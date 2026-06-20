@@ -45,29 +45,52 @@
       margin-left: 10px;
     }
     .spots {
-      padding: 16px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
     }
     .spot {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 14px;
-      border-radius: 8px;
-      background: #fafafa;
+      flex-direction: column;
+      border-radius: 10px;
+      overflow: hidden;
       border: 1px solid #eee;
       text-decoration: none;
       color: inherit;
-      transition: background 0.15s;
+      transition: box-shadow 0.15s, transform 0.15s;
+      background: #fafafa;
     }
-    .spot:hover { background: #fff3f3; border-color: #c0392b; }
-    .spot-icon { font-size: 1.3em; width: 28px; text-align: center; }
+    .spot:hover {
+      box-shadow: 0 4px 16px rgba(192,57,43,0.15);
+      transform: translateY(-2px);
+    }
+    .spot-img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      display: block;
+      background: #eee;
+    }
+    .spot-body {
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .spot-icon { font-size: 1.3em; flex-shrink: 0; }
     .spot-info { flex: 1; }
     .spot-name { font-weight: 600; font-size: 0.95em; }
     .spot-desc { font-size: 0.8em; color: #888; margin-top: 2px; }
-    .map-icon { color: #c0392b; font-size: 1em; }
+    .map-badge {
+      font-size: 0.72em;
+      color: #c0392b;
+      border: 1px solid #c0392b;
+      border-radius: 4px;
+      padding: 2px 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
     .tips {
       background: #fff;
       border-radius: 12px;
@@ -82,180 +105,238 @@
     @media (max-width: 600px) {
       body { padding: 12px; }
       h1 { font-size: 1.5em; }
+      .spots { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
 <h1>🗼 东京5天行程</h1>
-<p class="subtitle">点击地点名称 → 直接在 Google Maps 查看</p>
+<p class="subtitle">点击卡片 → 直接在 Google Maps 查看</p>
 
+<!-- Day 1 -->
 <div class="day">
   <div class="day-header">第1天 <span>抵达 · 浅草 · 上野</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/浅草寺" target="_blank">
-      <div class="spot-icon">⛩️</div>
-      <div class="spot-info">
-        <div class="spot-name">浅草寺</div>
-        <div class="spot-desc">东京最古老的寺庙，必去打卡</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/asakusa,temple,tokyo" alt="浅草寺">
+      <div class="spot-body">
+        <div class="spot-icon">⛩️</div>
+        <div class="spot-info">
+          <div class="spot-name">浅草寺</div>
+          <div class="spot-desc">东京最古老的寺庙，必去打卡</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/仲見世通り" target="_blank">
-      <div class="spot-icon">🛍️</div>
-      <div class="spot-info">
-        <div class="spot-name">仲见世通购物街</div>
-        <div class="spot-desc">传统小吃与纪念品</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/nakamise,shopping,japan" alt="仲见世通">
+      <div class="spot-body">
+        <div class="spot-icon">🛍️</div>
+        <div class="spot-info">
+          <div class="spot-name">仲见世通购物街</div>
+          <div class="spot-desc">传统小吃与纪念品</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/上野公園" target="_blank">
-      <div class="spot-icon">🌸</div>
-      <div class="spot-info">
-        <div class="spot-name">上野公园</div>
-        <div class="spot-desc">博物馆群 & 动物园</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/ueno,park,tokyo" alt="上野公园">
+      <div class="spot-body">
+        <div class="spot-icon">🌸</div>
+        <div class="spot-info">
+          <div class="spot-name">上野公园</div>
+          <div class="spot-desc">博物馆群 & 动物园</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
   </div>
 </div>
 
+<!-- Day 2 -->
 <div class="day">
   <div class="day-header">第2天 <span>新宿 · 涩谷 · 原宿</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/新宿御苑" target="_blank">
-      <div class="spot-icon">🌿</div>
-      <div class="spot-info">
-        <div class="spot-name">新宿御苑</div>
-        <div class="spot-desc">市中心大型庭园</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/shinjuku,garden,japan" alt="新宿御苑">
+      <div class="spot-body">
+        <div class="spot-icon">🌿</div>
+        <div class="spot-info">
+          <div class="spot-name">新宿御苑</div>
+          <div class="spot-desc">市中心大型庭园</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/渋谷スクランブル交差点" target="_blank">
-      <div class="spot-icon">🚶</div>
-      <div class="spot-info">
-        <div class="spot-name">涩谷十字路口</div>
-        <div class="spot-desc">全球最繁忙的斑马线</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/shibuya,crossing,tokyo" alt="涩谷十字路口">
+      <div class="spot-body">
+        <div class="spot-icon">🚶</div>
+        <div class="spot-info">
+          <div class="spot-name">涩谷十字路口</div>
+          <div class="spot-desc">全球最繁忙的斑马线</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/渋谷スカイ" target="_blank">
-      <div class="spot-icon">🏙️</div>
-      <div class="spot-info">
-        <div class="spot-name">涩谷Sky展望台</div>
-        <div class="spot-desc">360° 俯瞰东京，需提前预约</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/tokyo,skyline,skyscraper" alt="涩谷Sky">
+      <div class="spot-body">
+        <div class="spot-icon">🏙️</div>
+        <div class="spot-info">
+          <div class="spot-name">涩谷Sky展望台</div>
+          <div class="spot-desc">360° 俯瞰东京，需提前预约</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/竹下通り+原宿" target="_blank">
-      <div class="spot-icon">🎀</div>
-      <div class="spot-info">
-        <div class="spot-name">原宿竹下通</div>
-        <div class="spot-desc">潮流文化 & 可爱甜品</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/harajuku,takeshita,japan" alt="原宿竹下通">
+      <div class="spot-body">
+        <div class="spot-icon">🎀</div>
+        <div class="spot-info">
+          <div class="spot-name">原宿竹下通</div>
+          <div class="spot-desc">潮流文化 & 可爱甜品</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
   </div>
 </div>
 
+<!-- Day 3 -->
 <div class="day">
   <div class="day-header">第3天 <span>秋叶原 · 银座 · 筑地</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/秋葉原電気街" target="_blank">
-      <div class="spot-icon">🎮</div>
-      <div class="spot-info">
-        <div class="spot-name">秋叶原电器街</div>
-        <div class="spot-desc">电子产品、动漫周边天堂</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/akihabara,anime,electric" alt="秋叶原">
+      <div class="spot-body">
+        <div class="spot-icon">🎮</div>
+        <div class="spot-info">
+          <div class="spot-name">秋叶原电器街</div>
+          <div class="spot-desc">电子产品、动漫周边天堂</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/築地場外市場" target="_blank">
-      <div class="spot-icon">🍣</div>
-      <div class="spot-info">
-        <div class="spot-name">筑地场外市场</div>
-        <div class="spot-desc">最新鲜的海鲜早午餐</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/tsukiji,sushi,seafood" alt="筑地市场">
+      <div class="spot-body">
+        <div class="spot-icon">🍣</div>
+        <div class="spot-info">
+          <div class="spot-name">筑地场外市场</div>
+          <div class="spot-desc">最新鲜的海鲜早午餐</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/銀座+無印良品" target="_blank">
-      <div class="spot-icon">🛒</div>
-      <div class="spot-info">
-        <div class="spot-name">银座 · 无印良品旗舰店</div>
-        <div class="spot-desc">购物 & 高级餐厅</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/ginza,shopping,tokyo" alt="银座">
+      <div class="spot-body">
+        <div class="spot-icon">🛒</div>
+        <div class="spot-info">
+          <div class="spot-name">银座 · 无印良品旗舰店</div>
+          <div class="spot-desc">购物 & 高级餐厅</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
   </div>
 </div>
 
+<!-- Day 4 -->
 <div class="day">
   <div class="day-header">第4天 <span>一日游：镰仓 或 日光</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/高徳院+鎌倉大仏" target="_blank">
-      <div class="spot-icon">🗿</div>
-      <div class="spot-info">
-        <div class="spot-name">镰仓大佛（高德院）</div>
-        <div class="spot-desc">镰仓标志性景点</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/kamakura,buddha,japan" alt="镰仓大佛">
+      <div class="spot-body">
+        <div class="spot-icon">🗿</div>
+        <div class="spot-info">
+          <div class="spot-name">镰仓大佛（高德院）</div>
+          <div class="spot-desc">镰仓标志性景点</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/長谷寺+鎌倉" target="_blank">
-      <div class="spot-icon">⛩️</div>
-      <div class="spot-info">
-        <div class="spot-name">长谷寺</div>
-        <div class="spot-desc">可俯瞰镰仓海景</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/hasedera,temple,kamakura" alt="长谷寺">
+      <div class="spot-body">
+        <div class="spot-icon">⛩️</div>
+        <div class="spot-info">
+          <div class="spot-name">长谷寺</div>
+          <div class="spot-desc">可俯瞰镰仓海景</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/日光東照宮" target="_blank">
-      <div class="spot-icon">🏯</div>
-      <div class="spot-info">
-        <div class="spot-name">日光东照宫</div>
-        <div class="spot-desc">世界遗产，华丽神社建筑群</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/nikko,toshogu,shrine" alt="日光东照宫">
+      <div class="spot-body">
+        <div class="spot-icon">🏯</div>
+        <div class="spot-info">
+          <div class="spot-name">日光东照宫</div>
+          <div class="spot-desc">世界遗产，华丽神社建筑群</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/華厳の滝" target="_blank">
-      <div class="spot-icon">💧</div>
-      <div class="spot-info">
-        <div class="spot-name">华严瀑布</div>
-        <div class="spot-desc">日本三大名瀑之一</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/kegon,waterfall,nikko" alt="华严瀑布">
+      <div class="spot-body">
+        <div class="spot-icon">💧</div>
+        <div class="spot-info">
+          <div class="spot-name">华严瀑布</div>
+          <div class="spot-desc">日本三大名瀑之一</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
   </div>
 </div>
 
+<!-- Day 5 -->
 <div class="day">
   <div class="day-header">第5天 <span>台场 · 六本木 · 出发</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/お台場海浜公園" target="_blank">
-      <div class="spot-icon">🌊</div>
-      <div class="spot-info">
-        <div class="spot-name">台场海滨公园</div>
-        <div class="spot-desc">海景 & 自由女神像复制品</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/odaiba,tokyo,waterfront" alt="台场海滨">
+      <div class="spot-body">
+        <div class="spot-icon">🌊</div>
+        <div class="spot-info">
+          <div class="spot-name">台场海滨公园</div>
+          <div class="spot-desc">海景 & 自由女神像复制品</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/チームラボプラネッツ+豊洲" target="_blank">
-      <div class="spot-icon">✨</div>
-      <div class="spot-info">
-        <div class="spot-name">teamLab Planets</div>
-        <div class="spot-desc">沉浸式数字艺术，需提前预约</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/teamlab,digital,art" alt="teamLab">
+      <div class="spot-body">
+        <div class="spot-icon">✨</div>
+        <div class="spot-info">
+          <div class="spot-name">teamLab Planets</div>
+          <div class="spot-desc">沉浸式数字艺术，需提前预约</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/森美術館+六本木" target="_blank">
-      <div class="spot-icon">🎨</div>
-      <div class="spot-info">
-        <div class="spot-name">六本木森美术馆</div>
-        <div class="spot-desc">当代艺术 + 城市观景台</div>
+      <img class="spot-img" src="https://loremflickr.com/400/160/mori,museum,roppongi" alt="森美术馆">
+      <div class="spot-body">
+        <div class="spot-icon">🎨</div>
+        <div class="spot-info">
+          <div class="spot-name">六本木森美术馆</div>
+          <div class="spot-desc">当代艺术 + 城市观景台</div>
+        </div>
+        <div class="map-badge">📍 地图</div>
       </div>
-      <div class="map-icon">📍</div>
     </a>
   </div>
 </div>
 
+<!-- Tips -->
 <div class="tips">
   <h2>实用贴士</h2>
   <table>
