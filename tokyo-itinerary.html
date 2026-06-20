@@ -357,51 +357,40 @@
 
 <script>
   const spots = [
-    { id: "img-senso",      q: "Senso-ji Temple Asakusa Tokyo" },
-    { id: "img-nakamise",   q: "Nakamise Shopping Street Asakusa Tokyo" },
-    { id: "img-ueno",       q: "Ueno Park Tokyo" },
-    { id: "img-shinjuku",   q: "Shinjuku Gyoen National Garden Tokyo" },
-    { id: "img-shibuya",    q: "Shibuya Scramble Crossing Tokyo" },
-    { id: "img-shibuyasky", q: "Shibuya Sky observation deck Tokyo" },
-    { id: "img-harajuku",   q: "Takeshita Street Harajuku Tokyo" },
-    { id: "img-akiba",      q: "Akihabara Electric Town Tokyo" },
-    { id: "img-tsukiji",    q: "Tsukiji Outer Market Tokyo" },
-    { id: "img-ginza",      q: "Ginza shopping district Tokyo" },
-    { id: "img-daibutsu",   q: "Kotoku-in Great Buddha Kamakura" },
-    { id: "img-hasedera",   q: "Hase-dera Temple Kamakura" },
-    { id: "img-toshogu",    q: "Nikko Toshogu Shrine Nikko Japan" },
-    { id: "img-kegon",      q: "Kegon Falls Nikko Japan" },
-    { id: "img-odaiba",     q: "Odaiba waterfront Tokyo" },
-    { id: "img-teamlab",    q: "teamLab Planets Tokyo Toyosu" },
-    { id: "img-mori",       q: "Mori Art Museum Roppongi Tokyo" },
+    { id: "img-senso",      wiki: "Senso-ji" },
+    { id: "img-nakamise",   wiki: "Nakamise" },
+    { id: "img-ueno",       wiki: "Ueno_Park" },
+    { id: "img-shinjuku",   wiki: "Shinjuku_Gyoen" },
+    { id: "img-shibuya",    wiki: "Shibuya_Crossing" },
+    { id: "img-shibuyasky", wiki: "Shibuya_Scramble_Square" },
+    { id: "img-harajuku",   wiki: "Takeshita_Street" },
+    { id: "img-akiba",      wiki: "Akihabara" },
+    { id: "img-tsukiji",    wiki: "Tsukiji_market" },
+    { id: "img-ginza",      wiki: "Ginza" },
+    { id: "img-daibutsu",   wiki: "Kōtoku-in" },
+    { id: "img-hasedera",   wiki: "Hase-dera,_Kamakura" },
+    { id: "img-toshogu",    wiki: "Nikkō_Tōshō-gū" },
+    { id: "img-kegon",      wiki: "Kegon_Falls" },
+    { id: "img-odaiba",     wiki: "Odaiba" },
+    { id: "img-teamlab",    wiki: "TeamLab_Planets_Tokyo" },
+    { id: "img-mori",       wiki: "Mori_Art_Museum" },
   ];
 
-  async function loadPhoto(id, query) {
+  async function loadWikiPhoto(id, article) {
     const el = document.getElementById(id);
     if (!el) return;
     try {
-      // Step 1: Search place and get photo reference
-      const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": KEY,
-          "X-Goog-FieldMask": "places.photos"
-        },
-        body: JSON.stringify({ textQuery: query, pageSize: 1 })
-      });
+      const res = await fetch(
+        `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(article)}&prop=pageimages&format=json&pithumbsize=400&origin=*`
+      );
       const data = await res.json();
-      const photoName = data.places?.[0]?.photos?.[0]?.name;
-      if (photoName) {
-        // Step 2: Load photo via Places photo media endpoint
-        el.src = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=400&key=${KEY}`;
-      }
-    } catch (e) {
-      // silently keep placeholder
-    }
+      const page = Object.values(data.query.pages)[0];
+      const url = page?.thumbnail?.source;
+      if (url) el.src = url;
+    } catch (e) {}
   }
 
-  spots.forEach(({ id, q }) => loadPhoto(id, q));
+  spots.forEach(({ id, wiki }) => loadWikiPhoto(id, wiki));
 </script>
 
 </body>
