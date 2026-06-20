@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>东京5天行程</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 2em;
+      margin: 20px 0 8px;
+      color: #c0392b;
+    }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 30px;
+      font-size: 0.95em;
+    }
+    .day {
+      background: #fff;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .day-header {
+      background: #c0392b;
+      color: #fff;
+      padding: 14px 20px;
+      font-size: 1.1em;
+      font-weight: bold;
+    }
+    .day-header span {
+      font-size: 0.85em;
+      font-weight: normal;
+      opacity: 0.85;
+      margin-left: 10px;
+    }
+    .spots {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .spot {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: #fafafa;
+      border: 1px solid #eee;
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.15s;
+    }
+    .spot:hover { background: #fff3f3; border-color: #c0392b; }
+    .spot-icon { font-size: 1.3em; width: 28px; text-align: center; }
+    .spot-info { flex: 1; }
+    .spot-name { font-weight: 600; font-size: 0.95em; }
+    .spot-desc { font-size: 0.8em; color: #888; margin-top: 2px; }
+    .map-icon { color: #c0392b; font-size: 1em; }
+    .tips {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .tips h2 { font-size: 1.05em; margin-bottom: 14px; color: #c0392b; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+    td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+    tr:last-child td { border-bottom: none; }
+    td:first-child { font-weight: 600; width: 80px; color: #555; }
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      h1 { font-size: 1.5em; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>🗼 东京5天行程</h1>
+<p class="subtitle">点击地点名称 → 直接在 Google Maps 查看</p>
+
+<div class="day">
+  <div class="day-header">第1天 <span>抵达 · 浅草 · 上野</span></div>
+  <div class="spots">
+    <a class="spot" href="https://www.google.com/maps/search/浅草寺" target="_blank">
+      <div class="spot-icon">⛩️</div>
+      <div class="spot-info">
+        <div class="spot-name">浅草寺</div>
+        <div class="spot-desc">东京最古老的寺庙，必去打卡</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/仲見世通り" target="_blank">
+      <div class="spot-icon">🛍️</div>
+      <div class="spot-info">
+        <div class="spot-name">仲见世通购物街</div>
+        <div class="spot-desc">传统小吃与纪念品</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/上野公園" target="_blank">
+      <div class="spot-icon">🌸</div>
+      <div class="spot-info">
+        <div class="spot-name">上野公园</div>
+        <div class="spot-desc">博物馆群 & 动物园</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+  </div>
+</div>
+
+<div class="day">
+  <div class="day-header">第2天 <span>新宿 · 涩谷 · 原宿</span></div>
+  <div class="spots">
+    <a class="spot" href="https://www.google.com/maps/search/新宿御苑" target="_blank">
+      <div class="spot-icon">🌿</div>
+      <div class="spot-info">
+        <div class="spot-name">新宿御苑</div>
+        <div class="spot-desc">市中心大型庭园</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/渋谷スクランブル交差点" target="_blank">
+      <div class="spot-icon">🚶</div>
+      <div class="spot-info">
+        <div class="spot-name">涩谷十字路口</div>
+        <div class="spot-desc">全球最繁忙的斑马线</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/渋谷スカイ" target="_blank">
+      <div class="spot-icon">🏙️</div>
+      <div class="spot-info">
+        <div class="spot-name">涩谷Sky展望台</div>
+        <div class="spot-desc">360° 俯瞰东京，需提前预约</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/竹下通り+原宿" target="_blank">
+      <div class="spot-icon">🎀</div>
+      <div class="spot-info">
+        <div class="spot-name">原宿竹下通</div>
+        <div class="spot-desc">潮流文化 & 可爱甜品</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+  </div>
+</div>
+
+<div class="day">
+  <div class="day-header">第3天 <span>秋叶原 · 银座 · 筑地</span></div>
+  <div class="spots">
+    <a class="spot" href="https://www.google.com/maps/search/秋葉原電気街" target="_blank">
+      <div class="spot-icon">🎮</div>
+      <div class="spot-info">
+        <div class="spot-name">秋叶原电器街</div>
+        <div class="spot-desc">电子产品、动漫周边天堂</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/築地場外市場" target="_blank">
+      <div class="spot-icon">🍣</div>
+      <div class="spot-info">
+        <div class="spot-name">筑地场外市场</div>
+        <div class="spot-desc">最新鲜的海鲜早午餐</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/銀座+無印良品" target="_blank">
+      <div class="spot-icon">🛒</div>
+      <div class="spot-info">
+        <div class="spot-name">银座 · 无印良品旗舰店</div>
+        <div class="spot-desc">购物 & 高级餐厅</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+  </div>
+</div>
+
+<div class="day">
+  <div class="day-header">第4天 <span>一日游：镰仓 或 日光</span></div>
+  <div class="spots">
+    <a class="spot" href="https://www.google.com/maps/search/高徳院+鎌倉大仏" target="_blank">
+      <div class="spot-icon">🗿</div>
+      <div class="spot-info">
+        <div class="spot-name">镰仓大佛（高德院）</div>
+        <div class="spot-desc">镰仓标志性景点</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/長谷寺+鎌倉" target="_blank">
+      <div class="spot-icon">⛩️</div>
+      <div class="spot-info">
+        <div class="spot-name">长谷寺</div>
+        <div class="spot-desc">可俯瞰镰仓海景</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/日光東照宮" target="_blank">
+      <div class="spot-icon">🏯</div>
+      <div class="spot-info">
+        <div class="spot-name">日光东照宫</div>
+        <div class="spot-desc">世界遗产，华丽神社建筑群</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/華厳の滝" target="_blank">
+      <div class="spot-icon">💧</div>
+      <div class="spot-info">
+        <div class="spot-name">华严瀑布</div>
+        <div class="spot-desc">日本三大名瀑之一</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+  </div>
+</div>
+
+<div class="day">
+  <div class="day-header">第5天 <span>台场 · 六本木 · 出发</span></div>
+  <div class="spots">
+    <a class="spot" href="https://www.google.com/maps/search/お台場海浜公園" target="_blank">
+      <div class="spot-icon">🌊</div>
+      <div class="spot-info">
+        <div class="spot-name">台场海滨公园</div>
+        <div class="spot-desc">海景 & 自由女神像复制品</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/チームラボプラネッツ+豊洲" target="_blank">
+      <div class="spot-icon">✨</div>
+      <div class="spot-info">
+        <div class="spot-name">teamLab Planets</div>
+        <div class="spot-desc">沉浸式数字艺术，需提前预约</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+    <a class="spot" href="https://www.google.com/maps/search/森美術館+六本木" target="_blank">
+      <div class="spot-icon">🎨</div>
+      <div class="spot-info">
+        <div class="spot-name">六本木森美术馆</div>
+        <div class="spot-desc">当代艺术 + 城市观景台</div>
+      </div>
+      <div class="map-icon">📍</div>
+    </a>
+  </div>
+</div>
+
+<div class="tips">
+  <h2>实用贴士</h2>
+  <table>
+    <tr><td>交通</td><td>购买 Suica 卡，通吃电车/地铁/便利店</td></tr>
+    <tr><td>上网</td><td>租借随身 WiFi 或购买 eSIM</td></tr>
+    <tr><td>预约</td><td>teamLab、涩谷Sky 需提前在官网预约</td></tr>
+    <tr><td>餐饮</td><td>约 ¥800–2000 /餐</td></tr>
+    <tr><td>交通费</td><td>每日约 ¥500–1000</td></tr>
+  </table>
+</div>
+
+</body>
+</html>
