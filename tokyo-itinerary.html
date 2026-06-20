@@ -47,7 +47,7 @@
     .spots {
       padding: 16px;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: 14px;
     }
     .spot {
@@ -70,7 +70,7 @@
       height: 160px;
       object-fit: cover;
       display: block;
-      background: #eee;
+      background: #e8e8e8;
     }
     .spot-body {
       padding: 12px 14px;
@@ -114,12 +114,19 @@
 <h1>🗼 东京5天行程</h1>
 <p class="subtitle">点击卡片 → 直接在 Google Maps 查看</p>
 
+<script>
+  const KEY = "AIzaSyCdPSJBGOPzM4v-MyX9ncfLqjMM4Du_Pbc";
+  function sv(location) {
+    return `https://maps.googleapis.com/maps/api/streetview?size=400x160&location=${encodeURIComponent(location)}&fov=90&pitch=10&key=${KEY}`;
+  }
+</script>
+
 <!-- Day 1 -->
 <div class="day">
   <div class="day-header">第1天 <span>抵达 · 浅草 · 上野</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/浅草寺" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/asakusa,temple,tokyo" alt="浅草寺">
+      <img class="spot-img" id="img-senso" alt="浅草寺">
       <div class="spot-body">
         <div class="spot-icon">⛩️</div>
         <div class="spot-info">
@@ -130,7 +137,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/仲見世通り" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/nakamise,shopping,japan" alt="仲见世通">
+      <img class="spot-img" id="img-nakamise" alt="仲见世通">
       <div class="spot-body">
         <div class="spot-icon">🛍️</div>
         <div class="spot-info">
@@ -141,7 +148,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/上野公園" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/ueno,park,tokyo" alt="上野公园">
+      <img class="spot-img" id="img-ueno" alt="上野公园">
       <div class="spot-body">
         <div class="spot-icon">🌸</div>
         <div class="spot-info">
@@ -159,7 +166,7 @@
   <div class="day-header">第2天 <span>新宿 · 涩谷 · 原宿</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/新宿御苑" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/shinjuku,garden,japan" alt="新宿御苑">
+      <img class="spot-img" id="img-shinjuku" alt="新宿御苑">
       <div class="spot-body">
         <div class="spot-icon">🌿</div>
         <div class="spot-info">
@@ -170,7 +177,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/渋谷スクランブル交差点" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/shibuya,crossing,tokyo" alt="涩谷十字路口">
+      <img class="spot-img" id="img-shibuya" alt="涩谷十字路口">
       <div class="spot-body">
         <div class="spot-icon">🚶</div>
         <div class="spot-info">
@@ -181,7 +188,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/渋谷スカイ" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/tokyo,skyline,skyscraper" alt="涩谷Sky">
+      <img class="spot-img" id="img-shibuyasky" alt="涩谷Sky">
       <div class="spot-body">
         <div class="spot-icon">🏙️</div>
         <div class="spot-info">
@@ -192,7 +199,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/竹下通り+原宿" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/harajuku,takeshita,japan" alt="原宿竹下通">
+      <img class="spot-img" id="img-harajuku" alt="原宿竹下通">
       <div class="spot-body">
         <div class="spot-icon">🎀</div>
         <div class="spot-info">
@@ -210,7 +217,7 @@
   <div class="day-header">第3天 <span>秋叶原 · 银座 · 筑地</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/秋葉原電気街" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/akihabara,anime,electric" alt="秋叶原">
+      <img class="spot-img" id="img-akiba" alt="秋叶原">
       <div class="spot-body">
         <div class="spot-icon">🎮</div>
         <div class="spot-info">
@@ -221,7 +228,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/築地場外市場" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/tsukiji,sushi,seafood" alt="筑地市场">
+      <img class="spot-img" id="img-tsukiji" alt="筑地市场">
       <div class="spot-body">
         <div class="spot-icon">🍣</div>
         <div class="spot-info">
@@ -231,8 +238,8 @@
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
-    <a class="spot" href="https://www.google.com/maps/search/銀座+無印良品" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/ginza,shopping,tokyo" alt="银座">
+    <a class="spot" href="https://www.google.com/maps/search/銀座" target="_blank">
+      <img class="spot-img" id="img-ginza" alt="银座">
       <div class="spot-body">
         <div class="spot-icon">🛒</div>
         <div class="spot-info">
@@ -250,7 +257,7 @@
   <div class="day-header">第4天 <span>一日游：镰仓 或 日光</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/高徳院+鎌倉大仏" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/kamakura,buddha,japan" alt="镰仓大佛">
+      <img class="spot-img" id="img-daibutsu" alt="镰仓大佛">
       <div class="spot-body">
         <div class="spot-icon">🗿</div>
         <div class="spot-info">
@@ -261,7 +268,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/長谷寺+鎌倉" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/hasedera,temple,kamakura" alt="长谷寺">
+      <img class="spot-img" id="img-hasedera" alt="长谷寺">
       <div class="spot-body">
         <div class="spot-icon">⛩️</div>
         <div class="spot-info">
@@ -272,7 +279,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/日光東照宮" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/nikko,toshogu,shrine" alt="日光东照宫">
+      <img class="spot-img" id="img-toshogu" alt="日光东照宫">
       <div class="spot-body">
         <div class="spot-icon">🏯</div>
         <div class="spot-info">
@@ -283,7 +290,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/華厳の滝" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/kegon,waterfall,nikko" alt="华严瀑布">
+      <img class="spot-img" id="img-kegon" alt="华严瀑布">
       <div class="spot-body">
         <div class="spot-icon">💧</div>
         <div class="spot-info">
@@ -301,7 +308,7 @@
   <div class="day-header">第5天 <span>台场 · 六本木 · 出发</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/お台場海浜公園" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/odaiba,tokyo,waterfront" alt="台场海滨">
+      <img class="spot-img" id="img-odaiba" alt="台场海滨">
       <div class="spot-body">
         <div class="spot-icon">🌊</div>
         <div class="spot-info">
@@ -312,7 +319,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/チームラボプラネッツ+豊洲" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/teamlab,digital,art" alt="teamLab">
+      <img class="spot-img" id="img-teamlab" alt="teamLab">
       <div class="spot-body">
         <div class="spot-icon">✨</div>
         <div class="spot-info">
@@ -323,7 +330,7 @@
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/森美術館+六本木" target="_blank">
-      <img class="spot-img" src="https://loremflickr.com/400/160/mori,museum,roppongi" alt="森美术馆">
+      <img class="spot-img" id="img-mori" alt="森美术馆">
       <div class="spot-body">
         <div class="spot-icon">🎨</div>
         <div class="spot-info">
@@ -347,6 +354,44 @@
     <tr><td>交通费</td><td>每日约 ¥500–1000</td></tr>
   </table>
 </div>
+
+<script>
+  const spots = [
+    { id: "img-senso",      wiki: "Senso-ji" },
+    { id: "img-nakamise",   wiki: "Nakamise" },
+    { id: "img-ueno",       wiki: "Ueno_Park" },
+    { id: "img-shinjuku",   wiki: "Shinjuku_Gyoen" },
+    { id: "img-shibuya",    wiki: "Shibuya_Crossing" },
+    { id: "img-shibuyasky", wiki: "Shibuya_Scramble_Square" },
+    { id: "img-harajuku",   wiki: "Takeshita_Street" },
+    { id: "img-akiba",      wiki: "Akihabara" },
+    { id: "img-tsukiji",    wiki: "Tsukiji_market" },
+    { id: "img-ginza",      wiki: "Ginza" },
+    { id: "img-daibutsu",   wiki: "Kōtoku-in" },
+    { id: "img-hasedera",   wiki: "Hase-dera,_Kamakura" },
+    { id: "img-toshogu",    wiki: "Nikkō_Tōshō-gū" },
+    { id: "img-kegon",      wiki: "Kegon_Falls" },
+    { id: "img-odaiba",     wiki: "Odaiba" },
+    { id: "img-teamlab",    wiki: "TeamLab_Planets_Tokyo" },
+    { id: "img-mori",       wiki: "Mori_Art_Museum" },
+  ];
+
+  async function loadWikiPhoto(id, article) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    try {
+      const res = await fetch(
+        `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(article)}&prop=pageimages&format=json&pithumbsize=400&origin=*`
+      );
+      const data = await res.json();
+      const page = Object.values(data.query.pages)[0];
+      const url = page?.thumbnail?.source;
+      if (url) el.src = url;
+    } catch (e) {}
+  }
+
+  spots.forEach(({ id, wiki }) => loadWikiPhoto(id, wiki));
+</script>
 
 </body>
 </html>
