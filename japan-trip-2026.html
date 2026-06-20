@@ -299,6 +299,39 @@
   const GKEY   = "AIzaSyCdPSJBGOPzM4v-MyX9ncfLqjMM4Du_Pbc";
   const AVKEY  = "af669cc0fe4c1e03a86a0ff82ea0a6bb";
 
+  // ── Wikipedia pageimages API (CORS origin=*, works locally + GitHub Pages) ──
+  const wikiPages = {
+    "img-conrad":      "Conrad_Osaka",
+    "img-fourseasons": "Four_Seasons_Hotel_Tokyo_at_Otemachi",
+    "spot-lego-osaka": "Legoland_Discovery_Centre_Osaka",
+    "spot-nifrel":     "Nifrel",
+    "spot-usj":        "Universal_Studios_Japan",
+    "spot-kaiyukan":   "Osaka_Aquarium_Kaiyukan",
+    "spot-santamaria": "Santa_Maria_(ship,_Osaka)",
+    "spot-tempozan":   "Tempozan_Giant_Ferris_Wheel",
+    "spot-shibuya":    "Shibuya_Crossing",
+    "spot-lego-tokyo": "Legoland_Discovery_Centre_Tokyo",
+    "spot-olympic":    "Japan_Olympic_Museum",
+    "spot-tokyotower": "Tokyo_Tower",
+    "spot-disney":     "Tokyo_Disneyland",
+    "spot-teamlab":    "TeamLab_Planets",
+    "spot-skytree":    "Tokyo_Skytree",
+    "spot-ginza":      "Ginza",
+  };
+
+  async function loadWikiPageImage(imgId, article) {
+    try {
+      const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(article)}&prop=pageimages&pithumbsize=600&pilicense=any&format=json&origin=*`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const page = Object.values(data.query?.pages ?? {})[0];
+      const thumb = page?.thumbnail?.source;
+      if (thumb) {
+        const el = document.getElementById(imgId);
+        if (el) el.src = thumb;
+      }
+    } catch(e) {}
+  }
 
   // ── AviationStack flight tracking ─────────────────────────
   const flights = [
@@ -340,7 +373,10 @@
 
   function trackAllFlights() { flights.forEach(trackFlight); }
 
-  window.addEventListener("DOMContentLoaded", () => { trackAllFlights(); });
+  window.addEventListener("DOMContentLoaded", () => {
+    trackAllFlights();
+    Object.entries(wikiPages).forEach(([id, article]) => loadWikiPageImage(id, article));
+  });
 </script>
 </body>
 </html>
