@@ -65,25 +65,12 @@
       box-shadow: 0 4px 16px rgba(192,57,43,0.15);
       transform: translateY(-2px);
     }
-    .spot-img-wrap {
-      width: 100%;
-      height: 160px;
-      background: #e8e8e8;
-      overflow: hidden;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
     .spot-img {
       width: 100%;
-      height: 100%;
+      height: 160px;
       object-fit: cover;
       display: block;
-    }
-    .img-placeholder {
-      font-size: 2.5em;
-      opacity: 0.4;
+      background: #e8e8e8;
     }
     .spot-body {
       padding: 12px 14px;
@@ -127,38 +114,45 @@
 <h1>🗼 东京5天行程</h1>
 <p class="subtitle">点击卡片 → 直接在 Google Maps 查看</p>
 
+<script>
+  const KEY = "AIzaSyCdPSJBGOPzM4v-MyX9ncfLqjMM4Du_Pbc";
+  function sv(location) {
+    return `https://maps.googleapis.com/maps/api/streetview?size=400x160&location=${encodeURIComponent(location)}&fov=90&pitch=10&key=${KEY}`;
+  }
+</script>
+
 <!-- Day 1 -->
 <div class="day">
   <div class="day-header">第1天 <span>抵达 · 浅草 · 上野</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/浅草寺" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">⛩️</span></div>
+      <img class="spot-img" id="img-senso" alt="浅草寺">
       <div class="spot-body">
         <div class="spot-icon">⛩️</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Senso-ji">浅草寺</div>
+          <div class="spot-name">浅草寺</div>
           <div class="spot-desc">东京最古老的寺庙，必去打卡</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/仲見世通り" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🛍️</span></div>
+      <img class="spot-img" id="img-nakamise" alt="仲见世通">
       <div class="spot-body">
         <div class="spot-icon">🛍️</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Nakamise">仲见世通购物街</div>
+          <div class="spot-name">仲见世通购物街</div>
           <div class="spot-desc">传统小吃与纪念品</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/上野公園" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🌸</span></div>
+      <img class="spot-img" id="img-ueno" alt="上野公园">
       <div class="spot-body">
         <div class="spot-icon">🌸</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Ueno_Park">上野公园</div>
+          <div class="spot-name">上野公园</div>
           <div class="spot-desc">博物馆群 & 动物园</div>
         </div>
         <div class="map-badge">📍 地图</div>
@@ -172,44 +166,44 @@
   <div class="day-header">第2天 <span>新宿 · 涩谷 · 原宿</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/新宿御苑" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🌿</span></div>
+      <img class="spot-img" id="img-shinjuku" alt="新宿御苑">
       <div class="spot-body">
         <div class="spot-icon">🌿</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Shinjuku_Gyoen">新宿御苑</div>
+          <div class="spot-name">新宿御苑</div>
           <div class="spot-desc">市中心大型庭园</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/渋谷スクランブル交差点" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🚶</span></div>
+      <img class="spot-img" id="img-shibuya" alt="涩谷十字路口">
       <div class="spot-body">
         <div class="spot-icon">🚶</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Shibuya_Crossing">涩谷十字路口</div>
+          <div class="spot-name">涩谷十字路口</div>
           <div class="spot-desc">全球最繁忙的斑马线</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/渋谷スカイ" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🏙️</span></div>
+      <img class="spot-img" id="img-shibuyasky" alt="涩谷Sky">
       <div class="spot-body">
         <div class="spot-icon">🏙️</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Shibuya_Scramble_Square">涩谷Sky展望台</div>
+          <div class="spot-name">涩谷Sky展望台</div>
           <div class="spot-desc">360° 俯瞰东京，需提前预约</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/竹下通り+原宿" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🎀</span></div>
+      <img class="spot-img" id="img-harajuku" alt="原宿竹下通">
       <div class="spot-body">
         <div class="spot-icon">🎀</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Takeshita_Street">原宿竹下通</div>
+          <div class="spot-name">原宿竹下通</div>
           <div class="spot-desc">潮流文化 & 可爱甜品</div>
         </div>
         <div class="map-badge">📍 地图</div>
@@ -223,33 +217,33 @@
   <div class="day-header">第3天 <span>秋叶原 · 银座 · 筑地</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/秋葉原電気街" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🎮</span></div>
+      <img class="spot-img" id="img-akiba" alt="秋叶原">
       <div class="spot-body">
         <div class="spot-icon">🎮</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Akihabara">秋叶原电器街</div>
+          <div class="spot-name">秋叶原电器街</div>
           <div class="spot-desc">电子产品、动漫周边天堂</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/築地場外市場" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🍣</span></div>
+      <img class="spot-img" id="img-tsukiji" alt="筑地市场">
       <div class="spot-body">
         <div class="spot-icon">🍣</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Tsukiji_outer_market">筑地场外市场</div>
+          <div class="spot-name">筑地场外市场</div>
           <div class="spot-desc">最新鲜的海鲜早午餐</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/銀座" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🛒</span></div>
+      <img class="spot-img" id="img-ginza" alt="银座">
       <div class="spot-body">
         <div class="spot-icon">🛒</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Ginza">银座 · 无印良品旗舰店</div>
+          <div class="spot-name">银座 · 无印良品旗舰店</div>
           <div class="spot-desc">购物 & 高级餐厅</div>
         </div>
         <div class="map-badge">📍 地图</div>
@@ -263,44 +257,44 @@
   <div class="day-header">第4天 <span>一日游：镰仓 或 日光</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/高徳院+鎌倉大仏" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🗿</span></div>
+      <img class="spot-img" id="img-daibutsu" alt="镰仓大佛">
       <div class="spot-body">
         <div class="spot-icon">🗿</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Kotoku-in">镰仓大佛（高德院）</div>
+          <div class="spot-name">镰仓大佛（高德院）</div>
           <div class="spot-desc">镰仓标志性景点</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/長谷寺+鎌倉" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">⛩️</span></div>
+      <img class="spot-img" id="img-hasedera" alt="长谷寺">
       <div class="spot-body">
         <div class="spot-icon">⛩️</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Hase-dera,_Kamakura">长谷寺</div>
+          <div class="spot-name">长谷寺</div>
           <div class="spot-desc">可俯瞰镰仓海景</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/日光東照宮" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🏯</span></div>
+      <img class="spot-img" id="img-toshogu" alt="日光东照宫">
       <div class="spot-body">
         <div class="spot-icon">🏯</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Nikko_Tosho-gu">日光东照宫</div>
+          <div class="spot-name">日光东照宫</div>
           <div class="spot-desc">世界遗产，华丽神社建筑群</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/華厳の滝" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">💧</span></div>
+      <img class="spot-img" id="img-kegon" alt="华严瀑布">
       <div class="spot-body">
         <div class="spot-icon">💧</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Kegon_Falls">华严瀑布</div>
+          <div class="spot-name">华严瀑布</div>
           <div class="spot-desc">日本三大名瀑之一</div>
         </div>
         <div class="map-badge">📍 地图</div>
@@ -314,33 +308,33 @@
   <div class="day-header">第5天 <span>台场 · 六本木 · 出发</span></div>
   <div class="spots">
     <a class="spot" href="https://www.google.com/maps/search/お台場海浜公園" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🌊</span></div>
+      <img class="spot-img" id="img-odaiba" alt="台场海滨">
       <div class="spot-body">
         <div class="spot-icon">🌊</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Odaiba">台场海滨公园</div>
+          <div class="spot-name">台场海滨公园</div>
           <div class="spot-desc">海景 & 自由女神像复制品</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/チームラボプラネッツ+豊洲" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">✨</span></div>
+      <img class="spot-img" id="img-teamlab" alt="teamLab">
       <div class="spot-body">
         <div class="spot-icon">✨</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="TeamLab_Planets_Tokyo">teamLab Planets</div>
+          <div class="spot-name">teamLab Planets</div>
           <div class="spot-desc">沉浸式数字艺术，需提前预约</div>
         </div>
         <div class="map-badge">📍 地图</div>
       </div>
     </a>
     <a class="spot" href="https://www.google.com/maps/search/森美術館+六本木" target="_blank">
-      <div class="spot-img-wrap"><span class="img-placeholder">🎨</span></div>
+      <img class="spot-img" id="img-mori" alt="森美术馆">
       <div class="spot-body">
         <div class="spot-icon">🎨</div>
         <div class="spot-info">
-          <div class="spot-name" data-wiki="Mori_Art_Museum">六本木森美术馆</div>
+          <div class="spot-name">六本木森美术馆</div>
           <div class="spot-desc">当代艺术 + 城市观景台</div>
         </div>
         <div class="map-badge">📍 地图</div>
@@ -362,24 +356,29 @@
 </div>
 
 <script>
-  // Load real Wikipedia thumbnail images for each spot
-  document.querySelectorAll('[data-wiki]').forEach(el => {
-    const article = el.getAttribute('data-wiki');
-    const wrap = el.closest('.spot').querySelector('.spot-img-wrap');
-    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${article}`)
-      .then(r => r.json())
-      .then(data => {
-        const url = data.thumbnail && data.thumbnail.source;
-        if (url) {
-          const img = document.createElement('img');
-          img.className = 'spot-img';
-          img.src = url;
-          img.alt = el.textContent;
-          wrap.innerHTML = '';
-          wrap.appendChild(img);
-        }
-      })
-      .catch(() => {});
+  const spots = [
+    { id: "img-senso",     q: "Senso-ji Temple, Asakusa, Tokyo" },
+    { id: "img-nakamise",  q: "Nakamise Shopping Street, Asakusa, Tokyo" },
+    { id: "img-ueno",      q: "Ueno Park, Tokyo" },
+    { id: "img-shinjuku",  q: "Shinjuku Gyoen Garden, Tokyo" },
+    { id: "img-shibuya",   q: "Shibuya Scramble Crossing, Tokyo" },
+    { id: "img-shibuyasky",q: "Shibuya Scramble Square, Tokyo" },
+    { id: "img-harajuku",  q: "Takeshita Street, Harajuku, Tokyo" },
+    { id: "img-akiba",     q: "Akihabara Electric Town, Tokyo" },
+    { id: "img-tsukiji",   q: "Tsukiji Outer Market, Tokyo" },
+    { id: "img-ginza",     q: "Ginza, Tokyo" },
+    { id: "img-daibutsu",  q: "Kotoku-in Great Buddha, Kamakura" },
+    { id: "img-hasedera",  q: "Hase-dera Temple, Kamakura" },
+    { id: "img-toshogu",   q: "Nikko Toshogu Shrine, Nikko" },
+    { id: "img-kegon",     q: "Kegon Falls, Nikko" },
+    { id: "img-odaiba",    q: "Odaiba Beach Park, Tokyo" },
+    { id: "img-teamlab",   q: "teamLab Planets Tokyo, Toyosu" },
+    { id: "img-mori",      q: "Mori Art Museum, Roppongi, Tokyo" },
+  ];
+
+  spots.forEach(({ id, q }) => {
+    const el = document.getElementById(id);
+    if (el) el.src = `https://maps.googleapis.com/maps/api/streetview?size=400x160&location=${encodeURIComponent(q)}&fov=90&pitch=10&key=${KEY}`;
   });
 </script>
 
