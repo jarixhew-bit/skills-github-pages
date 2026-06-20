@@ -357,29 +357,51 @@
 
 <script>
   const spots = [
-    { id: "img-senso",     q: "Senso-ji Temple, Asakusa, Tokyo" },
-    { id: "img-nakamise",  q: "Nakamise Shopping Street, Asakusa, Tokyo" },
-    { id: "img-ueno",      q: "Ueno Park, Tokyo" },
-    { id: "img-shinjuku",  q: "Shinjuku Gyoen Garden, Tokyo" },
-    { id: "img-shibuya",   q: "Shibuya Scramble Crossing, Tokyo" },
-    { id: "img-shibuyasky",q: "Shibuya Scramble Square, Tokyo" },
-    { id: "img-harajuku",  q: "Takeshita Street, Harajuku, Tokyo" },
-    { id: "img-akiba",     q: "Akihabara Electric Town, Tokyo" },
-    { id: "img-tsukiji",   q: "Tsukiji Outer Market, Tokyo" },
-    { id: "img-ginza",     q: "Ginza, Tokyo" },
-    { id: "img-daibutsu",  q: "Kotoku-in Great Buddha, Kamakura" },
-    { id: "img-hasedera",  q: "Hase-dera Temple, Kamakura" },
-    { id: "img-toshogu",   q: "Nikko Toshogu Shrine, Nikko" },
-    { id: "img-kegon",     q: "Kegon Falls, Nikko" },
-    { id: "img-odaiba",    q: "Odaiba Beach Park, Tokyo" },
-    { id: "img-teamlab",   q: "teamLab Planets Tokyo, Toyosu" },
-    { id: "img-mori",      q: "Mori Art Museum, Roppongi, Tokyo" },
+    { id: "img-senso",      q: "Senso-ji Temple Asakusa Tokyo" },
+    { id: "img-nakamise",   q: "Nakamise Shopping Street Asakusa Tokyo" },
+    { id: "img-ueno",       q: "Ueno Park Tokyo" },
+    { id: "img-shinjuku",   q: "Shinjuku Gyoen National Garden Tokyo" },
+    { id: "img-shibuya",    q: "Shibuya Scramble Crossing Tokyo" },
+    { id: "img-shibuyasky", q: "Shibuya Sky observation deck Tokyo" },
+    { id: "img-harajuku",   q: "Takeshita Street Harajuku Tokyo" },
+    { id: "img-akiba",      q: "Akihabara Electric Town Tokyo" },
+    { id: "img-tsukiji",    q: "Tsukiji Outer Market Tokyo" },
+    { id: "img-ginza",      q: "Ginza shopping district Tokyo" },
+    { id: "img-daibutsu",   q: "Kotoku-in Great Buddha Kamakura" },
+    { id: "img-hasedera",   q: "Hase-dera Temple Kamakura" },
+    { id: "img-toshogu",    q: "Nikko Toshogu Shrine Nikko Japan" },
+    { id: "img-kegon",      q: "Kegon Falls Nikko Japan" },
+    { id: "img-odaiba",     q: "Odaiba waterfront Tokyo" },
+    { id: "img-teamlab",    q: "teamLab Planets Tokyo Toyosu" },
+    { id: "img-mori",       q: "Mori Art Museum Roppongi Tokyo" },
   ];
 
-  spots.forEach(({ id, q }) => {
+  async function loadPhoto(id, query) {
     const el = document.getElementById(id);
-    if (el) el.src = `https://maps.googleapis.com/maps/api/streetview?size=400x160&location=${encodeURIComponent(q)}&fov=90&pitch=10&key=${KEY}`;
-  });
+    if (!el) return;
+    try {
+      // Step 1: Search place and get photo reference
+      const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": KEY,
+          "X-Goog-FieldMask": "places.photos"
+        },
+        body: JSON.stringify({ textQuery: query, pageSize: 1 })
+      });
+      const data = await res.json();
+      const photoName = data.places?.[0]?.photos?.[0]?.name;
+      if (photoName) {
+        // Step 2: Load photo via Places photo media endpoint
+        el.src = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=400&key=${KEY}`;
+      }
+    } catch (e) {
+      // silently keep placeholder
+    }
+  }
+
+  spots.forEach(({ id, q }) => loadPhoto(id, q));
 </script>
 
 </body>
