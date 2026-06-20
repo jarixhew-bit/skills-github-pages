@@ -8,12 +8,9 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f4f4; color: #333; }
 
-    /* Header */
     .hero {
       background: linear-gradient(135deg, #c0392b, #e74c3c);
-      color: #fff;
-      text-align: center;
-      padding: 36px 20px 28px;
+      color: #fff; text-align: center; padding: 36px 20px 28px;
     }
     .hero h1 { font-size: 2em; margin-bottom: 6px; }
     .hero p { opacity: 0.85; font-size: 0.95em; }
@@ -22,16 +19,10 @@
 
     /* Flight Tracker */
     .flight-section { background: #1a1a2e; border-radius: 14px; padding: 20px; margin-bottom: 24px; color: #fff; }
-    .flight-section h2 { font-size: 1em; color: #f39c12; margin-bottom: 16px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .section-title { font-size: 0.85em; color: #f39c12; margin-bottom: 16px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; }
     .flight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media(max-width:600px){ .flight-grid { grid-template-columns: 1fr; } }
-
-    .flight-card {
-      background: #16213e;
-      border-radius: 10px;
-      padding: 14px 16px;
-      border-left: 4px solid #f39c12;
-    }
+    .flight-card { background: #16213e; border-radius: 10px; padding: 14px 16px; border-left: 4px solid #f39c12; }
     .flight-card.inbound { border-left-color: #27ae60; }
     .flight-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .flight-no { font-size: 1.1em; font-weight: 700; color: #f39c12; }
@@ -50,37 +41,42 @@
     .flight-times .time { text-align: center; }
     .flight-times .time .val { font-size: 1.1em; font-weight: 600; color: #ecf0f1; }
     .flight-times .time .lbl { font-size: 0.75em; opacity: 0.6; margin-top: 2px; }
-    .flight-date-label { font-size: 0.72em; color: #7f8c8d; margin-top: 8px; }
+    .flight-meta { font-size: 0.72em; color: #7f8c8d; margin-top: 8px; }
     .flight-airline { font-size: 0.75em; color: #95a5a6; margin-bottom: 4px; }
-    .refresh-btn {
-      display: block; margin: 14px auto 0; padding: 8px 20px;
-      background: #f39c12; color: #fff; border: none; border-radius: 20px;
-      font-size: 0.82em; cursor: pointer; transition: background 0.2s;
-    }
+    .refresh-btn { display: block; margin: 14px auto 0; padding: 8px 22px; background: #f39c12; color: #fff; border: none; border-radius: 20px; font-size: 0.82em; cursor: pointer; }
     .refresh-btn:hover { background: #e67e22; }
-    .api-note { font-size: 0.72em; color: #7f8c8d; text-align: center; margin-top: 10px; }
+    .api-note { font-size: 0.7em; color: #7f8c8d; text-align: center; margin-top: 8px; }
+
+    /* Hotels */
+    .hotels-section { margin-bottom: 24px; }
+    .hotels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media(max-width:600px){ .hotels-grid { grid-template-columns: 1fr; } }
+    .hotel-card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .hotel-img { width: 100%; height: 180px; object-fit: cover; background: #e8e8e8; display: block; }
+    .hotel-body { padding: 14px 16px; }
+    .hotel-name { font-weight: 700; font-size: 1em; color: #c0392b; }
+    .hotel-stars { color: #f39c12; font-size: 0.85em; margin: 2px 0 6px; }
+    .hotel-detail { font-size: 0.8em; color: #555; line-height: 1.6; }
+    .hotel-dates { display: inline-block; margin-top: 8px; font-size: 0.75em; background: #fef3f3; color: #c0392b; padding: 3px 10px; border-radius: 10px; border: 1px solid #f5c6c6; }
 
     /* Day cards */
     .day { background: #fff; border-radius: 12px; margin-bottom: 18px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-    .day-header { background: #c0392b; color: #fff; padding: 12px 18px; font-weight: bold; font-size: 1em; display: flex; align-items: center; gap: 10px; }
+    .day-header { background: #c0392b; color: #fff; padding: 12px 18px; font-weight: bold; font-size: 1em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .day-header .date { font-size: 0.8em; opacity: 0.8; font-weight: normal; }
-    .day-header .hotel-tag { margin-left: auto; font-size: 0.72em; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; }
-    .spots { padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-    .spot {
-      display: flex; flex-direction: column; border-radius: 10px; overflow: hidden;
-      border: 1px solid #eee; text-decoration: none; color: inherit;
-      transition: box-shadow 0.15s, transform 0.15s; background: #fafafa;
-    }
+    .hotel-tag { margin-left: auto; font-size: 0.72em; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+    .spots { padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .spot { display: flex; flex-direction: column; border-radius: 10px; overflow: hidden; border: 1px solid #eee; text-decoration: none; color: inherit; transition: box-shadow 0.15s, transform 0.15s; background: #fafafa; }
     .spot:hover { box-shadow: 0 4px 14px rgba(192,57,43,0.15); transform: translateY(-2px); }
-    .spot-img { width: 100%; height: 150px; object-fit: cover; background: #e8e8e8; display: block; }
+    .spot-img-wrap { width: 100%; height: 150px; background: #e8e8e8; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .spot-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .spot-placeholder { font-size: 2.5em; opacity: 0.35; }
     .spot-body { padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
     .spot-icon { font-size: 1.2em; flex-shrink: 0; }
     .spot-info { flex: 1; }
     .spot-name { font-weight: 600; font-size: 0.9em; }
     .spot-desc { font-size: 0.75em; color: #888; margin-top: 2px; }
     .map-badge { font-size: 0.68em; color: #c0392b; border: 1px solid #c0392b; border-radius: 4px; padding: 2px 5px; white-space: nowrap; }
-
-    .transit-note { padding: 12px 18px; font-size: 0.82em; color: #666; background: #fef9f0; border-top: 1px solid #fde; display: flex; align-items: center; gap: 8px; }
+    .transit-note { padding: 12px 18px; font-size: 0.82em; color: #666; background: #fef9f0; border-top: 1px solid #fde8c0; display: flex; align-items: center; gap: 8px; }
 
     @media(max-width:600px){ .spots { grid-template-columns: 1fr; } .hero h1 { font-size: 1.5em; } }
   </style>
@@ -96,131 +92,135 @@
 
   <!-- ✈️ Flight Tracker -->
   <div class="flight-section">
-    <h2>✈️ 实时航班追踪</h2>
+    <div class="section-title">✈️ 实时航班追踪</div>
     <div class="flight-grid">
-      <!-- Outbound -->
       <div class="flight-card" id="card-SQ0153">
-        <div class="flight-airline">Singapore Airlines · 去程</div>
-        <div class="flight-header">
-          <span class="flight-no">SQ 0153</span>
-          <span class="flight-status scheduled" id="status-SQ0153">查询中…</span>
-        </div>
-        <div class="flight-route">
-          <span class="iata">KTI</span>
-          <span class="route-arrow"><span>✈</span></span>
-          <span class="iata">SIN</span>
-        </div>
+        <div class="flight-airline">Singapore Airlines · 去程 Leg 1</div>
+        <div class="flight-header"><span class="flight-no">SQ 0153</span><span class="flight-status" id="status-SQ0153">查询中…</span></div>
+        <div class="flight-route"><span class="iata">KTI</span><span class="route-arrow"><span>✈</span></span><span class="iata">SIN</span></div>
         <div class="flight-times">
-          <div class="time"><div class="val" id="dep-SQ0153">09:35</div><div class="lbl">出发</div></div>
-          <div class="time"><div class="val" id="arr-SQ0153">12:40</div><div class="lbl">到达</div></div>
+          <div class="time"><div class="val" id="dep-SQ0153">09:35</div><div class="lbl">金边出发</div></div>
+          <div class="time"><div class="val" id="arr-SQ0153">12:40</div><div class="lbl">新加坡到达</div></div>
         </div>
-        <div class="flight-date-label">22 Jul 2026 · Boeing 737 MAX</div>
+        <div class="flight-meta">22 Jul 2026 · Boeing 737 MAX · Economy</div>
       </div>
-
       <div class="flight-card" id="card-SQ0622">
-        <div class="flight-airline">Singapore Airlines · 去程</div>
-        <div class="flight-header">
-          <span class="flight-no">SQ 0622</span>
-          <span class="flight-status scheduled" id="status-SQ0622">查询中…</span>
-        </div>
-        <div class="flight-route">
-          <span class="iata">SIN</span>
-          <span class="route-arrow"><span>✈</span></span>
-          <span class="iata">KIX</span>
-        </div>
+        <div class="flight-airline">Singapore Airlines · 去程 Leg 2</div>
+        <div class="flight-header"><span class="flight-no">SQ 0622</span><span class="flight-status" id="status-SQ0622">查询中…</span></div>
+        <div class="flight-route"><span class="iata">SIN</span><span class="route-arrow"><span>✈</span></span><span class="iata">KIX</span></div>
         <div class="flight-times">
-          <div class="time"><div class="val" id="dep-SQ0622">14:10</div><div class="lbl">出发</div></div>
-          <div class="time"><div class="val" id="arr-SQ0622">21:35</div><div class="lbl">到达</div></div>
+          <div class="time"><div class="val" id="dep-SQ0622">14:10</div><div class="lbl">新加坡出发</div></div>
+          <div class="time"><div class="val" id="arr-SQ0622">21:35</div><div class="lbl">大阪到达</div></div>
         </div>
-        <div class="flight-date-label">22 Jul 2026 · Boeing 787 · T2→T1</div>
+        <div class="flight-meta">22 Jul 2026 · Boeing 787 · T2→T1 · Economy</div>
       </div>
-
       <div class="flight-card inbound" id="card-CX0543">
-        <div class="flight-airline">Cathay Pacific · 回程</div>
-        <div class="flight-header">
-          <span class="flight-no">CX 0543</span>
-          <span class="flight-status scheduled" id="status-CX0543">查询中…</span>
-        </div>
-        <div class="flight-route">
-          <span class="iata">HND</span>
-          <span class="route-arrow"><span>✈</span></span>
-          <span class="iata">HKG</span>
-        </div>
+        <div class="flight-airline">Cathay Pacific · 回程 Leg 1</div>
+        <div class="flight-header"><span class="flight-no">CX 0543</span><span class="flight-status" id="status-CX0543">查询中…</span></div>
+        <div class="flight-route"><span class="iata">HND</span><span class="route-arrow"><span>✈</span></span><span class="iata">HKG</span></div>
         <div class="flight-times">
-          <div class="time"><div class="val" id="dep-CX0543">10:05</div><div class="lbl">出发</div></div>
-          <div class="time"><div class="val" id="arr-CX0543">13:50</div><div class="lbl">到达</div></div>
+          <div class="time"><div class="val" id="dep-CX0543">10:05</div><div class="lbl">东京出发</div></div>
+          <div class="time"><div class="val" id="arr-CX0543">13:50</div><div class="lbl">香港到达</div></div>
         </div>
-        <div class="flight-date-label">30 Jul 2026 · Boeing 777 · T3→T1</div>
+        <div class="flight-meta">30 Jul 2026 · Boeing 777 · T3→T1 · Economy</div>
       </div>
-
       <div class="flight-card inbound" id="card-CX0655">
-        <div class="flight-airline">Cathay Pacific · 回程</div>
-        <div class="flight-header">
-          <span class="flight-no">CX 0655</span>
-          <span class="flight-status scheduled" id="status-CX0655">查询中…</span>
-        </div>
-        <div class="flight-route">
-          <span class="iata">HKG</span>
-          <span class="route-arrow"><span>✈</span></span>
-          <span class="iata">KTI</span>
-        </div>
+        <div class="flight-airline">Cathay Pacific · 回程 Leg 2</div>
+        <div class="flight-header"><span class="flight-no">CX 0655</span><span class="flight-status" id="status-CX0655">查询中…</span></div>
+        <div class="flight-route"><span class="iata">HKG</span><span class="route-arrow"><span>✈</span></span><span class="iata">KTI</span></div>
         <div class="flight-times">
-          <div class="time"><div class="val" id="dep-CX0655">15:35</div><div class="lbl">出发</div></div>
-          <div class="time"><div class="val" id="arr-CX0655">17:15</div><div class="lbl">到达</div></div>
+          <div class="time"><div class="val" id="dep-CX0655">15:35</div><div class="lbl">香港出发</div></div>
+          <div class="time"><div class="val" id="arr-CX0655">17:15</div><div class="lbl">金边到达</div></div>
         </div>
-        <div class="flight-date-label">30 Jul 2026 · Airbus A350 · T1→KTI</div>
+        <div class="flight-meta">30 Jul 2026 · Airbus A350 · T1→KTI · Economy</div>
       </div>
     </div>
     <button class="refresh-btn" onclick="trackAllFlights()">🔄 刷新航班状态</button>
-    <div class="api-note">由 AviationStack 提供实时数据 · 出发当天状态最准确</div>
+    <div class="api-note">由 AviationStack 提供 · 出发当天数据最准确</div>
+  </div>
+
+  <!-- 🏨 Accommodation -->
+  <div class="hotels-section">
+    <div style="font-weight:700;font-size:1em;margin-bottom:12px;color:#c0392b;">🏨 行程住宿</div>
+    <div class="hotels-grid">
+      <div class="hotel-card">
+        <img class="hotel-img" id="img-conrad" alt="Conrad Osaka">
+        <div class="hotel-body">
+          <div class="hotel-name">Conrad Osaka</div>
+          <div class="hotel-stars">★★★★★</div>
+          <div class="hotel-detail">
+            📍 大阪北浜，中之岛<br>
+            🛏 Executive Corner Suite (100m²) × 2<br>
+            🛏 King Deluxe Room × 1<br>
+            🍳 每日酒店早餐含括
+          </div>
+          <span class="hotel-dates">22 Jul – 26 Jul · 4晚</span>
+        </div>
+      </div>
+      <div class="hotel-card">
+        <img class="hotel-img" id="img-fourseasons" alt="Four Seasons Tokyo">
+        <div class="hotel-body">
+          <div class="hotel-name">Four Seasons Hotel Tokyo at Otemachi</div>
+          <div class="hotel-stars">★★★★★</div>
+          <div class="hotel-detail">
+            📍 东京大手町，皇居旁<br>
+            🛏 Panoramic Suite (100m²) × 1<br>
+            🛏 Executive Suite × 1<br>
+            🛏 King Superior Room × 1<br>
+            🍳 每日酒店早餐含括
+          </div>
+          <span class="hotel-dates">26 Jul – 30 Jul · 4晚</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- D01 -->
   <div class="day">
-    <div class="day-header">D01 <span class="date">22 Jul 周三</span> <span class="hotel-tag">🏨 Conrad Osaka</span></div>
-    <div class="transit-note">✈️ 金边 KTI → 新加坡 SIN (SQ0153) → 大阪 KIX (SQ0622) · 抵达入住休息</div>
+    <div class="day-header">D01 <span class="date">22 Jul 周三</span><span class="hotel-tag">🏨 Conrad Osaka</span></div>
+    <div class="transit-note">✈️ 金边 KTI 09:35 → 新加坡 SIN 12:40 (SQ0153) · 转机 → 大阪 KIX 21:35 (SQ0622) · 抵达入住</div>
   </div>
 
   <!-- D02 -->
   <div class="day">
-    <div class="day-header">D02 <span class="date">23 Jul 周四</span> <span class="hotel-tag">🏨 Conrad Osaka</span></div>
+    <div class="day-header">D02 <span class="date">23 Jul 周四</span><span class="hotel-tag">🏨 Conrad Osaka</span></div>
     <div class="spots">
       <a class="spot" href="https://www.google.com/maps/search/LEGOLAND+Discovery+Center+Osaka" target="_blank">
-        <img class="spot-img" alt="LEGOLAND Osaka" id="wi-lego-osaka">
-        <div class="spot-body"><div class="spot-icon">🧱</div><div class="spot-info"><div class="spot-name">LEGOLAND Discovery Center</div><div class="spot-desc">大阪乐高乐园，室内主题乐园</div></div><div class="map-badge">📍</div></div>
+        <div class="spot-img-wrap" id="spot-lego-osaka"><span class="spot-placeholder">🧱</span></div>
+        <div class="spot-body"><div class="spot-icon">🧱</div><div class="spot-info"><div class="spot-name">LEGOLAND Discovery Center</div><div class="spot-desc">大阪乐高室内主题乐园</div></div><div class="map-badge">📍</div></div>
       </a>
-      <a class="spot" href="https://www.google.com/maps/search/Aquarium+Nifrel+Osaka" target="_blank">
-        <img class="spot-img" alt="Nifrel" id="wi-nifrel">
-        <div class="spot-body"><div class="spot-icon">🐧</div><div class="spot-info"><div class="spot-name">Aquarium Nifrel</div><div class="spot-desc">水生美世界，独特互动水族馆</div></div><div class="map-badge">📍</div></div>
+      <a class="spot" href="https://www.google.com/maps/search/Aquarium+Nifrel+Expo+City+Osaka" target="_blank">
+        <div class="spot-img-wrap" id="spot-nifrel"><span class="spot-placeholder">🐧</span></div>
+        <div class="spot-body"><div class="spot-icon">🐧</div><div class="spot-info"><div class="spot-name">Aquarium Nifrel 水生美世界</div><div class="spot-desc">独特互动式水族馆</div></div><div class="map-badge">📍</div></div>
       </a>
     </div>
   </div>
 
   <!-- D03 -->
   <div class="day">
-    <div class="day-header">D03 <span class="date">24 Jul 周五</span> <span class="hotel-tag">🏨 Conrad Osaka</span></div>
+    <div class="day-header">D03 <span class="date">24 Jul 周五</span><span class="hotel-tag">🏨 Conrad Osaka</span></div>
     <div class="spots">
-      <a class="spot" href="https://www.google.com/maps/search/Universal+Studios+Japan+Osaka" target="_blank">
-        <img class="spot-img" alt="USJ" id="wi-usj">
-        <div class="spot-body"><div class="spot-icon">🎢</div><div class="spot-info"><div class="spot-name">Universal Studios Japan</div><div class="spot-desc">含门票 + 7景点快速通行证</div></div><div class="map-badge">📍</div></div>
+      <a class="spot" href="https://www.google.com/maps/search/Universal+Studios+Japan" target="_blank">
+        <div class="spot-img-wrap" id="spot-usj"><span class="spot-placeholder">🎢</span></div>
+        <div class="spot-body"><div class="spot-icon">🎢</div><div class="spot-info"><div class="spot-name">Universal Studios Japan</div><div class="spot-desc">日本环球影城 · 含票 + 7景点快速通行证</div></div><div class="map-badge">📍</div></div>
       </a>
     </div>
   </div>
 
   <!-- D04 -->
   <div class="day">
-    <div class="day-header">D04 <span class="date">25 Jul 周六</span> <span class="hotel-tag">🏨 Conrad Osaka</span></div>
+    <div class="day-header">D04 <span class="date">25 Jul 周六</span><span class="hotel-tag">🏨 Conrad Osaka</span></div>
     <div class="spots">
       <a class="spot" href="https://www.google.com/maps/search/Osaka+Aquarium+Kaiyukan" target="_blank">
-        <img class="spot-img" alt="海游馆" id="wi-kaiyukan">
-        <div class="spot-body"><div class="spot-icon">🦈</div><div class="spot-info"><div class="spot-name">大阪海游馆</div><div class="spot-desc">世界最大级别水族馆</div></div><div class="map-badge">📍</div></div>
+        <div class="spot-img-wrap" id="spot-kaiyukan"><span class="spot-placeholder">🦈</span></div>
+        <div class="spot-body"><div class="spot-icon">🦈</div><div class="spot-info"><div class="spot-name">大阪海游馆</div><div class="spot-desc">世界级大型水族馆</div></div><div class="map-badge">📍</div></div>
       </a>
-      <a class="spot" href="https://www.google.com/maps/search/Santa+Maria+Cruise+Osaka+Bay" target="_blank">
-        <img class="spot-img" alt="圣玛丽亚游船" id="wi-santamaria">
-        <div class="spot-body"><div class="spot-icon">⛵</div><div class="spot-info"><div class="spot-name">圣玛丽亚大阪湾游船</div><div class="spot-desc">仿哥伦布船游览大阪湾</div></div><div class="map-badge">📍</div></div>
+      <a class="spot" href="https://www.google.com/maps/search/Santa+Maria+cruise+Osaka+Bay" target="_blank">
+        <div class="spot-img-wrap" id="spot-santamaria"><span class="spot-placeholder">⛵</span></div>
+        <div class="spot-body"><div class="spot-icon">⛵</div><div class="spot-info"><div class="spot-name">圣玛丽亚大阪湾游船</div><div class="spot-desc">仿哥伦布帆船游大阪湾</div></div><div class="map-badge">📍</div></div>
       </a>
       <a class="spot" href="https://www.google.com/maps/search/Tempozan+Ferris+Wheel+Osaka" target="_blank">
-        <img class="spot-img" alt="天保山摩天轮" id="wi-tempozan">
+        <div class="spot-img-wrap" id="spot-tempozan"><span class="spot-placeholder">🎡</span></div>
         <div class="spot-body"><div class="spot-icon">🎡</div><div class="spot-info"><div class="spot-name">天保山摩天轮</div><div class="spot-desc">天保山港村，俯瞰大阪湾</div></div><div class="map-badge">📍</div></div>
       </a>
     </div>
@@ -228,11 +228,11 @@
 
   <!-- D05 -->
   <div class="day">
-    <div class="day-header">D05 <span class="date">26 Jul 周日</span> <span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
+    <div class="day-header">D05 <span class="date">26 Jul 周日</span><span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
     <div class="transit-note">🚄 新干线 大阪 → 东京（含票）</div>
     <div class="spots">
-      <a class="spot" href="https://www.google.com/maps/search/Shibuya+shopping+Tokyo" target="_blank">
-        <img class="spot-img" alt="涩谷" id="wi-shibuya">
+      <a class="spot" href="https://www.google.com/maps/search/Shibuya+Tokyo" target="_blank">
+        <div class="spot-img-wrap" id="spot-shibuya"><span class="spot-placeholder">🛍️</span></div>
         <div class="spot-body"><div class="spot-icon">🛍️</div><div class="spot-info"><div class="spot-name">涩谷购物</div><div class="spot-desc">抵达东京后自由逛涩谷</div></div><div class="map-badge">📍</div></div>
       </a>
     </div>
@@ -240,18 +240,18 @@
 
   <!-- D06 -->
   <div class="day">
-    <div class="day-header">D06 <span class="date">27 Jul 周一</span> <span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
+    <div class="day-header">D06 <span class="date">27 Jul 周一</span><span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
     <div class="spots">
       <a class="spot" href="https://www.google.com/maps/search/Legoland+Tokyo" target="_blank">
-        <img class="spot-img" alt="Legoland Tokyo" id="wi-lego-tokyo">
+        <div class="spot-img-wrap" id="spot-lego-tokyo"><span class="spot-placeholder">🧱</span></div>
         <div class="spot-body"><div class="spot-icon">🧱</div><div class="spot-info"><div class="spot-name">Legoland Tokyo</div><div class="spot-desc">东京乐高乐园（含门票）</div></div><div class="map-badge">📍</div></div>
       </a>
       <a class="spot" href="https://www.google.com/maps/search/Japan+Olympic+Museum+Tokyo" target="_blank">
-        <img class="spot-img" alt="奥林匹克博物馆" id="wi-olympic">
+        <div class="spot-img-wrap" id="spot-olympic"><span class="spot-placeholder">🏅</span></div>
         <div class="spot-body"><div class="spot-icon">🏅</div><div class="spot-info"><div class="spot-name">日本奥林匹克博物馆</div><div class="spot-desc">含门票，奥运历史展览</div></div><div class="map-badge">📍</div></div>
       </a>
       <a class="spot" href="https://www.google.com/maps/search/Tokyo+Tower" target="_blank">
-        <img class="spot-img" alt="东京铁塔" id="wi-tokyotower">
+        <div class="spot-img-wrap" id="spot-tokyotower"><span class="spot-placeholder">🗼</span></div>
         <div class="spot-body"><div class="spot-icon">🗼</div><div class="spot-info"><div class="spot-name">东京铁塔</div><div class="spot-desc">东京地标，333米高</div></div><div class="map-badge">📍</div></div>
       </a>
     </div>
@@ -259,30 +259,30 @@
 
   <!-- D07 -->
   <div class="day">
-    <div class="day-header">D07 <span class="date">28 Jul 周二</span> <span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
+    <div class="day-header">D07 <span class="date">28 Jul 周二</span><span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
     <div class="spots">
       <a class="spot" href="https://www.google.com/maps/search/Tokyo+Disneyland" target="_blank">
-        <img class="spot-img" alt="东京迪士尼" id="wi-disney">
-        <div class="spot-body"><div class="spot-icon">🏰</div><div class="spot-info"><div class="spot-name">东京迪士尼乐园</div><div class="spot-desc">含一日门票 · 建议下载App买快通</div></div><div class="map-badge">📍</div></div>
+        <div class="spot-img-wrap" id="spot-disney"><span class="spot-placeholder">🏰</span></div>
+        <div class="spot-body"><div class="spot-icon">🏰</div><div class="spot-info"><div class="spot-name">东京迪士尼乐园</div><div class="spot-desc">含一日门票 · 下载 App 购买快速通行证</div></div><div class="map-badge">📍</div></div>
       </a>
     </div>
   </div>
 
   <!-- D08 -->
   <div class="day">
-    <div class="day-header">D08 <span class="date">29 Jul 周三</span> <span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
+    <div class="day-header">D08 <span class="date">29 Jul 周三</span><span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
     <div class="spots">
       <a class="spot" href="https://www.google.com/maps/search/TeamLab+Planets+Tokyo" target="_blank">
-        <img class="spot-img" alt="TeamLab" id="wi-teamlab">
+        <div class="spot-img-wrap" id="spot-teamlab"><span class="spot-placeholder">✨</span></div>
         <div class="spot-body"><div class="spot-icon">✨</div><div class="spot-info"><div class="spot-name">TeamLab Planets</div><div class="spot-desc">含门票，沉浸式数字艺术</div></div><div class="map-badge">📍</div></div>
       </a>
       <a class="spot" href="https://www.google.com/maps/search/Tokyo+Skytree" target="_blank">
-        <img class="spot-img" alt="晴空塔" id="wi-skytree">
+        <div class="spot-img-wrap" id="spot-skytree"><span class="spot-placeholder">📡</span></div>
         <div class="spot-body"><div class="spot-icon">📡</div><div class="spot-info"><div class="spot-name">东京晴空塔</div><div class="spot-desc">含展望台门票，634米</div></div><div class="map-badge">📍</div></div>
       </a>
-      <a class="spot" href="https://www.google.com/maps/search/Ginza+Tokyo+shopping" target="_blank">
-        <img class="spot-img" alt="银座" id="wi-ginza">
-        <div class="spot-body"><div class="spot-icon">🛒</div><div class="spot-info"><div class="spot-name">银座购物</div><div class="spot-desc">高端购物街，伴手礼</div></div><div class="map-badge">📍</div></div>
+      <a class="spot" href="https://www.google.com/maps/search/Ginza+Tokyo" target="_blank">
+        <div class="spot-img-wrap" id="spot-ginza"><span class="spot-placeholder">🛒</span></div>
+        <div class="spot-body"><div class="spot-icon">🛒</div><div class="spot-info"><div class="spot-name">银座购物</div><div class="spot-desc">高端购物街，购买伴手礼</div></div><div class="map-badge">📍</div></div>
       </a>
     </div>
   </div>
@@ -290,14 +290,74 @@
   <!-- D09 -->
   <div class="day">
     <div class="day-header">D09 <span class="date">30 Jul 周四</span></div>
-    <div class="transit-note">✈️ 东京羽田 HND → 香港 HKG (CX0543 10:05) → 金边 KTI (CX0655 15:35) · 温暖的家 🏠</div>
+    <div class="transit-note">✈️ 东京羽田 HND 10:05 → 香港 HKG (CX0543) → 金边 KTI 17:15 (CX0655) · 温暖的家 🏠</div>
   </div>
 
-</div><!-- /container -->
+</div>
 
 <script>
-  const AVKEY = "af669cc0fe4c1e03a86a0ff82ea0a6bb";
+  const GKEY   = "AIzaSyCdPSJBGOPzM4v-MyX9ncfLqjMM4Du_Pbc";
+  const AVKEY  = "af669cc0fe4c1e03a86a0ff82ea0a6bb";
 
+  // ── Google Places API photos ───────────────────────────────
+  const placeSpots = [
+    // Hotels
+    { id: "img-conrad",      q: "Conrad Osaka hotel" },
+    { id: "img-fourseasons", q: "Four Seasons Hotel Tokyo at Otemachi" },
+    // Spots D02
+    { id: "spot-lego-osaka", q: "LEGOLAND Discovery Center Osaka" },
+    { id: "spot-nifrel",     q: "Aquarium Nifrel Osaka" },
+    // D03
+    { id: "spot-usj",        q: "Universal Studios Japan Osaka" },
+    // D04
+    { id: "spot-kaiyukan",   q: "Osaka Aquarium Kaiyukan" },
+    { id: "spot-santamaria", q: "Santa Maria cruise Osaka Bay Tempozan" },
+    { id: "spot-tempozan",   q: "Tempozan Ferris Wheel Osaka" },
+    // D05
+    { id: "spot-shibuya",    q: "Shibuya Crossing Tokyo" },
+    // D06
+    { id: "spot-lego-tokyo", q: "Legoland Tokyo" },
+    { id: "spot-olympic",    q: "Japan Olympic Museum Tokyo" },
+    { id: "spot-tokyotower", q: "Tokyo Tower" },
+    // D07
+    { id: "spot-disney",     q: "Tokyo Disneyland" },
+    // D08
+    { id: "spot-teamlab",    q: "TeamLab Planets Tokyo" },
+    { id: "spot-skytree",    q: "Tokyo Skytree" },
+    { id: "spot-ginza",      q: "Ginza Tokyo" },
+  ];
+
+  async function loadPlacePhoto(id, query) {
+    const wrap = document.getElementById(id);
+    if (!wrap) return;
+    try {
+      const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": GKEY,
+          "X-Goog-FieldMask": "places.photos"
+        },
+        body: JSON.stringify({ textQuery: query, pageSize: 1 })
+      });
+      const data = await res.json();
+      const photoName = data.places?.[0]?.photos?.[0]?.name;
+      if (!photoName) return;
+      const img = document.createElement("img");
+      img.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
+      img.src = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=500&key=${GKEY}`;
+      img.alt = query;
+      // For hotel cards use .hotel-img, for spots replace placeholder
+      if (wrap.classList.contains("hotel-img")) {
+        wrap.src = img.src;
+      } else {
+        wrap.innerHTML = "";
+        wrap.appendChild(img);
+      }
+    } catch(e) {}
+  }
+
+  // ── AviationStack flight tracking ─────────────────────────
   const flights = [
     { iata: "SQ0153", date: "2026-07-22" },
     { iata: "SQ0622", date: "2026-07-22" },
@@ -310,79 +370,41 @@
     return new Date(dt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   }
 
-  function statusLabel(s) {
-    const map = { scheduled: "计划中", active: "飞行中", landed: "已落地", cancelled: "取消", incident: "异常", diverted: "改降" };
-    return map[s] || s || "—";
-  }
+  const statusMap = { scheduled:"计划中", active:"飞行中", landed:"已落地", cancelled:"取消", diverted:"改降" };
 
-  async function trackFlight(iata, date) {
+  async function trackFlight({ iata, date }) {
     const statusEl = document.getElementById("status-" + iata);
     const depEl    = document.getElementById("dep-" + iata);
     const arrEl    = document.getElementById("arr-" + iata);
     try {
-      const url = `http://api.aviationstack.com/v1/flights?access_key=${AVKEY}&flight_iata=${iata}&flight_date=${date}`;
-      const res = await fetch(url);
+      const res  = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${AVKEY}&flight_iata=${iata}&flight_date=${date}`);
       const data = await res.json();
-      const f = data.data && data.data[0];
-      if (!f) { statusEl.textContent = "暂无数据"; return; }
-
+      const f    = data.data?.[0];
+      if (!f) { statusEl.textContent = "暂无数据"; statusEl.className = "flight-status"; return; }
       const s = f.flight_status || "scheduled";
-      statusEl.textContent = statusLabel(s);
-      statusEl.className = "flight-status " + s;
-
-      // Show actual times if available, else estimated, else scheduled
+      statusEl.textContent = statusMap[s] || s;
+      statusEl.className   = "flight-status " + s;
       const dep = f.departure?.actual || f.departure?.estimated || f.departure?.scheduled;
       const arr = f.arrival?.actual   || f.arrival?.estimated   || f.arrival?.scheduled;
       if (dep) depEl.textContent = fmtTime(dep);
       if (arr) arrEl.textContent = fmtTime(arr);
-
-      // Delay indicator
-      if (f.departure?.delay > 0) {
-        depEl.title = `延误 ${f.departure.delay} 分钟`;
-        depEl.style.color = "#e74c3c";
-      }
-    } catch (e) {
-      statusEl.textContent = "需HTTPS";
-      statusEl.title = "AviationStack 免费版仅支持 HTTP，GitHub Pages 需升级至付费版";
+      if (f.departure?.delay > 0) { depEl.style.color = "#e74c3c"; depEl.title = `延误 ${f.departure.delay} 分钟`; }
+    } catch(e) {
+      statusEl.textContent = "需HTTPS升级";
+      statusEl.className   = "flight-status";
     }
   }
 
-  function trackAllFlights() {
-    flights.forEach(f => trackFlight(f.iata, f.date));
-  }
+  function trackAllFlights() { flights.forEach(trackFlight); }
 
-  // Wikipedia images
-  const wikiSpots = [
-    { id: "wi-lego-osaka",   article: "Legoland_Discovery_Centre" },
-    { id: "wi-nifrel",       article: "Expocity" },
-    { id: "wi-usj",          article: "Universal_Studios_Japan" },
-    { id: "wi-kaiyukan",     article: "Osaka_Aquarium_Kaiyukan" },
-    { id: "wi-santamaria",   article: "Santa_María_(Columbus)" },
-    { id: "wi-tempozan",     article: "Tempozan_Ferris_Wheel" },
-    { id: "wi-shibuya",      article: "Shibuya_Crossing" },
-    { id: "wi-lego-tokyo",   article: "Legoland_Discovery_Centre" },
-    { id: "wi-olympic",      article: "Japan_Olympic_Museum" },
-    { id: "wi-tokyotower",   article: "Tokyo_Tower" },
-    { id: "wi-disney",       article: "Tokyo_Disneyland" },
-    { id: "wi-teamlab",      article: "TeamLab_Planets_Tokyo" },
-    { id: "wi-skytree",      article: "Tokyo_Skytree" },
-    { id: "wi-ginza",        article: "Ginza" },
-  ];
-
-  async function loadWiki(id, article) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    try {
-      const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(article)}&prop=pageimages&format=json&pithumbsize=400&origin=*`);
-      const data = await res.json();
-      const page = Object.values(data.query.pages)[0];
-      if (page?.thumbnail?.source) el.src = page.thumbnail.source;
-    } catch(e) {}
-  }
-
+  // ── Init ──────────────────────────────────────────────────
   window.addEventListener("DOMContentLoaded", () => {
     trackAllFlights();
-    wikiSpots.forEach(s => loadWiki(s.id, s.article));
+    // Hotels use <img> tags directly
+    loadPlacePhoto("img-conrad",      "Conrad Osaka hotel");
+    loadPlacePhoto("img-fourseasons", "Four Seasons Hotel Tokyo Otemachi");
+    // Spots use wrapper divs
+    placeSpots.filter(s => !s.id.startsWith("img-")).forEach(s => loadPlacePhoto(s.id, s.q));
   });
 </script>
 </body>
