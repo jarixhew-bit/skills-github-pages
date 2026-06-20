@@ -299,61 +299,35 @@
   const GKEY   = "AIzaSyCdPSJBGOPzM4v-MyX9ncfLqjMM4Du_Pbc";
   const AVKEY  = "af669cc0fe4c1e03a86a0ff82ea0a6bb";
 
-  // ── Google Places API photos ───────────────────────────────
-  const placeSpots = [
-    // Hotels
-    { id: "img-conrad",      q: "Conrad Osaka hotel" },
-    { id: "img-fourseasons", q: "Four Seasons Hotel Tokyo at Otemachi" },
-    // Spots D02
-    { id: "spot-lego-osaka", q: "LEGOLAND Discovery Center Osaka" },
-    { id: "spot-nifrel",     q: "Aquarium Nifrel Osaka" },
-    // D03
-    { id: "spot-usj",        q: "Universal Studios Japan Osaka" },
-    // D04
-    { id: "spot-kaiyukan",   q: "Osaka Aquarium Kaiyukan" },
-    { id: "spot-santamaria", q: "Santa Maria cruise Osaka Bay Tempozan" },
-    { id: "spot-tempozan",   q: "Tempozan Ferris Wheel Osaka" },
-    // D05
-    { id: "spot-shibuya",    q: "Shibuya Crossing Tokyo" },
-    // D06
-    { id: "spot-lego-tokyo", q: "Legoland Tokyo" },
-    { id: "spot-olympic",    q: "Japan Olympic Museum Tokyo" },
-    { id: "spot-tokyotower", q: "Tokyo Tower" },
-    // D07
-    { id: "spot-disney",     q: "Tokyo Disneyland" },
-    // D08
-    { id: "spot-teamlab",    q: "TeamLab Planets Tokyo" },
-    { id: "spot-skytree",    q: "Tokyo Skytree" },
-    { id: "spot-ginza",      q: "Ginza Tokyo" },
-  ];
+  // ── Wikipedia thumbnail loader (CORS-enabled, works locally + GitHub Pages) ──
+  const wikiArticles = {
+    "img-conrad":      "Conrad_Osaka",
+    "img-fourseasons": "Four_Seasons_Hotel_Tokyo_at_Otemachi",
+    "spot-lego-osaka": "Legoland_Discovery_Centre_Osaka",
+    "spot-nifrel":     "Nifrel",
+    "spot-usj":        "Universal_Studios_Japan",
+    "spot-kaiyukan":   "Osaka_Aquarium_Kaiyukan",
+    "spot-santamaria": "Santa_Maria_(Columbus_replica)",
+    "spot-tempozan":   "Tempozan_Giant_Ferris_Wheel",
+    "spot-shibuya":    "Shibuya_Crossing",
+    "spot-lego-tokyo": "Legoland_Discovery_Centre_Tokyo",
+    "spot-olympic":    "Japan_Olympic_Museum",
+    "spot-tokyotower": "Tokyo_Tower",
+    "spot-disney":     "Tokyo_Disneyland",
+    "spot-teamlab":    "TeamLab_Planets",
+    "spot-skytree":    "Tokyo_Skytree",
+    "spot-ginza":      "Ginza",
+  };
 
-  async function loadPlacePhoto(id, query) {
-    const wrap = document.getElementById(id);
-    if (!wrap) return;
+  async function loadWikiImage(imgId, article) {
     try {
-      const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": GKEY,
-          "X-Goog-FieldMask": "places.photos"
-        },
-        body: JSON.stringify({ textQuery: query, pageSize: 1 })
-      });
+      const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(article)}`);
+      if (!res.ok) return;
       const data = await res.json();
-      const photoName = data.places?.[0]?.photos?.[0]?.name;
-      if (!photoName) return;
-      const img = document.createElement("img");
-      img.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
-      img.src = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=500&key=${GKEY}`;
-      img.alt = query;
-      // For hotel cards use .hotel-img, for spots replace placeholder
-      if (wrap.classList.contains("hotel-img")) {
-        wrap.src = img.src;
-      } else {
-        wrap.innerHTML = "";
-        wrap.appendChild(img);
-      }
+      const src = data.originalimage?.source || data.thumbnail?.source;
+      if (!src) return;
+      const el = document.getElementById(imgId);
+      if (el) el.src = src;
     } catch(e) {}
   }
 
@@ -400,11 +374,7 @@
   // ── Init ──────────────────────────────────────────────────
   window.addEventListener("DOMContentLoaded", () => {
     trackAllFlights();
-    // Hotels use <img> tags directly
-    loadPlacePhoto("img-conrad",      "Conrad Osaka hotel");
-    loadPlacePhoto("img-fourseasons", "Four Seasons Hotel Tokyo Otemachi");
-    // Spots use wrapper divs
-    placeSpots.filter(s => !s.id.startsWith("img-")).forEach(s => loadPlacePhoto(s.id, s.q));
+    Object.entries(wikiArticles).forEach(([id, article]) => loadWikiImage(id, article));
   });
 </script>
 </body>
