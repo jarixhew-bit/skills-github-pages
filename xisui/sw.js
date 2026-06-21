@@ -1,8 +1,8 @@
 const CACHE = 'xisui-v1';
 const ASSETS = [
-  '/xisui/',
-  '/xisui/index.html',
-  '/xisui/manifest.json',
+  '/skills-github-pages/xisui/',
+  '/skills-github-pages/xisui/index.html',
+  '/skills-github-pages/xisui/manifest.json',
 ];
 
 self.addEventListener('install', e => {
