@@ -386,14 +386,7 @@
     <!-- Audio slot -->
     <div class="audio-wrap">
       <p>🔊 吐納功法音頻引導</p>
-      <!-- Cowork: 將音頻文件放到 audio/tuna.mp3，取消下方注釋並刪除 placeholder -->
-      <!--
       <audio controls src="../audio/tuna.mp3"></audio>
-      -->
-      <div class="audio-placeholder">
-        <div class="placeholder-icon">🎵</div>
-        <div>音頻待放入<br><small>audio/tuna.mp3</small></div>
-      </div>
     </div>
 
     <div class="counter-wrap">
@@ -679,14 +672,7 @@ function buildLotusSlides() {
       <div class="lotus-title">第${['一','二','三','四','五','六','七'][i]}式　${item.name}</div>
 
       <div class="video-wrap">
-        <!-- Cowork: 將視頻放到 videos/${item.file}.mp4，取消注釋並刪除 placeholder -->
-        <!--
         <video controls playsinline src="../videos/${item.file}.mp4"></video>
-        -->
-        <div class="video-placeholder">
-          <div class="placeholder-icon">🎬</div>
-          <p>${item.name}<br><small>videos/${item.file}.mp4</small></p>
-        </div>
       </div>
 
       <div class="timer-display ${isDone ? 'done-timer' : ''}" id="ltimer-${i}">
