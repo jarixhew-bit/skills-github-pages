@@ -1,4 +1,4 @@
-import os, feedparser, yfinance as yf, urllib.request, urllib.parse, json
+import os, feedparser, yfinance as yf, urllib.request, urllib.parse, html
 from datetime import datetime
 
 HOLDINGS = {
@@ -74,8 +74,8 @@ def send_telegram(token, chat_id, text):
     }).encode()
     urllib.request.urlopen(url, data=data, timeout=15)
 
-today  = datetime.now().strftime("%Y-%m-%d")
-token  = os.environ["TELEGRAM_TOKEN"]
+today   = datetime.now().strftime("%Y-%m-%d")
+token   = os.environ["TELEGRAM_TOKEN"]
 chat_id = os.environ["TELEGRAM_CHAT_ID"]
 bull_total = bear_total = neutral_total = 0
 
@@ -97,7 +97,7 @@ for ticker, info in HOLDINGS.items():
     else:                 overall = "⚪ 中性"
 
     lines = []
-    lines.append(f"📈 <b>{info['name']} ({ticker})</b>  {today}")
+    lines.append(f"📈 <b>{html.escape(info['name'])} ({ticker})</b>  {today}")
     lines.append(f"持仓 {info['qty']} 股 | 均成本 ${info['cost']}")
     lines.append(f"当前价 <b>${price}</b> | 市值 ${mv:,.0f}")
     lines.append(f"浮盈亏 <b>${pnl_usd:+,.0f}</b> ({pnl_pct:+.1f}%)")
@@ -107,19 +107,22 @@ for ticker, info in HOLDINGS.items():
     lines.append("")
     lines.append("📰 相关新闻")
     for i, n in enumerate(news, 1):
-        lines.append(f"{i}. {n['sentiment']} <a href='{n['link']}'>{n['title']}</a>")
-        if n["summary"]:
-            lines.append(f"   <i>{n['summary']}...</i>")
+        safe_title   = html.escape(n['title'])
+        safe_summary = html.escape(n['summary'])
+        safe_link    = n['link']
+        lines.append(f"{i}. {n['sentiment']} <a href='{safe_link}'>{safe_title}</a>")
+        if safe_summary:
+            lines.append(f"   <i>{safe_summary}...</i>")
     lines.append("")
     lines.append("─" * 20)
 
     send_telegram(token, chat_id, "\n".join(lines))
     print(f"{ticker} sent.")
 
-# Summary message
 if bull_total > bear_total:   mood = "🟢 利好"
 elif bear_total > bull_total: mood = "🔴 利空"
 else:                          mood = "⚪ 中性"
+
 summary = (
     f"📊 <b>组合总情绪 {today}</b>\n"
     f"整体情绪: {mood}\n"
