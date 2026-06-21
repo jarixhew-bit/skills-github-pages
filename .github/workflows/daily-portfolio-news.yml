@@ -17,36 +17,60 @@ jobs:
         run: |
           pip install requests feedparser --quiet
           python3 /dev/stdin <<'PYEOF'
-import os, smtplib, feedparser, requests
+import os, smtplib, feedparser
 from email.mime.text import MIMEText
 from datetime import datetime
 
 HOLDINGS = {
-    "IBIT": {"name": "iShares Bitcoin Trust (IBIT)", "qty": 357.57, "cost": 39.08},
-    "SGOV": {"name": "iShares 0-3M Treasury ETF (SGOV)", "qty": 65.24,  "cost": 100.59},
-    "VOO":  {"name": "Vanguard S&P 500 ETF (VOO)",     "qty": 114.18, "cost": 550.46},
+    "IBIT": {"name": "iShares 比特币 ETF (IBIT)",    "qty": 357.57, "cost": 39.08},
+    "VOO":  {"name": "Vanguard 标普500 ETF (VOO)",   "qty": 114.18, "cost": 550.46},
 }
 
-BULLISH_WORDS = [
-    "surge","rally","soar","jump","gain","rise","bull","record","high","boost",
+BULLISH = [
+    "surge","rally","soar","jump","gain","rise","bull","record high","boost",
     "beat","exceed","strong","growth","upgrade","buy","positive","optimistic",
-    "inflow","demand","breakout","upside","recover","approve","approval",
-    "上涨","利好","突破","新高","买入","看涨","增长","流入","反弹"
+    "inflow","breakout","upside","recover","approval","approve","adoption",
+    "inflation easing","rate cut","fed pivot","soft landing","earnings beat",
 ]
-BEARISH_WORDS = [
+BEARISH = [
     "drop","fall","crash","slump","decline","bear","low","loss","risk","warn",
     "miss","weak","downgrade","sell","negative","pessimistic","outflow","fear",
     "breakdown","downside","concern","ban","restrict","lawsuit","fine",
-    "下跌","利空","跌破","新低","卖出","看跌","亏损","流出","崩盘"
+    "inflation","rate hike","recession","layoff","earnings miss","default",
 ]
 
-def score_sentiment(text):
+BULLISH_CN = [
+    "上涨","利好","突破","新高","买入","看涨","增长","流入","反弹","强势","创新","扩张"
+]
+BEARISH_CN = [
+    "下跌","利空","跌破","新低","卖出","看跌","亏损","流出","崩盘","衰退","抑制","违规"
+]
+
+def score(text):
     t = text.lower()
-    bull = sum(1 for w in BULLISH_WORDS if w in t)
-    bear = sum(1 for w in BEARISH_WORDS if w in t)
+    bull = sum(1 for w in BULLISH if w in t) + sum(1 for w in BULLISH_CN if w in t)
+    bear = sum(1 for w in BEARISH if w in t) + sum(1 for w in BEARISH_CN if w in t)
     if bull > bear:   return "🟢 利好", bull, bear
     elif bear > bull: return "🔴 利空", bull, bear
     else:             return "⚪ 中性", bull, bear
+
+def cn_comment(ticker, bull_c, bear_c, total):
+    """Generate a short Chinese commentary based on sentiment ratio."""
+    if total == 0:
+        return "暂无足够新闻评估当前情绪。"
+    ratio = bull_c / total
+    if ticker == "IBIT":
+        asset = "比特币及加密ETF"
+    else:
+        asset = "标普500及美股市场"
+    if ratio >= 0.7:
+        return f"当前{asset}新闻情绪强烈偏利好，利好消息占主导，可小心关注短期回调机会。"
+    elif ratio >= 0.5:
+        return f"当前{asset}新闻偏乐观，利好因素出现较多，但仍需关注宏观风险变化。"
+    elif ratio >= 0.3:
+        return f"当前{asset}新闻多空混杂，市场情绪不明朗，建议观望为主，减少短期操作。"
+    else:
+        return f"当前{asset}新闻偏空头，利空因素占主导，建议控制仓位，谨慎操作。"
 
 def fetch_news(ticker):
     url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
@@ -55,53 +79,55 @@ def fetch_news(ticker):
     for e in feed.entries[:8]:
         title   = e.get("title", "")
         link    = e.get("link", "")
-        summary = e.get("summary", "")
+        summary = e.get("summary", "")[:200]
         pub     = e.get("published", "")
-        sentiment, bull, bear = score_sentiment(title + " " + summary)
+        sentiment, bull, bear = score(title + " " + summary)
         items.append({"title": title, "link": link, "pub": pub,
-                       "sentiment": sentiment, "bull": bull, "bear": bear,
-                       "summary": summary[:200]})
+                      "sentiment": sentiment, "bull": bull, "bear": bear,
+                      "summary": summary})
     return items
 
 today = datetime.now().strftime("%Y-%m-%d")
-bull_total, bear_total, neutral_total = 0, 0, 0
+bull_total = bear_total = neutral_total = 0
 lines = []
-lines.append(f"每日持仓新闻 & 情绪分析 — {today}")
-lines.append("=" * 52)
+lines.append(f"每日持仓情绪分析报告 — {today}")
+lines.append("=" * 54)
 
 for ticker, info in HOLDINGS.items():
     news = fetch_news(ticker)
     bull_c  = sum(1 for n in news if "利好" in n["sentiment"])
     bear_c  = sum(1 for n in news if "利空" in n["sentiment"])
-    neut_c  = sum(1 for n in news if "中性" in n["sentiment"])
+    neut_c  = len(news) - bull_c - bear_c
     bull_total += bull_c; bear_total += bear_c; neutral_total += neut_c
+    total = bull_c + bear_c + neut_c
 
     if bull_c > bear_c:     overall = "🟢 整体偏利好"
     elif bear_c > bull_c:   overall = "🔴 整体偏利空"
     else:                   overall = "⚪ 整体中性"
 
     lines.append("")
-    lines.append(f"{'─'*52}")
-    lines.append(f"  {info['name']}")
-    lines.append(f"  持仓: {info['qty']} 股 | 成本: ${info['cost']}")
+    lines.append("─" * 54)
+    lines.append(f"▶ {info['name']}")
+    lines.append(f"  持仓: {info['qty']} 股 | 均成本: ${info['cost']}")
     lines.append(f"  情绪汇总: {overall}  (利好 {bull_c} | 利空 {bear_c} | 中性 {neut_c})")
+    lines.append(f"  【分析】{cn_comment(ticker, bull_c, bear_c, total)}")
     lines.append("")
 
     for i, n in enumerate(news, 1):
         lines.append(f"  {i}. {n['sentiment']}  {n['title']}")
-        if n["pub"]: lines.append(f"     {n['pub']}")
+        if n["pub"]:     lines.append(f"     时间: {n['pub']}")
         if n["summary"]: lines.append(f"     摘要: {n['summary']}...")
-        lines.append(f"     {n['link']}")
+        lines.append(f"     链接: {n['link']}")
         lines.append("")
 
-lines.append("=" * 52)
-if bull_total > bear_total:   portfolio_mood = "🟢 组合整体偏利好"
-elif bear_total > bull_total: portfolio_mood = "🔴 组合整体偏利空"
-else:                          portfolio_mood = "⚪ 组合整体中性"
-lines.append(f"组合总情绪: {portfolio_mood}")
-lines.append(f"全部新闻: 利好 {bull_total} 条 | 利空 {bear_total} 条 | 中性 {neutral_total} 条")
+lines.append("=" * 54)
+if bull_total > bear_total:   mood = "🟢 整体偏利好"
+elif bear_total > bull_total: mood = "🔴 整体偏利空"
+else:                          mood = "⚪ 整体中性"
+lines.append(f"组合总情绪: {mood}")
+lines.append(f"全部新闻汇总: 利好 {bull_total} 条 | 利空 {bear_total} 条 | 中性 {neutral_total} 条")
 lines.append("")
-lines.append("由 GitHub Actions 自动发送")
+lines.append("由 GitHub Actions 自动发送 — 每日北京时8:00")
 
 body = "\n".join(lines)
 
@@ -110,7 +136,7 @@ gmail_pw   = os.environ["GMAIL_APP_PASSWORD"]
 email_to   = os.environ["EMAIL_TO"]
 
 msg = MIMEText(body, "plain", "utf-8")
-msg["Subject"] = f"[持仓情绪] {today} — {portfolio_mood}"
+msg["Subject"] = f"[持仓早报] {today} {mood} | IBIT & VOO"
 msg["From"]    = gmail_user
 msg["To"]      = email_to
 
