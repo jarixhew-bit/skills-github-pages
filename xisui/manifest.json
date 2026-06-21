@@ -2,7 +2,7 @@
   "name": "洗髓功法",
   "short_name": "洗髓功",
   "description": "每日洗髓功法練習引導",
-  "start_url": "/xisui/",
+  "start_url": "/skills-github-pages/xisui/",
   "display": "standalone",
   "background_color": "#0d0d1a",
   "theme_color": "#1a1a2e",
