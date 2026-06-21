@@ -1,11 +1,12 @@
-import os, html, time, feedparser, requests, yfinance as yf
+import os, html, time, xml.etree.ElementTree as ET
+import feedparser, requests, yfinance as yf
 from datetime import datetime
 
-# ── 持仓（第二步将自动从 IBKR 拉取）
-HOLDINGS = {
-    "IBIT": {"name": "比特币 ETF (IBIT)",  "qty": 357.57, "cost": 39.08},
-    "VOO":  {"name": "标普500 ETF (VOO)", "qty": 114.18, "cost": 550.46},
-}
+TOKEN    = os.environ["TELEGRAM_TOKEN"]
+CHAT_ID  = os.environ["TELEGRAM_CHAT_ID"]
+FLEX_TOK = os.environ["IBKR_FLEX_TOKEN"]
+FLEX_QID = os.environ["IBKR_FLEX_QUERY_ID"]
+TODAY    = datetime.now().strftime("%Y-%m-%d")
 
 BULLISH = [
     "surge","rally","soar","jump","gain","rise","bull","record high","boost",
@@ -20,17 +21,18 @@ BEARISH = [
     "rate hike","recession","layoff","earnings miss","default","inflation",
 ]
 
-TOKEN   = os.environ["TELEGRAM_TOKEN"]
-CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
-TODAY   = datetime.now().strftime("%Y-%m-%d")
+# ── 工具 ───────────────────────────────────────────
 
-
-# ── 工具函数 ────────────────────────────────────────
+def send(text):
+    requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        json={"chat_id": CHAT_ID, "text": text,
+              "parse_mode": "HTML", "disable_web_page_preview": True},
+        timeout=15
+    )
 
 def translate(text):
-    """MyMemory 免费翻译 EN → ZH"""
-    if not text.strip():
-        return text
+    if not text.strip(): return text
     try:
         r = requests.get(
             "https://api.mymemory.translated.net/get",
@@ -50,6 +52,44 @@ def score(text):
     elif bear > bull: return "🔴 利空"
     else:             return "⚪ 中性"
 
+def fetch_ibkr_positions():
+    """IBKR Flex Query 拉取持仓"""
+    base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
+    # Step 1: 请求生成报告
+    r1 = requests.get(
+        f"{base}.SendRequest",
+        params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"},
+        timeout=30
+    )
+    root1 = ET.fromstring(r1.text)
+    ref   = root1.findtext("ReferenceCode")
+    if not ref:
+        print("⚠️ Flex Query 未返回 ReferenceCode，使用默认持仓")
+        return None
+
+    # Step 2: 获取报告（最多重试 5 次）
+    time.sleep(5)
+    for _ in range(5):
+        r2   = requests.get(
+            f"{base}.GetStatement",
+            params={"v": "3", "q": ref, "t": FLEX_TOK},
+            timeout=30
+        )
+        if "<FlexQueryResponse" in r2.text:
+            break
+        time.sleep(5)
+
+    root2     = ET.fromstring(r2.text)
+    positions = {}
+    for pos in root2.iter("OpenPosition"):
+        sym  = pos.get("symbol", "")
+        qty  = float(pos.get("position") or pos.get("quantity") or 0)
+        cost = float(pos.get("costBasisPrice") or pos.get("avgCost") or 0)
+        ac   = pos.get("assetCategory", "STK")
+        if sym and qty and ac == "STK":
+            positions[sym] = {"qty": round(qty, 4), "cost": round(cost, 4)}
+    return positions if positions else None
+
 def fetch_price(ticker):
     tk   = yf.Ticker(ticker)
     hist = tk.history(period="1y")
@@ -59,7 +99,7 @@ def fetch_price(ticker):
     high52    = round(hist["High"].max(), 2)
     low52     = round(hist["Low"].min(), 2)
     pct_range = round((price - low52) / (high52 - low52) * 100, 1)
-    return price, prev, day_chg, high52, low52, pct_range
+    return price, day_chg, high52, low52, pct_range
 
 def fetch_news(ticker):
     feed  = feedparser.parse(
@@ -71,118 +111,120 @@ def fetch_news(ticker):
         link    = e.get("link", "")
         summary = e.get("summary", "")[:200]
         sent    = score(title + " " + summary)
-        cn_title = translate(title)
-        time.sleep(0.5)  # 避免翻译 API 限流
-        cn_summary = translate(summary) if summary else ""
+        cn_title   = translate(title);   time.sleep(0.5)
+        cn_summary = translate(summary); time.sleep(0.5)
         items.append({"sent": sent, "cn_title": cn_title,
                       "cn_summary": cn_summary, "link": link})
     return items
 
 def fetch_macro():
     result = {}
-    tickers = {"VIX": "^VIX", "DXY": "DX-Y.NYB", "US10Y": "^TNX"}
-    for name, sym in tickers.items():
+    for name, sym in {"VIX": "^VIX", "DXY": "DX-Y.NYB", "US10Y": "^TNX"}.items():
         try:
-            tk    = yf.Ticker(sym)
-            hist  = tk.history(period="5d")
+            hist  = yf.Ticker(sym).history(period="5d")
             price = round(hist["Close"].iloc[-1], 2)
             prev  = round(hist["Close"].iloc[-2], 2)
-            chg   = round((price - prev) / prev * 100, 2)
-            result[name] = (price, chg)
+            result[name] = (price, round((price-prev)/prev*100, 2))
         except Exception:
             result[name] = ("N/A", 0)
     return result
 
 def fetch_fear_greed():
     try:
-        r    = requests.get("https://api.alternative.me/fng/", timeout=10)
-        data = r.json()["data"][0]
+        data = requests.get("https://api.alternative.me/fng/", timeout=10).json()["data"][0]
         return data["value"], data["value_classification"]
     except Exception:
         return "N/A", "N/A"
 
 def buy_rec(price, cost, pct_range, bull_c, bear_c, total):
-    pnl     = (price - cost) / cost * 100
-    sratio  = bull_c / total if total > 0 else 0.5
-    pos     = pct_range / 100
+    pnl    = (price - cost) / cost * 100
+    sratio = bull_c / total if total > 0 else 0.5
+    pos    = pct_range / 100
     sc = 0
-    if pnl <= 0:       sc += 2
-    elif pnl <= 20:    sc += 1
-    if pos <= 0.3:     sc += 2
-    elif pos <= 0.5:   sc += 1
-    if sratio >= 0.6:  sc += 1
+    if pnl <= 0:        sc += 2
+    elif pnl <= 20:     sc += 1
+    if pos <= 0.3:      sc += 2
+    elif pos <= 0.5:    sc += 1
+    if sratio >= 0.6:   sc += 1
     elif sratio <= 0.3: sc -= 1
     if sc >= 4:   return "⭐ 建议分批加仓"
     elif sc >= 2: return "🟡 可小量加仓"
     elif sc >= 0: return "⏸️ 观望为主"
     else:         return "⛔ 建议暂缓"
 
-def send(text):
-    requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        json={"chat_id": CHAT_ID, "text": text,
-              "parse_mode": "HTML", "disable_web_page_preview": True},
-        timeout=15
-    )
 
+# ── 主流程 ───────────────────────────────────────────
 
-# ── 1. 宏观指标 ────────────────────────────────────────
+# 拉取 IBKR 持仓
+print("拉取 IBKR 持仓...")
+ibkr = fetch_ibkr_positions()
+
+# 默认过滤（只看 ETF，排除 SGOV）
+EXCLUDE = {"SGOV"}
+NAME_MAP = {
+    "IBIT": "比特币 ETF (IBIT)",
+    "VOO":  "标普500 ETF (VOO)",
+}
+
+if ibkr:
+    HOLDINGS = {
+        sym: {"name": NAME_MAP.get(sym, sym), "qty": v["qty"], "cost": v["cost"]}
+        for sym, v in ibkr.items() if sym not in EXCLUDE
+    }
+    print(f"成功拉取 IBKR 持仓: {list(HOLDINGS.keys())}")
+else:
+    # 回退到默认数据
+    HOLDINGS = {
+        "IBIT": {"name": "比特币 ETF (IBIT)",  "qty": 357.57, "cost": 39.08},
+        "VOO":  {"name": "标普500 ETF (VOO)", "qty": 114.18, "cost": 550.46},
+    }
+    print("使用默认持仓数据")
+
+# 1. 宏观指标
 print("拉取宏观指标...")
-macro = fetch_macro()
-fg_val, fg_label = fetch_fear_greed()
+macro        = fetch_macro()
+fg_val, fg_l = fetch_fear_greed()
+vix,  vix_c  = macro["VIX"]
+dxy,  dxy_c  = macro["DXY"]
+tn,   tn_c   = macro["US10Y"]
+vix_icon = "🔴" if isinstance(vix, float) and vix > 25 else "🟢"
 
-vix,   vix_chg   = macro["VIX"]
-dxy,   dxy_chg   = macro["DXY"]
-us10y, us10y_chg = macro["US10Y"]
-
-vix_icon  = "🔴" if isinstance(vix, float) and vix > 25 else "🟢"
-fg_icon   = "🟢" if isinstance(fg_val, str) and int(fg_val) >= 50 else "🔴" if isinstance(fg_val, str) else "⚪"
-
-macro_msg = (
+send(
     f"🌍 <b>宏观指标 — {TODAY}</b>\n"
     f"────────────────────\n"
-    f"{vix_icon} VIX 恐慧指数: <b>{vix}</b>  ({vix_chg:+.2f}%)\n"
+    f"{vix_icon} VIX 恐慧指数: <b>{vix}</b> ({vix_c:+.2f}%)\n"
     f"   &gt;30 极度恐慧 | 20-30 波动 | &lt;20 平静\n"
-    f"💵 美元指数 DXY: <b>{dxy}</b>  ({dxy_chg:+.2f}%)\n"
-    f"   美元强 → 对 IBIT/VOO 小利空\n"
-    f"📉 10年期国债: <b>{us10y}%</b>  ({us10y_chg:+.2f}%)\n"
-    f"   收益率高 → 对成长股小利空\n"
-    f"{fg_icon} BTC 恐慧贪婪指数: <b>{fg_val}</b> （{fg_label}）\n"
-    f"   0-25 极度恐慧 | 25-45 恐慧 | 45-55 中性 | 55+ 贪婪"
+    f"💵 美元指数 DXY: <b>{dxy}</b> ({dxy_c:+.2f}%)\n"
+    f"📉 10年期国债: <b>{tn}%</b> ({tn_c:+.2f}%)\n"
+    f"🔥 BTC 恐慧贪婪: <b>{fg_val}</b> （{fg_l}）\n"
+    f"   0-25 极度恐慧 | 25-45 恐慧 | 55+ 贪婪"
 )
-send(macro_msg)
-print("宏观指标已发送")
 
-
-# ── 2. 持仓分析 ────────────────────────────────────────
+# 2. 持仓分析
 bull_total = bear_total = neut_total = 0
 
 for ticker, info in HOLDINGS.items():
     print(f"处理 {ticker}...")
-    price, prev, day_chg, high52, low52, pct_range = fetch_price(ticker)
+    price, day_chg, high52, low52, pct_range = fetch_price(ticker)
     news   = fetch_news(ticker)
     bull_c = sum(1 for n in news if "利好" in n["sent"])
     bear_c = sum(1 for n in news if "利空" in n["sent"])
     neut_c = len(news) - bull_c - bear_c
     bull_total += bull_c; bear_total += bear_c; neut_total += neut_c
-    total  = bull_c + bear_c + neut_c
-    pnl    = (price - info["cost"]) / info["cost"] * 100
+    total   = bull_c + bear_c + neut_c
+    pnl_pct = (price - info["cost"]) / info["cost"] * 100
     pnl_usd = round((price - info["cost"]) * info["qty"], 2)
-    mv     = round(price * info["qty"], 2)
-    rec    = buy_rec(price, info["cost"], pct_range, bull_c, bear_c, total)
-
-    if bull_c > bear_c:   overall = "🟢 利好"
-    elif bear_c > bull_c: overall = "🔴 利空"
-    else:                 overall = "⚪ 中性"
-
+    mv      = round(price * info["qty"], 2)
+    rec     = buy_rec(price, info["cost"], pct_range, bull_c, bear_c, total)
+    overall = "🟢 利好" if bull_c > bear_c else ("🔴 利空" if bear_c > bull_c else "⚪ 中性")
     day_icon = "🟢" if day_chg >= 0 else "🔴"
-    alert    = "\n⚠️ <b>单日涨跌超过 3%，请关注！</b>" if abs(day_chg) >= 3 else ""
+    alert = "\n⚠️ <b>单日涨跌超 3%，请关注！</b>" if abs(day_chg) >= 3 else ""
 
     lines = [
         f"📈 <b>{html.escape(info['name'])}</b>{alert}",
         f"持仓 {info['qty']} 股 | 均成本 ${info['cost']}",
         f"当前价 <b>${price}</b> {day_icon} ({day_chg:+.2f}%)",
-        f"市值 ${mv:,.0f} | 浮盈亏 <b>${pnl_usd:+,.0f}</b> ({pnl:+.1f}%)",
+        f"市值 ${mv:,.0f} | 浮盈亏 <b>${pnl_usd:+,.0f}</b> ({pnl_pct:+.1f}%)",
         f"52周: 高 ${high52} / 低 ${low52} | 位置 {pct_range:.0f}%",
         f"情绪: {overall} (利好 {bull_c} | 利空 {bear_c} | 中性 {neut_c})",
         f"今日建议: <b>{rec}</b>",
@@ -198,8 +240,7 @@ for ticker, info in HOLDINGS.items():
     print(f"{ticker} 已发送")
     time.sleep(1)
 
-
-# ── 3. 总结 ────────────────────────────────────────────
+# 3. 总结
 if bull_total > bear_total:   mood = "🟢 利好"
 elif bear_total > bull_total: mood = "🔴 利空"
 else:                          mood = "⚪ 中性"
@@ -208,6 +249,6 @@ send(
     f"📊 <b>组合汇总 — {TODAY}</b>\n"
     f"整体情绪: {mood}\n"
     f"新闻: 利好 {bull_total} | 利空 {bear_total} | 中性 {neut_total}\n"
-    f"每日北京 08:00 自动推送"
+    f"每日北京 08:00 由 GitHub Actions 自动推送"
 )
 print("全部完成")
