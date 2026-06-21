@@ -299,37 +299,42 @@
   const GKEY   = "AIzaSyCdPSJBGOPzM4v-MyX9ncfLqjMM4Du_Pbc";
   const AVKEY  = "af669cc0fe4c1e03a86a0ff82ea0a6bb";
 
-  // ── Wikipedia pageimages API (CORS origin=*, works locally + GitHub Pages) ──
-  const wikiPages = {
-    "img-conrad":      "Conrad_Osaka",
-    "img-fourseasons": "Four_Seasons_Hotel_Tokyo_at_Otemachi",
-    "spot-lego-osaka": "Legoland_Discovery_Centre_Osaka",
-    "spot-nifrel":     "Nifrel",
-    "spot-usj":        "Universal_Studios_Japan",
-    "spot-kaiyukan":   "Osaka_Aquarium_Kaiyukan",
-    "spot-santamaria": "Santa_Maria_(ship,_Osaka)",
-    "spot-tempozan":   "Tempozan_Giant_Ferris_Wheel",
-    "spot-shibuya":    "Shibuya_Crossing",
-    "spot-lego-tokyo": "Legoland_Discovery_Centre_Tokyo",
-    "spot-olympic":    "Japan_Olympic_Museum",
-    "spot-tokyotower": "Tokyo_Tower",
-    "spot-disney":     "Tokyo_Disneyland",
-    "spot-teamlab":    "TeamLab_Planets",
-    "spot-skytree":    "Tokyo_Skytree",
-    "spot-ginza":      "Ginza",
+  // ── Google Places API (New) photo loader ──
+  const placeQueries = {
+    "img-conrad":      "Conrad Osaka Hotel",
+    "img-fourseasons": "Four Seasons Hotel Tokyo at Otemachi",
+    "spot-lego-osaka": "LEGOLAND Discovery Centre Osaka",
+    "spot-nifrel":     "Nifrel Aquarium Osaka",
+    "spot-usj":        "Universal Studios Japan Osaka",
+    "spot-kaiyukan":   "Osaka Aquarium Kaiyukan",
+    "spot-santamaria": "Santa Maria cruise Osaka Bay",
+    "spot-tempozan":   "Tempozan Giant Ferris Wheel Osaka",
+    "spot-shibuya":    "Shibuya Crossing Tokyo",
+    "spot-lego-tokyo": "LEGOLAND Discovery Centre Tokyo",
+    "spot-olympic":    "Japan Olympic Museum Tokyo",
+    "spot-tokyotower": "Tokyo Tower",
+    "spot-disney":     "Tokyo Disneyland",
+    "spot-teamlab":    "TeamLab Planets Tokyo",
+    "spot-skytree":    "Tokyo Skytree",
+    "spot-ginza":      "Ginza Tokyo shopping",
   };
 
-  async function loadWikiPageImage(imgId, article) {
+  async function loadPlacePhoto(imgId, query) {
     try {
-      const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(article)}&prop=pageimages&pithumbsize=600&pilicense=any&format=json&origin=*`;
-      const res = await fetch(url);
+      const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": GKEY,
+          "X-Goog-FieldMask": "places.photos"
+        },
+        body: JSON.stringify({ textQuery: query, pageSize: 1 })
+      });
       const data = await res.json();
-      const page = Object.values(data.query?.pages ?? {})[0];
-      const thumb = page?.thumbnail?.source;
-      if (thumb) {
-        const el = document.getElementById(imgId);
-        if (el) el.src = thumb;
-      }
+      const photoName = data.places?.[0]?.photos?.[0]?.name;
+      if (!photoName) return;
+      const el = document.getElementById(imgId);
+      if (el) el.src = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=600&key=${GKEY}`;
     } catch(e) {}
   }
 
@@ -375,7 +380,7 @@
 
   window.addEventListener("DOMContentLoaded", () => {
     trackAllFlights();
-    Object.entries(wikiPages).forEach(([id, article]) => loadWikiPageImage(id, article));
+    Object.entries(placeQueries).forEach(([id, query]) => loadPlacePhoto(id, query));
   });
 </script>
 </body>
