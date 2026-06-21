@@ -1,0 +1,88 @@
+name: Daily Portfolio News Digest
+
+on:
+  schedule:
+    # 00:00 UTC = 08:00 Beijing time (UTC+8)
+    - cron: '0 0 * * *'
+  workflow_dispatch: # allow manual trigger for testing
+
+jobs:
+  news-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch news and send digest
+        env:
+          EMAIL_TO: jarixhew@gmail.com
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          set -e
+
+          # Holdings to monitor
+          TICKERS=("IBIT" "SGOV" "VOO")
+          TICKER_NAMES=("iShares Bitcoin Trust (IBIT)" "iShares 0-3 Month Treasury Bond ETF (SGOV)" "Vanguard S&P 500 ETF (VOO)")
+
+          TODAY=$(date '+%Y-%m-%d')
+          BODY="Portfolio News Digest - ${TODAY}\n"
+          BODY+="================================================\n\n"
+
+          for i in "${!TICKERS[@]}"; do
+            TICKER="${TICKERS[$i]}"
+            NAME="${TICKER_NAMES[$i]}"
+
+            BODY+="## ${NAME}\n"
+            BODY+="Yahoo Finance: https://finance.yahoo.com/quote/${TICKER}/news/\n\n"
+
+            # Fetch Yahoo Finance RSS feed
+            RSS_URL="https://feeds.finance.yahoo.com/rss/2.0/headline?s=${TICKER}&region=US&lang=en-US"
+            RSS_CONTENT=$(curl -s --max-time 15 "${RSS_URL}" || echo "")
+
+            if [ -z "$RSS_CONTENT" ]; then
+              BODY+="  (Unable to fetch news)\n\n"
+              continue
+            fi
+
+            # Parse top 5 items: extract title and link
+            ITEMS=$(echo "$RSS_CONTENT" | grep -oP '(?<=<item>).*?(?=</item>)' | head -5 || true)
+
+            COUNT=0
+            while IFS= read -r ITEM; do
+              TITLE=$(echo "$ITEM" | grep -oP '(?<=<title>).*?(?=</title>)' | sed 's/<[^>]*>//g' | head -1)
+              LINK=$(echo "$ITEM" | grep -oP '(?<=<link>).*?(?=</link>)' | head -1)
+              PUB=$(echo "$ITEM" | grep -oP '(?<=<pubDate>).*?(?=</pubDate>)' | head -1)
+
+              if [ -n "$TITLE" ]; then
+                COUNT=$((COUNT+1))
+                BODY+="  ${COUNT}. ${TITLE}\n"
+                [ -n "$PUB" ] && BODY+="     ${PUB}\n"
+                [ -n "$LINK" ] && BODY+="     ${LINK}\n"
+                BODY+="\n"
+              fi
+            done <<< "$ITEMS"
+
+            [ $COUNT -eq 0 ] && BODY+="  (No recent news found)\n"
+            BODY+="\n"
+          done
+
+          BODY+="------------------------------------------------\n"
+          BODY+="Sent automatically by GitHub Actions\n"
+          BODY+="Positions: IBIT x357.57 | SGOV x65.24 | VOO x114.18\n"
+
+          # Send email via Gmail SMTP using curl
+          printf '%b' "$BODY" > /tmp/email_body.txt
+
+          curl --url 'smtps://smtp.gmail.com:465' \
+            --ssl-reqd \
+            --user "${GMAIL_USER}:${GMAIL_APP_PASSWORD}" \
+            --mail-from "${GMAIL_USER}" \
+            --mail-rcpt "${EMAIL_TO}" \
+            --upload-file - <<EOF
+From: Portfolio Bot <${GMAIL_USER}>
+To: ${EMAIL_TO}
+Subject: [每日持仓新闻] ${TODAY} - IBIT / SGOV / VOO
+Content-Type: text/plain; charset=UTF-8
+
+$(cat /tmp/email_body.txt)
+EOF
+
+          echo "Email sent successfully to ${EMAIL_TO}"
