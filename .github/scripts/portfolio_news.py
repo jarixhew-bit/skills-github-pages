@@ -1,5 +1,4 @@
-import os, smtplib, feedparser, yfinance as yf
-from email.mime.text import MIMEText
+import os, feedparser, yfinance as yf, urllib.request, urllib.parse, json
 from datetime import datetime
 
 HOLDINGS = {
@@ -41,64 +40,44 @@ def fetch_news(ticker):
     url  = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
     feed = feedparser.parse(url)
     items = []
-    for e in feed.entries[:8]:
+    for e in feed.entries[:6]:
         title   = e.get("title", "")
         link    = e.get("link", "")
-        summary = e.get("summary", "")[:200]
-        pub     = e.get("published", "")
+        summary = e.get("summary", "")[:150]
         s, b, br = score(title + " " + summary)
-        items.append({"title": title, "link": link, "pub": pub,
-                      "sentiment": s, "bull": b, "bear": br, "summary": summary})
+        items.append({"title": title, "link": link, "sentiment": s, "summary": summary})
     return items
 
-def buy_recommendation(ticker, price, cost, pct_from_low, bull_c, bear_c, total):
+def buy_recommendation(price, cost, pct_from_low, bull_c, bear_c, total):
     pnl_pct    = (price - cost) / cost * 100
     sent_ratio = bull_c / total if total > 0 else 0.5
     pos        = pct_from_low / 100
-    lines = []
-
-    if pnl_pct <= -10:
-        lines.append(f"▷ 价格已低于均成本 {abs(pnl_pct):.1f}%，处于浮亏区间")
-    elif pnl_pct <= 0:
-        lines.append(f"▷ 价格轻微低于均成本 {abs(pnl_pct):.1f}%")
-    elif pnl_pct <= 20:
-        lines.append(f"▷ 价格高于均成本 {pnl_pct:.1f}%，温和浮盈")
-    else:
-        lines.append(f"▷ 价格大幅高于均成本 {pnl_pct:.1f}%，浮盈丰厉")
-
-    if pos <= 0.2:
-        lines.append(f"▷ 处于52周低位区 ({pct_from_low:.0f}%)，属于相对历史低位")
-    elif pos <= 0.4:
-        lines.append(f"▷ 处于52周偏低区 ({pct_from_low:.0f}%)，有一定安全边际")
-    elif pos <= 0.6:
-        lines.append(f"▷ 处于52周中间区 ({pct_from_low:.0f}%)，价格居中")
-    elif pos <= 0.8:
-        lines.append(f"▷ 处于52周偏高区 ({pct_from_low:.0f}%)，谨慎追高")
-    else:
-        lines.append(f"▷ 处于52周高位区 ({pct_from_low:.0f}%)，追高风险大")
-
     sc = 0
-    if pnl_pct <= 0:      sc += 2
-    elif pnl_pct <= 20:   sc += 1
-    if pos <= 0.3:        sc += 2
-    elif pos <= 0.5:      sc += 1
-    if sent_ratio >= 0.6: sc += 1
+    if pnl_pct <= 0:        sc += 2
+    elif pnl_pct <= 20:     sc += 1
+    if pos <= 0.3:          sc += 2
+    elif pos <= 0.5:        sc += 1
+    if sent_ratio >= 0.6:   sc += 1
     elif sent_ratio <= 0.3: sc -= 1
+    if sc >= 4:   return "⭐ 建议分批加仓"
+    elif sc >= 2: return "🟡 可小量加仓"
+    elif sc >= 0: return "⏸️ 观望为主"
+    else:         return "⛔ 建议暂缓"
 
-    if sc >= 4:   rec = "⭐ 建议分批加仓（价格、位置、情绪均支持）"
-    elif sc >= 2: rec = "🟡 可小量定指加仓，不必强调时机"
-    elif sc >= 0: rec = "⏸️ 建议观望，无需操作"
-    else:         rec = "⛔ 建议暂缓，价格偏高且情绪偏空"
+def send_telegram(token, chat_id, text):
+    url  = f"https://api.telegram.org/bot{token}/sendMessage"
+    data = urllib.parse.urlencode({
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": "true"
+    }).encode()
+    urllib.request.urlopen(url, data=data, timeout=15)
 
-    lines.append(f"▷ 今日建议: {rec}")
-    lines.append( "  (长期持有者小量定期定额即可，无需过分优化时机)")
-    return lines
-
-today = datetime.now().strftime("%Y-%m-%d")
+today  = datetime.now().strftime("%Y-%m-%d")
+token  = os.environ["TELEGRAM_TOKEN"]
+chat_id = os.environ["TELEGRAM_CHAT_ID"]
 bull_total = bear_total = neutral_total = 0
-lines = []
-lines.append(f"持仓早报 — {today}   每日北京 08:00 自动发送")
-lines.append("=" * 54)
 
 for ticker, info in HOLDINGS.items():
     news = fetch_news(ticker)
@@ -109,54 +88,43 @@ for ticker, info in HOLDINGS.items():
     bull_total += bull_c; bear_total += bear_c; neutral_total += neut_c
     total   = bull_c + bear_c + neut_c
     pnl_usd = round((price - info["cost"]) * info["qty"], 2)
-    mv      = round(price * info["qty"], 2)
     pnl_pct = (price - info["cost"]) / info["cost"] * 100
+    mv      = round(price * info["qty"], 2)
+    rec     = buy_recommendation(price, info["cost"], pct, bull_c, bear_c, total)
 
     if bull_c > bear_c:   overall = "🟢 利好"
     elif bear_c > bull_c: overall = "🔴 利空"
     else:                 overall = "⚪ 中性"
 
+    lines = []
+    lines.append(f"📈 <b>{info['name']} ({ticker})</b>  {today}")
+    lines.append(f"持仓 {info['qty']} 股 | 均成本 ${info['cost']}")
+    lines.append(f"当前价 <b>${price}</b> | 市值 ${mv:,.0f}")
+    lines.append(f"浮盈亏 <b>${pnl_usd:+,.0f}</b> ({pnl_pct:+.1f}%)")
+    lines.append(f"52周: 高 ${high52} / 低 ${low52} | 当前位置 {pct:.0f}%")
+    lines.append(f"新闻情绪: {overall} (利好 {bull_c} | 利空 {bear_c} | 中性 {neut_c})")
+    lines.append(f"今日建议: <b>{rec}</b>")
     lines.append("")
-    lines.append("─" * 54)
-    lines.append(f"▶ {info['name']} ({ticker})")
-    lines.append(f"   持仓: {info['qty']} 股  |均成本: ${info['cost']}")
-    lines.append(f"   当前价: ${price}  |市値: ${mv:,.2f}")
-    lines.append(f"   浮盈亏: ${pnl_usd:+,.2f}  ({pnl_pct:+.1f}%)")
-    lines.append(f"   52周高: ${high52}  |52周低: ${low52}")
-    lines.append(f"   当前位置: 处于52周区间 {pct:.0f}% 处")
-    lines.append(f"   新闻情绪: {overall}  (利好 {bull_c} | 利空 {bear_c} | 中性 {neut_c})")
-    lines.append("")
-    lines.append("  《加仓分析》")
-    for r in buy_recommendation(ticker, price, info["cost"], pct, bull_c, bear_c, total):
-        lines.append(f"  {r}")
-    lines.append("")
-    lines.append("  《相关新闻》")
+    lines.append("📰 相关新闻")
     for i, n in enumerate(news, 1):
-        lines.append(f"  {i}. {n['sentiment']}  {n['title']}")
-        if n["pub"]:     lines.append(f"     时间: {n['pub']}")
-        if n["summary"]: lines.append(f"     摘要: {n['summary']}...")
-        lines.append(f"     {n['link']}")
-        lines.append("")
+        lines.append(f"{i}. {n['sentiment']} <a href='{n['link']}'>{n['title']}</a>")
+        if n["summary"]:
+            lines.append(f"   <i>{n['summary']}...</i>")
+    lines.append("")
+    lines.append("─" * 20)
 
-lines.append("=" * 54)
+    send_telegram(token, chat_id, "\n".join(lines))
+    print(f"{ticker} sent.")
+
+# Summary message
 if bull_total > bear_total:   mood = "🟢 利好"
 elif bear_total > bull_total: mood = "🔴 利空"
 else:                          mood = "⚪ 中性"
-lines.append(f"组合整体情绪: {mood}")
-lines.append(f"新闻汇总: 利好 {bull_total} | 利空 {bear_total} | 中性 {neutral_total}")
-
-body = "\n".join(lines)
-
-gmail_user = os.environ["GMAIL_USER"]
-gmail_pw   = os.environ["GMAIL_APP_PASSWORD"]
-email_to   = os.environ["EMAIL_TO"]
-
-msg = MIMEText(body, "plain", "utf-8")
-msg["Subject"] = f"[持仓早报] {today} {mood} | IBIT & VOO"
-msg["From"] = gmail_user
-msg["To"]   = email_to
-
-with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
-    s.login(gmail_user, gmail_pw)
-    s.send_message(msg)
-print("Email sent!")
+summary = (
+    f"📊 <b>组合总情绪 {today}</b>\n"
+    f"整体情绪: {mood}\n"
+    f"利好 {bull_total} | 利空 {bear_total} | 中性 {neutral_total}\n"
+    f"每日北京 08:00 由 GitHub Actions 自动发送"
+)
+send_telegram(token, chat_id, summary)
+print("Summary sent.")
