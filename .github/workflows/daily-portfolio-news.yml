@@ -9,63 +9,113 @@ jobs:
   news-digest:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch news and send digest
+      - name: Run news digest
         env:
           EMAIL_TO: jarixhew@gmail.com
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
-          TODAY=$(date '+%Y-%m-%d')
-          TICKERS=("IBIT" "SGOV" "VOO")
-          NAMES=("iShares Bitcoin Trust (IBIT)" "iShares 0-3 Month Treasury Bond ETF (SGOV)" "Vanguard S&P 500 ETF (VOO)")
+          pip install requests feedparser --quiet
+          python3 /dev/stdin <<'PYEOF'
+import os, smtplib, feedparser, requests
+from email.mime.text import MIMEText
+from datetime import datetime
 
-          BODY="Portfolio News Digest - ${TODAY}\n"
-          BODY+="================================================\n\n"
+HOLDINGS = {
+    "IBIT": {"name": "iShares Bitcoin Trust (IBIT)", "qty": 357.57, "cost": 39.08},
+    "SGOV": {"name": "iShares 0-3M Treasury ETF (SGOV)", "qty": 65.24,  "cost": 100.59},
+    "VOO":  {"name": "Vanguard S&P 500 ETF (VOO)",     "qty": 114.18, "cost": 550.46},
+}
 
-          for i in "${!TICKERS[@]}"; do
-            T="${TICKERS[$i]}"
-            N="${NAMES[$i]}"
-            BODY+="## ${N}\n"
-            BODY+="https://finance.yahoo.com/quote/${T}/news/\n\n"
+BULLISH_WORDS = [
+    "surge","rally","soar","jump","gain","rise","bull","record","high","boost",
+    "beat","exceed","strong","growth","upgrade","buy","positive","optimistic",
+    "inflow","demand","breakout","upside","recover","approve","approval",
+    "上涨","利好","突破","新高","买入","看涨","增长","流入","反弹"
+]
+BEARISH_WORDS = [
+    "drop","fall","crash","slump","decline","bear","low","loss","risk","warn",
+    "miss","weak","downgrade","sell","negative","pessimistic","outflow","fear",
+    "breakdown","downside","concern","ban","restrict","lawsuit","fine",
+    "下跌","利空","跌破","新低","卖出","看跌","亏损","流出","崩盘"
+]
 
-            RSS=$(curl -s --max-time 15 "https://feeds.finance.yahoo.com/rss/2.0/headline?s=${T}&region=US&lang=en-US" || true)
-            COUNT=0
-            while IFS= read -r ITEM; do
-              TITLE=$(echo "$ITEM" | grep -oP '(?<=<title>).*?(?=</title>)' | sed 's/<[^>]*>//g' | head -1)
-              LINK=$(echo "$ITEM" | grep -oP '(?<=<link>).*?(?=</link>)' | head -1)
-              PUB=$(echo "$ITEM" | grep -oP '(?<=<pubDate>).*?(?=</pubDate>)' | head -1)
-              if [ -n "$TITLE" ]; then
-                COUNT=$((COUNT+1))
-                BODY+="  ${COUNT}. ${TITLE}\n"
-                [ -n "$PUB" ] && BODY+="     ${PUB}\n"
-                [ -n "$LINK" ] && BODY+="     ${LINK}\n"
-                BODY+="\n"
-              fi
-            done < <(echo "$RSS" | grep -oP '(?<=<item>).*?(?=</item>)' | head -5)
-            [ $COUNT -eq 0 ] && BODY+="  (No recent news)\n"
-            BODY+="\n"
-          done
+def score_sentiment(text):
+    t = text.lower()
+    bull = sum(1 for w in BULLISH_WORDS if w in t)
+    bear = sum(1 for w in BEARISH_WORDS if w in t)
+    if bull > bear:   return "🟢 利好", bull, bear
+    elif bear > bull: return "🔴 利空", bull, bear
+    else:             return "⚪ 中性", bull, bear
 
-          BODY+="------------------------------------------------\n"
-          BODY+="Positions: IBIT x357.57 | SGOV x65.24 | VOO x114.18\n"
+def fetch_news(ticker):
+    url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+    feed = feedparser.parse(url)
+    items = []
+    for e in feed.entries[:8]:
+        title   = e.get("title", "")
+        link    = e.get("link", "")
+        summary = e.get("summary", "")
+        pub     = e.get("published", "")
+        sentiment, bull, bear = score_sentiment(title + " " + summary)
+        items.append({"title": title, "link": link, "pub": pub,
+                       "sentiment": sentiment, "bull": bull, "bear": bear,
+                       "summary": summary[:200]})
+    return items
 
-          SUBJECT="[每日持仓新闻] ${TODAY} - IBIT / SGOV / VOO"
-          printf '%b' "$BODY" > /tmp/body.txt
+today = datetime.now().strftime("%Y-%m-%d")
+bull_total, bear_total, neutral_total = 0, 0, 0
+lines = []
+lines.append(f"每日持仓新闻 & 情绪分析 — {today}")
+lines.append("=" * 52)
 
-          {
-            printf 'From: Portfolio Bot <%s>\r\n' "$GMAIL_USER"
-            printf 'To: %s\r\n' "$EMAIL_TO"
-            printf 'Subject: %s\r\n' "$SUBJECT"
-            printf 'Content-Type: text/plain; charset=UTF-8\r\n'
-            printf '\r\n'
-            cat /tmp/body.txt
-          } > /tmp/email.txt
+for ticker, info in HOLDINGS.items():
+    news = fetch_news(ticker)
+    bull_c  = sum(1 for n in news if "利好" in n["sentiment"])
+    bear_c  = sum(1 for n in news if "利空" in n["sentiment"])
+    neut_c  = sum(1 for n in news if "中性" in n["sentiment"])
+    bull_total += bull_c; bear_total += bear_c; neutral_total += neut_c
 
-          curl --url 'smtps://smtp.gmail.com:465' \
-            --ssl-reqd \
-            --user "${GMAIL_USER}:${GMAIL_APP_PASSWORD}" \
-            --mail-from "${GMAIL_USER}" \
-            --mail-rcpt "${EMAIL_TO}" \
-            --upload-file /tmp/email.txt
+    if bull_c > bear_c:     overall = "🟢 整体偏利好"
+    elif bear_c > bull_c:   overall = "🔴 整体偏利空"
+    else:                   overall = "⚪ 整体中性"
 
-          echo "Done!"
+    lines.append("")
+    lines.append(f"{'─'*52}")
+    lines.append(f"  {info['name']}")
+    lines.append(f"  持仓: {info['qty']} 股 | 成本: ${info['cost']}")
+    lines.append(f"  情绪汇总: {overall}  (利好 {bull_c} | 利空 {bear_c} | 中性 {neut_c})")
+    lines.append("")
+
+    for i, n in enumerate(news, 1):
+        lines.append(f"  {i}. {n['sentiment']}  {n['title']}")
+        if n["pub"]: lines.append(f"     {n['pub']}")
+        if n["summary"]: lines.append(f"     摘要: {n['summary']}...")
+        lines.append(f"     {n['link']}")
+        lines.append("")
+
+lines.append("=" * 52)
+if bull_total > bear_total:   portfolio_mood = "🟢 组合整体偏利好"
+elif bear_total > bull_total: portfolio_mood = "🔴 组合整体偏利空"
+else:                          portfolio_mood = "⚪ 组合整体中性"
+lines.append(f"组合总情绪: {portfolio_mood}")
+lines.append(f"全部新闻: 利好 {bull_total} 条 | 利空 {bear_total} 条 | 中性 {neutral_total} 条")
+lines.append("")
+lines.append("由 GitHub Actions 自动发送")
+
+body = "\n".join(lines)
+
+gmail_user = os.environ["GMAIL_USER"]
+gmail_pw   = os.environ["GMAIL_APP_PASSWORD"]
+email_to   = os.environ["EMAIL_TO"]
+
+msg = MIMEText(body, "plain", "utf-8")
+msg["Subject"] = f"[持仓情绪] {today} — {portfolio_mood}"
+msg["From"]    = gmail_user
+msg["To"]      = email_to
+
+with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
+    s.login(gmail_user, gmail_pw)
+    s.send_message(msg)
+print("Email sent!")
+PYEOF
