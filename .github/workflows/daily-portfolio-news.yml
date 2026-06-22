@@ -3,7 +3,8 @@ name: Daily Portfolio News Digest
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'
+    # UTC 21:30 = Beijing 05:30, compensates for ~2.5hr GitHub delay = arrives ~08:00
+    - cron: '30 21 * * *'
 
 jobs:
   news-digest:
