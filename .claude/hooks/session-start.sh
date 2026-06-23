@@ -22,6 +22,13 @@ cat > ~/.claude/settings.json << 'JSON'
 }
 JSON
 
+# Clone and start html-anything
+if [ ! -d "$HOME/html-anything" ]; then
+  git clone https://github.com/nexu-io/html-anything "$HOME/html-anything" -q
+  cd "$HOME/html-anything" && pnpm install -s 2>/dev/null || true
+fi
+cd "$HOME/html-anything" && pnpm -F @html-anything/next dev --port 3000 > /tmp/html-anything.log 2>&1 &
+
 # Add knowledge-work-plugins marketplace
 claude plugin marketplace add anthropics/knowledge-work-plugins 2>/dev/null || true
 
