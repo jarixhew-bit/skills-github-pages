@@ -13,6 +13,7 @@
 - 所有页面部署到 GitHub Pages
 - 网址格式：`https://jarixhew-bit.github.io/skills-github-pages/文件名`
 - 发给别人直接发网址，更新后对方刷新自动同步，不需要重发文件
+- **完成任务后自动处理所有 Git 细节**：commit → push → 创建 PR → merge to main，无需等用户指示，完成后直接给出部署网址
 
 ## 现有项目
 - `xisui/` — 洗髓功法练习 App（PWA）
