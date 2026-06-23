@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USJ / 迪士尼后 · 精选餐厅</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1a1209;
+  --red: #b5291c;
+  --red2: #d94030;
+  --gold: #c8982a;
+  --gold2: #f0c96a;
+  --cream: #faf7f2;
+  --paper: #f4efe6;
+  --muted: #7a6f62;
+  --border: #e2d9cc;
+  --osaka: #1e3a5f;
+  --tokyo: #2d1a0e;
+  --green: #1a4a2e;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body { font-family:'Noto Sans SC',sans-serif; background:var(--cream); color:var(--ink); -webkit-font-smoothing:antialiased; }
+
+/* ── MASTHEAD ── */
+.masthead {
+  background: var(--ink);
+  color: #fff;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.masthead-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 30%, rgba(181,41,28,.18) 0%, transparent 70%),
+    repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(255,255,255,.025) 60px, rgba(255,255,255,.025) 61px),
+    repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,.025) 60px, rgba(255,255,255,.025) 61px);
+}
+.masthead-eyebrow {
+  font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--gold2); font-family:'Noto Sans SC',sans-serif; font-weight:500;
+  margin-bottom: 16px;
+}
+.masthead-title {
+  font-family:'Playfair Display',serif;
+  font-size: clamp(36px, 10vw, 72px);
+  line-height: 1.05;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.masthead-title em {
+  font-style: italic; color: var(--gold2);
+}
+.masthead-sub {
+  font-size: 14px; color: rgba(255,255,255,.55);
+  line-height: 1.7; max-width: 420px;
+  margin-bottom: 32px;
+}
+.masthead-content {
+  position: relative; z-index: 1;
+  padding: 48px 24px 40px;
+  max-width: 680px; margin: 0 auto; width: 100%;
+}
+.masthead-stats {
+  display: flex; gap: 0;
+  border-top: 1px solid rgba(255,255,255,.12);
+  padding-top: 24px;
+  margin-bottom: 0;
+}
+.mstat {
+  flex: 1; text-align: center;
+  padding: 0 12px;
+  border-right: 1px solid rgba(255,255,255,.1);
+}
+.mstat:last-child { border-right: none; }
+.mstat-n { font-size: 28px; font-weight: 700; color: var(--gold2); font-family:'Playfair Display',serif; }
+.mstat-l { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,.4); margin-top: 3px; }
+
+/* ── AREA NAV ── */
+.area-nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(26,18,9,.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  display: flex;
+  white-space: nowrap;
+}
+.area-nav::-webkit-scrollbar { display: none; }
+.area-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500;
+  color: rgba(255,255,255,.5);
+  padding: 14px 16px;
+  border: none; background: none; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .2s; white-space: nowrap;
+  font-family: inherit;
+}
+.area-btn:hover { color: #fff; }
+.area-btn.active { color: var(--gold2); border-bottom-color: var(--gold2); }
+.area-btn .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; flex-shrink:0;
+}
+
+/* ── SECTION ── */
+.section { padding: 0 0 56px; }
+.section-header {
+  padding: 40px 24px 0;
+  max-width: 680px; margin: 0 auto;
+}
+.section-label {
+  font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 10px;
+}
+.section-title {
+  font-family:'Playfair Display',serif;
+  font-size: clamp(26px, 7vw, 40px);
+  font-weight: 700; line-height: 1.1;
+  margin-bottom: 8px;
+}
+.section-meta {
+  font-size: 13px; color: var(--muted);
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+}
+.section-meta .tag {
+  background: var(--paper); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 10px;
+  font-size: 11px; color: var(--muted);
+}
+.section-rule {
+  height: 1px;
+  background: linear-gradient(to right, var(--red), transparent);
+  margin: 20px 24px 0;
+  max-width: calc(680px - 48px);
+  margin-left: auto; margin-right: auto;
+}
+
+/* ── MAP STRIP ── */
+.map-strip {
+  margin: 20px 24px 0;
+  max-width: calc(680px - 48px);
+  margin-left: auto; margin-right: auto;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.map-strip-title {
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 10px;
+}
+.area-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.area-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 500;
+  padding: 5px 12px; border-radius: 20px;
+  border: 1px solid var(--border);
+  background: white; color: var(--ink);
+  cursor: pointer; transition: all .15s;
+  white-space: nowrap;
+}
+.area-chip:hover { border-color: var(--red); color: var(--red); }
+.area-chip .chip-count {
+  background: var(--paper); border-radius: 20px;
+  padding: 0 6px; font-size: 10px; color: var(--muted);
+}
+
+/* ── CARDS ── */
+.cards { padding: 20px 24px 0; max-width: 680px; margin: 0 auto; }
+.card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  transition: box-shadow .2s, transform .2s;
+  position: relative;
+}
+.card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-1px); }
+.card-accent {
+  position: absolute; left: 0; top: 16px; bottom: 16px;
+  width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--red);
+}
+
+/* hero photo */
+.card-photo {
+  width: 100%; height: 200px;
+  object-fit: cover; display: block;
+  background: var(--paper);
+}
+.card-photo-wrap {
+  position: relative;
+}
+.card-num {
+  position: absolute; top: 12px; left: 12px;
+  background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+  color: white; font-size: 11px; font-weight: 700;
+  padding: 4px 10px; border-radius: 20px;
+  letter-spacing: .5px;
+}
+.card-badges-float {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
+}
+
+/* body */
+.card-body { padding: 18px 18px 18px 22px; }
+.card-name {
+  font-family:'Noto Serif SC',serif;
+  font-size: 17px; font-weight: 700;
+  line-height: 1.3; margin-bottom: 8px;
+  color: var(--ink);
+}
+.badge {
+  display: inline-flex; align-items: center;
+  font-size: 10px; padding: 3px 9px; border-radius: 20px;
+  font-weight: 500; white-space: nowrap;
+}
+.b-type  { background:#f0ece6; color:#5a4e42; border:1px solid #ddd8d0; }
+.b-stars { background:#fef9ec; color:#9a7220; border:1px solid #f0dfa0; }
+.b-prev  { background:#e8f0e8; color:#2d6e2d; border:1px solid #a8d4a8; }
+.b-chick { background:#fff0e0; color:#b8540a; border:1px solid #f0a868; font-weight:700; }
+.b-walkin{ background:#e8f8f0; color:#1a7a4a; border:1px solid #a8dfc0; }
+
+.card-desc {
+  font-size: 13px; color: #555; line-height: 1.8;
+  margin-bottom: 14px;
+}
+.card-meta {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.card-hours {
+  font-size: 12px; color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
+}
+.card-hours::before { content:'◷'; color: var(--gold); }
+.card-warning {
+  font-size: 11px; color: #c0520a; font-weight:500;
+  display: flex; align-items: flex-start; gap: 5px;
+  background: #fff6ed; border: 1px solid #fcd6a8;
+  border-radius: 8px; padding: 8px 10px;
+}
+.card-warning::before { content:'⚠'; flex-shrink:0; }
+.card-note {
+  font-size: 11px; color: #6b4fa0; font-weight:500;
+  display: flex; align-items: flex-start; gap: 5px;
+  background: #f5f0ff; border: 1px solid #d4c8f0;
+  border-radius: 8px; padding: 8px 10px;
+}
+.card-note::before { content:'◆'; flex-shrink:0; font-size:9px; margin-top:1px; }
+.card-footer {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  align-items: center;
+}
+.link-map {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight:600; color: white;
+  background: var(--ink); padding: 6px 14px;
+  border-radius: 20px; text-decoration: none;
+  transition: background .15s;
+}
+.link-map:hover { background: var(--red); }
+.link-map::before { content:'↗'; font-size:10px; }
+.link-menu {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--gold);
+  background: #fdf9ee; border: 1px solid #e4d3a8;
+  padding: 5px 12px; border-radius: 20px;
+  text-decoration: none; transition: all .15s;
+}
+.link-menu:hover { background:#f5e9c8; }
+
+/* ── DIVIDER ── */
+.city-divider {
+  text-align: center; padding: 40px 24px 0;
+  position: relative;
+}
+.city-divider::before {
+  content:'';
+  position:absolute; top:60px; left:50%; transform:translateX(-50%);
+  width:1px; height:calc(100% - 60px);
+  background: linear-gradient(to bottom, var(--border), transparent);
+}
+
+/* ── FOOTER ── */
+footer {
+  background: var(--ink); color: rgba(255,255,255,.45);
+  text-align: center; padding: 32px 24px;
+  font-size: 12px; line-height: 1.9;
+}
+footer strong { color: rgba(255,255,255,.7); }
+
+/* ── SCROLL TO TOP ── */
+.fab {
+  position: fixed; bottom: 24px; right: 20px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--ink); color: white; border: none;
+  font-size: 18px; cursor: pointer; z-index: 200;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.fab:hover { background: var(--red); }
+
+/* ── OSAKA THEME ── */
+.osaka .section-title { color: var(--osaka); }
+.osaka .card-accent { background: var(--osaka); }
+.osaka .section-rule { background: linear-gradient(to right, var(--osaka), transparent); }
+.osaka .link-map { background: var(--osaka); }
+.osaka .link-map:hover { background: #2a5080; }
+
+/* ── TOKYO THEME ── */
+.tokyo .section-title { color: var(--tokyo); }
+.tokyo .section-rule { background: linear-gradient(to right, var(--tokyo), transparent); }
+
+@media (min-width: 480px) {
+  .card-photo { height: 240px; }
+  .masthead-content { padding: 56px 40px 48px; }
+  .section-header { padding-top: 48px; padding-left: 40px; padding-right: 40px; }
+  .cards { padding-left: 40px; padding-right: 40px; }
+  .section-rule { margin-left: auto; margin-right: auto; max-width: calc(680px - 80px); }
+  .map-strip { margin-left: auto; margin-right: auto; max-width: calc(680px - 80px); }
+}
+</style>
+</head>
+<body>
+
+<!-- ── MASTHEAD ── -->
+<div class="masthead">
+  <div class="masthead-bg"></div>
+  <div class="masthead-content">
+    <div class="masthead-eyebrow">Japan Trip 2026 · 餐厅指南</div>
+    <h1 class="masthead-title">主题乐园后<br><em>吃什么</em></h1>
+    <p class="masthead-sub">USJ、迪士尼乐园、新干线落地——全部全天连续营业，2–4pm 到店完全没问题</p>
+    <div class="masthead-stats">
+      <div class="mstat"><div class="mstat-n">17</div><div class="mstat-l">精选餐厅</div></div>
+      <div class="mstat"><div class="mstat-n">3</div><div class="mstat-l">行程场景</div></div>
+      <div class="mstat"><div class="mstat-n">2</div><div class="mstat-l">城市</div></div>
+      <div class="mstat"><div class="mstat-n">4.2+</div><div class="mstat-l">平均评分</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STICKY NAV ── -->
+<nav class="area-nav">
+  <button class="area-btn active" onclick="goToSection('#usj')"><span class="dot"></span>USJ 后 7/24</button>
+  <button class="area-btn" onclick="goToSection('#disney')"><span class="dot"></span>迪士尼后 7/28</button>
+  <button class="area-btn" onclick="goToSection('#shinkansen')"><span class="dot"></span>新干线落地 7/26</button>
+</nav>
+
+<!-- ══════════════════════════════════════
+     SECTION 1 · USJ 后
+══════════════════════════════════════ -->
+<section class="section osaka" id="usj">
+  <div class="section-header">
+    <div class="section-label">场景一 · 7月24日周五 · 大阪</div>
+    <h2 class="section-title">🎢 USJ 后</h2>
+    <div class="section-meta">
+      <span>道顿堀 · 心斋桥 · 难波 · 北堀江</span>
+      <span class="tag">6 家餐厅</span>
+      <span class="tag">全天连营</span>
+    </div>
+  </div>
+  <div class="section-rule"></div>
+
+  <div class="map-strip">
+    <div class="map-strip-title">📍 按区域</div>
+    <div class="area-chips">
+      <div class="area-chip">道顿堀 <span class="chip-count">2</span></div>
+      <div class="area-chip">心斋桥 <span class="chip-count">1</span></div>
+      <div class="area-chip">难波 <span class="chip-count">2</span></div>
+      <div class="area-chip">北堀江 <span class="chip-count">1</span></div>
+    </div>
+  </div>
+
+  <div class="cards">
+
+    <!-- 1. 蟹道乐 -->
+    <div class="card">
+      <div class="card-accent"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNMhLeBg79xhKgRl0mzTy0QvyhLrDps2VZp8qGRave_v0PuAeQzpcRWXpr4G9SgEjqW0bXMGdXPdb0TmHkAF9JuW_UVdqAUdkivV5Q1Nt67n60MDL31ThZsFe3vR5aEzrpWnz3E6BV859kSxPU=s4800-w800-h600" alt="蟹道乐" loading="lazy">
+        <div class="card-num">① 道顿堀</div>
+        <div class="card-badges-float">
+          <span class="badge b-prev">去年吃过</span>
+          <span class="badge b-stars">★ 4.2</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">蟹道乐 · 道顿堀本店</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">蟹料理</span></div>
+        <p class="card-desc">大阪最具代表性的螃蟹料理老字号，门口巨型螃蟹招牌是道顿堀地标。蟹料理套餐以课程形式上菜，可选松叶蟹、帝王蟹或毛蟹，道顿堀河景座位风景绝佳。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:00–22:00</div>
+          <div class="card-note">全天连续营业，USJ 后任何时段到店均可</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.google.com/?cid=10320232838878048301" target="_blank">Google Map</a>
+          <a class="link-menu" href="https://douraku.co.jp/kansai/honten/" target="_blank">官网</a>
+          <a class="link-menu" href="https://tabelog.com/en/osaka/A2701/A270202/27001516/dtlmenu/" target="_blank">Tabelog 菜单</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 一兰 -->
+    <div class="card">
+      <div class="card-accent"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOT-jb7jpWUEMj7ewLZ3P3QS-ZwxKvfdKUhu_06JfrEbHN7gnLfes3ZC97C3u8UCK-XY0Rl5aoEeFOPjRgStGJxMKNniojVc3D0qYQlmexDOxB8i8NUOBJpVKYFVrMfa-swspMEyvyGmygX4_ih3QRxiA=s4800-w800-h600" alt="一兰拉面" loading="lazy">
+        <div class="card-num">② 道顿堀</div>
+        <div class="card-badges-float"><span class="badge b-stars">★ 4.3</span></div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">一兰拉面 · 道顿堀南馆</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">拉面</span></div>
+        <p class="card-desc">来自福冈的豚骨拉面连锁名店，独立隔间单人位设计独特，自定义汤底浓度、面条硬度、辣度，24 小时全年无休，道顿堀逛街累了随时可以来。</p>
+        <div class="card-meta">
+          <div class="card-hours">24 小时全年无休</div>
+          <div class="card-note">随时到店，无需担心营业时间</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.google.com/?cid=5996734370962942050" target="_blank">Google Map</a>
+          <a class="link-menu" href="https://ichiran.com/" target="_blank">官网</a>
+          <a class="link-menu" href="https://tabelog.com/en/osaka/A2701/A270202/27084189/dtlmenu/" target="_blank">Tabelog 菜单</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Love Chicken -->
+    <div class="card">
+      <div class="card-accent"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPGgLoYUHE8wP48p3ynwAA4QBggQHNFhCug7ffbJ9-bkV2yKoUssoMwDKpeAVj8Rp0j4UeznQ0fKGlTf6Z7iyE5OhWGKTPEdSuy8Ze7Pv5WwA0TOxUox6NsyqTYop27MKWGR2wUSU2xepMBFOfaYk853Q=s4800-w720-h600" alt="Love Chicken" loading="lazy">
+        <div class="card-num">③ 心斋桥</div>
+        <div class="card-badges-float">
+          <span class="badge b-chick">含炸鸡</span>
+          <span class="badge b-stars">★ 4.8</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Love Chicken by Danmi · 心斋桥</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">韩式炸鸡</span></div>
+        <p class="card-desc">心斋桥人气韩式料理店，炸鸡外脆内嫩口味多样，另有韩式 BBQ、拌饭、海鲜粉丝等选择，环境时尚宽敞，适合朋友聚餐，每日午市 11:30 起。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:30–24:00</div>
+          <div class="card-note">全天连续营业，USJ 后前往完全没问题</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.app.goo.gl/nvFW1HiDbMY68pCF7" target="_blank">Google Map</a>
+          <a class="link-menu" href="https://love-chickenbydanmi.owst.jp/" target="_blank">官网</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 民福北京烤鸭 -->
+    <div class="card">
+      <div class="card-accent"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMnh47x6y8UKgbRFQLb-dARuj6WszSSyACw5kq_trLhhwr2bEIRJj9Zi1ysocJm6dsv9MfuqgnAij35Mot7pEl_rClssQDzQ631L6v8F58HLxZ89OlLkcpJkbalyWVJk-Fh5UIeWTgwOaqQNwhFzUFTuA=s4800-w800-h600" alt="民福北京烤鸭" loading="lazy">
+        <div class="card-num">④ 难波</div>
+        <div class="card-badges-float"><span class="badge b-stars">★ 4.7</span></div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">民福 北京烤鸭 · 难波总本店</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">北京烤鸭</span></div>
+        <p class="card-desc">难波道顿堀附近的北京烤鸭自助餐，鸭皮酥脆配黄瓜葱段甜面酱，另有点心、海鲜、春卷等大量中式菜肴，新鲜热辣不断出品，环境现代舒适。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:00–23:00</div>
+          <div class="card-note">全天连续营业，USJ 后前往完全没问题</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.app.goo.gl/BTU5Q1T5qCEpMD5f9" target="_blank">Google Map</a>
+          <a class="link-menu" href="https://minfuku-pekin-kaoyahten-namba.foodre.jp/" target="_blank">官网</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. KAWASAKI -->
+    <div class="card">
+      <div class="card-accent"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZM9YC_mkQP0DwkZaBuuJ1FA-gZEBtCj_7Z8xprNVoSv3nLqEbZwJvTmVAG4x8D9V9yEaznhvqPtMNEbb2VbVkvTyBk5MKPvNK57ZTI3T1wJma6snhtMqLAhL-UD6yp0q19lATnysaQi_yd47rASoNZcIQ=s4800-w800-h600" alt="KAWASAKI" loading="lazy">
+        <div class="card-num">⑤ 难波</div>
+        <div class="card-badges-float">
+          <span class="badge b-chick">含炸鸡</span>
+          <span class="badge b-stars">★ 4.3</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">KAWASAKI · Japanese Set Meal · 难波</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">家庭定食</span></div>
+        <p class="card-desc">健康家庭式定食，评价直呼「日本最好吃的炸鸡」，配米饭／味噌汤，自家种植食材，环境温馨。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:00–23:00</div>
+          <div class="card-note">全天连续营业，USJ 后前往完全没问题</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.app.goo.gl/D1eY7chKCSLNbmur8" target="_blank">Google Map</a>
+          <a class="link-menu" href="https://tabelog.com/en/osaka/A2701/A270202/27057280/dtlmenu/" target="_blank">Tabelog 菜单</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. MORISHITA -->
+    <div class="card">
+      <div class="card-accent"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNIosPYS1IAylyJPgAEp_a1XwGytqV6O_wKPXtJSeaixKz6oeecDit1kAc6C-_BBadRESFSzzcVh7gZ_t0507LQCq8l7RJg0sZ3aB7g86SUnt21WxCXUdxr03QxGMI1H4Fy6uoxLYbMIOfI-lDLTfLl-Q=s4800-w800-h600" alt="MORISHITA" loading="lazy">
+        <div class="card-num">⑥ 北堀江</div>
+        <div class="card-badges-float">
+          <span class="badge b-chick">含炸鸡</span>
+          <span class="badge b-stars">★ 4.4</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">MORISHITA · Japanese Set Meal · 北堀江</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">家庭定食</span></div>
+        <p class="card-desc">健康路线和食定食，菜单标注卡路里，环境温馨家庭式，QR 点餐，是「八百屋とごはん もりした」品牌餐厅。近心斋桥 / 中之岛 Conrad 酒店。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:00–23:00</div>
+          <div class="card-note">全天连续营业，USJ 后前往完全没问题</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://www.google.com/maps/search/MORISHITA%20Japanese%20Set%20Meal%20Kitahorie%20Osaka/@34.67344,135.49628,17z" target="_blank">Google Map</a>
+          <a class="link-menu" href="https://www.instagram.com/yaoyatogohan_morishita/" target="_blank">Instagram</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     SECTION 2 · 迪士尼后
+══════════════════════════════════════ -->
+<section class="section tokyo" id="disney">
+  <div class="section-header">
+    <div class="section-label">场景二 · 7月28日周二 · 东京</div>
+    <h2 class="section-title">🏰 迪士尼乐园后</h2>
+    <div class="section-meta">
+      <span>银座 · 大手町 · 新宿 · 西麻布</span>
+      <span class="tag">5 家餐厅</span>
+      <span class="tag">全天连营</span>
+    </div>
+  </div>
+  <div class="section-rule" style="background:linear-gradient(to right,var(--tokyo),transparent)"></div>
+
+  <div class="map-strip">
+    <div class="map-strip-title">📍 按区域</div>
+    <div class="area-chips">
+      <div class="area-chip">银座 <span class="chip-count">1</span></div>
+      <div class="area-chip">大手町 <span class="chip-count">1</span></div>
+      <div class="area-chip">新宿 <span class="chip-count">2</span></div>
+      <div class="area-chip">西麻布 <span class="chip-count">1</span></div>
+    </div>
+  </div>
+
+  <div class="cards">
+
+    <!-- 1. Ginza Happo -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN87LAMODzntmMDIV07StVWpeqhn-YKIT1K-ATFSddrGiT2dVfDWiAT-0MGtgaXpB2CAXkRQ5lXq9O-if3jkxmYg9lDTIlcZpnxUy8iwsH7nI7wZzB2TNPZIYrgZ1iAAIzmQK3g4xHcMR3p5Xdqn6cJ=s4800-w800-h600" alt="Ginza Happo" loading="lazy">
+        <div class="card-num">① 银座</div>
+        <div class="card-badges-float"><span class="badge b-stars">★ 4.3</span></div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Seafood Buffet Dining Ginza Happo</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">海鲜自助</span></div>
+        <p class="card-desc">银座 B1 楼高档海鲜自助餐，逾 150 种菜色，包含帝王蟹脚、和牛、新鲜刺身、天妇罗、寿司等。约 12,000 日元含酒水畅饮，用餐 90–120 分钟，须提前预约。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:30–22:00</div>
+          <div class="card-note">全天连续营业，迪士尼后前往完全没问题</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.app.goo.gl/k3AF3vVwnZnCeyHA6" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://ginzahappo.owst.jp/" target="_blank">官网菜单</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. KollaBo -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPjpJwQ_jF05uQIa5d21bUY4W6mfLipIX-XA_aVn4rfiOUhxbqMBhm-hFvQr83vlf0eQGp2VtYWAjoPK77KuNRUUPQNNIWuxuno0vAjgk_ciYAh8cHJ4qWZR8tPE1ZkKs0Iinv8XJGKLIkO9bdccW9t=s4800-w800-h600" alt="KollaBo" loading="lazy">
+        <div class="card-num">② 大手町</div>
+        <div class="card-badges-float"><span class="badge b-stars">★ 4.2</span></div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">KollaBo（コラボ）大手町店</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">韩式烤肉</span></div>
+        <p class="card-desc">大手町 One 大楼 B2，韩式综合料理，牛肉、猪肉、海鲜都有，腌蟹是招牌之一，对外国客人友善，午市套餐多样。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:00–22:30（周日休）</div>
+          <div class="card-note">靠近酒店，7/26 新干线到站及 7/28 迪士尼后均可前往</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://www.google.com/maps/search/Yakiniku%20Kankokuryori%20KollaBo%20Otemachiten/@35.6877555,139.76336659999998,17z" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://shop.kollabo.co.jp/otemachi/" target="_blank">官网</a>
+          <a class="link-menu" href="https://tabelog.com/tokyo/A1302/A130201/13245986/dtlmenu/" target="_blank">Tabelog</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Majangdong -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMJjzyxoNBgS3Gv_cDsHC110Xw9vLQ2oLha2Kmt3s3c3eBVap1PvDcho7DHVaDc21xCOdtDMJy3INUia8aUmRFJJ3rGPJPHMi5juBcW0EINteNCVHi0qGK_77w4X82FrX8HbKA9GjujgPpIWHCUi274Tw=s4800-w800-h600" alt="Majangdong" loading="lazy">
+        <div class="card-num">③ 新宿</div>
+        <div class="card-badges-float">
+          <span class="badge b-prev">去年吃过</span>
+          <span class="badge b-stars">★ 4.7</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Majangdong · 马场洞</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">韩国烤肉</span></div>
+        <p class="card-desc">新宿大久保韩国街人气名店，猪五花与内脏部位品质上乘，烤肉无异味，搭配韩式小菜极为满足。环境比一般居酒屋精致，建议提前预约。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:00–23:30</div>
+          <div class="card-note">不在回程顺路方向，但有包车不受影响</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.google.com/?cid=12223949282328352189" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://tabelog.com/en/tokyo/A1304/A130404/13275767/dtlmenu/" target="_blank">Tabelog</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. OLLE -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMebfjwJV3b79PD8TwSSCD4MXXDtcTkopQUHDwYpNXpigNnYHz-6OtFpCKUKQIV5ch_o0DuXpYSuQBuJjlsd9EJsfQsTR6UeY4lfpb45Q7XvZ1fzXx0Wlg3GTihm7b4UPAl7jsDlk_NE8XX7Amd2foafw=s4800-w800-h600" alt="OLLE" loading="lazy">
+        <div class="card-num">④ 新宿</div>
+        <div class="card-badges-float">
+          <span class="badge b-chick">含炸鸡</span>
+          <span class="badge b-stars">★ 4.5</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">OLLE Korean Restaurant</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">韩国料理</span></div>
+        <p class="card-desc">以济州岛风格为主题，新宿 B1 楼熔岩洞穴风装潢独特。石锅拌饭、韩式炖菜与海鲜料理皆有，配搭生啤一绝，人气旺盛，建议提前订座。</p>
+        <div class="card-meta">
+          <div class="card-hours">平日 11:00–24:00 / 周六日 10:00–24:00</div>
+          <div class="card-note">不在回程顺路方向，但有包车不受影响</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.google.com/?cid=5961150729128978398" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://olle-tokyo.com/" target="_blank">官网</a>
+          <a class="link-menu" href="https://tabelog.com/en/tokyo/A1304/A130401/13298607/dtlmenu/" target="_blank">Tabelog</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Gonpachi 西麻布 -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMG2XDc6fS7QAbYwAhOet_DuSDwHwjWuioV9pdASh1OaLdn2uyUb00P5az2D_OV5B8h4W97ZDqzgLLf-9bYEkYhHBq9h9FudxEubOpM7oG-Z3VHDkr9XzXenFfzG1cTqybixB93t7w7Xn8129nxeeRXpw=s4800-w800-h600" alt="Gonpachi" loading="lazy">
+        <div class="card-num">⑤ 西麻布</div>
+        <div class="card-badges-float">
+          <span class="badge b-chick">含炸鸡</span>
+          <span class="badge b-stars">★ 4.3</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Gonpachi · 西麻布店</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">居酒屋</span></div>
+        <p class="card-desc">《杀死比尔》取景地，多国料理居酒屋，菜单含刺身、寿司、炸鸡、烤串、和牛等多样选择，气氛热闹，每日全天营业至凌晨。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:30–凌晨 3:30</div>
+          <div class="card-note">需专程前往，与大手町方向相反，但有包车可去</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.app.goo.gl/jd8eX1btnbs3F6TT7" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://gonpachi.jp/nishi-azabu/" target="_blank">官网</a>
+          <a class="link-menu" href="https://tabelog.com/en/tokyo/A1307/A130701/13005298/dtlmenu/" target="_blank">Tabelog</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     SECTION 3 · 新干线落地
+══════════════════════════════════════ -->
+<section class="section tokyo" id="shinkansen">
+  <div class="section-header">
+    <div class="section-label">场景三 · 7月26日周日 约 4pm 出站 · 东京</div>
+    <h2 class="section-title">🚄 新干线落地</h2>
+    <div class="section-meta">
+      <span>涩谷 · 新宿 · 银座 · 大手町 · 西麻布</span>
+      <span class="tag">6 家餐厅</span>
+      <span class="tag">4pm 后开</span>
+    </div>
+  </div>
+  <div class="section-rule" style="background:linear-gradient(to right,var(--tokyo),transparent)"></div>
+
+  <div class="map-strip">
+    <div class="map-strip-title">📍 按区域</div>
+    <div class="area-chips">
+      <div class="area-chip">涩谷 <span class="chip-count">2</span></div>
+      <div class="area-chip">新宿 <span class="chip-count">2</span></div>
+      <div class="area-chip">银座 <span class="chip-count">1</span></div>
+      <div class="area-chip">大手町 <span class="chip-count">1</span></div>
+    </div>
+  </div>
+
+  <div class="cards">
+
+    <!-- 1. Majangdong (repeat) -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMJjzyxoNBgS3Gv_cDsHC110Xw9vLQ2oLha2Kmt3s3c3eBVap1PvDcho7DHVaDc21xCOdtDMJy3INUia8aUmRFJJ3rGPJPHMi5juBcW0EINteNCVHi0qGK_77w4X82FrX8HbKA9GjujgPpIWHCUi274Tw=s4800-w800-h600" alt="Majangdong" loading="lazy">
+        <div class="card-num">① 新宿</div>
+        <div class="card-badges-float">
+          <span class="badge b-prev">去年吃过</span>
+          <span class="badge b-stars">★ 4.7</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Majangdong · 马场洞</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">韩国烤肉</span></div>
+        <p class="card-desc">新宿大久保韩国街人气名店，猪五花与内脏部位品质上乘，烤肉无异味，搭配韩式小菜极为满足。建议提前预约。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:00–23:30</div>
+          <div class="card-note">4pm 出站后前往新宿，全天连续营业</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.google.com/?cid=12223949282328352189" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://tabelog.com/en/tokyo/A1304/A130404/13275767/dtlmenu/" target="_blank">Tabelog</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. OLLE (repeat) -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMebfjwJV3b79PD8TwSSCD4MXXDtcTkopQUHDwYpNXpigNnYHz-6OtFpCKUKQIV5ch_o0DuXpYSuQBuJjlsd9EJsfQsTR6UeY4lfpb45Q7XvZ1fzXx0Wlg3GTihm7b4UPAl7jsDlk_NE8XX7Amd2foafw=s4800-w800-h600" alt="OLLE" loading="lazy">
+        <div class="card-num">② 新宿</div>
+        <div class="card-badges-float">
+          <span class="badge b-chick">含炸鸡</span>
+          <span class="badge b-stars">★ 4.5</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">OLLE Korean Restaurant</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">韩国料理</span></div>
+        <p class="card-desc">以济州岛风格为主题，新宿 B1 楼熔岩洞穴风装潢独特。石锅拌饭、韩式炖菜与海鲜料理皆有，配搭生啤一绝，人气旺盛，建议提前订座。</p>
+        <div class="card-meta">
+          <div class="card-hours">平日 11:00–24:00 / 周六日 10:00–24:00</div>
+          <div class="card-note">4pm 出站后前往新宿，全天连续营业</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.google.com/?cid=5961150729128978398" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://olle-tokyo.com/" target="_blank">官网</a>
+          <a class="link-menu" href="https://tabelog.com/en/tokyo/A1304/A130401/13298607/dtlmenu/" target="_blank">Tabelog</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Ginza Happo (repeat) -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN87LAMODzntmMDIV07StVWpeqhn-YKIT1K-ATFSddrGiT2dVfDWiAT-0MGtgaXpB2CAXkRQ5lXq9O-if3jkxmYg9lDTIlcZpnxUy8iwsH7nI7wZzB2TNPZIYrgZ1iAAIzmQK3g4xHcMR3p5Xdqn6cJ=s4800-w800-h600" alt="Ginza Happo" loading="lazy">
+        <div class="card-num">③ 银座</div>
+        <div class="card-badges-float"><span class="badge b-stars">★ 4.3</span></div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Seafood Buffet Dining Ginza Happo</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">海鲜自助</span></div>
+        <p class="card-desc">银座 B1 楼高档海鲜自助餐，逾 150 种菜色，包含帝王蟹脚、和牛、刺身、天妇罗、寿司等。约 12,000 日元含酒水畅饮，须提前预约。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:30–22:00</div>
+          <div class="card-note">4pm 出站后前往银座，全天连续营业</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.app.goo.gl/k3AF3vVwnZnCeyHA6" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://ginzahappo.owst.jp/" target="_blank">官网菜单</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Gonpachi 西麻布 (repeat) -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMG2XDc6fS7QAbYwAhOet_DuSDwHwjWuioV9pdASh1OaLdn2uyUb00P5az2D_OV5B8h4W97ZDqzgLLf-9bYEkYhHBq9h9FudxEubOpM7oG-Z3VHDkr9XzXenFfzG1cTqybixB93t7w7Xn8129nxeeRXpw=s4800-w800-h600" alt="Gonpachi" loading="lazy">
+        <div class="card-num">④ 西麻布</div>
+        <div class="card-badges-float">
+          <span class="badge b-chick">含炸鸡</span>
+          <span class="badge b-stars">★ 4.3</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Gonpachi · 西麻布店</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">居酒屋</span></div>
+        <p class="card-desc">《杀死比尔》取景地，多国料理居酒屋，菜单含刺身、寿司、炸鸡、烤串、和牛等多样选择，气氛热闹，全天营业至凌晨。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:30–凌晨 3:30</div>
+          <div class="card-note">与大手町方向相反，需专程前往</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.app.goo.gl/jd8eX1btnbs3F6TT7" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://gonpachi.jp/nishi-azabu/" target="_blank">官网</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. KINKA 涩谷 -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPMKSIMPINP4eoiTTrZ0oY6sz9AcUqQq8KDitDcsi6zfRn4_iqDx2FydFmmks2wupf6hHfxfmZzpz4qbyv0NdETiMJUBE8-dTME9f1H5rzkFhtVAXT5hFAnCA31hwBf5jQ0pmBtMS_3tknJ3wlExdJHyg=s4800-w800-h600" alt="KINKA" loading="lazy">
+        <div class="card-num">⑤ 涩谷</div>
+        <div class="card-badges-float">
+          <span class="badge b-chick">含炸鸡</span>
+          <span class="badge b-stars">★ 4.5</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">KINKA Sushi Bar Izakaya · 涩谷店</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">寿司居酒屋</span></div>
+        <p class="card-desc">炙烤寿司、刺身、单点小菜选择丰富，评价特别提到「日式炸鸡外脆内嫩」，环境时尚，每日午市营业。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:30–14:00 / 17:00–22:00</div>
+          <div class="card-warning">14:00–17:00 午晚市空档！约 4pm 出站抵达需注意，建议 17:00 后或提早 14:00 前入座</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://www.google.com/maps/search/KINKA%20Sushi%20Bar%20Izakaya%20Shibuya%20Tokyo/@35.6625123,139.6987412,17z" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://tabelog.com/en/tokyo/A1303/A130301/13199924/dtlmenu/" target="_blank">Tabelog</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Gonpachi 涩谷 -->
+    <div class="card">
+      <div class="card-accent" style="background:var(--tokyo)"></div>
+      <div class="card-photo-wrap">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMdNYDHR_gSkg8Bx6l5CUnXc5Myv9VqNfE71raJyqQNM0n9ErSIsK7pSfcIk8FRbPCJECnlZ4-uzCng-PLS08Vm5G7HjU3YdtzPQ_cbL9wbwnYOvcR-7CwNydNNEXAoBO1dn3a03StqMcPENg=s4800-w800-h600" alt="Gonpachi 涩谷" loading="lazy">
+        <div class="card-num">⑥ 涩谷</div>
+        <div class="card-badges-float">
+          <span class="badge b-chick">含炸鸡</span>
+          <span class="badge b-stars">★ 4.2</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">Gonpachi · 涩谷店</div>
+        <div style="margin-bottom:10px"><span class="badge b-type">居酒屋</span></div>
+        <p class="card-desc">西麻布同品牌涩谷分店，菜单含寿司、刺身、炸鸡、烤串等多样选择，评价提到烧鸟与炸鸡必试，气氛热闹，每日全天营业至凌晨。</p>
+        <div class="card-meta">
+          <div class="card-hours">每日 11:30–凌晨 3:30</div>
+          <div class="card-note">4pm 出站后前往涩谷，全天连续营业至凌晨</div>
+        </div>
+        <div class="card-footer">
+          <a class="link-map" href="https://maps.google.com/?cid=5535728105966142773" target="_blank" style="background:var(--tokyo)">Google Map</a>
+          <a class="link-menu" href="https://gonpachi.jp/shibuya/" target="_blank">官网</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <strong>说明</strong>：以上全部餐厅均确认全天连续营业，无午晚市空档，2pm / 4pm 后到店用餐不受影响<br>
+  Majangdong、OLLE、Gonpachi 位置不在回程顺路方向，但因有包车，地理位置不作为筛选条件
+</footer>
+
+<button class="fab" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+const sections = ['usj','disney','shinkansen'];
+const btns = document.querySelectorAll('.area-btn');
+
+function goToSection(id) {
+  document.querySelector(id).scrollIntoView({behavior:'smooth'});
+}
+
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const i = sections.indexOf(e.target.id);
+      btns.forEach((b,j) => b.classList.toggle('active', i===j));
+    }
+  });
+}, { threshold: 0.3 });
+
+sections.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) obs.observe(el);
+});
+</script>
+</body>
+</html>
