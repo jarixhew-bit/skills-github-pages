@@ -205,6 +205,55 @@ body { font-family:'Noto Sans SC',sans-serif; background:var(--cream); color:var
 .card-photo-wrap {
   position: relative;
 }
+
+/* ── PHOTO GALLERY (full image, no crop) ── */
+.card-gallery {
+  display: flex;
+  width: 100%; height: 200px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  background: #ece5d8;
+}
+.card-gallery::-webkit-scrollbar { display: none; }
+.gallery-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.gallery-slide img {
+  max-width: 100%; max-height: 100%;
+  width: auto; height: auto;
+  object-fit: contain;
+  display: block;
+}
+.gallery-dots {
+  position: absolute; left: 0; right: 0; bottom: 10px;
+  display: flex; justify-content: center; gap: 5px;
+  z-index: 2; pointer-events: none;
+}
+.gallery-dots .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,.45);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.15);
+  transition: background .2s, transform .2s;
+}
+.gallery-dots .dot.active {
+  background: #fff;
+  transform: scale(1.25);
+}
+.gallery-count {
+  position: absolute; bottom: 9px; right: 10px;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+  color: #fff; font-size: 10px; font-weight: 600;
+  padding: 3px 9px; border-radius: 20px;
+  z-index: 2; pointer-events: none;
+  letter-spacing: .3px;
+}
 .card-num {
   position: absolute; top: 12px; left: 12px;
   background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
@@ -331,6 +380,7 @@ footer strong { color: rgba(255,255,255,.7); }
 
 @media (min-width: 480px) {
   .card-photo { height: 240px; }
+  .card-gallery { height: 240px; }
   .masthead-content { padding: 56px 40px 48px; }
   .section-header { padding-top: 48px; padding-left: 40px; padding-right: 40px; }
   .cards { padding-left: 40px; padding-right: 40px; }
@@ -395,7 +445,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNMhLeBg79xhKgRl0mzTy0QvyhLrDps2VZp8qGRave_v0PuAeQzpcRWXpr4G9SgEjqW0bXMGdXPdb0TmHkAF9JuW_UVdqAUdkivV5Q1Nt67n60MDL31ThZsFe3vR5aEzrpWnz3E6BV859kSxPU=s4800-w800-h600" alt="蟹道乐" loading="lazy">
+        <div class="card-gallery" id="gal-蟹道乐-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMX8waB2DWWP1nIcz9hbiOOo0URdt6Ksns19Fqlp1SawHRM83L_XrqGetSJRSW9kHpA-Xpk3-I676MRAz86yIinbQICeNzImp1fLZjc-AsvgiaAAtWAN8mDsbnLlU9IG59WKrvL8V46aOrpcSM=s4800-w800-h600" alt="蟹道乐 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZObUUhGiKRwYo_-KsfUcBBDSZ9m8h-VVsCs9i9E2hNXFflE9TSedsiNrseNEQBYIYVb8KBCzk9zgytmr4wEGXscQY09Jz9cQlU3fdx-NuB1uRBve0C6UVvw8uAxbigDnH6umLcG6VSreAPjBTvkwZbvsQ=s4800-w800-h600" alt="蟹道乐 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOLVg5vKdC4zj-9G45jtFsYPjNRUBR-DMEQY_gJCSjHldqnVKgpE6ONPxyY2opwzkSeGfVM-mHZvn3qvwWlISEw7rYdh1NR9ULaYONH-DJQ-VDCbX_qoIyK5C3YRMwzcruuMUqJQ_0jhXYCJhBM8_F_ew=s4800-w800-h600" alt="蟹道乐 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZO2fC0w89fxYQR1K8mqtO4yQSyLPUDAqDB4B_unZ-JKnAFLcDdRaGOM3PQohpFE895gP3BzAZxMoYke0_KcLRQMMT1sCmzHZzVmtw9W7cKAJbF3NXD2v1yW1pTLNcAvhtWyz2ApFpMLeg4wSRqF6Ygxgw=s4800-w800-h600" alt="蟹道乐 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNwwBJddRMXGAd_MQ08e3qDo029sYXMQsRlEaKKMnieu1dV7bdqpXQHAl3qHfj_oTRp-EkTc6orfFh1RmLKXd8MsifeSNcVsyi_m24znKhfQjKPybcXWo_KbHiX_uAVroyiCRgFfFli9CRNiQ=s4800-w525-h296" alt="蟹道乐 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-蟹道乐-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">① 道顿堀</div>
         <div class="card-badges-float">
           <span class="badge b-prev">去年吃过</span>
@@ -422,7 +472,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOT-jb7jpWUEMj7ewLZ3P3QS-ZwxKvfdKUhu_06JfrEbHN7gnLfes3ZC97C3u8UCK-XY0Rl5aoEeFOPjRgStGJxMKNniojVc3D0qYQlmexDOxB8i8NUOBJpVKYFVrMfa-swspMEyvyGmygX4_ih3QRxiA=s4800-w800-h600" alt="一兰拉面" loading="lazy">
+        <div class="card-gallery" id="gal-一兰拉面-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMuybFa6carZ1lIdXxMe92JBo4LLZzWUM4xNro95M6oeLiUjcT76AJ9vQXWhw_qSEPRXhVoQGgTHeizPnLSjfzZ-mrhcJ8p40ukEo3NJ2TRfbrTK52iN8g_-kwV7z9p0-5cIrQe8CM4XxYdKg=s4800-w800-h600" alt="一兰拉面 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNSdY1cA4V9moQKpi6F2TVE4m07aSSbHHfcRgDCCayWd0semhAtbEEspqS-n-LrDL9Rnd7fTxqEmvl9V_V5dd1pOoJjkHrq_V-DODNc2QhWPca7SkijSp4IzWt_0CSVSvqNLcRkVYtafday1S5ecl2kLA=s4800-w800-h600" alt="一兰拉面 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPTCoJHod7JbNT5Mulj2zKKy-xGju1_PCqm9lwTTwvMn1BmRMUNoeS6pTBG3QYOd-kKMd6a2erG-eW1Rz7bFjr6FvHAEGKTM8_-uE_pqPxlzO8JbRTO0U_eT8hL9YWjZcvhrWFDkkueZ1NRtyyOWEFN=s4800-w800-h600" alt="一兰拉面 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNBBI-LSlFX7cKre0NhlKH4Ghz2xkfL_UGqC4vgwnOP6zwynVAaqTY9w8IG7Ze5GVt7beXkbEeon3IRBX4-mEDTRfa1eJP4IannmiU_9DvxoYvAFWJaFasSIj3piWknvHYCYSxQxDB5kvLUQ0feRZy9YA=s4800-w800-h600" alt="一兰拉面 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPo_iD5LBXL7yktk4prboh7C-XO2FkmnTr5iO6rPZG0DGlECtm3Y5Z2dJWXc6OYSPN-FPuTAzOSMZx2SzcHpiRa5nqby5Tu6fo0Dssyh6F1pUg2GuJ9SqYh6tZydVD-_ft1mmRX5GCZB6YeeYKrx98vgw=s4800-w800-h600" alt="一兰拉面 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-一兰拉面-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">② 道顿堀</div>
         <div class="card-badges-float"><span class="badge b-stars">★ 4.3</span></div>
       </div>
@@ -446,7 +496,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPGgLoYUHE8wP48p3ynwAA4QBggQHNFhCug7ffbJ9-bkV2yKoUssoMwDKpeAVj8Rp0j4UeznQ0fKGlTf6Z7iyE5OhWGKTPEdSuy8Ze7Pv5WwA0TOxUox6NsyqTYop27MKWGR2wUSU2xepMBFOfaYk853Q=s4800-w720-h600" alt="Love Chicken" loading="lazy">
+        <div class="card-gallery" id="gal-LoveChicken-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZO4jeTqf0dCfBZHWXOwZVB2nIoE5_GvV4Fz05jKh5PrT5_04ggR4e49LCaoK0ovaxrvTHn2NSiGnGPcsrX_uGgtX_1gMPKEU9rKmFmTggRKQL2DzdyDOZMG0_lWxcSA4iK49Gmv2IPU3qVrnKkeOO0oPA=s4800-w480-h478" alt="Love Chicken 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPshCFrwF34u-BMRUWqug_M0BQztvT6OteHZi3uNPUdiulR2tSbHE8h_iuo4rnkgl1zIQtbsDVRJ7WBpBworeObCGSm0z_AwmudfcS9NXni3YNtMwPiIC5KMmoOOKDj-pIT6cu6epdUU_gdZdgaKSzuig=s4800-w800-h600" alt="Love Chicken 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMorfLOYdsrVhoWNoFFA4K9eHgVIhXDYLc8W2j2s7YapTgehLpc3rfDLm-NmqAxBcQ0fpJ51Xzbtkjq8fF9mIV6vtCF-0moqaiezSfTUlbyw_S0Ymh91YfHc9GRllyeahX9y5vT68c5UndL3ZTY28a7zQ=s4800-w720-h600" alt="Love Chicken 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPEjJ2sGr_OCVs_Ld895o1jOhNn7GT2RHVlzCb3Y9T8jPugK4an81s_n1KCEQY7PwXWamJtrq2pSW3gAo6nAqHQFvQDZasqOtqbgsgaA99o5ZlFoVavT3gczNuDhtI8KJamCW_wa-UtQN_uLuEqMEdtjw=s4800-w800-h600" alt="Love Chicken 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOQokVDiSvMxDeyi8rvn00CfCTDGgW7f5D_gZeAPn7IHK1aTxswqg9KCNMCTKyya0-51CsVvI8QslZGFy78H8PcGEJprByj9DTe6UNpXdpejctrCUa7yfOaTRxbn0Xfvj3flxfQq2fXq33-cxz8HuFW=s4800-w800-h600" alt="Love Chicken 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-LoveChicken-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">③ 心斋桥</div>
         <div class="card-badges-float">
           <span class="badge b-chick">含炸鸡</span>
@@ -472,7 +522,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMnh47x6y8UKgbRFQLb-dARuj6WszSSyACw5kq_trLhhwr2bEIRJj9Zi1ysocJm6dsv9MfuqgnAij35Mot7pEl_rClssQDzQ631L6v8F58HLxZ89OlLkcpJkbalyWVJk-Fh5UIeWTgwOaqQNwhFzUFTuA=s4800-w800-h600" alt="民福北京烤鸭" loading="lazy">
+        <div class="card-gallery" id="gal-民福北京烤鸭-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPQXIUtkks28Q83I8TH1N4V3nVdgJRqY4YExoFEqROpVQ8EtuKS8sJDd4pCftpRVWIzG7yTKCZNylL7iFpq6e8mOALacVqY6ucJ0yhLxn7AuZCw9V4BkdkWInzjiM9avcMIS-JtSDuNbiAfpcusZLkH1Q=s4800-w800-h600" alt="民福北京烤鸭 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZP6P1iB2s8EtFjweTRtmr6Z7i9Pun5gQGKc654focMSAJA11dymQTj_8RZcLaZS6hKKiZ6tFeGnw5zGC-U5nPZxl1hYytq12U4zXZsvu3kBbEqJMTo_srPpcBdj1fSw89ezVqJ5VwtcM4Q0OcyN6ktgLA=s4800-w800-h600" alt="民福北京烤鸭 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOB0Ps0Ff1nqT-gMKZjwnnQaQxP-Rbl6zrCfStWziQncTYwn4bok1Mhp2ABxG86K4NyXL_LacOygr2HTpI-CF3Q3uREWcPW_t_vgWVD2-QceOFZ1jYSwzMVxYhN2XRu31otndJ4HptxtjrRCivdyW4oJg=s4800-w800-h600" alt="民福北京烤鸭 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOMtNH0KlEr7bhXoLaXcr5-Db2-PKq__2x3yMwTjKHHmb83n3k633cPJa2J9byY4R6kEP1_GH9qnQs-dM9Wk5UartVPhCzNJEaHXwJd5Um83qR3Yia1VIIfgSyuHlPxoRaBe5kaZ9KTRLfDeLKjOJ9LRQ=s4800-w800-h600" alt="民福北京烤鸭 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNBgwjHm-86hR0qgcdy5Ughjp6WHXJcvr_pOkx5n8s8GO4Q42mGaSkMYF-wlC-8iHxnwpuXbDEJRUhd7rISu16xyvo4oGUHcJxRFjb_RkR-yZ1qkGJH2RWO0-r5GtpQYG4GNREoQBJGMaazcnt7-vAVtg=s4800-w800-h600" alt="民福北京烤鸭 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-民福北京烤鸭-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">④ 难波</div>
         <div class="card-badges-float"><span class="badge b-stars">★ 4.7</span></div>
       </div>
@@ -495,7 +545,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZM9YC_mkQP0DwkZaBuuJ1FA-gZEBtCj_7Z8xprNVoSv3nLqEbZwJvTmVAG4x8D9V9yEaznhvqPtMNEbb2VbVkvTyBk5MKPvNK57ZTI3T1wJma6snhtMqLAhL-UD6yp0q19lATnysaQi_yd47rASoNZcIQ=s4800-w800-h600" alt="KAWASAKI" loading="lazy">
+        <div class="card-gallery" id="gal-KAWASAKI-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOmVyAFg1n5c38v_X5mhZTD8cOmm4DrlcFGQQaHy81apcIh3VEmx5eN8Npy52iGGT7AwvmdjIlN-oRszZRWWXnCBJyFRbqqwv5xEWDaPEOuhtodJTVBz4HscxB7J4-VDyk8vQoAKAeu2qCd=s4800-w800-h600" alt="KAWASAKI 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPS7rkT0IKMfDpmlTsefSd5EmY32hywei97uLK4vb-0xZrLOzV3Q1reSi2iK_3YR7Gv0adm41bq6kywZuu6p3_JI0n95PmVNbkxiteibzIO8kfiRqtjS1mwh9wJUqBGy8yh95-QWn-mUkyxDg=s4800-w800-h600" alt="KAWASAKI 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPmqM0n_9lSJkZ-lsrJomeLSzGVOB88mssn0BN_3mvR4sUH1F8_hvaUlMNVwGkYSH7iczcC_lW6-ah4MNAeKo2GDlybqp7oKp7aLMXEGz1ueFOU3HLOwp03mUP6eNC6e81VQtR1kmwTAwIzE1TScTVdgg=s4800-w800-h600" alt="KAWASAKI 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZO7IPPzDDOckw0aGHMVTIBFRB4plV2qDo0L94hk7Qyrs4oSH99i0uUfAVAJi8zveEBy8sJBcCrIGt_jVeUFUNUQcgwt_MbgDfN6uhdyQYOcPj07swJ8eYKmKIGKPEnL5iCR4Atzao1_wYgu6BbNHdYnPw=s4800-w800-h600" alt="KAWASAKI 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZP4bEuzLkoWe3bLG1gMSoTKvbSdsqqmcmE2ljlZ940mYH3XGSSsdgLSt8Do5tuS7ziip1BqOS_pDMb8DDsLNTmCq-mBjXaKgI-G15hl6QHbvIE4TZR665gjfWtlSJC-3Ojqjoiseg8B3N2c0eyRhPVmsg=s4800-w800-h600" alt="KAWASAKI 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-KAWASAKI-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">⑤ 难波</div>
         <div class="card-badges-float">
           <span class="badge b-chick">含炸鸡</span>
@@ -521,7 +571,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNIosPYS1IAylyJPgAEp_a1XwGytqV6O_wKPXtJSeaixKz6oeecDit1kAc6C-_BBadRESFSzzcVh7gZ_t0507LQCq8l7RJg0sZ3aB7g86SUnt21WxCXUdxr03QxGMI1H4Fy6uoxLYbMIOfI-lDLTfLl-Q=s4800-w800-h600" alt="MORISHITA" loading="lazy">
+        <div class="card-gallery" id="gal-MORISHITA-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZM-kcoLoeBUCoGGOAzYLkDRpqaYr1qpo7oViMn91a7mayibx2948zWQYJnskQHW-7zG4YAfUUSmIcEFcBEijdsdXP9Ob9jWlNAZQf9PikRa_7Hj-Brh1q67GaBoAV9voFgur5xCsg3PXcxk830=s4800-w800-h590" alt="MORISHITA 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPRcSSr0yovOVvLiRU7pwvA2HnyiOYIaY304f77ySNT6DDqOxFR5HbOKdvgSMPQ9DN2Id2xMGuiDVTkQ-iQAFapgNFRs6lPQU8cPqSHUdeoAF09_oNj8nyNV8wNmbq4JBqIsSSxh89aLDcbrirfW-Tp_g=s4800-w800-h600" alt="MORISHITA 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMxJiHaFAruyhRk9xxrORD5LKfTOcErburkE-_vSFizYZAaRCiwRd1MuASLDhMou98rxPFuWAJ4ZJ8rNHOA4m1vNMIaTfSJWniwaaqRyXemcgHejQHqTPniV0EO9Gx7uR3_NfWCPitdWoar1Iil3qs3vQ=s4800-w800-h600" alt="MORISHITA 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPPN4ICbkAE4yBJqu4E9AP4cseOlX2ewaChbUYr-Gcs6tMSJ7cRQm0NvS_NclGZb6CUvqi9-cNtWwQFoD63_uIE2_Jj0hg_o672hw5mV4k4seHp2itHMJhqonFkTzAIvdGimtRmcdZ6JrpGkk1ee_ah=s4800-w800-h600" alt="MORISHITA 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOQtnvkKaeeMdLgWCY_tE0a9-qmN4aEdz5tQViuKD8WbSSQEeHCeczApWbJoP4HetxYMUN6NV1tilsoNL-x2B4nTwbfIz6CU97kTM5rDEMjNufJhwqgPTrV2_Al3QYFCsd85rI22Jq1Cgq9-JiGdkpn=s4800-w800-h600" alt="MORISHITA 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-MORISHITA-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">⑥ 北堀江</div>
         <div class="card-badges-float">
           <span class="badge b-chick">含炸鸡</span>
@@ -577,7 +627,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN87LAMODzntmMDIV07StVWpeqhn-YKIT1K-ATFSddrGiT2dVfDWiAT-0MGtgaXpB2CAXkRQ5lXq9O-if3jkxmYg9lDTIlcZpnxUy8iwsH7nI7wZzB2TNPZIYrgZ1iAAIzmQK3g4xHcMR3p5Xdqn6cJ=s4800-w800-h600" alt="Ginza Happo" loading="lazy">
+        <div class="card-gallery" id="gal-GinzaHappo-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOXHKPKWTfPG3P3klhnTcNYT_-uCwnRfsg5ANhbU3XLWeuET9NvXGa0uFSq_qIrajWcPAOJQZzMZsbQk7VbZu0xfWESzkhPeaAeU4uWF9XgdIv7UXO_Ust9wBhKn0vMDd7ih2spJWWMmUI2pA=s4800-w800-h600" alt="Ginza Happo 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPoYRNuOFPBqRK_ow2_XX2l-qNmhB7ZrtSa1IEKkwrWEC_Qeka-QgTqNgka0XNy0Z6Ykayn2K--jSExTl7qF9GpF2DzvybCI2HBHG74lS2SHQvCUg4dV5e2Fuw3I9hDogw2-YLkoK-m6MAJ4z_S9DhEOA=s4800-w800-h600" alt="Ginza Happo 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMdTDrBG4zBWrex-b19pUzrYnPNyqcUpxjRF11JDtceiC1vd5Sh78dQ6F0YEVuxto2TSvwZjJ0hXG_KlLEnsBS5PzqndN87T3J89odKXBztr37Sh7KasTtsb2e-aaVBbEEC611iGSlkvQ7JwErTA8MSOQ=s4800-w800-h600" alt="Ginza Happo 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZM_usH1V1xmEJl2nJpiwiHDjyDaaiAUX_RQmvSZU2Nbg2FisM7ZnLKZJhFphfi288jKKo5yMHjL3ptYRrgftxhWl-HaJayfkIQD2L8LL9_JfvBxV2ZsCm_AG9hq5xpBkD13zXGc0IAdoe7-USDwUddn=s4800-w800-h600" alt="Ginza Happo 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPev-IElE4BIFgUW_iTGi6hd-fMRvD0e179MV07I5R7BkD6y2OKKwfZ2M64Gli3a-ksBoHJOp0RB7u4k07XGXzp3uBY6Dd5CI-TFSJqs184M8XGtL-0_N7zf-MuA19cGaHszuiCo2iIG4BpXEJIlUuD=s4800-w800-h600" alt="Ginza Happo 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-GinzaHappo-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">① 银座</div>
         <div class="card-badges-float"><span class="badge b-stars">★ 4.3</span></div>
       </div>
@@ -600,7 +650,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPjpJwQ_jF05uQIa5d21bUY4W6mfLipIX-XA_aVn4rfiOUhxbqMBhm-hFvQr83vlf0eQGp2VtYWAjoPK77KuNRUUPQNNIWuxuno0vAjgk_ciYAh8cHJ4qWZR8tPE1ZkKs0Iinv8XJGKLIkO9bdccW9t=s4800-w800-h600" alt="KollaBo" loading="lazy">
+        <div class="card-gallery" id="gal-KollaBo-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMeARJuwM_IWnKRDAR6nMHKJrfLjDD_PbsS6D1wVrWdvKX1mQ1NK24Bte5Fp-FBFLCu9sV9h825Vl4h8wfBdqpuI3TcUUuxuoXkmMjvexboG0ji_TFTrFSbeAVjaRenKkQfS22IKFh3fOPEOxlwI0Tq=s4800-w800-h600" alt="KollaBo 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZP-v3GTcEr1nF_DnYgr6gl0cPV_GfechAaGkYU6wow6sjGQluuHPMO-P3jCJM3vWsfSsGDz_vqUyDgFEhxn3AX75Dxs4XZIoWIjArFFkGDeXxy22PaFpeYjL2Wu1tRbO1_EB119vtnR47h_2LM=s4800-w800-h600" alt="KollaBo 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMrm8JQhAwA2eFVMrg3U5zEi0YX_FqR88BjEW-GtexsiwX8UleCz_YEyL-qSq1L2JOiTrx8OpIxu5XhS3kyqQ5VY99dmFabojQnMAH8vkA1Vr_entBjP9VSrnezO342ApEsEHg09aNJYGFfl7xpd-SIkA=s4800-w800-h600" alt="KollaBo 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNTDFPs2M-IoPeKFFDFNc_d6tNY6gkOpZs9zon2d5X4lzLj27bffjKVUov0MF5DOF9EuyAokIJa4l8IOV-6kcQK4FVKEdgDLajuWGLZ4boyECtRvIYTk3isOxrjQvipHeqrAPyxq1t4TjSjMfmK3A7C=s4800-w800-h600" alt="KollaBo 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZN0xAchnhhvGaentR3ydi7DJu7PTQI6eFHZ9knocghuz5L7Q881ykgnaFwMIxqNiXQjnvT9MBEzsHz92TatuPT9FHRoBwEuOPKCLdg477OJwNarOeN8ZERROPjVBM19u-gj5z7Dl4jyneKmGg=s4800-w640-h480" alt="KollaBo 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-KollaBo-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">② 大手町</div>
         <div class="card-badges-float"><span class="badge b-stars">★ 4.2</span></div>
       </div>
@@ -624,7 +674,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMJjzyxoNBgS3Gv_cDsHC110Xw9vLQ2oLha2Kmt3s3c3eBVap1PvDcho7DHVaDc21xCOdtDMJy3INUia8aUmRFJJ3rGPJPHMi5juBcW0EINteNCVHi0qGK_77w4X82FrX8HbKA9GjujgPpIWHCUi274Tw=s4800-w800-h600" alt="Majangdong" loading="lazy">
+        <div class="card-gallery" id="gal-Majangdong-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMjAViZOY9qT_TvksW-FRXEUxryzikuxyaat6d5vFBmCQqPDykjJv8yDbxJJvH6R5AMhLHko_rN4c4jQI-C5FKuBQX4WxHchqittVVWaLwR1AhjWE4vSWhah8POSdyllsD-YzyDAWmPpPpgqyQLW27ZKQ=s4800-w800-h600" alt="Majangdong 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPDh4CN66s8a65lxD5ocXkAqcksSgvQ2dgdWP2xfeUANtuI1mF4B3mEcExtUOTz3IsbBLLx0GEqnRcnWJAO-cTRoL12Qd7h5LeM5pelP24fd-92Vb5dxqmQJ9SbRFProOUiJ7F84h-fxi2v_VZtZ8q5YQ=s4800-w800-h600" alt="Majangdong 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMjZ20AkcQoff00SXoWoUTAtP9L7V-aD2HMs11dsRRFp1CC5ARLyUYh-jqT_JzO0ZILf8DGDn2FXtb6F6iriZwOCWaW0TB3O_K5S9djR4neH2rrYraGiCI7vBtiAvRbi4yixARb8jGMnpUNttAHpwgGSQ=s4800-w800-h600" alt="Majangdong 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNOyWvcBWBUxh7xMWX2E7KviwfkLgTzOAbc0IRAhtZOuiMF29VgmBa8D383qa5LSGSYKKMifOAQaANE6701B0i03GhHqHw6ZiJgsoQi3ljJgr05OBcZsfzMYPeI3VcrTtjnD4urQuXfiwCwj69F_rCcSA=s4800-w800-h600" alt="Majangdong 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOeJgGR7hZqWt-Icf4NUZhECHA_DocZvxwg3PCr0iaCV2i_2614ZJo3NxR9cdDMo-otWvOoN0YG9soIRoWcxkVHroiREWIYdWNv9FJppGzwoQuOWOHYVGQwhnsQsXo2uZVNt0bWSsmNvSjwUjo=s4800-w640-h359" alt="Majangdong 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-Majangdong-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">③ 新宿</div>
         <div class="card-badges-float">
           <span class="badge b-prev">去年吃过</span>
@@ -650,7 +700,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMebfjwJV3b79PD8TwSSCD4MXXDtcTkopQUHDwYpNXpigNnYHz-6OtFpCKUKQIV5ch_o0DuXpYSuQBuJjlsd9EJsfQsTR6UeY4lfpb45Q7XvZ1fzXx0Wlg3GTihm7b4UPAl7jsDlk_NE8XX7Amd2foafw=s4800-w800-h600" alt="OLLE" loading="lazy">
+        <div class="card-gallery" id="gal-OLLE-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOJYWHH1sAOzSp3HG1bL5SX6ixwldDU5kfAW6gdBxMOh37jY6-vILz9XLOlmwKb1Vkxvi-TtCbNgBe6e23J_It9lmVciDB7FvhvXRcNE_YadAt_2g6R_W6Lh0F2M9O85KtRS41-dnV8eZS8wlQ=s4800-w800-h600" alt="OLLE 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZM5sRqh0wefmhxM6W6U31bcPpGi6GE4lDpPp2DLQpLIKK8LaYOJ6TcLvk6tCgcDxRR6FEABvY2zyGp9cEKypZedw7F-Qy1A6JFdLXz0F7MWHfBF41PbpxXC3-7ajAahzfNrsvwzCQA1-w10tDGyrCyGbg=s4800-w800-h600" alt="OLLE 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNwjD335lXY074UTFft4nM1HMt4YJe94X3ILqySdpmMb6Ye-cKbA7VH8iDvJhZYsCbBzJpRi_N7VeYs4NA509hlv2_p0VDcX_d9TNcaPreuAcrOxXWOcZlBlbgfaLK4r84otkEMmzT20uPoQNk=s4800-w800-h600" alt="OLLE 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPfRAocMw7C_z-vmMBP_BmW0oRLKUj6L3xOz0ChSU3ATOoOgibbpAgipe9o3rfqVkTWG5g3cTQroCq6cqrsAHaK2aBfHeLBArpQdCvXI4jBHZo4DNx4scHKG07dAVAadD33A9Ri6a0yaqy5Pf7GfqWP4A=s4800-w800-h600" alt="OLLE 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOatgo_smkCBHu3tHdDVEQOozF9AGj39HwSTK83quPhlt5zM8QZ-R026MSY-sB7T_S4rmV0WC2Y2npQ8-4CyGhDD6zjK8DF4k_jbxg1R9QWI635zuuh8c04Xf9yn9DbiTcbnN5duwpqwsPbxn_FwtkYyA=s4800-w800-h600" alt="OLLE 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-OLLE-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">④ 新宿</div>
         <div class="card-badges-float">
           <span class="badge b-chick">含炸鸡</span>
@@ -677,7 +727,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMG2XDc6fS7QAbYwAhOet_DuSDwHwjWuioV9pdASh1OaLdn2uyUb00P5az2D_OV5B8h4W97ZDqzgLLf-9bYEkYhHBq9h9FudxEubOpM7oG-Z3VHDkr9XzXenFfzG1cTqybixB93t7w7Xn8129nxeeRXpw=s4800-w800-h600" alt="Gonpachi" loading="lazy">
+        <div class="card-gallery" id="gal-Gonpachi西麻布-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZP34eiky39_bcA67UjkJwzFAzt9oLKz8u1tM2VmrXumgU5-Qmj0NEAEyn7ewRA4DOGPE-id3DWVp4gYKswbXKaHrFeio0ZEzrM90tf4ys81lffPJ7IEBXzmLU_R7PqqL-fuDoNC1hlGM_adMA=s4800-w800-h600" alt="Gonpachi 西麻布 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPAB0iqIibTU1Wlgq1vuYZ0z9pDL8qiH6b3aoFS99lugkw2AV8tOx1UHG1QxDKQUnenqtM9GLhboryRLAtENVrAlr64jfUI-puY6FJoiVo70l8d_eGOEi-03QRTN6W47ituDadvWLIzrcxr-70CkxKHWQ=s4800-w800-h600" alt="Gonpachi 西麻布 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMNfgofUxHiWQKJCYlEK8ToGqITmmhsBJgdxroetniwVi39OonPh1zdgS5vV33Vkqwzpen2dkZojhW-RF8UU5XMin95pcGArvS8oFJKfFe90NSAuPhL86mCWp82VjCSMObhJ-LuPJo1eRDt42w=s4800-w800-h600" alt="Gonpachi 西麻布 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZO2Jq7-yRZWp04U79IK7V9kmYQBXDbQN-yiV_O71VJWd-BRmJv4-6UwnIbfY5PyqvaxkIKjdWYlkvZ5zd9QZvo1eCSwhBruSTT63Y9IW6ERyO5GctVAMLXMUsanz5t5dLx6VJGyBHgg2OvN2ttxccuugw=s4800-w800-h600" alt="Gonpachi 西麻布 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMG2XDc6fS7QAbYwAhOet_DuSDwHwjWuioV9pdASh1OaLdn2uyUb00P5az2D_OV5B8h4W97ZDqzgLLf-9bYEkYhHBq9h9FudxEubOpM7oG-Z3VHDkr9XzXenFfzG1cTqybixB93t7w7Xn8129nxeeRXpw=s4800-w800-h600" alt="Gonpachi 西麻布 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-Gonpachi西麻布-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">⑤ 西麻布</div>
         <div class="card-badges-float">
           <span class="badge b-chick">含炸鸡</span>
@@ -734,7 +784,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMJjzyxoNBgS3Gv_cDsHC110Xw9vLQ2oLha2Kmt3s3c3eBVap1PvDcho7DHVaDc21xCOdtDMJy3INUia8aUmRFJJ3rGPJPHMi5juBcW0EINteNCVHi0qGK_77w4X82FrX8HbKA9GjujgPpIWHCUi274Tw=s4800-w800-h600" alt="Majangdong" loading="lazy">
+        <div class="card-gallery" id="gal-Majangdong-2"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMjAViZOY9qT_TvksW-FRXEUxryzikuxyaat6d5vFBmCQqPDykjJv8yDbxJJvH6R5AMhLHko_rN4c4jQI-C5FKuBQX4WxHchqittVVWaLwR1AhjWE4vSWhah8POSdyllsD-YzyDAWmPpPpgqyQLW27ZKQ=s4800-w800-h600" alt="Majangdong 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPDh4CN66s8a65lxD5ocXkAqcksSgvQ2dgdWP2xfeUANtuI1mF4B3mEcExtUOTz3IsbBLLx0GEqnRcnWJAO-cTRoL12Qd7h5LeM5pelP24fd-92Vb5dxqmQJ9SbRFProOUiJ7F84h-fxi2v_VZtZ8q5YQ=s4800-w800-h600" alt="Majangdong 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMjZ20AkcQoff00SXoWoUTAtP9L7V-aD2HMs11dsRRFp1CC5ARLyUYh-jqT_JzO0ZILf8DGDn2FXtb6F6iriZwOCWaW0TB3O_K5S9djR4neH2rrYraGiCI7vBtiAvRbi4yixARb8jGMnpUNttAHpwgGSQ=s4800-w800-h600" alt="Majangdong 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNOyWvcBWBUxh7xMWX2E7KviwfkLgTzOAbc0IRAhtZOuiMF29VgmBa8D383qa5LSGSYKKMifOAQaANE6701B0i03GhHqHw6ZiJgsoQi3ljJgr05OBcZsfzMYPeI3VcrTtjnD4urQuXfiwCwj69F_rCcSA=s4800-w800-h600" alt="Majangdong 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOeJgGR7hZqWt-Icf4NUZhECHA_DocZvxwg3PCr0iaCV2i_2614ZJo3NxR9cdDMo-otWvOoN0YG9soIRoWcxkVHroiREWIYdWNv9FJppGzwoQuOWOHYVGQwhnsQsXo2uZVNt0bWSsmNvSjwUjo=s4800-w640-h359" alt="Majangdong 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-Majangdong-2"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">① 新宿</div>
         <div class="card-badges-float">
           <span class="badge b-prev">去年吃过</span>
@@ -760,7 +810,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMebfjwJV3b79PD8TwSSCD4MXXDtcTkopQUHDwYpNXpigNnYHz-6OtFpCKUKQIV5ch_o0DuXpYSuQBuJjlsd9EJsfQsTR6UeY4lfpb45Q7XvZ1fzXx0Wlg3GTihm7b4UPAl7jsDlk_NE8XX7Amd2foafw=s4800-w800-h600" alt="OLLE" loading="lazy">
+        <div class="card-gallery" id="gal-OLLE-2"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOJYWHH1sAOzSp3HG1bL5SX6ixwldDU5kfAW6gdBxMOh37jY6-vILz9XLOlmwKb1Vkxvi-TtCbNgBe6e23J_It9lmVciDB7FvhvXRcNE_YadAt_2g6R_W6Lh0F2M9O85KtRS41-dnV8eZS8wlQ=s4800-w800-h600" alt="OLLE 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZM5sRqh0wefmhxM6W6U31bcPpGi6GE4lDpPp2DLQpLIKK8LaYOJ6TcLvk6tCgcDxRR6FEABvY2zyGp9cEKypZedw7F-Qy1A6JFdLXz0F7MWHfBF41PbpxXC3-7ajAahzfNrsvwzCQA1-w10tDGyrCyGbg=s4800-w800-h600" alt="OLLE 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNwjD335lXY074UTFft4nM1HMt4YJe94X3ILqySdpmMb6Ye-cKbA7VH8iDvJhZYsCbBzJpRi_N7VeYs4NA509hlv2_p0VDcX_d9TNcaPreuAcrOxXWOcZlBlbgfaLK4r84otkEMmzT20uPoQNk=s4800-w800-h600" alt="OLLE 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPfRAocMw7C_z-vmMBP_BmW0oRLKUj6L3xOz0ChSU3ATOoOgibbpAgipe9o3rfqVkTWG5g3cTQroCq6cqrsAHaK2aBfHeLBArpQdCvXI4jBHZo4DNx4scHKG07dAVAadD33A9Ri6a0yaqy5Pf7GfqWP4A=s4800-w800-h600" alt="OLLE 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOatgo_smkCBHu3tHdDVEQOozF9AGj39HwSTK83quPhlt5zM8QZ-R026MSY-sB7T_S4rmV0WC2Y2npQ8-4CyGhDD6zjK8DF4k_jbxg1R9QWI635zuuh8c04Xf9yn9DbiTcbnN5duwpqwsPbxn_FwtkYyA=s4800-w800-h600" alt="OLLE 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-OLLE-2"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">② 新宿</div>
         <div class="card-badges-float">
           <span class="badge b-chick">含炸鸡</span>
@@ -787,7 +837,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN87LAMODzntmMDIV07StVWpeqhn-YKIT1K-ATFSddrGiT2dVfDWiAT-0MGtgaXpB2CAXkRQ5lXq9O-if3jkxmYg9lDTIlcZpnxUy8iwsH7nI7wZzB2TNPZIYrgZ1iAAIzmQK3g4xHcMR3p5Xdqn6cJ=s4800-w800-h600" alt="Ginza Happo" loading="lazy">
+        <div class="card-gallery" id="gal-GinzaHappo-2"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOXHKPKWTfPG3P3klhnTcNYT_-uCwnRfsg5ANhbU3XLWeuET9NvXGa0uFSq_qIrajWcPAOJQZzMZsbQk7VbZu0xfWESzkhPeaAeU4uWF9XgdIv7UXO_Ust9wBhKn0vMDd7ih2spJWWMmUI2pA=s4800-w800-h600" alt="Ginza Happo 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPoYRNuOFPBqRK_ow2_XX2l-qNmhB7ZrtSa1IEKkwrWEC_Qeka-QgTqNgka0XNy0Z6Ykayn2K--jSExTl7qF9GpF2DzvybCI2HBHG74lS2SHQvCUg4dV5e2Fuw3I9hDogw2-YLkoK-m6MAJ4z_S9DhEOA=s4800-w800-h600" alt="Ginza Happo 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMdTDrBG4zBWrex-b19pUzrYnPNyqcUpxjRF11JDtceiC1vd5Sh78dQ6F0YEVuxto2TSvwZjJ0hXG_KlLEnsBS5PzqndN87T3J89odKXBztr37Sh7KasTtsb2e-aaVBbEEC611iGSlkvQ7JwErTA8MSOQ=s4800-w800-h600" alt="Ginza Happo 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZM_usH1V1xmEJl2nJpiwiHDjyDaaiAUX_RQmvSZU2Nbg2FisM7ZnLKZJhFphfi288jKKo5yMHjL3ptYRrgftxhWl-HaJayfkIQD2L8LL9_JfvBxV2ZsCm_AG9hq5xpBkD13zXGc0IAdoe7-USDwUddn=s4800-w800-h600" alt="Ginza Happo 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPev-IElE4BIFgUW_iTGi6hd-fMRvD0e179MV07I5R7BkD6y2OKKwfZ2M64Gli3a-ksBoHJOp0RB7u4k07XGXzp3uBY6Dd5CI-TFSJqs184M8XGtL-0_N7zf-MuA19cGaHszuiCo2iIG4BpXEJIlUuD=s4800-w800-h600" alt="Ginza Happo 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-GinzaHappo-2"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">③ 银座</div>
         <div class="card-badges-float"><span class="badge b-stars">★ 4.3</span></div>
       </div>
@@ -810,7 +860,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMG2XDc6fS7QAbYwAhOet_DuSDwHwjWuioV9pdASh1OaLdn2uyUb00P5az2D_OV5B8h4W97ZDqzgLLf-9bYEkYhHBq9h9FudxEubOpM7oG-Z3VHDkr9XzXenFfzG1cTqybixB93t7w7Xn8129nxeeRXpw=s4800-w800-h600" alt="Gonpachi" loading="lazy">
+        <div class="card-gallery" id="gal-Gonpachi西麻布-2"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZP34eiky39_bcA67UjkJwzFAzt9oLKz8u1tM2VmrXumgU5-Qmj0NEAEyn7ewRA4DOGPE-id3DWVp4gYKswbXKaHrFeio0ZEzrM90tf4ys81lffPJ7IEBXzmLU_R7PqqL-fuDoNC1hlGM_adMA=s4800-w800-h600" alt="Gonpachi 西麻布 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPAB0iqIibTU1Wlgq1vuYZ0z9pDL8qiH6b3aoFS99lugkw2AV8tOx1UHG1QxDKQUnenqtM9GLhboryRLAtENVrAlr64jfUI-puY6FJoiVo70l8d_eGOEi-03QRTN6W47ituDadvWLIzrcxr-70CkxKHWQ=s4800-w800-h600" alt="Gonpachi 西麻布 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMNfgofUxHiWQKJCYlEK8ToGqITmmhsBJgdxroetniwVi39OonPh1zdgS5vV33Vkqwzpen2dkZojhW-RF8UU5XMin95pcGArvS8oFJKfFe90NSAuPhL86mCWp82VjCSMObhJ-LuPJo1eRDt42w=s4800-w800-h600" alt="Gonpachi 西麻布 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZO2Jq7-yRZWp04U79IK7V9kmYQBXDbQN-yiV_O71VJWd-BRmJv4-6UwnIbfY5PyqvaxkIKjdWYlkvZ5zd9QZvo1eCSwhBruSTT63Y9IW6ERyO5GctVAMLXMUsanz5t5dLx6VJGyBHgg2OvN2ttxccuugw=s4800-w800-h600" alt="Gonpachi 西麻布 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMG2XDc6fS7QAbYwAhOet_DuSDwHwjWuioV9pdASh1OaLdn2uyUb00P5az2D_OV5B8h4W97ZDqzgLLf-9bYEkYhHBq9h9FudxEubOpM7oG-Z3VHDkr9XzXenFfzG1cTqybixB93t7w7Xn8129nxeeRXpw=s4800-w800-h600" alt="Gonpachi 西麻布 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-Gonpachi西麻布-2"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">④ 西麻布</div>
         <div class="card-badges-float">
           <span class="badge b-chick">含炸鸡</span>
@@ -836,7 +886,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPMKSIMPINP4eoiTTrZ0oY6sz9AcUqQq8KDitDcsi6zfRn4_iqDx2FydFmmks2wupf6hHfxfmZzpz4qbyv0NdETiMJUBE8-dTME9f1H5rzkFhtVAXT5hFAnCA31hwBf5jQ0pmBtMS_3tknJ3wlExdJHyg=s4800-w800-h600" alt="KINKA" loading="lazy">
+        <div class="card-gallery" id="gal-KINKA-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPkRcUfnYmgjlz-WhYyJZnUEXY7Nk_2tp9L3GNeysfpoaiLSGK1iVW6NgaTSmJlcy0c8QA_xsRJPis4SPUxYzr4TV2o3aVzS4lI9YLKnU10z2MpB_Chg1OqNUk6ck_xnP_9juZyqiDkUn09TA=s4800-w800-h600" alt="KINKA 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNCBK1rUtCTYlj1gWx_7AAsUWv4JrhNdFI-MgvLXmOSAJp6Dz3bAin1-kKjUsrBdiCO7qLm13911h1gI3jKJotBcF8nRE5iT_yH4tPxP1JjCOmEHVErfaTsML4SktErXbDhReg2l-fUp3iYC_o=s4800-w800-h600" alt="KINKA 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNzjVOxDqW1WnOXy9q5CaJYXYogX0vR9IKXbMuXLIqZz-ZGuGuJd5p9VnRioKDNUmNde4kKVOI9liohEbtPP4BuF003YDr8gn-Rj7TmLN4Ixb6CvXTSan-FpiJZ31oNx_B1UlUDZXTHjbWBHZHTCKcaXw=s4800-w800-h600" alt="KINKA 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZN4gPMlWabUQp9dN2NDiPA4Twsf_2CTLbzFxdvdDdsBkrzzYOS3Y1nnpO76EpBxx0k30bXrKO6Ekq4pFWBTo-eh1T_FaFqCbNeW06TqVD-YdeD948JSI-kfZzT9pyvyrSU8lEXloXt_LTd6lYbIybGysg=s4800-w800-h600" alt="KINKA 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPMKSIMPINP4eoiTTrZ0oY6sz9AcUqQq8KDitDcsi6zfRn4_iqDx2FydFmmks2wupf6hHfxfmZzpz4qbyv0NdETiMJUBE8-dTME9f1H5rzkFhtVAXT5hFAnCA31hwBf5jQ0pmBtMS_3tknJ3wlExdJHyg=s4800-w800-h600" alt="KINKA 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-KINKA-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">⑤ 涩谷</div>
         <div class="card-badges-float">
           <span class="badge b-chick">含炸鸡</span>
@@ -862,7 +912,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent" style="background:var(--tokyo)"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMdNYDHR_gSkg8Bx6l5CUnXc5Myv9VqNfE71raJyqQNM0n9ErSIsK7pSfcIk8FRbPCJECnlZ4-uzCng-PLS08Vm5G7HjU3YdtzPQ_cbL9wbwnYOvcR-7CwNydNNEXAoBO1dn3a03StqMcPENg=s4800-w800-h600" alt="Gonpachi 涩谷" loading="lazy">
+        <div class="card-gallery" id="gal-Gonpachi涩谷-1"><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMdNYDHR_gSkg8Bx6l5CUnXc5Myv9VqNfE71raJyqQNM0n9ErSIsK7pSfcIk8FRbPCJECnlZ4-uzCng-PLS08Vm5G7HjU3YdtzPQ_cbL9wbwnYOvcR-7CwNydNNEXAoBO1dn3a03StqMcPENg=s4800-w800-h600" alt="Gonpachi 涩谷 1" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPWfY1VhAU5OfkZupCSLrBUjR7KO0juKxDpw171VAC823XzsSPB24T-j6cKjRuTH7qan1yc83Eox1X7TK7tW2weEraN5SzX3N5G02NHNEVlCq4tDyAj0-XBbtvQ8RDDs3KcQeko-h4bj2BUG9IGaQzX=s4800-w800-h600" alt="Gonpachi 涩谷 2" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPjdKPXZto2Tm9iLH4ob92biNo6QjelQ2EHpcuI_m1Zm9I1Fwox9BWUhkAKYbf1-fA6CUG5IoerKSQRkKJLIC050rIKHR3F7m1M-cTG90xb4wVwKGvqsFkjbBcF4i5tg9iT_-n0p082yx_rpEWzNMmiaQ=s4800-w800-h600" alt="Gonpachi 涩谷 3" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZNkUXBvXay3NnSg91vj5mIzd5D0jJbmvHeeqBwYWsl-s9GYPXVil_1fo9YHSzkDY2D_0mg_Oc94SdU-ZtBJBQv7uHJF4bpXMZb48C_RE1U5P2toHyXfB-VsD1F7VbLAMk-EFJXyjM3JvSsS4Kf37syWEw=s4800-w550-h440" alt="Gonpachi 涩谷 4" loading="lazy"></div><div class="gallery-slide"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOzkcwGguu74SuYG5K-Qp2MMLKt5aPVki26ev94zIrYnqAEob3yALmAC-E1owTNSmMDlAozOIz5IShW402liG50vR5Inr9DR7ynX2oogo98jdJDE7IAIucpPPLypuOIywWRhESPeRBk4Zu5vw=s4800-w550-h440" alt="Gonpachi 涩谷 5" loading="lazy"></div></div><div class="gallery-dots" data-for="gal-Gonpachi涩谷-1"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="gallery-count">5 张</div>
         <div class="card-num">⑥ 涩谷</div>
         <div class="card-badges-float">
           <span class="badge b-chick">含炸鸡</span>
@@ -915,6 +965,87 @@ sections.forEach(id => {
   const el = document.getElementById(id);
   if (el) obs.observe(el);
 });
+
+// ── 画廊圆点联动 ──
+document.querySelectorAll('.card-gallery').forEach(gallery => {
+  const wrap = gallery.parentElement;
+  const dotsBox = wrap.querySelector('.gallery-dots');
+  const slides = Array.from(gallery.querySelectorAll('.gallery-slide'));
+  const dots = dotsBox ? Array.from(dotsBox.querySelectorAll('.dot')) : [];
+  if (!dots.length) return;
+  const galObs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+        const idx = slides.indexOf(entry.target);
+        dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+      }
+    });
+  }, { root: gallery, threshold: 0.6 });
+  slides.forEach(s => galObs.observe(s));
+});
+
+// ── 画廊自动轮播（每3秒主动检测，谁在屏幕上就让谁切下一张；手动滑动暂停一会；离屏的不切）──
+(function() {
+  const cards = [];
+
+  document.querySelectorAll('.card-gallery').forEach(gallery => {
+    const slides = Array.from(gallery.querySelectorAll('.gallery-slide'));
+    if (slides.length < 2) return;
+    const card = gallery.closest('.card') || gallery;
+
+    const state = { gallery, card, idx: 0, paused: false, resumeTimeout: null };
+
+    // 手动触摸时暂停，松手延迟恢复
+    gallery.addEventListener('pointerdown', () => {
+      state.paused = true;
+      if (state.resumeTimeout) clearTimeout(state.resumeTimeout);
+    }, { passive: true });
+    gallery.addEventListener('pointerup', () => {
+      if (state.resumeTimeout) clearTimeout(state.resumeTimeout);
+      state.resumeTimeout = setTimeout(() => { state.paused = false; }, 4500);
+    }, { passive: true });
+
+    // 跟随手动滑动同步当前索引
+    let scrollDebounce = null;
+    gallery.addEventListener('scroll', () => {
+      if (scrollDebounce) clearTimeout(scrollDebounce);
+      scrollDebounce = setTimeout(() => {
+        const w = gallery.clientWidth || gallery.offsetWidth || 1;
+        state.idx = Math.round(gallery.scrollLeft / w);
+      }, 80);
+    }, { passive: true });
+
+    cards.push({ state, slides });
+  });
+
+  function isOnScreen(el) {
+    const r = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    return r.bottom > 0 && r.top < vh;
+  }
+
+  function tick() {
+    cards.forEach(({ state, slides }) => {
+      try {
+        if (state.paused) return;
+        if (!isOnScreen(state.card)) return;
+        const w = state.gallery.clientWidth || state.gallery.offsetWidth || 1;
+        state.idx = (state.idx + 1) % slides.length;
+        // 自动切换用瞬切（behavior:'auto'），避开部分浏览器（尤其iOS Safari）
+        // 在 scroll-snap 容器上用 smooth + JS scrollTo 时偶发卡住不动的问题；
+        // 手动滑动仍由原生触摸滚动接管，效果不受影响。
+        state.gallery.scrollTo({ left: state.idx * w, behavior: 'auto' });
+      } catch (err) {
+        // 单家出错不影响其余餐厅本轮继续轮播
+        console.warn('画廊轮播出错，已跳过该卡片：', state.gallery && state.gallery.id, err);
+      }
+    });
+  }
+
+  setInterval(tick, 3000);
+  // 页面刚加载时，已经在屏幕上的卡片提早跑一次，不用傻等3秒
+  setTimeout(tick, 1200);
+})();
 </script>
 </body>
 </html>
