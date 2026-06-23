@@ -111,7 +111,7 @@ body { font-family:'Noto Sans SC',sans-serif; background:var(--cream); color:var
 .area-btn.active { color: var(--gold2); border-bottom-color: var(--gold2); }
 .area-btn .dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: currentColor; flex-shrink: 0;
+  background: currentColor; flex-shrink:0;
 }
 
 /* ── SECTION ── */
@@ -359,9 +359,9 @@ footer strong { color: rgba(255,255,255,.7); }
 
 <!-- ── STICKY NAV ── -->
 <nav class="area-nav">
-  <button class="area-btn active" onclick="scrollTo('#usj')"><span class="dot"></span>USJ 后 7/24</button>
-  <button class="area-btn" onclick="scrollTo('#disney')"><span class="dot"></span>迪士尼后 7/28</button>
-  <button class="area-btn" onclick="scrollTo('#shinkansen')"><span class="dot"></span>新干线落地 7/26</button>
+  <button class="area-btn active" onclick="goToSection('#usj')"><span class="dot"></span>USJ 后 7/24</button>
+  <button class="area-btn" onclick="goToSection('#disney')"><span class="dot"></span>迪士尼后 7/28</button>
+  <button class="area-btn" onclick="goToSection('#shinkansen')"><span class="dot"></span>新干线落地 7/26</button>
 </nav>
 
 <!-- ══════════════════════════════════════
@@ -495,7 +495,7 @@ footer strong { color: rgba(255,255,255,.7); }
     <div class="card">
       <div class="card-accent"></div>
       <div class="card-photo-wrap">
-        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNIosPYS1IAylyJPgAEp_a1XwGytqV6O_wKPXtJSeaixKz6oeecDit1kAc6C-_BBadRESFSzzcVh7gZ_t0507LQCq8l7RJg0sZ3aB7g86SUnt21WxCXUdxr03QxGMI1H4Fy6uoxLYbMIOfI-lDLTfLl-Q=s4800-w800-h600" alt="KAWASAKI" loading="lazy">
+        <img class="card-photo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZM9YC_mkQP0DwkZaBuuJ1FA-gZEBtCj_7Z8xprNVoSv3nLqEbZwJvTmVAG4x8D9V9yEaznhvqPtMNEbb2VbVkvTyBk5MKPvNK57ZTI3T1wJma6snhtMqLAhL-UD6yp0q19lATnysaQi_yd47rASoNZcIQ=s4800-w800-h600" alt="KAWASAKI" loading="lazy">
         <div class="card-num">⑤ 难波</div>
         <div class="card-badges-float">
           <span class="badge b-chick">含炸鸡</span>
@@ -895,12 +895,13 @@ footer strong { color: rgba(255,255,255,.7); }
 <button class="fab" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
 <script>
-// Nav active state
 const sections = ['usj','disney','shinkansen'];
 const btns = document.querySelectorAll('.area-btn');
-function scrollTo(id) {
+
+function goToSection(id) {
   document.querySelector(id).scrollIntoView({behavior:'smooth'});
 }
+
 const obs = new IntersectionObserver(entries => {
   entries.forEach(e => {
     if (e.isIntersecting) {
@@ -909,6 +910,7 @@ const obs = new IntersectionObserver(entries => {
     }
   });
 }, { threshold: 0.3 });
+
 sections.forEach(id => {
   const el = document.getElementById(id);
   if (el) obs.observe(el);
