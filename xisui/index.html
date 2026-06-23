@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>洗髓功法</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --dark: #0d0d1a;
+    --dark2: #1a1a2e;
+    --dark3: #16213e;
+    --text: #e8e0d0;
+    --text-dim: #a09080;
+    --red: #c0392b;
+    --green: #27ae60;
+  }
+
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, var(--dark2), var(--dark3));
+    border-bottom: 1px solid var(--gold);
+    padding: 16px 20px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 {
+    font-size: 1.5rem;
+    color: var(--gold);
+    letter-spacing: 0.3em;
+    text-shadow: 0 0 20px rgba(201,168,76,0.4);
+  }
+  header p {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── Progress Bar ── */
+  .overall-progress {
+    background: var(--dark2);
+    padding: 10px 20px;
+    border-bottom: 1px solid #333;
+  }
+  .progress-bar {
+    background: #333;
+    border-radius: 10px;
+    height: 6px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease;
+    border-radius: 10px;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  /* ── Sections ── */
+  .section {
+    margin: 16px;
+    background: var(--dark2);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #2a2a4a;
+    transition: border-color 0.3s;
+  }
+  .section.active { border-color: var(--gold); }
+  .section.done { border-color: var(--green); opacity: 0.7; }
+
+  .section-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .section-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--dark3);
+    border: 1px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+    color: var(--gold);
+    flex-shrink: 0;
+  }
+  .section.done .section-num {
+    background: var(--green);
+    border-color: var(--green);
+    color: white;
+  }
+  .section-title { flex: 1; }
+  .section-title h2 { font-size: 1.1rem; color: var(--text); }
+  .section-title span { font-size: 0.75rem; color: var(--text-dim); }
+  .section-chevron { color: var(--text-dim); font-size: 1.2rem; transition: transform 0.3s; }
+  .section.open .section-chevron { transform: rotate(90deg); }
+
+  .section-body { display: none; padding: 0 20px 20px; }
+  .section.open .section-body { display: block; }
+
+  /* ── Counter ── */
+  .counter-wrap {
+    text-align: center;
+    padding: 10px 0;
+  }
+  .counter-display {
+    font-size: 5rem;
+    font-weight: 300;
+    color: var(--gold);
+    line-height: 1;
+    letter-spacing: -2px;
+    text-shadow: 0 0 30px rgba(201,168,76,0.3);
+  }
+  .counter-display .counter-total {
+    font-size: 1.5rem;
+    color: var(--text-dim);
+    font-weight: 300;
+  }
+  .counter-progress {
+    margin: 12px auto;
+    max-width: 280px;
+  }
+  .counter-btn-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+  .btn {
+    padding: 12px 24px;
+    border-radius: 50px;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(0.93); }
+  .btn-primary {
+    background: var(--gold);
+    color: var(--dark);
+    font-weight: 600;
+    padding: 14px 36px;
+    font-size: 1.1rem;
+  }
+  .btn-secondary {
+    background: #2a2a4a;
+    color: var(--text-dim);
+    border: 1px solid #3a3a5a;
+  }
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid var(--red);
+    font-size: 0.85rem;
+    padding: 8px 16px;
+  }
+  .btn-success {
+    background: var(--green);
+    color: white;
+    font-weight: 600;
+  }
+
+  /* big tap button */
+  .tap-btn {
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    border: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 16px auto;
+    box-shadow: 0 0 30px rgba(201,168,76,0.3);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .tap-btn:active {
+    transform: scale(0.9);
+    box-shadow: 0 0 10px rgba(201,168,76,0.1);
+  }
+  .tap-btn span:first-child { font-size: 2.5rem; }
+  .tap-btn span:last-child { font-size: 0.75rem; color: var(--dark); font-weight: 600; margin-top: 4px; }
+
+  /* ── Audio Player ── */
+  .audio-wrap {
+    background: var(--dark3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .audio-wrap p {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .audio-wrap audio {
+    width: 100%;
+    accent-color: var(--gold);
+  }
+  .audio-placeholder {
+    border: 2px dashed #3a3a5a;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+  }
+  .audio-placeholder .placeholder-icon { font-size: 2rem; margin-bottom: 8px; }
+
+  /* ── Video Player ── */
+  .video-wrap {
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    position: relative;
+    aspect-ratio: 16/9;
+  }
+  .video-wrap video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .video-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--dark3);
+    color: var(--text-dim);
+    border: 2px dashed #3a3a5a;
+    border-radius: 12px;
+  }
+  .video-placeholder .placeholder-icon { font-size: 3rem; margin-bottom: 8px; }
+  .video-placeholder p { font-size: 0.8rem; text-align: center; padding: 0 20px; }
+
+  /* ── Divider ── */
+  .divider {
+    border: none;
+    border-top: 1px solid #2a2a4a;
+    margin: 16px 0;
+  }
+
+  /* ── Completion ── */
+  .completion-banner {
+    display: none;
+    margin: 16px;
+    background: linear-gradient(135deg, #1a3a1a, #0d1f0d);
+    border: 1px solid var(--green);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+  }
+  .completion-banner.show { display: block; }
+  .completion-banner .icon { font-size: 3rem; }
+  .completion-banner h2 { color: var(--green); margin: 12px 0 8px; font-size: 1.3rem; letter-spacing: 0.2em; }
+  .completion-banner p { color: var(--text-dim); font-size: 0.9rem; }
+
+  /* ── Reset all ── */
+  .reset-all-wrap { text-align: center; padding: 8px 16px 32px; }
+
+  /* ── Lotus section ── */
+  .lotus-nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 0 8px;
+    scrollbar-width: none;
+  }
+  .lotus-nav::-webkit-scrollbar { display: none; }
+  .lotus-tab {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: var(--dark3);
+    border: 1px solid #3a3a5a;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .lotus-tab.active {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--dark);
+    font-weight: 600;
+  }
+  .lotus-tab.done-tab {
+    border-color: var(--green);
+    color: var(--green);
+  }
+  .lotus-slide { display: none; }
+  .lotus-slide.active { display: block; }
+  .lotus-title {
+    text-align: center;
+    margin: 12px 0;
+    color: var(--gold);
+    font-size: 1.1rem;
+    letter-spacing: 0.2em;
+  }
+  .lotus-btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .lotus-btns button { flex: 1; }
+
+  /* Timer */
+  .timer-display {
+    font-size: 3.5rem;
+    color: var(--gold);
+    text-align: center;
+    font-weight: 300;
+    letter-spacing: 4px;
+    margin: 12px 0;
+    text-shadow: 0 0 20px rgba(201,168,76,0.3);
+  }
+  .timer-display.running { color: var(--gold-light); }
+  .timer-display.done-timer { color: var(--green); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>洗　髓　功　法</h1>
+  <p>每日修練　持之以恆</p>
+</header>
+
+<div class="overall-progress">
+  <div class="progress-label">
+    <span>今日進度</span>
+    <span id="progress-text">0 / 9</span>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     1. 吐納
+════════════════════════════════════════ -->
+<div class="section" id="sec-tuna" data-index="0">
+  <div class="section-header" onclick="toggleSection('tuna')">
+    <div class="section-num" id="num-tuna">1</div>
+    <div class="section-title">
+      <h2>吐　納</h2>
+      <span>調息 160 次</span>
+    </div>
+    <div class="section-chevron">›</div>
+  </div>
+  <div class="section-body" id="body-tuna">
+    <!-- Audio slot -->
+    <div class="audio-wrap">
+      <p>🔊 吐納功法音頻引導</p>
+      <audio controls src="../audio/tuna.mp3"></audio>
+    </div>
+
+    <div class="counter-wrap">
+      <div class="counter-display">
+        <span id="tuna-count">0</span><span class="counter-total"> / 160</span>
+      </div>
+      <div class="counter-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" id="tuna-bar"></div>
+        </div>
+      </div>
+      <button class="tap-btn" onclick="tap('tuna', 160)">
+        <span>🌬️</span>
+        <span>點擊計數</span>
+      </button>
+      <div class="counter-btn-row">
+        <button class="btn btn-danger" onclick="resetCounter('tuna', 160)">重置</button>
+        <button class="btn btn-success" id="tuna-done-btn" onclick="markDone('tuna')" style="display:none">完成 ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     2. 收功
+════════════════════════════════════════ -->
+<div class="section" id="sec-shougong" data-index="1">
+  <div class="section-header" onclick="toggleSection('shougong')">
+    <div class="section-num" id="num-shougong">2</div>
+    <div class="section-title">
+      <h2>收　功</h2>
+      <span>5 次</span>
+    </div>
+    <div class="section-chevron">›</div>
+  </div>
+  <div class="section-body" id="body-shougong">
+    <div class="counter-wrap">
+      <div class="counter-display">
+        <span id="shougong-count">0</span><span class="counter-total"> / 5</span>
+      </div>
+      <div class="counter-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" id="shougong-bar"></div>
+        </div>
+      </div>
+      <button class="tap-btn" onclick="tap('shougong', 5)">
+        <span>🙏</span>
+        <span>點擊計數</span>
+      </button>
+      <div class="counter-btn-row">
+        <button class="btn btn-danger" onclick="resetCounter('shougong', 5)">重置</button>
+        <button class="btn btn-success" id="shougong-done-btn" onclick="markDone('shougong')" style="display:none">完成 ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     3. 垂吊
+════════════════════════════════════════ -->
+<div class="section" id="sec-chuidiao" data-index="2">
+  <div class="section-header" onclick="toggleSection('chuidiao')">
+    <div class="section-num" id="num-chuidiao">3</div>
+    <div class="section-title">
+      <h2>垂　吊</h2>
+      <span>320 下</span>
+    </div>
+    <div class="section-chevron">›</div>
+  </div>
+  <div class="section-body" id="body-chuidiao">
+    <div class="counter-wrap">
+      <div class="counter-display">
+        <span id="chuidiao-count">0</span><span class="counter-total"> / 320</span>
+      </div>
+      <div class="counter-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" id="chuidiao-bar"></div>
+        </div>
+      </div>
+      <button class="tap-btn" onclick="tap('chuidiao', 320)">
+        <span>⬇️</span>
+        <span>點擊計數</span>
+      </button>
+      <div class="counter-btn-row">
+        <button class="btn btn-danger" onclick="resetCounter('chuidiao', 320)">重置</button>
+        <button class="btn btn-success" id="chuidiao-done-btn" onclick="markDone('chuidiao')" style="display:none">完成 ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     4. 甩鞭
+════════════════════════════════════════ -->
+<div class="section" id="sec-shuai" data-index="3">
+  <div class="section-header" onclick="toggleSection('shuai')">
+    <div class="section-num" id="num-shuai">4</div>
+    <div class="section-title">
+      <h2>甩　鞭</h2>
+      <span>90 下</span>
+    </div>
+    <div class="section-chevron">›</div>
+  </div>
+  <div class="section-body" id="body-shuai">
+    <div class="counter-wrap">
+      <div class="counter-display">
+        <span id="shuai-count">0</span><span class="counter-total"> / 90</span>
+      </div>
+      <div class="counter-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" id="shuai-bar"></div>
+        </div>
+      </div>
+      <button class="tap-btn" onclick="tap('shuai', 90)">
+        <span>💪</span>
+        <span>點擊計數</span>
+      </button>
+      <div class="counter-btn-row">
+        <button class="btn btn-danger" onclick="resetCounter('shuai', 90)">重置</button>
+        <button class="btn btn-success" id="shuai-done-btn" onclick="markDone('shuai')" style="display:none">完成 ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     5. 會陰拍打
+════════════════════════════════════════ -->
+<div class="section" id="sec-huiyin" data-index="4">
+  <div class="section-header" onclick="toggleSection('huiyin')">
+    <div class="section-num" id="num-huiyin">5</div>
+    <div class="section-title">
+      <h2>會陰拍打</h2>
+      <span>30 下</span>
+    </div>
+    <div class="section-chevron">›</div>
+  </div>
+  <div class="section-body" id="body-huiyin">
+    <div class="counter-wrap">
+      <div class="counter-display">
+        <span id="huiyin-count">0</span><span class="counter-total"> / 30</span>
+      </div>
+      <div class="counter-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" id="huiyin-bar"></div>
+        </div>
+      </div>
+      <button class="tap-btn" onclick="tap('huiyin', 30)">
+        <span>👋</span>
+        <span>點擊計數</span>
+      </button>
+      <div class="counter-btn-row">
+        <button class="btn btn-danger" onclick="resetCounter('huiyin', 30)">重置</button>
+        <button class="btn btn-success" id="huiyin-done-btn" onclick="markDone('huiyin')" style="display:none">完成 ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     6. 腹股溝拍打
+════════════════════════════════════════ -->
+<div class="section" id="sec-fugu" data-index="5">
+  <div class="section-header" onclick="toggleSection('fugu')">
+    <div class="section-num" id="num-fugu">6</div>
+    <div class="section-title">
+      <h2>腹股溝拍打</h2>
+      <span>30 下</span>
+    </div>
+    <div class="section-chevron">›</div>
+  </div>
+  <div class="section-body" id="body-fugu">
+    <div class="counter-wrap">
+      <div class="counter-display">
+        <span id="fugu-count">0</span><span class="counter-total"> / 30</span>
+      </div>
+      <div class="counter-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" id="fugu-bar"></div>
+        </div>
+      </div>
+      <button class="tap-btn" onclick="tap('fugu', 30)">
+        <span>👋</span>
+        <span>點擊計數</span>
+      </button>
+      <div class="counter-btn-row">
+        <button class="btn btn-danger" onclick="resetCounter('fugu', 30)">重置</button>
+        <button class="btn btn-success" id="fugu-done-btn" onclick="markDone('fugu')" style="display:none">完成 ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     7. 蓮花動功
+════════════════════════════════════════ -->
+<div class="section" id="sec-lotus" data-index="6">
+  <div class="section-header" onclick="toggleSection('lotus')">
+    <div class="section-num" id="num-lotus">7</div>
+    <div class="section-title">
+      <h2>蓮花動功</h2>
+      <span>七式</span>
+    </div>
+    <div class="section-chevron">›</div>
+  </div>
+  <div class="section-body" id="body-lotus">
+
+    <!-- Tab nav -->
+    <div class="lotus-nav" id="lotus-nav">
+      <div class="lotus-tab active" onclick="lotusTab(0)" id="ltab-0">第一式</div>
+      <div class="lotus-tab" onclick="lotusTab(1)" id="ltab-1">第二式</div>
+      <div class="lotus-tab" onclick="lotusTab(2)" id="ltab-2">第三式</div>
+      <div class="lotus-tab" onclick="lotusTab(3)" id="ltab-3">第四式</div>
+      <div class="lotus-tab" onclick="lotusTab(4)" id="ltab-4">第五式</div>
+      <div class="lotus-tab" onclick="lotusTab(5)" id="ltab-5">第六式</div>
+      <div class="lotus-tab" onclick="lotusTab(6)" id="ltab-6">第七式</div>
+    </div>
+
+    <!-- Slides -->
+    <div id="lotus-slides">
+      <!-- Slide template repeated 7 times -->
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     Completion
+════════════════════════════════════════ -->
+<div class="completion-banner" id="completion">
+  <div class="icon">🏆</div>
+  <h2>今日修練完成</h2>
+  <p>功德圓滿　明日再練</p>
+</div>
+
+<div class="reset-all-wrap">
+  <button class="btn btn-danger" onclick="resetAll()">重置全部</button>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────
+const LOTUS = [
+  { name: '觀音請聖', file: 'lotus1' },
+  { name: '仙鶴展翅', file: 'lotus2' },
+  { name: '合住江帆', file: 'lotus3' },
+  { name: '前坤旋轉', file: 'lotus4' },
+  { name: '犀牛望月', file: 'lotus5' },
+  { name: '荷花搖擺', file: 'lotus6' },
+  { name: '立地沖天', file: 'lotus7' },
+];
+
+const COUNTERS = [
+  { id: 'tuna', total: 160 },
+  { id: 'shougong', total: 5 },
+  { id: 'chuidiao', total: 320 },
+  { id: 'shuai', total: 90 },
+  { id: 'huiyin', total: 30 },
+  { id: 'fugu', total: 30 },
+];
+
+// ── State ─────────────────────────────────────────────────
+let state = JSON.parse(localStorage.getItem('xisui_state') || '{}');
+if (!state.counts) state.counts = {};
+if (!state.done) state.done = {};
+if (!state.lotusDone) state.lotusDone = {};
+if (!state.lotusTimers) state.lotusTimers = {};
+
+let timers = {}; // active interval handles per lotus index
+
+// ── Build Lotus Slides ────────────────────────────────────
+function buildLotusSlides() {
+  const container = document.getElementById('lotus-slides');
+  container.innerHTML = '';
+  LOTUS.forEach((item, i) => {
+    const slide = document.createElement('div');
+    slide.className = 'lotus-slide' + (i === 0 ? ' active' : '');
+    slide.id = 'lslide-' + i;
+
+    const isDone = state.lotusDone[i];
+    const savedSec = state.lotusTimers[i] || 0;
+
+    slide.innerHTML = `
+      <div class="lotus-title">第${['一','二','三','四','五','六','七'][i]}式　${item.name}</div>
+
+      <div class="video-wrap">
+        <video controls playsinline src="../videos/${item.file}.mp4"></video>
+      </div>
+
+      <div class="timer-display ${isDone ? 'done-timer' : ''}" id="ltimer-${i}">
+        ${fmtTime(savedSec)}
+      </div>
+
+      <div class="lotus-btns">
+        <button class="btn btn-secondary" onclick="lotusTimerToggle(${i})" id="lbtn-start-${i}">
+          ${isDone ? '重新練習' : '▶ 開始計時'}
+        </button>
+        <button class="btn btn-danger" onclick="lotusTimerReset(${i})">重置</button>
+        <button class="btn btn-success" onclick="lotusMarkDone(${i})" ${isDone ? '' : 'style="display:none"'} id="lbtn-done-${i}">完成 ✓</button>
+      </div>
+    `;
+    container.appendChild(slide);
+  });
+}
+
+// ── Toggle Section ────────────────────────────────────────
+function toggleSection(id) {
+  const sec = document.getElementById('sec-' + id);
+  const body = document.getElementById('body-' + id);
+  const isOpen = sec.classList.contains('open');
+  // close all
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('open'));
+  if (!isOpen) sec.classList.add('open');
+}
+
+// ── Counter ───────────────────────────────────────────────
+function tap(id, total) {
+  if (state.done[id]) return;
+  let c = (state.counts[id] || 0) + 1;
+  if (c > total) c = total;
+  state.counts[id] = c;
+  saveState();
+  updateCounter(id, total);
+  // vibrate
+  if (navigator.vibrate) navigator.vibrate(20);
+}
+
+function updateCounter(id, total) {
+  const c = state.counts[id] || 0;
+  document.getElementById(id + '-count').textContent = c;
+  const pct = Math.min(100, c / total * 100);
+  document.getElementById(id + '-bar').style.width = pct + '%';
+  const doneBtn = document.getElementById(id + '-done-btn');
+  if (c >= total) doneBtn.style.display = '';
+  else doneBtn.style.display = 'none';
+}
+
+function resetCounter(id, total) {
+  state.counts[id] = 0;
+  state.done[id] = false;
+  saveState();
+  updateCounter(id, total);
+  const sec = document.getElementById('sec-' + id);
+  sec.classList.remove('done');
+  const num = document.getElementById('num-' + id);
+  num.innerHTML = sec.dataset.index * 1 + 1;
+  updateProgress();
+}
+
+function markDone(id) {
+  state.done[id] = true;
+  saveState();
+  const sec = document.getElementById('sec-' + id);
+  sec.classList.add('done');
+  sec.classList.remove('open');
+  document.getElementById('num-' + id).textContent = '✓';
+  updateProgress();
+}
+
+// ── Lotus Tabs ────────────────────────────────────────────
+let currentLotus = 0;
+
+function lotusTab(i) {
+  document.getElementById('lslide-' + currentLotus).classList.remove('active');
+  document.getElementById('ltab-' + currentLotus).classList.remove('active');
+  currentLotus = i;
+  document.getElementById('lslide-' + i).classList.add('active');
+  document.getElementById('ltab-' + i).classList.add('active');
+}
+
+// ── Lotus Timer ───────────────────────────────────────────
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = (sec % 60).toString().padStart(2, '0');
+  return m + ':' + s;
+}
+
+function lotusTimerToggle(i) {
+  const btn = document.getElementById('lbtn-start-' + i);
+  if (timers[i]) {
+    clearInterval(timers[i]);
+    timers[i] = null;
+    btn.textContent = '▶ 繼續計時';
+  } else {
+    state.lotusDone[i] = false;
+    timers[i] = setInterval(() => {
+      state.lotusTimers[i] = (state.lotusTimers[i] || 0) + 1;
+      saveState();
+      const el = document.getElementById('ltimer-' + i);
+      if (el) {
+        el.textContent = fmtTime(state.lotusTimers[i]);
+        el.classList.add('running');
+        el.classList.remove('done-timer');
+      }
+      const doneBtn = document.getElementById('lbtn-done-' + i);
+      if (doneBtn) doneBtn.style.display = '';
+    }, 1000);
+    btn.textContent = '⏸ 暫停';
+  }
+}
+
+function lotusTimerReset(i) {
+  if (timers[i]) { clearInterval(timers[i]); timers[i] = null; }
+  state.lotusTimers[i] = 0;
+  state.lotusDone[i] = false;
+  saveState();
+  const el = document.getElementById('ltimer-' + i);
+  if (el) { el.textContent = fmtTime(0); el.classList.remove('running', 'done-timer'); }
+  const startBtn = document.getElementById('lbtn-start-' + i);
+  if (startBtn) startBtn.textContent = '▶ 開始計時';
+  const doneBtn = document.getElementById('lbtn-done-' + i);
+  if (doneBtn) doneBtn.style.display = 'none';
+  document.getElementById('ltab-' + i).classList.remove('done-tab');
+  updateProgress();
+}
+
+function lotusMarkDone(i) {
+  if (timers[i]) { clearInterval(timers[i]); timers[i] = null; }
+  state.lotusDone[i] = true;
+  saveState();
+  const el = document.getElementById('ltimer-' + i);
+  if (el) { el.classList.remove('running'); el.classList.add('done-timer'); }
+  document.getElementById('ltab-' + i).classList.add('done-tab');
+  if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+
+  // check all lotus done
+  const allLotus = LOTUS.every((_, idx) => state.lotusDone[idx]);
+  if (allLotus) {
+    state.done['lotus'] = true;
+    saveState();
+    const sec = document.getElementById('sec-lotus');
+    sec.classList.add('done');
+    sec.classList.remove('open');
+    document.getElementById('num-lotus').textContent = '✓';
+  }
+  updateProgress();
+
+  // auto advance
+  if (i < 6 && !state.lotusDone[i + 1]) {
+    setTimeout(() => lotusTab(i + 1), 600);
+  }
+}
+
+// ── Progress ──────────────────────────────────────────────
+function updateProgress() {
+  let done = 0;
+  COUNTERS.forEach(c => { if (state.done[c.id]) done++; });
+  if (state.done['lotus']) done++;
+  // also partial lotus counts toward showing section done
+  const total = 9; // 6 counters + lotus section + buffer = use 9 shown steps but track by 7+1
+  // Actually track: 6 counter sections + lotus (counts as 1 when all 7 done)
+  const realTotal = 7;
+  const pct = Math.min(100, done / realTotal * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = done + ' / ' + realTotal;
+
+  if (done >= realTotal) {
+    document.getElementById('completion').classList.add('show');
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+  } else {
+    document.getElementById('completion').classList.remove('show');
+  }
+}
+
+// ── Reset All ─────────────────────────────────────────────
+function resetAll() {
+  if (!confirm('確定要重置今日所有進度？')) return;
+  Object.values(timers).forEach(t => t && clearInterval(t));
+  timers = {};
+  state = { counts: {}, done: {}, lotusDone: {}, lotusTimers: {} };
+  saveState();
+  location.reload();
+}
+
+// ── Save / Load ───────────────────────────────────────────
+function saveState() {
+  localStorage.setItem('xisui_state', JSON.stringify(state));
+}
+
+// ── Init ──────────────────────────────────────────────────
+function init() {
+  buildLotusSlides();
+
+  COUNTERS.forEach(c => {
+    updateCounter(c.id, c.total);
+    if (state.done[c.id]) {
+      const sec = document.getElementById('sec-' + c.id);
+      sec.classList.add('done');
+      document.getElementById('num-' + c.id).textContent = '✓';
+    }
+  });
+
+  // Lotus tabs done state
+  LOTUS.forEach((_, i) => {
+    if (state.lotusDone[i]) {
+      document.getElementById('ltab-' + i).classList.add('done-tab');
+    }
+  });
+
+  if (state.done['lotus']) {
+    const sec = document.getElementById('sec-lotus');
+    sec.classList.add('done');
+    document.getElementById('num-lotus').textContent = '✓';
+  }
+
+  // open first incomplete section
+  const sections = ['tuna','shougong','chuidiao','shuai','huiyin','fugu','lotus'];
+  for (const id of sections) {
+    if (!state.done[id]) {
+      document.getElementById('sec-' + id).classList.add('open');
+      break;
+    }
+  }
+
+  updateProgress();
+}
+
+init();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/xisui/sw.js');
+}
+</script>
+</body>
+</html>
