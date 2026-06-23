@@ -1,5 +1,9 @@
 # 项目规则
 
+## 用户环境
+- 只使用 **Claude Code 网页版**（claude.ai/code），不用本地 CLI
+- 所有「本地安装」都是指远程容器内，session 结束会消失，需靠 SessionStart hook 持久化
+
 ## 媒体文件规则
 - **视频**：一律上传到 YouTube，设成「不公开」(unlisted)，用 `<iframe>` 嵌入页面，不直接放进仓库
 - **图片**：旅游手册一律用 Google Places 图片链接，不上传图片文件到仓库
