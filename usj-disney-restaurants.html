@@ -376,6 +376,47 @@ footer {
 }
 footer strong { color: rgba(255,255,255,.7); }
 
+/* ── LIGHTBOX (点图放大) ── */
+.lightbox {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(10,7,3,.94);
+  display: none;
+  align-items: center; justify-content: center;
+}
+.lightbox.open { display: flex; }
+.lightbox-img {
+  max-width: 92vw; max-height: 80vh;
+  object-fit: contain;
+  user-select: none; -webkit-user-select: none;
+  border-radius: 4px;
+}
+.lightbox-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(255,255,255,.14); color: #fff;
+  font-size: 18px; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1002; transition: background .15s;
+}
+.lightbox-close:hover { background: rgba(255,255,255,.28); }
+.lightbox-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 42px; height: 42px; border-radius: 50%;
+  background: rgba(255,255,255,.14); color: #fff;
+  font-size: 20px; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1002; transition: background .15s;
+}
+.lightbox-nav:hover { background: rgba(255,255,255,.28); }
+.lightbox-prev { left: 12px; }
+.lightbox-next { right: 12px; }
+.lightbox-counter {
+  position: absolute; bottom: 18px; left: 0; right: 0;
+  text-align: center; color: rgba(255,255,255,.65);
+  font-size: 12px; letter-spacing: .5px;
+}
+.card-gallery img { cursor: zoom-in; }
+
 /* ── SCROLL TO TOP ── */
 .fab {
   position: fixed; bottom: 24px; right: 20px;
@@ -971,6 +1012,15 @@ footer strong { color: rgba(255,255,255,.7); }
 
 <button class="fab" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
+<!-- ── LIGHTBOX ── -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()">×</button>
+  <button class="lightbox-nav lightbox-prev" onclick="lightboxNav(-1)">‹</button>
+  <img class="lightbox-img" id="lightbox-img" src="" alt="">
+  <button class="lightbox-nav lightbox-next" onclick="lightboxNav(1)">›</button>
+  <div class="lightbox-counter" id="lightbox-counter"></div>
+</div>
+
 <script>
 // ── 中/EN 双语切换 ──
 // 首次切换时自动把当前显示的中文缓存进 dataset.zh，之后用 dataset.zh / dataset.en 来回切换
@@ -1114,6 +1164,53 @@ function toggleAreaFilter(chip) {
 
 // ── 默认以英文为主页显示，中文作为副页（点"中"按钮切回） ──
 setLang('en');
+
+// ── 点图放大（灯箱） ──
+let lightboxSlides = [];
+let lightboxIndex = 0;
+
+function updateLightboxImage() {
+  const img = document.getElementById('lightbox-img');
+  img.src = lightboxSlides[lightboxIndex];
+  document.getElementById('lightbox-counter').textContent = (lightboxIndex + 1) + ' / ' + lightboxSlides.length;
+}
+function openLightbox(slides, index) {
+  lightboxSlides = slides;
+  lightboxIndex = index;
+  updateLightboxImage();
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function lightboxNav(delta) {
+  lightboxIndex = (lightboxIndex + delta + lightboxSlides.length) % lightboxSlides.length;
+  updateLightboxImage();
+}
+
+// 点击图片本身打开灯箱（浏览器原生会区分"点击"与"滑动"，滑动浏览画廊时不会误触发点击）
+document.querySelectorAll('.card-gallery').forEach(gallery => {
+  const imgs = Array.from(gallery.querySelectorAll('img'));
+  const srcs = imgs.map(im => im.src);
+  imgs.forEach((im, idx) => {
+    im.addEventListener('click', () => openLightbox(srcs, idx));
+  });
+});
+
+// 点背景（非图片、非按钮区域）关闭
+document.getElementById('lightbox').addEventListener('click', (e) => {
+  if (e.target.id === 'lightbox') closeLightbox();
+});
+// 键盘支持（桌面浏览器方便测试/使用）
+document.addEventListener('keydown', (e) => {
+  const lb = document.getElementById('lightbox');
+  if (!lb.classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') lightboxNav(-1);
+  if (e.key === 'ArrowRight') lightboxNav(1);
+});
 </script>
 </body>
 </html>
