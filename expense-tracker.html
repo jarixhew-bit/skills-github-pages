@@ -387,12 +387,19 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <!-- description -->
     <div class="form-group">
       <label class="form-label">描述（选填）</label>
-      <input class="form-input" id="tx-desc" type="text" placeholder="例：午餐、打的…">
+      <input class="form-input" id="tx-desc" type="text" placeholder="例：午餐、打的…" oninput="autoDetectCat(this.value)">
     </div>
     <!-- category -->
     <div class="form-group">
       <label class="form-label">类别</label>
       <div id="cat-grid" class="cat-grid"></div>
+      <div id="cat-auto-hint" style="display:none;margin-top:8px;padding:6px 10px;
+        background:var(--p2);border-radius:8px;font-size:12px;color:var(--p);
+        display:none;align-items:center;gap:6px">
+        🤖 已自动识别为「<span id="cat-auto-name"></span>」
+        <span style="margin-left:auto;color:var(--sub);cursor:pointer"
+          onclick="clearAutoHint()">✕</span>
+      </div>
     </div>
     <!-- date -->
     <div class="form-group">
@@ -489,6 +496,24 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 // ===================== DATA =====================
 const COLORS = ['#6C63FF','#FF6584','#F7B731','#20BF6B','#FC5C65','#45AAF2','#A55EEA','#FD9644','#26DE81','#4B7BEC'];
 
+const KEYWORD_MAP = [
+  {catId:'cat_food', kw:['饭','餐','吃','早餐','午餐','晚餐','宵夜','夜宵','外卖','咖啡','奶茶','茶','饮料','餐厅','食堂','火锅','烧烤','寿司','拉面','汉堡','披萨','pizza','便当','包子','肠粉','炒饭','炒菜','炸鸡','薯条','沙拉','三明治','点心','dim sum','甜点','蛋糕','零食','饼干','水果','kfc','麦当劳','肯德基','星巴克','starbucks','快餐','打包','自助餐','buffet','牛肉','猪肉','鸡肉','海鲜','面条','粥','糖水','冰淇淋','港式','茶餐厅','冰','咖','奶','果汁','汤','锅']},
+  {catId:'cat_transport', kw:['的士','打的','出租车','uber','grab','地铁','巴士','公交','bus','mtr','lrt','停车','油费','加油','高铁','动车','火车','车票','地铁票','飞机','机票','顺风车','滴滴','taxi','cab','摩托','单车','电单车','过路费','隧道费','轮渡','船票','toll','parking','petrol','ron','grab','bas','lrt','komuter','ktm']},
+  {catId:'cat_shopping', kw:['超市','网购','购物','百货','商场','mall','淘宝','京东','amazon','亚马逊','shopee','lazada','temu','日用品','生活用品','卫生纸','洗发','洗衣','清洁','家居','ikea','宜家','便利店','7-11','全家','711','minimart','giant','tesco','aeon','mydin','jaya']},
+  {catId:'cat_housing', kw:['租金','房租','水电','物业','管理费','酒店','hotel','住宿','airbnb','宾馆','旅馆','押金','装修','家具','维修','房贷','按揭','mortgage']},
+  {catId:'cat_entertainment', kw:['电影','cinema','游戏','ktv','唱歌','卡拉ok','演唱会','concert','音乐会','展览','博物馆','游乐','游玩','娱乐','netflix','spotify','bilibili','disney','迪士尼','youtube','会员','订阅','escape room','密室','桌游','撞球','斯诺克','高尔夫','bowling','保龄球']},
+  {catId:'cat_medical', kw:['医院','医生','药','诊所','看病','检查','手术','牙医','打针','血压','体检','配药','护理','眼镜','隐形眼镜','pharmacy','watsons','guardian','clinic','doctor','hospital','ubat','ubat','klinik']},
+  {catId:'cat_education', kw:['学费','tuition','书','课','培训','补习','学习','课程','考试','文具','资料','学校','上课','老师','tutorial','tutor','workshop','seminar']},
+  {catId:'cat_utilities', kw:['水费','电费','煤气','gas','宽带','wifi','网费','tnb','syabas','iqiyi','unifi','streamyx','maxis home','时代','水务','电力']},
+  {catId:'cat_phone', kw:['话费','手机费','电话费','流量','月租','sim','套餐','maxis','celcom','digi','umobile','hotlink','prepaid','postpaid','数据','充值','topup']},
+  {catId:'cat_travel', kw:['旅游','旅行','度假','出游','景点','门票','签证','护照','行李','伴手礼','纪念品','出国','出境','海外','japan','日本','韩国','泰国','新加坡','香港','台湾','欧洲','澳洲','hotel','resort','度假村']},
+  {catId:'cat_clothing', kw:['衣服','鞋','裤','裙','外套','t恤','运动服','包包','皮包','手袋','服装','时装','球鞋','袜子','内衣','帽子','围巾','手表','首饰','化妆品','护肤','美容','salon','理发','剪发']},
+  {catId:'cat_salary', kw:['工资','薪水','月薪','薪资','发工资','底薪','salary','gaji','pay']},
+  {catId:'cat_bonus', kw:['奖金','年终','花红','提成','佣金','commission','bonus','incentive']},
+  {catId:'cat_investment', kw:['股票','基金','利息','分红','收益','回报','理财','投资','dividend','interest','profit','crypto','比特币','etf']},
+  {catId:'cat_parttime', kw:['兼职','freelance','副业','稿费','设计费','咨询费','part time','partime']},
+];
+
 const DEFAULT_DATA = {
   currentAccountId: null,
   accounts: [
@@ -531,7 +556,8 @@ let state = {
   txType: 'expense',
   selectedCatId: null,
   selectedAccColor: COLORS[0],
-  pieChart: null
+  pieChart: null,
+  catManuallySelected: false
 };
 
 // ===================== PERSIST =====================
@@ -825,6 +851,7 @@ function showAddTx(){
   state.editingTxId = null;
   state.txType = 'expense';
   state.selectedCatId = null;
+  state.catManuallySelected = false;
   document.getElementById('tx-modal-title').textContent = '新增记录';
   document.getElementById('tx-amount').value = '';
   document.getElementById('tx-desc').value = '';
@@ -832,6 +859,7 @@ function showAddTx(){
   document.getElementById('tx-delete-wrap').style.display = 'none';
   document.getElementById('type-exp').classList.add('active');
   document.getElementById('type-inc').classList.remove('active');
+  hideAutoHint();
   renderCatGrid();
   showModal('modal-add-tx');
   setTimeout(()=>document.getElementById('tx-amount').focus(), 300);
@@ -857,9 +885,13 @@ function editTx(id){
 function setTxType(type){
   state.txType = type;
   state.selectedCatId = null;
+  state.catManuallySelected = false;
   document.getElementById('type-exp').classList.toggle('active', type==='expense');
   document.getElementById('type-inc').classList.toggle('active', type==='income');
   renderCatGrid();
+  // re-detect with current description after switching type
+  const desc = document.getElementById('tx-desc').value;
+  if(desc.trim()) autoDetectCat(desc); else hideAutoHint();
 }
 
 function renderCatGrid(){
@@ -875,7 +907,48 @@ function renderCatGrid(){
 
 function selectCat(id){
   state.selectedCatId = id;
+  state.catManuallySelected = true;
+  hideAutoHint();
   renderCatGrid();
+}
+
+function autoDetectCat(desc){
+  if(state.catManuallySelected) return;
+  const text = desc.toLowerCase();
+  if(!text.trim()){ hideAutoHint(); return; }
+
+  let bestCatId = null, bestScore = 0;
+  for(const entry of KEYWORD_MAP){
+    // only match categories of current tx type
+    const cat = data.categories.find(c=>c.id===entry.catId);
+    if(!cat || cat.type!==state.txType) continue;
+    let score = 0;
+    for(const kw of entry.kw){
+      if(text.includes(kw.toLowerCase())) score += kw.length; // longer kw = higher weight
+    }
+    if(score > bestScore){ bestScore = score; bestCatId = entry.catId; }
+  }
+
+  if(bestCatId && bestScore > 0){
+    state.selectedCatId = bestCatId;
+    renderCatGrid();
+    const cat = data.categories.find(c=>c.id===bestCatId);
+    const hint = document.getElementById('cat-auto-hint');
+    document.getElementById('cat-auto-name').textContent = cat ? cat.icon+' '+cat.name : '';
+    hint.style.display = 'flex';
+  } else {
+    hideAutoHint();
+  }
+}
+
+function hideAutoHint(){
+  document.getElementById('cat-auto-hint').style.display = 'none';
+}
+function clearAutoHint(){
+  state.catManuallySelected = true;
+  state.selectedCatId = null;
+  renderCatGrid();
+  hideAutoHint();
 }
 
 function saveTx(){
