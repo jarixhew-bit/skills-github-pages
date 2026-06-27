@@ -450,6 +450,9 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
         <option value="TWD">TWD — 台币 NT$</option>
         <option value="THB">THB — 泰铢 ฿</option>
         <option value="AUD">AUD — 澳元 A$</option>
+        <option value="KHR">KHR — 柬币 ៛</option>
+        <option value="KRW">KRW — 韩元 ₩</option>
+        <option value="VND">VND — 越南盾 ₫</option>
       </select>
     </div>
     <div class="form-group">
@@ -512,7 +515,11 @@ const KEYWORD_MAP = [
     'bubble tea','boba','juice','soup','seafood','chicken','beef','pork',
     'sushi','ramen','pasta','taco','wrap','hotpot','bbq','grill','bakery',
     'biscuit','cookie','ice cream','yogurt','milk tea','takeaway','takeout',
-    'delivery','foodpanda','grabfood','shopeefood'],
+    'delivery','foodpanda','grabfood','shopeefood',
+    // 柬埔寨
+    'nham24','nham 24','bai','num','samlor','amok','lok lak','kuy teav',
+    'nom banh chok','banh mi','bai sach chrouk','num pang','joma','brown coffee',
+    'the shop','vann\'s','sundown','eclipse','romdoul','phsar','market food'],
   },
   {catId:'cat_transport', kw:[
     // 中文
@@ -525,7 +532,11 @@ const KEYWORD_MAP = [
     'car park','e-hailing','rapid','myrapid','bas','drive','car','ride',
     'motorcycle','bicycle','scooter','tram','monorail','airport','express',
     'highway','fare','transit','transport','vehicle','pump','ron95','ron97',
-    'diesel','shell','petronas','bhp','caltex'],
+    'diesel','shell','petronas','bhp','caltex',
+    // 柬埔寨
+    'passapp','pass app','tuk tuk','tuktuk','remork','tuk-tuk','moto','motodop',
+    'remorque','camup','itsumo','exnet','sorya transport','pp bus',
+    'phnom penh taxi','cambodia taxi'],
   },
   {catId:'cat_shopping', kw:[
     // 中文
@@ -537,7 +548,12 @@ const KEYWORD_MAP = [
     'gadget','amazon','shopee','lazada','temu','ikea','giant','tesco','aeon',
     'mydin','jaya','village','99','cold storage','ben\'s','lotus','econsave',
     '7-11','711','familymart','kk mart','99 speedmart','household','laundry',
-    'detergent','shampoo','toiletries'],
+    'detergent','shampoo','toiletries',
+    // 柬埔寨
+    'lucky supermarket','lucky mall','aeon mall','aeon','makro','orussey',
+    'olympic market','central market','russian market','night market',
+    'phsar thmei','phsar tuol tom poung','phsar reatrey','sorya','exchange square',
+    'chip mong','the garden city','factory outlet','monument books'],
   },
   {catId:'cat_housing', kw:[
     // 中文
@@ -545,7 +561,9 @@ const KEYWORD_MAP = [
     // 英文
     'rent','rental','house','apartment','condo','maintenance','repair','fix',
     'mortgage','hotel','airbnb','hostel','lodging','accommodation','utility',
-    'management fee','deposit','renovation','furniture','plumber','electrician'],
+    'management fee','deposit','renovation','furniture','plumber','electrician',
+    // 柬埔寨
+    'borey','flat','shophouse','phnom penh rent','villa','bungalow'],
   },
   {catId:'cat_entertainment', kw:[
     // 中文
@@ -556,7 +574,11 @@ const KEYWORD_MAP = [
     'theme park','streaming','subscription','netflix','spotify','disney',
     'youtube','bilibili','hbo','apple tv','gaming','steam','playstation',
     'xbox','escape room','bowling','golf','pool','snooker','darts','arcade',
-    'waterpark','zoo','aquarium','museum','gallery','festival','gig'],
+    'waterpark','zoo','aquarium','museum','gallery','festival','gig',
+    // 柬埔寨
+    'naga world','nagaworld','naga casino','eclipse sky bar','pontoon',
+    'level 9','sevens','oskar bistro','the pontoon','heart of darkness',
+    'angkor wat ticket','siem reap tour','pub street'],
   },
   {catId:'cat_medical', kw:[
     // 中文
@@ -567,7 +589,11 @@ const KEYWORD_MAP = [
     'checkup','vaccine','injection','pill','supplement','optician','glasses',
     'contact lens','health','medical','xray','scan','blood test','pcr',
     'watsons','guardian','caring','alpro','ubat','klinik','physiotherapy',
-    'specialist','surgery','consultation','prescription'],
+    'specialist','surgery','consultation','prescription',
+    // 柬埔寨
+    'sunrise japan hospital','royal phnom penh hospital','calmette',
+    'raffles medical','sen sok international','nida medical','tropical',
+    'unity clinic','royal rattanak','smc','health clinic pp'],
   },
   {catId:'cat_education', kw:[
     // 中文
@@ -576,7 +602,10 @@ const KEYWORD_MAP = [
     'school','college','university','course','class','lesson','tuition',
     'book','stationery','exam','study','workshop','seminar','training',
     'tutorial','tutor','fee','education','degree','diploma','certificate',
-    'learn','lecture','assignment','library','pencil','pen','notebook'],
+    'learn','lecture','assignment','library','pencil','pen','notebook',
+    // 柬埔寨
+    'norton university','rupp','ppu','aii','westline','paragon','american university',
+    'cambodia academy','setec'],
   },
   {catId:'cat_utilities', kw:[
     // 中文
@@ -584,7 +613,9 @@ const KEYWORD_MAP = [
     // 英文
     'electricity','water','internet','broadband','wifi','bill','utility',
     'tnb','syabas','unifi','streamyx','time fibre','maxis home','celcom home',
-    'natural gas','gas bill','sewage','indah water'],
+    'natural gas','gas bill','sewage','indah water',
+    // 柬埔寨
+    'edc','electricite du cambodge','ppwsa','cambodia water','electric bill pp'],
   },
   {catId:'cat_phone', kw:[
     // 中文
@@ -592,7 +623,10 @@ const KEYWORD_MAP = [
     // 英文
     'phone bill','phone plan','data plan','prepaid','postpaid','top up',
     'reload','sim','mobile plan','maxis','celcom','digi','umobile',
-    'hotlink','yes','u mobile','telco','roaming','international call'],
+    'hotlink','yes','u mobile','telco','roaming','international call',
+    // 柬埔寨
+    'smart axiata','smart luy','metfone','cootel','seatel','cellcard',
+    'qb','cambodia telco','cambodia sim','khmer phone'],
   },
   {catId:'cat_travel', kw:[
     // 中文
@@ -604,7 +638,10 @@ const KEYWORD_MAP = [
     'sightseeing','passport','visa','luggage','souvenir','airfare','cruise',
     'japan','korea','thailand','singapore','taiwan','europe','australia',
     'london','paris','tokyo','bangkok','bali','booking','expedia','agoda',
-    'klook','airasia','malindo','mas','firefly','attraction','tour package'],
+    'klook','airasia','malindo','mas','firefly','attraction','tour package',
+    // 柬埔寨
+    'angkor wat','siem reap','phnom penh airport','cambodia travel',
+    'mekong','tonle sap','kampot','kep','koh rong','cambodia airlines','bassaka air'],
   },
   {catId:'cat_clothing', kw:[
     // 中文
@@ -632,6 +669,9 @@ const KEYWORD_MAP = [
     'stock','fund','dividend','interest','investment','crypto','bitcoin',
     'etf','profit','returns','unit trust','amanah saham','asb','epf','kwsp',
     'shares','forex','gold','emas',
+    // 柬埔寨
+    'aba bank','aba','acleda','wing','pi pay','pipay','true money','wing money',
+    'cambodia investment','phnom penh securities','csx','cambodia stock'],
   ]},
   {catId:'cat_parttime', kw:[
     '兼职','副业','稿费','设计费','咨询费',
@@ -698,7 +738,7 @@ function loadData(){
 function saveData(){ localStorage.setItem('expenseTracker_v2', JSON.stringify(data)); }
 
 // ===================== UTILS =====================
-const CUR_SYMBOLS = {HKD:'HK$',MYR:'RM ',USD:'US$',SGD:'S$ ',CNY:'¥',JPY:'¥',EUR:'€',GBP:'£',TWD:'NT$',THB:'฿',AUD:'A$'};
+const CUR_SYMBOLS = {HKD:'HK$',MYR:'RM ',USD:'US$',SGD:'S$ ',CNY:'¥',JPY:'¥',EUR:'€',GBP:'£',TWD:'NT$',THB:'฿',AUD:'A$',KHR:'៛',KRW:'₩',VND:'₫'};
 function symOf(cur){ return CUR_SYMBOLS[cur] || cur+' '; }
 function fmt(amt, cur){ return symOf(cur) + Number(amt).toFixed(2); }
 function getAcc(id){ return data.accounts.find(a=>a.id===id); }
