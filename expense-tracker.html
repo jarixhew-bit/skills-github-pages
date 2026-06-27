@@ -1118,8 +1118,9 @@ function clearAutoHint(){
 }
 
 function saveTx(){
-  const amt = parseFloat(document.getElementById('tx-amount').value);
-  if(!amt || amt<=0){ toast('请输入金额'); return; }
+  const raw = document.getElementById('tx-amount').value.trim();
+  const amt = parseFloat(raw);
+  if(raw==='' || isNaN(amt) || amt<0){ toast('请输入金额（可以填 0）'); return; }
   if(!state.selectedCatId){ toast('请选择类别'); return; }
   const acc = curAcc(); if(!acc) return;
 
