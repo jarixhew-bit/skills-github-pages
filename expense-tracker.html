@@ -387,12 +387,19 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <!-- description -->
     <div class="form-group">
       <label class="form-label">描述（选填）</label>
-      <input class="form-input" id="tx-desc" type="text" placeholder="例：午餐、打的…">
+      <input class="form-input" id="tx-desc" type="text" placeholder="例：午餐、打的…" oninput="autoDetectCat(this.value)">
     </div>
     <!-- category -->
     <div class="form-group">
       <label class="form-label">类别</label>
       <div id="cat-grid" class="cat-grid"></div>
+      <div id="cat-auto-hint" style="display:none;margin-top:8px;padding:6px 10px;
+        background:var(--p2);border-radius:8px;font-size:12px;color:var(--p);
+        display:none;align-items:center;gap:6px">
+        🤖 已自动识别为「<span id="cat-auto-name"></span>」
+        <span style="margin-left:auto;color:var(--sub);cursor:pointer"
+          onclick="clearAutoHint()">✕</span>
+      </div>
     </div>
     <!-- date -->
     <div class="form-group">
@@ -443,6 +450,9 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
         <option value="TWD">TWD — 台币 NT$</option>
         <option value="THB">THB — 泰铢 ฿</option>
         <option value="AUD">AUD — 澳元 A$</option>
+        <option value="KHR">KHR — 柬币 ៛</option>
+        <option value="KRW">KRW — 韩元 ₩</option>
+        <option value="VND">VND — 越南盾 ₫</option>
       </select>
     </div>
     <div class="form-group">
@@ -489,6 +499,187 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 // ===================== DATA =====================
 const COLORS = ['#6C63FF','#FF6584','#F7B731','#20BF6B','#FC5C65','#45AAF2','#A55EEA','#FD9644','#26DE81','#4B7BEC'];
 
+const KEYWORD_MAP = [
+  {catId:'cat_food', kw:[
+    // 中文
+    '饭','餐','吃','早餐','午餐','晚餐','宵夜','夜宵','外卖','咖啡','奶茶','茶','饮料',
+    '餐厅','食堂','火锅','烧烤','寿司','拉面','汉堡','披萨','便当','包子','肠粉',
+    '炒饭','炒菜','炸鸡','薯条','沙拉','三明治','点心','甜点','蛋糕','零食','饼干',
+    '水果','快餐','打包','自助餐','牛肉','猪肉','鸡肉','海鲜','面条','粥','糖水',
+    '冰淇淋','港式','茶餐厅','果汁','汤','锅','麦当劳','肯德基','星巴克',
+    // 英文
+    'lunch','dinner','breakfast','supper','brunch','food','eat','meal',
+    'restaurant','cafe','coffee','tea','drinks','drink','snack','dessert',
+    'cake','bread','rice','noodle','burger','sandwich','salad','hawker',
+    'kopitiam','mamak','dim sum','buffet','pizza','kfc','mcdonald','starbucks',
+    'bubble tea','boba','juice','soup','seafood','chicken','beef','pork',
+    'sushi','ramen','pasta','taco','wrap','hotpot','bbq','grill','bakery',
+    'biscuit','cookie','ice cream','yogurt','milk tea','takeaway','takeout',
+    'delivery','foodpanda','grabfood','shopeefood',
+    // 柬埔寨
+    'nham24','nham 24','bai','num','samlor','amok','lok lak','kuy teav',
+    'nom banh chok','banh mi','bai sach chrouk','num pang','joma','brown coffee',
+    'the shop','vann\'s','sundown','eclipse','romdoul','phsar','market food'],
+  },
+  {catId:'cat_transport', kw:[
+    // 中文
+    '的士','打的','出租车','地铁','巴士','公交','停车','油费','加油','高铁',
+    '动车','火车','车票','飞机','机票','顺风车','滴滴','摩托','单车','电单车',
+    '过路费','隧道费','轮渡','船票',
+    // 英文
+    'bus','train','taxi','cab','uber','grab','lrt','mrt','ktm','komuter',
+    'parking','petrol','fuel','gas','toll','flight','ferry','boat','ship',
+    'car park','e-hailing','rapid','myrapid','bas','drive','car','ride',
+    'motorcycle','bicycle','scooter','tram','monorail','airport','express',
+    'highway','fare','transit','transport','vehicle','pump','ron95','ron97',
+    'diesel','shell','petronas','bhp','caltex',
+    // 柬埔寨
+    'passapp','pass app','tuk tuk','tuktuk','remork','tuk-tuk','moto','motodop',
+    'remorque','camup','itsumo','exnet','sorya transport','pp bus',
+    'phnom penh taxi','cambodia taxi'],
+  },
+  {catId:'cat_shopping', kw:[
+    // 中文
+    '超市','网购','购物','百货','商场','淘宝','京东','亚马逊','日用品',
+    '生活用品','卫生纸','洗发','洗衣','清洁','家居','宜家','便利店','全家',
+    // 英文
+    'shop','store','shopping','supermarket','market','mall','online','buy',
+    'purchase','groceries','grocery','convenience','hardware','electronic',
+    'gadget','amazon','shopee','lazada','temu','ikea','giant','tesco','aeon',
+    'mydin','jaya','village','99','cold storage','ben\'s','lotus','econsave',
+    '7-11','711','familymart','kk mart','99 speedmart','household','laundry',
+    'detergent','shampoo','toiletries',
+    // 柬埔寨
+    'lucky supermarket','lucky mall','aeon mall','aeon','makro','orussey',
+    'olympic market','central market','russian market','night market',
+    'phsar thmei','phsar tuol tom poung','phsar reatrey','sorya','exchange square',
+    'chip mong','the garden city','factory outlet','monument books'],
+  },
+  {catId:'cat_housing', kw:[
+    // 中文
+    '租金','房租','物业','管理费','宾馆','旅馆','押金','装修','家具','维修','房贷','按揭',
+    // 英文
+    'rent','rental','house','apartment','condo','maintenance','repair','fix',
+    'mortgage','hotel','airbnb','hostel','lodging','accommodation','utility',
+    'management fee','deposit','renovation','furniture','plumber','electrician',
+    // 柬埔寨
+    'borey','flat','shophouse','phnom penh rent','villa','bungalow'],
+  },
+  {catId:'cat_entertainment', kw:[
+    // 中文
+    '电影','游戏','唱歌','卡拉ok','演唱会','音乐会','展览','博物馆','游乐',
+    '游玩','娱乐','迪士尼','会员','订阅','密室','桌游','撞球','高尔夫','保龄球',
+    // 英文
+    'movie','cinema','game','karaoke','ktv','concert','show','ticket','event',
+    'theme park','streaming','subscription','netflix','spotify','disney',
+    'youtube','bilibili','hbo','apple tv','gaming','steam','playstation',
+    'xbox','escape room','bowling','golf','pool','snooker','darts','arcade',
+    'waterpark','zoo','aquarium','museum','gallery','festival','gig',
+    // 柬埔寨
+    'naga world','nagaworld','naga casino','eclipse sky bar','pontoon',
+    'level 9','sevens','oskar bistro','the pontoon','heart of darkness',
+    'angkor wat ticket','siem reap tour','pub street'],
+  },
+  {catId:'cat_medical', kw:[
+    // 中文
+    '医院','医生','药','诊所','看病','检查','手术','牙医','打针','血压',
+    '体检','配药','护理','眼镜','隐形眼镜',
+    // 英文
+    'doctor','clinic','hospital','medicine','pharmacy','dental','dentist',
+    'checkup','vaccine','injection','pill','supplement','optician','glasses',
+    'contact lens','health','medical','xray','scan','blood test','pcr',
+    'watsons','guardian','caring','alpro','ubat','klinik','physiotherapy',
+    'specialist','surgery','consultation','prescription',
+    // 柬埔寨
+    'sunrise japan hospital','royal phnom penh hospital','calmette',
+    'raffles medical','sen sok international','nida medical','tropical',
+    'unity clinic','royal rattanak','smc','health clinic pp'],
+  },
+  {catId:'cat_education', kw:[
+    // 中文
+    '学费','书','课','培训','补习','学习','课程','考试','文具','资料','学校','上课','老师',
+    // 英文
+    'school','college','university','course','class','lesson','tuition',
+    'book','stationery','exam','study','workshop','seminar','training',
+    'tutorial','tutor','fee','education','degree','diploma','certificate',
+    'learn','lecture','assignment','library','pencil','pen','notebook',
+    // 柬埔寨
+    'norton university','rupp','ppu','aii','westline','paragon','american university',
+    'cambodia academy','setec'],
+  },
+  {catId:'cat_utilities', kw:[
+    // 中文
+    '水费','电费','煤气','宽带','网费','水务','电力','时代',
+    // 英文
+    'electricity','water','internet','broadband','wifi','bill','utility',
+    'tnb','syabas','unifi','streamyx','time fibre','maxis home','celcom home',
+    'natural gas','gas bill','sewage','indah water',
+    // 柬埔寨
+    'edc','electricite du cambodge','ppwsa','cambodia water','electric bill pp'],
+  },
+  {catId:'cat_phone', kw:[
+    // 中文
+    '话费','手机费','电话费','流量','月租','套餐','数据','充值',
+    // 英文
+    'phone bill','phone plan','data plan','prepaid','postpaid','top up',
+    'reload','sim','mobile plan','maxis','celcom','digi','umobile',
+    'hotlink','yes','u mobile','telco','roaming','international call',
+    // 柬埔寨
+    'smart axiata','smart luy','metfone','cootel','seatel','cellcard',
+    'qb','cambodia telco','cambodia sim','khmer phone'],
+  },
+  {catId:'cat_travel', kw:[
+    // 中文
+    '旅游','旅行','度假','出游','景点','门票','签证','护照','行李',
+    '伴手礼','纪念品','出国','出境','海外','日本','韩国','泰国',
+    '新加坡','香港','台湾','欧洲','澳洲','度假村',
+    // 英文
+    'travel','trip','holiday','vacation','hotel','resort','flight','tour',
+    'sightseeing','passport','visa','luggage','souvenir','airfare','cruise',
+    'japan','korea','thailand','singapore','taiwan','europe','australia',
+    'london','paris','tokyo','bangkok','bali','booking','expedia','agoda',
+    'klook','airasia','malindo','mas','firefly','attraction','tour package',
+    // 柬埔寨
+    'angkor wat','siem reap','phnom penh airport','cambodia travel',
+    'mekong','tonle sap','kampot','kep','koh rong','cambodia airlines','bassaka air'],
+  },
+  {catId:'cat_clothing', kw:[
+    // 中文
+    '衣服','鞋','裤','裙','外套','运动服','包包','皮包','手袋','服装',
+    '时装','球鞋','袜子','内衣','帽子','围巾','手表','首饰','化妆品',
+    '护肤','美容','理发','剪发',
+    // 英文
+    'clothes','shirt','pants','dress','shoes','bag','fashion','wear',
+    'outfit','accessory','watch','jewelry','makeup','skincare','haircut',
+    'salon','barber','tshirt','jeans','jacket','coat','sneakers','heels',
+    'socks','underwear','hat','scarf','handbag','wallet','perfume',
+    'lipstick','foundation','sunscreen','lotion','zara','h&m','uniqlo',
+    'nike','adidas','cotton on','padini'],
+  },
+  {catId:'cat_salary', kw:[
+    '工资','薪水','月薪','薪资','发工资','底薪',
+    'salary','pay','wage','income','paycheck','gaji','monthly pay',
+  ]},
+  {catId:'cat_bonus', kw:[
+    '奖金','年终','花红','提成','佣金',
+    'bonus','commission','incentive','reward','allowance','13th month',
+  ]},
+  {catId:'cat_investment', kw:[
+    '股票','基金','利息','分红','收益','回报','理财','投资','比特币',
+    'stock','fund','dividend','interest','investment','crypto','bitcoin',
+    'etf','profit','returns','unit trust','amanah saham','asb','epf','kwsp',
+    'shares','forex','gold','emas',
+    // 柬埔寨
+    'aba bank','aba','acleda','wing','pi pay','pipay','true money','wing money',
+    'cambodia investment','phnom penh securities','csx','cambodia stock'],
+  ]},
+  {catId:'cat_parttime', kw:[
+    '兼职','副业','稿费','设计费','咨询费',
+    'freelance','part time','partime','side income','gig','consulting',
+    'commission','project fee','design fee',
+  ]},
+];
+
 const DEFAULT_DATA = {
   currentAccountId: null,
   accounts: [
@@ -531,7 +722,8 @@ let state = {
   txType: 'expense',
   selectedCatId: null,
   selectedAccColor: COLORS[0],
-  pieChart: null
+  pieChart: null,
+  catManuallySelected: false
 };
 
 // ===================== PERSIST =====================
@@ -546,7 +738,7 @@ function loadData(){
 function saveData(){ localStorage.setItem('expenseTracker_v2', JSON.stringify(data)); }
 
 // ===================== UTILS =====================
-const CUR_SYMBOLS = {HKD:'HK$',MYR:'RM ',USD:'US$',SGD:'S$ ',CNY:'¥',JPY:'¥',EUR:'€',GBP:'£',TWD:'NT$',THB:'฿',AUD:'A$'};
+const CUR_SYMBOLS = {HKD:'HK$',MYR:'RM ',USD:'US$',SGD:'S$ ',CNY:'¥',JPY:'¥',EUR:'€',GBP:'£',TWD:'NT$',THB:'฿',AUD:'A$',KHR:'៛',KRW:'₩',VND:'₫'};
 function symOf(cur){ return CUR_SYMBOLS[cur] || cur+' '; }
 function fmt(amt, cur){ return symOf(cur) + Number(amt).toFixed(2); }
 function getAcc(id){ return data.accounts.find(a=>a.id===id); }
@@ -825,6 +1017,7 @@ function showAddTx(){
   state.editingTxId = null;
   state.txType = 'expense';
   state.selectedCatId = null;
+  state.catManuallySelected = false;
   document.getElementById('tx-modal-title').textContent = '新增记录';
   document.getElementById('tx-amount').value = '';
   document.getElementById('tx-desc').value = '';
@@ -832,6 +1025,7 @@ function showAddTx(){
   document.getElementById('tx-delete-wrap').style.display = 'none';
   document.getElementById('type-exp').classList.add('active');
   document.getElementById('type-inc').classList.remove('active');
+  hideAutoHint();
   renderCatGrid();
   showModal('modal-add-tx');
   setTimeout(()=>document.getElementById('tx-amount').focus(), 300);
@@ -857,9 +1051,13 @@ function editTx(id){
 function setTxType(type){
   state.txType = type;
   state.selectedCatId = null;
+  state.catManuallySelected = false;
   document.getElementById('type-exp').classList.toggle('active', type==='expense');
   document.getElementById('type-inc').classList.toggle('active', type==='income');
   renderCatGrid();
+  // re-detect with current description after switching type
+  const desc = document.getElementById('tx-desc').value;
+  if(desc.trim()) autoDetectCat(desc); else hideAutoHint();
 }
 
 function renderCatGrid(){
@@ -875,12 +1073,54 @@ function renderCatGrid(){
 
 function selectCat(id){
   state.selectedCatId = id;
+  state.catManuallySelected = true;
+  hideAutoHint();
   renderCatGrid();
 }
 
+function autoDetectCat(desc){
+  if(state.catManuallySelected) return;
+  const text = desc.toLowerCase();
+  if(!text.trim()){ hideAutoHint(); return; }
+
+  let bestCatId = null, bestScore = 0;
+  for(const entry of KEYWORD_MAP){
+    // only match categories of current tx type
+    const cat = data.categories.find(c=>c.id===entry.catId);
+    if(!cat || cat.type!==state.txType) continue;
+    let score = 0;
+    for(const kw of entry.kw){
+      if(text.includes(kw.toLowerCase())) score += kw.length; // longer kw = higher weight
+    }
+    if(score > bestScore){ bestScore = score; bestCatId = entry.catId; }
+  }
+
+  if(bestCatId && bestScore > 0){
+    state.selectedCatId = bestCatId;
+    renderCatGrid();
+    const cat = data.categories.find(c=>c.id===bestCatId);
+    const hint = document.getElementById('cat-auto-hint');
+    document.getElementById('cat-auto-name').textContent = cat ? cat.icon+' '+cat.name : '';
+    hint.style.display = 'flex';
+  } else {
+    hideAutoHint();
+  }
+}
+
+function hideAutoHint(){
+  document.getElementById('cat-auto-hint').style.display = 'none';
+}
+function clearAutoHint(){
+  state.catManuallySelected = true;
+  state.selectedCatId = null;
+  renderCatGrid();
+  hideAutoHint();
+}
+
 function saveTx(){
-  const amt = parseFloat(document.getElementById('tx-amount').value);
-  if(!amt || amt<=0){ toast('请输入金额'); return; }
+  const raw = document.getElementById('tx-amount').value.trim();
+  const amt = parseFloat(raw);
+  if(raw==='' || isNaN(amt) || amt<0){ toast('请输入金额（可以填 0）'); return; }
   if(!state.selectedCatId){ toast('请选择类别'); return; }
   const acc = curAcc(); if(!acc) return;
 
