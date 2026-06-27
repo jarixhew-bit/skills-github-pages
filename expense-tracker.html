@@ -497,21 +497,147 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 const COLORS = ['#6C63FF','#FF6584','#F7B731','#20BF6B','#FC5C65','#45AAF2','#A55EEA','#FD9644','#26DE81','#4B7BEC'];
 
 const KEYWORD_MAP = [
-  {catId:'cat_food', kw:['饭','餐','吃','早餐','午餐','晚餐','宵夜','夜宵','外卖','咖啡','奶茶','茶','饮料','餐厅','食堂','火锅','烧烤','寿司','拉面','汉堡','披萨','pizza','便当','包子','肠粉','炒饭','炒菜','炸鸡','薯条','沙拉','三明治','点心','dim sum','甜点','蛋糕','零食','饼干','水果','kfc','麦当劳','肯德基','星巴克','starbucks','快餐','打包','自助餐','buffet','牛肉','猪肉','鸡肉','海鲜','面条','粥','糖水','冰淇淋','港式','茶餐厅','冰','咖','奶','果汁','汤','锅']},
-  {catId:'cat_transport', kw:['的士','打的','出租车','uber','grab','地铁','巴士','公交','bus','mtr','lrt','停车','油费','加油','高铁','动车','火车','车票','地铁票','飞机','机票','顺风车','滴滴','taxi','cab','摩托','单车','电单车','过路费','隧道费','轮渡','船票','toll','parking','petrol','ron','grab','bas','lrt','komuter','ktm']},
-  {catId:'cat_shopping', kw:['超市','网购','购物','百货','商场','mall','淘宝','京东','amazon','亚马逊','shopee','lazada','temu','日用品','生活用品','卫生纸','洗发','洗衣','清洁','家居','ikea','宜家','便利店','7-11','全家','711','minimart','giant','tesco','aeon','mydin','jaya']},
-  {catId:'cat_housing', kw:['租金','房租','水电','物业','管理费','酒店','hotel','住宿','airbnb','宾馆','旅馆','押金','装修','家具','维修','房贷','按揭','mortgage']},
-  {catId:'cat_entertainment', kw:['电影','cinema','游戏','ktv','唱歌','卡拉ok','演唱会','concert','音乐会','展览','博物馆','游乐','游玩','娱乐','netflix','spotify','bilibili','disney','迪士尼','youtube','会员','订阅','escape room','密室','桌游','撞球','斯诺克','高尔夫','bowling','保龄球']},
-  {catId:'cat_medical', kw:['医院','医生','药','诊所','看病','检查','手术','牙医','打针','血压','体检','配药','护理','眼镜','隐形眼镜','pharmacy','watsons','guardian','clinic','doctor','hospital','ubat','ubat','klinik']},
-  {catId:'cat_education', kw:['学费','tuition','书','课','培训','补习','学习','课程','考试','文具','资料','学校','上课','老师','tutorial','tutor','workshop','seminar']},
-  {catId:'cat_utilities', kw:['水费','电费','煤气','gas','宽带','wifi','网费','tnb','syabas','iqiyi','unifi','streamyx','maxis home','时代','水务','电力']},
-  {catId:'cat_phone', kw:['话费','手机费','电话费','流量','月租','sim','套餐','maxis','celcom','digi','umobile','hotlink','prepaid','postpaid','数据','充值','topup']},
-  {catId:'cat_travel', kw:['旅游','旅行','度假','出游','景点','门票','签证','护照','行李','伴手礼','纪念品','出国','出境','海外','japan','日本','韩国','泰国','新加坡','香港','台湾','欧洲','澳洲','hotel','resort','度假村']},
-  {catId:'cat_clothing', kw:['衣服','鞋','裤','裙','外套','t恤','运动服','包包','皮包','手袋','服装','时装','球鞋','袜子','内衣','帽子','围巾','手表','首饰','化妆品','护肤','美容','salon','理发','剪发']},
-  {catId:'cat_salary', kw:['工资','薪水','月薪','薪资','发工资','底薪','salary','gaji','pay']},
-  {catId:'cat_bonus', kw:['奖金','年终','花红','提成','佣金','commission','bonus','incentive']},
-  {catId:'cat_investment', kw:['股票','基金','利息','分红','收益','回报','理财','投资','dividend','interest','profit','crypto','比特币','etf']},
-  {catId:'cat_parttime', kw:['兼职','freelance','副业','稿费','设计费','咨询费','part time','partime']},
+  {catId:'cat_food', kw:[
+    // 中文
+    '饭','餐','吃','早餐','午餐','晚餐','宵夜','夜宵','外卖','咖啡','奶茶','茶','饮料',
+    '餐厅','食堂','火锅','烧烤','寿司','拉面','汉堡','披萨','便当','包子','肠粉',
+    '炒饭','炒菜','炸鸡','薯条','沙拉','三明治','点心','甜点','蛋糕','零食','饼干',
+    '水果','快餐','打包','自助餐','牛肉','猪肉','鸡肉','海鲜','面条','粥','糖水',
+    '冰淇淋','港式','茶餐厅','果汁','汤','锅','麦当劳','肯德基','星巴克',
+    // 英文
+    'lunch','dinner','breakfast','supper','brunch','food','eat','meal',
+    'restaurant','cafe','coffee','tea','drinks','drink','snack','dessert',
+    'cake','bread','rice','noodle','burger','sandwich','salad','hawker',
+    'kopitiam','mamak','dim sum','buffet','pizza','kfc','mcdonald','starbucks',
+    'bubble tea','boba','juice','soup','seafood','chicken','beef','pork',
+    'sushi','ramen','pasta','taco','wrap','hotpot','bbq','grill','bakery',
+    'biscuit','cookie','ice cream','yogurt','milk tea','takeaway','takeout',
+    'delivery','foodpanda','grabfood','shopeefood'],
+  },
+  {catId:'cat_transport', kw:[
+    // 中文
+    '的士','打的','出租车','地铁','巴士','公交','停车','油费','加油','高铁',
+    '动车','火车','车票','飞机','机票','顺风车','滴滴','摩托','单车','电单车',
+    '过路费','隧道费','轮渡','船票',
+    // 英文
+    'bus','train','taxi','cab','uber','grab','lrt','mrt','ktm','komuter',
+    'parking','petrol','fuel','gas','toll','flight','ferry','boat','ship',
+    'car park','e-hailing','rapid','myrapid','bas','drive','car','ride',
+    'motorcycle','bicycle','scooter','tram','monorail','airport','express',
+    'highway','fare','transit','transport','vehicle','pump','ron95','ron97',
+    'diesel','shell','petronas','bhp','caltex'],
+  },
+  {catId:'cat_shopping', kw:[
+    // 中文
+    '超市','网购','购物','百货','商场','淘宝','京东','亚马逊','日用品',
+    '生活用品','卫生纸','洗发','洗衣','清洁','家居','宜家','便利店','全家',
+    // 英文
+    'shop','store','shopping','supermarket','market','mall','online','buy',
+    'purchase','groceries','grocery','convenience','hardware','electronic',
+    'gadget','amazon','shopee','lazada','temu','ikea','giant','tesco','aeon',
+    'mydin','jaya','village','99','cold storage','ben\'s','lotus','econsave',
+    '7-11','711','familymart','kk mart','99 speedmart','household','laundry',
+    'detergent','shampoo','toiletries'],
+  },
+  {catId:'cat_housing', kw:[
+    // 中文
+    '租金','房租','物业','管理费','宾馆','旅馆','押金','装修','家具','维修','房贷','按揭',
+    // 英文
+    'rent','rental','house','apartment','condo','maintenance','repair','fix',
+    'mortgage','hotel','airbnb','hostel','lodging','accommodation','utility',
+    'management fee','deposit','renovation','furniture','plumber','electrician'],
+  },
+  {catId:'cat_entertainment', kw:[
+    // 中文
+    '电影','游戏','唱歌','卡拉ok','演唱会','音乐会','展览','博物馆','游乐',
+    '游玩','娱乐','迪士尼','会员','订阅','密室','桌游','撞球','高尔夫','保龄球',
+    // 英文
+    'movie','cinema','game','karaoke','ktv','concert','show','ticket','event',
+    'theme park','streaming','subscription','netflix','spotify','disney',
+    'youtube','bilibili','hbo','apple tv','gaming','steam','playstation',
+    'xbox','escape room','bowling','golf','pool','snooker','darts','arcade',
+    'waterpark','zoo','aquarium','museum','gallery','festival','gig'],
+  },
+  {catId:'cat_medical', kw:[
+    // 中文
+    '医院','医生','药','诊所','看病','检查','手术','牙医','打针','血压',
+    '体检','配药','护理','眼镜','隐形眼镜',
+    // 英文
+    'doctor','clinic','hospital','medicine','pharmacy','dental','dentist',
+    'checkup','vaccine','injection','pill','supplement','optician','glasses',
+    'contact lens','health','medical','xray','scan','blood test','pcr',
+    'watsons','guardian','caring','alpro','ubat','klinik','physiotherapy',
+    'specialist','surgery','consultation','prescription'],
+  },
+  {catId:'cat_education', kw:[
+    // 中文
+    '学费','书','课','培训','补习','学习','课程','考试','文具','资料','学校','上课','老师',
+    // 英文
+    'school','college','university','course','class','lesson','tuition',
+    'book','stationery','exam','study','workshop','seminar','training',
+    'tutorial','tutor','fee','education','degree','diploma','certificate',
+    'learn','lecture','assignment','library','pencil','pen','notebook'],
+  },
+  {catId:'cat_utilities', kw:[
+    // 中文
+    '水费','电费','煤气','宽带','网费','水务','电力','时代',
+    // 英文
+    'electricity','water','internet','broadband','wifi','bill','utility',
+    'tnb','syabas','unifi','streamyx','time fibre','maxis home','celcom home',
+    'natural gas','gas bill','sewage','indah water'],
+  },
+  {catId:'cat_phone', kw:[
+    // 中文
+    '话费','手机费','电话费','流量','月租','套餐','数据','充值',
+    // 英文
+    'phone bill','phone plan','data plan','prepaid','postpaid','top up',
+    'reload','sim','mobile plan','maxis','celcom','digi','umobile',
+    'hotlink','yes','u mobile','telco','roaming','international call'],
+  },
+  {catId:'cat_travel', kw:[
+    // 中文
+    '旅游','旅行','度假','出游','景点','门票','签证','护照','行李',
+    '伴手礼','纪念品','出国','出境','海外','日本','韩国','泰国',
+    '新加坡','香港','台湾','欧洲','澳洲','度假村',
+    // 英文
+    'travel','trip','holiday','vacation','hotel','resort','flight','tour',
+    'sightseeing','passport','visa','luggage','souvenir','airfare','cruise',
+    'japan','korea','thailand','singapore','taiwan','europe','australia',
+    'london','paris','tokyo','bangkok','bali','booking','expedia','agoda',
+    'klook','airasia','malindo','mas','firefly','attraction','tour package'],
+  },
+  {catId:'cat_clothing', kw:[
+    // 中文
+    '衣服','鞋','裤','裙','外套','运动服','包包','皮包','手袋','服装',
+    '时装','球鞋','袜子','内衣','帽子','围巾','手表','首饰','化妆品',
+    '护肤','美容','理发','剪发',
+    // 英文
+    'clothes','shirt','pants','dress','shoes','bag','fashion','wear',
+    'outfit','accessory','watch','jewelry','makeup','skincare','haircut',
+    'salon','barber','tshirt','jeans','jacket','coat','sneakers','heels',
+    'socks','underwear','hat','scarf','handbag','wallet','perfume',
+    'lipstick','foundation','sunscreen','lotion','zara','h&m','uniqlo',
+    'nike','adidas','cotton on','padini'],
+  },
+  {catId:'cat_salary', kw:[
+    '工资','薪水','月薪','薪资','发工资','底薪',
+    'salary','pay','wage','income','paycheck','gaji','monthly pay',
+  ]},
+  {catId:'cat_bonus', kw:[
+    '奖金','年终','花红','提成','佣金',
+    'bonus','commission','incentive','reward','allowance','13th month',
+  ]},
+  {catId:'cat_investment', kw:[
+    '股票','基金','利息','分红','收益','回报','理财','投资','比特币',
+    'stock','fund','dividend','interest','investment','crypto','bitcoin',
+    'etf','profit','returns','unit trust','amanah saham','asb','epf','kwsp',
+    'shares','forex','gold','emas',
+  ]},
+  {catId:'cat_parttime', kw:[
+    '兼职','副业','稿费','设计费','咨询费',
+    'freelance','part time','partime','side income','gig','consulting',
+    'commission','project fee','design fee',
+  ]},
 ];
 
 const DEFAULT_DATA = {
