@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>记账本</title>
-<meta name="theme-color" content="#6C63FF">
+<meta name="theme-color" content="#1E7A42">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="记账本">
+<link rel="manifest" href="expense-tracker.webmanifest">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1641,32 +1642,16 @@ function setupPWA(){
 
   const dataUrl = canvas.toDataURL('image/png');
 
-  // Apple touch icon (iOS)
+  // Apple touch icon (iOS home screen)
   const appleLink = document.createElement('link');
   appleLink.rel = 'apple-touch-icon';
   appleLink.href = dataUrl;
   document.head.appendChild(appleLink);
 
-  // Web app manifest (Android / Chrome)
-  const manifest = {
-    name: '记账本',
-    short_name: '记账本',
-    description: 'Multi-account expense tracker',
-    start_url: location.pathname,
-    scope: location.pathname,
-    display: 'standalone',
-    orientation: 'portrait',
-    background_color: '#1B6B3A',
-    theme_color: '#1B6B3A',
-    icons: [
-      {src: dataUrl, sizes: '512x512', type: 'image/png', purpose: 'any maskable'}
-    ]
-  };
-  const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
-  const mLink = document.createElement('link');
-  mLink.rel = 'manifest';
-  mLink.href = URL.createObjectURL(blob);
-  document.head.appendChild(mLink);
+  // Register service worker (enables Chrome Install prompt)
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('expense-tracker-sw.js').catch(()=>{});
+  }
 }
 
 function init(){
