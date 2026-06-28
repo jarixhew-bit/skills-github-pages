@@ -7,6 +7,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -242,10 +245,14 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-title">💰 记账本</div>
+  <div style="display:flex;align-items:center;gap:10px">
+  <div id="hdr-cloud" onclick="switchTab('settings')" title="Cloud Sync"
+    style="cursor:pointer;font-size:17px;opacity:0.45;line-height:1">☁️</div>
   <div class="acc-pill" onclick="openAccSwitch()">
     <div class="acc-dot" id="hdr-dot" style="background:#fff"></div>
     <span id="hdr-acc-name">加载中…</span>
     <span>▾</span>
+  </div>
   </div>
 </div>
 
@@ -323,6 +330,10 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 
 <!-- SETTINGS TAB -->
 <div class="tab" id="tab-settings">
+  <div class="setting-section">
+    <div class="setting-title">Cloud Sync</div>
+    <div class="card" id="sync-status" style="padding:16px;font-size:13px;color:var(--sub)">Loading…</div>
+  </div>
   <div class="setting-section">
     <div class="setting-title">账户管理</div>
     <div id="settings-accs"></div>
@@ -496,6 +507,124 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 <div class="toast" id="toast"></div>
 
 <script>
+// ===================== FIREBASE =====================
+firebase.initializeApp({
+  apiKey: "AIzaSyCfZ407K6xNTvIpqKoFa_lkULgmrZwKJBM",
+  authDomain: "my-expense-tracker-a1aee.firebaseapp.com",
+  projectId: "my-expense-tracker-a1aee",
+  storageBucket: "my-expense-tracker-a1aee.firebasestorage.app",
+  messagingSenderId: "83592751983",
+  appId: "1:83592751983:web:fb62d72257da794b4d569a"
+});
+const auth = firebase.auth();
+const db = firebase.firestore();
+let currentUser = null;
+let cloudSaving = false;
+
+async function signInWithGoogle(){
+  try{
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  }catch(e){
+    if(e.code==='auth/popup-blocked') toast('Please allow popups for this site');
+    else toast('Sign-in failed, please try again');
+  }
+}
+
+async function signOutUser(){
+  if(!confirm('Sign out? Your data stays on this device.')) return;
+  await auth.signOut();
+  toast('Signed out');
+}
+
+async function saveToCloud(){
+  if(!currentUser || cloudSaving) return;
+  cloudSaving = true;
+  try{
+    await db.collection('users').doc(currentUser.uid).set({
+      payload: JSON.stringify(data),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    setCloudIcon('synced');
+  }catch(e){
+    console.error('Cloud save:', e);
+    setCloudIcon('error');
+  }
+  cloudSaving = false;
+}
+
+async function syncFromCloud(){
+  if(!currentUser) return;
+  setCloudIcon('syncing');
+  try{
+    const snap = await db.collection('users').doc(currentUser.uid).get();
+    if(snap.exists){
+      const cloud = JSON.parse(snap.data().payload);
+      if(cloud && cloud.accounts && cloud.accounts.length>0){
+        data = cloud;
+        if(!data.currentAccountId && data.accounts.length>0)
+          data.currentAccountId = data.accounts[0].id;
+        localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
+        updateHeader();
+        if(state.currentTab==='overview') renderOverview();
+        if(state.currentTab==='transactions') renderTxList();
+        if(state.currentTab==='analytics') renderAnalytics();
+        toast('☁️ Synced from cloud');
+      }
+    } else {
+      await saveToCloud();
+      toast('☁️ Local data backed up to cloud');
+    }
+  }catch(e){
+    console.error('Cloud sync:', e);
+    toast('Sync failed — check connection');
+    setCloudIcon('error');
+  }
+  renderSyncSection();
+}
+
+function setCloudIcon(status){
+  const el = document.getElementById('hdr-cloud');
+  if(!el) return;
+  if(status==='synced')  { el.textContent='☁️'; el.style.opacity='1'; el.title='Synced'; }
+  if(status==='syncing') { el.textContent='🔄'; el.style.opacity='1'; el.title='Syncing…'; }
+  if(status==='error')   { el.textContent='⚠️'; el.style.opacity='1'; el.title='Sync error'; }
+  if(status==='off')     { el.textContent='☁️'; el.style.opacity='0.3'; el.title='Not signed in'; }
+}
+
+function renderSyncSection(){
+  const el = document.getElementById('sync-status');
+  if(!el) return;
+  if(currentUser){
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <img src="${currentUser.photoURL||''}" style="width:42px;height:42px;border-radius:50%;background:var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600">${currentUser.displayName||'User'}</div>
+          <div style="font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${currentUser.email}</div>
+          <div style="font-size:11px;color:var(--inc);margin-top:2px">☁️ Cloud sync active</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="syncFromCloud()">↓ Pull from cloud</button>
+        <button class="btn btn-outline btn-sm" onclick="saveToCloud()">↑ Push to cloud</button>
+        <button class="btn btn-danger btn-sm" onclick="signOutUser()">Sign out</button>
+      </div>`;
+  } else {
+    el.innerHTML = `
+      <div style="font-size:13px;color:var(--sub);margin-bottom:12px">
+        Not signed in — data is on this device only
+      </div>
+      <button class="btn btn-primary" onclick="signInWithGoogle()"
+        style="display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="18" height="18" viewBox="0 0 48 48">
+          <path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
+        </svg>
+        Sign in with Google
+      </button>`;
+  }
+}
+
 // ===================== DATA =====================
 const COLORS = ['#6C63FF','#FF6584','#F7B731','#20BF6B','#FC5C65','#45AAF2','#A55EEA','#FD9644','#26DE81','#4B7BEC'];
 
@@ -735,7 +864,10 @@ function loadData(){
       data.currentAccountId = data.accounts[0].id;
   }catch(e){ data = JSON.parse(JSON.stringify(DEFAULT_DATA)); }
 }
-function saveData(){ localStorage.setItem('expenseTracker_v2', JSON.stringify(data)); }
+function saveData(){
+  localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
+  saveToCloud();
+}
 
 // ===================== UTILS =====================
 const CUR_SYMBOLS = {HKD:'HK$',MYR:'RM ',USD:'US$',SGD:'S$ ',CNY:'¥',JPY:'¥',EUR:'€',GBP:'£',TWD:'NT$',THB:'฿',AUD:'A$',KHR:'៛',KRW:'₩',VND:'₫'};
@@ -970,6 +1102,7 @@ function renderAnalytics(){
 
 // ===================== SETTINGS =====================
 function renderSettings(){
+  renderSyncSection();
   renderSettingsAccs();
   renderSettingsCats();
 }
@@ -1411,6 +1544,19 @@ function init(){
     data.currentAccountId = data.accounts[0].id;
   updateHeader();
   renderOverview();
+  setCloudIcon('off');
+
+  auth.onAuthStateChanged(async user => {
+    currentUser = user;
+    if(user){
+      setCloudIcon('syncing');
+      await syncFromCloud();
+      setCloudIcon('synced');
+    } else {
+      setCloudIcon('off');
+    }
+    if(state.currentTab==='settings') renderSettings();
+  });
 }
 
 init();
