@@ -1,26 +1,22 @@
-# IBKR Sync
-
-Fetch the latest IBKR account balance and publish it to GitHub Pages so the expense tracker PWA shows the current balance.
+---
+description: Sync IBKR account balance to the expense tracker app. Fetches net liquidation value, cash, stock value and unrealized P&L from Interactive Brokers, then publishes to ibkr-snapshot.json on GitHub Pages so the mobile app shows the latest balance.
+---
 
 ## Steps
 
 1. Call `mcp__Interactive_Brokers_IBKR__get_account_summary` to get net liquidation value and key metrics.
-2. Call `mcp__Interactive_Brokers_IBKR__get_account_balances` to get cash and stock breakdown.
-3. Build a JSON object:
+2. Call `mcp__Interactive_Brokers_IBKR__get_account_balances` to get cash and stock breakdown. Use the USD row.
+3. Get the current SHA of `ibkr-snapshot.json` from GitHub using `mcp__github__get_file_contents` on `jarixhew-bit/skills-github-pages` main branch.
+4. Build updated JSON with current UTC timestamp:
    ```json
    {
-     "netLiquidation": <number>,
+     "netLiquidation": <number rounded to 2dp>,
      "currency": "USD",
      "cash": <number>,
      "stockValue": <number>,
      "unrealizedPnl": <number>,
-     "updatedAt": "<ISO timestamp>"
+     "updatedAt": "<current UTC ISO 8601 timestamp>"
    }
    ```
-4. Use `mcp__github__create_or_update_file` to write/update `ibkr-snapshot.json` in the `jarixhew-bit/skills-github-pages` repo on the `main` branch. Get the current file SHA first if the file already exists (use `mcp__github__get_file_contents`).
-5. Tell the user the balance and that it will appear in the app within ~1 minute.
-
-## Notes
-- Always use the BASE/USD row from `get_account_balances` for the numbers.
-- Round all numbers to 2 decimal places.
-- `updatedAt` should be the current UTC time in ISO 8601 format.
+5. Use `mcp__github__create_or_update_file` to write `ibkr-snapshot.json` to `jarixhew-bit/skills-github-pages` main branch with the SHA from step 3.
+6. Report to user: the balance amount and that it will appear in the app within ~1 minute.
