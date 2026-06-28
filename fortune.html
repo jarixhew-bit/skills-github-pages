@@ -468,20 +468,67 @@
     <h2>☯ 八字命理</h2>
     <label>出生日期</label>
     <input type="date" id="bz-date" max="2025-12-31">
-    <label>出生時辰</label>
-    <select id="bz-hour">
-      <option value="0">子時（23:00–01:00）</option>
-      <option value="1">丑時（01:00–03:00）</option>
-      <option value="2">寅時（03:00–05:00）</option>
-      <option value="3">卯時（05:00–07:00）</option>
-      <option value="4">辰時（07:00–09:00）</option>
-      <option value="5">巳時（09:00–11:00）</option>
-      <option value="6">午時（11:00–13:00）</option>
-      <option value="7">未時（13:00–15:00）</option>
-      <option value="8">申時（15:00–17:00）</option>
-      <option value="9">酉時（17:00–19:00）</option>
-      <option value="10">戌時（19:00–21:00）</option>
-      <option value="11">亥時（21:00–23:00）</option>
+    <label>出生時間（當地標準時間）</label>
+    <input type="time" id="bz-time" placeholder="HH:MM">
+    <label>出生地點</label>
+    <select id="bz-city" onchange="updateLongitude()">
+      <option value="">— 選擇城市 —</option>
+      <optgroup label="台灣">
+        <option value="121.5">台北／台灣（121.5°E）</option>
+        <option value="120.7">台中（120.7°E）</option>
+        <option value="120.3">台南（120.3°E）</option>
+        <option value="120.3">高雄（120.3°E）</option>
+      </optgroup>
+      <optgroup label="中國大陸">
+        <option value="116.4">北京（116.4°E）</option>
+        <option value="121.5">上海（121.5°E）</option>
+        <option value="113.3">廣州（113.3°E）</option>
+        <option value="114.1">深圳（114.1°E）</option>
+        <option value="104.1">成都（104.1°E）</option>
+        <option value="108.9">西安（108.9°E）</option>
+        <option value="106.5">重慶（106.5°E）</option>
+        <option value="120.2">杭州（120.2°E）</option>
+        <option value="117.0">南京（117.0°E）</option>
+        <option value="112.9">武漢（112.9°E）</option>
+        <option value="113.6">鄭州（113.6°E）</option>
+        <option value="126.5">哈爾濱（126.5°E）</option>
+        <option value="123.4">瀋陽（123.4°E）</option>
+        <option value="87.6">烏魯木齊（87.6°E）</option>
+        <option value="102.7">昆明（102.7°E）</option>
+      </optgroup>
+      <optgroup label="香港／澳門">
+        <option value="114.2">香港（114.2°E）</option>
+        <option value="113.5">澳門（113.5°E）</option>
+      </optgroup>
+      <optgroup label="海外">
+        <option value="103.8">新加坡（103.8°E）</option>
+        <option value="101.7">吉隆坡（101.7°E）</option>
+        <option value="100.5">曼谷（100.5°E）</option>
+        <option value="-118.2">洛杉磯（-118.2°E）</option>
+        <option value="-73.9">紐約（-73.9°E）</option>
+        <option value="-0.1">倫敦（-0.1°E）</option>
+        <option value="2.3">巴黎（2.3°E）</option>
+        <option value="139.7">東京（139.7°E）</option>
+        <option value="151.2">雪梨（151.2°E）</option>
+      </optgroup>
+    </select>
+    <label>或自行輸入經度</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="number" id="bz-longitude" placeholder="例：121.5（東經為正，西經為負）" step="0.1" min="-180" max="180" style="flex:1">
+      <span style="color:var(--muted);font-size:0.85rem;white-space:nowrap">°E</span>
+    </div>
+    <label>時區（UTC+）</label>
+    <select id="bz-timezone">
+      <option value="8" selected>UTC+8（台灣／中國／香港／新加坡）</option>
+      <option value="9">UTC+9（日本／韓國）</option>
+      <option value="7">UTC+7（泰國／越南）</option>
+      <option value="5.5">UTC+5:30（印度）</option>
+      <option value="0">UTC+0（英國）</option>
+      <option value="1">UTC+1（法國）</option>
+      <option value="-5">UTC-5（美國東部）</option>
+      <option value="-8">UTC-8（美國西部）</option>
+      <option value="10">UTC+10（澳洲東部）</option>
+      <option value="-3">UTC-3（巴西）</option>
     </select>
     <label>性別</label>
     <select id="bz-gender">
@@ -490,7 +537,7 @@
     </select>
     <button class="btn" onclick="calcBazi()">✦ 排八字 ✦</button>
   </div>
-  <div class="loading" id="bz-loading"><span class="spinner"></span>天干地支推算中…</div>
+  <div class="loading" id="bz-loading"><span class="spinner"></span>換算真太陽時中…</div>
   <div class="result" id="bz-result"></div>
 </div>
 
@@ -804,21 +851,110 @@ function getStemBranch(year, month, day, hour) {
   ];
 }
 
+// ── 真太陽時換算 ─────────────────────────────────────────
+function updateLongitude() {
+  const city = document.getElementById('bz-city');
+  const val = city.value;
+  if (val !== '') document.getElementById('bz-longitude').value = val;
+}
+
+// 均時差（Equation of Time），單位：分鐘
+// 使用Spencer(1971)公式近似，精度約±30秒
+function equationOfTime(doy) {
+  const B = (2 * Math.PI / 365) * (doy - 1);
+  const eot = 229.18 * (0.000075
+    + 0.001868 * Math.cos(B)   - 0.032077 * Math.sin(B)
+    - 0.014615 * Math.cos(2*B) - 0.04089  * Math.sin(2*B));
+  return eot; // minutes
+}
+
+// 一年中的第幾天
+function dayOfYear(year, month, day) {
+  const start = new Date(year, 0, 0);
+  const date  = new Date(year, month - 1, day);
+  return Math.floor((date - start) / 86400000);
+}
+
+// 輸入：標準時間(HH:MM)、出生日期、經度、時區offset(小時)
+// 輸出：{ trueSolarMinutes, displayStr, shifted: bool, newDate }
+function toTrueSolarTime(year, month, day, localHH, localMM, longitude, tzOffset) {
+  // 地方平時修正：(經度 - 時區標準經線) × 4 分鐘
+  const stdMeridian = tzOffset * 15;
+  const lonCorrection = (longitude - stdMeridian) * 4; // minutes
+
+  // 均時差
+  const doy = dayOfYear(year, month, day);
+  const eot = equationOfTime(doy);
+
+  // 真太陽時 = 標準時 + 經度修正 + 均時差
+  const stdMinutes = localHH * 60 + localMM;
+  const trueSolarMinutes = stdMinutes + lonCorrection + eot;
+
+  // 處理跨天
+  let tsmAdj = trueSolarMinutes;
+  let dateShift = 0;
+  if (tsmAdj < 0)    { tsmAdj += 1440; dateShift = -1; }
+  if (tsmAdj >= 1440){ tsmAdj -= 1440; dateShift = +1; }
+
+  const tHH = Math.floor(tsmAdj / 60) % 24;
+  const tMM = Math.round(tsmAdj % 60);
+  const pad = n => String(n).padStart(2,'0');
+  const displayStr = `${pad(tHH)}:${pad(tMM)}`;
+
+  // 調整後日期
+  const d = new Date(year, month-1, day);
+  d.setDate(d.getDate() + dateShift);
+  const newDate = { year: d.getFullYear(), month: d.getMonth()+1, day: d.getDate() };
+
+  return {
+    trueSolarMinutes: tsmAdj,
+    displayStr,
+    lonCorrection: Math.round(lonCorrection),
+    eot: Math.round(eot * 10) / 10,
+    dateShift,
+    newDate,
+  };
+}
+
+// 真太陽時（分鐘）→ 時辰index (0=子…11=亥)
+// 子時跨日：23:00–01:00 → 前半夜子(0) / 後半夜仍子
+function minutesToShichen(tsmMin) {
+  // 子時起點 23:00 = 1380min；每時辰2小時
+  // 先把時間轉成以「子時開始」為0的偏移
+  let adj = tsmMin - (23 * 60); // 相對子時起點的分鐘數
+  if (adj < 0) adj += 1440;
+  return Math.floor(adj / 120) % 12;
+}
+// ─────────────────────────────────────────────────────────
+
 function calcBazi() {
-  const dateVal = document.getElementById('bz-date').value;
-  const hourVal = parseInt(document.getElementById('bz-hour').value);
-  const gender = document.getElementById('bz-gender').value;
+  const dateVal  = document.getElementById('bz-date').value;
+  const timeVal  = document.getElementById('bz-time').value;
+  const lonInput = document.getElementById('bz-longitude').value;
+  const tzOffset = parseFloat(document.getElementById('bz-timezone').value);
+  const gender   = document.getElementById('bz-gender').value;
 
   if (!dateVal) { alert('請填寫出生日期'); return; }
+  if (!timeVal) { alert('請填寫出生時間（時：分）'); return; }
+  if (lonInput === '') { alert('請選擇城市或填寫經度'); return; }
 
   const [year, month, day] = dateVal.split('-').map(Number);
+  const [localHH, localMM] = timeVal.split(':').map(Number);
+  const longitude = parseFloat(lonInput);
+
   loading('bz-loading', true);
   document.getElementById('bz-result').classList.remove('show');
 
   setTimeout(() => {
     loading('bz-loading', false);
-    const rand = rng(year * 100 + month * 10 + day + hourVal);
-    const pillars = getStemBranch(year, month, day, hourVal);
+
+    // 換算真太陽時
+    const tst = toTrueSolarTime(year, month, day, localHH, localMM, longitude, tzOffset);
+    const { year: tYear, month: tMonth, day: tDay } = tst.newDate;
+    const shichen = minutesToShichen(tst.trueSolarMinutes);
+
+    const rand = rng(tYear * 100 + tMonth * 10 + tDay + shichen);
+    const pillars = getStemBranch(tYear, tMonth, tDay, shichen);
     const dayMaster = pillars[2].stem;
 
     // Count elements
@@ -862,8 +998,21 @@ function calcBazi() {
     const luckyColor = {木:'綠色、青色',火:'紅色、橙色',土:'黃色、棕色',金:'白色、銀色',水:'黑色、深藍'}[strongEl];
     const luckyNumber = {木:'3、8',火:'2、7',土:'5、10',金:'4、9',水:'1、6'}[strongEl];
 
+    const pad = n => String(n).padStart(2,'0');
+    const origTimeStr = `${pad(localHH)}:${pad(localMM)}`;
+    const dateShiftNote = tst.dateShift !== 0
+      ? `（已跨日至 ${tYear}/${tMonth}/${tDay}）` : '';
+
     showResult('bz-result', `
-      <h3>☯ ${year}年${month}月${day}日 ${branches[hourVal]}時 八字命盤</h3>
+      <h3>☯ ${year}年${month}月${day}日 八字命盤</h3>
+      <div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:0.88rem;line-height:2">
+        <div style="color:var(--gold);font-size:0.8rem;margin-bottom:4px">☀ 真太陽時換算過程</div>
+        標準時間：${origTimeStr}
+        &nbsp;→&nbsp; 經度修正：${tst.lonCorrection > 0 ? '+' : ''}${tst.lonCorrection} 分
+        &nbsp;+&nbsp; 均時差：${tst.eot > 0 ? '+' : ''}${tst.eot} 分<br>
+        <strong style="color:var(--gold)">真太陽時：${tst.displayStr} ${dateShiftNote}</strong>
+        &nbsp;→&nbsp; 時辰：<strong style="color:var(--gold)">${branches[shichen]}時</strong>
+      </div>
       ${pillarsHtml}
       <div class="section-title">▎五行分佈</div>
       ${elementsHtml}
