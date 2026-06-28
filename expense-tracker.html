@@ -577,7 +577,7 @@ async function syncFromCloud(){
     }
   }catch(e){
     console.error('Cloud sync:', e);
-    toast('Sync failed — check connection');
+    toast('Sync failed: ' + (e.code || e.message || 'unknown'));
     setCloudIcon('error');
   }
   renderSyncSection();
