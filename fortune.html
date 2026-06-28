@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>玄機閣 · 算命占卜</title>
+<style>
+  :root {
+    --gold: #c9a84c;
+    --dark: #0d0a1a;
+    --panel: #16102b;
+    --border: #2e2060;
+    --text: #e8dfc8;
+    --muted: #8a7fa0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'Noto Serif TC', 'Georgia', serif;
+    min-height: 100vh;
+  }
+  /* Background stars */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,200,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 60%, rgba(255,255,200,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 15%, rgba(255,255,200,0.7) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 40%, rgba(255,255,200,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 70%, rgba(255,255,200,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 20% 85%, rgba(255,255,200,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 90%, rgba(255,255,200,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 50%, rgba(255,255,200,0.3) 0%, transparent 100%),
+      radial-gradient(2px 2px at 80% 10%, rgba(255,255,200,0.8) 0%, transparent 100%),
+      radial-gradient(2px 2px at 5% 45%, rgba(255,255,200,0.7) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    text-align: center;
+    padding: 40px 20px 20px;
+    position: relative;
+    z-index: 1;
+  }
+  header h1 {
+    font-size: 2.6rem;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(201,168,76,0.6);
+    letter-spacing: 0.2em;
+  }
+  header p {
+    color: var(--muted);
+    margin-top: 8px;
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+  }
+  nav button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 10px 22px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-family: inherit;
+    letter-spacing: 0.05em;
+    transition: all 0.3s;
+  }
+  nav button:hover, nav button.active {
+    background: rgba(201,168,76,0.15);
+    border-color: var(--gold);
+    color: var(--gold);
+    box-shadow: 0 0 12px rgba(201,168,76,0.2);
+  }
+
+  .section {
+    display: none;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 10px 20px 60px;
+    position: relative;
+    z-index: 1;
+  }
+  .section.active { display: block; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+  }
+
+  h2 {
+    color: var(--gold);
+    font-size: 1.3rem;
+    margin-bottom: 18px;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  label {
+    display: block;
+    color: var(--muted);
+    font-size: 0.88rem;
+    margin-bottom: 6px;
+    margin-top: 14px;
+    letter-spacing: 0.05em;
+  }
+  label:first-of-type { margin-top: 0; }
+
+  input, select, textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--gold);
+  }
+  select option { background: var(--panel); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .btn {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    background: linear-gradient(135deg, #8b6914, #c9a84c, #8b6914);
+    border: none;
+    border-radius: 10px;
+    color: #0d0a1a;
+    font-size: 1.05rem;
+    font-weight: bold;
+    font-family: inherit;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn:active { transform: scale(0.99); }
+
+  .result {
+    display: none;
+    background: rgba(201,168,76,0.06);
+    border: 1px solid rgba(201,168,76,0.25);
+    border-radius: 12px;
+    padding: 22px;
+    margin-top: 20px;
+    line-height: 1.9;
+    font-size: 0.97rem;
+  }
+  .result.show { display: block; }
+  .result h3 {
+    color: var(--gold);
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+    letter-spacing: 0.08em;
+  }
+  .result p { margin-bottom: 10px; color: var(--text); }
+  .result .tag {
+    display: inline-block;
+    background: rgba(201,168,76,0.18);
+    color: var(--gold);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 0.85rem;
+    margin: 3px;
+  }
+  .result .section-title {
+    color: var(--gold);
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+    margin: 14px 0 6px;
+    border-left: 3px solid var(--gold);
+    padding-left: 10px;
+  }
+
+  /* Tarot */
+  .tarot-deck {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+  }
+  .tarot-slot {
+    width: 110px;
+    text-align: center;
+  }
+  .tarot-slot label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 8px;
+    margin-top: 0;
+  }
+  .tarot-card {
+    width: 100px;
+    height: 160px;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+    background: linear-gradient(135deg, #1a1035, #2a1f4e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    margin: 0 auto;
+  }
+  .tarot-card::before {
+    content: '✦';
+    color: rgba(201,168,76,0.3);
+    font-size: 4rem;
+    position: absolute;
+  }
+  .tarot-card.revealed {
+    border-color: var(--gold);
+    box-shadow: 0 0 18px rgba(201,168,76,0.35);
+    background: linear-gradient(135deg, #2a1f4e, #1a1035);
+  }
+  .tarot-card .card-content {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    z-index: 1;
+  }
+  .tarot-card.revealed .card-content { display: flex; }
+  .tarot-card.revealed::before { display: none; }
+  .tarot-card .card-icon { font-size: 2.2rem; }
+  .tarot-card .card-name {
+    font-size: 0.7rem;
+    color: var(--gold);
+    margin-top: 6px;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .tarot-card .card-reversed {
+    font-size: 0.6rem;
+    color: #e06060;
+    margin-top: 2px;
+  }
+
+  /* Ziwei grid */
+  .ziwei-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .ziwei-cell {
+    border: 1px solid var(--border);
+    padding: 10px 8px;
+    min-height: 80px;
+    font-size: 0.78rem;
+  }
+  .ziwei-cell .palace-name {
+    color: var(--gold);
+    font-size: 0.7rem;
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+  }
+  .ziwei-cell .stars {
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .ziwei-cell .main-star {
+    color: #f0c060;
+    font-weight: bold;
+  }
+
+  /* Bazi pillars */
+  .bazi-pillars {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin: 16px 0;
+    flex-wrap: wrap;
+  }
+  .pillar {
+    text-align: center;
+    width: 70px;
+  }
+  .pillar .pillar-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .pillar .stem, .pillar .branch {
+    padding: 8px 0;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    letter-spacing: 0.05em;
+  }
+  .pillar .stem {
+    background: rgba(201,168,76,0.15);
+    border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+  .pillar .branch {
+    background: rgba(100,150,255,0.1);
+    border: 1px solid rgba(100,150,255,0.3);
+    color: #a0c0ff;
+  }
+  .element-badge {
+    display: inline-block;
+    width: 28px; height: 28px;
+    line-height: 28px;
+    border-radius: 50%;
+    font-size: 0.85rem;
+    margin: 3px;
+    text-align: center;
+  }
+  .el-wood { background: rgba(80,180,80,0.2); color: #80e080; border: 1px solid #80e08060; }
+  .el-fire { background: rgba(220,80,80,0.2); color: #ff9090; border: 1px solid #ff909060; }
+  .el-earth { background: rgba(180,140,60,0.2); color: #d4b060; border: 1px solid #d4b06060; }
+  .el-metal { background: rgba(200,200,220,0.2); color: #d0d0e0; border: 1px solid #d0d0e060; }
+  .el-water { background: rgba(60,120,220,0.2); color: #80b0ff; border: 1px solid #80b0ff60; }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 18px 0;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.78rem;
+    padding: 30px 20px;
+    position: relative;
+    z-index: 1;
+    letter-spacing: 0.05em;
+  }
+
+  /* Loading animation */
+  .loading { display: none; text-align: center; padding: 20px; color: var(--muted); }
+  .loading.show { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 24px; height: 24px;
+    border: 2px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>☽ 玄機閣 ☾</h1>
+  <p>紫微 · 塔羅 · 八字 · 解夢</p>
+</header>
+
+<nav>
+  <button class="active" onclick="showSection('ziwei', this)">🌟 紫微斗數</button>
+  <button onclick="showSection('tarot', this)">🃏 塔羅牌</button>
+  <button onclick="showSection('bazi', this)">☯ 八字命理</button>
+  <button onclick="showSection('dream', this)">🌙 周公解夢</button>
+</nav>
+
+<!-- ========== 紫微斗數 ========== -->
+<div id="ziwei" class="section active">
+  <div class="card">
+    <h2>🌟 紫微斗數命盤</h2>
+    <label>出生年份</label>
+    <input type="number" id="zw-year" placeholder="例：1990" min="1900" max="2025">
+    <label>出生月份</label>
+    <select id="zw-month">
+      <option value="">請選擇</option>
+      <option value="1">一月</option><option value="2">二月</option>
+      <option value="3">三月</option><option value="4">四月</option>
+      <option value="5">五月</option><option value="6">六月</option>
+      <option value="7">七月</option><option value="8">八月</option>
+      <option value="9">九月</option><option value="10">十月</option>
+      <option value="11">十一月</option><option value="12">十二月</option>
+    </select>
+    <label>出生日期</label>
+    <input type="number" id="zw-day" placeholder="例：15" min="1" max="31">
+    <label>出生時辰</label>
+    <select id="zw-hour">
+      <option value="">請選擇</option>
+      <option value="0">子時（23:00–01:00）</option>
+      <option value="1">丑時（01:00–03:00）</option>
+      <option value="2">寅時（03:00–05:00）</option>
+      <option value="3">卯時（05:00–07:00）</option>
+      <option value="4">辰時（07:00–09:00）</option>
+      <option value="5">巳時（09:00–11:00）</option>
+      <option value="6">午時（11:00–13:00）</option>
+      <option value="7">未時（13:00–15:00）</option>
+      <option value="8">申時（15:00–17:00）</option>
+      <option value="9">酉時（17:00–19:00）</option>
+      <option value="10">戌時（19:00–21:00）</option>
+      <option value="11">亥時（21:00–23:00）</option>
+    </select>
+    <label>性別</label>
+    <select id="zw-gender">
+      <option value="m">男</option>
+      <option value="f">女</option>
+    </select>
+    <button class="btn" onclick="calcZiwei()">✦ 起命盤 ✦</button>
+  </div>
+  <div class="loading" id="zw-loading"><span class="spinner"></span>天星運轉中…</div>
+  <div class="result" id="zw-result"></div>
+</div>
+
+<!-- ========== 塔羅牌 ========== -->
+<div id="tarot" class="section">
+  <div class="card">
+    <h2>🃏 塔羅牌占卜</h2>
+    <label>占問主題</label>
+    <select id="tarot-topic">
+      <option value="love">感情愛情</option>
+      <option value="career">事業財運</option>
+      <option value="health">健康身體</option>
+      <option value="general">整體運勢</option>
+      <option value="decision">重要決定</option>
+    </select>
+    <label>想問的問題（可不填）</label>
+    <input type="text" id="tarot-question" placeholder="例：我的感情何時有進展？">
+    <label>牌陣</label>
+    <select id="tarot-spread">
+      <option value="1">單張牌（直接指引）</option>
+      <option value="3" selected>三張牌（過去·現在·未來）</option>
+      <option value="5">五張牌（凱爾特十字簡版）</option>
+    </select>
+    <button class="btn" onclick="drawTarot()">✦ 洗牌抽牌 ✦</button>
+  </div>
+  <div class="loading" id="tarot-loading"><span class="spinner"></span>命運之牌浮現中…</div>
+  <div class="result" id="tarot-result"></div>
+</div>
+
+<!-- ========== 八字 ========== -->
+<div id="bazi" class="section">
+  <div class="card">
+    <h2>☯ 八字命理</h2>
+    <label>出生日期</label>
+    <input type="date" id="bz-date" max="2025-12-31">
+    <label>出生時辰</label>
+    <select id="bz-hour">
+      <option value="0">子時（23:00–01:00）</option>
+      <option value="1">丑時（01:00–03:00）</option>
+      <option value="2">寅時（03:00–05:00）</option>
+      <option value="3">卯時（05:00–07:00）</option>
+      <option value="4">辰時（07:00–09:00）</option>
+      <option value="5">巳時（09:00–11:00）</option>
+      <option value="6">午時（11:00–13:00）</option>
+      <option value="7">未時（13:00–15:00）</option>
+      <option value="8">申時（15:00–17:00）</option>
+      <option value="9">酉時（17:00–19:00）</option>
+      <option value="10">戌時（19:00–21:00）</option>
+      <option value="11">亥時（21:00–23:00）</option>
+    </select>
+    <label>性別</label>
+    <select id="bz-gender">
+      <option value="m">男</option>
+      <option value="f">女</option>
+    </select>
+    <button class="btn" onclick="calcBazi()">✦ 排八字 ✦</button>
+  </div>
+  <div class="loading" id="bz-loading"><span class="spinner"></span>天干地支推算中…</div>
+  <div class="result" id="bz-result"></div>
+</div>
+
+<!-- ========== 解夢 ========== -->
+<div id="dream" class="section">
+  <div class="card">
+    <h2>🌙 周公解夢</h2>
+    <label>夢境描述</label>
+    <textarea id="dream-text" placeholder="請描述你的夢境，例如：夢見自己在飛、夢見水、夢見已故親人…"></textarea>
+    <label>做夢時間</label>
+    <select id="dream-time">
+      <option value="early">入夜初夢（睡後1–3小時）</option>
+      <option value="mid">半夜夢（3–5小時）</option>
+      <option value="late" selected>天亮前夢（5小時後）</option>
+    </select>
+    <label>近期心情</label>
+    <select id="dream-mood">
+      <option value="happy">愉快開心</option>
+      <option value="anxious">焦慮不安</option>
+      <option value="sad">憂鬱低落</option>
+      <option value="neutral" selected>平靜平常</option>
+    </select>
+    <button class="btn" onclick="interpretDream()">✦ 解析夢境 ✦</button>
+  </div>
+  <div class="loading" id="dream-loading"><span class="spinner"></span>周公正在解夢…</div>
+  <div class="result" id="dream-result"></div>
+</div>
+
+<footer>
+  ☽ 玄機閣 ☾ · 僅供娛樂參考，不構成任何人生建議
+</footer>
+
+<script>
+// ===== Navigation =====
+function showSection(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ===== Utilities =====
+function loading(id, show) {
+  document.getElementById(id).classList.toggle('show', show);
+}
+function showResult(id, html) {
+  const el = document.getElementById(id);
+  el.innerHTML = html;
+  el.classList.add('show');
+}
+function rng(seed) {
+  // Simple seeded pseudo-random
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+function pick(arr, rand) { return arr[Math.floor(rand() * arr.length)]; }
+function seed() { return Date.now() + Math.random() * 99999 | 0; }
+
+// ===== 紫微斗數 =====
+const palaces = ['命宮','兄弟','夫妻','子女','財帛','疾厄','遷移','交友','事業','田宅','福德','父母'];
+const mainStars = ['紫微','天機','太陽','武曲','天同','廉貞','天府','太陰','貪狼','巨門','天相','天梁','七殺','破軍'];
+const minorStars = ['左輔','右弼','文昌','文曲','祿存','天馬','火星','鈴星','地空','地劫'];
+const personalities = [
+  '聰慧睿智，善於謀略，適合從事分析、策劃類工作。',
+  '個性溫和，重情重義，人際關係廣闊，貴人緣佳。',
+  '意志堅定，不屈不撓，適合創業開拓，勇於挑戰。',
+  '心思細膩，感情豐富，藝術才華出眾，直覺敏銳。',
+  '領導魄力強，做事果斷，適合管理職位，威嚴十足。',
+  '多才多藝，適應力強，善於溝通，口才一流。',
+];
+const fortuneTexts = {
+  love: ['感情方面桃花旺盛，易遇有緣人，宜主動把握。','感情需多溝通，避免誤解，耐心經營感情。','伴侶關係穩定，互信互愛，婚姻美滿。','感情起伏較大，宜調整心態，放寬標準。'],
+  career: ['事業運旺，升職加薪機會大，宜積極表現。','工作有貴人相助，合作項目順利，財源廣進。','事業需穩紮穩打，避免冒進，腳踏實地。','適合轉換跑道，尋找更適合自己的發展方向。'],
+  wealth: ['財運亨通，正財偏財皆有，理財得宜可積累財富。','財運平穩，宜節流勝於開源，避免衝動消費。','投資宜保守，避免高風險，穩健為主。','意外之財有機會出現，但需防破財之象。'],
+};
+
+function calcZiwei() {
+  const year = parseInt(document.getElementById('zw-year').value);
+  const month = parseInt(document.getElementById('zw-month').value);
+  const day = parseInt(document.getElementById('zw-day').value);
+  const hour = parseInt(document.getElementById('zw-hour').value);
+  const gender = document.getElementById('zw-gender').value;
+
+  if (!year || !month || !day || isNaN(hour)) {
+    alert('請填寫完整出生資訊');
+    return;
+  }
+
+  loading('zw-loading', true);
+  document.getElementById('zw-result').classList.remove('show');
+
+  setTimeout(() => {
+    loading('zw-loading', false);
+    const rand = rng(year * 1000 + month * 100 + day + hour);
+
+    // Generate palace stars
+    const palaceStars = palaces.map((_, i) => {
+      const stars = [];
+      if (rand() > 0.5) stars.push(`<span class="main-star">${pick(mainStars, rand)}</span>`);
+      if (rand() > 0.6) stars.push(pick(mainStars, rand));
+      if (rand() > 0.7) stars.push(pick(minorStars, rand));
+      return stars;
+    });
+
+    // Ensure 命宮 has a main star
+    if (!palaceStars[0].length) palaceStars[0].push(`<span class="main-star">${pick(mainStars, rand)}</span>`);
+
+    const personality = pick(personalities, rand);
+    const loveText = pick(fortuneTexts.love, rand);
+    const careerText = pick(fortuneTexts.career, rand);
+    const wealthText = pick(fortuneTexts.wealth, rand);
+
+    const genderText = gender === 'm' ? '男命' : '女命';
+    const lunarNote = `${year}年${month}月${day}日 ${['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'][hour]}時`;
+
+    let gridHtml = '<div class="ziwei-grid">';
+    // Arrange 12 palaces in 4x4 grid (standard layout approximation)
+    const gridOrder = [11,0,1,2,10,null,null,3,9,null,null,4,8,7,6,5];
+    gridOrder.forEach(idx => {
+      if (idx === null) {
+        gridHtml += '<div class="ziwei-cell" style="background:rgba(0,0,0,0.2)"></div>';
+      } else {
+        gridHtml += `<div class="ziwei-cell">
+          <div class="palace-name">${palaces[idx]}</div>
+          <div class="stars">${palaceStars[idx].join('<br>') || '…'}</div>
+        </div>`;
+      }
+    });
+    gridHtml += '</div>';
+
+    showResult('zw-result', `
+      <h3>☽ ${lunarNote} ${genderText} 命盤</h3>
+      ${gridHtml}
+      <hr class="divider">
+      <div class="section-title">▎命主性格</div>
+      <p>${personality}</p>
+      <div class="section-title">▎感情運勢</div>
+      <p>${loveText}</p>
+      <div class="section-title">▎事業運勢</div>
+      <p>${careerText}</p>
+      <div class="section-title">▎財運分析</div>
+      <p>${wealthText}</p>
+      <hr class="divider">
+      <p style="color:var(--muted);font-size:0.82rem;text-align:center">
+        ✦ 命盤僅供參考，實際命運由自身造化決定 ✦
+      </p>
+    `);
+  }, 1500);
+}
+
+// ===== 塔羅牌 =====
+const tarotCards = [
+  {name:'愚者',icon:'🃏',up:'新開始、冒險、自由',down:'魯莽、缺乏規劃'},
+  {name:'魔術師',icon:'🎩',up:'意志力、創造力、主動',down:'操控、欺騙'},
+  {name:'女祭司',icon:'🌙',up:'直覺、神秘、智慧',down:'隱瞞、混亂'},
+  {name:'皇后',icon:'🌸',up:'豐盛、母性、創造',down:'依賴、停滯'},
+  {name:'皇帝',icon:'👑',up:'權威、穩定、領導',down:'控制欲、固執'},
+  {name:'教皇',icon:'⛪',up:'傳統、指引、信仰',down:'盲目服從、教條'},
+  {name:'戀人',icon:'💕',up:'愛情、選擇、和諧',down:'失衡、猶豫'},
+  {name:'戰車',icon:'⚔️',up:'勝利、意志、前進',down:'失控、衝突'},
+  {name:'力量',icon:'🦁',up:'勇氣、耐心、內在力量',down:'懷疑、軟弱'},
+  {name:'隱士',icon:'🔦',up:'反思、孤獨、智慧',down:'孤立、逃避'},
+  {name:'命運之輪',icon:'☸️',up:'轉機、命運、循環',down:'厄運、停滯'},
+  {name:'正義',icon:'⚖️',up:'公平、真相、因果',down:'不公正、偏見'},
+  {name:'吊人',icon:'🙃',up:'暫停、新視角、犧牲',down:'拖延、固執'},
+  {name:'死神',icon:'🌑',up:'轉化、結束、重生',down:'抗拒改變、停滯'},
+  {name:'節制',icon:'💧',up:'平衡、耐心、調和',down:'失衡、過度'},
+  {name:'惡魔',icon:'🔗',up:'執著、物質、慾望',down:'解脫、清醒'},
+  {name:'高塔',icon:'⚡',up:'突破、覺醒、改變',down:'混亂、災難'},
+  {name:'星星',icon:'⭐',up:'希望、靈感、療癒',down:'失望、悲觀'},
+  {name:'月亮',icon:'🌕',up:'幻象、潛意識、直覺',down:'迷惑、恐懼'},
+  {name:'太陽',icon:'☀️',up:'喜悅、成功、活力',down:'自大、虛榮'},
+  {name:'審判',icon:'📯',up:'覺醒、重生、呼喚',down:'自我懷疑、拖延'},
+  {name:'世界',icon:'🌍',up:'完成、整合、成就',down:'未完成、逃避'},
+];
+
+const spreadLabels = {
+  '1': ['指引'],
+  '3': ['過去','現在','未來'],
+  '5': ['現況','阻礙','潛意識','建議','結果'],
+};
+
+const tarotInterpretations = {
+  love: {
+    up: ['感情將有美好進展，對方對你有好感，宜主動表達。','關係中有強烈的吸引力，感情基礎穩固，宜珍惜。','愛情運旺，單身者有機會遇到命中注定的人。'],
+    down: ['感情面臨考驗，需雙方努力溝通才能化解誤會。','關係中有不平衡，需重新審視彼此的付出。'],
+  },
+  career: {
+    up: ['事業將有突破，新機會即將到來，宜把握。','工作表現受到肯定，升遷機會大增。','合作計畫順利，團隊默契佳。'],
+    down: ['工作壓力增加，需調整策略，避免正面衝突。','需重新評估目標，找到真正適合自己的方向。'],
+  },
+  health: {
+    up: ['身體狀況良好，精力充沛，宜保持好習慣。','若有舊疾，此時是調養的好時機。'],
+    down: ['需注意休息，避免過勞，放慢腳步。','情緒影響身體，需學會釋放壓力。'],
+  },
+  general: {
+    up: ['整體運勢向好，諸事順利，宜積極行動。','貴人運旺，有人從旁協助，事半功倍。'],
+    down: ['需謹慎行事，不宜冒進，耐心等待時機。'],
+  },
+  decision: {
+    up: ['此決定有利，可以放心前進，結果將是正面的。','直覺告訴你答案了，相信自己的判斷。'],
+    down: ['暫緩決定，多方評估後再行動。','此路可能有阻礙，考慮備選方案。'],
+  },
+};
+
+let drawnCards = [];
+
+function drawTarot() {
+  const count = parseInt(document.getElementById('tarot-spread').value);
+  const topic = document.getElementById('tarot-topic').value;
+  const question = document.getElementById('tarot-question').value;
+
+  loading('tarot-loading', true);
+  document.getElementById('tarot-result').classList.remove('show');
+  drawnCards = [];
+
+  const rand = rng(seed());
+  const shuffled = [...tarotCards].sort(() => rand() - 0.5);
+  drawnCards = shuffled.slice(0, count).map(c => ({
+    ...c,
+    reversed: rand() > 0.6,
+  }));
+
+  const labels = spreadLabels[String(count)];
+
+  setTimeout(() => {
+    loading('tarot-loading', false);
+
+    let cardsHtml = '<div class="tarot-deck">';
+    drawnCards.forEach((c, i) => {
+      cardsHtml += `
+        <div class="tarot-slot">
+          <label>${labels[i]}</label>
+          <div class="tarot-card revealed" style="${c.reversed ? 'transform:rotate(180deg)' : ''}">
+            <div class="card-content">
+              <div class="card-icon">${c.icon}</div>
+              <div class="card-name">${c.name}</div>
+              ${c.reversed ? '<div class="card-reversed">逆位</div>' : ''}
+            </div>
+          </div>
+        </div>`;
+    });
+    cardsHtml += '</div>';
+
+    let interpHtml = '';
+    const topicInterp = tarotInterpretations[topic];
+    drawnCards.forEach((c, i) => {
+      const meaning = c.reversed ? c.down : c.up;
+      const contextMsg = pick(c.reversed ? topicInterp.down : topicInterp.up, rng(seed()));
+      interpHtml += `
+        <div class="section-title">▎${labels[i]}：${c.name}${c.reversed ? '（逆位）' : '（正位）'}</div>
+        <p><span class="tag">牌義</span> ${meaning}</p>
+        <p>${contextMsg}</p>`;
+    });
+
+    showResult('tarot-result', `
+      <h3>🃏 ${question ? '「' + question + '」' : '塔羅指引'}</h3>
+      ${cardsHtml}
+      <hr class="divider">
+      ${interpHtml}
+      <hr class="divider">
+      <p style="color:var(--muted);font-size:0.82rem;text-align:center">
+        ✦ 塔羅是心靈的鏡子，最終選擇權在你 ✦
+      </p>
+    `);
+  }, 1500);
+}
+
+// ===== 八字 =====
+const stems = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const branches = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const stemElements = ['木','木','火','火','土','土','金','金','水','水'];
+const branchElements = ['水','土','木','木','土','火','火','土','金','金','土','水'];
+const elementColors = {木:'el-wood',火:'el-fire',土:'el-earth',金:'el-metal',水:'el-water'};
+const elementEmojis = {木:'🌳',火:'🔥',土:'🪨',金:'⚡',水:'💧'};
+
+const dayMasterPersonality = {
+  甲: '甲木之人，正直剛毅，有領袖氣質，理想遠大，重視原則。',
+  乙: '乙木之人，溫柔細心，適應力強，善於交際，處事靈活。',
+  丙: '丙火之人，熱情開朗，慷慨大方，富有感染力，樂觀進取。',
+  丁: '丁火之人，溫婉體貼，內心細膩，藝術感強，重情義。',
+  戊: '戊土之人，穩重踏實，包容力強，值得信賴，做事有始有終。',
+  己: '己土之人，謙虛內斂，思慮周全，善於協調，為人和善。',
+  庚: '庚金之人，果斷剛強，做事俐落，重義氣，意志堅定。',
+  辛: '辛金之人，聰明秀氣，審美獨到，注重細節，追求完美。',
+  壬: '壬水之人，聰慧機智，思維靈活，適應力佳，視野開闊。',
+  癸: '癸水之人，敏感直覺強，感情豐富，善解人意，神秘迷人。',
+};
+
+function getStemBranch(year, month, day, hour) {
+  // Simplified calculation (approximation)
+  const base = 4; // 甲子 year base
+  const yearIdx = (year - 4) % 10;
+  const yearBranchIdx = (year - 4) % 12;
+  const monthIdx = (year * 12 + month - 1) % 10;
+  const monthBranchIdx = ((month + 1) % 12);
+  const dayBase = Math.floor((year * 365.25 + month * 30.4375 + day) % 60);
+  const dayIdx = dayBase % 10;
+  const dayBranchIdx = dayBase % 12;
+  const hourIdx = (dayIdx * 2 + Math.floor(hour)) % 10;
+  const hourBranchIdx = hour % 12;
+
+  return [
+    {stem: stems[(yearIdx + 10) % 10], branch: branches[(yearBranchIdx + 12) % 12], label:'年柱'},
+    {stem: stems[(monthIdx + 10) % 10], branch: branches[monthBranchIdx % 12], label:'月柱'},
+    {stem: stems[(dayIdx + 10) % 10], branch: branches[(dayBranchIdx + 12) % 12], label:'日柱'},
+    {stem: stems[(hourIdx + 10) % 10], branch: branches[hourBranchIdx % 12], label:'時柱'},
+  ];
+}
+
+function calcBazi() {
+  const dateVal = document.getElementById('bz-date').value;
+  const hourVal = parseInt(document.getElementById('bz-hour').value);
+  const gender = document.getElementById('bz-gender').value;
+
+  if (!dateVal) { alert('請填寫出生日期'); return; }
+
+  const [year, month, day] = dateVal.split('-').map(Number);
+  loading('bz-loading', true);
+  document.getElementById('bz-result').classList.remove('show');
+
+  setTimeout(() => {
+    loading('bz-loading', false);
+    const rand = rng(year * 100 + month * 10 + day + hourVal);
+    const pillars = getStemBranch(year, month, day, hourVal);
+    const dayMaster = pillars[2].stem;
+
+    // Count elements
+    const elCount = {木:0,火:0,土:0,金:0,水:0};
+    pillars.forEach(p => {
+      elCount[stemElements[stems.indexOf(p.stem)]]++;
+      elCount[branchElements[branches.indexOf(p.branch)]]++;
+    });
+
+    const sortedEl = Object.entries(elCount).sort((a,b) => b[1]-a[1]);
+    const strongEl = sortedEl[0][0];
+    const weakEl = sortedEl[sortedEl.length-1][0];
+
+    const personality = dayMasterPersonality[dayMaster];
+
+    let pillarsHtml = '<div class="bazi-pillars">';
+    pillars.forEach(p => {
+      pillarsHtml += `
+        <div class="pillar">
+          <div class="pillar-label">${p.label}</div>
+          <div class="stem">${p.stem}</div>
+          <div class="branch">${p.branch}</div>
+        </div>`;
+    });
+    pillarsHtml += '</div>';
+
+    let elementsHtml = '<div style="text-align:center;margin:10px 0">';
+    Object.entries(elCount).forEach(([el, count]) => {
+      for (let i = 0; i < count; i++) {
+        elementsHtml += `<span class="element-badge ${elementColors[el]}">${el}</span>`;
+      }
+    });
+    elementsHtml += '</div>';
+
+    const luckTexts = [
+      `五行以${strongEl}為旺，${elementEmojis[strongEl]} 宜從事與${strongEl}相關行業；${weakEl}五行較弱，需注意補足。`,
+      `日主${dayMaster}為${stemElements[stems.indexOf(dayMaster)]}，個性${['剛強','柔韌'][Math.floor(rand()*2)]}，${gender === 'm' ? '男命' : '女命'}宜把握${['木','火'][Math.floor(rand()*2)]}運年份。`,
+    ];
+
+    const careerAdvice = {木:'文教、創意、設計、農業、植物相關',火:'娛樂、演藝、能源、電子、行銷',土:'房地產、建築、農業、資源、倉儲',金:'金融、法律、軍警、機械、冶金',水:'航運、貿易、資訊、教育、流通'}[strongEl];
+    const luckyColor = {木:'綠色、青色',火:'紅色、橙色',土:'黃色、棕色',金:'白色、銀色',水:'黑色、深藍'}[strongEl];
+    const luckyNumber = {木:'3、8',火:'2、7',土:'5、10',金:'4、9',水:'1、6'}[strongEl];
+
+    showResult('bz-result', `
+      <h3>☯ ${year}年${month}月${day}日 ${branches[hourVal]}時 八字命盤</h3>
+      ${pillarsHtml}
+      <div class="section-title">▎五行分佈</div>
+      ${elementsHtml}
+      <div class="section-title">▎日主性格（${dayMaster}日）</div>
+      <p>${personality}</p>
+      <div class="section-title">▎五行分析</div>
+      <p>${luckTexts[0]}</p>
+      <p>${luckTexts[1]}</p>
+      <div class="section-title">▎事業方向</div>
+      <p>適合從事 <strong>${careerAdvice}</strong> 等行業。</p>
+      <div class="section-title">▎幸運資訊</div>
+      <p>
+        <span class="tag">幸運色</span> ${luckyColor} &nbsp;
+        <span class="tag">幸運數字</span> ${luckyNumber}
+      </p>
+      <hr class="divider">
+      <p style="color:var(--muted);font-size:0.82rem;text-align:center">
+        ✦ 八字為人生藍圖，後天努力可改變命運 ✦
+      </p>
+    `);
+  }, 1500);
+}
+
+// ===== 解夢 =====
+const dreamKeywords = {
+  飛: {meaning:'象徵自由、脫離束縛，或內心渴望突破現狀。',advice:'近期可能有新機會，勇敢追求吧！'},
+  水: {meaning:'水代表情感與潛意識。清水主吉，濁水需注意感情困擾。',advice:'關注內心情緒，適度表達感受。'},
+  蛇: {meaning:'蛇有雙重象徵：智慧與危機。可能有小人或隱患需防範。',advice:'近期與人交往宜謹慎，信任需建立在了解基礎上。'},
+  死: {meaning:'夢見死亡不代表真實死亡，通常象徵結束與新生。',advice:'某段關係或階段即將結束，迎接新的開始。'},
+  錢: {meaning:'夢見錢財象徵對物質安全感的渴望，或近期財務有變動。',advice:'注意財務規劃，避免衝動消費。'},
+  追: {meaning:'被追逐代表逃避壓力或責任，需正視面臨的問題。',advice:'鼓起勇氣面對問題，逃避只會讓壓力累積。'},
+  考試: {meaning:'經典的焦慮夢，代表對自我要求高，擔心表現不如預期。',advice:'放輕鬆，你比自己想像的更有準備。'},
+  牙齒: {meaning:'夢見牙齒脫落象徵對外在形象的焦慮，或擔心失去重要事物。',advice:'審視你最近在乎什麼，或有何重要決定待做。'},
+  家: {meaning:'家象徵內心、自我認同。夢見家的狀態反映你的心理狀態。',advice:'關注自己的內在需求，回歸生活本質。'},
+  貓: {meaning:'貓象徵神秘、直覺和獨立性，也可能與女性能量有關。',advice:'相信你的直覺，適度保持自己的空間。'},
+  狗: {meaning:'狗代表忠誠、友誼與保護。可能有好友需要你，或你需要支持。',advice:'珍視身邊的朋友，適時表達關心。'},
+  火: {meaning:'火象徵激情、能量，也可能是憤怒或危機的警示。',advice:'疏導情緒，把熱情放在正確的事情上。'},
+  嬰兒: {meaning:'嬰兒象徵新開始、潛力與創意，也可能代表依賴感。',advice:'有新計畫或想法將要開展，給自己信心。'},
+  飛機: {meaning:'象徵遠大目標、旅行計畫或渴望改變環境。',advice:'計劃中的旅行或轉變近期會有進展。'},
+  結婚: {meaning:'不一定指婚姻，象徵承諾、合作或整合不同面向的自我。',advice:'生命中某段重要關係或合作將更進一步。'},
+};
+
+const generalDreamInterp = [
+  '此夢境反映你近期的內心狀態，潛意識在傳遞重要信號。',
+  '夢境是心靈自我療癒的方式，訊息值得深思。',
+  '此夢與你近期的壓力和期望有關，建議多休息放鬆。',
+  '潛意識透過夢境提醒你某些被忽略的需求或關係。',
+];
+
+function interpretDream() {
+  const text = document.getElementById('dream-text').value.trim();
+  const dreamTime = document.getElementById('dream-time').value;
+  const mood = document.getElementById('dream-mood').value;
+
+  if (!text) { alert('請描述你的夢境'); return; }
+
+  loading('dream-loading', true);
+  document.getElementById('dream-result').classList.remove('show');
+
+  setTimeout(() => {
+    loading('dream-loading', false);
+    const rand = rng(seed());
+
+    // Find matching keywords
+    const found = [];
+    for (const [kw, data] of Object.entries(dreamKeywords)) {
+      if (text.includes(kw)) found.push({kw, ...data});
+    }
+
+    const timeMsg = {
+      early: '入夜初夢多為白天事務的延伸，影響較淺，不必過度在意。',
+      mid: '半夜之夢較接近潛意識，所傳遞的訊息值得留意。',
+      late: '天亮前的夢最貼近真實潛意識，古人認為此時之夢最靈驗。',
+    }[dreamTime];
+
+    const moodMsg = {
+      happy: '在愉快心情下做的夢通常是正面的，反映內心的和諧。',
+      anxious: '焦慮時做的夢往往放大了擔憂，需區分現實與夢境。',
+      sad: '憂鬱狀態下的夢可能是內心釋放的管道，有助情緒療癒。',
+      neutral: '平靜心態下的夢最能反映潛意識的真實想法。',
+    }[mood];
+
+    const generalMsg = pick(generalDreamInterp, rand);
+
+    let kwHtml = '';
+    if (found.length > 0) {
+      found.forEach(f => {
+        kwHtml += `
+          <div class="section-title">▎夢見「${f.kw}」</div>
+          <p>${f.meaning}</p>
+          <p><span class="tag">建議</span> ${f.advice}</p>`;
+      });
+    } else {
+      kwHtml = `
+        <div class="section-title">▎夢境解析</div>
+        <p>${generalMsg}</p>`;
+    }
+
+    showResult('dream-result', `
+      <h3>🌙 夢境解析</h3>
+      <div class="section-title">▎夢的時段</div>
+      <p>${timeMsg}</p>
+      <div class="section-title">▎心情影響</div>
+      <p>${moodMsg}</p>
+      ${kwHtml}
+      <div class="section-title">▎今日建議</div>
+      <p>${pick([
+        '多飲水，靜心冥想五分鐘，讓夢境的訊息自然沉澱。',
+        '用日記記下夢境細節，日後回顧會有新的領悟。',
+        '夢境提醒你關注某件事，今天試著面對它。',
+        '保持好奇心，夢境是潛意識送給你的禮物。',
+      ], rand)}</p>
+      <hr class="divider">
+      <p style="color:var(--muted);font-size:0.82rem;text-align:center">
+        ✦ 周公解夢，僅供心靈參考 ✦
+      </p>
+    `);
+  }, 1500);
+}
+</script>
+</body>
+</html>
