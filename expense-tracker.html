@@ -85,6 +85,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .acc-card-add{background:var(--border);color:var(--sub);
   display:flex;align-items:center;justify-content:center;
   font-size:28px;border:2px dashed var(--sub)}
+.acc-card-ibkr{background:linear-gradient(135deg,#1a3a5c,#0d2238);min-width:180px}
+.ibkr-pnl-pos{color:#4ade80;font-size:11px;margin-top:3px}
+.ibkr-pnl-neg{color:#f87171;font-size:11px;margin-top:3px}
 
 /* SUMMARY ROW */
 .sum-row{display:flex;gap:12px;margin-bottom:14px}
@@ -276,7 +279,13 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 <!-- OVERVIEW TAB -->
 <div class="tab active" id="tab-overview">
   <div style="padding-top:4px">
-    <div id="acc-cards-row" class="accs-row"></div>
+    <div id="acc-cards-row" class="accs-row">
+      <div class="acc-card acc-card-ibkr" id="ibkr-card" style="display:none">
+        <div class="acc-card-name">📈 IBKR</div>
+        <div class="acc-card-bal" id="ibkr-bal">—</div>
+        <div class="acc-card-cur" id="ibkr-sub">USD · 加载中…</div>
+      </div>
+    </div>
     <div class="sum-row">
       <div class="sum-box inc">
         <div class="sum-box-label">本月收入</div>
@@ -1748,6 +1757,24 @@ function setupPWA(){
   }
 }
 
+async function loadIBKR(){
+  try{
+    const r = await fetch('ibkr-snapshot.json?t='+Date.now());
+    if(!r.ok) return;
+    const d = await r.json();
+    const card = document.getElementById('ibkr-card');
+    const balEl = document.getElementById('ibkr-bal');
+    const subEl = document.getElementById('ibkr-sub');
+    card.style.display = '';
+    balEl.textContent = 'US$' + Number(d.netLiquidation).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const pnl = d.unrealizedPnl;
+    const pnlSign = pnl>=0?'+':'';
+    const pnlCls = pnl>=0?'ibkr-pnl-pos':'ibkr-pnl-neg';
+    const updated = d.updatedAt ? new Date(d.updatedAt).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    subEl.innerHTML = `USD · 更新 ${updated}<br><span class="${pnlCls}">${pnlSign}US$${Math.abs(pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} 未实现</span>`;
+  }catch(e){ /* silently ignore if file missing */ }
+}
+
 function init(){
   loadData();
   if(!data.currentAccountId && data.accounts.length>0)
@@ -1755,6 +1782,7 @@ function init(){
   setupPWA();
   updateHeader();
   renderOverview();
+  loadIBKR();
   setCloudIcon('off');
 
   auth.onAuthStateChanged(async user => {
