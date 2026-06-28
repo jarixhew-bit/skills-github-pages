@@ -104,8 +104,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 /* TRANSACTION LIST */
 .tx-list{display:flex;flex-direction:column;gap:2px}
 .tx-group-date{font-size:12px;color:var(--sub);padding:10px 0 6px;font-weight:500}
-.tx-item{background:var(--card);border-radius:10px;padding:12px 14px;
-  display:flex;align-items:center;gap:12px;cursor:pointer;transition:.15s}
+/* SWIPE DELETE */
+.tx-swipe-wrap{position:relative;overflow:hidden;border-radius:10px}
+.tx-del-btn{position:absolute;right:0;top:0;bottom:0;width:72px;
+  background:#E74C3C;color:#fff;display:flex;align-items:center;
+  justify-content:center;font-size:13px;font-weight:700;cursor:pointer;
+  user-select:none;-webkit-user-select:none;flex-direction:column;gap:2px}
+.tx-item{background:var(--card);padding:12px 14px;
+  display:flex;align-items:center;gap:12px;cursor:pointer;
+  transition:background .15s;will-change:transform;touch-action:pan-y}
 .tx-item:active{background:#f8f8f8}
 .tx-icon{width:40px;height:40px;border-radius:50%;display:flex;
   align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
@@ -1008,6 +1015,7 @@ function renderOverview(){
     el.innerHTML = `<div class="empty"><div class="empty-icon">📝</div><div class="empty-text">还没有记录，点击 ＋ 开始记账</div></div>`;
   } else {
     el.innerHTML = recent.map(t=>txHtml(t,acc.currency)).join('');
+    initSwipeGestures();
   }
 }
 
@@ -1045,13 +1053,16 @@ function txHtml(t, currency){
   const sign = t.type==='expense'?'-':'+';
   const cls = t.type==='expense'?'exp':'inc';
   const cur = currency || (curAcc()?curAcc().currency:'HKD');
-  return `<div class="tx-item" onclick="editTx('${t.id}')">
-    <div class="tx-icon" style="background:${color}22">${icon}</div>
-    <div class="tx-info">
-      <div class="tx-name">${t.description||catName}</div>
-      <div class="tx-cat">${catName} · ${t.date}</div>
+  return `<div class="tx-swipe-wrap">
+    <div class="tx-del-btn" onclick="deleteTxById('${t.id}')">🗑<br>删除</div>
+    <div class="tx-item" onclick="editTx('${t.id}')">
+      <div class="tx-icon" style="background:${color}22">${icon}</div>
+      <div class="tx-info">
+        <div class="tx-name">${t.description||catName}</div>
+        <div class="tx-cat">${catName} · ${t.date}</div>
+      </div>
+      <div class="tx-amt ${cls}">${sign}${fmt(t.amount, cur)}</div>
     </div>
-    <div class="tx-amt ${cls}">${sign}${fmt(t.amount, cur)}</div>
   </div>`;
 }
 
@@ -1074,6 +1085,7 @@ function renderTxList(){
       <div class="tx-group-date">${date}</div>
       ${list.map(t=>txHtml(t,acc.currency)).join('')}
     `).join('');
+  initSwipeGestures();
 }
 
 function setTxFilter(f, btn){
@@ -1234,6 +1246,7 @@ function showAddTx(){
 }
 
 function editTx(id){
+  if(_txSwipeBlocked) return;
   const t = data.transactions.find(x=>x.id===id);
   if(!t) return;
   state.editingTxId = id;
@@ -1604,6 +1617,87 @@ function importJSON(e){
   };
   reader.readAsText(file);
   e.target.value='';
+}
+
+// ===================== SWIPE TO DELETE =====================
+let _txSwipeOpen = null;
+let _txSwipeBlocked = false;
+let _swipeDocListenerAdded = false;
+
+function closeOpenSwipe(){
+  if(!_txSwipeOpen) return;
+  const item = _txSwipeOpen.querySelector('.tx-item');
+  if(item){ item.style.transition='transform .2s ease'; item.style.transform='translateX(0)'; }
+  _txSwipeOpen = null;
+}
+
+function deleteTxById(id){
+  if(!confirm('确定删除这条记录？')) return;
+  data.transactions = data.transactions.filter(t=>t.id!==id);
+  saveData();
+  toast('已删除记录');
+  if(state.currentTab==='overview') renderOverview();
+  if(state.currentTab==='transactions') renderTxList();
+  if(state.currentTab==='analytics') renderAnalytics();
+}
+
+function initSwipeGestures(){
+  document.querySelectorAll('.tx-swipe-wrap').forEach(wrap=>{
+    const item = wrap.querySelector('.tx-item');
+    if(!item || item._swipeInit) return;
+    item._swipeInit = true;
+
+    let sx=0, sy=0, dx=0, tracking=false;
+    const SNAP=72, THRESH=40;
+
+    item.addEventListener('touchstart', e=>{
+      sx=e.touches[0].clientX; sy=e.touches[0].clientY;
+      dx=0; tracking=false;
+    }, {passive:true});
+
+    item.addEventListener('touchmove', e=>{
+      const cx=e.touches[0].clientX, cy=e.touches[0].clientY;
+      dx=cx-sx;
+      if(!tracking){
+        if(Math.abs(cy-sy)>Math.abs(dx)) return;
+        tracking=true;
+      }
+      const tx=Math.max(-SNAP, Math.min(0, dx));
+      item.style.transition='none';
+      item.style.transform=`translateX(${tx}px)`;
+    }, {passive:true});
+
+    item.addEventListener('touchend', ()=>{
+      item.style.transition='transform .2s ease';
+      if(!tracking){
+        if(_txSwipeOpen===wrap){
+          closeOpenSwipe();
+          _txSwipeBlocked=true; setTimeout(()=>{_txSwipeBlocked=false;},200);
+        }
+        return;
+      }
+      if(dx<-THRESH){
+        item.style.transform=`translateX(-${SNAP}px)`;
+        if(_txSwipeOpen&&_txSwipeOpen!==wrap){
+          const prev=_txSwipeOpen.querySelector('.tx-item');
+          if(prev){prev.style.transition='transform .2s ease';prev.style.transform='translateX(0)';}
+        }
+        _txSwipeOpen=wrap;
+        _txSwipeBlocked=true; setTimeout(()=>{_txSwipeBlocked=false;},300);
+      } else {
+        item.style.transform='translateX(0)';
+        if(_txSwipeOpen===wrap) _txSwipeOpen=null;
+        if(Math.abs(dx)>5){ _txSwipeBlocked=true; setTimeout(()=>{_txSwipeBlocked=false;},200); }
+      }
+    });
+  });
+
+  if(!_swipeDocListenerAdded){
+    _swipeDocListenerAdded=true;
+    document.addEventListener('touchstart', e=>{
+      if(_txSwipeOpen&&!e.target.closest('.tx-swipe-wrap')) closeOpenSwipe();
+    }, {passive:true});
+  }
 }
 
 // ===================== INIT =====================
