@@ -553,14 +553,24 @@ async function saveToCloud(){
   cloudSaving = false;
 }
 
-async function syncFromCloud(){
+async function syncFromCloud(force){
   if(!currentUser) return;
   setCloudIcon('syncing');
   try{
     const snap = await db.collection('users').doc(currentUser.uid).get();
     if(snap.exists){
       const cloud = JSON.parse(snap.data().payload);
-      if(cloud && cloud.accounts && cloud.accounts.length>0){
+      const hasCloud = cloud && cloud.transactions && cloud.transactions.length>0;
+      const hasLocal = data.transactions && data.transactions.length>0;
+
+      if(hasCloud && hasLocal && !force){
+        // Both sides have data — ask user
+        showSyncConflict(cloud);
+        setCloudIcon('error');
+        return;
+      }
+
+      if(hasCloud){
         data = cloud;
         if(!data.currentAccountId && data.accounts.length>0)
           data.currentAccountId = data.accounts[0].id;
@@ -570,16 +580,45 @@ async function syncFromCloud(){
         if(state.currentTab==='transactions') renderTxList();
         if(state.currentTab==='analytics') renderAnalytics();
         toast('☁️ Synced from cloud');
+      } else {
+        // Cloud empty, push local up
+        await saveToCloud();
+        toast('☁️ Local data backed up to cloud');
       }
     } else {
       await saveToCloud();
       toast('☁️ Local data backed up to cloud');
     }
+    setCloudIcon('synced');
   }catch(e){
     console.error('Cloud sync:', e);
     toast('Sync failed: ' + (e.code || e.message || 'unknown'));
     setCloudIcon('error');
   }
+  renderSyncSection();
+}
+
+function showSyncConflict(cloudData){
+  const localTx = data.transactions.length;
+  const cloudTx = cloudData.transactions.length;
+  const msg = `Both local and cloud have data:\n\n📱 This device: ${localTx} records\n☁️ Cloud: ${cloudTx} records\n\nWhich do you want to keep?`;
+  const choice = confirm(msg + '\n\nOK = Keep CLOUD data\nCancel = Keep LOCAL data (and overwrite cloud)');
+  if(choice){
+    // Use cloud
+    data = cloudData;
+    if(!data.currentAccountId && data.accounts.length>0)
+      data.currentAccountId = data.accounts[0].id;
+    localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
+    updateHeader();
+    renderOverview();
+    saveToCloud();
+    toast('☁️ Using cloud data');
+  } else {
+    // Use local, push to cloud
+    saveToCloud();
+    toast('📱 Using local data — backed up to cloud');
+  }
+  setCloudIcon('synced');
   renderSyncSection();
 }
 
