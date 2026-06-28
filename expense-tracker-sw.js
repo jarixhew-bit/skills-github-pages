@@ -20,6 +20,12 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // HTML: network-first so updates are always picked up immediately
+  if(e.request.destination === 'document'){
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    return;
+  }
+  // Other assets (icons, manifest, SW): cache-first
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request))
   );
