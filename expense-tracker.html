@@ -549,7 +549,7 @@ async function saveToCloud(){
       payload: JSON.stringify(data),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    setCloudIcon('synced');
+    setPendingSync(false);
   }catch(e){
     console.error('Cloud save:', e);
     setCloudIcon('error');
@@ -615,14 +615,13 @@ function showSyncConflict(cloudData){
     localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
     updateHeader();
     renderOverview();
-    saveToCloud();
+    setPendingSync(false);
     toast('☁️ Using cloud data');
   } else {
-    // Use local, push to cloud
-    saveToCloud();
-    toast('📱 Using local data — backed up to cloud');
+    // Use local — don't auto-push, let user decide
+    toast('📱 Using local data — tap "Push to cloud" in Settings when ready');
+    setPendingSync(true);
   }
-  setCloudIcon('synced');
   renderSyncSection();
 }
 
@@ -633,6 +632,29 @@ function setCloudIcon(status){
   if(status==='syncing') { el.textContent='🔄'; el.style.opacity='1'; el.title='Syncing…'; }
   if(status==='error')   { el.textContent='⚠️'; el.style.opacity='1'; el.title='Sync error'; }
   if(status==='off')     { el.textContent='☁️'; el.style.opacity='0.3'; el.title='Not signed in'; }
+  if(status==='pending') { el.textContent='☁️'; el.style.opacity='1'; el.title='Unsynced changes'; }
+}
+
+function setPendingSync(pending){
+  if(!currentUser) return;
+  const el = document.getElementById('hdr-cloud');
+  if(!el) return;
+  if(pending){
+    el.textContent = '☁️'; el.style.opacity='1'; el.title='Unsynced changes — go to Settings to push';
+    // add red dot
+    el.style.position='relative';
+    let dot = document.getElementById('cloud-dot');
+    if(!dot){
+      dot = document.createElement('span');
+      dot.id = 'cloud-dot';
+      dot.style.cssText='position:absolute;top:-2px;right:-2px;width:8px;height:8px;background:#E74C3C;border-radius:50%;border:1.5px solid var(--p)';
+      el.appendChild(dot);
+    }
+  } else {
+    const dot = document.getElementById('cloud-dot');
+    if(dot) dot.remove();
+    setCloudIcon('synced');
+  }
 }
 
 function renderSyncSection(){
@@ -909,7 +931,7 @@ function loadData(){
 }
 function saveData(){
   localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
-  saveToCloud();
+  setPendingSync(true);
 }
 
 // ===================== UTILS =====================
