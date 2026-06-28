@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>玄機閣 · 算命占卜</title>
+<link rel="manifest" href="fortune-manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="玄機閣">
+<link rel="apple-touch-icon" href="fortune-icon.svg">
+<meta name="theme-color" content="#0d0a1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta property="og:title" content="玄機閣 · 算命占卜">
+<meta property="og:description" content="紫微斗數・塔羅牌・八字命理・周公解夢">
+<meta name="description" content="紫微斗數・塔羅牌・八字命理・周公解夢，真太陽時精準起盤">
 <style>
   :root {
     --gold: #c9a84c;
@@ -19,24 +29,50 @@
     color: var(--text);
     font-family: 'Noto Serif TC', 'Georgia', serif;
     min-height: 100vh;
+    overflow-x: hidden;
   }
-  /* Background stars */
+
+  /* ── 星空背景 ── */
+  #bg-canvas {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── 浮動符文 ── */
+  .rune {
+    position: fixed;
+    font-size: 1.4rem;
+    color: rgba(201,168,76,0.12);
+    pointer-events: none;
+    z-index: 0;
+    animation: runeFloat linear infinite;
+    user-select: none;
+  }
+  @keyframes runeFloat {
+    0%   { transform: translateY(0)    rotate(0deg);   opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 0.8; }
+    100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+  }
+
+  /* ── 星雲光暈 ── */
   body::before {
     content: '';
     position: fixed; inset: 0;
-    background-image:
-      radial-gradient(1px 1px at 10% 20%, rgba(255,255,200,0.6) 0%, transparent 100%),
-      radial-gradient(1px 1px at 30% 60%, rgba(255,255,200,0.4) 0%, transparent 100%),
-      radial-gradient(1px 1px at 55% 15%, rgba(255,255,200,0.7) 0%, transparent 100%),
-      radial-gradient(1px 1px at 75% 40%, rgba(255,255,200,0.5) 0%, transparent 100%),
-      radial-gradient(1px 1px at 90% 70%, rgba(255,255,200,0.6) 0%, transparent 100%),
-      radial-gradient(1px 1px at 20% 85%, rgba(255,255,200,0.4) 0%, transparent 100%),
-      radial-gradient(1px 1px at 60% 90%, rgba(255,255,200,0.5) 0%, transparent 100%),
-      radial-gradient(1px 1px at 45% 50%, rgba(255,255,200,0.3) 0%, transparent 100%),
-      radial-gradient(2px 2px at 80% 10%, rgba(255,255,200,0.8) 0%, transparent 100%),
-      radial-gradient(2px 2px at 5% 45%, rgba(255,255,200,0.7) 0%, transparent 100%);
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 30%, rgba(80,30,120,0.25) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 60% at 80% 70%, rgba(30,60,140,0.2) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 40% at 50% 50%, rgba(120,50,80,0.12) 0%, transparent 70%);
     pointer-events: none;
     z-index: 0;
+    animation: nebulaShift 20s ease-in-out infinite alternate;
+  }
+  @keyframes nebulaShift {
+    0%   { opacity: 0.7; }
+    50%  { opacity: 1; }
+    100% { opacity: 0.6; }
   }
 
   header {
@@ -379,6 +415,9 @@
 </head>
 <body>
 
+<canvas id="bg-canvas"></canvas>
+<div id="rune-container"></div>
+
 <header>
   <h1>☽ 玄機閣 ☾</h1>
   <p>紫微 · 塔羅 · 八字 · 解夢</p>
@@ -455,6 +494,7 @@
       <option value="1">單張牌（直接指引）</option>
       <option value="3" selected>三張牌（過去·現在·未來）</option>
       <option value="5">五張牌（凱爾特十字簡版）</option>
+      <option value="10">十張牌（凱爾特十字完整版）</option>
     </select>
     <button class="btn" onclick="drawTarot()">✦ 洗牌抽牌 ✦</button>
   </div>
@@ -600,22 +640,217 @@ function pick(arr, rand) { return arr[Math.floor(rand() * arr.length)]; }
 function seed() { return Date.now() + Math.random() * 99999 | 0; }
 
 // ===== 紫微斗數 =====
-const palaces = ['命宮','兄弟','夫妻','子女','財帛','疾厄','遷移','交友','事業','田宅','福德','父母'];
-const mainStars = ['紫微','天機','太陽','武曲','天同','廉貞','天府','太陰','貪狼','巨門','天相','天梁','七殺','破軍'];
-const minorStars = ['左輔','右弼','文昌','文曲','祿存','天馬','火星','鈴星','地空','地劫'];
-const personalities = [
-  '聰慧睿智，善於謀略，適合從事分析、策劃類工作。',
-  '個性溫和，重情重義，人際關係廣闊，貴人緣佳。',
-  '意志堅定，不屈不撓，適合創業開拓，勇於挑戰。',
-  '心思細膩，感情豐富，藝術才華出眾，直覺敏銳。',
-  '領導魄力強，做事果斷，適合管理職位，威嚴十足。',
-  '多才多藝，適應力強，善於溝通，口才一流。',
+// 農曆新年日期表 1924-2043 [month, day]
+const CNY_TABLE = [
+  [2,5],[1,25],[2,13],[2,2],[1,23],[2,10],[1,30],[2,17],[2,6],[1,26],   // 1924-1933
+  [2,14],[2,4],[1,24],[2,11],[1,31],[2,19],[2,8],[1,27],[2,15],[2,5],   // 1934-1943
+  [1,25],[2,13],[2,2],[1,22],[2,10],[1,29],[2,17],[2,6],[1,27],[2,14],  // 1944-1953
+  [2,3],[1,24],[2,12],[1,31],[2,18],[2,8],[1,28],[2,15],[2,5],[1,25],   // 1954-1963
+  [2,13],[2,2],[1,21],[2,9],[1,30],[2,17],[2,6],[1,27],[2,15],[2,3],    // 1964-1973
+  [1,23],[2,11],[1,31],[2,18],[2,7],[1,28],[2,16],[2,5],[1,25],[2,13],  // 1974-1983
+  [2,2],[2,20],[2,9],[1,29],[2,17],[2,6],[1,27],[2,15],[2,4],[1,23],    // 1984-1993
+  [2,10],[1,31],[2,19],[2,7],[1,28],[2,16],[2,5],[1,24],[2,12],[2,1],   // 1994-2003
+  [1,22],[2,9],[1,29],[2,18],[2,7],[1,26],[2,14],[2,3],[1,23],[2,10],   // 2004-2013
+  [1,31],[2,19],[2,8],[1,28],[2,16],[2,5],[1,25],[2,12],[2,1],[1,22],   // 2014-2023
+  [2,10],[1,29],[2,17],[2,6],[1,26],[2,13],[2,3],[1,23],[2,11],[1,31],  // 2024-2033
+  [2,19],[2,8],[1,28],[2,15],[2,4],[1,24],[2,12],[2,1],[1,21],[2,9],    // 2034-2043
 ];
-const fortuneTexts = {
-  love: ['感情方面桃花旺盛，易遇有緣人，宜主動把握。','感情需多溝通，避免誤解，耐心經營感情。','伴侶關係穩定，互信互愛，婚姻美滿。','感情起伏較大，宜調整心態，放寬標準。'],
-  career: ['事業運旺，升職加薪機會大，宜積極表現。','工作有貴人相助，合作項目順利，財源廣進。','事業需穩紮穩打，避免冒進，腳踏實地。','適合轉換跑道，尋找更適合自己的發展方向。'],
-  wealth: ['財運亨通，正財偏財皆有，理財得宜可積累財富。','財運平穩，宜節流勝於開源，避免衝動消費。','投資宜保守，避免高風險，穩健為主。','意外之財有機會出現，但需防破財之象。'],
+
+function approxLunarMonth(year, month, day) {
+  const idx = year - 1924;
+  if (idx < 0 || idx >= CNY_TABLE.length) {
+    // 粗估：用節氣月份
+    return month <= 1 ? 12 : month - 1;
+  }
+  const [cm, cd] = CNY_TABLE[idx];
+  const birth = new Date(year, month-1, day);
+  let cny = new Date(year, cm-1, cd);
+  // 若出生在春節前，用前一年農曆
+  if (birth < cny) {
+    const prevIdx = idx - 1;
+    if (prevIdx >= 0) {
+      const [pm, pd] = CNY_TABLE[prevIdx];
+      cny = new Date(year-1, pm-1, pd);
+    } else {
+      cny = new Date(year-1, 1, 5);
+    }
+  }
+  const daysSinceCNY = Math.round((birth - cny) / 86400000);
+  const lm = Math.floor(daysSinceCNY / 29.53) + 1;
+  return Math.max(1, Math.min(12, lm));
+}
+
+function approxLunarDay(year, month, day) {
+  const idx = year - 1924;
+  if (idx < 0 || idx >= CNY_TABLE.length) return day;
+  const [cm, cd] = CNY_TABLE[idx];
+  const birth = new Date(year, month-1, day);
+  let cny = new Date(year, cm-1, cd);
+  if (birth < cny) {
+    const prevIdx = idx - 1;
+    if (prevIdx >= 0) { const [pm, pd] = CNY_TABLE[prevIdx]; cny = new Date(year-1, pm-1, pd); }
+    else cny = new Date(year-1, 1, 5);
+  }
+  const d = Math.round((birth - cny) / 86400000);
+  return ((d % 30) + 30) % 30 + 1;
+}
+
+// 命宮地支 = ((農曆月+1) % 12 - 時辰index + 12) % 12
+function getLifePalaceBranch(lunarMonth, shichenIdx) {
+  return ((lunarMonth + 1) % 12 - shichenIdx + 12) % 12;
+}
+
+// 命宮天干 (各宮天干順序)
+const ZW_STEMS = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const ZW_BRANCHES = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const ZW_PALACE_NAMES = ['命宮','父母','福德','田宅','事業','交友','遷移','疾厄','財帛','子女','夫妻','兄弟'];
+
+// 宮天干：子宮起點由年干決定
+function getPalaceStem(lifePalanceBranch, yearStemIdx) {
+  // 子宮天干: 甲己年→甲, 乙庚→丙, 丙辛→戊, 丁壬→庚, 戊癸→壬
+  const ziStem = [0,2,4,6,8][yearStemIdx % 5];
+  return ZW_STEMS[(ziStem + lifePalanceBranch) % 10];
+}
+
+// 納音五行 → 五行局
+function getWuxingJu(stemIdx, branchIdx) {
+  const idx60 = stemIdx * 6 + Math.floor(branchIdx / 2);
+  // 納音五行表 (每2個干支一組，60組)
+  const NAYIN = [3,1,0,4,3,1,0,4,3,1,0,4,3,1,0,4,3,1,0,4,3,1,0,4,3,1,0,4,3,1,
+                 3,1,0,4,3,1,0,4,3,1,0,4,3,1,0,4,3,1,0,4,3,1,0,4,3,1,0,4,3,1];
+  // 0=木3局, 1=火6局, 2=土5局, 3=金4局, 4=水2局
+  const juMap = [3,6,5,4,2];
+  const pairIdx = (stemIdx % 2 === 0) ? Math.floor(branchIdx / 2) * 5 + Math.floor(stemIdx / 2) : 0;
+  // 簡化：用stem+branch模60決定納音
+  const idx = ((stemIdx * 12 + branchIdx) % 30);
+  const NAYIN2 = [3,3,1,1,0,0,4,4,3,3,1,1,0,0,4,4,3,3,1,1,0,0,4,4,3,3,1,1,0,0];
+  return juMap[NAYIN2[idx]];
+}
+
+// 14主星安星表：給定紫微所在地支，傳回每顆星的地支
+// 順序: 紫微,天機,太陽,武曲,天同,廉貞,天府,太陰,貪狼,巨門,天相,天梁,七殺,破軍
+const ZIWEI_STARS_POS = [
+  // 紫微在子(0):
+  [0,11,10,9,8,5,6,7,8,9,10,11,0,6],
+  // 紫微在丑(1):
+  [1,0,11,10,9,6,7,8,9,10,11,0,1,7],
+  // 紫微在寅(2):
+  [2,1,0,11,10,7,8,9,10,11,0,1,2,8],
+  // 紫微在卯(3):
+  [3,2,1,0,11,8,9,10,11,0,1,2,3,9],
+  // 紫微在辰(4):
+  [4,3,2,1,0,9,10,11,0,1,2,3,4,10],
+  // 紫微在巳(5):
+  [5,4,3,2,1,10,11,0,1,2,3,4,5,11],
+  // 紫微在午(6):
+  [6,5,4,3,2,11,0,1,2,3,4,5,6,0],
+  // 紫微在未(7):
+  [7,6,5,4,3,0,1,2,3,4,5,6,7,1],
+  // 紫微在申(8):
+  [8,7,6,5,4,1,2,3,4,5,6,7,8,2],
+  // 紫微在酉(9):
+  [9,8,7,6,5,2,3,4,5,6,7,8,9,3],
+  // 紫微在戌(10):
+  [10,9,8,7,6,3,4,5,6,7,8,9,10,4],
+  // 紫微在亥(11):
+  [11,10,9,8,7,4,5,6,7,8,9,10,11,5],
+];
+const MAIN_STAR_NAMES = ['紫微','天機','太陽','武曲','天同','廉貞','天府','太陰','貪狼','巨門','天相','天梁','七殺','破軍'];
+const MAIN_STAR_NATURE = {
+  紫微:'帝王星・尊貴', 天機:'智慧星・謀略', 太陽:'陽剛星・熱情', 武曲:'財帛星・剛毅',
+  天同:'福德星・享受', 廉貞:'才藝星・桃花', 天府:'財庫星・慈祥', 太陰:'月亮星・溫柔',
+  貪狼:'慾望星・多才', 巨門:'是非星・口才', 天相:'印綬星・善良', 天梁:'蔭星・宗教',
+  七殺:'將星・衝勁', 破軍:'耗星・創新',
 };
+
+// 安紫微：用五行局和農曆日算紫微所在地支
+function getZiweiPos(lunarDay, wuxingJu) {
+  // 依五行局的安星步數，從丑宮起
+  const step = wuxingJu;
+  // 丑(1)起，每步skip=step-1，以農曆日找位置
+  // 循環公式：每 (step*2-1) 天一輪
+  const cycle = step * 2 - 1;
+  const pos = (1 + Math.floor((lunarDay-1) / step) + ((lunarDay-1) % step > 0 ? 1 : 0)) % 12;
+  return (1 + Math.floor((lunarDay-1) * step / cycle)) % 12;
+}
+
+// 宮位描述
+const PALACE_DESC = {
+  命宮: {en:'Life', desc:'代表本人性格、才能、先天稟賦，是最重要的宮位。'},
+  兄弟: {en:'Siblings', desc:'代表兄弟姐妹關係、朋友緣份、合夥運勢。'},
+  夫妻: {en:'Spouse', desc:'代表婚姻感情、另一半特質、感情運勢。'},
+  子女: {en:'Children', desc:'代表子女緣份、部屬關係、創作才華。'},
+  財帛: {en:'Wealth', desc:'代表財富多寡、理財能力、金錢進出。'},
+  疾厄: {en:'Health', desc:'代表健康狀況、疾病特性、身體素質。'},
+  遷移: {en:'Travel', desc:'代表出行運勢、外在表現、社會地位。'},
+  交友: {en:'Friends', desc:'代表朋友好壞、社交圈、下屬奴僕。'},
+  事業: {en:'Career', desc:'代表事業發展、職業方向、官祿名聲。'},
+  田宅: {en:'Property', desc:'代表房產田地、家庭環境、祖業遺產。'},
+  福德: {en:'Fortune', desc:'代表精神享受、福份深淺、前世業力。'},
+  父母: {en:'Parents', desc:'代表父母緣份、長輩貴人、文書運勢。'},
+};
+
+// 命宮主星性格
+const LIFE_PALACE_ANALYSIS = {
+  紫微: {char:'紫微為帝王星坐命，氣質高貴，天生領袖魅力，一生貴人相助，但也有孤高之氣，需學會放下身段融入群體。',
+         love:'感情方面重視對等與尊重，伴侶需有一定社會地位，婚後家庭地位高。',
+         career:'適合從政、管理、企業主，能在高位上發揮所長，一生有升遷機會。',
+         wealth:'財運佳，正財穩定，有機會累積大量財富，但需防奢侈浪費。'},
+  天機: {char:'天機坐命，聰穎機智，思維敏捷，善謀略，好學習，對宗教哲學有興趣，但有時想太多，缺乏行動力。',
+         love:'感情方面變化多，需找一個穩定包容的伴侶，彼此需多溝通。',
+         career:'適合從事諮詢、策劃、IT、研究、宗教等需要動腦的行業。',
+         wealth:'財運有波動，適合用智慧賺錢，投機需謹慎。'},
+  太陽: {char:'太陽坐命，熱情開朗，正直無私，人緣極好，男命尤佳，天生有號召力，但有時太直率而得罪人。',
+         love:'感情開誠布公，愛就是愛，但需注意衝動，感情發展宜循序漸進。',
+         career:'適合公關、政治、藝術表演、教育等需要曝光的職業。',
+         wealth:'財運與社交掛鉤，廣結善緣則財源廣進，貴人多助。'},
+  武曲: {char:'武曲坐命，意志堅定，做事雷厲風行，重義氣，財星入命主有錢，但感情方面略顯孤克，婚緣需多留意。',
+         love:'感情上較理性，不善表達，但一旦承諾就很忠誠，婚後踏實顧家。',
+         career:'適合金融、軍警、工程師、外科醫生等需要精準果斷的工作。',
+         wealth:'正財旺，理財能力強，一生財富穩定積累，晚年富足。'},
+  天同: {char:'天同坐命，個性隨和，享受人生，感情豐富，福氣深厚，但有惰性，有時缺乏衝勁，需適當激勵。',
+         love:'感情方面溫柔體貼，重視感受，但有依賴心理，需找較主動的伴侶。',
+         career:'適合服務業、藝術、文化創意、休閒娛樂等讓人開心的工作。',
+         wealth:'財運佳但易花費，享受生活是天性，建議建立強制儲蓄習慣。'},
+  廉貞: {char:'廉貞坐命，才藝多，個性強，情感豐富，感情緣分複雜，一生有貴有賤的考驗，需學會自律。',
+         love:'感情路波折，桃花多，需謹慎選擇伴侶，感情易有三角關係的糾葛。',
+         career:'適合演藝、律師、政治、創業等充滿挑戰的工作。',
+         wealth:'財運起伏，偏財有機會，但需防因情感或訴訟導致的破財。'},
+  天府: {char:'天府坐命，氣質高雅，財庫豐盛，做事保守謹慎，重視安全感，有包容力，但有時過於保守錯失機會。',
+         love:'感情方面重視家庭，婚後是好丈夫好妻子，家庭和諧，婚姻穩定。',
+         career:'適合財務、管理、行政、銀行業等需要穩健保守的職業。',
+         wealth:'財運極佳，財庫豐盛，有積蓄，一生衣食無憂，晚年富裕。'},
+  太陰: {char:'太陰坐命，心思細膩，直覺敏銳，溫柔體貼，審美好，女命尤佳，但有時過於情緒化，敏感易受傷。',
+         love:'感情方面溫柔深情，重視感受，需要被呵護，與文靜穩重的伴侶最合。',
+         career:'適合藝術、設計、文學、護理、幼教等細膩溫柔的工作。',
+         wealth:'財運與房產有關，田宅運旺，適合投資不動產，晚年收益穩定。'},
+  貪狼: {char:'貪狼坐命，才華橫溢，多才多藝，桃花旺，人際關係好，享受生活，但慾望多，需學習取捨專注。',
+         love:'桃花極旺，感情緣分多，但也易糾纏複雜，需謹慎選擇真命天子。',
+         career:'適合演藝、餐飲、娛樂、業務銷售等需要魅力與交際的行業。',
+         wealth:'偏財旺，有投機賺錢機會，但也易揮霍，需建立財務規劃。'},
+  巨門: {char:'巨門坐命，口才佳，善辯論，聰明有見解，但多是非口舌，需學習說話藝術，化解人際衝突。',
+         love:'感情路多磨，溝通是關鍵，需學習傾聽，避免爭辯傷感情。',
+         career:'適合律師、演講、顧問、教學、傳媒等以口為業的工作。',
+         wealth:'財運靠口才和知識，專業服務收費高，需防口舌招致的損失。'},
+  天相: {char:'天相坐命，善良正直，重情義，為人可靠，做事謹慎，是理想的幫手，但過於依賴他人認可。',
+         love:'感情忠誠，重視家庭責任，婚後是好丈夫好妻子，婚姻穩定幸福。',
+         career:'適合行政、助理、法律、公關、服務業等輔佐性質的工作。',
+         wealth:'財運平穩，不求暴富，勤勤懇懇積累，生活不愁，晚年安逸。'},
+  天梁: {char:'天梁坐命，老成持重，有蔭庇之氣，貴人多，對宗教哲學有興趣，有仁厚之德，但有時固執守舊。',
+         love:'感情較晚開花，易與年長的人結緣，婚後穩定長久，感情如老朋友。',
+         career:'適合宗教、醫療、社工、法律、教育等助人的職業，晚年成就顯著。',
+         wealth:'財運偏晚發，中年後財富穩定，有機會繼承財產，貴人相助得財。'},
+  七殺: {char:'七殺坐命，魄力十足，勇於改革，敢衝敢拼，有將帥之氣，但有孤克之象，人生多起伏波折。',
+         love:'感情方面強勢主導，需找包容度高的伴侶，婚緣需多留意，宜晚婚。',
+         career:'適合創業、軍警、外科、改革型工作，最能在艱難環境中展現實力。',
+         wealth:'財來財去，暴起暴落，需謹慎理財，避免賭博投機，穩健為宜。'},
+  破軍: {char:'破軍坐命，個性獨特，天生反骨，充滿創新精神，人生多變，波折也多，但越挫越勇，後天開創力強。',
+         love:'感情多變，有多段感情的可能，婚後也有波動，需雙方共同努力維繫。',
+         career:'適合創業、藝術、軍事、改革先驅等不走尋常路的工作。',
+         wealth:'財運起伏大，年輕時多耗損，中年後若專注一業可有大成就。'},
+};
+
+const ZW_MINOR_STARS = ['左輔','右弼','文昌','文曲','祿存','天馬','火星','鈴星','地空','地劫','天魁','天鉞'];
 
 function calcZiwei() {
   const year = parseInt(document.getElementById('zw-year').value);
@@ -624,126 +859,418 @@ function calcZiwei() {
   const hour = parseInt(document.getElementById('zw-hour').value);
   const gender = document.getElementById('zw-gender').value;
 
-  if (!year || !month || !day || isNaN(hour)) {
-    alert('請填寫完整出生資訊');
-    return;
-  }
+  if (!year || !month || !day || isNaN(hour)) { alert('請填寫完整出生資訊'); return; }
 
   loading('zw-loading', true);
   document.getElementById('zw-result').classList.remove('show');
 
   setTimeout(() => {
     loading('zw-loading', false);
-    const rand = rng(year * 1000 + month * 100 + day + hour);
 
-    // Generate palace stars
-    const palaceStars = palaces.map((_, i) => {
-      const stars = [];
-      if (rand() > 0.5) stars.push(`<span class="main-star">${pick(mainStars, rand)}</span>`);
-      if (rand() > 0.6) stars.push(pick(mainStars, rand));
-      if (rand() > 0.7) stars.push(pick(minorStars, rand));
-      return stars;
+    // 年干支
+    const yStemIdx = ((year - 4) % 10 + 10) % 10;
+    const yBranchIdx = ((year - 4) % 12 + 12) % 12;
+
+    // 農曆月、日（近似）
+    const lunarMonth = approxLunarMonth(year, month, day);
+    const lunarDay = approxLunarDay(year, month, day);
+
+    // 命宮地支
+    const lpBranch = getLifePalaceBranch(lunarMonth, hour);
+    const lpStem = getPalaceStem(lpBranch, yStemIdx);
+    const lpStemIdx = ZW_STEMS.indexOf(lpStem);
+
+    // 五行局
+    const wuxingJu = getWuxingJu(lpStemIdx, lpBranch);
+    const juNames = {2:'水二局',3:'木三局',4:'金四局',5:'土五局',6:'火六局'};
+
+    // 紫微所在地支（近似）
+    const ziweiPos = (lpBranch + lunarDay * 3 + wuxingJu) % 12;
+    const starPosArr = ZIWEI_STARS_POS[ziweiPos];
+
+    // 建立各地支的星曜列表
+    const branchStars = Array.from({length:12}, () => []);
+    MAIN_STAR_NAMES.forEach((name, i) => {
+      branchStars[starPosArr[i]].push(name);
+    });
+    // 加輔星（用種子決定位置）
+    const rand = rng(year * 1000 + month * 100 + day + hour);
+    ZW_MINOR_STARS.forEach(s => {
+      branchStars[Math.floor(rand() * 12)].push(s);
     });
 
-    // Ensure 命宮 has a main star
-    if (!palaceStars[0].length) palaceStars[0].push(`<span class="main-star">${pick(mainStars, rand)}</span>`);
+    // 命宮主星
+    const lifeStars = branchStars[lpBranch];
+    const mainLifeStar = lifeStars.find(s => MAIN_STAR_NAMES.includes(s)) || '空宮';
+    const analysis = LIFE_PALACE_ANALYSIS[mainLifeStar] || {
+      char:'此宮為空宮，需看對宮借星看命，受對宮星曜影響性格，變化多端，適應力強。',
+      love:'感情需看整體命盤分析，宜找性格互補的伴侶。',
+      career:'事業發展多變，需多嘗試找到最適合的方向。',
+      wealth:'財運受流年影響大，宜穩健理財。'
+    };
 
-    const personality = pick(personalities, rand);
-    const loveText = pick(fortuneTexts.love, rand);
-    const careerText = pick(fortuneTexts.career, rand);
-    const wealthText = pick(fortuneTexts.wealth, rand);
+    // 12宮格（從命宮地支開始，逆時針排宮名）
+    const palaceOrder = ZW_PALACE_NAMES; // 從命宮到父母，共12宮
+    const cells = Array(12);
+    palaceOrder.forEach((pName, i) => {
+      const branchIdx = (lpBranch + i) % 12;
+      cells[branchIdx] = {name: pName, stars: branchStars[branchIdx], branch: ZW_BRANCHES[branchIdx]};
+    });
 
-    const genderText = gender === 'm' ? '男命' : '女命';
-    const lunarNote = `${year}年${month}月${day}日 ${['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'][hour]}時`;
-
+    // 命盤格（4×4，中間空）
+    const gridOrderBranches = [11,0,1,2,10,null,null,3,9,null,null,4,8,7,6,5];
     let gridHtml = '<div class="ziwei-grid">';
-    // Arrange 12 palaces in 4x4 grid (standard layout approximation)
-    const gridOrder = [11,0,1,2,10,null,null,3,9,null,null,4,8,7,6,5];
-    gridOrder.forEach(idx => {
-      if (idx === null) {
+    gridOrderBranches.forEach(b => {
+      if (b === null) {
         gridHtml += '<div class="ziwei-cell" style="background:rgba(0,0,0,0.2)"></div>';
       } else {
-        gridHtml += `<div class="ziwei-cell">
-          <div class="palace-name">${palaces[idx]}</div>
-          <div class="stars">${palaceStars[idx].join('<br>') || '…'}</div>
+        const c = cells[b];
+        const isLife = b === lpBranch;
+        const mainSs = c.stars.filter(s => MAIN_STAR_NAMES.includes(s));
+        const minorSs = c.stars.filter(s => !MAIN_STAR_NAMES.includes(s));
+        gridHtml += `<div class="ziwei-cell" ${isLife?'style="border-color:var(--gold);background:rgba(201,168,76,0.06)"':''}>
+          <div class="palace-name">${c.name}<span style="color:var(--muted);font-size:0.65rem"> ${c.branch}</span></div>
+          <div class="stars">
+            ${mainSs.map(s=>`<span class="main-star" title="${MAIN_STAR_NATURE[s]||''}">${s}</span>`).join(' ')}
+            ${minorSs.slice(0,2).map(s=>`<span style="color:var(--muted);font-size:0.72rem">${s}</span>`).join(' ')}
+          </div>
         </div>`;
       }
     });
     gridHtml += '</div>';
 
+    const genderText = gender === 'm' ? '男命' : '女命';
+
     showResult('zw-result', `
-      <h3>☽ ${lunarNote} ${genderText} 命盤</h3>
+      <h3>🌟 ${year}年${month}月${day}日 ${ZW_BRANCHES[hour]}時 ${genderText}</h3>
+      <div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.88rem;line-height:2">
+        農曆月份（近似）：<strong style="color:var(--gold)">${lunarMonth}月 初${lunarDay}</strong>
+        &nbsp;│&nbsp; 命宮：<strong style="color:var(--gold)">${lpStem}${ZW_BRANCHES[lpBranch]}</strong>
+        &nbsp;│&nbsp; ${juNames[wuxingJu]}
+        &nbsp;│&nbsp; 命宮主星：<strong style="color:var(--gold)">${mainLifeStar}</strong>
+        ${mainLifeStar !== '空宮' ? `<br><span style="color:var(--muted);font-size:0.8rem">${MAIN_STAR_NATURE[mainLifeStar]}</span>` : ''}
+      </div>
       ${gridHtml}
       <hr class="divider">
-      <div class="section-title">▎命主性格</div>
-      <p>${personality}</p>
-      <div class="section-title">▎感情運勢</div>
-      <p>${loveText}</p>
-      <div class="section-title">▎事業運勢</div>
-      <p>${careerText}</p>
-      <div class="section-title">▎財運分析</div>
-      <p>${wealthText}</p>
+      <div class="section-title">▎命主性格（${mainLifeStar}坐命）</div>
+      <p>${analysis.char}</p>
+      <div class="section-title">▎感情婚姻（夫妻宮分析）</div>
+      <p>${analysis.love}</p>
+      <div class="section-title">▎事業官祿（事業宮分析）</div>
+      <p>${analysis.career}</p>
+      <div class="section-title">▎財帛運勢（財帛宮分析）</div>
+      <p>${analysis.wealth}</p>
+      <div class="section-title">▎2026年流年運勢</div>
+      <p>${pick([
+        '丙午流年，火旺，事業上有貴人提攜，適合主動出擊爭取晉升機會。感情方面桃花旺，單身者有望脫單。',
+        '流年紫微化科入命，學習運旺，適合進修或考取證照，知識帶來財富。',
+        '丙午年對財帛宮有利，正財收入穩定，偏財也有斬獲，理財得宜可有效積累。',
+        '今年遷移宮受吉星照，出外運旺，適合旅行、出差或拓展人脈，遠方有好消息。',
+      ], rand)}</p>
       <hr class="divider">
-      <p style="color:var(--muted);font-size:0.82rem;text-align:center">
-        ✦ 命盤僅供參考，實際命運由自身造化決定 ✦
+      <p style="color:var(--muted);font-size:0.78rem;text-align:center">
+        ✦ 農曆換算為近似值，精確命盤請提供確切農曆生日 ✦<br>
+        ✦ 命盤僅供參考，命運掌握在自己手中 ✦
       </p>
     `);
-  }, 1500);
+  }, 1800);
 }
 
 // ===== 塔羅牌 =====
 const tarotCards = [
-  {name:'愚者',icon:'🃏',up:'新開始、冒險、自由',down:'魯莽、缺乏規劃'},
-  {name:'魔術師',icon:'🎩',up:'意志力、創造力、主動',down:'操控、欺騙'},
-  {name:'女祭司',icon:'🌙',up:'直覺、神秘、智慧',down:'隱瞞、混亂'},
-  {name:'皇后',icon:'🌸',up:'豐盛、母性、創造',down:'依賴、停滯'},
-  {name:'皇帝',icon:'👑',up:'權威、穩定、領導',down:'控制欲、固執'},
-  {name:'教皇',icon:'⛪',up:'傳統、指引、信仰',down:'盲目服從、教條'},
-  {name:'戀人',icon:'💕',up:'愛情、選擇、和諧',down:'失衡、猶豫'},
-  {name:'戰車',icon:'⚔️',up:'勝利、意志、前進',down:'失控、衝突'},
-  {name:'力量',icon:'🦁',up:'勇氣、耐心、內在力量',down:'懷疑、軟弱'},
-  {name:'隱士',icon:'🔦',up:'反思、孤獨、智慧',down:'孤立、逃避'},
-  {name:'命運之輪',icon:'☸️',up:'轉機、命運、循環',down:'厄運、停滯'},
-  {name:'正義',icon:'⚖️',up:'公平、真相、因果',down:'不公正、偏見'},
-  {name:'吊人',icon:'🙃',up:'暫停、新視角、犧牲',down:'拖延、固執'},
-  {name:'死神',icon:'🌑',up:'轉化、結束、重生',down:'抗拒改變、停滯'},
-  {name:'節制',icon:'💧',up:'平衡、耐心、調和',down:'失衡、過度'},
-  {name:'惡魔',icon:'🔗',up:'執著、物質、慾望',down:'解脫、清醒'},
-  {name:'高塔',icon:'⚡',up:'突破、覺醒、改變',down:'混亂、災難'},
-  {name:'星星',icon:'⭐',up:'希望、靈感、療癒',down:'失望、悲觀'},
-  {name:'月亮',icon:'🌕',up:'幻象、潛意識、直覺',down:'迷惑、恐懼'},
-  {name:'太陽',icon:'☀️',up:'喜悅、成功、活力',down:'自大、虛榮'},
-  {name:'審判',icon:'📯',up:'覺醒、重生、呼喚',down:'自我懷疑、拖延'},
-  {name:'世界',icon:'🌍',up:'完成、整合、成就',down:'未完成、逃避'},
+  {name:'愚者',num:'0',icon:'🃏',
+   up:'全新開始、純真冒險、跟隨直覺、自由無拘',
+   down:'魯莽衝動、逃避責任、缺乏計畫、不成熟',
+   interp:{
+     love:{up:'感情上有全新的緣分即將出現，保持開放心態，不要用過去的傷痛設限自己，緣分會在意想不到的地方出現。',
+           down:'感情上有逃避的傾向，或是對方尚未成熟，雙方需要更多時間成長再考慮深入關係。'},
+     career:{up:'職場有新機遇，可能是全新的工作方向或創業契機，勇敢踏出舒適圈，成功往往在未知之處。',
+             down:'工作上行事衝動，計畫不周，需三思而後行，避免因魯莽損失機會。'},
+     health:{up:'身心狀態輕盈，適合嘗試新的運動或飲食習慣，為健康帶來正向改變。',
+             down:'需注意因粗心大意造成的意外傷害，出行要謹慎，避免不必要的風險。'},
+     general:{up:'人生將翻開全新篇章，充滿可能性，相信直覺，勇於出發。',
+              down:'行事前多做準備，避免因衝動而後悔，謀定而後動。'},
+   }},
+  {name:'魔術師',num:'I',icon:'🎩',
+   up:'意志力、創造力、主動出擊、資源俱備',
+   down:'操控欺騙、能力浪費、三心二意',
+   interp:{
+     love:{up:'你擁有吸引異性的魅力，現在是主動表達感情的好時機，自信展現自我，對方會被你深深吸引。',
+           down:'關係中可能存在欺騙或操控，需辨別對方是否真心，或審視自己的動機是否純正。'},
+     career:{up:'能力與資源俱備，是大展身手的時刻，主動爭取機會，善用人脈與技能，成果豐碩。',
+             down:'才能未得充分發揮，或有人在職場中不誠信，需警惕小人，同時反省自己是否言過其實。'},
+     health:{up:'精力充沛，身心協調，善用意志力執行健康計畫，此時戒除壞習慣成功率極高。',
+             down:'健康問題可能被誇大或忽視，建議尋求專業醫療意見，不要輕信偏方。'},
+     general:{up:'手握所有成功的工具，關鍵在於聚焦和行動，相信自己的能力，萬事俱備只欠東風。',
+              down:'需誠實面對自己的能力極限，腳踏實地而非好高騖遠。'},
+   }},
+  {name:'女祭司',num:'II',icon:'🌙',
+   up:'直覺、神秘智慧、內在聲音、潛意識',
+   down:'隱藏秘密、忽視直覺、混亂困惑',
+   interp:{
+     love:{up:'感情方面需靜下心傾聽內在聲音，不要急於行動，目前有些真相尚未浮現，等待時機成熟再表白。',
+           down:'關係中有秘密或隱瞞，建議坦誠溝通，不要讓猜疑影響感情基礎。'},
+     career:{up:'職場上需保持低調，靠著敏銳直覺洞察職場動態，現在不是大張旗鼓的時機，等待是最好的策略。',
+             down:'因資訊不足或受到隱瞞，決策可能有偏差，需多方求證後再行動。'},
+     health:{up:'身體在傳遞訊號，需仔細傾聽自己的感受，直覺告訴你某些地方需要調養，靜心休息最重要。',
+             down:'可能忽略了身體的警告訊號，建議定期健康檢查，不要等症狀明顯才就醫。'},
+     general:{up:'答案就在你心中，靜心冥想，直覺會給你指引，不需向外尋求所有答案。',
+              down:'思緒混亂，難以做決定，需要獨處時間整理思緒，讓內心平靜才能看清方向。'},
+   }},
+  {name:'皇后',num:'III',icon:'🌸',
+   up:'豐盛豐收、母性創造、感官享受、大地之力',
+   down:'過度依賴、停滯不前、物慾過重',
+   interp:{
+     love:{up:'感情豐盛甜蜜，雙方關係滋養彼此，適合共同創造美好生活，有結婚生子的吉象。',
+           down:'感情中依賴心過重，或過於在乎物質條件，需找回自我，不要在愛情中迷失。'},
+     career:{up:'創意旺盛，工作上有豐碩成果，藝術、美食、育嬰相關行業大旺，老闆或客戶對你讚賞有加。',
+             down:'工作倦怠，創意停滯，需找回工作熱情，或適當休假充電後再出發。'},
+     health:{up:'身體狀況良好，適合享受自然、養生調理，女性婦科運佳，孕婦有保佑。',
+             down:'需注意飲食過量或沉溺於感官享受，保持節制，注意身材與健康。'},
+     general:{up:'豐盛之能量環繞，種下什麼種子就有什麼收穫，用心培育的事物都將結出果實。',
+              down:'物質豐盛但精神空虛，需找回生活重心，不要被舒適圈限制了成長。'},
+   }},
+  {name:'皇帝',num:'IV',icon:'👑',
+   up:'權威領導、穩定結構、規律秩序、父性力量',
+   down:'專制固執、控制慾強、缺乏彈性',
+   interp:{
+     love:{up:'感情中有一方承擔較多責任和保護，關係穩定有安全感，適合確定關係或求婚。',
+           down:'關係中有控制欲或支配慾，需學習尊重伴侶的自主性，平等溝通才能長久。'},
+     career:{up:'職場上展現領導魄力，有機會晉升管理職，建立系統與規範，讓團隊更有效率。',
+             down:'管理方式過於嚴苛，導致下屬不滿，或因固執拒絕好建議，需學習靈活。'},
+     health:{up:'規律的生活作息帶來健康，此時建立良好習慣效果最佳，系統性養生法最有效。',
+             down:'工作壓力大，需學習放鬆，過於追求掌控反而造成身心緊繃。'},
+     general:{up:'用系統和紀律達成目標，穩紮穩打，一步一步建立屬於你的帝國。',
+              down:'過於死板，拒絕變化，需適度放鬆對局面的控制，讓事情自然發展。'},
+   }},
+  {name:'教皇',num:'V',icon:'⛪',
+   up:'傳統智慧、精神指引、信仰道德、正式結合',
+   down:'盲目服從、教條束縛、拒絕新思維',
+   interp:{
+     love:{up:'感情走向正式化，可能有結婚或訂婚的打算，傳統的愛情觀帶來穩定幸福。',
+           down:'感情受到外在道德或家庭壓力的束縛，雙方需突破傳統觀念，找到屬於自己的幸福。'},
+     career:{up:'在傳統行業或大型機構有好的發展，遵循規則和程序，獲得組織的信任與提拔。',
+             down:'職場規定過於僵化，讓你感到窒息，或你過度遵循前例而失去創新機會。'},
+     health:{up:'傳統養生方法、中醫調理效果顯著，尋求有經驗醫生的指導，系統治療見效快。',
+             down:'過於依賴傳統療法而忽略現代醫學，或因諱疾忌醫延誤治療，需保持開放態度。'},
+     general:{up:'尋求導師或前輩的指引，傳統方法在此刻最有效，遵循時間考驗過的智慧。',
+              down:'被規則和傳統綁住，需評估哪些規範值得遵循，哪些已過時，勇於創新。'},
+   }},
+  {name:'戀人',num:'VI',icon:'💕',
+   up:'愛情選擇、靈魂契合、價值觀一致、和諧結合',
+   down:'關係失衡、猶豫不決、價值觀衝突',
+   interp:{
+     love:{up:'出現靈魂伴侶，感情深度連結，雙方價值觀一致，是發展長期關係的最佳時機。',
+           down:'感情中面臨重要選擇，或雙方理念衝突，需誠實面對自己真正想要的是什麼。'},
+     career:{up:'工作上遇到志同道合的伙伴，合作愉快，事業如虎添翼，也代表熱愛目前的工作。',
+             down:'職業選擇的十字路口，需釐清自己的核心價值，不要為了金錢而從事不喜歡的工作。'},
+     health:{up:'身心靈和諧，情緒穩定帶來健康，愛情滋養了你的心靈，整體狀態極佳。',
+             down:'感情困擾影響健康，情緒波動大，需處理好感情問題，身心才能真正平衡。'},
+     general:{up:'面臨人生重要選擇，跟隨心的聲音，選擇對你有深刻意義的路，愛是最好的指引。',
+              down:'優柔寡斷讓機會溜走，需要做出承諾，猶豫只會讓局面更複雜。'},
+   }},
+  {name:'戰車',num:'VII',icon:'⚔️',
+   up:'勝利征服、堅強意志、掌控全局、前進不止',
+   down:'失控衝動、缺乏方向、強行其事',
+   interp:{
+     love:{up:'感情上積極主動追求，有勇氣克服阻礙，長跑戀人有機會正式確定關係，勝利在望。',
+           down:'感情中過於強勢，需要給對方空間和自主權，強求的愛情難以長久。'},
+     career:{up:'職場競爭激烈但你有勝算，憑藉強大意志力突破重圍，此時最適合爭取晉升或拿下大案。',
+             down:'工作上過於衝動，不聽勸阻，可能因急功近利而犯錯，需適當放慢節奏。'},
+     health:{up:'精力旺盛，適合高強度運動訓練，意志力強，執行健康計畫成效顯著。',
+             down:'過度操勞，身體透支，勝利慾望壓過了休息需求，需在適當時候踩剎車。'},
+     general:{up:'乘勝追擊的時刻，保持速度和方向，排除萬難向前衝，成功就在眼前。',
+              down:'方向偏差的高速前進只會讓你離目標越來越遠，先停下來確認方向再出發。'},
+   }},
+  {name:'力量',num:'VIII',icon:'🦁',
+   up:'內在力量、柔中帶剛、耐心、駕馭本能',
+   down:'軟弱懷疑、失去控制、自我破壞',
+   interp:{
+     love:{up:'以溫柔和包容化解衝突，愛情中展現真正的內在力量，感化對方，感情因此更深厚。',
+           down:'感情中被恐懼或不安全感主導，需先建立自信，才能建立健康的愛情關係。'},
+     career:{up:'以從容不迫的態度面對工作挑戰，展現專業和穩定，獲得同事和上司的信賴。',
+             down:'面對壓力時信心動搖，自我懷疑影響表現，需要重建自信才能發揮真正實力。'},
+     health:{up:'以正念和意志力維持健康習慣，身心調和，慢性病透過耐心調養有所改善。',
+             down:'情緒化飲食或不健康的發洩方式傷身，需學習健康的壓力管理方法。'},
+     general:{up:'真正的力量來自內心，以溫和而堅定的方式應對挑戰，最終征服困難。',
+              down:'此刻需要向內尋找力量，不要被外界的評價動搖，相信自己的能力。'},
+   }},
+  {name:'隱士',num:'IX',icon:'🔦',
+   up:'獨處沉思、內在智慧、尋找真理、精神導師',
+   down:'孤立封閉、拒絕幫助、過度退縮',
+   interp:{
+     love:{up:'感情上需要給彼此一些空間和時間，獨處有助於釐清感情，也可能遇到精神層面契合的伴侶。',
+           down:'過度退縮導致感情停滯，或因孤僻傾向而錯失良緣，需走出心理防線，對愛開放。'},
+     career:{up:'退後一步深思熟慮，規劃長遠目標，顧問、研究、教育類工作此刻特別適合。',
+             down:'過度隱居導致脫離職場訊息，錯失機會，需適當與外界保持聯繫。'},
+     health:{up:'靜養是現在最好的療法，避免人多嘈雜的環境，冥想、瑜伽、自然療法效果佳。',
+             down:'長期孤立導致憂鬱，需主動尋求社交和心理支持，不要把自己關在黑暗中。'},
+     general:{up:'向內探索，答案在沉靜中出現，此刻是精神成長的重要時期，耐心等待領悟。',
+              down:'不要把孤獨當成逃避，某些問題需要實際行動解決，而非一直沉思。'},
+   }},
+  {name:'命運之輪',num:'X',icon:'☸️',
+   up:'命運轉折、時機成熟、因果循環、好運降臨',
+   down:'厄運纏身、抗拒命運、錯失時機',
+   interp:{
+     love:{up:'感情出現命運般的轉折，可能再次遇到舊愛或機緣巧合認識重要的人，命運之輪轉到你這邊了。',
+           down:'感情走到低潮，但這只是循環，耐心等待，輪子終會轉回來，不要在低谷時做出衝動決定。'},
+     career:{up:'職業運勢大轉，好機會從天而降，把握時機迅速行動，這個機遇窗口不會一直開著。',
+             down:'職場遇到不利的命運轉折，此時宜守不宜攻，等待時機重新啟動。'},
+     health:{up:'健康狀況即將好轉，治療開始見效，身體進入恢復的正向循環。',
+             down:'健康出現突發狀況，需接受既定的業力，同時積極配合治療，循環終將改變。'},
+     general:{up:'好運輪到你了，積極行動，天時地利人和齊備，此時出擊事半功倍。',
+              down:'運勢處於低潮，接受現實，等待下一個轉機，放下抗拒讓命運自然流動。'},
+   }},
+  {name:'正義',num:'XI',icon:'⚖️',
+   up:'公平正義、真相大白、因果報應、理性決斷',
+   down:'不公正判斷、迴避責任、偏見歪曲',
+   interp:{
+     love:{up:'感情關係達到公平平衡，雙方付出相當，若有糾紛也將得到公正解決，誠實相待最重要。',
+           down:'感情中有不公平的對待，需勇敢說出來，不要默默承受，公平是長久關係的基礎。'},
+     career:{up:'職場上的付出將得到公正的回報，法律、司法、仲裁相關工作大吉，評鑑結果對你有利。',
+             down:'職場遭遇不公平對待，需透過正當途徑申訴，也需檢視自己是否有需要改進之處。'},
+     health:{up:'健康問題找到正確診斷，醫療過程公正，依照醫囑執行，療效顯著。',
+             down:'健康問題可能牽涉複雜因素，需尋求第二意見，不要輕易接受單一診斷結果。'},
+     general:{up:'真相終將大白，公平公正的結果即將到來，過去的努力和付出都會得到應有的回報。',
+              down:'需為自己的行為負責，業力是真實的，要確保自己的所作所為經得起公正的評判。'},
+   }},
+  {name:'吊人',num:'XII',icon:'🙃',
+   up:'暫停等待、新的視角、自我犧牲、接受現實',
+   down:'拖延不決、無謂犧牲、固執舊觀',
+   interp:{
+     love:{up:'感情上需要暫停，給彼此一段思考的時間，換個角度看關係，往往發現以前沒看到的珍貴。',
+           down:'感情因拖延而耽誤，一直在等待而不行動，若有心儀對象需主動，否則機會溜走。'},
+     career:{up:'職場上需要按兵不動，等待最佳時機，此刻學習和充電比積極爭取更重要。',
+             down:'職業發展停滯不前，無謂的等待和犧牲沒有意義，需主動創造機會。'},
+     health:{up:'養病需要時間，不要急於康復，靜養是最好的治療，放鬆接受身體恢復的自然節奏。',
+             down:'因拖延就醫讓病情加重，需立刻行動就醫，不要再找藉口推遲了。'},
+     general:{up:'換個角度看問題，你認為的困境或許是祝福，暫停讓你有機會重新審視人生方向。',
+              down:'不要讓自己成為永遠的受害者，打破消極的等待循環，主動改變現狀。'},
+   }},
+  {name:'死神',num:'XIII',icon:'🌑',
+   up:'結束與重生、蛻變轉化、放下過去、全新開始',
+   down:'抗拒改變、停滯腐朽、拒絕放手',
+   interp:{
+     love:{up:'一段感情即將結束，為新的愛情讓路；或舊感情蛻變升級，進入全新階段，改變是必要的。',
+           down:'對已結束的感情死抱不放，阻礙了新緣分的到來，需要勇敢放下，才能重生。'},
+     career:{up:'職業生涯即將出現重大轉變，可能是換工作或轉行，結束舊章節是新機遇的開始。',
+             down:'不願意放棄已沒有前景的工作，恐懼改變讓你原地踏步，需鼓起勇氣做出改變。'},
+     health:{up:'舊的不良習慣即將死亡，健康全面更新，戒除壞習慣的最佳時機，身體準備好迎接新生。',
+             down:'健康問題因拒絕改變生活方式而持續，必須下定決心徹底改變，才能脫離惡性循環。'},
+     general:{up:'歡迎改變，結束是開始的另一個名字，讓那些不再有益的事物自然結束，為新生命騰出空間。',
+              down:'執著於消逝的事物，讓自己陷在過去的泥沼，需要勇氣面對和接受必然的改變。'},
+   }},
+  {name:'節制',num:'XIV',icon:'💧',
+   up:'平衡調和、耐心混合、溫和節制、中庸之道',
+   down:'失衡過度、急躁衝動、缺乏節制',
+   interp:{
+     love:{up:'感情和諧平衡，雙方互相調和，磨合期過後關係趨於穩定，共同努力打造美好關係。',
+           down:'感情失衡，一方付出過多，或雙方生活節奏不協調，需重新找到共同的頻率。'},
+     career:{up:'工作與生活取得良好平衡，腳踏實地循序漸進，專案在掌控之中，穩健推進。',
+             down:'工作與生活失衡，可能工作過度或鬆懈，需重新調整時間和精力的分配。'},
+     health:{up:'均衡飲食和適量運動帶來好體質，身心靈調和，溫和漸進的健康法最有效。',
+             down:'生活方式極端，暴飲暴食或過度節制，需找到健康的中間點。'},
+     general:{up:'找到人生的平衡點，急事緩辦，慢慢調和，最終達到圓滿，不急不躁是最高境界。',
+              down:'目前狀態失衡，需緊急調整，在極端之間找到中庸，才能持續前進。'},
+   }},
+  {name:'惡魔',num:'XV',icon:'🔗',
+   up:'物質執著、慾望束縛、陰暗面、需要誠視',
+   down:'解開枷鎖、清醒自知、重獲自由',
+   interp:{
+     love:{up:'感情中有強烈的吸引力和執著，但需分清是真愛還是佔有慾，物質或外表不是長久感情的基礎。',
+           down:'從不健康的感情關係中解脫，認清自己曾受到的束縛，重獲愛情的自由。'},
+     career:{up:'工作上可能被物質利益誘惑而妥協原則，或工作成為你的枷鎖，需重新審視真正的追求。',
+             down:'從壓迫性的工作環境中解放，勇敢離開不健康的職場，找回工作的真正意義。'},
+     health:{up:'上癮行為或不良習慣正在傷害你，需正視問題，可能需要尋求專業幫助。',
+             down:'成功戒除不良習慣，從身體和心理的枷鎖中解放，重新掌控自己的健康。'},
+     general:{up:'誠實面對自己的陰暗面和慾望，了解束縛的根源，才有機會脫離它的控制。',
+              down:'你已準備好打破生命中的枷鎖，清醒地認識到束縛後，自由就在眼前。'},
+   }},
+  {name:'高塔',num:'XVI',icon:'⚡',
+   up:'突然崩塌、覺醒震撼、舊結構瓦解、轉危為機',
+   down:'逃避災難、拒絕改變、混亂延續',
+   interp:{
+     love:{up:'感情出現突發的衝擊或驚喜，舊的關係模式被打破，雖然震撼但此後有機會建立更真實的關係。',
+           down:'感情危機被迴避而非解決，問題終將爆發，面對比逃避更有建設性。'},
+     career:{up:'職場遭遇突變，可能是裁員、倒閉或重大失誤，雖然衝擊巨大，但重建後反而有更好的發展。',
+             down:'職場危機的後續仍在發酵，不肯正視問題，只會讓混亂持續更長時間。'},
+     health:{up:'健康出現突發警訊，可能是讓你正視一直忽略的問題，衝擊是為了讓你做出必要改變。',
+             down:'健康危機未能徹底解決，症狀反覆，需找到根本原因並徹底處理。'},
+     general:{up:'動盪是轉機，舊的不去新的不來，讓崩塌的倒塌，在廢墟上重建更好的基礎。',
+              down:'一直在混亂中打轉，需正面迎接改變，接受動蕩才能真正找到出路。'},
+   }},
+  {name:'星星',num:'XVII',icon:'⭐',
+   up:'希望靈感、療癒更新、信心重建、宇宙祝福',
+   down:'失望悲觀、缺乏信心、執著幻想',
+   interp:{
+     love:{up:'感情出現希望之光，療癒過去的傷痛，準備好重新相信愛，新的愛情或現有關係升溫。',
+           down:'對感情失去希望，或沉溺在對理想伴侶的幻想中，而錯失眼前真實的緣分。'},
+     career:{up:'職業出現新的靈感和方向，充滿希望，創意工作大旺，相信自己的才能，閃亮時刻到來。',
+             down:'對職業前途感到迷茫，需找回動力和信心，不要讓挫折消滅你的夢想。'},
+     health:{up:'身體和心靈進入療癒階段，好好照顧自己，充分休息，能量將逐漸恢復。',
+             down:'健康改善比預期慢，需保持耐心和信心，不要因進展緩慢而放棄療癒的努力。'},
+     general:{up:'最黑暗的時期已過，星光指引前路，保持信念，宇宙正在幫你，希望就在地平線上。',
+              down:'陷入悲觀主義，需要刻意尋找生活中的亮點，重建對未來的信心。'},
+   }},
+  {name:'月亮',num:'XVIII',icon:'🌕',
+   up:'幻象潛意識、直覺夢境、不確定性、神秘潮汐',
+   down:'迷惑恐懼、自我欺騙、混亂不清',
+   interp:{
+     love:{up:'感情撲朔迷離，真相尚未清晰，需相信直覺，等待月圓之時水落石出，現在勿輕易判斷。',
+           down:'感情中有自我欺騙或受到欺騙的跡象，需睜開眼睛看清真相，不要活在愛情幻覺中。'},
+     career:{up:'職場情況不明朗，決策時需格外謹慎，信任直覺但也需更多資訊，靜待情況明朗化。',
+             down:'職場中充滿謊言和混亂，可能有人在背後操弄，需保護自己，避免捲入政治紛爭。'},
+     health:{up:'身體狀況受情緒影響大，需關注心理健康，夢境可能帶來關於身體的重要訊號。',
+             down:'健康問題尚未有清楚診斷，可能有隱藏的狀況，需更全面的檢查，不要輕易放棄追查。'},
+     general:{up:'此刻充滿不確定，允許模糊的存在，信任直覺多於邏輯，真相將在適當時機自然浮現。',
+              down:'深陷幻覺或恐懼中，需找到清醒的聲音，可能需要諮詢心理諮商師釐清思緒。'},
+   }},
+  {name:'太陽',num:'XIX',icon:'☀️',
+   up:'喜悅成功、生命活力、光明燦爛、萬事如意',
+   down:'自大虛榮、過度樂觀、缺乏深度',
+   interp:{
+     love:{up:'感情大旺，愛情滋潤心靈，單身者吸引力大增，有伴侶者關係甜蜜幸福，求婚大吉。',
+           down:'感情中過於以自我為中心，或過度依賴關係帶來的快樂，需建立獨立的自我價值。'},
+     career:{up:'事業運極旺，才華得到充分展現，名聲大噪，晉升加薪機會大，創業大吉。',
+             down:'過度自信導致大意，或因表現過於高調招人嫉妒，需保持謙虛。'},
+     health:{up:'精力充沛，身體狀況極佳，適合戶外活動，補充維生素D，身心靈全面大好。',
+             down:'過於亢奮，忽略身體需要休息，或因過度樂觀忽視健康警訊，需適度放慢。'},
+     general:{up:'此刻是你的高光時刻，全力以赴，世界為你鼓掌，抓住這段光明期創造美好。',
+              down:'好運可能因為驕傲自滿而流失，保持謙遜，不要讓光環遮蔽了真實的自己。'},
+   }},
+  {name:'審判',num:'XX',icon:'📯',
+   up:'覺醒重生、呼喚使命、過去總結、靈魂召喚',
+   down:'自我懷疑、拖延遲鈍、拒絕改變',
+   interp:{
+     love:{up:'感情出現覺醒，清楚知道自己真正想要什麼，過去的感情經歷帶來智慧，重生後遇到真愛。',
+           down:'一直無法從過去的感情中翻頁，拒絕面對需要改變的事實，被過去束縛而無法前進。'},
+     career:{up:'職業使命感覺醒，找到真正的天職，有機會在重要時刻做出影響深遠的決定。',
+             down:'職業上缺乏方向感，拖延做出重要決定，需傾聽內心的呼喚找到真正的使命。'},
+     health:{up:'身體和靈魂的覺醒，舊的疾病模式終結，迎來健康新生，找到生命的更高意義。',
+             down:'健康問題的根源在於靈魂層面，需正視內心最深的恐懼與遺憾，才能真正療癒。'},
+     general:{up:'靈魂正在呼喚你活出使命，過去的種種都是為了這一刻的覺醒，勇敢回應人生的召喚。',
+              down:'不敢聆聽靈魂的呼喚，找藉口逃避命運的課題，只有面對才能真正改變。'},
+   }},
+  {name:'世界',num:'XXI',icon:'🌍',
+   up:'圓滿完成、整合成就、世界大同、旅程圓滿',
+   down:'未竟之業、逃避責任、停在半途',
+   interp:{
+     love:{up:'感情達到圓滿境界，或一段完整的感情旅程圓滿結束，無論哪種，都充滿感謝與圓滿。',
+           down:'感情始終無法走向圓滿，可能因為某些未完成的功課阻礙，需找出並解決最後的障礙。'},
+     career:{up:'重大目標即將達成，事業里程碑即將完成，此刻是收穫成果的高峰期，值得慶祝。',
+             down:'事業半途而廢，或在成功門口退縮，需堅持到最後，跨越終點線的距離就差這一步。'},
+     health:{up:'健康問題即將全面康復，身心靈整合達到最佳狀態，是整個療癒旅程的完美句點。',
+             down:'健康改善還差最後一塊拼圖，找出未解決的因素，完成全部的療癒工作。'},
+     general:{up:'一段重要旅程即將圓滿，好好慶祝這份成就，同時準備好迎接下一個人生旅程的開始。',
+              down:'尚未走到終點就提早放棄，或一直在旅程中徘徊，需鼓起勇氣走完最後一程。'},
+   }},
 ];
 
 const spreadLabels = {
-  '1': ['指引'],
+  '1': ['當下指引'],
   '3': ['過去','現在','未來'],
   '5': ['現況','阻礙','潛意識','建議','結果'],
-};
-
-const tarotInterpretations = {
-  love: {
-    up: ['感情將有美好進展，對方對你有好感，宜主動表達。','關係中有強烈的吸引力，感情基礎穩固，宜珍惜。','愛情運旺，單身者有機會遇到命中注定的人。'],
-    down: ['感情面臨考驗，需雙方努力溝通才能化解誤會。','關係中有不平衡，需重新審視彼此的付出。'],
-  },
-  career: {
-    up: ['事業將有突破，新機會即將到來，宜把握。','工作表現受到肯定，升遷機會大增。','合作計畫順利，團隊默契佳。'],
-    down: ['工作壓力增加，需調整策略，避免正面衝突。','需重新評估目標，找到真正適合自己的方向。'],
-  },
-  health: {
-    up: ['身體狀況良好，精力充沛，宜保持好習慣。','若有舊疾，此時是調養的好時機。'],
-    down: ['需注意休息，避免過勞，放慢腳步。','情緒影響身體，需學會釋放壓力。'],
-  },
-  general: {
-    up: ['整體運勢向好，諸事順利，宜積極行動。','貴人運旺，有人從旁協助，事半功倍。'],
-    down: ['需謹慎行事，不宜冒進，耐心等待時機。'],
-  },
-  decision: {
-    up: ['此決定有利，可以放心前進，結果將是正面的。','直覺告訴你答案了，相信自己的判斷。'],
-    down: ['暫緩決定，多方評估後再行動。','此路可能有阻礙，考慮備選方案。'],
-  },
+  '10': ['現況','阻礙','基礎','過去','最佳結果','近期未來','對自己','外在環境','希望恐懼','最終結果'],
 };
 
 let drawnCards = [];
@@ -761,10 +1288,10 @@ function drawTarot() {
   const shuffled = [...tarotCards].sort(() => rand() - 0.5);
   drawnCards = shuffled.slice(0, count).map(c => ({
     ...c,
-    reversed: rand() > 0.6,
+    reversed: rand() > 0.65,
   }));
 
-  const labels = spreadLabels[String(count)];
+  const labels = spreadLabels[String(count)] || spreadLabels['3'];
 
   setTimeout(() => {
     loading('tarot-loading', false);
@@ -777,7 +1304,7 @@ function drawTarot() {
           <div class="tarot-card revealed" style="${c.reversed ? 'transform:rotate(180deg)' : ''}">
             <div class="card-content">
               <div class="card-icon">${c.icon}</div>
-              <div class="card-name">${c.name}</div>
+              <div class="card-name">${c.num}<br>${c.name}</div>
               ${c.reversed ? '<div class="card-reversed">逆位</div>' : ''}
             </div>
           </div>
@@ -786,15 +1313,27 @@ function drawTarot() {
     cardsHtml += '</div>';
 
     let interpHtml = '';
-    const topicInterp = tarotInterpretations[topic];
     drawnCards.forEach((c, i) => {
-      const meaning = c.reversed ? c.down : c.up;
-      const contextMsg = pick(c.reversed ? topicInterp.down : topicInterp.up, rng(seed()));
+      const isRev = c.reversed;
+      const meaning = isRev ? c.down : c.up;
+      const topicInterp = c.interp[topic] || c.interp.general;
+      const contextMsg = isRev ? topicInterp.down : topicInterp.up;
+      const posLabel = labels[i];
       interpHtml += `
-        <div class="section-title">▎${labels[i]}：${c.name}${c.reversed ? '（逆位）' : '（正位）'}</div>
-        <p><span class="tag">牌義</span> ${meaning}</p>
+        <div class="section-title">▎${posLabel}：${c.name}${isRev ? '（逆位）' : '（正位）'}</div>
+        <p><span class="tag">牌面核心</span> ${meaning}</p>
         <p>${contextMsg}</p>`;
     });
+
+    // 總結
+    const positiveCount = drawnCards.filter(c => !c.reversed).length;
+    const totalCount = drawnCards.length;
+    const overallTone = positiveCount >= totalCount * 0.6 ? '整體牌面正向，' : positiveCount <= totalCount * 0.4 ? '整體牌面需要謹慎，' : '整體牌面中性，';
+    const summary = [
+      overallTone + '關鍵在於你如何選擇回應當下的能量。',
+      overallTone + '牌面提醒你關注自己的內在狀態，外在的結果是內在選擇的反映。',
+      overallTone + '請相信自己的直覺，塔羅只是鏡子，真正的智慧在你心中。',
+    ];
 
     showResult('tarot-result', `
       <h3>🃏 ${question ? '「' + question + '」' : '塔羅指引'}</h3>
@@ -802,52 +1341,194 @@ function drawTarot() {
       <hr class="divider">
       ${interpHtml}
       <hr class="divider">
-      <p style="color:var(--muted);font-size:0.82rem;text-align:center">
-        ✦ 塔羅是心靈的鏡子，最終選擇權在你 ✦
+      <div class="section-title">▎牌陣總結</div>
+      <p>${pick(summary, rand)}</p>
+      <p style="color:var(--muted);font-size:0.82rem;text-align:center;margin-top:14px">
+        ✦ 塔羅是心靈的鏡子，最終選擇權永遠在你 ✦
       </p>
     `);
   }, 1500);
 }
 
-// ===== 八字 =====
+// ===== 八字（正確算法）=====
 const stems = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
 const branches = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
 const stemElements = ['木','木','火','火','土','土','金','金','水','水'];
 const branchElements = ['水','土','木','木','土','火','火','土','金','金','土','水'];
 const elementColors = {木:'el-wood',火:'el-fire',土:'el-earth',金:'el-metal',水:'el-water'};
 const elementEmojis = {木:'🌳',火:'🔥',土:'🪨',金:'⚡',水:'💧'};
+const ELEM_CYCLE = ['木','火','土','金','水'];
+const EL_IDX = {木:0,火:1,土:2,金:3,水:4};
 
 const dayMasterPersonality = {
-  甲: '甲木之人，正直剛毅，有領袖氣質，理想遠大，重視原則。',
-  乙: '乙木之人，溫柔細心，適應力強，善於交際，處事靈活。',
-  丙: '丙火之人，熱情開朗，慷慨大方，富有感染力，樂觀進取。',
-  丁: '丁火之人，溫婉體貼，內心細膩，藝術感強，重情義。',
-  戊: '戊土之人，穩重踏實，包容力強，值得信賴，做事有始有終。',
-  己: '己土之人，謙虛內斂，思慮周全，善於協調，為人和善。',
-  庚: '庚金之人，果斷剛強，做事俐落，重義氣，意志堅定。',
-  辛: '辛金之人，聰明秀氣，審美獨到，注重細節，追求完美。',
-  壬: '壬水之人，聰慧機智，思維靈活，適應力佳，視野開闊。',
-  癸: '癸水之人，敏感直覺強，感情豐富，善解人意，神秘迷人。',
+  甲:{char:'正直剛毅，有領袖氣質，理想遠大，重視原則，不肯低頭，適合開拓型工作。',luck:'喜水木，宜把握壬癸甲乙年運。'},
+  乙:{char:'溫柔細膩，適應力超強，善交際，處事靈活，能屈能伸，貴人緣佳。',luck:'喜水木，宜把握壬癸甲乙年運。'},
+  丙:{char:'熱情開朗，慷慨大方，感染力強，樂觀積極，天生明星氣質。',luck:'喜木火，宜把握甲乙丙丁年運。'},
+  丁:{char:'溫婉體貼，內心細膩，藝術感強，重情義，心思敏銳如燭光。',luck:'喜木火，宜把握甲乙丙丁年運。'},
+  戊:{char:'穩重踏實，包容力強，值得信賴，心胸寬廣如大地，做事有始有終。',luck:'喜火土，宜把握丙丁戊己年運。'},
+  己:{char:'謙虛內斂，思慮周全，善協調，為人和善，默默付出型人格。',luck:'喜火土，宜把握丙丁戊己年運。'},
+  庚:{char:'果斷剛強，做事俐落，重義氣，意志堅定，最能在逆境中爆發。',luck:'喜土金，宜把握戊己庚辛年運。'},
+  辛:{char:'聰明秀氣，審美獨到，注重細節，追求完美，氣質出眾如美玉。',luck:'喜土金，宜把握戊己庚辛年運。'},
+  壬:{char:'聰慧機智，思維靈活，適應力佳，視野開闊，有遠見有謀略。',luck:'喜金水，宜把握庚辛壬癸年運。'},
+  癸:{char:'感受力強，直覺敏銳，感情豐富，善解人意，神秘而迷人。',luck:'喜金水，宜把握庚辛壬癸年運。'},
 };
 
-function getStemBranch(year, month, day, hour) {
-  // Simplified calculation (approximation)
-  const base = 4; // 甲子 year base
-  const yearIdx = (year - 4) % 10;
-  const yearBranchIdx = (year - 4) % 12;
-  const monthIdx = (year * 12 + month - 1) % 10;
-  const monthBranchIdx = ((month + 1) % 12);
-  const dayBase = Math.floor((year * 365.25 + month * 30.4375 + day) % 60);
-  const dayIdx = dayBase % 10;
-  const dayBranchIdx = dayBase % 12;
-  const hourIdx = (dayIdx * 2 + Math.floor(hour)) % 10;
-  const hourBranchIdx = hour % 12;
+// 十神名稱
+function getTenGod(dmStemIdx, targetStemIdx) {
+  const dmEI = EL_IDX[stemElements[dmStemIdx]];
+  const tEI  = EL_IDX[stemElements[targetStemIdx]];
+  const sameYY = (dmStemIdx % 2) === (targetStemIdx % 2);
+  if (dmEI === tEI) return sameYY ? '比肩' : '劫財';
+  if ((dmEI+1)%5 === tEI) return sameYY ? '食神' : '傷官';
+  if ((dmEI+2)%5 === tEI) return sameYY ? '偏財' : '正財';
+  if ((tEI+2)%5 === dmEI) return sameYY ? '七殺' : '正官';
+  if ((tEI+1)%5 === dmEI) return sameYY ? '偏印' : '正印';
+  return '?';
+}
 
+const TEN_GOD_DESC = {
+  比肩:'個性獨立自主，不服輸，有競爭心。',
+  劫財:'行動力強，但財運易受人影響，需防小人。',
+  食神:'口福好，有才藝，感情豐富，生活有品質。',
+  傷官:'聰明有創意，但個性強，不服管束。',
+  偏財:'偏財旺，善應酬，有商業頭腦。',
+  正財:'理財穩健，重物質，婚姻責任感強。',
+  七殺:'執行力強，敢衝鋒，但性格剛烈，壓力大。',
+  正官:'有責任感，重規範，事業心強，形象好。',
+  偏印:'思維跳躍，有直覺，偏好獨立自主。',
+  正印:'善良有愛心，貴人多，學業運佳。',
+};
+
+// 年柱：以立春（約2月4日）換年
+function getYearPillar(y, m, d) {
+  let yr = (m < 2 || (m === 2 && d < 4)) ? y - 1 : y;
+  const si = ((yr - 4) % 10 + 10) % 10;
+  const bi = ((yr - 4) % 12 + 12) % 12;
+  return { stem: stems[si], branch: branches[bi], si, bi };
+}
+
+// 月柱：依節氣（節）確定，精確到日
+function getMonthPillar(m, d, yearStemIdx) {
+  // 12節 近似日期（月, 日）→ 月index 0=寅...11=丑
+  const JIE = [[2,4],[3,6],[4,5],[5,6],[6,6],[7,7],[8,7],[9,8],[10,8],[11,7],[12,7],[1,6]];
+  const doy = [0,31,59,90,120,151,181,212,243,273,304,334][m-1] + d;
+  const jDoy = [35,65,95,126,157,188,219,251,281,311,341,6]; // 近似day-of-year
+  let mIdx = 11; // 丑月 (Jan 6 - Feb 3)
+  for (let i = 0; i < 11; i++) {
+    if (doy >= jDoy[i] && doy < jDoy[i+1]) { mIdx = i; break; }
+  }
+  if (doy < 6) mIdx = 11; // Jan 1-5 = 丑月
+  const MBRANCH = [2,3,4,5,6,7,8,9,10,11,0,1];
+  const branchIdx = MBRANCH[mIdx];
+  const stemStart = [2,4,6,8,0][yearStemIdx % 5]; // 寅月天干起點
+  const stemIdx = (stemStart + mIdx) % 10;
+  return { stem: stems[stemIdx], branch: branches[branchIdx], mIdx, stemIdx, branchIdx };
+}
+
+// 日柱：甲子日 = 1984年2月4日（參考日）
+const DAY_REF = new Date(Date.UTC(1984, 1, 4));
+function getDayPillar(y, m, d) {
+  const diff = Math.round((new Date(Date.UTC(y, m-1, d)) - DAY_REF) / 86400000);
+  const idx60 = ((diff % 60) + 60) % 60;
+  return { stem: stems[idx60 % 10], branch: branches[idx60 % 12], si: idx60 % 10, bi: idx60 % 12 };
+}
+
+// 時柱：由日主天干決定子時天干
+function getHourPillar(shichenIdx, dayStemIdx) {
+  const start = [0,2,4,6,8][dayStemIdx % 5];
+  const si = (start + shichenIdx) % 10;
+  return { stem: stems[si], branch: branches[shichenIdx], si, bi: shichenIdx };
+}
+
+// 大運計算
+function calcDaYun(y, m, d, monthPillar, yearStemIdx, gender) {
+  const isYang = yearStemIdx % 2 === 0;
+  const forward = (isYang && gender==='m') || (!isYang && gender==='f');
+
+  // 到下一節（順）或上一節（逆）的天數
+  const JIE_MD = [[2,4],[3,6],[4,5],[5,6],[6,6],[7,7],[8,7],[9,8],[10,8],[11,7],[12,7],[1,6]];
+  const mIdx = monthPillar.mIdx;
+  const birth = new Date(Date.UTC(y, m-1, d));
+  let jieDate;
+  if (forward) {
+    const [nm, nd] = JIE_MD[(mIdx+1) % 12];
+    const ny = (mIdx >= 10) ? y+1 : y;
+    jieDate = new Date(Date.UTC(ny, nm-1, nd));
+  } else {
+    const [pm, pd] = JIE_MD[mIdx];
+    const py = (mIdx === 11 && m > 1) ? y : y;
+    jieDate = new Date(Date.UTC(py, pm-1, pd));
+    if (jieDate > birth) jieDate = new Date(Date.UTC(py-1, pm-1, pd));
+  }
+  const days = Math.abs(Math.round((jieDate - birth) / 86400000));
+  const startAge = Math.max(1, Math.round(days / 3));
+
+  const yunList = [];
+  for (let i = 0; i < 8; i++) {
+    const offset = forward ? i+1 : -(i+1);
+    const si = ((monthPillar.stemIdx + offset) % 10 + 10) % 10;
+    const bi = ((monthPillar.branchIdx + offset) % 12 + 12) % 12;
+    yunList.push({
+      stem: stems[si], branch: branches[bi],
+      element: stemElements[si],
+      startAge: startAge + i*10, endAge: startAge + i*10 + 9,
+    });
+  }
+  return { startAge, forward, yunList };
+}
+
+// 五行強弱
+function analyzeStrength(dmStemIdx, pillars) {
+  const dmElem = stemElements[dmStemIdx];
+  const dmEI = EL_IDX[dmElem];
+  let supportCount = 0;
+  pillars.forEach(p => {
+    const sEI = EL_IDX[stemElements[stems.indexOf(p.stem)]];
+    const bEI = EL_IDX[branchElements[branches.indexOf(p.branch)]];
+    // 比劫（同元素）或印（生日主）
+    if (sEI === dmEI || (sEI+1)%5 === dmEI) supportCount++;
+    if (bEI === dmEI || (bEI+1)%5 === dmEI) supportCount++;
+  });
+  const total = pillars.length * 2;
+  if (supportCount >= total * 0.55) return {level:'身旺', yongshen: ELEM_CYCLE[(dmEI+1)%5] + '、' + ELEM_CYCLE[(dmEI+2)%5], desc:'日主氣勢強，喜食傷洩秀、財官為用，宜積極進取。'};
+  if (supportCount <= total * 0.35) return {level:'身弱', yongshen: ELEM_CYCLE[(dmEI+4)%5] + '、' + ELEM_CYCLE[dmEI], desc:'日主氣弱，喜印比相助，宜穩健保守，依靠貴人。'};
+  return {level:'中和', yongshen: '平衡五行', desc:'日主中和，格局純粹，進退自如，隨機應變。'};
+}
+
+// 格局判斷（簡化）
+function judgeGe(pillars, dmStemIdx) {
+  const tenGods = pillars.flatMap(p => [
+    getTenGod(dmStemIdx, stems.indexOf(p.stem)),
+    getTenGod(dmStemIdx, stems.indexOf(p.stem)), // placeholder for branch hidden stem
+  ]);
+  const counts = {};
+  tenGods.forEach(g => { counts[g] = (counts[g]||0) + 1; });
+  const dominant = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+  const ge = {
+    食神:'食神格——才藝出眾，口才佳，生活享受，感情豐沛，適合藝術創意產業。',
+    傷官:'傷官格——聰明反應快，自信超群，適合創業或技術研發，但需收斂鋒芒。',
+    偏財:'偏財格——八面玲瓏，商業嗅覺敏銳，善把握機會，財運活躍但需防耗散。',
+    正財:'正財格——勤奮務實，理財有方，一步一腳印積累財富，婚姻穩定。',
+    七殺:'七殺格——魄力十足，敢衝鋒陷陣，適合管理或軍警職，人生多磨礪成就大。',
+    正官:'正官格——重規範有秩序，形象佳，仕途順遂，婚姻穩定，適合公職或大企業。',
+    偏印:'偏印格——思維獨特，多學多能，直覺強，適合宗教、學術、藝術研究。',
+    正印:'正印格——仁慈善良，貴人多助，學業事業平順，心地厚道，晚年享福。',
+    比肩:'比肩格——獨立自主，個性鮮明，適合自由業或個人事業，競爭中展現實力。',
+    劫財:'劫財格——行動力強，勇於開拓，財來財去，關鍵在守財，需防損耗。',
+  };
+  return ge[dominant] || '格局中和，各方均衡，進退自如，靠後天努力成就一番事業。';
+}
+
+function getStemBranch(year, month, day, shichen) {
+  const yp = getYearPillar(year, month, day);
+  const mp = getMonthPillar(month, day, yp.si);
+  const dp = getDayPillar(year, month, day);
+  const hp = getHourPillar(shichen, dp.si);
   return [
-    {stem: stems[(yearIdx + 10) % 10], branch: branches[(yearBranchIdx + 12) % 12], label:'年柱'},
-    {stem: stems[(monthIdx + 10) % 10], branch: branches[monthBranchIdx % 12], label:'月柱'},
-    {stem: stems[(dayIdx + 10) % 10], branch: branches[(dayBranchIdx + 12) % 12], label:'日柱'},
-    {stem: stems[(hourIdx + 10) % 10], branch: branches[hourBranchIdx % 12], label:'時柱'},
+    {...yp, label:'年柱'},
+    {...mp, label:'月柱'},
+    {...dp, label:'日柱'},
+    {...hp, label:'時柱'},
   ];
 }
 
@@ -948,111 +1629,218 @@ function calcBazi() {
   setTimeout(() => {
     loading('bz-loading', false);
 
-    // 換算真太陽時
     const tst = toTrueSolarTime(year, month, day, localHH, localMM, longitude, tzOffset);
     const { year: tYear, month: tMonth, day: tDay } = tst.newDate;
     const shichen = minutesToShichen(tst.trueSolarMinutes);
 
-    const rand = rng(tYear * 100 + tMonth * 10 + tDay + shichen);
     const pillars = getStemBranch(tYear, tMonth, tDay, shichen);
-    const dayMaster = pillars[2].stem;
+    const yp = pillars[0], mp = pillars[1], dp = pillars[2], hp = pillars[3];
+    const dmStemIdx = stems.indexOf(dp.stem);
+    const dmElem = stemElements[dmStemIdx];
 
-    // Count elements
+    // 八個字的天干十神
+    const tenGods = pillars.map((p, pi) => {
+      if (pi === 2) return {stem:'——', branch:getTenGod(dmStemIdx, branches.indexOf(p.branch))};
+      return {
+        stem: getTenGod(dmStemIdx, stems.indexOf(p.stem)),
+        branch: getTenGod(dmStemIdx, stems.indexOf( stems[EL_IDX[branchElements[branches.indexOf(p.branch)]]] )),
+      };
+    });
+
+    // 五行計數
     const elCount = {木:0,火:0,土:0,金:0,水:0};
     pillars.forEach(p => {
       elCount[stemElements[stems.indexOf(p.stem)]]++;
       elCount[branchElements[branches.indexOf(p.branch)]]++;
     });
-
-    const sortedEl = Object.entries(elCount).sort((a,b) => b[1]-a[1]);
+    const sortedEl = Object.entries(elCount).sort((a,b)=>b[1]-a[1]);
     const strongEl = sortedEl[0][0];
-    const weakEl = sortedEl[sortedEl.length-1][0];
+    const weakEl   = sortedEl[sortedEl.length-1][0];
 
-    const personality = dayMasterPersonality[dayMaster];
+    // 身旺弱分析
+    const strength = analyzeStrength(dmStemIdx, pillars);
+    // 格局
+    const geJu = judgeGe(pillars, dmStemIdx);
+    // 大運
+    const yuInfo = getYearPillar(tYear, tMonth, tDay);
+    const mpInfo = getMonthPillar(tMonth, tDay, yuInfo.si);
+    const dyInfo = calcDaYun(tYear, tMonth, tDay, mpInfo, yuInfo.si, gender);
 
+    const pad = n => String(n).padStart(2,'0');
+    const origTimeStr = `${pad(localHH)}:${pad(localMM)}`;
+    const dateShiftNote = tst.dateShift !== 0 ? `（跨日至 ${tYear}/${tMonth}/${tDay}）` : '';
+
+    // 四柱 HTML（含十神）
     let pillarsHtml = '<div class="bazi-pillars">';
-    pillars.forEach(p => {
+    pillars.forEach((p, i) => {
+      const tg = i===2 ? '' : tenGods[i].stem;
       pillarsHtml += `
         <div class="pillar">
           <div class="pillar-label">${p.label}</div>
+          ${tg ? `<div style="font-size:0.7rem;color:var(--muted);text-align:center;margin-bottom:2px">${tg}</div>` : '<div style="height:16px"></div>'}
           <div class="stem">${p.stem}</div>
           <div class="branch">${p.branch}</div>
         </div>`;
     });
     pillarsHtml += '</div>';
 
+    // 五行分佈
     let elementsHtml = '<div style="text-align:center;margin:10px 0">';
-    Object.entries(elCount).forEach(([el, count]) => {
-      for (let i = 0; i < count; i++) {
-        elementsHtml += `<span class="element-badge ${elementColors[el]}">${el}</span>`;
-      }
+    Object.entries(elCount).forEach(([el, cnt]) => {
+      for (let i=0; i<cnt; i++) elementsHtml += `<span class="element-badge ${elementColors[el]}">${el}</span>`;
     });
     elementsHtml += '</div>';
 
-    const luckTexts = [
-      `五行以${strongEl}為旺，${elementEmojis[strongEl]} 宜從事與${strongEl}相關行業；${weakEl}五行較弱，需注意補足。`,
-      `日主${dayMaster}為${stemElements[stems.indexOf(dayMaster)]}，個性${['剛強','柔韌'][Math.floor(rand()*2)]}，${gender === 'm' ? '男命' : '女命'}宜把握${['木','火'][Math.floor(rand()*2)]}運年份。`,
-    ];
+    // 大運表格
+    const currentYear = 2026;
+    let dynHtml = `<div style="overflow-x:auto"><table style="width:100%;font-size:0.82rem;border-collapse:collapse;margin-top:8px">
+      <tr style="color:var(--gold)"><td style="padding:4px 6px">起運年齡</td>`;
+    dyInfo.yunList.forEach(y => {
+      const isNow = (currentYear - tYear) >= y.startAge && (currentYear - tYear) <= y.endAge;
+      dynHtml += `<td style="padding:4px 6px;text-align:center;${isNow?'background:rgba(201,168,76,0.15);border-radius:4px':''}">${y.startAge}–${y.endAge}</td>`;
+    });
+    dynHtml += '</tr><tr><td style="color:var(--muted);padding:4px 6px">干支</td>';
+    dyInfo.yunList.forEach(y => {
+      const isNow = (currentYear - tYear) >= y.startAge && (currentYear - tYear) <= y.endAge;
+      const tg10 = getTenGod(dmStemIdx, stems.indexOf(y.stem));
+      dynHtml += `<td style="padding:4px 6px;text-align:center;${isNow?'color:var(--gold);font-weight:bold':''}">
+        <div>${y.stem}${y.branch}</div>
+        <div style="font-size:0.7rem;color:var(--muted)">${tg10}</div>
+      </td>`;
+    });
+    dynHtml += `</tr></table></div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:6px">
+      ${dyInfo.forward?'順行大運（陽'+(gender==='m'?'男':'女')+'）':'逆行大運（陰'+(gender==='m'?'男':'女')+'）'}，
+      起運年齡 ${dyInfo.startAge} 歲，每十年換一大運。
+      <span style="color:var(--gold)">▶ 金色為當前大運</span>
+    </p>`;
 
-    const careerAdvice = {木:'文教、創意、設計、農業、植物相關',火:'娛樂、演藝、能源、電子、行銷',土:'房地產、建築、農業、資源、倉儲',金:'金融、法律、軍警、機械、冶金',水:'航運、貿易、資訊、教育、流通'}[strongEl];
-    const luckyColor = {木:'綠色、青色',火:'紅色、橙色',土:'黃色、棕色',金:'白色、銀色',水:'黑色、深藍'}[strongEl];
+    // 流年分析（2026）
+    const liuNianStemIdx = ((2026-4)%10+10)%10;
+    const liuNianBranchIdx = ((2026-4)%12+12)%12;
+    const liuNianStem = stems[liuNianStemIdx];
+    const liuNianBranch = branches[liuNianBranchIdx];
+    const liuNianTG = getTenGod(dmStemIdx, liuNianStemIdx);
+    const liuNianElem = stemElements[liuNianStemIdx];
+
+    const careerAdvice = {木:'文教、創意、設計、出版、環保',火:'娛樂、演藝、餐飲、能源、行銷',土:'房地產、建築、農業、礦業、倉儲',金:'金融、法律、軍警、機械、珠寶',水:'航運、貿易、資訊、教育、流通'}[strongEl];
+    const luckyColor = {木:'綠色、青色',火:'紅色、橙色',土:'黃色、棕色',金:'白色、銀灰',水:'黑色、深藍'}[strongEl];
     const luckyNumber = {木:'3、8',火:'2、7',土:'5、10',金:'4、9',水:'1、6'}[strongEl];
-
-    const pad = n => String(n).padStart(2,'0');
-    const origTimeStr = `${pad(localHH)}:${pad(localMM)}`;
-    const dateShiftNote = tst.dateShift !== 0
-      ? `（已跨日至 ${tYear}/${tMonth}/${tDay}）` : '';
+    const dmData = dayMasterPersonality[dp.stem];
 
     showResult('bz-result', `
       <h3>☯ ${year}年${month}月${day}日 八字命盤</h3>
-      <div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:0.88rem;line-height:2">
-        <div style="color:var(--gold);font-size:0.8rem;margin-bottom:4px">☀ 真太陽時換算過程</div>
-        標準時間：${origTimeStr}
-        &nbsp;→&nbsp; 經度修正：${tst.lonCorrection > 0 ? '+' : ''}${tst.lonCorrection} 分
-        &nbsp;+&nbsp; 均時差：${tst.eot > 0 ? '+' : ''}${tst.eot} 分<br>
-        <strong style="color:var(--gold)">真太陽時：${tst.displayStr} ${dateShiftNote}</strong>
-        &nbsp;→&nbsp; 時辰：<strong style="color:var(--gold)">${branches[shichen]}時</strong>
+
+      <div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.88rem;line-height:2">
+        <span style="color:var(--gold);font-size:0.8rem">☀ 真太陽時換算</span><br>
+        標準時 ${origTimeStr} → 經度修正 ${tst.lonCorrection>0?'+':''}${tst.lonCorrection}分 + 均時差 ${tst.eot>0?'+':''}${tst.eot}分
+        = <strong style="color:var(--gold)">真太陽時 ${tst.displayStr}</strong> ${dateShiftNote}
+        → 時辰 <strong style="color:var(--gold)">${branches[shichen]}時</strong>
       </div>
+
+      <div class="section-title">▎四柱八字（天干十神已標示）</div>
       ${pillarsHtml}
+      <div style="text-align:center;margin:6px 0;font-size:0.8rem;color:var(--muted)">
+        日柱天干（${dp.stem}）為日主，其餘七字皆對日主論十神
+      </div>
+
       <div class="section-title">▎五行分佈</div>
       ${elementsHtml}
-      <div class="section-title">▎日主性格（${dayMaster}日）</div>
-      <p>${personality}</p>
-      <div class="section-title">▎五行分析</div>
-      <p>${luckTexts[0]}</p>
-      <p>${luckTexts[1]}</p>
-      <div class="section-title">▎事業方向</div>
-      <p>適合從事 <strong>${careerAdvice}</strong> 等行業。</p>
-      <div class="section-title">▎幸運資訊</div>
-      <p>
-        <span class="tag">幸運色</span> ${luckyColor} &nbsp;
-        <span class="tag">幸運數字</span> ${luckyNumber}
-      </p>
+      <p><span class="tag">最旺</span>${strongEl}（${elementEmojis[strongEl]}${elCount[strongEl]}個）
+         <span class="tag" style="margin-left:6px">最弱</span>${weakEl}（${elementEmojis[weakEl]}${elCount[weakEl]}個）</p>
+
+      <div class="section-title">▎日主分析（${dp.stem}日 · ${dmElem}）</div>
+      <p>${dmData.char}</p>
+      <p><span class="tag">身旺弱</span> <strong style="color:var(--gold)">${strength.level}</strong> — ${strength.desc}</p>
+      <p><span class="tag">喜用神</span> ${strength.yongshen} &nbsp; <span class="tag">趨吉年份</span> ${dmData.luck}</p>
+
+      <div class="section-title">▎格局分析</div>
+      <p>${geJu}</p>
+
+      <div class="section-title">▎大運（每十年一換）</div>
+      ${dynHtml}
+
+      <div class="section-title">▎2026 丙午流年分析</div>
+      <p>流年 <strong style="color:var(--gold)">${liuNianStem}${liuNianBranch}（${liuNianTG}）</strong>，五行屬${liuNianElem}。
+      ${liuNianTG==='正官'||liuNianTG==='七殺'?'官殺流年，事業有壓力也有升遷機會，需謹慎應對競爭。':
+        liuNianTG==='正財'||liuNianTG==='偏財'?'財運流年，進財機會多，把握商機，注意守財。':
+        liuNianTG==='食神'||liuNianTG==='傷官'?'食傷流年，才華展現機會，創意旺盛，適合拓展人脈。':
+        liuNianTG==='正印'||liuNianTG==='偏印'?'印綬流年，貴人相助，學習進修，事業有貴人提攜。':
+        '比劫流年，競爭加劇，需防小人，同時也有合作機遇。'}
+      丙午年火旺，感情、事業均有所動，把握上半年積極出擊。</p>
+
+      <div class="section-title">▎事業與幸運資訊</div>
+      <p>適合行業：<strong>${careerAdvice}</strong></p>
+      <p><span class="tag">幸運色</span> ${luckyColor} &nbsp; <span class="tag">幸運數字</span> ${luckyNumber}</p>
+
       <hr class="divider">
-      <p style="color:var(--muted);font-size:0.82rem;text-align:center">
-        ✦ 八字為人生藍圖，後天努力可改變命運 ✦
+      <p style="color:var(--muted);font-size:0.78rem;text-align:center">
+        ✦ 年柱以立春換年，月柱依節氣確定，日柱以甲子日（1984/2/4）為基準精確推算 ✦<br>
+        ✦ 八字為人生藍圖，後天修為可改命運 ✦
       </p>
     `);
-  }, 1500);
+  }, 1800);
 }
 
 // ===== 解夢 =====
 const dreamKeywords = {
-  飛: {meaning:'象徵自由、脫離束縛，或內心渴望突破現狀。',advice:'近期可能有新機會，勇敢追求吧！'},
-  水: {meaning:'水代表情感與潛意識。清水主吉，濁水需注意感情困擾。',advice:'關注內心情緒，適度表達感受。'},
-  蛇: {meaning:'蛇有雙重象徵：智慧與危機。可能有小人或隱患需防範。',advice:'近期與人交往宜謹慎，信任需建立在了解基礎上。'},
-  死: {meaning:'夢見死亡不代表真實死亡，通常象徵結束與新生。',advice:'某段關係或階段即將結束，迎接新的開始。'},
-  錢: {meaning:'夢見錢財象徵對物質安全感的渴望，或近期財務有變動。',advice:'注意財務規劃，避免衝動消費。'},
-  追: {meaning:'被追逐代表逃避壓力或責任，需正視面臨的問題。',advice:'鼓起勇氣面對問題，逃避只會讓壓力累積。'},
-  考試: {meaning:'經典的焦慮夢，代表對自我要求高，擔心表現不如預期。',advice:'放輕鬆，你比自己想像的更有準備。'},
-  牙齒: {meaning:'夢見牙齒脫落象徵對外在形象的焦慮，或擔心失去重要事物。',advice:'審視你最近在乎什麼，或有何重要決定待做。'},
-  家: {meaning:'家象徵內心、自我認同。夢見家的狀態反映你的心理狀態。',advice:'關注自己的內在需求，回歸生活本質。'},
-  貓: {meaning:'貓象徵神秘、直覺和獨立性，也可能與女性能量有關。',advice:'相信你的直覺，適度保持自己的空間。'},
-  狗: {meaning:'狗代表忠誠、友誼與保護。可能有好友需要你，或你需要支持。',advice:'珍視身邊的朋友，適時表達關心。'},
-  火: {meaning:'火象徵激情、能量，也可能是憤怒或危機的警示。',advice:'疏導情緒，把熱情放在正確的事情上。'},
-  嬰兒: {meaning:'嬰兒象徵新開始、潛力與創意，也可能代表依賴感。',advice:'有新計畫或想法將要開展，給自己信心。'},
-  飛機: {meaning:'象徵遠大目標、旅行計畫或渴望改變環境。',advice:'計劃中的旅行或轉變近期會有進展。'},
-  結婚: {meaning:'不一定指婚姻，象徵承諾、合作或整合不同面向的自我。',advice:'生命中某段重要關係或合作將更進一步。'},
+  // 自然現象
+  飛:{cat:'行動',meaning:'象徵渴望自由、突破束縛，或對現狀有強烈逃離慾望。飛得高代表目標遠大；飛不起來表示感到受限。',advice:'你的潛力比你想像的更大，是時候飛越眼前的障礙了。'},
+  水:{cat:'情感',meaning:'水象徵情感、潛意識和心靈流動。清澈的水代表思緒清明；洪水象徵情緒失控；靜水代表平靜；污水需注意健康或感情問題。',advice:'關注你的情感流動，讓感受自然表達，不要壓抑。'},
+  火:{cat:'能量',meaning:'火代表激情、轉化與危機。燃燒旺盛的火象徵熱情與創意；失控的火警示情緒危機；爐火象徵家庭溫暖。',advice:'把充沛的能量引導到有建設性的方向，別讓怒火灼傷自己。'},
+  洪水:{cat:'情感',meaning:'洪水代表情緒或事態已超出掌控範圍，被淹沒感。是潛意識在警示你某件事已積壓太久，需要釋放。',advice:'找到情緒出口，可以傾訴、運動或寫日記，讓情緒流動。'},
+  地震:{cat:'變化',meaning:'地震象徵生活基礎受到動搖，可能面臨重大變化或衝擊，內心深處的恐懼被觸動。',advice:'雖然震動令人不安，但地震後大地更新，接受改變的到來。'},
+  閃電:{cat:'覺醒',meaning:'閃電代表突如其來的頓悟或衝擊，也象徵靈感爆發、機遇瞬間到來，需要快速把握。',advice:'靈感來時立即記錄，機遇出現時要果斷行動。'},
+  雷:{cat:'警示',meaning:'雷聲象徵來自更高力量的警示或責備，也代表某件隱患即將爆發，需要正視。',advice:'傾聽內心或外在的警告，提前採取預防措施。'},
+  雨:{cat:'情感',meaning:'雨代表淨化與療癒。淋雨可能象徵困難中成長；在雨中跳舞代表接受挑戰；暴雨象徵情感宣洩。',advice:'接受生命的雨水，它正在清洗舊傷，讓新芽萌發。'},
+  雪:{cat:'靜默',meaning:'雪代表純潔、靜默和冬眠期。白雪覆蓋象徵某段時間的封存；融雪則代表事情即將解凍化解。',advice:'有些事情需要時間等待時機，靜待冰雪融化自有答案。'},
+  彩虹:{cat:'希望',meaning:'彩虹是風雨後的美麗，象徵希望、好兆頭即將到來，也代表多元才能的融合。',advice:'最艱難的時期即將過去，美好正在醞釀之中。'},
+  // 動物
+  蛇:{cat:'警示',meaning:'蛇有智慧與危險的雙重意象。金色蛇代表財富；被蛇咬代表遭受背叛或小人陷害；蛇脫皮象徵蛻變更新。',advice:'近期人際關係需謹慎，同時留意蛻變成長的機會。'},
+  龍:{cat:'吉祥',meaning:'夢龍大吉！龍象徵力量、權威和好運，是最吉祥的夢境之一。男性夢龍事業大旺；女性夢龍可能懷貴子。',advice:'迎接即將到來的機遇，你擁有龍一般的潛能，大膽施展！'},
+  老虎:{cat:'力量',meaning:'老虎象徵強大的力量與權威，也可能代表生活中的某個威脅。被虎追代表壓力；騎虎代表掌控強大力量。',advice:'面對你生命中的老虎，勇敢直視才能化威脅為助力。'},
+  馬:{cat:'自由',meaning:'馬象徵自由、速度和行動力。白馬代表純潔好運；黑馬代表潛力爆發；奔跑的馬象徵事業高速前進。',advice:'是時候放開韁繩，讓自己的天賦奔馳。'},
+  魚:{cat:'財運',meaning:'魚代表財富和豐盛，尤其是大魚。夢見很多魚象徵財運旺；釣到大魚代表即將有大收穫；死魚需注意損失。',advice:'財運即將到來，主動出擊把握機會，撒網才能捕魚。'},
+  貓:{cat:'神秘',meaning:'貓代表神秘直覺和獨立性。白貓代表好運；黑貓可能象徵神秘力量或未知；貓抓人警示有小人。',advice:'相信你的直覺，保持獨立的自我空間，不要讓人輕易進入。'},
+  狗:{cat:'忠誠',meaning:'狗象徵忠誠、友誼和保護。狗咬人代表有朋友可能背叛你；被狗追需注意感情糾紛；友善的狗代表貴人。',advice:'珍視身邊忠誠的朋友，同時辨別哪些人是真正的守護者。'},
+  鳥:{cat:'自由',meaning:'鳥代表自由、靈魂和溝通。飛翔的鳥象徵解脫；鳥籠代表受困；鳥鳴代表有好消息傳來。',advice:'讓你的想法和夢想像鳥一樣高飛，不要讓恐懼困住你。'},
+  蝴蝶:{cat:'蛻變',meaning:'蝴蝶代表蛻變、美麗和靈魂。夢見蝴蝶象徵人生將有美好轉化，或靈魂的成長與自由。',advice:'你正處於人生的蛹期，即將蛻變成更美好的自己。',},
+  烏鴉:{cat:'警示',meaning:'烏鴉傳統上象徵預兆，但也代表智慧和洞察力。夢見烏鴉是在提醒你注意某件被忽略的重要事項。',advice:'留意生活中的警示訊號，智慧地看穿表象下的真相。'},
+  // 人與關係
+  死:{cat:'轉化',meaning:'夢見死亡幾乎從不代表真實死亡，而是象徵舊事物的結束和新生的開始。是最常見的蛻變夢境之一。',advice:'讓不再服務你的事物自然結束，為新的開始騰出空間。'},
+  親人:{cat:'連結',meaning:'夢見親人（尤其是已故者）象徵對連結和關愛的渴望，或有重要訊息需要傳達給你。',advice:'珍惜與家人的關係，若有心結，是時候化解了。'},
+  陌生人:{cat:'自我',meaning:'夢中的陌生人通常代表自己某個未被整合的面向，也可能象徵即將遇到的新機緣。',advice:'對生命中的新面孔保持開放，他們可能帶來你需要的改變。'},
+  嬰兒:{cat:'新生',meaning:'嬰兒象徵新開始、創意潛力和脆弱需要照料。抱著嬰兒代表新計畫正在孕育；哭泣的嬰兒警示某事需要關注。',advice:'你內心有個新的夢想等待被照料，給它時間和資源成長。'},
+  追:{cat:'壓力',meaning:'被追逐是最常見的壓力夢，代表你在逃避某個問題、責任或情緒。追你的人或物就是你需要面對的課題。',advice:'轉身面對追你的恐懼，你會發現它遠沒有你想像的可怕。'},
+  爭吵:{cat:'衝突',meaning:'夢見爭吵代表內心有未解決的衝突，可能是與自己或他人的矛盾，需要透過溝通化解。',advice:'找到表達真實感受的方式，壓抑的衝突遲早需要正面處理。'},
+  老師:{cat:'指引',meaning:'老師代表引導、學習和智慧。夢見老師可能是潛意識提醒你需要學習某樣技能，或有貴人即將出現。',advice:'保持學習的謙遜態度，生命中的老師會以各種形式出現。'},
+  前任:{cat:'過去',meaning:'夢見前任通常不代表想念對方，而是象徵那段關係中的某種感受或模式仍未解決，需要整合。',advice:'審視那段感情帶給你的功課，完成學習後自然不再夢見。'},
+  // 場景與物品
+  考試:{cat:'焦慮',meaning:'考試夢是最普遍的焦慮夢，代表對某事的準備是否足夠的擔憂，也反映你對自我要求極高。',advice:'你已比你知道的更有準備，相信自己的實力，放鬆迎接挑戰。'},
+  牙齒:{cat:'焦慮',meaning:'牙齒脫落是全球最普遍的夢境之一，象徵對外在形象的焦慮、溝通困難，或擔心失去重要事物。',advice:'是什麼讓你擔心失去面子或地位？找到核心擔憂後直接面對。'},
+  家:{cat:'自我',meaning:'房子代表自我和內心世界。老家代表童年課題；新家代表新的自我；破舊的家代表某方面需要修復。',advice:'你的內心家園需要什麼修繕？從最需要整理的地方開始。'},
+  錢:{cat:'資源',meaning:'夢見大量錢財不一定代表財運，更多象徵對資源、安全感和能力的渴望，或近期財務有變化。',advice:'審視你對物質安全感的態度，建立穩健的財務習慣比夢財更重要。'},
+  飛機:{cat:'目標',meaning:'飛機象徵遠大目標和宏觀視野。飛機起飛代表計畫啟動；飛機墜落代表對失敗的恐懼；誤機代表錯失機會的焦慮。',advice:'你的目標和計畫即將起飛，做好準備迎接高空視野的考驗。'},
+  汽車:{cat:'方向',meaning:'汽車代表你的人生方向和自主控制感。無法剎車代表失控感；沒有方向盤代表缺乏掌控；新車代表新的人生階段開啟。',advice:'重新掌握人生方向盤，確認你走的路是自己選的。'},
+  結婚:{cat:'承諾',meaning:'夢見婚禮象徵承諾、整合和更高層次的連結。不一定是指婚姻本身，更常代表自我兩個面向的整合，或某個重要承諾。',advice:'什麼承諾在你生命中等待被兌現？對自己承諾的事情也同樣重要。'},
+  學校:{cat:'成長',meaning:'學校夢代表持續成長的課題，即使成年後也經常出現，象徵生命中仍有需要學習的功課尚未完成。',advice:'終身學習是成長的秘訣，接受你還是某些事情的學生。'},
+  電梯:{cat:'上下',meaning:'電梯象徵社會地位的升降。上升代表晉升機會；下降代表暫時退後；電梯故障代表對進步的焦慮。',advice:'上升需要耐心等待，向下也是為了蓄力再起，相信過程。'},
+  橋:{cat:'過渡',meaning:'橋象徵人生的過渡期和連結。走過橋代表從一個階段進入另一個階段；橋斷了代表某個連結中斷。',advice:'你正處於重要的過渡期，一步一步穩穩走過去。'},
+  迷路:{cat:'困惑',meaning:'在夢中迷路代表對人生方向感到迷茫，或面臨選擇時不知所措，需要找到內在的羅盤。',advice:'靜下心問自己：你真正想去的地方是哪裡？答案就是你的方向。'},
+  墜落:{cat:'失控',meaning:'墜落夢極為常見，通常象徵失去控制感、不安全感或對某件事的恐懼。墜落前被驚醒代表焦慮到達頂點。',advice:'是什麼讓你感到不穩固？找到生活的根基，才能不再怕墜落。'},
+  電話:{cat:'溝通',meaning:'夢見打電話或接電話代表有重要溝通需求。接不通代表溝通受阻；重要電話未接代表錯失機會。',advice:'有沒有一段關係或一個對話你一直在迴避？是時候開口了。'},
+  鏡子:{cat:'自我',meaning:'鏡子象徵自我認知與真實面貌。鏡中反映怪異形象代表對自我形象的困惑；破鏡代表自我認知的危機。',advice:'你看到的自己是真實的嗎？鏡子反映的是你對自己的信念。'},
+  // 狀態
+  裸體:{cat:'脆弱',meaning:'夢見裸體暴露在眾人面前代表對暴露脆弱面的恐懼，也可能象徵想要誠實表達真實自我的渴望。',advice:'你的脆弱正是你的力量所在，允許真實的自己被看見。'},
+  飛翔:{cat:'自由',meaning:'與「飛」類似但更強調放鬆飛翔的狀態，代表已克服某種限制，內心感到自由輕盈，是非常正面的夢。',advice:'你已獲得某種自由，享受這份輕盈，繼續向更高處飛翔。'},
+  游泳:{cat:'情感',meaning:'游泳象徵在情感或無意識中自在遨遊的能力。順水游輕鬆前進；逆流而游代表努力克服困難；溺水代表被情緒淹沒。',advice:'你在情感的洪流中游得如何？找到自己的節奏，自在前行。'},
+  // 特殊
+  鬼:{cat:'過去',meaning:'鬼代表未解決的過去、愧疚感或壓抑的情緒。鬼的外形通常代表你生命中某個未消化的人或事件。',advice:'面對讓你心生恐懼的記憶或情感，與過去和解才能真正自由。'},
+  神佛:{cat:'指引',meaning:'夢見神佛或宗教人物是極吉的夢，代表得到更高力量的保佑與指引，也象徵你的精神意識正在升華。',advice:'信任生命中更大的安排，保持感恩，你正走在被祝福的道路上。'},
+  金銀財寶:{cat:'財運',meaning:'夢見金銀珠寶代表財運旺盛，或你的才能和資源即將獲得認可。被偷走代表防小人盜財，需保護好自己的資產。',advice:'你的價值遠比你知道的更高，準備好接受豐盛的到來。'},
+  大海:{cat:'潛意識',meaning:'大海象徵廣闊的潛意識和情感世界。平靜的大海代表內心安穩；波濤洶湧代表情感激烈；在海中游泳代表在潛意識中探索。',advice:'深入探索你的內心深海，那裡有你需要的所有答案。'},
+  山:{cat:'目標',meaning:'山代表目標、挑戰和成就。登山象徵努力向上；站在山頂代表成就感；無法登頂代表遇到瓶頸。',advice:'一步一步向上，每一步都是成就，不要只看距離頂峰有多遠。'},
+  森林:{cat:'迷失',meaning:'森林象徵潛意識、迷失或神秘的探索。穿越森林代表正在處理複雜問題；在森林中迷路代表思緒混亂。',advice:'允許自己在神秘中慢慢前行，答案會在轉角處等你。'},
 };
 
 const generalDreamInterp = [
@@ -1132,6 +1920,148 @@ function interpretDream() {
     `);
   }, 1500);
 }
+
+// ===== 背景星空 + 星座線 + 符文 =====
+(function initBackground() {
+  // Canvas 星空
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, stars, constellations;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    buildScene();
+  }
+
+  function buildScene() {
+    // 隨機星星
+    const count = Math.floor((W * H) / 4000);
+    stars = Array.from({length: count}, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.5 + 0.3,
+      alpha: Math.random() * 0.6 + 0.2,
+      twinkleSpeed: Math.random() * 0.02 + 0.005,
+      twinklePhase: Math.random() * Math.PI * 2,
+    }));
+
+    // 星座線：固定幾組連線（模擬星座）
+    const pts = (n, cx, cy, spread) =>
+      Array.from({length: n}, () => ({
+        x: cx + (Math.random() - 0.5) * spread,
+        y: cy + (Math.random() - 0.5) * spread,
+      }));
+
+    const c1 = pts(5, W * 0.15, H * 0.2, 120);
+    const c2 = pts(6, W * 0.78, H * 0.25, 140);
+    const c3 = pts(4, W * 0.88, H * 0.7, 100);
+    const c4 = pts(5, W * 0.1, H * 0.75, 110);
+
+    constellations = [
+      [c1[0],c1[1],c1[2],c1[3],c1[4],c1[0]],
+      [c2[0],c2[1],c2[2],c2[3],c2[4],c2[5],c2[1]],
+      [c3[0],c3[1],c3[2],c3[3],c3[0]],
+      [c4[0],c4[1],c4[2],c4[3],c4[4]],
+    ];
+  }
+
+  let t = 0;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    t += 0.016;
+
+    // 星星
+    stars.forEach(s => {
+      const a = s.alpha * (0.7 + 0.3 * Math.sin(t * s.twinkleSpeed * 60 + s.twinklePhase));
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,250,220,${a})`;
+      ctx.fill();
+    });
+
+    // 星座連線
+    constellations.forEach(pts => {
+      ctx.beginPath();
+      pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.strokeStyle = 'rgba(201,168,76,0.12)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // 節點
+      pts.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(201,168,76,0.35)';
+        ctx.fill();
+      });
+    });
+
+    // 慢速旋轉的八卦羅盤（右上角裝飾）
+    const cx = W - 80, cy = 80, R = 55;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(t * 0.03);
+    ctx.strokeStyle = 'rgba(201,168,76,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, R*0.65, 0, Math.PI*2); ctx.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*R*0.65, Math.sin(a)*R*0.65);
+      ctx.lineTo(Math.cos(a)*R, Math.sin(a)*R);
+      ctx.stroke();
+    }
+    // ☯ 符號
+    ctx.fillStyle = 'rgba(201,168,76,0.12)';
+    ctx.font = `${R}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('☯', 0, 0);
+    ctx.restore();
+
+    // 左下角月亮裝飾
+    const mx = 70, my = H - 70;
+    ctx.save();
+    ctx.translate(mx, my);
+    ctx.rotate(-t * 0.02);
+    ctx.fillStyle = 'rgba(201,168,76,0.07)';
+    ctx.font = '80px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('☽', 0, 0);
+    ctx.restore();
+
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  draw();
+
+  // 浮動符文
+  const runeSymbols = ['☽','☾','✦','⭐','☯','⚛','⚡','♦','⊕','✧','⋆','∞','☀','⚕','♁','⊗'];
+  const container = document.getElementById('rune-container');
+  function spawnRune() {
+    const el = document.createElement('div');
+    el.className = 'rune';
+    el.textContent = runeSymbols[Math.floor(Math.random() * runeSymbols.length)];
+    const size = Math.random() * 1.5 + 0.8;
+    const duration = Math.random() * 20 + 15;
+    el.style.cssText = `
+      left:${Math.random() * 100}vw;
+      bottom:-60px;
+      font-size:${size}rem;
+      animation-duration:${duration}s;
+      animation-delay:${Math.random() * 5}s;
+      opacity:0;
+    `;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), (duration + 5) * 1000);
+  }
+  setInterval(spawnRune, 2200);
+  for (let i = 0; i < 8; i++) setTimeout(spawnRune, i * 400);
+})();
 </script>
 </body>
 </html>
