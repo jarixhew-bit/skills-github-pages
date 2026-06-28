@@ -935,7 +935,7 @@ function loadData(){
 }
 function saveData(){
   localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
-  setPendingSync(true);
+  if(currentUser) saveToCloud(); else setPendingSync(true);
 }
 
 // ===================== UTILS =====================
