@@ -1799,7 +1799,7 @@ async function callGeminiVision(base64, mimeType){
     if(!resp.ok){
       const er = await resp.json().catch(()=>({}));
       lastErr = `[${model}] ${er.error?.message||'HTTP '+resp.status}`;
-      if(resp.status===404 || resp.status===400) continue; // try next model
+      if([400,404,429,503].includes(resp.status)) continue; // try next model
       throw new Error(lastErr);
     }
     const json = await resp.json();
