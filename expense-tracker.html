@@ -1837,8 +1837,8 @@ async function callGeminiVision(base64, mimeType){
   // Use saved model if set, otherwise try list in order
   const savedModel = localStorage.getItem('gemini_model');
   const models = savedModel
-    ? [savedModel, 'gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash','gemini-1.5-flash-8b']
-    : ['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash','gemini-1.5-flash-8b'];
+    ? [savedModel, 'gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite']
+    : ['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite'];
   const tried = new Set();
   let lastErr = '';
   for(const model of models){
