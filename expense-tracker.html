@@ -388,6 +388,8 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       </div>
       <input class="form-input" id="gemini-key-input" type="password"
         placeholder="AIza..." style="margin-bottom:8px">
+      <input class="form-input" id="gemini-model-input" type="text"
+        placeholder="模型（留空自动检测）" style="margin-bottom:8px;font-size:12px">
       <div style="display:flex;gap:8px;margin-bottom:8px">
         <button class="btn btn-outline btn-sm" onclick="saveGeminiKey()">保存</button>
         <button class="btn btn-outline btn-sm" onclick="testGeminiKey()">测试连接</button>
@@ -1698,13 +1700,17 @@ function getGeminiKey(){ return localStorage.getItem('gemini_api_key')||''; }
 
 function saveGeminiKey(){
   const k = document.getElementById('gemini-key-input').value.trim();
+  const m = document.getElementById('gemini-model-input').value.trim();
   localStorage.setItem('gemini_api_key', k);
-  toast(k ? '✅ API Key 已保存' : 'API Key 已清除');
+  if(m) localStorage.setItem('gemini_model', m); else localStorage.removeItem('gemini_model');
+  toast(k ? '✅ 已保存' : 'API Key 已清除');
 }
 
 function initGeminiKeyField(){
-  const el = document.getElementById('gemini-key-input');
-  if(el) el.value = getGeminiKey();
+  const k = document.getElementById('gemini-key-input');
+  if(k) k.value = getGeminiKey();
+  const m = document.getElementById('gemini-model-input');
+  if(m) m.value = localStorage.getItem('gemini_model')||'';
 }
 
 async function testGeminiKey(){
@@ -1828,15 +1834,24 @@ async function callGeminiVision(base64, mimeType){
     generationConfig:{temperature:0,maxOutputTokens:300}
   });
   const base_url = 'https://generativelanguage.googleapis.com/v1beta/models/';
-  const models = ['gemini-2.0-flash','gemini-1.5-flash','gemini-pro-vision'];
+  // Use saved model if set, otherwise try list in order
+  const savedModel = localStorage.getItem('gemini_model');
+  const models = savedModel
+    ? [savedModel, 'gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash','gemini-1.5-flash-8b']
+    : ['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash','gemini-1.5-flash-8b'];
+  const tried = new Set();
   let lastErr = '';
   for(const model of models){
+    if(tried.has(model)) continue;
+    tried.add(model);
     const resp = await fetch(`${base_url}${model}:generateContent?key=${key}`,
       {method:'POST', headers:{'Content-Type':'application/json'}, body});
     if(!resp.ok){
       const er = await resp.json().catch(()=>({}));
       lastErr = `[${model}] ${er.error?.message||'HTTP '+resp.status}`;
-      if([400,404,429,503].includes(resp.status)) continue; // try next model
+      // 404/400/403 = model not available, try next
+      // 429/503 = rate limit/overload, also try next model
+      if([400,403,404,429,503].includes(resp.status)) continue;
       throw new Error(lastErr);
     }
     const json = await resp.json();
@@ -1845,7 +1860,7 @@ async function callGeminiVision(base64, mimeType){
     if(!m) throw new Error('无法解析：'+text.slice(0,200));
     return JSON.parse(m[0]);
   }
-  throw new Error('所有模型均失败：'+lastErr);
+  throw new Error('识别失败。请去「设置→AI扫描收据」点「测试连接」查看可用模型，把结果告诉我。\n\n上次错误：'+lastErr);
 }
 
 function fillFromReceipt(d){
