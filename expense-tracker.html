@@ -436,9 +436,12 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div style="margin-bottom:12px">
       <button class="btn-scan" onclick="triggerScanReceipt()">📷 扫描收据自动填写</button>
       <div class="scan-menu" id="scan-menu" style="display:none">
-        <div class="scan-menu-item" onclick="scanViaCamera()">📷 拍照</div>
-        <div class="scan-menu-item" onclick="scanViaImage()">🖼️ 从相册 / 文件</div>
+        <div class="scan-menu-item" onclick="scanViaCamera()">📷 直接拍照</div>
+        <div class="scan-menu-item" onclick="scanViaImage()">🖼️ 从相册 / 文件选择</div>
         <div class="scan-menu-item" onclick="scanViaPDF()">📄 上传 PDF</div>
+        <div style="padding:8px 16px;font-size:11px;color:var(--sub);line-height:1.5">
+          💡 Android 建议：用 Google Drive「扫描」后从相册导入，效果更清晰
+        </div>
       </div>
       <div class="scan-loading" id="scan-loading">⏳ AI 识别中，请稍候…</div>
       <input type="file" id="scan-camera-input" accept="image/*" capture="environment" style="display:none" onchange="processReceiptFile(event)">
@@ -1784,7 +1787,7 @@ async function callGeminiVision(base64, mimeType){
 {"amount":<总金额数字>,"currency":<货币代码HKD/USD/CNY/JPY/MYR等>,"date":<YYYY-MM-DD或null>,"description":<商家或描述10字内>,"categoryId":<从以下选最合适的id或null：${cats}>}`;
 
   const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
     {method:'POST', headers:{'Content-Type':'application/json'},
      body:JSON.stringify({
        contents:[{parts:[{text:prompt},{inlineData:{mimeType,data:base64}}]}],
