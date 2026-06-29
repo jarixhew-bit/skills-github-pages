@@ -371,10 +371,6 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div class="setting-title">数据</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
-      <button class="btn btn-outline btn-sm" onclick="exportJSON()">📦 备份数据</button>
-      <label class="btn btn-outline btn-sm" style="cursor:pointer">
-        📂 恢复数据<input type="file" accept=".json" style="display:none" onchange="importJSON(event)">
-      </label>
     </div>
   </div>
 </div>
@@ -1637,33 +1633,6 @@ function exportCSV(){
   toast('CSV 已导出');
 }
 
-// ===================== IMPORT / EXPORT JSON =====================
-function exportJSON(){
-  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `expense-backup-${today()}.json`;
-  a.click(); URL.revokeObjectURL(url);
-  toast('数据已备份');
-}
-function importJSON(e){
-  const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev=>{
-    try{
-      const imported = JSON.parse(ev.target.result);
-      if(!imported.accounts || !imported.transactions) throw new Error('格式错误');
-      if(!confirm('恢复数据会覆盖当前所有记录，确定继续？')) return;
-      data = imported;
-      saveData();
-      updateHeader();
-      renderOverview();
-      toast('数据已恢复');
-    }catch(err){ toast('文件格式有误'); }
-  };
-  reader.readAsText(file);
-  e.target.value='';
-}
 
 
 // ===================== SWIPE TO DELETE =====================
