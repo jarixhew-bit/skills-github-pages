@@ -369,7 +369,8 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   </div>
   <div class="setting-section">
     <div class="setting-title">数据</div>
-    <div style="display:flex;gap:10px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
       <button class="btn btn-outline btn-sm" onclick="exportJSON()">📦 备份数据</button>
       <label class="btn btn-outline btn-sm" style="cursor:pointer">
         📂 恢复数据<input type="file" accept=".json" style="display:none" onchange="importJSON(event)">
@@ -1608,6 +1609,32 @@ async function exportPDF(){
     console.error(e);
     toast('PDF 生成失败，请重试');
   }
+}
+
+// ===================== EXPORT CSV =====================
+function exportCSV(){
+  const rows = [['日期','类型','账户','货币','金额','类别','描述']];
+  const txs = [...data.transactions].sort((a,b)=>a.date.localeCompare(b.date));
+  txs.forEach(t=>{
+    const acc = data.accounts.find(a=>a.id===t.accountId) || {};
+    const cat = data.categories.find(c=>c.id===t.categoryId);
+    rows.push([
+      t.date,
+      t.type==='income'?'收入':'支出',
+      acc.name||'',
+      acc.currency||'',
+      t.amount,
+      cat?cat.name:(t.categoryId||''),
+      t.description||''
+    ]);
+  });
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `expense-${today()}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV 已导出');
 }
 
 // ===================== IMPORT / EXPORT JSON =====================
