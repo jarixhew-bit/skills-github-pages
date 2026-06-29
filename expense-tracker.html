@@ -436,12 +436,10 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div style="margin-bottom:12px">
       <button class="btn-scan" onclick="triggerScanReceipt()">📷 扫描收据自动填写</button>
       <div class="scan-menu" id="scan-menu" style="display:none">
-        <div class="scan-menu-item" onclick="scanViaCamera()">📷 拍照</div>
-        <div class="scan-menu-item" onclick="scanViaFile()">🖼️ 从相册 / 上传图片</div>
+        <div class="scan-menu-item" onclick="scanViaImage()">📷 拍照 / 相册 / 扫描文稿</div>
         <div class="scan-menu-item" onclick="scanViaPDF()">📄 上传 PDF</div>
       </div>
       <div class="scan-loading" id="scan-loading">⏳ AI 识别中，请稍候…</div>
-      <input type="file" id="scan-camera-input" accept="image/*" capture="environment" style="display:none" onchange="processReceiptFile(event)">
       <input type="file" id="scan-image-input" accept="image/*" style="display:none" onchange="processReceiptFile(event)">
       <input type="file" id="scan-pdf-input" accept="application/pdf" style="display:none" onchange="processReceiptFile(event)">
     </div>
@@ -1712,11 +1710,7 @@ function triggerScanReceipt(){
   document.getElementById('scan-menu').style.display = _scanMenuOpen ? 'block' : 'none';
 }
 
-function scanViaCamera(){
-  document.getElementById('scan-menu').style.display='none'; _scanMenuOpen=false;
-  document.getElementById('scan-camera-input').click();
-}
-function scanViaFile(){
+function scanViaImage(){
   document.getElementById('scan-menu').style.display='none'; _scanMenuOpen=false;
   document.getElementById('scan-image-input').click();
 }
