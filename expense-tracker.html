@@ -1725,6 +1725,27 @@ function scanViaPDF(){
   document.getElementById('scan-pdf-input').click();
 }
 
+async function compressImage(file, maxPx=1280, quality=0.85){
+  return new Promise((res,rej)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      URL.revokeObjectURL(url);
+      let {width:w, height:h} = img;
+      if(w>maxPx || h>maxPx){
+        if(w>h){ h=Math.round(h*maxPx/w); w=maxPx; }
+        else { w=Math.round(w*maxPx/h); h=maxPx; }
+      }
+      const c = document.createElement('canvas');
+      c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      res(c.toDataURL('image/jpeg',quality).split(',')[1]);
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+
 async function processReceiptFile(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -1732,18 +1753,23 @@ async function processReceiptFile(e){
   const loading = document.getElementById('scan-loading');
   loading.style.display='block';
   try{
-    const base64 = await new Promise((res,rej)=>{
-      const r = new FileReader();
-      r.onload = ev => res(ev.target.result.split(',')[1]);
-      r.onerror = rej;
-      r.readAsDataURL(file);
-    });
-    const mimeType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+    let base64, mimeType;
+    if(file.type==='application/pdf' || file.name.toLowerCase().endsWith('.pdf')){
+      mimeType='application/pdf';
+      base64 = await new Promise((res,rej)=>{
+        const r=new FileReader();
+        r.onload=ev=>res(ev.target.result.split(',')[1]);
+        r.onerror=rej; r.readAsDataURL(file);
+      });
+    } else {
+      mimeType='image/jpeg';
+      base64 = await compressImage(file);
+    }
     const result = await callGeminiVision(base64, mimeType);
     fillFromReceipt(result);
     toast('✅ 已自动填写，请确认');
   }catch(err){
-    toast('识别失败：'+(err.message||'请重试'));
+    alert('扫描失败：\n'+(err.message||String(err)));
     console.error(err);
   }finally{
     loading.style.display='none';
@@ -1758,7 +1784,7 @@ async function callGeminiVision(base64, mimeType){
 {"amount":<总金额数字>,"currency":<货币代码HKD/USD/CNY/JPY/MYR等>,"date":<YYYY-MM-DD或null>,"description":<商家或描述10字内>,"categoryId":<从以下选最合适的id或null：${cats}>}`;
 
   const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`,
     {method:'POST', headers:{'Content-Type':'application/json'},
      body:JSON.stringify({
        contents:[{parts:[{text:prompt},{inlineData:{mimeType,data:base64}}]}],
@@ -1767,12 +1793,12 @@ async function callGeminiVision(base64, mimeType){
   );
   if(!resp.ok){
     const er = await resp.json().catch(()=>({}));
-    throw new Error(er.error?.message || `API 错误 ${resp.status}`);
+    throw new Error(er.error?.message || `HTTP ${resp.status}`);
   }
   const json = await resp.json();
   const text = json.candidates?.[0]?.content?.parts?.[0]?.text||'';
   const m = text.match(/\{[\s\S]*\}/);
-  if(!m) throw new Error('无法解析返回结果');
+  if(!m) throw new Error('无法解析：'+text.slice(0,200));
   return JSON.parse(m[0]);
 }
 
