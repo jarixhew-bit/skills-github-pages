@@ -388,7 +388,12 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       </div>
       <input class="form-input" id="gemini-key-input" type="password"
         placeholder="AIza..." style="margin-bottom:8px">
-      <button class="btn btn-outline btn-sm" onclick="saveGeminiKey()">保存</button>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-outline btn-sm" onclick="saveGeminiKey()">保存</button>
+        <button class="btn btn-outline btn-sm" onclick="testGeminiKey()">测试连接</button>
+      </div>
+      <div id="gemini-test-result" style="font-size:11px;line-height:1.6;display:none;
+        padding:8px;background:var(--bg);border-radius:8px;word-break:break-all"></div>
       <div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.5">
         免费申请：aistudio.google.com → Get API Key<br>
         每天 1500 次，个人使用完全够用
@@ -1700,6 +1705,38 @@ function saveGeminiKey(){
 function initGeminiKeyField(){
   const el = document.getElementById('gemini-key-input');
   if(el) el.value = getGeminiKey();
+}
+
+async function testGeminiKey(){
+  const key = document.getElementById('gemini-key-input').value.trim() || getGeminiKey();
+  const box = document.getElementById('gemini-test-result');
+  box.style.display='block';
+  box.style.color='var(--sub)';
+  box.textContent='⏳ 正在测试…';
+  try{
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${key}&pageSize=50`
+    );
+    const json = await r.json();
+    if(!r.ok){
+      box.style.color='var(--exp)';
+      box.textContent='❌ 错误：'+(json.error?.message||'HTTP '+r.status);
+      return;
+    }
+    const vision = (json.models||[])
+      .filter(m=>m.supportedGenerationMethods?.includes('generateContent'))
+      .map(m=>m.name.replace('models/',''));
+    if(vision.length===0){
+      box.style.color='var(--exp)';
+      box.textContent='⚠️ Key 有效，但没有找到可用模型';
+    } else {
+      box.style.color='var(--inc)';
+      box.textContent='✅ 可用模型：\n'+vision.join('\n');
+    }
+  }catch(e){
+    box.style.color='var(--exp)';
+    box.textContent='❌ 网络错误：'+e.message;
+  }
 }
 
 let _scanMenuOpen = false;
