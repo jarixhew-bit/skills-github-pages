@@ -1786,23 +1786,29 @@ async function callGeminiVision(base64, mimeType){
   const prompt = `从这张收据/账单中提取以下信息，只返回JSON不要其他文字：
 {"amount":<总金额数字>,"currency":<货币代码HKD/USD/CNY/JPY/MYR等>,"date":<YYYY-MM-DD或null>,"description":<商家或描述10字内>,"categoryId":<从以下选最合适的id或null：${cats}>}`;
 
-  const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
-    {method:'POST', headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({
-       contents:[{parts:[{text:prompt},{inlineData:{mimeType,data:base64}}]}],
-       generationConfig:{temperature:0,maxOutputTokens:300}
-     })}
-  );
-  if(!resp.ok){
-    const er = await resp.json().catch(()=>({}));
-    throw new Error(er.error?.message || `HTTP ${resp.status}`);
+  const body = JSON.stringify({
+    contents:[{parts:[{text:prompt},{inlineData:{mimeType,data:base64}}]}],
+    generationConfig:{temperature:0,maxOutputTokens:300}
+  });
+  const base_url = 'https://generativelanguage.googleapis.com/v1beta/models/';
+  const models = ['gemini-2.0-flash','gemini-1.5-flash','gemini-pro-vision'];
+  let lastErr = '';
+  for(const model of models){
+    const resp = await fetch(`${base_url}${model}:generateContent?key=${key}`,
+      {method:'POST', headers:{'Content-Type':'application/json'}, body});
+    if(!resp.ok){
+      const er = await resp.json().catch(()=>({}));
+      lastErr = `[${model}] ${er.error?.message||'HTTP '+resp.status}`;
+      if(resp.status===404 || resp.status===400) continue; // try next model
+      throw new Error(lastErr);
+    }
+    const json = await resp.json();
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    const m = text.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error('无法解析：'+text.slice(0,200));
+    return JSON.parse(m[0]);
   }
-  const json = await resp.json();
-  const text = json.candidates?.[0]?.content?.parts?.[0]?.text||'';
-  const m = text.match(/\{[\s\S]*\}/);
-  if(!m) throw new Error('无法解析：'+text.slice(0,200));
-  return JSON.parse(m[0]);
+  throw new Error('所有模型均失败：'+lastErr);
 }
 
 function fillFromReceipt(d){
