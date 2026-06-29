@@ -1855,10 +1855,13 @@ async function callGeminiVision(base64, mimeType){
       throw new Error(lastErr);
     }
     const json = await resp.json();
-    const text = json.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    const raw = json.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    // strip markdown code fences e.g. ```json ... ```
+    const text = raw.replace(/```[\w]*\n?/g,'').trim();
     const m = text.match(/\{[\s\S]*\}/);
-    if(!m) throw new Error('无法解析：'+text.slice(0,200));
-    return JSON.parse(m[0]);
+    if(!m) throw new Error('无法解析（原始响应）：'+raw.slice(0,300));
+    try{ return JSON.parse(m[0]); }
+    catch(e){ throw new Error('JSON解析失败：'+m[0].slice(0,200)); }
   }
   throw new Error('识别失败。请去「设置→AI扫描收据」点「测试连接」查看可用模型，把结果告诉我。\n\n上次错误：'+lastErr);
 }
