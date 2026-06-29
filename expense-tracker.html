@@ -89,6 +89,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .ibkr-pnl-pos{color:#4ade80;font-size:11px;margin-top:3px}
 .ibkr-pnl-neg{color:#f87171;font-size:11px;margin-top:3px}
 
+/* RECEIPT SCAN */
+.btn-scan{width:100%;padding:10px 14px;background:var(--p2);color:var(--p);
+  border:1.5px dashed var(--p);border-radius:10px;font-size:14px;font-weight:600;
+  cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-scan:active{background:var(--p);color:#fff}
+.scan-menu{background:#fff;border-radius:10px;box-shadow:var(--shadow);
+  overflow:hidden;margin-top:6px;border:1px solid var(--border)}
+.scan-menu-item{padding:12px 16px;font-size:14px;cursor:pointer;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.scan-menu-item:last-child{border-bottom:none}
+.scan-menu-item:active{background:var(--p2)}
+.scan-loading{display:none;text-align:center;padding:12px;background:var(--p2);
+  border-radius:10px;margin-bottom:12px;font-size:13px;color:var(--p)}
+
 /* SUMMARY ROW */
 .sum-row{display:flex;gap:12px;margin-bottom:14px}
 .sum-box{flex:1;background:var(--card);border-radius:var(--radius);
@@ -367,6 +381,21 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-cat')">＋ 新增类别</button>
   </div>
   <div class="setting-section">
+    <div class="setting-title">AI 扫描收据</div>
+    <div class="card" style="padding:14px">
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px">
+        Gemini API Key（免费，用于识别收据图片/PDF）
+      </div>
+      <input class="form-input" id="gemini-key-input" type="password"
+        placeholder="AIza..." style="margin-bottom:8px">
+      <button class="btn btn-outline btn-sm" onclick="saveGeminiKey()">保存</button>
+      <div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.5">
+        免费申请：aistudio.google.com → Get API Key<br>
+        每天 1500 次，个人使用完全够用
+      </div>
+    </div>
+  </div>
+  <div class="setting-section">
     <div class="setting-title">数据</div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-outline btn-sm" onclick="exportJSON()">📦 备份数据</button>
@@ -402,6 +431,19 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div class="modal-hdr">
       <div class="modal-title" id="tx-modal-title">新增记录</div>
       <button class="modal-close" onclick="closeModal('modal-add-tx')">✕</button>
+    </div>
+    <!-- scan receipt -->
+    <div style="margin-bottom:12px">
+      <button class="btn-scan" onclick="triggerScanReceipt()">📷 扫描收据自动填写</button>
+      <div class="scan-menu" id="scan-menu" style="display:none">
+        <div class="scan-menu-item" onclick="scanViaCamera()">📷 拍照</div>
+        <div class="scan-menu-item" onclick="scanViaFile()">🖼️ 从相册 / 上传图片</div>
+        <div class="scan-menu-item" onclick="scanViaPDF()">📄 上传 PDF</div>
+      </div>
+      <div class="scan-loading" id="scan-loading">⏳ AI 识别中，请稍候…</div>
+      <input type="file" id="scan-camera-input" accept="image/*" capture="environment" style="display:none" onchange="processReceiptFile(event)">
+      <input type="file" id="scan-image-input" accept="image/*" style="display:none" onchange="processReceiptFile(event)">
+      <input type="file" id="scan-pdf-input" accept="application/pdf" style="display:none" onchange="processReceiptFile(event)">
     </div>
     <!-- type toggle -->
     <div class="type-tabs" style="margin-bottom:16px">
@@ -1204,6 +1246,7 @@ function renderSettings(){
   renderSyncSection();
   renderSettingsAccs();
   renderSettingsCats();
+  initGeminiKeyField();
 }
 
 function renderSettingsAccs(){
@@ -1506,6 +1549,10 @@ function showModal(id){
 }
 function closeModal(id){
   document.getElementById(id).classList.remove('open');
+  if(id==='modal-add-tx'){
+    const m=document.getElementById('scan-menu');
+    if(m){m.style.display='none';} _scanMenuOpen=false;
+  }
 }
 document.querySelectorAll('.overlay').forEach(el=>{
   el.addEventListener('click', e=>{ if(e.target===el) closeModal(el.id); });
@@ -1635,6 +1682,112 @@ function importJSON(e){
   };
   reader.readAsText(file);
   e.target.value='';
+}
+
+// ===================== RECEIPT SCAN (GEMINI) =====================
+
+function getGeminiKey(){ return localStorage.getItem('gemini_api_key')||''; }
+
+function saveGeminiKey(){
+  const k = document.getElementById('gemini-key-input').value.trim();
+  localStorage.setItem('gemini_api_key', k);
+  toast(k ? '✅ API Key 已保存' : 'API Key 已清除');
+}
+
+function initGeminiKeyField(){
+  const el = document.getElementById('gemini-key-input');
+  if(el) el.value = getGeminiKey();
+}
+
+let _scanMenuOpen = false;
+
+function triggerScanReceipt(){
+  if(!getGeminiKey()){
+    toast('请先在「设置」填写 Gemini API Key');
+    closeModal('modal-add-tx');
+    setTimeout(()=>switchTab('settings'), 300);
+    return;
+  }
+  _scanMenuOpen = !_scanMenuOpen;
+  document.getElementById('scan-menu').style.display = _scanMenuOpen ? 'block' : 'none';
+}
+
+function scanViaCamera(){
+  document.getElementById('scan-menu').style.display='none'; _scanMenuOpen=false;
+  document.getElementById('scan-camera-input').click();
+}
+function scanViaFile(){
+  document.getElementById('scan-menu').style.display='none'; _scanMenuOpen=false;
+  document.getElementById('scan-image-input').click();
+}
+function scanViaPDF(){
+  document.getElementById('scan-menu').style.display='none'; _scanMenuOpen=false;
+  document.getElementById('scan-pdf-input').click();
+}
+
+async function processReceiptFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  e.target.value='';
+  const loading = document.getElementById('scan-loading');
+  loading.style.display='block';
+  try{
+    const base64 = await new Promise((res,rej)=>{
+      const r = new FileReader();
+      r.onload = ev => res(ev.target.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    const mimeType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+    const result = await callGeminiVision(base64, mimeType);
+    fillFromReceipt(result);
+    toast('✅ 已自动填写，请确认');
+  }catch(err){
+    toast('识别失败：'+(err.message||'请重试'));
+    console.error(err);
+  }finally{
+    loading.style.display='none';
+  }
+}
+
+async function callGeminiVision(base64, mimeType){
+  const key = getGeminiKey();
+  const cats = data.categories.filter(c=>c.type===state.txType)
+    .map(c=>`${c.icon}${c.name}(id:${c.id})`).join('、');
+  const prompt = `从这张收据/账单中提取以下信息，只返回JSON不要其他文字：
+{"amount":<总金额数字>,"currency":<货币代码HKD/USD/CNY/JPY/MYR等>,"date":<YYYY-MM-DD或null>,"description":<商家或描述10字内>,"categoryId":<从以下选最合适的id或null：${cats}>}`;
+
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    {method:'POST', headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({
+       contents:[{parts:[{text:prompt},{inlineData:{mimeType,data:base64}}]}],
+       generationConfig:{temperature:0,maxOutputTokens:300}
+     })}
+  );
+  if(!resp.ok){
+    const er = await resp.json().catch(()=>({}));
+    throw new Error(er.error?.message || `API 错误 ${resp.status}`);
+  }
+  const json = await resp.json();
+  const text = json.candidates?.[0]?.content?.parts?.[0]?.text||'';
+  const m = text.match(/\{[\s\S]*\}/);
+  if(!m) throw new Error('无法解析返回结果');
+  return JSON.parse(m[0]);
+}
+
+function fillFromReceipt(d){
+  if(d.amount!=null && !isNaN(d.amount))
+    document.getElementById('tx-amount').value = Math.abs(Number(d.amount)).toFixed(2);
+  if(d.description){
+    document.getElementById('tx-desc').value = d.description;
+    if(!d.categoryId) autoDetectCat(d.description);
+  }
+  if(d.date) document.getElementById('tx-date').value = d.date;
+  if(d.categoryId){
+    const cat = data.categories.find(c=>c.id===d.categoryId);
+    if(cat){ state.selectedCatId=d.categoryId; state.catManuallySelected=true; renderCatGrid(); hideAutoHint(); }
+  }
 }
 
 // ===================== SWIPE TO DELETE =====================
