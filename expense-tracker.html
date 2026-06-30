@@ -873,7 +873,7 @@ const KEYWORD_MAP = [
   {catId:'cat_investment', kw:[
     '股票','基金','利息','分红','收益','回报','理财','投资','比特币',
     'stock','fund','dividend','interest','investment','crypto','bitcoin',
-    'etf','profit','returns','unit trust','amanah saham','asb','epf','kwsp',
+    'etf','profit','returns','unit trust','amanah saham','asb',
     'shares','forex','gold','emas',
     // 柬埔寨
     'aba bank','aba','acleda','wing','pi pay','pipay','true money','wing money',
@@ -884,6 +884,25 @@ const KEYWORD_MAP = [
     'freelance','part time','partime','side income','gig','consulting',
     'commission','project fee','design fee',
   ]},
+  {catId:'cat_epf', kw:[
+    '公积金','公积','社保','社会保险','公积金缴款','退休金',
+    'epf','kwsp','provident fund','cpf','pension','retirement fund',
+    'epf contribution','kwsp potongan','caruman kwsp','simpanan persaraan'],
+  },
+  {catId:'cat_insurance', kw:[
+    '保险','保费','人寿','医疗保险','车险','意外险','续保','投保','理赔','寿险',
+    'insurance','premium','policy','life insurance','car insurance',
+    'medical insurance','health insurance','coverage','annuity',
+    'aia','prudential','great eastern','allianz','tokio marine',
+    'manulife','sunlife','zurich','tune protect','lonpac','kurnia',
+    'income insurance','fwd','chubb','axa','takaful','etiqa'],
+  },
+  {catId:'cat_donation', kw:[
+    '捐款','捐赠','捐','慈善','公益','布施','功德','供养','奉献',
+    'donation','donate','charity','zakat','derma','contribution',
+    'tithe','offering','church','mosque','temple','ngo',
+    'red cross','unicef','world vision','mercy','yayasan','tabung'],
+  },
 ];
 
 const DEFAULT_DATA = {
@@ -904,6 +923,9 @@ const DEFAULT_DATA = {
     {id:'cat_phone',name:'通讯',icon:'📱',type:'expense',color:'#87CEEB'},
     {id:'cat_travel',name:'旅游',icon:'✈️',type:'expense',color:'#F0E68C'},
     {id:'cat_clothing',name:'服装',icon:'👗',type:'expense',color:'#FFB6C1'},
+    {id:'cat_epf',name:'公积金/EPF',icon:'🏦',type:'expense',color:'#3498DB'},
+    {id:'cat_insurance',name:'保险',icon:'🛡️',type:'expense',color:'#9B59B6'},
+    {id:'cat_donation',name:'捐款',icon:'❤️',type:'expense',color:'#E74C3C'},
     {id:'cat_other_exp',name:'其他支出',icon:'📦',type:'expense',color:'#C0C0C0'},
     {id:'cat_salary',name:'薪资',icon:'💰',type:'income',color:'#27AE60'},
     {id:'cat_bonus',name:'奖金',icon:'🎁',type:'income',color:'#2ECC71'},
@@ -940,6 +962,10 @@ function loadData(){
     if(raw) data = JSON.parse(raw);
     if(!data.currentAccountId && data.accounts.length>0)
       data.currentAccountId = data.accounts[0].id;
+    // migrate: add any new default categories not yet in user data
+    DEFAULT_DATA.categories.forEach(def=>{
+      if(!data.categories.find(c=>c.id===def.id)) data.categories.push(def);
+    });
   }catch(e){ data = JSON.parse(JSON.stringify(DEFAULT_DATA)); }
 }
 function saveData(){
