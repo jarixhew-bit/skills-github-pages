@@ -991,7 +991,6 @@ const DEFAULT_DATA = {
     {id:'cat_epf',name:'公积金/EPF',icon:'🏦',type:'expense',color:'#3498DB'},
     {id:'cat_insurance',name:'保险',icon:'🛡️',type:'expense',color:'#9B59B6'},
     {id:'cat_donation',name:'捐款',icon:'❤️',type:'expense',color:'#E74C3C'},
-    {id:'cat_invest_buy',name:'证券买入',icon:'📊',type:'expense',color:'#2980B9'},
     {id:'cat_other_exp',name:'其他支出',icon:'📦',type:'expense',color:'#C0C0C0'},
     {id:'cat_salary',name:'薪资',icon:'💰',type:'income',color:'#27AE60'},
     {id:'cat_bonus',name:'奖金',icon:'🎁',type:'income',color:'#2ECC71'},
@@ -1027,7 +1026,6 @@ function migrateCategories(){
   DEFAULT_DATA.categories.forEach(def=>{
     if(!data.categories.find(c=>c.id===def.id)) data.categories.push(def);
   });
-  if(!data.recurring) data.recurring = [];
 }
 function loadData(){
   try{
