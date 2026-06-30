@@ -590,6 +590,7 @@ async function syncFromCloud(force){
         data = cloud;
         if(!data.currentAccountId && data.accounts.length>0)
           data.currentAccountId = data.accounts[0].id;
+        migrateCategories();
         localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
         updateHeader();
         if(state.currentTab==='overview') renderOverview();
@@ -624,6 +625,7 @@ function showSyncConflict(cloudData){
     data = cloudData;
     if(!data.currentAccountId && data.accounts.length>0)
       data.currentAccountId = data.accounts[0].id;
+    migrateCategories();
     localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
     updateHeader();
     renderOverview();
@@ -956,16 +958,18 @@ let state = {
 };
 
 // ===================== PERSIST =====================
+function migrateCategories(){
+  DEFAULT_DATA.categories.forEach(def=>{
+    if(!data.categories.find(c=>c.id===def.id)) data.categories.push(def);
+  });
+}
 function loadData(){
   try{
     const raw = localStorage.getItem('expenseTracker_v2');
     if(raw) data = JSON.parse(raw);
     if(!data.currentAccountId && data.accounts.length>0)
       data.currentAccountId = data.accounts[0].id;
-    // migrate: add any new default categories not yet in user data
-    DEFAULT_DATA.categories.forEach(def=>{
-      if(!data.categories.find(c=>c.id===def.id)) data.categories.push(def);
-    });
+    migrateCategories();
   }catch(e){ data = JSON.parse(JSON.stringify(DEFAULT_DATA)); }
 }
 function saveData(){
