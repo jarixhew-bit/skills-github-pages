@@ -512,6 +512,10 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
         <div class="type-tab" id="new-cat-inc" onclick="setNewCatType('income')">收入</div>
       </div>
     </div>
+    <div class="form-group">
+      <label class="form-label">触发词（选填，逗号分隔）</label>
+      <input class="form-input" id="new-cat-keywords" type="text" placeholder="例：保险, premium, aia">
+    </div>
     <button class="btn btn-primary" onclick="saveCategory()">新增类别</button>
   </div>
 </div>
@@ -1254,15 +1258,23 @@ function renderSettingsAccs(){
 function renderSettingsCats(){
   const el = document.getElementById('settings-cats');
   const cats = data.categories.filter(c=>c.type===state.catFilterType);
-  el.innerHTML = cats.map(cat=>`
-    <div class="setting-item">
-      <div class="setting-item-left">
+  el.innerHTML = cats.map(cat=>{
+    const kw = (cat.keywords||[]).join(', ');
+    return `<div class="setting-item" style="flex-wrap:wrap;gap:6px">
+      <div class="setting-item-left" style="flex:1;min-width:0">
         <div class="setting-icon" style="background:${cat.color}33">${cat.icon}</div>
-        <div class="setting-name">${cat.name}</div>
+        <div style="min-width:0">
+          <div class="setting-name">${cat.name}</div>
+          ${kw?`<div class="setting-sub" style="white-space:normal">${kw}</div>`:''}
+        </div>
       </div>
-      <button class="del-btn" onclick="deleteCategory('${cat.id}')">删除</button>
-    </div>
-  `).join('');
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="del-btn" style="background:var(--p2);color:var(--p)"
+          onclick="editCatKeywords('${cat.id}')">触发词</button>
+        <button class="del-btn" onclick="deleteCategory('${cat.id}')">删除</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function setCatFilterType(type, el){
@@ -1345,15 +1357,24 @@ function autoDetectCat(desc){
   if(!text.trim()){ hideAutoHint(); return; }
 
   let bestCatId = null, bestScore = 0;
+  // check built-in keyword map
   for(const entry of KEYWORD_MAP){
-    // only match categories of current tx type
     const cat = data.categories.find(c=>c.id===entry.catId);
     if(!cat || cat.type!==state.txType) continue;
     let score = 0;
     for(const kw of entry.kw){
-      if(text.includes(kw.toLowerCase())) score += kw.length; // longer kw = higher weight
+      if(text.includes(kw.toLowerCase())) score += kw.length;
     }
     if(score > bestScore){ bestScore = score; bestCatId = entry.catId; }
+  }
+  // check user-defined keywords on each category
+  for(const cat of data.categories){
+    if(cat.type!==state.txType || !cat.keywords?.length) continue;
+    let score = 0;
+    for(const kw of cat.keywords){
+      if(text.includes(kw)) score += kw.length * 2; // user-defined gets priority
+    }
+    if(score > bestScore){ bestScore = score; bestCatId = cat.id; }
   }
 
   if(bestCatId && bestScore > 0){
@@ -1499,13 +1520,18 @@ function setNewCatType(type){
   document.getElementById('new-cat-inc').classList.toggle('active', type==='income');
 }
 
+function parseKeywords(raw){
+  return raw.split(/[,，]+/).map(k=>k.trim().toLowerCase()).filter(Boolean);
+}
+
 function saveCategory(){
   const name = document.getElementById('new-cat-name').value.trim();
   const icon = document.getElementById('new-cat-icon').value.trim()||'📦';
   if(!name){ toast('请输入类别名称'); return; }
   const colors = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#DDA0DD','#F0E68C','#87CEEB','#FFB6C1'];
   const color = colors[Math.floor(Math.random()*colors.length)];
-  data.categories.push({id:uid(), name, icon, type:newCatType, color});
+  const kw = parseKeywords(document.getElementById('new-cat-keywords').value);
+  data.categories.push({id:uid(), name, icon, type:newCatType, color, keywords:kw});
   saveData();
   closeModal('modal-add-cat');
   toast(`类别「${name}」已添加`);
@@ -1513,6 +1539,19 @@ function saveCategory(){
   renderSettings();
   document.getElementById('new-cat-name').value='';
   document.getElementById('new-cat-icon').value='';
+  document.getElementById('new-cat-keywords').value='';
+}
+
+function editCatKeywords(id){
+  const cat = getCat(id);
+  if(!cat) return;
+  const current = (cat.keywords||[]).join(', ');
+  const input = prompt(`「${cat.icon} ${cat.name}」的触发词（逗号分隔）：`, current);
+  if(input===null) return;
+  cat.keywords = parseKeywords(input);
+  saveData();
+  renderSettingsCats();
+  toast('触发词已更新');
 }
 
 function deleteCategory(id){
