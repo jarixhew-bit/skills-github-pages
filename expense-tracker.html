@@ -371,6 +371,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div class="setting-title">数据</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="showModal('modal-import-tx')">📥 导入 IBKR</button>
     </div>
   </div>
 </div>
@@ -517,6 +518,25 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <input class="form-input" id="new-cat-keywords" type="text" placeholder="例：保险, premium, aia">
     </div>
     <button class="btn btn-primary" onclick="saveCategory()">新增类别</button>
+  </div>
+</div>
+
+<!-- MODAL: IMPORT TX JSON -->
+<div class="overlay" id="modal-import-tx">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">导入 IBKR 交易</div>
+      <button class="modal-close" onclick="closeModal('modal-import-tx')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">选择账户</label>
+      <select class="form-input" id="import-acc-sel"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">交易 JSON（粘贴 Claude 提供的内容）</label>
+      <textarea class="form-input" id="import-tx-json" rows="8" style="font-size:12px;font-family:monospace" placeholder='[{"date":"2026-06-11","type":"expense","categoryId":"cat_invest_buy","amount":3213,"description":"BUY IBIT"}]'></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="importTxJSON()">导入</button>
   </div>
 </div>
 
@@ -932,6 +952,7 @@ const DEFAULT_DATA = {
     {id:'cat_epf',name:'公积金/EPF',icon:'🏦',type:'expense',color:'#3498DB'},
     {id:'cat_insurance',name:'保险',icon:'🛡️',type:'expense',color:'#9B59B6'},
     {id:'cat_donation',name:'捐款',icon:'❤️',type:'expense',color:'#E74C3C'},
+    {id:'cat_invest_buy',name:'证券买入',icon:'📊',type:'expense',color:'#2980B9'},
     {id:'cat_other_exp',name:'其他支出',icon:'📦',type:'expense',color:'#C0C0C0'},
     {id:'cat_salary',name:'薪资',icon:'💰',type:'income',color:'#27AE60'},
     {id:'cat_bonus',name:'奖金',icon:'🎁',type:'income',color:'#2ECC71'},
@@ -1569,6 +1590,10 @@ function deleteCategory(id){
 // ===================== MODAL =====================
 function showModal(id){
   if(id==='modal-add-acc') initColorPicker();
+  if(id==='modal-import-tx'){
+    const sel = document.getElementById('import-acc-sel');
+    sel.innerHTML = data.accounts.map(a=>`<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+  }
   document.getElementById(id).classList.add('open');
 }
 function closeModal(id){
@@ -1674,6 +1699,35 @@ async function exportPDF(){
     console.error(e);
     toast('PDF 生成失败，请重试');
   }
+}
+
+// ===================== IMPORT TX JSON =====================
+function importTxJSON(){
+  const accId = document.getElementById('import-acc-sel').value;
+  if(!accId){ toast('请选择账户'); return; }
+  let txs;
+  try{ txs = JSON.parse(document.getElementById('import-tx-json').value); }
+  catch(e){ toast('JSON 格式错误'); return; }
+  if(!Array.isArray(txs)||!txs.length){ toast('没有可导入的交易'); return; }
+  let count = 0;
+  txs.forEach(t=>{
+    if(!t.date||!t.type||!t.amount) return;
+    data.transactions.push({
+      id: uid(),
+      accountId: accId,
+      date: t.date,
+      type: t.type,
+      amount: Number(t.amount),
+      categoryId: t.categoryId||'cat_other_exp',
+      description: t.description||''
+    });
+    count++;
+  });
+  saveData();
+  closeModal('modal-import-tx');
+  document.getElementById('import-tx-json').value='';
+  renderAll();
+  toast(`已导入 ${count} 条交易`);
 }
 
 // ===================== EXPORT CSV =====================
