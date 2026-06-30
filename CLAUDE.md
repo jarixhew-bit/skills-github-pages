@@ -15,15 +15,14 @@
 - 发给别人直接发网址，更新后对方刷新自动同步，不需要重发文件
 
 ## 分支策略
-- Claude 只负责将改动推送到功能分支 `claude/vigilant-allen-0yscji`
-- **不自动创建 PR，不合并到 main**
-- 用户自己在 GitHub 上合并 PR
+- Claude 将改动推送到功能分支，然后**自动创建 PR 并合并到 main**
+- 合并方式：squash merge
+- 如有冲突先 merge origin/main 解决后再合并
 
 ## 上传流程
-1. 用户上传修改好的文件
-2. Claude 将文件复制到 `/home/user/skills-github-pages/`
-3. Claude commit 并 push 到功能分支
-4. 用户在 GitHub 上合并 PR → 内容上线到 GitHub Pages
+1. 用户上传修改好的文件（或直接说明需求）
+2. Claude 修改文件并 commit push 到功能分支
+3. Claude 创建 PR 并自动合并到 main → 内容上线到 GitHub Pages
 
 ## 现有项目
 - `xisui/` — 洗髓功法练习 App（PWA）

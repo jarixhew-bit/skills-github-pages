@@ -368,6 +368,14 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-cat')">＋ 新增类别</button>
   </div>
   <div class="setting-section">
+    <div class="setting-title">月固定开销</div>
+    <div id="settings-recurring"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-primary btn-sm" onclick="addMonthlyRecurring()">📅 一键录入本月</button>
+      <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-recurring')">＋ 新增项目</button>
+    </div>
+  </div>
+  <div class="setting-section">
     <div class="setting-title">数据</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
@@ -512,9 +520,45 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
         <div class="type-tab" id="new-cat-inc" onclick="setNewCatType('income')">收入</div>
       </div>
     </div>
+    <div class="form-group">
+      <label class="form-label">触发词（选填，逗号分隔）</label>
+      <input class="form-input" id="new-cat-keywords" type="text" placeholder="例：保险, premium, aia">
+    </div>
     <button class="btn btn-primary" onclick="saveCategory()">新增类别</button>
   </div>
 </div>
+
+<!-- MODAL: ADD RECURRING -->
+<div class="overlay" id="modal-add-recurring">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">新增固定开销</div>
+      <button class="modal-close" onclick="closeModal('modal-add-recurring')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">名称</label>
+      <input class="form-input" id="rec-name" type="text" placeholder="例：房贷、保险…">
+    </div>
+    <div class="form-group">
+      <label class="form-label">金额</label>
+      <input class="form-input" id="rec-amount" type="number" min="0" step="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label class="form-label">账户</label>
+      <select class="form-input" id="rec-acc"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">类别</label>
+      <select class="form-input" id="rec-cat"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">备注（选填）</label>
+      <input class="form-input" id="rec-desc" type="text" placeholder="">
+    </div>
+    <button class="btn btn-primary" onclick="saveRecurring()">新增</button>
+  </div>
+</div>
+
 
 <!-- PDF REPORT (hidden) -->
 <div id="pdf-report"></div>
@@ -590,6 +634,7 @@ async function syncFromCloud(force){
         data = cloud;
         if(!data.currentAccountId && data.accounts.length>0)
           data.currentAccountId = data.accounts[0].id;
+        migrateCategories();
         localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
         updateHeader();
         if(state.currentTab==='overview') renderOverview();
@@ -624,6 +669,7 @@ function showSyncConflict(cloudData){
     data = cloudData;
     if(!data.currentAccountId && data.accounts.length>0)
       data.currentAccountId = data.accounts[0].id;
+    migrateCategories();
     localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
     updateHeader();
     renderOverview();
@@ -873,7 +919,7 @@ const KEYWORD_MAP = [
   {catId:'cat_investment', kw:[
     '股票','基金','利息','分红','收益','回报','理财','投资','比特币',
     'stock','fund','dividend','interest','investment','crypto','bitcoin',
-    'etf','profit','returns','unit trust','amanah saham','asb','epf','kwsp',
+    'etf','profit','returns','unit trust','amanah saham','asb',
     'shares','forex','gold','emas',
     // 柬埔寨
     'aba bank','aba','acleda','wing','pi pay','pipay','true money','wing money',
@@ -884,6 +930,25 @@ const KEYWORD_MAP = [
     'freelance','part time','partime','side income','gig','consulting',
     'commission','project fee','design fee',
   ]},
+  {catId:'cat_epf', kw:[
+    '公积金','公积','社保','社会保险','公积金缴款','退休金',
+    'epf','kwsp','provident fund','cpf','pension','retirement fund',
+    'epf contribution','kwsp potongan','caruman kwsp','simpanan persaraan'],
+  },
+  {catId:'cat_insurance', kw:[
+    '保险','保费','人寿','医疗保险','车险','意外险','续保','投保','理赔','寿险',
+    'insurance','premium','policy','life insurance','car insurance',
+    'medical insurance','health insurance','coverage','annuity',
+    'aia','prudential','great eastern','allianz','tokio marine',
+    'manulife','sunlife','zurich','tune protect','lonpac','kurnia',
+    'income insurance','fwd','chubb','axa','takaful','etiqa'],
+  },
+  {catId:'cat_donation', kw:[
+    '捐款','捐赠','捐','慈善','公益','布施','功德','供养','奉献',
+    'donation','donate','charity','zakat','derma','contribution',
+    'tithe','offering','church','mosque','temple','ngo',
+    'red cross','unicef','world vision','mercy','yayasan','tabung'],
+  },
 ];
 
 const DEFAULT_DATA = {
@@ -904,6 +969,9 @@ const DEFAULT_DATA = {
     {id:'cat_phone',name:'通讯',icon:'📱',type:'expense',color:'#87CEEB'},
     {id:'cat_travel',name:'旅游',icon:'✈️',type:'expense',color:'#F0E68C'},
     {id:'cat_clothing',name:'服装',icon:'👗',type:'expense',color:'#FFB6C1'},
+    {id:'cat_epf',name:'公积金/EPF',icon:'🏦',type:'expense',color:'#3498DB'},
+    {id:'cat_insurance',name:'保险',icon:'🛡️',type:'expense',color:'#9B59B6'},
+    {id:'cat_donation',name:'捐款',icon:'❤️',type:'expense',color:'#E74C3C'},
     {id:'cat_other_exp',name:'其他支出',icon:'📦',type:'expense',color:'#C0C0C0'},
     {id:'cat_salary',name:'薪资',icon:'💰',type:'income',color:'#27AE60'},
     {id:'cat_bonus',name:'奖金',icon:'🎁',type:'income',color:'#2ECC71'},
@@ -911,7 +979,8 @@ const DEFAULT_DATA = {
     {id:'cat_parttime',name:'兼职',icon:'💵',type:'income',color:'#16A085'},
     {id:'cat_other_inc',name:'其他收入',icon:'🏦',type:'income',color:'#27AE60'}
   ],
-  transactions: []
+  transactions: [],
+  recurring: []
 };
 
 let data = JSON.parse(JSON.stringify(DEFAULT_DATA));
@@ -934,12 +1003,18 @@ let state = {
 };
 
 // ===================== PERSIST =====================
+function migrateCategories(){
+  DEFAULT_DATA.categories.forEach(def=>{
+    if(!data.categories.find(c=>c.id===def.id)) data.categories.push(def);
+  });
+}
 function loadData(){
   try{
     const raw = localStorage.getItem('expenseTracker_v2');
     if(raw) data = JSON.parse(raw);
     if(!data.currentAccountId && data.accounts.length>0)
       data.currentAccountId = data.accounts[0].id;
+    migrateCategories();
   }catch(e){ data = JSON.parse(JSON.stringify(DEFAULT_DATA)); }
 }
 function saveData(){
@@ -1202,6 +1277,74 @@ function renderSettings(){
   renderSyncSection();
   renderSettingsAccs();
   renderSettingsCats();
+  renderSettingsRecurring();
+}
+
+function renderSettingsRecurring(){
+  const el = document.getElementById('settings-recurring');
+  if(!el) return;
+  if(!data.recurring) data.recurring = [];
+  if(!data.recurring.length){ el.innerHTML='<div class="setting-sub" style="padding:8px 0">暂无项目</div>'; return; }
+  el.innerHTML = data.recurring.map(r=>{
+    const acc = data.accounts.find(a=>a.id===r.accountId)||{};
+    const cat = data.categories.find(c=>c.id===r.categoryId)||{};
+    return `<div class="setting-item">
+      <div class="setting-item-left" style="flex:1;min-width:0">
+        <div class="setting-icon" style="background:${cat.color||'#eee'}33">${cat.icon||'📦'}</div>
+        <div>
+          <div class="setting-name">${r.name}</div>
+          <div class="setting-sub">${acc.name||''} · ${acc.currency||''} ${fmt(r.amount, acc.currency)}</div>
+        </div>
+      </div>
+      <button class="del-btn" onclick="deleteRecurring('${r.id}')">删除</button>
+    </div>`;
+  }).join('');
+}
+
+function saveRecurring(){
+  const name = document.getElementById('rec-name').value.trim();
+  const amount = parseFloat(document.getElementById('rec-amount').value);
+  const accountId = document.getElementById('rec-acc').value;
+  const categoryId = document.getElementById('rec-cat').value;
+  const description = document.getElementById('rec-desc').value.trim();
+  if(!name||!amount||!accountId){ toast('请填写名称、金额和账户'); return; }
+  data.recurring.push({id:uid(), name, amount, accountId, categoryId, description});
+  saveData();
+  closeModal('modal-add-recurring');
+  renderSettingsRecurring();
+  toast(`「${name}」已加入固定开销`);
+}
+
+function deleteRecurring(id){
+  data.recurring = data.recurring.filter(r=>r.id!==id);
+  saveData();
+  renderSettingsRecurring();
+  toast('已删除');
+}
+
+function addMonthlyRecurring(){
+  if(!data.recurring.length){ toast('没有固定开销项目'); return; }
+  const month = today().slice(0,7); // YYYY-MM
+  let added = 0;
+  data.recurring.forEach(r=>{
+    const dup = data.transactions.find(t=>t.recurId===r.id && t.date.startsWith(month));
+    if(dup) return;
+    data.transactions.push({
+      id: uid(),
+      recurId: r.id,
+      accountId: r.accountId,
+      date: today(),
+      type: 'expense',
+      amount: r.amount,
+      categoryId: r.categoryId||'cat_other_exp',
+      description: r.description||r.name
+    });
+    added++;
+  });
+  if(!added){ toast('本月已全部录入'); return; }
+  saveData();
+  renderAll();
+  toast(`已录入 ${added} 条固定开销`);
 }
 
 function renderSettingsAccs(){
@@ -1224,15 +1367,23 @@ function renderSettingsAccs(){
 function renderSettingsCats(){
   const el = document.getElementById('settings-cats');
   const cats = data.categories.filter(c=>c.type===state.catFilterType);
-  el.innerHTML = cats.map(cat=>`
-    <div class="setting-item">
-      <div class="setting-item-left">
+  el.innerHTML = cats.map(cat=>{
+    const kw = (cat.keywords||[]).join(', ');
+    return `<div class="setting-item" style="flex-wrap:wrap;gap:6px">
+      <div class="setting-item-left" style="flex:1;min-width:0">
         <div class="setting-icon" style="background:${cat.color}33">${cat.icon}</div>
-        <div class="setting-name">${cat.name}</div>
+        <div style="min-width:0">
+          <div class="setting-name">${cat.name}</div>
+          ${kw?`<div class="setting-sub" style="white-space:normal">${kw}</div>`:''}
+        </div>
       </div>
-      <button class="del-btn" onclick="deleteCategory('${cat.id}')">删除</button>
-    </div>
-  `).join('');
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="del-btn" style="background:var(--p2);color:var(--p)"
+          onclick="editCatKeywords('${cat.id}')">触发词</button>
+        <button class="del-btn" onclick="deleteCategory('${cat.id}')">删除</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function setCatFilterType(type, el){
@@ -1315,15 +1466,24 @@ function autoDetectCat(desc){
   if(!text.trim()){ hideAutoHint(); return; }
 
   let bestCatId = null, bestScore = 0;
+  // check built-in keyword map
   for(const entry of KEYWORD_MAP){
-    // only match categories of current tx type
     const cat = data.categories.find(c=>c.id===entry.catId);
     if(!cat || cat.type!==state.txType) continue;
     let score = 0;
     for(const kw of entry.kw){
-      if(text.includes(kw.toLowerCase())) score += kw.length; // longer kw = higher weight
+      if(text.includes(kw.toLowerCase())) score += kw.length;
     }
     if(score > bestScore){ bestScore = score; bestCatId = entry.catId; }
+  }
+  // check user-defined keywords on each category
+  for(const cat of data.categories){
+    if(cat.type!==state.txType || !cat.keywords?.length) continue;
+    let score = 0;
+    for(const kw of cat.keywords){
+      if(text.includes(kw)) score += kw.length * 2; // user-defined gets priority
+    }
+    if(score > bestScore){ bestScore = score; bestCatId = cat.id; }
   }
 
   if(bestCatId && bestScore > 0){
@@ -1469,13 +1629,18 @@ function setNewCatType(type){
   document.getElementById('new-cat-inc').classList.toggle('active', type==='income');
 }
 
+function parseKeywords(raw){
+  return raw.split(/[,，]+/).map(k=>k.trim().toLowerCase()).filter(Boolean);
+}
+
 function saveCategory(){
   const name = document.getElementById('new-cat-name').value.trim();
   const icon = document.getElementById('new-cat-icon').value.trim()||'📦';
   if(!name){ toast('请输入类别名称'); return; }
   const colors = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#DDA0DD','#F0E68C','#87CEEB','#FFB6C1'];
   const color = colors[Math.floor(Math.random()*colors.length)];
-  data.categories.push({id:uid(), name, icon, type:newCatType, color});
+  const kw = parseKeywords(document.getElementById('new-cat-keywords').value);
+  data.categories.push({id:uid(), name, icon, type:newCatType, color, keywords:kw});
   saveData();
   closeModal('modal-add-cat');
   toast(`类别「${name}」已添加`);
@@ -1483,6 +1648,19 @@ function saveCategory(){
   renderSettings();
   document.getElementById('new-cat-name').value='';
   document.getElementById('new-cat-icon').value='';
+  document.getElementById('new-cat-keywords').value='';
+}
+
+function editCatKeywords(id){
+  const cat = getCat(id);
+  if(!cat) return;
+  const current = (cat.keywords||[]).join(', ');
+  const input = prompt(`「${cat.icon} ${cat.name}」的触发词（逗号分隔）：`, current);
+  if(input===null) return;
+  cat.keywords = parseKeywords(input);
+  saveData();
+  renderSettingsCats();
+  toast('触发词已更新');
 }
 
 function deleteCategory(id){
@@ -1500,6 +1678,13 @@ function deleteCategory(id){
 // ===================== MODAL =====================
 function showModal(id){
   if(id==='modal-add-acc') initColorPicker();
+  if(id==='modal-add-recurring'){
+    document.getElementById('rec-name').value='';
+    document.getElementById('rec-amount').value='';
+    document.getElementById('rec-desc').value='';
+    document.getElementById('rec-acc').innerHTML = data.accounts.map(a=>`<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+    document.getElementById('rec-cat').innerHTML = data.categories.filter(c=>c.type==='expense').map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+  }
   document.getElementById(id).classList.add('open');
 }
 function closeModal(id){
@@ -1606,6 +1791,7 @@ async function exportPDF(){
     toast('PDF 生成失败，请重试');
   }
 }
+
 
 // ===================== EXPORT CSV =====================
 function exportCSV(){
