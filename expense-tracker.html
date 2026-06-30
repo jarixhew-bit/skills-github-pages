@@ -368,6 +368,14 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-cat')">＋ 新增类别</button>
   </div>
   <div class="setting-section">
+    <div class="setting-title">月固定开销</div>
+    <div id="settings-recurring"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-primary btn-sm" onclick="addMonthlyRecurring()">📅 一键录入本月</button>
+      <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-recurring')">＋ 新增项目</button>
+    </div>
+  </div>
+  <div class="setting-section">
     <div class="setting-title">数据</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
@@ -518,6 +526,37 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <input class="form-input" id="new-cat-keywords" type="text" placeholder="例：保险, premium, aia">
     </div>
     <button class="btn btn-primary" onclick="saveCategory()">新增类别</button>
+  </div>
+</div>
+
+<!-- MODAL: ADD RECURRING -->
+<div class="overlay" id="modal-add-recurring">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">新增固定开销</div>
+      <button class="modal-close" onclick="closeModal('modal-add-recurring')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">名称</label>
+      <input class="form-input" id="rec-name" type="text" placeholder="例：房贷、保险…">
+    </div>
+    <div class="form-group">
+      <label class="form-label">金额</label>
+      <input class="form-input" id="rec-amount" type="number" min="0" step="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label class="form-label">账户</label>
+      <select class="form-input" id="rec-acc"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">类别</label>
+      <select class="form-input" id="rec-cat"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">备注（选填）</label>
+      <input class="form-input" id="rec-desc" type="text" placeholder="">
+    </div>
+    <button class="btn btn-primary" onclick="saveRecurring()">新增</button>
   </div>
 </div>
 
@@ -960,7 +999,8 @@ const DEFAULT_DATA = {
     {id:'cat_parttime',name:'兼职',icon:'💵',type:'income',color:'#16A085'},
     {id:'cat_other_inc',name:'其他收入',icon:'🏦',type:'income',color:'#27AE60'}
   ],
-  transactions: []
+  transactions: [],
+  recurring: []
 };
 
 let data = JSON.parse(JSON.stringify(DEFAULT_DATA));
@@ -987,6 +1027,7 @@ function migrateCategories(){
   DEFAULT_DATA.categories.forEach(def=>{
     if(!data.categories.find(c=>c.id===def.id)) data.categories.push(def);
   });
+  if(!data.recurring) data.recurring = [];
 }
 function loadData(){
   try{
@@ -1257,6 +1298,73 @@ function renderSettings(){
   renderSyncSection();
   renderSettingsAccs();
   renderSettingsCats();
+  renderSettingsRecurring();
+}
+
+function renderSettingsRecurring(){
+  const el = document.getElementById('settings-recurring');
+  if(!el) return;
+  if(!data.recurring.length){ el.innerHTML='<div class="setting-sub" style="padding:8px 0">暂无项目</div>'; return; }
+  el.innerHTML = data.recurring.map(r=>{
+    const acc = data.accounts.find(a=>a.id===r.accountId)||{};
+    const cat = data.categories.find(c=>c.id===r.categoryId)||{};
+    return `<div class="setting-item">
+      <div class="setting-item-left" style="flex:1;min-width:0">
+        <div class="setting-icon" style="background:${cat.color||'#eee'}33">${cat.icon||'📦'}</div>
+        <div>
+          <div class="setting-name">${r.name}</div>
+          <div class="setting-sub">${acc.name||''} · ${acc.currency||''} ${fmt(r.amount, acc.currency)}</div>
+        </div>
+      </div>
+      <button class="del-btn" onclick="deleteRecurring('${r.id}')">删除</button>
+    </div>`;
+  }).join('');
+}
+
+function saveRecurring(){
+  const name = document.getElementById('rec-name').value.trim();
+  const amount = parseFloat(document.getElementById('rec-amount').value);
+  const accountId = document.getElementById('rec-acc').value;
+  const categoryId = document.getElementById('rec-cat').value;
+  const description = document.getElementById('rec-desc').value.trim();
+  if(!name||!amount||!accountId){ toast('请填写名称、金额和账户'); return; }
+  data.recurring.push({id:uid(), name, amount, accountId, categoryId, description});
+  saveData();
+  closeModal('modal-add-recurring');
+  renderSettingsRecurring();
+  toast(`「${name}」已加入固定开销`);
+}
+
+function deleteRecurring(id){
+  data.recurring = data.recurring.filter(r=>r.id!==id);
+  saveData();
+  renderSettingsRecurring();
+  toast('已删除');
+}
+
+function addMonthlyRecurring(){
+  if(!data.recurring.length){ toast('没有固定开销项目'); return; }
+  const month = today().slice(0,7); // YYYY-MM
+  let added = 0;
+  data.recurring.forEach(r=>{
+    const dup = data.transactions.find(t=>t.recurId===r.id && t.date.startsWith(month));
+    if(dup) return;
+    data.transactions.push({
+      id: uid(),
+      recurId: r.id,
+      accountId: r.accountId,
+      date: today(),
+      type: 'expense',
+      amount: r.amount,
+      categoryId: r.categoryId||'cat_other_exp',
+      description: r.description||r.name
+    });
+    added++;
+  });
+  if(!added){ toast('本月已全部录入'); return; }
+  saveData();
+  renderAll();
+  toast(`已录入 ${added} 条固定开销`);
 }
 
 function renderSettingsAccs(){
@@ -1593,6 +1701,13 @@ function showModal(id){
   if(id==='modal-import-tx'){
     const sel = document.getElementById('import-acc-sel');
     sel.innerHTML = data.accounts.map(a=>`<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+  }
+  if(id==='modal-add-recurring'){
+    document.getElementById('rec-name').value='';
+    document.getElementById('rec-amount').value='';
+    document.getElementById('rec-desc').value='';
+    document.getElementById('rec-acc').innerHTML = data.accounts.map(a=>`<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+    document.getElementById('rec-cat').innerHTML = data.categories.filter(c=>c.type==='expense').map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
   }
   document.getElementById(id).classList.add('open');
 }
