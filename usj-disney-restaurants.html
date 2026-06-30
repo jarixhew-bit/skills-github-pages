@@ -1098,6 +1098,9 @@ const btns = document.querySelectorAll('.area-btn');
 function goToSection(id) {
   var el = document.querySelector(id);
   if (!el) return;
+  // update active immediately on click
+  var idx = sections.indexOf(id.replace('#',''));
+  btns.forEach(function(b,j){ b.classList.toggle('active', j===idx); });
   var navH = (document.querySelector('.lang-bar') ? document.querySelector('.lang-bar').offsetHeight : 0)
            + (document.querySelector('.area-nav') ? document.querySelector('.area-nav').offsetHeight : 0);
   var top = el.getBoundingClientRect().top + window.pageYOffset - navH - 8;
