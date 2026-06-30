@@ -1,0 +1,25 @@
+{
+  "name": "记账本",
+  "short_name": "记账本",
+  "description": "Multi-account expense tracker",
+  "start_url": "expense-tracker.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1E7A42",
+  "theme_color": "#1E7A42",
+  "icons": [
+    {
+      "src": "expense-tracker-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "expense-tracker-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
