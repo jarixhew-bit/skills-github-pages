@@ -1096,7 +1096,12 @@ const sections = ['usj','disney','shinkansen'];
 const btns = document.querySelectorAll('.area-btn');
 
 function goToSection(id) {
-  document.querySelector(id).scrollIntoView({behavior:'smooth'});
+  var el = document.querySelector(id);
+  if (!el) return;
+  var navH = (document.querySelector('.lang-bar') ? document.querySelector('.lang-bar').offsetHeight : 0)
+           + (document.querySelector('.area-nav') ? document.querySelector('.area-nav').offsetHeight : 0);
+  var top = el.getBoundingClientRect().top + window.pageYOffset - navH - 8;
+  window.scrollTo({top: top, behavior: 'smooth'});
 }
 
 const obs = new IntersectionObserver(entries => {
