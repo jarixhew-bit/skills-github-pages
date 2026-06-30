@@ -1,385 +1,1688 @@
 <!DOCTYPE html>
+
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>9D8N 东京 & 大阪 2026</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f4f4; color: #333; }
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>9D8N 东京大阪 · 双语行程手册 EN/CN</title>
+<style>
+  :root {
+    --red: #C8102E;
+    --ink: #1a1a1a;
+    --muted: #666;
+    --bg: #f8f6f2;
+    --card: #ffffff;
+    --border: #e5e0d8;
+    --gold: #b8860b;
+    --green: #2d6a4f;
+    --amber: #e07b00;
+    --blue: #1d4e89;
+    --purple: #5b2d8e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'PingFang SC','Microsoft YaHei','Helvetica Neue',sans-serif; background: var(--bg); color: var(--ink); line-height: 1.55; }
+  .en { display: block; font-family: 'Helvetica Neue',Arial,sans-serif; font-style: italic; color: var(--muted); font-weight: 400; }
 
-    .hero {
-      background: linear-gradient(135deg, #c0392b, #e74c3c);
-      color: #fff; text-align: center; padding: 36px 20px 28px;
-    }
-    .hero h1 { font-size: 2em; margin-bottom: 6px; }
-    .hero p { opacity: 0.85; font-size: 0.95em; }
+  /* HERO */
+  .hero { position: relative; overflow: hidden; min-height: 300px; color: white; text-align: center; }
+  .hero-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,10,40,.35), rgba(20,10,40,.3) 45%, rgba(20,10,40,.72)); z-index: 1; pointer-events: none; }
+  .hero-content { position: relative; z-index: 2; padding: 44px 20px 32px; pointer-events: none; }
+  /* carousel-hero rule moved below base .carousel definition to fix CSS override order */
+  .hero-label { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; opacity: .75; margin-bottom: 8px; }
+  .hero h1 { font-size: 24px; font-weight: 800; margin-bottom: 2px; text-shadow: 0 2px 8px rgba(0,0,0,.35); }
+  .hero h1 .en { font-size: 13px; color: rgba(255,255,255,.8); margin-top: 2px; }
+  .hero-sub { font-size: 13px; opacity: .85; margin-bottom: 4px; }
+  .hero-sub .en { color: rgba(255,255,255,.65); font-size: 11px; margin-top: 1px; }
+  .hero-tags { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 14px; }
+  .hero-tag { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); border-radius: 20px; padding: 4px 12px; font-size: 11px; }
 
-    .container { max-width: 900px; margin: 0 auto; padding: 20px 16px; }
+  .warn { background: #fff3cd; border-left: 4px solid #e07b00; padding: 13px 18px; font-size: 13px; color: #5a3e00; }
+  .warn strong { display: block; margin-bottom: 3px; }
+  .warn .en { color: #8a6a1a; font-size: 11px; }
 
-    /* Flight Tracker */
-    .flight-section { background: #1a1a2e; border-radius: 14px; padding: 20px; margin-bottom: 24px; color: #fff; }
-    .section-title { font-size: 0.85em; color: #f39c12; margin-bottom: 16px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; }
-    .flight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    @media(max-width:600px){ .flight-grid { grid-template-columns: 1fr; } }
-    .flight-card { background: #16213e; border-radius: 10px; padding: 14px 16px; border-left: 4px solid #f39c12; }
-    .flight-card.inbound { border-left-color: #27ae60; }
-    .flight-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .flight-no { font-size: 1.1em; font-weight: 700; color: #f39c12; }
-    .flight-card.inbound .flight-no { color: #27ae60; }
-    .flight-status { font-size: 0.72em; padding: 3px 8px; border-radius: 20px; background: #2c3e50; color: #bdc3c7; }
-    .flight-status.scheduled { background: #2980b9; color: #fff; }
-    .flight-status.active    { background: #27ae60; color: #fff; }
-    .flight-status.landed    { background: #7f8c8d; color: #fff; }
-    .flight-status.delayed   { background: #e74c3c; color: #fff; }
-    .flight-route { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .iata { font-size: 1.3em; font-weight: 700; }
-    .route-arrow { flex: 1; text-align: center; color: #7f8c8d; font-size: 0.8em; display: flex; align-items: center; }
-    .route-arrow::before, .route-arrow::after { content: ''; flex: 1; height: 1px; background: #2c3e50; }
-    .route-arrow span { padding: 0 6px; }
-    .flight-times { display: flex; justify-content: space-between; font-size: 0.8em; color: #bdc3c7; }
-    .flight-times .time { text-align: center; }
-    .flight-times .time .val { font-size: 1.1em; font-weight: 600; color: #ecf0f1; }
-    .flight-times .time .lbl { font-size: 0.75em; opacity: 0.6; margin-top: 2px; }
-    .flight-meta { font-size: 0.72em; color: #7f8c8d; margin-top: 8px; }
-    .flight-airline { font-size: 0.75em; color: #95a5a6; margin-bottom: 4px; }
-    .refresh-btn { display: block; margin: 14px auto 0; padding: 8px 22px; background: #f39c12; color: #fff; border: none; border-radius: 20px; font-size: 0.82em; cursor: pointer; }
-    .refresh-btn:hover { background: #e67e22; }
-    .api-note { font-size: 0.7em; color: #7f8c8d; text-align: center; margin-top: 8px; }
+  /* NAV TABS */
+  .tabs { display: flex; overflow-x: auto; background: white; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  .tab { flex-shrink: 0; padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; text-decoration: none; text-align: center; }
+  .tab .en { font-size: 8px; font-style: normal; color: #999; }
+  .tab:hover { color: var(--red); }
+  .tab.active { color: var(--red); border-bottom-color: var(--red); }
 
-    /* Hotels */
-    .hotels-section { margin-bottom: 24px; }
-    .hotels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media(max-width:600px){ .hotels-grid { grid-template-columns: 1fr; } }
-    .hotel-card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .hotel-img { width: 100%; height: 180px; object-fit: cover; background: #e8e8e8; display: block; }
-    .hotel-body { padding: 14px 16px; }
-    .hotel-name { font-weight: 700; font-size: 1em; color: #c0392b; }
-    .hotel-stars { color: #f39c12; font-size: 0.85em; margin: 2px 0 6px; }
-    .hotel-detail { font-size: 0.8em; color: #555; line-height: 1.6; }
-    .hotel-dates { display: inline-block; margin-top: 8px; font-size: 0.75em; background: #fef3f3; color: #c0392b; padding: 3px 10px; border-radius: 10px; border: 1px solid #f5c6c6; }
+  /* SECTION */
+  .section { padding: 20px 16px; max-width: 800px; margin: 0 auto; }
+  .sec-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--red); font-weight: 700; margin-bottom: 4px; }
+  .sec-title .en { font-size: 9px; letter-spacing: 1px; color: #c8819090; color: #b06070; margin-top: 1px; text-transform: none; }
+  .sec-title-wrap { margin-bottom: 14px; padding-bottom: 7px; border-bottom: 1px solid var(--border); }
 
-    /* Day cards */
-    .day { background: #fff; border-radius: 12px; margin-bottom: 18px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-    .day-header { background: #c0392b; color: #fff; padding: 12px 18px; font-weight: bold; font-size: 1em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .day-header .date { font-size: 0.8em; opacity: 0.8; font-weight: normal; }
-    .hotel-tag { margin-left: auto; font-size: 0.72em; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
-    .spots { padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-    .spot { display: flex; flex-direction: column; border-radius: 10px; overflow: hidden; border: 1px solid #eee; text-decoration: none; color: inherit; transition: box-shadow 0.15s, transform 0.15s; background: #fafafa; }
-    .spot:hover { box-shadow: 0 4px 14px rgba(192,57,43,0.15); transform: translateY(-2px); }
-    .spot-img { width: 100%; height: 150px; object-fit: cover; display: block; background: #e8e8e8; }
-    .spot-body { padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
-    .spot-icon { font-size: 1.2em; flex-shrink: 0; }
-    .spot-info { flex: 1; }
-    .spot-name { font-weight: 600; font-size: 0.9em; }
-    .spot-desc { font-size: 0.75em; color: #888; margin-top: 2px; }
-    .map-badge { font-size: 0.68em; color: #c0392b; border: 1px solid #c0392b; border-radius: 4px; padding: 2px 5px; white-space: nowrap; }
-    .transit-note { padding: 12px 18px; font-size: 0.82em; color: #666; background: #fef9f0; border-top: 1px solid #fde8c0; display: flex; align-items: center; gap: 8px; }
+  /* FLIGHT CARD */
+  .flight-group { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+  .flight-group-header { background: var(--ink); color: white; padding: 10px 16px; font-size: 12px; font-weight: 700; }
+  .flight-group-header .en { color: rgba(255,255,255,.6); font-size: 10px; }
+  .flight-row { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .flight-row:last-child { border-bottom: none; }
+  .flight-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .airline-badge { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700; color: var(--ink); }
+  .flight-num { font-size: 15px; font-weight: 800; color: var(--red); }
+  .cabin-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; white-space: nowrap; display: inline-block; }
+  .biz { background: #fde8ec; color: var(--red); }
+  .eco { background: #f0f4ff; color: var(--blue); }
+  .flight-route { display: flex; align-items: center; gap: 10px; }
+  .airport { text-align: center; }
+  .iata { font-size: 20px; font-weight: 800; color: var(--ink); }
+  .city { font-size: 10px; color: var(--muted); }
+  .time { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .arrow { flex: 1; display: flex; flex-direction: column; align-items: center; }
+  .arrow-line { width: 100%; height: 1px; background: var(--border); position: relative; }
+  .arrow-line::after { content: '▶'; position: absolute; right: -4px; top: -7px; font-size: 10px; color: var(--muted); }
+  .duration { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+  .pax-list { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .pax-tag { font-size: 11px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
+  .track-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; background: var(--blue); color: white; border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; text-decoration: none; }
+  .track-btn:hover { opacity: .85; }
+  .transit-cn { font-size: 12px; color: var(--amber); font-weight: 700; }
+  .transit-en { font-size: 10px; color: var(--muted); font-style: italic; }
+  .transit-sub-cn { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .transit-sub-en { font-size: 10px; color: #999; font-style: italic; }
+  body:not(.lang-cn) .transit-cn, body:not(.lang-cn) .transit-sub-cn { display: none !important; }
+  body.lang-cn .transit-en, body.lang-cn .transit-sub-en { display: none !important; }
+  body:not(.lang-cn) .transit-en { font-size: 12px !important; color: var(--amber) !important; font-weight: 700 !important; font-style: normal !important; }
+  body:not(.lang-cn) .transit-sub-en { font-size: 11px !important; color: var(--muted) !important; font-style: normal !important; margin-top: 3px !important; }
 
-    @media(max-width:600px){ .spots { grid-template-columns: 1fr; } .hero h1 { font-size: 1.5em; } }
-  </style>
+  /* BAGGAGE TABLE */
+  .bag-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  .bag-table th { background: var(--ink); color: white; padding: 9px 13px; text-align: left; font-size: 11px; }
+  .bag-table th .en { color: rgba(255,255,255,.6); font-size: 9px; }
+  .bag-table td { padding: 10px 13px; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 12px; }
+  .bag-table tr:last-child td { border-bottom: none; }
+  .bag-table tr:nth-child(even) td { background: var(--bg); }
+
+  /* DAY CARD */
+  .day-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
+  .day-header { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
+  .day-num { background: var(--red); color: white; padding: 12px 14px; font-size: 18px; font-weight: 800; min-width: 56px; display: flex; align-items: center; justify-content: center; flex-direction: column; line-height: 1; }
+  .day-num span { font-size: 9px; font-weight: 400; opacity: .8; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+  .day-meta { padding: 11px 14px; flex: 1; min-width: 0; }
+  .day-title { font-size: 14px; font-weight: 700; margin-bottom: 1px; }
+  .day-title .en { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .day-date { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .city-badge { align-self: center; margin-right: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .day-body { padding: 12px 14px; }
+
+  /* SPOT */
+  .spot-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .spot-row:last-child { border-bottom: none; }
+  .spot-img { width: 100%; height: 160px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; display: block; }
+  .spot-badge { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; margin-top: 1px; }
+  .must { background: #fde8ec; color: var(--red); }
+  .side { background: #f0f4ff; color: var(--blue); }
+  .pending { background: #fff3cd; color: #7a4f00; }
+  .spot-main { flex: 1; min-width: 0; }
+  .spot-name { font-size: 13px; font-weight: 700; margin-bottom: 1px; }
+  .spot-name .en { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .spot-note { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 4px; }
+  .spot-note .en { font-size: 10px; color: #999; margin-top: 2px; }
+  .tags-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; line-height: 1.6; }
+  .tag .en { font-size: 8px; font-weight: 400; opacity: .85; }
+  .tag-ticket { background: #fde8ec; color: var(--red); }
+  .tag-verify { background: #fff3cd; color: #7a4f00; }
+  .tag-book { background: #e8f5e9; color: var(--green); }
+  .tag-backup { background: #f0e8ff; color: var(--purple,#5b2d8e); }
+  .backup-row { margin-top: 10px; border: 1px dashed #c9b8e8; border-radius: 10px; padding: 10px; background: #faf7ff; overflow: hidden; }
+  .backup-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #7a4fc0; font-weight: 700; margin-bottom: 6px; }
+  .backup-label .en { font-size: 8px; color: #a98fd0; text-transform: none; letter-spacing: 0; }
+  .tag-visited { background: #ede6fa; color: #7a4fc0; }
+  .backup-row .carousel-sm { width: 100% !important; max-width: 100% !important; }
+  .spot-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .map-btn { display: inline-flex; align-items: center; gap: 4px; background: var(--green); color: white; border-radius: 7px; padding: 5px 10px; font-size: 11px; font-weight: 700; text-decoration: none; }
+  .map-btn:hover { opacity: .85; }
+  .hours-chip { font-size: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; color: var(--muted); line-height: 1.5; }
+  .hours-chip .en { font-size: 8px; color: #999; }
+
+  /* SUB ROW */
+  .sub-row { margin-top: 10px; background: var(--bg); border-radius: 8px; padding: 9px 11px; }
+  .sub-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 5px; font-weight: 700; }
+  .sub-label .en { font-size: 8px; color: #aaa; text-transform: none; letter-spacing: 0; }
+  .rain-plan { font-size: 12px; color: var(--blue); font-weight: 500; }
+  .rain-plan .en { font-size: 10px; color: #7090b0; font-weight: 400; }
+  .traffic-info { font-size: 12px; color: var(--muted); }
+  .traffic-info .en { font-size: 10px; color: #999; }
+
+  /* D09 TIMELINE */
+  .timeline { padding: 4px 0; }
+  .tl-row { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+  .tl-row:last-child { border-bottom: none; }
+  .tl-time { font-size: 13px; font-weight: 800; color: var(--red); min-width: 55px; flex-shrink: 0; }
+  .tl-text { font-size: 12px; color: var(--ink); font-weight: 600; }
+  .tl-text .en { font-size: 10px; color: var(--muted); font-weight: 400; margin-top: 1px; }
+  .tl-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .tl-sub .en { font-size: 9px; color: #aaa; margin-top: 2px; }
+
+  /* CHECKLIST */
+  .checklist { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .check-item { display: flex; align-items: flex-start; gap: 11px; padding: 13px 15px; border-bottom: 1px solid var(--border); }
+  .check-item:last-child { border-bottom: none; }
+  .check-icon { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; margin-top: 1px; }
+  .c-red { background: #fde8ec; color: var(--red); }
+  .c-amber { background: #fff3cd; color: var(--amber); }
+  .c-green { background: #e8f5e9; color: var(--green); }
+  .check-main { font-size: 13px; font-weight: 700; margin-bottom: 1px; }
+  .check-main .en { font-size: 10px; color: var(--muted); font-weight: 400; }
+  .check-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .check-sub .en { font-size: 9px; color: #aaa; margin-top: 2px; }
+
+  /* HOTEL CARD */
+  .hotel-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+  .hotel-img { width: 100%; height: 200px; object-fit: cover; display: block; }
+  .hotel-header { background: var(--gold); color: white; padding: 10px 15px; font-size: 13px; font-weight: 800; }
+  .hotel-header .en { color: rgba(255,255,255,.7); font-size: 10px; font-weight: 400; }
+  .hotel-body { padding: 13px 15px; }
+  .hotel-name { font-size: 15px; font-weight: 800; margin-bottom: 3px; }
+  .hotel-addr { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .hotel-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hotel-info { font-size: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; }
+  .hotel-note { margin-top: 10px; font-size: 11px; color: var(--muted); }
+  .hotel-note .en { font-size: 9px; color: #aaa; }
+
+  /* PAX CARD */
+  .pax-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; margin-bottom: 10px; }
+  .pax-name { font-size: 13px; font-weight: 800; margin-bottom: 6px; }
+  .pax-name .en { font-size: 10px; color: var(--muted); font-weight: 400; }
+  .pax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pax-cell { font-size: 11px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; }
+  .pax-cell span { display: block; color: var(--muted); font-size: 10px; margin-bottom: 1px; }
+  .pax-cell span .en { font-size: 8px; color: #aaa; }
+
+  .footer { text-align: center; font-size: 11px; color: var(--muted); padding: 22px 16px; border-top: 1px solid var(--border); }
+  .footer .en { font-size: 10px; color: #aaa; }
+
+  /* CAROUSEL */
+  .carousel { position: relative; width: 100%; height: 230px; overflow: hidden; background: #000; max-height: 230px; }
+
+  /* HERO CAROUSEL — defined AFTER base .carousel so it correctly overrides position/height (text sits on top via z-index) */
+  .carousel-hero { position: absolute !important; inset: 0; height: 100% !important; width: 100%; z-index: 0; border-radius: 0; box-shadow: none; margin: 0; }
+  .carousel-hero .carousel-arrow, .carousel-hero .carousel-dots, .carousel-hero .carousel-zoom-hint { z-index: 3; }
+  .carousel-hero .carousel-cap { display: none; }
+  .carousel-track { display: flex; height: 100%; transition: transform .5s ease; }
+  .carousel-slide { flex: 0 0 100%; height: 100%; position: relative; cursor: zoom-in; overflow: hidden; }
+  .carousel-slide img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .carousel-cap { position: absolute; bottom: 0; left: 0; right: 0; padding: 18px 14px 8px; background: linear-gradient(transparent, rgba(0,0,0,.65)); color: #fff; font-size: 12px; font-weight: 700; }
+  .carousel-cap .en { color: rgba(255,255,255,.75); font-size: 10px; font-weight: 400; font-style: italic; }
+  .carousel-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.4); color: #fff; border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5; }
+  .carousel-arrow.prev { left: 8px; }
+  .carousel-arrow.next { right: 8px; }
+  .carousel-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; z-index: 5; }
+  .carousel-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.5); cursor: pointer; }
+  .carousel-dot.active { background: #fff; width: 16px; border-radius: 3px; }
+  .carousel-zoom-hint { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,.4); color: #fff; font-size: 9px; padding: 3px 7px; border-radius: 10px; z-index: 5; }
+
+  /* MINI CAROUSEL (per-location, replaces old static spot-img) */
+  .carousel-sm { height: 160px !important; border-radius: 8px; margin-bottom: 8px; display: block; position: relative; }
+  .carousel.carousel-sm { height: 160px !important; }
+  @media (min-width: 600px) {
+    .carousel-sm { height: 180px !important; }
+    .carousel.carousel-sm { height: 180px !important; }
+  }
+  .carousel-sm .carousel-arrow { width: 24px; height: 24px; font-size: 13px; }
+  .carousel-sm .carousel-zoom-hint { font-size: 8px; padding: 2px 6px; top: 6px; right: 6px; }
+  .carousel-sm .carousel-dots { bottom: 5px; }
+  .carousel-sm .carousel-dot { width: 5px; height: 5px; }
+  .carousel-sm .carousel-dot.active { width: 12px; }
+
+  /* HOTEL CAROUSEL */
+  .carousel-hotel { height: 200px; border-radius: 0; margin-bottom: 0; }
+  .carousel.carousel-hotel { height: 200px !important; }
+
+  /* (old standalone carousel-hero spacing rule removed — now absolute-positioned as hero background) */
+
+  /* LIGHTBOX */
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; z-index: 999; flex-direction: column; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 92%; max-height: 78vh; object-fit: contain; border-radius: 6px; }
+  .lightbox-cap { color: #fff; font-size: 13px; margin-top: 10px; text-align: center; }
+  .lightbox-cap .en { color: rgba(255,255,255,.6); font-size: 11px; font-style: italic; }
+  .lightbox-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,.15); color: #fff; border: none; width: 34px; height: 34px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+  .lightbox-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.15); color: #fff; border: none; width: 38px; height: 38px; border-radius: 50%; font-size: 20px; cursor: pointer; }
+  .lightbox-arrow.prev { left: 12px; }
+  .lightbox-arrow.next { right: 12px; }
+
+  /* DINE BADGE + CARD */
+  .dine { background: #ffe8d6; color: #b2560a; }
+  .dine-tag { background: #ffe8d6; color: #b2560a; }
+
+  /* JUMP TO TODAY FAB */
+  .fab-today { position: fixed; bottom: 18px; right: 16px; z-index: 200; background: var(--red); color: #fff; border: none; border-radius: 30px; padding: 11px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+  .fab-today .en { font-size: 8px; font-weight: 400; opacity: .85; }
+  .fab-today.disabled { background: #aaa; }
+
+  /* JUMP MENU FAB + SHEET */
+  .fab-jump { position: fixed; bottom: 78px; right: 16px; z-index: 200; background: var(--blue); color: #fff; border: none; border-radius: 30px; padding: 11px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+  .fab-jump .en { font-size: 8px; font-weight: 400; opacity: .85; }
+  .day-card { scroll-margin-top: 50px; }
+  .jump-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; z-index: 998; align-items: flex-end; justify-content: center; }
+  .jump-overlay.open { display: flex; }
+  .jump-sheet { background: var(--card); width: 100%; max-width: 480px; max-height: 75vh; border-radius: 16px 16px 0 0; overflow-y: auto; padding-bottom: 10px; animation: slideUp .25s ease; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .jump-sheet-header { position: sticky; top: 0; background: var(--card); padding: 14px 16px 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .jump-sheet-title { font-size: 14px; font-weight: 800; }
+  .jump-sheet-title .en { font-size: 10px; color: var(--muted); font-weight: 400; display: block; }
+  .jump-sheet-close { background: var(--bg); border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 14px; cursor: pointer; color: var(--muted); }
+  .jump-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .jump-row:last-child { border-bottom: none; }
+  .jump-row:active { background: var(--bg); }
+  .jump-row-num { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--bg); color: var(--red); font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+  .jump-row-main { flex: 1; }
+  .jump-row-title { font-size: 13px; font-weight: 700; }
+  .jump-row-date { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  /* ===== LANGUAGE TOGGLE =====
+     Default (no body class) = English primary, Chinese hidden.
+     body.lang-cn = Chinese primary, English hidden.
+     This single block overrides ALL the per-context ".xxx .en {...}" subtitle-styling
+     rules above by winning on specificity/source-order, so .en/.cn inherit normal
+     parent styling (size/weight/color) when shown as the primary language. */
+  .cn { font-family: 'PingFang SC','Microsoft YaHei','Helvetica Neue',sans-serif; }
+  body:not(.lang-cn) .cn { display: none !important; }
+  body.lang-cn .en { display: none !important; }
+  body:not(.lang-cn) .en {
+    display: inline !important; font-style: normal !important; color: inherit !important;
+    font-weight: inherit !important; font-size: inherit !important; margin-top: 0 !important;
+    letter-spacing: inherit !important; text-transform: inherit !important; opacity: 1 !important;
+  }
+  body.lang-cn .cn {
+    display: inline !important; font-style: normal !important; color: inherit !important;
+    font-weight: inherit !important; font-size: inherit !important; margin-top: 0 !important;
+    letter-spacing: inherit !important; text-transform: inherit !important; opacity: 1 !important;
+  }
+
+  /* LANGUAGE TOGGLE FAB */
+  .fab-lang { position: fixed; bottom: 138px; right: 16px; z-index: 200; background: var(--gold); color: #fff; border: none; border-radius: 30px; padding: 11px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+  .fab-lang .en { font-size: 8px; font-weight: 400; opacity: .85; }
+</style>
 </head>
 <body>
-
+<!-- HERO -->
 <div class="hero">
-  <h1>🗾 夏日の东京 & 大阪</h1>
-  <p>9天8夜 · 22 Jul – 30 Jul 2026 · AA Aviation Sdn Bhd</p>
+<div class="carousel carousel-hero">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="环球影城 · 超级任天堂世界 · D03" data-cap-en="Universal Studios Japan · D03">
+<img alt="USJ" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMVdA6n0QWCR7hkiOyrbh2Bt4pJ5jBb7f8OUe68O8uDYWNbY3DPsuCGyE0oW8GipHZjp5FuZD7z6afjC9dyMQrgKS-IYgnU8V6JaeCNXB9jDOY64B02kUVeTBGXxmJZ872xkgnl-wueERR-dQ=s4800-w800-h600"/>
+<div class="carousel-cap"><span class="cn">环球影城</span><span class="en">Universal Studios Japan · D03</span></div>
 </div>
-
-<div class="container">
-
-  <!-- ✈️ Flight Tracker -->
-  <div class="flight-section">
-    <div class="section-title">✈️ 实时航班追踪</div>
-    <div class="flight-grid">
-      <div class="flight-card" id="card-SQ0153">
-        <div class="flight-airline">Singapore Airlines · 去程 Leg 1</div>
-        <div class="flight-header"><span class="flight-no">SQ 0153</span><span class="flight-status" id="status-SQ0153">查询中…</span></div>
-        <div class="flight-route"><span class="iata">KTI</span><span class="route-arrow"><span>✈</span></span><span class="iata">SIN</span></div>
-        <div class="flight-times">
-          <div class="time"><div class="val" id="dep-SQ0153">09:35</div><div class="lbl">金边出发</div></div>
-          <div class="time"><div class="val" id="arr-SQ0153">12:40</div><div class="lbl">新加坡到达</div></div>
-        </div>
-        <div class="flight-meta">22 Jul 2026 · Boeing 737 MAX · Economy</div>
-      </div>
-      <div class="flight-card" id="card-SQ0622">
-        <div class="flight-airline">Singapore Airlines · 去程 Leg 2</div>
-        <div class="flight-header"><span class="flight-no">SQ 0622</span><span class="flight-status" id="status-SQ0622">查询中…</span></div>
-        <div class="flight-route"><span class="iata">SIN</span><span class="route-arrow"><span>✈</span></span><span class="iata">KIX</span></div>
-        <div class="flight-times">
-          <div class="time"><div class="val" id="dep-SQ0622">14:10</div><div class="lbl">新加坡出发</div></div>
-          <div class="time"><div class="val" id="arr-SQ0622">21:35</div><div class="lbl">大阪到达</div></div>
-        </div>
-        <div class="flight-meta">22 Jul 2026 · Boeing 787 · T2→T1 · Economy</div>
-      </div>
-      <div class="flight-card inbound" id="card-CX0543">
-        <div class="flight-airline">Cathay Pacific · 回程 Leg 1</div>
-        <div class="flight-header"><span class="flight-no">CX 0543</span><span class="flight-status" id="status-CX0543">查询中…</span></div>
-        <div class="flight-route"><span class="iata">HND</span><span class="route-arrow"><span>✈</span></span><span class="iata">HKG</span></div>
-        <div class="flight-times">
-          <div class="time"><div class="val" id="dep-CX0543">10:05</div><div class="lbl">东京出发</div></div>
-          <div class="time"><div class="val" id="arr-CX0543">13:50</div><div class="lbl">香港到达</div></div>
-        </div>
-        <div class="flight-meta">30 Jul 2026 · Boeing 777 · T3→T1 · Economy</div>
-      </div>
-      <div class="flight-card inbound" id="card-CX0655">
-        <div class="flight-airline">Cathay Pacific · 回程 Leg 2</div>
-        <div class="flight-header"><span class="flight-no">CX 0655</span><span class="flight-status" id="status-CX0655">查询中…</span></div>
-        <div class="flight-route"><span class="iata">HKG</span><span class="route-arrow"><span>✈</span></span><span class="iata">KTI</span></div>
-        <div class="flight-times">
-          <div class="time"><div class="val" id="dep-CX0655">15:35</div><div class="lbl">香港出发</div></div>
-          <div class="time"><div class="val" id="arr-CX0655">17:15</div><div class="lbl">金边到达</div></div>
-        </div>
-        <div class="flight-meta">30 Jul 2026 · Airbus A350 · T1→KTI · Economy</div>
-      </div>
-    </div>
-    <button class="refresh-btn" onclick="trackAllFlights()">🔄 刷新航班状态</button>
-    <div class="api-note">由 AviationStack 提供 · 出发当天数据最准确</div>
-  </div>
-
-  <!-- 🏨 Accommodation -->
-  <div class="hotels-section">
-    <div style="font-weight:700;font-size:1em;margin-bottom:12px;color:#c0392b;">🏨 行程住宿</div>
-    <div class="hotels-grid">
-      <div class="hotel-card">
-        <img class="hotel-img" id="img-conrad" src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Conrad_Osaka_Hotel_201904.jpg/600px-Conrad_Osaka_Hotel_201904.jpg" alt="Conrad Osaka" onerror="this.onerror=null">
-        <div class="hotel-body">
-          <div class="hotel-name">Conrad Osaka</div>
-          <div class="hotel-stars">★★★★★</div>
-          <div class="hotel-detail">
-            📍 大阪北浜，中之岛<br>
-            🛏 Executive Corner Suite (100m²) × 2<br>
-            🛏 King Deluxe Room × 1<br>
-            🍳 每日酒店早餐含括
-          </div>
-          <span class="hotel-dates">22 Jul – 26 Jul · 4晚</span>
-        </div>
-      </div>
-      <div class="hotel-card">
-        <img class="hotel-img" id="img-fourseasons" src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Four_Seasons_Hotel_Tokyo_at_Otemachi.jpg/600px-Four_Seasons_Hotel_Tokyo_at_Otemachi.jpg" alt="Four Seasons Tokyo" onerror="this.onerror=null">
-        <div class="hotel-body">
-          <div class="hotel-name">Four Seasons Hotel Tokyo at Otemachi</div>
-          <div class="hotel-stars">★★★★★</div>
-          <div class="hotel-detail">
-            📍 东京大手町，皇居旁<br>
-            🛏 Panoramic Suite (100m²) × 1<br>
-            🛏 Executive Suite × 1<br>
-            🛏 King Superior Room × 1<br>
-            🍳 每日酒店早餐含括
-          </div>
-          <span class="hotel-dates">26 Jul – 30 Jul · 4晚</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- D01 -->
-  <div class="day">
-    <div class="day-header">D01 <span class="date">22 Jul 周三</span><span class="hotel-tag">🏨 Conrad Osaka</span></div>
-    <div class="transit-note">✈️ 金边 KTI 09:35 → 新加坡 SIN 12:40 (SQ0153) · 转机 → 大阪 KIX 21:35 (SQ0622) · 抵达入住</div>
-  </div>
-
-  <!-- D02 -->
-  <div class="day">
-    <div class="day-header">D02 <span class="date">23 Jul 周四</span><span class="hotel-tag">🏨 Conrad Osaka</span></div>
-    <div class="spots">
-      <a class="spot" href="https://www.google.com/maps/search/LEGOLAND+Discovery+Center+Osaka" target="_blank">
-        <img class="spot-img" id="spot-lego-osaka" src="" alt="LEGOLAND Osaka">
-        <div class="spot-body"><div class="spot-icon">🧱</div><div class="spot-info"><div class="spot-name">LEGOLAND Discovery Center</div><div class="spot-desc">大阪乐高室内主题乐园</div></div><div class="map-badge">📍</div></div>
-      </a>
-      <a class="spot" href="https://www.google.com/maps/search/Aquarium+Nifrel+Expo+City+Osaka" target="_blank">
-        <img class="spot-img" id="spot-nifrel" src="" alt="Nifrel">
-        <div class="spot-body"><div class="spot-icon">🐧</div><div class="spot-info"><div class="spot-name">Aquarium Nifrel 水生美世界</div><div class="spot-desc">独特互动式水族馆</div></div><div class="map-badge">📍</div></div>
-      </a>
-    </div>
-  </div>
-
-  <!-- D03 -->
-  <div class="day">
-    <div class="day-header">D03 <span class="date">24 Jul 周五</span><span class="hotel-tag">🏨 Conrad Osaka</span></div>
-    <div class="spots">
-      <a class="spot" href="https://www.google.com/maps/search/Universal+Studios+Japan" target="_blank">
-        <img class="spot-img" id="spot-usj" src="" alt="USJ">
-        <div class="spot-body"><div class="spot-icon">🎢</div><div class="spot-info"><div class="spot-name">Universal Studios Japan</div><div class="spot-desc">日本环球影城 · 含票 + 7景点快速通行证</div></div><div class="map-badge">📍</div></div>
-      </a>
-    </div>
-  </div>
-
-  <!-- D04 -->
-  <div class="day">
-    <div class="day-header">D04 <span class="date">25 Jul 周六</span><span class="hotel-tag">🏨 Conrad Osaka</span></div>
-    <div class="spots">
-      <a class="spot" href="https://www.google.com/maps/search/Osaka+Aquarium+Kaiyukan" target="_blank">
-        <img class="spot-img" id="spot-kaiyukan" src="" alt="Kaiyukan">
-        <div class="spot-body"><div class="spot-icon">🦈</div><div class="spot-info"><div class="spot-name">大阪海游馆</div><div class="spot-desc">世界级大型水族馆</div></div><div class="map-badge">📍</div></div>
-      </a>
-      <a class="spot" href="https://www.google.com/maps/search/Santa+Maria+cruise+Osaka+Bay" target="_blank">
-        <img class="spot-img" id="spot-santamaria" src="" alt="Santa Maria">
-        <div class="spot-body"><div class="spot-icon">⛵</div><div class="spot-info"><div class="spot-name">圣玛丽亚大阪湾游船</div><div class="spot-desc">仿哥伦布帆船游大阪湾</div></div><div class="map-badge">📍</div></div>
-      </a>
-      <a class="spot" href="https://www.google.com/maps/search/Tempozan+Ferris+Wheel+Osaka" target="_blank">
-        <img class="spot-img" id="spot-tempozan" src="" alt="Tempozan">
-        <div class="spot-body"><div class="spot-icon">🎡</div><div class="spot-info"><div class="spot-name">天保山摩天轮</div><div class="spot-desc">天保山港村，俯瞰大阪湾</div></div><div class="map-badge">📍</div></div>
-      </a>
-    </div>
-  </div>
-
-  <!-- D05 -->
-  <div class="day">
-    <div class="day-header">D05 <span class="date">26 Jul 周日</span><span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
-    <div class="transit-note">🚄 新干线 大阪 → 东京（含票）</div>
-    <div class="spots">
-      <a class="spot" href="https://www.google.com/maps/search/Shibuya+Tokyo" target="_blank">
-        <img class="spot-img" id="spot-shibuya" src="" alt="Shibuya">
-        <div class="spot-body"><div class="spot-icon">🛍️</div><div class="spot-info"><div class="spot-name">涩谷购物</div><div class="spot-desc">抵达东京后自由逛涩谷</div></div><div class="map-badge">📍</div></div>
-      </a>
-    </div>
-  </div>
-
-  <!-- D06 -->
-  <div class="day">
-    <div class="day-header">D06 <span class="date">27 Jul 周一</span><span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
-    <div class="spots">
-      <a class="spot" href="https://www.google.com/maps/search/Legoland+Tokyo" target="_blank">
-        <img class="spot-img" id="spot-lego-tokyo" src="" alt="Legoland Tokyo">
-        <div class="spot-body"><div class="spot-icon">🧱</div><div class="spot-info"><div class="spot-name">Legoland Tokyo</div><div class="spot-desc">东京乐高乐园（含门票）</div></div><div class="map-badge">📍</div></div>
-      </a>
-      <a class="spot" href="https://www.google.com/maps/search/Japan+Olympic+Museum+Tokyo" target="_blank">
-        <img class="spot-img" id="spot-olympic" src="" alt="Olympic Museum">
-        <div class="spot-body"><div class="spot-icon">🏅</div><div class="spot-info"><div class="spot-name">日本奥林匹克博物馆</div><div class="spot-desc">含门票，奥运历史展览</div></div><div class="map-badge">📍</div></div>
-      </a>
-      <a class="spot" href="https://www.google.com/maps/search/Tokyo+Tower" target="_blank">
-        <img class="spot-img" id="spot-tokyotower" src="" alt="Tokyo Tower">
-        <div class="spot-body"><div class="spot-icon">🗼</div><div class="spot-info"><div class="spot-name">东京铁塔</div><div class="spot-desc">东京地标，333米高</div></div><div class="map-badge">📍</div></div>
-      </a>
-    </div>
-  </div>
-
-  <!-- D07 -->
-  <div class="day">
-    <div class="day-header">D07 <span class="date">28 Jul 周二</span><span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
-    <div class="spots">
-      <a class="spot" href="https://www.google.com/maps/search/Tokyo+Disneyland" target="_blank">
-        <img class="spot-img" id="spot-disney" src="" alt="Tokyo Disneyland">
-        <div class="spot-body"><div class="spot-icon">🏰</div><div class="spot-info"><div class="spot-name">东京迪士尼乐园</div><div class="spot-desc">含一日门票 · 下载 App 购买快速通行证</div></div><div class="map-badge">📍</div></div>
-      </a>
-    </div>
-  </div>
-
-  <!-- D08 -->
-  <div class="day">
-    <div class="day-header">D08 <span class="date">29 Jul 周三</span><span class="hotel-tag">🏨 Four Seasons Tokyo</span></div>
-    <div class="spots">
-      <a class="spot" href="https://www.google.com/maps/search/TeamLab+Planets+Tokyo" target="_blank">
-        <img class="spot-img" id="spot-teamlab" src="" alt="TeamLab Planets">
-        <div class="spot-body"><div class="spot-icon">✨</div><div class="spot-info"><div class="spot-name">TeamLab Planets</div><div class="spot-desc">含门票，沉浸式数字艺术</div></div><div class="map-badge">📍</div></div>
-      </a>
-      <a class="spot" href="https://www.google.com/maps/search/Tokyo+Skytree" target="_blank">
-        <img class="spot-img" id="spot-skytree" src="" alt="Tokyo Skytree">
-        <div class="spot-body"><div class="spot-icon">📡</div><div class="spot-info"><div class="spot-name">东京晴空塔</div><div class="spot-desc">含展望台门票，634米</div></div><div class="map-badge">📍</div></div>
-      </a>
-      <a class="spot" href="https://www.google.com/maps/search/Ginza+Tokyo" target="_blank">
-        <img class="spot-img" id="spot-ginza" src="" alt="Ginza">
-        <div class="spot-body"><div class="spot-icon">🛒</div><div class="spot-info"><div class="spot-name">银座购物</div><div class="spot-desc">高端购物街，购买伴手礼</div></div><div class="map-badge">📍</div></div>
-      </a>
-    </div>
-  </div>
-
-  <!-- D09 -->
-  <div class="day">
-    <div class="day-header">D09 <span class="date">30 Jul 周四</span></div>
-    <div class="transit-note">✈️ 东京羽田 HND 10:05 → 香港 HKG (CX0543) → 金边 KTI 17:15 (CX0655) · 温暖的家 🏠</div>
-  </div>
-
+<div class="carousel-slide" data-cap-cn="清水寺 · 京都 · D04" data-cap-en="Kiyomizu-dera, Kyoto · D04">
+<img alt="清水寺" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN0s2eA-ijD9ifrGoza9atC_M_towFiYLUWIyAlPM1qHKiFrZaRwc3kDSdqXBtuEle5yzhAJnzL2che0e4CCMiS-oGi7rO6ystp7Uz_o9a2tOrVwK5dOq8hSJf1b7v25Yg74BMT-ReBRoTsSLZ2_lVt=s4800-w800-h600"/>
+<div class="carousel-cap"><span class="cn">清水寺</span><span class="en">Kiyomizu-dera, Kyoto · D04</span></div>
 </div>
-
+<div class="carousel-slide" data-cap-cn="东京迪士尼乐园 · D06" data-cap-en="Tokyo Disneyland · D06">
+<img alt="东京迪士尼" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNzgxG5V_-Pg-q7JmnehaifVwM2CP8T1QnUjECr07hTn3l4LTYuVwl9fvtDu0zqIpxFTkzaUrFOQl1vhp-qG6pag9XEog2zppJO5FDwCrXs4ctvqoyBP5viFaww_XNp7Rya_J8BoRBe0-URwA=s4800-w800-h600"/>
+<div class="carousel-cap"><span class="cn">东京迪士尼乐园</span><span class="en">Tokyo Disneyland · D06</span></div>
+</div>
+<div class="carousel-slide" data-cap-cn="涩谷十字路口 · D05" data-cap-en="Shibuya Crossing · D05">
+<img alt="涩谷" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNxJOBZBXPRjQ1ajutpO1df0q16xyF2MWd-SUoHouEgg731n291_4gIKGOlDgoOpXa5AECwk159izaCZQHWj-LxHnKOtT4MavvYBjfMjstNXXqA-YbbZu_3UV7hEOlobuyoeYdvv29aU7j0hQ=s4800-w800-h600"/>
+<div class="carousel-cap"><span class="cn">涩谷十字路口</span><span class="en">Shibuya Crossing · D05</span></div>
+</div>
+<div class="carousel-slide" data-cap-cn="东京铁塔 · D07" data-cap-en="Tokyo Tower · D07">
+<img alt="东京铁塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMMRn3MWygtpouY48FZhpt2loAbLSkNEFsJ2AMpnSnyC44rz-bBaiKgHuBQsH8mJ-IjbNh9phRV6QPyeEARpnSbOvnfuTpMemwDqNx63G2CNoOQBj_N7Onu9LRPU8GVbxMJJXf8CGIp4CE8LA=s4800-w800-h600"/>
+<div class="carousel-cap"><span class="cn">东京铁塔</span><span class="en">Tokyo Tower · D07</span></div>
+</div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍 <span class="cn">点击放大</span><span class="en">Tap to enlarge</span></div>
+</div>
+<div class="hero-overlay"></div>
+<div class="hero-content">
+<div class="hero-label"><span class="cn">行程手册</span><span class="en">Travel Handbook</span></div>
+<h1><span class="cn">夏日の东京・大阪・京都</span><span class="en">Summer in Tokyo, Osaka &amp; Kyoto</span></h1>
+<div class="hero-sub"><span class="cn">9天8夜 · 22 Jul – 30 Jul 2026</span><span class="en">9 Days 8 Nights · Jul 22 – Jul 30, 2026</span></div>
+<div class="hero-tags">
+<span class="hero-tag">✈️ <span class="cn">SQ去程 / CX回程</span><span class="en">Outbound SQ / Return CX</span></span>
+<span class="hero-tag">🏨 Conrad Osaka + Four Seasons Tokyo</span>
+<span class="hero-tag">🚄 <span class="cn">新干线 + 京都一日游</span><span class="en">Shinkansen + Kyoto Day Trip</span></span>
+<span class="hero-tag">👨‍👩‍👧 <span class="cn">6人出行</span><span class="en">6 Travelers</span></span>
+</div>
+</div>
+</div>
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox">
+<button class="lightbox-close" onclick="closeLightbox()">✕</button>
+<button class="lightbox-arrow prev" onclick="lightboxMove(-1)">‹</button>
+<img alt="" id="lightboxImg" src=""/>
+<div class="lightbox-cap" id="lightboxCap"></div>
+<button class="lightbox-arrow next" onclick="lightboxMove(1)">›</button>
+</div>
+<!-- WARNING -->
+<div class="warn"><span class="cn">
+<strong><span class="cn">⚠️ 出发前必读 </span><span class="en" style="display:inline;color:rgba(90,62,0,.7)">Read Before Departure</span></strong>
+  营业时间 / 公休 / 票价 — 标注「需查证」项目一律以<strong>官网 / Google Map 为准</strong>。
+  </span><span class="en">Opening hours / closures / prices — items marked "verify" must be confirmed via official website / Google Maps.</span>
+<br/><br/>
+<span class="cn">
+  👆 文档内所有<strong>绿色按钮</strong>（地图、菜单等）和<strong>蓝色按钮</strong>（航班追踪）均可点击打开。
+  </span><span class="en">👆 All <strong>green buttons</strong> (maps, menus, etc.) and <strong>blue buttons</strong> (flight tracking) in this document are clickable.</span>
+</div>
+<!-- TABS -->
+<div class="tabs">
+<a class="tab active" href="#flights"><span class="cn">✈️ 航班</span><span class="en">Flights</span></a>
+<a class="tab" href="#hotels"><span class="cn">🏨 住宿</span><span class="en">Hotels</span></a>
+<a class="tab" href="#itinerary"><span class="cn">📅 行程</span><span class="en">Itinerary</span></a>
+<a class="tab" href="#d09"><span class="cn">🕙 D09时间轴</span><span class="en">D09 Timeline</span></a>
+<a class="tab" href="#weather"><span class="cn">🌡️ 天气电压</span><span class="en">Weather/Power</span></a>
+<a class="tab" href="#checklist"><span class="cn">✅ 必办</span><span class="en">Checklist</span></a>
+</div>
+<!-- ===== FLIGHTS ===== -->
+<div class="section" id="flights">
+<div class="sec-title-wrap"><div class="sec-title"><span class="cn">✈️ 航班详情</span><span class="en">FLIGHT DETAILS</span></div></div>
+<!-- 去程 -->
+<div class="flight-group">
+<div class="flight-group-header"><span class="cn">🛫 去程 · 22 Jul 2026 (三) · 金边 → 大阪</span><span class="en">Outbound · Jul 22, 2026 (Wed) · Phnom Penh → Osaka</span></div>
+<!-- SQ0153 合并 -->
+<div class="flight-row">
+<div class="flight-top">
+<span class="airline-badge">SQ</span>
+<span class="flight-num">SQ 0153</span>
+</div>
+<div class="flight-route">
+<div class="airport"><div class="iata">KTI</div><div class="city"><span class="cn">金边Techo</span><span class="en">Phnom Penh</span></div><div class="time">09:35</div></div>
+<div class="arrow"><div class="duration">2h 05m · Boeing 737 MAX</div><div class="arrow-line"></div></div>
+<div class="airport"><div class="iata">SIN</div><div class="city"><span class="cn">新加坡</span><span class="en">Singapore</span></div><div class="time">12:40</div></div>
+</div>
+<div class="pax-list">
+<span class="cabin-badge biz" style="margin-right:4px">Business J</span>
+<span class="pax-tag">TAN/CHIN HOOI 14A</span>
+<span class="pax-tag">THUN/SAVRY 14C</span>
+<span class="pax-tag">TAN/KUAN ZE 14H</span>
+<span class="pax-tag">TAN/YONG LIANG 14K</span>
+</div>
+<div class="pax-list" style="margin-top:6px">
+<span class="cabin-badge eco" style="margin-right:4px">Economy Q</span>
+<span class="pax-tag">HEW/CHERN YANG 55H</span>
+<span class="pax-tag">CHET/POV 55J</span>
+</div>
+<a class="track-btn" href="https://www.flightaware.com/live/flight/SIA153" target="_blank">📡 <span class="cn">点击追踪</span><span class="en">Tap to track</span> SQ0153</a>
+</div>
+<!-- 转机提示 -->
+<div class="flight-row" style="background:#f8f6f2">
+<div class="transit-cn">⏱ 新加坡转机 · 候机约 1h 30m</div>
+<div class="transit-en">Transit in Singapore · Layover approx. 1h 30m</div>
+<div class="transit-sub-cn">SIN T2 出发 → KIX T1 抵达 · 请勿离开转机区</div>
+<div class="transit-sub-en">Depart SIN T2 → Arrive KIX T1 · Stay in transit area</div>
+</div>
+<!-- SQ0622 合并 -->
+<div class="flight-row">
+<div class="flight-top">
+<span class="airline-badge">SQ</span>
+<span class="flight-num">SQ 0622</span>
+</div>
+<div class="flight-route">
+<div class="airport"><div class="iata">SIN</div><div class="city"><span class="cn">新加坡 T2</span><span class="en">Singapore T2</span></div><div class="time">14:10</div></div>
+<div class="arrow"><div class="duration">6h 25m · Boeing 787</div><div class="arrow-line"></div></div>
+<div class="airport"><div class="iata">KIX</div><div class="city"><span class="cn">大阪关西 T1</span><span class="en">Osaka Kansai T1</span></div><div class="time">21:35</div></div>
+</div>
+<div class="pax-list">
+<span class="cabin-badge biz" style="margin-right:4px">Business J</span>
+<span class="pax-tag">TAN/CHIN HOOI 17A</span>
+<span class="pax-tag">THUN/SAVRY 17F</span>
+<span class="pax-tag">TAN/KUAN ZE 17K</span>
+<span class="pax-tag">TAN/YONG LIANG 17D</span>
+</div>
+<div class="pax-list" style="margin-top:6px">
+<span class="cabin-badge eco" style="margin-right:4px">Economy Q</span>
+<span class="pax-tag">HEW/CHERN YANG 54H</span>
+<span class="pax-tag">CHET/POV 54G</span>
+</div>
+<a class="track-btn" href="https://www.flightaware.com/live/flight/SIA622" target="_blank">📡 <span class="cn">点击追踪</span><span class="en">Tap to track</span> SQ0622</a>
+</div>
+</div>
+<!-- 回程 -->
+<div class="flight-group">
+<div class="flight-group-header"><span class="cn">🛬 回程 · 30 Jul 2026 (四) · 东京 → 金边</span><span class="en">Return · Jul 30, 2026 (Thu) · Tokyo → Phnom Penh</span></div>
+<!-- CX0543 合并 -->
+<div class="flight-row">
+<div class="flight-top">
+<span class="airline-badge">CX</span>
+<span class="flight-num">CX 0543</span>
+</div>
+<div class="flight-route">
+<div class="airport"><div class="iata">HND</div><div class="city"><span class="cn">东京羽田 T3</span><span class="en">Tokyo Haneda T3</span></div><div class="time">10:05</div></div>
+<div class="arrow"><div class="duration">4h 45m · Boeing 777</div><div class="arrow-line"></div></div>
+<div class="airport"><div class="iata">HKG</div><div class="city"><span class="cn">香港 T1</span><span class="en">Hong Kong T1</span></div><div class="time">13:50</div></div>
+</div>
+<div class="pax-list">
+<span class="cabin-badge biz" style="margin-right:4px">Business J</span>
+<span class="pax-tag">TAN/CHIN HOOI 12C</span>
+<span class="pax-tag">THUN/SAVRY 12G</span>
+<span class="pax-tag">TAN/KUAN ZE 12D</span>
+<span class="pax-tag">TAN/YONG LIANG 12E</span>
+</div>
+<div class="pax-list" style="margin-top:6px">
+<span class="cabin-badge eco" style="margin-right:4px">Economy S</span>
+<span class="pax-tag">HEW/CHERN YANG 49H</span>
+<span class="pax-tag">CHET/POV 49G</span>
+</div>
+<a class="track-btn" href="https://www.flightaware.com/live/flight/CPA543" target="_blank">📡 <span class="cn">点击追踪</span><span class="en">Tap to track</span> CX0543</a>
+</div>
+<!-- 转机提示 -->
+<div class="flight-row" style="background:#f8f6f2">
+<div class="transit-cn">⏱ 香港转机 · 候机约 1h 45m</div>
+<div class="transit-en">Transit in Hong Kong · Layover approx. 1h 45m</div>
+<div class="transit-sub-cn">HKG T1 抵达 → T1 出发 · 同航站楼转机</div>
+<div class="transit-sub-en">Arrive HKG T1 → Depart T1 · Same terminal transfer</div>
+</div>
+<!-- CX0655 合并 -->
+<div class="flight-row">
+<div class="flight-top">
+<span class="airline-badge">CX</span>
+<span class="flight-num">CX 0655</span>
+</div>
+<div class="flight-route">
+<div class="airport"><div class="iata">HKG</div><div class="city"><span class="cn">香港 T1</span><span class="en">Hong Kong T1</span></div><div class="time">15:35</div></div>
+<div class="arrow"><div class="duration">2h 40m · Airbus A359</div><div class="arrow-line"></div></div>
+<div class="airport"><div class="iata">KTI</div><div class="city"><span class="cn">金边Techo</span><span class="en">Phnom Penh</span></div><div class="time">17:15</div></div>
+</div>
+<div class="pax-list">
+<span class="cabin-badge biz" style="margin-right:4px">Business J</span>
+<span class="pax-tag">TAN/CHIN HOOI 15A</span>
+<span class="pax-tag">THUN/SAVRY 15K</span>
+<span class="pax-tag">TAN/KUAN ZE 15D</span>
+<span class="pax-tag">TAN/YONG LIANG 15G</span>
+</div>
+<div class="pax-list" style="margin-top:6px">
+<span class="cabin-badge eco" style="margin-right:4px">Economy S</span>
+<span class="pax-tag">HEW/CHERN YANG 46H</span>
+<span class="pax-tag">CHET/POV 46J</span>
+</div>
+<a class="track-btn" href="https://www.flightaware.com/live/flight/CPA655" target="_blank">📡 <span class="cn">点击追踪</span><span class="en">Tap to track</span> CX0655</a>
+</div>
+</div>
+<!-- 行李对比 -->
+<div class="sec-title-wrap" style="margin-top:20px"><div class="sec-title"><span class="cn">🧳 行李额对比</span><span class="en">BAGGAGE ALLOWANCE COMPARISON</span></div></div>
+<table class="bag-table">
+<tr><th><span class="cn">乘客</span><span class="en">Passenger</span></th><th><span class="cn">舱位</span><span class="en">Cabin</span></th><th><span class="cn">托运</span><span class="en">Checked</span></th><th><span class="cn">手提</span><span class="en">Cabin</span></th></tr>
+<tr><td><span class="cn">Tan家 4人</span><span class="en">Tan Family · 4 pax</span><br/><small style="color:var(--muted)"><span class="cn">去程SQ / 回程CX</span><span class="en">Outbound SQ / Return CX</span></small></td><td><span class="cabin-badge biz">Business</span></td><td><span class="cn">去程 40kg<br/>回程 2×32kg=64kg</span><span class="en">Outbound 40kg<br/>Return 2×32kg=64kg</span></td><td><span class="cn">去程 2件<br/>回程 1×10kg</span><span class="en">Outbound 2pc<br/>Return 1×10kg</span></td></tr>
+<tr><td>Hew + Chet<br/><small style="color:var(--muted)"><span class="cn">去程SQ / 回程CX</span><span class="en">Outbound SQ / Return CX</span></small></td><td><span class="cabin-badge eco">Economy</span></td><td><span class="cn">去程 25kg<br/>回程 1×23kg</span><span class="en">Outbound 25kg<br/>Return 1×23kg</span></td><td><span class="cn">去程 1×7kg<br/>回程 1×7kg</span><span class="en">Outbound 1×7kg<br/>Return 1×7kg</span></td></tr>
+</table>
+<div style="font-size:11px;color:var(--amber);margin-top:8px;padding:0 2px"><span class="cn">
+    ⚠️ Tan家回程行李额从 40kg 增至 2×32kg(64kg)，日本购物可多带！Hew/Chet 回程仅 23kg，注意控制
+    </span><div class="en" style="color:#c89050;margin-top:2px">Tan family's return baggage allowance increases from 40kg to 2×32kg (64kg) — more room for shopping! Hew/Chet only have 23kg on return, please pack carefully.</div>
+</div>
+</div>
+<!-- ===== HOTELS ===== -->
+<div class="section" id="hotels">
+<div class="sec-title-wrap"><div class="sec-title"><span class="cn">🏨 住宿详情</span><span class="en">ACCOMMODATION DETAILS</span></div></div>
+<div class="hotel-card">
+<div class="carousel carousel-hotel">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="Conrad Osaka" data-cap-en="Conrad Osaka"><img alt="Conrad Osaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZP7jXq8lJmRu-0IZ4z8pAXluo5PWXdH-kq-JY1y9L3wwQlJ1PFeF5eD8Mj7R42_NRoH7vwh36cWYSf3A3-2P9I0IUUaunx7LW0kyVfNfLODIHp3_ipDISJB4bRkye_EEt0anZkfqVfhT7MroA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Conrad Osaka" data-cap-en="Conrad Osaka"><img alt="Conrad Osaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPhV20cp1Yp4WB-BtA8wB2Q4r5sFgGIW1Ivq1TjN5b3WOR0NWQc9zpx-CrE8J_mo9m4m51G-JKnco9SDqa1KmO1ILFoC9qLwXBdhtfFuhU0qARXIEGPfpzM0rmPU_f-uGVha07nHzB1fze62Q=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Conrad Osaka" data-cap-en="Conrad Osaka"><img alt="Conrad Osaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMi4c4QW-__ouZlSRP8Bu1xtOS8k8r1QY1no_Fjiln7LZGHbb4YJl7_-KFAL2P-jyf4yuPT6Q-DyrTtTQOzGC7Cxmnxc6Q9AA3K1NI7JYVqtChugiAVGlPX_Z86Vu3E5oFL1bN9wELLLS-kX9A=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Conrad Osaka" data-cap-en="Conrad Osaka"><img alt="Conrad Osaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO1bCNguaOdyDP3sYlc8ID9oo4Xq0w1arB9_A6XCzlt0URRGj9olPg3Hu5mxoWxMI4gMl-3o3-yantutphxsn1knnCgvq8taFRGbjFjWwsX7yAymJH-IOjIwJecKTZiDMjjsWGbZma-gf60Lcg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Conrad Osaka" data-cap-en="Conrad Osaka"><img alt="Conrad Osaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPnQIViIcphx7cUDdc3PhdUcbNePMmjJrlWVtv-V28he0DpflhoFaYyX5IrFnfxnMnKzOCzO2Ty0PYsbX69Mqor_QO9MAXyDDzuH7Ujou6rrapAL0MRwXu90miio7lRcccBlEL1Hezp39xqFw=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="hotel-header"><span class="cn">大阪 · 22–26 Jul · 4晚</span><span class="en">Osaka · Jul 22–26 · 4 Nights</span></div>
+<div class="hotel-body">
+<div class="hotel-name">Conrad Osaka ⭐ 4.6</div>
+<div class="hotel-addr">📍 3-2-4 Nakanoshima, Kita Ward, Osaka 530-0005</div>
+<div class="hotel-row">
+<span class="hotel-info">📞 +81 6-6222-0111</span>
+<span class="hotel-info">Suite 100m² / King Premium 50m²</span>
+</div>
+<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+<a class="map-btn" href="https://maps.google.com/?q=Conrad+Osaka,+3-2-4+Nakanoshima,+Kita+Ward,+Osaka" target="_blank">📍 <span class="cn">点击查看 Google Maps</span><span class="en">Tap to open Google Maps</span></a>
+</div>
+</div>
+</div>
+<div class="hotel-card">
+<div class="carousel carousel-hotel">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="Four Seasons Tokyo at Otemachi" data-cap-en="Four Seasons Hotel Tokyo at Otemachi"><img alt="Four Seasons Tokyo at Otemachi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN71j5qiwBGLGlzgRWwt5M3whirzS6wdjiT4kXqPFRJEt_kAfS_xnfwc78CK66BLr7_-ie6PTiSTi8G4_YTGAG_CkEwoeu0Vcn_kmAi8NaeS5mW7njL5BUEDrfLzNdvm15g6uZpEPvkjpqm=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Four Seasons Tokyo at Otemachi" data-cap-en="Four Seasons Hotel Tokyo at Otemachi"><img alt="Four Seasons Tokyo at Otemachi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZP9D-fq7coMbnF4Ho9-Wt6dvAcCIUgH9DQikvxLDImpw8DAakFhxpIaN6bE0qZyHDDEkPiK64J7L_U_1usXL8STaLdkzSj2HKi_dFCQ7MoQwvLtfVkl5S9C5IyHbYHhUKcR1gl9JDygBkkc3HM=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Four Seasons Tokyo at Otemachi" data-cap-en="Four Seasons Hotel Tokyo at Otemachi"><img alt="Four Seasons Tokyo at Otemachi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOTBkiTRbhgSYWWGwkNxfFZPLlnI48JjHKJDDG7SqHgpe8VPuAnh0exWKE82A21VjZjzuuJ0TpGN6adzhJOHv4GjxnTz-qdmbmsl5s-mvBzuujpn9KQ8RQOVKd_MIbSrFJNk_uPLYvW4YehLA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Four Seasons Tokyo at Otemachi" data-cap-en="Four Seasons Hotel Tokyo at Otemachi"><img alt="Four Seasons Tokyo at Otemachi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN4ZMxoMVVnMAo-3dVYs5kYNY0GHCP6gV0dpJNEhTBL5ok_Qpr4GzNwsf-Qf8opN4-l9amIj_bhJXIFrSNh1cw6EDVa5-Q4wD_cTKI6IaYilPEpT4jud73DFv_BUPpTxREkECJltf9k87o4lg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Four Seasons Tokyo at Otemachi" data-cap-en="Four Seasons Hotel Tokyo at Otemachi"><img alt="Four Seasons Tokyo at Otemachi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO1iJYYDrGwVvfGTKDB3r-rk8ivTHRIMrbToM80r-REZAnQYzWCaK3a58rAbrHIQYpkct_pwF1FgW8ohuau8lAZuDme_lYVKmwxxI17GHxSoXuc0c3zxHXvuBG8ocr3GRwVOS9Khxlmjcl2=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="hotel-header"><span class="cn">东京 · 26–30 Jul · 4晚</span><span class="en">Tokyo · Jul 26–30 · 4 Nights</span></div>
+<div class="hotel-body">
+<div class="hotel-name">Four Seasons Hotel Tokyo at Otemachi ⭐ 4.5</div>
+<div class="hotel-addr">📍 1-2-1 Otemachi, Chiyoda City, Tokyo 100-0004</div>
+<div class="hotel-row">
+<span class="hotel-info">📞 +81 3-6810-0600</span>
+<span class="hotel-info"><span class="cn">共3间房（已全部确认）</span><span class="en" style="display:inline">3 rooms (all confirmed)</span></span>
+</div>
+<div class="hotel-note"><span class="cn">
+        💡 39楼大堂 · 皇居花园景 · 晴天可见富士山
+        </span><div class="en">39th-floor lobby · Imperial Palace garden view · Mt. Fuji visible on clear days</div>
+</div>
+<table class="bag-table" style="margin-top:10px">
+<tr><th><span class="cn">房型</span><span class="en">Room Type</span></th><th><span class="cn">大小</span><span class="en">Size</span></th><th><span class="cn">床型</span><span class="en">Bed</span></th><th><span class="cn">入住</span><span class="en">Guests</span></th></tr>
+<tr><td>Executive Suite</td><td>67m²</td><td><span class="cn">1张大床</span><span class="en">1 King</span></td><td>Ds Tan</td></tr>
+<tr><td>Panoramic Room<br/><i style="font-size:9px;color:#999">(Panoramic Suite)</i></td><td>100m²</td><td><span class="cn">1大床+1沙发床</span><span class="en">1 King + Sofa Bed</span></td><td><span class="cn">Tan家其余成员</span><span class="en">Remaining Tan family</span></td></tr>
+<tr><td>Deluxe Room</td><td>54m²</td><td><span class="cn">2小床或1大床</span><span class="en">2 Doubles or 1 King</span></td><td>Yang</td></tr>
+</table>
+<div style="margin-top:8px;background:#fff3cd;border-radius:8px;padding:9px 11px;font-size:11px;color:#7a4f00"><span class="cn">
+        ⚠ Panoramic Room <strong>不可加床</strong>，固定仅 1张大床 + 1张沙发床
+        </span><div class="en" style="color:#8a6a1a;margin-top:2px">⚠ Panoramic Room <strong>does not allow extra beds</strong> — fixed at 1 King + 1 sofa bed.</div>
+</div>
+<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+<a class="map-btn" href="https://maps.google.com/?q=Four+Seasons+Hotel+Tokyo+at+Otemachi,+1-2-1+Otemachi,+Chiyoda+City,+Tokyo" target="_blank">📍 <span class="cn">点击查看 Google Maps</span><span class="en">Tap to open Google Maps</span></a>
+</div>
+</div>
+</div>
+</div>
+<!-- ===== ITINERARY ===== -->
+<div class="section" id="itinerary">
+<div class="sec-title-wrap"><div class="sec-title"><span class="cn">📅 逐日行程</span><span class="en">DAY-BY-DAY ITINERARY</span></div></div>
+<!-- D01 -->
+<div class="day-card" data-date="2026-07-22" id="day01">
+<div class="day-header">
+<div class="day-num">01<span>DAY</span></div>
+<div class="day-meta"><div class="day-title"><span class="cn">金边 → 新加坡 → 大阪</span><span class="en">Phnom Penh → Singapore → Osaka</span></div><div class="day-date">22 Jul <span class="cn">(三) · 出发日</span><span class="en">(Wed) · Departure Day</span></div></div>
+<div class="city-badge">✈️ <span class="cn">飞行</span><span class="en">Flying</span></div>
+</div>
+<div class="day-body">
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">07:00 从家出发前往机场</span><span class="en">07:00 Depart Home for the Airport</span></div>
+<div class="spot-note"><span class="cn">预留充足时间办理出境手续，09:35起飞前抵达机场
+            </span><div class="en">Allow plenty of time for departure/immigration formalities before the 09:35 flight.</div>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge side">○</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">SQ0153 金边出发 09:35</span><span class="en">SQ0153 Departs Phnom Penh 09:35</span></div>
+<div class="spot-note"><span class="cn">新加坡转机约1.5小时，乘SQ0622 14:10出发，21:35抵达关西T1。到酒店约22:30
+            </span><div class="en">Transit in Singapore approx. 1.5h, then SQ0622 departs 14:10, arriving Kansai T1 at 21:35. Hotel arrival approx. 22:30.</div>
+</div>
+<div class="tags-row"><span class="tag tag-verify"><span class="cn">⚠ 出发前网上办理登机手续</span><span class="en" style="display:inline">⚠ Check-in online before departure</span></span></div>
+<div class="spot-actions">
+<a class="track-btn" href="https://www.flightaware.com/live/flight/SIA153" target="_blank">📡 <span class="cn">点击追踪</span><span class="en">Tap to track</span> SQ0153</a>
+<a class="track-btn" href="https://www.flightaware.com/live/flight/SIA622" target="_blank">📡 <span class="cn">点击追踪</span><span class="en">Tap to track</span> SQ0622</a>
+</div>
+</div>
+</div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🌧 雨天</span><span class="en">Rain Plan</span></div><div class="rain-plan"><span class="cn">飞行日，不受影响 ✅</span><div class="en">Travel day — not affected ✅</div></div></div>
+</div>
+</div>
+<!-- D02 -->
+<div class="day-card" data-date="2026-07-23" id="day02">
+<div class="day-header">
+<div class="day-num">02<span>DAY</span></div>
+<div class="day-meta"><div class="day-title"><span class="cn">大阪天保山海湾区</span><span class="en">Osaka Tempozan Harbor Area</span></div><div class="day-date">23 Jul <span class="cn">(四)</span><span class="en">(Thu)</span></div></div>
+<div class="city-badge">🏙 <span class="cn">大阪</span><span class="en">Osaka</span></div>
+</div>
+<div class="day-body">
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">大阪海游馆 Osaka Aquarium Kaiyukan</span><span class="en">Osaka Aquarium Kaiyukan</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="大阪海游馆" data-cap-en="Osaka Aquarium Kaiyukan"><img alt="大阪海游馆" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPyYy_nhlp6L6WfPI3alM8tioYBMjG_RkhWDlWi4O9oFO4Q376tKNjainYUiEP9EhitQhd5y1azkVIEwJebK4_E6Y8eD6rJxRZwFttB8pFaf8G2EoZzO8Jc4aLjLjWOLUnPjBJ1ibFppdjzSw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="大阪海游馆" data-cap-en="Osaka Aquarium Kaiyukan"><img alt="大阪海游馆" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPfNp8Yy2S4E9ltrGtlNtb7CfEv1wsDfQGWSU01X83-WKpMMSPmo2BnuRYmJas6yJ4p_AFOExRtXFG3i3I-019NXIW4jQaPD1waPHWWDEaFKyk4Wp43_m6SlKtYEcO7V7OMcgYfKNUsNVIvfA=s4800-w736-h490"/></div>
+<div class="carousel-slide" data-cap-cn="大阪海游馆" data-cap-en="Osaka Aquarium Kaiyukan"><img alt="大阪海游馆" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNeEGE0idT7sIuB_kxt0FMKHJT2Jf3XQaEbPsmqFC8D5XyoolieUDVe1g6o004Gf8Is2ndtPl7TFV2_-pJpdR_qcs6AKpTnJMEnZLcUUJe9P2HogArd0lJYPFOEerMFgiaJv1D6nkRpzTDO=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="大阪海游馆" data-cap-en="Osaka Aquarium Kaiyukan"><img alt="大阪海游馆" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNtTIYE-uhSOhNepaPKrPtOxPXWzooBoTu9dCjCshQDCRWjMLK8hi4OftySu-k9GLKUQM0KJLEZ8YGHQjLxdyfdCImKwwu8vVmn_Gf6f9_C0VCc0C0vJVQ6hh0MfLME2OlDt9sLTh2O8C83lO6U_SInDA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="大阪海游馆" data-cap-en="Osaka Aquarium Kaiyukan"><img alt="大阪海游馆" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPx8Dnkw4_45mpC0ZzfWAbbLIsmDJ5uyZP6hWaCDDOx5H05fPtpNgikoy-RcG1GLsV2goix4r03urCurA6gYnRVLcI670hBp6BGkXy683BOYyQuAubx-5rvd3iD9Qs738Hr-kzLSkspcP5B6Q=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">世界最大级水族馆，有鲸鲨！约2–3小时
+            </span><div class="en">One of the world's largest aquariums, with whale sharks! Approx. 2–3 hours.</div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 平日 10:30–20:00 / 周末 9:30–20:00</span><span class="en">Weekday 10:30–20:00 / Weekend 9:30–20:00</span></span>
+</div>
+<div class="tags-row">
+<span class="tag tag-book"><span class="cn">📋 建议网上提前购票</span><span class="en">Recommend booking online in advance</span></span>
+<span class="tag tag-verify"><span class="cn">⚠ 查证票价</span><span class="en">Verify ticket price</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=Osaka+Aquarium+Kaiyukan" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge side">○</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">圣玛丽亚湾游船 + 天保山港村 + 摩天轮</span><span class="en">Santa Maria Cruise + Tempozan Harbor Village + Ferris Wheel</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="天保山港村" data-cap-en="Santa Maria Cruise + Tempozan Harbor Village + Ferris Wheel"><img alt="天保山港村" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOKO5-yeailXodzvEnEsAglsHGkrMo1196HE7IHXZaJ09ZwWb5NXx1aVuxPnQ31CnuITSgc4YzobdAcYe2GWKBCfAXfLWT4Sn7QPepkE8Mvcf7uzIDf4zEqAfNRX3OFhVVxwqsM7US62wTq=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="天保山港村" data-cap-en="Santa Maria Cruise + Tempozan Harbor Village + Ferris Wheel"><img alt="天保山港村" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOvIVMnU4AKgNsnaXZAWOUh0gQZSlHFkLBrDVE79L89FfnXBtd2sLSD246o42czqyZQQAdf2XrChKIWSdmQkjf_OQgXsEdBRIVjtaLaaljeH-Ga9ui3SumCyEwtiJb0KztQroMC0UZ9jevO=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="天保山港村" data-cap-en="Santa Maria Cruise + Tempozan Harbor Village + Ferris Wheel"><img alt="天保山港村" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMtBF9tkSswWYi_wIXprTEsEtqOCK32zXmaUhGfwKbie-G73ietpG4aAKjJX5atL6XB5oB-wrNG2pLTG88pPFChyObovsO2_q9I1aMrqtKeazC8MvxK91pUAzlLxa-daoE8GFAhKkjhYHajGA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="天保山港村" data-cap-en="Santa Maria Cruise + Tempozan Harbor Village + Ferris Wheel"><img alt="天保山港村" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPJrAnY3o-GQPtvkEMhQMloGGqyckLFJdofJQ7epidWqCMvW8TjwYB5oX0ahJ5TYzG1wMEWqcmiKbzGnbr1SbBpRqPR2XK6ZJ0TzE7HQJaJlMjYuyZxGkmnl6OOARgMtIU_xI3dt4mr-a0K4LGu0XbSpA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="天保山港村" data-cap-en="Santa Maria Cruise + Tempozan Harbor Village + Ferris Wheel"><img alt="天保山港村" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNmG-GjhX8OKilW_YFPWHbqBHs0KFKzh5XnmWggkKQobr8Tb6ODQk3WasMGLr-h6-ag7TmNW7lFASuZolAYI8OggGJTxq-_genLT7D7qg6gqDoYOIK6JiOlQtknQaceemZjE2vhBSHJOe4X=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">与海游馆同区，步行即达。游船约45分钟，摩天轮傍晚乘坐景色更好
+            </span><div class="en">Same area as the aquarium, walkable. Cruise approx. 45 min; Ferris wheel views better at dusk.</div>
+</div>
+<div class="tags-row"><span class="tag tag-verify"><span class="cn">⚠ 游船大风/暴雨可能停航</span><span class="en">Cruise may be cancelled in high winds/heavy rain</span></span></div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=Tempozan+Harbor+Village+Osaka" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge pending">?</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">大阪乐高乐园探索中心</span><span class="en">LEGOLAND Discovery Center Osaka</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="LEGOLAND Osaka" data-cap-en="LEGOLAND Discovery Center Osaka"><img alt="LEGOLAND Osaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNgiwcwfQSSXVyLWwCSW8zSKHPgoZg-bOSERE_1EHhQL9E4oQCuuM60AqOgNTWoixBWQ8PNNmtlKbGe9aoeW8KZt_n0UyTA51tyBW5M74pfmtVZGlGq-RMagVxlF_LGiWmy5vVRzzVcguSd=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="LEGOLAND Osaka" data-cap-en="LEGOLAND Discovery Center Osaka"><img alt="LEGOLAND Osaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMRyXHsqvMASVAj3lRiJoWPxysM5FDFt5rInpttrrBR6N9pb26A8nrfHPbJU0p1hEB880yTo-ivEg5CssxlfO1xZ2gIvod5nMQVNcUmUF21SvmZRT3Gv-3bJbeto-f-Uc3bYM86e-gncf3PsjzaPeCMng=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="LEGOLAND Osaka" data-cap-en="LEGOLAND Discovery Center Osaka"><img alt="LEGOLAND Osaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPMCyy4JFq8txLGi1-07xjC-wMa6hrk2BadG_yJcAjNQzAnrSEUfVRo583UwE5HrthnmJt9u0zkKOB6NDNQ2UIxwlzm79zUWcOojwf7RNALLn9c3Z_93D3TmgC58is3PPgupcCAeqwEtfhM2py287tR5g=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="LEGOLAND Osaka" data-cap-en="LEGOLAND Discovery Center Osaka"><img alt="LEGOLAND Osaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNz_lj3aD2ictAWIPig88AFhCJPPuzGlsWtcMS1EQGmcHzB3XSKcctc7tzr0L3J1JeKlCTM9zj2wF6DLE4AhxX1H6YrdAMQca0K_w19DEZSHzuR3ESdAqTPwauB5TQfSbNBhLn0YEXDn8geSw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="LEGOLAND Osaka" data-cap-en="LEGOLAND Discovery Center Osaka"><img alt="LEGOLAND Osaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPINmlyC4c9RpJckZGAW8GqFlFY_Ruk1nsxdNVrbvqmHgvozhps36EH18LvbVCs0gjAG6xO3C0Ox6sjxKP63i-ioUwIf3QZ-z1K8Zs35ITLHRQ_hNZLHQaIJ4Lys96mwLC0q6574BbS6G6NVg=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">室内设施，适合亲子，约2–3小时。位于天保山Marketplace，与海游馆、摩天轮同区
+            </span><div class="en">Indoor facility, family-friendly, approx. 2–3 hours. Located at Tempozan Marketplace, same area as the Aquarium and Ferris Wheel.</div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 平日 10:00–18:00 / 周末 10:00–19:00</span><span class="en">Weekday 10–18:00 / Weekend 10–19:00</span></span>
+</div>
+<div class="tags-row">
+<span class="tag tag-book"><span class="cn">📋 需提前网购票，现场不卖票</span><span class="en">Buy online in advance, no walk-in sales</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=LEGOLAND+Discovery+Center+Osaka,+Tempozan+Marketplace" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge dine">🍽</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">うなぎや花道 难波店</span><span class="en">Unagiya Hanamichi, Namba ⭐5.0</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="うなぎや花道" data-cap-en="Unagiya Hanamichi, Namba"><img alt="うなぎや花道" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNrHb3qajerH3Bq8pRlgFiNmJLuLu-i9MeIQDRw-NlhEkf-EyPs9q4FJPALZqe9YbH6a2tumco5SBZlIAtIbHOhZ6_1mDrNRQFFmSqxcdsnlWE_vCPk-AzCtZX56QRS9uwCjagPTmHRQVRHE17bEG_2UQ=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="うなぎや花道" data-cap-en="Unagiya Hanamichi, Namba"><img alt="うなぎや花道" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNxqRNbqmjUg1SsFH2Ut2RDDZ0PGBnBPfRq3MqOyYTTztqukRtDhx6cY1TZ4V1KsnVqOgzZKbtjPJlVondKScgVPtpWU3i0O3YONNAq0jh9zfoh9ZAPTMqLFSf4-t6sC3Ix1cX-_Mr88YsKtxZaonJrbw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="うなぎや花道" data-cap-en="Unagiya Hanamichi, Namba"><img alt="うなぎや花道" src="https://lh3.googleusercontent.com/place-photos/AJRVUZP8D5dHLnUnTNMI5-XlrJLogs_vWzomojPoOZBb_VmZ7JYnHixK7NZzI073zsK10A0HV53_j5xjF_uBWeZU4b_vrr2yxmP8H57EVPS_Rv8pT081DzaT0r8lqJLkZTcCIXFUEjuJnnaoeqAeW8RG7s4phg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="うなぎや花道" data-cap-en="Unagiya Hanamichi, Namba"><img alt="うなぎや花道" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPHV5mTnXbCoDkRs1qRlwr15pqEMovsV-ckk8MsEol0qYZSFdOgVT-7QP1L67AjPOPlh4bwKxEpkquKRCohmEVeeYzE7VLWwY5U9NgFgzQh3aGx3pPAtmbkycaSaGMinhWc0Z60jyw83miLmW8U4fC-=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="うなぎや花道" data-cap-en="Unagiya Hanamichi, Namba"><img alt="うなぎや花道" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOZQbQCqCamtt1PNTBa3zaOs23Mijm1oK8v4ecLfJ0zMU7f5YZ3V-oqAFv3HHRA9kRojP7AqzZgzy67edjQYKlL07cloDPX1_Sib1Jt5U2wtxjtX-vvm8VooZKNzW0ZgwWdb7kckOcPSkblARhhhyBt=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">午餐预定约1点下午。鳗鱼饭专门店，全天无午休。<strong style="color:var(--amber)">位于难波（大阪市中心），与天保山景区不同区</strong>，charter car接送不受影响
+            </span><div class="en">Lunch reservation approx. 1:00 PM. Unagi (eel rice) specialist, open all day no afternoon break. <strong style="color:var(--amber)">Located in Namba (downtown Osaka), a different area from Tempozan</strong> — charter car handles this fine.</div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 每日 11:00–21:30</span><span class="en">Daily 11:00 AM–9:30 PM</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?cid=14844667400734804757" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🚌 交通</span><span class="en">Transport</span></div><div class="traffic-info"><span class="cn">景点全部在天保山港区，步行可达</span><div class="en">All attractions in Tempozan Harbor area, walkable.</div></div></div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🌧 雨天</span><span class="en">Rain Plan</span></div><div class="rain-plan"><span class="cn">海游馆、乐高室内✅ · 游船可能停航 → 改在天保山商场内用餐购物</span><div class="en">Aquarium, Legoland indoor ✅ · Cruise may cancel → shop/dine inside Tempozan mall instead.</div></div></div>
+</div>
+</div>
+<!-- D03 -->
+<div class="day-card" data-date="2026-07-24" id="day03">
+<div class="day-header">
+<div class="day-num">03<span>DAY</span></div>
+<div class="day-meta"><div class="day-title"><span class="cn">Universal Studio Japan 全日</span><span class="en">Universal Studios Japan — Full Day</span></div><div class="day-date">24 Jul <span class="cn">(五)</span><span class="en">(Fri)</span></div></div>
+<div class="city-badge">🏙 <span class="cn">大阪</span><span class="en">Osaka</span></div>
+</div>
+<div class="day-body">
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">Universal Studios Japan 日本环球影城</span><span class="en">Universal Studios Japan</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="Universal Studios Japan" data-cap-en="Universal Studios Japan"><img alt="Universal Studios Japan" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO6nTAmHrYO7Q0B6LvUvRGrF1YyxADpLgDv_hHRaF22M_-o8UIe__5V6mVdpBWidAmuODBvQCa0QD6zKIt8U0PCpBPhSEvKjLDnOM4LynSV1mmhTzN6jFa6of3ZWgrv0Dl1POsUDgmtlotyiA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Universal Studios Japan" data-cap-en="Universal Studios Japan"><img alt="Universal Studios Japan" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOkExsl9YKejOHpqLla8H30Ca1OaJyMCYVrnVxBoRZWu_BtIrpVMxdPSr6GtOU6v6tk_IPM68CmkZN0GHnutiGMaxoO4XEtck4tm2fwMRTjZzb-Dx0IxWJ8JsyBy9yuu_B-8Spnv1pNzjWZNw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Universal Studios Japan" data-cap-en="Universal Studios Japan"><img alt="Universal Studios Japan" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO6X3nEUen1wed01hKP4tGF0dbAXVTiCu5psxkYp7QiAbhNsK5MDzR7knX0vsbRQF_zugE0U4vav7qW6mXmr_PMSd7wRnqz_sJutQrORVxTj2XS0dbGu6SESygURuGbJzlLhvrV_ZlQQk8lIA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Universal Studios Japan" data-cap-en="Universal Studios Japan"><img alt="Universal Studios Japan" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNIKR3y_wI355uHhL6x5LOoi5AxT0Ntpk4vFLaUZI16ykFKp3YOvhHlpGcgHghVjMRGdSGQQW9VWBoa3n-cU5TtSAodT2EDPrSc_FRQj3sHfOEJPETaDemuprvD-xr0na7FF8L3ifibI-1AxA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Universal Studios Japan" data-cap-en="Universal Studios Japan"><img alt="Universal Studios Japan" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNntouE0xL4xrx9ora9pcSOY2l0229OLadaoALkTPcnGkHS-T2whHCpWrfUcM-pFO5JK9bMvB7PGN5q9_sZjvWT-8AiFYIXdYc2K06QT6i_jjYCanEk4Jh7wvX5y5dfRrKJwpHxEH4Lc4eUTD8=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="timeline" style="margin-top:8px;background:var(--bg);border-radius:8px;padding:8px 10px">
+<div class="tl-row"><div class="tl-time">10:50<br/>–11:50</div><div><div class="tl-text"><span class="cn">超级任天堂世界园区入场</span><span class="en">Super Nintendo World Area Entry</span></div></div></div>
+<div class="tl-row"><div class="tl-time">10:50<br/>–11:20</div><div><div class="tl-text"><span class="cn">玛利欧赛车～库巴的挑战书</span><span class="en">Mario Kart: Koopa's Challenge</span></div></div></div>
+<div class="tl-row"><div class="tl-time">11:20<br/>–11:50</div><div><div class="tl-text"><span class="cn">耀西冒险</span><span class="en">Yoshi's Adventure</span></div></div></div>
+<div class="tl-row"><div class="tl-time">11:50<br/>–12:20</div><div><div class="tl-text"><span class="cn">咚奇刚的疯狂矿车</span><span class="en">Donkey Kong's Crazy Mine Cart</span></div></div></div>
+<div class="tl-row"><div class="tl-time">13:00<br/>–14:00</div><div><div class="tl-text"><span class="cn">哈利波特魔法世界园区入场</span><span class="en">Wizarding World of Harry Potter Area Entry</span></div></div></div>
+<div class="tl-row"><div class="tl-time">13:20<br/>–13:50</div><div><div class="tl-text"><span class="cn">哈利波特禁忌之旅</span><span class="en">Harry Potter and the Forbidden Journey</span></div></div></div>
+<div class="tl-row" style="border-bottom:none"><div class="tl-time">13:50<br/>–14:20</div><div><div class="tl-text"><span class="cn">鹰马的飞行</span><span class="en">Flight of the Hippogriff</span></div></div></div>
+</div>
+<div class="spot-note" style="margin-top:8px"><span class="cn">全天游玩。7月暑假旺季，人流极多，建议09:00开园即入场。超级任天堂世界、哈利波特区是重点
+            </span><div class="en">Full day. July is peak summer season with heavy crowds — arrive at 09:00 opening. Super Nintendo World and Harry Potter area are highlights.</div>
+</div>
+<div class="tags-row">
+<span class="tag tag-ticket"><span class="cn">🎟 含票 + 7景点Express Pass</span><span class="en">Ticket + 7-Attraction Express Pass included</span></span>
+<span class="tag tag-book"><span class="cn">✅ 7个Express时段已确认（见上方时刻表）</span><span class="en">7 Express time slots confirmed (see schedule above)</span></span>
+<span class="tag tag-verify"><span class="cn">⚠ 查证当日开放设施</span><span class="en">Verify day-of facility openings</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=Universal+Studios+Japan+Osaka" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🌧 雨天</span><span class="en">Rain Plan</span></div><div class="rain-plan"><span class="cn">大部分室内设施照常运营。备好一次性雨衣（园内购买较贵）☂</span><div class="en">Most indoor attractions operate as normal. Bring disposable raincoats (pricier inside the park).</div></div></div>
+</div>
+</div>
+<!-- D04 -->
+<div class="day-card" data-date="2026-07-25" id="day04">
+<div class="day-header">
+<div class="day-num">04<span>DAY</span></div>
+<div class="day-meta"><div class="day-title"><span class="cn">京都古都一日游</span><span class="en">Kyoto Day Trip</span></div><div class="day-date">25 Jul <span class="cn">(六)</span><span class="en">(Sat)</span></div></div>
+<div class="city-badge">⛩ <span class="cn">京都</span><span class="en">Kyoto</span></div>
+</div>
+<div class="day-body">
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">京都忍者武士博物馆</span><span class="en">SAMURAI NINJA MUSEUM KYOTO</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="Samurai Ninja Museum Kyoto" data-cap-en="SAMURAI NINJA MUSEUM Kyoto"><img alt="Samurai Ninja Museum Kyoto" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMgtO0pCl3Heeyo5iiy4Z3sQwN6obEaBzjAF-rmv81CMzHblHKOxD1r1rM7B00WcgwNTyy_97xffGasX8zxExmrQGmXd_BHrsSHPTVQxaBUPSD-fP4CNIJkBYWPlPxYR5UNffsdCtKAGHYBcX1VjlrI=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Samurai Ninja Museum Kyoto" data-cap-en="SAMURAI NINJA MUSEUM Kyoto"><img alt="Samurai Ninja Museum Kyoto" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMvKhD4_iQqP9t83Mva0VjbNU0EnDHuaySv7eQno7kUcV7oxy_ifXiqMzXYL9BDZCVIGlHOH3LbOS7Ap63AFh_keuABpKHqViOsZrhqlusPttohrWQllN7uyabrLayyQ9n0EvZ89VRplWmNsyU=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Samurai Ninja Museum Kyoto" data-cap-en="SAMURAI NINJA MUSEUM Kyoto"><img alt="Samurai Ninja Museum Kyoto" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOyvTvntFmraN97h8jorUGGAEcsY0fmvkbbHQBbVEoICC92cH_S7LbmzoW8vNpyr22aT18Gf8yNGTNxcPuPad1-8rObuUxAyCfekQvhZALvXBRAakznP2gCnmgc4-S8gHF9yOC9Ee_1_m3h9Q=s4800-w735-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Samurai Ninja Museum Kyoto" data-cap-en="SAMURAI NINJA MUSEUM Kyoto"><img alt="Samurai Ninja Museum Kyoto" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMvQJPQ_a31twD5XwXXmERrlsh38GYnyM8jPxHuIVmUsfjtz5Z7Y4_voyrDqAPd8FiDNq0z4Xabc8x5USIZAynXrbton6Jpi0A3PkUC_6Iuy9ul5_6FBjIYtG5ilHJQVwu5T9N9UXPzfhCPDnlxkOUVEA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Samurai Ninja Museum Kyoto" data-cap-en="SAMURAI NINJA MUSEUM Kyoto"><img alt="Samurai Ninja Museum Kyoto" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPsKZRsTOg-7WfJHskzt7CjF26oDMTdIH0XDa6bkRTccWLZ8KzTmySBpN8uMhgna7yGf6sDo9jsqsTpMKehH_YaEEpMVwgAP7sMT3SgKVOoVKm_eaOgXs4ZH7SDSIRqPpxXFkXo3LloUmPq=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">11:30入场。可手持武士刀拍照、手里剑投掷体验，全程英语讲解，亲子互动性强
+</span><div class="en">Entry at 11:30. Handle replica swords, try shuriken throwing, all-English explanations. Highly interactive for families.</div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 每日 9:30–19:30</span><span class="en">Daily 9:30 AM–7:30 PM</span></span>
+</div>
+<div class="tags-row">
+<span class="tag tag-book"><span class="cn">📋 建议提前预约场次</span><span class="en">Recommend booking entry slot in advance</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?cid=16408752262557150839" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge side">○</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">清水寺 Kiyomizu-dera</span><span class="en">Kiyomizu-dera Temple</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="清水寺" data-cap-en="Kiyomizu-dera, Kyoto"><img alt="清水寺" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN0s2eA-ijD9ifrGoza9atC_M_towFiYLUWIyAlPM1qHKiFrZaRwc3kDSdqXBtuEle5yzhAJnzL2che0e4CCMiS-oGi7rO6ystp7Uz_o9a2tOrVwK5dOq8hSJf1b7v25Yg74BMT-ReBRoTsSLZ2_lVt=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="清水寺" data-cap-en="Kiyomizu-dera, Kyoto"><img alt="清水寺" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOr-gxnRSb21f44S74_QJPoSrtLvXEXPZ5kkUiGECqueH5mBR-Q31JZaqAhtFxvP2Ja-kd_VQxYoaphNfcriinXbD1BZmIg7fceUK_B08E3T0qYbhY_qp253zSJantgc6s_-V6ouZVKvkf0dw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="清水寺" data-cap-en="Kiyomizu-dera, Kyoto"><img alt="清水寺" src="https://lh3.googleusercontent.com/place-photos/AJRVUZND_2nWVecfAMrU9LrR4eOHB9T2aLZPqm8AGn6VkGxACjjv3Rp8f4NU46gk4873xssHe_Z-T2RpDp5kN9h0GWBewM7fwpX3V5hxOuSWSOm8TCAAqV7_T_mRZNUPcR-XWT0eXqmm5DHwTUu5rA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="清水寺" data-cap-en="Kiyomizu-dera, Kyoto"><img alt="清水寺" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOWa1M2gjNfGjYCv1wgEJtnUdfrbJdQUlyWDQOwEDyEaDJAPJ3E00iGeupHOJFqq_cDVRmpjqfGPGXb3MYAzKwk880LJOojBvo1Xkue5aXaxilZVy2c8fZe-rNIhTsxduHmprfOJvBM7ZGQfA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="清水寺" data-cap-en="Kiyomizu-dera, Kyoto"><img alt="清水寺" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOfECXsc4S4IiIPq6xpIBDPxATnsSlrNTSZ0DcfNS5AXLWs1GqlV_NI5EEPjUyA7B8S_00ueqeYvREaCv-xd6Te7RxILmLgxP4NSMYd-AWkgdNXlEh7ddbRfozn85Y_rRza3c23wnZNmaXEIHM=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">京都最具代表性古寺，木造舞台俯瞰京都市景，沿途清水坂、产宁坂老街适合购物拍照。建议穿好走的鞋，石阶较多
+</span><div class="en">Kyoto's most iconic temple — wooden stage overlooks the city. Approach via Kiyomizu-zaka/Sannen-zaka old streets, good for shopping and photos. Wear comfortable shoes — many stone steps.</div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 每日 6:00–18:00</span><span class="en">Daily 6:00 AM–6:00 PM</span></span>
+</div>
+<div class="tags-row"><span class="tag tag-verify"><span class="cn">⚠ 旺季人流大，建议避开正午</span><span class="en">Heavy crowds in peak season — avoid midday if possible</span></span></div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?cid=7111013964196361402" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge dine">🍽</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">はし本 Hashimoto</span><span class="en">Hashimoto ⭐4.8</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="はし本" data-cap-en="Hashimoto, Kyoto"><img alt="はし本" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO07eLx_NxWofRybFcItGQ4gW-T7IUxOZwzJLIf2I9PYRhwpJTdIjN9aV0eBunxuIP3I_TM5KjkXyv3lnuYUt7NePaZp-Lb7coJRi1Tv4sRIu4_X0GFd-E97gS10s25FG5_We3MdgOu-OGChw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="はし本" data-cap-en="Hashimoto, Kyoto"><img alt="はし本" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPnAuJRmqiKagzZA02O7rCFmP72ovDTkVhAeidWKblNBO1A35uVzjlmA0RH2YL1q-wMOCuxieRwANCJYF9HUc5UmxUA3AmECA0sKMhy31EDZMVQjri_ui7eU7bDhCNBss-j2ZFYXOmtRbXtRVDWN3qXRg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="はし本" data-cap-en="Hashimoto, Kyoto"><img alt="はし本" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMxd4iGEm5fxeW1KVy5T1VejLnOSWa77_Jm6aFpz0advqsn2tqZXiYEWtwDeZiTrmwqU-4aWwikAQLb8DSC72H8Hqqail_0hKwRcxXtrHDsycodPFjYPFkeFIT062FI1rHVND2j5qrO4RKjZynL6e3GBg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="はし本" data-cap-en="Hashimoto, Kyoto"><img alt="はし本" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOa6fvDa7p6AYQa0TKMfXGUF6v7em8tu0UQL1JOOV4MFlhd8UVRueXYDhPOWVngKoq04tNsfYAP8AH90wOm64gVadj6Y4-i_vfpryFGU2larjxH0JsU5hJQl0G6AjVvpyxqaO8kimsEYr_fkiRE97rzSQ=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="はし本" data-cap-en="Hashimoto, Kyoto"><img alt="はし本" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMnE-OR3no_HKYrLRKbWTTZfZZbWYIOtfCJA703U7Almwwdtz_tXRmSdnW36Kz8McQiypKlA0DtBq6-1Z5brqwx9Orvw5DZxUNwuOpnf-YpXEiKJA6Z7Xmlk5caPdHF-iNpT38EW_rqjOxAP8VTKXyObA=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">午餐预定约1点下午。招牌<strong>唐揚げ炸鸡套餐</strong>，附带刺身、煎蛋卷，可单点，符合亲子用餐需求
+</span><div class="en">Lunch reservation approx. 1:00 PM. Known for its <strong>karaage (fried chicken) set</strong>, with sashimi and rolled omelette, à la carte — fits family dining needs.</div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 周六 11:30–14:00, 18:00–23:30</span><span class="en">Sat 11:30 AM–2:00 PM, 6:00–11:30 PM</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?cid=5560931258008110915" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="backup-row">
+<div class="backup-label"><span class="cn">🔄 备选 — 持续刷票中</span><span class="en">Backup option — keep refreshing for tickets</span></div>
+<div class="spot-name" style="font-size:13px"><span class="cn">Nintendo Museum · 宇治市（京都府）</span><span class="en">Nintendo Museum · Uji, Kyoto Prefecture</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="Nintendo Museum 宇治" data-cap-en="Nintendo Museum, Uji Kyoto"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPZbi-olgtoEFPTa6sIFh3u1NWDhZS0WDJoUuFBPWoSW6aOodl8Yj5r9a2skX6PceTu-qontqhBjfWR05MA8tmxXL2RwWOZVxmlY7aSGhjolvF0KhAvQHF8o6G5feoXnMBPXIkweUOUm1hOrcM=s4800-w800-h600" alt="Nintendo Museum"></div>
+<div class="carousel-slide" data-cap-cn="Nintendo Museum 宇治" data-cap-en="Nintendo Museum, Uji Kyoto"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZOk8vos6fEdNLQGuIpEngD21JRWTvt72ork8uHdxsTnGgpd0nQvHAHrKnv38X_zNVC0UGM2EDHf8MF9cSDpmGpeo2_xhZHDlOfxGNCeScPrZMX2HK611gCdd0P8NivMi1b_w8v0q12Cc-jkzSK=s4800-w800-h600" alt="Nintendo Museum"></div>
+<div class="carousel-slide" data-cap-cn="Nintendo Museum 宇治" data-cap-en="Nintendo Museum, Uji Kyoto"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMl77eY14zIFW3aCAPiz5ZEV8HLdSFXrlNP0phdJIOZe_CUq6aZWXPbQcm7iMRKeZgHt3Z1Y6zjCRSuUfICEwEIp8bE-y-AQSWMB-whMiqaEfd_0KhtRg2C7RgFmYh8aT5gCSkQSYM2LUF0VA=s4800-w800-h600" alt="Nintendo Museum"></div>
+<div class="carousel-slide" data-cap-cn="Nintendo Museum 宇治" data-cap-en="Nintendo Museum, Uji Kyoto"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZP07EloZZGLfpyYSYdR1ZarsPoQvrwnzXHvmIyDeCg-lWG47CN1NxhdC3GLnkHkorZCG27nwS16TZiPv7QY2VuP4GFiF6LANw8rKWRQ4vG46tMRIBMzN1cxBJQXRPpFSY_xBUPyWYDvDRWcHSEWqpVSoA=s4800-w800-h600" alt="Nintendo Museum"></div>
+<div class="carousel-slide" data-cap-cn="Nintendo Museum 宇治" data-cap-en="Nintendo Museum, Uji Kyoto"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPGXMhwlZpem9l4dqAke66TkjO2hVgjtOMG7tozfYicaPDkxb7V4svrsprGATgBgv7OsHH9eY41gBzSVIIPLegmbCz2qkGLaVpYb9A3VLQteTloijl8nlcFnQyQcYtWDB8WGNdpfvZPICGMtn4=s4800-w800-h600" alt="Nintendo Museum"></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note" style="font-size:11px"><span class="cn">任天堂官方博物馆，旧厂房改建，从花牌到游戏机完整历史+大量互动体验+限定周边。⭐ 4.5 · 位于宇治市，距清水寺约25分钟车程。<strong>需网上抽签预约（官网 museum.nintendo.com），名额极紧，但据悉有机会刷到退票，建议出发前持续关注</strong>
+</span><div class="en">Nintendo's official museum in a converted former factory — full history from hanafuda cards to consoles, interactive exhibits, exclusive merchandise. ⭐ 4.5 · Located in Uji, approx. 25 min by car from Kiyomizu-dera. <strong>Lottery-based booking at museum.nintendo.com. Very competitive — but cancellation slots do appear; worth monitoring regularly before departure.</strong></div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 10:00–20:00，周二休馆</span><span class="en">10:00 AM–8:00 PM · Closed Tuesdays</span></span>
+</div>
+<div class="tags-row">
+<span class="tag tag-verify"><span class="cn">⚠ 刷票地址：museum.nintendo.com</span><span class="en">⚠ Book / refresh at: museum.nintendo.com</span></span>
+</div>
+<a class="map-btn" href="https://maps.app.goo.gl/q8hF5x91noKqv7AP7" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+<div class="backup-row" style="margin-top:10px">
+<div class="backup-label"><span class="cn">🔄 备选 — 去年去过</span><span class="en">Backup option — visited last year</span></div>
+<div class="spot-name" style="font-size:13px">
+<span class="cn">东映太秦映画村</span><span class="en">Toei Kyoto Studio Park (Eigamura)</span>
+<span class="tag tag-visited" style="margin-left:6px"><span class="cn">去年去过</span><span class="en">Visited last year</span></span>
+</div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="东映太秦映画村" data-cap-en="Toei Kyoto Studio Park"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZN99dLm6istxh0Tq7B_4ELSVbfbZJlLP-1F7AR4pnp9-9KEgXBNuBxdF-TBCQFkMDB0y29i5c_JiS9EqpZDS_74CZC2eanpmo2O5kaOgQ2g79oDT04O2-6sjN-rrbNp6xtu-tZp-hivwHW-=s4800-w800-h600" alt="东映太秦映画村"></div>
+<div class="carousel-slide" data-cap-cn="东映太秦映画村" data-cap-en="Toei Kyoto Studio Park"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMs9fhjKdrUk_W-anA7nx2-f-e5pRWjTt25sK0Cv4H9aR3y9r1hADhq_EAA2BskV2w--ddxVF9a0TzhSD0uc0t6KJIKp7LNyAvl0DDp__n3dGFVYrDdc3akP6m2CRm6bMEDcNx6o3J9ztM3On4=s4800-w800-h600" alt="东映太秦映画村"></div>
+<div class="carousel-slide" data-cap-cn="东映太秦映画村" data-cap-en="Toei Kyoto Studio Park"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZMg8ROPDq0Ggb9l0DR0szM8izbNt-maSGpq8SXxlnyiac9V3qwI9IB3DzwIqzQCBXwy8yHR7-f5GNSKIweTgRhwls0KySYVM30s0-vVz_6bhTt0PKIV1rmniQGwfy-u_SC-PFxXD1qADri89Pc=s4800-w800-h600" alt="东映太秦映画村"></div>
+<div class="carousel-slide" data-cap-cn="东映太秦映画村" data-cap-en="Toei Kyoto Studio Park"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZPPFmUiV2Dt1BoTqUKMYhl3R7_iTw6ruHTB10f3cPXsEFER_42ACUQ0blzLo4jsZB0VjJfJ8SrtVHKq6j1yasMwFOb2KrwBbk79Ixxpy-FVM4R1dS-0_9SiCu_RaAdI51JeSTbElz1-8sEzlw=s4800-w800-h600" alt="东映太秦映画村"></div>
+<div class="carousel-slide" data-cap-cn="东映太秦映画村" data-cap-en="Toei Kyoto Studio Park"><img src="https://lh3.googleusercontent.com/place-photos/AJRVUZP2hseziaUrSZf8Ldi_pMU5lfA4ge8WsFokOi198_WYVKsPAmILJcXD-hosF7C1v77uWwNzpfgbmpMFCc9qEhJmXZFcXxBQYlfrgyjr1HZ3Odh_vWdkGXJ1VW0Q56bhfNyb7FY0JXRAOY8xQw=s4800-w800-h600" alt="东映太秦映画村"></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note" style="font-size:11px"><span class="cn">东映旗下真实运作的影视棚+主题公园，江户时代街景实景搭建，有武士/忍者表演、鬼屋、假面骑士&amp;超级战队展览，半天约5–6小时。⭐ 4.0 · 无需提前预约，现场购票即可
+</span><div class="en">Toei's working film studio turned theme park — life-size Edo-period street sets, samurai/ninja shows, haunted house, Kamen Rider &amp; Super Sentai exhibitions. Half-day approx. 5–6 hours. ⭐ 4.0 · No advance booking required, buy tickets on-site.</div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 10:00–21:00，周二休馆</span><span class="en">10:00 AM–9:00 PM · Closed Tuesdays</span></span>
+</div>
+<div class="tags-row">
+<span class="tag tag-book"><span class="cn">✅ 7/25（周六）正常开放</span><span class="en">✅ Open on Jul 25 (Sat)</span></span>
+<span class="tag tag-verify"><span class="cn">⚠ 查证票价</span><span class="en">⚠ Verify ticket price</span></span>
+</div>
+<a class="map-btn" href="https://maps.google.com/?cid=3150840243035149927" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🚌 交通</span><span class="en">Transport</span></div><div class="traffic-info"><span class="cn">当天往返，charter car接送，不在京都过夜，晚上回大阪酒店</span><div class="en">Day trip, round-trip by charter car — no overnight in Kyoto, return to Osaka hotel in the evening.</div></div></div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🌧 雨天</span><span class="en">Rain Plan</span></div><div class="rain-plan"><span class="cn">忍者博物馆室内✅ · 映画村室内设施多✅ · 清水寺露天，雨天石阶较滑，备好雨具防滑鞋</span><div class="en">Ninja Museum indoor ✅ · Eigamura has many indoor facilities ✅ · Kiyomizu-dera outdoors — stone steps slippery in rain.</div></div></div>
+</div>
+</div>
+<!-- D05 -->
+<div class="day-card" data-date="2026-07-26" id="day05">
+<div class="day-header">
+<div class="day-num">05<span>DAY</span></div>
+<div class="day-meta"><div class="day-title"><span class="cn">新干线 → 东京 · 涩谷</span><span class="en">Shinkansen → Tokyo · Shibuya</span></div><div class="day-date">26 Jul <span class="cn">(日)</span><span class="en">(Sun)</span></div></div>
+<div class="city-badge">🚄 <span class="cn">移动</span><span class="en">Transit</span></div>
+</div>
+<div class="day-body">
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">新干线 大阪 → 东京（含车票）</span><span class="en">Shinkansen Osaka → Tokyo (ticket included)</span></div>
+<div class="spot-note"><span class="cn">车次 <strong>NOZOMI 252</strong>，大阪 <strong>12:15 出发 — 14:45 抵达</strong>东京站，车程2.5小时。<strong>大件行李将另行运送至东京</strong>，车上只需带手提行李即可。座位安排<strong>2+1</strong>。下午抵达后直接前往涉谷
+            </span><div class="en">Train <strong>NOZOMI 252</strong>, <strong>departs Osaka 12:15 — arrives 14:45</strong>, 2.5-hour journey. <strong>Checked luggage will be transferred separately to Tokyo</strong> — only hand-carry items needed on board. Seating arranged <strong>2+1</strong>. Head to Shibuya after arrival in the afternoon.</div>
+</div>
+<div class="tags-row">
+<span class="tag tag-ticket"><span class="cn">🎟 含新干线票</span><span class="en">Shinkansen ticket included</span></span>
+<span class="tag tag-book"><span class="cn">🧳 行李另行运送</span><span class="en">Luggage transferred separately</span></span>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge side">○</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">涩谷区购物 Shibuya</span><span class="en">Shibuya Shopping</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="涩谷" data-cap-en="Shibuya Crossing"><img alt="涩谷" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOgeUDngaS1IT6Q8xwr-epJCYlnkEzRlgrwGaxl67vkBpIT5Db9tBHQsuuCEMhFgCnMEl-C4bHvcnphtG116U83346miCfIS2KcIDUiiU8U2nAUDHScbmNEOAUlfr1GmW5ErbzasSAH_G3naQ=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="涩谷" data-cap-en="Shibuya Crossing"><img alt="涩谷" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMCZyDROB0sUXdugHnqZnNOmBmw6wR5GIpRa_P9bsLKcI_x031eRCFTlEISsyIOY_AZRSkt24NNs4ZmzpkNQTAvhJf1g-gbzcXxEI2Pj1GupHTZwrhQvrQH4IwfTVpXFvED3xfmpqweMWopdw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="涩谷" data-cap-en="Shibuya Crossing"><img alt="涩谷" src="https://lh3.googleusercontent.com/place-photos/AJRVUZM-NBuQA8PScprEipRfMHlqaUXvVfvxxvvx2O9NqZEkegloamE_IpbXacx2S4fc16D9l5cY6-MplByDGbBl7qE4ws6fKFV3tzc-GwvP8HcavsxI4R1dP2l0Msddz1AhcqAR7uWPCgzIr_1VEw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="涩谷" data-cap-en="Shibuya Crossing"><img alt="涩谷" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOxoo9TDx2idyxuC95oUMofDE-ROaAcyhxW9r9kNHiifBtXQWqegI-6ltlVnCRtAxai8Z3nrm9vWsfCUGEvooGd6_xx2ZfWbOjaKUkoeOp1s_R6ZvArLGAmzYrY-voiwYp5cme7D3fJfQ9MWacGtW8Oog=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="涩谷" data-cap-en="Shibuya Crossing"><img alt="涩谷" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPusVkFEzAAqn_KgphqCiL4iZsFK3UMmuiIhL4XEU6fYzFMF8dGGUKJjFaX9mS8PW4INo8pKc1qzHF_Z8w0u2hBud0vhwLlCmpcmxwir7oyn6LKQlL86WtchXySb-PxjKQI_VpW9osu0lSXJYfIYwCyyQ=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">SHIBUYA 109 / Scramble Square / 涩谷Hikarie。抵达后下午可逛至晚上
+            </span><div class="en">SHIBUYA 109 / Scramble Square / Shibuya Hikarie. Browse afternoon into evening after arrival.</div>
+</div>
+<div class="tags-row"><span class="tag tag-verify"><span class="cn">⚠ 涩谷Sky展望台需另购票</span><span class="en">Shibuya Sky observation deck requires separate ticket</span></span></div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=Shibuya+Scramble+Crossing+Tokyo" target="_blank">📍 <span class="cn">点击查看涩谷地图</span><span class="en">Tap to view Shibuya map</span></a>
+</div>
+</div>
+</div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🌧 雨天</span><span class="en">Rain Plan</span></div><div class="rain-plan"><span class="cn">涩谷室内商场多 ✅ 雨天购物体验不受影响</span><div class="en">Many indoor malls in Shibuya ✅ Shopping unaffected by rain.</div></div></div>
+</div>
+</div>
+<!-- D06 -->
+<div class="day-card" data-date="2026-07-27" id="day06">
+<div class="day-header">
+<div class="day-num">06<span>DAY</span></div>
+<div class="day-meta"><div class="day-title"><span class="cn">东京迪士尼 全日</span><span class="en">Tokyo Disneyland — Full Day</span></div><div class="day-date">27 Jul <span class="cn">(一)</span><span class="en">(Mon)</span></div></div>
+<div class="city-badge">🏙 <span class="cn">东京</span><span class="en">Tokyo</span></div>
+</div>
+<div class="day-body">
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">Tokyo Disneyland 东京迪士尼乐园</span><span class="en">Tokyo Disneyland</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="东京迪士尼" data-cap-en="Tokyo Disneyland"><img alt="东京迪士尼" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOsLEwwizMWEG-v1RWbzd962cxFw57jW-ACkf2zuTZ8pgii3BDveF36EI_752wIdkQgOcJ6p_gmNf-T8auVvhVhUUs9Mew5vfs_9rPQ4Vk2O5P-6SJS7klwWwVTJWf_7at4V5fIXuZBvvtekQ=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京迪士尼" data-cap-en="Tokyo Disneyland"><img alt="东京迪士尼" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOL9JZWhdDfjhsXEJERD_QpSC_welRBVIRA91kNyfLs6ExL1lrOWtO5GSQX8PFcOx3LPp7KytFySZRLYibnwBy2lgpm9DL-CnF48ukjcSuePfwv-kNWpJ04wJnQRzaLLtPvAusd7Vkd99TJZA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京迪士尼" data-cap-en="Tokyo Disneyland"><img alt="东京迪士尼" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOTpeIT2D0yzq5WMbbVNwYwMTKxxEwYdngU7v8Q5hKeQdQCCiSSVMUFLALUr7dEQ7D_phRLfjdpoIGiP6qwKEF8HiyvgRBseUFRxiuFMTr4f0OYM81r12q1EyIbmaVY3M4K6WIsgnfzpg01=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京迪士尼" data-cap-en="Tokyo Disneyland"><img alt="东京迪士尼" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNDlx_iBoLb4rW6IcsvEsHbPYCT0NVR9maguh60SLsiES-uFCehT5UV_aysUMOh6iNvkSy39DIWz1DN_A9HpP9pF0IbyZKuO90IF8n7dNjC_4h3kFIFAvXjMKzvOPS9mLVYT8vs9N_okr23Kp4=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京迪士尼" data-cap-en="Tokyo Disneyland"><img alt="东京迪士尼" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPEb1snbSjNihWb_Vd37cZnixQ0aed7WEg8BMkXDwiw15do2xMdsymtTYzREYeT7e5koXX2_fdHoJ8VwxXCbCfjqeZ266jaGFDvdveiRn16uSph9x_2WZC6c7c5W2Mg9qu4xBiY2F2dvPYF=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">含标准一日卷。营业 09:00–21:00。7月暑假人满为患，快通须另在App购买，入园即抢
+            </span><div class="en">Standard one-day pass included. Open 09:00–21:00. Very crowded in July — buy Premier Access in the app immediately upon entry.</div>
+</div>
+<div class="tags-row">
+<span class="tag tag-ticket"><span class="cn">🎟 含一日卷</span><span class="en">One-day pass included</span></span>
+<span class="tag tag-book"><span class="cn">📋 提前下载 Tokyo Disneyland App 购快通</span><span class="en">Download Tokyo Disneyland App in advance for Premier Access</span></span>
+<span class="tag tag-verify"><span class="cn">⚠ Premier Access价格查证</span><span class="en">Verify Premier Access pricing</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=Tokyo+Disneyland+Maihama+Urayasu" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="sub-row"><div class="sub-label"><span class="cn">⚡ 旺季提醒</span><span class="en">Peak Season Note</span></div><div class="traffic-info"><span class="cn">美女与野兽等热门设施等候达120分钟，Premier Access必备。入园后第一时间在App购买，否则售罄</span><div class="en">Popular rides like Beauty and the Beast can have 120-min waits — Premier Access essential. Buy in-app immediately on entry before it sells out.</div></div></div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🌧 雨天</span><span class="en">Rain Plan</span></div><div class="rain-plan"><span class="cn">照常运营，室内景点全开。备好雨衣（园内贵），游行可能取消→改看室内表演</span><div class="en">Operates as normal, indoor attractions fully open. Bring raincoats (expensive inside); parades may be cancelled → watch indoor shows instead.</div></div></div>
+</div>
+</div>
+<!-- D07 -->
+<div class="day-card" data-date="2026-07-28" id="day07">
+<div class="day-header">
+<div class="day-num">07<span>DAY</span></div>
+<div class="day-meta"><div class="day-title"><span class="cn">乐高 · 奥林匹克博物馆 · 东京铁塔</span><span class="en">Legoland · Olympic Museum · Tokyo Tower</span></div><div class="day-date">28 Jul <span class="cn">(二)</span><span class="en">(Tue)</span></div></div>
+<div class="city-badge">🏙 <span class="cn">东京</span><span class="en">Tokyo</span></div>
+</div>
+<div class="day-body">
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">Legoland Tokyo 东京乐高乐园</span><span class="en">Legoland Discovery Center Tokyo</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="Legoland Tokyo" data-cap-en="LEGOLAND Discovery Center Tokyo"><img alt="Legoland Tokyo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMWtsbfc-zHXi1a6Aa0zjJpdU3bWr-Ivi04zCtpKJWMbLZirXDgzXNBODIMrHtywntbSl1WuMan6dUj6QVpoy32gTLzB78jT4NcLcDUGY4MT-ZvDTkzr4_likcwdmVIcv-iDelcbznR11ZW-z0=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Legoland Tokyo" data-cap-en="LEGOLAND Discovery Center Tokyo"><img alt="Legoland Tokyo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPJdNzBz8tSfz4XhgIjGQVIZnj9s2Pmz5ChRU4n8M1zInEgLCIMbkWCNLQaJE0SpTR7hmzTH-M1LAPT0Fqp49uKhkD5d2HTV-JrLEh2sUHW4wwFI6V5xRyzux33KEu5mwF2mSoW23j-FqgFmG0=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Legoland Tokyo" data-cap-en="LEGOLAND Discovery Center Tokyo"><img alt="Legoland Tokyo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOp-3F1NdeZgf2BEMw1N0jis_fIC2WlH2bEmhTY0iSi-E5lRuWCRNcUx_FQZI1g9q9JdylT75JfCxFQeIH0cIz5Ovc5BCNRnlTz_ldUGZLfKX1ruRg7jKfOn2EnrjMIJ5elZ_lb_-jqWevs3PPssk8HBg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Legoland Tokyo" data-cap-en="LEGOLAND Discovery Center Tokyo"><img alt="Legoland Tokyo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOTIXR6sFfdqlY2yc8KkitanYBbL-7yGI-PO_SR9RfSBf-sGc31mHODctuDToKnBQ7cO6zf0gbhSqbLrNGog5CkNTYWB3scrKEBp9bbs8polZR4WtYj1ZkbrH4breXwBBGDfs3RGEXP4r1AMdM=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Legoland Tokyo" data-cap-en="LEGOLAND Discovery Center Tokyo"><img alt="Legoland Tokyo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPcVdZb6kL2is4Nw_EpaeOt0ay2AO1dISLBf2-n4vvgOdn59eFcwbzerWnk8xWyL70Q_btuJSibBnfRApcqG6haKPEupz6eRacgQv4OGsDoDqn8PbzmrCJF4JVwq90GHt8GeWQ8kbKflcPsgdJNwmYs3g=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">含门票。室内为主，适合上午进场。位于台场 DECKS Tokyo Beach，与铁塔<strong>驾车约5.8公里，约12分钟</strong>（非步行可达）
+            </span><div class="en">Ticket included. Mostly indoor, good for morning visit. Located at DECKS Tokyo Beach, Daiba — <strong>~5.8km / approx. 12 min by car</strong> to Tokyo Tower (not walkable).</div>
+</div>
+<div class="tags-row">
+<span class="tag tag-ticket"><span class="cn">🎟 含门票</span><span class="en">Ticket included</span></span>
+<span class="tag tag-verify"><span class="cn">⚠ 查证营业时间</span><span class="en">Verify opening hours</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=LEGOLAND+Discovery+Center+Tokyo" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">日本奥林匹克博物馆</span><span class="en">Japan Olympic Museum</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="日本奥林匹克博物馆" data-cap-en="Japan Olympic Museum"><img alt="日本奥林匹克博物馆" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNRBop2prKVsWNBKbn7nJq8KNi2SiwgLP92YAxm4hD_eVcB3gT2AjlWxF5rZ7bFMIyxyOfMCICmQ1Px40DEuajb8zVh1s8j81mHjksZl3C0d6rxpXhaQPT8FDwtDV5T-hSmVAZb0gi04E6eoQ=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="日本奥林匹克博物馆" data-cap-en="Japan Olympic Museum"><img alt="日本奥林匹克博物馆" src="https://lh3.googleusercontent.com/place-photos/AJRVUZP2GL2ydFWk-RLm-vi5iX-I9OKw7GgCnbACNXqT3uGo-q4CXD2TSC1ilQk9ZsuA49zmu9_-i9thzxtzOrMTy_a__OzgWahA63TUvGdMH4uh1lNVpnJNG1aVOb16-GcRfLyodfocfcwBdc2LABk=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="日本奥林匹克博物馆" data-cap-en="Japan Olympic Museum"><img alt="日本奥林匹克博物馆" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPT-KLI6fMEJfCLxtzKyJ2Zy0B7HBkgsxaD06NXukX5vwGNfv5DnFa5a_yBQ-qSOZhov_iCCJF2d7ocFb6cvxEB-2Q0xoLJHv_Opyl9uvnB-G99uib5kCBrk278ZDSHOAcAeWBKsTdu-8zisg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="日本奥林匹克博物馆" data-cap-en="Japan Olympic Museum"><img alt="日本奥林匹克博物馆" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMl7PRtTsibqLmmD2PwF7i0XkolryEoUxcC1_KhhSLxpwf6VK8z13-3M5pryAJ2KsqLr9lT79jZijnJvRCNIdPoVuO0ZsejPEZsJtmXTowGpg3jRUeNu_7ny2-XakHhfq7PVlF61HV8WZevIg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="日本奥林匹克博物馆" data-cap-en="Japan Olympic Museum"><img alt="日本奥林匹克博物馆" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO_CjIAOOnR11K_tCHtxJ50XTVV3fxncSntlFpW8S-fs-LiT9KtMblD6TbnKPK-Z-ibZPWRarP5aWJi4VCSH1QuNaJLmFbOgdYsdLWREUDLQidaIrBtPzJKLaRtBip5Ic9R4BSBZC632WaS9t0=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">含门票。约1.5小时。<strong style="color:var(--green)">✅ 28日为周二——常规周一休馆日已避开（馆方固定每周一休馆，遇假日顺延至次个工作日）</strong>
+</span><div class="en">Ticket included. Approx. 1.5 hours. <strong style="color:var(--green)">✅ The 28th is a Tuesday — clear of the museum's regular Monday closure (closes Mondays year-round, shifting to the next weekday if Monday is a holiday).</strong></div>
+</div>
+<div class="tags-row">
+<span class="tag tag-ticket"><span class="cn">🎟 含门票</span><span class="en">Ticket included</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=Japan+Olympic+Museum+Tokyo+Shinjuku" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+<div class="backup-row">
+<div class="backup-label"><span class="cn">🔄 如不去奥林匹克博物馆，备选</span><span class="en">Backup if skipping Olympic Museum</span></div>
+<div class="spot-name" style="font-size:13px"><span class="cn">Tokyo Joypolis 东京乔伊波利斯</span><span class="en">Indoor arcade &amp; rides — DECKS Tokyo Beach, Odaiba</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="Tokyo Joypolis" data-cap-en="Tokyo Joypolis"><img alt="Tokyo Joypolis" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMH562QJLOewcZ-IU3NzEOKeFVympwj45KBtif2uciYuZ6a_YGPrlvnos78QyWvkCFWk7d1WI9YQ0rOCicreNrA4HtawjQYnW2xx5Okaf4CwsZLLVP_QgIBxHTzZkCkUZs-xZIQ1dUEcJbgVtU=s4800-w670-h450"/></div>
+<div class="carousel-slide" data-cap-cn="Tokyo Joypolis" data-cap-en="Tokyo Joypolis"><img alt="Tokyo Joypolis" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPi0XgJ5TFmuJTPa7EfpfPmqzGoVlSwSdMkOiqVL_ovlHZbvstR3OOpkQb3Nob7VC8HVs2ZgN_ccs_fN-nCOXJcMNjYxW-GISY2t2apDyMTtzzIxnVvpKKKNUfIK7MHSGS-z9Xq55WTTfhyO5A=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Tokyo Joypolis" data-cap-en="Tokyo Joypolis"><img alt="Tokyo Joypolis" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO4MZsp1de--66BzzMez4yofCeJh_9O73rNdoSBJSksUEOEhQkqywq0eMQDspG_CCVsnu46iCGcYdULcKlBfVyd7f8-btKxNaOxCWMtg1QsYL8feAFNg9NtoY5HpFIyM7kGGVIUgExZD8ChkrbUyTUrYg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Tokyo Joypolis" data-cap-en="Tokyo Joypolis"><img alt="Tokyo Joypolis" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMEIGw-IXQA4l-S1uCbE2YjH3gRRN7cDZqMplNB3CF81cGuon7-2MsdzBvPX0Xla9CakuUKCqYsXW7LdXQMGoXYjOcq2g4EP0SbPIix6BflNrON7X2nELMSHLmoRyaM1HVGjP6ZV8wqA-wtoew=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="Tokyo Joypolis" data-cap-en="Tokyo Joypolis"><img alt="Tokyo Joypolis" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNUvvVBqDZjArXQdLDTnyUKVryTeuBT_28BWAiZkvRnFCad0PA_DCUtVq8jIgbH6msIz4PaLs287ZOMnrZMikeGjRUijKIKmaN0pl7e-ytWt-kS4svB2PS3ShHASrG57Xdk-cKHXBfxyGvRmw=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">世嘉旗下室内电玩+游乐设施，位于台场 DECKS Tokyo Beach 3-5楼。室内雨天也不受影响，适合亲子
+              </span><div class="en">Sega's indoor arcade and amusement rides at DECKS Tokyo Beach, Odaiba (3F–5F). Fully indoor — rain-proof, family-friendly.</div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 平日 11:00–19:00 / 周末 10:00–20:00</span><span class="en">Weekday 11–19:00 / Weekend 10–20:00</span></span>
+</div>
+<div class="tags-row">
+<span class="tag tag-verify"><span class="cn">⚠ 查证票价（约¥3,800/人）</span><span class="en">Verify ticket price (approx. ¥3,800/pax)</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.app.goo.gl/19H3c7rc8JodWZWw9?g_st=ac" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">东京铁塔 Tokyo Tower</span><span class="en">Tokyo Tower</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="东京铁塔" data-cap-en="Tokyo Tower"><img alt="东京铁塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMMRn3MWygtpouY48FZhpt2loAbLSkNEFsJ2AMpnSnyC44rz-bBaiKgHuBQsH8mJ-IjbNh9phRV6QPyeEARpnSbOvnfuTpMemwDqNx63G2CNoOQBj_N7Onu9LRPU8GVbxMJJXf8CGIp4CE8LA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京铁塔" data-cap-en="Tokyo Tower"><img alt="东京铁塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNysLNqMDzuaUA2avn08jGIeEgWpko5gjfGRHQ4xsc2m8ONLLe3hEqV1WDP_gdqCGb5IqLwbHJrjG20j8X8JEEtAIzGzsAlrOwZKGLhZtMTUxM6ty38beY1b_E-S5jBEDbQ6ekjadY5hLN6kA=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京铁塔" data-cap-en="Tokyo Tower"><img alt="东京铁塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPXxn7xgq7mnpEQt3JefjwGdr-pClfB4YlNMGZ74Vk7mu0KYVoUV6Y5FLS7KJI2NJNZEeG73DIbf2H8pra3V8XrPHYzNi13BMvFSZ5Do9bG7sFe2O4vhETfftstfhQDjoU9CJT1Sq9jKNJl5Fno1Zrx=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京铁塔" data-cap-en="Tokyo Tower"><img alt="东京铁塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN1xVbT_PXaQlanON3_CZNDe6Opjwy2vXvsB23mCKqEbLARw53WIibCzASy53WoRv8UTMmHQxcQZj-FQpIT-lr_TEWDT1YY3lrP2WjNiCH4ubaZtyc0PoA_Qv5I3JzKxX_eg6T-Lw5s6XgK=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京铁塔" data-cap-en="Tokyo Tower"><img alt="东京铁塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOg4lvrC7KqZvlJQMymk9eXH3AMrvD4GBbTFvPzC1lF-LCp7gIFe8vuD7ufwDg1jQpLnJ8wonLhLM6B4zboskIHb0J2gvRd6OapMpxhGZFor0sp1nV91FZXEW4Z63AsB_QW74ZyVUh9RhUd8w=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">傍晚灯亮后景色最佳。与博物馆<strong>驾车约4.4公里，约9分钟</strong>
+</span><div class="en">Best viewed at dusk once lit up. <strong>~4.4km / approx. 9 min by car</strong> from the Olympic Museum.</div>
+</div>
+<div class="tags-row"><span class="tag tag-verify"><span class="cn">⚠ 查证展望台票价</span><span class="en">Verify observation deck price</span></span></div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=Tokyo+Tower+Minato+City" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge dine">🍽</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">日本料理 旬房 Shunbou</span><span class="en">Shunbou ⭐4.4</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="旬房" data-cap-en="Shunbou, Roppongi"><img alt="旬房" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMHFt5df0oXMr3Me695FmJtYMWKxvSUkqGFz1nKlgM6Autm0Yo5rZxCKY2AJY9muaA8em1fjv6h-O9w3HyLIcg-rlsUDL0JKaEqdt5pT2CyJfahlr8QDJIvalsHs_v5YKzW-RWfaN3aG6FH8SbsjJkB=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="旬房" data-cap-en="Shunbou, Roppongi"><img alt="旬房" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOTeuY8g1Cu87ujz39AlrsyqejnvFBPk8ZvlK25HGFAkui-0pRdgjl62-ed6SOEhVtqQ31o_VL7L2o1mUQZOfKCU7wDueXInyiiUh8qpniiXZbjmF-hz6jawTM-moI-3fY7ti584tGNoYp8e19wN1mMrQ=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="旬房" data-cap-en="Shunbou, Roppongi"><img alt="旬房" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOum_Vzvd6AjyNlfC4_o-qy-OmyhwcEd4kNuQLRVtf1FaB8z4I06SNKItx-BPZ-6EReTSVxN-CerMs4mfCK3BD1OO2SbRSbn8gNoBMwuMiXaPmoQvm6U5xnYShx0h4c8tsgfyYxFyQhS2YVVBVFBa38xg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="旬房" data-cap-en="Shunbou, Roppongi"><img alt="旬房" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOeuKGz6RG46X-hkmo-XzTqe1Uh8xS8MS_0jlhhQ_5QzzzMm5rdrIhGEWaiaQJkscoQs_IA6uTpm4nR-LL514RofMIC_KF3kd68Dyl9xivIiIsSePSKgsDgDg8WWmuXT0x_6x6Um4ehE1_Uw7g7-K7F0A=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="旬房" data-cap-en="Shunbou, Roppongi"><img alt="旬房" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO1EQQ_nKr2lDS9LKrEy6qbgU6OBhwSkPg6vKDQ7rJ0idPMgR9ZbyXoeb8i5Y4hWiuaey240MF2Rx27w6T9e1-M4Yv0NMCYs8IcpWpgK34qFQPLjC1oApos6d43abLVro261gu6pAPPdnn5HOzdYTN0FA=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">午餐预定约1点下午。位于六本木Grand Hyatt Tokyo内，与铁塔同在港区，日式套餐含和牛/海鲜/刺身
+            </span><div class="en">Lunch reservation approx. 1:00 PM. Located in Grand Hyatt Tokyo, Roppongi — same Minato Ward as Tokyo Tower. Japanese set menus with wagyu/seafood/sashimi.</div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 周二 11:30–14:30, 17:30–20:30</span><span class="en">Tue 11:30 AM–2:30 PM, 5:30–8:30 PM</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?cid=765301258044528511" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🚌 交通</span><span class="en">Transport</span></div><div class="traffic-info"><span class="cn">乐高(台场) → 博物馆(新宿) <strong>约10km，约22分钟</strong> · 博物馆(新宿) → 铁塔(港区) <strong>约4.4km，约9分钟</strong></span><div class="en">Legoland (Daiba) → Museum (Shinjuku) <strong>~10km, ~22 min</strong> · Museum (Shinjuku) → Tower (Minato) <strong>~4.4km, ~9 min</strong></div></div></div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🌧 雨天</span><span class="en">Rain Plan</span></div><div class="rain-plan"><span class="cn">乐高室内✅ · 博物馆室内✅ · 铁塔展望台雨天仍可参观（视野可能受雾影响）</span><div class="en">Legoland indoor ✅ · Museum indoor ✅ · Tower deck still open in rain (view may be foggy).</div></div></div>
+</div>
+</div>
+<!-- D08 -->
+<div class="day-card" data-date="2026-07-29" id="day08">
+<div class="day-header">
+<div class="day-num">08<span>DAY</span></div>
+<div class="day-meta"><div class="day-title"><span class="cn">TeamLab · 晴空塔 · 银座</span><span class="en">TeamLab · Skytree · Ginza</span></div><div class="day-date">29 Jul <span class="cn">(三)</span><span class="en">(Wed)</span></div></div>
+<div class="city-badge">🏙 <span class="cn">东京</span><span class="en">Tokyo</span></div>
+</div>
+<div class="day-body">
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">TeamLab Planets TOKYO（丰洲）</span><span class="en">teamLab Planets TOKYO (Toyosu)</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="TeamLab Planets" data-cap-en="teamLab Planets TOKYO"><img alt="TeamLab Planets" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOubC5GiWJGFxnUo9_DCEoVdDiwvTIgutQb8PgSUVGPbNtEK5k6H9-wMe-O0LC21O7wAlrXIXqPKV2fgwqFeXOToHIgtvWWDJQWZtuAKwt9MBBwDa-ivOqgjkNCPDmz52_cq91kyr-Mgz5s23M=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="TeamLab Planets" data-cap-en="teamLab Planets TOKYO"><img alt="TeamLab Planets" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO7kd82Q_lCl-OUxeJkg-URAV_Ns-0yi46yj6AoMAYb-ErSE6gHJ2igq0YH9ZcC7pK5ILCcd5qIzVX9US15Y6GQcsuIw2NhD7sbhyD0Uag_tgbWTNbkHk3b-uQwK29f6WiyGr1BhHpue-mB4A=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="TeamLab Planets" data-cap-en="teamLab Planets TOKYO"><img alt="TeamLab Planets" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPmhw2CSbGlyXnUOtyY1pCdUGPI0Ru5TqtP1buZOb_ybcA4jpIpbSdxa3MVKBWsI10_D2rvOKRWTTJEddYXjHlusTaCnCjyb-R3nB2CyiV4XGL0gbk4d67lLnoszb00fVBmHMpbmW-UdTGRLw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="TeamLab Planets" data-cap-en="teamLab Planets TOKYO"><img alt="TeamLab Planets" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPUAADqkN7G1QCAAdqVPUNKbB6BlX4kaFH9eozA6ggsu-nRdthQGE3O_GThHEVqNOCXHY1caUYees0khQwGlqXD3GcvgH3x_eiJtMG8e-42Sm6oLHBcsP2sQ6u4G90fmame_FPt1rWjEzmfaik=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="TeamLab Planets" data-cap-en="teamLab Planets TOKYO"><img alt="TeamLab Planets" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOufbaO7Z_1xhuY2cPAOJFTV9Jakr_TpyH-7SQ9u8y-Ai62K4nEc2G2KLavI200GT0YrucnE-naPUDCGOrZLw1wSz_-CFRXJNiA1WGcZso5-_mIx6cMbAqIHN_kT-tTYN6ClaDKXzRt-_Z6wN39E80g=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">含门票。营业 08:00–22:00。须提前预约时段，7月旺季极可能售罄。进水区需卷裤脚
+            </span><div class="en">Ticket included. Open 08:00–22:00. Timed entry must be booked ahead — likely to sell out in July. Roll up pants for the water area.</div>
+</div>
+<div class="tags-row">
+<span class="tag tag-ticket"><span class="cn">🎟 含门票</span><span class="en">Ticket included</span></span>
+<span class="tag tag-book"><span class="cn">📋 出发前1个月提前预约时段票</span><span class="en">Book timed entry 1 month before departure</span></span>
+<span class="tag tag-verify"><span class="cn">⚠ 确认场馆是Planets(丰洲)还是Borderless(麻布台)</span><span class="en">Confirm Planets (Toyosu) vs Borderless (Azabudai)</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=teamLab+Planets+Tokyo+Toyosu" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge must">★</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">东京晴空塔展望台 Tokyo Skytree</span><span class="en">Tokyo Skytree Observation Deck</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="东京晴空塔" data-cap-en="Tokyo Skytree"><img alt="东京晴空塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMOFLn4jer0UbC2VPEWSBTQhhMLSHq2wgve_mEdNmtTH4ET2JBYmrzxdNxAUigLE4qjH68v6sVB1iplogQ5MK_e7ktarmUsLgBJB2oztXKK_uWx_kJQeOl2tyCxNO7hUc3qKMRUfyTyV7I0tg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京晴空塔" data-cap-en="Tokyo Skytree"><img alt="东京晴空塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMYB3AM-u6zDHbtVpKR6dRiIlO6RYAtPnUvl_8Xzegt4MU8rf5y7lTG-T121C0l6AHsACSiylYg6M0YJxttsLqqLCirDdWHvJE6GW8jskpLyxmw24XG2BRd37DvmAqpoVOFS-zj2kbNZhSy13Y=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京晴空塔" data-cap-en="Tokyo Skytree"><img alt="东京晴空塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPW1sP70_WexM2PkhKvoA8pISU01_-Q03PTH7fOrJI6WSkilnmoAgGFIuwiEYaB-qne2ZF7cIQjTUkcLFu5mtmCth1iNhzX7op-a8CL_T5xIuOZ2oJRV41dqxhF8K15ph-Pa-h1dyFOr7WCMw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京晴空塔" data-cap-en="Tokyo Skytree"><img alt="东京晴空塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMAyPUE0AY1SLwuhu_0ztrGMylzb6tBccd5F7NtRoMBi0SyxTK6-_oLO7p3oixMC8doV7lYVgmB44CIJJEcjIIaCHLPNbybIHcPWJ_O88T5eqUrFvBCkFM2ei0tf8kPDmR0UbxUbXq0ymelog=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="东京晴空塔" data-cap-en="Tokyo Skytree"><img alt="东京晴空塔" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNHFXctg31tj7OghwplyrP4iF8g-kT59MMLGl6aj1465yyhmBUgR_Yhp7PqN6Enyo7eN6sePTiyPEq33abO5tvPTGNx1-plaAXPai0supdYSm82-j4Ro48TFUyO7wVqcn0ytkf_4kjJ9NVgSa9w6qETrQ=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">含门票。营业 10:00–22:00（周末9:00起）。押上站徒步即达。晴天可见富士山
+            </span><div class="en">Ticket included. Open 10:00–22:00 (9:00 on weekends). Walkable from Oshiage Station. Mt. Fuji visible on clear days.</div>
+</div>
+<div class="tags-row">
+<span class="tag tag-ticket"><span class="cn">🎟 含门票</span><span class="en">Ticket included</span></span>
+<span class="tag tag-verify"><span class="cn">⚠ 确认含天望廊350m还是天望回廊450m</span><span class="en">Confirm 350m or 450m deck included</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?q=Tokyo+Skytree+Sumida+City" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge side">○</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">银座购物 Ginza</span><span class="en">Ginza Shopping</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="银座" data-cap-en="Ginza, Tokyo"><img alt="银座" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPf3jIC9LQCRziNJ7PkGdPL3obdsQnrNdo4YJA2wXpfar07W14cnu-sj7_ZE5dIBWkJ5PQvf4Wq9huV_qpzRwS6zU3m_eUO1D8EDB4YROMgTuk2dQNm_uAWO_a3sjEuWrThRNNvIFhFerAj=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="银座" data-cap-en="Ginza, Tokyo"><img alt="银座" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPp4LgJ3l_9w-J2yqESKYNTt87ApDMjqKvWgVuKfGqy2QnmtONNaYETrjvFksfOgsmCknGjpSbp0ibpiBL8RuCS1pvocYoXY1V8xEjdaKNpRZzMQMxA7vf4spbb3_PGAz0a111EPpzNoUDl98e78iihRg=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="银座" data-cap-en="Ginza, Tokyo"><img alt="银座" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOeMMXQ7yvnmWxr866cE8obqJ6nYBS5Z_KvPuybTvjHLr4H9XNoKLHjUl4IUan-P3Yu584X8G5cTxsxzlRCH4AXD-hXAXBi4xg4IxXW59Bh3GQN9S6Mv44nSf7BFii-bCcthLxiYJE5naVz3ac=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="银座" data-cap-en="Ginza, Tokyo"><img alt="银座" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMbyk31HachnBDjDL9LEkXv-7TID1zc36NbkRkX8EWOzxMpCA3wxUKXbnwb8n4j33S1MfS0QmfXGkz8gK0ZyjmHoTuALRSsBNy6vhyax-V-_Op9V7FxXTB5liDSvAt6PWHw8h7Cvfj_rbM6ktE=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="银座" data-cap-en="Ginza, Tokyo"><img alt="银座" src="https://lh3.googleusercontent.com/place-photos/AJRVUZM91nxzIKE936K7DTTguyhhDYeBDufPe2uqH15KGtsk9VJcCpTiCKFYEkGo-uY2k244nML1hhA_ac-uPLGJ4SoQBsfbOoKayNG1dnxDO-XOVtSDGg29GyAratLY58ZpAI4E99XCYs4D1pA0pg=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">日系百货+精品街。晴空塔→银座约30分钟，午餐后继续购物
+            </span><div class="en">Japanese department stores + boutique streets. Approx. 30 min from Skytree. Shopping continues after lunch.</div>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.app.goo.gl/yyAutSfsJGxMBHks5?g_st=ac" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="spot-row">
+<div class="spot-badge dine">🍽</div>
+<div class="spot-main">
+<div class="spot-name"><span class="cn">银座 うかい亭 Ginza Ukai-Tei</span><span class="en">Ginza Ukai-Tei ⭐4.6</span></div>
+<div class="carousel carousel-sm">
+<div class="carousel-track">
+<div class="carousel-slide" data-cap-cn="银座うかい亭" data-cap-en="Ginza Ukai-Tei"><img alt="银座うかい亭" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMgyd8QtvMZh_CC8USnEUGbNWrnl9y10OnolxcWK5HdpHUE6uTxkgD1uUeY31BE5zM69G8bP8xdnZMNW5Mz5GqJzcLDJ4AXyDh4v7wqUlVgBajWocy-_IbDhbOGtw_HDwDjrN2XAF1TrIcqPx7EvxszBw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="银座うかい亭" data-cap-en="Ginza Ukai-Tei"><img alt="银座うかい亭" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPIOwiLCwTME1ohNCosUh7tmnU3KiAUEhbYOsenS703VczkEVnnY4BGVz39BtWL5lkg8BIKhMavBXIddcZr5k5eXZbf6EfdcuMZH2mFqE7OIrZXa53hKXvisNvwlzMj6JDuYg-SIibQjJG6BTlPJVOOmw=s4800-w702-h447"/></div>
+<div class="carousel-slide" data-cap-cn="银座うかい亭" data-cap-en="Ginza Ukai-Tei"><img alt="银座うかい亭" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMCbPQsx75cZnXi6TtA5TJl59ace84rGJxSdcn4xD0MdLvYL4HPiXcqnGHBo_9I25G7CgxKx1J0EQ8gQvs-xW15SfAt3lo-RGyuSPUZhdgjCB3OMQR15_uIyGJGVlT7RMecjKgwd9m9cUDJEwUnmf-u=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="银座うかい亭" data-cap-en="Ginza Ukai-Tei"><img alt="银座うかい亭" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPP7iLYR8bleqZk1ujhhieBkUpIR-E0vXI-dDn_d3DQxxHTyLXr6VvTxoqe4eEX3iuneco3LiPurPF8hQuL9zRgpiSmIg_hpNHCPcr2tvaINRb9F_E4ePVLxMq-B-bpfL1vUpiymXYuQfjbMGCNm7R2Tw=s4800-w800-h600"/></div>
+<div class="carousel-slide" data-cap-cn="银座うかい亭" data-cap-en="Ginza Ukai-Tei"><img alt="银座うかい亭" src="https://lh3.googleusercontent.com/place-photos/AJRVUZObaWLrbFPflP4IMZsWtmwfsSBLHzbOqDNEo9u7IApVPVWNEOyadgIpio1-LE1d8j_eOb_DCDn0hEHO2ph0BfFYThhESHWFQzyjxmZPIKs8wZQy_kpeltusKsuy-7RKlwnw1iIS4XrO6JteJADGoMOFew=s4800-w800-h600"/></div>
+</div>
+<button class="carousel-arrow prev">‹</button>
+<button class="carousel-arrow next">›</button>
+<div class="carousel-dots"></div>
+<div class="carousel-zoom-hint">🔍</div>
+</div>
+<div class="spot-note"><span class="cn">午餐预定约1点下午。<strong>已订位</strong>，铁板烧名店，A5和牛+鲍鱼，去年吃过
+            </span><div class="en">Lunch reservation approx. 1:00 PM. <strong>Booking confirmed.</strong> Renowned teppanyaki — A5 wagyu + abalone. Visited last year.</div>
+</div>
+<div class="tags-row">
+<span class="hours-chip"><span class="cn">📅 周三 12:00–21:30</span><span class="en">Wed 12:00 PM–9:30 PM</span></span>
+<span class="tag tag-book"><span class="cn">✅ 已订位</span><span class="en">Confirmed booking</span></span>
+</div>
+<div class="spot-actions">
+<a class="map-btn" href="https://maps.google.com/?cid=9657200045435452382" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
+</div>
+</div>
+</div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🚌 交通</span><span class="en">Transport</span></div><div class="traffic-info"><span class="cn">TeamLab(丰洲) → 晴空塔(押上) <strong>约9.5km，约20分钟</strong> · 晴空塔 → 银座 <strong>约7.9km，约17分钟</strong></span><div class="en">TeamLab (Toyosu) → Skytree (Oshiage) <strong>~9.5km, ~20 min</strong> · Skytree → Ginza <strong>~7.9km, ~17 min</strong></div></div></div>
+<div class="sub-row"><div class="sub-label"><span class="cn">🌧 雨天</span><span class="en">Rain Plan</span></div><div class="rain-plan"><span class="cn">TeamLab室内✅ · 晴空塔室内✅ · 银座商场✅ 全天雨天完全不影响 🎉</span><div class="en">TeamLab indoor ✅ · Skytree indoor ✅ · Ginza malls ✅ — entire day unaffected by rain 🎉</div></div></div>
+</div>
+</div>
+<!-- ===== D09 TIMELINE ===== -->
+<div class="section" id="d09">
+<div class="sec-title-wrap"><div class="sec-title"><span class="cn">🕙 D09 回程时间轴 · 30 Jul (四)</span><span class="en">D09 RETURN DAY TIMELINE · JUL 30 (THU)</span></div></div>
+<div class="day-card" data-date="2026-07-30" id="day09">
+<div class="day-header">
+<div class="day-num">09<span>DAY</span></div>
+<div class="day-meta"><div class="day-title"><span class="cn">东京 → 香港 → 金边</span><span class="en">Tokyo → Hong Kong → Phnom Penh</span></div><div class="day-date">30 Jul <span class="cn">(四) · 回程日</span><span class="en">(Thu) · Return Day</span></div></div>
+<div class="city-badge">✈️ <span class="cn">回家</span><span class="en">Going Home</span></div>
+</div>
+<div class="day-body">
+<div class="timeline">
+<div class="tl-row">
+<div class="tl-time">06:30</div>
+<div><div class="tl-text"><span class="cn">⏰ 起床</span><span class="en">Wake up</span></div><div class="tl-sub"><span class="cn">退房前收拾行李，确认无遗漏</span><div class="en">Pack before check-out, double-check nothing is left behind</div></div></div>
+</div>
+<div class="tl-row">
+<div class="tl-time">07:00</div>
+<div><div class="tl-text"><span class="cn">🍳 酒店快速早餐</span><span class="en">Quick hotel breakfast</span></div><div class="tl-sub"><span class="cn">D09早餐含在套餐内，最后一顿，建议快吃</span><div class="en">D09 breakfast included — last meal, recommend eating quickly</div></div></div>
+</div>
+<div class="tl-row">
+<div class="tl-time">07:15</div>
+<div><div class="tl-text"><span class="cn">🧳 Check-out · 装载行李上巴士</span><span class="en">Check-out · Load luggage onto bus</span></div><div class="tl-sub"><span class="cn">Tan家回程行李额达2×32kg，注意装箱 · 确认护照/随身包不放进托运箱</span><div class="en">Tan family's return allowance is 2×32kg — pack carefully · keep passports/valuables out of checked bags</div></div></div>
+</div>
+<div class="tl-row" style="background:#fde8ec">
+<div class="tl-time" style="color:var(--red)">07:15</div>
+<div><div class="tl-text" style="font-weight:800"><span class="cn">🚌 出发前往羽田机场（HND）</span><span class="en">Depart for Haneda Airport (HND)</span></div><div class="tl-sub"><span class="cn">酒店→羽田约30–60分钟（视路况，早高峰可能更久）</span><div class="en">Hotel → Haneda approx. 30–60 min (traffic-dependent, longer during rush hour)</div></div></div>
+</div>
+<div class="tl-row" style="background:#fde8ec">
+<div class="tl-time" style="color:var(--red)">08:05</div>
+<div><div class="tl-text" style="font-weight:800"><span class="cn">✅ 最晚抵达羽田 T3 国际线</span><span class="en">Latest arrival at Haneda T3 International</span></div><div class="tl-sub"><span class="cn">起飞前2小时到达 · 羽田行李安检须<strong>自己推行李到安检区、自行将行李放上 X 光机扫描</strong>，交完柜台不代表完成托运，记得走完这步再去过安检
+            </span><div class="en">Arrive 2 hours before departure · At Haneda, you must <strong>personally wheel your bags to the security area and place them on the X-ray scanner yourself</strong> — checking in at the counter does not complete the process; remember this step before heading to security.</div>
+</div></div>
+</div>
+<div class="tl-row">
+<div class="tl-time">08:05<br/>–09:30</div>
+<div><div class="tl-text"><span class="cn">🧳 CX柜台值机 → 行李安检 → 过安检 → 候机</span><span class="en">CX Counter Check-in → Baggage Scan → Security → Boarding Wait</span></div><div class="tl-sub"><span class="cn">① CX柜台办理值机 + 打印登机牌 + 贴行李牌<br/>② <strong>自己推行李去行李安检区，自行放上 X 光机扫描</strong>（⚠️ 很多人不知道这步，必须完成才算托运成功）<br/>③ 才能去过人身安检 · 候机
+            </span><div class="en">① CX counter check-in + print boarding pass + attach baggage tag<br/>② <strong>Personally wheel bags to baggage security and place on the X-ray scanner</strong> (⚠️ many travelers miss this step — required to complete check-in)<br/>③ Then proceed to personal security · boarding wait</div>
+</div></div>
+</div>
+<div class="tl-row">
+<div class="tl-time">10:05</div>
+<div><div class="tl-text"><span class="cn">✈️ CX0543 起飞 HND → HKG</span><span class="en">CX0543 Departs HND → HKG</span></div><div class="tl-sub"><span class="cn">Tan家商务J / Hew/Chet经济S · Boeing 777 · 4h45m</span><div class="en">Tan family Business J / Hew/Chet Economy S · Boeing 777 · 4h45m</div></div></div>
+</div>
+<div class="tl-row">
+<div class="tl-time">13:50</div>
+<div><div class="tl-text"><span class="cn">🛬 抵达香港 HKG T1</span><span class="en">Arrive Hong Kong HKG T1</span></div><div class="tl-sub"><span class="cn">过境转机，不出境 · 同T1转机 · 候机约1h45m</span><div class="en">Transit only, no exit through immigration · Same T1 transfer · Layover approx. 1h45m</div></div></div>
+</div>
+<div class="tl-row">
+<div class="tl-time">15:35</div>
+<div><div class="tl-text"><span class="cn">✈️ CX0655 起飞 HKG → KTI</span><span class="en">CX0655 Departs HKG → KTI</span></div><div class="tl-sub"><span class="cn">Tan家商务J / Hew/Chet经济S · Airbus A359 · 2h40m</span><div class="en">Tan family Business J / Hew/Chet Economy S · Airbus A359 · 2h40m</div></div></div>
+</div>
+<div class="tl-row" style="background:#e8f5e9">
+<div class="tl-time" style="color:var(--green)">17:15</div>
+<div><div class="tl-text" style="font-weight:800;color:var(--green)"><span class="cn">🏠 抵达金边 KTI · 回家！</span><span class="en">Arrive Phnom Penh KTI · Home!</span></div><div class="tl-sub"><span class="cn">取行李，回家</span><div class="en">Collect baggage, head home</div></div></div>
+</div>
+</div>
+<div style="margin-top:12px;background:#fde8ec;border-radius:8px;padding:10px 12px;font-size:12px;color:#5a0010"><span class="cn">
+        ⚠️ <strong>羽田行李托运提醒：</strong>CX柜台办完值机后，<strong>须自己推行李到行李安检区放上 X 光机扫描</strong>，这步完成才算真正托运成功。6人行李量大，预留充足时间，<strong>08:05前务必抵达</strong>
+</span><div class="en" style="color:#a04050;margin-top:4px">⚠️ <strong>Haneda Baggage Reminder:</strong> After checking in at the CX counter, you must <strong>personally bring your bags to the security scan area and place them on the X-ray machine yourself</strong> — this step completes the check-in. With 6 passengers' luggage, allow plenty of time and <strong>arrive by 08:05</strong>.</div>
+</div>
+<div style="margin-top:8px;background:#fff3cd;border-radius:8px;padding:10px 12px;font-size:12px;color:#5a3e00"><span class="cn">
+        💡 <strong>CX值机提醒：</strong>全员座位均已选好（Tan家商务舱 CX0543：12C/12D/12E/12G · CX0655：15A/15D/15G/15K；Hew/Chet经济舱 CX0543：49H/49G · CX0655：46H/46J），<strong>但尚未办理值机</strong>。全员须在出发前24小时内网上办理值机
+        </span><div class="en" style="color:#8a6a1a;margin-top:4px">💡 <strong>CX Check-in Note:</strong> Everyone's seats are pre-selected (Tan family Business — CX0543: 12C/12D/12E/12G · CX0655: 15A/15D/15G/15K; Hew/Chet Economy — CX0543: 49H/49G · CX0655: 46H/46J), <strong>but check-in has not yet been done</strong>. Everyone must complete online check-in within 24 hours of departure.</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ===== WEATHER & POWER ===== -->
+<div class="section" id="weather">
+<div class="sec-title-wrap"><div class="sec-title"><span class="cn">🌡️ 七月天气 &amp; 电源插座</span><span class="en">JULY WEATHER &amp; POWER OUTLETS</span></div></div>
+<div class="info-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+<div class="hotel-card" style="margin-bottom:0">
+<div class="hotel-header" style="background:var(--blue)">🏙 <span class="cn">大阪</span><span class="en">Osaka</span></div>
+<div class="hotel-body">
+<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px">
+<span style="font-size:28px;font-weight:800;color:var(--red)">26–32°C</span>
+</div>
+<div style="font-size:11px;color:var(--muted);margin-bottom:8px"><span class="cn">最低 ~26°C / 最高 ~32°C+</span><div class="en">Low ~26°C / High 32°C+</div></div>
+<div style="font-size:12px;color:var(--ink)"><span class="cn">☔ 7月中旬梅雨季结束，下旬转闷热晴天</span><div class="en" style="margin-top:2px">Rainy season usually ends mid-July; late July turns hot &amp; humid/sunny</div></div>
+</div>
+</div>
+<div class="hotel-card" style="margin-bottom:0">
+<div class="hotel-header" style="background:var(--blue)">🏙 <span class="cn">东京</span><span class="en">Tokyo</span></div>
+<div class="hotel-body">
+<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px">
+<span style="font-size:28px;font-weight:800;color:var(--red)">25–31°C</span>
+</div>
+<div style="font-size:11px;color:var(--muted);margin-bottom:8px"><span class="cn">最低 ~25°C / 最高 ~31°C+</span><div class="en">Low ~25°C / High 31°C+</div></div>
+<div style="font-size:12px;color:var(--ink)"><span class="cn">☔ 6–7月中为梅雨季，7月下旬猛暑开始</span><div class="en" style="margin-top:2px">Rainy season runs Jun–mid Jul; intense summer heat begins late July</div></div>
+</div>
+</div>
+</div>
+<div class="checklist" style="margin-bottom:16px">
+<div class="check-item">
+<div class="check-icon c-amber">☂</div>
+<div><div class="check-main"><span class="cn">行程横跨梅雨尾声 + 盛夏初期</span><span class="en">Trip spans tail-end of rainy season + early summer heat</span></div><div class="check-sub"><span class="cn">22–26日大阪、26–30日东京，正值梅雨季结束至猛暑开始的过渡期，早晚备好雨具，白天注意防暑</span><div class="en">Osaka (22–26) and Tokyo (26–30) fall right in the transition from rainy season to peak summer — carry rain gear and stay hydrated.</div></div></div>
+</div>
+<div class="check-item">
+<div class="check-icon c-amber">🌡️</div>
+<div><div class="check-main"><span class="cn">湿度高，体感闷热</span><span class="en">High humidity makes it feel hotter</span></div><div class="check-sub"><span class="cn">日间高峰时段室外活动建议补水、戴帽子/太阳伞，傍晚气温仍可能25°C以上</span><div class="en">Hydrate and bring a hat/umbrella for midday outdoor activities; evenings often stay above 25°C.</div></div></div>
+</div>
+<div class="check-item">
+<div class="check-icon c-green">✓</div>
+<div><div class="check-main"><span class="cn">行李建议：轻薄速干衣物为主</span><span class="en">Pack light, quick-dry clothing</span></div><div class="check-sub"><span class="cn">短袖/短裤为主，备1-2件薄长袖应对室内冷气（商场/电车冷气常较强）</span><div class="en">Mostly short sleeves/shorts; bring 1–2 light long-sleeve items for strong AC indoors/on trains.</div></div></div>
+</div>
+</div>
+<div class="sec-title-wrap"><div class="sec-title"><span class="cn">🔌 电源插座规格</span><span class="en">POWER OUTLET SPECS</span></div></div>
+<div class="hotel-card">
+<div class="hotel-body" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+<img alt="Japan Type A outlet" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDIwMCAxNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxNjAiIHJ4PSIxMiIgZmlsbD0iI2Y4ZjZmMiIvPgogIDwhLS0gT3V0bGV0IHBsYXRlIC0tPgogIDxyZWN0IHg9IjUwIiB5PSIzMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIHJ4PSIxMCIgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjZTVlMGQ4IiBzdHJva2Utd2lkdGg9IjIiLz4KICA8IS0tIFR3byB2ZXJ0aWNhbCBwYXJhbGxlbCBzbG90cyAoVHlwZSBBKSAtLT4KICA8cmVjdCB4PSI4MCIgeT0iNTUiIHdpZHRoPSI4IiBoZWlnaHQ9IjMyIiByeD0iMiIgZmlsbD0iIzFhMWExYSIvPgogIDxyZWN0IHg9IjExMiIgeT0iNTUiIHdpZHRoPSI4IiBoZWlnaHQ9IjMyIiByeD0iMiIgZmlsbD0iIzFhMWExYSIvPgogIDwhLS0gU21hbGwgaG9sZXMgbmVhciB0aXAgKEphcGFuLXNwZWNpZmljIGRldGFpbCkgLS0+CiAgPGNpcmNsZSBjeD0iODQiIGN5PSI2MCIgcj0iMS41IiBmaWxsPSIjZjhmNmYyIi8+CiAgPGNpcmNsZSBjeD0iMTE2IiBjeT0iNjAiIHI9IjEuNSIgZmlsbD0iI2Y4ZjZmMiIvPgogIDwhLS0gTGFiZWwgLS0+CiAgPHRleHQgeD0iMTAwIiB5PSIxMTUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI0M4MTAyRSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VHlwZSBBIMK3IDEwMFY8L3RleHQ+Cjwvc3ZnPgo=" style="width:140px;height:auto;flex-shrink:0"/>
+<div style="flex:1;min-width:180px">
+<div class="hotel-name" style="margin-bottom:6px">Type A · 100V · 50/60Hz</div>
+<div style="font-size:12px;color:var(--muted);line-height:1.6"><span class="cn">
+          日本插座为<strong>双扁脚 A 型</strong>，电压 <strong>100V</strong>（比中国/马来西亚的220-240V低）。东京地区50Hz，大阪地区60Hz
+          </span><div class="en" style="margin-top:4px">Japan uses <strong>two-prong flat Type A</strong> outlets at <strong>100V</strong> (lower than China/Malaysia's 220–240V). Tokyo runs 50Hz, Osaka runs 60Hz.</div>
+</div>
+</div>
+</div>
+</div>
+<div class="checklist" style="margin-top:12px">
+<div class="check-item">
+<div class="check-icon c-green">✓</div>
+<div><div class="check-main"><span class="cn">手机/笔电充电器：通常无需转换插头</span><span class="en">Phone/laptop chargers: usually no adapter needed</span></div><div class="check-sub"><span class="cn">大多数充电器是宽电压（100-240V）通用，两扁脚插头可直接插入日本插座</span><div class="en">Most chargers are wide-voltage (100–240V) and use two flat prongs that fit Japanese outlets directly.</div></div></div>
+</div>
+<div class="check-item">
+<div class="check-icon c-amber">⚠</div>
+<div><div class="check-main"><span class="cn">三脚插头（接地脚）需转接头</span><span class="en">Three-prong (grounded) plugs need an adapter</span></div><div class="check-sub"><span class="cn">如吹风机、卷发棒等三脚插头电器，需带 A/B 型万用转换头</span><div class="en">Items like hairdryers/curlers with grounded plugs need a universal Type A/B adapter.</div></div></div>
+</div>
+<div class="check-item">
+<div class="check-icon c-green">✓</div>
+<div><div class="check-main"><span class="cn">非宽压家电（吹风机等）注意电压差</span><span class="en">Non-wide-voltage appliances: mind the voltage gap</span></div><div class="check-sub"><span class="cn">100V 电器功率会明显变弱，非宽压设备建议直接在日本购买使用，不必千里带去</span><div class="en">Devices not rated for 100V will run weaker — better to buy locally in Japan rather than bring non-wide-voltage appliances.</div></div></div>
+</div>
+</div>
+</div>
+<!-- ===== CHECKLIST ===== -->
+<div class="section" id="checklist">
+<div class="sec-title-wrap"><div class="sec-title"><span class="cn">✅ 出发前必办清单</span><span class="en">PRE-DEPARTURE CHECKLIST</span></div></div>
+<div class="checklist">
+<div class="check-item">
+<div class="check-icon c-green">✓</div>
+<div><div class="check-main"><span class="cn">🎢 USJ Express Pass 时段已确认</span><span class="en">USJ Express Pass time slots confirmed</span></div><div class="check-sub"><span class="cn">超级任天堂世界 10:50–12:20（含Mario Kart/耀西/咚奇刚） · 哈利波特区 13:00–14:20（含禁忌之旅/鹰马飞行），详见D03行程</span><div class="en">Super Nintendo World 10:50–12:20 (Mario Kart/Yoshi/Donkey Kong) · Harry Potter area 13:00–14:20 (Forbidden Journey/Hippogriff) — see D03 for details</div></div></div>
+</div>
+<div class="check-item">
+<div class="check-icon c-green">✓</div>
+<div><div class="check-main"><span class="cn">日本奥林匹克博物馆已移至 D07（28 Jul 周二）</span><span class="en">Japan Olympic Museum moved to D07 (Jul 28, Tuesday)</span></div><div class="check-sub"><span class="cn">原行程27日(周一)休馆风险，新行程已避开——馆方固定每周一休馆</span><div class="en">Original plan risked Monday closure — new schedule avoids it; museum closes every Monday year-round.</div></div></div>
+</div>
+<div class="check-item">
+<div class="check-icon c-amber">⚠</div>
+<div><div class="check-main"><span class="cn">网上办理 CX0543 / CX0655 值机（全员，提前24小时）</span><span class="en">Check in online for CX0543 / CX0655 (everyone, 24 hours ahead)</span></div><div class="check-sub"><span class="cn">全员座位均已选好（Tan家商务舱 / Hew·Chet经济舱），但<strong>值机尚未办理</strong>，须出发前24小时内网上办理</span><div class="en">Everyone's seats are pre-selected (Tan family Business / Hew &amp; Chet Economy), but <strong>check-in has not been completed</strong> — must complete online check-in within 24 hours of departure.</div></div></div>
+</div>
+<div class="check-item">
+<div class="check-icon c-green">✓</div>
+<div><div class="check-main"><span class="cn">日元现金准备</span><span class="en">Prepare Japanese Yen cash</span></div><div class="check-sub"><span class="cn">超时费¥10,000/小时现场付 · USJ园内现金消费 · 小额支付</span><div class="en">Overtime fee ¥10,000/hour paid on-site · cash spending inside USJ · small purchases.</div></div></div>
+</div>
+</div>
+</div>
+</div>
+<div class="footer"><span class="cn">
+  本手册 EN/CN 双语版 · 含航班 / 酒店 / 地图 / 雨天备案 / 查证提醒
+  </span><div class="en">Bilingual EN/CN Handbook · Includes flights / hotels / maps / rain plans / verification reminders</div><span class="cn">
+  所有营业时间 / 票价 / 公休以官网为准 · 切勿全信本文件记忆
+  </span><div class="en">All hours / prices / closures should be verified via official sources — do not rely solely on this document.</div>
+</div>
+<!-- JUMP TO TODAY FAB -->
+<button class="fab-today" id="fabToday" onclick="jumpToToday(false)"><span class="cn">📍 今天</span><span class="en">Today</span></button>
+<!-- JUMP MENU FAB -->
+<button class="fab-jump" onclick="openJumpSheet()"><span class="cn">📋 跳转</span><span class="en">Jump</span></button>
+<!-- LANGUAGE TOGGLE FAB -->
+<button class="fab-lang" id="fabLang" onclick="toggleLang()">🌐 <span id="fabLangLabel">中</span></button>
+<!-- JUMP SHEET -->
+<div class="jump-overlay" id="jumpOverlay" onclick="if(event.target===this)closeJumpSheet()">
+<div class="jump-sheet">
+<div class="jump-sheet-header">
+<div class="jump-sheet-title"><span class="cn">跳转到指定日期</span><span class="en">Jump to a Day</span></div>
+<button class="jump-sheet-close" onclick="closeJumpSheet()">✕</button>
+</div>
+<div id="jumpRows"></div>
+</div>
+</div>
 <script>
-  const GKEY  = "AIzaSyCdPSJBGOPzM4v-MyX9ncfLqjMM4Du_Pbc";
-  const AVKEY = "af669cc0fe4c1e03a86a0ff82ea0a6bb";
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+window.addEventListener('scroll', () => {
+  const sections = ['flights','hotels','itinerary','d09','weather','checklist'];
+  let current = 'flights';
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && window.scrollY >= el.offsetTop - 80) current = id;
+  });
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.getAttribute('href') === '#' + current);
+  });
+});
 
-  // ── Google Places API (New) photo loader ──
-  const placeQueries = {
-    "img-conrad":      "Conrad Osaka Hotel",
-    "img-fourseasons": "Four Seasons Hotel Tokyo at Otemachi",
-    "spot-lego-osaka": "LEGOLAND Discovery Centre Osaka",
-    "spot-nifrel":     "Nifrel Aquarium Osaka",
-    "spot-usj":        "Universal Studios Japan Osaka",
-    "spot-kaiyukan":   "Osaka Aquarium Kaiyukan",
-    "spot-santamaria": "Santa Maria cruise Osaka Bay",
-    "spot-tempozan":   "Tempozan Giant Ferris Wheel Osaka",
-    "spot-shibuya":    "Shibuya Crossing Tokyo",
-    "spot-lego-tokyo": "LEGOLAND Discovery Centre Tokyo",
-    "spot-olympic":    "Japan Olympic Museum Tokyo",
-    "spot-tokyotower": "Tokyo Tower",
-    "spot-disney":     "Tokyo Disneyland",
-    "spot-teamlab":    "TeamLab Planets Tokyo",
-    "spot-skytree":    "Tokyo Skytree",
-    "spot-ginza":      "Ginza Tokyo shopping",
-  };
+/* ===== CAROUSEL (generic: handles hero + every per-location mini carousel) ===== */
+function initAllCarousels() {
+  document.querySelectorAll('.carousel').forEach((root) => {
+    const track = root.querySelector('.carousel-track');
+    const slides = Array.from(root.querySelectorAll('.carousel-slide'));
+    const dotsWrap = root.querySelector('.carousel-dots');
+    if (!track || slides.length === 0) return;
 
-  async function loadPlacePhoto(imgId, query) {
-    try {
-      const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": GKEY,
-          "X-Goog-FieldMask": "places.photos"
-        },
-        body: JSON.stringify({ textQuery: query, pageSize: 1 })
+    let cur = 0;
+    let timer = null;
+
+    if (dotsWrap) {
+      slides.forEach((s, i) => {
+        const dot = document.createElement('div');
+        dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+        dot.addEventListener('click', (e) => { e.stopPropagation(); goTo(i); });
+        dotsWrap.appendChild(dot);
       });
-      const data = await res.json();
-      const photoName = data.places?.[0]?.photos?.[0]?.name;
-      if (!photoName) return;
-      const el = document.getElementById(imgId);
-      if (el) el.src = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=600&key=${GKEY}`;
-    } catch(e) {}
-  }
+    }
 
-  // ── AviationStack flight tracking ──
-  const flights = [
-    { iata: "SQ0153", date: "2026-07-22" },
-    { iata: "SQ0622", date: "2026-07-22" },
-    { iata: "CX0543", date: "2026-07-30" },
-    { iata: "CX0655", date: "2026-07-30" },
-  ];
+    function render() {
+      track.style.transform = `translateX(-${cur * 100}%)`;
+      if (dotsWrap) Array.from(dotsWrap.children).forEach((d, i) => d.classList.toggle('active', i === cur));
+    }
+    function goTo(i) { cur = (i + slides.length) % slides.length; render(); restart(); }
+    function move(dir) { goTo(cur + dir); }
+    function start() { if (slides.length > 1) timer = setInterval(() => goTo(cur + 1), 4200); }
+    function stop() { clearInterval(timer); }
+    function restart() { stop(); start(); }
 
-  function fmtTime(dt) {
-    if (!dt) return "—";
-    return new Date(dt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-  }
+    root.querySelectorAll('.carousel-arrow.prev').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); move(-1); }));
+    root.querySelectorAll('.carousel-arrow.next').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); move(1); }));
 
-  const statusMap = { scheduled:"计划中", active:"飞行中", landed:"已落地", cancelled:"取消", diverted:"改降" };
+    slides.forEach((s, i) => {
+      s.addEventListener('click', () => {
+        const gallery = slides.map(sl => ({
+          src: sl.querySelector('img').src,
+          capCn: sl.dataset.capCn || '',
+          capEn: sl.dataset.capEn || ''
+        }));
+        openLightbox(gallery, i);
+        stop();
+      });
+    });
+    root._carouselStop = stop;
+    root._carouselStart = start;
+    start();
+  });
+}
+initAllCarousels();
 
-  async function trackFlight({ iata, date }) {
-    const statusEl = document.getElementById("status-" + iata);
-    const depEl    = document.getElementById("dep-" + iata);
-    const arrEl    = document.getElementById("arr-" + iata);
-    try {
-      const res  = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${AVKEY}&flight_iata=${iata}&flight_date=${date}`);
-      const data = await res.json();
-      const f    = data.data?.[0];
-      if (!f) { statusEl.textContent = "暂无数据"; statusEl.className = "flight-status"; return; }
-      const s = f.flight_status || "scheduled";
-      statusEl.textContent = statusMap[s] || s;
-      statusEl.className   = "flight-status " + s;
-      const dep = f.departure?.actual || f.departure?.estimated || f.departure?.scheduled;
-      const arr = f.arrival?.actual   || f.arrival?.estimated   || f.arrival?.scheduled;
-      if (dep) depEl.textContent = fmtTime(dep);
-      if (arr) arrEl.textContent = fmtTime(arr);
-      if (f.departure?.delay > 0) { depEl.style.color = "#e74c3c"; depEl.title = `延误 ${f.departure.delay} 分钟`; }
-    } catch(e) {
-      statusEl.textContent = "需HTTPS升级";
-      statusEl.className   = "flight-status";
+/* ===== LIGHTBOX (shared by all carousels) ===== */
+let lbGallery = [];
+let lbIndex = 0;
+function openLightbox(gallery, index) {
+  lbGallery = gallery;
+  lbIndex = index;
+  renderLightbox();
+  document.getElementById('lightbox').classList.add('open');
+}
+function renderLightbox() {
+  const item = lbGallery[lbIndex];
+  document.getElementById('lightboxImg').src = item.src;
+  document.getElementById('lightboxCap').innerHTML =
+    item.capCn + '<div class="en">' + item.capEn + '</div>';
+}
+function lightboxMove(dir) { lbIndex = (lbIndex + dir + lbGallery.length) % lbGallery.length; renderLightbox(); }
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+document.getElementById('lightbox').addEventListener('click', (e) => {
+  if (e.target.id === 'lightbox') closeLightbox();
+});
+
+/* ===== JUMP TO TODAY ===== */
+function parseLocalDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function jumpToToday(autoTrigger) {
+  const cards = Array.from(document.querySelectorAll('.day-card[data-date]'));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let target = cards.find(c => parseLocalDate(c.dataset.date).getTime() === today.getTime());
+  if (!target) {
+    const first = cards[0], last = cards[cards.length - 1];
+    if (today < parseLocalDate(first.dataset.date)) {
+      if (autoTrigger) return; // don't auto-scroll before trip starts
+      alert('行程还没开始（7/22 开始）\nTrip hasn\'t started yet (starts Jul 22)');
+      return;
+    } else if (today > parseLocalDate(last.dataset.date)) {
+      target = last;
     }
   }
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.style.transition = 'box-shadow .3s';
+    target.style.boxShadow = '0 0 0 3px var(--red)';
+    setTimeout(() => { target.style.boxShadow = ''; }, 2200);
+  }
+}
+function updateFabState() {
+  const cards = Array.from(document.querySelectorAll('.day-card[data-date]'));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const first = parseLocalDate(cards[0].dataset.date);
+  const fab = document.getElementById('fabToday');
+  if (today < first) fab.classList.add('disabled');
+}
+updateFabState();
+window.addEventListener('load', () => jumpToToday(true));
 
-  function trackAllFlights() { flights.forEach(trackFlight); }
-
-  window.addEventListener("DOMContentLoaded", () => {
-    trackAllFlights();
-    Object.entries(placeQueries).forEach(([id, q]) => loadPlacePhoto(id, q));
+/* ===== JUMP TO ANY DAY ===== */
+function buildJumpRows() {
+  const cards = Array.from(document.querySelectorAll('.day-card[data-date]'));
+  const wrap = document.getElementById('jumpRows');
+  wrap.innerHTML = '';
+  cards.forEach((c, i) => {
+    const num = String(i + 1).padStart(2, '0');
+    const titleEl = c.querySelector('.day-title');
+    const cnTitle = titleEl ? titleEl.childNodes[0].textContent.trim() : '';
+    const enTitle = titleEl && titleEl.querySelector('.en') ? titleEl.querySelector('.en').textContent.trim() : '';
+    const d = parseLocalDate(c.dataset.date);
+    const dateLabel = (d.getMonth() + 1) + '/' + d.getDate();
+    const row = document.createElement('div');
+    row.className = 'jump-row';
+    row.innerHTML = `
+      <div class="jump-row-num">D${num}</div>
+      <div class="jump-row-main">
+        <div class="jump-row-title">${cnTitle}</div>
+        <div class="jump-row-date">${dateLabel} · ${enTitle}</div>
+      </div>`;
+    row.addEventListener('click', () => {
+      closeJumpSheet();
+      setTimeout(() => scrollToDay(c), 150);
+    });
+    wrap.appendChild(row);
   });
+}
+function scrollToDay(card) {
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  card.style.transition = 'box-shadow .3s';
+  card.style.boxShadow = '0 0 0 3px var(--blue)';
+  setTimeout(() => { card.style.boxShadow = ''; }, 2200);
+}
+function openJumpSheet() {
+  buildJumpRows();
+  document.getElementById('jumpOverlay').classList.add('open');
+}
+function closeJumpSheet() {
+  document.getElementById('jumpOverlay').classList.remove('open');
+}/* ===== LANGUAGE TOGGLE ===== */
+function applyLang(lang) {
+  document.body.classList.toggle('lang-cn', lang === 'cn');
+  document.getElementById('fabLangLabel').textContent = lang === 'cn' ? 'EN' : '中';
+  try { localStorage.setItem('handbookLang', lang); } catch (e) {}
+}
+function toggleLang() {
+  const next = document.body.classList.contains('lang-cn') ? 'en' : 'cn';
+  applyLang(next);
+}
+(function initLang() {
+  let saved = 'en';
+  try { saved = localStorage.getItem('handbookLang') || 'en'; } catch (e) {}
+  applyLang(saved);
+})();
 </script>
 </body>
 </html>
