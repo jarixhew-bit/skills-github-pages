@@ -379,7 +379,6 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div class="setting-title">数据</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
-      <button class="btn btn-outline btn-sm" onclick="showModal('modal-import-tx')">📥 导入 IBKR</button>
     </div>
   </div>
 </div>
@@ -560,24 +559,6 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   </div>
 </div>
 
-<!-- MODAL: IMPORT TX JSON -->
-<div class="overlay" id="modal-import-tx">
-  <div class="modal">
-    <div class="modal-hdr">
-      <div class="modal-title">导入 IBKR 交易</div>
-      <button class="modal-close" onclick="closeModal('modal-import-tx')">✕</button>
-    </div>
-    <div class="form-group">
-      <label class="form-label">选择账户</label>
-      <select class="form-input" id="import-acc-sel"></select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">交易 JSON（粘贴 Claude 提供的内容）</label>
-      <textarea class="form-input" id="import-tx-json" rows="8" style="font-size:12px;font-family:monospace" placeholder='[{"date":"2026-06-11","type":"expense","categoryId":"cat_invest_buy","amount":3213,"description":"BUY IBIT"}]'></textarea>
-    </div>
-    <button class="btn btn-primary" onclick="importTxJSON()">导入</button>
-  </div>
-</div>
 
 <!-- PDF REPORT (hidden) -->
 <div id="pdf-report"></div>
@@ -1302,6 +1283,7 @@ function renderSettings(){
 function renderSettingsRecurring(){
   const el = document.getElementById('settings-recurring');
   if(!el) return;
+  if(!data.recurring) data.recurring = [];
   if(!data.recurring.length){ el.innerHTML='<div class="setting-sub" style="padding:8px 0">暂无项目</div>'; return; }
   el.innerHTML = data.recurring.map(r=>{
     const acc = data.accounts.find(a=>a.id===r.accountId)||{};
@@ -1696,10 +1678,6 @@ function deleteCategory(id){
 // ===================== MODAL =====================
 function showModal(id){
   if(id==='modal-add-acc') initColorPicker();
-  if(id==='modal-import-tx'){
-    const sel = document.getElementById('import-acc-sel');
-    sel.innerHTML = data.accounts.map(a=>`<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
-  }
   if(id==='modal-add-recurring'){
     document.getElementById('rec-name').value='';
     document.getElementById('rec-amount').value='';
@@ -1814,34 +1792,6 @@ async function exportPDF(){
   }
 }
 
-// ===================== IMPORT TX JSON =====================
-function importTxJSON(){
-  const accId = document.getElementById('import-acc-sel').value;
-  if(!accId){ toast('请选择账户'); return; }
-  let txs;
-  try{ txs = JSON.parse(document.getElementById('import-tx-json').value); }
-  catch(e){ toast('JSON 格式错误'); return; }
-  if(!Array.isArray(txs)||!txs.length){ toast('没有可导入的交易'); return; }
-  let count = 0;
-  txs.forEach(t=>{
-    if(!t.date||!t.type||!t.amount) return;
-    data.transactions.push({
-      id: uid(),
-      accountId: accId,
-      date: t.date,
-      type: t.type,
-      amount: Number(t.amount),
-      categoryId: t.categoryId||'cat_other_exp',
-      description: t.description||''
-    });
-    count++;
-  });
-  saveData();
-  closeModal('modal-import-tx');
-  document.getElementById('import-tx-json').value='';
-  renderAll();
-  toast(`已导入 ${count} 条交易`);
-}
 
 // ===================== EXPORT CSV =====================
 function exportCSV(){
