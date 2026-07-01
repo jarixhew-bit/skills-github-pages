@@ -115,9 +115,25 @@ body { font-family:'Noto Sans SC',sans-serif; background:var(--cream); color:var
   .seigaiha-bg { animation: none; }
 }
 
+/* ── SITE NAV ── */
+.site-nav {
+  position: sticky; top: 0; z-index: 102;
+  height: 34px;
+  display: flex;
+  background: #120a04;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.site-nav a {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; text-decoration: none;
+  color: rgba(255,255,255,.55);
+  border-bottom: 2px solid transparent;
+}
+.site-nav a.active { color: #fff; border-bottom-color: #e8b840; }
+
 /* ── AREA NAV ── */
 .lang-bar {
-  position: sticky; top: 0; z-index: 101;
+  position: sticky; top: 34px; z-index: 101;
   height: 38px;
   background: var(--ink);
   border-bottom: 1px solid rgba(255,255,255,.1);
@@ -126,7 +142,7 @@ body { font-family:'Noto Sans SC',sans-serif; background:var(--cream); color:var
   padding: 0 16px;
 }
 .area-nav {
-  position: sticky; top: 38px; z-index: 100;
+  position: sticky; top: 72px; z-index: 100;
   background: rgba(26,18,9,.96);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -493,6 +509,12 @@ footer strong { color: rgba(255,255,255,.7); }
 </head>
 <body>
 
+<!-- ── SITE NAV ── -->
+<div class="site-nav">
+  <a href="japan-trip-2026.html">🗾 <span data-en="Handbook">行程手册</span></a>
+  <a href="usj-disney-restaurants.html" class="active">🍽️ <span data-en="Restaurants">餐厅指南</span></a>
+</div>
+
 <!-- ── MASTHEAD ── -->
 <div class="masthead">
   <div class="hero-carousel" id="heroCarousel">
@@ -507,7 +529,6 @@ footer strong { color: rgba(255,255,255,.7); }
   </div>
   <div class="masthead-overlay"></div>
   <div class="masthead-content">
-    <a href="japan-trip-2026.html" style="display:inline-flex;align-items:center;gap:6px;color:rgba(255,255,255,.85);text-decoration:none;font-size:12px;font-weight:700;margin-bottom:10px;">‹ <span data-en="Back to Handbook">返回行程手册</span></a>
     <div class="masthead-eyebrow" data-en="Japan Trip 2026 · Restaurant Guide">Japan Trip 2026 · 餐厅指南</div>
     <h1 class="masthead-title" data-en-html="What to Eat<br><em>After the Parks</em>">主题乐园后<br><em>吃什么</em></h1>
     <p class="masthead-sub" data-en="USJ, Tokyo Disneyland, Shinkansen arrival — all open continuously all day, perfectly fine to arrive between 2–4pm">USJ、迪士尼乐园、新干线落地——全部全天连续营业，2–4pm 到店完全没问题</p>
