@@ -37,7 +37,7 @@
   .hero-tag { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); border-radius: 20px; padding: 4px 12px; font-size: 11px; }
 
   .warn { background: #fff3cd; border-left: 4px solid #e07b00; padding: 13px 18px; font-size: 13px; color: #5a3e00; }
-  .warn strong { display: block; margin-bottom: 3px; }
+  .warn-title { display: block; margin-bottom: 3px; }
   .warn .en { color: #8a6a1a; font-size: 11px; }
 
   /* SITE NAV */
@@ -204,6 +204,7 @@
 
   .footer { text-align: center; font-size: 11px; color: var(--muted); padding: 22px 16px; border-top: 1px solid var(--border); }
   .footer .en { font-size: 10px; color: #aaa; }
+  body:not(.lang-cn) .footer .en, body.lang-cn .footer .en { display: block !important; margin-top: 4px; }
 
   /* CAROUSEL */
   .carousel { position: relative; width: 100%; height: 230px; overflow: hidden; background: #000; max-height: 230px; }
@@ -371,7 +372,7 @@
 </div>
 <!-- WARNING -->
 <div class="warn">
-<strong><span class="cn">👆 使用提示</span><span class="en">Quick Tip</span></strong>
+<strong class="warn-title"><span class="cn">👆 使用提示</span><span class="en">Quick Tip</span></strong>
 <span class="cn">文档内<strong>绿色按钮</strong>（地图、菜单等）和<strong>蓝色按钮</strong>（航班追踪）均可点击打开，标注「⚠ 需查证」的营业时间/票价请以官网为准。</span><span class="en">👆 <strong>Green buttons</strong> (maps, menus) and <strong>blue buttons</strong> (flight tracking) are clickable — items marked "⚠ verify" should be confirmed via official sources.</span>
 </div>
 <!-- TABS -->
