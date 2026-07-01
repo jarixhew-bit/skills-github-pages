@@ -307,14 +307,14 @@
     letter-spacing: inherit !important; text-transform: inherit !important; opacity: 1 !important;
   }
 
-  /* LANGUAGE TOGGLE FAB */
-  .fab-lang { background: var(--gold); color: #fff; border: none; border-radius: 30px; padding: 11px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; flex-direction: column; align-items: center; line-height: 1.25; }
-  .fab-lang .en { font-size: 8px; font-weight: 400; opacity: .85; }
+  /* LANGUAGE TOGGLE (top nav) */
+  .site-lang-btn { flex: none; width: 46px; background: transparent; border: none; border-right: 1px solid rgba(255,255,255,.15); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
 </style>
 </head>
 <body>
 <!-- SITE NAV -->
 <div class="site-nav">
+  <button class="site-lang-btn" id="fabLang" onclick="toggleLang()">🌐 <span id="fabLangLabel">中</span></button>
   <a href="japan-trip-2026.html" class="active"><span class="cn">🗾 行程手册</span><span class="en">Handbook</span></a>
   <a href="usj-disney-restaurants.html"><span class="cn">🍽️ 餐厅指南</span><span class="en">Restaurants</span></a>
 </div>
@@ -1515,7 +1515,6 @@
 <button class="fab-toggle" id="fabToggle" onclick="toggleFabGroup()">⋯</button>
 <button class="fab-mini fab-today" id="fabToday" onclick="jumpToToday(false); closeFabGroup()"><span class="cn">📍 今天</span><span class="en">Today</span></button>
 <button class="fab-mini fab-jump" onclick="openJumpSheet(); closeFabGroup()"><span class="cn">📋 跳转</span><span class="en">Jump</span></button>
-<button class="fab-mini fab-lang" id="fabLang" onclick="toggleLang(); closeFabGroup()">🌐 <span id="fabLangLabel">中</span></button>
 </div>
 <!-- JUMP SHEET -->
 <div class="jump-overlay" id="jumpOverlay" onclick="if(event.target===this)closeJumpSheet()">
