@@ -9,6 +9,11 @@
 - **图片**：旅游手册一律用 Google Places 图片链接，不上传图片文件到仓库
 - **音频**：可以直接放进仓库（文件小，没问题）
 
+## 双语页面规则
+- 所有双语（中/英）页面都要加系统语言自动侦测：首次打开时读 `navigator.language`，以 `zh` 开头显示中文，否则显示英文
+- 用户手动点过语言切换按钮后，要记住该选择（存 localStorage，用独立 key 如 `xxxLangUser`），之后优先于系统语言侦测
+- 参考实现见 `japan-trip-2026.html` 和 `usj-disney-restaurants.html` 的 `initLang()` / `setLangUser()`
+
 ## 部署
 - 所有页面部署到 GitHub Pages
 - 网址格式：`https://jarixhew-bit.github.io/skills-github-pages/文件名`
