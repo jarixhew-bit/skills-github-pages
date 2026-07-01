@@ -1713,16 +1713,17 @@ function closeFabGroup() {
 function applyLang(lang) {
   document.body.classList.toggle('lang-cn', lang === 'cn');
   document.getElementById('fabLangLabel').textContent = lang === 'cn' ? 'EN' : '中';
-  try { localStorage.setItem('handbookLang', lang); } catch (e) {}
 }
 function toggleLang() {
   const next = document.body.classList.contains('lang-cn') ? 'en' : 'cn';
   applyLang(next);
+  try { localStorage.setItem('handbookLangUser', next); } catch (e) {}
 }
 (function initLang() {
-  let saved = 'en';
-  try { saved = localStorage.getItem('handbookLang') || 'en'; } catch (e) {}
-  applyLang(saved);
+  let lang = null;
+  try { lang = localStorage.getItem('handbookLangUser'); } catch (e) {}
+  if (!lang) lang = (navigator.language || '').toLowerCase().startsWith('zh') ? 'cn' : 'en';
+  applyLang(lang);
 })();
 </script>
 </body>
