@@ -1123,7 +1123,8 @@ function goToSection(id) {
   // update active immediately on click
   var idx = sections.indexOf(id.replace('#',''));
   btns.forEach(function(b,j){ b.classList.toggle('active', j===idx); });
-  var navH = (document.querySelector('.lang-bar') ? document.querySelector('.lang-bar').offsetHeight : 0)
+  var navH = (document.querySelector('.site-nav') ? document.querySelector('.site-nav').offsetHeight : 0)
+           + (document.querySelector('.lang-bar') ? document.querySelector('.lang-bar').offsetHeight : 0)
            + (document.querySelector('.area-nav') ? document.querySelector('.area-nav').offsetHeight : 0);
   var top = el.getBoundingClientRect().top + window.pageYOffset - navH - 8;
   window.scrollTo({top: top, behavior: 'smooth'});
