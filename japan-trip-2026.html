@@ -41,7 +41,7 @@
   .warn .en { color: #8a6a1a; font-size: 11px; }
 
   /* NAV TABS */
-.fab-resto { position: fixed; bottom: 198px; right: 16px; z-index: 999; display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #c8982a, #e8b840); color: #1a0800; text-decoration: none; border-radius: 30px; padding: 11px 18px 11px 14px; box-shadow: 0 4px 18px rgba(0,0,0,.35), 0 0 0 3px rgba(200,152,42,.25); font-weight: 800; font-size: 13px; transition: transform .15s, box-shadow .15s; }
+.fab-resto { position: fixed; bottom: 18px; right: 16px; z-index: 999; display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #c8982a, #e8b840); color: #1a0800; text-decoration: none; border-radius: 30px; padding: 11px 18px 11px 14px; box-shadow: 0 4px 18px rgba(0,0,0,.35), 0 0 0 3px rgba(200,152,42,.25); font-weight: 800; font-size: 13px; transition: transform .15s, box-shadow .15s; }
   .fab-resto:hover { transform: scale(1.05); box-shadow: 0 6px 24px rgba(0,0,0,.4), 0 0 0 4px rgba(200,152,42,.3); }
   .fab-resto-icon { font-size: 20px; line-height: 1; }
   .fab-resto-text { display: flex; flex-direction: column; line-height: 1.2; }
@@ -257,12 +257,12 @@
   .dine-tag { background: #ffe8d6; color: #b2560a; }
 
   /* JUMP TO TODAY FAB */
-  .fab-today { position: fixed; bottom: 18px; right: 16px; z-index: 200; background: var(--red); color: #fff; border: none; border-radius: 30px; padding: 11px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+  .fab-today { position: fixed; bottom: 78px; right: 16px; z-index: 200; background: var(--red); color: #fff; border: none; border-radius: 30px; padding: 11px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
   .fab-today .en { font-size: 8px; font-weight: 400; opacity: .85; }
   .fab-today.disabled { background: #aaa; }
 
   /* JUMP MENU FAB + SHEET */
-  .fab-jump { position: fixed; bottom: 78px; right: 16px; z-index: 200; background: var(--blue); color: #fff; border: none; border-radius: 30px; padding: 11px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+  .fab-jump { position: fixed; bottom: 138px; right: 16px; z-index: 200; background: var(--blue); color: #fff; border: none; border-radius: 30px; padding: 11px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
   .fab-jump .en { font-size: 8px; font-weight: 400; opacity: .85; }
   .day-card { scroll-margin-top: 50px; }
   .jump-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; z-index: 998; align-items: flex-end; justify-content: center; }
@@ -301,7 +301,7 @@
   }
 
   /* LANGUAGE TOGGLE FAB */
-  .fab-lang { position: fixed; bottom: 138px; right: 16px; z-index: 200; background: var(--gold); color: #fff; border: none; border-radius: 30px; padding: 11px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+  .fab-lang { position: fixed; bottom: 198px; right: 16px; z-index: 200; background: var(--gold); color: #fff; border: none; border-radius: 30px; padding: 11px 16px; font-size: 12px; font-weight: 800; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
   .fab-lang .en { font-size: 8px; font-weight: 400; opacity: .85; }
 </style>
 </head>
@@ -715,7 +715,7 @@
             </span><div class="en">Indoor facility, family-friendly, approx. 2–3 hours. Located at Tempozan Marketplace, same area as the Aquarium and Ferris Wheel.</div>
 </div>
 <div class="tags-row">
-<span class="hours-chip"><span class="cn">📅 平日 10:00–18:00 / 周末 10:00–19:00</span><span class="en">Weekday 10–18:00 / Weekend 10–19:00</span></span>
+<span class="hours-chip"><span class="cn">📅 平日 10:00–18:00 / 周末 10:00–19:00</span><span class="en">Weekday 10:00–18:00 / Weekend 10:00–19:00</span></span>
 </div>
 <div class="tags-row">
 <span class="tag tag-book"><span class="cn">📋 需提前网购票，现场不卖票</span><span class="en">Buy online in advance, no walk-in sales</span></span>
@@ -746,7 +746,7 @@
             </span><div class="en">Lunch reservation approx. 1:00 PM. Unagi (eel rice) specialist, open all day no afternoon break. <strong style="color:var(--amber)">Located in Namba (downtown Osaka), a different area from Tempozan</strong> — charter car handles this fine.</div>
 </div>
 <div class="tags-row">
-<span class="hours-chip"><span class="cn">📅 每日 11:00–21:30</span><span class="en">Daily 11:00 AM–9:30 PM</span></span>
+<span class="hours-chip"><span class="cn">📅 每日 11:00–21:30</span><span class="en">Daily 11:00–21:30</span></span>
 </div>
 <div class="spot-actions">
 <a class="map-btn" href="https://maps.google.com/?cid=14844667400734804757" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
@@ -836,7 +836,7 @@
 </span><div class="en">Entry at 11:30. Handle replica swords, try shuriken throwing, all-English explanations. Highly interactive for families.</div>
 </div>
 <div class="tags-row">
-<span class="hours-chip"><span class="cn">📅 每日 9:30–19:30</span><span class="en">Daily 9:30 AM–7:30 PM</span></span>
+<span class="hours-chip"><span class="cn">📅 每日 9:30–19:30</span><span class="en">Daily 9:30–19:30</span></span>
 </div>
 <div class="tags-row">
 <span class="tag tag-book"><span class="cn">📋 建议提前预约场次</span><span class="en">Recommend booking entry slot in advance</span></span>
@@ -867,7 +867,7 @@
 </span><div class="en">Kyoto's most iconic temple — wooden stage overlooks the city. Approach via Kiyomizu-zaka/Sannen-zaka old streets, good for shopping and photos. Wear comfortable shoes — many stone steps.</div>
 </div>
 <div class="tags-row">
-<span class="hours-chip"><span class="cn">📅 每日 6:00–18:00</span><span class="en">Daily 6:00 AM–6:00 PM</span></span>
+<span class="hours-chip"><span class="cn">📅 每日 6:00–18:00</span><span class="en">Daily 6:00–18:00</span></span>
 </div>
 <div class="tags-row"><span class="tag tag-verify"><span class="cn">⚠ 旺季人流大，建议避开正午</span><span class="en">Heavy crowds in peak season — avoid midday if possible</span></span></div>
 <div class="spot-actions">
@@ -896,7 +896,7 @@
 </span><div class="en">Lunch reservation approx. 1:00 PM. Known for its <strong>karaage (fried chicken) set</strong>, with sashimi and rolled omelette, à la carte — fits family dining needs.</div>
 </div>
 <div class="tags-row">
-<span class="hours-chip"><span class="cn">📅 周六 11:30–14:00, 18:00–23:30</span><span class="en">Sat 11:30 AM–2:00 PM, 6:00–11:30 PM</span></span>
+<span class="hours-chip"><span class="cn">📅 周六 11:30–14:00, 18:00–23:30</span><span class="en">Sat 11:30–14:00, 18:00–23:30</span></span>
 </div>
 <div class="spot-actions">
 <a class="map-btn" href="https://maps.google.com/?cid=5560931258008110915" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
@@ -922,7 +922,7 @@
 </span><div class="en">Nintendo's official museum in a converted former factory — full history from hanafuda cards to consoles, interactive exhibits, exclusive merchandise. ⭐ 4.5 · Located in Uji, approx. 25 min by car from Kiyomizu-dera. <strong>Lottery-based booking at museum.nintendo.com. Very competitive — but cancellation slots do appear; worth monitoring regularly before departure.</strong></div>
 </div>
 <div class="tags-row">
-<span class="hours-chip"><span class="cn">📅 10:00–20:00，周二休馆</span><span class="en">10:00 AM–8:00 PM · Closed Tuesdays</span></span>
+<span class="hours-chip"><span class="cn">📅 10:00–20:00，周二休馆</span><span class="en">10:00–20:00 · Closed Tuesdays</span></span>
 </div>
 <div class="tags-row">
 <span class="tag tag-verify"><span class="cn">⚠ 刷票地址：museum.nintendo.com</span><span class="en">⚠ Book / refresh at: museum.nintendo.com</span></span>
@@ -952,7 +952,7 @@
 </span><div class="en">Toei's working film studio turned theme park — life-size Edo-period street sets, samurai/ninja shows, haunted house, Kamen Rider &amp; Super Sentai exhibitions. Half-day approx. 5–6 hours. ⭐ 4.0 · No advance booking required, buy tickets on-site.</div>
 </div>
 <div class="tags-row">
-<span class="hours-chip"><span class="cn">📅 10:00–21:00，周二休馆</span><span class="en">10:00 AM–9:00 PM · Closed Tuesdays</span></span>
+<span class="hours-chip"><span class="cn">📅 10:00–21:00，周二休馆</span><span class="en">10:00–21:00 · Closed Tuesdays</span></span>
 </div>
 <div class="tags-row">
 <span class="tag tag-book"><span class="cn">✅ 7/25（周六）正常开放</span><span class="en">✅ Open on Jul 25 (Sat)</span></span>
@@ -1139,7 +1139,7 @@
               </span><div class="en">Sega's indoor arcade and amusement rides at DECKS Tokyo Beach, Odaiba (3F–5F). Fully indoor — rain-proof, family-friendly.</div>
 </div>
 <div class="tags-row">
-<span class="hours-chip"><span class="cn">📅 平日 11:00–19:00 / 周末 10:00–20:00</span><span class="en">Weekday 11–19:00 / Weekend 10–20:00</span></span>
+<span class="hours-chip"><span class="cn">📅 平日 11:00–19:00 / 周末 10:00–20:00</span><span class="en">Weekday 11:00–19:00 / Weekend 10:00–20:00</span></span>
 </div>
 <div class="tags-row">
 <span class="tag tag-verify"><span class="cn">⚠ 查证票价（约¥3,800/人）</span><span class="en">Verify ticket price (approx. ¥3,800/pax)</span></span>
@@ -1197,7 +1197,7 @@
             </span><div class="en">Lunch reservation approx. 1:00 PM. Located in Grand Hyatt Tokyo, Roppongi — same Minato Ward as Tokyo Tower. Japanese set menus with wagyu/seafood/sashimi.</div>
 </div>
 <div class="tags-row">
-<span class="hours-chip"><span class="cn">📅 周二 11:30–14:30, 17:30–20:30</span><span class="en">Tue 11:30 AM–2:30 PM, 5:30–8:30 PM</span></span>
+<span class="hours-chip"><span class="cn">📅 周二 11:30–14:30, 17:30–20:30</span><span class="en">Tue 11:30–14:30, 17:30–20:30</span></span>
 </div>
 <div class="spot-actions">
 <a class="map-btn" href="https://maps.google.com/?cid=765301258044528511" target="_blank">📍 <span class="cn">点击查看地图</span><span class="en">Tap to view map</span></a>
@@ -1321,7 +1321,7 @@
             </span><div class="en">Lunch reservation approx. 1:00 PM. <strong>Booking confirmed.</strong> Renowned teppanyaki — A5 wagyu + abalone. Visited last year.</div>
 </div>
 <div class="tags-row">
-<span class="hours-chip"><span class="cn">📅 周三 12:00–21:30</span><span class="en">Wed 12:00 PM–9:30 PM</span></span>
+<span class="hours-chip"><span class="cn">📅 周三 12:00–21:30</span><span class="en">Wed 12:00–21:30</span></span>
 <span class="tag tag-book"><span class="cn">✅ 已订位</span><span class="en">Confirmed booking</span></span>
 </div>
 <div class="spot-actions">
