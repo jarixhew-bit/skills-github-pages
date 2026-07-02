@@ -142,8 +142,18 @@
   /* ===== GALLERY (pure CSS scroll-snap) ===== */
   .gal { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 10px; scrollbar-width: none; margin: 10px 0 4px; }
   .gal::-webkit-scrollbar { display: none; }
-  .gal img { scroll-snap-align: start; width: 78%; max-width: 340px; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; flex: none; background: var(--line); }
+  .gal img { scroll-snap-align: start; width: 78%; max-width: 340px; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; flex: none; background: var(--line); cursor: zoom-in; }
   .gal-hint { font-size: 10px; color: var(--faint); margin-bottom: 6px; }
+
+  /* ===== LIGHTBOX ===== */
+  .lb { position: fixed; inset: 0; background: rgba(0,0,0,.93); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
+  .lb.open { display: flex; }
+  .lb img { max-width: 94%; max-height: 80vh; object-fit: contain; border-radius: 8px; }
+  .lb-counter { color: rgba(255,255,255,.55); font-size: 12px; margin-top: 10px; letter-spacing: .05em; }
+  .lb-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 19px; cursor: pointer; line-height: 36px; text-align: center; }
+  .lb-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.15); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 22px; cursor: pointer; line-height: 40px; text-align: center; }
+  .lb-arrow.prev { left: 10px; }
+  .lb-arrow.next { right: 10px; }
 
   /* ===== HOTEL ===== */
   .hotel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
@@ -1045,6 +1055,15 @@
 
 </div><!-- /wrap -->
 
+<!-- LIGHTBOX -->
+<div class="lb" id="lb">
+  <button class="lb-close" id="lbClose">✕</button>
+  <button class="lb-arrow prev" id="lbPrev">‹</button>
+  <img id="lbImg" src="" alt="">
+  <div class="lb-counter" id="lbCounter"></div>
+  <button class="lb-arrow next" id="lbNext">›</button>
+</div>
+
 <script>
 /* ===== LANGUAGE: system auto-detect + remembered manual choice ===== */
 function applyLang(lang) {
@@ -1064,17 +1083,26 @@ function toggleLang() {
   applyLang(lang);
 })();
 
-/* ===== TODAY highlight (day cards + strip chips) ===== */
+/* ===== TODAY highlight + auto-scroll ===== */
 (function markToday() {
   const now = new Date();
   const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
   const todayStr = y + '-' + m + '-' + d;
+  let todayEl = null;
   document.querySelectorAll('.day[data-date]').forEach(el => {
-    if (el.dataset.date === todayStr) el.classList.add('today');
+    if (el.dataset.date === todayStr) { el.classList.add('today'); todayEl = el; }
   });
   document.querySelectorAll('.daystrip a[data-date]').forEach(el => {
     if (el.dataset.date === todayStr) el.classList.add('today-chip');
   });
+  if (todayEl) {
+    requestAnimationFrame(() => {
+      const topbarH = (document.querySelector('.topbar') || {}).offsetHeight || 44;
+      const stripH = (document.querySelector('.daystrip') || {}).offsetHeight || 54;
+      const top = todayEl.getBoundingClientRect().top + window.pageYOffset - topbarH - stripH - 12;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    });
+  }
 })();
 
 /* ===== DAY STRIP: smooth scroll with sticky offset + active highlight ===== */
@@ -1107,6 +1135,48 @@ function toggleLang() {
   }
   window.addEventListener('scroll', setActive, { passive: true });
   setActive();
+})();
+
+/* ===== LIGHTBOX ===== */
+(function galLightbox() {
+  const lb = document.getElementById('lb');
+  const lbImg = document.getElementById('lbImg');
+  const lbCounter = document.getElementById('lbCounter');
+  let imgs = [], idx = 0;
+
+  function open(galImgs, i) {
+    imgs = galImgs; idx = i;
+    render();
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function close() {
+    lb.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function render() {
+    lbImg.src = imgs[idx].src;
+    lbCounter.textContent = (idx + 1) + ' / ' + imgs.length;
+  }
+  function move(dir) { idx = (idx + dir + imgs.length) % imgs.length; render(); }
+
+  document.getElementById('lbClose').onclick = close;
+  document.getElementById('lbPrev').onclick = () => move(-1);
+  document.getElementById('lbNext').onclick = () => move(1);
+  lb.addEventListener('click', e => { if (e.target === lb) close(); });
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'ArrowLeft') move(-1);
+    else if (e.key === 'ArrowRight') move(1);
+    else if (e.key === 'Escape') close();
+  });
+
+  document.querySelectorAll('.gal').forEach(gal => {
+    const galImgs = Array.from(gal.querySelectorAll('img'));
+    galImgs.forEach((img, i) => {
+      img.addEventListener('click', () => open(galImgs, i));
+    });
+  });
 })();
 
 /* ===== CHECKLIST: tap to toggle, persisted per device ===== */
