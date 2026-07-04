@@ -8,9 +8,8 @@
 
 ### 1. 開場健檢〔本機限定〕
 
-- 本機 `~/.claude/settings.json` 的 `model` 曾被設為 `claude-fable-5[1m]`。此模型是
-  限期提供的，失效後 session 可能報錯或行為異常。若使用者反映「怪怪的」或你發現
-  模型設定仍是 fable，提醒他跑 `/model` 選 Sonnet。
+- 本機 `~/.claude/settings.json` 目前無 model 覆寫（已於 2026-07-04 確認使用者已跑過
+  `/model` 設回 Sonnet 5，舊的 fable 警示已解除，不需再提）。
 - 同一個 settings.json 裡有**明文的 Google Maps API key**。key 若外流會被盜用計費。
   觸發時機：使用者下次問到設定、安全，或你下次需要動 settings.json 時，提一次
   「值得在 Google Cloud 後台加用量上限，也可研究改放環境變數（派 claude-code-guide

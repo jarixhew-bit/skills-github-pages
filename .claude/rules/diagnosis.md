@@ -49,9 +49,7 @@
 - **鐵律（所有環境適用）：同一指令失敗 2 次就換方法（換工具、換寫法、或查文件），
   禁止第 3 次原樣重試。**
 
-## 附帶發現〔本機限定，修完可刪〕
+## 附帶發現〔本機限定，見 letter.md 第 1 件事〕
 
-1. 本機 `~/.claude/settings.json` 的 `model` 曾被設為 `claude-fable-5[1m]`——此模型
-   失效後 session 可能異常。使用者應執行 `/model` 改回 sonnet。
-2. 本機 settings.json 內含明文 Google Maps API key。建議在 Google Cloud 後台設
-   用量上限，並研究改放環境變數（見 letter.md 第 1 件事）。
+本機 settings.json 內含明文 Google Maps API key，詳情與建議只寫在 letter.md，
+此處不重複（避免同一件事寫兩個家）。
