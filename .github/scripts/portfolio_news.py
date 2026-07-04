@@ -90,6 +90,14 @@ def fetch_ibkr_positions():
             positions[sym] = {"qty": round(qty, 4), "cost": round(cost, 4)}
     return positions if positions else None
 
+def compute_rsi(hist, period=14):
+    delta = hist["Close"].diff()
+    gain  = delta.where(delta > 0, 0).rolling(period).mean()
+    loss  = -delta.where(delta < 0, 0).rolling(period).mean()
+    rs    = gain / loss
+    rsi   = 100 - 100 / (1 + rs)
+    return round(rsi.iloc[-1], 1)
+
 def fetch_price(ticker):
     tk   = yf.Ticker(ticker)
     hist = tk.history(period="1y")
@@ -99,7 +107,8 @@ def fetch_price(ticker):
     high52    = round(hist["High"].max(), 2)
     low52     = round(hist["Low"].min(), 2)
     pct_range = round((price - low52) / (high52 - low52) * 100, 1)
-    return price, day_chg, high52, low52, pct_range
+    rsi       = compute_rsi(hist)
+    return price, day_chg, high52, low52, pct_range, rsi
 
 def fetch_news(ticker):
     feed  = feedparser.parse(
@@ -136,7 +145,7 @@ def fetch_fear_greed():
     except Exception:
         return "N/A", "N/A"
 
-def buy_rec(price, cost, pct_range, bull_c, bear_c, total):
+def buy_rec(price, cost, pct_range, bull_c, bear_c, total, rsi):
     pnl    = (price - cost) / cost * 100
     sratio = bull_c / total if total > 0 else 0.5
     pos    = pct_range / 100
@@ -147,8 +156,11 @@ def buy_rec(price, cost, pct_range, bull_c, bear_c, total):
     elif pos <= 0.5:    sc += 1
     if sratio >= 0.6:   sc += 1
     elif sratio <= 0.3: sc -= 1
-    if sc >= 4:   return "⭐ 建议分批加仓"
-    elif sc >= 2: return "🟡 可小量加仓"
+    if rsi <= 30:       sc += 2
+    elif rsi <= 40:     sc += 1
+    elif rsi >= 70:     sc -= 1
+    if sc >= 5:   return "⭐ 建议分批加仓"
+    elif sc >= 3: return "🟡 可小量加仓"
     elif sc >= 0: return "⏸️ 观望为主"
     else:         return "⛔ 建议暂缓"
 
@@ -205,7 +217,7 @@ bull_total = bear_total = neut_total = 0
 
 for ticker, info in HOLDINGS.items():
     print(f"处理 {ticker}...")
-    price, day_chg, high52, low52, pct_range = fetch_price(ticker)
+    price, day_chg, high52, low52, pct_range, rsi = fetch_price(ticker)
     news   = fetch_news(ticker)
     bull_c = sum(1 for n in news if "利好" in n["sent"])
     bear_c = sum(1 for n in news if "利空" in n["sent"])
@@ -215,10 +227,11 @@ for ticker, info in HOLDINGS.items():
     pnl_pct = (price - info["cost"]) / info["cost"] * 100
     pnl_usd = round((price - info["cost"]) * info["qty"], 2)
     mv      = round(price * info["qty"], 2)
-    rec     = buy_rec(price, info["cost"], pct_range, bull_c, bear_c, total)
+    rec     = buy_rec(price, info["cost"], pct_range, bull_c, bear_c, total, rsi)
     overall = "🟢 利好" if bull_c > bear_c else ("🔴 利空" if bear_c > bull_c else "⚪ 中性")
     day_icon = "🟢" if day_chg >= 0 else "🔴"
     alert = "\n⚠️ <b>单日涨跌超 3%，请关注！</b>" if abs(day_chg) >= 3 else ""
+    rsi_note = " 🟢超卖" if rsi <= 30 else (" 🔴超买" if rsi >= 70 else "")
 
     lines = [
         f"📈 <b>{html.escape(info['name'])}</b>{alert}",
@@ -226,6 +239,7 @@ for ticker, info in HOLDINGS.items():
         f"当前价 <b>${price}</b> {day_icon} ({day_chg:+.2f}%)",
         f"市值 ${mv:,.0f} | 浮盈亏 <b>${pnl_usd:+,.0f}</b> ({pnl_pct:+.1f}%)",
         f"52周: 高 ${high52} / 低 ${low52} | 位置 {pct_range:.0f}%",
+        f"RSI(14): <b>{rsi}</b>{rsi_note}",
         f"情绪: {overall} (利好 {bull_c} | 利空 {bear_c} | 中性 {neut_c})",
         f"今日建议: <b>{rec}</b>",
         "",
