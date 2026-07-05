@@ -1,4 +1,8 @@
 #!/bin/bash
+# ⚠️ 已停用（2026-07-05）：此脚本曾注册为 SessionStart hook，
+# 但安装量太重（clone + pnpm install + 11 个插件），导致网页版开新对话
+# 无限转圈。现已从 .claude/settings.json 移除注册，仅保留供手动执行。
+# 如需重新启用，务必改为后台执行并加超时，不要阻塞 session 启动。
 set -euo pipefail
 
 # Only run in remote (web) environments
