@@ -27,7 +27,8 @@ jobs:
 
       - name: Fetch IBKR data and update ibkr-snapshot.json
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          IBKR_FLEX_TOKEN: ${{ secrets.IBKR_FLEX_TOKEN }}
+          IBKR_FLEX_QUERY_ID: ${{ secrets.IBKR_FLEX_QUERY_ID }}
         run: python3 .github/scripts/ibkr_sync.py
 
       - name: Commit and push changes
