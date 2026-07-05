@@ -26,16 +26,24 @@ if not FLEX_TOK or not FLEX_QID:
 
 def fetch_flex_xml():
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
-    r1 = requests.get(
-        f"{base}.SendRequest",
-        params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"},
-        timeout=30,
-    )
-    root1 = ET.fromstring(r1.text)
-    ref = root1.findtext("ReferenceCode")
-    if not ref:
-        print("ERROR: Flex SendRequest failed:",
+    # 错误 1001（Statement could not be generated）为暂时性错误，重试即可
+    ref = None
+    for attempt in range(4):
+        if attempt:
+            time.sleep(30)
+        r1 = requests.get(
+            f"{base}.SendRequest",
+            params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"},
+            timeout=30,
+        )
+        root1 = ET.fromstring(r1.text)
+        ref = root1.findtext("ReferenceCode")
+        if ref:
+            break
+        print(f"WARN: Flex SendRequest attempt {attempt + 1} failed:",
               root1.findtext("ErrorCode"), root1.findtext("ErrorMessage"))
+    if not ref:
+        print("ERROR: Flex SendRequest failed after retries")
         sys.exit(1)
 
     time.sleep(5)
