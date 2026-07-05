@@ -3,8 +3,10 @@
 ## 用户环境
 - **两个环境共用本 repo**：Claude Code 网页版（claude.ai/code，远程容器）+ 本地 CLI
   （Windows，clone 在 `C:\Users\YANG\skills-github-pages`）。（2026-07-03 起，此前仅网页版）
-- 网页版 session 里的「本地安装」都是指远程容器内，session 结束会消失，需靠
-  SessionStart hook 持久化
+- 网页版 session 里的「本地安装」都是指远程容器内，session 结束会消失
+- ⚠️ SessionStart hook 已于 2026-07-05 停用：曾因安装任务过重导致网页版开新对话
+  无限转圈数天。**禁止再注册阻塞式启动 hook**；如需持久化容器环境，必须后台执行
+  ＋超时，见 `.claude/hooks/session-start.sh` 的停用说明
 - 判别方法：环境变量 `CLAUDE_CODE_REMOTE=true` 为网页版容器；Windows 路径为本地
 
 ## 媒体文件规则
@@ -21,6 +23,14 @@
 - 所有页面部署到 GitHub Pages
 - 网址格式：`https://jarixhew-bit.github.io/skills-github-pages/文件名`
 - 发给别人直接发网址，更新后对方刷新自动同步，不需要重发文件
+
+## 专项组织规则（2026-07-05 与用户确认后建立）
+- **开新专项前先选仓库**：对外网页/App/手册 → 本 repo；制度规则、给 Claude 的
+  工作指示 → workspace repo。本 repo 是**公开仓库**，私密内容一律不放。
+- **新专项必须开独立文件夹**（参照 `xisui/`、`trading/`），禁止把新文件散放在
+  根目录。根目录现有旧页面为保住网址不搬动。
+- **分支不用于分类**：分支只是合并前的临时工作区，合并后即删（网页版自动产生的
+  `claude/*` 分支合并后应删除）。分类靠仓库和文件夹，不靠分支。
 
 ## 分支策略
 - Claude 将改动推送到功能分支，然后**自动创建 PR 并合并到 main**
