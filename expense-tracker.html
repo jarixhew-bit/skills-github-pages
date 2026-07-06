@@ -1910,8 +1910,18 @@ async function exportPDF(){
       pdf.addPage();
       const cat = getCat(t.categoryId);
       const title = `${t.date} · ${cat?cat.icon+' '+cat.name:'未分类'} · ${t.type==='expense'?'−':'+'}${fmt(t.amount, acc.currency)}${t.description?' · '+t.description:''}`;
-      pdf.setFontSize(11);
-      pdf.text(title, 10, 12, {maxWidth: pw-20});
+      // jsPDF 内置字体不支持中文，标题画到 canvas 再以图片嵌入
+      const tc = document.createElement('canvas');
+      let tctx = tc.getContext('2d');
+      tctx.font = '28px sans-serif';
+      tc.width = Math.ceil(tctx.measureText(title).width) + 8;
+      tc.height = 40;
+      tctx = tc.getContext('2d'); // 改尺寸会重置画布状态，需重新设置
+      tctx.font = '28px sans-serif'; tctx.fillStyle = '#222'; tctx.textBaseline = 'middle';
+      tctx.fillText(title, 4, 20);
+      let tW = tc.width*(6/40), tH = 6;
+      if(tW > pw-20){ tH = tH*(pw-20)/tW; tW = pw-20; }
+      pdf.addImage(tc.toDataURL('image/png'), 'PNG', 10, 8, tW, tH);
 
       const margin = 10, topOffset = 20;
       const availW = pw - margin*2, availH = ph - topOffset - margin;
@@ -2486,24 +2496,28 @@ function renderCornerStage(){
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, dispW, dispH);
 
-  const wrap = document.getElementById('corner-wrap');
-  scanState.corners.forEach((pt, idx)=>{
-    const dot = document.createElement('div');
-    dot.className = 'scan-corner-dot';
-    dot.style.left = (pt.x*scale)+'px';
-    dot.style.top = (pt.y*scale)+'px';
-    dot.dataset.idx = idx;
-    attachDragHandlers(dot, wrap, scale);
-    wrap.appendChild(dot);
-  });
-  drawCornerQuad(ctx, scanState.corners, scale);
-
   document.getElementById('scan-footer').innerHTML = `
     <div class="scan-hint">拖动圆点对齐单据四角</div>
     <div class="scan-actions">
       <button class="btn btn-outline" onclick="resetCornersToFull()">重设为全图</button>
       <button class="btn btn-primary" onclick="confirmCorners()">确认裁切 →</button>
     </div>`;
+
+  const wrap = document.getElementById('corner-wrap');
+  // 画布可能被 CSS max-width/max-height 再次缩小，圆点必须按实际显示尺寸定位
+  requestAnimationFrame(()=>{
+    const es = canvas.getBoundingClientRect().width / img.width;
+    scanState.corners.forEach((pt, idx)=>{
+      const dot = document.createElement('div');
+      dot.className = 'scan-corner-dot';
+      dot.style.left = (pt.x*es)+'px';
+      dot.style.top = (pt.y*es)+'px';
+      dot.dataset.idx = idx;
+      attachDragHandlers(dot, wrap);
+      wrap.appendChild(dot);
+    });
+  });
+  drawCornerQuad(ctx, scanState.corners, scale);
 }
 
 function drawCornerQuad(ctx, corners, scale){
@@ -2518,16 +2532,18 @@ function drawCornerQuad(ctx, corners, scale){
   ctx.restore();
 }
 
-function attachDragHandlers(dot, wrap, scale){
+function attachDragHandlers(dot, wrap){
   let dragging = false;
   const move = (clientX, clientY)=>{
-    const rect = wrap.getBoundingClientRect();
+    const canvas = document.getElementById('corner-canvas');
+    const rect = canvas.getBoundingClientRect();
     let x = clientX - rect.left, y = clientY - rect.top;
     x = Math.max(0, Math.min(rect.width, x));
     y = Math.max(0, Math.min(rect.height, y));
     dot.style.left = x+'px'; dot.style.top = y+'px';
     const idx = +dot.dataset.idx;
-    scanState.corners[idx] = {x: x/scale, y: y/scale};
+    const es = rect.width / scanState.img.width;
+    scanState.corners[idx] = {x: x/es, y: y/es};
     redrawCornerCanvas();
   };
   dot.addEventListener('touchstart', e=>{ dragging=true; e.preventDefault(); }, {passive:false});
