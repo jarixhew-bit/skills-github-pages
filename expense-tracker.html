@@ -1824,6 +1824,11 @@ async function exportPDF(){
   // All txs sorted by date desc
   const allSorted = [...txs].sort((a,b)=>new Date(b.date)-new Date(a.date));
 
+  // 凭证编号：有附件的交易按报表顺序编 P1、P2…，明细表与附件页共用同一编号
+  const withAttachments = allSorted.filter(t=>t.attachmentId);
+  const pMap = {};
+  withAttachments.forEach((t,i)=>{ pMap[t.id] = 'P' + (i+1); });
+
   const reportEl = document.getElementById('pdf-report');
   reportEl.innerHTML = `
     <h1>📒 记账报表</h1>
@@ -1859,7 +1864,7 @@ async function exportPDF(){
 
     <h2>交易记录（${allSorted.length} 条）</h2>
     <table>
-      <tr><th>日期</th><th>描述</th><th>类别</th><th>金额</th></tr>
+      <tr><th>日期</th><th>描述</th><th>类别</th><th>金额</th><th>凭证</th></tr>
       ${allSorted.map(t=>{
         const cat = getCat(t.categoryId);
         const amt = t.type==='expense'?`<span class="amt-exp">−${fmt(t.amount,acc.currency)}</span>`:`<span class="amt-inc">+${fmt(t.amount,acc.currency)}</span>`;
@@ -1868,9 +1873,10 @@ async function exportPDF(){
           <td>${t.description||(cat?cat.name:'—')}</td>
           <td>${cat?cat.icon+' '+cat.name:'未分类'}</td>
           <td>${amt}</td>
+          <td>${pMap[t.id]||'—'}</td>
         </tr>`;
       }).join('')}
-      ${allSorted.length===0?'<tr><td colspan="4" style="text-align:center;color:#999">本月暂无记录</td></tr>':''}
+      ${allSorted.length===0?'<tr><td colspan="5" style="text-align:center;color:#999">本月暂无记录</td></tr>':''}
     </table>
 
     <div class="footer">由记账本 App 生成 · ${new Date().toLocaleString('zh-CN')}</div>
@@ -1878,7 +1884,8 @@ async function exportPDF(){
 
   try{
     const canvas = await html2canvas(reportEl, {scale:2, useCORS:true, logging:false});
-    const imgData = canvas.toDataURL('image/png');
+    // 报表页用 JPEG 压缩，PNG 会让整份 PDF 大出近十倍
+    const imgData = canvas.toDataURL('image/jpeg', 0.82);
     const {jsPDF} = window.jspdf;
     const pdf = new jsPDF('p','mm','a4');
     const pw = pdf.internal.pageSize.getWidth();
@@ -1888,12 +1895,11 @@ async function exportPDF(){
     let y = 0;
     while(y < imgH){
       if(y>0) pdf.addPage();
-      pdf.addImage(imgData,'PNG',0,-y,imgW,imgH);
+      pdf.addImage(imgData,'JPEG',0,-y,imgW,imgH);
       y += ph;
     }
 
     // Append one page per transaction with an attachment (this month, this account)
-    const withAttachments = allSorted.filter(t=>t.attachmentId);
     for(const t of withAttachments){
       let blob = await getAttachmentBlob(t.attachmentId);
       if(!blob) blob = await tryFetchRemoteAttachment(t.attachmentId);
@@ -1909,7 +1915,7 @@ async function exportPDF(){
 
       pdf.addPage();
       const cat = getCat(t.categoryId);
-      const title = `${t.date} · ${cat?cat.icon+' '+cat.name:'未分类'} · ${t.type==='expense'?'−':'+'}${fmt(t.amount, acc.currency)}${t.description?' · '+t.description:''}`;
+      const title = `${pMap[t.id]} · ${t.date} · ${cat?cat.icon+' '+cat.name:'未分类'} · ${t.type==='expense'?'−':'+'}${fmt(t.amount, acc.currency)}${t.description?' · '+t.description:''}`;
       // jsPDF 内置字体不支持中文，标题画到 canvas 再以图片嵌入
       const tc = document.createElement('canvas');
       let tctx = tc.getContext('2d');
@@ -2423,49 +2429,99 @@ function detectCornersWithCV(img){
   cv.cvtColor(small, gray, cv.COLOR_RGBA2GRAY);
   const blur = new cv.Mat();
   cv.GaussianBlur(gray, blur, new cv.Size(5,5), 0);
-  const edged = new cv.Mat();
-  cv.Canny(blur, edged, 75, 200);
-  const kernel = cv.Mat.ones(3,3,cv.CV_8U);
-  cv.dilate(edged, edged, kernel);
-
-  const contours = new cv.MatVector();
-  const hierarchy = new cv.Mat();
-  cv.findContours(edged, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
-
-  let best = null, bestArea = 0;
   const imgArea = small.rows * small.cols;
-  const candidates = [];
-  for(let i=0;i<contours.size();i++){
-    const c = contours.get(i);
-    candidates.push({c, area: cv.contourArea(c)});
-  }
-  candidates.sort((a,b)=>b.area-a.area);
-  const top5 = candidates.slice(0,5);
 
-  for(const {c} of top5){
-    const peri = cv.arcLength(c, true);
-    const approx = new cv.Mat();
-    cv.approxPolyDP(c, approx, 0.02*peri, true);
-    const area = cv.contourArea(approx);
-    if(approx.rows===4 && area > 0.2*imgArea && area>bestArea){
-      const pts = [];
-      for(let j=0;j<4;j++){
-        pts.push({x: approx.data32S[j*2]/scale, y: approx.data32S[j*2+1]/scale});
-      }
-      best = pts; bestArea = area;
+  // 三组预处理依次尝试：强边缘 → 弱边缘（补断裂）→ 亮度二值化（白纸深底），
+  // 真实照片对比度低或边缘断裂时后两组能救回来
+  const edgeMaps = [];
+  {
+    const e = new cv.Mat(); cv.Canny(blur, e, 75, 200);
+    const k = cv.Mat.ones(3,3,cv.CV_8U); cv.dilate(e, e, k); k.delete();
+    edgeMaps.push(e);
+  }
+  {
+    const e = new cv.Mat(); cv.Canny(blur, e, 30, 100);
+    const k = cv.Mat.ones(5,5,cv.CV_8U); cv.dilate(e, e, k); k.delete();
+    edgeMaps.push(e);
+  }
+  {
+    const e = new cv.Mat();
+    cv.threshold(blur, e, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+    const k = cv.Mat.ones(5,5,cv.CV_8U);
+    cv.morphologyEx(e, e, cv.MORPH_CLOSE, k); k.delete();
+    edgeMaps.push(e);
+  }
+
+  let best = null, bestScore = 0, bestFallback = null, bestFallbackArea = 0;
+  for(const edged of edgeMaps){
+    const contours = new cv.MatVector();
+    const hierarchy = new cv.Mat();
+    cv.findContours(edged, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+    const cand = [];
+    for(let i=0;i<contours.size();i++){
+      const c = contours.get(i);
+      cand.push({c, area: cv.contourArea(c)});
     }
-    approx.delete();
+    cand.sort((a,b)=>b.area-a.area);
+    for(const {c, area} of cand.slice(0,5)){
+      if(area < 0.15*imgArea) continue;
+      const peri = cv.arcLength(c, true);
+      let gotQuad = false;
+      for(const eps of [0.02, 0.035, 0.05]){
+        const approx = new cv.Mat();
+        cv.approxPolyDP(c, approx, eps*peri, true);
+        if(approx.rows===4 && cv.isContourConvex(approx)){
+          const qArea = cv.contourArea(approx);
+          if(qArea > 0.15*imgArea && qArea > bestScore){
+            const pts = [];
+            for(let j=0;j<4;j++) pts.push({x: approx.data32S[j*2]/scale, y: approx.data32S[j*2+1]/scale});
+            best = pts; bestScore = qArea;
+          }
+          gotQuad = true;
+        }
+        approx.delete();
+        if(gotQuad) break;
+      }
+      // 取不到规整四边形时，用最大轮廓的最小外接矩形保底（接近的框比全图好调）
+      if(!gotQuad && area > bestFallbackArea && area > 0.25*imgArea){
+        const rr = cv.minAreaRect(c);
+        const vts = cv.RotatedRect.points(rr);
+        bestFallback = vts.map(p=>({
+          x: Math.max(0, Math.min(img.width, p.x/scale)),
+          y: Math.max(0, Math.min(img.height, p.y/scale))
+        }));
+        bestFallbackArea = area;
+      }
+    }
+    for(const {c} of cand) c.delete();
+    contours.delete(); hierarchy.delete();
+    if(best) break;
   }
-  for(const {c} of candidates) c.delete();
+  for(const e of edgeMaps) e.delete();
+  if(!best && bestFallback) best = bestFallback;
+  // 软阴影/柔和边缘常让检测框略微内缩，向外扩约 1.2% 补偿（背景在增强时会变白，不碍事）
+  if(best) best = expandQuad(best, img.width, img.height);
 
-  src.delete(); small.delete(); gray.delete(); blur.delete(); edged.delete();
-  kernel.delete(); contours.delete(); hierarchy.delete();
+  src.delete(); small.delete(); gray.delete(); blur.delete();
 
   if(best){
     scanState.corners = orderPoints(best);
   } else {
     scanState.corners = defaultCorners(img.width, img.height);
   }
+}
+
+function expandQuad(pts, w, h){
+  const pad = 0.012 * Math.max(w, h);
+  const cx = pts.reduce((s,p)=>s+p.x,0)/4, cy = pts.reduce((s,p)=>s+p.y,0)/4;
+  return pts.map(p=>{
+    const dx = p.x-cx, dy = p.y-cy;
+    const len = Math.hypot(dx,dy) || 1;
+    return {
+      x: Math.max(0, Math.min(w-1, p.x + dx/len*pad)),
+      y: Math.max(0, Math.min(h-1, p.y + dy/len*pad))
+    };
+  });
 }
 
 function orderPoints(pts){
