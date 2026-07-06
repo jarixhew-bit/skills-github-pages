@@ -282,6 +282,55 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 #pdf-reimburse .rb-footer{margin-top:36px;padding-top:12px;border-top:1px solid #E4E7EB;
   font-size:10.5px;color:#AAB2BB;text-align:right}
 
+/* PDF STATEMENT REPORT (hidden, used for export) — 账户明细，仿手工范本深蓝金线风格 */
+#pdf-statement{position:fixed;left:-9999px;top:0;width:800px;background:#fff;
+  padding:0;font-family:Arial,'Microsoft YaHei',sans-serif;font-size:13px;
+  color:#222;line-height:1.5}
+#pdf-statement .st-page{background:#fff;position:relative}
+#pdf-statement .st-band{background:#1e3a5f;color:#fff;padding:26px 40px 18px}
+#pdf-statement .st-band-title{font-size:22px;font-weight:700;letter-spacing:.5px}
+#pdf-statement .st-band-sub{font-size:12px;color:#d4af6a;letter-spacing:1px;margin-top:6px}
+#pdf-statement .st-gold-line{height:3px;background:#c9a24b}
+#pdf-statement .st-body{padding:24px 40px 32px}
+#pdf-statement .st-info{display:flex;flex-wrap:wrap;border:1px solid #1e3a5f;margin-bottom:22px}
+#pdf-statement .st-info-cell{width:50%;box-sizing:border-box;padding:12px 18px;border-bottom:1px solid #D8DCE1}
+#pdf-statement .st-info-cell:nth-child(odd){border-right:1px solid #D8DCE1}
+#pdf-statement .st-info-cell:nth-last-child(-n+2){border-bottom:none}
+#pdf-statement .st-info-label{font-size:11px;color:#8A94A0;letter-spacing:.5px}
+#pdf-statement .st-info-val{font-size:15px;font-weight:700;color:#1e3a5f;margin-top:3px}
+#pdf-statement .st-info-note{font-size:10.5px;color:#8A94A0;margin-top:2px}
+#pdf-statement .st-info-remark{width:100%;box-sizing:border-box;padding:10px 18px;font-size:11px;color:#8A94A0;border-bottom:none;background:#F7F8FA}
+#pdf-statement .st-sec-title{font-size:15px;font-weight:700;color:#1e3a5f;margin:26px 0 10px}
+#pdf-statement .st-sec-title:first-child{margin-top:0}
+#pdf-statement table{width:100%;border-collapse:collapse;font-size:12.5px}
+#pdf-statement th{text-align:left;padding:9px 10px;background:#1e3a5f;color:#fff;
+  font-size:11px;font-weight:600;letter-spacing:.3px}
+#pdf-statement th.st-num-col, #pdf-statement td.st-num-col{text-align:center;width:50px}
+#pdf-statement th.st-amt-col, #pdf-statement td.st-amt-col{text-align:right}
+#pdf-statement th.st-voucher-col, #pdf-statement td.st-voucher-col{text-align:right;width:60px;color:#1e3a5f}
+#pdf-statement td{padding:8px 10px;border-bottom:1px solid #E4E7EB;color:#2C2C2C}
+#pdf-statement tbody tr:nth-child(even){background:#F7F8FA}
+#pdf-statement .st-total-row td{border-top:2px solid #1e3a5f;border-bottom:none;background:#1e3a5f !important;
+  color:#d4af6a;font-weight:700;font-size:13.5px;padding-top:10px;padding-bottom:10px}
+#pdf-statement .st-cash-table td, #pdf-statement .st-cash-table th{padding:10px 12px}
+#pdf-statement .st-cash-label{color:#555}
+#pdf-statement .st-cash-val{text-align:right;font-weight:700}
+#pdf-statement .st-cash-exp{color:#C0392B}
+#pdf-statement .st-cash-note{font-size:10.5px;color:#8A94A0;margin-left:6px;font-weight:400}
+#pdf-statement .st-cash-final td{background:#1e7a42 !important;color:#fff;font-size:14.5px;font-weight:700}
+#pdf-statement .st-footer{background:#1e3a5f;color:#d4af6a;padding:10px 40px;
+  display:flex;justify-content:space-between;font-size:10.5px;letter-spacing:.3px}
+#pdf-statement .st-attach-band{background:#1e3a5f;color:#fff;padding:22px 40px 14px}
+#pdf-statement .st-attach-title{font-size:19px;font-weight:700;letter-spacing:.5px}
+#pdf-statement .st-attach-body{padding:22px 40px 32px;min-height:640px}
+#pdf-statement .st-attach-strip{background:#1e3a5f;color:#fff;display:flex;
+  align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:16px;font-size:12.5px}
+#pdf-statement .st-attach-strip-left{text-align:left}
+#pdf-statement .st-attach-strip-mid{text-align:center;flex:1}
+#pdf-statement .st-attach-strip-right{text-align:right;font-weight:700;color:#d4af6a}
+#pdf-statement .st-attach-img-wrap{text-align:center;margin-top:10px}
+#pdf-statement .st-attach-img-wrap img{max-width:100%;max-height:560px;object-fit:contain;border:1px solid #D8DCE1}
+
 /* toast */
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);
   background:#2C3E50;color:#fff;padding:10px 20px;border-radius:20px;
@@ -432,6 +481,9 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   </button>
   <button class="btn btn-outline" style="width:100%;margin-top:8px" onclick="exportReimbursementPDF()">
     🧾 导出报销单
+  </button>
+  <button class="btn btn-outline" style="width:100%;margin-top:8px" onclick="exportStatementPDF()">
+    📑 导出账户明细
   </button>
 </div>
 
@@ -683,6 +735,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 <!-- PDF REPORT (hidden) -->
 <div id="pdf-report"></div>
 <div id="pdf-reimburse"></div>
+<div id="pdf-statement"></div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -1149,6 +1202,15 @@ function saveData(){
 const CUR_SYMBOLS = {HKD:'HK$',MYR:'RM ',USD:'US$',SGD:'S$ ',CNY:'¥',JPY:'¥',EUR:'€',GBP:'£',TWD:'NT$',THB:'฿',AUD:'A$',KHR:'៛',KRW:'₩',VND:'₫'};
 function symOf(cur){ return CUR_SYMBOLS[cur] || cur+' '; }
 function fmt(amt, cur){ return symOf(cur) + Number(amt).toFixed(2); }
+// 千分位格式（账户明细范本要求），如 12,345.67
+function fmtThousands(amt){
+  const n = Number(amt);
+  const sign = n<0 ? '-' : '';
+  const abs = Math.abs(n).toFixed(2);
+  const parts = abs.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return sign + parts.join('.');
+}
 function getAcc(id){ return data.accounts.find(a=>a.id===id); }
 function getCat(id){ return data.categories.find(c=>c.id===id); }
 function curAcc(){ return getAcc(data.currentAccountId); }
@@ -2133,6 +2195,283 @@ async function exportReimbursementPDF(){
   }catch(e){
     console.error(e);
     toast('报销单生成失败，请重试');
+  }
+}
+
+
+// ===================== STATEMENT PDF EXPORT =====================
+// 仿手工范本「个人账户明细」格式：深蓝横幅+金线，支出汇总/明细+收支汇总，附件页三段式标题条。
+async function exportStatementPDF(){
+  const acc = curAcc(); if(!acc){ toast('请先选择账户'); return; }
+  toast('正在生成账户明细…');
+
+  const year = state.anYear, month = state.anMonth;
+
+  // 期初余额：该账户本月 1 号之前所有交易的（收入−支出）累计
+  const monthStart = new Date(year, month, 1);
+  let openingBalance = 0;
+  data.transactions.forEach(t=>{
+    if(t.accountId !== acc.id) return;
+    const d = new Date(t.date);
+    if(d < monthStart){
+      openingBalance += (t.type==='income' ? t.amount : -t.amount);
+    }
+  });
+
+  const txs = monthTxs(acc.id, year, month);
+  const incomeTotal = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expenseTxs = txs.filter(t=>t.type==='expense').sort((a,b)=>a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  const expenseTotal = expenseTxs.reduce((s,t)=>s+t.amount,0);
+  const closingBalance = openingBalance + incomeTotal - expenseTotal;
+
+  // 凭证编号：按明细顺序，明细行与附件页共用
+  const withAttachments = expenseTxs.filter(t=>t.attachmentId);
+  const pMap = {};
+  withAttachments.forEach((t,i)=>{ pMap[t.id] = 'P' + (i+1); });
+
+  // 支出汇总：按类别
+  const catMap = {};
+  expenseTxs.forEach(t=>{
+    const key = t.categoryId || '__none__';
+    if(!catMap[key]) catMap[key] = {cat:getCat(t.categoryId), count:0, total:0, receipts:0};
+    catMap[key].count += 1;
+    catMap[key].total += t.amount;
+    if(t.attachmentId) catMap[key].receipts += 1;
+  });
+  const catSorted = Object.values(catMap).sort((a,b)=>b.total-a.total);
+  const totalReceipts = withAttachments.length;
+
+  const monthLabel = `${year}年${String(month+1).padStart(2,'0')}月`;
+  const pageNoLabel = (n)=>`第 ${n} 页`;
+
+  const reportEl = document.getElementById('pdf-statement');
+  reportEl.innerHTML = `
+    <div class="st-page">
+      <div class="st-band">
+        <div class="st-band-title">${acc.name} 个人账户明细 / ${acc.name.toUpperCase()} PERSONAL ACCOUNT</div>
+        <div class="st-band-sub">${monthLabel} · 货币：${acc.currency}</div>
+      </div>
+      <div class="st-gold-line"></div>
+      <div class="st-body">
+        <div class="st-info">
+          <div class="st-info-cell">
+            <div class="st-info-label">账户</div>
+            <div class="st-info-val">${acc.name}</div>
+          </div>
+          <div class="st-info-cell">
+            <div class="st-info-label">月份</div>
+            <div class="st-info-val">${monthLabel}</div>
+          </div>
+          <div class="st-info-cell">
+            <div class="st-info-label">期初余额</div>
+            <div class="st-info-val">${openingBalance>=0?'+':''}${fmtThousands(openingBalance)} ${acc.currency}</div>
+            <div class="st-info-note">承上月结余</div>
+          </div>
+          <div class="st-info-cell">
+            <div class="st-info-label">期末余额</div>
+            <div class="st-info-val">${closingBalance>=0?'+':''}${fmtThousands(closingBalance)} ${acc.currency}</div>
+          </div>
+          <div class="st-info-remark">备注：仅供内部记录</div>
+        </div>
+
+        <div class="st-sec-title">■ 支出汇总 / Expense Summary</div>
+        <table>
+          <thead>
+            <tr>
+              <th>项目</th>
+              <th class="st-num-col">笔数</th>
+              <th class="st-amt-col">金额</th>
+              <th class="st-num-col">单据张数</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${catSorted.map(s=>`
+              <tr>
+                <td>${s.cat?s.cat.name:'未分类'}</td>
+                <td class="st-num-col">${s.count}</td>
+                <td class="st-amt-col">${fmtThousands(s.total)}</td>
+                <td class="st-num-col">${s.receipts}</td>
+              </tr>
+            `).join('')}
+            ${catSorted.length===0?'<tr><td colspan="4" style="text-align:center;color:#999">本月暂无支出</td></tr>':''}
+            <tr class="st-total-row">
+              <td>总计</td>
+              <td class="st-num-col">${expenseTxs.length}</td>
+              <td class="st-amt-col">${fmtThousands(expenseTotal)}</td>
+              <td class="st-num-col">${totalReceipts}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="st-sec-title">■ 支出明细 / Expense Breakdown</div>
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>项目</th>
+              <th class="st-amt-col">金额</th>
+              <th class="st-voucher-col">单据</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${expenseTxs.map(t=>{
+              const cat = getCat(t.categoryId);
+              const label = t.description || (cat?cat.name:'未分类');
+              return `<tr>
+                <td>${t.date}</td>
+                <td>${label}</td>
+                <td class="st-amt-col">${fmtThousands(t.amount)}</td>
+                <td class="st-voucher-col">${pMap[t.id]||'—'}</td>
+              </tr>`;
+            }).join('')}
+            ${expenseTxs.length===0?'<tr><td colspan="4" style="text-align:center;color:#999">本月暂无支出</td></tr>':''}
+            <tr class="st-total-row">
+              <td colspan="2">总计</td>
+              <td class="st-amt-col">${fmtThousands(expenseTotal)}</td>
+              <td class="st-voucher-col"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="st-sec-title">■ 收支汇总 / Cash Summary</div>
+        <table class="st-cash-table">
+          <tbody>
+            <tr>
+              <td class="st-cash-label">期初余额<span class="st-cash-note">（承接上月）</span></td>
+              <td class="st-cash-val">${openingBalance>=0?'+':''}${fmtThousands(openingBalance)}</td>
+            </tr>
+            <tr>
+              <td class="st-cash-label">本月收入</td>
+              <td class="st-cash-val">+${fmtThousands(incomeTotal)}</td>
+            </tr>
+            <tr>
+              <td class="st-cash-label">总支出</td>
+              <td class="st-cash-val st-cash-exp">-${fmtThousands(expenseTotal)}</td>
+            </tr>
+            <tr class="st-cash-final">
+              <td class="st-cash-label">期末余额</td>
+              <td class="st-cash-val">${closingBalance>=0?'+':''}${fmtThousands(closingBalance)} ${acc.currency}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="st-footer">
+        <span>仅供内部记录 · INTERNAL RECORD ONLY</span>
+        <span>${pageNoLabel(1)}</span>
+      </div>
+    </div>
+  `;
+
+  try{
+    const canvas = await html2canvas(reportEl, {scale:2, useCORS:true, logging:false});
+    const imgData = canvas.toDataURL('image/jpeg', 0.85);
+    const {jsPDF} = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    const imgW = pw;
+    const imgH = (canvas.height * pw) / canvas.width;
+    let y = 0;
+    while(y < imgH){
+      if(y>0) pdf.addPage();
+      pdf.addImage(imgData,'JPEG',0,-y,imgW,imgH);
+      y += ph;
+    }
+
+    // 附件页：每张单据一页，深蓝三段式标题条（沿用 canvas 画中文再嵌图的技巧）
+    let pageIdx = 2;
+    for(const t of withAttachments){
+      let blob = await getAttachmentBlob(t.attachmentId);
+      if(!blob) blob = await tryFetchRemoteAttachment(t.attachmentId);
+      if(!blob) continue;
+      const dataUrl = await blobToBase64(blob);
+      const dims = await new Promise(resolve=>{
+        const im = new Image();
+        im.onload = ()=>resolve({w:im.width,h:im.height});
+        im.onerror = ()=>resolve(null);
+        im.src = dataUrl;
+      });
+      if(!dims) continue;
+
+      pdf.addPage();
+
+      // jsPDF 内置字体不支持中文，横幅/标题条/页脚一律画到 canvas 再以图片嵌入
+      const cat = getCat(t.categoryId);
+      const leftText = `${pMap[t.id]} · ${t.description || (cat?cat.name:'未分类')}`;
+      const midText = t.date;
+      const rightText = `${fmtThousands(t.amount)} ${acc.currency}`;
+
+      // 顶部横幅：深蓝底 + 标题 + 金线
+      const bandY = 0, bandH = 16;
+      const bandCanvas = document.createElement('canvas');
+      bandCanvas.width = 2400; bandCanvas.height = 220;
+      let bctx = bandCanvas.getContext('2d');
+      bctx.fillStyle = '#1e3a5f';
+      bctx.fillRect(0,0,bandCanvas.width,bandCanvas.height*0.86);
+      bctx.fillStyle = '#c9a24b';
+      bctx.fillRect(0,bandCanvas.height*0.86,bandCanvas.width,bandCanvas.height*0.14);
+      bctx.font = 'bold 64px sans-serif';
+      bctx.fillStyle = '#fff';
+      bctx.textBaseline = 'middle';
+      bctx.textAlign = 'left';
+      bctx.fillText('附件单据 / RECEIPTS', 30, bandCanvas.height*0.4);
+      // 注意：canvas PNG 带 alpha 通道会被 jsPDF 解码成未压缩位图（每条约 2MB），必须用 JPEG
+      pdf.addImage(bandCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, bandY, pw, bandH);
+
+      // 三段式标题条：左 P编号+说明，中 日期，右 金额币种
+      const stripY = bandY + bandH + 6, stripH = 12;
+      const tc = document.createElement('canvas');
+      tc.width = 2400; tc.height = 140;
+      let tctx = tc.getContext('2d');
+      tctx.fillStyle = '#1e3a5f';
+      tctx.fillRect(0,0,tc.width,tc.height);
+      tctx.font = '44px sans-serif';
+      tctx.fillStyle = '#fff';
+      tctx.textBaseline = 'middle';
+      tctx.textAlign = 'left';
+      tctx.fillText(leftText, 24, tc.height/2);
+      tctx.textAlign = 'center';
+      tctx.fillText(midText, tc.width/2, tc.height/2);
+      tctx.textAlign = 'right';
+      tctx.fillStyle = '#d4af6a';
+      tctx.fillText(rightText, tc.width-24, tc.height/2);
+      pdf.addImage(tc.toDataURL('image/jpeg', 0.9), 'JPEG', 0, stripY, pw, stripH);
+
+      const margin = 10, topOffset = stripY + stripH + 8;
+      const footH = 10;
+      const availW = pw - margin*2, availH = ph - topOffset - margin - footH;
+      const ratio = Math.min(availW/dims.w, availH/dims.h);
+      const drawW = dims.w*ratio, drawH = dims.h*ratio;
+      const x = (pw-drawW)/2;
+      pdf.setDrawColor(180,180,180);
+      pdf.setLineWidth(0.3);
+      pdf.rect(x-1, topOffset-1, drawW+2, drawH+2);
+      pdf.addImage(dataUrl, 'JPEG', x, topOffset, drawW, drawH);
+
+      // 页脚深蓝横条
+      const footY = ph - footH;
+      const footCanvas = document.createElement('canvas');
+      footCanvas.width = 2400; footCanvas.height = 140;
+      let fctx = footCanvas.getContext('2d');
+      fctx.fillStyle = '#1e3a5f';
+      fctx.fillRect(0,0,footCanvas.width,footCanvas.height);
+      fctx.font = '38px sans-serif';
+      fctx.fillStyle = '#d4af6a';
+      fctx.textBaseline = 'middle';
+      fctx.textAlign = 'left';
+      fctx.fillText('仅供内部记录 · INTERNAL RECORD ONLY', 24, footCanvas.height/2);
+      fctx.textAlign = 'right';
+      fctx.fillText(`第 ${pageIdx} 页`, footCanvas.width-24, footCanvas.height/2);
+      pdf.addImage(footCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, footY, pw, footH);
+
+      pageIdx++;
+    }
+
+    pdf.save(`账户明细-${acc.name}-${year}-${String(month+1).padStart(2,'0')}.pdf`);
+    toast('账户明细已导出');
+  }catch(e){
+    console.error(e);
+    toast('账户明细生成失败，请重试');
   }
 }
 
