@@ -294,9 +294,11 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 @keyframes spinRot{to{transform:rotate(360deg)}}
 .scan-footer{padding:14px 16px 28px;flex-shrink:0}
 .scan-mode-tabs{display:flex;gap:8px;margin-bottom:14px}
-.scan-mode-tab{flex:1;padding:9px 4px;text-align:center;border-radius:10px;
-  font-size:12px;font-weight:600;color:#ccc;background:rgba(255,255,255,.08);
-  cursor:pointer;border:1.5px solid transparent}
+.scan-mode-tab{flex:1;padding:13px 4px;text-align:center;border-radius:10px;
+  font-size:13px;font-weight:600;color:#ccc;background:rgba(255,255,255,.08);
+  cursor:pointer;border:1.5px solid transparent;user-select:none;
+  -webkit-tap-highlight-color:transparent}
+.scan-mode-tab:active{background:rgba(255,255,255,.22)}
 .scan-mode-tab.active{background:var(--p);color:#fff;border-color:var(--p)}
 .scan-actions{display:flex;gap:10px}
 .scan-actions .btn{flex:1}
@@ -2633,17 +2635,21 @@ function resetCornersToFull(){
 // ---- stage 2: perspective warp + enhance mode selection ----
 let _warpedCanvas = null;
 function confirmCorners(){
-  const img = scanState.img;
-  const src = document.createElement('canvas');
-  src.width = img.width; src.height = img.height;
-  src.getContext('2d').drawImage(img, 0, 0);
+  const btn = [...document.querySelectorAll('#scan-footer button')].find(b=>b.textContent.includes('确认裁切'));
+  if(btn){ btn.disabled = true; btn.textContent = '处理中…'; }
+  setTimeout(()=>{ // 先让按钮状态画出来，再进透视变换
+    const img = scanState.img;
+    const src = document.createElement('canvas');
+    src.width = img.width; src.height = img.height;
+    src.getContext('2d').drawImage(img, 0, 0);
 
-  if(scanState.cvAvailable){
-    _warpedCanvas = warpPerspectiveCV(src, scanState.corners);
-  } else {
-    _warpedCanvas = src; // no cv: just use the cropped/original rectangle as-is
-  }
-  renderEnhanceStage();
+    if(scanState.cvAvailable){
+      _warpedCanvas = warpPerspectiveCV(src, scanState.corners);
+    } else {
+      _warpedCanvas = src; // no cv: just use the cropped/original rectangle as-is
+    }
+    renderEnhanceStage();
+  }, 30);
 }
 
 function warpPerspectiveCV(srcCanvas, corners){
@@ -2652,10 +2658,18 @@ function warpPerspectiveCV(srcCanvas, corners){
   const [tl,tr,br,bl] = corners;
   const widthTop = Math.hypot(tr.x-tl.x, tr.y-tl.y);
   const widthBottom = Math.hypot(br.x-bl.x, br.y-bl.y);
-  const maxWidth = Math.max(Math.round(widthTop), Math.round(widthBottom), 1);
+  let maxWidth = Math.max(Math.round(widthTop), Math.round(widthBottom), 1);
   const heightLeft = Math.hypot(bl.x-tl.x, bl.y-tl.y);
   const heightRight = Math.hypot(br.x-tr.x, br.y-tr.y);
-  const maxHeight = Math.max(Math.round(heightLeft), Math.round(heightRight), 1);
+  let maxHeight = Math.max(Math.round(heightLeft), Math.round(heightRight), 1);
+  // 变换时直接限制输出尺寸：手机原图动辄上千万像素，全尺寸算起来极慢；
+  // 一次重采样到目标尺寸，比先全尺寸再缩小更快也更清晰
+  const OUT_MAX = 2400;
+  const longSide = Math.max(maxWidth, maxHeight);
+  if(longSide > OUT_MAX){
+    const s = OUT_MAX/longSide;
+    maxWidth = Math.round(maxWidth*s); maxHeight = Math.round(maxHeight*s);
+  }
 
   const srcTri = cv.matFromArray(4,1,cv.CV_32FC2,[tl.x,tl.y,tr.x,tr.y,br.x,br.y,bl.x,bl.y]);
   const dstTri = cv.matFromArray(4,1,cv.CV_32FC2,[0,0,maxWidth-1,0,maxWidth-1,maxHeight-1,0,maxHeight-1]);
@@ -2671,6 +2685,7 @@ function warpPerspectiveCV(srcCanvas, corners){
   return outCanvas;
 }
 
+let _previewSmall = null, _previewCache = null;
 function renderEnhanceStage(){
   document.getElementById('scan-title').textContent = '选择效果';
   const stage = document.getElementById('scan-stage');
@@ -2678,42 +2693,52 @@ function renderEnhanceStage(){
   const maxH = stage.clientHeight || 400;
   const w = _warpedCanvas.width, h = _warpedCanvas.height;
   const scale = Math.min(maxW/w, maxH/h, 1);
+  const dw = Math.round(w*scale), dh = Math.round(h*scale);
 
-  stage.innerHTML = `<div class="scan-canvas-wrap" style="width:${Math.round(w*scale)}px;height:${Math.round(h*scale)}px">
-    <canvas id="enhance-preview" width="${Math.round(w*scale)}" height="${Math.round(h*scale)}"></canvas>
+  stage.innerHTML = `<div class="scan-canvas-wrap" style="width:${dw}px;height:${dh}px">
+    <canvas id="enhance-preview" width="${dw}" height="${dh}"></canvas>
   </div>`;
-  applyEnhanceAndPreview(scanState.enhanceMode);
+
+  // 预览滤镜在缩小的副本上算并缓存，切换模式即时响应；全尺寸只在保存时算一次
+  _previewSmall = document.createElement('canvas');
+  _previewSmall.width = dw; _previewSmall.height = dh;
+  _previewSmall.getContext('2d').drawImage(_warpedCanvas, 0, 0, dw, dh);
+  _previewCache = {};
 
   document.getElementById('scan-footer').innerHTML = `
     <div class="scan-mode-tabs">
-      <div class="scan-mode-tab ${scanState.enhanceMode==='enhance'?'active':''}" onclick="setEnhanceMode('enhance')">✨ 增强</div>
-      <div class="scan-mode-tab ${scanState.enhanceMode==='bw'?'active':''}" onclick="setEnhanceMode('bw')">⬛ 黑白</div>
-      <div class="scan-mode-tab ${scanState.enhanceMode==='original'?'active':''}" onclick="setEnhanceMode('original')">🖼️ 原图</div>
+      <div class="scan-mode-tab ${scanState.enhanceMode==='enhance'?'active':''}" id="mode-tab-enhance" onclick="setEnhanceMode('enhance')">✨ 增强</div>
+      <div class="scan-mode-tab ${scanState.enhanceMode==='bw'?'active':''}" id="mode-tab-bw" onclick="setEnhanceMode('bw')">⬛ 黑白</div>
+      <div class="scan-mode-tab ${scanState.enhanceMode==='original'?'active':''}" id="mode-tab-original" onclick="setEnhanceMode('original')">🖼️ 原图</div>
     </div>
     <div class="scan-actions">
       <button class="btn btn-outline" onclick="renderCornerStage()">← 重新裁边</button>
-      <button class="btn btn-primary" onclick="saveScannedAttachment()">保存单据</button>
+      <button class="btn btn-primary" id="save-attach-btn" onclick="saveScannedAttachment()">保存单据</button>
     </div>`;
+  applyEnhanceAndPreview(scanState.enhanceMode);
 }
 
 function setEnhanceMode(mode){
   scanState.enhanceMode = mode;
-  renderEnhanceStage();
+  document.querySelectorAll('.scan-mode-tab').forEach(el=>el.classList.remove('active'));
+  const tab = document.getElementById('mode-tab-'+mode);
+  if(tab) tab.classList.add('active');
+  applyEnhanceAndPreview(mode);
 }
 
 function applyEnhanceAndPreview(mode){
   const canvas = document.getElementById('enhance-preview');
   const ctx = canvas.getContext('2d');
   if(!scanState.cvAvailable || mode==='original'){
-    ctx.drawImage(_warpedCanvas, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(_previewSmall, 0, 0, canvas.width, canvas.height);
     return;
   }
   try{
-    const enhanced = applyEnhanceFilterCV(_warpedCanvas, mode);
-    ctx.drawImage(enhanced, 0, 0, canvas.width, canvas.height);
+    if(!_previewCache[mode]) _previewCache[mode] = applyEnhanceFilterCV(_previewSmall, mode);
+    ctx.drawImage(_previewCache[mode], 0, 0, canvas.width, canvas.height);
   }catch(e){
     console.error('Enhance failed, showing original:', e);
-    ctx.drawImage(_warpedCanvas, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(_previewSmall, 0, 0, canvas.width, canvas.height);
   }
 }
 
@@ -2762,22 +2787,32 @@ function applyEnhanceFilterCV(canvas, mode){
 function estimateBackgroundCV(mat){
   const cv = window.cv;
   const h = mat.rows, w = mat.cols;
-  let ksize = Math.max(15, Math.round(Math.min(h,w)*0.1));
+  // 背景是低频信息，缩到小图上估计再放大，速度快几十倍、效果等同
+  const WORK = 400;
+  const s = Math.min(WORK/Math.max(h,w), 1);
+  let workMat = mat, owned = false;
+  if(s < 1){
+    workMat = new cv.Mat();
+    cv.resize(mat, workMat, new cv.Size(Math.max(1,Math.round(w*s)), Math.max(1,Math.round(h*s))));
+    owned = true;
+  }
+  let ksize = Math.max(15, Math.round(Math.min(workMat.rows, workMat.cols)*0.1));
   ksize = ksize % 2 === 0 ? ksize+1 : ksize;
-  ksize = Math.min(ksize, 151);
   const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(ksize, ksize));
-  const bg = new cv.Mat();
-  cv.morphologyEx(mat, bg, cv.MORPH_CLOSE, kernel);
+  const bgSmall = new cv.Mat();
+  cv.morphologyEx(workMat, bgSmall, cv.MORPH_CLOSE, kernel);
   kernel.delete();
+  if(!owned) return bgSmall;
+  const bg = new cv.Mat();
+  cv.resize(bgSmall, bg, new cv.Size(w, h));
+  bgSmall.delete(); workMat.delete();
   return bg;
 }
 
 function divideNormalizeCV(channel, bg){
   const cv = window.cv;
   const chF = new cv.Mat(); channel.convertTo(chF, cv.CV_32F);
-  const bgF = new cv.Mat(); bg.convertTo(bgF, cv.CV_32F);
-  // avoid divide by zero
-  for(let i=0;i<bgF.data32F.length;i++){ if(bgF.data32F[i]===0) bgF.data32F[i]=1; }
+  const bgF = new cv.Mat(); bg.convertTo(bgF, cv.CV_32F, 1, 1); // +1 防除零，免去逐像素循环
   const norm = new cv.Mat();
   cv.divide(chF, bgF, norm, 255.0);
   const out = new cv.Mat();
@@ -2807,15 +2842,23 @@ function contrastStretchCV(mat){
 
 // ---- stage 3: finalize -> compress JPEG, store blob, close workflow ----
 async function saveScannedAttachment(){
-  const finalCanvas = document.getElementById('enhance-preview');
+  const btn = document.getElementById('save-attach-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '处理中…'; }
+  await new Promise(r=>setTimeout(r, 30)); // 先让按钮状态画出来，再进重计算
   // Re-render at full resolution (the preview canvas is downscaled for display)
-  const fullCanvas = (scanState.cvAvailable && scanState.enhanceMode!=='original')
-    ? applyEnhanceFilterCV(_warpedCanvas, scanState.enhanceMode)
-    : _warpedCanvas;
+  let fullCanvas;
+  try{
+    fullCanvas = (scanState.cvAvailable && scanState.enhanceMode!=='original')
+      ? applyEnhanceFilterCV(_warpedCanvas, scanState.enhanceMode)
+      : _warpedCanvas;
+  }catch(e){
+    console.error('Full-res enhance failed, saving original:', e);
+    fullCanvas = _warpedCanvas;
+  }
 
-  const outCanvas = resizeForOutput(fullCanvas, 1600);
-  const blob = await new Promise(resolve=>outCanvas.toBlob(resolve, 'image/jpeg', 0.8));
-  if(!blob){ toast('图片处理失败'); return; }
+  const outCanvas = resizeForOutput(fullCanvas, 2400);
+  const blob = await new Promise(resolve=>outCanvas.toBlob(resolve, 'image/jpeg', 0.85));
+  if(!blob){ toast('图片处理失败'); if(btn){ btn.disabled = false; btn.textContent = '保存单据'; } return; }
 
   const id = 'att_'+uid();
   await putAttachmentBlob(id, blob);
@@ -2844,11 +2887,11 @@ function resizeForOutput(canvas, maxSide){
 function cancelScan(){
   document.getElementById('scan-overlay').classList.remove('open');
   scanState.file = null; scanState.img = null; scanState.corners = null;
-  _warpedCanvas = null;
+  _warpedCanvas = null; _previewSmall = null; _previewCache = null;
 }
 function closeScan(){
   document.getElementById('scan-overlay').classList.remove('open');
-  _warpedCanvas = null;
+  _warpedCanvas = null; _previewSmall = null; _previewCache = null;
 }
 
 function init(){
