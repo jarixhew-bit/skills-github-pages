@@ -225,63 +225,6 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   color:var(--sub);font-weight:500;transition:.15s}
 .filter-btn.active{background:var(--p);border-color:var(--p);color:#fff}
 
-/* PDF REPORT (hidden, used for export) */
-#pdf-report{position:fixed;left:-9999px;top:0;width:800px;background:#fff;
-  padding:48px;font-family:Arial,'Microsoft YaHei',sans-serif;font-size:14px;
-  color:#2C3E50;line-height:1.6}
-#pdf-report h1{font-size:26px;color:#6C63FF;margin-bottom:4px}
-#pdf-report .rpt-meta{color:#95A5A6;font-size:13px;margin-bottom:32px}
-#pdf-report .rpt-summary{display:flex;gap:24px;margin-bottom:32px}
-#pdf-report .rpt-box{flex:1;border-radius:10px;padding:18px}
-#pdf-report .rpt-box.inc-box{background:#E8F5E9}
-#pdf-report .rpt-box.exp-box{background:#FDECEA}
-#pdf-report .rpt-box.net-box{background:#EEF0FF}
-#pdf-report .rpt-box-label{font-size:12px;color:#7F8C8D;margin-bottom:4px}
-#pdf-report .rpt-box-val{font-size:22px;font-weight:700}
-#pdf-report .rpt-box.inc-box .rpt-box-val{color:#27AE60}
-#pdf-report .rpt-box.exp-box .rpt-box-val{color:#E74C3C}
-#pdf-report .rpt-box.net-box .rpt-box-val{color:#6C63FF}
-#pdf-report h2{font-size:16px;margin:24px 0 12px;border-bottom:2px solid #ECF0F1;padding-bottom:8px}
-#pdf-report table{width:100%;border-collapse:collapse;font-size:13px}
-#pdf-report th{text-align:left;padding:10px 12px;background:#F8F9FA;
-  font-size:12px;color:#7F8C8D;text-transform:uppercase;font-weight:600}
-#pdf-report td{padding:10px 12px;border-bottom:1px solid #F0F2F5}
-#pdf-report tr:last-child td{border-bottom:none}
-#pdf-report .amt-inc{color:#27AE60;font-weight:600}
-#pdf-report .amt-exp{color:#E74C3C;font-weight:600}
-#pdf-report .footer{margin-top:40px;padding-top:16px;border-top:1px solid #ECF0F1;
-  font-size:11px;color:#BDC3C7;text-align:right}
-
-/* PDF REIMBURSEMENT REPORT (hidden, used for export) — formal business style, no emoji/color cards */
-#pdf-reimburse{position:fixed;left:-9999px;top:0;width:800px;background:#fff;
-  padding:0;font-family:Arial,'Microsoft YaHei',sans-serif;font-size:13px;
-  color:#222;line-height:1.5}
-#pdf-reimburse .rb-band{background:#1B2A41;color:#fff;padding:28px 48px 20px}
-#pdf-reimburse .rb-title{font-size:24px;font-weight:700;letter-spacing:1px}
-#pdf-reimburse .rb-subtitle{font-size:12px;color:#B8C2CE;letter-spacing:2px;margin-top:2px}
-#pdf-reimburse .rb-body{padding:24px 48px 40px}
-#pdf-reimburse .rb-info{display:flex;flex-wrap:wrap;gap:0 40px;margin-bottom:24px;
-  border:1px solid #D8DCE1;border-radius:2px;padding:14px 18px}
-#pdf-reimburse .rb-info-item{min-width:180px;margin:4px 0}
-#pdf-reimburse .rb-info-label{font-size:11px;color:#8A94A0;text-transform:uppercase;letter-spacing:.5px}
-#pdf-reimburse .rb-info-val{font-size:14px;font-weight:600;color:#1B2A41;margin-top:2px}
-#pdf-reimburse table{width:100%;border-collapse:collapse;font-size:12.5px}
-#pdf-reimburse th{text-align:left;padding:9px 10px;background:#1B2A41;color:#fff;
-  font-size:11px;font-weight:600;letter-spacing:.3px}
-#pdf-reimburse th.rb-num-col{width:36px;text-align:center}
-#pdf-reimburse th.rb-amt-col, #pdf-reimburse td.rb-amt-col{text-align:right}
-#pdf-reimburse th.rb-voucher-col, #pdf-reimburse td.rb-voucher-col{text-align:center;width:56px}
-#pdf-reimburse td{padding:8px 10px;border-bottom:1px solid #E4E7EB;color:#2C2C2C}
-#pdf-reimburse td.rb-num-col{text-align:center;color:#8A94A0}
-#pdf-reimburse tbody tr:nth-child(even){background:#F7F8FA}
-#pdf-reimburse .rb-total-row td{border-top:2px solid #1B2A41;border-bottom:none;
-  font-weight:700;font-size:13.5px;padding-top:12px}
-#pdf-reimburse .rb-sign{display:flex;justify-content:space-between;margin-top:56px;padding-top:8px}
-#pdf-reimburse .rb-sign-block{width:45%;font-size:12.5px;color:#333}
-#pdf-reimburse .rb-sign-line{margin-top:36px;border-top:1px solid #999;padding-top:6px;color:#8A94A0;font-size:11px}
-#pdf-reimburse .rb-footer{margin-top:36px;padding-top:12px;border-top:1px solid #E4E7EB;
-  font-size:10.5px;color:#AAB2BB;text-align:right}
-
 /* PDF STATEMENT REPORT (hidden, used for export) — 账户明细，仿手工范本深蓝金线风格 */
 #pdf-statement{position:fixed;left:-9999px;top:0;width:800px;background:#fff;
   padding:0;font-family:Arial,'Microsoft YaHei',sans-serif;font-size:13px;
@@ -317,6 +260,8 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 #pdf-statement .st-cash-val{text-align:right;font-weight:700}
 #pdf-statement .st-cash-exp{color:#C0392B}
 #pdf-statement .st-cash-note{font-size:10.5px;color:#8A94A0;margin-left:6px;font-weight:400}
+#pdf-statement th.st-desc-col{text-align:left;width:34%}
+#pdf-statement td.st-cash-desc{color:#8A94A0;font-size:11.5px}
 #pdf-statement .st-cash-final td{background:#1e7a42 !important;color:#fff;font-size:14.5px;font-weight:700}
 #pdf-statement .st-footer{background:#1e3a5f;color:#d4af6a;padding:10px 40px;
   display:flex;justify-content:space-between;font-size:10.5px;letter-spacing:.3px}
@@ -476,13 +421,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div class="chart-wrap"><canvas id="pie-chart"></canvas></div>
     <div id="cat-bars" class="cat-bars"></div>
   </div>
-  <button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="exportPDF()">
-    📄 导出 PDF 报表
-  </button>
-  <button class="btn btn-outline" style="width:100%;margin-top:8px" onclick="exportReimbursementPDF()">
-    🧾 导出报销单
-  </button>
-  <button class="btn btn-outline" style="width:100%;margin-top:8px" onclick="exportStatementPDF()">
+  <button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="exportStatementPDF()">
     📑 导出账户明细
   </button>
 </div>
@@ -733,8 +672,6 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 
 
 <!-- PDF REPORT (hidden) -->
-<div id="pdf-report"></div>
-<div id="pdf-reimburse"></div>
 <div id="pdf-statement"></div>
 
 <!-- TOAST -->
@@ -1901,304 +1838,6 @@ document.querySelectorAll('.overlay').forEach(el=>{
   el.addEventListener('click', e=>{ if(e.target===el) closeModal(el.id); });
 });
 
-// ===================== PDF EXPORT =====================
-async function exportPDF(){
-  const acc = curAcc(); if(!acc){ toast('请先选择账户'); return; }
-  toast('正在生成 PDF…');
-
-  const txs = monthTxs(acc.id, state.anYear, state.anMonth);
-  const inc = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const exp = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const net = inc - exp;
-
-  // Category breakdown
-  const catMap = {};
-  txs.filter(t=>t.type==='expense').forEach(t=>{
-    const cat = getCat(t.categoryId);
-    const key = t.categoryId;
-    if(!catMap[key]) catMap[key]={cat, total:0};
-    catMap[key].total += t.amount;
-  });
-  const catSorted = Object.values(catMap).sort((a,b)=>b.total-a.total);
-
-  // All txs sorted by date desc
-  const allSorted = [...txs].sort((a,b)=>new Date(b.date)-new Date(a.date));
-
-  // 凭证编号：有附件的交易按报表顺序编 P1、P2…，明细表与附件页共用同一编号
-  const withAttachments = allSorted.filter(t=>t.attachmentId);
-  const pMap = {};
-  withAttachments.forEach((t,i)=>{ pMap[t.id] = 'P' + (i+1); });
-
-  const reportEl = document.getElementById('pdf-report');
-  reportEl.innerHTML = `
-    <h1>📒 记账报表</h1>
-    <div class="rpt-meta">${acc.name} · ${monthName(state.anYear, state.anMonth)} · 导出日期：${today()}</div>
-
-    <div class="rpt-summary">
-      <div class="rpt-box inc-box">
-        <div class="rpt-box-label">收入</div>
-        <div class="rpt-box-val">${fmt(inc, acc.currency)}</div>
-      </div>
-      <div class="rpt-box exp-box">
-        <div class="rpt-box-label">支出</div>
-        <div class="rpt-box-val">${fmt(exp, acc.currency)}</div>
-      </div>
-      <div class="rpt-box net-box">
-        <div class="rpt-box-label">结余</div>
-        <div class="rpt-box-val">${net>=0?'+':''}${fmt(net, acc.currency)}</div>
-      </div>
-    </div>
-
-    ${catSorted.length>0?`
-    <h2>支出分类明细</h2>
-    <table>
-      <tr><th>类别</th><th>金额</th><th>占比</th></tr>
-      ${catSorted.map(s=>`
-        <tr>
-          <td>${s.cat?s.cat.icon+' '+s.cat.name:'未分类'}</td>
-          <td class="amt-exp">${fmt(s.total, acc.currency)}</td>
-          <td>${exp>0?(s.total/exp*100).toFixed(1)+'%':'—'}</td>
-        </tr>
-      `).join('')}
-    </table>`:''}
-
-    <h2>交易记录（${allSorted.length} 条）</h2>
-    <table>
-      <tr><th>日期</th><th>描述</th><th>类别</th><th>金额</th><th>凭证</th></tr>
-      ${allSorted.map(t=>{
-        const cat = getCat(t.categoryId);
-        const amt = t.type==='expense'?`<span class="amt-exp">−${fmt(t.amount,acc.currency)}</span>`:`<span class="amt-inc">+${fmt(t.amount,acc.currency)}</span>`;
-        return `<tr>
-          <td>${t.date}</td>
-          <td>${t.description||(cat?cat.name:'—')}</td>
-          <td>${cat?cat.icon+' '+cat.name:'未分类'}</td>
-          <td>${amt}</td>
-          <td>${pMap[t.id]||'—'}</td>
-        </tr>`;
-      }).join('')}
-      ${allSorted.length===0?'<tr><td colspan="5" style="text-align:center;color:#999">本月暂无记录</td></tr>':''}
-    </table>
-
-    <div class="footer">由记账本 App 生成 · ${new Date().toLocaleString('zh-CN')}</div>
-  `;
-
-  try{
-    const canvas = await html2canvas(reportEl, {scale:2, useCORS:true, logging:false});
-    // 报表页用 JPEG 压缩，PNG 会让整份 PDF 大出近十倍
-    const imgData = canvas.toDataURL('image/jpeg', 0.82);
-    const {jsPDF} = window.jspdf;
-    const pdf = new jsPDF('p','mm','a4');
-    const pw = pdf.internal.pageSize.getWidth();
-    const ph = pdf.internal.pageSize.getHeight();
-    const imgW = pw;
-    const imgH = (canvas.height * pw) / canvas.width;
-    let y = 0;
-    while(y < imgH){
-      if(y>0) pdf.addPage();
-      pdf.addImage(imgData,'JPEG',0,-y,imgW,imgH);
-      y += ph;
-    }
-
-    // Append one page per transaction with an attachment (this month, this account)
-    for(const t of withAttachments){
-      let blob = await getAttachmentBlob(t.attachmentId);
-      if(!blob) blob = await tryFetchRemoteAttachment(t.attachmentId);
-      if(!blob) continue; // silently skip attachments unavailable on this device
-      const dataUrl = await blobToBase64(blob);
-      const dims = await new Promise(resolve=>{
-        const im = new Image();
-        im.onload = ()=>resolve({w:im.width,h:im.height});
-        im.onerror = ()=>resolve(null);
-        im.src = dataUrl;
-      });
-      if(!dims) continue;
-
-      pdf.addPage();
-      const cat = getCat(t.categoryId);
-      const title = `${pMap[t.id]} · ${t.date} · ${cat?cat.icon+' '+cat.name:'未分类'} · ${t.type==='expense'?'−':'+'}${fmt(t.amount, acc.currency)}${t.description?' · '+t.description:''}`;
-      // jsPDF 内置字体不支持中文，标题画到 canvas 再以图片嵌入
-      const tc = document.createElement('canvas');
-      let tctx = tc.getContext('2d');
-      tctx.font = '28px sans-serif';
-      tc.width = Math.ceil(tctx.measureText(title).width) + 8;
-      tc.height = 40;
-      tctx = tc.getContext('2d'); // 改尺寸会重置画布状态，需重新设置
-      tctx.font = '28px sans-serif'; tctx.fillStyle = '#222'; tctx.textBaseline = 'middle';
-      tctx.fillText(title, 4, 20);
-      let tW = tc.width*(6/40), tH = 6;
-      if(tW > pw-20){ tH = tH*(pw-20)/tW; tW = pw-20; }
-      pdf.addImage(tc.toDataURL('image/png'), 'PNG', 10, 8, tW, tH);
-
-      const margin = 10, topOffset = 20;
-      const availW = pw - margin*2, availH = ph - topOffset - margin;
-      const ratio = Math.min(availW/dims.w, availH/dims.h);
-      const drawW = dims.w*ratio, drawH = dims.h*ratio;
-      const x = (pw-drawW)/2;
-      pdf.addImage(dataUrl, 'JPEG', x, topOffset, drawW, drawH);
-    }
-
-    pdf.save(`${acc.name}-${state.anYear}-${String(state.anMonth+1).padStart(2,'0')}.pdf`);
-    toast('PDF 已导出');
-  }catch(e){
-    console.error(e);
-    toast('PDF 生成失败，请重试');
-  }
-}
-
-
-// ===================== REIMBURSEMENT PDF EXPORT =====================
-// Formal expense-report style, boss-facing: expense-only, no emoji, signature lines.
-async function exportReimbursementPDF(){
-  const acc = curAcc(); if(!acc){ toast('请先选择账户'); return; }
-  toast('正在生成报销单…');
-
-  const txs = monthTxs(acc.id, state.anYear, state.anMonth)
-    .filter(t=>t.type==='expense')
-    .sort((a,b)=>a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
-  const total = txs.reduce((s,t)=>s+t.amount,0);
-
-  // 凭证编号：与个人版报表一致的 P1/P2… 规则，只在报销单范围内独立编号
-  const withAttachments = txs.filter(t=>t.attachmentId);
-  const pMap = {};
-  withAttachments.forEach((t,i)=>{ pMap[t.id] = 'P' + (i+1); });
-
-  const reportEl = document.getElementById('pdf-reimburse');
-  reportEl.innerHTML = `
-    <div class="rb-band">
-      <div class="rb-title">费用报销单</div>
-      <div class="rb-subtitle">EXPENSE REPORT</div>
-    </div>
-    <div class="rb-body">
-      <div class="rb-info">
-        <div class="rb-info-item">
-          <div class="rb-info-label">报销人</div>
-          <div class="rb-info-val">${acc.name}</div>
-        </div>
-        <div class="rb-info-item">
-          <div class="rb-info-label">所属期间</div>
-          <div class="rb-info-val">${monthName(state.anYear, state.anMonth)}</div>
-        </div>
-        <div class="rb-info-item">
-          <div class="rb-info-label">提交日期</div>
-          <div class="rb-info-val">${today()}</div>
-        </div>
-        <div class="rb-info-item">
-          <div class="rb-info-label">币种</div>
-          <div class="rb-info-val">${acc.currency}</div>
-        </div>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th class="rb-num-col">序号</th>
-            <th>日期</th>
-            <th>费用类别</th>
-            <th>事由/说明</th>
-            <th class="rb-amt-col">金额</th>
-            <th class="rb-voucher-col">凭证</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${txs.map((t,i)=>{
-            const cat = getCat(t.categoryId);
-            return `<tr>
-              <td class="rb-num-col">${i+1}</td>
-              <td>${t.date}</td>
-              <td>${cat?cat.name:'未分类'}</td>
-              <td>${t.description||'—'}</td>
-              <td class="rb-amt-col">${fmt(t.amount, acc.currency)}</td>
-              <td class="rb-voucher-col">${pMap[t.id]||'—'}</td>
-            </tr>`;
-          }).join('')}
-          ${txs.length===0?'<tr><td colspan="6" style="text-align:center;color:#999">本月暂无支出记录</td></tr>':''}
-          <tr class="rb-total-row">
-            <td colspan="4" style="text-align:right">合计</td>
-            <td class="rb-amt-col">${fmt(total, acc.currency)}</td>
-            <td></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="rb-sign">
-        <div class="rb-sign-block">
-          <div class="rb-sign-line">报销人签名：＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿＿</div>
-        </div>
-        <div class="rb-sign-block">
-          <div class="rb-sign-line">审批人签名：＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿＿</div>
-        </div>
-      </div>
-
-      <div class="rb-footer">生成日期：${new Date().toLocaleString('zh-CN')}</div>
-    </div>
-  `;
-
-  try{
-    const canvas = await html2canvas(reportEl, {scale:2, useCORS:true, logging:false});
-    const imgData = canvas.toDataURL('image/jpeg', 0.82);
-    const {jsPDF} = window.jspdf;
-    const pdf = new jsPDF('p','mm','a4');
-    const pw = pdf.internal.pageSize.getWidth();
-    const ph = pdf.internal.pageSize.getHeight();
-    const imgW = pw;
-    const imgH = (canvas.height * pw) / canvas.width;
-    let y = 0;
-    while(y < imgH){
-      if(y>0) pdf.addPage();
-      pdf.addImage(imgData,'JPEG',0,-y,imgW,imgH);
-      y += ph;
-    }
-
-    // Append one page per expense transaction with an attachment (same P-numbering as table)
-    for(const t of withAttachments){
-      let blob = await getAttachmentBlob(t.attachmentId);
-      if(!blob) blob = await tryFetchRemoteAttachment(t.attachmentId);
-      if(!blob) continue;
-      const dataUrl = await blobToBase64(blob);
-      const dims = await new Promise(resolve=>{
-        const im = new Image();
-        im.onload = ()=>resolve({w:im.width,h:im.height});
-        im.onerror = ()=>resolve(null);
-        im.src = dataUrl;
-      });
-      if(!dims) continue;
-
-      pdf.addPage();
-      const cat = getCat(t.categoryId);
-      const title = `凭证 ${pMap[t.id]} · ${t.date} · ${cat?cat.name:'未分类'} · ${fmt(t.amount, acc.currency)}${t.description?' · '+t.description:''}`;
-      const tc = document.createElement('canvas');
-      let tctx = tc.getContext('2d');
-      tctx.font = '28px sans-serif';
-      tc.width = Math.ceil(tctx.measureText(title).width) + 8;
-      tc.height = 40;
-      tctx = tc.getContext('2d');
-      tctx.font = '28px sans-serif'; tctx.fillStyle = '#222'; tctx.textBaseline = 'middle';
-      tctx.fillText(title, 4, 20);
-      let tW = tc.width*(6/40), tH = 6;
-      if(tW > pw-20){ tH = tH*(pw-20)/tW; tW = pw-20; }
-      pdf.addImage(tc.toDataURL('image/png'), 'PNG', 10, 8, tW, tH);
-
-      const margin = 10, topOffset = 20;
-      const availW = pw - margin*2, availH = ph - topOffset - margin;
-      const ratio = Math.min(availW/dims.w, availH/dims.h);
-      const drawW = dims.w*ratio, drawH = dims.h*ratio;
-      const x = (pw-drawW)/2;
-      // 图片外加细边框，视觉更像正式单据凭证
-      pdf.setDrawColor(180,180,180);
-      pdf.setLineWidth(0.3);
-      pdf.rect(x-1, topOffset-1, drawW+2, drawH+2);
-      pdf.addImage(dataUrl, 'JPEG', x, topOffset, drawW, drawH);
-    }
-
-    pdf.save(`报销单-${acc.name}-${state.anYear}-${String(state.anMonth+1).padStart(2,'0')}.pdf`);
-    toast('报销单已导出');
-  }catch(e){
-    console.error(e);
-    toast('报销单生成失败，请重试');
-  }
-}
-
-
 // ===================== STATEMENT PDF EXPORT =====================
 // 仿手工范本「个人账户明细」格式：深蓝横幅+金线，支出汇总/明细+收支汇总，附件页三段式标题条。
 async function exportStatementPDF(){
@@ -2219,7 +1858,8 @@ async function exportStatementPDF(){
   });
 
   const txs = monthTxs(acc.id, year, month);
-  const incomeTotal = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const incomeTxs = txs.filter(t=>t.type==='income');
+  const incomeTotal = incomeTxs.reduce((s,t)=>s+t.amount,0);
   const expenseTxs = txs.filter(t=>t.type==='expense').sort((a,b)=>a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   const expenseTotal = expenseTxs.reduce((s,t)=>s+t.amount,0);
   const closingBalance = openingBalance + incomeTotal - expenseTotal;
@@ -2243,6 +1883,12 @@ async function exportStatementPDF(){
 
   const monthLabel = `${year}年${String(month+1).padStart(2,'0')}月`;
   const pageNoLabel = (n)=>`第 ${n} 页`;
+  // 收支汇总说明栏（范本第三栏）：注资说明按本月收入自动生成
+  const prevMonthNum = month===0 ? 12 : month;
+  const incomeNote = incomeTotal>0 ? `新增注资 ${incomeTxs.length}笔` : '本月无新增注资';
+  const expenseNote = expenseTxs.length>0 ? `${expenseTxs.length}笔，详见上方拆解` : '本月暂无支出';
+  const lastDay = new Date(year, month+1, 0).getDate();
+  const closingNote = `截至${month+1}/${lastDay}`;
 
   const reportEl = document.getElementById('pdf-statement');
   reportEl.innerHTML = `
@@ -2335,22 +1981,33 @@ async function exportStatementPDF(){
 
         <div class="st-sec-title">■ 收支汇总 / Cash Summary</div>
         <table class="st-cash-table">
+          <thead>
+            <tr>
+              <th>项目</th>
+              <th class="st-amt-col">金额 (${acc.currency})</th>
+              <th class="st-desc-col">说明</th>
+            </tr>
+          </thead>
           <tbody>
             <tr>
-              <td class="st-cash-label">期初余额<span class="st-cash-note">（承接上月）</span></td>
+              <td class="st-cash-label">期初余额 (承${prevMonthNum}月结余)</td>
               <td class="st-cash-val">${openingBalance>=0?'+':''}${fmtThousands(openingBalance)}</td>
+              <td class="st-cash-desc">承接上月</td>
             </tr>
             <tr>
-              <td class="st-cash-label">本月收入</td>
+              <td class="st-cash-label">${month+1}月收入</td>
               <td class="st-cash-val">+${fmtThousands(incomeTotal)}</td>
+              <td class="st-cash-desc">${incomeNote}</td>
             </tr>
             <tr>
               <td class="st-cash-label">总支出</td>
               <td class="st-cash-val st-cash-exp">-${fmtThousands(expenseTotal)}</td>
+              <td class="st-cash-desc">${expenseNote}</td>
             </tr>
             <tr class="st-cash-final">
               <td class="st-cash-label">期末余额</td>
-              <td class="st-cash-val">${closingBalance>=0?'+':''}${fmtThousands(closingBalance)} ${acc.currency}</td>
+              <td class="st-cash-val">${closingBalance>=0?'+':''}${fmtThousands(closingBalance)}</td>
+              <td class="st-cash-desc">${closingNote}</td>
             </tr>
           </tbody>
         </table>
