@@ -252,6 +252,36 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 #pdf-report .footer{margin-top:40px;padding-top:16px;border-top:1px solid #ECF0F1;
   font-size:11px;color:#BDC3C7;text-align:right}
 
+/* PDF REIMBURSEMENT REPORT (hidden, used for export) — formal business style, no emoji/color cards */
+#pdf-reimburse{position:fixed;left:-9999px;top:0;width:800px;background:#fff;
+  padding:0;font-family:Arial,'Microsoft YaHei',sans-serif;font-size:13px;
+  color:#222;line-height:1.5}
+#pdf-reimburse .rb-band{background:#1B2A41;color:#fff;padding:28px 48px 20px}
+#pdf-reimburse .rb-title{font-size:24px;font-weight:700;letter-spacing:1px}
+#pdf-reimburse .rb-subtitle{font-size:12px;color:#B8C2CE;letter-spacing:2px;margin-top:2px}
+#pdf-reimburse .rb-body{padding:24px 48px 40px}
+#pdf-reimburse .rb-info{display:flex;flex-wrap:wrap;gap:0 40px;margin-bottom:24px;
+  border:1px solid #D8DCE1;border-radius:2px;padding:14px 18px}
+#pdf-reimburse .rb-info-item{min-width:180px;margin:4px 0}
+#pdf-reimburse .rb-info-label{font-size:11px;color:#8A94A0;text-transform:uppercase;letter-spacing:.5px}
+#pdf-reimburse .rb-info-val{font-size:14px;font-weight:600;color:#1B2A41;margin-top:2px}
+#pdf-reimburse table{width:100%;border-collapse:collapse;font-size:12.5px}
+#pdf-reimburse th{text-align:left;padding:9px 10px;background:#1B2A41;color:#fff;
+  font-size:11px;font-weight:600;letter-spacing:.3px}
+#pdf-reimburse th.rb-num-col{width:36px;text-align:center}
+#pdf-reimburse th.rb-amt-col, #pdf-reimburse td.rb-amt-col{text-align:right}
+#pdf-reimburse th.rb-voucher-col, #pdf-reimburse td.rb-voucher-col{text-align:center;width:56px}
+#pdf-reimburse td{padding:8px 10px;border-bottom:1px solid #E4E7EB;color:#2C2C2C}
+#pdf-reimburse td.rb-num-col{text-align:center;color:#8A94A0}
+#pdf-reimburse tbody tr:nth-child(even){background:#F7F8FA}
+#pdf-reimburse .rb-total-row td{border-top:2px solid #1B2A41;border-bottom:none;
+  font-weight:700;font-size:13.5px;padding-top:12px}
+#pdf-reimburse .rb-sign{display:flex;justify-content:space-between;margin-top:56px;padding-top:8px}
+#pdf-reimburse .rb-sign-block{width:45%;font-size:12.5px;color:#333}
+#pdf-reimburse .rb-sign-line{margin-top:36px;border-top:1px solid #999;padding-top:6px;color:#8A94A0;font-size:11px}
+#pdf-reimburse .rb-footer{margin-top:36px;padding-top:12px;border-top:1px solid #E4E7EB;
+  font-size:10.5px;color:#AAB2BB;text-align:right}
+
 /* toast */
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);
   background:#2C3E50;color:#fff;padding:10px 20px;border-radius:20px;
@@ -400,6 +430,9 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   <button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="exportPDF()">
     📄 导出 PDF 报表
   </button>
+  <button class="btn btn-outline" style="width:100%;margin-top:8px" onclick="exportReimbursementPDF()">
+    🧾 导出报销单
+  </button>
 </div>
 
 <!-- SETTINGS TAB -->
@@ -494,7 +527,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <!-- date -->
     <div class="form-group">
       <label class="form-label">日期</label>
-      <input class="form-input" id="tx-date" type="date">
+      <input class="form-input" id="tx-date" type="date" oninput="state.dateTouchedByUser=true">
     </div>
     <!-- attachment -->
     <div class="form-group">
@@ -649,6 +682,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 
 <!-- PDF REPORT (hidden) -->
 <div id="pdf-report"></div>
+<div id="pdf-reimburse"></div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -1493,6 +1527,7 @@ function showAddTx(){
   document.getElementById('tx-amount').value = '';
   document.getElementById('tx-desc').value = '';
   document.getElementById('tx-date').value = today();
+  state.dateTouchedByUser = false;
   document.getElementById('tx-delete-wrap').style.display = 'none';
   document.getElementById('type-exp').classList.add('active');
   document.getElementById('type-inc').classList.remove('active');
@@ -1514,6 +1549,7 @@ function editTx(id){
   document.getElementById('tx-amount').value = t.amount;
   document.getElementById('tx-desc').value = t.description||'';
   document.getElementById('tx-date').value = t.date;
+  state.dateTouchedByUser = false;
   document.getElementById('tx-delete-wrap').style.display = 'block';
   document.getElementById('type-exp').classList.toggle('active', t.type==='expense');
   document.getElementById('type-inc').classList.toggle('active', t.type==='income');
@@ -1944,6 +1980,159 @@ async function exportPDF(){
   }catch(e){
     console.error(e);
     toast('PDF 生成失败，请重试');
+  }
+}
+
+
+// ===================== REIMBURSEMENT PDF EXPORT =====================
+// Formal expense-report style, boss-facing: expense-only, no emoji, signature lines.
+async function exportReimbursementPDF(){
+  const acc = curAcc(); if(!acc){ toast('请先选择账户'); return; }
+  toast('正在生成报销单…');
+
+  const txs = monthTxs(acc.id, state.anYear, state.anMonth)
+    .filter(t=>t.type==='expense')
+    .sort((a,b)=>a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  const total = txs.reduce((s,t)=>s+t.amount,0);
+
+  // 凭证编号：与个人版报表一致的 P1/P2… 规则，只在报销单范围内独立编号
+  const withAttachments = txs.filter(t=>t.attachmentId);
+  const pMap = {};
+  withAttachments.forEach((t,i)=>{ pMap[t.id] = 'P' + (i+1); });
+
+  const reportEl = document.getElementById('pdf-reimburse');
+  reportEl.innerHTML = `
+    <div class="rb-band">
+      <div class="rb-title">费用报销单</div>
+      <div class="rb-subtitle">EXPENSE REPORT</div>
+    </div>
+    <div class="rb-body">
+      <div class="rb-info">
+        <div class="rb-info-item">
+          <div class="rb-info-label">报销人</div>
+          <div class="rb-info-val">${acc.name}</div>
+        </div>
+        <div class="rb-info-item">
+          <div class="rb-info-label">所属期间</div>
+          <div class="rb-info-val">${monthName(state.anYear, state.anMonth)}</div>
+        </div>
+        <div class="rb-info-item">
+          <div class="rb-info-label">提交日期</div>
+          <div class="rb-info-val">${today()}</div>
+        </div>
+        <div class="rb-info-item">
+          <div class="rb-info-label">币种</div>
+          <div class="rb-info-val">${acc.currency}</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="rb-num-col">序号</th>
+            <th>日期</th>
+            <th>费用类别</th>
+            <th>事由/说明</th>
+            <th class="rb-amt-col">金额</th>
+            <th class="rb-voucher-col">凭证</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${txs.map((t,i)=>{
+            const cat = getCat(t.categoryId);
+            return `<tr>
+              <td class="rb-num-col">${i+1}</td>
+              <td>${t.date}</td>
+              <td>${cat?cat.name:'未分类'}</td>
+              <td>${t.description||'—'}</td>
+              <td class="rb-amt-col">${fmt(t.amount, acc.currency)}</td>
+              <td class="rb-voucher-col">${pMap[t.id]||'—'}</td>
+            </tr>`;
+          }).join('')}
+          ${txs.length===0?'<tr><td colspan="6" style="text-align:center;color:#999">本月暂无支出记录</td></tr>':''}
+          <tr class="rb-total-row">
+            <td colspan="4" style="text-align:right">合计</td>
+            <td class="rb-amt-col">${fmt(total, acc.currency)}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="rb-sign">
+        <div class="rb-sign-block">
+          <div class="rb-sign-line">报销人签名：＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿＿</div>
+        </div>
+        <div class="rb-sign-block">
+          <div class="rb-sign-line">审批人签名：＿＿＿＿＿＿＿＿　日期：＿＿＿＿＿＿</div>
+        </div>
+      </div>
+
+      <div class="rb-footer">生成日期：${new Date().toLocaleString('zh-CN')}</div>
+    </div>
+  `;
+
+  try{
+    const canvas = await html2canvas(reportEl, {scale:2, useCORS:true, logging:false});
+    const imgData = canvas.toDataURL('image/jpeg', 0.82);
+    const {jsPDF} = window.jspdf;
+    const pdf = new jsPDF('p','mm','a4');
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    const imgW = pw;
+    const imgH = (canvas.height * pw) / canvas.width;
+    let y = 0;
+    while(y < imgH){
+      if(y>0) pdf.addPage();
+      pdf.addImage(imgData,'JPEG',0,-y,imgW,imgH);
+      y += ph;
+    }
+
+    // Append one page per expense transaction with an attachment (same P-numbering as table)
+    for(const t of withAttachments){
+      let blob = await getAttachmentBlob(t.attachmentId);
+      if(!blob) blob = await tryFetchRemoteAttachment(t.attachmentId);
+      if(!blob) continue;
+      const dataUrl = await blobToBase64(blob);
+      const dims = await new Promise(resolve=>{
+        const im = new Image();
+        im.onload = ()=>resolve({w:im.width,h:im.height});
+        im.onerror = ()=>resolve(null);
+        im.src = dataUrl;
+      });
+      if(!dims) continue;
+
+      pdf.addPage();
+      const cat = getCat(t.categoryId);
+      const title = `凭证 ${pMap[t.id]} · ${t.date} · ${cat?cat.name:'未分类'} · ${fmt(t.amount, acc.currency)}${t.description?' · '+t.description:''}`;
+      const tc = document.createElement('canvas');
+      let tctx = tc.getContext('2d');
+      tctx.font = '28px sans-serif';
+      tc.width = Math.ceil(tctx.measureText(title).width) + 8;
+      tc.height = 40;
+      tctx = tc.getContext('2d');
+      tctx.font = '28px sans-serif'; tctx.fillStyle = '#222'; tctx.textBaseline = 'middle';
+      tctx.fillText(title, 4, 20);
+      let tW = tc.width*(6/40), tH = 6;
+      if(tW > pw-20){ tH = tH*(pw-20)/tW; tW = pw-20; }
+      pdf.addImage(tc.toDataURL('image/png'), 'PNG', 10, 8, tW, tH);
+
+      const margin = 10, topOffset = 20;
+      const availW = pw - margin*2, availH = ph - topOffset - margin;
+      const ratio = Math.min(availW/dims.w, availH/dims.h);
+      const drawW = dims.w*ratio, drawH = dims.h*ratio;
+      const x = (pw-drawW)/2;
+      // 图片外加细边框，视觉更像正式单据凭证
+      pdf.setDrawColor(180,180,180);
+      pdf.setLineWidth(0.3);
+      pdf.rect(x-1, topOffset-1, drawW+2, drawH+2);
+      pdf.addImage(dataUrl, 'JPEG', x, topOffset, drawW, drawH);
+    }
+
+    pdf.save(`报销单-${acc.name}-${state.anYear}-${String(state.anMonth+1).padStart(2,'0')}.pdf`);
+    toast('报销单已导出');
+  }catch(e){
+    console.error(e);
+    toast('报销单生成失败，请重试');
   }
 }
 
@@ -2871,6 +3060,9 @@ async function saveScannedAttachment(){
 
   // best-effort cloud upload, tie to the tx once it's saved (txId patched below if editing)
   uploadAttachmentToCloud(id, blob, state.editingTxId||null);
+
+  // best-effort local OCR prefill: runs async, never blocks save, never overwrites user input
+  runReceiptOCRPrefill(fullCanvas);
 }
 
 function resizeForOutput(canvas, maxSide){
@@ -2882,6 +3074,103 @@ function resizeForOutput(canvas, maxSide){
   out.width = Math.round(w*scale); out.height = Math.round(h*scale);
   out.getContext('2d').drawImage(canvas, 0, 0, out.width, out.height);
   return out;
+}
+
+// ===================== LOCAL OCR PREFILL (Tesseract.js, lazy CDN load) =====================
+// Runs fully on-device after a receipt is saved. Best-effort: never blocks saving,
+// never overwrites a value the user already typed, silently gives up on failure/timeout.
+let _tesseractLoadPromise = null;
+function loadTesseractJS(){
+  if(window.Tesseract) return Promise.resolve(window.Tesseract);
+  if(_tesseractLoadPromise) return _tesseractLoadPromise;
+  _tesseractLoadPromise = new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = ()=> window.Tesseract ? resolve(window.Tesseract) : reject(new Error('Tesseract.js failed to init'));
+    s.onerror = ()=> reject(new Error('Tesseract.js failed to load from CDN'));
+    document.head.appendChild(s);
+  });
+  return _tesseractLoadPromise;
+}
+
+function ocrExtractAmount(text){
+  const lines = text.split(/\r?\n/);
+  const keyRe = /(合计|总计|总额|實付|实付|应付|total|amount)/i;
+  const numRe = /\d{1,6}[.,]\d{2}/g;
+  // Pass 1: a number on a line that mentions a total/payable keyword, preferring 2-decimal numbers
+  for(const line of lines){
+    if(keyRe.test(line)){
+      const matches = line.match(numRe);
+      if(matches && matches.length){
+        const v = parseFloat(matches[matches.length-1].replace(',', '.'));
+        if(!isNaN(v) && v>=0.01 && v<=999999) return v;
+      }
+    }
+  }
+  // Pass 2: no keyword line matched -> take the largest 2-decimal number in the whole text
+  const all = text.match(numRe);
+  if(all && all.length){
+    const vals = all.map(m=>parseFloat(m.replace(',', '.'))).filter(v=>!isNaN(v) && v>=0.01 && v<=999999);
+    if(vals.length) return Math.max(...vals);
+  }
+  return null;
+}
+
+function ocrExtractDate(text){
+  const m = text.match(/20\d{2}[年\-\/.]\s?\d{1,2}[月\-\/.]\s?\d{1,2}/);
+  if(!m) return null;
+  const parts = m[0].match(/(\d{2,4})[年\-\/.]\s?(\d{1,2})[月\-\/.]\s?(\d{1,2})/);
+  if(!parts) return null;
+  const y = parseInt(parts[1],10), mo = parseInt(parts[2],10), d = parseInt(parts[3],10);
+  if(mo<1||mo>12||d<1||d>31) return null;
+  const dateObj = new Date(y, mo-1, d);
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1); tomorrow.setHours(23,59,59,999);
+  if(isNaN(dateObj.getTime()) || dateObj > tomorrow) return null;
+  return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+async function runReceiptOCRPrefill(sourceCanvas){
+  try{
+    // OCR doesn't need full resolution; shrink long side to speed up recognition & memory
+    let ocrCanvas = sourceCanvas;
+    const longSide = Math.max(sourceCanvas.width, sourceCanvas.height);
+    if(longSide > 1600){
+      const scale = 1600/longSide;
+      const small = document.createElement('canvas');
+      small.width = Math.round(sourceCanvas.width*scale);
+      small.height = Math.round(sourceCanvas.height*scale);
+      small.getContext('2d').drawImage(sourceCanvas, 0, 0, small.width, small.height);
+      ocrCanvas = small;
+    }
+
+    const timeoutMs = 30000;
+    const withTimeout = (p)=> Promise.race([
+      p,
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('OCR timeout')), timeoutMs))
+    ]);
+
+    const Tesseract = await withTimeout(loadTesseractJS());
+    const { data:{ text } } = await withTimeout(Tesseract.recognize(ocrCanvas, 'chi_sim+eng'));
+    if(!text) return;
+
+    // Only prefill fields the user hasn't already touched, and only if the tx modal is still open
+    const amountEl = document.getElementById('tx-amount');
+    const dateEl = document.getElementById('tx-date');
+    let prefilled = false;
+
+    if(amountEl && amountEl.value.trim()===''){
+      const amt = ocrExtractAmount(text);
+      if(amt!==null){ amountEl.value = String(amt); prefilled = true; }
+    }
+    if(dateEl && !state.dateTouchedByUser){
+      const d = ocrExtractDate(text);
+      if(d!==null){ dateEl.value = d; prefilled = true; }
+    }
+
+    if(prefilled) toast('已自动识别，请核对金额');
+  }catch(e){
+    console.error('Receipt OCR prefill failed (ignored):', e);
+  }
 }
 
 function cancelScan(){
