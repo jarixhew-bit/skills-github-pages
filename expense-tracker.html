@@ -257,6 +257,59 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   background:#2C3E50;color:#fff;padding:10px 20px;border-radius:20px;
   font-size:13px;z-index:999;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
+
+/* ATTACHMENT: capture button on tx form */
+.attach-row{display:flex;gap:10px;margin-bottom:16px}
+.attach-btn{flex:1;padding:12px 8px;border:1.5px dashed var(--border);
+  border-radius:10px;background:#fafbff;color:var(--sub);font-size:13px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;
+  font-family:inherit}
+.attach-btn:active{background:var(--p2)}
+.attach-thumb-wrap{position:relative;margin-bottom:16px}
+.attach-thumb{width:100%;max-height:220px;object-fit:contain;border-radius:10px;
+  background:#f5f5f5;display:block;cursor:pointer}
+.attach-thumb-remove{position:absolute;top:8px;right:8px;width:28px;height:28px;
+  border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border:none;
+  font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.attach-local-note{font-size:11px;color:var(--sub);margin-top:6px;text-align:center}
+.tx-attach-flag{font-size:13px;margin-left:4px;flex-shrink:0;opacity:.7}
+
+/* ATTACHMENT: full-screen scan workflow */
+.scan-overlay{position:fixed;inset:0;background:#000;z-index:500;display:none;
+  flex-direction:column}
+.scan-overlay.open{display:flex}
+.scan-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;color:#fff;font-size:15px;font-weight:600;flex-shrink:0}
+.scan-hdr button{background:rgba(255,255,255,.15);border:none;color:#fff;
+  width:32px;height:32px;border-radius:50%;font-size:15px;cursor:pointer}
+.scan-stage{flex:1;position:relative;overflow:hidden;display:flex;
+  align-items:center;justify-content:center;min-height:0}
+.scan-canvas-wrap{position:relative;max-width:100%;max-height:100%;touch-action:none}
+.scan-canvas-wrap canvas{max-width:100%;max-height:100%;display:block;touch-action:none}
+.scan-corner-dot{position:absolute;width:26px;height:26px;margin:-13px;
+  border-radius:50%;background:rgba(108,99,255,.9);border:3px solid #fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);touch-action:none;cursor:grab}
+.scan-loading{color:#fff;text-align:center;padding:24px;font-size:14px}
+.scan-loading .spin{font-size:32px;margin-bottom:12px;animation:spinRot 1s linear infinite}
+@keyframes spinRot{to{transform:rotate(360deg)}}
+.scan-footer{padding:14px 16px 28px;flex-shrink:0}
+.scan-mode-tabs{display:flex;gap:8px;margin-bottom:14px}
+.scan-mode-tab{flex:1;padding:9px 4px;text-align:center;border-radius:10px;
+  font-size:12px;font-weight:600;color:#ccc;background:rgba(255,255,255,.08);
+  cursor:pointer;border:1.5px solid transparent}
+.scan-mode-tab.active{background:var(--p);color:#fff;border-color:var(--p)}
+.scan-actions{display:flex;gap:10px}
+.scan-actions .btn{flex:1}
+.scan-hint{color:#ccc;font-size:12px;text-align:center;margin-bottom:12px}
+
+/* ATTACHMENT: full-screen viewer */
+.viewer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;
+  display:none;align-items:center;justify-content:center;flex-direction:column}
+.viewer-overlay.open{display:flex}
+.viewer-overlay img{max-width:94%;max-height:80vh;object-fit:contain;border-radius:6px}
+.viewer-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.15);
+  border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:17px;cursor:pointer}
+.viewer-note{color:#ccc;font-size:12px;margin-top:14px;text-align:center;padding:0 24px}
 </style>
 </head>
 <body>
@@ -441,12 +494,44 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <label class="form-label">日期</label>
       <input class="form-input" id="tx-date" type="date">
     </div>
+    <!-- attachment -->
+    <div class="form-group">
+      <label class="form-label">单据照片（选填）</label>
+      <div id="attach-thumb-area"></div>
+      <div id="attach-btn-row" class="attach-row">
+        <button type="button" class="attach-btn" onclick="document.getElementById('attach-camera-input').click()">
+          <span style="font-size:20px">📷</span>拍照
+        </button>
+        <button type="button" class="attach-btn" onclick="document.getElementById('attach-gallery-input').click()">
+          <span style="font-size:20px">🖼️</span>从相册选择
+        </button>
+      </div>
+      <input type="file" id="attach-camera-input" accept="image/*" capture="environment" style="display:none" onchange="onAttachFileChosen(event)">
+      <input type="file" id="attach-gallery-input" accept="image/*" style="display:none" onchange="onAttachFileChosen(event)">
+    </div>
     <!-- delete btn (edit mode) -->
     <div id="tx-delete-wrap" style="display:none;margin-bottom:12px">
       <button class="btn btn-danger" onclick="deleteTx()">🗑 删除此记录</button>
     </div>
     <button class="btn btn-primary" onclick="saveTx()">保存</button>
   </div>
+</div>
+
+<!-- SCAN WORKFLOW (full screen) -->
+<div class="scan-overlay" id="scan-overlay">
+  <div class="scan-hdr">
+    <span id="scan-title">处理单据</span>
+    <button onclick="cancelScan()">✕</button>
+  </div>
+  <div class="scan-stage" id="scan-stage"></div>
+  <div class="scan-footer" id="scan-footer"></div>
+</div>
+
+<!-- ATTACHMENT VIEWER -->
+<div class="viewer-overlay" id="viewer-overlay">
+  <button class="viewer-close" onclick="closeViewer()">✕</button>
+  <img id="viewer-img" src="">
+  <div class="viewer-note" id="viewer-note"></div>
 </div>
 
 <!-- MODAL: ACCOUNT SWITCHER -->
@@ -999,7 +1084,9 @@ let state = {
   selectedCatId: null,
   selectedAccColor: COLORS[0],
   pieChart: null,
-  catManuallySelected: false
+  catManuallySelected: false,
+  pendingAttachmentId: null,
+  pendingAttachmentIsNew: false
 };
 
 // ===================== PERSIST =====================
@@ -1144,12 +1231,13 @@ function txHtml(t, currency){
   const sign = t.type==='expense'?'-':'+';
   const cls = t.type==='expense'?'exp':'inc';
   const cur = currency || (curAcc()?curAcc().currency:'HKD');
+  const clip = t.attachmentId ? `<span class="tx-attach-flag" onclick="event.stopPropagation();openAttachmentViewer('${t.id}')">📎</span>` : '';
   return `<div class="tx-swipe-wrap">
     <div class="tx-del-btn" onclick="deleteTxById('${t.id}')">🗑<br>删除</div>
     <div class="tx-item" onclick="editTx('${t.id}')">
       <div class="tx-icon" style="background:${color}22">${icon}</div>
       <div class="tx-info">
-        <div class="tx-name">${t.description||catName}</div>
+        <div class="tx-name">${t.description||catName}${clip}</div>
         <div class="tx-cat">${catName} · ${t.date}</div>
       </div>
       <div class="tx-amt ${cls}">${sign}${fmt(t.amount, cur)}</div>
@@ -1408,6 +1496,7 @@ function showAddTx(){
   document.getElementById('type-inc').classList.remove('active');
   hideAutoHint();
   renderCatGrid();
+  resetAttachState();
   showModal('modal-add-tx');
   setTimeout(()=>document.getElementById('tx-amount').focus(), 300);
 }
@@ -1427,6 +1516,7 @@ function editTx(id){
   document.getElementById('type-exp').classList.toggle('active', t.type==='expense');
   document.getElementById('type-inc').classList.toggle('active', t.type==='income');
   renderCatGrid();
+  loadAttachStateForTx(t);
   showModal('modal-add-tx');
 }
 
@@ -1524,6 +1614,10 @@ function saveTx(){
     description: document.getElementById('tx-desc').value.trim(),
     date: document.getElementById('tx-date').value || today()
   };
+  if(state.pendingAttachmentId) tx.attachmentId = state.pendingAttachmentId;
+
+  const prevTx = state.editingTxId ? data.transactions.find(t=>t.id===state.editingTxId) : null;
+  const prevAttachmentId = prevTx ? prevTx.attachmentId : null;
 
   if(state.editingTxId){
     const idx = data.transactions.findIndex(t=>t.id===state.editingTxId);
@@ -1535,6 +1629,16 @@ function saveTx(){
   }
 
   saveData();
+  // if attachment was removed/replaced, clean up the orphaned blob
+  if(prevAttachmentId && prevAttachmentId !== tx.attachmentId){
+    deleteAttachmentBlob(prevAttachmentId);
+  }
+  // link the cloud attachment doc to its transaction id (best-effort, silent on failure)
+  if(tx.attachmentId && state.pendingAttachmentIsNew && currentUser){
+    db.collection('users').doc(currentUser.uid).collection('attachments')
+      .doc(tx.attachmentId).set({txId: tx.id}, {merge:true}).catch(e=>console.error('link txId failed (ignored):', e));
+  }
+  state.pendingAttachmentIsNew = false;
   closeModal('modal-add-tx');
   if(state.currentTab==='overview') renderOverview();
   if(state.currentTab==='transactions') renderTxList();
@@ -1544,8 +1648,11 @@ function saveTx(){
 function deleteTx(){
   if(!state.editingTxId) return;
   if(!confirm('确定删除这条记录？')) return;
+  const t = data.transactions.find(t=>t.id===state.editingTxId);
+  const attachmentId = t ? t.attachmentId : null;
   data.transactions = data.transactions.filter(t=>t.id!==state.editingTxId);
   saveData();
+  if(attachmentId) deleteAttachmentBlob(attachmentId);
   closeModal('modal-add-tx');
   toast('已删除记录');
   if(state.currentTab==='overview') renderOverview();
@@ -1784,6 +1891,36 @@ async function exportPDF(){
       pdf.addImage(imgData,'PNG',0,-y,imgW,imgH);
       y += ph;
     }
+
+    // Append one page per transaction with an attachment (this month, this account)
+    const withAttachments = allSorted.filter(t=>t.attachmentId);
+    for(const t of withAttachments){
+      let blob = await getAttachmentBlob(t.attachmentId);
+      if(!blob) blob = await tryFetchRemoteAttachment(t.attachmentId);
+      if(!blob) continue; // silently skip attachments unavailable on this device
+      const dataUrl = await blobToBase64(blob);
+      const dims = await new Promise(resolve=>{
+        const im = new Image();
+        im.onload = ()=>resolve({w:im.width,h:im.height});
+        im.onerror = ()=>resolve(null);
+        im.src = dataUrl;
+      });
+      if(!dims) continue;
+
+      pdf.addPage();
+      const cat = getCat(t.categoryId);
+      const title = `${t.date} · ${cat?cat.icon+' '+cat.name:'未分类'} · ${t.type==='expense'?'−':'+'}${fmt(t.amount, acc.currency)}${t.description?' · '+t.description:''}`;
+      pdf.setFontSize(11);
+      pdf.text(title, 10, 12, {maxWidth: pw-20});
+
+      const margin = 10, topOffset = 20;
+      const availW = pw - margin*2, availH = ph - topOffset - margin;
+      const ratio = Math.min(availW/dims.w, availH/dims.h);
+      const drawW = dims.w*ratio, drawH = dims.h*ratio;
+      const x = (pw-drawW)/2;
+      pdf.addImage(dataUrl, 'JPEG', x, topOffset, drawW, drawH);
+    }
+
     pdf.save(`${acc.name}-${state.anYear}-${String(state.anMonth+1).padStart(2,'0')}.pdf`);
     toast('PDF 已导出');
   }catch(e){
@@ -1835,8 +1972,11 @@ function closeOpenSwipe(){
 
 function deleteTxById(id){
   if(!confirm('确定删除这条记录？')) return;
+  const t = data.transactions.find(t=>t.id===id);
+  const attachmentId = t ? t.attachmentId : null;
   data.transactions = data.transactions.filter(t=>t.id!==id);
   saveData();
+  if(attachmentId) deleteAttachmentBlob(attachmentId);
   toast('已删除记录');
   if(state.currentTab==='overview') renderOverview();
   if(state.currentTab==='transactions') renderTxList();
@@ -1957,6 +2097,686 @@ async function loadIBKR(){
     ibkrData = await r.json();
     renderAccCards();
   }catch(e){ /* silently ignore if file missing */ }
+}
+
+// ===================== ATTACHMENTS: IndexedDB =====================
+const ATTACH_DB_NAME = 'expenseTrackerFiles';
+const ATTACH_STORE = 'attachments';
+let _attachDbPromise = null;
+
+function openAttachDb(){
+  if(_attachDbPromise) return _attachDbPromise;
+  _attachDbPromise = new Promise((resolve, reject)=>{
+    if(!('indexedDB' in window)){ reject(new Error('no indexedDB')); return; }
+    const req = indexedDB.open(ATTACH_DB_NAME, 1);
+    req.onupgradeneeded = ()=>{
+      const dbi = req.result;
+      if(!dbi.objectStoreNames.contains(ATTACH_STORE)) dbi.createObjectStore(ATTACH_STORE);
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+  return _attachDbPromise;
+}
+
+async function putAttachmentBlob(id, blob){
+  try{
+    const dbi = await openAttachDb();
+    await new Promise((resolve, reject)=>{
+      const tx = dbi.transaction(ATTACH_STORE, 'readwrite');
+      tx.objectStore(ATTACH_STORE).put(blob, id);
+      tx.oncomplete = resolve; tx.onerror = ()=>reject(tx.error);
+    });
+  }catch(e){ console.error('IndexedDB put failed:', e); }
+}
+
+async function getAttachmentBlob(id){
+  try{
+    const dbi = await openAttachDb();
+    return await new Promise((resolve, reject)=>{
+      const tx = dbi.transaction(ATTACH_STORE, 'readonly');
+      const req = tx.objectStore(ATTACH_STORE).get(id);
+      req.onsuccess = ()=>resolve(req.result||null);
+      req.onerror = ()=>reject(req.error);
+    });
+  }catch(e){ console.error('IndexedDB get failed:', e); return null; }
+}
+
+async function deleteAttachmentBlobLocal(id){
+  try{
+    const dbi = await openAttachDb();
+    await new Promise((resolve, reject)=>{
+      const tx = dbi.transaction(ATTACH_STORE, 'readwrite');
+      tx.objectStore(ATTACH_STORE).delete(id);
+      tx.oncomplete = resolve; tx.onerror = ()=>reject(tx.error);
+    });
+  }catch(e){ console.error('IndexedDB delete failed:', e); }
+}
+
+// Delete blob locally + best-effort remote cleanup (never blocks/throws to caller)
+async function deleteAttachmentBlob(id){
+  if(!id) return;
+  await deleteAttachmentBlobLocal(id);
+  if(currentUser){
+    try{
+      await db.collection('users').doc(currentUser.uid)
+        .collection('attachments').doc(id).delete();
+    }catch(e){ console.error('Cloud attachment delete failed (ignored):', e); }
+  }
+}
+
+// ===================== ATTACHMENTS: form thumbnail state =====================
+function resetAttachState(){
+  state.pendingAttachmentId = null;
+  state.pendingAttachmentIsNew = false;
+  renderAttachThumb(null);
+}
+
+async function loadAttachStateForTx(t){
+  state.pendingAttachmentId = t.attachmentId || null;
+  state.pendingAttachmentIsNew = false;
+  if(!t.attachmentId){ renderAttachThumb(null); return; }
+  renderAttachThumb('loading');
+  let blob = await getAttachmentBlob(t.attachmentId);
+  if(!blob) blob = await tryFetchRemoteAttachment(t.attachmentId);
+  if(blob){
+    const url = URL.createObjectURL(blob);
+    renderAttachThumb(url);
+  } else {
+    renderAttachThumb(null, true);
+  }
+}
+
+function renderAttachThumb(url, failed){
+  const area = document.getElementById('attach-thumb-area');
+  const btnRow = document.getElementById('attach-btn-row');
+  if(!area) return;
+  if(url==='loading'){
+    area.innerHTML = `<div class="attach-local-note">正在加载图片…</div>`;
+    btnRow.style.display = 'flex';
+    return;
+  }
+  if(!url){
+    area.innerHTML = failed ? `<div class="attach-local-note">此照片仅存于拍摄设备，本机无法预览</div>` : '';
+    btnRow.style.display = 'flex';
+    return;
+  }
+  area.innerHTML = `<div class="attach-thumb-wrap">
+    <img class="attach-thumb" src="${url}" onclick="openImageInViewer('${url}')">
+    <button type="button" class="attach-thumb-remove" onclick="removePendingAttachment()">✕</button>
+  </div>`;
+  btnRow.style.display = 'none';
+}
+
+function removePendingAttachment(){
+  state.pendingAttachmentId = null;
+  state.pendingAttachmentIsNew = false;
+  renderAttachThumb(null);
+}
+
+function onAttachFileChosen(event){
+  const file = event.target.files && event.target.files[0];
+  event.target.value = ''; // allow re-selecting the same file later
+  if(!file) return;
+  openScanWorkflow(file);
+}
+
+// ===================== ATTACHMENTS: full-screen viewer =====================
+async function openAttachmentViewer(txId){
+  const t = data.transactions.find(x=>x.id===txId);
+  if(!t || !t.attachmentId) return;
+  const noteEl = document.getElementById('viewer-note');
+  const imgEl = document.getElementById('viewer-img');
+  noteEl.textContent = '正在加载…';
+  imgEl.src = '';
+  document.getElementById('viewer-overlay').classList.add('open');
+  let blob = await getAttachmentBlob(t.attachmentId);
+  let remote = false;
+  if(!blob){
+    blob = await tryFetchRemoteAttachment(t.attachmentId);
+    remote = !!blob;
+  }
+  if(blob){
+    imgEl.src = URL.createObjectURL(blob);
+    noteEl.textContent = remote ? '已从云端加载' : '';
+  } else {
+    noteEl.textContent = '此照片仅存于拍摄设备';
+  }
+}
+function openImageInViewer(url){
+  document.getElementById('viewer-img').src = url;
+  document.getElementById('viewer-note').textContent = '';
+  document.getElementById('viewer-overlay').classList.add('open');
+}
+function closeViewer(){
+  document.getElementById('viewer-overlay').classList.remove('open');
+}
+
+// ===================== ATTACHMENTS: cloud sync (best-effort) =====================
+const ATTACH_CLOUD_MAX_BYTES = 700 * 1024; // ~700KB base64 cap
+
+function blobToBase64(blob){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onloadend = ()=>resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+function base64ToBlob(dataUrl){
+  const [meta, b64] = dataUrl.split(',');
+  const mimeMatch = meta.match(/data:(.*);base64/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], {type:mime});
+}
+
+async function uploadAttachmentToCloud(id, blob, txId){
+  if(!currentUser) return;
+  try{
+    const b64 = await blobToBase64(blob);
+    if(b64.length > ATTACH_CLOUD_MAX_BYTES){
+      console.warn('Attachment too large for cloud sync, staying local-only:', id);
+      return;
+    }
+    await db.collection('users').doc(currentUser.uid)
+      .collection('attachments').doc(id).set({
+        base64: b64, txId: txId||null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+  }catch(e){
+    console.error('Cloud attachment upload failed (ignored):', e);
+  }
+}
+
+async function tryFetchRemoteAttachment(id){
+  if(!currentUser) return null;
+  try{
+    const snap = await db.collection('users').doc(currentUser.uid)
+      .collection('attachments').doc(id).get();
+    if(!snap.exists) return null;
+    const b64 = snap.data().base64;
+    if(!b64) return null;
+    const blob = base64ToBlob(b64);
+    await putAttachmentBlob(id, blob); // cache locally for next time
+    return blob;
+  }catch(e){
+    console.error('Cloud attachment fetch failed (ignored):', e);
+    return null;
+  }
+}
+
+// ===================== SCAN WORKFLOW: OpenCV lazy load =====================
+let _cvReadyPromise = null;
+function loadOpenCV(){
+  if(window.cv && window.cv.Mat) return Promise.resolve(true);
+  if(_cvReadyPromise) return _cvReadyPromise;
+  _cvReadyPromise = new Promise((resolve)=>{
+    const script = document.createElement('script');
+    script.src = 'https://docs.opencv.org/4.x/opencv.js';
+    script.onload = ()=>{
+      // opencv.js calls Module.onRuntimeInitialized when the wasm is ready
+      if(window.cv && window.cv.Mat){ resolve(true); return; }
+      const check = ()=>{
+        if(window.cv && window.cv.Mat) resolve(true);
+        else if(window.cv) window.cv.onRuntimeInitialized = ()=>resolve(true);
+        else setTimeout(check, 100);
+      };
+      check();
+    };
+    script.onerror = ()=>resolve(false);
+    document.head.appendChild(script);
+  });
+  return _cvReadyPromise;
+}
+
+// ===================== SCAN WORKFLOW: state machine =====================
+const scanState = {
+  file: null,
+  img: null,          // HTMLImageElement, original photo
+  corners: null,       // [{x,y}*4] in ORIGINAL image pixel coords, order TL,TR,BR,BL
+  cvAvailable: false,
+  enhanceMode: 'enhance', // 'enhance' | 'bw' | 'original'
+  stageEl: null,
+  displayScale: 1,     // ratio of displayed canvas size to original image size
+};
+
+function openScanWorkflow(file){
+  scanState.file = file;
+  scanState.img = null;
+  scanState.corners = null;
+  document.getElementById('scan-title').textContent = '处理单据';
+  document.getElementById('scan-overlay').classList.add('open');
+  renderScanLoading('正在加载图片…');
+
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    const img = new Image();
+    img.onload = async ()=>{
+      scanState.img = img;
+      renderScanLoading('正在加载图像处理引擎…');
+      const ok = await loadOpenCV().catch(()=>false);
+      scanState.cvAvailable = !!ok;
+      if(scanState.cvAvailable){
+        try{
+          detectCornersWithCV(img);
+        }catch(err){
+          console.error('Corner detect failed, falling back to full image:', err);
+          scanState.corners = defaultCorners(img.width, img.height);
+        }
+      } else {
+        toast('图像引擎加载失败，将直接使用原图');
+        scanState.corners = defaultCorners(img.width, img.height);
+      }
+      renderCornerStage();
+    };
+    img.onerror = ()=>{
+      toast('图片加载失败');
+      cancelScan();
+    };
+    img.src = e.target.result;
+  };
+  reader.onerror = ()=>{ toast('文件读取失败'); cancelScan(); };
+  reader.readAsDataURL(file);
+}
+
+function defaultCorners(w, h){
+  const m = 0; // full image
+  return [{x:m,y:m},{x:w-m,y:m},{x:w-m,y:h-m},{x:m,y:h-m}];
+}
+
+function renderScanLoading(msg){
+  document.getElementById('scan-stage').innerHTML = `<div class="scan-loading"><div class="spin">⏳</div>${msg}</div>`;
+  document.getElementById('scan-footer').innerHTML = '';
+}
+
+// ---- corner detection using OpenCV.js (mirrors camscanner-local/scanner/detect.py) ----
+function detectCornersWithCV(img){
+  const cv = window.cv;
+  const RESIZE_WIDTH = 800;
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = img.width; srcCanvas.height = img.height;
+  srcCanvas.getContext('2d').drawImage(img, 0, 0);
+  const src = cv.imread(srcCanvas);
+
+  const scale = img.width > RESIZE_WIDTH ? RESIZE_WIDTH / img.width : 1.0;
+  const small = new cv.Mat();
+  if(scale !== 1.0){
+    cv.resize(src, small, new cv.Size(Math.round(img.width*scale), Math.round(img.height*scale)));
+  } else {
+    src.copyTo(small);
+  }
+
+  const gray = new cv.Mat();
+  cv.cvtColor(small, gray, cv.COLOR_RGBA2GRAY);
+  const blur = new cv.Mat();
+  cv.GaussianBlur(gray, blur, new cv.Size(5,5), 0);
+  const edged = new cv.Mat();
+  cv.Canny(blur, edged, 75, 200);
+  const kernel = cv.Mat.ones(3,3,cv.CV_8U);
+  cv.dilate(edged, edged, kernel);
+
+  const contours = new cv.MatVector();
+  const hierarchy = new cv.Mat();
+  cv.findContours(edged, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
+
+  let best = null, bestArea = 0;
+  const imgArea = small.rows * small.cols;
+  const candidates = [];
+  for(let i=0;i<contours.size();i++){
+    const c = contours.get(i);
+    candidates.push({c, area: cv.contourArea(c)});
+  }
+  candidates.sort((a,b)=>b.area-a.area);
+  const top5 = candidates.slice(0,5);
+
+  for(const {c} of top5){
+    const peri = cv.arcLength(c, true);
+    const approx = new cv.Mat();
+    cv.approxPolyDP(c, approx, 0.02*peri, true);
+    const area = cv.contourArea(approx);
+    if(approx.rows===4 && area > 0.2*imgArea && area>bestArea){
+      const pts = [];
+      for(let j=0;j<4;j++){
+        pts.push({x: approx.data32S[j*2]/scale, y: approx.data32S[j*2+1]/scale});
+      }
+      best = pts; bestArea = area;
+    }
+    approx.delete();
+  }
+  for(const {c} of candidates) c.delete();
+
+  src.delete(); small.delete(); gray.delete(); blur.delete(); edged.delete();
+  kernel.delete(); contours.delete(); hierarchy.delete();
+
+  if(best){
+    scanState.corners = orderPoints(best);
+  } else {
+    scanState.corners = defaultCorners(img.width, img.height);
+  }
+}
+
+function orderPoints(pts){
+  // TL = min(x+y), BR = max(x+y), TR = min(x-y), BL = max(x-y)
+  const withSum = pts.map(p=>({...p, s:p.x+p.y, d:p.x-p.y}));
+  const tl = withSum.reduce((a,b)=>b.s<a.s?b:a);
+  const br = withSum.reduce((a,b)=>b.s>a.s?b:a);
+  const tr = withSum.reduce((a,b)=>b.d>a.d?b:a);
+  const bl = withSum.reduce((a,b)=>b.d<a.d?b:a);
+  return [{x:tl.x,y:tl.y},{x:tr.x,y:tr.y},{x:br.x,y:br.y},{x:bl.x,y:bl.y}];
+}
+
+// ---- stage 1: draggable corner picker ----
+function renderCornerStage(){
+  document.getElementById('scan-title').textContent = '拖动调整四角';
+  const img = scanState.img;
+  const stage = document.getElementById('scan-stage');
+  const maxW = stage.clientWidth || 360;
+  const maxH = (stage.clientHeight || 400);
+  const scale = Math.min(maxW/img.width, maxH/img.height, 1);
+  scanState.displayScale = scale;
+  const dispW = Math.round(img.width*scale), dispH = Math.round(img.height*scale);
+
+  stage.innerHTML = `<div class="scan-canvas-wrap" id="corner-wrap" style="width:${dispW}px;height:${dispH}px">
+    <canvas id="corner-canvas" width="${dispW}" height="${dispH}"></canvas>
+  </div>`;
+  const canvas = document.getElementById('corner-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, dispW, dispH);
+
+  const wrap = document.getElementById('corner-wrap');
+  scanState.corners.forEach((pt, idx)=>{
+    const dot = document.createElement('div');
+    dot.className = 'scan-corner-dot';
+    dot.style.left = (pt.x*scale)+'px';
+    dot.style.top = (pt.y*scale)+'px';
+    dot.dataset.idx = idx;
+    attachDragHandlers(dot, wrap, scale);
+    wrap.appendChild(dot);
+  });
+  drawCornerQuad(ctx, scanState.corners, scale);
+
+  document.getElementById('scan-footer').innerHTML = `
+    <div class="scan-hint">拖动圆点对齐单据四角</div>
+    <div class="scan-actions">
+      <button class="btn btn-outline" onclick="resetCornersToFull()">重设为全图</button>
+      <button class="btn btn-primary" onclick="confirmCorners()">确认裁切 →</button>
+    </div>`;
+}
+
+function drawCornerQuad(ctx, corners, scale){
+  ctx.save();
+  ctx.strokeStyle = '#6C63FF'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  corners.forEach((p,i)=>{
+    const x=p.x*scale, y=p.y*scale;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.closePath(); ctx.stroke();
+  ctx.restore();
+}
+
+function attachDragHandlers(dot, wrap, scale){
+  let dragging = false;
+  const move = (clientX, clientY)=>{
+    const rect = wrap.getBoundingClientRect();
+    let x = clientX - rect.left, y = clientY - rect.top;
+    x = Math.max(0, Math.min(rect.width, x));
+    y = Math.max(0, Math.min(rect.height, y));
+    dot.style.left = x+'px'; dot.style.top = y+'px';
+    const idx = +dot.dataset.idx;
+    scanState.corners[idx] = {x: x/scale, y: y/scale};
+    redrawCornerCanvas();
+  };
+  dot.addEventListener('touchstart', e=>{ dragging=true; e.preventDefault(); }, {passive:false});
+  dot.addEventListener('touchmove', e=>{
+    if(!dragging) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    move(t.clientX, t.clientY);
+  }, {passive:false});
+  dot.addEventListener('touchend', ()=>{ dragging=false; });
+  dot.addEventListener('mousedown', e=>{ dragging=true; e.preventDefault(); });
+  window.addEventListener('mousemove', e=>{ if(dragging) move(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', ()=>{ dragging=false; });
+}
+
+function redrawCornerCanvas(){
+  const canvas = document.getElementById('corner-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const scale = scanState.displayScale;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(scanState.img, 0, 0, canvas.width, canvas.height);
+  drawCornerQuad(ctx, scanState.corners, scale);
+}
+
+function resetCornersToFull(){
+  scanState.corners = defaultCorners(scanState.img.width, scanState.img.height);
+  renderCornerStage();
+}
+
+// ---- stage 2: perspective warp + enhance mode selection ----
+let _warpedCanvas = null;
+function confirmCorners(){
+  const img = scanState.img;
+  const src = document.createElement('canvas');
+  src.width = img.width; src.height = img.height;
+  src.getContext('2d').drawImage(img, 0, 0);
+
+  if(scanState.cvAvailable){
+    _warpedCanvas = warpPerspectiveCV(src, scanState.corners);
+  } else {
+    _warpedCanvas = src; // no cv: just use the cropped/original rectangle as-is
+  }
+  renderEnhanceStage();
+}
+
+function warpPerspectiveCV(srcCanvas, corners){
+  const cv = window.cv;
+  const src = cv.imread(srcCanvas);
+  const [tl,tr,br,bl] = corners;
+  const widthTop = Math.hypot(tr.x-tl.x, tr.y-tl.y);
+  const widthBottom = Math.hypot(br.x-bl.x, br.y-bl.y);
+  const maxWidth = Math.max(Math.round(widthTop), Math.round(widthBottom), 1);
+  const heightLeft = Math.hypot(bl.x-tl.x, bl.y-tl.y);
+  const heightRight = Math.hypot(br.x-tr.x, br.y-tr.y);
+  const maxHeight = Math.max(Math.round(heightLeft), Math.round(heightRight), 1);
+
+  const srcTri = cv.matFromArray(4,1,cv.CV_32FC2,[tl.x,tl.y,tr.x,tr.y,br.x,br.y,bl.x,bl.y]);
+  const dstTri = cv.matFromArray(4,1,cv.CV_32FC2,[0,0,maxWidth-1,0,maxWidth-1,maxHeight-1,0,maxHeight-1]);
+  const M = cv.getPerspectiveTransform(srcTri, dstTri);
+  const dst = new cv.Mat();
+  cv.warpPerspective(src, dst, M, new cv.Size(maxWidth, maxHeight));
+
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = maxWidth; outCanvas.height = maxHeight;
+  cv.imshow(outCanvas, dst);
+
+  src.delete(); srcTri.delete(); dstTri.delete(); M.delete(); dst.delete();
+  return outCanvas;
+}
+
+function renderEnhanceStage(){
+  document.getElementById('scan-title').textContent = '选择效果';
+  const stage = document.getElementById('scan-stage');
+  const maxW = stage.clientWidth || 360;
+  const maxH = stage.clientHeight || 400;
+  const w = _warpedCanvas.width, h = _warpedCanvas.height;
+  const scale = Math.min(maxW/w, maxH/h, 1);
+
+  stage.innerHTML = `<div class="scan-canvas-wrap" style="width:${Math.round(w*scale)}px;height:${Math.round(h*scale)}px">
+    <canvas id="enhance-preview" width="${Math.round(w*scale)}" height="${Math.round(h*scale)}"></canvas>
+  </div>`;
+  applyEnhanceAndPreview(scanState.enhanceMode);
+
+  document.getElementById('scan-footer').innerHTML = `
+    <div class="scan-mode-tabs">
+      <div class="scan-mode-tab ${scanState.enhanceMode==='enhance'?'active':''}" onclick="setEnhanceMode('enhance')">✨ 增强</div>
+      <div class="scan-mode-tab ${scanState.enhanceMode==='bw'?'active':''}" onclick="setEnhanceMode('bw')">⬛ 黑白</div>
+      <div class="scan-mode-tab ${scanState.enhanceMode==='original'?'active':''}" onclick="setEnhanceMode('original')">🖼️ 原图</div>
+    </div>
+    <div class="scan-actions">
+      <button class="btn btn-outline" onclick="renderCornerStage()">← 重新裁边</button>
+      <button class="btn btn-primary" onclick="saveScannedAttachment()">保存单据</button>
+    </div>`;
+}
+
+function setEnhanceMode(mode){
+  scanState.enhanceMode = mode;
+  renderEnhanceStage();
+}
+
+function applyEnhanceAndPreview(mode){
+  const canvas = document.getElementById('enhance-preview');
+  const ctx = canvas.getContext('2d');
+  if(!scanState.cvAvailable || mode==='original'){
+    ctx.drawImage(_warpedCanvas, 0, 0, canvas.width, canvas.height);
+    return;
+  }
+  try{
+    const enhanced = applyEnhanceFilterCV(_warpedCanvas, mode);
+    ctx.drawImage(enhanced, 0, 0, canvas.width, canvas.height);
+  }catch(e){
+    console.error('Enhance failed, showing original:', e);
+    ctx.drawImage(_warpedCanvas, 0, 0, canvas.width, canvas.height);
+  }
+}
+
+// mirrors camscanner-local/scanner/enhance.py: magic_color() -> 'enhance', black_white() -> 'bw'
+function applyEnhanceFilterCV(canvas, mode){
+  const cv = window.cv;
+  const src = cv.imread(canvas);
+  let result;
+  if(mode==='bw'){
+    const gray = new cv.Mat();
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    const bg = estimateBackgroundCV(gray);
+    const norm = divideNormalizeCV(gray, bg);
+    const binary = new cv.Mat();
+    cv.adaptiveThreshold(norm, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 21, 10);
+    result = new cv.Mat();
+    cv.cvtColor(binary, result, cv.COLOR_GRAY2RGBA);
+    gray.delete(); bg.delete(); norm.delete(); binary.delete();
+  } else {
+    // enhance = per-channel background-divide + contrast stretch (magic_color)
+    const channels = new cv.MatVector();
+    cv.split(src, channels);
+    const outCh = new cv.MatVector();
+    for(let i=0;i<channels.size();i++){
+      const ch = channels.get(i);
+      if(i===3){ outCh.push_back(ch); continue; } // keep alpha as-is
+      const bg = estimateBackgroundCV(ch);
+      const norm = divideNormalizeCV(ch, bg);
+      outCh.push_back(norm);
+      bg.delete();
+    }
+    const merged = new cv.Mat();
+    cv.merge(outCh, merged);
+    result = contrastStretchCV(merged);
+    merged.delete();
+    for(let i=0;i<channels.size();i++) channels.get(i).delete();
+    channels.delete(); outCh.delete();
+  }
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = canvas.width; outCanvas.height = canvas.height;
+  cv.imshow(outCanvas, result);
+  src.delete(); result.delete();
+  return outCanvas;
+}
+
+function estimateBackgroundCV(mat){
+  const cv = window.cv;
+  const h = mat.rows, w = mat.cols;
+  let ksize = Math.max(15, Math.round(Math.min(h,w)*0.1));
+  ksize = ksize % 2 === 0 ? ksize+1 : ksize;
+  ksize = Math.min(ksize, 151);
+  const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(ksize, ksize));
+  const bg = new cv.Mat();
+  cv.morphologyEx(mat, bg, cv.MORPH_CLOSE, kernel);
+  kernel.delete();
+  return bg;
+}
+
+function divideNormalizeCV(channel, bg){
+  const cv = window.cv;
+  const chF = new cv.Mat(); channel.convertTo(chF, cv.CV_32F);
+  const bgF = new cv.Mat(); bg.convertTo(bgF, cv.CV_32F);
+  // avoid divide by zero
+  for(let i=0;i<bgF.data32F.length;i++){ if(bgF.data32F[i]===0) bgF.data32F[i]=1; }
+  const norm = new cv.Mat();
+  cv.divide(chF, bgF, norm, 255.0);
+  const out = new cv.Mat();
+  norm.convertTo(out, channel.type());
+  chF.delete(); bgF.delete(); norm.delete();
+  return out;
+}
+
+function contrastStretchCV(mat){
+  const cv = window.cv;
+  // percentile-based stretch approximated via min/max of a downsampled histogram
+  const data = mat.data; // Uint8, RGBA interleaved
+  let lo = 255, hi = 0;
+  for(let i=0;i<data.length;i+=4*37){ // sample for speed
+    for(let c=0;c<3;c++){
+      const v = data[i+c];
+      if(v<lo) lo=v; if(v>hi) hi=v;
+    }
+  }
+  if(hi<=lo) hi = lo+1;
+  const out = new cv.Mat();
+  const alpha = 255.0/(hi-lo);
+  const beta = -lo*alpha;
+  mat.convertTo(out, -1, alpha, beta);
+  return out;
+}
+
+// ---- stage 3: finalize -> compress JPEG, store blob, close workflow ----
+async function saveScannedAttachment(){
+  const finalCanvas = document.getElementById('enhance-preview');
+  // Re-render at full resolution (the preview canvas is downscaled for display)
+  const fullCanvas = (scanState.cvAvailable && scanState.enhanceMode!=='original')
+    ? applyEnhanceFilterCV(_warpedCanvas, scanState.enhanceMode)
+    : _warpedCanvas;
+
+  const outCanvas = resizeForOutput(fullCanvas, 1600);
+  const blob = await new Promise(resolve=>outCanvas.toBlob(resolve, 'image/jpeg', 0.8));
+  if(!blob){ toast('图片处理失败'); return; }
+
+  const id = 'att_'+uid();
+  await putAttachmentBlob(id, blob);
+  state.pendingAttachmentId = id;
+  state.pendingAttachmentIsNew = true;
+  const url = URL.createObjectURL(blob);
+  renderAttachThumb(url);
+  closeScan();
+  toast('单据照片已添加');
+
+  // best-effort cloud upload, tie to the tx once it's saved (txId patched below if editing)
+  uploadAttachmentToCloud(id, blob, state.editingTxId||null);
+}
+
+function resizeForOutput(canvas, maxSide){
+  const {width:w, height:h} = canvas;
+  const longSide = Math.max(w,h);
+  if(longSide<=maxSide) return canvas;
+  const scale = maxSide/longSide;
+  const out = document.createElement('canvas');
+  out.width = Math.round(w*scale); out.height = Math.round(h*scale);
+  out.getContext('2d').drawImage(canvas, 0, 0, out.width, out.height);
+  return out;
+}
+
+function cancelScan(){
+  document.getElementById('scan-overlay').classList.remove('open');
+  scanState.file = null; scanState.img = null; scanState.corners = null;
+  _warpedCanvas = null;
+}
+function closeScan(){
+  document.getElementById('scan-overlay').classList.remove('open');
+  _warpedCanvas = null;
 }
 
 function init(){
