@@ -52,6 +52,9 @@
 - `expense-tracker.html` — 记帐工具（PWA）
 - `fortune.html` — 运势页面
 - `trading/` — IBKR 交易脚本与页面
+- **`ai-vault`（独立私有仓库 jarixhew-bit/ai-vault，2026-07-07 建立）** — AI 个人知识库
+  （第二大脑）。用户说「存进 vault」「查 vault」时：网页版先用 add_repo 把它加进
+  session，本地直接 clone/pull；管理规则见该仓库自己的 CLAUDE.md，直接推 main 不走 PR。
 
 ## AI 工作制度（2026-07-03 建立，正本在本 repo 的 .claude/rules/）
 
