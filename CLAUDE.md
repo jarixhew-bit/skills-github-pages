@@ -55,6 +55,8 @@
 - **`ai-vault`（独立私有仓库 jarixhew-bit/ai-vault，2026-07-07 建立）** — AI 个人知识库
   （第二大脑）。用户说「存进 vault」「查 vault」时：网页版先用 add_repo 把它加进
   session，本地直接 clone/pull；管理规则见该仓库自己的 CLAUDE.md，直接推 main 不走 PR。
+  **主动归档**：不等用户开口——任务收尾时若对话中出现值得长期记住的信息（决定、
+  数字、经验、偏好），主动存进 vault 并告知一句；细则见该仓库 CLAUDE.md 核心任务 0。
 
 ## AI 工作制度（2026-07-03 建立，正本在本 repo 的 .claude/rules/）
 
