@@ -44,6 +44,7 @@
   .sec-head .rule { flex: 1; height: 1px; background: var(--line); align-self: center; }
 
   h3.city-h { margin: 16px 0 4px; font-family: var(--serif); font-size: 15px; font-weight: 700; }
+  h3.city-h.tokyo { font-size: 20px; margin-top: 28px; border-top: 2px solid var(--line); padding-top: 18px; }
 
   .stop { position: relative; padding: 12px 0 12px 0; border-bottom: 1px solid var(--line); }
   .stop:last-of-type { border-bottom: none; }
@@ -54,8 +55,18 @@
 
   .gal { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 10px; scrollbar-width: none; margin: 10px 0 4px; }
   .gal::-webkit-scrollbar { display: none; }
-  .gal img { scroll-snap-align: start; width: 78%; max-width: 340px; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; flex: none; background: var(--line); }
+  .gal img { scroll-snap-align: start; width: 78%; max-width: 340px; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; flex: none; background: var(--line); cursor: zoom-in; }
   .gal-hint { font-size: 10px; color: var(--faint); margin-bottom: 6px; }
+
+  /* ===== LIGHTBOX ===== */
+  .lb { position: fixed; inset: 0; background: rgba(0,0,0,.93); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
+  .lb.open { display: flex; }
+  .lb img { max-width: 94%; max-height: 80vh; object-fit: contain; border-radius: 8px; }
+  .lb-counter { color: rgba(255,255,255,.55); font-size: 12px; margin-top: 10px; letter-spacing: .05em; }
+  .lb-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 19px; cursor: pointer; line-height: 36px; text-align: center; }
+  .lb-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.15); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 22px; cursor: pointer; line-height: 40px; text-align: center; }
+  .lb-arrow.prev { left: 10px; }
+  .lb-arrow.next { right: 10px; }
 
   .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
   .chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid; }
@@ -75,65 +86,213 @@
 <button class="lang-toggle" onclick="document.body.classList.toggle('lang-en')"><span class="cn">EN</span><span class="en">中文</span></button>
 </div>
 <div class="wrap">
-<div class="page-h1"><span class="cn">🍽 老板晚餐 · 酒店内选</span><span class="en">🍽 Boss Dinner · In-Hotel Picks</span></div>
-<div class="page-sub"><span class="cn">大阪 4 家 · 东京 2 家（陆续增加中）</span><span class="en">Osaka 4 · Tokyo 2 (more being added)</span></div>
-
+<div class="page-h1"><span class="cn">🍽 老板晚餐精选</span><span class="en">🍽 Boss Dinner Picks</span></div>
+<div class="page-sub"><span class="cn">大阪 11 家 · 东京 13 家</span><span class="en">Osaka 11 · Tokyo 13</span></div>
 
 <div class="sec-head"><span class="no">04b</span><h2><span class="cn">老板晚餐 · 酒店内选</span><span class="en">Boss Dinner · In-Hotel Picks</span></h2><span class="rule"></span></div>
+
 <div class="note amber">
 <span class="cn">💡 全部为两间酒店内附设餐厅，走电梯即达、无需外出；均<strong>不吃牛肉</strong>已考虑，但多家招牌菜含和牛/牛排（详见各卡说明），预订时务必向餐厅提出不用牛肉，改点海鲜/鸡肉/猪肉主菜</span>
 <span class="en">All are in-house restaurants at your two hotels — no need to go outside. <strong>No-beef</strong> factored in, but several signature dishes involve wagyu/beef steak (see notes) — flag "no beef" when booking and request seafood/chicken/pork mains instead</span>
 </div>
 
-<h3 class="city-h">🏙 <span class="cn">大阪 · Conrad 40楼</span><span class="en">Osaka · Conrad 40F</span></h3>
+<h3 class="city-h">🏙 <span class="cn">大阪 · Conrad 40楼（酒店内）</span><span class="en">Osaka · Conrad 40F (In-Hotel)</span></h3>
+<div class="note amber">
+<span class="cn">💡 走电梯即达，无需外出。<strong>不吃牛肉</strong>已考虑，但 C:GRILL 菜单含牛肉项目，预订时务必说明，改点海鲜/鸡肉主菜</span>
+<span class="en">Elevator access — no need to go outside. <strong>No-beef</strong> factored in; C:GRILL menu includes beef items — flag this at booking and request seafood/chicken mains instead</span>
+</div>
 
 <div class="stop">
 <h4><span class="cn">C:GRILL 海鲜烧烤</span><span class="en">C:GRILL</span> <span class="star">⭐4.4</span></h4>
 <div class="gal">
 <img alt="C:GRILL" src="https://lh3.googleusercontent.com/place-photos/AJRVUZP4FSNd8kdtSO6DYkUft9jId9rKC-zKErqil2bgWEoTzH0b8x5jULtrIy3yp4mu8L-9gM615rIE0fmZNnsoLl-XTsnKof7BwgAeM1B0-ogF97Ocr1zfQLl6U8-FSbcMZGEHo3uthRN5_LQ=s4800-w800-h600"/>
 <img alt="C:GRILL" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMbodRf1O2FkcccxoKTMS91k4K1tKQtQQ2eYBojt3ZGBBAxnCiw2vg-81_B8ByfLB3ByzK6h9Ng7Z-TP_b5ahgAEwnpK-lXairki7K4LrkyZO3udPii7Zk-yUmMealZweX5kpskUM0HLrWE=s4800-w800-h600"/>
-<img alt="C:GRILL" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN0vtGxd_W3WC72BPADxaicEkC810z2pZzz9arfY47GE9h8IUHjzEN5eX9EP6avC5YvWUv6NW-uGIksMhoB_qhcm5z0p0ikOh_cKO5zSTP3hFkSbO6TRwQ1ap4g2-QYtJnxGn82F2Mj49A45G9qSo7k=s4800-w800-h600"/>
+<img alt="C:GRILL" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNPmPHdYLXaoU7ZI-0kFzMJjn09y1HKkqEgvIFCTEoCtea7caQZotvFAeU3IbjuyrsViKtPw7_V6wzgl2gRN6sNgMowlh5pnvQSDVJ30aYlFco1mfV_UOVt3rZ0GdJKk7upweWVo3wphLwGHIxbhKa_=s4800-w800-h600"/>
+<img alt="C:GRILL" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNi3-nmNgIWqhYIAZaZghVz6JCBY-AoUuP2TaSbwDfAj2sHsB_Fcoi8ySdOIFZ4YsqbEXzo7Xfca-68o5xMhvbIE1d1BAg4_Asmq-Z-JbWcUCKQ7tPN-8IZU5kfyzly4sOYanGlSOAjN8f4xnGyJt2x9w=s4800-w800-h600"/>
+<img alt="C:GRILL" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMMBXJJVjap7JNDznIntUU5oiPfQmlJm4FBgOObfofeUBFPYklFDbf_Pe3-CgexZpeBR0mPxUBbTPBZI8g1Q5y4MarJt-1hW5s2Zp0n5uWWf9hl4J3CHs61-TMV9aXB6BxQ-Y2nLmMqDrSwyC3VAtKkHQ=s4800-w800-h600"/>
 </div>
-<div class="desc"><span class="cn">40楼薪火炭烤，主打全球直送海鲜，200米高空夜景。菜单也有牛排单品，<strong>点餐时选海鲜/鸡肉款即可避开</strong>。窗边位建议提前指定</span><span class="en">40F wood-fire grill, globally-sourced seafood, 200m night view. Steak is on the menu too — <strong>order seafood/chicken to avoid beef</strong>. Request a window table in advance</span></div>
+<div class="desc"><span class="cn">40楼薪火炭烤，主打全球直送海鲜，200米高空夜景。<strong>走电梯即达，无需外出。</strong>菜单也有牛排单品，<strong>点餐时选海鲜/鸡肉款即可避开</strong>。窗边位建议提前指定</span><span class="en">40F wood-fire grill, globally-sourced seafood, 200m night view. <strong>Elevator access — no need to go outside.</strong> Steak is on the menu too — <strong>order seafood/chicken to avoid beef</strong>. Request a window table in advance</span></div>
 <div class="chips"><span class="chip verify"><span class="cn">⚠ 周一二休 · 建议7/23或7/24晚</span><span class="en">⚠ Closed Mon/Tue · suggest evening of Jul 23 or 24</span></span></div>
 <a class="btn-map" href="https://maps.google.com/?cid=774036362649357477" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270102/27097668/" target="_blank">📖 Tabelog</a>
+<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270102/27097668/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<h3 class="city-h">🚖 <span class="cn">大阪 · 外出精选（2人）</span><span class="en">Osaka · Off-Site Picks (2-Person)</span></h3>
+<div class="note amber">
+<span class="cn">💡 贔屓屋步行约2分钟、座银/いな田/江南春步行约4–5分钟、東寶步行约10分钟、Kogi Soul步行约12分钟（建议打车）；其余需打车</span>
+<span class="en">Hiiki-ya ~2 min walk · Zagin/Inada/Jiang Nan Chun ~4–5 min · Dongbao ~10 min · Kogi Soul ~12 min (taxi recommended) · others by taxi</span>
 </div>
 
 <div class="stop">
-<h4><span class="cn">蔵 KURA 铁板烧＆寿司</span><span class="en">KURA</span> <span class="star">⭐4.6</span></h4>
+<h4><span class="cn">上方ごちそう処贔屓屋 中之島ダイビル店</span><span class="en">Hiiki-ya Nakanoshima</span> <span class="star">⭐4.5</span></h4>
 <div class="gal">
-<img alt="KURA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOddKcKipV2KySijINr6oe2UUgcchko2VfEdt1CnTR9GB-7ReJX2epn11C5tI5ofZmqetUPJQzQfGapK2np6ZGDeojTkpRMqVe7fpJeLk8Vx9cGv3teS5THmeoqZc0_w1qmhCtX2sQfA-t0Vfc=s4800-w800-h600"/>
-<img alt="KURA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMwteDXq8y6OUqyNx8S406zVFwRC9FlDYzc5haGkDTzoV3AW_XvsJ8RblE43Rpoc2wwf2XUDSt7doM6da8MuLwvtB9Bdf1wTkCPcNON-n2dGqQoX-1OoacQm4niVVf6XTk_QXwe4dj2ef3M=s4800-w800-h600"/>
-<img alt="KURA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO3ZostPLvn6UWfcoG-rfwgRrRumpmKyRW_6rhxISIuHhF8r0OQJuQ9kdqvmqR0gQu51x0_dd0ivFxFFRiJYPrwHnVf0LfqOMTyhFirtxgf5hsipSM7Gd3vzDi_uuCu69F7FdvOFaZsxRaOkubis1mbkg=s4800-w800-h600"/>
+<img alt="Hiiki-ya Nakanoshima" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOxhud04IN4dvhbBhEfcngJqRe393IpXfTt9zeB_Pfi9IaIGFF1dVtGlbzECdFM4KbSZmZ2tbiXCEc82YpGxReoUafnZZBkLodQZaABi3jNgx9ipg_sIRLC1LXq8Odw1Rf7zflOnik1jjiVJGQ=s4800-w480-h480"/>
+<img alt="Hiiki-ya Nakanoshima" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPEmrBS9Dt2VL1MtiGeJJ4ZLiOXG4GMOcVrcdrujC976fnQB-pM88F4w4bpeaU2x-_UBNdvt5ejsclTmcjQTpReVwFQX83L7UqiEhNJQJBBlRcZ0ihmClWLVz89ANsvYErBtnqCZleLbO9Hv_2MFhNP=s4800-w480-h480"/>
+<img alt="Hiiki-ya Nakanoshima" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNvmDPQU4X2W89vcy1ASgYdu360qGUY1CNUPBmFD8RCXtRDgtA_CMmWtpabrkVyaquounqzh4LBf1i8UWwrS1J_leG3mCG0hw_sBvQSO9zJyCCzdDi_EjLPKuATuPkdA1wBmRUqC9KllRmdstZZbSmd=s4800-w800-h600"/>
+<img alt="Hiiki-ya Nakanoshima" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOsJ4YOW5CDSDLq2pcIm2xBTaiwpmDeBFobXCjpRP7WNpgUQeC2wOgRThV0iYsSfDWi5KKmLK1ranRFvmq2iKhGWd-X4_nW4xM75o2sDtaRZjIqNTpM_khSTjoJBFXON0Qvn-P7nLtAcXfOnA=s4800-w800-h600"/>
+<img alt="Hiiki-ya Nakanoshima" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMeH6mz60fjUaVHRMgeSgXPzewEdu06HssNZe_9bOlzy7i0UEpl508GM2UxDQkKnIAcpkr9GRXlD0P5kYIWUouLYTm13_fVoUjPrZTYSlykqQ2bGPvlsUusxZlHuhk4GYHaGbcdbrLRFFnzCpfRNRuqHA=s4800-w800-h600"/>
 </div>
-<div class="desc"><span class="cn">同层铁板烧+寿司柜台，主厨现场表演。<strong>套餐固定含一道牛肉主菜（国产牛/黑毛和牛可选升级），非自由替换鸡肉/海鲜</strong>——订位时问清是否能整段换成海鲜或鸡肉；握寿司、前菜、汤品不受影响</span><span class="en">Teppanyaki + sushi counter on the same floor, chef performs tableside. <strong>The set course has a fixed beef main (domestic beef, upgradable to wagyu) — it is not a free swap to chicken/seafood</strong>; ask at booking whether the whole course can be substituted. Sushi, starters and soup are unaffected</span></div>
-<div class="chips"><span class="chip verify"><span class="cn">⚠ 周三休 · 建议7/23或7/24晚</span><span class="en">⚠ Closed Wed · suggest evening of Jul 23 or 24</span></span></div>
-<a class="btn-map" href="https://maps.google.com/?cid=12025163265478297639" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270102/27097667/" target="_blank">📖 Tabelog</a>
+<div class="desc"><span class="cn">中之岛大厦3楼，与 Conrad 同在中之岛区，<strong>步行约2分钟（约150m）</strong>。居酒屋，刺身、握寿司、鸡肉串等à la carte小皿，评价中未见牛肉相关菜色</span><span class="en">Nakanoshima Daibiru 3F, same island as Conrad — <strong>approx. 2 min walk (~150m)</strong>. Izakaya, à la carte small plates: sashimi, nigiri, chicken skewers; no beef mentioned in reviews</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 午11:00–14:00·晚16:00–23:00 · 周日休</span><span class="en">✅ Lunch 11 AM–2 PM · Dinner 4–11 PM · Closed Sun</span></span></div>
+<a class="btn-map" href="https://maps.app.goo.gl/Bgazb2aqLmJcdkuL9?g_st=atm" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/osaka/A2701/A270102/27127939/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
 </div>
 
 <div class="stop">
 <h4><span class="cn">一兰拉面 道顿堀南馆</span><span class="en">ICHIRAN Dotonbori South</span> <span class="star">⭐4.3</span></h4>
 <div class="gal">
-<img alt="Ichiran" src="https://lh3.googleusercontent.com/place-photos/AJRVUZM8HbGpOG8lxr7SDEIVDsE2WGpYsXFPFm6TDdfnHKlZQCPPo2fUAjTZ3ejmVsY0jSjJl2XzS-EMzsBH4iqTQlmZ6bWyQvXfHKV6CkxbxwPeXwG-A8Zb1SqBWMe1YSMWFvcx3ATIpQm34TQMlA=s4800-w800-h600"/>
+<img alt="Ichiran" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMBpNQsNItXe-eI-FpuKKV6xQDZ8f8oSl7uObJTicCZ4Laclt4mRHGZZJ1mJwRg_uBkInAylkE67jSy1SJ8Kejp_dUB3eoFV3I37hEOD1g6kFRrBjrBpzEsTq3jYhUyk8eTPvzjuOMQn7l5TA=s4800-w800-h600"/>
+<img alt="Ichiran" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPaaqiR2Q8hRG0R7JA3ilbHC01wWW57YrDMkJmXucMcKlu54V99o5gpBs6u4uBolqbv9nH2G0QXwvTy_OLtqNukegi6Y_7A2uuBAmUacWuZhWjIaJwydBGjzwg3uum2ar7HRUcUJi_Ts29MX9zY42V3bQ=s4800-w800-h600"/>
+<img alt="Ichiran" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNTOgjLouA51CMRflNmqz2ErH7sRJ8BoTYtjGIO2_wL-PXmezSvlvRspGVe2Lg6IHPa8726Kv-asGYKeWiHBSL35FzIQetI9lyfTL0Jxw_Nur8RdTwNwD-_7RkluJ49pHwSCLQby9cAemsa2GTAwVA7=s4800-w800-h600"/>
+<img alt="Ichiran" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOi9q0Mk2pkP73wXdtgdj1LP85HVNqJ4uvXhuDuS5yHewCq3naAnCs7S8rmSrAeFanjtT_c90hSy8XMV6KHtuvUCtNfkoJ-yMQIYvzSuCoEihZ_Zyx_ctXt_moM3GWnFM8cs--TEbkihpbBvtg9yE1X_A=s4800-w800-h600"/>
+<img alt="Ichiran" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPxjeoaEsWug3Z9CRJ1mofnSgbitJH51C10y-wOb1ru7dwoqn1_hhxwSBfQeKfzWnUeWOy2uxYqWM9pYWVJlcc_HQsXghybdnONiWZZV80EbtJoaOCqIwjlFCFy97GYabg8mSxsAFSgangVih5lglPj9Q=s4800-w800-h600"/>
 </div>
-<div class="desc"><span class="cn">全球知名连锁拉面，24小时营业，可自订浓淡/软硬/辣度。招牌一人食隔间座位是特色体验；也有多人桌台座（非24小时，较早打烊）。<strong>纯猪骨汤底拉面，不含牛肉</strong>，但风格随性简单，比其他几家正式许多，适合想吃点熟悉的宵夜口味时</span><span class="en">World-famous ramen chain, open 24 hours, fully customizable broth/noodle firmness/spice. Signature solo dining booths are a novelty; table seating for groups also available (closes earlier than the 24h booth floor). <strong>Pork-bone broth, no beef</strong>, but very casual — a different register from the other picks, good if you want something familiar and low-key</span></div>
-<div class="chips"><span class="chip ok"><span class="cn">✅ 24小时营业（桌台座较早打烊）</span><span class="en">✅ Open 24h (table floor closes earlier)</span></span></div>
-<a class="btn-map" href="https://maps.google.com/?cid=5980002210415952994" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<div class="desc"><span class="cn">道顿堀南馆，全球知名连锁拉面，24小时营业，可自订浓淡/软硬/辣度。<strong>纯猪骨汤底，不含牛肉</strong>。距 Conrad 约2.9km，<strong>建议打车</strong></span><span class="en">Dotonbori South, world-famous ramen chain, open 24h, fully customizable broth/noodle/spice. <strong>Pork-bone broth, no beef</strong>. Approx. 2.9km, <strong>taxi recommended</strong></span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 24小时营业</span><span class="en">✅ Open 24 hours</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=5996734370962942050" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270202/27084189/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
 </div>
 
 <div class="stop">
 <h4><span class="cn">Kogi Soul 梅田御初天神店</span><span class="en">Kogi Soul Umeda Ohatsu Tenjin</span> <span class="star">⭐4.8</span></h4>
 <div class="gal">
-<img alt="Kogi Soul" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOKn02G9SoT5cqvxU_bV71lKAeGdIfjJQXJ0nQCn0GgZmxDGVAn9BdBqdM8sVj3-QcE6ObA5R0MCA_L1H_zaCMYRnfULCNK7lsB9v0iZ2jXlgSSNwK1nvxT4mNTvfPnpk1CVjHUXO0d0jHV=s4800-w800-h600"/>
+<img alt="Kogi Soul" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNYhJN71OhK3PewsDakXoo_b4EUxXLuC_moCqLN0Ud8oZsO1d3UGRMwa1CBSs8mhLcWYgEm06l1ge8ZRnRIIV9YMSCEJZNvl5f9fx6pyGpTJnKPsylrbnDDpFh4vRIp_TCag5uX5lLtDuJ4-lM=s4800-w800-h600"/>
+<img alt="Kogi Soul" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO39rkEWMm3JCRAEpfUYKTaNiJ7Ry5ussnMaRntGNOfxi-Y4Zr1syjF5iMv1zP389d6yyDbA23Jw-_-s-n0ivMx9k8yP9OFiWeTQblDsBHl0lO4r9iS7yA257persb_5iDUXT24nin3zo014Rk=s4800-w800-h600"/>
+<img alt="Kogi Soul" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOboSdas7cm-T9RZMHQJ5DdHhOH2MDggn1OMjtqs9wtWg67RBvJu5K_9DYSdK9XYgfUiJIlMcatBsxzc8yc9l48ZM_1pni22WeI9kQb6Rw7Pb8G-InXKKe8Wlq2m17RQZTv5JKh1XD3bF-WKxsv5S-itw=s4800-w800-h600"/>
+<img alt="Kogi Soul" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMbuqaCju_ayQQALwmqUuIaxiV3GSqCIr2WfWClHN3EuCpUTus7dvwCXhRuUNZhKRqZ17CGEwa8gb-2xrxqWXK0Du2cUG_tam-XoFnmnNuYFypc0mpYegUrLRXMxNSG5nK1Q0Q7g9uEFbNocjPK0Hjp=s4800-w800-h600"/>
+<img alt="Kogi Soul" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNXoARAk8HCKPkLd21Cn5GOA2CjZtIFYKX0jOPEZsXgHn-q5OQHjSaV44sanIpvTPApdMz-8UyaBepLLrm3x7pRYSVAJliVHUwdJEy1DKnd9bfJm1r3edbAaE3TH0WXfcHjl28dsZK1vzaw7zQHMTCohg=s4800-w800-h600"/>
 </div>
-<div class="desc"><span class="cn">曾经吃过、评价很好的韩式烤肉店，藏在梅田/御初天神一带3楼，<strong>没有招牌</strong>。以熟成猪五花烤肉（サムギョプサル）为主，<strong>不主打牛肉</strong>，Google 4.8分／逾万条评论，气氛热闹随性。离 Conrad（中之岛）有段距离，<strong>需打车前往</strong></span><span class="en">Previously visited, highly rated Korean BBQ tucked away on the 3rd floor in Umeda/Ohatsu Tenjin — <strong>no signage</strong>. Centers on aged pork belly samgyeopsal, <strong>not beef-focused</strong>, 4.8 on Google with 10,000+ reviews, lively casual vibe. A distance from Conrad (Nakanoshima) — <strong>taxi recommended</strong></span></div>
-<div class="chips"><span class="chip hours"><span class="cn">📅 周一至五 17:00–23:00（只做晚市）· 周六日 12:00–23:00</span><span class="en">Mon–Fri 5–11 PM (dinner only) · Sat–Sun 12–11 PM</span></span></div>
-<a class="btn-map" href="https://maps.google.com/?cid=6183321931307180796" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<div class="desc"><span class="cn">梅田御初天神3楼，<strong>无招牌</strong>。以熟成猪五花烤肉（サムギョプサル）为主，<strong>不主打牛肉</strong>，气氛热闹。距 Conrad 步行约12分钟（约990m），<strong>建议打车</strong></span><span class="en">Umeda Ohatsu Tenjin 3F, <strong>no signage</strong>. Centers on aged pork belly samgyeopsal, <strong>not beef-focused</strong>, 4.8 stars / lively vibe. Approx. 12 min walk (~990m), <strong>taxi recommended</strong></span></div>
+<div class="chips"><span class="chip hours"><span class="cn">📅 周一至五 17:00–23:00 · 周六日 12:00–23:00</span><span class="en">Mon–Fri 5–11 PM · Sat–Sun 12–11 PM</span></span></div>
+<a class="btn-map" href="https://maps.app.goo.gl/wqP2MidwXRucr68z8?g_st=atm" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270101/27128675/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
 </div>
 
-<h3 class="city-h">🏙 <span class="cn">东京 · 四季大手町 39楼</span><span class="en">Tokyo · Four Seasons Otemachi 39F</span></h3>
+<div class="stop">
+<h4><span class="cn">すし処 築地 Sushi dokoro Tsukiji</span><span class="en">Sushi dokoro Tsukiji</span> <span class="star">⭐4.7</span></h4>
+<div class="gal">
+<img alt="Sushi dokoro Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPSE-HZ4U7sZFb-n72lhkfLPFQzkNXYvTrbge184l36QGH5DRvbe9Gj3EPmy2OLBh-GCwK5KTIdHUV8vYx_WLBd1CEzj2eDCgSazitgPAyJbz7uzlS3con9kuJmqCaFVNE-BL4mwBipPwFGVHByg1kQ_g=s4800-w800-h600"/>
+<img alt="Sushi dokoro Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AJRVUZM2zpm6N3tlxpH-E66Jrh0Kh0Nz68jUAbV6jmgniVmUtp1wXysE_1hzKa8WMSGlkHvCiI0Iuq0OLRkUS8nYnBmC2wRe6mFnTwKHcPjCW7ZBB01xxumraP9VwcRo3eIHOU_IYfJAs8NCrt8Ni3w=s4800-w800-h600"/>
+<img alt="Sushi dokoro Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMuYReU6a8c6l1qaC7zhY2rGEn9WLXol02sEg8jcewmt3naCZ91_qqzblcLJiubSp3P5zkIBryXatKmLigsroV4CXCwy9F2MgZ9B_QeQDzvKqI6boFnXXfY6IpKorL84LvYtFzcJ9kFexUa3d6NtSX9=s4800-w800-h600"/>
+<img alt="Sushi dokoro Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPoxVEHQv3m3cJyIDleFz_jq6JdHkMAt_jyvlIvdDtokLbyzfgmRGI6nb8bSSUdYiZXOKgWq2iRQGiKs99a4UL61-tYqXphRICJDq4GMAXeyfqDc3Yb_LqXHEzlv46QvVTM7M50gWX-E4Vye8KAL4pffw=s4800-w800-h600"/>
+<img alt="Sushi dokoro Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPdLPtCuNHoNYgN6gZGIUmfRh4Z2Gy4kWcjXVEnB0rPJnCm2fOjlMV58hDvPrfQRqq6di8quFPzVlLzVlCAChXErz5pgGVS-kL8BWGQnPD0Rj7SRVTZlk47ejbqdLeGWHolsmVWCLM4vI65MuT6rj_9=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">南船场，夫妻经营寿司店，气氛温馨。金枪鱼握寿司、拖罗、海胆评价极高，也提供omakase套餐。距 Conrad 约1.8km，<strong>建议打车</strong></span><span class="en">Minamisenba, family-run sushi, cozy atmosphere. Tuna nigiri, fatty tuna, uni all highly praised; omakase available. Approx. 1.8km, <strong>taxi recommended</strong></span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 只做晚市 17:00–23:00 · 周日休</span><span class="en">⚠ Dinner only 5–11 PM · Closed Sun</span></span></div>
+<a class="btn-map" href="https://maps.app.goo.gl/s7g648PuWgwpaQDY8?g_st=atm" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/osaka/A2701/A270201/27027889/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">焼鳥 無名 Yakitori NO NAME</span><span class="en">Yakitori NO NAME</span> <span class="star">⭐4.9</span></h4>
+<div class="gal">
+<img alt="Yakitori NO NAME" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN5rXBqTCzRVth3ktjQDdVQqMVtOQJRg5x1mzPyfhM0E3QVgw_J1TImcF6c4dcFXTUAXLbfcXE3cUlvf6e5FgT6r1lQGR_Lkyj5D1OCsNnp5CCbgS221ajPxwjI78UDopDrfxgW951XQ_MfAA=s4800-w800-h600"/>
+<img alt="Yakitori NO NAME" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO8wo1P7XqJp-GSa8UIq40zrmf2OZP8BohwLcVuqxlawzTysD21uuH9vSI8ANbqj9gfVrVCLOHg5R6eVuH5P9AdPrbCDc43s9OC1ACJR6Ai-MTOClRCXwPO-_6AHxt8pTplzTEjpERbyA4v=s4800-w800-h600"/>
+<img alt="Yakitori NO NAME" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNHlP96k9ESmGpmLbsTNE8FFo-_5G6OdnQ---2Cry84Hdg2ji5ElHSq7ru6T85350Ahxy1uFA_GRAM1bMS8ErA5GASrTvL9LUQB_6VKBZMwQONcMRECfGy4Gc7INPtxX2_tWqf4ZJ4oQC-CGg1NXLMeXg=s4800-w800-h600"/>
+<img alt="Yakitori NO NAME" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOq4szEIPdh4hnoWQ0TYx67UWyxJLx0UQffVgFFW3GVvmBUId75iOjhxf2w--XDwhUBIm8AD1HuFAEPXJubgOQApVAZkVxwbAaQ66NkIrgbin367IobSU-9cltNlgp2z4MdWSbyzWDAEOigAl4rFvsfmA=s4800-w800-h600"/>
+<img alt="Yakitori NO NAME" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNu72mnr7x3ITJfYHRWVkSYq2ha6o2SgGIu83tw5gduFR2EnPKfrz_xIuifcJz3hWYlxwAVsl8Cb8RJ9l8uMy7ulsgy9bu52xtJsotyNQt93b8H8ITzjc8T1KCVi8OJWqjhoEZQ77DHgMwKokvSyqg0Sg=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">东心斋桥4楼，不到10个座位，全店只做鸡肉串烧（<strong>不含牛肉</strong>），8道course形式，2人私密感强。距 Conrad 约2.6km，<strong>建议打车</strong></span><span class="en">Higashishinsaibashi 4F, fewer than 10 seats, chicken-only skewers (<strong>no beef</strong>), 8-course omakase format, very intimate for 2. Approx. 2.6km, <strong>taxi recommended</strong></span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 周三休 · 只做晚市 18:00–23:00</span><span class="en">⚠ Closed Wed · Dinner only 6–11 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=15672204171438482056" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/osaka/A2701/A270202/27142182/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">鶏Soba 座銀 総本店</span><span class="en">Tori Soba ZAGIN Main Shop</span> <span class="star">⭐4.5</span></h4>
+<div class="gal">
+<img alt="Tori Soba ZAGIN" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNKjDfwf9gUlmXWIZE8yR7Rd2AJdogNpO8AWE3fhh8yNgcn_cZl3HHlTJ2QPOIfCLvLILQDnG-dbmo-bxavsehfl2g19urqoEcPXA28vRC4a-ZmX536sw95sF_94abC-sFVLdIWYNuCDuV5ww=s4800-w800-h600"/>
+<img alt="Tori Soba ZAGIN" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPyoKfS5eVqPsbSBS47Aq0S62vfVF41hbtTDddV9qcaCvSRqlna-ccs33qkw_cTLQ81hO4ZG2Hp3KsFRVTyxa4dNVKbphM7mu-ibW3SdzNc8A-3AmovKn2CQY59HFsQRgt8jiCwc9N5mV3tDAk_shGc=s4800-w800-h600"/>
+<img alt="Tori Soba ZAGIN" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMA_vy_cvkVR6iIfdK5znD9HBVt0bwItV_TuuvlQ2o6ffnoZ4qQzdGlXBj_Wl_8SWpPx2grJbRkKl6JP9dsk0BCEQFaHbr4tirntF9cfT6TQ-9NkWZi-0O-aLH6_X6d0KGAftRWbNViaJ_WTw=s4800-w800-h600"/>
+<img alt="Tori Soba ZAGIN" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNZsQ6rHbCwvjBl7ibJbwNYl3T-spSPwithKLRpTHTH81pF4LdRZVcjwufaYzaTVzld_Rd3wo95t6jc9NdBI4kyyca1NQ6VN_6w1IyTteWHfrTpAVRp4-2GA0IFTnDxCJZm04BKL5GWWLKdOVpG708G=s4800-w800-h600"/>
+<img alt="Tori Soba ZAGIN" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOOk0yqrlE1LVIe5ejCpVhwieYQkNfq1uUfYdO9NMGOXPcnzAZguErJDAI138fOWRDrCKtA8TuuFnx0SMoaCX6eRkJXYV8i58VCPZB-3HKqw3BdMYOKkGQL-LjOsBAzHVVlgTicaN6d6Ji5bQJLsvNI2A=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">江户堀，鸡骨浓汤拉面，4.5分。<strong>菜单上有一道"牛肉寿司"小食，点餐时避开即可</strong>，主体鸡汤拉面不受影响。距 Conrad <strong>步行约5分钟（约400m）</strong></span><span class="en">Edobori, chicken-bone broth ramen, 4.5 stars. <strong>One side item "beef sushi" is on the menu — skip it</strong>; the core ramen is unaffected. Approx. <strong>5 min walk (~400m)</strong> from Conrad</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 每天 10:30–22:00 无休</span><span class="en">✅ Daily 10:30 AM–10 PM, no closed day</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=13538891041640546370" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270102/27079112/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">肥後橋 いな田</span><span class="en">Higobashi Inada</span> <span class="star">⭐4.8</span></h4>
+<div class="gal">
+<img alt="Higobashi Inada" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMfH3WHuKiA8nRclIVKAWB8qqQ8vShMxXGvTNAVNYA_n2WD73FzT0s96cicMQXs6RHi9swyD3Pw2mzSMyDuxD2g12bXp57Nan6eNnVOaHHfA7du1sjk6NP8shB7GgwsMpxAcx7s25o8a2x1=s4800-w800-h600"/>
+<img alt="Higobashi Inada" src="https://lh3.googleusercontent.com/place-photos/AJRVUZP2fgUjaFB6PVnKSQ8WrSN1nUU4E2cirM8YSghrbTpVXujeXb95N3AXdWeOZ2QAfXfgJLLHoJop-rZGCMQp9hoP3zj1qRqdt0_oGq2YZv0mFO4XIhdff2vKzlEfO5COzdmS-AMr3FJXzpN_NQ=s4800-w800-h600"/>
+<img alt="Higobashi Inada" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMGUG2Tb8fB-A6BbSlseXpKK0kPi2ZNWjSyDrb3qgRUwXOLDT92-VZ-hTqCLKXOoAls-HS_YsF5Ax-BKkitEZGvXpQzTUV-4wsaL9FoCoezZAIviZqkUs4n-Os10W3Hu6zgwiCuuPvFqwRnKH9P02Be-w=s4800-w800-h600"/>
+<img alt="Higobashi Inada" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPaxWQhIkiy8-qvTFlpO_hGy27HBoB6XjWZ9SZcwJO2AMyi9nz73NKudb39KmJiAOnHw_hLwe17lEzpL1Ys5Pcb6nkYHhqroxz7EqPA-TRZPIYRFcUm5N0YZxaIQiVizV-QuDxGTZ2OFkF2gmDPG5tV=s4800-w800-h600"/>
+<img alt="Higobashi Inada" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOcBY9R8WJBEd3iyd9Z7VVwY_lJoZzLww5XvnI86G8Ur4mrMA00nqo_vocWftPzKND2U6DoEzNKIKxiMFR3sIGmwwEiwWWrKE7Wv_VIXtS9X53qFOgFagcxqG1bu4ZUYlxUO2haekUex3y6R3nQ53iD0A=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">江户堀，和食料理店，新鲜刺身＋海鲜饭套餐，气氛沉稳。距 Conrad <strong>步行约5分钟（约380m）</strong></span><span class="en">Edobori, Japanese restaurant, fresh sashimi + seafood rice sets, calm atmosphere.  Approx. <strong>5 min walk (~380m)</strong> from Conrad</span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 午11:30–13:30(周二至六)·晚18:00–23:30 · 周日休</span><span class="en">⚠ Lunch 11:30 AM–1:30 PM (Tue–Sat) · Dinner 6–11:30 PM · Closed Sun</span></span></div>
+<a class="btn-map" href="https://maps.app.goo.gl/5YqcW41QLTAUZ52Q9?g_st=atm" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270102/27139507/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">饂飩たまたま Udon Tamatama</span><span class="en">Udon Tamatama</span> <span class="star">⭐4.7</span></h4>
+<div class="gal">
+<img alt="Udon Tamatama" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPZCDqrA8WMT2E_5mC-c-fB2VfDLevpakM-RHkq2mXZrKmwrLqRATwa5vPTo9XPJyx1oQNmZoa9SrGUxPF_nw5ZWIXnYwrBTM6smn_icJg4VAzElEd7ArHO_A1HHSAO9ILSqpdXGzs54XrunSs=s4800-w800-h600"/>
+<img alt="Udon Tamatama" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPymRC-yGHQP3xxlLSv8dFUfvLeo6zTfwyvenDm5CRyX28ZeESMU8fF0sMhJ7sWke67pU3L476B9NFX8gryl0x4KSJuINtg8jyI5CsNHjXPfncmZC_tSUa-VbdEeH_ja40bhH3rf_llfzUdfg=s4800-w800-h600"/>
+<img alt="Udon Tamatama" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMucRttMNCgGSW0xGP2Auk_irEHMPRJTdTcoN0833z9nSVoENvqBUBY6Q5Hc4gFeFf-OjKZphrgW3kPjNNAQCZvS9o0XT-QWbf5DIvAV98TjdZV64co8OGQTKxI2dmVERk6ci86dqciMW_PZBVqwJ7DEw=s4800-w800-h600"/>
+<img alt="Udon Tamatama" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPwJusbFjhR09XZ7OT1D7DemUfCkr4VpXEuVAwlIm4wDvvCyrF0BIPGNcQ9aTTzJGchPCswLxdbAmXMlqtJrIQmOuYIbnz_pJsQuzwFLc23rtrh7gaPvWVnz9jKaz0u7OhllXuuRnNQDKW0JWeNkn9wMA=s4800-w800-h600"/>
+<img alt="Udon Tamatama" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN7u1gT25gUmoS9xl8oum8IDDLO5E8wZKRV5gpF2R4nkkke8YlxNs-gUuNH9R9YLKlGUXya-7TDmDsGr4xiL81go3ky_9bKO4btfA73s-y0xf_p08YkKJpbwB1tcRteoH6cRMMdhO2xaPx6o8LFaLvg5Q=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">东心斋桥，手打乌冬配天妇罗，点餐机自由加料，4.7分，风格随性平价。距 Conrad 约2.6km，<strong>建议打车</strong></span><span class="en">Higashishinsaibashi, handmade udon with tempura, order via ticket machine, 4.7 stars, casual and affordable. Approx. 2.6km, <strong>taxi recommended</strong></span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 每天 10:30–24:00 无休</span><span class="en">✅ Daily 10:30 AM–12 AM, no closed day</span></span></div>
+<a class="btn-map" href="https://maps.app.goo.gl/WLUziybZgo9UBdyg8?g_st=atm" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270202/27137531/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<h3 class="city-h">🥢 <span class="cn">大阪 · 中餐精选</span><span class="en">Osaka · Chinese Picks</span></h3>
+
+<div class="stop">
+<h4><span class="cn">江南春 Jiang Nan Chun</span><span class="en">Jiang Nan Chun</span> <span class="star">⭐4.5</span></h4>
+<div class="gal">
+<img alt="Jiang Nan Chun" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMmMX2gEw6MMyz-MJv5Lb0QQU7Bswo--_Z8_vHja5rYdm2KjbfVrU0fyZVQ3BCJiBa7uZbWgz7RloQ51aWt5PX_DTLQwtD40onV7YY0P5CJhenJMJBpfSD0z6oi5sFxzMtxy49gxTITviLr6d1MmiFX=s4800-w800-h600"/>
+<img alt="Jiang Nan Chun" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNTxPYSOLtiXlfwuJgvKeOd2D2rLBXg0E7fwHpvZLnufZPsZ9SISOUYtSD885k-6jzlwfk96mjk4fUy9uHrmm0x8NOwMB1GPIZ6nA-AHSOyH2MRoQEQ9pHy19fTtEFVE3FULub7b3j1vfNhKojU0h12-Q=s4800-w800-h600"/>
+<img alt="Jiang Nan Chun" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNIKfrznIMb64KxwmHLuw-nUvxIjt1ZRm45uxAn9q9CGd8QLsDRe59ykB6tfPTc2cMh04e6Fy5O4VLJkhpox2Q4xygTOCsIrGK4__wsCRnFUs7NjOK0ZepCHB0mAl5GgNDSTafPxb5WP37uCW4t560M=s4800-w800-h600"/>
+<img alt="Jiang Nan Chun" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN7LE6y0x2v8bnwYoH0PTAf9JXTrb2cMFMN6fwzq9DRUNzfU0goNGjitoNJR6n1z9JmX5pUOlRYhAlUSokf2KFKD53Jq3Nn_wvuMRTwXQ3B3lVdRbUgmDZC0SKewL5duzVeR5l5YuSmD-uJfC6Y_RJhdg=s4800-w800-h600"/>
+<img alt="Jiang Nan Chun" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMfuk9Q-mhAZMHjGjHynstrNrCCGosjmG7paTC6IsQlIbKFBqUymGkRc0DnSzzUdLrZai9_HnpRf-tP2rNBZu7LzEgLsF9Hc9rN7C1I2H4b06Xy3V9cE2g0pznTmV6GiXjO3WKwC3FCMGtHVZ2ljLBSMA=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">四季大阪37楼粤式料理，即使不住这里也可以订位。评价：汤品、烤鸭、点心俱佳，服务水准高。距 Conrad <strong>步行约4分钟（约340m）</strong></span><span class="en">Cantonese, Four Seasons Osaka 37F — open to non-guests. Soup, Peking duck and dim sum all highly praised, service consistently excellent. Approx. <strong>4 min walk (~340m)</strong> from Conrad</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 每天 11:30–14:30·17:30–21:30 无休</span><span class="en">✅ Daily 11:30 AM–2:30 PM · 5:30–9:30 PM, no closed day</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=3254303679797462069" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270101/27143622/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">東寶 Dongbao 北京烤鸭</span><span class="en">Dongbao Peking Duck</span> <span class="star">⭐4.5</span></h4>
+<div class="gal">
+<img alt="Dongbao" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNFRytxjve3mEPuTSZOEc9SQ5BYNg4ZtepfzCnzeBy1QbYy8JGEf3mH1HOR0SyS7HR8XW4c3bfV93vBKWnZaujFZgCdYAPyexvpI_85O3Azd1qGwOBcs_xU34AT-_9KK3Kgb-RpJwv6fJIDZkhm8lT-kA=s4800-w800-h600"/>
+<img alt="Dongbao" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMAIkr751Rl_zdYl7AtP07n05pm44B_oN4f5MNbPFiX8IVNh1jyvJ3M-NFu6hsS9HCQLKUeNmxzJ5bak26ySaZVs6S6lEU4bn6nhESunUWySG7z4UrZOAI7z_BFn5o0lrpWv8hm-bLZAqQL2PpzGB6RQQ=s4800-w800-h600"/>
+<img alt="Dongbao" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPp2tQKhovxnWsHBdVFhyzorq-5y9CcDdg9ReRMwx6snw6CIeftw6TSgtpca_icxC4I5a9i-PZjiM-mSO13RTt9TdipAthZVbQw-KY1VLwhliODzHrN7kOv5-5G3dzZldjvgYObO4ujSubHS9-JdAmKyg=s4800-w800-h600"/>
+<img alt="Dongbao" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPXqSaevMzm5k2h5Jb78RifvTvGjbwg1ARWITfvdf3DotQ80yhfa3Nxg-Cf5O916VLfXMkfXi_EG7towvi_lY18RnAeZkqu2-ZHKzzmJt7UlxgHh5yTO43CLW5MtWB0SVAlFPgePOumTj6jxt4AlS_Plg=s4800-w800-h600"/>
+<img alt="Dongbao" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPLRDVCBaKszEN7_lXB61fH6ByJ_Z0sfCyJZUkdPJuVt-AybKZ9tflEf724zIWk8grwRZxQZixXSvuMoSV1R8ZjoltBF16lTgGXdgsO8MfUA0QOtOvsxfQVxQpsW_x7RVZGEDaCUKpWJYtJ9dzMwexqUw=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">KITTE大阪5楼，北京烤鸭专门店，亦有新加坡分店。<strong>🗓 去年吃过</strong>。招牌干式熟成北京鸭，脆皮评价极高；鸭肉另付约2000円可追加。距 Conrad <strong>步行约10分钟（约830m）</strong></span><span class="en">KITTE Osaka 5F, Peking duck specialist with Singapore branch. <strong>🗓 Visited last year</strong>. Signature dry-aged Peking duck, highly praised crispy skin; duck meat add-on approx. ¥2,000 extra. Approx. <strong>10 min walk (~830m)</strong> from Conrad</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 每天 11:00–15:00·17:00–23:00 无休</span><span class="en">✅ Daily 11 AM–3 PM · 5–11 PM, no closed day</span></span></div>
+<a class="btn-map" href="https://maps.app.goo.gl/4zHoo8eYLYEFS3qZ9" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270101/27143447/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<h3 class="city-h tokyo">🗼 <span class="cn">东京 · 四季大手町</span><span class="en">Tokyo · Four Seasons Otemachi</span></h3>
+
+<h3 class="city-h">🏙 <span class="cn">酒店内 · 39楼及同栋</span><span class="en">In-Hotel / Same Building</span></h3>
+
+<div class="stop">
+<h4><span class="cn">焼肉・韓国料理 KollaBo 大手町店</span><span class="en">KollaBo Otemachi</span> <span class="star">⭐4.1</span></h4>
+<div class="gal">
+<img alt="KollaBo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOWPRk6nEPS9K7eKj_Od0lUv3FM1_JLfMebckfx0hcJD1DHDI_d4zGvWh4OxUTFEnNa2f8-shtJkG_E2Pd9cNILwMzaE-5asiaiOuIrQZZGV4OYFaD2cRIkCkObmHmfCQUdyv0i--fieUa9MQ=s4800-w640-h480"/>
+<img alt="KollaBo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOZna1PexkiOl-L4cheVNXm17p7lXIwCUvl058Tr2hm8zawOxZuczFlk11Dx880Qq7w56rmOO0hO--ymqtSHRHFqN1Vb9JJaxXYZDpYuMjVuFFWTx2dXBE6H0490ilYm12BoBJ-55UiEHBGgA=s4800-w800-h600"/>
+<img alt="KollaBo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOK7Q1FY2dixBVngbaegz6gI9EwSwEHV1AZ0BO1q2MWbK21HEo3Y8wciDorDWvmO86_tpDRzChWHctbzLvVPS9G3h8ZG6E2ShiB99QaaWB8-h8qqfCWjc3s4HnfTJUP6-xkvwdfQaq44yxvJ1pNCHGncQ=s4800-w800-h600"/>
+<img alt="KollaBo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMZloxcZS3Y8ubP2S7X7pOaiwILT_NTezgdCEHmuewQj0-9qaGuE2klAeNOyVroweFqkd8KfTNnF0Lj6mS4xgfg84wTmoZULW55nTp7JwaheSqulW-Yl8PjbzUkgEk1eH1ZYrW0tp4rgqtpv-c=s4800-w800-h600"/>
+<img alt="KollaBo" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNoxEqUgbBfUozeZE_EyybOsxluSGbkemRFnA8JNt5NCmb_0pIT8dKo1273dYTCr1uuAoN3qBuTCYZ4_TBQ6SHvU3rhEqArrEHT3Got12ZsW4Ifwnzku1kOsc6BFwPoHBaTUhKfgZ_YeWlcYB-Kq0pKRw=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">韩式烤肉，大手町One地下2楼，与四季同栋步行约2分钟。菜单以猪肉/鸡肉/海鲜为主，也有牛肉选项，<strong>点餐时选非牛肉款即可</strong>。<strong>⚠ 周日不营业</strong>——7/26抵达当天不适用，可选7/27或7/28</span><span class="en">Korean BBQ, Otemachi One B2F, same building as Four Seasons — approx. 2 min walk. Menu centers on pork/chicken/seafood with beef options; <strong>simply order non-beef items</strong>. <strong>⚠ Closed Sunday</strong> — not available Jul 26; use Jul 27 or Jul 28</span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 周日休 · 周一至六 11:00–22:30</span><span class="en">⚠ Closed Sun · Mon–Sat 11 AM–10:30 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=18276866416296811700" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13245986/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
 
 <div class="stop">
 <h4><span class="cn">est 米其林一星法餐</span><span class="en">est (1 Michelin Star)</span> <span class="star">⭐4.3</span></h4>
@@ -141,11 +300,13 @@
 <img alt="est" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPXO3gu2aNTSRXnJ3_M5gBCNN1q9-_1GnJGsIhapAgXE4wLtMo_ZEczHIRwhcnmbH2FH4laJcZ1NEJzSlWMWNVJjFmtyn143BoOz1U_K9G830tnvUogvvsBq4vdLeSAa27MdaC1wdZRdseJrtzhcm1yLw=s4800-w800-h600"/>
 <img alt="est" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMDmk5TcJuuYCEGSANmikZOnqv1Gdx_JTgo2Z1vCjPuu_44W4w0BPNtfymUEj_yYKB6OxJMX8iAHg3-YiJl8H1FU_maeoxC8ohgNtifF2OotavDzTHGc5A405MayjhLoUGSAccP77FGu98ez81UpZAmkg=s4800-w800-h600"/>
 <img alt="est" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOqF93MIGG3riJYtzbHq-27Q-b6o6mEfdvWs_21aq2yQYMdmm7rcaqiOmtBxwD9MOirtJZvStTi91ng-ez1PtSwBOgeZLnCuT0AQ6DnmHJupoK4IE7WlfWndQOaxDDsHodlcYo00pMaTMGxoPBwlxcV=s4800-w800-h600"/>
+<img alt="est" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPNdyyycWK1__q85m7XlitIpCDRW7OGBPQngEiYJC4zKe-Thltsh4taLMWZoUp-d870PE5R8iSPWpmD9XWLykn31xEl1Kv33RGPfebXk5LQrrekbr072BaSZ-QEQmrRH4GD-rpsfoF46Q3BkpfPl1B8=s4800-w800-h600"/>
+<img alt="est" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO2_OxsCk0WNXyNu-LLz-DBIet2pYYlVjVdfyxWNdnNU4zdTmF2PXYcrueHwJHFuc-_VUmGWpQ-xcIydDzkU5Bl67KDQVihM-zQAFV5PnD7ZFPiBva5kt2ideddy-9GoIScfiIoxpZCgCsW5blU6Pq6bQ=s4800-w800-h600"/>
 </div>
-<div class="desc"><span class="cn">米其林一星法餐，95%食材来自日本本地农渔，套餐式上菜。<strong>食客评价确认餐厅有和牛courses，但也证实厨房会认真处理"不吃某类食材"的要求（曾配合过不吃猪肉的客人）</strong>，订位时说明不吃牛肉即可</span><span class="en">1-Michelin-star French, 95% Japan-sourced ingredients, set-menu format. <strong>Reviews confirm a wagyu course exists, but also confirm the kitchen genuinely accommodates dietary exclusions</strong> (one review noted a no-pork request handled well) — just flag no-beef at booking</span></div>
+<div class="desc"><span class="cn">米其林一星法餐，95%食材来自日本本地农渔，套餐式上菜。<strong>走电梯即达，无需外出。</strong><strong>食客评价确认餐厅有和牛courses，但也证实厨房会认真处理"不吃某类食材"的要求（曾配合过不吃猪肉的客人）</strong>，订位时说明不吃牛肉即可</span><span class="en">1-Michelin-star French, 95% Japan-sourced ingredients, set-menu format. <strong>Reviews confirm a wagyu course exists, but also confirm the kitchen genuinely accommodates dietary exclusions</strong> (one review noted a no-pork request handled well) — just flag no-beef at booking</span></div>
 <div class="chips"><span class="chip verify"><span class="cn">⚠ 周三休 · 建议7/26/27/28晚，务必提前订位</span><span class="en">⚠ Closed Wed · suggest Jul 26/27/28 evening, book well ahead</span></span></div>
 <a class="btn-map" href="https://maps.google.com/?cid=8091669988576275959" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13249494/" target="_blank">📖 Tabelog</a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13249494/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
 </div>
 
 <div class="stop">
@@ -154,15 +315,220 @@
 <img alt="PIGNETO" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPmNS9YPMP5nhWbblT8TaOQXNQ0GVdO-OkG2hAWVlksPGFPcEdrwxaYMC2pP5Jg44FRrV70c5UR9JG5te9XiY4w0Ac9Z_DqoJyPn8LWYi7epCbdu7mP2kJAK-TwjE0XTlF5t76VZyKcPsoC6Zw8c9_ZJg=s4800-w800-h600"/>
 <img alt="PIGNETO" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNvw6VMjE5QpVwvS8JmwVIa79pMOKOub-r8ZdYwtFUfV3MIuoOQIwjKBgUqOThEBtGBjFXinvDSIX_IceJ-5QIAuRjePF1U77Fq75z4WRcF7RVxpFyoIBGRqQc1M07RZxevSARf3ex5L1XWPpO7a_7QIA=s4800-w800-h600"/>
 <img alt="PIGNETO" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMRf8WVZfA0B8rDJIS8D8bFU39zwGqWbw3PRzzjbmGAY9UHEIF9r2I7sXSpmW8OhLg9G9F84kmscn_cstKzKVZ0SjbgeYwV6aYcTx8fab_RCC_wkdkLrIlhTy36tRrkwCsJdEgtgkwF-T0RPaPla_vw=s4800-w800-h600"/>
+<img alt="PIGNETO" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN1uhqFLDQif1LFREc8Ziv2m4S5TxrRFw3lU4ExXXmwMxiYp_hBB8Y0-DcteCBUGYm6MciwK2sFG6v3qB2NmLAbDt5_89kgJq2k4Em1P2GksiHYqAgHgcDngIYsv2GLtHwPF47QV6sEN31waT0DQElS4g=s4800-w800-h600"/>
+<img alt="PIGNETO" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMI4xtuSaOlTZTPpbh5GOFngZy36XsdsnluArJNhPGfaIFwYLdlCSb2JOn4Lr12jo4a004eFhiCpHrqLmeAZcOU_P8tADFdXTv_SnUrXtE8D_h8F7CCreLdPCcNyrnDHp2kw65WhuSQe3bso8Qgm4EnNQ=s4800-w800-h600"/>
 </div>
-<div class="desc"><span class="cn">39楼露台，可望皇居+富士山（天气好时），全天营业无休无午休。披萨、意面、烤物为主，评价中主菜有牛小排选项，<strong>可点披萨/海鲜意面/烤鸡代替</strong>，氛围比 est 更轻松</span><span class="en">39F terrace overlooking the Imperial Palace + Mt Fuji (clear days), open daily with no lunch gap. Pizza, pasta, oven-roasted mains — short rib is one reviewed option, <strong>order pizza/seafood pasta/roast chicken instead</strong>; more relaxed than est</span></div>
+<div class="desc"><span class="cn">39楼露台，可望皇居+富士山（天气好时），全天营业无休无午休。<strong>走电梯即达，无需外出。</strong>披萨、意面、烤物为主，评价中主菜有牛小排选项，<strong>可点披萨/海鲜意面/烤鸡代替</strong>，氛围比 est 更轻松</span><span class="en">39F terrace overlooking the Imperial Palace + Mt Fuji (clear days), open daily with no lunch gap. Pizza, pasta, oven-roasted mains — short rib is one reviewed option, <strong>order pizza/seafood pasta/roast chicken instead</strong>; more relaxed than est</span></div>
 <div class="chips"><span class="chip ok"><span class="cn">✅ 全天营业，无休无午休</span><span class="en">✅ Open daily, no gap</span></span></div>
 <a class="btn-map" href="https://maps.google.com/?cid=14727733378470688645" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13249493/" target="_blank">📖 Tabelog</a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13249493/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
 </div>
 
-
-
+<h3 class="city-h">🗾 <span class="cn">东京 · 周边精选（步行或打车）</span><span class="en">Tokyo · Nearby Picks</span></h3>
+<div class="note amber">
+<span class="cn">💡 以下均在大手町/丸之内/银座一带，含日料、意大利、新加坡、马来西亚、西班牙各式选择</span>
+<span class="en">All in the Otemachi / Marunouchi / Ginza vicinity — Japanese, Italian, Singaporean, Malaysian and Spanish options</span>
 </div>
+
+<div class="stop">
+<h4><span class="cn">中国飯店 琥珀宮 Amber Palace</span><span class="en">Amber Palace</span> <span class="star">⭐4.5</span></h4>
+<div class="gal">
+<img alt="Amber Palace" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPAaYNCBHloN7gd9I-qw91dRyvpc4CYaKG0OexT8rRmiY5d7g2Dpwiit_uRmPWp1lOox25pg7F_VdFMPbKQ2U9yaukH6pd31nVhmyUOWcu4vE0_yTwzPsRv-L3Q_2JlDBP68Z3e_Ik-9liR_pQ=s4800-w800-h600"/>
+<img alt="Amber Palace" src="https://lh3.googleusercontent.com/place-photos/AJRVUZM-b1UNetbVh9FUWCa3kkW1vlBRoMAYLVwVAaCJeQ4QlU1cl8jjNX2i1gOsIWRqAyxrytmZRGlj6zCCYiRERjP12j0Ch4dSKNqrHBsFpLQ4zJbUbvB9wdnKzYzA6VUzvneI2WgNmZzeJpNuoA=s4800-w800-h600"/>
+<img alt="Amber Palace" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPhTuvm4ciL9upAM64zaIella-LqAAvS9WsKKoqWo-XfSWKsf_nIuz8ocpyemssXDnXMoiIc48kSi6dAzh4e5HJqIO1v0AblQA0IHWGxDLz8y7yCFjcOGto_dtiLeqNJaRbcldkCmu-J6p4ZLYRy94_eg=s4800-w800-h600"/>
+<img alt="Amber Palace" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOgC-Yim41F3jUtsxiBNAqmro_zXKC-57B-BXATA-ClCvqLv3fB1wbtiWIgsAOcwzO8ArvRwPjtVzQux-UdJMHD4zWARclXRioG58vByKzB-4fhqSWM95SwzdGsvq992AICKUYamOfglS6WPCwMQs9V=s4800-w800-h600"/>
+<img alt="Amber Palace" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMi2OgPFS1WSo7pc4QFC-LgWrtd9GTJYxN9K7JzAjjf-PvxvWLKkl7gvWKChxaxOifiQr-gA4lCHEx4Y4AbOJlGzVTPnLZaISNfyHfva5xL5x2JPH3H7hguvV90frAAjSgjsHNdvenHm9mwF9clpY1Dfw=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">Palace Hotel Tokyo 5楼，粤式精致中餐，评价极佳，米其林一星。北京烤鸭、脆皮烧肉、点心均受好评。<strong>⚠ 套餐含牛頬肉炖菜，需点餐时说明不吃牛</strong>。距四季大手町<strong>步行约5分钟（约400m）</strong></span><span class="en">Palace Hotel Tokyo 5F, refined Cantonese cuisine with outstanding reviews, 1 Michelin star. Peking duck, crispy pork and dim sum all praised. <strong>⚠ Set menu includes braised beef cheek — flag no-beef when booking</strong>. Approx. <strong>5 min walk (~400m)</strong> from Four Seasons Otemachi</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 每天 11:30–15:30·17:30–22:00 无休</span><span class="en">✅ Daily 11:30 AM–3:30 PM · 5:30–10 PM, no closed day</span></span></div>
+<a class="btn-map" href="https://maps.app.goo.gl/4Zc9FoZXeZw5jcXn6" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13141135/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">まんてん鮨 丸の内</span><span class="en">Manten Sushi Marunouchi</span> <span class="star">⭐4.3</span></h4>
+<div class="gal">
+<img alt="Manten Sushi Marunouchi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPv45HmZuc4kREdVvm7ZaGJBrwIy6PI4Npmw5lYLMo5TqBS2SG4hYEIlGGzfW4xUYZC5vUsxnXd8dQPi7lf1_At3iylG47vTWFz7X55IxWKuCJQHzH7XmB3Gveg7Xct__hoN9ffRtWIeGt1dpeTCoQI=s4800-w800-h600"/>
+<img alt="Manten Sushi Marunouchi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMM44IisxaptQWkHm3ayM0MjwDOoVl1JFLzLETxI40TDbzKS_x-wWSvigqvx1ONf8KRcEW6f03tmxhb58MXITszPuOH9XXzEhijctfrHoYKPcLi_iigNbs5iaFL6is60gRhjtGNOofJRamH2NAKct6AXA=s4800-w800-h600"/>
+<img alt="Manten Sushi Marunouchi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN2nkBMlr4NqvJVNeVnwyBMJNUoKv3L5ZeW3KRUdyitVf6PDk7oDPKG_MU4vkHu_1Vwxee0r2V0MTZ20uYF2BR79jORzTtZ2mxXTHfdRDT58XdEBvZt0YvAgZKFVl7G4lf-YOvQlFdiKkkCCli1Q40XCA=s4800-w800-h600"/>
+<img alt="Manten Sushi Marunouchi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOSNOy4yxtWqL93xfBupnZ23Fx8pLaW81Bvcfpm-EgNhAfWxjuXpOQOMxM-8iV0BkmhUTS7WvlMuR1jqYqaBsQb60nxrUSgmWc5yVLhD-ofTKjU9s6q5EC_HCBULvQrjDm8T28qEA86a99TMj3Ihs_aRQ=s4800-w800-h600"/>
+<img alt="Manten Sushi Marunouchi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMO9VZwK9JN7MyNT1NyV1Zwj-Y5mDuKLgxrp7dusEz0VOt9KJ6FlpblJX3OIXEz3FYh5A6EyzFsVLi80IXzh1P3GasHujxhWgmQp9faES3I7eWMlKFIIaMiclgBRGPohzrGHfmM8MKrfx9T1A_85aYsqQ=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">平价omakase，需提前订位（TableCheck）。　距四季大手町<strong>步行约12分钟（约1000m）</strong></span><span class="en">Affordable omakase. Book ahead via TableCheck. Approx. <strong>12 min walk (~1000m)</strong> from Four Seasons Otemachi</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 全周无休 11:00–23:00</span><span class="en">✅ Daily 11 AM–11 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=5434145913963650887" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13096429/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">焼鳥 ハレツバメ Trust Tower店</span><span class="en">Yakitori Haretsubame Trust Tower</span> <span class="star">⭐4.6</span></h4>
+<div class="gal">
+<img alt="Yakitori Haretsubame Trust Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOgXQrla9JBh9eumbAZUHhG2-jIgyZ24Q4JB1nhVluXJ4SueSobqqZs2IUG4qwUVlzCUqhdwULNEShUsN0r_aOMKCOaLRfZUECij2zvAT_TaD6aBmChF2bx0AL-ss8DA4N45lTz-d5_uya1NM8=s4800-w800-h600"/>
+<img alt="Yakitori Haretsubame Trust Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOjx4HObNCcTOdgGB8JlbrGeKAlyHaWmiOtt5C1FLN6hlnZ3d1FPsAEMAV_kf64XXiNhXgHO6OLmdW86kDS0yg60ojPdDPXPZwl7JhEvXZj1wQauQdzb3sTv9BFTaK8RVPcK9KcoqShnlwOsJM=s4800-w800-h600"/>
+<img alt="Yakitori Haretsubame Trust Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMeR2uJn5d0DVEb1XXp01LSq5qitrVlupMwJiJc8_6MCIy1C2r1SRXO4zAfkEpt0SxXE-IZ9zJpB7vujycsu2EHiFdo58WsFkLDBmbMdgw_6F8XE82xttzookdntBwKvWgO2z3kBKqKUo3QFN60riEk1w=s4800-w800-h600"/>
+<img alt="Yakitori Haretsubame Trust Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMrEN90jN1n_IlVbFAptYOQIpas6THt-Y9O8TTYGPxHFC1NSS-zkp60TzPwRynoR0fCdvUqIPeYLm5pe7gNTD9WhD5SKHjdZs-Pvh8HwnqMbKghQuRUE_-ZfsiPMbjxgqCaM1oQw0nzFD7vYZjFI68P9g=s4800-w800-h600"/>
+<img alt="Yakitori Haretsubame Trust Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMjVYLBwY_NzMBzcQ8hEP1mwb9oZHyis0l9dwenPOBA8PFprZ4TvZnkbtyfT6uIieyKJ3KwX5VSI2ViYh-Bs-q9bjNKFkQOy3eNDe-0hAIHbvW9QDb3EvELtNcbUh-Vw-pjadpLEKkXs7SBLQLkWxLQ=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">鸭肉串是招牌，英文菜单，周末也开。<strong>⚠ 宴会套餐含黑毛和牛，单点菜单以鸭肉/鸡肉为主</strong>　距四季大手町<strong>步行约10分钟（约800m）</strong></span><span class="en">Duck skewers are a highlight, English menu available, open weekends. <strong>⚠ Banquet set menus include wagyu beef; à la carte menu centers on duck/chicken</strong> Approx. <strong>10 min walk (~800m)</strong> from Four Seasons Otemachi</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 周一至五 11:30–22:30 · 周六 16:00–22:00 · 周日 16:00–21:00</span><span class="en">✅ Mon–Fri 11:30 AM–10:30 PM · Sat 4–10 PM · Sun 4–9 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=6673287165330565935" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13274783/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">銀座 篝 大手町店</span><span class="en">Ginza Kagari Otemachi</span> <span class="star">⭐4.1</span></h4>
+<div class="gal">
+<img alt="Ginza Kagari Otemachi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOHbnrei6KAkF2MR5LzMbHvmvK3dnCmIOU0thNg3vIW5rq0sOF98K-jeSBH14TUs4s8Euabq8ostIoZTUrKiM1CXLZS8hvD6stq79TnIKMvcfl0gMTtR6R7EfZKwZ4wRIWFz0tNwcgGvIRM=s4800-w800-h600"/>
+<img alt="Ginza Kagari Otemachi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNEB36VTEuDHXzzVZtFGRk4agId7F5dKeVXcjas4RdnJvdWGisqLmGOi_uzJTC-KObGv6b_yvw-BhD0cjxUxz5Re86bNLP-6VUt-sT5C4h2NPIhi_DGhl5_bDg4TPJ835ClupQvmEaKqemZ7A=s4800-w800-h600"/>
+<img alt="Ginza Kagari Otemachi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPWw-8WUNBYQ3yjRyN4CrD8jFd-KQRPjBeHbIDhxcicO0JshqJeGB2f2GQzOT1ftqZ8dNH5ovS4IYFTwnq3Ycn3StZkU_Ua5RX_-sb3ssAgx2hN1wkeQqISCH-OiCipDAshMajd7wjsxHTLdP1Gp24oVw=s4800-w800-h600"/>
+<img alt="Ginza Kagari Otemachi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOKf1q5b_ppyrZUqwyGzMIdYTOzY6FkFMuuAilmDBJIJ-ifdfhbqqiIVvK93R3ByUJtOrwbsaGeJZMOSGK9gya8nG5eG1MftVCVGY58tkgIQrUw0f04CVKIQbfw1REasSAPjgg4I_9VKJxjNmQXhgemhA=s4800-w800-h600"/>
+<img alt="Ginza Kagari Otemachi" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOxfciroyiArkQ-U1WnMdTyL7yBFIPs6EHoDSAVldLeD9huaimNVNaV4anJFdB5VvV7a3kPS1EYNjJ6yaPnVx-o8mgY_tPSlvXcsk8IaeV1ogw2BdYgUwfbLANsbGBK5wlzn8s8jmn_QMwwiP-xPcKLFg=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">浓厚鸡白汤拉面。　距四季大手町<strong>步行约2分钟（约100m）</strong></span><span class="en">Thick chicken paitan ramen. Approx. <strong>2 min walk (~100m)</strong> from Four Seasons Otemachi</span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 周日休 · 周一至五 11:00–21:15 · 周六 11:00–14:00</span><span class="en">⚠ Closed Sun · Mon–Fri 11 AM–9:15 PM · Sat 11 AM–2 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=12788108064905503810" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13195336/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">天ぷら いやさか</span><span class="en">Tempura Iyasaka</span> <span class="star">⭐4.4</span></h4>
+<div class="gal">
+<img alt="Tempura Iyasaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNcG7dyDBLmUx3BjEPdn78mq_E5wVTu_Nu8aIdtDSj07SLISN7UgyHsacajONeDVkVbvL4Z3QObRgafXts9fLD2kpeYmPFXTPmwE7alGfgovbb4reGeWhQZodzfhNXUlAC3dQUPESYcXms_jnVknPTjmg=s4800-w800-h600"/>
+<img alt="Tempura Iyasaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPq3pnnDJ6WkktV2gkBS-D9JddXQEt9oA6ifR9a8LujLjoJ5B5MNKxMV2NjzayzHz_rtBSJ7hStR7TEeLQidG4SlAxDwSxCIWreDob_EdqV-WZMa46AERT0XGkelioQ3WSbrNM06Kf2itmZpTziO5g0lw=s4800-w800-h600"/>
+<img alt="Tempura Iyasaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPi9X6KEMszKawHucACwW-7_vw8uASKupUzxi_aD4FBlnfnySlO2nAOnD1SgQcy-_cVEpsKajLf5j72_NSVoPtADYXnY1KOnugkGgB25Vfmhs499Oy9pHpVA-GD65vIlsxKbYyQUwxcG9j_OgKfk_FI=s4800-w800-h600"/>
+<img alt="Tempura Iyasaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPuOI1Kxm9bjf86ZyKjntE-Flo-vjOAjjlV1zZqxA3v6UbvXMA4pIIJac3W24ktvAsV3q1Fd5QA6xOjblNbCGk-oV0WvufGUjq9_6irVGkdvR5xLvW0ccFoHXYkNy_KZw4w6gEXipV2bNSSee0bfggVtw=s4800-w800-h600"/>
+<img alt="Tempura Iyasaka" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPW2i6PauMFsE85K_UvdYj1Cu3R1_nvlj1qrJq9nJiqP00QknqjruRrEa8MUgPXZvjvJQmlp4dBFyIls6jA9bYOxh4yGjEygLa-c7utNCJMSc5hRm8L-iD2nKp8OB11ghsjKEzH1WDcOAY78QFUwamQfg=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">新丸之内大楼5F，à la carte及套餐皆有，全周无休。　距四季大手町<strong>步行约7分钟（约600m）</strong></span><span class="en">Shin-Marunouchi Bldg 5F, à la carte and set menu, open daily. Approx. <strong>7 min walk (~600m)</strong> from Four Seasons Otemachi</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 全周无休 11:00–15:00·17:00–23:00</span><span class="en">✅ Daily 11 AM–3 PM · 5–11 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=6782566676201506474" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13300504/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">日本料理 和田倉</span><span class="en">Japanese Restaurant Wadakura</span> <span class="star">⭐4.5</span></h4>
+<div class="gal">
+<img alt="Japanese Restaurant Wadakura" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN1R9eH3UiYbedwGRnN2ASS9u8BSRYenxx_ihHnUPDnAAjM1nRMLe91DBXYHyrGaM07l_EfCq_WmtnKK-Gsr5b0UTudVcRBi2pxvuqpSWYXoGGduYjkyeVl7cPF3rxKIAfzz1hwo5mnAdAdV9SUaJwf=s4800-w800-h600"/>
+<img alt="Japanese Restaurant Wadakura" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN0Gk_awZJyYjKytBAdy8imGsk_g8V1gvPbNnwYBDdbdzlFvyZlAKTriAvhT5K4IPH06D04cjAlVmX64LRw-iK5Rf9OdFh2iDykM2JIIBpq5yJ-tHkddIi-6teT1zn5Faj0qhOW7V2QGAMAjNJhxDOg=s4800-w800-h600"/>
+<img alt="Japanese Restaurant Wadakura" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMdZslUqZHp7G9utgS5DKQytYPqc8jutvLQuNqRgOAbVYa2qfU0sZ5PnO1pr__jZVxWJq_7AtE_hu0auH7RnlulUNxdCQfAQf-9noCBMr7UmeGPbndJE08mFn1xvbkH4fKc4vGo-7DtZ-3NCUdkULvH=s4800-w800-h600"/>
+<img alt="Japanese Restaurant Wadakura" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO0flOG5uWCLP_1URwA7B_t37vQTvex9UzmvNhBBGA4t_pHhdyc-Uwr8PkqoUKqjKZ63xdmgpJ-tc-RT8DR-UD_jAS0bkGZXVvRxnT2S1KjV4GLjYHjp5D7gJBBtx6QUFGrCtwwCEUnNQ8rnrS8BNlwfw=s4800-w800-h600"/>
+<img alt="Japanese Restaurant Wadakura" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOIaS9wCYQkKFnOXBS5__5EJAht_Md3KDX0m546zOjBOASlSt6HtV9XApPaV8wAfVMZeuk2py8zFf5kKHEw04OhQmobWCHWCOaugCuWT6GsrrqzSZLPys8oHiUMY2Rx3kpuZpBRK5wrSwXk2FkAz0I8pA=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">Palace Hotel Tokyo 9F，皇居景观，日本怀石料理。<strong>⚠ 会席套餐含"和牛前腱有马煮"（炖菜），需提前告知不吃牛肉改换菜色</strong>。距四季大手町<strong>步行约5分钟（约400m）</strong></span><span class="en">Palace Hotel Tokyo 9F, Imperial Palace view, kaiseki cuisine. <strong>⚠ Course includes a braised wagyu shank dish — flag no-beef at booking for a substitute</strong>. Approx. <strong>5 min walk (~400m)</strong> from Four Seasons Otemachi</span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 全周 11:30–14:30·17:30–22:00</span><span class="en">⚠ Daily 11:30 AM–2:30 PM · 5:30–10 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=3397604255153515366" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13010982/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">ANTICA OSTERIA DEL PONTE 意大利餐厅</span><span class="en">ANTICA OSTERIA DEL PONTE</span> <span class="star">⭐4.3</span></h4>
+<div class="gal">
+<img alt="ANTICA OSTERIA DEL PONTE" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO8J7z4CBkXt5VrMBymijBxvbjHsXalKHhtSXXn7LQU8ZbsJJZfZ0AjT24NygBtaJp8YDaBQqtWot8NgaTSLCGZlEu30qdCiO3elFFqtASLydV_y8Y4aWPDlDLy8Qnxk7kU1zu5sGN0cif15Q=s4800-w800-h600"/>
+<img alt="ANTICA OSTERIA DEL PONTE" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPk2Yz-HTqIU1XHAy4O_89WFaCxfhQ52jWxxOfjmEVgF0CNs2NN8idIvrKAQ2AguH0UkNwKT1tRpbnLm0GBzkCogR2UPj754WqHeTxa_PNbrAijTozThkJWhA0p05k0_sc_W5dltsQ-zeJkJ2nemzCdWQ=s4800-w800-h600"/>
+<img alt="ANTICA OSTERIA DEL PONTE" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPe0N_JPZqFErU7a6prQVykwhJaA_RkkvLS6-F2dsm4RUO1CnwlCfyWRRKSM745P71mznQnROWY_Y67Bu7dSpAtozZHS1gSUFwOzOsr6nGz76BoPb-A_X2zNFgUVB2_XEXZ6p-mwmo3XViWmSBrr7ZjMA=s4800-w800-h600"/>
+<img alt="ANTICA OSTERIA DEL PONTE" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNjp6RjjsdRkEfgJXN1JecqTMaMCC02OEUpZE8mAAgevqLC8roBe9CTqhcJqpaji1qz6lRHHuOGv0c_fQCl_3cNVmEb5LkXssfGv2jgB7Qfl86XrK7D5St1M4VsWt2X_3OU9s5TQ0lHWKqrhwqyyq5JAQ=s4800-w800-h600"/>
+<img alt="ANTICA OSTERIA DEL PONTE" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOqV7JFmFnsgwUmnZ59LCUtbIdd7GWZKufpLAj1V60FQ6Irh0WpEK36OMit5MDlyoxp1nstmk01ERrbFFdv15pwcLrQ5BOkaP87datXVfCTzoHp1bGige2552w2aXh27ounFEUDEdiJ2FdtneVqzqprAg=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">丸之内大楼36F，意大利三星餐厅同名海外分店，全周无休。　距四季大手町<strong>步行约9分钟（约700m）</strong></span><span class="en">Marunouchi Bldg 36F, overseas branch of 3-Michelin-star Italian original, open daily. Approx. <strong>9 min walk (~700m)</strong> from Four Seasons Otemachi</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 全周无休 11:30–15:00·17:30–22:00</span><span class="en">✅ Daily 11:30 AM–3 PM · 5:30–10 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=2713056623264145832" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://www.anticaosteriadelponte.jp/" target="_blank">🔗 <span class="cn">官网</span><span class="en">Official Site</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">CHATTERBOX CAFÉ 丸之内（新加坡料理）</span><span class="en">CHATTERBOX CAFÉ Marunouchi (Singaporean)</span> <span class="star">⭐4.2</span></h4>
+<div class="gal">
+<img alt="CHATTERBOX CAFÉ Marunouchi (Singaporean)" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN9Jt-JwN9w3dut_eOeVVem4GuGzynKcRYdMDjR6T42GLAJBjDVG_mOfhDD7pVIVXUZQ1QIvAvZ39TW1xk7lWmjaQspNi8iIKZ4_gHE1dVFyZzfjnhkjVoNLniGkiQfvtfoB0uk8PypY-e6n8ralwYB4w=s4800-w800-h600"/>
+<img alt="CHATTERBOX CAFÉ Marunouchi (Singaporean)" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMgKEBL_Jyfm3YrccwjVRp5pwb4azbIjrmbmLJFStG96CiaJkK8UfNIn1HVAEGb8OTPJELC11C-3SWgbUdYFZeNrThNIyHtlB8wpe3d3d_ewXiC4K06lI_LnkDPSjq2eA0zYymirkbtMSCMju6J5mCEAQ=s4800-w800-h600"/>
+<img alt="CHATTERBOX CAFÉ Marunouchi (Singaporean)" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN0uSm96BOMcLkzAteW6feKrXwcA-ehgXfzbg7_svK4EveJgSFbxXgEjxmYJaKfN2DD-qI8uFySr9-uJmloS3eVZRH-a0rBGfmNm50EsvmwpwADiqTTfmipJ0z7lqHnUK5bM4R1Njsj0K1CzjJYWYlS=s4800-w800-h600"/>
+<img alt="CHATTERBOX CAFÉ Marunouchi (Singaporean)" src="https://lh3.googleusercontent.com/place-photos/AJRVUZP0926Tgs91gRYqsWhgcQ_eSeNWbPcTepPGw28XpdS1q9zfAy2m1Vu-v2QafEei2ZzVeyu_ZOj3criyU266dGLIVoOcISoguDiwyidp98aXigDoqStAlnEJSsn6XOKS6pDHjb0tLjZNLgGuxmS9tIPN=s4800-w800-h600"/>
+<img alt="CHATTERBOX CAFÉ Marunouchi (Singaporean)" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN2D5n6HNI3hbk8tAR4yIRK4XbZYYgH3NUYmvH5rMyVH-5mcSqBuAmdN8Wq0K_kYl9NRiwOdetRIzSlIGuU4I9hgvL-WdLf-50to2O0XEAXoczBs6h8QE1DKAPtUVJVTr9agenKcLyc4XTnQ_y48TW6=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">丸之内大楼5F，海南鸡饭、肉骨茶为主，新加坡本地客认可口味。　距四季大手町<strong>步行约9分钟（约700m）</strong></span><span class="en">Marunouchi Bldg 5F, Hainanese chicken rice and bak kut teh. Taste approved by Singaporean regulars. Approx. <strong>9 min walk (~700m)</strong> from Four Seasons Otemachi</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 全周无休 11:00–14:30·17:00–21:30</span><span class="en">✅ Daily 11 AM–2:30 PM · 5–9:30 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=6986570645424718169" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13316049/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">Rasa Malaysia Ginza（马来西亚料理）</span><span class="en">Rasa Malaysia Ginza</span> <span class="star">⭐4.3</span></h4>
+<div class="gal">
+<img alt="Rasa Malaysia Ginza" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPO0BiqUlRO2aVN5csHXJLzYRz3bRMc8no6dWJV9H2vioOw0qGNQhapPzy4jGdPYmLkMN6VE0MNU7cjUtl-KsuRpR11tHWcT3WiSc_NsEqhrcZhIt-SSzPNm2Xm8ADK-0yrWDc40_BhnNzXzw=s4800-w800-h600"/>
+<img alt="Rasa Malaysia Ginza" src="https://lh3.googleusercontent.com/place-photos/AJRVUZObQNSUU663xzGz9kPnIdLxGEYtVpUbC4agbZABPhAqEyjIrliWHtfieatu-MNL1d1KP12NOqGiEW2XSKEs8LRPAfcobVDTQeYqmp-aWfIwR_v33WrZ2CGa7t9B8tARrNQOfenvo1yc-IbWgQ=s4800-w800-h600"/>
+<img alt="Rasa Malaysia Ginza" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMJbI4OrKyCr34DnSZwBQw_jbH5sHxM0ielm4vK4FjBc6DnbOEAZRjlk_GxWo1n36aBtWMAO8xLE47xqsLpJdkzlfFvSTNCVaPupB27Fu5V0B8Z5sTU3tDz1ZMWMgKTYgqK3tpPonfgDd5m-uuBl-IOPQ=s4800-w800-h600"/>
+<img alt="Rasa Malaysia Ginza" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOMnPOJKP2lv10sYCAU56KrxHj37CpTDTNxII8oNVseKdC0a0_h27jN81XMzMPZ7RpJy1fw4CCsBQXQdxJDqboErMkEz4DGu-fD7u9P2QYk6-fMtj4UEZwM7S8O7RzNaou3HVcFh88liGQ7_8-ZvO4_YQ=s4800-w800-h600"/>
+<img alt="Rasa Malaysia Ginza" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMV0LyMXDa2z9hu_WluYWGiAtIV3BIEzHa8zpy4kNmfSM9bnvUJC-25DO8STVp17ieBgZ4igSwALPPMsd8qSYh7ElEfJDiPruJtpDC7r1eO_ZzTDX_5IG6T93pxMSxm2rc2r8kkM0xMplBq9EtdT_Pw=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">银座5F，炒粿条、叻沙、椰浆饭，马来西亚客认可口味。<strong>⚠ 招牌菜含A5和牛黑椒炒、牛肉仁当，点餐时选鸡肉/海鲜款即可</strong>。需打车约10分钟</span><span class="en">Ginza 5F, char kway teow / laksa / nasi lemak. <strong>⚠ Signature dishes include A5 wagyu black pepper stir-fry and beef rendang — order chicken/seafood instead</strong>. Taxi ~10 min from hotel</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 周一至五 11:30–14:30·17:00–21:00 · 周六日 12:00起</span><span class="en">✅ Mon–Fri 11:30 AM–2:30 PM, 5–9 PM · Sat–Sun from 12 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=4058936577383268708" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1301/A130101/13223152/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">Bar Portillo DE ESPAÑA（西班牙料理）</span><span class="en">Bar Portillo DE ESPAÑA</span> <span class="star">⭐4.4</span></h4>
+<div class="gal">
+<img alt="Bar Portillo DE ESPAÑA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPGquzMrWtWwcMg6hkPlS3QoGpg9OVpcAiRhLhuQs9Ii-_uxnsj-C8zK1TCbPN57ow_LuuabFC1dn7-Wy7zRP_Ea2BWbBJr7hRnY_L_okWGcMLfKbkEi86ySo_yOsNFbL9mbvosSC9T_0MuqyzShCUDuw=s4800-w800-h600"/>
+<img alt="Bar Portillo DE ESPAÑA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZODtgakfPsoupDFMJDsrSgJB1iqAyHbDpHBI-eIU189O42as2XxSzoNXw9Xe1MIwdmOik6GfBhPgxhoCJVjcSzxjfrWnRyS5Ky7GghGjzc5glrLccCoXFfIDLKTCS0YaYBjsCnhkMzgzM2cl6w=s4800-w800-h600"/>
+<img alt="Bar Portillo DE ESPAÑA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOEyOBmtzjjodxJdUOQcoR6y6D9C6TNBOooDmZTITFd5Et-9_qYQYtOK039irOSMexmr09-IX5tacXxUyO6i2nM00vPxfcbG0pF7yLr-nQbD1DQyBnobVHjAUd_8t3HpcxKPfjPgXFOzKG_81Oe5LO9VA=s4800-w800-h600"/>
+<img alt="Bar Portillo DE ESPAÑA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO7bQUWJK7DZiDKoPWBeBj9zzQ9TaSg594k27iIHb4nDC4h_zNdUljclY_IJPfj12kHioLMnk9TvDSvycpoF_8L-YeZKtadH0TKgxbcEKOPBd6h7Cqn4fEDF3phrXh5pb0MAznKe42dXyaQNZL3hIjrZw=s4800-w800-h600"/>
+<img alt="Bar Portillo DE ESPAÑA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOuR5HFfvdEI5nJ5o4Vkxbuf7Ph3mquqQ5brNMJ1ga-CDA1bgkiMOBLok2Ke3U5_QKxhA_FLQfSVtFcXc9lehnAnMSW5ilTKAxs2-BSThG09dxeqBCl4h2tOL9w5N0-ysSXzTa6DybjGPR6wtVjbD866g=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">海鲜paella＋tapas，全周无休。　距四季大手町<strong>步行约5分钟（约400m）</strong></span><span class="en">Seafood paella and tapas, open daily. Approx. <strong>5 min walk (~400m)</strong> from Four Seasons Otemachi</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 全周无休 11:30–14:00·17:00–21:30（周六日16:30起）</span><span class="en">✅ Daily 11:30 AM–2 PM · 5–9:30 PM (Sat–Sun from 4:30 PM)</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=13747193754870407060" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13250724/dtlmenu/" target="_blank">📖 <span class="cn">Tabelog菜单</span><span class="en">Tabelog Menu</span></a>
+</div>
+</div><!-- /wrap -->
+<!-- LIGHTBOX -->
+<div class="lb" id="lb">
+<button class="lb-close" id="lbClose">✕</button>
+<button class="lb-arrow prev" id="lbPrev">‹</button>
+<img alt="" id="lbImg" src=""/>
+<div class="lb-counter" id="lbCounter"></div>
+<button class="lb-arrow next" id="lbNext">›</button>
+</div>
+<script>
+(function galLightbox() {
+  const lb = document.getElementById('lb');
+  const lbImg = document.getElementById('lbImg');
+  const lbCounter = document.getElementById('lbCounter');
+  let imgs = [], idx = 0;
+
+  function open(galImgs, i) {
+    imgs = galImgs; idx = i;
+    render();
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function close() {
+    lb.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function render() {
+    lbImg.src = imgs[idx].src;
+    lbCounter.textContent = (idx + 1) + ' / ' + imgs.length;
+  }
+  function move(dir) { idx = (idx + dir + imgs.length) % imgs.length; render(); }
+
+  document.getElementById('lbClose').onclick = close;
+  document.getElementById('lbPrev').onclick = () => move(-1);
+  document.getElementById('lbNext').onclick = () => move(1);
+  lb.addEventListener('click', e => { if (e.target === lb) close(); });
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'ArrowLeft') move(-1);
+    else if (e.key === 'ArrowRight') move(1);
+    else if (e.key === 'Escape') close();
+  });
+
+  document.querySelectorAll('.gal').forEach(gal => {
+    const galImgs = Array.from(gal.querySelectorAll('img'));
+    galImgs.forEach((img, i) => {
+      img.addEventListener('click', () => open(galImgs, i));
+    });
+  });
+})();
+</script>
 </body>
 </html>
