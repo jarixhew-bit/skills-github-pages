@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>老板晚餐 · Boss Dinner | Japan 2026</title>
+<style>
+  :root {
+    --paper: #faf7f1;
+    --card: #ffffff;
+    --ink: #1c1917;
+    --muted: #78716c;
+    --faint: #a8a29e;
+    --line: #e7e0d5;
+    --red: #c8102e;
+    --red-soft: #fdf0f2;
+    --gold: #b08d3e;
+    --gold-soft: #faf3e3;
+    --green: #2e7d4f;
+    --green-soft: #edf7f0;
+    --blue: #1d5c8f;
+    --blue-soft: #edf4fa;
+    --serif: "Palatino Linotype", "Songti SC", "Noto Serif SC", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--sans); background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.65; padding-bottom: 40px; }
+  img { display: block; }
+  body.lang-en .cn { display: none; }
+  body:not(.lang-en) .en { display: none; }
+
+  .topbar { position: sticky; top: 0; z-index: 20; background: var(--paper); border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+  .topbar a.back { font-size: 13px; font-weight: 700; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 4px; }
+  .topbar .lang-toggle { font-size: 11px; font-weight: 700; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); cursor: pointer; }
+
+  .wrap { max-width: 640px; margin: 0 auto; padding: 18px 16px 0; }
+  .page-h1 { font-family: var(--serif); font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .page-sub { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
+
+  .sec-head { display: flex; align-items: baseline; gap: 10px; margin: 22px 0 14px; }
+  .sec-head .no { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--red); letter-spacing: .1em; }
+  .sec-head h2 { font-family: var(--serif); font-size: 21px; font-weight: 700; letter-spacing: .01em; }
+  .sec-head .rule { flex: 1; height: 1px; background: var(--line); align-self: center; }
+
+  h3.city-h { margin: 16px 0 4px; font-family: var(--serif); font-size: 15px; font-weight: 700; }
+
+  .stop { position: relative; padding: 12px 0 12px 0; border-bottom: 1px solid var(--line); }
+  .stop:last-of-type { border-bottom: none; }
+  .stop h4 { font-size: 14.5px; font-weight: 800; line-height: 1.35; }
+  .stop h4 .star { color: var(--gold); font-weight: 700; font-size: 12.5px; }
+  .stop .desc { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .stop .desc strong { color: var(--ink); }
+
+  .gal { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 10px; scrollbar-width: none; margin: 10px 0 4px; }
+  .gal::-webkit-scrollbar { display: none; }
+  .gal img { scroll-snap-align: start; width: 78%; max-width: 340px; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; flex: none; background: var(--line); }
+  .gal-hint { font-size: 10px; color: var(--faint); margin-bottom: 6px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid; }
+  .chip.hours { color: var(--muted); border-color: var(--line); background: var(--paper); }
+  .chip.verify { color: #a33b00; border-color: #f2cdb3; background: #fdf2ea; }
+  .chip.ok { color: var(--green); border-color: #c4e3cf; background: var(--green-soft); }
+
+  .btn-map { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--green); background: var(--green-soft); border: 1px solid #c4e3cf; border-radius: 999px; padding: 5px 12px; text-decoration: none; margin-top: 10px; }
+
+  .note { border-radius: 12px; padding: 12px 14px; font-size: 12.5px; line-height: 1.55; margin-bottom: 6px; }
+  .note.amber { background: var(--gold-soft); border: 1px solid #e5d3a4; color: #6b5420; }
+</style>
+</head>
+<body>
+<div class="topbar">
+<a class="back" href="japan-trip-2026.html">← <span class="cn">返回行程</span><span class="en">Back to Itinerary</span></a>
+<button class="lang-toggle" onclick="document.body.classList.toggle('lang-en')"><span class="cn">EN</span><span class="en">中文</span></button>
+</div>
+<div class="wrap">
+<div class="page-h1"><span class="cn">🍽 老板晚餐 · 酒店内选</span><span class="en">🍽 Boss Dinner · In-Hotel Picks</span></div>
+<div class="page-sub"><span class="cn">大阪 4 家 · 东京 2 家（陆续增加中）</span><span class="en">Osaka 4 · Tokyo 2 (more being added)</span></div>
+
+
+<div class="sec-head"><span class="no">04b</span><h2><span class="cn">老板晚餐 · 酒店内选</span><span class="en">Boss Dinner · In-Hotel Picks</span></h2><span class="rule"></span></div>
+<div class="note amber">
+<span class="cn">💡 全部为两间酒店内附设餐厅，走电梯即达、无需外出；均<strong>不吃牛肉</strong>已考虑，但多家招牌菜含和牛/牛排（详见各卡说明），预订时务必向餐厅提出不用牛肉，改点海鲜/鸡肉/猪肉主菜</span>
+<span class="en">All are in-house restaurants at your two hotels — no need to go outside. <strong>No-beef</strong> factored in, but several signature dishes involve wagyu/beef steak (see notes) — flag "no beef" when booking and request seafood/chicken/pork mains instead</span>
+</div>
+
+<h3 class="city-h">🏙 <span class="cn">大阪 · Conrad 40楼</span><span class="en">Osaka · Conrad 40F</span></h3>
+
+<div class="stop">
+<h4><span class="cn">C:GRILL 海鲜烧烤</span><span class="en">C:GRILL</span> <span class="star">⭐4.4</span></h4>
+<div class="gal">
+<img alt="C:GRILL" src="https://lh3.googleusercontent.com/place-photos/AJRVUZP4FSNd8kdtSO6DYkUft9jId9rKC-zKErqil2bgWEoTzH0b8x5jULtrIy3yp4mu8L-9gM615rIE0fmZNnsoLl-XTsnKof7BwgAeM1B0-ogF97Ocr1zfQLl6U8-FSbcMZGEHo3uthRN5_LQ=s4800-w800-h600"/>
+<img alt="C:GRILL" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMbodRf1O2FkcccxoKTMS91k4K1tKQtQQ2eYBojt3ZGBBAxnCiw2vg-81_B8ByfLB3ByzK6h9Ng7Z-TP_b5ahgAEwnpK-lXairki7K4LrkyZO3udPii7Zk-yUmMealZweX5kpskUM0HLrWE=s4800-w800-h600"/>
+<img alt="C:GRILL" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN0vtGxd_W3WC72BPADxaicEkC810z2pZzz9arfY47GE9h8IUHjzEN5eX9EP6avC5YvWUv6NW-uGIksMhoB_qhcm5z0p0ikOh_cKO5zSTP3hFkSbO6TRwQ1ap4g2-QYtJnxGn82F2Mj49A45G9qSo7k=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">40楼薪火炭烤，主打全球直送海鲜，200米高空夜景。菜单也有牛排单品，<strong>点餐时选海鲜/鸡肉款即可避开</strong>。窗边位建议提前指定</span><span class="en">40F wood-fire grill, globally-sourced seafood, 200m night view. Steak is on the menu too — <strong>order seafood/chicken to avoid beef</strong>. Request a window table in advance</span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 周一二休 · 建议7/23或7/24晚</span><span class="en">⚠ Closed Mon/Tue · suggest evening of Jul 23 or 24</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=774036362649357477" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270102/27097668/" target="_blank">📖 Tabelog</a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">蔵 KURA 铁板烧＆寿司</span><span class="en">KURA</span> <span class="star">⭐4.6</span></h4>
+<div class="gal">
+<img alt="KURA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOddKcKipV2KySijINr6oe2UUgcchko2VfEdt1CnTR9GB-7ReJX2epn11C5tI5ofZmqetUPJQzQfGapK2np6ZGDeojTkpRMqVe7fpJeLk8Vx9cGv3teS5THmeoqZc0_w1qmhCtX2sQfA-t0Vfc=s4800-w800-h600"/>
+<img alt="KURA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMwteDXq8y6OUqyNx8S406zVFwRC9FlDYzc5haGkDTzoV3AW_XvsJ8RblE43Rpoc2wwf2XUDSt7doM6da8MuLwvtB9Bdf1wTkCPcNON-n2dGqQoX-1OoacQm4niVVf6XTk_QXwe4dj2ef3M=s4800-w800-h600"/>
+<img alt="KURA" src="https://lh3.googleusercontent.com/place-photos/AJRVUZO3ZostPLvn6UWfcoG-rfwgRrRumpmKyRW_6rhxISIuHhF8r0OQJuQ9kdqvmqR0gQu51x0_dd0ivFxFFRiJYPrwHnVf0LfqOMTyhFirtxgf5hsipSM7Gd3vzDi_uuCu69F7FdvOFaZsxRaOkubis1mbkg=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">同层铁板烧+寿司柜台，主厨现场表演。<strong>套餐固定含一道牛肉主菜（国产牛/黑毛和牛可选升级），非自由替换鸡肉/海鲜</strong>——订位时问清是否能整段换成海鲜或鸡肉；握寿司、前菜、汤品不受影响</span><span class="en">Teppanyaki + sushi counter on the same floor, chef performs tableside. <strong>The set course has a fixed beef main (domestic beef, upgradable to wagyu) — it is not a free swap to chicken/seafood</strong>; ask at booking whether the whole course can be substituted. Sushi, starters and soup are unaffected</span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 周三休 · 建议7/23或7/24晚</span><span class="en">⚠ Closed Wed · suggest evening of Jul 23 or 24</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=12025163265478297639" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/osaka/A2701/A270102/27097667/" target="_blank">📖 Tabelog</a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">一兰拉面 道顿堀南馆</span><span class="en">ICHIRAN Dotonbori South</span> <span class="star">⭐4.3</span></h4>
+<div class="gal">
+<img alt="Ichiran" src="https://lh3.googleusercontent.com/place-photos/AJRVUZM8HbGpOG8lxr7SDEIVDsE2WGpYsXFPFm6TDdfnHKlZQCPPo2fUAjTZ3ejmVsY0jSjJl2XzS-EMzsBH4iqTQlmZ6bWyQvXfHKV6CkxbxwPeXwG-A8Zb1SqBWMe1YSMWFvcx3ATIpQm34TQMlA=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">全球知名连锁拉面，24小时营业，可自订浓淡/软硬/辣度。招牌一人食隔间座位是特色体验；也有多人桌台座（非24小时，较早打烊）。<strong>纯猪骨汤底拉面，不含牛肉</strong>，但风格随性简单，比其他几家正式许多，适合想吃点熟悉的宵夜口味时</span><span class="en">World-famous ramen chain, open 24 hours, fully customizable broth/noodle firmness/spice. Signature solo dining booths are a novelty; table seating for groups also available (closes earlier than the 24h booth floor). <strong>Pork-bone broth, no beef</strong>, but very casual — a different register from the other picks, good if you want something familiar and low-key</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 24小时营业（桌台座较早打烊）</span><span class="en">✅ Open 24h (table floor closes earlier)</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=5980002210415952994" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">Kogi Soul 梅田御初天神店</span><span class="en">Kogi Soul Umeda Ohatsu Tenjin</span> <span class="star">⭐4.8</span></h4>
+<div class="gal">
+<img alt="Kogi Soul" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOKn02G9SoT5cqvxU_bV71lKAeGdIfjJQXJ0nQCn0GgZmxDGVAn9BdBqdM8sVj3-QcE6ObA5R0MCA_L1H_zaCMYRnfULCNK7lsB9v0iZ2jXlgSSNwK1nvxT4mNTvfPnpk1CVjHUXO0d0jHV=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">曾经吃过、评价很好的韩式烤肉店，藏在梅田/御初天神一带3楼，<strong>没有招牌</strong>。以熟成猪五花烤肉（サムギョプサル）为主，<strong>不主打牛肉</strong>，Google 4.8分／逾万条评论，气氛热闹随性。离 Conrad（中之岛）有段距离，<strong>需打车前往</strong></span><span class="en">Previously visited, highly rated Korean BBQ tucked away on the 3rd floor in Umeda/Ohatsu Tenjin — <strong>no signage</strong>. Centers on aged pork belly samgyeopsal, <strong>not beef-focused</strong>, 4.8 on Google with 10,000+ reviews, lively casual vibe. A distance from Conrad (Nakanoshima) — <strong>taxi recommended</strong></span></div>
+<div class="chips"><span class="chip hours"><span class="cn">📅 周一至五 17:00–23:00（只做晚市）· 周六日 12:00–23:00</span><span class="en">Mon–Fri 5–11 PM (dinner only) · Sat–Sun 12–11 PM</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=6183321931307180796" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+</div>
+
+<h3 class="city-h">🏙 <span class="cn">东京 · 四季大手町 39楼</span><span class="en">Tokyo · Four Seasons Otemachi 39F</span></h3>
+
+<div class="stop">
+<h4><span class="cn">est 米其林一星法餐</span><span class="en">est (1 Michelin Star)</span> <span class="star">⭐4.3</span></h4>
+<div class="gal">
+<img alt="est" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPXO3gu2aNTSRXnJ3_M5gBCNN1q9-_1GnJGsIhapAgXE4wLtMo_ZEczHIRwhcnmbH2FH4laJcZ1NEJzSlWMWNVJjFmtyn143BoOz1U_K9G830tnvUogvvsBq4vdLeSAa27MdaC1wdZRdseJrtzhcm1yLw=s4800-w800-h600"/>
+<img alt="est" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMDmk5TcJuuYCEGSANmikZOnqv1Gdx_JTgo2Z1vCjPuu_44W4w0BPNtfymUEj_yYKB6OxJMX8iAHg3-YiJl8H1FU_maeoxC8ohgNtifF2OotavDzTHGc5A405MayjhLoUGSAccP77FGu98ez81UpZAmkg=s4800-w800-h600"/>
+<img alt="est" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOqF93MIGG3riJYtzbHq-27Q-b6o6mEfdvWs_21aq2yQYMdmm7rcaqiOmtBxwD9MOirtJZvStTi91ng-ez1PtSwBOgeZLnCuT0AQ6DnmHJupoK4IE7WlfWndQOaxDDsHodlcYo00pMaTMGxoPBwlxcV=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">米其林一星法餐，95%食材来自日本本地农渔，套餐式上菜。<strong>食客评价确认餐厅有和牛courses，但也证实厨房会认真处理"不吃某类食材"的要求（曾配合过不吃猪肉的客人）</strong>，订位时说明不吃牛肉即可</span><span class="en">1-Michelin-star French, 95% Japan-sourced ingredients, set-menu format. <strong>Reviews confirm a wagyu course exists, but also confirm the kitchen genuinely accommodates dietary exclusions</strong> (one review noted a no-pork request handled well) — just flag no-beef at booking</span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 周三休 · 建议7/26/27/28晚，务必提前订位</span><span class="en">⚠ Closed Wed · suggest Jul 26/27/28 evening, book well ahead</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=8091669988576275959" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13249494/" target="_blank">📖 Tabelog</a>
+</div>
+
+<div class="stop">
+<h4><span class="cn">PIGNETO 意大利餐厅</span><span class="en">PIGNETO</span> <span class="star">⭐4.4</span></h4>
+<div class="gal">
+<img alt="PIGNETO" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPmNS9YPMP5nhWbblT8TaOQXNQ0GVdO-OkG2hAWVlksPGFPcEdrwxaYMC2pP5Jg44FRrV70c5UR9JG5te9XiY4w0Ac9Z_DqoJyPn8LWYi7epCbdu7mP2kJAK-TwjE0XTlF5t76VZyKcPsoC6Zw8c9_ZJg=s4800-w800-h600"/>
+<img alt="PIGNETO" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNvw6VMjE5QpVwvS8JmwVIa79pMOKOub-r8ZdYwtFUfV3MIuoOQIwjKBgUqOThEBtGBjFXinvDSIX_IceJ-5QIAuRjePF1U77Fq75z4WRcF7RVxpFyoIBGRqQc1M07RZxevSARf3ex5L1XWPpO7a_7QIA=s4800-w800-h600"/>
+<img alt="PIGNETO" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMRf8WVZfA0B8rDJIS8D8bFU39zwGqWbw3PRzzjbmGAY9UHEIF9r2I7sXSpmW8OhLg9G9F84kmscn_cstKzKVZ0SjbgeYwV6aYcTx8fab_RCC_wkdkLrIlhTy36tRrkwCsJdEgtgkwF-T0RPaPla_vw=s4800-w800-h600"/>
+</div>
+<div class="desc"><span class="cn">39楼露台，可望皇居+富士山（天气好时），全天营业无休无午休。披萨、意面、烤物为主，评价中主菜有牛小排选项，<strong>可点披萨/海鲜意面/烤鸡代替</strong>，氛围比 est 更轻松</span><span class="en">39F terrace overlooking the Imperial Palace + Mt Fuji (clear days), open daily with no lunch gap. Pizza, pasta, oven-roasted mains — short rib is one reviewed option, <strong>order pizza/seafood pasta/roast chicken instead</strong>; more relaxed than est</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">✅ 全天营业，无休无午休</span><span class="en">✅ Open daily, no gap</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=14727733378470688645" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-map" href="https://tabelog.com/en/tokyo/A1302/A130201/13249493/" target="_blank">📖 Tabelog</a>
+</div>
+
+
+
+</div>
+</body>
+</html>

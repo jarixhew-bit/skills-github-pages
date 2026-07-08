@@ -21,6 +21,8 @@
     --green-soft: #edf7f0;
     --blue: #1d5c8f;
     --blue-soft: #edf4fa;
+  --purple: #7c5295;
+  --purple-soft: #f2ecf5;
     --serif: "Palatino Linotype", "Songti SC", "Noto Serif SC", Georgia, serif;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
   }
@@ -204,8 +206,8 @@
   .chip.ok { color: var(--green); border-color: #c4e3cf; background: var(--green-soft); }
 
   /* backup */
-  .backup { margin: 10px 0 4px 26px; border: 1px dashed var(--faint); border-radius: 12px; padding: 12px 14px; background: var(--paper); }
-  .backup .bk-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); margin-bottom: 4px; }
+  .backup { margin: 10px 0 4px 26px; border: 1px dashed var(--purple); border-radius: 12px; padding: 12px 14px; background: var(--paper); }
+  .backup .bk-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--purple); margin-bottom: 4px; }
   .backup h4 { font-size: 13.5px; font-weight: 800; }
   .backup .desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
 
@@ -266,6 +268,7 @@
 <div class="topbar">
 <div class="brand"><span class="dot"></span><span class="t"><span class="cn">日本 · 9天8夜 · Jul 2026</span><span class="en">Japan · 9D8N · Jul 2026</span></span></div>
 <a class="resto-link" href="usj-disney-restaurants.html">🍽 <span class="cn">餐厅</span><span class="en">Dining</span></a>
+<a class="resto-link" href="boss-dinner.html">🥂 <span class="cn">晚餐</span><span class="en">Dinner</span></a>
 <button class="lang" id="langBtn" onclick="toggleLang()">EN</button>
 </div>
 <!-- DAY STRIP -->
@@ -646,8 +649,8 @@
 <img alt="Hashimoto" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOa6fvDa7p6AYQa0TKMfXGUF6v7em8tu0UQL1JOOV4MFlhd8UVRueXYDhPOWVngKoq04tNsfYAP8AH90wOm64gVadj6Y4-i_vfpryFGU2larjxH0JsU5hJQl0G6AjVvpyxqaO8kimsEYr_fkiRE97rzSQ=s4800-w800-h600"/>
 <img alt="Hashimoto" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMnE-OR3no_HKYrLRKbWTTZfZZbWYIOtfCJA703U7Almwwdtz_tXRmSdnW36Kz8McQiypKlA0DtBq6-1Z5brqwx9Orvw5DZxUNwuOpnf-YpXEiKJA6Z7Xmlk5caPdHF-iNpT38EW_rqjOxAP8VTKXyObA=s4800-w800-h600"/>
 </div>
-<div class="desc"><span class="cn">午餐约 13:00 · <strong>已订位</strong>。招牌<strong>唐揚げ炸鸡套餐</strong>，附带刺身、煎蛋卷，可单点，符合亲子用餐需求</span><span class="en">Lunch approx. 13:00 · <strong>Reserved</strong>. Known for its <strong>karaage (fried chicken) set</strong> with sashimi and rolled omelette, à la carte available — fits family dining.</span></div>
-<div class="chips"><span class="chip ok"><span class="cn">✅ 已订位</span><span class="en">✅ Reserved</span></span><span class="chip hours"><span class="cn">📅 周六 11:30–14:00, 18:00–23:30</span><span class="en">Sat 11:30–14:00, 18:00–23:30</span></span></div>
+<div class="desc"><span class="cn">午餐约 13:00 · <strong>不接受预订</strong>（店面小，旅行社已确认），可能需现场排队。招牌<strong>唐揚げ炸鸡套餐</strong>，附带刺身、煎蛋卷，可单点，符合亲子用餐需求</span><span class="en">Lunch approx. 13:00 · <strong>No reservations</strong> (small shop, confirmed by the agency) — expect a possible queue. Known for its <strong>karaage (fried chicken) set</strong> with sashimi and rolled omelette, à la carte available — fits family dining.</span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 不接受预订 · 可能排队</span><span class="en">⚠ No reservations · possible queue</span></span><span class="chip hours"><span class="cn">📅 周六 11:30–14:00, 18:00–23:30</span><span class="en">Sat 11:30–14:00, 18:00–23:30</span></span></div>
 <a class="btn-map" href="https://maps.google.com/?cid=5560931258008110915" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
 </div>
 <div class="stop">
@@ -666,6 +669,19 @@
 <span class="chip verify"><span class="cn">⚠ 旺季人流大，建议避开正午</span><span class="en">⚠ Heavy crowds — avoid midday if possible</span></span>
 </div>
 <a class="btn-map" href="https://maps.google.com/?cid=7111013964196361402" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+</div>
+<div class="backup">
+<div class="bk-label"><span class="cn">🔄 はし本排队时的备选</span><span class="en">🔄 Backup if Hashimoto has a queue</span></div>
+<h4><span class="cn">がんこ · 三条本店</span><span class="en">Ganko · Sanjo Honten</span> <span class="star">⭐3.8</span></h4>
+<div class="gal">
+<img alt="Ganko Sanjo Honten" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOZiZv5CXAuVq-uWKjtdiCMf_ZJaIVPSwxwIcm23LThu2LvcqIfYQgePo2TbXkdNYTta-U_42iydWGl7iMLk5vDPidP47jLSyL-xLgiUU4tUDeATFQqiv6PY4z1l1HODw7sH_pZ4kWD1H75EkmVCeJLKA=s4800-w796-h530"/>
+<img alt="Ganko Sanjo Honten" src="https://lh3.googleusercontent.com/place-photos/AJRVUZORGV5hJOaPt7V0AaFuqAFAPUSh7iitsl-fqbA6Oc-p1GsJfqFrCXwUVUU0p3EK_eQc1rT5XELmTKa-sppRXtUyJOah15AFNUHD-k5PGwb_Pn-mU8S7iosMoxQ13vBHgZw1gQ6-En5gjFtqIF37OAvnEw=s4800-w567-h378"/>
+<img alt="Ganko Sanjo Honten" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPPqmxqCZD2HTMLCrESih6-J3AyVpINAgTZrBKG86OMg2Zylcos5KXJHr3sGAt0b2IGxUwcqbp81ch_YHnKfddPMmOcKWXjw1CaYB5-u-Ffrt4C_QJPDDm4fBkA0yN9hewSp3zqcO7sw_UUSJU=s4800-w800-h600"/>
+<img alt="Ganko Sanjo Honten" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPnyg8sCZ6DHyH5106Y7UqhV9fAwQ3gRFWGLjjL5czFwMU-c8lb5FHHzG1l_WdJh7Wp5l-M0yuT9Vzs76oELOGQycRbgoPo7RRiOJ7GqNQSMEEjbNxymCl4V919gQJFfZakGG_xn9pW13Ybl3QtQ7tOTw=s4800-w600-h600"/>
+</div>
+<div class="desc"><span class="cn">三条大桥旁，居酒屋连锁老店，全天 11:30–21:30 连续营业无午休。菜单有若鶏唐揚げ、刺身盛合、天妇罗、握寿司，可单点，儿童菜单齐备；桌席个室 2–6 人可预约。<strong>炸鸡未在官方最新菜单页确认——建议预约时向店家/旅行社确认当天有无鸡唐揚单点</strong></span><span class="en">By Sanjo Bridge — long-running izakaya chain, open continuously 11:30 AM–9:30 PM with no lunch gap. Menu includes fried chicken karaage, sashimi platter, tempura, sushi, all à la carte, with a kids' menu; private table room for 2–6 seats, reservable. <strong>Karaage was not listed on the restaurant's latest official menu page — confirm availability with the shop/agency when booking</strong></span></div>
+<div class="chips"><span class="chip hours"><span class="cn">📅 每日 11:30–21:30</span><span class="en">Daily 11:30 AM–9:30 PM</span></span><span class="chip verify"><span class="cn">⚠ 炸鸡未查证，订位时确认</span><span class="en">⚠ Karaage unverified — confirm at booking</span></span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=10832351061469271455" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
 </div>
 <div class="backup">
 <div class="bk-label"><span class="cn">🔄 备选 · 持续刷票中</span><span class="en">🔄 Backup · keep refreshing for tickets</span></div>
@@ -827,8 +843,8 @@
 <div class="pin must">★</div>
 <h4><span class="cn">东京铁塔</span><span class="en">Tokyo Tower</span> <span class="star">⭐4.5</span></h4>
 <div class="gal">
-<img alt="Tokyo Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMMRn3MWygtpouY48FZhpt2loAbLSkNEFsJ2AMpnSnyC44rz-bBaiKgHuBQsH8mJ-IjbNh9phRV6QPyeEARpnSbOvnfuTpMemwDqNx63G2CNoOQBj_N7Onu9LRPU8GVbxMJJXf8CGIp4CE8LA=s4800-w800-h600"/>
-<img alt="Tokyo Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZNysLNqMDzuaUA2avn08jGIeEgWpko5gjfGRHQ4xsc2m8ONLLe3hEqV1WDP_gdqCGb5IqLwbHJrjG20j8X8JEEtAIzGzsAlrOwZKGLhZtMTUxM6ty38beY1b_E-S5jBEDbQ6ekjadY5hLN6kA=s4800-w800-h600"/>
+<img alt="Tokyo Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZM0Ic6evMmQj7oDnXCxs8vsV2UT9cHdS0iBnTyiK9AdsprGZLYQsdx35mcB2hZX1DyoYLXz8-v4Uzckfevr-44b0OXflBdK5YTo8teaV7LPniIN8A8nAX6WYlO69Jqie8CBRQ_-XB2xQIntwg=s4800-w800-h600"/>
+<img alt="Tokyo Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPPxTsOji_EEIvWXDLQtDmd06cyLGaSpcj5GkIEcELa99Swo4m92sHMOY_xIvb4W-0JNXAHEn_gQ_X3nmrAWP5t-C8lBDIOH9O57ThTHn_yNKZrvd_KAoGXyBAEjjQqEVLsUAr6uzDB3Km2=s4800-w800-h600"/>
 <img alt="Tokyo Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZPXxn7xgq7mnpEQt3JefjwGdr-pClfB4YlNMGZ74Vk7mu0KYVoUV6Y5FLS7KJI2NJNZEeG73DIbf2H8pra3V8XrPHYzNi13BMvFSZ5Do9bG7sFe2O4vhETfftstfhQDjoU9CJT1Sq9jKNJl5Fno1Zrx=s4800-w800-h600"/>
 <img alt="Tokyo Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZN1xVbT_PXaQlanON3_CZNDe6Opjwy2vXvsB23mCKqEbLARw53WIibCzASy53WoRv8UTMmHQxcQZj-FQpIT-lr_TEWDT1YY3lrP2WjNiCH4ubaZtyc0PoA_Qv5I3JzKxX_eg6T-Lw5s6XgK=s4800-w800-h600"/>
 <img alt="Tokyo Tower" src="https://lh3.googleusercontent.com/place-photos/AJRVUZOg4lvrC7KqZvlJQMymk9eXH3AMrvD4GBbTFvPzC1lF-LCp7gIFe8vuD7ufwDg1jQpLnJ8wonLhLM6B4zboskIHb0J2gvRd6OapMpxhGZFor0sp1nV91FZXEW4Z63AsB_QW74ZyVUh9RhUd8w=s4800-w800-h600"/>
@@ -968,6 +984,7 @@
 </div>
 </section>
 <!-- ===== WEATHER & POWER ===== -->
+
 <section id="weather">
 <div class="sec-head"><span class="no">04</span><h2><span class="cn">天气 &amp; 电源</span><span class="en">Weather &amp; Power</span></h2><span class="rule"></span></div>
 <div class="wx-grid">
