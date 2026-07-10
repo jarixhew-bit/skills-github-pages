@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>股票交易分析器</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
 <style>
   :root {
     --bg: #0f1117; --card: #1a1d27; --card2: #12141d; --border: #2a2d3e;
@@ -353,7 +354,7 @@ function renderPrivate() {
   const pf = P.perf || {};
   $("pfTiles").innerHTML = `
     <div class="tile"><div class="label">总资产</div><div class="value">${fmtUsd(P.account.net_liq)}</div>
-      <div class="sub">现金 ${fmtUsd(P.account.cash)}（${P.account.cash_pct ?? "—"}%）</div></div>
+      <div class="sub">现金 ${fmtUsd(P.account.cash)}（${P.account.cash_pct ?? "—"}%）${P.account.synced ? " · " + P.account.synced + " 与IBKR对账" : ""}</div></div>
     <div class="tile"><div class="label">今日</div><div class="value ${cls(pf["1d"])}">${fmtPct(pf["1d"])}</div></div>
     <div class="tile"><div class="label">本月</div><div class="value ${cls(pf.mtd)}">${fmtPct(pf.mtd)}</div></div>
     <div class="tile"><div class="label">今年以来</div><div class="value ${cls(pf.ytd)}">${fmtPct(pf.ytd)}</div>

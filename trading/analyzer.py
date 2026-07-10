@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
 """
-股票交易分析器 · 每日分析管线
+股票交易分析器 · 分析管线
 ================================
+两种运行模式（自动判别）：
+- 日常模式（GitHub Actions，每个交易日）：无 raw/ 账户文件。用 history/ 最新收盘价
+  重算持仓市值/盈亏/净值，生成信号与建议。零 Claude 消耗。
+- 对账模式（Claude session，每周或用户说「同步持仓」时）：trading/raw/ 有从 IBKR MCP
+  转录的账户文件，刷新持仓底数、现金、TWR 基准，并把新交易并入台账。
+
 输入:
-  trading/history/*.json   日线K线（仓库内逐日累积，公开的市场数据）
-  trading/raw/              当日从 IBKR MCP 转录的账户数据（不入 git）:
-    positions.json          get_account_positions 原样转录
-    summary.json            get_account_summary 原样转录
-    trades.json             get_account_trades 原样转录（增量合并进台账）
-    bars_update.json        {"SYM": {"time":[...],"open":[...],...}, ...} 近几日K线增量
-    nav_bootstrap.json      [["YYYY-MM-DD", nav], ...] 仅首次建库用
-    ai_note.md              当日 AI 点评（可选，进入加密区）
+  trading/history/*.json   日线K线（fetch_prices.py 每日全量覆盖）
+  trading/raw/              对账模式才有（不入 git）:
+    positions.json / summary.json / trades.json / perf.json / ai_note.md
+    nav_bootstrap.json      仅首次建库
 输出:
   trading/data-public.json  市场扫描信号（公开）
-  trading/data-private.enc  持仓健康+交易复盘（AES-256-GCM 加密）
-  trading/state.enc         交易台账+净值序列（加密持久化，逐日累积）
-依赖: 仅 Python 标准库 + cryptography（容器预装）
-用法: python3 analyzer.py [--password-file 路径]   # 无密码则只产出公开部分
+  trading/data-private.enc  持仓健康+复盘（AES-256-GCM 加密）
+  trading/state.enc         持仓底数+台账+净值序列+TWR基准（加密持久化）
+密码: --password-file 或环境变量 ANALYZER_PW（Actions 用 Secret 注入）
+依赖: 标准库 + cryptography
 """
 import argparse
 import base64
@@ -36,6 +38,7 @@ PRIV_OUT = os.path.join(BASE, "data-private.enc")
 STATE_OUT = os.path.join(BASE, "state.enc")
 
 PBKDF2_ITER = 300_000
+CASH_LIKE = {"SGOV"}  # 现金类持仓，不给技术信号建议
 
 
 # ---------------- 加密 ----------------
@@ -83,11 +86,10 @@ def sma_last(vals, n):
     return sum(vals[-n:]) / n
 
 
-def rsi_series(closes, n=14):
-    """Wilder 平滑 RSI，返回与 closes 等长的列表（前 n 项为 None）"""
-    out = [None] * len(closes)
+def rsi_last(closes, n=14):
+    """Wilder 平滑 RSI 最新值"""
     if len(closes) <= n:
-        return out
+        return None
     gains, losses = [], []
     for i in range(1, len(closes)):
         d = closes[i] - closes[i - 1]
@@ -96,21 +98,15 @@ def rsi_series(closes, n=14):
     avg_g = sum(gains[:n]) / n
     avg_l = sum(losses[:n]) / n
     for i in range(n, len(gains)):
-        if i > n:
-            avg_g = (avg_g * (n - 1) + gains[i - 1]) / n
-            avg_l = (avg_l * (n - 1) + losses[i - 1]) / n
-        rs = avg_g / avg_l if avg_l > 1e-12 else float("inf")
-        out[i] = 100.0 - 100.0 / (1.0 + rs) if math.isfinite(rs) else 100.0
-    # 最后一根
-    avg_g = (avg_g * (n - 1) + gains[-1]) / n
-    avg_l = (avg_l * (n - 1) + losses[-1]) / n
-    rs = avg_g / avg_l if avg_l > 1e-12 else float("inf")
-    out[-1] = 100.0 - 100.0 / (1.0 + rs) if math.isfinite(rs) else 100.0
-    return out
+        avg_g = (avg_g * (n - 1) + gains[i]) / n
+        avg_l = (avg_l * (n - 1) + losses[i]) / n
+    if avg_l < 1e-12:
+        return 100.0
+    rs = avg_g / avg_l
+    return 100.0 - 100.0 / (1.0 + rs)
 
 
 def atr_last(bars, n=14):
-    """bars: [[date,o,h,l,c,v],...]，Wilder ATR"""
     if len(bars) < n + 1:
         return None
     trs = []
@@ -143,7 +139,7 @@ def analyze_ticker(bars):
     hist_now = macd_line[-1] - macd_sig[-1]
     hist_prev = macd_line[-2] - macd_sig[-2]
 
-    rsi_now = rsi_series(closes)[-1]
+    rsi_now = rsi_last(closes)
 
     bb_mid = ma20
     bb_std = statistics.stdev(closes[-20:])
@@ -157,19 +153,16 @@ def analyze_ticker(bars):
     lo_52w = min(b[3] for b in bars[-252:])
 
     signals, score = [], 0
-    # 中期趋势
     if ma50 is not None:
         if price > ma50:
             signals.append(["趋势", f"价格站上50日线 ({ma50:.2f})", 1]); score += 1
         else:
             signals.append(["趋势", f"价格跌破50日线 ({ma50:.2f})", -1]); score -= 1
-    # 长期趋势
     if ma200 is not None:
         if price > ma200:
             signals.append(["长期", f"200日线上方，长期多头 ({ma200:.2f})", 1]); score += 1
         else:
             signals.append(["长期", f"200日线下方，长期偏空 ({ma200:.2f})", -1]); score -= 1
-    # 均线交叉
     if ma50_prev is not None:
         if ma20_prev <= ma50_prev and ma20 > ma50:
             signals.append(["均线", "MA20 金叉 MA50 ↑", 2]); score += 2
@@ -179,7 +172,6 @@ def analyze_ticker(bars):
             signals.append(["均线", "MA20 在 MA50 上方（多头排列）", 0])
         else:
             signals.append(["均线", "MA20 在 MA50 下方（空头排列）", 0])
-    # RSI
     if rsi_now is not None:
         if rsi_now < 30:
             signals.append(["RSI", f"超卖 ({rsi_now:.0f})，可能反弹", 2]); score += 2
@@ -187,7 +179,6 @@ def analyze_ticker(bars):
             signals.append(["RSI", f"超买 ({rsi_now:.0f})，注意回调", -2]); score -= 2
         else:
             signals.append(["RSI", f"中性 ({rsi_now:.0f})", 0])
-    # MACD
     if hist_prev < 0 <= hist_now:
         signals.append(["MACD", "金叉 ↑", 2]); score += 2
     elif hist_prev > 0 >= hist_now:
@@ -196,12 +187,10 @@ def analyze_ticker(bars):
         signals.append(["MACD", "动能为正", 1]); score += 1
     else:
         signals.append(["MACD", "动能为负", -1]); score -= 1
-    # 布林带
     if bb_pct < 0.2:
         signals.append(["布林带", f"接近下轨 ({bb_pct:.0%})", 1]); score += 1
     elif bb_pct > 0.8:
         signals.append(["布林带", f"接近上轨 ({bb_pct:.0%})", -1]); score -= 1
-    # 放量确认
     if vol20 and vols[-1] > vol20 * 1.5:
         d = 1 if score > 0 else -1 if score < 0 else 0
         if d:
@@ -220,6 +209,7 @@ def analyze_ticker(bars):
 
     return {
         "price": round(price, 2),
+        "prev_close": round(prev_close, 4),
         "chg1d": round((price / prev_close - 1) * 100, 2),
         "score": score,
         "action": action,
@@ -254,7 +244,9 @@ def validate_bars(symbol, bars):
         if len(b) != 6:
             errs.append(f"{symbol} 第{i}根字段数≠6"); continue
         _, o, h, l, c, v = b
-        if not (h >= l and h >= c and h >= o and l <= c and l <= o):
+        # 官方收盘价（集合竞价）可比盘中高低价序列偏差几美分，给 0.1% 容差
+        tol = c * 0.001
+        if not (h >= l and h >= c - tol and h >= o - tol and l <= c + tol and l <= o + tol):
             errs.append(f"{symbol} {b[0]} OHLC 关系异常")
         if v < 0:
             errs.append(f"{symbol} {b[0]} 成交量为负")
@@ -262,42 +254,9 @@ def validate_bars(symbol, bars):
             if b[0] <= bars[i - 1][0]:
                 errs.append(f"{symbol} {b[0]} 日期未升序")
             pc = bars[i - 1][4]
-            if pc > 0 and abs(c / pc - 1) > 0.35:
-                errs.append(f"{symbol} {b[0]} 单日涨跌超±35%（疑似抄录错误）")
+            if pc > 0 and abs(c / pc - 1) > 0.5:
+                errs.append(f"{symbol} {b[0]} 单日涨跌超±50%（疑似数据错误）")
     return errs
-
-
-def merge_bar_updates(warnings):
-    """把 raw/bars_update.json 合并进 history/*.json"""
-    p = os.path.join(RAW_DIR, "bars_update.json")
-    if not os.path.exists(p):
-        return 0
-    with open(p, encoding="utf-8") as f:
-        updates = json.load(f)
-    merged = 0
-    for sym, u in updates.items():
-        hist = load_history(sym)
-        if hist is None:
-            warnings.append(f"{sym}: 无历史文件，跳过增量")
-            continue
-        new_bars = []
-        for t, o, h, l, c, v in zip(u["time"], u["open"], u["high"], u["low"], u["close"], u["volume"]):
-            new_bars.append([t[:10], o, h, l, c, int(v)])
-        by_date = {b[0]: b for b in hist["bars"]}
-        for b in new_bars:
-            by_date[b[0]] = b  # 同日以新数据为准
-        bars = sorted(by_date.values(), key=lambda b: b[0])
-        errs = validate_bars(sym, bars)
-        if errs:
-            warnings.extend(errs[:3])
-            warnings.append(f"{sym}: 校验未过，本次不更新该股历史")
-            continue
-        hist["bars"] = bars
-        hist["updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        with open(os.path.join(HIST_DIR, f"{sym}.json"), "w", encoding="utf-8") as f:
-            json.dump(hist, f, ensure_ascii=False, separators=(",", ":"))
-        merged += 1
-    return merged
 
 
 def read_raw(name):
@@ -365,6 +324,36 @@ def build_review(trades):
     }
 
 
+# ---------------- 加仓建议（规则式，仅供参考） ----------------
+
+def build_add_suggestions(positions, cash, net_liq, sig_by_sym):
+    tips = []
+    if cash is None or net_liq is None or cash < 200:
+        return tips
+    lot = max(100, round(min(cash * 0.5, net_liq * 0.05), -2))  # 单次参考额度
+    for p in positions:
+        sym = p["symbol"]
+        if sym in CASH_LIKE:
+            continue
+        s = sig_by_sym.get(sym)
+        if not s:
+            continue
+        why = None
+        if s["score"] >= 2:
+            why = f"技术面偏多（{s['score']:+d}分）"
+        elif s["rsi"] is not None and s["rsi"] <= 35 and s.get("above_ma200"):
+            why = f"回调至超卖区（RSI {s['rsi']:.0f}）且长期趋势未破"
+        elif s["from_52w_high"] <= -12 and s.get("above_ma200"):
+            why = f"自52周高点回撤 {abs(s['from_52w_high']):.0f}% 但仍在200日线上方"
+        if why:
+            tips.append(f"📈 {sym} 加仓参考：{why}，若按计划分批投入，可考虑约 ${lot:,.0f}（现金余 ${cash:,.0f}）")
+    cash_pct = cash / net_liq * 100 if net_liq else 0
+    spy = sig_by_sym.get("SPY") or sig_by_sym.get("VOO")
+    if cash_pct > 20 and spy and spy["score"] >= 2:
+        tips.append(f"📈 现金占 {cash_pct:.0f}% 偏高且大盘偏多，可考虑分批投入指数 ETF")
+    return tips
+
+
 # ---------------- 主流程 ----------------
 
 def main():
@@ -382,8 +371,6 @@ def main():
 
     with open(UNIVERSE, encoding="utf-8") as f:
         universe = json.load(f)["tickers"]
-
-    merged = merge_bar_updates(warnings)
 
     # --- 公开部分：全名单信号 ---
     tickers, latest_date = [], None
@@ -424,8 +411,7 @@ def main():
             return "空头趋势"
         return "震荡"
 
-    opportunities = sorted([t for t in tickers if t["score"] >= 2],
-                           key=lambda t: -t["score"])[:10]
+    opportunities = sorted([t for t in tickers if t["score"] >= 2], key=lambda t: -t["score"])[:10]
     weak = sorted([t for t in tickers if t["score"] <= -3], key=lambda t: t["score"])[:6]
 
     market_line = (f"标普500{trend_word(spy)}、纳指{trend_word(qqq)}；"
@@ -450,20 +436,23 @@ def main():
     }
     with open(PUB_OUT, "w", encoding="utf-8") as f:
         json.dump(public, f, ensure_ascii=False, separators=(",", ":"))
-
-    print(f"[public] {len(tickers)} 只已分析，增量合并 {merged} 只，数据日期 {latest_date}")
+    print(f"[public] {len(tickers)} 只已分析，数据日期 {latest_date}")
 
     # --- 私密部分 ---
     if not password:
-        print("[private] 未提供密码，跳过私密部分")
+        print("[private] 未提供密码，跳过（页面私密区维持上次数据）")
         if warnings:
             print("[warnings]", *warnings, sep="\n  ")
         return
 
-    state = {"trades": [], "nav_series": []}
+    state = {"trades": [], "nav_series": [], "positions": [], "cash": None, "twr_base": None}
     if os.path.exists(STATE_OUT):
-        state = decrypt_json(open(STATE_OUT, encoding="utf-8").read(), password)
+        loaded = decrypt_json(open(STATE_OUT, encoding="utf-8").read(), password)
+        state.update(loaded)
 
+    sync_mode = read_raw("positions.json") is not None
+
+    # ---- 对账模式：用 IBKR 数据刷新底数 ----
     raw_trades = read_raw("trades.json")
     if raw_trades:
         known = {t["trade_id"] for t in state["trades"]}
@@ -482,60 +471,53 @@ def main():
         state["nav_series"] = boot
         print(f"[nav] 引导净值序列 {len(boot)} 天")
 
-    summary = read_raw("summary.json")
-    positions_raw = read_raw("positions.json")
+    if sync_mode:
+        positions_raw = read_raw("positions.json")
+        summary = read_raw("summary.json") or {}
+        state["positions"] = [
+            {"symbol": p["contract_description"], "qty": p["position"],
+             "avg_price": p["average_price"]}
+            for p in positions_raw.get("positions", [])
+        ]
+        state["cash"] = summary.get("total_cash_value")
+        perf_raw = read_raw("perf.json")
+        nav_now = summary.get("net_liquidation")
+        if perf_raw and nav_now:
+            state["twr_base"] = {"date": now.strftime("%Y-%m-%d"), "nav": nav_now,
+                                 "ytd": perf_raw.get("ytd"), "mtd": perf_raw.get("mtd")}
+        print(f"[sync] 持仓底数 {len(state['positions'])} 项、现金 {state['cash']}、TWR 基准已刷新")
 
-    if summary:
-        today = now.strftime("%Y-%m-%d")
-        nav = summary.get("net_liquidation")
-        if nav:
-            sd = {d: v for d, v in state["nav_series"]}
-            sd[today] = nav
-            state["nav_series"] = sorted(sd.items())
-
-    # 收益率：优先用 IBKR 时间加权收益（raw/perf.json，小数如 0.1136），
-    # 净值差会把出入金误算成收益，仅作无 perf.json 时的降级方案
-    navs = state["nav_series"]
-    perf_raw = read_raw("perf.json")
-    if perf_raw:
-        perf = {k: round(v * 100, 2) if v is not None else None
-                for k, v in perf_raw.items() if k in ("1d", "7d", "mtd", "ytd")}
-    else:
-        def ret_since(idx):
-            if not navs or idx >= len(navs) or navs[idx][1] == 0:
-                return None
-            return round((navs[-1][1] / navs[idx][1] - 1) * 100, 2)
-        perf = {}
-        if navs:
-            perf["1d"] = ret_since(-2) if len(navs) >= 2 else None
-            perf["7d"] = ret_since(-6) if len(navs) >= 6 else None
-            year_start = [i for i, (d, _) in enumerate(navs) if d >= f"{now.year}-01-01"]
-            perf["ytd"] = ret_since(year_start[0]) if year_start else None
-            month_start = [i for i, (d, _) in enumerate(navs) if d >= now.strftime("%Y-%m-01")]
-            perf["mtd"] = ret_since(month_start[0]) if month_start else None
-        if perf:
-            perf["approx"] = True  # 净值差近似，含出入金影响
-
+    # ---- 用最新收盘价重算持仓与净值 ----
     sig_by_sym = {t["symbol"]: t for t in tickers}
     positions, actions = [], []
-    if positions_raw and summary:
-        net_liq = summary.get("net_liquidation") or 1
-        for p in positions_raw.get("positions", []):
-            sym = p["contract_description"]
-            mv = p["market_value"]
-            qty, avg = p["position"], p["average_price"]
-            upnl = p["unrealized_pnl"]
-            upct = (p["market_price"] / avg - 1) * 100 if avg else 0
-            weight = mv / net_liq * 100
-            # 校验转录：市值 ≈ 数量×现价
-            if abs(qty * p["market_price"] - mv) > max(1.0, mv * 0.01):
-                warnings.append(f"{sym}: 持仓市值与数量×价格不一致，疑似转录错误")
+    net_liq = None
+    cash = state.get("cash")
+    if state["positions"]:
+        total_val = 0.0
+        pos_calc = []
+        for sp in state["positions"]:
+            sym, qty, avg = sp["symbol"], sp["qty"], sp["avg_price"]
             sig = sig_by_sym.get(sym)
+            if sig is None:
+                warnings.append(f"{sym}: 持仓但不在扫描名单/无历史，市值按成本估算")
+                price, prev = avg, avg
+            else:
+                price, prev = sig["price"], sig["prev_close"]
+            mv = qty * price
+            total_val += mv
+            pos_calc.append((sp, sig, price, prev, mv))
+        net_liq = total_val + (cash or 0)
+
+        for sp, sig, price, prev, mv in pos_calc:
+            sym, qty, avg = sp["symbol"], sp["qty"], sp["avg_price"]
+            upnl = (price - avg) * qty
+            upct = (price / avg - 1) * 100 if avg else 0
+            weight = mv / net_liq * 100 if net_liq else 0
             pos = {
                 "symbol": sym, "qty": round(qty, 4), "avg_price": round(avg, 2),
-                "price": round(p["market_price"], 2), "value": round(mv, 2),
+                "price": round(price, 2), "value": round(mv, 2),
                 "upnl": round(upnl, 2), "upct": round(upct, 2),
-                "daily_pnl": round(p.get("daily_pnl", 0), 2),
+                "daily_pnl": round((price - prev) * qty, 2),
                 "weight": round(weight, 1),
                 "signal": {k: sig[k] for k in ("score", "action", "act_cls", "rsi", "stop_atr", "from_52w_high")} if sig else None,
             }
@@ -544,45 +526,72 @@ def main():
                 notes.append(f"占组合 {weight:.0f}%，集中度偏高")
             if upct <= -10:
                 notes.append(f"浮亏 {upct:.0f}%，检查当初买入逻辑是否仍成立")
-            if sig and sig["score"] <= -3:
+            if sig and sig["score"] <= -3 and sym not in CASH_LIKE:
                 notes.append("技术面转弱，留意止损参考位")
-            if sig and sig["score"] >= 4 and upct > 0:
-                notes.append("技术面强势，趋势仍在")
             pos["notes"] = notes
             positions.append(pos)
             if notes:
-                actions.append(f"{sym}：{'；'.join(notes)}")
+                actions.append(f"⚠️ {sym}：{'；'.join(notes)}")
         positions.sort(key=lambda x: -x["value"])
-        cash = summary.get("total_cash_value", 0)
-        cash_pct = cash / net_liq * 100 if net_liq else 0
+
+        # 净值序列逐日累积（同日覆盖）
+        nav_date = latest_date or now.strftime("%Y-%m-%d")
+        sd = {d: v for d, v in state["nav_series"]}
+        sd[nav_date] = round(net_liq, 2)
+        state["nav_series"] = sorted(sd.items())
+
+        cash_pct = (cash or 0) / net_liq * 100 if net_liq else 0
         if cash_pct < 3:
-            actions.append(f"现金仅占 {cash_pct:.1f}%，缓冲较薄")
+            actions.append(f"⚠️ 现金仅占 {cash_pct:.1f}%，缓冲较薄")
+        actions.extend(build_add_suggestions(positions, cash, net_liq, sig_by_sym))
         if not actions:
-            actions.append("持仓无异常信号，继续按计划持有")
+            actions.append("✅ 持仓无异常信号，继续按计划持有")
+
+    # ---- 收益率：TWR 基准 + 净值续算（两次对账间无出入金时是准确的 TWR 链式）----
+    navs = state["nav_series"]
+    perf = {}
+    tb = state.get("twr_base")
+    if tb and navs:
+        factor = navs[-1][1] / tb["nav"] if tb["nav"] else 1
+        if tb.get("ytd") is not None:
+            perf["ytd"] = round(((1 + tb["ytd"]) * factor - 1) * 100, 2)
+        if tb.get("mtd") is not None and tb["date"][:7] == navs[-1][0][:7]:
+            perf["mtd"] = round(((1 + tb["mtd"]) * factor - 1) * 100, 2)
+        elif len(navs) >= 2:
+            month_start = [v for d, v in navs if d < navs[-1][0][:7] + "-01"]
+            if month_start:
+                perf["mtd"] = round((navs[-1][1] / month_start[-1] - 1) * 100, 2)
+        if len(navs) >= 2:
+            perf["1d"] = round((navs[-1][1] / navs[-2][1] - 1) * 100, 2)
+        if len(navs) >= 6:
+            perf["7d"] = round((navs[-1][1] / navs[-6][1] - 1) * 100, 2)
 
     review = build_review(state["trades"])
     ai_note = read_raw("ai_note.md")
+    if ai_note:
+        state["ai_note"] = ai_note.strip()
 
     private = {
         "generated_at": public["generated_at"],
         "account": {
-            "net_liq": summary.get("net_liquidation") if summary else None,
-            "cash": summary.get("total_cash_value") if summary else None,
-            "cash_pct": round(summary["total_cash_value"] / summary["net_liquidation"] * 100, 1)
-                        if summary and summary.get("net_liquidation") else None,
+            "net_liq": round(net_liq, 2) if net_liq else None,
+            "cash": round(cash, 2) if cash is not None else None,
+            "cash_pct": round(cash / net_liq * 100, 1) if cash is not None and net_liq else None,
+            "synced": (tb or {}).get("date"),
         },
         "perf": perf,
         "nav_series": navs[-260:],
         "positions": positions,
         "actions": actions,
         "review": review,
-        "ai_note": ai_note,
+        "ai_note": state.get("ai_note"),
     }
     with open(PRIV_OUT, "w", encoding="utf-8") as f:
         f.write(encrypt_json(private, password))
     with open(STATE_OUT, "w", encoding="utf-8") as f:
         f.write(encrypt_json(state, password))
-    print(f"[private] 持仓 {len(positions)} 项、台账 {len(state['trades'])} 笔、净值 {len(navs)} 天，已加密输出")
+    mode = "对账" if sync_mode else "日常"
+    print(f"[private/{mode}] 持仓 {len(positions)} 项、净资产 {net_liq and round(net_liq)}、台账 {len(state['trades'])} 笔、净值 {len(navs)} 天")
     if warnings:
         print("[warnings]", *warnings, sep="\n  ")
 
