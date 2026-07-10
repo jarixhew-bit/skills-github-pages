@@ -564,11 +564,23 @@ def main():
                 actions.append(f"⚠️ {sym}：{'；'.join(notes)}")
         positions.sort(key=lambda x: -x["value"])
 
-        # 净值序列逐日累积（同日覆盖）
+        # 净值序列逐日累积（同日覆盖；剔除超前于行情日期的孤点，等行情跟上再补）
         nav_date = latest_date or now.strftime("%Y-%m-%d")
-        sd = {d: v for d, v in state["nav_series"]}
+        sd = {d: v for d, v in state["nav_series"] if d <= nav_date}
         sd[nav_date] = round(net_liq, 2)
         state["nav_series"] = sorted(sd.items())
+
+        # 每日 TWR 因子：净值变化中「持仓×价差」解释不了的大额差视为出入金，剔除后记收益
+        twr_daily = state.setdefault("twr_daily", {})
+        ns = state["nav_series"]
+        if len(ns) >= 2 and ns[-1][0] == nav_date and nav_date not in twr_daily:
+            prev_nav = ns[-2][1]
+            if prev_nav:
+                expected = sum(p["daily_pnl"] for p in positions)
+                flow = (net_liq - prev_nav) - expected
+                if abs(flow) < max(300.0, prev_nav * 0.003):
+                    flow = 0.0
+                twr_daily[nav_date] = round((net_liq - flow) / prev_nav, 8)
 
         cash_pct = (cash or 0) / net_liq * 100 if net_liq else 0
         if cash_pct < 3:
@@ -577,24 +589,35 @@ def main():
         if not actions:
             actions.append("✅ 持仓无异常信号，继续按计划持有")
 
-    # ---- 收益率：TWR 基准 + 净值续算（两次对账间无出入金时是准确的 TWR 链式）----
+    # ---- 收益率：官方 TWR 基准（对账时刷新）× 自算日因子链（已剔除出入金），全程零 Claude ----
     navs = state["nav_series"]
     perf = {}
     tb = state.get("twr_base")
-    if tb and navs:
-        factor = navs[-1][1] / tb["nav"] if tb["nav"] else 1
-        if tb.get("ytd") is not None:
-            perf["ytd"] = round(((1 + tb["ytd"]) * factor - 1) * 100, 2)
-        if tb.get("mtd") is not None and tb["date"][:7] == navs[-1][0][:7]:
-            perf["mtd"] = round(((1 + tb["mtd"]) * factor - 1) * 100, 2)
+    twr_daily = state.get("twr_daily", {})
+
+    def prod(pred):
+        f = 1.0
+        for d, v in twr_daily.items():
+            if pred(d):
+                f *= v
+        return f
+
+    if navs:
+        last_d = navs[-1][0]
+        if tb and tb.get("ytd") is not None and tb["date"][:4] == last_d[:4]:
+            perf["ytd"] = round(((1 + tb["ytd"]) * prod(lambda d: d > tb["date"]) - 1) * 100, 2)
+        elif any(d[:4] == last_d[:4] for d in twr_daily):
+            perf["ytd"] = round((prod(lambda d: d[:4] == last_d[:4]) - 1) * 100, 2)
+        if tb and tb.get("mtd") is not None and tb["date"][:7] == last_d[:7]:
+            perf["mtd"] = round(((1 + tb["mtd"]) * prod(lambda d: d > tb["date"]) - 1) * 100, 2)
+        elif any(d[:7] == last_d[:7] for d in twr_daily):
+            perf["mtd"] = round((prod(lambda d: d[:7] == last_d[:7]) - 1) * 100, 2)
+        recent = sorted(twr_daily)[-5:]
+        if recent:
+            perf["1d"] = round((twr_daily[recent[-1]] - 1) * 100, 2)
+            perf["7d"] = round((prod(lambda d: d in set(recent)) - 1) * 100, 2)
         elif len(navs) >= 2:
-            month_start = [v for d, v in navs if d < navs[-1][0][:7] + "-01"]
-            if month_start:
-                perf["mtd"] = round((navs[-1][1] / month_start[-1] - 1) * 100, 2)
-        if len(navs) >= 2:
             perf["1d"] = round((navs[-1][1] / navs[-2][1] - 1) * 100, 2)
-        if len(navs) >= 6:
-            perf["7d"] = round((navs[-1][1] / navs[-6][1] - 1) * 100, 2)
 
     review = build_review(state["trades"])
     ai_note = read_raw("ai_note.md")
