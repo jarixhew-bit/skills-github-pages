@@ -57,6 +57,9 @@
   写回，重跑管线；同步更新 vault 密码文件和仓库 Secret `ANALYZER_PW`；页面重新输入即可。
 - **信号/建议规则**：`analyzer.py` 的 `analyze_ticker()`（打分）、`build_add_suggestions()`（加仓）、
   `main()`（持仓提示），全中文注释。
+- **目标配置**：用户的目标仓位存在 `state.enc` 的 `targets` 字段（加密，不入公开库；
+  2026-07-10 设为 VOO 80 / IBIT 20）。加仓建议以再平衡为先，技术面只作用于策略外标的；
+  用户要改比例时解密 state 改 `targets` 再重跑管线即可。
 - **Actions 挂了**：仓库 Actions 页看 trading-daily 日志；行情源失败>1/4 会整跑失败（防发布残缺数据）。
 
 ## 数据契约
