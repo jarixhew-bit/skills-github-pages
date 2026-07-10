@@ -455,19 +455,31 @@ def main():
 
     sync_mode = read_raw("positions.json") is not None
 
-    # ---- 对账模式：用 IBKR 数据刷新底数 ----
+    # 跨来源去重：MCP 与 Flex 的 trade_id 体系不同，同一笔成交用组合签名识别
+    def trade_sig(t):
+        return (t["symbol"], t["side"], round(float(t["size"]), 4),
+                round(float(t["price"]), 4), (t.get("trade_time") or "")[:16])
+
+    def merge_trades(new_trades, label):
+        known_ids = {t["trade_id"] for t in state["trades"]}
+        known_sigs = {trade_sig(t) for t in state["trades"]}
+        added = 0
+        for t in new_trades:
+            if t["trade_id"] in known_ids or trade_sig(t) in known_sigs:
+                continue
+            state["trades"].append({k: t.get(k) for k in
+                ("trade_id", "symbol", "side", "size", "price", "trade_time",
+                 "commission", "net_amount", "realized_pnl", "order_id", "order_type")})
+            known_sigs.add(trade_sig(t))
+            added += 1
+        state["trades"].sort(key=lambda t: t["trade_time"])
+        if added:
+            print(f"[ledger/{label}] 新增 {added} 笔交易，台账共 {len(state['trades'])} 笔")
+
+    # ---- 对账模式：用 IBKR MCP 数据刷新底数 ----
     raw_trades = read_raw("trades.json")
     if raw_trades:
-        known = {t["trade_id"] for t in state["trades"]}
-        added = 0
-        for t in raw_trades.get("trades", []):
-            if t["trade_id"] not in known:
-                state["trades"].append({k: t.get(k) for k in
-                    ("trade_id", "symbol", "side", "size", "price", "trade_time",
-                     "commission", "net_amount", "realized_pnl", "order_id", "order_type")})
-                added += 1
-        state["trades"].sort(key=lambda t: t["trade_time"])
-        print(f"[ledger] 新增 {added} 笔交易，台账共 {len(state['trades'])} 笔")
+        merge_trades(raw_trades.get("trades", []), "mcp")
 
     boot = read_raw("nav_bootstrap.json")
     if boot and not state["nav_series"]:
@@ -490,6 +502,17 @@ def main():
                                  "ytd": perf_raw.get("ytd"), "mtd": perf_raw.get("mtd")}
         print(f"[sync] 持仓底数 {len(state['positions'])} 项、现金 {state['cash']}、TWR 基准已刷新")
 
+    # ---- Flex 对账（CI 每日自动，零 Claude）：MCP 对账缺席时刷新底数 ----
+    flex = None if sync_mode else read_raw("flex_account.json")
+    if flex:
+        if flex.get("positions"):
+            state["positions"] = flex["positions"]
+        if flex.get("cash") is not None:
+            state["cash"] = flex["cash"]
+        state["flex_nav"] = {"date": flex.get("date"), "net_liq": flex.get("net_liq")}
+        merge_trades(flex.get("trades", []), "flex")
+        print(f"[flex] 持仓底数 {len(state['positions'])} 项、现金 {state['cash']}、NAV {flex.get('net_liq')}")
+
     # ---- 用最新收盘价重算持仓与净值 ----
     sig_by_sym = {t["symbol"]: t for t in tickers}
     positions, actions = [], []
@@ -510,6 +533,10 @@ def main():
             total_val += mv
             pos_calc.append((sp, sig, price, prev, mv))
         net_liq = total_val + (cash or 0)
+        # Flex 提供的官方 NAV（含应计利息等）比收盘价重算更准，日期够新就用它
+        fx = state.get("flex_nav") or {}
+        if fx.get("net_liq") and fx.get("date") and latest_date and fx["date"] >= latest_date:
+            net_liq = fx["net_liq"]
 
         for sp, sig, price, prev, mv in pos_calc:
             sym, qty, avg = sp["symbol"], sp["qty"], sp["avg_price"]
@@ -580,7 +607,7 @@ def main():
             "net_liq": round(net_liq, 2) if net_liq else None,
             "cash": round(cash, 2) if cash is not None else None,
             "cash_pct": round(cash / net_liq * 100, 1) if cash is not None and net_liq else None,
-            "synced": (tb or {}).get("date"),
+            "synced": (state.get("flex_nav") or {}).get("date") or (tb or {}).get("date"),
         },
         "perf": perf,
         "nav_series": navs[-260:],
