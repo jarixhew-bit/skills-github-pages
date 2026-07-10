@@ -22,9 +22,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install --quiet cryptography
+      - run: pip install --quiet cryptography requests
       - name: 抓取行情
         run: python trading/fetch_prices.py
+      - name: IBKR Flex 账户同步（持仓/现金/净值，失败不阻断）
+        env:
+          IBKR_FLEX_TOKEN: ${{ secrets.IBKR_FLEX_TOKEN }}
+          IBKR_FLEX_QUERY_ID: ${{ secrets.IBKR_FLEX_QUERY_ID }}
+        run: python trading/flex_account.py || echo "Flex 同步失败，沿用上次持仓底数"
       - name: 运行分析管线
         env:
           ANALYZER_PW: ${{ secrets.ANALYZER_PW }}

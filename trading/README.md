@@ -8,10 +8,12 @@
 ```
 每个交易日 21:40 UTC · GitHub Actions（免费，不用 Claude）
   fetch_prices.py  Stooq/Yahoo 下载58只日线 → history/*.json（全量覆盖）
+  flex_account.py  IBKR Flex Query 拉真实持仓/现金/NAV/成交（密钥在仓库 Secrets，失败不阻断）
   analyzer.py      信号+持仓重算+加仓建议 → data-public.json / data-private.enc / state.enc
   git push main    → GitHub Pages 自动发布
 
-对账（用 Claude，仅两种时机：每周五 Routine 自动 / 用户说「同步持仓」）
+深度对账（用 Claude，仅两种时机：每月 1 日 Routine 自动 / 用户说「同步持仓」）
+  作用：刷新 TWR 收益率基准（Flex 不提供 TWR）、写 AI 点评、核对台账
   从 IBKR MCP 转录 positions/summary/trades/perf 到 trading/raw/ → 跑 analyzer.py
   → 刷新持仓底数、现金、TWR 基准、交易台账，可附 ai_note.md 点评
 ```
