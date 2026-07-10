@@ -411,8 +411,11 @@ def main():
             return "空头趋势"
         return "震荡"
 
-    opportunities = sorted([t for t in tickers if t["score"] >= 2], key=lambda t: -t["score"])[:10]
-    weak = sorted([t for t in tickers if t["score"] <= -3], key=lambda t: t["score"])[:6]
+    # 现金类（如短期国债 ETF）不参与买卖信号榜
+    opportunities = sorted([t for t in tickers if t["score"] >= 2 and t["symbol"] not in CASH_LIKE],
+                           key=lambda t: -t["score"])[:10]
+    weak = sorted([t for t in tickers if t["score"] <= -3 and t["symbol"] not in CASH_LIKE],
+                  key=lambda t: t["score"])[:6]
 
     market_line = (f"标普500{trend_word(spy)}、纳指{trend_word(qqq)}；"
                    f"扫描名单中 {breadth}% 个股站上50日线。")
