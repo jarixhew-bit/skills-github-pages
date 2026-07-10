@@ -39,6 +39,8 @@ STATE_OUT = os.path.join(BASE, "state.enc")
 
 PBKDF2_ITER = 300_000
 CASH_LIKE = {"SGOV"}  # 现金类持仓，不给技术信号建议
+# 宽基指数：跌了大概率涨回来，适用「打折加大定投」规则；单一资产（如 IBIT）不适用
+BROAD_INDEX = {"VOO", "SPY", "VTI", "QQQ", "DIA", "IWM"}
 
 
 # ---------------- 加密 ----------------
@@ -347,6 +349,17 @@ def build_add_suggestions(positions, cash, net_liq, sig_by_sym, targets=None):
             elif gap <= -5:
                 tips.append(f"⚖️ {sym} 超出目标配置 {tgt}%（现 {cur:.1f}%），可暂停加仓等待回落或再平衡")
                 covered.add(sym)
+        # 宽基指数打折规则（2026-07-10 与用户确认）：回撤越深越是长期买点，仅限宽基不含单一资产
+        for sym in targets:
+            s = sig_by_sym.get(sym)
+            if not s or sym not in BROAD_INDEX:
+                continue
+            dd = s["from_52w_high"]
+            if dd <= -25:
+                tips.append(f"🏷️ {sym} 自52周高点回撤 {abs(dd):.0f}%——历史级深度折扣，"
+                            f"20年视角是难得的加大投入窗口（仍要分批，勿一次用尽现金）")
+            elif dd <= -15:
+                tips.append(f"🏷️ {sym} 自52周高点回撤 {abs(dd):.0f}%——大盘打折中，可考虑加大本期定投（分批）")
     if cash is None or net_liq is None or cash < 200:
         return tips
     lot = max(100, round(min(cash * 0.5, net_liq * 0.05), -2))  # 单次参考额度
