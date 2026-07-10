@@ -326,14 +326,34 @@ def build_review(trades):
 
 # ---------------- 加仓建议（规则式，仅供参考） ----------------
 
-def build_add_suggestions(positions, cash, net_liq, sig_by_sym):
+def build_add_suggestions(positions, cash, net_liq, sig_by_sym, targets=None):
     tips = []
+    covered = set()
+    # 策略再平衡优先：目标配置（如 {"VOO":80,"IBIT":20}）存在加密 state 里，不入公开仓库
+    if targets and net_liq:
+        w = {p["symbol"]: p["weight"] for p in positions}
+        for sym, tgt in targets.items():
+            cur = w.get(sym, 0.0)
+            gap = tgt - cur
+            s = sig_by_sym.get(sym)
+            hint = f"（现价 ${s['price']}，RSI {s['rsi']:.0f}）" if s and s.get("rsi") is not None else ""
+            if gap >= 2:
+                need = gap / 100 * net_liq
+                afford = min(need, max((cash or 0) - 100, 0))
+                tips.append(f"📈 {sym} 低于目标配置 {tgt}%（现 {cur:.1f}%），补齐约需 ${need:,.0f}"
+                            + (f"，手头现金可先投 ${afford:,.0f}" if afford >= 100 else "，现金不足可分批定投")
+                            + hint)
+                covered.add(sym)
+            elif gap <= -5:
+                tips.append(f"⚖️ {sym} 超出目标配置 {tgt}%（现 {cur:.1f}%），可暂停加仓等待回落或再平衡")
+                covered.add(sym)
     if cash is None or net_liq is None or cash < 200:
         return tips
     lot = max(100, round(min(cash * 0.5, net_liq * 0.05), -2))  # 单次参考额度
     for p in positions:
         sym = p["symbol"]
-        if sym in CASH_LIKE:
+        # 已列入目标配置的标的由策略再平衡主导，不再叠加技术面加仓建议
+        if sym in CASH_LIKE or sym in covered or (targets and sym in targets):
             continue
         s = sig_by_sym.get(sym)
         if not s:
@@ -552,7 +572,12 @@ def main():
                 "signal": {k: sig[k] for k in ("score", "action", "act_cls", "rsi", "stop_atr", "from_52w_high")} if sig else None,
             }
             notes = []
-            if weight > 50:
+            tgt = (state.get("targets") or {}).get(sym)
+            if tgt is not None:
+                # 有目标配置：只在明显偏离目标时提示，不再按绝对集中度警告
+                if weight > tgt + 5:
+                    notes.append(f"占组合 {weight:.0f}%，高于目标 {tgt}%")
+            elif weight > 50:
                 notes.append(f"占组合 {weight:.0f}%，集中度偏高")
             if upct <= -10:
                 notes.append(f"浮亏 {upct:.0f}%，检查当初买入逻辑是否仍成立")
@@ -585,7 +610,8 @@ def main():
         cash_pct = (cash or 0) / net_liq * 100 if net_liq else 0
         if cash_pct < 3:
             actions.append(f"⚠️ 现金仅占 {cash_pct:.1f}%，缓冲较薄")
-        actions.extend(build_add_suggestions(positions, cash, net_liq, sig_by_sym))
+        actions.extend(build_add_suggestions(positions, cash, net_liq, sig_by_sym,
+                                             targets=state.get("targets")))
         if not actions:
             actions.append("✅ 持仓无异常信号，继续按计划持有")
 
