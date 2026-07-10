@@ -1221,7 +1221,13 @@ function renderOverview(){
 function renderAccCards(){
   const row = document.getElementById('acc-cards-row');
   let ibkrCard = '';
-  if(ibkrData){
+  if(ibkrData && ibkrData.locked){
+    ibkrCard = `<div class="acc-card acc-card-ibkr" onclick="unlockIBKR()">
+      <div class="acc-card-name">📈 IBKR</div>
+      <div class="acc-card-bal">🔒</div>
+      <div class="acc-card-cur">点击输入密码显示余额</div>
+    </div>`;
+  } else if(ibkrData){
     const pnl = ibkrData.unrealizedPnl||0;
     const pnlSign = pnl>=0?'+':'';
     const pnlCls = pnl>=0?'ibkr-pnl-pos':'ibkr-pnl-neg';
@@ -2293,13 +2299,40 @@ function setupPWA(){
   }
 }
 
+// IBKR 数据改读加密文件（与交易分析器共用密码，存 localStorage 同一个 key，解锁一次两边通用）
+const IBKR_PW_KEY = 'tradingAnalyzerPw';
+async function decryptIBKREnvelope(envText, password){
+  const env = JSON.parse(envText);
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const keyMat = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt:b64(env.salt), iterations:env.iter, hash:'SHA-256'},
+    keyMat, {name:'AES-GCM', length:256}, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64(env.nonce)}, key, b64(env.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
 async function loadIBKR(){
   try{
-    const r = await fetch('ibkr-snapshot.json?t='+Date.now());
+    const pw = localStorage.getItem(IBKR_PW_KEY);
+    if(!pw){ ibkrData = {locked:true}; renderAccCards(); return; }
+    const r = await fetch('trading/data-private.enc?t='+Date.now());
     if(!r.ok) return;
-    ibkrData = await r.json();
+    const p = await decryptIBKREnvelope(await r.text(), pw);
+    ibkrData = {
+      netLiquidation: p.account && p.account.net_liq,
+      unrealizedPnl: (p.positions||[]).reduce((s,x)=>s+(x.upnl||0), 0),
+      updatedAt: p.generated_at ? p.generated_at.replace(' UTC',':00Z').replace(' ','T') : null
+    };
     renderAccCards();
-  }catch(e){ /* silently ignore if file missing */ }
+  }catch(e){ ibkrData = {locked:true}; renderAccCards(); }
+}
+async function unlockIBKR(){
+  const pw = prompt('输入交易分析器密码（解锁 IBKR 余额显示）');
+  if(!pw) return;
+  localStorage.setItem(IBKR_PW_KEY, pw.trim());
+  ibkrData = null;
+  await loadIBKR();
+  if(ibkrData && ibkrData.locked){ localStorage.removeItem(IBKR_PW_KEY); alert('密码不对或数据未就绪'); }
 }
 
 // ===================== ATTACHMENTS: IndexedDB =====================
