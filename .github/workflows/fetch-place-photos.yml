@@ -7,29 +7,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch and extract photo URLs
+      - name: Extract photo URLs from official site and Maps
         run: |
-          curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36" \
-            "https://maps.app.goo.gl/1sNSjfdqYinbQkZ18" -o page.html
-          echo "size: $(wc -c < page.html)"
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+          curl -sL -A "$UA" "https://www.gankofood.co.jp/shop/detail/ya-nijyoen/" -o official.html || true
+          curl -sL -A "$UA" "https://gu-takasegawa.gorp.jp/" -o gorp.html || true
+          curl -sL -A "$UA" -H "Cookie: CONSENT=YES+cb; SOCS=CAI" "https://maps.app.goo.gl/1sNSjfdqYinbQkZ18" -o maps.html || true
           python3 - <<'PY'
           import re
-          s = open('page.html', encoding='utf-8', errors='ignore').read()
-          s = s.replace('\\u003d','=').replace('\\u0026','&').replace('\\/','/')
-          urls = re.findall(r'https://lh\d\.googleusercontent\.com/[A-Za-z0-9_\-=/.&%]+', s)
-          seen = []
-          for u in urls:
-              u = u.rstrip('.')
-              if u not in seen and len(u) > 60:
-                  seen.append(u)
-          open('photo-urls.txt','w').write('\n'.join(seen[:40]))
-          print('found', len(seen))
+          out = []
+          for name in ['official.html','gorp.html','maps.html']:
+              try:
+                  s = open(name, encoding='utf-8', errors='ignore').read()
+              except OSError:
+                  continue
+              s = s.replace('\\u003d','=').replace('\\u0026','&').replace('\\/','/')
+              t = re.search(r'<title[^>]*>(.*?)</title>', s, re.S)
+              out.append(f"## {name} size={len(s)} title={(t.group(1).strip()[:80] if t else 'NONE')}")
+              pats = [r'https://lh\d\.googleusercontent\.com/[A-Za-z0-9_\-=/.&%]{40,}',
+                      r'https?://[A-Za-z0-9.\-]+/[A-Za-z0-9_\-/.%]+\.(?:jpg|jpeg|png|webp)',
+                      r'(?:src|href|content)="(/[A-Za-z0-9_\-/.%]+\.(?:jpg|jpeg|png|webp))"']
+              found = []
+              for p in pats:
+                  for m in re.findall(p, s):
+                      if m not in found: found.append(m)
+              out += found[:25]
+              out.append('')
+          open('photo-urls.txt','w').write('\n'.join(out))
+          print(open('photo-urls.txt').read()[:3000])
           PY
-          head -c 2000 photo-urls.txt
       - name: Commit results
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add photo-urls.txt
-          git commit -m "CI: place photo URLs v2" || echo "nothing to commit"
+          git commit -m "CI: place photo URLs v3" || echo "nothing to commit"
           git push
