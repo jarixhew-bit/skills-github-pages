@@ -1,17 +1,10 @@
-## official.html size=33391 title=お屋敷・高瀬川二条苑 | 店舗を探す | 株式会社GANKO
-https://www.gankofood.co.jp/assets/image/cmn/ogp.png
-/apple-touch-icon.png
-/android-touch-icon.png
-/assets/image/cmn/logo.png
-/assets/image/cmn/sp-menu-logo.png
+## gallery size=40415
 /uploads/resized/900x530_ya-nijyoen01.jpg
-/uploads/resized/140x85_ya-nijyoen01.jpg
-/uploads/resized/220x240_jinrikisha_banner.jpg
-/uploads/resized/220x240_nijo_thumbnail.jpg
-
-## gorp.html size=17859 title=NONE
-http://rimage.gnst.jp/rest/img/5xb0wet40000/s_0n8x.jpg
-https://rimage.gnst.jp/rest/img/5xb0wet40000/s_0n8x.jpg
-
-## maps.html size=168953 title=Google Maps
-https://ssl.gstatic.com/gb/images/bar/al-icon.png
+/uploads/resized/140x85_ya-nijyoen01.jpgprobe 01: 200
+probe 02: 404
+probe 03: 404
+probe 04: 404
+probe 05: 404
+probe 06: 404
+probe 07: 404
+probe 08: 404
