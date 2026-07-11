@@ -1,0 +1,24 @@
+name: fetch-place-photos
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch Google Maps place page and extract photo URLs
+        run: |
+          curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36" \
+            "https://maps.app.goo.gl/1sNSjfdqYinbQkZ18" -o page.html
+          echo "size: $(wc -c < page.html)"
+          grep -oE 'https://lh3\.googleusercontent\.com/(place-photos|gps-cs-s)/[A-Za-z0-9_=/-]+' page.html | sort -u | head -30 > photo-urls.txt
+          echo "found: $(wc -l < photo-urls.txt)"
+          cat photo-urls.txt
+      - name: Commit results
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add photo-urls.txt
+          git commit -m "CI: place photo URLs for Nijo-en" || echo "nothing to commit"
+          git push
