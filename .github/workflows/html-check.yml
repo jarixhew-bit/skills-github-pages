@@ -1,0 +1,23 @@
+# HTML 结构自动把关：每个改动 HTML 的 PR / push 都会跑 tools/check-html.py。
+# 目的：哪怕改页面的模型忘了规则（div 平衡、siteLangUser 统一 key），
+# CI 也会把不合格的改动拦在合并之前。零 Claude 用量消耗。
+name: HTML Structure Check
+
+on:
+  pull_request:
+    paths:
+      - "**/*.html"
+      - "tools/check-html.py"
+  push:
+    branches: [main]
+    paths:
+      - "**/*.html"
+      - "tools/check-html.py"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check all HTML files
+        run: python3 tools/check-html.py --all
