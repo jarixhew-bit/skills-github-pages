@@ -87,7 +87,8 @@
 |---|---|
 | 要派 subagent、选模型、任务较大需拆解 | `.claude/rules/dispatch.md` |
 | 不确定该升级模型／算不算完成／该不该问用户 | `.claude/rules/judgment.md` |
-| 派工时要写委派 prompt | `.claude/rules/templates.md` |
+| 派工时要写委派 prompt | `.claude/rules/templates.md`（填好的真实范例在 `examples.md`） |
+| 要改现有项目（页面/xisui/trading） | `.claude/notes/` 对应结构笔记（锚点、改哪几处、坑） |
 | 想修改制度档或本档 | `.claude/rules/maintenance.md` |
 | 新 session 开始较大工作之前 | `.claude/rules/letter.md`（背景与注意事项） |
 | 选浏览器／爬网工具拿不定主意 | `.claude/rules/diagnosis.md` 问题 #2 的路由表 |
