@@ -9,7 +9,7 @@
   `skills/pwa-pages.md`）。內含 6 個計數器段落（吐納/收功/垂吊/甩鞭/會陰拍打/腹股溝拍打）
   + 1 個「蓮花動功」7 式輪播段落。改文案/時長/次數、加減段落都動這個檔。
 - `manifest.json`——PWA 名稱/icon/顏色/`start_url`。改 App 名稱、圖示、啟動路徑時動它。
-- `sw.js`（25 行）——Service Worker，cache-first，`CACHE = 'xisui-v1'`
+- `sw.js`（24 行）——Service Worker，cache-first，`CACHE = 'xisui-v1'`
   （xisui.md:第 1 行常數，見下方 PWA 章節）。
 - `icon-192.png` / `icon-512.png`——PWA 圖示，manifest.json 引用，很少需要動。
 - 音檔/影片不在 `xisui/` 目錄內：`index.html:389` 引用 `../audio/tuna.mp3`
@@ -42,7 +42,7 @@
 
 **加一個新的計數段落**：複製既有 `<div class="section" id="sec-xxx">` 區塊
 （如 `index.html:450-471` 的垂吊段），改 id/文案/次數，並在 `COUNTERS` 陣列
-（631-648 行附近）加一筆，且在 `init()` 的 `sections` 陣列（約 895 行）加入新 id
+（641-648 行，631 行起是 `LOTUS` 陣列別搞混）加一筆，且在 `init()` 的 `sections` 陣列（約 895 行）加入新 id
 （否則「自動展開第一個未完成段落」邏輯不會巡到它），`updateProgress()` 的
 `realTotal`（840 行，目前寫死 `7`）也要跟著調整。
 

@@ -85,8 +85,9 @@ URL: .../restaurant-guide.html
 老板晚餐候选（大阪14家+东京13家），双语，按场地分组，无编号系统。
 URL: .../boss-dinner.html
 结构：topbar(:84) → `.page-h1`(:89) → `.page-sub`总数「大阪14家·东京13家」(:90)
-→ `.sec-head`(:92) → 5个`h3.city-h`分组（各带`.note.amber`）：Conrad酒店内(:99)、
-大阪外出(:120)、大阪中餐(:291)、东京酒店内(:325)、东京周边(:372)，各组下接
+→ `.sec-head`(:92) → 6个`h3.city-h`分组（各带`.note.amber`）：Conrad酒店内(:99)、
+大阪外出(:120)、大阪中餐(:291)、东京·四季大手町(:323)、东京酒店内(:325)、
+东京周边(:372)，各组下接
 `.stop`卡片 → lightbox(:529) → `<script>`(lightbox:537/applyLang:579/
 toggleLang:583/initLang:588-594)。
 高频操作：
