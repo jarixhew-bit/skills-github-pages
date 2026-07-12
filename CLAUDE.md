@@ -22,10 +22,12 @@
 - 用户手动点过语言切换按钮后，要记住该选择并**全站共用**：统一存 localStorage key `siteLangUser`
   （2026-07-12 起，不再各页独立 key），并监听 `storage` 事件让已开页面即时同步；之后优先于系统语言侦测
 - 参考实现见 `japan-trip-2026.html` 和 `usj-disney-restaurants.html` 的 `initLang()` / `toggleLang()`
-- **日文行话一律本地化**（2026-07-12 用户明确要求：扫描到直接改，不必询问）：读者不懂日文——
-  描述与标签里的日文词，中文侧翻成中文（个室→包厢、握り寿司→手握寿司、おでん→关东煮等），
-  英文侧罗马字翻成英文（karaage→fried chicken、teishoku→set meal 等）。
-  例外保留：店名/品牌原文（现场找店要用）、英文已通用的词（sushi/sashimi/ramen/izakaya/tempura）。
+- **外语行话一律本地化**（2026-07-12 用户明确要求：扫描到直接改，不必询问）：手册只有
+  中/英两种语言，读者不懂日语、韩语等第三方语言——描述与标签里的外语词，中文侧翻成中文
+  （个室→包厢、握り寿司→手握寿司、おでん→关东煮等），英文侧的罗马字/音译翻成英文
+  （karaage→fried chicken、teishoku→set meal 等）。
+  例外保留：店名/品牌原文（现场找店要用）、英文已通用的词（sushi/sashimi/ramen/izakaya/
+  tempura/bibimbap/kimchi 等词典收录词）。
 
 ## 部署
 - 所有页面部署到 GitHub Pages
