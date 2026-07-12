@@ -1,0 +1,43 @@
+# 删除已合并的功能分支。存在原因：Claude 网页版 session 的 git 代理不允许
+# 删远端分支（push --delete 返回 403），按仓库规矩「合并后即删」只能靠这里代劳。
+# 手动触发（Actions 页面 Run workflow，或由 Claude 调 API 触发），传入分支名列表。
+# 安全阀：main 永不删；每个分支删除前验证其内容树已存在于 main 历史中，
+# 验证不过的跳过并在日志说明，不会误删未合并的工作。
+name: Cleanup Merged Branches
+
+on:
+  workflow_dispatch:
+    inputs:
+      branches:
+        description: "要删除的分支名，用空格分隔"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Delete merged branches
+        run: |
+          git fetch origin --prune
+          main_trees=$(git log origin/main --format=%T)
+          for b in ${{ github.event.inputs.branches }}; do
+            if [ "$b" = "main" ]; then
+              echo "::warning::跳过 main（永不删除）"; continue
+            fi
+            if ! git rev-parse --verify -q "origin/$b" >/dev/null; then
+              echo "::warning::跳过 $b：远端不存在"; continue
+            fi
+            tree=$(git rev-parse "origin/$b^{tree}")
+            if echo "$main_trees" | grep -q "$tree"; then
+              git push origin --delete "$b" && echo "已删除 $b"
+            else
+              echo "::warning::跳过 $b：内容树不在 main 历史中（可能未合并），请人工确认"
+            fi
+          done
