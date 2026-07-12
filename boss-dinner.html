@@ -83,7 +83,7 @@
 <body>
 <div class="topbar">
 <a class="back" href="japan-trip-2026.html">← <span class="cn">返回行程</span><span class="en">Back to Itinerary</span></a>
-<button class="lang-toggle" onclick="document.body.classList.toggle('lang-en')"><span class="cn">EN</span><span class="en">中文</span></button>
+<button class="lang-toggle" onclick="toggleLang()"><span class="cn">EN</span><span class="en">中文</span></button>
 </div>
 <div class="wrap">
 <div class="page-h1"><span class="cn">🍽 老板晚餐精选</span><span class="en">🍽 Boss Dinner Picks</span></div>
@@ -572,6 +572,26 @@
     galImgs.forEach((img, i) => {
       img.addEventListener('click', () => open(galImgs, i));
     });
+  });
+})();
+</script>
+<script>
+function applyLang(lang) {
+  document.body.classList.toggle('lang-en', lang === 'en');
+  document.documentElement.lang = lang === 'en' ? 'en' : 'zh';
+}
+function toggleLang() {
+  const next = document.body.classList.contains('lang-en') ? 'cn' : 'en';
+  applyLang(next);
+  try { localStorage.setItem('siteLangUser', next); } catch (e) {}
+}
+(function initLang() {
+  let lang = null;
+  try { lang = localStorage.getItem('siteLangUser'); } catch (e) {}
+  if (!lang) lang = (navigator.language || '').toLowerCase().startsWith('zh') ? 'cn' : 'en';
+  applyLang(lang);
+  window.addEventListener('storage', e => {
+    if (e.key === 'siteLangUser' && e.newValue) applyLang(e.newValue);
   });
 })();
 </script>
