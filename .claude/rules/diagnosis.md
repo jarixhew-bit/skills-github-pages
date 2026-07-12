@@ -71,4 +71,4 @@
 - [2026-07-12][雲端] 情境：合併後要刪遠端功能分支。教訓：網頁版 session 的 git 代理
   禁止 `git push --delete`（403，策略性非暫時），別重試——觸發 `cleanup-branches.yml`
   workflow（workflow_dispatch，傳分支名）由 CI 代刪，帶 main 保護與合併驗證。
-  來源：Fable 5 交接時試刪兩次 403 後建立此通道，一次清掉 14 個積壓分支。
+  來源：Fable 5 交接時試刪兩次 403 後建立此通道，一次清掉 14 個積壓分支。注意：要新開/重建功能分支時先 `git fetch origin main`——本地 origin/main 過舊會讓分支基點落後，清理 workflow 的「內容樹在 main」安全閥會攔下不刪（同 session 踩過兩次）；被攔時把分支 force-push 指到 origin/main 再觸發一次即可。
