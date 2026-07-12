@@ -14,6 +14,9 @@ description: 把本仓库的改动发布上线（commit、push、开 PR、合并
 4. **开 PR 并合并**：用 GitHub MCP 工具开 PR → **squash merge** 到 main。
    有冲突先 `git merge origin/main` 解决再合。
 5. **删分支**：合并后删除功能分支（分支不用于分类，见 CLAUDE.md）。
+   注意：网页版 session 的 git 代理不允许 `push --delete`（403）——改用 GitHub MCP 的
+   actions_run_trigger 触发 `cleanup-branches.yml` workflow（传入分支名），由 CI 代删；
+   它有 main 保护和"内容已在 main"验证，删不掉的会在日志里警告而不是误删。
 6. **验证上线**：等 1-2 分钟 Pages 构建，WebFetch 抓
    `https://jarixhew-bit.github.io/skills-github-pages/文件名` 确认改动可见。
    抓不到新内容时先等再重试（Pages 构建有延迟），不要急着回滚。

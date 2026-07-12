@@ -68,3 +68,7 @@
   用的斜線指令，建議裝在本機 CLI（本機 session 是持久環境，重開就會載入）。
   來源：本機 letter.md 提過使用者想要「一隊 AI 幫他做事」，這次 claude-council
   安裝驗證時踩到的雲端限制。
+- [2026-07-12][雲端] 情境：合併後要刪遠端功能分支。教訓：網頁版 session 的 git 代理
+  禁止 `git push --delete`（403，策略性非暫時），別重試——觸發 `cleanup-branches.yml`
+  workflow（workflow_dispatch，傳分支名）由 CI 代刪，帶 main 保護與合併驗證。
+  來源：Fable 5 交接時試刪兩次 403 後建立此通道，一次清掉 14 個積壓分支。
