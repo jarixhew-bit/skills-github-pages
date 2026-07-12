@@ -61,7 +61,12 @@ def fetch_ibkr_positions():
         params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"},
         timeout=30
     )
-    root1 = ET.fromstring(r1.text)
+    try:
+        root1 = ET.fromstring(r1.text)
+    except ET.ParseError:
+        # 周末/维护时段 IBKR 会返回 HTML 错误页而非 XML（2026-07-12 周日实际发生过）
+        print(f"⚠️ Flex SendRequest 返回非 XML（IBKR 可能在维护），使用默认持仓：{r1.text[:120]!r}")
+        return None
     ref   = root1.findtext("ReferenceCode")
     if not ref:
         print("⚠️ Flex Query 未返回 ReferenceCode，使用默认持仓")
@@ -79,7 +84,11 @@ def fetch_ibkr_positions():
             break
         time.sleep(5)
 
-    root2     = ET.fromstring(r2.text)
+    try:
+        root2 = ET.fromstring(r2.text)
+    except ET.ParseError:
+        print(f"⚠️ Flex GetStatement 返回非 XML，使用默认持仓：{r2.text[:120]!r}")
+        return None
     positions = {}
     for pos in root2.iter("OpenPosition"):
         sym  = pos.get("symbol", "")
