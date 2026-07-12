@@ -5,7 +5,7 @@ name: trading-daily
 on:
   schedule:
     - cron: '40 21 * * 1-5'   # 美股收盘后（UTC 21:40 ≈ 美东 16:40/17:40）
-    - cron: '40 9 * * 2-6'    # 次日早上补漏跑：GitHub 偶尔整次丢掉定时任务（2026-07-11 发生过）；
+    - cron: '40 9 * * 2-6'    # 次日早上补漏跑（保险）：GitHub 的定时任务偶尔会被整次跳过；
                               # 昨晚已跑成功时，本次因行情无新数据会跳过提交
   workflow_dispatch:
 
@@ -47,5 +47,7 @@ jobs:
             echo "行情无新数据，跳过提交"
           else
             git commit -m "chore(trading): daily data update $(date -u +%F)"
+            # 运行期间 main 可能有新合并（2026-07-12 曾因此推送被拒），rebase 后再推
+            git pull --rebase origin main
             git push
           fi

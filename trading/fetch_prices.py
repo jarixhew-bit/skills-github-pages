@@ -96,7 +96,18 @@ def main():
             failed.append(err or sym)
             print("FAIL", err, file=sys.stderr)
             continue
-        with open(os.path.join(HIST_DIR, f"{sym}.json"), "w", encoding="utf-8") as f:
+        path = os.path.join(HIST_DIR, f"{sym}.json")
+        # 行情无新增时不重写：updated 是当天日期，重写会让所有文件天天有 diff，
+        # 补漏跑（次日 09:40 UTC）就无法用「history/ 是否变化」判断该不该提交
+        try:
+            with open(path, encoding="utf-8") as f:
+                if json.load(f).get("bars") == bars:
+                    ok.append(f"{sym}(无新增)")
+                    time.sleep(0.4)
+                    continue
+        except (OSError, ValueError):
+            pass
+        with open(path, "w", encoding="utf-8") as f:
             json.dump({"symbol": sym, "contract_id": u.get("contract_id"), "currency": "USD",
                        "source": src, "updated": today, "bars": bars},
                       f, ensure_ascii=False, separators=(",", ":"))
