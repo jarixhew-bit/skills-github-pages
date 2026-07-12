@@ -1053,13 +1053,19 @@ function applyLang(lang) {
 function toggleLang() {
   const next = document.body.classList.contains('lang-en') ? 'cn' : 'en';
   applyLang(next);
-  try { localStorage.setItem('handbookV2LangUser', next); } catch (e) {}
+  try { localStorage.setItem('siteLangUser', next); } catch (e) {}
 }
 (function initLang() {
   let lang = null;
-  try { lang = localStorage.getItem('handbookV2LangUser'); } catch (e) {}
+  try {
+    lang = localStorage.getItem('siteLangUser') || localStorage.getItem('handbookV2LangUser');
+    if (lang) localStorage.setItem('siteLangUser', lang);
+  } catch (e) {}
   if (!lang) lang = (navigator.language || '').toLowerCase().startsWith('zh') ? 'cn' : 'en';
   applyLang(lang);
+  window.addEventListener('storage', e => {
+    if (e.key === 'siteLangUser' && e.newValue) applyLang(e.newValue);
+  });
 })();
 
 /* ===== TODAY highlight + auto-scroll ===== */
