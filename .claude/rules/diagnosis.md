@@ -53,3 +53,18 @@
 
 本機 settings.json 內含明文 Google Maps API key，詳情與建議只寫在 letter.md，
 此處不重複（避免同一件事寫兩個家）。
+
+## 教訓紀錄
+
+- [2026-07-12][雲端] 情境：session 進行中用 `claude plugin marketplace add` /
+  `claude plugin install` 裝新 plugin（例如 claude-council），裝完立刻在同一對話
+  試新 plugin 提供的斜線指令（如 `/plugin-name:command`），回報 `Unknown command`。
+  教訓：雲端 session 是同一個從 session 開始就在跑的 `claude` 進程，斜線指令表在
+  進程啟動時就固定了，中途裝的 plugin 不會熱更新進去；而且雲端多半每個新 session
+  是全新容器，開新對話未必能延續剛裝好的設定。當下可行解法：改用 Bash 直接呼叫
+  plugin 內部腳本（路徑通常在
+  `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/scripts/` 或
+  `commands/*.md` 描述的邏輯）達到同樣效果，不必等指令表刷新；要拿到真正能長期
+  用的斜線指令，建議裝在本機 CLI（本機 session 是持久環境，重開就會載入）。
+  來源：本機 letter.md 提過使用者想要「一隊 AI 幫他做事」，這次 claude-council
+  安裝驗證時踩到的雲端限制。
