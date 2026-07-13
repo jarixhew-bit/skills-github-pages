@@ -12,9 +12,12 @@
 - `Plan`：規劃實作方案用，回傳步驟計畫。
 - `claude`：萬用型，沒有更合適的才用。
 - `claude-code-guide`：查 Claude Code / Claude API 本身的功能問題。
-- 自訂 agent：`verifier`（驗收員，見第 5 節），定義在本 repo `.claude/agents/verifier.md`。
-  **備援**：若當前 session 的可用 agent 清單沒有 verifier（agents 目錄新建需重啟才載入，
-  或雲端未讀到），改派 `general-purpose`/sonnet，並把 verifier.md 的內文規則整段
+- 自訂 agent（定義在本 repo `.claude/agents/`，2026-07-12 起共三個）：
+  `verifier`（驗收員，見第 5 節）、`researcher`（網路研究＋交叉查證，方法論已內建）、
+  `html-editor`（批量/結構性改本 repo 頁面，頁面規則與檢查流程已內建）。
+  常設任務優先派這三個——effort 已調高、方法論已燒進定義，比裸 general-purpose 少踩坑。
+  **備援**：若當前 session 的可用 agent 清單沒有它們（agents 目錄新建需重啟才載入，
+  或雲端未讀到），改派 `general-purpose`/sonnet，並把對應定義檔的內文規則整段
   貼進委派 prompt，效果等同。
 
 **模型**（Agent 呼叫的 `model` 參數）：`haiku`、`sonnet`、`opus`。

@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
   schedule:
     # UTC 21:30 = Beijing 05:30, compensates for ~2.5hr GitHub delay = arrives ~08:00
-    - cron: '30 21 * * *'
+    # 只在交易日收盘后跑（周一至五 UTC）：周末无行情，且 IBKR 周末维护窗曾致任务失败
+    #（2026-07-12）。用户 2026-07-13 要求周末不推送。
+    - cron: '30 21 * * 1-5'
 
 jobs:
   news-digest:

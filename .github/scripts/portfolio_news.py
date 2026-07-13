@@ -55,7 +55,8 @@ def score(text):
 def fetch_ibkr_positions():
     """IBKR Flex Query 拉取持仓"""
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
-    # Step 1: 请求生成报告（IBKR 报表生成偶发繁忙，重试 4 次，与 trading/flex_account.py 一致）
+    # Step 1: 请求生成报告（IBKR 报表生成偶发繁忙，重试 4 次，与 trading/flex_account.py 一致；
+    # 周末/维护时段会返回 HTML 错误页而非 XML，2026-07-12 周日实际发生过，需兼容非 XML 响应）
     ref = None
     for attempt in range(4):
         if attempt:
@@ -65,8 +66,12 @@ def fetch_ibkr_positions():
             params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"},
             timeout=30
         )
-        root1 = ET.fromstring(r1.text)
-        ref   = root1.findtext("ReferenceCode")
+        try:
+            root1 = ET.fromstring(r1.text)
+        except ET.ParseError:
+            print(f"⚠️ SendRequest 第 {attempt+1} 次返回非 XML: {r1.text[:120]!r}")
+            continue
+        ref = root1.findtext("ReferenceCode")
         if ref:
             break
         print(f"⚠️ SendRequest 第 {attempt+1} 次未返回 ReferenceCode:",
@@ -87,7 +92,11 @@ def fetch_ibkr_positions():
             break
         time.sleep(5)
 
-    root2     = ET.fromstring(r2.text)
+    try:
+        root2 = ET.fromstring(r2.text)
+    except ET.ParseError:
+        print(f"⚠️ Flex GetStatement 返回非 XML，使用默认持仓：{r2.text[:120]!r}")
+        return None
     positions = {}
     for pos in root2.iter("OpenPosition"):
         sym  = pos.get("symbol", "")
