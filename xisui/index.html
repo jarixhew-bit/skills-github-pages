@@ -265,6 +265,17 @@
     text-align: center;
     margin-bottom: 12px;
     letter-spacing: 0.05em;
+    line-height: 1.8;
+  }
+  .bili-link {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 6px 14px;
+    border: 1px solid var(--gold-dim);
+    border-radius: 20px;
+    color: var(--gold);
+    text-decoration: none;
+    font-size: 0.75rem;
   }
   .lotus-list {
     display: flex;
@@ -491,11 +502,16 @@ function buildSections() {
         ${s.video ? `
         <div class="video-wrap">
           <iframe
-            src="https://player.bilibili.com/player.html?bvid=BV19J411N7HC&p=1&autoplay=0&danmaku=0&high_quality=1"
-            allowfullscreen scrolling="no" loading="lazy"
+            src="https://player.bilibili.com/player.html?isOutside=true&bvid=BV19J411N7HC&p=1&autoplay=0&danmaku=0"
+            allowfullscreen scrolling="no"
+            referrerpolicy="no-referrer"
             title="蓮花生動功全套示範"></iframe>
         </div>
-        <div class="video-note">全套示範影片 11:54 · 跟著影片練完整套</div>
+        <div class="video-note">
+          全套示範影片 11:54 · 跟著影片練完整套<br>
+          <a class="bili-link" href="https://www.bilibili.com/video/BV19J411N7HC/"
+             target="_blank" rel="noopener">影片放不出來？點此在 B 站打開 ▶</a>
+        </div>
         <div class="lotus-list">
           ${LOTUS_NAMES.map((n, j) => `<span>${NUMS[j]}　${n}</span>`).join('')}
         </div>` : ''}
