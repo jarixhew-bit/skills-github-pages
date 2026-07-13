@@ -2,87 +2,80 @@
 
 一句話：洗髓功法每日練習引導 App（PWA），給使用者本人在手機上每天做完 7 個功法段落
 打卡計數；入口 `https://jarixhew-bit.github.io/skills-github-pages/xisui/`。
+**2026-07-13 整頁 redesign**（深色鎏金＋襯線標題＋頂欄環形進度），功能與資料結構未變。
 
 ## 檔案清單
 
-- `index.html`（921 行）——唯一的邏輯檔，單檔 HTML+CSS+JS（無構建、無框架，見
+- `index.html`（977 行）——唯一的邏輯檔，單檔 HTML+CSS+JS（無構建、無框架，見
   `skills/pwa-pages.md`）。內含 6 個計數器段落（吐納/收功/垂吊/甩鞭/會陰拍打/腹股溝拍打）
-  + 1 個「蓮花動功」7 式輪播段落。改文案/時長/次數、加減段落都動這個檔。
+  + 1 個「蓮花生動功」7 式段落。改文案/時長/次數、加減段落都動這個檔。
 - `manifest.json`——PWA 名稱/icon/顏色/`start_url`。改 App 名稱、圖示、啟動路徑時動它。
-- `sw.js`（24 行）——Service Worker，cache-first，`CACHE = 'xisui-v2'`
-  （xisui.md:第 1 行常數，見下方 PWA 章節）。
+- `sw.js`（24 行）——Service Worker，cache-first，`CACHE = 'xisui-v3'`（sw.js:1）。
 - `icon-192.png` / `icon-512.png`——PWA 圖示，manifest.json 引用，很少需要動。
-- 音檔/影片不在 `xisui/` 目錄內：`index.html:389` 引用 `../audio/tuna.mp3`
-  （相對於 xisui/ 的上一層，即 repo 根目錄的 `audio/` 資料夾）；蓮花動功 7 式
-  在 `index.html:683` 引用 `../videos/lotus1.mp4` ~ `lotus7.mp4`。
+- 音檔不在 `xisui/` 內：吐納段引用 `../audio/tuna.mp3`（repo 根目錄 `audio/`，已核實存在）。
+- **影片不再用本地檔案**：蓮花生動功的示範影片是 B 站 iframe 嵌入
+  （index.html:646，`player.bilibili.com/player.html?bvid=BV19J411N7HC`，萬行上師
+  蓮花生動功全套 11:54），七式共用一個播放器，使用者自行拖進度。舊的
+  `videos/lotus1~7.mp4` 引用已於 2026-07-13 移除，repo 不需要 videos/ 目錄。
 
 ## 資料流
 
 - **狀態**：所有打卡進度存瀏覽器 `localStorage`，key 固定 `xisui_state`
-  （`index.html:651` 讀、`index.html:865` 寫）。結構：`{counts:{段落id:數字},
+  （index.html:710 讀、:923 寫）。結構：`{counts:{段落id:數字},
   done:{段落id:bool}, lotusDone:{式子索引:bool}, lotusTimers:{式子索引:已計時秒數}}`。
-  **無雲端同步、無帳號**——換裝置或清瀏覽器資料進度就沒了，這是設計如此，不是 bug。
-- **音訊**：目前只有 `audio/tuna.mp3` 真實存在（已核實，6.1MB）。蓮花動功引用的
-  `videos/lotus1.mp4`~`lotus7.mp4` **repo 裡不存在** `videos/` 目錄——2026-07-13 起
-  已加優雅降級（`showVideoPlaceholder()`，index.html:660，複用 `.video-placeholder`
-  樣式）：影片載入失敗時顯示「示範影片尚未上架」占位而非壞播放器。補影片時見「已知坑」。
-- **PWA 快取**：`sw.js` 的 `ASSETS` 陣列（sw.js:2-6）只快取 3 個檔（`/`、
-  `index.html`、`manifest.json`），音訊/圖示/影片不進 precache，靠瀏覽器一般 HTTP 快取。
+  **redesign 未動此結構**，舊進度無縫沿用。無雲端同步、無帳號——換裝置或清瀏覽器
+  資料進度就沒了，這是設計如此，不是 bug。
+- **PWA 快取**：`sw.js` 的 `ASSETS`（sw.js:2-6）只快取 3 個檔（`/`、`index.html`、
+  `manifest.json`），音訊/圖示/B 站 iframe 不進 precache。
 
 ## 高頻修改操作
 
 **改一個計數段落的次數/文案**（如「垂吊」從 320 改 350 下）：
-1. `index.html` 的 `COUNTERS` 陣列（約 641-648 行）改對應 `total`。
-2. 對應 `<div class="section" id="sec-xxx">` 區塊內三處硬編碼數字要同步改：
-   `<span>320 下</span>`（顯示文案）、`/ 320`（counter-total 文字）、
-   `onclick="tap('chuidiao', 320)"` 與 `resetCounter('chuidiao', 320)` 的參數。
-   四處數字**必須一致**，沒有單一資料源（`COUNTERS` 陣列只管進度條初始化，
-   HTML 硬編碼的數字才是實際判斷完成的依據，`tap()`/`resetCounter()` 呼叫時傳入的
-   `total` 參數優先生效）。
-3. 若改的是 SW 會快取到的檔案內容（index.html 本身），照 PWA 章節升版本號。
+1. `COUNTERS` 陣列（index.html:698-706）改對應 `total`。
+2. 該段 HTML 裡**四處硬編碼數字**同步改：`<span>320 下</span>`（副標）、
+   `/ 320`（counter-total）、`tap('chuidiao', 320)` 與 `resetCounter('chuidiao', 320)`
+   的參數、`id="status-chuidiao"` 的初始文字 `0/320`（頂部收合狀態）。
+   五處必須一致（`COUNTERS` 只管初始化，onclick 傳入的 total 才是判斷完成的依據）。
+3. 改了 index.html 內容就把 `sw.js:1` 版本號 +1（見 PWA 章節）。
 
 **加一個新的計數段落**：複製既有 `<div class="section" id="sec-xxx">` 區塊
-（如 `index.html:450-471` 的垂吊段），改 id/文案/次數，並在 `COUNTERS` 陣列
-（641-648 行，631 行起是 `LOTUS` 陣列別搞混）加一筆，且在 `init()` 的 `sections` 陣列（903 行）加入新 id
-（否則「自動展開第一個未完成段落」邏輯不會巡到它），`updateProgress()` 的
-`realTotal`（848 行，目前寫死 `7`）也要跟著調整。
+（注意 body 內是 `<div class="section-body"><div class="inner">…` 雙層結構，
+展開動畫靠外層 grid），改 id/文案/次數；`COUNTERS`（698-706）加一筆；`init()` 的
+`sections` 陣列（959 行）加 id；`updateProgress()` 的 `realTotal`（896 行，寫死 7）
+跟著調；段落序號用中文數字（`NUMS` 陣列 708 行）。
 
-**加一式蓮花動功**：在 `LOTUS` 陣列（632-638 行）加一筆 `{name, file}`，
-`buildLotusSlides()`（668-700 行）會自動生成 UI，但需準備對應 `videos/xxxN.mp4`
-放進 repo 根目錄 `videos/`（目前該目錄不存在，需新建）；同時 `.lotus-tab` 分頁按鈕
-是手寫 HTML（600-606 行附近，`onclick="lotusTab(N)"`），加式子要手動補一個 tab。
+**改蓮花生動功式名**：`LOTUS` 陣列（688-696 行，只有 `name` 欄位，`file` 欄位已移除）。
+現行七式（2026-07-13 依萬行上師體系查證改正）：觀音請聖、仙鶴展翅、**河住江翻**、
+**乾坤旋轉**、犀牛望月、荷花搖擺、立地沖天。`buildLotusSlides()`（719 行）自動生成
+UI；`.lotus-tab` 分頁按鈕是手寫 HTML（656-662 行），加式子要手動補 tab。
+
+**換示範影片**：改 index.html:646 iframe 的 `bvid=` 參數（B 站）或整個 src（YouTube
+用 `youtube.com/embed/ID`）。遵守 CLAUDE.md 媒體規則：影片一律外鏈嵌入，不進 repo。
 
 ## 牽一發動全身
 
 - **段落 id 字串**（如 `'tuna'`、`'chuidiao'`）同時出現在：HTML 的 `id="sec-xxx"`/
-  `id="body-xxx"`/`onclick` 參數、`COUNTERS` 陣列、`init()` 的 `sections` 陣列、
-  `localStorage` 存的 `state.counts`/`state.done` 的 key。改 id 名稱必須全檔案
-  一致改，任何一處漏改會讓該段落的完成判斷或展開邏輯失效。
-- `state` 的 JSON 結構（`counts`/`done`/`lotusDone`/`lotusTimers`）是唯一資料格式，
-  沒有版本遷移邏輯——若未來改結構（例如加欄位），舊使用者 localStorage 裡的舊格式
-  會被 `JSON.parse(... || '{}')` 讀入後靠 `if (!state.xxx) state.xxx = {}` 補預設值
-  （651-655 行），新增欄位需照這個模式補，否則舊使用者會報錯。
+  `id="body-xxx"`/`id="status-xxx"`/onclick 參數、`COUNTERS` 陣列、`init()` 的
+  `sections` 陣列、`localStorage` 的 key。改 id 必須全檔一致改。
+- `state` 的 JSON 結構是唯一資料格式，沒有版本遷移邏輯——新增欄位要照
+  index.html:711-714 的 `if (!state.xxx) state.xxx = {}` 模式補預設值，否則老用戶報錯。
+- 頂欄環形進度（SVG，周長 97.4 寫死在 `updateProgress()` 898 行附近）與 `progress-text`
+  綁定 `realTotal`；動 realTotal 不用動周長。
 
 ## PWA 相關（Service Worker 快取版本）
 
-- 版本號位置：`sw.js:1`，`const CACHE = 'xisui-v1';`。
-- **硬規則（見 `skills/pwa-pages.md` 第 16 行）：只要改了 `index.html`／
-  `manifest.json` 的內容，必須把 `sw.js:1` 的版本號往上升一位（v1→v2），
-  否則已安裝 PWA 的使用者會因 cache-first 策略永遠看到舊版本，直到快取自然失效。**
-  升版本會觸發 `activate` 事件（sw.js:13-18）清掉舊版快取。
-- SW 註冊路徑是 `index.html:917` 的 `navigator.serviceWorker.register('sw.js')`
-  ——**相對路徑**（2026-07-13 修正；原本寫死 `/xisui/sw.js`，在
-  `/skills-github-pages/` 子路徑部署下是 404，離線模式從未生效過）。
-  `sw.js` 內 `ASSETS` 與 `manifest.json:5` 的 `start_url` 仍用
-  `/skills-github-pages/...` 絕對路徑，與部署位置一致。
+- 版本號位置：`sw.js:1`，`const CACHE = 'xisui-v3';`。
+- **硬規則（見 `skills/pwa-pages.md`）：改了 `index.html`／`manifest.json` 內容就把
+  版本號 +1（v3→v4），否則已安裝 PWA 的使用者因 cache-first 永遠看到舊版。**
+- SW 註冊：index.html:973，相對路徑 `register('sw.js').catch(()=>{})`（2026-07-13 修正，
+  原絕對路徑 `/xisui/sw.js` 在子路徑部署下 404，離線模式從未生效過；修復上線後
+  老用戶首次訪問才會真正安裝 SW）。
 
 ## 已知坑
 
-- ~~SW 註冊路徑錯誤~~ **已於 2026-07-13 修復**（改相對路徑 `'sw.js'`，CACHE 升 v2）。
-  該修復意味著老用戶瀏覽器裡從來沒有註冊成功過 SW，修復上線後首次訪問才會真正安裝。
-- **蓮花動功影片仍然缺失（已降級，未補片）**：`videos/lotus1.mp4`~`lotus7.mp4` 不存在，
-  2026-07-13 起載入失敗會顯示占位提示（不再是壞播放器），計時器照常可用。將來補影片時
-  遵守 CLAUDE.md「媒體檔案規則」——上傳 YouTube（不公開）用 iframe 嵌入替換整個
-  `<video>` 標籤，不要把 mp4 放進 repo；同時移除 `showVideoPlaceholder` 降級即可。
-- `resetAll()`（854-861 行）會清空全部 `localStorage` 進度且無法復原（`confirm()`
-  後直接覆蓋），沒有雲端備份，這是已知的資料風險設計，不是 bug。
+- B 站 iframe 在無網路時顯示空白（SW 不快取跨域 iframe）——離線只能用計數/計時功能，
+  屬預期行為。
+- `resetAll()`（916 行附近）清空全部進度且無法復原（`confirm()` 後直接覆蓋），
+  無雲端備份，是已知的資料風險設計，不是 bug。
+- 沙盒/本地 `file://` 打開時 SW 註冊必失敗（已 `.catch` 靜默），Playwright 測試時
+  這不算錯誤。

@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#1a1a2e">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>洗髓功法</title>
@@ -12,378 +12,418 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --gold: #c9a84c;
-    --gold-light: #e8c97a;
-    --dark: #0d0d1a;
-    --dark2: #1a1a2e;
-    --dark3: #16213e;
-    --text: #e8e0d0;
-    --text-dim: #a09080;
-    --red: #c0392b;
-    --green: #27ae60;
+    --bg: #0b0e14;
+    --card: #131826;
+    --card2: #1a2133;
+    --line: #232c42;
+    --gold: #d2ab66;
+    --gold-soft: #e8d3a4;
+    --gold-dim: rgba(210,171,102,0.35);
+    --text: #ece4d2;
+    --dim: #938b77;
+    --green: #5fb586;
+    --red: #c96a5e;
+    --serif: 'Noto Serif TC', 'Songti TC', 'STSong', 'SimSun', serif;
   }
 
+  html { -webkit-text-size-adjust: 100%; }
+
   body {
-    background: var(--dark);
+    background:
+      radial-gradient(1200px 500px at 50% -10%, #141b2e 0%, transparent 60%),
+      var(--bg);
     color: var(--text);
-    font-family: 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
+    font-family: 'PingFang TC', 'PingFang SC', 'Noto Sans CJK TC', sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* ── Header ── */
   header {
-    background: linear-gradient(135deg, var(--dark2), var(--dark3));
-    border-bottom: 1px solid var(--gold);
-    padding: 16px 20px;
+    padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
     text-align: center;
     position: sticky;
     top: 0;
     z-index: 100;
-  }
-  header h1 {
-    font-size: 1.5rem;
-    color: var(--gold);
-    letter-spacing: 0.3em;
-    text-shadow: 0 0 20px rgba(201,168,76,0.4);
-  }
-  header p {
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    margin-top: 4px;
-    letter-spacing: 0.1em;
-  }
-
-  /* ── Progress Bar ── */
-  .overall-progress {
-    background: var(--dark2);
-    padding: 10px 20px;
-    border-bottom: 1px solid #333;
-  }
-  .progress-bar {
-    background: #333;
-    border-radius: 10px;
-    height: 6px;
-    overflow: hidden;
-  }
-  .progress-fill {
-    background: linear-gradient(90deg, var(--gold), var(--gold-light));
-    height: 100%;
-    width: 0%;
-    transition: width 0.5s ease;
-    border-radius: 10px;
-  }
-  .progress-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    margin-bottom: 6px;
-  }
-
-  /* ── Sections ── */
-  .section {
-    margin: 16px;
-    background: var(--dark2);
-    border-radius: 16px;
-    overflow: hidden;
-    border: 1px solid #2a2a4a;
-    transition: border-color 0.3s;
-  }
-  .section.active { border-color: var(--gold); }
-  .section.done { border-color: var(--green); opacity: 0.7; }
-
-  .section-header {
-    padding: 16px 20px;
+    background: rgba(11,14,20,0.85);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
+  }
+  .header-titles { text-align: left; }
+  header h1 {
+    font-family: var(--serif);
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.35em;
+    text-shadow: 0 0 24px var(--gold-dim);
+    white-space: nowrap;
+  }
+  header .sub {
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-top: 3px;
+    letter-spacing: 0.15em;
+  }
+
+  /* progress ring */
+  .ring-wrap {
+    position: relative;
+    width: 52px; height: 52px;
+    flex-shrink: 0;
+  }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--line); stroke-width: 3.5; }
+  .ring-fg {
+    fill: none;
+    stroke: var(--gold);
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-dasharray: 97.4;
+    stroke-dashoffset: 97.4;
+    transition: stroke-dashoffset 0.6s ease;
+  }
+  .ring-wrap.all-done .ring-fg { stroke: var(--green); }
+  .ring-text {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.66rem;
+    color: var(--dim);
+    letter-spacing: 0;
+  }
+  .ring-wrap.all-done .ring-text { color: var(--green); }
+
+  /* ── Sections ── */
+  main { padding: 14px 14px 0; max-width: 560px; margin: 0 auto; }
+
+  .section {
+    margin-bottom: 12px;
+    background: linear-gradient(180deg, var(--card2), var(--card));
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    transition: border-color 0.3s, opacity 0.3s;
+    overflow: hidden;
+  }
+  .section.open { border-color: var(--gold-dim); }
+  .section.done { border-color: rgba(95,181,134,0.4); opacity: 0.65; }
+
+  .section-header {
+    padding: 15px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
   .section-num {
-    width: 36px; height: 36px;
+    width: 38px; height: 38px;
     border-radius: 50%;
-    background: var(--dark3);
-    border: 1px solid var(--gold);
+    background: rgba(210,171,102,0.08);
+    border: 1px solid var(--gold-dim);
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.85rem;
+    font-family: var(--serif);
+    font-size: 0.9rem;
     color: var(--gold);
     flex-shrink: 0;
   }
   .section.done .section-num {
     background: var(--green);
     border-color: var(--green);
-    color: white;
+    color: #0b0e14;
+    font-weight: 700;
   }
-  .section-title { flex: 1; }
-  .section-title h2 { font-size: 1.1rem; color: var(--text); }
-  .section-title span { font-size: 0.75rem; color: var(--text-dim); }
-  .section-chevron { color: var(--text-dim); font-size: 1.2rem; transition: transform 0.3s; }
+  .section-title { flex: 1; min-width: 0; }
+  .section-title h2 {
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.12em;
+  }
+  .section-title span { font-size: 0.72rem; color: var(--dim); letter-spacing: 0.05em; }
+  .sec-status {
+    font-size: 0.78rem;
+    color: var(--dim);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .section.done .sec-status { color: var(--green); }
+  .section-chevron {
+    color: var(--dim);
+    font-size: 1.1rem;
+    transition: transform 0.3s;
+    flex-shrink: 0;
+  }
   .section.open .section-chevron { transform: rotate(90deg); }
 
-  .section-body { display: none; padding: 0 20px 20px; }
-  .section.open .section-body { display: block; }
+  .section-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.35s ease;
+  }
+  .section.open .section-body { grid-template-rows: 1fr; }
+  .section-body > .inner { overflow: hidden; }
+  .section.open .section-body > .inner { padding: 0 18px 20px; }
 
   /* ── Counter ── */
-  .counter-wrap {
-    text-align: center;
-    padding: 10px 0;
-  }
+  .counter-wrap { text-align: center; padding: 6px 0 0; }
   .counter-display {
-    font-size: 5rem;
-    font-weight: 300;
-    color: var(--gold);
+    font-size: 4.6rem;
+    font-weight: 200;
+    color: var(--gold-soft);
     line-height: 1;
     letter-spacing: -2px;
-    text-shadow: 0 0 30px rgba(201,168,76,0.3);
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 34px var(--gold-dim);
   }
   .counter-display .counter-total {
-    font-size: 1.5rem;
-    color: var(--text-dim);
+    font-size: 1.4rem;
+    color: var(--dim);
     font-weight: 300;
+    letter-spacing: 0;
   }
-  .counter-progress {
-    margin: 12px auto;
-    max-width: 280px;
+  .counter-progress { margin: 14px auto 0; max-width: 280px; }
+  .progress-bar {
+    background: var(--line);
+    border-radius: 10px;
+    height: 5px;
+    overflow: hidden;
   }
+  .progress-fill {
+    background: linear-gradient(90deg, var(--gold), var(--gold-soft));
+    height: 100%;
+    width: 0%;
+    transition: width 0.4s ease;
+    border-radius: 10px;
+  }
+
   .counter-btn-row {
     display: flex;
     gap: 12px;
     justify-content: center;
-    margin-top: 16px;
+    margin-top: 14px;
   }
   .btn {
     padding: 12px 24px;
     border-radius: 50px;
     border: none;
-    font-size: 1rem;
+    font-size: 0.95rem;
     cursor: pointer;
     font-family: inherit;
-    transition: all 0.15s;
+    transition: transform 0.15s, opacity 0.15s;
     -webkit-tap-highlight-color: transparent;
   }
   .btn:active { transform: scale(0.93); }
-  .btn-primary {
-    background: var(--gold);
-    color: var(--dark);
-    font-weight: 600;
-    padding: 14px 36px;
-    font-size: 1.1rem;
-  }
   .btn-secondary {
-    background: #2a2a4a;
-    color: var(--text-dim);
-    border: 1px solid #3a3a5a;
+    background: var(--card2);
+    color: var(--text);
+    border: 1px solid var(--line);
   }
   .btn-danger {
     background: transparent;
     color: var(--red);
-    border: 1px solid var(--red);
-    font-size: 0.85rem;
-    padding: 8px 16px;
+    border: 1px solid rgba(201,106,94,0.5);
+    font-size: 0.82rem;
+    padding: 9px 18px;
   }
   .btn-success {
     background: var(--green);
-    color: white;
-    font-weight: 600;
+    color: #0b0e14;
+    font-weight: 700;
   }
 
   /* big tap button */
   .tap-btn {
-    width: 160px; height: 160px;
+    width: 158px; height: 158px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 65%, #a8823f);
     border: none;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: 16px auto;
-    box-shadow: 0 0 30px rgba(201,168,76,0.3);
+    margin: 18px auto 0;
+    box-shadow: 0 6px 34px var(--gold-dim), inset 0 1px 0 rgba(255,255,255,0.35);
     -webkit-tap-highlight-color: transparent;
     transition: transform 0.1s, box-shadow 0.1s;
   }
   .tap-btn:active {
-    transform: scale(0.9);
-    box-shadow: 0 0 10px rgba(201,168,76,0.1);
+    transform: scale(0.92);
+    box-shadow: 0 2px 12px rgba(210,171,102,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
   }
-  .tap-btn span:first-child { font-size: 2.5rem; }
-  .tap-btn span:last-child { font-size: 0.75rem; color: var(--dark); font-weight: 600; margin-top: 4px; }
+  .tap-btn span:first-child { font-size: 2.4rem; }
+  .tap-btn span:last-child {
+    font-size: 0.72rem;
+    color: #33270f;
+    font-weight: 700;
+    margin-top: 4px;
+    letter-spacing: 0.2em;
+  }
 
-  /* ── Audio Player ── */
+  /* ── Audio ── */
   .audio-wrap {
-    background: var(--dark3);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 16px;
+    background: rgba(11,14,20,0.5);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 6px;
   }
   .audio-wrap p {
-    font-size: 0.8rem;
-    color: var(--text-dim);
+    font-size: 0.78rem;
+    color: var(--dim);
     margin-bottom: 8px;
     text-align: center;
+    letter-spacing: 0.1em;
   }
-  .audio-wrap audio {
-    width: 100%;
-    accent-color: var(--gold);
-  }
-  .audio-placeholder {
-    border: 2px dashed #3a3a5a;
-    border-radius: 10px;
-    padding: 20px;
-    text-align: center;
-    color: var(--text-dim);
-    font-size: 0.8rem;
-  }
-  .audio-placeholder .placeholder-icon { font-size: 2rem; margin-bottom: 8px; }
+  .audio-wrap audio { width: 100%; accent-color: var(--gold); }
 
-  /* ── Video Player ── */
+  /* ── Lotus video ── */
   .video-wrap {
     background: #000;
-    border-radius: 12px;
+    border-radius: 14px;
     overflow: hidden;
-    margin-bottom: 16px;
-    position: relative;
+    margin-bottom: 14px;
     aspect-ratio: 16/9;
+    border: 1px solid var(--line);
   }
-  .video-wrap video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-  .video-placeholder {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--dark3);
-    color: var(--text-dim);
-    border: 2px dashed #3a3a5a;
-    border-radius: 12px;
-  }
-  .video-placeholder .placeholder-icon { font-size: 3rem; margin-bottom: 8px; }
-  .video-placeholder p { font-size: 0.8rem; text-align: center; padding: 0 20px; }
-
-  /* ── Divider ── */
-  .divider {
-    border: none;
-    border-top: 1px solid #2a2a4a;
-    margin: 16px 0;
-  }
-
-  /* ── Completion ── */
-  .completion-banner {
-    display: none;
-    margin: 16px;
-    background: linear-gradient(135deg, #1a3a1a, #0d1f0d);
-    border: 1px solid var(--green);
-    border-radius: 16px;
-    padding: 24px;
+  .video-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .video-note {
+    font-size: 0.7rem;
+    color: var(--dim);
     text-align: center;
+    margin: -6px 0 12px;
+    letter-spacing: 0.05em;
   }
-  .completion-banner.show { display: block; }
-  .completion-banner .icon { font-size: 3rem; }
-  .completion-banner h2 { color: var(--green); margin: 12px 0 8px; font-size: 1.3rem; letter-spacing: 0.2em; }
-  .completion-banner p { color: var(--text-dim); font-size: 0.9rem; }
 
-  /* ── Reset all ── */
-  .reset-all-wrap { text-align: center; padding: 8px 16px 32px; }
-
-  /* ── Lotus section ── */
+  /* ── Lotus tabs ── */
   .lotus-nav {
     display: flex;
     gap: 8px;
     overflow-x: auto;
-    padding: 0 0 8px;
+    padding: 2px 0 10px;
     scrollbar-width: none;
   }
   .lotus-nav::-webkit-scrollbar { display: none; }
   .lotus-tab {
     flex-shrink: 0;
-    padding: 6px 14px;
+    padding: 7px 14px;
     border-radius: 20px;
-    background: var(--dark3);
-    border: 1px solid #3a3a5a;
-    color: var(--text-dim);
-    font-size: 0.8rem;
+    background: rgba(11,14,20,0.5);
+    border: 1px solid var(--line);
+    color: var(--dim);
+    font-size: 0.78rem;
     cursor: pointer;
     white-space: nowrap;
     -webkit-tap-highlight-color: transparent;
+    transition: background 0.2s, color 0.2s;
   }
   .lotus-tab.active {
     background: var(--gold);
     border-color: var(--gold);
-    color: var(--dark);
-    font-weight: 600;
+    color: #0b0e14;
+    font-weight: 700;
   }
-  .lotus-tab.done-tab {
-    border-color: var(--green);
-    color: var(--green);
-  }
+  .lotus-tab.done-tab { border-color: rgba(95,181,134,0.5); color: var(--green); }
+  .lotus-tab.done-tab.active { background: var(--green); border-color: var(--green); color: #0b0e14; }
+
   .lotus-slide { display: none; }
   .lotus-slide.active { display: block; }
   .lotus-title {
     text-align: center;
-    margin: 12px 0;
+    margin: 10px 0 2px;
     color: var(--gold);
-    font-size: 1.1rem;
-    letter-spacing: 0.2em;
+    font-family: var(--serif);
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.25em;
   }
-  .lotus-btns {
-    display: flex;
-    gap: 10px;
-    margin-top: 12px;
-  }
+  .lotus-btns { display: flex; gap: 10px; margin-top: 12px; }
   .lotus-btns button { flex: 1; }
 
   /* Timer */
   .timer-display {
-    font-size: 3.5rem;
-    color: var(--gold);
+    font-size: 3.4rem;
+    color: var(--gold-soft);
     text-align: center;
-    font-weight: 300;
-    letter-spacing: 4px;
-    margin: 12px 0;
-    text-shadow: 0 0 20px rgba(201,168,76,0.3);
+    font-weight: 200;
+    letter-spacing: 5px;
+    margin: 10px 0 4px;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 24px var(--gold-dim);
   }
-  .timer-display.running { color: var(--gold-light); }
+  .timer-display.running { color: var(--gold); }
   .timer-display.done-timer { color: var(--green); }
+
+  /* ── Completion ── */
+  .completion-banner {
+    display: none;
+    margin: 4px 0 12px;
+    background:
+      radial-gradient(400px 160px at 50% 0%, rgba(95,181,134,0.18), transparent 70%),
+      linear-gradient(180deg, var(--card2), var(--card));
+    border: 1px solid rgba(95,181,134,0.45);
+    border-radius: 18px;
+    padding: 26px 20px;
+    text-align: center;
+  }
+  .completion-banner.show { display: block; animation: rise 0.5s ease; }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .completion-banner .icon { font-size: 2.8rem; }
+  .completion-banner h2 {
+    font-family: var(--serif);
+    color: var(--green);
+    margin: 12px 0 6px;
+    font-size: 1.25rem;
+    letter-spacing: 0.3em;
+  }
+  .completion-banner p { color: var(--dim); font-size: 0.85rem; letter-spacing: 0.15em; }
+
+  .reset-all-wrap { text-align: center; padding: 10px 16px 36px; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>洗　髓　功　法</h1>
-  <p>每日修練　持之以恆</p>
+  <div class="header-titles">
+    <h1>洗髓功法</h1>
+    <div class="sub" id="today-sub">每日修練　持之以恆</div>
+  </div>
+  <div class="ring-wrap" id="ring-wrap">
+    <svg width="52" height="52" viewBox="0 0 38 38">
+      <circle class="ring-bg" cx="19" cy="19" r="15.5"></circle>
+      <circle class="ring-fg" id="ring-fg" cx="19" cy="19" r="15.5"></circle>
+    </svg>
+    <div class="ring-text" id="progress-text">0/7</div>
+  </div>
 </header>
 
-<div class="overall-progress">
-  <div class="progress-label">
-    <span>今日進度</span>
-    <span id="progress-text">0 / 9</span>
-  </div>
-  <div class="progress-bar">
-    <div class="progress-fill" id="progress-fill"></div>
-  </div>
-</div>
+<main>
 
 <!-- ══════════════════════════════════════
      1. 吐納
 ════════════════════════════════════════ -->
 <div class="section" id="sec-tuna" data-index="0">
   <div class="section-header" onclick="toggleSection('tuna')">
-    <div class="section-num" id="num-tuna">1</div>
+    <div class="section-num" id="num-tuna">一</div>
     <div class="section-title">
       <h2>吐　納</h2>
       <span>調息 160 次</span>
     </div>
+    <div class="sec-status" id="status-tuna">0/160</div>
     <div class="section-chevron">›</div>
   </div>
-  <div class="section-body" id="body-tuna">
-    <!-- Audio slot -->
+  <div class="section-body" id="body-tuna"><div class="inner">
     <div class="audio-wrap">
       <p>🔊 吐納功法音頻引導</p>
       <audio controls src="../audio/tuna.mp3"></audio>
@@ -407,7 +447,7 @@
         <button class="btn btn-success" id="tuna-done-btn" onclick="markDone('tuna')" style="display:none">完成 ✓</button>
       </div>
     </div>
-  </div>
+  </div></div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -415,14 +455,15 @@
 ════════════════════════════════════════ -->
 <div class="section" id="sec-shougong" data-index="1">
   <div class="section-header" onclick="toggleSection('shougong')">
-    <div class="section-num" id="num-shougong">2</div>
+    <div class="section-num" id="num-shougong">二</div>
     <div class="section-title">
       <h2>收　功</h2>
       <span>5 次</span>
     </div>
+    <div class="sec-status" id="status-shougong">0/5</div>
     <div class="section-chevron">›</div>
   </div>
-  <div class="section-body" id="body-shougong">
+  <div class="section-body" id="body-shougong"><div class="inner">
     <div class="counter-wrap">
       <div class="counter-display">
         <span id="shougong-count">0</span><span class="counter-total"> / 5</span>
@@ -441,7 +482,7 @@
         <button class="btn btn-success" id="shougong-done-btn" onclick="markDone('shougong')" style="display:none">完成 ✓</button>
       </div>
     </div>
-  </div>
+  </div></div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -449,14 +490,15 @@
 ════════════════════════════════════════ -->
 <div class="section" id="sec-chuidiao" data-index="2">
   <div class="section-header" onclick="toggleSection('chuidiao')">
-    <div class="section-num" id="num-chuidiao">3</div>
+    <div class="section-num" id="num-chuidiao">三</div>
     <div class="section-title">
       <h2>垂　吊</h2>
       <span>320 下</span>
     </div>
+    <div class="sec-status" id="status-chuidiao">0/320</div>
     <div class="section-chevron">›</div>
   </div>
-  <div class="section-body" id="body-chuidiao">
+  <div class="section-body" id="body-chuidiao"><div class="inner">
     <div class="counter-wrap">
       <div class="counter-display">
         <span id="chuidiao-count">0</span><span class="counter-total"> / 320</span>
@@ -475,7 +517,7 @@
         <button class="btn btn-success" id="chuidiao-done-btn" onclick="markDone('chuidiao')" style="display:none">完成 ✓</button>
       </div>
     </div>
-  </div>
+  </div></div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -483,14 +525,15 @@
 ════════════════════════════════════════ -->
 <div class="section" id="sec-shuai" data-index="3">
   <div class="section-header" onclick="toggleSection('shuai')">
-    <div class="section-num" id="num-shuai">4</div>
+    <div class="section-num" id="num-shuai">四</div>
     <div class="section-title">
       <h2>甩　鞭</h2>
       <span>90 下</span>
     </div>
+    <div class="sec-status" id="status-shuai">0/90</div>
     <div class="section-chevron">›</div>
   </div>
-  <div class="section-body" id="body-shuai">
+  <div class="section-body" id="body-shuai"><div class="inner">
     <div class="counter-wrap">
       <div class="counter-display">
         <span id="shuai-count">0</span><span class="counter-total"> / 90</span>
@@ -509,7 +552,7 @@
         <button class="btn btn-success" id="shuai-done-btn" onclick="markDone('shuai')" style="display:none">完成 ✓</button>
       </div>
     </div>
-  </div>
+  </div></div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -517,14 +560,15 @@
 ════════════════════════════════════════ -->
 <div class="section" id="sec-huiyin" data-index="4">
   <div class="section-header" onclick="toggleSection('huiyin')">
-    <div class="section-num" id="num-huiyin">5</div>
+    <div class="section-num" id="num-huiyin">五</div>
     <div class="section-title">
       <h2>會陰拍打</h2>
       <span>30 下</span>
     </div>
+    <div class="sec-status" id="status-huiyin">0/30</div>
     <div class="section-chevron">›</div>
   </div>
-  <div class="section-body" id="body-huiyin">
+  <div class="section-body" id="body-huiyin"><div class="inner">
     <div class="counter-wrap">
       <div class="counter-display">
         <span id="huiyin-count">0</span><span class="counter-total"> / 30</span>
@@ -543,7 +587,7 @@
         <button class="btn btn-success" id="huiyin-done-btn" onclick="markDone('huiyin')" style="display:none">完成 ✓</button>
       </div>
     </div>
-  </div>
+  </div></div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -551,14 +595,15 @@
 ════════════════════════════════════════ -->
 <div class="section" id="sec-fugu" data-index="5">
   <div class="section-header" onclick="toggleSection('fugu')">
-    <div class="section-num" id="num-fugu">6</div>
+    <div class="section-num" id="num-fugu">六</div>
     <div class="section-title">
       <h2>腹股溝拍打</h2>
       <span>30 下</span>
     </div>
+    <div class="sec-status" id="status-fugu">0/30</div>
     <div class="section-chevron">›</div>
   </div>
-  <div class="section-body" id="body-fugu">
+  <div class="section-body" id="body-fugu"><div class="inner">
     <div class="counter-wrap">
       <div class="counter-display">
         <span id="fugu-count">0</span><span class="counter-total"> / 30</span>
@@ -577,22 +622,34 @@
         <button class="btn btn-success" id="fugu-done-btn" onclick="markDone('fugu')" style="display:none">完成 ✓</button>
       </div>
     </div>
-  </div>
+  </div></div>
 </div>
 
 <!-- ══════════════════════════════════════
-     7. 蓮花動功
+     7. 蓮花生動功
 ════════════════════════════════════════ -->
 <div class="section" id="sec-lotus" data-index="6">
   <div class="section-header" onclick="toggleSection('lotus')">
-    <div class="section-num" id="num-lotus">7</div>
+    <div class="section-num" id="num-lotus">七</div>
     <div class="section-title">
-      <h2>蓮花動功</h2>
+      <h2>蓮花生動功</h2>
       <span>七式</span>
     </div>
+    <div class="sec-status" id="status-lotus">0/7</div>
     <div class="section-chevron">›</div>
   </div>
-  <div class="section-body" id="body-lotus">
+  <div class="section-body" id="body-lotus"><div class="inner">
+
+    <!-- 全套示範影片（B 站，萬行上師蓮花生動功，11:54），七式共用 -->
+    <div class="video-wrap">
+      <iframe
+        src="https://player.bilibili.com/player.html?bvid=BV19J411N7HC&p=1&autoplay=0&danmaku=0&high_quality=1"
+        allowfullscreen
+        scrolling="no"
+        loading="lazy"
+        title="蓮花生動功全套示範"></iframe>
+    </div>
+    <div class="video-note">全套示範影片 · 練到哪一式自行拖動進度</div>
 
     <!-- Tab nav -->
     <div class="lotus-nav" id="lotus-nav">
@@ -606,11 +663,9 @@
     </div>
 
     <!-- Slides -->
-    <div id="lotus-slides">
-      <!-- Slide template repeated 7 times -->
-    </div>
+    <div id="lotus-slides"></div>
 
-  </div>
+  </div></div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -626,16 +681,18 @@
   <button class="btn btn-danger" onclick="resetAll()">重置全部</button>
 </div>
 
+</main>
+
 <script>
 // ── Data ──────────────────────────────────────────────────
 const LOTUS = [
-  { name: '觀音請聖', file: 'lotus1' },
-  { name: '仙鶴展翅', file: 'lotus2' },
-  { name: '合住江帆', file: 'lotus3' },
-  { name: '前坤旋轉', file: 'lotus4' },
-  { name: '犀牛望月', file: 'lotus5' },
-  { name: '荷花搖擺', file: 'lotus6' },
-  { name: '立地沖天', file: 'lotus7' },
+  { name: '觀音請聖' },
+  { name: '仙鶴展翅' },
+  { name: '河住江翻' },
+  { name: '乾坤旋轉' },
+  { name: '犀牛望月' },
+  { name: '荷花搖擺' },
+  { name: '立地沖天' },
 ];
 
 const COUNTERS = [
@@ -647,6 +704,8 @@ const COUNTERS = [
   { id: 'fugu', total: 30 },
 ];
 
+const NUMS = ['一','二','三','四','五','六','七'];
+
 // ── State ─────────────────────────────────────────────────
 let state = JSON.parse(localStorage.getItem('xisui_state') || '{}');
 if (!state.counts) state.counts = {};
@@ -655,14 +714,6 @@ if (!state.lotusDone) state.lotusDone = {};
 if (!state.lotusTimers) state.lotusTimers = {};
 
 let timers = {}; // active interval handles per lotus index
-
-// 示範影片尚未提供（videos/ 目錄不存在）時的優雅降級，避免顯示壞掉的播放器
-function showVideoPlaceholder(video) {
-  video.parentElement.innerHTML =
-    '<div class="video-placeholder" style="position:static;aspect-ratio:16/9;">' +
-    '<div class="placeholder-icon">🧘</div>' +
-    '<p>示範影片尚未上架<br>請先依式名與計時器自行練習</p></div>';
-}
 
 // ── Build Lotus Slides ────────────────────────────────────
 function buildLotusSlides() {
@@ -677,11 +728,7 @@ function buildLotusSlides() {
     const savedSec = state.lotusTimers[i] || 0;
 
     slide.innerHTML = `
-      <div class="lotus-title">第${['一','二','三','四','五','六','七'][i]}式　${item.name}</div>
-
-      <div class="video-wrap">
-        <video controls playsinline src="../videos/${item.file}.mp4" onerror="showVideoPlaceholder(this)"></video>
-      </div>
+      <div class="lotus-title">第${NUMS[i]}式　${item.name}</div>
 
       <div class="timer-display ${isDone ? 'done-timer' : ''}" id="ltimer-${i}">
         ${fmtTime(savedSec)}
@@ -702,9 +749,7 @@ function buildLotusSlides() {
 // ── Toggle Section ────────────────────────────────────────
 function toggleSection(id) {
   const sec = document.getElementById('sec-' + id);
-  const body = document.getElementById('body-' + id);
   const isOpen = sec.classList.contains('open');
-  // close all
   document.querySelectorAll('.section').forEach(s => s.classList.remove('open'));
   if (!isOpen) sec.classList.add('open');
 }
@@ -717,7 +762,6 @@ function tap(id, total) {
   state.counts[id] = c;
   saveState();
   updateCounter(id, total);
-  // vibrate
   if (navigator.vibrate) navigator.vibrate(20);
 }
 
@@ -726,20 +770,19 @@ function updateCounter(id, total) {
   document.getElementById(id + '-count').textContent = c;
   const pct = Math.min(100, c / total * 100);
   document.getElementById(id + '-bar').style.width = pct + '%';
-  const doneBtn = document.getElementById(id + '-done-btn');
-  if (c >= total) doneBtn.style.display = '';
-  else doneBtn.style.display = 'none';
+  document.getElementById(id + '-done-btn').style.display = c >= total ? '' : 'none';
+  document.getElementById('status-' + id).textContent =
+    state.done[id] ? '✓' : c + '/' + total;
 }
 
 function resetCounter(id, total) {
   state.counts[id] = 0;
   state.done[id] = false;
   saveState();
-  updateCounter(id, total);
   const sec = document.getElementById('sec-' + id);
   sec.classList.remove('done');
-  const num = document.getElementById('num-' + id);
-  num.innerHTML = sec.dataset.index * 1 + 1;
+  document.getElementById('num-' + id).textContent = NUMS[sec.dataset.index * 1];
+  updateCounter(id, total);
   updateProgress();
 }
 
@@ -750,6 +793,7 @@ function markDone(id) {
   sec.classList.add('done');
   sec.classList.remove('open');
   document.getElementById('num-' + id).textContent = '✓';
+  document.getElementById('status-' + id).textContent = '✓';
   updateProgress();
 }
 
@@ -807,6 +851,7 @@ function lotusTimerReset(i) {
   const doneBtn = document.getElementById('lbtn-done-' + i);
   if (doneBtn) doneBtn.style.display = 'none';
   document.getElementById('ltab-' + i).classList.remove('done-tab');
+  updateLotusStatus();
   updateProgress();
 }
 
@@ -819,7 +864,6 @@ function lotusMarkDone(i) {
   document.getElementById('ltab-' + i).classList.add('done-tab');
   if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
 
-  // check all lotus done
   const allLotus = LOTUS.every((_, idx) => state.lotusDone[idx]);
   if (allLotus) {
     state.done['lotus'] = true;
@@ -829,6 +873,7 @@ function lotusMarkDone(i) {
     sec.classList.remove('open');
     document.getElementById('num-lotus').textContent = '✓';
   }
+  updateLotusStatus();
   updateProgress();
 
   // auto advance
@@ -837,18 +882,23 @@ function lotusMarkDone(i) {
   }
 }
 
+function updateLotusStatus() {
+  const n = LOTUS.filter((_, idx) => state.lotusDone[idx]).length;
+  document.getElementById('status-lotus').textContent =
+    state.done['lotus'] ? '✓' : n + '/7';
+}
+
 // ── Progress ──────────────────────────────────────────────
 function updateProgress() {
   let done = 0;
   COUNTERS.forEach(c => { if (state.done[c.id]) done++; });
   if (state.done['lotus']) done++;
-  // also partial lotus counts toward showing section done
-  const total = 9; // 6 counters + lotus section + buffer = use 9 shown steps but track by 7+1
-  // Actually track: 6 counter sections + lotus (counts as 1 when all 7 done)
-  const realTotal = 7;
-  const pct = Math.min(100, done / realTotal * 100);
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-text').textContent = done + ' / ' + realTotal;
+  const realTotal = 7; // 6 個計數段落 + 蓮花生動功（七式全完成算 1）
+  const pct = Math.min(1, done / realTotal);
+  // 環形進度：周長 2π×15.5 ≈ 97.4
+  document.getElementById('ring-fg').style.strokeDashoffset = 97.4 * (1 - pct);
+  document.getElementById('progress-text').textContent = done + '/' + realTotal;
+  document.getElementById('ring-wrap').classList.toggle('all-done', done >= realTotal);
 
   if (done >= realTotal) {
     document.getElementById('completion').classList.add('show');
@@ -875,6 +925,11 @@ function saveState() {
 
 // ── Init ──────────────────────────────────────────────────
 function init() {
+  // 頂欄日期
+  const d = new Date();
+  document.getElementById('today-sub').textContent =
+    (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日　每日修練　持之以恆';
+
   buildLotusSlides();
 
   COUNTERS.forEach(c => {
@@ -883,10 +938,10 @@ function init() {
       const sec = document.getElementById('sec-' + c.id);
       sec.classList.add('done');
       document.getElementById('num-' + c.id).textContent = '✓';
+      document.getElementById('status-' + c.id).textContent = '✓';
     }
   });
 
-  // Lotus tabs done state
   LOTUS.forEach((_, i) => {
     if (state.lotusDone[i]) {
       document.getElementById('ltab-' + i).classList.add('done-tab');
@@ -898,6 +953,7 @@ function init() {
     sec.classList.add('done');
     document.getElementById('num-lotus').textContent = '✓';
   }
+  updateLotusStatus();
 
   // open first incomplete section
   const sections = ['tuna','shougong','chuidiao','shuai','huiyin','fugu','lotus'];
@@ -914,7 +970,7 @@ function init() {
 init();
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 </script>
 </body>
