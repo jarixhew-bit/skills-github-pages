@@ -8,11 +8,13 @@ on:
     paths:
       - "**/*.html"
       - "tools/check-html.py"
+      - "tools/jargon-whitelist.txt"
   push:
     branches: [main]
     paths:
       - "**/*.html"
       - "tools/check-html.py"
+      - "tools/jargon-whitelist.txt"
 
 jobs:
   check:
