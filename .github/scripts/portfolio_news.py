@@ -55,21 +55,29 @@ def score(text):
 def fetch_ibkr_positions():
     """IBKR Flex Query 拉取持仓"""
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
-    # Step 1: 请求生成报告
-    r1 = requests.get(
-        f"{base}.SendRequest",
-        params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"},
-        timeout=30
-    )
-    try:
-        root1 = ET.fromstring(r1.text)
-    except ET.ParseError:
-        # 周末/维护时段 IBKR 会返回 HTML 错误页而非 XML（2026-07-12 周日实际发生过）
-        print(f"⚠️ Flex SendRequest 返回非 XML（IBKR 可能在维护），使用默认持仓：{r1.text[:120]!r}")
-        return None
-    ref   = root1.findtext("ReferenceCode")
+    # Step 1: 请求生成报告（IBKR 报表生成偶发繁忙，重试 4 次，与 trading/flex_account.py 一致；
+    # 周末/维护时段会返回 HTML 错误页而非 XML，2026-07-12 周日实际发生过，需兼容非 XML 响应）
+    ref = None
+    for attempt in range(4):
+        if attempt:
+            time.sleep(30)
+        r1 = requests.get(
+            f"{base}.SendRequest",
+            params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"},
+            timeout=30
+        )
+        try:
+            root1 = ET.fromstring(r1.text)
+        except ET.ParseError:
+            print(f"⚠️ SendRequest 第 {attempt+1} 次返回非 XML: {r1.text[:120]!r}")
+            continue
+        ref = root1.findtext("ReferenceCode")
+        if ref:
+            break
+        print(f"⚠️ SendRequest 第 {attempt+1} 次未返回 ReferenceCode:",
+              root1.findtext("ErrorCode"), root1.findtext("ErrorMessage"))
     if not ref:
-        print("⚠️ Flex Query 未返回 ReferenceCode，使用默认持仓")
+        print("⚠️ Flex Query 多次重试仍失败，使用默认持仓")
         return None
 
     # Step 2: 获取报告（最多重试 5 次）
@@ -187,6 +195,7 @@ NAME_MAP = {
     "VOO":  "标普500 ETF (VOO)",
 }
 
+STALE = False
 if ibkr:
     HOLDINGS = {
         sym: {"name": NAME_MAP.get(sym, sym), "qty": v["qty"], "cost": v["cost"]}
@@ -194,12 +203,13 @@ if ibkr:
     }
     print(f"成功拉取 IBKR 持仓: {list(HOLDINGS.keys())}")
 else:
-    # 回退到默认数据
+    # 回退到默认数据（可能非最新，仅作占位，消息里会标注）
+    STALE = True
     HOLDINGS = {
         "IBIT": {"name": "比特币 ETF (IBIT)",  "qty": 357.57, "cost": 39.08},
         "VOO":  {"name": "标普500 ETF (VOO)", "qty": 114.18, "cost": 550.46},
     }
-    print("使用默认持仓数据")
+    print("使用默认持仓数据（IBKR Flex 拉取失败）")
 
 # 1. 宏观指标
 print("拉取宏观指标...")
@@ -242,8 +252,9 @@ for ticker, info in HOLDINGS.items():
     alert = "\n⚠️ <b>单日涨跌超 3%，请关注！</b>" if abs(day_chg) >= 3 else ""
     rsi_note = " 🟢超卖" if rsi <= 30 else (" 🔴超买" if rsi >= 70 else "")
 
+    stale_note = "\n⚠️ <b>IBKR 持仓拉取失败，以下股数/成本为上次已知值，可能非最新</b>" if STALE else ""
     lines = [
-        f"📈 <b>{html.escape(info['name'])}</b>{alert}",
+        f"📈 <b>{html.escape(info['name'])}</b>{alert}{stale_note}",
         f"持仓 {info['qty']} 股 | 均成本 ${info['cost']}",
         f"当前价 <b>${price}</b> {day_icon} ({day_chg:+.2f}%)",
         f"市值 ${mv:,.0f} | 浮盈亏 <b>${pnl_usd:+,.0f}</b> ({pnl_pct:+.1f}%)",
