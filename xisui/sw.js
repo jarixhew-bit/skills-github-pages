@@ -1,4 +1,4 @@
-const CACHE = 'xisui-v3';
+const CACHE = 'xisui-v4';
 const ASSETS = [
   '/skills-github-pages/xisui/',
   '/skills-github-pages/xisui/index.html',

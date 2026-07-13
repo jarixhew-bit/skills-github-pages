@@ -43,7 +43,6 @@
   /* ── Header ── */
   header {
     padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
-    text-align: center;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -74,11 +73,7 @@
   }
 
   /* progress ring */
-  .ring-wrap {
-    position: relative;
-    width: 52px; height: 52px;
-    flex-shrink: 0;
-  }
+  .ring-wrap { position: relative; width: 52px; height: 52px; flex-shrink: 0; }
   .ring-wrap svg { transform: rotate(-90deg); }
   .ring-bg { fill: none; stroke: var(--line); stroke-width: 3.5; }
   .ring-fg {
@@ -96,7 +91,6 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 0.66rem;
     color: var(--dim);
-    letter-spacing: 0;
   }
   .ring-wrap.all-done .ring-text { color: var(--green); }
 
@@ -112,6 +106,7 @@
     overflow: hidden;
   }
   .section.open { border-color: var(--gold-dim); }
+  .section.running { border-color: var(--gold); }
   .section.done { border-color: rgba(95,181,134,0.4); opacity: 0.65; }
 
   .section-header {
@@ -154,6 +149,7 @@
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
   }
+  .section.running .sec-status { color: var(--gold); }
   .section.done .sec-status { color: var(--green); }
   .section-chevron {
     color: var(--dim);
@@ -172,55 +168,44 @@
   .section-body > .inner { overflow: hidden; }
   .section.open .section-body > .inner { padding: 0 18px 20px; }
 
-  /* ── Counter ── */
-  .counter-wrap { text-align: center; padding: 6px 0 0; }
-  .counter-display {
-    font-size: 4.6rem;
-    font-weight: 200;
+  /* ── Timer ── */
+  .timer-display {
+    font-size: 4.2rem;
     color: var(--gold-soft);
-    line-height: 1;
-    letter-spacing: -2px;
+    text-align: center;
+    font-weight: 200;
+    letter-spacing: 4px;
+    margin: 14px 0 6px;
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 34px var(--gold-dim);
+    text-shadow: 0 0 28px var(--gold-dim);
   }
-  .counter-display .counter-total {
-    font-size: 1.4rem;
+  .timer-display.running { color: var(--gold); }
+  .timer-display.done-timer { color: var(--green); }
+  .timer-hint {
+    text-align: center;
+    font-size: 0.72rem;
     color: var(--dim);
-    font-weight: 300;
-    letter-spacing: 0;
-  }
-  .counter-progress { margin: 14px auto 0; max-width: 280px; }
-  .progress-bar {
-    background: var(--line);
-    border-radius: 10px;
-    height: 5px;
-    overflow: hidden;
-  }
-  .progress-fill {
-    background: linear-gradient(90deg, var(--gold), var(--gold-soft));
-    height: 100%;
-    width: 0%;
-    transition: width 0.4s ease;
-    border-radius: 10px;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
   }
 
-  .counter-btn-row {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-top: 14px;
-  }
   .btn {
-    padding: 12px 24px;
+    padding: 13px 24px;
     border-radius: 50px;
     border: none;
-    font-size: 0.95rem;
+    font-size: 0.98rem;
     cursor: pointer;
     font-family: inherit;
     transition: transform 0.15s, opacity 0.15s;
     -webkit-tap-highlight-color: transparent;
   }
   .btn:active { transform: scale(0.93); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--gold), var(--gold-soft));
+    color: #33270f;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
   .btn-secondary {
     background: var(--card2);
     color: var(--text);
@@ -231,42 +216,21 @@
     color: var(--red);
     border: 1px solid rgba(201,106,94,0.5);
     font-size: 0.82rem;
-    padding: 9px 18px;
+    padding: 10px 18px;
   }
   .btn-success {
     background: var(--green);
     color: #0b0e14;
     font-weight: 700;
   }
-
-  /* big tap button */
-  .tap-btn {
-    width: 158px; height: 158px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 65%, #a8823f);
-    border: none;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin: 18px auto 0;
-    box-shadow: 0 6px 34px var(--gold-dim), inset 0 1px 0 rgba(255,255,255,0.35);
-    -webkit-tap-highlight-color: transparent;
-    transition: transform 0.1s, box-shadow 0.1s;
+  .timer-btns { display: flex; gap: 8px; }
+  .timer-btns .btn {
+    flex: 1;
+    padding: 13px 6px;
+    font-size: 0.9rem;
+    white-space: nowrap;
   }
-  .tap-btn:active {
-    transform: scale(0.92);
-    box-shadow: 0 2px 12px rgba(210,171,102,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
-  }
-  .tap-btn span:first-child { font-size: 2.4rem; }
-  .tap-btn span:last-child {
-    font-size: 0.72rem;
-    color: #33270f;
-    font-weight: 700;
-    margin-top: 4px;
-    letter-spacing: 0.2em;
-  }
+  .timer-btns .btn-main { flex: 1.6; }
 
   /* ── Audio ── */
   .audio-wrap {
@@ -285,12 +249,12 @@
   }
   .audio-wrap audio { width: 100%; accent-color: var(--gold); }
 
-  /* ── Lotus video ── */
+  /* ── Lotus video + name list ── */
   .video-wrap {
     background: #000;
     border-radius: 14px;
     overflow: hidden;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
     aspect-ratio: 16/9;
     border: 1px solid var(--line);
   }
@@ -299,68 +263,27 @@
     font-size: 0.7rem;
     color: var(--dim);
     text-align: center;
-    margin: -6px 0 12px;
+    margin-bottom: 12px;
     letter-spacing: 0.05em;
   }
-
-  /* ── Lotus tabs ── */
-  .lotus-nav {
+  .lotus-list {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
-    overflow-x: auto;
-    padding: 2px 0 10px;
-    scrollbar-width: none;
+    justify-content: center;
+    margin-bottom: 6px;
   }
-  .lotus-nav::-webkit-scrollbar { display: none; }
-  .lotus-tab {
-    flex-shrink: 0;
-    padding: 7px 14px;
+  .lotus-list span {
+    font-family: var(--serif);
+    font-size: 0.82rem;
+    color: var(--gold-soft);
+    letter-spacing: 0.12em;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
     border-radius: 20px;
     background: rgba(11,14,20,0.5);
-    border: 1px solid var(--line);
-    color: var(--dim);
-    font-size: 0.78rem;
-    cursor: pointer;
     white-space: nowrap;
-    -webkit-tap-highlight-color: transparent;
-    transition: background 0.2s, color 0.2s;
   }
-  .lotus-tab.active {
-    background: var(--gold);
-    border-color: var(--gold);
-    color: #0b0e14;
-    font-weight: 700;
-  }
-  .lotus-tab.done-tab { border-color: rgba(95,181,134,0.5); color: var(--green); }
-  .lotus-tab.done-tab.active { background: var(--green); border-color: var(--green); color: #0b0e14; }
-
-  .lotus-slide { display: none; }
-  .lotus-slide.active { display: block; }
-  .lotus-title {
-    text-align: center;
-    margin: 10px 0 2px;
-    color: var(--gold);
-    font-family: var(--serif);
-    font-size: 1.15rem;
-    font-weight: 600;
-    letter-spacing: 0.25em;
-  }
-  .lotus-btns { display: flex; gap: 10px; margin-top: 12px; }
-  .lotus-btns button { flex: 1; }
-
-  /* Timer */
-  .timer-display {
-    font-size: 3.4rem;
-    color: var(--gold-soft);
-    text-align: center;
-    font-weight: 200;
-    letter-spacing: 5px;
-    margin: 10px 0 4px;
-    font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 24px var(--gold-dim);
-  }
-  .timer-display.running { color: var(--gold); }
-  .timer-display.done-timer { color: var(--green); }
 
   /* ── Completion ── */
   .completion-banner {
@@ -409,344 +332,221 @@
 </header>
 
 <main>
+  <div id="sections"></div>
 
-<!-- ══════════════════════════════════════
-     1. 吐納
-════════════════════════════════════════ -->
-<div class="section" id="sec-tuna" data-index="0">
-  <div class="section-header" onclick="toggleSection('tuna')">
-    <div class="section-num" id="num-tuna">一</div>
-    <div class="section-title">
-      <h2>吐　納</h2>
-      <span>調息 160 次</span>
-    </div>
-    <div class="sec-status" id="status-tuna">0/160</div>
-    <div class="section-chevron">›</div>
+  <div class="completion-banner" id="completion">
+    <div class="icon">🏆</div>
+    <h2>今日修練完成</h2>
+    <p>功德圓滿　明日再練</p>
   </div>
-  <div class="section-body" id="body-tuna"><div class="inner">
-    <div class="audio-wrap">
-      <p>🔊 吐納功法音頻引導</p>
-      <audio controls src="../audio/tuna.mp3"></audio>
-    </div>
 
-    <div class="counter-wrap">
-      <div class="counter-display">
-        <span id="tuna-count">0</span><span class="counter-total"> / 160</span>
-      </div>
-      <div class="counter-progress">
-        <div class="progress-bar">
-          <div class="progress-fill" id="tuna-bar"></div>
-        </div>
-      </div>
-      <button class="tap-btn" onclick="tap('tuna', 160)">
-        <span>🌬️</span>
-        <span>點擊計數</span>
-      </button>
-      <div class="counter-btn-row">
-        <button class="btn btn-danger" onclick="resetCounter('tuna', 160)">重置</button>
-        <button class="btn btn-success" id="tuna-done-btn" onclick="markDone('tuna')" style="display:none">完成 ✓</button>
-      </div>
-    </div>
-  </div></div>
-</div>
-
-<!-- ══════════════════════════════════════
-     2. 收功
-════════════════════════════════════════ -->
-<div class="section" id="sec-shougong" data-index="1">
-  <div class="section-header" onclick="toggleSection('shougong')">
-    <div class="section-num" id="num-shougong">二</div>
-    <div class="section-title">
-      <h2>收　功</h2>
-      <span>5 次</span>
-    </div>
-    <div class="sec-status" id="status-shougong">0/5</div>
-    <div class="section-chevron">›</div>
+  <div class="reset-all-wrap">
+    <button class="btn btn-danger" onclick="resetAll()">重置全部</button>
   </div>
-  <div class="section-body" id="body-shougong"><div class="inner">
-    <div class="counter-wrap">
-      <div class="counter-display">
-        <span id="shougong-count">0</span><span class="counter-total"> / 5</span>
-      </div>
-      <div class="counter-progress">
-        <div class="progress-bar">
-          <div class="progress-fill" id="shougong-bar"></div>
-        </div>
-      </div>
-      <button class="tap-btn" onclick="tap('shougong', 5)">
-        <span>🙏</span>
-        <span>點擊計數</span>
-      </button>
-      <div class="counter-btn-row">
-        <button class="btn btn-danger" onclick="resetCounter('shougong', 5)">重置</button>
-        <button class="btn btn-success" id="shougong-done-btn" onclick="markDone('shougong')" style="display:none">完成 ✓</button>
-      </div>
-    </div>
-  </div></div>
-</div>
-
-<!-- ══════════════════════════════════════
-     3. 垂吊
-════════════════════════════════════════ -->
-<div class="section" id="sec-chuidiao" data-index="2">
-  <div class="section-header" onclick="toggleSection('chuidiao')">
-    <div class="section-num" id="num-chuidiao">三</div>
-    <div class="section-title">
-      <h2>垂　吊</h2>
-      <span>320 下</span>
-    </div>
-    <div class="sec-status" id="status-chuidiao">0/320</div>
-    <div class="section-chevron">›</div>
-  </div>
-  <div class="section-body" id="body-chuidiao"><div class="inner">
-    <div class="counter-wrap">
-      <div class="counter-display">
-        <span id="chuidiao-count">0</span><span class="counter-total"> / 320</span>
-      </div>
-      <div class="counter-progress">
-        <div class="progress-bar">
-          <div class="progress-fill" id="chuidiao-bar"></div>
-        </div>
-      </div>
-      <button class="tap-btn" onclick="tap('chuidiao', 320)">
-        <span>⬇️</span>
-        <span>點擊計數</span>
-      </button>
-      <div class="counter-btn-row">
-        <button class="btn btn-danger" onclick="resetCounter('chuidiao', 320)">重置</button>
-        <button class="btn btn-success" id="chuidiao-done-btn" onclick="markDone('chuidiao')" style="display:none">完成 ✓</button>
-      </div>
-    </div>
-  </div></div>
-</div>
-
-<!-- ══════════════════════════════════════
-     4. 甩鞭
-════════════════════════════════════════ -->
-<div class="section" id="sec-shuai" data-index="3">
-  <div class="section-header" onclick="toggleSection('shuai')">
-    <div class="section-num" id="num-shuai">四</div>
-    <div class="section-title">
-      <h2>甩　鞭</h2>
-      <span>90 下</span>
-    </div>
-    <div class="sec-status" id="status-shuai">0/90</div>
-    <div class="section-chevron">›</div>
-  </div>
-  <div class="section-body" id="body-shuai"><div class="inner">
-    <div class="counter-wrap">
-      <div class="counter-display">
-        <span id="shuai-count">0</span><span class="counter-total"> / 90</span>
-      </div>
-      <div class="counter-progress">
-        <div class="progress-bar">
-          <div class="progress-fill" id="shuai-bar"></div>
-        </div>
-      </div>
-      <button class="tap-btn" onclick="tap('shuai', 90)">
-        <span>💪</span>
-        <span>點擊計數</span>
-      </button>
-      <div class="counter-btn-row">
-        <button class="btn btn-danger" onclick="resetCounter('shuai', 90)">重置</button>
-        <button class="btn btn-success" id="shuai-done-btn" onclick="markDone('shuai')" style="display:none">完成 ✓</button>
-      </div>
-    </div>
-  </div></div>
-</div>
-
-<!-- ══════════════════════════════════════
-     5. 會陰拍打
-════════════════════════════════════════ -->
-<div class="section" id="sec-huiyin" data-index="4">
-  <div class="section-header" onclick="toggleSection('huiyin')">
-    <div class="section-num" id="num-huiyin">五</div>
-    <div class="section-title">
-      <h2>會陰拍打</h2>
-      <span>30 下</span>
-    </div>
-    <div class="sec-status" id="status-huiyin">0/30</div>
-    <div class="section-chevron">›</div>
-  </div>
-  <div class="section-body" id="body-huiyin"><div class="inner">
-    <div class="counter-wrap">
-      <div class="counter-display">
-        <span id="huiyin-count">0</span><span class="counter-total"> / 30</span>
-      </div>
-      <div class="counter-progress">
-        <div class="progress-bar">
-          <div class="progress-fill" id="huiyin-bar"></div>
-        </div>
-      </div>
-      <button class="tap-btn" onclick="tap('huiyin', 30)">
-        <span>👋</span>
-        <span>點擊計數</span>
-      </button>
-      <div class="counter-btn-row">
-        <button class="btn btn-danger" onclick="resetCounter('huiyin', 30)">重置</button>
-        <button class="btn btn-success" id="huiyin-done-btn" onclick="markDone('huiyin')" style="display:none">完成 ✓</button>
-      </div>
-    </div>
-  </div></div>
-</div>
-
-<!-- ══════════════════════════════════════
-     6. 腹股溝拍打
-════════════════════════════════════════ -->
-<div class="section" id="sec-fugu" data-index="5">
-  <div class="section-header" onclick="toggleSection('fugu')">
-    <div class="section-num" id="num-fugu">六</div>
-    <div class="section-title">
-      <h2>腹股溝拍打</h2>
-      <span>30 下</span>
-    </div>
-    <div class="sec-status" id="status-fugu">0/30</div>
-    <div class="section-chevron">›</div>
-  </div>
-  <div class="section-body" id="body-fugu"><div class="inner">
-    <div class="counter-wrap">
-      <div class="counter-display">
-        <span id="fugu-count">0</span><span class="counter-total"> / 30</span>
-      </div>
-      <div class="counter-progress">
-        <div class="progress-bar">
-          <div class="progress-fill" id="fugu-bar"></div>
-        </div>
-      </div>
-      <button class="tap-btn" onclick="tap('fugu', 30)">
-        <span>👋</span>
-        <span>點擊計數</span>
-      </button>
-      <div class="counter-btn-row">
-        <button class="btn btn-danger" onclick="resetCounter('fugu', 30)">重置</button>
-        <button class="btn btn-success" id="fugu-done-btn" onclick="markDone('fugu')" style="display:none">完成 ✓</button>
-      </div>
-    </div>
-  </div></div>
-</div>
-
-<!-- ══════════════════════════════════════
-     7. 蓮花生動功
-════════════════════════════════════════ -->
-<div class="section" id="sec-lotus" data-index="6">
-  <div class="section-header" onclick="toggleSection('lotus')">
-    <div class="section-num" id="num-lotus">七</div>
-    <div class="section-title">
-      <h2>蓮花生動功</h2>
-      <span>七式</span>
-    </div>
-    <div class="sec-status" id="status-lotus">0/7</div>
-    <div class="section-chevron">›</div>
-  </div>
-  <div class="section-body" id="body-lotus"><div class="inner">
-
-    <!-- 全套示範影片（B 站，萬行上師蓮花生動功，11:54），七式共用 -->
-    <div class="video-wrap">
-      <iframe
-        src="https://player.bilibili.com/player.html?bvid=BV19J411N7HC&p=1&autoplay=0&danmaku=0&high_quality=1"
-        allowfullscreen
-        scrolling="no"
-        loading="lazy"
-        title="蓮花生動功全套示範"></iframe>
-    </div>
-    <div class="video-note">全套示範影片 · 練到哪一式自行拖動進度</div>
-
-    <!-- Tab nav -->
-    <div class="lotus-nav" id="lotus-nav">
-      <div class="lotus-tab active" onclick="lotusTab(0)" id="ltab-0">第一式</div>
-      <div class="lotus-tab" onclick="lotusTab(1)" id="ltab-1">第二式</div>
-      <div class="lotus-tab" onclick="lotusTab(2)" id="ltab-2">第三式</div>
-      <div class="lotus-tab" onclick="lotusTab(3)" id="ltab-3">第四式</div>
-      <div class="lotus-tab" onclick="lotusTab(4)" id="ltab-4">第五式</div>
-      <div class="lotus-tab" onclick="lotusTab(5)" id="ltab-5">第六式</div>
-      <div class="lotus-tab" onclick="lotusTab(6)" id="ltab-6">第七式</div>
-    </div>
-
-    <!-- Slides -->
-    <div id="lotus-slides"></div>
-
-  </div></div>
-</div>
-
-<!-- ══════════════════════════════════════
-     Completion
-════════════════════════════════════════ -->
-<div class="completion-banner" id="completion">
-  <div class="icon">🏆</div>
-  <h2>今日修練完成</h2>
-  <p>功德圓滿　明日再練</p>
-</div>
-
-<div class="reset-all-wrap">
-  <button class="btn btn-danger" onclick="resetAll()">重置全部</button>
-</div>
-
 </main>
 
 <script>
 // ── Data ──────────────────────────────────────────────────
-const LOTUS = [
-  { name: '觀音請聖' },
-  { name: '仙鶴展翅' },
-  { name: '河住江翻' },
-  { name: '乾坤旋轉' },
-  { name: '犀牛望月' },
-  { name: '荷花搖擺' },
-  { name: '立地沖天' },
+// 全部段落統一為計時制（2026-07-13 使用者要求：練功時不方便點按計數）。
+// 次數目標保留為參考文案，完成與否由使用者按「完成」自行判定。
+const SECTIONS = [
+  { id: 'tuna',     name: '吐　納',     sub: '調息 160 次', audio: '../audio/tuna.mp3' },
+  { id: 'shougong', name: '收　功',     sub: '5 次' },
+  { id: 'chuidiao', name: '垂　吊',     sub: '320 下' },
+  { id: 'shuai',    name: '甩　鞭',     sub: '90 下' },
+  { id: 'huiyin',   name: '會陰拍打',   sub: '30 下' },
+  { id: 'fugu',     name: '腹股溝拍打', sub: '30 下' },
+  { id: 'lotus',    name: '蓮花生動功', sub: '七式 · 隨影片練', video: true },
 ];
 
-const COUNTERS = [
-  { id: 'tuna', total: 160 },
-  { id: 'shougong', total: 5 },
-  { id: 'chuidiao', total: 320 },
-  { id: 'shuai', total: 90 },
-  { id: 'huiyin', total: 30 },
-  { id: 'fugu', total: 30 },
-];
-
+const LOTUS_NAMES = ['觀音請聖','仙鶴展翅','河住江翻','乾坤旋轉','犀牛望月','荷花搖擺','立地沖天'];
 const NUMS = ['一','二','三','四','五','六','七'];
 
 // ── State ─────────────────────────────────────────────────
+// 舊欄位 counts/lotusDone/lotusTimers 保留讀取相容（不再寫入）；
+// secTimers 存各段累計秒數，runningSince 存計時中的起始時間戳（毫秒），
+// 用時間戳計算 elapsed——鎖屏、切後台、甚至重新整理都不會丟時間。
 let state = JSON.parse(localStorage.getItem('xisui_state') || '{}');
-if (!state.counts) state.counts = {};
 if (!state.done) state.done = {};
-if (!state.lotusDone) state.lotusDone = {};
-if (!state.lotusTimers) state.lotusTimers = {};
+if (!state.secTimers) {
+  state.secTimers = {};
+  // 從舊版蓮花七式分計時遷移：合併為蓮花段總時長
+  if (state.lotusTimers) {
+    const total = Object.values(state.lotusTimers).reduce((a, b) => a + (b || 0), 0);
+    if (total > 0) state.secTimers.lotus = total;
+  }
+}
+if (!state.runningSince) state.runningSince = {};
+saveState(); // 遷移結果立即落盤，避免舊格式殘留
 
-let timers = {}; // active interval handles per lotus index
+function saveState() {
+  localStorage.setItem('xisui_state', JSON.stringify(state));
+}
 
-// ── Build Lotus Slides ────────────────────────────────────
-function buildLotusSlides() {
-  const container = document.getElementById('lotus-slides');
+// ── Wake Lock（計時中保持螢幕常亮，失敗靜默） ──────────────
+let wakeLock = null;
+async function requestWake() {
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+function releaseWake() {
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    renderAllTimers();
+    if (Object.keys(state.runningSince).length) requestWake();
+  }
+});
+
+// ── Timer engine ──────────────────────────────────────────
+function elapsedSec(id) {
+  let s = state.secTimers[id] || 0;
+  if (state.runningSince[id]) s += Math.floor((Date.now() - state.runningSince[id]) / 1000);
+  return s;
+}
+
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = (sec % 60).toString().padStart(2, '0');
+  return m + ':' + s;
+}
+
+function timerToggle(id) {
+  if (state.runningSince[id]) {           // 暫停
+    state.secTimers[id] = elapsedSec(id);
+    delete state.runningSince[id];
+    if (!Object.keys(state.runningSince).length) releaseWake();
+  } else {                                // 開始／繼續
+    state.done[id] = false;
+    state.runningSince[id] = Date.now();
+    requestWake();
+    if (navigator.vibrate) navigator.vibrate(20);
+  }
+  saveState();
+  renderTimer(id);
+  renderHeader(id);
+}
+
+function timerReset(id) {
+  state.secTimers[id] = 0;
+  delete state.runningSince[id];
+  state.done[id] = false;
+  if (!Object.keys(state.runningSince).length) releaseWake();
+  saveState();
+  renderTimer(id);
+  renderHeader(id);
+  updateProgress();
+}
+
+function markDone(id) {
+  state.secTimers[id] = elapsedSec(id);
+  delete state.runningSince[id];
+  state.done[id] = true;
+  if (!Object.keys(state.runningSince).length) releaseWake();
+  saveState();
+  if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+  renderTimer(id);
+  renderHeader(id);
+  const sec = document.getElementById('sec-' + id);
+  sec.classList.remove('open');
+  updateProgress();
+  // 自動展開下一個未完成段落
+  for (const s of SECTIONS) {
+    if (!state.done[s.id]) {
+      document.getElementById('sec-' + s.id).classList.add('open');
+      break;
+    }
+  }
+}
+
+// 每 500ms 刷新所有計時中的顯示
+setInterval(() => {
+  Object.keys(state.runningSince).forEach(id => { renderTimer(id); renderHeader(id); });
+}, 500);
+
+// ── Render ────────────────────────────────────────────────
+function buildSections() {
+  const container = document.getElementById('sections');
   container.innerHTML = '';
-  LOTUS.forEach((item, i) => {
-    const slide = document.createElement('div');
-    slide.className = 'lotus-slide' + (i === 0 ? ' active' : '');
-    slide.id = 'lslide-' + i;
-
-    const isDone = state.lotusDone[i];
-    const savedSec = state.lotusTimers[i] || 0;
-
-    slide.innerHTML = `
-      <div class="lotus-title">第${NUMS[i]}式　${item.name}</div>
-
-      <div class="timer-display ${isDone ? 'done-timer' : ''}" id="ltimer-${i}">
-        ${fmtTime(savedSec)}
+  SECTIONS.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'section';
+    el.id = 'sec-' + s.id;
+    el.innerHTML = `
+      <div class="section-header" onclick="toggleSection('${s.id}')">
+        <div class="section-num" id="num-${s.id}">${NUMS[i]}</div>
+        <div class="section-title">
+          <h2>${s.name}</h2>
+          <span>${s.sub}</span>
+        </div>
+        <div class="sec-status" id="status-${s.id}"></div>
+        <div class="section-chevron">›</div>
       </div>
-
-      <div class="lotus-btns">
-        <button class="btn btn-secondary" onclick="lotusTimerToggle(${i})" id="lbtn-start-${i}">
-          ${isDone ? '重新練習' : '▶ 開始計時'}
-        </button>
-        <button class="btn btn-danger" onclick="lotusTimerReset(${i})">重置</button>
-        <button class="btn btn-success" onclick="lotusMarkDone(${i})" ${isDone ? '' : 'style="display:none"'} id="lbtn-done-${i}">完成 ✓</button>
-      </div>
+      <div class="section-body"><div class="inner">
+        ${s.audio ? `
+        <div class="audio-wrap">
+          <p>🔊 吐納功法音頻引導</p>
+          <audio controls src="${s.audio}"></audio>
+        </div>` : ''}
+        ${s.video ? `
+        <div class="video-wrap">
+          <iframe
+            src="https://player.bilibili.com/player.html?bvid=BV19J411N7HC&p=1&autoplay=0&danmaku=0&high_quality=1"
+            allowfullscreen scrolling="no" loading="lazy"
+            title="蓮花生動功全套示範"></iframe>
+        </div>
+        <div class="video-note">全套示範影片 11:54 · 跟著影片練完整套</div>
+        <div class="lotus-list">
+          ${LOTUS_NAMES.map((n, j) => `<span>${NUMS[j]}　${n}</span>`).join('')}
+        </div>` : ''}
+        <div class="timer-display" id="timer-${s.id}">00:00</div>
+        <div class="timer-hint">計時中鎖屏也不會丟時間</div>
+        <div class="timer-btns">
+          <button class="btn btn-primary btn-main" onclick="timerToggle('${s.id}')" id="btn-start-${s.id}">▶ 開始計時</button>
+          <button class="btn btn-danger" onclick="timerReset('${s.id}')">重置</button>
+          <button class="btn btn-success" onclick="markDone('${s.id}')">完成 ✓</button>
+        </div>
+      </div></div>
     `;
-    container.appendChild(slide);
+    container.appendChild(el);
   });
 }
 
-// ── Toggle Section ────────────────────────────────────────
+function renderTimer(id) {
+  const el = document.getElementById('timer-' + id);
+  const btn = document.getElementById('btn-start-' + id);
+  if (!el || !btn) return;
+  const sec = elapsedSec(id);
+  el.textContent = fmtTime(sec);
+  el.classList.toggle('running', !!state.runningSince[id]);
+  el.classList.toggle('done-timer', !!state.done[id]);
+  btn.textContent = state.runningSince[id] ? '⏸ 暫停'
+    : (sec > 0 && !state.done[id] ? '▶ 繼續計時'
+    : (state.done[id] ? '▶ 重新練習' : '▶ 開始計時'));
+}
+
+function renderHeader(id) {
+  const sec = document.getElementById('sec-' + id);
+  const status = document.getElementById('status-' + id);
+  const num = document.getElementById('num-' + id);
+  if (!sec) return;
+  const running = !!state.runningSince[id];
+  sec.classList.toggle('running', running);
+  sec.classList.toggle('done', !!state.done[id]);
+  const idx = SECTIONS.findIndex(s => s.id === id);
+  if (state.done[id]) {
+    num.textContent = '✓';
+    status.textContent = '✓ ' + fmtTime(elapsedSec(id));
+  } else {
+    num.textContent = NUMS[idx];
+    status.textContent = elapsedSec(id) > 0 || running ? fmtTime(elapsedSec(id)) : '';
+  }
+}
+
+function renderAllTimers() {
+  SECTIONS.forEach(s => { renderTimer(s.id); renderHeader(s.id); });
+}
+
 function toggleSection(id) {
   const sec = document.getElementById('sec-' + id);
   const isOpen = sec.classList.contains('open');
@@ -754,153 +554,18 @@ function toggleSection(id) {
   if (!isOpen) sec.classList.add('open');
 }
 
-// ── Counter ───────────────────────────────────────────────
-function tap(id, total) {
-  if (state.done[id]) return;
-  let c = (state.counts[id] || 0) + 1;
-  if (c > total) c = total;
-  state.counts[id] = c;
-  saveState();
-  updateCounter(id, total);
-  if (navigator.vibrate) navigator.vibrate(20);
-}
-
-function updateCounter(id, total) {
-  const c = state.counts[id] || 0;
-  document.getElementById(id + '-count').textContent = c;
-  const pct = Math.min(100, c / total * 100);
-  document.getElementById(id + '-bar').style.width = pct + '%';
-  document.getElementById(id + '-done-btn').style.display = c >= total ? '' : 'none';
-  document.getElementById('status-' + id).textContent =
-    state.done[id] ? '✓' : c + '/' + total;
-}
-
-function resetCounter(id, total) {
-  state.counts[id] = 0;
-  state.done[id] = false;
-  saveState();
-  const sec = document.getElementById('sec-' + id);
-  sec.classList.remove('done');
-  document.getElementById('num-' + id).textContent = NUMS[sec.dataset.index * 1];
-  updateCounter(id, total);
-  updateProgress();
-}
-
-function markDone(id) {
-  state.done[id] = true;
-  saveState();
-  const sec = document.getElementById('sec-' + id);
-  sec.classList.add('done');
-  sec.classList.remove('open');
-  document.getElementById('num-' + id).textContent = '✓';
-  document.getElementById('status-' + id).textContent = '✓';
-  updateProgress();
-}
-
-// ── Lotus Tabs ────────────────────────────────────────────
-let currentLotus = 0;
-
-function lotusTab(i) {
-  document.getElementById('lslide-' + currentLotus).classList.remove('active');
-  document.getElementById('ltab-' + currentLotus).classList.remove('active');
-  currentLotus = i;
-  document.getElementById('lslide-' + i).classList.add('active');
-  document.getElementById('ltab-' + i).classList.add('active');
-}
-
-// ── Lotus Timer ───────────────────────────────────────────
-function fmtTime(sec) {
-  const m = Math.floor(sec / 60).toString().padStart(2, '0');
-  const s = (sec % 60).toString().padStart(2, '0');
-  return m + ':' + s;
-}
-
-function lotusTimerToggle(i) {
-  const btn = document.getElementById('lbtn-start-' + i);
-  if (timers[i]) {
-    clearInterval(timers[i]);
-    timers[i] = null;
-    btn.textContent = '▶ 繼續計時';
-  } else {
-    state.lotusDone[i] = false;
-    timers[i] = setInterval(() => {
-      state.lotusTimers[i] = (state.lotusTimers[i] || 0) + 1;
-      saveState();
-      const el = document.getElementById('ltimer-' + i);
-      if (el) {
-        el.textContent = fmtTime(state.lotusTimers[i]);
-        el.classList.add('running');
-        el.classList.remove('done-timer');
-      }
-      const doneBtn = document.getElementById('lbtn-done-' + i);
-      if (doneBtn) doneBtn.style.display = '';
-    }, 1000);
-    btn.textContent = '⏸ 暫停';
-  }
-}
-
-function lotusTimerReset(i) {
-  if (timers[i]) { clearInterval(timers[i]); timers[i] = null; }
-  state.lotusTimers[i] = 0;
-  state.lotusDone[i] = false;
-  saveState();
-  const el = document.getElementById('ltimer-' + i);
-  if (el) { el.textContent = fmtTime(0); el.classList.remove('running', 'done-timer'); }
-  const startBtn = document.getElementById('lbtn-start-' + i);
-  if (startBtn) startBtn.textContent = '▶ 開始計時';
-  const doneBtn = document.getElementById('lbtn-done-' + i);
-  if (doneBtn) doneBtn.style.display = 'none';
-  document.getElementById('ltab-' + i).classList.remove('done-tab');
-  updateLotusStatus();
-  updateProgress();
-}
-
-function lotusMarkDone(i) {
-  if (timers[i]) { clearInterval(timers[i]); timers[i] = null; }
-  state.lotusDone[i] = true;
-  saveState();
-  const el = document.getElementById('ltimer-' + i);
-  if (el) { el.classList.remove('running'); el.classList.add('done-timer'); }
-  document.getElementById('ltab-' + i).classList.add('done-tab');
-  if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
-
-  const allLotus = LOTUS.every((_, idx) => state.lotusDone[idx]);
-  if (allLotus) {
-    state.done['lotus'] = true;
-    saveState();
-    const sec = document.getElementById('sec-lotus');
-    sec.classList.add('done');
-    sec.classList.remove('open');
-    document.getElementById('num-lotus').textContent = '✓';
-  }
-  updateLotusStatus();
-  updateProgress();
-
-  // auto advance
-  if (i < 6 && !state.lotusDone[i + 1]) {
-    setTimeout(() => lotusTab(i + 1), 600);
-  }
-}
-
-function updateLotusStatus() {
-  const n = LOTUS.filter((_, idx) => state.lotusDone[idx]).length;
-  document.getElementById('status-lotus').textContent =
-    state.done['lotus'] ? '✓' : n + '/7';
-}
-
 // ── Progress ──────────────────────────────────────────────
 function updateProgress() {
   let done = 0;
-  COUNTERS.forEach(c => { if (state.done[c.id]) done++; });
-  if (state.done['lotus']) done++;
-  const realTotal = 7; // 6 個計數段落 + 蓮花生動功（七式全完成算 1）
-  const pct = Math.min(1, done / realTotal);
+  SECTIONS.forEach(s => { if (state.done[s.id]) done++; });
+  const total = SECTIONS.length;  // 7
+  const pct = Math.min(1, done / total);
   // 環形進度：周長 2π×15.5 ≈ 97.4
   document.getElementById('ring-fg').style.strokeDashoffset = 97.4 * (1 - pct);
-  document.getElementById('progress-text').textContent = done + '/' + realTotal;
-  document.getElementById('ring-wrap').classList.toggle('all-done', done >= realTotal);
+  document.getElementById('progress-text').textContent = done + '/' + total;
+  document.getElementById('ring-wrap').classList.toggle('all-done', done >= total);
 
-  if (done >= realTotal) {
+  if (done >= total) {
     document.getElementById('completion').classList.add('show');
     if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
   } else {
@@ -911,55 +576,28 @@ function updateProgress() {
 // ── Reset All ─────────────────────────────────────────────
 function resetAll() {
   if (!confirm('確定要重置今日所有進度？')) return;
-  Object.values(timers).forEach(t => t && clearInterval(t));
-  timers = {};
-  state = { counts: {}, done: {}, lotusDone: {}, lotusTimers: {} };
+  releaseWake();
+  state = { done: {}, secTimers: {}, runningSince: {} };
   saveState();
   location.reload();
 }
 
-// ── Save / Load ───────────────────────────────────────────
-function saveState() {
-  localStorage.setItem('xisui_state', JSON.stringify(state));
-}
-
 // ── Init ──────────────────────────────────────────────────
 function init() {
-  // 頂欄日期
   const d = new Date();
   document.getElementById('today-sub').textContent =
     (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日　每日修練　持之以恆';
 
-  buildLotusSlides();
+  buildSections();
+  renderAllTimers();
 
-  COUNTERS.forEach(c => {
-    updateCounter(c.id, c.total);
-    if (state.done[c.id]) {
-      const sec = document.getElementById('sec-' + c.id);
-      sec.classList.add('done');
-      document.getElementById('num-' + c.id).textContent = '✓';
-      document.getElementById('status-' + c.id).textContent = '✓';
-    }
-  });
+  // 上次關閉時若有計時進行中，繼續保持常亮
+  if (Object.keys(state.runningSince).length) requestWake();
 
-  LOTUS.forEach((_, i) => {
-    if (state.lotusDone[i]) {
-      document.getElementById('ltab-' + i).classList.add('done-tab');
-    }
-  });
-
-  if (state.done['lotus']) {
-    const sec = document.getElementById('sec-lotus');
-    sec.classList.add('done');
-    document.getElementById('num-lotus').textContent = '✓';
-  }
-  updateLotusStatus();
-
-  // open first incomplete section
-  const sections = ['tuna','shougong','chuidiao','shuai','huiyin','fugu','lotus'];
-  for (const id of sections) {
-    if (!state.done[id]) {
-      document.getElementById('sec-' + id).classList.add('open');
+  // 展開第一個未完成段落
+  for (const s of SECTIONS) {
+    if (!state.done[s.id]) {
+      document.getElementById('sec-' + s.id).classList.add('open');
       break;
     }
   }
