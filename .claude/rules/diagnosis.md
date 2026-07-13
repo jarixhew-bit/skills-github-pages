@@ -78,3 +78,9 @@
   merge commit 的「pages build and deployment」是否 success；(2) `git show origin/main:檔案`
   read-back 關鍵改動。兩者都過即視為上線。另：actions_list 回傳動輒 40 萬字元，
   結果落檔後用 jq 提取，別直接讀。來源：洗髓 App 修復上線驗證時踩到。
+- [2026-07-13][雲端] 情境：合併到 main 後 Pages 遲遲不更新。教訓：GitHub 故障（Service
+  Unavailable）期間合併的 commit，其「pages build and deployment」觸發事件可能被整個丟掉，
+  重跑其他 workflow 不會補觸發——用 deployments API（`/deployments?environment=github-pages`）
+  核對最新部署的 sha 是否等於 merge commit；缺失時再合併一個新 commit 重新觸發。
+  另：驗證上線必須看到部署記錄裡出現該 sha 才算數，「檢查 workflow 綠了」不等於已部署。
+  來源：鮨酒場訂位更新上線時 Pages 事件被 GitHub 故障吞掉，誤報已上線被使用者發現。
