@@ -12,6 +12,11 @@
 2. 双语页面检查：页面若含 initLang/toggleLang 语言切换，语言偏好写入
    （setItem）必须用全站统一 key siteLangUser（CLAUDE.md 双语页面规则，
    2026-07-12 起）；读取旧 key 做迁移兼容是允许的。
+3. 第三方语言检查（CLAUDE.md 外语本地化规则，2026-07-12 起）：cn/en 双语
+   span 的可见文本里不得残留假名、韩文——手册读者只懂中/英。店名等必须
+   保留原文的短语登记在 tools/jargon-whitelist.txt，先剔除再扫描。
+   注意：本检查只能抓非拉丁字符；罗马字行话（karaage 等）机器分不清
+   是店名还是行话，仍靠改页面的人按规则翻译。
 
 用法：
     python3 tools/check-html.py 文件1.html [文件2.html ...]
@@ -99,6 +104,42 @@ def check_lang_key(path: str, html: str) -> list:
     return errors
 
 
+import os
+
+WHITELIST_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              "jargon-whitelist.txt")
+# 假名（不含中点・与长音标点）、韩文音节
+FOREIGN_PATTERNS = [
+    ("假名", re.compile(r"[ぁ-ゖァ-ヺｦ-ﾟ]+")),
+    ("韩文", re.compile(r"[가-힣]+")),
+]
+
+
+def load_whitelist() -> list:
+    try:
+        lines = open(WHITELIST_PATH, encoding="utf-8").read().splitlines()
+    except FileNotFoundError:
+        return []
+    return [l.strip() for l in lines if l.strip() and not l.startswith("#")]
+
+
+def check_foreign_jargon(path: str, html: str, whitelist: list) -> list:
+    """cn/en span 可见文本里的假名/韩文 = 未本地化的第三方语言（白名单短语除外）。"""
+    errors = []
+    for cls, body in re.findall(r'<span class="(cn|en)">(.*?)</span>',
+                                html, re.S):
+        text = re.sub(r"<[^>]+>", "", body)
+        for phrase in whitelist:
+            text = text.replace(phrase, "")
+        for name, pat in FOREIGN_PATTERNS:
+            for m in pat.findall(text):
+                snippet = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", body))[:40]
+                errors.append(
+                    f"{path}: {cls} 侧残留{name}「{m}」（…{snippet}…）——"
+                    f"行话请翻译；店名请登记 tools/jargon-whitelist.txt")
+    return errors
+
+
 def trace_tag(path: str, html: str, tag: str):
     """辅助定位：打印该标签每次深度变化的行号，人工找缺口用。"""
     text = strip_noise(html)
@@ -131,11 +172,13 @@ def main():
     else:
         files = args
 
+    whitelist = load_whitelist()
     all_errors = []
     for f in files:
         html = open(f, encoding="utf-8", errors="replace").read()
         all_errors += check_balance(f, html)
         all_errors += check_lang_key(f, html)
+        all_errors += check_foreign_jargon(f, html, whitelist)
 
     if all_errors:
         print(f"不通过（{len(all_errors)} 个问题）：")
