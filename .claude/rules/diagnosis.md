@@ -72,3 +72,9 @@
   禁止 `git push --delete`（403，策略性非暫時），別重試——觸發 `cleanup-branches.yml`
   workflow（workflow_dispatch，傳分支名）由 CI 代刪，帶 main 保護與合併驗證。
   來源：Fable 5 交接時試刪兩次 403 後建立此通道，一次清掉 14 個積壓分支。注意：要新開/重建功能分支時先 `git fetch origin main`——本地 origin/main 過舊會讓分支基點落後，清理 workflow 的「內容樹在 main」安全閥會攔下不刪（同 session 踩過兩次）；被攔時把分支 force-push 指到 origin/main 再觸發一次即可。
+- [2026-07-13][雲端] 情境：合併後想驗證 GitHub Pages 上線內容。教訓：沙盒代理封鎖對
+  `github.io` 的出站請求（WebFetch 與 curl 皆 CONNECT 403，策略性非暫時；youtube.com/
+  bilibili.com 同樣被封），別重試——改兩步驗證：(1) GitHub MCP 的 actions_list 查該
+  merge commit 的「pages build and deployment」是否 success；(2) `git show origin/main:檔案`
+  read-back 關鍵改動。兩者都過即視為上線。另：actions_list 回傳動輒 40 萬字元，
+  結果落檔後用 jq 提取，別直接讀。來源：洗髓 App 修復上線驗證時踩到。
