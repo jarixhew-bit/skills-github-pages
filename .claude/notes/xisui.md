@@ -5,16 +5,16 @@
 
 ## 檔案清單
 
-- `index.html`（913 行）——唯一的邏輯檔，單檔 HTML+CSS+JS（無構建、無框架，見
+- `index.html`（921 行）——唯一的邏輯檔，單檔 HTML+CSS+JS（無構建、無框架，見
   `skills/pwa-pages.md`）。內含 6 個計數器段落（吐納/收功/垂吊/甩鞭/會陰拍打/腹股溝拍打）
   + 1 個「蓮花動功」7 式輪播段落。改文案/時長/次數、加減段落都動這個檔。
 - `manifest.json`——PWA 名稱/icon/顏色/`start_url`。改 App 名稱、圖示、啟動路徑時動它。
-- `sw.js`（24 行）——Service Worker，cache-first，`CACHE = 'xisui-v1'`
+- `sw.js`（24 行）——Service Worker，cache-first，`CACHE = 'xisui-v2'`
   （xisui.md:第 1 行常數，見下方 PWA 章節）。
 - `icon-192.png` / `icon-512.png`——PWA 圖示，manifest.json 引用，很少需要動。
 - 音檔/影片不在 `xisui/` 目錄內：`index.html:389` 引用 `../audio/tuna.mp3`
   （相對於 xisui/ 的上一層，即 repo 根目錄的 `audio/` 資料夾）；蓮花動功 7 式
-  在 `index.html:675` 引用 `../videos/lotus1.mp4` ~ `lotus7.mp4`。
+  在 `index.html:683` 引用 `../videos/lotus1.mp4` ~ `lotus7.mp4`。
 
 ## 資料流
 
@@ -23,8 +23,9 @@
   done:{段落id:bool}, lotusDone:{式子索引:bool}, lotusTimers:{式子索引:已計時秒數}}`。
   **無雲端同步、無帳號**——換裝置或清瀏覽器資料進度就沒了，這是設計如此，不是 bug。
 - **音訊**：目前只有 `audio/tuna.mp3` 真實存在（已核實，6.1MB）。蓮花動功引用的
-  `videos/lotus1.mp4`~`lotus7.mp4` **repo 裡不存在** `videos/` 目錄（已核實：
-  `find` 無結果）——這 7 個 `<video>` 標籤目前必定播放失敗，是已知缺口，見「已知坑」。
+  `videos/lotus1.mp4`~`lotus7.mp4` **repo 裡不存在** `videos/` 目錄——2026-07-13 起
+  已加優雅降級（`showVideoPlaceholder()`，index.html:660，複用 `.video-placeholder`
+  樣式）：影片載入失敗時顯示「示範影片尚未上架」占位而非壞播放器。補影片時見「已知坑」。
 - **PWA 快取**：`sw.js` 的 `ASSETS` 陣列（sw.js:2-6）只快取 3 個檔（`/`、
   `index.html`、`manifest.json`），音訊/圖示/影片不進 precache，靠瀏覽器一般 HTTP 快取。
 
@@ -42,12 +43,12 @@
 
 **加一個新的計數段落**：複製既有 `<div class="section" id="sec-xxx">` 區塊
 （如 `index.html:450-471` 的垂吊段），改 id/文案/次數，並在 `COUNTERS` 陣列
-（641-648 行，631 行起是 `LOTUS` 陣列別搞混）加一筆，且在 `init()` 的 `sections` 陣列（約 895 行）加入新 id
+（641-648 行，631 行起是 `LOTUS` 陣列別搞混）加一筆，且在 `init()` 的 `sections` 陣列（903 行）加入新 id
 （否則「自動展開第一個未完成段落」邏輯不會巡到它），`updateProgress()` 的
-`realTotal`（840 行，目前寫死 `7`）也要跟著調整。
+`realTotal`（848 行，目前寫死 `7`）也要跟著調整。
 
 **加一式蓮花動功**：在 `LOTUS` 陣列（632-638 行）加一筆 `{name, file}`，
-`buildLotusSlides()`（660-692 行）會自動生成 UI，但需準備對應 `videos/xxxN.mp4`
+`buildLotusSlides()`（668-700 行）會自動生成 UI，但需準備對應 `videos/xxxN.mp4`
 放進 repo 根目錄 `videos/`（目前該目錄不存在，需新建）；同時 `.lotus-tab` 分頁按鈕
 是手寫 HTML（600-606 行附近，`onclick="lotusTab(N)"`），加式子要手動補一個 tab。
 
@@ -69,23 +70,19 @@
   `manifest.json` 的內容，必須把 `sw.js:1` 的版本號往上升一位（v1→v2），
   否則已安裝 PWA 的使用者會因 cache-first 策略永遠看到舊版本，直到快取自然失效。**
   升版本會觸發 `activate` 事件（sw.js:13-18）清掉舊版快取。
-- SW 註冊路徑目前是 `index.html:909` 的 `navigator.serviceWorker.register('/xisui/sw.js')`
-  ——**這是絕對路徑，但實際部署在 `/skills-github-pages/xisui/sw.js`**（對照
-  `manifest.json:5` 的 `start_url: "/skills-github-pages/xisui/"` 與 `sw.js` 內
-  `ASSETS` 用的也是 `/skills-github-pages/xisui/...` 路徑）。註冊路徑與實際部署路徑
-  不一致，見「已知坑」。
+- SW 註冊路徑是 `index.html:917` 的 `navigator.serviceWorker.register('sw.js')`
+  ——**相對路徑**（2026-07-13 修正；原本寫死 `/xisui/sw.js`，在
+  `/skills-github-pages/` 子路徑部署下是 404，離線模式從未生效過）。
+  `sw.js` 內 `ASSETS` 與 `manifest.json:5` 的 `start_url` 仍用
+  `/skills-github-pages/...` 絕對路徑，與部署位置一致。
 
 ## 已知坑
 
-- **SW 註冊路徑疑似錯誤（未查證是否已在生產環境失效，需實測）**：
-  `index.html:909` 註冊 `/xisui/sw.js`，但頁面實際部署在
-  `https://jarixhew-bit.github.io/skills-github-pages/xisui/`，SW 作用域規則下
-  `/xisui/sw.js` 在該網域應該是 404（正確路徑應為 `/skills-github-pages/xisui/sw.js`，
-  與 `sw.js` 內 `ASSETS` 陣列、`manifest.json` 的 `start_url` 一致）。若使用者反映
-  PWA 離線功能不生效或改版後看不到更新，優先檢查這裡。
-- **蓮花動功影片全數缺失**：`videos/lotus1.mp4`~`lotus7.mp4` 在 repo 中不存在，
-  7 個 `<video>` 標籤會播放失敗。加影片時遵守 CLAUDE.md「媒體檔案規則」——影片一律
-  上傳 YouTube（不公開）用 iframe 嵌入，不要把 mp4 直接放進 repo；目前 `<video src=...>`
-  的寫法與這條規則衝突，未來補影片時應一併改成 iframe 嵌入而非補 mp4 檔案。
+- ~~SW 註冊路徑錯誤~~ **已於 2026-07-13 修復**（改相對路徑 `'sw.js'`，CACHE 升 v2）。
+  該修復意味著老用戶瀏覽器裡從來沒有註冊成功過 SW，修復上線後首次訪問才會真正安裝。
+- **蓮花動功影片仍然缺失（已降級，未補片）**：`videos/lotus1.mp4`~`lotus7.mp4` 不存在，
+  2026-07-13 起載入失敗會顯示占位提示（不再是壞播放器），計時器照常可用。將來補影片時
+  遵守 CLAUDE.md「媒體檔案規則」——上傳 YouTube（不公開）用 iframe 嵌入替換整個
+  `<video>` 標籤，不要把 mp4 放進 repo；同時移除 `showVideoPlaceholder` 降級即可。
 - `resetAll()`（854-861 行）會清空全部 `localStorage` 進度且無法復原（`confirm()`
   後直接覆蓋），沒有雲端備份，這是已知的資料風險設計，不是 bug。
