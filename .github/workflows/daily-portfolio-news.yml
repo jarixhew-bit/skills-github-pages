@@ -3,10 +3,12 @@ name: Daily Portfolio News Digest
 on:
   workflow_dispatch:
   schedule:
-    # UTC 21:30 = Beijing 05:30, compensates for ~2.5hr GitHub delay = arrives ~08:00
+    # UTC 22:40 = Beijing 06:40（GitHub 常有 1-2 小时排队延迟，实际约 08:00 前后送达）。
+    # 特意与 trading-daily（21:40）错开 1 小时：两者共用同一份 IBKR Flex 报表，
+    # 2026-07-13 观察到两任务几乎同时请求时，后到的一方持续被 1001 拒绝，疑似生成冷却期。
     # 只在交易日收盘后跑（周一至五 UTC）：周末无行情，且 IBKR 周末维护窗曾致任务失败
     #（2026-07-12）。用户 2026-07-13 要求周末不推送。
-    - cron: '30 21 * * 1-5'
+    - cron: '40 22 * * 1-5'
 
 jobs:
   news-digest:
