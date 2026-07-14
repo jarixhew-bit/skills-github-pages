@@ -7,7 +7,7 @@
 
 ```
 每个交易日 21:40 UTC · GitHub Actions（免费，不用 Claude）
-（次日 09:40 UTC 补漏跑作保险：GitHub 定时任务偶尔会被整次跳过；无新行情则跳过提交）
+（次日 09:40 UTC 补漏跑作保险：GitHub 定时任务偶尔会被整次跳过；行情与持仓底数均无变化才跳过提交）
   fetch_prices.py  Stooq/Yahoo 下载58只日线 → history/*.json（bars 无新增时不重写）
   flex_account.py  IBKR Flex Query 拉真实持仓/现金/NAV/成交（密钥在仓库 Secrets，失败不阻断）
   analyzer.py      信号+持仓重算+加仓建议 → data-public.json / data-private.enc / state.enc

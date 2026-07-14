@@ -41,10 +41,12 @@ jobs:
           git config user.name "trading-bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add trading/history trading/data-public.json trading/data-private.enc trading/state.enc
-          # 以 history/ 是否有新行情决定提交：data-public.json 含 generated_at 时间戳，
-          # 每次运行必有差异，不加此判断补漏跑会在数据未变时产生重复提交
-          if git diff --cached --quiet -- trading/history; then
-            echo "行情无新数据，跳过提交"
+          # 提交判据：history 或 state.enc 有实质变化就提交。data-public.json/data-private.enc
+          # 都含 generated_at 时间戳，每次运行必有差异，不能单独作为判据；但 state.enc
+          # 不含时间戳，只要 Flex 刷新了持仓/现金/NAV 就会变——2026-07-14 曾发生 Flex
+          # 拉到修正后的持仓但当天行情已抓过、history 无新增，导致修正被判据吞掉不提交
+          if git diff --cached --quiet -- trading/history trading/state.enc; then
+            echo "行情与持仓底数均无变化，跳过提交"
           else
             git commit -m "chore(trading): daily data update $(date -u +%F)"
             # 运行期间 main 可能有新合并（2026-07-12 曾因此推送被拒），rebase 后再推
