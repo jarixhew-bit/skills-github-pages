@@ -105,15 +105,20 @@ for t in root.iter("Trade"):
         "order_type": t.get("orderType"),
     })
 
-# 汇总持仓需与 NAV 粗对：偏差>5% 视为报表残缺，不落档
-if out["net_liq"] and out["positions"]:
-    pv = sum(to_float(p.get("positionValue")) or 0 for p in root.iter("OpenPosition"))
-    if pv and abs((pv + (out["cash"] or 0)) / out["net_liq"] - 1) > 0.05:
-        print(f"ERROR: 持仓合计 {pv:.0f}+现金 与 NAV {out['net_liq']:.0f} 偏差过大，疑似残缺报表")
-        sys.exit(1)
-
+# 报表必须同时含 NAV 汇总与持仓才可信：曾出现只给 OpenPosition/Cash、
+# 缺 EquitySummaryByReportDateInBase 的半成品报表——此时持仓已刷新但现金/NAV
+# 还是旧值，两者拼起来净值会被算错（旧现金 + 新股数，等于把买入的钱重复计入）
 if not out["positions"]:
     print("ERROR: Flex 报表无 OpenPosition，放弃本次（不覆盖旧底数）")
+    sys.exit(1)
+if not out["net_liq"]:
+    print("ERROR: Flex 报表缺 NAV 汇总（疑似半成品报表），放弃本次（不覆盖旧底数）")
+    sys.exit(1)
+
+# 汇总持仓需与 NAV 粗对：偏差>5% 视为报表残缺，不落档
+pv = sum(to_float(p.get("positionValue")) or 0 for p in root.iter("OpenPosition"))
+if pv and abs((pv + (out["cash"] or 0)) / out["net_liq"] - 1) > 0.05:
+    print(f"ERROR: 持仓合计 {pv:.0f}+现金 与 NAV {out['net_liq']:.0f} 偏差过大，疑似残缺报表")
     sys.exit(1)
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
