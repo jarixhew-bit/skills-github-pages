@@ -455,6 +455,18 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     </div>
   </div>
   <div class="setting-section">
+    <div class="setting-title">拍照智能识别（可选）</div>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:8px">
+      配置后拍收据会用 Gemini AI 识别金额、日期、商户，比默认的本地识别更准；不填也没关系，会自动退回本地识别。
+      key 只存在这台设备本地，不会上传到任何服务器。去 aistudio.google.com/apikey 免费领取。
+    </div>
+    <div style="display:flex;gap:8px">
+      <input class="form-input" id="gemini-key-input" type="password" placeholder="粘贴 Gemini API Key" style="flex:1">
+      <button class="btn btn-outline btn-sm" onclick="saveGeminiKey()">保存</button>
+    </div>
+    <div id="gemini-key-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+  </div>
+  <div class="setting-section">
     <div class="setting-title">数据</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
@@ -1407,6 +1419,7 @@ function renderSettings(){
   renderSettingsAccs();
   renderSettingsCats();
   renderSettingsRecurring();
+  renderGeminiKeyStatus();
 }
 
 function renderSettingsRecurring(){
@@ -3090,8 +3103,94 @@ async function saveScannedAttachment(){
   // best-effort cloud upload, tie to the tx once it's saved (txId patched below if editing)
   uploadAttachmentToCloud(id, blob, state.editingTxId||null);
 
-  // best-effort local OCR prefill: runs async, never blocks save, never overwrites user input
-  runReceiptOCRPrefill(fullCanvas);
+  // best-effort OCR prefill: runs async, never blocks save, never overwrites user input.
+  // 有配置 Gemini key 就先试 Gemini（更准，能顺带认商户名），失败/没配置就退回本地 Tesseract。
+  runReceiptSmartOCR(fullCanvas);
+}
+
+// ===================== GEMINI-ASSISTED RECEIPT OCR (optional, key stored locally) =====================
+const GEMINI_KEY_STORAGE = 'expenseTracker_geminiKey';
+
+function getGeminiKey(){ return (localStorage.getItem(GEMINI_KEY_STORAGE) || '').trim(); }
+
+function saveGeminiKey(){
+  const input = document.getElementById('gemini-key-input');
+  const key = (input.value || '').trim();
+  if(key){
+    localStorage.setItem(GEMINI_KEY_STORAGE, key);
+    toast('已保存，下次拍收据会用 AI 识别');
+  } else {
+    localStorage.removeItem(GEMINI_KEY_STORAGE);
+    toast('已清空，将使用本地识别');
+  }
+  input.value = '';
+  renderGeminiKeyStatus();
+}
+
+function renderGeminiKeyStatus(){
+  const el = document.getElementById('gemini-key-status');
+  if(!el) return;
+  el.textContent = getGeminiKey() ? '✅ 已配置，拍收据会优先用 AI 识别' : '未配置，当前使用本地识别（较简单）';
+}
+
+async function runReceiptSmartOCR(sourceCanvas){
+  const key = getGeminiKey();
+  if(!key){ return runReceiptOCRPrefill(sourceCanvas); }
+
+  try{
+    const outCanvas = resizeForOutput(sourceCanvas, 1600);
+    const dataUrl = outCanvas.toDataURL('image/jpeg', 0.85);
+    const base64 = dataUrl.split(',')[1];
+
+    const prompt = '这是一张收据/发票照片。请提取：合计金额（数字，不含货币符号）、消费日期（YYYY-MM-DD，若看不到年份就用今年）、商户或店铺名称（简短，看不出就留空）。只输出 JSON，格式：{"amount": 数字或null, "date": "YYYY-MM-DD"或null, "merchant": "字符串"或null}，不要输出任何其他文字。';
+
+    const timeoutMs = 20000;
+    const resp = await Promise.race([
+      fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(key)}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          contents: [{ role:'user', parts: [
+            { text: prompt },
+            { inline_data: { mime_type: 'image/jpeg', data: base64 } }
+          ]}],
+          generationConfig: { responseMimeType: 'application/json' }
+        })
+      }),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('Gemini timeout')), timeoutMs))
+    ]);
+
+    if(!resp.ok) throw new Error('Gemini HTTP ' + resp.status);
+    const body = await resp.json();
+    const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if(!text) throw new Error('Gemini 返回为空');
+    const parsed = JSON.parse(text);
+
+    const amountEl = document.getElementById('tx-amount');
+    const dateEl = document.getElementById('tx-date');
+    const descEl = document.getElementById('tx-desc');
+    let prefilled = false;
+
+    if(amountEl && amountEl.value.trim()==='' && typeof parsed.amount === 'number' && parsed.amount > 0){
+      amountEl.value = String(parsed.amount);
+      prefilled = true;
+    }
+    if(dateEl && !state.dateTouchedByUser && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date||'')){
+      dateEl.value = parsed.date;
+      prefilled = true;
+    }
+    if(descEl && descEl.value.trim()==='' && parsed.merchant){
+      descEl.value = String(parsed.merchant).slice(0, 40);
+      autoDetectCat(descEl.value); // 复用现有关键词分类逻辑，不用 Gemini 猜类别 id
+      prefilled = true;
+    }
+
+    if(prefilled) toast('✨ AI 已自动识别，请核对');
+    else await runReceiptOCRPrefill(sourceCanvas); // Gemini 没识别出东西，退回本地识别兜底
+  }catch(e){
+    console.error('Gemini receipt OCR failed, falling back to local OCR (ignored):', e);
+    await runReceiptOCRPrefill(sourceCanvas);
+  }
 }
 
 function resizeForOutput(canvas, maxSide){
