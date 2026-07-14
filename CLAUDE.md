@@ -62,6 +62,10 @@
 - `expense-tracker.html` — 记帐工具（PWA）
 - `fortune.html` — 运势页面
 - `trading/` — IBKR 交易脚本与页面
+- **`butler-bot`（独立私有仓库 jarixhew-bit/butler-bot，2026-07-14 建立）** — Telegram 私人
+  管家 bot（酒库存/航班追踪/提醒/记账/手册查询）。架构：Cloudflare Worker（webhook＋cron）
+  ＋该仓库 data/ 当数据库＋Gemini 免费档＋AeroDataBox 航班数据，全免费。要改它时先用
+  add_repo 把它加进 session（本地直接 clone/pull），代码与数据都直接推 main 不走 PR。
 - **`ai-vault`（独立私有仓库 jarixhew-bit/ai-vault，2026-07-07 建立）** — AI 个人知识库
   （第二大脑）。用户说「存进 vault」「查 vault」时：网页版先用 add_repo 把它加进
   session，本地直接 clone/pull；管理规则见该仓库自己的 CLAUDE.md，直接推 main 不走 PR。
