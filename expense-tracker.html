@@ -457,14 +457,21 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   <div class="setting-section">
     <div class="setting-title">拍照智能识别（可选）</div>
     <div style="font-size:12px;color:var(--sub);margin-bottom:8px">
-      配置后拍收据会用 Gemini AI 识别金额、日期、商户，比默认的本地识别更准；不填也没关系，会自动退回本地识别。
-      key 只存在这台设备本地，不会上传到任何服务器。去 aistudio.google.com/apikey 免费领取。
+      配置后拍收据会用 AI 识别金额、日期、商户，比默认的本地识别更准；不填也没关系，会自动退回本地识别。
+      key 只存在这台设备本地，不会上传到任何服务器（Qwen/Mistral 会经 butler-bot 转发一次，
+      只用于绕开浏览器的跨域限制，不会被存下来）。
     </div>
+    <select class="form-input" id="ai-provider-select" onchange="onAiProviderChange()" style="margin-bottom:8px">
+      <option value="">不用，仅本地识别</option>
+      <option value="qwen">Qwen（通义千问，中文识图最强）</option>
+      <option value="mistral">Mistral（免注册门槛低）</option>
+      <option value="gemini">Gemini（Google）</option>
+    </select>
     <div style="display:flex;gap:8px">
-      <input class="form-input" id="gemini-key-input" type="password" placeholder="粘贴 Gemini API Key" style="flex:1">
-      <button class="btn btn-outline btn-sm" onclick="saveGeminiKey()">保存</button>
+      <input class="form-input" id="ai-key-input" type="password" placeholder="粘贴对应的 API Key" style="flex:1">
+      <button class="btn btn-outline btn-sm" onclick="saveAiKey()">保存</button>
     </div>
-    <div id="gemini-key-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+    <div id="ai-key-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
   </div>
   <div class="setting-section">
     <div class="setting-title">数据</div>
@@ -1419,7 +1426,7 @@ function renderSettings(){
   renderSettingsAccs();
   renderSettingsCats();
   renderSettingsRecurring();
-  renderGeminiKeyStatus();
+  renderAiKeyStatus();
 }
 
 function renderSettingsRecurring(){
@@ -3104,38 +3111,70 @@ async function saveScannedAttachment(){
   uploadAttachmentToCloud(id, blob, state.editingTxId||null);
 
   // best-effort OCR prefill: runs async, never blocks save, never overwrites user input.
-  // 有配置 Gemini key 就先试 Gemini（更准，能顺带认商户名），失败/没配置就退回本地 Tesseract。
+  // 有配置 AI key 就先试 AI 识别（更准，能顺带认商户名），失败/没配置就退回本地 Tesseract。
   runReceiptSmartOCR(fullCanvas);
 }
 
-// ===================== GEMINI-ASSISTED RECEIPT OCR (optional, key stored locally) =====================
-const GEMINI_KEY_STORAGE = 'expenseTracker_geminiKey';
+// ===================== AI-ASSISTED RECEIPT OCR (optional, key stored locally) =====================
+// 三选一：Qwen / Mistral / Gemini。Gemini 允许浏览器直接跨域调用它的接口，Qwen/Mistral 不允许，
+// 所以这两家要经 butler-bot 的 /ai-proxy 转发一次（调用方自带 key，Worker 只转发不落地）。
+const AI_PROXY_URL = 'https://butler-bot.jarixhew.workers.dev/ai-proxy';
+const AI_PROVIDER_STORAGE = 'expenseTracker_aiProvider';
+const AI_KEY_STORAGE_PREFIX = 'expenseTracker_aiKey_';
+const AI_PROVIDER_NAMES = { qwen:'Qwen', mistral:'Mistral', gemini:'Gemini' };
 
-function getGeminiKey(){ return (localStorage.getItem(GEMINI_KEY_STORAGE) || '').trim(); }
+function getAiProvider(){ return (localStorage.getItem(AI_PROVIDER_STORAGE) || '').trim(); }
 
-function saveGeminiKey(){
-  const input = document.getElementById('gemini-key-input');
-  const key = (input.value || '').trim();
-  if(key){
-    localStorage.setItem(GEMINI_KEY_STORAGE, key);
-    toast('已保存，下次拍收据会用 AI 识别');
-  } else {
-    localStorage.removeItem(GEMINI_KEY_STORAGE);
-    toast('已清空，将使用本地识别');
-  }
-  input.value = '';
-  renderGeminiKeyStatus();
+function getAiKey(provider){
+  if(!provider) return '';
+  const v = (localStorage.getItem(AI_KEY_STORAGE_PREFIX + provider) || '').trim();
+  if(v) return v;
+  // 兼容旧版本（只支持 Gemini 时）已经存下的 key，避免用户升级后要重新填一次
+  if(provider === 'gemini') return (localStorage.getItem('expenseTracker_geminiKey') || '').trim();
+  return '';
 }
 
-function renderGeminiKeyStatus(){
-  const el = document.getElementById('gemini-key-status');
+function onAiProviderChange(){
+  const provider = document.getElementById('ai-provider-select').value;
+  localStorage.setItem(AI_PROVIDER_STORAGE, provider);
+  renderAiKeyStatus();
+}
+
+function saveAiKey(){
+  const provider = document.getElementById('ai-provider-select').value;
+  const input = document.getElementById('ai-key-input');
+  const key = (input.value || '').trim();
+  if(!provider){
+    toast('先在上面选一个识别引擎');
+    return;
+  }
+  if(key){
+    localStorage.setItem(AI_KEY_STORAGE_PREFIX + provider, key);
+    toast('已保存，下次拍收据会用 AI 识别');
+  } else {
+    localStorage.removeItem(AI_KEY_STORAGE_PREFIX + provider);
+    toast('已清空这个引擎的 key');
+  }
+  input.value = '';
+  renderAiKeyStatus();
+}
+
+function renderAiKeyStatus(){
+  const el = document.getElementById('ai-key-status');
+  const select = document.getElementById('ai-provider-select');
   if(!el) return;
-  el.textContent = getGeminiKey() ? '✅ 已配置，拍收据会优先用 AI 识别' : '未配置，当前使用本地识别（较简单）';
+  const provider = getAiProvider();
+  if(select) select.value = provider;
+  const key = getAiKey(provider);
+  el.textContent = (provider && key)
+    ? `✅ 已配置 ${AI_PROVIDER_NAMES[provider]}，拍收据会优先用 AI 识别`
+    : '未配置，当前使用本地识别（较简单）';
 }
 
 async function runReceiptSmartOCR(sourceCanvas){
-  const key = getGeminiKey();
-  if(!key){ return runReceiptOCRPrefill(sourceCanvas); }
+  const provider = getAiProvider();
+  const key = getAiKey(provider);
+  if(!provider || !key){ return runReceiptOCRPrefill(sourceCanvas); }
 
   try{
     const outCanvas = resizeForOutput(sourceCanvas, 1600);
@@ -3143,28 +3182,54 @@ async function runReceiptSmartOCR(sourceCanvas){
     const base64 = dataUrl.split(',')[1];
 
     const prompt = '这是一张收据/发票照片。请提取：合计金额（数字，不含货币符号）、消费日期（YYYY-MM-DD，若看不到年份就用今年）、商户或店铺名称（简短，看不出就留空）。只输出 JSON，格式：{"amount": 数字或null, "date": "YYYY-MM-DD"或null, "merchant": "字符串"或null}，不要输出任何其他文字。';
-
     const timeoutMs = 20000;
-    const resp = await Promise.race([
-      fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(key)}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          contents: [{ role:'user', parts: [
-            { text: prompt },
-            { inline_data: { mime_type: 'image/jpeg', data: base64 } }
-          ]}],
-          generationConfig: { responseMimeType: 'application/json' }
-        })
-      }),
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('Gemini timeout')), timeoutMs))
-    ]);
+    let text;
 
-    if(!resp.ok) throw new Error('Gemini HTTP ' + resp.status);
-    const body = await resp.json();
-    const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if(!text) throw new Error('Gemini 返回为空');
-    const parsed = JSON.parse(text);
+    if(provider === 'gemini'){
+      const resp = await Promise.race([
+        fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(key)}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            contents: [{ role:'user', parts: [
+              { text: prompt },
+              { inline_data: { mime_type: 'image/jpeg', data: base64 } }
+            ]}],
+            generationConfig: { responseMimeType: 'application/json' }
+          })
+        }),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('Gemini timeout')), timeoutMs))
+      ]);
+      if(!resp.ok) throw new Error('Gemini HTTP ' + resp.status);
+      const body = await resp.json();
+      text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if(!text) throw new Error('Gemini 返回为空');
+    } else {
+      // Qwen / Mistral：不允许浏览器直连，经 butler-bot 转发
+      const resp = await Promise.race([
+        fetch(AI_PROXY_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            provider, apiKey: key,
+            systemPrompt: '你只输出 JSON，不要输出任何其他文字。',
+            userText: prompt,
+            imageBase64: base64, imageMime: 'image/jpeg'
+          })
+        }),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error(AI_PROVIDER_NAMES[provider] + ' timeout')), timeoutMs))
+      ]);
+      const body = await resp.json();
+      if(!resp.ok) throw new Error((body && body.error) || (AI_PROVIDER_NAMES[provider] + ' HTTP ' + resp.status));
+      text = body && body.text;
+      if(!text) throw new Error(AI_PROVIDER_NAMES[provider] + ' 返回为空');
+    }
+
+    let cleaned = text.trim();
+    if(cleaned.startsWith('```')){
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    }
+    const parsed = JSON.parse(cleaned);
 
     const amountEl = document.getElementById('tx-amount');
     const dateEl = document.getElementById('tx-date');
@@ -3181,14 +3246,14 @@ async function runReceiptSmartOCR(sourceCanvas){
     }
     if(descEl && descEl.value.trim()==='' && parsed.merchant){
       descEl.value = String(parsed.merchant).slice(0, 40);
-      autoDetectCat(descEl.value); // 复用现有关键词分类逻辑，不用 Gemini 猜类别 id
+      autoDetectCat(descEl.value); // 复用现有关键词分类逻辑，不用 AI 猜类别 id
       prefilled = true;
     }
 
     if(prefilled) toast('✨ AI 已自动识别，请核对');
-    else await runReceiptOCRPrefill(sourceCanvas); // Gemini 没识别出东西，退回本地识别兜底
+    else await runReceiptOCRPrefill(sourceCanvas); // AI 没识别出东西，退回本地识别兜底
   }catch(e){
-    console.error('Gemini receipt OCR failed, falling back to local OCR (ignored):', e);
+    console.error('AI receipt OCR failed, falling back to local OCR (ignored):', e);
     await runReceiptOCRPrefill(sourceCanvas);
   }
 }
