@@ -39,7 +39,12 @@ URL: https://jarixhew-bit.github.io/skills-github-pages/expense-tracker.html
    `showSyncConflict()`(:773)。所有本地写入都过`saveData()`(:1133)，它会在
    `currentUser`存在时自动调`saveToCloud()`，否则标记`setPendingSync(true)`
    等下次登录再同步——改同步策略要注意别绕过这条路径。
-3. **改收据 OCR/扫描流程**：入口`openScanWorkflow()`(:2582)，用 OpenCV.js（懒加载，
+3. **瑞尔(KHR)输入换算**（2026-07-16 新增）：ADD TRANSACTION modal 金额框旁的
+   `#tx-riel-toggle`按钮，开启后`saveTx()`(:1703起)按固定`RIEL_RATE`常量
+   （:1165，值4000）把输入数字换算成账户货币金额，原始瑞尔数额附进描述文字里
+   （不新增tx字段，走description，改动面小）。`state.rielMode`控制开关，
+   `showAddTx()`/`editTx()`都会重置为false。汇率固定写死在常量里，不是实时汇率。
+4. **改收据 OCR/扫描流程**：入口`openScanWorkflow()`(:2582)，用 OpenCV.js（懒加载，
    `loadOpenCV()`:2549）做边角检测与透视变换，`Tesseract.js`（懒加载CDN，
    `loadTesseractJS()`:3112）做本地 OCR 识别金额/日期。OCR 全程在浏览器端跑，
    不上传收据到任何服务器（隐私要求，见 `skills/pwa-pages.md` 本专案实例）。
