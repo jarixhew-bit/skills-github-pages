@@ -56,7 +56,6 @@
 ## 现有项目
 - `xisui/` — 洗髓功法练习 App（PWA）
 - `japan-trip-2026.html` — 日本旅游手册（2026-07 已将 v2 设计转正，v2 文件已删除）
-- `tokyo-itinerary.html` — 东京行程
 - `restaurant-guide.html` — 餐厅指南
 - `usj-disney-restaurants.html` — USJ/迪士尼后餐厅（2026-07 已将 v2 设计转正，v2 文件已删除）
 - `expense-tracker.html` — 记帐工具（PWA）

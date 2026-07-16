@@ -42,24 +42,6 @@ initLang:743-752/区域筛选:781-794/lightbox:797-820）。
 双语：siteLangUser，旧key`restoV2LangUser`兜底(:746)。PWA：不适用。
 已知坑：单行最长704字符；①②③手打非JS生成；本页计数同步点最多，最易漏改。
 
-## tokyo-itinerary.html（397 行，旧页面，仅保网址不主动维护）
-东京5天行程网格卡片，**仅中文单语**，无cn/en机制，CLAUDE.md「根目录旧页面
-不搬动」保留，不代表结构达标。
-URL: .../tokyo-itinerary.html
-结构：`<h1>`(:114) → 5个`.day`(:125/165/216/256/307，含`.day-header`+`.spots`
-网格，内含`a.spot`) → 尾部`<script>`(:358-393)。
-高频操作：
-1. 加/替换景点卡片`a.spot`（例:128）：`<img class="spot-img" id="img-唯一id">`
-   （**src留空**）+`.spot-body`(`.spot-icon`+`.spot-info`内`.spot-name`/
-   `.spot-desc`+`.map-badge`)。
-2. **图片机制特殊**：非Google Places静态链接，是运行时调用Wikipedia API按
-   文章标题抓缩略图（`spots`数组:359-377 + `loadWikiPhoto()`）。加卡片必须
-   同时在`spots`数组加`{id:"img-xxx", wiki:"Wikipedia_文章标题"}`，否则图片
-   永远空白（不符合当前媒体规则，历史遗留，新卡片建议改用Google Places链接）。
-双语：无，`<html lang="zh-CN">`。若要双语化属整页迁移，非小补丁。PWA：不适用。
-已知坑：Wikipedia抓图运行时可能失败且无占位提示，是本页最脆弱点；单行最长
-148字符，结构简单。
-
 ## restaurant-guide.html（673 行，旧页面，仅保网址不主动维护）
 东京/大阪/京都35家餐厅指南，**仅中文单语**，中英文名写同一字符串（`&nbsp;`
 分隔），非cn/en切换机制。
