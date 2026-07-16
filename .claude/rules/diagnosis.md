@@ -84,3 +84,13 @@
   核對最新部署的 sha 是否等於 merge commit；缺失時再合併一個新 commit 重新觸發。
   另：驗證上線必須看到部署記錄裡出現該 sha 才算數，「檢查 workflow 綠了」不等於已部署。
   來源：鮨酒場訂位更新上線時 Pages 事件被 GitHub 故障吞掉，誤報已上線被使用者發現。
+- [2026-07-16][皆是] 情境：新建或接手 Firebase 專案，需要判斷資料是否安全。教訓：Firebase
+  預設的「測試模式」Firestore 規則（`allow read, write: if request.time <
+  timestamp.date(...)`）在到期日之前對**任何人、免登入**開放全庫讀寫，到期後又會反過來
+  拒絕所有請求（包含合法使用者）；上線前必須手動改成按 `request.auth.uid` 限權的規則，
+  不能沿用預設值也不能拖到到期日才處理。Firestore 規則只在 Firebase Console 網頁 UI 設定，
+  repo 內不會有 `firestore.rules` 之類的檔案可查，稽核時要主動去 Console 確認，光看程式碼
+  看不出來。來源：稽核 expense-tracker 的 Firebase 專案（my-expense-tracker-a1aee）時發現
+  仍是預設規則且將於 2026-07-28 到期（等於已公開暴露所有使用者的記帳資料一段時間），
+  已協助改成 `users/{uid}` 限權規則並確認發布；順帶查過本 repo 只有這個專案用到
+  Firebase，其餘頁面（含 xisui）未使用，不需要比照檢查。
