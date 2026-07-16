@@ -514,8 +514,13 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     </div>
     <!-- amount -->
     <div class="form-group">
-      <input class="form-input amt" id="tx-amount" type="number" min="0" step="0.01"
-        placeholder="0.00" inputmode="decimal">
+      <div style="display:flex;gap:8px;align-items:stretch">
+        <input class="form-input amt" id="tx-amount" type="number" min="0" step="0.01"
+          placeholder="0.00" inputmode="decimal" style="flex:1" oninput="updateRielHint()">
+        <button type="button" id="tx-riel-toggle" class="attach-btn" onclick="toggleRielInput()"
+          style="flex:none;width:auto;padding:0 14px">៛ 瑞尔</button>
+      </div>
+      <div id="tx-riel-hint" style="display:none;margin-top:6px;font-size:12px;color:var(--sub)"></div>
     </div>
     <!-- description -->
     <div class="form-group">
@@ -1131,7 +1136,8 @@ let state = {
   pieChart: null,
   catManuallySelected: false,
   pendingAttachmentId: null,
-  pendingAttachmentIsNew: false
+  pendingAttachmentIsNew: false,
+  rielMode: false
 };
 
 // ===================== PERSIST =====================
@@ -1156,6 +1162,7 @@ function saveData(){
 
 // ===================== UTILS =====================
 const CUR_SYMBOLS = {HKD:'HK$',MYR:'RM ',USD:'US$',SGD:'S$ ',CNY:'¥',JPY:'¥',EUR:'€',GBP:'£',TWD:'NT$',THB:'฿',AUD:'A$',KHR:'៛',KRW:'₩',VND:'₫'};
+const RIEL_RATE = 4000; // 柬埔寨瑞尔固定汇率：1 USD = 4000 KHR
 function symOf(cur){ return CUR_SYMBOLS[cur] || cur+' '; }
 function fmt(amt, cur){ return symOf(cur) + Number(amt).toFixed(2); }
 // 千分位格式（账户明细范本要求），如 12,345.67
@@ -1543,11 +1550,36 @@ function setCatFilterType(type, el){
 }
 
 // ===================== ADD / EDIT TX =====================
+function toggleRielInput(){
+  state.rielMode = !state.rielMode;
+  const btn = document.getElementById('tx-riel-toggle');
+  if(state.rielMode){
+    btn.style.background = 'var(--p)';
+    btn.style.borderColor = 'var(--p)';
+    btn.style.color = '#fff';
+  } else {
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }
+  updateRielHint();
+}
+
+function updateRielHint(){
+  const hint = document.getElementById('tx-riel-hint');
+  if(!state.rielMode){ hint.style.display = 'none'; return; }
+  const raw = parseFloat(document.getElementById('tx-amount').value);
+  if(isNaN(raw) || raw < 0){ hint.style.display = 'none'; return; }
+  hint.textContent = `${raw.toLocaleString()}៛ ≈ $${(raw/RIEL_RATE).toFixed(2)}（按 1$=${RIEL_RATE}៛ 换算）`;
+  hint.style.display = 'block';
+}
+
 function showAddTx(){
   state.editingTxId = null;
   state.txType = 'expense';
   state.selectedCatId = null;
   state.catManuallySelected = false;
+  state.rielMode = false;
   document.getElementById('tx-modal-title').textContent = '新增记录';
   document.getElementById('tx-amount').value = '';
   document.getElementById('tx-desc').value = '';
@@ -1559,6 +1591,9 @@ function showAddTx(){
   hideAutoHint();
   renderCatGrid();
   resetAttachState();
+  const rielBtn = document.getElementById('tx-riel-toggle');
+  rielBtn.style.background = ''; rielBtn.style.borderColor = ''; rielBtn.style.color = '';
+  updateRielHint();
   showModal('modal-add-tx');
   setTimeout(()=>document.getElementById('tx-amount').focus(), 300);
 }
@@ -1570,6 +1605,10 @@ function editTx(id){
   state.editingTxId = id;
   state.txType = t.type;
   state.selectedCatId = t.categoryId;
+  state.rielMode = false;
+  const rielBtn = document.getElementById('tx-riel-toggle');
+  rielBtn.style.background = ''; rielBtn.style.borderColor = ''; rielBtn.style.color = '';
+  document.getElementById('tx-riel-hint').style.display = 'none';
   document.getElementById('tx-modal-title').textContent = '编辑记录';
   document.getElementById('tx-amount').value = t.amount;
   document.getElementById('tx-desc').value = t.description||'';
@@ -1663,10 +1702,17 @@ function clearAutoHint(){
 
 function saveTx(){
   const raw = document.getElementById('tx-amount').value.trim();
-  const amt = parseFloat(raw);
-  if(raw==='' || isNaN(amt) || amt<0){ toast('请输入金额（可以填 0）'); return; }
+  const rawAmt = parseFloat(raw);
+  if(raw==='' || isNaN(rawAmt) || rawAmt<0){ toast('请输入金额（可以填 0）'); return; }
   if(!state.selectedCatId){ toast('请选择类别'); return; }
   const acc = curAcc(); if(!acc) return;
+
+  const amt = state.rielMode ? Math.round((rawAmt/RIEL_RATE)*100)/100 : rawAmt;
+  let description = document.getElementById('tx-desc').value.trim();
+  if(state.rielMode){
+    const rielNote = `${rawAmt.toLocaleString()}៛`;
+    description = description ? `${description}（${rielNote}）` : rielNote;
+  }
 
   const tx = {
     id: state.editingTxId || uid(),
@@ -1674,7 +1720,7 @@ function saveTx(){
     amount: amt,
     type: state.txType,
     categoryId: state.selectedCatId,
-    description: document.getElementById('tx-desc').value.trim(),
+    description: description,
     date: document.getElementById('tx-date').value || today()
   };
   if(state.pendingAttachmentId) tx.attachmentId = state.pendingAttachmentId;
