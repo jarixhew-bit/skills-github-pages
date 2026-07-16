@@ -53,11 +53,10 @@ def score(text):
     else:             return "⚪ 中性"
 
 def fetch_ibkr_positions():
-    """IBKR Flex Query 拉取持仓"""
+    """IBKR Flex Query 拉取持仓。返回 (positions|None, error_detail|None)"""
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
-    # Step 1: 请求生成报告（IBKR 报表生成偶发繁忙，重试 4 次，与 trading/flex_account.py 一致；
-    # 周末/维护时段会返回 HTML 错误页而非 XML，2026-07-12 周日实际发生过，需兼容非 XML 响应）
     ref = None
+    last_error = "未知错误"
     for attempt in range(4):
         if attempt:
             time.sleep(30)
@@ -69,18 +68,20 @@ def fetch_ibkr_positions():
         try:
             root1 = ET.fromstring(r1.text)
         except ET.ParseError:
-            print(f"⚠️ SendRequest 第 {attempt+1} 次返回非 XML: {r1.text[:120]!r}")
+            last_error = f"SendRequest 返回非 XML: {r1.text[:150]!r}"
+            print(f"⚠️ 第 {attempt+1} 次 {last_error}")
             continue
         ref = root1.findtext("ReferenceCode")
         if ref:
             break
-        print(f"⚠️ SendRequest 第 {attempt+1} 次未返回 ReferenceCode:",
-              root1.findtext("ErrorCode"), root1.findtext("ErrorMessage"))
+        err_code = root1.findtext("ErrorCode")
+        err_msg  = root1.findtext("ErrorMessage")
+        last_error = f"ErrorCode={err_code} ErrorMessage={err_msg}"
+        print(f"⚠️ 第 {attempt+1} 次未返回 ReferenceCode: {last_error}")
     if not ref:
         print("⚠️ Flex Query 多次重试仍失败，使用默认持仓")
-        return None
+        return None, last_error
 
-    # Step 2: 获取报告（最多重试 5 次）
     time.sleep(5)
     for _ in range(5):
         r2   = requests.get(
@@ -95,8 +96,9 @@ def fetch_ibkr_positions():
     try:
         root2 = ET.fromstring(r2.text)
     except ET.ParseError:
-        print(f"⚠️ Flex GetStatement 返回非 XML，使用默认持仓：{r2.text[:120]!r}")
-        return None
+        last_error = f"GetStatement 返回非 XML: {r2.text[:150]!r}"
+        print(f"⚠️ {last_error}")
+        return None, last_error
     positions = {}
     for pos in root2.iter("OpenPosition"):
         sym  = pos.get("symbol", "")
@@ -105,7 +107,10 @@ def fetch_ibkr_positions():
         ac   = pos.get("assetCategory", "STK")
         if sym and qty and ac == "STK":
             positions[sym] = {"qty": round(qty, 4), "cost": round(cost, 4)}
-    return positions if positions else None
+    if not positions:
+        last_error = f"GetStatement 成功但未解析到任何 OpenPosition: {r2.text[:200]!r}"
+        return None, last_error
+    return positions, None
 
 def compute_rsi(hist, period=14):
     delta = hist["Close"].diff()
@@ -184,11 +189,9 @@ def buy_rec(price, cost, pct_range, bull_c, bear_c, total, rsi):
 
 # ── 主流程 ───────────────────────────────────────────
 
-# 拉取 IBKR 持仓
 print("拉取 IBKR 持仓...")
-ibkr = fetch_ibkr_positions()
+ibkr, ibkr_error = fetch_ibkr_positions()
 
-# 默认过滤（只看 ETF，排除 SGOV）
 EXCLUDE = {"SGOV"}
 NAME_MAP = {
     "IBIT": "比特币 ETF (IBIT)",
@@ -203,15 +206,18 @@ if ibkr:
     }
     print(f"成功拉取 IBKR 持仓: {list(HOLDINGS.keys())}")
 else:
-    # 回退到默认数据（可能非最新，仅作占位，消息里会标注）
     STALE = True
     HOLDINGS = {
         "IBIT": {"name": "比特币 ETF (IBIT)",  "qty": 357.57, "cost": 39.08},
         "VOO":  {"name": "标普500 ETF (VOO)", "qty": 114.18, "cost": 550.46},
     }
-    print("使用默认持仓数据（IBKR Flex 拉取失败）")
+    print(f"使用默认持仓数据（IBKR Flex 拉取失败）：{ibkr_error}")
+    send(
+        f"⚠️ <b>IBKR 持仓同步失败 — {TODAY}</b>\n"
+        f"以下持仓早报使用的是上次已知数据，可能非最新。\n"
+        f"失败原因: <code>{html.escape(str(ibkr_error))}</code>"
+    )
 
-# 1. 宏观指标
 print("拉取宏观指标...")
 macro        = fetch_macro()
 fg_val, fg_l = fetch_fear_greed()
@@ -231,7 +237,6 @@ send(
     f"   0-25 极度恐慧 | 25-45 恐慧 | 55+ 贪婪"
 )
 
-# 2. 持仓分析
 bull_total = bear_total = neut_total = 0
 
 for ticker, info in HOLDINGS.items():
@@ -274,7 +279,6 @@ for ticker, info in HOLDINGS.items():
     print(f"{ticker} 已发送")
     time.sleep(1)
 
-# 3. 总结
 if bull_total > bear_total:   mood = "🟢 利好"
 elif bear_total > bull_total: mood = "🔴 利空"
 else:                          mood = "⚪ 中性"
