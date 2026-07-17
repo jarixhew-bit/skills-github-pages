@@ -53,13 +53,17 @@ def score(text):
     else:             return "⚪ 中性"
 
 def fetch_ibkr_positions():
-    """IBKR Flex Query 拉取持仓。返回 (positions|None, error_detail|None)"""
+    """IBKR Flex Query 拉取持仓。返回 (positions|None, error_detail|None)
+    ErrorCode 1001 (报表暂时无法生成) 是 IBKR 服务端常见的瞬时繁忙，
+    高峰时段（如收盘后）很容易触发，需要足够长的重试窗口。"""
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
     ref = None
     last_error = "未知错误"
-    for attempt in range(4):
+    MAX_ATTEMPTS = 8
+    RETRY_WAIT   = 45
+    for attempt in range(MAX_ATTEMPTS):
         if attempt:
-            time.sleep(30)
+            time.sleep(RETRY_WAIT)
         r1 = requests.get(
             f"{base}.SendRequest",
             params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"},
@@ -69,7 +73,7 @@ def fetch_ibkr_positions():
             root1 = ET.fromstring(r1.text)
         except ET.ParseError:
             last_error = f"SendRequest 返回非 XML: {r1.text[:150]!r}"
-            print(f"⚠️ 第 {attempt+1} 次 {last_error}")
+            print(f"⚠️ 第 {attempt+1}/{MAX_ATTEMPTS} 次 {last_error}")
             continue
         ref = root1.findtext("ReferenceCode")
         if ref:
@@ -77,9 +81,11 @@ def fetch_ibkr_positions():
         err_code = root1.findtext("ErrorCode")
         err_msg  = root1.findtext("ErrorMessage")
         last_error = f"ErrorCode={err_code} ErrorMessage={err_msg}"
-        print(f"⚠️ 第 {attempt+1} 次未返回 ReferenceCode: {last_error}")
+        print(f"⚠️ 第 {attempt+1}/{MAX_ATTEMPTS} 次未返回 ReferenceCode: {last_error}")
+        if err_code == "1001":
+            print("   → IBKR 报表服务端繁忙（常见于收盘后高峰期），继续等待重试")
     if not ref:
-        print("⚠️ Flex Query 多次重试仍失败，使用默认持仓")
+        print(f"⚠️ Flex Query 重试 {MAX_ATTEMPTS} 次仍失败，使用默认持仓")
         return None, last_error
 
     time.sleep(5)
@@ -212,10 +218,14 @@ else:
         "VOO":  {"name": "标普500 ETF (VOO)", "qty": 114.18, "cost": 550.46},
     }
     print(f"使用默认持仓数据（IBKR Flex 拉取失败）：{ibkr_error}")
+    friendly_hint = (
+        "（IBKR 报表服务器瞬时繁忙，常见于高峰时段，非配置问题）"
+        if "1001" in str(ibkr_error) else ""
+    )
     send(
         f"⚠️ <b>IBKR 持仓同步失败 — {TODAY}</b>\n"
         f"以下持仓早报使用的是上次已知数据，可能非最新。\n"
-        f"失败原因: <code>{html.escape(str(ibkr_error))}</code>"
+        f"失败原因: <code>{html.escape(str(ibkr_error))}</code>{html.escape(friendly_hint)}"
     )
 
 print("拉取宏观指标...")
