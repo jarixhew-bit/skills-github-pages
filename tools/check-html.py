@@ -17,6 +17,8 @@
    保留原文的短语登记在 tools/jargon-whitelist.txt，先剔除再扫描。
    注意：本检查只能抓非拉丁字符；罗马字行话（karaage 等）机器分不清
    是店名还是行话，仍靠改页面的人按规则翻译。
+4. 无障碍最低项（WCAG 1.1.1，精简自 ECC accessibility skill，2026-07-17 引入）：
+   <img> 必须带 alt 属性，否则屏幕阅读器读不出图片内容。
 
 用法：
     python3 tools/check-html.py 文件1.html [文件2.html ...]
@@ -140,6 +142,17 @@ def check_foreign_jargon(path: str, html: str, whitelist: list) -> list:
     return errors
 
 
+def check_img_alt(path: str, html: str) -> list:
+    """WCAG 1.1.1：<img> 缺 alt 属性，屏幕阅读器读不出图片内容。"""
+    errors = []
+    text = strip_noise(html)
+    for m in re.finditer(r"<img\b[^>]*>", text, re.I):
+        if not re.search(r"\balt\s*=", m.group(0), re.I):
+            errors.append(f"{path}:{line_of(text, m.start())} <img> 缺 alt 属性——"
+                          f"补一句图片描述（中文页写中文，英文页写英文）")
+    return errors
+
+
 def trace_tag(path: str, html: str, tag: str):
     """辅助定位：打印该标签每次深度变化的行号，人工找缺口用。"""
     text = strip_noise(html)
@@ -179,6 +192,7 @@ def main():
         all_errors += check_balance(f, html)
         all_errors += check_lang_key(f, html)
         all_errors += check_foreign_jargon(f, html, whitelist)
+        all_errors += check_img_alt(f, html)
 
     if all_errors:
         print(f"不通过（{len(all_errors)} 个问题）：")

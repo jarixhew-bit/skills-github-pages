@@ -22,6 +22,8 @@ effort: high
   位置见对应结构笔记。
 - 补"缺失的关闭标签"前先跑 `python3 tools/check-html.py 文件 --trace div` 用深度追踪定位具体行，
   禁止凭肉眼判断（2026-07-11 事故教训）。
+- 无障碍最低要求（2026-07-17 引入）：新增 `<img>` 必须带 alt 描述（CI 会查）；
+  图标按钮（无文字、只有 emoji/svg）加 aria-label 或可见文字，让读屏软件能读出用途。
 
 改完后（不通过不准宣告完成）：
 1. 跑 `python3 tools/check-html.py 改过的文件`，必须通过。
