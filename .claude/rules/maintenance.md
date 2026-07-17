@@ -62,6 +62,22 @@
 - 改動若涉及規則語義（不只是錯字），派 verifier 檢查該檔（模板 5）。
 - 在回覆中用一兩句告訴使用者改了什麼、為什麼。
 
+## 7. 語境預算稽核（規模變大時用，方法精簡自 ECC context-budget skill）
+
+觸發時機：新增 3 個以上 agent/skill/rule 檔案後，或感覺 Claude 開始漏看指令、
+回應變得含糊時，跑一次稽核。
+
+方法（不做精確 token 計算，用行數當代理指標，與第 4 節 150 行門檻同一把尺）：
+```
+wc -l .claude/rules/*.md .claude/agents/*.md .claude/skills/*/SKILL.md CLAUDE.md
+```
+分級：
+- rules 單檔 >150 行、agent 單檔 >200 行、skill 單檔 >400 行 → 列入精簡候選
+- CLAUDE.md 本身總行數明顯膨脹 → 檢查是否有內容該下沉到 rules/，而不是留在 CLAUDE.md
+- 兩份檔案講同一件事（如兩處都寫「派工三件套」）→ 留一份，其他改成引用
+
+稽核結果直接丟進第 4 節既有的精簡流程，不必另建新格式或新工具。
+
 ## 教訓紀錄
 - [2026-07-04][皆是] 情境：diagnosis.md 與 letter.md 曾對同一件事（fable 模型警示、
   API key 提醒）各寫一份，且 fable 那條已解決卻沒清掉。教訓：CLAUDE.md 審查/精簡時
