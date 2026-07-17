@@ -9,6 +9,8 @@ description: 把本仓库的改动发布上线（commit、push、开 PR、合并
 
 ## 步骤
 1. **改完先检查**：动过 HTML 就跑 `python3 tools/check-html.py --all`，不通过不准往下走。
+   新增文件/脚本/配置（尤其可能带 API key、token 的）跑一次
+   `python3 tools/check-secrets.py`，CI 也会拦，但自查更快。
 2. **commit 到功能分支**（网页版 session 用自动分配的 `claude/*` 分支），commit message 一句话说清改了什么。
 3. **push**：`git push -u origin 分支名`。失败按网络错误重试最多 4 次（2s/4s/8s/16s 退避）。
 4. **开 PR 并合并**：用 GitHub MCP 工具开 PR → **squash merge** 到 main。
