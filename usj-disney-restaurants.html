@@ -48,8 +48,10 @@
   .topbar a.hb-link {
     display: flex; align-items: center; padding: 0 14px;
     font-size: 12px; font-weight: 700; color: rgba(255,255,255,.75);
-    text-decoration: none; border-left: 1px solid rgba(255,255,255,.14);
+    text-decoration: none; border-right: 1px solid rgba(255,255,255,.14);
   }
+  .page-h1 { font-family: var(--serif); font-size: 22px; font-weight: 700; margin: 18px 16px 4px; }
+  .page-sub { font-size: 12.5px; color: var(--muted); margin: 0 16px 4px; }
   .topbar button.lang {
     display: flex; align-items: center; padding: 0 14px;
     background: none; border: none; border-left: 1px solid rgba(255,255,255,.14);
@@ -162,11 +164,11 @@
 
 <!-- ===== TOP BAR ===== -->
 <div class="topbar">
+  <a class="hb-link" href="japan-trip-2026.html">← <span class="cn">返回行程</span><span class="en">Back to Itinerary</span></a>
   <div class="brand">
     <span class="dot"></span>
     <span class="t"><span class="cn">餐厅指南 · 大阪 &amp; 东京</span><span class="en">Dining Guide · Osaka &amp; Tokyo</span></span>
   </div>
-  <a class="hb-link" href="japan-trip-2026.html">← <span class="cn">返回行程</span><span class="en">Back to Itinerary</span></a>
   <button class="lang" id="langBtn" onclick="toggleLang()">EN</button>
 </div>
 
@@ -176,20 +178,8 @@
 <a href="#tokyo"><span class="d">🗼 <span class="cn">东京</span><span class="en">Tokyo</span></span><span class="m">10 SPOTS</span></a>
 </div>
 
-<!-- ===== COVER ===== -->
-<div class="cover">
-  <img class="bg" src="https://lh3.googleusercontent.com/place-photos/AJRVUZMX8waB2DWWP1nIcz9hbiOOo0URdt6Ksns19Fqlp1SawHRM83L_XrqGetSJRSW9kHpA-Xpk3-I676MRAz86yIinbQICeNzImp1fLZjc-AsvgiaAAtWAN8mDsbnLlU9IG59WKrvL8V46aOrpcSM=s4800-w800-h600" alt="">
-  <div class="inner">
-    <div class="kicker">Japan 2026 · Dining Guide</div>
-    <h1><span class="cn">大阪 · 东京 建议餐厅</span><span class="en">Suggested Restaurants · Osaka &amp; Tokyo</span></h1>
-    <div class="dates"><span class="cn">大阪 10 家 · 东京 10 家 — 共 20 家精选</span><span class="en">Osaka 10 · Tokyo 10 — 20 picks in total</span></div>
-    <div class="meta-row">
-      <span class="meta-chip"><span class="cn">多数全天不打烊</span><span class="en">Mostly no afternoon gap</span></span>
-      <span class="meta-chip"><span class="cn">2 城市</span><span class="en">2 cities</span></span>
-      <span class="meta-chip">★ 3.6–4.8</span>
-    </div>
-  </div>
-</div>
+<div class="page-h1"><span class="cn">大阪 · 东京 建议餐厅</span><span class="en">Suggested Restaurants · Osaka &amp; Tokyo</span></div>
+<div class="page-sub"><span class="cn">大阪 10 家 · 东京 10 家 — 共 20 家精选 · ★ 3.6–4.8</span><span class="en">Osaka 10 · Tokyo 10 — 20 picks in total · ★ 3.6–4.8</span></div>
 
 <div class="tip"><span class="ico">💡</span><span><span class="cn">多数餐厅<b>午市至晚市全程不打烊</b>，下午任何时段到店均可；<b>KINKA、虎連坊、さしす（梅田）、KollaBo、杉玉</b>等少数店有午休断档或固定休息日，详见各卡片橙色提示。不顺路的店也照收，因为有包车。</span><span class="en">Most restaurants are <b>open continuously with no lunch/dinner gap</b>, so any arrival time works; a few — <b>KINKA, Torarenbo, Sashisu (Umeda), KollaBo, Sugidama</b> — have an afternoon gap or a fixed closing day, flagged in orange on their cards. Off-route picks included since you have a car.</span></span></div>
 
