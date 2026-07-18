@@ -46,10 +46,13 @@ jobs:
           # 都含 generated_at 时间戳，每次运行必有差异，不能单独作为判据；但 state.enc
           # 不含时间戳，只要 Flex 刷新了持仓/现金/NAV 就会变——2026-07-14 曾发生 Flex
           # 拉到修正后的持仓但当天行情已抓过、history 无新增，导致修正被判据吞掉不提交
+          # 注：state.enc 采用随机 salt/nonce 加密，即使底层数据完全不变，密文也会每次不同，
+          # 因此改为每小时运行后，本步骤基本每次都会判定为「有变化」并提交——这是预期行为
+          # （用户 2026-07-18 要求的就是 HTML 页面每小时刷新），不是 bug。
           if git diff --cached --quiet -- trading/history trading/state.enc; then
             echo "行情与持仓底数均无变化，跳过提交"
           else
-            git commit -m "chore(trading): daily data update $(date -u +%F)"
+            git commit -m "chore(trading): hourly data update $(date -u +'%F %H:00 UTC')"
             # 运行期间 main 可能有新合并（2026-07-12 曾因此推送被拒），rebase 后再推
             git pull --rebase origin main
             git push
