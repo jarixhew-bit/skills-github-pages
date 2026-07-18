@@ -39,12 +39,15 @@
 ## 資料流
 
 ```
-每個交易日 21:40 UTC（+ 次日 09:40 UTC 補漏跑）── GitHub Actions（trading-daily.yml）
+UTC 13-21 點每小時（美股交易時段，週一至五）── GitHub Actions（trading-daily.yml）
   fetch_prices.py → history/*.json（無新行情不重寫，靠此判斷要不要 commit）
   flex_account.py → raw/flex_account.json（失敗不阻斷，沿用舊底數）
   analyzer.py     → data-public.json / data-private.enc / state.enc
   git commit + push → GitHub Pages 自動發布
 ```
+（2026-07-18 由「收盤後 21:40 UTC + 次日 09:40 UTC 補漏跑」改為交易時段內每小時跑，
+用戶要求讓 HTML 頁面資料每小時刷新，見下方「已知坑」的相關記錄。）
+
 - `index.html` 讀 `data-public.json`（`index.html:228`，明文，任何人可看）與
   `data-private.enc`（`index.html:246`，需密碼解密才能看持倉）。
 - 對帳模式（改真實持倉底數）不在自動化裡，是 Claude session 手動流程，
@@ -83,21 +86,24 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
   改 KDF 迭代次數、演算法或欄位名稱，兩邊必須同步改，否則頁面端解密會直接失敗
   （無版本協商機制，`v` 欄位目前恆為 1，未做多版本相容判斷，未查證）。
 - **IBKR Flex 密鑰**（`IBKR_FLEX_TOKEN`/`IBKR_FLEX_QUERY_ID`）被 `flex_account.py`
-  與 `portfolio_news.py` 兩處各自讀取使用，改 Secret 名稱或輪換密鑰要兩處都改。
+  與 `portfolio_news.py` 兩處各自讀取使用，改 Secret 名稱或輪換密鑰要兩處都改；
+  兩個 workflow **共用同一組憑證**，改其中一邊的 Flex Query 定義或 token 前，
+  務必想到會同時影響另一邊（見下方「已知坑」IBKR 1001 那條）。
 
 ## 自動化（GitHub Actions）
 
-- **`trading-daily.yml`**：交易日 21:40 UTC + 次日 09:40 UTC 補漏跑，跑
+- **`trading-daily.yml`**：UTC 13-21 點每小時（美股交易時段，週一至五），跑
   `fetch_prices.py → flex_account.py → analyzer.py`，成功則 commit+push 到 main
-  （`concurrency` group 防重疊執行，48-53 行有 `git pull --rebase` 防推送衝突，
+  （`concurrency` group 防重疊執行，有 `git pull --rebase` 防推送衝突，
   見 yml 註解「2026-07-12 曾因此推送被拒」）。需要 Secret：`ANALYZER_PW`
   （缺失時私密區停更但公開信號區照跑，README.md:29-30）、`IBKR_FLEX_TOKEN`、
   `IBKR_FLEX_QUERY_ID`。失敗排查：倉庫 Actions 頁看 `trading-daily` 執行日誌。
-- **`daily-portfolio-news.yml`**：每天 UTC 21:30（=北京 05:30），跑
-  `.github/scripts/portfolio_news.py` 發 Telegram 摘要（新聞翻譯+打分+持倉建議），
-  需要 `TELEGRAM_TOKEN`/`TELEGRAM_CHAT_ID`/`IBKR_FLEX_TOKEN`/`IBKR_FLEX_QUERY_ID`
-  四個 Secret，任一失敗此 workflow 直接失敗（腳本用 `os.environ[...]` 硬取值，
-  未做缺失容錯，未查證是否故意如此）。失敗排查同上，看該 workflow 的 Actions 日誌。
+- **`daily-portfolio-news.yml`**：UTC 00:40（週二至六，=柬埔寨 UTC+7 早上約 09:00，
+  用戶 2026-07-17 指定），跑 `.github/scripts/portfolio_news.py` 發 Telegram 摘要
+  （新聞翻譯+打分+持倉建議），需要 `TELEGRAM_TOKEN`/`TELEGRAM_CHAT_ID`/
+  `IBKR_FLEX_TOKEN`/`IBKR_FLEX_QUERY_ID` 四個 Secret，任一失敗此 workflow 直接失敗
+  （腳本用 `os.environ[...]` 硬取值，未做缺失容錯，未查證是否故意如此）。
+  失敗排查同上，看該 workflow 的 Actions 日誌。
 - **「大批量數據走 CI 不走 Claude」規則的落點**：58 檔×320 根 K 線的抓取與計算全部
   在這兩個 workflow 裡跑完，Claude session 只在「對帳模式」時經手少量帳戶級 JSON
   （positions/summary/trades/perf，通常幾十行），不逐筆抄寫價格數據——這正是
@@ -108,9 +114,27 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
 - 兩套 Flex 拉取實作重複（見上「牽一發動全身」），改帳戶欄位解析邏輯容易漏改一邊。
 - `analyzer.py` 對「持倉但不在掃描名單/無歷史」的股票會退化成按成本估算市值並記警告
   （analyzer.py:561），不是精確值，深度對帳前不要用它算精確損益。
-- `trading-daily.yml` 的補漏跑（次日 09:40 UTC）與主跑（21:40 UTC）共用同一
-  `concurrency` group 但不是同一 cron 條件（`1-5` vs `2-6`，錯開一天），
-  改 cron 表達式前先核對星期幾對應的 UTC/美東時區換算，勿心算
-  （`judgment.md` 教訓紀錄 2026-07-12 那條就是這類日期心算錯誤的先例）。
 - `data-private.enc`/`state.enc` 解密密碼與 `expense-tracker.html` 共用同一
   localStorage key `tradingAnalyzerPw`，改其中一邊的密碼機制要考慮另一邊是否受影響。
+- **IBKR Flex `ErrorCode=1001` 的真正根因是 Flex Query 定義本身殘缺，不是排隊衝突**
+  （2026-07-16~18 排查記錄）：一開始誤判是 `trading-daily` 與 `daily-portfolio-news`
+  共用同一組 Flex 憑證、實際執行時間點太接近導致 IBKR 報表生成冷卻期衝突，因此把
+  `daily-portfolio-news` 的排程改了兩次（先避開 1 小時，再改到用戶指定的柬埔寨 9 點）；
+  但改完排程後、手動觸發驗證仍然 100% 失敗（且觸發時間點離另一個 workflow 已超過
+  3.5 小時，遠超正常冷卻期），才確認真正原因是 IBKR 帳戶那邊的 Flex Query 定義本身
+  缺 Section（只有 NAV 沒有 Cash Report / Open Positions，且 NAV 裡也只勾了
+  Report Date 一個欄位）——報表天生生成不出完整數據，跟哪個時間點請求無關。
+  **教訓**：`1001` 報錯本身模糊、不能只從症狀反推「服務器忙/衝突」這類猜測性根因，
+  收到同一報錯連續多天出現時，優先直接讓用戶到 IBKR Client Portal → Reports →
+  Flex Queries 把對應 Query 手動「運行」一次核對，比在我們這端猜測排程/頻率因素
+  快得多、準得多。修復後的 Query 需要三個 Section 都在：**Cash Report**（Currency/
+  Starting Cash/Ending Cash/Ending Settled Cash）、**Net Asset Value (NAV) in Base**
+  （至少 Report Date + Cash + Stock + Total）、**Open Positions**（Currency/Asset
+  Class/Symbol/Quantity/Cost Basis Price/Position Value/Open Price/Mark Price 等）；
+  `flex_account.py` 的殘缺報表校驗（見檔案內註解）就是靠這三塊互相對帳（持倉市值+
+  現金 應約等於 NAV Total，容差 5%）。
+- **`trading-daily.yml` 改成每小時跑後，`state.enc` 幾乎每次都會判定「有變化」並
+  提交**：因為加密用隨機 salt/nonce，即使底層持倉數據完全不變，密文每次也不同。
+  這是預期行為（用戶要的就是 HTML 頁面每小時刷新），不是 bug，但意味著 main 的
+  提交歷史會變得密集（工作日每小時一次），提交訊息已改成帶時鐘點的
+  `hourly data update YYYY-MM-DD HH:00 UTC` 格式，方便日後排查。
