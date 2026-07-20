@@ -23,6 +23,8 @@ URL: .../japan-trip-2026.html
 双语：siteLangUser，旧key`handbookV2LangUser`仅读取兜底(:1061)。PWA：不适用。
 已知坑：单行图片链接最长699字符；不跑check-html.py易漏闭合标签（曾真实翻车，
 见dispatch.md教训2026-07-11）。
+内容决定：D04备选=Cup Noodles池田+GIGO道顿堀，**用户2026-07-20确认有意为之**，
+不要再把Nintendo Museum卡片/刷票清单项加回来（c158fec的commit信息写反了，勿信）。
 
 ## usj-disney-restaurants.html（823 行）
 USJ/迪士尼后餐厅指南（大阪+东京各10家），双语，卡片支持按区域筛选。
