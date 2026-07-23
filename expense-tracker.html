@@ -790,9 +790,8 @@ async function syncFromCloud(){
     const snap = await db.collection('users').doc(currentUser.uid).get();
     if(snap.exists){
       const cloud = JSON.parse(snap.data().payload);
-      const hasCloud = cloud && cloud.transactions && cloud.transactions.length>0;
 
-      if(hasCloud){
+      if(cloud){
         const before = data.transactions.length;
         data = mergeData(data, cloud);
         if(!data.currentAccountId && data.accounts.length>0)
@@ -807,7 +806,7 @@ async function syncFromCloud(){
         toast(added>0 ? `☁️ 已合并云端 ${added} 笔新记录` : '☁️ 已同步（无新增）');
         await saveToCloud(); // push merged result back so both sides converge
       } else {
-        // Cloud empty, push local up
+        // Cloud doc exists but payload didn't parse to anything usable — push local up
         await saveToCloud();
         toast('☁️ Local data backed up to cloud');
       }
