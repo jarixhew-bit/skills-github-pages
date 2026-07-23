@@ -1,0 +1,21 @@
+name: probe-photo
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe broken image with various headers
+        run: |
+          UA="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+          REF="https://jarixhew-bit.github.io/"
+          for U in \
+            "https://lh3.googleusercontent.com/place-photos/AJRVUZPo_iD5LBXL7yktk4prboh7C-XO2FkmnTr5iO6rPZG0DGlECtm3Y5Z2dJWXc6OYSPN-FPuTAzOSMZx2SzcHpiRa5nqby5Tu6fo0Dssyh6F1pUg2GuJ9SqYh6tZydVD-_ft1mmRX5GCZB6YeeYKrx98vgw=s4800-w800-h600" \
+            "https://lh3.googleusercontent.com/place-photos/AJRVUZPshCFrwF34u-BMRUWqug_M0BQztvT6OteHZi3uNPUdiulR2tSbHE8h_iuo4rnkgl1zIQtbsDVRJ7WBpBworeObCGSm0z_AwmudfcS9NXni3YNtMwPiIC5KMmoOOKDj-pIT6cu6epdUU_gdZdgaKSzuig=s4800-w800-h600" ; do
+            echo "URL: ...${U: -40}"
+            echo "  no-header:      $(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$U")"
+            echo "  browser-UA:     $(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -A "$UA" "$U")"
+            echo "  UA+referer:     $(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -A "$UA" -e "$REF" "$U")"
+            # 试小尺寸变体（有时大尺寸被限）
+            SMALL="${U/=s4800-w800-h600/=w400-h300}"
+            echo "  small-variant:  $(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -A "$UA" "$SMALL")"
+          done
