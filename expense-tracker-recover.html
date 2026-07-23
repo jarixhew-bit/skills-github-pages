@@ -21,6 +21,10 @@ button:disabled{opacity:.5}
 .card{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:6px;font-size:11px;color:#555}
 .card img{width:100%;border-radius:6px;display:block;margin-bottom:4px;max-height:180px;object-fit:cover}
 .empty{color:#999;font-size:13px;padding:10px 0}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}
+th,td{text-align:left;padding:6px 4px;border-bottom:1px solid #eee}
+th{color:#888;font-weight:normal}
+.bad-date{color:#c0392b;font-weight:bold}
 </style>
 </head>
 <body>
@@ -46,6 +50,16 @@ button:disabled{opacity:.5}
 </div>
 
 <div class="box">
+  <h2>3. 扫描日期异常的账目（跨所有年份月份，需要登录同一个 Google 账号）</h2>
+  <p class="sub" style="margin-bottom:8px">
+  找出所有日期跟今天差超过60天的账目（不管是过去还是未来）——这些大概率是拍照识别猜错年份/日期的记录，混在别的月份里不容易发现。列出来后回记账本按 id 或 金额/店名 找到对应记录，手动把日期改回正确的。
+  </p>
+  <button onclick="signInAndScanDates()" id="date-btn">登录并扫描日期异常</button>
+  <div id="date-status"></div>
+  <div id="date-list"></div>
+</div>
+
+<div class="box">
   <h2>说明</h2>
   <p class="sub" style="margin-bottom:0">
   • 只有你用「拍照识别」功能录入过的账目才会有照片，手动打字录入的没有照片，只能凭记忆或银行/信用卡账单核对补录。<br><br>
@@ -65,6 +79,15 @@ firebase.initializeApp({
 });
 const auth = firebase.auth();
 const db = firebase.firestore();
+let cachedUid = null;
+
+async function ensureSignedIn(){
+  if(cachedUid) return cachedUid;
+  const provider = new firebase.auth.GoogleAuthProvider();
+  const result = await auth.signInWithPopup(provider);
+  cachedUid = result.user.uid;
+  return cachedUid;
+}
 
 const ATTACH_DB_NAME = 'expenseTrackerFiles';
 const ATTACH_STORE = 'attachments';
@@ -119,9 +142,7 @@ async function signInAndScanCloud(){
   document.getElementById('cloud-btn').disabled = true;
   statusEl.textContent = '登录中…';
   try{
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const result = await auth.signInWithPopup(provider);
-    const uid = result.user.uid;
+    const uid = await ensureSignedIn();
     statusEl.textContent = '正在读取云端照片…';
     const snap = await db.collection('users').doc(uid).collection('attachments').get();
     if(snap.empty){
@@ -141,6 +162,58 @@ async function signInAndScanCloud(){
     statusEl.textContent = '失败：' + (e.message||e);
   }finally{
     document.getElementById('cloud-btn').disabled = false;
+  }
+}
+
+async function signInAndScanDates(){
+  const statusEl = document.getElementById('date-status');
+  const listEl = document.getElementById('date-list');
+  listEl.innerHTML = '';
+  document.getElementById('date-btn').disabled = true;
+  statusEl.textContent = '登录中…';
+  try{
+    const uid = await ensureSignedIn();
+    statusEl.textContent = '正在读取云端数据…';
+    const snap = await db.collection('users').doc(uid).get();
+    if(!snap.exists){
+      statusEl.textContent = '云端没有找到记账数据。';
+      return;
+    }
+    const data = JSON.parse(snap.data().payload);
+    const accounts = data.accounts || [];
+    const accName = id => (accounts.find(a=>a.id===id)||{}).name || id || '（未知账户）';
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const MAX_DAYS = 60;
+    const bad = (data.transactions||[]).filter(t=>{
+      const d = new Date(t.date + 'T00:00:00');
+      if(isNaN(d.getTime())) return true; // 日期格式本身有问题也算异常
+      const days = Math.abs((d - today) / 86400000);
+      return days > MAX_DAYS;
+    }).sort((a,b)=> a.date.localeCompare(b.date));
+
+    if(!bad.length){
+      statusEl.textContent = `扫描了 ${(data.transactions||[]).length} 笔记录，没有发现日期异常的（都在最近${MAX_DAYS}天内）。`;
+      return;
+    }
+    statusEl.textContent = `扫描了 ${(data.transactions||[]).length} 笔记录，发现 ${bad.length} 笔日期异常，列在下面（按日期排序）：`;
+    const rows = bad.map(t=>`
+      <tr>
+        <td class="bad-date">${t.date||'(无日期)'}</td>
+        <td>${t.type==='income'?'收入':'支出'}</td>
+        <td>${(t.amount!=null?t.amount:'')}</td>
+        <td>${(t.description||'').replace(/</g,'&lt;')}</td>
+        <td>${accName(t.accountId)}</td>
+        <td>${t.id}</td>
+      </tr>`).join('');
+    listEl.innerHTML = `<table>
+      <tr><th>日期</th><th>类型</th><th>金额</th><th>描述/店名</th><th>账户</th><th>id</th></tr>
+      ${rows}
+    </table>`;
+  }catch(e){
+    statusEl.textContent = '失败：' + (e.message||e);
+  }finally{
+    document.getElementById('date-btn').disabled = false;
   }
 }
 </script>
