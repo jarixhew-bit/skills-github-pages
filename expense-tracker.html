@@ -3234,7 +3234,7 @@ async function runReceiptSmartOCR(sourceCanvas){
     const dataUrl = outCanvas.toDataURL('image/jpeg', 0.85);
     const base64 = dataUrl.split(',')[1];
 
-    const prompt = '这是一张收据/发票照片。请提取：合计金额（数字，不含货币符号）、消费日期（YYYY-MM-DD，若看不到年份就用今年）、商户或店铺名称（简短，看不出就留空）。只输出 JSON，格式：{"amount": 数字或null, "date": "YYYY-MM-DD"或null, "merchant": "字符串"或null}，不要输出任何其他文字。';
+    const prompt = `这是一张收据/发票照片。今天的实际日期是 ${today()}。请提取：合计金额（数字，不含货币符号）、消费日期（YYYY-MM-DD，若收据上看不清或没有年份，就用 ${today().slice(0,4)} 年，不要凭训练知识猜别的年份）、商户或店铺名称（简短，看不出就留空）。只输出 JSON，格式：{"amount": 数字或null, "date": "YYYY-MM-DD"或null, "merchant": "字符串"或null}，不要输出任何其他文字。`;
     const timeoutMs = 20000;
     let text;
 
@@ -3293,7 +3293,7 @@ async function runReceiptSmartOCR(sourceCanvas){
       amountEl.value = String(parsed.amount);
       prefilled = true;
     }
-    if(dateEl && !state.dateTouchedByUser && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date||'')){
+    if(dateEl && !state.dateTouchedByUser && isReasonableReceiptDate(parsed.date)){
       dateEl.value = parsed.date;
       prefilled = true;
     }
@@ -3362,6 +3362,21 @@ function ocrExtractAmount(text){
   return null;
 }
 
+// Receipts should be near "now" — reject anything that isn't, rather than
+// trusting OCR/AI blindly. Catches the classic failure mode where a
+// misread digit or an AI model guessing a stale training-era year silently
+// files a transaction into the wrong month, where it looks "disappeared"
+// (the app's monthly views filter by exact year+month).
+const RECEIPT_DATE_MAX_PAST_DAYS = 60;
+function isReasonableReceiptDate(dateStr){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateStr||'')) return false;
+  const dateObj = new Date(dateStr + 'T00:00:00');
+  if(isNaN(dateObj.getTime())) return false;
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1); tomorrow.setHours(23,59,59,999);
+  const earliest = new Date(); earliest.setDate(earliest.getDate()-RECEIPT_DATE_MAX_PAST_DAYS); earliest.setHours(0,0,0,0);
+  return dateObj <= tomorrow && dateObj >= earliest;
+}
+
 function ocrExtractDate(text){
   const m = text.match(/20\d{2}[年\-\/.]\s?\d{1,2}[月\-\/.]\s?\d{1,2}/);
   if(!m) return null;
@@ -3369,10 +3384,9 @@ function ocrExtractDate(text){
   if(!parts) return null;
   const y = parseInt(parts[1],10), mo = parseInt(parts[2],10), d = parseInt(parts[3],10);
   if(mo<1||mo>12||d<1||d>31) return null;
-  const dateObj = new Date(y, mo-1, d);
-  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1); tomorrow.setHours(23,59,59,999);
-  if(isNaN(dateObj.getTime()) || dateObj > tomorrow) return null;
-  return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const candidate = `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  if(!isReasonableReceiptDate(candidate)) return null;
+  return candidate;
 }
 
 async function runReceiptOCRPrefill(sourceCanvas){
