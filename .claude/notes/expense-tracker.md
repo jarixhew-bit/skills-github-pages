@@ -81,9 +81,17 @@ URL: https://jarixhew-bit.github.io/skills-github-pages/expense-tracker.html
 
 ## 已知坑
 - 文件很大（3241行），单次 Read 建议配合 offset/limit 分段读，不要整档读入对话。
-- Firebase Firestore 结构是「整份 data 当一个 JSON 字符串存」（:716 `payload:
-  JSON.stringify(data)`），不是逐字段存——意味着云端冲突处理是「整份数据」级别
-  的（`showSyncConflict`:773 让用户选本地或云端整份覆盖），不是逐笔合并，改
-  同步逻辑时要意识到这个粒度。
+- Firebase Firestore 结构是「整份 data 当一个 JSON 字符串存」（`payload:
+  JSON.stringify(data)`），不是逐字段存。
 - 涉及金额、汇率、分类的改动，按 CLAUDE.md 与 `skills/numbers-and-money.md`
   规则，属于「错一个就毁信任」的类型，改完要抽验几笔真实数据核对。
+- **2026-07-23 修复过一次真实数据丢失事故**：原 `syncFromCloud()` 在本机和云端
+  都有数据时会跳出英文 `confirm()`，用户选哪边就整份覆盖丢弃另一边——用户在日本
+  旅行记账时误点确认，昨天的记录被云端旧快照整个覆盖消失。已改为 `mergeData()`
+  做 union-by-id 合并（`mergeById`函数），transactions 按新加的 `updatedAt` 字段
+  （`saveTx()`/`addMonthlyRecurring()`写入）取较新版本，不再有整份覆盖的路径。
+  权衡：合并不做删除同步（无 tombstone），一台设备删除的交易如果和还没见过这次
+  删除的旧云端快照合并，可能被"复活"——这是有意选的取舍（换掉更严重的整批消失），
+  以后改同步逻辑时留意这个已知限制，不要绕开 `mergeData()` 另开覆盖式路径。
+  同时新增 `expense-tracker-recover.html`（只读恢复工具，扫描 IndexedDB 本机
+  收据照片 + Firestore 云端收据照片备份，帮用户找回被覆盖记录的线索）。

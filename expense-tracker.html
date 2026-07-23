@@ -748,25 +748,52 @@ async function saveToCloud(){
   cloudSaving = false;
 }
 
-async function syncFromCloud(force){
+// Merge two arrays of {id,...} records into one, keyed by id.
+// preferNewer: on same id in both sides, keep whichever has the larger
+// updatedAt (falls back to local when neither/equal has one, since local
+// is the side actively being edited on this device).
+function mergeById(localArr, cloudArr, preferNewer){
+  const map = new Map();
+  (cloudArr||[]).forEach(item=>map.set(item.id, item));
+  (localArr||[]).forEach(item=>{
+    const existing = map.get(item.id);
+    if(!existing){ map.set(item.id, item); return; }
+    if(preferNewer){
+      const a = item.updatedAt||0, b = existing.updatedAt||0;
+      map.set(item.id, a>=b ? item : existing);
+    } else {
+      map.set(item.id, item);
+    }
+  });
+  return Array.from(map.values());
+}
+
+// Union-merge local + cloud so neither side's records get silently dropped.
+// Trade-off: a transaction deleted on one device can reappear after a
+// merge with a device/cloud copy that predates the deletion — annoying but
+// far safer than the old behavior, which could wipe out an entire side's
+// data when picking "keep cloud"/"keep local".
+function mergeData(local, cloud){
+  return {
+    accounts: mergeById(local.accounts, cloud.accounts),
+    categories: mergeById(local.categories, cloud.categories),
+    recurring: mergeById(local.recurring, cloud.recurring),
+    transactions: mergeById(local.transactions, cloud.transactions, true),
+    currentAccountId: local.currentAccountId || cloud.currentAccountId
+  };
+}
+
+async function syncFromCloud(){
   if(!currentUser) return;
   setCloudIcon('syncing');
   try{
     const snap = await db.collection('users').doc(currentUser.uid).get();
     if(snap.exists){
       const cloud = JSON.parse(snap.data().payload);
-      const hasCloud = cloud && cloud.transactions && cloud.transactions.length>0;
-      const hasLocal = data.transactions && data.transactions.length>0;
 
-      if(hasCloud && hasLocal && !force){
-        // Both sides have data — ask user
-        showSyncConflict(cloud);
-        setCloudIcon('error');
-        return;
-      }
-
-      if(hasCloud){
-        data = cloud;
+      if(cloud){
+        const before = data.transactions.length;
+        data = mergeData(data, cloud);
         if(!data.currentAccountId && data.accounts.length>0)
           data.currentAccountId = data.accounts[0].id;
         migrateCategories();
@@ -775,9 +802,11 @@ async function syncFromCloud(force){
         if(state.currentTab==='overview') renderOverview();
         if(state.currentTab==='transactions') renderTxList();
         if(state.currentTab==='analytics') renderAnalytics();
-        toast('☁️ Synced from cloud');
+        const added = data.transactions.length - before;
+        toast(added>0 ? `☁️ 已合并云端 ${added} 笔新记录` : '☁️ 已同步（无新增）');
+        await saveToCloud(); // push merged result back so both sides converge
       } else {
-        // Cloud empty, push local up
+        // Cloud doc exists but payload didn't parse to anything usable — push local up
         await saveToCloud();
         toast('☁️ Local data backed up to cloud');
       }
@@ -790,30 +819,6 @@ async function syncFromCloud(force){
     console.error('Cloud sync:', e);
     toast('Sync failed: ' + (e.code || e.message || 'unknown'));
     setCloudIcon('error');
-  }
-  renderSyncSection();
-}
-
-function showSyncConflict(cloudData){
-  const localTx = data.transactions.length;
-  const cloudTx = cloudData.transactions.length;
-  const msg = `Both local and cloud have data:\n\n📱 This device: ${localTx} records\n☁️ Cloud: ${cloudTx} records\n\nWhich do you want to keep?`;
-  const choice = confirm(msg + '\n\nOK = Keep CLOUD data\nCancel = Keep LOCAL data (and overwrite cloud)');
-  if(choice){
-    // Use cloud
-    data = cloudData;
-    if(!data.currentAccountId && data.accounts.length>0)
-      data.currentAccountId = data.accounts[0].id;
-    migrateCategories();
-    localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
-    updateHeader();
-    renderOverview();
-    setPendingSync(false);
-    toast('☁️ Using cloud data');
-  } else {
-    // Use local — don't auto-push, let user decide
-    toast('📱 Using local data — tap "Push to cloud" in Settings when ready');
-    setPendingSync(true);
   }
   renderSyncSection();
 }
@@ -1493,7 +1498,8 @@ function addMonthlyRecurring(){
       type: 'expense',
       amount: r.amount,
       categoryId: r.categoryId||'cat_other_exp',
-      description: r.description||r.name
+      description: r.description||r.name,
+      updatedAt: Date.now()
     });
     added++;
   });
@@ -1721,7 +1727,8 @@ function saveTx(){
     type: state.txType,
     categoryId: state.selectedCatId,
     description: description,
-    date: document.getElementById('tx-date').value || today()
+    date: document.getElementById('tx-date').value || today(),
+    updatedAt: Date.now()
   };
   if(state.pendingAttachmentId) tx.attachmentId = state.pendingAttachmentId;
 

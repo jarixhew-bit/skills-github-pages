@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>记账本 - 数据恢复工具</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{background:#f4f6f5;color:#1a1a1a;padding:16px;padding-bottom:60px}
+h1{font-size:18px;margin-bottom:4px}
+p.sub{color:#666;font-size:13px;margin-bottom:16px;line-height:1.5}
+.box{background:#fff;border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.box h2{font-size:14px;margin-bottom:8px}
+button{background:#1E7A42;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:14px;cursor:pointer}
+button:disabled{opacity:.5}
+#status{font-size:13px;color:#666;margin-top:8px;white-space:pre-wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:10px}
+.card{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:6px;font-size:11px;color:#555}
+.card img{width:100%;border-radius:6px;display:block;margin-bottom:4px;max-height:180px;object-fit:cover}
+.empty{color:#999;font-size:13px;padding:10px 0}
+</style>
+</head>
+<body>
+
+<h1>🔧 记账本数据恢复工具</h1>
+<p class="sub">
+这个页面不会修改你的记账数据，只是把浏览器里可能残留的收据照片列出来，
+帮你找回被同步覆盖掉的记录（金额/店名要靠照片自己核对，然后回记账本手动补录）。
+</p>
+
+<div class="box">
+  <h2>1. 本机浏览器里的收据照片</h2>
+  <button onclick="scanLocal()">扫描本机照片</button>
+  <div id="local-status"></div>
+  <div id="local-grid" class="grid"></div>
+</div>
+
+<div class="box">
+  <h2>2. 云端备份里的收据照片（需要登录同一个 Google 账号）</h2>
+  <button onclick="signInAndScanCloud()" id="cloud-btn">登录并扫描云端</button>
+  <div id="cloud-status"></div>
+  <div id="cloud-grid" class="grid"></div>
+</div>
+
+<div class="box">
+  <h2>说明</h2>
+  <p class="sub" style="margin-bottom:0">
+  • 只有你用「拍照识别」功能录入过的账目才会有照片，手动打字录入的没有照片，只能凭记忆或银行/信用卡账单核对补录。<br><br>
+  • 找到照片后，回到记账本 App 里用「+」手动新建一笔，把金额/日期/店名照着照片重新填一次即可，这个工具不会自动帮你补录。<br><br>
+  • 这个工具用完可以直接关掉，不影响记账本正常使用。
+  </p>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyCfZ407K6xNTvIpqKoFa_lkULgmrZwKJBM",
+  authDomain: "my-expense-tracker-a1aee.firebaseapp.com",
+  projectId: "my-expense-tracker-a1aee",
+  storageBucket: "my-expense-tracker-a1aee.firebasestorage.app",
+  messagingSenderId: "83592751983",
+  appId: "1:83592751983:web:fb62d72257da794b4d569a"
+});
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const ATTACH_DB_NAME = 'expenseTrackerFiles';
+const ATTACH_STORE = 'attachments';
+
+function openAttachDb(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(ATTACH_DB_NAME, 1);
+    req.onupgradeneeded = ()=>{
+      const dbi = req.result;
+      if(!dbi.objectStoreNames.contains(ATTACH_STORE)) dbi.createObjectStore(ATTACH_STORE);
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+}
+
+async function scanLocal(){
+  const statusEl = document.getElementById('local-status');
+  const grid = document.getElementById('local-grid');
+  grid.innerHTML = '';
+  statusEl.textContent = '扫描中…';
+  try{
+    const dbi = await openAttachDb();
+    const tx = dbi.transaction(ATTACH_STORE, 'readonly');
+    const store = tx.objectStore(ATTACH_STORE);
+    const keysReq = store.getAllKeys();
+    const valsReq = store.getAll();
+    const keys = await new Promise((res,rej)=>{ keysReq.onsuccess=()=>res(keysReq.result); keysReq.onerror=()=>rej(keysReq.error); });
+    const vals = await new Promise((res,rej)=>{ valsReq.onsuccess=()=>res(valsReq.result); valsReq.onerror=()=>rej(valsReq.error); });
+    if(!keys.length){
+      statusEl.textContent = '没有找到本机照片（可能这台设备上没拍过收据，或已被清理）。';
+      return;
+    }
+    statusEl.textContent = `找到 ${keys.length} 张本机照片：`;
+    keys.forEach((id,i)=>{
+      const blob = vals[i];
+      const url = URL.createObjectURL(blob);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<img src="${url}" alt="本机收据照片 ${id}"><div>id: ${id}</div>`;
+      grid.appendChild(card);
+    });
+  }catch(e){
+    statusEl.textContent = '扫描失败：' + (e.message||e);
+  }
+}
+
+async function signInAndScanCloud(){
+  const statusEl = document.getElementById('cloud-status');
+  const grid = document.getElementById('cloud-grid');
+  grid.innerHTML = '';
+  document.getElementById('cloud-btn').disabled = true;
+  statusEl.textContent = '登录中…';
+  try{
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const result = await auth.signInWithPopup(provider);
+    const uid = result.user.uid;
+    statusEl.textContent = '正在读取云端照片…';
+    const snap = await db.collection('users').doc(uid).collection('attachments').get();
+    if(snap.empty){
+      statusEl.textContent = '云端没有找到照片备份。';
+      return;
+    }
+    statusEl.textContent = `找到 ${snap.size} 张云端照片：`;
+    snap.forEach(doc=>{
+      const d = doc.data();
+      if(!d.base64) return;
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<img src="${d.base64}" alt="云端收据照片 ${doc.id}"><div>id: ${doc.id}${d.txId ? '<br>关联记录: '+d.txId : '（未关联到任何现存记录）'}</div>`;
+      grid.appendChild(card);
+    });
+  }catch(e){
+    statusEl.textContent = '失败：' + (e.message||e);
+  }finally{
+    document.getElementById('cloud-btn').disabled = false;
+  }
+}
+</script>
+</body>
+</html>
