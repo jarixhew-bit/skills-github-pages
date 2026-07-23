@@ -1,0 +1,51 @@
+name: fetch-one
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm i playwright@1.47 && npx playwright install chromium
+      - name: fetch store15
+        run: |
+          cat > one.js <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const queries = ['Gonpachi Nishiazabu Tokyo','権八 西麻布','権八 西麻布 東京'];
+          (async () => {
+            const b = await chromium.launch();
+            const ctx = await b.newContext({ locale:'en-US', userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36' });
+            const pg = await ctx.newPage();
+            let best=[];
+            for (const q of queries) {
+              try {
+                await pg.goto('https://www.google.com/maps/search/'+encodeURIComponent(q), { waitUntil:'domcontentloaded', timeout:45000 });
+                await pg.waitForTimeout(4000);
+                // 若是列表页，点第一个结果进详情
+                const first = await pg.$('a[href*="/maps/place/"]');
+                if (first) { await first.click().catch(()=>{}); await pg.waitForTimeout(4500); }
+                let urls = await pg.$$eval('img', imgs => imgs.map(i=>i.src).filter(s=>s && s.includes('googleusercontent') && (s.includes('gps-cs-s')||s.includes('/p/'))));
+                const seen=new Set(), clean=[];
+                for (const u of urls){ const base=u.split('=')[0]; if(!seen.has(base)){seen.add(base); clean.push(base+'=w800-h600');} }
+                console.log('query:', q, '| title:', (await pg.title()).slice(0,40), '->', clean.length);
+                if (clean.length > best.length) best = clean;
+                if (best.length >= 5) break;
+              } catch(e){ console.log('q', q, 'ERR', e.message); }
+            }
+            fs.writeFileSync('tools/usj-store15.json', JSON.stringify(best.slice(0,5)));
+            console.log('BEST:', best.length);
+          })();
+          JS
+          node one.js
+      - name: commit
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add tools/usj-store15.json
+          git commit -m "CI抓店15结果" || echo nothing
+          git push
