@@ -19,9 +19,11 @@ jobs:
           grep -o 'src="https://[^"]*"' "$FILE" | sed 's/^src="//;s/"$//' | sort -u > urls.txt
           grep -o 'href="https://maps[^"]*"' "$FILE" | sed 's/^href="//;s/"$//' | sed 's/&amp;/\&/g' | sort -u >> urls.txt
           echo "Total unique image URLs: $(wc -l < urls.txt)"
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+          REF="https://jarixhew-bit.github.io/"
           BROKEN=0
           while read -r url; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -L "$url" || echo ERR)
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -L -A "$UA" -e "$REF" "$url" || echo ERR)
             if [ "$code" != "200" ]; then
               BROKEN=$((BROKEN+1))
               echo "BROKEN [$code] $url"
