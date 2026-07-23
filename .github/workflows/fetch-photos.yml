@@ -1,0 +1,52 @@
+name: fetch-photos
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm i playwright@1.47 && npx playwright install chromium
+      - name: fetch photo urls
+        run: |
+          cat > fetch.js <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const stores = JSON.parse(fs.readFileSync('tools/usj-stores.json','utf8'));
+          (async () => {
+            const b = await chromium.launch();
+            const ctx = await b.newContext({ locale:'en-US', userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36' });
+            const pg = await ctx.newPage();
+            const out = {};
+            for (const s of stores) {
+              const url = s.cid ? 'https://www.google.com/maps?cid='+s.cid
+                                : 'https://www.google.com/maps/search/'+encodeURIComponent(s.q);
+              try {
+                await pg.goto(url, { waitUntil:'domcontentloaded', timeout:45000 });
+                await pg.waitForTimeout(6500);
+                let urls = await pg.$$eval('img', imgs => imgs.map(i=>i.src).filter(s=>s && s.includes('googleusercontent') && (s.includes('gps-cs-s')||s.includes('/p/'))));
+                // 取base去重
+                const seen=new Set(), clean=[];
+                for (const u of urls){ const base=u.split('=')[0]; if(!seen.has(base)){seen.add(base); clean.push(base+'=w800-h600');} }
+                out[s.i] = clean.slice(0,5);
+                console.log('store', s.i, s.cid?('cid'):('q:'+s.q), '->', out[s.i].length, 'imgs');
+              } catch(e){ console.log('store', s.i, 'ERR', e.message); out[s.i]=[]; }
+            }
+            await b.close();
+            fs.writeFileSync('tools/usj-fetched.json', JSON.stringify(out));
+          })();
+          JS
+          node fetch.js
+          echo "=== 汇总 ==="
+          python3 -c "import json;d=json.load(open('tools/usj-fetched.json'));print('抓到图的店:',sum(1 for v in d.values() if v),'/',len(d));print('总图数:',sum(len(v) for v in d.values()))"
+      - name: commit results
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add tools/usj-fetched.json
+          git commit -m "CI抓图结果 usj-fetched.json" || echo "nothing"
+          git push
