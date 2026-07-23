@@ -91,12 +91,17 @@ body{overflow-x:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','
 .ibkr-pnl-neg{color:#f87171;font-size:11px;margin-top:3px}
 
 
-/* SUMMARY ROW */
-.sum-row{display:flex;gap:12px;margin-bottom:14px}
-.sum-box{flex:1;min-width:0;background:var(--card);border-radius:var(--radius);
+/* SUMMARY ROW — grows evenly to fill the row like before when it fits;
+   once a box's content can't fit on one line anymore, it stops shrinking
+   (min-width:max-content) and the row scrolls horizontally instead of
+   squishing text or blowing out the page (same contained-overflow pattern
+   as .accs-row below), so it never drags the whole page sideways again. */
+.sum-row{display:flex;gap:12px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
+.sum-row::-webkit-scrollbar{display:none}
+.sum-box{flex:1 1 0;min-width:max-content;background:var(--card);border-radius:var(--radius);
   padding:14px;box-shadow:var(--shadow)}
 .sum-box-label{font-size:11px;color:var(--sub);margin-bottom:4px}
-.sum-box-val{font-size:18px;font-weight:700;overflow-wrap:break-word}
+.sum-box-val{font-size:18px;font-weight:700;white-space:nowrap}
 .sum-box.inc .sum-box-val{color:var(--inc)}
 .sum-box.exp .sum-box-val{color:var(--exp)}
 
