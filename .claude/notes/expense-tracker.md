@@ -95,3 +95,15 @@ URL: https://jarixhew-bit.github.io/skills-github-pages/expense-tracker.html
   以后改同步逻辑时留意这个已知限制，不要绕开 `mergeData()` 另开覆盖式路径。
   同时新增 `expense-tracker-recover.html`（只读恢复工具，扫描 IndexedDB 本机
   收据照片 + Firestore 云端收据照片备份，帮用户找回被覆盖记录的线索）。
+- **2026-07-23 同一次事故还查出第二个独立 bug（真正的根因）**：拍收据自动识别日期
+  （`ocrExtractDate()`本地OCR / `runReceiptSmartOCR()`AI识别）在识别不清年份时会
+  猜错年份——AI 路径的 prompt 原本没告诉模型"今天实际日期"，模型会用训练数据里的
+  旧年份瞎猜（例如猜成 2023，而旅行当下是 2026）；本地 OCR 路径也只挡未来日期，
+  不挡离谱的过去日期。由于`monthTxs()`（本月支出/明细 tab）严格按 年+月 过滤，
+  日期被猜错年份的记录会从当月视图"消失"（数据其实还在，只是被排到别的年份桶里），
+  表现为"这个月只剩一笔""新增的账也不见了"。修复：新增 `isReasonableReceiptDate()`
+  统一 sanity check（超过 `RECEIPT_DATE_MAX_PAST_DAYS`=60 天前或未来的一律拒绝，
+  两条识别路径都过这关），AI prompt 也改为显式传入 `today()`真实日期。**这是这次
+  用户报告"账目消失"的真正根因**，之前诊断的云同步整份覆盖是同时存在的另一个独立
+  bug（也已修）。已知局限：这次修复只挡未来新扫的收据，已经进错年份的历史记录
+  不会自动纠正，需要用户在 明细 tab 翻月份找到、手动改日期。
