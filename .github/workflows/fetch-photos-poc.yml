@@ -1,0 +1,39 @@
+name: fetch-photos-poc
+on: workflow_dispatch
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: install playwright
+        run: npm i playwright@1.47 && npx playwright install chromium
+      - name: render maps and extract photo urls
+        run: |
+          cat > extract.js <<'JS'
+          const { chromium } = require('playwright');
+          const cids = ['10320232838878048301','5535728105966142773'];
+          (async () => {
+            const b = await chromium.launch();
+            const ctx = await b.newContext({ locale:'en-US', userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36' });
+            const pg = await ctx.newPage();
+            for (const cid of cids) {
+              try {
+                await pg.goto('https://www.google.com/maps?cid='+cid, { waitUntil:'domcontentloaded', timeout:45000 });
+                // consent 页处理
+                const consent = await pg.$('button[aria-label*="Accept"], form[action*="consent"] button');
+                if (consent) { await consent.click().catch(()=>{}); await pg.waitForTimeout(2000); }
+                await pg.waitForTimeout(5000);
+                const title = await pg.title();
+                const urls = await pg.$$eval('img', imgs => imgs.map(i=>i.src).filter(s=>s && s.includes('googleusercontent')));
+                console.log('=== cid', cid, '| title:', title.slice(0,40));
+                console.log('  googleusercontent imgs:', urls.length);
+                urls.slice(0,4).forEach(u=>console.log('   ', u.slice(0,90)));
+              } catch(e){ console.log('cid', cid, 'ERR', e.message); }
+            }
+            await b.close();
+          })();
+          JS
+          node extract.js
