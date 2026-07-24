@@ -2627,26 +2627,52 @@ async function tryFetchRemoteAttachment(id){
 }
 
 // ===================== SCAN WORKFLOW: OpenCV lazy load =====================
-let _cvReadyPromise = null;
-function loadOpenCV(){
-  if(window.cv && window.cv.Mat) return Promise.resolve(true);
-  if(_cvReadyPromise) return _cvReadyPromise;
-  _cvReadyPromise = new Promise((resolve)=>{
+// docs.opencv.org/4.x/opencv.js is a docs-site path, not a real CDN — no
+// version pinning, no redundancy, single origin. When it's unreachable
+// (blocked network, outage) the whole auto-crop feature used to just fail.
+// Try it first (canonical/freshest build), then fall back to two independent
+// CDN mirrors of the same official build (republished by @techstark/opencv-js,
+// verified to be the same UMD build exposing window.cv), each with its own
+// timeout so one slow/dead host doesn't block trying the next.
+const OPENCV_SOURCES = [
+  'https://docs.opencv.org/4.x/opencv.js',
+  'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js',
+  'https://unpkg.com/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js'
+];
+const OPENCV_LOAD_TIMEOUT_MS = 12000;
+function loadOpenCVFrom(src, timeoutMs){
+  return new Promise((resolve)=>{
+    let settled = false;
+    const done = (ok)=>{ if(settled) return; settled = true; resolve(ok); };
+    const timer = setTimeout(()=>done(false), timeoutMs);
     const script = document.createElement('script');
-    script.src = 'https://docs.opencv.org/4.x/opencv.js';
+    script.src = src;
     script.onload = ()=>{
       // opencv.js calls Module.onRuntimeInitialized when the wasm is ready
-      if(window.cv && window.cv.Mat){ resolve(true); return; }
+      if(window.cv && window.cv.Mat){ clearTimeout(timer); done(true); return; }
       const check = ()=>{
-        if(window.cv && window.cv.Mat) resolve(true);
-        else if(window.cv) window.cv.onRuntimeInitialized = ()=>resolve(true);
+        if(settled) return;
+        if(window.cv && window.cv.Mat){ clearTimeout(timer); done(true); }
+        else if(window.cv) window.cv.onRuntimeInitialized = ()=>{ clearTimeout(timer); done(true); };
         else setTimeout(check, 100);
       };
       check();
     };
-    script.onerror = ()=>resolve(false);
+    script.onerror = ()=>{ clearTimeout(timer); done(false); };
     document.head.appendChild(script);
   });
+}
+let _cvReadyPromise = null;
+function loadOpenCV(){
+  if(window.cv && window.cv.Mat) return Promise.resolve(true);
+  if(_cvReadyPromise) return _cvReadyPromise;
+  _cvReadyPromise = (async ()=>{
+    for(const src of OPENCV_SOURCES){
+      const ok = await loadOpenCVFrom(src, OPENCV_LOAD_TIMEOUT_MS);
+      if(ok) return true;
+    }
+    return false;
+  })();
   return _cvReadyPromise;
 }
 
