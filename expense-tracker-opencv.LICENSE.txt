@@ -1,0 +1,12 @@
+expense-tracker-opencv.js is the official OpenCV.js WebAssembly build
+(version 4.10.0-release.1), redistributed here unmodified so the receipt
+scanner's corner-detection feature in expense-tracker.html can load it
+from this site's own domain instead of depending on an external CDN
+(some hotel/venue WiFi networks block unlisted external domains outright,
+which broke auto-detection entirely when it only had external sources).
+
+Source: https://github.com/TechStark/opencv-js (npm: @techstark/opencv-js@4.10.0-release.1),
+itself a redistribution of the official OpenCV project's build (https://opencv.org).
+
+Licensed under the Apache License, Version 2.0:
+https://www.apache.org/licenses/LICENSE-2.0
