@@ -8,7 +8,8 @@
 Firebase 云同步，含收据扫描 OCR 自动填单。单用户/家庭用，非工程师使用者。
 URL: https://jarixhew-bit.github.io/skills-github-pages/expense-tracker.html
 配套文件：`expense-tracker-sw.js`（Service Worker）、`expense-tracker.webmanifest`
-（PWA manifest）、`expense-tracker-icon.svg`。
+（PWA manifest）、`expense-tracker-icon.svg`、`expense-tracker-opencv.js`（同源
+vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那条）。
 
 ## 结构地图（expense-tracker.html，3241 行）
 - Firebase SDK 引入(:15-17，CDN script) → `<body>`(:342起)
@@ -115,4 +116,24 @@ URL: https://jarixhew-bit.github.io/skills-github-pages/expense-tracker.html
   所以只有 nav 看起来正常）。已加 `min-width:0` 让盒子能缩小、数字换行，并在
   `html`/`body` 补了 `overflow-x:hidden` 当兜底——以后任何地方金额涨到很宽的数字
   都不会再拖垮整页布局。这条教训：**凡是拿"金额"直接塞进 flex 子项的地方，都该有
-  `min-width:0`**，改新功能时留意别重犯。
+  `min-width:0`**，改新功能时留意别重犯。（后续 2026-07-24 改了实现方式，见下一条
+  最后一句——视觉效果这条描述的"换行"已不准确，教训本身仍成立。）
+- **2026-07-24 收据扫描的"图像引擎加载失败"，根因是外部 CDN 依赖，不是代码逻辑
+  错误**：`loadOpenCV()`原本只从 `docs.opencv.org/4.x/opencv.js`（文档站路径，
+  不是真正 CDN）单一来源加载识别引擎。第一次修复加了两个外部 CDN 镜像
+  （jsdelivr/unpkg 的 `@techstark/opencv-js`）做备援，但用户反馈仍然失败，且失败
+  是"拍完照立刻报错"而非等了几秒才超时——排除是本地旧代码问题后，问对用户才发现
+  当时用的是**酒店/商家 WiFi**：这类网络常见做法是白名单制，只放行少数已知网域，
+  任何没在白名单里的外部网域一律秒拒，三个外部 CDN 因此同时失效——加更多外部镜像
+  这条路本身就走不通，因为问题不在"选哪个 CDN"，而在"这类网络根本不让连外部网域"。
+  真正修法：把 opencv.js 整份 vendor 进本仓库（`expense-tracker-opencv.js`，10MB，
+  License 见 `expense-tracker-opencv.LICENSE.txt`，Apache-2.0，来源
+  `@techstark/opencv-js@4.10.0-release.1`，是官方 OpenCV.js build 的原始重新发布，
+  非改动版），`OPENCV_SOURCES`（`loadOpenCV()`附近）第一顺位改成同源相对路径
+  `expense-tracker-opencv.js`——只要这个页面本身能打开，同源文件就一定能连到，
+  这类"整个域名白名单"的网络限制才算真正解决；外部 CDN 镜像保留在后面几个顺位，
+  当作"同源文件意外 404"这种小概率情况的备援，不删。**教训（比这次具体的 bug 更
+  值得记住）**：使用者反馈"还是老样子/没用"时，先问"失败得快不快""换个网络会不会
+  好"这类几秒钟能回答的问题，比闷头再叠一层同类型的修法（这次是"再加一个外部
+  CDN"）更快找到真根因——同一大类修法用了两次都没解决，就该怀疑问题出在这个大类
+  本身（"外部依赖"），而不是这一类里挑得不够好。

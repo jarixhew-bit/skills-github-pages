@@ -2628,13 +2628,19 @@ async function tryFetchRemoteAttachment(id){
 
 // ===================== SCAN WORKFLOW: OpenCV lazy load =====================
 // docs.opencv.org/4.x/opencv.js is a docs-site path, not a real CDN — no
-// version pinning, no redundancy, single origin. When it's unreachable
-// (blocked network, outage) the whole auto-crop feature used to just fail.
-// Try it first (canonical/freshest build), then fall back to two independent
-// CDN mirrors of the same official build (republished by @techstark/opencv-js,
-// verified to be the same UMD build exposing window.cv), each with its own
-// timeout so one slow/dead host doesn't block trying the next.
+// version pinning, no redundancy, single origin. Worse: some hotel/venue
+// WiFi networks block outbound access to unlisted external domains
+// entirely, which fails EVERY external source equally and instantly (this
+// is what actually hit the user while traveling) — no amount of external
+// CDN mirrors can fix that class of failure. So the same-origin copy
+// (expense-tracker-opencv.js, the official build vendored into this repo —
+// see expense-tracker-opencv.LICENSE.txt) is tried first, since if the
+// page itself loaded, this domain is by definition reachable. The two
+// external CDN mirrors stay as a fallback for the unlikely case the local
+// copy 404s for some deploy reason, each bounded by its own timeout so a
+// dead host doesn't block trying the next.
 const OPENCV_SOURCES = [
+  'expense-tracker-opencv.js',
   'https://docs.opencv.org/4.x/opencv.js',
   'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js',
   'https://unpkg.com/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js'
