@@ -319,6 +319,9 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .scan-corner-dot{position:absolute;width:26px;height:26px;margin:-13px;
   border-radius:50%;background:rgba(108,99,255,.9);border:3px solid #fff;
   box-shadow:0 2px 8px rgba(0,0,0,.4);touch-action:none;cursor:grab}
+.corner-magnifier{position:absolute;width:110px;height:110px;border-radius:50%;
+  border:3px solid #6C63FF;box-shadow:0 2px 10px rgba(0,0,0,.35);
+  overflow:hidden;pointer-events:none;z-index:50;display:none;background:#000}
 .scan-loading{color:#fff;text-align:center;padding:24px;font-size:14px}
 .scan-loading .spin{font-size:32px;margin-bottom:12px;animation:spinRot 1s linear infinite}
 @keyframes spinRot{to{transform:rotate(360deg)}}
@@ -2887,6 +2890,50 @@ function drawCornerQuad(ctx, corners, scale){
   ctx.restore();
 }
 
+// 手指/鼠标拖动圆点时，指尖会正好挡住要对准的角——放大镜跟随显示指尖下方的
+// 放大画面＋十字准星，画在圆点上方（贴边时自动改画下方），让人能看清实际对准的像素。
+const MAG_SIZE = 110, MAG_ZOOM = 2.5;
+function ensureMagnifier(wrap){
+  let mag = document.getElementById('corner-magnifier');
+  if(!mag){
+    mag = document.createElement('div');
+    mag.id = 'corner-magnifier';
+    mag.className = 'corner-magnifier';
+    mag.innerHTML = `<canvas id="corner-mag-canvas" width="${MAG_SIZE}" height="${MAG_SIZE}"></canvas>`;
+    wrap.appendChild(mag);
+  }
+  return mag;
+}
+function updateMagnifier(dotX, dotY, canvas, wrap){
+  const mag = ensureMagnifier(wrap);
+  mag.style.display = 'block';
+  const wrapRect = wrap.getBoundingClientRect();
+  let top = dotY - MAG_SIZE - 30;
+  if(top < 0) top = dotY + 30;
+  let left = Math.max(0, Math.min(wrapRect.width - MAG_SIZE, dotX - MAG_SIZE/2));
+  mag.style.left = left+'px';
+  mag.style.top = top+'px';
+
+  const rect = canvas.getBoundingClientRect();
+  const es = rect.width / scanState.img.width;
+  const srcX = dotX/es, srcY = dotY/es;
+  const halfSrc = (MAG_SIZE/2) / (es*MAG_ZOOM);
+  const mctx = document.getElementById('corner-mag-canvas').getContext('2d');
+  mctx.clearRect(0,0,MAG_SIZE,MAG_SIZE);
+  mctx.drawImage(scanState.img,
+    srcX-halfSrc, srcY-halfSrc, halfSrc*2, halfSrc*2,
+    0, 0, MAG_SIZE, MAG_SIZE);
+  mctx.strokeStyle = '#6C63FF'; mctx.lineWidth = 1.5;
+  mctx.beginPath();
+  mctx.moveTo(MAG_SIZE/2-10, MAG_SIZE/2); mctx.lineTo(MAG_SIZE/2+10, MAG_SIZE/2);
+  mctx.moveTo(MAG_SIZE/2, MAG_SIZE/2-10); mctx.lineTo(MAG_SIZE/2, MAG_SIZE/2+10);
+  mctx.stroke();
+}
+function hideMagnifier(){
+  const mag = document.getElementById('corner-magnifier');
+  if(mag) mag.style.display = 'none';
+}
+
 function attachDragHandlers(dot, wrap){
   let dragging = false;
   const move = (clientX, clientY)=>{
@@ -2900,6 +2947,7 @@ function attachDragHandlers(dot, wrap){
     const es = rect.width / scanState.img.width;
     scanState.corners[idx] = {x: x/es, y: y/es};
     redrawCornerCanvas();
+    updateMagnifier(x, y, canvas, wrap);
   };
   dot.addEventListener('touchstart', e=>{ dragging=true; e.preventDefault(); }, {passive:false});
   dot.addEventListener('touchmove', e=>{
@@ -2908,10 +2956,10 @@ function attachDragHandlers(dot, wrap){
     const t = e.touches[0];
     move(t.clientX, t.clientY);
   }, {passive:false});
-  dot.addEventListener('touchend', ()=>{ dragging=false; });
+  dot.addEventListener('touchend', ()=>{ dragging=false; hideMagnifier(); });
   dot.addEventListener('mousedown', e=>{ dragging=true; e.preventDefault(); });
   window.addEventListener('mousemove', e=>{ if(dragging) move(e.clientX, e.clientY); });
-  window.addEventListener('mouseup', ()=>{ dragging=false; });
+  window.addEventListener('mouseup', ()=>{ if(dragging){ dragging=false; hideMagnifier(); } });
 }
 
 function redrawCornerCanvas(){
