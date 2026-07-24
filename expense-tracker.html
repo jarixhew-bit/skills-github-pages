@@ -525,6 +525,22 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <div class="type-tab active" id="type-exp" onclick="setTxType('expense')">支出</div>
       <div class="type-tab" id="type-inc" onclick="setTxType('income')">收入</div>
     </div>
+    <!-- attachment (moved above amount: photographing the receipt first lets
+         the scan workflow prefill the fields below, instead of retyping them) -->
+    <div class="form-group">
+      <label class="form-label">单据照片（选填）</label>
+      <div id="attach-thumb-area"></div>
+      <div id="attach-btn-row" class="attach-row">
+        <button type="button" class="attach-btn" onclick="document.getElementById('attach-camera-input').click()">
+          <span style="font-size:20px">📷</span>拍照
+        </button>
+        <button type="button" class="attach-btn" onclick="document.getElementById('attach-gallery-input').click()">
+          <span style="font-size:20px">🖼️</span>从相册选择
+        </button>
+      </div>
+      <input type="file" id="attach-camera-input" accept="image/*" capture="environment" style="display:none" onchange="onAttachFileChosen(event)">
+      <input type="file" id="attach-gallery-input" accept="image/*" style="display:none" onchange="onAttachFileChosen(event)">
+    </div>
     <!-- amount -->
     <div class="form-group">
       <div style="display:flex;gap:8px;align-items:stretch">
@@ -556,21 +572,6 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div class="form-group">
       <label class="form-label">日期</label>
       <input class="form-input" id="tx-date" type="date" oninput="state.dateTouchedByUser=true">
-    </div>
-    <!-- attachment -->
-    <div class="form-group">
-      <label class="form-label">单据照片（选填）</label>
-      <div id="attach-thumb-area"></div>
-      <div id="attach-btn-row" class="attach-row">
-        <button type="button" class="attach-btn" onclick="document.getElementById('attach-camera-input').click()">
-          <span style="font-size:20px">📷</span>拍照
-        </button>
-        <button type="button" class="attach-btn" onclick="document.getElementById('attach-gallery-input').click()">
-          <span style="font-size:20px">🖼️</span>从相册选择
-        </button>
-      </div>
-      <input type="file" id="attach-camera-input" accept="image/*" capture="environment" style="display:none" onchange="onAttachFileChosen(event)">
-      <input type="file" id="attach-gallery-input" accept="image/*" style="display:none" onchange="onAttachFileChosen(event)">
     </div>
     <!-- delete btn (edit mode) -->
     <div id="tx-delete-wrap" style="display:none;margin-bottom:12px">
