@@ -54,8 +54,12 @@ body{overflow-x:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','
 .nav-btn.active{color:var(--p)}
 .nav-icon{font-size:20px;line-height:1}
 
-/* FAB */
-.fab{position:fixed;bottom:68px;right:calc(50% - 240px + 20px);
+/* FAB — right offset was written assuming the ≥480px desktop-preview case
+   (centering against the capped app-frame width); on a real phone
+   (viewport <480px) that formula goes negative and pushes the button past
+   the screen's right edge, making it hard to tap. max() falls back to a
+   flat 20px inset from the actual edge whenever the frame isn't capped. */
+.fab{position:fixed;bottom:68px;right:max(20px, calc(50vw - 240px + 20px));
   width:52px;height:52px;border-radius:50%;background:var(--p);
   color:#fff;font-size:26px;border:none;cursor:pointer;
   box-shadow:0 4px 16px rgba(108,99,255,.4);display:flex;
