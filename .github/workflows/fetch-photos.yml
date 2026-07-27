@@ -1,0 +1,62 @@
+name: Fetch place photos
+
+on:
+  workflow_dispatch:
+    inputs:
+      queries:
+        description: "Search queries, separated by |"
+        required: true
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        run: |
+          npm i -g playwright@1.47.0
+          npx playwright@1.47.0 install --with-deps chromium
+
+      - name: Write scraper
+        run: |
+          cat > scrape.js <<'JS'
+          const { chromium } = require('playwright');
+          (async () => {
+            const queries = process.env.QUERIES.split('|').map(s => s.trim()).filter(Boolean);
+            const browser = await chromium.launch();
+            const ctx = await browser.newContext({
+              locale: 'ja-JP',
+              userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
+            });
+            for (const q of queries) {
+              const page = await ctx.newPage();
+              const url = 'https://www.google.com/maps/search/' + encodeURIComponent(q) + '?hl=ja';
+              console.log('##### QUERY: ' + q);
+              try {
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+                await page.waitForTimeout(7000);
+                const urls = await page.$$eval('img', imgs =>
+                  imgs.map(i => i.src).filter(s =>
+                    s && s.includes('googleusercontent.com') &&
+                    (s.includes('gps-cs-s') || s.includes('/p/') || s.includes('place-photos'))
+                  )
+                );
+                const uniq = [...new Set(urls)].slice(0, 8);
+                console.log('COUNT ' + uniq.length);
+                uniq.forEach(u => console.log('IMG ' + u.replace(/=w\d+-h\d+.*$/, '=s4800-w800-h600')));
+                const title = await page.title();
+                console.log('TITLE ' + title);
+              } catch (e) {
+                console.log('ERROR ' + e.message);
+              }
+              await page.close();
+            }
+            await browser.close();
+          })();
+          JS
+
+      - name: Run scraper
+        env:
+          QUERIES: ${{ github.event.inputs.queries }}
+        run: |
+          export NODE_PATH=$(npm root -g)
+          node scrape.js
