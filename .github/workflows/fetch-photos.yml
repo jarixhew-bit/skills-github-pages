@@ -29,7 +29,7 @@ jobs:
             });
             for (const q of queries) {
               const page = await ctx.newPage();
-              const url = 'https://www.google.com/maps/search/' + encodeURIComponent(q) + '?hl=ja';
+              const url = /^https?:\/\//.test(q) ? q : 'https://www.google.com/maps/search/' + encodeURIComponent(q) + '?hl=ja';
               console.log('##### QUERY: ' + q);
               try {
                 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -43,6 +43,7 @@ jobs:
                 const uniq = [...new Set(urls)].slice(0, 8);
                 console.log('COUNT ' + uniq.length);
                 uniq.forEach(u => console.log('IMG ' + u.replace(/=w\d+-h\d+.*$/, '=s4800-w800-h600')));
+                console.log('FINAL_URL ' + page.url());
                 const title = await page.title();
                 console.log('TITLE ' + title);
                 const rating = await page.evaluate(() => {
