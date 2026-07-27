@@ -45,6 +45,13 @@ jobs:
                 uniq.forEach(u => console.log('IMG ' + u.replace(/=w\d+-h\d+.*$/, '=s4800-w800-h600')));
                 const title = await page.title();
                 console.log('TITLE ' + title);
+                const rating = await page.evaluate(() => {
+                  const el = document.querySelector('div.F7nice');
+                  if (el) return el.innerText.replace(/\n/g, ' ').trim();
+                  const m = document.body.innerText.match(/([0-9]\.[0-9])\s*\n?\s*\(([0-9,]+)\)/);
+                  return m ? m[1] + ' (' + m[2] + ')' : 'NOT_FOUND';
+                });
+                console.log('RATING ' + rating);
               } catch (e) {
                 console.log('ERROR ' + e.message);
               }
