@@ -320,7 +320,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   align-items:center;justify-content:center;min-height:0}
 .scan-canvas-wrap{position:relative;max-width:100%;max-height:100%;touch-action:none}
 .scan-canvas-wrap canvas{max-width:100%;max-height:100%;display:block;touch-action:none}
-.scan-corner-dot{position:absolute;width:26px;height:26px;margin:-13px;
+.scan-corner-dot{position:absolute;width:36px;height:36px;margin:-18px;
   border-radius:50%;background:rgba(108,99,255,.9);border:3px solid #fff;
   box-shadow:0 2px 8px rgba(0,0,0,.4);touch-action:none;cursor:grab}
 .corner-magnifier{position:absolute;width:110px;height:110px;border-radius:50%;
@@ -2878,8 +2878,12 @@ function renderCornerStage(){
   document.getElementById('scan-title').textContent = '拖动调整四角';
   const img = scanState.img;
   const stage = document.getElementById('scan-stage');
-  const maxW = stage.clientWidth || 360;
-  const maxH = (stage.clientHeight || 400);
+  // 四角圆点常常正好落在图片边缘（默认四角就是整张图的四个角），画布如果贴满
+  // stage 边界，圆点的可点范围会被 stage 的 overflow:hidden 裁掉一半，且正好落在
+  // 屏幕物理边缘手指也难摸到——四边各留一点空间，让圆点有地方可以完整露出来。
+  const CORNER_MARGIN = 24;
+  const maxW = (stage.clientWidth || 360) - CORNER_MARGIN*2;
+  const maxH = (stage.clientHeight || 400) - CORNER_MARGIN*2;
   const scale = Math.min(maxW/img.width, maxH/img.height, 1);
   scanState.displayScale = scale;
   const dispW = Math.round(img.width*scale), dispH = Math.round(img.height*scale);
