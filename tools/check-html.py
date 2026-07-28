@@ -142,6 +142,30 @@ def check_foreign_jargon(path: str, html: str, whitelist: list) -> list:
     return errors
 
 
+def check_dup_segments(path: str, html: str) -> list:
+    """抓「· 分隔的清单里出现完全相同的段落」——改写行程说明时最常见的复制残留，
+    标签平衡与假名检查都查不出这类错误。"""
+    errors = []
+    for raw in html.split("\n"):
+        if "dayfoot" not in raw and 'class="desc"' not in raw:
+            continue
+        text = re.sub(r"<[^>]+>", "", raw)
+        for part in re.split(r"[；;。]", text):
+            segs = [x.strip() for x in part.split(" · ") if x.strip()]
+            seen = set()
+            for seg in segs:
+                if len(seg) < 6:
+                    continue
+                if seg in seen:
+                    errors.append(
+                        f"{path}: 说明文字出现重复段落「{seg[:40]}」——"
+                        f"改写行程时可能复制残留，请检查"
+                    )
+                    break
+                seen.add(seg)
+    return errors
+
+
 def check_img_alt(path: str, html: str) -> list:
     """WCAG 1.1.1：<img> 缺 alt 属性，屏幕阅读器读不出图片内容。"""
     errors = []
@@ -193,6 +217,7 @@ def main():
         all_errors += check_lang_key(f, html)
         all_errors += check_foreign_jargon(f, html, whitelist)
         all_errors += check_img_alt(f, html)
+        all_errors += check_dup_segments(f, html)
 
     if all_errors:
         print(f"不通过（{len(all_errors)} 个问题）：")
