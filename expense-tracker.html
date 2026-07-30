@@ -2425,6 +2425,7 @@ async function unlockIBKR(){
 // ===================== ATTACHMENTS: IndexedDB =====================
 const ATTACH_DB_NAME = 'expenseTrackerFiles';
 const ATTACH_STORE = 'attachments';
+const SHARE_TARGET_KEY = '__shared_photo__'; // must match expense-tracker-sw.js's SHARE_KEY
 let _attachDbPromise = null;
 
 function openAttachDb(){
@@ -2486,6 +2487,26 @@ async function deleteAttachmentBlob(id){
         .collection('attachments').doc(id).delete();
     }catch(e){ console.error('Cloud attachment delete failed (ignored):', e); }
   }
+}
+
+// 手机相册/相机 App 里点「分享」→ 记账本，走的是 manifest 的 share_target：
+// Service Worker 拦截那次 POST，把照片先存进这个 IndexedDB（见 expense-tracker-sw.js
+// 的 handleShareTarget），再跳转回本页并带上 ?share=1；这里负责把它取出来、丢进
+// 正常的拍照识别流程，跟手动点「拍照」按钮效果一样。
+async function checkShareTarget(){
+  const params = new URLSearchParams(location.search);
+  if(params.get('share') !== '1') return;
+  history.replaceState(null, '', location.pathname);
+  try{
+    const blob = await getAttachmentBlob(SHARE_TARGET_KEY);
+    if(blob){
+      await deleteAttachmentBlobLocal(SHARE_TARGET_KEY);
+      showAddTx();
+      openScanWorkflow(blob);
+    } else {
+      toast('没有收到分享的照片，请重试');
+    }
+  }catch(e){ console.error('Share target pickup failed:', e); }
 }
 
 // ===================== ATTACHMENTS: form thumbnail state =====================
@@ -3547,6 +3568,7 @@ function init(){
   renderOverview();
   loadIBKR();
   setCloudIcon('off');
+  checkShareTarget();
 
   auth.onAuthStateChanged(async user => {
     currentUser = user;
