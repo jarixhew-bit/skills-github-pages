@@ -1471,7 +1471,11 @@ function renderSettingsRecurring(){
           <div class="setting-sub">${acc.name||''} · ${acc.currency||''} ${fmt(r.amount, acc.currency)}</div>
         </div>
       </div>
-      <button class="del-btn" onclick="deleteRecurring('${r.id}')">删除</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="del-btn" style="background:var(--p2);color:var(--p)"
+          onclick="addOneRecurring('${r.id}')">录入</button>
+        <button class="del-btn" onclick="deleteRecurring('${r.id}')">删除</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -1497,30 +1501,44 @@ function deleteRecurring(id){
   toast('已删除');
 }
 
+// 一个固定开销项目每月最多算一次「已录入」（按 recurId + 当月日期判重）；
+// addMonthlyRecurring 一次性把所有项目都录进去，addOneRecurring 只录一项——
+// 用户如果某项提早还/晚还，不想被批量按钮连带今天的日期一起写掉，就单独点它。
+function pushRecurringTx(r){
+  const month = today().slice(0,7); // YYYY-MM
+  const dup = data.transactions.find(t=>t.recurId===r.id && t.date.startsWith(month));
+  if(dup) return false;
+  data.transactions.push({
+    id: uid(),
+    recurId: r.id,
+    accountId: r.accountId,
+    date: today(),
+    type: 'expense',
+    amount: r.amount,
+    categoryId: r.categoryId||'cat_other_exp',
+    description: r.description||r.name,
+    updatedAt: Date.now()
+  });
+  return true;
+}
+
 function addMonthlyRecurring(){
   if(!data.recurring.length){ toast('没有固定开销项目'); return; }
-  const month = today().slice(0,7); // YYYY-MM
   let added = 0;
-  data.recurring.forEach(r=>{
-    const dup = data.transactions.find(t=>t.recurId===r.id && t.date.startsWith(month));
-    if(dup) return;
-    data.transactions.push({
-      id: uid(),
-      recurId: r.id,
-      accountId: r.accountId,
-      date: today(),
-      type: 'expense',
-      amount: r.amount,
-      categoryId: r.categoryId||'cat_other_exp',
-      description: r.description||r.name,
-      updatedAt: Date.now()
-    });
-    added++;
-  });
+  data.recurring.forEach(r=>{ if(pushRecurringTx(r)) added++; });
   if(!added){ toast('本月已全部录入'); return; }
   saveData();
-  renderAll();
+  renderSettingsRecurring();
   toast(`已录入 ${added} 条固定开销`);
+}
+
+function addOneRecurring(id){
+  const r = data.recurring.find(x=>x.id===id);
+  if(!r) return;
+  if(!pushRecurringTx(r)){ toast(`「${r.name}」本月已录入过`); return; }
+  saveData();
+  renderSettingsRecurring();
+  toast(`「${r.name}」已录入`);
 }
 
 function renderSettingsAccs(){
