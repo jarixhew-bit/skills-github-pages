@@ -147,3 +147,40 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   且公式是针对某个封顶宽度的容器（桌面预览、居中卡片）算出来的，套到没有封顶的
   真实窄屏（viewport <该封顶值）上要单独验证会不会算出负值/超界；用 `max()`/
   `min()`包一层做保底是比重新硬编两套公式更省事的通用解法。
+- **2026-07-24 收据校准四角圆点贴屏幕边缘难抓**：`renderCornerStage()`
+  （拖动调整四角那一步）原本让画布贴满整个 `#scan-stage`，而 `defaultCorners()`
+  默认把四个圆点摆在图片的像素边缘——大多数收据照片本来就是贴边拍的，圆点因此
+  经常正好卡在画布边界，可点范围被 `overflow:hidden` 裁掉将近一半，还正好挨着
+  屏幕物理边缘，手指难点中。修法：`renderCornerStage()`里画布四周留 24px
+  `CORNER_MARGIN`，圆点尺寸从 26px 加大到 36px。**教训**：凡是「默认值/重设值
+  刚好落在容器边界」的可拖动 UI（这类通常是有意为之，比如「重设为全图」就是要
+  四角对齐边缘），容器不能让内容贴满 0 边距，一定要留够半个可点元素的缓冲，
+  不然默认状态自己就是最难用的状态。
+- **2026-07-30 Android「分享到」记账本失败，根因是 manifest 里 `share_target.action`
+  用了相对路径**：为了让用户拍完收据/选完相册照片能直接从系统分享面板分享进
+  App（跳过手动打开 App 选相册），加了 `share_target`（`expense-tracker.webmanifest`）
+  ＋ Service Worker 端拦截 POST（`expense-tracker-sw.js`的`handleShareTarget()`，
+  把文件塞进跟收据附件共用的 IndexedDB，再跳转回`?share=1`让页面
+  `checkShareTarget()`捡起来）。第一版`action`写成相对路径`"expense-tracker.html"`
+  ——manifest 规范允许相对路径（相对 manifest 自身 URL 解析），但 Chrome 在
+  Android 上把 PWA 注册成系统分享目标（WebAPK）这一步，文档记载**必须用完整绝对
+  网址（含 `https://` 和域名）**，写相对路径会静默注册失败——用户重装 App 后分享
+  列表里依然没有记账本，查了两篇独立文章才确认这个坑。已改成完整网址修复。
+  **教训**：manifest 里任何要给系统（而不是给浏览器自己）用的字段（`share_target`、
+  `protocol_handlers`、`file_handlers`这类"注册到 OS"的能力），相对路径不能全信
+  规范允许就够用，实际抓紧写绝对网址，出问题时先查是不是这类 OS 注册环节的已知坑，
+  别只在自己代码逻辑里找。另外，**改 manifest/SW 后，已安装用户必须卸载重装 PWA
+  才会生效**，光刷新网页不够——这条本节前面 PWA 关键点已经提过一次（CACHE 版本号
+  那条），这里是它在真实故障排查里踩过的实例，互相印证。
+- **2026-07-30 月固定开销的批量按钮曾静默报错，因为调用了不存在的
+  `renderAll()`**：`addMonthlyRecurring()`（一键录入本月）在`saveData()`之后调用
+  `renderAll()`，但全文搜索这个函数根本不存在——`saveData()`已经成功执行（交易
+  确实写进去了），但紧接着的`renderAll()`抛 ReferenceError，导致成功提示`toast()`
+  和列表刷新从未跑到，用户点了按钮却感觉「什么都没发生」。改成调用当前屏幕真正
+  需要的`renderSettingsRecurring()`。同时把「只能整批一起录」拆开：新增
+  `addOneRecurring(id)`+ 每个项目一个「录入」按钮，允许单独某一项在它实际发生的
+  当天单独录入（不用被批量按钮的"今天日期＋全额"绑死），公用的判重/写入逻辑抽成
+  `pushRecurringTx(r)`给两条路径共用。**教训**：改动周边代码时顺手全文搜索一下
+  被调用的函数是否真的存在，尤其是`saveData()`/写入操作**之后**才会触发的收尾函数
+  ——数据层的 bug 容易被最先测到，UI 反馈层的 bug（写完了但用户看不到反馈）反而
+  更隐蔽，因为「重新整理页面后数据是对的」会让人误以为功能一直正常。
