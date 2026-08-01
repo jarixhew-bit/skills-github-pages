@@ -108,14 +108,46 @@ def main():
             if not ok:
                 broken.append((f, kind, url, info))
 
-    if broken:
-        print(f"不通过（{len(broken)} 个链接失效）：")
-        for f, kind, url, info in broken:
-            print(f"  ✗ [{info}] {f} 的{kind}：{url}")
-        sys.exit(1)
+    if not broken:
+        print(f"通过：{len(jobs)} 个链接全部正常")
+        sys.exit(0)
 
-    print(f"通过：{len(jobs)} 个链接全部正常")
-    sys.exit(0)
+    # 失败多的时候，逐条列清单会刷屏且把统计埋掉。改为先分组统计、每组只列样本，
+    # 摘要放最后（CI 日志与 issue 都是从尾部看起）。
+    by_file, by_code = {}, {}
+    for f, kind, url, info in broken:
+        by_file.setdefault(f, []).append((kind, url, info))
+        by_code[info] = by_code.get(info, 0) + 1
+
+    print("失效样本（每个页面最多列 3 条）：")
+    for f in sorted(by_file, key=lambda x: -len(by_file[x])):
+        items = by_file[f]
+        print(f"\n  {f} —— {len(items)} 个失效")
+        for kind, url, info in items[:3]:
+            print(f"    ✗ [{info}] {kind}：{url[:110]}")
+        if len(items) > 3:
+            print(f"    …另有 {len(items) - 3} 个未列出")
+
+    print("\n" + "=" * 60)
+    print(f"不通过：{len(jobs)} 个链接里有 {len(broken)} 个失效")
+    print("\n按页面：")
+    for f in sorted(by_file, key=lambda x: -len(by_file[x])):
+        total_in_file = sum(1 for j in jobs if j[0] == f)
+        print(f"  {f}: {len(by_file[f])}/{total_in_file}")
+    print("\n按状态码：")
+    for code in sorted(by_code, key=lambda c: -by_code[c]):
+        print(f"  {code}: {by_code[code]} 个")
+
+    # 403 的成因有两种，处理方式完全不同，必须让人能分辨：
+    # (a) Google Places 图片链接带签名、会过期 → 真失效，要重抓；
+    # (b) Google 挡 CI 机房 IP → 误报，用户从家用网络看是好的。
+    # 脚本分不出来，所以只提示、不替人下结论。
+    if "403" in by_code:
+        print(f"\n注意：有 {by_code['403']} 个 403。403 有两种可能——"
+              "Google Places 图片签名过期（真失效，要重抓），"
+              "或 Google 挡住 CI 机房 IP（误报，从家用网络看是好的）。"
+              "\n分辨方法：在浏览器打开该页面看图片是否真的破了。")
+    sys.exit(1)
 
 
 if __name__ == "__main__":
