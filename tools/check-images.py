@@ -27,6 +27,7 @@ import re
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
@@ -59,10 +60,13 @@ def extract(path: str) -> list:
 
 def probe(url: str):
     """回传 (是否活着, 说明)。2xx/3xx 算活着。"""
+    # 地图链接里常带中文店名（如 .../search/鶏Soba+座銀+総本店/），非 ASCII 字符
+    # 直接丢进 urllib 会 UnicodeEncodeError，要先 percent-encode。
+    safe = urllib.parse.quote(url, safe=":/?#[]@!$&'()*+,;=~-._%")
     last = ""
     for _ in range(RETRIES):
         req = urllib.request.Request(
-            url, headers={"User-Agent": UA, "Referer": REFERER})
+            safe, headers={"User-Agent": UA, "Referer": REFERER})
         try:
             with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
                 if 200 <= r.status < 400:
