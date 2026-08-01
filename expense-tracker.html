@@ -1969,7 +1969,7 @@ async function exportStatementPDF(){
   });
 
   const txs = monthTxs(acc.id, year, month);
-  const incomeTxs = txs.filter(t=>t.type==='income');
+  const incomeTxs = txs.filter(t=>t.type==='income').sort((a,b)=>a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   const incomeTotal = incomeTxs.reduce((s,t)=>s+t.amount,0);
   const expenseTxs = txs.filter(t=>t.type==='expense').sort((a,b)=>a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   const expenseTotal = expenseTxs.reduce((s,t)=>s+t.amount,0);
@@ -2086,6 +2086,33 @@ async function exportStatementPDF(){
               <td colspan="2">总计</td>
               <td class="st-amt-col">${fmtThousands(expenseTotal)}</td>
               <td class="st-voucher-col"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="st-sec-title">■ 收入明细 / Income Breakdown</div>
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>项目</th>
+              <th class="st-amt-col">金额</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${incomeTxs.map(t=>{
+              const cat = getCat(t.categoryId);
+              const label = t.description || (cat?cat.name:'未分类');
+              return `<tr>
+                <td>${t.date}</td>
+                <td>${label}</td>
+                <td class="st-amt-col">${fmtThousands(t.amount)}</td>
+              </tr>`;
+            }).join('')}
+            ${incomeTxs.length===0?'<tr><td colspan="3" style="text-align:center;color:#999">本月无新增注资</td></tr>':''}
+            <tr class="st-total-row">
+              <td colspan="2">总计</td>
+              <td class="st-amt-col">${fmtThousands(incomeTotal)}</td>
             </tr>
           </tbody>
         </table>
