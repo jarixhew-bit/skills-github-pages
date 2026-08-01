@@ -1,32 +1,72 @@
+# 图片体检：手册的图片一律走 Google Places 外链、不进仓库（CLAUDE.md 媒体文件规则），
+# 而外链会悄悄失效——页面还在、网址还通，只有打开的人看到破图，发手册的人不会知道。
+# 每周一自动扫一次全站外链，失效才开 issue 通知。零 Claude 用量消耗。
 name: Check image links
 
 on:
+  schedule:
+    # 每周一 UTC 01:00（柬埔寨 UTC+7 早上 08:00 前后）。
+    - cron: '0 1 * * 1'
   workflow_dispatch:
     inputs:
       file:
-        description: "HTML file to check (repo-relative path)"
-        required: true
-        default: "japan-trip-2026.html"
+        description: "只检查单一 HTML（留空 = 全站扫描）"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Check all image URLs
+
+      - name: 扫描外链
+        id: scan
         run: |
           FILE="${{ github.event.inputs.file }}"
-          grep -o 'src="https://[^"]*"' "$FILE" | sed 's/^src="//;s/"$//' | sort -u > urls.txt
-          grep -o 'href="https://maps[^"]*"' "$FILE" | sed 's/^href="//;s/"$//' | sed 's/&amp;/\&/g' | sort -u >> urls.txt
-          echo "Total unique image URLs: $(wc -l < urls.txt)"
-          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
-          REF="https://jarixhew-bit.github.io/"
-          BROKEN=0
-          while read -r url; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 -L -A "$UA" -e "$REF" "$url" || echo ERR)
-            if [ "$code" != "200" ]; then
-              BROKEN=$((BROKEN+1))
-              echo "BROKEN [$code] $url"
-            fi
-          done < urls.txt
-          echo "Broken count: $BROKEN"
+          if [ -n "$FILE" ]; then
+            TARGET="$FILE"
+          else
+            TARGET="--all"
+          fi
+          if python3 tools/check-images.py $TARGET > result.txt 2>&1; then
+            echo "broken=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "broken=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat result.txt
+
+      # 失效才开 issue。已有开着的同名 issue 就改为补一条评论，避免每周堆积。
+      - name: 失效则开 issue 通知
+        if: steps.scan.outputs.broken == 'true' && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="手册图片链接失效（每周体检）"
+          {
+            echo "每周图片体检发现有外链失效。**页面本身没坏，是图片打不开**——"
+            echo "家人打开手册会看到破图。"
+            echo
+            echo '```'
+            head -c 60000 result.txt
+            echo '```'
+            echo
+            echo "## 怎么处理"
+            echo
+            echo "跟 Claude 说一句「修一下失效的图片」即可。它会按 CLAUDE.md 的媒体文件规则"
+            echo "重新抓 Google Places 图片链接替换（沙盒抓不到时走 fetch-photos.yml 这条 CI 通道）。"
+            echo
+            echo "自己重跑：Actions → Check image links → Run workflow"
+          } > body.md
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" \
+                       --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file body.md
+          else
+            gh issue create --title "$TITLE" --body-file body.md
+          fi
