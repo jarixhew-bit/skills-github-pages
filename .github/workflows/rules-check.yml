@@ -1,0 +1,70 @@
+# 制度档月度体检：每月 1 号跑 tools/check-rules.py，检查 .claude/rules/ 等制度档
+# 有没有超过 maintenance.md 第 4 节的精简门槛（教训满 10 条 / 单档超行数上限 /
+# 路由引用失效）。
+#
+# 为什么放 CI 而不是 Claude 定时任务（2026-08-01 用户提出后改的）：
+# 绝大多数月份的结论是「没超标」，为此每月开一个新 Claude session（要载入
+# CLAUDE.md ＋全部规则档＋工具定义）不划算。检测不需要判断力，放 CI 零消耗；
+# 真正需要判断力的「精简」才叫 Claude 上场——超标时开 issue 通知用户即可。
+name: Rules Health Check
+
+on:
+  schedule:
+    # 每月 1 号 UTC 01:00（柬埔寨 UTC+7 早上 08:00 前后）。
+    # 每月一次，GitHub 的排队延迟不影响用途。
+    - cron: '0 1 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 跑制度档体检
+        id: check
+        run: |
+          if python3 tools/check-rules.py --quiet > result.txt 2>&1; then
+            echo "over=false" >> "$GITHUB_OUTPUT"
+            echo "所有制度档都在门槛内，无需精简。"
+          else
+            echo "over=true" >> "$GITHUB_OUTPUT"
+            cat result.txt
+          fi
+
+      # 超标才开 issue。已有开着的同名 issue 就不再重复开，避免每月堆积。
+      - name: 超标则开 issue 通知
+        if: steps.check.outputs.over == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="制度档该精简了（月度体检）"
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" \
+                       --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "已有开着的 issue #$EXISTING，本月不重复开。"
+            exit 0
+          fi
+          {
+            echo "月度体检发现制度档超过 \`.claude/rules/maintenance.md\` 第 4 节的精简门槛："
+            echo
+            echo '```'
+            cat result.txt
+            echo '```'
+            echo
+            echo "## 怎么处理"
+            echo
+            echo "跟 Claude 说一句「处理一下制度档精简」即可。它会按 maintenance.md"
+            echo "第 4 节的六种判定（追加／修正／新增章节／新建档案／已覆盖／太具体）"
+            echo "逐条精简，并走 PR 流程。"
+            echo
+            echo "注意：改铁律门槛数字、删整节、把教训上升为正文规则这三类改动，"
+            echo "按 maintenance.md 第 2 节必须先经你同意，Claude 不会自己动手。"
+            echo
+            echo "自己看当前状况：\`python3 tools/check-rules.py\`"
+          } > body.md
+          gh issue create --title "$TITLE" --body-file body.md
