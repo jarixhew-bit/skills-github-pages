@@ -926,7 +926,34 @@ const KEYWORD_MAP = [
     // 柬埔寨
     'nham24','nham 24','bai','num','samlor','amok','lok lak','kuy teav',
     'nom banh chok','banh mi','bai sach chrouk','num pang','joma','brown coffee',
-    'the shop','vann\'s','sundown','eclipse','romdoul','phsar','market food'],
+    'the shop','vann\'s','sundown','eclipse','romdoul','phsar','market food',
+    // 繁体字变体（收据/菜单常见港台写法，上面那批全是简体，不加这些就匹配不到）
+    '餐廳','飯','麵','雞','豬','魚','蝦','燒','鍋','點心','咖啡廳','飲料','麵包',
+    '燒烤','壽司','拉麵','炸雞','牛肉麵','雲吞','燒臘','叉燒','小籠包','火鍋',
+    // 中餐细分（西港/金边常见中餐馆招牌用词）
+    '烧鹅','燒鵝','烧腊','叉烧','云吞','米线','米粉','麻辣烫','串串','冒菜',
+    '酸菜鱼','烤鱼','黄焖鸡','沙县','兰州','煲仔饭','砂锅','羊肉','烤羊',
+    '小龙虾','早茶','粤菜','川菜','湘菜','东北菜','日式','料理','中餐','西餐',
+    'chhne meas',
+    // 店名后缀（比逐家店名更管用：中餐馆招牌基本都带这几个字之一）
+    '菜馆','菜館','酒楼','酒樓','饭馆','飯館','食府','餐馆','餐館','大排档','大排檔',
+    '小吃','美食','厨房','廚房','私房菜','烧菜','燒菜','farm to table',
+    '领头羊','涮羊肉','羊肉串','烤羊肉',
+    // 日本（2026-08 日本行会用到；便利店/连锁店名是收据上最常出现的字样）
+    '居酒屋','izakaya','定食','丼','牛丼','天妇罗','天婦羅','tempura','唐扬','唐揚',
+    'karaage','刺身','sashimi','烧鸟','焼き鳥','yakitori','章鱼烧','takoyaki',
+    '大阪烧','okonomiyaki','关东煮','おでん','乌冬','udon','荞麦面','soba',
+    '松屋','matsuya','吉野家','yoshinoya','sukiya','すき家','一兰','一蘭','ichiran',
+    '一风堂','ippudo','coco壱','ローソン','lawson','セブン','konbini','コンビニ',
+    // 韩国（서울갈비 这类韩文招牌，AI 会原样返回韩文，所以韩文也要能匹配）
+    '韩式','韓式','韩国料理','烤肉','갈비','서울','kalbi','galbi','korean bbq',
+    'bibimbap','拌饭','泡菜','kimchi','部队锅','石锅',
+    // 泰国 / 越南
+    '泰式','泰餐','泰国菜','冬阴功','tom yum','som tam','青木瓜','打抛','pad thai',
+    '越南粉','河粉','pho ','pho hong','pho24', // 'pho ' 带空格：防止匹配到 phone
+    // 酒水（酒吧类消费；不要加裸 'bar'，会匹配到 barber/barbecue）
+    '酒吧','啤酒','beer','红酒','紅酒','wine','洋酒','威士忌','whisky','whiskey',
+    'cocktail','鸡尾酒','清酒','sake','highball'],
   },
   {catId:'cat_transport', kw:[
     // 中文
@@ -943,7 +970,17 @@ const KEYWORD_MAP = [
     // 柬埔寨
     'passapp','pass app','tuk tuk','tuktuk','remork','tuk-tuk','moto','motodop',
     'remorque','camup','itsumo','exnet','sorya transport','pp bus',
-    'phnom penh taxi','cambodia taxi'],
+    'phnom penh taxi','cambodia taxi','tada','嘟嘟车','突突车',
+    // 繁体字变体
+    '車','車票','機票','停車','過路費','計程車','地鐵',
+    // 日本（交通卡与铁路是日本行收据上最常见的）
+    'jr pass','japan rail','新干线','新幹線','shinkansen','suica','icoca','pasmo',
+    '西瓜卡','交通卡','私铁','私鉄','特急','近铁','近鉄','阪急','南海电铁',
+    '成田特快','haruka','关西机场','關西機場','kix','羽田','成田',
+    // 通用补充
+    '网约车','打车','车费','油钱','洗车','修车','轮胎','保养','年检','驾照',
+    // 不要加 'service'（餐厅账单的 service charge 会误判）、'tire'（会匹配到 entire）
+    'car wash','tyre','road tax','car service','engine oil'],
   },
   {catId:'cat_shopping', kw:[
     // 中文
@@ -957,10 +994,21 @@ const KEYWORD_MAP = [
     '7-11','711','familymart','kk mart','99 speedmart','household','laundry',
     'detergent','shampoo','toiletries',
     // 柬埔寨
-    'lucky supermarket','lucky mall','aeon mall','aeon','makro','orussey',
+    'lucky supermarket','lucky mall','aeon mall','makro','orussey',
     'olympic market','central market','russian market','night market',
     'phsar thmei','phsar tuol tom poung','phsar reatrey','sorya','exchange square',
-    'chip mong','the garden city','factory outlet','monument books'],
+    'chip mong','the garden city','factory outlet','monument books',
+    // 繁体字变体（超市/便利店/日用品 简繁同形，上面已有，不重复加——同一条目里重复的词会重复计分）
+    '購物','商場','百貨','衛生紙','洗髮','清潔','傢俱','網購',
+    // 日本（药妆店/百元店是日本行最常刷卡的地方）
+    'ドンキ','ドン・キホーテ','キホーテ','donki','don quijote','唐吉诃德','唐吉訶德',
+    '驚安','daiso','大创','大創',
+    '百元店','100均','药妆','藥妝','松本清','matsumoto','sundrug','muji','无印良品',
+    '無印良品','bic camera','yodobashi','yamada','loft','tokyu hands','唐吉',
+    // 通用补充
+    '拼多多','天猫','天貓','抖音','小红书','五金','电池','電池','纸巾','紙巾',
+    // 不加 'stationery shop'：会盖过 cat_education 的 'stationery'（更长的词优先）
+    'battery','tissue','miniso','名创优品'],
   },
   {catId:'cat_housing', kw:[
     // 中文
@@ -970,7 +1018,12 @@ const KEYWORD_MAP = [
     'mortgage','hotel','airbnb','hostel','lodging','accommodation','utility',
     'management fee','deposit','renovation','furniture','plumber','electrician',
     // 柬埔寨
-    'borey','flat','shophouse','phnom penh rent','villa','bungalow'],
+    'borey','flat','shophouse','phnom penh rent','villa','bungalow',
+    // 繁体字变体
+    '物業','管理費','賓館','旅館','裝修','傢私','維修',
+    // 日本住宿（日本行订的多半是这几类）
+    '民宿','ryokan','温泉旅馆','溫泉旅館','酒店','飯店','ホテル',
+    'guesthouse','dormitory','capsule','胶囊旅馆','膠囊旅館','公寓','町屋'],
   },
   {catId:'cat_entertainment', kw:[
     // 中文
@@ -985,7 +1038,15 @@ const KEYWORD_MAP = [
     // 柬埔寨
     'naga world','nagaworld','naga casino','eclipse sky bar','pontoon',
     'level 9','sevens','oskar bistro','the pontoon','heart of darkness',
-    'angkor wat ticket','siem reap tour','pub street'],
+    'angkor wat ticket','siem reap tour','pub street',
+    // 繁体字变体
+    '電影','遊戲','演唱會','音樂會','展覽','博物館','遊樂','娛樂',
+    // 日本行的游乐设施（USJ/环球是这趟行程的重点，按主题乐园归娱乐，跟已有的 disney 一致）
+    '环球影城','環球影城','universal studio','usj','日本环球','主题乐园','主題樂園',
+    '游戏厅','遊戲廳','电玩城','電玩城','扭蛋','夹娃娃','夾娃娃','round1','namco',
+    'taito','game center','purikura','大头贴',
+    // 放松类消费
+    '按摩','massage','spa','桑拿','足浴','健身','gym','fitness','游泳','瑜伽'],
   },
   {catId:'cat_medical', kw:[
     // 中文
@@ -1000,7 +1061,14 @@ const KEYWORD_MAP = [
     // 柬埔寨
     'sunrise japan hospital','royal phnom penh hospital','calmette',
     'raffles medical','sen sok international','nida medical','tropical',
-    'unity clinic','royal rattanak','smc','health clinic pp'],
+    'unity clinic','royal rattanak','smc','health clinic pp',
+    // 繁体字变体
+    '醫院','醫生','藥','診所','檢查','手術','牙醫','打針','體檢','護理','眼鏡',
+    // 日本
+    '薬局','藥局','ドラッグストア','病院','クリニック','市販薬',
+    // 通用补充
+    '感冒药','退烧','止痛','创可贴','口罩','消毒','体温计','血糖','疫苗','驱蚊',
+    'panadol','paracetamol','ibuprofen','antibiotic','mask','plaster','vitamin'],
   },
   {catId:'cat_education', kw:[
     // 中文
@@ -1012,7 +1080,9 @@ const KEYWORD_MAP = [
     'learn','lecture','assignment','library','pencil','pen','notebook',
     // 柬埔寨
     'norton university','rupp','ppu','aii','westline','paragon','american university',
-    'cambodia academy','setec'],
+    'cambodia academy','setec',
+    // 繁体字变体
+    '學費','書','課','培訓','補習','學習','課程','考試','學校','上課','老師'],
   },
   {catId:'cat_utilities', kw:[
     // 中文
@@ -1022,7 +1092,9 @@ const KEYWORD_MAP = [
     'tnb','syabas','unifi','streamyx','time fibre','maxis home','celcom home',
     'natural gas','gas bill','sewage','indah water',
     // 柬埔寨
-    'edc','electricite du cambodge','ppwsa','cambodia water','electric bill pp'],
+    'edc','electricite du cambodge','ppwsa','cambodia water','electric bill pp',
+    // 繁体字变体
+    '水費','電費','煤氣','寬頻','網費','電力','瓦斯'],
   },
   {catId:'cat_phone', kw:[
     // 中文
@@ -1033,7 +1105,11 @@ const KEYWORD_MAP = [
     'hotlink','yes','u mobile','telco','roaming','international call',
     // 柬埔寨
     'smart axiata','smart luy','metfone','cootel','seatel','cellcard',
-    'qb','cambodia telco','cambodia sim','khmer phone'],
+    'qb','cambodia telco','cambodia sim','khmer phone',
+    // 繁体字变体
+    '話費','手機費','電話費','數據',
+    // 出国上网（日本行会买）
+    'esim','e-sim','漫游','漫遊','上网卡','上網卡','日本sim','pocket wifi','随身wifi'],
   },
   {catId:'cat_travel', kw:[
     // 中文
@@ -1048,7 +1124,13 @@ const KEYWORD_MAP = [
     'klook','airasia','malindo','mas','firefly','attraction','tour package',
     // 柬埔寨
     'angkor wat','siem reap','phnom penh airport','cambodia travel',
-    'mekong','tonle sap','kampot','kep','koh rong','cambodia airlines','bassaka air'],
+    'mekong','tonle sap','kampot','kep','koh rong','cambodia airlines','bassaka air',
+    // 繁体字变体
+    '旅遊','出遊','景點','門票','簽證','護照','紀念品','出國',
+    // 日本各地（2026-08 行程用；不加"金边""西港"这类本地地名——住在柬埔寨，
+    // 本地店名带城市名会被误判成旅游）
+    '大阪','京都','奈良','北海道','冲绳','沖繩','名古屋','福冈','福岡','神户','神戶',
+    '横滨','橫濱','广岛','廣島','关西','關西','日本行','和服','浴衣','御守','神社','寺庙'],
   },
   {catId:'cat_clothing', kw:[
     // 中文
@@ -1061,7 +1143,13 @@ const KEYWORD_MAP = [
     'salon','barber','tshirt','jeans','jacket','coat','sneakers','heels',
     'socks','underwear','hat','scarf','handbag','wallet','perfume',
     'lipstick','foundation','sunscreen','lotion','zara','h&m','uniqlo',
-    'nike','adidas','cotton on','padini'],
+    'nike','adidas','cotton on','padini',
+    // 繁体字变体
+    '褲','運動服','服裝','時裝','襪子',
+    '內衣','圍巾','手錶','首飾','化妝品','護膚','理髮','剪髮',
+    // 通用补充
+    '美甲','染发','染髮','烫发','燙髮','洗剪吹','眼镜店','太阳镜','太陽鏡','墨镜',
+    'nail','hair salon','sunglasses','gu store','wego','shein','decathlon'],
   },
   {catId:'cat_salary', kw:[
     '工资','薪水','月薪','薪资','发工资','底薪',
