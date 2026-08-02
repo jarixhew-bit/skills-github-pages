@@ -137,6 +137,35 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   好"这类几秒钟能回答的问题，比闷头再叠一层同类型的修法（这次是"再加一个外部
   CDN"）更快找到真根因——同一大类修法用了两次都没解决，就该怀疑问题出在这个大类
   本身（"外部依赖"），而不是这一类里挑得不够好。
+- **2026-08-02 上一条只修了一半：本地 OCR（tesseract）当时没一起 vendor，白名单 WiFi 下
+  照样全挂**。用户又在这种网络下拍收据，报"又是连上 WiFi 就识别不了"。查下来这条路上有
+  两道关、在这种网络下**两道全断**：(1) AI 识别要连 butler-bot 转发＋AI 服务商；(2) 退回
+  本地 OCR 时，`loadTesseractJS()` 从 CDN 抓主脚本，**而且 tesseract 默认还会另外去抓
+  worker、wasm 引擎、语言包（tessdata.projectnaptha.com）三样东西**——总共四个外部网域。
+  修法照 2026-07-24 那条：整套 vendor 进 `vendor/tesseract/`，`TESSERACT_SOURCES` 同源
+  第一顺位，CDN 留作备援。**关键细节：只把主脚本改成同源没用**，必须把
+  `workerPath`/`corePath`/`langPath`/`gzip:false` 一起传给 `recognize()`，否则那三样照旧
+  去外部网域抓、照旧被墙。
+  **诚实标注**：AI 识别在这种网络下**无解**（它本质就要连外部服务），这次修的是"本地识别
+  能正常工作"，不是"AI 识别恢复"。用户在酒店 WiFi 下的预期应该是"能自动填金额日期、
+  但没商户名"，而不是恢复到 AI 那种准度。
+  另外三个踩过的坑，改这块时别重犯：
+  1. **语言包别用 tesseract.js 默认的 `tessdata.projectnaptha.com/4.0.0`**——那是完整模型，
+     chi_sim 43MB、eng 23MB，两个 66MB。仓库撑大是其次，真正的问题是**用户手机第一次拍
+     收据时要在酒店慢网上把这 66MB 拉下来，比原本的 bug 还难用**。改用 `tessdata_fast`
+     （整数量化版）两个一共 6.6MB，认金额/日期完全够。workflow 里有 25MB 闸门挡这条回头路。
+  2. **wasm 引擎四个变体都要抓**（`tesseract-core{,-simd}{,-lstm}.wasm.js`）：tesseract 按
+     「CPU 支不支持 SIMD」×「语言包是不是 LSTM-only」四选一，而 tessdata_fast 正是
+     LSTM-only，浏览器实际要的是 `tesseract-core-simd-lstm.wasm.js`。第一版只抓了前两个，
+     浏览器实测直接 404（importScripts failed）——**这个是真跑浏览器才发现的，光看代码看不出来**。
+  3. **OCR 超时从 30s 提到 90s**：第一次识别要下载约 11MB（wasm＋语言包），慢网上 30 秒
+     会在下载途中被判超时，白白退化成"识别不了"。之后浏览器有缓存，通常 1~2 秒。
+  验证方法（以后改这块照抄）：`python3 -m http.server` 起本地服务，Playwright 开
+  Chromium 并用 `ctx.route()` **把所有非 localhost 请求全部 abort**，模拟白名单 WiFi，
+  再跑一次真实识别看能不能读出金额和日期。注意本环境的 Chromium 已移除 old headless，
+  Playwright 1.47 要用 `headless:false + args:['--headless=new']` 才起得来。
+  抓取通道：`.github/workflows/vendor-tesseract.yml`（沙盒的出站代理封锁 jsdelivr，
+  只能在 CI 上抓；但 `raw.githubusercontent.com` 沙盒**可以**直连，语言包能在本地直接下）。
 - **2026-07-24 记账 FAB 圆形按钮贴右边缘难点**：`.fab`（:465附近）的
   `right:calc(50% - 240px + 20px)` 是照着桌面预览场景（App 外层容器宽度封顶
   480px，`50%`相对居中容器算）写的公式，在真手机（viewport 通常 <480px）上
