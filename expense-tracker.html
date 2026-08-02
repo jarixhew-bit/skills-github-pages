@@ -3583,16 +3583,53 @@ function resizeForOutput(canvas, maxSide){
 // Runs fully on-device after a receipt is saved. Best-effort: never blocks saving,
 // never overwrites a value the user already typed, silently gives up on failure/timeout.
 let _tesseractLoadPromise = null;
+let _tesseractIsLocal = false;
+// 本地 OCR 引擎一律优先走**同源**文件（vendor/tesseract/，由 .github/workflows/
+// vendor-tesseract.yml 抓进仓库）。原因跟 opencv.js 那次完全一样：酒店/商家的白名单
+// WiFi 只放行少数网域，任何外部 CDN 都秒拒——2026-08-02 用户在这种网络下拍收据，
+// AI 识别和本地 OCR 双双挂掉，等于完全不能用。只要这个页面本身打得开，同源文件就一定
+// 连得到。外部 CDN 只留作"同源文件意外 404"的备援，不删但排在后面。
+const TESSERACT_SOURCES = [
+  'vendor/tesseract/tesseract.min.js',
+  'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
+  'https://unpkg.com/tesseract.js@5/dist/tesseract.min.js'
+];
+// 同源那份对应的 worker / wasm / 语言包路径。**这三个必须一起传给 recognize()**：
+// tesseract 默认会各自去外部网域抓（worker 和 wasm 抓 CDN、语言包抓
+// tessdata.projectnaptha.com），只把主脚本改成同源是不够的，那三个照样会被墙掉。
+const TESSERACT_LOCAL_OPTS = {
+  workerPath: 'vendor/tesseract/worker.min.js',
+  corePath:   'vendor/tesseract/',       // 目录：tesseract 自己按有没有 SIMD 挑对应的 wasm
+  langPath:   'vendor/tesseract/lang',
+  gzip: false                            // 语言包是未压缩的 .traineddata，见 workflow 里的说明
+};
+
+function loadScriptOnce(src){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = ()=> window.Tesseract ? resolve(window.Tesseract) : reject(new Error('Tesseract init failed: ' + src));
+    s.onerror = ()=> reject(new Error('Tesseract load failed: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
 function loadTesseractJS(){
   if(window.Tesseract) return Promise.resolve(window.Tesseract);
   if(_tesseractLoadPromise) return _tesseractLoadPromise;
-  _tesseractLoadPromise = new Promise((resolve, reject)=>{
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-    s.onload = ()=> window.Tesseract ? resolve(window.Tesseract) : reject(new Error('Tesseract.js failed to init'));
-    s.onerror = ()=> reject(new Error('Tesseract.js failed to load from CDN'));
-    document.head.appendChild(s);
-  });
+  _tesseractLoadPromise = (async ()=>{
+    let lastErr;
+    for(const src of TESSERACT_SOURCES){
+      try{
+        const T = await loadScriptOnce(src);
+        // 记住这次是不是走的同源：只有同源那份才配套有 worker/wasm/语言包，
+        // 万一退到 CDN，就让 tesseract 用它自己的默认路径，别把本地路径硬塞给它
+        _tesseractIsLocal = (src === TESSERACT_SOURCES[0]);
+        return T;
+      }catch(e){ lastErr = e; }
+    }
+    throw lastErr || new Error('Tesseract.js 全部来源都加载失败');
+  })();
   return _tesseractLoadPromise;
 }
 
@@ -3660,14 +3697,20 @@ async function runReceiptOCRPrefill(sourceCanvas){
       ocrCanvas = small;
     }
 
-    const timeoutMs = 30000;
+    // 90 秒不是随便给的：改成同源引擎后，**第一次**识别要下载约 11MB
+    // （wasm 引擎 4.6MB ＋ 中英文语言包 6.6MB），在酒店那种慢网上 30 秒不够，
+    // 会在下载途中被判超时，白白退化成"识别不了"。之后浏览器有缓存，通常几秒就好。
+    const timeoutMs = 90000;
     const withTimeout = (p)=> Promise.race([
       p,
       new Promise((_,rej)=>setTimeout(()=>rej(new Error('OCR timeout')), timeoutMs))
     ]);
 
     const Tesseract = await withTimeout(loadTesseractJS());
-    const { data:{ text } } = await withTimeout(Tesseract.recognize(ocrCanvas, 'chi_sim+eng'));
+    // 走同源那份就把 worker/wasm/语言包路径一并指到本地（否则它们仍会去外部网域抓）；
+    // 退到 CDN 时传空 options，让 tesseract 用自己的默认路径
+    const ocrOpts = _tesseractIsLocal ? TESSERACT_LOCAL_OPTS : {};
+    const { data:{ text } } = await withTimeout(Tesseract.recognize(ocrCanvas, 'chi_sim+eng', ocrOpts));
     if(!text) return;
 
     // Only prefill fields the user hasn't already touched, and only if the tx modal is still open

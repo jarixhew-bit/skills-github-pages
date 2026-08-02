@@ -52,16 +52,31 @@ jobs:
 
           get "https://cdn.jsdelivr.net/npm/tesseract.js@${TJS}/dist/tesseract.min.js"      vendor/tesseract/tesseract.min.js
           get "https://cdn.jsdelivr.net/npm/tesseract.js@${TJS}/dist/worker.min.js"         vendor/tesseract/worker.min.js
-          get "https://cdn.jsdelivr.net/npm/tesseract.js-core@${CORE}/tesseract-core.wasm.js"       vendor/tesseract/tesseract-core.wasm.js
-          get "https://cdn.jsdelivr.net/npm/tesseract.js-core@${CORE}/tesseract-core-simd.wasm.js"  vendor/tesseract/tesseract-core-simd.wasm.js
+          # 四个变体都要抓，一个都不能省：tesseract 会按「CPU 支不支持 SIMD」×「语言包是不是
+          # LSTM-only」四种组合去挑对应文件。我们用的 tessdata_fast 正是 LSTM-only，实测
+          # 浏览器要的是 tesseract-core-simd-lstm.wasm.js——2026-08-02 第一版只抓了前两个，
+          # 浏览器实测直接 404 挂掉（importScripts failed），所以别再精简这份清单。
+          for V in tesseract-core tesseract-core-simd tesseract-core-lstm tesseract-core-simd-lstm; do
+            get "https://cdn.jsdelivr.net/npm/tesseract.js-core@${CORE}/${V}.wasm.js" "vendor/tesseract/${V}.wasm.js"
+          done
 
-          # 语言包存成**未压缩**的 .traineddata，并在页面里传 gzip:false。
-          # 不存 .gz 是有意的：GitHub Pages 对 .gz 可能带 Content-Encoding: gzip 送出，
-          # 浏览器会先自动解压一次，tesseract 再自己解压就会失败——这个坑很难查，
-          # 直接用未压缩档换掉这层不确定性（代价只是多几 MB）。
+          # 语言包用 **tessdata_fast**，不要用 tesseract.js 默认的
+          # tessdata.projectnaptha.com/4.0.0——那个是完整模型，解压后 chi_sim 43MB、
+          # eng 23MB，两个就 66MB：仓库撑大是其次，真正的问题是用户第一次拍收据时要在
+          # 酒店 WiFi 上把这 66MB 拉下来，比原本的 bug 还难用。tessdata_fast 是整数量化版，
+          # 两个语言包一共只有 6.6MB，认收据上的金额/日期完全够用。（2026-08-02 实测过
+          # 完整版才改的，别为了"准一点"换回完整模型。）
+          #
+          # 存成**未压缩**的 .traineddata，并在页面里传 gzip:false：GitHub Pages 对 .gz
+          # 可能带 Content-Encoding: gzip 送出，浏览器会先自动解压一次，tesseract 再自己
+          # 解压就会失败——这个坑很难查，直接用未压缩档换掉这层不确定性。
           for L in $LANGS; do
-            get "https://tessdata.projectnaptha.com/4.0.0/${L}.traineddata.gz" "/tmp/${L}.traineddata.gz"
-            gunzip -c "/tmp/${L}.traineddata.gz" > "vendor/tesseract/lang/${L}.traineddata"
+            get "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/${L}.traineddata" \
+                "vendor/tesseract/lang/${L}.traineddata"
+            # 404 会拿到一个 HTML 页面，大小看起来也"正常"，这里挡掉
+            if head -c 1 "vendor/tesseract/lang/${L}.traineddata" | grep -q '<'; then
+              echo "::error::${L}.traineddata looks like an HTML error page, not model data"; exit 1
+            fi
           done
 
       - name: Report sizes and guard against repo bloat
@@ -71,10 +86,11 @@ jobs:
           find vendor/tesseract -type f -printf '%10s  %p\n' | sort -k2
           total_kb=$(du -sk vendor/tesseract | cut -f1)
           echo "total: $((total_kb/1024)) MB"
-          # GitHub 单档上限 100MB；这里设一个更保守的总量闸门，超了就让人先看一眼再决定，
-          # 免得某次升版本悄悄把仓库撑大。
-          if [ "$total_kb" -gt 81920 ]; then
-            echo "::error::vendored total $((total_kb/1024))MB exceeds the 80MB guard — check before committing"
+          # 闸门设在 25MB：正常应该是 16MB 左右（两个 wasm 引擎各 4.6MB ＋ 语言包 6.6MB）。
+          # 一超过就说明多半是又抓成完整语言模型了（那会是 70MB+），必须先看一眼再提交，
+          # 因为这些文件是用户手机要下载的，不只是仓库大小问题。
+          if [ "$total_kb" -gt 25600 ]; then
+            echo "::error::vendored total $((total_kb/1024))MB exceeds the 25MB guard — did the language data come from the full model set instead of tessdata_fast?"
             exit 1
           fi
 
