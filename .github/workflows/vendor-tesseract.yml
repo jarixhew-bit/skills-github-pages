@@ -1,0 +1,94 @@
+name: Vendor tesseract.js
+
+# 把 tesseract.js 的全部运行时文件抓进仓库，让本地 OCR 完全走同源、不依赖任何外部网域。
+# 起因：酒店/商家的白名单 WiFi 只放行少数网域，外部 CDN 一律秒拒，导致拍收据完全识别不了
+# （AI 识别和本地 OCR 双双失败）。这跟 2026-07-24 opencv.js 那次是同一个坑，当时的结论是
+# 「加更多外部镜像没用，问题出在『外部依赖』这个大类本身」，解法就是 vendor 进仓库。
+#
+# 沙盒（Claude 网页版容器）的出站代理封锁了 cdn.jsdelivr.net / tessdata.projectnaptha.com，
+# 抓不到这些文件，所以搬到 CI 上跑——这是本仓库处理「沙盒连不上的公开资源」的既定做法
+# （见 .claude/rules/dispatch.md 2026-07-10 的教训）。
+#
+# 用法：Actions 页面手动跑一次即可，之后除非要升级 tesseract 版本，不用再跑。
+
+on:
+  workflow_dispatch:
+    inputs:
+      tesseract_version:
+        description: "tesseract.js version (dist 文件)"
+        required: true
+        default: "5.1.1"
+      core_version:
+        description: "tesseract.js-core version (wasm 引擎)"
+        required: true
+        default: "5.1.1"
+      langs:
+        description: "语言包，空格分隔（收据用 chi_sim+eng）"
+        required: true
+        default: "eng chi_sim"
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download tesseract runtime + language data
+        env:
+          TJS: ${{ inputs.tesseract_version }}
+          CORE: ${{ inputs.core_version }}
+          LANGS: ${{ inputs.langs }}
+        run: |
+          set -euo pipefail
+          mkdir -p vendor/tesseract/lang
+
+          get () {  # get <url> <dest>
+            echo "→ $2"
+            curl -fsSL --retry 3 --retry-delay 2 "$1" -o "$2"
+          }
+
+          get "https://cdn.jsdelivr.net/npm/tesseract.js@${TJS}/dist/tesseract.min.js"      vendor/tesseract/tesseract.min.js
+          get "https://cdn.jsdelivr.net/npm/tesseract.js@${TJS}/dist/worker.min.js"         vendor/tesseract/worker.min.js
+          get "https://cdn.jsdelivr.net/npm/tesseract.js-core@${CORE}/tesseract-core.wasm.js"       vendor/tesseract/tesseract-core.wasm.js
+          get "https://cdn.jsdelivr.net/npm/tesseract.js-core@${CORE}/tesseract-core-simd.wasm.js"  vendor/tesseract/tesseract-core-simd.wasm.js
+
+          # 语言包存成**未压缩**的 .traineddata，并在页面里传 gzip:false。
+          # 不存 .gz 是有意的：GitHub Pages 对 .gz 可能带 Content-Encoding: gzip 送出，
+          # 浏览器会先自动解压一次，tesseract 再自己解压就会失败——这个坑很难查，
+          # 直接用未压缩档换掉这层不确定性（代价只是多几 MB）。
+          for L in $LANGS; do
+            get "https://tessdata.projectnaptha.com/4.0.0/${L}.traineddata.gz" "/tmp/${L}.traineddata.gz"
+            gunzip -c "/tmp/${L}.traineddata.gz" > "vendor/tesseract/lang/${L}.traineddata"
+          done
+
+      - name: Report sizes and guard against repo bloat
+        run: |
+          set -euo pipefail
+          echo "=== vendored files ==="
+          find vendor/tesseract -type f -printf '%10s  %p\n' | sort -k2
+          total_kb=$(du -sk vendor/tesseract | cut -f1)
+          echo "total: $((total_kb/1024)) MB"
+          # GitHub 单档上限 100MB；这里设一个更保守的总量闸门，超了就让人先看一眼再决定，
+          # 免得某次升版本悄悄把仓库撑大。
+          if [ "$total_kb" -gt 81920 ]; then
+            echo "::error::vendored total $((total_kb/1024))MB exceeds the 80MB guard — check before committing"
+            exit 1
+          fi
+
+      - name: Commit
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add vendor/tesseract
+          if git diff --cached --quiet; then
+            echo "nothing changed"; exit 0
+          fi
+          git commit -m "Vendor tesseract.js ${{ inputs.tesseract_version }} runtime + language data
+
+          Fetched by .github/workflows/vendor-tesseract.yml so receipt OCR
+          works on networks that only whitelist a few domains."
+          git push
