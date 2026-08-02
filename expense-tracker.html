@@ -476,7 +476,8 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     </div>
     <select class="form-input" id="ai-provider-select" onchange="onAiProviderChange()" style="margin-bottom:8px">
       <option value="">不用，仅本地识别</option>
-      <option value="qwen">Qwen（通义千问，中文识图最强）</option>
+      <option value="qwen">Qwen 中国站（通义千问，中文识图最强）</option>
+      <option value="qwen-intl">Qwen 国际站（不用中国手机号也能注册）</option>
       <option value="mistral">Mistral（免注册门槛低）</option>
       <option value="gemini">Gemini（Google）</option>
       <option value="agnes">Agnes（agnes-ai.com）</option>
@@ -3426,7 +3427,11 @@ async function saveScannedAttachment(){
 const AI_PROXY_URL = 'https://butler-bot.jarixhew.workers.dev/ai-proxy';
 const AI_PROVIDER_STORAGE = 'expenseTracker_aiProvider';
 const AI_KEY_STORAGE_PREFIX = 'expenseTracker_aiKey_';
-const AI_PROVIDER_NAMES = { qwen:'Qwen', mistral:'Mistral', gemini:'Gemini', agnes:'Agnes' };
+// 注意 qwen 与 qwen-intl 是两个独立供应商：阿里云百炼中国站/国际站的账号与 key 不通用，
+// 接口地址也不同，key 打错站会报"无效的令牌"（看起来像 key 错了，其实是站点错了）。
+const AI_PROVIDER_NAMES = {
+  qwen:'Qwen 中国站', 'qwen-intl':'Qwen 国际站', mistral:'Mistral', gemini:'Gemini', agnes:'Agnes'
+};
 
 function getAiProvider(){ return (localStorage.getItem(AI_PROVIDER_STORAGE) || '').trim(); }
 
