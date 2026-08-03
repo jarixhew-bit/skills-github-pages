@@ -2040,16 +2040,55 @@ function saveTx(){
 // 用户会以为删干净了，月底 Excel 里那笔还在。
 function confirmDeleteTx(t){
   if(t && t.company && t.company.status === 'sent'){
-    return confirm('这笔已经记进公司账本了。\n\n删除只会删掉手机上这条，'
-      + '公司账本里那笔还在——要一起删请在 Telegram 里说「删掉…那笔」。\n\n仍要删除本机记录？');
+    return confirm('这笔已经记进公司账本了。\n\n删除会同时删掉公司账本里那条'
+      + '（本机和公司账本一起删，不会只删一边）。\n\n确定删除？');
   }
   return confirm('确定删除这条记录？');
 }
 
-function deleteTx(){
+/**
+ * 删一笔已经送进公司账本的记录：先删公司账本那条，成功了才删本机。
+ *
+ * 顺序是刻意的——先删远端再删本机，万一网络不通就整个中止、两边都不动。
+ * 反过来（先删本机）会留下「本机没了、公司账本还在」的状态，而那正是这个功能要消灭的问题。
+ * 返回 true 表示可以继续删本机。
+ */
+async function deleteCompanyRecord(t){
+  if(!(t && t.company && t.company.status === 'sent')) return true;   // 没送出去过，无需处理
+  if(!t.company.recordId){
+    return confirm('这笔是旧版本记的，没存下公司账本里的记录编号，App 删不掉那边那条。\n\n'
+      + '请在 Telegram 里说「删掉…那笔」自行删除。\n\n仍要删除本机这条？');
+  }
+  const token = getCompanyToken();
+  if(!token){ toast('还没填公司报账密钥，删不了公司账本那条'); return false; }
+  toast('正在删除公司账本里那条…');
+  let res;
+  try{
+    res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({token, action:'delete', recordId:t.company.recordId, date:t.date})
+    });
+  }catch(e){
+    toast('现在连不上，公司账本那条没删成——等有网再试，本机这条先留着');
+    return false;
+  }
+  let body = {};
+  try{ body = await res.json(); }catch(e){}
+  if(res.ok && body.status === 'ok'){ toast('公司账本那条已删'); return true; }
+  // not_found 多半是已经在 Telegram 那边删过了，这种情况让本机也删掉才是对的
+  if(body.status === 'not_found'){
+    return confirm('公司账本里已经没有这条了（可能先前在 Telegram 删过）。\n\n继续删除本机这条？');
+  }
+  toast(`公司账本那条没删成：${body.message || body.error || res.status}`);
+  return false;
+}
+
+async function deleteTx(){
   if(!state.editingTxId) return;
   const t = data.transactions.find(t=>t.id===state.editingTxId);
   if(!confirmDeleteTx(t)) return;
+  // 先删公司账本那条，删不成就整个中止——不留「本机没了、公司账本还在」的状态
+  if(!(await deleteCompanyRecord(t))) return;
   const attachmentId = t ? t.attachmentId : null;
   data.transactions = data.transactions.filter(t=>t.id!==state.editingTxId);
   saveData();
@@ -2144,8 +2183,14 @@ function toggleCompanyAccount(id){
 function deleteAccount(id){
   const acc = getAcc(id);
   const txCount = data.transactions.filter(t=>t.accountId===id).length;
+  // 公司账户下已经送进公司账本的记录：这里是整批删，逐条去删远端太容易删到一半失败、
+  // 留下两边不一致。所以不代删，只把话说明白——公司账本那边请自己在 Telegram 处理。
+  const sentCount = data.transactions.filter(
+    t=>t.accountId===id && t.company && t.company.status==='sent').length;
   const msg = txCount>0
     ? `确定删除账户「${acc.name}」？该账户有 ${txCount} 条记录也会一并删除。`
+      + (sentCount>0 ? `\n\n⚠️ 其中 ${sentCount} 条已经记进公司账本了。删账户只删手机上这些，`
+          + `公司账本里那些不会动——要一并清掉请在 Telegram 里逐笔删。` : '')
     : `确定删除账户「${acc.name}」？`;
   if(!confirm(msg)) return;
   data.accounts = data.accounts.filter(a=>a.id!==id);
@@ -2594,9 +2639,10 @@ function closeOpenSwipe(){
   _txSwipeOpen = null;
 }
 
-function deleteTxById(id){
+async function deleteTxById(id){
   const t = data.transactions.find(t=>t.id===id);
   if(!confirmDeleteTx(t)) return;
+  if(!(await deleteCompanyRecord(t))) return;
   const attachmentId = t ? t.attachmentId : null;
   data.transactions = data.transactions.filter(t=>t.id!==id);
   saveData();
@@ -4159,11 +4205,13 @@ async function submitCompanyTx(tx){
   const result = await postCompanyExpense(buildCompanyPayload(tx, extra));
   const local = data.transactions.find(t=>t.id===tx.id);
   if(result.ok){
-    const person = (result.records && result.records[0] && result.records[0].person) || null;
+    const rec = (result.records && result.records[0]) || null;
     if(local && local.company){
       local.company.status = 'sent';
       local.company.error = null;
-      if(person) local.company.person = person;   // 服务端算的，仅存来显示
+      if(rec && rec.person) local.company.person = rec.person;   // 服务端算的，仅存来显示
+      // 记下服务端那条记录的 id：以后在 App 里删这笔时，靠它精确删掉公司账本里对应那条
+      if(rec && rec.id) local.company.recordId = rec.id;
     }
     saveData();
     return result;
