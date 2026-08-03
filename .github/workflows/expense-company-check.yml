@@ -1,0 +1,39 @@
+# expense-tracker.html 公司报账功能的自检（真浏览器）。
+# 这块管的是钱——送进公司账本的金额、币种、算谁头上，错一个就是账目对不上，
+# 所以不接受"看起来对"，每次改到这个页面都用真浏览器实跑一遍。
+# 测试全程把 localhost 以外的网域断掉，等于复现酒店/商家白名单 WiFi 那种网络。
+name: expense tracker company check
+
+on:
+  push:
+    paths:
+      - 'expense-tracker.html'
+      - 'tools/check-expense-company.mjs'
+      - '.github/workflows/expense-company-check.yml'
+  pull_request:
+    paths:
+      - 'expense-tracker.html'
+      - 'tools/check-expense-company.mjs'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 装 playwright
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+      - name: 起本地服务器
+        run: |
+          python3 -m http.server 8899 &
+          for i in $(seq 1 20); do
+            curl -sf -o /dev/null http://localhost:8899/expense-tracker.html && break
+            sleep 1
+          done
+      - name: 跑公司报账自检
+        run: node tools/check-expense-company.mjs

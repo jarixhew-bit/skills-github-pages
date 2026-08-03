@@ -51,6 +51,18 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
    不上传收据到任何服务器（隐私要求，见 `skills/pwa-pages.md` 本专案实例）。
    识别结果只是「预填」，不阻塞保存、不覆盖用户已输入内容（:3093 注释已注明）。
 
+5. **改公司报账（送进 butler 的公司账本）**：入口在 `saveTx()` 末尾——账户勾了
+   `isCompany` 才会走。核心函数集中在文件末尾「公司报账」那一节：
+   `submitCompanyTx()`（送一笔）、`flushCompanyQueue()`（补送队列）、
+   `syncCompanyTxFields()`（表单显隐与回填）、`renderCompanySettings()`（设置页状态）。
+   **铁律：分类归拢、汇率换算、算谁头上，这三件事一个字都不许在 App 里算**——全部
+   由 butler 的 `companyExpenseAddFromApp()` 做，App 只把原始输入原样送过去。理由是
+   Telegram 和 App 是同一本账的两个入口，规则只住 butler 一处，两边产出才会一致。
+   类别下拉也是从 butler 的 `GET /company-expense` 拉的，不硬编（用户在 Telegram
+   教过的自定义类别只有服务端知道）。密钥存 localStorage `expenseTracker_companyToken`，
+   服务端对应 Worker 的 `APP_SHARED_TOKEN`，设置方法见 butler-bot 的 SETUP.md。
+   公司账户强制美元：butler 把非 KHR 金额一律当美元，账户币种是 HKD 会静静记错。
+
 ## 牵一发动全身
 - `data` 全局对象（结构见`DEFAULT_DATA`:1065）是唯一数据源，`accounts`/
   `categories`/`transactions`/`recurring` 四个数组被几乎所有 render 函数读取；
@@ -223,3 +235,26 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   被调用的函数是否真的存在，尤其是`saveData()`/写入操作**之后**才会触发的收尾函数
   ——数据层的 bug 容易被最先测到，UI 反馈层的 bug（写完了但用户看不到反馈）反而
   更隐蔽，因为「重新整理页面后数据是对的」会让人误以为功能一直正常。
+
+- **2026-08-03 Firebase SDK 连不上会让整个 App 打不开（已修，别改回去）**：
+  `firebase.initializeApp()` 原本是脚本最上方的裸调用，而 SDK 从 `gstatic.com` 加载。
+  白名单 WiFi 挡掉 gstatic 时 `firebase` 是 undefined，这行当场抛错，整个 `<script>`
+  停在第一行——本地记账、离线 OCR、离线队列全部陪葬，**只因为「云同步」这一个可选功能
+  连不上**。已改成 try/catch + `cloudAvailable` 标志，连不上就退化成纯本地记账；
+  `signInWithGoogle()`/`signOutUser()`/`init()` 里的 `auth.onAuthStateChanged` 都加了
+  闸门（其余 `db.` 调用本来就被 `currentUser` 挡着，firebase 挂了 currentUser 恒为 null）。
+  **教训**：可选功能的初始化代码放在脚本顶层且不设兜底，等于把整个 App 的存活押在
+  那个可选功能的网络可达性上。这是 2026-07-24 / 2026-08-02 那两条「外部依赖在白名单
+  WiFi 下全挂」的同一类问题，第三次踩到了——以后引入任何外部 SDK，先问一句
+  「它连不上的时候，App 是整个死掉还是只少一个功能」。
+- **2026-08-03 新增公司报账功能**：账户加 `isCompany` 标记后，该账户下记的账会同时送进
+  butler 的公司账本（`data/company-expenses/YYYY-MM.json`），月底跟 Telegram 记的一起
+  出同一份 Excel。tx 上多一个 `company` 字段（reporter/categoryEn/refTag/rawAmount/
+  rawCurrency/status/error），`status` 为 `sent`/`pending`/`failed`；`pending` 的 id 同时
+  进 localStorage 队列 `expenseTracker_companyQueue`，开 App、网络恢复、设置页手动点都会
+  补送。**送不出去绝不丢账**：本机永远先存好，网络问题进队列重试，服务端明确拒绝
+  （密钥错/类别归不了/日期不合理）才标 `failed` 并在设置页显示原因。
+  自检：`node tools/check-expense-company.mjs`（真浏览器 32 项，全程断掉外部网域模拟
+  酒店 WiFi），CI 是 `.github/workflows/expense-company-check.yml`，改这个页面就自动跑。
+  本地跑法：`npm i playwright` → `python3 -m http.server 8899 &` →
+  `CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/check-expense-company.mjs`。

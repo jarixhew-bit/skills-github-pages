@@ -1,0 +1,12 @@
+{
+  "name": "skills-github-pages",
+  "private": true,
+  "description": "静态站仓库。这份 package.json 只为浏览器自检服务（GitHub Pages 本身不需要 node）。",
+  "type": "module",
+  "scripts": {
+    "check:company": "node tools/check-expense-company.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  }
+}

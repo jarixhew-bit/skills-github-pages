@@ -489,6 +489,21 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div id="ai-key-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
   </div>
   <div class="setting-section">
+    <div class="setting-title">公司报账</div>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
+      填好密钥后，标记为「公司账户」的账户记账时会同时送进公司账本，跟 Telegram 记的
+      进同一本、出同一份 Excel。密钥只存在这台设备本地。
+      设置方法见 butler-bot 仓库的 SETUP.md。
+    </div>
+    <div style="display:flex;gap:8px">
+      <input class="form-input" id="company-token-input" type="password"
+        placeholder="粘贴 APP_SHARED_TOKEN" style="flex:1">
+      <button class="btn btn-outline btn-sm" onclick="saveCompanyToken()">保存</button>
+    </div>
+    <div id="company-token-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+    <div id="company-queue-status" style="font-size:12px;margin-top:8px"></div>
+  </div>
+  <div class="setting-section">
     <div class="setting-title">数据</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
@@ -575,6 +590,33 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <label class="form-label">日期</label>
       <input class="form-input" id="tx-date" type="date" oninput="state.dateTouchedByUser=true">
     </div>
+    <!-- 公司报账专用字段：只在当前账户勾了「公司账户」时显示，见 syncCompanyTxFields() -->
+    <div id="tx-company-wrap" style="display:none">
+      <div style="padding:10px 12px;background:var(--p2);border-radius:10px;margin-bottom:14px;
+        font-size:12px;color:var(--p);line-height:1.6">
+        🧾 这是公司账户，保存后会同时送进公司账本 —— 跟 Telegram 记的进同一本、出同一份 Excel。
+      </div>
+      <div class="form-group">
+        <label class="form-label">算谁的开销</label>
+        <select class="form-input" id="tx-company-reporter">
+          <option value="Boss">Boss（老板）</option>
+          <option value="XY">XY</option>
+          <option value="G">G</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">公司类别</label>
+        <select class="form-input" id="tx-company-category"></select>
+        <div style="font-size:12px;color:var(--sub);margin-top:6px">
+          汽油要填车牌，这个表单填不了 —— 加油那笔请用 Telegram 记。
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">收据编号（选填）</label>
+        <input class="form-input" id="tx-company-reftag" type="text"
+          placeholder="收据上写的编号，例：1">
+      </div>
+    </div>
     <!-- delete btn (edit mode) -->
     <div id="tx-delete-wrap" style="display:none;margin-bottom:12px">
       <button class="btn btn-danger" onclick="deleteTx()">🗑 删除此记录</button>
@@ -644,6 +686,16 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div class="form-group">
       <label class="form-label">颜色</label>
       <div id="color-picker" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+        <input type="checkbox" id="new-acc-company" style="width:18px;height:18px">
+        <span>这是公司账户</span>
+      </label>
+      <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
+        勾了以后，在这个账户下记的账会同时送进公司账本（butler），月底跟 Telegram 记的
+        一起出 Excel。需要先在下面「公司报账」里填好密钥。
+      </div>
     </div>
     <button class="btn btn-primary" onclick="saveAccount()">新增账户</button>
   </div>
@@ -719,20 +771,34 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 
 <script>
 // ===================== FIREBASE =====================
-firebase.initializeApp({
-  apiKey: "AIzaSyCfZ407K6xNTvIpqKoFa_lkULgmrZwKJBM",
-  authDomain: "my-expense-tracker-a1aee.firebaseapp.com",
-  projectId: "my-expense-tracker-a1aee",
-  storageBucket: "my-expense-tracker-a1aee.firebasestorage.app",
-  messagingSenderId: "83592751983",
-  appId: "1:83592751983:web:fb62d72257da794b4d569a"
-});
-const auth = firebase.auth();
-const db = firebase.firestore();
+// 【这段必须能失败，别把它改回裸调用】Firebase SDK 是从 gstatic.com 加载的。
+// 酒店/商家那种白名单 WiFi 常常连 gstatic.com 也不放行，SDK 加载不到时 firebase 是
+// undefined——原本这里直接写 firebase.initializeApp(...)，会当场抛错，整个 <script>
+// 停在第一行，App 完全打不开：本地记账、离线 OCR、离线队列全部陪葬，只因为「云同步」
+// 这一个可选功能连不上。云同步连不上就该只是云同步不能用，不该拖垮整个 App。
+// （2026-08-03 修，此前一直是裸调用。）
+let auth = null, db = null, cloudAvailable = false;
+try{
+  if(typeof firebase === 'undefined') throw new Error('Firebase SDK 没加载到（网络可能挡了 gstatic.com）');
+  firebase.initializeApp({
+    apiKey: "AIzaSyCfZ407K6xNTvIpqKoFa_lkULgmrZwKJBM",
+    authDomain: "my-expense-tracker-a1aee.firebaseapp.com",
+    projectId: "my-expense-tracker-a1aee",
+    storageBucket: "my-expense-tracker-a1aee.firebasestorage.app",
+    messagingSenderId: "83592751983",
+    appId: "1:83592751983:web:fb62d72257da794b4d569a"
+  });
+  auth = firebase.auth();
+  db = firebase.firestore();
+  cloudAvailable = true;
+}catch(e){
+  console.warn('云同步不可用，退化成纯本地记账：', e && e.message ? e.message : e);
+}
 let currentUser = null;
 let cloudSaving = false;
 
 async function signInWithGoogle(){
+  if(!cloudAvailable){ toast('现在连不上 Google 服务，云同步暂时用不了（记账照常）'); return; }
   try{
     const provider = new firebase.auth.GoogleAuthProvider();
     await auth.signInWithPopup(provider);
@@ -743,6 +809,7 @@ async function signInWithGoogle(){
 }
 
 async function signOutUser(){
+  if(!cloudAvailable) return;
   if(!confirm('Sign out? Your data stays on this device.')) return;
   await auth.signOut();
   toast('Signed out');
@@ -1543,6 +1610,7 @@ function renderSettings(){
   renderSettingsCats();
   renderSettingsRecurring();
   renderAiKeyStatus();
+  renderCompanySettings();
 }
 
 function renderSettingsRecurring(){
@@ -1637,13 +1705,16 @@ function renderSettingsAccs(){
     const txCount = data.transactions.filter(t=>t.accountId===acc.id).length;
     return `<div class="setting-item">
       <div class="setting-item-left">
-        <div class="setting-icon" style="background:${acc.color}22;font-size:20px">💳</div>
+        <div class="setting-icon" style="background:${acc.color}22;font-size:20px">${acc.isCompany?'🧾':'💳'}</div>
         <div>
-          <div class="setting-name">${acc.name}</div>
+          <div class="setting-name">${acc.name}${acc.isCompany?' <span style="font-size:11px;color:var(--p);border:1px solid var(--p);border-radius:4px;padding:1px 5px;vertical-align:middle">公司</span>':''}</div>
           <div class="setting-sub">${acc.currency} · ${txCount} 条记录</div>
         </div>
       </div>
-      ${data.accounts.length>1?`<button class="del-btn" onclick="deleteAccount('${acc.id}')">删除</button>`:''}
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-outline btn-sm" onclick="toggleCompanyAccount('${acc.id}')">${acc.isCompany?'取消公司':'设为公司'}</button>
+        ${data.accounts.length>1?`<button class="del-btn" onclick="deleteAccount('${acc.id}')">删除</button>`:''}
+      </div>
     </div>`;
   }).join('');
 }
@@ -1722,6 +1793,7 @@ function showAddTx(){
   const rielBtn = document.getElementById('tx-riel-toggle');
   rielBtn.style.background = ''; rielBtn.style.borderColor = ''; rielBtn.style.color = '';
   updateRielHint();
+  syncCompanyTxFields(null);
   showModal('modal-add-tx');
   setTimeout(()=>document.getElementById('tx-amount').focus(), 300);
 }
@@ -1747,6 +1819,7 @@ function editTx(id){
   document.getElementById('type-inc').classList.toggle('active', t.type==='income');
   renderCatGrid();
   loadAttachStateForTx(t);
+  syncCompanyTxFields(t);
   showModal('modal-add-tx');
 }
 
@@ -1832,8 +1905,9 @@ function saveTx(){
   const raw = document.getElementById('tx-amount').value.trim();
   const rawAmt = parseFloat(raw);
   if(raw==='' || isNaN(rawAmt) || rawAmt<0){ toast('请输入金额（可以填 0）'); return; }
-  if(!state.selectedCatId){ toast('请选择类别'); return; }
   const acc = curAcc(); if(!acc) return;
+  // 公司账户用下面的「公司类别」下拉，不用再选一次 App 的类别（会自动对应过去）
+  if(!acc.isCompany && !state.selectedCatId){ toast('请选择类别'); return; }
 
   const amt = state.rielMode ? Math.round((rawAmt/RIEL_RATE)*100)/100 : rawAmt;
   let description = document.getElementById('tx-desc').value.trim();
@@ -1853,6 +1927,25 @@ function saveTx(){
     updatedAt: Date.now()
   };
   if(state.pendingAttachmentId) tx.attachmentId = state.pendingAttachmentId;
+
+  if(acc.isCompany){
+    const categoryEn = document.getElementById('tx-company-category').value;
+    const reporter = document.getElementById('tx-company-reporter').value || 'Boss';
+    if(!categoryEn){ toast('请选择公司类别'); return; }
+    localStorage.setItem(COMPANY_REPORTER_STORAGE, reporter);
+    tx.company = {
+      reporter,
+      categoryEn,
+      refTag: (document.getElementById('tx-company-reftag').value||'').trim() || null,
+      // 送原始金额和币种过去，让 butler 自己换算成美元——这边不算，理由见公司报账那一节的注释
+      rawAmount: rawAmt,
+      rawCurrency: state.rielMode ? 'KHR' : acc.currency,
+      status: 'pending',
+      error: null
+    };
+    // 公司类别顺带决定这笔账在 App 列表/统计里算哪一类，用户不用再选一次
+    tx.categoryId = COMPANY_CAT_TO_APP[categoryEn] || 'cat_other_exp';
+  }
 
   const prevTx = state.editingTxId ? data.transactions.find(t=>t.id===state.editingTxId) : null;
   const prevAttachmentId = prevTx ? prevTx.attachmentId : null;
@@ -1881,6 +1974,16 @@ function saveTx(){
   if(state.currentTab==='overview') renderOverview();
   if(state.currentTab==='transactions') renderTxList();
   if(state.currentTab==='analytics') renderAnalytics();
+  // 公司账另外送一份进 butler 的公司账本。不 await——本机已经存好了，
+  // 送不出去会进队列自动重试，不该让用户在这里干等网络。
+  if(tx.company){
+    submitCompanyTx(tx).then(r=>{
+      if(r.ok) toast('已记入公司账本');
+      else if(r.retriable) toast('已存本机，有网时自动送进公司账本');
+      else toast(`没能进公司账本：${r.message}`);
+      if(state.currentTab==='settings') renderCompanySettings();
+    });
+  }
 }
 
 function deleteTx(){
@@ -1939,13 +2042,43 @@ function saveAccount(){
   const name = document.getElementById('new-acc-name').value.trim();
   if(!name){ toast('请输入账户名称'); return; }
   const cur = document.getElementById('new-acc-currency').value;
-  data.accounts.push({id:uid(), name, currency:cur, color:selectedAccColor, createdAt:Date.now()});
+  const isCompany = document.getElementById('new-acc-company').checked;
+  if(isCompany && cur !== 'USD'){ toast('公司账户必须选美元（USD），公司账本是美元记账'); return; }
+  const acc = {id:uid(), name, currency:cur, color:selectedAccColor, createdAt:Date.now()};
+  if(isCompany) acc.isCompany = true;
+  data.accounts.push(acc);
   saveData();
   closeModal('modal-add-acc');
-  toast(`账户「${name}」已创建`);
+  toast(`账户「${name}」已创建${isCompany?'（公司账户）':''}`);
   if(state.currentTab==='overview') renderOverview();
   if(state.currentTab==='settings') renderSettings();
   document.getElementById('new-acc-name').value = '';
+  document.getElementById('new-acc-company').checked = false;
+}
+
+// 只改标记，不动已有记录：已经送进公司账本的那些账，butler 那边照旧存在，
+// 这里取消标记只是让以后新记的账不再往公司账本送。
+function toggleCompanyAccount(id){
+  const acc = getAcc(id);
+  if(!acc) return;
+  if(acc.isCompany){
+    delete acc.isCompany;
+    toast(`「${acc.name}」不再是公司账户（已送出的记录不受影响）`);
+  } else {
+    // 公司账本是美元记账，butler 把非 KHR 的金额一律当美元处理（convertToUsd）。
+    // 账户币种要是 HKD 之类，10 港币会被当成 10 美元记进公司账——静静记错，
+    // 月底对账才发现。所以这里直接拦住，而不是记完再说。
+    if(acc.currency !== 'USD'){
+      toast(`公司账户必须是美元账户，「${acc.name}」现在是 ${acc.currency}`);
+      return;
+    }
+    acc.isCompany = true;
+    toast(getCompanyToken()
+      ? `「${acc.name}」已设为公司账户`
+      : `「${acc.name}」已设为公司账户，但还没填密钥，记的账暂时送不出去`);
+  }
+  saveData();
+  renderSettings();
 }
 
 function deleteAccount(id){
@@ -3754,6 +3887,9 @@ function init(){
   setCloudIcon('off');
   checkShareTarget();
 
+  // 云同步连不上时 auth 是 null（见顶部 FIREBASE 那段）。这里必须挡一下，
+  // 否则 init() 会抛错，后面的启动步骤全都不会执行。
+  if(!cloudAvailable) return;
   auth.onAuthStateChanged(async user => {
     currentUser = user;
     if(user){
@@ -3767,7 +3903,245 @@ function init(){
   });
 }
 
+// ===================== 公司报账（送进 butler 的公司账本）=====================
+// 【改这块前必读】分类归拢、汇率换算、算到谁头上，这三件事一个字都不许在这里算——
+// 全部由 butler 那边做（src/handlers/company_expense.js 的 companyExpenseAddFromApp）。
+// 这里只负责把用户填的原始内容原样送过去。理由：Telegram 和 App 是同一本账的两个入口，
+// 规则只住 butler 一处，两边产出的记录才会一模一样；一旦这里也算一份，butler 改了规则
+// 而这里没跟上，Excel 里出来的和 App 里显示的就对不上——公司账目对不上是要花时间查的。
+const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
+const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
+const COMPANY_REPORTER_STORAGE = 'expenseTracker_companyReporter';
+const COMPANY_QUEUE_STORAGE = 'expenseTracker_companyQueue';
+const COMPANY_CATS_CACHE = 'expenseTracker_companyCats';
+// 拉不到类别清单时的兜底（butler 的内建 9 类去掉 Petrol）。正常情况下会被服务端返回的
+// 清单覆盖掉——包括用户在 Telegram 教过的自定义类别，那些只有服务端知道。
+const COMPANY_CATS_FALLBACK = ['Beverage','Bread','Breakfast','Dentist','Dinner','Lunch','Store','Supper'];
+
+// 公司类别 → App 自己的类别。只为了让公司账在 App 的列表和统计里正常显示，
+// 不用用户再选一次 App 的类别。记进 Excel 的是 butler 那边的类别，不是这个。
+const COMPANY_CAT_TO_APP = {
+  'Breakfast':'cat_food', 'Lunch':'cat_food', 'Dinner':'cat_food', 'Supper':'cat_food',
+  'Bread':'cat_food', 'Beverage':'cat_food',
+  'Store':'cat_shopping',
+  'Parking':'cat_transport', 'Toll Fee':'cat_transport', 'Car Wash':'cat_transport',
+  'Petrol':'cat_transport',
+  'Dentist':'cat_medical',
+};
+
+function getCompanyToken(){ return (localStorage.getItem(COMPANY_TOKEN_STORAGE) || '').trim(); }
+
+/**
+ * 按当前账户是不是公司账户，显示/隐藏公司报账字段并填好选项。
+ * 编辑已有记录时把 tx 传进来回填。
+ */
+function syncCompanyTxFields(tx){
+  const wrap = document.getElementById('tx-company-wrap');
+  if(!wrap) return;
+  const acc = curAcc();
+  const isCompany = !!(acc && acc.isCompany);
+  wrap.style.display = isCompany ? 'block' : 'none';
+  if(!isCompany) return;
+
+  const catSel = document.getElementById('tx-company-category');
+  const cats = getCompanyCats();
+  const want = (tx && tx.company && tx.company.categoryEn) || catSel.value;
+  catSel.innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(want && cats.includes(want)) catSel.value = want;
+
+  document.getElementById('tx-company-reporter').value =
+    (tx && tx.company && tx.company.reporter)
+    || localStorage.getItem(COMPANY_REPORTER_STORAGE) || 'Boss';
+
+  document.getElementById('tx-company-reftag').value =
+    (tx && tx.company && tx.company.refTag) || '';
+}
+
+function saveCompanyToken(){
+  const input = document.getElementById('company-token-input');
+  const v = (input.value || '').trim();
+  if(v){
+    localStorage.setItem(COMPANY_TOKEN_STORAGE, v);
+    toast('密钥已保存');
+    refreshCompanyCategories();
+  } else {
+    localStorage.removeItem(COMPANY_TOKEN_STORAGE);
+    toast('已清空密钥，公司账将只记在本机');
+  }
+  input.value = '';
+  renderCompanySettings();
+}
+
+function getCompanyCats(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(COMPANY_CATS_CACHE) || 'null');
+    if(Array.isArray(raw) && raw.length) return raw;
+  }catch(e){}
+  return COMPANY_CATS_FALLBACK;
+}
+
+// 类别清单从 butler 拉，不在这里硬编——用户在 Telegram 教过 bot 的新词（例如
+// 「洗车→Car Wash」）只有服务端知道，硬编一份的话 App 永远选不到那些类别。
+// 拉到就缓存下来，之后离线也有得选。
+async function refreshCompanyCategories(){
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {method:'GET'});
+    if(!res.ok) return;
+    const body = await res.json();
+    if(Array.isArray(body.categories) && body.categories.length){
+      localStorage.setItem(COMPANY_CATS_CACHE, JSON.stringify(body.categories));
+    }
+  }catch(e){ /* 离线或服务端没开，用缓存/兜底，不打扰用户 */ }
+}
+
+function loadCompanyQueue(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(COMPANY_QUEUE_STORAGE) || '[]');
+    return Array.isArray(raw) ? raw : [];
+  }catch(e){ return []; }
+}
+
+function saveCompanyQueue(q){
+  localStorage.setItem(COMPANY_QUEUE_STORAGE, JSON.stringify(q));
+}
+
+/**
+ * 把一笔公司账送进 butler。返回 {ok:true} 或 {ok:false, retriable, message}。
+ * retriable 的含义：true = 网络问题，等会儿自动重试有意义；
+ * false = 服务端明确说这笔数据有问题（密钥错、类别归不了、日期不合理），
+ * 重试一百次也是同样结果，必须让用户看到并改。
+ */
+async function postCompanyExpense(payload){
+  const token = getCompanyToken();
+  if(!token) return {ok:false, retriable:false, message:'还没填公司报账密钥（设置 → 公司报账）'};
+  let res;
+  try{
+    res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({token, ...payload})
+    });
+  }catch(e){
+    return {ok:false, retriable:true, message:'现在连不上，已存起来等有网再送'};
+  }
+  let body = {};
+  try{ body = await res.json(); }catch(e){}
+  if(res.ok && body.status === 'ok') return {ok:true};
+  // 5xx 当作暂时性问题；4xx 是数据/密钥本身的问题，重试没用
+  const retriable = res.status >= 500;
+  return {ok:false, retriable, message: body.message || body.error || `送不进去（${res.status}）`};
+}
+
+function buildCompanyPayload(tx, extra){
+  return {
+    reporter: tx.company.reporter,
+    date: tx.date,
+    items: [{
+      categoryRaw: tx.company.categoryEn,
+      amount: tx.company.rawAmount,
+      currency: tx.company.rawCurrency,
+      refTag: tx.company.refTag || null
+    }],
+    ...(extra || {})
+  };
+}
+
+// 把这笔账的收据照片一起送过去（有的话）。照片放 butler 仓库的 photos/ 存档，
+// 跟 Telegram 那条路一样，月底对账时找得到凭证。
+async function companyPhotoFields(tx){
+  if(!tx.attachmentId) return {};
+  try{
+    const blob = await getAttachmentBlob(tx.attachmentId);
+    if(!blob) return {};
+    const dataUrl = await blobToBase64(blob);
+    const comma = dataUrl.indexOf(',');
+    if(comma < 0) return {};
+    return {photoBase64: dataUrl.slice(comma+1), photoMime: blob.type || 'image/jpeg'};
+  }catch(e){ return {}; }
+}
+
+async function submitCompanyTx(tx){
+  const extra = await companyPhotoFields(tx);
+  const result = await postCompanyExpense(buildCompanyPayload(tx, extra));
+  const local = data.transactions.find(t=>t.id===tx.id);
+  if(result.ok){
+    if(local && local.company){ local.company.status = 'sent'; local.company.error = null; }
+    saveData();
+    return result;
+  }
+  if(result.retriable){
+    if(local && local.company){ local.company.status = 'pending'; local.company.error = null; }
+    const q = loadCompanyQueue();
+    if(!q.includes(tx.id)){ q.push(tx.id); saveCompanyQueue(q); }
+  } else {
+    if(local && local.company){ local.company.status = 'failed'; local.company.error = result.message; }
+  }
+  saveData();
+  return result;
+}
+
+/**
+ * 把排队中的公司账补送出去。开 App 时、网络恢复时、以及设置页手动点都会调。
+ * 一笔失败（不可重试）就从队列里拿掉并标记 failed，避免一条坏数据卡住后面所有的。
+ */
+async function flushCompanyQueue(opts){
+  const silent = !(opts && opts.loud);
+  let q = loadCompanyQueue();
+  if(!q.length){ if(!silent) toast('没有待补送的公司账'); return; }
+  if(!getCompanyToken()){ if(!silent) toast('还没填公司报账密钥'); return; }
+  let sent = 0, failed = 0;
+  for(const txId of [...q]){
+    const tx = data.transactions.find(t=>t.id===txId);
+    if(!tx || !tx.company){ q = q.filter(x=>x!==txId); saveCompanyQueue(q); continue; }
+    const r = await submitCompanyTx(tx);
+    if(r.ok){ sent++; q = q.filter(x=>x!==txId); saveCompanyQueue(q); }
+    else if(!r.retriable){ failed++; q = q.filter(x=>x!==txId); saveCompanyQueue(q); }
+    else break; // 还是没网，剩下的留着下次
+  }
+  if(sent || failed){
+    if(!silent || failed) toast(`公司账补送：成功 ${sent} 笔${failed?`，${failed} 笔要处理`:''}`);
+    if(state.currentTab==='settings') renderCompanySettings();
+    if(state.currentTab==='transactions') renderTxList();
+  } else if(!silent){
+    toast('还是连不上，等有网再试');
+  }
+}
+
+function renderCompanySettings(){
+  const statusEl = document.getElementById('company-token-status');
+  if(!statusEl) return;
+  const hasToken = !!getCompanyToken();
+  const companyAccs = data.accounts.filter(a=>a.isCompany);
+  statusEl.innerHTML = hasToken
+    ? `✅ 密钥已保存${companyAccs.length?`　·　公司账户：${companyAccs.map(a=>a.name).join('、')}`:'　·　<span style="color:var(--danger,#e74c3c)">还没有账户勾「公司账户」</span>'}`
+    : '未填密钥，公司账目前只会记在本机，不会进公司账本';
+
+  const queueEl = document.getElementById('company-queue-status');
+  const pendingIds = loadCompanyQueue();
+  const failed = data.transactions.filter(t=>t.company && t.company.status==='failed');
+  const parts = [];
+  if(pendingIds.length){
+    parts.push(`<div style="color:var(--sub)">⏳ ${pendingIds.length} 笔等着补送
+      <button class="btn btn-outline btn-sm" style="margin-left:8px"
+        onclick="flushCompanyQueue({loud:true})">立即补送</button></div>`);
+  }
+  if(failed.length){
+    parts.push(`<div style="color:#e74c3c;margin-top:6px">⚠️ ${failed.length} 笔没能进公司账本：
+      ${failed.slice(0,3).map(t=>`<div style="margin-left:12px">· ${t.date} ${t.company.categoryEn}
+      —— ${t.company.error||'原因不明'}</div>`).join('')}
+      <div style="margin-left:12px;color:var(--sub)">改好后在明细里重新保存这笔，会自动重送。</div></div>`);
+  }
+  queueEl.innerHTML = parts.join('');
+}
+
+// 开 App 和网络恢复时自动补送（静默，不打扰）
+window.addEventListener('online', ()=>flushCompanyQueue());
+
+// 启动。必须放在最后：上面那些 const（COMPANY_* 等）是块级作用域，
+// 在它们的定义语句执行之前引用会报错，init() 里会碰到这些东西。
 init();
+refreshCompanyCategories();
+flushCompanyQueue();
 </script>
 </body>
 </html>
