@@ -579,10 +579,14 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       </div>
       <div id="tx-riel-hint" style="display:none;margin-top:6px;font-size:12px;color:var(--sub)"></div>
     </div>
-    <!-- description -->
+    <!-- description：公司账户下会一并送进公司账本，标签由 syncCompanyTxFields() 改写 -->
     <div class="form-group">
-      <label class="form-label">描述（选填）</label>
+      <label class="form-label" id="tx-desc-label">描述（选填）</label>
       <input class="form-input" id="tx-desc" type="text" placeholder="例：午餐、打的…" oninput="autoDetectCat(this.value)">
+      <div id="tx-desc-note" style="display:none;font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
+        这段字会写进交给公司的 Excel，跟在类别后面（例：<b>LUNCH (BOSS) — 客户A招待</b>）。
+        不想让公司看到的就别写在这里。
+      </div>
     </div>
     <!-- category：公司账户下整块隐藏，改用下面的「公司类别」下拉（见 syncCompanyTxFields） -->
     <div class="form-group" id="tx-cat-wrap">
@@ -2007,6 +2011,9 @@ function saveTx(){
       // 送原始金额和币种过去，让 butler 自己换算成美元——这边不算，理由见公司报账那一节的注释
       rawAmount: rawAmt,
       rawCurrency: state.rielMode ? 'KHR' : acc.currency,
+      // 描述会跟着送进公司账本，显示在 Excel 的 DETAILS 后面（"LUNCH (BOSS) — 客户A招待"）。
+      // 所以公司账户下这一栏的标签写明了「会写进公司 Excel」，别让用户以为只存在手机里。
+      note: description || null,
       status: alreadySent ? 'sent' : 'pending',
       error: null
     };
@@ -4054,7 +4061,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-03d';
+const APP_BUILD = '2026-08-03e';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4117,6 +4124,11 @@ function syncCompanyTxFields(tx){
   // 自动决定（COMPANY_CAT_TO_APP），两个都摆出来用户会以为要选两次。
   const catWrap = document.getElementById('tx-cat-wrap');
   if(catWrap) catWrap.style.display = isCompany ? 'none' : '';
+  // 公司账户下描述会送给公司看，标签要说明白
+  const descLabel = document.getElementById('tx-desc-label');
+  const descNote = document.getElementById('tx-desc-note');
+  if(descLabel) descLabel.textContent = isCompany ? '描述／备注（会写进公司 Excel）' : '描述（选填）';
+  if(descNote) descNote.style.display = isCompany ? 'block' : 'none';
   if(!isCompany) return;
 
   const catSel = document.getElementById('tx-company-category');
@@ -4245,7 +4257,8 @@ function buildCompanyPayload(tx, extra){
       amount: tx.company.rawAmount,
       currency: tx.company.rawCurrency,
       refTag: tx.company.refTag || null,
-      plate: tx.company.plate || null
+      plate: tx.company.plate || null,
+      note: tx.company.note || null
     }],
     ...(extra || {})
   };

@@ -125,7 +125,13 @@ const browser = await chromium.launch(launchOpts);
   await page.waitForTimeout(600);
   ok('公司字段显示', await page.locator('#tx-company-wrap').isVisible());
   ok('App 的类别宫格隐藏（避免看起来要选两次）', !(await page.locator('#tx-cat-wrap').isVisible()));
+  // 描述会给公司看，标签必须说明白，别让用户以为只存在手机里
+  ok('描述栏标签写明会进公司 Excel',
+     (await page.textContent('#tx-desc-label')).includes('公司 Excel'),
+     await page.textContent('#tx-desc-label'));
+  ok('说明文字显示出来', await page.locator('#tx-desc-note').isVisible());
   await page.fill('#tx-amount', '12.34');
+  await page.fill('#tx-desc', '跟客户午餐');
   await page.selectOption('#tx-company-category', 'Lunch');
   await page.selectOption('#tx-company-reporter', 'XY');
   await page.fill('#tx-company-reftag', '7');
@@ -139,6 +145,8 @@ const browser = await chromium.launch(launchOpts);
   ok('币种原样送出', p.items?.[0]?.currency==='USD', p.items?.[0]?.currency);
   ok('类别原样送出', p.items?.[0]?.categoryRaw==='Lunch', p.items?.[0]?.categoryRaw);
   ok('收据编号原样送出', p.items?.[0]?.refTag==='7', p.items?.[0]?.refTag);
+  // 描述要一并送去公司账本——它会显示在 Excel 的 DETAILS 后面
+  ok('描述作为备注送出', p.items?.[0]?.note==='跟客户午餐', p.items?.[0]);
   ok('日期格式 YYYY-MM-DD', /^\d{4}-\d{2}-\d{2}$/.test(p.date||''), p.date);
   const tx = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
   ok('本机也留了一份并标记已送达', tx?.company?.status==='sent', tx?.company);
@@ -322,6 +330,9 @@ const browser = await chromium.launch(launchOpts);
   await page.waitForTimeout(500);
   ok('公司字段隐藏', !(await page.locator('#tx-company-wrap').isVisible()));
   ok('App 的类别宫格回来了', await page.locator('#tx-cat-wrap').isVisible());
+  ok('普通账户下描述栏标签恢复原样',
+     (await page.textContent('#tx-desc-label')) === '描述（选填）',
+     await page.textContent('#tx-desc-label'));
   posted = [];
   await page.fill('#tx-amount', '88');
   await page.evaluate(()=>selectCat(data.categories.find(c=>c.type==='expense').id));
