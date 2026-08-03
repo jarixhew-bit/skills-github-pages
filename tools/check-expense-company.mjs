@@ -36,6 +36,7 @@ const browser = await chromium.launch(launchOpts);
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   let posted = []; let butlerMode = 'ok';
+  const serverBook = []; let recSeq = 0;   // 假的公司账本，用来验证删除真的删到了远端
   await ctx.route('**/*', async route => {
     const u = route.request().url();
     if (u.startsWith(`http://localhost:${PORT}`)) return route.continue();
@@ -50,6 +51,14 @@ const browser = await chromium.launch(launchOpts);
           }) });
       const req = JSON.parse(route.request().postData() || '{}');
       posted.push(req);
+      if (req.action === 'delete') {
+        const i = serverBook.findIndex(r => r.id === req.recordId);
+        if (i === -1) return route.fulfill({ status:400, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'not_found', message:'账本里没有这条' }) });
+        const [removed] = serverBook.splice(i, 1);
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', removed }) });
+      }
       // 假服务端照 butler 的规则算 person 回传（真规则住在 butler，这里只是替身）：
       // XY 的 Lunch/Dinner、G 的 Breakfast/Lunch 算同事自己，其余一律 Boss。
       const cat = String(req.items?.[0]?.categoryRaw || '').toLowerCase();
@@ -57,8 +66,10 @@ const browser = await chromium.launch(launchOpts);
       const mine = (rep==='XY' && ['lunch','dinner'].includes(cat))
                 || (rep==='G'  && ['breakfast','lunch'].includes(cat));
       const person = mine ? rep : 'Boss';
+      const id = 'rec' + (++recSeq);
+      serverBook.push({ id, person, amount: req.items?.[0]?.amount });
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
-        body: JSON.stringify({ status:'ok', records:[{person}], total:0 }) });
+        body: JSON.stringify({ status:'ok', records:[{id, person}], total:0 }) });
     }
     return route.abort('failed');
   });
@@ -217,6 +228,45 @@ const browser = await chromium.launch(launchOpts);
   ok('本机金额已更新', await page.evaluate(id=>data.transactions.find(t=>t.id===id)?.amount===99.99, sentId));
   ok('状态仍是 sent（没退回 pending）', await page.evaluate(id=>data.transactions.find(t=>t.id===id)?.company?.status==='sent', sentId));
   ok('也没混进补送队列', (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]'))).length===0);
+
+  console.log('\n【5c】App 里删记录会同步删掉公司账本那条');
+  page.on('dialog', d => d.accept());   // 删除确认弹窗一律确定
+  posted = [];
+  await page.evaluate(()=>showAddTx());
+  await page.waitForTimeout(500);
+  await page.fill('#tx-amount', '33.33');
+  await page.selectOption('#tx-company-category', 'Dinner');
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(1500);
+  const delTx = await page.evaluate(()=>data.transactions.filter(t=>t.amount===33.33).pop());
+  ok('入账后存下了服务端的记录 id', !!delTx?.company?.recordId, delTx?.company);
+  const bookBefore = serverBook.length;
+  ok('公司账本里确实有这条', serverBook.some(r=>r.id===delTx.company.recordId), serverBook);
+
+  await page.evaluate(id=>deleteTxById(id), delTx.id);
+  await page.waitForTimeout(1500);
+  ok('本机已删除', !(await page.evaluate(id=>data.transactions.some(t=>t.id===id), delTx.id)));
+  ok('公司账本那条也删了', !serverBook.some(r=>r.id===delTx.company.recordId), serverBook);
+  ok('账本少了一条（没误删别的）', serverBook.length===bookBefore-1, serverBook.length);
+
+  console.log('\n【5d】连不上时不准只删本机（那正是要消灭的状态）');
+  await page.evaluate(()=>showAddTx());
+  await page.waitForTimeout(500);
+  await page.fill('#tx-amount', '44.44');
+  await page.selectOption('#tx-company-category', 'Dinner');
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(1500);
+  const keepTx = await page.evaluate(()=>data.transactions.filter(t=>t.amount===44.44).pop());
+  butlerMode = 'offline';
+  await page.evaluate(id=>deleteTxById(id), keepTx.id);
+  await page.waitForTimeout(1500);
+  ok('连不上时本机这条保留着', await page.evaluate(id=>data.transactions.some(t=>t.id===id), keepTx.id));
+  ok('公司账本那条也还在', serverBook.some(r=>r.id===keepTx.company.recordId), serverBook);
+  butlerMode = 'ok';
+  await page.evaluate(id=>deleteTxById(id), keepTx.id);
+  await page.waitForTimeout(1500);
+  ok('恢复后两边都删掉', !(await page.evaluate(id=>data.transactions.some(t=>t.id===id), keepTx.id))
+     && !serverBook.some(r=>r.id===keepTx.company.recordId), serverBook);
 
   console.log('\n【6】普通账户完全不受影响');
   await page.evaluate(()=>{ const a=data.accounts.find(x=>!x.isCompany); data.currentAccountId=a.id; saveData(); });
