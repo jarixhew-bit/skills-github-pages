@@ -16,6 +16,12 @@ on:
       - 'tools/check-expense-company.mjs'
   workflow_dispatch:
 
+# 同一个分支上 push 与 pull_request 会各触发一次，这个检查要装 Chromium（约 1 分钟），
+# 跑两遍纯属浪费。新的一跑就取消同组里还没跑完的旧的。
+concurrency:
+  group: expense-company-check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -30,10 +36,16 @@ jobs:
           npx playwright install --with-deps chromium
       - name: 起本地服务器
         run: |
-          python3 -m http.server 8899 &
+          # 输出必须重定向、还要 disown：后台进程只要还占着这个步骤的 stdout，
+          # Actions 就会一直等它、整个步骤挂住不结束（2026-08-03 踩到，一个 run 卡了 20 分钟，
+          # 同一个 commit 上另一个 run 却 79 秒跑完——这种时好时坏正是没重定向的典型表现）。
+          nohup python3 -m http.server 8899 > /tmp/httpserver.log 2>&1 &
+          disown || true
           for i in $(seq 1 20); do
             curl -sf -o /dev/null http://localhost:8899/expense-tracker.html && break
             sleep 1
           done
+          curl -sf -o /dev/null http://localhost:8899/expense-tracker.html \
+            || { echo "本地服务器没起来"; cat /tmp/httpserver.log; exit 1; }
       - name: 跑公司报账自检
         run: node tools/check-expense-company.mjs
