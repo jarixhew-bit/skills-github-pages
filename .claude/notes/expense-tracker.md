@@ -120,9 +120,15 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   旅行记账时误点确认，昨天的记录被云端旧快照整个覆盖消失。已改为 `mergeData()`
   做 union-by-id 合并（`mergeById`函数），transactions 按新加的 `updatedAt` 字段
   （`saveTx()`/`addMonthlyRecurring()`写入）取较新版本，不再有整份覆盖的路径。
-  权衡：合并不做删除同步（无 tombstone），一台设备删除的交易如果和还没见过这次
-  删除的旧云端快照合并，可能被"复活"——这是有意选的取舍（换掉更严重的整批消失），
-  以后改同步逻辑时留意这个已知限制，不要绕开 `mergeData()` 另开覆盖式路径。
+  **2026-08-03 已补上删除同步（tombstone），下面这段"已知限制"已解除**：原本合并
+  不记删除，一台设备删掉的交易只要碰上还没见过这次删除的旧云端快照就会"复活"——
+  用户报"App 上删除又失效了"就是这个（删了、下次启动 `syncFromCloud()` 一合并又回来）。
+  现在 `data.deletedTxIds`（`{id, at}`，180 天后自动清）记下删除，`mergeData()` 把
+  墓碑并集算出来后从 transactions 里剔除；墓碑本身也跟着同步，所以另一台设备也会照删。
+  **每一处从 `data.transactions` 移除记录的地方都必须调 `tombstoneTx(id)`**（现有三处：
+  `deleteTx()` / `deleteTxById()` / `deleteAccount()`），漏一处那条路删的就会复活。
+  同一次还修了 `saveToCloud()`：原本"正在推就直接 return"会让那次改动永远没上传
+  （删除最容易撞上），改成置脏标记推完再补一次。不要绕开 `mergeData()` 另开覆盖式路径。
   同时新增 `expense-tracker-recover.html`（只读恢复工具，扫描 IndexedDB 本机
   收据照片 + Firestore 云端收据照片备份，帮用户找回被覆盖记录的线索）。
 - **2026-07-23 同一次事故还查出第二个独立 bug（真正的根因）**：拍收据自动识别日期
@@ -308,7 +314,14 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   三个删除入口：编辑弹窗 `deleteTx()`、滑动删除 `deleteTxById()`（都已接上），
   以及 `deleteAccount()`——**批量删账户不代删远端**（逐条删太容易删到一半失败），
   只在确认框里说明有几条已进公司账本、要自己去 Telegram 清。
-  自检：`node tools/check-expense-company.mjs`（真浏览器 37 项，全程断掉外部网域模拟
+  **删除还有第二道坎在云同步那边**：远端账本删干净了，本机这条也删了，但云端旧快照
+  一合并还是会把它并回来（看起来仍是「删除没用」）。修法见上面 tombstone 那段——
+  查「删除失效」时两处都要看，只查公司账本那条会漏掉真正的病根。
+  月度报表的顺序：Excel 行序与账单 PDF 页序都按日期升序（butler 两个脚本用同一个
+  排序 key，CI 有 `tests/check-report-order.py` 守着）；**单据号不跟着重排**——号是
+  录入当下派的、用户已照着写在纸质单据上，重排会让已写的号全部作废，所以 Bill No.
+  那栏可能出现 2/1/3。
+  自检：`node tools/check-expense-company.mjs`（真浏览器 82 项，全程断掉外部网域模拟
   酒店 WiFi），CI 是 `.github/workflows/expense-company-check.yml`，改这个页面就自动跑。
   本地跑法：`npm i playwright` → `python3 -m http.server 8899 &` →
   `CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/check-expense-company.mjs`。
