@@ -619,7 +619,11 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <div class="form-group">
         <label class="form-label">收据编号（选填）</label>
         <input class="form-input" id="tx-company-reftag" type="text"
-          placeholder="收据上写的编号，例：1">
+          inputmode="numeric" maxlength="2" placeholder="收据上写的编号，例：1">
+        <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
+          只能填 1~2 位数字。会写进 Excel 的 Bill No. 那一列，方便跟手上的实体单据对号；
+          不填的话那列保留模板自己的流水号。
+        </div>
       </div>
     </div>
     <!-- delete btn (edit mode) -->
@@ -1937,6 +1941,12 @@ function saveTx(){
     const categoryEn = document.getElementById('tx-company-category').value;
     const reporter = document.getElementById('tx-company-reporter').value || 'Boss';
     if(!categoryEn){ toast('请选择公司类别'); return; }
+    // 收据编号会写进 Excel 的 Bill No. 列，生成时要转成整数——非数字会让整份月度表
+    // 生成失败。服务端也拦（那是真闸门），这里先挡一次省得白填一遍。
+    const refTagRaw = (document.getElementById('tx-company-reftag').value||'').trim();
+    if(refTagRaw && !/^\d{1,2}$/.test(refTagRaw)){
+      toast('收据编号只能是 1~2 位数字（例：1、12）'); return;
+    }
     localStorage.setItem(COMPANY_REPORTER_STORAGE, reporter);
     // 已经送进公司账本的那笔，编辑后**绝对不能再送一次**——butler 的 saveRecords 是
     // 往月度账本里 push 追加（不是按 id 覆盖），再送一次就多一条重复记录，金额直接翻倍。
@@ -1948,7 +1958,7 @@ function saveTx(){
     tx.company = {
       reporter,
       categoryEn,
-      refTag: (document.getElementById('tx-company-reftag').value||'').trim() || null,
+      refTag: refTagRaw || null,
       // 送原始金额和币种过去，让 butler 自己换算成美元——这边不算，理由见公司报账那一节的注释
       rawAmount: rawAmt,
       rawCurrency: state.rielMode ? 'KHR' : acc.currency,

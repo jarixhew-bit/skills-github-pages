@@ -254,6 +254,11 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   进 localStorage 队列 `expenseTracker_companyQueue`，开 App、网络恢复、设置页手动点都会
   补送。**送不出去绝不丢账**：本机永远先存好，网络问题进队列重试，服务端明确拒绝
   （密钥错/类别归不了/日期不合理）才标 `failed` 并在设置页显示原因。
+  **收据编号（refTag）只能是 1~2 位数字**：它会写进 Excel 的 Bill No. 列，生成时
+  `int(ref_tag)` 转换，非数字会让**整份月度表生成失败**（一笔坏数据毁掉所有人的表）。
+  App 侧 saveTx 先挡一次，butler 的 `companyExpenseAddFromApp` 用 `normalizeTag` 再挡
+  一次（那是真闸门），Excel 脚本的 int() 也加了 try/except 兜底。Telegram 那条路还
+  支持圆圈数字 ①~⑩（会转成 "1"~"10"），App 的输入框只收阿拉伯数字。
   **`reporter` 不是「算谁头上」**：表单那个下拉是「谁报的账」，最终归属（`person`，
   决定进 Excel 左边 Boss 表还是右边 Assistants 表）由 butler 的
   `classifyCompanyExpensePerson()` 从 reporter＋categoryEn 算出来——只有同事自己吃的

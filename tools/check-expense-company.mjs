@@ -115,6 +115,25 @@ const browser = await chromium.launch(launchOpts);
   // XY 的 Lunch → 算 XY 自己 → Excel 右边。App 只转述服务端算的结果，不自己算。
   ok('存下服务端算的 person（XY 的 Lunch → XY）', tx?.company?.person==='XY', tx?.company);
 
+  console.log('\n【4a】收据编号只收 1~2 位数字（非数字会让整份月度 Excel 生成失败）');
+  posted = [];
+  await page.evaluate(()=>showAddTx());
+  await page.waitForTimeout(500);
+  await page.fill('#tx-amount', '10');
+  await page.selectOption('#tx-company-category', 'Lunch');
+  await page.evaluate(()=>{ document.getElementById('tx-company-reftag').value = 'A1'; });
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(1000);
+  ok('非数字编号被挡下，什么都没送出', posted.length===0, posted);
+  ok('这笔也没被存进本机（保存整个中止）',
+     !(await page.evaluate(()=>data.transactions.some(t=>t.amount===10 && t.company))));
+  await page.evaluate(()=>{ document.getElementById('tx-company-reftag').value = '12'; });
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(1500);
+  ok('改成合法编号后正常送出', posted.length===1, posted.length);
+  ok('编号原样送到服务端', posted[0]?.items?.[0]?.refTag==='12', posted[0]?.items?.[0]);
+  await page.evaluate(()=>closeModal('modal-add-tx'));
+
   console.log('\n【4b】同一个人报的非正餐要算到 Boss 头上（Excel 换到左边）');
   posted = [];
   await page.evaluate(()=>showAddTx());
