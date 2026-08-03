@@ -254,6 +254,12 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   进 localStorage 队列 `expenseTracker_companyQueue`，开 App、网络恢复、设置页手动点都会
   补送。**送不出去绝不丢账**：本机永远先存好，网络问题进队列重试，服务端明确拒绝
   （密钥错/类别归不了/日期不合理）才标 `failed` 并在设置页显示原因。
+  **车牌类项目（汽油/洗车/汽车保养）**：这几类每次车牌不同、不能记词典，最终标签是
+  `Petrol (NS6868)` 这种拼接格式，且一律归 Boss（`forceBoss`）。App 选到这些类别时会
+  显示车牌输入框，把 `plate` 一并送过去由 butler 拼接——**App 不拼、也不判断哪些类别
+  要车牌**，后者由 `GET /company-expense` 返回的 `plateCategories` 告知（正本是 butler
+  的 `PLATE_CATEGORIES`）。2026-08-03 之前这几类被排除在下拉外，导致这些账只能回
+  Telegram 记、App 里公司账户的合计跟公司账本对不上（用户指出）。
   **收据编号（refTag）只能是 1~2 位数字**：它会写进 Excel 的 Bill No. 列，生成时
   `int(ref_tag)` 转换，非数字会让**整份月度表生成失败**（一笔坏数据毁掉所有人的表）。
   App 侧 saveTx 先挡一次，butler 的 `companyExpenseAddFromApp` 用 `normalizeTag` 再挡

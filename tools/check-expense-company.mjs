@@ -44,7 +44,10 @@ const browser = await chromium.launch(launchOpts);
       const h = { 'Access-Control-Allow-Origin': '*' };
       if (route.request().method() === 'GET')
         return route.fulfill({ status:200, contentType:'application/json', headers:h,
-          body: JSON.stringify({ categories:['Beverage','Car Wash','Dinner','Lunch','Postage','Store'] }) });
+          body: JSON.stringify({
+            categories:['Beverage','Car Wash','Dinner','Lunch','Petrol','Postage','Store'],
+            plateCategories:['Car Wash','Petrol'],
+          }) });
       const req = JSON.parse(route.request().postData() || '{}');
       posted.push(req);
       // 假服务端照 butler 的规则算 person 回传（真规则住在 butler，这里只是替身）：
@@ -87,7 +90,11 @@ const browser = await chromium.launch(launchOpts);
   await page.waitForTimeout(2000);
   const cats = await page.evaluate(()=>getCompanyCats());
   ok('拿到服务端返回的类别（含用户教过的自定义类别）', cats.includes('Car Wash') && cats.includes('Postage'), cats);
-  ok('不含 Petrol（要填车牌，这个表单答不了）', !cats.includes('Petrol'), cats);
+  // 车牌类也要在清单里——只能回 Telegram 记的话，App 里公司账户的合计会少一块
+  ok('含车牌类（Petrol / Car Wash）', cats.includes('Petrol') && cats.includes('Car Wash'), cats);
+  ok('车牌类清单也是服务端给的，不是 App 判断的',
+     JSON.stringify(await page.evaluate(()=>getCompanyPlateCats()))===JSON.stringify(['Car Wash','Petrol']),
+     await page.evaluate(()=>getCompanyPlateCats()));
 
   console.log('\n【4】记一笔公司账 —— 送出去的内容必须原样，不能在本地算');
   await page.evaluate(()=>showAddTx());
@@ -132,6 +139,35 @@ const browser = await chromium.launch(launchOpts);
   await page.waitForTimeout(1500);
   ok('改成合法编号后正常送出', posted.length===1, posted.length);
   ok('编号原样送到服务端', posted[0]?.items?.[0]?.refTag==='12', posted[0]?.items?.[0]);
+  await page.evaluate(()=>closeModal('modal-add-tx'));
+
+  console.log('\n【4c】车牌类项目：选了才出现车牌栏，没填不准送出');
+  posted = [];
+  await page.evaluate(()=>showAddTx());
+  await page.waitForTimeout(500);
+  ok('一般类别下车牌栏是藏着的', !(await page.locator('#tx-company-plate-wrap').isVisible()));
+  await page.selectOption('#tx-company-category', 'Petrol');
+  await page.waitForTimeout(300);
+  ok('选了汽油，车牌栏出现', await page.locator('#tx-company-plate-wrap').isVisible());
+  await page.fill('#tx-amount', '60');
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(1000);
+  ok('没填车牌不准送出', posted.length===0, posted);
+  await page.fill('#tx-company-plate', 'ns6868');
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(1500);
+  ok('填了车牌就送得出去', posted.length===1, posted.length);
+  ok('车牌转成大写送出', posted[0]?.items?.[0]?.plate==='NS6868', posted[0]?.items?.[0]);
+  ok('类别原样送出（拼接交给 butler）', posted[0]?.items?.[0]?.categoryRaw==='Petrol', posted[0]?.items?.[0]);
+  // 保存成功后弹窗会自动关闭，重开一个再验「换类别时车牌栏跟着收起」
+  await page.evaluate(()=>showAddTx());
+  await page.waitForTimeout(500);
+  await page.selectOption('#tx-company-category', 'Petrol');
+  await page.waitForTimeout(300);
+  ok('重开后选汽油，车牌栏还是会出现', await page.locator('#tx-company-plate-wrap').isVisible());
+  await page.selectOption('#tx-company-category', 'Lunch');
+  await page.waitForTimeout(300);
+  ok('换回一般类别，车牌栏收起来', !(await page.locator('#tx-company-plate-wrap').isVisible()));
   await page.evaluate(()=>closeModal('modal-add-tx'));
 
   console.log('\n【4b】同一个人报的非正餐要算到 Boss 头上（Excel 换到左边）');
