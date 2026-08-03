@@ -846,14 +846,22 @@ async function signOutUser(){
   toast('Signed out');
 }
 
+// 上一次推送进行中时又来了新改动，就把这个标记立起来，推完再补一次。
+// 原本是「正在推就直接 return」——那次改动等于没上传过，云端停在旧状态。
+// 删除记录时最容易撞上（删远端账本那条要等网络，回来 saveData 可能正好赶上前一次推送）。
+let cloudSaveDirty = false;
 async function saveToCloud(){
-  if(!currentUser || cloudSaving) return;
+  if(!currentUser) return;
+  if(cloudSaving){ cloudSaveDirty = true; return; }
   cloudSaving = true;
   try{
-    await db.collection('users').doc(currentUser.uid).set({
-      payload: JSON.stringify(data),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    do {
+      cloudSaveDirty = false;
+      await db.collection('users').doc(currentUser.uid).set({
+        payload: JSON.stringify(data),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } while(cloudSaveDirty);
     setPendingSync(false);
   }catch(e){
     console.error('Cloud save:', e);
@@ -862,11 +870,35 @@ async function saveToCloud(){
   cloudSaving = false;
 }
 
+// ---- 删除墓碑（tombstone）：删掉的记录不许被云端合并回来 ----
+// 【为什么需要】合并是「取并集」（见下面 mergeData 的注释），所以删除本身没有任何
+// 痕迹留给合并逻辑看——本机删掉后，只要云端那份还带着这条（推送失败、推送被
+// cloudSaving 并发挡掉、或者另一台设备的旧副本先上传），下次启动 syncFromCloud
+// 一合并就把它并回来，看起来就是「删除没用、删完又出现」。
+// 修法：删除时记下 id 和时间，合并时把墓碑里的 id 一律排除。墓碑本身也跟着同步，
+// 所以另一台设备拉下来之后也会照删。180 天后清掉，避免无限膨胀。
+const TOMBSTONE_TTL_MS = 180*24*3600*1000;
+
+function pruneTombstones(list){
+  const cutoff = Date.now() - TOMBSTONE_TTL_MS;
+  return (list||[]).filter(x => x && x.id && (Number(x.at)||0) > cutoff);
+}
+
+// 记一笔删除。**每一处从 data.transactions 里移除记录的地方都必须调用它**，
+// 漏掉一处，那条路删的记录就会在下次同步时复活。
+function tombstoneTx(id){
+  if(!id) return;
+  if(!Array.isArray(data.deletedTxIds)) data.deletedTxIds = [];
+  if(!data.deletedTxIds.some(x=>x && x.id===id)) data.deletedTxIds.push({id, at: Date.now()});
+  data.deletedTxIds = pruneTombstones(data.deletedTxIds);
+}
+
 // Merge two arrays of {id,...} records into one, keyed by id.
 // preferNewer: on same id in both sides, keep whichever has the larger
 // updatedAt (falls back to local when neither/equal has one, since local
 // is the side actively being edited on this device).
-function mergeById(localArr, cloudArr, preferNewer){
+// skipIds: 墓碑集合，两边出现的都当作已删除，直接丢弃。
+function mergeById(localArr, cloudArr, preferNewer, skipIds){
   const map = new Map();
   (cloudArr||[]).forEach(item=>map.set(item.id, item));
   (localArr||[]).forEach(item=>{
@@ -879,20 +911,22 @@ function mergeById(localArr, cloudArr, preferNewer){
       map.set(item.id, item);
     }
   });
-  return Array.from(map.values());
+  const out = Array.from(map.values());
+  return skipIds && skipIds.size ? out.filter(x=>!skipIds.has(x.id)) : out;
 }
 
 // Union-merge local + cloud so neither side's records get silently dropped.
-// Trade-off: a transaction deleted on one device can reappear after a
-// merge with a device/cloud copy that predates the deletion — annoying but
-// far safer than the old behavior, which could wipe out an entire side's
-// data when picking "keep cloud"/"keep local".
+// 取并集是刻意的：旧行为（二选一「保留云端／保留本机」）会整片抹掉一边的数据。
+// 并集唯一的代价是「删掉的会复活」，这一条由上面的墓碑机制堵住。
 function mergeData(local, cloud){
+  const tombs = pruneTombstones(mergeById(local.deletedTxIds, cloud.deletedTxIds));
+  const dead = new Set(tombs.map(x=>x.id));
   return {
     accounts: mergeById(local.accounts, cloud.accounts),
     categories: mergeById(local.categories, cloud.categories),
     recurring: mergeById(local.recurring, cloud.recurring),
-    transactions: mergeById(local.transactions, cloud.transactions, true),
+    transactions: mergeById(local.transactions, cloud.transactions, true, dead),
+    deletedTxIds: tombs,
     currentAccountId: local.currentAccountId || cloud.currentAccountId
   };
 }
@@ -1322,7 +1356,10 @@ const DEFAULT_DATA = {
     {id:'cat_other_inc',name:'其他收入',icon:'🏦',type:'income',color:'#27AE60'}
   ],
   transactions: [],
-  recurring: []
+  recurring: [],
+  // 删掉过的记录 id（{id, at}）。存在的意义见 tombstoneTx 附近的注释：
+  // 没有它，云端合并会把删掉的记录并回来。
+  deletedTxIds: []
 };
 
 let data = JSON.parse(JSON.stringify(DEFAULT_DATA));
@@ -1359,6 +1396,7 @@ function loadData(){
     if(raw) data = JSON.parse(raw);
     if(!data.currentAccountId && data.accounts.length>0)
       data.currentAccountId = data.accounts[0].id;
+    if(!Array.isArray(data.deletedTxIds)) data.deletedTxIds = [];   // 老版本存的没有这个字段
     migrateCategories();
   }catch(e){ data = JSON.parse(JSON.stringify(DEFAULT_DATA)); }
 }
@@ -2132,6 +2170,7 @@ async function deleteTx(){
   // 先删公司账本那条，删不成就整个中止——不留「本机没了、公司账本还在」的状态
   if(!(await deleteCompanyRecord(t))) return;
   const attachmentId = t ? t.attachmentId : null;
+  tombstoneTx(state.editingTxId);
   data.transactions = data.transactions.filter(t=>t.id!==state.editingTxId);
   saveData();
   if(attachmentId) deleteAttachmentBlob(attachmentId);
@@ -2236,6 +2275,7 @@ function deleteAccount(id){
     : `确定删除账户「${acc.name}」？`;
   if(!confirm(msg)) return;
   data.accounts = data.accounts.filter(a=>a.id!==id);
+  data.transactions.filter(t=>t.accountId===id).forEach(t=>tombstoneTx(t.id));
   data.transactions = data.transactions.filter(t=>t.accountId!==id);
   if(data.currentAccountId===id)
     data.currentAccountId = data.accounts[0]?.id || null;
@@ -2686,6 +2726,7 @@ async function deleteTxById(id){
   if(!confirmDeleteTx(t)) return;
   if(!(await deleteCompanyRecord(t))) return;
   const attachmentId = t ? t.attachmentId : null;
+  tombstoneTx(id);
   data.transactions = data.transactions.filter(t=>t.id!==id);
   saveData();
   if(attachmentId) deleteAttachmentBlob(attachmentId);
@@ -4061,7 +4102,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-03e';
+const APP_BUILD = '2026-08-03f';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';

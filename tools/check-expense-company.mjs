@@ -324,6 +324,52 @@ const browser = await chromium.launch(launchOpts);
   ok('恢复后两边都删掉', !(await page.evaluate(id=>data.transactions.some(t=>t.id===id), keepTx.id))
      && !serverBook.some(r=>r.id===keepTx.company.recordId), serverBook);
 
+  console.log('\n【5e】删掉的记录不许被云端合并回来（「删了又出现」的真正病根）');
+  // 合并是取并集：本机删掉后，只要云端那份还带着这条（推送失败、并发被挡、或另一台
+  // 设备的旧副本先上传），下次启动一合并就并回来。墓碑机制就是堵这个洞。
+  // 这里直接测 mergeData 这个纯函数——它是同步路径上唯一决定「谁活下来」的地方。
+  const tombOk = await page.evaluate(()=>{
+    const gone = data.deletedTxIds.map(x=>x.id);
+    if(gone.length === 0) return {err:'删除后没有留下墓碑'};
+    const deadId = gone[gone.length-1];
+    // 云端那份是删除之前的旧副本：还带着那条已删的，另外多一条别的设备记的新账
+    const cloud = {
+      accounts: data.accounts, categories: data.categories, recurring: [],
+      deletedTxIds: [],
+      transactions: [
+        {id: deadId, amount: 33.33, date: '2026-08-03', type:'expense'},
+        {id: 'from_other_device', amount: 7.77, date: '2026-08-03', type:'expense'}
+      ]
+    };
+    const merged = mergeData(data, cloud);
+    return {
+      resurrected: merged.transactions.some(t=>t.id===deadId),
+      newKept: merged.transactions.some(t=>t.id==='from_other_device'),
+      tombKept: merged.deletedTxIds.some(x=>x.id===deadId),
+      deadId
+    };
+  });
+  ok('删除时留下了墓碑', !tombOk.err, tombOk);
+  ok('云端的旧副本不会把删掉的那条并回来', tombOk.resurrected===false, tombOk);
+  ok('别的设备新记的账照样合并进来（没把并集改坏）', tombOk.newKept===true, tombOk);
+  ok('墓碑本身也会同步出去（另一台设备才会跟着删）', tombOk.tombKept===true, tombOk);
+  // 墓碑无限增长会把 localStorage 和云端 payload 撑大，180 天后要自动清掉
+  ok('过期墓碑会被清掉（不会无限膨胀）', await page.evaluate(()=>{
+    const old = {id:'ancient', at: Date.now() - 200*24*3600*1000};
+    const merged = mergeData({...data, deletedTxIds:[...data.deletedTxIds, old]},
+                             {transactions:[], deletedTxIds:[]});
+    return !merged.deletedTxIds.some(x=>x.id==='ancient');
+  }));
+  // 删整个账户走的是另一条代码路径，漏了同样会复活
+  ok('删账户时旗下记录也留墓碑', await page.evaluate(()=>{
+    // 用一个临时账户测，别动主流程用到的那两个
+    data.accounts.push({id:'acc_tmp_del', name:'临时', currency:'USD', color:'#888', createdAt:Date.now()});
+    data.transactions.push({id:'tmp_for_acc_del', accountId:'acc_tmp_del', amount:1, date:'2026-08-03', type:'expense'});
+    deleteAccount('acc_tmp_del');
+    return data.deletedTxIds.some(x=>x.id==='tmp_for_acc_del')
+        && !data.transactions.some(t=>t.id==='tmp_for_acc_del');
+  }));
+
   console.log('\n【6】普通账户完全不受影响');
   await page.evaluate(()=>{ const a=data.accounts.find(x=>!x.isCompany); data.currentAccountId=a.id; saveData(); });
   await page.evaluate(()=>showAddTx());
