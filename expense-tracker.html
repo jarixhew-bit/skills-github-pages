@@ -509,6 +509,13 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
     </div>
   </div>
+  <div class="setting-section">
+    <div class="setting-title">版本</div>
+    <div id="app-build-info" style="font-size:12px;color:var(--sub);line-height:1.6"></div>
+    <div style="margin-top:8px">
+      <button class="btn btn-outline btn-sm" onclick="forceReload()">🔄 检查更新并重载</button>
+    </div>
+  </div>
 </div>
 
 <!-- FAB -->
@@ -1627,6 +1634,7 @@ function renderSettings(){
   renderSettingsRecurring();
   renderAiKeyStatus();
   renderCompanySettings();
+  renderBuildInfo();
 }
 
 function renderSettingsRecurring(){
@@ -4017,6 +4025,12 @@ function init(){
 // 这里只负责把用户填的原始内容原样送过去。理由：Telegram 和 App 是同一本账的两个入口，
 // 规则只住 butler 一处，两边产出的记录才会一模一样；一旦这里也算一份，butler 改了规则
 // 而这里没跟上，Excel 里出来的和 App 里显示的就对不上——公司账目对不上是要花时间查的。
+// 页面版本号。作用是排查问题时能一眼确认「用户手上这份是不是最新的」——
+// 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
+// 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
+// 改动本页面的功能时顺手把日期改成当天。
+const APP_BUILD = '2026-08-03c';
+
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
 const COMPANY_REPORTER_STORAGE = 'expenseTracker_companyReporter';
@@ -4037,6 +4051,30 @@ const COMPANY_CAT_TO_APP = {
   'Petrol':'cat_transport', 'Car Service':'cat_transport',
   'Dentist':'cat_medical',
 };
+
+function renderBuildInfo(){
+  const el = document.getElementById('app-build-info');
+  if(el) el.textContent = `版本 ${APP_BUILD}`;
+}
+
+/**
+ * 强制拿最新版：清掉 Service Worker 的缓存再硬重载。
+ * 装到主屏的 PWA 有时会停在旧版，而旧版记的公司账缺 recordId、删除时同步不了账本——
+ * 与其让用户猜「我是不是旧版」，给一个按钮直接解决。
+ */
+async function forceReload(){
+  try{
+    if('caches' in window){
+      const names = await caches.keys();
+      await Promise.all(names.map(n=>caches.delete(n)));
+    }
+    if(navigator.serviceWorker){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.update().catch(()=>{})));
+    }
+  }catch(e){ /* 清不掉也照样重载，网络优先策略本来就会拿新版 */ }
+  location.reload(true);
+}
 
 function getCompanyToken(){ return (localStorage.getItem(COMPANY_TOKEN_STORAGE) || '').trim(); }
 

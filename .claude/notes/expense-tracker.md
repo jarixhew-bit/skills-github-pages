@@ -92,6 +92,14 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
 - manifest：`expense-tracker.webmanifest`，`start_url`/`scope`已设为相对路径。
 - SW 注册点：expense-tracker.html:2297-2298（`navigator.serviceWorker.register`）。
 
+## 版本排查
+
+设置页最底下显示 `APP_BUILD`（常量在 script 开头），旁边有「检查更新并重载」按钮
+（`forceReload()`：清 caches ＋ update SW ＋ 硬重载）。
+**用户报「功能没用」时先问版本号**——这个 App 常装在手机主屏，容易停在旧版；
+而旧版记的公司账缺 `company.recordId`，删除时同步不了公司账本，看起来就像功能坏了
+（2026-08-03 排查过一次）。改动本页功能时顺手把 `APP_BUILD` 改成当天日期。
+
 ## 已知坑
 - 文件很大（3241行），单次 Read 建议配合 offset/limit 分段读，不要整档读入对话。
 - Firebase Firestore 结构是「整份 data 当一个 JSON 字符串存」（`payload:

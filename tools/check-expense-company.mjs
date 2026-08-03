@@ -88,6 +88,15 @@ const browser = await chromium.launch(launchOpts);
   ok('主界面渲染出来', await page.locator('.fab').isVisible());
   ok('退化成纯本地模式', await page.evaluate(()=>cloudAvailable===false));
 
+  console.log('\n【1b】设置页要能看到版本号（排查「是不是旧版」时靠它）');
+  await page.evaluate(()=>switchTab('settings'));
+  await page.waitForTimeout(600);
+  const buildText = await page.textContent('#app-build-info');
+  ok('版本号显示出来了', /版本\s+\d{4}-\d{2}-\d{2}/.test(buildText||''), buildText);
+  ok('跟代码里的常量一致',
+     (buildText||'').includes(await page.evaluate(()=>APP_BUILD)), buildText);
+  ok('强制更新按钮存在', await page.evaluate(()=>typeof forceReload==='function'));
+
   console.log('\n【2】公司账户的币种闸门（公司账本是美元记账）');
   await page.evaluate(()=>localStorage.setItem('expenseTracker_companyToken','test-token-123'));
   ok('非美元账户不准设成公司账户', await page.evaluate(()=>{
