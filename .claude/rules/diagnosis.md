@@ -84,6 +84,13 @@
   核對最新部署的 sha 是否等於 merge commit；缺失時再合併一個新 commit 重新觸發。
   另：驗證上線必須看到部署記錄裡出現該 sha 才算數，「檢查 workflow 綠了」不等於已部署。
   來源：鮨酒場訂位更新上線時 Pages 事件被 GitHub 故障吞掉，誤報已上線被使用者發現。
+- [2026-08-03][皆是] 情境：刪除／修改資料檔（帳本 JSON、設定檔）後 commit。教訓：`git rm` 會
+  自動把刪除放進暫存區，但**用 Write/Edit/重定向改過的檔案不會**——同一個 commit 裡混用兩者時，
+  只 `git rm` 就 commit，改過的檔案會被靜靜漏掉。commit 前一定跑一次 `git diff --cached --stat`
+  確認要改的檔案都在暫存區裡（或直接用 `git add -A`）。**更根本的一條：資料改動的驗證要從
+  remote 讀回**（`git show origin/main:路徑`），不能只看本地工作區——工作區顯示正確不代表
+  commit 進去了。來源：清空公司帳本時只提交了照片刪除、帳本 JSON 沒 add，結果記錄全在、
+  照片全沒，使用者跑月度導出時看到「6 筆帳目都沒有電子收據」才發現，白繞一圈。
 - [2026-08-03][雲端] 情境：改完 Cloudflare Worker（butler-bot）想從沙盒 curl 一下驗證端點活著。
   教訓：沙盒代理對 `*.workers.dev` 是 **403 CONNECT tunnel failed**（策略性封鎖，跟已記錄的
   `github.io` / youtube 同一類），別重試也別懷疑 Worker 掛了。改用兩步驗證：(1) GitHub MCP
