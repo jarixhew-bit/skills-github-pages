@@ -1989,7 +1989,9 @@ function saveTx(){
   } else if(tx.company){
     submitCompanyTx(tx).then(r=>{
       if(r.ok) toast('已记入公司账本');
-      else if(r.retriable) toast('已存本机，有网时自动送进公司账本');
+      // 可重试的两种情况措辞不一样：连不上是「等有网」，服务端 503（例如密钥还没配好）
+      // 要把服务端说的原因带出来，不然用户会一直等一个不会自己好的东西。
+      else if(r.retriable) toast(r.message || '已存本机，有网时自动送进公司账本');
       else toast(`没能进公司账本：${r.message}`);
       if(state.currentTab==='settings') renderCompanySettings();
     });
@@ -4053,8 +4055,11 @@ async function postCompanyExpense(payload){
   try{ body = await res.json(); }catch(e){}
   if(res.ok && body.status === 'ok') return {ok:true};
   // 5xx 当作暂时性问题；4xx 是数据/密钥本身的问题，重试没用
+  // 5xx 当作暂时性问题（含 503「密钥没配」——配好之后队列会自动补送）；
+  // 4xx 是数据/密钥本身的问题，重试没用
   const retriable = res.status >= 500;
-  return {ok:false, retriable, message: body.message || body.error || `送不进去（${res.status}）`};
+  const detail = body.message || body.error || `送不进去（${res.status}）`;
+  return {ok:false, retriable, message: retriable ? `已存本机。${detail}` : detail};
 }
 
 function buildCompanyPayload(tx, extra){
