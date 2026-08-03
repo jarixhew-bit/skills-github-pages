@@ -597,12 +597,17 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
         🧾 这是公司账户，保存后会同时送进公司账本 —— 跟 Telegram 记的进同一本、出同一份 Excel。
       </div>
       <div class="form-group">
-        <label class="form-label">算谁的开销</label>
+        <label class="form-label">谁报的账</label>
         <select class="form-input" id="tx-company-reporter">
-          <option value="Boss">Boss（老板）</option>
+          <option value="Boss">Boss（老板自己）</option>
           <option value="XY">XY</option>
           <option value="G">G</option>
         </select>
+        <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
+          这是「谁交上来的」，不是最终算谁头上。Excel 分左右两边由 butler 按规则自动算：
+          只有同事<b>自己吃的正餐</b>（XY 的午/晚餐、G 的早/午餐）进右边，
+          其余一律算公司的、进左边 Boss 表。保存后会告诉你实际进了哪边。
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">公司类别</label>
@@ -1988,7 +1993,13 @@ function saveTx(){
     toast('本机已改。公司账本那边改不了——要更正请在 Telegram 里删掉这笔重记');
   } else if(tx.company){
     submitCompanyTx(tx).then(r=>{
-      if(r.ok) toast('已记入公司账本');
+      if(r.ok){
+        const person = r.records && r.records[0] && r.records[0].person;
+        // 左/右是 Excel 里两张子表的位置：person=Boss 走左边那张，XY/G 走右边那张
+        toast(person
+          ? `已记入公司账本 · 算 ${person} 头上（Excel ${person==='Boss'?'左':'右'}边）`
+          : '已记入公司账本');
+      }
       // 可重试的两种情况措辞不一样：连不上是「等有网」，服务端 503（例如密钥还没配好）
       // 要把服务端说的原因带出来，不然用户会一直等一个不会自己好的东西。
       else if(r.retriable) toast(r.message || '已存本机，有网时自动送进公司账本');
@@ -4053,7 +4064,9 @@ async function postCompanyExpense(payload){
   }
   let body = {};
   try{ body = await res.json(); }catch(e){}
-  if(res.ok && body.status === 'ok') return {ok:true};
+  // 把服务端算出的 person 带回来给调用方显示。**不要在这边自己算一遍**——
+  // 分左右两边的规则只住 butler 一处（见本节开头注释），这里只负责转述结果。
+  if(res.ok && body.status === 'ok') return {ok:true, records: body.records || []};
   // 5xx 当作暂时性问题；4xx 是数据/密钥本身的问题，重试没用
   // 5xx 当作暂时性问题（含 503「密钥没配」——配好之后队列会自动补送）；
   // 4xx 是数据/密钥本身的问题，重试没用
@@ -4095,7 +4108,12 @@ async function submitCompanyTx(tx){
   const result = await postCompanyExpense(buildCompanyPayload(tx, extra));
   const local = data.transactions.find(t=>t.id===tx.id);
   if(result.ok){
-    if(local && local.company){ local.company.status = 'sent'; local.company.error = null; }
+    const person = (result.records && result.records[0] && result.records[0].person) || null;
+    if(local && local.company){
+      local.company.status = 'sent';
+      local.company.error = null;
+      if(person) local.company.person = person;   // 服务端算的，仅存来显示
+    }
     saveData();
     return result;
   }

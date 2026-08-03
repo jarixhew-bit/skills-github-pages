@@ -254,6 +254,13 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   进 localStorage 队列 `expenseTracker_companyQueue`，开 App、网络恢复、设置页手动点都会
   补送。**送不出去绝不丢账**：本机永远先存好，网络问题进队列重试，服务端明确拒绝
   （密钥错/类别归不了/日期不合理）才标 `failed` 并在设置页显示原因。
+  **`reporter` 不是「算谁头上」**：表单那个下拉是「谁报的账」，最终归属（`person`，
+  决定进 Excel 左边 Boss 表还是右边 Assistants 表）由 butler 的
+  `classifyCompanyExpensePerson()` 从 reporter＋categoryEn 算出来——只有同事自己吃的
+  正餐（XY 的 Lunch/Dinner、G 的 Breakfast/Lunch）算他们自己进右边，其余一律 Boss 进左边。
+  所以 XY 报的 Store 会进左边。**App 不准自己算这个**，只把服务端返回的 `person`
+  存进 `tx.company.person` 用于显示（保存后的提示会说明进了哪边）。
+  Excel 分边实现见 butler-bot `scripts/generate_company_excel.py:140-141`。
   **公司账本没有「改」这个操作**：butler 的 `saveRecords()` 是往月度账本 push 追加，
   不是按 id 覆盖。所以 App 里编辑一笔 `status==='sent'` 的公司账**绝不能再送一次**
   （会多一条重复记录、金额翻倍），代码里已挡住并提示用户去 Telegram 删掉重记。

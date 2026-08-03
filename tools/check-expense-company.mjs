@@ -45,9 +45,17 @@ const browser = await chromium.launch(launchOpts);
       if (route.request().method() === 'GET')
         return route.fulfill({ status:200, contentType:'application/json', headers:h,
           body: JSON.stringify({ categories:['Beverage','Car Wash','Dinner','Lunch','Postage','Store'] }) });
-      posted.push(JSON.parse(route.request().postData() || '{}'));
+      const req = JSON.parse(route.request().postData() || '{}');
+      posted.push(req);
+      // 假服务端照 butler 的规则算 person 回传（真规则住在 butler，这里只是替身）：
+      // XY 的 Lunch/Dinner、G 的 Breakfast/Lunch 算同事自己，其余一律 Boss。
+      const cat = String(req.items?.[0]?.categoryRaw || '').toLowerCase();
+      const rep = req.reporter;
+      const mine = (rep==='XY' && ['lunch','dinner'].includes(cat))
+                || (rep==='G'  && ['breakfast','lunch'].includes(cat));
+      const person = mine ? rep : 'Boss';
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
-        body: JSON.stringify({ status:'ok', records:[], total:0 }) });
+        body: JSON.stringify({ status:'ok', records:[{person}], total:0 }) });
     }
     return route.abort('failed');
   });
@@ -104,6 +112,21 @@ const browser = await chromium.launch(launchOpts);
   const tx = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
   ok('本机也留了一份并标记已送达', tx?.company?.status==='sent', tx?.company);
   ok('自动对应到 App 的类别（用户不用选两次）', tx?.categoryId==='cat_food', tx?.categoryId);
+  // XY 的 Lunch → 算 XY 自己 → Excel 右边。App 只转述服务端算的结果，不自己算。
+  ok('存下服务端算的 person（XY 的 Lunch → XY）', tx?.company?.person==='XY', tx?.company);
+
+  console.log('\n【4b】同一个人报的非正餐要算到 Boss 头上（Excel 换到左边）');
+  posted = [];
+  await page.evaluate(()=>showAddTx());
+  await page.waitForTimeout(500);
+  await page.fill('#tx-amount', '20');
+  await page.selectOption('#tx-company-category', 'Store');
+  await page.selectOption('#tx-company-reporter', 'XY');
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(1500);
+  const txStore = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
+  ok('reporter 仍原样送出 XY', posted[0]?.reporter==='XY', posted[0]?.reporter);
+  ok('但 person 是服务端算的 Boss（→ Excel 左边）', txStore?.company?.person==='Boss', txStore?.company);
 
   console.log('\n【5】送不出去时不能丢账：进队列，恢复后补送');
   butlerMode = 'offline'; posted = [];
