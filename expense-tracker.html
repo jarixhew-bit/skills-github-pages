@@ -624,12 +624,12 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">收据编号（选填）</label>
+        <label class="form-label">单据号（留空自动派）</label>
         <input class="form-input" id="tx-company-reftag" type="text"
-          inputmode="numeric" maxlength="2" placeholder="收据上写的编号，例：1">
+          inputmode="numeric" maxlength="2" placeholder="留空就自动派下一个号">
         <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
-          只能填 1~2 位数字。会写进 Excel 的 Bill No. 那一列，方便跟手上的实体单据对号；
-          不填的话那列保留模板自己的流水号。
+          <b>一般留空就好</b>——保存后会告诉你写几号，照着在纸质单据上写上去，
+          月底出的 Excel 和账单 PDF 都用这个号。自己填的话只能是 1~2 位数字。
         </div>
       </div>
     </div>
@@ -2020,11 +2020,13 @@ function saveTx(){
   } else if(tx.company){
     submitCompanyTx(tx).then(r=>{
       if(r.ok){
-        const person = r.records && r.records[0] && r.records[0].person;
+        const rec0 = (r.records && r.records[0]) || {};
         // 左/右是 Excel 里两张子表的位置：person=Boss 走左边那张，XY/G 走右边那张
-        toast(person
-          ? `已记入公司账本 · 算 ${person} 头上（Excel ${person==='Boss'?'左':'右'}边）`
-          : '已记入公司账本');
+        const side = rec0.person
+          ? ` · 算 ${rec0.person} 头上（Excel ${rec0.person==='Boss'?'左':'右'}边）` : '';
+        // 单据号要显眼——用户看到几就在纸质单据上写几，这是纸和 Excel 对上的唯一线索
+        const no = rec0.refTag ? ` · 📄 单据请写 ${rec0.refTag} 号` : '';
+        toast(`已记入公司账本${side}${no}`);
       }
       // 可重试的两种情况措辞不一样：连不上是「等有网」，服务端 503（例如密钥还没配好）
       // 要把服务端说的原因带出来，不然用户会一直等一个不会自己好的东西。
@@ -4212,6 +4214,9 @@ async function submitCompanyTx(tx){
       if(rec && rec.person) local.company.person = rec.person;   // 服务端算的，仅存来显示
       // 记下服务端那条记录的 id：以后在 App 里删这笔时，靠它精确删掉公司账本里对应那条
       if(rec && rec.id) local.company.recordId = rec.id;
+      // 服务端派的单据号（一个月从 1 排到底，左右两张表分开排）。用户拿到实体单据后
+      // 要在上面手写这个号，跟 Excel 的 Bill No. 对上——所以保存后一定要显示出来。
+      if(rec && rec.refTag) local.company.refTag = rec.refTag;
     }
     saveData();
     return result;

@@ -260,6 +260,10 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   要车牌**，后者由 `GET /company-expense` 返回的 `plateCategories` 告知（正本是 butler
   的 `PLATE_CATEGORIES`）。2026-08-03 之前这几类被排除在下拉外，导致这些账只能回
   Telegram 记、App 里公司账户的合计跟公司账本对不上（用户指出）。
+  **单据号一般留空，由服务端自动派**（2026-08-03）：butler 的 `assignBillNumbers()` 按
+  「一个月从 1 排到底、左右两张表分开排」派号，App 保存后在提示里显示「📄 单据请写 N 号」
+  ——用户照着写在纸质单据上，月底 Excel 的 Bill No. 和账单照片 PDF 都用这个号。
+  App 只转述服务端派的号，不自己编。用户自己填的号会被尊重、不覆盖。
   **收据编号（refTag）只能是 1~2 位数字**：它会写进 Excel 的 Bill No. 列，生成时
   `int(ref_tag)` 转换，非数字会让**整份月度表生成失败**（一笔坏数据毁掉所有人的表）。
   App 侧 saveTx 先挡一次，butler 的 `companyExpenseAddFromApp` 用 `normalizeTag` 再挡

@@ -67,9 +67,13 @@ const browser = await chromium.launch(launchOpts);
                 || (rep==='G'  && ['breakfast','lunch'].includes(cat));
       const person = mine ? rep : 'Boss';
       const id = 'rec' + (++recSeq);
-      serverBook.push({ id, person, amount: req.items?.[0]?.amount });
+      // 照 butler 的规则派号：一个月从 1 排到底，左右两张表分开排
+      const table = person === 'Boss' ? 'boss' : 'assist';
+      const refTag = req.items?.[0]?.refTag
+        || String(serverBook.filter(r => r.table === table).length + 1);
+      serverBook.push({ id, person, table, refTag, amount: req.items?.[0]?.amount });
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
-        body: JSON.stringify({ status:'ok', records:[{id, person}], total:0 }) });
+        body: JSON.stringify({ status:'ok', records:[{id, person, refTag}], total:0 }) });
     }
     return route.abort('failed');
   });
@@ -132,6 +136,22 @@ const browser = await chromium.launch(launchOpts);
   ok('自动对应到 App 的类别（用户不用选两次）', tx?.categoryId==='cat_food', tx?.categoryId);
   // XY 的 Lunch → 算 XY 自己 → Excel 右边。App 只转述服务端算的结果，不自己算。
   ok('存下服务端算的 person（XY 的 Lunch → XY）', tx?.company?.person==='XY', tx?.company);
+
+  console.log('\n【4d】单据号：留空由服务端派，App 只负责转述给用户');
+  posted = [];
+  await page.evaluate(()=>showAddTx());
+  await page.waitForTimeout(500);
+  await page.fill('#tx-amount', '6.60');
+  await page.selectOption('#tx-company-category', 'Dinner');
+  await page.selectOption('#tx-company-reporter', 'Boss');
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(1500);
+  ok('留空时不往服务端塞编号', posted[0]?.items?.[0]?.refTag===null, posted[0]?.items?.[0]);
+  const numbered = await page.evaluate(()=>data.transactions.filter(t=>t.amount===6.6).pop());
+  ok('存下服务端派的单号', !!numbered?.company?.refTag, numbered?.company);
+  ok('单号是服务端给的那个（App 不自己编）',
+     numbered?.company?.refTag === serverBook.slice(-1)[0]?.refTag,
+     [numbered?.company?.refTag, serverBook.slice(-1)[0]?.refTag]);
 
   console.log('\n【4a】收据编号只收 1~2 位数字（非数字会让整份月度 Excel 生成失败）');
   posted = [];
