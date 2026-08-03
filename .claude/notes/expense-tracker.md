@@ -92,6 +92,15 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
 - manifest：`expense-tracker.webmanifest`，`start_url`/`scope`已设为相对路径。
 - SW 注册点：expense-tracker.html:2297-2298（`navigator.serviceWorker.register`）。
 
+## 提示（toast）的约束
+
+`.toast` 原本是 `white-space:nowrap`，长文字会直接跑出手机屏幕外（2026-08-03 用户反馈
+「字太长手机看不到完整的」）。现在限宽 `min(100vw-32px, 420px)` ＋ 允许换行，
+`toast()` 里设 `white-space:pre-line` 所以消息里的 `\n` 会真的换行。
+**写提示时最重要的信息放第二行**（手机上第一行容易被略过）。
+另外提示只显示 2.2 秒——**任何用户需要抄下来的信息（如单据号）必须同时在界面上长期可见**，
+公司账的单据号就显示在明细列表每条记录的第二行（`companyTxNote()`）。
+
 ## 版本排查
 
 设置页最底下显示 `APP_BUILD`（常量在 script 开头），旁边有「检查更新并重载」按钮

@@ -158,6 +158,25 @@ const browser = await chromium.launch(launchOpts);
   ok('留空时不往服务端塞编号', posted[0]?.items?.[0]?.refTag===null, posted[0]?.items?.[0]);
   const numbered = await page.evaluate(()=>data.transactions.filter(t=>t.amount===6.6).pop());
   ok('存下服务端派的单号', !!numbered?.company?.refTag, numbered?.company);
+  // 提示只闪 2.2 秒，单号必须能在明细里长期看到，否则抄不到纸上就对不了账
+  await page.evaluate(()=>switchTab('transactions'));
+  await page.waitForTimeout(600);
+  const listText = await page.textContent('#tx-list');
+  ok('明细列表里能看到单据号', listText.includes(`📄${numbered.company.refTag}号`), listText?.slice(0,200));
+  // 送达是异步的，回来后必须重画——否则入账成功了列表还标着「待送出」
+  ok('入账成功后列表不再显示「待送出」', !listText.includes('待送出'), listText?.slice(0,200));
+  // toast 不能超出手机屏幕（原本 white-space:nowrap 会直接跑出去）
+  const toastFits = await page.evaluate(()=>{
+    const el = document.getElementById('toast');
+    el.style.whiteSpace='pre-line';
+    el.textContent = '✅ 已入账 Boss（左表）\n📄 单据写 12 号';
+    el.classList.add('show');
+    const r = el.getBoundingClientRect();
+    const ok_ = r.left >= 0 && r.right <= window.innerWidth;
+    el.classList.remove('show');
+    return {ok_, left:Math.round(r.left), right:Math.round(r.right), vw:window.innerWidth};
+  });
+  ok('长提示不会超出手机屏幕', toastFits.ok_, toastFits);
   ok('单号是服务端给的那个（App 不自己编）',
      numbered?.company?.refTag === serverBook.slice(-1)[0]?.refTag,
      [numbered?.company?.refTag, serverBook.slice(-1)[0]?.refTag]);

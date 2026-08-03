@@ -287,9 +287,13 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 #pdf-statement .st-attach-img-wrap img{max-width:100%;max-height:560px;object-fit:contain;border:1px solid #D8DCE1}
 
 /* toast */
+/* white-space:nowrap 会让长提示直接跑出手机屏幕外（2026-08-03 用户反馈看不到完整的）。
+   改成限制宽度 + 允许换行；短提示看起来跟以前一样，长的会自己折行。 */
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);
-  background:#2C3E50;color:#fff;padding:10px 20px;border-radius:20px;
-  font-size:13px;z-index:999;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap}
+  background:#2C3E50;color:#fff;padding:10px 18px;border-radius:16px;
+  font-size:13px;z-index:999;opacity:0;transition:.3s;pointer-events:none;
+  max-width:min(calc(100vw - 32px), 420px);width:max-content;
+  text-align:center;line-height:1.5;word-break:break-word}
 .toast.show{opacity:1}
 
 /* ATTACHMENT: capture button on tx form */
@@ -1393,6 +1397,8 @@ function uid(){ return 'id_'+Date.now()+'_'+Math.random().toString(36).slice(2,7
 
 function toast(msg){
   const el = document.getElementById('toast');
+  // white-space:pre-line 让消息里的 \n 真的换行（CSS 里没设 pre-line 的话 \n 会被当空格）
+  el.style.whiteSpace = 'pre-line';
   el.textContent = msg; el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'), 2200);
 }
@@ -1489,6 +1495,21 @@ function switchAccount(id){
 }
 
 // ===================== TX LIST =====================
+/**
+ * 公司账在明细里的补充说明：单据号 ＋ 送达状态。
+ * 单据号本来只在保存后的提示里出现一次（2.2 秒就消失），错过就没处找了——
+ * 而这个号要抄到纸质单据上，找不到等于对不上账（2026-08-03 用户反馈提示看不全）。
+ */
+function companyTxNote(t){
+  if(!t.company) return '';
+  const parts = [];
+  if(t.company.refTag) parts.push(`📄${t.company.refTag}号`);
+  const st = t.company.status;
+  if(st === 'pending') parts.push('⏳待送出');
+  else if(st === 'failed') parts.push('⚠️未入账');
+  return parts.length ? ` · ${parts.join(' · ')}` : '';
+}
+
 function txHtml(t, currency){
   const cat = getCat(t.categoryId);
   const icon = cat?cat.icon:'❓';
@@ -1504,7 +1525,7 @@ function txHtml(t, currency){
       <div class="tx-icon" style="background:${color}22">${icon}</div>
       <div class="tx-info">
         <div class="tx-name">${t.description||catName}${clip}</div>
-        <div class="tx-cat">${catName} · ${t.date}</div>
+        <div class="tx-cat">${catName} · ${t.date}${companyTxNote(t)}</div>
       </div>
       <div class="tx-amt ${cls}">${sign}${fmt(t.amount, cur)}</div>
     </div>
@@ -2030,16 +2051,20 @@ function saveTx(){
       if(r.ok){
         const rec0 = (r.records && r.records[0]) || {};
         // 左/右是 Excel 里两张子表的位置：person=Boss 走左边那张，XY/G 走右边那张
-        const side = rec0.person
-          ? ` · 算 ${rec0.person} 头上（Excel ${rec0.person==='Boss'?'左':'右'}边）` : '';
-        // 单据号要显眼——用户看到几就在纸质单据上写几，这是纸和 Excel 对上的唯一线索
-        const no = rec0.refTag ? ` · 📄 单据请写 ${rec0.refTag} 号` : '';
-        toast(`已记入公司账本${side}${no}`);
+        const side = rec0.person ? `${rec0.person}（${rec0.person==='Boss'?'左':'右'}表）` : '';
+        // 单据号要显眼——用户看到几就在纸质单据上写几，这是纸和 Excel 对上的唯一线索。
+        // 换行放在单据号前面，手机上第二行就是最该看的那句。
+        const no = rec0.refTag ? `\n📄 单据写 ${rec0.refTag} 号` : '';
+        toast(`✅ 已入账 ${side}${no}`);
       }
       // 可重试的两种情况措辞不一样：连不上是「等有网」，服务端 503（例如密钥还没配好）
       // 要把服务端说的原因带出来，不然用户会一直等一个不会自己好的东西。
       else if(r.retriable) toast(r.message || '已存本机，有网时自动送进公司账本');
       else toast(`没能进公司账本：${r.message}`);
+      // 送达是异步的，列表在此之前已经画好了、还标着「待送出」——结果回来必须重画一次，
+      // 否则明明入账成功、列表却一直显示待送出，看起来像没送出去。
+      if(state.currentTab==='overview') renderOverview();
+      if(state.currentTab==='transactions') renderTxList();
       if(state.currentTab==='settings') renderCompanySettings();
     });
   }
@@ -4029,7 +4054,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-03c';
+const APP_BUILD = '2026-08-03d';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
