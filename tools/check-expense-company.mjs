@@ -122,6 +122,23 @@ const browser = await chromium.launch(launchOpts);
   ok('恢复后队列清空', (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]'))).length===0);
   ok('补送的正是那笔 5.60 Store', posted.some(x=>x.items?.[0]?.amount===5.6 && x.items?.[0]?.categoryRaw==='Store'), posted);
 
+  console.log('\n【5b】编辑已送出的公司账，绝不能重复送（butler 是追加落档，会金额翻倍）');
+  posted = [];
+  const sentId = await page.evaluate(()=>{
+    const t = data.transactions.filter(x=>x.company && x.company.status==='sent').pop();
+    return t ? t.id : null;
+  });
+  ok('找得到一笔已送出的公司账', !!sentId, sentId);
+  await page.evaluate(id=>editTx(id), sentId);
+  await page.waitForTimeout(600);
+  await page.fill('#tx-amount', '99.99');          // 改金额后重新保存
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(1500);
+  ok('没有再送一次（不会重复记账）', posted.length===0, posted);
+  ok('本机金额已更新', await page.evaluate(id=>data.transactions.find(t=>t.id===id)?.amount===99.99, sentId));
+  ok('状态仍是 sent（没退回 pending）', await page.evaluate(id=>data.transactions.find(t=>t.id===id)?.company?.status==='sent', sentId));
+  ok('也没混进补送队列', (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]'))).length===0);
+
   console.log('\n【6】普通账户完全不受影响');
   await page.evaluate(()=>{ const a=data.accounts.find(x=>!x.isCompany); data.currentAccountId=a.id; saveData(); });
   await page.evaluate(()=>showAddTx());

@@ -1933,6 +1933,13 @@ function saveTx(){
     const reporter = document.getElementById('tx-company-reporter').value || 'Boss';
     if(!categoryEn){ toast('请选择公司类别'); return; }
     localStorage.setItem(COMPANY_REPORTER_STORAGE, reporter);
+    // 已经送进公司账本的那笔，编辑后**绝对不能再送一次**——butler 的 saveRecords 是
+    // 往月度账本里 push 追加（不是按 id 覆盖），再送一次就多一条重复记录，金额直接翻倍。
+    // 公司账本没有"改"这个操作，要改只能在 Telegram 里删掉重记。
+    const prevCompany = state.editingTxId
+      ? (data.transactions.find(t=>t.id===state.editingTxId)||{}).company
+      : null;
+    const alreadySent = !!(prevCompany && prevCompany.status === 'sent');
     tx.company = {
       reporter,
       categoryEn,
@@ -1940,7 +1947,7 @@ function saveTx(){
       // 送原始金额和币种过去，让 butler 自己换算成美元——这边不算，理由见公司报账那一节的注释
       rawAmount: rawAmt,
       rawCurrency: state.rielMode ? 'KHR' : acc.currency,
-      status: 'pending',
+      status: alreadySent ? 'sent' : 'pending',
       error: null
     };
     // 公司类别顺带决定这笔账在 App 列表/统计里算哪一类，用户不用再选一次
@@ -1976,7 +1983,10 @@ function saveTx(){
   if(state.currentTab==='analytics') renderAnalytics();
   // 公司账另外送一份进 butler 的公司账本。不 await——本机已经存好了，
   // 送不出去会进队列自动重试，不该让用户在这里干等网络。
-  if(tx.company){
+  // status 已经是 sent 的不再送（见上面组 tx.company 时的注释：会造成重复记账）。
+  if(tx.company && tx.company.status === 'sent'){
+    toast('本机已改。公司账本那边改不了——要更正请在 Telegram 里删掉这笔重记');
+  } else if(tx.company){
     submitCompanyTx(tx).then(r=>{
       if(r.ok) toast('已记入公司账本');
       else if(r.retriable) toast('已存本机，有网时自动送进公司账本');
