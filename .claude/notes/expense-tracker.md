@@ -258,6 +258,8 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   不是按 id 覆盖。所以 App 里编辑一笔 `status==='sent'` 的公司账**绝不能再送一次**
   （会多一条重复记录、金额翻倍），代码里已挡住并提示用户去 Telegram 删掉重记。
   以后要做「同步修改」必须先在 butler 加按 id 覆盖/删除的接口，别在 App 侧硬来。
+  **删除同理**：删掉 App 里那条不会删掉公司账本里的。`confirmDeleteTx()` 对
+  `status==='sent'` 的会换一段说明文案（两个删除入口——编辑弹窗和滑动删除——共用它）。
   自检：`node tools/check-expense-company.mjs`（真浏览器 37 项，全程断掉外部网域模拟
   酒店 WiFi），CI 是 `.github/workflows/expense-company-check.yml`，改这个页面就自动跑。
   本地跑法：`npm i playwright` → `python3 -m http.server 8899 &` →

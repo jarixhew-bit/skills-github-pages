@@ -1996,10 +1996,21 @@ function saveTx(){
   }
 }
 
+// 删除确认文案。已经送进公司账本的那笔，删掉本机记录**不会**同时删掉公司账本里的
+// ——butler 那边没有联动删除，公司账本的更正只能在 Telegram 里做。不讲清楚的话，
+// 用户会以为删干净了，月底 Excel 里那笔还在。
+function confirmDeleteTx(t){
+  if(t && t.company && t.company.status === 'sent'){
+    return confirm('这笔已经记进公司账本了。\n\n删除只会删掉手机上这条，'
+      + '公司账本里那笔还在——要一起删请在 Telegram 里说「删掉…那笔」。\n\n仍要删除本机记录？');
+  }
+  return confirm('确定删除这条记录？');
+}
+
 function deleteTx(){
   if(!state.editingTxId) return;
-  if(!confirm('确定删除这条记录？')) return;
   const t = data.transactions.find(t=>t.id===state.editingTxId);
+  if(!confirmDeleteTx(t)) return;
   const attachmentId = t ? t.attachmentId : null;
   data.transactions = data.transactions.filter(t=>t.id!==state.editingTxId);
   saveData();
@@ -2545,8 +2556,8 @@ function closeOpenSwipe(){
 }
 
 function deleteTxById(id){
-  if(!confirm('确定删除这条记录？')) return;
   const t = data.transactions.find(t=>t.id===id);
+  if(!confirmDeleteTx(t)) return;
   const attachmentId = t ? t.attachmentId : null;
   data.transactions = data.transactions.filter(t=>t.id!==id);
   saveData();
