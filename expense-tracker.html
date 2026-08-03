@@ -611,9 +611,16 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       </div>
       <div class="form-group">
         <label class="form-label">公司类别</label>
-        <select class="form-input" id="tx-company-category"></select>
-        <div style="font-size:12px;color:var(--sub);margin-top:6px">
-          汽油要填车牌，这个表单填不了 —— 加油那笔请用 Telegram 记。
+        <select class="form-input" id="tx-company-category" onchange="syncCompanyPlateField()"></select>
+      </div>
+      <!-- 车牌：只在选了汽油/洗车/汽车保养这类项目时出现，哪些类别要车牌由服务端告知 -->
+      <div class="form-group" id="tx-company-plate-wrap" style="display:none">
+        <label class="form-label">车牌号</label>
+        <input class="form-input" id="tx-company-plate" type="text" maxlength="15"
+          placeholder="例：NS6868" style="text-transform:uppercase">
+        <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
+          车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。
+          这类开销一律算在 Boss 头上（进左边那张表）。
         </div>
       </div>
       <div class="form-group">
@@ -1947,6 +1954,14 @@ function saveTx(){
     if(refTagRaw && !/^\d{1,2}$/.test(refTagRaw)){
       toast('收据编号只能是 1~2 位数字（例：1、12）'); return;
     }
+    // 车辆类开销（汽油/洗车/保养）每笔都要车牌——车牌会拼进 Excel 的类别名，
+    // 缺了服务端会退回 needs_plate，这里先挡一次省得白填。
+    const needsPlate = getCompanyPlateCats().includes(categoryEn);
+    const plateRaw = (document.getElementById('tx-company-plate').value||'').trim().toUpperCase();
+    if(needsPlate && !plateRaw){ toast(`${categoryEn} 要填车牌号`); return; }
+    if(needsPlate && !/^[A-Z0-9][A-Z0-9 -]{0,14}$/.test(plateRaw)){
+      toast('车牌号只能是字母、数字、空格或连字号'); return;
+    }
     localStorage.setItem(COMPANY_REPORTER_STORAGE, reporter);
     // 已经送进公司账本的那笔，编辑后**绝对不能再送一次**——butler 的 saveRecords 是
     // 往月度账本里 push 追加（不是按 id 覆盖），再送一次就多一条重复记录，金额直接翻倍。
@@ -1959,6 +1974,7 @@ function saveTx(){
       reporter,
       categoryEn,
       refTag: refTagRaw || null,
+      plate: needsPlate ? plateRaw : null,
       // 送原始金额和币种过去，让 butler 自己换算成美元——这边不算，理由见公司报账那一节的注释
       rawAmount: rawAmt,
       rawCurrency: state.rielMode ? 'KHR' : acc.currency,
@@ -3960,7 +3976,8 @@ const COMPANY_QUEUE_STORAGE = 'expenseTracker_companyQueue';
 const COMPANY_CATS_CACHE = 'expenseTracker_companyCats';
 // 拉不到类别清单时的兜底（butler 的内建 9 类去掉 Petrol）。正常情况下会被服务端返回的
 // 清单覆盖掉——包括用户在 Telegram 教过的自定义类别，那些只有服务端知道。
-const COMPANY_CATS_FALLBACK = ['Beverage','Bread','Breakfast','Dentist','Dinner','Lunch','Store','Supper'];
+const COMPANY_CATS_FALLBACK = ['Beverage','Bread','Breakfast','Car Service','Car Wash','Dentist','Dinner','Lunch','Petrol','Store','Supper'];
+const COMPANY_PLATE_CATS_FALLBACK = ['Car Service','Car Wash','Petrol'];
 
 // 公司类别 → App 自己的类别。只为了让公司账在 App 的列表和统计里正常显示，
 // 不用用户再选一次 App 的类别。记进 Excel 的是 butler 那边的类别，不是这个。
@@ -3969,7 +3986,7 @@ const COMPANY_CAT_TO_APP = {
   'Bread':'cat_food', 'Beverage':'cat_food',
   'Store':'cat_shopping',
   'Parking':'cat_transport', 'Toll Fee':'cat_transport', 'Car Wash':'cat_transport',
-  'Petrol':'cat_transport',
+  'Petrol':'cat_transport', 'Car Service':'cat_transport',
   'Dentist':'cat_medical',
 };
 
@@ -4003,6 +4020,10 @@ function syncCompanyTxFields(tx){
 
   document.getElementById('tx-company-reftag').value =
     (tx && tx.company && tx.company.refTag) || '';
+
+  document.getElementById('tx-company-plate').value =
+    (tx && tx.company && tx.company.plate) || '';
+  syncCompanyPlateField();
 }
 
 function saveCompanyToken(){
@@ -4020,12 +4041,28 @@ function saveCompanyToken(){
   renderCompanySettings();
 }
 
-function getCompanyCats(){
+function getCompanyCatsCache(){
   try{
     const raw = JSON.parse(localStorage.getItem(COMPANY_CATS_CACHE) || 'null');
-    if(Array.isArray(raw) && raw.length) return raw;
+    // 旧版本存的是纯数组，兼容一下免得升级后下拉变空
+    if(Array.isArray(raw) && raw.length) return {categories: raw, plateCategories: []};
+    if(raw && Array.isArray(raw.categories) && raw.categories.length) return raw;
   }catch(e){}
-  return COMPANY_CATS_FALLBACK;
+  return {categories: COMPANY_CATS_FALLBACK, plateCategories: COMPANY_PLATE_CATS_FALLBACK};
+}
+function getCompanyCats(){ return getCompanyCatsCache().categories; }
+// 哪些类别要填车牌由服务端说了算（butler 的 PLATE_CATEGORIES），App 不自己判断
+function getCompanyPlateCats(){ return getCompanyCatsCache().plateCategories || []; }
+
+/**
+ * 选了车牌类项目（汽油/洗车/汽车保养）才显示车牌输入框。
+ * 这几类每次的车牌可能不同，不能记进词典，所以每笔都要填。
+ */
+function syncCompanyPlateField(){
+  const wrap = document.getElementById('tx-company-plate-wrap');
+  if(!wrap) return;
+  const cat = document.getElementById('tx-company-category').value;
+  wrap.style.display = getCompanyPlateCats().includes(cat) ? 'block' : 'none';
 }
 
 // 类别清单从 butler 拉，不在这里硬编——用户在 Telegram 教过 bot 的新词（例如
@@ -4037,7 +4074,10 @@ async function refreshCompanyCategories(){
     if(!res.ok) return;
     const body = await res.json();
     if(Array.isArray(body.categories) && body.categories.length){
-      localStorage.setItem(COMPANY_CATS_CACHE, JSON.stringify(body.categories));
+      localStorage.setItem(COMPANY_CATS_CACHE, JSON.stringify({
+        categories: body.categories,
+        plateCategories: Array.isArray(body.plateCategories) ? body.plateCategories : []
+      }));
     }
   }catch(e){ /* 离线或服务端没开，用缓存/兜底，不打扰用户 */ }
 }
@@ -4093,7 +4133,8 @@ function buildCompanyPayload(tx, extra){
       categoryRaw: tx.company.categoryEn,
       amount: tx.company.rawAmount,
       currency: tx.company.rawCurrency,
-      refTag: tx.company.refTag || null
+      refTag: tx.company.refTag || null,
+      plate: tx.company.plate || null
     }],
     ...(extra || {})
   };
