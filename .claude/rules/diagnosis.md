@@ -84,6 +84,14 @@
   核對最新部署的 sha 是否等於 merge commit；缺失時再合併一個新 commit 重新觸發。
   另：驗證上線必須看到部署記錄裡出現該 sha 才算數，「檢查 workflow 綠了」不等於已部署。
   來源：鮨酒場訂位更新上線時 Pages 事件被 GitHub 故障吞掉，誤報已上線被使用者發現。
+- [2026-08-03][雲端] 情境：改完 Cloudflare Worker（butler-bot）想從沙盒 curl 一下驗證端點活著。
+  教訓：沙盒代理對 `*.workers.dev` 是 **403 CONNECT tunnel failed**（策略性封鎖，跟已記錄的
+  `github.io` / youtube 同一類），別重試也別懷疑 Worker 掛了。改用兩步驗證：(1) GitHub MCP
+  的 actions_list 查該 commit 的 Deploy workflow 是否 success；(2) 邏輯層寫成不需網路的
+  單元測試（butler-bot 的 `npm test` 就是為此而生）＋前端用 Playwright 對假端點測。
+  真實端到端只能交給使用者實際用一次——交付時要誠實說明「線上調用未在此環境驗證」，
+  不能因為 CI 綠了就宣稱端點已驗證。判別方法：`curl -sv` 看到 `CONNECT tunnel failed,
+  response 403` 就是代理策略，不是對方服務的問題。
 - [2026-07-16][皆是] 情境：新建或接手 Firebase 專案，需要判斷資料是否安全。教訓：Firebase
   預設的「測試模式」Firestore 規則（`allow read, write: if request.time <
   timestamp.date(...)`）在到期日之前對**任何人、免登入**開放全庫讀寫，到期後又會反過來
