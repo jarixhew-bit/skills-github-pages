@@ -573,8 +573,8 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <label class="form-label">描述（选填）</label>
       <input class="form-input" id="tx-desc" type="text" placeholder="例：午餐、打的…" oninput="autoDetectCat(this.value)">
     </div>
-    <!-- category -->
-    <div class="form-group">
+    <!-- category：公司账户下整块隐藏，改用下面的「公司类别」下拉（见 syncCompanyTxFields） -->
+    <div class="form-group" id="tx-cat-wrap">
       <label class="form-label">类别</label>
       <div id="cat-grid" class="cat-grid"></div>
       <div id="cat-auto-hint" style="display:none;margin-top:8px;padding:6px 10px;
@@ -3962,6 +3962,10 @@ function syncCompanyTxFields(tx){
   const acc = curAcc();
   const isCompany = !!(acc && acc.isCompany);
   wrap.style.display = isCompany ? 'block' : 'none';
+  // 公司账户下把 App 自己的类别宫格整块藏起来：这笔账归哪个 App 类别由公司类别
+  // 自动决定（COMPANY_CAT_TO_APP），两个都摆出来用户会以为要选两次。
+  const catWrap = document.getElementById('tx-cat-wrap');
+  if(catWrap) catWrap.style.display = isCompany ? 'none' : '';
   if(!isCompany) return;
 
   const catSel = document.getElementById('tx-company-category');
