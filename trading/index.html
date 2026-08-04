@@ -119,6 +119,7 @@
   #navTip { position: absolute; pointer-events: none; background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; display: none; white-space: nowrap; z-index: 5; }
 
   .ai-note { margin-top: 12px; font-size: 14px; line-height: 1.8; background: var(--card2); border-left: 3px solid var(--purple); border-radius: 10px; padding: 12px 14px; white-space: pre-wrap; }
+  .ai-note.stale { color: var(--dim); border-left-color: var(--yellow); }
 
   footer { color: var(--dim); font-size: 12px; text-align: center; padding: 20px 16px 40px; line-height: 1.8; }
   .warn-note { color: var(--yellow); font-size: 12px; margin-top: 10px; }
@@ -383,7 +384,24 @@ function renderPrivate() {
     </div>`;
   }).join("");
 
-  if (P.ai_note) { $("aiNote").style.display = ""; $("aiNote").textContent = "🤖 AI 点评：" + P.ai_note.trim(); }
+  if (P.ai_note) {
+    // 点评只在对账时手写，其余时间原样沿用，容易与每小时刷新的数字脱节：
+    // 超过 7 天、或写作时净值与现在差 2% 以上，就标灰并提示过期（缺日期视同过期）
+    const el = $("aiNote"), noteDate = P.ai_note_date, noteNav = P.ai_note_nav;
+    const curNav = P.account && P.account.net_liq;
+    let ageDays = null;
+    if (noteDate && P.generated_at) {
+      const d0 = Date.parse(noteDate + "T00:00:00Z"), d1 = Date.parse(P.generated_at.slice(0, 10) + "T00:00:00Z");
+      if (!isNaN(d0) && !isNaN(d1)) ageDays = Math.round((d1 - d0) / 86400000);
+    }
+    const drift = (noteNav && curNav) ? Math.abs(curNav / noteNav - 1) : null;
+    const stale = !noteDate || (ageDays !== null && ageDays > 7) || (drift !== null && drift > 0.02);
+    el.className = "ai-note" + (stale ? " stale" : "");
+    el.style.display = "";
+    el.textContent = stale
+      ? `⚠️ 以下点评写于${noteDate || "上次对账时"}，之后账户数字已变化，仅供参考\n` + P.ai_note.trim()
+      : `🤖 AI 点评（${noteDate}）：` + P.ai_note.trim();
+  }
 
   const R = P.review;
   if (R) {

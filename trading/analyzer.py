@@ -662,6 +662,11 @@ def main():
     ai_note = read_raw("ai_note.md")
     if ai_note:
         state["ai_note"] = ai_note.strip()
+        # 一并记下写作日期与当时净值：点评只在对账时手写，之后管线每小时刷新数字却
+        # 原样沿用它，页面靠这两个值判断点评是否已与现况脱节（2026-08-04 曾出现页面
+        # 账户显示 100258 而点评里写着 98950，同一页两个净值互相打架）
+        state["ai_note_date"] = public["generated_at"][:10]
+        state["ai_note_nav"] = round(net_liq, 2) if net_liq else None
 
     private = {
         "generated_at": public["generated_at"],
@@ -677,6 +682,8 @@ def main():
         "actions": actions,
         "review": review,
         "ai_note": state.get("ai_note"),
+        "ai_note_date": state.get("ai_note_date"),
+        "ai_note_nav": state.get("ai_note_nav"),
     }
     with open(PRIV_OUT, "w", encoding="utf-8") as f:
         f.write(encrypt_json(private, password))
