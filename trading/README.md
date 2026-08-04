@@ -6,15 +6,17 @@
 ## 架构（2026-07-10 定稿：日常零 Claude 消耗）
 
 ```
-每个交易日 21:40 UTC · GitHub Actions（免费，不用 Claude）
-（次日 09:40 UTC 补漏跑作保险：GitHub 定时任务偶尔会被整次跳过；行情与持仓底数均无变化才跳过提交）
+交易日 UTC 13:00-21:00 每小时一次 · GitHub Actions（免费，不用 Claude）
+（用户 2026-07-18 要求每小时刷新页面；同一小时内多次运行天然冗余，已无需补漏跑）
   fetch_prices.py  Stooq/Yahoo 下载58只日线 → history/*.json（bars 无新增时不重写）
   flex_account.py  IBKR Flex Query 拉真实持仓/现金/NAV/成交（密钥在仓库 Secrets，失败不阻断）
   analyzer.py      信号+持仓重算+加仓建议 → data-public.json / data-private.enc / state.enc
+  ai_note.py       Gemini 免费档生成账户点评（每天首次运行才生成，失败不阻断）
   git push main    → GitHub Pages 自动发布
 
 深度对账（用 Claude，**仅当用户开口**说「同步持仓」；无任何定时消耗）
-  作用：校准 TWR 收益率基准、写 AI 点评、核对台账。日常收益率由 analyzer 自算：
+  作用：校准 TWR 收益率基准、核对台账（点评已改由 ai_note.py 每日自动生成）。
+  日常收益率由 analyzer 自算：
   每日净值变化中「持仓×价差」解释不了的大额差(>$300 且 >0.3%)视为出入金并剔除，
   链式累乘成 TWR——与官方口径的漂移极小，且每次深度对账会重新校准。
   从 IBKR MCP 转录 positions/summary/trades/perf 到 trading/raw/ → 跑 analyzer.py
@@ -28,6 +30,12 @@
   说「同步持仓」校准一次。
 - Actions **必须**有仓库 Secret `ANALYZER_PW`（= vault 里的密码）才能更新私密区；
   没有它公开信号区照常更新，私密区永远停在上次手动对账（已无定时 Claude 对账兜底）。
+- AI 点评（`ai_note.py`，2026-08-04 起）：每天首次运行时用 Gemini 免费档生成，需仓库
+  Secret `GEMINI_API_KEY`（Google AI Studio 免费申请）。缺密钥、网络失败、或**模型输出
+  里出现事实中不存在的数字**，一律丢弃并保留上次点评——页面对过期点评会自动标灰提示
+  （`index.html` 依 `ai_note_date`/`ai_note_nav` 判定：超 7 天、净值变动超 2%、或缺日期）。
+  金额编错的代价远高于当天没有新点评，这个取舍不要为了「每天都有话说」而放宽。
+  注意：生成点评会把账户净值/持仓金额发给 Google（用户 2026-08-04 知情并同意）。
 - `expense-tracker.html` 的 IBKR 余额卡也改读 `trading/data-private.enc`（同一密码，
   localStorage 共用 `tradingAnalyzerPw`）；旧的明文 `ibkr-snapshot.json` 管道已于
   2026-07-10 整条删除（workflow/脚本/skill 文档）。注意：旧数值仍留在 git 历史里。
@@ -42,7 +50,8 @@
    - `summary.json` ← `get_account_summary`
    - `trades.json` ← `get_account_trades(period="DAYS_30")`（台账按 trade_id 自动去重）
    - `perf.json` ← `get_pa_performance_all_periods` 各期 cps **最后一个值**：`{"1d":…,"7d":…,"mtd":…,"ytd":…}`（小数）
-   - （可选）`ai_note.md`：3-5 句中文点评，进加密区
+   - `ai_note.md`：一般**不用写**（点评已由 ai_note.py 每天自动生成）。只有当天的
+     自动点评没生成、或你要写一段自动生成给不出的判断时才手写；写了它会覆盖当天的自动点评
 4. 若 cryptography 报缺 `_cffi_backend`：`pip3 install --user cffi`。
 5. `python3 trading/analyzer.py --password-file trading/raw/pw.txt`，输出应含 `[sync]`；
    有 `[warnings]` 先排查（多为转录错误）再重跑。

@@ -37,6 +37,11 @@ jobs:
         env:
           ANALYZER_PW: ${{ secrets.ANALYZER_PW }}
         run: python trading/analyzer.py
+      - name: 生成 AI 点评（Gemini 免费档，每天首次运行才生成，失败不阻断）
+        env:
+          ANALYZER_PW: ${{ secrets.ANALYZER_PW }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python trading/ai_note.py || echo "点评生成失败，沿用上次点评"
       - name: 提交数据
         run: |
           git config user.name "trading-bot"
