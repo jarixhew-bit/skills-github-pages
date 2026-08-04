@@ -102,8 +102,8 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有五个：`check-html` / `check-secrets` /
-   `check-rules` / `check-images`（挂 CI）＋ `fetch-photos`（抓图通道）。
+   交付时告诉用户自检怎么跑。现有六个：`check-html` / `check-secrets` /
+   `check-rules` / `check-images` / `check-ai-note`（挂 CI）＋ `fetch-photos`（抓图通道）。
 
 ### 路由表（遇到左边情况，先读右边档案再动手）
 | 情况 | 读这个档 |

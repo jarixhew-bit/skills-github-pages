@@ -1,0 +1,26 @@
+# AI 点评防编造逻辑把关：改动 ai_note.py 或其自检脚本时自动跑。
+# 目的：这道防线拦的是「模型把一个不存在的金额写上私密页」，一旦被放宽就没人会发现，
+# 所以让 CI 在合并前挡住。零 Claude 用量消耗。
+name: AI Note Guard Check
+
+on:
+  pull_request:
+    paths:
+      - "trading/ai_note.py"
+      - "tools/check-ai-note.py"
+  push:
+    branches: [main]
+    paths:
+      - "trading/ai_note.py"
+      - "tools/check-ai-note.py"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet cryptography
+      - run: python3 tools/check-ai-note.py
