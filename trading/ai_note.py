@@ -26,8 +26,11 @@ PRIV = os.path.join(BASE, "data-private.enc")
 STATE = os.path.join(BASE, "state.enc")
 PUBLIC = os.path.join(BASE, "data-public.json")
 
-MODEL = "gemini-2.5-flash"
-ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
+API_ROOT = "https://generativelanguage.googleapis.com/v1beta"
+# 偏好顺序：免费档额度最宽松的 flash 系列优先。写死单一模型名会踩 404——
+# Google 的模型命名换得勤（2026-08-05 首次上线时 gemini-2.5-flash 就对本密钥返回 404），
+# 所以改成每次先问 ListModels 有哪些可用，名字变了也不用改代码。
+MODEL_PREFS = ("gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash")
 
 PROMPT = """你在为一位长期投资者写他自己账户的每日点评，直接给他本人看。
 
@@ -139,15 +142,42 @@ def bad_numbers(text, allowed):
     return bad
 
 
+def pick_model(api_key, timeout=15):
+    """问 Google 这把密钥能用哪些模型，挑一个 flash。
+
+    失败时回退到偏好列表第一个——总比不试强，反正外层会接住异常。
+    """
+    import requests
+
+    r = requests.get(f"{API_ROOT}/models", params={"key": api_key}, timeout=timeout)
+    r.raise_for_status()
+    usable = [
+        m["name"].split("/")[-1]
+        for m in r.json().get("models", [])
+        if "generateContent" in (m.get("supportedGenerationMethods") or [])
+    ]
+    for pref in MODEL_PREFS:
+        if pref in usable:
+            return pref
+    # 偏好名都没有：退而求其次挑任意 flash（排除思考版，费额度且这活用不上）
+    flash = [n for n in usable if "flash" in n and "thinking" not in n]
+    if flash:
+        return flash[0]
+    if usable:
+        return usable[0]
+    raise RuntimeError("这把密钥没有任何支持 generateContent 的模型")
+
+
 def call_gemini(facts, api_key, timeout=30):
     import requests
 
+    model = pick_model(api_key)
     body = {
         "contents": [{"parts": [{"text": PROMPT + json.dumps(facts, ensure_ascii=False, indent=1)}]}],
         "generationConfig": {"temperature": 0.4, "maxOutputTokens": 500},
     }
     r = requests.post(
-        ENDPOINT,
+        f"{API_ROOT}/models/{model}:generateContent",
         params={"key": api_key},
         json=body,
         timeout=timeout,
@@ -156,6 +186,7 @@ def call_gemini(facts, api_key, timeout=30):
     r.raise_for_status()
     data = r.json()
     parts = data["candidates"][0]["content"]["parts"]
+    print(f"[ai_note] 使用模型 {model}")
     return "".join(p.get("text", "") for p in parts).strip()
 
 
@@ -190,6 +221,17 @@ def main():
         text = call_gemini(facts, api_key)
     except Exception as e:
         print(f"[ai_note] 调用失败，保留旧点评：{e}")
+        # 把诊断信息直接打进日志，省得为了知道「密钥到底能用什么」再跑一轮
+        try:
+            import requests
+
+            r = requests.get(f"{API_ROOT}/models", params={"key": api_key}, timeout=15)
+            r.raise_for_status()
+            names = [m["name"].split("/")[-1] for m in r.json().get("models", [])]
+            print(f"[ai_note] 这把密钥可用的模型（前 20 个）：{names[:20]}")
+        except Exception as e2:
+            print(f"[ai_note] 连模型清单也拿不到：{e2}")
+            print("[ai_note] 多半是密钥本身无效，或该 Google 项目没启用 Generative Language API")
         return 0
 
     text = " ".join(text.split())
