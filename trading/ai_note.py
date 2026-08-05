@@ -50,9 +50,13 @@ SYSTEM_PROMPT = """你在为一位长期投资者写他自己账户的每日点�
   新数字、禁止编造任何金额或百分比**。宁可少说一个数字，也不要写一个事实里没有的数字。
 - 不要提及任何外部新闻、行情预测或你不掌握的信息。
 - 语气像一位熟悉他策略的朋友，平实、不夸张、不喊口号。
-- 必须把话说完整，最后一句要有句号。"""
+- **全文控制在 200 字以内**，必须把话说完整，最后一句要有句号。
+- 直接给点评正文，不要写「好的」「以下是」这类开场白，也不要复述我给你的数据。"""
 
 USER_PROMPT = "以下是今天的事实（JSON），据此写点评：\n"
+
+# 正文长度上限（字）。prompt 里要求 200 字以内，这里放宽到 400 当硬闸。
+MAX_NOTE_CHARS = 400
 
 
 def build_facts(private, state, public):
@@ -135,6 +139,10 @@ def incomplete_reason(text):
     """
     if len(text) < 60:
         return f"内容过短（{len(text)} 字，正常 3-5 句应在 60 字以上）"
+    if len(text) > MAX_NOTE_CHARS:
+        # 上限比 prompt 要求的 200 字宽一倍：不是为了卡字数，是为了挡住「模型完全没听
+        # 指令、写了一篇长文」的情况——那种内容塞进页面卡片里没法看
+        return f"内容过长（{len(text)} 字，要求 200 字以内），模型没按指令写"
     if text[-1] not in "。！？.!?":
         return f"结尾不是完整句子，疑似截断（结尾：…{text[-15:]}）"
     return None
@@ -184,8 +192,10 @@ def call_agnes(facts, api_key, timeout=60):
                 {"role": "user", "content": USER_PROMPT + json.dumps(facts, ensure_ascii=False, indent=1)},
             ],
             "temperature": 0.4,
-            # 3-5 句中文用不了几百 token，给 800 留足余量；写不完会是 finish_reason=length
-            "max_tokens": 800,
+            # 别按「3-5 句话该用多少 token」估：模型不一定听长度指令，也可能先写一段
+            # 铺垫。2026-08-05 首次真实调用给 800 就撞上 finish_reason=length。
+            # 这里给足余量，真正的长度约束靠 prompt ＋ 下面的 incomplete_reason 把关。
+            "max_tokens": 4000,
         },
         timeout=timeout,
     )
@@ -193,12 +203,17 @@ def call_agnes(facts, api_key, timeout=60):
         # 把服务端的原话带出来——「无效的令牌」多半是 key 打错了站（.cn / .com）
         raise RuntimeError(f"HTTP {r.status_code}：{r.text[:300]}")
 
-    choice = r.json()["choices"][0]
+    data = r.json()
+    choice = data["choices"][0]
     finish = choice.get("finish_reason")
-    if finish and finish != "stop":
-        raise RuntimeError(f"模型未正常写完（finish_reason={finish}），丢弃避免出现半句话")
     text = ((choice.get("message") or {}).get("content") or "").strip()
-    print(f"[ai_note] 使用 {model} @ {base}")
+    usage = data.get("usage") or {}
+    print(f"[ai_note] {model} @ {base}｜finish={finish}｜正文 {len(text)} 字"
+          f"｜tokens {usage.get('completion_tokens', '?')}/{usage.get('total_tokens', '?')}")
+    if finish and finish != "stop":
+        # 把实际长度一起报出来，下次看日志就知道是「预算太小」还是「模型跑题写长文」
+        raise RuntimeError(
+            f"模型未正常写完（finish_reason={finish}，已写 {len(text)} 字），丢弃避免出现半句话")
     return text
 
 
