@@ -385,8 +385,9 @@ function renderPrivate() {
   }).join("");
 
   if (P.ai_note) {
-    // 点评只在对账时手写，其余时间原样沿用，容易与每小时刷新的数字脱节：
-    // 超过 7 天、或写作时净值与现在差 2% 以上，就标灰并提示过期（缺日期视同过期）
+    // 点评由 ai_note.py 每天生成一次（见 trading/README.md），而数字每小时刷新，
+    // 所以仍可能脱节：超过 7 天、或写作时净值与现在差 2% 以上，就标灰并提示过期
+    // （缺日期视同过期）。生成失败时点评会是空的，整个区块直接不显示
     const el = $("aiNote"), noteDate = P.ai_note_date, noteNav = P.ai_note_nav;
     const curNav = P.account && P.account.net_liq;
     let ageDays = null;
