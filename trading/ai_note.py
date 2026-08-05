@@ -240,9 +240,6 @@ def main():
     if not password:
         print("[ai_note] 无 ANALYZER_PW，跳过")
         return 0
-    if not api_key:
-        print("[ai_note] 无 GEMINI_API_KEY，跳过（保留旧点评）")
-        return 0
     if not (os.path.exists(PRIV) and os.path.exists(STATE)):
         print("[ai_note] 加密数据不存在，跳过")
         return 0
@@ -253,6 +250,32 @@ def main():
         public = json.load(open(PUBLIC, encoding="utf-8"))
     except Exception as e:
         print(f"[ai_note] 读取失败，跳过：{e}")
+        return 0
+
+    def write_back():
+        with open(PRIV, "w", encoding="utf-8") as f:
+            f.write(encrypt_json(private, password))
+        with open(STATE, "w", encoding="utf-8") as f:
+            f.write(encrypt_json(state, password))
+
+    def set_note(text, date, nav):
+        for blob in (state, private):
+            blob["ai_note"] = text
+            blob["ai_note_date"] = date
+            blob["ai_note_nav"] = nav
+
+    # 先体检已存的点评：坏的一律清掉，哪怕这次生成不出新的。
+    # 页面上挂着一句半截话、还标着当天日期，比空着更误导——这正是 2026-08-05
+    # 上线当天发生的事（「你的账户总净值为1」被截断后照样显示成最新内容）。
+    # 这一步排在「有没有密钥」之前：没密钥也要清，否则坏点评会一直挂着
+    old = state.get("ai_note")
+    if old and incomplete_reason(old):
+        print(f"[ai_note] 已存的点评不合格（{incomplete_reason(old)}），清除")
+        set_note(None, None, None)
+        write_back()
+
+    if not api_key:
+        print("[ai_note] 无 GEMINI_API_KEY，跳过生成（保留现有点评）")
         return 0
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -291,15 +314,8 @@ def main():
         print(f"[ai_note] 输出含事实中不存在的数字 {bad}，整段丢弃（保留旧点评）")
         return 0
 
-    nav = (private.get("account") or {}).get("net_liq")
-    for blob in (state, private):
-        blob["ai_note"] = text
-        blob["ai_note_date"] = today
-        blob["ai_note_nav"] = nav
-    with open(PRIV, "w", encoding="utf-8") as f:
-        f.write(encrypt_json(private, password))
-    with open(STATE, "w", encoding="utf-8") as f:
-        f.write(encrypt_json(state, password))
+    set_note(text, today, (private.get("account") or {}).get("net_liq"))
+    write_back()
     print(f"[ai_note] 已生成（{len(text)} 字）：{text[:60]}...")
     return 0
 
