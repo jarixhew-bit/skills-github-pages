@@ -37,6 +37,10 @@ PUBLIC = os.path.join(BASE, "data-public.json")
 # key 错了，其实是站点错了（butler-bot 踩过同款坑）。
 AGNES_DEFAULT_BASE = "https://apihub.agnes-ai.com/v1"
 AGNES_DEFAULT_MODEL = "agnes-2.5-flash"
+# 备选：2.5 实测写得又长又慢（2026-08-05：给 800 token 写满被截断，放宽到 4000 就跑到
+# 60 秒超时）。2.0 同为 text+vision，写这种四句话的短点评够用，且通常更快更简洁。
+# 只在首选失败时才试，不额外花额度。
+AGNES_FALLBACK_MODEL = "agnes-2.0-flash"
 
 SYSTEM_PROMPT = """你在为一位长期投资者写他自己账户的每日点评，直接给他本人看。
 
@@ -170,17 +174,14 @@ def bad_numbers(text, allowed):
     return bad
 
 
-def call_agnes(facts, api_key, timeout=60):
-    """调 Agnes（OpenAI 兼容的 /chat/completions）要一段点评。
+def _ask_model(base, model, api_key, facts, timeout):
+    """向单个模型要一段点评。成功返回正文，失败抛异常。
 
-    只做一次调用、不做模型轮换：Agnes 的模型名由 butler-bot 那边确定并共用，
-    不像 Gemini 那样会自己改名换代。
+    **日志里绝不打印正文**：点评含净值与持仓金额，而本仓库是公开的、Actions 日志
+    也是公开的。只记长度与 token 数——这两个数字已经足够分辨「预算太小」和
+    「模型跑题写长文」，不需要把钱数印到公开日志里。
     """
     import requests
-
-    base = os.environ.get("AGNES_BASE_URL", "").strip() or AGNES_DEFAULT_BASE
-    model = os.environ.get("AGNES_MODEL", "").strip() or AGNES_DEFAULT_MODEL
-    base = base.rstrip("/")
 
     r = requests.post(
         f"{base}/chat/completions",
@@ -192,10 +193,9 @@ def call_agnes(facts, api_key, timeout=60):
                 {"role": "user", "content": USER_PROMPT + json.dumps(facts, ensure_ascii=False, indent=1)},
             ],
             "temperature": 0.4,
-            # 别按「3-5 句话该用多少 token」估：模型不一定听长度指令，也可能先写一段
-            # 铺垫。2026-08-05 首次真实调用给 800 就撞上 finish_reason=length。
-            # 这里给足余量，真正的长度约束靠 prompt ＋ 下面的 incomplete_reason 把关。
-            "max_tokens": 4000,
+            # 1500 是折中：够写完四句话还有充分余量，又不至于让爱写长文的模型
+            # 一路写到超时（2026-08-05 给 4000 就在 60 秒读超时上翻车）。
+            "max_tokens": 1500,
         },
         timeout=timeout,
     )
@@ -208,13 +208,31 @@ def call_agnes(facts, api_key, timeout=60):
     finish = choice.get("finish_reason")
     text = ((choice.get("message") or {}).get("content") or "").strip()
     usage = data.get("usage") or {}
-    print(f"[ai_note] {model} @ {base}｜finish={finish}｜正文 {len(text)} 字"
+    print(f"[ai_note] {model}｜finish={finish}｜正文 {len(text)} 字"
           f"｜tokens {usage.get('completion_tokens', '?')}/{usage.get('total_tokens', '?')}")
     if finish and finish != "stop":
-        # 把实际长度一起报出来，下次看日志就知道是「预算太小」还是「模型跑题写长文」
         raise RuntimeError(
-            f"模型未正常写完（finish_reason={finish}，已写 {len(text)} 字），丢弃避免出现半句话")
+            f"未正常写完（finish_reason={finish}，已写 {len(text)} 字）")
     return text
+
+
+def call_agnes(facts, api_key, timeout=180):
+    """调 Agnes 要点评：先试首选模型，失败再试备选。
+
+    timeout 给到 180 秒：这一步跑在 Actions 上，没人等着看，慢一点无所谓，
+    但 60 秒对写得慢的模型不够（2026-08-05 实测读超时）。
+    """
+    base = (os.environ.get("AGNES_BASE_URL", "").strip() or AGNES_DEFAULT_BASE).rstrip("/")
+    primary = os.environ.get("AGNES_MODEL", "").strip() or AGNES_DEFAULT_MODEL
+    models = [primary] + ([AGNES_FALLBACK_MODEL] if AGNES_FALLBACK_MODEL != primary else [])
+
+    problems = []
+    for model in models:
+        try:
+            return _ask_model(base, model, api_key, facts, timeout)
+        except Exception as e:
+            problems.append(f"{model}: {e}")
+    raise RuntimeError("；".join(problems))
 
 
 def main():
