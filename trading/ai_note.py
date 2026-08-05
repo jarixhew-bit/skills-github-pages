@@ -120,6 +120,20 @@ def allowed_numbers(facts):
     return allowed
 
 
+def incomplete_reason(text):
+    """点评是否像一段写完的话；不是就回一句原因，是就回 None。
+
+    2026-08-05 首次真实生成写出「截至2026-08-05，你的账户总净值为1」就挂上了页面
+    （思考 token 吃光输出预算被截断）。半句话比没有更糟——它带着当天日期，
+    看起来像是最新的正常内容。
+    """
+    if len(text) < 60:
+        return f"内容过短（{len(text)} 字，正常 3-5 句应在 60 字以上）"
+    if text[-1] not in "。！？.!?":
+        return f"结尾不是完整句子，疑似截断（结尾：…{text[-15:]}）"
+    return None
+
+
 def bad_numbers(text, allowed):
     """挑出文中「事实里没有」的数字。
 
@@ -172,22 +186,35 @@ def call_gemini(facts, api_key, timeout=30):
     import requests
 
     model = pick_model(api_key)
-    body = {
-        "contents": [{"parts": [{"text": PROMPT + json.dumps(facts, ensure_ascii=False, indent=1)}]}],
-        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 500},
-    }
-    r = requests.post(
-        f"{API_ROOT}/models/{model}:generateContent",
-        params={"key": api_key},
-        json=body,
-        timeout=timeout,
-        headers={"Content-Type": "application/json"},
-    )
+    prompt = PROMPT + json.dumps(facts, ensure_ascii=False, indent=1)
+    # 2.5 系列的「思考」token 也算进 maxOutputTokens，给 500 会让正文只剩几个字就被切断
+    # （2026-08-05 首次生成就写出「你的账户总净值为1」这种半句话）。
+    # 所以：额度给足 + 关掉思考（这活不需要）+ 下面按 finishReason 拒收截断结果。
+    gen_cfg = {"temperature": 0.4, "maxOutputTokens": 2000, "thinkingConfig": {"thinkingBudget": 0}}
+
+    def post(cfg):
+        return requests.post(
+            f"{API_ROOT}/models/{model}:generateContent",
+            params={"key": api_key},
+            json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": cfg},
+            timeout=timeout,
+            headers={"Content-Type": "application/json"},
+        )
+
+    r = post(gen_cfg)
+    if r.status_code == 400:
+        # 老模型不认 thinkingConfig，去掉重试一次
+        gen_cfg.pop("thinkingConfig")
+        r = post(gen_cfg)
     r.raise_for_status()
-    data = r.json()
-    parts = data["candidates"][0]["content"]["parts"]
-    print(f"[ai_note] 使用模型 {model}")
-    return "".join(p.get("text", "") for p in parts).strip()
+
+    cand = r.json()["candidates"][0]
+    finish = cand.get("finishReason")
+    if finish and finish != "STOP":
+        raise RuntimeError(f"模型未正常写完（finishReason={finish}），丢弃避免出现半句话")
+    text = "".join(p.get("text", "") for p in cand["content"]["parts"]).strip()
+    print(f"[ai_note] 使用模型 {model}，finishReason={finish}")
+    return text
 
 
 def main():
@@ -212,7 +239,9 @@ def main():
         return 0
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    if state.get("ai_note_date") == today:
+    # AI_NOTE_FORCE：手动触发 workflow 时勾选，用来重写当天已生成但不满意的点评
+    force = os.environ.get("AI_NOTE_FORCE", "").strip().lower() not in ("", "0", "false")
+    if state.get("ai_note_date") == today and not force:
         print(f"[ai_note] 今天（{today}）已生成过，跳过")
         return 0
 
@@ -235,8 +264,9 @@ def main():
         return 0
 
     text = " ".join(text.split())
-    if len(text) < 20:
-        print(f"[ai_note] 返回内容过短（{len(text)} 字），丢弃")
+    problem = incomplete_reason(text)
+    if problem:
+        print(f"[ai_note] {problem}，丢弃（保留旧点评）：{text[:60]!r}")
         return 0
 
     bad = bad_numbers(text, allowed_numbers(facts))
