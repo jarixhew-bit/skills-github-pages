@@ -11,7 +11,7 @@
   fetch_prices.py  Stooq/Yahoo 下载58只日线 → history/*.json（bars 无新增时不重写）
   flex_account.py  IBKR Flex Query 拉真实持仓/现金/NAV/成交（密钥在仓库 Secrets，失败不阻断）
   analyzer.py      信号+持仓重算+加仓建议 → data-public.json / data-private.enc / state.enc
-  ai_note.py       Gemini 免费档生成账户点评（每天首次运行才生成，失败不阻断）
+  ai_note.py       Agnes 生成账户点评（每天首次运行才生成，失败不阻断）
   git push main    → GitHub Pages 自动发布
 
 深度对账（用 Claude，**仅当用户开口**说「同步持仓」；无任何定时消耗）
@@ -30,12 +30,19 @@
   说「同步持仓」校准一次。
 - Actions **必须**有仓库 Secret `ANALYZER_PW`（= vault 里的密码）才能更新私密区；
   没有它公开信号区照常更新，私密区永远停在上次手动对账（已无定时 Claude 对账兜底）。
-- AI 点评（`ai_note.py`，2026-08-04 起）：每天首次运行时用 Gemini 免费档生成，需仓库
-  Secret `GEMINI_API_KEY`（Google AI Studio 免费申请）。缺密钥、网络失败、或**模型输出
-  里出现事实中不存在的数字**，一律丢弃并保留上次点评——页面对过期点评会自动标灰提示
-  （`index.html` 依 `ai_note_date`/`ai_note_nav` 判定：超 7 天、净值变动超 2%、或缺日期）。
+- AI 点评（`ai_note.py`，2026-08-04 起）：每天首次运行时生成，需仓库 Secret
+  `AGNES_API_KEY`（跟记帐工具里填的 Agnes key 是同一把）。可选 `AGNES_MODEL` /
+  `AGNES_BASE_URL` 覆盖默认值，默认与 butler-bot 一致（`agnes-2.5-flash` @
+  `apihub.agnes-ai.com/v1`）。**Agnes 分 .cn / .com 两个站，key 不通用，打错站报
+  「无效的令牌」——看起来像 key 错了，其实是站点错了。**
+  三种情况一律丢弃并保留现有点评：缺密钥、网络/接口失败、**模型输出里出现事实中
+  不存在的数字**。另外每次运行会先体检已存的点评，过短或结尾不完整（被截断）就直接
+  清空——半句话挂在页面上还标着当天日期，比空着更误导（2026-08-05 实际发生过）。
+  点评为空时页面整个区块不显示；正常显示时依 `ai_note_date`/`ai_note_nav` 判定过期
+  （超 7 天、净值变动超 2%、或缺日期就标灰）。
   金额编错的代价远高于当天没有新点评，这个取舍不要为了「每天都有话说」而放宽。
-  注意：生成点评会把账户净值/持仓金额发给 Google（用户 2026-08-04 知情并同意）。
+  想重写当天已生成的点评：手动触发 workflow 时勾选 `force_ai_note`。
+  注意：生成点评会把账户净值/持仓金额发给 Agnes（用户 2026-08-04 知情并同意）。
 - `expense-tracker.html` 的 IBKR 余额卡也改读 `trading/data-private.enc`（同一密码，
   localStorage 共用 `tradingAnalyzerPw`）；旧的明文 `ibkr-snapshot.json` 管道已于
   2026-07-10 整条删除（workflow/脚本/skill 文档）。注意：旧数值仍留在 git 历史里。

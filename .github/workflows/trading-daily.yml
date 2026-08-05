@@ -42,10 +42,13 @@ jobs:
         env:
           ANALYZER_PW: ${{ secrets.ANALYZER_PW }}
         run: python trading/analyzer.py
-      - name: 生成 AI 点评（Gemini 免费档，每天首次运行才生成，失败不阻断）
+      - name: 生成 AI 点评（Agnes，每天首次运行才生成，失败不阻断）
         env:
           ANALYZER_PW: ${{ secrets.ANALYZER_PW }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+          # 下面两个是可选覆盖：不填就用 ai_note.py 里的默认值（与 butler-bot 一致）
+          AGNES_MODEL: ${{ secrets.AGNES_MODEL }}
+          AGNES_BASE_URL: ${{ secrets.AGNES_BASE_URL }}
           AI_NOTE_FORCE: ${{ inputs.force_ai_note && '1' || '' }}
         run: python trading/ai_note.py || echo "点评生成失败，沿用上次点评"
       - name: 提交数据

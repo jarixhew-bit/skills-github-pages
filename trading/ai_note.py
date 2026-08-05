@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""用 Gemini 免费档生成账户点评，写回加密数据（data-private.enc / state.enc）。
+"""用 Agnes 生成账户点评，写回加密数据（data-private.enc / state.enc）。
 
 在 analyzer.py 之后运行：analyzer 负责算数字，本脚本只负责把数字翻成一段人话。
 
+供应商：Agnes（OpenAI 兼容接口），跟 butler-bot 与记帐工具用的是同一家、同一把 key。
+2026-08-05 最初接的是 Gemini 免费档，当天连踩模型名 404、思考 token 把正文截断、
+免费额度 429 三个坑（细节见 .claude/notes/trading.md），用户决定直接换成 Agnes。
+
 三条设计底线：
 1. **每天只生成一次**。管线每小时跑一次，但 80/20 长期再平衡的账户一天内没有新东西
-   可说，每小时调用纯属浪费免费额度。state 里已有当天日期就直接跳过。
-2. **失败一律不阻断**。缺 GEMINI_API_KEY、网络不通、模型返回异常，全都 exit 0 并保留
+   可说，每小时调用纯属浪费额度。state 里已有当天日期就直接跳过。
+2. **失败一律不阻断**。缺 AGNES_API_KEY、网络不通、模型返回异常，全都 exit 0 并保留
    旧点评——页面已有过期标灰机制（index.html），旧点评不会伪装成最新的。
 3. **数字防编造**。模型输出里凡是带小数点或 >=1000 的数字，都必须能在喂进去的事实里
    原样找到，否则整段丢弃。2026-07-14 与 08-04 两次事故都是「页面上出现一个错误金额」
@@ -26,35 +30,29 @@ PRIV = os.path.join(BASE, "data-private.enc")
 STATE = os.path.join(BASE, "state.enc")
 PUBLIC = os.path.join(BASE, "data-public.json")
 
-API_ROOT = "https://generativelanguage.googleapis.com/v1beta"
-# 偏好顺序：不带「思考」的模型排前面。写这活不需要思考，而思考 token 会算进
-# maxOutputTokens，把正文挤没（2026-08-05 上线时 gemini-flash-latest 已指向 Gemini 3
-# 系列，不吃 thinkingBudget=0 这个老参数，连续两次返回 finishReason=MAX_TOKENS）。
-# 名字都可能过时，所以只当偏好用——实际清单每次问 ListModels，且会按顺序轮流试。
-MODEL_PREFS = (
-    "gemini-2.0-flash",       # 无思考模式，最稳
-    "gemini-2.0-flash-001",
-    "gemini-2.5-flash-lite",  # 思考可关
-    "gemini-2.5-flash",
-    "gemini-flash-latest",    # 可能指向新一代（会强制思考），放最后
-)
-MAX_MODEL_TRIES = 3
+# Agnes 的默认接口与模型，与 butler-bot 保持一致（正本在 butler-bot 的 src/ai.js，
+# 那边写着：2.x-flash 是 text+vision 模型走 /chat/completions；别用 agnes-image-2.x-flash，
+# 那是文字生成图片的）。想换模型/换站点填 AGNES_MODEL、AGNES_BASE_URL 两个 secret，不用改代码。
+# 注意：Agnes 分 .cn / .com 两个站，key 不通用，打错站会报「无效的令牌」——看起来像
+# key 错了，其实是站点错了（butler-bot 踩过同款坑）。
+AGNES_DEFAULT_BASE = "https://apihub.agnes-ai.com/v1"
+AGNES_DEFAULT_MODEL = "agnes-2.5-flash"
 
-PROMPT = """你在为一位长期投资者写他自己账户的每日点评，直接给他本人看。
+SYSTEM_PROMPT = """你在为一位长期投资者写他自己账户的每日点评，直接给他本人看。
 
 他的策略（不要质疑、不要改变它）：VOO 与 IBIT 按 80/20 长期持有并再平衡，20 年期限，
 不做择时，不看技术指标决定买卖，只看「实际配置离目标差多少」来决定补哪个。
 
 写作要求：
-- 用简体中文写 3 到 5 句话，一段，不分点、不加标题。
+- 用简体中文写 3 到 5 句话，一段，不分点、不加标题、不要 markdown。
 - 先说账户当前状态，再说配置偏离情况，最后一句说该做什么（或不该做什么）。
-- **只能使用下面「事实」里出现的数字，必须原样照抄，禁止四舍五入、禁止自己计算新数字、
-  禁止编造任何金额或百分比**。宁可少说一个数字，也不要写一个事实里没有的数字。
+- **只能使用用户给你的「事实」里出现的数字，必须原样照抄，禁止四舍五入、禁止自己计算
+  新数字、禁止编造任何金额或百分比**。宁可少说一个数字，也不要写一个事实里没有的数字。
 - 不要提及任何外部新闻、行情预测或你不掌握的信息。
 - 语气像一位熟悉他策略的朋友，平实、不夸张、不喊口号。
+- 必须把话说完整，最后一句要有句号。"""
 
-事实（JSON）：
-"""
+USER_PROMPT = "以下是今天的事实（JSON），据此写点评：\n"
 
 
 def build_facts(private, state, public):
@@ -164,79 +162,49 @@ def bad_numbers(text, allowed):
     return bad
 
 
-def candidate_models(api_key, timeout=15):
-    """问 Google 这把密钥能用哪些模型，按偏好排出要轮流试的顺序。
+def call_agnes(facts, api_key, timeout=60):
+    """调 Agnes（OpenAI 兼容的 /chat/completions）要一段点评。
 
-    返回列表而不是单个模型：哪个模型会强制思考、会不会把正文挤掉，
-    从名字上看不出来，只能实际试。
+    只做一次调用、不做模型轮换：Agnes 的模型名由 butler-bot 那边确定并共用，
+    不像 Gemini 那样会自己改名换代。
     """
     import requests
 
-    r = requests.get(f"{API_ROOT}/models", params={"key": api_key}, timeout=timeout)
-    r.raise_for_status()
-    usable = [
-        m["name"].split("/")[-1]
-        for m in r.json().get("models", [])
-        if "generateContent" in (m.get("supportedGenerationMethods") or [])
-    ]
-    if not usable:
-        raise RuntimeError("这把密钥没有任何支持 generateContent 的模型")
+    base = os.environ.get("AGNES_BASE_URL", "").strip() or AGNES_DEFAULT_BASE
+    model = os.environ.get("AGNES_MODEL", "").strip() or AGNES_DEFAULT_MODEL
+    base = base.rstrip("/")
 
-    ordered = [m for m in MODEL_PREFS if m in usable]
-    # 偏好名之外的兜底：任意 flash（排除图像/语音/思考等特殊版本）
-    ordered += [
-        n for n in usable
-        if "flash" in n and n not in ordered
-        and not any(x in n for x in ("thinking", "image", "tts", "lite-latest"))
-    ]
-    return (ordered or usable)[:MAX_MODEL_TRIES]
+    r = requests.post(
+        f"{base}/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={
+            "model": model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": USER_PROMPT + json.dumps(facts, ensure_ascii=False, indent=1)},
+            ],
+            "temperature": 0.4,
+            # 3-5 句中文用不了几百 token，给 800 留足余量；写不完会是 finish_reason=length
+            "max_tokens": 800,
+        },
+        timeout=timeout,
+    )
+    if not r.ok:
+        # 把服务端的原话带出来——「无效的令牌」多半是 key 打错了站（.cn / .com）
+        raise RuntimeError(f"HTTP {r.status_code}：{r.text[:300]}")
 
-
-def call_gemini(facts, api_key, timeout=30):
-    import requests
-
-    prompt = PROMPT + json.dumps(facts, ensure_ascii=False, indent=1)
-    models = candidate_models(api_key)
-    print(f"[ai_note] 候选模型：{models}")
-
-    def post(model, cfg):
-        return requests.post(
-            f"{API_ROOT}/models/{model}:generateContent",
-            params={"key": api_key},
-            json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": cfg},
-            timeout=timeout,
-            headers={"Content-Type": "application/json"},
-        )
-
-    problems = []
-    for model in models:
-        # 额度给足：即使模型强制思考，8000 也够它想完再把 4 句话写完
-        cfg = {"temperature": 0.4, "maxOutputTokens": 8000, "thinkingConfig": {"thinkingBudget": 0}}
-        try:
-            r = post(model, cfg)
-            if r.status_code == 400:
-                # 新一代模型不认 thinkingBudget（Gemini 3 改用 thinkingLevel），去掉重试
-                cfg.pop("thinkingConfig")
-                r = post(model, cfg)
-            r.raise_for_status()
-            cand = r.json()["candidates"][0]
-            finish = cand.get("finishReason")
-            if finish and finish != "STOP":
-                # 多半是思考把额度吃光，换下一个模型比调参数靠谱
-                problems.append(f"{model}: finishReason={finish}")
-                continue
-            text = "".join(p.get("text", "") for p in cand["content"]["parts"]).strip()
-            print(f"[ai_note] 使用模型 {model}")
-            return text
-        except Exception as e:
-            problems.append(f"{model}: {e}")
-
-    raise RuntimeError("候选模型都没能正常写完 → " + "；".join(problems))
+    choice = r.json()["choices"][0]
+    finish = choice.get("finish_reason")
+    if finish and finish != "stop":
+        raise RuntimeError(f"模型未正常写完（finish_reason={finish}），丢弃避免出现半句话")
+    text = ((choice.get("message") or {}).get("content") or "").strip()
+    print(f"[ai_note] 使用 {model} @ {base}")
+    return text
 
 
 def main():
     password = os.environ.get("ANALYZER_PW", "").strip()
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    api_key = os.environ.get("AGNES_API_KEY", "").strip()
     if not password:
         print("[ai_note] 无 ANALYZER_PW，跳过")
         return 0
@@ -275,7 +243,7 @@ def main():
         write_back()
 
     if not api_key:
-        print("[ai_note] 无 GEMINI_API_KEY，跳过生成（保留现有点评）")
+        print("[ai_note] 无 AGNES_API_KEY，跳过生成（保留现有点评）")
         return 0
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -287,20 +255,12 @@ def main():
 
     facts = build_facts(private, state, public)
     try:
-        text = call_gemini(facts, api_key)
+        text = call_agnes(facts, api_key)
     except Exception as e:
-        print(f"[ai_note] 调用失败，保留旧点评：{e}")
-        # 把诊断信息直接打进日志，省得为了知道「密钥到底能用什么」再跑一轮
-        try:
-            import requests
-
-            r = requests.get(f"{API_ROOT}/models", params={"key": api_key}, timeout=15)
-            r.raise_for_status()
-            names = [m["name"].split("/")[-1] for m in r.json().get("models", [])]
-            print(f"[ai_note] 这把密钥可用的模型（前 20 个）：{names[:20]}")
-        except Exception as e2:
-            print(f"[ai_note] 连模型清单也拿不到：{e2}")
-            print("[ai_note] 多半是密钥本身无效，或该 Google 项目没启用 Generative Language API")
+        print(f"[ai_note] 调用失败，保留现有点评：{e}")
+        print("[ai_note] 排查顺序：(1) 报「无效的令牌」= key 打错站，Agnes 分 .cn/.com，"
+              "记帐工具里用的是哪把就用哪把；(2) 429 = 额度用尽，等下一次运行自己重试；"
+              "(3) 模型名不认 = 填 AGNES_MODEL secret 覆盖")
         return 0
 
     text = " ".join(text.split())
