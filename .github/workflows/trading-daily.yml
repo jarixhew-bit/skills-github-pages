@@ -9,6 +9,11 @@ on:
     # 同一小时内多次运行天然形成冗余，不再需要额外的次日补漏跑。
     - cron: '0 13-21 * * 1-5'
   workflow_dispatch:
+    inputs:
+      force_ai_note:
+        description: '重新生成今天的 AI 点评（平时每天只生成一次，勾选可覆盖当天已有的）'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -41,6 +46,7 @@ jobs:
         env:
           ANALYZER_PW: ${{ secrets.ANALYZER_PW }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AI_NOTE_FORCE: ${{ inputs.force_ai_note && '1' || '' }}
         run: python trading/ai_note.py || echo "点评生成失败，沿用上次点评"
       - name: 提交数据
         run: |

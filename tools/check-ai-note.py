@@ -44,9 +44,33 @@ CASES = [
 ]
 
 
+# (应否判为不完整, 用例名, 文本)
+COMPLETENESS_CASES = [
+    (True, "被截断的半句话", "截至2026-08-05，你的账户总净值为1"),
+    (True, "结尾缺句号", "账户净值 100258.82 美元，配置基本在目标线上，IBIT 还差一点，"
+                        "手头现金可以先补一部分，其余等后续资金到位"),
+    (True, "只回了一个词", "好的。"),
+    (False, "正常的一段点评", "净值 100258.82 美元，年初至今 12.41%。VOO 占 80.3% 正在目标线上，"
+                            "IBIT 占 14.7% 还差一截，补齐约需 5314 美元。手头现金先投一部分，"
+                            "其余等资金到位再补。"),
+    (False, "以问号结尾也算完整", "账户净值 100258.82 美元，配置没什么要动的。真要说的话，"
+                                "只有 IBIT 那 5314 美元的缺口值得留意，不急着一次补完，你说呢？"),
+]
+
+
 def main():
     allowed = A.allowed_numbers(FACTS)
     failures = []
+
+    for expect_bad, name, text in COMPLETENESS_CASES:
+        reason = A.incomplete_reason(text)
+        got_bad = reason is not None
+        if got_bad != expect_bad:
+            failures.append(
+                f"[完整性] {name}：预期{'拒收' if expect_bad else '接受'}，"
+                f"实际{'拒收（' + reason + '）' if got_bad else '接受'}\n    文本：{text[:50]}"
+            )
+
     for expect_bad, name, text in CASES:
         bad = A.bad_numbers(text, allowed)
         got_bad = bool(bad)
@@ -64,7 +88,7 @@ def main():
               "放宽这道防线等于允许模型把编造的金额写上页面。")
         return 1
 
-    print(f"通过：{len(CASES)} 个防编造用例全部符合预期")
+    print(f"通过：{len(CASES)} 个防编造用例 + {len(COMPLETENESS_CASES)} 个完整性用例全部符合预期")
     return 0
 
 
