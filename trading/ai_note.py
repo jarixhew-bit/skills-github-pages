@@ -193,9 +193,14 @@ def _ask_model(base, model, api_key, facts, timeout):
                 {"role": "user", "content": USER_PROMPT + json.dumps(facts, ensure_ascii=False, indent=1)},
             ],
             "temperature": 0.4,
-            # 1500 是折中：够写完四句话还有充分余量，又不至于让爱写长文的模型
-            # 一路写到超时（2026-08-05 给 4000 就在 60 秒读超时上翻车）。
-            "max_tokens": 1500,
+            # **故意不设 max_tokens**。Agnes 会先花大量 token「思考」，思考也算进这个
+            # 上限——2026-08-05 实测给 1500 时 completion_tokens 用满 1500、而
+            # message.content 是 0 字：预算全被思考吃光，正式答案一个字都没开始写
+            # （2.5 与 2.0 两个模型表现完全一样，所以不是模型选错）。
+            # butler-bot 调同一个端点是正常工作的，它的 body 就只有 model/messages/
+            # temperature，没有 max_tokens（src/ai.js callOpenaiCompat，那里也留了
+            # 「不设 max_tokens 避免截断」的注释）。照抄能跑通的配置，别自己发明。
+            # 长度约束改由 prompt ＋ incomplete_reason 的 400 字上限负责。
         },
         timeout=timeout,
     )
