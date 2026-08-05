@@ -27,10 +27,18 @@ STATE = os.path.join(BASE, "state.enc")
 PUBLIC = os.path.join(BASE, "data-public.json")
 
 API_ROOT = "https://generativelanguage.googleapis.com/v1beta"
-# 偏好顺序：免费档额度最宽松的 flash 系列优先。写死单一模型名会踩 404——
-# Google 的模型命名换得勤（2026-08-05 首次上线时 gemini-2.5-flash 就对本密钥返回 404），
-# 所以改成每次先问 ListModels 有哪些可用，名字变了也不用改代码。
-MODEL_PREFS = ("gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash")
+# 偏好顺序：不带「思考」的模型排前面。写这活不需要思考，而思考 token 会算进
+# maxOutputTokens，把正文挤没（2026-08-05 上线时 gemini-flash-latest 已指向 Gemini 3
+# 系列，不吃 thinkingBudget=0 这个老参数，连续两次返回 finishReason=MAX_TOKENS）。
+# 名字都可能过时，所以只当偏好用——实际清单每次问 ListModels，且会按顺序轮流试。
+MODEL_PREFS = (
+    "gemini-2.0-flash",       # 无思考模式，最稳
+    "gemini-2.0-flash-001",
+    "gemini-2.5-flash-lite",  # 思考可关
+    "gemini-2.5-flash",
+    "gemini-flash-latest",    # 可能指向新一代（会强制思考），放最后
+)
+MAX_MODEL_TRIES = 3
 
 PROMPT = """你在为一位长期投资者写他自己账户的每日点评，直接给他本人看。
 
@@ -156,10 +164,11 @@ def bad_numbers(text, allowed):
     return bad
 
 
-def pick_model(api_key, timeout=15):
-    """问 Google 这把密钥能用哪些模型，挑一个 flash。
+def candidate_models(api_key, timeout=15):
+    """问 Google 这把密钥能用哪些模型，按偏好排出要轮流试的顺序。
 
-    失败时回退到偏好列表第一个——总比不试强，反正外层会接住异常。
+    返回列表而不是单个模型：哪个模型会强制思考、会不会把正文挤掉，
+    从名字上看不出来，只能实际试。
     """
     import requests
 
@@ -170,29 +179,27 @@ def pick_model(api_key, timeout=15):
         for m in r.json().get("models", [])
         if "generateContent" in (m.get("supportedGenerationMethods") or [])
     ]
-    for pref in MODEL_PREFS:
-        if pref in usable:
-            return pref
-    # 偏好名都没有：退而求其次挑任意 flash（排除思考版，费额度且这活用不上）
-    flash = [n for n in usable if "flash" in n and "thinking" not in n]
-    if flash:
-        return flash[0]
-    if usable:
-        return usable[0]
-    raise RuntimeError("这把密钥没有任何支持 generateContent 的模型")
+    if not usable:
+        raise RuntimeError("这把密钥没有任何支持 generateContent 的模型")
+
+    ordered = [m for m in MODEL_PREFS if m in usable]
+    # 偏好名之外的兜底：任意 flash（排除图像/语音/思考等特殊版本）
+    ordered += [
+        n for n in usable
+        if "flash" in n and n not in ordered
+        and not any(x in n for x in ("thinking", "image", "tts", "lite-latest"))
+    ]
+    return (ordered or usable)[:MAX_MODEL_TRIES]
 
 
 def call_gemini(facts, api_key, timeout=30):
     import requests
 
-    model = pick_model(api_key)
     prompt = PROMPT + json.dumps(facts, ensure_ascii=False, indent=1)
-    # 2.5 系列的「思考」token 也算进 maxOutputTokens，给 500 会让正文只剩几个字就被切断
-    # （2026-08-05 首次生成就写出「你的账户总净值为1」这种半句话）。
-    # 所以：额度给足 + 关掉思考（这活不需要）+ 下面按 finishReason 拒收截断结果。
-    gen_cfg = {"temperature": 0.4, "maxOutputTokens": 2000, "thinkingConfig": {"thinkingBudget": 0}}
+    models = candidate_models(api_key)
+    print(f"[ai_note] 候选模型：{models}")
 
-    def post(cfg):
+    def post(model, cfg):
         return requests.post(
             f"{API_ROOT}/models/{model}:generateContent",
             params={"key": api_key},
@@ -201,20 +208,30 @@ def call_gemini(facts, api_key, timeout=30):
             headers={"Content-Type": "application/json"},
         )
 
-    r = post(gen_cfg)
-    if r.status_code == 400:
-        # 老模型不认 thinkingConfig，去掉重试一次
-        gen_cfg.pop("thinkingConfig")
-        r = post(gen_cfg)
-    r.raise_for_status()
+    problems = []
+    for model in models:
+        # 额度给足：即使模型强制思考，8000 也够它想完再把 4 句话写完
+        cfg = {"temperature": 0.4, "maxOutputTokens": 8000, "thinkingConfig": {"thinkingBudget": 0}}
+        try:
+            r = post(model, cfg)
+            if r.status_code == 400:
+                # 新一代模型不认 thinkingBudget（Gemini 3 改用 thinkingLevel），去掉重试
+                cfg.pop("thinkingConfig")
+                r = post(model, cfg)
+            r.raise_for_status()
+            cand = r.json()["candidates"][0]
+            finish = cand.get("finishReason")
+            if finish and finish != "STOP":
+                # 多半是思考把额度吃光，换下一个模型比调参数靠谱
+                problems.append(f"{model}: finishReason={finish}")
+                continue
+            text = "".join(p.get("text", "") for p in cand["content"]["parts"]).strip()
+            print(f"[ai_note] 使用模型 {model}")
+            return text
+        except Exception as e:
+            problems.append(f"{model}: {e}")
 
-    cand = r.json()["candidates"][0]
-    finish = cand.get("finishReason")
-    if finish and finish != "STOP":
-        raise RuntimeError(f"模型未正常写完（finishReason={finish}），丢弃避免出现半句话")
-    text = "".join(p.get("text", "") for p in cand["content"]["parts"]).strip()
-    print(f"[ai_note] 使用模型 {model}，finishReason={finish}")
-    return text
+    raise RuntimeError("候选模型都没能正常写完 → " + "；".join(problems))
 
 
 def main():
