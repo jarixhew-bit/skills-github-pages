@@ -163,3 +163,12 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
   第一次成功调用写进去的半句话，因为占着当天日期，后续运行全部跳过，一直挂在页面上——
   把关只做在「新产出」上是不够的。现在 `ai_note.py` 每次运行先检查已存点评，
   不合格就连日期一起清空，且这一步排在「有没有密钥」之前。
+- **2026-08-05 当天把点评供应商从 Gemini 换成 Agnes**（用户决定）。Agnes 是 OpenAI 兼容
+  接口，跟 butler-bot、记帐工具共用同一把 key：`POST {base}/chat/completions`、
+  `Authorization: Bearer <key>`、默认 `agnes-2.5-flash` @ `apihub.agnes-ai.com/v1`
+  （正本在 butler-bot 的 `src/ai.js`，改默认值时两边一起看）。仓库 Secret 是
+  `AGNES_API_KEY`，可选 `AGNES_MODEL` / `AGNES_BASE_URL` 覆盖。
+  **Agnes 分 .cn / .com 两站，key 不通用，打错站报「无效的令牌」**——看着像 key 错，
+  其实是站点错（butler-bot 与 Qwen 中国站/国际站踩过同款坑）。
+  换供应商只动了 `call_agnes()` 一个函数：防编造数字、拒收半句话、清除坏点评三道防线
+  与供应商无关，原样适用——接入新 LLM 时把关逻辑不要跟调用逻辑缠在一起，就是为了这个。
