@@ -1,4 +1,4 @@
-import os, html, time, xml.etree.ElementTree as ET
+import os, html, time, json, xml.etree.ElementTree as ET
 import feedparser, requests, yfinance as yf
 from datetime import datetime
 
@@ -54,13 +54,16 @@ def score(text):
 
 def fetch_ibkr_positions():
     """IBKR Flex Query 拉取持仓。返回 (positions|None, error_detail|None)
-    ErrorCode 1001 (报表暂时无法生成) 是 IBKR 服务端常见的瞬时繁忙，
-    高峰时段（如收盘后）很容易触发，需要足够长的重试窗口。"""
+    ErrorCode 1001「报表暂时无法生成」偶尔是服务端瞬时繁忙，但 2026-07 与 2026-08
+    两次连续多天的 1001，真正原因都是 IBKR 后台的 Flex Query 定义残缺（缺 Section）。
+    判别：连续多天 8/8 全失败 = 去查 Query 定义；偶发一两次 = 服务端繁忙。"""
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
     ref = None
     last_error = "未知错误"
-    MAX_ATTEMPTS = 8
-    RETRY_WAIT   = 45
+    # 1001 若是 Query 定义问题（2026-07/08 两次都是），再怎么重试都不会好，
+    # 长重试只是白等 6 分钟；缩短为 4 次 × 30 秒，够挡住真正的瞬时繁忙即可。
+    MAX_ATTEMPTS = 4
+    RETRY_WAIT   = 30
     for attempt in range(MAX_ATTEMPTS):
         if attempt:
             time.sleep(RETRY_WAIT)
@@ -83,7 +86,7 @@ def fetch_ibkr_positions():
         last_error = f"ErrorCode={err_code} ErrorMessage={err_msg}"
         print(f"⚠️ 第 {attempt+1}/{MAX_ATTEMPTS} 次未返回 ReferenceCode: {last_error}")
         if err_code == "1001":
-            print("   → IBKR 报表服务端繁忙（常见于收盘后高峰期），继续等待重试")
+            print("   → 1001：可能是服务端繁忙，也可能是 Query 定义残缺（见函数说明），重试")
     if not ref:
         print(f"⚠️ Flex Query 重试 {MAX_ATTEMPTS} 次仍失败，使用默认持仓")
         return None, last_error
@@ -213,19 +216,32 @@ if ibkr:
     print(f"成功拉取 IBKR 持仓: {list(HOLDINGS.keys())}")
 else:
     STALE = True
+    # 底数来自 .github/data/ibkr-positions-fallback.json（由 Claude session 用 IBKR
+    # 连接器手动同步刷新）。2026-08-06 前这里是写死在代码里的旧数字，Flex 一失效
+    # 早报就拿过期持仓算钱——改成外部档案，刷新时不必动代码，且能标注同步日期。
+    fb_path = os.path.join(os.path.dirname(__file__), "..", "data",
+                           "ibkr-positions-fallback.json")
+    with open(fb_path, encoding="utf-8") as f:
+        fb = json.load(f)
+    fb_as_of = fb.get("as_of", "未知日期")
     HOLDINGS = {
-        "IBIT": {"name": "比特币 ETF (IBIT)",  "qty": 357.57, "cost": 39.08},
-        "VOO":  {"name": "标普500 ETF (VOO)", "qty": 114.18, "cost": 550.46},
+        sym: {"name": NAME_MAP.get(sym, sym), "qty": v["qty"], "cost": v["cost"]}
+        for sym, v in fb["positions"].items() if sym not in EXCLUDE
     }
-    print(f"使用默认持仓数据（IBKR Flex 拉取失败）：{ibkr_error}")
-    friendly_hint = (
-        "（IBKR 报表服务器瞬时繁忙，常见于高峰时段，非配置问题）"
-        if "1001" in str(ibkr_error) else ""
-    )
+    print(f"使用备用持仓底数（as_of {fb_as_of}，IBKR Flex 拉取失败）：{ibkr_error}")
+    try:
+        stale_days = (datetime.now() - datetime.strptime(fb_as_of, "%Y-%m-%d")).days
+    except ValueError:
+        stale_days = -1
+    age_hint = (f"底数同步日期：{fb_as_of}"
+                + ("（已 %d 天未刷新，数字可能已偏离）" % stale_days
+                   if stale_days > 14 else ""))
     send(
         f"⚠️ <b>IBKR 持仓同步失败 — {TODAY}</b>\n"
-        f"以下持仓早报使用的是上次已知数据，可能非最新。\n"
-        f"失败原因: <code>{html.escape(str(ibkr_error))}</code>{html.escape(friendly_hint)}"
+        f"以下持仓早报使用备用底数，非实时。\n"
+        f"{html.escape(age_hint)}\n"
+        f"失败原因: <code>{html.escape(str(ibkr_error))}</code>\n"
+        f"连续多天出现 1001 = IBKR 那边的 Flex Query 定义有问题，不是服务器繁忙。"
     )
 
 print("拉取宏观指标...")
