@@ -620,7 +620,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
         </select>
         <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
           这是「谁交上来的」，不是最终算谁头上。Excel 分左右两边由 butler 按规则自动算：
-          只有同事<b>自己吃的正餐</b>（XY 的午/晚餐、G 的早/午餐）进右边，
+          只有同事<b>自己吃的正餐</b>（XY 的早/午/晚餐、G 的早/午餐）进右边，
           其余一律算公司的、进左边 Boss 表。保存后会告诉你实际进了哪边。
         </div>
       </div>
@@ -4102,7 +4102,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-03f';
+const APP_BUILD = '2026-08-06a';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
