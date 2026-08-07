@@ -353,9 +353,51 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .viewer-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.15);
   border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:17px;cursor:pointer}
 .viewer-note{color:#ccc;font-size:12px;margin-top:14px;text-align:center;padding:0 24px}
+/* ===== 同事模式（?staff=1 且钥匙被服务端认成同事时启用）=====
+   同事用的是同一个 App —— 拍照压缩、扫描校准、离线队列这些实机磨出来的东西全都继承，
+   不再另外维护一份（2026-08-07 用户拍板：「同事直接用你那个 App」）。
+   这里只做**界面简化**：把个人账本那一整套藏掉，只留公司报账。
+   注意：这不是安全边界——真正的权限在服务端（reporter 由钥匙推出、只能删自己的），
+   客户端就算被改也越不过去。所以用 CSS 藏就够了，不必费劲做成不可绕过。 */
+body.staff-mode #nav-overview,
+body.staff-mode #nav-analytics,
+body.staff-mode #nav-settings,
+body.staff-mode #tab-settings,
+body.staff-mode #hdr-cloud,
+body.staff-mode #acc-cards-row,
+body.staff-mode .acc-pill,
+body.staff-mode #tab-overview,
+body.staff-mode #tab-analytics,
+body.staff-mode .staff-hide{ display:none !important; }
+body.staff-mode .nav{ justify-content:space-around }
+body.staff-mode #staff-signout-row{ display:block !important }
+/* 同事看到的标题是自己的名字，不是「记账本」 */
+body.staff-mode .hdr-title::after{ content:attr(data-staff-name) }
+body.staff-mode .hdr-title{ font-size:0 }
+body.staff-mode .hdr-title::after{ font-size:17px }
+
+/* 钥匙闸门：还没认出身份前盖住整个 App */
+#staff-gate{
+  position:fixed; inset:0; z-index:200; background:var(--bg);
+  display:none; flex-direction:column; justify-content:center; padding:24px;
+}
+#staff-gate.on{ display:flex }
+#staff-gate h2{ margin:0 0 8px; font-size:20px }
+#staff-gate p{ color:var(--sub); font-size:14px; margin:0 0 18px; line-height:1.6 }
 </style>
 </head>
 <body>
+
+<!-- 同事模式的钥匙闸门：填一次钥匙，服务端认出是谁之后才放进 App -->
+<div id="staff-gate">
+  <h2>🧾 报账 Expense Report</h2>
+  <p>填一次钥匙就好，之后这个手机会记住。<br>
+     Enter your key once — this phone will remember it.</p>
+  <input class="form-input" id="staff-gate-key" type="password" autocomplete="off"
+         placeholder="••••••••••" style="margin-bottom:14px">
+  <button class="btn btn-primary" onclick="staffGateSubmit()" id="staff-gate-btn">确定 / Save</button>
+  <div id="staff-gate-msg" style="margin-top:14px;font-size:14px;color:var(--exp);min-height:20px"></div>
+</div>
 
 <!-- HEADER -->
 <div class="hdr">
@@ -397,6 +439,10 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 
 <!-- TRANSACTIONS TAB -->
 <div class="tab" id="tab-transactions">
+  <!-- 只在同事模式显示（body.staff-mode 之外由下面的 CSS 藏掉） -->
+  <div id="staff-signout-row" style="display:none;text-align:center;margin:18px 0 4px">
+    <button class="btn btn-outline btn-sm" onclick="staffSignOut()">换钥匙 / Sign out</button>
+  </div>
   <div id="tx-month-picker" class="month-picker">
     <button class="month-arrow" onclick="changeMonth(-1)">‹</button>
     <div class="month-text" id="tx-month-text"></div>
@@ -611,7 +657,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
         font-size:12px;color:var(--p);line-height:1.6">
         🧾 这是公司账户，保存后会同时送进公司账本 —— 跟 Telegram 记的进同一本、出同一份 Excel。
       </div>
-      <div class="form-group">
+      <div class="form-group staff-hide">
         <label class="form-label">谁报的账</label>
         <!-- 选项由 renderCompanyReporterOptions() 从 butler 拿的名册渲染；
              这里留的是拿不到名册时的兜底（正本在 butler 的 config/people.json） -->
@@ -4102,7 +4148,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07b';
+const APP_BUILD = '2026-08-07c';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4132,6 +4178,105 @@ const COMPANY_CAT_TO_APP = {
   'Petrol':'cat_transport', 'Car Service':'cat_transport',
   'Dentist':'cat_medical',
 };
+
+/* ===================== 同事模式 =====================
+ * 同事跟老板用同一个 App（2026-08-07 用户拍板）。这样拍照压缩、扫描校准、离线队列
+ * 这些实机磨出来的东西他们全都继承，以后修一次两边都得到——不用再维护第二份页面。
+ *
+ * 怎么进：网址带 ?staff=1（同事拿到的链接就是这个）。带了这个参数就先盖上钥匙闸门，
+ * 填完钥匙问服务端「我是谁」，服务端回 scope==='staff' 才真的进同事模式。
+ * **身份由服务端说了算，不是靠网址参数**——参数只决定要不要显示闸门。
+ *
+ * 界面上藏掉的东西见 body.staff-mode 那段 CSS。这只是界面简化，不是安全边界：
+ * 真正的权限在服务端（reporter 由钥匙推出、只能删自己记的），客户端改不了。
+ * 同事手机上本来也没有老板的数据——Firebase 是按 uid 隔离的，他们从不登录。
+ */
+const STAFF_PARAM = new URLSearchParams(location.search).has('staff');
+const STAFF_IDENTITY_STORAGE = 'expenseTracker_staffIdentity';
+let staffIdentity = null;   // {reporter, scope} —— 服务端认出来的
+
+function isStaffMode(){ return !!(staffIdentity && staffIdentity.scope === 'staff'); }
+
+/** 拿当前存着的钥匙问服务端「我是谁」。回 null 表示钥匙不对或连不上。 */
+async function whoAmI(token){
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'mine', token })
+    });
+    if(!res.ok) return { error: res.status === 401 ? 'bad-key' : 'server' };
+    const b = await res.json();
+    return (b && b.status === 'ok') ? { reporter: b.reporter, scope: b.scope || 'owner' } : { error:'server' };
+  }catch(e){ return { error:'offline' }; }
+}
+
+function applyStaffMode(){
+  if(!isStaffMode()) return;
+  document.body.classList.add('staff-mode');
+  const title = document.querySelector('.hdr-title');
+  if(title) title.setAttribute('data-staff-name', '🧾 ' + staffIdentity.reporter);
+  // 同事只有公司账：没有就自动建一个，并选中它，省得他自己去设置里摸索
+  let acc = data.accounts.find(a => a.isCompany);
+  if(!acc){
+    acc = { id:'acc'+Date.now(), name:'公司报账', currency:'USD',
+            color:'linear-gradient(135deg,#0f766e,#14b8a6)', isCompany:true };
+    data.accounts.push(acc);
+  }
+  data.currentAccountId = acc.id;
+  saveData();
+  updateHeader();
+  switchTab('transactions');
+}
+
+async function staffGateSubmit(){
+  const input = document.getElementById('staff-gate-key');
+  const msg = document.getElementById('staff-gate-msg');
+  const btn = document.getElementById('staff-gate-btn');
+  const v = (input.value || '').trim();
+  if(!v){ msg.textContent = '请先填钥匙 / Please enter your key'; return; }
+  btn.disabled = true; msg.textContent = '';
+  const who = await whoAmI(v);
+  btn.disabled = false;
+  if(who.error === 'bad-key'){ msg.textContent = '钥匙不对，请核对后重填 / Wrong key'; return; }
+  if(who.error){ msg.textContent = '连不上服务器，稍后再试 / Cannot reach server'; return; }
+  localStorage.setItem(COMPANY_TOKEN_STORAGE, v);
+  staffIdentity = who;
+  // 身份也存下来：之后没信号重开 App 时才不会被闸门挡在门外（他正要记账）
+  localStorage.setItem(STAFF_IDENTITY_STORAGE, JSON.stringify(who));
+  input.value = '';
+  closeStaffGate();
+  applyStaffMode();
+}
+
+function staffSignOut(){
+  if(!confirm('要清掉这台手机上的钥匙吗？之后要重新填。\nRemove the key from this phone?')) return;
+  localStorage.removeItem(COMPANY_TOKEN_STORAGE);
+  localStorage.removeItem(STAFF_IDENTITY_STORAGE);
+  location.reload();
+}
+
+function openStaffGate(){ document.getElementById('staff-gate').classList.add('on'); }
+function closeStaffGate(){ document.getElementById('staff-gate').classList.remove('on'); }
+
+/** 启动时跑：带了 ?staff=1 才生效，老板那条路完全不碰。 */
+async function initStaffMode(){
+  if(!STAFF_PARAM) return;
+  const tok = getCompanyToken();
+  if(!tok){ openStaffGate(); return; }
+  const who = await whoAmI(tok);
+  if(who.error === 'bad-key'){ openStaffGate(); return; }
+  // 连不上服务器时不要把人挡在外面——他可能正在没信号的地方要记账。
+  // 认过一次就把身份存下来，之后离线也能直接进同事模式。
+  if(who.error){
+    const cached = localStorage.getItem(STAFF_IDENTITY_STORAGE);
+    if(cached){ try{ staffIdentity = JSON.parse(cached); }catch(e){} }
+    if(!staffIdentity){ openStaffGate(); return; }
+  } else {
+    staffIdentity = who;
+    localStorage.setItem(STAFF_IDENTITY_STORAGE, JSON.stringify(who));
+  }
+  applyStaffMode();
+}
 
 function renderBuildInfo(){
   const el = document.getElementById('app-build-info');
@@ -4441,6 +4586,7 @@ window.addEventListener('online', ()=>flushCompanyQueue());
 init();
 refreshCompanyCategories();
 flushCompanyQueue();
+initStaffMode();
 </script>
 </body>
 </html>
