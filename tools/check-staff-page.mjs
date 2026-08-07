@@ -37,8 +37,14 @@ const ok = (name, cond, got) => {
 const STAFF_KEY = 'seryi-key-xyz';
 const BOSS_KEY  = 'boss-key-abc';
 
-async function newCtx({ offline = false } = {}) {
+async function newCtx({ offline = false, lang } = {}) {
   const ctx = await browser.newContext();
+  // 钉住起始语言再断言文案：headless Chromium 的 navigator.language 是 en-US，
+  // 页面会自动显示英文，靠"默认语言"写断言会挂。只在没选过时写入——无条件写的话
+  // 会把用户刚点的选择在刷新时盖掉（旧版测试踩过）。
+  if (lang) await ctx.addInitScript(l => {
+    if (!localStorage.getItem('siteLangUser')) localStorage.setItem('siteLangUser', l);
+  }, lang);
   const posted = [];
   let mode = offline ? 'offline' : 'online';
   await ctx.route('**/*', async route => {
@@ -71,7 +77,15 @@ async function newCtx({ offline = false } = {}) {
   return { ctx, page, posted, errs, setMode: m => { mode = m; } };
 }
 
-const seeVisible = (page, sel) => page.locator(sel).isVisible().catch(() => false);
+// 选择器必须唯一：以前用 .catch(()=>false) 兜底，结果「选到 3 个元素」这种错
+// 被静静吞成「看不见」，藏东西的断言就假通过了（2026-08-07 踩到，.type-tabs 有 3 个）。
+// 现在多重匹配直接抛错，宁可测试挂掉也不要假绿灯。
+async function seeVisible(page, sel){
+  const n = await page.locator(sel).count();
+  if (n > 1) throw new Error(`选择器 ${sel} 匹配到 ${n} 个元素，断言不可靠——换个唯一的选择器`);
+  if (n === 0) return false;
+  return page.locator(sel).isVisible();
+}
 
 // ---------- 【1】旧网址还能用 ----------
 console.log('【1】发出去的旧网址 staff/ 要能继续用（同事可能已经加到主屏幕了）');
@@ -167,6 +181,56 @@ console.log('\n【4】记一笔：报账人由钥匙决定，页面不给选');
   await staffCtx.ctx.close();
 }
 
+// ---------- 【4b】同事模式的界面精简 + 中英切换 ----------
+console.log('\n【4b】同事版要精简：没有收入、没有瑞尔、没有备注');
+{
+  const { ctx, page, errs } = await newCtx({ lang:'zh' });
+  await page.goto(APP + '?staff=1', { waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1500);
+  await page.fill('#staff-gate-key', STAFF_KEY);
+  await page.click('#staff-gate-btn');
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => showAddTx());
+  await page.waitForTimeout(800);
+
+  // 同事只会有支出、只用美元、不用写备注——这些都是纯干扰
+  for (const [name, sel] of [
+    ['收入/支出切换', '#tx-type-tabs'],
+    ['瑞尔按钮', '#tx-riel-toggle'],
+    ['描述/备注', '#tx-desc'],
+    ['单据号（系统派给他，自己填会撞号）', '#tx-company-reftag'],
+    ['「谁报的账」', '#tx-company-reporter'],
+  ]) ok(`藏掉了：${name}`, !(await seeVisible(page, sel)));
+
+  // 该留的不能连带藏掉
+  for (const [name, sel] of [
+    ['金额', '#tx-amount'], ['日期', '#tx-date'],
+    ['公司类别', '#tx-company-category'], ['拍照按钮', '#attach-btn-row'],
+  ]) ok(`留着：${name}`, await seeVisible(page, sel));
+
+  // 记的一定是支出——收入切换藏了，type 不能还停在 income
+  ok('默认就是支出', await page.evaluate(() => state.txType !== 'income'),
+     await page.evaluate(() => state.txType));
+
+  console.log('\n  —— 中英切换 ——');
+  ok('有语言按钮', await seeVisible(page, '#staff-lang-btn'));
+  ok('默认按存下的选择显示中文', /日期/.test(await page.textContent('#modal-add-tx')));
+  // 弹窗盖着语言按钮，这里直接调函数（真实使用时他会先切好语言再记账）
+  await page.evaluate(() => staffToggleLang());
+  await page.waitForTimeout(500);
+  const en = await page.textContent('#modal-add-tx');
+  ok('切成英文：日期/类别/保存', /Date/.test(en) && /Category/.test(en) && /Save/.test(en), null);
+  ok('拍照按钮也变英文', /Take photo/.test(en) && /From gallery/.test(en), null);
+  ok('存进全站共用的 siteLangUser',
+     (await page.evaluate(() => localStorage.getItem('siteLangUser'))) === 'en');
+  await page.evaluate(() => staffToggleLang());
+  await page.waitForTimeout(500);
+  ok('切回中文能还原（不是把中文弄丢了）',
+     /日期/.test(await page.textContent('#modal-add-tx')), null);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 // ---------- 【5】老板的钥匙不进同事模式 ----------
 console.log('\n【5】老板的钥匙带 ?staff=1 → 不进同事模式（身份由服务端说了算）');
 {
@@ -195,6 +259,14 @@ console.log('\n【6】不带 ?staff=1：老板的 App 完全不受影响');
     ['概览', '#nav-overview'], ['统计', '#nav-analytics'],
     ['设置', '#nav-settings'], ['账户卡片', '#acc-cards-row'],
   ]) ok(`${name}照常显示`, await seeVisible(page, sel));
+  // 同事模式藏掉的那些，老板这边必须一样不少
+  await page.evaluate(() => showAddTx());
+  await page.waitForTimeout(800);
+  for (const [name, sel] of [
+    ['收入/支出切换', '#tx-type-tabs'], ['瑞尔按钮', '#tx-riel-toggle'],
+    ['描述/备注', '#tx-desc'],
+  ]) ok(`${name}照常显示`, await seeVisible(page, sel));
+  ok('没有语言按钮（老板那边一律中文）', !(await seeVisible(page, '#staff-lang-btn')));
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
 }
