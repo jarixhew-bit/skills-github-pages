@@ -4,15 +4,21 @@
 # 测试全程把 localhost 以外的网域断掉，等于复现工地/路上没信号那种网络。
 name: staff expense page check
 
+# staff/index.html 是从 expense-tracker.html 生成的，所以改 App 也要跑这套——
+# 不然 App 改了、同事版没重新生成，两边就静静分岔了。
 on:
   push:
     paths:
       - 'staff/**'
+      - 'expense-tracker.html'
+      - 'tools/build-staff-page.py'
       - 'tools/check-staff-page.mjs'
       - '.github/workflows/staff-page-check.yml'
   pull_request:
     paths:
       - 'staff/**'
+      - 'expense-tracker.html'
+      - 'tools/build-staff-page.py'
       - 'tools/check-staff-page.mjs'
   workflow_dispatch:
 
@@ -27,6 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 先确认交上来的 staff/index.html 真的是当前 expense-tracker.html 生成出来的。
+      # 手改同事版、或改了 App 忘了重新生成，都在这一步就红——不必等浏览器测试。
+      - name: 同事版是不是最新生成的
+        run: python3 tools/build-staff-page.py --check
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
