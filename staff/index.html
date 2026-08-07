@@ -131,8 +131,8 @@
   <div class="card" id="setup">
     <h2 data-zh="先填一次钥匙" data-en="Enter your key (once)"></h2>
     <p style="margin:0 0 12px;font-size:14px;color:var(--sub)"
-       data-zh="老板会发给你一串专属钥匙。填一次就好，之后这个手机会记住。"
-       data-en="Your boss will send you a personal key. Enter it once — this phone will remember it."></p>
+       data-zh="填一次就好，之后这个手机会记住。"
+       data-en="Enter it once — this phone will remember it."></p>
     <div class="field">
       <input id="key-input" type="password" autocomplete="off" placeholder="••••••••••">
     </div>
@@ -272,7 +272,7 @@ async function saveKey(){
   // 先拿它去问一次「我是谁」——钥匙对不对当场就知道，不要等他记完一笔才报错
   const r = await api({action:'mine', token:v});
   if(!r.ok){
-    toast(r.status === 401 ? t('钥匙不对，跟老板确认一下','Wrong key — check with your boss')
+    toast(r.status === 401 ? t('钥匙不对，请核对后重新填写','Wrong key — please check it and try again')
                            : (r.message || t('连不上，等会儿再试','Cannot connect, try again later')));
     return;
   }
@@ -419,7 +419,7 @@ async function submitTx(){
     return;
   }
   if(r.status === 401){
-    toast(t('钥匙不对了，跟老板确认一下','Your key no longer works — check with your boss'));
+    toast(t('钥匙已失效，请重新取得一串','This key is no longer valid — please get a new one'));
     return;
   }
   toast(r.message || t('没送出去，再试一次','Could not submit, please try again'));
