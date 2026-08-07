@@ -80,6 +80,11 @@ async function newPage({ offline = false, lang = 'zh' } = {}) {
     if (req.action === 'delete')
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
         body: JSON.stringify({ status:'ok' }) });
+    // 认不得的 action 一律拒绝。别把它当成「新增」——真服务端不会那样做，
+    // 而且会让「送出了几笔」这类断言被别的请求悄悄污染（踩过：同事版误调 ledger，
+    // 假服务端当成新增，单号就多跳了一号）。
+    if (req.action) return route.fulfill({ status:400, contentType:'application/json', headers:h,
+      body: JSON.stringify({ status:'error', message:'假服务端不认得这个 action：' + req.action }) });
     // 新增：照 butler 的规则回一个号和归属（自己吃的正餐算自己，其余算 Boss）
     const cat = String(req.items?.[0]?.categoryRaw || '');
     const person = ['Breakfast','Lunch','Dinner'].includes(cat) ? 'Seryi' : 'Boss';
@@ -223,6 +228,10 @@ console.log('\n【4】记一笔');
   // 单号是同事唯一必须记住的信息——保存后必须当场告诉他写几号
   const toastTxt = await page.textContent('#toast');
   ok('保存后告诉他单据写几号', /7/.test(toastTxt) && /单据写|Write No/.test(toastTxt), toastTxt);
+  // 全员账本是老板专用的（服务端只认老板的钥匙）。同事版连问都不该问——
+  // 问了必被拒，白费一次请求，还会让人以为同事那边也能看到全员的数
+  ok('从头到尾没去问过全员账本', posted.every(x => x.action !== 'ledger'),
+     posted.map(x => x.action || 'add'));
   ok('记录出现在清单里', (await page.locator('#tx-list .tx-item').count()) === 1,
      await page.locator('#tx-list .tx-item').count());
   const listTxt = await page.textContent('#tx-list');
@@ -235,8 +244,13 @@ console.log('\n【5】本月合计与缺收据提醒');
 {
   const { page } = main;
   const sum = await page.textContent('#staff-summary');
-  ok('显示本月合计', /12\.34/.test(sum), sum);
+  // 「今天合计」摆在最上面：同事每天要在纸单上抄当天总数，这就是他要抄的那个数
+  ok('显示今天合计', /今天合计/.test(sum), sum);
+  ok('显示本月合计', /本月合计/.test(sum) && /12\.34/.test(sum), sum);
   ok('显示笔数', /1/.test(sum), sum);
+  // 清单里每一天也要带当天小计（翻回前几天核对时用）
+  const dayTotals = await page.$$eval('.staff-day-total', els => els.map(e => e.textContent.trim()));
+  ok('清单里每天一行小计', dayTotals.length === 1 && dayTotals[0].includes('12.34'), dayTotals);
   // 用户明确要的：缺收据照样能记，但要**明显标红**提醒（2026-08-07 拍板）
   ok('这笔没拍照 → 出现缺收据提醒', /没有收据照片|without a receipt/.test(sum), sum);
   ok('缺收据提醒用醒目样式，不是普通灰字',

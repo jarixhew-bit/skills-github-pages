@@ -36,6 +36,7 @@ const browser = await chromium.launch(launchOpts);
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   let posted = []; let butlerMode = 'ok';
+  const todayStr = new Date().toISOString().slice(0,10);
   const serverBook = []; let recSeq = 0;   // 假的公司账本，用来验证删除真的删到了远端
   await ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -57,6 +58,26 @@ const browser = await chromium.launch(launchOpts);
             ],
           }) });
       const req = JSON.parse(route.request().postData() || '{}');
+      // action:'ledger'（首屏那张「公司账本·今天」的卡）跟记账无关，
+      // 别混进 posted——不然「送出 1 个请求」这类断言会被它污染（踩过）。
+      if (req.action === 'ledger') {
+        const days = new Map();
+        for (const r of serverBook) {
+          const d = r.date || todayStr;
+          if (!days.has(d)) days.set(d, []);
+          days.get(d).push({ id:r.id, date:d, categoryEn:r.categoryEn || 'Store', billNo:String(r.refTag || 1),
+            side: r.person === 'Boss' ? 'boss' : 'assist', person:r.person, reporter:r.reporter,
+            amountUsd:Number(r.amountUsd) || 0, originalAmount:null, note:null, hasPhoto:true });
+        }
+        const mk = rows => Math.round(rows.reduce((s,x)=>s+x.amountUsd,0)*100)/100;
+        const all = [...days.values()].flat();
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', month: todayStr.slice(0,7), scope:'owner',
+            days:[...days.entries()].sort((a,b)=>b[0].localeCompare(a[0]))
+              .map(([date, rows])=>({ date, count:rows.length, total:mk(rows), missingPhoto:0, records:rows })),
+            count: all.length, total: mk(all), missingPhoto:0,
+            byPerson:[], byReporter:[], orphan:0 }) });
+      }
       posted.push(req);
       if (req.action === 'delete') {
         const i = serverBook.findIndex(r => r.id === req.recordId);
@@ -434,6 +455,49 @@ const browser = await chromium.launch(launchOpts);
   await page.waitForTimeout(1200);
   ok('普通账不会送去公司账本', posted.length===0, posted.length);
   ok('普通账正常保存', await page.evaluate(()=>data.transactions.some(t=>t.amount===88 && !t.company)));
+  console.log('\n【6b】首屏的「公司账本（全员）」：同事记的账也要看得到');
+  // 为什么要有这组：同事改用 App 记账之后，他们记的账在他们自己的手机里，
+  // 这台手机上一笔都没有。老板每天要拿「当天合计」跟纸单核对，看不到就等于没法对账。
+  await page.evaluate(()=>{ const a=data.accounts.find(x=>x.isCompany); data.currentAccountId=a.id; saveData(); });
+  await page.evaluate(()=>{ ledState.data=null; ledState.fetchedAt=0; });
+  await page.evaluate(()=>fetchCompanyLedger(null,{force:true}));
+  await page.evaluate(()=>switchTab('overview'));
+  await page.waitForTimeout(600);
+  ok('首屏出现公司账本卡', await page.locator('#ov-company').isVisible());
+  const ovTxt = await page.textContent('#ov-company');
+  ok('卡上写着「今天」', /今天/.test(ovTxt), ovTxt);
+  // 服务端算的合计，App 一个数都不许自己算（单号/合计要跟月底 Excel 完全一致）
+  const srvTotal = await page.evaluate(()=>ledState.data.total);
+  ok('卡上的本月合计跟服务端给的一致', ovTxt.includes(srvTotal.toFixed(2)), {ovTxt, srvTotal});
+  await page.click('#ov-company');
+  await page.waitForTimeout(900);
+  ok('点开是完整清单', await page.locator('#modal-company-ledger').isVisible());
+  const ledTxt = await page.textContent('#led-body');
+  const srv = await page.evaluate(()=>ledState.data);
+  // 取具体那几个元素来比，不能用「整段文字里出现过这个数」——只有一天时
+  // 当天小计跟月合计是同一个数，那种写法删掉小计也照样通过（踩过，负向测试才发现）
+  const dayTotals = await page.$$eval('.led-day-total', els => els.map(e => e.textContent.trim()));
+  const dayDates = await page.$$eval('.led-day-date', els => els.map(e => e.textContent.trim()));
+  ok('每天一个分组，日期按服务端的顺序',
+     dayDates.length === srv.days.length && srv.days.every((d,i) => dayDates[i].startsWith(d.date)),
+     {dayDates, srv: srv.days.map(d=>d.date)});
+  ok('每天都有当天小计，数值跟服务端一致',
+     dayTotals.length === srv.days.length
+     && srv.days.every((d,i) => dayTotals[i].includes(d.total.toFixed(2))),
+     {dayTotals, srv: srv.days.map(d=>d.total)});
+  const nos = await page.$$eval('.led-no', els => els.map(e => e.textContent.trim()));
+  const srvNos = srv.days.flatMap(d => d.records.map(r => r.billNo));
+  ok('单号照抄服务端给的（App 不自己编）',
+     JSON.stringify(nos) === JSON.stringify(srvNos), {nos, srvNos});
+  ok('看得到是谁记的', /记/.test(ledTxt), ledTxt.slice(0,120));
+  await page.evaluate(()=>closeModal('modal-company-ledger'));
+
+  // 同事的钥匙调这个会被服务端拒（forbidden）——那就不该摆这张卡出来
+  await page.evaluate(()=>{ ledState.data=null; ledState.error='forbidden'; renderOvCompany(); });
+  await page.waitForTimeout(200);
+  ok('钥匙是同事的（服务端拒绝）→ 不摆这张卡', !(await page.locator('#ov-company').isVisible()));
+  await page.evaluate(()=>{ ledState.error=null; });
+
   ok('全程无 JS 报错', errs.length===0, errs.slice(0,3));
   await ctx.close();
 }
