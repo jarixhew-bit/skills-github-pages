@@ -142,11 +142,24 @@ async function signIn(h) {
   return h;
 }
 
+/**
+ * 按键输入金额（不是 fill）。
+ * 用 pressSequentially 是刻意的：金额栏一旦被改回 type="number"，playwright 的
+ * fill 会直接抛错、整份自检崩掉；逐键输入则跟真人一样——逗号被输入框吞掉、
+ * 值变成空的，断言才会给出一个干净的红灯，看得出是「金额没进去」而不是脚本坏了。
+ */
+async function typeAmount(page, text) {
+  const el = page.locator('#tx-amount');
+  await el.click();
+  await el.press('ControlOrMeta+a').catch(() => {});
+  await el.pressSequentially(String(text), { delay: 20 });
+}
+
 /** 走一遍完整的记一笔（金额 + 类别 [+ 车牌]）。 */
 async function addOne(page, { amount, category, plate } = {}) {
   await page.click('.fab');
   await page.waitForTimeout(400);
-  await page.fill('#tx-amount', String(amount));
+  await typeAmount(page, amount);
   await page.selectOption('#tx-company-category', category);
   await page.waitForTimeout(200);
   if (plate) await page.fill('#tx-company-plate', plate);
@@ -489,6 +502,65 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
   await h.ctx.close();
 }
 
+// ---------- 【9f】金额栏要收得下人真的会打出来的写法 ----------
+console.log('\n【9f】用逗号当小数点也要记得进去（手机键盘很多语言就是逗号）');
+{
+  const h = await signIn(await newPage());
+  const { page, posted, errs } = h;
+
+  // 2026-08-07 Seryi 实机：手打「5,45」怎么都存不进去。原因是金额栏原本是
+  // type="number"，逗号让它判定不合法、.value 回空字符串——画面上有数字，
+  // 程序拿到的是空的。当天有收据那笔（OCR 自动填、带小数点）和整数那笔都进得去，
+  // 只有手打小数的进不去，正是这个毛病的形状。
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '5,45');
+  await page.selectOption('#tx-company-category', 'Dinner');
+  await page.waitForTimeout(200);
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(1000);
+  const sent = posted.filter(x => !x.action);
+  ok('「5,45」存得进去', sent.length === 1, posted.map(x => x.action || 'add'));
+  ok('而且金额是 5.45，不是 545 也不是 5', sent[0] && sent[0].items[0].amount === 5.45,
+     sent[0] && sent[0].items[0]);
+  ok('清单里看得到 5.45', (await page.textContent('#tx-list')).includes('5.45'));
+
+  // iPhone 的数字键盘在有些语言下只有逗号没有点（用户 2026-08-07 确认同事就是这样），
+  // 所以打字当下就要回显认到的是多少，别让他记完才发现记成了 545
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '5,45');
+  await page.waitForTimeout(300);
+  const echo = page.locator('#tx-amount-echo');
+  ok('用逗号打字时当场回显认到多少', await echo.isVisible());
+  ok('回显的是 5.45', (await echo.textContent() || '').includes('5.45'), await echo.textContent());
+  await typeAmount(page, '6.00');
+  await page.waitForTimeout(300);
+  ok('正常打小数点就不啰嗦（回显收起）', !(await echo.isVisible()));
+  await page.click('button[onclick="closeModal(\'modal-add-tx\')"]');
+  await page.waitForTimeout(300);
+
+  // 千分位写法（1,234.50）不能被当成小数点
+  posted.length = 0;
+  await addOne(page, { amount: '1,234.50', category: 'Store' });
+  const s2 = posted.filter(x => !x.action);
+  ok('「1,234.50」认成 1234.5（逗号当千分位）', s2[0] && s2[0].items[0].amount === 1234.5,
+     s2[0] && s2[0].items[0]);
+
+  // 真的看不懂时要把他打的原文引出来，不能只说「请输入金额」
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, 'abc');
+  await page.selectOption('#tx-company-category', 'Dinner');
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(600);
+  const note = await page.textContent('#tx-save-note') || '';
+  ok('打了看不懂的东西：把原文引给他看', note.includes('abc'), note);
+  ok('并且告诉他小数点该用什么', note.includes('.'), note);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 // ---------- 【9d】手机存不住数据时，不许静静地什么都不说 ----------
 console.log('\n【9d】存不住 / 存丢了：要么当场说清楚，要么自己把记录找回来');
 {
@@ -536,7 +608,7 @@ console.log('\n【9e】保存出错要留下痕迹（「点了完全没反应」
   const { page, errs } = h;
   await page.click('.fab');
   await page.waitForTimeout(400);
-  await page.fill('#tx-amount', '5.00');
+  await typeAmount(page, '5.00');
   await page.selectOption('#tx-company-category', 'Lunch');
   // 让保存中途炸掉，模拟任意一处意外抛错
   await page.evaluate(() => { window.saveData = () => { throw new Error('假装存储炸了'); }; });
