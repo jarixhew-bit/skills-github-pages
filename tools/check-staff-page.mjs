@@ -251,8 +251,13 @@ console.log('\n【7】没网时记账：存本机、有网自动补送（这是�
   await page.selectOption('#f-category', 'Dinner');
   await page.click('#submit-btn');
   await page.waitForTimeout(900);
-  ok('提示已存本机（没有假装成功）',
-     (await page.textContent('#toast')).includes('没网'), await page.textContent('#toast'));
+  // 措辞分两种：真的没网 vs 有网但连不上服务器。都必须说清「已存在手机里」，
+  // 但**不能一律说成「没网络」**——用户开着 4G 看到「没网」完全没法排查（2026-08-07 实机反馈）。
+  const offToast = await page.textContent('#toast');
+  ok('提示已存本机（没有假装成功）', offToast.includes('已存在手机里'), offToast);
+  if (await page.evaluate(() => navigator.onLine)) {
+    ok('有网却连不上时，措辞不是「没网络」', !offToast.includes('没网络'), offToast);
+  }
   const q = await page.evaluate(()=>JSON.parse(localStorage.getItem('staffExpenseQueue')||'[]'));
   ok('这笔真的进了队列，没丢', q.length === 1 && q[0].items[0].amount === 9.99, q);
   ok('顶部显示还有几笔没送出', (await page.textContent('#offline-note')).includes('1'),

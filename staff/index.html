@@ -329,8 +329,14 @@ async function api(body){
     return { ok: res.ok, status: res.status, retriable: false,
              message: data.error || data.message, data };
   }catch(e){
-    return { ok:false, status:0, retriable:true,
-             message: t('现在没网络','No connection right now') };
+    // fetch 抛异常有好几种原因：真的没网、连不上服务器、请求体太大传不完。
+    // 以前一律说「没网」，用户明明开着 4G 却看到没网，完全没法排查（2026-08-07 反馈）。
+    // navigator.onLine 只有 false 时可信（true 不代表真能连上），所以只拿它区分这一种。
+    const reallyOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    return { ok:false, status:0, retriable:true, reallyOffline,
+             message: reallyOffline
+               ? t('现在没网络','No connection right now')
+               : t('连不上服务器（已存在手机里，稍后自动重试）','Cannot reach the server (saved on your phone, will retry)') };
   }
 }
 
@@ -374,17 +380,45 @@ function syncPlate(){
 }
 
 /* ---------- 送出 ---------- */
+// 送出前必须先压缩。手机拍的收据是 4000×3000、3~8MB，base64 再涨 33%，等于要在 4G 上
+// 传 5~11MB——传不上去，页面只会说「没网」，同事完全不知道发生了什么（2026-08-07 实机
+// 踩到）。收据是文字，长边 1600px 足够看清，压完通常 200~400KB。
+// 老板那个 App 一直有这一步（长边 2400、JPEG 0.85），同事版第一版漏了。
+const PHOTO_MAX_SIDE = 1600;
+const PHOTO_QUALITY = 0.8;
+
+function setPhoto(dataUrl, mime){
+  photoData = { base64: dataUrl.split(',')[1], mime };
+  const img = document.getElementById('photo-prev');
+  img.src = dataUrl; img.style.display = 'block';
+  document.querySelector('.photo-row').classList.add('has');
+  document.getElementById('nophoto-warn').classList.add('hide');
+}
+
 function onPhoto(ev){
   const f = ev.target.files && ev.target.files[0];
   if(!f) return;
   const rd = new FileReader();
   rd.onload = ()=>{
-    const s = String(rd.result);
-    photoData = { base64: s.split(',')[1], mime: (s.match(/^data:(.*?);/) || [])[1] || 'image/jpeg' };
-    const img = document.getElementById('photo-prev');
-    img.src = s; img.style.display = 'block';
-    document.querySelector('.photo-row').classList.add('has');
-    document.getElementById('nophoto-warn').classList.add('hide');
+    const raw = String(rd.result);
+    const rawMime = (raw.match(/^data:(.*?);/) || [])[1] || 'image/jpeg';
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        setPhoto(cv.toDataURL('image/jpeg', PHOTO_QUALITY), 'image/jpeg');
+      }catch(e){
+        setPhoto(raw, rawMime);   // 画布出错就退回原图，宁可大也别记不成账
+      }
+    };
+    // 解码失败（少见的格式、iOS 的 HEIC 等）也退回原图，不能因此让他记不了账
+    img.onerror = ()=> setPhoto(raw, rawMime);
+    img.src = raw;
   };
   rd.readAsDataURL(f);
 }
@@ -434,10 +468,12 @@ async function submitTx(){
     loadMine();
     return;
   }
-  if(r.status === 0){            // 没网：存进队列，有网自动补送
+  if(r.status === 0){            // 送不出去：存进队列，有网自动补送
     queuePush(payload);
     clearForm();
-    toast(t('没网络，已存在手机里，有网会自动送出','No connection — saved on your phone, will send automatically'));
+    toast(r.reallyOffline
+      ? t('没网络，已存在手机里，有网会自动送出','No connection — saved on your phone, will send automatically')
+      : t('暂时送不出去，已存在手机里，稍后自动重试','Could not send right now — saved on your phone, will retry'));
     renderOffline();
     return;
   }
@@ -485,8 +521,8 @@ function renderOffline(){
   const n = queueGet().length;
   const el = document.getElementById('offline-note');
   el.classList.toggle('hide', n === 0);
-  if(n > 0) el.textContent = t(`📶 有 ${n} 笔还没送出（没网），有网会自动送`,
-                               `📶 ${n} item(s) not sent yet (offline) — will send automatically`);
+  if(n > 0) el.textContent = t(`📶 有 ${n} 笔还没送出，有网时会自动送出`,
+                               `📶 ${n} item(s) not sent yet — will send automatically when online`);
 }
 
 /* ---------- 我记过的 ---------- */
