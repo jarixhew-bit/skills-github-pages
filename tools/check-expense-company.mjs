@@ -48,6 +48,13 @@ const browser = await chromium.launch(launchOpts);
           body: JSON.stringify({
             categories:['Beverage','Car Wash','Dinner','Lunch','Petrol','Postage','Store'],
             plateCategories:['Car Wash','Petrol'],
+            // 人员名册由服务端给（butler 的 config/people.json），App 的下拉框照它渲染
+            people:[
+              {code:'Boss', label:'Boss（老板自己）'},
+              {code:'Seryi', label:'Seryi', ownMeals:['Breakfast','Lunch','Dinner']},
+              {code:'Kuang', label:'Kuang', ownMeals:['Breakfast','Lunch']},
+              {code:'Yang', label:'Yang', ownMeals:['Breakfast','Lunch','Dinner']},
+            ],
           }) });
       const req = JSON.parse(route.request().postData() || '{}');
       posted.push(req);
@@ -60,11 +67,12 @@ const browser = await chromium.launch(launchOpts);
           body: JSON.stringify({ status:'ok', removed }) });
       }
       // 假服务端照 butler 的规则算 person 回传（真规则住在 butler，这里只是替身）：
-      // XY 的 Lunch/Dinner、G 的 Breakfast/Lunch 算同事自己，其余一律 Boss。
+      // 名册里各人的 ownMeals 算他自己，其余一律 Boss。
+      const OWN_MEALS = { Seryi:['breakfast','lunch','dinner'], Kuang:['breakfast','lunch'],
+                          Yang:['breakfast','lunch','dinner'] };
       const cat = String(req.items?.[0]?.categoryRaw || '').toLowerCase();
       const rep = req.reporter;
-      const mine = (rep==='XY' && ['lunch','dinner'].includes(cat))
-                || (rep==='G'  && ['breakfast','lunch'].includes(cat));
+      const mine = (OWN_MEALS[rep] || []).includes(cat);
       const person = mine ? rep : 'Boss';
       const id = 'rec' + (++recSeq);
       // 照 butler 的规则派号：一个月从 1 排到底，左右两张表分开排
@@ -130,17 +138,30 @@ const browser = await chromium.launch(launchOpts);
      (await page.textContent('#tx-desc-label')).includes('公司 Excel'),
      await page.textContent('#tx-desc-label'));
   ok('说明文字显示出来', await page.locator('#tx-desc-note').isVisible());
+  // 「谁报的账」的选项由服务端名册渲染（butler 的 config/people.json）——App 里不写死
+  // 人名，所以以后加人/改名只改 butler 一处。这里锁住「服务端说谁在册，下拉就有谁」。
+  const repOpts = await page.$$eval('#tx-company-reporter option',
+    els => els.map(e => ({ v: e.value, t: e.textContent })));
+  ok('下拉框照服务端名册渲染（Boss + 3 位同事）',
+     JSON.stringify(repOpts.map(o=>o.v))===JSON.stringify(['Boss','Seryi','Kuang','Yang']), repOpts);
+  ok('Boss 排第一且标注是老板自己', repOpts[0].t.includes('老板自己'), repOpts[0]);
+  // 括号里标出各人哪几餐算自己，省得用户去记规则；Kuang 只有早/午，不能写成早/午/晚
+  ok('Seryi 标注早/午/晚餐', repOpts[1].t.includes('自己的 早/午/晚餐进右表'), repOpts[1]);
+  ok('Kuang 标注早/午餐（不是三餐）',
+     repOpts[2].t.includes('自己的 早/午餐进右表') && !repOpts[2].t.includes('晚'), repOpts[2]);
+  ok('Boss 不带餐别标注（他没有 ownMeals）', !repOpts[0].t.includes('进右表'), repOpts[0]);
+
   await page.fill('#tx-amount', '12.34');
   await page.fill('#tx-desc', '跟客户午餐');
   await page.selectOption('#tx-company-category', 'Lunch');
-  await page.selectOption('#tx-company-reporter', 'XY');
+  await page.selectOption('#tx-company-reporter', 'Seryi');
   await page.fill('#tx-company-reftag', '7');
   await page.evaluate(()=>saveTx());
   await page.waitForTimeout(1500);
   const p = posted[0] || {};
   ok('送出 1 个请求', posted.length===1, posted.length);
   ok('带了密钥', p.token==='test-token-123', p.token);
-  ok('reporter 原样送出', p.reporter==='XY', p.reporter);
+  ok('reporter 原样送出', p.reporter==='Seryi', p.reporter);
   ok('金额是用户填的原始值（换算交给 butler）', p.items?.[0]?.amount===12.34, p.items?.[0]);
   ok('币种原样送出', p.items?.[0]?.currency==='USD', p.items?.[0]?.currency);
   ok('类别原样送出', p.items?.[0]?.categoryRaw==='Lunch', p.items?.[0]?.categoryRaw);
@@ -151,8 +172,8 @@ const browser = await chromium.launch(launchOpts);
   const tx = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
   ok('本机也留了一份并标记已送达', tx?.company?.status==='sent', tx?.company);
   ok('自动对应到 App 的类别（用户不用选两次）', tx?.categoryId==='cat_food', tx?.categoryId);
-  // XY 的 Lunch → 算 XY 自己 → Excel 右边。App 只转述服务端算的结果，不自己算。
-  ok('存下服务端算的 person（XY 的 Lunch → XY）', tx?.company?.person==='XY', tx?.company);
+  // Seryi 的 Lunch → 算 Seryi 自己 → Excel 右边。App 只转述服务端算的结果，不自己算。
+  ok('存下服务端算的 person（Seryi 的 Lunch → Seryi）', tx?.company?.person==='Seryi', tx?.company);
 
   console.log('\n【4d】单据号：留空由服务端派，App 只负责转述给用户');
   posted = [];
@@ -243,11 +264,11 @@ const browser = await chromium.launch(launchOpts);
   await page.waitForTimeout(500);
   await page.fill('#tx-amount', '20');
   await page.selectOption('#tx-company-category', 'Store');
-  await page.selectOption('#tx-company-reporter', 'XY');
+  await page.selectOption('#tx-company-reporter', 'Seryi');
   await page.evaluate(()=>saveTx());
   await page.waitForTimeout(1500);
   const txStore = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
-  ok('reporter 仍原样送出 XY', posted[0]?.reporter==='XY', posted[0]?.reporter);
+  ok('reporter 仍原样送出 Seryi', posted[0]?.reporter==='Seryi', posted[0]?.reporter);
   ok('但 person 是服务端算的 Boss（→ Excel 左边）', txStore?.company?.person==='Boss', txStore?.company);
 
   console.log('\n【5】送不出去时不能丢账：进队列，恢复后补送');

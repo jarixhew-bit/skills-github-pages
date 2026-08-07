@@ -613,14 +613,14 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       </div>
       <div class="form-group">
         <label class="form-label">谁报的账</label>
+        <!-- 选项由 renderCompanyReporterOptions() 从 butler 拿的名册渲染；
+             这里留的是拿不到名册时的兜底（正本在 butler 的 config/people.json） -->
         <select class="form-input" id="tx-company-reporter">
           <option value="Boss">Boss（老板自己）</option>
-          <option value="XY">XY</option>
-          <option value="G">G</option>
         </select>
         <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
           这是「谁交上来的」，不是最终算谁头上。Excel 分左右两边由 butler 按规则自动算：
-          只有同事<b>自己吃的正餐</b>（XY 的早/午/晚餐、G 的早/午餐）进右边，
+          只有同事<b>自己吃的正餐</b>进右边（每个人算哪几餐见下面括号里的标注），
           其余一律算公司的、进左边 Boss 表。保存后会告诉你实际进了哪边。
         </div>
       </div>
@@ -4102,7 +4102,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-06a';
+const APP_BUILD = '2026-08-06b';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4111,6 +4111,14 @@ const COMPANY_QUEUE_STORAGE = 'expenseTracker_companyQueue';
 const COMPANY_CATS_CACHE = 'expenseTracker_companyCats';
 // 拉不到类别清单时的兜底（butler 的内建 9 类去掉 Petrol）。正常情况下会被服务端返回的
 // 清单覆盖掉——包括用户在 Telegram 教过的自定义类别，那些只有服务端知道。
+// 拿不到服务端名册时的兜底人员列表（正本是 butler 的 config/people.json）。
+// 只在从没成功连过 butler 时才会用到——连上一次就缓存下来了。
+const COMPANY_PEOPLE_FALLBACK = [
+  {code:'Boss', label:'Boss（老板自己）'},
+  {code:'Seryi', label:'Seryi', ownMeals:['Breakfast','Lunch','Dinner']},
+  {code:'Kuang', label:'Kuang', ownMeals:['Breakfast','Lunch']},
+  {code:'Yang', label:'Yang', ownMeals:['Breakfast','Lunch','Dinner']},
+];
 const COMPANY_CATS_FALLBACK = ['Beverage','Bread','Breakfast','Car Service','Car Wash','Dentist','Dinner','Lunch','Petrol','Store','Supper'];
 const COMPANY_PLATE_CATS_FALLBACK = ['Car Service','Car Wash','Petrol'];
 
@@ -4178,9 +4186,9 @@ function syncCompanyTxFields(tx){
   catSel.innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
   if(want && cats.includes(want)) catSel.value = want;
 
-  document.getElementById('tx-company-reporter').value =
+  renderCompanyReporterOptions(
     (tx && tx.company && tx.company.reporter)
-    || localStorage.getItem(COMPANY_REPORTER_STORAGE) || 'Boss';
+    || localStorage.getItem(COMPANY_REPORTER_STORAGE) || 'Boss');
 
   document.getElementById('tx-company-reftag').value =
     (tx && tx.company && tx.company.refTag) || '';
@@ -4214,6 +4222,25 @@ function getCompanyCatsCache(){
   }catch(e){}
   return {categories: COMPANY_CATS_FALLBACK, plateCategories: COMPANY_PLATE_CATS_FALLBACK};
 }
+// 「谁报的账」的人员名册同样由服务端说了算，App 不写死人名——加人/改名只改 butler 的
+// config/people.json，这里下次打开就跟上了（2026-08-06 名册一天改两次之后改成这样）
+function getCompanyPeople(){
+  const p = getCompanyCatsCache().people;
+  return (Array.isArray(p) && p.length) ? p : COMPANY_PEOPLE_FALLBACK;
+}
+function renderCompanyReporterOptions(want){
+  const sel = document.getElementById('tx-company-reporter');
+  if(!sel) return;
+  const people = getCompanyPeople();
+  sel.innerHTML = people.map(p=>{
+    // 括号里标出这个人哪几餐算他自己，省得记规则（Boss 没有 ownMeals，不标）
+    const meals = Array.isArray(p.ownMeals) && p.ownMeals.length
+      ? `（自己的 ${p.ownMeals.map(m=>({Breakfast:'早',Lunch:'午',Dinner:'晚'}[m]||m)).join('/')}餐进右表）` : '';
+    return `<option value="${p.code}">${p.label}${meals}</option>`;
+  }).join('');
+  const codes = people.map(p=>p.code);
+  sel.value = (want && codes.includes(want)) ? want : 'Boss';
+}
 function getCompanyCats(){ return getCompanyCatsCache().categories; }
 // 哪些类别要填车牌由服务端说了算（butler 的 PLATE_CATEGORIES），App 不自己判断
 function getCompanyPlateCats(){ return getCompanyCatsCache().plateCategories || []; }
@@ -4240,7 +4267,10 @@ async function refreshCompanyCategories(){
     if(Array.isArray(body.categories) && body.categories.length){
       localStorage.setItem(COMPANY_CATS_CACHE, JSON.stringify({
         categories: body.categories,
-        plateCategories: Array.isArray(body.plateCategories) ? body.plateCategories : []
+        plateCategories: Array.isArray(body.plateCategories) ? body.plateCategories : [],
+        // 人员名册（谁能报账、各自哪几餐算自己）也存下来，「谁报的账」下拉框从这里渲染。
+        // 旧版服务端不返回 people，这时存 [] → getCompanyPeople() 会退回内建兜底名单。
+        people: Array.isArray(body.people) ? body.people : []
       }));
     }
   }catch(e){ /* 离线或服务端没开，用缓存/兜底，不打扰用户 */ }
