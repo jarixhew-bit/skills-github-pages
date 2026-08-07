@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>记账本</title>
+<script>
+  // 同事模式：网址带 ?staff=1 且这台设备还没存过同事钥匙时，**立刻**把整个 App 盖住。
+  // 放在 head 里同步执行，是为了不留任何「先闪出老板界面」的空档，也不依赖后面
+  // 任何一步不出错。认出身份之后由 applyStaffMode() 把 staff-pending 去掉。
+  try{
+    if(new URLSearchParams(location.search).has('staff')
+       && !(localStorage.getItem('expenseTracker_staffToken') || '').trim()){
+      document.documentElement.classList.add('staff-pending');
+    }
+  }catch(e){}
+</script>
 <meta name="theme-color" content="#1E7A42">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -383,6 +394,11 @@ body.staff-mode .hdr-title::after{ font-size:17px }
   display:none; flex-direction:column; justify-content:center; padding:24px;
 }
 #staff-gate.on{ display:flex }
+/* html 上带 staff-pending 时闸门先盖住：网址带 ?staff=1 就立刻生效，不等任何脚本跑完。
+   2026-08-07 改：原本闸门是 init() 之后才异步弹的，中间那一瞬间完整 App 是可见的，
+   而且前面任何一步出错闸门就永远不出现——同事会直接看到老板的界面。 */
+html.staff-pending #staff-gate{ display:flex }
+html.staff-pending body > *:not(#staff-gate){ visibility:hidden }
 #staff-gate h2{ margin:0 0 8px; font-size:20px }
 #staff-gate p{ color:var(--sub); font-size:14px; margin:0 0 18px; line-height:1.6 }
 </style>
@@ -398,6 +414,8 @@ body.staff-mode .hdr-title::after{ font-size:17px }
          placeholder="••••••••••" style="margin-bottom:14px">
   <button class="btn btn-primary" onclick="staffGateSubmit()" id="staff-gate-btn">确定 / Save</button>
   <div id="staff-gate-msg" style="margin-top:14px;font-size:14px;color:var(--exp);min-height:20px"></div>
+  <div id="staff-gate-build" style="margin-top:auto;padding-top:20px;text-align:center;
+       font-size:11px;color:var(--sub)"></div>
 </div>
 
 <!-- HEADER -->
@@ -4157,7 +4175,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07e';
+const APP_BUILD = '2026-08-07f';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4315,8 +4333,16 @@ function staffSignOut(){
   location.reload();
 }
 
-function openStaffGate(){ document.getElementById('staff-gate').classList.add('on'); }
-function closeStaffGate(){ document.getElementById('staff-gate').classList.remove('on'); }
+function openStaffGate(){
+  const b = document.getElementById('staff-gate-build');
+  if(b) b.textContent = '版本 ' + APP_BUILD;
+  document.documentElement.classList.add('staff-pending');
+  document.getElementById('staff-gate').classList.add('on');
+}
+function closeStaffGate(){
+  document.documentElement.classList.remove('staff-pending');
+  document.getElementById('staff-gate').classList.remove('on');
+}
 
 /** 启动时跑：带了 ?staff=1 才生效，老板那条路完全不碰。 */
 async function initStaffMode(){

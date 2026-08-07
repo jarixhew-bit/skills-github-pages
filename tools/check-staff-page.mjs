@@ -105,6 +105,13 @@ console.log('\n【2】带 ?staff=1 但还没填钥匙：闸门挡住');
   await page.waitForTimeout(1500);
   ok('闸门显示出来', await seeVisible(page, '#staff-gate'));
   ok('闸门上有中英两种说明', /Enter your key/.test(await page.textContent('#staff-gate')));
+  // 闸门必须**一进页面就盖住**，不能等脚本跑完——否则同事会先看到老板的界面闪一下，
+  // 而且前面任何一步出错闸门就永远不出现（2026-08-07 加固）
+  ok('底下的 App 被遮住（不是只叠了一层半透明）',
+     !(await seeVisible(page, '#nav-transactions')));
+  ok('闸门上显示版本号（同事截图时能看出他手机上是哪一版）',
+     /版本\s+\d{4}-\d{2}-\d{2}/.test(await page.textContent('#staff-gate-build')),
+     await page.textContent('#staff-gate-build'));
   // 钥匙错要当场说，不能等他辛苦填完一笔才报错
   await page.fill('#staff-gate-key', 'wrong-key');
   await page.click('#staff-gate-btn');
@@ -113,6 +120,27 @@ console.log('\n【2】带 ?staff=1 但还没填钥匙：闸门挡住');
      (await page.textContent('#staff-gate-msg')).includes('钥匙不对') && await seeVisible(page, '#staff-gate'),
      await page.textContent('#staff-gate-msg'));
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---------- 【2b】脚本出错也不能露出老板的界面 ----------
+console.log('\n【2b】就算后面的脚本整个挂掉，闸门也必须已经盖住');
+{
+  const { ctx, page } = await newCtx();
+  // 在任何脚本跑之前就把 localStorage 弄坏，模拟「启动流程中途抛错」
+  await page.addInitScript(() => {
+    const realSetItem = Storage.prototype.setItem;
+    let n = 0;
+    Storage.prototype.setItem = function(...a){
+      if(++n > 2) throw new Error('模拟启动中途抛错');
+      return realSetItem.apply(this, a);
+    };
+  });
+  await page.goto(APP + '?staff=1', { waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1500);
+  ok('闸门仍然盖住了（head 里同步加的遮罩，不依赖后面的脚本）',
+     await seeVisible(page, '#staff-gate'));
+  ok('老板的界面没露出来', !(await seeVisible(page, '#nav-transactions')));
   await ctx.close();
 }
 
