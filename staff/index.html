@@ -4421,12 +4421,12 @@ function renderCompanyLedger(){
     `<div class="led-chip">${ledEsc(x.name)} ${fmt(x.total,'USD')} · ${x.count} 笔</div>`).join('');
   // 记录行放在「谁记的」那一块底下，所以行里不再重复写一次「X 记」——
   // 一块里每一行都是同一个人记的，重复写只会把真正要看的「算谁的」挤到后面
-  const rows = (list) => list.map(r => `
+  const rows = (list, showReporter) => list.map(r => `
     <div class="led-row">
       <div class="led-no">${ledEsc(r.billNo)}</div>
       <div class="led-mid">
         <div>${ledEsc(r.categoryEn)}${r.note ? ` <span class="led-who">— ${ledEsc(r.note)}</span>` : ''}</div>
-        <div class="led-who">算 ${ledEsc(r.person)} 的（Excel ${r.side==='boss'?'左':'右'}表）${
+        <div class="led-who">${showReporter ? `${ledEsc(r.reporter)} 记　·　` : ''}算 ${ledEsc(r.person)} 的（Excel ${r.side==='boss'?'左':'右'}表）${
           r.hasPhoto ? '' : '　·　<span class="led-warn">缺收据</span>'}</div>
       </div>
       <div class="led-amt">${fmt(r.amountUsd,'USD')}</div>
@@ -4440,7 +4440,13 @@ function renderCompanyLedger(){
         <div class="led-day-date">${day.date}　<span class="led-who">${day.count} 笔${
           day.missingPhoto ? ` · <span class="led-warn">${day.missingPhoto} 笔缺收据</span>` : ''}</span></div>
       </div>
-      ${(day.byReporter || []).map(g => `
+      ${(day.byReporter
+         // 兜底：服务端还是旧版（没有 byReporter）时，退回平铺一天的清单，
+         // 而不是渲染出一片空白。只是换个排版，一个数都不重算；这一路没有分块，
+         // 所以行里要自己写明「谁记的」（name 为 null 就是这一路）。
+         || [{ name:null, records:day.records || [] }]).map(g => g.name === null
+        ? rows(g.records, true)
+        : `
         <div class="led-person">
           <div class="led-person-name">${ledEsc(g.name)}<span class="led-who">　${g.count} 笔${
             g.missingPhoto ? ` · <span class="led-warn">${g.missingPhoto} 笔缺收据</span>` : ''}</span></div>

@@ -71,10 +71,20 @@ const browser = await chromium.launch(launchOpts);
         }
         const mk = rows => Math.round(rows.reduce((s,x)=>s+x.amountUsd,0)*100)/100;
         const all = [...days.values()].flat();
+        // 每天再按「谁记的」分块——真服务端从 2026-08-07 起就是这个形状
+        // （companyExpenseLedgerForApp 的 byReporter），假的这边要跟着，
+        // 不然测的是一个线上不存在的响应
+        const grp = rows => {
+          const m = new Map();
+          for (const r of rows) { if (!m.has(r.reporter)) m.set(r.reporter, []); m.get(r.reporter).push(r); }
+          return [...m.entries()].map(([name, rs]) =>
+            ({ name, count:rs.length, total:mk(rs), missingPhoto:0, records:rs }));
+        };
         return route.fulfill({ status:200, contentType:'application/json', headers:h,
           body: JSON.stringify({ status:'ok', month: todayStr.slice(0,7), scope:'owner',
             days:[...days.entries()].sort((a,b)=>b[0].localeCompare(a[0]))
-              .map(([date, rows])=>({ date, count:rows.length, total:mk(rows), missingPhoto:0, records:rows })),
+              .map(([date, rows])=>({ date, count:rows.length, total:mk(rows), missingPhoto:0,
+                                      byReporter:grp(rows), records:rows })),
             count: all.length, total: mk(all), missingPhoto:0,
             byPerson:[], byReporter:[], orphan:0 }) });
       }
@@ -100,7 +110,11 @@ const browser = await chromium.launch(launchOpts);
       const table = person === 'Boss' ? 'boss' : 'assist';
       const refTag = req.items?.[0]?.refTag
         || String(serverBook.filter(r => r.table === table).length + 1);
-      serverBook.push({ id, person, table, refTag, amount: req.items?.[0]?.amount });
+      // reporter / amountUsd 也要存下来：账本清单按「谁记的」分块、每块带小计，
+      // 不存的话拉回来的每一笔都是「没有名字、0 块钱」，分块那几条断言等于没测
+      serverBook.push({ id, person, table, refTag, reporter: rep,
+                        amount: req.items?.[0]?.amount,
+                        amountUsd: Number(req.items?.[0]?.amount) || 0 });
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
         body: JSON.stringify({ status:'ok', records:[{id, person, refTag}], total:0 }) });
     }
@@ -486,10 +500,21 @@ const browser = await chromium.launch(launchOpts);
      && srv.days.every((d,i) => dayTotals[i].includes(d.total.toFixed(2))),
      {dayTotals, srv: srv.days.map(d=>d.total)});
   const nos = await page.$$eval('.led-no', els => els.map(e => e.textContent.trim()));
-  const srvNos = srv.days.flatMap(d => d.records.map(r => r.billNo));
+  // 顺序跟着页面走：一天里先按「谁记的」分块，块内才是那几笔（2026-08-07 起的排法）
+  const srvNos = srv.days.flatMap(d => d.byReporter.flatMap(g => g.records.map(r => r.billNo)));
   ok('单号照抄服务端给的（App 不自己编）',
      JSON.stringify(nos) === JSON.stringify(srvNos), {nos, srvNos});
-  ok('看得到是谁记的', /记/.test(ledTxt), ledTxt.slice(0,120));
+  // 2026-08-07 起：一天里按「谁记的」分块，一个人一块（他那几笔＋他的小计），
+  // 最后才是当天总账（用户明确要的顺序，对账是一个人一叠纸单地对）
+  const reporters = [...new Set(srv.days.flatMap(d => d.records.map(r => r.reporter)))];
+  ok('看得到是谁记的（每个人自成一块）',
+     reporters.length > 0 && reporters.every(n => ledTxt.includes(n)), {reporters, ledTxt: ledTxt.slice(0,200)});
+  ok('当天总账排在人的后面，不是摆最前面',
+     srv.days.every(() => true) && ledTxt.indexOf('当天总账') > ledTxt.indexOf(reporters[0]),
+     ledTxt.slice(0,200));
+  ok('每块的小计加起来等于当天总账',
+     srv.days.every(d => Math.abs(d.byReporter.reduce((t,g)=>t+g.total,0) - d.total) < 0.005),
+     srv.days.map(d => [d.total, d.byReporter.map(g=>g.total)]));
   await page.evaluate(()=>closeModal('modal-company-ledger'));
 
   // 同事的钥匙调这个会被服务端拒（forbidden）——那就不该摆这张卡出来
