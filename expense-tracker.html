@@ -4102,7 +4102,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07a';
+const APP_BUILD = '2026-08-07b';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4119,7 +4119,7 @@ const COMPANY_PEOPLE_FALLBACK = [
   {code:'Kuang', label:'Kuang', ownMeals:['Breakfast','Lunch']},
   {code:'Yang', label:'Yang', ownMeals:['Breakfast','Lunch','Dinner']},
 ];
-const COMPANY_CATS_FALLBACK = ['Beverage','Bread','Breakfast','Car Service','Car Wash','Dentist','Dinner','Lunch','Petrol','Store','Supper'];
+const COMPANY_CATS_FALLBACK = ['Beverage','Bread','Breakfast','Car Service','Car Wash','Dentist','Dinner','Driver Meal','Lunch','Petrol','Store','Supper'];
 const COMPANY_PLATE_CATS_FALLBACK = ['Car Service','Car Wash','Petrol'];
 
 // 公司类别 → App 自己的类别。只为了让公司账在 App 的列表和统计里正常显示，
