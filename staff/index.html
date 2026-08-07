@@ -547,7 +547,9 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <!-- date -->
     <div class="form-group">
       <label class="form-label" data-en="Date">日期</label>
-      <input class="form-input" id="tx-date" type="date" oninput="state.dateTouchedByUser=true">
+      <input class="form-input" id="tx-date" type="date"
+             oninput="state.dateTouchedByUser=true;syncDateHint()">
+      <div id="tx-date-hint" style="display:none;margin-top:6px;font-size:12px;color:#e67e22"></div>
     </div>
     <!-- 公司报账专用字段：只在当前账户勾了「公司账户」时显示，见 syncCompanyTxFields() -->
     <div id="tx-company-wrap" style="display:none">
@@ -1255,9 +1257,37 @@ function monthTxs(accId, year, month){
 function monthName(year, month){
   return `${year} 年 ${month+1} 月`;
 }
+/**
+ * 今天是几号——按**手机本地时区**算，不能用 toISOString()。
+ * toISOString() 给的是 UTC 日期：金边是 UTC+7，凌晨 0 点到早上 7 点之间它会回昨天，
+ * 于是那段时间记的账全部落到前一天，「今天合计」也对不上。
+ */
 function today(){
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
 }
+/**
+ * 日期栏填的不是今天时，在它底下亮一行提醒。
+ *
+ * 为什么要有（2026-08-07 踩过）：收据照片的 OCR 会把**票面上的日期**填进日期栏，
+ * 拍一张旧收据这笔就记成那天。同事不会注意（日期栏在折叠区、字又小），老板首屏看
+ * 「今天合计」是 0，以为账根本没进系统——真正的原因只是那笔记到别的日子去了。
+ * 补记前几天的账是合法用法，所以不拦，只是把「记在哪天」当场说出来。
+ */
+function syncDateHint(){
+  const el = document.getElementById('tx-date-hint');
+  const dateEl = document.getElementById('tx-date');
+  if(!el || !dateEl) return;
+  const v = dateEl.value;
+  if(!v || v === today()){ el.style.display = 'none'; return; }
+  // 同事版有中英切换（tt 由它注入），App 里没有就照原样显示中文
+  const _t = (typeof tt === 'function') ? tt : (zh) => zh;
+  el.style.display = 'block';
+  el.textContent = _t(`⚠️ 这笔记在 ${v}，不是今天（${today()}）`,
+                      `⚠️ Dated ${v}, not today (${today()})`);
+}
+
 function uid(){ return 'id_'+Date.now()+'_'+Math.random().toString(36).slice(2,7); }
 
 function toast(msg){
@@ -1358,6 +1388,12 @@ function switchAccount(id){
   if(state.currentTab==='transactions') renderTxList();
   if(state.currentTab==='analytics') renderAnalytics();
   closeModal('modal-acc-switch');
+  // 切到公司账户时顺手刷新公司账本：那张卡只在这边出现，刚切过来看到的不该是
+  // 十分钟前的数（force 只在这一下打一次，不会跟 60 秒缓存打架）
+  const acc = getAcc(id);
+  if(acc && acc.isCompany && getCompanyToken())
+    fetchCompanyLedger(ledMonthNow(), {force:true})
+      .then(()=>{ if(state.currentTab==='overview') renderOvCompany(); });
 }
 
 // ===================== TX LIST =====================
@@ -1696,6 +1732,7 @@ function showAddTx(){
   document.getElementById('tx-desc').value = '';
   document.getElementById('tx-date').value = today();
   state.dateTouchedByUser = false;
+  syncDateHint();
   document.getElementById('tx-delete-wrap').style.display = 'none';
   document.getElementById('type-exp').classList.add('active');
   document.getElementById('type-inc').classList.remove('active');
@@ -1726,6 +1763,7 @@ function editTx(id){
   document.getElementById('tx-desc').value = t.description||'';
   document.getElementById('tx-date').value = t.date;
   state.dateTouchedByUser = false;
+  syncDateHint();
   document.getElementById('tx-delete-wrap').style.display = 'block';
   document.getElementById('type-exp').classList.toggle('active', t.type==='expense');
   document.getElementById('type-inc').classList.toggle('active', t.type==='income');
@@ -3711,7 +3749,7 @@ async function runReceiptSmartOCR(sourceCanvas){
       prefilled = true;
     }
 
-    if(prefilled) toast('✨ AI 已自动识别，请核对');
+    if(prefilled){ syncDateHint(); toast('✨ AI 已自动识别，请核对'); }
     else await runReceiptOCRPrefill(sourceCanvas); // AI 没识别出东西，退回本地识别兜底
   }catch(e){
     console.error('AI receipt OCR failed, falling back to local OCR (ignored):', e);
@@ -3878,7 +3916,7 @@ async function runReceiptOCRPrefill(sourceCanvas){
       if(d!==null){ dateEl.value = d; prefilled = true; }
     }
 
-    if(prefilled) toast('已自动识别，请核对金额');
+    if(prefilled){ syncDateHint(); toast('已自动识别，请核对金额'); }
   }catch(e){
     console.error('Receipt OCR prefill failed (ignored):', e);
   }
@@ -3929,7 +3967,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07i';
+const APP_BUILD = '2026-08-07j';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -4278,10 +4316,18 @@ async function fetchCompanyLedger(month, opts){
   return ledState.data;
 }
 
-/** 首屏那张卡：今天合计 + 本月合计 + 缺收据。点开是完整清单。 */
+/**
+ * 首屏那张卡：今天合计 + 本月合计 + 缺收据。点开是完整清单。
+ *
+ * 只在**当前账户是公司账户**时出现（2026-08-07 用户要求：「公司账本能不能只显示在
+ * 公司那一边，私人账看到不太对」）。私人账那一屏讲的是自己的钱，混进一张全公司的
+ * 账不但看着别扭，扫一眼还容易把公司的数当成自己的。切到公司账户它就回来。
+ */
 function renderOvCompany(){
   const el = document.getElementById('ov-company');
   if(!el) return;
+  const acc = curAcc();
+  if(!acc || !acc.isCompany){ el.style.display = 'none'; return; }
   if(!getCompanyToken()){ el.style.display = 'none'; return; }
   const d = ledState.data;
   // 同事钥匙看不到全员，那就不摆这张卡（不是错误，是本来就不该看到）
@@ -4298,13 +4344,21 @@ function renderOvCompany(){
   const dayToday = (d.days || []).find(x => x.date === t);
   const todayTotal = dayToday ? dayToday.total : 0;
   const todayCount = dayToday ? dayToday.count : 0;
+  // 今天是 0 但这个月有账时，把「最近有记录的那天」写出来。
+  // 为什么（2026-08-07 踩过）：同事拍旧收据，OCR 把票面日期填进去，那笔就记到别的
+  // 日子；老板看到大大的 $0.00 会以为账没进系统，其实只是不在今天。指出那天在哪，
+  // 一眼就分得清「今天真没人记」和「记到别天去了」。
+  const latestDay = (d.days || []).find(x => x.date !== t);   // days 由服务端按日期倒序
+  const zeroNote = (todayCount === 0 && d.count > 0 && latestDay)
+    ? `　·　最近一天 ${latestDay.date} ${fmt(latestDay.total, 'USD')}（${latestDay.count} 笔）` : '';
   el.innerHTML = `
     <div class="led-card-top">
       <div class="led-card-title">📒 公司账本（全员）· 今天</div>
       <div class="led-card-link">看全部 →</div>
     </div>
     <div class="led-today">${fmt(todayTotal, 'USD')}</div>
-    <div class="led-sub">今天 ${todayCount} 笔　·　本月 ${d.count} 笔 ${fmt(d.total, 'USD')}</div>
+    <div class="led-sub">${todayCount === 0 ? '今天还没有人记账' : `今天 ${todayCount} 笔`}${zeroNote}</div>
+    <div class="led-sub">本月 ${d.count} 笔 ${fmt(d.total, 'USD')}</div>
     ${d.missingPhoto ? `<div class="led-sub led-warn">⚠️ 本月有 ${d.missingPhoto} 笔没有收据照片</div>` : ''}`;
 }
 
@@ -4556,6 +4610,8 @@ function staffApplyLang(){
   if(btn) btn.textContent = staffLang === 'en' ? '中' : 'EN';
   document.documentElement.lang = staffLang === 'en' ? 'en' : 'zh';
   if(state.currentTab === 'transactions') renderTxList();
+  // 日期提醒是脚本画的，不带 data-en，切语言时要自己重画一次
+  syncDateHint();
 }
 function staffToggleLang(){
   staffLang = staffLang === 'en' ? 'zh' : 'en';

@@ -34,6 +34,22 @@ const ok = (name, cond, got) => {
 };
 
 const SERYI_KEY = 'seryi-key-xyz';
+const BOSS_KEY = 'boss-key-abc';
+
+// 老板 App 首屏那张「公司账本（全员）」用的假账本。日期**故意不是今天**：
+// 真实踩过的情形就是同事拍旧收据、OCR 把票面日期填进去，那笔记到别天，老板看到
+// 今天合计 $0.00 以为账没进系统。断言要守住「0 的旁边有话说清楚」。
+const LEDGER_DAY = '2026-01-05';
+const LEDGER_FIXTURE = {
+  status:'ok', month:'2026-01', scope:'owner',
+  days:[{ date:LEDGER_DAY, count:1, total:4.49, missingPhoto:0,
+          records:[{ id:'rec_1', date:LEDGER_DAY, categoryEn:'Lunch', billNo:'1', side:'assist',
+                     person:'Seryi', reporter:'Seryi', amountUsd:4.49, note:null, hasPhoto:true }] }],
+  count:1, total:4.49, missingPhoto:0,
+  byPerson:[{ name:'Seryi', count:1, total:4.49 }],
+  byReporter:[{ name:'Seryi', count:1, total:4.49 }],
+  orphan:0,
+};
 
 // 假 butler：只认一把钥匙，按钥匙回身份。「看不到别人的记录」那条守在服务端
 // （butler-bot 的 tests/staff-access.test.mjs），这份只守页面这一侧。
@@ -43,8 +59,8 @@ function makeBook() {
   };
 }
 
-async function newPage({ offline = false, lang = 'zh' } = {}) {
-  const ctx = await browser.newContext();
+async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
+  const ctx = await browser.newContext(tz ? { timezoneId: tz } : {});
   // 明确钉住语言再断言文案：headless Chromium 的 navigator.language 是 en-US，
   // 靠「默认语言」写断言会全挂。只在还没有选择时写入，否则 addInitScript 会在
   // 刷新时把用户刚点的语言盖掉，「刷新后记住选择」那条就永远测不出来（踩过）。
@@ -72,6 +88,12 @@ async function newPage({ offline = false, lang = 'zh' } = {}) {
     }
     const req = JSON.parse(route.request().postData() || '{}');
     posted.push(req);
+    // 全员账本：只有老板那把钥匙拿得到，同事的钥匙回 forbidden（跟真服务端一样）。
+    // 放在 book 检查之前，因为老板的钥匙不在同事名册里。
+    if (req.action === 'ledger')
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify(req.token === BOSS_KEY ? LEDGER_FIXTURE
+          : { status:'forbidden', message:'这个功能只有老板的钥匙能用' }) });
     if (!book[req.token]) return route.fulfill({ status:401, contentType:'application/json',
       headers:h, body: JSON.stringify({ error:'密钥不对' }) });
     if (req.action === 'mine')
@@ -428,6 +450,76 @@ console.log('\n【11】老板自己的 App 没受影响');
   ok('App 的概览页还在', (await page.locator('#tab-overview').count()) === 1);
   ok('App 的设置页还在', (await page.locator('#tab-settings').count()) === 1);
   ok('App 里没有混进同事版的东西', (await page.locator('#staff-lang-btn').count()) === 0);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【12】日期不是今天要当场说出来 ----------
+console.log('\n【12】记的不是今天时，日期底下要有提醒（OCR 会填票面日期）');
+{
+  // 钉在金边时区的凌晨 3 点（UTC 那时还是前一天）：这一刻 toISOString() 会回昨天，
+  // 本地日历回今天。不钉住的话容器跑在 UTC，两种写法算出来一样，这条测了等于没测。
+  const h = await newPage({ tz:'Asia/Phnom_Penh' });
+  const { page, errs } = h;
+  await page.clock.setFixedTime(new Date('2026-08-06T20:00:00Z'));
+  await signIn(h);
+  ok('today() 按手机本地日期算（UTC 那时还是 6 号）',
+     (await page.evaluate(() => today())) === '2026-08-07',
+     await page.evaluate(() => today()));
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  const hint = page.locator('#tx-date-hint');
+  ok('刚打开时是今天，没有多余提醒', !(await hint.isVisible()));
+
+  await page.fill('#tx-date', LEDGER_DAY);
+  await page.waitForTimeout(200);
+  ok('改成别的日子：提醒出现', await hint.isVisible());
+  ok('提醒里写明记在哪天', (await hint.textContent() || '').includes(LEDGER_DAY));
+
+  // 英文模式下不能漏成中文——同事有人只读英文。语言键在表单底下点不到，
+  // 按钮本身在【8】已经点过了，这里直接调切换函数
+  await page.evaluate(() => staffToggleLang());
+  await page.waitForTimeout(300);
+  ok('切语言后提醒当场跟着变成英文', (await hint.textContent() || '').includes('not today'),
+     await hint.textContent());
+
+  // 改回今天要收起来（不能一直挂着，挂着就没人看了）
+  const t = await page.evaluate(() => today());
+  await page.fill('#tx-date', t);
+  await page.waitForTimeout(200);
+  ok('改回今天：提醒收起', !(await hint.isVisible()));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【13】公司账本卡只出现在公司账户那一边 ----------
+console.log('\n【13】老板 App：公司账本卡只在公司账户那边，今天是 0 也要说清楚');
+{
+  const h = await newPage();
+  const { page, errs } = h;
+  await h.ctx.addInitScript(k => localStorage.setItem('expenseTracker_companyToken', k), BOSS_KEY);
+  await page.goto(APP, { waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1200);
+
+  // 造两个账户：一个私人（默认那个）、一个公司，然后来回切
+  await page.evaluate(async () => {
+    data.accounts[0].isCompany = false;
+    data.accounts.push({ id:'acc-co', name:'公司', currency:'USD', color:'#334155', isCompany:true });
+    saveData();
+    await fetchCompanyLedger(ledMonthNow(), { force:true });
+  });
+  await page.evaluate(() => switchAccount(data.accounts[0].id));
+  await page.waitForTimeout(400);
+  ok('私人账户那一屏：卡不出现', !(await page.locator('#ov-company').isVisible()));
+
+  await page.evaluate(() => switchAccount('acc-co'));
+  await page.waitForTimeout(700);
+  const card = page.locator('#ov-company');
+  ok('切到公司账户：卡回来了', await card.isVisible());
+  const txt = (await card.textContent() || '').replace(/\s+/g, ' ');
+  ok('今天没人记账时不是干摆一个 0', txt.includes('今天还没有人记账'), txt);
+  ok('指出最近有记录的那天在哪', txt.includes(LEDGER_DAY), txt);
+  ok('本月合计仍然看得到', txt.includes('4.49'), txt);
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }

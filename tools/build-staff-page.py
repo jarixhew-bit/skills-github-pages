@@ -520,6 +520,8 @@ function staffApplyLang(){
   if(btn) btn.textContent = staffLang === 'en' ? '中' : 'EN';
   document.documentElement.lang = staffLang === 'en' ? 'en' : 'zh';
   if(state.currentTab === 'transactions') renderTxList();
+  // 日期提醒是脚本画的，不带 data-en，切语言时要自己重画一次
+  syncDateHint();
 }
 function staffToggleLang(){
   staffLang = staffLang === 'en' ? 'zh' : 'en';
