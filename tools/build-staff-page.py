@@ -144,6 +144,13 @@ def build(src: str) -> str:
     for old, new, n in STORAGE_KEYS:
         s = replace_n(s, old, new, f"存储位 {old}", n)
 
+    # ---------- 5b) 同源的大件资源在上一层目录 ----------
+    # opencv.js 和 tesseract 都刻意优先走**同源**文件（酒店/商家的白名单 WiFi 连不上
+    # CDN，见源码里那两段注释）。同事版在 staff/ 子目录，路径不加 ../ 会 404，
+    # 于是每次拍收据都退到 CDN——正好在最需要同源的那种网络里退掉了。
+    for rel in RELATIVE_ASSETS:
+        s = replace_once(s, f"'{rel}'", f"'../{rel}'", f"同源资源 {rel}")
+
     # ---------- 6) PWA：自己的 manifest 和 service worker ----------
     s = replace_once(s, '<link rel="manifest" href="expense-tracker.webmanifest">',
                      '<link rel="manifest" href="manifest.webmanifest">', "manifest 链接")
@@ -198,6 +205,16 @@ STORAGE_KEYS = [
     ("'expenseTracker_aiProvider'",      "'staffExpense_aiProvider'", 1),
     ("'expenseTracker_aiKey_'",          "'staffExpense_aiKey_'",     1),
     ("'expenseTracker_geminiKey'",       "'staffExpense_geminiKey'",  1),
+]
+
+# 页面用相对路径引的同源大件（收据识别用的 opencv / tesseract）。
+# 同事版在 staff/ 子目录，这些都要往上一层找。
+RELATIVE_ASSETS = [
+    "expense-tracker-opencv.js",
+    "vendor/tesseract/tesseract.min.js",
+    "vendor/tesseract/worker.min.js",
+    "vendor/tesseract/",
+    "vendor/tesseract/lang",
 ]
 
 # 同事版会看到的固定文案（左边必须跟 expense-tracker.html 里的一字不差）

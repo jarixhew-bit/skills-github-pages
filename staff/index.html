@@ -2918,7 +2918,7 @@ async function tryFetchRemoteAttachment(id){
 // copy 404s for some deploy reason, each bounded by its own timeout so a
 // dead host doesn't block trying the next.
 const OPENCV_SOURCES = [
-  'expense-tracker-opencv.js',
+  '../expense-tracker-opencv.js',
   'https://docs.opencv.org/4.x/opencv.js',
   'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js',
   'https://unpkg.com/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js'
@@ -3707,7 +3707,7 @@ let _tesseractIsLocal = false;
 // AI 识别和本地 OCR 双双挂掉，等于完全不能用。只要这个页面本身打得开，同源文件就一定
 // 连得到。外部 CDN 只留作"同源文件意外 404"的备援，不删但排在后面。
 const TESSERACT_SOURCES = [
-  'vendor/tesseract/tesseract.min.js',
+  '../vendor/tesseract/tesseract.min.js',
   'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
   'https://unpkg.com/tesseract.js@5/dist/tesseract.min.js'
 ];
@@ -3715,9 +3715,9 @@ const TESSERACT_SOURCES = [
 // tesseract 默认会各自去外部网域抓（worker 和 wasm 抓 CDN、语言包抓
 // tessdata.projectnaptha.com），只把主脚本改成同源是不够的，那三个照样会被墙掉。
 const TESSERACT_LOCAL_OPTS = {
-  workerPath: 'vendor/tesseract/worker.min.js',
-  corePath:   'vendor/tesseract/',       // 目录：tesseract 自己按有没有 SIMD 挑对应的 wasm
-  langPath:   'vendor/tesseract/lang',
+  workerPath: '../vendor/tesseract/worker.min.js',
+  corePath:   '../vendor/tesseract/',       // 目录：tesseract 自己按有没有 SIMD 挑对应的 wasm
+  langPath:   '../vendor/tesseract/lang',
   gzip: false                            // 语言包是未压缩的 .traineddata，见 workflow 里的说明
 };
 

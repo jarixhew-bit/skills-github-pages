@@ -370,6 +370,36 @@ console.log('\n【10】跟老板的 App 同源，存储位必须分开');
   await h.ctx.close();
 }
 
+// ---------- 【10b】收据识别的大件必须是同源那份 ----------
+console.log('\n【10b】拍收据要用的 opencv / tesseract，同源那份得真的取得到');
+{
+  // 这两样都刻意优先走仓库里的同源文件——酒店/商家的白名单 WiFi 连不上 CDN，
+  // 而同事正好常在那种网络里。同事版在 staff/ 子目录，路径少个 ../ 就会 404，
+  // 于是每次拍收据都悄悄退到 CDN：不会报错，只会在最需要的时候用不了。
+  const h = await signIn(await newPage());
+  const { page } = h;
+  const probe = await page.evaluate(async () => {
+    // 语言包按页面自己声明的 gzip 设定拼文件名，别在这里猜
+    const lang = TESSERACT_LOCAL_OPTS.langPath + '/eng.traineddata'
+               + (TESSERACT_LOCAL_OPTS.gzip === false ? '' : '.gz');
+    const srcs = [OPENCV_SOURCES[0], TESSERACT_SOURCES[0],
+                  TESSERACT_LOCAL_OPTS.workerPath,
+                  TESSERACT_LOCAL_OPTS.corePath + 'tesseract-core-simd.wasm.js', lang];
+    const out = [];
+    for (const s of srcs) {
+      const url = new URL(s, location.href).href;
+      let status = 0;
+      try { status = (await fetch(url, { method:'GET' })).status; } catch (e) { status = -1; }
+      out.push({ src: s, url, status });
+    }
+    return out;
+  });
+  for (const r of probe) {
+    ok(`同源取得到 ${r.src}`, r.status === 200, r);
+  }
+  await h.ctx.close();
+}
+
 // ---------- 【11】源码那份没被改坏 ----------
 console.log('\n【11】老板自己的 App 没受影响');
 {
