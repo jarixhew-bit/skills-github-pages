@@ -378,6 +378,17 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   padding:12px 0 6px;border-bottom:1px solid var(--border);margin-bottom:6px}
 .led-day-date{font-size:14px;font-weight:600;color:var(--text)}
 .led-day-total{font-size:16px;font-weight:700;color:var(--text)}
+/* 一天里再按人分块：一个人一块（他那几笔＋他的小计），最后才是当天总账。
+   顺序是用户 2026-08-07 明确要的——对账是一个人一叠纸单地对。 */
+.led-person{display:flex;align-items:baseline;justify-content:space-between;
+  padding:8px 0 2px;margin-top:2px}
+.led-person-name{font-size:13px;font-weight:600;color:var(--text)}
+.led-person-total{font-size:14px;font-weight:700;color:var(--text)}
+.led-day-sum{display:flex;align-items:baseline;justify-content:space-between;
+  margin:8px 0 14px;padding-top:8px;border-top:2px solid var(--border);
+  font-size:13px;font-weight:600;color:var(--text)}
+/* 缩进一格，让「这几笔是这个人的」一眼看得出来 */
+.led-person-rows{padding-left:10px;border-left:2px solid var(--border)}
 .led-row{display:flex;align-items:baseline;gap:8px;padding:5px 0;font-size:13px}
 .led-no{flex:none;min-width:26px;font-weight:700;color:var(--p)}
 .led-mid{flex:1;min-width:0}
@@ -3977,7 +3988,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07k';
+const APP_BUILD = '2026-08-07m';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -4408,12 +4419,14 @@ function renderCompanyLedger(){
   // 谁记的：三个人各报了多少，一眼看完
   const chips = (d.byReporter || []).map(x =>
     `<div class="led-chip">${ledEsc(x.name)} ${fmt(x.total,'USD')} · ${x.count} 笔</div>`).join('');
+  // 记录行放在「谁记的」那一块底下，所以行里不再重复写一次「X 记」——
+  // 一块里每一行都是同一个人记的，重复写只会把真正要看的「算谁的」挤到后面
   const rows = (list) => list.map(r => `
     <div class="led-row">
       <div class="led-no">${ledEsc(r.billNo)}</div>
       <div class="led-mid">
         <div>${ledEsc(r.categoryEn)}${r.note ? ` <span class="led-who">— ${ledEsc(r.note)}</span>` : ''}</div>
-        <div class="led-who">${ledEsc(r.reporter)} 记　·　算 ${ledEsc(r.person)} 的（Excel ${r.side==='boss'?'左':'右'}表）${
+        <div class="led-who">算 ${ledEsc(r.person)} 的（Excel ${r.side==='boss'?'左':'右'}表）${
           r.hasPhoto ? '' : '　·　<span class="led-warn">缺收据</span>'}</div>
       </div>
       <div class="led-amt">${fmt(r.amountUsd,'USD')}</div>
@@ -4426,9 +4439,18 @@ function renderCompanyLedger(){
       <div class="led-day">
         <div class="led-day-date">${day.date}　<span class="led-who">${day.count} 笔${
           day.missingPhoto ? ` · <span class="led-warn">${day.missingPhoto} 笔缺收据</span>` : ''}</span></div>
-        <div class="led-day-total">${fmt(day.total,'USD')}</div>
       </div>
-      ${rows(day.records)}`).join('')}
+      ${(day.byReporter || []).map(g => `
+        <div class="led-person">
+          <div class="led-person-name">${ledEsc(g.name)}<span class="led-who">　${g.count} 笔${
+            g.missingPhoto ? ` · <span class="led-warn">${g.missingPhoto} 笔缺收据</span>` : ''}</span></div>
+          <div class="led-person-total">${fmt(g.total,'USD')}</div>
+        </div>
+        <div class="led-person-rows">${rows(g.records)}</div>`).join('')}
+      <div class="led-day-sum">
+        <div>当天总账</div>
+        <div class="led-day-total">${fmt(day.total,'USD')}</div>
+      </div>`).join('')}
     ${d.orphan ? `<div class="led-sub led-warn" style="margin-top:12px">⚠️ 另有 ${d.orphan} 笔归属人不在名册里，不会进 Excel</div>` : ''}`;
 }
 

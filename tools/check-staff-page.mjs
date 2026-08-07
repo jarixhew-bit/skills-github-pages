@@ -40,14 +40,22 @@ const BOSS_KEY = 'boss-key-abc';
 // 真实踩过的情形就是同事拍旧收据、OCR 把票面日期填进去，那笔记到别天，老板看到
 // 今天合计 $0.00 以为账没进系统。断言要守住「0 的旁边有话说清楚」。
 const LEDGER_DAY = '2026-01-05';
+const R_SERYI = { id:'rec_1', date:LEDGER_DAY, categoryEn:'Lunch', billNo:'1', side:'assist',
+                  person:'Seryi', reporter:'Seryi', amountUsd:4.49, note:null, hasPhoto:true };
+const R_KUANG = { id:'rec_2', date:LEDGER_DAY, categoryEn:'Store', billNo:'1', side:'boss',
+                  person:'Boss', reporter:'Kuang', amountUsd:20.00, note:null, hasPhoto:false };
 const LEDGER_FIXTURE = {
   status:'ok', month:'2026-01', scope:'owner',
-  days:[{ date:LEDGER_DAY, count:1, total:4.49, missingPhoto:0,
-          records:[{ id:'rec_1', date:LEDGER_DAY, categoryEn:'Lunch', billNo:'1', side:'assist',
-                     person:'Seryi', reporter:'Seryi', amountUsd:4.49, note:null, hasPhoto:true }] }],
-  count:1, total:4.49, missingPhoto:0,
-  byPerson:[{ name:'Seryi', count:1, total:4.49 }],
-  byReporter:[{ name:'Seryi', count:1, total:4.49 }],
+  days:[{ date:LEDGER_DAY, count:2, total:24.49, missingPhoto:1,
+          // 一天里按「谁记的」分块，服务端算好送过来（App 一个数都不自己加）
+          byReporter:[
+            { name:'Seryi', count:1, total:4.49,  missingPhoto:0, records:[R_SERYI] },
+            { name:'Kuang', count:1, total:20.00, missingPhoto:1, records:[R_KUANG] },
+          ],
+          records:[R_SERYI, R_KUANG] }],
+  count:2, total:24.49, missingPhoto:1,
+  byPerson:[{ name:'Boss', count:1, total:20.00 }, { name:'Seryi', count:1, total:4.49 }],
+  byReporter:[{ name:'Seryi', count:1, total:4.49 }, { name:'Kuang', count:1, total:20.00 }],
   orphan:0,
 };
 
@@ -613,7 +621,24 @@ console.log('\n【13】老板 App：公司账本卡只在公司账户那边，�
   const txt = (await card.textContent() || '').replace(/\s+/g, ' ');
   ok('今天没人记账时不是干摆一个 0', txt.includes('今天还没有人记账'), txt);
   ok('指出最近有记录的那天在哪', txt.includes(LEDGER_DAY), txt);
-  ok('本月合计仍然看得到', txt.includes('4.49'), txt);
+  ok('本月合计仍然看得到', txt.includes('24.49'), txt);
+
+  // 点开完整清单：一天里要按人分块，当天总账摆最后
+  // （2026-08-07 用户明确要的排法：「seryi 一笔、kuang 一笔、以此类推，然后才来个总账」）
+  await page.click('#ov-company');
+  await page.waitForTimeout(900);
+  const led = (await page.textContent('#led-body') || '').replace(/\s+/g, ' ');
+  ok('一天里分成两块：Seryi 一块', /Seryi\s*1 笔/.test(led), led.slice(0, 400));
+  ok('一天里分成两块：Kuang 一块', /Kuang\s*1 笔/.test(led), led.slice(0, 400));
+  ok('每块带自己的小计', led.includes('US$4.49') && led.includes('US$20.00'), led.slice(0, 400));
+  ok('缺收据算在那个人自己那块', /Kuang[^A-Za-z]*1 笔 · 1 笔缺收据/.test(led), led.slice(0, 400));
+  const iSeryi = led.indexOf('Seryi'), iKuang = led.indexOf('Kuang'), iSum = led.indexOf('当天总账');
+  ok('当天总账排在两个人后面（不是摆最前面）',
+     iSum > 0 && iSeryi < iSum && iKuang < iSum, { iSeryi, iKuang, iSum });
+  ok('当天总账的数 = 两块加起来', /当天总账 US\$24\.49/.test(led), led.slice(0, 400));
+  // 块里每一行都是同一个人记的，不必再逐行写一次「X 记」
+  ok('记录行不再逐行重复「谁记的」', !led.includes('记　·　算') && !led.includes('记 · 算'), led.slice(0, 400));
+  ok('但仍写明这笔算谁头上（Excel 分左右靠它）', led.includes('算 Boss 的'), led.slice(0, 400));
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
