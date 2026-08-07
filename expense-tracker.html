@@ -371,6 +371,7 @@ body.staff-mode #tab-analytics,
 body.staff-mode .staff-hide{ display:none !important; }
 body.staff-mode .nav{ justify-content:space-around }
 body.staff-mode #staff-signout-row{ display:block !important }
+body.staff-mode #staff-lang-btn{ display:inline-block !important }
 /* 同事看到的标题是自己的名字，不是「记账本」 */
 body.staff-mode .hdr-title::after{ content:attr(data-staff-name) }
 body.staff-mode .hdr-title{ font-size:0 }
@@ -403,6 +404,10 @@ body.staff-mode .hdr-title::after{ font-size:17px }
 <div class="hdr">
   <div class="hdr-title">💰 记账本</div>
   <div style="display:flex;align-items:center;gap:10px">
+  <!-- 语言切换：只在同事模式显示（同事不一定读中文）。用全站共用的 siteLangUser。 -->
+  <button id="staff-lang-btn" onclick="staffToggleLang()"
+    style="display:none;background:rgba(255,255,255,.22);color:#fff;border:0;border-radius:999px;
+           padding:6px 12px;font-size:13px;font-family:inherit;cursor:pointer">EN</button>
   <div id="hdr-cloud" onclick="switchTab('settings')" title="Cloud Sync"
     style="cursor:pointer;font-size:17px;opacity:0.45;line-height:1">☁️</div>
   <div class="acc-pill" onclick="openAccSwitch()">
@@ -448,7 +453,7 @@ body.staff-mode .hdr-title::after{ font-size:17px }
     <div class="month-text" id="tx-month-text"></div>
     <button class="month-arrow" onclick="changeMonth(1)">›</button>
   </div>
-  <div class="filter-row">
+  <div class="filter-row staff-hide">
     <button class="filter-btn active" onclick="setTxFilter('all',this)">全部</button>
     <button class="filter-btn" onclick="setTxFilter('expense',this)">支出</button>
     <button class="filter-btn" onclick="setTxFilter('income',this)">收入</button>
@@ -577,7 +582,7 @@ body.staff-mode .hdr-title::after{ font-size:17px }
     <div class="nav-icon">🏠</div>概览
   </button>
   <button class="nav-btn" id="nav-transactions" onclick="switchTab('transactions')">
-    <div class="nav-icon">📋</div>明细
+    <div class="nav-icon">📋</div><span data-en="Records">明细</span>
   </button>
   <button class="nav-btn" id="nav-analytics" onclick="switchTab('analytics')">
     <div class="nav-icon">📊</div>统计
@@ -591,25 +596,25 @@ body.staff-mode .hdr-title::after{ font-size:17px }
 <div class="overlay" id="modal-add-tx">
   <div class="modal">
     <div class="modal-hdr">
-      <div class="modal-title" id="tx-modal-title">新增记录</div>
+      <div class="modal-title" id="tx-modal-title" data-en="New expense">新增记录</div>
       <button class="modal-close" onclick="closeModal('modal-add-tx')">✕</button>
     </div>
     <!-- type toggle -->
-    <div class="type-tabs" style="margin-bottom:16px">
+    <div class="type-tabs staff-hide" id="tx-type-tabs" style="margin-bottom:16px">
       <div class="type-tab active" id="type-exp" onclick="setTxType('expense')">支出</div>
       <div class="type-tab" id="type-inc" onclick="setTxType('income')">收入</div>
     </div>
     <!-- attachment (moved above amount: photographing the receipt first lets
          the scan workflow prefill the fields below, instead of retyping them) -->
     <div class="form-group">
-      <label class="form-label">单据照片（选填）</label>
+      <label class="form-label" data-en="Receipt photo (optional)">单据照片（选填）</label>
       <div id="attach-thumb-area"></div>
       <div id="attach-btn-row" class="attach-row">
         <button type="button" class="attach-btn" onclick="document.getElementById('attach-camera-input').click()">
-          <span style="font-size:20px">📷</span>拍照
+          <span style="font-size:20px">📷</span><span data-en="Take photo">拍照</span>
         </button>
         <button type="button" class="attach-btn" onclick="document.getElementById('attach-gallery-input').click()">
-          <span style="font-size:20px">🖼️</span>从相册选择
+          <span style="font-size:20px">🖼️</span><span data-en="From gallery">从相册选择</span>
         </button>
       </div>
       <input type="file" id="attach-camera-input" accept="image/*" capture="environment" style="display:none" onchange="onAttachFileChosen(event)">
@@ -620,13 +625,13 @@ body.staff-mode .hdr-title::after{ font-size:17px }
       <div style="display:flex;gap:8px;align-items:stretch">
         <input class="form-input amt" id="tx-amount" type="number" min="0" step="0.01"
           placeholder="0.00" inputmode="decimal" style="flex:1" oninput="updateRielHint()">
-        <button type="button" id="tx-riel-toggle" class="attach-btn" onclick="toggleRielInput()"
+        <button type="button" id="tx-riel-toggle" class="attach-btn staff-hide" onclick="toggleRielInput()"
           style="flex:none;width:auto;padding:0 14px">៛ 瑞尔</button>
       </div>
       <div id="tx-riel-hint" style="display:none;margin-top:6px;font-size:12px;color:var(--sub)"></div>
     </div>
     <!-- description：公司账户下会一并送进公司账本，标签由 syncCompanyTxFields() 改写 -->
-    <div class="form-group">
+    <div class="form-group staff-hide">
       <label class="form-label" id="tx-desc-label">描述（选填）</label>
       <input class="form-input" id="tx-desc" type="text" placeholder="例：午餐、打的…" oninput="autoDetectCat(this.value)">
       <div id="tx-desc-note" style="display:none;font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
@@ -648,14 +653,14 @@ body.staff-mode .hdr-title::after{ font-size:17px }
     </div>
     <!-- date -->
     <div class="form-group">
-      <label class="form-label">日期</label>
+      <label class="form-label" data-en="Date">日期</label>
       <input class="form-input" id="tx-date" type="date" oninput="state.dateTouchedByUser=true">
     </div>
     <!-- 公司报账专用字段：只在当前账户勾了「公司账户」时显示，见 syncCompanyTxFields() -->
     <div id="tx-company-wrap" style="display:none">
       <div style="padding:10px 12px;background:var(--p2);border-radius:10px;margin-bottom:14px;
         font-size:12px;color:var(--p);line-height:1.6">
-        🧾 这是公司账户，保存后会同时送进公司账本 —— 跟 Telegram 记的进同一本、出同一份 Excel。
+        <span data-en="🧾 This goes straight into the company expense book — same book, same monthly Excel.">🧾 这是公司账户，保存后会同时送进公司账本 —— 跟 Telegram 记的进同一本、出同一份 Excel。</span>
       </div>
       <div class="form-group staff-hide">
         <label class="form-label">谁报的账</label>
@@ -671,20 +676,20 @@ body.staff-mode .hdr-title::after{ font-size:17px }
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">公司类别</label>
+        <label class="form-label" data-en="Category">公司类别</label>
         <select class="form-input" id="tx-company-category" onchange="syncCompanyPlateField()"></select>
       </div>
       <!-- 车牌：只在选了汽油/洗车/汽车保养这类项目时出现，哪些类别要车牌由服务端告知 -->
       <div class="form-group" id="tx-company-plate-wrap" style="display:none">
-        <label class="form-label">车牌号</label>
+        <label class="form-label" data-en="Plate number">车牌号</label>
         <input class="form-input" id="tx-company-plate" type="text" maxlength="15"
           placeholder="例：NS6868" style="text-transform:uppercase">
         <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
-          车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。
-          这类开销一律算在 Boss 头上（进左边那张表）。
+          <span data-en="Vehicle expenses need the plate number. It goes into the Excel as &quot;Petrol (NS6868)&quot;.">车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。
+          这类开销一律算在 Boss 头上（进左边那张表）。</span>
         </div>
       </div>
-      <div class="form-group">
+      <div class="form-group staff-hide">
         <label class="form-label">单据号（留空自动派）</label>
         <input class="form-input" id="tx-company-reftag" type="text"
           inputmode="numeric" maxlength="2" placeholder="留空就自动派下一个号">
@@ -696,9 +701,9 @@ body.staff-mode .hdr-title::after{ font-size:17px }
     </div>
     <!-- delete btn (edit mode) -->
     <div id="tx-delete-wrap" style="display:none;margin-bottom:12px">
-      <button class="btn btn-danger" onclick="deleteTx()">🗑 删除此记录</button>
+      <button class="btn btn-danger" onclick="deleteTx()" data-en="🗑 Delete this record">🗑 删除此记录</button>
     </div>
-    <button class="btn btn-primary" onclick="saveTx()">保存</button>
+    <button class="btn btn-primary" onclick="saveTx()" data-en="Save">保存</button>
   </div>
 </div>
 
@@ -1591,10 +1596,10 @@ function switchAccount(id){
 function companyTxNote(t){
   if(!t.company) return '';
   const parts = [];
-  if(t.company.refTag) parts.push(`📄${t.company.refTag}号`);
+  if(t.company.refTag) parts.push(tt(`📄${t.company.refTag}号`, `📄 No.${t.company.refTag}`));
   const st = t.company.status;
-  if(st === 'pending') parts.push('⏳待送出');
-  else if(st === 'failed') parts.push('⚠️未入账');
+  if(st === 'pending') parts.push(tt('⏳待送出','⏳ not sent yet'));
+  else if(st === 'failed') parts.push(tt('⚠️未入账','⚠️ not recorded'));
   return parts.length ? ` · ${parts.join(' · ')}` : '';
 }
 
@@ -1628,7 +1633,7 @@ function renderTxList(){
   txs.sort((a,b)=>new Date(b.date)-new Date(a.date));
   const el = document.getElementById('tx-list');
   if(txs.length===0){
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🗒️</div><div class="empty-text">这个月还没有记录</div></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🗒️</div><div class="empty-text">${tt('这个月还没有记录','Nothing recorded this month')}</div></div>`;
     return;
   }
   // Group by date
@@ -2142,11 +2147,15 @@ function saveTx(){
       if(r.ok){
         const rec0 = (r.records && r.records[0]) || {};
         // 左/右是 Excel 里两张子表的位置：person=Boss 走左边那张，XY/G 走右边那张
-        const side = rec0.person ? `${rec0.person}（${rec0.person==='Boss'?'左':'右'}表）` : '';
+        const side = rec0.person
+          ? tt(`${rec0.person}（${rec0.person==='Boss'?'左':'右'}表）`, `${rec0.person}`)
+          : '';
         // 单据号要显眼——用户看到几就在纸质单据上写几，这是纸和 Excel 对上的唯一线索。
         // 换行放在单据号前面，手机上第二行就是最该看的那句。
-        const no = rec0.refTag ? `\n📄 单据写 ${rec0.refTag} 号` : '';
-        toast(`✅ 已入账 ${side}${no}`);
+        const no = rec0.refTag
+          ? tt(`\n📄 单据写 ${rec0.refTag} 号`, `\n📄 Write No. ${rec0.refTag} on the receipt`)
+          : '';
+        toast(tt(`✅ 已入账 ${side}${no}`, `✅ Recorded ${side}${no}`));
       }
       // 可重试的两种情况措辞不一样：连不上是「等有网」，服务端 503（例如密钥还没配好）
       // 要把服务端说的原因带出来，不然用户会一直等一个不会自己好的东西。
@@ -4148,7 +4157,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07c';
+const APP_BUILD = '2026-08-07d';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4226,6 +4235,7 @@ function applyStaffMode(){
   saveData();
   updateHeader();
   switchTab('transactions');
+  staffInitLang();
 }
 
 async function staffGateSubmit(){
@@ -4247,6 +4257,50 @@ async function staffGateSubmit(){
   closeStaffGate();
   applyStaffMode();
 }
+
+/* —— 同事模式的中英切换 ——
+ * 同事不一定读中文。只翻同事模式下看得到的那些文案（老板那边一律中文，不受影响）。
+ * 做法：固定文案在 HTML 上标 data-en，切到英文时把原中文暂存进 data-zh 再换掉，
+ * 切回来时还原——这样不用把整个 App 双语化，也不会动到老板看到的任何字。
+ * 语言选择存全站共用的 siteLangUser（跟仓库里其他双语页面同一个 key）。
+ */
+const STAFF_LANG_KEY = 'siteLangUser';
+let staffLang = 'zh';
+
+function staffApplyLang(){
+  document.querySelectorAll('[data-en]').forEach(el=>{
+    if(el.dataset.zh === undefined) el.dataset.zh = el.textContent;
+    el.textContent = staffLang === 'en' ? el.dataset.en : el.dataset.zh;
+  });
+  const btn = document.getElementById('staff-lang-btn');
+  if(btn) btn.textContent = staffLang === 'en' ? '中' : 'EN';
+  document.documentElement.lang = staffLang === 'en' ? 'en' : 'zh';
+  // 清单和提示是脚本画的，要重画才会跟着换语言
+  if(state.currentTab === 'transactions') renderTxList();
+}
+
+function staffToggleLang(){
+  staffLang = staffLang === 'en' ? 'zh' : 'en';
+  localStorage.setItem(STAFF_LANG_KEY, staffLang);
+  staffApplyLang();
+}
+
+function staffInitLang(){
+  if(!isStaffMode()) return;
+  const saved = localStorage.getItem(STAFF_LANG_KEY);
+  // 手动选过就听用户的；没选过才看手机系统语言
+  staffLang = saved ? saved : ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+  staffApplyLang();
+}
+// 另一个分页切了语言，这边立刻跟上
+window.addEventListener('storage', e=>{
+  if(e.key === STAFF_LANG_KEY && e.newValue && e.newValue !== staffLang && isStaffMode()){
+    staffLang = e.newValue; staffApplyLang();
+  }
+});
+
+/** 同事模式下要翻译的动态文字用这个；老板模式永远回中文。 */
+function tt(zh, en){ return (isStaffMode() && staffLang === 'en') ? en : zh; }
 
 function staffSignOut(){
   if(!confirm('要清掉这台手机上的钥匙吗？之后要重新填。\nRemove the key from this phone?')) return;
