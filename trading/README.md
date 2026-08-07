@@ -46,6 +46,13 @@
 - `expense-tracker.html` 的 IBKR 余额卡也改读 `trading/data-private.enc`（同一密码，
   localStorage 共用 `tradingAnalyzerPw`）；旧的明文 `ibkr-snapshot.json` 管道已于
   2026-07-10 整条删除（workflow/脚本/skill 文档）。注意：旧数值仍留在 git 历史里。
+- `plan.html`（2026-08-05）：财务自由进度推演。用蒙特卡洛模拟「按当前净值＋每月投入，
+  多久能达到目标被动收入」，并把「持有 X% IBIT」这个决定量化成「只有当你认为比特币
+  长期年化跑赢股票约 5 个点以上才划算」。解锁后自动带入 data-private.enc 的实际净值
+  与 IBIT 权重（与分析器共用密码 localStorage key `tradingAnalyzerPw`），不解锁也能手动填。
+  **自检内建在页面里**：每次载入会用「零波动」跑一次模拟，结果必须等于确定性年金终值
+  公式，不一致就在页尾显示红字警告。这条能挡住再平衡/月度复利/投入时点这几处最易写反的
+  地方。纵轴用对数刻度（线性会被 30 年后的极端上限撑爆，把目标线压成底部一条缝）。
 - `signals.py`/`backtest.py` 为旧原型，不在使用。
 
 ## 对账流程（Claude session 照此执行）
