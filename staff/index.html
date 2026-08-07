@@ -613,6 +613,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div id="tx-delete-wrap" style="display:none;margin-bottom:12px">
       <button class="btn btn-danger" onclick="deleteTx()" data-en="🗑 Delete this record">🗑 删除此记录</button>
     </div>
+    <div id="tx-save-note" style="display:none;margin-bottom:10px;font-size:12px;line-height:1.6"></div>
     <button class="btn btn-primary" onclick="saveTx()" data-en="Save">保存</button>
   </div>
 </div>
@@ -1866,7 +1867,72 @@ function clearAutoHint(){
   hideAutoHint();
 }
 
+/**
+ * 存完立刻从 localStorage 读回来，确认这笔真的落地了。
+ *
+ * 为什么要有（2026-08-07 同事实机踩到）：Seryi 记了好几笔，公司账本那边三次都收到了，
+ * 他手机上却一直是「Today US$0.00 · 0 record(s)」。原因是那台手机的浏览器**存不住**
+ * （iOS Safari 无痕模式、或站点数据被限制/清掉）——`localStorage.setItem` 不一定报错，
+ * 可能写了等于没写。同一次打开期间内存里有，所以他看得到也删得掉；一刷新就全空。
+ * 从他角度看就是「按保存没反应、记了几笔都不算数」，而且完全没有任何提示可查。
+ *
+ * 宁可当场说「这台手机存不住」，也不要让人一晚上白记。
+ */
+function verifyTxPersisted(txId){
+  try{
+    const raw = localStorage.getItem('staffExpense_v2');
+    const back = raw ? JSON.parse(raw) : null;
+    return !!(back && Array.isArray(back.transactions) && back.transactions.some(t => t.id === txId));
+  }catch(e){ return false; }
+}
+
+let storageWarnedThisSession = false;
+/**
+ * 手机存不住记录时把话说死。用 alert 是刻意的：toast 两秒就没，而这件事的代价是
+ * 「他记了一晚上，明天全空」——必须挡在他眼前一次，让他知道账已经报出去了、
+ * 不要再记一遍（重记会让公司账本多出重复的钱）。同一次打开只弹一次，不折磨人。
+ */
+function warnStorageBroken(){
+  const msg = '⚠️ 这台手机的浏览器存不住记录\n\n'
+    + '这笔账已经报进公司账本了（不用重记，重记会算两次），\n'
+    + '但这台手机上看不到、刷新后清单会是空的。\n\n'
+    + '怎么修：用 Safari 正常模式打开（不要用无痕/私密浏览），\n'
+    + '或把这个页面「加到主屏幕」再用。\n\n'
+    + `版本 ${APP_BUILD}`;
+  toast('⚠️ 这台手机存不住记录，账已报出去，别重记');
+  if(storageWarnedThisSession) return;
+  storageWarnedThisSession = true;
+  setTimeout(() => { try{ alert(msg); }catch(e){} }, 300);
+}
+
+/** 把一句话钉在保存按钮上方，不像 toast 两秒就没——出问题时人要能截图给我们看。 */
+function showSaveNote(msg, kind){
+  const box = document.getElementById('tx-save-note');
+  if(!box) return;
+  if(!msg){ box.style.display = 'none'; box.textContent = ''; return; }
+  box.style.display = 'block';
+  box.style.color = kind === 'warn' ? '#e67e22' : 'var(--exp,#e74c3c)';
+  box.textContent = msg;
+}
+
+/**
+ * 保存的外壳。saveTx 里任何一处抛错，onclick 都会静静吞掉——按钮按下去什么都不发生，
+ * 用户手上一点线索都没有（2026-08-07 同事回报「点了完全没反应」，查了一圈没有任何痕迹）。
+ * 所以这里包一层：出错就把原文钉在按钮上方，留在屏幕上不消失。
+ */
 function saveTx(){
+  showSaveNote('');
+  try{
+    saveTxInner();
+  }catch(e){
+    const msg = (e && e.message) ? e.message : String(e);
+    console.error('saveTx 出错:', e);
+    showSaveNote(`保存出错：${msg}　（版本 ${APP_BUILD}）请截图这行发给管理员`);
+    toast('保存出错，详情见保存按钮上方那行字');
+  }
+}
+
+function saveTxInner(){
   const raw = document.getElementById('tx-amount').value.trim();
   const rawAmt = parseFloat(raw);
   if(raw==='' || isNaN(rawAmt) || rawAmt<0){ toast(tt('请输入金额（可以填 0）','Please enter an amount (0 is fine)')); return; }
@@ -1955,8 +2021,10 @@ function saveTx(){
     data.transactions.push(tx);
     toast(tt('记录已保存','Saved'));
   }
-
   saveData();
+  // 读回确认真的写进去了。写不进去照样往下走（公司账那笔还是要报出去，不能因为
+  // 手机存不住就让这笔钱消失），但必须当场把话说明白，免得他以为没记成又记一遍。
+  if(!verifyTxPersisted(tx.id)) warnStorageBroken();
   // if attachment was removed/replaced, clean up the orphaned blob
   if(prevAttachmentId && prevAttachmentId !== tx.attachmentId){
     deleteAttachmentBlob(prevAttachmentId);
@@ -3988,7 +4056,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07m';
+const APP_BUILD = '2026-08-07n';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -4559,12 +4627,14 @@ async function staffGateSubmit(){
  *
  * 只拉当月：同事平时要对的就是这个月的合计；跨月对账是老板那边整本账的活。
  */
-async function staffRestore(){
+async function staffRestore(opts){
+  // silent：开页面时自动补的那一次，没东西可补就一声不吭（别每次开页面都弹提示）
+  const silent = !!(opts && opts.silent);
   const btn = document.getElementById('staff-restore-btn');
   const token = (localStorage.getItem(STAFF_TOKEN_STORAGE) || '').trim();
-  if(!token){ toast(tt('还没填钥匙','No key yet')); return; }
+  if(!token){ if(!silent) toast(tt('还没填钥匙','No key yet')); return; }
   if(btn) btn.disabled = true;
-  toast(tt('正在从公司账本找回…','Fetching from the company ledger…'));
+  if(!silent) toast(tt('正在从公司账本找回…','Fetching from the company ledger…'));
   let body;
   try{
     const res = await fetch(COMPANY_EXPENSE_URL, {
@@ -4575,7 +4645,7 @@ async function staffRestore(){
     if(!res.ok || !body || body.status !== 'ok') throw new Error('bad');
   }catch(e){
     if(btn) btn.disabled = false;
-    toast(tt('现在连不上，等有网再按一次','Cannot reach the server — try again when online'));
+    if(!silent) toast(tt('现在连不上，等有网再按一次','Cannot reach the server — try again when online'));
     return;
   }
 
@@ -4617,9 +4687,11 @@ async function staffRestore(){
   saveData();
   renderTxList();
   if(btn) btn.disabled = false;
-  toast(added
-    ? tt(`找回 ${added} 笔`, `Restored ${added} record(s)`)
-    : tt('都在了，没有要找回的','Everything is already here'));
+  if(added || !silent){
+    toast(added
+      ? tt(`找回 ${added} 笔`, `Restored ${added} record(s)`)
+      : tt('都在了，没有要找回的','Everything is already here'));
+  }
 }
 
 function staffSignOut(){
@@ -4654,6 +4726,15 @@ function staffStart(){
   refreshCompanyCategories();
   flushCompanyQueue();
   staffApplyLang();
+  // 打开时清单是空的，就自动从公司账本把这个月自己报过的拉回来。
+  //
+  // 为什么要自动（2026-08-07 Seryi 实机）：他记了好几笔，公司账本三次都收到了，
+  // 手机上却一直是「Today US$0.00 · 0 record(s)」——同一次打开期间看得到，一刷新
+  // 就空。手机存不住的原因有好几种（无痕模式、iOS 七天没用清站点数据、旧版页面
+  // 的清空 bug），但对他来说都是同一件事：记了等于白记，还以为按钮坏了。
+  // 与其教他记得去按「找回本月记录」，不如空的时候自己去拉一次。
+  // 安全：拉回来的一律标已送出、按 recordId 去重，多拉几次不会重复记账。
+  if((data.transactions || []).length === 0) staffRestore({ silent:true });
 }
 
 async function initStaffPage(){

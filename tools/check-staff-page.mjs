@@ -125,9 +125,12 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', e => errs.push(e.message));
-  page.on('dialog', d => d.accept());
+  // 弹出的对话框内容留下来：有些提示（例如「这台手机存不住记录」）就是用 alert 说的，
+  // 一律 accept 掉的话断言就看不到它说了什么
+  const dialogs = [];
+  page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
   // book 交出去：测「从公司账本找回记录」时要能摆布服务端手上有哪几笔
-  return { ctx, page, posted, errs, book, setMode: m => { mode = m; } };
+  return { ctx, page, posted, errs, book, dialogs, setMode: m => { mode = m; } };
 }
 
 /** 填钥匙进门，返回已经进到主界面的 page。 */
@@ -421,7 +424,16 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
 {
   const h = await signIn(await newPage());
   const { page, posted, errs, book } = h;
-  // 服务端手上有这个人本月报过的两笔（模拟他之前在别的手机上报的）
+  // 模拟「清了浏览器数据／换手机」：账本没了，钥匙还在。
+  // 此刻服务端手上也还没有他的记录，所以开页面时的自动补回没东西可补——
+  // 这一组测的是**手动**按「找回本月记录」，先把自动那条路排除掉（自动那条在【9d】）
+  await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1800);
+  ok('清掉之后清单确实是空的', /还没有记录|Nothing recorded/.test(await page.textContent('#tx-list')),
+     await page.textContent('#tx-list'));
+
+  // 现在服务端有他本月报过的两笔（模拟他之前在别的手机上报的）
   book[SERYI_KEY].records = [
     { id:'srv_1', date:'2026-08-02', categoryEn:'Lunch',   billNo:'1', side:'assist',
       amountUsd:4.49, originalAmount:null, note:null, hasPhoto:true },
@@ -429,11 +441,6 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
     { id:'srv_2', date:'2026-08-03', categoryEn:'Petrol (2AB-1234)', billNo:'2', side:'boss',
       amountUsd:20.00, originalAmount:null, note:null, hasPhoto:false },
   ];
-  // 模拟「清了浏览器数据／换手机」：账本没了，钥匙还在
-  await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));
-  await page.reload({ waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  ok('清掉之后清单确实是空的', /还没有记录|Nothing recorded/.test(await page.textContent('#tx-list')));
 
   posted.length = 0;
   await page.click('#staff-restore-btn');
@@ -479,6 +486,68 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
   ok('第二次提示「都在了」', /都在了|already here/.test(await page.textContent('#toast')),
      await page.textContent('#toast'));
   ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【9d】手机存不住数据时，不许静静地什么都不说 ----------
+console.log('\n【9d】存不住 / 存丢了：要么当场说清楚，要么自己把记录找回来');
+{
+  // 情境一：清单空着打开页面（无痕模式、站点数据被清、旧版页面清空过）→ 自动补回来。
+  // 2026-08-07 Seryi 实机就是这样：公司账本收到了三笔，他手机上一直是 0 笔 US$0.00。
+  const h = await signIn(await newPage());
+  const { page, errs, book } = h;
+  book[SERYI_KEY].records = [
+    { id:'srv_9', date:'2026-08-02', categoryEn:'Lunch', billNo:'1', side:'assist',
+      amountUsd:4.49, originalAmount:null, note:null, hasPhoto:true },
+  ];
+  await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1800);
+  ok('开页面时清单是空的 → 自动从公司账本补回来（不用他自己去按）',
+     (await page.textContent('#tx-list')).includes('4.49'), await page.textContent('#tx-list'));
+
+  // 情境二：localStorage 写不进去（写了等于没写）→ 必须当场说，不能静静吞掉。
+  // 关键：账还是要报出去（钱不能因为手机存不住就消失），但要明说别重记。
+  const dialogs = h.dialogs;
+  await page.evaluate(() => { localStorage.setItem = () => {}; });   // 假装写进去了
+  const before = h.posted.filter(x => !x.action).length;
+  await addOne(page, { amount: 12.34, category: 'Dinner' });
+  await page.waitForTimeout(900);
+  ok('存不住时也照样报进公司账本（钱不能丢）',
+     h.posted.filter(x => !x.action).length === before + 1,
+     h.posted.map(x => x.action || 'add'));
+  // 用 alert 而不是 toast 说这件事是刻意的：toast 两秒就被后面的「已入账」盖掉，
+  // 而这件事的代价是「记了一晚上，明天全空」，必须挡在眼前一次
+  ok('弹窗当场说清楚这台手机存不住', dialogs.some(m => /存不住/.test(m)), dialogs);
+  ok('并且明说别重记（重记会让公司账本算两次）',
+     dialogs.some(m => /不用重记|别重记/.test(m)), dialogs);
+  ok('也说了怎么修（别用无痕 / 加到主屏幕）',
+     dialogs.some(m => /无痕|主屏幕/.test(m)), dialogs);
+  ok('提示里带版本号（同事截图就能看出他手上是哪一版）',
+     dialogs.some(m => /版本 \d{4}-\d{2}-\d{2}/.test(m)), dialogs);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【9e】保存中途抛错，不许按钮按下去什么都不发生 ----------
+console.log('\n【9e】保存出错要留下痕迹（「点了完全没反应」是最难查的一种）');
+{
+  const h = await signIn(await newPage());
+  const { page, errs } = h;
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await page.fill('#tx-amount', '5.00');
+  await page.selectOption('#tx-company-category', 'Lunch');
+  // 让保存中途炸掉，模拟任意一处意外抛错
+  await page.evaluate(() => { window.saveData = () => { throw new Error('假装存储炸了'); }; });
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(700);
+  const note = page.locator('#tx-save-note');
+  ok('出错时按钮上方留下一行字（不是什么都不发生）', await note.isVisible());
+  const txt = await note.textContent() || '';
+  ok('那行字带原始错误内容', txt.includes('假装存储炸了'), txt);
+  ok('那行字带版本号，方便同事截图回报', /版本 \d{4}-\d{2}-\d{2}/.test(txt), txt);
+  ok('弹窗留着不关，让人看得到', (await page.locator('#modal-add-tx.open').count()) === 1);
   await h.ctx.close();
 }
 
