@@ -177,6 +177,9 @@ console.log('\n【3】身份由钥匙决定，页面上没得选');
   const { page } = main;
   ok('标题显示服务端认出的名字 Seryi',
      (await page.textContent('#hdr-title')).includes('Seryi'), await page.textContent('#hdr-title'));
+  // 同事回报问题时第一件要确认的就是「你手上是哪一版」——版本号必须在页面上看得到
+  ok('页面上看得到版本号', /\d{4}-\d{2}-\d{2}/.test(await page.textContent('#staff-build-note')),
+     await page.textContent('#staff-build-note'));
   await page.click('.fab');
   await page.waitForTimeout(400);
   ok('「谁报的账」看不见（选不了也就选不错）', !(await page.locator('#tx-reporter-group').isVisible()));

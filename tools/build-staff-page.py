@@ -137,6 +137,7 @@ def build(src: str) -> str:
                      '<div id="tx-list" class="tx-list"></div>\n'
                      '  <div id="staff-signout-row">\n'
                      '    <button class="btn btn-outline btn-sm" onclick="staffSignOut()">换钥匙 / Sign out</button>\n'
+                     '    <div id="staff-build-note"></div>\n'
                      '  </div>\n</div>',
                      "明细页（放换钥匙按钮）")
 
@@ -249,6 +250,11 @@ DYNAMIC_TEXT = [
           : '';
         toast(tt(`✅ 已入账 ${side}${no}`, `✅ Recorded ${side}${no}`));""",
      "入账提示"),
+    # 同事没有 Telegram 那条路，改口说 App 里能做的那件事
+    ("""    toast('本机已改。公司账本那边改不了——要更正请在 Telegram 里删掉这笔重记');""",
+     """    toast(tt('已经送出去的改不了——请把这笔删掉，重记一次',
+             'Already submitted — delete this record and enter it again'));""",
+     "已送出的改不了"),
     ("""toast('请输入金额（可以填 0）');""",
      """toast(tt('请输入金额（可以填 0）','Please enter an amount (0 is fine)'));""",
      "金额提示"),
@@ -306,6 +312,8 @@ STAFF_CSS = """
 #staff-lang-btn{background:rgba(255,255,255,.22);color:#fff;border:0;border-radius:999px;
   padding:6px 12px;font-size:13px;font-family:inherit;cursor:pointer}
 #staff-signout-row{text-align:center;margin:18px 0 4px}
+/* 版本号：同事回报问题时第一句要问的就是「你手上是哪一版」 */
+#staff-build-note{margin-top:8px;font-size:11px;color:var(--sub)}
 #staff-summary{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .staff-sum-label{font-size:12px;color:var(--sub)}
 .staff-sum-total{font-size:26px;font-weight:700;color:var(--text);margin-top:2px}
@@ -389,6 +397,9 @@ function staffSignOut(){
 function staffStart(){
   const title = document.getElementById('hdr-title');
   if(title) title.textContent = '🧾 ' + staffIdentity.reporter;
+  // 版本号写在页面底部：同事回报问题时，第一件要确认的就是他手上是不是最新那一版
+  const bn = document.getElementById('staff-build-note');
+  if(bn) bn.textContent = staffIdentity.reporter + ' · ' + APP_BUILD;
   // 同事只有公司账：没有就建一个并选中，省得他去设置里摸索（这个版本也没有设置页）
   let acc = (data.accounts || []).find(a => a.isCompany);
   if(!acc){
