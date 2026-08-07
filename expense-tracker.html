@@ -2136,6 +2136,12 @@ function saveTx(){
       status: alreadySent ? 'sent' : 'pending',
       error: null
     };
+    // 已经送出去过的，编辑时**必须把服务端那条记录的 id 带过来**——tx.company 是整个
+    // 重新组的，不带就丢了。丢了之后在 App 里删这笔，删不掉公司账本里对应那条（会退回
+    // 「这笔是旧版本记的，没存下记录编号」那条路），本机没了、公司账本还留着，
+    // 正是这个功能当初要消灭的状态。person 同理，丢了列表上就不显示算谁的。
+    if(prevCompany && prevCompany.recordId) tx.company.recordId = prevCompany.recordId;
+    if(prevCompany && prevCompany.person) tx.company.person = prevCompany.person;
     // 公司类别顺带决定这笔账在 App 列表/统计里算哪一类，用户不用再选一次
     tx.categoryId = COMPANY_CAT_TO_APP[categoryEn] || 'cat_other_exp';
   }
@@ -4189,7 +4195,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07j';
+const APP_BUILD = '2026-08-07k';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';

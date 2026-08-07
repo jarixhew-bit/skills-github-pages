@@ -118,7 +118,8 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   const errs = [];
   page.on('pageerror', e => errs.push(e.message));
   page.on('dialog', d => d.accept());
-  return { ctx, page, posted, errs, setMode: m => { mode = m; } };
+  // book 交出去：测「从公司账本找回记录」时要能摆布服务端手上有哪几笔
+  return { ctx, page, posted, errs, book, setMode: m => { mode = m; } };
 }
 
 /** 填钥匙进门，返回已经进到主界面的 page。 */
@@ -403,6 +404,72 @@ console.log('\n【9b】刷新／重开页面，之前记的还在（同事一天
   ok('刷新后连没送出的那笔也还在', list.includes('8.80'));
   const sum = await page.textContent('#staff-summary');
   ok('本月合计跟着还在（18.80）', sum.replace(/\s+/g,'').includes('18.80'), sum);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【9c】换手机／清过数据之后，从公司账本找回 ----------
+console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过的找回来');
+{
+  const h = await signIn(await newPage());
+  const { page, posted, errs, book } = h;
+  // 服务端手上有这个人本月报过的两笔（模拟他之前在别的手机上报的）
+  book[SERYI_KEY].records = [
+    { id:'srv_1', date:'2026-08-02', categoryEn:'Lunch',   billNo:'1', side:'assist',
+      amountUsd:4.49, originalAmount:null, note:null, hasPhoto:true },
+    // 车牌类项目服务端存的就是 "Petrol (车牌)"（见 butler 的 plateLabelOf），照实摆
+    { id:'srv_2', date:'2026-08-03', categoryEn:'Petrol (2AB-1234)', billNo:'2', side:'boss',
+      amountUsd:20.00, originalAmount:null, note:null, hasPhoto:false },
+  ];
+  // 模拟「清了浏览器数据／换手机」：账本没了，钥匙还在
+  await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1500);
+  ok('清掉之后清单确实是空的', /还没有记录|Nothing recorded/.test(await page.textContent('#tx-list')));
+
+  posted.length = 0;
+  await page.click('#staff-restore-btn');
+  await page.waitForTimeout(1200);
+  const list = await page.textContent('#tx-list');
+  ok('找回第一笔（4.49）', list.includes('4.49'), list.slice(0, 300));
+  ok('找回第二笔（20.00）', list.includes('20.00'));
+  const sum = await page.textContent('#staff-summary');
+  ok('本月合计跟着回来（24.49）', sum.replace(/\s+/g,'').includes('24.49'), sum);
+
+  // 最贵的一条：找回来的必须标成「已送出」，绝不能再送一次——
+  // butler 那边是追加不是覆盖，重送就是公司账本里多一条、金额翻倍
+  ok('找回来的不标成待送出', !/待送出|not sent/.test(list), list.slice(0, 300));
+  const q = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_queue') || '[]'));
+  ok('没有被塞进补送队列', q.length === 0, q);
+  ok('没有偷偷重新报一次账', !posted.some(x => !x.action), posted.map(x => x.action || 'add'));
+  // 真正会让钱翻倍的路径：找回来的那笔如果没标成「已送出」，同事一编辑它
+  // saveTx 就当成还没报过、真的再送一次。所以要走一遍编辑，确认一个字都没送出去。
+  posted.length = 0;
+  await page.click('.tx-item >> nth=1');   // 第 2 条是 08-02 那笔午餐（清单按日期倒序）
+  await page.waitForTimeout(500);
+  await page.fill('#tx-amount', '99.99');
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(1000);
+  ok('编辑找回来的那笔，不会再报一次账', !posted.some(x => !x.action),
+     posted.map(x => x.action || 'add'));
+  ok('而且明说已送出的改不了', /改不了|cannot be changed|Delete it/i.test(await page.textContent('#toast')),
+     await page.textContent('#toast'));
+  // 编辑时 tx.company 是整个重组的，recordId 不带过来就丢了——丢了以后这笔在 App 里
+  // 删不掉公司账本那条（本机没了、账本还留着），找回时也会当成新的再拉一遍
+  const ids = await page.evaluate(() =>
+    (JSON.parse(localStorage.getItem('staffExpense_v2') || '{}').transactions || [])
+      .map(t => t.company && t.company.recordId));
+  ok('编辑之后 recordId 还在（删除和去重都靠它）', ids.filter(Boolean).length === 2, ids);
+
+  // 按第二下不该变出重复的
+  await page.click('#staff-restore-btn');
+  await page.waitForTimeout(1200);
+  const n = await page.evaluate(() =>
+    (JSON.parse(localStorage.getItem('staffExpense_v2') || '{}').transactions || []).length);
+  ok('再按一次不会重复（还是 2 笔）', n === 2, n);
+  ok('第二次提示「都在了」', /都在了|already here/.test(await page.textContent('#toast')),
+     await page.textContent('#toast'));
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }

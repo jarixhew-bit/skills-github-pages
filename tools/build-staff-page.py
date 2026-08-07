@@ -142,6 +142,11 @@ def build(src: str) -> str:
     s = replace_once(s, '<div id="tx-list" class="tx-list"></div>\n</div>',
                      '<div id="tx-list" class="tx-list"></div>\n'
                      '  <div id="staff-signout-row">\n'
+                     '    <button class="btn btn-outline btn-sm" id="staff-restore-btn"\n'
+                     '            onclick="staffRestore()">找回本月记录 / Restore this month</button>\n'
+                     '    <div id="staff-restore-note" data-en="Changed phone or cleared browser data? '
+                     'Tap above to pull back the records you already reported.">'
+                     '换手机、清过浏览器数据之后，按上面这个把已经报上去的记录拉回来</div>\n'
                      '    <button class="btn btn-outline btn-sm" onclick="staffSignOut()">换钥匙 / Sign out</button>\n'
                      '    <div id="staff-build-note"></div>\n'
                      '  </div>\n</div>',
@@ -334,6 +339,7 @@ STAFF_CSS = """
 #staff-lang-btn{background:rgba(255,255,255,.22);color:#fff;border:0;border-radius:999px;
   padding:6px 12px;font-size:13px;font-family:inherit;cursor:pointer}
 #staff-signout-row{text-align:center;margin:18px 0 4px}
+#staff-restore-note{margin:8px 0 16px;font-size:11px;color:var(--sub);line-height:1.6}
 /* 版本号：同事回报问题时第一句要问的就是「你手上是哪一版」 */
 #staff-build-note{margin-top:8px;font-size:11px;color:var(--sub)}
 #staff-summary{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
@@ -412,6 +418,86 @@ async function staffGateSubmit(){
   input.value = '';
   staffCloseGate();
   staffStart();
+}
+
+/**
+ * 从公司账本把「我这个月已经报上去的」拉回本机清单。
+ *
+ * 为什么要有（2026-08-07 用户要求：「怕他们没加」）：这台手机上的清单只是本地副本——
+ * 换手机、清浏览器数据、iPhone 上七天没打开被 Safari 清掉，清单就空了。钱没丢
+ * （服务端有整本账），但同事看不到自己报过什么，也没法照着抄纸单上的合计。
+ * 按一下就把服务端那份拉回来。
+ *
+ * 三条不能破的规矩：
+ * 1. 拉回来的每一笔 status 一律标 'sent'。标别的（例如 'pending'）不会当场重送，
+ *    但同事一编辑那笔，saveTx 就会把它当成还没报过、真的送一次——butler 那边是
+ *    追加不是覆盖，公司账本里于是多一条重复记录，金额直接翻倍。
+ * 2. 靠 recordId 去重，按次数多按几下不会变出重复的记录。
+ * 3. 只拉「我记的」（服务端按钥匙筛，同事之间互相看不到），这条守在服务端。
+ *
+ * 只拉当月：同事平时要对的就是这个月的合计；跨月对账是老板那边整本账的活。
+ */
+async function staffRestore(){
+  const btn = document.getElementById('staff-restore-btn');
+  const token = (localStorage.getItem(STAFF_TOKEN_STORAGE) || '').trim();
+  if(!token){ toast(tt('还没填钥匙','No key yet')); return; }
+  if(btn) btn.disabled = true;
+  toast(tt('正在从公司账本找回…','Fetching from the company ledger…'));
+  let body;
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'mine', token, month: today().slice(0,7) })
+    });
+    body = await res.json();
+    if(!res.ok || !body || body.status !== 'ok') throw new Error('bad');
+  }catch(e){
+    if(btn) btn.disabled = false;
+    toast(tt('现在连不上，等有网再按一次','Cannot reach the server — try again when online'));
+    return;
+  }
+
+  const acc = (data.accounts || []).find(a => a.isCompany) || data.accounts[0];
+  const have = new Set(data.transactions
+    .filter(t => t.company && t.company.recordId).map(t => t.company.recordId));
+  let added = 0;
+  for(const r of (body.records || [])){
+    if(!r || !r.id || have.has(r.id)) continue;
+    data.transactions.push({
+      id: uid(),
+      accountId: acc.id,
+      amount: Number(r.amountUsd) || 0,
+      type: 'expense',
+      // 车牌类项目服务端存成 "Petrol (2AB-1234)"，去掉括号那截才对得上 App 的类别表
+      categoryId: COMPANY_CAT_TO_APP[r.categoryEn]
+        || COMPANY_CAT_TO_APP[String(r.categoryEn || '').replace(/\s*\(.*\)$/, '')]
+        || 'cat_other_exp',
+      description: r.note || '',
+      date: r.date,
+      updatedAt: Date.now(),
+      company: {
+        reporter: body.reporter,
+        categoryEn: r.categoryEn,
+        refTag: r.billNo || null,
+        plate: null,
+        rawAmount: Number(r.amountUsd) || 0,
+        rawCurrency: 'USD',
+        note: r.note || null,
+        // side 是服务端算的「进 Excel 左边还是右边」，拉回来只用于显示
+        person: r.side === 'assist' ? body.reporter : 'Boss',
+        status: 'sent',          // ← 见上面第 1 条，改这里会导致重复记账
+        recordId: r.id,
+        error: null,
+      },
+    });
+    added++;
+  }
+  saveData();
+  renderTxList();
+  if(btn) btn.disabled = false;
+  toast(added
+    ? tt(`找回 ${added} 笔`, `Restored ${added} record(s)`)
+    : tt('都在了，没有要找回的','Everything is already here'));
 }
 
 function staffSignOut(){
