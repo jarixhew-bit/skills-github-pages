@@ -70,11 +70,13 @@
   }
   .btn:disabled{opacity:.55; cursor:default}
   .btn-ghost{background:transparent; color:var(--brand); border:1px solid var(--line); font-weight:600; font-size:15px; padding:11px}
+  .photo-row{display:flex; gap:10px}
   .photo-btn{
-    display:block; text-align:center; padding:16px; border:1.5px dashed var(--line);
-    border-radius:10px; color:var(--sub); cursor:pointer; font-size:15px;
+    flex:1; text-align:center; padding:13px 8px; border:1.5px dashed var(--line);
+    border-radius:10px; color:var(--sub); cursor:pointer; font-size:14px; line-height:1.4;
+    background:transparent; font-family:inherit;
   }
-  .photo-btn.has{border-style:solid; border-color:var(--brand); color:var(--brand); background:var(--brand-soft)}
+  .photo-row.has .photo-btn{border-style:solid; border-color:var(--brand); color:var(--brand); background:var(--brand-soft)}
   #photo-prev{max-width:100%; max-height:190px; border-radius:10px; margin-top:10px; display:none}
 
   /* 送出成功后那块「单据写 N 号」——这是同事唯一必须记住的信息，做得最大 */
@@ -101,7 +103,13 @@
   .item .s{font-size:12.5px; color:var(--sub)}
   .item .amt2{font-weight:700; white-space:nowrap}
   .nophoto{color:var(--danger); font-weight:600}
-  .del{background:none; border:0; color:var(--sub); font-size:19px; cursor:pointer; padding:2px 5px; line-height:1}
+  /* 删除键原本是个灰色小 ✕，实机上没人看出那是删除（2026-08-07 用户反馈"删除键也要给
+     他们"——其实一直都在，只是看不出来）。改成带字的按钮，点击区也放大到好按。 */
+  .del{
+    background:transparent; border:1px solid var(--line); border-radius:8px;
+    color:var(--danger); font-size:13px; font-family:inherit; cursor:pointer;
+    padding:7px 11px; white-space:nowrap; align-self:center;
+  }
   .sum{display:flex; justify-content:space-between; padding-top:12px; margin-top:4px; border-top:2px solid var(--line); font-weight:700}
   .muted{color:var(--sub); font-size:14px; text-align:center; padding:14px 0}
   #toast{
@@ -190,14 +198,23 @@
 
       <div class="field">
         <label data-zh="收据照片" data-en="Receipt photo"></label>
-        <label class="photo-btn" id="photo-label" for="f-photo">
-          <span data-zh="📷 拍照 / 选一张" data-en="📷 Take or choose a photo"></span>
-        </label>
-        <!-- 刻意不加 capture 属性：加了浏览器会直接开相机、跳过选择器，同事就没法从
-             相册挑一张（2026-08-07 实机发现）。收据常常是外卖 App 的截图、或别人转发
-             过来的图，早就在相册里了——逼他现场拍等于这笔账记不了。
-             不加 capture 时 Android/iOS 都会弹「相机 / 相册 / 文件」让他自己选。 -->
-        <input id="f-photo" type="file" accept="image/*" class="hide" onchange="onPhoto(event)">
+        <!-- 相机和相册**必须是两个按钮**（2026-08-07 实机两次踩坑后确定）：
+             只放一个 input 时，加 capture 属性 → 只开相机、选不了相册；
+             去掉 capture → 那台 Android 只弹相册/文件、没有相机。
+             两个 input 各司其职就没有这个问题——老板那个 App 一直是这么做的，
+             在同一台手机上验证过可用。改这里之前先看这段注释。 -->
+        <div class="photo-row">
+          <button type="button" class="photo-btn" onclick="document.getElementById('f-photo-cam').click()">
+            <span style="font-size:20px">📷</span><br>
+            <span data-zh="拍照" data-en="Take photo"></span>
+          </button>
+          <button type="button" class="photo-btn" onclick="document.getElementById('f-photo-lib').click()">
+            <span style="font-size:20px">🖼️</span><br>
+            <span data-zh="从相册选" data-en="From gallery"></span>
+          </button>
+        </div>
+        <input id="f-photo-cam" type="file" accept="image/*" capture="environment" class="hide" onchange="onPhoto(event)">
+        <input id="f-photo-lib" type="file" accept="image/*" class="hide" onchange="onPhoto(event)">
         <img id="photo-prev" alt="">
         <div id="nophoto-warn" class="banner warn" style="margin:10px 0 0"
              data-zh="⚠️ 没有收据照片也能记，但月底要靠纸质单据补。能拍就现在拍。"
@@ -366,7 +383,7 @@ function onPhoto(ev){
     photoData = { base64: s.split(',')[1], mime: (s.match(/^data:(.*?);/) || [])[1] || 'image/jpeg' };
     const img = document.getElementById('photo-prev');
     img.src = s; img.style.display = 'block';
-    document.getElementById('photo-label').classList.add('has');
+    document.querySelector('.photo-row').classList.add('has');
     document.getElementById('nophoto-warn').classList.add('hide');
   };
   rd.readAsDataURL(f);
@@ -376,9 +393,11 @@ function clearForm(){
   document.getElementById('f-amount').value = '';
   document.getElementById('f-note').value = '';
   document.getElementById('f-plate').value = '';
-  document.getElementById('f-photo').value = '';
+  // 两个 input 都要清空，否则连着记两笔时第二笔会带上第一笔的照片
+  document.getElementById('f-photo-cam').value = '';
+  document.getElementById('f-photo-lib').value = '';
   document.getElementById('photo-prev').style.display = 'none';
-  document.getElementById('photo-label').classList.remove('has');
+  document.querySelector('.photo-row').classList.remove('has');
   document.getElementById('nophoto-warn').classList.remove('hide');
   photoData = null;
 }
@@ -508,7 +527,7 @@ function renderMine(){
         <div class="s">${esc(r.date.slice(5))} · ${side}${nophoto}${r.note ? ' · ' + esc(r.note) : ''}</div>
       </div>
       <div class="amt2">${money(r.amountUsd)}<div class="s" style="text-align:right;font-weight:400">${orig}</div></div>
-      <button class="del" title="${t('删除','Delete')}" onclick="delTx('${esc(r.id)}','${esc(r.date)}')">✕</button>
+      <button class="del" onclick="delTx('${esc(r.id)}','${esc(r.date)}')">${t('删除','Delete')}</button>
     </div>`;
   }).join('');
 
