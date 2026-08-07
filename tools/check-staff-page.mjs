@@ -134,14 +134,18 @@ let mainCtx;
   // 收据照片必须能「从相册选」，不能只让现场拍：加了 capture 属性浏览器会直接开相机、
   // 跳过选择器（2026-08-07 实机发现）。收据常常是外卖 App 截图或别人转发来的图，
   // 早就在相册里了，逼他现场拍等于这笔账记不了。
-  const photoAttrs = await page.$eval('#f-photo', e => ({
-    capture: e.getAttribute('capture'), accept: e.getAttribute('accept'), type: e.type,
-  }));
-  ok('照片输入框没有 capture 属性（否则只能开相机、选不了相册）',
-     photoAttrs.capture === null, photoAttrs);
-  ok('只收图片（accept=image/*）', photoAttrs.accept === 'image/*', photoAttrs);
-  ok('按钮文案跟行为一致（写了「选一张」就真的能选）',
-     (await page.textContent('#photo-label')).includes('选一张'), await page.textContent('#photo-label'));
+  // 相机和相册必须是**两个**独立 input：只放一个的话，加 capture 就只能开相机、
+  // 去掉 capture 那台 Android 又只弹相册——两次实机都踩到（2026-08-07）。
+  const cam = await page.$eval('#f-photo-cam', e => ({ capture: e.getAttribute('capture'), accept: e.getAttribute('accept') }));
+  const lib = await page.$eval('#f-photo-lib', e => ({ capture: e.getAttribute('capture'), accept: e.getAttribute('accept') }));
+  ok('拍照那个 input 带 capture（点了直接开相机）', cam.capture === 'environment', cam);
+  ok('相册那个 input 不带 capture（点了才会出相册）', lib.capture === null, lib);
+  ok('两个都只收图片', cam.accept === 'image/*' && lib.accept === 'image/*', { cam, lib });
+  ok('页面上真的有两个按钮', (await page.locator('.photo-row .photo-btn').count()) === 2,
+     await page.locator('.photo-row .photo-btn').count());
+  const photoBtns = await page.$$eval('.photo-row .photo-btn', els => els.map(e => e.textContent.replace(/\s+/g, '')));
+  ok('一个写「拍照」、一个写「从相册选」',
+     photoBtns.some(t => t.includes('拍照')) && photoBtns.some(t => t.includes('从相册选')), photoBtns);
   ok('无 JS 报错', errs.length === 0, errs);
 }
 
@@ -191,6 +195,9 @@ console.log('\n【4】送出一笔');
      parseFloat(await page.$eval('#done-no', e=>getComputedStyle(e).fontSize)) >= 32,
      await page.$eval('#done-no', e=>getComputedStyle(e).fontSize));
   ok('送完清空金额，避免重复记同一笔', (await page.inputValue('#f-amount')) === '', await page.inputValue('#f-amount'));
+  // 两个 input 都要清空，否则连着记两笔时第二笔会带上第一笔的照片
+  ok('送完两个照片 input 都清空了',
+     (await page.inputValue('#f-photo-cam')) === '' && (await page.inputValue('#f-photo-lib')) === '');
   ok('无 JS 报错', errs.length === 0, errs);
 }
 
@@ -220,6 +227,11 @@ console.log('\n【6】删掉自己记错的');
   await page.waitForTimeout(900);
   const d = posted.find(x => x.action === 'delete');
   ok('送出删除请求', !!d, posted);
+  // 删除键必须**看得出是删除**：原本是个灰色小 ✕，实机上没人认出来（2026-08-07 用户反馈）
+  const delTxt = (await page.$$eval('#mine-body .del', els => els.map(e => e.textContent.trim())))[0];
+  ok('删除键上写着字，不是一个光秃秃的符号', /删除|Delete/.test(delTxt || ''), delTxt);
+  const delBox = await page.$eval('#mine-body .del', e => { const r = e.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; });
+  ok('点击区够大（手指按得到，高≥32px）', delBox.h >= 32, delBox);
   ok('带了钥匙和记录 id', d.token === SERYI_KEY && d.recordId === 's1', d);
   ok('删完清单少一笔', (await page.locator('#mine-body .item').count()) === 1,
      await page.locator('#mine-body .item').count());
