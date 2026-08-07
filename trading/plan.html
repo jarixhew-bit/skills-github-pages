@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>财务自由进度推演</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --card2: #12141d; --border: #2a2d3e;
+    --text: #e2e8f0; --muted: #7c8698; --dim: #4b5468;
+    --green: #22c55e; --red: #f87171; --blue: #60a5fa; --yellow: #fbbf24; --purple: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif; min-height: 100vh; font-size: 15px; }
+  a { color: var(--blue); }
+
+  header { position: sticky; top: 0; z-index: 20; background: rgba(15,17,23,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  header h1 { font-size: 17px; font-weight: 700; }
+  .meta { color: var(--muted); font-size: 12px; }
+  .hdr-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .btn-sm { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer; text-decoration: none; }
+  .btn-sm.unlocked { border-color: var(--green); color: var(--green); }
+
+  .container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+  section { margin-bottom: 24px; }
+  .sec-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sec-title .sub { font-size: 12px; font-weight: 400; color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+
+  .locked-box { text-align: center; padding: 28px 16px; }
+  .locked-box .icon { font-size: 26px; margin-bottom: 8px; }
+  .locked-box p { color: var(--muted); font-size: 13px; margin: 6px 0 14px; line-height: 1.6; }
+  .pw-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .pw-row input { background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 10px 12px; font-size: 15px; width: 220px; }
+  .pw-row button { background: var(--blue); border: 0; color: #0b1220; font-weight: 700; border-radius: 10px; padding: 10px 18px; font-size: 14px; cursor: pointer; }
+  .err { color: var(--red); font-size: 13px; margin-top: 10px; display: none; }
+
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 700px) { .tiles { grid-template-columns: 1fr; } }
+  .tile { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .tile .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .tile .value { font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+  .tile .sub { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .tile.hero { border-color: rgba(96,165,250,.45); }
+
+  .ctrl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 20px; }
+  @media (max-width: 700px) { .ctrl-grid { grid-template-columns: 1fr; } }
+  .ctrl { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl label { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .ctrl label b { color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .ctrl input[type=range] { width: 100%; accent-color: var(--blue); }
+  .ctrl input[type=number] { background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 15px; width: 100%; }
+  .ctrl .hint { font-size: 11px; color: var(--dim); line-height: 1.5; }
+
+  .adv-toggle { background: none; border: 0; color: var(--blue); font-size: 13px; cursor: pointer; padding: 6px 0; }
+  #advanced { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  #advanced.open { display: block; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 9px 8px; text-align: right; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  tr:last-child td { border-bottom: 0; }
+  td.win { color: var(--green); } td.lose { color: var(--red); }
+
+  .note { font-size: 13px; color: var(--muted); line-height: 1.75; }
+  .note b { color: var(--text); }
+  .warn { border-left: 3px solid var(--yellow); padding-left: 12px; }
+  .chart-wrap { overflow-x: auto; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { background: var(--card2); border: 0; color: var(--muted); padding: 6px 12px; font-size: 13px; cursor: pointer; }
+  .seg button.on { background: var(--blue); color: #0b1220; font-weight: 700; }
+  #selftest { font-size: 11px; color: var(--dim); margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎯 财务自由进度推演</h1>
+  <span class="meta" id="hdrMeta"></span>
+  <div class="hdr-right">
+    <a class="btn-sm" href="./">← 分析器</a>
+    <button class="btn-sm" id="lockBtn" onclick="onLockBtn()">🔒 未解锁</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <section id="lockSec">
+    <div class="card locked-box">
+      <div class="icon">🔒</div>
+      <p>输入密码可自动带入你的当前净值。<br>不解锁也能用，手动填个数字即可。</p>
+      <div class="pw-row">
+        <input type="password" id="pwInput" placeholder="密码" onkeydown="if(event.key==='Enter')tryUnlock()">
+        <button onclick="tryUnlock()">解锁</button>
+        <button onclick="skipUnlock()" style="background:var(--card);color:var(--text);border:1px solid var(--border)">手动输入</button>
+      </div>
+      <div class="err" id="pwErr"></div>
+    </div>
+  </section>
+
+  <div id="main" style="display:none">
+
+    <section>
+      <div class="tiles">
+        <div class="tile hero">
+          <div class="label">还需要多少年（中位数）</div>
+          <div class="value" id="tYears">—</div>
+          <div class="sub" id="tYearsSub">—</div>
+        </div>
+        <div class="tile">
+          <div class="label">按中位数，达标那年是</div>
+          <div class="value" id="tWhen">—</div>
+          <div class="sub" id="tWhenSub">运气好/差各 10% 的情况</div>
+        </div>
+        <div class="tile">
+          <div class="label">目标本金</div>
+          <div class="value" id="tTarget">—</div>
+          <div class="sub" id="tTargetSub">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-title">你的输入 <span class="sub">改任何一项都会立刻重算</span></div>
+      <div class="card">
+        <div class="ctrl-grid">
+          <div class="ctrl">
+            <label>当前净值 <b id="navSrc"></b></label>
+            <input type="number" id="iNav" step="1000">
+            <div class="hint">解锁后自动带入 IBKR 实际净值，也可以自己改着玩</div>
+          </div>
+          <div class="ctrl">
+            <label>每月投入 <b id="vPmt"></b></label>
+            <input type="range" id="iPmt" min="0" max="5000" step="100">
+            <div class="hint">这是你最能控制的一项</div>
+          </div>
+          <div class="ctrl">
+            <label>目标每月被动收入 <b id="vInc"></b></label>
+            <input type="range" id="iInc" min="500" max="6000" step="100">
+            <div class="hint">目标定多高，比选什么股票影响还大</div>
+          </div>
+          <div class="ctrl">
+            <label>IBIT 占比 <b id="vBtc"></b></label>
+            <input type="range" id="iBtc" min="0" max="60" step="5">
+            <div class="hint">你现在是 20%。拖到 0 就是纯 VOO</div>
+          </div>
+        </div>
+
+        <button class="adv-toggle" onclick="document.getElementById('advanced').classList.toggle('open')">⚙️ 假设参数（点开可改）</button>
+        <div id="advanced">
+          <div class="ctrl-grid">
+            <div class="ctrl">
+              <label>股票预期年化 <b id="vMuV"></b></label>
+              <input type="range" id="iMuV" min="2" max="18" step="0.5">
+              <div class="hint">标普长期平均约 10%；过去十年 15.5% 是偏好的十年</div>
+            </div>
+            <div class="ctrl">
+              <label>股票年化波动 <b id="vSdV"></b></label>
+              <input type="range" id="iSdV" min="8" max="30" step="1">
+              <div class="hint">历史约 16%</div>
+            </div>
+            <div class="ctrl">
+              <label>IBIT 预期年化 <b id="vMuB"></b></label>
+              <input type="range" id="iMuB" min="-20" max="40" step="1">
+              <div class="hint">没有人知道这个数。默认 15% 是「跟纯 VOO 打平」的分水岭——拖高代表你看好它</div>
+            </div>
+            <div class="ctrl">
+              <label>IBIT 年化波动 <b id="vSdB"></b></label>
+              <input type="range" id="iSdB" min="20" max="120" step="5">
+              <div class="hint">比特币历史大致 60–90%</div>
+            </div>
+            <div class="ctrl">
+              <label>两者相关性 <b id="vRho"></b></label>
+              <input type="range" id="iRho" min="-50" max="90" step="5">
+              <div class="hint">近年大致 0.2–0.5，不是独立的</div>
+            </div>
+            <div class="ctrl">
+              <label>安全提取率 <b id="vWd"></b></label>
+              <input type="range" id="iWd" min="2" max="6" step="0.25">
+              <div class="hint">经典「4% 法则」：每年卖掉 4% 过活</div>
+            </div>
+            <div class="ctrl">
+              <label>通胀 <b id="vInf"></b></label>
+              <input type="range" id="iInf" min="0" max="8" step="0.5">
+              <div class="hint">只在切到「今天购买力」口径时起作用</div>
+            </div>
+            <div class="ctrl">
+              <label>模拟次数 <b id="vRuns"></b></label>
+              <input type="range" id="iRuns" min="1000" max="10000" step="1000">
+              <div class="hint">越多越稳，也越慢</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-title">
+        钱会怎么长
+        <span class="sub">阴影是运气好坏的范围，不是预测</span>
+        <span class="seg" style="margin-left:auto">
+          <button id="segNom" class="on" onclick="setReal(false)">名义金额</button>
+          <button id="segReal" onclick="setReal(true)">今天购买力</button>
+        </span>
+      </div>
+      <div class="card">
+        <div class="chart-wrap"><div id="chart"></div></div>
+        <div class="legend">
+          <span><i style="background:rgba(96,165,250,.15)"></i>最差 10% ～ 最好 10%</span>
+          <span><i style="background:rgba(96,165,250,.3)"></i>中间一半</span>
+          <span><i style="background:var(--blue)"></i>中位数</span>
+          <span><i style="background:var(--yellow)"></i>目标线</span>
+          <span style="color:var(--dim)">纵轴为对数刻度（每格不是等距金额）</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-title">你的配置 vs 纯 VOO <span class="sub">同样的投入、同样的目标</span></div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>　</th><th id="thMine">你的配置</th><th>100% VOO</th><th>差别</th></tr>
+          </thead>
+          <tbody id="cmpBody"></tbody>
+        </table>
+        <div class="note" id="cmpVerdict" style="margin-top:12px"></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-title">目标定多高，差别有多大</div>
+      <div class="card">
+        <table>
+          <thead><tr><th>每月想要</th><th>需要本金</th><th>中位数年数</th><th>15 年内达标概率</th></tr></thead>
+          <tbody id="ladderBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-title">看这页时要记住的几件事</div>
+      <div class="card note warn">
+        <p><b>这是模拟，不是预测。</b>每次结果都会略有不同，因为它真的在掷骰子。中位数的意思是「一半情况比这快，一半比这慢」，不是「大概就是这个数」。</p>
+        <p style="margin-top:10px"><b>真实市场的暴跌比模型更狠。</b>这里用的是正态分布，而现实中的崩盘更频繁、更深。所以实际的「最差 10%」会比图上更难看。</p>
+        <p style="margin-top:10px"><b>没有人知道 IBIT 那一栏该填多少。</b>默认 15% 只是「跟纯 VOO 打平」的分水岭，不是预测。你把它拖到哪，就等于你在赌那个数。</p>
+        <p style="margin-top:10px"><b>目标和投入是你能控制的，收益率不是。</b>如果发现某个滑块拖动后结果剧烈变化，那说明你的计划过度依赖那个假设——那不是好事。</p>
+        <div id="selftest"></div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+"use strict";
+const PW_KEY = "tradingAnalyzerPw";      // 与分析器页共用，解锁一次两边都记住
+const CFG_KEY = "planAssumptions";        // 只存假设参数，不存任何金额之外的隐私内容
+let PRIV = null, showReal = false, lastRun = null;
+
+const $ = id => document.getElementById(id);
+const usd = v => (v == null || !isFinite(v)) ? "—" : "$" + Math.round(v).toLocaleString("en-US");
+const usdK = v => v >= 1e6 ? "$" + (v/1e6).toFixed(2) + "M" : "$" + Math.round(v/1000) + "k";
+
+// ---------- 解密（与 index.html 同一套信封格式） ----------
+async function decryptEnvelope(envText, password) {
+  const env = JSON.parse(envText);
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const keyMat = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: b64(env.salt), iterations: env.iter, hash: "SHA-256" },
+    keyMat, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(env.nonce) }, key, b64(env.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+async function unlockWith(password, silent) {
+  let envText;
+  try {
+    const r = await fetch("data-private.enc", { cache: "no-store" });
+    if (!r.ok) throw new Error("尚无私密数据文件");
+    envText = await r.text();
+  } catch (e) {
+    if (!silent) showPwErr(e.message);
+    return false;
+  }
+  try {
+    PRIV = await decryptEnvelope(envText, password);
+  } catch (e) {
+    if (!silent) showPwErr("密码不对，再试一次");
+    return false;
+  }
+  localStorage.setItem(PW_KEY, password);
+  const nav = PRIV.account && PRIV.account.net_liq;
+  if (nav) {
+    $("iNav").value = Math.round(nav);
+    $("navSrc").textContent = "已带入实际净值";
+    // 有真实持仓就把 IBIT 占比也带进来，省得自己算
+    const ibit = (PRIV.positions || []).find(p => p.symbol === "IBIT");
+    if (ibit && ibit.weight != null) $("iBtc").value = Math.round(ibit.weight / 5) * 5;
+  }
+  $("lockBtn").textContent = "🔓 已解锁";
+  $("lockBtn").classList.add("unlocked");
+  $("hdrMeta").textContent = PRIV.generated_at ? "数据 " + PRIV.generated_at.slice(0, 10) : "";
+  enterMain();
+  return true;
+}
+
+function showPwErr(m) { $("pwErr").textContent = m; $("pwErr").style.display = "block"; }
+function tryUnlock() { const pw = $("pwInput").value.trim(); if (pw) unlockWith(pw, false); }
+function skipUnlock() { $("navSrc").textContent = "手动输入"; enterMain(); }
+function onLockBtn() {
+  if (PRIV) {
+    if (confirm("锁定并忘记本机密码？")) { localStorage.removeItem(PW_KEY); location.reload(); }
+  } else { $("lockSec").scrollIntoView({ behavior: "smooth" }); }
+}
+function enterMain() { $("lockSec").style.display = "none"; $("main").style.display = "block"; recompute(); }
+
+// ---------- 参数 ----------
+const DEFAULTS = { nav: 100000, pmt: 1000, inc: 2800, btc: 20, muV: 10, sdV: 16, muB: 15, sdB: 70, rho: 30, wd: 4, inf: 3, runs: 4000 };
+const FIELDS = ["nav","pmt","inc","btc","muV","sdV","muB","sdB","rho","wd","inf","runs"];
+
+function loadCfg() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(CFG_KEY) || "{}"); } catch (e) { saved = {}; }
+  FIELDS.forEach(k => {
+    const el = $("i" + k[0].toUpperCase() + k.slice(1));
+    if (el) el.value = (saved[k] != null ? saved[k] : DEFAULTS[k]);
+  });
+}
+function readCfg() {
+  const o = {};
+  FIELDS.forEach(k => { o[k] = parseFloat($("i" + k[0].toUpperCase() + k.slice(1)).value) || 0; });
+  return o;
+}
+function saveCfg(c) {
+  const keep = Object.assign({}, c); delete keep.nav;   // 净值不落 localStorage
+  try { localStorage.setItem(CFG_KEY, JSON.stringify(keep)); } catch (e) {}
+}
+
+// ---------- 蒙特卡洛 ----------
+// 每月再平衡回目标权重；两资产用相关正态。返回各年份的净值分布与达标月份分布。
+function simulate(cfg, wBtc, years) {
+  const N = Math.max(200, cfg.runs), M = years * 12;
+  const mv = cfg.muV / 100 / 12, sv = cfg.sdV / 100 / Math.sqrt(12);
+  const mb = cfg.muB / 100 / 12, sb = cfg.sdB / 100 / Math.sqrt(12);
+  const rho = cfg.rho / 100, rc = Math.sqrt(Math.max(0, 1 - rho * rho));
+  const target = cfg.inc * 12 / (cfg.wd / 100);
+  const wv = 1 - wBtc;
+
+  const yearly = [];                       // yearly[y] = 该年末所有路径的净值
+  for (let y = 0; y <= years; y++) yearly.push(new Float64Array(N));
+  const hitMonth = new Float64Array(N);
+
+  let spare = null;
+  const gauss = () => {                    // Box-Muller，缓存第二个值
+    if (spare !== null) { const s = spare; spare = null; return s; }
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    v = Math.random();
+    const r = Math.sqrt(-2 * Math.log(u));
+    spare = r * Math.sin(2 * Math.PI * v);
+    return r * Math.cos(2 * Math.PI * v);
+  };
+
+  for (let i = 0; i < N; i++) {
+    let val = cfg.nav, hit = 0;
+    yearly[0][i] = val;
+    for (let m = 1; m <= M; m++) {
+      const z1 = gauss(), z2 = rho * z1 + rc * gauss();
+      const gv = 1 + mv + sv * z1, gb = 1 + mb + sb * z2;
+      val = val * (wv * gv + wBtc * gb) + cfg.pmt;
+      if (val < 0) val = 0;
+      if (!hit && val >= target) hit = m;
+      if (m % 12 === 0) yearly[m / 12][i] = val;
+    }
+    hitMonth[i] = hit || Infinity;
+  }
+  yearly.forEach(a => a.sort());
+  const hits = Array.from(hitMonth).sort((a, b) => a - b);
+  return { yearly, hits, target, N };
+}
+
+const pct = (sortedArr, q) => sortedArr[Math.min(sortedArr.length - 1, Math.floor(q * sortedArr.length))];
+function hitYears(res, q) { const v = pct(res.hits, q); return isFinite(v) ? v / 12 : null; }
+function probWithin(res, years) { return res.hits.filter(m => m <= years * 12).length / res.N; }
+
+// ---------- 渲染 ----------
+const HORIZON = 30;
+
+function recompute() {
+  const cfg = readCfg();
+  saveCfg(cfg);
+  ["pmt","inc"].forEach(k => $("v" + k[0].toUpperCase() + k.slice(1)).textContent = usd(cfg[k]));
+  $("vBtc").textContent = cfg.btc + "%";
+  $("vMuV").textContent = cfg.muV + "%";
+  $("vSdV").textContent = cfg.sdV + "%";
+  $("vMuB").textContent = cfg.muB + "%";
+  $("vSdB").textContent = cfg.sdB + "%";
+  $("vRho").textContent = (cfg.rho / 100).toFixed(2);
+  $("vWd").textContent = cfg.wd + "%";
+  $("vInf").textContent = cfg.inf + "%";
+  $("vRuns").textContent = cfg.runs;
+
+  const mine = simulate(cfg, cfg.btc / 100, HORIZON);
+  const pure = simulate(cfg, 0, HORIZON);
+  lastRun = { cfg, mine, pure };
+
+  renderTiles(cfg, mine);
+  renderChart(cfg, mine);
+  renderCompare(cfg, mine, pure);
+  renderLadder(cfg);
+}
+
+function renderTiles(cfg, res) {
+  const med = hitYears(res, 0.5), p10 = hitYears(res, 0.10), p90 = hitYears(res, 0.90);
+  $("tYears").textContent = med == null ? "30 年内到不了" : med.toFixed(0) + " 年";
+  $("tYearsSub").textContent = med == null
+    ? "一半以上的情况在 30 年内都达不到这个目标"
+    : `运气好（前 10%）约 ${p10 ? p10.toFixed(0) : "—"} 年，运气差（后 10%）${p90 ? p90.toFixed(0) + " 年" : "30 年也到不了"}`;
+
+  const nowY = new Date().getFullYear();
+  $("tWhen").textContent = med == null ? "—" : (nowY + Math.round(med)) + " 年";
+  $("tWhenSub").textContent = med == null ? "—"
+    : `最快 ${p10 ? nowY + Math.round(p10) : "—"}，最慢 ${p90 ? nowY + Math.round(p90) : "30 年外"}`;
+
+  $("tTarget").textContent = usd(res.target);
+  const realTgt = res.target / Math.pow(1 + cfg.inf / 100, med || 15);
+  $("tTargetSub").textContent = `按 ${cfg.wd}% 提取率，每月 ${usd(cfg.inc)}`
+    + (med ? `；那时的购买力约等于今天的 ${usd(realTgt)}` : "");
+}
+
+function deflate(v, cfg, years) { return showReal ? v / Math.pow(1 + cfg.inf / 100, years) : v; }
+
+function renderChart(cfg, res) {
+  const W = 860, H = 300, PL = 62, PR = 12, PT = 12, PB = 28;
+  const iw = W - PL - PR, ih = H - PT - PB;
+  const bands = [0.10, 0.25, 0.50, 0.75, 0.90].map(q => res.yearly.map((a, y) => deflate(pct(a, q), cfg, y)));
+  const tgt = res.target;
+
+  // 纵轴用对数刻度：线性刻度会被 30 年后的极端上限撑爆（实测能到 $13M+），
+  // 把真正要看的「什么时候穿过目标线」压成底部一条缝。取对数后各分位带宽度均匀，
+  // 而且用户把 IBIT 拖到 60% 时也不会失控。
+  // 下界贴着最差那条线走，别从 $1k 起画——否则大半张图是空的
+  const lowVals = bands[0].filter(v => v > 0).concat([cfg.nav]);
+  const yMin = Math.max(1000, Math.min.apply(null, lowVals) * 0.8);
+  const yMax = Math.max(tgt * 1.3, ...bands[4]);
+  const lg = v => Math.log10(Math.max(v, yMin));
+  const x = y => PL + y / HORIZON * iw;
+  const yy = v => PT + ih - (lg(v) - lg(yMin)) / (lg(yMax) - lg(yMin)) * ih;
+  const path = (arr, rev) => {
+    const idx = arr.map((v, i) => [x(i), yy(v)]);
+    if (rev) idx.reverse();
+    return idx.map((p, i) => (i === 0 && !rev ? "M" : "L") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+  };
+  const area = (lo2, hi2) => path(hi2) + " " + path(lo2, true) + " Z";
+
+  let g = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px;display:block">`;
+  // 刻度取 1/2/5 × 10^n 这种整数档，读起来才像钱
+  const ticks = [];
+  for (let e = 3; e <= 8; e++) for (const m of [1, 2, 5]) {
+    const v = m * Math.pow(10, e);
+    if (v >= yMin && v <= yMax) ticks.push(v);
+  }
+  ticks.forEach(v => {
+    const py = yy(v);
+    g += `<line x1="${PL}" y1="${py}" x2="${W-PR}" y2="${py}" stroke="#2a2d3e" stroke-width="1"/>`;
+    g += `<text x="${PL-8}" y="${py+4}" fill="#7c8698" font-size="11" text-anchor="end">${usdK(v)}</text>`;
+  });
+  for (let y = 0; y <= HORIZON; y += 5) {
+    g += `<text x="${x(y)}" y="${H-8}" fill="#7c8698" font-size="11" text-anchor="middle">${y}年</text>`;
+  }
+  g += `<path d="${area(bands[0], bands[4])}" fill="rgba(96,165,250,.15)"/>`;
+  g += `<path d="${area(bands[1], bands[3])}" fill="rgba(96,165,250,.3)"/>`;
+  g += `<path d="${path(bands[2])}" fill="none" stroke="#60a5fa" stroke-width="2.5"/>`;
+  const ty = yy(tgt);
+  if (ty > PT) {
+    g += `<line x1="${PL}" y1="${ty}" x2="${W-PR}" y2="${ty}" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,4"/>`;
+    g += `<text x="${W-PR-4}" y="${ty-6}" fill="#fbbf24" font-size="11" text-anchor="end">目标 ${usdK(tgt)}</text>`;
+  }
+  g += `</svg>`;
+  $("chart").innerHTML = g;
+}
+
+function renderCompare(cfg, mine, pure) {
+  $("thMine").textContent = `你的配置（${cfg.btc}% IBIT）`;
+  const rows = [
+    ["中位数年数", r => { const y = hitYears(r, 0.5); return y == null ? "30+ 年" : y.toFixed(1) + " 年"; }, true],
+    ["15 年内达标概率", r => (probWithin(r, 15) * 100).toFixed(0) + "%", false],
+    ["15 年后中位数净值", r => usd(deflate(pct(r.yearly[15], 0.5), cfg, 15)), false],
+    ["15 年后最差 10%", r => usd(deflate(pct(r.yearly[15], 0.10), cfg, 15)), false],
+    ["15 年后最好 10%", r => usd(deflate(pct(r.yearly[15], 0.90), cfg, 15)), false],
+  ];
+  let html = "";
+  rows.forEach(([label, fn]) => {
+    html += `<tr><td>${label}</td><td>${fn(mine)}</td><td>${fn(pure)}</td><td>—</td></tr>`;
+  });
+  $("cmpBody").innerHTML = html;
+
+  // 判词：只比中位数净值，因为它同时反映了收益和波动损耗
+  const m15 = pct(mine.yearly[15], 0.5), p15 = pct(pure.yearly[15], 0.5);
+  const diff = m15 - p15, pctDiff = p15 ? diff / p15 * 100 : 0;
+  const worse10 = pct(mine.yearly[15], 0.10) - pct(pure.yearly[15], 0.10);
+  let verdict;
+  if (cfg.btc === 0) {
+    verdict = "IBIT 占比拖到 0 了，两边是同一个东西。";
+  } else if (Math.abs(pctDiff) < 3) {
+    verdict = `<b>按你现在填的假设，两者基本打平</b>（中位数差 ${pctDiff.toFixed(1)}%）。也就是说这 ${cfg.btc}% 的 IBIT 你多担了波动，却没换到更好的典型结果——`
+      + `把上面「IBIT 预期年化」拖高才会开始划算。`;
+  } else if (pctDiff > 0) {
+    verdict = `<b>按你填的假设，你的配置中位数高出 ${pctDiff.toFixed(0)}%</b>（${usd(diff)}）。代价写在下面一行：最差 10% 的情况比纯 VOO 还少 ${usd(-worse10)}。`
+      + `这个「上限更高、下限更低」就是你用波动换来的东西。`;
+  } else {
+    verdict = `<b>按你填的假设，你的配置反而落后 ${(-pctDiff).toFixed(0)}%</b>（${usd(-diff)}）。`
+      + (cfg.muB < cfg.muV
+        ? `你把 IBIT 的预期收益填得比股票还低（${cfg.muB}% vs ${cfg.muV}%），那结果落后是必然的——真按这个判断，就不该持有它。`
+        : `注意这里 IBIT 的预期收益已经不低于股票，仍然输——因为高波动本身会吃掉复利。预期收益要**明显**高过股票，这笔交易才划算。`);
+  }
+  $("cmpVerdict").innerHTML = verdict;
+}
+
+function renderLadder(cfg) {
+  let html = "";
+  [1000, 1500, 2000, 2800, 4000].forEach(inc => {
+    const c = Object.assign({}, cfg, { inc, runs: Math.min(cfg.runs, 3000) });
+    const r = simulate(c, cfg.btc / 100, HORIZON);
+    const y = hitYears(r, 0.5);
+    const mark = inc === cfg.inc ? ' style="color:var(--blue);font-weight:700"' : "";
+    html += `<tr${mark}><td>${usd(inc)}</td><td>${usd(r.target)}</td><td>${y == null ? "30+ 年" : y.toFixed(0) + " 年"}</td><td>${(probWithin(r, 15) * 100).toFixed(0)}%</td></tr>`;
+  });
+  $("ladderBody").innerHTML = html;
+}
+
+function setReal(v) {
+  showReal = v;
+  $("segNom").classList.toggle("on", !v);
+  $("segReal").classList.toggle("on", v);
+  if (lastRun) { renderChart(lastRun.cfg, lastRun.mine); renderCompare(lastRun.cfg, lastRun.mine, lastRun.pure); }
+}
+
+// ---------- 自检 ----------
+// 把波动设为 0，模拟结果必须等于确定性的年金终值公式。
+// 这条能挡住再平衡、月度复利、投入时点这几处最容易写反的地方。
+function selfTest() {
+  const cfg = { nav: 100000, pmt: 1000, inc: 2800, wd: 4, muV: 10, sdV: 0, muB: 10, sdB: 0, rho: 0, inf: 3, runs: 300 };
+  const res = simulate(cfg, 0.2, 15);
+  const got = pct(res.yearly[15], 0.5);
+  const r = 0.10 / 12, m = 180;
+  const want = cfg.nav * Math.pow(1 + r, m) + cfg.pmt * ((Math.pow(1 + r, m) - 1) / r);
+  const err = Math.abs(got - want) / want;
+  const ok = err < 0.005;
+  $("selftest").textContent = ok
+    ? `✓ 自检通过：零波动时模拟值 ${usd(got)} 与公式值 ${usd(want)} 一致（误差 ${(err*100).toFixed(3)}%）`
+    : `✗ 自检不通过：模拟 ${usd(got)} vs 公式 ${usd(want)}，误差 ${(err*100).toFixed(2)}% —— 计算逻辑有问题，别信这页的数字`;
+  $("selftest").style.color = ok ? "" : "var(--red)";
+  return ok;
+}
+
+// ---------- 启动 ----------
+async function boot() {
+  loadCfg();
+  FIELDS.forEach(k => {
+    const el = $("i" + k[0].toUpperCase() + k.slice(1));
+    if (el) el.addEventListener("input", recompute);
+  });
+  selfTest();
+  const saved = localStorage.getItem(PW_KEY);
+  if (saved) { const ok = await unlockWith(saved, true); if (!ok) localStorage.removeItem(PW_KEY); }
+}
+boot();
+</script>
+
+</body>
+</html>

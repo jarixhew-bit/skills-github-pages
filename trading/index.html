@@ -21,7 +21,8 @@
   header { position: sticky; top: 0; z-index: 20; background: rgba(15,17,23,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   header h1 { font-size: 17px; font-weight: 700; }
   .meta { color: var(--muted); font-size: 12px; }
-  #lockBtn { margin-left: auto; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
+  #planLink { margin-left: auto; background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 13px; text-decoration: none; }
+  #lockBtn { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
   #lockBtn.unlocked { border-color: var(--green); color: var(--green); }
 
   .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
@@ -130,6 +131,7 @@
 <header>
   <h1>📊 股票交易分析器</h1>
   <span class="meta" id="metaLine">载入中…</span>
+  <a id="planLink" href="plan.html">🎯 进度推演</a>
   <button id="lockBtn" onclick="onLockBtn()">🔒 解锁</button>
 </header>
 
