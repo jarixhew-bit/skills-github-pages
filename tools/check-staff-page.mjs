@@ -125,9 +125,12 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', e => errs.push(e.message));
-  page.on('dialog', d => d.accept());
+  // 弹出的对话框内容留下来：有些提示（例如「这台手机存不住记录」）就是用 alert 说的，
+  // 一律 accept 掉的话断言就看不到它说了什么
+  const dialogs = [];
+  page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
   // book 交出去：测「从公司账本找回记录」时要能摆布服务端手上有哪几笔
-  return { ctx, page, posted, errs, book, setMode: m => { mode = m; } };
+  return { ctx, page, posted, errs, book, dialogs, setMode: m => { mode = m; } };
 }
 
 /** 填钥匙进门，返回已经进到主界面的 page。 */
@@ -139,11 +142,24 @@ async function signIn(h) {
   return h;
 }
 
+/**
+ * 按键输入金额（不是 fill）。
+ * 用 pressSequentially 是刻意的：金额栏一旦被改回 type="number"，playwright 的
+ * fill 会直接抛错、整份自检崩掉；逐键输入则跟真人一样——逗号被输入框吞掉、
+ * 值变成空的，断言才会给出一个干净的红灯，看得出是「金额没进去」而不是脚本坏了。
+ */
+async function typeAmount(page, text) {
+  const el = page.locator('#tx-amount');
+  await el.click();
+  await el.press('ControlOrMeta+a').catch(() => {});
+  await el.pressSequentially(String(text), { delay: 20 });
+}
+
 /** 走一遍完整的记一笔（金额 + 类别 [+ 车牌]）。 */
 async function addOne(page, { amount, category, plate } = {}) {
   await page.click('.fab');
   await page.waitForTimeout(400);
-  await page.fill('#tx-amount', String(amount));
+  await typeAmount(page, amount);
   await page.selectOption('#tx-company-category', category);
   await page.waitForTimeout(200);
   if (plate) await page.fill('#tx-company-plate', plate);
@@ -421,7 +437,16 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
 {
   const h = await signIn(await newPage());
   const { page, posted, errs, book } = h;
-  // 服务端手上有这个人本月报过的两笔（模拟他之前在别的手机上报的）
+  // 模拟「清了浏览器数据／换手机」：账本没了，钥匙还在。
+  // 此刻服务端手上也还没有他的记录，所以开页面时的自动补回没东西可补——
+  // 这一组测的是**手动**按「找回本月记录」，先把自动那条路排除掉（自动那条在【9d】）
+  await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1800);
+  ok('清掉之后清单确实是空的', /还没有记录|Nothing recorded/.test(await page.textContent('#tx-list')),
+     await page.textContent('#tx-list'));
+
+  // 现在服务端有他本月报过的两笔（模拟他之前在别的手机上报的）
   book[SERYI_KEY].records = [
     { id:'srv_1', date:'2026-08-02', categoryEn:'Lunch',   billNo:'1', side:'assist',
       amountUsd:4.49, originalAmount:null, note:null, hasPhoto:true },
@@ -429,11 +454,6 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
     { id:'srv_2', date:'2026-08-03', categoryEn:'Petrol (2AB-1234)', billNo:'2', side:'boss',
       amountUsd:20.00, originalAmount:null, note:null, hasPhoto:false },
   ];
-  // 模拟「清了浏览器数据／换手机」：账本没了，钥匙还在
-  await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));
-  await page.reload({ waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  ok('清掉之后清单确实是空的', /还没有记录|Nothing recorded/.test(await page.textContent('#tx-list')));
 
   posted.length = 0;
   await page.click('#staff-restore-btn');
@@ -479,6 +499,127 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
   ok('第二次提示「都在了」', /都在了|already here/.test(await page.textContent('#toast')),
      await page.textContent('#toast'));
   ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【9f】金额栏要收得下人真的会打出来的写法 ----------
+console.log('\n【9f】用逗号当小数点也要记得进去（手机键盘很多语言就是逗号）');
+{
+  const h = await signIn(await newPage());
+  const { page, posted, errs } = h;
+
+  // 2026-08-07 Seryi 实机：手打「5,45」怎么都存不进去。原因是金额栏原本是
+  // type="number"，逗号让它判定不合法、.value 回空字符串——画面上有数字，
+  // 程序拿到的是空的。当天有收据那笔（OCR 自动填、带小数点）和整数那笔都进得去，
+  // 只有手打小数的进不去，正是这个毛病的形状。
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '5,45');
+  await page.selectOption('#tx-company-category', 'Dinner');
+  await page.waitForTimeout(200);
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(1000);
+  const sent = posted.filter(x => !x.action);
+  ok('「5,45」存得进去', sent.length === 1, posted.map(x => x.action || 'add'));
+  ok('而且金额是 5.45，不是 545 也不是 5', sent[0] && sent[0].items[0].amount === 5.45,
+     sent[0] && sent[0].items[0]);
+  ok('清单里看得到 5.45', (await page.textContent('#tx-list')).includes('5.45'));
+
+  // iPhone 的数字键盘在有些语言下只有逗号没有点（用户 2026-08-07 确认同事就是这样），
+  // 所以打字当下就要回显认到的是多少，别让他记完才发现记成了 545
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '5,45');
+  await page.waitForTimeout(300);
+  const echo = page.locator('#tx-amount-echo');
+  ok('用逗号打字时当场回显认到多少', await echo.isVisible());
+  ok('回显的是 5.45', (await echo.textContent() || '').includes('5.45'), await echo.textContent());
+  await typeAmount(page, '6.00');
+  await page.waitForTimeout(300);
+  ok('正常打小数点就不啰嗦（回显收起）', !(await echo.isVisible()));
+  await page.click('button[onclick="closeModal(\'modal-add-tx\')"]');
+  await page.waitForTimeout(300);
+
+  // 千分位写法（1,234.50）不能被当成小数点
+  posted.length = 0;
+  await addOne(page, { amount: '1,234.50', category: 'Store' });
+  const s2 = posted.filter(x => !x.action);
+  ok('「1,234.50」认成 1234.5（逗号当千分位）', s2[0] && s2[0].items[0].amount === 1234.5,
+     s2[0] && s2[0].items[0]);
+
+  // 真的看不懂时要把他打的原文引出来，不能只说「请输入金额」
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, 'abc');
+  await page.selectOption('#tx-company-category', 'Dinner');
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(600);
+  const note = await page.textContent('#tx-save-note') || '';
+  ok('打了看不懂的东西：把原文引给他看', note.includes('abc'), note);
+  ok('并且告诉他小数点该用什么', note.includes('.'), note);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【9d】手机存不住数据时，不许静静地什么都不说 ----------
+console.log('\n【9d】存不住 / 存丢了：要么当场说清楚，要么自己把记录找回来');
+{
+  // 情境一：清单空着打开页面（无痕模式、站点数据被清、旧版页面清空过）→ 自动补回来。
+  // 2026-08-07 Seryi 实机就是这样：公司账本收到了三笔，他手机上一直是 0 笔 US$0.00。
+  const h = await signIn(await newPage());
+  const { page, errs, book } = h;
+  book[SERYI_KEY].records = [
+    { id:'srv_9', date:'2026-08-02', categoryEn:'Lunch', billNo:'1', side:'assist',
+      amountUsd:4.49, originalAmount:null, note:null, hasPhoto:true },
+  ];
+  await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1800);
+  ok('开页面时清单是空的 → 自动从公司账本补回来（不用他自己去按）',
+     (await page.textContent('#tx-list')).includes('4.49'), await page.textContent('#tx-list'));
+
+  // 情境二：localStorage 写不进去（写了等于没写）→ 必须当场说，不能静静吞掉。
+  // 关键：账还是要报出去（钱不能因为手机存不住就消失），但要明说别重记。
+  const dialogs = h.dialogs;
+  await page.evaluate(() => { localStorage.setItem = () => {}; });   // 假装写进去了
+  const before = h.posted.filter(x => !x.action).length;
+  await addOne(page, { amount: 12.34, category: 'Dinner' });
+  await page.waitForTimeout(900);
+  ok('存不住时也照样报进公司账本（钱不能丢）',
+     h.posted.filter(x => !x.action).length === before + 1,
+     h.posted.map(x => x.action || 'add'));
+  // 用 alert 而不是 toast 说这件事是刻意的：toast 两秒就被后面的「已入账」盖掉，
+  // 而这件事的代价是「记了一晚上，明天全空」，必须挡在眼前一次
+  ok('弹窗当场说清楚这台手机存不住', dialogs.some(m => /存不住/.test(m)), dialogs);
+  ok('并且明说别重记（重记会让公司账本算两次）',
+     dialogs.some(m => /不用重记|别重记/.test(m)), dialogs);
+  ok('也说了怎么修（别用无痕 / 加到主屏幕）',
+     dialogs.some(m => /无痕|主屏幕/.test(m)), dialogs);
+  ok('提示里带版本号（同事截图就能看出他手上是哪一版）',
+     dialogs.some(m => /版本 \d{4}-\d{2}-\d{2}/.test(m)), dialogs);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【9e】保存中途抛错，不许按钮按下去什么都不发生 ----------
+console.log('\n【9e】保存出错要留下痕迹（「点了完全没反应」是最难查的一种）');
+{
+  const h = await signIn(await newPage());
+  const { page, errs } = h;
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '5.00');
+  await page.selectOption('#tx-company-category', 'Lunch');
+  // 让保存中途炸掉，模拟任意一处意外抛错
+  await page.evaluate(() => { window.saveData = () => { throw new Error('假装存储炸了'); }; });
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(700);
+  const note = page.locator('#tx-save-note');
+  ok('出错时按钮上方留下一行字（不是什么都不发生）', await note.isVisible());
+  const txt = await note.textContent() || '';
+  ok('那行字带原始错误内容', txt.includes('假装存储炸了'), txt);
+  ok('那行字带版本号，方便同事截图回报', /版本 \d{4}-\d{2}-\d{2}/.test(txt), txt);
+  ok('弹窗留着不关，让人看得到', (await page.locator('#modal-add-tx.open').count()) === 1);
   await h.ctx.close();
 }
 

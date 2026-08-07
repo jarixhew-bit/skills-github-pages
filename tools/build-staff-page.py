@@ -219,7 +219,8 @@ def build(src: str) -> str:
 # 同事版自己的存储位。两个页面同源，共用存储位的话老板在自己手机上打开同事版
 # 会读到、甚至覆盖掉他自己的账本（staffStart() 会重设 data.accounts）。
 STORAGE_KEYS = [
-    ("'expenseTracker_v2'",              "'staffExpense_v2'",         3),
+    # 4 处：loadData / saveData / 云端合并 / 存完读回确认（verifyTxPersisted）
+    ("'expenseTracker_v2'",              "'staffExpense_v2'",         4),
     ("'expenseTrackerFiles'",            "'staffExpenseFiles'",       1),
     ("'expenseTracker_companyToken'",    "'staffExpense_token'",      1),
     ("'expenseTracker_companyReporter'", "'staffExpense_reporter'",   1),
@@ -437,12 +438,14 @@ async function staffGateSubmit(){
  *
  * 只拉当月：同事平时要对的就是这个月的合计；跨月对账是老板那边整本账的活。
  */
-async function staffRestore(){
+async function staffRestore(opts){
+  // silent：开页面时自动补的那一次，没东西可补就一声不吭（别每次开页面都弹提示）
+  const silent = !!(opts && opts.silent);
   const btn = document.getElementById('staff-restore-btn');
   const token = (localStorage.getItem(STAFF_TOKEN_STORAGE) || '').trim();
-  if(!token){ toast(tt('还没填钥匙','No key yet')); return; }
+  if(!token){ if(!silent) toast(tt('还没填钥匙','No key yet')); return; }
   if(btn) btn.disabled = true;
-  toast(tt('正在从公司账本找回…','Fetching from the company ledger…'));
+  if(!silent) toast(tt('正在从公司账本找回…','Fetching from the company ledger…'));
   let body;
   try{
     const res = await fetch(COMPANY_EXPENSE_URL, {
@@ -453,7 +456,7 @@ async function staffRestore(){
     if(!res.ok || !body || body.status !== 'ok') throw new Error('bad');
   }catch(e){
     if(btn) btn.disabled = false;
-    toast(tt('现在连不上，等有网再按一次','Cannot reach the server — try again when online'));
+    if(!silent) toast(tt('现在连不上，等有网再按一次','Cannot reach the server — try again when online'));
     return;
   }
 
@@ -495,9 +498,11 @@ async function staffRestore(){
   saveData();
   renderTxList();
   if(btn) btn.disabled = false;
-  toast(added
-    ? tt(`找回 ${added} 笔`, `Restored ${added} record(s)`)
-    : tt('都在了，没有要找回的','Everything is already here'));
+  if(added || !silent){
+    toast(added
+      ? tt(`找回 ${added} 笔`, `Restored ${added} record(s)`)
+      : tt('都在了，没有要找回的','Everything is already here'));
+  }
 }
 
 function staffSignOut(){
@@ -532,6 +537,15 @@ function staffStart(){
   refreshCompanyCategories();
   flushCompanyQueue();
   staffApplyLang();
+  // 打开时清单是空的，就自动从公司账本把这个月自己报过的拉回来。
+  //
+  // 为什么要自动（2026-08-07 Seryi 实机）：他记了好几笔，公司账本三次都收到了，
+  // 手机上却一直是「Today US$0.00 · 0 record(s)」——同一次打开期间看得到，一刷新
+  // 就空。手机存不住的原因有好几种（无痕模式、iOS 七天没用清站点数据、旧版页面
+  // 的清空 bug），但对他来说都是同一件事：记了等于白记，还以为按钮坏了。
+  // 与其教他记得去按「找回本月记录」，不如空的时候自己去拉一次。
+  // 安全：拉回来的一律标已送出、按 recordId 去重，多拉几次不会重复记账。
+  if((data.transactions || []).length === 0) staffRestore({ silent:true });
 }
 
 async function initStaffPage(){
