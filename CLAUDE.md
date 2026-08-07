@@ -102,8 +102,13 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有六个：`check-html` / `check-secrets` /
-   `check-rules` / `check-images` / `check-ai-note`（挂 CI）＋ `fetch-photos`（抓图通道）。
+   交付时告诉用户自检怎么跑。现有八个，全部挂 CI：`check-html` / `check-secrets` /
+   `check-rules` / `check-images` / `check-ai-note` / `check-expense-company.mjs` /
+   `check-staff-page.mjs`（后两个是浏览器自检，跑前要先起
+   `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）
+   ＋ `fetch-photos`（抓图通道）。
+   **改完 `expense-tracker.html` 要跑 `tools/` 底下全部 check-\*，不是只跑手上那一个**
+   ——同一个文件被两份浏览器自检覆盖，只跑一个就推，另一个会在 CI 上红（2026-08-07 踩过）。
 
 ### 路由表（遇到左边情况，先读右边档案再动手）
 | 情况 | 读这个档 |
