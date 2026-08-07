@@ -380,6 +380,33 @@ console.log('\n【9】没网时记账：存本机、有网自动补送（这是�
   await h.ctx.close();
 }
 
+// ---------- 【9b】刷新之后记录还在 ----------
+console.log('\n【9b】刷新／重开页面，之前记的还在（同事一天会开关很多次）');
+{
+  const h = await signIn(await newPage());
+  const { page, errs, setMode } = h;
+  await addOne(page, { amount: 3.30, category: 'Beverage' });
+  await addOne(page, { amount: 6.70, category: 'Lunch' });
+  // 再记一笔没网的：这笔只在本机、还等着补送，被冲掉就是真的丢钱
+  setMode('offline');
+  await addOne(page, { amount: 8.80, category: 'Dinner' });
+  setMode('online');
+
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1500);
+  const n = await page.evaluate(() =>
+    (JSON.parse(localStorage.getItem('staffExpense_v2') || '{}').transactions || []).length);
+  ok('刷新后本机账本里还是 3 笔', n === 3, n);
+  const list = await page.textContent('#tx-list');
+  ok('刷新后清单里看得到（3.30）', list.includes('3.30'), list.slice(0, 300));
+  ok('刷新后清单里看得到（6.70）', list.includes('6.70'));
+  ok('刷新后连没送出的那笔也还在', list.includes('8.80'));
+  const sum = await page.textContent('#staff-summary');
+  ok('本月合计跟着还在（18.80）', sum.replace(/\s+/g,'').includes('18.80'), sum);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 // ---------- 【10】存储位跟老板 App 分开 ----------
 console.log('\n【10】跟老板的 App 同源，存储位必须分开');
 {
