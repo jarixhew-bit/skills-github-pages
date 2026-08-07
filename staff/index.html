@@ -1,27 +1,604 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
+<!-- charset 必须在最前面：没有它、服务端又没送 charset 时，浏览器会猜错编码，
+     整页中文变乱码（2026-08-07 自检抓到过一次，别删）。 -->
 <meta charset="UTF-8">
 <title>报账 · Expense Report</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- 同事版原本是一个独立页面（约 480 行手写的）。2026-08-07 改成直接用记账 App 的
-     「同事模式」——拍照压缩、扫描校准、离线队列这些实机磨出来的东西全都继承，
-     不再维护第二份。独立那份连撞三个 App 早就解决过的问题（中文乱码、只能开相机、
-     不压缩导致 4G 传不上去），当初就不该重写。
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f766e'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle'%3E%F0%9F%A7%BE%3C/text%3E%3C/svg%3E">
 
-     这个文件保留成跳转页，**不要删**：网址已经发给同事、可能已经加到主屏幕了。
-     用 replace 不留历史记录，按返回键不会又弹回这一页。 -->
-<script>location.replace('../expense-tracker.html?staff=1' + location.hash);</script>
-<meta http-equiv="refresh" content="0; url=../expense-tracker.html?staff=1">
 <style>
-  body{font:16px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
-       margin:0;padding:40px 24px;text-align:center;color:#2C3E50;background:#F0F2F5}
-  a{color:#6C63FF}
+  /* 同事版报账页。刻意跟老板那个 4400 行的记账 App 完全分开：
+     这里没有个人账本、没有登录、没有图表，一屏记一笔。
+     字号和点击区都放大——同事多半在路上、单手、边走边记。 */
+  :root{
+    --bg:#f6f7f6; --card:#fff; --ink:#16211f; --sub:#6b7c78;
+    --line:#e2e8e6; --brand:#0f766e; --brand-soft:#e6f2f0;
+    --warn:#b45309; --warn-soft:#fef3c7; --danger:#b91c1c;
+    --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1513; --card:#18211f; --ink:#e8efed; --sub:#93a5a1;
+      --line:#25322f; --brand:#2dd4bf; --brand-soft:#123330;
+      --warn:#fbbf24; --warn-soft:#3a2c08;  --danger:#f87171;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1513; --card:#18211f; --ink:#e8efed; --sub:#93a5a1;
+    --line:#25322f; --brand:#2dd4bf; --brand-soft:#123330;
+    --warn:#fbbf24; --warn-soft:#3a2c08; --danger:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    padding:0 0 40px; -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:520px; margin:0 auto; padding:0 14px}
+  header{
+    background:var(--brand); color:#fff; padding:14px 0 16px; margin-bottom:16px;
+    padding-top:calc(14px + env(safe-area-inset-top));
+  }
+  header .wrap{display:flex; align-items:center; gap:10px}
+  .who{font-size:19px; font-weight:700; flex:1; min-width:0}
+  .who small{display:block; font-size:12px; font-weight:400; opacity:.85}
+  .langbtn{
+    background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:999px;
+    padding:7px 13px; font-size:13px; cursor:pointer; flex-shrink:0;
+  }
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:14px}
+  h2{font-size:15px; margin:0 0 12px; color:var(--sub); font-weight:600; letter-spacing:.02em}
+  label{display:block; font-size:13px; color:var(--sub); margin:0 0 5px}
+  .field{margin-bottom:14px}
+  input,select,textarea{
+    width:100%; padding:13px 12px; font-size:17px; font-family:inherit;
+    border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--brand); outline-offset:-1px}
+  textarea{resize:vertical; min-height:52px; font-size:15px}
+  .row{display:flex; gap:10px}
+  .row > *{flex:1}
+  .row .amt{flex:2}
+  button{font-family:inherit}
+  .btn{
+    width:100%; padding:15px; font-size:17px; font-weight:700; border:0; border-radius:10px;
+    background:var(--brand); color:#fff; cursor:pointer;
+  }
+  .btn:disabled{opacity:.55; cursor:default}
+  .btn-ghost{background:transparent; color:var(--brand); border:1px solid var(--line); font-weight:600; font-size:15px; padding:11px}
+  .photo-row{display:flex; gap:10px}
+  .photo-btn{
+    flex:1; text-align:center; padding:13px 8px; border:1.5px dashed var(--line);
+    border-radius:10px; color:var(--sub); cursor:pointer; font-size:14px; line-height:1.4;
+    background:transparent; font-family:inherit;
+  }
+  .photo-row.has .photo-btn{border-style:solid; border-color:var(--brand); color:var(--brand); background:var(--brand-soft)}
+  #photo-prev{max-width:100%; max-height:190px; border-radius:10px; margin-top:10px; display:none}
+
+  /* 送出成功后那块「单据写 N 号」——这是同事唯一必须记住的信息，做得最大 */
+  #done{display:none; background:var(--brand-soft); border:1px solid var(--brand); border-radius:var(--radius); padding:20px; margin-bottom:14px; text-align:center}
+  #done .no{font-size:44px; font-weight:800; color:var(--brand); line-height:1.1; margin:6px 0}
+  #done .side{font-size:13px; color:var(--sub)}
+
+  .banner{padding:11px 13px; border-radius:10px; font-size:14px; margin-bottom:14px}
+  .banner.warn{background:var(--warn-soft); color:var(--warn)}
+  .banner.err{background:#fee2e2; color:#991b1b}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .banner.err{background:#3b1616; color:#fca5a5}
+  }
+  :root[data-theme="dark"] .banner.err{background:#3b1616; color:#fca5a5}
+
+  .item{display:flex; align-items:flex-start; gap:11px; padding:11px 0; border-bottom:1px solid var(--line)}
+  .item:last-child{border-bottom:0}
+  .item .bno{
+    flex-shrink:0; width:34px; height:34px; border-radius:9px; background:var(--brand-soft); color:var(--brand);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px;
+  }
+  .item .mid{flex:1; min-width:0}
+  .item .t{font-weight:600}
+  .item .s{font-size:12.5px; color:var(--sub)}
+  .item .amt2{font-weight:700; white-space:nowrap}
+  .nophoto{color:var(--danger); font-weight:600}
+  /* 删除键原本是个灰色小 ✕，实机上没人看出那是删除（2026-08-07 用户反馈"删除键也要给
+     他们"——其实一直都在，只是看不出来）。改成带字的按钮，点击区也放大到好按。 */
+  .del{
+    background:transparent; border:1px solid var(--line); border-radius:8px;
+    color:var(--danger); font-size:13px; font-family:inherit; cursor:pointer;
+    padding:7px 11px; white-space:nowrap; align-self:center;
+  }
+  .sum{display:flex; justify-content:space-between; padding-top:12px; margin-top:4px; border-top:2px solid var(--line); font-weight:700}
+  .muted{color:var(--sub); font-size:14px; text-align:center; padding:14px 0}
+  #toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(80px);
+    background:var(--ink); color:var(--bg); padding:12px 20px; border-radius:999px;
+    font-size:14.5px; opacity:0; transition:.25s; z-index:9; max-width:90vw; text-align:center;
+  }
+  #toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
+  .hide{display:none !important}
 </style>
 </head>
 <body>
-  <!-- JS 被关掉时才会看到这段 -->
-  <p>正在转到报账页… / Redirecting…</p>
-  <p><a href="../expense-tracker.html?staff=1">点这里继续 / Tap here to continue</a></p>
+
+<header>
+  <div class="wrap">
+    <div class="who">
+      <span id="hdr-name">🧾 <span data-zh="报账" data-en="Expense Report"></span></span>
+      <small id="hdr-sub"></small>
+    </div>
+    <button class="langbtn" onclick="toggleLang()" id="langbtn">EN</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ① 还没填钥匙时只显示这块 -->
+  <div class="card" id="setup">
+    <h2 data-zh="先填一次钥匙" data-en="Enter your key (once)"></h2>
+    <p style="margin:0 0 12px;font-size:14px;color:var(--sub)"
+       data-zh="填一次就好，之后这个手机会记住。"
+       data-en="Enter it once — this phone will remember it."></p>
+    <div class="field">
+      <input id="key-input" type="password" autocomplete="off" placeholder="••••••••••">
+    </div>
+    <button class="btn" onclick="saveKey()" data-zh="确定" data-en="Save"></button>
+  </div>
+
+  <!-- ② 正常使用时显示这些 -->
+  <div id="app" class="hide">
+
+    <div id="done">
+      <div style="font-size:14px" data-zh="已记录 ✅" data-en="Recorded ✅"></div>
+      <div class="no" id="done-no">—</div>
+      <div data-zh="请在纸质单据上写这个号" data-en="Write this number on the paper receipt" style="font-size:14px;font-weight:600"></div>
+      <div class="side" id="done-side"></div>
+    </div>
+
+    <div id="offline-note" class="banner warn hide"></div>
+
+    <div class="card">
+      <h2 data-zh="记一笔" data-en="New expense"></h2>
+
+      <div class="field">
+        <label data-zh="日期" data-en="Date"></label>
+        <input id="f-date" type="date">
+      </div>
+
+      <div class="field">
+        <label data-zh="金额（美元）" data-en="Amount (USD)"></label>
+        <input id="f-amount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+      </div>
+
+      <div class="field">
+        <label data-zh="类别" data-en="Category"></label>
+        <select id="f-category" onchange="syncPlate()"></select>
+      </div>
+
+      <div class="field hide" id="plate-wrap">
+        <label data-zh="车牌号（这类项目必填）" data-en="Plate number (required for this type)"></label>
+        <input id="f-plate" placeholder="2AH9988">
+      </div>
+
+      <div class="field">
+        <label data-zh="收据照片" data-en="Receipt photo"></label>
+        <!-- 相机和相册**必须是两个按钮**（2026-08-07 实机两次踩坑后确定）：
+             只放一个 input 时，加 capture 属性 → 只开相机、选不了相册；
+             去掉 capture → 那台 Android 只弹相册/文件、没有相机。
+             两个 input 各司其职就没有这个问题——老板那个 App 一直是这么做的，
+             在同一台手机上验证过可用。改这里之前先看这段注释。 -->
+        <div class="photo-row">
+          <button type="button" class="photo-btn" onclick="document.getElementById('f-photo-cam').click()">
+            <span style="font-size:20px">📷</span><br>
+            <span data-zh="拍照" data-en="Take photo"></span>
+          </button>
+          <button type="button" class="photo-btn" onclick="document.getElementById('f-photo-lib').click()">
+            <span style="font-size:20px">🖼️</span><br>
+            <span data-zh="从相册选" data-en="From gallery"></span>
+          </button>
+        </div>
+        <input id="f-photo-cam" type="file" accept="image/*" capture="environment" class="hide" onchange="onPhoto(event)">
+        <input id="f-photo-lib" type="file" accept="image/*" class="hide" onchange="onPhoto(event)">
+        <img id="photo-prev" alt="">
+        <div id="nophoto-warn" class="banner warn" style="margin:10px 0 0"
+             data-zh="⚠️ 没有收据照片也能记，但月底要靠纸质单据补。能拍就现在拍。"
+             data-en="⚠️ You can submit without a photo, but you'll need the paper receipt at month end. Take one now if you can."></div>
+      </div>
+
+      <button class="btn" id="submit-btn" onclick="submitTx()" data-zh="送出" data-en="Submit"></button>
+    </div>
+
+    <div class="card">
+      <h2 id="mine-title"></h2>
+      <div id="mine-body"><div class="muted" data-zh="载入中…" data-en="Loading…"></div></div>
+    </div>
+
+    <div style="text-align:center;margin-bottom:20px">
+      <button class="btn btn-ghost" style="width:auto;padding:9px 18px" onclick="forgetKey()"
+              data-zh="换钥匙 / 退出" data-en="Change key / Sign out"></button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = 'https://butler-bot.jarixhew.workers.dev/company-expense';
+const K_KEY  = 'staffExpenseKey';
+const K_QUEUE= 'staffExpenseQueue';
+const K_CATS = 'staffExpenseCats';
+// 全站共用的语言选择（跟仓库里其他双语页面同一个 key，用户在哪一页切过都通用）
+const K_LANG = 'siteLangUser';
+
+let lang = 'zh';
+let me = null;            // 钥匙认出来的人，服务端说了算
+let photoData = null;     // {base64, mime}
+
+/* ---------- 双语 ---------- */
+function applyLang(){
+  document.documentElement.lang = lang === 'zh' ? 'zh' : 'en';
+  document.querySelectorAll('[data-zh]').forEach(el=>{
+    const t = lang === 'zh' ? el.dataset.zh : el.dataset.en;
+    if(t != null) el.textContent = t;
+  });
+  document.getElementById('langbtn').textContent = lang === 'zh' ? 'EN' : '中';
+  renderMine();          // 清单是脚本画的，要重画才会跟着换语言
+  syncHeader();
+}
+function toggleLang(){
+  lang = lang === 'zh' ? 'en' : 'zh';
+  localStorage.setItem(K_LANG, lang);
+  applyLang();
+}
+function initLang(){
+  const saved = localStorage.getItem(K_LANG);
+  // 手动选过就一律听用户的；没选过才看系统语言
+  lang = saved ? saved : ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+  applyLang();
+}
+// 另一个分页切了语言，这边立刻跟上
+window.addEventListener('storage', e=>{
+  if(e.key === K_LANG && e.newValue && e.newValue !== lang){ lang = e.newValue; applyLang(); }
+});
+const t = (zh, en) => lang === 'zh' ? zh : en;
+
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('on');
+  clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('on'), 3200);
+}
+
+/* ---------- 钥匙 ---------- */
+function getKey(){ return localStorage.getItem(K_KEY) || ''; }
+
+async function saveKey(){
+  const v = document.getElementById('key-input').value.trim();
+  if(!v){ toast(t('请先填钥匙','Please enter your key')); return; }
+  // 先拿它去问一次「我是谁」——钥匙对不对当场就知道，不要等他记完一笔才报错
+  const r = await api({action:'mine', token:v});
+  if(!r.ok){
+    toast(r.status === 401 ? t('钥匙不对，请核对后重新填写','Wrong key — please check it and try again')
+                           : (r.message || t('连不上，等会儿再试','Cannot connect, try again later')));
+    return;
+  }
+  localStorage.setItem(K_KEY, v);
+  document.getElementById('key-input').value = '';
+  boot();
+}
+
+function forgetKey(){
+  if(!confirm(t('要清掉这台手机上的钥匙吗？之后要重新填。',
+               'Remove the key from this phone? You will need to enter it again.'))) return;
+  localStorage.removeItem(K_KEY);
+  location.reload();
+}
+
+function syncHeader(){
+  const sub = document.getElementById('hdr-sub');
+  document.getElementById('hdr-name').innerHTML =
+    me ? `🧾 ${me}` : `🧾 <span>${t('报账','Expense Report')}</span>`;
+  sub.textContent = me ? t('公司报账','Company expenses') : '';
+}
+
+/* ---------- 网络 ---------- */
+async function api(body){
+  try{
+    const res = await fetch(API, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    let data = {};
+    try{ data = await res.json(); }catch(e){}
+    // retriable=true 表示「等有网再试有意义」，false 表示服务端明确说这笔有问题
+    return { ok: res.ok, status: res.status, retriable: false,
+             message: data.error || data.message, data };
+  }catch(e){
+    // fetch 抛异常有好几种原因：真的没网、连不上服务器、请求体太大传不完。
+    // 以前一律说「没网」，用户明明开着 4G 却看到没网，完全没法排查（2026-08-07 反馈）。
+    // navigator.onLine 只有 false 时可信（true 不代表真能连上），所以只拿它区分这一种。
+    const reallyOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    return { ok:false, status:0, retriable:true, reallyOffline,
+             message: reallyOffline
+               ? t('现在没网络','No connection right now')
+               : t('连不上服务器（已存在手机里，稍后自动重试）','Cannot reach the server (saved on your phone, will retry)') };
+  }
+}
+
+/* ---------- 类别 ---------- */
+function cats(){
+  try{
+    const c = JSON.parse(localStorage.getItem(K_CATS) || 'null');
+    if(c && Array.isArray(c.categories) && c.categories.length) return c;
+  }catch(e){}
+  // 兜底：第一次打开就没网时也要能记账（正本在 butler，连上一次就换成真的）
+  return { categories:['Beverage','Bread','Breakfast','Car Service','Car Wash','Dentist',
+                       'Dinner','Driver Meal','Lunch','Petrol','Store','Supper'],
+           plateCategories:['Car Service','Car Wash','Petrol'] };
+}
+async function refreshCats(){
+  try{
+    const res = await fetch(API, {method:'GET'});
+    if(!res.ok) return;
+    const b = await res.json();
+    if(Array.isArray(b.categories) && b.categories.length){
+      localStorage.setItem(K_CATS, JSON.stringify({
+        categories:b.categories,
+        plateCategories: Array.isArray(b.plateCategories) ? b.plateCategories : []
+      }));
+      renderCats();
+    }
+  }catch(e){}
+}
+function renderCats(){
+  const sel = document.getElementById('f-category');
+  const keep = sel.value;
+  const list = cats().categories;
+  sel.innerHTML = list.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(keep && list.includes(keep)) sel.value = keep;
+  syncPlate();
+}
+// 哪些类别要车牌由服务端说了算（butler 的 PLATE_CATEGORIES），这里不自己判断
+function syncPlate(){
+  const need = (cats().plateCategories || []).includes(document.getElementById('f-category').value);
+  document.getElementById('plate-wrap').classList.toggle('hide', !need);
+}
+
+/* ---------- 送出 ---------- */
+// 送出前必须先压缩。手机拍的收据是 4000×3000、3~8MB，base64 再涨 33%，等于要在 4G 上
+// 传 5~11MB——传不上去，页面只会说「没网」，同事完全不知道发生了什么（2026-08-07 实机
+// 踩到）。收据是文字，长边 1600px 足够看清，压完通常 200~400KB。
+// 老板那个 App 一直有这一步（长边 2400、JPEG 0.85），同事版第一版漏了。
+const PHOTO_MAX_SIDE = 1600;
+const PHOTO_QUALITY = 0.8;
+
+function setPhoto(dataUrl, mime){
+  photoData = { base64: dataUrl.split(',')[1], mime };
+  const img = document.getElementById('photo-prev');
+  img.src = dataUrl; img.style.display = 'block';
+  document.querySelector('.photo-row').classList.add('has');
+  document.getElementById('nophoto-warn').classList.add('hide');
+}
+
+function onPhoto(ev){
+  const f = ev.target.files && ev.target.files[0];
+  if(!f) return;
+  const rd = new FileReader();
+  rd.onload = ()=>{
+    const raw = String(rd.result);
+    const rawMime = (raw.match(/^data:(.*?);/) || [])[1] || 'image/jpeg';
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        setPhoto(cv.toDataURL('image/jpeg', PHOTO_QUALITY), 'image/jpeg');
+      }catch(e){
+        setPhoto(raw, rawMime);   // 画布出错就退回原图，宁可大也别记不成账
+      }
+    };
+    // 解码失败（少见的格式、iOS 的 HEIC 等）也退回原图，不能因此让他记不了账
+    img.onerror = ()=> setPhoto(raw, rawMime);
+    img.src = raw;
+  };
+  rd.readAsDataURL(f);
+}
+
+function clearForm(){
+  document.getElementById('f-amount').value = '';
+  document.getElementById('f-plate').value = '';
+  // 两个 input 都要清空，否则连着记两笔时第二笔会带上第一笔的照片
+  document.getElementById('f-photo-cam').value = '';
+  document.getElementById('f-photo-lib').value = '';
+  document.getElementById('photo-prev').style.display = 'none';
+  document.querySelector('.photo-row').classList.remove('has');
+  document.getElementById('nophoto-warn').classList.remove('hide');
+  photoData = null;
+}
+
+async function submitTx(){
+  const date = document.getElementById('f-date').value;
+  const amount = parseFloat(document.getElementById('f-amount').value);
+  const categoryRaw = document.getElementById('f-category').value;
+  // 公司账本是美元记账，同事这边不给选币种（2026-08-07 用户要求去掉瑞尔）
+  const currency = 'USD';
+  const plate = document.getElementById('f-plate').value.trim();
+
+  if(!date){ toast(t('请选日期','Please pick a date')); return; }
+  if(!(amount > 0)){ toast(t('金额要大于 0','Amount must be greater than 0')); return; }
+  if(!document.getElementById('plate-wrap').classList.contains('hide') && !plate){
+    toast(t('这类项目要填车牌号','Plate number is required for this type')); return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  const payload = {
+    token: getKey(), date,
+    // reporter 刻意不送——服务端从钥匙推出是谁，送了也不算数
+    items: [{ categoryRaw, amount, currency, plate: plate || null, note: null }],
+    photoBase64: photoData ? photoData.base64 : null,
+    photoMime: photoData ? photoData.mime : null,
+  };
+  const r = await api(payload);
+  btn.disabled = false;
+
+  if(r.ok && r.data.status === 'ok'){
+    showDone(r.data);
+    clearForm();
+    loadMine();
+    return;
+  }
+  if(r.status === 0){            // 送不出去：存进队列，有网自动补送
+    queuePush(payload);
+    clearForm();
+    toast(r.reallyOffline
+      ? t('没网络，已存在手机里，有网会自动送出','No connection — saved on your phone, will send automatically')
+      : t('暂时送不出去，已存在手机里，稍后自动重试','Could not send right now — saved on your phone, will retry'));
+    renderOffline();
+    return;
+  }
+  if(r.status === 401){
+    toast(t('钥匙已失效，请重新取得一串','This key is no longer valid — please get a new one'));
+    return;
+  }
+  toast(r.message || t('没送出去，再试一次','Could not submit, please try again'));
+}
+
+function showDone(data){
+  const rec = (data.records && data.records[0]) || {};
+  document.getElementById('done-no').textContent = rec.refTag || '—';
+  document.getElementById('done-side').textContent =
+    rec.person && rec.person !== me
+      ? t('（这笔算公司的开销）','(counted as a company expense)')
+      : t('（这笔算你自己的餐费）','(counted as your own meal)');
+  const el = document.getElementById('done');
+  el.style.display = 'block';
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+/* ---------- 离线队列 ---------- */
+function queueGet(){ try{ return JSON.parse(localStorage.getItem(K_QUEUE) || '[]'); }catch(e){ return []; } }
+function queueSet(q){ localStorage.setItem(K_QUEUE, JSON.stringify(q)); }
+function queuePush(p){ const q = queueGet(); q.push(p); queueSet(q); }
+
+async function flushQueue(){
+  let q = queueGet();
+  if(q.length === 0) return;
+  const left = [];
+  for(const p of q){
+    const r = await api({...p, token:getKey()});   // 钥匙可能换过，用当前这把
+    // 送出去了（成功），或者服务端明确说这笔有问题（400）——两种都不该一直卡在队列里。
+    // 只有网络失败才留着重试，否则一笔坏数据会永远堵住后面所有笔。
+    if(r.status === 0) left.push(p);
+    else if(!r.ok) toast(t('有一笔补送失败：','One queued item failed: ') + (r.message || ''));
+  }
+  queueSet(left);
+  renderOffline();
+  if(left.length === 0 && q.length > 0){ toast(t('待送出的都补上了','Queued items have been sent')); loadMine(); }
+}
+
+function renderOffline(){
+  const n = queueGet().length;
+  const el = document.getElementById('offline-note');
+  el.classList.toggle('hide', n === 0);
+  if(n > 0) el.textContent = t(`📶 有 ${n} 笔还没送出，有网时会自动送出`,
+                               `📶 ${n} item(s) not sent yet — will send automatically when online`);
+}
+
+/* ---------- 我记过的 ---------- */
+let mineData = null;
+
+async function loadMine(){
+  const r = await api({action:'mine', token:getKey()});
+  if(r.ok && r.data.status === 'ok'){
+    me = r.data.reporter;
+    mineData = r.data;
+    syncHeader();
+  }
+  renderMine();
+}
+
+function renderMine(){
+  const box = document.getElementById('mine-body');
+  const title = document.getElementById('mine-title');
+  if(!box || !title) return;
+  if(!mineData){ box.innerHTML = `<div class="muted">${t('载入中…','Loading…')}</div>`; return; }
+
+  title.textContent = t(`我这个月记的（${mineData.month}）`, `My records this month (${mineData.month})`);
+  const rs = mineData.records || [];
+  if(rs.length === 0){
+    box.innerHTML = `<div class="muted">${t('这个月还没记过。','Nothing recorded this month yet.')}</div>`;
+    return;
+  }
+  const money = n => (Number(n)||0).toFixed(2);
+  const rows = rs.map(r=>{
+    const orig = r.originalAmount ? `（${r.originalAmount.value} ${r.originalAmount.currency}）` : '';
+    const side = r.side === 'boss' ? t('公司','Company') : t('自己','Own');
+    const nophoto = r.hasPhoto ? '' :
+      ` · <span class="nophoto">${t('缺收据','No receipt')}</span>`;
+    return `<div class="item">
+      <div class="bno">${esc(r.billNo)}</div>
+      <div class="mid">
+        <div class="t">${esc(r.categoryEn)}</div>
+        <div class="s">${esc(r.date.slice(5))} · ${side}${nophoto}${r.note ? ' · ' + esc(r.note) : ''}</div>
+      </div>
+      <div class="amt2">${money(r.amountUsd)}<div class="s" style="text-align:right;font-weight:400">${orig}</div></div>
+      <button class="del" onclick="delTx('${esc(r.id)}','${esc(r.date)}')">${t('删除','Delete')}</button>
+    </div>`;
+  }).join('');
+
+  const warn = mineData.missingPhoto > 0
+    ? `<div class="banner warn" style="margin:12px 0 0">${
+        t(`⚠️ 有 ${mineData.missingPhoto} 笔没有收据照片，月底要交纸质单据。`,
+          `⚠️ ${mineData.missingPhoto} item(s) have no receipt photo — you'll need the paper receipts at month end.`)}</div>`
+    : '';
+
+  box.innerHTML = rows +
+    `<div class="sum"><span>${t('合计','Total')}</span><span>USD ${money(mineData.total)}</span></div>` + warn;
+}
+
+async function delTx(id, date){
+  if(!confirm(t('确定删掉这一笔吗？','Delete this record?'))) return;
+  const r = await api({action:'delete', token:getKey(), recordId:id, date});
+  if(r.ok && r.data.status === 'ok'){ toast(t('已删除','Deleted')); loadMine(); return; }
+  if(r.status === 0){ toast(t('没网络，等会儿再删','No connection — try again later')); return; }
+  toast(r.message || t('删不掉','Could not delete'));
+}
+
+// onclick 里要插进字符串，撇号/尖括号都得转义，不然 id 里有怪字符会把页面打坏
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/* ---------- 启动 ---------- */
+function boot(){
+  const hasKey = !!getKey();
+  document.getElementById('setup').classList.toggle('hide', hasKey);
+  document.getElementById('app').classList.toggle('hide', !hasKey);
+  if(!hasKey){ me = null; syncHeader(); return; }
+
+  // 日期默认今天（用本机时区，同事就在当地）
+  const d = new Date();
+  document.getElementById('f-date').value =
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  renderCats();
+  refreshCats();
+  renderOffline();
+  loadMine();
+  flushQueue();
+}
+
+window.addEventListener('online', flushQueue);
+initLang();
+boot();
+</script>
 </body>
 </html>

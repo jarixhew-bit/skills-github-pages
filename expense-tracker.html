@@ -4,17 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>记账本</title>
-<script>
-  // 同事模式：网址带 ?staff=1 且这台设备还没存过同事钥匙时，**立刻**把整个 App 盖住。
-  // 放在 head 里同步执行，是为了不留任何「先闪出老板界面」的空档，也不依赖后面
-  // 任何一步不出错。认出身份之后由 applyStaffMode() 把 staff-pending 去掉。
-  try{
-    if(new URLSearchParams(location.search).has('staff')
-       && !(localStorage.getItem('expenseTracker_staffToken') || '').trim()){
-      document.documentElement.classList.add('staff-pending');
-    }
-  }catch(e){}
-</script>
 <meta name="theme-color" content="#1E7A42">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -364,68 +353,14 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .viewer-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.15);
   border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:17px;cursor:pointer}
 .viewer-note{color:#ccc;font-size:12px;margin-top:14px;text-align:center;padding:0 24px}
-/* ===== 同事模式（?staff=1 且钥匙被服务端认成同事时启用）=====
-   同事用的是同一个 App —— 拍照压缩、扫描校准、离线队列这些实机磨出来的东西全都继承，
-   不再另外维护一份（2026-08-07 用户拍板：「同事直接用你那个 App」）。
-   这里只做**界面简化**：把个人账本那一整套藏掉，只留公司报账。
-   注意：这不是安全边界——真正的权限在服务端（reporter 由钥匙推出、只能删自己的），
-   客户端就算被改也越不过去。所以用 CSS 藏就够了，不必费劲做成不可绕过。 */
-body.staff-mode #nav-overview,
-body.staff-mode #nav-analytics,
-body.staff-mode #nav-settings,
-body.staff-mode #tab-settings,
-body.staff-mode #hdr-cloud,
-body.staff-mode #acc-cards-row,
-body.staff-mode .acc-pill,
-body.staff-mode #tab-overview,
-body.staff-mode #tab-analytics,
-body.staff-mode .staff-hide{ display:none !important; }
-body.staff-mode .nav{ justify-content:space-around }
-body.staff-mode #staff-signout-row{ display:block !important }
-body.staff-mode #staff-lang-btn{ display:inline-block !important }
-/* 同事看到的标题是自己的名字，不是「记账本」 */
-body.staff-mode .hdr-title::after{ content:attr(data-staff-name) }
-body.staff-mode .hdr-title{ font-size:0 }
-body.staff-mode .hdr-title::after{ font-size:17px }
-
-/* 钥匙闸门：还没认出身份前盖住整个 App */
-#staff-gate{
-  position:fixed; inset:0; z-index:200; background:var(--bg);
-  display:none; flex-direction:column; justify-content:center; padding:24px;
-}
-#staff-gate.on{ display:flex }
-/* html 上带 staff-pending 时闸门先盖住：网址带 ?staff=1 就立刻生效，不等任何脚本跑完。
-   2026-08-07 改：原本闸门是 init() 之后才异步弹的，中间那一瞬间完整 App 是可见的，
-   而且前面任何一步出错闸门就永远不出现——同事会直接看到老板的界面。 */
-html.staff-pending #staff-gate{ display:flex }
-html.staff-pending body > *:not(#staff-gate){ visibility:hidden }
-#staff-gate h2{ margin:0 0 8px; font-size:20px }
-#staff-gate p{ color:var(--sub); font-size:14px; margin:0 0 18px; line-height:1.6 }
 </style>
 </head>
 <body>
-
-<!-- 同事模式的钥匙闸门：填一次钥匙，服务端认出是谁之后才放进 App -->
-<div id="staff-gate">
-  <h2>🧾 报账 Expense Report</h2>
-  <p>填一次钥匙就好，之后这个手机会记住。<br>
-     Enter your key once — this phone will remember it.</p>
-  <input class="form-input" id="staff-gate-key" type="password" autocomplete="off"
-         placeholder="••••••••••" style="margin-bottom:14px">
-  <button class="btn btn-primary" onclick="staffGateSubmit()" id="staff-gate-btn">确定 / Save</button>
-  <div id="staff-gate-msg" style="margin-top:14px;font-size:14px;color:var(--exp);min-height:20px"></div>
-  <div id="staff-gate-build" style="margin-top:auto;padding-top:20px;text-align:center;
-       font-size:11px;color:var(--sub)"></div>
-</div>
 
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-title">💰 记账本</div>
   <div style="display:flex;align-items:center;gap:10px">
-  <!-- 语言切换：只在同事模式显示（同事不一定读中文）。用全站共用的 siteLangUser。 -->
-  <button id="staff-lang-btn" onclick="staffToggleLang()"
-    style="display:none;background:rgba(255,255,255,.22);color:#fff;border:0;border-radius:999px;
-           padding:6px 12px;font-size:13px;font-family:inherit;cursor:pointer">EN</button>
   <div id="hdr-cloud" onclick="switchTab('settings')" title="Cloud Sync"
     style="cursor:pointer;font-size:17px;opacity:0.45;line-height:1">☁️</div>
   <div class="acc-pill" onclick="openAccSwitch()">
@@ -462,16 +397,12 @@ html.staff-pending body > *:not(#staff-gate){ visibility:hidden }
 
 <!-- TRANSACTIONS TAB -->
 <div class="tab" id="tab-transactions">
-  <!-- 只在同事模式显示（body.staff-mode 之外由下面的 CSS 藏掉） -->
-  <div id="staff-signout-row" style="display:none;text-align:center;margin:18px 0 4px">
-    <button class="btn btn-outline btn-sm" onclick="staffSignOut()">换钥匙 / Sign out</button>
-  </div>
   <div id="tx-month-picker" class="month-picker">
     <button class="month-arrow" onclick="changeMonth(-1)">‹</button>
     <div class="month-text" id="tx-month-text"></div>
     <button class="month-arrow" onclick="changeMonth(1)">›</button>
   </div>
-  <div class="filter-row staff-hide">
+  <div class="filter-row">
     <button class="filter-btn active" onclick="setTxFilter('all',this)">全部</button>
     <button class="filter-btn" onclick="setTxFilter('expense',this)">支出</button>
     <button class="filter-btn" onclick="setTxFilter('income',this)">收入</button>
@@ -600,7 +531,7 @@ html.staff-pending body > *:not(#staff-gate){ visibility:hidden }
     <div class="nav-icon">🏠</div>概览
   </button>
   <button class="nav-btn" id="nav-transactions" onclick="switchTab('transactions')">
-    <div class="nav-icon">📋</div><span data-en="Records">明细</span>
+    <div class="nav-icon">📋</div>明细
   </button>
   <button class="nav-btn" id="nav-analytics" onclick="switchTab('analytics')">
     <div class="nav-icon">📊</div>统计
@@ -614,25 +545,25 @@ html.staff-pending body > *:not(#staff-gate){ visibility:hidden }
 <div class="overlay" id="modal-add-tx">
   <div class="modal">
     <div class="modal-hdr">
-      <div class="modal-title" id="tx-modal-title" data-en="New expense">新增记录</div>
+      <div class="modal-title" id="tx-modal-title">新增记录</div>
       <button class="modal-close" onclick="closeModal('modal-add-tx')">✕</button>
     </div>
     <!-- type toggle -->
-    <div class="type-tabs staff-hide" id="tx-type-tabs" style="margin-bottom:16px">
+    <div class="type-tabs" style="margin-bottom:16px">
       <div class="type-tab active" id="type-exp" onclick="setTxType('expense')">支出</div>
       <div class="type-tab" id="type-inc" onclick="setTxType('income')">收入</div>
     </div>
     <!-- attachment (moved above amount: photographing the receipt first lets
          the scan workflow prefill the fields below, instead of retyping them) -->
     <div class="form-group">
-      <label class="form-label" data-en="Receipt photo (optional)">单据照片（选填）</label>
+      <label class="form-label">单据照片（选填）</label>
       <div id="attach-thumb-area"></div>
       <div id="attach-btn-row" class="attach-row">
         <button type="button" class="attach-btn" onclick="document.getElementById('attach-camera-input').click()">
-          <span style="font-size:20px">📷</span><span data-en="Take photo">拍照</span>
+          <span style="font-size:20px">📷</span>拍照
         </button>
         <button type="button" class="attach-btn" onclick="document.getElementById('attach-gallery-input').click()">
-          <span style="font-size:20px">🖼️</span><span data-en="From gallery">从相册选择</span>
+          <span style="font-size:20px">🖼️</span>从相册选择
         </button>
       </div>
       <input type="file" id="attach-camera-input" accept="image/*" capture="environment" style="display:none" onchange="onAttachFileChosen(event)">
@@ -643,13 +574,13 @@ html.staff-pending body > *:not(#staff-gate){ visibility:hidden }
       <div style="display:flex;gap:8px;align-items:stretch">
         <input class="form-input amt" id="tx-amount" type="number" min="0" step="0.01"
           placeholder="0.00" inputmode="decimal" style="flex:1" oninput="updateRielHint()">
-        <button type="button" id="tx-riel-toggle" class="attach-btn staff-hide" onclick="toggleRielInput()"
+        <button type="button" id="tx-riel-toggle" class="attach-btn" onclick="toggleRielInput()"
           style="flex:none;width:auto;padding:0 14px">៛ 瑞尔</button>
       </div>
       <div id="tx-riel-hint" style="display:none;margin-top:6px;font-size:12px;color:var(--sub)"></div>
     </div>
     <!-- description：公司账户下会一并送进公司账本，标签由 syncCompanyTxFields() 改写 -->
-    <div class="form-group staff-hide">
+    <div class="form-group">
       <label class="form-label" id="tx-desc-label">描述（选填）</label>
       <input class="form-input" id="tx-desc" type="text" placeholder="例：午餐、打的…" oninput="autoDetectCat(this.value)">
       <div id="tx-desc-note" style="display:none;font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
@@ -671,16 +602,16 @@ html.staff-pending body > *:not(#staff-gate){ visibility:hidden }
     </div>
     <!-- date -->
     <div class="form-group">
-      <label class="form-label" data-en="Date">日期</label>
+      <label class="form-label">日期</label>
       <input class="form-input" id="tx-date" type="date" oninput="state.dateTouchedByUser=true">
     </div>
     <!-- 公司报账专用字段：只在当前账户勾了「公司账户」时显示，见 syncCompanyTxFields() -->
     <div id="tx-company-wrap" style="display:none">
       <div style="padding:10px 12px;background:var(--p2);border-radius:10px;margin-bottom:14px;
         font-size:12px;color:var(--p);line-height:1.6">
-        <span data-en="🧾 This goes straight into the company expense book — same book, same monthly Excel.">🧾 这是公司账户，保存后会同时送进公司账本 —— 跟 Telegram 记的进同一本、出同一份 Excel。</span>
+        🧾 这是公司账户，保存后会同时送进公司账本 —— 跟 Telegram 记的进同一本、出同一份 Excel。
       </div>
-      <div class="form-group staff-hide">
+      <div class="form-group">
         <label class="form-label">谁报的账</label>
         <!-- 选项由 renderCompanyReporterOptions() 从 butler 拿的名册渲染；
              这里留的是拿不到名册时的兜底（正本在 butler 的 config/people.json） -->
@@ -694,20 +625,20 @@ html.staff-pending body > *:not(#staff-gate){ visibility:hidden }
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label" data-en="Category">公司类别</label>
+        <label class="form-label">公司类别</label>
         <select class="form-input" id="tx-company-category" onchange="syncCompanyPlateField()"></select>
       </div>
       <!-- 车牌：只在选了汽油/洗车/汽车保养这类项目时出现，哪些类别要车牌由服务端告知 -->
       <div class="form-group" id="tx-company-plate-wrap" style="display:none">
-        <label class="form-label" data-en="Plate number">车牌号</label>
+        <label class="form-label">车牌号</label>
         <input class="form-input" id="tx-company-plate" type="text" maxlength="15"
           placeholder="例：NS6868" style="text-transform:uppercase">
         <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
-          <span data-en="Vehicle expenses need the plate number. It goes into the Excel as &quot;Petrol (NS6868)&quot;.">车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。
-          这类开销一律算在 Boss 头上（进左边那张表）。</span>
+          车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。
+          这类开销一律算在 Boss 头上（进左边那张表）。
         </div>
       </div>
-      <div class="form-group staff-hide">
+      <div class="form-group">
         <label class="form-label">单据号（留空自动派）</label>
         <input class="form-input" id="tx-company-reftag" type="text"
           inputmode="numeric" maxlength="2" placeholder="留空就自动派下一个号">
@@ -719,9 +650,9 @@ html.staff-pending body > *:not(#staff-gate){ visibility:hidden }
     </div>
     <!-- delete btn (edit mode) -->
     <div id="tx-delete-wrap" style="display:none;margin-bottom:12px">
-      <button class="btn btn-danger" onclick="deleteTx()" data-en="🗑 Delete this record">🗑 删除此记录</button>
+      <button class="btn btn-danger" onclick="deleteTx()">🗑 删除此记录</button>
     </div>
-    <button class="btn btn-primary" onclick="saveTx()" data-en="Save">保存</button>
+    <button class="btn btn-primary" onclick="saveTx()">保存</button>
   </div>
 </div>
 
@@ -1614,10 +1545,10 @@ function switchAccount(id){
 function companyTxNote(t){
   if(!t.company) return '';
   const parts = [];
-  if(t.company.refTag) parts.push(tt(`📄${t.company.refTag}号`, `📄 No.${t.company.refTag}`));
+  if(t.company.refTag) parts.push(`📄${t.company.refTag}号`);
   const st = t.company.status;
-  if(st === 'pending') parts.push(tt('⏳待送出','⏳ not sent yet'));
-  else if(st === 'failed') parts.push(tt('⚠️未入账','⚠️ not recorded'));
+  if(st === 'pending') parts.push('⏳待送出');
+  else if(st === 'failed') parts.push('⚠️未入账');
   return parts.length ? ` · ${parts.join(' · ')}` : '';
 }
 
@@ -1651,7 +1582,7 @@ function renderTxList(){
   txs.sort((a,b)=>new Date(b.date)-new Date(a.date));
   const el = document.getElementById('tx-list');
   if(txs.length===0){
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🗒️</div><div class="empty-text">${tt('这个月还没有记录','Nothing recorded this month')}</div></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🗒️</div><div class="empty-text">这个月还没有记录</div></div>`;
     return;
   }
   // Group by date
@@ -2165,15 +2096,11 @@ function saveTx(){
       if(r.ok){
         const rec0 = (r.records && r.records[0]) || {};
         // 左/右是 Excel 里两张子表的位置：person=Boss 走左边那张，XY/G 走右边那张
-        const side = rec0.person
-          ? tt(`${rec0.person}（${rec0.person==='Boss'?'左':'右'}表）`, `${rec0.person}`)
-          : '';
+        const side = rec0.person ? `${rec0.person}（${rec0.person==='Boss'?'左':'右'}表）` : '';
         // 单据号要显眼——用户看到几就在纸质单据上写几，这是纸和 Excel 对上的唯一线索。
         // 换行放在单据号前面，手机上第二行就是最该看的那句。
-        const no = rec0.refTag
-          ? tt(`\n📄 单据写 ${rec0.refTag} 号`, `\n📄 Write No. ${rec0.refTag} on the receipt`)
-          : '';
-        toast(tt(`✅ 已入账 ${side}${no}`, `✅ Recorded ${side}${no}`));
+        const no = rec0.refTag ? `\n📄 单据写 ${rec0.refTag} 号` : '';
+        toast(`✅ 已入账 ${side}${no}`);
       }
       // 可重试的两种情况措辞不一样：连不上是「等有网」，服务端 503（例如密钥还没配好）
       // 要把服务端说的原因带出来，不然用户会一直等一个不会自己好的东西。
@@ -4175,7 +4102,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07f';
+const APP_BUILD = '2026-08-07g';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4206,164 +4133,6 @@ const COMPANY_CAT_TO_APP = {
   'Dentist':'cat_medical',
 };
 
-/* ===================== 同事模式 =====================
- * 同事跟老板用同一个 App（2026-08-07 用户拍板）。这样拍照压缩、扫描校准、离线队列
- * 这些实机磨出来的东西他们全都继承，以后修一次两边都得到——不用再维护第二份页面。
- *
- * 怎么进：网址带 ?staff=1（同事拿到的链接就是这个）。带了这个参数就先盖上钥匙闸门，
- * 填完钥匙问服务端「我是谁」，服务端回 scope==='staff' 才真的进同事模式。
- * **身份由服务端说了算，不是靠网址参数**——参数只决定要不要显示闸门。
- *
- * 界面上藏掉的东西见 body.staff-mode 那段 CSS。这只是界面简化，不是安全边界：
- * 真正的权限在服务端（reporter 由钥匙推出、只能删自己记的），客户端改不了。
- * 同事手机上本来也没有老板的数据——Firebase 是按 uid 隔离的，他们从不登录。
- */
-const STAFF_PARAM = new URLSearchParams(location.search).has('staff');
-const STAFF_IDENTITY_STORAGE = 'expenseTracker_staffIdentity';
-// 同事的钥匙存在**独立**的位置，绝不跟老板那把（COMPANY_TOKEN_STORAGE）共用。
-// 2026-08-07 踩到：一开始两者共用一个 key，后果是——(1) 老板在自己手机上打开
-// ?staff=1，程序读到的是他自己的 token、服务端回 owner，于是不进同事模式，看起来
-// 像「同事版坏了」；(2) 他要是在闸门里填了同事的钥匙，会直接**覆盖掉自己的 token**，
-// 他的 App 从此送不出公司账。分开存之后两者互不干扰，老板也能用同事钥匙预览同事模式。
-const STAFF_TOKEN_STORAGE = 'expenseTracker_staffToken';
-let staffIdentity = null;   // {reporter, scope} —— 服务端认出来的
-
-function isStaffMode(){ return !!(staffIdentity && staffIdentity.scope === 'staff'); }
-
-/** 拿当前存着的钥匙问服务端「我是谁」。回 null 表示钥匙不对或连不上。 */
-async function whoAmI(token){
-  try{
-    const res = await fetch(COMPANY_EXPENSE_URL, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'mine', token })
-    });
-    if(!res.ok) return { error: res.status === 401 ? 'bad-key' : 'server' };
-    const b = await res.json();
-    return (b && b.status === 'ok') ? { reporter: b.reporter, scope: b.scope || 'owner' } : { error:'server' };
-  }catch(e){ return { error:'offline' }; }
-}
-
-function applyStaffMode(){
-  if(!isStaffMode()) return;
-  document.body.classList.add('staff-mode');
-  const title = document.querySelector('.hdr-title');
-  if(title) title.setAttribute('data-staff-name', '🧾 ' + staffIdentity.reporter);
-  // 同事只有公司账：没有就自动建一个，并选中它，省得他自己去设置里摸索
-  let acc = data.accounts.find(a => a.isCompany);
-  if(!acc){
-    acc = { id:'acc'+Date.now(), name:'公司报账', currency:'USD',
-            color:'linear-gradient(135deg,#0f766e,#14b8a6)', isCompany:true };
-    data.accounts.push(acc);
-  }
-  data.currentAccountId = acc.id;
-  saveData();
-  updateHeader();
-  switchTab('transactions');
-  staffInitLang();
-}
-
-async function staffGateSubmit(){
-  const input = document.getElementById('staff-gate-key');
-  const msg = document.getElementById('staff-gate-msg');
-  const btn = document.getElementById('staff-gate-btn');
-  const v = (input.value || '').trim();
-  if(!v){ msg.textContent = '请先填钥匙 / Please enter your key'; return; }
-  btn.disabled = true; msg.textContent = '';
-  const who = await whoAmI(v);
-  btn.disabled = false;
-  if(who.error === 'bad-key'){ msg.textContent = '钥匙不对，请核对后重填 / Wrong key'; return; }
-  if(who.error){ msg.textContent = '连不上服务器，稍后再试 / Cannot reach server'; return; }
-  localStorage.setItem(STAFF_TOKEN_STORAGE, v);
-  staffIdentity = who;
-  // 身份也存下来：之后没信号重开 App 时才不会被闸门挡在门外（他正要记账）
-  localStorage.setItem(STAFF_IDENTITY_STORAGE, JSON.stringify(who));
-  input.value = '';
-  closeStaffGate();
-  applyStaffMode();
-}
-
-/* —— 同事模式的中英切换 ——
- * 同事不一定读中文。只翻同事模式下看得到的那些文案（老板那边一律中文，不受影响）。
- * 做法：固定文案在 HTML 上标 data-en，切到英文时把原中文暂存进 data-zh 再换掉，
- * 切回来时还原——这样不用把整个 App 双语化，也不会动到老板看到的任何字。
- * 语言选择存全站共用的 siteLangUser（跟仓库里其他双语页面同一个 key）。
- */
-const STAFF_LANG_KEY = 'siteLangUser';
-let staffLang = 'zh';
-
-function staffApplyLang(){
-  document.querySelectorAll('[data-en]').forEach(el=>{
-    if(el.dataset.zh === undefined) el.dataset.zh = el.textContent;
-    el.textContent = staffLang === 'en' ? el.dataset.en : el.dataset.zh;
-  });
-  const btn = document.getElementById('staff-lang-btn');
-  if(btn) btn.textContent = staffLang === 'en' ? '中' : 'EN';
-  document.documentElement.lang = staffLang === 'en' ? 'en' : 'zh';
-  // 清单和提示是脚本画的，要重画才会跟着换语言
-  if(state.currentTab === 'transactions') renderTxList();
-}
-
-function staffToggleLang(){
-  staffLang = staffLang === 'en' ? 'zh' : 'en';
-  localStorage.setItem(STAFF_LANG_KEY, staffLang);
-  staffApplyLang();
-}
-
-function staffInitLang(){
-  if(!isStaffMode()) return;
-  const saved = localStorage.getItem(STAFF_LANG_KEY);
-  // 手动选过就听用户的；没选过才看手机系统语言
-  staffLang = saved ? saved : ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
-  staffApplyLang();
-}
-// 另一个分页切了语言，这边立刻跟上
-window.addEventListener('storage', e=>{
-  if(e.key === STAFF_LANG_KEY && e.newValue && e.newValue !== staffLang && isStaffMode()){
-    staffLang = e.newValue; staffApplyLang();
-  }
-});
-
-/** 同事模式下要翻译的动态文字用这个；老板模式永远回中文。 */
-function tt(zh, en){ return (isStaffMode() && staffLang === 'en') ? en : zh; }
-
-function staffSignOut(){
-  if(!confirm('要清掉这台手机上的钥匙吗？之后要重新填。\nRemove the key from this phone?')) return;
-  localStorage.removeItem(STAFF_TOKEN_STORAGE);
-  localStorage.removeItem(STAFF_IDENTITY_STORAGE);
-  location.reload();
-}
-
-function openStaffGate(){
-  const b = document.getElementById('staff-gate-build');
-  if(b) b.textContent = '版本 ' + APP_BUILD;
-  document.documentElement.classList.add('staff-pending');
-  document.getElementById('staff-gate').classList.add('on');
-}
-function closeStaffGate(){
-  document.documentElement.classList.remove('staff-pending');
-  document.getElementById('staff-gate').classList.remove('on');
-}
-
-/** 启动时跑：带了 ?staff=1 才生效，老板那条路完全不碰。 */
-async function initStaffMode(){
-  if(!STAFF_PARAM) return;
-  const tok = (localStorage.getItem(STAFF_TOKEN_STORAGE) || '').trim();
-  if(!tok){ openStaffGate(); return; }
-  const who = await whoAmI(tok);
-  if(who.error === 'bad-key'){ openStaffGate(); return; }
-  // 连不上服务器时不要把人挡在外面——他可能正在没信号的地方要记账。
-  // 认过一次就把身份存下来，之后离线也能直接进同事模式。
-  if(who.error){
-    const cached = localStorage.getItem(STAFF_IDENTITY_STORAGE);
-    if(cached){ try{ staffIdentity = JSON.parse(cached); }catch(e){} }
-    if(!staffIdentity){ openStaffGate(); return; }
-  } else {
-    staffIdentity = who;
-    localStorage.setItem(STAFF_IDENTITY_STORAGE, JSON.stringify(who));
-  }
-  applyStaffMode();
-}
-
 function renderBuildInfo(){
   const el = document.getElementById('app-build-info');
   if(el) el.textContent = `版本 ${APP_BUILD}`;
@@ -4388,13 +4157,7 @@ async function forceReload(){
   location.reload(true);
 }
 
-function getCompanyToken(){
-  // 同事模式用同事自己那把（独立存储，见 STAFF_TOKEN_STORAGE 的注释）。
-  // 判断用网址参数而不是 isStaffMode()：启动时补送离线队列会在身份认出来之前跑，
-  // 那时 isStaffMode() 还是 false，用错钥匙会让整队都 401。
-  if (STAFF_PARAM) return (localStorage.getItem(STAFF_TOKEN_STORAGE) || '').trim();
-  return (localStorage.getItem(COMPANY_TOKEN_STORAGE) || '').trim();
-}
+function getCompanyToken(){ return (localStorage.getItem(COMPANY_TOKEN_STORAGE) || '').trim(); }
 
 /**
  * 按当前账户是不是公司账户，显示/隐藏公司报账字段并填好选项。
@@ -4678,7 +4441,6 @@ window.addEventListener('online', ()=>flushCompanyQueue());
 init();
 refreshCompanyCategories();
 flushCompanyQueue();
-initStaffMode();
 </script>
 </body>
 </html>
