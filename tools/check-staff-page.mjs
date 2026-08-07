@@ -231,6 +231,44 @@ console.log('\n【4b】同事版要精简：没有收入、没有瑞尔、没有
   await ctx.close();
 }
 
+// ---------- 【4c】两把钥匙必须分开存 ----------
+console.log('\n【4c】同事的钥匙不能覆盖掉老板自己的（同一台手机上两者互不干扰）');
+{
+  const { ctx, page, errs } = await newCtx();
+  // 模拟老板自己的手机：App 设置里早就存了他的 APP_SHARED_TOKEN
+  await page.goto(APP, { waitUntil:'domcontentloaded' });
+  await page.evaluate(k => localStorage.setItem('expenseTracker_companyToken', k), BOSS_KEY);
+
+  // 他打开同事版网址想预览 —— 不能因为「已经有 token」就跳过闸门
+  await page.goto(APP + '?staff=1', { waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1500);
+  ok('老板手机上打开 ?staff=1 仍会问同事的钥匙（不拿他自己那把顶）',
+     await seeVisible(page, '#staff-gate'));
+
+  await page.fill('#staff-gate-key', STAFF_KEY);
+  await page.click('#staff-gate-btn');
+  await page.waitForTimeout(1500);
+  ok('填了同事钥匙就进同事模式（老板也能预览）',
+     await page.evaluate(() => document.body.classList.contains('staff-mode')));
+
+  // 这条是重点：老板自己那把必须原封不动
+  const boss = await page.evaluate(() => localStorage.getItem('expenseTracker_companyToken'));
+  const staff = await page.evaluate(() => localStorage.getItem('expenseTracker_staffToken'));
+  ok('**老板自己那把没被覆盖**', boss === BOSS_KEY, boss);
+  ok('同事那把存在自己的位置', staff === STAFF_KEY, staff);
+
+  // 退出只清同事那把
+  page.on('dialog', d => d.accept());
+  await page.click('#staff-signout-row button');
+  await page.waitForTimeout(1200);
+  ok('退出只清同事的钥匙',
+     (await page.evaluate(() => localStorage.getItem('expenseTracker_staffToken'))) === null);
+  ok('**退出没把老板那把一起清掉**',
+     (await page.evaluate(() => localStorage.getItem('expenseTracker_companyToken'))) === BOSS_KEY);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 // ---------- 【5】老板的钥匙不进同事模式 ----------
 console.log('\n【5】老板的钥匙带 ?staff=1 → 不进同事模式（身份由服务端说了算）');
 {
@@ -240,6 +278,7 @@ console.log('\n【5】老板的钥匙带 ?staff=1 → 不进同事模式（身�
   await page.fill('#staff-gate-key', BOSS_KEY);
   await page.click('#staff-gate-btn');
   await page.waitForTimeout(1500);
+  // 服务端回 owner —— 就算是从同事版网址进来的，也不该进同事模式
   ok('没进同事模式', !(await page.evaluate(() => document.body.classList.contains('staff-mode'))));
   ok('概览入口还在', await seeVisible(page, '#nav-overview'));
   ok('设置入口还在', await seeVisible(page, '#nav-settings'));
