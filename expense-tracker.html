@@ -4157,7 +4157,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07d';
+const APP_BUILD = '2026-08-07e';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4202,6 +4202,12 @@ const COMPANY_CAT_TO_APP = {
  */
 const STAFF_PARAM = new URLSearchParams(location.search).has('staff');
 const STAFF_IDENTITY_STORAGE = 'expenseTracker_staffIdentity';
+// 同事的钥匙存在**独立**的位置，绝不跟老板那把（COMPANY_TOKEN_STORAGE）共用。
+// 2026-08-07 踩到：一开始两者共用一个 key，后果是——(1) 老板在自己手机上打开
+// ?staff=1，程序读到的是他自己的 token、服务端回 owner，于是不进同事模式，看起来
+// 像「同事版坏了」；(2) 他要是在闸门里填了同事的钥匙，会直接**覆盖掉自己的 token**，
+// 他的 App 从此送不出公司账。分开存之后两者互不干扰，老板也能用同事钥匙预览同事模式。
+const STAFF_TOKEN_STORAGE = 'expenseTracker_staffToken';
 let staffIdentity = null;   // {reporter, scope} —— 服务端认出来的
 
 function isStaffMode(){ return !!(staffIdentity && staffIdentity.scope === 'staff'); }
@@ -4249,7 +4255,7 @@ async function staffGateSubmit(){
   btn.disabled = false;
   if(who.error === 'bad-key'){ msg.textContent = '钥匙不对，请核对后重填 / Wrong key'; return; }
   if(who.error){ msg.textContent = '连不上服务器，稍后再试 / Cannot reach server'; return; }
-  localStorage.setItem(COMPANY_TOKEN_STORAGE, v);
+  localStorage.setItem(STAFF_TOKEN_STORAGE, v);
   staffIdentity = who;
   // 身份也存下来：之后没信号重开 App 时才不会被闸门挡在门外（他正要记账）
   localStorage.setItem(STAFF_IDENTITY_STORAGE, JSON.stringify(who));
@@ -4304,7 +4310,7 @@ function tt(zh, en){ return (isStaffMode() && staffLang === 'en') ? en : zh; }
 
 function staffSignOut(){
   if(!confirm('要清掉这台手机上的钥匙吗？之后要重新填。\nRemove the key from this phone?')) return;
-  localStorage.removeItem(COMPANY_TOKEN_STORAGE);
+  localStorage.removeItem(STAFF_TOKEN_STORAGE);
   localStorage.removeItem(STAFF_IDENTITY_STORAGE);
   location.reload();
 }
@@ -4315,7 +4321,7 @@ function closeStaffGate(){ document.getElementById('staff-gate').classList.remov
 /** 启动时跑：带了 ?staff=1 才生效，老板那条路完全不碰。 */
 async function initStaffMode(){
   if(!STAFF_PARAM) return;
-  const tok = getCompanyToken();
+  const tok = (localStorage.getItem(STAFF_TOKEN_STORAGE) || '').trim();
   if(!tok){ openStaffGate(); return; }
   const who = await whoAmI(tok);
   if(who.error === 'bad-key'){ openStaffGate(); return; }
@@ -4356,7 +4362,13 @@ async function forceReload(){
   location.reload(true);
 }
 
-function getCompanyToken(){ return (localStorage.getItem(COMPANY_TOKEN_STORAGE) || '').trim(); }
+function getCompanyToken(){
+  // 同事模式用同事自己那把（独立存储，见 STAFF_TOKEN_STORAGE 的注释）。
+  // 判断用网址参数而不是 isStaffMode()：启动时补送离线队列会在身份认出来之前跑，
+  // 那时 isStaffMode() 还是 false，用错钥匙会让整队都 401。
+  if (STAFF_PARAM) return (localStorage.getItem(STAFF_TOKEN_STORAGE) || '').trim();
+  return (localStorage.getItem(COMPANY_TOKEN_STORAGE) || '').trim();
+}
 
 /**
  * 按当前账户是不是公司账户，显示/隐藏公司报账字段并填好选项。
