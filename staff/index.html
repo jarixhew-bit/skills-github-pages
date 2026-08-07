@@ -193,7 +193,11 @@
         <label class="photo-btn" id="photo-label" for="f-photo">
           <span data-zh="📷 拍照 / 选一张" data-en="📷 Take or choose a photo"></span>
         </label>
-        <input id="f-photo" type="file" accept="image/*" capture="environment" class="hide" onchange="onPhoto(event)">
+        <!-- 刻意不加 capture 属性：加了浏览器会直接开相机、跳过选择器，同事就没法从
+             相册挑一张（2026-08-07 实机发现）。收据常常是外卖 App 的截图、或别人转发
+             过来的图，早就在相册里了——逼他现场拍等于这笔账记不了。
+             不加 capture 时 Android/iOS 都会弹「相机 / 相册 / 文件」让他自己选。 -->
+        <input id="f-photo" type="file" accept="image/*" class="hide" onchange="onPhoto(event)">
         <img id="photo-prev" alt="">
         <div id="nophoto-warn" class="banner warn" style="margin:10px 0 0"
              data-zh="⚠️ 没有收据照片也能记，但月底要靠纸质单据补。能拍就现在拍。"

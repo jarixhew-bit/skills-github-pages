@@ -131,6 +131,17 @@ let mainCtx;
      (await page.locator('select').count()) === 2, await page.locator('select').count());
   ok('类别下拉来自服务端', (await page.$$eval('#f-category option', e=>e.map(o=>o.value))).includes('Store'));
   ok('日期默认填好了', (await page.inputValue('#f-date')).length === 10, await page.inputValue('#f-date'));
+  // 收据照片必须能「从相册选」，不能只让现场拍：加了 capture 属性浏览器会直接开相机、
+  // 跳过选择器（2026-08-07 实机发现）。收据常常是外卖 App 截图或别人转发来的图，
+  // 早就在相册里了，逼他现场拍等于这笔账记不了。
+  const photoAttrs = await page.$eval('#f-photo', e => ({
+    capture: e.getAttribute('capture'), accept: e.getAttribute('accept'), type: e.type,
+  }));
+  ok('照片输入框没有 capture 属性（否则只能开相机、选不了相册）',
+     photoAttrs.capture === null, photoAttrs);
+  ok('只收图片（accept=image/*）', photoAttrs.accept === 'image/*', photoAttrs);
+  ok('按钮文案跟行为一致（写了「选一张」就真的能选）',
+     (await page.textContent('#photo-label')).includes('选一张'), await page.textContent('#photo-label'));
   ok('无 JS 报错', errs.length === 0, errs);
 }
 
