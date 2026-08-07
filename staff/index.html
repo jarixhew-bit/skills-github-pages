@@ -363,6 +363,28 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .viewer-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.15);
   border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:17px;cursor:pointer}
 .viewer-note{color:#ccc;font-size:12px;margin-top:14px;text-align:center;padding:0 24px}
+/* ===== 公司账本（全员）===== */
+.led-card{background:var(--card);border-radius:var(--radius);padding:14px 16px;
+  margin-bottom:14px;cursor:pointer}
+.led-card:active{background:var(--p2)}
+.led-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.led-card-title{font-size:13px;font-weight:600;color:var(--text)}
+.led-card-link{font-size:12px;color:var(--p)}
+.led-today{font-size:26px;font-weight:700;color:var(--text);margin-top:4px}
+.led-sub{font-size:12px;color:var(--sub);margin-top:4px;line-height:1.6}
+.led-warn{color:var(--exp);font-weight:600}
+/* 当天小计要够大——这是老板每天真正要跟纸单核对的那个数 */
+.led-day{display:flex;align-items:baseline;justify-content:space-between;
+  padding:12px 0 6px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.led-day-date{font-size:14px;font-weight:600;color:var(--text)}
+.led-day-total{font-size:16px;font-weight:700;color:var(--text)}
+.led-row{display:flex;align-items:baseline;gap:8px;padding:5px 0;font-size:13px}
+.led-no{flex:none;min-width:26px;font-weight:700;color:var(--p)}
+.led-mid{flex:1;min-width:0}
+.led-who{font-size:11px;color:var(--sub)}
+.led-amt{flex:none;font-weight:600}
+.led-tally{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.led-chip{background:var(--bg);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--sub)}
 
 /* ===== 同事版（生成时注入，见 tools/build-staff-page.py）===== */
 /* 这几个栏位共用的脚本会去读，删掉会让记账当场抛错，所以留在 DOM 里收起来。
@@ -387,10 +409,16 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 #staff-summary{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .staff-sum-label{font-size:12px;color:var(--sub)}
 .staff-sum-total{font-size:26px;font-weight:700;color:var(--text);margin-top:2px}
+/* 本月合计小一号：每天真正要抄的是「今天」那个数，别让两个大数字打架 */
+.staff-sum-month{font-size:20px}
+.staff-sum-divider{height:1px;background:var(--border);margin:12px 0}
 .staff-sum-sub{font-size:12px;color:var(--sub);margin-top:6px}
 /* 缺收据要显眼——月底纸质单据对不上是要花时间查的 */
 .staff-sum-warn{margin-top:10px;padding:8px 10px;border-radius:8px;
   background:rgba(239,68,68,.12);color:var(--exp);font-size:13px;font-weight:600}
+/* 每天一行小计：同事每天要在纸单上抄当天合计，这个数就是他要抄的那个 */
+.staff-day{display:flex;align-items:baseline;justify-content:space-between}
+.staff-day-total{font-size:14px;font-weight:700;color:var(--text)}
 </style>
 </head>
 <body>
@@ -1264,6 +1292,7 @@ function updateHeader(){
 // ===================== OVERVIEW =====================
 function renderOverview(){
   renderAccCards();
+  renderOvCompany();
   const acc = curAcc(); if(!acc) return;
   const now = new Date();
   const txs = monthTxs(acc.id, now.getFullYear(), now.getMonth());
@@ -1385,7 +1414,8 @@ function renderTxList(){
   txs.forEach(t=>{ (groups[t.date]||(groups[t.date]=[])).push(t); });
   el.innerHTML = Object.entries(groups).sort((a,b)=>new Date(b[0])-new Date(a[0]))
     .map(([date,list])=>`
-      <div class="tx-group-date">${date}</div>
+      <div class="tx-group-date staff-day">${date}<span class="staff-day-total">${
+        fmt(list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0), acc.currency)}</span></div>
       ${list.map(t=>txHtml(t,acc.currency)).join('')}
     `).join('');
   initSwipeGestures();
@@ -3899,7 +3929,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07h';
+const APP_BUILD = '2026-08-07i';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -4203,6 +4233,141 @@ async function flushCompanyQueue(opts){
   }
 }
 
+// ===================== 公司账本（全员）=====================
+// 为什么要有（2026-08-07 用户要求）：同事改用 App 记账之后，他们记的账在他们自己的
+// 手机里，这台手机上一笔都看不到。老板每天的活是核对——纸单上抄的当天合计，跟系统里
+// 那天的合计对不对得上。所以这里从 butler 拉回整本账，**按天分组、每天带小计**。
+//
+// 分组、小计、单号全部由服务端算（companyExpenseLedgerForApp）。这边一个数都不许自己算：
+// 单号要跟月底 Excel/PDF 完全一致，两套算法迟早会分岔，那时候对账就全错了。
+const ledState = { month: null, data: null, loading: false, error: null, fetchedAt: 0 };
+
+function ledMonthNow(){ return today().slice(0, 7); }
+
+// 备注是从服务端来的自由文本（同事在 Telegram 里打的字），拼进 innerHTML 前要转义
+function ledEsc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/** 拉一个月的全员公司账。同一分钟内不重复拉，避免每次切 tab 都打一次服务端。 */
+async function fetchCompanyLedger(month, opts){
+  const force = !!(opts && opts.force);
+  const m = month || ledMonthNow();
+  if(!force && ledState.data && ledState.month === m && Date.now() - ledState.fetchedAt < 60000) return ledState.data;
+  const token = getCompanyToken();
+  if(!token){ ledState.error = 'no-token'; return null; }
+  ledState.month = m; ledState.loading = true; ledState.error = null;
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'ledger', month: m })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(res.ok && body.status === 'ok'){
+      ledState.data = body; ledState.fetchedAt = Date.now(); ledState.error = null;
+    } else {
+      // forbidden = 这台手机填的是同事的钥匙（看不到全员，这是对的）
+      ledState.data = null;
+      ledState.error = body.status === 'forbidden' ? 'forbidden' : (body.message || `拉不到（${res.status}）`);
+    }
+  }catch(e){
+    ledState.data = null; ledState.error = 'offline';
+  }
+  ledState.loading = false;
+  return ledState.data;
+}
+
+/** 首屏那张卡：今天合计 + 本月合计 + 缺收据。点开是完整清单。 */
+function renderOvCompany(){
+  const el = document.getElementById('ov-company');
+  if(!el) return;
+  if(!getCompanyToken()){ el.style.display = 'none'; return; }
+  const d = ledState.data;
+  // 同事钥匙看不到全员，那就不摆这张卡（不是错误，是本来就不该看到）
+  if(ledState.error === 'forbidden'){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  if(!d){
+    el.innerHTML = `<div class="led-card-top"><div class="led-card-title">📒 公司账本（全员）</div></div>
+      <div class="led-sub">${ledState.loading ? '正在拉取…'
+        : ledState.error === 'offline' ? '现在连不上，等有网再看'
+        : (ledState.error || '还没拉到数据')}</div>`;
+    return;
+  }
+  const t = today();
+  const dayToday = (d.days || []).find(x => x.date === t);
+  const todayTotal = dayToday ? dayToday.total : 0;
+  const todayCount = dayToday ? dayToday.count : 0;
+  el.innerHTML = `
+    <div class="led-card-top">
+      <div class="led-card-title">📒 公司账本（全员）· 今天</div>
+      <div class="led-card-link">看全部 →</div>
+    </div>
+    <div class="led-today">${fmt(todayTotal, 'USD')}</div>
+    <div class="led-sub">今天 ${todayCount} 笔　·　本月 ${d.count} 笔 ${fmt(d.total, 'USD')}</div>
+    ${d.missingPhoto ? `<div class="led-sub led-warn">⚠️ 本月有 ${d.missingPhoto} 笔没有收据照片</div>` : ''}`;
+}
+
+async function openCompanyLedger(){
+  showModal('modal-company-ledger');
+  renderCompanyLedger();
+  await fetchCompanyLedger(ledState.month || ledMonthNow(), {force:true});
+  renderCompanyLedger();
+  renderOvCompany();
+}
+
+async function companyLedgerMonth(delta){
+  const [y, m] = (ledState.month || ledMonthNow()).split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1 + delta, 1));
+  ledState.month = dt.toISOString().slice(0, 7);
+  ledState.data = null;
+  renderCompanyLedger();
+  await fetchCompanyLedger(ledState.month, {force:true});
+  renderCompanyLedger();
+}
+
+function renderCompanyLedger(){
+  const body = document.getElementById('led-body');
+  if(!body) return;
+  const m = ledState.month || ledMonthNow();
+  document.getElementById('led-month-text').textContent = m.replace('-', ' 年 ') + ' 月';
+  const d = ledState.data;
+  if(!d){
+    body.innerHTML = `<div class="led-sub">${ledState.loading ? '正在拉取…'
+      : ledState.error === 'forbidden' ? '这台手机填的是同事的钥匙，看不到全员账本'
+      : ledState.error === 'offline' ? '现在连不上服务器，等有网再看'
+      : ledState.error === 'no-token' ? '还没填公司报账密钥（设置 → 公司报账）'
+      : (ledState.error || '这个月还没有记录')}</div>`;
+    return;
+  }
+  if(!d.days.length){ body.innerHTML = `<div class="led-sub">这个月还没有记录</div>`; return; }
+  // 谁记的：三个人各报了多少，一眼看完
+  const chips = (d.byReporter || []).map(x =>
+    `<div class="led-chip">${ledEsc(x.name)} ${fmt(x.total,'USD')} · ${x.count} 笔</div>`).join('');
+  const rows = (list) => list.map(r => `
+    <div class="led-row">
+      <div class="led-no">${ledEsc(r.billNo)}</div>
+      <div class="led-mid">
+        <div>${ledEsc(r.categoryEn)}${r.note ? ` <span class="led-who">— ${ledEsc(r.note)}</span>` : ''}</div>
+        <div class="led-who">${ledEsc(r.reporter)} 记　·　算 ${ledEsc(r.person)} 的（Excel ${r.side==='boss'?'左':'右'}表）${
+          r.hasPhoto ? '' : '　·　<span class="led-warn">缺收据</span>'}</div>
+      </div>
+      <div class="led-amt">${fmt(r.amountUsd,'USD')}</div>
+    </div>`).join('');
+  body.innerHTML = `
+    <div class="led-sub">本月 ${d.count} 笔　·　合计 <b>${fmt(d.total,'USD')}</b>${
+      d.missingPhoto ? `　·　<span class="led-warn">${d.missingPhoto} 笔缺收据</span>` : ''}</div>
+    <div class="led-tally">${chips}</div>
+    ${d.days.map(day => `
+      <div class="led-day">
+        <div class="led-day-date">${day.date}　<span class="led-who">${day.count} 笔${
+          day.missingPhoto ? ` · <span class="led-warn">${day.missingPhoto} 笔缺收据</span>` : ''}</span></div>
+        <div class="led-day-total">${fmt(day.total,'USD')}</div>
+      </div>
+      ${rows(day.records)}`).join('')}
+    ${d.orphan ? `<div class="led-sub led-warn" style="margin-top:12px">⚠️ 另有 ${d.orphan} 笔归属人不在名册里，不会进 Excel</div>` : ''}`;
+}
+
 function renderCompanySettings(){
   const statusEl = document.getElementById('company-token-status');
   if(!statusEl) return;
@@ -4349,9 +4514,19 @@ function staffRenderSummary(){
   const total = txs.reduce((s,t)=>s+t.amount, 0);
   // 缺收据 = 这笔没有存照片。月底纸质单据要跟 Excel 对上，缺一张就得回头找。
   const noPhoto = txs.filter(t => !t.attachmentId).length;
+  // 「今天合计」摆在最上面：同事每天要在纸单上抄当天总数，这就是他要抄的那个数。
+  // 翻到别的月份时不显示——那时候「今天」不在画面里，摆着只会看错。
+  const t0 = today();
+  const todayTxs = txs.filter(t => t.date === t0);
+  const isThisMonth = t0.slice(0,7) === `${state.txYear}-${String(state.txMonth+1).padStart(2,'0')}`;
   box.innerHTML = `
+    ${isThisMonth ? `
+      <div class="staff-sum-label">${tt('今天合计','Today')}</div>
+      <div class="staff-sum-total">${fmt(todayTxs.reduce((s,t)=>s+t.amount,0), acc.currency)}</div>
+      <div class="staff-sum-sub">${tt(`今天 ${todayTxs.length} 笔`, `${todayTxs.length} record(s) today`)}</div>
+      <div class="staff-sum-divider"></div>` : ''}
     <div class="staff-sum-label">${tt('本月合计','This month')}</div>
-    <div class="staff-sum-total">${fmt(total, acc.currency)}</div>
+    <div class="staff-sum-total staff-sum-month">${fmt(total, acc.currency)}</div>
     <div class="staff-sum-sub">${tt(`${txs.length} 笔`, `${txs.length} record(s)`)}</div>
     ${noPhoto ? `<div class="staff-sum-warn">${tt(
         `⚠️ 有 ${noPhoto} 笔没有收据照片`,

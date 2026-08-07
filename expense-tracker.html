@@ -353,6 +353,28 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .viewer-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.15);
   border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:17px;cursor:pointer}
 .viewer-note{color:#ccc;font-size:12px;margin-top:14px;text-align:center;padding:0 24px}
+/* ===== 公司账本（全员）===== */
+.led-card{background:var(--card);border-radius:var(--radius);padding:14px 16px;
+  margin-bottom:14px;cursor:pointer}
+.led-card:active{background:var(--p2)}
+.led-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.led-card-title{font-size:13px;font-weight:600;color:var(--text)}
+.led-card-link{font-size:12px;color:var(--p)}
+.led-today{font-size:26px;font-weight:700;color:var(--text);margin-top:4px}
+.led-sub{font-size:12px;color:var(--sub);margin-top:4px;line-height:1.6}
+.led-warn{color:var(--exp);font-weight:600}
+/* 当天小计要够大——这是老板每天真正要跟纸单核对的那个数 */
+.led-day{display:flex;align-items:baseline;justify-content:space-between;
+  padding:12px 0 6px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.led-day-date{font-size:14px;font-weight:600;color:var(--text)}
+.led-day-total{font-size:16px;font-weight:700;color:var(--text)}
+.led-row{display:flex;align-items:baseline;gap:8px;padding:5px 0;font-size:13px}
+.led-no{flex:none;min-width:26px;font-weight:700;color:var(--p)}
+.led-mid{flex:1;min-width:0}
+.led-who{font-size:11px;color:var(--sub)}
+.led-amt{flex:none;font-weight:600}
+.led-tally{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.led-chip{background:var(--bg);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--sub)}
 </style>
 </head>
 <body>
@@ -387,6 +409,9 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
         <div class="sum-box-val" id="ov-expense">—</div>
       </div>
     </div>
+    <!-- 公司账本（全员）：同事在他们那版记的账不会出现在这台手机上，这一块是从
+         butler 拉回来的。放在首屏是因为对账是每天的活——打开 App 就该看到今天的数。 -->
+    <div id="ov-company" class="led-card" style="display:none" onclick="openCompanyLedger()"></div>
     <div class="sec-hdr">
       <div class="sec-title">最近记录</div>
       <div class="sec-link" onclick="switchTab('transactions')">全部 →</div>
@@ -793,6 +818,23 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   </div>
 </div>
 
+<!-- MODAL: COMPANY LEDGER（老板看全员的公司账，按天分组带小计）
+     刻意放在这一段（账户切换～PDF 之间）：同事版生成时整段会被删掉，
+     同事拿不到这个界面。真正的权限在服务端（action:"ledger" 只认老板的钥匙）。 -->
+<div class="overlay" id="modal-company-ledger">
+  <div class="modal" style="max-height:88vh">
+    <div class="modal-hdr">
+      <div class="modal-title">📒 公司账本（全员）</div>
+      <button class="modal-close" onclick="closeModal('modal-company-ledger')">✕</button>
+    </div>
+    <div class="month-picker" style="margin-bottom:10px">
+      <button class="month-arrow" onclick="companyLedgerMonth(-1)">‹</button>
+      <div class="month-text" id="led-month-text"></div>
+      <button class="month-arrow" onclick="companyLedgerMonth(1)">›</button>
+    </div>
+    <div id="led-body" style="overflow-y:auto"></div>
+  </div>
+</div>
 
 <!-- PDF REPORT (hidden) -->
 <div id="pdf-statement"></div>
@@ -1469,6 +1511,7 @@ function updateHeader(){
 // ===================== OVERVIEW =====================
 function renderOverview(){
   renderAccCards();
+  renderOvCompany();
   const acc = curAcc(); if(!acc) return;
   const now = new Date();
   const txs = monthTxs(acc.id, now.getFullYear(), now.getMonth());
@@ -2108,6 +2151,8 @@ function saveTx(){
       else toast(`没能进公司账本：${r.message}`);
       // 送达是异步的，列表在此之前已经画好了、还标着「待送出」——结果回来必须重画一次，
       // 否则明明入账成功、列表却一直显示待送出，看起来像没送出去。
+      // 刚进账本的这笔也要算进首屏那张「今天」卡里，重拉一次
+      if(r.ok) fetchCompanyLedger(ledMonthNow(), {force:true}).then(()=>renderOvCompany());
       if(state.currentTab==='overview') renderOverview();
       if(state.currentTab==='transactions') renderTxList();
       if(state.currentTab==='settings') renderCompanySettings();
@@ -4076,6 +4121,10 @@ function init(){
   setCloudIcon('off');
   checkShareTarget();
 
+  // 公司账本（全员）：开 App 时后台拉一次，首屏那张卡才有「今天」的数。
+  // 不 await——拉不到就是卡上写一句「连不上」，不该拖住启动。
+  fetchCompanyLedger().then(()=>{ if(state.currentTab==='overview') renderOvCompany(); });
+
   // 云同步连不上时 auth 是 null（见顶部 FIREBASE 那段）。这里必须挡一下，
   // 否则 init() 会抛错，后面的启动步骤全都不会执行。
   if(!cloudAvailable) return;
@@ -4102,7 +4151,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07h';
+const APP_BUILD = '2026-08-07i';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4404,6 +4453,141 @@ async function flushCompanyQueue(opts){
   } else if(!silent){
     toast('还是连不上，等有网再试');
   }
+}
+
+// ===================== 公司账本（全员）=====================
+// 为什么要有（2026-08-07 用户要求）：同事改用 App 记账之后，他们记的账在他们自己的
+// 手机里，这台手机上一笔都看不到。老板每天的活是核对——纸单上抄的当天合计，跟系统里
+// 那天的合计对不对得上。所以这里从 butler 拉回整本账，**按天分组、每天带小计**。
+//
+// 分组、小计、单号全部由服务端算（companyExpenseLedgerForApp）。这边一个数都不许自己算：
+// 单号要跟月底 Excel/PDF 完全一致，两套算法迟早会分岔，那时候对账就全错了。
+const ledState = { month: null, data: null, loading: false, error: null, fetchedAt: 0 };
+
+function ledMonthNow(){ return today().slice(0, 7); }
+
+// 备注是从服务端来的自由文本（同事在 Telegram 里打的字），拼进 innerHTML 前要转义
+function ledEsc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/** 拉一个月的全员公司账。同一分钟内不重复拉，避免每次切 tab 都打一次服务端。 */
+async function fetchCompanyLedger(month, opts){
+  const force = !!(opts && opts.force);
+  const m = month || ledMonthNow();
+  if(!force && ledState.data && ledState.month === m && Date.now() - ledState.fetchedAt < 60000) return ledState.data;
+  const token = getCompanyToken();
+  if(!token){ ledState.error = 'no-token'; return null; }
+  ledState.month = m; ledState.loading = true; ledState.error = null;
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'ledger', month: m })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(res.ok && body.status === 'ok'){
+      ledState.data = body; ledState.fetchedAt = Date.now(); ledState.error = null;
+    } else {
+      // forbidden = 这台手机填的是同事的钥匙（看不到全员，这是对的）
+      ledState.data = null;
+      ledState.error = body.status === 'forbidden' ? 'forbidden' : (body.message || `拉不到（${res.status}）`);
+    }
+  }catch(e){
+    ledState.data = null; ledState.error = 'offline';
+  }
+  ledState.loading = false;
+  return ledState.data;
+}
+
+/** 首屏那张卡：今天合计 + 本月合计 + 缺收据。点开是完整清单。 */
+function renderOvCompany(){
+  const el = document.getElementById('ov-company');
+  if(!el) return;
+  if(!getCompanyToken()){ el.style.display = 'none'; return; }
+  const d = ledState.data;
+  // 同事钥匙看不到全员，那就不摆这张卡（不是错误，是本来就不该看到）
+  if(ledState.error === 'forbidden'){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  if(!d){
+    el.innerHTML = `<div class="led-card-top"><div class="led-card-title">📒 公司账本（全员）</div></div>
+      <div class="led-sub">${ledState.loading ? '正在拉取…'
+        : ledState.error === 'offline' ? '现在连不上，等有网再看'
+        : (ledState.error || '还没拉到数据')}</div>`;
+    return;
+  }
+  const t = today();
+  const dayToday = (d.days || []).find(x => x.date === t);
+  const todayTotal = dayToday ? dayToday.total : 0;
+  const todayCount = dayToday ? dayToday.count : 0;
+  el.innerHTML = `
+    <div class="led-card-top">
+      <div class="led-card-title">📒 公司账本（全员）· 今天</div>
+      <div class="led-card-link">看全部 →</div>
+    </div>
+    <div class="led-today">${fmt(todayTotal, 'USD')}</div>
+    <div class="led-sub">今天 ${todayCount} 笔　·　本月 ${d.count} 笔 ${fmt(d.total, 'USD')}</div>
+    ${d.missingPhoto ? `<div class="led-sub led-warn">⚠️ 本月有 ${d.missingPhoto} 笔没有收据照片</div>` : ''}`;
+}
+
+async function openCompanyLedger(){
+  showModal('modal-company-ledger');
+  renderCompanyLedger();
+  await fetchCompanyLedger(ledState.month || ledMonthNow(), {force:true});
+  renderCompanyLedger();
+  renderOvCompany();
+}
+
+async function companyLedgerMonth(delta){
+  const [y, m] = (ledState.month || ledMonthNow()).split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1 + delta, 1));
+  ledState.month = dt.toISOString().slice(0, 7);
+  ledState.data = null;
+  renderCompanyLedger();
+  await fetchCompanyLedger(ledState.month, {force:true});
+  renderCompanyLedger();
+}
+
+function renderCompanyLedger(){
+  const body = document.getElementById('led-body');
+  if(!body) return;
+  const m = ledState.month || ledMonthNow();
+  document.getElementById('led-month-text').textContent = m.replace('-', ' 年 ') + ' 月';
+  const d = ledState.data;
+  if(!d){
+    body.innerHTML = `<div class="led-sub">${ledState.loading ? '正在拉取…'
+      : ledState.error === 'forbidden' ? '这台手机填的是同事的钥匙，看不到全员账本'
+      : ledState.error === 'offline' ? '现在连不上服务器，等有网再看'
+      : ledState.error === 'no-token' ? '还没填公司报账密钥（设置 → 公司报账）'
+      : (ledState.error || '这个月还没有记录')}</div>`;
+    return;
+  }
+  if(!d.days.length){ body.innerHTML = `<div class="led-sub">这个月还没有记录</div>`; return; }
+  // 谁记的：三个人各报了多少，一眼看完
+  const chips = (d.byReporter || []).map(x =>
+    `<div class="led-chip">${ledEsc(x.name)} ${fmt(x.total,'USD')} · ${x.count} 笔</div>`).join('');
+  const rows = (list) => list.map(r => `
+    <div class="led-row">
+      <div class="led-no">${ledEsc(r.billNo)}</div>
+      <div class="led-mid">
+        <div>${ledEsc(r.categoryEn)}${r.note ? ` <span class="led-who">— ${ledEsc(r.note)}</span>` : ''}</div>
+        <div class="led-who">${ledEsc(r.reporter)} 记　·　算 ${ledEsc(r.person)} 的（Excel ${r.side==='boss'?'左':'右'}表）${
+          r.hasPhoto ? '' : '　·　<span class="led-warn">缺收据</span>'}</div>
+      </div>
+      <div class="led-amt">${fmt(r.amountUsd,'USD')}</div>
+    </div>`).join('');
+  body.innerHTML = `
+    <div class="led-sub">本月 ${d.count} 笔　·　合计 <b>${fmt(d.total,'USD')}</b>${
+      d.missingPhoto ? `　·　<span class="led-warn">${d.missingPhoto} 笔缺收据</span>` : ''}</div>
+    <div class="led-tally">${chips}</div>
+    ${d.days.map(day => `
+      <div class="led-day">
+        <div class="led-day-date">${day.date}　<span class="led-who">${day.count} 笔${
+          day.missingPhoto ? ` · <span class="led-warn">${day.missingPhoto} 笔缺收据</span>` : ''}</span></div>
+        <div class="led-day-total">${fmt(day.total,'USD')}</div>
+      </div>
+      ${rows(day.records)}`).join('')}
+    ${d.orphan ? `<div class="led-sub led-warn" style="margin-top:12px">⚠️ 另有 ${d.orphan} 笔归属人不在名册里，不会进 Excel</div>` : ''}`;
 }
 
 function renderCompanySettings(){

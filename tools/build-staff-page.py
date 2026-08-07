@@ -69,6 +69,12 @@ def replace_once(s, old, new, what):
     return s.replace(old, new, 1)
 
 
+def cut_exact(s, block, what):
+    """删掉一段一字不差的文本。"""
+    once(s, block, what)
+    return s.replace(block, "", 1)
+
+
 def replace_n(s, old, new, what, n):
     """替换全部 n 处——数量对不上就报错（少一处就等于漏了一个存储位）。"""
     got = s.count(old)
@@ -164,6 +170,17 @@ def build(src: str) -> str:
                      "  // 同事版没有概览/统计/设置，直接进明细（生成时改的，见 tools/build-staff-page.py）\n"
                      "  switchTab('transactions');",
                      "init() 里的首屏")
+    # 全员账本是老板专用的（服务端只认老板的钥匙），同事版连问都不该问
+    s = cut_exact(s,
+                  "\n\n  // 公司账本（全员）：开 App 时后台拉一次，首屏那张卡才有「今天」的数。\n"
+                  "  // 不 await——拉不到就是卡上写一句「连不上」，不该拖住启动。\n"
+                  "  fetchCompanyLedger().then(()=>{ if(state.currentTab==='overview') renderOvCompany(); });",
+                  "启动时拉全员账本")
+    s = cut_exact(s,
+                  "      // 刚进账本的这笔也要算进首屏那张「今天」卡里，重拉一次\n"
+                  "      if(r.ok) fetchCompanyLedger(ledMonthNow(), {force:true}).then(()=>renderOvCompany());\n",
+                  "入账后重拉全员账本")
+
     # 云同步整个不接：同事版没有登录入口，留着 auth 监听只是白等
     s = replace_once(s,
                      "  // 云同步连不上时 auth 是 null（见顶部 FIREBASE 那段）。这里必须挡一下，\n"
@@ -240,6 +257,11 @@ DYNAMIC_TEXT = [
      """  if(st === 'pending') parts.push(tt('⏳待送出','⏳ not sent yet'));
   else if(st === 'failed') parts.push(tt('⚠️未入账','⚠️ not recorded'));""",
      "送出状态"),
+    # 每天一行小计：同事每天要在纸单上抄当天合计，这个数就是他要抄的那个
+    ("""      <div class="tx-group-date">${date}</div>""",
+     """      <div class="tx-group-date staff-day">${date}<span class="staff-day-total">${
+        fmt(list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0), acc.currency)}</span></div>""",
+     "每天小计"),
     ("""<div class="empty-text">这个月还没有记录</div>""",
      """<div class="empty-text">${tt('这个月还没有记录','Nothing recorded this month')}</div>""",
      "空清单"),
@@ -317,10 +339,16 @@ STAFF_CSS = """
 #staff-summary{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .staff-sum-label{font-size:12px;color:var(--sub)}
 .staff-sum-total{font-size:26px;font-weight:700;color:var(--text);margin-top:2px}
+/* 本月合计小一号：每天真正要抄的是「今天」那个数，别让两个大数字打架 */
+.staff-sum-month{font-size:20px}
+.staff-sum-divider{height:1px;background:var(--border);margin:12px 0}
 .staff-sum-sub{font-size:12px;color:var(--sub);margin-top:6px}
 /* 缺收据要显眼——月底纸质单据对不上是要花时间查的 */
 .staff-sum-warn{margin-top:10px;padding:8px 10px;border-radius:8px;
-  background:rgba(239,68,68,.12);color:var(--exp);font-size:13px;font-weight:600}"""
+  background:rgba(239,68,68,.12);color:var(--exp);font-size:13px;font-weight:600}
+/* 每天一行小计：同事每天要在纸单上抄当天合计，这个数就是他要抄的那个 */
+.staff-day{display:flex;align-items:baseline;justify-content:space-between}
+.staff-day-total{font-size:14px;font-weight:700;color:var(--text)}"""
 
 STAFF_GATE_HTML = """
 <!-- 钥匙闸门：默认就盖着（不是等脚本跑完才弹），认出身份后才拿掉 -->
@@ -450,9 +478,19 @@ function staffRenderSummary(){
   const total = txs.reduce((s,t)=>s+t.amount, 0);
   // 缺收据 = 这笔没有存照片。月底纸质单据要跟 Excel 对上，缺一张就得回头找。
   const noPhoto = txs.filter(t => !t.attachmentId).length;
+  // 「今天合计」摆在最上面：同事每天要在纸单上抄当天总数，这就是他要抄的那个数。
+  // 翻到别的月份时不显示——那时候「今天」不在画面里，摆着只会看错。
+  const t0 = today();
+  const todayTxs = txs.filter(t => t.date === t0);
+  const isThisMonth = t0.slice(0,7) === `${state.txYear}-${String(state.txMonth+1).padStart(2,'0')}`;
   box.innerHTML = `
+    ${isThisMonth ? `
+      <div class="staff-sum-label">${tt('今天合计','Today')}</div>
+      <div class="staff-sum-total">${fmt(todayTxs.reduce((s,t)=>s+t.amount,0), acc.currency)}</div>
+      <div class="staff-sum-sub">${tt(`今天 ${todayTxs.length} 笔`, `${todayTxs.length} record(s) today`)}</div>
+      <div class="staff-sum-divider"></div>` : ''}
     <div class="staff-sum-label">${tt('本月合计','This month')}</div>
-    <div class="staff-sum-total">${fmt(total, acc.currency)}</div>
+    <div class="staff-sum-total staff-sum-month">${fmt(total, acc.currency)}</div>
     <div class="staff-sum-sub">${tt(`${txs.length} 笔`, `${txs.length} record(s)`)}</div>
     ${noPhoto ? `<div class="staff-sum-warn">${tt(
         `⚠️ 有 ${noPhoto} 笔没有收据照片`,
