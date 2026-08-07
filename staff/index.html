@@ -4518,6 +4518,11 @@ function staffStart(){
   // 版本号写在页面底部：同事回报问题时，第一件要确认的就是他手上是不是最新那一版
   const bn = document.getElementById('staff-build-note');
   if(bn) bn.textContent = staffIdentity.reporter + ' · ' + APP_BUILD;
+  // ⚠️ 必须先 loadData()，再动 data、再 saveData()。
+  // 这一行漏掉的话（2026-08-07 上线当天就踩到）：此刻的 data 还是脚本顶上的默认空对象，
+  // init() 里的 loadData() 要到下面才跑；先 saveData() 等于拿一个空账本盖掉本机存的记录，
+  // 于是「每刷新一次，之前记的全没了」。已经送进公司账本的钱不会丢，但离线待补送的会。
+  loadData();
   // 同事只有公司账：没有就建一个并选中，省得他去设置里摸索（这个版本也没有设置页）
   let acc = (data.accounts || []).find(a => a.isCompany);
   if(!acc){
