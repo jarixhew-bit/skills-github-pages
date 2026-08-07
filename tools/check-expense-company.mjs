@@ -117,6 +117,33 @@ const browser = await chromium.launch(launchOpts);
     return !!data.accounts.find(x=>x.id===a.id).isCompany;
   }));
 
+  console.log('\n【2b】账户卡片的余额：负数必须看得出是负的');
+  // 公司账只有支出没有收入，余额一定是负的。2026-08-07 用户发现卡片把它显示成正数——
+  // 大字用了 Math.abs()，负号被丢到下面那行小字的末尾（"USD · 总结余 −"），
+  // 后面还没跟东西，看起来像被截断了。钱的正负看错是最要命的一类显示错误。
+  await page.evaluate(()=>{
+    const a = data.accounts.find(x=>x.currency==='USD');
+    data.transactions = data.transactions.filter(t=>t.accountId!==a.id);
+    data.transactions.push({id:'neg1', accountId:a.id, type:'expense', amount:1234,
+      categoryId:(data.categories[0]||{}).id, date:'2026-08-01', desc:'测试'});
+    saveData(); switchTab('overview'); renderAccCards();
+  });
+  await page.waitForTimeout(400);
+  const cardBal = await page.evaluate(()=>{
+    const a = data.accounts.find(x=>x.currency==='USD');
+    const cards = [...document.querySelectorAll('.acc-card')];
+    const c = cards.find(el=>(el.textContent||'').includes(a.name));
+    return { bal: c.querySelector('.acc-card-bal').textContent.trim(),
+             cur: c.querySelector('.acc-card-cur').textContent.trim() };
+  });
+  ok('负余额的大字带负号（不是显示成正数）', /^[-−]/.test(cardBal.bal), cardBal);
+  ok('金额本身还是对的（1234.00）', cardBal.bal.includes('1234.00'), cardBal);
+  // 负号不能孤零零挂在小字末尾——那是这次 bug 的具体形态
+  ok('小字那行末尾没有孤立的负号', !/[-−]\s*$/.test(cardBal.cur), cardBal);
+  await page.evaluate(()=>{
+    data.transactions = data.transactions.filter(t=>t.id!=='neg1'); saveData();
+  });
+
   console.log('\n【3】类别清单来自服务端，不是 App 里硬编的');
   await page.reload({ waitUntil:'domcontentloaded' });
   await page.waitForTimeout(2000);

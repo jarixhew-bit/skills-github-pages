@@ -1520,8 +1520,8 @@ function renderAccCards(){
     return `<div class="acc-card ${sel}" style="background:${acc.color}"
       onclick="switchAccount('${acc.id}')">
       <div class="acc-card-name">${acc.name}</div>
-      <div class="acc-card-bal">${fmt(Math.abs(bal), acc.currency)}</div>
-      <div class="acc-card-cur">${acc.currency} · 总结余 ${bal>=0?'':'−'}</div>
+      <div class="acc-card-bal">${bal<0?'−':''}${fmt(Math.abs(bal), acc.currency)}</div>
+      <div class="acc-card-cur">${acc.currency} · 总结余</div>
     </div>`;
   }).join('') + `<div class="acc-card acc-card-add" onclick="showModal('modal-add-acc')">＋</div>`;
 }
@@ -4102,7 +4102,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-06b';
+const APP_BUILD = '2026-08-07a';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
