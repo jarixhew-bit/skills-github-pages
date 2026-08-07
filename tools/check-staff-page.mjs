@@ -1,4 +1,4 @@
-// 同事模式的浏览器自检（记账 App 的 ?staff=1）。
+// 同事版报账页（staff/index.html）的浏览器自检。
 //
 // 跑法：
 //   python3 -m http.server 8899 &
@@ -6,22 +6,14 @@
 //   （沙盒里浏览器装在别处时加 CHROMIUM_PATH=/opt/pw-browsers/chromium）
 // CI 见 .github/workflows/staff-page-check.yml。
 //
-// 2026-08-07 起同事跟老板用**同一个 App**（用户拍板）。原本的独立页面
-// staff/index.html 已改成跳转页——它连撞三个 App 早就解决过的问题
-// （中文乱码、只能开相机、不压缩导致 4G 传不上去），当初就不该重写。
-//
-// 这份守的是两件事：
-// 1. 同事模式确实把个人账本那一整套藏掉了（他们不该看到老板的界面）
-// 2. **不带 ?staff=1 时一切照旧**——老板的 App 不能被同事模式影响
-//    （老板那一侧的完整验证在 check-expense-company.mjs，90 项）
-//
-// 注意：同事模式只是界面简化，不是安全边界。真正的权限在服务端
-// （reporter 由钥匙推出、只能删自己记的），有 tests/staff-access.test.mjs 守着。
+// 为什么要有这份：这个页面要发到同事手上，装在他们自己的手机里。会出问题的地方
+// 不是「好不好看」，而是——送出去的内容对不对、离线时会不会静静丢掉一笔、
+// 会不会显示到别人的数据。这三件全部在这里断言。
+// 用假服务端（route 拦截）跑，不碰真的 butler，也不需要任何钥匙。
 import { chromium } from 'playwright';
 
 const PORT = 8899;
-const APP = `http://localhost:${PORT}/expense-tracker.html`;
-const REDIRECT = `http://localhost:${PORT}/staff/index.html`;
+const BASE = `http://localhost:${PORT}/staff/index.html`;
 const BUTLER = 'https://butler-bot.jarixhew.workers.dev';
 
 const launchOpts = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {};
@@ -34,15 +26,29 @@ const ok = (name, cond, got) => {
   else { fails.push(name); console.log(`  ❌ ${name} —— 实际: ${JSON.stringify(got)}`); }
 };
 
-const STAFF_KEY = 'seryi-key-xyz';
-const BOSS_KEY  = 'boss-key-abc';
+// 假 butler：认两把钥匙，各自只回自己的记录。刻意不实现「回别人的」——
+// 页面若真去要了别人的数据，这里也给不出来，所以「看不到别人」那条要在
+// 服务端测试（tests/staff-access.test.mjs）里守，这份只守页面这一侧。
+const SERYI_KEY = 'seryi-key-xyz';
+const BOOK = {
+  [SERYI_KEY]: {
+    reporter: 'Seryi', month: '2026-08', total: 25, missingPhoto: 1,
+    records: [
+      { id:'s1', date:'2026-08-02', categoryEn:'Lunch', billNo:'1', side:'assist',
+        amountUsd:5, originalAmount:null, note:null, hasPhoto:true },
+      { id:'s2', date:'2026-08-03', categoryEn:'Store', billNo:'2', side:'boss',
+        amountUsd:20, originalAmount:{value:80000,currency:'KHR'}, note:'办公室用品', hasPhoto:false },
+    ],
+  },
+};
 
-async function newCtx({ offline = false, lang } = {}) {
+async function newPage({ offline = false, lang = 'zh' } = {}) {
   const ctx = await browser.newContext();
-  // 钉住起始语言再断言文案：headless Chromium 的 navigator.language 是 en-US，
-  // 页面会自动显示英文，靠"默认语言"写断言会挂。只在没选过时写入——无条件写的话
-  // 会把用户刚点的选择在刷新时盖掉（旧版测试踩过）。
-  if (lang) await ctx.addInitScript(l => {
+  // 明确钉住语言再断言文案：headless Chromium 的 navigator.language 是 en-US，
+  // 页面会自动显示英文，靠"默认语言"写断言会全挂（第一版就是这么挂的）。
+  // 只在还没有选择时写入：addInitScript 每次导航都会跑，无条件写的话会把用户
+  // 刚点的语言在刷新时盖掉，「刷新后记住选择」那条就永远测不出来（踩过）。
+  await ctx.addInitScript(l => {
     if (!localStorage.getItem('siteLangUser')) localStorage.setItem('siteLangUser', l);
   }, lang);
   const posted = [];
@@ -50,26 +56,37 @@ async function newCtx({ offline = false, lang } = {}) {
   await ctx.route('**/*', async route => {
     const u = route.request().url();
     if (u.startsWith(`http://localhost:${PORT}`)) return route.continue();
-    // 外部网域一律挡：Firebase / CDN 连不上时 App 要能退化成纯本地，
-    // 顺带复现同事在工地/路上那种网络
-    if (!u.startsWith(BUTLER)) return route.abort('failed');
+    if (!u.startsWith(BUTLER)) return route.abort('failed');   // 外部网域一律挡（酒店 WiFi）
     if (mode === 'offline') return route.abort('failed');
     const h = { 'Access-Control-Allow-Origin': '*' };
     if (route.request().method() === 'GET') {
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
-        body: JSON.stringify({ categories:['Dinner','Lunch','Petrol','Store'], plateCategories:['Petrol'] }) });
+        body: JSON.stringify({
+          categories:['Beverage','Dinner','Lunch','Petrol','Store'],
+          plateCategories:['Petrol'],
+        }) });
     }
     const req = JSON.parse(route.request().postData() || '{}');
     posted.push(req);
-    const who = req.token === STAFF_KEY ? { reporter:'Seryi', scope:'staff' }
-              : req.token === BOSS_KEY  ? { reporter:'Boss',  scope:'owner' } : null;
-    if (!who) return route.fulfill({ status:401, contentType:'application/json', headers:h,
-      body: JSON.stringify({ error:'密钥不对' }) });
+    if (!BOOK[req.token]) return route.fulfill({ status:401, contentType:'application/json',
+      headers:h, body: JSON.stringify({ error:'密钥不对' }) });
+    const mine = BOOK[req.token];
     if (req.action === 'mine')
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
-        body: JSON.stringify({ status:'ok', month:'2026-08', total:0, missingPhoto:0, records:[], ...who }) });
+        body: JSON.stringify({ status:'ok', ...mine }) });
+    if (req.action === 'delete') {
+      const i = mine.records.findIndex(r => r.id === req.recordId);
+      if (i === -1) return route.fulfill({ status:400, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'not_found', message:'账本里没有你记的这条记录' }) });
+      mine.records.splice(i, 1);
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'ok' }) });
+    }
+    // 新增：假服务端照 butler 的规则回一个号和归属
+    const cat = String(req.items?.[0]?.categoryRaw || '').toLowerCase();
+    const person = ['breakfast','lunch','dinner'].includes(cat) ? 'Seryi' : 'Boss';
     return route.fulfill({ status:200, contentType:'application/json', headers:h,
-      body: JSON.stringify({ status:'ok', records:[{ id:'n1', person:who.reporter, refTag:'7' }] }) });
+      body: JSON.stringify({ status:'ok', records:[{ id:'new1', person, refTag:'7' }] }) });
   });
   const page = await ctx.newPage();
   const errs = [];
@@ -77,284 +94,244 @@ async function newCtx({ offline = false, lang } = {}) {
   return { ctx, page, posted, errs, setMode: m => { mode = m; } };
 }
 
-// 选择器必须唯一：以前用 .catch(()=>false) 兜底，结果「选到 3 个元素」这种错
-// 被静静吞成「看不见」，藏东西的断言就假通过了（2026-08-07 踩到，.type-tabs 有 3 个）。
-// 现在多重匹配直接抛错，宁可测试挂掉也不要假绿灯。
-async function seeVisible(page, sel){
-  const n = await page.locator(sel).count();
-  if (n > 1) throw new Error(`选择器 ${sel} 匹配到 ${n} 个元素，断言不可靠——换个唯一的选择器`);
-  if (n === 0) return false;
-  return page.locator(sel).isVisible();
-}
-
-// ---------- 【1】旧网址还能用 ----------
-console.log('【1】发出去的旧网址 staff/ 要能继续用（同事可能已经加到主屏幕了）');
+// ---------- 【1】没钥匙时的样子 ----------
+console.log('【1】还没填钥匙：只显示填钥匙那块，不显示表单');
 {
-  const { ctx, page } = await newCtx();
-  await page.goto(REDIRECT, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1200);
-  ok('自动转到 App 的同事模式', /expense-tracker\.html\?staff=1/.test(page.url()), page.url());
+  const { ctx, page, errs } = await newPage();
+  await page.goto(BASE, { waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(400);
+  ok('显示填钥匙的卡片', await page.locator('#setup').isVisible());
+  ok('不显示记账表单', !(await page.locator('#app').isVisible()));
+  // 钥匙错的时候必须当场说，不能等他辛辛苦苦填完一笔才报错
+  await page.fill('#key-input', 'wrong-key');
+  await page.click('#setup .btn');
+  await page.waitForTimeout(600);
+  ok('钥匙错 → 当场提示，不放进去', await page.locator('#setup').isVisible());
+  ok('提示文字说得明白', (await page.textContent('#toast')).includes('钥匙不对'),
+     await page.textContent('#toast'));
+  ok('无 JS 报错', errs.length === 0, errs);
   await ctx.close();
 }
 
-// ---------- 【2】没填钥匙：闸门挡住 ----------
-console.log('\n【2】带 ?staff=1 但还没填钥匙：闸门挡住');
+// ---------- 【2】填对钥匙 → 认出是谁 ----------
+console.log('\n【2】钥匙对了：服务端说他是谁，页面就显示谁');
+let mainCtx;
 {
-  const { ctx, page, errs } = await newCtx();
-  await page.goto(APP + '?staff=1', { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  ok('闸门显示出来', await seeVisible(page, '#staff-gate'));
-  ok('闸门上有中英两种说明', /Enter your key/.test(await page.textContent('#staff-gate')));
-  // 闸门必须**一进页面就盖住**，不能等脚本跑完——否则同事会先看到老板的界面闪一下，
-  // 而且前面任何一步出错闸门就永远不出现（2026-08-07 加固）
-  ok('底下的 App 被遮住（不是只叠了一层半透明）',
-     !(await seeVisible(page, '#nav-transactions')));
-  ok('闸门上显示版本号（同事截图时能看出他手机上是哪一版）',
-     /版本\s+\d{4}-\d{2}-\d{2}/.test(await page.textContent('#staff-gate-build')),
-     await page.textContent('#staff-gate-build'));
-  // 钥匙错要当场说，不能等他辛苦填完一笔才报错
-  await page.fill('#staff-gate-key', 'wrong-key');
-  await page.click('#staff-gate-btn');
-  await page.waitForTimeout(900);
-  ok('钥匙错 → 当场提示，闸门不放行',
-     (await page.textContent('#staff-gate-msg')).includes('钥匙不对') && await seeVisible(page, '#staff-gate'),
-     await page.textContent('#staff-gate-msg'));
-  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
-  await ctx.close();
-}
-
-// ---------- 【2b】脚本出错也不能露出老板的界面 ----------
-console.log('\n【2b】就算后面的脚本整个挂掉，闸门也必须已经盖住');
-{
-  const { ctx, page } = await newCtx();
-  // 在任何脚本跑之前就把 localStorage 弄坏，模拟「启动流程中途抛错」
-  await page.addInitScript(() => {
-    const realSetItem = Storage.prototype.setItem;
-    let n = 0;
-    Storage.prototype.setItem = function(...a){
-      if(++n > 2) throw new Error('模拟启动中途抛错');
-      return realSetItem.apply(this, a);
-    };
-  });
-  await page.goto(APP + '?staff=1', { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  ok('闸门仍然盖住了（head 里同步加的遮罩，不依赖后面的脚本）',
-     await seeVisible(page, '#staff-gate'));
-  ok('老板的界面没露出来', !(await seeVisible(page, '#nav-transactions')));
-  await ctx.close();
-}
-
-// ---------- 【3】填对钥匙：进同事模式 ----------
-console.log('\n【3】同事的钥匙 → 进同事模式，个人账本整套藏掉');
-let staffCtx;
-{
-  const { ctx, page, posted, errs } = await newCtx();
-  staffCtx = { ctx, page, posted, errs };
-  await page.goto(APP + '?staff=1', { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  await page.fill('#staff-gate-key', STAFF_KEY);
-  await page.click('#staff-gate-btn');
-  await page.waitForTimeout(1500);
-
-  ok('闸门收起来了', !(await seeVisible(page, '#staff-gate')));
-  ok('进了同事模式（body 挂上 staff-mode）',
-     await page.evaluate(() => document.body.classList.contains('staff-mode')));
+  const { ctx, page, posted, errs } = await newPage();
+  mainCtx = { ctx, page, posted, errs };
+  await page.goto(BASE, { waitUntil:'domcontentloaded' });
+  await page.fill('#key-input', SERYI_KEY);
+  await page.click('#setup .btn');
+  await page.waitForTimeout(800);
+  ok('进到主界面', await page.locator('#app').isVisible());
   ok('标题显示服务端认出的名字 Seryi',
-     (await page.$eval('.hdr-title', e => e.getAttribute('data-staff-name') || '')).includes('Seryi'),
-     await page.$eval('.hdr-title', e => e.getAttribute('data-staff-name')));
-
-  // 下面这些是老板的东西，同事不该看到
-  for (const [name, sel] of [
-    ['概览 tab 的入口', '#nav-overview'],
-    ['统计 tab 的入口', '#nav-analytics'],
-    ['设置 tab 的入口', '#nav-settings'],
-    ['云同步图标', '#hdr-cloud'],
-    ['账户卡片行', '#acc-cards-row'],
-    ['切换账户的按钮', '.acc-pill'],
-  ]) ok(`藏掉了：${name}`, !(await seeVisible(page, sel)));
-
-  ok('留着「明细」入口', await seeVisible(page, '#nav-transactions'));
-  ok('留着记账按钮（FAB）', await seeVisible(page, '.fab'));
-  ok('有「换钥匙」的出口（钥匙换了要能重填）', await seeVisible(page, '#staff-signout-row'));
-
-  // 自动建好公司账户并选中——同事不该自己去设置里摸索
-  const acc = await page.evaluate(() => {
-    const a = data.accounts.find(x => x.id === data.currentAccountId);
-    return a ? { isCompany: !!a.isCompany, currency: a.currency } : null;
-  });
-  ok('自动建好公司账户并选中', acc && acc.isCompany === true, acc);
-  ok('公司账户是美元（公司账本是美元记账）', acc && acc.currency === 'USD', acc);
-  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+     (await page.textContent('#hdr-name')).includes('Seryi'), await page.textContent('#hdr-name'));
+  // 关键：页面上没有「选择报账人」的下拉框——身份由钥匙决定，选不了也就选不错。
+  // 用「下拉框只有类别这一个」来断言，比数总数稳（去掉币种之后总数会变）。
+  const selects = await page.$$eval('select', els => els.map(e => e.id));
+  ok('没有「谁报的账」下拉框（身份由钥匙决定）',
+     JSON.stringify(selects) === JSON.stringify(['f-category']), selects);
+  ok('类别下拉来自服务端', (await page.$$eval('#f-category option', e=>e.map(o=>o.value))).includes('Store'));
+  ok('日期默认填好了', (await page.inputValue('#f-date')).length === 10, await page.inputValue('#f-date'));
+  // 收据照片必须能「从相册选」，不能只让现场拍：加了 capture 属性浏览器会直接开相机、
+  // 跳过选择器（2026-08-07 实机发现）。收据常常是外卖 App 截图或别人转发来的图，
+  // 早就在相册里了，逼他现场拍等于这笔账记不了。
+  // 相机和相册必须是**两个**独立 input：只放一个的话，加 capture 就只能开相机、
+  // 去掉 capture 那台 Android 又只弹相册——两次实机都踩到（2026-08-07）。
+  const cam = await page.$eval('#f-photo-cam', e => ({ capture: e.getAttribute('capture'), accept: e.getAttribute('accept') }));
+  const lib = await page.$eval('#f-photo-lib', e => ({ capture: e.getAttribute('capture'), accept: e.getAttribute('accept') }));
+  ok('拍照那个 input 带 capture（点了直接开相机）', cam.capture === 'environment', cam);
+  ok('相册那个 input 不带 capture（点了才会出相册）', lib.capture === null, lib);
+  ok('两个都只收图片', cam.accept === 'image/*' && lib.accept === 'image/*', { cam, lib });
+  ok('页面上真的有两个按钮', (await page.locator('.photo-row .photo-btn').count()) === 2,
+     await page.locator('.photo-row .photo-btn').count());
+  const photoBtns = await page.$$eval('.photo-row .photo-btn', els => els.map(e => e.textContent.replace(/\s+/g, '')));
+  ok('一个写「拍照」、一个写「从相册选」',
+     photoBtns.some(t => t.includes('拍照')) && photoBtns.some(t => t.includes('从相册选')), photoBtns);
+  ok('无 JS 报错', errs.length === 0, errs);
 }
 
-// ---------- 【4】记一笔：不给他选报账人 ----------
-console.log('\n【4】记一笔：报账人由钥匙决定，页面不给选');
+// ---------- 【3】我记过的：显示单号、缺收据标红、合计 ----------
+console.log('\n【3】我记过的清单');
 {
-  const { page, posted, errs } = staffCtx;
+  const { page } = mainCtx;
+  const body = await page.textContent('#mine-body');
+  ok('显示两笔', (await page.locator('#mine-body .item').count()) === 2,
+     await page.locator('#mine-body .item').count());
+  // 单号是服务端按整月算的（2 号），不能是页面自己按第几行编的（那样会是 2 但含义不同，
+  // 这里用「跟服务端给的 billNo 一致」来验）
+  const bnos = await page.$$eval('#mine-body .bno', e=>e.map(x=>x.textContent.trim()));
+  ok('单号照抄服务端给的 1 / 2', JSON.stringify(bnos) === JSON.stringify(['1','2']), bnos);
+  ok('合计是服务端算的 25.00', body.includes('25.00'), body);
+  ok('缺收据那笔标出来了', body.includes('缺收据'), body);
+  ok('缺收据用醒目样式（不是普通灰字）', (await page.locator('.nophoto').count()) === 1);
+  ok('顶部有缺收据总提醒', body.includes('1 笔没有收据照片'), body);
+  ok('标出哪笔算公司的、哪笔算自己的', body.includes('公司') && body.includes('自己'), body);
+  ok('原币金额带出来（80000 KHR）', body.includes('80000 KHR'), body);
+  ok('备注显示出来', body.includes('办公室用品'), body);
+}
+
+// ---------- 【4】送出：内容必须原样，且不送 reporter ----------
+console.log('\n【4】送出一笔');
+{
+  const { page, posted, errs } = mainCtx;
   posted.length = 0;
-  await page.evaluate(() => showAddTx());
+  await page.fill('#f-amount', '12.34');
+  await page.selectOption('#f-category', 'Lunch');
+  await page.click('#submit-btn');
   await page.waitForTimeout(900);
-  ok('公司字段显示出来', await seeVisible(page, '#tx-company-wrap'));
-  // 这是同事模式最重要的一条：没有「谁报的账」下拉框，选不了也就选不错
-  ok('「谁报的账」那一组被藏起来', !(await seeVisible(page, '#tx-company-reporter')));
-  await page.fill('#tx-amount', '12.34');
-  await page.selectOption('#tx-company-category', 'Lunch');
-  await page.evaluate(() => saveTx());
-  await page.waitForTimeout(1800);
   const p = posted.find(x => !x.action);
-  ok('送出去了', !!p, posted);
-  ok('带的是同事自己那把钥匙', p && p.token === STAFF_KEY, p && p.token);
-  ok('金额原样送出，没在本地换算', p && p.items[0].amount === 12.34, p && p.items[0]);
-  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
-  await staffCtx.ctx.close();
+  ok('送出了一个新增请求', !!p, posted);
+  ok('带了钥匙', p.token === SERYI_KEY, p.token);
+  // 这是这个页面最重要的一条：身份由服务端从钥匙推，页面不送 reporter，
+  // 送了也不算数——同事没有任何办法把账记到别人头上
+  ok('**不送 reporter**（身份由钥匙决定，不给冒充的余地）', p.reporter === undefined, p.reporter);
+  ok('金额原样送出，没在本地换算', p.items[0].amount === 12.34, p.items[0]);
+  // 公司账本是美元记账，同事这边没有币种选择，一律 USD
+  ok('币种固定 USD', p.items[0].currency === 'USD', p.items[0].currency);
+  ok('页面上没有币种选择器（去掉了瑞尔）', (await page.locator('#f-currency').count()) === 0);
+  ok('页面上没有备注栏', (await page.locator('#f-note').count()) === 0);
+  ok('类别原样送出', p.items[0].categoryRaw === 'Lunch', p.items[0].categoryRaw);
+  ok('不送备注（同事版没有这个栏位）', p.items[0].note === null, p.items[0].note);
+  // 送完把「写几号」显示得够大——这是同事唯一必须记住的信息
+  ok('显示单号', (await page.textContent('#done-no')).trim() === '7', await page.textContent('#done-no'));
+  ok('单号字号足够大（≥32px）',
+     parseFloat(await page.$eval('#done-no', e=>getComputedStyle(e).fontSize)) >= 32,
+     await page.$eval('#done-no', e=>getComputedStyle(e).fontSize));
+  ok('送完清空金额，避免重复记同一笔', (await page.inputValue('#f-amount')) === '', await page.inputValue('#f-amount'));
+  // 两个 input 都要清空，否则连着记两笔时第二笔会带上第一笔的照片
+  ok('送完两个照片 input 都清空了',
+     (await page.inputValue('#f-photo-cam')) === '' && (await page.inputValue('#f-photo-lib')) === '');
+  ok('无 JS 报错', errs.length === 0, errs);
 }
 
-// ---------- 【4b】同事模式的界面精简 + 中英切换 ----------
-console.log('\n【4b】同事版要精简：没有收入、没有瑞尔、没有备注');
+// ---------- 【5】车牌类项目 ----------
+console.log('\n【5】汽油这类项目要填车牌，且由服务端说了算');
 {
-  const { ctx, page, errs } = await newCtx({ lang:'zh' });
-  await page.goto(APP + '?staff=1', { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  await page.fill('#staff-gate-key', STAFF_KEY);
-  await page.click('#staff-gate-btn');
-  await page.waitForTimeout(1500);
-  await page.evaluate(() => showAddTx());
-  await page.waitForTimeout(800);
-
-  // 同事只会有支出、只用美元、不用写备注——这些都是纯干扰
-  for (const [name, sel] of [
-    ['收入/支出切换', '#tx-type-tabs'],
-    ['瑞尔按钮', '#tx-riel-toggle'],
-    ['描述/备注', '#tx-desc'],
-    ['单据号（系统派给他，自己填会撞号）', '#tx-company-reftag'],
-    ['「谁报的账」', '#tx-company-reporter'],
-  ]) ok(`藏掉了：${name}`, !(await seeVisible(page, sel)));
-
-  // 该留的不能连带藏掉
-  for (const [name, sel] of [
-    ['金额', '#tx-amount'], ['日期', '#tx-date'],
-    ['公司类别', '#tx-company-category'], ['拍照按钮', '#attach-btn-row'],
-  ]) ok(`留着：${name}`, await seeVisible(page, sel));
-
-  // 记的一定是支出——收入切换藏了，type 不能还停在 income
-  ok('默认就是支出', await page.evaluate(() => state.txType !== 'income'),
-     await page.evaluate(() => state.txType));
-
-  console.log('\n  —— 中英切换 ——');
-  ok('有语言按钮', await seeVisible(page, '#staff-lang-btn'));
-  ok('默认按存下的选择显示中文', /日期/.test(await page.textContent('#modal-add-tx')));
-  // 弹窗盖着语言按钮，这里直接调函数（真实使用时他会先切好语言再记账）
-  await page.evaluate(() => staffToggleLang());
+  const { page } = mainCtx;
+  await page.selectOption('#f-category', 'Petrol');
+  await page.waitForTimeout(200);
+  ok('选 Petrol → 车牌栏出现', await page.locator('#plate-wrap').isVisible());
+  await page.fill('#f-amount', '50');
+  await page.click('#submit-btn');
   await page.waitForTimeout(500);
-  const en = await page.textContent('#modal-add-tx');
-  ok('切成英文：日期/类别/保存', /Date/.test(en) && /Category/.test(en) && /Save/.test(en), null);
-  ok('拍照按钮也变英文', /Take photo/.test(en) && /From gallery/.test(en), null);
-  ok('存进全站共用的 siteLangUser',
-     (await page.evaluate(() => localStorage.getItem('siteLangUser'))) === 'en');
-  await page.evaluate(() => staffToggleLang());
-  await page.waitForTimeout(500);
-  ok('切回中文能还原（不是把中文弄丢了）',
-     /日期/.test(await page.textContent('#modal-add-tx')), null);
-  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
-  await ctx.close();
+  ok('没填车牌不给送', (await page.textContent('#toast')).includes('车牌'), await page.textContent('#toast'));
+  await page.selectOption('#f-category', 'Lunch');
+  await page.waitForTimeout(200);
+  ok('换回 Lunch → 车牌栏收起', !(await page.locator('#plate-wrap').isVisible()));
 }
 
-// ---------- 【4c】两把钥匙必须分开存 ----------
-console.log('\n【4c】同事的钥匙不能覆盖掉老板自己的（同一台手机上两者互不干扰）');
+// ---------- 【6】删除 ----------
+console.log('\n【6】删掉自己记错的');
 {
-  const { ctx, page, errs } = await newCtx();
-  // 模拟老板自己的手机：App 设置里早就存了他的 APP_SHARED_TOKEN
-  await page.goto(APP, { waitUntil:'domcontentloaded' });
-  await page.evaluate(k => localStorage.setItem('expenseTracker_companyToken', k), BOSS_KEY);
-
-  // 他打开同事版网址想预览 —— 不能因为「已经有 token」就跳过闸门
-  await page.goto(APP + '?staff=1', { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  ok('老板手机上打开 ?staff=1 仍会问同事的钥匙（不拿他自己那把顶）',
-     await seeVisible(page, '#staff-gate'));
-
-  await page.fill('#staff-gate-key', STAFF_KEY);
-  await page.click('#staff-gate-btn');
-  await page.waitForTimeout(1500);
-  ok('填了同事钥匙就进同事模式（老板也能预览）',
-     await page.evaluate(() => document.body.classList.contains('staff-mode')));
-
-  // 这条是重点：老板自己那把必须原封不动
-  const boss = await page.evaluate(() => localStorage.getItem('expenseTracker_companyToken'));
-  const staff = await page.evaluate(() => localStorage.getItem('expenseTracker_staffToken'));
-  ok('**老板自己那把没被覆盖**', boss === BOSS_KEY, boss);
-  ok('同事那把存在自己的位置', staff === STAFF_KEY, staff);
-
-  // 退出只清同事那把
+  const { page, posted } = mainCtx;
+  posted.length = 0;
   page.on('dialog', d => d.accept());
-  await page.click('#staff-signout-row button');
-  await page.waitForTimeout(1200);
-  ok('退出只清同事的钥匙',
-     (await page.evaluate(() => localStorage.getItem('expenseTracker_staffToken'))) === null);
-  ok('**退出没把老板那把一起清掉**',
-     (await page.evaluate(() => localStorage.getItem('expenseTracker_companyToken'))) === BOSS_KEY);
-  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
-  await ctx.close();
+  await page.click('#mine-body .item:first-child .del');
+  await page.waitForTimeout(900);
+  const d = posted.find(x => x.action === 'delete');
+  ok('送出删除请求', !!d, posted);
+  // 删除键必须**看得出是删除**：原本是个灰色小 ✕，实机上没人认出来（2026-08-07 用户反馈）
+  const delTxt = (await page.$$eval('#mine-body .del', els => els.map(e => e.textContent.trim())))[0];
+  ok('删除键上写着字，不是一个光秃秃的符号', /删除|Delete/.test(delTxt || ''), delTxt);
+  const delBox = await page.$eval('#mine-body .del', e => { const r = e.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; });
+  ok('点击区够大（手指按得到，高≥32px）', delBox.h >= 32, delBox);
+  ok('带了钥匙和记录 id', d.token === SERYI_KEY && d.recordId === 's1', d);
+  ok('删完清单少一笔', (await page.locator('#mine-body .item').count()) === 1,
+     await page.locator('#mine-body .item').count());
+  await mainCtx.ctx.close();
 }
 
-// ---------- 【5】老板的钥匙不进同事模式 ----------
-console.log('\n【5】老板的钥匙带 ?staff=1 → 不进同事模式（身份由服务端说了算）');
+// ---------- 【7】离线：不能静静丢掉一笔 ----------
+console.log('\n【7】没网时记账：存本机、有网自动补送（这是最容易丢钱的地方）');
 {
-  const { ctx, page, errs } = await newCtx();
-  await page.goto(APP + '?staff=1', { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  await page.fill('#staff-gate-key', BOSS_KEY);
-  await page.click('#staff-gate-btn');
-  await page.waitForTimeout(1500);
-  // 服务端回 owner —— 就算是从同事版网址进来的，也不该进同事模式
-  ok('没进同事模式', !(await page.evaluate(() => document.body.classList.contains('staff-mode'))));
-  ok('概览入口还在', await seeVisible(page, '#nav-overview'));
-  ok('设置入口还在', await seeVisible(page, '#nav-settings'));
-  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
-  await ctx.close();
-}
-
-// ---------- 【6】不带 ?staff=1：老板的 App 一切照旧 ----------
-console.log('\n【6】不带 ?staff=1：老板的 App 完全不受影响');
-{
-  const { ctx, page, errs } = await newCtx();
-  await page.goto(APP, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  ok('闸门不出现', !(await seeVisible(page, '#staff-gate')));
-  ok('没有 staff-mode', !(await page.evaluate(() => document.body.classList.contains('staff-mode'))));
-  for (const [name, sel] of [
-    ['概览', '#nav-overview'], ['统计', '#nav-analytics'],
-    ['设置', '#nav-settings'], ['账户卡片', '#acc-cards-row'],
-  ]) ok(`${name}照常显示`, await seeVisible(page, sel));
-  // 同事模式藏掉的那些，老板这边必须一样不少
-  await page.evaluate(() => showAddTx());
-  await page.waitForTimeout(800);
-  for (const [name, sel] of [
-    ['收入/支出切换', '#tx-type-tabs'], ['瑞尔按钮', '#tx-riel-toggle'],
-    ['描述/备注', '#tx-desc'],
-  ]) ok(`${name}照常显示`, await seeVisible(page, sel));
-  ok('没有语言按钮（老板那边一律中文）', !(await seeVisible(page, '#staff-lang-btn')));
-  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
-  await ctx.close();
-}
-
-// ---------- 【7】认过一次之后，没网也进得去 ----------
-console.log('\n【7】认过一次之后没网：不能把人挡在门外（他正要记账）');
-{
-  const { ctx, page, setMode, errs } = await newCtx();
-  await page.goto(APP + '?staff=1', { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
-  await page.fill('#staff-gate-key', STAFF_KEY);
-  await page.click('#staff-gate-btn');
-  await page.waitForTimeout(1200);
-  ok('先正常进去', await page.evaluate(() => document.body.classList.contains('staff-mode')));
-  setMode('offline');
+  const { ctx, page, posted, errs, setMode } = await newPage();
+  await page.goto(BASE, { waitUntil:'domcontentloaded' });
+  await page.evaluate(k => localStorage.setItem('staffExpenseKey', k), SERYI_KEY);
   await page.reload({ waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(2000);
-  ok('没网重开仍进同事模式（用上次认过的身份）',
-     await page.evaluate(() => document.body.classList.contains('staff-mode')));
-  ok('没被闸门挡住', !(await seeVisible(page, '#staff-gate')));
-  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await page.waitForTimeout(700);
+  setMode('offline');
+  await page.fill('#f-amount', '9.99');
+  await page.selectOption('#f-category', 'Dinner');
+  await page.click('#submit-btn');
+  await page.waitForTimeout(900);
+  // 措辞分两种：真的没网 vs 有网但连不上服务器。都必须说清「已存在手机里」，
+  // 但**不能一律说成「没网络」**——用户开着 4G 看到「没网」完全没法排查（2026-08-07 实机反馈）。
+  const offToast = await page.textContent('#toast');
+  ok('提示已存本机（没有假装成功）', offToast.includes('已存在手机里'), offToast);
+  if (await page.evaluate(() => navigator.onLine)) {
+    ok('有网却连不上时，措辞不是「没网络」', !offToast.includes('没网络'), offToast);
+  }
+  const q = await page.evaluate(()=>JSON.parse(localStorage.getItem('staffExpenseQueue')||'[]'));
+  ok('这笔真的进了队列，没丢', q.length === 1 && q[0].items[0].amount === 9.99, q);
+  ok('顶部显示还有几笔没送出', (await page.textContent('#offline-note')).includes('1'),
+     await page.textContent('#offline-note'));
+
+  // 恢复网络 → 自动补送
+  posted.length = 0;
+  setMode('online');
+  await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await page.waitForTimeout(1200);
+  const sent = posted.find(x => !x.action && x.items?.[0]?.amount === 9.99);
+  ok('有网后自动补送出去', !!sent, posted.map(x=>x.action || 'add'));
+  ok('补送时也带钥匙', sent && sent.token === SERYI_KEY, sent && sent.token);
+  const q2 = await page.evaluate(()=>JSON.parse(localStorage.getItem('staffExpenseQueue')||'[]'));
+  ok('送出去之后队列清空（不会重复送）', q2.length === 0, q2);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await ctx.close();
+}
+
+// ---------- 【8】双语 ----------
+console.log('\n【8】中英双语（同事不一定读中文）');
+{
+  const { ctx, page, errs } = await newPage({ lang:'zh' });
+  await page.goto(BASE, { waitUntil:'domcontentloaded' });
+  await page.evaluate(k => localStorage.setItem('staffExpenseKey', k), SERYI_KEY);
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(800);
+  ok('默认按存下的选择显示中文', (await page.textContent('body')).includes('记一笔'));
+  await page.click('#langbtn');
+  await page.waitForTimeout(400);
+  const en = await page.textContent('body');
+  ok('切到英文后表单是英文', en.includes('New expense') && en.includes('Submit'), null);
+  ok('清单也跟着变英文（脚本画的部分不能漏）',
+     en.includes('My records this month') && en.includes('No receipt'), null);
+  ok('缺收据提醒也是英文', en.includes('paper receipts at month end'), null);
+  // 全站共用的语言 key，跟仓库里其他双语页面一致
+  ok('语言选择存进全站共用的 siteLangUser',
+     (await page.evaluate(()=>localStorage.getItem('siteLangUser'))) === 'en');
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(700);
+  ok('刷新后记住英文', (await page.textContent('body')).includes('New expense'));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await ctx.close();
+}
+{
+  // 没手动选过语言时跟系统语言走（这个 headless 浏览器是 en-US → 英文）
+  const ctx2 = await browser.newContext();
+  await ctx2.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const p2 = await ctx2.newPage();
+  await p2.goto(BASE, { waitUntil:'domcontentloaded' });
+  await p2.waitForTimeout(400);
+  ok('从没选过语言 → 跟系统语言（这台是英文）',
+     (await p2.textContent('body')).includes('Enter your key'), await p2.textContent('#setup h2'));
+  await ctx2.close();
+}
+
+// ---------- 【9】退出 ----------
+console.log('\n【9】换钥匙 / 退出');
+{
+  const { ctx, page } = await newPage();
+  await page.goto(BASE, { waitUntil:'domcontentloaded' });
+  await page.evaluate(k => localStorage.setItem('staffExpenseKey', k), SERYI_KEY);
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(700);
+  page.on('dialog', d => d.accept());
+  await page.click('button[onclick="forgetKey()"]');
+  await page.waitForTimeout(900);
+  ok('钥匙被清掉', (await page.evaluate(()=>localStorage.getItem('staffExpenseKey'))) === null);
+  ok('回到填钥匙那一屏', await page.locator('#setup').isVisible());
   await ctx.close();
 }
 
