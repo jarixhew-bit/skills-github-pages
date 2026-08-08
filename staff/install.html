@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>报账 App 安装说明 / Install Guide</title>
+<meta name="theme-color" content="#0f766e">
+<style>
+:root{
+  --teal:#0f766e; --teal-dk:#0b5c56; --teal-lt:#e6f3f1;
+  --bg:#f6f7f6; --card:#fff; --text:#17201f; --sub:#6b7a78; --line:#e2e8e6;
+  --hi:#e11d48;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  line-height:1.65;padding-bottom:48px}
+.wrap{max-width:600px;margin:0 auto;padding:0 16px}
+
+header{background:var(--teal);color:#fff;padding:24px 0 26px;margin-bottom:18px}
+header .wrap{display:flex;align-items:flex-start;gap:12px}
+.h-txt{flex:1}
+h1{margin:0 0 6px;font-size:21px;font-weight:700;letter-spacing:.3px}
+.sub{margin:0;font-size:13.5px;opacity:.92}
+#lang-btn{flex:none;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.45);
+  border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer}
+
+.why{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;
+  padding:14px 16px;margin-bottom:20px;font-size:14.5px;color:#7c2d12}
+.why b{color:#9a3412}
+
+.ok{display:none;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:14px;
+  padding:14px 16px;margin-bottom:20px;font-size:15px;color:#065f46;font-weight:600}
+.ok.on{display:block}
+
+.urlbox{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;margin-bottom:22px}
+.urlbox .lbl{font-size:12px;color:var(--sub);margin-bottom:6px}
+.urlbox a{display:block;word-break:break-all;color:var(--teal);font-weight:600;
+  font-size:15px;text-decoration:none}
+
+.step{background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:18px 16px 8px;margin-bottom:16px}
+.step-hd{display:flex;align-items:flex-start;gap:11px;margin-bottom:4px}
+.num{flex:none;width:27px;height:27px;border-radius:50%;background:var(--teal);color:#fff;
+  font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.step-t{font-size:16.5px;font-weight:700;margin:0}
+.step-d{margin:2px 0 0 38px;font-size:14px;color:var(--sub)}
+.pic{text-align:center;padding:14px 0 10px}
+.pic svg{max-width:100%;height:auto}
+
+.tips{background:var(--teal-lt);border-radius:16px;padding:16px 18px;margin-top:22px}
+.tips h2{margin:0 0 10px;font-size:16px;color:var(--teal-dk)}
+.tips dt{font-weight:700;font-size:14.5px;margin-top:12px}
+.tips dt:first-of-type{margin-top:0}
+.tips dd{margin:3px 0 0;font-size:14px;color:#3d4b49}
+.foot{text-align:center;color:var(--sub);font-size:12px;margin-top:26px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="h-txt">
+      <h1 data-zh="把「报账」装到手机上" data-en="Put “Expense Report” on your phone">把「报账」装到手机上</h1>
+      <p class="sub" data-zh="iPhone · Safari · 四步，一分钟" data-en="iPhone · Safari · 4 steps, one minute">iPhone · Safari · 四步，一分钟</p>
+    </div>
+    <button id="lang-btn" onclick="toggleLang()">EN</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="ok" id="ok-box" data-zh="✅ 你已经装好了，这一页可以关掉。" data-en="✅ You are already set up — you can close this page.">✅ 你已经装好了，这一页可以关掉。</div>
+
+  <div class="why" data-zh="⚠️ 一定要装。直接在 Safari 里用网页记账，iPhone 会自己清掉记录，你记了几笔，隔天打开可能就不见了。装到主屏幕之后它是一个独立的 App，苹果不会去动它。" data-en="⚠️ Please do install it. If you just use the web page inside Safari, iPhone may clear your data on its own — records you entered can be gone the next day. Once it sits on your Home Screen it is a real app and iOS leaves it alone.">⚠️ 一定要装。直接在 Safari 里用网页记账，iPhone 会自己清掉记录，你记了几笔，隔天打开可能就不见了。装到主屏幕之后它是一个独立的 App，苹果不会去动它。</div>
+
+  <div class="urlbox">
+    <div class="lbl" data-zh="第一步要打开的网址（请用 Safari）" data-en="The address to open — in Safari">第一步要打开的网址（请用 Safari）</div>
+    <a href="https://jarixhew-bit.github.io/skills-github-pages/staff/">jarixhew-bit.github.io/skills-github-pages/staff/</a>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <div class="step-hd">
+      <div class="num">1</div>
+      <div>
+        <p class="step-t" data-zh="用 Safari 打开报账页面" data-en="Open the page in Safari">用 Safari 打开报账页面</p>
+      </div>
+    </div>
+    <p class="step-d" data-zh="必须是 Safari。用微信、Chrome 打开的话，下一步找不到那个按钮。" data-en="It must be Safari. Chrome or an in-app browser will not show the button in step 2.">必须是 Safari。用微信、Chrome 打开的话，下一步找不到那个按钮。</p>
+    <div class="pic">
+      <svg width="200" height="330" viewBox="0 0 200 330" role="img" aria-labelledby="t1">
+        <title id="t1" data-zh="示意图：Safari 打开报账页面" data-en="Illustration: the expense page open in Safari">示意图：Safari 打开报账页面</title>
+        <rect x="4" y="4" width="192" height="322" rx="26" fill="#fff" stroke="#c9d4d2" stroke-width="2"/>
+        <rect x="12" y="12" width="176" height="20" rx="10" fill="#f1f5f4"/>
+        <rect x="12" y="36" width="176" height="46" fill="#0f766e"/>
+        <text x="26" y="65" font-size="14" fill="#fff" font-family="sans-serif" data-zh="🧾 报账" data-en="🧾 Expense">🧾 报账</text>
+        <rect x="24" y="96" width="152" height="60" rx="10" fill="#f1f5f4"/>
+        <text x="38" y="122" font-size="10" fill="#6b7a78" font-family="sans-serif" data-zh="今天合计" data-en="Today">今天合计</text>
+        <text x="38" y="144" font-size="17" fill="#17201f" font-family="sans-serif" font-weight="bold">US$0.00</text>
+        <rect x="24" y="168" width="152" height="30" rx="8" fill="#f7faf9"/>
+        <rect x="24" y="206" width="152" height="30" rx="8" fill="#f7faf9"/>
+        <circle cx="156" cy="256" r="18" fill="#0f766e"/>
+        <text x="156" y="263" font-size="20" fill="#fff" text-anchor="middle" font-family="sans-serif">+</text>
+        <rect x="12" y="286" width="176" height="32" rx="8" fill="#f1f5f4"/>
+        <g stroke="#94a3a1" stroke-width="1.8" stroke-linecap="round" fill="none">
+          <path d="M34 302 l-6 -6 6 -6"/>
+          <path d="M64 290 l6 6 -6 6"/>
+          <path d="M100 296 v-10 M96 290 l4 -4 4 4"/>
+          <path d="M96 300 v6 h8 v-6"/>
+          <rect x="127" y="290" width="12" height="12" rx="2"/>
+          <rect x="160" y="290" width="12" height="12" rx="2"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <div class="step-hd">
+      <div class="num">2</div>
+      <div>
+        <p class="step-t" data-zh="点最下面中间的「分享」" data-en="Tap the Share button at the bottom">点最下面中间的「分享」</p>
+      </div>
+    </div>
+    <p class="step-d" data-zh="就是那个「方框里一支往上的箭头」。找不到的话，先往下滑一下页面，工具栏会出来。" data-en="It is the square with an arrow pointing up. If you cannot see it, scroll the page down a little and the toolbar comes back.">就是那个「方框里一支往上的箭头」。找不到的话，先往下滑一下页面，工具栏会出来。</p>
+    <div class="pic">
+      <svg width="230" height="180" viewBox="0 0 230 180" role="img" aria-labelledby="t2">
+        <title id="t2" data-zh="示意图：Safari 底部工具栏，中间是分享按钮" data-en="Illustration: Safari toolbar, Share button in the middle">示意图：Safari 底部工具栏，中间是分享按钮</title>
+        <rect x="10" y="52" width="210" height="52" rx="12" fill="#f1f5f4" stroke="#dde5e3"/>
+        <g stroke="#94a3a1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M40 78 l-8 -8 8 -8"/>
+          <path d="M78 62 l8 8 -8 8"/>
+          <rect x="160" y="70" width="16" height="16" rx="3"/>
+          <rect x="196" y="70" width="16" height="16" rx="3"/>
+        </g>
+        <circle cx="122" cy="78" r="26" fill="none" stroke="#e11d48" stroke-width="3"/>
+        <g stroke="#0f766e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M122 82 v-22"/>
+          <path d="M115 67 l7 -7 7 7"/>
+          <path d="M112 76 v14 h20 v-14"/>
+        </g>
+        <path d="M122 116 l0 30" stroke="#e11d48" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M116 140 l6 8 6 -8" fill="none" stroke="#e11d48" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="122" y="30" font-size="14" fill="#e11d48" text-anchor="middle" font-family="sans-serif" font-weight="bold" data-zh="点这里" data-en="Tap here">点这里</text>
+        <text x="122" y="172" font-size="12" fill="#6b7a78" text-anchor="middle" font-family="sans-serif" data-zh="分享 / Share" data-en="Share">分享 / Share</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <div class="step-hd">
+      <div class="num">3</div>
+      <div>
+        <p class="step-t" data-zh="往下滑，选「加到主屏幕」" data-en="Scroll down and choose “Add to Home Screen”">往下滑，选「加到主屏幕」</p>
+      </div>
+    </div>
+    <p class="step-d" data-zh="面板里那一列要往下滑一段才看得到，图标是「方框里一个加号」。" data-en="You need to scroll that list down a bit. The icon is a plus inside a square.">面板里那一列要往下滑一段才看得到，图标是「方框里一个加号」。</p>
+    <div class="pic">
+      <svg width="240" height="230" viewBox="0 0 240 230" role="img" aria-labelledby="t3">
+        <title id="t3" data-zh="示意图：分享面板里的「加到主屏幕」" data-en="Illustration: “Add to Home Screen” in the share sheet">示意图：分享面板里的「加到主屏幕」</title>
+        <rect x="8" y="8" width="224" height="214" rx="18" fill="#fff" stroke="#dde5e3" stroke-width="2"/>
+        <rect x="96" y="18" width="48" height="4" rx="2" fill="#cbd5d3"/>
+        <rect x="20" y="34" width="200" height="34" rx="9" fill="#f4f7f6"/>
+        <text x="34" y="56" font-size="12" fill="#6b7a78" font-family="sans-serif" data-zh="拷贝" data-en="Copy">拷贝</text>
+        <rect x="20" y="74" width="200" height="34" rx="9" fill="#f4f7f6"/>
+        <text x="34" y="96" font-size="12" fill="#6b7a78" font-family="sans-serif" data-zh="加入书签" data-en="Add Bookmark">加入书签</text>
+        <rect x="20" y="114" width="200" height="34" rx="9" fill="#f4f7f6"/>
+        <text x="34" y="136" font-size="12" fill="#6b7a78" font-family="sans-serif" data-zh="添加到快速备忘录" data-en="Add to Quick Note">添加到快速备忘录</text>
+        <rect x="16" y="154" width="208" height="42" rx="10" fill="#e6f3f1" stroke="#e11d48" stroke-width="2.5"/>
+        <g stroke="#0f766e" stroke-width="2.2" fill="none" stroke-linecap="round">
+          <rect x="32" y="164" width="22" height="22" rx="5"/>
+          <path d="M43 170 v10 M38 175 h10"/>
+        </g>
+        <text x="66" y="181" font-size="13" fill="#0b5c56" font-family="sans-serif" font-weight="bold" data-zh="加到主屏幕" data-en="Add to Home Screen">加到主屏幕</text>
+        <text x="120" y="216" font-size="11" fill="#6b7a78" text-anchor="middle" font-family="sans-serif" data-zh="↓ 名单要往下滑才看得到这一行" data-en="↓ scroll the list down to reach this row">↓ 名单要往下滑才看得到这一行</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step">
+    <div class="step-hd">
+      <div class="num">4</div>
+      <div>
+        <p class="step-t" data-zh="右上角按「添加」，完成" data-en="Tap “Add” at the top right — done">右上角按「添加」，完成</p>
+      </div>
+    </div>
+    <p class="step-d" data-zh="名字保持「报账」就好。按完回到桌面，会多一个新图标——以后每天都点它，不要再用 Safari 开。" data-en="Keep the name as it is. Go back to your Home Screen and you will see a new icon — use that one from now on, not Safari.">名字保持「报账」就好。按完回到桌面，会多一个新图标——以后每天都点它，不要再用 Safari 开。</p>
+    <div class="pic">
+      <svg width="240" height="210" viewBox="0 0 240 210" role="img" aria-labelledby="t4">
+        <title id="t4" data-zh="示意图：按添加后，桌面出现报账图标" data-en="Illustration: after tapping Add, the icon appears on the Home Screen">示意图：按添加后，桌面出现报账图标</title>
+        <rect x="8" y="8" width="224" height="74" rx="14" fill="#fff" stroke="#dde5e3" stroke-width="2"/>
+        <text x="26" y="34" font-size="11" fill="#94a3a1" font-family="sans-serif" data-zh="取消" data-en="Cancel">取消</text>
+        <text x="118" y="34" font-size="9.5" fill="#17201f" text-anchor="middle" font-family="sans-serif" font-weight="bold" data-zh="添加到主屏幕" data-en="Add to Home Screen">添加到主屏幕</text>
+        <rect x="182" y="22" width="36" height="18" rx="9" fill="#e11d48"/>
+        <text x="200" y="35" font-size="10.5" fill="#fff" text-anchor="middle" font-family="sans-serif" font-weight="bold" data-zh="添加" data-en="Add">添加</text>
+        <rect x="26" y="50" width="24" height="24" rx="6" fill="#0f766e"/>
+        <text x="38" y="67" font-size="12" text-anchor="middle" font-family="sans-serif">🧾</text>
+        <rect x="58" y="54" width="160" height="16" rx="5" fill="#f1f5f4"/>
+        <text x="66" y="66" font-size="10.5" fill="#6b7a78" font-family="sans-serif" data-zh="报账" data-en="Expense Report">报账</text>
+
+        <text x="120" y="102" font-size="18" fill="#94a3a1" text-anchor="middle" font-family="sans-serif">↓</text>
+
+        <rect x="46" y="114" width="148" height="88" rx="16" fill="#eef4f3" stroke="#dde5e3"/>
+        <rect x="62" y="130" width="34" height="34" rx="9" fill="#cfdcda"/>
+        <rect x="144" y="130" width="34" height="34" rx="9" fill="#cfdcda"/>
+        <rect x="103" y="130" width="34" height="34" rx="9" fill="#0f766e" stroke="#e11d48" stroke-width="2.5"/>
+        <text x="120" y="153" font-size="16" text-anchor="middle" font-family="sans-serif">🧾</text>
+        <text x="120" y="178" font-size="10.5" fill="#17201f" text-anchor="middle" font-family="sans-serif" font-weight="bold" data-zh="报账" data-en="Expense">报账</text>
+        <text x="120" y="194" font-size="10" fill="#6b7a78" text-anchor="middle" font-family="sans-serif" data-zh="以后每天点这个" data-en="use this one every day">以后每天点这个</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="tips">
+    <h2 data-zh="常见问题" data-en="If something goes wrong">常见问题</h2>
+    <dl>
+      <dt data-zh="面板里找不到「加到主屏幕」" data-en="I cannot find “Add to Home Screen”">面板里找不到「加到主屏幕」</dt>
+      <dd data-zh="两个原因：一是那一列没滑到底；二是你不是用 Safari 开的（微信、Chrome 里没有这个功能）。把网址复制出来，用 Safari 重开一次。" data-en="Two reasons: you have not scrolled that list to the bottom, or you are not in Safari (Chrome and in-app browsers do not have it). Copy the address and open it in Safari.">两个原因：一是那一列没滑到底；二是你不是用 Safari 开的（微信、Chrome 里没有这个功能）。把网址复制出来，用 Safari 重开一次。</dd>
+
+      <dt data-zh="装好之后，以前记的会不见吗？" data-en="Will the records I already entered disappear?">装好之后，以前记的会不见吗？</dt>
+      <dd data-zh="不会丢。已经送出去的都在公司账本里。第一次打开新图标如果清单是空的，它会自己去把这个月你报过的拉回来；没自动拉的话，滑到最下面按「找回本月记录」。" data-en="No. Everything you already submitted is in the company ledger. The first time you open the new icon, if the list looks empty it pulls this month’s records back automatically. If not, scroll to the bottom and tap “Restore this month”.">不会丢。已经送出去的都在公司账本里。第一次打开新图标如果清单是空的，它会自己去把这个月你报过的拉回来；没自动拉的话，滑到最下面按「找回本月记录」。</dd>
+
+      <dt data-zh="还要再填一次钥匙吗？" data-en="Do I have to enter my key again?">还要再填一次钥匙吗？</dt>
+      <dd data-zh="要。新图标是一个全新的 App，第一次打开会让你填钥匙，填完就不用再填了。钥匙忘了就问老板。" data-en="Yes, once. The new icon is a fresh app, so it asks for your key the first time and then remembers it. Ask the boss if you forgot your key.">要。新图标是一个全新的 App，第一次打开会让你填钥匙，填完就不用再填了。钥匙忘了就问老板。</dd>
+
+      <dt data-zh="装好了要怎么确认？" data-en="How do I know it worked?">装好了要怎么确认？</dt>
+      <dd data-zh="点新图标打开，上面没有网址栏、没有底下那排 Safari 按钮，整页满屏，就对了。" data-en="Open the new icon: no address bar at the top, no Safari toolbar at the bottom, the page fills the whole screen. That is it.">点新图标打开，上面没有网址栏、没有底下那排 Safari 按钮，整页满屏，就对了。</dd>
+    </dl>
+  </div>
+
+  <p class="foot" data-zh="装好后记得每天用新图标记账，收据拍照一起存。" data-en="Use the new icon every day, and attach a photo of each receipt.">装好后记得每天用新图标记账，收据拍照一起存。</p>
+</div>
+
+<script>
+/* 双语：手选优先 → 系统语言 → 英文。key 全站统一 siteLangUser（CLAUDE.md 双语页面规则）。 */
+let lang = 'zh';
+function applyLang(l){
+  lang = (l === 'en') ? 'en' : 'zh';
+  document.querySelectorAll('[data-en]').forEach(el => {
+    if(el.dataset.zh === undefined) el.dataset.zh = el.textContent;
+    el.textContent = (lang === 'en') ? el.dataset.en : el.dataset.zh;
+  });
+  const btn = document.getElementById('lang-btn');
+  if(btn) btn.textContent = (lang === 'en') ? '中' : 'EN';
+  document.documentElement.lang = lang;
+}
+function toggleLang(){
+  const next = (lang === 'en') ? 'zh' : 'en';
+  try{ localStorage.setItem('siteLangUser', next); }catch(e){}
+  applyLang(next);
+}
+(function initLang(){
+  let saved = null;
+  try{ saved = localStorage.getItem('siteLangUser'); }catch(e){}
+  applyLang(saved || ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en'));
+})();
+window.addEventListener('storage', e => {
+  if(e.key === 'siteLangUser' && e.newValue) applyLang(e.newValue);
+});
+
+/* 已经装好的人从图标里打开这一页时，直接告诉他不用再看了。 */
+(function(){
+  const standalone = window.navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  if(standalone) document.getElementById('ok-box').classList.add('on');
+})();
+</script>
+</body>
+</html>
