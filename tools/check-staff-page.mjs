@@ -77,6 +77,8 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   }, lang);
   const posted = [];
   const book = makeBook();
+  // 备用金：测试可以改 petty.row 来摆布服务端回什么（null = 还没设起点）
+  const petty = { row: null, fail: false };
   let mode = offline ? 'offline' : 'online';
   let nextNo = 7;
   await ctx.route('**/*', async route => {
@@ -104,6 +106,12 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
           : { status:'forbidden', message:'这个功能只有老板的钥匙能用' }) });
     if (!book[req.token]) return route.fulfill({ status:401, contentType:'application/json',
       headers:h, body: JSON.stringify({ error:'密钥不对' }) });
+    if (req.action === 'petty') {
+      if (petty.fail) return route.abort('failed');
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'ok', scope:'staff',
+          people: [petty.row || { person:'Seryi', status:'unset', balance:null, topups:[], spent:0 }] }) });
+    }
     if (req.action === 'mine')
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
         body: JSON.stringify(book[req.token]) });
@@ -130,7 +138,7 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   const dialogs = [];
   page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
   // book 交出去：测「从公司账本找回记录」时要能摆布服务端手上有哪几笔
-  return { ctx, page, posted, errs, book, dialogs, setMode: m => { mode = m; } };
+  return { ctx, page, posted, errs, book, dialogs, petty, setMode: m => { mode = m; } };
 }
 
 /** 填钥匙进门，返回已经进到主界面的 page。 */
@@ -900,6 +908,85 @@ console.log('\n【14b】切成英文之后，画面上不该再有中文');
      (await page.getAttribute('#tx-company-plate', 'placeholder') || '').includes('例'),
      await page.getAttribute('#tx-company-plate', 'placeholder'));
   ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【16】备用金卡 ----------
+// 这张卡显示的是同事口袋里的**现金**还剩多少。显示错了他会照着错的数去花钱、
+// 或者该要钱的时候不要，月底点现金对不上，谁也说不清差额从哪来。
+// 所以守两条底线：数字一律照抄服务端（App 不许自己算），没数字时整张卡不出现。
+console.log('\n【16】备用金卡：数字照抄服务端，没设起点就不出现');
+{
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  ok('还没设起点：整张卡不出现（不是显示 0）',
+     !(await page.locator('#staff-petty').isVisible()));
+
+  // 老板设好起点、发过一笔钱之后
+  h.petty.row = { person:'Seryi', status:'ok', opened:500, openedDate:'2026-08-08',
+                  spent:37.72, balance:562.28,
+                  topups:[{ date:'2026-08-20', amountUsd:100, type:'topup', note:null }] };
+  await page.evaluate(() => staffLoadPetty());
+  await page.waitForTimeout(600);
+  const card = page.locator('#staff-petty');
+  ok('设了起点就出现', await card.isVisible());
+  const txt = (await card.textContent() || '').replace(/\s+/g, ' ');
+  ok('余额照抄服务端的数，一分不差', txt.includes('US$562.28'), txt);
+  ok('起点写出来（同事要能自己对）', txt.includes('US$500.00'), txt);
+  ok('已花写出来', txt.includes('US$37.72'), txt);
+  ok('收到的钱有明细', txt.includes('2026-08-20') && txt.includes('US$100.00'), txt);
+  ok('余额够时不喊「快用完」', !txt.includes('快用完'), txt);
+  ok('这个数不是 App 自己算的（500-37.72=462.28 不该出现）', !txt.includes('462.28'), txt);
+
+  // 见底了要显眼
+  h.petty.row = { ...h.petty.row, balance:42.5, spent:557.5 };
+  await page.evaluate(() => staffLoadPetty());
+  await page.waitForTimeout(600);
+  const txt2 = (await card.textContent() || '').replace(/\s+/g, ' ');
+  ok('余额见底：喊他去要钱', txt2.includes('快用完'), txt2);
+  ok('见底时换成警示色', (await card.getAttribute('class') || '').includes('low'));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+{
+  // 没网时：显示上次拿到的，但要明说是旧的——同事常在外面没信号，
+  // 一片空白比一个标注过的旧数字更没用
+  const h = await newPage();
+  const { page } = h;
+  h.petty.row = { person:'Seryi', status:'ok', opened:500, openedDate:'2026-08-08',
+                  spent:0, balance:500, topups:[] };
+  await signIn(h);
+  await page.waitForTimeout(600);
+  ok('在线时正常显示', await page.locator('#staff-petty').isVisible());
+  h.petty.fail = true;
+  await page.evaluate(() => staffLoadPetty());
+  await page.waitForTimeout(600);
+  const txt = (await page.textContent('#staff-petty') || '').replace(/\s+/g, ' ');
+  ok('断网后还看得到余额（用上次那份）', txt.includes('US$500.00'), txt);
+  ok('但明说这是离线的旧数字', txt.includes('离线'), txt);
+  await h.ctx.close();
+}
+{
+  // 离线记的那几笔还没送出去，服务端余额里没扣。不许 App 自己减，
+  // 但必须把这件事说出来——否则他以为还有那么多钱
+  const h = await newPage({ offline: true });
+  const { page } = h;
+  await page.goto(BASE, { waitUntil:'domcontentloaded' });
+  await page.evaluate(k => localStorage.setItem('staffExpense_token', k), SERYI_KEY);
+  await page.evaluate(w => localStorage.setItem('staffExpense_identity', JSON.stringify(w)),
+                      { status:'ok', reporter:'Seryi', scope:'staff' });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(800);
+  await addOne(page, { amount: '8.00', category: 'Lunch' });   // 离线：存本机、待送出
+  h.setMode('online');
+  h.petty.row = { person:'Seryi', status:'ok', opened:500, openedDate:'2026-08-08',
+                  spent:0, balance:500, topups:[] };
+  await page.evaluate(() => staffLoadPetty());
+  await page.waitForTimeout(700);
+  const txt = (await page.textContent('#staff-petty') || '').replace(/\s+/g, ' ');
+  ok('余额仍是服务端那个数，App 没自己减', txt.includes('US$500.00') && !txt.includes('US$492.00'), txt);
+  ok('但明写「还有 N 笔没送出去，没扣」', /没送出去/.test(txt) && txt.includes('US$8.00'), txt);
   await h.ctx.close();
 }
 
