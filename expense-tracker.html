@@ -649,6 +649,16 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
            iPhone 的数字键盘在有些语言下只有逗号没有点，同事根本打不出小数点——
            不给他看一眼确认，他没办法知道自己记的到底是 5.45 还是 545。 -->
       <div id="tx-amount-echo" style="display:none;margin-top:6px;font-size:12px;color:var(--p)"></div>
+      <!-- 照片认出来的金额必须人工核对过才准保存（2026-08-08 用户要求「不要再有数目不对」）。
+           一闪而过的提示挡不住这类错误：认错一位数不会报错、不会变色，只会静静进账本，
+           最后靠人肉比对收据才发现。所以这里改成一道闸门，见 markAmountUnconfirmed()。 -->
+      <div id="tx-amount-check" style="display:none;margin-top:8px;padding:8px 10px;
+        background:rgba(230,126,34,.12);border-radius:8px;font-size:12px;color:#e67e22;
+        line-height:1.6;align-items:center;gap:8px">
+        <span style="flex:1">👀 这个数是从照片认出来的，请跟收据核对一遍</span>
+        <button type="button" class="btn btn-sm" id="tx-amount-ok" onclick="confirmAmount()"
+          style="flex:none;width:auto;padding:4px 12px;background:#e67e22;color:#fff">对的</button>
+      </div>
     </div>
     <!-- description：公司账户下会一并送进公司账本，标签由 syncCompanyTxFields() 改写 -->
     <div class="form-group">
@@ -1528,7 +1538,9 @@ let state = {
   pendingAttachmentIsNew: false,
   rielMode: false,
   // 公司账的「这一餐算谁的」：'self'（按原规则算）或 'boss'（强制记到 Boss 头上）
-  companyWhose: 'self'
+  companyWhose: 'self',
+  // 金额是照片认出来的、还没人核对过 → 不准保存（见 markAmountUnconfirmed）
+  amountFromOcr: false
 };
 
 // ===================== PERSIST =====================
@@ -2096,8 +2108,36 @@ function updateAmountEcho(){
 }
 
 function onAmountInput(){
+  // 自己动手改过这个数，就等于已经核对过了——闸门只挡「照片填完没人看过」那种
+  confirmAmount();
   updateRielHint();
   updateAmountEcho();
+}
+
+/**
+ * 「这个数是照片认出来的，还没人核对」的闸门。
+ *
+ * 为什么要有（2026-08-08 用户明确要求）：识别把 11.76 认成 11.78 这种错，不会报错、
+ * 不会变色，只会静静进公司账本，最后要靠人拿收据一笔笔比对才发现——而账本一旦收下，
+ * 就只能删掉重记。原本只有一句 2.2 秒的提示（「已自动识别，请核对金额」），
+ * 错过就没了。现在改成：没核对过不准保存。
+ *
+ * 什么算核对过：按了「对的」，或者自己动手改过金额栏（onAmountInput）。
+ */
+function markAmountUnconfirmed(){
+  state.amountFromOcr = true;
+  const box = document.getElementById('tx-amount-check');
+  if(box) box.style.display = 'flex';
+  const el = document.getElementById('tx-amount');
+  if(el){ el.style.borderColor = '#e67e22'; el.style.background = 'rgba(230,126,34,.06)'; }
+}
+function confirmAmount(){
+  if(!state.amountFromOcr) return;
+  state.amountFromOcr = false;
+  const box = document.getElementById('tx-amount-check');
+  if(box) box.style.display = 'none';
+  const el = document.getElementById('tx-amount');
+  if(el){ el.style.borderColor = ''; el.style.background = ''; }
 }
 
 function updateRielHint(){
@@ -2129,6 +2169,7 @@ function showAddTx(){
   resetAttachState();
   const rielBtn = document.getElementById('tx-riel-toggle');
   rielBtn.style.background = ''; rielBtn.style.borderColor = ''; rielBtn.style.color = '';
+  state.amountFromOcr = false; confirmAmount();
   onAmountInput();
   syncCompanyTxFields(null);
   showModal('modal-add-tx');
@@ -2148,6 +2189,7 @@ function editTx(id){
   document.getElementById('tx-riel-hint').style.display = 'none';
   document.getElementById('tx-amount-echo').style.display = 'none';
   document.getElementById('tx-modal-title').textContent = '编辑记录';
+  state.amountFromOcr = false; confirmAmount();   // 旧记录的金额是存过的，不是刚认出来的
   document.getElementById('tx-amount').value = t.amount;
   document.getElementById('tx-desc').value = t.description||'';
   document.getElementById('tx-date').value = t.date;
@@ -2323,6 +2365,14 @@ function saveTxInner(){
   if(isNaN(rawAmt) || rawAmt < 0){
     showSaveNote(`金额看不懂：「${amt0.shown}」——请只填数字，小数点用「.」（例：5.45）`);
     toast('金额格式不对，看保存按钮上方那行字');
+    return;
+  }
+  // 照片认出来的金额没人核对过，不准保存（见 markAmountUnconfirmed）
+  if(state.amountFromOcr){
+    showSaveNote('这个金额是从照片认出来的——请跟收据核对一遍，再按上面那个「对的」');
+    toast('请先核对金额，看保存按钮上方那行字');
+    const box = document.getElementById('tx-amount-check');
+    if(box) box.scrollIntoView({block:'center', behavior:'smooth'});
     return;
   }
   const acc = curAcc(); if(!acc) return;
@@ -4223,6 +4273,7 @@ async function runReceiptSmartOCR(sourceCanvas){
 
     if(amountEl && amountEl.value.trim()==='' && typeof parsed.amount === 'number' && parsed.amount > 0){
       amountEl.value = String(parsed.amount);
+      markAmountUnconfirmed();   // 同上：AI 认的也要人核对过才准存
       prefilled = true;
     }
     if(dateEl && !state.dateTouchedByUser && isReasonableReceiptDate(parsed.date)){
@@ -4395,7 +4446,8 @@ async function runReceiptOCRPrefill(sourceCanvas){
 
     if(amountEl && amountEl.value.trim()===''){
       const amt = ocrExtractAmount(text);
-      if(amt!==null){ amountEl.value = String(amt); prefilled = true; }
+      // 认出来的金额一律标成「还没核对」——闸门在 saveTxInner，见 markAmountUnconfirmed()
+      if(amt!==null){ amountEl.value = String(amt); markAmountUnconfirmed(); prefilled = true; }
     }
     if(dateEl && !state.dateTouchedByUser){
       const d = ocrExtractDate(text);
@@ -4460,7 +4512,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-08d';
+const APP_BUILD = '2026-08-08e';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
