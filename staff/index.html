@@ -1439,6 +1439,7 @@ function renderOverview(){
   renderAccCards();
   renderOvCompany();
   renderOvPetty();
+  renderOvReconcile();
   const acc = curAcc(); if(!acc) return;
   const now = new Date();
   const txs = monthTxs(acc.id, now.getFullYear(), now.getMonth());
@@ -1504,12 +1505,14 @@ function switchAccount(id){
   if(state.currentTab==='transactions') renderTxList();
   if(state.currentTab==='analytics') renderAnalytics();
   closeModal('modal-acc-switch');
-  // 切到公司账户时顺手刷新公司账本：那张卡只在这边出现，刚切过来看到的不该是
-  // 十分钟前的数（force 只在这一下打一次，不会跟 60 秒缓存打架）
+  // 切到公司账户时顺手刷新公司账本/备用金/待claim：这几张卡只在这边出现，
+  // 刚切过来看到的不该是十分钟前的数（force 只在这一下打一次，不会跟 60 秒缓存打架）
   const acc = getAcc(id);
-  if(acc && acc.isCompany && getCompanyToken())
-    fetchCompanyLedger(ledMonthNow(), {force:true})
-      .then(()=>{ if(state.currentTab==='overview') renderOvCompany(); });
+  if(acc && acc.isCompany && getCompanyToken()){
+    Promise.all([fetchCompanyLedger(ledMonthNow(), {force:true}), fetchPetty({force:true}),
+                fetchPendingClaim({force:true})])
+      .then(()=>{ if(state.currentTab==='overview') renderOverview(); });
+  }
 }
 
 // ===================== TX LIST =====================
@@ -4328,7 +4331,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-08g';
+const APP_BUILD = '2026-08-08h';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -5017,6 +5020,7 @@ async function pettySubmit(){
     await fetchPetty({force:true});
     renderPetty();
     renderOvPetty();
+    renderOvReconcile();
   }catch(e){
     showPettyNote('现在连不上，等有网再存一次（这一笔没有记进去）');
   }
@@ -5039,6 +5043,203 @@ async function pettyUndo(){
     await fetchPetty({force:true});
     renderPetty();
     renderOvPetty();
+    renderOvReconcile();
+  }catch(e){
+    toast('现在连不上，等有网再试');
+  }
+}
+
+/* ===================== 对账（待claim + 月度总数检查）=====================
+ * 老板自己的做法（2026-08-08 他描述）：每个月把「三个人的备用金余额」+「本月公司
+ * 账本总开销」+「待claim的」加起来，应该正好等于公司给的固定盘子。前两块系统
+ * 本来就有；待claim是缺口——App 是这个月才开始用的，之前欠着没结清的钱（还有老板
+ * 自己垫的钱，不同于三个同事，他没有备用金那套）系统完全看不到，只能他自己记。
+ *
+ * 同一条铁律：**不存一个「当前待claim多少」的字段**，服务端按事件流现算，这边只画。
+ *
+ * 目标总数写死在这——公司给的盘子基本不会变，真的变了改这一行就够，不值得为一个
+ * 几乎不变的数字做一套设置界面。
+ */
+const PENDING_CLAIM_TARGET_USD = 10000;
+const pendingClaimState = { total: null, history: null, last: null, loading: false, error: null, fetchedAt: 0 };
+
+async function fetchPendingClaim(opts){
+  const force = !!(opts && opts.force);
+  if(!force && pendingClaimState.total !== null && Date.now() - pendingClaimState.fetchedAt < 60000)
+    return pendingClaimState;
+  const token = getCompanyToken();
+  if(!token){ pendingClaimState.error = 'no-token'; return null; }
+  pendingClaimState.loading = true; pendingClaimState.error = null;
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'pendingClaim' })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(res.ok && body.status === 'ok'){
+      pendingClaimState.total = body.total;
+      pendingClaimState.history = body.history || [];
+      pendingClaimState.last = body.lastEvent || null;
+      pendingClaimState.fetchedAt = Date.now(); pendingClaimState.error = null;
+    } else {
+      pendingClaimState.total = null;
+      pendingClaimState.error = body.message || `拉不到（${res.status}）`;
+    }
+  }catch(e){
+    pendingClaimState.total = null; pendingClaimState.error = 'offline';
+  }
+  pendingClaimState.loading = false;
+  return pendingClaimState;
+}
+
+/**
+ * 三块凑出来的合计，null 表示还差数据凑不出来（不给一个缺角的假数字）。
+ * missing：备用金没设起点的人——凑出来的合计不含他们那份，要如实说清楚。
+ */
+function reconcileCompute(){
+  const petty = pettyState.data;
+  const claim = pendingClaimState.total;
+  const monthTotal = ledState.data ? ledState.data.total : null;
+  if(!petty || claim === null || monthTotal === null) return null;
+  const set = petty.filter(r=>r.status==='ok');
+  const missing = petty.filter(r=>r.status!=='ok').map(r=>r.person);
+  const pettySum = Math.round(set.reduce((t,r)=>t+r.balance,0)*100)/100;
+  const sum = Math.round((pettySum+monthTotal+claim)*100)/100;
+  const diff = Math.round((PENDING_CLAIM_TARGET_USD-sum)*100)/100;
+  return { pettySum, monthTotal, claim, sum, diff, missing };
+}
+
+/** 首屏那张卡：一眼看出对不对得上，对不上写清楚差多少、差在哪。 */
+function renderOvReconcile(){
+  const el = document.getElementById('ov-reconcile');
+  if(!el) return;
+  const acc = curAcc();
+  if(!acc || !acc.isCompany || !getCompanyToken()){ el.style.display = 'none'; return; }
+  if(ledState.error === 'forbidden'){ el.style.display = 'none'; return; }   // 同事钥匙看不到
+  const r = reconcileCompute();
+  if(!r){ el.style.display = 'none'; return; }
+  const diffAbs = Math.abs(r.diff);
+  const diffLabel = r.diff > 0.01 ? `少了 ${fmt(r.diff,'USD')}` : r.diff < -0.01 ? `多了 ${fmt(-r.diff,'USD')}` : '对上了';
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="led-card-top">
+      <div class="led-card-title">🧮 对账</div>
+      <div class="led-card-link">明细 →</div>
+    </div>
+    <div class="led-today" style="${diffAbs<0.01 ? '' : 'color:var(--exp)'}">${fmt(r.sum,'USD')}</div>
+    <div class="led-sub">三人余额 ${fmt(r.pettySum,'USD')} + 本月开销 ${fmt(r.monthTotal,'USD')} + 待claim ${fmt(r.claim,'USD')}</div>
+    <div class="led-sub${diffAbs<0.01 ? '' : ' led-warn'}">应该是 ${fmt(PENDING_CLAIM_TARGET_USD,'USD')} —— ${diffLabel}</div>
+    ${r.missing.length ? `<div class="led-sub led-warn">⚠️ ${r.missing.join('、')} 还没设起点，这个数不完整</div>` : ''}`;
+}
+
+async function openReconcile(){
+  showModal('modal-reconcile');
+  renderReconcile();
+  await Promise.all([
+    fetchPetty({force:true}),
+    fetchPendingClaim({force:true}),
+    fetchCompanyLedger(ledMonthNow(), {force:true})
+  ]);
+  renderReconcile();
+  renderOvReconcile();
+}
+
+function renderReconcile(){
+  const body = document.getElementById('reconcile-body');
+  if(!body) return;
+  const r = reconcileCompute();
+  if(!r){
+    body.innerHTML = `<div class="led-sub">${pendingClaimState.loading ? '正在拉取…'
+      : pendingClaimState.error === 'offline' ? '现在连不上，等有网再看'
+      : (pendingClaimState.error || '还没拉到数据')}</div>`;
+    return;
+  }
+  const diffAbs = Math.abs(r.diff);
+  const diffLabel = r.diff > 0.01 ? `少了 ${fmt(r.diff,'USD')}` : r.diff < -0.01 ? `多了 ${fmt(-r.diff,'USD')}` : '刚好对上';
+  const history = pendingClaimState.history || [];
+  const last = pendingClaimState.last;
+  body.innerHTML = `
+    <div class="petty-row"><div class="petty-name">三人余额</div><div class="petty-bal">${fmt(r.pettySum,'USD')}</div></div>
+    <div class="petty-row"><div class="petty-name">本月开销</div><div class="petty-bal">${fmt(r.monthTotal,'USD')}</div></div>
+    <div class="petty-row"><div class="petty-name">待claim</div><div class="petty-bal">${fmt(r.claim,'USD')}</div></div>
+    <div class="led-sub" style="margin:10px 0 4px">合计 ${fmt(r.sum,'USD')} · 应该是 ${fmt(PENDING_CLAIM_TARGET_USD,'USD')}
+      · <b style="${diffAbs<0.01 ? '' : 'color:var(--exp)'}">${diffLabel}</b></div>
+    ${r.missing.length ? `<div class="led-sub led-warn">⚠️ ${r.missing.join('、')} 还没设起点，三人余额这块不完整</div>` : ''}
+    <div class="sec-hdr" style="margin-top:16px">
+      <div class="sec-title">待claim 记录</div>
+      <button class="btn btn-outline btn-sm" onclick="reconcileOpenAdd()">+ 记一笔</button>
+    </div>
+    ${history.length ? history.map(h=>`<div class="petty-row">
+        <div><div class="petty-name">${h.amountUsd>=0?'+':''}${fmt(h.amountUsd,'USD')}</div>
+        <div class="petty-meta">${h.date}${h.note ? '　'+h.note : ''}</div></div></div>`).join('')
+      : `<div class="led-sub">还没记过</div>`}
+    ${last ? `<div class="petty-undo">上一笔：${last.amountUsd>=0?'+':''}${fmt(last.amountUsd,'USD')}（${last.date}）<br>
+        <span style="color:var(--exp);cursor:pointer" onclick="reconcileUndo()">记错了？撤销这一笔</span></div>` : ''}`;
+}
+
+function reconcileOpenAdd(){
+  const el = document.getElementById('reconcile-add-amount');
+  if(el) el.value = '';
+  const noteEl = document.getElementById('reconcile-add-note-input');
+  if(noteEl) noteEl.value = '';
+  showReconcileAddNote('');
+  showModal('modal-reconcile-add');
+  setTimeout(()=>{ const a = document.getElementById('reconcile-add-amount'); if(a) a.focus(); }, 120);
+}
+
+function showReconcileAddNote(msg){
+  const el = document.getElementById('reconcile-add-note');
+  if(el) el.textContent = msg || '';
+}
+
+async function reconcileSubmit(){
+  const { shown, num } = parseAmountText((document.getElementById('reconcile-add-amount')||{}).value);
+  if(isNaN(num) || num === 0){
+    showReconcileAddNote(shown ? `金额看不懂：「${shown}」——请只填数字，且不能是 0`
+      : '请填金额（正数=新增待claim，负数=claim回来了）');
+    return;
+  }
+  const note = (document.getElementById('reconcile-add-note-input')||{}).value.trim();
+  const verb = num > 0 ? '新增待claim' : '扣掉（claim回来了）';
+  // 这是钱，写进去马上影响首屏那张对账卡——多按一次确认，换掉「多打一个 0」
+  if(!confirm(`确定${verb} ${fmt(Math.abs(num),'USD')}？`)) return;
+  showReconcileAddNote('正在保存…');
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: getCompanyToken(), action:'pendingClaimAdjust',
+                             amount: num, note: note || null })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.status !== 'ok'){
+      showReconcileAddNote(body.message || `保存失败（${res.status}）`);
+      return;
+    }
+    closeModal('modal-reconcile-add');
+    toast(`已记下，待claim现在是 ${fmt(body.total,'USD')}`);
+    await fetchPendingClaim({force:true});
+    renderReconcile();
+    renderOvReconcile();
+  }catch(e){
+    showReconcileAddNote('现在连不上，等有网再存一次（这一笔没有记进去）');
+  }
+}
+
+async function reconcileUndo(){
+  const last = pendingClaimState.last;
+  if(!last) return;
+  if(!confirm(`撤销这一笔？\n${last.amountUsd>=0?'+':''}${fmt(last.amountUsd,'USD')}（${last.date}）`)) return;
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: getCompanyToken(), action:'pendingClaimUndo' })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.status !== 'ok'){ toast(body.message || '撤销失败'); return; }
+    toast('已撤销');
+    await fetchPendingClaim({force:true});
+    renderReconcile();
+    renderOvReconcile();
   }catch(e){
     toast('现在连不上，等有网再试');
   }

@@ -1263,6 +1263,26 @@ console.log('\n【20】双击「保存」不能生出两条一样的记录');
   await h.ctx.close();
 }
 
+// ---------- 【21】对账（待claim）是老板专用的，不该出现在同事版里 ----------
+// 2026-08-08 加的对账功能（三人余额+本月开销+待claim=固定盘子）整个只服务老板一个人，
+// 同事跟这笔钱一点关系都没有。HTML 已经靠 ACCOUNT SWITCHER～PDF REPORT 那段 cut 掉了，
+// 这里守的是运行时：卡片真的看不见、也真的没有任何请求打去 pendingClaim 那几个 action
+// ——万一以后谁不小心把 init() 里的 fetchPendingClaim() 调用漏掉没 cut，这条会当场变红。
+console.log('\n【21】对账功能是老板专用的，同事版看不到也碰不到');
+{
+  const h = await newPage();
+  const { page, posted, errs } = h;
+  await signIn(h);
+  await page.waitForTimeout(600);
+  ok('同事版 DOM 里没有对账卡', (await page.locator('#ov-reconcile').count()) === 0);
+  ok('同事版 DOM 里没有对账明细弹窗', (await page.locator('#modal-reconcile').count()) === 0);
+  ok('同事版没有「记一笔待claim」的弹窗', (await page.locator('#modal-reconcile-add').count()) === 0);
+  ok('全程没有任何 pendingClaim 相关请求',
+     !posted.some(r => /^pendingClaim/.test(r.action || '')), posted.map(r => r.action));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

@@ -189,18 +189,18 @@ def build(src: str) -> str:
                      "  // 同事版没有概览/统计/设置，直接进明细（生成时改的，见 tools/build-staff-page.py）\n"
                      "  switchTab('transactions');",
                      "init() 里的首屏")
-    # 全员账本是老板专用的（服务端只认老板的钥匙），同事版连问都不该问
-    s = cut_exact(s,
-                  "\n  fetchPetty().then(()=>{ if(state.currentTab==='overview') renderOvPetty(); });",
-                  "启动时拉全员备用金")
+    # 全员账本/备用金/待claim 都是老板专用的（服务端只认老板的钥匙），同事版连问都不该问
     s = cut_exact(s,
                   "\n\n  // 公司账本（全员）：开 App 时后台拉一次，首屏那张卡才有「今天」的数。\n"
                   "  // 不 await——拉不到就是卡上写一句「连不上」，不该拖住启动。\n"
-                  "  fetchCompanyLedger().then(()=>{ if(state.currentTab==='overview') renderOvCompany(); });",
-                  "启动时拉全员账本")
+                  "  fetchCompanyLedger().then(()=>{ if(state.currentTab==='overview'){ renderOvCompany(); renderOvReconcile(); } });\n"
+                  "  fetchPetty().then(()=>{ if(state.currentTab==='overview'){ renderOvPetty(); renderOvReconcile(); } });\n"
+                  "  fetchPendingClaim().then(()=>{ if(state.currentTab==='overview') renderOvReconcile(); });",
+                  "启动时拉全员账本/备用金/待claim")
     s = cut_exact(s,
                   "      // 刚进账本的这笔也要算进首屏那张「今天」卡里，重拉一次\n"
-                  "      if(r.ok) fetchCompanyLedger(ledMonthNow(), {force:true}).then(()=>renderOvCompany());\n",
+                  "      if(r.ok) fetchCompanyLedger(ledMonthNow(), {force:true})"
+                  ".then(()=>{ renderOvCompany(); renderOvReconcile(); });\n",
                   "入账后重拉全员账本")
 
     # 云同步整个不接：同事版没有登录入口，留着 auth 监听只是白等
