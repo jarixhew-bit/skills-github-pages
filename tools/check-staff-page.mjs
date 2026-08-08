@@ -837,6 +837,72 @@ console.log('\n【14】还在浏览器里：顶上要有「装到主屏幕」的
   await h.ctx.close();
 }
 
+// ---------- 【14b】英文模式下不许剩中文 ----------
+// 同事里有人只读英文。以前是靠人肉扫，漏了整整三处（月份栏、底部导航、车牌说明），
+// 还漏掉一个更糟的：拍照按钮的 data-en 加错元素，英文模式下变成「Camera拍照」
+// 而且相机图标没了（2026-08-08 扫出来时已经上线过一版）。所以改成机器扫。
+console.log('\n【14b】切成英文之后，画面上不该再有中文');
+{
+  const h = await newPage({ lang:'en' });
+  const { page, errs } = h;
+  await signIn(h);
+  // 扫「看得见的」中文：闸门已经关掉，语言按钮本身写「中」是对的（按它换回中文）
+  const scanCJK = () => page.evaluate(() => {
+    const out = [], CJK = /[一-鿿]/;
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      const t = (n.nodeValue || '').trim();
+      if (!t || !CJK.test(t)) continue;
+      const el = n.parentElement;
+      if (!el || el.closest('#staff-lang-btn, #staff-gate')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;
+      let vis = true;
+      for (let e = el; e; e = e.parentElement) {
+        const st = getComputedStyle(e);
+        if (st.display === 'none' || st.visibility === 'hidden') { vis = false; break; }
+      }
+      if (vis) out.push(`${t.slice(0, 30)} <${el.tagName.toLowerCase()}#${el.id}>`);
+    }
+    document.querySelectorAll('input[placeholder]').forEach(el => {
+      if (el.offsetParent && /[一-鿿]/.test(el.getAttribute('placeholder')))
+        out.push(`[提示字] ${el.getAttribute('placeholder')} <#${el.id}>`);
+    });
+    return out;
+  });
+  const home = await scanCJK();
+  ok('主界面没有残留中文', home.length === 0, home);
+  ok('月份栏是英文月名', /^[A-Z][a-z]+ \d{4}$/.test(await page.textContent('#tx-month-text') || ''),
+     await page.textContent('#tx-month-text'));
+  ok('底部导航是英文', (await page.textContent('#nav-transactions') || '').includes('Records'),
+     await page.textContent('#nav-transactions'));
+  // 「找回本月记录 / Restore this month」那种斜线并排，两边读者都要多看一半
+  const restore = (await page.textContent('#staff-restore-btn') || '').trim();
+  ok('按钮只说一种语言，不是中英并排', restore === 'Restore this month', restore);
+
+  await page.click('.fab');
+  await page.waitForTimeout(500);
+  await page.selectOption('#tx-company-category', 'Petrol');
+  await page.waitForTimeout(400);
+  const modal = await scanCJK();
+  ok('新增弹窗（含车牌栏）没有残留中文', modal.length === 0, modal);
+  // 这条专门守上面那个 bug：图标必须还在，且不许中英黏在一起
+  const cam = (await page.locator('.attach-btn').first().textContent() || '').trim();
+  ok('拍照按钮：图标还在、文字只有英文', cam.includes('📷') && cam.includes('Camera') && !/[一-鿿]/.test(cam), cam);
+
+  // 切回中文要能完整还原（data-zh 是第一次切换时才记下来的，容易只单向对）
+  await page.evaluate(() => staffToggleLang());
+  await page.waitForTimeout(400);
+  ok('切回中文：月份栏还原', (await page.textContent('#tx-month-text') || '').includes('年'),
+     await page.textContent('#tx-month-text'));
+  ok('切回中文：拍照按钮还原', (await page.locator('.attach-btn').first().textContent() || '').includes('拍照'));
+  ok('切回中文：车牌提示字还原',
+     (await page.getAttribute('#tx-company-plate', 'placeholder') || '').includes('例'),
+     await page.getAttribute('#tx-company-plate', 'placeholder'));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 // ---------- 【15】说明书本身 ----------
 // 提示条点过去的落地页。它是同事唯一的操作指引，坏了没人会回报——所以在这里守。
 console.log('\n【15】安装说明书 staff/install.html');

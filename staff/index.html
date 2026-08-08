@@ -427,6 +427,10 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 #staff-install-tip.on{display:block}
 #staff-install-tip b{display:block;color:#9a3412;font-size:14.5px;margin-bottom:2px}
 #staff-install-tip .go{display:inline-block;margin-top:6px;color:#9a3412;font-weight:700}
+/* 车牌栏整格是 text-transform:uppercase（车牌本来就写大写），但提示字会跟着被
+   拉成大写——中文「例：NS6868」看不出来，英文「e.g. NS6868」变成「E.G. NS6868」，
+   像在喊。提示字不是用户输入的内容，不该跟着变形。 */
+#tx-company-plate::placeholder{text-transform:none}
 #staff-summary{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .staff-sum-label{font-size:12px;color:var(--sub)}
 .staff-sum-total{font-size:26px;font-weight:700;color:var(--text);margin-top:2px}
@@ -494,9 +498,11 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   <div id="tx-list" class="tx-list"></div>
   <div id="staff-signout-row">
     <button class="btn btn-outline btn-sm" id="staff-restore-btn"
-            onclick="staffRestore()">找回本月记录 / Restore this month</button>
+            data-en="Restore this month"
+            onclick="staffRestore()">找回本月记录</button>
     <div id="staff-restore-note" data-en="Changed phone or cleared browser data? Tap above to pull back the records you already reported.">换手机、清过浏览器数据之后，按上面这个把已经报上去的记录拉回来</div>
-    <button class="btn btn-outline btn-sm" onclick="staffSignOut()">换钥匙 / Sign out</button>
+    <button class="btn btn-outline btn-sm" data-en="Sign out"
+            onclick="staffSignOut()">换钥匙</button>
     <div id="staff-build-note"></div>
   </div>
 </div>
@@ -508,7 +514,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 <div class="nav">
   
   <button class="nav-btn" id="nav-transactions" onclick="switchTab('transactions')">
-    <div class="nav-icon">📋</div>明细
+    <div class="nav-icon">📋</div><span data-en="Records">明细</span>
   </button>
   
   
@@ -533,10 +539,10 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <div id="attach-thumb-area"></div>
       <div id="attach-btn-row" class="attach-row">
         <button type="button" class="attach-btn" onclick="document.getElementById('attach-camera-input').click()">
-          <span style="font-size:20px" data-en="Camera">📷</span>拍照
+          <span style="font-size:20px">📷</span><span data-en="Camera">拍照</span>
         </button>
         <button type="button" class="attach-btn" onclick="document.getElementById('attach-gallery-input').click()">
-          <span style="font-size:20px" data-en="Gallery">🖼️</span>从相册选择
+          <span style="font-size:20px">🖼️</span><span data-en="Gallery">从相册选择</span>
         </button>
       </div>
       <input type="file" id="attach-camera-input" accept="image/*" capture="environment" style="display:none" onchange="onAttachFileChosen(event)">
@@ -591,7 +597,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <!-- 公司报账专用字段：只在当前账户勾了「公司账户」时显示，见 syncCompanyTxFields() -->
     <div id="tx-company-wrap" style="display:none">
       <div style="padding:10px 12px;background:var(--p2);border-radius:10px;margin-bottom:14px;
-        font-size:12px;color:var(--p);line-height:1.6">
+        font-size:12px;color:var(--p);line-height:1.6" data-en="🧾 This is the company account. Saving also files it to the company ledger — the same ledger and the same Excel as records entered in Telegram.">
         🧾 这是公司账户，保存后会同时送进公司账本 —— 跟 Telegram 记的进同一本、出同一份 Excel。
       </div>
       <div class="form-group" id="tx-reporter-group">
@@ -615,10 +621,9 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <div class="form-group" id="tx-company-plate-wrap" style="display:none">
         <label class="form-label" data-en="Plate number">车牌号</label>
         <input class="form-input" id="tx-company-plate" type="text" maxlength="15"
-          placeholder="例：NS6868" style="text-transform:uppercase">
+          placeholder="例：NS6868" data-en-ph="e.g. NS6868" style="text-transform:uppercase">
         <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
-          车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。
-          这类开销一律算在 Boss 头上（进左边那张表）。
+          <span data-en="Vehicle costs need a plate number. It goes into the Excel as &quot;Petrol (NS6868)&quot;. These are always charged to the Boss (the left-hand table).">车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。这类开销一律算在 Boss 头上（进左边那张表）。</span>
         </div>
       </div>
       <div class="form-group" id="tx-reftag-group">
@@ -1293,7 +1298,9 @@ function monthTxs(accId, year, month){
   });
 }
 function monthName(year, month){
-  return `${year} 年 ${month+1} 月`;
+  const EN = ['January','February','March','April','May','June',
+              'July','August','September','October','November','December'];
+  return tt(`${year} 年 ${month+1} 月`, `${EN[month]} ${year}`);
 }
 /**
  * 今天是几号——按**手机本地时区**算，不能用 toISOString()。
@@ -4667,7 +4674,9 @@ async function staffWhoAmI(token){
 
 function staffOpenGate(){
   const b = document.getElementById('staff-gate-build');
-  if(b) b.textContent = '版本 ' + APP_BUILD;
+  // 闸门在语言切换按钮之前出现（那时还没进主界面），所以这里用两种语言都读得懂的
+  // 写法，不走 data-en
+  if(b) b.textContent = 'v ' + APP_BUILD;
   document.getElementById('staff-gate').classList.remove('off');
 }
 function staffCloseGate(){ document.getElementById('staff-gate').classList.add('off'); }
@@ -4914,6 +4923,11 @@ function staffApplyLang(){
   document.querySelectorAll('[data-en]').forEach(el=>{
     if(el.dataset.zh === undefined) el.dataset.zh = el.textContent;
     el.textContent = staffLang === 'en' ? el.dataset.en : el.dataset.zh;
+  });
+  // 输入框的提示字不是 textContent，得另外换（换错地方会把整个 input 的内容清掉）
+  document.querySelectorAll('[data-en-ph]').forEach(el=>{
+    if(el.dataset.zhPh === undefined) el.dataset.zhPh = el.getAttribute('placeholder') || '';
+    el.setAttribute('placeholder', staffLang === 'en' ? el.dataset.enPh : el.dataset.zhPh);
   });
   const btn = document.getElementById('staff-lang-btn');
   if(btn) btn.textContent = staffLang === 'en' ? '中' : 'EN';
