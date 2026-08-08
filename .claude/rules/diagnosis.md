@@ -72,12 +72,15 @@
   禁止 `git push --delete`（403，策略性非暫時），別重試——觸發 `cleanup-branches.yml`
   workflow（workflow_dispatch，傳分支名）由 CI 代刪，帶 main 保護與合併驗證。
   來源：Fable 5 交接時試刪兩次 403 後建立此通道，一次清掉 14 個積壓分支。注意：要新開/重建功能分支時先 `git fetch origin main`——本地 origin/main 過舊會讓分支基點落後，清理 workflow 的「內容樹在 main」安全閥會攔下不刪（同 session 踩過兩次）；被攔時把分支 force-push 指到 origin/main 再觸發一次即可。
-- [2026-07-13][雲端] 情境：合併後想驗證 GitHub Pages 上線內容。教訓：沙盒代理封鎖對
-  `github.io` 的出站請求（WebFetch 與 curl 皆 CONNECT 403，策略性非暫時；youtube.com/
-  bilibili.com 同樣被封），別重試——改兩步驗證：(1) GitHub MCP 的 actions_list 查該
-  merge commit 的「pages build and deployment」是否 success；(2) `git show origin/main:檔案`
-  read-back 關鍵改動。兩者都過即視為上線。另：actions_list 回傳動輒 40 萬字元，
-  結果落檔後用 jq 提取，別直接讀。來源：洗髓 App 修復上線驗證時踩到。
+- [2026-07-13／2026-08-03][雲端] 情境：想從沙盒直接連某個外部網域驗證東西上線了沒。
+  教訓：代理對 `github.io`、`*.workers.dev`、youtube/bilibili 一律 **403 CONNECT tunnel
+  failed**（策略性封鎖，非暫時），別重試也別懷疑對方服務掛了——判別方法：`curl -sv`
+  看到 `CONNECT tunnel failed, response 403` 就是代理策略。改成兩步驗證：(1) GitHub MCP
+  的 actions_list 查該 commit 的部署 workflow 是否 success；(2) `git show origin/main:檔案`
+  read-back 關鍵改動，或寫成不需網路的單元測試／對假端點的 Playwright 測試。
+  真實端到端只能交給使用者實際用一次——**CI 綠了不等於線上端點驗過**，交付時要說明白。
+  另：actions_list 回傳動輒 40 萬字元，落檔後用 jq 提取，別直接讀。
+  來源：洗髓 App 上線驗證（github.io）與 butler-bot Worker 端點驗證（workers.dev）。
 - [2026-07-13][雲端] 情境：合併到 main 後 Pages 遲遲不更新。教訓：GitHub 故障（Service
   Unavailable）期間合併的 commit，其「pages build and deployment」觸發事件可能被整個丟掉，
   重跑其他 workflow 不會補觸發——用 deployments API（`/deployments?environment=github-pages`）
@@ -91,14 +94,6 @@
   remote 讀回**（`git show origin/main:路徑`），不能只看本地工作區——工作區顯示正確不代表
   commit 進去了。來源：清空公司帳本時只提交了照片刪除、帳本 JSON 沒 add，結果記錄全在、
   照片全沒，使用者跑月度導出時看到「6 筆帳目都沒有電子收據」才發現，白繞一圈。
-- [2026-08-03][雲端] 情境：改完 Cloudflare Worker（butler-bot）想從沙盒 curl 一下驗證端點活著。
-  教訓：沙盒代理對 `*.workers.dev` 是 **403 CONNECT tunnel failed**（策略性封鎖，跟已記錄的
-  `github.io` / youtube 同一類），別重試也別懷疑 Worker 掛了。改用兩步驗證：(1) GitHub MCP
-  的 actions_list 查該 commit 的 Deploy workflow 是否 success；(2) 邏輯層寫成不需網路的
-  單元測試（butler-bot 的 `npm test` 就是為此而生）＋前端用 Playwright 對假端點測。
-  真實端到端只能交給使用者實際用一次——交付時要誠實說明「線上調用未在此環境驗證」，
-  不能因為 CI 綠了就宣稱端點已驗證。判別方法：`curl -sv` 看到 `CONNECT tunnel failed,
-  response 403` 就是代理策略，不是對方服務的問題。
 - [2026-08-03][皆是] 情境：使用者說「刪除沒用／刪了又出現」。教訓：刪除在多層系統裡有好幾層，
   逐層查完再下結論——(1) 遠端資料源刪了沒（查 commit／API 回應）；(2) 本機刪了沒；
   (3) **有沒有被同步「合併」回來**。取並集的同步（union merge）沒有 tombstone 就一定會復活
@@ -116,6 +111,13 @@
   仍是預設規則且將於 2026-07-28 到期（等於已公開暴露所有使用者的記帳資料一段時間），
   已協助改成 `users/{uid}` 限權規則並確認發布；順帶查過本 repo 只有這個專案用到
   Firebase，其餘頁面（含 xisui）未使用，不需要比照檢查。
+- [2026-08-08][皆是] 情境：同一份数据在本机和远端各存一份，而其中一边能改、另一边不能改
+  （例：记账 App 能改本机记录，公司账本只支持新增/删除）。教训：这种结构**一定会分叉**，
+  而且分叉后没有任何提示，只能靠人肉比对发现。设计时必须二选一——要么禁止改能改的那一边
+  （锁住表单，只留「删掉重记」这条会同步的路），要么把「改」实现成「远端删旧＋新增新的」。
+  「改完弹一句提示告诉用户那边没改」不算解法：提示 2.2 秒就没了，之后两边永远不一样。
+  来源：Seryi 2026-08-02 那笔本机 11.76、账本 11.78，老板肉眼比对才发现；查下去
+  发现是「已送出的记录被改过」，而这是 App 的既有设计。
 - [2026-08-05][皆是] 情境：写扫描器/检查工具，跑完报「通过」。教训：**先拿一个已知
   该被查出的东西验证它真的会报**，再信任它的绿灯。当天给 check-secrets.py 加 git 历史
   扫描，第一版 0.13 秒扫完 4844 个对象报「通过」——实际是遇到第一个 tree 对象就

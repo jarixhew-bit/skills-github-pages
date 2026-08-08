@@ -610,6 +610,12 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <div class="type-tab active" id="type-exp" onclick="setTxType('expense')">支出</div>
       <div class="type-tab" id="type-inc" onclick="setTxType('income')">收入</div>
     </div>
+    <!-- 已经报进公司账本的那笔：整张表单锁起来，只留删除（见 applyCompanyLock()）。
+         2026-08-08 起加的：在这之前本机改得动、账本改不动，两边会静静分叉。 -->
+    <div id="tx-sent-lock" style="display:none;padding:10px 12px;background:rgba(230,126,34,.12);
+      border-radius:10px;margin-bottom:14px;font-size:12px;color:#e67e22;line-height:1.6">
+      🔒 这笔已经报进公司账本了，改不了——要更正请按下面的「删除此记录」，然后重新记一次。
+    </div>
     <!-- attachment (moved above amount: photographing the receipt first lets
          the scan workflow prefill the fields below, instead of retyping them) -->
     <div class="form-group">
@@ -736,7 +742,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       <button class="btn btn-danger" onclick="deleteTx()">🗑 删除此记录</button>
     </div>
     <div id="tx-save-note" style="display:none;margin-bottom:10px;font-size:12px;line-height:1.6"></div>
-    <button class="btn btn-primary" onclick="saveTx()">保存</button>
+    <button class="btn btn-primary" id="tx-save-btn" onclick="saveTx()">保存</button>
   </div>
 </div>
 
@@ -2300,6 +2306,15 @@ function saveTx(){
 }
 
 function saveTxInner(){
+  // 已经报进公司账本的那笔不给改（理由见 applyCompanyLock）。表单那边已经锁住了，
+  // 这里是第二道闸门——防的是绕过 UI 的路径（旧版页面、脚本、以后新加的入口）。
+  if(state.editingTxId){
+    const prev = data.transactions.find(t=>t.id===state.editingTxId);
+    if(prev && prev.company && prev.company.status === 'sent'){
+      toast('这笔已经报进公司账本了，改不了——请删掉重记');
+      return;
+    }
+  }
   const amt0 = readAmountInput();
   const rawAmt = amt0.num;
   if(amt0.shown === ''){ toast('请输入金额（可以填 0）'); return; }
@@ -2423,6 +2438,8 @@ function saveTxInner(){
   // 公司账另外送一份进 butler 的公司账本。不 await——本机已经存好了，
   // 送不出去会进队列自动重试，不该让用户在这里干等网络。
   // status 已经是 sent 的不再送（见上面组 tx.company 时的注释：会造成重复记账）。
+  // 2026-08-08 起，函数开头那道闸门已经让「编辑已送出的记录」走不到这里；这一支
+  // 留着是最后一道防重复记账的保险，不要因为「看起来不会执行」就删掉。
   if(tx.company && tx.company.status === 'sent'){
     toast('本机已改。公司账本那边改不了——要更正请在 Telegram 里删掉这笔重记');
   } else if(tx.company){
@@ -4443,7 +4460,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-08c';
+const APP_BUILD = '2026-08-08d';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4514,11 +4531,44 @@ function getCompanyToken(){ return (localStorage.getItem(COMPANY_TOKEN_STORAGE) 
  * 按当前账户是不是公司账户，显示/隐藏公司报账字段并填好选项。
  * 编辑已有记录时把 tx 传进来回填。
  */
+/**
+ * 已经报进公司账本的那笔，整张表单锁起来，只留「删除此记录」。
+ *
+ * 为什么（2026-08-08 真出过事）：公司账本只有新增和删除，**没有「改」**——butler 的
+ * saveRecords 是往月度账本里追加，同一笔再送一次不会覆盖、只会多一条，钱直接翻倍。
+ * 所以以前编辑已送出的记录时，App 只改本机、不动账本，弹一句 2.2 秒的提示就完了。
+ * 结果是两边静静分叉：Seryi 8/2 那笔本机 11.76、账本 11.78，靠肉眼比对才发现。
+ * 与其事后比对，不如从源头断掉——要改就删掉重记，而删除是会同步到账本的。
+ *
+ * 只锁 status==='sent' 的：pending（排队等送）和 failed（服务端退回）那两种账本里
+ * 还没有这一笔，随便改，队列送出去的是改完的版本。
+ */
+function applyCompanyLock(locked){
+  const box = document.getElementById('tx-sent-lock');
+  if(box) box.style.display = locked ? 'block' : 'none';
+  const saveBtn = document.getElementById('tx-save-btn');
+  if(saveBtn) saveBtn.style.display = locked ? 'none' : '';
+  ['tx-amount','tx-riel-toggle','tx-desc','tx-date','tx-company-reporter',
+   'tx-company-category','tx-company-plate','tx-company-reftag'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.disabled = locked;
+  });
+  // 这几个不是 input，disabled 对它们无效，只能挡点击
+  ['whose-self','whose-boss'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){ el.style.pointerEvents = locked ? 'none' : ''; el.style.opacity = locked ? '.5' : ''; }
+  });
+  const attach = document.getElementById('attach-btn-row');
+  if(attach) attach.style.display = locked ? 'none' : '';
+}
+
 function syncCompanyTxFields(tx){
   const wrap = document.getElementById('tx-company-wrap');
   if(!wrap) return;
   const acc = curAcc();
   const isCompany = !!(acc && acc.isCompany);
+  // 放在最前面：非公司账户会在下面提前 return，锁必须在那之前先解开
+  applyCompanyLock(isCompany && !!(tx && tx.company && tx.company.status === 'sent'));
   wrap.style.display = isCompany ? 'block' : 'none';
   // 公司账户下把 App 自己的类别宫格整块藏起来：这笔账归哪个 App 类别由公司类别
   // 自动决定（COMPANY_CAT_TO_APP），两个都摆出来用户会以为要选两次。
