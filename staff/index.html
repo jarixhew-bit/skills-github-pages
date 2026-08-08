@@ -431,6 +431,19 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
    拉成大写——中文「例：NS6868」看不出来，英文「e.g. NS6868」变成「E.G. NS6868」，
    像在喊。提示字不是用户输入的内容，不该跟着变形。 */
 #tx-company-plate::placeholder{text-transform:none}
+/* 备用金卡：老板给的那笔现金还剩多少。没设起点时整张不出现（见 staffLoadPetty）。 */
+#staff-petty{display:none;background:linear-gradient(135deg,#0f766e,#115e59);color:#fff;
+  border-radius:14px;padding:16px;margin-bottom:12px}
+#staff-petty.on{display:block}
+.petty-label{font-size:12px;opacity:.85}
+.petty-total{font-size:28px;font-weight:700;margin-top:2px;letter-spacing:.5px}
+.petty-sub{font-size:12px;opacity:.85;margin-top:6px;line-height:1.6}
+/* 见底了要看得出来——这张卡平时是背景板，只有这一刻需要他去开口要钱 */
+#staff-petty.low{background:linear-gradient(135deg,#b45309,#92400e)}
+.petty-warn{margin-top:10px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.18);
+  font-size:13px;font-weight:600}
+.petty-list{margin-top:10px;border-top:1px solid rgba(255,255,255,.25);padding-top:8px}
+.petty-row{display:flex;justify-content:space-between;font-size:12.5px;opacity:.92;padding:2px 0}
 #staff-summary{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .staff-sum-label{font-size:12px;color:var(--sub)}
 .staff-sum-total{font-size:26px;font-weight:700;color:var(--text);margin-top:2px}
@@ -484,6 +497,7 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <span data-en="A page opened in Safari gets its data cleared by iPhone on its own. Once it sits on your Home Screen it is a real app and iOS leaves it alone.">用 Safari 直接开的网页，iPhone 会自己清掉记录。装到主屏幕就是独立 App，系统不会动它。</span>
     <span class="go" data-en="→ How to install (1 min)">→ 怎么装（一分钟）</span>
   </a>
+  <div id="staff-petty"></div>
   <div id="staff-summary"></div>
   <div id="tx-month-picker" class="month-picker">
     <button class="month-arrow" onclick="changeMonth(-1)">‹</button>
@@ -4817,6 +4831,7 @@ function staffStart(){
   flushCompanyQueue();
   staffApplyLang();
   staffShowInstallTip();
+  staffLoadPetty();
   // 打开时清单是空的，就自动从公司账本把这个月自己报过的拉回来。
   //
   // 为什么要自动（2026-08-07 Seryi 实机）：他记了好几笔，公司账本三次都收到了，
@@ -4826,6 +4841,70 @@ function staffStart(){
   // 与其教他记得去按「找回本月记录」，不如空的时候自己去拉一次。
   // 安全：拉回来的一律标已送出、按 recordId 去重，多拉几次不会重复记账。
   if((data.transactions || []).length === 0) staffRestore({ silent:true });
+}
+
+/* —— 备用金：老板给的那笔现金还剩多少 ——
+ *
+ * 数字**全部由服务端算**（butler 的 pettyCashBalances），这边一个数都不加不减。
+ * 原因跟公司账本那张卡一样：Telegram 和 App 是同一本账的两个窗口，算法住两处迟早分岔。
+ *
+ * 老板还没设起点时整张卡不出现——服务端回 unset 就是「这个人还没开始记」，
+ * 编一个 0 出来会被当成「花光了」。
+ *
+ * 缓存：余额存一份在本机，没网时照样看得到，但会明说「离线显示」。同事常在外面
+ * 没信号，一片空白比一个标注过的旧数字更没用。
+ */
+const STAFF_PETTY_CACHE = 'staffExpense_petty';
+
+async function staffLoadPetty(){
+  const token = (localStorage.getItem(STAFF_TOKEN_STORAGE) || '').trim();
+  if(!token) return;
+  let row = null, stale = false;
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'petty', token })
+    });
+    const body = await res.json();
+    if(!res.ok || !body || body.status !== 'ok') throw new Error('bad');
+    row = (body.people || [])[0] || null;
+    try{ localStorage.setItem(STAFF_PETTY_CACHE, JSON.stringify(row)); }catch(e){}
+  }catch(e){
+    // 没网/服务端出错：退回上次拿到的那份，并标明是旧的
+    try{ row = JSON.parse(localStorage.getItem(STAFF_PETTY_CACHE) || 'null'); }catch(e2){ row = null; }
+    stale = true;
+  }
+  staffRenderPetty(row, stale);
+}
+
+function staffRenderPetty(row, stale){
+  const el = document.getElementById('staff-petty');
+  if(!el) return;
+  if(!row || row.status !== 'ok'){ el.classList.remove('on'); el.innerHTML = ''; return; }
+  const cur = 'USD';
+  const low = row.balance < 100;
+  el.classList.toggle('low', low);
+  // 本机还没送出去的那几笔：钱已经花掉了，但服务端还不知道，所以余额里没扣。
+  // 不在这边替它减——只把事实写出来，让他自己心里有数（钱的数不许 App 自己算）。
+  const pend = (data.transactions || []).filter(t =>
+    t.company && (t.company.status === 'pending' || t.company.status === 'failed'));
+  const pendSum = pend.reduce((s,t) => s + (t.amount || 0), 0);
+  const rows = (row.topups || []).slice(0, 5).map(e => `
+      <div class="petty-row"><span>${e.date}</span><span>+${fmt(e.amountUsd, cur)}</span></div>`).join('');
+  el.innerHTML = `
+    <div class="petty-label">${tt('备用金余额','Cash on hand')}</div>
+    <div class="petty-total">${fmt(row.balance, cur)}</div>
+    <div class="petty-sub">${tt(
+        `起点 ${fmt(row.opened, cur)}（${row.openedDate}）· 已花 ${fmt(row.spent, cur)}`,
+        `Started at ${fmt(row.opened, cur)} (${row.openedDate}) · spent ${fmt(row.spent, cur)}`)}${
+      stale ? tt('　·　离线显示，可能不是最新','　·　offline, may be out of date') : ''}</div>
+    ${low ? `<div class="petty-warn">${tt('⚠️ 快用完了，记得跟老板要','⚠️ Running low — ask the boss for a top-up')}</div>` : ''}
+    ${pend.length ? `<div class="petty-warn">${tt(
+        `还有 ${pend.length} 笔 ${fmt(pendSum, cur)} 没送出去，这个数里还没扣`,
+        `${pend.length} record(s) ${fmt(pendSum, cur)} not sent yet — not deducted above`)}</div>` : ''}
+    ${rows ? `<div class="petty-list">
+      <div class="petty-label">${tt('收到的钱','Top-ups received')}</div>${rows}</div>` : ''}`;
+  el.classList.add('on');
 }
 
 /** 还在浏览器里（没装到主屏幕）就把安装提示条打开。
@@ -4904,6 +4983,21 @@ function staffRenderSummary(){
         `⚠️ 有 ${noPhoto} 笔没有收据照片`,
         `⚠️ ${noPhoto} record(s) without a receipt photo`)}</div>` : ''}`;
 }
+
+/* 余额什么时候重拉：
+ * 1) 记完一笔之后——钱刚花掉，余额该跟着变。等 2.5 秒是让入账请求先到服务端；
+ *    没到也没关系，下面第 2 条会补上。
+ * 2) 页面重新回到前台——老板刚给他转了钱、或上一次没拉到，切回来就是最自然的刷新时机，
+ *    比定时轮询省电也省流量。
+ */
+const _staffSaveTx = saveTx;
+saveTx = function(){
+  _staffSaveTx.apply(this, arguments);
+  setTimeout(staffLoadPetty, 2500);
+};
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden && staffIdentity) staffLoadPetty();
+});
 
 /* 弹窗标题是脚本写死的中文，包一层让它跟着语言走 */
 const _staffShowAddTx = showAddTx, _staffEditTx = editTx;
