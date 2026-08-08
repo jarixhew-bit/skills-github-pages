@@ -438,3 +438,40 @@ id 冲突报 `BuildError`，第 3 步那条注入已删掉）。`syncCompanyTxFi
 
 自检：`check-expense-company.mjs`【19】，用「把两道闸门都拿掉」验证过——真的会看到
 一笔 `amount:55.55` 的"收入"被 POST 进公司账本 payload，不是假设。
+
+## 对账：三人余额 + 本月开销 + 待claim（2026-08-08）
+
+用户自己的月度对账法：三个同事的备用金余额 + 本月公司账本总开销 + 待claim的，
+加起来应该正好等于公司给的固定盘子（写死在 `PENDING_CLAIM_TARGET_USD = 10000`）。
+前两块系统本来就有；待claim 是新加的第三块——App 是那个月才开始用的，之前欠着
+没结清的钱（还有老板自己垫的钱，不同于三个同事，他没有备用金那套）系统完全看
+不到，只能他自己记一笔。
+
+**架构完全照抄备用金那一套**（butler-bot `src/handlers/pending_claim.js`）：
+append-only 事件流 `data/pending-claim.json`，不存一个「当前待claim多少」的字段，
+总数永远现算。跟备用金的差异：这是老板一个人一本账，没有「起点/发放/调整」三种
+类型的区分——不需要，第一笔记录本身就是起点（例如「+3123.45 上个月开销」）。
+金额正负都行：正=新发现一笔还没结清的开销，负=claim 回来了、冲抵。
+
+**排序坑跟备用金 openIdx 是同一类**：`pendingClaimTotal` 给「最近 20 条」历史时，
+一开始用时间戳字符串排序，同一毫秒内连记几笔时间戳会一样，稳定排序全平局时保持
+原序（旧的还在前面），等于没排。改成直接 `events.slice().reverse()`——事件流只
+追加，数组顺序本来就是真实发生顺序，不用比时间戳。
+
+**App 侧**（`expense-tracker.html`）：`reconcileCompute()` 把三块凑出来，任何一块
+拿不到就回 `null`（不给缺角的假数字）；`renderOvReconcile()` 是首屏卡片，
+`openReconcile()`/`renderReconcile()` 是明细弹窗（含待claim历史 + 记一笔 + 撤销）。
+`missing`：备用金没设起点的人不计入「三人余额」，如实标出来是谁没设，不能悄悄
+把他当 0 算。整个功能（卡片 + 两个弹窗）都在 ACCOUNT SWITCHER～PDF REPORT 那段
+cut 区间内，同事版生成时自动整块消失；但 `init()` 里拉取数据的三行
+（`fetchCompanyLedger().then` / `fetchPetty().then` / `fetchPendingClaim().then`）
+是 JS 逻辑，**不在**那段 HTML cut 范围内，必须在 `build-staff-page.py` 里单独
+`cut_exact` 掉——漏了这步的话，同事版的 `init()`（`staffStart()` 内部真的会调用它）
+会带着同事的钥匙去问一个只认老板的接口，白打一发请求（服务端会拒，不会出错，
+但也不该问）。
+
+自检：`check-expense-company.mjs`【20】（算术、missing、记一笔/撤销联动、首屏卡片
+跟明细一致）；`check-staff-page.mjs`【21】守「同事版摸不到也碰不到」——DOM 里没有
+这几个元素，且全程没有任何 `pendingClaim` 开头的请求被送出去（万一以后谁漏掉
+cut_exact，这条会当场变红）；butler-bot `tests/pending-claim.test.mjs` 28 项覆盖
+handler 本身的算术、0 值拒绝、撤销、历史截断/排序。

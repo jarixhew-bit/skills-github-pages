@@ -41,6 +41,9 @@ const browser = await chromium.launch(launchOpts);
   // 假的备用金：跟真服务端同一个形状——事件流 + 余额现算（绝不存一个「当前余额」字段）
   const pettyEvents = [];
   const pettyCalls = { add: 0 };
+  // 假的待claim：同样是事件流 + 现算总数，不存一个「当前总数」的字段
+  const claimEvents = [];
+  const claimTotal = () => Math.round(claimEvents.reduce((t,e)=>t+e.amountUsd,0)*100)/100;
   const pettyRows = () => ['Seryi','Kuang','Yang'].map(person => {
     let openIdx = -1;
     pettyEvents.forEach((e,i)=>{ if(e.person===person && e.type==='open') openIdx = i; });
@@ -106,6 +109,31 @@ const browser = await chromium.launch(launchOpts);
         const removed = pettyEvents.pop();
         return route.fulfill({ status:200, contentType:'application/json', headers:h,
           body: JSON.stringify({ status:'ok', removed, people: pettyRows() }) });
+      }
+      if (req.action === 'pendingClaim') {
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', total: claimTotal(),
+            history: claimEvents.slice().reverse().slice(0,20),
+            lastEvent: claimEvents.length ? claimEvents[claimEvents.length-1] : null }) });
+      }
+      if (req.action === 'pendingClaimAdjust') {
+        // 真服务端拒 0 和非数字，假的也要拒
+        if (!Number.isFinite(Number(req.amount)) || Number(req.amount) === 0) {
+          return route.fulfill({ status:400, contentType:'application/json', headers:h,
+            body: JSON.stringify({ status:'error', message:'假服务端拒绝了这笔待claim' }) });
+        }
+        const ev = { id:'pc'+claimEvents.length, amountUsd:Number(req.amount),
+                     note:req.note||null, date:todayStr, at:new Date().toISOString() };
+        claimEvents.push(ev);
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', event:ev, total: claimTotal() }) });
+      }
+      if (req.action === 'pendingClaimUndo') {
+        if (!claimEvents.length) return route.fulfill({ status:400, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'error', message:'没得撤销' }) });
+        const removed = claimEvents.pop();
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', removed, total: claimTotal() }) });
       }
       if (req.action === 'ledger') {
         const days = new Map();
@@ -992,6 +1020,95 @@ const browser = await chromium.launch(launchOpts);
     await page.click('#type-inc');
     ok('个人账户下能正常选「收入」', await page.evaluate(()=>state.txType==='income'));
     await page.evaluate(()=>closeModal('modal-add-tx'));
+  }
+
+  console.log('\n【20】对账：三人余额+本月开销+待claim 加起来该等于固定盘子');
+  // 2026-08-08 用户自己描述的月度对账法：三块加起来应该正好等于公司给的一万。
+  // 前两块（备用金余额、本月开销）系统本来就有，待claim 是新加的第三块——
+  // App 是那天才开始用的，之前欠着没结清的钱（还有老板自己垫的钱）系统看不到，
+  // 只能他自己记一笔。这里守四样：算术对不对、missing 警告对不对、
+  // 记一笔/撤销之后数字有没有正确联动、还没设起点的人不该被算进「三人余额」。
+  {
+    await page.evaluate(()=>{
+      const a = data.accounts.find(x=>x.currency==='USD' && x.isCompany);
+      data.currentAccountId = a.id; saveData();
+    });
+    // 先给 Seryi、Kuang 设起点（Yang 故意不设——要测「missing」那条警告）
+    for(const [person, amt] of [['Seryi', 200], ['Kuang', 300]]){
+      await page.evaluate(p=>pettyOpenAdd(p,'open'), person);
+      await page.waitForTimeout(200);
+      await page.fill('#petty-amount', String(amt));
+      await page.evaluate(()=>pettySubmit());
+      await page.waitForTimeout(600);
+    }
+    await page.evaluate(()=>closeModal('modal-petty'));
+
+    await page.evaluate(()=>openReconcile());
+    await page.waitForTimeout(1200);
+    const r0 = await page.evaluate(()=>reconcileCompute());
+    ok('三人余额只算 Seryi+Kuang（Yang 没起点不算）', r0.pettySum===500, r0);
+    ok('missing 里点名 Yang', JSON.stringify(r0.missing)==='["Yang"]', r0.missing);
+    ok('待claim 一开始是 0', r0.claim===0, r0.claim);
+    ok('合计 = 三块加起来（算术不是编的）',
+       r0.sum === Math.round((r0.pettySum+r0.monthTotal+r0.claim)*100)/100, r0);
+    ok('差额 = 一万 - 合计', r0.diff === Math.round((10000-r0.sum)*100)/100, r0);
+    const bodyTxt0 = (await page.textContent('#reconcile-body') || '');
+    ok('明细里显示 missing 警告', bodyTxt0.includes('Yang') && bodyTxt0.includes('还没设起点'), bodyTxt0.slice(0,300));
+
+    console.log('\n【20b】记一笔待claim（上个月的历史欠账），数字要正确联动');
+    await page.evaluate(()=>reconcileOpenAdd());
+    await page.waitForTimeout(300);
+    await page.fill('#reconcile-add-amount', '3123.45');
+    await page.fill('#reconcile-add-note-input', '上个月开销，还没claim');
+    await page.evaluate(()=>reconcileSubmit());
+    await page.waitForTimeout(1200);
+    const r1 = await page.evaluate(()=>reconcileCompute());
+    ok('待claim 变成 3123.45', r1.claim===3123.45, r1.claim);
+    ok('合计跟着涨了 3123.45', Math.round((r1.sum-r0.sum)*100)/100===3123.45, [r0.sum, r1.sum]);
+    ok('差额跟着少了 3123.45（离一万更近了）',
+       Math.round((r0.diff-r1.diff)*100)/100===3123.45, [r0.diff, r1.diff]);
+    const bodyTxt1 = (await page.textContent('#reconcile-body') || '');
+    ok('明细里的历史记录带备注', bodyTxt1.includes('上个月开销，还没claim'), bodyTxt1.slice(0,400));
+
+    console.log('\n【20c】0 不许记——闸门要挡住，不能留一条没意义的历史');
+    await page.evaluate(()=>reconcileOpenAdd());
+    await page.waitForTimeout(300);
+    await page.fill('#reconcile-add-amount', '0');
+    await page.evaluate(()=>reconcileSubmit());
+    await page.waitForTimeout(500);
+    ok('0 被挡下来，弹窗还开着（没当成保存成功关掉）',
+       await page.locator('#modal-reconcile-add').isVisible());
+    ok('总数没被 0 打扰', (await page.evaluate(()=>reconcileCompute())).claim===3123.45);
+    await page.evaluate(()=>closeModal('modal-reconcile-add'));
+
+    console.log('\n【20d】撤销：只撤最后一笔，数字退回去');
+    await page.evaluate(()=>reconcileUndo());
+    await page.waitForTimeout(1000);
+    const r2 = await page.evaluate(()=>reconcileCompute());
+    ok('撤销后待claim退回 0', r2.claim===0, r2.claim);
+    ok('合计也退回去了', r2.sum===r0.sum, [r0.sum, r2.sum]);
+
+    console.log('\n【20e】首屏「对账」卡：数字跟明细一致，missing 也要写出来');
+    await page.evaluate(()=>closeModal('modal-reconcile'));
+    // 前面几步一路操作弹窗，没保证还站在「概览」这个 tab 上——卡片藏在这个 tab 底下，
+    // tab 本身不在当前显示时，卡片就算 innerHTML 是对的，isVisible() 也会是 false
+    // （这不是 bug，是「你压根没在看那一屏」）。显式切回去，跟真实操作路径一致。
+    await page.evaluate(()=>switchTab('overview'));
+    await page.evaluate(()=>renderOverview());
+    await page.waitForTimeout(300);
+    const cardVisible = await page.locator('#ov-reconcile').isVisible();
+    ok('公司账户下卡片出现', cardVisible, cardVisible);
+    const cardTxt = (await page.textContent('#ov-reconcile') || '').replace(/\s+/g,' ');
+    ok('卡片上的合计数字跟明细算的一致', cardTxt.includes(String(r2.sum.toFixed(2))), cardTxt);
+    ok('卡片也点名 Yang 没设起点', cardTxt.includes('Yang') && cardTxt.includes('还没设起点'), cardTxt);
+
+    console.log('\n【20f】切到私人账户：卡不出现');
+    await page.evaluate(()=>{
+      const a = data.accounts.find(x=>!x.isCompany);
+      switchAccount(a.id);
+    });
+    await page.waitForTimeout(300);
+    ok('私人账户下对账卡不出现', !(await page.locator('#ov-reconcile').isVisible()));
   }
 
   ok('全程无 JS 报错', errs.length===0, errs.slice(0,3));
