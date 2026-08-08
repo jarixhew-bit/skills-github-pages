@@ -98,6 +98,9 @@ def build(src: str) -> str:
     s = cut_between(s, "<!-- SETTINGS TAB -->", "<!-- FAB -->", "设置 tab")
     s = cut_between(s, "<!-- MODAL: ACCOUNT SWITCHER -->", "<!-- PDF REPORT (hidden) -->",
                     "账户/类别/循环账单的弹窗")
+    # 注：备用金的「转钱 / 设起点 / 调整」两个弹窗是老板专用的写入界面，它们摆在
+    # ACCOUNT SWITCHER 和 PDF REPORT 之间，**已经被上面那条规则一起切掉了**。
+    # 新增老板专用的弹窗时放在这个区间里就自动不会进同事版；放到区间外要另外加一条 cut。
 
     # 底部导航只留「明细」
     for nav_id, label in (("nav-overview", "概览"), ("nav-analytics", "统计"), ("nav-settings", "设置")):
@@ -188,6 +191,9 @@ def build(src: str) -> str:
                      "  switchTab('transactions');",
                      "init() 里的首屏")
     # 全员账本是老板专用的（服务端只认老板的钥匙），同事版连问都不该问
+    s = cut_exact(s,
+                  "\n  fetchPetty().then(()=>{ if(state.currentTab==='overview') renderOvPetty(); });",
+                  "启动时拉全员备用金")
     s = cut_exact(s,
                   "\n\n  // 公司账本（全员）：开 App 时后台拉一次，首屏那张卡才有「今天」的数。\n"
                   "  // 不 await——拉不到就是卡上写一句「连不上」，不该拖住启动。\n"
@@ -423,7 +429,10 @@ STAFF_CSS = """
 .petty-warn{margin-top:10px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.18);
   font-size:13px;font-weight:600}
 .petty-list{margin-top:10px;border-top:1px solid rgba(255,255,255,.25);padding-top:8px}
-.petty-row{display:flex;justify-content:space-between;font-size:12.5px;opacity:.92;padding:2px 0}
+/* 刻意不叫 .petty-row：老板 App 的共用样式里已经有一个同名的（带下边框、
+   字号也不同），同名会被它套上去。生成出来的页面两套 CSS 住同一个文件，
+   新增类名前先在源码里搜一遍。 */
+.petty-line{display:flex;justify-content:space-between;font-size:12.5px;opacity:.92;padding:2px 0}
 #staff-summary{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .staff-sum-label{font-size:12px;color:var(--sub)}
 .staff-sum-total{font-size:26px;font-weight:700;color:var(--text);margin-top:2px}
@@ -680,7 +689,7 @@ function staffRenderPetty(row, stale){
     t.company && (t.company.status === 'pending' || t.company.status === 'failed'));
   const pendSum = pend.reduce((s,t) => s + (t.amount || 0), 0);
   const rows = (row.topups || []).slice(0, 5).map(e => `
-      <div class="petty-row"><span>${e.date}</span><span>+${fmt(e.amountUsd, cur)}</span></div>`).join('');
+      <div class="petty-line"><span>${e.date}</span><span>+${fmt(e.amountUsd, cur)}</span></div>`).join('');
   el.innerHTML = `
     <div class="petty-label">${tt('备用金余额','Cash on hand')}</div>
     <div class="petty-total">${fmt(row.balance, cur)}</div>
