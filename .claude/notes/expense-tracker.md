@@ -345,6 +345,25 @@ CSS 在 `STAFF_CSS`、脚本在 `STAFF_BOOTSTRAP`），生成后连同 `staff/in
 没装才显示、装好自动消失，点它去 `install.html`。改动这块要保证「装好的人看不到」——
 天天被念的提示等于没有提示。
 
+## 「这一餐算谁的」（2026-08-08）
+
+公司账的归属规则住在 butler（`classifyCompanyExpensePerson`）：同事自己那几餐
+（`ownMeals`）算他自己进 Excel 右表，其余一律 Boss 进左表。问题是同事**买给老板**的
+午餐也只能选 `Lunch`，于是被记成他自己的——老板的餐费算进了同事那栏。
+
+修法沿用 Telegram 早就有的写法：项目原文带「老板」两字（`forceBoss`）就强制归 Boss，
+原文里的餐别词再决定 Excel 标签。表单这边多一个「这一餐算谁的」开关
+（`#tx-company-whose-wrap`，只在正餐类别出现），选「老板的」就把服务端给的原文送出去。
+
+**字串由服务端给，App 不许自己拼**：`companyExpenseCategories` 多返回
+`mealCategories: [{label, bossRaw}]`，App 存进 `tx.company.bossRaw`、发送时当
+`categoryRaw`。理由跟 `plateCategories` 一样——拼错一个字 butler 不会报错，
+只会静静把钱记到错的人头上。`tx.company.categoryEn` 保持标准类别，所以
+`COMPANY_CAT_TO_APP` 的对应和列表显示都不用跟着改。
+
+备用金不受影响：它按 `reporter` 扣（钱从谁手上出去就扣谁），跟这笔算 Boss 还是
+算他自己无关——同事替老板垫的钱照样从他的备用金里扣，这是对的。
+
 自检：`node tools/check-staff-page.mjs`（真浏览器 173 项，含【14】提示条与【15】说明书），
 CI 是 `.github/workflows/staff-page-check.yml`。**改 `expense-tracker.html` 也要跑这套**
 （同事版从它生成），并且 `tools/` 底下两份浏览器自检要一起跑，只跑一份另一份会在 CI 上红。

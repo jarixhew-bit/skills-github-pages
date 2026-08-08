@@ -64,6 +64,9 @@ const browser = await chromium.launch(launchOpts);
           body: JSON.stringify({
             categories:['Beverage','Car Wash','Dinner','Lunch','Petrol','Postage','Store'],
             plateCategories:['Car Wash','Petrol'],
+            // 正餐清单 + 「这一餐是老板的」该送什么原文（butler 的 BOSS_MEAL_RAW）。
+            // 故意只给 Lunch/Dinner：清单是服务端说了算，App 不许自己补齐四餐。
+            mealCategories:[{label:'Lunch', bossRaw:'老板午餐'}, {label:'Dinner', bossRaw:'老板晚餐'}],
             // 人员名册由服务端给（butler 的 config/people.json），App 的下拉框照它渲染
             people:[
               {code:'Boss', label:'Boss（老板自己）'},
@@ -147,7 +150,8 @@ const browser = await chromium.launch(launchOpts);
                           Yang:['breakfast','lunch','dinner'] };
       const cat = String(req.items?.[0]?.categoryRaw || '').toLowerCase();
       const rep = req.reporter;
-      const mine = (OWN_MEALS[rep] || []).includes(cat);
+      // 原文带「老板」两字的一律 Boss（butler 的 forceBoss），即使是同事自己那几餐
+      const mine = !/老板|boss/i.test(cat) && (OWN_MEALS[rep] || []).includes(cat);
       const person = mine ? rep : 'Boss';
       const id = 'rec' + (++recSeq);
       // 照 butler 的规则派号：一个月从 1 排到底，左右两张表分开排
@@ -690,6 +694,82 @@ const browser = await chromium.launch(launchOpts);
   ok('余额够的那位不被点名', !/Seryi\s*快用完/.test(txt), txt);
   ok('无 JS 报错', errs.length===0, errs.slice(0,3));
 }
+
+  console.log('\n【15】买给老板的餐：要能标出来，且真的记到 Boss 头上');
+  // 2026-08-08 用户发现：同事买了老板的午餐也只能选 Lunch，会按 ownMeals 记成他自己的，
+  // 老板的餐费算进了同事那栏。这一组守的是「钱记对人」。
+  {
+    await page.evaluate(()=>switchTab('transactions'));
+    posted = [];
+    await page.evaluate(()=>showAddTx());
+    await page.waitForTimeout(600);
+    // 非正餐类别不该问这个问题——问了会让人以为有得选
+    await page.selectOption('#tx-company-category', 'Store');
+    await page.waitForTimeout(200);
+    ok('选 Store 时不出现「这一餐算谁的」',
+       !(await page.locator('#tx-company-whose-wrap').isVisible()));
+    await page.selectOption('#tx-company-category', 'Lunch');
+    await page.waitForTimeout(200);
+    ok('选 Lunch 时出现「这一餐算谁的」',
+       await page.locator('#tx-company-whose-wrap').isVisible());
+    ok('默认是「自己吃的」（不改变原来的行为）',
+       await page.evaluate(()=>state.companyWhose==='self'), await page.evaluate(()=>state.companyWhose));
+    // 正餐清单是服务端给的，App 不许自己补：假服务端只给了 Lunch/Dinner
+    ok('餐别清单照服务端给的（Breakfast 不在里面就不问）', await page.evaluate(()=>{
+      document.getElementById('tx-company-category').value='Lunch';
+      return bossRawFor('Lunch')==='老板午餐' && bossRawFor('Breakfast')===null && bossRawFor('Store')===null;
+    }));
+
+    await page.fill('#tx-amount', '8.80');
+    await page.selectOption('#tx-company-reporter', 'Seryi');
+    await page.evaluate(()=>setCompanyWhose('boss'));
+    await page.waitForTimeout(150);
+    ok('点了「老板的」按钮会亮起来',
+       await page.evaluate(()=>document.getElementById('whose-boss').classList.contains('active')));
+    await page.evaluate(()=>saveTx());
+    await page.waitForTimeout(1500);
+    const pb = posted[0] || {};
+    ok('送出去的 categoryRaw 是服务端给的「老板午餐」',
+       pb.items?.[0]?.categoryRaw==='老板午餐', pb.items?.[0]?.categoryRaw);
+    ok('服务端据此算成 Boss（不是 Seryi）', await page.evaluate(()=>{
+      const t = data.transactions.filter(x=>x.amount===8.8).pop(); return t?.company?.person;
+    })==='Boss');
+    const txBoss = await page.evaluate(()=>data.transactions.filter(x=>x.amount===8.8).pop());
+    ok('本机的 categoryEn 仍是标准类别 Lunch（App 自己的分类才对得上）',
+       txBoss?.company?.categoryEn==='Lunch', txBoss?.company);
+    ok('对应到 App 的餐饮类别，不是「其他」', txBoss?.categoryId==='cat_food', txBoss?.categoryId);
+    ok('存下 forBoss，重开 App 也看得出来', txBoss?.company?.forBoss===true, txBoss?.company);
+    await page.evaluate(()=>{ switchTab('transactions'); renderTxList(); });
+    await page.waitForTimeout(400);
+    ok('明细列表上标出「老板的」',
+       (await page.textContent('#tx-list') || '').includes('👔老板的'));
+
+    // 对照组：同一个类别不点「老板的」，仍要记回 Seryi 自己（别把原行为改坏）
+    posted = [];
+    await page.evaluate(()=>showAddTx());
+    await page.waitForTimeout(600);
+    await page.fill('#tx-amount', '7.70');
+    await page.selectOption('#tx-company-category', 'Lunch');
+    await page.selectOption('#tx-company-reporter', 'Seryi');
+    await page.evaluate(()=>saveTx());
+    await page.waitForTimeout(1500);
+    ok('对照：不点「老板的」就送标准类别 Lunch',
+       posted[0]?.items?.[0]?.categoryRaw==='Lunch', posted[0]?.items?.[0]?.categoryRaw);
+    ok('对照：仍记到 Seryi 头上', await page.evaluate(()=>{
+      const t = data.transactions.filter(x=>x.amount===7.7).pop(); return t?.company?.person;
+    })==='Seryi');
+
+    // 换成非正餐类别时，「老板的」这个选择必须被清掉——留着就是个看不见的错默认值
+    await page.evaluate(()=>showAddTx());
+    await page.waitForTimeout(500);
+    await page.selectOption('#tx-company-category', 'Lunch');
+    await page.evaluate(()=>setCompanyWhose('boss'));
+    await page.selectOption('#tx-company-category', 'Store');
+    await page.waitForTimeout(250);
+    ok('切到非正餐类别后，选择被清回「自己吃的」',
+       await page.evaluate(()=>state.companyWhose==='self'), await page.evaluate(()=>state.companyWhose));
+    await page.evaluate(()=>closeModal('modal-add-tx'));
+  }
 
   ok('全程无 JS 报错', errs.length===0, errs.slice(0,3));
   await ctx.close();

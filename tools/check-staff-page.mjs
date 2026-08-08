@@ -93,6 +93,8 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
         body: JSON.stringify({
           categories:['Beverage','Dinner','Driver Meal','Lunch','Petrol','Store'],
           plateCategories:['Petrol'],
+          // 正餐清单 + 「这一餐是老板的」该送什么原文（butler 的 BOSS_MEAL_RAW）
+          mealCategories:[{label:'Lunch', bossRaw:'老板午餐'}, {label:'Dinner', bossRaw:'老板晚餐'}],
           people:[{code:'Boss',label:'Boss'},{code:'Seryi',label:'Seryi',ownMeals:['Breakfast','Lunch','Dinner']}],
         }) });
     }
@@ -124,8 +126,10 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
     if (req.action) return route.fulfill({ status:400, contentType:'application/json', headers:h,
       body: JSON.stringify({ status:'error', message:'假服务端不认得这个 action：' + req.action }) });
     // 新增：照 butler 的规则回一个号和归属（自己吃的正餐算自己，其余算 Boss）
+    // 原文带「老板」两字的一律 Boss（butler 的 forceBoss），即使是他自己那几餐
     const cat = String(req.items?.[0]?.categoryRaw || '');
-    const person = ['Breakfast','Lunch','Dinner'].includes(cat) ? 'Seryi' : 'Boss';
+    const person = (!/老板|boss/i.test(cat) && ['Breakfast','Lunch','Dinner'].includes(cat))
+      ? 'Seryi' : 'Boss';
     return route.fulfill({ status:200, contentType:'application/json', headers:h,
       body: JSON.stringify({ status:'ok',
         records:[{ id:'rec_'+(nextNo), person, refTag:String(nextNo++) }] }) });
@@ -894,6 +898,13 @@ console.log('\n【14b】切成英文之后，画面上不该再有中文');
   await page.waitForTimeout(400);
   const modal = await scanCJK();
   ok('新增弹窗（含车牌栏）没有残留中文', modal.length === 0, modal);
+  // 「这一餐算谁的」只在选了正餐时展开，上面那一轮扫不到（跟车牌栏同一个坑）
+  await page.selectOption('#tx-company-category', 'Lunch');
+  await page.waitForTimeout(400);
+  ok('英文模式下「这一餐算谁的」也展开得出来',
+     await page.locator('#tx-company-whose-wrap').isVisible());
+  const mealBlock = await scanCJK();
+  ok('「这一餐算谁的」那一段没有残留中文', mealBlock.length === 0, mealBlock);
   // 这条专门守上面那个 bug：图标必须还在，且不许中英黏在一起
   const cam = (await page.locator('.attach-btn').first().textContent() || '').trim();
   ok('拍照按钮：图标还在、文字只有英文', cam.includes('📷') && cam.includes('Camera') && !/[一-鿿]/.test(cam), cam);
@@ -1042,6 +1053,62 @@ console.log('\n【15】安装说明书 staff/install.html');
   await h.page.waitForTimeout(300);
   ok('从已装好的图标里打开：顶上说「你已经装好了」',
      await h.page.locator('#ok-box.on').isVisible());
+  await h.ctx.close();
+}
+
+// ---------- 【17】买给老板的餐 ----------
+// 2026-08-08 用户发现：同事买了老板的午餐，在这一页也只能选 Lunch，服务端按
+// ownMeals 规则记成他自己的（Excel 右表）——老板的餐费算到了同事那栏，而且
+// 备用金也会按他花的钱扣。所以这一组守的是「钱记对人」。
+console.log('\n【17】买给老板的餐：同事要能标出来');
+{
+  const h = await newPage();
+  const { page, posted, errs } = h;
+  await signIn(h);
+  await page.click('.fab');
+  await page.waitForTimeout(500);
+
+  await page.selectOption('#tx-company-category', 'Store');
+  await page.waitForTimeout(200);
+  ok('选 Store 时不问「这一餐算谁的」', !(await page.locator('#tx-company-whose-wrap').isVisible()));
+  await page.selectOption('#tx-company-category', 'Lunch');
+  await page.waitForTimeout(200);
+  ok('选 Lunch 时问「这一餐算谁的」', await page.locator('#tx-company-whose-wrap').isVisible());
+  ok('默认「自己吃的」（同事绝大多数时候记的是自己的餐）',
+     await page.evaluate(() => state.companyWhose === 'self'));
+  // 说明文字要用同事的口径：老板 App 那句讲「报账人」，这边没有那个下拉，照抄会看不懂
+  const hint = await page.textContent('#tx-company-whose-wrap');
+  ok('说明用的是同事口径，不提「报账人」', !hint.includes('报账人'), hint);
+
+  await typeAmount(page, '9.90');
+  await page.evaluate(() => setCompanyWhose('boss'));
+  await page.waitForTimeout(150);
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(1200);
+  const sent = posted.filter(r => !r.action).pop() || {};
+  ok('送出去的是服务端给的「老板午餐」', sent.items?.[0]?.categoryRaw === '老板午餐',
+     sent.items?.[0]?.categoryRaw);
+  ok('服务端据此记成 Boss，不是 Seryi 自己', await page.evaluate(() => {
+    const t = data.transactions.filter(x => x.amount === 9.9).pop(); return t?.company?.person;
+  }) === 'Boss');
+  await page.waitForTimeout(300);
+  ok('明细里标出「老板的」（记错人要翻账才查得出来）',
+     (await page.textContent('#tx-list') || '').includes('老板的'));
+
+  // 对照组：不点就还是他自己的（别把原来的行为改坏）
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '4.40');
+  await page.selectOption('#tx-company-category', 'Lunch');
+  await page.waitForTimeout(200);
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(1200);
+  const own = posted.filter(r => !r.action).pop() || {};
+  ok('对照：不点就送标准类别 Lunch', own.items?.[0]?.categoryRaw === 'Lunch', own.items?.[0]?.categoryRaw);
+  ok('对照：仍记到 Seryi 自己头上', await page.evaluate(() => {
+    const t = data.transactions.filter(x => x.amount === 4.4).pop(); return t?.company?.person;
+  }) === 'Seryi');
+  ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
 

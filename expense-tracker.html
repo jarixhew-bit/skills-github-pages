@@ -693,7 +693,23 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
       </div>
       <div class="form-group">
         <label class="form-label">公司类别</label>
-        <select class="form-input" id="tx-company-category" onchange="syncCompanyPlateField()"></select>
+        <select class="form-input" id="tx-company-category"
+          onchange="syncCompanyPlateField();syncCompanyWhoseField()"></select>
+      </div>
+      <!-- 这一餐算谁的：只在选了正餐类别时出现（哪些算正餐、以及「老板的」该送什么原文，
+           都由服务端的 mealCategories 说了算，App 不自己判断也不自己拼字串）。
+           没有这个开关的话，同事买给老板的午餐也只能选 Lunch，会按 ownMeals 规则
+           记成他自己的（Excel 右表）——老板的餐费算进同事那栏（2026-08-08 用户发现）。 -->
+      <div class="form-group" id="tx-company-whose-wrap" style="display:none">
+        <label class="form-label">这一餐算谁的</label>
+        <div class="type-tabs" style="margin-bottom:8px">
+          <div class="type-tab active" id="whose-self" onclick="setCompanyWhose('self')">自己吃的</div>
+          <div class="type-tab" id="whose-boss" onclick="setCompanyWhose('boss')">老板的</div>
+        </div>
+        <div style="font-size:12px;color:var(--sub);line-height:1.6">
+          买给老板的餐选「老板的」，这笔算公司的，进 Excel 左边 Boss 表；
+          选「自己吃的」按原来的规则算——报账人自己的正餐才进右边那张表。
+        </div>
       </div>
       <!-- 车牌：只在选了汽油/洗车/汽车保养这类项目时出现，哪些类别要车牌由服务端告知 -->
       <div class="form-group" id="tx-company-plate-wrap" style="display:none">
@@ -1504,7 +1520,9 @@ let state = {
   catManuallySelected: false,
   pendingAttachmentId: null,
   pendingAttachmentIsNew: false,
-  rielMode: false
+  rielMode: false,
+  // 公司账的「这一餐算谁的」：'self'（按原规则算）或 'boss'（强制记到 Boss 头上）
+  companyWhose: 'self'
 };
 
 // ===================== PERSIST =====================
@@ -1705,6 +1723,8 @@ function companyTxNote(t){
   if(!t.company) return '';
   const parts = [];
   if(t.company.refTag) parts.push(`📄${t.company.refTag}号`);
+  // 标出「这一餐是老板的」——记错人是要翻账才查得出来的，所以在列表上就看得见
+  if(t.company.forBoss) parts.push('👔老板的');
   const st = t.company.status;
   if(st === 'pending') parts.push('⏳待送出');
   else if(st === 'failed') parts.push('⚠️未入账');
@@ -2339,9 +2359,17 @@ function saveTxInner(){
       ? (data.transactions.find(t=>t.id===state.editingTxId)||{}).company
       : null;
     const alreadySent = !!(prevCompany && prevCompany.status === 'sent');
+    // 选了「老板的」就把服务端给的原文（"老板午餐"）一起存下来，送出去时用它当
+    // categoryRaw——butler 认「老板」两字强制归 Boss。存下来而不是发送时再查一次：
+    // 排队补送可能是几小时后，那时类别缓存已经刷新过，再查未必查到同一个东西。
+    const bossRaw = (state.companyWhose === 'boss') ? bossRawFor(categoryEn) : null;
     tx.company = {
       reporter,
       categoryEn,
+      // categoryEn 保持标准类别（Lunch），只有送出去的 categoryRaw 带「老板」前缀——
+      // 这样 App 自己的类别对应（COMPANY_CAT_TO_APP）和列表显示都不用跟着改。
+      forBoss: !!bossRaw,
+      bossRaw: bossRaw,
       refTag: refTagRaw || null,
       plate: needsPlate ? plateRaw : null,
       // 送原始金额和币种过去，让 butler 自己换算成美元——这边不算，理由见公司报账那一节的注释
@@ -4415,7 +4443,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-08b';
+const APP_BUILD = '2026-08-08c';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4434,6 +4462,16 @@ const COMPANY_PEOPLE_FALLBACK = [
 ];
 const COMPANY_CATS_FALLBACK = ['Beverage','Bread','Breakfast','Car Service','Car Wash','Dentist','Dinner','Driver Meal','Lunch','Petrol','Store','Supper'];
 const COMPANY_PLATE_CATS_FALLBACK = ['Car Service','Car Wash','Petrol'];
+// 正餐类别，以及这一餐买给老板时该送什么 categoryRaw（正本是 butler 的 BOSS_MEAL_RAW，
+// 随类别清单一起下发）。只在从没成功连过 butler 时才用得到这份兜底。
+// 为什么字串是服务端给的：拼错一个字（少了「老板」两字）butler 不会报错，
+// 只会静静把老板的餐记到同事头上，而钱记错人要翻账才查得出来。
+const COMPANY_MEAL_CATS_FALLBACK = [
+  {label:'Breakfast', bossRaw:'老板早餐'},
+  {label:'Lunch',     bossRaw:'老板午餐'},
+  {label:'Dinner',    bossRaw:'老板晚餐'},
+  {label:'Supper',    bossRaw:'老板宵夜'},
+];
 
 // 公司类别 → App 自己的类别。只为了让公司账在 App 的列表和统计里正常显示，
 // 不用用户再选一次 App 的类别。记进 Excel 的是 butler 那边的类别，不是这个。
@@ -4499,6 +4537,10 @@ function syncCompanyTxFields(tx){
   catSel.innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
   if(want && cats.includes(want)) catSel.value = want;
 
+  // 「这一餐算谁的」：编辑旧记录时恢复当初的选择，新记录一律从「自己吃的」开始
+  setCompanyWhose((tx && tx.company && tx.company.forBoss) ? 'boss' : 'self');
+  syncCompanyWhoseField();
+
   renderCompanyReporterOptions(
     (tx && tx.company && tx.company.reporter)
     || localStorage.getItem(COMPANY_REPORTER_STORAGE) || 'Boss');
@@ -4557,6 +4599,39 @@ function renderCompanyReporterOptions(want){
 function getCompanyCats(){ return getCompanyCatsCache().categories; }
 // 哪些类别要填车牌由服务端说了算（butler 的 PLATE_CATEGORIES），App 不自己判断
 function getCompanyPlateCats(){ return getCompanyCatsCache().plateCategories || []; }
+// 哪些类别是正餐（要问「这一餐算谁的」）同理由服务端说了算
+function getCompanyMealCats(){
+  const m = getCompanyCatsCache().mealCategories;
+  return (Array.isArray(m) && m.length) ? m : COMPANY_MEAL_CATS_FALLBACK;
+}
+// 这一餐买给老板时该送的 categoryRaw；不是正餐类别就回 null（也就没有这个选择题）
+function bossRawFor(categoryEn){
+  const hit = getCompanyMealCats().find(m => m && m.label === categoryEn);
+  return (hit && hit.bossRaw) || null;
+}
+
+function setCompanyWhose(v){
+  state.companyWhose = (v === 'boss') ? 'boss' : 'self';
+  const self = document.getElementById('whose-self');
+  const boss = document.getElementById('whose-boss');
+  if(self) self.classList.toggle('active', state.companyWhose === 'self');
+  if(boss) boss.classList.toggle('active', state.companyWhose === 'boss');
+}
+
+/**
+ * 只有正餐类别才问「这一餐算谁的」。别的类别（Store/Petrol/Driver Meal…）本来就
+ * 一律算公司的，摆个选择题出来只会让人以为有得选、选错了还以为自己改了什么。
+ * 切到非正餐类别时把选择清回「自己吃的」——否则选过「老板的」再改类别，
+ * 那个状态会悄悄留着，下次又切回正餐时就是错的默认值。
+ */
+function syncCompanyWhoseField(){
+  const wrap = document.getElementById('tx-company-whose-wrap');
+  if(!wrap) return;
+  const cat = document.getElementById('tx-company-category').value;
+  const isMeal = !!bossRawFor(cat);
+  wrap.style.display = isMeal ? 'block' : 'none';
+  if(!isMeal) setCompanyWhose('self');
+}
 
 /**
  * 选了车牌类项目（汽油/洗车/汽车保养）才显示车牌输入框。
@@ -4581,6 +4656,9 @@ async function refreshCompanyCategories(){
       localStorage.setItem(COMPANY_CATS_CACHE, JSON.stringify({
         categories: body.categories,
         plateCategories: Array.isArray(body.plateCategories) ? body.plateCategories : [],
+        // 正餐清单（含「老板的」该送什么原文）。旧版服务端不返回 → 存 []，
+        // getCompanyMealCats() 会退回内建兜底，开关照样能用。
+        mealCategories: Array.isArray(body.mealCategories) ? body.mealCategories : [],
         // 人员名册（谁能报账、各自哪几餐算自己）也存下来，「谁报的账」下拉框从这里渲染。
         // 旧版服务端不返回 people，这时存 [] → getCompanyPeople() 会退回内建兜底名单。
         people: Array.isArray(body.people) ? body.people : []
@@ -4637,7 +4715,8 @@ function buildCompanyPayload(tx, extra){
     reporter: tx.company.reporter,
     date: tx.date,
     items: [{
-      categoryRaw: tx.company.categoryEn,
+      // 选了「这一餐是老板的」就送 bossRaw（"老板午餐"），否则送标准类别
+      categoryRaw: tx.company.bossRaw || tx.company.categoryEn,
       amount: tx.company.rawAmount,
       currency: tx.company.rawCurrency,
       refTag: tx.company.refTag || null,
