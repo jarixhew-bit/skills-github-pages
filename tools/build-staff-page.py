@@ -123,9 +123,8 @@ def build(src: str) -> str:
                      "账户按钮（要收起来，先给它一个 id）")
 
     # ---------- 3) 给要收起来的栏位加 id ----------
-    s = replace_once(s, '<!-- type toggle -->\n    <div class="type-tabs" style="margin-bottom:16px">',
-                     '<!-- type toggle -->\n    <div class="type-tabs" id="tx-type-tabs" style="margin-bottom:16px">',
-                     "收入/支出切换")
+    # 「收入/支出切换」的 id 已经在源码里了（2026-08-08 起：老板 App 自己也要用它，
+    # 见 syncCompanyTxFields() 把公司账户下这个切换整块藏起来），这里不用再注入。
     s = replace_once(s, '<div class="form-group">\n      <label class="form-label" id="tx-desc-label">',
                      '<div class="form-group" id="tx-desc-group">\n      <label class="form-label" id="tx-desc-label">',
                      "描述栏")

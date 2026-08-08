@@ -954,6 +954,46 @@ const browser = await chromium.launch(launchOpts);
     await page.evaluate(()=>closeModal('modal-add-tx'));
   }
 
+  console.log('\n【19】公司账户没有「收入」——记了会被当成一笔支出静静塞进 Excel');
+  // 2026-08-08 用户问「用老板 App 记收入会不会出现在 Excel 里」，查代码发现：
+  // butler 的公司账本（Boss_Expenses.xlsx）从数据结构到 Excel 整个是纯支出报表，
+  // 没有收入这个字段——选「收入」保存，会跟支出走同一条路送进账本，被当成一笔
+  // 支出记进去，money 记错方向、月底按公式对总数会对不上，而且没有任何报错。
+  {
+    ok('公司账户下「收入/支出」切换整块藏起来', await page.evaluate(()=>{
+      const a = data.accounts.find(x=>x.currency==='USD' && x.isCompany);
+      data.currentAccountId = a.id; saveData();
+      showAddTx();
+      return document.getElementById('tx-type-tabs').style.display === 'none';
+    }));
+    ok('打开公司账户的新增记录，类型强制是「支出」', await page.evaluate(()=>state.txType==='expense'));
+
+    // 绕过 UI 把类型硬掰成「收入」，模拟切换被绕过的情况——闸门必须还是挡得住
+    posted = [];
+    await page.fill('#tx-amount', '55.55');
+    await page.selectOption('#tx-company-category', 'Store');
+    await page.evaluate(()=>{ state.txType = 'income'; });
+    await page.evaluate(()=>saveTx());
+    await page.waitForTimeout(800);
+    ok('绕过切换硬记「收入」→ 挡下来，一个字都没送出去',
+       posted.filter(r=>!r.action).length===0, posted);
+    ok('也没存进本机', !(await page.evaluate(()=>data.transactions.some(t=>t.amount===55.55))));
+    await page.evaluate(()=>closeModal('modal-add-tx'));
+
+    // 切回个人账户，收入/支出切换要恢复正常，不能被公司账户那次隐藏卡住
+    await page.evaluate(()=>{
+      const a = data.accounts.find(x=>!x.isCompany);
+      data.currentAccountId = a.id; saveData();
+      showAddTx();
+    });
+    await page.waitForTimeout(300);
+    ok('个人账户下切换正常显示（没被公司账户那次隐藏卡住）',
+       (await page.evaluate(()=>document.getElementById('tx-type-tabs').style.display)) !== 'none');
+    await page.click('#type-inc');
+    ok('个人账户下能正常选「收入」', await page.evaluate(()=>state.txType==='income'));
+    await page.evaluate(()=>closeModal('modal-add-tx'));
+  }
+
   ok('全程无 JS 报错', errs.length===0, errs.slice(0,3));
   await ctx.close();
 }
