@@ -38,6 +38,21 @@ const browser = await chromium.launch(launchOpts);
   let posted = []; let butlerMode = 'ok';
   const todayStr = new Date().toISOString().slice(0,10);
   const serverBook = []; let recSeq = 0;   // 假的公司账本，用来验证删除真的删到了远端
+  // 假的备用金：跟真服务端同一个形状——事件流 + 余额现算（绝不存一个「当前余额」字段）
+  const pettyEvents = [];
+  const pettyCalls = { add: 0 };
+  const pettyRows = () => ['Seryi','Kuang','Yang'].map(person => {
+    let openIdx = -1;
+    pettyEvents.forEach((e,i)=>{ if(e.person===person && e.type==='open') openIdx = i; });
+    if (openIdx === -1) return { person, status:'unset', balance:null, topups:[], spent:0 };
+    const open = pettyEvents[openIdx];
+    const after = pettyEvents.filter((e,i)=> e.person===person && e.type!=='open' && i>openIdx);
+    const added = after.reduce((t,e)=>t+e.amountUsd, 0);
+    const r2 = n => Math.round(n*100)/100;
+    return { person, status:'ok', opened:r2(open.amountUsd), openedDate:open.date,
+             spent:0, balance:r2(open.amountUsd + added),
+             topups: after.slice().reverse().map(e=>({ date:e.date, amountUsd:r2(e.amountUsd), type:e.type })) };
+  });
   await ctx.route('**/*', async route => {
     const u = route.request().url();
     if (u.startsWith(`http://localhost:${PORT}`)) return route.continue();
@@ -60,6 +75,35 @@ const browser = await chromium.launch(launchOpts);
       const req = JSON.parse(route.request().postData() || '{}');
       // action:'ledger'（首屏那张「公司账本·今天」的卡）跟记账无关，
       // 别混进 posted——不然「送出 1 个请求」这类断言会被它污染（踩过）。
+      // 备用金的三个 action 也不进 posted（跟 ledger 同理，别污染「送出几个请求」的断言）
+      if (req.action === 'petty') {
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', scope:'owner', people: pettyRows(),
+            lastEvent: pettyEvents.length ? pettyEvents[pettyEvents.length-1] : null }) });
+      }
+      if (req.action === 'pettyAdd') {
+        pettyCalls.add++;
+        // 真服务端会拒的，假的也要拒——不然 App 送了坏数据这边照单全收，测了个寂寞
+        if (!['Seryi','Kuang','Yang'].includes(req.person) ||
+            !['open','topup','adjust'].includes(req.type) || !Number.isFinite(Number(req.amount)) ||
+            (req.type !== 'adjust' && Number(req.amount) < 0)) {
+          return route.fulfill({ status:400, contentType:'application/json', headers:h,
+            body: JSON.stringify({ status:'error', message:'假服务端拒绝了这笔备用金' }) });
+        }
+        const ev = { id:'pe'+pettyEvents.length, person:req.person, type:req.type,
+                     amountUsd:Number(req.amount), date:todayStr, at:new Date().toISOString(), note:null };
+        pettyEvents.push(ev);
+        const row = pettyRows().find(r=>r.person===req.person);
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', event:ev, balance:row }) });
+      }
+      if (req.action === 'pettyUndo') {
+        if (!pettyEvents.length) return route.fulfill({ status:400, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'error', message:'没得撤销' }) });
+        const removed = pettyEvents.pop();
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', removed, people: pettyRows() }) });
+      }
       if (req.action === 'ledger') {
         const days = new Map();
         for (const r of serverBook) {
@@ -369,7 +413,10 @@ const browser = await chromium.launch(launchOpts);
   ok('也没混进补送队列', (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]'))).length===0);
 
   console.log('\n【5c】App 里删记录会同步删掉公司账本那条');
-  page.on('dialog', d => d.accept());   // 删除确认弹窗一律确定
+  // 确认框：默认一律「确定」。要测「按取消会怎样」时把 dialogAction 改成 'dismiss'
+  // ——不能再挂第二个 once 处理器，playwright 会报「dialog already handled」。
+  let dialogAction = 'accept';
+  page.on('dialog', d => dialogAction === 'dismiss' ? d.dismiss() : d.accept());
   posted = [];
   await page.evaluate(()=>showAddTx());
   await page.waitForTimeout(500);
@@ -522,6 +569,96 @@ const browser = await chromium.launch(launchOpts);
   await page.waitForTimeout(200);
   ok('钥匙是同事的（服务端拒绝）→ 不摆这张卡', !(await page.locator('#ov-company').isVisible()));
   await page.evaluate(()=>{ ledState.error=null; });
+
+  console.log('\n【14】备用金：老板在 App 里看余额、转钱给同事');
+{
+  // 这块直接改钱，而且写进去同事那边当场就看得到。守三条：
+  // 1. 余额照抄服务端（App 一个数都不算）
+  // 2. 送出去的 person/type/amount 必须是他填的那个（人选错、金额少个小数点都是钱的事故）
+  // 3. 每一次写入都要经过确认框；取消就一个请求都不许发
+  await page.evaluate(()=>{ pettyState.data = null; pettyState.fetchedAt = 0; });
+  await page.evaluate(()=>fetchPetty({force:true}).then(()=>renderOvPetty()));
+  await page.waitForTimeout(600);
+  const card = page.locator('#ov-petty');
+  ok('还没设起点：卡在，但给的是「去设定」而不是一堆 0',
+     (await card.isVisible()) && /还没设起点/.test(await card.textContent() || ''),
+     await card.textContent());
+  ok('这时候不许出现任何金额', !/US\$/.test(await card.textContent() || ''), await card.textContent());
+
+  // 设起点：Seryi 手上还剩 320
+  await page.evaluate(()=>pettyOpenAdd('Seryi','open'));
+  await page.waitForTimeout(300);
+  await page.fill('#petty-amount', '320');
+  await page.evaluate(()=>pettySubmit());
+  await page.waitForTimeout(700);
+  ok('起点写进服务端了', pettyEvents.length===1 && pettyEvents[0].type==='open'
+     && pettyEvents[0].person==='Seryi' && pettyEvents[0].amountUsd===320, pettyEvents);
+  await page.evaluate(()=>renderOvPetty());
+  await page.waitForTimeout(200);
+  ok('卡上出现余额', /US\$320\.00/.test(await card.textContent() || ''), await card.textContent());
+
+  // 转钱：金额用逗号打（手机键盘打不出小数点那台）
+  await page.evaluate(()=>pettyOpenAdd('Seryi','topup'));
+  await page.waitForTimeout(250);
+  await page.fill('#petty-amount', '12,50');
+  await page.evaluate(()=>pettySubmit());
+  await page.waitForTimeout(700);
+  const ev = pettyEvents[pettyEvents.length-1];
+  ok('逗号当小数点，12,50 = 12.5（不是 1250）', ev.amountUsd===12.5, ev);
+  ok('人和类型都对', ev.person==='Seryi' && ev.type==='topup', ev);
+  await page.evaluate(()=>renderOvPetty());
+  await page.waitForTimeout(200);
+  ok('余额跟着变成 332.50', /US\$332\.50/.test(await card.textContent() || ''), await card.textContent());
+
+  // 确认框按取消：一个请求都不许发
+  const before = pettyEvents.length;
+  dialogAction = 'dismiss';
+  await page.evaluate(()=>pettyOpenAdd('Kuang','open'));
+  await page.waitForTimeout(250);
+  await page.fill('#petty-amount', '999');
+  await page.evaluate(()=>pettySubmit());
+  await page.waitForTimeout(600);
+  ok('取消确认后什么都没写进去', pettyEvents.length===before, pettyEvents.length);
+  dialogAction = 'accept';
+  await page.evaluate(()=>closeModal('modal-petty-add'));
+
+  // 转钱不许负数——挡在送出之前
+  await page.evaluate(()=>pettyOpenAdd('Seryi','topup'));
+  await page.waitForTimeout(250);
+  const callsBefore = pettyCalls.add;
+  await page.fill('#petty-amount', '-50');
+  await page.evaluate(()=>pettySubmit());
+  await page.waitForTimeout(500);
+  // 数请求次数而不是数事件数：假服务端也会拒负数，只看「账本没变」的话，
+  // App 那道闸拿掉了这条依然是绿的（2026-08-08 验假绿灯时抓到）。
+  ok('负数根本没送出去（不是靠服务端拒）', pettyCalls.add===callsBefore, [pettyCalls.add, callsBefore]);
+  ok('账本也确实没变', pettyEvents.length===before, pettyEvents.length);
+  ok('并且当场说明为什么',
+     /负数/.test(await page.textContent('#petty-add-note') || ''),
+     await page.textContent('#petty-add-note'));
+  await page.evaluate(()=>closeModal('modal-petty-add'));
+
+  // 撤销：把刚才那笔 12.50 撤掉，余额回到 320
+  await page.evaluate(()=>pettyUndo());
+  await page.waitForTimeout(700);
+  ok('撤销真的从服务端拿掉了', pettyEvents.length===1, pettyEvents);
+  await page.evaluate(()=>renderOvPetty());
+  await page.waitForTimeout(200);
+  ok('余额回到 320', /US\$320\.00/.test(await card.textContent() || ''), await card.textContent());
+
+  // 见底要点名（老板一眼看出该给谁转钱）
+  await page.evaluate(()=>pettyOpenAdd('Kuang','open'));
+  await page.waitForTimeout(250);
+  await page.fill('#petty-amount', '42.5');
+  await page.evaluate(()=>pettySubmit());
+  await page.waitForTimeout(700);
+  await page.evaluate(()=>renderOvPetty());
+  await page.waitForTimeout(200);
+  const txt = await card.textContent() || '';
+  ok('余额低的那位被点名', /Kuang[^]*快用完/.test(txt) || /快用完[^]*Kuang/.test(txt), txt);
+  ok('余额够的那位不被点名', !/Seryi\s*快用完/.test(txt), txt);
+  ok('无 JS 报错', errs.length===0, errs.slice(0,3));
+}
 
   ok('全程无 JS 报错', errs.length===0, errs.slice(0,3));
   await ctx.close();

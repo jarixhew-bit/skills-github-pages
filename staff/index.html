@@ -363,6 +363,24 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .viewer-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.15);
   border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:17px;cursor:pointer}
 .viewer-note{color:#ccc;font-size:12px;margin-top:14px;text-align:center;padding:0 24px}
+/* ===== 备用金 ===== */
+.petty-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px 0;border-bottom:1px solid var(--border)}
+.petty-row:last-child{border-bottom:0}
+.petty-name{font-size:15px;font-weight:600;color:var(--text)}
+.petty-bal{font-size:17px;font-weight:700;color:var(--text)}
+.petty-bal.low{color:var(--exp)}
+.petty-bal.unset{font-size:13px;font-weight:500;color:var(--sub)}
+.petty-meta{font-size:11.5px;color:var(--sub);margin-top:2px}
+/* 一整行可点：手机上不用瞄准小按钮 */
+.petty-pick{cursor:pointer}
+.petty-pick:active{background:var(--p2)}
+.petty-types{display:flex;gap:8px;margin:4px 0 14px}
+.petty-type{flex:1;padding:9px 4px;border-radius:10px;border:1px solid var(--border);
+  background:var(--card);color:var(--sub);font-size:13px;font-family:inherit;cursor:pointer}
+.petty-type.active{background:var(--p);border-color:var(--p);color:#fff;font-weight:600}
+.petty-hint{font-size:12px;color:var(--sub);line-height:1.6;margin-bottom:14px}
+.petty-undo{margin-top:16px;text-align:center;font-size:12px;color:var(--sub);line-height:1.7}
 /* ===== 公司账本（全员）===== */
 .led-card{background:var(--card);border-radius:var(--radius);padding:14px 16px;
   margin-bottom:14px;cursor:pointer}
@@ -443,7 +461,10 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .petty-warn{margin-top:10px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.18);
   font-size:13px;font-weight:600}
 .petty-list{margin-top:10px;border-top:1px solid rgba(255,255,255,.25);padding-top:8px}
-.petty-row{display:flex;justify-content:space-between;font-size:12.5px;opacity:.92;padding:2px 0}
+/* 刻意不叫 .petty-row：老板 App 的共用样式里已经有一个同名的（带下边框、
+   字号也不同），同名会被它套上去。生成出来的页面两套 CSS 住同一个文件，
+   新增类名前先在源码里搜一遍。 */
+.petty-line{display:flex;justify-content:space-between;font-size:12.5px;opacity:.92;padding:2px 0}
 #staff-summary{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .staff-sum-label{font-size:12px;color:var(--sub)}
 .staff-sum-total{font-size:26px;font-weight:700;color:var(--text);margin-top:2px}
@@ -1382,6 +1403,7 @@ function updateHeader(){
 function renderOverview(){
   renderAccCards();
   renderOvCompany();
+  renderOvPetty();
   const acc = curAcc(); if(!acc) return;
   const now = new Date();
   const txs = monthTxs(acc.id, now.getFullYear(), now.getMonth());
@@ -1784,10 +1806,16 @@ function toggleRielInput(){
  * 返回 {shown, num}：shown 是他实际看到的字（报错时要原样引给他看），
  * num 是解析结果（NaN 表示看不懂）。
  */
-function readAmountInput(){
-  const el = document.getElementById('tx-amount');
-  const shown = ((el && el.value) || '').trim();
+/**
+ * 把用户打的那串字解析成数字。**所有收金额的输入框都必须走这里**——
+ * 手机键盘打不出小数点这件事不是记账栏独有的（2026-08-07 Seryi 那台 iPhone
+ * 只有逗号），换个栏位就重写一遍解析，迟早又有一个栏位把 5,45 变成 545。
+ * 允许开头的负号，是给备用金的「调整」用的（对不上账时手工减）。
+ */
+function parseAmountText(raw){
+  const shown = String(raw == null ? '' : raw).trim();
   if(shown === '') return { shown, num: NaN };
+  const neg = /^-/.test(shown);
   let s = shown.replace(/[\s ]/g, '');
   // 同时出现逗号和点，逗号当千分位（1,234.56）；只有逗号，当小数点（5,45）
   s = (s.includes(',') && s.includes('.')) ? s.replace(/,/g, '') : s.replace(/,/g, '.');
@@ -1796,7 +1824,14 @@ function readAmountInput(){
   if(firstDot !== -1){                          // 多个小数点只认第一个
     s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, '');
   }
-  return { shown, num: s === '' || s === '.' ? NaN : parseFloat(s) };
+  if(s === '' || s === '.') return { shown, num: NaN };
+  const n = parseFloat(s);
+  return { shown, num: neg ? -n : n };
+}
+
+function readAmountInput(){
+  const el = document.getElementById('tx-amount');
+  return parseAmountText((el && el.value) || '');
 }
 
 /**
@@ -4158,7 +4193,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-07p';
+const APP_BUILD = '2026-08-08a';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -4553,6 +4588,227 @@ function renderOvCompany(){
     ${d.missingPhoto ? `<div class="led-sub led-warn">⚠️ 本月有 ${d.missingPhoto} 笔没有收据照片</div>` : ''}`;
 }
 
+/* ===================== 备用金 =====================
+ * 老板这一侧：看三个人手上还剩多少现金，并且直接在这里记「转了多少给他」。
+ *
+ * 铁律跟公司账本那张卡一样：**余额一个数都不在这边算**。服务端
+ * （butler 的 pettyCashBalances）算好送过来，这边只负责画。Telegram 和 App 是
+ * 同一本账的两个窗口，算法住两处迟早分岔——分岔的那天，钱的数会有两个版本。
+ */
+const pettyState = { data: null, last: null, loading: false, error: null, fetchedAt: 0 };
+const pettyForm = { person: null, type: 'topup' };
+
+async function fetchPetty(opts){
+  const force = !!(opts && opts.force);
+  if(!force && pettyState.data && Date.now() - pettyState.fetchedAt < 60000) return pettyState.data;
+  const token = getCompanyToken();
+  if(!token){ pettyState.error = 'no-token'; return null; }
+  pettyState.loading = true; pettyState.error = null;
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'petty' })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(res.ok && body.status === 'ok'){
+      pettyState.data = body.people || [];
+      pettyState.last = body.lastEvent || null;
+      pettyState.fetchedAt = Date.now(); pettyState.error = null;
+    } else {
+      pettyState.data = null;
+      pettyState.error = body.message || `拉不到（${res.status}）`;
+    }
+  }catch(e){
+    pettyState.data = null; pettyState.error = 'offline';
+  }
+  pettyState.loading = false;
+  return pettyState.data;
+}
+
+/** 首屏那张卡：一眼看出谁快没钱了。三个人都没设起点时整张不出现。 */
+function renderOvPetty(){
+  const el = document.getElementById('ov-petty');
+  if(!el) return;
+  const acc = curAcc();
+  if(!acc || !acc.isCompany || !getCompanyToken()){ el.style.display = 'none'; return; }
+  const rows = pettyState.data;
+  // 同事的钥匙拿不到全员（服务端只回他自己那个），也就不该摆这张「全员」卡
+  if(ledState.error === 'forbidden'){ el.style.display = 'none'; return; }
+  if(!rows){
+    // 还没拉到就先不占位置——首屏已经有一张公司账本卡在说「连不上」了
+    el.style.display = pettyState.error && pettyState.error !== 'offline' ? 'block' : 'none';
+    if(el.style.display === 'block'){
+      el.innerHTML = `<div class="led-card-top"><div class="led-card-title">💵 备用金</div></div>
+        <div class="led-sub">${pettyState.error}</div>`;
+    }
+    return;
+  }
+  const set = rows.filter(r => r.status === 'ok');
+  if(set.length === 0){
+    // 一个人都还没设起点：给一句话把它启动起来，而不是静静地什么都不显示
+    el.style.display = 'block';
+    el.innerHTML = `<div class="led-card-top">
+        <div class="led-card-title">💵 备用金</div><div class="led-card-link">去设定 →</div></div>
+      <div class="led-sub">还没设起点。点进去填每个人现在手上还剩多少，之后他们花的会自动扣。</div>`;
+    return;
+  }
+  const low = set.filter(r => r.balance < 100);
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="led-card-top">
+      <div class="led-card-title">💵 备用金</div>
+      <div class="led-card-link">转钱 / 明细 →</div>
+    </div>
+    ${set.map(r => `<div class="petty-row">
+      <div class="petty-name">${r.person}</div>
+      <div class="petty-bal ${r.balance < 100 ? 'low' : ''}">${fmt(r.balance, 'USD')}</div>
+    </div>`).join('')}
+    ${low.length ? `<div class="led-sub led-warn">⚠️ ${low.map(r=>r.person).join('、')} 快用完了</div>` : ''}`;
+}
+
+async function openPetty(){
+  showModal('modal-petty');
+  renderPetty();
+  await fetchPetty({force:true});
+  renderPetty();
+  renderOvPetty();
+}
+
+function renderPetty(){
+  const body = document.getElementById('petty-body');
+  if(!body) return;
+  const rows = pettyState.data;
+  if(!rows){
+    body.innerHTML = `<div class="led-sub">${pettyState.loading ? '正在拉取…'
+      : pettyState.error === 'offline' ? '现在连不上，等有网再看'
+      : (pettyState.error || '还没拉到数据')}</div>`;
+    return;
+  }
+  const last = pettyState.last;
+  body.innerHTML = rows.map(r => {
+    const bal = r.status === 'ok'
+      ? `<div class="petty-bal ${r.balance < 100 ? 'low' : ''}">${fmt(r.balance, 'USD')}</div>`
+      : `<div class="petty-bal unset">还没设起点 ›</div>`;
+    const meta = r.status === 'ok'
+      ? `<div class="petty-meta">起点 ${fmt(r.opened, 'USD')}（${r.openedDate}）· 已花 ${fmt(r.spent, 'USD')}${
+          r.topups.length ? ` · 之后领 ${fmt(r.topups.reduce((t,e)=>t+e.amountUsd,0), 'USD')}` : ''}</div>`
+      : `<div class="petty-meta">填一次他现在手上还剩多少，之后自动扣</div>`;
+    return `<div class="petty-row petty-pick" onclick="pettyOpenAdd('${r.person}','${
+      r.status === 'ok' ? 'topup' : 'open'}')">
+      <div><div class="petty-name">${r.person}</div>${meta}</div>${bal}</div>`;
+  }).join('')
+  + `<div class="petty-undo">${last
+      ? `上一笔：${last.person} ${last.type === 'open' ? '设起点' : last.type === 'adjust' ? '调整' : '转钱'} ${
+          fmt(last.amountUsd, 'USD')}（${last.date}）<br>
+         <span style="color:var(--exp);cursor:pointer" onclick="pettyUndo()">记错了？撤销这一笔</span>`
+      : '还没有任何记录'}</div>`;
+}
+
+function pettyOpenAdd(person, type){
+  pettyForm.person = person;
+  pettySetType(type || 'topup');
+  const el = document.getElementById('petty-amount');
+  if(el) el.value = '';
+  pettyEcho();
+  showPettyNote('');
+  showModal('modal-petty-add');
+  setTimeout(()=>{ const a = document.getElementById('petty-amount'); if(a) a.focus(); }, 120);
+}
+
+function pettySetType(type){
+  pettyForm.type = type;
+  ['topup','open','adjust'].forEach(t=>{
+    const b = document.getElementById('petty-type-' + t);
+    if(b) b.classList.toggle('active', t === type);
+  });
+  const who = pettyForm.person || '';
+  const title = document.getElementById('petty-add-title');
+  const hint = document.getElementById('petty-hint');
+  if(title) title.textContent = (type === 'open' ? '设起点' : type === 'adjust' ? '调整' : '转钱给') + ' ' + who;
+  if(hint){
+    hint.textContent = type === 'open'
+      ? `填 ${who} 现在手上实际还剩多少。设定这一刻之前录进系统的开销不再扣（那些已经算在你自己那本账里了），之后录的自动扣。`
+      : type === 'adjust'
+      ? `点现金对不上时用。可以填负数（例：-12.5 表示少了 12.5）。`
+      : `你转给 ${who} 的现金，填多少加多少。`;
+  }
+}
+
+function pettyEcho(){
+  const el = document.getElementById('petty-echo');
+  const input = document.getElementById('petty-amount');
+  if(!el || !input) return;
+  const { shown, num } = parseAmountText(input.value);
+  // 跟记账栏同一条规矩：正常打法不啰嗦，用了逗号/符号才回显认到的数
+  const plain = /^-?\d*\.?\d*$/.test(shown);
+  if(shown === '' || isNaN(num) || plain){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.textContent = `＝ ${fmt(num, 'USD')}`;
+}
+
+function showPettyNote(msg){
+  const el = document.getElementById('petty-add-note');
+  if(el) el.textContent = msg || '';
+}
+
+async function pettySubmit(){
+  const { shown, num } = parseAmountText((document.getElementById('petty-amount') || {}).value);
+  if(isNaN(num)){
+    showPettyNote(shown ? `金额看不懂：「${shown}」——请只填数字` : '请填金额');
+    return;
+  }
+  if(pettyForm.type !== 'adjust' && num < 0){
+    showPettyNote('转钱和设起点不能是负数——要减钱请选「调整」');
+    return;
+  }
+  const who = pettyForm.person;
+  const verb = pettyForm.type === 'open' ? '把起点设为' : pettyForm.type === 'adjust' ? '调整' : '转';
+  // 这是钱，而且写进去之后同事那边当场就看得到——多按一次确认，换掉「多打一个 0」
+  if(!confirm(`确定给 ${who} ${verb} ${fmt(num, 'USD')}？`)) return;
+  showPettyNote('正在保存…');
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: getCompanyToken(), action:'pettyAdd',
+                             person: who, type: pettyForm.type, amount: num })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.status !== 'ok'){
+      showPettyNote(body.message || `保存失败（${res.status}）`);
+      return;
+    }
+    closeModal('modal-petty-add');
+    toast(`已记下：${who} ${fmt(body.balance.balance, 'USD')}`);
+    await fetchPetty({force:true});
+    renderPetty();
+    renderOvPetty();
+  }catch(e){
+    showPettyNote('现在连不上，等有网再存一次（这一笔没有记进去）');
+  }
+}
+
+async function pettyUndo(){
+  const last = pettyState.last;
+  if(!last) return;
+  if(!confirm(`撤销这一笔？\n${last.person} ${
+    last.type === 'open' ? '设起点' : last.type === 'adjust' ? '调整' : '转钱'} ${
+    fmt(last.amountUsd, 'USD')}（${last.date}）`)) return;
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: getCompanyToken(), action:'pettyUndo' })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.status !== 'ok'){ toast(body.message || '撤销失败'); return; }
+    toast('已撤销');
+    await fetchPetty({force:true});
+    renderPetty();
+    renderOvPetty();
+  }catch(e){
+    toast('现在连不上，等有网再试');
+  }
+}
+
 async function openCompanyLedger(){
   showModal('modal-company-ledger');
   renderCompanyLedger();
@@ -4890,7 +5146,7 @@ function staffRenderPetty(row, stale){
     t.company && (t.company.status === 'pending' || t.company.status === 'failed'));
   const pendSum = pend.reduce((s,t) => s + (t.amount || 0), 0);
   const rows = (row.topups || []).slice(0, 5).map(e => `
-      <div class="petty-row"><span>${e.date}</span><span>+${fmt(e.amountUsd, cur)}</span></div>`).join('');
+      <div class="petty-line"><span>${e.date}</span><span>+${fmt(e.amountUsd, cur)}</span></div>`).join('');
   el.innerHTML = `
     <div class="petty-label">${tt('备用金余额','Cash on hand')}</div>
     <div class="petty-total">${fmt(row.balance, cur)}</div>
