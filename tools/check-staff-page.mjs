@@ -1183,6 +1183,57 @@ console.log('\n【18】已经报上去的那笔不给改（改了跟账本会对
   await h.ctx.close();
 }
 
+// ---------- 【19】照片认出来的金额要人核对过 ----------
+// 同事记账几乎每笔都拍收据，识别认错一位数不会报错、不会变色，只会静静进公司账本。
+// 2026-08-08 用户明确要求「不要再有数目不对」，所以这里是硬闸门，不是一句提示。
+console.log('\n【19】照片认出来的金额，没核对过不准保存');
+{
+  const h = await newPage();
+  const { page, posted, errs } = h;
+  await signIn(h);
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await page.selectOption('#tx-company-category', 'Store');
+  await page.evaluate(() => {          // 模拟识别填进去的金额
+    document.getElementById('tx-amount').value = '77.78';
+    markAmountUnconfirmed();
+  });
+  await page.waitForTimeout(200);
+  ok('出现「请跟收据核对」', await page.locator('#tx-amount-check').isVisible());
+  const n = posted.filter(r => !r.action).length;
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(800);
+  ok('没核对就存 → 挡下来，一个字都没送出去',
+     posted.filter(r => !r.action).length === n, posted.map(r => r.action || 'add'));
+  ok('也没存进本机', !(await page.evaluate(() => data.transactions.some(t => t.amount === 77.78))));
+
+  await page.click('#tx-amount-ok');
+  await page.waitForTimeout(200);
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(1000);
+  ok('核对过就存得进去，金额原样 77.78',
+     posted.filter(r => !r.action).pop()?.items?.[0]?.amount === 77.78,
+     posted.filter(r => !r.action).pop()?.items?.[0]);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+{
+  // 英文模式：提示和按钮都要是英文
+  const h = await newPage({ lang: 'en' });
+  const { page } = h;
+  await signIn(h);
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    document.getElementById('tx-amount').value = '77.78';
+    markAmountUnconfirmed();
+  });
+  await page.waitForTimeout(300);
+  const t = (await page.textContent('#tx-amount-check') || '').trim();
+  ok('英文模式下这段提示是英文', /receipt/i.test(t) && !/[一-鿿]/.test(t), t);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

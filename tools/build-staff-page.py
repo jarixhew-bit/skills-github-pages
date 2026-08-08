@@ -267,6 +267,11 @@ STAFF_LABELS = [
     ('<label class="form-label">日期</label>', "Date"),
     ('<label class="form-label">公司类别</label>', "Category"),
     ('<label class="form-label">这一餐算谁的</label>', "Who was this meal for?"),
+    ('<span style="flex:1">👀 这个数是从照片认出来的，请跟收据核对一遍</span>',
+     "👀 This amount was read from the photo — check it against the receipt"),
+    ('<button type="button" class="btn btn-sm" id="tx-amount-ok" onclick="confirmAmount()"\n'
+     '          style="flex:none;width:auto;padding:4px 12px;background:#e67e22;color:#fff">对的</button>',
+     "It&#39;s right"),
     ('<div class="type-tab active" id="whose-self" onclick="setCompanyWhose(\'self\')">自己吃的</div>',
      "I ate it"),
     ('<div class="type-tab" id="whose-boss" onclick="setCompanyWhose(\'boss\')">老板的</div>',
@@ -380,6 +385,12 @@ DYNAMIC_TEXT = [
      """      toast(tt('这笔已经报进公司账本了，改不了——请删掉重记',
                'Already filed to the company ledger — delete it and enter it again'));""",
      "已报上去的改不了"),
+    ("""    showSaveNote('这个金额是从照片认出来的——请跟收据核对一遍，再按上面那个「对的」');
+    toast('请先核对金额，看保存按钮上方那行字');""",
+     """    showSaveNote(tt('这个金额是从照片认出来的——请跟收据核对一遍，再按上面那个「对的」',
+                    'This amount was read from the photo — check it against the receipt, then tap the button'));
+    toast(tt('请先核对金额，看保存按钮上方那行字','Please check the amount — see the line above the Save button'));""",
+     "金额待核对提示"),
     ("""    toast('记录已保存');""",
      """    toast(tt('记录已保存','Saved'));""",
      "保存提示"),

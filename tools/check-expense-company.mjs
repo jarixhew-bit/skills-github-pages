@@ -854,6 +854,66 @@ const browser = await chromium.launch(launchOpts);
     butlerMode = 'ok';
   }
 
+  console.log('\n【17】照片认出来的金额，没人核对过不准保存');
+  // 2026-08-08 用户要求「不要再有数目不对」。识别把 77.76 认成 77.78 这种错不会报错、
+  // 不会变色，只会静静进账本，最后要靠人拿收据比对才发现——而账本收下了就只能删掉重记。
+  // 所以这里是一道硬闸门，不是一句提示。
+  {
+    posted = [];
+    await page.evaluate(()=>showAddTx());
+    await page.waitForTimeout(600);
+    await page.selectOption('#tx-company-category', 'Store');
+    // 模拟识别填进去的金额（真实路径是 OCR/AI 填完调 markAmountUnconfirmed）
+    await page.evaluate(()=>{
+      document.getElementById('tx-amount').value = '77.78';
+      markAmountUnconfirmed();
+    });
+    await page.waitForTimeout(200);
+    ok('金额栏旁边出现「请跟收据核对」', await page.locator('#tx-amount-check').isVisible());
+    await page.evaluate(()=>saveTx());
+    await page.waitForTimeout(900);
+    ok('没核对就保存 → 挡下来，什么都没送出去', posted.length===0, posted);
+    ok('也没存进本机（保存整个中止）',
+       !(await page.evaluate(()=>data.transactions.some(t=>t.amount===77.78))));
+    ok('保存键上方写清楚为什么按不动',
+       /核对/.test(await page.textContent('#tx-save-note') || ''),
+       await page.textContent('#tx-save-note'));
+
+    // 按「对的」＝核对过了
+    await page.click('#tx-amount-ok');
+    await page.waitForTimeout(200);
+    ok('按了「对的」提示就收起来', !(await page.locator('#tx-amount-check').isVisible()));
+    await page.evaluate(()=>saveTx());
+    await page.waitForTimeout(1500);
+    ok('核对过之后存得进去', posted.length===1, posted.length);
+    ok('金额原样送出（闸门不许改数字）', posted[0]?.items?.[0]?.amount===77.78, posted[0]?.items?.[0]);
+
+    // 自己动手改金额也算核对过——不该逼他多按一次
+    posted = [];
+    await page.evaluate(()=>showAddTx());
+    await page.waitForTimeout(500);
+    await page.selectOption('#tx-company-category', 'Store');
+    await page.evaluate(()=>{
+      document.getElementById('tx-amount').value = '77.78';
+      markAmountUnconfirmed();
+    });
+    await page.fill('#tx-amount', '77.76');      // 照着收据改成对的那个数
+    await page.waitForTimeout(200);
+    ok('自己改过金额就算核对过（提示自动收起）',
+       !(await page.locator('#tx-amount-check').isVisible()));
+    await page.evaluate(()=>saveTx());
+    await page.waitForTimeout(1500);
+    ok('改完存得进去，送的是改后的 77.76', posted[0]?.items?.[0]?.amount===77.76, posted[0]?.items?.[0]);
+
+    // 闸门不能留到下一笔（新增/编辑都要复位）
+    await page.evaluate(()=>showAddTx());
+    await page.waitForTimeout(500);
+    ok('开新记录时闸门是解开的',
+       !(await page.locator('#tx-amount-check').isVisible()) &&
+       !(await page.evaluate(()=>state.amountFromOcr)));
+    await page.evaluate(()=>closeModal('modal-add-tx'));
+  }
+
   ok('全程无 JS 报错', errs.length===0, errs.slice(0,3));
   await ctx.close();
 }
