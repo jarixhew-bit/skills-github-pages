@@ -488,8 +488,13 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
   posted.length = 0;
   await page.click('.tx-item >> nth=1');   // 第 2 条是 08-02 那笔午餐（清单按日期倒序）
   await page.waitForTimeout(500);
-  await page.fill('#tx-amount', '99.99');
-  await page.click('button[onclick="saveTx()"]');
+  // 2026-08-08 起表单会锁住（见【18】），所以这里直接绕过锁硬存一次——
+  // 要测的是「就算改得动，也绝不会再报一次账」
+  await page.evaluate(() => {
+    const el = document.getElementById('tx-amount');
+    el.disabled = false; el.value = '99.99';
+    saveTx();
+  });
   await page.waitForTimeout(1000);
   ok('编辑找回来的那笔，不会再报一次账', !posted.some(x => !x.action),
      posted.map(x => x.action || 'add'));
@@ -501,6 +506,9 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
     (JSON.parse(localStorage.getItem('staffExpense_v2') || '{}').transactions || [])
       .map(t => t.company && t.company.recordId));
   ok('编辑之后 recordId 还在（删除和去重都靠它）', ids.filter(Boolean).length === 2, ids);
+  // 被挡下来的保存不会关弹窗（保存成功才关），弹窗盖着下面的按钮点不到
+  await page.evaluate(() => closeModal('modal-add-tx'));
+  await page.waitForTimeout(300);
 
   // 按第二下不该变出重复的
   await page.click('#staff-restore-btn');
@@ -1109,6 +1117,69 @@ console.log('\n【17】买给老板的餐：同事要能标出来');
     const t = data.transactions.filter(x => x.amount === 4.4).pop(); return t?.company?.person;
   }) === 'Seryi');
   ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【18】已经报上去的那笔不给改 ----------
+// 公司账本没有「改」这个操作（butler 是追加落档，重送会金额翻倍），所以以前编辑
+// 已送出的记录只改本机、账本不动，两边静静分叉——2026-08-08 真出过事（Seryi 8/2
+// 那笔本机 11.76、账本 11.78）。现在从源头断掉：锁住表单，只留删除。
+console.log('\n【18】已经报上去的那笔不给改（改了跟账本会对不上）');
+{
+  const h = await newPage();
+  const { page, posted, errs } = h;
+  await signIn(h);
+  await addOne(page, { amount: '6.60', category: 'Store' });
+  const txId = await page.evaluate(() => {
+    const t = data.transactions.filter(x => x.company && x.company.status === 'sent').pop();
+    return t ? t.id : null;
+  });
+  ok('先记一笔并送达', !!txId, txId);
+
+  await page.evaluate(id => editTx(id), txId);
+  await page.waitForTimeout(500);
+  ok('顶上说明这笔改不了', await page.locator('#tx-sent-lock').isVisible());
+  ok('金额、类别都锁住', await page.evaluate(() =>
+    ['tx-amount', 'tx-company-category'].every(id => document.getElementById(id).disabled)));
+  ok('保存键收起来', !(await page.locator('#tx-save-btn').isVisible()));
+  ok('删除键还在（这才是更正的正路）', await page.locator('#tx-delete-wrap').isVisible());
+
+  const n = posted.length;
+  await page.evaluate(() => {
+    const el = document.getElementById('tx-amount');
+    el.disabled = false; el.value = '99.99';   // 模拟表单的锁被绕过去
+    saveTx();
+  });
+  await page.waitForTimeout(700);
+  ok('绕过表单也改不动本机那笔',
+     await page.evaluate(id => data.transactions.find(t => t.id === id)?.amount, txId) === 6.6);
+  ok('也没有再往账本送一次（重送会翻倍）', posted.length === n, [posted.length, n]);
+  await page.evaluate(() => closeModal('modal-add-tx'));
+
+  // 新记一笔时锁必须是解开的（别把上一笔的状态留着）
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  ok('新增记录时锁是解开的',
+     !(await page.locator('#tx-sent-lock').isVisible()) &&
+     !(await page.evaluate(() => document.getElementById('tx-amount').disabled)));
+  await page.evaluate(() => closeModal('modal-add-tx'));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+{
+  // 英文模式下这句提示也要是英文（同事不一定读中文）
+  const h = await newPage({ lang: 'en' });
+  const { page } = h;
+  await signIn(h);
+  await addOne(page, { amount: '2.20', category: 'Store' });
+  const id = await page.evaluate(() => {
+    const t = data.transactions.filter(x => x.company && x.company.status === 'sent').pop();
+    return t ? t.id : null;
+  });
+  await page.evaluate(i => editTx(i), id);
+  await page.waitForTimeout(500);
+  const txt = (await page.textContent('#tx-sent-lock') || '').trim();
+  ok('英文模式下提示是英文', /company ledger/i.test(txt) && !/[一-鿿]/.test(txt), txt);
   await h.ctx.close();
 }
 

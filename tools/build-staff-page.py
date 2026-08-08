@@ -272,7 +272,14 @@ STAFF_LABELS = [
     ('<div class="type-tab" id="whose-boss" onclick="setCompanyWhose(\'boss\')">老板的</div>',
      "The Boss"),
     ('<label class="form-label">车牌号</label>', "Plate number"),
-    ('<button class="btn btn-primary" onclick="saveTx()">保存</button>', "Save"),
+    ('<button class="btn btn-primary" id="tx-save-btn" onclick="saveTx()">保存</button>', "Save"),
+    # add_en 把 data-en 加在这段的第一个 '>' 上，也就是 div 的开标签末尾——所以锚点
+    # 必须从 <div 开始带上（开标签因为 style 太长断成了两行）
+    ('<div id="tx-sent-lock" style="display:none;padding:10px 12px;background:rgba(230,126,34,.12);\n'
+     '      border-radius:10px;margin-bottom:14px;font-size:12px;color:#e67e22;line-height:1.6">\n'
+     '      🔒 这笔已经报进公司账本了，改不了——要更正请按下面的「删除此记录」，然后重新记一次。',
+     "🔒 This one is already filed to the company ledger and cannot be edited. "
+     "To correct it, tap Delete below and enter it again."),
     ('<button class="btn btn-danger" onclick="deleteTx()">🗑 删除此记录</button>', "🗑 Delete this record"),
     # ⚠️ 这两个不能走 add_en：按钮里是「emoji span + 文字」两段，add_en 会把 data-en
     # 加到 **emoji 那个 span** 上（它找的是第一个 '>'），切英文时 📷 被换成 "Camera"、
@@ -369,6 +376,10 @@ DYNAMIC_TEXT = [
     ("""if(needsPlate && !plateRaw){ toast(`${categoryEn} 要填车牌号`); return; }""",
      """if(needsPlate && !plateRaw){ toast(tt(`${categoryEn} 要填车牌号`,`${categoryEn} needs a plate number`)); return; }""",
      "车牌提示"),
+    ("""      toast('这笔已经报进公司账本了，改不了——请删掉重记');""",
+     """      toast(tt('这笔已经报进公司账本了，改不了——请删掉重记',
+               'Already filed to the company ledger — delete it and enter it again'));""",
+     "已报上去的改不了"),
     ("""    toast('记录已保存');""",
      """    toast(tt('记录已保存','Saved'));""",
      "保存提示"),
