@@ -325,3 +325,26 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   酒店 WiFi），CI 是 `.github/workflows/expense-company-check.yml`，改这个页面就自动跑。
   本地跑法：`npm i playwright` → `python3 -m http.server 8899 &` →
   `CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/check-expense-company.mjs`。
+
+## 同事版 staff/（2026-08-08 补记）
+
+`staff/index.html` **不是手写的**，由 `python3 tools/build-staff-page.py` 从
+`expense-tracker.html` 生成——直接改它会在下次生成时被覆盖，且 CI 的
+`build-staff-page.py --check` 会红。要改同事版就改生成脚本（HTML 注入在 `build()` 里、
+CSS 在 `STAFF_CSS`、脚本在 `STAFF_BOOTSTRAP`），生成后连同 `staff/index.html` 一起提交。
+每处注入都锚定「全文只出现一次」的字符串，锚点被源码改动碰掉时脚本抛 `BuildError`，
+不会静静生成半份页面。
+
+同目录还有三个**手写**文件（不由脚本生成）：`staff-sw.js`（离线用的 SW）、
+`manifest.webmanifest`、`install.html`（安装说明书，中英双语，四步内联 SVG 图解）。
+
+**「装到主屏幕」这件事是数据安全问题，不是体验问题**：iOS 会自行清掉 Safari 里的
+站点数据，没装的人记了几笔、隔天打开就全空（2026-08-07 Seryi 实机）。所以
+明细页顶上有 `#staff-install-tip` 提示条，`staffShowInstallTip()` 用
+`navigator.standalone`（iOS 唯一认的信号）或 `display-mode: standalone` 判断，
+没装才显示、装好自动消失，点它去 `install.html`。改动这块要保证「装好的人看不到」——
+天天被念的提示等于没有提示。
+
+自检：`node tools/check-staff-page.mjs`（真浏览器 173 项，含【14】提示条与【15】说明书），
+CI 是 `.github/workflows/staff-page-check.yml`。**改 `expense-tracker.html` 也要跑这套**
+（同事版从它生成），并且 `tools/` 底下两份浏览器自检要一起跑，只跑一份另一份会在 CI 上红。

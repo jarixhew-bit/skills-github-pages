@@ -784,6 +784,102 @@ console.log('\n【13】老板 App：公司账本卡只在公司账户那边，�
   await h.ctx.close();
 }
 
+// ---------- 【14】没装到主屏幕就提醒（装好了就闭嘴）----------
+// 这条守的不是好不好看：iOS 会自行清掉 Safari 里的站点数据，没装到主屏幕的人
+// 记了几笔、隔天打开就全空（2026-08-07 Seryi 实机）。提示条不出现 = 没人会去装。
+console.log('\n【14】还在浏览器里：顶上要有「装到主屏幕」的提示，装好了就不再念');
+{
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  const tip = page.locator('#staff-install-tip');
+  ok('在浏览器里打开：提示条出现', await tip.isVisible());
+  const txt = (await tip.textContent() || '').replace(/\s+/g, ' ');
+  ok('说清楚后果，不是只说「建议安装」', txt.includes('记录可能会不见'), txt);
+  ok('链接指向说明书', (await tip.getAttribute('href')) === 'install.html');
+  // 链接写对了但文件没上线 = 点下去 404。真的抓一次。
+  const r = await page.request.get(`http://localhost:${PORT}/staff/install.html`);
+  ok('说明书打得开（不是 404）', r.status() === 200, r.status());
+  // 只读英文的同事也要看得懂
+  await page.evaluate(() => staffToggleLang());
+  await page.waitForTimeout(300);
+  ok('切英文后提示条也变英文', /Home Screen/.test(await tip.textContent() || ''),
+     await tip.textContent());
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+{
+  // iOS 装好之后走的是 navigator.standalone（Safari 至今不认 display-mode）
+  const h = await newPage();
+  await h.ctx.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'standalone', { value:true, configurable:true });
+  });
+  await signIn(h);
+  ok('iOS 装好后（navigator.standalone）：提示条不出现',
+     !(await h.page.locator('#staff-install-tip').isVisible()));
+  ok('无 JS 报错', h.errs.length === 0, h.errs);
+  await h.ctx.close();
+}
+{
+  // Android／桌面装成 App 后走的是 display-mode: standalone
+  const h = await newPage();
+  await h.ctx.addInitScript(() => {
+    const real = window.matchMedia.bind(window);
+    window.matchMedia = q => q.includes('display-mode: standalone')
+      ? { matches:true, media:q, onchange:null, addEventListener(){}, removeEventListener(){},
+          addListener(){}, removeListener(){}, dispatchEvent(){ return false; } }
+      : real(q);
+  });
+  await signIn(h);
+  ok('装成 App 后（display-mode: standalone）：提示条不出现',
+     !(await h.page.locator('#staff-install-tip').isVisible()));
+  ok('无 JS 报错', h.errs.length === 0, h.errs);
+  await h.ctx.close();
+}
+
+// ---------- 【15】说明书本身 ----------
+// 提示条点过去的落地页。它是同事唯一的操作指引，坏了没人会回报——所以在这里守。
+console.log('\n【15】安装说明书 staff/install.html');
+{
+  const h = await newPage();
+  const { page, errs } = h;
+  await page.goto(`http://localhost:${PORT}/staff/install.html`, { waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(300);
+  ok('四个步骤都在', (await page.locator('.step').count()) === 4,
+     await page.locator('.step').count());
+  ok('每一步都配图', (await page.locator('.step .pic svg').count()) === 4,
+     await page.locator('.step .pic svg').count());
+  // 图是画出来的，读屏软件只能靠 <title> 念出内容
+  ok('每张图都有文字说明（读屏用）', (await page.locator('.step .pic svg > title').count()) === 4,
+     await page.locator('.step .pic svg > title').count());
+  const zh = (await page.textContent('body') || '').replace(/\s+/g, ' ');
+  ok('中文版讲了关键那三件事：Safari、分享、加到主屏幕',
+     zh.includes('Safari') && zh.includes('分享') && zh.includes('加到主屏幕'), zh.slice(0, 200));
+  ok('说明书里带着报账页网址', (await page.locator('a[href$="/staff/"]').count()) >= 1);
+
+  await page.click('#lang-btn');
+  await page.waitForTimeout(300);
+  const en = (await page.textContent('body') || '').replace(/\s+/g, ' ');
+  ok('切英文后正文真的变英文', en.includes('Add to Home Screen') && !en.includes('加到主屏幕'),
+     en.slice(0, 200));
+  ok('语言选择用全站统一的 key',
+     (await page.evaluate(() => localStorage.getItem('siteLangUser'))) === 'en');
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+{
+  // 已经装好的人如果点进这一页，要直接告诉他不用看了
+  const h = await newPage();
+  await h.ctx.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'standalone', { value:true, configurable:true });
+  });
+  await h.page.goto(`http://localhost:${PORT}/staff/install.html`, { waitUntil:'domcontentloaded' });
+  await h.page.waitForTimeout(300);
+  ok('从已装好的图标里打开：顶上说「你已经装好了」',
+     await h.page.locator('#ok-box.on').isVisible());
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {
