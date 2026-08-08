@@ -2214,6 +2214,12 @@ function saveTxInner(){
   if(state.pendingAttachmentId) tx.attachmentId = state.pendingAttachmentId;
 
   if(acc.isCompany){
+    // 第二道防线：公司账本没有「收入」这个概念（见 syncCompanyTxFields 里的注释），
+    // UI 已经把切换藏起来了，这里再挡一次防绕过（跟今天其他几道闸门同一个思路）。
+    if(state.txType !== 'expense'){
+      toast('公司账户只能记支出——收入请换到个人账户记');
+      return;
+    }
     const categoryEn = document.getElementById('tx-company-category').value;
     // 身份由钥匙决定（服务端也以钥匙为准、忽略这个字段），页面上没得选也就选不错
     const reporter = staffIdentity ? staffIdentity.reporter : 'Boss';
@@ -4322,7 +4328,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-08f';
+const APP_BUILD = '2026-08-08g';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -4436,6 +4442,15 @@ function syncCompanyTxFields(tx){
   // 自动决定（COMPANY_CAT_TO_APP），两个都摆出来用户会以为要选两次。
   const catWrap = document.getElementById('tx-cat-wrap');
   if(catWrap) catWrap.style.display = isCompany ? 'none' : '';
+  // 公司账户不认「收入」——公司账本（butler 的 Boss_Expenses.xlsx）从数据结构到
+  // Excel 表格整个是纯支出报表，没有收入这个概念。选了「收入」照样会被送进去，
+  // 但会被当成一笔支出记进 Excel（金额、类别、算谁头上都跟支出走同一套逻辑），
+  // 等于把一笔收入误记成支出——月底按「三人余额+开销+待claim=1万」对总数会对不上，
+  // 且没有任何报错或提示（2026-08-08 用户问「记收入会不会出现在 Excel 里」时查出）。
+  // 所以整个收入/支出切换在公司账户下直接藏起来，只留支出，从根上不给这个选项。
+  const typeTabs = document.getElementById('tx-type-tabs');
+  if(typeTabs) typeTabs.style.display = isCompany ? 'none' : '';
+  if(isCompany && state.txType !== 'expense') setTxType('expense');
   // 公司账户下描述会送给公司看，标签要说明白
   const descLabel = document.getElementById('tx-desc-label');
   const descNote = document.getElementById('tx-desc-note');

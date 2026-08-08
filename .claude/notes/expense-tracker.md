@@ -419,3 +419,22 @@ CSS 在 `STAFF_CSS`、脚本在 `STAFF_BOOTSTRAP`），生成后连同 `staff/in
 自检：`node tools/check-staff-page.mjs`（真浏览器 173 项，含【14】提示条与【15】说明书），
 CI 是 `.github/workflows/staff-page-check.yml`。**改 `expense-tracker.html` 也要跑这套**
 （同事版从它生成），并且 `tools/` 底下两份浏览器自检要一起跑，只跑一份另一份会在 CI 上红。
+
+## 公司账户没有「收入」（2026-08-08）
+
+用户问「用老板 App 记收入会不会出现在 Excel 里」——查代码发现会，而且是**静静记错**：
+butler 的公司账本（`Boss_Expenses.xlsx`）从数据结构到 Excel 整个是纯支出报表
+（`companyExpenseAddFromApp` 只有 `amountUsd`/`person`/`categoryEn`，没有收入这个
+字段），选「收入」保存会跟支出走同一条路送进 `buildCompanyPayload`，被当成一笔
+支出记进账本——钱记错方向，且没有任何报错或提示。这条本来就没人会故意去踩，
+但一旦踩到，是用户做月度对账（三人余额+开销+待claim=固定总数）时才会发现的那种
+无声错误，损失可以是任意大小。
+
+修法：`<div class="type-tabs" id="tx-type-tabs">`（收入/支出切换）源码里直接带 id
+（不再由 `build-staff-page.py` 注入——同事版本来就不需要，源码有了它会跟已存在的
+id 冲突报 `BuildError`，第 3 步那条注入已删掉）。`syncCompanyTxFields()` 里公司账户
+下整块隐藏这个切换、强制 `state.txType='expense'`；`saveTxInner()` 顶上再挡一次防
+绕过（跟今天其它几道闸门同一个思路：UI 隐藏 + 逻辑闸门两道防线）。
+
+自检：`check-expense-company.mjs`【19】，用「把两道闸门都拿掉」验证过——真的会看到
+一笔 `amount:55.55` 的"收入"被 POST 进公司账本 payload，不是假设。
