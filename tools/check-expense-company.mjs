@@ -914,6 +914,46 @@ const browser = await chromium.launch(launchOpts);
     await page.evaluate(()=>closeModal('modal-add-tx'));
   }
 
+  console.log('\n【18】双击「保存」不能生出两条一样的记录');
+  // 2026-08-08 用户实机遇到：用主记账 App 记账会出现两条一样的。saveTxInner() 全程
+  // 同步，双击时第一下点击的事件处理函数会完整跑完（含把按钮重新变回可点）后，
+  // 浏览器才轮到派发第二下点击——这就是「两条一样的」的成因，跟网络快慢无关。
+  //
+  // 测试手法：用 DOM 原生 el.click()（不是 page.click()，Playwright 的高阶 click 会
+  // 帮你等按钮变回可点再点，那样永远测不出「按钮当下是 disabled」这件事）连打两下，
+  // 这才是真实双击的样子：disabled 的按钮浏览器根本不会把 click 派给它，
+  // 第二下 onclick 都不会被调用——这行为不看 JS 代码是测不出来的，只能真浏览器测。
+  {
+    posted = [];
+    await page.evaluate(()=>showAddTx());
+    await page.waitForTimeout(600);
+    await page.fill('#tx-amount', '4.44');
+    await page.selectOption('#tx-company-category', 'Store');
+    await page.evaluate(()=>{
+      const btn = document.getElementById('tx-save-btn');
+      btn.click(); btn.click();   // 同一拍连打两下，模拟真实双击
+    });
+    await page.waitForTimeout(1500);
+    const matches = await page.evaluate(()=>data.transactions.filter(t=>t.amount===4.44));
+    ok('本机只留一笔，不是两笔', matches.length===1, matches.length);
+    ok('公司账本也只收到一次（不会金额翻倍）',
+       posted.filter(r=>!r.action && r.items?.[0]?.amount===4.44).length===1,
+       posted.filter(r=>!r.action).map(r=>r.items?.[0]?.amount));
+
+    // 按钮短暂锁住之后要能解开——不是永久锁死，改完东西还得点得动
+    await page.waitForTimeout(500);
+    ok('短暂延迟之后按钮解锁了',
+       !(await page.evaluate(()=>document.getElementById('tx-save-btn').disabled)));
+
+    // 开新记录时强制解锁（保底，理由见 showAddTx 里的注释）
+    await page.evaluate(()=>{ document.getElementById('tx-save-btn').disabled = true; });
+    await page.evaluate(()=>showAddTx());
+    await page.waitForTimeout(400);
+    ok('新开一笔时保存键保底解锁',
+       !(await page.evaluate(()=>document.getElementById('tx-save-btn').disabled)));
+    await page.evaluate(()=>closeModal('modal-add-tx'));
+  }
+
   ok('全程无 JS 报错', errs.length===0, errs.slice(0,3));
   await ctx.close();
 }

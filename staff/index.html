@@ -1954,6 +1954,10 @@ function showAddTx(){
   state.amountFromOcr = false; confirmAmount();
   onAmountInput();
   syncCompanyTxFields(null);
+  // 保底：万一上一笔保存后 400ms 延迟解锁还没到就又开了新记录，这里强制解开，
+  // 不然明明是新的一笔却按不动保存键（见 saveTx() 顶上的注释）
+  const saveBtnA = document.getElementById('tx-save-btn');
+  if(saveBtnA) saveBtnA.disabled = false;
   showModal('modal-add-tx');
   setTimeout(()=>document.getElementById('tx-amount').focus(), 300);
 }
@@ -1983,6 +1987,10 @@ function editTx(id){
   renderCatGrid();
   loadAttachStateForTx(t);
   syncCompanyTxFields(t);
+  // 保底：理由同 showAddTx()。已送出的那笔 syncCompanyTxFields 会再次隐藏保存键，
+  // 这里的 disabled=false 不影响那个（一个管 display，一个管 disabled，互不冲突）
+  const saveBtnE = document.getElementById('tx-save-btn');
+  if(saveBtnE) saveBtnE.disabled = false;
   showModal('modal-add-tx');
 }
 
@@ -2117,7 +2125,28 @@ function showSaveNote(msg, kind){
  * 用户手上一点线索都没有（2026-08-07 同事回报「点了完全没反应」，查了一圈没有任何痕迹）。
  * 所以这里包一层：出错就把原文钉在按钮上方，留在屏幕上不消失。
  */
+/**
+ * 防手机双击：快速点两下「保存」，两次点击是两个各自独立、各自跑到底的事件——
+ * JS 单线程、saveTxInner() 全程同步（唯一的异步部分 submitCompanyTx().then() 是
+ * fire-and-forget，不挡第二次点击），所以第一下点击的处理函数会完整跑完、把按钮
+ * 重新变回可点，然后浏览器才轮到处理第二下点击——如果解锁是「跟第一下同一个执行
+ * 栈里立刻做」，等第二下真的被处理时按钮早就又能点了，等于没挡。这正是
+ * 2026-08-08 用户实机遇到「两条一样的」的成因。
+ *
+ * 修法：disabled 必须**跨过**第一次点击的整个同步执行、留到浏览器处理第二次点击
+ * 的那一刻还是 true——disabled 的按钮，浏览器根本不会把 click 事件派给它，第二下
+ * 直接被吞掉，onclick 都不会被调用。所以解锁不能在 saveTxInner() 跑完的同一拍做，
+ * 要用 setTimeout 延后一点。延后多久：比一次双击两下的间隔（通常 <300ms）长，
+ * 用户想改完东西再存一次也不会等到不耐烦，两头都够用。
+ *
+ * 顶上的 `if(btn.disabled) return` 是第二道防线——防的是不经过按钮 click 事件的
+ * 调用方式（例如脚本、测试直接呼叫 saveTx()），那种调用不会被浏览器的原生
+ * disabled 拦截，得自己查一遍。
+ */
 function saveTx(){
+  const btn = document.getElementById('tx-save-btn');
+  if(btn && btn.disabled) return;
+  if(btn) btn.disabled = true;
   showSaveNote('');
   try{
     saveTxInner();
@@ -2126,6 +2155,8 @@ function saveTx(){
     console.error('saveTx 出错:', e);
     showSaveNote(`保存出错：${msg}　（版本 ${APP_BUILD}）请截图这行发给管理员`);
     toast('保存出错，详情见保存按钮上方那行字');
+  } finally {
+    setTimeout(()=>{ if(btn) btn.disabled = false; }, 400);
   }
 }
 
@@ -4291,7 +4322,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-08e';
+const APP_BUILD = '2026-08-08f';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
