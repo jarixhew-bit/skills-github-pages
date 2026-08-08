@@ -137,7 +137,16 @@ def build(src: str) -> str:
 
     # ---------- 4) 明细页上方的合计 + 下方的换钥匙 ----------
     s = replace_once(s, '<div class="tab" id="tab-transactions">',
-                     '<div class="tab" id="tab-transactions">\n  <div id="staff-summary"></div>',
+                     '<div class="tab" id="tab-transactions">\n'
+                     '  <a id="staff-install-tip" href="install.html">\n'
+                     '    <b data-en="Not on your Home Screen yet — records can vanish">'
+                     '还没装到主屏幕——记录可能会不见</b>\n'
+                     '    <span data-en="A page opened in Safari gets its data cleared by iPhone on its own. '
+                     'Once it sits on your Home Screen it is a real app and iOS leaves it alone.">'
+                     '用 Safari 直接开的网页，iPhone 会自己清掉记录。装到主屏幕就是独立 App，系统不会动它。</span>\n'
+                     '    <span class="go" data-en="→ How to install (1 min)">→ 怎么装（一分钟）</span>\n'
+                     '  </a>\n'
+                     '  <div id="staff-summary"></div>',
                      "明细页（放本月合计）")
     s = replace_once(s, '<div id="tx-list" class="tx-list"></div>\n</div>',
                      '<div id="tx-list" class="tx-list"></div>\n'
@@ -343,6 +352,15 @@ STAFF_CSS = """
 #staff-restore-note{margin:8px 0 16px;font-size:11px;color:var(--sub);line-height:1.6}
 /* 版本号：同事回报问题时第一句要问的就是「你手上是哪一版」 */
 #staff-build-note{margin-top:8px;font-size:11px;color:var(--sub)}
+/* 「还在浏览器里」的提示条：只在**没装到主屏幕**时出现，装好当天就自己消失。
+   写得像广告没人点，所以话讲直接：不装记录会不见（2026-08-07 Seryi 实机踩过，
+   iOS 会自行清掉 Safari 里的站点数据）。做成一整条可点，手机上不用瞄准小链接。 */
+#staff-install-tip{display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;
+  padding:12px 14px;margin-bottom:12px;color:#7c2d12;font-size:13.5px;line-height:1.55;
+  text-decoration:none;cursor:pointer}
+#staff-install-tip.on{display:block}
+#staff-install-tip b{display:block;color:#9a3412;font-size:14.5px;margin-bottom:2px}
+#staff-install-tip .go{display:inline-block;margin-top:6px;color:#9a3412;font-weight:700}
 #staff-summary{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .staff-sum-label{font-size:12px;color:var(--sub)}
 .staff-sum-total{font-size:26px;font-weight:700;color:var(--text);margin-top:2px}
@@ -537,6 +555,7 @@ function staffStart(){
   refreshCompanyCategories();
   flushCompanyQueue();
   staffApplyLang();
+  staffShowInstallTip();
   // 打开时清单是空的，就自动从公司账本把这个月自己报过的拉回来。
   //
   // 为什么要自动（2026-08-07 Seryi 实机）：他记了好几笔，公司账本三次都收到了，
@@ -546,6 +565,29 @@ function staffStart(){
   // 与其教他记得去按「找回本月记录」，不如空的时候自己去拉一次。
   // 安全：拉回来的一律标已送出、按 recordId 去重，多拉几次不会重复记账。
   if((data.transactions || []).length === 0) staffRestore({ silent:true });
+}
+
+/** 还在浏览器里（没装到主屏幕）就把安装提示条打开。
+ *
+ * 为什么要有这条：iOS 会自行清掉 Safari 里的站点数据，同事记了几笔、隔天打开就
+ * 全空（2026-08-07 Seryi 实机）。装到主屏幕之后是独立的 App 沙盒，系统不会去动它，
+ * 所以「装没装」直接决定他的记录会不会消失，不是好不好看的问题。
+ *
+ * 判别用两个信号：iOS Safari 只认 navigator.standalone；Android/桌面浏览器认
+ * display-mode: standalone。任一为真就当已装好，提示条不出现——装好的人不该
+ * 每天被念一次。两个都读不到（很旧的浏览器）时按「没装」处理：多提醒一次的
+ * 代价，远小于漏提醒导致记录丢失。
+ */
+function staffShowInstallTip(){
+  const el = document.getElementById('staff-install-tip');
+  if(!el) return;
+  let installed = false;
+  try{
+    installed = window.navigator.standalone === true ||
+      (typeof window.matchMedia === 'function' &&
+       window.matchMedia('(display-mode: standalone)').matches);
+  }catch(e){}
+  el.classList.toggle('on', !installed);
 }
 
 async function initStaffPage(){
