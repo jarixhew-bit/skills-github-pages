@@ -266,6 +266,11 @@ STAFF_LABELS = [
     ('<label class="form-label">单据照片（选填）</label>', "Receipt photo (optional)"),
     ('<label class="form-label">日期</label>', "Date"),
     ('<label class="form-label">公司类别</label>', "Category"),
+    ('<label class="form-label">这一餐算谁的</label>', "Who was this meal for?"),
+    ('<div class="type-tab active" id="whose-self" onclick="setCompanyWhose(\'self\')">自己吃的</div>',
+     "I ate it"),
+    ('<div class="type-tab" id="whose-boss" onclick="setCompanyWhose(\'boss\')">老板的</div>',
+     "The Boss"),
     ('<label class="form-label">车牌号</label>', "Plate number"),
     ('<button class="btn btn-primary" onclick="saveTx()">保存</button>', "Save"),
     ('<button class="btn btn-danger" onclick="deleteTx()">🗑 删除此记录</button>', "🗑 Delete this record"),
@@ -299,6 +304,14 @@ LABEL_REWRITES = [
      '车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。'
      '这类开销一律算在 Boss 头上（进左边那张表）。</span>',
      "车牌说明"),
+    # 「这一餐算谁的」的说明：老板 App 那边讲的是「报账人」（他能替别人记账），
+    # 同事版没有那个下拉、报账人永远是他自己，照抄过来会看不懂，所以整段换成他的口径。
+    ('          买给老板的餐选「老板的」，这笔算公司的，进 Excel 左边 Boss 表；\n'
+     '          选「自己吃的」按原来的规则算——报账人自己的正餐才进右边那张表。',
+     '          <span data-en="Buying a meal for the Boss? Pick &quot;The Boss&quot; — it goes on the '
+     'company\'s side. Your own meal stays on yours.">'
+     '买给老板吃的那餐选「老板的」，算公司的账；你自己吃的选「自己吃的」，算你的。</span>',
+     "这一餐算谁的 说明"),
     # placeholder 不是 textContent，staffApplyLang 另外用 data-en-ph 处理
     ('placeholder="例：NS6868"', 'placeholder="例：NS6868" data-en-ph="e.g. NS6868"', "车牌提示字"),
 ]
@@ -308,6 +321,9 @@ DYNAMIC_TEXT = [
     ("""if(t.company.refTag) parts.push(`📄${t.company.refTag}号`);""",
      """if(t.company.refTag) parts.push(tt(`📄${t.company.refTag}号`, `📄 No.${t.company.refTag}`));""",
      "单号标注"),
+    ("""  if(t.company.forBoss) parts.push('👔老板的');""",
+     """  if(t.company.forBoss) parts.push(tt('👔老板的','👔 for the Boss'));""",
+     "老板的餐标注"),
     ("""  if(st === 'pending') parts.push('⏳待送出');
   else if(st === 'failed') parts.push('⚠️未入账');""",
      """  if(st === 'pending') parts.push(tt('⏳待送出','⏳ not sent yet'));
