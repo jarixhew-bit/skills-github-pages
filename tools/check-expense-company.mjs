@@ -86,7 +86,7 @@ const browser = await chromium.launch(launchOpts);
         // 真服务端会拒的，假的也要拒——不然 App 送了坏数据这边照单全收，测了个寂寞
         if (!['Seryi','Kuang','Yang'].includes(req.person) ||
             !['open','topup','adjust'].includes(req.type) || !Number.isFinite(Number(req.amount)) ||
-            (req.type !== 'adjust' && Number(req.amount) < 0)) {
+            (req.type === 'topup' && Number(req.amount) < 0)) {
           return route.fulfill({ status:400, contentType:'application/json', headers:h,
             body: JSON.stringify({ status:'error', message:'假服务端拒绝了这笔备用金' }) });
         }
@@ -637,6 +637,37 @@ const browser = await chromium.launch(launchOpts);
      /负数/.test(await page.textContent('#petty-add-note') || ''),
      await page.textContent('#petty-add-note'));
   await page.evaluate(()=>closeModal('modal-petty-add'));
+
+  // 负数起点：上个月他垫了钱，结转过来是负的（2026-08-08 用户实际遇到的场景——
+  // 一开始把负起点也挡掉了，他填 -52.25 存不进去，卡片也就不出现）
+  const negBefore = pettyCalls.add;
+  await page.evaluate(()=>pettyOpenAdd('Yang','open'));
+  await page.waitForTimeout(250);
+  await page.fill('#petty-amount', '-52.25');
+  await page.evaluate(()=>pettySubmit());
+  await page.waitForTimeout(700);
+  ok('负数起点送得出去（不再被前端挡）', pettyCalls.add===negBefore+1, [pettyCalls.add, negBefore]);
+  const negEv = pettyEvents[pettyEvents.length-1];
+  ok('存进去的就是 -52.25', negEv && negEv.person==='Yang' && negEv.amountUsd===-52.25, negEv);
+  await page.evaluate(()=>renderOvPetty());
+  await page.waitForTimeout(250);
+  const negTxt = await card.textContent() || '';
+  ok('卡片出得来（不是空白）', await card.isVisible());
+  ok('负余额说的是「垫了」不是「快用完了」',
+     /Yang 垫了 US\$52\.25/.test(negTxt), negTxt);
+  ok('垫的数写成正的，不让人对着两个负号读', !/垫了 US\$-/.test(negTxt), negTxt);
+  // 「转钱」仍然不许负数——那是往回收钱，该走「调整」
+  const t2 = pettyCalls.add;
+  await page.evaluate(()=>pettyOpenAdd('Yang','topup'));
+  await page.waitForTimeout(250);
+  await page.fill('#petty-amount', '-10');
+  await page.evaluate(()=>pettySubmit());
+  await page.waitForTimeout(500);
+  ok('转钱依旧挡负数，且没送出去', pettyCalls.add===t2, [pettyCalls.add, t2]);
+  await page.evaluate(()=>closeModal('modal-petty-add'));
+  // 撤销掉这两笔实验，别影响后面的断言
+  await page.evaluate(()=>pettyUndo());
+  await page.waitForTimeout(600);
 
   // 撤销：把刚才那笔 12.50 撤掉，余额回到 320
   await page.evaluate(()=>pettyUndo());

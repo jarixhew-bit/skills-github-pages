@@ -4415,7 +4415,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-08a';
+const APP_BUILD = '2026-08-08b';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -4874,7 +4874,9 @@ function renderOvPetty(){
       <div class="led-sub">还没设起点。点进去填每个人现在手上还剩多少，之后他们花的会自动扣。</div>`;
     return;
   }
-  const low = set.filter(r => r.balance < 100);
+  // 负数 = 他自己先垫了钱，公司欠他；跟「快没钱了」是两回事，混在一起写没人分得清
+  const owed = set.filter(r => r.balance < 0);
+  const low = set.filter(r => r.balance >= 0 && r.balance < 100);
   el.style.display = 'block';
   el.innerHTML = `
     <div class="led-card-top">
@@ -4885,6 +4887,8 @@ function renderOvPetty(){
       <div class="petty-name">${r.person}</div>
       <div class="petty-bal ${r.balance < 100 ? 'low' : ''}">${fmt(r.balance, 'USD')}</div>
     </div>`).join('')}
+    ${owed.length ? `<div class="led-sub led-warn">⚠️ ${owed.map(r=>
+        `${r.person} 垫了 ${fmt(-r.balance, 'USD')}`).join('、')}</div>` : ''}
     ${low.length ? `<div class="led-sub led-warn">⚠️ ${low.map(r=>r.person).join('、')} 快用完了</div>` : ''}`;
 }
 
@@ -4949,7 +4953,7 @@ function pettySetType(type){
   if(title) title.textContent = (type === 'open' ? '设起点' : type === 'adjust' ? '调整' : '转钱给') + ' ' + who;
   if(hint){
     hint.textContent = type === 'open'
-      ? `填 ${who} 现在手上实际还剩多少。设定这一刻之前录进系统的开销不再扣（那些已经算在你自己那本账里了），之后录的自动扣。`
+      ? `填 ${who} 现在手上实际还剩多少。他垫了钱（公司欠他）就填负数，例：-52.25。设定这一刻之前录进系统的开销不再扣（那些已经算在你自己那本账里了），之后录的自动扣。`
       : type === 'adjust'
       ? `点现金对不上时用。可以填负数（例：-12.5 表示少了 12.5）。`
       : `你转给 ${who} 的现金，填多少加多少。`;
@@ -4979,8 +4983,11 @@ async function pettySubmit(){
     showPettyNote(shown ? `金额看不懂：「${shown}」——请只填数字` : '请填金额');
     return;
   }
-  if(pettyForm.type !== 'adjust' && num < 0){
-    showPettyNote('转钱和设起点不能是负数——要减钱请选「调整」');
+  // 只有「转钱」不许负数：转给他的现金不可能是负的。
+  // **起点可以是负数**——上个月他垫了钱、结转过来就是负的（公司欠他）。
+  // 2026-08-08 用户实际遇到：填 -52.25 被挡下来，起点没设成，卡片也就不出现。
+  if(pettyForm.type === 'topup' && num < 0){
+    showPettyNote('转钱不能是负数——要往回收钱请选「调整」；他垫了钱请用「设起点」填负数');
     return;
   }
   const who = pettyForm.person;

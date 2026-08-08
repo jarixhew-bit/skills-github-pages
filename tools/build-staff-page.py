@@ -681,8 +681,12 @@ function staffRenderPetty(row, stale){
   if(!el) return;
   if(!row || row.status !== 'ok'){ el.classList.remove('on'); el.innerHTML = ''; return; }
   const cur = 'USD';
-  const low = row.balance < 100;
-  el.classList.toggle('low', low);
+  // 负数 = 他自己先垫了钱，公司欠他。跟「快用完了」是两回事：一个是该去要钱，
+  // 一个是钱已经从他口袋里出去了。对着「公司欠你 52 块」写「快用完了记得跟老板要」，
+  // 他会以为自己还有钱。（2026-08-08 用户指出他们上个月就是负的。）
+  const owed = row.balance < 0;
+  const low = !owed && row.balance < 100;
+  el.classList.toggle('low', low || owed);
   // 本机还没送出去的那几笔：钱已经花掉了，但服务端还不知道，所以余额里没扣。
   // 不在这边替它减——只把事实写出来，让他自己心里有数（钱的数不许 App 自己算）。
   const pend = (data.transactions || []).filter(t =>
@@ -691,12 +695,15 @@ function staffRenderPetty(row, stale){
   const rows = (row.topups || []).slice(0, 5).map(e => `
       <div class="petty-line"><span>${e.date}</span><span>+${fmt(e.amountUsd, cur)}</span></div>`).join('');
   el.innerHTML = `
-    <div class="petty-label">${tt('备用金余额','Cash on hand')}</div>
-    <div class="petty-total">${fmt(row.balance, cur)}</div>
+    <div class="petty-label">${owed ? tt('公司欠你','The company owes you') : tt('备用金余额','Cash on hand')}</div>
+    <div class="petty-total">${fmt(owed ? -row.balance : row.balance, cur)}</div>
     <div class="petty-sub">${tt(
         `起点 ${fmt(row.opened, cur)}（${row.openedDate}）· 已花 ${fmt(row.spent, cur)}`,
         `Started at ${fmt(row.opened, cur)} (${row.openedDate}) · spent ${fmt(row.spent, cur)}`)}${
       stale ? tt('　·　离线显示，可能不是最新','　·　offline, may be out of date') : ''}</div>
+    ${owed ? `<div class="petty-warn">${tt(
+        `⚠️ 你先垫了 ${fmt(-row.balance, cur)}，公司还没还给你`,
+        `⚠️ You are ${fmt(-row.balance, cur)} out of pocket — the company owes you`)}</div>` : ''}
     ${low ? `<div class="petty-warn">${tt('⚠️ 快用完了，记得跟老板要','⚠️ Running low — ask the boss for a top-up')}</div>` : ''}
     ${pend.length ? `<div class="petty-warn">${tt(
         `还有 ${pend.length} 笔 ${fmt(pendSum, cur)} 没送出去，这个数里还没扣`,

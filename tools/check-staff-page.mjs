@@ -939,6 +939,18 @@ console.log('\n【16】备用金卡：数字照抄服务端，没设起点就不
   ok('余额够时不喊「快用完」', !txt.includes('快用完'), txt);
   ok('这个数不是 App 自己算的（500-37.72=462.28 不该出现）', !txt.includes('462.28'), txt);
 
+  // 负余额：他自己先垫了钱，公司欠他。这跟「快用完了」是两回事——
+  // 对着「公司欠你 52 块」写「快用完了记得跟老板要」，他会以为自己还有钱。
+  // （2026-08-08 用户指出他们上个月就是负的，一开始连负起点都存不进去。）
+  h.petty.row = { ...h.petty.row, balance:-52.25, spent:552.25 };
+  await page.evaluate(() => staffLoadPetty());
+  await page.waitForTimeout(600);
+  const neg = (await card.textContent() || '').replace(/\s+/g, ' ');
+  ok('负余额：标题改成「公司欠你」', neg.includes('公司欠你'), neg);
+  ok('大字写成正数 52.25（不是 -52.25）', neg.includes('US$52.25') && !neg.includes('-US$'), neg);
+  ok('说的是「你先垫了」不是「快用完了」',
+     neg.includes('你先垫了') && !neg.includes('快用完'), neg);
+
   // 见底了要显眼
   h.petty.row = { ...h.petty.row, balance:42.5, spent:557.5 };
   await page.evaluate(() => staffLoadPetty());
