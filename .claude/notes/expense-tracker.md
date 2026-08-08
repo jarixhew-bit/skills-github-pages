@@ -345,6 +345,29 @@ CSS 在 `STAFF_CSS`、脚本在 `STAFF_BOOTSTRAP`），生成后连同 `staff/in
 没装才显示、装好自动消失，点它去 `install.html`。改动这块要保证「装好的人看不到」——
 天天被念的提示等于没有提示。
 
+## 双击「保存」不能生出两条一样的记录（2026-08-08）
+
+用户实机在主 App 遇到「两条一样的」。根因：`saveTxInner()` 全程同步（唯一异步的
+`submitCompanyTx().then()` 是 fire-and-forget，不挡后续点击），双击时第一下点击的
+事件处理函数会**完整跑完**（包括把按钮重新变回可点）之后，浏览器才轮到派发第二下
+点击——JS 单线程，两次点击是两个各自跑到底的独立事件，不是同时发生的竞态。
+
+**第一版闸门是错的**：在 `saveTx()` 里同步 `disabled=true` 再在 `finally` 里同步
+`disabled=false`，看起来锁住了，但因为整段在同一个执行栈里完成，等浏览器真的要
+派发第二次点击时，锁早就解开了，等于没挡——这个错误做法在把它接上真浏览器测试
+（用 `el.click()` 连打两下，不是 `page.evaluate` 直接调函数）时就会立刻现形，
+用 `page.evaluate(() => saveTx())` 连调两次测不出来（那是同步顺序调用，不是双击）。
+
+**真正有效的做法**：`disabled=true` 必须**跨过**第一次点击的整个同步执行，留到
+浏览器要派发第二次点击的那一刻还是 `true`——disabled 的按钮，浏览器根本不会把
+`click` 事件派给它，第二下 `onclick` 都不会被调用。所以解锁要用 `setTimeout` 延后
+（400ms），不能在同一拍里做。`showAddTx()` / `editTx()` 里各留一道保底重置，防
+万一延迟还没到又开了新记录，按钮却按不动。
+
+自检手法要记住：这类 bug 只能用 `el.click(); el.click();`（原生 DOM 方法，Chromium
+会执行「disabled 按钮不派发 click」的规则）模拟真实双击，Playwright 的高阶
+`page.click()` 会等按钮变回可点再点，测不出这个窗口。
+
 ## 照片认出来的金额要人核对过（2026-08-08）
 
 识别（本地 Tesseract 和 AI 两条路都算）填进金额栏之后，`markAmountUnconfirmed()`

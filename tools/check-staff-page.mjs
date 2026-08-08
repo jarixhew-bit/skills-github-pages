@@ -1234,6 +1234,35 @@ console.log('\n【19】照片认出来的金额，没核对过不准保存');
   await h.ctx.close();
 }
 
+// ---------- 【20】双击保存不能生出两条一样的记录 ----------
+// 2026-08-08 用户实机遇到（主 App 那边），同事版用的是同一份 saveTx()，一并守住。
+console.log('\n【20】双击「保存」不能生出两条一样的记录');
+{
+  const h = await newPage();
+  const { page, posted, errs } = h;
+  await signIn(h);
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '4.44');
+  await page.selectOption('#tx-company-category', 'Store');
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    const btn = document.getElementById('tx-save-btn');
+    btn.click(); btn.click();   // 原生 el.click() 连打两下，真实模拟双击
+  });
+  await page.waitForTimeout(1500);
+  const matches = await page.evaluate(() =>
+    (JSON.parse(localStorage.getItem('staffExpense_v2') || '{}').transactions || [])
+      .filter(t => t.amount === 4.44));
+  ok('本机只留一笔，不是两笔', matches.length === 1, matches.length);
+  ok('账本也只收到一次', posted.filter(r => !r.action && r.items?.[0]?.amount === 4.44).length === 1,
+     posted.filter(r => !r.action).map(r => r.items?.[0]?.amount));
+  await page.waitForTimeout(500);
+  ok('短暂延迟后按钮解锁', !(await page.evaluate(() => document.getElementById('tx-save-btn').disabled)));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {
