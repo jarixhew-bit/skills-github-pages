@@ -152,11 +152,13 @@ def build(src: str) -> str:
                      '<div id="tx-list" class="tx-list"></div>\n'
                      '  <div id="staff-signout-row">\n'
                      '    <button class="btn btn-outline btn-sm" id="staff-restore-btn"\n'
-                     '            onclick="staffRestore()">找回本月记录 / Restore this month</button>\n'
+                     '            data-en="Restore this month"\n'
+                     '            onclick="staffRestore()">找回本月记录</button>\n'
                      '    <div id="staff-restore-note" data-en="Changed phone or cleared browser data? '
                      'Tap above to pull back the records you already reported.">'
                      '换手机、清过浏览器数据之后，按上面这个把已经报上去的记录拉回来</div>\n'
-                     '    <button class="btn btn-outline btn-sm" onclick="staffSignOut()">换钥匙 / Sign out</button>\n'
+                     '    <button class="btn btn-outline btn-sm" data-en="Sign out"\n'
+                     '            onclick="staffSignOut()">换钥匙</button>\n'
                      '    <div id="staff-build-note"></div>\n'
                      '  </div>\n</div>',
                      "明细页（放换钥匙按钮）")
@@ -210,6 +212,8 @@ def build(src: str) -> str:
     # ---------- 8) 同事看得到的文案加英文 ----------
     for zh_html, en in STAFF_LABELS:
         s = replace_once(s, zh_html, add_en(zh_html, en), f"文案「{en}」")
+    for old, new, what in LABEL_REWRITES:
+        s = replace_once(s, old, new, what)
     for old_js, new_js, what in DYNAMIC_TEXT:
         s = replace_once(s, old_js, new_js, what)
 
@@ -258,8 +262,38 @@ STAFF_LABELS = [
     ('<label class="form-label">车牌号</label>', "Plate number"),
     ('<button class="btn btn-primary" onclick="saveTx()">保存</button>', "Save"),
     ('<button class="btn btn-danger" onclick="deleteTx()">🗑 删除此记录</button>', "🗑 Delete this record"),
-    ('<span style="font-size:20px">📷</span>拍照', "Camera"),
-    ('<span style="font-size:20px">🖼️</span>从相册选择', "Gallery"),
+    # ⚠️ 这两个不能走 add_en：按钮里是「emoji span + 文字」两段，add_en 会把 data-en
+    # 加到 **emoji 那个 span** 上（它找的是第一个 '>'），切英文时 📷 被换成 "Camera"、
+    # 中文「拍照」原样留着，按钮变成「Camera拍照」而且图标没了（2026-08-08 扫出来的，
+    # 已经上线过一版）。所以这里整段换掉，让文字自己住一个 span。
+    ('<div style="padding:10px 12px;background:var(--p2);border-radius:10px;margin-bottom:14px;\n'
+     '        font-size:12px;color:var(--p);line-height:1.6">\n'
+     '        🧾 这是公司账户，保存后会同时送进公司账本 —— 跟 Telegram 记的进同一本、出同一份 Excel。',
+     "🧾 This is the company account. Saving also files it to the company ledger — "
+     "the same ledger and the same Excel as records entered in Telegram."),
+]
+
+# 整段替换的文案（结构要动，不只是加个 data-en）
+LABEL_REWRITES = [
+    ('<span style="font-size:20px">📷</span>拍照',
+     '<span style="font-size:20px">📷</span><span data-en="Camera">拍照</span>',
+     "拍照按钮"),
+    ('<span style="font-size:20px">🖼️</span>从相册选择',
+     '<span style="font-size:20px">🖼️</span><span data-en="Gallery">从相册选择</span>',
+     "相册按钮"),
+    ('<div class="nav-icon">📋</div>明细',
+     '<div class="nav-icon">📋</div><span data-en="Records">明细</span>',
+     "底部导航"),
+    # 车牌栏的说明：选了汽油才展开，所以第一轮扫描没扫到（那时它是 display:none）
+    ('          车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。\n'
+     '          这类开销一律算在 Boss 头上（进左边那张表）。',
+     '          <span data-en="Vehicle costs need a plate number. It goes into the Excel as '
+     '&quot;Petrol (NS6868)&quot;. These are always charged to the Boss (the left-hand table).">'
+     '车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。'
+     '这类开销一律算在 Boss 头上（进左边那张表）。</span>',
+     "车牌说明"),
+    # placeholder 不是 textContent，staffApplyLang 另外用 data-en-ph 处理
+    ('placeholder="例：NS6868"', 'placeholder="例：NS6868" data-en-ph="e.g. NS6868"', "车牌提示字"),
 ]
 
 # 脚本画出来的文字：包一层 tt() 才会跟着语言切换
@@ -277,6 +311,17 @@ DYNAMIC_TEXT = [
      """      <div class="tx-group-date staff-day">${date}<span class="staff-day-total">${
         fmt(list.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0), acc.currency)}</span></div>""",
      "每天小计"),
+    # 月份栏「2026 年 8 月」：renderTxList() 每次都重画它，而 staffApplyLang() 会
+    # 重跑 renderTxList，所以只要 monthName 自己会说两种话，切语言就跟着变。
+    ("""function monthName(year, month){
+  return `${year} 年 ${month+1} 月`;
+}""",
+     """function monthName(year, month){
+  const EN = ['January','February','March','April','May','June',
+              'July','August','September','October','November','December'];
+  return tt(`${year} 年 ${month+1} 月`, `${EN[month]} ${year}`);
+}""",
+     "月份栏"),
     ("""<div class="empty-text">这个月还没有记录</div>""",
      """<div class="empty-text">${tt('这个月还没有记录','Nothing recorded this month')}</div>""",
      "空清单"),
@@ -361,6 +406,10 @@ STAFF_CSS = """
 #staff-install-tip.on{display:block}
 #staff-install-tip b{display:block;color:#9a3412;font-size:14.5px;margin-bottom:2px}
 #staff-install-tip .go{display:inline-block;margin-top:6px;color:#9a3412;font-weight:700}
+/* 车牌栏整格是 text-transform:uppercase（车牌本来就写大写），但提示字会跟着被
+   拉成大写——中文「例：NS6868」看不出来，英文「e.g. NS6868」变成「E.G. NS6868」，
+   像在喊。提示字不是用户输入的内容，不该跟着变形。 */
+#tx-company-plate::placeholder{text-transform:none}
 #staff-summary{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .staff-sum-label{font-size:12px;color:var(--sub)}
 .staff-sum-total{font-size:26px;font-weight:700;color:var(--text);margin-top:2px}
@@ -415,7 +464,9 @@ async function staffWhoAmI(token){
 
 function staffOpenGate(){
   const b = document.getElementById('staff-gate-build');
-  if(b) b.textContent = '版本 ' + APP_BUILD;
+  // 闸门在语言切换按钮之前出现（那时还没进主界面），所以这里用两种语言都读得懂的
+  // 写法，不走 data-en
+  if(b) b.textContent = 'v ' + APP_BUILD;
   document.getElementById('staff-gate').classList.remove('off');
 }
 function staffCloseGate(){ document.getElementById('staff-gate').classList.add('off'); }
@@ -662,6 +713,11 @@ function staffApplyLang(){
   document.querySelectorAll('[data-en]').forEach(el=>{
     if(el.dataset.zh === undefined) el.dataset.zh = el.textContent;
     el.textContent = staffLang === 'en' ? el.dataset.en : el.dataset.zh;
+  });
+  // 输入框的提示字不是 textContent，得另外换（换错地方会把整个 input 的内容清掉）
+  document.querySelectorAll('[data-en-ph]').forEach(el=>{
+    if(el.dataset.zhPh === undefined) el.dataset.zhPh = el.getAttribute('placeholder') || '';
+    el.setAttribute('placeholder', staffLang === 'en' ? el.dataset.enPh : el.dataset.zhPh);
   });
   const btn = document.getElementById('staff-lang-btn');
   if(btn) btn.textContent = staffLang === 'en' ? '中' : 'EN';
