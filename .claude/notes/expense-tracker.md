@@ -475,3 +475,40 @@ cut 区间内，同事版生成时自动整块消失；但 `init()` 里拉取数
 这几个元素，且全程没有任何 `pendingClaim` 开头的请求被送出去（万一以后谁漏掉
 cut_exact，这条会当场变红）；butler-bot `tests/pending-claim.test.mjs` 28 项覆盖
 handler 本身的算术、0 值拒绝、撤销、历史截断/排序。
+
+## 首屏账户卡片：公司账户显示 Yang 的备用金余额（2026-08-09）
+
+`renderAccCards()`（约 :1726）给每个账户画一张卡，普通账户是「全部交易 income−expense
+的本地加总」。**公司账户不能套这个公式**——它只记支出（见上面「公司账户没有收入」），
+本地加总只会一路往负的方向跑，跟真实情况无关（用户第一次看到 -246.35 就是这个算法
+本身没道理，不是记错账）。
+
+第一版改成显示服务端「全员本月已报」（`ledState.data.total`），用户接着说明真实现金
+流向：转钱给 Seryi/Kuang 的是 Yang，claim 回来的钱也进他手上，「主要财务都是他在
+负责」——于是改成显示 **`pettyState.data` 里 Yang 那一行的 `balance`**：
+```js
+const yang = (pettyState.data || []).find(r => r.person === 'Yang');
+const val = (yang && yang.status === 'ok')
+  ? `${yang.balance<0?'−':''}${fmt(Math.abs(yang.balance), 'USD')}` : '点击查看';
+```
+`pettyState.data` 还没拉到、或者 Yang 还没设起点（`status:'unset'`）时一律显示「点击查看」
+占位，绝不显示自己算出来的数字——铁律跟公司账本/备用金那两张卡一样。
+
+**同事版天然拿不到这个数**：`fetchPetty()` 在 `build-staff-page.py` 里跟
+`fetchCompanyLedger()`/`fetchPendingClaim()` 一起被 `cut_exact` 掉（同事版
+`init()` 根本不拉全员备用金），所以同事版的公司账户卡片永远显示「点击查看」——
+这是预期行为，不是 bug。
+
+**Yang 的余额为什么会变准**：butler-bot 那边给 `pettyCashRecord`（发放给 Seryi/Kuang
+时）和 `pendingClaimAdjust`（claim 回来时）都加了自动镜像到 Yang 账上的逻辑，见
+butler-bot `CLAUDE.md`「备用金 ↔ 待claim ↔ Yang 的联动」——没有这两笔镜像，Yang
+的余额只会单调上涨，跟他手上实际现金脱节，这张卡片显示的数字也就没有意义。改这张
+卡片时如果数字看起来不对，先去查那边的镜像逻辑，不要在这个文件里加特例。
+
+**刷新时机**：切账户（`switchAccount`）本来就会重拉全员数据后 `renderOverview()`；
+另外在 `fetchPetty()` 的 init 回调、`pettyOpenAdd` 保存成功、`pettyUndo` 撤销成功
+这三处补了 `renderAccCards()`，不然卡片会停在上一次拉到的旧数字，直到下次切页/刷新
+才更新。
+
+自检：`check-expense-company.mjs`【2c】——分别测「还没拉到数据」「Yang 有正余额」
+「Yang 垫钱变负余额（负号不能被 `Math.abs()` 弄丢，跟【2b】同一类 bug）」三种状态。

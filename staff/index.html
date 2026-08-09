@@ -1490,16 +1490,20 @@ function renderAccCards(){
       // 公司账户不是钱包，没有「结余」这回事——它只记支出（见 syncCompanyTxFields
       // 里的说明），本地历史支出加总只会一路往负的方向跑，跟真实情况毫无关系
       // （2026-08-09 用户发现显示 -246.35，正是这个算法本身就没道理，不是记错账）。
-      // 铁律跟公司账本/备用金那两张卡一样：余额一个数都不在这边算，改用服务端
-      // 已经拉回来的「全员本月」合计——跟下面公司账本卡片同一个数，不会分岔。
-      // 只在数据确实是「本月」时才用，翻页看过其它月份之后这里不能拿旧月份的数顶上。
-      const d = (ledState.data && ledState.month === ledMonthNow()) ? ledState.data : null;
-      const val = d ? fmt(d.total, 'USD') : '点击查看';
+      // 改显示 Yang 的备用金余额（2026-08-09 用户明确要求：「主要财务都是他在负责」——
+      // 转钱给 Seryi/Kuang 的现金实际是从 Yang 手上出的，见 submitCompanyTx 那份
+      // butler-bot 端的镜像逻辑，他的余额就是「公司现金实际还剩多少」这件事）。
+      // 铁律跟公司账本/备用金那两张卡一样：余额一个数都不在这边算，只用服务端
+      // 已经拉回来的 pettyState——同事版从不拉全员备用金，这边自然拿不到 Yang 的
+      // 那一行，落到下面的「点击查看」占位，不会显示任何自己算出来的数字。
+      const yang = (pettyState.data || []).find(r => r.person === 'Yang');
+      const val = (yang && yang.status === 'ok')
+        ? `${yang.balance<0?'−':''}${fmt(Math.abs(yang.balance), 'USD')}` : '点击查看';
       return `<div class="acc-card ${sel}" style="background:${acc.color}"
         onclick="switchAccount('${acc.id}')">
         <div class="acc-card-name">${acc.name}</div>
         <div class="acc-card-bal">${val}</div>
-        <div class="acc-card-cur">USD · 本月全员已报</div>
+        <div class="acc-card-cur">USD · Yang 备用金余额</div>
       </div>`;
     }
     const allTxs = data.transactions.filter(t=>t.accountId===acc.id);
@@ -5041,6 +5045,7 @@ async function pettySubmit(){
     renderPetty();
     renderOvPetty();
     renderOvReconcile();
+    renderAccCards();
   }catch(e){
     showPettyNote('现在连不上，等有网再存一次（这一笔没有记进去）');
   }
@@ -5064,6 +5069,7 @@ async function pettyUndo(){
     renderPetty();
     renderOvPetty();
     renderOvReconcile();
+    renderAccCards();
   }catch(e){
     toast('现在连不上，等有网再试');
   }
