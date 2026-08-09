@@ -560,61 +560,27 @@ handler 本身的算术、0 值拒绝、撤销、历史截断/排序。
 自检：`check-staff-page.mjs`【23】（币种改得动且列表跟着变、乱填代码不认、余额是真算的、
 未送出照扣、超支提示、重填不动账目、公司账页不出现这张卡）。
 
-## 待claim「claim 回来了」一键记进自己账户（2026-08-09）
+## 待claim「claim 回来了」——不要在 App 这边补记（2026-08-09 撤回的一版）
 
-待claim 住 butler 服务端（事件流现算），个人账本住本机＋云同步，**是两本账**。
-公司把钱还回来时两本都要动。以前得手动来两趟（对账弹窗填负数扣掉、再去账户记一笔
-收入），漏掉任一趟月底就对不上，而且事后看不出漏的是哪趟。
+2026-08-09 做过一版：对账弹窗填负数时多一个「☑ 同时把这笔钱记进我的账户」，勾了就在
+个人账户记一笔收入。**当天用户试用后撤掉**——「回去户口是要回公司户口，不是 boss 账户」。
 
-- 「记一笔待claim」弹窗（`modal-reconcile-add`）里加了 `#reconcile-transfer-row`：
-  **只在金额是负数时出现**（`reconcileAmountChanged()` 由 `oninput` 驱动）——正数是
-  「新增待claim」，钱还没回来，没有收入可记。
-- 账户下拉只列 `!isCompany && currency==='USD'`（`claimTargetAccounts()`）：待claim 记的
-  是美元，**换算这种事不许 App 自己猜**。上次选的存 `expenseTracker_claimAccount`。
-- **顺序铁律：先服务端、成功了再记本机**。反过来做，服务端那步失败时本机已经凭空多了
-  一笔收入，比什么都没做更糟。
-- 记出来的那笔带 `claimBack:{at,amountUsd}` 标记，以后要核对「哪几笔收入是 claim 回来的」
-  不用靠描述文字去猜。
+查下去发现根因不是「记错账户」，是**这一步整个不该存在**：
 
-自检：`check-expense-company.mjs`【20d2】【20d3】——正数时不出现、账户清单不混进公司账/
-非美元账、勾了真的多一笔（金额取绝对值、类别 `cat_other_inc`、进选中的账户）、
-**没勾一笔都不许多**（「顺便帮你记了」是最难发现的错账）。
-⚠️ 写这个自检时踩过：种子数据里已经有一个 id 叫 `acc_boss` 的账户，测试再 push 一个同 id
-的会让 `find()` 捞回旧的那个——测试新建账户请用不撞的 id。
+- butler 的 `pendingClaimAdjust` 收到**负数**（claim 回来了）时，已经自动给 **Yang 的
+  备用金**记一笔等额 `type:"adjust"` 加款（`butler-bot/src/handlers/pending_claim.js`，
+  2026-08-09 依用户说明「这笔钱实际是进 Yang 手上的」加的）。正数不镜像。
+- 首屏「公司」那张卡显示的**就是 Yang 的备用金余额**（`renderAccCards()` 的
+  `acc.isCompany` 分支）。
 
-## 首屏账户卡片：公司账户显示 Yang 的备用金余额（2026-08-09）
+所以填完负数，公司户口那张卡**本来就会自己涨回来**。再在 App 这边记一笔收入 = 同一笔
+钱数两次，而且是月底对账才发现、发现了也查不出哪来的那种错。
 
-`renderAccCards()`（约 :1726）给每个账户画一张卡，普通账户是「全部交易 income−expense
-的本地加总」。**公司账户不能套这个公式**——它只记支出（见上面「公司账户没有收入」），
-本地加总只会一路往负的方向跑，跟真实情况无关（用户第一次看到 -246.35 就是这个算法
-本身没道理，不是记错账）。
+改完之后：弹窗里只留一句说明（卡会自己涨、不用手动补），并在保存成功且金额为负时
+`fetchPetty({force:true}) + renderAccCards()`，否则要等下次切页才看得到卡片变化。
 
-第一版改成显示服务端「全员本月已报」（`ledState.data.total`），用户接着说明真实现金
-流向：转钱给 Seryi/Kuang 的是 Yang，claim 回来的钱也进他手上，「主要财务都是他在
-负责」——于是改成显示 **`pettyState.data` 里 Yang 那一行的 `balance`**：
-```js
-const yang = (pettyState.data || []).find(r => r.person === 'Yang');
-const val = (yang && yang.status === 'ok')
-  ? `${yang.balance<0?'−':''}${fmt(Math.abs(yang.balance), 'USD')}` : '点击查看';
-```
-`pettyState.data` 还没拉到、或者 Yang 还没设起点（`status:'unset'`）时一律显示「点击查看」
-占位，绝不显示自己算出来的数字——铁律跟公司账本/备用金那两张卡一样。
+⚠️ **别再把这个功能加回来**。自检【20d2】就是守这条：断言弹窗里**不存在**
+`#reconcile-transfer-row`、提交负数后本机账本一笔都不许多。
 
-**同事版天然拿不到这个数**：`fetchPetty()` 在 `build-staff-page.py` 里跟
-`fetchCompanyLedger()`/`fetchPendingClaim()` 一起被 `cut_exact` 掉（同事版
-`init()` 根本不拉全员备用金），所以同事版的公司账户卡片永远显示「点击查看」——
-这是预期行为，不是 bug。
-
-**Yang 的余额为什么会变准**：butler-bot 那边给 `pettyCashRecord`（发放给 Seryi/Kuang
-时）和 `pendingClaimAdjust`（claim 回来时）都加了自动镜像到 Yang 账上的逻辑，见
-butler-bot `CLAUDE.md`「备用金 ↔ 待claim ↔ Yang 的联动」——没有这两笔镜像，Yang
-的余额只会单调上涨，跟他手上实际现金脱节，这张卡片显示的数字也就没有意义。改这张
-卡片时如果数字看起来不对，先去查那边的镜像逻辑，不要在这个文件里加特例。
-
-**刷新时机**：切账户（`switchAccount`）本来就会重拉全员数据后 `renderOverview()`；
-另外在 `fetchPetty()` 的 init 回调、`pettyOpenAdd` 保存成功、`pettyUndo` 撤销成功
-这三处补了 `renderAccCards()`，不然卡片会停在上一次拉到的旧数字，直到下次切页/刷新
-才更新。
-
-自检：`check-expense-company.mjs`【2c】——分别测「还没拉到数据」「Yang 有正余额」
-「Yang 垫钱变负余额（负号不能被 `Math.abs()` 弄丢，跟【2b】同一类 bug）」三种状态。
+⚠️ 另一个坑（`pendingClaimUndo` 的已知限制，butler 那边写在注释里）：撤销 claim 事件
+**不会**连带撤掉 Yang 那笔镜像加款——要撤得自己去备用金那边手工记一笔「调整」冲回去。
