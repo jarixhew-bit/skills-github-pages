@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>库存管理</title>
+<meta name="theme-color" content="#7A1F3D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="库存管理">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%237A1F3D'/%3E%3Ctext x='256' y='352' font-size='272' text-anchor='middle'%3E%F0%9F%8D%B7%3C/text%3E%3C/svg%3E">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+:root{
+  --p:#7A1F3D;--p2:#F6E9EC;
+  --bg:#F4EFE9;--card:#fff;
+  --text:#2C2422;--sub:#8A7B74;--border:#EEE4DD;
+  --radius:14px;--shadow:0 2px 12px rgba(0,0,0,.08);
+  --danger:#C0392B;--ok:#2E7D46;
+}
+html{overflow-x:hidden}
+body{overflow-x:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;
+  min-height:100vh;padding-bottom:24px;position:relative}
+
+.hdr{background:var(--p);color:#fff;padding:16px 18px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(122,31,61,.3)}
+.hdr-title{font-size:18px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.icon-btn{background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);
+  color:#fff;border-radius:50%;width:40px;height:40px;font-size:18px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+.icon-btn:active{background:rgba(255,255,255,.32)}
+
+.tabs{display:flex;gap:8px;padding:12px 14px 0;background:var(--bg);position:sticky;top:72px;z-index:90}
+.tab-btn{flex:1;padding:10px 4px;border-radius:12px;border:1.5px solid var(--border);
+  background:#fff;color:var(--sub);font-size:14px;font-weight:600;cursor:pointer}
+.tab-btn.active{background:var(--p);color:#fff;border-color:var(--p)}
+
+.toolbar{display:flex;gap:10px;padding:12px 14px}
+.btn-outline{flex:1;padding:11px 0;border-radius:12px;border:1.5px solid var(--p);
+  background:#fff;color:var(--p);font-size:14px;font-weight:600;cursor:pointer;min-height:44px}
+.btn-primary{flex:1;padding:11px 0;border-radius:12px;border:none;
+  background:var(--p);color:#fff;font-size:14px;font-weight:700;cursor:pointer;min-height:44px}
+.btn-outline:active,.btn-primary:active{opacity:.85}
+
+.banner{margin:0 14px 12px;padding:12px 14px;border-radius:12px;background:#FFF6E5;
+  border:1px solid #F0D89A;color:#7A5A00;font-size:14px;display:flex;
+  align-items:center;justify-content:space-between;gap:10px}
+.banner.error{background:#FDECEA;border-color:#F3B6B0;color:var(--danger)}
+.banner button{border:none;background:var(--p);color:#fff;border-radius:8px;
+  padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;min-height:36px}
+.banner.error button{background:var(--danger)}
+
+.loading{text-align:center;padding:30px 0;color:var(--sub);font-size:14px}
+
+.list{padding:0 14px 90px}
+.empty-state{text-align:center;padding:50px 10px;color:var(--sub);font-size:14px;line-height:1.7}
+
+.loc-group{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  margin-bottom:14px;overflow:hidden}
+.loc-head{display:flex;align-items:center;gap:8px;padding:12px 14px;
+  background:var(--p2);border-bottom:1px solid var(--border)}
+.loc-name{font-weight:700;font-size:14px;color:var(--p);flex:1}
+.loc-sub{font-size:12px;color:var(--sub);white-space:nowrap}
+.loc-share{width:32px;height:32px;border-radius:50%;border:none;background:transparent;
+  color:var(--p);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.loc-share:active{background:rgba(122,31,61,.12)}
+
+.item-row{display:flex;align-items:center;gap:10px;padding:12px 14px;
+  border-bottom:1px solid var(--border);cursor:pointer}
+.item-row:last-child{border-bottom:none}
+.item-info{flex:1;min-width:0}
+.item-name{font-size:15px;font-weight:600;word-break:break-word}
+.item-note{font-size:12px;color:var(--sub);margin-top:2px}
+.item-qty{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.qty-val{font-size:14px;font-weight:600;min-width:60px;text-align:center}
+.qty-btn{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--border);
+  background:#fff;color:var(--p);font-size:20px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.qty-btn:active{background:var(--p2)}
+.qty-btn:disabled{opacity:.35;cursor:default}
+
+details.used-up{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  margin-bottom:14px;overflow:hidden}
+details.used-up summary{padding:12px 14px;font-size:13px;font-weight:600;color:var(--sub);
+  cursor:pointer;background:var(--p2);list-style:none}
+details.used-up summary::-webkit-details-marker{display:none}
+details.used-up summary::before{content:'▸ ';display:inline-block}
+details.used-up[open] summary::before{content:'▾ '}
+details.used-up .item-row .item-name,details.used-up .item-row .qty-val{color:var(--sub)}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);
+  background:rgba(20,16,15,.92);color:#fff;padding:10px 18px;border-radius:20px;
+  font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:300;
+  max-width:90%;text-align:center;white-space:pre-line}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;
+  display:flex;align-items:flex-end;justify-content:center}
+.modal[hidden]{display:none}
+.modal-card{background:#fff;width:100%;max-width:480px;border-radius:18px 18px 0 0;
+  padding:20px 18px 26px;max-height:88vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:14px}
+.modal-card label{display:block;font-size:13px;color:var(--sub);margin-bottom:12px}
+.modal-card input,.modal-card select{display:block;width:100%;margin-top:5px;
+  padding:11px 12px;border-radius:10px;border:1.5px solid var(--border);
+  font-size:15px;color:var(--text);background:#fff;min-height:44px}
+.modal-actions{display:flex;gap:10px;margin-top:6px}
+.modal-actions button{min-height:44px}
+.danger-btn{width:100%;margin-top:4px;padding:11px 0;border-radius:12px;border:1.5px solid var(--danger);
+  background:#fff;color:var(--danger);font-size:14px;font-weight:600;cursor:pointer;min-height:44px}
+.modal-hint{font-size:12px;color:var(--sub);margin-top:-6px;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-title">📦 库存管理</div>
+  <button id="btn-settings" class="icon-btn" aria-label="设置密钥">⚙️</button>
+</div>
+
+<div class="tabs" role="tablist">
+  <button class="tab-btn active" data-cat="wine" aria-label="切换到酒库存">🍷 酒</button>
+  <button class="tab-btn" data-cat="tea" aria-label="切换到茶叶库存">🍵 茶叶</button>
+  <button class="tab-btn" data-cat="herb" aria-label="切换到虫草库存">🌿 虫草</button>
+</div>
+
+<div class="toolbar">
+  <button id="btn-share-all" class="btn-outline">🔗 分享</button>
+  <button id="btn-add" class="btn-primary">＋ 添加</button>
+</div>
+
+<div id="guide-banner" class="banner" hidden>
+  <span id="guide-text">还没设置密钥，先去设置才能查看库存</span>
+  <button id="guide-settings-link">去设置</button>
+</div>
+
+<div id="error-banner" class="banner error" hidden>
+  <span id="error-text">连不上服务器</span>
+  <button id="btn-retry">重试</button>
+</div>
+
+<div id="loading" class="loading" hidden>加载中…</div>
+
+<div id="list" class="list"></div>
+
+<!-- 设置弹窗 -->
+<div id="modal-settings" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-title">设置密钥</div>
+    <label>密钥
+      <input id="settings-token" type="text" placeholder="老板的密钥" autocomplete="off">
+    </label>
+    <div class="modal-hint">密钥只存在这台设备本地，不会上传到别处。</div>
+    <div class="modal-actions">
+      <button class="btn-outline" data-close="modal-settings">取消</button>
+      <button id="settings-save" class="btn-primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 添加弹窗 -->
+<div id="modal-add" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-title">添加库存</div>
+    <label>名称
+      <input id="add-name" type="text" placeholder="例如 Laffite 2001">
+    </label>
+    <label>数量
+      <input id="add-count" type="number" min="0" step="1" value="1">
+    </label>
+    <label>单位
+      <input id="add-unit" type="text">
+    </label>
+    <label>存放位置
+      <select id="add-location-select"></select>
+      <input id="add-location-new" type="text" placeholder="输入新位置名，例如 西港" hidden>
+    </label>
+    <label>备注（选填）
+      <input id="add-note" type="text" placeholder="例如 老板留用">
+    </label>
+    <div class="modal-actions">
+      <button class="btn-outline" data-close="modal-add">取消</button>
+      <button id="add-submit" class="btn-primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑弹窗 -->
+<div id="modal-edit" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-title">编辑记录</div>
+    <label>名称
+      <input id="edit-name" type="text">
+    </label>
+    <label>数量
+      <input id="edit-count" type="number" min="0" step="1">
+    </label>
+    <label>单位
+      <input id="edit-unit" type="text">
+    </label>
+    <label>存放位置
+      <select id="edit-location-select"></select>
+      <input id="edit-location-new" type="text" placeholder="输入新位置名" hidden>
+    </label>
+    <label>备注（选填）
+      <input id="edit-note" type="text">
+    </label>
+    <div class="modal-actions">
+      <button class="btn-outline" data-close="modal-edit">取消</button>
+      <button id="edit-submit" class="btn-primary">保存</button>
+    </div>
+    <button id="edit-delete" class="danger-btn">删除这条记录</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API_URL = 'https://butler-bot.jarixhew.workers.dev/inventory';
+const TOKEN_KEY = 'inventoryToken';
+
+const CAT_META = {
+  wine: { label:'酒', unit:'瓶', icon:'🍷' },
+  tea:  { label:'茶叶', unit:'饼', icon:'🍵' },
+  herb: { label:'虫草', unit:'克', icon:'🌿' },
+};
+const CAT_ORDER = ['wine','tea','herb'];
+
+const state = {
+  token: localStorage.getItem(TOKEN_KEY) || '',
+  cats: [],      // [{key,label,defaultUnit,items:[...]}] from server
+  currentCat: 'wine',
+  editing: null, // {category,id}
+};
+
+// ---------- 小工具 ----------
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2200);
+}
+function openModal(id){ document.getElementById(id).hidden = false; }
+function closeModal(id){ document.getElementById(id).hidden = true; }
+
+// ---------- 接口 ----------
+async function apiCall(action, params){
+  params = params || {};
+  let res;
+  try{
+    res = await fetch(API_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(Object.assign({ token: state.token, action }, params)),
+    });
+  }catch(e){
+    const err = new Error('连不上服务器，检查一下网络');
+    err.network = true;
+    throw err;
+  }
+  if (res.status === 401){
+    let msg = '密钥不对或已过期，请重新设置';
+    try{ const j = await res.json(); if (j && j.error) msg = j.error; }catch(e){}
+    const err = new Error(msg);
+    err.auth = true;
+    throw err;
+  }
+  let data;
+  try{ data = await res.json(); }
+  catch(e){ throw new Error('服务器返回的数据看不懂'); }
+  // 只要不是 ok 就当错误：服务端除了 error 还会回 forbidden（拿同事版钥匙来查库存时，
+  // 库存是老板私人物品，服务端一律挡掉）。只认 error 的话，forbidden 会被当成成功往下走，
+  // 结果是读 data.item 读到 undefined、页面莫名其妙地坏掉，而不是告诉他钥匙不对。
+  if (data && data.status && data.status !== 'ok'){
+    throw new Error(data.message || '服务器出错了');
+  }
+  return data;
+}
+
+// ---------- 数据整理 ----------
+function getCatMerged(key){
+  const meta = CAT_META[key];
+  const fromServer = state.cats.find(c => c.key === key);
+  return {
+    key,
+    label: (fromServer && fromServer.label) || meta.label,
+    defaultUnit: (fromServer && fromServer.defaultUnit) || meta.unit,
+    icon: meta.icon,
+    items: (fromServer && fromServer.items) || [],
+  };
+}
+
+function groupByLocation(items){
+  const withStock = items.filter(it => Number(it.count) > 0);
+  const usedUp = items.filter(it => !(Number(it.count) > 0));
+  const order = [];
+  const map = new Map();
+  withStock.forEach(it => {
+    const raw = (it.location || '').trim();
+    const key = raw || '\u0000NONE';
+    if (!map.has(key)){ map.set(key, []); order.push(key); }
+    map.get(key).push(it);
+  });
+  order.sort((a,b) => (a === '\u0000NONE') - (b === '\u0000NONE'));
+  const groups = order.map(key => ({
+    location: key === '\u0000NONE' ? '未标存放位置' : key,
+    rawLocation: key === '\u0000NONE' ? '' : key,
+    items: map.get(key),
+  }));
+  return { groups, usedUp };
+}
+
+function patchItem(category, item){
+  const cat = state.cats.find(c => c.key === category);
+  if (!cat || !item) return;
+  const idx = cat.items.findIndex(x => String(x.id) === String(item.id));
+  if (idx >= 0) cat.items[idx] = item; else cat.items.push(item);
+}
+
+// ---------- 分享文字 ----------
+function buildShareText(catKey, filterLoc){
+  const cat = getCatMerged(catKey);
+  const icon = cat.icon;
+  const dateStr = new Date().toISOString().slice(0,10);
+  const { groups, usedUp } = groupByLocation(cat.items);
+  const target = filterLoc != null ? groups.filter(g => g.rawLocation === filterLoc) : groups;
+  const lines = [`${icon} ${cat.label}库存（${dateStr}）`];
+  target.forEach((g, idx) => {
+    const total = g.items.reduce((s,it) => s + (Number(it.count) || 0), 0);
+    lines.push(`📍 ${g.location}　共 ${total} ${cat.defaultUnit}`);
+    g.items.forEach(it => lines.push(`${icon} ${it.name} x${it.count}`));
+    if (idx < target.length - 1) lines.push('');
+  });
+  if (filterLoc == null && usedUp.length){
+    if (target.length) lines.push('');
+    lines.push(`另有 ${usedUp.length} 种已用完`);
+  }
+  return lines.join('\n');
+}
+
+async function shareText(text){
+  if (navigator.share){
+    try{
+      await navigator.share({ text });
+      return;
+    }catch(e){
+      if (e && e.name === 'AbortError') return; // 用户自己取消，不算失败
+      // 其他失败情况走复制兜底
+    }
+  }
+  try{
+    await navigator.clipboard.writeText(text);
+    toast('已复制，去粘贴给对方');
+    return;
+  }catch(e){}
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('已复制，去粘贴给对方');
+  }catch(e){
+    toast('分享失败，请手动截图发送');
+  }
+}
+
+// ---------- 渲染 ----------
+function renderRow(cat, it){
+  const qty = Number(it.count) || 0;
+  return `<div class="item-row" data-category="${cat.key}" data-id="${esc(it.id)}">
+    <div class="item-info">
+      <div class="item-name">${esc(it.name)}</div>
+      ${it.note ? `<div class="item-note">${esc(it.note)}</div>` : ''}
+    </div>
+    <div class="item-qty">
+      <button class="qty-btn qty-minus" aria-label="减少 ${esc(it.name)} 数量"${qty<=0?' disabled':''}>−</button>
+      <span class="qty-val">${esc(it.count)} ${esc(it.unit || cat.defaultUnit)}</span>
+      <button class="qty-btn qty-plus" aria-label="增加 ${esc(it.name)} 数量">＋</button>
+    </div>
+  </div>`;
+}
+
+function renderList(){
+  const listEl = document.getElementById('list');
+  const cat = getCatMerged(state.currentCat);
+  const { groups, usedUp } = groupByLocation(cat.items);
+  if (groups.length === 0 && usedUp.length === 0){
+    listEl.innerHTML = `<div class="empty-state">暂无${esc(cat.label)}库存记录<br>点右上角「＋ 添加」开始记录</div>`;
+    return;
+  }
+  let html = '';
+  groups.forEach(g => {
+    const total = g.items.reduce((s,it) => s + (Number(it.count) || 0), 0);
+    html += `<div class="loc-group">
+      <div class="loc-head">
+        <span class="loc-name">📍 ${esc(g.location)}</span>
+        <span class="loc-sub">共 ${total} ${esc(cat.defaultUnit)}</span>
+        <button class="loc-share icon-btn" data-cat="${cat.key}" data-loc="${esc(g.rawLocation)}" aria-label="分享 ${esc(g.location)} 库存">🔗</button>
+      </div>
+      ${g.items.map(it => renderRow(cat, it)).join('')}
+    </div>`;
+  });
+  if (usedUp.length){
+    html += `<details class="used-up">
+      <summary>已用完（${usedUp.length} 种）</summary>
+      ${usedUp.map(it => renderRow(cat, it)).join('')}
+    </details>`;
+  }
+  listEl.innerHTML = html;
+}
+
+// ---------- 顶部状态条 ----------
+function showGuide(msg){
+  document.getElementById('guide-text').textContent = msg || '还没设置密钥，先去设置才能查看库存';
+  document.getElementById('guide-banner').hidden = false;
+  document.getElementById('error-banner').hidden = true;
+  document.getElementById('list').innerHTML = '';
+}
+function hideGuide(){ document.getElementById('guide-banner').hidden = true; }
+function showError(msg){
+  document.getElementById('error-text').textContent = msg || '连不上服务器';
+  document.getElementById('error-banner').hidden = false;
+  document.getElementById('guide-banner').hidden = true;
+}
+function hideError(){ document.getElementById('error-banner').hidden = true; }
+function showLoading(on){ document.getElementById('loading').hidden = !on; }
+
+// ---------- 拉取数据 ----------
+async function refreshList(){
+  if (!state.token){ showGuide(); return; }
+  hideGuide(); hideError();
+  showLoading(true);
+  try{
+    const data = await apiCall('list');
+    state.cats = data.categories || [];
+    showLoading(false);
+    renderList();
+  }catch(e){
+    showLoading(false);
+    if (e.auth){ showGuide(e.message); }
+    else{ showError(e.message); }
+  }
+}
+
+// ---------- 数量加减（含防连点）----------
+const busyAdjust = new Set();
+function onListClick(e){
+  const qtyBtn = e.target.closest('.qty-btn');
+  if (qtyBtn){
+    if (qtyBtn.disabled) return;
+    const row = qtyBtn.closest('.item-row');
+    const category = row.dataset.category;
+    const id = row.dataset.id;
+    const key = category + ':' + id;
+    if (busyAdjust.has(key)) return; // 上一次点击还没落地，直接吞掉这次
+    busyAdjust.add(key);             // 加锁跨过本次点击的整个同步执行
+    const delta = qtyBtn.classList.contains('qty-plus') ? 1 : -1;
+    row.querySelectorAll('.qty-btn').forEach(b => b.disabled = true);
+    apiCall('adjust', { category, id, delta })
+      .then(data => { patchItem(category, data.item); renderList(); })
+      .catch(err => {
+        toast(err.message || '操作失败');
+        row.querySelectorAll('.qty-btn').forEach(b => b.disabled = false);
+      })
+      .finally(() => {
+        setTimeout(() => { busyAdjust.delete(key); }, 400); // 延后解锁，吞掉紧跟着的第二次点击
+      });
+    return;
+  }
+  const shareBtn = e.target.closest('.loc-share');
+  if (shareBtn){
+    const text = buildShareText(shareBtn.dataset.cat, shareBtn.dataset.loc);
+    shareText(text);
+    return;
+  }
+  const row = e.target.closest('.item-row');
+  if (row){
+    openEdit(row.dataset.category, row.dataset.id);
+  }
+}
+
+// ---------- 存放位置下拉 ----------
+function populateLocationSelect(selectEl, catKey, currentLoc){
+  const cat = getCatMerged(catKey);
+  const locs = Array.from(new Set(cat.items.map(it => (it.location||'').trim()).filter(Boolean))).sort();
+  selectEl.innerHTML = locs.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('')
+    + `<option value="__NEW__">＋ 新位置…</option>`;
+  if (currentLoc && locs.includes(currentLoc)) selectEl.value = currentLoc;
+  else if (locs.length) selectEl.value = locs[0];
+  else selectEl.value = '__NEW__';
+}
+function wireLocationToggle(selectEl, newInputEl){
+  const sync = () => { newInputEl.hidden = selectEl.value !== '__NEW__'; };
+  selectEl.addEventListener('change', sync);
+  sync();
+}
+
+// ---------- 添加 ----------
+function openAdd(){
+  document.getElementById('add-name').value = '';
+  document.getElementById('add-count').value = '1';
+  document.getElementById('add-unit').value = getCatMerged(state.currentCat).defaultUnit;
+  document.getElementById('add-note').value = '';
+  const sel = document.getElementById('add-location-select');
+  populateLocationSelect(sel, state.currentCat, null);
+  document.getElementById('add-location-new').value = '';
+  document.getElementById('add-location-new').hidden = sel.value !== '__NEW__';
+  openModal('modal-add');
+}
+async function onAddSubmit(){
+  const name = document.getElementById('add-name').value.trim();
+  if (!name){ toast('请填写名称'); return; }
+  const count = Number(document.getElementById('add-count').value);
+  if (!Number.isFinite(count) || count < 0){ toast('数量不对'); return; }
+  const unit = document.getElementById('add-unit').value.trim() || getCatMerged(state.currentCat).defaultUnit;
+  const sel = document.getElementById('add-location-select');
+  const location = sel.value === '__NEW__'
+    ? document.getElementById('add-location-new').value.trim()
+    : sel.value;
+  const note = document.getElementById('add-note').value.trim();
+  const btn = document.getElementById('add-submit');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  try{
+    const data = await apiCall('add', { category: state.currentCat, name, count, unit, location, note });
+    toast(data.merged ? '已合并到同名同位置的记录' : '已添加');
+    closeModal('modal-add');
+    await refreshList();
+  }catch(e){
+    toast(e.message || '添加失败');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+// ---------- 编辑／删除 ----------
+function openEdit(category, id){
+  const cat = getCatMerged(category);
+  const it = cat.items.find(x => String(x.id) === String(id));
+  if (!it) return;
+  state.editing = { category, id };
+  document.getElementById('edit-name').value = it.name || '';
+  document.getElementById('edit-count').value = it.count;
+  document.getElementById('edit-unit').value = it.unit || cat.defaultUnit;
+  document.getElementById('edit-note').value = it.note || '';
+  const sel = document.getElementById('edit-location-select');
+  populateLocationSelect(sel, category, it.location);
+  document.getElementById('edit-location-new').value = '';
+  document.getElementById('edit-location-new').hidden = sel.value !== '__NEW__';
+  openModal('modal-edit');
+}
+async function onEditSubmit(){
+  if (!state.editing) return;
+  const { category, id } = state.editing;
+  const name = document.getElementById('edit-name').value.trim();
+  if (!name){ toast('请填写名称'); return; }
+  const count = Number(document.getElementById('edit-count').value);
+  if (!Number.isFinite(count) || count < 0){ toast('数量不对'); return; }
+  const unit = document.getElementById('edit-unit').value.trim();
+  const sel = document.getElementById('edit-location-select');
+  const location = sel.value === '__NEW__'
+    ? document.getElementById('edit-location-new').value.trim()
+    : sel.value;
+  const note = document.getElementById('edit-note').value.trim();
+  const btn = document.getElementById('edit-submit');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  try{
+    await apiCall('update', { category, id, name, count, unit, location, note });
+    toast('已保存');
+    closeModal('modal-edit');
+    await refreshList();
+  }catch(e){
+    toast(e.message || '保存失败');
+  }finally{
+    btn.disabled = false;
+  }
+}
+async function onEditDelete(){
+  if (!state.editing) return;
+  const { category, id } = state.editing;
+  if (!confirm('确定删除这条记录吗？删除后无法恢复。')) return;
+  const btn = document.getElementById('edit-delete');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  try{
+    await apiCall('remove', { category, id });
+    toast('已删除');
+    closeModal('modal-edit');
+    await refreshList();
+  }catch(e){
+    toast(e.message || '删除失败');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+// ---------- 设置 ----------
+function openSettings(){
+  document.getElementById('settings-token').value = state.token;
+  openModal('modal-settings');
+}
+function onSettingsSave(){
+  const v = document.getElementById('settings-token').value.trim();
+  if (!v){ toast('请输入密钥'); return; }
+  localStorage.setItem(TOKEN_KEY, v);
+  state.token = v;
+  closeModal('modal-settings');
+  refreshList();
+}
+
+// ---------- 启动 ----------
+function boot(){
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.currentCat = btn.dataset.cat;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+      renderList();
+    });
+  });
+  document.getElementById('list').addEventListener('click', onListClick);
+  document.getElementById('btn-settings').addEventListener('click', openSettings);
+  document.getElementById('guide-settings-link').addEventListener('click', openSettings);
+  document.getElementById('settings-save').addEventListener('click', onSettingsSave);
+  document.getElementById('btn-retry').addEventListener('click', refreshList);
+  document.getElementById('btn-add').addEventListener('click', openAdd);
+  document.getElementById('add-submit').addEventListener('click', onAddSubmit);
+  document.getElementById('edit-submit').addEventListener('click', onEditSubmit);
+  document.getElementById('edit-delete').addEventListener('click', onEditDelete);
+  document.getElementById('btn-share-all').addEventListener('click', () => {
+    shareText(buildShareText(state.currentCat));
+  });
+  wireLocationToggle(document.getElementById('add-location-select'), document.getElementById('add-location-new'));
+  wireLocationToggle(document.getElementById('edit-location-select'), document.getElementById('edit-location-new'));
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', () => closeModal(btn.dataset.close));
+  });
+  document.querySelectorAll('.modal').forEach(m => {
+    m.addEventListener('click', (e) => { if (e.target === m) closeModal(m.id); });
+  });
+
+  refreshList();
+}
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>

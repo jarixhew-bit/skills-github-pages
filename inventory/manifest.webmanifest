@@ -1,0 +1,19 @@
+{
+  "name": "库存管理",
+  "short_name": "库存",
+  "description": "酒／茶叶／虫草库存管理",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4EFE9",
+  "theme_color": "#7A1F3D",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%237A1F3D'/%3E%3Ctext x='256' y='352' font-size='272' text-anchor='middle'%3E%F0%9F%8D%B7%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
