@@ -1,0 +1,57 @@
+// Firestore 安全规则 —— 项目 my-expense-tracker-a1aee
+//
+// ⚠️ 这个文件是**底稿，不是正本**。
+// Firestore 的规则只能在 Firebase Console 网页后台改，仓库里的文件不会自动生效。
+// 留这份底稿的原因：Console 里的规则在仓库里完全查不到，稽核时看代码看不出来
+// （2026-07-16 就因为这个，测试模式的「谁都能读写全库」规则挂了一段时间才被发现）。
+//
+// 改了 Console 里的规则，请顺手把这份底稿同步更新。
+//
+// 两处占位符必须换成真值再贴进 Console：
+//   BOSS_UID_HERE  → Firebase Console → Authentication → Users → jarixhew@gmail.com 那行的 User UID
+//   PASSCODE_HERE  → 老板自己定的口令，私下发给同事，同事版页面里输入一次存起来
+//                    （口令**故意不写进网页源码**——网址是公开的 GitHub Pages，
+//                     写进源码等于没有口令。它只住在这份规则里和同事手机的 localStorage 里。）
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── 老板自己的账本（2026-07-16 建立）──
+    // 整份 data 一个 JSON 字符串存在 users/{uid}，收据照片在 users/{uid}/attachments
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── 投递箱：同事版把账丢进来，老板 App 收走后删掉 ──
+    //
+    // 为什么是投递箱、而不是让同事直接写老板的账本：
+    // 账本在云端是「整份 data 压成一个 JSON 字符串」存的，两边同时写会整本互相覆盖
+    // （2026-07-23 已经栽过一次，日本旅行记的账被云端旧快照整份盖掉）。
+    // 投递箱一条一个文档、只增不改，物理上没有覆盖账本的路径。
+    match /inbox_boss/{docId} {
+
+      // 老板本人：能看、能删（收件后清空）
+      allow read, delete: if request.auth != null
+                          && request.auth.uid == 'BOSS_UID_HERE';
+
+      // 同事：只能新增一条，不能读、不能改、不能删
+      // （所以同事看不到老板的账本，也看不到别的同事塞了什么）
+      allow create: if request.auth != null
+                    && request.resource.data.k == 'PASSCODE_HERE'
+                    && request.resource.data.keys().hasAll(['k','tx','from'])
+                    && request.resource.data.keys().hasOnly(['k','tx','photo','from','createdAt'])
+                    && request.resource.data.tx is string
+                    && request.resource.data.tx.size() < 4000
+                    && request.resource.data.from is string
+                    && request.resource.data.from.size() < 40
+                    && (!('photo' in request.resource.data)
+                        || (request.resource.data.photo is string
+                            && request.resource.data.photo.size() < 760000));
+
+      // 塞进来的东西谁也改不了（防止事后偷偷改金额）
+      allow update: if false;
+    }
+  }
+}

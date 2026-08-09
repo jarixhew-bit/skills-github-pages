@@ -419,9 +419,29 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 /* 这几个栏位共用的脚本会去读，删掉会让记账当场抛错，所以留在 DOM 里收起来。
    真正属于个人账本的整块界面（概览/统计/设置/账户切换）是**根本没生成进来**，
    不在这张单子上。 */
-#hdr-cloud, #hdr-acc-pill, #tx-type-tabs, #tx-riel-toggle,
-#tx-desc-group, #tx-reporter-group, #tx-reftag-group,
-#tx-filter-row{display:none !important}
+#hdr-cloud, #hdr-acc-pill, #tx-reporter-group, #tx-reftag-group{display:none !important}
+/* 下面这几个只在**公司账**那边收起来。老板账那边它们就是普通的记账栏位，要留着用
+   （描述、收入/支出、瑞尔换算、筛选）——所以用 body.staff-boss 分开，而不是写两套。 */
+body:not(.staff-boss) #tx-type-tabs,
+body:not(.staff-boss) #tx-riel-toggle,
+body:not(.staff-boss) #tx-desc-group,
+body:not(.staff-boss) #tx-filter-row{display:none !important}
+/* 反过来，公司账专属的东西在老板账那边不该出现：备用金卡是公司给的现金、
+   本月合计算的是公司账、「找回本月记录」是从公司账本拉的——摆在老板账页面上
+   全都是错的数。 */
+body.staff-boss #staff-petty,
+body.staff-boss #staff-summary,
+body.staff-boss #staff-restore-btn,
+body.staff-boss #staff-restore-note{display:none !important}
+/* 老板账页面顶上那条说明：这两个页面记的账去处完全不同，走错一个是要翻账查的，
+   所以每次都写在脸上，不做成「点一下才看得到」。 */
+#staff-boss-note{display:none;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:14px;
+  padding:12px 14px;margin-bottom:12px;color:#4c1d95;font-size:13.5px;line-height:1.55}
+body.staff-boss #staff-boss-note{display:block}
+#staff-boss-note b{display:block;font-size:14.5px;margin-bottom:2px}
+#staff-boss-queue{margin-top:8px;font-weight:600}
+/* 老板账的 nav 图标用不同颜色：两个入口长得太像会记错地方 */
+#nav-boss.active{color:#7c3aed}
 
 #staff-gate{position:fixed;inset:0;z-index:300;background:var(--bg);
   display:flex;flex-direction:column;justify-content:center;padding:24px}
@@ -518,6 +538,11 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <span data-en="A page opened in Safari gets its data cleared by iPhone on its own. Once it sits on your Home Screen it is a real app and iOS leaves it alone.">用 Safari 直接开的网页，iPhone 会自己清掉记录。装到主屏幕就是独立 App，系统不会动它。</span>
     <span class="go" data-en="→ How to install (1 min)">→ 怎么装（一分钟）</span>
   </a>
+  <div id="staff-boss-note">
+    <b data-en="This page goes straight to the Boss's own ledger">这里记的账直接进老板自己的账本</b>
+    <span data-en="Not a company expense claim — these do not go into the month-end Excel and are not deducted from your cash on hand.">不是公司报账——这里记的不会进月底的 Excel，也不会从你的备用金里扣。</span>
+    <div id="staff-boss-queue"></div>
+  </div>
   <div id="staff-petty"></div>
   <div id="staff-summary"></div>
   <div id="tx-month-picker" class="month-picker">
@@ -536,6 +561,8 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
             data-en="Restore this month"
             onclick="staffRestore()">找回本月记录</button>
     <div id="staff-restore-note" data-en="Changed phone or cleared browser data? Tap above to pull back the records you already reported.">换手机、清过浏览器数据之后，按上面这个把已经报上去的记录拉回来</div>
+    <button class="btn btn-outline btn-sm" data-en="Boss ledger key"
+            onclick="staffSetBossKey()">老板账口令</button>
     <button class="btn btn-outline btn-sm" data-en="Sign out"
             onclick="staffSignOut()">换钥匙</button>
     <div id="staff-build-note"></div>
@@ -548,8 +575,11 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 <!-- BOTTOM NAV -->
 <div class="nav">
   
-  <button class="nav-btn" id="nav-transactions" onclick="switchTab('transactions')">
+  <button class="nav-btn" id="nav-transactions" onclick="staffGoCompany()">
     <div class="nav-icon">📋</div><span data-en="Records">明细</span>
+  </button>
+  <button class="nav-btn" id="nav-boss" style="display:none" onclick="staffGoBoss()">
+    <div class="nav-icon">👔</div><span data-en="Boss">老板账</span>
   </button>
   
   
@@ -1553,6 +1583,24 @@ function companyTxNote(t){
   return parts.length ? ` · ${parts.join(' · ')}` : '';
 }
 
+/**
+ * 从同事投递箱收进来的账，在明细里标出「谁记的」。
+ * 不标的话，这笔看起来跟自己记的一模一样——对不上数时无从查起（同事版没有编辑权，
+ * 有疑问只能回头问人，所以「问谁」必须写在脸上）。
+ */
+function staffTxNote(t){
+  const parts = [];
+  if(t.fromStaff && t.fromStaff.by) parts.push(`🙋${t.fromStaff.by}记的`);
+  // t.inbox 只有同事版会写（送进老板投递箱的状态）。老板 App 里的记录没有这个字段，
+  // 所以这几句在老板那边永远不会执行——放在共用函数里是因为列表本身是共用的。
+  if(t.inbox){
+    if(t.inbox.status === 'pending') parts.push('⏳待送出');
+    else if(t.inbox.status === 'failed') parts.push('⚠️没送到');
+    else if(t.inbox.status === 'sent') parts.push('👔已送老板');
+  }
+  return parts.length ? ` · ${parts.join(' · ')}` : '';
+}
+
 function txHtml(t, currency){
   const cat = getCat(t.categoryId);
   const icon = cat?cat.icon:'❓';
@@ -1568,7 +1616,7 @@ function txHtml(t, currency){
       <div class="tx-icon" style="background:${color}22">${icon}</div>
       <div class="tx-info">
         <div class="tx-name">${t.description||catName}${clip}</div>
-        <div class="tx-cat">${catName} · ${t.date}${companyTxNote(t)}</div>
+        <div class="tx-cat">${catName} · ${t.date}${companyTxNote(t)}${staffTxNote(t)}</div>
       </div>
       <div class="tx-amt ${cls}">${sign}${fmt(t.amount, cur)}</div>
     </div>
@@ -1699,6 +1747,7 @@ function renderSettings(){
   renderSettingsRecurring();
   renderAiKeyStatus();
   renderCompanySettings();
+  renderInboxSettings();
   renderBuildInfo();
 }
 
@@ -2362,6 +2411,12 @@ function saveTxInner(){
       if(state.currentTab==='settings') renderCompanySettings();
     });
   }
+
+  // 同事版（staff/）在这里把「Boss 账」那笔送进云端投递箱（tools/build-staff-page.py
+  // 注入 onTxSaved）。老板 App 里没有这个函数，所以什么都不会发生。
+  // 为什么留成钩子而不是在这里写发送逻辑：投递箱是同事版专属的东西，写进源码等于
+  // 让老板 App 也带着一段永远不会跑的代码，以后改动时还要两头照顾。
+  if(typeof onTxSaved === 'function') onTxSaved(tx);
 }
 
 // 删除确认文案。已经送进公司账本的那笔，删掉本机记录**不会**同时删掉公司账本里的
@@ -4334,6 +4389,9 @@ function init(){
       setCloudIcon('syncing');
       await syncFromCloud();
       setCloudIcon('synced');
+      // 收件放在同步之后：先把云端账本拉齐，收进来的这几笔才会跟着 saveData()
+      // 一起推上云。反过来也不会丢账（mergeData 是取并集），只是多绕一圈。
+      fetchInbox();
     } else {
       setCloudIcon('off');
     }
@@ -4351,7 +4409,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-08h';
+const APP_BUILD = '2026-08-09a';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -5375,8 +5433,160 @@ function renderCompanySettings(){
   queueEl.innerHTML = parts.join('');
 }
 
+// ===================== 同事投递箱（收件）=====================
+// 同事版（staff/）里的「Boss 账」页面记的账不走 butler，也**不直接写这本账本**——
+// 它写进 Firestore 的 inbox_boss 集合，一条一个文档；这台 App 开起来把它们收走、
+// 并进指定账户、再把原文档删掉。
+//
+// 【为什么必须隔一个投递箱】账本在云端是「整份 data 压成一个 JSON 字符串」存的
+// （saveToCloud），两个人同时写就是整本互相覆盖——2026-07-23 已经栽过一次，
+// 日本旅行记的账被云端旧快照整份盖掉。投递箱一条一个文档、只增不改，
+// 物理上没有覆盖账本的路径。权限规则底稿见仓库根目录 firestore.rules。
+//
+// 【不会重复记账】收进来的交易 id 固定是 'ix_' + 同事那边那条的 id：同一条被收两次
+// （删文档失败、或者同事重发）也只是覆盖同一笔，变不出第二条。
+// 【删了不会复活】已经在墓碑里（deletedTxIds）的不再收回来——否则「删除没用」那个
+// 老问题会从这条新路径重新长出来（见 diagnosis.md 2026-08-03 那条）。
+const INBOX_COLLECTION = 'inbox_boss';
+const INBOX_ACCOUNT_STORAGE = 'expenseTracker_inboxAccount';
+const inboxState = { last: 0, added: 0, error: null, running: false };
+
+/**
+ * 收件收进哪个账户。默认 Boss（USD 那个），可以在设置页改。
+ * 做成可选而不是写死 'acc_boss'：账户是用户自己建的，写死等于赌他没改过名字/没重建过。
+ */
+function getInboxAccountId(){
+  const saved = localStorage.getItem(INBOX_ACCOUNT_STORAGE);
+  if(saved && data.accounts.some(a=>a.id===saved)) return saved;
+  const guess = data.accounts.find(a=>a.id==='acc_boss')
+    || data.accounts.find(a=>!a.isCompany && a.currency==='USD')
+    || data.accounts.find(a=>!a.isCompany)
+    || data.accounts[0];
+  return guess ? guess.id : null;
+}
+
+function setInboxAccount(id){
+  if(!data.accounts.some(a=>a.id===id)) return;
+  localStorage.setItem(INBOX_ACCOUNT_STORAGE, id);
+  renderInboxSettings();
+  toast(`以后同事记的账收进\n「${(getAcc(id)||{}).name}」`);
+}
+
+/** 把投递箱里那条删掉。删不掉不算错——下次靠 id 去重，不会变成两笔。 */
+async function inboxDrop(doc){
+  try{ await doc.ref.delete(); }catch(e){ console.warn('投递箱删除失败（已收到，忽略）', e); }
+}
+
+async function fetchInbox(opts){
+  const loud = !!(opts && opts.loud);
+  if(!cloudAvailable || !currentUser){
+    if(loud) toast('要先登录 Google 才能收件');
+    return;
+  }
+  if(inboxState.running) return;
+  const accId = getInboxAccountId();
+  if(!accId){ if(loud) toast('还没有账户可以收件'); return; }
+
+  inboxState.running = true;
+  if(loud) toast('正在收件…');
+  let snap;
+  try{
+    snap = await db.collection(INBOX_COLLECTION).limit(50).get();
+  }catch(e){
+    inboxState.running = false;
+    // permission-denied = 规则还没贴好（最常见），跟「没网」要分开说，
+    // 否则用户会对着一个「连不上」在 WiFi 里瞎找问题
+    inboxState.error = (e && e.code === 'permission-denied')
+      ? '权限规则还没设好（照 firestore.rules 贴进 Firebase 后台）'
+      : '连不上云端';
+    if(loud) toast('收件失败：\n' + inboxState.error);
+    renderInboxSettings();
+    return;
+  }
+
+  inboxState.error = null;
+  const dead = new Set((data.deletedTxIds || []).map(d => d.id));
+  let added = 0, skipped = 0;
+
+  for(const doc of snap.docs){
+    const d = doc.data() || {};
+    let raw = null;
+    try{ raw = JSON.parse(d.tx); }catch(e){ raw = null; }
+    // 坏数据不留在箱子里堵着后面的（箱子是别人能写的地方，必须假设会收到垃圾）
+    if(!raw || !(Number(raw.amount) >= 0) || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.date||''))){
+      await inboxDrop(doc); skipped++; continue;
+    }
+    const id = 'ix_' + String(raw.srcId || doc.id).slice(0, 40);
+    if(dead.has(id)){ await inboxDrop(doc); skipped++; continue; }
+
+    const isIncome = raw.type === 'income';
+    const known = data.categories.some(c => c.id === raw.categoryId);
+    const tx = {
+      id,
+      accountId: accId,
+      amount: Number(raw.amount),
+      type: isIncome ? 'income' : 'expense',
+      categoryId: known ? raw.categoryId : (isIncome ? 'cat_other_inc' : 'cat_other_exp'),
+      description: String(raw.description || '').slice(0, 200),
+      date: raw.date,
+      updatedAt: Date.now(),
+      fromStaff: { by: String(d.from || '同事').slice(0, 40), at: Date.now() }
+    };
+
+    // 收据照片：存不下就只收文字。照片没了还能问人补，账丢了就真丢了——
+    // 所以照片这一步的任何失败都不许中断入账。
+    if(d.photo){
+      try{
+        const blob = base64ToBlob(d.photo);
+        const attId = 'att_' + id;
+        await putAttachmentBlob(attId, blob);
+        tx.attachmentId = attId;
+        uploadAttachmentToCloud(attId, blob, id);   // 不 await：备份慢不该拖住收件
+      }catch(e){ console.warn('投递箱照片存不下（只收文字）', e); }
+    }
+
+    const i = data.transactions.findIndex(t => t.id === id);
+    if(i >= 0) data.transactions[i] = Object.assign({}, data.transactions[i], tx);
+    else { data.transactions.push(tx); added++; }
+    await inboxDrop(doc);
+  }
+
+  if(added) saveData();
+  inboxState.added = added;
+  inboxState.last = Date.now();
+  inboxState.running = false;
+
+  if(added){
+    toast(`收到同事记的 ${added} 笔\n已进「${(getAcc(accId)||{}).name}」`);
+    if(state.currentTab === 'overview') renderOverview();
+    if(state.currentTab === 'transactions') renderTxList();
+  } else if(loud){
+    toast(skipped ? '箱子里没有新的账' : '箱子是空的');
+  }
+  renderInboxSettings();
+}
+
+function renderInboxSettings(){
+  const sel = document.getElementById('inbox-acc-select');
+  if(!sel) return;
+  const cur = getInboxAccountId();
+  sel.innerHTML = data.accounts.map(a =>
+    `<option value="${a.id}"${a.id===cur?' selected':''}>${a.name}（${a.currency}）</option>`).join('');
+
+  const el = document.getElementById('inbox-status');
+  if(!el) return;
+  if(!cloudAvailable){ el.textContent = '现在连不上 Google 服务，收不了件（记账照常）'; return; }
+  if(!currentUser){ el.textContent = '要先在上面登录 Google 才能收件'; return; }
+  if(inboxState.error){ el.innerHTML = `<span style="color:#e74c3c">⚠️ ${inboxState.error}</span>`; return; }
+  el.textContent = inboxState.last
+    ? `上次收件：${new Date(inboxState.last).toLocaleString('zh-CN')}` +
+      (inboxState.added ? `，收到 ${inboxState.added} 笔` : '，没有新的')
+    : '还没收过件';
+}
+
 // 开 App 和网络恢复时自动补送（静默，不打扰）
 window.addEventListener('online', ()=>flushCompanyQueue());
+window.addEventListener('online', ()=>fetchInbox());
 
 // 启动。必须放在最后：上面那些 const（COMPANY_* 等）是块级作用域，
 // 在它们的定义语句执行之前引用会报错，init() 里会碰到这些东西。
@@ -5541,12 +5751,18 @@ function staffStart(){
     acc = { id:'acc'+Date.now(), name:'公司报账', currency:'USD', color:'#0f766e',
             isCompany:true, createdAt:Date.now() };
   }
-  data.accounts = [acc];            // 同事版只有这一个账户，切不了也就选不错
-  data.currentAccountId = acc.id;
+  // 拿到老板账口令的人多一个「老板账」账户；没拿到的跟以前一模一样，只有公司报账这一个。
+  data.accounts = staffBossOn()
+    ? [acc, staffBossAcc()]
+    : [acc];
+  // 上次停在哪个账户就还在哪个（刷新一次被弹回公司账，记到一半会记错地方）
+  if(!data.accounts.some(a => a.id === data.currentAccountId)) data.currentAccountId = acc.id;
   saveData();
   init();
   refreshCompanyCategories();
   flushCompanyQueue();
+  staffSyncMode();
+  flushBossQueue();
   staffApplyLang();
   staffShowInstallTip();
   staffLoadPetty();
@@ -5754,6 +5970,8 @@ function staffApplyLang(){
   if(state.currentTab === 'transactions') renderTxList();
   // 日期提醒是脚本画的，不带 data-en，切语言时要自己重画一次
   syncDateHint();
+  // 标题（🧾 Seryi ／ 👔 老板账）和老板账那块说明也是脚本画的，同上
+  if(staffIdentity) staffSyncMode();
 }
 function staffToggleLang(){
   staffLang = staffLang === 'en' ? 'zh' : 'en';
@@ -5771,6 +5989,225 @@ window.addEventListener('storage', e=>{
 });
 /** 同事版的动态文字用这个翻。 */
 function tt(zh, en){ return staffLang === 'en' ? en : zh; }
+
+/* ===================== 老板账（投递箱）=====================
+ *
+ * 这一页记的账**不走 butler、也不进公司账本**——写进 Firestore 的 inbox_boss 集合，
+ * 老板的 App 开起来收走、并进他自己的账户。规则底稿见仓库根目录 firestore.rules。
+ *
+ * 谁看得到这一页：手上有「老板账口令」的人。口令不写在页面源码里（网址是公开的
+ * GitHub Pages，写进源码等于没有口令），只住在 Firestore 规则里和这台手机的
+ * localStorage 里，老板私下发给谁谁才有。
+ *
+ * 两个页面的账去处完全不同，走错一个是要翻账才查得出来的，所以：
+ * 底部两个入口图标/颜色不一样、老板账页面顶上永远挂着一条说明。
+ */
+const STAFF_BOSS_KEY_STORAGE = 'staffExpense_bossKey';
+const STAFF_BOSS_QUEUE = 'staffExpense_bossQueue';
+const STAFF_BOSS_ACC_ID = 'acc_boss_inbox';
+
+function staffBossKey(){ return (localStorage.getItem(STAFF_BOSS_KEY_STORAGE) || '').trim(); }
+function staffBossOn(){ return !!staffBossKey(); }
+function staffBossAcc(){
+  const old = (data.accounts || []).find(a => a.id === STAFF_BOSS_ACC_ID);
+  return old || { id: STAFF_BOSS_ACC_ID, name:'老板账', currency:'USD', color:'#7c3aed',
+                  createdAt: Date.now() };
+}
+
+/** 填/换/清掉老板账口令。填错了送不出去时会说明白（见 submitInboxTx 的 permission-denied）。 */
+function staffSetBossKey(){
+  const cur = staffBossKey();
+  const v = prompt(tt(
+    '老板账口令（老板私下给你的那个）。留空并确定＝清掉，这个页面就不见了。',
+    "The Boss ledger passcode (the Boss gives it to you). Leave empty to remove this page."), cur);
+  if(v === null) return;                       // 按了取消：什么都不动
+  const k = v.trim();
+  if(k) localStorage.setItem(STAFF_BOSS_KEY_STORAGE, k);
+  else localStorage.removeItem(STAFF_BOSS_KEY_STORAGE);
+  // 账户清单要跟着变（多一个/少一个），最省事也最不会出错的做法是重来一遍
+  location.reload();
+}
+
+/** 底部两个入口、body 上的模式 class、标题，全部对齐当前账户。 */
+function staffSyncMode(){
+  const onBoss = data.currentAccountId === STAFF_BOSS_ACC_ID;
+  document.body.classList.toggle('staff-boss', onBoss);
+  const navBoss = document.getElementById('nav-boss');
+  if(navBoss){
+    navBoss.style.display = staffBossOn() ? '' : 'none';
+    navBoss.classList.toggle('active', onBoss);
+  }
+  const navTx = document.getElementById('nav-transactions');
+  if(navTx) navTx.classList.toggle('active', !onBoss);
+  const title = document.getElementById('hdr-title');
+  if(title && staffIdentity){
+    title.textContent = onBoss ? tt('👔 老板账','👔 Boss') : ('🧾 ' + staffIdentity.reporter);
+  }
+  renderBossQueue();
+}
+
+/**
+ * 切账户。**不能用共用的 switchAccount()**——它末尾会 closeModal('modal-acc-switch')，
+ * 而账户切换弹窗在同事版里是整块没生成进来的，getElementById 回 null，
+ * 当场抛「Cannot read properties of null」，切换只做到一半（账户变了、界面没跟上）。
+ * 这里只做同事版需要的那几步。
+ */
+function staffSwitchAcc(id){
+  data.currentAccountId = id;
+  saveData();
+  updateHeader();
+  switchTab('transactions');
+  staffSyncMode();
+}
+function staffGoCompany(){
+  staffSwitchAcc((data.accounts.find(a => a.isCompany) || data.accounts[0]).id);
+}
+function staffGoBoss(){ staffSwitchAcc(STAFF_BOSS_ACC_ID); }
+
+/**
+ * 投递箱要一个 Firebase 身份才写得进去（规则里 request.auth != null 那条）。
+ * 用匿名登录：同事不用注册任何账号，打开就有一个临时身份。
+ *
+ * 注意：同事版的 onAuthStateChanged 在生成时已经被拿掉了（第 7 步），所以匿名登录
+ * **不会**让 currentUser 变成非 null，也就不会有人把同事的账本推上老板的云端——
+ * 改动这一段前先确认那条还在。
+ */
+async function staffEnsureAnon(){
+  if(!cloudAvailable) return false;
+  try{
+    if(!auth.currentUser) await auth.signInAnonymously();
+    return !!auth.currentUser;
+  }catch(e){ console.warn('匿名登录失败', e); return false; }
+}
+
+async function submitInboxTx(tx){
+  const k = staffBossKey();
+  if(!k) return { ok:false, retriable:false, message: tt('还没填老板账口令','No Boss passcode yet') };
+  if(!(await staffEnsureAnon()))
+    return { ok:false, retriable:true, message: tt('现在连不上，等有网自动送','Offline — will send later') };
+
+  const payload = {
+    k,
+    from: (staffIdentity ? staffIdentity.reporter : '同事').slice(0, 40),
+    // 整笔账压成一个字符串送（规则里只校验长度，不逐字段校验——字段校验住老板 App
+    // 那边，收进来时不认的类别会退回「其他」，坏数据直接丢掉不入账）
+    tx: JSON.stringify({
+      srcId: tx.id, date: tx.date, amount: tx.amount, type: tx.type,
+      categoryId: tx.categoryId, description: tx.description || ''
+    })
+    // 刻意不带 createdAt：那要用 firebase.firestore.FieldValue.serverTimestamp()，
+    // 等于让这条路多依赖一个全局对象；而「什么时候收到的」老板那边收件时自己盖章
+    // （fromStaff.at）就够了。规则允许这个字段存在，只是我们不送。
+  };
+  // 收据照片一起送，老板那份账户明细 PDF 的凭证页才有图。太大就只送文字——
+  // 照片没了还能回头问人补，账送不出去才是真丢。
+  if(tx.attachmentId){
+    try{
+      const blob = await getAttachmentBlob(tx.attachmentId);
+      if(blob){
+        const dataUrl = await blobToBase64(blob);
+        if(dataUrl.length < 700 * 1024) payload.photo = dataUrl;
+      }
+    }catch(e){ console.warn('照片读不出来，只送文字', e); }
+  }
+
+  try{
+    await db.collection(INBOX_COLLECTION).add(payload);
+    return { ok:true };
+  }catch(e){
+    // 口令不对 / 老板还没设好权限：重试一百次也是同样结果，要当场说清楚
+    if(e && e.code === 'permission-denied')
+      return { ok:false, retriable:false,
+               message: tt('口令不对，或者老板那边还没设好','Wrong passcode, or the Boss has not set it up') };
+    return { ok:false, retriable:true, message: tt('现在送不出去，等有网自动送','Offline — will send later') };
+  }
+}
+
+function loadBossQueue(){
+  try{ return JSON.parse(localStorage.getItem(STAFF_BOSS_QUEUE) || '[]'); }catch(e){ return []; }
+}
+function saveBossQueue(q){
+  try{ localStorage.setItem(STAFF_BOSS_QUEUE, JSON.stringify(q)); }catch(e){}
+}
+
+/**
+ * saveTxInner 存完本机之后调这里（钩子在 expense-tracker.html 末尾）。
+ *
+ * 送不出去绝不丢账：本机永远先存好（那一步已经做完了），这里只管送；
+ * 网络问题进队列自动重试，口令错才标 failed 并写在列表上。
+ * 重送安全：老板那边按 srcId 去重覆盖同一笔，送两次不会变成两条。
+ */
+function onTxSaved(tx){
+  if(tx.accountId !== STAFF_BOSS_ACC_ID) return;
+  const local = data.transactions.find(t => t.id === tx.id);
+  if(local){ local.inbox = { status:'pending', error:null }; saveData(); }
+  const q = loadBossQueue();
+  if(!q.includes(tx.id)){ q.push(tx.id); saveBossQueue(q); }
+  renderTxList();
+  renderBossQueue();
+  flushBossQueue({ loud:true });
+}
+
+async function flushBossQueue(opts){
+  const loud = !!(opts && opts.loud);
+  let q = loadBossQueue();
+  if(!q.length) return;
+  if(!staffBossOn()) return;
+  for(const txId of [...q]){
+    const tx = data.transactions.find(t => t.id === txId);
+    if(!tx){ q = q.filter(x => x !== txId); saveBossQueue(q); continue; }
+    const r = await submitInboxTx(tx);
+    const local = data.transactions.find(t => t.id === txId);
+    if(r.ok){
+      if(local) local.inbox = { status:'sent', error:null };
+      q = q.filter(x => x !== txId); saveBossQueue(q);
+      if(loud) toast(tt('✅ 已送到老板那边','✅ Sent to the Boss'));
+    } else if(r.retriable){
+      if(local) local.inbox = { status:'pending', error:null };
+      if(loud) toast(r.message);
+      break;                      // 还是没网，剩下的留着下次
+    } else {
+      if(local) local.inbox = { status:'failed', error:r.message };
+      q = q.filter(x => x !== txId); saveBossQueue(q);
+      if(loud) toast('⚠️ ' + r.message);
+    }
+    saveData();
+  }
+  renderTxList();
+  renderBossQueue();
+}
+
+/** 老板账页面顶上那块说明里的一行状态：还有几笔没送到。 */
+function renderBossQueue(){
+  const el = document.getElementById('staff-boss-queue');
+  if(!el) return;
+  const pend = (data.transactions || []).filter(t => t.inbox && t.inbox.status === 'pending').length;
+  const failed = (data.transactions || []).filter(t => t.inbox && t.inbox.status === 'failed');
+  const parts = [];
+  if(pend) parts.push(tt(`⏳ 有 ${pend} 笔还没送到，有网时自动送`,
+                         `⏳ ${pend} record(s) not sent yet — will go out when you are online`));
+  if(failed.length) parts.push(tt(
+    `⚠️ 有 ${failed.length} 笔送不出去：${failed[0].inbox.error || ''}`,
+    `⚠️ ${failed.length} record(s) failed: ${failed[0].inbox.error || ''}`));
+  el.innerHTML = parts.join('<br>');
+}
+
+/* 已经送到老板那边的，删掉只是删自己手机上这条——老板的账本里那条还在，
+   App 没有回收的路。不讲清楚的话，同事会以为删干净了。 */
+const _staffConfirmDeleteTx = confirmDeleteTx;
+confirmDeleteTx = function(t){
+  if(t && t.inbox && t.inbox.status === 'sent'){
+    return confirm(tt(
+      '这笔已经送到老板那边了。\n\n删除只会删掉你手机上这条，老板账本里那条还在——'
+      + '要更正请直接跟老板说。\n\n仍要删除？',
+      'This one already went to the Boss.\n\nDeleting only removes it from your phone — '
+      + 'the Boss still has it. Tell the Boss to fix it.\n\nDelete anyway?'));
+  }
+  return _staffConfirmDeleteTx.apply(this, arguments);
+};
+
+// 网络恢复时把没送到的补上（跟公司账那条队列同一个思路）
+window.addEventListener('online', ()=>flushBossQueue());
 
 initStaffPage();
 </script>

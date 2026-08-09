@@ -224,8 +224,11 @@ let main;
   // 云同步/账户切换按钮留在 DOM 里（共用脚本会读），但必须看不见、点不到
   ok('云同步图标看不见', !(await page.locator('#hdr-cloud').isVisible()));
   ok('账户切换按钮看不见', !(await page.locator('#hdr-acc-pill').isVisible()));
-  ok('底部只剩一个按钮', (await page.locator('.nav-btn').count()) === 1,
+  // 底部只有「明细」和「老板账」两个入口，而老板账要有口令才看得见——
+  // 没口令的同事看到的跟以前一模一样，只有一个按钮
+  ok('底部只有明细/老板账两个入口', (await page.locator('.nav-btn').count()) === 2,
      await page.locator('.nav-btn').count());
+  ok('没填口令时看不到老板账入口', !(await page.locator('#nav-boss').isVisible()));
   // 设置页里的东西一个都不该在（脚本里可能还留着用不到的函数，那不影响；
   // 要守的是 DOM 里没有任何可以点到的入口）
   ok('没有云同步的界面', (await page.locator('#cloud-status-text').count()) === 0);
@@ -1279,6 +1282,107 @@ console.log('\n【21】对账功能是老板专用的，同事版看不到也碰
   ok('同事版没有「记一笔待claim」的弹窗', (await page.locator('#modal-reconcile-add').count()) === 0);
   ok('全程没有任何 pendingClaim 相关请求',
      !posted.some(r => /^pendingClaim/.test(r.action || '')), posted.map(r => r.action));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【22】老板账（投递箱）：拿到口令才有，记的账送去 inbox_boss ----------
+// 这一页跟公司报账是两本完全不同的账：公司账进 butler 出月底 Excel，老板账直接进
+// 老板自己的账本。走错一个是要翻账才查得出来的，所以这里守三件事：
+//   1. 没口令的人根本看不到这个入口（跟以前一模一样的页面）
+//   2. 切过去之后表单是**个人账本**那套（描述/收入支出/类别宫格），不是公司那套
+//   3. 记一笔真的送进 inbox_boss，payload 的字段跟 Firestore 规则对得上
+//      （规则要求 k/tx/from，可选 photo/createdAt，多一个字段就会被服务端拒绝）
+console.log('\n【22】老板账：拿到口令才有，记的账送进投递箱');
+{
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  ok('没口令时看不到老板账入口', !(await page.locator('#nav-boss').isVisible()));
+
+  // 老板私下发的口令。存进去再刷新——正式路径是 staffSetBossKey()（prompt + reload），
+  // 这里直接写存储位跳过 prompt，效果一样。
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(900);
+  ok('填了口令就看得到老板账入口', await page.locator('#nav-boss').isVisible());
+
+  // 把 Firestore 的写入换成假的：外部网域在这份自检里全被挡（模拟酒店 WiFi），
+  // 真发一定失败，测不到 payload 长什么样。
+  await page.evaluate(() => {
+    window.__inbox = [];
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    db = { collection: (c) => ({ add: async (p) => { window.__inbox.push({ c, p }); return { id:'d1' }; } }) };
+    cloudAvailable = true;
+  });
+
+  await page.click('#nav-boss');
+  await page.waitForTimeout(400);
+  ok('切过去之后 body 上有 staff-boss', await page.evaluate(() => document.body.classList.contains('staff-boss')));
+  ok('页面顶上挂着「进老板账本」的说明', await page.locator('#staff-boss-note').isVisible());
+  ok('备用金卡不出现（那是公司账的钱）', !(await page.locator('#staff-petty').isVisible()));
+
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  ok('公司那套栏位整块不见', !(await page.locator('#tx-company-wrap').isVisible()));
+  ok('描述栏回来了（个人账本那套）', await page.locator('#tx-desc-group').isVisible());
+  ok('收入/支出切换回来了', await page.locator('#tx-type-tabs').isVisible());
+  ok('类别宫格回来了', await page.locator('#tx-cat-wrap').isVisible());
+
+  await typeAmount(page, '12.34');
+  await page.locator('#cat-grid > *').first().click();
+  await page.fill('#tx-desc', '老板的咖啡');
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(900);
+
+  const box = await page.evaluate(() => window.__inbox);
+  ok('送进 inbox_boss 集合，一笔一条', box.length === 1 && box[0].c === 'inbox_boss',
+     box.map(b => b.c));
+  const p = box[0]?.p || {};
+  ok('带上口令 k', p.k === 'pass-1234', p.k);
+  ok('带上谁记的', p.from === 'Seryi', p.from);
+  const sent = JSON.parse(p.tx || '{}');
+  ok('金额原样送过去', sent.amount === 12.34, sent.amount);
+  ok('描述一起送', sent.description === '老板的咖啡', sent.description);
+  ok('带 srcId（老板那边靠它去重，送两次不会变两条）', !!sent.srcId, sent.srcId);
+  // 规则里 hasOnly(['k','tx','photo','from','createdAt'])：多一个字段整条会被拒
+  ok('字段没有超出规则允许的范围',
+     Object.keys(p).every(k => ['k','tx','photo','from','createdAt'].includes(k)), Object.keys(p));
+
+  const st = await page.evaluate(() =>
+    (data.transactions.find(t => t.accountId === 'acc_boss_inbox') || {}).inbox);
+  ok('本机标成已送出', st && st.status === 'sent', st);
+  ok('队列已清空', (await page.evaluate(() =>
+     JSON.parse(localStorage.getItem('staffExpense_bossQueue') || '[]'))).length === 0);
+  ok('列表上看得出「已送老板」',
+     (await page.locator('#tx-list').innerText()).includes('已送老板'));
+
+  // 送不出去也绝不丢账：本机永远先存好，进队列等有网
+  await page.evaluate(() => {
+    db = { collection: () => ({ add: async () => { const e = new Error('offline'); throw e; } }) };
+  });
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '5.00');
+  await page.locator('#cat-grid > *').first().click();
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(900);
+  ok('送不出去这笔还是存进了本机',
+     await page.evaluate(() => data.transactions.some(t => t.amount === 5)));
+  ok('进了待送队列', (await page.evaluate(() =>
+     JSON.parse(localStorage.getItem('staffExpense_bossQueue') || '[]'))).length === 1);
+  ok('说明条上写着还有几笔没送到',
+     (await page.locator('#staff-boss-queue').innerText()).includes('还没送到'));
+
+  // 切回公司账：表单要变回公司那套，两边不能互相污染
+  await page.click('#nav-transactions');
+  await page.waitForTimeout(400);
+  ok('切回来 body 上的 staff-boss 拿掉了',
+     await page.evaluate(() => !document.body.classList.contains('staff-boss')));
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  ok('公司那套栏位回来了', await page.locator('#tx-company-wrap').isVisible());
+  ok('描述栏又收起来了', !(await page.locator('#tx-desc-group').isVisible()));
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
