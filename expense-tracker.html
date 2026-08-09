@@ -4657,7 +4657,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-09a';
+const APP_BUILD = '2026-08-09b';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -5825,11 +5825,18 @@ function renderInboxSettings(){
   if(!el) return;
   if(!cloudAvailable){ el.textContent = '现在连不上 Google 服务，收不了件（记账照常）'; return; }
   if(!currentUser){ el.textContent = '要先在上面登录 Google 才能收件'; return; }
-  if(inboxState.error){ el.innerHTML = `<span style="color:#e74c3c">⚠️ ${inboxState.error}</span>`; return; }
-  el.textContent = inboxState.last
+  // 规则里那串 uid 必须跟这台 App 登录的账号一模一样，否则读投递箱会被拒。
+  // 去 Firebase 后台的用户列表里抄容易抄错行（还要认哪一行是自己），所以直接显示在这里。
+  const uidLine = `<div style="margin-top:6px;word-break:break-all">你的 UID（规则里 BOSS_UID 那处要填这串）：
+    <code style="user-select:all">${currentUser.uid}</code></div>`;
+  if(inboxState.error){
+    el.innerHTML = `<span style="color:#e74c3c">⚠️ ${inboxState.error}</span>${uidLine}`;
+    return;
+  }
+  el.innerHTML = (inboxState.last
     ? `上次收件：${new Date(inboxState.last).toLocaleString('zh-CN')}` +
       (inboxState.added ? `，收到 ${inboxState.added} 笔` : '，没有新的')
-    : '还没收过件';
+    : '还没收过件') + uidLine;
 }
 
 // 开 App 和网络恢复时自动补送（静默，不打扰）
