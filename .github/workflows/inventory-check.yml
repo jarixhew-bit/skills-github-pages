@@ -1,0 +1,52 @@
+# 库存页（inventory/index.html）的自检（真浏览器）。
+# 这页管的是老板的酒/茶叶/虫草实物库存——数字点错一下就跟实际瓶数对不上，
+# 而且「点两下 + 只能加一次」这类窗口期 bug 光看代码看不出来（2026-08-08 在记账 App
+# 上踩过：写法错了自测照样通过），所以每次改到这页都用真浏览器实跑一遍。
+# 测试全程把 worker 请求拦下来假造返回，不打真实接口、不碰真实库存数据。
+name: inventory page check
+
+on:
+  push:
+    paths:
+      - 'inventory/**'
+      - 'tools/check-inventory.mjs'
+      - '.github/workflows/inventory-check.yml'
+  pull_request:
+    paths:
+      - 'inventory/**'
+      - 'tools/check-inventory.mjs'
+  workflow_dispatch:
+
+# 同一个分支上 push 与 pull_request 会各触发一次，这个检查要装 Chromium（约 1 分钟），
+# 跑两遍纯属浪费。新的一跑就取消同组里还没跑完的旧的。
+concurrency:
+  group: inventory-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 装 playwright
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+      - name: 起本地服务器
+        run: |
+          # 输出必须重定向、还要 disown：后台进程只要还占着这个步骤的 stdout，
+          # Actions 就会一直等它、整个步骤挂住不结束（见 expense-company-check.yml 里
+          # 2026-08-03 那次卡 20 分钟的记录）。
+          nohup python3 -m http.server 8899 > /tmp/httpserver.log 2>&1 &
+          disown || true
+          for i in $(seq 1 20); do
+            curl -sf -o /dev/null http://localhost:8899/inventory/ && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://localhost:8899/inventory/ \
+            || { echo "本地服务器没起来"; cat /tmp/httpserver.log; exit 1; }
+      - name: 跑库存页自检
+        run: node tools/check-inventory.mjs
