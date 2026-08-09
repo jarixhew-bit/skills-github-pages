@@ -1485,9 +1485,25 @@ function renderAccCards(){
     </div>`;
   }
   row.innerHTML = ibkrCard + data.accounts.map(acc=>{
+    const sel = acc.id===data.currentAccountId?'selected':'';
+    if(acc.isCompany){
+      // 公司账户不是钱包，没有「结余」这回事——它只记支出（见 syncCompanyTxFields
+      // 里的说明），本地历史支出加总只会一路往负的方向跑，跟真实情况毫无关系
+      // （2026-08-09 用户发现显示 -246.35，正是这个算法本身就没道理，不是记错账）。
+      // 铁律跟公司账本/备用金那两张卡一样：余额一个数都不在这边算，改用服务端
+      // 已经拉回来的「全员本月」合计——跟下面公司账本卡片同一个数，不会分岔。
+      // 只在数据确实是「本月」时才用，翻页看过其它月份之后这里不能拿旧月份的数顶上。
+      const d = (ledState.data && ledState.month === ledMonthNow()) ? ledState.data : null;
+      const val = d ? fmt(d.total, 'USD') : '点击查看';
+      return `<div class="acc-card ${sel}" style="background:${acc.color}"
+        onclick="switchAccount('${acc.id}')">
+        <div class="acc-card-name">${acc.name}</div>
+        <div class="acc-card-bal">${val}</div>
+        <div class="acc-card-cur">USD · 本月全员已报</div>
+      </div>`;
+    }
     const allTxs = data.transactions.filter(t=>t.accountId===acc.id);
     const bal = allTxs.reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0);
-    const sel = acc.id===data.currentAccountId?'selected':'';
     return `<div class="acc-card ${sel}" style="background:${acc.color}"
       onclick="switchAccount('${acc.id}')">
       <div class="acc-card-name">${acc.name}</div>
@@ -4651,7 +4667,11 @@ function buildCompanyPayload(tx, extra){
       currency: tx.company.rawCurrency,
       refTag: tx.company.refTag || null,
       plate: tx.company.plate || null,
-      note: tx.company.note || null
+      note: tx.company.note || null,
+      // 本机这笔记录稳定不变的 id：网络不稳时 fetch 可能已经送达、butler 也已经写进去了，
+      // 只是这台手机没收到回应，判定成失败去排队重送——重送靠这个 id 让 butler 认出
+      // 「这笔已经写过了」，不会记成两条（2026-08-09，同事反映网络一断偶尔就多出一条）。
+      clientId: tx.id
     }],
     ...(extra || {})
   };
