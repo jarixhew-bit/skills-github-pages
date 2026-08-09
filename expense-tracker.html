@@ -1834,7 +1834,16 @@ function companyTxNote(t){
  * 有疑问只能回头问人，所以「问谁」必须写在脸上）。
  */
 function staffTxNote(t){
-  return (t.fromStaff && t.fromStaff.by) ? ` · 🙋${t.fromStaff.by}记的` : '';
+  const parts = [];
+  if(t.fromStaff && t.fromStaff.by) parts.push(`🙋${t.fromStaff.by}记的`);
+  // t.inbox 只有同事版会写（送进老板投递箱的状态）。老板 App 里的记录没有这个字段，
+  // 所以这几句在老板那边永远不会执行——放在共用函数里是因为列表本身是共用的。
+  if(t.inbox){
+    if(t.inbox.status === 'pending') parts.push('⏳待送出');
+    else if(t.inbox.status === 'failed') parts.push('⚠️没送到');
+    else if(t.inbox.status === 'sent') parts.push('👔已送老板');
+  }
+  return parts.length ? ` · ${parts.join(' · ')}` : '';
 }
 
 function txHtml(t, currency){

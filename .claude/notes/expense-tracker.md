@@ -476,6 +476,48 @@ cut 区间内，同事版生成时自动整块消失；但 `init()` 里拉取数
 cut_exact，这条会当场变红）；butler-bot `tests/pending-claim.test.mjs` 28 项覆盖
 handler 本身的算术、0 值拒绝、撤销、历史截断/排序。
 
+## 同事投递箱：同事帮老板记账（2026-08-09）
+
+同事版多一个「老板账」页面，记的账**不走 butler、不进公司账本**，直接进老板自己的账户。
+用户要的是「PDF 和功能都跟主 App 现在一样，不要跟着公司账那套」——所以这条路上
+一个字都没改 PDF 和记账表单，只是换了个「账从哪来」。
+
+**为什么隔一个投递箱，而不是让同事直接写老板的账本**：账本在云端是「整份 data 压成
+一个 JSON 字符串」存的（`saveToCloud`），两边同时写就是整本互相覆盖——2026-07-23
+栽过一次。投递箱（Firestore `inbox_boss` 集合）一条一个文档、只增不改，物理上没有
+覆盖账本的路径。
+
+- **权限住 Firestore 规则里**，不在代码里：同事只能 create、不能读/改/删；只有老板那个
+  uid 能读能删。规则底稿在仓库根目录 `firestore.rules`（**Console 才是正本**，改了要
+  回来同步这份底稿——规则在仓库里查不到是 2026-07-16 栽过的坑）。
+- **口令不写在源码里**：网址是公开的 GitHub Pages，写进源码等于没有口令。它只住在
+  规则里和同事手机的 localStorage（`staffExpense_bossKey`）。没口令的同事连「老板账」
+  这个入口都看不到（`staffSyncMode` 控制），页面跟以前一模一样。
+- **身份用匿名登录**（`auth.signInAnonymously`）：规则要求 `request.auth != null`。
+  ⚠️ 同事版的 `onAuthStateChanged` 在生成时已被拿掉（build 第 7 步），所以匿名登录
+  **不会**让 `currentUser` 变成非 null——改那一段前先确认这条还在，否则同事的账本会被
+  推上老板的云端。
+- **老板侧**（`fetchInbox()`，设置页「同事投递箱」那一栏）：登录后自动收、也能手动点。
+  收进来的 id 固定 `ix_<同事那条的 id>`——收两次只覆盖同一笔；已在墓碑
+  （`deletedTxIds`）里的不再收回来（「删了又出现」不许从新路径长回来）。
+  收进哪个账户是设置页的下拉（`expenseTracker_inboxAccount`，默认 `acc_boss`），
+  **不写死**——账户是用户自己建的。
+- **同事侧**（build 脚本注入）：`onTxSaved()` 钩子（钩子本身在 `saveTxInner()` 末尾，
+  老板 App 里没这个函数所以什么都不做）→ `submitInboxTx()` → 送不出去进队列
+  `staffExpense_bossQueue`，开页面/网络恢复自动补送。**送不出去绝不丢账**。
+- **老板账那边表单是个人账本那套**：`syncCompanyTxFields()` 本来就按 `acc.isCompany`
+  分岔，所以描述/收入支出/类别宫格自动回来。STAFF_CSS 的隐藏改成
+  `body:not(.staff-boss)` 作用域，不是两套 CSS。
+- **不能用共用的 `switchAccount()` 切账户**：它末尾 `closeModal('modal-acc-switch')`，
+  而那个弹窗在同事版里整块没生成进来，会当场抛 null。用 `staffSwitchAcc()`。
+- 送出去的 payload 刻意不带 `createdAt`（那要 `firebase.firestore.FieldValue`，多依赖
+  一个全局对象；收到时间由老板侧盖 `fromStaff.at`）。字段必须落在规则的
+  `hasOnly(['k','tx','photo','from','createdAt'])` 里，多一个整条会被拒。
+
+自检：`check-expense-company.mjs`【21】（收件：去重、墓碑、坏数据、权限错误分辨、
+没登录不读）＋ `check-staff-page.mjs`【22】（口令才可见、表单换成个人那套、payload
+字段跟规则对得上、离线进队列）。
+
 ## 首屏账户卡片：公司账户显示 Yang 的备用金余额（2026-08-09）
 
 `renderAccCards()`（约 :1726）给每个账户画一张卡，普通账户是「全部交易 income−expense

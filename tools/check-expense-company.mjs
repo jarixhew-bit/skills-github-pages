@@ -1208,6 +1208,111 @@ const browser = await chromium.launch(launchOpts);
   await ctx.close();
 }
 
+// ---------- 【21】同事投递箱：把同事记的账收进来 ----------
+// 同事版的「老板账」页面把账写进 Firestore 的 inbox_boss，这台 App 收走、并进账户、
+// 清空箱子。要守的是三件「静静出错」的事：收两次不能变两笔、删掉的不能复活、
+// 别人能写的地方一定会收到垃圾数据（箱子不设防会被一条坏数据堵住）。
+console.log('\n【21】同事投递箱：把同事记的账收进来');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1500);
+
+  // 假投递箱。docs = 箱子里现在有哪几条，deleted = 收完之后哪几条被清掉了
+  await page.evaluate(() => {
+    window.__box = { docs: [], deleted: [], mode: 'ok' };
+    window.__put = (id, d) => window.__box.docs.push({
+      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
+    cloudAvailable = true;
+    currentUser = { uid: 'boss' };
+    db = { collection: (c) => ({
+      limit: () => ({ get: async () => {
+        if (window.__box.mode === 'denied') { const e = new Error('nope'); e.code = 'permission-denied'; throw e; }
+        window.__box.readFrom = c;
+        return { docs: window.__box.docs };
+      } }),
+      // 照片备份走 users/{uid}/attachments，这里给个空壳免得 uploadAttachmentToCloud 报错
+      doc: () => ({ collection: () => ({ doc: () => ({ set: async () => {} }) }) }),
+    }) };
+  });
+
+  const seed = (id, tx, from) => page.evaluate(([id, tx, from]) =>
+    window.__put(id, { k:'x', from, tx: JSON.stringify(tx) }), [id, tx, from]);
+  const fetchNow = () => page.evaluate(() => fetchInbox());
+  const bossAcc = await page.evaluate(() => getInboxAccountId());
+  ok('默认收进 Boss（USD）那个账户', bossAcc === 'acc_boss', bossAcc);
+
+  await seed('d1', { srcId:'s1', date:'2026-08-09', amount:12.34, type:'expense',
+                     categoryId:'cat_food', description:'老板的咖啡' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  let tx = await page.evaluate(() => data.transactions.find(t => t.id === 'ix_s1'));
+  ok('收进来了，id 用同事那条的 srcId', !!tx, tx);
+  ok('金额原样', tx?.amount === 12.34, tx?.amount);
+  ok('进了指定账户', tx?.accountId === 'acc_boss', tx?.accountId);
+  ok('记下是谁记的', tx?.fromStaff?.by === 'Seryi', tx?.fromStaff);
+  ok('收完把箱子里那条清掉', (await page.evaluate(() => window.__box.deleted)).includes('d1'));
+  ok('列表上标出「Seryi记的」',
+     (await page.evaluate(() => staffTxNote(data.transactions.find(t=>t.id==='ix_s1')))).includes('Seryi'));
+
+  // 同一笔再送一次（同事重送、或上次删文档失败）：只能覆盖，不能变两条
+  await seed('d1b', { srcId:'s1', date:'2026-08-09', amount:12.34, type:'expense',
+                      categoryId:'cat_food', description:'老板的咖啡（改过）' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  const n = await page.evaluate(() => data.transactions.filter(t => t.id === 'ix_s1').length);
+  ok('收两次还是一笔，不是两笔', n === 1, n);
+  ok('内容跟着更新（同事改过再送）',
+     (await page.evaluate(() => data.transactions.find(t=>t.id==='ix_s1').description)).includes('改过'));
+
+  // 删掉之后不许再被收回来——「删了又出现」是这个 App 栽过的坑，别从新路径长回来
+  await page.evaluate(() => { deleteTxById('ix_s1'); });
+  await page.waitForTimeout(300);
+  await seed('d1c', { srcId:'s1', date:'2026-08-09', amount:12.34, type:'expense',
+                      categoryId:'cat_food', description:'老板的咖啡' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('删掉的不会被再收回来（墓碑挡住）',
+     (await page.evaluate(() => data.transactions.some(t => t.id === 'ix_s1'))) === false);
+
+  // 箱子是别人能写的地方，一定会收到垃圾——坏数据要丢掉，而且不能堵住后面的好数据
+  const before = await page.evaluate(() => data.transactions.length);
+  await seed('bad1', { srcId:'b1', date:'不是日期', amount:5, type:'expense', categoryId:'cat_food' }, 'X');
+  await seed('bad2', { srcId:'b2', date:'2026-08-09', amount:'很多钱', type:'expense', categoryId:'cat_food' }, 'X');
+  await seed('good', { srcId:'g1', date:'2026-08-09', amount:9.99, type:'expense', categoryId:'cat_food' }, 'Kuang');
+  await fetchNow(); await page.waitForTimeout(300);
+  const after = await page.evaluate(() => data.transactions.length);
+  ok('两条坏数据都没入账', after - before === 1, { before, after });
+  ok('坏数据后面的好数据照收', await page.evaluate(() => data.transactions.some(t => t.id === 'ix_g1')));
+  ok('坏数据也从箱子里清掉，不会堵着',
+     (await page.evaluate(() => window.__box.deleted)).filter(x => x.startsWith('bad')).length === 2);
+
+  // 不认得的类别退回「其他」，不是丢掉——账不能因为类别对不上就消失
+  await seed('d2', { srcId:'s2', date:'2026-08-09', amount:1, type:'expense',
+                     categoryId:'cat_不存在', description:'' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('认不得的类别退回「其他」而不是丢掉',
+     (await page.evaluate(() => (data.transactions.find(t=>t.id==='ix_s2')||{}).categoryId)) === 'cat_other_exp');
+
+  // 规则没贴好 vs 没网，要分开说——不然用户对着「连不上」在 WiFi 里瞎找
+  await page.evaluate(() => { window.__box.mode = 'denied'; });
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('权限被拒时说的是「规则没设好」',
+     (await page.evaluate(() => inboxState.error)).includes('权限规则'),
+     await page.evaluate(() => inboxState.error));
+
+  // 没登录不收（也收不到——规则那边只认老板的 uid）
+  await page.evaluate(() => { window.__box.mode = 'ok'; currentUser = null; window.__box.readFrom = null; });
+  await seed('d3', { srcId:'s3', date:'2026-08-09', amount:2, type:'expense', categoryId:'cat_food' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('没登录时根本不去读投递箱',
+     (await page.evaluate(() => window.__box.readFrom)) === null);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
