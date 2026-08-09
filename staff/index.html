@@ -4434,7 +4434,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-09c';
+const APP_BUILD = '2026-08-09d';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -5292,47 +5292,8 @@ function reconcileOpenAdd(){
   const noteEl = document.getElementById('reconcile-add-note-input');
   if(noteEl) noteEl.value = '';
   showReconcileAddNote('');
-  renderReconcileTransfer();
   showModal('modal-reconcile-add');
   setTimeout(()=>{ const a = document.getElementById('reconcile-add-amount'); if(a) a.focus(); }, 120);
-}
-
-/* ——「claim 回来了」顺手记进自己账户 ————————————————————————————
- *
- * 待claim 住在 butler 服务端（事件流现算），个人账本住本机＋云同步，两本账。
- * 公司把钱还回来时这两本都要动：这边扣掉、那边多一笔收入。分两趟手动做，
- * 漏掉任何一趟月底都对不上，而且事后没人看得出漏的是哪一趟。
- *
- * 顺序铁律：**先服务端、成功了再记本机**。反过来做，服务端那一步失败时
- * 本机已经凭空多了一笔收入，比什么都没做更糟。
- */
-const CLAIM_ACC_STORAGE = 'expenseTracker_claimAccount';
-
-/** 能收 claim 的账户：待claim 记的是美元，换算这种事不许 App 自己猜，所以只列美元账户。 */
-function claimTargetAccounts(){
-  return (data.accounts || []).filter(a => !a.isCompany && a.currency === 'USD');
-}
-
-function renderReconcileTransfer(){
-  const sel = document.getElementById('reconcile-transfer-acc');
-  if(sel){
-    const list = claimTargetAccounts();
-    let cur = '';
-    try{ cur = localStorage.getItem(CLAIM_ACC_STORAGE) || ''; }catch(e){}
-    if(!list.some(a => a.id === cur)) cur = (list.find(a => a.id === 'acc_boss') || list[0] || {}).id || '';
-    sel.innerHTML = list.length
-      ? list.map(a => `<option value="${a.id}"${a.id===cur?' selected':''}>${a.name}（${a.currency}）</option>`).join('')
-      : '<option value="">（没有美元账户可以收）</option>';
-  }
-  reconcileAmountChanged();
-}
-
-/** 正数是「新增待claim」，钱还没回来，没有可记的收入——那时整块不出现。 */
-function reconcileAmountChanged(){
-  const row = document.getElementById('reconcile-transfer-row');
-  if(!row) return;
-  const { num } = parseAmountText((document.getElementById('reconcile-add-amount')||{}).value);
-  row.style.display = (!isNaN(num) && num < 0 && claimTargetAccounts().length) ? '' : 'none';
 }
 
 function showReconcileAddNote(msg){
@@ -5349,17 +5310,9 @@ async function reconcileSubmit(){
   }
   const note = (document.getElementById('reconcile-add-note-input')||{}).value.trim();
   const verb = num > 0 ? '新增待claim' : '扣掉（claim回来了）';
-
-  // claim 回来的钱要不要顺手记进账户（见 renderReconcileTransfer 上面那段）
-  const onEl = document.getElementById('reconcile-transfer-on');
-  const accEl = document.getElementById('reconcile-transfer-acc');
-  const toAccId = (accEl && accEl.value) || '';
-  const toAcc = toAccId ? getAcc(toAccId) : null;
-  const transfer = num < 0 && onEl && onEl.checked && !!toAcc;
-
   // 这是钱，写进去马上影响首屏那张对账卡——多按一次确认，换掉「多打一个 0」
   if(!confirm(`确定${verb} ${fmt(Math.abs(num),'USD')}？`
-    + (transfer ? `\n同时在「${toAcc.name}」记一笔收入 ${fmt(Math.abs(num),'USD')}` : ''))) return;
+    + (num < 0 ? '\n（公司户口那张卡会自己涨回来，不用再手动补一笔）' : ''))) return;
   showReconcileAddNote('正在保存…');
   try{
     const res = await fetch(COMPANY_EXPENSE_URL, {
@@ -5372,33 +5325,17 @@ async function reconcileSubmit(){
       showReconcileAddNote(body.message || `保存失败（${res.status}）`);
       return;
     }
-    // 服务端那一步过了才动本机账本（顺序理由见 CLAIM_ACC_STORAGE 上面那段）
-    let moved = '';
-    if(transfer){
-      try{ localStorage.setItem(CLAIM_ACC_STORAGE, toAcc.id); }catch(e){}
-      data.transactions.push({
-        id: uid(),
-        accountId: toAcc.id,
-        amount: Math.abs(num),
-        type: 'income',
-        categoryId: 'cat_other_inc',
-        description: note ? `公司 claim 回来（${note}）` : '公司 claim 回来',
-        date: today(),
-        updatedAt: Date.now(),
-        // 标记来源：以后想核对「哪几笔收入是 claim 回来的」不用靠描述文字去猜
-        claimBack: { at: Date.now(), amountUsd: Math.abs(num) }
-      });
-      saveData();
-      moved = `\n已在「${toAcc.name}」记一笔收入 ${fmt(Math.abs(num),'USD')}`;
-    }
     closeModal('modal-reconcile-add');
-    toast(`已记下，待claim现在是 ${fmt(body.total,'USD')}${moved}`);
+    toast(`已记下，待claim现在是 ${fmt(body.total,'USD')}`);
     await fetchPendingClaim({force:true});
     renderReconcile();
     renderOvReconcile();
-    if(moved){
+    // claim 回来时服务端已经把钱镜像进 Yang 的备用金，公司那张卡的数会跟着变——
+    // 重拉一次备用金，否则要等下次切页才看得到（跟 pettyOpenAdd 保存后同一处理）
+    if(num < 0){
+      await fetchPetty({force:true});
+      renderAccCards();
       if(state.currentTab === 'overview') renderOverview();
-      if(state.currentTab === 'transactions') renderTxList();
     }
   }catch(e){
     showReconcileAddNote('现在连不上，等有网再存一次（这一笔没有记进去）');
