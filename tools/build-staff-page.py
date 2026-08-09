@@ -194,7 +194,7 @@ def build(src: str) -> str:
                   "\n\n  // 公司账本（全员）：开 App 时后台拉一次，首屏那张卡才有「今天」的数。\n"
                   "  // 不 await——拉不到就是卡上写一句「连不上」，不该拖住启动。\n"
                   "  fetchCompanyLedger().then(()=>{ if(state.currentTab==='overview'){ renderAccCards(); renderOvCompany(); renderOvReconcile(); } });\n"
-                  "  fetchPetty().then(()=>{ if(state.currentTab==='overview'){ renderOvPetty(); renderOvReconcile(); } });\n"
+                  "  fetchPetty().then(()=>{ if(state.currentTab==='overview'){ renderAccCards(); renderOvPetty(); renderOvReconcile(); } });\n"
                   "  fetchPendingClaim().then(()=>{ if(state.currentTab==='overview') renderOvReconcile(); });",
                   "启动时拉全员账本/备用金/待claim")
     s = cut_exact(s,

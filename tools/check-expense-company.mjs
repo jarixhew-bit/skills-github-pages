@@ -256,15 +256,16 @@ const browser = await chromium.launch(launchOpts);
     data.transactions = data.transactions.filter(t=>t.id!=='neg1'); saveData();
   });
 
-  console.log('\n【2c】公司账户卡片不能再显示本地加总的「结余」（那个数没有意义）');
+  console.log('\n【2c】公司账户卡片不能再显示本地加总的「结余」，改显示 Yang 的备用金余额');
   // 2026-08-09 用户发现公司账户卡片显示 -246.35——公司账户只记支出、本地历史加总
-  // 只会一路往负的方向跑，跟真实情况毫无关系。改成显示服务端已经拉回来的「全员本月」
-  // 合计（还没拉到就显示「点击查看」占位，不能显示任何自己算出来的数字）。
+  // 只会一路往负的方向跑，跟真实情况毫无关系。用户接着说明：负责转钱给 Seryi/Kuang
+  // 的是 Yang，「主要财务都是他在负责」，改成显示他的备用金余额（还没拉到就显示
+  // 「点击查看」占位，不能显示任何自己算出来的数字）。
   await page.evaluate(()=>{
     const a = data.accounts.find(x=>x.isCompany);
     data.transactions.push({id:'neg2', accountId:a.id, type:'expense', amount:246.35,
       categoryId:(data.categories[0]||{}).id, date:'2026-08-01', desc:'测试'});
-    ledState.data = null; ledState.month = null;
+    pettyState.data = null;
     saveData(); switchTab('overview'); renderAccCards();
   });
   await page.waitForTimeout(400);
@@ -277,21 +278,43 @@ const browser = await chromium.launch(launchOpts);
   });
   ok('还没拉到服务端数据时，不显示任何自己算出来的数字', companyCardEmpty.bal === '点击查看', companyCardEmpty);
   ok('也不再是「总结余」这个说法', !companyCardEmpty.cur.includes('总结余'), companyCardEmpty);
+
+  // Yang 有余额时：正常显示
   await page.evaluate(()=>{
-    const a = data.accounts.find(x=>x.isCompany);
-    ledState.data = { total: 88.8, count: 3, days: [] };
-    ledState.month = ledMonthNow();
+    pettyState.data = [
+      { person:'Seryi', status:'unset', balance:null, topups:[], spent:0 },
+      { person:'Kuang', status:'unset', balance:null, topups:[], spent:0 },
+      { person:'Yang', status:'ok', balance:88.8, opened:100, openedDate:'2026-08-01', topups:[], spent:11.2 },
+    ];
     renderAccCards();
   });
   await page.waitForTimeout(200);
-  const companyCardLoaded = await page.evaluate(()=>{
+  let companyCardLoaded = await page.evaluate(()=>{
+    const a = data.accounts.find(x=>x.isCompany);
+    const cards = [...document.querySelectorAll('.acc-card')];
+    const c = cards.find(el=>(el.textContent||'').includes(a.name));
+    return { bal: c.querySelector('.acc-card-bal').textContent.trim(),
+             cur: c.querySelector('.acc-card-cur').textContent.trim() };
+  });
+  ok('显示的是 Yang 的备用金余额（88.80），不是本地加总', companyCardLoaded.bal.includes('88.80'), companyCardLoaded);
+  ok('小字注明是 Yang 的备用金', companyCardLoaded.cur.includes('Yang'), companyCardLoaded);
+
+  // Yang 垫了钱、余额是负数时：负号不能被 Math.abs() 弄丢（跟【2b】同一类 bug）
+  await page.evaluate(()=>{
+    pettyState.data[2] = { person:'Yang', status:'ok', balance:-52.25, opened:0, openedDate:'2026-08-01', topups:[], spent:52.25 };
+    renderAccCards();
+  });
+  await page.waitForTimeout(200);
+  companyCardLoaded = await page.evaluate(()=>{
     const a = data.accounts.find(x=>x.isCompany);
     const cards = [...document.querySelectorAll('.acc-card')];
     const c = cards.find(el=>(el.textContent||'').includes(a.name));
     return c.querySelector('.acc-card-bal').textContent.trim();
   });
-  ok('服务端数据到了之后，显示的是那个数字（88.80），不是本地加总',
-     companyCardLoaded.includes('88.80'), companyCardLoaded);
+  ok('Yang 垫钱时余额带负号，不是显示成正数', /^[-−]/.test(companyCardLoaded), companyCardLoaded);
+  ok('负余额金额本身还是对的（52.25）', companyCardLoaded.includes('52.25'), companyCardLoaded);
+
+  await page.evaluate(()=>{ pettyState.data = null; });
   await page.evaluate(()=>{
     data.transactions = data.transactions.filter(t=>t.id!=='neg2'); saveData();
     ledState.data = null; ledState.month = null;
