@@ -1387,6 +1387,135 @@ console.log('\n【22】老板账：拿到口令才有，记的账送进投递箱
   await h.ctx.close();
 }
 
+// ---------- 【23】老板账的币种 + 手上现金 ----------
+// 出门带的是现金，币种由老板当场决定：写死 USD 的话，日元账目会显示成「US$8000」，
+// 差两个数量级，同事会以为自己多打了一个零。
+// 手上现金那张卡跟公司账那张备用金卡是两套东西——那张的数由 butler 服务端算，
+// 这张老板账没有服务端，只能本机算（收到的钱 − 支出 + 收入）。这里守的是：
+//   1. 币种改得动，而且改完列表和卡片一起跟着变
+//   2. 余额是真算的，不是显示一个固定数
+//   3. 没送出去的账也照扣（现金离开口袋就没了，跟送没送到无关）
+//   4. 公司账那一页不许出现这张卡
+console.log('\n【23】老板账：币种可改，手上现金自己算');
+{
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(900);
+  await page.evaluate(() => {
+    window.__inbox = [];
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    db = { collection: () => ({ add: async (p) => { window.__inbox.push(p); return { id:'d1' }; } }) };
+    cloudAvailable = true;
+  });
+  await page.click('#nav-boss');
+  await page.waitForTimeout(400);
+
+  ok('手上现金卡出现在老板账页', await page.locator('#staff-boss-cash').isVisible());
+  ok('还没填收到多少时，不编一个 0 出来（那看起来像花光了）',
+     !(await page.locator('#staff-boss-cash').innerText()).match(/0\.00/),
+     await page.locator('#staff-boss-cash').innerText());
+  ok('请他先记一笔收到的现金',
+     (await page.locator('#staff-boss-cash').innerText()).includes('收到现金'));
+  ok('默认币种是 USD', await page.evaluate(() => staffBossCur()) === 'USD');
+
+  // —— 改币种 ——
+  await page.evaluate(() => { window.prompt = () => 'JPY'; });
+  await page.evaluate(() => staffSetBossCur());
+  await page.waitForTimeout(400);
+  ok('币种改成 JPY', await page.evaluate(() => staffBossCur()) === 'JPY');
+  ok('老板账那个账户的币种也跟着改（否则设定变了、数字还是旧符号）',
+     await page.evaluate(() =>
+       (data.accounts.find(a => a.id === 'acc_boss_inbox') || {}).currency) === 'JPY');
+  ok('说明块上写着现在用的是 JPY',
+     (await page.locator('#staff-boss-cfg').innerText()).includes('JPY'));
+  await page.evaluate(() => { window.prompt = () => 'ABC'; });
+  await page.evaluate(() => staffSetBossCur());
+  await page.waitForTimeout(300);
+  ok('乱填的代码不认（不然会变成「ABC 300.00」）',
+     await page.evaluate(() => staffBossCur()) === 'JPY');
+
+  // —— 收到现金 600 ——
+  await page.evaluate(() => { window.prompt = () => '600'; });
+  await page.evaluate(() => bossCashAdd());
+  await page.waitForTimeout(400);
+  let card = await page.locator('#staff-boss-cash').innerText();
+  ok('卡上显示手上现金 600（用 JPY 的符号 ¥）',
+     card.includes('¥600.00') && card.includes('手上现金'), card);
+
+  // —— 花掉 100：余额要自己算出 500 ——
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '100');
+  await page.locator('#cat-grid > *').first().click();
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(900);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('花了 100 之后余额变 500（是算出来的，不是写死的）', card.includes('¥500.00'), card);
+  ok('卡上写明收到多少、花掉多少', card.includes('收到 ¥600.00') && card.includes('已花 ¥100.00'), card);
+
+  // —— 送不出去的那笔照样扣：现金离开口袋就没了 ——
+  await page.evaluate(() => {
+    db = { collection: () => ({ add: async () => { throw new Error('offline'); } }) };
+  });
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '50');
+  await page.locator('#cat-grid > *').first().click();
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(900);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('没送出去的那笔也从余额扣掉了（现金已经花了）', card.includes('¥450.00'), card);
+  ok('但要写明有几笔还没送到，别让人以为账丢了',
+     card.includes('还没送到老板那边'), card);
+
+  // —— 超支：他自己先垫了钱，要看得出来 ——
+  await page.evaluate(() => {
+    db = { collection: () => ({ add: async (p) => { window.__inbox.push(p); return { id:'d2' }; } }) };
+  });
+  await page.click('.fab');
+  await page.waitForTimeout(400);
+  await typeAmount(page, '500');
+  await page.locator('#cat-grid > *').first().click();
+  await page.click('button[onclick="saveTx()"]');
+  await page.waitForTimeout(900);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('花超了显示「超支了」而不是一个负数余额', card.includes('超支了'), card);
+  ok('说清楚是他自己先垫的、该跟老板要回来', card.includes('先垫了'), card);
+  ok('超支时卡片换成警示色', await page.evaluate(() =>
+     document.getElementById('staff-boss-cash').classList.contains('low')));
+
+  // —— 老板又给钱：加上去 ——
+  await page.evaluate(() => { window.prompt = () => '1000'; });
+  await page.evaluate(() => bossCashAdd());
+  await page.waitForTimeout(400);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('又收到 1000 之后余额回正（600+1000-650=950）', card.includes('¥950.00'), card);
+
+  // —— 重填只清收到的钱，账目一笔都不许动 ——
+  const txCount = await page.evaluate(() =>
+    data.transactions.filter(t => t.accountId === 'acc_boss_inbox').length);
+  // 直接换掉 window.confirm，不再挂 dialog 处理器——这页已经有一个了，
+  // 再挂第二个 playwright 会报「dialog already handled」（同一个坑在 check-expense-company 里写过）
+  await page.evaluate(() => { window.confirm = () => true; });
+  await page.evaluate(() => bossCashReset());
+  await page.waitForTimeout(400);
+  ok('重填之后回到「还没填收到多少」的状态',
+     (await page.locator('#staff-boss-cash').innerText()).includes('收到现金'));
+  ok('重填不动任何一笔账', await page.evaluate(() =>
+     data.transactions.filter(t => t.accountId === 'acc_boss_inbox').length) === txCount, txCount);
+
+  // —— 公司账那一页不该有这张卡 ——
+  await page.click('#nav-transactions');
+  await page.waitForTimeout(400);
+  ok('切回公司账，手上现金卡不出现（那是老板账的钱）',
+     !(await page.locator('#staff-boss-cash').isVisible()));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

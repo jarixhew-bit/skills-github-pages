@@ -168,7 +168,9 @@ def build(src: str) -> str:
                      'month-end Excel and are not deducted from your cash on hand.">'
                      '不是公司报账——这里记的不会进月底的 Excel，也不会从你的备用金里扣。</span>\n'
                      '    <div id="staff-boss-queue"></div>\n'
+                     '    <div id="staff-boss-cfg"></div>\n'
                      '  </div>\n'
+                     '  <div id="staff-boss-cash"></div>\n'
                      '  <div id="staff-petty"></div>\n'
                      '  <div id="staff-summary"></div>',
                      "明细页（放本月合计）")
@@ -468,8 +470,31 @@ body.staff-boss #staff-restore-note{display:none !important}
 body.staff-boss #staff-boss-note{display:block}
 #staff-boss-note b{display:block;font-size:14.5px;margin-bottom:2px}
 #staff-boss-queue{margin-top:8px;font-weight:600}
+/* 这本账用什么钱：出门带的是现金，币种由老板当场决定，所以做成一行可点的设定，
+   不是写死。写死成 USD 的话，日元账目会显示成「US$8000」——差两个数量级，
+   同事会以为自己多打了个零。 */
+#staff-boss-cfg{margin-top:8px;font-size:12.5px;opacity:.9}
+#staff-boss-cfg span{cursor:pointer;text-decoration:underline;font-weight:600}
 /* 老板账的 nav 图标用不同颜色：两个入口长得太像会记错地方 */
 #nav-boss.active{color:#7c3aed}
+/* 手上现金卡：老板给了多少现金、花掉之后还剩多少。
+   跟公司账那张 #staff-petty 是**两套东西**——那张的数由 butler 服务端算，这张
+   老板账没有服务端，只能本机自己算（起点由同事自己录，花掉的从本机账目减）。
+   所以不共用样式类，免得哪天改一边动到另一边。 */
+#staff-boss-cash{display:none;background:linear-gradient(135deg,#6d28d9,#4c1d95);color:#fff;
+  border-radius:14px;padding:16px;margin-bottom:12px}
+body.staff-boss #staff-boss-cash{display:block}
+#staff-boss-cash.low{background:linear-gradient(135deg,#b45309,#92400e)}
+.bcash-label{font-size:12px;opacity:.85}
+.bcash-total{font-size:28px;font-weight:700;margin-top:2px;letter-spacing:.5px}
+.bcash-sub{font-size:12px;opacity:.85;margin-top:6px;line-height:1.6}
+.bcash-warn{margin-top:10px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.18);
+  font-size:13px;font-weight:600}
+.bcash-btns{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.bcash-btn{background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:999px;
+  padding:7px 14px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer}
+.bcash-list{margin-top:10px;border-top:1px solid rgba(255,255,255,.25);padding-top:8px}
+.bcash-line{display:flex;justify-content:space-between;font-size:12.5px;opacity:.92;padding:2px 0}
 
 #staff-gate{position:fixed;inset:0;z-index:300;background:var(--bg);
   display:flex;flex-direction:column;justify-content:center;padding:24px}
@@ -848,6 +873,10 @@ const _staffRenderTxList = renderTxList;
 renderTxList = function(){
   _staffRenderTxList.apply(this, arguments);
   staffRenderSummary();
+  // 老板账那张「手上现金」卡的数也是从账目现算的，同样挂在这里重画：记账、删除、
+  // 找回记录、收件后重画全都会经过 renderTxList，逐个入口去补一定会漏，
+  // 而漏掉的表现是余额停在旧数字上——那种错要人肉比对才发现。
+  renderBossCash();
 };
 function staffRenderSummary(){
   const box = document.getElementById('staff-summary');
@@ -956,13 +985,142 @@ function tt(zh, en){ return staffLang === 'en' ? en : zh; }
 const STAFF_BOSS_KEY_STORAGE = 'staffExpense_bossKey';
 const STAFF_BOSS_QUEUE = 'staffExpense_bossQueue';
 const STAFF_BOSS_ACC_ID = 'acc_boss_inbox';
+const STAFF_BOSS_CUR_STORAGE = 'staffExpense_bossCur';
+const STAFF_BOSS_CASH = 'staffExpense_bossCash';
 
 function staffBossKey(){ return (localStorage.getItem(STAFF_BOSS_KEY_STORAGE) || '').trim(); }
 function staffBossOn(){ return !!staffBossKey(); }
+/**
+ * 这本账的币种。老板那边收件时是按**他自己选的目标账户**记的，币种以那边为准；
+ * 这里这个只影响同事屏幕上的符号——但旅行时这个符号很要命，日元跟美元差两个
+ * 数量级，显示成 US$ 会让人以为自己多打了一个零。所以做成可设，老板给现金时
+ * 顺口说一声「选日元」即可。
+ */
+function staffBossCur(){
+  return (localStorage.getItem(STAFF_BOSS_CUR_STORAGE) || '').trim() || 'USD';
+}
 function staffBossAcc(){
+  const cur = staffBossCur();
   const old = (data.accounts || []).find(a => a.id === STAFF_BOSS_ACC_ID);
-  return old || { id: STAFF_BOSS_ACC_ID, name:'老板账', currency:'USD', color:'#7c3aed',
-                  createdAt: Date.now() };
+  // 账户对象第一次建好就存进 data 了，之后改币种要顺手把存着的那份也改掉，
+  // 否则设定看着变了、列表里的数字还是旧符号。
+  if(old){ old.currency = cur; return old; }
+  return { id: STAFF_BOSS_ACC_ID, name:'老板账', currency: cur, color:'#7c3aed',
+           createdAt: Date.now() };
+}
+
+/** 换币种。只认 App 本来就支持的那几种（CUR_SYMBOLS），乱填会变成「XYZ 300.00」。 */
+function staffSetBossCur(){
+  const list = Object.keys(CUR_SYMBOLS);
+  const v = prompt(tt(
+    '这本账用什么钱？填代码即可：\\n' + list.join(' / '),
+    'Which currency does this ledger use? Type the code:\\n' + list.join(' / ')), staffBossCur());
+  if(v === null) return;
+  const code = v.trim().toUpperCase();
+  if(!CUR_SYMBOLS[code]){ toast(tt('不认得这个代码：' + code, 'Unknown code: ' + code)); return; }
+  localStorage.setItem(STAFF_BOSS_CUR_STORAGE, code);
+  const acc = (data.accounts || []).find(a => a.id === STAFF_BOSS_ACC_ID);
+  if(acc){ acc.currency = code; saveData(); }
+  updateHeader();
+  renderTxList();
+  staffSyncMode();
+  toast(tt('这本账改用 ' + code, 'This ledger now uses ' + code));
+}
+
+/* —— 手上现金：老板给了多少、还剩多少 ——————————————————————
+ *
+ * 跟公司账那张备用金卡不是同一件事：那边的数由 butler 服务端算，这边老板账
+ * 根本没有服务端，只能本机算。算法就一句：收到的钱 − 记的支出 ＋ 记的收入。
+ *
+ * 刻意**全部本机算、连没送出去的也扣**：现金离开他口袋的那一刻就该扣，
+ * 跟账送没送到老板那边没关系。（公司账那张相反，因为那边的权威数在服务端。）
+ * 送没送到另外写一行提醒，不混进这个数里。
+ */
+function loadBossCash(){
+  try{
+    const o = JSON.parse(localStorage.getItem(STAFF_BOSS_CASH) || 'null');
+    return (o && Array.isArray(o.topups)) ? o : { topups: [] };
+  }catch(e){ return { topups: [] }; }
+}
+function saveBossCash(o){
+  try{ localStorage.setItem(STAFF_BOSS_CASH, JSON.stringify(o)); }catch(e){}
+}
+
+function bossCashAdd(){
+  const v = prompt(tt('老板给了你多少现金？（' + staffBossCur() + '）',
+                      'How much cash did the Boss give you? (' + staffBossCur() + ')'), '');
+  if(v === null) return;
+  const n = Number(String(v).replace(/[^\\d.\\-]/g, ''));
+  if(!(n > 0)){ toast(tt('请填一个大于 0 的数', 'Please enter a number above 0')); return; }
+  const o = loadBossCash();
+  o.topups.push({ date: today(), amount: Math.round(n * 100) / 100 });
+  saveBossCash(o);
+  renderBossCash();
+  toast(tt('记下了：收到 ' + fmt(n, staffBossCur()), 'Recorded: received ' + fmt(n, staffBossCur())));
+}
+
+/** 记错起点时用。只清「收到的钱」，记过的账一笔都不动。 */
+function bossCashReset(){
+  if(!confirm(tt(
+    '把「收到的钱」全部清掉重记？\\n\\n你记过的账一笔都不会动，只是这张卡要重新填收到多少。',
+    'Clear all cash top-ups and start over?\\n\\nYour recorded expenses are untouched — '
+    + 'you just re-enter how much cash you received.'))) return;
+  saveBossCash({ topups: [] });
+  renderBossCash();
+}
+
+function renderBossCash(){
+  const el = document.getElementById('staff-boss-cash');
+  if(!el) return;
+  const cur = staffBossCur();
+  const o = loadBossCash();
+  const got = o.topups.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+  // 还没填收到多少：不编一个 0 出来（那看起来像「花光了」），直接请他填
+  if(!o.topups.length){
+    el.classList.remove('low');
+    el.innerHTML = `
+      <div class="bcash-label">${tt('手上现金','Cash on hand')}</div>
+      <div class="bcash-sub" style="margin-top:4px">${tt(
+        '老板给你现金后按下面这个记一笔，之后每记一笔账这里会自动扣，随时看得到还剩多少。',
+        'Tap below when the Boss hands you cash. Every record you make is deducted here, '
+        + 'so you always know what is left.')}</div>
+      <div class="bcash-btns">
+        <button class="bcash-btn" onclick="bossCashAdd()">${tt('＋ 收到现金','+ Received cash')}</button>
+      </div>`;
+    return;
+  }
+
+  const mine = (data.transactions || []).filter(t => t.accountId === STAFF_BOSS_ACC_ID);
+  const spent = mine.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const back = mine.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const left = Math.round((got - spent + back) * 100) / 100;
+  const notSent = mine.filter(t => t.inbox && t.inbox.status !== 'sent').length;
+  const over = left < 0;
+  el.classList.toggle('low', over || left < got * 0.15);
+
+  const rows = o.topups.slice(-5).reverse().map(t => `
+      <div class="bcash-line"><span>${t.date}</span><span>+${fmt(t.amount, cur)}</span></div>`).join('');
+
+  el.innerHTML = `
+    <div class="bcash-label">${over ? tt('超支了','Over budget') : tt('手上现金','Cash on hand')}</div>
+    <div class="bcash-total">${fmt(over ? -left : left, cur)}</div>
+    <div class="bcash-sub">${tt(
+      `收到 ${fmt(got, cur)} · 已花 ${fmt(spent, cur)}`,
+      `Received ${fmt(got, cur)} · spent ${fmt(spent, cur)}`)}${
+      back ? tt(` · 退回 ${fmt(back, cur)}`, ` · refunds ${fmt(back, cur)}`) : ''}</div>
+    ${over ? `<div class="bcash-warn">${tt(
+      `⚠️ 你自己先垫了 ${fmt(-left, cur)}，记得跟老板要回来`,
+      `⚠️ You are ${fmt(-left, cur)} out of pocket — ask the Boss to pay you back`)}</div>` : ''}
+    ${notSent ? `<div class="bcash-warn">${tt(
+      `⏳ 有 ${notSent} 笔还没送到老板那边（这个余额已经扣过了）`,
+      `⏳ ${notSent} record(s) not sent to the Boss yet (already deducted above)`)}</div>` : ''}
+    <div class="bcash-btns">
+      <button class="bcash-btn" onclick="bossCashAdd()">${tt('＋ 又收到现金','+ Got more cash')}</button>
+      <button class="bcash-btn" onclick="bossCashReset()">${tt('重填','Start over')}</button>
+    </div>
+    <div class="bcash-list">
+      <div class="bcash-label">${tt('收到的钱','Cash received')}</div>${rows}</div>`;
 }
 
 /** 填/换/清掉老板账口令。填错了送不出去时会说明白（见 submitInboxTx 的 permission-denied）。 */
@@ -995,6 +1153,16 @@ function staffSyncMode(){
     title.textContent = onBoss ? tt('👔 老板账','👔 Boss') : ('🧾 ' + staffIdentity.reporter);
   }
   renderBossQueue();
+  renderBossCfg();
+  renderBossCash();
+}
+
+/** 说明块底下那一行设定：这本账用什么钱。 */
+function renderBossCfg(){
+  const el = document.getElementById('staff-boss-cfg');
+  if(!el) return;
+  el.innerHTML = tt('这本账用的钱：', 'This ledger uses: ')
+    + `<span onclick="staffSetBossCur()">${staffBossCur()} ✎</span>`;
 }
 
 /**
