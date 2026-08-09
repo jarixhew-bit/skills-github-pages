@@ -228,12 +228,13 @@ const browser = await chromium.launch(launchOpts);
     return !!data.accounts.find(x=>x.id===a.id).isCompany;
   }));
 
-  console.log('\n【2b】账户卡片的余额：负数必须看得出是负的');
-  // 公司账只有支出没有收入，余额一定是负的。2026-08-07 用户发现卡片把它显示成正数——
-  // 大字用了 Math.abs()，负号被丢到下面那行小字的末尾（"USD · 总结余 −"），
-  // 后面还没跟东西，看起来像被截断了。钱的正负看错是最要命的一类显示错误。
+  console.log('\n【2b】账户卡片的余额：负数必须看得出是负的（普通个人账户）');
+  // 2026-08-07 用户发现卡片把负余额显示成正数——大字用了 Math.abs()，负号被丢到
+  // 下面那行小字的末尾（"HKD · 总结余 −"），后面还没跟东西，看起来像被截断了。
+  // 钱的正负看错是最要命的一类显示错误。用非公司账户测——公司账户从 2026-08-09
+  // 起不再显示这种本地加总的「结余」，见下面【2c】。
   await page.evaluate(()=>{
-    const a = data.accounts.find(x=>x.currency==='USD');
+    const a = data.accounts.find(x=>!x.isCompany);
     data.transactions = data.transactions.filter(t=>t.accountId!==a.id);
     data.transactions.push({id:'neg1', accountId:a.id, type:'expense', amount:1234,
       categoryId:(data.categories[0]||{}).id, date:'2026-08-01', desc:'测试'});
@@ -241,7 +242,7 @@ const browser = await chromium.launch(launchOpts);
   });
   await page.waitForTimeout(400);
   const cardBal = await page.evaluate(()=>{
-    const a = data.accounts.find(x=>x.currency==='USD');
+    const a = data.accounts.find(x=>!x.isCompany);
     const cards = [...document.querySelectorAll('.acc-card')];
     const c = cards.find(el=>(el.textContent||'').includes(a.name));
     return { bal: c.querySelector('.acc-card-bal').textContent.trim(),
@@ -253,6 +254,47 @@ const browser = await chromium.launch(launchOpts);
   ok('小字那行末尾没有孤立的负号', !/[-−]\s*$/.test(cardBal.cur), cardBal);
   await page.evaluate(()=>{
     data.transactions = data.transactions.filter(t=>t.id!=='neg1'); saveData();
+  });
+
+  console.log('\n【2c】公司账户卡片不能再显示本地加总的「结余」（那个数没有意义）');
+  // 2026-08-09 用户发现公司账户卡片显示 -246.35——公司账户只记支出、本地历史加总
+  // 只会一路往负的方向跑，跟真实情况毫无关系。改成显示服务端已经拉回来的「全员本月」
+  // 合计（还没拉到就显示「点击查看」占位，不能显示任何自己算出来的数字）。
+  await page.evaluate(()=>{
+    const a = data.accounts.find(x=>x.isCompany);
+    data.transactions.push({id:'neg2', accountId:a.id, type:'expense', amount:246.35,
+      categoryId:(data.categories[0]||{}).id, date:'2026-08-01', desc:'测试'});
+    ledState.data = null; ledState.month = null;
+    saveData(); switchTab('overview'); renderAccCards();
+  });
+  await page.waitForTimeout(400);
+  const companyCardEmpty = await page.evaluate(()=>{
+    const a = data.accounts.find(x=>x.isCompany);
+    const cards = [...document.querySelectorAll('.acc-card')];
+    const c = cards.find(el=>(el.textContent||'').includes(a.name));
+    return { bal: c.querySelector('.acc-card-bal').textContent.trim(),
+             cur: c.querySelector('.acc-card-cur').textContent.trim() };
+  });
+  ok('还没拉到服务端数据时，不显示任何自己算出来的数字', companyCardEmpty.bal === '点击查看', companyCardEmpty);
+  ok('也不再是「总结余」这个说法', !companyCardEmpty.cur.includes('总结余'), companyCardEmpty);
+  await page.evaluate(()=>{
+    const a = data.accounts.find(x=>x.isCompany);
+    ledState.data = { total: 88.8, count: 3, days: [] };
+    ledState.month = ledMonthNow();
+    renderAccCards();
+  });
+  await page.waitForTimeout(200);
+  const companyCardLoaded = await page.evaluate(()=>{
+    const a = data.accounts.find(x=>x.isCompany);
+    const cards = [...document.querySelectorAll('.acc-card')];
+    const c = cards.find(el=>(el.textContent||'').includes(a.name));
+    return c.querySelector('.acc-card-bal').textContent.trim();
+  });
+  ok('服务端数据到了之后，显示的是那个数字（88.80），不是本地加总',
+     companyCardLoaded.includes('88.80'), companyCardLoaded);
+  await page.evaluate(()=>{
+    data.transactions = data.transactions.filter(t=>t.id!=='neg2'); saveData();
+    ledState.data = null; ledState.month = null;
   });
 
   console.log('\n【3】类别清单来自服务端，不是 App 里硬编的');

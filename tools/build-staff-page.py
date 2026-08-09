@@ -193,14 +193,14 @@ def build(src: str) -> str:
     s = cut_exact(s,
                   "\n\n  // 公司账本（全员）：开 App 时后台拉一次，首屏那张卡才有「今天」的数。\n"
                   "  // 不 await——拉不到就是卡上写一句「连不上」，不该拖住启动。\n"
-                  "  fetchCompanyLedger().then(()=>{ if(state.currentTab==='overview'){ renderOvCompany(); renderOvReconcile(); } });\n"
+                  "  fetchCompanyLedger().then(()=>{ if(state.currentTab==='overview'){ renderAccCards(); renderOvCompany(); renderOvReconcile(); } });\n"
                   "  fetchPetty().then(()=>{ if(state.currentTab==='overview'){ renderOvPetty(); renderOvReconcile(); } });\n"
                   "  fetchPendingClaim().then(()=>{ if(state.currentTab==='overview') renderOvReconcile(); });",
                   "启动时拉全员账本/备用金/待claim")
     s = cut_exact(s,
                   "      // 刚进账本的这笔也要算进首屏那张「今天」卡里，重拉一次\n"
                   "      if(r.ok) fetchCompanyLedger(ledMonthNow(), {force:true})"
-                  ".then(()=>{ renderOvCompany(); renderOvReconcile(); });\n",
+                  ".then(()=>{ renderAccCards(); renderOvCompany(); renderOvReconcile(); });\n",
                   "入账后重拉全员账本")
 
     # 云同步整个不接：同事版没有登录入口，留着 auth 监听只是白等
