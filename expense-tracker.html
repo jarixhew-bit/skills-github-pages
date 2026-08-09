@@ -993,11 +993,21 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
     <div class="form-group">
       <label class="form-label">金额（美元，正负都行）</label>
       <input class="form-input" id="reconcile-add-amount" type="text" inputmode="decimal"
-             autocomplete="off" placeholder="例：3123.45 或 -3123.45">
+             autocomplete="off" placeholder="例：3123.45 或 -3123.45"
+             oninput="reconcileAmountChanged()">
     </div>
     <div class="form-group">
       <label class="form-label">备注（选填）</label>
       <input class="form-input" id="reconcile-add-note-input" type="text" placeholder="例：上个月开销">
+    </div>
+    <!-- 只在填负数（claim 回来了）时出现：钱既然回来了，多半要落进某个账户。
+         以前得手动来两趟（这边扣、那边记收入），漏做一半账就对不上。 -->
+    <div class="form-group" id="reconcile-transfer-row" style="display:none">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+        <input type="checkbox" id="reconcile-transfer-on" checked style="width:18px;height:18px">
+        <span>同时把这笔钱记进我的账户（一笔收入）</span>
+      </label>
+      <select class="form-input" id="reconcile-transfer-acc" style="margin-top:8px"></select>
     </div>
     <button class="btn btn-primary" onclick="reconcileSubmit()">保存</button>
     <div id="reconcile-add-note" style="font-size:12px;color:var(--exp);margin-top:10px;
@@ -4657,7 +4667,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-09b';
+const APP_BUILD = '2026-08-09c';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -5515,8 +5525,47 @@ function reconcileOpenAdd(){
   const noteEl = document.getElementById('reconcile-add-note-input');
   if(noteEl) noteEl.value = '';
   showReconcileAddNote('');
+  renderReconcileTransfer();
   showModal('modal-reconcile-add');
   setTimeout(()=>{ const a = document.getElementById('reconcile-add-amount'); if(a) a.focus(); }, 120);
+}
+
+/* ——「claim 回来了」顺手记进自己账户 ————————————————————————————
+ *
+ * 待claim 住在 butler 服务端（事件流现算），个人账本住本机＋云同步，两本账。
+ * 公司把钱还回来时这两本都要动：这边扣掉、那边多一笔收入。分两趟手动做，
+ * 漏掉任何一趟月底都对不上，而且事后没人看得出漏的是哪一趟。
+ *
+ * 顺序铁律：**先服务端、成功了再记本机**。反过来做，服务端那一步失败时
+ * 本机已经凭空多了一笔收入，比什么都没做更糟。
+ */
+const CLAIM_ACC_STORAGE = 'expenseTracker_claimAccount';
+
+/** 能收 claim 的账户：待claim 记的是美元，换算这种事不许 App 自己猜，所以只列美元账户。 */
+function claimTargetAccounts(){
+  return (data.accounts || []).filter(a => !a.isCompany && a.currency === 'USD');
+}
+
+function renderReconcileTransfer(){
+  const sel = document.getElementById('reconcile-transfer-acc');
+  if(sel){
+    const list = claimTargetAccounts();
+    let cur = '';
+    try{ cur = localStorage.getItem(CLAIM_ACC_STORAGE) || ''; }catch(e){}
+    if(!list.some(a => a.id === cur)) cur = (list.find(a => a.id === 'acc_boss') || list[0] || {}).id || '';
+    sel.innerHTML = list.length
+      ? list.map(a => `<option value="${a.id}"${a.id===cur?' selected':''}>${a.name}（${a.currency}）</option>`).join('')
+      : '<option value="">（没有美元账户可以收）</option>';
+  }
+  reconcileAmountChanged();
+}
+
+/** 正数是「新增待claim」，钱还没回来，没有可记的收入——那时整块不出现。 */
+function reconcileAmountChanged(){
+  const row = document.getElementById('reconcile-transfer-row');
+  if(!row) return;
+  const { num } = parseAmountText((document.getElementById('reconcile-add-amount')||{}).value);
+  row.style.display = (!isNaN(num) && num < 0 && claimTargetAccounts().length) ? '' : 'none';
 }
 
 function showReconcileAddNote(msg){
@@ -5533,8 +5582,17 @@ async function reconcileSubmit(){
   }
   const note = (document.getElementById('reconcile-add-note-input')||{}).value.trim();
   const verb = num > 0 ? '新增待claim' : '扣掉（claim回来了）';
+
+  // claim 回来的钱要不要顺手记进账户（见 renderReconcileTransfer 上面那段）
+  const onEl = document.getElementById('reconcile-transfer-on');
+  const accEl = document.getElementById('reconcile-transfer-acc');
+  const toAccId = (accEl && accEl.value) || '';
+  const toAcc = toAccId ? getAcc(toAccId) : null;
+  const transfer = num < 0 && onEl && onEl.checked && !!toAcc;
+
   // 这是钱，写进去马上影响首屏那张对账卡——多按一次确认，换掉「多打一个 0」
-  if(!confirm(`确定${verb} ${fmt(Math.abs(num),'USD')}？`)) return;
+  if(!confirm(`确定${verb} ${fmt(Math.abs(num),'USD')}？`
+    + (transfer ? `\n同时在「${toAcc.name}」记一笔收入 ${fmt(Math.abs(num),'USD')}` : ''))) return;
   showReconcileAddNote('正在保存…');
   try{
     const res = await fetch(COMPANY_EXPENSE_URL, {
@@ -5547,11 +5605,34 @@ async function reconcileSubmit(){
       showReconcileAddNote(body.message || `保存失败（${res.status}）`);
       return;
     }
+    // 服务端那一步过了才动本机账本（顺序理由见 CLAIM_ACC_STORAGE 上面那段）
+    let moved = '';
+    if(transfer){
+      try{ localStorage.setItem(CLAIM_ACC_STORAGE, toAcc.id); }catch(e){}
+      data.transactions.push({
+        id: uid(),
+        accountId: toAcc.id,
+        amount: Math.abs(num),
+        type: 'income',
+        categoryId: 'cat_other_inc',
+        description: note ? `公司 claim 回来（${note}）` : '公司 claim 回来',
+        date: today(),
+        updatedAt: Date.now(),
+        // 标记来源：以后想核对「哪几笔收入是 claim 回来的」不用靠描述文字去猜
+        claimBack: { at: Date.now(), amountUsd: Math.abs(num) }
+      });
+      saveData();
+      moved = `\n已在「${toAcc.name}」记一笔收入 ${fmt(Math.abs(num),'USD')}`;
+    }
     closeModal('modal-reconcile-add');
-    toast(`已记下，待claim现在是 ${fmt(body.total,'USD')}`);
+    toast(`已记下，待claim现在是 ${fmt(body.total,'USD')}${moved}`);
     await fetchPendingClaim({force:true});
     renderReconcile();
     renderOvReconcile();
+    if(moved){
+      if(state.currentTab === 'overview') renderOverview();
+      if(state.currentTab === 'transactions') renderTxList();
+    }
   }catch(e){
     showReconcileAddNote('现在连不上，等有网再存一次（这一笔没有记进去）');
   }

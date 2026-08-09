@@ -1153,6 +1153,98 @@ const browser = await chromium.launch(launchOpts);
     ok('撤销后待claim退回 0', r2.claim===0, r2.claim);
     ok('合计也退回去了', r2.sum===r0.sum, [r0.sum, r2.sum]);
 
+    console.log('\n【20d2】claim 回来了顺手记进自己账户：两本账要一起动');
+    // 待claim 住服务端、个人账本住本机，是两本账。以前「claim 回来了」得手动来两趟
+    // （这边扣、那边记收入），漏掉任一趟月底就对不上，而且事后看不出漏的是哪趟。
+    // 这里守四件事：正数时不该出现这个选项、账户清单不许混进公司账、勾了要真的
+    // 多一笔收入、没勾就一笔都不许多（不许「顺便帮你记了」）。
+    {
+      // 这份自检的账户是公司账那套（本地货币），没有美元私人账户；真人那边有一个
+      // 「Boss（USD）」。补一个出来，才测得到「钱回来了记进哪」。
+      const bossAccId = await page.evaluate(()=>{
+        let a = data.accounts.find(x=>!x.isCompany && x.currency==='USD');
+        if(!a){
+          // 刻意不叫 acc_boss：这份自检的种子数据里已经有一个同 id 的账户（公司那本），
+          // 撞 id 的话 find() 会捞回旧的那个，断言会指着一个根本不是新建的账户。
+          a = { id:'acc_boss_usd_test', name:'Boss', currency:'USD', color:'#7c3aed',
+                createdAt: Date.now() };
+          data.accounts.push(a); saveData();
+        }
+        return a.id;
+      });
+      ok('有一个美元私人账户可以收 claim', !!bossAccId, bossAccId);
+
+      await page.evaluate(()=>reconcileOpenAdd());
+      await page.waitForTimeout(300);
+      await page.fill('#reconcile-add-amount', '500');
+      await page.evaluate(()=>reconcileAmountChanged());
+      ok('填正数（新增待claim）时，转账那块不出现——钱还没回来，没有收入可记',
+         !(await page.locator('#reconcile-transfer-row').isVisible()));
+
+      await page.fill('#reconcile-add-amount', '-500');
+      await page.evaluate(()=>reconcileAmountChanged());
+      ok('填负数（claim回来了）时，转账那块出现',
+         await page.locator('#reconcile-transfer-row').isVisible());
+      const opts = await page.evaluate(()=>Array.from(
+        document.getElementById('reconcile-transfer-acc').options).map(o=>o.value));
+      const anyCompany = await page.evaluate(ids=>ids.some(id=>{
+        const a = data.accounts.find(x=>x.id===id); return a && a.isCompany;
+      }), opts);
+      ok('账户清单里没有公司账户（那本账不该收私人收入）', !anyCompany, opts);
+      const nonUsd = await page.evaluate(ids=>ids.some(id=>{
+        const a = data.accounts.find(x=>x.id===id); return a && a.currency!=='USD';
+      }), opts);
+      ok('账户清单里只有美元账户（待claim记的是美元，不许 App 自己换算）', !nonUsd, opts);
+
+      const before = await page.evaluate(()=>data.transactions.length);
+      await page.fill('#reconcile-add-note-input', '八月那笔');
+      await page.evaluate(id=>{ document.getElementById('reconcile-transfer-acc').value = id; }, bossAccId);
+      await page.evaluate(()=>{ document.getElementById('reconcile-transfer-on').checked = true; });
+      await page.evaluate(()=>reconcileSubmit());
+      await page.waitForTimeout(1200);
+
+      const rc = await page.evaluate(()=>reconcileCompute());
+      ok('待claim 扣掉了 500', rc.claim === -500, rc.claim);
+      const added = await page.evaluate(bid=>{
+        const list = data.transactions.filter(t=>t.claimBack);
+        return { n: list.length, t: list[list.length-1] || null,
+                 inAcc: list.length ? list[list.length-1].accountId === bid : false };
+      }, bossAccId);
+      ok('个人账本多了一笔（而且只多一笔）',
+         added.n===1 && (await page.evaluate(()=>data.transactions.length))===before+1, added.n);
+      ok('是一笔收入，不是支出', added.t && added.t.type==='income', added.t);
+      ok('金额是绝对值 500，不是 -500', added.t && added.t.amount===500, added.t);
+      ok('进了下拉框选的那个账户', added.inAcc, added.t);
+      ok('类别是「其他收入」', added.t && added.t.categoryId==='cat_other_inc', added.t);
+      ok('描述写明是 claim 回来的，并带上备注',
+         added.t && added.t.description.includes('claim') && added.t.description.includes('八月那笔'),
+         added.t && added.t.description);
+      ok('弹窗关掉了（当成保存成功）', !(await page.locator('#modal-reconcile-add').isVisible()));
+
+      console.log('\n【20d3】不勾选就一笔都不许多——「顺便帮你记了」是最难发现的错账');
+      const before2 = await page.evaluate(()=>data.transactions.length);
+      await page.evaluate(()=>reconcileOpenAdd());
+      await page.waitForTimeout(300);
+      await page.fill('#reconcile-add-amount', '-100');
+      await page.evaluate(()=>reconcileAmountChanged());
+      await page.evaluate(()=>{ document.getElementById('reconcile-transfer-on').checked = false; });
+      await page.evaluate(()=>reconcileSubmit());
+      await page.waitForTimeout(1200);
+      ok('待claim 又扣了 100', (await page.evaluate(()=>reconcileCompute())).claim === -600);
+      ok('个人账本一笔都没多',
+         (await page.evaluate(()=>data.transactions.length))===before2,
+         [before2, await page.evaluate(()=>data.transactions.length)]);
+
+      // 把这两笔撤掉，后面几项检查的数字才回得到基准线
+      await page.evaluate(()=>reconcileUndo()); await page.waitForTimeout(800);
+      await page.evaluate(()=>reconcileUndo()); await page.waitForTimeout(800);
+      await page.evaluate(bid=>{
+        data.transactions = data.transactions.filter(t=>!t.claimBack);
+        saveData();
+      }, bossAccId);
+      ok('撤销后待claim退回 0', (await page.evaluate(()=>reconcileCompute())).claim===0);
+    }
+
     console.log('\n【20e】首屏「对账」卡：数字跟明细一致，missing 也要写出来');
     await page.evaluate(()=>closeModal('modal-reconcile'));
     // 前面几步一路操作弹窗，没保证还站在「概览」这个 tab 上——卡片藏在这个 tab 底下，
