@@ -76,10 +76,15 @@ function fakeCategories() {
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   let hitApi = false;
+  let lastPostedToken = null;
   await ctx.route('**/*', async route => {
     const u = route.request().url();
     if (u.startsWith(`http://localhost:${PORT}`)) return route.continue();
-    if (u.startsWith(API)) { hitApi = true; return route.fulfill({ status:200, contentType:'application/json', body:'{}' }); }
+    if (u.startsWith(API)) {
+      hitApi = true;
+      try{ const b = JSON.parse(route.request().postData() || '{}'); lastPostedToken = b.token; }catch(e){}
+      return route.fulfill({ status:200, contentType:'application/json', body:'{}' });
+    }
     return route.abort('failed');
   });
 
@@ -93,6 +98,8 @@ function fakeCategories() {
   const tabTexts = await page.$$eval('.tab-btn', els => els.map(e => e.textContent));
   ok('标签含 酒／茶叶／虫草', tabTexts.some(t=>t.includes('酒')) && tabTexts.some(t=>t.includes('茶叶')) && tabTexts.some(t=>t.includes('虫草')), tabTexts);
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  ok('没连上时顶部不显示 who（不能显示 undefined）',
+     !(await page.locator('#hdr-who').isVisible()), await page.locator('#hdr-who').textContent());
 
   console.log('\n【1b】点「去设置」能填密钥');
   await page.click('#guide-settings-link');
@@ -121,6 +128,43 @@ function fakeCategories() {
   // 借用只在读取时兜底，不写回自己的 key——那边换钥匙时这边要跟着变，不留过期副本
   ok('没有把借来的密钥复制成自己的一份',
      await page.evaluate(()=>localStorage.getItem('inventoryToken')) === null);
+
+  // 同事版记账页（staff/index.html）用 staffExpense_token 存钥匙。老板与同事权限相同后，
+  // 库存页也要能自动借用同事已经设过的那把——原理跟借老板那把一样：同源共用 localStorage，
+  // 不必让人再输一遍。
+  console.log('\n【1d】只有 staffExpense_token（没有另外两个）时，能正常加载，不显示引导');
+  await page.evaluate(() => {
+    localStorage.removeItem('inventoryToken');
+    localStorage.removeItem('expenseTracker_companyToken');
+    localStorage.setItem('staffExpense_token', 'staff-key-seryi');
+  });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(600);
+  ok('不显示「还没设密钥」的引导', !(await page.locator('#guide-banner').isVisible()));
+
+  console.log('\n【1e】三把钥匙优先顺序：inventoryToken > 老板 > 同事');
+  await page.evaluate(() => {
+    localStorage.setItem('inventoryToken', 'own-key');
+    localStorage.setItem('expenseTracker_companyToken', 'boss-key');
+    localStorage.setItem('staffExpense_token', 'staff-key');
+  });
+  lastPostedToken = null;
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(600);
+  ok('三把都在时用自己设过的 own-key', lastPostedToken === 'own-key', lastPostedToken);
+
+  await page.evaluate(() => { localStorage.removeItem('inventoryToken'); });
+  lastPostedToken = null;
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(600);
+  ok('只剩老板与同事两把时用老板的 boss-key', lastPostedToken === 'boss-key', lastPostedToken);
+
+  await page.evaluate(() => { localStorage.removeItem('expenseTracker_companyToken'); });
+  lastPostedToken = null;
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(600);
+  ok('只剩同事那把时用 staff-key', lastPostedToken === 'staff-key', lastPostedToken);
+
   await ctx.close();
 }
 
@@ -130,8 +174,26 @@ function fakeCategories() {
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   let posted = [];
+  let logCalls = []; // 单独记录 action:'log' 的请求，不混进 posted（posted 是写操作计数用的）
   let serverCats = fakeCategories();
   let forceError = null; // {action, message}
+  let logEntriesOverride = null; // null = 用 fakeLogEntries()，[] = 测空状态
+
+  // 三条假操作记录，最新的排最前（跟服务端的约定一致）
+  function fakeLogEntries(){
+    const now = Date.now();
+    return [
+      { id:'l3', at:new Date(now - 3*60000).toISOString(), who:'Seryi', action:'adjust',
+        category:'wine', itemName:'Laffite 2001', before:11, after:12, delta:1,
+        note:'Seryi 把 Laffite 2001 从 11 加到 12' },
+      { id:'l2', at:new Date(now - 3600*1000).toISOString(), who:'Boss', action:'add',
+        category:'tea', itemName:'普洱饼', before:0, after:5, delta:5,
+        note:'Boss 新增 普洱饼 x5' },
+      { id:'l1', at:new Date(now - 90000*1000).toISOString(), who:'Kuang', action:'remove',
+        category:'herb', itemName:'过期虫草', before:2, after:0, delta:-2,
+        note:'Kuang 删除了 过期虫草 这条记录' },
+    ];
+  }
 
   await ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -147,7 +209,13 @@ function fakeCategories() {
       }
       if (req.action === 'list') {
         return route.fulfill({ status:200, contentType:'application/json', headers:h,
-          body: JSON.stringify({ status:'ok', categories: serverCats }) });
+          body: JSON.stringify({ status:'ok', who:'Boss', categories: serverCats }) });
+      }
+      if (req.action === 'log') {
+        logCalls.push(req);
+        const entries = logEntriesOverride !== null ? logEntriesOverride : fakeLogEntries();
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', who:'Boss', entries }) });
       }
       posted.push(req);
       if (req.action === 'adjust') {
@@ -342,6 +410,47 @@ function fakeCategories() {
   await page.click('#edit-delete');
   await page.waitForTimeout(600);
   ok('删除后条目消失', !(await page.locator('.item-row[data-id="w3"]').count()));
+
+  console.log('\n【11】标题栏显示服务端回的 who');
+  const hdrWhoTxt = await page.textContent('#hdr-who');
+  ok('标题栏含 · Boss', (hdrWhoTxt||'').includes('Boss'), hdrWhoTxt);
+
+  console.log('\n【12】操作记录：首屏启动时不发请求，点开才发');
+  ok('首屏没有 log 请求', logCalls.length === 0, logCalls.length);
+  await page.click('#btn-log');
+  await page.waitForTimeout(700);
+  ok('打开后发了 1 个 log 请求', logCalls.length === 1, logCalls.length);
+  ok('请求带 action:log', logCalls[0] && logCalls[0].action === 'log', logCalls[0]);
+
+  console.log('\n【13】操作记录列表显示 who 与 note，最新的在最上面');
+  const logEntriesTxt = await page.$$eval('.log-entry', els => els.map(e=>e.textContent));
+  ok('共 3 条记录', logEntriesTxt.length === 3, logEntriesTxt.length);
+  ok('第一条含 Seryi 与 note 文本（最新的排最前）',
+     (logEntriesTxt[0]||'').includes('Seryi') && (logEntriesTxt[0]||'').includes('Laffite 2001'), logEntriesTxt[0]);
+  ok('第三条含 Kuang（最旧的排最后）', (logEntriesTxt[2]||'').includes('Kuang'), logEntriesTxt[2]);
+  await page.click('[data-close="modal-log"]');
+  await page.waitForTimeout(300);
+
+  console.log('\n【14】操作记录为空时显示空状态（不是坏掉）');
+  logEntriesOverride = [];
+  await page.click('#btn-log');
+  await page.waitForTimeout(700);
+  const emptyLogTxt = await page.textContent('#log-list');
+  ok('显示「还没有任何操作记录」', (emptyLogTxt||'').includes('还没有任何操作记录'), emptyLogTxt);
+  await page.click('[data-close="modal-log"]');
+  await page.waitForTimeout(300);
+  logEntriesOverride = null;
+
+  console.log('\n【15】拉取操作记录失败时显示错误提示，不是白屏');
+  forceError = { action:'log', message:'假服务端说日志读取失败' };
+  await page.click('#btn-log');
+  await page.waitForTimeout(700);
+  ok('log 错误横幅显示', await page.locator('#log-error').isVisible());
+  const logErrTxt = await page.textContent('#log-error-text');
+  ok('显示服务端的错误信息', (logErrTxt||'').includes('假服务端说日志读取失败'), logErrTxt);
+  forceError = null;
+  await page.click('[data-close="modal-log"]');
+  await page.waitForTimeout(300);
 
   console.log('\n【10】全程无 JS 报错');
   ok('无 JS 报错', errs.length === 0, errs.slice(0,5));
