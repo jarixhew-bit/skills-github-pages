@@ -14,6 +14,12 @@
  * 全程用 ctx.route('**\/*', ...) 拦掉所有请求，不打真实的 butler-bot 接口。
  */
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+// 注意：本文件下面把 URL 当成页面地址的常量名用了，会盖掉全局的 URL 构造器，
+// 所以这里读文件只能走 fileURLToPath，不能用 new URL(..., import.meta.url)。
+const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const PORT = process.env.CHECK_PORT || 8899;
 const URL = `http://localhost:${PORT}/inventory/`;
@@ -24,6 +30,27 @@ const ok = (n, c, got) => {
   if (c) { pass++; console.log(`  ✅ ${n}`); }
   else { fails.push(n); console.log(`  ❌ ${n} — 实际: ${JSON.stringify(got)}`); }
 };
+
+// 装到主屏的图标格式（不用开浏览器，直接读文件判断）。
+// 为什么要守：iOS 的 apple-touch-icon **不认 SVG**——写成 SVG 不会报任何错，只是
+// 主屏上那个图标会悄悄退化成网页截图，装过一次不重装就一直是那样，属于「上线好几周
+// 都没人发现」的那类问题（2026-08-09 就是这么写出去的，用户问能不能装 PWA 时才查出来）。
+console.log('【0】主屏图标必须是 PNG（iOS 不认 SVG），且有安卓自适应用的 maskable 版');
+{
+  const html = readFileSync(join(REPO, 'inventory/index.html'), 'utf8');
+  const mf = JSON.parse(readFileSync(join(REPO, 'inventory/manifest.webmanifest'), 'utf8'));
+  const touch = (html.match(/<link rel="apple-touch-icon" href="([^"]*)"/) || [])[1] || '';
+  ok('apple-touch-icon 是 PNG', touch.startsWith('data:image/png;base64,'), touch.slice(0, 40));
+  ok('manifest 里没有任何 SVG 图标',
+     mf.icons.every(i => i.type === 'image/png' && i.src.startsWith('data:image/png;base64,')),
+     mf.icons.map(i => i.type));
+  ok('有 192 与 512 两种尺寸',
+     ['192x192', '512x512'].every(s => mf.icons.some(i => i.sizes === s)),
+     mf.icons.map(i => i.sizes));
+  ok('有 maskable 版（安卓裁圆之后图案才完整）',
+     mf.icons.some(i => (i.purpose || '').includes('maskable')),
+     mf.icons.map(i => i.purpose));
+}
 
 const launchOpts = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {};
 const browser = await chromium.launch(launchOpts);
