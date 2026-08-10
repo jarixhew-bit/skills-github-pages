@@ -95,7 +95,9 @@ def build(src: str) -> str:
     # ---------- 1) 整块删掉个人账本的界面 ----------
     s = cut_between(s, "<!-- OVERVIEW TAB -->", "<!-- TRANSACTIONS TAB -->", "概览 tab")
     s = cut_between(s, "<!-- ANALYTICS TAB -->", "<!-- SETTINGS TAB -->", "统计 tab")
-    s = cut_between(s, "<!-- SETTINGS TAB -->", "<!-- FAB -->", "设置 tab")
+    # 终点是「库存 tab」而不是 FAB：库存分页排在设置之后、FAB 之前，而同事版**要**保留
+    # 库存（老板与同事在服务端的库存权限相同）。写成 FAB 会把库存一起切掉。
+    s = cut_between(s, "<!-- SETTINGS TAB -->", "<!-- INVENTORY TAB -->", "设置 tab")
     s = cut_between(s, "<!-- MODAL: ACCOUNT SWITCHER -->", "<!-- PDF REPORT (hidden) -->",
                     "账户/类别/循环账单的弹窗")
     # 注：备用金的「转钱 / 设起点 / 调整」两个弹窗是老板专用的写入界面，它们摆在
@@ -332,6 +334,13 @@ LABEL_REWRITES = [
     ('<div class="nav-icon">📋</div>明细',
      '<div class="nav-icon">📋</div><span data-en="Records">明细</span>',
      "底部导航"),
+    # 库存入口同事也看得到，切英文时不加这条会剩一个中文「库存」挂在导航上
+    # （check-staff-page.mjs【14b】会当场抓到）。
+    # ⚠️ 文字必须自己住一个 span：add_en 那条路会把 data-en 加到 emoji 那个 div 上，
+    # 切英文时图标被换成文字、中文原样留着（2026-08-08 踩过，见上面拍照按钮那条）。
+    ('<div class="nav-icon">📦</div>库存',
+     '<div class="nav-icon">📦</div><span data-en="Stock">库存</span>',
+     "底部导航（库存）"),
     # 车牌栏的说明：选了汽油才展开，所以第一轮扫描没扫到（那时它是 display:none）
     ('          车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。\n'
      '          这类开销一律算在 Boss 头上（进左边那张表）。',

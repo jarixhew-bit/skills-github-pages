@@ -414,6 +414,79 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .led-amt{flex:none;font-weight:600}
 .led-tally{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
 .led-chip{background:var(--bg);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--sub)}
+/* ===== 库存（2026-08-10 从独立的 inventory/index.html 并进来）=====
+   命名铁律：这一节所有类名一律 inv- 开头，DOM id 一律 inv- 开头。
+   理由是这个文件管的是钱（公司报账、备用金、对账），库存写错一个通用类名
+   （原页面用的是 .tab / .list / .banner / .modal 这种）就会静静改掉记账的样子，
+   而版式错在手机上要用户自己发现。加前缀是最省事也最不会漏的隔离方式。 */
+.inv-tabs{display:flex;gap:8px;margin-bottom:12px}
+.inv-tab-btn{flex:1;padding:10px 4px;border-radius:12px;border:1.5px solid var(--border);
+  background:#fff;color:var(--sub);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.inv-tab-btn.active{background:var(--p);color:#fff;border-color:var(--p)}
+.inv-toolbar{display:flex;gap:10px;margin-bottom:12px}
+.inv-toolbar .btn{flex:1;padding:11px 0;min-height:44px}
+.inv-who{font-size:12px;color:var(--sub);margin-bottom:10px}
+.inv-who b{color:var(--p)}
+.inv-banner{margin-bottom:12px;padding:12px 14px;border-radius:12px;background:#FFF6E5;
+  border:1px solid #F0D89A;color:#7A5A00;font-size:13px;display:flex;
+  align-items:center;justify-content:space-between;gap:10px;line-height:1.6}
+.inv-banner.inv-err{background:#FDECEA;border-color:#F3B6B0;color:var(--exp)}
+/* ⚠️ display:flex 会盖掉浏览器内建的 [hidden]{display:none}，不补这一条的话
+   错误横幅永远挂在那里（自检【1】当场抓到）。这个文件没有全局的 [hidden] 规则，
+   所以凡是给 inv- 元素设 display 的地方都要自己补一条。 */
+.inv-banner[hidden]{display:none !important}
+.inv-banner button{border:none;background:var(--p);color:#fff;border-radius:8px;
+  padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
+  min-height:36px;font-family:inherit;flex:none}
+.inv-banner.inv-err button{background:var(--exp)}
+.inv-loading{text-align:center;padding:30px 0;color:var(--sub);font-size:14px}
+.inv-list{padding-bottom:10px}
+.inv-empty{text-align:center;padding:50px 10px;color:var(--sub);font-size:14px;line-height:1.7}
+.inv-loc-group{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  margin-bottom:14px;overflow:hidden}
+.inv-loc-head{display:flex;align-items:center;gap:8px;padding:12px 14px;
+  background:var(--p2);border-bottom:1px solid var(--border)}
+.inv-loc-name{font-weight:700;font-size:14px;color:var(--p);flex:1;min-width:0}
+.inv-loc-sub{font-size:12px;color:var(--sub);white-space:nowrap}
+.inv-loc-share{width:32px;height:32px;border-radius:50%;border:none;background:transparent;
+  color:var(--p);font-size:15px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;font-family:inherit}
+.inv-loc-share:active{background:rgba(108,99,255,.14)}
+.inv-item-row{display:flex;align-items:center;gap:10px;padding:12px 14px;
+  border-bottom:1px solid var(--border);cursor:pointer}
+.inv-item-row:last-child{border-bottom:none}
+.inv-item-info{flex:1;min-width:0}
+.inv-item-name{font-size:15px;font-weight:600;word-break:break-word}
+.inv-item-note{font-size:12px;color:var(--sub);margin-top:2px}
+.inv-item-qty{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.inv-qty-val{font-size:14px;font-weight:600;min-width:60px;text-align:center}
+.inv-qty-btn{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--border);
+  background:#fff;color:var(--p);font-size:20px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:inherit}
+.inv-qty-btn:active{background:var(--p2)}
+.inv-qty-btn:disabled{opacity:.35;cursor:default}
+details.inv-used-up{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  margin-bottom:14px;overflow:hidden}
+details.inv-used-up summary{padding:12px 14px;font-size:13px;font-weight:600;color:var(--sub);
+  cursor:pointer;background:var(--p2);list-style:none}
+details.inv-used-up summary::-webkit-details-marker{display:none}
+details.inv-used-up summary::before{content:'▸ ';display:inline-block}
+details.inv-used-up[open] summary::before{content:'▾ '}
+details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--sub)}
+.inv-log-entry{padding:12px 0;border-bottom:1px solid var(--border)}
+.inv-log-entry:last-child{border-bottom:none}
+.inv-log-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px}
+.inv-log-who{font-weight:700;font-size:14px;color:var(--p)}
+.inv-log-time{font-size:12px;color:var(--sub);white-space:nowrap}
+.inv-log-body{display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap}
+.inv-log-badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;color:#fff;white-space:nowrap}
+.inv-log-badge-add{background:var(--inc)}
+.inv-log-badge-adjust{background:#4A73A8}
+.inv-log-badge-update{background:var(--sub)}
+.inv-log-badge-remove{background:var(--exp)}
+.inv-log-cat{font-size:12px;color:var(--sub)}
+.inv-log-note{font-size:14px;color:var(--text);word-break:break-word}
+.inv-log-empty{text-align:center;padding:40px 10px;color:var(--sub);font-size:14px}
 
 /* ===== 同事版（生成时注入，见 tools/build-staff-page.py）===== */
 /* 这几个栏位共用的脚本会去读，删掉会让记账当场抛错，所以留在 DOM 里收起来。
@@ -594,6 +667,38 @@ body.staff-boss #staff-boss-cash{display:block}
   </div>
 </div>
 
+<!-- INVENTORY TAB -->
+<div class="tab" id="tab-inventory">
+  <div class="inv-tabs" role="tablist">
+    <button class="inv-tab-btn active" id="inv-cat-wine" data-inv-cat="wine"
+            onclick="invSwitchCat('wine')">🍷 酒</button>
+    <button class="inv-tab-btn" id="inv-cat-tea" data-inv-cat="tea"
+            onclick="invSwitchCat('tea')">🍵 茶叶</button>
+    <button class="inv-tab-btn" id="inv-cat-herb" data-inv-cat="herb"
+            onclick="invSwitchCat('herb')">🌿 虫草</button>
+  </div>
+  <!-- 每次加减都记在这个名字底下，所以必须看得见（服务端从钥匙推出来的） -->
+  <div id="inv-who" class="inv-who" hidden></div>
+  <div class="inv-toolbar">
+    <button class="btn btn-outline" id="inv-btn-share-all" onclick="invShareAll()">🔗 分享</button>
+    <button class="btn btn-outline" id="inv-btn-log" onclick="invOpenLog()"
+            aria-label="查看库存操作记录">🕘 记录</button>
+    <button class="btn btn-primary" id="inv-btn-add" onclick="invOpenAdd()">＋ 添加</button>
+  </div>
+  <div id="inv-guide-banner" class="inv-banner" hidden>
+    <span id="inv-guide-text">还没设置密钥，先去设置里填公司报账密钥才能查看库存</span>
+    <button id="inv-guide-link" onclick="invGoSettings()">去设置</button>
+  </div>
+  <div id="inv-error-banner" class="inv-banner inv-err" hidden>
+    <span id="inv-error-text">连不上服务器</span>
+    <button id="inv-btn-retry" onclick="invRefresh()">重试</button>
+  </div>
+  <div id="inv-loading" class="inv-loading" hidden>加载中…</div>
+  <div id="inv-list" class="inv-list"></div>
+  <button class="btn btn-outline btn-sm" id="inv-btn-refresh" onclick="invRefresh()"
+          style="width:100%;margin-top:4px">🔄 重新载入库存</button>
+</div>
+
 <!-- FAB -->
 <button class="fab" onclick="showAddTx()">＋</button>
 
@@ -607,6 +712,9 @@ body.staff-boss #staff-boss-cash{display:block}
     <div class="nav-icon">👔</div><span data-en="Boss">老板账</span>
   </button>
   
+  <button class="nav-btn" id="nav-inventory" onclick="switchTab('inventory')">
+    <div class="nav-icon">📦</div><span data-en="Stock">库存</span>
+  </button>
   
 </div>
 
@@ -785,6 +893,89 @@ body.staff-boss #staff-boss-cash{display:block}
 
 <!-- PDF REPORT (hidden) -->
 <div id="pdf-statement"></div>
+
+<!-- MODAL: INVENTORY ADD/EDIT/LOG（放在 PDF REPORT 之后，不在同事版会切掉的
+     ACCOUNT SWITCHER～PDF REPORT 区间里——同事也要能用库存） -->
+<div class="overlay" id="inv-modal-add">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">添加库存</div>
+      <button class="modal-close" onclick="closeModal('inv-modal-add')" aria-label="关闭">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">名称</label>
+      <input class="form-input" id="inv-add-name" type="text" placeholder="例如 Laffite 2001">
+    </div>
+    <div class="form-group">
+      <label class="form-label">数量</label>
+      <input class="form-input" id="inv-add-count" type="number" min="0" step="1" value="1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">单位</label>
+      <input class="form-input" id="inv-add-unit" type="text">
+    </div>
+    <div class="form-group">
+      <label class="form-label">存放位置</label>
+      <select class="form-input" id="inv-add-location-select"></select>
+      <input class="form-input" id="inv-add-location-new" type="text"
+             placeholder="输入新位置名，例如 西港" style="margin-top:8px" hidden>
+    </div>
+    <div class="form-group">
+      <label class="form-label">备注（选填）</label>
+      <input class="form-input" id="inv-add-note" type="text" placeholder="例如 老板留用">
+    </div>
+    <button class="btn btn-primary" id="inv-add-submit" onclick="invAddSubmit()">保存</button>
+  </div>
+</div>
+
+<div class="overlay" id="inv-modal-edit">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">编辑库存</div>
+      <button class="modal-close" onclick="closeModal('inv-modal-edit')" aria-label="关闭">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">名称</label>
+      <input class="form-input" id="inv-edit-name" type="text">
+    </div>
+    <div class="form-group">
+      <label class="form-label">数量</label>
+      <input class="form-input" id="inv-edit-count" type="number" min="0" step="1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">单位</label>
+      <input class="form-input" id="inv-edit-unit" type="text">
+    </div>
+    <div class="form-group">
+      <label class="form-label">存放位置</label>
+      <select class="form-input" id="inv-edit-location-select"></select>
+      <input class="form-input" id="inv-edit-location-new" type="text"
+             placeholder="输入新位置名" style="margin-top:8px" hidden>
+    </div>
+    <div class="form-group">
+      <label class="form-label">备注（选填）</label>
+      <input class="form-input" id="inv-edit-note" type="text">
+    </div>
+    <button class="btn btn-primary" id="inv-edit-submit" onclick="invEditSubmit()">保存</button>
+    <button class="btn btn-danger" id="inv-edit-delete" onclick="invEditDelete()"
+            style="margin-top:10px">🗑 删除这条记录</button>
+  </div>
+</div>
+
+<div class="overlay" id="inv-modal-log">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">库存操作记录</div>
+      <button class="modal-close" onclick="closeModal('inv-modal-log')" aria-label="关闭">✕</button>
+    </div>
+    <div id="inv-log-loading" class="inv-loading" hidden>加载中…</div>
+    <div id="inv-log-error" class="inv-banner inv-err" hidden>
+      <span id="inv-log-error-text">连不上服务器</span>
+      <button id="inv-log-retry" onclick="invLoadLog()">重试</button>
+    </div>
+    <div id="inv-log-list"></div>
+  </div>
+</div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -1479,6 +1670,8 @@ function switchTab(tab){
   if(tab==='transactions') renderTxList();
   if(tab==='analytics') renderAnalytics();
   if(tab==='settings') renderSettings();
+  // 库存是懒加载：第一次切进来才去问服务端。记账是主要用途，启动速度不能被库存拖慢。
+  if(tab==='inventory') invOnTabShow();
 }
 
 // ===================== HEADER =====================
@@ -4434,7 +4627,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-09d';
+const APP_BUILD = '2026-08-10';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -5627,6 +5820,531 @@ function renderInboxSettings(){
 // 开 App 和网络恢复时自动补送（静默，不打扰）
 window.addEventListener('online', ()=>flushCompanyQueue());
 window.addEventListener('online', ()=>fetchInbox());
+
+// ===================== 库存 =====================
+/* 2026-08-10 从独立的 inventory/index.html 整个并进来（老板不想开两个 App：
+ * 库存和记账用的是同一把钥匙、同一个服务端，分成两个只是多一个图标、多一份要维护的代码）。
+ *
+ * 【改这块前必读的三条】
+ * 1. **所有顶层名字一律 inv 开头，所有 DOM id 一律 inv- 开头**。这个文件管的是钱
+ *    （公司报账、备用金、对账），原库存页用的是 state / toast / closeModal / #list /
+ *    #toast 这类通用名——`state` 尤其致命，记账的全部界面状态都在里面。加前缀不是
+ *    洁癖，是让「库存写错」这件事在物理上碰不到记账。
+ * 2. **钥匙直接用 getCompanyToken()**，库存不自己再存一把。老板版读
+ *    expenseTracker_companyToken，同事版由 build-staff-page.py 换成 staffExpense_token，
+ *    两边都不用再输一遍。
+ * 3. **懒加载**：只有切到库存分页才拉数据（switchTab 里那一行）。记账是主要用途，
+ *    开 App 的速度不能被库存拖慢。
+ *
+ * 这里一个字都不碰 data / saveData()——库存的数住服务端，记账的数住 data，
+ * 两本账没有任何交叉路径。
+ */
+const INV_API_URL = 'https://butler-bot.jarixhew.workers.dev/inventory';
+
+const INV_CAT_META = {
+  wine: { label:'酒', unit:'瓶', icon:'🍷' },
+  tea:  { label:'茶叶', unit:'饼', icon:'🍵' },
+  herb: { label:'虫草', unit:'克', icon:'🌿' },
+};
+
+// 操作记录里 action 字段 → 中文标签与颜色样式的映射，唯一正本。
+const INV_ACTION_META = {
+  add:    { label:'新增', cls:'add' },
+  adjust: { label:'加减', cls:'adjust' },
+  update: { label:'修改', cls:'update' },
+  remove: { label:'删除', cls:'remove' },
+};
+
+const invState = {
+  cats: [],        // [{key,label,defaultUnit,items:[...]}]，服务端给的
+  currentCat: 'wine',
+  editing: null,   // {category,id}
+  who: '',         // 服务端从钥匙推出来的操作人名字（Boss / Seryi…），拿不到时留空
+  loaded: false,   // 拉过一次没有——懒加载靠它，切回来不重拉
+};
+
+function invEsc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- 接口 ----------
+async function invApiCall(action, params){
+  params = params || {};
+  let res;
+  try{
+    res = await fetch(INV_API_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(Object.assign({ token: getCompanyToken(), action }, params)),
+    });
+  }catch(e){
+    const err = new Error('连不上服务器，检查一下网络');
+    err.network = true;
+    throw err;
+  }
+  if(res.status === 401){
+    let msg = '密钥不对或已过期，请到设置里重新填';
+    try{ const j = await res.json(); if(j && j.error) msg = j.error; }catch(e){}
+    const err = new Error(msg);
+    err.auth = true;
+    throw err;
+  }
+  let body;
+  try{ body = await res.json(); }
+  catch(e){ throw new Error('服务器返回的数据看不懂'); }
+  // 只要不是 ok 就当错误：服务端除了 error 还会回 forbidden。只认 error 的话，
+  // forbidden 会被当成成功往下走，结果是读 data.item 读到 undefined、页面莫名其妙地坏掉，
+  // 而不是告诉他钥匙不对。
+  if(body && body.status && body.status !== 'ok'){
+    throw new Error(body.message || '服务器出错了');
+  }
+  // 每个正常回应都带 who（从钥匙推出来的操作人）。拿到就更新显示，让同事看得见
+  // 「接下来每一次加减都记在自己名下」。拿不到就不动 invState.who——
+  // 清成 undefined 的话界面会一路显示到 "undefined"。
+  if(body && body.who){ invState.who = body.who; invUpdateWho(); }
+  return body;
+}
+
+// ---------- 数据整理 ----------
+function invGetCat(key){
+  const meta = INV_CAT_META[key];
+  const fromServer = invState.cats.find(c => c.key === key);
+  return {
+    key,
+    label: (fromServer && fromServer.label) || meta.label,
+    defaultUnit: (fromServer && fromServer.defaultUnit) || meta.unit,
+    icon: meta.icon,
+    items: (fromServer && fromServer.items) || [],
+  };
+}
+
+function invGroupByLocation(items){
+  const withStock = items.filter(it => Number(it.count) > 0);
+  const usedUp = items.filter(it => !(Number(it.count) > 0));
+  const order = [];
+  const map = new Map();
+  withStock.forEach(it => {
+    const raw = (it.location || '').trim();
+    const key = raw || '\u0000NONE';
+    if(!map.has(key)){ map.set(key, []); order.push(key); }
+    map.get(key).push(it);
+  });
+  order.sort((a,b) => (a === '\u0000NONE') - (b === '\u0000NONE'));
+  const groups = order.map(key => ({
+    location: key === '\u0000NONE' ? '未标存放位置' : key,
+    rawLocation: key === '\u0000NONE' ? '' : key,
+    items: map.get(key),
+  }));
+  return { groups, usedUp };
+}
+
+function invPatchItem(category, item){
+  const cat = invState.cats.find(c => c.key === category);
+  if(!cat || !item) return;
+  const idx = cat.items.findIndex(x => String(x.id) === String(item.id));
+  if(idx >= 0) cat.items[idx] = item; else cat.items.push(item);
+}
+
+// ---------- 分享文字 ----------
+function invBuildShareText(catKey, filterLoc){
+  const cat = invGetCat(catKey);
+  const icon = cat.icon;
+  const dateStr = new Date().toISOString().slice(0,10);
+  const { groups, usedUp } = invGroupByLocation(cat.items);
+  const target = filterLoc != null ? groups.filter(g => g.rawLocation === filterLoc) : groups;
+  const lines = [`${icon} ${cat.label}库存（${dateStr}）`];
+  target.forEach((g, idx) => {
+    const total = g.items.reduce((s,it) => s + (Number(it.count) || 0), 0);
+    lines.push(`📍 ${g.location}　共 ${total} ${cat.defaultUnit}`);
+    g.items.forEach(it => lines.push(`${icon} ${it.name} x${it.count}`));
+    if(idx < target.length - 1) lines.push('');
+  });
+  if(filterLoc == null && usedUp.length){
+    if(target.length) lines.push('');
+    lines.push(`另有 ${usedUp.length} 种已用完`);
+  }
+  return lines.join('\n');
+}
+
+async function invShareText(text){
+  if(navigator.share){
+    try{
+      await navigator.share({ text });
+      return;
+    }catch(e){
+      if(e && e.name === 'AbortError') return; // 用户自己取消，不算失败
+      // 其他失败情况走复制兜底
+    }
+  }
+  try{
+    await navigator.clipboard.writeText(text);
+    toast('已复制，去粘贴给对方');
+    return;
+  }catch(e){}
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('已复制，去粘贴给对方');
+  }catch(e){
+    toast('分享失败，请手动截图发送');
+  }
+}
+function invShareAll(){ invShareText(invBuildShareText(invState.currentCat)); }
+
+// ---------- 渲染 ----------
+function invRenderRow(cat, it){
+  const qty = Number(it.count) || 0;
+  return `<div class="inv-item-row" data-inv-category="${cat.key}" data-inv-id="${invEsc(it.id)}">
+    <div class="inv-item-info">
+      <div class="inv-item-name">${invEsc(it.name)}</div>
+      ${it.note ? `<div class="inv-item-note">${invEsc(it.note)}</div>` : ''}
+    </div>
+    <div class="inv-item-qty">
+      <button class="inv-qty-btn inv-qty-minus" aria-label="减少 ${invEsc(it.name)} 数量"${qty<=0?' disabled':''}>−</button>
+      <span class="inv-qty-val">${invEsc(it.count)} ${invEsc(it.unit || cat.defaultUnit)}</span>
+      <button class="inv-qty-btn inv-qty-plus" aria-label="增加 ${invEsc(it.name)} 数量">＋</button>
+    </div>
+  </div>`;
+}
+
+function invRenderList(){
+  const listEl = document.getElementById('inv-list');
+  if(!listEl) return;
+  const cat = invGetCat(invState.currentCat);
+  const { groups, usedUp } = invGroupByLocation(cat.items);
+  if(groups.length === 0 && usedUp.length === 0){
+    listEl.innerHTML = `<div class="inv-empty">暂无${invEsc(cat.label)}库存记录<br>点上面的「＋ 添加」开始记录</div>`;
+    return;
+  }
+  let html = '';
+  groups.forEach(g => {
+    const total = g.items.reduce((s,it) => s + (Number(it.count) || 0), 0);
+    html += `<div class="inv-loc-group">
+      <div class="inv-loc-head">
+        <span class="inv-loc-name">📍 ${invEsc(g.location)}</span>
+        <span class="inv-loc-sub">共 ${total} ${invEsc(cat.defaultUnit)}</span>
+        <button class="inv-loc-share" data-inv-cat="${cat.key}" data-inv-loc="${invEsc(g.rawLocation)}" aria-label="分享 ${invEsc(g.location)} 库存">🔗</button>
+      </div>
+      ${g.items.map(it => invRenderRow(cat, it)).join('')}
+    </div>`;
+  });
+  if(usedUp.length){
+    html += `<details class="inv-used-up">
+      <summary>已用完（${usedUp.length} 种）</summary>
+      ${usedUp.map(it => invRenderRow(cat, it)).join('')}
+    </details>`;
+  }
+  listEl.innerHTML = html;
+}
+
+function invSwitchCat(key){
+  invState.currentCat = key;
+  document.querySelectorAll('.inv-tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.invCat === key));
+  invRenderList();
+}
+
+// ---------- 状态条 ----------
+function invUpdateWho(){
+  const el = document.getElementById('inv-who');
+  if(!el) return;
+  if(invState.who){
+    el.innerHTML = `每次加减都会记在 <b>${invEsc(invState.who)}</b> 名下`;
+    el.hidden = false;
+  }else{
+    el.textContent = '';
+    el.hidden = true;
+  }
+}
+function invShowGuide(msg){
+  const g = document.getElementById('inv-guide-text');
+  if(g) g.textContent = msg || '还没设置密钥，先去设置里填公司报账密钥才能查看库存';
+  const gb = document.getElementById('inv-guide-banner'); if(gb) gb.hidden = false;
+  const eb = document.getElementById('inv-error-banner'); if(eb) eb.hidden = true;
+  const l = document.getElementById('inv-list'); if(l) l.innerHTML = '';
+  invState.who = ''; invUpdateWho(); // 没连上／密钥不对时，不能挂着上一次的人名
+}
+function invHideGuide(){
+  const gb = document.getElementById('inv-guide-banner'); if(gb) gb.hidden = true;
+}
+function invShowError(msg){
+  const t = document.getElementById('inv-error-text');
+  if(t) t.textContent = msg || '连不上服务器';
+  const eb = document.getElementById('inv-error-banner'); if(eb) eb.hidden = false;
+  const gb = document.getElementById('inv-guide-banner'); if(gb) gb.hidden = true;
+}
+function invHideError(){
+  const eb = document.getElementById('inv-error-banner'); if(eb) eb.hidden = true;
+}
+function invShowLoading(on){
+  const el = document.getElementById('inv-loading'); if(el) el.hidden = !on;
+}
+/** 引导去填密钥。同事版没有设置分页（本来就有钥匙闸门，进得来就一定有钥匙）。 */
+function invGoSettings(){
+  if(document.getElementById('tab-settings')) switchTab('settings');
+  else toast('请回到报账页重新填钥匙');
+}
+
+// ---------- 拉取 ----------
+/** 切到库存分页时调。第一次才真的去拉，之后用手上这份（要最新的按「重新载入」）。 */
+function invOnTabShow(){
+  if(!getCompanyToken()){ invShowGuide(); return; }
+  if(invState.loaded){ invRenderList(); return; }
+  invRefresh();
+}
+
+async function invRefresh(){
+  if(!getCompanyToken()){ invShowGuide(); return; }
+  invHideGuide(); invHideError();
+  invShowLoading(true);
+  try{
+    const body = await invApiCall('list');
+    invState.cats = body.categories || [];
+    invState.loaded = true;
+    invShowLoading(false);
+    invRenderList();
+  }catch(e){
+    invShowLoading(false);
+    if(e.auth){ invShowGuide(e.message); }
+    else{ invShowError(e.message); }
+  }
+}
+
+// ---------- 数量加减（含防连点）----------
+// 【别改成「同一拍里解锁」】JS 单线程，双击是两个各自跑到底的独立事件，不是竞态：
+// 若解锁跟加锁在同一个执行栈里做完，浏览器要派发第二次点击时锁早就开了，等于没挡。
+// 所以锁必须跨过第一次点击的整个同步执行，用 setTimeout 延后解锁。
+// （.claude/rules/diagnosis.md 2026-08-08，记账那边的双击重复记账就是这么修的。）
+const invBusyAdjust = new Set();
+function invOnListClick(e){
+  const qtyBtn = e.target.closest('.inv-qty-btn');
+  if(qtyBtn){
+    if(qtyBtn.disabled) return;
+    const row = qtyBtn.closest('.inv-item-row');
+    const category = row.dataset.invCategory;
+    const id = row.dataset.invId;
+    const key = category + ':' + id;
+    if(invBusyAdjust.has(key)) return;  // 上一次点击还没落地，直接吞掉这次
+    invBusyAdjust.add(key);             // 加锁跨过本次点击的整个同步执行
+    const delta = qtyBtn.classList.contains('inv-qty-plus') ? 1 : -1;
+    row.querySelectorAll('.inv-qty-btn').forEach(b => b.disabled = true);
+    invApiCall('adjust', { category, id, delta })
+      .then(body => { invPatchItem(category, body.item); invRenderList(); })
+      .catch(err => {
+        toast(err.message || '操作失败');
+        row.querySelectorAll('.inv-qty-btn').forEach(b => b.disabled = false);
+      })
+      .finally(() => {
+        setTimeout(() => { invBusyAdjust.delete(key); }, 400); // 延后解锁，吞掉紧跟着的第二次点击
+      });
+    return;
+  }
+  const shareBtn = e.target.closest('.inv-loc-share');
+  if(shareBtn){
+    invShareText(invBuildShareText(shareBtn.dataset.invCat, shareBtn.dataset.invLoc));
+    return;
+  }
+  const row = e.target.closest('.inv-item-row');
+  if(row) invOpenEdit(row.dataset.invCategory, row.dataset.invId);
+}
+
+// ---------- 存放位置下拉 ----------
+function invFillLocations(selectEl, catKey, currentLoc){
+  const cat = invGetCat(catKey);
+  const locs = Array.from(new Set(cat.items.map(it => (it.location||'').trim()).filter(Boolean))).sort();
+  selectEl.innerHTML = locs.map(l => `<option value="${invEsc(l)}">${invEsc(l)}</option>`).join('')
+    + `<option value="__NEW__">＋ 新位置…</option>`;
+  if(currentLoc && locs.includes(currentLoc)) selectEl.value = currentLoc;
+  else if(locs.length) selectEl.value = locs[0];
+  else selectEl.value = '__NEW__';
+}
+function invWireLocationToggle(selectEl, newInputEl){
+  const sync = () => { newInputEl.hidden = selectEl.value !== '__NEW__'; };
+  selectEl.addEventListener('change', sync);
+  sync();
+}
+
+// ---------- 添加 ----------
+function invOpenAdd(){
+  if(!getCompanyToken()){ invShowGuide(); toast('请先填公司报账密钥'); return; }
+  document.getElementById('inv-add-name').value = '';
+  document.getElementById('inv-add-count').value = '1';
+  document.getElementById('inv-add-unit').value = invGetCat(invState.currentCat).defaultUnit;
+  document.getElementById('inv-add-note').value = '';
+  const sel = document.getElementById('inv-add-location-select');
+  invFillLocations(sel, invState.currentCat, null);
+  document.getElementById('inv-add-location-new').value = '';
+  document.getElementById('inv-add-location-new').hidden = sel.value !== '__NEW__';
+  showModal('inv-modal-add');
+}
+async function invAddSubmit(){
+  const name = document.getElementById('inv-add-name').value.trim();
+  if(!name){ toast('请填写名称'); return; }
+  const count = Number(document.getElementById('inv-add-count').value);
+  if(!Number.isFinite(count) || count < 0){ toast('数量不对'); return; }
+  const unit = document.getElementById('inv-add-unit').value.trim() || invGetCat(invState.currentCat).defaultUnit;
+  const sel = document.getElementById('inv-add-location-select');
+  const location = sel.value === '__NEW__'
+    ? document.getElementById('inv-add-location-new').value.trim()
+    : sel.value;
+  const note = document.getElementById('inv-add-note').value.trim();
+  const btn = document.getElementById('inv-add-submit');
+  if(btn.disabled) return;
+  btn.disabled = true;
+  try{
+    const body = await invApiCall('add', { category: invState.currentCat, name, count, unit, location, note });
+    toast(body.merged ? '已合并到同名同位置的记录' : '已添加');
+    closeModal('inv-modal-add');
+    await invRefresh();
+  }catch(e){
+    toast(e.message || '添加失败');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+// ---------- 编辑／删除 ----------
+function invOpenEdit(category, id){
+  const cat = invGetCat(category);
+  const it = cat.items.find(x => String(x.id) === String(id));
+  if(!it) return;
+  invState.editing = { category, id };
+  document.getElementById('inv-edit-name').value = it.name || '';
+  document.getElementById('inv-edit-count').value = it.count;
+  document.getElementById('inv-edit-unit').value = it.unit || cat.defaultUnit;
+  document.getElementById('inv-edit-note').value = it.note || '';
+  const sel = document.getElementById('inv-edit-location-select');
+  invFillLocations(sel, category, it.location);
+  document.getElementById('inv-edit-location-new').value = '';
+  document.getElementById('inv-edit-location-new').hidden = sel.value !== '__NEW__';
+  showModal('inv-modal-edit');
+}
+async function invEditSubmit(){
+  if(!invState.editing) return;
+  const { category, id } = invState.editing;
+  const name = document.getElementById('inv-edit-name').value.trim();
+  if(!name){ toast('请填写名称'); return; }
+  const count = Number(document.getElementById('inv-edit-count').value);
+  if(!Number.isFinite(count) || count < 0){ toast('数量不对'); return; }
+  const unit = document.getElementById('inv-edit-unit').value.trim();
+  const sel = document.getElementById('inv-edit-location-select');
+  const location = sel.value === '__NEW__'
+    ? document.getElementById('inv-edit-location-new').value.trim()
+    : sel.value;
+  const note = document.getElementById('inv-edit-note').value.trim();
+  const btn = document.getElementById('inv-edit-submit');
+  if(btn.disabled) return;
+  btn.disabled = true;
+  try{
+    await invApiCall('update', { category, id, name, count, unit, location, note });
+    toast('已保存');
+    closeModal('inv-modal-edit');
+    await invRefresh();
+  }catch(e){
+    toast(e.message || '保存失败');
+  }finally{
+    btn.disabled = false;
+  }
+}
+async function invEditDelete(){
+  if(!invState.editing) return;
+  const { category, id } = invState.editing;
+  if(!confirm('确定删除这条库存记录吗？删除后无法恢复。')) return;
+  const btn = document.getElementById('inv-edit-delete');
+  if(btn.disabled) return;
+  btn.disabled = true;
+  try{
+    await invApiCall('remove', { category, id });
+    toast('已删除');
+    closeModal('inv-modal-edit');
+    await invRefresh();
+  }catch(e){
+    toast(e.message || '删除失败');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+// ---------- 操作记录 ----------
+// 相对时间比绝对时间戳好读：3 分钟前一眼就懂。超过昨天退回「月-日 时:分」（跨年带上年份）。
+function invRelTime(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return String(iso);
+  const now = new Date();
+  const diffMin = Math.floor((now - d) / 60000);
+  if(diffMin < 1) return '刚刚';
+  if(diffMin < 60) return `${diffMin} 分钟前`;
+  if(diffMin < 24*60 && d.toDateString() === now.toDateString()){
+    return `${Math.floor(diffMin/60)} 小时前`;
+  }
+  const hhmm = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  const yest = new Date(now); yest.setDate(now.getDate()-1);
+  if(d.toDateString() === yest.toDateString()) return `昨天 ${hhmm}`;
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  if(d.getFullYear() === now.getFullYear()) return `${mm}-${dd} ${hhmm}`;
+  return `${d.getFullYear()}-${mm}-${dd} ${hhmm}`;
+}
+function invRenderLogEntry(e){
+  const am = INV_ACTION_META[e.action] || { label: e.action || '操作', cls:'update' };
+  const catMeta = INV_CAT_META[e.category];
+  const catLabel = (catMeta && catMeta.label) || e.category || '';
+  const catIcon = (catMeta && catMeta.icon) || '';
+  return `<div class="inv-log-entry">
+    <div class="inv-log-top">
+      <span class="inv-log-who">${invEsc(e.who || '未知')}</span>
+      <span class="inv-log-time">${invEsc(invRelTime(e.at))}</span>
+    </div>
+    <div class="inv-log-body">
+      <span class="inv-log-badge inv-log-badge-${invEsc(am.cls)}">${invEsc(am.label)}</span>
+      ${catLabel ? `<span class="inv-log-cat">${invEsc(catIcon)} ${invEsc(catLabel)}</span>` : ''}
+    </div>
+    <div class="inv-log-note">${invEsc(e.note || e.itemName || '')}</div>
+  </div>`;
+}
+async function invLoadLog(){
+  document.getElementById('inv-log-error').hidden = true;
+  document.getElementById('inv-log-list').innerHTML = '';
+  document.getElementById('inv-log-loading').hidden = false;
+  try{
+    const body = await invApiCall('log', { limit:50 });
+    document.getElementById('inv-log-loading').hidden = true;
+    const entries = body.entries || [];
+    if(!entries.length){
+      document.getElementById('inv-log-list').innerHTML = `<div class="inv-log-empty">还没有任何操作记录</div>`;
+      return;
+    }
+    document.getElementById('inv-log-list').innerHTML = entries.map(invRenderLogEntry).join('');
+  }catch(e){
+    document.getElementById('inv-log-loading').hidden = true;
+    document.getElementById('inv-log-error-text').textContent = e.message || '拉取失败，检查一下网络';
+    document.getElementById('inv-log-error').hidden = false;
+  }
+}
+function invOpenLog(){
+  if(!getCompanyToken()){ invShowGuide(); toast('请先填公司报账密钥'); return; }
+  showModal('inv-modal-log');
+  invLoadLog(); // 打开时才拉，不在启动时拉——那会拖慢开 App
+}
+
+// 事件挂一次就好。列表是 innerHTML 重画的，所以用委派挂在容器上。
+(function invWire(){
+  const list = document.getElementById('inv-list');
+  if(list) list.addEventListener('click', invOnListClick);
+  const addSel = document.getElementById('inv-add-location-select');
+  const addNew = document.getElementById('inv-add-location-new');
+  if(addSel && addNew) invWireLocationToggle(addSel, addNew);
+  const edSel = document.getElementById('inv-edit-location-select');
+  const edNew = document.getElementById('inv-edit-location-new');
+  if(edSel && edNew) invWireLocationToggle(edSel, edNew);
+})();
 
 // 启动。必须放在最后：上面那些 const（COMPANY_* 等）是块级作用域，
 // 在它们的定义语句执行之前引用会报错，init() 里会碰到这些东西。

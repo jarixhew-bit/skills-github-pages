@@ -1,5 +1,7 @@
-# 库存页（inventory/index.html）的自检（真浏览器）。
-# 这页管的是老板的酒/茶叶/虫草实物库存——数字点错一下就跟实际瓶数对不上，
+# 库存分页的自检（真浏览器）。
+# 2026-08-10 起库存不再是独立页，而是记账 App（expense-tracker.html）的第五个分页，
+# 同事版 staff/index.html 也有一份——所以这里盯的是那两个文件，不是 inventory/。
+# 这块管的是老板的酒/茶叶/虫草实物库存——数字点错一下就跟实际瓶数对不上，
 # 而且「点两下 + 只能加一次」这类窗口期 bug 光看代码看不出来（2026-08-08 在记账 App
 # 上踩过：写法错了自测照样通过），所以每次改到这页都用真浏览器实跑一遍。
 # 测试全程把 worker 请求拦下来假造返回，不打真实接口、不碰真实库存数据。
@@ -8,13 +10,19 @@ name: inventory page check
 on:
   push:
     paths:
+      - 'expense-tracker.html'
+      - 'staff/index.html'
       - 'inventory/**'
       - 'tools/check-inventory.mjs'
+      - 'tools/build-staff-page.py'
       - '.github/workflows/inventory-check.yml'
   pull_request:
     paths:
+      - 'expense-tracker.html'
+      - 'staff/index.html'
       - 'inventory/**'
       - 'tools/check-inventory.mjs'
+      - 'tools/build-staff-page.py'
   workflow_dispatch:
 
 # 同一个分支上 push 与 pull_request 会各触发一次，这个检查要装 Chromium（约 1 分钟），
@@ -43,10 +51,10 @@ jobs:
           nohup python3 -m http.server 8899 > /tmp/httpserver.log 2>&1 &
           disown || true
           for i in $(seq 1 20); do
-            curl -sf -o /dev/null http://localhost:8899/inventory/ && break
+            curl -sf -o /dev/null http://localhost:8899/expense-tracker.html && break
             sleep 1
           done
-          curl -sf -o /dev/null http://localhost:8899/inventory/ \
+          curl -sf -o /dev/null http://localhost:8899/expense-tracker.html \
             || { echo "本地服务器没起来"; cat /tmp/httpserver.log; exit 1; }
-      - name: 跑库存页自检
+      - name: 跑库存分页自检
         run: node tools/check-inventory.mjs

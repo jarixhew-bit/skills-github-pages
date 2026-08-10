@@ -142,6 +142,37 @@ def check_foreign_jargon(path: str, html: str, whitelist: list) -> list:
     return errors
 
 
+def check_control_bytes(path: str) -> list:
+    """页面里不准出现 NUL 等控制字节（要看原始字节，不能看解码后的字符串）。
+
+    为什么要有（2026-08-10，同一个坑踩了两次）：写代码时想表达「一个不可能跟真实
+    数据撞车的占位符」，很容易直接把 \\x00 这个字节写进文件，而不是写成 JS 的转义
+    写法 '\\u0000'。功能上完全正常、浏览器照跑、所有自检照样全绿——**唯一的症状是
+    git 和 grep 从此把这个文件当成二进制**：`git diff` 只显示「Binary files differ」，
+    看不到任何改了什么，代码审查等于瞎了。
+    第一次出现在 inventory/index.html；第二次是把库存并进 expense-tracker.html 时
+    又带了进去，而那是管钱的文件。所以改成机器守着。
+
+    修法：把真实字节换成转义写法（`d.replace(b"\\x00", b"\\\\u0000")`），
+    运行时的值完全不变。
+    """
+    raw = open(path, "rb").read()
+    errors = []
+    # 允许的控制字符只有 \t(9) \n(10) \r(13)
+    bad = {}
+    for i, b in enumerate(raw):
+        if b < 9 or b == 11 or b == 12 or (14 <= b < 32):
+            bad.setdefault(b, []).append(i)
+    for b, positions in sorted(bad.items()):
+        line = raw[:positions[0]].count(b"\n") + 1
+        errors.append(
+            f"{path}:{line} 出现控制字节 0x{b:02x}（共 {len(positions)} 个）——"
+            f"git 会把整个文件当成二进制、diff 看不到内容。"
+            f"若本意是写占位符，请改成 JS 转义写法如 '\\u0000'"
+        )
+    return errors
+
+
 def check_dup_segments(path: str, html: str) -> list:
     """抓「· 分隔的清单里出现完全相同的段落」——改写行程说明时最常见的复制残留，
     标签平衡与假名检查都查不出这类错误。"""
@@ -218,6 +249,7 @@ def main():
         all_errors += check_foreign_jargon(f, html, whitelist)
         all_errors += check_img_alt(f, html)
         all_errors += check_dup_segments(f, html)
+        all_errors += check_control_bytes(f)
 
     if all_errors:
         print(f"不通过（{len(all_errors)} 个问题）：")
