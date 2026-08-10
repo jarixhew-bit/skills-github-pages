@@ -625,6 +625,36 @@ function mountRoutes(ctx, opts = {}) {
   await ctx.close();
 }
 
+// ---------- 场景五：库存页上不该有记账球（2026-08-10 用户发现）----------
+// 记账球是 position:fixed，跟分页无关，切到库存页照样浮在右下角，
+// 跟库存自己的「＋ 添加」撞成两个加号——点错就开出记账表单。
+for (const [who, url, token, homeNav] of [
+  ['老板版', BOSS_URL,  'expenseTracker_companyToken', '#nav-overview'],
+  ['同事版', STAFF_URL, 'staffExpense_token',          '#nav-transactions'],
+]) {
+  const ctx = await browser.newContext();
+  mountRoutes(ctx, { who:'Seryi' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(k => localStorage.setItem(k, 'test-token-fab'), token);
+  await page.goto(url, { waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(1500);
+
+  console.log(`\n【21】${who}：记账球只在记账的分页出现`);
+  ok('记账分页上记账球在（这是主要用途，不能连它一起藏掉）',
+     await page.locator('.fab').isVisible());
+  await page.click('#nav-inventory');
+  await page.waitForTimeout(900);
+  ok('切到库存页，记账球不见了', !(await page.locator('.fab').isVisible()));
+  ok('库存自己的「＋ 添加」还在（页面上只剩这一个加号）',
+     await page.locator('#inv-btn-add').isVisible());
+  await page.click(homeNav);
+  await page.waitForTimeout(500);
+  ok('切回记账分页，记账球又回来了', await page.locator('.fab').isVisible());
+  ok('全程无 JS 报错', errs.length === 0, errs.slice(0,5));
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);

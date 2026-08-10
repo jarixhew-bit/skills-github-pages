@@ -75,6 +75,8 @@ body{overflow-x:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','
   box-shadow:0 4px 16px rgba(108,99,255,.4);display:flex;
   align-items:center;justify-content:center;z-index:99;transition:.2s}
 .fab:active{transform:scale(.93)}
+/* 库存页有自己的「＋ 添加」，记账球再浮在上面就是两个加号，点错会开记账表单 */
+.fab.fab-hidden{display:none}
 
 /* TAB CONTENT */
 .tab{display:none;padding:16px}.tab.active{display:block}
@@ -1666,6 +1668,8 @@ function switchTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
   document.getElementById('nav-'+tab).classList.add('active');
   state.currentTab = tab;
+  // 记账球只在记账相关的页面出现；库存页有自己的「＋ 添加」
+  document.querySelector('.fab').classList.toggle('fab-hidden', tab==='inventory');
   if(tab==='overview') renderOverview();
   if(tab==='transactions') renderTxList();
   if(tab==='analytics') renderAnalytics();
