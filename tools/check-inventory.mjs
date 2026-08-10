@@ -75,6 +75,25 @@ function fakeCategories() {
   await page.click('#settings-save');
   await page.waitForTimeout(300);
   ok('保存到 localStorage', await page.evaluate(()=>localStorage.getItem('inventoryToken')) === 'test-token-abc');
+
+  // 两个页面同在 github.io 这一个站点下，localStorage 同源共用。记账 App 那边的输入框是
+  // password 型、打开设置又不回填，密钥忘了就真的看不到了——所以库存页要能直接借用它存的
+  // 那把，不必让人再输一遍（2026-08-09 用户就是忘了密钥卡在这）。
+  console.log('\n【1c】自己没设密钥时，借用记账 App 已存的那把');
+  await page.evaluate(() => {
+    localStorage.removeItem('inventoryToken');
+    localStorage.setItem('expenseTracker_companyToken', 'boss-key-from-expense-app');
+  });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(600);
+  ok('不再显示「还没设密钥」的引导', !(await page.locator('#guide-banner').isVisible()));
+  await page.click('#btn-settings');
+  await page.waitForTimeout(200);
+  ok('设置里看得到借来的密钥（忘了也能在这查回来）',
+     await page.inputValue('#settings-token') === 'boss-key-from-expense-app');
+  // 借用只在读取时兜底，不写回自己的 key——那边换钥匙时这边要跟着变，不留过期副本
+  ok('没有把借来的密钥复制成自己的一份',
+     await page.evaluate(()=>localStorage.getItem('inventoryToken')) === null);
   await ctx.close();
 }
 

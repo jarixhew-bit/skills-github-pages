@@ -154,7 +154,8 @@ details.used-up .item-row .item-name,details.used-up .item-row .qty-val{color:va
     <label>密钥
       <input id="settings-token" type="text" placeholder="老板的密钥" autocomplete="off">
     </label>
-    <div class="modal-hint">密钥只存在这台设备本地，不会上传到别处。</div>
+    <div class="modal-hint">密钥只存在这台设备本地，不会上传到别处。<br>
+      跟记账 App 是同一把——那边设过的话这里会自动带出来，忘了也能在这看到。</div>
     <div class="modal-actions">
       <button class="btn-outline" data-close="modal-settings">取消</button>
       <button id="settings-save" class="btn-primary">保存</button>
@@ -222,6 +223,13 @@ details.used-up .item-row .item-name,details.used-up .item-row .qty-val{color:va
 <script>
 const API_URL = 'https://butler-bot.jarixhew.workers.dev/inventory';
 const TOKEN_KEY = 'inventoryToken';
+// 记账 App 存老板密钥用的 key。两个页面都在 jarixhew-bit.github.io 这同一个站点下，
+// localStorage 同源共用，所以库存页自己没设过密钥时直接借用它——同一把钥匙、同一台
+// 设备，没道理让他再输一遍。而且记账 App 那个输入框是 password 型、打开设置也不回填
+// 已存的值，密钥忘了的话在那边根本看不到（2026-08-09 用户就是这么卡住的）。
+// 借用只在读取时兜底、不写回 TOKEN_KEY：这样他哪天在记账 App 换了钥匙，这边跟着变，
+// 不会留一份过期的副本在这里。
+const EXPENSE_TOKEN_KEY = 'expenseTracker_companyToken';
 
 const CAT_META = {
   wine: { label:'酒', unit:'瓶', icon:'🍷' },
@@ -231,7 +239,7 @@ const CAT_META = {
 const CAT_ORDER = ['wine','tea','herb'];
 
 const state = {
-  token: localStorage.getItem(TOKEN_KEY) || '',
+  token: localStorage.getItem(TOKEN_KEY) || localStorage.getItem(EXPENSE_TOKEN_KEY) || '',
   cats: [],      // [{key,label,defaultUnit,items:[...]}] from server
   currentCat: 'wine',
   editing: null, // {category,id}
