@@ -559,6 +559,72 @@ function mountRoutes(ctx, opts = {}) {
   await ctx.close();
 }
 
+// ---------- 场景四：按名字排序（2026-08-10 用户要求）----------
+// 为什么单独开一个场景：主战场那份假数据本来就是排好序的，拿它测排序等于没测。
+// 这里故意给一份「乱序 + 大小写混着 + 名字里带数字」的数据，把排序真正逼出来。
+{
+  const ctx = await browser.newContext();
+  const rec = mountRoutes(ctx);
+  rec.serverCats = [
+    { key:'wine', label:'酒', defaultUnit:'瓶', items:[
+      { id:'s1', name:'Pavie',        count:2, unit:'瓶', location:'西港', note:'', added_at:'2026-01-01' },
+      { id:'s2', name:'茅台50年',      count:1, unit:'瓶', location:'西港', note:'', added_at:'2026-01-01' },
+      { id:'s3', name:'Laffite 2012', count:1, unit:'瓶', location:'西港', note:'', added_at:'2026-01-01' },
+      { id:'s4', name:'laffite 2001', count:1, unit:'瓶', location:'西港', note:'', added_at:'2026-01-01' },
+      { id:'s5', name:'茅台30年',      count:1, unit:'瓶', location:'西港', note:'', added_at:'2026-01-01' },
+      { id:'s6', name:'Dalmore',      count:1, unit:'瓶', location:'金边', note:'', added_at:'2026-01-01' },
+      { id:'s7', name:'Zzz 喝完的',    count:0, unit:'瓶', location:'西港', note:'', added_at:'2026-01-01' },
+      { id:'s8', name:'Aaa 喝完的',    count:0, unit:'瓶', location:'西港', note:'', added_at:'2026-01-01' },
+    ]},
+    { key:'tea',  label:'茶叶', defaultUnit:'饼', items: [] },
+    { key:'herb', label:'虫草', defaultUnit:'克', items: [] },
+  ];
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(() => localStorage.setItem('expenseTracker_companyToken', 'test-token-sort'));
+  await page.goto(BOSS_URL, { waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(900);
+  await page.click('#nav-inventory');
+  await page.waitForTimeout(900);
+
+  console.log('\n【20】列表按名字排序（不是按记录加入的先后）');
+  const names = await page.locator('.inv-loc-group', { hasText:'西港' })
+    .locator('.inv-item-name').allTextContents();
+  const at = n => names.indexOf(n);
+  ok('西港这一组 5 条都在', names.length === 5, names);
+  ok('名字里的数字按数值排：laffite 2001 在 Laffite 2012 前面',
+     at('laffite 2001') >= 0 && at('laffite 2001') < at('Laffite 2012'), names);
+  ok('大小写不拆组：两条 laffite 挨在一起',
+     Math.abs(at('laffite 2001') - at('Laffite 2012')) === 1, names);
+  ok('L 排在 P 前面（Laffite 2012 → Pavie）', at('Laffite 2012') < at('Pavie'), names);
+  ok('中文按拼音排：茅台30年 在 茅台50年 前面', at('茅台30年') < at('茅台50年'), names);
+
+  console.log('\n【20b】存放位置本身也排序，已用完那一区也排序');
+  const locs = await page.$$eval('.inv-loc-name', els => els.map(e=>e.textContent.trim()));
+  ok('金边（j）排在西港（x）前面', locs.indexOf('📍 金边') < locs.indexOf('📍 西港'), locs);
+  const usedNames = await page.locator('details.inv-used-up .inv-item-name').allTextContents();
+  ok('已用完的两条也按名字排', usedNames.indexOf('Aaa 喝完的') < usedNames.indexOf('Zzz 喝完的'), usedNames);
+
+  console.log('\n【20c】分享出去的文字跟屏幕上的顺序一致（对方念第几行＝你看第几行）');
+  const shareCalls2 = [];
+  await page.exposeFunction('__recordShare2', (opts) => { shareCalls2.push(opts); });
+  await page.evaluate(() => {
+    navigator.share = (opts) => { window.__recordShare2(opts); return Promise.resolve(); };
+  });
+  await page.click('#inv-btn-share-all');
+  await page.waitForTimeout(400);
+  const txt = shareCalls2[0]?.text || '';
+  // 第一行是标题「🍷 酒库存（日期）」，也以 🍷 开头，要先切掉再取条目行
+  const shareOrder = txt.split('\n').slice(1)
+    .filter(l => l.startsWith('🍷 ')).map(l => l.slice(2).replace(/ x\d+$/, '').trim());
+  const expected = ['Dalmore', ...names];   // 金边那组在前，然后西港那组，顺序照屏幕
+  ok('分享文字里的条目顺序 = 屏幕上的顺序',
+     JSON.stringify(shareOrder) === JSON.stringify(expected), { shareOrder, expected });
+
+  ok('排序场景全程无 JS 报错', errs.length === 0, errs.slice(0,5));
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);
