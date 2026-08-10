@@ -224,11 +224,17 @@ let main;
   // 云同步/账户切换按钮留在 DOM 里（共用脚本会读），但必须看不见、点不到
   ok('云同步图标看不见', !(await page.locator('#hdr-cloud').isVisible()));
   ok('账户切换按钮看不见', !(await page.locator('#hdr-acc-pill').isVisible()));
-  // 底部只有「明细」和「老板账」两个入口，而老板账要有口令才看得见——
-  // 没口令的同事看到的跟以前一模一样，只有一个按钮
-  ok('底部只有明细/老板账两个入口', (await page.locator('.nav-btn').count()) === 2,
+  // 底部只有「明细」「老板账」「库存」三个入口，而老板账要有口令才看得见——
+  // 没口令的同事看到的是明细＋库存两个按钮。
+  // 库存是 2026-08-10 从独立的 inventory/index.html 并进来的第五个分页：老板与同事在
+  // 服务端的库存权限相同，所以生成同事版时**刻意保留**（概览/统计/设置那三个才删）。
+  // 这条守的是「除了这三个之外没有别的入口漏进来」，不是「必须是 2 个」。
+  ok('底部只有明细/老板账/库存三个入口', (await page.locator('.nav-btn').count()) === 3,
      await page.locator('.nav-btn').count());
   ok('没填口令时看不到老板账入口', !(await page.locator('#nav-boss').isVisible()));
+  ok('库存入口在（同事也要能查库存）', await page.locator('#nav-inventory').isVisible());
+  ok('概览/统计/设置三个入口一个都没有',
+     (await page.locator('#nav-overview, #nav-analytics, #nav-settings').count()) === 0);
   // 设置页里的东西一个都不该在（脚本里可能还留着用不到的函数，那不影响；
   // 要守的是 DOM 里没有任何可以点到的入口）
   ok('没有云同步的界面', (await page.locator('#cloud-status-text').count()) === 0);

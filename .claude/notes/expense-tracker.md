@@ -326,6 +326,38 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   本地跑法：`npm i playwright` → `python3 -m http.server 8899 &` →
   `CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/check-expense-company.mjs`。
 
+## 库存并进来了：第五个分页（2026-08-10）
+
+原本 `inventory/index.html` 是独立 App，现在整个并进本页成为「📦 库存」分页
+（老板不想开两个 App：同一把钥匙、同一个服务端，分两个只是多一个图标多一份代码）。
+`inventory/index.html` 已改成跳转页（主屏可能装过它，网址不能失效）；
+`inventory/manifest.webmanifest` **保留不动**（已装的 PWA 删了 manifest 会出怪问题）。
+
+- **锚点**：`<!-- INVENTORY TAB -->` / `<div class="tab" id="tab-inventory">`（settings tab
+  之后、FAB 之前）、导航 `#nav-inventory`（analytics 与 settings 之间）、三个弹窗
+  `#inv-modal-add/edit/log`（在 PDF REPORT 之后）、JS 那一节 `// ===== 库存 =====`。
+- **命名铁律**：库存来的 JS 顶层名一律 `inv` 开头、DOM id 一律 `inv-` 开头、CSS 类一律
+  `.inv-` 开头。**`state` 尤其致命**（记账全部界面状态在里面），库存用的是 `invState`。
+  `toast` / `showModal` / `closeModal` 是**复用记账现成的**，没有另建一份。
+- **钥匙**：`getCompanyToken()`，不自己再存一把。老板版读 `expenseTracker_companyToken`，
+  同事版由构建脚本换成 `staffExpense_token`——所以**别在库存代码里再写一次那个字符串
+  字面量**，`build-staff-page.py` 的 `replace_n` 要求它全文恰好出现 1 次。
+- **懒加载**：只有 `switchTab('inventory')` 才拉数据（`invOnTabShow()`），拉过一次就不再拉。
+  记账是主要用途，启动速度不能被库存拖慢——自检有一条专门守这个。
+- **`.inv-*` 里凡是设了 display 的，都要自己补 `[hidden]{display:none!important}`**：本页
+  没有全局 `[hidden]` 规则，`.inv-banner{display:flex}` 当场让错误横幅永远挂着（自检抓到的）。
+- **`build-staff-page.py` 的坑**：「设置 tab」那段 `cut_between` 的终点已从 `<!-- FAB -->`
+  改成 `<!-- INVENTORY TAB -->`——同事版**要**保留库存，写回 FAB 会把库存一起切掉。
+  底部导航那个删除循环按 id 逐个删（overview/analytics/settings），`nav-inventory` 不在
+  名单里所以自动保留。导航的中文「库存」在 `LABEL_REWRITES` 里加了 `data-en="Stock"`。
+- **已知缺口**：库存分页**内部**的文案只有中文，同事版切成英文时这一块还是中文
+  （导航按钮已经会跟着切）。要补的话静态标签加 `data-en`、动态渲染的要包 `tt()`，
+  但 `tt()` 只存在于同事版，老板 App 里没有，所以不是加几个属性就完事。
+
+自检：`node tools/check-inventory.mjs`（真浏览器 97 项，老板版＋同事版都覆盖：懒加载、
+防连点双击、分组小计、分享文案、空态/错误态/forbidden、操作记录懒加载、
+以及「库存的操作不许改到 `data.transactions`」）。跑法同下面那两份。
+
 ## 同事版 staff/（2026-08-08 补记）
 
 `staff/index.html` **不是手写的**，由 `python3 tools/build-staff-page.py` 从
