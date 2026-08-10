@@ -5918,9 +5918,21 @@ function invGetCat(key){
   };
 }
 
+// 按名字排序用的比较器（2026-08-10 用户要求「按名字顺序排列」）。
+// numeric:true 让「Laffite 2001」排在「Laffite 2012」前面，而不是按字符逐位比；
+// sensitivity:'base' 让「maotai」和「Maotai」挨在一起，不会因为大小写被拆到两处；
+// zh-Hans-CN 让中文按拼音排（茅台归到 M 那一档），不是按 Unicode 码位乱排。
+const INV_NAME_COLLATOR = new Intl.Collator('zh-Hans-CN', { numeric: true, sensitivity: 'base' });
+function invByName(a, b){
+  return INV_NAME_COLLATOR.compare(String((a && a.name) || ''), String((b && b.name) || ''));
+}
+
+// 排序放在这个函数里（而不是各自在渲染处排）是有意的：库存页面和「分享给别人看」的文字
+// 都从这里取数据，排在这里两边才一定一致——分享出去的清单跟屏幕上看到的顺序不一样，
+// 对方念第三行、你看第五行，是最容易数错的那种不一致。
 function invGroupByLocation(items){
   const withStock = items.filter(it => Number(it.count) > 0);
-  const usedUp = items.filter(it => !(Number(it.count) > 0));
+  const usedUp = items.filter(it => !(Number(it.count) > 0)).sort(invByName);
   const order = [];
   const map = new Map();
   withStock.forEach(it => {
@@ -5929,11 +5941,14 @@ function invGroupByLocation(items){
     if(!map.has(key)){ map.set(key, []); order.push(key); }
     map.get(key).push(it);
   });
-  order.sort((a,b) => (a === '\u0000NONE') - (b === '\u0000NONE'));
+  // 存放位置也按名字排（未标位置的永远垫底）：位置的先后本来跟着记录顺序走，
+  // 加一条酒就可能整组跳位置，排一下才不会每次打开顺序都不一样。
+  order.sort((a,b) =>
+    ((a === '\u0000NONE') - (b === '\u0000NONE')) || INV_NAME_COLLATOR.compare(a, b));
   const groups = order.map(key => ({
     location: key === '\u0000NONE' ? '未标存放位置' : key,
     rawLocation: key === '\u0000NONE' ? '' : key,
-    items: map.get(key),
+    items: map.get(key).sort(invByName),
   }));
   return { groups, usedUp };
 }
