@@ -110,7 +110,10 @@ async function scrollGallery(page, collected, want) {
  * 并在回报里标明 method，方便人工抽查。
  */
 async function collectFromSource(page) {
-  const html = await page.content();
+  // 关键：初始数据 blob 里的网址是 JSON 转义过的（https:\/\/lh3...），
+  // 不先还原斜线，正则一张也捞不到——看起来像「这家店照片就是少」，
+  // 实际是根本没在找。2026-08-11 就是这样误判 C:GRILL 只有 4 张。
+  const html = (await page.content()).replace(/\\\//g, '/');
   const re = /https:\/\/lh\d\.googleusercontent\.com\/[A-Za-z0-9_\-/]+(?:=[A-Za-z0-9\-]+)?/g;
   return (html.match(re) || []).filter(isPlacePhoto);
 }
