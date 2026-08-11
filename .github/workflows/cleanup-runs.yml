@@ -1,0 +1,101 @@
+# 清理 Actions 里堆积的历史运行记录。
+#
+# 存在原因（2026-08-11）：Actions 页面积了 1911 条运行记录，其中很大一部分是
+# 「同一份代码跑两遍」留下的成对记录——那个毛病当天已经修掉（push 只在 main 触发），
+# 但历史记录不会自己消失，翻起来全是噪音。
+#
+# 为什么做成 workflow 而不是让 Claude 逐条删：删运行记录要 actions:write 权限，
+# 沙盒里的工具没有；而 Actions 自己的 GITHUB_TOKEN 有。顺带也符合仓库既定做法——
+# 检测与清理放 CI（零 Claude 用量），只有需要判断力的事才叫 Claude 上场。
+#
+# 用法：Actions 页面选这个 workflow → Run workflow，填两个数：
+#   older_than_days  删多少天以前的（默认 30，今天的记录不会被碰）
+#   max_delete       这一次最多删几条（默认 300，避免撞 GitHub 的限速）
+# 删不完会在日志最后写明还剩多少，再点一次即可。
+#
+# 安全阀：
+#   - 只删「已结束」的记录（in_progress / queued 的不碰）
+#   - 不删自己这一次的运行
+#   - dry_run 打开时只列出来、不删，先看清楚要删什么
+name: Cleanup old workflow runs
+
+on:
+  workflow_dispatch:
+    inputs:
+      older_than_days:
+        description: "删多少天以前的运行记录"
+        required: true
+        default: "30"
+        type: string
+      max_delete:
+        description: "这一次最多删几条"
+        required: true
+        default: "300"
+        type: string
+      dry_run:
+        description: "只列出来、不真的删"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 删掉旧的运行记录
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DAYS: ${{ inputs.older_than_days }}
+          MAX: ${{ inputs.max_delete }}
+          DRY: ${{ inputs.dry_run }}
+          SELF: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d "-${DAYS} days" +%Y-%m-%dT%H:%M:%SZ)
+          echo "删除 $cutoff 之前结束的运行记录，本次上限 $MAX 条，dry_run=$DRY"
+
+          # 先把候选列出来：已结束、早于 cutoff、不是自己
+          candidates=$(gh api --paginate \
+            "/repos/$REPO/actions/runs?per_page=100&status=completed" \
+            --jq ".workflow_runs[] | select(.created_at < \"$cutoff\") | select(.id != $SELF) | \"\(.id)\t\(.created_at)\t\(.name)\"" \
+            | head -n "$MAX")
+
+          if [ -z "$candidates" ]; then
+            echo "没有符合条件的记录，收工。"
+            exit 0
+          fi
+
+          count=$(printf '%s\n' "$candidates" | wc -l)
+          echo "本次将处理 $count 条："
+          printf '%s\n' "$candidates" | head -n 10
+          [ "$count" -gt 10 ] && echo "…（其余省略）"
+
+          if [ "$DRY" = "true" ]; then
+            echo "dry_run 打开，没有真的删。"
+            exit 0
+          fi
+
+          deleted=0; failed=0
+          while IFS=$'\t' read -r id created name; do
+            if gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1; then
+              deleted=$((deleted+1))
+            else
+              failed=$((failed+1))
+              echo "::warning::删不掉 $id（$name，$created）"
+            fi
+            # 慢一点，别撞 GitHub 的次级限速
+            sleep 0.3
+          done <<< "$candidates"
+
+          echo "删掉 $deleted 条，失败 $failed 条。"
+
+          remain=$(gh api --paginate \
+            "/repos/$REPO/actions/runs?per_page=100&status=completed" \
+            --jq "[.workflow_runs[] | select(.created_at < \"$cutoff\")] | length" \
+            | paste -sd+ | bc)
+          echo "还剩 $remain 条符合条件的旧记录——不为 0 的话，再点一次 Run workflow 即可。"
