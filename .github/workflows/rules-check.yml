@@ -9,6 +9,15 @@
 name: Rules Health Check
 
 on:
+  # 改到制度档或体检脚本本身时，PR 上先跑一次——不然「改制度档的 PR」和
+  # 「改 CI 的 PR」一样没人看着，超标要等到下个月 1 号才知道（2026-08-11 补）。
+  # 这一路只跑检测、不开 issue（开 issue 是定时任务那一路的事，见下面的 if）。
+  pull_request:
+    paths:
+      - '.claude/rules/**'
+      - 'CLAUDE.md'
+      - 'tools/check-rules.py'
+      - '.github/workflows/rules-check.yml'
   schedule:
     # 每月 1 号 UTC 01:00（柬埔寨 UTC+7 早上 08:00 前后）。
     # 每月一次，GitHub 的排队延迟不影响用途。
@@ -34,11 +43,13 @@ jobs:
           else
             echo "over=true" >> "$GITHUB_OUTPUT"
             cat result.txt
+            # PR 上直接红，改档的人当场就看到；定时那一路不红，改开 issue 通知。
+            if [ "${{ github.event_name }}" = "pull_request" ]; then exit 1; fi
           fi
 
       # 超标才开 issue。已有开着的同名 issue 就不再重复开，避免每月堆积。
       - name: 超标则开 issue 通知
-        if: steps.check.outputs.over == 'true'
+        if: steps.check.outputs.over == 'true' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

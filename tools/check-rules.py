@@ -37,7 +37,10 @@ SKILL_LIMIT = 400  # .claude/skills/*/SKILL.md
 LESSON_LIMIT = 10  # maintenance.md 第 4 节
 
 # 教训条目格式：- [2026-07-03][本机/云端/皆是] 情境：…
-LESSON_RE = re.compile(r"^- \[\d{4}-\d{2}-\d{2}\]")
+# 合并过的条目日期会写成「2026-08-03／2026-08-08」（精简时把两条并一条是
+# maintenance.md 第 4 节推荐的做法），旧正则只认单个日期，一合并就漏数——
+# 结果是「越精简、数出来越少」，档案涨过门槛也不会报。2026-08-11 修。
+LESSON_RE = re.compile(r"^- \[\d{4}-\d{2}-\d{2}(?:\s*[／/、,]\s*\d{4}-\d{2}-\d{2})*\]")
 
 # 仓库内路径引用：backtick 包住、含 / 或以 .md 结尾的相对路径
 PATH_RE = re.compile(r"`([^`\s]+\.(?:md|py|ya?ml|html|json|txt|sh))`")
