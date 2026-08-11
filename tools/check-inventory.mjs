@@ -206,9 +206,14 @@ function mountRoutes(ctx, opts = {}) {
   await until(() => page.evaluate(() => {
     const tab = document.getElementById('tab-inventory');
     if (!tab || !tab.classList.contains('active')) return false;
+    // 同「操作记录」那一处的教训：光看「没在加载中」会当场成立，等于没等。
+    // 三种终态才算画完：列表有东西 / 提示要填钥匙 / 连不上的错误横幅。
     const list = document.getElementById('inv-list');
-    const loading = document.getElementById('inv-loading');
-    return !!list && !(loading && !loading.hidden);
+    const guide = document.getElementById('inv-guide-banner');
+    const err = document.getElementById('inv-error-banner');
+    if (!list) return false;
+    return list.children.length > 0
+           || (!!guide && !guide.hidden) || (!!err && !err.hidden);
   }), { what: '库存分页显示出来' });
   ok('库存分页显示出来', await page.locator('#tab-inventory').isVisible());
   ok('引导横幅显示', await page.locator('#inv-guide-banner').isVisible());
@@ -269,9 +274,14 @@ function mountRoutes(ctx, opts = {}) {
   await until(() => page.evaluate(() => {
     const tab = document.getElementById('tab-inventory');
     if (!tab || !tab.classList.contains('active')) return false;
+    // 同「操作记录」那一处的教训：光看「没在加载中」会当场成立，等于没等。
+    // 三种终态才算画完：列表有东西 / 提示要填钥匙 / 连不上的错误横幅。
     const list = document.getElementById('inv-list');
-    const loading = document.getElementById('inv-loading');
-    return !!list && !(loading && !loading.hidden);
+    const guide = document.getElementById('inv-guide-banner');
+    const err = document.getElementById('inv-error-banner');
+    if (!list) return false;
+    return list.children.length > 0
+           || (!!guide && !guide.hidden) || (!!err && !err.hidden);
   }), { what: '库存分页显示出来' });
   ok('切过去之后拉了 1 次 list', rec.listCalls.length === 1, rec.listCalls.length);
   ok('引导横幅不显示', !(await page.locator('#inv-guide-banner').isVisible()));
@@ -294,9 +304,14 @@ function mountRoutes(ctx, opts = {}) {
   await until(() => page.evaluate(() => {
     const tab = document.getElementById('tab-inventory');
     if (!tab || !tab.classList.contains('active')) return false;
+    // 同「操作记录」那一处的教训：光看「没在加载中」会当场成立，等于没等。
+    // 三种终态才算画完：列表有东西 / 提示要填钥匙 / 连不上的错误横幅。
     const list = document.getElementById('inv-list');
-    const loading = document.getElementById('inv-loading');
-    return !!list && !(loading && !loading.hidden);
+    const guide = document.getElementById('inv-guide-banner');
+    const err = document.getElementById('inv-error-banner');
+    if (!list) return false;
+    return list.children.length > 0
+           || (!!guide && !guide.hidden) || (!!err && !err.hidden);
   }), { what: '库存分页显示出来' });
   ok('还是只拉过 1 次', rec.listCalls.length === 1, rec.listCalls.length);
   ok('列表还在（没被切走时清空）', (await page.textContent('#inv-list')).includes('Laffite 2001'));
@@ -508,8 +523,13 @@ function mountRoutes(ctx, opts = {}) {
   await until(() => page.evaluate(() => {
     const m2 = document.getElementById('inv-modal-log');
     if (!m2 || !m2.classList.contains('open')) return false;
+    // 三种终态才算「载入完」：画出了条目 / 空状态 / 错误横幅。
+    // 第一版写成「文字里没有『加载中』」——列表初始是空字符串，条件当场就成立，
+    // 等于没等；本地够快看不出来，CI 慢一点就整段红（2026-08-11 踩过）。
     const body = document.getElementById('inv-log-list');
-    return !!body && !/加载中/.test(body.textContent || '');
+    const err = document.getElementById('inv-log-error');
+    if (!body) return false;
+    return body.children.length > 0 || (!!err && !err.hidden);
   }), { what: '操作记录打开并载入' });
   ok('打开后发了 1 个 log 请求', rec.logCalls.length === 1, rec.logCalls.length);
   ok('请求带 action:log', rec.logCalls[0] && rec.logCalls[0].action === 'log', rec.logCalls[0]);
@@ -536,8 +556,13 @@ function mountRoutes(ctx, opts = {}) {
   await until(() => page.evaluate(() => {
     const m2 = document.getElementById('inv-modal-log');
     if (!m2 || !m2.classList.contains('open')) return false;
+    // 三种终态才算「载入完」：画出了条目 / 空状态 / 错误横幅。
+    // 第一版写成「文字里没有『加载中』」——列表初始是空字符串，条件当场就成立，
+    // 等于没等；本地够快看不出来，CI 慢一点就整段红（2026-08-11 踩过）。
     const body = document.getElementById('inv-log-list');
-    return !!body && !/加载中/.test(body.textContent || '');
+    const err = document.getElementById('inv-log-error');
+    if (!body) return false;
+    return body.children.length > 0 || (!!err && !err.hidden);
   }), { what: '操作记录打开并载入' });
   const emptyLogTxt = await page.textContent('#inv-log-list');
   ok('显示「还没有任何操作记录」', (emptyLogTxt||'').includes('还没有任何操作记录'), emptyLogTxt);
@@ -554,8 +579,13 @@ function mountRoutes(ctx, opts = {}) {
   await until(() => page.evaluate(() => {
     const m2 = document.getElementById('inv-modal-log');
     if (!m2 || !m2.classList.contains('open')) return false;
+    // 三种终态才算「载入完」：画出了条目 / 空状态 / 错误横幅。
+    // 第一版写成「文字里没有『加载中』」——列表初始是空字符串，条件当场就成立，
+    // 等于没等；本地够快看不出来，CI 慢一点就整段红（2026-08-11 踩过）。
     const body = document.getElementById('inv-log-list');
-    return !!body && !/加载中/.test(body.textContent || '');
+    const err = document.getElementById('inv-log-error');
+    if (!body) return false;
+    return body.children.length > 0 || (!!err && !err.hidden);
   }), { what: '操作记录打开并载入' });
   ok('log 错误横幅显示', await page.locator('#inv-log-error').isVisible());
   const logErrTxt = await page.textContent('#inv-log-error-text');
@@ -617,9 +647,14 @@ function mountRoutes(ctx, opts = {}) {
   await until(() => page.evaluate(() => {
     const tab = document.getElementById('tab-inventory');
     if (!tab || !tab.classList.contains('active')) return false;
+    // 同「操作记录」那一处的教训：光看「没在加载中」会当场成立，等于没等。
+    // 三种终态才算画完：列表有东西 / 提示要填钥匙 / 连不上的错误横幅。
     const list = document.getElementById('inv-list');
-    const loading = document.getElementById('inv-loading');
-    return !!list && !(loading && !loading.hidden);
+    const guide = document.getElementById('inv-guide-banner');
+    const err = document.getElementById('inv-error-banner');
+    if (!list) return false;
+    return list.children.length > 0
+           || (!!guide && !guide.hidden) || (!!err && !err.hidden);
   }), { what: '库存分页显示出来' });
   ok('库存分页显示出来', await page.locator('#tab-inventory').isVisible());
   ok('拉了 1 次 list', rec.listCalls.length === 1, rec.listCalls.length);
@@ -646,8 +681,13 @@ function mountRoutes(ctx, opts = {}) {
   await until(() => page.evaluate(() => {
     const m2 = document.getElementById('inv-modal-log');
     if (!m2 || !m2.classList.contains('open')) return false;
+    // 三种终态才算「载入完」：画出了条目 / 空状态 / 错误横幅。
+    // 第一版写成「文字里没有『加载中』」——列表初始是空字符串，条件当场就成立，
+    // 等于没等；本地够快看不出来，CI 慢一点就整段红（2026-08-11 踩过）。
     const body = document.getElementById('inv-log-list');
-    return !!body && !/加载中/.test(body.textContent || '');
+    const err = document.getElementById('inv-log-error');
+    if (!body) return false;
+    return body.children.length > 0 || (!!err && !err.hidden);
   }), { what: '操作记录打开并载入' });
   ok('打开后拉了 1 次', rec.logCalls.length === 1, rec.logCalls.length);
   ok('列表画出来了', (await page.$$eval('.inv-log-entry', e=>e.length)) === 3);
@@ -693,9 +733,14 @@ function mountRoutes(ctx, opts = {}) {
   await until(() => page.evaluate(() => {
     const tab = document.getElementById('tab-inventory');
     if (!tab || !tab.classList.contains('active')) return false;
+    // 同「操作记录」那一处的教训：光看「没在加载中」会当场成立，等于没等。
+    // 三种终态才算画完：列表有东西 / 提示要填钥匙 / 连不上的错误横幅。
     const list = document.getElementById('inv-list');
-    const loading = document.getElementById('inv-loading');
-    return !!list && !(loading && !loading.hidden);
+    const guide = document.getElementById('inv-guide-banner');
+    const err = document.getElementById('inv-error-banner');
+    if (!list) return false;
+    return list.children.length > 0
+           || (!!guide && !guide.hidden) || (!!err && !err.hidden);
   }), { what: '库存分页显示出来' });
 
   console.log('\n【20】列表按名字排序（不是按记录加入的先后）');
@@ -758,9 +803,14 @@ for (const [who, url, token, homeNav] of [
   await until(() => page.evaluate(() => {
     const tab = document.getElementById('tab-inventory');
     if (!tab || !tab.classList.contains('active')) return false;
+    // 同「操作记录」那一处的教训：光看「没在加载中」会当场成立，等于没等。
+    // 三种终态才算画完：列表有东西 / 提示要填钥匙 / 连不上的错误横幅。
     const list = document.getElementById('inv-list');
-    const loading = document.getElementById('inv-loading');
-    return !!list && !(loading && !loading.hidden);
+    const guide = document.getElementById('inv-guide-banner');
+    const err = document.getElementById('inv-error-banner');
+    if (!list) return false;
+    return list.children.length > 0
+           || (!!guide && !guide.hidden) || (!!err && !err.hidden);
   }), { what: '库存分页显示出来' });
   ok('切到库存页，记账球不见了', !(await page.locator('.fab').isVisible()));
   ok('库存自己的「＋ 添加」还在（页面上只剩这一个加号）',
