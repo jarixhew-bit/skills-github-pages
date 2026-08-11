@@ -60,10 +60,21 @@
   `Unknown command`。教訓：雲端 session 的斜線指令表在進程啟動時就固定，中途裝的
   plugin 不會熱更新；而且下次多半是全新容器。當下解法：用 Bash 直接呼叫 plugin 內部
   腳本（`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`）；要長期可用就裝在本機 CLI。
-- [2026-07-12][雲端] 情境：合併後要刪遠端功能分支。教訓：網頁版 session 的 git 代理
-  禁止 `git push --delete`（403，策略性非暫時），別重試——觸發 `cleanup-branches.yml`
-  workflow（workflow_dispatch，傳分支名）由 CI 代刪，帶 main 保護與合併驗證。
-  來源：Fable 5 交接時試刪兩次 403 後建立此通道，一次清掉 14 個積壓分支。注意：要新開/重建功能分支時先 `git fetch origin main`——本地 origin/main 過舊會讓分支基點落後，清理 workflow 的「內容樹在 main」安全閥會攔下不刪（同 session 踩過兩次）；被攔時把分支 force-push 指到 origin/main 再觸發一次即可。
+- [2026-07-12／2026-08-11][雲端] 情境：雲端 session 操作功能分支（合併後刪分支、
+  一個 session 内連做好幾件事）。教訓，三條都踩過：
+  (1) **刪遠端分支**：git 代理禁止 `git push --delete`（403，策略性非暫時），別重試——
+  觸發 `cleanup-branches.yml`（workflow_dispatch，傳分支名）由 CI 代刪，帶 main 保護與合併驗證。
+  (2) **新開/重建功能分支前先 `git fetch origin main`**——本地 origin/main 過舊會讓分支基點
+  落後，清理 workflow 的「內容樹在 main」安全閥會攔下不刪；被攔時把分支 force-push 指到
+  origin/main 再觸發一次即可。
+  (3) **每次 squash 合併之後、開始下一件事之前，先把分支重置到最新 main**
+  （`git fetch origin main && git reset --hard origin/main`）。不重置就繼續 commit，分支會
+  同時帶著「合併前的舊 commit」和新改動，跟 main 上 squash 後的版本衝突：PR 開出來是
+  `mergeable_state: dirty`，**GitHub 對衝突的 PR 不跑任何檢查**（頁面上看起來像卡住），
+  必須 rebase 再強推才跑得起來——而多推一次就在 Actions 頁面多一行記錄。
+  判別法：開 PR 後遲遲沒有檢查記錄，先查 `mergeable_state`，別去懷疑 workflow 配置。
+  來源：(1)(2) Fable 5 交接時試刪兩次 403 後建立此通道，一次清掉 14 個積壓分支；
+  (3) 使用者回報「一次任務就重複好幾個」，查下來一半是這個，同一天連踩兩次（PR #364、#365）。
 - [2026-07-13／2026-08-03][雲端] 情境：想確認一個改動「真的上線了／真的提交進去了」。
   教訓：沙盒**連不到** `github.io`、`*.workers.dev`（代理策略性 403 CONNECT tunnel failed，
   別重試、也別懷疑對方服務掛了），只能三步間接驗證，缺一步就會誤報上線：

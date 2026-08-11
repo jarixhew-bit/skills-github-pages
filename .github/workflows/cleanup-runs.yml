@@ -8,7 +8,8 @@
 # 沙盒里的工具没有；而 Actions 自己的 GITHUB_TOKEN 有。顺带也符合仓库既定做法——
 # 检测与清理放 CI（零 Claude 用量），只有需要判断力的事才叫 Claude 上场。
 #
-# 用法：Actions 页面选这个 workflow → Run workflow，填两个数：
+# 平时不必管它：每周一自动跑（见下面 schedule），把两周前的旧记录清掉。
+# 想立刻清或想换口径时才手动跑——用法：Actions 页面选这个 workflow → Run workflow，填两个数：
 #   older_than_days  删多少天以前的（默认 30，今天的记录不会被碰；填 -1 连今天的也算）
 #   max_delete       安全上限（默认 3000）。**点一次就会一直删到清干净**，撞到上限才停，
 #                    停了会在日志最后写明还剩多少。
@@ -37,6 +38,14 @@
 name: Cleanup old workflow runs
 
 on:
+  # 每周一自动跑一次，把两周前的旧记录清掉（2026-08-11 用户：「这样的话很快又上千个了」）。
+  # 一个任务现在稳定产生 2 行（PR 一行 Checks ＋ 合并后一行 pages 部署），不算多，
+  # 但天天累积照样会回到上千条。靠人想起来去按不可靠，所以让它自己维持。
+  # 排程跑的时候用的参数写死在下面 env 里（不看 inputs，因为排程事件没有 inputs）：
+  #   14 天前 / 上限 3000 / main 上跑绿的也清 / 解析不了的残骸也清 / 真删。
+  # **红过的和 pages 部署记录永远不动**，所以自动清不会吃掉任何诊断线索。
+  schedule:
+    - cron: "0 3 * * 1"
   workflow_dispatch:
     inputs:
       older_than_days:
@@ -77,11 +86,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          DAYS: ${{ inputs.older_than_days }}
-          MAX: ${{ inputs.max_delete }}
-          DRY: ${{ inputs.dry_run }}
-          MAIN: ${{ inputs.include_main }}
-          UNPARSE: ${{ inputs.include_unparseable }}
+          # 排程事件没有 inputs，所以按事件类型分流写死一套参数。
+          # 不能写成 `inputs.include_main || 'true'`：布尔 input 明确填 false 时，
+          # `false || 'true'` 会被判成 'true'，等于使用者关不掉这个开关。
+          DAYS: ${{ github.event_name == 'schedule' && '14' || inputs.older_than_days }}
+          MAX: ${{ github.event_name == 'schedule' && '3000' || inputs.max_delete }}
+          DRY: ${{ github.event_name == 'schedule' && 'false' || inputs.dry_run }}
+          MAIN: ${{ github.event_name == 'schedule' && 'true' || inputs.include_main }}
+          UNPARSE: ${{ github.event_name == 'schedule' && 'true' || inputs.include_unparseable }}
           SELF: ${{ github.run_id }}
         run: |
           set -euo pipefail
