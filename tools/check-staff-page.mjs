@@ -28,6 +28,25 @@ const browser = await chromium.launch(launchOpts);
 
 let pass = 0;
 const fails = [];
+/**
+ * 等条件成立，而不是死等固定时间（2026-08-11 提速改造，做法与 check-expense-company.mjs 一致）。
+ * 注意：断言「某件事没有发生」的地方不能用它——等一件不会发生的事只能真的等，
+ * 那些 waitForTimeout 都留着。
+ */
+async function until(fn, { timeout = 8000, interval = 20, what = '条件' } = {}) {
+  const t0 = Date.now();
+  for (;;) {
+    if (await fn()) return;
+    if (Date.now() - t0 > timeout) throw new Error(`等不到「${what}」（超时 ${timeout}ms）`);
+    await new Promise(r => setTimeout(r, interval));
+  }
+}
+/** 记账弹窗是开着还是关着（overlay 拿到 .open 才算开）。 */
+const txModalOpen = page => page.evaluate(() => {
+  const m = document.getElementById('modal-add-tx');
+  return !!m && m.classList.contains('open');
+});
+
 const ok = (name, cond, got) => {
   if (cond) { pass++; console.log(`  ✅ ${name}`); }
   else { fails.push(name); console.log(`  ❌ ${name} —— 实际: ${JSON.stringify(got)}`); }
@@ -170,13 +189,14 @@ async function typeAmount(page, text) {
 /** 走一遍完整的记一笔（金额 + 类别 [+ 车牌]）。 */
 async function addOne(page, { amount, category, plate } = {}) {
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, amount);
   await page.selectOption('#tx-company-category', category);
   await page.waitForTimeout(200);
   if (plate) await page.fill('#tx-company-plate', plate);
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(900);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
 }
 
 // ---------- 【1】没钥匙时的样子 ----------
@@ -254,7 +274,7 @@ console.log('\n【3】身份由钥匙决定，页面上没得选');
   ok('页面上看得到版本号', /\d{4}-\d{2}-\d{2}/.test(await page.textContent('#staff-build-note')),
      await page.textContent('#staff-build-note'));
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   ok('「谁报的账」看不见（选不了也就选不错）', !(await page.locator('#tx-reporter-group').isVisible()));
   ok('单据号栏看不见（号由服务端派）', !(await page.locator('#tx-reftag-group').isVisible()));
   ok('收入/支出切换看不见（同事只会有支出）', !(await page.locator('#tx-type-tabs').isVisible()));
@@ -274,7 +294,7 @@ console.log('\n【3】身份由钥匙决定，页面上没得选');
   ok('相册那个 input 不带 capture（点了才会出相册）', lib.capture === null, lib);
   ok('两个都只收图片', cam.accept === 'image/*' && lib.accept === 'image/*', { cam, lib });
   await page.click('#modal-add-tx .modal-close');
-  await page.waitForTimeout(300);
+  await until(async () => !(await txModalOpen(page)), { what: '弹窗关上' });
 }
 
 // ---------- 【4】记一笔：送出去的内容必须对 ----------
@@ -331,7 +351,7 @@ console.log('\n【6】汽油这类项目要填车牌');
   const { page, posted } = main;
   posted.length = 0;
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await page.fill('#tx-amount', '50');
   await page.selectOption('#tx-company-category', 'Petrol');
   await page.waitForTimeout(300);
@@ -343,7 +363,8 @@ console.log('\n【6】汽油这类项目要填车牌');
   ok('也真的没送出去', posted.filter(x => !x.action).length === 0, posted);
   await page.fill('#tx-company-plate', 'NS6868');
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(900);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
   const p = posted.find(x => !x.action);
   ok('填了车牌就能送', !!p && p.items[0].plate === 'NS6868', p && p.items[0]);
   await page.selectOption('#tx-company-category', 'Lunch').catch(() => {});
@@ -380,17 +401,19 @@ console.log('\n【8】中英双语（同事不一定读中文）');
   ok('切到英文：合计跟着变', en.includes('This month'), null);
   ok('切到英文：缺收据提醒也跟着变', /without a receipt/.test(en), null);
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   const enForm = await page.textContent('#modal-add-tx');
   ok('切到英文：表单也是英文', enForm.includes('New expense') && enForm.includes('Save'), null);
   ok('切到英文：栏位标签也是英文', enForm.includes('Category') && enForm.includes('Date'), null);
   await page.click('#modal-add-tx .modal-close');
-  await page.waitForTimeout(300);
+  await until(async () => !(await txModalOpen(page)), { what: '弹窗关上' });
   // 全站共用的语言 key，跟仓库里其他双语页面一致
   ok('语言选择存进全站共用的 siteLangUser',
      (await page.evaluate(() => localStorage.getItem('siteLangUser'))) === 'en');
   await page.reload({ waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1200);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   ok('刷新后记住英文', (await page.textContent('body')).includes('This month'));
   ok('刷新后不用再填钥匙', !(await page.locator('#staff-gate').isVisible()));
   await main.ctx.close();
@@ -463,7 +486,9 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
   // 这一组测的是**手动**按「找回本月记录」，先把自动那条路排除掉（自动那条在【9d】）
   await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));
   await page.reload({ waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1800);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   ok('清掉之后清单确实是空的', /还没有记录|Nothing recorded/.test(await page.textContent('#tx-list')),
      await page.textContent('#tx-list'));
 
@@ -542,12 +567,12 @@ console.log('\n【9f】用逗号当小数点也要记得进去（手机键盘很
   // 程序拿到的是空的。当天有收据那笔（OCR 自动填、带小数点）和整数那笔都进得去，
   // 只有手打小数的进不去，正是这个毛病的形状。
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '5,45');
   await page.selectOption('#tx-company-category', 'Dinner');
-  await page.waitForTimeout(200);
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(1000);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
   const sent = posted.filter(x => !x.action);
   ok('「5,45」存得进去', sent.length === 1, posted.map(x => x.action || 'add'));
   ok('而且金额是 5.45，不是 545 也不是 5', sent[0] && sent[0].items[0].amount === 5.45,
@@ -557,7 +582,7 @@ console.log('\n【9f】用逗号当小数点也要记得进去（手机键盘很
   // iPhone 的数字键盘在有些语言下只有逗号没有点（用户 2026-08-07 确认同事就是这样），
   // 所以打字当下就要回显认到的是多少，别让他记完才发现记成了 545
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '5,45');
   await page.waitForTimeout(300);
   const echo = page.locator('#tx-amount-echo');
@@ -578,7 +603,7 @@ console.log('\n【9f】用逗号当小数点也要记得进去（手机键盘很
 
   // 真的看不懂时要把他打的原文引出来，不能只说「请输入金额」
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, 'abc');
   await page.selectOption('#tx-company-category', 'Dinner');
   await page.click('button[onclick="saveTx()"]');
@@ -603,7 +628,9 @@ console.log('\n【9d】存不住 / 存丢了：要么当场说清楚，要么自
   ];
   await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));
   await page.reload({ waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1800);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   ok('开页面时清单是空的 → 自动从公司账本补回来（不用他自己去按）',
      (await page.textContent('#tx-list')).includes('4.49'), await page.textContent('#tx-list'));
 
@@ -636,7 +663,7 @@ console.log('\n【9e】保存出错要留下痕迹（「点了完全没反应」
   const h = await signIn(await newPage());
   const { page, errs } = h;
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '5.00');
   await page.selectOption('#tx-company-category', 'Lunch');
   // 让保存中途炸掉，模拟任意一处意外抛错
@@ -660,7 +687,9 @@ console.log('\n【10】跟老板的 App 同源，存储位必须分开');
   // 先在同一个浏览器里放一份「老板的账本」当哨兵。同源共用 localStorage，
   // 存储位没分开的话，同事版一启动就会把它冲掉（staffStart() 会重设 data.accounts）。
   await page.goto(APP, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1200);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   const bossBefore = await page.evaluate(() => {
     localStorage.setItem('expenseTracker_v2', JSON.stringify({ sentinel:'老板的账本' }));
     localStorage.setItem('expenseTracker_companyToken', 'boss-key-do-not-touch');
@@ -717,7 +746,9 @@ console.log('\n【11】老板自己的 App 没受影响');
   const h = await newPage();
   const { page, errs } = h;
   await page.goto(APP, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1200);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   ok('App 打开正常、没有闸门', (await page.locator('#staff-gate').count()) === 0);
   ok('App 的概览页还在', (await page.locator('#tab-overview').count()) === 1);
   ok('App 的设置页还在', (await page.locator('#tab-settings').count()) === 1);
@@ -739,7 +770,7 @@ console.log('\n【12】记的不是今天时，日期底下要有提醒（OCR �
      (await page.evaluate(() => today())) === '2026-08-07',
      await page.evaluate(() => today()));
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   const hint = page.locator('#tx-date-hint');
   ok('刚打开时是今天，没有多余提醒', !(await hint.isVisible()));
 
@@ -751,7 +782,10 @@ console.log('\n【12】记的不是今天时，日期底下要有提醒（OCR �
   // 英文模式下不能漏成中文——同事有人只读英文。语言键在表单底下点不到，
   // 按钮本身在【8】已经点过了，这里直接调切换函数
   await page.evaluate(() => staffToggleLang());
-  await page.waitForTimeout(300);
+  await until(() => page.evaluate(() => {
+    const b = document.getElementById('staff-lang-btn');
+    return !!b && (b.textContent.trim() === 'EN' || b.textContent.trim() === '中');
+  }), { what: '语言切换生效' });
   ok('切语言后提醒当场跟着变成英文', (await hint.textContent() || '').includes('not today'),
      await hint.textContent());
 
@@ -771,7 +805,9 @@ console.log('\n【13】老板 App：公司账本卡只在公司账户那边，�
   const { page, errs } = h;
   await h.ctx.addInitScript(k => localStorage.setItem('expenseTracker_companyToken', k), BOSS_KEY);
   await page.goto(APP, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1200);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
 
   // 造两个账户：一个私人（默认那个）、一个公司，然后来回切
   await page.evaluate(async () => {
@@ -831,7 +867,10 @@ console.log('\n【14】还在浏览器里：顶上要有「装到主屏幕」的
   ok('说明书打得开（不是 404）', r.status() === 200, r.status());
   // 只读英文的同事也要看得懂
   await page.evaluate(() => staffToggleLang());
-  await page.waitForTimeout(300);
+  await until(() => page.evaluate(() => {
+    const b = document.getElementById('staff-lang-btn');
+    return !!b && (b.textContent.trim() === 'EN' || b.textContent.trim() === '中');
+  }), { what: '语言切换生效' });
   ok('切英文后提示条也变英文', /Home Screen/.test(await tip.textContent() || ''),
      await tip.textContent());
   ok('无 JS 报错', errs.length === 0, errs);
@@ -910,7 +949,7 @@ console.log('\n【14b】切成英文之后，画面上不该再有中文');
   ok('按钮只说一种语言，不是中英并排', restore === 'Restore this month', restore);
 
   await page.click('.fab');
-  await page.waitForTimeout(500);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await page.selectOption('#tx-company-category', 'Petrol');
   await page.waitForTimeout(400);
   const modal = await scanCJK();
@@ -1083,13 +1122,11 @@ console.log('\n【17】买给老板的餐：同事要能标出来');
   const { page, posted, errs } = h;
   await signIn(h);
   await page.click('.fab');
-  await page.waitForTimeout(500);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
 
   await page.selectOption('#tx-company-category', 'Store');
-  await page.waitForTimeout(200);
   ok('选 Store 时不问「这一餐算谁的」', !(await page.locator('#tx-company-whose-wrap').isVisible()));
   await page.selectOption('#tx-company-category', 'Lunch');
-  await page.waitForTimeout(200);
   ok('选 Lunch 时问「这一餐算谁的」', await page.locator('#tx-company-whose-wrap').isVisible());
   ok('默认「自己吃的」（同事绝大多数时候记的是自己的餐）',
      await page.evaluate(() => state.companyWhose === 'self'));
@@ -1101,7 +1138,8 @@ console.log('\n【17】买给老板的餐：同事要能标出来');
   await page.evaluate(() => setCompanyWhose('boss'));
   await page.waitForTimeout(150);
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(1200);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
   const sent = posted.filter(r => !r.action).pop() || {};
   ok('送出去的是服务端给的「老板午餐」', sent.items?.[0]?.categoryRaw === '老板午餐',
      sent.items?.[0]?.categoryRaw);
@@ -1114,12 +1152,12 @@ console.log('\n【17】买给老板的餐：同事要能标出来');
 
   // 对照组：不点就还是他自己的（别把原来的行为改坏）
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '4.40');
   await page.selectOption('#tx-company-category', 'Lunch');
-  await page.waitForTimeout(200);
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(1200);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
   const own = posted.filter(r => !r.action).pop() || {};
   ok('对照：不点就送标准类别 Lunch', own.items?.[0]?.categoryRaw === 'Lunch', own.items?.[0]?.categoryRaw);
   ok('对照：仍记到 Seryi 自己头上', await page.evaluate(() => {
@@ -1167,7 +1205,7 @@ console.log('\n【18】已经报上去的那笔不给改（改了跟账本会对
 
   // 新记一笔时锁必须是解开的（别把上一笔的状态留着）
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   ok('新增记录时锁是解开的',
      !(await page.locator('#tx-sent-lock').isVisible()) &&
      !(await page.evaluate(() => document.getElementById('tx-amount').disabled)));
@@ -1201,7 +1239,7 @@ console.log('\n【19】照片认出来的金额，没核对过不准保存');
   const { page, posted, errs } = h;
   await signIn(h);
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await page.selectOption('#tx-company-category', 'Store');
   await page.evaluate(() => {          // 模拟识别填进去的金额
     document.getElementById('tx-amount').value = '77.78';
@@ -1219,7 +1257,8 @@ console.log('\n【19】照片认出来的金额，没核对过不准保存');
   await page.click('#tx-amount-ok');
   await page.waitForTimeout(200);
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(1000);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
   ok('核对过就存得进去，金额原样 77.78',
      posted.filter(r => !r.action).pop()?.items?.[0]?.amount === 77.78,
      posted.filter(r => !r.action).pop()?.items?.[0]);
@@ -1232,7 +1271,7 @@ console.log('\n【19】照片认出来的金额，没核对过不准保存');
   const { page } = h;
   await signIn(h);
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await page.evaluate(() => {
     document.getElementById('tx-amount').value = '77.78';
     markAmountUnconfirmed();
@@ -1251,10 +1290,9 @@ console.log('\n【20】双击「保存」不能生出两条一样的记录');
   const { page, posted, errs } = h;
   await signIn(h);
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '4.44');
   await page.selectOption('#tx-company-category', 'Store');
-  await page.waitForTimeout(200);
   await page.evaluate(() => {
     const btn = document.getElementById('tx-save-btn');
     btn.click(); btn.click();   // 原生 el.click() 连打两下，真实模拟双击
@@ -1310,7 +1348,9 @@ console.log('\n【22】老板账：拿到口令才有，记的账送进投递箱
   // 这里直接写存储位跳过 prompt，效果一样。
   await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
   await page.reload({ waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   ok('填了口令就看得到老板账入口', await page.locator('#nav-boss').isVisible());
 
   // 把 Firestore 的写入换成假的：外部网域在这份自检里全被挡（模拟酒店 WiFi），
@@ -1323,13 +1363,18 @@ console.log('\n【22】老板账：拿到口令才有，记的账送进投递箱
   });
 
   await page.click('#nav-boss');
-  await page.waitForTimeout(400);
+  // 「老板账」不是普通分页（staffGoBoss 切的是身份，没有 #tab-boss 这个元素），
+  // 所以这里等的是切换后标题变成老板账那一版
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('hdr-title');
+    return !!el && /老板|Boss/i.test(el.textContent || '');
+  }), { what: '切到老板账' });
   ok('切过去之后 body 上有 staff-boss', await page.evaluate(() => document.body.classList.contains('staff-boss')));
   ok('页面顶上挂着「进老板账本」的说明', await page.locator('#staff-boss-note').isVisible());
   ok('备用金卡不出现（那是公司账的钱）', !(await page.locator('#staff-petty').isVisible()));
 
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   ok('公司那套栏位整块不见', !(await page.locator('#tx-company-wrap').isVisible()));
   ok('描述栏回来了（个人账本那套）', await page.locator('#tx-desc-group').isVisible());
   ok('收入/支出切换回来了', await page.locator('#tx-type-tabs').isVisible());
@@ -1339,7 +1384,8 @@ console.log('\n【22】老板账：拿到口令才有，记的账送进投递箱
   await page.locator('#cat-grid > *').first().click();
   await page.fill('#tx-desc', '老板的咖啡');
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(900);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
 
   const box = await page.evaluate(() => window.__inbox);
   ok('送进 inbox_boss 集合，一笔一条', box.length === 1 && box[0].c === 'inbox_boss',
@@ -1368,11 +1414,12 @@ console.log('\n【22】老板账：拿到口令才有，记的账送进投递箱
     db = { collection: () => ({ add: async () => { const e = new Error('offline'); throw e; } }) };
   });
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '5.00');
   await page.locator('#cat-grid > *').first().click();
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(900);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
   ok('送不出去这笔还是存进了本机',
      await page.evaluate(() => data.transactions.some(t => t.amount === 5)));
   ok('进了待送队列', (await page.evaluate(() =>
@@ -1382,11 +1429,14 @@ console.log('\n【22】老板账：拿到口令才有，记的账送进投递箱
 
   // 切回公司账：表单要变回公司那套，两边不能互相污染
   await page.click('#nav-transactions');
-  await page.waitForTimeout(400);
+  await until(() => page.evaluate(t => {
+    const el = document.getElementById('tab-' + t);
+    return !!el && el.classList.contains('active');
+  }, 'transactions'), { what: '切到 transactions 分页' });
   ok('切回来 body 上的 staff-boss 拿掉了',
      await page.evaluate(() => !document.body.classList.contains('staff-boss')));
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   ok('公司那套栏位回来了', await page.locator('#tx-company-wrap').isVisible());
   ok('描述栏又收起来了', !(await page.locator('#tx-desc-group').isVisible()));
   ok('无 JS 报错', errs.length === 0, errs);
@@ -1409,7 +1459,9 @@ console.log('\n【23】老板账：币种可改，手上现金自己算');
   await signIn(h);
   await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
   await page.reload({ waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   await page.evaluate(() => {
     window.__inbox = [];
     auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
@@ -1417,7 +1469,12 @@ console.log('\n【23】老板账：币种可改，手上现金自己算');
     cloudAvailable = true;
   });
   await page.click('#nav-boss');
-  await page.waitForTimeout(400);
+  // 「老板账」不是普通分页（staffGoBoss 切的是身份，没有 #tab-boss 这个元素），
+  // 所以这里等的是切换后标题变成老板账那一版
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('hdr-title');
+    return !!el && /老板|Boss/i.test(el.textContent || '');
+  }), { what: '切到老板账' });
 
   ok('手上现金卡出现在老板账页', await page.locator('#staff-boss-cash').isVisible());
   ok('还没填收到多少时，不编一个 0 出来（那看起来像花光了）',
@@ -1453,11 +1510,12 @@ console.log('\n【23】老板账：币种可改，手上现金自己算');
 
   // —— 花掉 100：余额要自己算出 500 ——
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '100');
   await page.locator('#cat-grid > *').first().click();
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(900);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
   card = await page.locator('#staff-boss-cash').innerText();
   ok('花了 100 之后余额变 500（是算出来的，不是写死的）', card.includes('¥500.00'), card);
   ok('卡上写明收到多少、花掉多少', card.includes('收到 ¥600.00') && card.includes('已花 ¥100.00'), card);
@@ -1467,11 +1525,12 @@ console.log('\n【23】老板账：币种可改，手上现金自己算');
     db = { collection: () => ({ add: async () => { throw new Error('offline'); } }) };
   });
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '50');
   await page.locator('#cat-grid > *').first().click();
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(900);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
   card = await page.locator('#staff-boss-cash').innerText();
   ok('没送出去的那笔也从余额扣掉了（现金已经花了）', card.includes('¥450.00'), card);
   ok('但要写明有几笔还没送到，别让人以为账丢了',
@@ -1482,11 +1541,12 @@ console.log('\n【23】老板账：币种可改，手上现金自己算');
     db = { collection: () => ({ add: async (p) => { window.__inbox.push(p); return { id:'d2' }; } }) };
   });
   await page.click('.fab');
-  await page.waitForTimeout(400);
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '500');
   await page.locator('#cat-grid > *').first().click();
   await page.click('button[onclick="saveTx()"]');
-  await page.waitForTimeout(900);
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(100);   // 让送出与本机写入收尾
   card = await page.locator('#staff-boss-cash').innerText();
   ok('花超了显示「超支了」而不是一个负数余额', card.includes('超支了'), card);
   ok('说清楚是他自己先垫的、该跟老板要回来', card.includes('先垫了'), card);
@@ -1515,7 +1575,10 @@ console.log('\n【23】老板账：币种可改，手上现金自己算');
 
   // —— 公司账那一页不该有这张卡 ——
   await page.click('#nav-transactions');
-  await page.waitForTimeout(400);
+  await until(() => page.evaluate(t => {
+    const el = document.getElementById('tab-' + t);
+    return !!el && el.classList.contains('active');
+  }, 'transactions'), { what: '切到 transactions 分页' });
   ok('切回公司账，手上现金卡不出现（那是老板账的钱）',
      !(await page.locator('#staff-boss-cash').isVisible()));
   ok('无 JS 报错', errs.length === 0, errs);

@@ -29,6 +29,21 @@ const INV_API = 'https://butler-bot.jarixhew.workers.dev/inventory';
 const COMPANY_API = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 
 let pass = 0; const fails = [];
+/**
+ * 等条件成立，而不是死等固定时间（2026-08-11 提速改造，做法与其他两份自检一致）。
+ * 注意两类不能用它，本档里都留着原样的 waitForTimeout：
+ *   1) 断言「某件事没有发生」——等一件不会发生的事只能真的等；
+ *   2) 防连点那几段——那里等的就是「时间窗口」本身，把它换掉等于把要测的东西测没了。
+ */
+async function until(fn, { timeout = 8000, interval = 20, what = '条件' } = {}) {
+  const t0 = Date.now();
+  for (;;) {
+    if (await fn()) return;
+    if (Date.now() - t0 > timeout) throw new Error(`等不到「${what}」（超时 ${timeout}ms）`);
+    await new Promise(r => setTimeout(r, interval));
+  }
+}
+
 const ok = (n, c, got) => {
   if (c) { pass++; console.log(`  ✅ ${n}`); }
   else { fails.push(n); console.log(`  ❌ ${n} — 实际: ${JSON.stringify(got)}`); }
@@ -183,10 +198,18 @@ function mountRoutes(ctx, opts = {}) {
 
   console.log('【1】老板版没填密钥：库存分页显示引导去设置，不打接口');
   await page.goto(BOSS_URL, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   ok('底部导航有「库存」按钮', await page.locator('#nav-inventory').isVisible());
   await page.click('#nav-inventory');
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const tab = document.getElementById('tab-inventory');
+    if (!tab || !tab.classList.contains('active')) return false;
+    const list = document.getElementById('inv-list');
+    const loading = document.getElementById('inv-loading');
+    return !!list && !(loading && !loading.hidden);
+  }), { what: '库存分页显示出来' });
   ok('库存分页显示出来', await page.locator('#tab-inventory').isVisible());
   ok('引导横幅显示', await page.locator('#inv-guide-banner').isVisible());
   ok('错误横幅不显示', !(await page.locator('#inv-error-banner').isVisible()));
@@ -243,7 +266,13 @@ function mountRoutes(ctx, opts = {}) {
 
   console.log('\n【2b】切到库存分页才拉数据：按位置分组，小计对得上');
   await page.click('#nav-inventory');
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(() => {
+    const tab = document.getElementById('tab-inventory');
+    if (!tab || !tab.classList.contains('active')) return false;
+    const list = document.getElementById('inv-list');
+    const loading = document.getElementById('inv-loading');
+    return !!list && !(loading && !loading.hidden);
+  }), { what: '库存分页显示出来' });
   ok('切过去之后拉了 1 次 list', rec.listCalls.length === 1, rec.listCalls.length);
   ok('引导横幅不显示', !(await page.locator('#inv-guide-banner').isVisible()));
   ok('错误横幅不显示', !(await page.locator('#inv-error-banner').isVisible()));
@@ -262,7 +291,13 @@ function mountRoutes(ctx, opts = {}) {
   await page.click('#nav-transactions');
   await page.waitForTimeout(300);
   await page.click('#nav-inventory');
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const tab = document.getElementById('tab-inventory');
+    if (!tab || !tab.classList.contains('active')) return false;
+    const list = document.getElementById('inv-list');
+    const loading = document.getElementById('inv-loading');
+    return !!list && !(loading && !loading.hidden);
+  }), { what: '库存分页显示出来' });
   ok('还是只拉过 1 次', rec.listCalls.length === 1, rec.listCalls.length);
   ok('列表还在（没被切走时清空）', (await page.textContent('#inv-list')).includes('Laffite 2001'));
 
@@ -470,7 +505,12 @@ function mountRoutes(ctx, opts = {}) {
   console.log('\n【12】操作记录：切进库存分页时不发请求，点开才发');
   ok('到这一步都还没有 log 请求', rec.logCalls.length === 0, rec.logCalls.length);
   await page.click('#inv-btn-log');
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(() => {
+    const m2 = document.getElementById('inv-modal-log');
+    if (!m2 || !m2.classList.contains('open')) return false;
+    const body = document.getElementById('inv-log-list');
+    return !!body && !/加载中/.test(body.textContent || '');
+  }), { what: '操作记录打开并载入' });
   ok('打开后发了 1 个 log 请求', rec.logCalls.length === 1, rec.logCalls.length);
   ok('请求带 action:log', rec.logCalls[0] && rec.logCalls[0].action === 'log', rec.logCalls[0]);
 
@@ -485,28 +525,47 @@ function mountRoutes(ctx, opts = {}) {
   ok('动作徽章翻成中文（加减／新增／删除）',
      badges.includes('加减') && badges.includes('新增') && badges.includes('删除'), badges);
   await page.click('#inv-modal-log .modal-close');
-  await page.waitForTimeout(400);
+  await until(() => page.evaluate(() => {
+    const m2 = document.getElementById('inv-modal-log');
+    return !m2 || !m2.classList.contains('open');
+  }), { what: '操作记录关上' });
 
   console.log('\n【14】操作记录为空时显示空状态（不是坏掉）');
   rec.logEntriesOverride = [];
   await page.click('#inv-btn-log');
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(() => {
+    const m2 = document.getElementById('inv-modal-log');
+    if (!m2 || !m2.classList.contains('open')) return false;
+    const body = document.getElementById('inv-log-list');
+    return !!body && !/加载中/.test(body.textContent || '');
+  }), { what: '操作记录打开并载入' });
   const emptyLogTxt = await page.textContent('#inv-log-list');
   ok('显示「还没有任何操作记录」', (emptyLogTxt||'').includes('还没有任何操作记录'), emptyLogTxt);
   await page.click('#inv-modal-log .modal-close');
-  await page.waitForTimeout(400);
+  await until(() => page.evaluate(() => {
+    const m2 = document.getElementById('inv-modal-log');
+    return !m2 || !m2.classList.contains('open');
+  }), { what: '操作记录关上' });
   rec.logEntriesOverride = null;
 
   console.log('\n【15】拉取操作记录失败时显示错误提示，不是白屏');
   rec.forceError = { action:'log', message:'假服务端说日志读取失败' };
   await page.click('#inv-btn-log');
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(() => {
+    const m2 = document.getElementById('inv-modal-log');
+    if (!m2 || !m2.classList.contains('open')) return false;
+    const body = document.getElementById('inv-log-list');
+    return !!body && !/加载中/.test(body.textContent || '');
+  }), { what: '操作记录打开并载入' });
   ok('log 错误横幅显示', await page.locator('#inv-log-error').isVisible());
   const logErrTxt = await page.textContent('#inv-log-error-text');
   ok('显示服务端的错误信息', (logErrTxt||'').includes('假服务端说日志读取失败'), logErrTxt);
   rec.forceError = null;
   await page.click('#inv-modal-log .modal-close');
-  await page.waitForTimeout(400);
+  await until(() => page.evaluate(() => {
+    const m2 = document.getElementById('inv-modal-log');
+    return !m2 || !m2.classList.contains('open');
+  }), { what: '操作记录关上' });
 
   console.log('\n【16】记账本身没被库存弄坏：切回明细还能记一笔');
   await page.click('#nav-transactions');
@@ -545,7 +604,9 @@ function mountRoutes(ctx, opts = {}) {
 
   console.log('\n【17】同事版：库存分页也在，钥匙用同事那把');
   await page.goto(STAFF_URL, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   ok('钥匙闸门已经放行', !(await page.locator('#staff-gate').isVisible()));
   ok('启动后没有任何库存请求（懒加载）', rec.allInvCalls.length === 0, rec.allInvCalls);
   ok('底部导航有「库存」按钮', await page.locator('#nav-inventory').isVisible());
@@ -553,7 +614,13 @@ function mountRoutes(ctx, opts = {}) {
      await page.locator('#tab-settings').count() === 0);
 
   await page.click('#nav-inventory');
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(() => {
+    const tab = document.getElementById('tab-inventory');
+    if (!tab || !tab.classList.contains('active')) return false;
+    const list = document.getElementById('inv-list');
+    const loading = document.getElementById('inv-loading');
+    return !!list && !(loading && !loading.hidden);
+  }), { what: '库存分页显示出来' });
   ok('库存分页显示出来', await page.locator('#tab-inventory').isVisible());
   ok('拉了 1 次 list', rec.listCalls.length === 1, rec.listCalls.length);
   ok('用的是同事那把钥匙 staffExpense_token',
@@ -576,7 +643,12 @@ function mountRoutes(ctx, opts = {}) {
   ok('连点两下只送出 1 个请求', rec.invCalls.length === 1, rec.invCalls.length);
   ok('同事版的操作记录也是打开才拉', rec.logCalls.length === 0, rec.logCalls.length);
   await page.click('#inv-btn-log');
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(() => {
+    const m2 = document.getElementById('inv-modal-log');
+    if (!m2 || !m2.classList.contains('open')) return false;
+    const body = document.getElementById('inv-log-list');
+    return !!body && !/加载中/.test(body.textContent || '');
+  }), { what: '操作记录打开并载入' });
   ok('打开后拉了 1 次', rec.logCalls.length === 1, rec.logCalls.length);
   ok('列表画出来了', (await page.$$eval('.inv-log-entry', e=>e.length)) === 3);
   await page.click('#inv-modal-log .modal-close');
@@ -614,9 +686,17 @@ function mountRoutes(ctx, opts = {}) {
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   await page.addInitScript(() => localStorage.setItem('expenseTracker_companyToken', 'test-token-sort'));
   await page.goto(BOSS_URL, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   await page.click('#nav-inventory');
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(() => {
+    const tab = document.getElementById('tab-inventory');
+    if (!tab || !tab.classList.contains('active')) return false;
+    const list = document.getElementById('inv-list');
+    const loading = document.getElementById('inv-loading');
+    return !!list && !(loading && !loading.hidden);
+  }), { what: '库存分页显示出来' });
 
   console.log('\n【20】列表按名字排序（不是按记录加入的先后）');
   const names = await page.locator('.inv-loc-group', { hasText:'西港' })
@@ -675,7 +755,13 @@ for (const [who, url, token, homeNav] of [
   ok('记账分页上记账球在（这是主要用途，不能连它一起藏掉）',
      await page.locator('.fab').isVisible());
   await page.click('#nav-inventory');
-  await page.waitForTimeout(900);
+  await until(() => page.evaluate(() => {
+    const tab = document.getElementById('tab-inventory');
+    if (!tab || !tab.classList.contains('active')) return false;
+    const list = document.getElementById('inv-list');
+    const loading = document.getElementById('inv-loading');
+    return !!list && !(loading && !loading.hidden);
+  }), { what: '库存分页显示出来' });
   ok('切到库存页，记账球不见了', !(await page.locator('.fab').isVisible()));
   ok('库存自己的「＋ 添加」还在（页面上只剩这一个加号）',
      await page.locator('#inv-btn-add').isVisible());
