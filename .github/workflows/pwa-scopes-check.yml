@@ -17,7 +17,6 @@ on:
   # （推分支一遍、开 PR 又一遍），白烧一倍时间。2026-08-11 收掉。
   push:
     branches: [main]
-    branches: [main]
     paths:
       - "**/*.webmanifest"
       - "tools/check-pwa-scopes.py"
