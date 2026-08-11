@@ -1,0 +1,58 @@
+# 三个浏览器自检（公司账 / 同事版 / 库存）开头那段一模一样的准备工作，
+# 抽出来住这一处。2026-08-11 建：那天给 CI 加 Chromium 缓存，同一段话改了四个文件，
+# 改第四遍的时候就该明白它该只有一个家。
+#
+# 用法（在 workflow 里）：
+#   - uses: actions/checkout@v4
+#   - uses: ./.github/actions/browser-check-setup
+#     with:
+#       health-url: http://localhost:8899/expense-tracker.html
+name: 浏览器自检的准备工作
+description: 装 Node 与 Playwright（Chromium 走缓存），并起一个本地静态服务器
+
+inputs:
+  health-url:
+    description: 用来确认本地服务器真的起来了的网址
+    required: true
+  port:
+    description: 本地服务器端口
+    required: false
+    default: '8899'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    # Chromium 有 150MB 左右，每个 job 每次都重下要 30 秒上下（2026-08-11 量过）。
+    # 缓存住之后只有 playwright 版本变了才重下——所以 key 跟着 package.json 走。
+    - name: 缓存 Chromium
+      id: pw-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ hashFiles('package.json') }}
+    - name: 装 playwright
+      shell: bash
+      run: |
+        npm install
+        if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
+          # 浏览器本体已经从缓存拿回来了，只要补系统依赖（这一步很快）
+          npx playwright install-deps chromium
+        else
+          npx playwright install --with-deps chromium
+        fi
+    - name: 起本地服务器
+      shell: bash
+      run: |
+        # 输出必须重定向、还要 disown：后台进程只要还占着这个步骤的 stdout，
+        # Actions 就会一直等它、整个步骤挂住不结束（2026-08-03 卡过 20 分钟）。
+        nohup python3 -m http.server ${{ inputs.port }} > /tmp/httpserver.log 2>&1 &
+        disown || true
+        for i in $(seq 1 20); do
+          curl -sf -o /dev/null "${{ inputs.health-url }}" && break
+          sleep 1
+        done
+        curl -sf -o /dev/null "${{ inputs.health-url }}" \
+          || { echo "本地服务器没起来"; cat /tmp/httpserver.log; exit 1; }
