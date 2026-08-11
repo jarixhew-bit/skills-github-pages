@@ -47,6 +47,18 @@ const txModalOpen = page => page.evaluate(() => {
   return !!m && m.classList.contains('open');
 });
 
+/**
+ * 拆成两半并行跑（2026-08-11 加，为了压 CI 墙上时间）。
+ *   PART=1 只跑前半，PART=2 只跑后半，不设环境变量就整份跑（本地默认）。
+ * want() 每个场景块都会调用一次，所以计数不受跳过影响，两半加起来 = 整份。
+ * 注意：开头那条共用 main 上下文的链（【1】到【4】那几块）必须整条留在前半，
+ * 分开跑会拿到没登录的页面。
+ */
+const PART = Number(process.env.PART || 0);
+const SPLIT_AT = 14;           // 前半 = 第 1～14 块（含 main 那条链），后半 = 其余
+let _blk = 0;
+const want = () => { _blk++; return !PART || (PART === 1 ? _blk <= SPLIT_AT : _blk > SPLIT_AT); };
+
 const ok = (name, cond, got) => {
   if (cond) { pass++; console.log(`  ✅ ${name}`); }
   else { fails.push(name); console.log(`  ❌ ${name} —— 实际: ${JSON.stringify(got)}`); }
@@ -201,7 +213,7 @@ async function addOne(page, { amount, category, plate } = {}) {
 
 // ---------- 【1】没钥匙时的样子 ----------
 console.log('【1】还没填钥匙：闸门盖着，什么都看不到');
-{
+if (want()) {
   const h = await newPage();
   await h.page.goto(BASE, { waitUntil:'domcontentloaded' });
   await h.page.waitForTimeout(500);
@@ -224,7 +236,7 @@ console.log('【1】还没填钥匙：闸门盖着，什么都看不到');
 // ---------- 【2】生成器有没有真的把个人账本那些块拿掉 ----------
 console.log('\n【2】个人账本的界面是「没生成进来」，不是「藏起来」');
 let main;
-{
+if (want()) {
   main = await signIn(await newPage());
   const { page } = main;
   ok('进到主界面（闸门收起）', !(await page.locator('#staff-gate').isVisible()));
@@ -266,7 +278,7 @@ let main;
 
 // ---------- 【3】身份由钥匙决定 ----------
 console.log('\n【3】身份由钥匙决定，页面上没得选');
-{
+if (want()) {
   const { page } = main;
   ok('标题显示服务端认出的名字 Seryi',
      (await page.textContent('#hdr-title')).includes('Seryi'), await page.textContent('#hdr-title'));
@@ -299,7 +311,7 @@ console.log('\n【3】身份由钥匙决定，页面上没得选');
 
 // ---------- 【4】记一笔：送出去的内容必须对 ----------
 console.log('\n【4】记一笔');
-{
+if (want()) {
   const { page, posted, errs } = main;
   posted.length = 0;
   await addOne(page, { amount: 12.34, category: 'Lunch' });
@@ -329,7 +341,7 @@ console.log('\n【4】记一笔');
 
 // ---------- 【5】本月合计 + 缺收据标红 ----------
 console.log('\n【5】本月合计与缺收据提醒');
-{
+if (want()) {
   const { page } = main;
   const sum = await page.textContent('#staff-summary');
   // 「今天合计」摆在最上面：同事每天要在纸单上抄当天总数，这就是他要抄的那个数
@@ -347,7 +359,7 @@ console.log('\n【5】本月合计与缺收据提醒');
 
 // ---------- 【6】车牌类项目 ----------
 console.log('\n【6】汽油这类项目要填车牌');
-{
+if (want()) {
   const { page, posted } = main;
   posted.length = 0;
   await page.click('.fab');
@@ -372,7 +384,7 @@ console.log('\n【6】汽油这类项目要填车牌');
 
 // ---------- 【7】删掉自己记错的 ----------
 console.log('\n【7】删掉自己记错的（删本机的同时也删公司账本那条）');
-{
+if (want()) {
   const { page, posted } = main;
   posted.length = 0;
   const before = await page.locator('#tx-list .tx-item').count();
@@ -392,7 +404,7 @@ console.log('\n【7】删掉自己记错的（删本机的同时也删公司账�
 
 // ---------- 【8】双语 ----------
 console.log('\n【8】中英双语（同事不一定读中文）');
-{
+if (want()) {
   const { page } = main;
   ok('先是中文', (await page.textContent('body')).includes('本月合计'));
   await page.click('#staff-lang-btn');
@@ -421,7 +433,7 @@ console.log('\n【8】中英双语（同事不一定读中文）');
 
 // ---------- 【9】离线：不能静静丢掉一笔 ----------
 console.log('\n【9】没网时记账：存本机、有网自动补送（这是最容易丢钱的地方）');
-{
+if (want()) {
   const h = await signIn(await newPage());
   const { page, posted, errs, setMode } = h;
   setMode('offline');
@@ -451,7 +463,7 @@ console.log('\n【9】没网时记账：存本机、有网自动补送（这是�
 
 // ---------- 【9b】刷新之后记录还在 ----------
 console.log('\n【9b】刷新／重开页面，之前记的还在（同事一天会开关很多次）');
-{
+if (want()) {
   const h = await signIn(await newPage());
   const { page, errs, setMode } = h;
   await addOne(page, { amount: 3.30, category: 'Beverage' });
@@ -478,7 +490,7 @@ console.log('\n【9b】刷新／重开页面，之前记的还在（同事一天
 
 // ---------- 【9c】换手机／清过数据之后，从公司账本找回 ----------
 console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过的找回来');
-{
+if (want()) {
   const h = await signIn(await newPage());
   const { page, posted, errs, book } = h;
   // 模拟「清了浏览器数据／换手机」：账本没了，钥匙还在。
@@ -558,7 +570,7 @@ console.log('\n【9c】清掉本机数据后，能从公司账本把自己报过
 
 // ---------- 【9f】金额栏要收得下人真的会打出来的写法 ----------
 console.log('\n【9f】用逗号当小数点也要记得进去（手机键盘很多语言就是逗号）');
-{
+if (want()) {
   const h = await signIn(await newPage());
   const { page, posted, errs } = h;
 
@@ -617,7 +629,7 @@ console.log('\n【9f】用逗号当小数点也要记得进去（手机键盘很
 
 // ---------- 【9d】手机存不住数据时，不许静静地什么都不说 ----------
 console.log('\n【9d】存不住 / 存丢了：要么当场说清楚，要么自己把记录找回来');
-{
+if (want()) {
   // 情境一：清单空着打开页面（无痕模式、站点数据被清、旧版页面清空过）→ 自动补回来。
   // 2026-08-07 Seryi 实机就是这样：公司账本收到了三笔，他手机上一直是 0 笔 US$0.00。
   const h = await signIn(await newPage());
@@ -659,7 +671,7 @@ console.log('\n【9d】存不住 / 存丢了：要么当场说清楚，要么自
 
 // ---------- 【9e】保存中途抛错，不许按钮按下去什么都不发生 ----------
 console.log('\n【9e】保存出错要留下痕迹（「点了完全没反应」是最难查的一种）');
-{
+if (want()) {
   const h = await signIn(await newPage());
   const { page, errs } = h;
   await page.click('.fab');
@@ -681,7 +693,7 @@ console.log('\n【9e】保存出错要留下痕迹（「点了完全没反应」
 
 // ---------- 【10】存储位跟老板 App 分开 ----------
 console.log('\n【10】跟老板的 App 同源，存储位必须分开');
-{
+if (want()) {
   const h = await newPage();
   const { page } = h;
   // 先在同一个浏览器里放一份「老板的账本」当哨兵。同源共用 localStorage，
@@ -712,7 +724,7 @@ console.log('\n【10】跟老板的 App 同源，存储位必须分开');
 
 // ---------- 【10b】收据识别的大件必须是同源那份 ----------
 console.log('\n【10b】拍收据要用的 opencv / tesseract，同源那份得真的取得到');
-{
+if (want()) {
   // 这两样都刻意优先走仓库里的同源文件——酒店/商家的白名单 WiFi 连不上 CDN，
   // 而同事正好常在那种网络里。同事版在 staff/ 子目录，路径少个 ../ 就会 404，
   // 于是每次拍收据都悄悄退到 CDN：不会报错，只会在最需要的时候用不了。
@@ -742,7 +754,7 @@ console.log('\n【10b】拍收据要用的 opencv / tesseract，同源那份得�
 
 // ---------- 【11】源码那份没被改坏 ----------
 console.log('\n【11】老板自己的 App 没受影响');
-{
+if (want()) {
   const h = await newPage();
   const { page, errs } = h;
   await page.goto(APP, { waitUntil:'domcontentloaded' });
@@ -759,7 +771,7 @@ console.log('\n【11】老板自己的 App 没受影响');
 
 // ---------- 【12】日期不是今天要当场说出来 ----------
 console.log('\n【12】记的不是今天时，日期底下要有提醒（OCR 会填票面日期）');
-{
+if (want()) {
   // 钉在金边时区的凌晨 3 点（UTC 那时还是前一天）：这一刻 toISOString() 会回昨天，
   // 本地日历回今天。不钉住的话容器跑在 UTC，两种写法算出来一样，这条测了等于没测。
   const h = await newPage({ tz:'Asia/Phnom_Penh' });
@@ -800,7 +812,7 @@ console.log('\n【12】记的不是今天时，日期底下要有提醒（OCR �
 
 // ---------- 【13】公司账本卡只出现在公司账户那一边 ----------
 console.log('\n【13】老板 App：公司账本卡只在公司账户那边，今天是 0 也要说清楚');
-{
+if (want()) {
   const h = await newPage();
   const { page, errs } = h;
   await h.ctx.addInitScript(k => localStorage.setItem('expenseTracker_companyToken', k), BOSS_KEY);
@@ -853,7 +865,7 @@ console.log('\n【13】老板 App：公司账本卡只在公司账户那边，�
 // 这条守的不是好不好看：iOS 会自行清掉 Safari 里的站点数据，没装到主屏幕的人
 // 记了几笔、隔天打开就全空（2026-08-07 Seryi 实机）。提示条不出现 = 没人会去装。
 console.log('\n【14】还在浏览器里：顶上要有「装到主屏幕」的提示，装好了就不再念');
-{
+if (want()) {
   const h = await newPage();
   const { page, errs } = h;
   await signIn(h);
@@ -876,7 +888,7 @@ console.log('\n【14】还在浏览器里：顶上要有「装到主屏幕」的
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
-{
+if (want()) {
   // iOS 装好之后走的是 navigator.standalone（Safari 至今不认 display-mode）
   const h = await newPage();
   await h.ctx.addInitScript(() => {
@@ -888,7 +900,7 @@ console.log('\n【14】还在浏览器里：顶上要有「装到主屏幕」的
   ok('无 JS 报错', h.errs.length === 0, h.errs);
   await h.ctx.close();
 }
-{
+if (want()) {
   // Android／桌面装成 App 后走的是 display-mode: standalone
   const h = await newPage();
   await h.ctx.addInitScript(() => {
@@ -910,7 +922,7 @@ console.log('\n【14】还在浏览器里：顶上要有「装到主屏幕」的
 // 还漏掉一个更糟的：拍照按钮的 data-en 加错元素，英文模式下变成「Camera拍照」
 // 而且相机图标没了（2026-08-08 扫出来时已经上线过一版）。所以改成机器扫。
 console.log('\n【14b】切成英文之后，画面上不该再有中文');
-{
+if (want()) {
   const h = await newPage({ lang:'en' });
   const { page, errs } = h;
   await signIn(h);
@@ -983,7 +995,7 @@ console.log('\n【14b】切成英文之后，画面上不该再有中文');
 // 或者该要钱的时候不要，月底点现金对不上，谁也说不清差额从哪来。
 // 所以守两条底线：数字一律照抄服务端（App 不许自己算），没数字时整张卡不出现。
 console.log('\n【16】备用金卡：数字照抄服务端，没设起点就不出现');
-{
+if (want()) {
   const h = await newPage();
   const { page, errs } = h;
   await signIn(h);
@@ -1028,7 +1040,7 @@ console.log('\n【16】备用金卡：数字照抄服务端，没设起点就不
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
-{
+if (want()) {
   // 没网时：显示上次拿到的，但要明说是旧的——同事常在外面没信号，
   // 一片空白比一个标注过的旧数字更没用
   const h = await newPage();
@@ -1046,7 +1058,7 @@ console.log('\n【16】备用金卡：数字照抄服务端，没设起点就不
   ok('但明说这是离线的旧数字', txt.includes('离线'), txt);
   await h.ctx.close();
 }
-{
+if (want()) {
   // 离线记的那几笔还没送出去，服务端余额里没扣。不许 App 自己减，
   // 但必须把这件事说出来——否则他以为还有那么多钱
   const h = await newPage({ offline: true });
@@ -1072,7 +1084,7 @@ console.log('\n【16】备用金卡：数字照抄服务端，没设起点就不
 // ---------- 【15】说明书本身 ----------
 // 提示条点过去的落地页。它是同事唯一的操作指引，坏了没人会回报——所以在这里守。
 console.log('\n【15】安装说明书 staff/install.html');
-{
+if (want()) {
   const h = await newPage();
   const { page, errs } = h;
   await page.goto(`http://localhost:${PORT}/staff/install.html`, { waitUntil:'domcontentloaded' });
@@ -1099,7 +1111,7 @@ console.log('\n【15】安装说明书 staff/install.html');
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
-{
+if (want()) {
   // 已经装好的人如果点进这一页，要直接告诉他不用看了
   const h = await newPage();
   await h.ctx.addInitScript(() => {
@@ -1117,7 +1129,7 @@ console.log('\n【15】安装说明书 staff/install.html');
 // ownMeals 规则记成他自己的（Excel 右表）——老板的餐费算到了同事那栏，而且
 // 备用金也会按他花的钱扣。所以这一组守的是「钱记对人」。
 console.log('\n【17】买给老板的餐：同事要能标出来');
-{
+if (want()) {
   const h = await newPage();
   const { page, posted, errs } = h;
   await signIn(h);
@@ -1172,7 +1184,7 @@ console.log('\n【17】买给老板的餐：同事要能标出来');
 // 已送出的记录只改本机、账本不动，两边静静分叉——2026-08-08 真出过事（Seryi 8/2
 // 那笔本机 11.76、账本 11.78）。现在从源头断掉：锁住表单，只留删除。
 console.log('\n【18】已经报上去的那笔不给改（改了跟账本会对不上）');
-{
+if (want()) {
   const h = await newPage();
   const { page, posted, errs } = h;
   await signIn(h);
@@ -1213,7 +1225,7 @@ console.log('\n【18】已经报上去的那笔不给改（改了跟账本会对
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
-{
+if (want()) {
   // 英文模式下这句提示也要是英文（同事不一定读中文）
   const h = await newPage({ lang: 'en' });
   const { page } = h;
@@ -1234,7 +1246,7 @@ console.log('\n【18】已经报上去的那笔不给改（改了跟账本会对
 // 同事记账几乎每笔都拍收据，识别认错一位数不会报错、不会变色，只会静静进公司账本。
 // 2026-08-08 用户明确要求「不要再有数目不对」，所以这里是硬闸门，不是一句提示。
 console.log('\n【19】照片认出来的金额，没核对过不准保存');
-{
+if (want()) {
   const h = await newPage();
   const { page, posted, errs } = h;
   await signIn(h);
@@ -1265,7 +1277,7 @@ console.log('\n【19】照片认出来的金额，没核对过不准保存');
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
-{
+if (want()) {
   // 英文模式：提示和按钮都要是英文
   const h = await newPage({ lang: 'en' });
   const { page } = h;
@@ -1285,7 +1297,7 @@ console.log('\n【19】照片认出来的金额，没核对过不准保存');
 // ---------- 【20】双击保存不能生出两条一样的记录 ----------
 // 2026-08-08 用户实机遇到（主 App 那边），同事版用的是同一份 saveTx()，一并守住。
 console.log('\n【20】双击「保存」不能生出两条一样的记录');
-{
+if (want()) {
   const h = await newPage();
   const { page, posted, errs } = h;
   await signIn(h);
@@ -1316,7 +1328,7 @@ console.log('\n【20】双击「保存」不能生出两条一样的记录');
 // 这里守的是运行时：卡片真的看不见、也真的没有任何请求打去 pendingClaim 那几个 action
 // ——万一以后谁不小心把 init() 里的 fetchPendingClaim() 调用漏掉没 cut，这条会当场变红。
 console.log('\n【21】对账功能是老板专用的，同事版看不到也碰不到');
-{
+if (want()) {
   const h = await newPage();
   const { page, posted, errs } = h;
   await signIn(h);
@@ -1338,7 +1350,7 @@ console.log('\n【21】对账功能是老板专用的，同事版看不到也碰
 //   3. 记一笔真的送进 inbox_boss，payload 的字段跟 Firestore 规则对得上
 //      （规则要求 k/tx/from，可选 photo/createdAt，多一个字段就会被服务端拒绝）
 console.log('\n【22】老板账：拿到口令才有，记的账送进投递箱');
-{
+if (want()) {
   const h = await newPage();
   const { page, errs } = h;
   await signIn(h);
@@ -1453,7 +1465,7 @@ console.log('\n【22】老板账：拿到口令才有，记的账送进投递箱
 //   3. 没送出去的账也照扣（现金离开口袋就没了，跟送没送到无关）
 //   4. 公司账那一页不许出现这张卡
 console.log('\n【23】老板账：币种可改，手上现金自己算');
-{
+if (want()) {
   const h = await newPage();
   const { page, errs } = h;
   await signIn(h);

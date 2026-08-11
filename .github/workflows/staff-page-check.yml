@@ -31,6 +31,14 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # 这份自检整份要跑近两分钟，是四个浏览器 job 里最慢的一个，CI 的墙上时间由它决定。
+    # 拆成两条并行的腿（脚本里的 PART 开关，两半加起来 = 整份 289 项），
+    # 最慢那条降到约 70 秒。本地不设 PART 仍然是整份跑，不影响手动验证。
+    strategy:
+      fail-fast: false          # 一半红了，另一半也要跑完，才知道是不是同一个问题
+      matrix:
+        part: [1, 2]
+    name: check (前后半 ${{ matrix.part }}/2)
     steps:
       - uses: actions/checkout@v4
       # 先确认交上来的 staff/index.html 真的是当前 expense-tracker.html 生成出来的。
@@ -70,7 +78,11 @@ jobs:
           done
           curl -sf -o /dev/null http://localhost:8899/staff/index.html \
             || { echo "本地服务器没起来"; cat /tmp/httpserver.log; exit 1; }
-      - name: 跑同事版报账页自检
+      - name: 跑同事版报账页自检（第 ${{ matrix.part }} 半）
         run: node tools/check-staff-page.mjs
+        env:
+          PART: ${{ matrix.part }}
+      # 结构检查很快，只在第一条腿跑一次就够
       - name: HTML 结构检查
+        if: matrix.part == 1
         run: python3 tools/check-html.py staff/index.html
