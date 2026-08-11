@@ -13,7 +13,7 @@
  * forbidden 当失败处理…）全部保留，只换了定位方式（#list → #inv-list）与钥匙来源
  * （inventoryToken 那条三把钥匙的链条 → 直接用记账的 getCompanyToken()）。
  *
- * 为什么要用真浏览器而不是读代码判断：这里管的是老板的酒／茶叶／虫草库存数量，
+ * 为什么要用真浏览器而不是读代码判断：这里管的是老板的酒／茶叶／虫草／氢水库存数量，
  * 点两下按钮就可能多扣一瓶——见 .claude/rules/diagnosis.md 2026-08-08 那条教训，
  * 这类窗口期 bug 只有用 el.click(); el.click() 连打两下的真实双击才测得出来
  * （page.click() 会等元素恢复可点，page.evaluate 里同步调两次函数也测不出来）。
@@ -37,7 +37,7 @@ const ok = (n, c, got) => {
 const launchOpts = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {};
 const browser = await chromium.launch(launchOpts);
 
-// 一份跟真接口形状一致的假数据：wine 两个位置＋两种已用完，tea/herb 空
+// 一份跟真接口形状一致的假数据：wine 两个位置＋两种已用完，tea/herb 空，hydrogen 有货
 function fakeCategories() {
   return [
     { key:'wine', label:'酒', defaultUnit:'瓶', items: [
@@ -49,6 +49,12 @@ function fakeCategories() {
     ]},
     { key:'tea', label:'茶叶', defaultUnit:'饼', items: [] },
     { key:'herb', label:'虫草', defaultUnit:'克', items: [] },
+    // 氢水（2026-08-10 加的第四个类别）。这一格有货，所以它同时验了
+    // 「不是空状态也画得对」和「加减打给服务端的 category 是 hydrogen」
+    { key:'hydrogen', label:'氢水', defaultUnit:'瓶', items: [
+      { id:'h1', name:'禾露堂 350ml', count:48, unit:'瓶', location:'西港', note:'新到一批', added_at:'2026-08-10' },
+      { id:'h2', name:'禾露堂 500ml', count:12, unit:'瓶', location:'金边', note:'', added_at:'2026-08-10' },
+    ]},
   ];
 }
 
@@ -185,7 +191,7 @@ function mountRoutes(ctx, opts = {}) {
   ok('引导横幅显示', await page.locator('#inv-guide-banner').isVisible());
   ok('错误横幅不显示', !(await page.locator('#inv-error-banner').isVisible()));
   ok('没有请求打去库存接口', rec.allInvCalls.length === 0, rec.allInvCalls.length);
-  ok('三个类别标签都在', await page.locator('.inv-tab-btn').count() === 3);
+  ok('四个类别标签都在（酒／茶叶／虫草／氢水）', await page.locator('.inv-tab-btn').count() === 4);
   const tabTexts = await page.$$eval('.inv-tab-btn', els => els.map(e => e.textContent));
   ok('标签含 酒／茶叶／虫草',
      tabTexts.some(t=>t.includes('酒')) && tabTexts.some(t=>t.includes('茶叶')) && tabTexts.some(t=>t.includes('虫草')),
@@ -271,6 +277,31 @@ function mountRoutes(ctx, opts = {}) {
   await page.click('#inv-cat-herb');
   await page.waitForTimeout(300);
   ok('虫草也显示空状态', await page.locator('.inv-empty').isVisible());
+
+  console.log('\n【3b】氢水（第四个类别）：有货就照常画，加减打对 category');
+  await page.click('#inv-cat-hydrogen');
+  await page.waitForTimeout(400);
+  ok('氢水标签变 active',
+     await page.evaluate(()=>document.getElementById('inv-cat-hydrogen').classList.contains('active')));
+  const hydTxt = await page.textContent('#inv-list');
+  ok('两条禾露堂都画出来了',
+     hydTxt.includes('禾露堂 350ml') && hydTxt.includes('禾露堂 500ml'), hydTxt.slice(0,80));
+  ok('单位是「瓶」', hydTxt.includes('48 瓶'), hydTxt.slice(0,80));
+  ok('切到氢水不会再拉一次服务端（一次 list 就够）', rec.listCalls.length === 1, rec.listCalls.length);
+  rec.invCalls = [];
+  await page.locator('.inv-item-row[data-inv-id="h1"] .inv-qty-minus').click();
+  await page.waitForTimeout(700);
+  ok('减一瓶发的是 category=hydrogen',
+     rec.invCalls[0]?.category === 'hydrogen' && rec.invCalls[0]?.id === 'h1', rec.invCalls[0]);
+  ok('delta 是 -1', rec.invCalls[0]?.delta === -1, rec.invCalls[0]);
+  ok('数量变成 47', ((await page.textContent('.inv-item-row[data-inv-id="h1"] .inv-qty-val'))||'').includes('47'));
+  await page.click('#inv-btn-add');
+  await page.waitForTimeout(300);
+  ok('新增表单带出来的默认单位是「瓶」',
+     await page.inputValue('#inv-add-unit') === '瓶', await page.inputValue('#inv-add-unit'));
+  await page.click('#inv-modal-add .modal-close');
+  await page.waitForTimeout(200);
+
   await page.click('#inv-cat-wine');
   await page.waitForTimeout(300);
   ok('没有报错', errs.length === 0, errs.slice(0,3));
