@@ -60,14 +60,16 @@ jobs:
           SELF: ${{ github.run_id }}
         run: |
           set -euo pipefail
-          cutoff=$(date -u -d "-${DAYS} days" +%Y-%m-%dT%H:%M:%SZ)
-          echo "删除 $cutoff 之前结束的运行记录，本次上限 $MAX 条，dry_run=$DRY"
+          cutoff=$(date -u -d "-${DAYS} days" +%Y-%m-%d)
+          echo "删除 $cutoff 之前的运行记录，本次上限 $MAX 条，dry_run=$DRY"
+          # 日期筛选必须交给服务端（created=<日期）：运行列表接口最多只能翻到约 1000 条，
+          # 拉回来再自己筛的话，最近一千条要是都在门槛内，就会得到「没有符合条件的记录」
+          # 这个假结论——2026-08-11 第一次空跑就是这样，1911 条里一条都没找到。
 
           # 过滤口径见文件头：只留下「旧的 + 成功/取消 + 不在 main + 不是部署记录」
           candidates=$(gh api --paginate \
-            "/repos/$REPO/actions/runs?per_page=100&status=completed" \
+            "/repos/$REPO/actions/runs?per_page=100&status=completed&created=%3C$cutoff" \
             --jq ".workflow_runs[]
-                  | select(.created_at < \"$cutoff\")
                   | select(.id != $SELF)
                   | select(.conclusion == \"success\" or .conclusion == \"cancelled\" or .conclusion == \"skipped\")
                   | select(.head_branch != \"main\")
@@ -105,9 +107,8 @@ jobs:
           echo "删掉 $deleted 条，失败 $failed 条。"
 
           remain=$(gh api --paginate \
-            "/repos/$REPO/actions/runs?per_page=100&status=completed" \
+            "/repos/$REPO/actions/runs?per_page=100&status=completed&created=%3C$cutoff" \
             --jq "[.workflow_runs[]
-                   | select(.created_at < \"$cutoff\")
                    | select(.conclusion == \"success\" or .conclusion == \"cancelled\" or .conclusion == \"skipped\")
                    | select(.head_branch != \"main\")
                    | select(.name != \"pages build and deployment\")] | length" \
