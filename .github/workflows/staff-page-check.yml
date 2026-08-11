@@ -40,10 +40,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      # Chromium 有 150MB 左右，每个 job 每次都重下要 30 秒上下（2026-08-11 量过：
+      # 同事版那个 job 整段「装 playwright」34 秒）。缓存住之后只有 playwright 版本
+      # 变了才会重下——所以 key 跟着 package.json 走。
+      - name: 缓存 Chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package.json') }}
       - name: 装 playwright
         run: |
           npm install
-          npx playwright install --with-deps chromium
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
+            # 浏览器本体已经从缓存拿回来了，只要补系统依赖（这一步很快）
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
       - name: 起本地服务器
         run: |
           # 输出必须重定向、还要 disown：后台进程只要还占着这个步骤的 stdout，
