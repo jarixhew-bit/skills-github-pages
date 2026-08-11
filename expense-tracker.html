@@ -684,6 +684,8 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
             onclick="invSwitchCat('tea')">🍵 茶叶</button>
     <button class="inv-tab-btn" id="inv-cat-herb" data-inv-cat="herb"
             onclick="invSwitchCat('herb')">🌿 虫草</button>
+    <button class="inv-tab-btn" id="inv-cat-hydrogen" data-inv-cat="hydrogen"
+            onclick="invSwitchCat('hydrogen')">💧 氢水</button>
   </div>
   <!-- 每次加减都记在这个名字底下，所以必须看得见（服务端从钥匙推出来的） -->
   <div id="inv-who" class="inv-who" hidden></div>
@@ -6084,6 +6086,9 @@ const INV_CAT_META = {
   wine: { label:'酒', unit:'瓶', icon:'🍷' },
   tea:  { label:'茶叶', unit:'饼', icon:'🍵' },
   herb: { label:'虫草', unit:'克', icon:'🌿' },
+  // 氢水（2026-08-10 加）。牌子（禾露堂）写在每条记录的名字里，不单独开类别——
+  // 以后进别的牌子还是这一格。key 与默认单位必须跟 butler 的 CATEGORIES 一致。
+  hydrogen: { label:'氢水', unit:'瓶', icon:'💧' },
 };
 
 // 操作记录里 action 字段 → 中文标签与颜色样式的映射，唯一正本。
