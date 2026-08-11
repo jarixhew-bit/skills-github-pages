@@ -124,7 +124,9 @@ jobs:
       - run: node tools/check-inventory.mjs
 
   staff:
-    name: 同事版 ${{ matrix.part }}/2（真浏览器）
+    # 名字里不放 matrix 变量：job 被跳过时 GitHub 不展开它，会原样显示 ${{ }}，
+    # 看起来像坏了。分成哪两半在 job 内部的步骤名里写。
+    name: 同事版（真浏览器）
     needs: decide
     if: needs.decide.outputs.staff == 'true'
     runs-on: ubuntu-latest
@@ -140,7 +142,8 @@ jobs:
       - uses: ./.github/actions/browser-check-setup
         with:
           health-url: http://localhost:8899/staff/index.html
-      - run: node tools/check-staff-page.mjs
+      - name: 跑第 ${{ matrix.part }}/2 半
+        run: node tools/check-staff-page.mjs
         env:
           PART: ${{ matrix.part }}
       - if: matrix.part == 1
