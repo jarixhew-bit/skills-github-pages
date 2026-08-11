@@ -22,9 +22,11 @@ const PHOTO_HOST = 'googleusercontent.com';
 /** 判断一个 img src 是不是 Google 地图的地点照片（排除头像、图标、地图瓦片）。 */
 function isPlacePhoto(src) {
   if (!src || !src.includes(PHOTO_HOST)) return false;
-  if (!/gps-cs-s|gps-proxy|\/places\/|\/p\/|place-photos/.test(src)) return false;
-  // 用户头像走 /a/ 或 /a-/ 路径，尺寸也小，排除掉
-  if (/\/a[-/]/.test(src)) return false;
+  // 原本用白名单（只认 gps-cs-s 等几种路径），漏掉了 Google 其他几种照片路径，
+  // 表现像「这家店照片就是少」。改成黑名单：只排除确定不要的，其余都收。
+  // 会误收的东西（地图瓦片、UI 图标）走的是别的网域，不会混进来。
+  if (/\/a[-/]/.test(src)) return false;        // 用户头像
+  if (/=s\d{1,2}(-|$)/.test(src)) return false; // 极小尺寸 = 图标不是照片
   return true;
 }
 
@@ -183,6 +185,21 @@ async function fetchOne(ctx, query) {
     if (collected.size < WANT) {
       merge(collected, await collectFromSource(page));
       out.method += '+source';
+    }
+
+    // 抓不满时报出页面里到底有几个候选、长什么样，好判断是「这家店真的没照片」
+    // 还是「过滤规则挡掉了」。没有这个只能靠猜，一猜就是一轮 CI。
+    if (collected.size < WANT) {
+      out.diag = await page.evaluate(() => {
+        const raw = (document.documentElement.outerHTML || '').replace(/\\\//g, '/');
+        const all = raw.match(/https:\/\/lh\d\.googleusercontent\.com\/[A-Za-z0-9_\-/]+/g) || [];
+        const kinds = {};
+        for (const u of all) {
+          const seg = u.split('googleusercontent.com/')[1].split('/')[0].slice(0, 12);
+          kinds[seg] = (kinds[seg] || 0) + 1;
+        }
+        return { totalInPage: all.length, kinds };
+      });
     }
 
     out.urls = [...collected.values()].slice(0, Math.max(WANT, 8));
