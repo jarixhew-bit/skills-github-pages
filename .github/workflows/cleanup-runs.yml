@@ -16,11 +16,15 @@
 # 安全阀——「重要的不删，只删重复和不重要的」（2026-08-11 用户定的口径）：
 #   - **红过的不删**：失败/超时的记录是「什么时候开始红、当时报什么」的唯一线索
 #   - **上线记录不删**：pages build and deployment 是部署历史
-#   - **main 上的不删**：那是合并之后的验证记录
 #   - 只删「已结束」的（in_progress / queued 不碰）、不删自己这一次
 #   - dry_run 打开时只列出来、不删，先看清楚要删什么
 # 剩下会被删的，就是功能分支上跑绿了的那些——尤其是同一份代码被 push 与
 # pull_request 各跑一遍留下的成对记录（那个毛病当天已修，历史不会自己消失）。
+#
+# include_main（2026-08-11 用户追加：「除了重要的留着就行」）：
+# 默认 false，也就是 main 上的记录不碰——那是合并之后的验证记录。打开之后，
+# main 上**跑绿的**旧记录也一起清；红过的和部署记录任何情况下都不动，
+# 所以「什么时候开始红」「什么时候上线过」这两条线索永远查得到。
 name: Cleanup old workflow runs
 
 on:
@@ -36,6 +40,11 @@ on:
         required: true
         default: "300"
         type: string
+      include_main:
+        description: "连 main 上跑绿的旧记录一起删（红的和部署记录仍保留）"
+        required: false
+        default: false
+        type: boolean
       dry_run:
         description: "只列出来、不真的删"
         required: false
@@ -57,6 +66,7 @@ jobs:
           DAYS: ${{ inputs.older_than_days }}
           MAX: ${{ inputs.max_delete }}
           DRY: ${{ inputs.dry_run }}
+          MAIN: ${{ inputs.include_main }}
           SELF: ${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -69,15 +79,18 @@ jobs:
           # 拉回来再自己筛的话，最近一千条要是都在门槛内，就会得到「没有符合条件的记录」
           # 这个假结论——2026-08-11 第一次空跑就是这样，1911 条里一条都没找到。
 
-          # 过滤口径见文件头：只留下「旧的 + 成功/取消 + 不在 main + 不是部署记录」
+          # 过滤口径见文件头：只留下「旧的 + 没红过 + 不是部署记录」，
+          # main 上的是否一起删由 include_main 决定（默认保留）。
+          guard='| select(.head_branch != "main")'
+          if [ "$MAIN" = "true" ]; then
+            guard=''
+            echo "include_main 打开：main 上跑绿的旧记录这次也会一起删（红的和部署记录仍保留）"
+          fi
+          keep='select(.conclusion == "success" or .conclusion == "cancelled" or .conclusion == "skipped") | select(.name != "pages build and deployment")'
+
           candidates=$(gh api --paginate \
             "/repos/$REPO/actions/runs?per_page=100&status=completed&created=%3C$cutoff" \
-            --jq ".workflow_runs[]
-                  | select(.id != $SELF)
-                  | select(.conclusion == \"success\" or .conclusion == \"cancelled\" or .conclusion == \"skipped\")
-                  | select(.head_branch != \"main\")
-                  | select(.name != \"pages build and deployment\")
-                  | \"\(.id)\t\(.created_at)\t\(.head_branch)\t\(.name)\"" \
+            --jq ".workflow_runs[] | select(.id != $SELF) | $keep $guard | \"\(.id)\t\(.created_at)\t\(.head_branch)\t\(.name)\"" \
             | awk -v m="$MAX" 'NR<=m')
 
           if [ -z "$candidates" ]; then
@@ -111,9 +124,6 @@ jobs:
 
           remain=$(gh api --paginate \
             "/repos/$REPO/actions/runs?per_page=100&status=completed&created=%3C$cutoff" \
-            --jq "[.workflow_runs[]
-                   | select(.conclusion == \"success\" or .conclusion == \"cancelled\" or .conclusion == \"skipped\")
-                   | select(.head_branch != \"main\")
-                   | select(.name != \"pages build and deployment\")] | length" \
+            --jq "[.workflow_runs[] | $keep $guard] | length" \
             | paste -sd+ | bc)
           echo "还剩 $remain 条符合条件的旧记录——不为 0 的话，再点一次 Run workflow 即可。"
