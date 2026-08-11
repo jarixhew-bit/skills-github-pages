@@ -9,6 +9,9 @@
 检查项：
 1. <img src="https://..."> 的图片链接
 2. href="https://maps..." 的地图链接（CLAUDE.md 要求推荐地点必附地图链接）
+3. 店家官网／订位页外链（tabelog、餐厅自家网站）——官网 404 通常等于**店歇业**，
+   是「该换这张卡片了」的早期警报。为免噪音，官网只有 404/410/451 或域名查无此站
+   才算失效，403／超时归入「存疑」不报错（见 DEAD_CODES 注释）。
 
 判定：HTTP 2xx/3xx = 活着；4xx/5xx 或连不上 = 坏了。
 为了不误报（误报会让人开始忽略警报，等于白做），每个失败的链接会重试 2 次，
@@ -40,6 +43,18 @@ CONCURRENCY = 8
 
 IMG_RE = re.compile(r'<img\b[^>]*\bsrc="(https://[^"]+)"', re.I)
 MAP_RE = re.compile(r'href="(https://(?:www\.)?(?:maps|google\.[^"/]*/maps)[^"]+)"', re.I)
+HREF_RE = re.compile(r'href="(https://[^"]+)"', re.I)
+
+# 自家网址与社交平台不算「店家官网」：前者失效是我们自己的事（由烟雾测试管），
+# 后者常挡机器人、查了也只会制造噪音。
+SKIP_HOSTS = ("jarixhew-bit.github.io", "github.com", "instagram.com",
+              "facebook.com", "twitter.com", "x.com", "youtube.com")
+
+# 官网检查的判定门槛：只有这些状态码算「店真的没了」。
+# 403/429/5xx/超时多半是对方挡 CI 机房 IP 或临时故障，从家里点是好的——
+# 把这些算成失效会让每周警报长期红着，红到没人看，等于没做这个检查。
+DEAD_CODES = {"404", "410", "451"}
+DEAD_ERRORS = {"URLError", "gaierror"}   # DNS 查无此站 = 域名都没了
 
 
 def extract(path: str) -> list:
@@ -48,8 +63,21 @@ def extract(path: str) -> list:
     found = []
     for url in IMG_RE.findall(html):
         found.append(("图片", url.replace("&amp;", "&")))
+    maps = set()
     for url in MAP_RE.findall(html):
-        found.append(("地图", url.replace("&amp;", "&")))
+        clean = url.replace("&amp;", "&")
+        maps.add(clean)
+        found.append(("地图", clean))
+    # 店家官网／订位页（tabelog、餐厅自家网站）。官网 404 通常就等于店歇业，
+    # 是「该换这张卡片了」的早期警报——手册发出去后没人会主动发现这件事。
+    for url in HREF_RE.findall(html):
+        clean = url.replace("&amp;", "&")
+        if clean in maps:
+            continue
+        host = urllib.parse.urlparse(clean).netloc.lower()
+        if any(h in host for h in SKIP_HOSTS):
+            continue
+        found.append(("官网", clean))
     seen, out = set(), []
     for kind, url in found:
         if url not in seen:
@@ -101,15 +129,29 @@ def main():
 
     print(f"检查 {len(files)} 个页面里的 {len(jobs)} 个链接…\n")
 
-    broken = []
+    broken, unknown = [], []
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
         results = pool.map(lambda j: probe(j[2]), jobs)
         for (f, kind, url), (ok, info) in zip(jobs, results):
-            if not ok:
+            if ok:
+                continue
+            # 官网只有「确定没了」才算失效，其余归入存疑（见 DEAD_CODES 注释）
+            if kind == "官网" and info not in DEAD_CODES and info not in DEAD_ERRORS:
+                unknown.append((f, url, info))
+            else:
                 broken.append((f, kind, url, info))
 
+    if unknown:
+        print(f"存疑（不算失效）：{len(unknown)} 个店家官网没能确认，"
+              "多半是对方挡 CI 机房 IP 或临时故障，从家用网络点通常是好的。")
+        for f, url, info in unknown[:5]:
+            print(f"    ? [{info}] {f}：{url[:100]}")
+        if len(unknown) > 5:
+            print(f"    …另有 {len(unknown) - 5} 个未列出")
+        print()
+
     if not broken:
-        print(f"通过：{len(jobs)} 个链接全部正常")
+        print(f"通过：{len(jobs)} 个链接里没有确定失效的")
         sys.exit(0)
 
     # 失败多的时候，逐条列清单会刷屏且把统计埋掉。改为先分组统计、每组只列样本，

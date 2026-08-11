@@ -14,7 +14,7 @@
  * 输出：每家店一行 `RESULT {json}`，字段 query/ok/count/method/urls/title/rating。
  * 末尾一行 `SUMMARY {json}` 汇总，方便一眼看出哪几家没抓满。
  */
-const { chromium } = require('playwright');
+import { chromium } from 'playwright';
 
 const WANT = parseInt(process.env.WANT || '5', 10);
 const PHOTO_HOST = 'googleusercontent.com';
