@@ -476,7 +476,6 @@ const browser = await chromium.launch(launchOpts);
   }), { what: '记账弹窗打开' });
   ok('一般类别下车牌栏是藏着的', !(await page.locator('#tx-company-plate-wrap').isVisible()));
   await page.selectOption('#tx-company-category', 'Petrol');
-  await page.waitForTimeout(300);
   ok('选了汽油，车牌栏出现', await page.locator('#tx-company-plate-wrap').isVisible());
   await page.fill('#tx-amount', '60');
   await page.evaluate(()=>saveTx());
@@ -497,10 +496,8 @@ const browser = await chromium.launch(launchOpts);
     return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
   }), { what: '记账弹窗打开' });
   await page.selectOption('#tx-company-category', 'Petrol');
-  await page.waitForTimeout(300);
   ok('重开后选汽油，车牌栏还是会出现', await page.locator('#tx-company-plate-wrap').isVisible());
   await page.selectOption('#tx-company-category', 'Lunch');
-  await page.waitForTimeout(300);
   ok('换回一般类别，车牌栏收起来', !(await page.locator('#tx-company-plate-wrap').isVisible()));
   await page.evaluate(()=>closeModal('modal-add-tx'));
 
@@ -766,25 +763,25 @@ const browser = await chromium.launch(launchOpts);
   await page.evaluate(()=>pettyOpenAdd('Seryi','open'));
   await page.waitForTimeout(300);
   await page.fill('#petty-amount', '320');
+  const _pev1 = pettyEvents.length;
   await page.evaluate(()=>pettySubmit());
-  await page.waitForTimeout(700);
+  await until(() => pettyEvents.length > _pev1, { what: '备用金这一笔写进服务端' });
   ok('起点写进服务端了', pettyEvents.length===1 && pettyEvents[0].type==='open'
      && pettyEvents[0].person==='Seryi' && pettyEvents[0].amountUsd===320, pettyEvents);
   await page.evaluate(()=>renderOvPetty());
-  await page.waitForTimeout(200);
   ok('卡上出现余额', /US\$320\.00/.test(await card.textContent() || ''), await card.textContent());
 
   // 转钱：金额用逗号打（手机键盘打不出小数点那台）
   await page.evaluate(()=>pettyOpenAdd('Seryi','topup'));
   await page.waitForTimeout(250);
   await page.fill('#petty-amount', '12,50');
+  const _pev2 = pettyEvents.length;
   await page.evaluate(()=>pettySubmit());
-  await page.waitForTimeout(700);
+  await until(() => pettyEvents.length > _pev2, { what: '备用金这一笔写进服务端' });
   const ev = pettyEvents[pettyEvents.length-1];
   ok('逗号当小数点，12,50 = 12.5（不是 1250）', ev.amountUsd===12.5, ev);
   ok('人和类型都对', ev.person==='Seryi' && ev.type==='topup', ev);
   await page.evaluate(()=>renderOvPetty());
-  await page.waitForTimeout(200);
   ok('余额跟着变成 332.50', /US\$332\.50/.test(await card.textContent() || ''), await card.textContent());
 
   // 确认框按取消：一个请求都不许发
@@ -805,6 +802,7 @@ const browser = await chromium.launch(launchOpts);
   const callsBefore = pettyCalls.add;
   await page.fill('#petty-amount', '-50');
   await page.evaluate(()=>pettySubmit());
+  // 这里断言的是「负数根本没送出去」——等一件不会发生的事只能真的等
   await page.waitForTimeout(500);
   // 数请求次数而不是数事件数：假服务端也会拒负数，只看「账本没变」的话，
   // App 那道闸拿掉了这条依然是绿的（2026-08-08 验假绿灯时抓到）。
@@ -821,8 +819,9 @@ const browser = await chromium.launch(launchOpts);
   await page.evaluate(()=>pettyOpenAdd('Yang','open'));
   await page.waitForTimeout(250);
   await page.fill('#petty-amount', '-52.25');
+  const _pev4 = pettyEvents.length;
   await page.evaluate(()=>pettySubmit());
-  await page.waitForTimeout(700);
+  await until(() => pettyEvents.length > _pev4, { what: '备用金这一笔写进服务端' });
   ok('负数起点送得出去（不再被前端挡）', pettyCalls.add===negBefore+1, [pettyCalls.add, negBefore]);
   const negEv = pettyEvents[pettyEvents.length-1];
   ok('存进去的就是 -52.25', negEv && negEv.person==='Yang' && negEv.amountUsd===-52.25, negEv);
@@ -839,6 +838,7 @@ const browser = await chromium.launch(launchOpts);
   await page.waitForTimeout(250);
   await page.fill('#petty-amount', '-10');
   await page.evaluate(()=>pettySubmit());
+  // 这里断言的是「负数根本没送出去」——等一件不会发生的事只能真的等
   await page.waitForTimeout(500);
   ok('转钱依旧挡负数，且没送出去', pettyCalls.add===t2, [pettyCalls.add, t2]);
   await page.evaluate(()=>closeModal('modal-petty-add'));
@@ -851,17 +851,16 @@ const browser = await chromium.launch(launchOpts);
   await page.waitForTimeout(700);
   ok('撤销真的从服务端拿掉了', pettyEvents.length===1, pettyEvents);
   await page.evaluate(()=>renderOvPetty());
-  await page.waitForTimeout(200);
   ok('余额回到 320', /US\$320\.00/.test(await card.textContent() || ''), await card.textContent());
 
   // 见底要点名（老板一眼看出该给谁转钱）
   await page.evaluate(()=>pettyOpenAdd('Kuang','open'));
   await page.waitForTimeout(250);
   await page.fill('#petty-amount', '42.5');
+  const _pev6 = pettyEvents.length;
   await page.evaluate(()=>pettySubmit());
-  await page.waitForTimeout(700);
+  await until(() => pettyEvents.length > _pev6, { what: '备用金这一笔写进服务端' });
   await page.evaluate(()=>renderOvPetty());
-  await page.waitForTimeout(200);
   const txt = await card.textContent() || '';
   ok('余额低的那位被点名', /Kuang[^]*快用完/.test(txt) || /快用完[^]*Kuang/.test(txt), txt);
   ok('余额够的那位不被点名', !/Seryi\s*快用完/.test(txt), txt);
@@ -1229,7 +1228,10 @@ const browser = await chromium.launch(launchOpts);
 
     console.log('\n【20b】记一笔待claim（上个月的历史欠账），数字要正确联动');
     await page.evaluate(()=>reconcileOpenAdd());
-    await page.waitForTimeout(300);
+    await until(() => page.evaluate(() => {
+      const el = document.getElementById('modal-reconcile-add');
+      return !!el && el.classList.contains('open');
+    }), { what: '对账弹窗打开' });
     await page.fill('#reconcile-add-amount', '3123.45');
     await page.fill('#reconcile-add-note-input', '上个月开销，还没claim');
     await page.evaluate(()=>reconcileSubmit());
@@ -1244,7 +1246,10 @@ const browser = await chromium.launch(launchOpts);
 
     console.log('\n【20c】0 不许记——闸门要挡住，不能留一条没意义的历史');
     await page.evaluate(()=>reconcileOpenAdd());
-    await page.waitForTimeout(300);
+    await until(() => page.evaluate(() => {
+      const el = document.getElementById('modal-reconcile-add');
+      return !!el && el.classList.contains('open');
+    }), { what: '对账弹窗打开' });
     await page.fill('#reconcile-add-amount', '0');
     await page.evaluate(()=>reconcileSubmit());
     await page.waitForTimeout(500);
@@ -1269,7 +1274,10 @@ const browser = await chromium.launch(launchOpts);
     // 这条守的是「别再长回来」：弹窗里不许出现任何往账户记账的入口。
     {
       await page.evaluate(()=>reconcileOpenAdd());
-      await page.waitForTimeout(300);
+      await until(() => page.evaluate(() => {
+        const el = document.getElementById('modal-reconcile-add');
+        return !!el && el.classList.contains('open');
+      }), { what: '对账弹窗打开' });
       await page.fill('#reconcile-add-amount', '-500');
       await page.waitForTimeout(200);
       ok('弹窗里没有「记进我的账户」那块（重复计账的入口不许回来）',
