@@ -1,0 +1,147 @@
+# 本仓库全部 PR 检查，合并成这一个 workflow。
+#
+# 建立原因（2026-08-11 用户要求）：「我不要再看到下一个指令就跑好几条一样的 workflow」。
+# 原本每项检查各是一个独立 workflow，Actions 页面上一个改动就摊开成五到八行，
+# 看着像在重复。现在只有这一行，点进去才看得到里面跑了哪几项。
+#
+# 怎么决定跑哪几项：第一个 job（决定跑什么）用 tools/ci-decide.py 比对这次改了哪些文件，
+# 后面每个 job 靠 needs.decide.outputs.* 决定要不要跑。不需要的 job 显示成「跳过」，
+# 不占运行时间、也不另开一行记录。加新检查改 ci-decide.py 的 RULES ＋ 这里加一个 job，
+# **不要再开新的 workflow 文件**。
+#
+# 只挂 pull_request：所有改动都走 PR，合并前已经验过；再挂 push 的话合并后又跑一批，
+# 页面上就又变成两批记录。要补跑用 Actions 页的 Run workflow。
+name: Checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  decide:
+    name: 决定跑什么
+    runs-on: ubuntu-latest
+    outputs:
+      html: ${{ steps.d.outputs.html }}
+      secrets: ${{ steps.d.outputs.secrets }}
+      pwa: ${{ steps.d.outputs.pwa }}
+      ainote: ${{ steps.d.outputs.ainote }}
+      rules: ${{ steps.d.outputs.rules }}
+      workflows: ${{ steps.d.outputs.workflows }}
+      company: ${{ steps.d.outputs.company }}
+      inventory: ${{ steps.d.outputs.inventory }}
+      staff: ${{ steps.d.outputs.staff }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # 要拿得到 base 分支才算得出改动范围
+      - id: d
+        run: |
+          base="origin/${{ github.base_ref || 'main' }}"
+          git fetch origin "${{ github.base_ref || 'main' }}" --depth=1 || true
+          python3 tools/ci-decide.py "$base...HEAD"
+
+  html:
+    name: HTML 结构
+    needs: decide
+    if: needs.decide.outputs.html == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-html.py --all
+
+  secrets:
+    name: 秘钥扫描
+    needs: decide
+    if: needs.decide.outputs.secrets == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-secrets.py
+
+  pwa:
+    name: PWA scope 不重叠
+    needs: decide
+    if: needs.decide.outputs.pwa == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-pwa-scopes.py
+
+  ainote:
+    name: AI 笔记防编造
+    needs: decide
+    if: needs.decide.outputs.ainote == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-ai-note.py
+
+  rules:
+    name: 制度档体检
+    needs: decide
+    if: needs.decide.outputs.rules == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-rules.py
+
+  workflows:
+    name: workflow 文件
+    needs: decide
+    if: needs.decide.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-workflows.py
+
+  company:
+    name: 公司账（真浏览器）
+    needs: decide
+    if: needs.decide.outputs.company == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/browser-check-setup
+        with:
+          health-url: http://localhost:8899/expense-tracker.html
+      - run: node tools/check-expense-company.mjs
+
+  inventory:
+    name: 库存分页（真浏览器）
+    needs: decide
+    if: needs.decide.outputs.inventory == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/browser-check-setup
+        with:
+          health-url: http://localhost:8899/expense-tracker.html
+      - run: node tools/check-inventory.mjs
+
+  staff:
+    name: 同事版 ${{ matrix.part }}/2（真浏览器）
+    needs: decide
+    if: needs.decide.outputs.staff == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      # 先确认同事版真的是当前 expense-tracker.html 生成出来的，
+      # 手改或忘了重新生成都在这一步就红，不必等浏览器测试
+      - run: python3 tools/build-staff-page.py --check
+      - uses: ./.github/actions/browser-check-setup
+        with:
+          health-url: http://localhost:8899/staff/index.html
+      - run: node tools/check-staff-page.mjs
+        env:
+          PART: ${{ matrix.part }}
+      - if: matrix.part == 1
+        run: python3 tools/check-html.py staff/index.html
