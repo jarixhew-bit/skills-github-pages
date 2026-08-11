@@ -18,6 +18,10 @@
 3. **本仓库自己的约定** —— 有 pull_request 触发的检查类 workflow，路径过滤里必须
    包含它自己（不然「改 CI 配置的 PR」一个检查都不跑，等于改 CI 时 CI 是瞎的）
 4. **composite action 的 run 步骤必须写 shell:** —— 少写 GitHub 会拒绝
+5. **${{ }} 里的双单引号** —— 同一天又踩一次（2026-08-11）：在 `run: |` 这种字面块里
+   写 `${{ contains(x, ''y'') }}`，以为 `''` 是转义（那是 YAML 引号字符串的规则，
+   字面块里不适用），实际送给 GitHub 的就是两个引号 → 表达式语法错 → 整个文件
+   「解析不了」，运行记录的名字会显示成文件路径。PyYAML 照样解析成功，所以本地全绿。
 
 退出码：0 = 全过；1 = 有问题。
 """
@@ -63,6 +67,23 @@ def load(path: Path):
 
 def rel(p: Path) -> str:
     return str(p.relative_to(REPO))
+
+
+# ${{ ... }} 里出现 ''xxx''（一个 token 两边各两个单引号）＝ 把 YAML 引号字符串的
+# 转义规则误用到字面块里。GitHub 会判表达式语法错、整个文件解析不了。
+DOUBLED_QUOTE_RE = re.compile(r"\$\{\{[^}]*''[^}']*''[^}]*\}\}")
+
+
+def check_expressions(path: Path) -> list:
+    """逐行扫原始文字（不是解析后的结构）——这类错误只有在原文里才看得见。"""
+    problems = []
+    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if DOUBLED_QUOTE_RE.search(line):
+            problems.append(
+                f"{rel(path)}：第 {i} 行的 ${{{{ }}}} 里有 ''xxx''（双单引号）—— "
+                f"字面块里 '' 不是转义，GitHub 会判表达式语法错、整个文件解析不了。"
+                f"把表达式挪到 env: 再用 $变量 引用")
+    return problems
 
 
 def check_workflow(path: Path) -> list:
@@ -112,8 +133,10 @@ def main() -> int:
 
     for f in files:
         problems += check_workflow(f)
+        problems += check_expressions(f)
     for a in actions:
         problems += check_action(a)
+        problems += check_expressions(a)
 
     if not quiet:
         print(f"检查了 {len(files)} 个 workflow、{len(actions)} 个共用步骤")

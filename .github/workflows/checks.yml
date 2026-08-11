@@ -148,3 +148,43 @@ jobs:
           PART: ${{ matrix.part }}
       - if: matrix.part == 1
         run: python3 tools/check-html.py staff/index.html
+
+  # 总闸：给分支保护用的唯一一个必过项目。
+  #
+  # 为什么需要它（2026-08-11）：上面十个 job 会按改动路径跳过用不到的，而分支保护
+  # 若直接指定某个 job（例如「HTML 结构」），碰到那个 job 被跳过的 PR 就永远等不到
+  # 它回报，PR 从此卡死。所以改成：分支保护只要求这一个 job，由它去看别人的结果。
+  #
+  # 判定：只要有任何一项 failure 或 cancelled 就红；skipped 不算失败（那是「这次
+  # 不需要跑」，不是「没通过」）。`if: always()` 让它在前面有人红时照样执行——
+  # 少了这一句，前面一红它会跟着被跳过，分支保护就永远等不到结果。
+  all-green:
+    name: all-green
+    if: always()
+    needs: [decide, html, secrets, pwa, ainote, rules, workflows, company, inventory, staff]
+    runs-on: ubuntu-latest
+    steps:
+      # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——
+      # 表达式写错时总闸会变成永远绿，那比没有总闸更危险，而光看结果看不出来。
+      # 有了这行，任何一次运行都能直接核对「它看到的结果」和「它的判定」对不对得上。
+      # 表达式一律走 env，不要直接插进 run: 的文字里。两个理由：
+      # (1) `run: |` 是字面块，里面的 '' 不是「转义的单引号」而是两个引号，
+      #     送进 GitHub 表达式解析器就是语法错误，整个文件变成「解析不了」
+      #     （2026-08-11 踩过：名字显示成 .github/workflows/checks.yml）；
+      # (2) toJSON 出来是多行含引号的 JSON，插进 shell 会把命令拆坏。
+      - name: 印出各项结果（供核对）
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          HAS_FAILURE: ${{ contains(needs.*.result, 'failure') }}
+          HAS_CANCELLED: ${{ contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "各项结果：$NEEDS"
+          echo "有 failure：$HAS_FAILURE"
+          echo "有 cancelled：$HAS_CANCELLED"
+      - name: 有任何一项没过就红
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "有检查没通过，点进这次 Checks 看是哪一项红的。"
+          exit 1
+      - name: 全部通过
+        run: echo "全部通过（这次跳过的项目不算失败）"
