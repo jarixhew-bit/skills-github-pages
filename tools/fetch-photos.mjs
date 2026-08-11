@@ -9,7 +9,7 @@
  * 铁律：**宁可少给，绝不补重复**。抓不满就如实回报数量，由人决定怎么办。
  *
  * 用法（只能在 GitHub Actions 上跑，沙盒连不上 Google）：
- *   QUERIES="链接或店名|链接或店名" WANT=5 node tools/fetch-photos.js
+ *   QUERIES="链接或店名|链接或店名" WANT=5 node tools/fetch-photos.mjs
  *
  * 输出：每家店一行 `RESULT {json}`，字段 query/ok/count/method/urls/title/rating。
  * 末尾一行 `SUMMARY {json}` 汇总，方便一眼看出哪几家没抓满。
