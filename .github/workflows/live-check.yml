@@ -1,0 +1,78 @@
+# 上线烟雾测试：每天确认线上页面真的是 main 里的那一版。
+#
+# 为什么需要它：CI 全绿只代表「代码进了 main」，不代表「线上换成了新版」。
+# 2026-07 发生过 GitHub 故障期间 Pages 部署事件被整个丢掉——代码在 main、
+# 检查全绿、线上还是旧版，最后是用户自己发现的（.claude/rules/diagnosis.md）。
+# Claude 的沙盒连不上 github.io（代理策略性 403），这件事只能由 CI 来验。
+#
+# 放 CI 而不是 Claude 定时任务：检测不需要判断力，零 Claude 用量；
+# 真的出事才开 issue 叫人上场（同 rules-check.yml 的取舍）。
+name: Live Site Check
+
+on:
+  schedule:
+    # 每天 UTC 01:30（柬埔寨 UTC+7 早上 08:30 前后），一天一次够用。
+    - cron: '30 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: live-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 跑上线烟雾测试
+        id: check
+        run: |
+          if python3 tools/check-live.py > result.txt 2>&1; then
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+            cat result.txt
+          else
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+            cat result.txt
+          fi
+
+      # 出事才开 issue。已有开着的同名 issue 就不重复开，避免每天堆积。
+      - name: 出事则开 issue 通知
+        if: steps.check.outputs.failed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="线上页面有问题（每日烟雾测试）"
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" \
+                       --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "已有开着的 issue #$EXISTING，今天不重复开。"
+            exit 0
+          fi
+          {
+            echo "每日烟雾测试发现线上页面与 main 对不上："
+            echo
+            echo '```'
+            cat result.txt
+            echo '```'
+            echo
+            echo "## 怎么读这份报告"
+            echo
+            echo "- **✗ 打不开**：网址坏了或页面被删，先确认那个文件还在 main 里。"
+            echo "- **! 是旧版**：代码在 main 但线上没换过来，多半是 Pages"
+            echo "  部署事件被吞掉了。重跑别的 workflow **不会**补触发部署，"
+            echo "  要到 Actions 页面手动重跑 pages-build-deployment："
+            echo "  https://github.com/jarixhew-bit/skills-github-pages/actions"
+            echo
+            echo "自己看当前状况：\`python3 tools/check-live.py\`（本地跑，沙盒连不上）"
+          } > body.md
+          gh issue create --title "$TITLE" --body-file body.md
+
+      - name: 失败时让这次 run 显示红灯
+        if: steps.check.outputs.failed == 'true'
+        run: exit 1

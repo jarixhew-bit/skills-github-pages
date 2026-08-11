@@ -1,70 +1,76 @@
 name: Fetch place photos
 
+# 抓 Google 地图的地点照片给手册卡片用（沙盒连不上 Google，只能在 CI 抓）。
+# 抓取逻辑在 tools/fetch-photos.mjs，每家店进照片图库抓 5 张以上不重复照片。
+
 on:
   workflow_dispatch:
     inputs:
       queries:
-        description: "Search queries, separated by |"
+        description: "地图链接或店名，用 | 分隔"
         required: true
+      want:
+        description: "每家店要几张不重复照片"
+        required: false
+        default: "5"
+
+permissions:
+  contents: write
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - name: Setup
-        run: |
-          npm i -g playwright@1.47.0
-          npx playwright@1.47.0 install --with-deps chromium
+      - uses: actions/checkout@v4
 
-      - name: Write scraper
-        run: |
-          cat > scrape.js <<'JS'
-          const { chromium } = require('playwright');
-          (async () => {
-            const queries = process.env.QUERIES.split('|').map(s => s.trim()).filter(Boolean);
-            const browser = await chromium.launch();
-            const ctx = await browser.newContext({
-              locale: 'ja-JP',
-              userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
-            });
-            for (const q of queries) {
-              const page = await ctx.newPage();
-              const url = /^https?:\/\//.test(q) ? q : 'https://www.google.com/maps/search/' + encodeURIComponent(q) + '?hl=ja';
-              console.log('##### QUERY: ' + q);
-              try {
-                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-                await page.waitForTimeout(7000);
-                const urls = await page.$$eval('img', imgs =>
-                  imgs.map(i => i.src).filter(s =>
-                    s && s.includes('googleusercontent.com') &&
-                    (s.includes('gps-cs-s') || s.includes('/p/') || s.includes('place-photos'))
-                  )
-                );
-                const uniq = [...new Set(urls)].slice(0, 8);
-                console.log('COUNT ' + uniq.length);
-                uniq.forEach(u => console.log('IMG ' + u.replace(/=w\d+-h\d+.*$/, '=s4800-w800-h600')));
-                console.log('FINAL_URL ' + page.url());
-                const title = await page.title();
-                console.log('TITLE ' + title);
-                const rating = await page.evaluate(() => {
-                  const el = document.querySelector('div.F7nice');
-                  if (el) return el.innerText.replace(/\n/g, ' ').trim();
-                  const m = document.body.innerText.match(/([0-9]\.[0-9])\s*\n?\s*\(([0-9,]+)\)/);
-                  return m ? m[1] + ' (' + m[2] + ')' : 'NOT_FOUND';
-                });
-                console.log('RATING ' + rating);
-              } catch (e) {
-                console.log('ERROR ' + e.message);
-              }
-              await page.close();
-            }
-            await browser.close();
-          })();
-          JS
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
+      - name: 缓存 Chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package.json') }}
+
+      - name: 装 playwright
+        run: |
+          npm install
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install --with-deps chromium
+          else
+            npx playwright install-deps chromium
+          fi
+
+      # pipefail 不可省：没有它时 `node ... | tee` 的退出码取自 tee，
+      # 抓取脚本崩溃了这一步照样显示成功，绿灯是假的（2026-08-11 踩过）。
       - name: Run scraper
         env:
           QUERIES: ${{ github.event.inputs.queries }}
+          WANT: ${{ github.event.inputs.want }}
         run: |
-          export NODE_PATH=$(npm root -g)
-          node scrape.js
+          set -o pipefail
+          node tools/fetch-photos.mjs | tee photos-output.txt
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: photos
+          path: photos-output.txt
+
+      # 结果同时提交回触发分支。artifact 要登录才能下载、日志尾部又常被
+      # 收尾步骤淹掉，两条路 Claude 在沙盒里都读不到；提交回分支它 git pull
+      # 就能拿到完整结果。这是暂存档，合并回 main 前要删掉。
+      - name: 把结果提交回分支
+        if: always() && github.ref_name != 'main'
+        run: |
+          mkdir -p .photos
+          cp photos-output.txt .photos/latest.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .photos/latest.txt
+          git commit -m "抓图结果（自动产生的暂存档）" || exit 0
+          git push origin HEAD:${{ github.ref_name }}

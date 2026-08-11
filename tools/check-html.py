@@ -208,6 +208,52 @@ def check_img_alt(path: str, html: str) -> list:
     return errors
 
 
+def check_dup_images(path: str, html: str) -> list:
+    """同一张卡片的图库里不准出现重复照片。
+
+    2026-08-11 踩过：抓图脚本读的是 Google 地图搜索结果页，每家店只露 1~3 张，
+    抓不满 5 张就用同一张补齐。boss-dinner.html 26 张卡片全中，130 个图位
+    只有 71 张不同的图，上线后没人发现——因为页面本身完全正常，只是难看。
+
+    判定：把相邻的、alt 相同的 <img> 视为同一张卡片的图库（本仓库卡片就长这样），
+    组内出现重复的照片就报错。比对时抹掉 URL 的尺寸参数，因为同一张照片的
+    不同尺寸是两个不同的网址，按原样比对会漏掉这种重复。
+    只管外链照片；本地图标、logo 在多处重复出现是正常的。
+    """
+    errors = []
+    text = strip_noise(html)
+    groups, cur_alt, cur = [], None, []
+    for m in re.finditer(r"<img\b[^>]*>", text, re.I):
+        tag = m.group(0)
+        alt_m = re.search(r'\balt="([^"]*)"', tag, re.I)
+        src_m = re.search(r'\bsrc="(https://[^"]+)"', tag, re.I)
+        alt = alt_m.group(1) if alt_m else None
+        if not alt or not src_m or "googleusercontent" not in src_m.group(1):
+            cur_alt, cur = None, []
+            continue
+        line = line_of(text, m.start())
+        # 距离要一起看：图库的 <img> 是连着写的。只看「中间没有别的图」会把
+        # 封面背景图和一百行外的卡片图库归成一组，误报成重复
+        # （2026-08-11 在 singapore-trip/index.html 上踩过）。
+        far = cur and line - cur[-1][1] > 5
+        if alt != cur_alt or far:
+            if len(cur) > 1:
+                groups.append((cur_alt, cur))
+            cur_alt, cur = alt, []
+        cur.append((src_m.group(1), line))
+    if len(cur) > 1:
+        groups.append((cur_alt, cur))
+
+    for alt, imgs in groups:
+        keys = [src.split("=")[0] for src, _ in imgs]
+        if len(set(keys)) < len(keys):
+            errors.append(
+                f"{path}:{imgs[0][1]} 「{alt}」的图库有重复照片："
+                f"{len(imgs)} 个图位只有 {len(set(keys))} 张不同的图——"
+                f"用 fetch-photos.yml 重抓这家店（宁可少放几张，别用同一张凑数）")
+    return errors
+
+
 def trace_tag(path: str, html: str, tag: str):
     """辅助定位：打印该标签每次深度变化的行号，人工找缺口用。"""
     text = strip_noise(html)
@@ -249,6 +295,7 @@ def main():
         all_errors += check_foreign_jargon(f, html, whitelist)
         all_errors += check_img_alt(f, html)
         all_errors += check_dup_segments(f, html)
+        all_errors += check_dup_images(f, html)
         all_errors += check_control_bytes(f)
 
     if all_errors:
