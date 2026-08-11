@@ -18,6 +18,8 @@ on:
     paths:
       - 'expense-tracker.html'
       - 'tools/check-expense-company.mjs'
+      - '.github/workflows/expense-company-check.yml'
+      - '.github/actions/browser-check-setup/action.yml'
   workflow_dispatch:
 
 # 同一个分支上 push 与 pull_request 会各触发一次，这个检查要装 Chromium（约 1 分钟），

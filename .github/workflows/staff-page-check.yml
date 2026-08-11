@@ -24,6 +24,8 @@ on:
       - 'expense-tracker.html'
       - 'tools/build-staff-page.py'
       - 'tools/check-staff-page.mjs'
+      - '.github/actions/browser-check-setup/action.yml'
+      - '.github/workflows/staff-page-check.yml'
   workflow_dispatch:
 
 # 同一分支的 push 与 pull_request 会各触发一次，这个检查要装 Chromium（约 1 分钟），

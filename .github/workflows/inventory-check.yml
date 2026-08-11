@@ -27,6 +27,8 @@ on:
       - 'inventory/**'
       - 'tools/check-inventory.mjs'
       - 'tools/build-staff-page.py'
+      - '.github/actions/browser-check-setup/action.yml'
+      - '.github/workflows/inventory-check.yml'
   workflow_dispatch:
 
 # 同一个分支上 push 与 pull_request 会各触发一次，这个检查要装 Chromium（约 1 分钟），
