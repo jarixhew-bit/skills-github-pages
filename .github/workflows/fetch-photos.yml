@@ -14,6 +14,9 @@ on:
         required: false
         default: "5"
 
+permissions:
+  contents: write
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -57,3 +60,17 @@ jobs:
         with:
           name: photos
           path: photos-output.txt
+
+      # 结果同时提交回触发分支。artifact 要登录才能下载、日志尾部又常被
+      # 收尾步骤淹掉，两条路 Claude 在沙盒里都读不到；提交回分支它 git pull
+      # 就能拿到完整结果。这是暂存档，合并回 main 前要删掉。
+      - name: 把结果提交回分支
+        if: always() && github.ref_name != 'main'
+        run: |
+          mkdir -p .photos
+          cp photos-output.txt .photos/latest.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .photos/latest.txt
+          git commit -m "抓图结果（自动产生的暂存档）" || exit 0
+          git push origin HEAD:${{ github.ref_name }}
