@@ -26,6 +26,7 @@ function isPlacePhoto(src) {
   // 表现像「这家店照片就是少」。改成黑名单：只排除确定不要的，其余都收。
   // 会误收的东西（地图瓦片、UI 图标）走的是别的网域，不会混进来。
   if (/\/a[-/]/.test(src)) return false;        // 用户头像
+  if (/\/ogw\/|default-user/.test(src)) return false; // 预设头像占位图
   if (/=s\d{1,2}(-|$)/.test(src)) return false; // 极小尺寸 = 图标不是照片
   return true;
 }

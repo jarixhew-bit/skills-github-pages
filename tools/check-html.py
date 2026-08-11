@@ -231,11 +231,16 @@ def check_dup_images(path: str, html: str) -> list:
         if not alt or not src_m or "googleusercontent" not in src_m.group(1):
             cur_alt, cur = None, []
             continue
-        if alt != cur_alt:
+        line = line_of(text, m.start())
+        # 距离要一起看：图库的 <img> 是连着写的。只看「中间没有别的图」会把
+        # 封面背景图和一百行外的卡片图库归成一组，误报成重复
+        # （2026-08-11 在 singapore-trip/index.html 上踩过）。
+        far = cur and line - cur[-1][1] > 5
+        if alt != cur_alt or far:
             if len(cur) > 1:
                 groups.append((cur_alt, cur))
             cur_alt, cur = alt, []
-        cur.append((src_m.group(1), line_of(text, m.start())))
+        cur.append((src_m.group(1), line))
     if len(cur) > 1:
         groups.append((cur_alt, cur))
 

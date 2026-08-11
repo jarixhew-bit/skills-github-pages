@@ -45,3 +45,6 @@ __pycache__/
 # Node（本仓库是静态站，node_modules 只在跑浏览器自检时临时产生）
 node_modules/
 package-lock.json
+
+# CI 抓图的暂存结果（fetch-photos.yml 写回分支用），不进 main
+.photos/
