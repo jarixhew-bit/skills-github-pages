@@ -322,7 +322,7 @@ vendored 的 OpenCV.js 引擎，10MB，见下方"已知坑"，改动前先读那
   录入当下派的、用户已照着写在纸质单据上，重排会让已写的号全部作废，所以 Bill No.
   那栏可能出现 2/1/3。
   自检：`node tools/check-expense-company.mjs`（真浏览器 82 项，全程断掉外部网域模拟
-  酒店 WiFi），CI 是 `.github/workflows/expense-company-check.yml`，改这个页面就自动跑。
+  酒店 WiFi），CI 是 `.github/workflows/checks.yml` 里的「公司账（真浏览器）」job，改这个页面就自动跑。
   本地跑法：`npm i playwright` → `python3 -m http.server 8899 &` →
   `CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/check-expense-company.mjs`。
 
@@ -449,7 +449,8 @@ CSS 在 `STAFF_CSS`、脚本在 `STAFF_BOOTSTRAP`），生成后连同 `staff/in
 算他自己无关——同事替老板垫的钱照样从他的备用金里扣，这是对的。
 
 自检：`node tools/check-staff-page.mjs`（真浏览器 173 项，含【14】提示条与【15】说明书），
-CI 是 `.github/workflows/staff-page-check.yml`。**改 `expense-tracker.html` 也要跑这套**
+CI 是 `.github/workflows/checks.yml` 里的「同事版（真浏览器）」job（拆成两半并行跑）。
+**改 `expense-tracker.html` 也要跑这套**
 （同事版从它生成），并且 `tools/` 底下两份浏览器自检要一起跑，只跑一份另一份会在 CI 上红。
 
 ## 公司账户没有「收入」（2026-08-08）
