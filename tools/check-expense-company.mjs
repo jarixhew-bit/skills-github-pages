@@ -21,6 +21,22 @@ const URL = `http://localhost:${PORT}/expense-tracker.html`;
 const BUTLER = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 
 let pass = 0; const fails = [];
+/**
+ * 等条件成立，而不是死等固定时间（2026-08-11 提速改造）。
+ * 原本整份自检有 84 秒是纯粹在 waitForTimeout 里睡觉，其中大半是
+ * 「送出一笔之后等 1.5 秒」——实际上零点几秒就到了。
+ * 注意：断言「某件事没有发生」的地方不能用它（等一件不会发生的事只能真的等），
+ * 那些 waitForTimeout 都留着，并在原地注明理由。
+ */
+async function until(fn, { timeout = 6000, interval = 20, what = '条件' } = {}) {
+  const t0 = Date.now();
+  for (;;) {
+    if (await fn()) return;
+    if (Date.now() - t0 > timeout) throw new Error(`等不到「${what}」（超时 ${timeout}ms）`);
+    await new Promise(r => setTimeout(r, interval));
+  }
+}
+
 const ok = (n, c, got) => {
   if (c) { pass++; console.log(`  ✅ ${n}`); }
   else { fails.push(n); console.log(`  ❌ ${n} — 实际: ${JSON.stringify(got)}`); }
@@ -200,7 +216,9 @@ const browser = await chromium.launch(launchOpts);
 
   console.log('【1】所有外部网域被挡时，App 仍能完整启动');
   await page.goto(URL, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(2500);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   // 这条锁住 2026-08-03 修的 bug：Firebase SDK 从 gstatic.com 加载，挡掉后原本
   // firebase.initializeApp() 会当场抛错，整个脚本停在第一行，App 完全打不开。
   ok('无 JS 报错（云同步连不上不能拖垮整个 App）', errs.length===0, errs.slice(0,3));
@@ -322,7 +340,9 @@ const browser = await chromium.launch(launchOpts);
 
   console.log('\n【3】类别清单来自服务端，不是 App 里硬编的');
   await page.reload({ waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(2000);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   const cats = await page.evaluate(()=>getCompanyCats());
   ok('拿到服务端返回的类别（含用户教过的自定义类别）', cats.includes('Car Wash') && cats.includes('Postage'), cats);
   // 车牌类也要在清单里——只能回 Telegram 记的话，App 里公司账户的合计会少一块
@@ -333,7 +353,10 @@ const browser = await chromium.launch(launchOpts);
 
   console.log('\n【4】记一笔公司账 —— 送出去的内容必须原样，不能在本地算');
   await page.evaluate(()=>showAddTx());
-  await page.waitForTimeout(600);
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
   ok('公司字段显示', await page.locator('#tx-company-wrap').isVisible());
   ok('App 的类别宫格隐藏（避免看起来要选两次）', !(await page.locator('#tx-cat-wrap').isVisible()));
   // 描述会给公司看，标签必须说明白，别让用户以为只存在手机里
@@ -359,8 +382,10 @@ const browser = await chromium.launch(launchOpts);
   await page.selectOption('#tx-company-category', 'Lunch');
   await page.selectOption('#tx-company-reporter', 'Seryi');
   await page.fill('#tx-company-reftag', '7');
+  const _sent1 = posted.length;
   await page.evaluate(()=>saveTx());
-  await page.waitForTimeout(1500);
+  await until(() => posted.length > _sent1, { what: '这一笔送到服务端' });
+  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
   const p = posted[0] || {};
   ok('送出 1 个请求', posted.length===1, posted.length);
   ok('带了密钥', p.token==='test-token-123', p.token);
@@ -381,12 +406,17 @@ const browser = await chromium.launch(launchOpts);
   console.log('\n【4d】单据号：留空由服务端派，App 只负责转述给用户');
   posted = [];
   await page.evaluate(()=>showAddTx());
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
   await page.fill('#tx-amount', '6.60');
   await page.selectOption('#tx-company-category', 'Dinner');
   await page.selectOption('#tx-company-reporter', 'Boss');
+  const _sent2 = posted.length;
   await page.evaluate(()=>saveTx());
-  await page.waitForTimeout(1500);
+  await until(() => posted.length > _sent2, { what: '这一笔送到服务端' });
+  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
   ok('留空时不往服务端塞编号', posted[0]?.items?.[0]?.refTag===null, posted[0]?.items?.[0]);
   const numbered = await page.evaluate(()=>data.transactions.filter(t=>t.amount===6.6).pop());
   ok('存下服务端派的单号', !!numbered?.company?.refTag, numbered?.company);
@@ -416,7 +446,10 @@ const browser = await chromium.launch(launchOpts);
   console.log('\n【4a】收据编号只收 1~2 位数字（非数字会让整份月度 Excel 生成失败）');
   posted = [];
   await page.evaluate(()=>showAddTx());
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
   await page.fill('#tx-amount', '10');
   await page.selectOption('#tx-company-category', 'Lunch');
   await page.evaluate(()=>{ document.getElementById('tx-company-reftag').value = 'A1'; });
@@ -426,8 +459,10 @@ const browser = await chromium.launch(launchOpts);
   ok('这笔也没被存进本机（保存整个中止）',
      !(await page.evaluate(()=>data.transactions.some(t=>t.amount===10 && t.company))));
   await page.evaluate(()=>{ document.getElementById('tx-company-reftag').value = '12'; });
+  const _sent3 = posted.length;
   await page.evaluate(()=>saveTx());
-  await page.waitForTimeout(1500);
+  await until(() => posted.length > _sent3, { what: '这一笔送到服务端' });
+  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
   ok('改成合法编号后正常送出', posted.length===1, posted.length);
   ok('编号原样送到服务端', posted[0]?.items?.[0]?.refTag==='12', posted[0]?.items?.[0]);
   await page.evaluate(()=>closeModal('modal-add-tx'));
@@ -435,7 +470,10 @@ const browser = await chromium.launch(launchOpts);
   console.log('\n【4c】车牌类项目：选了才出现车牌栏，没填不准送出');
   posted = [];
   await page.evaluate(()=>showAddTx());
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
   ok('一般类别下车牌栏是藏着的', !(await page.locator('#tx-company-plate-wrap').isVisible()));
   await page.selectOption('#tx-company-category', 'Petrol');
   await page.waitForTimeout(300);
@@ -445,14 +483,19 @@ const browser = await chromium.launch(launchOpts);
   await page.waitForTimeout(1000);
   ok('没填车牌不准送出', posted.length===0, posted);
   await page.fill('#tx-company-plate', 'ns6868');
+  const _sent4 = posted.length;
   await page.evaluate(()=>saveTx());
-  await page.waitForTimeout(1500);
+  await until(() => posted.length > _sent4, { what: '这一笔送到服务端' });
+  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
   ok('填了车牌就送得出去', posted.length===1, posted.length);
   ok('车牌转成大写送出', posted[0]?.items?.[0]?.plate==='NS6868', posted[0]?.items?.[0]);
   ok('类别原样送出（拼接交给 butler）', posted[0]?.items?.[0]?.categoryRaw==='Petrol', posted[0]?.items?.[0]);
   // 保存成功后弹窗会自动关闭，重开一个再验「换类别时车牌栏跟着收起」
   await page.evaluate(()=>showAddTx());
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
   await page.selectOption('#tx-company-category', 'Petrol');
   await page.waitForTimeout(300);
   ok('重开后选汽油，车牌栏还是会出现', await page.locator('#tx-company-plate-wrap').isVisible());
@@ -464,12 +507,17 @@ const browser = await chromium.launch(launchOpts);
   console.log('\n【4b】同一个人报的非正餐要算到 Boss 头上（Excel 换到左边）');
   posted = [];
   await page.evaluate(()=>showAddTx());
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
   await page.fill('#tx-amount', '20');
   await page.selectOption('#tx-company-category', 'Store');
   await page.selectOption('#tx-company-reporter', 'Seryi');
+  const _sent5 = posted.length;
   await page.evaluate(()=>saveTx());
-  await page.waitForTimeout(1500);
+  await until(() => posted.length > _sent5, { what: '这一笔送到服务端' });
+  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
   const txStore = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
   ok('reporter 仍原样送出 Seryi', posted[0]?.reporter==='Seryi', posted[0]?.reporter);
   ok('但 person 是服务端算的 Boss（→ Excel 左边）', txStore?.company?.person==='Boss', txStore?.company);
@@ -477,18 +525,27 @@ const browser = await chromium.launch(launchOpts);
   console.log('\n【5】送不出去时不能丢账：进队列，恢复后补送');
   butlerMode = 'offline'; posted = [];
   await page.evaluate(()=>showAddTx());
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
   await page.fill('#tx-amount', '5.60');
   await page.selectOption('#tx-company-category', 'Store');
+  // 这一段是断线情境（butlerMode='offline'），请求根本到不了服务端——
+  // 所以要等的不是「送出去了」，而是「进了本机的待送队列」
   await page.evaluate(()=>saveTx());
-  await page.waitForTimeout(1500);
+  await until(async () => (await page.evaluate(
+       ()=>JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]'))).length === 1,
+     { what: '这一笔进了待送队列' });
   ok('进了待送队列', (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]'))).length===1);
   const tx2 = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
   ok('本机记录标成 pending', tx2?.company?.status==='pending', tx2?.company);
   ok('金额没丢', tx2?.amount===5.6, tx2?.amount);
   butlerMode = 'ok';
+  const _sent7 = posted.length;
   await page.evaluate(()=>flushCompanyQueue({loud:true}));
-  await page.waitForTimeout(1500);
+  await until(() => posted.length > _sent7, { what: '这一笔送到服务端' });
+  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
   ok('恢复后队列清空', (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]'))).length===0);
   ok('补送的正是那笔 5.60 Store', posted.some(x=>x.items?.[0]?.amount===5.6 && x.items?.[0]?.categoryRaw==='Store'), posted);
 
@@ -526,11 +583,16 @@ const browser = await chromium.launch(launchOpts);
   page.on('dialog', d => dialogAction === 'dismiss' ? d.dismiss() : d.accept());
   posted = [];
   await page.evaluate(()=>showAddTx());
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
   await page.fill('#tx-amount', '33.33');
   await page.selectOption('#tx-company-category', 'Dinner');
+  const _sent8 = posted.length;
   await page.evaluate(()=>saveTx());
-  await page.waitForTimeout(1500);
+  await until(() => posted.length > _sent8, { what: '这一笔送到服务端' });
+  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
   const delTx = await page.evaluate(()=>data.transactions.filter(t=>t.amount===33.33).pop());
   ok('入账后存下了服务端的记录 id', !!delTx?.company?.recordId, delTx?.company);
   const bookBefore = serverBook.length;
@@ -544,11 +606,16 @@ const browser = await chromium.launch(launchOpts);
 
   console.log('\n【5d】连不上时不准只删本机（那正是要消灭的状态）');
   await page.evaluate(()=>showAddTx());
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
   await page.fill('#tx-amount', '44.44');
   await page.selectOption('#tx-company-category', 'Dinner');
+  const _sent9 = posted.length;
   await page.evaluate(()=>saveTx());
-  await page.waitForTimeout(1500);
+  await until(() => posted.length > _sent9, { what: '这一笔送到服务端' });
+  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
   const keepTx = await page.evaluate(()=>data.transactions.filter(t=>t.amount===44.44).pop());
   butlerMode = 'offline';
   await page.evaluate(id=>deleteTxById(id), keepTx.id);
@@ -610,7 +677,10 @@ const browser = await chromium.launch(launchOpts);
   console.log('\n【6】普通账户完全不受影响');
   await page.evaluate(()=>{ const a=data.accounts.find(x=>!x.isCompany); data.currentAccountId=a.id; saveData(); });
   await page.evaluate(()=>showAddTx());
-  await page.waitForTimeout(500);
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
   ok('公司字段隐藏', !(await page.locator('#tx-company-wrap').isVisible()));
   ok('App 的类别宫格回来了', await page.locator('#tx-cat-wrap').isVisible());
   ok('普通账户下描述栏标签恢复原样',
@@ -805,7 +875,10 @@ const browser = await chromium.launch(launchOpts);
     await page.evaluate(()=>switchTab('transactions'));
     posted = [];
     await page.evaluate(()=>showAddTx());
-    await page.waitForTimeout(600);
+    await until(() => page.evaluate(() => {
+      const m = document.getElementById('modal-add-tx');
+      return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+    }), { what: '记账弹窗打开' });
     // 非正餐类别不该问这个问题——问了会让人以为有得选
     await page.selectOption('#tx-company-category', 'Store');
     await page.waitForTimeout(200);
@@ -829,8 +902,10 @@ const browser = await chromium.launch(launchOpts);
     await page.waitForTimeout(150);
     ok('点了「老板的」按钮会亮起来',
        await page.evaluate(()=>document.getElementById('whose-boss').classList.contains('active')));
+    const _sent10 = posted.length;
     await page.evaluate(()=>saveTx());
-    await page.waitForTimeout(1500);
+    await until(() => posted.length > _sent10, { what: '这一笔送到服务端' });
+    await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
     const pb = posted[0] || {};
     ok('送出去的 categoryRaw 是服务端给的「老板午餐」',
        pb.items?.[0]?.categoryRaw==='老板午餐', pb.items?.[0]?.categoryRaw);
@@ -850,12 +925,17 @@ const browser = await chromium.launch(launchOpts);
     // 对照组：同一个类别不点「老板的」，仍要记回 Seryi 自己（别把原行为改坏）
     posted = [];
     await page.evaluate(()=>showAddTx());
-    await page.waitForTimeout(600);
+    await until(() => page.evaluate(() => {
+      const m = document.getElementById('modal-add-tx');
+      return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+    }), { what: '记账弹窗打开' });
     await page.fill('#tx-amount', '7.70');
     await page.selectOption('#tx-company-category', 'Lunch');
     await page.selectOption('#tx-company-reporter', 'Seryi');
+    const _sent11 = posted.length;
     await page.evaluate(()=>saveTx());
-    await page.waitForTimeout(1500);
+    await until(() => posted.length > _sent11, { what: '这一笔送到服务端' });
+    await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
     ok('对照：不点「老板的」就送标准类别 Lunch',
        posted[0]?.items?.[0]?.categoryRaw==='Lunch', posted[0]?.items?.[0]?.categoryRaw);
     ok('对照：仍记到 Seryi 头上', await page.evaluate(()=>{
@@ -864,7 +944,10 @@ const browser = await chromium.launch(launchOpts);
 
     // 换成非正餐类别时，「老板的」这个选择必须被清掉——留着就是个看不见的错默认值
     await page.evaluate(()=>showAddTx());
-    await page.waitForTimeout(500);
+    await until(() => page.evaluate(() => {
+      const m = document.getElementById('modal-add-tx');
+      return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+    }), { what: '记账弹窗打开' });
     await page.selectOption('#tx-company-category', 'Lunch');
     await page.evaluate(()=>setCompanyWhose('boss'));
     await page.selectOption('#tx-company-category', 'Store');
@@ -881,12 +964,17 @@ const browser = await chromium.launch(launchOpts);
   {
     posted = [];
     await page.evaluate(()=>showAddTx());
-    await page.waitForTimeout(600);
+    await until(() => page.evaluate(() => {
+      const m = document.getElementById('modal-add-tx');
+      return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+    }), { what: '记账弹窗打开' });
     await page.fill('#tx-amount', '11.78');
     await page.selectOption('#tx-company-category', 'Store');
     await page.selectOption('#tx-company-reporter', 'Seryi');
+    const _sent12 = posted.length;
     await page.evaluate(()=>saveTx());
-    await page.waitForTimeout(1500);
+    await until(() => posted.length > _sent12, { what: '这一笔送到服务端' });
+    await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
     const txId = await page.evaluate(()=>{
       const t = data.transactions.filter(x=>x.amount===11.78).pop(); return t && t.id;
     });
@@ -924,7 +1012,10 @@ const browser = await chromium.launch(launchOpts);
     // 还没送出去的（排队中）必须照旧能改——队列送出去的是改完那一版
     butlerMode = 'offline';
     await page.evaluate(()=>showAddTx());
-    await page.waitForTimeout(500);
+    await until(() => page.evaluate(() => {
+      const m = document.getElementById('modal-add-tx');
+      return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+    }), { what: '记账弹窗打开' });
     ok('新增记录时锁是解开的（别把锁留在上一笔的状态）',
        !(await page.locator('#tx-sent-lock').isVisible()) &&
        !(await page.evaluate(()=>document.getElementById('tx-amount').disabled)));
@@ -954,7 +1045,10 @@ const browser = await chromium.launch(launchOpts);
   {
     posted = [];
     await page.evaluate(()=>showAddTx());
-    await page.waitForTimeout(600);
+    await until(() => page.evaluate(() => {
+      const m = document.getElementById('modal-add-tx');
+      return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+    }), { what: '记账弹窗打开' });
     await page.selectOption('#tx-company-category', 'Store');
     // 模拟识别填进去的金额（真实路径是 OCR/AI 填完调 markAmountUnconfirmed）
     await page.evaluate(()=>{
@@ -976,15 +1070,20 @@ const browser = await chromium.launch(launchOpts);
     await page.click('#tx-amount-ok');
     await page.waitForTimeout(200);
     ok('按了「对的」提示就收起来', !(await page.locator('#tx-amount-check').isVisible()));
+    const _sent13 = posted.length;
     await page.evaluate(()=>saveTx());
-    await page.waitForTimeout(1500);
+    await until(() => posted.length > _sent13, { what: '这一笔送到服务端' });
+    await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
     ok('核对过之后存得进去', posted.length===1, posted.length);
     ok('金额原样送出（闸门不许改数字）', posted[0]?.items?.[0]?.amount===77.78, posted[0]?.items?.[0]);
 
     // 自己动手改金额也算核对过——不该逼他多按一次
     posted = [];
     await page.evaluate(()=>showAddTx());
-    await page.waitForTimeout(500);
+    await until(() => page.evaluate(() => {
+      const m = document.getElementById('modal-add-tx');
+      return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+    }), { what: '记账弹窗打开' });
     await page.selectOption('#tx-company-category', 'Store');
     await page.evaluate(()=>{
       document.getElementById('tx-amount').value = '77.78';
@@ -994,13 +1093,18 @@ const browser = await chromium.launch(launchOpts);
     await page.waitForTimeout(200);
     ok('自己改过金额就算核对过（提示自动收起）',
        !(await page.locator('#tx-amount-check').isVisible()));
+    const _sent14 = posted.length;
     await page.evaluate(()=>saveTx());
-    await page.waitForTimeout(1500);
+    await until(() => posted.length > _sent14, { what: '这一笔送到服务端' });
+    await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
     ok('改完存得进去，送的是改后的 77.76', posted[0]?.items?.[0]?.amount===77.76, posted[0]?.items?.[0]);
 
     // 闸门不能留到下一笔（新增/编辑都要复位）
     await page.evaluate(()=>showAddTx());
-    await page.waitForTimeout(500);
+    await until(() => page.evaluate(() => {
+      const m = document.getElementById('modal-add-tx');
+      return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+    }), { what: '记账弹窗打开' });
     ok('开新记录时闸门是解开的',
        !(await page.locator('#tx-amount-check').isVisible()) &&
        !(await page.evaluate(()=>state.amountFromOcr)));
@@ -1019,7 +1123,10 @@ const browser = await chromium.launch(launchOpts);
   {
     posted = [];
     await page.evaluate(()=>showAddTx());
-    await page.waitForTimeout(600);
+    await until(() => page.evaluate(() => {
+      const m = document.getElementById('modal-add-tx');
+      return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+    }), { what: '记账弹窗打开' });
     await page.fill('#tx-amount', '4.44');
     await page.selectOption('#tx-company-category', 'Store');
     await page.evaluate(()=>{
@@ -1225,7 +1332,9 @@ const browser = await chromium.launch(launchOpts);
   const errs = []; page.on('pageerror', e=>errs.push(e.message));
   await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`) ? r.continue() : r.abort('failed'));
   await page.goto(URL, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(2500);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
   console.log('\n【7】Firebase SDK 正常时，云同步照常初始化');
   const st = await page.evaluate(()=>({a:cloudAvailable, auth:!!auth, db:!!db, fb:window.__fb}));
   ok('cloudAvailable = true', st.a===true, st);
@@ -1249,7 +1358,9 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
     ? r.continue() : r.abort('failed'));
   await page.goto(URL, { waitUntil:'domcontentloaded' });
-  await page.waitForTimeout(1500);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
 
   // 假投递箱。docs = 箱子里现在有哪几条，deleted = 收完之后哪几条被清掉了
   await page.evaluate(() => {
