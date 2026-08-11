@@ -9,9 +9,10 @@
 # 检测与清理放 CI（零 Claude 用量），只有需要判断力的事才叫 Claude 上场。
 #
 # 用法：Actions 页面选这个 workflow → Run workflow，填两个数：
-#   older_than_days  删多少天以前的（默认 30，今天的记录不会被碰）
-#   max_delete       这一次最多删几条（默认 300，避免撞 GitHub 的限速）
-# 删不完会在日志最后写明还剩多少，再点一次即可。
+#   older_than_days  删多少天以前的（默认 30，今天的记录不会被碰；填 -1 连今天的也算）
+#   max_delete       安全上限（默认 3000）。**点一次就会一直删到清干净**，撞到上限才停，
+#                    停了会在日志最后写明还剩多少。
+# 一次点击 = Actions 页面上一行记录，不必反复点。
 #
 # 安全阀——「重要的不删，只删重复和不重要的」（2026-08-11 用户定的口径）：
 #   - **红过的不删**：失败/超时的记录是「什么时候开始红、当时报什么」的唯一线索
@@ -44,9 +45,9 @@ on:
         default: "30"
         type: string
       max_delete:
-        description: "这一次最多删几条"
+        description: "这一次最多删几条（安全上限；没撞到就会一直删到清干净）"
         required: true
-        default: "300"
+        default: "3000"
         type: string
       include_main:
         description: "连 main 上跑绿的旧记录一起删（红的和部署记录仍保留）"
@@ -113,42 +114,57 @@ jobs:
           normal="((.conclusion == \"success\" or .conclusion == \"cancelled\" or .conclusion == \"skipped\") and (.name != \"pages build and deployment\") and $branch_cond)"
           keep="select($normal or $unparse_cond)"
 
-          candidates=$(gh api --paginate \
-            "/repos/$REPO/actions/runs?per_page=100&status=completed&created=%3C$cutoff" \
-            --jq ".workflow_runs[] | select(.id != $SELF) | $keep | \"\(.id)\t\(.created_at)\t\(.head_branch)\t\(.name)\"" \
-            | awk -v m="$MAX" 'NR<=m')
+          # 一次按到底：删完一批就重新查一次，直到查不到为止（或撞到 max_delete 上限）。
+          # 为什么要循环而不是一次捞完（2026-08-11 用户回报「一大堆重复的」后改的）：
+          # 运行列表接口即使 --paginate 也只能翻到约 1000 条，一次捞不干净。原本靠使用者
+          # 反复点 Run workflow 补刀，结果 Actions 页面上一件事排出五行清理记录——
+          # 那正是他抱怨的「重复」。现在一次点击 = 一行记录 = 事情做完。
+          deleted=0; failed=0; round=0
 
-          if [ -z "$candidates" ]; then
-            echo "没有符合条件的记录，收工。"
-            exit 0
-          fi
+          while [ "$deleted" -lt "$MAX" ]; do
+            round=$((round+1))
+            remaining_quota=$((MAX - deleted))
+            candidates=$(gh api --paginate \
+              "/repos/$REPO/actions/runs?per_page=100&status=completed&created=%3C$cutoff" \
+              --jq ".workflow_runs[] | select(.id != $SELF) | $keep | \"\(.id)\t\(.created_at)\t\(.head_branch)\t\(.name)\"" \
+              | awk -v m="$remaining_quota" 'NR<=m')
 
-          count=$(printf '%s\n' "$candidates" | wc -l)
-          echo "本次将处理 $count 条："
-          head -n 10 <<< "$candidates"
-          [ "$count" -gt 10 ] && echo "…（其余省略）"
-
-          if [ "$DRY" = "true" ]; then
-            echo "dry_run 打开，没有真的删。"
-            exit 0
-          fi
-
-          deleted=0; failed=0
-          while IFS=$'\t' read -r id created branch name; do
-            if gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1; then
-              deleted=$((deleted+1))
-            else
-              failed=$((failed+1))
-              echo "::warning::删不掉 $id（$name，$created）"
+            if [ -z "$candidates" ]; then
+              if [ "$round" = "1" ]; then echo "没有符合条件的记录，收工。"; else echo "已经清干净了。"; fi
+              break
             fi
-            # 慢一点，别撞 GitHub 的次级限速
-            sleep 0.3
-          done <<< "$candidates"
 
-          echo "删掉 $deleted 条，失败 $failed 条。"
+            count=$(printf '%s\n' "$candidates" | wc -l)
+            echo "第 $round 批：$count 条"
+            head -n 10 <<< "$candidates"
+            [ "$count" -gt 10 ] && echo "…（其余省略）"
+
+            if [ "$DRY" = "true" ]; then
+              echo "dry_run 打开，没有真的删（只列第一批；真跑时会一直循环到清干净）。"
+              exit 0
+            fi
+
+            while IFS=$'\t' read -r id created branch name; do
+              if gh api -X DELETE "/repos/$REPO/actions/runs/$id" >/dev/null 2>&1; then
+                deleted=$((deleted+1))
+              else
+                failed=$((failed+1))
+                echo "::warning::删不掉 $id（$name，$created）"
+              fi
+              # 慢一点，别撞 GitHub 的次级限速
+              sleep 0.3
+            done <<< "$candidates"
+            echo "  累计删掉 $deleted 条，失败 $failed 条。"
+          done
+
+          echo "删掉 $deleted 条，失败 $failed 条（共 $round 批）。"
 
           remain=$(gh api --paginate \
             "/repos/$REPO/actions/runs?per_page=100&status=completed&created=%3C$cutoff" \
             --jq "[.workflow_runs[] | $keep] | length" \
             | paste -sd+ | bc)
-          echo "还剩 $remain 条符合条件的旧记录——不为 0 的话，再点一次 Run workflow 即可。"
+          if [ "$remain" = "0" ]; then
+            echo "清干净了，剩 0 条符合条件的记录。"
+          else
+            echo "还剩 $remain 条——撞到 max_delete 上限（$MAX）了，把它调大再点一次。"
+          fi

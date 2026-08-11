@@ -66,8 +66,9 @@ CLAUDE.md 每次都會載入，但只是路由表。它有用的前提是你**�
 四樣東西，之後的你要**主動用上它們**，否則等於沒搬：
 
 1. **檢查已腳本化**：`tools/check-html.py`（標籤平衡＋siteLangUser key 檢查），
-   並掛了 CI（`.github/workflows/html-check.yml`）在每個 PR 自動跑。改 HTML 後
-   自己先跑，別等 CI 紅了才修。
+   並掛了 CI（`.github/workflows/checks.yml`，2026-08-11 起全部檢查合併成這一個
+   檔案，跑哪幾項由 `tools/ci-decide.py` 按改動路徑決定）在每個 PR 自動跑。
+   改 HTML 後自己先跑，別等 CI 紅了才修。
 2. **結構筆記**：`.claude/notes/` 每個專案一份——改頁面前先讀對應筆記，按錨點
    定位，不要重新通讀整個檔案。筆記過時了就順手更新它（這是筆記存活的唯一方式）。
 3. **專屬 agent**：`researcher` 與 `html-editor`（連同原有 `verifier`），方法論
