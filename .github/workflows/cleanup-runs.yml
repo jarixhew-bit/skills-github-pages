@@ -25,13 +25,21 @@
 # 默认 false，也就是 main 上的记录不碰——那是合并之后的验证记录。打开之后，
 # main 上**跑绿的**旧记录也一起清；红过的和部署记录任何情况下都不动，
 # 所以「什么时候开始红」「什么时候上线过」这两条线索永远查得到。
+#
+# include_unparseable（2026-08-11 用户追问「还是跑很多重复的出来」后加的）：
+# 「红过的不删」这条保护，会把**格式错误的 workflow 留下的红记录**一起保住——
+# 那种记录的名字显示成文件路径（`.github/workflows/xxx.yml`）而不是 workflow 名字，
+# 那正是「GitHub 解析不了这个文件」的症状。当天 branches 键写重复的那四个文件
+# 一口气留下四十几条这种记录，看起来就像同一件事在重复跑（其实早就不跑了）。
+# 这种红记录没有诊断价值——红的原因是文件格式错，跟代码好坏无关，而且原因已经
+# 查清、修好、还加了 tools/check-workflows.py 守着。打开这个开关就把它们一并清掉。
 name: Cleanup old workflow runs
 
 on:
   workflow_dispatch:
     inputs:
       older_than_days:
-        description: "删多少天以前的运行记录"
+        description: "删多少天以前的运行记录（填 -1 表示连今天的也一起算）"
         required: true
         default: "30"
         type: string
@@ -42,6 +50,11 @@ on:
         type: string
       include_main:
         description: "连 main 上跑绿的旧记录一起删（红的和部署记录仍保留）"
+        required: false
+        default: false
+        type: boolean
+      include_unparseable:
+        description: "连「解析不了的 workflow」留下的红记录一起删（名字显示成文件路径的那种）"
         required: false
         default: false
         type: boolean
@@ -67,30 +80,42 @@ jobs:
           MAX: ${{ inputs.max_delete }}
           DRY: ${{ inputs.dry_run }}
           MAIN: ${{ inputs.include_main }}
+          UNPARSE: ${{ inputs.include_unparseable }}
           SELF: ${{ github.run_id }}
         run: |
           set -euo pipefail
           # 注意：这段里不要用「… | head -n N」。head 取够就关掉管道，上游收到 SIGPIPE，
           # 配上 pipefail 会让整段当场判失败——2026-08-11 第一次真删就是这样挂的
           # （挂在列清单那一步，还没开始删，所以没删坏东西）。改用 awk 限行或 herestring。
-          cutoff=$(date -u -d "-${DAYS} days" +%Y-%m-%d)
+          # 写法必须是 "$DAYS days ago"，不能写成 "-$DAYS days"：
+          # DAYS=-1（想表达「连今天的也算」）在后者会拼成 "--1 days"，GNU date 不报错、
+          # 直接当成 "-1 days" 算出昨天——方向刚好相反，而且静默。2026-08-11 验过。
+          cutoff=$(date -u -d "${DAYS} days ago" +%Y-%m-%d)
           echo "删除 $cutoff 之前的运行记录，本次上限 $MAX 条，dry_run=$DRY"
           # 日期筛选必须交给服务端（created=<日期）：运行列表接口最多只能翻到约 1000 条，
           # 拉回来再自己筛的话，最近一千条要是都在门槛内，就会得到「没有符合条件的记录」
           # 这个假结论——2026-08-11 第一次空跑就是这样，1911 条里一条都没找到。
 
-          # 过滤口径见文件头：只留下「旧的 + 没红过 + 不是部署记录」，
-          # main 上的是否一起删由 include_main 决定（默认保留）。
-          guard='| select(.head_branch != "main")'
+          # 过滤口径见文件头。两个开关各自放宽一类，默认两个都关：
+          #   include_main        —— main 上跑绿的也删
+          #   include_unparseable —— 「解析不了的 workflow」留下的红记录也删
+          branch_cond='(.head_branch != "main")'
           if [ "$MAIN" = "true" ]; then
-            guard=''
+            branch_cond='true'
             echo "include_main 打开：main 上跑绿的旧记录这次也会一起删（红的和部署记录仍保留）"
           fi
-          keep='select(.conclusion == "success" or .conclusion == "cancelled" or .conclusion == "skipped") | select(.name != "pages build and deployment")'
+          unparse_cond='false'
+          if [ "$UNPARSE" = "true" ]; then
+            # 名字显示成 .github/workflows/xxx.yml 而不是 workflow 名字 = GitHub 解析不了那个文件
+            unparse_cond='(.name | startswith(".github/"))'
+            echo "include_unparseable 打开：名字显示成文件路径的那批红记录这次也会一起删"
+          fi
+          normal="((.conclusion == \"success\" or .conclusion == \"cancelled\" or .conclusion == \"skipped\") and (.name != \"pages build and deployment\") and $branch_cond)"
+          keep="select($normal or $unparse_cond)"
 
           candidates=$(gh api --paginate \
             "/repos/$REPO/actions/runs?per_page=100&status=completed&created=%3C$cutoff" \
-            --jq ".workflow_runs[] | select(.id != $SELF) | $keep $guard | \"\(.id)\t\(.created_at)\t\(.head_branch)\t\(.name)\"" \
+            --jq ".workflow_runs[] | select(.id != $SELF) | $keep | \"\(.id)\t\(.created_at)\t\(.head_branch)\t\(.name)\"" \
             | awk -v m="$MAX" 'NR<=m')
 
           if [ -z "$candidates" ]; then
@@ -124,6 +149,6 @@ jobs:
 
           remain=$(gh api --paginate \
             "/repos/$REPO/actions/runs?per_page=100&status=completed&created=%3C$cutoff" \
-            --jq "[.workflow_runs[] | $keep $guard] | length" \
+            --jq "[.workflow_runs[] | $keep] | length" \
             | paste -sd+ | bc)
           echo "还剩 $remain 条符合条件的旧记录——不为 0 的话，再点一次 Run workflow 即可。"
