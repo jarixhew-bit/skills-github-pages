@@ -39,7 +39,7 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 REFERER = "https://jarixhew-bit.github.io/"
 TIMEOUT = 20
 RETRIES = 3          # 三次都失败才算坏，避免网络抖动造成误报
-CONCURRENCY = 8
+CONCURRENCY = 12     # 2026-08-11 扩到店家官网后链接数从 ~700 涨到 ~810
 
 IMG_RE = re.compile(r'<img\b[^>]*\bsrc="(https://[^"]+)"', re.I)
 MAP_RE = re.compile(r'href="(https://(?:www\.)?(?:maps|google\.[^"/]*/maps)[^"]+)"', re.I)

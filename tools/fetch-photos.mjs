@@ -162,9 +162,19 @@ async function fetchOne(ctx, query) {
     const entry = await openGallery(page);
     if (entry) {
       out.method = 'gallery';
+      out.entry = entry;
       await scrollGallery(page, collected, WANT);
     } else {
       out.method = 'placepage';
+      // 图库点不开时，把页面上的按钮回报出来，好挑出真正能用的选择器。
+      // Google 会改版，选择器一定会有失效的一天；与其在沙盒里瞎猜
+      // （沙盒连不上 Google，猜一轮要烧一次 CI），不如让脚本自己报回来。
+      out.buttons = await page.$$eval('button', bs =>
+        bs.slice(0, 40)
+          .map(b => (b.getAttribute('aria-label') || '').slice(0, 40))
+          .filter(Boolean)
+          .slice(0, 12)
+      );
     }
 
     if (collected.size < WANT) {
