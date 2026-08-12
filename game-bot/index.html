@@ -259,17 +259,77 @@ AutoX.js 里设的定时任务会接着把脚本跑起来。
 </ul>
 </div>
 
-<p>按照脚本里的示范配置，你需要裁出这几张（<strong>文件名要一模一样</strong>）：</p>
+<p>脚本已经按<strong>五个板块</strong>配好：签到、挂机收益、体力、邮件、日常任务。
+每个板块要一两张模板图，全套如下（<strong>文件名要一模一样</strong>）：</p>
+
+<div class="box warn">
+<strong>不用一次裁完十几张。</strong> 没裁的图，那一步会<strong>立刻跳过</strong>（不是空等，不影响速度），
+所以建议：先只裁签到那几张，跑顺了再一块一块加。想彻底不要某个板块，把配置里那几行删掉即可。
+</div>
+
+<h3>共用的（几个板块都会用到）</h3>
 <div class="tablewrap">
 <table>
-<tr><th>文件名</th><th>裁什么</th><th>没有的话</th></tr>
-<tr><td><code>close.png</code></td><td>开屏广告/公告右上角的关闭 X</td><td>删掉这一步</td></tr>
-<tr><td><code>main.png</code></td><td>主界面上一个固定不变的标志物，用来确认「确实进游戏了」</td><td>建议保留，这是防瞎点的安全阀</td></tr>
-<tr><td><code>signin_entry.png</code></td><td>每日签到的入口按钮</td><td>必须有</td></tr>
-<tr><td><code>claim.png</code></td><td>「领取」按钮</td><td>必须有</td></tr>
-<tr><td><code>claim2.png</code></td><td>「领取」的另一种样子（有些游戏会随机换）</td><td>没有就在配置里删掉它</td></tr>
-<tr><td><code>ok.png</code></td><td>领奖后弹出的「确定」按钮</td><td>删掉这一步</td></tr>
+<tr><th>文件名</th><th>裁什么</th><th>不裁的话</th></tr>
+<tr><td><code>main.png</code></td><td>主界面上一个固定不变的标志物（角色头像框、某个常驻按钮）。它是「我现在在主界面」的判断依据</td><td><strong>强烈建议裁</strong>。没有它，「回主界面」只能盲按返回，板块之间容易串位</td></tr>
+<tr><td><code>ok.png</code></td><td>领奖后弹出的「确定 / 好的」按钮</td><td>跳过，但弹窗可能挡住后面的操作</td></tr>
+<tr><td><code>close.png</code></td><td>开屏广告、公告右上角的关闭 X</td><td>跳过</td></tr>
+<tr><td><code>exit_cancel.png</code></td><td>按返回时弹的「确定要退出游戏吗」里的<strong>取消</strong>按钮</td><td>跳过。但如果你的游戏按返回会弹这个框，<strong>一定要裁</strong>，否则脚本可能把游戏退掉</td></tr>
 </table>
+</div>
+
+<h3>每日签到</h3>
+<div class="tablewrap">
+<table>
+<tr><th>文件名</th><th>裁什么</th></tr>
+<tr><td><code>signin_entry.png</code></td><td>每日签到的入口按钮</td></tr>
+<tr><td><code>claim.png</code></td><td>签到界面里的「领取」按钮</td></tr>
+<tr><td><code>claim2.png</code></td><td>「领取」的另一种样子（有些游戏会换）。没有就在配置里从「图列表」删掉</td></tr>
+</table>
+</div>
+
+<h3>挂机收益</h3>
+<div class="tablewrap">
+<table>
+<tr><th>文件名</th><th>裁什么</th></tr>
+<tr><td><code>offline_claim.png</code></td><td>刚进游戏自动弹的「离线收益」框里的领取按钮</td></tr>
+<tr><td><code>idle_entry.png</code></td><td>主界面上挂机收益的入口（通常是个会冒东西的宝箱或资源堆）</td></tr>
+<tr><td><code>idle_claim.png</code></td><td>挂机收益界面里的领取按钮</td></tr>
+</table>
+</div>
+
+<h3>体力</h3>
+<div class="tablewrap">
+<table>
+<tr><th>文件名</th><th>裁什么</th></tr>
+<tr><td><code>stamina_entry.png</code></td><td>体力条旁边的 ＋ 号，或体力领取的入口</td></tr>
+<tr><td><code>stamina_claim.png</code></td><td>免费领体力的按钮。<strong>注意只裁免费那个</strong>——别把花钻石买体力的按钮裁进去</td></tr>
+</table>
+</div>
+
+<h3>邮件</h3>
+<div class="tablewrap">
+<table>
+<tr><th>文件名</th><th>裁什么</th></tr>
+<tr><td><code>mail_entry.png</code></td><td>主界面上的邮件图标</td></tr>
+<tr><td><code>mail_claim_all.png</code></td><td>「一键领取 / 全部领取」按钮</td></tr>
+</table>
+</div>
+
+<h3>日常任务</h3>
+<div class="tablewrap">
+<table>
+<tr><th>文件名</th><th>裁什么</th></tr>
+<tr><td><code>daily_entry.png</code></td><td>日常任务 / 活跃度界面的入口</td></tr>
+<tr><td><code>daily_claim.png</code></td><td>任务列表里的「领取」按钮。这一步用的是<strong>点掉所有</strong>，会一直点到没有为止，所以多个任务能一次全领</td></tr>
+<tr><td><code>daily_chest.png</code></td><td>活跃度进度条上的宝箱</td></tr>
+</table>
+</div>
+
+<div class="box warn">
+<strong>体力那张要特别小心。</strong> 「免费领」和「花钻石买」这两个按钮在很多游戏里长得很像、
+位置还相邻。裁错了脚本每天帮你花钻石，而且你不会马上发现。
+裁完务必用 capture-helper 第 3 项试一下，确认它认的是你想的那个。
 </div>
 
 <p>裁完可以用菜单第 <strong>3</strong> 项「试一张模板图现在找不找得到」当场验一验：
@@ -290,6 +350,7 @@ AutoX.js 里设的定时任务会接着把脚本跑起来。
 <tr><td><code>任选其一</code></td><td>几张图里任何一张出现就点</td><td>弹窗随机、按钮有多种样子时</td></tr>
 <tr><td><code>点掉所有</code></td><td>反复点直到这张图消失</td><td>连续弹出的领奖框、连续「确定」</td></tr>
 <tr><td><code>等图</code></td><td>只等它出现，不点</td><td>确认「确实进到某个界面了」再往下走</td></tr>
+<tr><td><code>回主界面</code></td><td>反复按返回，直到看见 <code>main.png</code>；顺手关掉弹出的退出确认框</td><td><strong>每个板块开头都有一步</strong>。别删——上个板块没退干净的话，后面全会在错的界面上找图</td></tr>
 <tr><td><code>点坐标</code></td><td>点固定位置</td><td>实在裁不出模板图时；建议前一步先用「等图」确认界面</td></tr>
 <tr><td><code>等待</code></td><td>纯等几秒</td><td>加载动画、过场</td></tr>
 <tr><td><code>返回</code></td><td>按一次系统返回键</td><td>退出某个子界面</td></tr>
