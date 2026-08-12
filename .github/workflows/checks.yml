@@ -30,6 +30,7 @@ jobs:
       secrets: ${{ steps.d.outputs.secrets }}
       pwa: ${{ steps.d.outputs.pwa }}
       ainote: ${{ steps.d.outputs.ainote }}
+      notify: ${{ steps.d.outputs.notify }}
       rules: ${{ steps.d.outputs.rules }}
       workflows: ${{ steps.d.outputs.workflows }}
       company: ${{ steps.d.outputs.company }}
@@ -80,6 +81,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/check-ai-note.py
+
+  notify:
+    name: 出事通知器
+    needs: decide
+    if: needs.decide.outputs.notify == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-ci-notify.py
 
   rules:
     name: 制度档体检
@@ -161,7 +171,7 @@ jobs:
   all-green:
     name: all-green
     if: always()
-    needs: [decide, html, secrets, pwa, ainote, rules, workflows, company, inventory, staff]
+    needs: [decide, html, secrets, pwa, ainote, notify, rules, workflows, company, inventory, staff]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——

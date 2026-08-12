@@ -194,35 +194,54 @@ jobs:
           # 暂存分支用完就删，不留痕迹（bot/* 不在保护规则范围内，删得掉）
           git push origin --delete "$BRANCH" || true
 
-      # Flex 坏了要有人知道。做法：坏了就开 issue（已有开着的就不重复开），
-      # 好了就自动关掉。这样单次抖动最多留下一个会自己关闭的 issue，
-      # 而持续故障永远不会像前三次那样静悄悄地拖上好几天。
+      # 这个工作流本身坏了要有人知道——**这才是这次故障拖一个多星期的病根**。
+      # 08-11 21:17 起每小时红一次，红记录躺在 Actions 页面上没人会去翻，
+      # 用户是隔了一星期自己发现数据不动才来问的。用户看的是 Telegram，
+      # 所以状态变化要送到那里；去重与开关 issue 的逻辑在 tools/ci-notify.py。
+      - name: 工作流失败通知
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # job.status 在最后一步读到的就是「前面所有步骤跑完的结果」。
+          # Flex 那一步是 continue-on-error，不会让 job 变红——它自己有独立通知。
+          if [ "${{ job.status }}" = "success" ]; then STATE=ok; else STATE=bad; fi
+          {
+            echo "\`trading-daily\` 跑失败了，**股票分析页的数据停止更新**。"
+            echo
+            echo "出事的这一次：$RUN_URL"
+            echo
+            echo "先看是哪一步红的。历史上最常见的两类："
+            echo "- **推不进 main**——保护规则要求 commit 身上有 \`all-green\` 状态。"
+            echo "  正常流程是「推暂存分支 → statuses API 盖章 → 直推 main」，"
+            echo "  这一段坏了会卡在「提交数据」那一步（2026-08-11 连红一星期就是这个）。"
+            echo "- **抓行情失败**——数据源挂了或改版，卡在「抓取行情」那一步。"
+            echo
+            echo "修好之后这个 issue 会在下一次跑绿时自动关闭。"
+          } > job-issue.md
+          python3 tools/ci-notify.py \
+            --title "trading-daily 运行失败——股票数据停止更新" \
+            --state "$STATE" --body-file job-issue.md \
+            --tg-bad "⚠️ trading-daily 跑失败了，股票分析页的数据停止更新。详情：$RUN_URL" \
+            --tg-ok "✅ trading-daily 已恢复正常，股票数据重新开始更新。" || true
+
+      # Flex 坏了要有人知道。做法与上面同一套：坏了开 issue ＋ 发 Telegram
+      #（已有开着的就静默），好了自动关掉 ＋ 报恢复。这样单次抖动最多留下一个
+      # 会自己关闭的 issue，而持续故障不会再像前三次那样静悄悄拖上好几天。
       - name: Flex 故障通知
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          # 这次没抓（不在抓取时段）就什么都别做。少了这一段，跳过的那 7 次
+          # 这次没抓（不在抓取时段）就什么都别做。少了这一段，跳过的那几次
           # 会因为 outputs.ok 是空的而被当成失败，每小时开一次 issue。
           if [ "${{ steps.needflex.outputs.yes }}" != "true" ]; then
             echo "这次没抓持仓，不做通知判断。"
-            exit 0
-          fi
-
-          TITLE="IBKR Flex 同步失败——持仓底数停止更新"
-          EXISTING=$(gh issue list --state open --search "$TITLE in:title" \
-                       --json number --jq '.[0].number // empty')
-
-          if [ "${{ steps.flex.outputs.ok }}" = "true" ]; then
-            if [ -n "$EXISTING" ]; then
-              gh issue close "$EXISTING" \
-                --comment "Flex 同步已恢复正常，持仓底数重新开始更新。（由 trading-daily 自动关闭）"
-            fi
-            exit 0
-          fi
-
-          if [ -n "$EXISTING" ]; then
-            echo "已有开着的 issue #$EXISTING，不重复开。"
             exit 0
           fi
           {
@@ -255,4 +274,9 @@ jobs:
             echo "完整排查记录见 \`.claude/notes/trading.md\`。"
             echo "修好之后这个 issue 会在下一次同步成功时自动关闭。"
           } > flex-issue.md
-          gh issue create --title "$TITLE" --body-file flex-issue.md
+          if [ "${{ steps.flex.outputs.ok }}" = "true" ]; then STATE=ok; else STATE=bad; fi
+          python3 tools/ci-notify.py \
+            --title "IBKR Flex 同步失败——持仓底数停止更新" \
+            --state "$STATE" --body-file flex-issue.md \
+            --tg-bad "⚠️ IBKR 持仓同步失败，页面上的股数与净值会停在旧的那一版（行情与信号照常更新）。" \
+            --tg-ok "✅ IBKR 持仓同步已恢复，股数与净值重新开始更新。" || true
