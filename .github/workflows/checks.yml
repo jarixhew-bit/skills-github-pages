@@ -32,6 +32,7 @@ jobs:
       ainote: ${{ steps.d.outputs.ainote }}
       notify: ${{ steps.d.outputs.notify }}
       morningpos: ${{ steps.d.outputs.morningpos }}
+      generated: ${{ steps.d.outputs.generated }}
       rules: ${{ steps.d.outputs.rules }}
       workflows: ${{ steps.d.outputs.workflows }}
       company: ${{ steps.d.outputs.company }}
@@ -102,6 +103,15 @@ jobs:
       - uses: actions/checkout@v4
       - run: pip install cryptography --quiet
       - run: python3 tools/check-morning-positions.py
+
+  generated:
+    name: 生成物没脱节
+    needs: decide
+    if: needs.decide.outputs.generated == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-generated.py
 
   rules:
     name: 制度档体检
@@ -197,7 +207,7 @@ jobs:
   all-green:
     name: all-green
     if: always()
-    needs: [decide, html, secrets, pwa, ainote, notify, morningpos, rules, workflows, company, inventory, staff, gamebot]
+    needs: [decide, html, secrets, pwa, ainote, notify, morningpos, generated, rules, workflows, company, inventory, staff, gamebot]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——
