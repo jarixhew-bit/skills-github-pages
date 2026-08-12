@@ -1,0 +1,25 @@
+# IBKR Flex 通道体检：把「只有拿得到 token 的人才能做的测试」搬进 CI，
+# 让使用者不必自己把凭证贴进浏览器网址列（2026-08-12 建，起因是 1001 排查
+# 到最后只剩这一步需要凭证，而凭证只有 CI 拿得到）。
+#
+# 脚本绝不打印凭证本身，只打印长度与字符类别。手动触发，不排程。
+name: Flex Doctor
+
+on:
+  workflow_dispatch:
+
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet requests
+      - name: 跑体检
+        env:
+          IBKR_FLEX_TOKEN: ${{ secrets.IBKR_FLEX_TOKEN }}
+          IBKR_FLEX_QUERY_ID: ${{ secrets.IBKR_FLEX_QUERY_ID }}
+        run: python3 tools/flex-doctor.py
