@@ -133,10 +133,12 @@
   抽成 `.github/actions/*/action.yml` 的 composite action，别在四个文件里改同一段话。
   另：**改 CI 配置的 PR 往往一个检查都不跑**（各 workflow 的 pull_request 路径过滤里不含
   自己），等于改 CI 时 CI 是瞎的——路径里要把 workflow 自己和它依赖的共用步骤都写进去。
-  另：**用 `GITHUB_TOKEN` 开的 PR 不会触发任何 workflow**（GitHub 的防回圈机制）。所以
-  机器人开的 PR 永远等不到 `all-green`，配上分支保护就永远合不进去。解法是让 workflow
-  自己实跑该跑的检查，通过后用 statuses API 盖 `all-green` 再合并，并加安全阀限定它只能
-  认证特定路径的改动（本仓库限 `trading/`）。判别法：PR 的 check run 数为 0 且不是冲突。
+  另：**机器人根本不该开 PR**。两坑叠着：`GITHUB_TOKEN` 开的 PR 不触发任何 workflow
+  （防回圈），永远等不到 `all-green`；而 `gh pr create` 还受仓库开关「Allow GitHub Actions
+  to create and approve pull requests」管，一关就 `not permitted`——**功能依赖人手开关
+  ＝随时会再坏**。正解是 required_status_checks 的官方用法：**commit 先推到别的分支
+  （让 SHA 在服务端存在）→ statuses API 盖章 → 再直推受保护的 ref**，全程不开 PR。
+  重试须整轮重来（中途 rebase 后 SHA 变了，旧章跟不过来），并限定只认证特定路径。
 - [2026-08-12][皆是] 情境：外部 API 连续多天回同一个错误码，查了好几轮都对不上。教训：
   **先换一台对等主机再送一次——同一个故障在不同主机上的错误码可能天差地别。**
   IBKR Flex 的 `gdcdyn` 回含糊的 `1001 报表生成不出来`，`ndcdyn` 却明说
