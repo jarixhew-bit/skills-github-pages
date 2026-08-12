@@ -25,8 +25,10 @@
 
 var CONFIG = {
 
-    // 游戏的包名。不知道就跑 capture-helper.js，它会列出来。
-    "游戏包名": "com.example.yourgame",
+    // 游戏的包名。这里预填的是「暗影紀元-魔幻冒险之旅」（2026-08-12 从
+    // Google Play 商店页确认：play.google.com/store/apps/details?id=com.yzzg.mdgame）。
+    // 换别的游戏就改这里，不知道包名就跑 capture-helper.js，它会列出来。
+    "游戏包名": "com.yzzg.mdgame",
 
     // 游戏是横屏还是竖屏（横屏游戏一定要填 true，否则截图会歪）
     "横屏": false,

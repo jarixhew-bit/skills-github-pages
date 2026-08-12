@@ -24,6 +24,8 @@ import urllib.request
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
+# 每个地区最多核几个包名的标题。搜索页一次给 30 个，全核完才敢说「查不到」。
+MAX_PER_REGION = 40
 PKG_RE = re.compile(r"/store/apps/details\?id=([A-Za-z0-9_][A-Za-z0-9_.]*)")
 # 详情页的标题与开发商都躺在 og / itemprop 这几个标签里
 TITLE_RE = re.compile(r'<meta\s+property="og:title"\s+content="([^"]*)"', re.I)
@@ -89,7 +91,9 @@ def main():
     for gl in regions:
         pkgs = search(keyword, gl)
         print(f"\n[{gl}] 搜索页命中 {len(pkgs)} 个包名")
-        for pkg in pkgs[:12]:
+        # 全部都要核标题。之前只核前 12 个，剩下的没验就下「查不到」的结论——
+        # 那个结论不可信，因为想找的那个可能正好排在第 13 位（2026-08-12 踩过）。
+        for pkg in pkgs[:MAX_PER_REGION]:
             if pkg in 命中:
                 continue
             title, desc = detail(pkg, gl)
