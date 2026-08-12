@@ -57,13 +57,16 @@ def fetch_ibkr_positions():
     ErrorCode 1001「报表暂时无法生成」有三种成因，2026-08-12 才查清第三种：
     (1) IBKR Flex Query 定义残缺（2026-07 那次）；
     (2) 服务端瞬时繁忙（偶发一两次）；
-    (3) **token 请求次数超标**——这是 2026-08 连续失效一个多星期的真正原因。
-        同一个 token 在 ndcdyn 主机会明说 `1018 Too many requests have been
-        made from this token`，gdcdyn 却含糊回 1001，所以查了很久才发现。
-    判别：换 ndcdyn 主机试一次，回 1018 就是额度问题，与 Query 定义无关。
+    (3) **触发了 token 限流**——2026-08 连续失效一个多星期就是这个。同一个 token
+        在 ndcdyn 主机会明说 `1018 Too many requests have been made from this
+        token`，gdcdyn 却含糊回 1001，所以查了很久才发现。
+    判别：换 ndcdyn 主机试一次，回 1018 就是限流，与 Query 定义无关。
 
-    **重试次数本身就是凶手**：一失败就连打多次，把额度烧得更快，掉进去爬不出来。
-    所以这里只留 2 次、间隔拉长——宁可这次拿不到，也不要毁掉一整天的额度。"""
+    但「用量大」是结果不是起因（2026-08-12 用户质疑后重算）：正常运作全仓每天
+    只打约 10 次，跑了好几周没事；**是重试把偶发放大成永久**——一次失败 → 重试
+    把当天流量翻到 40+ 次 → 1018 被触发并维持 → 隔天一开始就超标 → 又是 40 次。
+    失败本身就是产生额外流量的来源，所以这个循环没有出口。
+    所以这里只留 2 次、间隔拉长——不是为了省，是为了不再点燃那个循环。"""
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
     ref = None
     last_error = "未知错误"
