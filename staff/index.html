@@ -487,7 +487,16 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
 .inv-log-badge-update{background:var(--sub)}
 .inv-log-badge-remove{background:var(--exp)}
 .inv-log-cat{font-size:12px;color:var(--sub)}
-.inv-log-note{font-size:14px;color:var(--text);word-break:break-word}
+/* 加减了多少，一眼看得出方向。绿＝加、红＝减，跟记账那边的收入/支出同一套颜色。
+   加粗＋等宽数字，扫一列记录时数字对得齐（2026-08-12 用户要求：记录要显示 +- 了什么）。*/
+.inv-log-delta{font-size:13px;font-weight:800;padding:1px 7px;border-radius:8px;
+  white-space:nowrap;font-variant-numeric:tabular-nums}
+.inv-log-delta-up{color:var(--inc);background:rgba(39,174,96,.12)}
+.inv-log-delta-down{color:var(--exp);background:rgba(231,76,60,.12)}
+.inv-log-item{font-size:14px;font-weight:600;color:var(--text);word-break:break-word}
+/* 变化前后：次要信息，比品名淡一级 */
+.inv-log-ba{font-size:12px;color:var(--sub);white-space:nowrap;font-variant-numeric:tabular-nums}
+.inv-log-note{font-size:13px;color:var(--sub);word-break:break-word;margin-top:2px}
 .inv-log-empty{text-align:center;padding:40px 10px;color:var(--sub);font-size:14px}
 
 /* ===== 同事版（生成时注入，见 tools/build-staff-page.py）===== */
@@ -6316,11 +6325,29 @@ function invRelTime(iso){
   if(d.getFullYear() === now.getFullYear()) return `${mm}-${dd} ${hhmm}`;
   return `${d.getFullYear()}-${mm}-${dd} ${hhmm}`;
 }
+// 「+1」还是「−2」、动的是哪一样东西——2026-08-12 用户要求记录要看得出这两件事。
+// 服务端本来就送了 delta / before / after / itemName（见 tools/check-inventory.mjs
+// 里的假数据，那是双方约定的正本），只是以前没渲染出来，一列记录全是「加减」两个字。
+// 数字有没有可能是 0 或缺失：update（改名/改备注）就没有 delta，所以要判断后再显示，
+// 不能无脑 `+${e.delta}`——那会印出「+undefined」。
+function invFmtDelta(d){
+  if(d == null || d === '' || !isFinite(Number(d)) || Number(d) === 0) return null;
+  const n = Number(d);
+  // 用真的减号 U+2212 而不是连字号：等宽、跟加号一样高，扫一列时不会看漏
+  return { txt: (n > 0 ? '+' : '−') + Math.abs(n), cls: n > 0 ? 'up' : 'down' };
+}
 function invRenderLogEntry(e){
   const am = INV_ACTION_META[e.action] || { label: e.action || '操作', cls:'update' };
   const catMeta = INV_CAT_META[e.category];
   const catLabel = (catMeta && catMeta.label) || e.category || '';
   const catIcon = (catMeta && catMeta.icon) || '';
+  const d = invFmtDelta(e.delta);
+  // 前后数量：两个都在才显示（只有一个的话「11 → 」比不显示更难看）
+  const hasBA = e.before != null && e.after != null && isFinite(Number(e.before)) && isFinite(Number(e.after));
+  // note 现在退成第二行的补充说明：主行已经把「谁、加减多少、什么东西」讲完了，
+  // 服务端那句人话（「Seryi 把 Laffite 2001 从 11 加到 12」）重复了同样的信息，
+  // 所以只在它跟品名不一样时才显示，免得同一行看两遍。
+  const note = (e.note && e.note !== e.itemName) ? e.note : '';
   return `<div class="inv-log-entry">
     <div class="inv-log-top">
       <span class="inv-log-who">${invEsc(e.who || '未知')}</span>
@@ -6329,8 +6356,11 @@ function invRenderLogEntry(e){
     <div class="inv-log-body">
       <span class="inv-log-badge inv-log-badge-${invEsc(am.cls)}">${invEsc(am.label)}</span>
       ${catLabel ? `<span class="inv-log-cat">${invEsc(catIcon)} ${invEsc(catLabel)}</span>` : ''}
+      ${d ? `<span class="inv-log-delta inv-log-delta-${d.cls}">${invEsc(d.txt)}</span>` : ''}
+      ${e.itemName ? `<span class="inv-log-item">${invEsc(e.itemName)}</span>` : ''}
+      ${hasBA ? `<span class="inv-log-ba">${invEsc(e.before)} → ${invEsc(e.after)}</span>` : ''}
     </div>
-    <div class="inv-log-note">${invEsc(e.note || e.itemName || '')}</div>
+    ${note ? `<div class="inv-log-note">${invEsc(note)}</div>` : ''}
   </div>`;
 }
 async function invLoadLog(){

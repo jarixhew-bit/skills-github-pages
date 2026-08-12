@@ -544,6 +544,37 @@ function mountRoutes(ctx, opts = {}) {
   const badges = await page.$$eval('.inv-log-badge', els => els.map(e=>e.textContent.trim()));
   ok('动作徽章翻成中文（加减／新增／删除）',
      badges.includes('加减') && badges.includes('新增') && badges.includes('删除'), badges);
+
+  // 2026-08-12 用户要求：记录要看得出「+- 了什么类型的」。服务端本来就送
+  // delta / before / after / itemName，以前没渲染出来，一列记录全是「加减」两个字。
+  const deltas = await page.$$eval('.inv-log-delta',
+    els => els.map(e => e.textContent.trim() + '|' + e.className));
+  ok('三条记录各有一个加减数字', deltas.length === 3, deltas);
+  ok('加的显示 +N 且用绿色（up）',
+     deltas.some(d => d.startsWith('+1|') && d.includes('inv-log-delta-up')), deltas);
+  ok('减的显示 −N 且用红色（down）',
+     deltas.some(d => d.startsWith('−2|') && d.includes('inv-log-delta-down')), deltas);
+  ok('用的是真减号 U+2212，不是连字号',
+     deltas.some(d => d.includes('−')) && !deltas.some(d => /^-\d/.test(d)), deltas);
+  const items = await page.$$eval('.inv-log-item', els => els.map(e=>e.textContent.trim()));
+  ok('品名单独一格显示（不必从整句里读）',
+     items.includes('Laffite 2001') && items.includes('普洱饼') && items.includes('过期虫草'), items);
+  const bas = await page.$$eval('.inv-log-ba', els => els.map(e=>e.textContent.trim()));
+  ok('显示变化前后（11 → 12）', bas.some(t => t.replace(/\s/g,'') === '11→12'), bas);
+
+  // 反面：没有 delta 的动作（改名/改备注）不能印出「+undefined」这种东西。
+  // 这一条是本次改动最容易写坏的地方——无脑 `+${e.delta}` 就会这样。
+  await page.evaluate(() => {
+    window.invRenderProbe = invRenderLogEntry({
+      who:'Boss', at:new Date().toISOString(), action:'update',
+      category:'wine', itemName:'茅台50年', note:'改了存放位置',
+    });
+  });
+  const probe = await page.evaluate(() => window.invRenderProbe);
+  ok('没有 delta 时不出现 undefined／NaN／空的加减格',
+     !/undefined|NaN/.test(probe) && !probe.includes('inv-log-delta'), probe.slice(0, 200));
+  ok('没有 delta 时品名照常显示', probe.includes('茅台50年'), probe.slice(0, 200));
+
   await page.click('#inv-modal-log .modal-close');
   await until(() => page.evaluate(() => {
     const m2 = document.getElementById('inv-modal-log');
