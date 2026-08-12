@@ -16,6 +16,9 @@ import requests
 FLEX_TOK = os.environ.get("IBKR_FLEX_TOKEN")
 FLEX_QID = os.environ.get("IBKR_FLEX_QUERY_ID")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw", "flex_account.json")
+# 「今天已经抓到了」的标记，内容只有一个 UTC 日期。会随数据一起 commit，
+# 让每小时的排程知道该跳过（详见文件末尾写入处的说明）。
+MARK = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".flex-fetched")
 
 if not FLEX_TOK or not FLEX_QID:
     print("ERROR: IBKR_FLEX_TOKEN / IBKR_FLEX_QUERY_ID not set")
@@ -24,30 +27,30 @@ if not FLEX_TOK or not FLEX_QID:
 
 def fetch_flex_xml():
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
-    ref = None
-    # 只重试 2 次，不是 4 次（2026-08-12 改）。理由不是「省额度」，是**切断放大器**：
-    # 正常运作全仓每天只打约 10 次 Flex，跑了好几周没事；一旦有一次偶发失败，
-    # 4 次重试立刻把当天流量翻到 40+ 次，触发并维持住 `1018 Too many requests`
-    # （gdcdyn 把它含糊回成 1001，ndcdyn 才明说），隔天一开始就在超标状态——
-    # **失败本身就是产生额外流量的来源，所以这个循环没有出口**，连坏一个多星期。
-    # 现在即使整天全失败也只有 6 次，比健康时的 10 次还少，才有机会自己恢复。
-    # 宁可这次拿不到（analyzer 会沿用 state.enc 里的旧底数），也不要重新点燃那个循环。
-    for attempt in range(2):
-        if attempt:
-            time.sleep(90)
-        r1 = requests.get(f"{base}.SendRequest",
-                          params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"}, timeout=30)
-        root1 = ET.fromstring(r1.text)
-        ref = root1.findtext("ReferenceCode")
-        if ref:
-            break
+    # **一次就一次，不在同一次运行里重试**（2026-08-12 定案）。
+    #
+    # 因为真正点燃故障的是重试，不是频率：正常运作每天约 10 次 Flex，跑了好几周
+    # 没事；一旦有一次偶发失败，4 次重试立刻把当天流量翻到 40+ 次，触发并维持住
+    # `1018 Too many requests`（gdcdyn 把它含糊回成 1001，ndcdyn 才明说），
+    # 隔天一开始就在超标状态——**失败本身就是产生额外流量的来源，循环没有出口**，
+    # 连坏一个多星期。
+    #
+    # 现在的重试交给「下一个小时的排程」做，不在进程里等：workflow 每小时跑一次，
+    # 抓到了就把日期写进 trading/.flex-fetched，当天剩下的几次直接跳过。
+    # 所以一天的请求数是 1（一发就中）到 9（整天都不通）之间，**成功与失败都封顶**，
+    # 再也不会因为坏掉而产生额外流量。
+    r1 = requests.get(f"{base}.SendRequest",
+                      params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"}, timeout=30)
+    root1 = ET.fromstring(r1.text)
+    ref = root1.findtext("ReferenceCode")
+    if not ref:
         # 只印回应本体，绝不印 URL——URL 里带 token。
         # 2026-08-12：ErrorCode/ErrorMessage 两个字段不足以定位 1001 的成因
         # （query 手动跑得出来、凭证也有效），所以把整段回应留下来。
-        print(f"WARN: SendRequest attempt {attempt+1}:",
+        print("WARN: SendRequest 没拿到 ReferenceCode:",
               root1.findtext("ErrorCode"), root1.findtext("ErrorMessage"))
         print(f"      完整回应: {r1.text.strip()[:400]}")
-    if not ref:
+        print("      不在这里重试——下一个小时的排程会再试一次（见函数说明）。")
         sys.exit(1)
     time.sleep(5)
     for _ in range(5):
@@ -135,4 +138,13 @@ if pv and abs((pv + (out["cash"] or 0)) / out["net_liq"] - 1) > 0.05:
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 with open(OUT, "w", encoding="utf-8") as f:
     json.dump(out, f, ensure_ascii=False)
+
+# 落一个「今天已经抓到了」的标记，当天剩下的排程就会跳过（见 workflow 的
+# 「判断这次要不要抓持仓」）。里面只有一个日期，没有任何持仓数字——
+# 本仓库是公开的，持仓数据一律只进加密的 state.enc，raw/ 则被 gitignore。
+# 为什么同一天不必再抓：Flex Query 的周期是 LastBusinessDay，给的是上一个
+# 交易日收盘的持仓，同一天抓第二次拿到的是一模一样的数据。
+with open(MARK, "w", encoding="utf-8") as f:
+    f.write(time.strftime("%Y-%m-%d", time.gmtime()) + "\n")
+
 print(f"OK: {len(out['positions'])} 持仓, {len(out['trades'])} 笔成交, NAV={out['net_liq']}, 现金={out['cash']}, 日期={out['date']}")

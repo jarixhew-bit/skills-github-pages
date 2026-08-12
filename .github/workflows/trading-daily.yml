@@ -51,22 +51,32 @@ jobs:
       # 而**持仓一天之内根本不会变**，每小时抓是纯浪费；抓不到时 analyzer 会
       # 沿用 state.enc 里的底数，页面不受影响。
       # 留两个时段（开盘后、收盘后）是为了留一次补救机会，不是为了更即时。
-      # 手动触发**默认不抓**（2026-08-12 改，当天就踩到）：原本 workflow_dispatch
-      # 一律抓，结果排查别的问题时一天手动跑了七八次、每次烧两个 Flex 请求，
-      # 正好是把限流越查越死的那条路。手动跑要抓，得明确勾 force_flex。
+      # 抓持仓的节奏：**每小时试一次，抓到就停**（2026-08-12 定案，用户要求恢复每小时）。
+      #
+      # 为什么「抓到就停」不损失任何东西：Flex Query 的周期是 LastBusinessDay，
+      # 给的是上一个交易日收盘的持仓——同一天抓第二次，拿到的数据一模一样。
+      # 所以每小时抓在信息上是零收益，只是白烧请求。
+      #
+      # 但每小时「试」是有意义的：它就是重试机制本身。之前的写法是在同一次运行里
+      # 连打 4 次（间隔 30 秒），那才是把偶发放大成永久故障的凶手；现在改成
+      # 「这次不行，下个小时再来」，一天的请求数封顶在 9 次（一发就中则只有 1 次），
+      # **失败不再产生额外流量**，所以循环点不着。
+      #
+      # 手动触发默认不抓（当天踩过：排查时手动跑七八次，每次都烧请求）；要抓得勾 force_flex。
       - name: 判断这次要不要抓持仓
         id: needflex
         run: |
-          H=$(date -u +%H)
+          TODAY=$(date -u +%F)
+          MARK=trading/.flex-fetched
           if [ "${{ inputs.force_flex }}" = "true" ]; then
             echo "yes=true" >> "$GITHUB_OUTPUT"
-            echo "这次要抓持仓（手动勾了 force_flex）"
-          elif [ "$H" = "13" ] || [ "$H" = "20" ]; then
-            echo "yes=true" >> "$GITHUB_OUTPUT"
-            echo "这次要抓持仓（UTC ${H} 时，每天两个固定时段之一）"
-          else
+            echo "这次要抓持仓（手动勾了 force_flex，会忽略「今天已抓到」的标记）"
+          elif [ "$(cat $MARK 2>/dev/null)" = "$TODAY" ]; then
             echo "yes=false" >> "$GITHUB_OUTPUT"
-            echo "这次跳过持仓同步（UTC ${H} 时不在抓取时段，也没勾 force_flex），沿用既有底数"
+            echo "今天（$TODAY）已经抓到过持仓了，跳过——同一天再抓拿到的是同一份数据。"
+          else
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+            echo "今天还没抓到持仓，这次试一次（不成功就下个小时再来，本次不重试）。"
           fi
 
       - name: IBKR Flex 账户同步（持仓/现金/净值，失败不阻断）
@@ -127,7 +137,8 @@ jobs:
         run: |
           git config user.name "trading-bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add trading/history trading/data-public.json trading/data-private.enc trading/state.enc
+          git add trading/history trading/data-public.json trading/data-private.enc \
+                  trading/state.enc trading/.flex-fetched
           # 提交判据：history 或 state.enc 有实质变化就提交。data-public.json/data-private.enc
           # 都含 generated_at 时间戳，每次运行必有差异，不能单独作为判据；但 state.enc
           # 不含时间戳，只要 Flex 刷新了持仓/现金/NAV 就会变——2026-07-14 曾发生 Flex
@@ -135,7 +146,9 @@ jobs:
           # 注：state.enc 采用随机 salt/nonce 加密，即使底层数据完全不变，密文也会每次不同，
           # 因此改为每小时运行后，本步骤基本每次都会判定为「有变化」并提交——这是预期行为
           # （用户 2026-07-18 要求的就是 HTML 页面每小时刷新），不是 bug。
-          if git diff --cached --quiet -- trading/history trading/state.enc; then
+          # .flex-fetched 必须列进判据：它是「今天已抓到」的标记，不提交上去
+          # 下一个小时就读不到，等于每小时都重抓——正好是要避免的那件事。
+          if git diff --cached --quiet -- trading/history trading/state.enc trading/.flex-fetched; then
             echo "行情与持仓底数均无变化，跳过提交"
             exit 0
           fi

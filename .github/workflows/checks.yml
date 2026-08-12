@@ -31,6 +31,7 @@ jobs:
       pwa: ${{ steps.d.outputs.pwa }}
       ainote: ${{ steps.d.outputs.ainote }}
       notify: ${{ steps.d.outputs.notify }}
+      morningpos: ${{ steps.d.outputs.morningpos }}
       rules: ${{ steps.d.outputs.rules }}
       workflows: ${{ steps.d.outputs.workflows }}
       company: ${{ steps.d.outputs.company }}
@@ -90,6 +91,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/check-ci-notify.py
+
+  morningpos:
+    name: 早报读得懂持仓
+    needs: decide
+    if: needs.decide.outputs.morningpos == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install cryptography --quiet
+      - run: python3 tools/check-morning-positions.py
 
   rules:
     name: 制度档体检
@@ -171,7 +182,7 @@ jobs:
   all-green:
     name: all-green
     if: always()
-    needs: [decide, html, secrets, pwa, ainote, notify, rules, workflows, company, inventory, staff]
+    needs: [decide, html, secrets, pwa, ainote, notify, morningpos, rules, workflows, company, inventory, staff]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——

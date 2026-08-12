@@ -21,12 +21,17 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: pip install feedparser yfinance requests --quiet
+        # cryptography 是解 trading/state.enc 用的（本任务改成读它、不再打 IBKR）
+        run: pip install feedparser yfinance requests cryptography --quiet
 
       - name: Run digest
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          IBKR_FLEX_TOKEN: ${{ secrets.IBKR_FLEX_TOKEN }}
-          IBKR_FLEX_QUERY_ID: ${{ secrets.IBKR_FLEX_QUERY_ID }}
+          # 2026-08-12 起本任务**不再自己去打 IBKR Flex**，所以那两个密钥拿掉了。
+          # 改读 trading-daily 已经抓好并加密提交的 trading/state.enc。
+          # 两个理由：(1) 本仓库两个任务各自打同一个 Flex Query，笔记里记着它们撞车过
+          #（后到的一方撞上报表生成冷却期，被 1001 持续拒绝）；(2) 请求量砍一半。
+          # 不损失新鲜度——Flex Query 的周期是 LastBusinessDay，自己去打拿到的是同一份。
+          ANALYZER_PW: ${{ secrets.ANALYZER_PW }}
         run: python3 .github/scripts/portfolio_news.py

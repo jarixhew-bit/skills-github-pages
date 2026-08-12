@@ -1,11 +1,12 @@
-import os, html, time, json, xml.etree.ElementTree as ET
+import os, html, time, base64, hashlib, json
 import feedparser, requests, yfinance as yf
 from datetime import datetime
 
 TOKEN    = os.environ["TELEGRAM_TOKEN"]
 CHAT_ID  = os.environ["TELEGRAM_CHAT_ID"]
-FLEX_TOK = os.environ["IBKR_FLEX_TOKEN"]
-FLEX_QID = os.environ["IBKR_FLEX_QUERY_ID"]
+# 2026-08-12 起本脚本**不再自己去打 IBKR Flex**，改读 trading-daily 已经抓好并
+# 加密提交的 trading/state.enc（原因见 fetch_ibkr_positions 的说明）。
+ANALYZER_PW = os.environ.get("ANALYZER_PW")
 TODAY    = datetime.now().strftime("%Y-%m-%d")
 
 BULLISH = [
@@ -52,82 +53,63 @@ def score(text):
     elif bear > bull: return "🔴 利空"
     else:             return "⚪ 中性"
 
+def _derive_key(password: str, salt: bytes, iterations: int) -> bytes:
+    """PBKDF2-SHA256，参数**从档案自己带的 `iter` 字段读**，不在这里写死。
+
+    为什么（2026-08-12 当场踩到）：analyzer.py 用的是 300_000 次，我第一版在这里
+    照记忆写了 200_000，解密会直接失败——而失败的表现是「早报默默改用 fallback
+    底数」，跟正常几乎分不出来。两个文件各存一份同样的常数，迟早会分岔；
+    envelope 里既然已经写了 iter，就该以它为准，从结构上让分岔不可能发生。
+    """
+    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, dklen=32)
+
+
 def fetch_ibkr_positions():
-    """IBKR Flex Query 拉取持仓。返回 (positions|None, error_detail|None)
-    ErrorCode 1001「报表暂时无法生成」有三种成因，2026-08-12 才查清第三种：
-    (1) IBKR Flex Query 定义残缺（2026-07 那次）；
-    (2) 服务端瞬时繁忙（偶发一两次）；
-    (3) **触发了 token 限流**——2026-08 连续失效一个多星期就是这个。同一个 token
-        在 ndcdyn 主机会明说 `1018 Too many requests have been made from this
-        token`，gdcdyn 却含糊回 1001，所以查了很久才发现。
-    判别：换 ndcdyn 主机试一次，回 1018 就是限流，与 Query 定义无关。
+    """读 trading/state.enc 里的持仓底数。返回 (positions|None, error_detail|None)
 
-    但「用量大」是结果不是起因（2026-08-12 用户质疑后重算）：正常运作全仓每天
-    只打约 10 次，跑了好几周没事；**是重试把偶发放大成永久**——一次失败 → 重试
-    把当天流量翻到 40+ 次 → 1018 被触发并维持 → 隔天一开始就超标 → 又是 40 次。
-    失败本身就是产生额外流量的来源，所以这个循环没有出口。
-    所以这里只留 2 次、间隔拉长——不是为了省，是为了不再点燃那个循环。"""
-    base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
-    ref = None
-    last_error = "未知错误"
-    MAX_ATTEMPTS = 2
-    RETRY_WAIT   = 90
-    for attempt in range(MAX_ATTEMPTS):
-        if attempt:
-            time.sleep(RETRY_WAIT)
-        r1 = requests.get(
-            f"{base}.SendRequest",
-            params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"},
-            timeout=30
-        )
-        try:
-            root1 = ET.fromstring(r1.text)
-        except ET.ParseError:
-            last_error = f"SendRequest 返回非 XML: {r1.text[:150]!r}"
-            print(f"⚠️ 第 {attempt+1}/{MAX_ATTEMPTS} 次 {last_error}")
-            continue
-        ref = root1.findtext("ReferenceCode")
-        if ref:
-            break
-        err_code = root1.findtext("ErrorCode")
-        err_msg  = root1.findtext("ErrorMessage")
-        last_error = f"ErrorCode={err_code} ErrorMessage={err_msg}"
-        print(f"⚠️ 第 {attempt+1}/{MAX_ATTEMPTS} 次未返回 ReferenceCode: {last_error}")
-        if err_code == "1001":
-            print("   → 1001：可能是服务端繁忙，也可能是 Query 定义残缺（见函数说明），重试")
-    if not ref:
-        print(f"⚠️ Flex Query 重试 {MAX_ATTEMPTS} 次仍失败，使用默认持仓")
-        return None, last_error
+    2026-08-12 改：**本脚本不再自己去打 IBKR Flex。**
 
-    time.sleep(5)
-    for _ in range(5):
-        r2   = requests.get(
-            f"{base}.GetStatement",
-            params={"v": "3", "q": ref, "t": FLEX_TOK},
-            timeout=30
-        )
-        if "<FlexQueryResponse" in r2.text:
-            break
-        time.sleep(5)
+    原因有两个，都不是小事：
+    (1) 本仓库有两个任务各自去打同一个 Flex Query（本脚本 ＋ trading-daily），
+        而仓库自己的笔记里就记着这两个撞车过——「后到的一方撞上报表生成冷却期，
+        被 ErrorCode 1001 持续拒绝」。少一个调用方，这类碰撞直接归零。
+    (2) 请求量砍一半。2026-08 连坏一个多星期的那次故障，机制是「失败触发重试 →
+        流量翻倍 → 1018 限流被维持住 → 隔天继续失败」，少一个调用方就少一份燃料。
 
+    改成读 trading-daily 已经抓好、加密提交进仓库的 state.enc。不损失新鲜度：
+    Flex Query 的周期是 LastBusinessDay，给的本来就是上一个交易日收盘的持仓，
+    自己去打一次拿到的是同一份数据。
+
+    拿不到就回 None，由主流程走 fallback 档（跟以前一样）。
+    """
+    if not ANALYZER_PW:
+        return None, "没有 ANALYZER_PW，无法解密 trading/state.enc"
+    path = os.path.join(os.path.dirname(__file__), "..", "..", "trading", "state.enc")
+    if not os.path.exists(path):
+        return None, f"找不到 {path}"
     try:
-        root2 = ET.fromstring(r2.text)
-    except ET.ParseError:
-        last_error = f"GetStatement 返回非 XML: {r2.text[:150]!r}"
-        print(f"⚠️ {last_error}")
-        return None, last_error
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        env = json.loads(open(path, encoding="utf-8").read())
+        key = _derive_key(ANALYZER_PW, base64.b64decode(env["salt"]),
+                          int(env.get("iter") or 300_000))
+        pt = AESGCM(key).decrypt(base64.b64decode(env["nonce"]),
+                                 base64.b64decode(env["ct"]), None)
+        state = json.loads(pt.decode("utf-8"))
+    except Exception as e:
+        return None, f"解密 state.enc 失败：{type(e).__name__}: {e}"
+
     positions = {}
-    for pos in root2.iter("OpenPosition"):
-        sym  = pos.get("symbol", "")
-        qty  = float(pos.get("position") or pos.get("quantity") or 0)
-        cost = float(pos.get("costBasisPrice") or pos.get("avgCost") or 0)
-        ac   = pos.get("assetCategory", "STK")
-        if sym and qty and ac == "STK":
+    for p in state.get("positions") or []:
+        sym = p.get("symbol")
+        qty = float(p.get("qty") or 0)
+        # analyzer 那边字段叫 avg_price，本脚本一路用的是 cost，这里对齐
+        cost = float(p.get("avg_price") or 0)
+        if sym and qty:
             positions[sym] = {"qty": round(qty, 4), "cost": round(cost, 4)}
     if not positions:
-        last_error = f"GetStatement 成功但未解析到任何 OpenPosition: {r2.text[:200]!r}"
-        return None, last_error
+        return None, "state.enc 解开了但里面没有持仓（trading-daily 可能还没抓到过）"
     return positions, None
+
 
 def compute_rsi(hist, period=14):
     delta = hist["Close"].diff()
