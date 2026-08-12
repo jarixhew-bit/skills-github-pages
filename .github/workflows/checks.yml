@@ -111,6 +111,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/check-rules.py
+      # 「一条规则只住一个家」的可执行版本：查同一条规则有没有被复述进第二个档案
+      - run: python3 tools/check-rule-homes.py
 
   workflows:
     name: workflow 文件
