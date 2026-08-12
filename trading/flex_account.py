@@ -25,10 +25,13 @@ if not FLEX_TOK or not FLEX_QID:
 def fetch_flex_xml():
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
     ref = None
-    # 重试次数本身就是凶手（2026-08-12 查清）：IBKR 按 token 限流，一失败就
-    # 连打 4 次会把额度烧得更快，掉进去爬不出来——连续坏了一个多星期就是这样。
-    # gdcdyn 把限流含糊回成 1001，ndcdyn 才明说 `1018 Too many requests`。
-    # 宁可这次拿不到（analyzer 会沿用 state.enc 里的旧底数），也不要毁掉整天额度。
+    # 只重试 2 次，不是 4 次（2026-08-12 改）。理由不是「省额度」，是**切断放大器**：
+    # 正常运作全仓每天只打约 10 次 Flex，跑了好几周没事；一旦有一次偶发失败，
+    # 4 次重试立刻把当天流量翻到 40+ 次，触发并维持住 `1018 Too many requests`
+    # （gdcdyn 把它含糊回成 1001，ndcdyn 才明说），隔天一开始就在超标状态——
+    # **失败本身就是产生额外流量的来源，所以这个循环没有出口**，连坏一个多星期。
+    # 现在即使整天全失败也只有 6 次，比健康时的 10 次还少，才有机会自己恢复。
+    # 宁可这次拿不到（analyzer 会沿用 state.enc 里的旧底数），也不要重新点燃那个循环。
     for attempt in range(2):
         if attempt:
             time.sleep(90)
