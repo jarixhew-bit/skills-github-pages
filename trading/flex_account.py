@@ -25,9 +25,13 @@ if not FLEX_TOK or not FLEX_QID:
 def fetch_flex_xml():
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
     ref = None
-    for attempt in range(4):
+    # 重试次数本身就是凶手（2026-08-12 查清）：IBKR 按 token 限流，一失败就
+    # 连打 4 次会把额度烧得更快，掉进去爬不出来——连续坏了一个多星期就是这样。
+    # gdcdyn 把限流含糊回成 1001，ndcdyn 才明说 `1018 Too many requests`。
+    # 宁可这次拿不到（analyzer 会沿用 state.enc 里的旧底数），也不要毁掉整天额度。
+    for attempt in range(2):
         if attempt:
-            time.sleep(30)
+            time.sleep(90)
         r1 = requests.get(f"{base}.SendRequest",
                           params={"v": "3", "t": FLEX_TOK, "q": FLEX_QID, "fp": "1"}, timeout=30)
         root1 = ET.fromstring(r1.text)
