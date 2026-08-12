@@ -1,0 +1,40 @@
+# Google Play 查询通道。
+#
+# 存在原因（2026-08-12）：Claude 网页版沙盒的出口代理挡掉 play.google.com
+# 与各 APK 镜像站（EGRESS_BLOCKED），容器里查不到任何 App 的包名，而
+# game-bot/ 的脚本第一件事就是要包名。按 CLAUDE.md「沙盒连不上的外部服务，
+# 先想 CI 通道」——runner 出得去，所以把查询搬到这里。
+#
+# 用法：Actions 页面 Run workflow，填关键字；或由 Claude 调 API 触发。
+# 结果直接印在 job 日志里（输出很短），Claude 用 get_job_logs 读回，
+# 不必落档、也不必 commit 回分支。
+name: Play Store 查询
+
+on:
+  workflow_dispatch:
+    inputs:
+      q:
+        description: "要在 Google Play 搜的关键字（例如：暗夜纪元）"
+        required: true
+        type: string
+      gl:
+        description: "地区代码，逗号分隔（例如 TW,HK,SG,US）"
+        required: false
+        default: "TW,HK,SG"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 查询
+        # 输入一律走 env，不要直接插进 run: 的文字里——关键字含引号或
+        # 反引号时会把 shell 命令拆坏（checks.yml 的 all-green 踩过同类坑）
+        env:
+          Q: ${{ inputs.q }}
+          GL: ${{ inputs.gl }}
+        run: python3 tools/play-lookup.py "$Q" "$GL"
