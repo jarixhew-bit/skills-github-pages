@@ -24,6 +24,7 @@ RULES = {
     "secrets":   ["**"],                       # 秘钥扫描每次都跑，很快
     "pwa":       ["**/*.webmanifest", "tools/check-pwa-scopes.py"],
     "ainote":    ["trading/ai_note.py", "tools/check-ai-note.py"],
+    "notify":    ["tools/ci-notify.py", "tools/check-ci-notify.py"],
     "rules":     [".claude/rules/**", "CLAUDE.md", "tools/check-rules.py"],
     "workflows": [".github/workflows/**", ".github/actions/**", "tools/check-workflows.py"],
     "company":   ["expense-tracker.html", "tools/check-expense-company.mjs"],
