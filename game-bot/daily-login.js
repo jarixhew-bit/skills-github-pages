@@ -434,12 +434,22 @@ function main() {
     记("截图权限 OK，屏幕 " + device.width + "x" + device.height);
     检查分辨率();
 
-    // 3. 亮屏
+    // 3. 亮屏 + 往上滑一下（应付「上滑解锁」的锁屏；有密码锁的手机滑不开，
+    //    那种情况请把这台手机设成免密，或者让它跑的时候屏幕本来就是亮的）
     try {
         device.wakeUp();
         device.keepScreenOn(CONFIG["总超时分钟"] * 60 * 1000);
         sleep(1500);
-        swipe(device.width / 2, device.height * 0.8, device.width / 2, device.height * 0.3, 400);
+        var 中 = Math.floor(device.width / 2);
+        var 下 = Math.floor(device.height * 0.8);
+        var 上 = Math.floor(device.height * 0.3);
+        try {
+            // 无障碍手势，不需要 root——绝大多数手机走这条
+            gesture(400, [中, 下], [中, 上]);
+        } catch (e1) {
+            // 老版本或特殊机型退回坐标滑动（这条需要 root，没有就静默失败）
+            try { swipe(中, 下, 中, 上, 400); } catch (e2) {}
+        }
         sleep(1000);
     } catch (e) {
         记("亮屏/解锁这一步出了点状况（不一定有影响）：" + e.message);
