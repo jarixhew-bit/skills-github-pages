@@ -43,15 +43,12 @@
 - **分支不用于分类**：分支只是合并前的临时工作区，合并后即删（网页版自动产生的
   `claude/*` 分支合并后应删除）。分类靠仓库和文件夹，不靠分支。
 
-## 分支策略
-- Claude 将改动推送到功能分支，然后**自动创建 PR 并合并到 main**
-- 合并方式：squash merge
-- 如有冲突先 merge origin/main 解决后再合并
-
-## 上传流程
-1. 用户上传修改好的文件（或直接说明需求）
-2. Claude 修改文件并 commit push 到功能分支
-3. Claude 创建 PR 并自动合并到 main → 内容上线到 GitHub Pages
+## 分支策略与上传流程
+- Claude 把改动推到功能分支，然后**自动创建 PR 并合并到 main**，内容随即上线。
+  这是用户授权过的自动流程，**不用每次再问**。
+- 完整步骤（改完先跑哪些检查、合并方式、删分支、怎么验证、收工动作）见
+  skill `publish-pages`（`.claude/skills/publish-pages/SKILL.md`）——那是唯一正本，
+  此处只放授权与路由，不复述步骤。
 
 ## 现有项目
 - `xisui/` — 洗髓功法练习 App（PWA）
@@ -118,8 +115,9 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有十五个，全部挂 CI（2026-08-12 校对过与 `tools/` 一致）：
-   静态类 `check-html` / `check-secrets` / `check-rules` / `check-images` / `check-ai-note` /
+   交付时告诉用户自检怎么跑。现有十六个，全部挂 CI（2026-08-12 校对过与 `tools/` 一致）：
+   静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
+   有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
    `check-gamebot`（＋`check-gamebot-logic.mjs`：把安卓 API 打桩，用假屏幕实跑手机脚本，
    查语法查不出的行为问题）；浏览器类 `check-expense-company.mjs` /
@@ -140,6 +138,7 @@
 | 想修改制度档或本档 | `.claude/rules/maintenance.md` |
 | 新 session 开始较大工作之前 | `.claude/rules/letter.md`（背景与注意事项） |
 | 选浏览器／爬网工具拿不定主意 | `.claude/rules/diagnosis.md` 问题 #2 的路由表 |
+| 要动手做具体的事（放媒体、算数字、控范围、组织新档案） | `skills/INDEX.md` 查表选一份 |
 
 ### 制度档的同步与分支
 - 本地与网页版共用这套制度，靠 git 同步：开工前 `git pull`，改完必推送。
