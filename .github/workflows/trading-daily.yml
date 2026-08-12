@@ -14,6 +14,10 @@ on:
         description: '重新生成今天的 AI 点评（平时每天只生成一次，勾选可覆盖当天已有的）'
         type: boolean
         default: false
+      force_flex:
+        description: '这次也抓 IBKR 持仓（会消耗 Flex token 额度，只在确认要验证同步时勾）'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -47,16 +51,22 @@ jobs:
       # 而**持仓一天之内根本不会变**，每小时抓是纯浪费；抓不到时 analyzer 会
       # 沿用 state.enc 里的底数，页面不受影响。
       # 留两个时段（开盘后、收盘后）是为了留一次补救机会，不是为了更即时。
+      # 手动触发**默认不抓**（2026-08-12 改，当天就踩到）：原本 workflow_dispatch
+      # 一律抓，结果排查别的问题时一天手动跑了七八次、每次烧两个 Flex 请求，
+      # 正好是把限流越查越死的那条路。手动跑要抓，得明确勾 force_flex。
       - name: 判断这次要不要抓持仓
         id: needflex
         run: |
           H=$(date -u +%H)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$H" = "13" ] || [ "$H" = "20" ]; then
+          if [ "${{ inputs.force_flex }}" = "true" ]; then
             echo "yes=true" >> "$GITHUB_OUTPUT"
-            echo "这次要抓持仓（UTC ${H} 时）"
+            echo "这次要抓持仓（手动勾了 force_flex）"
+          elif [ "$H" = "13" ] || [ "$H" = "20" ]; then
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+            echo "这次要抓持仓（UTC ${H} 时，每天两个固定时段之一）"
           else
             echo "yes=false" >> "$GITHUB_OUTPUT"
-            echo "这次跳过持仓同步（UTC ${H} 时不在抓取时段），沿用既有底数"
+            echo "这次跳过持仓同步（UTC ${H} 时不在抓取时段，也没勾 force_flex），沿用既有底数"
           fi
 
       - name: IBKR Flex 账户同步（持仓/现金/净值，失败不阻断）
