@@ -127,6 +127,10 @@
    沙盒连不上 github.io）＋ `fetch-photos`（抓图通道，结果会写回触发分支）。
    **改完 `expense-tracker.html` 要跑 `tools/` 底下全部 check-\*，不是只跑手上那一个**
    ——同一个文件被两份浏览器自检覆盖，只跑一个就推，另一个会在 CI 上红（2026-08-07 踩过）。
+   **而且要先跑 `python3 tools/build-staff-page.py` 重新生成同事版、再跑检查**：
+   `staff/index.html` 是从 `expense-tracker.html` 生成的，不重生成就跑自检会**全绿骗过你**
+   （自检验的是同事版现有内容，而它还是旧的），CI 上却会被 `build-staff-page.py --check`
+   挡下——它不叫 check-\*，所以照着上面那句「跑全部 check-\*」正好会漏掉（2026-08-12 踩过）。
 
 ### 路由表（遇到左边情况，先读右边档案再动手）
 | 情况 | 读这个档 |
