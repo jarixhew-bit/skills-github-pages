@@ -63,6 +63,7 @@
 - `expense-tracker.html` — 记帐工具（PWA）
 - `fortune.html` — 运势页面
 - `trading/` — IBKR 交易脚本与页面
+- `game-bot/` — 手机游戏每日自动签到脚本（AutoX.js，跑在安卓手机上）＋图文说明页
 - **`butler-bot`（独立私有仓库 jarixhew-bit/butler-bot，2026-07-14 建立）** — Telegram 私人
   管家 bot（酒库存/航班追踪/提醒/记账/手册查询）。架构：Cloudflare Worker（webhook＋cron）
   ＋该仓库 data/ 当数据库＋Gemini 免费档＋AeroDataBox 航班数据，全免费。要改它时先用
@@ -117,9 +118,10 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有十三个，全部挂 CI（2026-08-12 校对过与 `tools/` 一致）：
+   交付时告诉用户自检怎么跑。现有十四个，全部挂 CI（2026-08-12 校对过与 `tools/` 一致）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-images` / `check-ai-note` /
-   `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions`；浏览器类 `check-expense-company.mjs` /
+   `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
+   `check-gamebot`；浏览器类 `check-expense-company.mjs` /
    `check-staff-page.mjs` / `check-inventory.mjs`（跑前要先起
    `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）；
    线上类 `check-live`（每天验线上页面是不是 main 那一版，**只能在 CI 跑**，

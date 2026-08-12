@@ -34,6 +34,7 @@ RULES = {
                   "tools/check-inventory.mjs", "tools/build-staff-page.py"],
     "staff":     ["staff/**", "expense-tracker.html", "tools/build-staff-page.py",
                   "tools/check-staff-page.mjs"],
+    "gamebot":   ["game-bot/**", "tools/check-gamebot.py"],
 }
 # 浏览器类检查（慢）额外也盯着共用步骤：它坏了这几项全瞎
 BROWSER = ["company", "inventory", "staff"]
