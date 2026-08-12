@@ -25,6 +25,8 @@ RULES = {
     "pwa":       ["**/*.webmanifest", "tools/check-pwa-scopes.py"],
     "ainote":    ["trading/ai_note.py", "tools/check-ai-note.py"],
     "notify":    ["tools/ci-notify.py", "tools/check-ci-notify.py"],
+    "morningpos": [".github/scripts/portfolio_news.py", "trading/analyzer.py",
+                   "tools/check-morning-positions.py"],
     "rules":     [".claude/rules/**", "CLAUDE.md", "tools/check-rules.py"],
     "workflows": [".github/workflows/**", ".github/actions/**", "tools/check-workflows.py"],
     "company":   ["expense-tracker.html", "tools/check-expense-company.mjs"],
