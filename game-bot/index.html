@@ -153,6 +153,43 @@
 免费版对宏的长度和定时有限制。适合「不想碰代码」的情况。</p>
 </div>
 
+<h2>两种跑法：手机上跑，还是电脑上跑</h2>
+<p>底下的步骤两种都适用，因为<strong>模拟器本身就是安卓</strong>——同样三个脚本，
+搬进模拟器一行都不用改。差别只在跑在哪台机器上：</p>
+<div class="tablewrap">
+<table>
+<tr><th></th><th>手机上跑</th><th>电脑模拟器里跑（更省心）</th></tr>
+<tr><td>要开着的东西</td><td>手机，且那几分钟屏幕要亮</td><td>电脑</td></tr>
+<tr><td>会不会占用你</td><td>会，跑的时候手机不能用</td><td>不会，你该干嘛干嘛</td></tr>
+<tr><td>锁屏麻烦</td><td>有密码锁就解不开</td><td>没有锁屏这回事</td></tr>
+<tr><td>模板图会不会失效</td><td>换手机、改显示大小就得重截</td><td>分辨率你自己定死，永久有效</td></tr>
+<tr><td>风险</td><td>游戏检测脚本</td><td>游戏检测脚本 <strong>＋ 检测模拟器</strong></td></tr>
+</table>
+</div>
+<p>真要「全自动、完全不碰手机」，选电脑那一栏。多出来的那点风险是：
+有些游戏会认出模拟器环境。<strong>暗影紀元</strong>这类休闲挂机游戏一般不查，
+但不保证。</p>
+
+<h3>电脑方案要多做的三件事</h3>
+<ol>
+<li><strong>装模拟器</strong>：<a href="https://www.ldplayer.net/">雷电模拟器 LDPlayer</a> 或
+<a href="https://mumu.163.com/">网易 MuMu</a>，都免费。装好后在里面登你的 Google 账号，
+用 Play 商店装
+<a href="https://play.google.com/store/apps/details?id=com.yzzg.mdgame&amp;hl=zh_TW">暗影紀元</a>。
+<span class="muted">进游戏后先把画质、分辨率设定好就别再改了——模板图是按这个分辨率截的。</span></li>
+<li><strong>模拟器里装 AutoX.js</strong>：把下载好的 APK 文件<strong>直接拖进模拟器窗口</strong>就会自动安装。
+之后的步骤（开无障碍、开截图权限、截图裁模板、设定时）跟手机完全一样，照着下面做。</li>
+<li><strong>让电脑到点自动开模拟器</strong>：Windows 搜索「任务计划程序」→ 创建基本任务 →
+每天某个时间 → 启动程序 → 选模拟器的 <code>.exe</code>。模拟器开机后，
+AutoX.js 里设的定时任务会接着把脚本跑起来。
+<span class="muted">雷电和 MuMu 也都自带「定时启动」功能，用哪个都行。</span></li>
+</ol>
+<div class="box warn">
+电脑方案有个手机没有的好处值得说一下：<strong>模拟器窗口的分辨率是你定死的</strong>，
+不会像手机那样因为系统更新、改字体大小而变。模板图截一次就能一直用，
+自检里那条「分辨率对不上」的警告基本不会再出现。
+</div>
+
 <h2>三个脚本各是做什么的</h2>
 <ul class="files">
 <li><code>capture-helper.js</code> —— <strong>准备工具</strong>。帮你查出游戏包名、连续截图、
