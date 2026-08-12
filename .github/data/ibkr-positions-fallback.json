@@ -1,10 +1,19 @@
 {
   "_说明": "Flex Query 拉取失败时早报使用的持仓底数。由 Claude session 用 IBKR 连接器手动同步刷新，不是自动更新的——as_of 距今太久时早报会提示。",
-  "as_of": "2026-08-06",
-  "source": "IBKR MCP 连接器 get_account_positions（Flex Query 因 ErrorCode 1001 连续失效期间的替代来源）",
+  "as_of": "2026-08-12",
+  "source": "IBKR MCP 连接器 get_account_positions（Flex Query ErrorCode 1001 持续失效期间的替代来源；2026-08-12 核对股数与成本价均未变动）",
   "positions": {
-    "IBIT": { "qty": 407.5694, "cost": 38.636 },
-    "VOO":  { "qty": 114.1816, "cost": 550.4563 },
-    "SGOV": { "qty": 32.6428,  "cost": 100.5904 }
+    "IBIT": {
+      "qty": 407.5694,
+      "cost": 38.636
+    },
+    "VOO": {
+      "qty": 114.1816,
+      "cost": 550.4563
+    },
+    "SGOV": {
+      "qty": 32.6428,
+      "cost": 100.5904
+    }
   }
 }
