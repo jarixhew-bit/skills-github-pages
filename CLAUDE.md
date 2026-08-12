@@ -115,10 +115,11 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有十六个，全部挂 CI（2026-08-12 校对过与 `tools/` 一致）：
+   交付时告诉用户自检怎么跑。现有十七个，全部挂 CI（2026-08-12 校对过与 `tools/` 一致）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
+   `check-generated`（查「生成又提交进仓库」的产物有没有跟源文件脱节）/
    `check-gamebot`（＋`check-gamebot-logic.mjs`：把安卓 API 打桩，用假屏幕实跑手机脚本，
    查语法查不出的行为问题）；浏览器类 `check-expense-company.mjs` /
    `check-staff-page.mjs` / `check-inventory.mjs`（跑前要先起
@@ -127,10 +128,8 @@
    沙盒连不上 github.io）＋ `fetch-photos`（抓图通道，结果会写回触发分支）。
    **改完 `expense-tracker.html` 要跑 `tools/` 底下全部 check-\*，不是只跑手上那一个**
    ——同一个文件被两份浏览器自检覆盖，只跑一个就推，另一个会在 CI 上红（2026-08-07 踩过）。
-   **而且要先跑 `python3 tools/build-staff-page.py` 重新生成同事版、再跑检查**：
-   `staff/index.html` 是从 `expense-tracker.html` 生成的，不重生成就跑自检会**全绿骗过你**
-   （自检验的是同事版现有内容，而它还是旧的），CI 上却会被 `build-staff-page.py --check`
-   挡下——它不叫 check-\*，所以照着上面那句「跑全部 check-\*」正好会漏掉（2026-08-12 踩过）。
+   跑全部 check-\* 就够了：生成物脱节由 `check-generated` 守着（2026-08-12 之前那个检查
+   叫 `build-staff-page.py --check`，不合命名规则、照着这句话做正好会漏掉，已改名收编）。
 
 ### 路由表（遇到左边情况，先读右边档案再动手）
 | 情况 | 读这个档 |

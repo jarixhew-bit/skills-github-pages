@@ -27,6 +27,9 @@ RULES = {
     "notify":    ["tools/ci-notify.py", "tools/check-ci-notify.py"],
     "morningpos": [".github/scripts/portfolio_news.py", "trading/analyzer.py",
                    "tools/check-morning-positions.py"],
+    # 生成物漂移：源文件、成品、生成器、登记表，动到任何一个都要重验
+    "generated": ["expense-tracker.html", "staff/**", "tools/build-*.py",
+                  "tools/check-generated.py"],
     "rules":     [".claude/rules/**", ".claude/skills/**", ".claude/agents/**",
                   "skills/**", "CLAUDE.md",
                   "tools/check-rules.py", "tools/check-rule-homes.py"],
