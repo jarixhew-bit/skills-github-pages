@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write   # 改走 PR 自动合并后需要（见「提交数据」步骤的注释）
 
 concurrency:
   group: trading-daily
@@ -51,7 +52,16 @@ jobs:
           AGNES_BASE_URL: ${{ secrets.AGNES_BASE_URL }}
           AI_NOTE_FORCE: ${{ inputs.force_ai_note && '1' || '' }}
         run: python trading/ai_note.py || echo "点评生成失败，沿用上次点评"
+      # 2026-08-11 改成走 PR：main 加了分支保护后，「required status check
+      # all-green」只在 PR 上跑，直接推 main 永远拿不到这个检查、永远被拒
+      # （规则上线当天 6 次全挂，数据停更整个交易日才被发现）。绕过名单里
+      # 找不到 GitHub Actions 可选，所以改由机器人开 PR 自动合并——保护规则
+      # 一条都不放宽，红的东西照样进不了 main。
+      # 纯数据改动只会触发「秘钥扫描」一项（ci-decide.py 的路径规则），
+      # 整个 PR 从开到合并约半分钟。
       - name: 提交数据
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "trading-bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -65,9 +75,32 @@ jobs:
           # （用户 2026-07-18 要求的就是 HTML 页面每小时刷新），不是 bug。
           if git diff --cached --quiet -- trading/history trading/state.enc; then
             echo "行情与持仓底数均无变化，跳过提交"
-          else
-            git commit -m "chore(trading): hourly data update $(date -u +'%F %H:00 UTC')"
-            # 运行期间 main 可能有新合并（2026-07-12 曾因此推送被拒），rebase 后再推
-            git pull --rebase origin main
-            git push
+            exit 0
           fi
+          git commit -m "chore(trading): hourly data update $(date -u +'%F %H:00 UTC')"
+          # 运行期间 main 可能有新合并（2026-07-12 曾因此推送被拒），rebase 后再推
+          git fetch origin main
+          git rebase origin/main
+
+          # 固定分支名：每小时强推同一条，不会累积一堆分支。上一轮的 PR 若还没
+          # 合并完，这次强推会直接更新它，不会开出第二个。
+          BRANCH="bot/trading-data"
+          git push -f origin "HEAD:refs/heads/$BRANCH"
+
+          PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [ -z "$PR" ]; then
+            gh pr create --head "$BRANCH" --base main \
+              --title "chore(trading): 行情数据更新" \
+              --body "由 trading-daily 自动产生：抓行情 → 算信号 → 更新 trading/ 下的数据文件。检查通过后自动合并。"
+            PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          fi
+          echo "PR #$PR"
+
+          # 检查要几秒才注册上来，问太早会拿到「no checks reported」
+          for _ in $(seq 1 12); do
+            gh pr checks "$PR" >/dev/null 2>&1 && break
+            sleep 5
+          done
+          # 检查红了就让这一步失败——数据宁可停更，也不要把坏东西合进 main
+          gh pr checks "$PR" --watch --interval 10
+          gh pr merge "$PR" --squash --delete-branch
