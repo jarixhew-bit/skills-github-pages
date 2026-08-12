@@ -116,8 +116,19 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
   （analyzer.py:561），不是精確值，深度對帳前不要用它算精確損益。
 - `data-private.enc`/`state.enc` 解密密碼與 `expense-tracker.html` 共用同一
   localStorage key `tradingAnalyzerPw`，改其中一邊的密碼機制要考慮另一邊是否受影響。
-- **IBKR Flex `ErrorCode=1001` 的真正根因是 Flex Query 定義本身殘缺，不是排隊衝突**
-  （2026-07-16~18 排查記錄）：一開始誤判是 `trading-daily` 與 `daily-portfolio-news`
+- ⚠️ **`ErrorCode=1001` 遇到先做這一件事：換 `ndcdyn` 主機再送一次**（2026-08-12 查清）。
+  同一個 token、同一分鐘：`gdcdyn` 回含糊的 `1001 Statement could not be generated`，
+  `ndcdyn` 回明確的 **`1018 Too many requests have been made from this token`**。
+  **1001 常常只是限流的偽裝**，而下面兩條「Query 定義殘缺」的結論就是這樣被誤導出來的
+  ——同一個問題誤診三次（2026-07、2026-08 初、2026-08-11），每次都往 Query 定義查。
+  判別法：`python3 tools/flex-doctor.py`（跑在 CI，凭证在 Secret 裡），它會兩台主機都試。
+  當時的用量：trading-daily 每小時抓一次 × 4 次重試 = 36 次/天，加早報 4 次 ≈ 40 次/天，
+  遠超額度；而且**重試本身會加速燒額度**，掉進去爬不出來。修法是「持倉一天不會變，
+  一天只抓兩個時段（UTC 13/20）、重試減到 2 次」，40 次/天 → 6 次/天。
+  另一個一直被忽略的線索：**網頁手動跑得出報表**——網頁走登入 session，不吃 token 額度，
+  所以「網頁行、程式不行」正是限流的典型症狀，不是 Query 壞掉。
+
+- **（已被上一條修正，保留供對照）2026-07-16~18 曾判定根因是 Flex Query 定義殘缺**：一開始誤判是 `trading-daily` 與 `daily-portfolio-news`
   共用同一組 Flex 憑證、實際執行時間點太接近導致 IBKR 報表生成冷卻期衝突，因此把
   `daily-portfolio-news` 的排程改了兩次（先避開 1 小時，再改到用戶指定的柬埔寨 9 點）；
   但改完排程後、手動觸發驗證仍然 100% 失敗（且觸發時間點離另一個 workflow 已超過
