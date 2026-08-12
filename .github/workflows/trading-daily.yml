@@ -18,6 +18,8 @@ on:
 permissions:
   contents: write
   pull-requests: write   # 改走 PR 自动合并后需要（见「提交数据」步骤的注释）
+  issues: write          # Flex 持续失败时开 issue 叫人（见最后一个步骤）
+  statuses: write        # 自己跑完检查后给数据 commit 盖 all-green（见「提交数据」）
 
 concurrency:
   group: trading-daily
@@ -34,11 +36,33 @@ jobs:
       - run: pip install --quiet cryptography requests
       - name: 抓取行情
         run: python trading/fetch_prices.py
+      # 不阻断是对的（沿用旧底数比停更好），但**不能静默**：
+      # 同一个 Flex 故障 2026-07、2026-08 初、2026-08-11 复发三次，每次都是
+      # 工作流全绿、持仓底数偷偷停更，等用户自己发现。所以失败要写进步骤摘要
+      # 与输出，由后面的步骤决定要不要开 issue 叫人。
       - name: IBKR Flex 账户同步（持仓/现金/净值，失败不阻断）
+        id: flex
         env:
           IBKR_FLEX_TOKEN: ${{ secrets.IBKR_FLEX_TOKEN }}
           IBKR_FLEX_QUERY_ID: ${{ secrets.IBKR_FLEX_QUERY_ID }}
-        run: python trading/flex_account.py || echo "Flex 同步失败，沿用上次持仓底数"
+        run: |
+          # pipefail 不可省：没有它，退出码取自 tee，Flex 崩了也会判成成功
+          set -o pipefail
+          if python trading/flex_account.py 2>&1 | tee flex.log; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### ⚠ IBKR Flex 同步失败——持仓底数没有更新"
+              echo
+              echo '行情与信号照常更新，但持仓/现金/净值沿用上一次的底数。'
+              echo
+              echo '```'
+              tail -20 flex.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+        continue-on-error: true
       - name: 运行分析管线
         env:
           ANALYZER_PW: ${{ secrets.ANALYZER_PW }}
@@ -96,11 +120,79 @@ jobs:
           fi
           echo "PR #$PR"
 
-          # 检查要几秒才注册上来，问太早会拿到「no checks reported」
-          for _ in $(seq 1 12); do
-            gh pr checks "$PR" >/dev/null 2>&1 && break
-            sleep 5
-          done
-          # 检查红了就让这一步失败——数据宁可停更，也不要把坏东西合进 main
-          gh pr checks "$PR" --watch --interval 10
+          # 为什么要自己跑检查、自己盖章：GitHub 规定「用 GITHUB_TOKEN 开的 PR
+          # 不会触发任何 workflow」，所以 checks.yml 永远不会在这个 PR 上跑，
+          # 光等 all-green 会等到天荒地老（2026-08-12 实测：机器人开的 PR
+          # check run 数为 0）。所以由本步骤实际跑一遍该跑的检查，通过才盖状态。
+          #
+          # 安全阀：机器人只被允许认证**纯 trading/ 数据**的改动。碰到任何其他
+          # 路径就停下来不盖章——那种改动该走人工 PR、跑完整的 checks.yml。
+          CHANGED=$(git diff --name-only origin/main...HEAD)
+          if echo "$CHANGED" | grep -qv '^trading/'; then
+            echo "::error::这次改动碰到 trading/ 以外的文件，机器人不自己盖章："
+            echo "$CHANGED" | grep -v '^trading/'
+            exit 1
+          fi
+
+          # ci-decide.py 对纯 trading/ 数据改动只选出「秘钥扫描」一项，
+          # 其余八项与这些文件无关（2026-08-12 用它的实际规则验证过）。
+          python3 tools/check-secrets.py
+
+          SHA=$(git rev-parse HEAD)
+          gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$SHA" \
+            -f state=success -f context=all-green \
+            -f description="行情数据更新：已实跑 check-secrets"
           gh pr merge "$PR" --squash --delete-branch
+
+      # Flex 坏了要有人知道。做法：坏了就开 issue（已有开着的就不重复开），
+      # 好了就自动关掉。这样单次抖动最多留下一个会自己关闭的 issue，
+      # 而持续故障永远不会像前三次那样静悄悄地拖上好几天。
+      - name: Flex 故障通知
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="IBKR Flex 同步失败——持仓底数停止更新"
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" \
+                       --json number --jq '.[0].number // empty')
+
+          if [ "${{ steps.flex.outputs.ok }}" = "true" ]; then
+            if [ -n "$EXISTING" ]; then
+              gh issue close "$EXISTING" \
+                --comment "Flex 同步已恢复正常，持仓底数重新开始更新。（由 trading-daily 自动关闭）"
+            fi
+            exit 0
+          fi
+
+          if [ -n "$EXISTING" ]; then
+            echo "已有开着的 issue #$EXISTING，不重复开。"
+            exit 0
+          fi
+          {
+            echo "\`trading-daily\` 的 IBKR Flex 同步失败了。"
+            echo
+            echo "**行情与信号照常更新**，但持仓／现金／净值沿用上一次的底数——"
+            echo "也就是说页面上的股数和净值会停在旧的那一版，不会自己恢复。"
+            echo
+            echo "IBKR 回的原文："
+            echo '```'
+            tail -20 flex.log 2>/dev/null || echo "(没抓到日志)"
+            echo '```'
+            echo
+            echo "## 怎么处理"
+            echo
+            echo "这个故障 2026-07 与 2026-08 各发生过一次，两次根因都是**IBKR 帐户里的"
+            echo "Flex Query 定义残缺**，不是我们这端的问题（排查记录见 \`.claude/notes/trading.md\`）。"
+            echo
+            echo "先去 https://www.interactivebrokers.com/sso/Login → Performance & Reports"
+            echo "→ Flex Queries，把对应的 Query 手动「运行」一次，看它报什么错。"
+            echo "Query 里这三个 Section 必须都在："
+            echo
+            echo "- **Cash Report**：Currency / Starting Cash / Ending Cash / Ending Settled Cash"
+            echo "- **Net Asset Value (NAV) in Base**：至少 Report Date + Cash + Stock + Total"
+            echo "- **Open Positions**：Currency / Asset Class / Symbol / Quantity / Cost Basis Price"
+            echo "  / Position Value / Open Price / Mark Price"
+            echo
+            echo "修好之后这个 issue 会在下一次同步成功时自动关闭。"
+          } > flex-issue.md
+          gh issue create --title "$TITLE" --body-file flex-issue.md
