@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日自动上线签到 · 手机脚本使用说明</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --text: #1c1f23;
+    --muted: #6b7280;
+    --line: #e3e6ea;
+    --accent: #2f6fed;
+    --warn-bg: #fff6e5;
+    --warn-line: #f0b429;
+    --danger-bg: #fdecec;
+    --danger-line: #e05252;
+    --code-bg: #f0f2f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c;
+      --card: #1e2126;
+      --text: #e8eaed;
+      --muted: #9aa2ad;
+      --line: #30343b;
+      --accent: #6a9bff;
+      --warn-bg: #33290f;
+      --warn-line: #c8931f;
+      --danger-bg: #3a1f1f;
+      --danger-line: #d96565;
+      --code-bg: #24272d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px 14px 60px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    line-height: 1.75;
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 8px 0 4px; line-height: 1.4; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  h2 {
+    font-size: 18px;
+    margin: 30px 0 10px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+  h3 { font-size: 16px; margin: 20px 0 6px; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin: 12px 0;
+  }
+  .box {
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 14px 0;
+    font-size: 15px;
+  }
+  .warn { background: var(--warn-bg); border-left: 4px solid var(--warn-line); }
+  .danger { background: var(--danger-bg); border-left: 4px solid var(--danger-line); }
+  code {
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+    word-break: break-all;
+  }
+  pre {
+    background: var(--code-bg);
+    padding: 12px 14px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  pre code { background: none; padding: 0; }
+  .tablewrap { overflow-x: auto; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 460px; }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); font-weight: 600; white-space: nowrap; }
+  .step {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 999px;
+    padding: 1px 11px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-right: 7px;
+  }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); font-size: 14px; }
+  .files { font-size: 15px; }
+  .files li { margin: 9px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>每日自动上线签到</h1>
+<p class="sub">手机端脚本 · 安卓 · 不用电脑、不用 root · 按本页从上往下做一遍即可</p>
+
+<div class="box danger">
+<strong>先说风险，你决定要不要做</strong>
+<ul>
+<li>几乎所有手游的服务条款都<strong>禁止脚本和模拟点击</strong>，被判定为使用外挂可能封号。</li>
+<li>大厂游戏（腾讯、米哈游、网易等）普遍装了反外挂检测，风险明显更高。</li>
+<li>每天只做签到领奖这种低强度操作，被抓的概率不高，但<strong>不等于零</strong>。</li>
+<li>如果这个账号你充过不少钱，建议先想清楚，或者先拿小号试一个月。</li>
+</ul>
+</div>
+
+<h2>为什么只能是「模拟点击」，不能做成真正的机器人</h2>
+<p>真正的机器人（挂在服务器上、手机关机也能跑）需要游戏方提供接口。手游基本都不提供，
+只有网页游戏和少数有官方 API 的游戏可以。所以对手游而言，唯一可行的路是：
+<strong>在你自己的手机上，让一个程序帮你看屏幕、帮你点</strong>。这也是本页做的事。</p>
+<p>因为它靠「看屏幕」工作，所以有两条硬性前提：手机要开着、屏幕要亮着（跑的那几分钟）。
+跑完会自动回桌面。</p>
+
+<h2>需要装什么</h2>
+
+<div class="card">
+<h3>AutoX.js（本页脚本用的就是它）</h3>
+<p>一个能跑 JavaScript 的安卓自动化工具，支持截图找图，免费开源。
+<strong>它不在 Google Play 上</strong>，要去 GitHub 下载安装包：</p>
+<p><a href="https://github.com/kkevsekk1/AutoX/releases">github.com/kkevsekk1/AutoX/releases</a></p>
+<p class="muted">在 Releases 页面找最新版的 <code>.apk</code> 文件下载（通常叫 autoxjs-v7.x.x.apk）。
+安装时安卓会提示「来自未知来源」，允许即可。另有一个持续维护的分支
+<a href="https://github.com/SuperMonster003/AutoJs6/releases">AutoJs6</a>，用法基本一样，两个选一个即可。</p>
+</div>
+
+<div class="card">
+<h3>如果你不想装 APK：Macrorify（Google Play 有）</h3>
+<p>Play 商店里能直接装、同样支持图像识别的替代品是
+<a href="https://play.google.com/store/apps/details?id=com.kok_emm.mobile">Macrorify - Image Auto Clicker</a>。
+它是图形界面操作（录制动作、设定「看到这张图就点」），不写代码，上手更简单。</p>
+<p class="muted">代价是：本页的三个脚本在它上面用不了，逻辑要你自己在它的界面里点出来；
+免费版对宏的长度和定时有限制。适合「不想碰代码」的情况。</p>
+</div>
+
+<h2>三个脚本各是做什么的</h2>
+<ul class="files">
+<li><code>capture-helper.js</code> —— <strong>准备工具</strong>。帮你查出游戏包名、连续截图、
+测试某张模板图找不找得到。第一次配置时用。</li>
+<li><code>selftest.js</code> —— <strong>自检</strong>。检查权限、截图、找图功能是否正常。
+配置前跑一次；以后哪天脚本失灵了，先跑它，它会直接告诉你坏在哪一层。</li>
+<li><code>daily-login.js</code> —— <strong>正式脚本</strong>。每天定时跑的就是它。
+你只需要改它开头的【配置区】。</li>
+</ul>
+
+<h2><span class="step">1</span>装好 AutoX.js，开两个权限</h2>
+<p>这两个权限缺一不可，缺了脚本要么看不见屏幕、要么点不动：</p>
+<ol>
+<li><strong>无障碍服务</strong>：手机 设置 → 无障碍（辅助功能）→ 找到 AutoX.js → 打开。
+<span class="muted">没有它，脚本能看到屏幕但点不动。</span></li>
+<li><strong>截图权限</strong>：脚本第一次运行时会弹「开始截屏/投射」的系统框，点
+<strong>立即开始</strong>。<span class="muted">建议勾上「不再询问」，否则每天都要手动点一次，定时就没意义了。</span></li>
+</ol>
+<div class="box warn">
+另外去 手机设置 → 电池 → 找到 AutoX.js → 设成<strong>不受限制 / 允许后台运行</strong>。
+不设的话系统会在半夜把它杀掉，定时任务就不会触发。这是定时失灵最常见的原因。
+</div>
+
+<h2><span class="step">2</span>把脚本放进手机</h2>
+<p>三个 <code>.js</code> 文件下载到手机后，放进 AutoX.js 的脚本目录
+（一般是 <code>/sdcard/脚本/</code>），或者直接在 AutoX.js 里点「新建脚本」把内容贴进去。</p>
+<p>脚本会用到手机上这几个文件夹，它自己会建，你只要知道东西在哪：</p>
+<div class="tablewrap">
+<table>
+<tr><th>路径</th><th>放什么</th></tr>
+<tr><td><code>/sdcard/game-bot/tpl/</code></td><td><strong>模板小图</strong>（你裁出来的按钮图，最重要）</td></tr>
+<tr><td><code>/sdcard/game-bot/screens/</code></td><td>连拍的整屏截图（用来裁模板）</td></tr>
+<tr><td><code>/sdcard/game-bot/shots/</code></td><td>失败时自动存下的现场截图</td></tr>
+<tr><td><code>/sdcard/game-bot/log.txt</code></td><td>运行日志，每天发生了什么都在这</td></tr>
+</table>
+</div>
+
+<h2><span class="step">3</span>跑 capture-helper.js，查出游戏包名</h2>
+<p>运行 <code>capture-helper.js</code>，选菜单第 <strong>1</strong> 项「查游戏包名」，
+输入游戏名的一部分，从列表里选中你的游戏。它会把包名显示出来并复制到剪贴板，
+形如 <code>com.company.gamename</code>。记下来，等下要填。</p>
+
+<h2><span class="step">4</span>连拍截图，裁出模板小图</h2>
+<p>还是 <code>capture-helper.js</code>，选第 <strong>2</strong> 项「连续截图」。
+点确定后有 8 秒切回游戏，然后<strong>你就正常手动做一遍每日签到</strong>，
+它会每 3 秒拍一张，把整个流程拍下来。</p>
+<p>拍完去相册（或任何图片编辑 App）打开 <code>/sdcard/game-bot/screens/</code> 里的截图，
+把你要脚本点的按钮<strong>单独裁出来</strong>，存成小图放进 <code>/sdcard/game-bot/tpl/</code>。</p>
+
+<div class="box warn">
+<strong>裁图是整件事成败的关键，就这一条要记牢：</strong>
+<ul>
+<li>只裁按钮本身，<strong>裁小一点、裁干净一点</strong>。</li>
+<li><strong>千万别把会变的东西裁进去</strong>：倒计时、剩余次数、红点数字、
+玩家头像、会飘动的特效、渐变的背景。今天长这样明天长那样，脚本就永远找不到了。</li>
+<li>按钮上的固定文字（「签到」「领取」「确定」）是最好的目标，稳定又好认。</li>
+</ul>
+</div>
+
+<p>按照脚本里的示范配置，你需要裁出这几张（<strong>文件名要一模一样</strong>）：</p>
+<div class="tablewrap">
+<table>
+<tr><th>文件名</th><th>裁什么</th><th>没有的话</th></tr>
+<tr><td><code>close.png</code></td><td>开屏广告/公告右上角的关闭 X</td><td>删掉这一步</td></tr>
+<tr><td><code>main.png</code></td><td>主界面上一个固定不变的标志物，用来确认「确实进游戏了」</td><td>建议保留，这是防瞎点的安全阀</td></tr>
+<tr><td><code>signin_entry.png</code></td><td>每日签到的入口按钮</td><td>必须有</td></tr>
+<tr><td><code>claim.png</code></td><td>「领取」按钮</td><td>必须有</td></tr>
+<tr><td><code>claim2.png</code></td><td>「领取」的另一种样子（有些游戏会随机换）</td><td>没有就在配置里删掉它</td></tr>
+<tr><td><code>ok.png</code></td><td>领奖后弹出的「确定」按钮</td><td>删掉这一步</td></tr>
+</table>
+</div>
+
+<p>裁完可以用菜单第 <strong>3</strong> 项「试一张模板图现在找不找得到」当场验一验：
+它会从相似度 0.95 一路试到 0.70，告诉你这张图配多少合适。</p>
+
+<h2><span class="step">5</span>改 daily-login.js 的配置区</h2>
+<p>打开 <code>daily-login.js</code>，只改文件开头【配置区】那一段。至少要改这两处：</p>
+<pre><code>"游戏包名": "com.example.yourgame",   ← 换成第 3 步查到的包名
+"横屏": false,                        ← 横屏游戏改成 true</code></pre>
+<p>然后按你自己的游戏流程，把「步骤」那个清单改成实际要做的动作。可以用的步骤类型：</p>
+<div class="tablewrap">
+<table>
+<tr><th>类型</th><th>做什么</th><th>什么时候用</th></tr>
+<tr><td><code>点图</code></td><td>等这张图出现，出现就点它</td><td>最常用，绝大多数步骤都是它</td></tr>
+<tr><td><code>任选其一</code></td><td>几张图里任何一张出现就点</td><td>弹窗随机、按钮有多种样子时</td></tr>
+<tr><td><code>点掉所有</code></td><td>反复点直到这张图消失</td><td>连续弹出的领奖框、连续「确定」</td></tr>
+<tr><td><code>等图</code></td><td>只等它出现，不点</td><td>确认「确实进到某个界面了」再往下走</td></tr>
+<tr><td><code>点坐标</code></td><td>点固定位置</td><td>实在裁不出模板图时；建议前一步先用「等图」确认界面</td></tr>
+<tr><td><code>等待</code></td><td>纯等几秒</td><td>加载动画、过场</td></tr>
+<tr><td><code>返回</code></td><td>按一次系统返回键</td><td>退出某个子界面</td></tr>
+<tr><td><code>存档</code></td><td>截一张图存起来</td><td>留证据，事后翻看那一刻的画面</td></tr>
+</table>
+</div>
+<p>每一步还有个 <code>必须</code> 开关：填 <code>true</code> 表示这步做不成就<strong>立刻中止并存下现场截图</strong>
+（关键步骤用），填 <code>false</code> 表示找不到就跳过继续（可有可无的步骤用，例如开屏广告）。</p>
+
+<div class="box warn">
+<strong>「必须」这个开关，就是脚本不会瞎点的保证。</strong>
+找不到图的时候它会等待、重试，等不到就按你的设定中止或跳过——
+它<strong>不会</strong>因为找不到就随便点一个地方。所以关键步骤一律填 <code>true</code>。
+</div>
+
+<h2><span class="step">6</span>跑 selftest.js 确认环境正常</h2>
+<p>运行 <code>selftest.js</code>，它会逐项检查并弹窗告诉你结果：</p>
+<ul>
+<li>无障碍服务开了没</li>
+<li>截图权限拿到没</li>
+<li>截到的是不是真实画面（不是黑屏）</li>
+<li>找图功能是否正常——它同时验「找得到」和「找不到时会不会老实说找不到」</li>
+<li>模板图能不能读、尺寸对不对、分辨率跟截图时是否一致</li>
+</ul>
+<p>全绿再往下走。有红的话弹窗里会直接写清楚是哪一层、怎么修。</p>
+
+<h2><span class="step">7</span>手动跑一次 daily-login.js</h2>
+<p>第一次<strong>一定要在旁边看着它跑完整一遍</strong>，别直接设定时。
+看它是不是每一步都点对了。跑完可以翻 <code>/sdcard/game-bot/log.txt</code>，
+里面每一步的结果都有记录。</p>
+<p class="muted">没跑成也不要紧：失败时它会自动把当时的屏幕存进
+<code>/sdcard/game-bot/shots/</code>，打开看一眼就知道卡在哪个画面了。</p>
+
+<h2><span class="step">8</span>设成每天自动跑</h2>
+<p>在 AutoX.js 里长按 <code>daily-login.js</code> → 选「定时任务」→ 设成每天某个时间，
+比如凌晨 3 点。保存即可。</p>
+<div class="box warn">
+<strong>定时不触发，九成是这两件事：</strong>
+① 电池优化没关（第 1 步最后那段）；② AutoX.js 被系统「清理」掉了——
+在最近任务列表里给它上锁（下拉卡片有个锁图标）。
+</div>
+<p>脚本内建「一天只跑一次」：万一定时重复触发，第二次会自己退出，不会重复跑。</p>
+
+<h2>出问题了怎么查</h2>
+<div class="tablewrap">
+<table>
+<tr><th>症状</th><th>多半是</th><th>怎么办</th></tr>
+<tr><td>完全没反应，日志也没有</td><td>定时没触发</td><td>关电池优化、锁住后台，见第 8 步</td></tr>
+<tr><td>日志写「无障碍服务没开」</td><td>系统重启后权限被关</td><td>重新打开；部分机型每次重启都要重开</td></tr>
+<tr><td>日志写「没拿到截图权限」</td><td>授权框没点</td><td>手动跑一次，点「立即开始」并勾不再询问</td></tr>
+<tr><td>日志写「找不到 xxx.png」</td><td>模板图问题（最常见）</td><td>用 capture-helper 第 3 项试找图，按它建议调低「相似度」；还不行就重裁，裁小一点</td></tr>
+<tr><td>某天突然全找不到了</td><td>游戏更新改了界面，或你改过手机「显示大小」</td><td>重新截图重裁模板。自检会提示分辨率对不上</td></tr>
+<tr><td>点是点了但点错地方</td><td>相似度调得太低</td><td>往上调（0.9），并把模板图裁得更有辨识度</td></tr>
+<tr><td>跑到一半卡住</td><td>遇到没配置的弹窗</td><td>看 <code>shots/</code> 里的失败截图，把那个弹窗加成一步</td></tr>
+<tr><td>日志说截到纯色 / 一直停在锁屏</td><td>手机有密码锁，脚本解不开</td><td>脚本只能应付「上滑解锁」。有 PIN/图案/指纹锁的话，把这台手机设成免密，或者让它在屏幕本来就亮着的时候跑</td></tr>
+</table>
+</div>
+
+<h2>想让它顺便发通知给你</h2>
+<p>配置区里有 <code>TG机器人Token</code> 和 <code>TG聊天ID</code> 两栏，填上之后
+每天跑完会发一条 Telegram 消息告诉你成功还是失败。</p>
+<div class="box danger">
+这两个值是私密的，<strong>只填在手机上那一份，不要传回 GitHub 仓库</strong>——
+这个仓库是公开的，填进去等于把机器人送人。仓库里有自动检查守着这一条。
+</div>
+
+<h2>换成另一个游戏怎么办</h2>
+<p>不用改代码，重做一遍第 3～5 步就行：查新游戏的包名、连拍截图、裁新的模板图、
+改配置区的步骤清单。想同时管两个游戏，就把 <code>daily-login.js</code> 复制成两份，
+各自改配置，模板图分别放在不同文件夹里（把脚本里的 <code>模板目录</code> 那行路径改掉）。</p>
+
+<p class="muted" style="margin-top:36px">
+本页与三个脚本都在仓库 <code>game-bot/</code> 目录下。
+脚本改动有 CI 自动检查语法、检查说明书与脚本是否同步、检查私密信息有没有被误提交。
+</p>
+
+</div>
+</body>
+</html>
