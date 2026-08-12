@@ -34,8 +34,12 @@ def fetch_flex_xml():
         ref = root1.findtext("ReferenceCode")
         if ref:
             break
+        # 只印回应本体，绝不印 URL——URL 里带 token。
+        # 2026-08-12：ErrorCode/ErrorMessage 两个字段不足以定位 1001 的成因
+        # （query 手动跑得出来、凭证也有效），所以把整段回应留下来。
         print(f"WARN: SendRequest attempt {attempt+1}:",
               root1.findtext("ErrorCode"), root1.findtext("ErrorMessage"))
+        print(f"      完整回应: {r1.text.strip()[:400]}")
     if not ref:
         sys.exit(1)
     time.sleep(5)
