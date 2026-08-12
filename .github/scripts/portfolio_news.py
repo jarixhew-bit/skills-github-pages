@@ -54,16 +54,21 @@ def score(text):
 
 def fetch_ibkr_positions():
     """IBKR Flex Query 拉取持仓。返回 (positions|None, error_detail|None)
-    ErrorCode 1001「报表暂时无法生成」偶尔是服务端瞬时繁忙，但 2026-07 与 2026-08
-    两次连续多天的 1001，真正原因都是 IBKR 后台的 Flex Query 定义残缺（缺 Section）。
-    判别：连续多天 8/8 全失败 = 去查 Query 定义；偶发一两次 = 服务端繁忙。"""
+    ErrorCode 1001「报表暂时无法生成」有三种成因，2026-08-12 才查清第三种：
+    (1) IBKR Flex Query 定义残缺（2026-07 那次）；
+    (2) 服务端瞬时繁忙（偶发一两次）；
+    (3) **token 请求次数超标**——这是 2026-08 连续失效一个多星期的真正原因。
+        同一个 token 在 ndcdyn 主机会明说 `1018 Too many requests have been
+        made from this token`，gdcdyn 却含糊回 1001，所以查了很久才发现。
+    判别：换 ndcdyn 主机试一次，回 1018 就是额度问题，与 Query 定义无关。
+
+    **重试次数本身就是凶手**：一失败就连打多次，把额度烧得更快，掉进去爬不出来。
+    所以这里只留 2 次、间隔拉长——宁可这次拿不到，也不要毁掉一整天的额度。"""
     base = "https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService"
     ref = None
     last_error = "未知错误"
-    # 1001 若是 Query 定义问题（2026-07/08 两次都是），再怎么重试都不会好，
-    # 长重试只是白等 6 分钟；缩短为 4 次 × 30 秒，够挡住真正的瞬时繁忙即可。
-    MAX_ATTEMPTS = 4
-    RETRY_WAIT   = 30
+    MAX_ATTEMPTS = 2
+    RETRY_WAIT   = 90
     for attempt in range(MAX_ATTEMPTS):
         if attempt:
             time.sleep(RETRY_WAIT)
