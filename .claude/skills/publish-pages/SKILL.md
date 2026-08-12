@@ -19,9 +19,18 @@ description: 把本仓库的改动发布上线（commit、push、开 PR、合并
    注意：网页版 session 的 git 代理不允许 `push --delete`（403）——改用 GitHub MCP 的
    actions_run_trigger 触发 `cleanup-branches.yml` workflow（传入分支名），由 CI 代删；
    它有 main 保护和"内容已在 main"验证，删不掉的会在日志里警告而不是误删。
-6. **验证上线**：等 1-2 分钟 Pages 构建，WebFetch 抓
-   `https://jarixhew-bit.github.io/skills-github-pages/文件名` 确认改动可见。
-   抓不到新内容时先等再重试（Pages 构建有延迟），不要急着回滚。
+6. **验证真的进了 main**：`git show origin/main:路径` 从 remote 读回抽验——工作区正确
+   不代表 commit 进去了。
+   ⚠️ **网页版 session 抓不到 `github.io`**（出口代理 403，见 diagnosis.md），所以
+   「WebFetch 线上网址确认」这一步在云端做不到，别浪费回合去试。线上那一层由
+   `tools/check-live.py` ＋ `live-check.yml` 每天自动验；真实端到端只能请用户开一次。
+   本机 CLI 不受此限，可以直接 WebFetch 验。
+7. **收工时把本地 HEAD 切回 main**：`git fetch origin main && git checkout -B main origin/main`。
+   理由：第 5 步删掉远端分支后，本地还留着一个指向旧分支头的过期远端追踪 ref，平台的
+   Stop hook 拿 `origin/<当前分支>..HEAD` 数提交，会把 squash 后的 main 提交算成
+   「1 个未推送提交」，每轮都误报一次。切回 main 后 upstream 是 origin/main，计数为 0。
+   （光靠 `git fetch --prune` 不够：CI 删分支是异步的，prune 早了过期 ref 会再回来。
+   2026-08-12 实测：造出过期 ref 后 A 法照样误报，B 法安静。）
 
 ## 回复用户
 给完整网址＋一句"刷新即可看到"。对方已有旧链接的，不需要重发文件。
