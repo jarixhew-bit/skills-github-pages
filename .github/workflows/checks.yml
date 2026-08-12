@@ -179,6 +179,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/check-gamebot.py
+      # 步骤引擎的实跑测试：把安卓 API 打桩，用假屏幕真跑一遍 daily-login.js。
+      # 语法检查看不出「板块失败会不会把后面带塌」这类行为问题，这个看得出。
+      - run: node tools/check-gamebot-logic.mjs
 
   # 总闸：给分支保护用的唯一一个必过项目。
   #

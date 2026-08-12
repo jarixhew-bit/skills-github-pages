@@ -92,12 +92,17 @@ def check_no_secrets(errors):
 
 
 def config_template_names(text):
-    """把配置区示范用到的模板图文件名捞出来。"""
+    """把配置区示范用到的模板图文件名捞出来。
+
+    键名一律按「任何以『图』结尾的键」来抓，不写死成 "图"——配置区后来长出了
+    「退出框取消图」这类键，写死的话新键漏进说明书也不会报（2026-08-12）。
+    值必须看起来像图片文件名，才不会把「图列表」以外的东西误当模板名。
+    """
     names = set()
-    for m in re.finditer(r'"图"\s*:\s*"([^"]+)"', text):
+    for m in re.finditer(r'"[^"]*图"\s*:\s*"([^"]+\.(?:png|jpg|jpeg))"', text, re.I):
         names.add(m.group(1))
-    for m in re.finditer(r'"图列表"\s*:\s*\[([^\]]*)\]', text):
-        for n in re.findall(r'"([^"]+)"', m.group(1)):
+    for m in re.finditer(r'"[^"]*图列表"\s*:\s*\[([^\]]*)\]', text):
+        for n in re.findall(r'"([^"]+\.(?:png|jpg|jpeg))"', m.group(1), re.I):
             names.add(n)
     return names
 

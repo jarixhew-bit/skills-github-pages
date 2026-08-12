@@ -118,10 +118,11 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有十四个，全部挂 CI（2026-08-12 校对过与 `tools/` 一致）：
+   交付时告诉用户自检怎么跑。现有十五个，全部挂 CI（2026-08-12 校对过与 `tools/` 一致）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
-   `check-gamebot`；浏览器类 `check-expense-company.mjs` /
+   `check-gamebot`（＋`check-gamebot-logic.mjs`：把安卓 API 打桩，用假屏幕实跑手机脚本，
+   查语法查不出的行为问题）；浏览器类 `check-expense-company.mjs` /
    `check-staff-page.mjs` / `check-inventory.mjs`（跑前要先起
    `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）；
    线上类 `check-live`（每天验线上页面是不是 main 那一版，**只能在 CI 跑**，
