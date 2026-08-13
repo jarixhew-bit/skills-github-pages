@@ -126,9 +126,13 @@
    `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）；
    线上类 `check-live`（每天验线上页面是不是 main 那一版，**只能在 CI 跑**，
    沙盒连不上 github.io）＋ `fetch-photos`（抓图通道，结果会写回触发分支）。
-   **改完 `expense-tracker.html` 要跑 `tools/` 底下全部 check-\*，不是只跑手上那一个**
-   ——同一个文件被两份浏览器自检覆盖，只跑一个就推，另一个会在 CI 上红（2026-08-07 踩过）。
-   跑全部 check-\* 就够了：生成物脱节由 `check-generated` 守着（2026-08-12 之前那个检查
+   **改完 `expense-tracker.html` 要跑全部自检，不是只跑手上那一个**——同一个文件被两份
+   浏览器自检覆盖，只跑一个就推，另一个会在 CI 上红（2026-08-07 踩过）。跑法用
+   **`python3 tools/check-all.py`**（2026-08-13 建立）：并行跑、自动起 http server、
+   自动带 `CHROMIUM_PATH`，实测**79 秒**跑完；一个一个串行跑同样这些要 5~6 分钟。
+   它默认不跑 `check-images`（外链体检，独立 105 秒，CI 每周一自己跑）与 `check-live`
+   （沙盒连不上 github.io），要外链体检加 `--with-network`。
+   跑完全部就够了：生成物脱节由 `check-generated` 守着（2026-08-12 之前那个检查
    叫 `build-staff-page.py --check`，不合命名规则、照着这句话做正好会漏掉，已改名收编）。
 
 ### 路由表（遇到左边情况，先读右边档案再动手）
