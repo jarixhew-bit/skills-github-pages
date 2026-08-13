@@ -4642,7 +4642,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-10';
+const APP_BUILD = '2026-08-12';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -4659,7 +4659,11 @@ const COMPANY_PEOPLE_FALLBACK = [
   {code:'Kuang', label:'Kuang', ownMeals:['Breakfast','Lunch']},
   {code:'Yang', label:'Yang', ownMeals:['Breakfast','Lunch','Dinner']},
 ];
-const COMPANY_CATS_FALLBACK = ['Beverage','Bread','Breakfast','Car Service','Car Wash','Dentist','Dinner','Driver Meal','Lunch','Petrol','Store','Supper'];
+// 只在「从没成功连过 butler、也没有缓存」时才用得到（正本在服务端，随 GET 一起下发）。
+// 顺序照抄服务端的字母序，方便跟那边逐项比对。
+// Phone Recharge（话费充值）2026-08-12 加入——服务端那边也要加，两处不同步的话，
+// 联网的人看得到、离线首次打开的人看不到。
+const COMPANY_CATS_FALLBACK = ['Beverage','Bread','Breakfast','Car Service','Car Wash','Dentist','Dinner','Driver Meal','Lunch','Petrol','Phone Recharge','Store','Supper'];
 const COMPANY_PLATE_CATS_FALLBACK = ['Car Service','Car Wash','Petrol'];
 // 正餐类别，以及这一餐买给老板时该送什么 categoryRaw（正本是 butler 的 BOSS_MEAL_RAW，
 // 随类别清单一起下发）。只在从没成功连过 butler 时才用得到这份兜底。
@@ -4681,6 +4685,9 @@ const COMPANY_CAT_TO_APP = {
   'Parking':'cat_transport', 'Toll Fee':'cat_transport', 'Car Wash':'cat_transport',
   'Petrol':'cat_transport', 'Car Service':'cat_transport',
   'Dentist':'cat_medical',
+  // 话费充值归到个人记账的「通讯 📱」（cat_phone）。不加这一条也不会报错，
+  // 但会掉进 cat_other_exp「其他支出」，月底分类统计里就看不出这笔是什么。
+  'Phone Recharge':'cat_phone',
 };
 
 function renderBuildInfo(){
