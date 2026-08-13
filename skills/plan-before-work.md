@@ -9,10 +9,10 @@
 ## 機械步驟（照順序做，不可跳步）
 1. `git pull`（或 `git fetch origin main`）——另一個環境（本地 CLI / 網頁版）可能已推過改動。
 2. 讀 CLAUDE.md 路由表，判斷這個任務要不要先讀某個 rules 檔：
-   - 要派 subagent → 先讀 `.claude/rules/dispatch.md`
-   - 拿不準完成標準 → 先讀 `.claude/rules/judgment.md`
+   - 要派 subagent → 先讀 `.claude/playbook/dispatch.md`
+   - 拿不準完成標準 → 先讀 `.claude/playbook/judgment.md`
 3. 決定改動落在哪裡（規則見 `skills/repo-organization.md`）：
-   - 新專項 → 開新資料夾；制度 → `.claude/rules/`；私密內容 → ai-vault 仓库，不放本 repo。
+   - 新專項 → 開新資料夾；制度 → `.claude/playbook/`；私密內容 → ai-vault 仓库，不放本 repo。
 4. 用一句話寫下「完成的樣子」＝驗收條件。寫不出來就先問使用者，不要開工。
    例：「usj 頁面新增 3 家餐廳，中英雙語都有，部署後網址打開能看到」——可檢查。
    反例：「把頁面弄好一點」——不可檢查，禁止以此開工。

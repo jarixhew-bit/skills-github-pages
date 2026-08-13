@@ -73,7 +73,7 @@ CLAUDE.md 每次都會載入，但只是路由表。它有用的前提是你**�
    定位，不要重新通讀整個檔案。筆記過時了就順手更新它（這是筆記存活的唯一方式）。
 3. **專屬 agent**：`researcher` 與 `html-editor`（連同原有 `verifier`），方法論
    與高 effort 已燒進定義檔。常設任務優先派它們，見 dispatch.md 第 0 節。
-4. **範例庫**：`.claude/rules/examples.md`，委派 prompt 照範例改詞，重點看每個
+4. **範例庫**：`.claude/playbook/examples.md`，委派 prompt 照範例改詞，重點看每個
    範例後的「為什麼這樣寫」。
 
 搬不動的東西（誠實條款，judgment.md 第 6 節）：品味、模糊需求的一次到位、跨領域

@@ -1,7 +1,7 @@
 # 技能：派工（subagent 委派的機械流程）
 
 ## 目的
-主對話的 context 是最貴的資源。大量讀取塞進主對話 → 觸發自動摘要 → 早期指令遺失 → 開始失焦重複。派工是防止這件事的唯一手段。完整規則在 `.claude/rules/dispatch.md`，本檔是操作摘要。
+主對話的 context 是最貴的資源。大量讀取塞進主對話 → 觸發自動摘要 → 早期指令遺失 → 開始失焦重複。派工是防止這件事的唯一手段。完整規則在 `.claude/playbook/dispatch.md`，本檔是操作摘要。
 
 ## 何時觸發（任一命中就派，不自己動手）
 - 讀 3 個以上檔案，或單次操作預期超過約 200 行進主對話
@@ -11,7 +11,7 @@
 
 ## 機械步驟
 1. 按 dispatch.md 第 4 節選 agent 與 model（搜尋→Explore/haiku；研究/實作→general-purpose/sonnet；驗收→verifier/sonnet）。
-2. 從 `.claude/rules/templates.md` 挑模板，把〔〕填滿。**〔驗收條件〕空著 = 不准派。**
+2. 從 `.claude/playbook/templates.md` 挑模板，把〔〕填滿。**〔驗收條件〕空著 = 不准派。**
 3. 委派 prompt 末尾必加兩句：
    - 回報合約（templates.md 開頭那段：只回結論、長產物落檔給路徑、禁止貼大段原文）
    - **「禁止再派 subagent」**（原因見下方實例）

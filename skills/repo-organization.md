@@ -11,7 +11,7 @@
    → 一律放 `jarixhew-bit/ai-vault`（獨立私有 repo，直推 main 不走 PR，管理規則見該 repo 自己的 CLAUDE.md）。網頁版先用 add_repo 把它加進 session；本地直接 clone/pull。
    → **本 repo 是公開倉庫，私密內容零容忍。** 拿不準算不算私密 → 當私密處理，問使用者。
 2. **對外網頁 / App / 手冊？** → 本 repo，且**必須開獨立資料夾**（參照 `xisui/`、`trading/`）。
-3. **制度規則、給 Claude 的工作指示？** → 本 repo `.claude/rules/`（唯一正本）。
+3. **制度規則、給 Claude 的工作指示？** → 本 repo `.claude/playbook/`（唯一正本）。
 4. **操作技能、交接文件？** → 本 repo `skills/`（本資料夾）。
 5. **臨時檔、中間產物？** → scratchpad（session 專屬臨時目錄），不進任何 repo。
 

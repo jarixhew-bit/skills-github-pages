@@ -11,7 +11,7 @@
    - **輸入錯誤**（網址打錯、路徑不存在、參數名寫錯）→ 修正輸入重跑。這不算方法失敗。
    - **方法失敗**（工具回錯、輸出不對、行為不符預期）→ 記下錯誤訊息原文，允許換一個明顯變體再試一次。
 2. **同樣的錯誤訊息出現第 2 次**：立即停止當前路線。禁止第 3 次原樣重試（CLAUDE.md 鐵律 3）。換路選項按序考慮：
-   a. 換工具（查 `.claude/rules/diagnosis.md` 問題 #2 的工具路由表）
+   a. 換工具（查 `.claude/playbook/diagnosis.md` 問題 #2 的工具路由表）
    b. 換寫法（換語法、換格式、換入口）
    c. 查文件（Context7 / claude-code-guide / WebSearch 官方文件）
    d. 升級模型重派（規則見 dispatch.md 第 6 節：haiku 錯 1 次升 sonnet；sonnet 連錯 2 次升 opus 並附完整失敗軌跡）
@@ -24,4 +24,4 @@
 - 除錯網頁類產出：用 chrome-devtools-mcp 看 console/network，不要瞪著程式碼猜。
 
 ## 本專案實例
-本地 Windows 環境曾用 PowerShell 寫中文檔案，兩次都亂碼（PowerShell 5.1 預設 UTF-16）。錯誤做法是第三次調編碼參數；實際的正確處置是：第 2 次失敗即換路——改用 Write 工具寫檔，並把教訓寫進 `.claude/rules/diagnosis.md` 問題 #3。從此這類問題是「查表」而不是「除錯」。**每個修好的坑都要落檔成規則，否則下個 session 重踩一遍。**
+本地 Windows 環境曾用 PowerShell 寫中文檔案，兩次都亂碼（PowerShell 5.1 預設 UTF-16）。錯誤做法是第三次調編碼參數；實際的正確處置是：第 2 次失敗即換路——改用 Write 工具寫檔，並把教訓寫進 `.claude/playbook/diagnosis.md` 問題 #3。從此這類問題是「查表」而不是「除錯」。**每個修好的坑都要落檔成規則，否則下個 session 重踩一遍。**
