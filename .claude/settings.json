@@ -21,6 +21,8 @@
       "mcp__github__list_branches",
       "mcp__github__create_pull_request",
       "mcp__github__merge_pull_request",
+      "mcp__Claude_Code_Remote__add_repo",
+      "mcp__Claude_Code_Remote__list_repos",
       "WebFetch(domain:jarixhew-bit.github.io)"
     ]
   }
