@@ -110,6 +110,8 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   const book = makeBook();
   // 备用金：测试可以改 petty.row 来摆布服务端回什么（null = 还没设起点）
   const petty = { row: null, fail: false };
+  // 就地改：测试把 editFails 设成 true 就能制造「账本改不成」，用来验本机不会偷偷改掉
+  const edit = { fails: false };
   let mode = offline ? 'offline' : 'online';
   let nextNo = 7;
   await ctx.route('**/*', async route => {
@@ -151,6 +153,16 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
     if (req.action === 'delete')
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
         body: JSON.stringify({ status:'ok' }) });
+    // 就地改（2026-08-13 起服务端有这个动作）：person 按新类别重算，别的字段不动
+    if (req.action === 'edit') {
+      if (edit.fails) return route.fulfill({ status:400, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'error', message:'假服务端故意让这次改失败' }) });
+      const c = String(req.categoryRaw || '');
+      const person = (!/老板|boss/i.test(c) && ['Breakfast','Lunch','Dinner'].includes(c))
+        ? 'Seryi' : 'Boss';
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'ok', record:{ id:req.recordId, person, amountUsd:req.amount } }) });
+    }
     // 认不得的 action 一律拒绝。别把它当成「新增」——真服务端不会那样做，
     // 而且会让「送出了几笔」这类断言被别的请求悄悄污染（踩过：同事版误调 ledger，
     // 假服务端当成新增，单号就多跳了一号）。
@@ -173,7 +185,7 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   const dialogs = [];
   page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
   // book 交出去：测「从公司账本找回记录」时要能摆布服务端手上有哪几笔
-  return { ctx, page, posted, errs, book, dialogs, petty, setMode: m => { mode = m; } };
+  return { ctx, page, posted, errs, book, dialogs, petty, edit, setMode: m => { mode = m; } };
 }
 
 /** 填钥匙进门，返回已经进到主界面的 page。 */
@@ -544,8 +556,10 @@ if (want()) {
   await page.waitForTimeout(1000);
   ok('编辑找回来的那笔，不会再报一次账', !posted.some(x => !x.action),
      posted.map(x => x.action || 'add'));
-  ok('而且明说已送出的改不了', /改不了|cannot be changed|Delete it/i.test(await page.textContent('#toast')),
-     await page.textContent('#toast'));
+  // 2026-08-13 前这里验的是「提示说改不了」；现在改得动了，改成验它走的是 edit——
+  // 要守的那件事没变：找回来的那笔绝不能被当成没报过、再报一次账（上一条断言）。
+  ok('走的是 edit（就地改），不是再报一次账',
+     posted.some(x => x.action === 'edit'), posted.map(x => x.action || 'add'));
   // 编辑时 tx.company 是整个重组的，recordId 不带过来就丢了——丢了以后这笔在 App 里
   // 删不掉公司账本那条（本机没了、账本还留着），找回时也会当成新的再拉一遍
   const ids = await page.evaluate(() =>
@@ -1179,11 +1193,12 @@ if (want()) {
   await h.ctx.close();
 }
 
-// ---------- 【18】已经报上去的那笔不给改 ----------
-// 公司账本没有「改」这个操作（butler 是追加落档，重送会金额翻倍），所以以前编辑
-// 已送出的记录只改本机、账本不动，两边静静分叉——2026-08-08 真出过事（Seryi 8/2
-// 那笔本机 11.76、账本 11.78）。现在从源头断掉：锁住表单，只留删除。
-console.log('\n【18】已经报上去的那笔不给改（改了跟账本会对不上）');
+// ---------- 【18】已经报上去的那笔：改得动，但两边必须一起改 ----------
+// 编辑已送出的记录只改本机、账本不动，两边会静静分叉——2026-08-08 真出过事
+// （Seryi 8/2 那笔本机 11.76、账本 11.78）。当时的解法是锁住表单只留删除；
+// 2026-08-13 服务端有了 action:'edit'，改成「先改账本、成功了才改本机」，
+// 分叉照样挡住（账本改不成就整个不动），而且不用删掉重记。
+console.log('\n【18】已经报上去的那笔：改得动，但账本和本机必须一起改');
 if (want()) {
   const h = await newPage();
   const { page, posted, errs } = h;
@@ -1197,22 +1212,35 @@ if (want()) {
 
   await page.evaluate(id => editTx(id), txId);
   await page.waitForTimeout(500);
-  ok('顶上说明这笔改不了', await page.locator('#tx-sent-lock').isVisible());
-  ok('金额、类别都锁住', await page.evaluate(() =>
-    ['tx-amount', 'tx-company-category'].every(id => document.getElementById(id).disabled)));
-  ok('保存键收起来', !(await page.locator('#tx-save-btn').isVisible()));
-  ok('删除键还在（这才是更正的正路）', await page.locator('#tx-delete-wrap').isVisible());
+  ok('顶上说明哪些能改哪些不能', await page.locator('#tx-sent-lock').isVisible());
+  // 2026-08-13 起金额和类别改得动了（会同步改账本），锁的只剩服务端 edit 不给改的那几栏
+  ok('金额、类别改得动', await page.evaluate(() =>
+    ['tx-amount', 'tx-company-category'].every(id => !document.getElementById(id).disabled)));
+  ok('日期、单据号仍锁着', await page.evaluate(() =>
+    ['tx-date', 'tx-company-reftag'].every(id => document.getElementById(id).disabled)));
+  ok('保存键在（现在按下去是有用的）', await page.locator('#tx-save-btn').isVisible());
+  ok('删除键还在', await page.locator('#tx-delete-wrap').isVisible());
 
-  const n = posted.length;
-  await page.evaluate(() => {
-    const el = document.getElementById('tx-amount');
-    el.disabled = false; el.value = '99.99';   // 模拟表单的锁被绕过去
-    saveTx();
-  });
+  // 先验最要紧的：账本改不成时，本机绝不能偷偷改掉（那就又回到两边分叉）
+  const adds0 = posted.filter(x => !x.action).length;
+  h.edit.fails = true;
+  await page.evaluate(() => { document.getElementById('tx-amount').value = '99.99'; saveTx(); });
   await page.waitForTimeout(700);
-  ok('绕过表单也改不动本机那笔',
+  ok('账本改不成时：本机金额没变',
      await page.evaluate(id => data.transactions.find(t => t.id === id)?.amount, txId) === 6.6);
-  ok('也没有再往账本送一次（重送会翻倍）', posted.length === n, [posted.length, n]);
+  h.edit.fails = false;
+
+  // 账本改成功了，两边才一起变
+  await page.evaluate(() => { document.getElementById('tx-amount').value = '99.99'; saveTx(); });
+  await page.waitForTimeout(700);
+  ok('账本改成功后：本机金额跟着变成 99.99',
+     await page.evaluate(id => data.transactions.find(t => t.id === id)?.amount, txId) === 99.99,
+     await page.evaluate(id => data.transactions.find(t => t.id === id)?.amount, txId));
+  ok('走的是 edit，不是再报一次账', posted.some(x => x.action === 'edit'),
+     posted.map(x => x.action || 'add'));
+  ok('也没有再往账本送一次 add（重送会翻倍）',
+     posted.filter(x => !x.action).length === adds0,
+     [posted.filter(x => !x.action).length, adds0]);
   await page.evaluate(() => closeModal('modal-add-tx'));
 
   // 新记一笔时锁必须是解开的（别把上一笔的状态留着）
