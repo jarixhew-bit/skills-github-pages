@@ -844,13 +844,14 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
         <label class="form-label">谁报的账</label>
         <!-- 选项由 renderCompanyReporterOptions() 从 butler 拿的名册渲染；
              这里留的是拿不到名册时的兜底（正本在 butler 的 config/people.json） -->
-        <select class="form-input" id="tx-company-reporter">
-          <option value="Boss">Boss（老板自己）</option>
+        <select class="form-input" id="tx-company-reporter" onchange="syncCompanyWhoseLabels()">
+          <option value="Yang">Yang</option>
         </select>
         <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
           这是「谁交上来的」，不是最终算谁头上。Excel 分左右两边由 butler 按规则自动算：
-          只有同事<b>自己吃的正餐</b>进右边（每个人算哪几餐见下面括号里的标注），
-          其余一律算公司的、进左边 Boss 表。保存后会告诉你实际进了哪边。
+          只有<b>自己吃的正餐</b>进右边、算他自己（每个人算哪几餐见括号里的标注），
+          其余一律算公司的、进左边 Boss 表。买给老板的餐用下面「这一餐算谁的」挑，
+          不用把报账人改成老板。保存后会告诉你实际进了哪边。
         </div>
       </div>
       <div class="form-group">
@@ -865,12 +866,12 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       <div class="form-group" id="tx-company-whose-wrap" style="display:none">
         <label class="form-label">这一餐算谁的</label>
         <div class="type-tabs" style="margin-bottom:8px">
-          <div class="type-tab active" id="whose-self" onclick="setCompanyWhose('self')">自己吃的</div>
-          <div class="type-tab" id="whose-boss" onclick="setCompanyWhose('boss')">老板的</div>
+          <div class="type-tab active" id="whose-self" onclick="setCompanyWhose('self')">自己吃</div>
+          <div class="type-tab" id="whose-boss" onclick="setCompanyWhose('boss')">老板吃</div>
         </div>
         <div style="font-size:12px;color:var(--sub);line-height:1.6">
-          买给老板的餐选「老板的」，这笔算公司的，进 Excel 左边 Boss 表；
-          选「自己吃的」按原来的规则算——报账人自己的正餐才进右边那张表。
+          买给老板的餐选「老板吃」，这笔算公司的，进 Excel 左边 Boss 表；
+          选「自己吃」的话，报账人自己的正餐进右边那张表、算他自己头上。
         </div>
       </div>
       <!-- 车牌：只在选了汽油/洗车/汽车保养这类项目时出现，哪些类别要车牌由服务端告知 -->
@@ -2762,7 +2763,7 @@ async function saveTxInner(){
       return;
     }
     const categoryEn = document.getElementById('tx-company-category').value;
-    const reporter = document.getElementById('tx-company-reporter').value || 'Boss';
+    const reporter = document.getElementById('tx-company-reporter').value || 'Yang';
     if(!categoryEn){ toast('请选择公司类别'); return; }
     // 收据编号会写进 Excel 的 Bill No. 列，生成时要转成整数——非数字会让整份月度表
     // 生成失败。服务端也拦（那是真闸门），这里先挡一次省得白填一遍。
@@ -4897,7 +4898,8 @@ const COMPANY_CATS_CACHE = 'expenseTracker_companyCats';
 // 拿不到服务端名册时的兜底人员列表（正本是 butler 的 config/people.json）。
 // 只在从没成功连过 butler 时才会用到——连上一次就缓存下来了。
 const COMPANY_PEOPLE_FALLBACK = [
-  {code:'Boss', label:'Boss（老板自己）'},
+  // Boss 不列进来：主 App 的报账人只在名册里的人之间选（2026-08-13 用户要求）。
+  // 买给老板的餐走「这一餐算谁的」那个开关，不靠报账人选 Boss。
   {code:'Seryi', label:'Seryi', ownMeals:['Breakfast','Lunch','Dinner']},
   {code:'Kuang', label:'Kuang', ownMeals:['Breakfast','Lunch']},
   {code:'Yang', label:'Yang', ownMeals:['Breakfast','Lunch','Dinner']},
@@ -5050,7 +5052,7 @@ function syncCompanyTxFields(tx){
 
   renderCompanyReporterOptions(
     (tx && tx.company && tx.company.reporter)
-    || localStorage.getItem(COMPANY_REPORTER_STORAGE) || 'Boss');
+    || localStorage.getItem(COMPANY_REPORTER_STORAGE) || 'Yang');
 
   document.getElementById('tx-company-reftag').value =
     (tx && tx.company && tx.company.refTag) || '';
@@ -5093,7 +5095,13 @@ function getCompanyPeople(){
 function renderCompanyReporterOptions(want){
   const sel = document.getElementById('tx-company-reporter');
   if(!sel) return;
-  const people = getCompanyPeople();
+  // 2026-08-13 用户要求：主 App 的主要使用者是 Yang，报账人清单里拿掉 Boss。
+  // 为什么这是对的而不只是少一个选项：以 Boss 的身份报账，butler 那边 classify 一律
+  // 判成 Boss（Boss 不在名册里、没有 ownMeals），Yang 自己吃的正餐会被记进左边那张
+  // 公司表，而不是右边他自己那栏——选 Boss 等于永远放弃「这一餐算谁的」这个区分。
+  // 买给老板的餐照样报得了：选正餐类别后用「这一餐算谁的」挑「老板吃」，butler 认
+  // 「老板」两字强制归 Boss（forceBoss），走的是原文那条路，不需要 Boss 这个报账人。
+  const people = getCompanyPeople().filter(p => p && p.code !== 'Boss');
   sel.innerHTML = people.map(p=>{
     // 括号里标出这个人哪几餐算他自己，省得记规则（Boss 没有 ownMeals，不标）
     const meals = Array.isArray(p.ownMeals) && p.ownMeals.length
@@ -5101,7 +5109,11 @@ function renderCompanyReporterOptions(want){
     return `<option value="${p.code}">${p.label}${meals}</option>`;
   }).join('');
   const codes = people.map(p=>p.code);
-  sel.value = (want && codes.includes(want)) ? want : 'Boss';
+  // 存过的偏好若是已经拿掉的 Boss（旧版本存下来的），退回 Yang 而不是留空——
+  // 留空的话下面读 .value 会拿到清单第一个人，等于把账记到别人头上
+  sel.value = (want && codes.includes(want)) ? want : (codes.includes('Yang') ? 'Yang' : codes[0]);
+  // 报账人换了，「这一餐算谁的」那两个标签要跟着换（写的是「XX 自己吃」）
+  syncCompanyWhoseLabels();
 }
 function getCompanyCats(){ return getCompanyCatsCache().categories; }
 // 哪些类别要填车牌由服务端说了算（butler 的 PLATE_CATEGORIES），App 不自己判断
@@ -5115,6 +5127,29 @@ function getCompanyMealCats(){
 function bossRawFor(categoryEn){
   const hit = getCompanyMealCats().find(m => m && m.label === categoryEn);
   return (hit && hit.bossRaw) || null;
+}
+
+/**
+ * 把「这一餐算谁的」左边那个标签写成「XX 自己吃」（XX = 当前选的报账人）。
+ * 2026-08-13 用户要求「午餐可以选老板吃还是 yang 自己吃」——写死「Yang」不行，
+ * 报账人还能选 Seryi/Kuang，写死会在替他们报账时指错人；跟着下拉走才永远是对的。
+ */
+function syncCompanyWhoseLabels(){
+  const self = document.getElementById('whose-self');
+  if(!self) return;
+  // 同事版没有报账人下拉（身份由钥匙决定），那边要显示登入的那个人；用 typeof 判断
+  // 是因为 staffIdentity 这个变量只存在于同事版，主 App 直接引用会 ReferenceError
+  const sel = document.getElementById('tx-company-reporter');
+  const who = (typeof staffIdentity !== 'undefined' && staffIdentity && staffIdentity.reporter)
+    ? staffIdentity.reporter
+    : ((sel && sel.value) ? sel.value : 'Yang');
+  // 同事版的中英切换是把 data-zh/data-en 换进 textContent 的（staffApplyLang），
+  // 只改 textContent 的话，切一次语言就被缓存的旧值盖回去——所以照 staffModalTitle
+  // 的做法，两个 dataset 一起更新，再用 tt() 决定当下显示哪一个。
+  // tt 只存在于同事版，主 App 走 typeof 判断退回中文。
+  const zh = `${who} 自己吃`, en = `${who} ate it`;
+  self.dataset.zh = zh; self.dataset.en = en;
+  self.textContent = (typeof tt === 'function') ? tt(zh, en) : zh;
 }
 
 function setCompanyWhose(v){
