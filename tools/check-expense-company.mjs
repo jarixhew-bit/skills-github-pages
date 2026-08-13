@@ -388,14 +388,20 @@ const browser = await chromium.launch(launchOpts);
   // 人名，所以以后加人/改名只改 butler 一处。这里锁住「服务端说谁在册，下拉就有谁」。
   const repOpts = await page.$$eval('#tx-company-reporter option',
     els => els.map(e => ({ v: e.value, t: e.textContent })));
-  ok('下拉框照服务端名册渲染（Boss + 3 位同事）',
-     JSON.stringify(repOpts.map(o=>o.v))===JSON.stringify(['Boss','Seryi','Kuang','Yang']), repOpts);
-  ok('Boss 排第一且标注是老板自己', repOpts[0].t.includes('老板自己'), repOpts[0]);
+  // 2026-08-13 用户要求拿掉 Boss：主 App 的使用者是 Yang，以 Boss 身份报账会让他
+  // 自己吃的正餐也被判成公司的（Boss 不在名册、没有 ownMeals），等于永远放弃
+  // 「这一餐算谁的」这个区分。买给老板的餐改走那个开关，不靠报账人选 Boss。
+  ok('下拉框只列名册里的人，不含 Boss',
+     JSON.stringify(repOpts.map(o=>o.v))===JSON.stringify(['Seryi','Kuang','Yang']), repOpts);
+  ok('预设是 Yang（主 App 的主要使用者）',
+     await page.inputValue('#tx-company-reporter')==='Yang',
+     await page.inputValue('#tx-company-reporter'));
   // 括号里标出各人哪几餐算自己，省得用户去记规则；Kuang 只有早/午，不能写成早/午/晚
-  ok('Seryi 标注早/午/晚餐', repOpts[1].t.includes('自己的 早/午/晚餐进右表'), repOpts[1]);
+  ok('Seryi 标注早/午/晚餐', repOpts[0].t.includes('自己的 早/午/晚餐进右表'), repOpts[0]);
   ok('Kuang 标注早/午餐（不是三餐）',
-     repOpts[2].t.includes('自己的 早/午餐进右表') && !repOpts[2].t.includes('晚'), repOpts[2]);
-  ok('Boss 不带餐别标注（他没有 ownMeals）', !repOpts[0].t.includes('进右表'), repOpts[0]);
+     repOpts[1].t.includes('自己的 早/午餐进右表') && !repOpts[1].t.includes('晚'), repOpts[1]);
+  ok('清单里没有 Boss（买给老板的餐走「这一餐算谁的」那个开关）',
+     !repOpts.some(o=>o.v==='Boss'), repOpts);
 
   await page.fill('#tx-amount', '12.34');
   await page.fill('#tx-desc', '跟客户午餐');
@@ -432,7 +438,9 @@ const browser = await chromium.launch(launchOpts);
   }), { what: '记账弹窗打开' });
   await page.fill('#tx-amount', '6.60');
   await page.selectOption('#tx-company-category', 'Dinner');
-  await page.selectOption('#tx-company-reporter', 'Boss');
+  // 原本这里选 Boss；Boss 已从清单拿掉（2026-08-13），改用 Kuang——他的 ownMeals
+  // 只有早/午餐，选 Dinner 时服务端照样判成 Boss，这一组要验的行为没变
+  await page.selectOption('#tx-company-reporter', 'Kuang');
   const _sent2 = posted.length;
   await page.evaluate(()=>saveTx());
   await until(() => posted.length > _sent2, { what: '这一笔送到服务端' });

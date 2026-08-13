@@ -257,7 +257,7 @@ def build(src: str) -> str:
                      "  if(!cloudAvailable) return;",
                      "  return;   // 同事版不接云同步（没有登录入口），公司账走 butler 那条路", "云同步")
     # 身份由钥匙决定：页面上没有「谁报的账」，这里也不许从 DOM 读
-    s = replace_once(s, "    const reporter = document.getElementById('tx-company-reporter').value || 'Boss';",
+    s = replace_once(s, "    const reporter = document.getElementById('tx-company-reporter').value || 'Yang';",
                      "    // 身份由钥匙决定（服务端也以钥匙为准、忽略这个字段），页面上没得选也就选不错\n"
                      "    const reporter = staffIdentity ? staffIdentity.reporter : 'Boss';",
                      "报账人")
@@ -320,10 +320,12 @@ STAFF_LABELS = [
     ('<button type="button" class="btn btn-sm" id="tx-amount-ok" onclick="confirmAmount()"\n'
      '          style="flex:none;width:auto;padding:4px 12px;background:#e67e22;color:#fff">对的</button>',
      "It&#39;s right"),
-    ('<div class="type-tab active" id="whose-self" onclick="setCompanyWhose(\'self\')">自己吃的</div>',
+    # 「自己吃」这个标签在页面跑起来后会被 syncCompanyWhoseLabels 改写成「XX 自己吃」
+    # （XX = 登入的那个人），这里的静态 data-en 只是它被改写之前的样子
+    ('<div class="type-tab active" id="whose-self" onclick="setCompanyWhose(\'self\')">自己吃</div>',
      "I ate it"),
-    ('<div class="type-tab" id="whose-boss" onclick="setCompanyWhose(\'boss\')">老板的</div>',
-     "The Boss"),
+    ('<div class="type-tab" id="whose-boss" onclick="setCompanyWhose(\'boss\')">老板吃</div>',
+     "The Boss ate it"),
     ('<label class="form-label">车牌号</label>', "Plate number"),
     ('<button class="btn btn-primary" id="tx-save-btn" onclick="saveTx()">保存</button>', "Save"),
     # add_en 把 data-en 加在这段的第一个 '>' 上，也就是 div 的开标签末尾——所以锚点
@@ -375,11 +377,11 @@ LABEL_REWRITES = [
      "车牌说明"),
     # 「这一餐算谁的」的说明：老板 App 那边讲的是「报账人」（他能替别人记账），
     # 同事版没有那个下拉、报账人永远是他自己，照抄过来会看不懂，所以整段换成他的口径。
-    ('          买给老板的餐选「老板的」，这笔算公司的，进 Excel 左边 Boss 表；\n'
-     '          选「自己吃的」按原来的规则算——报账人自己的正餐才进右边那张表。',
-     '          <span data-en="Buying a meal for the Boss? Pick &quot;The Boss&quot; — it goes on the '
+    ('          买给老板的餐选「老板吃」，这笔算公司的，进 Excel 左边 Boss 表；\n'
+     '          选「自己吃」的话，报账人自己的正餐进右边那张表、算他自己头上。',
+     '          <span data-en="Buying a meal for the Boss? Pick &quot;The Boss ate it&quot; — it goes on the '
      'company\'s side. Your own meal stays on yours.">'
-     '买给老板吃的那餐选「老板的」，算公司的账；你自己吃的选「自己吃的」，算你的。</span>',
+     '买给老板吃的那餐选「老板吃」，算公司的账；你自己吃的选「自己吃」，算你的。</span>',
      "这一餐算谁的 说明"),
     # placeholder 不是 textContent，staffApplyLang 另外用 data-en-ph 处理
     ('placeholder="例：NS6868"', 'placeholder="例：NS6868" data-en-ph="e.g. NS6868"', "车牌提示字"),
