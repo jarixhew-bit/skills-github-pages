@@ -16,7 +16,11 @@ effort: high
 
 修改时的硬规则：
 - 手册卡片必须带图和中英说明，图片用 Google Places 外链，不下载图片文件进仓库。
-- 双语文案一律 data-zh/data-en 成对；外语行话按 CLAUDE.md 双语规则本地化（店名/通用词除外）。
+- 双语文案照抄该页现有写法，不要自创：手册页（japan-trip / boss-dinner / usj-disney /
+  singapore-trip）一律 `<span class="cn">…</span><span class="en">…</span>` 成对；
+  expense-tracker／staff 走 JS 的 `tt()` 与 `LABEL_REWRITES`（静态标签才用 `data-en`）。
+  **`data-zh` 全仓库 0 处，别再写它**（2026-08-12 更正：本档原本写「一律 data-zh/data-en」，
+  照着做会在手册页里造出跟全页不一致的结构）。外语行话按 CLAUDE.md 双语规则本地化（店名/通用词除外）。
 - 语言偏好只许写 localStorage key `siteLangUser`。
 - PWA 页面（expense-tracker、xisui、fortune）改了内容必须同步升 Service Worker 缓存版本号，
   位置见对应结构笔记。

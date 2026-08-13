@@ -28,13 +28,15 @@ templates.md 给的是空模板；本档给**填好的完整范例**，任务相
 
 ```
 目标：把 japan-trip-2026.html 里 D03 晚餐的「某某烧肉」卡片整张替换为「新店名」。
-修改前→修改后范例：卡片结构照抄同页 D02 晚餐卡片（锚点 class="food-card"），
+修改前→修改后范例：卡片结构照抄同页上一张行程点卡片（锚点 <div class="stop">，
+里面依序是 pin／h4 店名＋star 评分／gal 图库／desc 描述／chips 标签／btn-map 地图链接），
 店名/图片/中英描述/地图链接四处都换，其他保持原结构。
 动机：用户说原店已歇业。手册已发给家人，改坏排版他们会直接看到。
 输入材料：新店信息见〔来源 URL 或用户原话〕；卡片图片用 Google Places 外链
 （做法见 skills/media-files.md）；结构锚点见 .claude/notes/travel-pages.md。
 验收条件：
-- 新卡片含图片＋中英双语描述（data-zh/data-en 成对），四处信息全部替换、无旧店残留
+- 新卡片含图片＋中英双语描述（双语一律写成 <span class="cn">…</span><span class="en">…</span>
+  成对，不是 data- 属性），四处信息全部替换、无旧店残留
   （全文搜索旧店名确认为 0 处）
 - python3 tools/check-html.py japan-trip-2026.html 输出"通过"
 - 不动 D03 晚餐卡片以外的任何内容
@@ -48,10 +50,10 @@ templates.md 给的是空模板；本档给**填好的完整范例**，任务相
 ## 范例 3：验收（agent: verifier）
 
 ```
-待验物：japan-trip-2026.html 的 D03 晚餐卡片（锚点 class="food-card"，搜"新店名"定位）。
+待验物：japan-trip-2026.html 的 D03 晚餐卡片（锚点 <div class="stop">，搜"新店名"定位）。
 背景：这是 html-editor agent 为了替换歇业餐厅做的修改，你没看过过程，请以全新视角检查。
 原始验收条件：
-- 新卡片含图片＋中英双语描述（data-zh/data-en 成对），无旧店名残留
+- 新卡片含图片＋中英双语描述（<span class="cn"> / <span class="en"> 成对），无旧店名残留
 - python3 tools/check-html.py japan-trip-2026.html 输出"通过"（请实际重跑）
 - D03 晚餐卡片以外的内容无改动（git diff 确认）
 额外要求：依你的 agent 定义检查文件存在性、引用真实性。
