@@ -68,6 +68,9 @@
   git checkout -B <分支> origin/main`）。不重置就繼續 commit，分支同時帶著合併前的舊 commit 和新改動，
   PR 開出來是 `mergeable_state: dirty`，而 **GitHub 對衝突的 PR 不跑任何檢查**（看起來像卡住）。
   判別法：開 PR 後遲遲沒有檢查記錄，先查 `mergeable_state`，別懷疑 workflow 配置。(3) 已踩三次。
+  (4) **CI 綠了要當場合併，別「等下再回來」**：一個 session 連做好幾件事時，開完 PR 就地等幾分鐘、
+  綠了立刻合併＋刪分支，再開始下一件。2026-08-13 開了 #400 就轉頭做下一件，等使用者反問
+  「怎麼 Boss 還在」才發現 PR 躺著沒合、他以為功能沒做。真要並行，收工前逐一核對每個 PR 的狀態。
 - [2026-07-13／2026-08-03／2026-08-12][雲端] 情境：想確認改動「真的上線了／真的提交進去了」，
   或需要沙盒連不到的外部資料。教訓：沙盒出口代理**擋掉一票外部站**——`github.io`、`*.workers.dev`
   （403）、`play.google.com` 與 apkcombo 等 APK 鏡像（EGRESS_BLOCKED）。另外 `raw.githubusercontent`
@@ -100,6 +103,9 @@
   (4) `node xxx | tee out.txt` 的退出码取自 `tee`，脚本崩了照样显示成功——**管道一律 `set -o pipefail`**；
   而仓库 `package.json` 若是 `type: module`，`.js` 里的 `require` 直接失效（要写成 `.mjs`）。
   两件叠起来 CI 绿了三分钟其实什么都没跑。`type: module` 这条已踩两次。
+  (6) 往既有自检档案**尾巴**追加断言：贴在「总结＋process.exit」那两行之后的断言照样跑、照样印 ✅，
+  但不计入通过数、也不影响退出码，等于白写（2026-08-13 追加 8 项路税断言，印出来全绿，总结停在 66 项）。
+  追加前先 grep `process.exit` 定位，插到它之前；跑完看总结那行的数字有没有跟着变大。
   (5) 「双击生出两条一样的记录」这类闸门自测通过、真机仍重复：双击是两个各自跑到底的事件不是竞态，
   加解锁在同一执行栈内做完等于没挡，要用 `setTimeout` 延后解锁；测法必须 `el.click(); el.click();`
   连打两下（`page.evaluate` 连调两次是顺序调用、Playwright `page.click()` 会等元素可操作，都测不出来）。

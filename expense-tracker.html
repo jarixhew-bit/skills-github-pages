@@ -651,6 +651,20 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
     </div>
     <div id="company-token-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
     <div id="company-queue-status" style="font-size:12px;margin-top:8px"></div>
+    <!-- 从公司账本把某个人本月记过的账找回这台 App（2026-08-13 加）：Yang 之前用同事版
+         记账，转用主 App 后那些记录只在公司账本里、这台 App 的清单看不到。已经有的不会
+         重复加（靠公司账本那条记录的 id 比对）。 -->
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
+        从公司账本找回本月的记录：把某个人这个月记过的账拉进这台 App 的清单
+        （之前用同事版记的、或换手机之后清单空了，用这个补回来）。已经有的不会重复加。
+      </div>
+      <div style="display:flex;gap:8px">
+        <select class="form-input" id="import-reporter-select" style="flex:1"></select>
+        <button class="btn btn-outline btn-sm" onclick="importMyCompanyRecords()">找回本月</button>
+      </div>
+      <div id="import-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+    </div>
   </div>
   <div class="setting-section">
     <div class="setting-title">同事投递箱</div>
@@ -2216,6 +2230,7 @@ function renderSettings(){
   renderSettingsRecurring();
   renderAiKeyStatus();
   renderCompanySettings();
+  renderImportReporterOptions();
   renderInboxSettings();
   renderBuildInfo();
 }
@@ -4973,6 +4988,95 @@ async function forceReload(){
 function getCompanyToken(){ return (localStorage.getItem(COMPANY_TOKEN_STORAGE) || '').trim(); }
 
 /**
+ * 从公司账本把某个人本月记过的账找回这台 App。
+ *
+ * 起因（2026-08-13）：Yang 一直用同事版记账，改用主 App 之后，他之前记的那些只存在
+ * 公司账本里，这台 App 的清单是空的。逻辑照抄同事版的 staffRestore——那条路已经跑了
+ * 一段时间，重复/归属/类别几个坑都踩过了，不要另写一套。
+ *
+ * 三条不能破的规矩：
+ * 1. 拉回来的一律 status:'sent' + 带上 recordId。少了 sent 会被当成还没报过，一编辑
+ *    就再送一次账本，金额直接翻倍；少了 recordId 则在 App 里删不掉账本那条。
+ * 2. 已经有的不再加一遍——用账本那条记录的 id 比对，不是按金额日期猜。
+ * 3. 只拉不推：这个动作绝不往账本写任何东西。
+ */
+async function importMyCompanyRecords(){
+  const note = document.getElementById('import-status');
+  const say = (s) => { if(note) note.textContent = s; };
+  const token = getCompanyToken();
+  if(!token){ say('还没填公司报账密钥，先在上面填好再按'); return; }
+  const sel = document.getElementById('import-reporter-select');
+  const reporter = (sel && sel.value) || 'Yang';
+
+  say('正在从公司账本找回…');
+  let body;
+  try{
+    const res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'mine', token, reporter, month: today().slice(0,7) })
+    });
+    body = await res.json();
+    if(!res.ok || !body || body.status !== 'ok') throw new Error((body && (body.message||body.error)) || res.status);
+  }catch(e){
+    say(`没找回成：${(e && e.message) || e}`);
+    return;
+  }
+
+  const acc = (data.accounts || []).find(a => a.isCompany) || data.accounts[0];
+  if(!acc){ say('还没有账户可以放这些记录'); return; }
+  const have = new Set((data.transactions || [])
+    .filter(t => t.company && t.company.recordId).map(t => t.company.recordId));
+  let added = 0;
+  for(const r of (body.records || [])){
+    if(!r || !r.id || have.has(r.id)) continue;
+    data.transactions.push({
+      id: uid(),
+      accountId: acc.id,
+      amount: Number(r.amountUsd) || 0,
+      type: 'expense',
+      // 车牌类项目账本里存成 "Petrol (2AB-1234)"，去掉括号那截才对得上 App 的类别表
+      categoryId: COMPANY_CAT_TO_APP[r.categoryEn]
+        || COMPANY_CAT_TO_APP[String(r.categoryEn || '').replace(/\s*\(.*\)$/, '')]
+        || 'cat_other_exp',
+      description: r.note || '',
+      date: r.date,
+      updatedAt: Date.now(),
+      company: {
+        reporter: body.reporter,
+        categoryEn: r.categoryEn,
+        refTag: r.billNo || null,
+        plate: null,
+        rawAmount: Number(r.amountUsd) || 0,
+        rawCurrency: 'USD',
+        note: r.note || null,
+        // side 是账本算的「进 Excel 左边还是右边」，拉回来只用于显示
+        person: r.side === 'assist' ? body.reporter : 'Boss',
+        status: 'sent',          // ← 见上面第 1 条，改这里会导致重复记账
+        recordId: r.id,
+        error: null,
+      },
+    });
+    added++;
+  }
+  if(added) saveData();
+  say(added ? `已找回 ${added} 笔（${body.reporter}）` : `都在了，没有要找回的（${body.reporter}）`);
+  if(state.currentTab==='overview') renderOverview();
+  if(state.currentTab==='transactions') renderTxList();
+  if(state.currentTab==='analytics') renderAnalytics();
+}
+
+/** 「找回本月」旁边那个人名下拉：跟报账人清单同一份名册 */
+function renderImportReporterOptions(){
+  const sel = document.getElementById('import-reporter-select');
+  if(!sel) return;
+  const people = getCompanyPeople().filter(p => p && p.code !== 'Boss');
+  const keep = sel.value;
+  sel.innerHTML = people.map(p => `<option value="${p.code}">${p.label} 记的</option>`).join('');
+  const codes = people.map(p => p.code);
+  sel.value = codes.includes(keep) ? keep : (codes.includes('Yang') ? 'Yang' : codes[0]);
+}
+
+/**
  * 按当前账户是不是公司账户，显示/隐藏公司报账字段并填好选项。
  * 编辑已有记录时把 tx 传进来回填。
  */
@@ -5216,6 +5320,8 @@ async function refreshCompanyCategories(){
         // 旧版服务端不返回 people，这时存 [] → getCompanyPeople() 会退回内建兜底名单。
         people: Array.isArray(body.people) ? body.people : []
       }));
+      // 名册可能变了（加人/改名），设置页那个「找回本月」的人名下拉跟着重画
+      renderImportReporterOptions();
     }
   }catch(e){ /* 离线或服务端没开，用缓存/兜底，不打扰用户 */ }
 }
