@@ -743,11 +743,15 @@ body.staff-boss #staff-boss-cash{display:block}
       <div class="type-tab active" id="type-exp" onclick="setTxType('expense')">支出</div>
       <div class="type-tab" id="type-inc" onclick="setTxType('income')">收入</div>
     </div>
-    <!-- 已经报进公司账本的那笔：整张表单锁起来，只留删除（见 applyCompanyLock()）。
-         2026-08-08 起加的：在这之前本机改得动、账本改不动，两边会静静分叉。 -->
+    <!-- 已经报进公司账本的那笔：只锁改不动的那几栏（见 applyCompanyLock()）。
+         2026-08-08 起整张表单是锁死的（那时公司账本没有「改」这个操作，本机改得动、
+         账本改不动会静静分叉）；2026-08-13 服务端加了 action:"edit"，金额/类别/备注/
+         车牌可以就地改并同步过去，所以只剩日期、报账人、单号仍锁着——那三样服务端
+         不给改（单号是纸本单据上手写的号，改了对不上）。 -->
     <div id="tx-sent-lock" style="display:none;padding:10px 12px;background:rgba(230,126,34,.12);
-      border-radius:10px;margin-bottom:14px;font-size:12px;color:#e67e22;line-height:1.6" data-en="🔒 This one is already filed to the company ledger and cannot be edited. To correct it, tap Delete below and enter it again.">
-      🔒 这笔已经报进公司账本了，改不了——要更正请按下面的「删除此记录」，然后重新记一次。
+      border-radius:10px;margin-bottom:14px;font-size:12px;color:#e67e22;line-height:1.6" data-en="✏️ This one is already filed to the company ledger. Changing the amount, category, description or plate number updates the company ledger too. The date, reporter and bill number cannot be changed — to change those, delete it and enter it again.">
+      ✏️ 这笔已经报进公司账本了。改<b>金额、类别、描述、车牌</b>会一起改掉公司账本那边；
+      <b>日期、报账人、单号</b>不能改——要改那三样请删掉重记。
     </div>
     <!-- attachment (moved above amount: photographing the receipt first lets
          the scan workflow prefill the fields below, instead of retyping them) -->
@@ -2448,13 +2452,16 @@ function showSaveNote(msg, kind){
  * 调用方式（例如脚本、测试直接呼叫 saveTx()），那种调用不会被浏览器的原生
  * disabled 拦截，得自己查一遍。
  */
-function saveTx(){
+async function saveTx(){
   const btn = document.getElementById('tx-save-btn');
   if(btn && btn.disabled) return;
   if(btn) btn.disabled = true;
   showSaveNote('');
   try{
-    saveTxInner();
+    // await：已送进公司账本的那笔要先等服务端改完才动本机（见 saveTxInner 里的
+    // editSentCompanyTx）。其余情况 saveTxInner 仍是全程同步，await 一个非 Promise
+    // 只多一个微任务，行为不变。
+    await saveTxInner();
   }catch(e){
     const msg = (e && e.message) ? e.message : String(e);
     console.error('saveTx 出错:', e);
@@ -2465,15 +2472,14 @@ function saveTx(){
   }
 }
 
-function saveTxInner(){
-  // 已经报进公司账本的那笔不给改（理由见 applyCompanyLock）。表单那边已经锁住了，
-  // 这里是第二道闸门——防的是绕过 UI 的路径（旧版页面、脚本、以后新加的入口）。
+async function saveTxInner(){
+  // 已经报进公司账本的那笔走专门的「就地改」路线：先改公司账本那条，成功了才动本机。
+  // 顺序跟删除一样是刻意的（见 deleteCompanyRecord）——反过来会留下「本机改了、公司
+  // 账本还是旧的」，正是这条路要消灭的分叉。
   if(state.editingTxId){
     const prev = data.transactions.find(t=>t.id===state.editingTxId);
     if(prev && prev.company && prev.company.status === 'sent'){
-      toast(tt('这笔已经报进公司账本了，改不了——请删掉重记',
-               'Already filed to the company ledger — delete it and enter it again'));
-      return;
+      return editSentCompanyTx(prev);
     }
   }
   const amt0 = readAmountInput();
@@ -2544,9 +2550,10 @@ function saveTxInner(){
       toast('车牌号只能是字母、数字、空格或连字号'); return;
     }
     localStorage.setItem(COMPANY_REPORTER_STORAGE, reporter);
-    // 已经送进公司账本的那笔，编辑后**绝对不能再送一次**——butler 的 saveRecords 是
+    // 已经送进公司账本的那笔，编辑后**绝对不能再走一次 add**——butler 的 saveRecords 是
     // 往月度账本里 push 追加（不是按 id 覆盖），再送一次就多一条重复记录，金额直接翻倍。
-    // 公司账本没有"改"这个操作，要改只能在 Telegram 里删掉重记。
+    // 要改走 action:"edit"（就地改，见 editSentCompanyTx），那条路在函数开头就分流走了，
+    // 正常情况下跑不到这里；下面 alreadySent 那几支是最后一道防重复记账的保险。
     const prevCompany = state.editingTxId
       ? (data.transactions.find(t=>t.id===state.editingTxId)||{}).company
       : null;
@@ -4642,7 +4649,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-12';
+const APP_BUILD = '2026-08-13';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -4732,20 +4739,36 @@ function getCompanyToken(){ return (localStorage.getItem(COMPANY_TOKEN_STORAGE) 
  * 只锁 status==='sent' 的：pending（排队等送）和 failed（服务端退回）那两种账本里
  * 还没有这一笔，随便改，队列送出去的是改完的版本。
  */
+/**
+ * 已经报进公司账本的那笔，表单该锁哪几栏。
+ *
+ * 2026-08-13 起不再整张锁死：服务端有了 action:"edit"（就地改），金额/类别/描述/车牌
+ * 改了会同步改到公司账本。仍然锁着的只有三栏——服务端的 edit 刻意不给改它们：
+ * - 日期：换月份等于换一个账本文件，那是「删掉重记」的事；
+ * - 报账人：改了归属和权限校验都要跟着变，风险不值这个便利；
+ * - 单号：纸本单据上是手写的号，改了纸和 Excel 就对不上。
+ * 收据照片也仍然不给换（edit 不碰 photoPath），所以拍照那排继续藏起来。
+ */
 function applyCompanyLock(locked){
   const box = document.getElementById('tx-sent-lock');
   if(box) box.style.display = locked ? 'block' : 'none';
+  // 保存键不再随锁隐藏——已送出的那笔现在也要能按保存（走 edit 那条路）
   const saveBtn = document.getElementById('tx-save-btn');
-  if(saveBtn) saveBtn.style.display = locked ? 'none' : '';
-  ['tx-amount','tx-riel-toggle','tx-desc','tx-date','tx-company-reporter',
-   'tx-company-category','tx-company-plate','tx-company-reftag'].forEach(id=>{
+  if(saveBtn) saveBtn.style.display = '';
+  ['tx-date','tx-company-reporter','tx-company-reftag'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.disabled = locked;
+  });
+  // 可以改的那几栏要主动解锁：同一个表单会被反复复用，上一次开的是已送出那笔时
+  // 这些栏位被停用过，不解开的话下一次开新记录就打不了字（2026-08-13 加 edit 时的坑）
+  ['tx-amount','tx-riel-toggle','tx-desc','tx-company-category','tx-company-plate'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.disabled = false;
   });
   // 这几个不是 input，disabled 对它们无效，只能挡点击
   ['whose-self','whose-boss'].forEach(id=>{
     const el = document.getElementById(id);
-    if(el){ el.style.pointerEvents = locked ? 'none' : ''; el.style.opacity = locked ? '.5' : ''; }
+    if(el){ el.style.pointerEvents = ''; el.style.opacity = ''; }
   });
   const attach = document.getElementById('attach-btn-row');
   if(attach) attach.style.display = locked ? 'none' : '';
@@ -4991,6 +5014,121 @@ async function companyPhotoFields(tx){
     if(comma < 0) return {};
     return {photoBase64: dataUrl.slice(comma+1), photoMime: blob.type || 'image/jpeg'};
   }catch(e){ return {}; }
+}
+
+/**
+ * 改一笔已经报进公司账本的记录：先改公司账本那条，成功了才改本机。
+ *
+ * 顺序跟 deleteCompanyRecord 一样是刻意的——先远端后本机，网络不通就整个中止、两边
+ * 都不动。反过来会留下「本机改了、公司账本还是旧的」，而那正是这条路要消灭的分叉。
+ *
+ * 只送服务端允许改的那几样（金额/类别/备注/车牌）。日期、报账人、单号、收据照片
+ * 服务端的 edit 不碰，表单那三栏也锁着（见 applyCompanyLock）。
+ */
+async function editSentCompanyTx(prev){
+  const amt0 = readAmountInput();
+  if(amt0.shown === ''){ toast(tt('请输入金额（可以填 0）','Please enter an amount (0 is fine)')); return; }
+  const rawAmt = amt0.num;
+  if(isNaN(rawAmt) || rawAmt <= 0){
+    showSaveNote(`金额看不懂：「${amt0.shown}」——请只填数字，小数点用「.」（例：5.45）`);
+    toast('金额格式不对，看保存按钮上方那行字'); return;
+  }
+  const categoryEn = document.getElementById('tx-company-category').value;
+  if(!categoryEn){ toast(tt('请选择公司类别','Please choose a category')); return; }
+  const needsPlate = getCompanyPlateCats().includes(categoryEn);
+  const plateRaw = (document.getElementById('tx-company-plate').value||'').trim().toUpperCase();
+  if(needsPlate && !plateRaw){ toast(tt(`${categoryEn} 要填车牌号`,`${categoryEn} needs a plate number`)); return; }
+  if(needsPlate && !/^[A-Z0-9][A-Z0-9 -]{0,14}$/.test(plateRaw)){
+    toast('车牌号只能是字母、数字、空格或连字号'); return;
+  }
+  // 描述和金额的算法照抄 saveTxInner：瑞尔模式下本机存美元、描述后面缀上原始瑞尔数字，
+  // 送给服务端的则是原始金额+币种（换算由服务端做）。两处算法必须一样，不然改完之后
+  // 本机显示的金额会跟公司账本那边对不上。
+  let description = (document.getElementById('tx-desc').value||'').trim();
+  if(state.rielMode){
+    const rielNote = `${rawAmt.toLocaleString()}៛`;
+    description = description ? `${description}（${rielNote}）` : rielNote;
+  }
+  const bossRaw = (state.companyWhose === 'boss') ? bossRawFor(categoryEn) : null;
+  const rawCurrency = state.rielMode ? 'KHR' : ((curAcc()||{}).currency || 'USD');
+  const categoryRaw = bossRaw || categoryEn;
+
+  // 没有任何改动就别打扰服务端——直接关掉，跟按取消一样
+  const same = prev.company.categoryEn === categoryEn
+    && (prev.company.bossRaw||null) === (bossRaw||null)
+    && Number(prev.company.rawAmount) === Number(rawAmt)
+    && (prev.company.rawCurrency||'USD') === rawCurrency
+    && (prev.company.note||'') === description
+    && (prev.company.plate||'') === (needsPlate ? plateRaw : '');
+  if(same){ toast(tt('没有改动','Nothing changed')); closeModal('modal-add-tx'); return; }
+
+  if(!prev.company.recordId){
+    toast(tt('这笔是旧版本记的，没存下公司账本里的记录编号，改不了那边——请删掉重记',
+             'This one was filed by an older version with no ledger record id — delete it and enter it again'));
+    return;
+  }
+  toast(tt('正在改公司账本那条…','Updating the company ledger…'));
+  const r = await postCompanyEdit({
+    recordId: prev.company.recordId,
+    date: prev.date,
+    categoryRaw,
+    amount: rawAmt,
+    currency: rawCurrency,
+    note: description || null,
+    plate: needsPlate ? plateRaw : null,
+  });
+  if(!r.ok){ showSaveNote(tt(`公司账本那条没改成：${r.message}`,`Could not update the company ledger: ${r.message}`));
+    toast(tt('没改成，看保存按钮上方那行字','Update failed — see the line above the Save button')); return; }
+
+  // 服务端改成功了，才动本机这笔
+  const local = data.transactions.find(t=>t.id===prev.id);
+  if(local){
+    local.amount = state.rielMode ? Math.round((rawAmt/RIEL_RATE)*100)/100 : rawAmt;
+    local.description = description;
+    local.updatedAt = Date.now();
+    local.company.categoryEn = categoryEn;
+    local.company.forBoss = !!bossRaw;
+    local.company.bossRaw = bossRaw;
+    local.company.rawAmount = rawAmt;
+    local.company.rawCurrency = rawCurrency;
+    local.company.plate = needsPlate ? plateRaw : null;
+    local.company.note = description || null;
+    // 归属是服务端按新类别重算的，照抄回来显示，别在这边自己算一遍
+    if(r.record && r.record.person) local.company.person = r.record.person;
+    local.categoryId = COMPANY_CAT_TO_APP[categoryEn] || 'cat_other_exp';
+  }
+  saveData();
+  if(!verifyTxPersisted(prev.id)) warnStorageBroken();
+  closeModal('modal-add-tx');
+  const side = (r.record && r.record.person) ? tt(`，算 ${r.record.person} 头上`,` — filed under ${r.record.person}`) : '';
+  toast(tt(`✅ 公司账本已改${side}`,`✅ Company ledger updated${side}`));
+  if(state.currentTab==='overview') renderOverview();
+  if(state.currentTab==='transactions') renderTxList();
+  if(state.currentTab==='analytics') renderAnalytics();
+}
+
+/**
+ * 送一次 action:"edit"。跟 postCompanyExpense 分开写：那个是「记一笔」，返回 records
+ * 数组；这个是「改一笔」，返回单条 record，而且**不排队重试**——改动只存在于当前这个
+ * 表单，排队补送等于把一份没人看得到的旧表单内容延后写进账本。连不上就当场说清楚。
+ */
+async function postCompanyEdit(payload){
+  const token = getCompanyToken();
+  if(!token) return {ok:false, message:tt('还没填公司报账密钥（设置 → 公司报账）','No company key set (Settings → Company)')};
+  let res;
+  try{
+    res = await fetch(COMPANY_EXPENSE_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({token, action:'edit', ...payload})
+    });
+  }catch(e){
+    return {ok:false, message:tt('现在连不上，公司账本那条没改成——等有网再试','No connection — the company ledger was not updated, try again when back online')};
+  }
+  let body = {};
+  try{ body = await res.json(); }catch(e){}
+  if(res.ok && body.status === 'ok') return {ok:true, record: body.record || null};
+  return {ok:false, message: body.message || body.error || tt(`改不了（${res.status}）`,`Could not update (${res.status})`)};
 }
 
 async function submitCompanyTx(tx){

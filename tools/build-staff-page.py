@@ -69,6 +69,19 @@ def replace_once(s, old, new, what):
     return s.replace(old, new, 1)
 
 
+def replace_n(s, old, new, what, n):
+    """锚点出现 n 次、且全部要换。
+
+    2026-08-13 加：同一句提示语现在同时出现在「新增/编辑」和「改已送出那笔」两条代码
+    路径里（saveTxInner 与 editSentCompanyTx），本来就该出现两次。仍然要求写明预期次数
+    ——不写死次数就等于放弃锚点检查，将来漏翻一句也不会有人发现。
+    """
+    got = s.count(old)
+    if got != n:
+        raise BuildError(f"锚点「{what}」应出现 {n} 次，实际 {got} 次：{old[:60]!r}")
+    return s.replace(old, new)
+
+
 def cut_exact(s, block, what):
     """删掉一段一字不差的文本。"""
     once(s, block, what)
@@ -229,6 +242,13 @@ def build(src: str) -> str:
                   "      if(r.ok) fetchCompanyLedger(ledMonthNow(), {force:true})"
                   ".then(()=>{ renderAccCards(); renderOvCompany(); renderOvReconcile(); });\n",
                   "入账后重拉全员账本")
+    # 就地改完也一样要拿掉（2026-08-13）：同事版没有概览分页，renderOvCompany 找不到
+    # 那几个元素会抛 "Cannot set properties of null"，把后面的渲染整串带断。
+    s = cut_exact(s,
+                  "  // 首屏那张「今天」卡和对账数字都来自公司账本，改完要重拉一次\n"
+                  "  fetchCompanyLedger(ledMonthNow(), {force:true})"
+                  ".then(()=>{ renderAccCards(); renderOvCompany(); renderOvReconcile(); });\n",
+                  "就地改完重拉全员账本")
 
     # 云同步整个不接：同事版没有登录入口，留着 auth 监听只是白等
     s = replace_once(s,
@@ -247,8 +267,10 @@ def build(src: str) -> str:
         s = replace_once(s, zh_html, add_en(zh_html, en), f"文案「{en}」")
     for old, new, what in LABEL_REWRITES:
         s = replace_once(s, old, new, what)
-    for old_js, new_js, what in DYNAMIC_TEXT:
-        s = replace_once(s, old_js, new_js, what)
+    for entry in DYNAMIC_TEXT:
+        old_js, new_js, what = entry[0], entry[1], entry[2]
+        n = entry[3] if len(entry) > 3 else 1
+        s = replace_n(s, old_js, new_js, what, n)
 
     # ---------- 9) 注入同事版的引导逻辑 ----------
     s = replace_once(s, "init();\nrefreshCompanyCategories();\nflushCompanyQueue();",
@@ -308,9 +330,11 @@ STAFF_LABELS = [
     # 必须从 <div 开始带上（开标签因为 style 太长断成了两行）
     ('<div id="tx-sent-lock" style="display:none;padding:10px 12px;background:rgba(230,126,34,.12);\n'
      '      border-radius:10px;margin-bottom:14px;font-size:12px;color:#e67e22;line-height:1.6">\n'
-     '      🔒 这笔已经报进公司账本了，改不了——要更正请按下面的「删除此记录」，然后重新记一次。',
-     "🔒 This one is already filed to the company ledger and cannot be edited. "
-     "To correct it, tap Delete below and enter it again."),
+     '      ✏️ 这笔已经报进公司账本了。改<b>金额、类别、描述、车牌</b>会一起改掉公司账本那边；\n'
+     '      <b>日期、报账人、单号</b>不能改——要改那三样请删掉重记。',
+     "✏️ This one is already filed to the company ledger. Changing the amount, category, "
+     "description or plate number updates the company ledger too. The date, reporter and "
+     "bill number cannot be changed — to change those, delete it and enter it again."),
     ('<button class="btn btn-danger" onclick="deleteTx()">🗑 删除此记录</button>', "🗑 Delete this record"),
     # ⚠️ 这两个不能走 add_en：按钮里是「emoji span + 文字」两段，add_en 会把 data-en
     # 加到 **emoji 那个 span** 上（它找的是第一个 '>'），切英文时 📷 被换成 "Camera"、
@@ -407,17 +431,43 @@ DYNAMIC_TEXT = [
      "已送出的改不了"),
     ("""toast('请输入金额（可以填 0）');""",
      """toast(tt('请输入金额（可以填 0）','Please enter an amount (0 is fine)'));""",
-     "金额提示"),
+     "金额提示", 2),
     ("""if(!categoryEn){ toast('请选择公司类别'); return; }""",
      """if(!categoryEn){ toast(tt('请选择公司类别','Please choose a category')); return; }""",
-     "类别提示"),
+     "类别提示", 2),
     ("""if(needsPlate && !plateRaw){ toast(`${categoryEn} 要填车牌号`); return; }""",
      """if(needsPlate && !plateRaw){ toast(tt(`${categoryEn} 要填车牌号`,`${categoryEn} needs a plate number`)); return; }""",
-     "车牌提示"),
-    ("""      toast('这笔已经报进公司账本了，改不了——请删掉重记');""",
-     """      toast(tt('这笔已经报进公司账本了，改不了——请删掉重记',
-               'Already filed to the company ledger — delete it and enter it again'));""",
-     "已报上去的改不了"),
+     "车牌提示", 2),
+    # 2026-08-13：原本这里是「已报上去的改不了」那句提示，现在改成走 edit 就地改，
+    # 那句提示已不存在，换成翻译新路径（editSentCompanyTx / postCompanyEdit）的提示语。
+    ("""  if(same){ toast('没有改动'); closeModal('modal-add-tx'); return; }""",
+     """  if(same){ toast(tt('没有改动','Nothing changed')); closeModal('modal-add-tx'); return; }""",
+     "没有改动"),
+    ("""    toast('这笔是旧版本记的，没存下公司账本里的记录编号，改不了那边——请删掉重记');""",
+     """    toast(tt('这笔是旧版本记的，没存下公司账本里的记录编号，改不了那边——请删掉重记',
+             'This one was filed by an older version with no ledger record id — delete it and enter it again'));""",
+     "旧版本没有记录编号"),
+    ("""  toast('正在改公司账本那条…');""",
+     """  toast(tt('正在改公司账本那条…','Updating the company ledger…'));""",
+     "正在改"),
+    ("""  if(!r.ok){ showSaveNote(`公司账本那条没改成：${r.message}`); toast('没改成，看保存按钮上方那行字'); return; }""",
+     """  if(!r.ok){ showSaveNote(tt(`公司账本那条没改成：${r.message}`,`Could not update the company ledger: ${r.message}`));
+    toast(tt('没改成，看保存按钮上方那行字','Update failed — see the line above the Save button')); return; }""",
+     "改失败提示"),
+    ("""  const side = (r.record && r.record.person) ? `，算 ${r.record.person} 头上` : '';
+  toast(`✅ 公司账本已改${side}`);""",
+     """  const side = (r.record && r.record.person) ? tt(`，算 ${r.record.person} 头上`,` — filed under ${r.record.person}`) : '';
+  toast(tt(`✅ 公司账本已改${side}`,`✅ Company ledger updated${side}`));""",
+     "改成功提示"),
+    ("""  if(!token) return {ok:false, message:'还没填公司报账密钥（设置 → 公司报账）'};""",
+     """  if(!token) return {ok:false, message:tt('还没填公司报账密钥（设置 → 公司报账）','No company key set (Settings → Company)')};""",
+     "改：没有密钥"),
+    ("""    return {ok:false, message:'现在连不上，公司账本那条没改成——等有网再试'};""",
+     """    return {ok:false, message:tt('现在连不上，公司账本那条没改成——等有网再试','No connection — the company ledger was not updated, try again when back online')};""",
+     "改：连不上"),
+    ("""  return {ok:false, message: body.message || body.error || `改不了（${res.status}）`};""",
+     """  return {ok:false, message: body.message || body.error || tt(`改不了（${res.status}）`,`Could not update (${res.status})`)};""",
+     "改：服务端错误"),
     ("""    showSaveNote('这个金额是从照片认出来的——请跟收据核对一遍，再按上面那个「对的」');
     toast('请先核对金额，看保存按钮上方那行字');""",
      """    showSaveNote(tt('这个金额是从照片认出来的——请跟收据核对一遍，再按上面那个「对的」',

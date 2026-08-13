@@ -52,6 +52,9 @@ const browser = await chromium.launch(launchOpts);
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   let posted = []; let butlerMode = 'ok';
+  // edit（就地改）单独记一份：验「有没有重复记账」要看的是**有没有再来一次 add**，
+  // 不能把 edit 也算进去（2026-08-13 加 edit 时分出来的）
+  let edited = [];
   const todayStr = new Date().toISOString().slice(0,10);
   const serverBook = []; let recSeq = 0;   // 假的公司账本，用来验证删除真的删到了远端
   // 假的备用金：跟真服务端同一个形状——事件流 + 余额现算（绝不存一个「当前余额」字段）
@@ -180,6 +183,23 @@ const browser = await chromium.launch(launchOpts);
             byPerson:[], byReporter:[], orphan:0 }) });
       }
       posted.push(req);
+      if (req.action === 'edit') edited.push(req);
+      if (req.action === 'edit') {
+        // 就地改，照 butler 的 companyExpenseEditFromApp：只换金额/类别/备注，
+        // person 按新类别重算，id / refTag / reporter 一律不动。
+        const i = serverBook.findIndex(r => r.id === req.recordId);
+        if (i === -1) return route.fulfill({ status:400, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'not_found', message:'账本里没有这条' }) });
+        const OWN = { Seryi:['breakfast','lunch','dinner'], Kuang:['breakfast','lunch'],
+                      Yang:['breakfast','lunch','dinner'] };
+        const c = String(req.categoryRaw || '').toLowerCase();
+        const rep = serverBook[i].reporter;
+        const isMine = !/老板|boss/i.test(c) && (OWN[rep] || []).includes(c);
+        serverBook[i] = { ...serverBook[i], person: isMine ? rep : 'Boss',
+                          amount: req.amount, amountUsd: Number(req.amount) || 0 };
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', record: serverBook[i] }) });
+      }
       if (req.action === 'delete') {
         const i = serverBook.findIndex(r => r.id === req.recordId);
         if (i === -1) return route.fulfill({ status:400, contentType:'application/json', headers:h,
@@ -546,11 +566,15 @@ const browser = await chromium.launch(launchOpts);
   ok('恢复后队列清空', (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]'))).length===0);
   ok('补送的正是那笔 5.60 Store', posted.some(x=>x.items?.[0]?.amount===5.6 && x.items?.[0]?.categoryRaw==='Store'), posted);
 
-  console.log('\n【5b】编辑已送出的公司账，绝不能重复送（butler 是追加落档，会金额翻倍）');
-  // 2026-08-08 改：以前这里允许「只改本机、不动账本」，结果两边静静分叉
-  // （Seryi 8/2 那笔本机 11.76、账本 11.78）。现在是整张表单锁住、本机也不许改，
-  // 详细的锁行为在【16】，这一组只守住最要命的那条：绝不能重复送。
-  posted = [];
+  console.log('\n【5b】编辑已送出的公司账：两边一起改，但绝不能再 add 一次（会金额翻倍）');
+  // 三代契约，别再改回去：
+  // - 2026-08-08 之前：只改本机、不动账本 → 两边静静分叉（Seryi 8/2 那笔本机 11.76、
+  //   账本 11.78），这是当初出事的写法。
+  // - 2026-08-08：整张表单锁死、本机也不许改。挡住了分叉，代价是改一个数字要删掉重记。
+  // - 2026-08-13（现在）：服务端有了 action:'edit'，改金额/类别会**先改账本、成功了
+  //   才改本机**。分叉照样挡住（失败就整个中止，见【16】那组），而且不用删掉重记。
+  // 这一组守住的仍是最要命的那条：不管怎么改，都不许再走一次 add。
+  posted = []; edited = [];
   const sentId = await page.evaluate(()=>{
     const t = data.transactions.filter(x=>x.company && x.company.status==='sent').pop();
     return t ? t.id : null;
@@ -565,10 +589,15 @@ const browser = await chromium.launch(launchOpts);
     saveTx();
   });
   await page.waitForTimeout(1500);
-  ok('没有再送一次（不会重复记账）', posted.length===0, posted);
-  ok('本机金额也没被改掉（不许跟账本分叉）',
-     await page.evaluate(id=>data.transactions.find(t=>t.id===id)?.amount, sentId) === amtBefore,
+  ok('没有再走一次 add（不会重复记账）', posted.filter(x=>!x.action).length===0, posted);
+  ok('走的是 edit，而且只送了一次', edited.length===1, edited);
+  ok('改的正是账本里那一条（带上了记录编号）', !!edited[0]?.recordId, edited[0]);
+  ok('本机金额跟着改成 99.99（两边一致，不分叉）',
+     await page.evaluate(id=>data.transactions.find(t=>t.id===id)?.amount, sentId) === 99.99,
      [amtBefore, await page.evaluate(id=>data.transactions.find(t=>t.id===id)?.amount, sentId)]);
+  ok('账本那边也真的改了（不是只改本机）',
+     serverBook.find(r=>r.id===edited[0]?.recordId)?.amountUsd === 99.99,
+     serverBook.find(r=>r.id===edited[0]?.recordId));
   ok('状态仍是 sent（没退回 pending）', await page.evaluate(id=>data.transactions.find(t=>t.id===id)?.company?.status==='sent', sentId));
   await page.evaluate(()=>closeModal('modal-add-tx'));
   ok('也没混进补送队列', (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]'))).length===0);
@@ -984,28 +1013,33 @@ const browser = await chromium.launch(launchOpts);
 
     await page.evaluate(id=>editTx(id), txId);
     await page.waitForTimeout(600);
-    ok('打开编辑：顶上说明这笔改不了', await page.locator('#tx-sent-lock').isVisible());
-    ok('金额栏锁住', await page.evaluate(()=>document.getElementById('tx-amount').disabled));
-    ok('类别、日期、单据号一起锁住', await page.evaluate(()=>
-      ['tx-company-category','tx-date','tx-company-reftag','tx-company-reporter']
+    ok('打开编辑：顶上说明哪些能改哪些不能', await page.locator('#tx-sent-lock').isVisible());
+    // 2026-08-13 起金额和类别可以改（会同步改账本），锁的只剩服务端 edit 不给改的那三栏
+    ok('金额栏可以改', !(await page.evaluate(()=>document.getElementById('tx-amount').disabled)));
+    ok('类别可以改', !(await page.evaluate(()=>document.getElementById('tx-company-category').disabled)));
+    ok('日期、单据号、报账人仍锁着（服务端 edit 不给改这三样）', await page.evaluate(()=>
+      ['tx-date','tx-company-reftag','tx-company-reporter']
         .every(id=>document.getElementById(id).disabled)));
-    ok('保存键收起来（不留一个按了没用的按钮）',
-       !(await page.locator('#tx-save-btn').isVisible()));
-    ok('删除键还在（这才是更正的正路）', await page.locator('#tx-delete-wrap').isVisible());
+    ok('保存键在（现在按下去是有用的）', await page.locator('#tx-save-btn').isVisible());
+    ok('删除键还在', await page.locator('#tx-delete-wrap').isVisible());
 
-    // 第二道闸门：绕过 UI 直接调 saveTx 也不许动这笔
-    const before = posted.length;
-    await page.evaluate(()=>{
-      const el = document.getElementById('tx-amount');
-      el.disabled = false; el.value = '99.99';   // 模拟「表单的锁被绕过去了」
-      saveTx();
-    });
+    // 最要紧的一条：账本那边改失败时，本机绝不能偷偷改掉——那就又回到两边分叉了。
+    // 用 butlerMode='offline' 制造失败，再确认本机原封不动。
+    // 「记一笔」的请求带 items，edit/delete/ledger 都不带——用它数 add 最直接
+    const addsBefore = posted.filter(x=>x.items).length;
+    butlerMode = 'offline';
+    await page.evaluate(()=>{ document.getElementById('tx-amount').value = '99.99'; saveTx(); });
     await page.waitForTimeout(800);
-    ok('绕过表单直接存也被挡下：本机金额没变',
+    ok('账本改不成时：本机金额没变（宁可不改，也不许分叉）',
        await page.evaluate(id=>{
          const t = data.transactions.find(x=>x.id===id); return t && t.amount;
        }, txId) === 11.78);
-    ok('也没有再往账本送一次（重送会翻倍）', posted.length===before, [posted.length, before]);
+    ok('账本改不成时：状态仍是 sent',
+       await page.evaluate(id=>data.transactions.find(x=>x.id===id)?.company?.status==='sent', txId));
+    ok('全程没有再走一次 add（重送会翻倍）',
+       posted.filter(x=>x.items).length===addsBefore,
+       [posted.filter(x=>x.items).length, addsBefore]);
+    butlerMode = 'ok';
     await page.evaluate(()=>closeModal('modal-add-tx'));
 
     // 还没送出去的（排队中）必须照旧能改——队列送出去的是改完那一版
