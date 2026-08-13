@@ -4348,10 +4348,18 @@ function renderAiKeyStatus(){
     : '未配置，当前使用本地识别（较简单）';
 }
 
+// 没在设置里填 AI key 时，用服务端的共用 key 走哪一家（2026-08-13 用户定：一律 Mistral）。
+// 同事版没有设置页、填不了 key，以前只能退回手机本地 Tesseract，识别明显更差。
+const AI_SHARED_PROVIDER = 'mistral';
+
 async function runReceiptSmartOCR(sourceCanvas){
-  const provider = getAiProvider();
+  // 设置里选过就用选的那家；没选过就用共用 key 那家
+  const provider = getAiProvider() || AI_SHARED_PROVIDER;
   const key = getAiKey(provider);
-  if(!provider || !key){ return runReceiptOCRPrefill(sourceCanvas); }
+  // 没有自己的 key 时，拿公司报账密钥去换服务端那把共用 key（butler 的 /ai-proxy 认它）。
+  // Gemini 是浏览器直连、不经 /ai-proxy，没自带 key 就没得换，只能退回本地 OCR。
+  const useShared = !key && provider !== 'gemini' && !!getCompanyToken();
+  if(!key && !useShared){ return runReceiptOCRPrefill(sourceCanvas); }
 
   try{
     const outCanvas = resizeForOutput(sourceCanvas, 1600);
@@ -4388,7 +4396,10 @@ async function runReceiptSmartOCR(sourceCanvas){
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            provider, apiKey: key,
+            provider,
+            // 二选一：自己的 key，或用公司报账密钥换服务端那把共用 key。
+            // 两个都送的话服务端会优先用 apiKey，所以没有自己的 key 时不要送空字串。
+            ...(key ? { apiKey: key } : { token: getCompanyToken() }),
             systemPrompt: '你只输出 JSON，不要输出任何其他文字。',
             userText: prompt,
             imageBase64: base64, imageMime: 'image/jpeg'

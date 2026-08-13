@@ -112,6 +112,7 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   const petty = { row: null, fail: false };
   // 就地改：测试把 editFails 设成 true 就能制造「账本改不成」，用来验本机不会偷偷改掉
   const edit = { fails: false };
+  const aiProxyCalls = [];   // 拍收据时打去 /ai-proxy 的请求
   let mode = offline ? 'offline' : 'online';
   let nextNo = 7;
   await ctx.route('**/*', async route => {
@@ -121,6 +122,13 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
     if (!u.startsWith(BUTLER)) return route.abort('failed');
     if (mode === 'offline') return route.abort('failed');
     const h = { 'Access-Control-Allow-Origin': '*' };
+    // 拍收据的 AI 识别转发。同事版没有设置页填不了 AI key，靠公司报账密钥换服务端
+    // 那把共用 key（2026-08-13）——这里只记下请求长什么样，交给断言检查。
+    if (u.startsWith(BUTLER + '/ai-proxy')) {
+      aiProxyCalls.push(JSON.parse(route.request().postData() || '{}'));
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ text: '{"amount":12.34,"date":null,"merchant":"Test Shop"}' }) });
+    }
     if (route.request().method() === 'GET') {
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
         body: JSON.stringify({
@@ -185,7 +193,8 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   const dialogs = [];
   page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
   // book 交出去：测「从公司账本找回记录」时要能摆布服务端手上有哪几笔
-  return { ctx, page, posted, errs, book, dialogs, petty, edit, setMode: m => { mode = m; } };
+  return { ctx, page, posted, errs, book, dialogs, petty, edit, aiProxyCalls,
+           setMode: m => { mode = m; } };
 }
 
 /** 填钥匙进门，返回已经进到主界面的 page。 */
@@ -1621,6 +1630,40 @@ if (want()) {
   }, 'transactions'), { what: '切到 transactions 分页' });
   ok('切回公司账，手上现金卡不出现（那是老板账的钱）',
      !(await page.locator('#staff-boss-cash').isVisible()));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【24】拍收据用 AI 识别（靠公司密钥换服务端共用 key）----------
+// 2026-08-13 用户反映「同事版相机识别没主 App 好用」。根因不是模型差，是同事版
+// 压根没用 AI：填 AI key 的入口在「设置」分页，而同事版把设置整个拿掉了，所以永远
+// 退回手机本地的 Tesseract。修法是带公司报账密钥去换服务端那把共用 key。
+// 这一组守住的是：同事手机上一个 key 都没有的情况下，仍然走得到 AI 那条路。
+console.log('\n【24】拍收据：没有自己的 AI key 也要能用 AI（拿公司密钥换服务端那把）');
+if (want()) {
+  const h = await newPage();
+  const { page, errs, aiProxyCalls } = h;
+  await signIn(h);
+  ok('前提：同事手机上没有自己的 AI key',
+     await page.evaluate(() => Object.keys(localStorage).filter(k => k.includes('aiKey')).length === 0));
+
+  // 直接喂一张画布给识别函数，不必真的开相机
+  await page.evaluate(async () => {
+    const c = document.createElement('canvas');
+    c.width = 400; c.height = 300;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 400, 300);
+    g.fillStyle = '#000'; g.font = '28px sans-serif'; g.fillText('TOTAL 12.34', 20, 150);
+    await runReceiptSmartOCR(c);
+  });
+  await page.waitForTimeout(500);
+
+  ok('真的去打了 AI 识别（不是默默退回本地 OCR）', aiProxyCalls.length === 1, aiProxyCalls.length);
+  ok('用的是 Mistral', aiProxyCalls[0]?.provider === 'mistral', aiProxyCalls[0]?.provider);
+  ok('带的是公司报账密钥', !!aiProxyCalls[0]?.token, Object.keys(aiProxyCalls[0] || {}));
+  // 同事手机上不该有、也不该送任何 AI key——共用那把只存在服务端
+  ok('没有把 AI key 送出去（共用那把只在服务端）', !aiProxyCalls[0]?.apiKey, aiProxyCalls[0]?.apiKey);
+  ok('照片有一起送过去', !!aiProxyCalls[0]?.imageBase64);
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
