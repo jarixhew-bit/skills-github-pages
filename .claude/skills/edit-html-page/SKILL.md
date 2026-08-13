@@ -45,4 +45,4 @@ description: 修改或新建本仓库任何 HTML 页面（旅游手册、卡片�
 
 ## 大批量修改（3 个文件以上或整页重构）
 不要自己动手——派 `html-editor` agent（它内建了本页全部规则），委派 prompt 按
-`.claude/rules/templates.md` 模板 3 填写，范例见 `.claude/rules/examples.md`。
+`.claude/playbook/templates.md` 模板 3 填写，范例见 `.claude/playbook/examples.md`。

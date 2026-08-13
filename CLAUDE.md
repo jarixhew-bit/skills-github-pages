@@ -36,7 +36,7 @@
 
 ## 专项组织规则（2026-07-05 与用户确认后建立）
 - **开新专项前先选仓库**：对外网页/App/手册 → 本 repo；制度规则、给 Claude 的
-  工作指示 → 本 repo 的 `.claude/rules/`（唯一正本；workspace repo 的制度副本
+  工作指示 → 本 repo 的 `.claude/playbook/`（唯一正本；workspace repo 的制度副本
   已于 2026-07-03 作废）。本 repo 是**公开仓库**，私密内容一律不放。
 - **新专项必须开独立文件夹**（参照 `xisui/`、`trading/`），禁止把新文件散放在
   根目录。根目录现有旧页面为保住网址不搬动。
@@ -71,7 +71,7 @@
   **主动归档**：不等用户开口——任务收尾时若对话中出现值得长期记住的信息（决定、
   数字、经验、偏好），主动存进 vault 并告知一句；细则见该仓库 CLAUDE.md 核心任务 0。
 
-## AI 工作制度（2026-07-03 建立，正本在本 repo 的 .claude/rules/）
+## AI 工作制度（2026-07-03 建立，正本在本 repo 的 .claude/playbook/）
 
 ### 用户与沟通
 - YANG，非工程师，中文使用者（回复用中文，简繁跟随用户）。少术语、先结论后细节，
@@ -135,16 +135,22 @@
    跑完全部就够了：生成物脱节由 `check-generated` 守着（2026-08-12 之前那个检查
    叫 `build-staff-page.py --check`，不合命名规则、照着这句话做正好会漏掉，已改名收编）。
 
-### 路由表（遇到左边情况，先读右边档案再动手）
+### 路由表（遇到左边情况，**必须先 Read 右边档案**再动手）
+
+⚠️ **这些档案不会自动载入**（2026-08-13 起从 `.claude/rules/` 搬到 `.claude/playbook/`，
+就是为了让它们不进每个 session 的固定开销）。**你现在手上没有它们的内容，凭印象做
+＝违规。** 遇到路由表左边的情况，先 Read 对应档案，再动手。省下的 token 是拿来
+换「按需读」的，不是拿来换「不读」的。
+
 | 情况 | 读这个档 |
 |---|---|
-| 要派 subagent、选模型、任务较大需拆解 | `.claude/rules/dispatch.md` |
-| 不确定该升级模型／算不算完成／该不该问用户 | `.claude/rules/judgment.md` |
-| 派工时要写委派 prompt | `.claude/rules/templates.md`（填好的真实范例在 `examples.md`） |
+| 要派 subagent、选模型、任务较大需拆解 | `.claude/playbook/dispatch.md` |
+| 不确定该升级模型／算不算完成／该不该问用户 | `.claude/playbook/judgment.md` |
+| 派工时要写委派 prompt | `.claude/playbook/templates.md`（填好的真实范例在 `examples.md`） |
 | 要改现有项目（页面/xisui/trading） | `.claude/notes/` 对应结构笔记（锚点、改哪几处、坑） |
-| 想修改制度档或本档 | `.claude/rules/maintenance.md` |
-| 新 session 开始较大工作之前 | `.claude/rules/letter.md`（背景与注意事项） |
-| 选浏览器／爬网工具拿不定主意 | `.claude/rules/diagnosis.md` 问题 #2 的路由表 |
+| 想修改制度档或本档 | `.claude/playbook/maintenance.md` |
+| 新 session 开始较大工作之前 | `.claude/playbook/letter.md`（背景与注意事项） |
+| 选浏览器／爬网工具拿不定主意 | `.claude/playbook/diagnosis.md` 问题 #2 的路由表 |
 | 要动手做具体的事（放媒体、算数字、控范围、组织新档案） | `skills/INDEX.md` 查表选一份 |
 
 ### 制度档的同步与分支

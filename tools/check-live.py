@@ -3,7 +3,7 @@
 
 背景：CI 全绿只代表「代码进了 main」，不代表「线上换成了新版」。
 2026-07 就发生过 GitHub 故障期间 Pages 部署事件被整个丢掉：代码在 main、
-检查全绿、线上还是旧版，最后是用户自己发现的（见 .claude/rules/diagnosis.md）。
+检查全绿、线上还是旧版，最后是用户自己发现的（见 .claude/playbook/diagnosis.md）。
 而 Claude 的沙盒连不上 github.io（代理策略性 403），验不了这件事——
 所以这个检查只能住在 CI 上。
 

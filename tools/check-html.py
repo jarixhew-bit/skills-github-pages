@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """HTML 结构检查器 —— 本仓库所有 HTML 改动 commit 前必跑。
 
-来源教训（.claude/rules/dispatch.md 2026-07-11）：修奥林匹克博物馆卡片时
+来源教训（.claude/playbook/dispatch.md 2026-07-11）：修奥林匹克博物馆卡片时
 把 </div> 补错位置，D07 起整段跑版，上线数日才被用户发现。
 此后规则：div 开闭不平衡不准 commit。本脚本就是那条规则的可执行版本。
 

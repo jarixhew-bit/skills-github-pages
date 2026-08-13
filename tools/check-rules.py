@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""制度档体检器 —— 把 .claude/rules/maintenance.md 的精简门槛变成可执行检查。
+"""制度档体检器 —— 把 .claude/playbook/maintenance.md 的精简门槛变成可执行检查。
 
 背景：maintenance.md 第 4 节写了「教训满 10 条或单档超 150 行就触发精简」，
 第 5 节写了「精简时顺带 audit 路由表指向的档案是否还存在」。规矩写在那里，
@@ -30,7 +30,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 行数门槛，照抄 maintenance.md 第 7 节
 LINE_LIMITS = [
-    (".claude/rules", 150, "rules"),
+    (".claude/playbook", 150, "rules"),
     (".claude/agents", 200, "agent"),
 ]
 SKILL_LIMIT = 400  # .claude/skills/*/SKILL.md
@@ -62,7 +62,7 @@ def walk_md(subdir: str):
 def governance_files() -> list:
     """所有受管辖的制度档（maintenance.md 第 0 行定义的管辖范围）。"""
     files = [os.path.join(REPO, "CLAUDE.md")]
-    files += walk_md(".claude/rules") + walk_md(".claude/agents")
+    files += walk_md(".claude/playbook") + walk_md(".claude/agents")
     skills_dir = os.path.join(REPO, ".claude", "skills")
     if os.path.isdir(skills_dir):
         for name in sorted(os.listdir(skills_dir)):

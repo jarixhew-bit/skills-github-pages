@@ -1,6 +1,6 @@
 # 制度檔維護協議（可攜版）
 
-管轄範圍：本 repo 的 `CLAUDE.md`、`.claude/rules/*.md`、`.claude/agents/*.md`。
+管轄範圍：本 repo 的 `CLAUDE.md`、`.claude/playbook/*.md`、`.claude/agents/*.md`。
 讀者：未來想修改這些檔案的任何模型（本機或雲端）。
 
 ## 1. 改之前——備份與同步鐵律
@@ -57,7 +57,7 @@
 ## 5. 防退化——每次精簡時順帶自查
 
 精簡任何檔案時，順帶跑一次快速 audit：
-- CLAUDE.md 路由表指的檔案是否都還存在（用 Glob 查 `.claude/rules/*.md`）
+- CLAUDE.md 路由表指的檔案是否都還存在（用 Glob 查 `.claude/playbook/*.md`）
 - 有沒有兩條規則互相矛盾（拿不準就派 verifier 查）
 - 有沒有混進「保持高品質」這類無法執行的空話——刪掉或改寫成可檢查的條件
 

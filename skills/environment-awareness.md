@@ -10,7 +10,7 @@ session 開始的第一個任務前；任何涉及「安裝」「持久化」「
 1. **判別環境**：環境變數 `CLAUDE_CODE_REMOTE=true` → 網頁版容器；路徑是 Windows 格式（`C:\...`）→ 本地。
 2. **網頁版容器的三個事實**：
    - 任何「本地安裝」都裝在容器裡，session 結束就消失。要持久的東西只有這個 repo 本身（commit + push 才算保存）。
-   - memory 系統不存在；教訓要落檔到 `.claude/rules/` 並 commit（maintenance.md 第 3 節）。
+   - memory 系統不存在；教訓要落檔到 `.claude/playbook/` 並 commit（maintenance.md 第 3 節）。
    - 需要使用者自己瀏覽器/登入態的操作（如 claude-in-chrome）做不到 → 明說「此事需本機做」。
 3. **本地 Windows 的三個坑**（詳見 diagnosis.md 問題 #3）：
    - PowerShell 5.1 沒有 `&&`/`||`；用 `A; if ($?) { B }`。

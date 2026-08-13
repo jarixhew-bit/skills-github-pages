@@ -27,7 +27,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 被管辖的档案：制度档 + 技能库 + 会被自动载入的 skill + CLAUDE.md
 SCOPE = [
-    ".claude/rules", ".claude/skills", ".claude/agents", "skills",
+    ".claude/playbook", ".claude/skills", ".claude/agents", "skills",
 ]
 EXTRA_FILES = ["CLAUDE.md"]
 
@@ -40,33 +40,33 @@ TOPICS = [
         "例外": {
             # 教训纪录记的是「当初怎么发现 403、为什么建这条通道」，属于事故来源，
             # 不是流程步骤本身；流程步骤在正本里
-            ".claude/rules/diagnosis.md": "教训纪录：记录 403 的发现经过与通道由来",
+            ".claude/playbook/diagnosis.md": "教训纪录：记录 403 的发现经过与通道由来",
         },
     },
     {
         "主题": "派工门槛与委派三件套",
-        "正本": ".claude/rules/dispatch.md",
+        "正本": ".claude/playbook/dispatch.md",
         "标记词": ["禁止再派 subagent", "派工三件套"],
         "例外": {
             # templates.md 是模板正本，委派 prompt 的成品里本来就要带这句
-            ".claude/rules/templates.md": "模板正本，成品 prompt 里必须带这句话",
-            ".claude/rules/examples.md": "范例库，填好的 prompt 里必须带这句话",
+            ".claude/playbook/templates.md": "模板正本，成品 prompt 里必须带这句话",
+            ".claude/playbook/examples.md": "范例库，填好的 prompt 里必须带这句话",
             # agent 定义档是「把规则用在自己身上」，不是复述规则
             ".claude/agents/html-editor.md": "agent 定义：对自己下的约束，不是复述规则",
             ".claude/agents/researcher.md": "agent 定义：对自己下的约束，不是复述规则",
             # maintenance.md 拿它当「重复规则长什么样」的举例
-            ".claude/rules/maintenance.md": "拿它当『两处写同一件事』的举例，非陈述",
+            ".claude/playbook/maintenance.md": "拿它当『两处写同一件事』的举例，非陈述",
         },
     },
     {
         "主题": "制度档维护协议（许可权、精简门槛）",
-        "正本": ".claude/rules/maintenance.md",
+        "正本": ".claude/playbook/maintenance.md",
         "标记词": ["必須先問使用者才能改", "觸發精簡"],
         "例外": {},
     },
     {
         "主题": "各类产出的验证底线表",
-        "正本": ".claude/rules/judgment.md",
+        "正本": ".claude/playbook/judgment.md",
         "标记词": ["底線檢查（全過才能交付）"],
         "例外": {},
     },
@@ -79,7 +79,7 @@ TOPICS = [
             "CLAUDE.md": "路由层：只说有这条规则并指向参考实现，不写做法",
             ".claude/skills/edit-html-page/SKILL.md": "改页面时的检查项，指向本档",
             # letter.md 只是提到「check-html.py 会查这个 key」，没讲做法
-            ".claude/rules/letter.md": "只提到检查脚本会查这个 key，未讲做法",
+            ".claude/playbook/letter.md": "只提到检查脚本会查这个 key，未讲做法",
         },
     },
 ]

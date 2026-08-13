@@ -7,7 +7,7 @@ name: Vendor tesseract.js
 #
 # 沙盒（Claude 网页版容器）的出站代理封锁了 cdn.jsdelivr.net / tessdata.projectnaptha.com，
 # 抓不到这些文件，所以搬到 CI 上跑——这是本仓库处理「沙盒连不上的公开资源」的既定做法
-# （见 .claude/rules/dispatch.md 2026-07-10 的教训）。
+# （见 .claude/playbook/dispatch.md 2026-07-10 的教训）。
 #
 # 用法：Actions 页面手动跑一次即可，之后除非要升级 tesseract 版本，不用再跑。
 

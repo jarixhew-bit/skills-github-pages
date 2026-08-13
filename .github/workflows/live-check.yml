@@ -2,7 +2,7 @@
 #
 # 为什么需要它：CI 全绿只代表「代码进了 main」，不代表「线上换成了新版」。
 # 2026-07 发生过 GitHub 故障期间 Pages 部署事件被整个丢掉——代码在 main、
-# 检查全绿、线上还是旧版，最后是用户自己发现的（.claude/rules/diagnosis.md）。
+# 检查全绿、线上还是旧版，最后是用户自己发现的（.claude/playbook/diagnosis.md）。
 # Claude 的沙盒连不上 github.io（代理策略性 403），这件事只能由 CI 来验。
 #
 # 放 CI 而不是 Claude 定时任务：检测不需要判断力，零 Claude 用量；

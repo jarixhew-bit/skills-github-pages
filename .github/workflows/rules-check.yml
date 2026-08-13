@@ -1,4 +1,4 @@
-# 制度档月度体检：每月 1 号跑 tools/check-rules.py，检查 .claude/rules/ 等制度档
+# 制度档月度体检：每月 1 号跑 tools/check-rules.py，检查 .claude/playbook/ 等制度档
 # 有没有超过 maintenance.md 第 4 节的精简门槛（教训满 10 条 / 单档超行数上限 /
 # 路由引用失效）。
 #
@@ -54,7 +54,7 @@ jobs:
             exit 0
           fi
           {
-            echo "月度体检发现制度档超过 \`.claude/rules/maintenance.md\` 第 4 节的精简门槛："
+            echo "月度体检发现制度档超过 \`.claude/playbook/maintenance.md\` 第 4 节的精简门槛："
             echo
             echo '```'
             cat result.txt

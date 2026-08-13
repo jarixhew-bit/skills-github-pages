@@ -18,6 +18,6 @@
 
 ## 仓库规则
 
-改动前请看 [`CLAUDE.md`](./CLAUDE.md)——媒体文件、双语页面、发布流程等规则都在那里，`.claude/rules/` 和 `.claude/notes/` 有更细的操作说明。
+改动前请看 [`CLAUDE.md`](./CLAUDE.md)——媒体文件、双语页面、发布流程等规则都在那里，`.claude/playbook/` 和 `.claude/notes/` 有更细的操作说明。
 
 自检脚本在 `tools/`（HTML 结构、密钥泄漏、图片外链等），改动会触发 `.github/workflows/` 里对应的 CI 检查。

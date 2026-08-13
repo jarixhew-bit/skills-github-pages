@@ -1,7 +1,7 @@
 # 技能：維護制度檔與技能庫（怎麼安全地改規則）
 
 ## 目的
-規則系統最大的敵人不是規則錯，是被靜靜略過或被改壞。此檔是改 `CLAUDE.md`、`.claude/rules/*.md`、`.claude/agents/*.md`、`skills/*.md` 時的操作流程摘要（完整協議在 `.claude/rules/maintenance.md`，衝突時以彼為準）。
+規則系統最大的敵人不是規則錯，是被靜靜略過或被改壞。此檔是改 `CLAUDE.md`、`.claude/playbook/*.md`、`.claude/agents/*.md`、`skills/*.md` 時的操作流程摘要（完整協議在 `.claude/playbook/maintenance.md`，衝突時以彼為準）。
 
 ## 何時觸發
 想修改任何規則/技能檔時；學到新教訓要落檔時；發現兩條規則矛盾時。
