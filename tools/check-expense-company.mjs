@@ -184,6 +184,17 @@ const browser = await chromium.launch(launchOpts);
       }
       posted.push(req);
       if (req.action === 'edit') edited.push(req);
+      // 「找回本月记录」用的接口：回指定报账人这个月记过的那些（老板的钥匙可以指定谁）
+      if (req.action === 'mine') {
+        const who = req.reporter || 'Boss';
+        const rows = serverBook.filter(r => r.reporter === who).map(r => ({
+          id: r.id, date: todayStr, categoryEn: r.categoryEn || 'Store',
+          billNo: r.refTag, side: r.person === 'Boss' ? 'boss' : 'assist',
+          amountUsd: Number(r.amountUsd) || 0, note: null,
+        }));
+        return route.fulfill({ status:200, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'ok', reporter: who, records: rows }) });
+      }
       if (req.action === 'edit') {
         // 就地改，照 butler 的 companyExpenseEditFromApp：只换金额/类别/备注，
         // person 按新类别重算，id / refTag / reporter 一律不动。
@@ -225,6 +236,8 @@ const browser = await chromium.launch(launchOpts);
       // reporter / amountUsd 也要存下来：账本清单按「谁记的」分块、每块带小计，
       // 不存的话拉回来的每一笔都是「没有名字、0 块钱」，分块那几条断言等于没测
       serverBook.push({ id, person, table, refTag, reporter: rep,
+                        // categoryEn 存下来：action:'mine'（找回本月记录）要照原样回给 App
+                        categoryEn: req.items?.[0]?.categoryRaw || 'Store',
                         amount: req.items?.[0]?.amount,
                         amountUsd: Number(req.items?.[0]?.amount) || 0 });
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
@@ -1392,6 +1405,117 @@ const browser = await chromium.launch(launchOpts);
   ok('initializeApp 调用 1 次', st.fb.init===1, st.fb);
   ok('登录状态监听照常注册', st.fb.authCbs===1, st.fb);
   ok('无 JS 报错', errs.length===0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---------- 【22】从公司账本找回某人本月记的账 ----------
+// 2026-08-13 用户：Yang 一直用同事版记账，改用主 App 后要「把同事 app yang 的记录
+// 同步来主 App」。这一组守住三条：拉回来的一定带 recordId 且标成 sent（少了会被当成
+// 还没报过，一编辑就再送一次账本、金额翻倍）、已经有的不重复加、这个动作只拉不推。
+{
+  console.log('\n【22】从公司账本找回某人本月记的账');
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  const posted = [];
+  const serverBook = []; let recSeq = 0;
+  const todayStr = new Date().toISOString().slice(0,10);   // 上面那个在别的区块作用域里，这边自己来一份
+  await ctx.route('**/*', async route => {
+    const u = route.request().url();
+    if (u.startsWith(`http://localhost:${PORT}`)) return route.continue();
+    if (!u.startsWith(BUTLER)) return route.abort('failed');   // 外部网域一律挡掉
+    const h = { 'Access-Control-Allow-Origin': '*' };
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ categories:['Lunch','Store'], plateCategories:[],
+          mealCategories:[{label:'Lunch', bossRaw:'老板午餐'}],
+          people:[{code:'Boss',label:'Boss'},
+                  {code:'Seryi',label:'Seryi',ownMeals:['Breakfast','Lunch','Dinner']},
+                  {code:'Yang',label:'Yang',ownMeals:['Breakfast','Lunch','Dinner']}] }) });
+    }
+    const req = JSON.parse(route.request().postData() || '{}');
+    posted.push(req);
+    if (req.action === 'mine') {
+      const who = req.reporter || 'Boss';
+      const rows = serverBook.filter(r => r.reporter === who).map(r => ({
+        id: r.id, date: todayStr, categoryEn: r.categoryEn,
+        billNo: r.refTag, side: r.person === 'Boss' ? 'boss' : 'assist',
+        amountUsd: r.amountUsd, note: null,
+      }));
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'ok', reporter: who, records: rows }) });
+    }
+    if (req.action) return route.fulfill({ status:200, contentType:'application/json', headers:h,
+      body: JSON.stringify({ status:'ok' }) });
+    // 记一笔：照 butler 的规则算归属（自己吃的正餐算自己，其余算 Boss）
+    const cat = String(req.items?.[0]?.categoryRaw || '');
+    const person = (!/老板|boss/i.test(cat) && ['Breakfast','Lunch','Dinner'].includes(cat))
+      ? req.reporter : 'Boss';
+    const id = 'rec' + (++recSeq);
+    serverBook.push({ id, person, reporter: req.reporter, categoryEn: cat,
+                      refTag: String(recSeq), amountUsd: Number(req.items?.[0]?.amount) || 0 });
+    return route.fulfill({ status:200, contentType:'application/json', headers:h,
+      body: JSON.stringify({ status:'ok', records:[{ id, person, refTag:String(recSeq) }], total:0 }) });
+  });
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_companyToken', 'boss-token');
+    const acc = data.accounts[0]; acc.isCompany = true; saveData();
+  });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 重新启动完成' });
+
+  // 先用 Seryi 的名义记两笔进假账本，再清掉本机记录，模拟「换了台手机/换了个 App」
+  for (const [amt, cat] of [['4.49','Lunch'], ['20','Store']]) {
+    await page.evaluate(()=>showAddTx());
+    await until(() => page.evaluate(() => {
+      const m = document.getElementById('modal-add-tx');
+      return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+    }), { what: '记账弹窗打开' });
+    await page.fill('#tx-amount', amt);
+    await page.selectOption('#tx-company-category', cat);
+    await page.selectOption('#tx-company-reporter', 'Seryi');
+    const n = posted.length;
+    await page.evaluate(()=>saveTx());
+    await until(() => posted.length > n, { what: '这一笔送到服务端' });
+    await page.waitForTimeout(120);
+  }
+  await page.evaluate(()=>{ data.transactions = []; saveData(); });
+  ok('前提：本机清单已经清空', await page.evaluate(()=>data.transactions.length)===0);
+
+  // 「记一笔」的请求带 items，mine/edit/delete 都不带——用它数 add 最直接
+  const addsBefore = posted.filter(x=>x.items).length;
+  await page.evaluate(()=>{
+    document.getElementById('import-reporter-select').value = 'Seryi';
+    return importMyCompanyRecords();
+  });
+  await page.waitForTimeout(400);
+  const txs = await page.evaluate(()=>data.transactions);
+  ok('找回两笔', txs.length===2, txs.length);
+  ok('金额对得上', JSON.stringify(txs.map(t=>t.amount).sort())===JSON.stringify([20,4.49].sort()), txs.map(t=>t.amount));
+  ok('每一笔都带着账本那条的 id（删除/去重都靠它）',
+     txs.every(t=>t.company && t.company.recordId), txs.map(t=>t.company?.recordId));
+  ok('每一笔都标成 sent（不标的话一编辑就会再送一次、金额翻倍）',
+     txs.every(t=>t.company && t.company.status==='sent'), txs.map(t=>t.company?.status));
+  ok('报账人记成 Seryi', txs.every(t=>t.company?.reporter==='Seryi'), txs.map(t=>t.company?.reporter));
+  ok('自己吃的午餐算他自己、Store 算 Boss',
+     txs.some(t=>t.company?.person==='Seryi') && txs.some(t=>t.company?.person==='Boss'),
+     txs.map(t=>t.company?.person));
+  ok('只拉不推：没往账本写任何东西',
+     posted.filter(x=>x.items).length===addsBefore,
+     [posted.filter(x=>x.items).length, addsBefore]);
+
+  // 再按一次不该变成四笔
+  await page.evaluate(()=>importMyCompanyRecords());
+  await page.waitForTimeout(400);
+  ok('再按一次不会重复（还是两笔）', await page.evaluate(()=>data.transactions.length)===2,
+     await page.evaluate(()=>data.transactions.length));
+  ok('无 JS 报错', errs.length===0, errs);
   await ctx.close();
 }
 
