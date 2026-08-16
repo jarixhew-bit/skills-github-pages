@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>自动交易作业系统 · 运作简报</title>
+<style>
+:root{
+  --paper:#F4F1EB; --card:#FCFBF8; --ink:#14110F; --muted:#6E6759;
+  --line:#DED8CC; --line2:#EAE5DA;
+  --orange:#E8541F; --orange-dim:#F6C9B6;
+  --green:#159A50; --red:#D33B27; --grey:#9A9284;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 18px 60px}
+
+/* ---------- 顶部导航 ---------- */
+.topbar{
+  position:sticky; top:0; z-index:50; background:rgba(244,241,235,.94);
+  backdrop-filter:saturate(180%) blur(10px); border-bottom:1px solid var(--line);
+}
+.topbar .inner{max-width:1080px;margin:0 auto;padding:9px 18px;display:flex;align-items:center;gap:12px}
+.brand{font-weight:800;font-size:14px;letter-spacing:.02em;white-space:nowrap}
+.brand em{font-style:normal;color:var(--orange)}
+.navdots{display:flex;gap:5px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.navdots::-webkit-scrollbar{display:none}
+.navdots a{
+  width:24px;height:24px;border-radius:6px;display:grid;place-items:center;flex:0 0 auto;
+  font-size:12px;font-weight:700;color:var(--muted);text-decoration:none;border:1px solid var(--line);
+  background:var(--card);
+}
+.navdots a.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.lockbtn{
+  flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--ink);
+  border-radius:7px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;
+}
+.lockbtn.open{border-color:var(--green);color:var(--green)}
+
+/* ---------- 区块 ---------- */
+section.page{padding:34px 0 8px;border-top:1px solid var(--line);}
+section.page:first-of-type{border-top:0}
+.phead{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.pnum{
+  width:32px;height:32px;background:var(--ink);color:#fff;border-radius:7px;
+  display:grid;place-items:center;font-weight:800;font-size:16px;flex:0 0 auto;
+}
+.ptitle{font-weight:800;font-size:14px;letter-spacing:.03em}
+.pver{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:6px}
+.pver .dot{width:7px;height:7px;border-radius:50%;background:var(--orange)}
+.prule{height:2px;background:var(--ink);margin-bottom:4px}
+.ptick{color:var(--muted);letter-spacing:.35em;font-size:12px;margin-bottom:16px}
+
+.hero{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;margin-bottom:22px}
+.hero h1{
+  font-size:clamp(30px,6.2vw,52px);line-height:1.06;margin:0 0 12px;
+  font-weight:900;letter-spacing:-.02em;
+}
+.hero h1 .o{color:var(--orange);display:block}
+.quote{
+  display:inline-block;border:1.5px solid var(--ink);padding:6px 14px;
+  font-weight:800;font-size:clamp(13px,2.4vw,16px);
+}
+.heroart{position:relative}
+.heroart svg{width:100%;height:auto;display:block}
+.artnotes{margin-top:10px;display:flex;flex-direction:column;gap:9px}
+.artnote{font-size:12px;font-weight:700;line-height:1.35;padding-left:13px;position:relative;color:var(--ink)}
+.artnote::before{content:"";position:absolute;left:0;top:6px;width:6px;height:6px;border-radius:50%;background:var(--orange)}
+.artnote span{display:block;font-weight:500;color:var(--muted)}
+
+/* ---------- 卡片 ---------- */
+.panel{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:16px;margin-bottom:14px}
+.panel > h3{margin:0 0 14px;font-size:14px;font-weight:800}
+.panel > h3 .hint{float:right;font-size:11px;font-weight:600;color:var(--muted)}
+.grid{display:grid;gap:12px}
+.grid > *{min-width:0}
+.g5{grid-template-columns:repeat(5,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+
+.metric{border:1px solid var(--line2);border-radius:11px;padding:13px 12px;text-align:center;background:#fff}
+.metric .k{font-size:12px;font-weight:700;color:var(--ink);min-height:32px;display:flex;align-items:center;justify-content:center;text-align:center}
+.metric .ico{margin:6px auto 8px;width:38px;height:38px;color:var(--ink)}
+.metric .ico svg{width:100%;height:100%}
+.metric .sub{font-size:11px;color:var(--muted)}
+.metric .v{font-size:clamp(20px,4.4vw,27px);font-weight:900;color:var(--orange);line-height:1.15;margin:2px 0}
+.metric .v.green{color:var(--green)} .metric .v.red{color:var(--red)} .metric .v.ink{color:var(--ink)}
+.metric .foot{margin-top:9px;padding-top:8px;border-top:1px dashed var(--line);font-size:11px;font-weight:700;color:var(--muted)}
+
+.bar{height:7px;border-radius:4px;background:var(--line2);overflow:hidden;margin:7px 0 3px}
+.bar i{display:block;height:100%;background:var(--orange);border-radius:4px}
+.bar.g i{background:var(--green)}
+.barscale{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
+
+/* 摘要条 */
+.summary{display:grid;grid-template-columns:repeat(4,1fr) 1.15fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.summary > div{padding:13px 12px;text-align:center;border-right:1px solid var(--line2)}
+.summary > div:last-child{border-right:0;background:#FAF8F3}
+.summary .k{font-size:11px;color:var(--muted);font-weight:600}
+.summary .v{font-size:clamp(17px,3.4vw,23px);font-weight:900;margin:3px 0 1px}
+.summary .u{font-size:11px;color:var(--muted)}
+
+/* 流程条 */
+.flow{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:15px 12px;display:flex;align-items:flex-start;gap:4px;margin-bottom:14px}
+.flow .step{flex:1;text-align:center;min-width:0}
+.flow .step .ico{width:32px;height:32px;margin:0 auto 7px;color:var(--ink)}
+.flow .step .ico svg{width:100%;height:100%}
+.flow .step b{display:block;font-size:12.5px;font-weight:800}
+.flow .step span{display:block;font-size:11px;color:var(--muted);line-height:1.35;margin-top:2px}
+.flow .arw{flex:0 0 auto;align-self:center;color:var(--orange);font-weight:900;padding:0 2px;font-size:15px}
+
+/* 表格 */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-size:11px;color:var(--muted);font-weight:700;text-align:right;padding:0 6px 8px;border-bottom:1px solid var(--line)}
+.tbl th:first-child{text-align:left}
+.tbl td{padding:9px 6px;text-align:right;border-bottom:1px solid var(--line2);font-variant-numeric:tabular-nums}
+.tbl td:first-child{text-align:left;font-weight:800}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tfoot td{border-top:1px solid var(--line);border-bottom:0;font-weight:800;padding-top:11px}
+.sym{display:flex;align-items:center;gap:8px}
+.tag{
+  width:30px;height:30px;border-radius:8px;background:var(--ink);color:#fff;flex:0 0 auto;
+  display:grid;place-items:center;font-size:10px;font-weight:800;letter-spacing:-.02em;
+}
+.tag.etf{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+.up{color:var(--green)} .down{color:var(--red)} .flat{color:var(--muted)}
+
+/* 清单项 */
+.list{display:flex;flex-direction:column;gap:9px}
+.item{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line2);border-radius:10px;padding:10px 11px;background:#fff}
+.item .ic{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;flex:0 0 auto;font-size:13px;font-weight:800}
+.item .ic.warn{background:#FDEEE9;color:var(--orange)}
+.item .ic.ok{background:#E9F6EE;color:var(--green)}
+.item .ic.buy{background:#E9F6EE;color:var(--green)}
+.item .ic.sell{background:#FDEBE8;color:var(--red)}
+.item .tx{font-size:12.5px;line-height:1.45;min-width:0}
+.item .tx b{display:block;font-size:13px}
+.item .tx span{color:var(--muted)}
+
+.log{display:flex;flex-direction:column;gap:0}
+.logrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px dashed var(--line2);font-size:12.5px}
+.logrow:last-child{border-bottom:0}
+.logrow .dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex:0 0 auto}
+.logrow .t{color:var(--muted);font-variant-numeric:tabular-nums;font-size:11.5px;flex:0 0 auto}
+.logrow .m{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logrow .s{font-size:11px;font-weight:700;color:var(--muted);flex:0 0 auto}
+.logrow .s.on{color:var(--green)}
+
+/* 锁 */
+.locked{
+  border:1px dashed var(--line);border-radius:12px;padding:26px 18px;text-align:center;background:#FAF8F3;
+}
+.locked b{display:block;font-size:14px;margin-bottom:4px}
+.locked span{font-size:12.5px;color:var(--muted)}
+.locked button{
+  margin-top:12px;border:0;background:var(--ink);color:#fff;border-radius:8px;
+  padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;
+}
+dialog{border:0;border-radius:14px;padding:20px;max-width:320px;width:calc(100% - 36px);background:var(--card);box-shadow:0 18px 50px rgba(0,0,0,.22)}
+dialog::backdrop{background:rgba(20,17,15,.45)}
+dialog h4{margin:0 0 4px;font-size:15px}
+dialog p{margin:0 0 12px;font-size:12px;color:var(--muted)}
+dialog input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;background:#fff;color:var(--ink)}
+dialog .row{display:flex;gap:8px;margin-top:12px}
+dialog button{flex:1;border:0;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+dialog .ok{background:var(--ink);color:#fff}
+dialog .cancel{background:var(--line2);color:var(--ink)}
+.err{color:var(--red);font-size:12px;margin-top:8px;display:none}
+
+.note{font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:10px}
+.note code{background:var(--line2);padding:1px 4px;border-radius:3px;font-size:11px}
+footer.foot{border-top:2px solid var(--ink);margin-top:28px;padding-top:16px;text-align:center}
+footer.foot .tagline{font-size:14px;font-weight:800;margin-bottom:8px}
+footer.foot .tagline em{font-style:normal;color:var(--orange)}
+footer.foot .disc{font-size:11.5px;color:var(--muted);line-height:1.6}
+#selftest{display:none;margin-top:12px;border:1.5px solid var(--red);border-radius:10px;padding:12px;color:var(--red);font-size:12.5px;font-weight:700;background:#FDEBE8}
+
+@media (max-width:860px){
+  .hero1,.allocwrap,.monwrap{grid-template-columns:1fr !important}
+  .allocwrap > div:last-child{max-width:220px;margin:0 auto}
+  .hero{grid-template-columns:1fr}
+  .heroart{max-width:280px}
+  .g5{grid-template-columns:repeat(2,1fr)}
+  .g4{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(2,1fr)}
+  .g2{grid-template-columns:1fr}
+  .summary{grid-template-columns:repeat(2,1fr)}
+  .summary > div{border-bottom:1px solid var(--line2)}
+  .summary > div:last-child{grid-column:1 / -1;border-bottom:0}
+  .flow{flex-wrap:wrap;gap:10px}
+  .flow .step{flex:1 1 30%}
+  .flow .arw{display:none}
+  .tblwrap{overflow-x:auto}
+  .tbl{min-width:520px}
+}
+@media (max-width:420px){
+  .g2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- 图标库 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<g id="i-search" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4 21 21"/></g>
+<g id="i-pie" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v8.5h8.5" stroke-linecap="round"/></g>
+<g id="i-target" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></g>
+<g id="i-shield" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.4-7 8.8-4.1-1.4-7-4.6-7-8.8V6z"/><path d="m8.6 12 2.4 2.4 4.4-4.6" stroke-linecap="round"/></g>
+<g id="i-chart" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 20h16"/><path d="M7 20v-6M12 20V7M17 20v-9"/></g>
+<g id="i-eye" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2.8 12S6.6 5.6 12 5.6 21.2 12 21.2 12 17.4 18.4 12 18.4 2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="2.9"/></g>
+<g id="i-slider" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.1" fill="#FCFBF8"/><circle cx="15" cy="12" r="2.1" fill="#FCFBF8"/><circle cx="8" cy="17" r="2.1" fill="#FCFBF8"/></g>
+<g id="i-refresh" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4.2V9h-4.8"/></g>
+<g id="i-scale" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 4v16M6 20h12M4 9h16"/><path d="M4 9 1.8 14a2.6 2.6 0 0 0 4.4 0Z"/><path d="M20 9l-2.2 5a2.6 2.6 0 0 0 4.4 0Z"/></g>
+<g id="i-bell" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4.2 1.5 5.6 1.5 5.6H5S6.5 14.2 6.5 10Z"/><path d="M10.2 18.6a2 2 0 0 0 3.6 0"/></g>
+<g id="i-clock" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/></g>
+<g id="i-drop" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 6h16l-6.2 7v6.2l-3.6-2V13Z"/></g>
+<g id="i-stop" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.4-7 8.8-4.1-1.4-7-4.6-7-8.8V6z"/><path d="m9.6 9.6 4.8 4.8M14.4 9.6l-4.8 4.8" stroke-linecap="round"/></g>
+<g id="i-dd" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 5.5 8.5 13l3-3 3.2 4.4L21 7"/><path d="M3 18.5h18" stroke-dasharray="3 3"/></g>
+<g id="i-net" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="4.6" r="1.9"/><circle cx="12" cy="19.4" r="1.9"/><circle cx="4.8" cy="8.2" r="1.9"/><circle cx="19.2" cy="8.2" r="1.9"/><circle cx="4.8" cy="15.8" r="1.9"/><circle cx="19.2" cy="15.8" r="1.9"/><path d="M12 6.5v3.1M12 14.4v3.1M6.5 9.2l3.4 1.7M17.5 9.2l-3.4 1.7M6.5 14.8l3.4-1.7M17.5 14.8l-3.4-1.7"/></g>
+<g id="i-cash" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.8" y="6" width="18.4" height="12" rx="2.2"/><circle cx="12" cy="12" r="2.8"/></g>
+</defs></svg>
+
+<div class="topbar"><div class="inner">
+  <div class="brand">自动交易<em>作业系统</em></div>
+  <nav class="navdots" id="navdots" aria-label="区块导航"></nav>
+  <button class="lockbtn" id="lockBtn" type="button">🔒 解锁</button>
+</div></div>
+
+<div class="wrap">
+
+<!-- ===================== 1 ===================== -->
+<section class="page" id="s1">
+  <div class="phead"><div class="pnum">1</div><div class="ptitle">自动交易作业系统</div>
+    <div class="pver">运作中 <span class="dot"></span></div></div>
+  <div class="prule"></div><div class="ptick">///</div>
+  <div class="hero">
+    <div>
+      <h1>我有一套<span class="o">自己跑的交易系统。</span></h1>
+      <div class="quote">它每小时重算一次，我只负责按下确认。</div>
+    </div>
+    <div class="heroart">
+      <svg viewBox="0 0 300 190" role="img" aria-label="系统架构线稿：基座、支柱与顶部">
+        <g fill="none" stroke="#C9C2B4" stroke-width=".7" stroke-dasharray="2 3">
+          <path d="M18 18h264M18 172h264M18 18v154M282 18v154"/></g>
+        <g fill="none" stroke="#14110F" stroke-width="1.5" stroke-linejoin="round">
+          <path d="M150 26 236 62H64Z"/><path d="M64 62h172v10H64Z"/>
+          <path d="M56 150h188v11H56ZM48 161h204v9H48Z"/>
+          <path d="M74 72v78M104 72v78M134 72v78M166 72v78M196 72v78M226 72v78"/>
+          <path d="M64 144h172v6H64Z"/></g>
+        <g fill="#E8541F"><rect x="128" y="86" width="14" height="46" rx="2"/><rect x="158" y="86" width="14" height="46" rx="2"/></g>
+        <g fill="none" stroke="#E8541F" stroke-width="1.3"><circle cx="150" cy="48" r="6"/></g>
+        <g fill="none" stroke="#C9C2B4" stroke-width=".7">
+          <circle cx="64" cy="62" r="2.6"/><circle cx="236" cy="62" r="2.6"/><circle cx="150" cy="26" r="2.6"/>
+          <path d="M150 8v14M150 26v-4"/></g>
+      </svg>
+      <div class="artnotes">
+        <div class="artnote">行情扫描 <span id="a1u">58 檔监控名单</span></div>
+        <div class="artnote">持仓追踪 <span id="a1p">IBKR 每日同步</span></div>
+        <div class="artnote">风险重算 <span id="a1r">交易时段每小时</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="p1">
+    <h3>历来表现 <span class="hint" id="p1hint"></span></h3>
+    <div id="p1body"><div class="locked"><b>需要密码才能看</b><span>绩效与持仓是加密的，公开仓库里只有密文。</span><button type="button" data-unlock>输入密码</button></div></div>
+  </div>
+
+  <div class="flow">
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-search"/></svg></div><b>扫描</b><span>58 檔日线<br>技术指标打分</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-pie"/></svg></div><b>比对</b><span>持仓 vs<br>目标配置</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg></div><b>建议</b><span>加仓与<br>再平衡清单</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-shield"/></svg></div><b>把关</b><span>风险指标<br>逐日重算</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-chart"/></svg></div><b>复利</b><span>只做决定<br>不做劳动</span></div>
+  </div>
+</section>
+
+<!-- ===================== 2 ===================== -->
+<section class="page" id="s2">
+  <div class="phead"><div class="pnum">2</div><div class="ptitle">自动交易作业系统</div>
+    <div class="pver" id="v2">扫描中 <span class="dot"></span></div></div>
+  <div class="prule"></div><div class="ptick">///</div>
+  <div class="hero">
+    <div>
+      <h1>它每天扫描。<span class="o">全名单，不漏看。</span></h1>
+      <div class="quote">趋势 · 均线 · RSI · MACD · 52 周位置</div>
+    </div>
+    <div class="heroart">
+      <svg viewBox="0 0 300 190" role="img" aria-label="地球网格与放大镜线稿">
+        <g fill="none" stroke="#C9C2B4" stroke-width=".7"><circle cx="132" cy="92" r="70"/>
+          <ellipse cx="132" cy="92" rx="70" ry="26"/><ellipse cx="132" cy="92" rx="70" ry="50"/>
+          <ellipse cx="132" cy="92" rx="26" ry="70"/><ellipse cx="132" cy="92" rx="50" ry="70"/>
+          <path d="M62 92h140M132 22v140"/></g>
+        <g fill="#14110F"><circle cx="100" cy="70" r="2"/><circle cx="152" cy="60" r="2"/><circle cx="118" cy="118" r="2"/><circle cx="170" cy="106" r="2"/><circle cx="86" cy="104" r="2"/></g>
+        <g fill="none" stroke="#14110F" stroke-width="2"><circle cx="188" cy="132" r="34"/><path d="m212 156 26 26" stroke-linecap="round" stroke-width="5"/></g>
+        <g fill="none" stroke="#E8541F" stroke-width="1.6" stroke-linecap="round"><path d="m170 138 10-14 8 10 12-20 8 12"/></g>
+      </svg>
+      <div class="artnotes">
+        <div class="artnote">监控名单 <span id="a2u">—</span></div>
+        <div class="artnote">今日买入信号 <span id="a2o">—</span></div>
+        <div class="artnote">数据日期 <span id="a2d">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>市场概况 <span class="hint">公开数据，不需密码</span></h3>
+    <div class="grid g4" id="mktGrid"></div>
+    <div class="note" id="mktLine">载入中…</div>
+  </div>
+
+  <div class="grid g2" style="margin-bottom:14px">
+    <div class="panel" style="margin:0">
+      <h3>今日买入信号 <span class="hint" id="oppN"></span></h3>
+      <div class="list" id="oppList"></div>
+    </div>
+    <div class="panel" style="margin:0">
+      <h3>技术面转弱 <span class="hint" id="weakN"></span></h3>
+      <div class="list" id="weakList"></div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-search"/></svg></div><b>抓行情</b><span>Stooq 主源<br>Yahoo 备援</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-drop"/></svg></div><b>算指标</b><span>五类信号<br>各自加减分</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg></div><b>排顺序</b><span>总分高的<br>排在前面</span></div>
+  </div>
+</section>
+
+<!-- ===================== 3 ===================== -->
+<section class="page" id="s3">
+  <div class="phead"><div class="pnum">3</div><div class="ptitle">自动交易作业系统</div>
+    <div class="pver">配置 <span class="dot"></span></div></div>
+  <div class="prule"></div><div class="ptick">///</div>
+  <div class="hero">
+    <div>
+      <h1>它建立<span class="o">投资组合。</span></h1>
+      <div class="quote">每个部位都有理由。</div>
+    </div>
+    <div class="heroart">
+      <svg viewBox="0 0 300 190" role="img" aria-label="等距圆饼线稿">
+        <g fill="none" stroke="#C9C2B4" stroke-width=".7" stroke-dasharray="2 3"><path d="M30 30h240M30 160h240M30 30v130M270 30v130"/></g>
+        <g fill="none" stroke="#14110F" stroke-width="1.5">
+          <ellipse cx="150" cy="104" rx="96" ry="42"/>
+          <path d="M54 104v-22a96 42 0 0 1 192 0v22"/>
+          <ellipse cx="150" cy="82" rx="96" ry="42"/>
+          <path d="M150 82 246 82M150 82 96 46M150 82 118 118"/></g>
+        <path d="M150 82 246 82a96 42 0 0 1-52 37Z" fill="#E8541F" opacity=".9"/>
+        <path d="M150 82 246 82v22a96 42 0 0 1-52 37v-22Z" fill="#E8541F" opacity=".45"/>
+        <g fill="none" stroke="#C9C2B4" stroke-width=".7"><circle cx="54" cy="82" r="2.6"/><circle cx="246" cy="82" r="2.6"/><circle cx="150" cy="40" r="2.6"/></g>
+      </svg>
+      <div class="artnotes">
+        <div class="artnote">持有部位 <span id="a3n">—</span></div>
+        <div class="artnote">现金比重 <span id="a3c">—</span></div>
+        <div class="artnote">最大单一部位 <span id="a3m">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>投资组合配置 <span class="hint" id="p3hint"></span></h3>
+    <div id="p3body"><div class="locked"><b>需要密码才能看</b><span>持仓明细存在加密档里。</span><button type="button" data-unlock>输入密码</button></div></div>
+  </div>
+
+  <div class="flow">
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-chart"/></svg></div><b>分析</b><span>找出<br>可用机会</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-pie"/></svg></div><b>配置</b><span>按目标比例<br>分配资金</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-scale"/></svg></div><b>平衡</b><span>控制集中度<br>与现金缓冲</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg></div><b>最佳化</b><span>偏离超标<br>就提示调整</span></div>
+  </div>
+</section>
+
+<!-- ===================== 4 ===================== -->
+<section class="page" id="s4">
+  <div class="phead"><div class="pnum">4</div><div class="ptitle">自动交易作业系统</div>
+    <div class="pver">风险引擎 <span class="dot"></span></div></div>
+  <div class="prule"></div><div class="ptick">///</div>
+  <div class="hero">
+    <div>
+      <h1>它管理风险。<span class="o">保住本金优先。</span></h1>
+      <div class="quote">先看会亏多少，再看能赚多少。</div>
+    </div>
+    <div class="heroart">
+      <svg viewBox="0 0 300 190" role="img" aria-label="盾牌线稿与网格">
+        <g fill="none" stroke="#C9C2B4" stroke-width=".7" stroke-dasharray="2 3"><path d="M40 20h220M40 172h220M40 20v152M260 20v152"/></g>
+        <g fill="none" stroke="#14110F" stroke-width="1.6" stroke-linejoin="round">
+          <path d="M150 26 232 58v50c0 44-34 72-82 86-48-14-82-42-82-86V58Z"/>
+          <path d="M150 40 220 67v41c0 37-28 61-70 73-42-12-70-36-70-73V67Z" stroke="#C9C2B4" stroke-width="1"/></g>
+        <path d="m116 104 26 26 48-56" fill="none" stroke="#E8541F" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <g fill="none" stroke="#C9C2B4" stroke-width=".7"><circle cx="68" cy="58" r="2.6"/><circle cx="232" cy="58" r="2.6"/><circle cx="150" cy="26" r="2.6"/><circle cx="150" cy="194" r="2.6"/></g>
+      </svg>
+      <div class="artnotes">
+        <div class="artnote">最大回撤 <span id="a4d">—</span></div>
+        <div class="artnote">现金缓冲 <span id="a4c">—</span></div>
+        <div class="artnote">样本天数 <span id="a4n">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>风险指标 <span class="hint" id="p4hint"></span></h3>
+    <div id="p4body"><div class="locked"><b>需要密码才能看</b><span>风险指标由加密的净值序列算出。</span><button type="button" data-unlock>输入密码</button></div></div>
+  </div>
+
+  <div class="flow">
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-chart"/></svg></div><b>衡量</b><span>波动、回撤<br>尾端风险</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-shield"/></svg></div><b>保护</b><span>限制下行<br>留足现金</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-slider"/></svg></div><b>控制</b><span>集中度与<br>偏离度设限</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg></div><b>执行</b><span>超标就<br>列进清单</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-refresh"/></svg></div><b>复查</b><span>每小时<br>重算一次</span></div>
+  </div>
+</section>
+
+<!-- ===================== 5 ===================== -->
+<section class="page" id="s5">
+  <div class="phead"><div class="pnum">5</div><div class="ptitle">自动交易作业系统</div>
+    <div class="pver">监控 <span class="dot"></span></div></div>
+  <div class="prule"></div><div class="ptick">///</div>
+  <div class="hero">
+    <div>
+      <h1>它盯着每个部位。<span class="o">每个交易时段。</span></h1>
+      <div class="quote">异常自己浮出来，不用我去翻。</div>
+    </div>
+    <div class="heroart">
+      <svg viewBox="0 0 300 190" role="img" aria-label="雷达同心圆线稿">
+        <g fill="none" stroke="#C9C2B4" stroke-width=".7"><circle cx="150" cy="96" r="82"/><circle cx="150" cy="96" r="62"/><circle cx="150" cy="96" r="42"/><circle cx="150" cy="96" r="22"/>
+          <path d="M150 14v164M68 96h164M92 38l116 116M208 38 92 154"/></g>
+        <path d="M150 96 150 14a82 82 0 0 1 58 24Z" fill="#E8541F" opacity=".18"/>
+        <g fill="none" stroke="#14110F" stroke-width="1.8" stroke-linecap="round"><path d="M150 96 208 38"/></g>
+        <g fill="#14110F"><circle cx="186" cy="66" r="3.4"/><circle cx="118" cy="128" r="3"/><circle cx="196" cy="122" r="3"/></g>
+        <circle cx="186" cy="66" r="9" fill="none" stroke="#E8541F" stroke-width="1.4"/>
+        <circle cx="150" cy="96" r="6" fill="#14110F"/>
+      </svg>
+      <div class="artnotes">
+        <div class="artnote">未实现损益 <span id="a5u">—</span></div>
+        <div class="artnote">今日变动 <span id="a5t">—</span></div>
+        <div class="artnote">待办提示 <span id="a5a">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>即时部位 <span class="hint" id="p5hint"></span></h3>
+    <div id="p5body"><div class="locked"><b>需要密码才能看</b><span>部位明细是加密的。</span><button type="button" data-unlock>输入密码</button></div></div>
+  </div>
+
+  <div class="flow">
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-eye"/></svg></div><b>监控</b><span>交易时段<br>每小时刷新</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-bell"/></svg></div><b>提示</b><span>偏离目标<br>浮亏、转弱</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-slider"/></svg></div><b>分析</b><span>技术面与<br>成本一起看</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-shield"/></svg></div><b>把关</b><span>该动手时<br>才叫我</span></div>
+  </div>
+</section>
+
+<!-- ===================== 6 ===================== -->
+<section class="page" id="s6">
+  <div class="phead"><div class="pnum">6</div><div class="ptitle">自动交易作业系统</div>
+    <div class="pver">再平衡 <span class="dot"></span></div></div>
+  <div class="prule"></div><div class="ptick">///</div>
+  <div class="hero">
+    <div>
+      <h1>它做再平衡。<span class="o">把钱拉回该在的位置。</span></h1>
+      <div class="quote">涨多的减一点，落后的补一点。</div>
+    </div>
+    <div class="heroart">
+      <svg viewBox="0 0 300 190" role="img" aria-label="圆环与再平衡箭头线稿">
+        <g fill="none" stroke="#C9C2B4" stroke-width=".7" stroke-dasharray="2 3"><path d="M30 24h240M30 166h240"/></g>
+        <g fill="none" stroke="#14110F" stroke-width="1.5"><circle cx="150" cy="95" r="62"/><circle cx="150" cy="95" r="34"/>
+          <path d="M150 33v28M150 129v28M88 95h28M184 95h28"/></g>
+        <path d="M150 33a62 62 0 0 1 53.7 31L174.5 81A34 34 0 0 0 150 67Z" fill="#E8541F"/>
+        <path d="M150 33a62 62 0 0 0-53.7 31l29.2 17A34 34 0 0 1 150 67Z" fill="#14110F" opacity=".82"/>
+        <path d="M96.3 64A62 62 0 0 0 150 157v-34a34 34 0 0 1-24.5-42Z" fill="#14110F" opacity=".28"/>
+        <g fill="none" stroke="#14110F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M138 95a12 12 0 0 1 22-7"/><path d="M162 95a12 12 0 0 1-22 7"/><path d="M160 82v7h-7M140 108v-7h7"/></g>
+      </svg>
+      <div class="artnotes">
+        <div class="artnote">目标配置 <span id="a6t">—</span></div>
+        <div class="artnote">最大偏离 <span id="a6d">—</span></div>
+        <div class="artnote">可用现金 <span id="a6c">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>目前配置 vs 目标配置 <span class="hint" id="p6hint"></span></h3>
+    <div id="p6body"><div class="locked"><b>需要密码才能看</b><span>目标比例存在加密档里。</span><button type="button" data-unlock>输入密码</button></div></div>
+  </div>
+
+  <div class="panel">
+    <h3>为什么要再平衡</h3>
+    <div class="grid g4">
+      <div class="metric"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-chart"/></svg></div>
+        <div class="k" style="color:var(--orange)">锁住涨幅</div><div class="sub">涨多的部位<br>顺手减回目标</div></div>
+      <div class="metric"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-shield"/></svg></div>
+        <div class="k" style="color:var(--orange)">控制风险</div><div class="sub">不让单一部位<br>大到能左右全局</div></div>
+      <div class="metric"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-pie"/></svg></div>
+        <div class="k" style="color:var(--orange)">纪律买进</div><div class="sub">落后的补仓<br>等于逢低加码</div></div>
+      <div class="metric"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg></div>
+        <div class="k" style="color:var(--orange)">省下判断</div><div class="sub">规则先定好<br>盘中不用临时想</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 7 ===================== -->
+<section class="page" id="s7">
+  <div class="phead"><div class="pnum">7</div><div class="ptitle">自动交易作业系统</div>
+    <div class="pver" id="v7">管线状态 <span class="dot"></span></div></div>
+  <div class="prule"></div><div class="ptick">///</div>
+  <div class="hero">
+    <div>
+      <h1>它不用我提醒。<span class="o">每小时自己跑一次。</span></h1>
+      <div class="quote">开盘时段跑，我睡觉它也在算。</div>
+    </div>
+    <div class="heroart">
+      <svg viewBox="0 0 300 190" role="img" aria-label="世界经纬网格与节点">
+        <g fill="none" stroke="#C9C2B4" stroke-width=".7">
+          <path d="M20 40h260M20 66h260M20 92h260M20 118h260M20 144h260"/>
+          <path d="M40 30v124M80 26v132M120 22v140M160 22v140M200 26v132M240 30v124M275 40v104M25 40v104"/></g>
+        <g fill="#14110F"><circle cx="80" cy="66" r="2.6"/><circle cx="98" cy="80" r="2.2"/><circle cx="150" cy="60" r="2.6"/><circle cx="166" cy="92" r="2.2"/><circle cx="212" cy="80" r="2.6"/><circle cx="228" cy="118" r="2.2"/><circle cx="60" cy="104" r="2.2"/></g>
+        <g fill="#E8541F"><circle cx="80" cy="66" r="5.5" opacity=".25"/><circle cx="150" cy="60" r="5.5" opacity=".25"/><circle cx="212" cy="80" r="5.5" opacity=".25"/></g>
+        <g fill="none" stroke="#E8541F" stroke-width="1.1"><path d="M80 66q35-26 70-6M150 60q35 2 62 20"/></g>
+        <g fill="none" stroke="#14110F" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 168l24-10 18 8 22-18 20 10 26-22 22 12 26-20 22 10 24-16 26 8"/></g>
+      </svg>
+      <div class="artnotes">
+        <div class="artnote">最近一次运算 <span id="a7g">—</span></div>
+        <div class="artnote">运算频率 <span id="a7f">交易时段每小时</span></div>
+        <div class="artnote">花费 <span>零 · GitHub Actions 免费额度</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>帐户总览 <span class="hint" id="p7hint"></span></h3>
+    <div id="p7body"><div class="locked"><b>需要密码才能看</b><span>帐户数字是加密的。</span><button type="button" data-unlock>输入密码</button></div></div>
+  </div>
+
+  <div class="grid g2">
+    <div class="panel" style="margin:0">
+      <h3>管线作业日志 <span class="hint">真实排程</span></h3>
+      <div class="log" id="pipeLog"></div>
+    </div>
+    <div class="panel" style="margin:0">
+      <h3>系统边界 <span class="hint">它不做什么</span></h3>
+      <div class="list">
+        <div class="item"><div class="ic warn">✕</div><div class="tx"><b>不会自动下单</b><span>只产出建议清单，最后一步由我在券商手动执行。</span></div></div>
+        <div class="item"><div class="ic warn">✕</div><div class="tx"><b>不看新闻和财报</b><span>只吃价格与量。突发消息它不知道。</span></div></div>
+        <div class="item"><div class="ic warn">✕</div><div class="tx"><b>不预测涨跌</b><span>技术指标只描述现况，不是对未来的判断。</span></div></div>
+        <div class="item"><div class="ic ok">✓</div><div class="tx"><b>它真正省下的</b><span>每天手动核对持仓、算权重、翻 58 檔线图的时间。</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-clock"/></svg></div><b>排程</b><span>交易时段<br>整点触发</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-search"/></svg></div><b>取数</b><span>行情 +<br>券商持仓</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-slider"/></svg></div><b>运算</b><span>信号、风险<br>再平衡</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-shield"/></svg></div><b>加密</b><span>私密数字<br>先加密再入库</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-net"/></svg></div><b>发布</b><span>推上线<br>手机随时看</span></div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="tagline">由程序打造，以<em>纪律</em>为后盾。</div>
+  <div class="disc">
+    本页数字全部来自本人实际帐户与公开行情，无模拟、无回测美化。<br>
+    技术指标由程序自动计算，仅供个人参考，<b>不构成投资建议</b>。<br>
+    <span id="metaLine"></span>
+  </div>
+  <div id="selftest"></div>
+</footer>
+
+</div><!-- /wrap -->
+
+<dialog id="pwDlg">
+  <h4>解锁私密数据</h4>
+  <p>密码只在这台装置上使用，解密全程在浏览器内完成。</p>
+  <form method="dialog" id="pwForm">
+    <input type="password" id="pwInput" placeholder="密码" autocomplete="current-password">
+    <div class="err" id="pwErr"></div>
+    <div class="row">
+      <button type="button" class="cancel" id="pwCancel">取消</button>
+      <button type="submit" class="ok">解锁</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+"use strict";
+const PW_KEY = "tradingAnalyzerPw";
+const JUMP = 0.06;           // 单日 |涨跌| 超过此值视为出入金造成的净值跳变，剔除
+let PUB = null, PRIV = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const fmtUsd = (v, d = 0) => v == null ? "—" : (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtPct = (v, d = 2) => v == null ? "—" : (v > 0 ? "+" : "") + v.toFixed(d) + "%";
+const cls = v => v > 0 ? "up" : v < 0 ? "down" : "flat";
+const vcls = v => v > 0 ? "green" : v < 0 ? "red" : "ink";
+
+/* ---------------- 风险指标：全部由净值序列现算 ---------------- */
+function riskMetrics(navSeries, twrDaily) {
+  // 日收益的来源有两条，优先用管线算好的那条：
+  //   twr：analyzer.py 的 twr_daily，出入金已在来源端用「持仓×价差」精确剔除
+  //   nav：退路——从净值序列现推，只能用阈值猜转帐，会把真实暴跌误剔，数字要标示为估算
+  let rs = [], dates = [], mode = null, dropped = 0;
+  const factors = twrDaily ? Object.entries(twrDaily).sort((a, b) => a[0] < b[0] ? -1 : 1) : [];
+  if (factors.length >= 20) {
+    mode = "twr";
+    for (const [d, f] of factors) { if (f > 0) { rs.push(f - 1); dates.push(d); } }
+  } else if (navSeries && navSeries.length >= 22) {
+    mode = "nav";
+    const raw = [];
+    for (let i = 1; i < navSeries.length; i++) {
+      const a = navSeries[i - 1][1], b = navSeries[i][1];
+      if (a > 0 && b > 0) raw.push({ d: navSeries[i][0], r: b / a - 1 });
+    }
+    const kept = raw.filter(x => Math.abs(x.r) <= JUMP);
+    dropped = raw.length - kept.length;
+    rs = kept.map(x => x.r); dates = kept.map(x => x.d);
+  } else return null;
+  if (rs.length < 20) return null;
+
+  const n = rs.length;
+  const mean = rs.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.sqrt(rs.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1));
+
+  // 合成净值曲线（纯收益，不含出入金），用来量回撤
+  let eq = 1, peak = 1, mdd = 0;
+  const curve = [1], ddCurve = [0];
+  for (const r of rs) {
+    eq *= (1 + r); curve.push(eq);
+    if (eq > peak) peak = eq;
+    const dd = eq / peak - 1; ddCurve.push(dd);
+    if (dd < mdd) mdd = dd;
+  }
+  const sorted = [...rs].sort((a, b) => a - b);
+  const q = p => {
+    const i = (sorted.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i);
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+  };
+  const var95 = q(0.05);
+  const tail = sorted.filter(v => v <= var95);
+  const es = tail.length ? tail.reduce((a, b) => a + b, 0) / tail.length : var95;
+  let bi = 0, wi = 0;
+  rs.forEach((r, i) => { if (r > rs[bi]) bi = i; if (r < rs[wi]) wi = i; });
+
+  return {
+    n, mode, dropped, days: navSeries ? navSeries.length : n,
+    annVol: sd * Math.sqrt(252) * 100,
+    annRet: (Math.pow(eq, 252 / n) - 1) * 100,
+    sharpe: sd > 0 ? mean * Math.sqrt(252) / sd : null,
+    cumRet: (eq - 1) * 100,
+    mdd: mdd * 100,
+    curDd: (eq / peak - 1) * 100,
+    var95: var95 * 100, es: es * 100,
+    best: { d: dates[bi], r: rs[bi] * 100 }, worst: { d: dates[wi], r: rs[wi] * 100 },
+    curve, ddCurve,
+  };
+}
+
+/* ---------------- 图 ---------------- */
+function areaChart(vals, w, h, up) {
+  if (!vals || vals.length < 2) return "";
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const x = i => i / (vals.length - 1) * w;
+  const y = v => h - 4 - (v - min) / span * (h - 12);
+  const line = vals.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1)).join("");
+  const col = up ? "var(--green)" : "var(--red)";
+  const id = "g" + Math.random().toString(36).slice(2, 8);
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${col}" stop-opacity=".22"/><stop offset="100%" stop-color="${col}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${line}L${w},${h}L0,${h}Z" fill="url(#${id})"/>
+    <path d="${line}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+function spark(vals, w, h) {
+  if (!vals || vals.length < 2) return "";
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const d = vals.map((v, i) => (i ? "L" : "M") + (i / (vals.length - 1) * w).toFixed(1) + "," + (h - 2 - (v - min) / span * (h - 4)).toFixed(1)).join("");
+  const col = vals[vals.length - 1] >= vals[0] ? "var(--green)" : "var(--red)";
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${d}" fill="none" stroke="${col}" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+}
+function donut(items, size) {
+  const total = items.reduce((a, b) => a + b.v, 0) || 1;
+  const R = size / 2, r = R * 0.62, C = 2 * Math.PI * r;
+  let off = 0;
+  const rings = items.map(it => {
+    const frac = it.v / total, len = frac * C;
+    const s = `<circle cx="${R}" cy="${R}" r="${r}" fill="none" stroke="${it.c}" stroke-width="${R * 0.42}"
+      stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"
+      transform="rotate(-90 ${R} ${R})"/>`;
+    off += len; return s;
+  }).join("");
+  return `<svg viewBox="0 0 ${size} ${size}" style="width:100%;max-width:${size}px;height:auto" role="img" aria-label="投资组合配置圆环图">${rings}</svg>`;
+}
+const PALETTE = ["#E8541F", "#14110F", "#6E6759", "#A79C88", "#C9C2B4", "#8FA37E", "#B8763F", "#D9C77E"];
+
+/* ---------------- 解密 ---------------- */
+async function decryptEnvelope(envText, password) {
+  const env = JSON.parse(envText);
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const keyMat = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: b64(env.salt), iterations: env.iter, hash: "SHA-256" },
+    keyMat, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(env.nonce) }, key, b64(env.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* ---------------- 公开区渲染 ---------------- */
+function bySym(sym) { return (PUB.tickers || []).find(t => t.symbol === sym); }
+
+function renderPublic() {
+  const m = PUB.market || {}, u = (PUB.tickers || []).length;
+  $("a1u").textContent = u + " 檔监控名单";
+  $("a2u").textContent = u + " 檔";
+  $("a2o").textContent = (PUB.opportunities || []).length + " 檔";
+  $("a2d").textContent = PUB.data_date || "—";
+  $("v2").innerHTML = u + " 檔已扫描 <span class=\"dot\"></span>";
+
+  const cards = [
+    { k: "标普 500", v: (m.spy && m.spy.trend) || "—", sub: m.spy ? fmtUsd(m.spy.price) + " · " + fmtPct(m.spy.chg1d) : "", up: m.spy && m.spy.chg1d >= 0 },
+    { k: "纳斯达克 100", v: (m.qqq && m.qqq.trend) || "—", sub: m.qqq ? fmtUsd(m.qqq.price) + " · " + fmtPct(m.qqq.chg1d) : "", up: m.qqq && m.qqq.chg1d >= 0 },
+    { k: "市场广度", v: (m.breadth != null ? m.breadth + "%" : "—"), sub: "站上 50 日线比例", bar: m.breadth },
+    { k: "扫描名单", v: u + " 檔", sub: (PUB.tickers || []).filter(t => t.etf).length + " 檔 ETF · 其余个股" },
+  ];
+  $("mktGrid").innerHTML = cards.map(c => `
+    <div class="metric">
+      <div class="k">${esc(c.k)}</div>
+      <div class="v ${c.bar != null ? "" : (c.up ? "green" : "ink")}">${esc(c.v)}</div>
+      <div class="sub">${esc(c.sub || "")}</div>
+      ${c.bar != null ? `<div class="bar"><i style="width:${Math.max(0, Math.min(100, c.bar))}%"></i></div>
+        <div class="barscale"><span>0%</span><span>50%</span><span>100%</span></div>` : ""}
+    </div>`).join("");
+  $("mktLine").textContent = m.line || "";
+
+  const row = (sym, kind) => {
+    const t = bySym(sym);
+    if (!t) return `<div class="item"><div class="ic ${kind}">${kind === "buy" ? "↑" : "↓"}</div><div class="tx"><b>${esc(sym)}</b></div></div>`;
+    return `<div class="item">
+      <div class="ic ${kind}">${kind === "buy" ? "↑" : "↓"}</div>
+      <div class="tx" style="flex:1">
+        <b>${esc(sym)} <span style="font-weight:500;color:var(--muted)">${esc(t.name || "")}</span></b>
+        <span>${esc(t.action)} · ${fmtUsd(t.price, 2)} <span class="${cls(t.chg1d)}">${fmtPct(t.chg1d)}</span> · RSI ${t.rsi}</span>
+      </div>
+      <div style="flex:0 0 auto">${spark((t.spark || []).slice(-40), 56, 24)}</div>
+    </div>`;
+  };
+  const opp = PUB.opportunities || [], weak = PUB.weak || [];
+  $("oppN").textContent = opp.length + " 檔";
+  $("weakN").textContent = weak.length + " 檔";
+  $("oppList").innerHTML = opp.length ? opp.map(s => row(s, "buy")).join("")
+    : `<div class="item"><div class="ic ok">–</div><div class="tx"><b>今天没有买入信号</b><span>名单里没有股票同时满足条件。</span></div></div>`;
+  $("weakList").innerHTML = weak.length ? weak.map(s => row(s, "sell")).join("")
+    : `<div class="item"><div class="ic ok">✓</div><div class="tx"><b>没有明显转弱的</b><span>名单里没有触发卖出信号。</span></div></div>`;
+
+  $("a7g").textContent = PUB.generated_at || "—";
+  $("metaLine").innerHTML = `数据日期 ${esc(PUB.data_date || "—")} · 最近运算 ${esc(PUB.generated_at || "—")} · <a href="./" style="color:var(--muted)">回到分析器</a>`;
+  renderPipeLog();
+}
+
+function renderPipeLog() {
+  const steps = [
+    ["fetch_prices.py", "抓取 " + ((PUB.tickers || []).length) + " 檔日线（Stooq 主源 / Yahoo 备援）", "完成"],
+    ["flex_account.py", "从券商拉持仓、现金、净值与成交", "完成"],
+    ["analyzer.py", "技术信号打分、持仓重算、加仓建议", "完成"],
+    ["加密封装", "PBKDF2-SHA256 30 万次 + AES-256-GCM", "完成"],
+    ["ai_note.py", "每日首次运算时生成帐户点评", "每日一次"],
+    ["git push", "推上 GitHub Pages，手机开网页就是最新的", "完成"],
+  ];
+  $("pipeLog").innerHTML = steps.map(([a, b, c]) => `
+    <div class="logrow"><span class="dot"></span>
+      <span class="t">${esc(a)}</span>
+      <span class="m">${esc(b)}</span>
+      <span class="s on">${esc(c)}</span>
+    </div>`).join("");
+}
+
+/* ---------------- 私密区渲染 ---------------- */
+function renderPrivate() {
+  const acc = PRIV.account || {}, perf = PRIV.perf || {}, rev = PRIV.review || {};
+  const pos = PRIV.positions || [], acts = PRIV.actions || [];
+  const rm = riskMetrics(PRIV.nav_series, PRIV.twr_daily);
+  const navs = PRIV.nav_series || [];
+
+  /* --- 1 历来表现 --- */
+  const ytd = perf.ytd, curve = rm ? rm.curve : null;
+  $("p1hint").textContent = navs.length ? `净值序列 ${navs.length} 天` : "";
+  $("p1body").innerHTML = `
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px;align-items:center" class="hero1">
+      <div>
+        <div style="font-size:12px;color:var(--muted);font-weight:700">年初至今报酬（TWR）</div>
+        <div style="font-size:clamp(34px,7.5vw,54px);font-weight:900;line-height:1.05;color:${ytd >= 0 ? "var(--green)" : "var(--red)"}">${fmtPct(ytd)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">已剔除出入金影响</div>
+      </div>
+      <div>${curve ? areaChart(curve, 300, 110, curve[curve.length - 1] >= curve[0]) : ""}
+        <div class="barscale" style="margin-top:2px"><span>${esc(navs.length ? navs[0][0] : "")}</span><span>合成净值（剔除出入金）</span><span>${esc(navs.length ? navs[navs.length - 1][0] : "")}</span></div>
+      </div>
+    </div>
+    <div class="summary" style="margin-top:16px">
+      <div><div class="k">夏普比率</div><div class="v">${rm && rm.sharpe != null ? rm.sharpe.toFixed(2) : "—"}</div><div class="u">年化 · 无风险利率取 0</div></div>
+      <div><div class="k">最大回撤</div><div class="v" style="color:var(--red)">${rm ? rm.mdd.toFixed(2) + "%" : "—"}</div><div class="u">区间内最深</div></div>
+      <div><div class="k">胜率</div><div class="v">${rev.win_rate != null ? (rev.win_rate * 100).toFixed(1) + "%" : "—"}</div><div class="u">${rev.n_closed != null ? rev.n_closed + " 笔已了结" : "尚无了结交易"}</div></div>
+      <div><div class="k">交易笔数</div><div class="v ink">${rev.n_trades != null ? rev.n_trades.toLocaleString() : "—"}</div><div class="u">${rev.first_date ? esc(rev.first_date) + " 起" : ""}</div></div>
+      <div><div class="k">年化波动率</div><div class="v ink">${rm ? rm.annVol.toFixed(1) + "%" : "—"}</div><div class="u">${rm ? rm.n + " 个交易日样本" : ""}</div></div>
+    </div>
+    <div class="note">口径：报酬率用时间加权（TWR），出入金不计入绩效。夏普、波动率、回撤由日收益现算，
+      ${rm && rm.mode === "twr"
+        ? `样本 ${rm.n} 个交易日，出入金已由管线依「持仓×价差」逐日精确剔除。`
+        : `<b>目前为估算</b>：管线尚未提供逐日收益，改由净值序列现推，已剔除 ${rm ? rm.dropped : 0} 个单日变动超过 ${(JUMP * 100).toFixed(0)}% 的跳点——这个做法可能把真实的暴跌误当成转帐，回撤因此偏轻。`}
+    </div>`;
+
+  /* --- 3 组合配置 --- */
+  const cash = acc.cash, netLiq = acc.net_liq;
+  const alloc = pos.map((p, i) => ({ k: p.symbol, v: p.value, c: PALETTE[i % PALETTE.length] }));
+  if (cash > 0) alloc.push({ k: "现金", v: cash, c: "#DED8CC" });
+  const totalAlloc = alloc.reduce((a, b) => a + b.v, 0) || 1;
+  const maxPos = pos.length ? pos[0] : null;
+  $("a3n").textContent = pos.length + " 项";
+  $("a3c").textContent = acc.cash_pct != null ? acc.cash_pct + "%" : "—";
+  $("a3m").textContent = maxPos ? maxPos.symbol + " " + maxPos.weight + "%" : "—";
+  $("p3hint").textContent = "净资产 " + fmtUsd(netLiq);
+  $("p3body").innerHTML = `
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:20px;align-items:center" class="allocwrap">
+      <div class="list">
+        ${alloc.map(a => `
+          <div class="item">
+            <div class="tag${a.k === "现金" ? " etf" : ""}" style="${a.k === "现金" ? "" : `background:${a.c};color:#fff`}">${esc(a.k.slice(0, 4))}</div>
+            <div class="tx" style="flex:1;min-width:0">
+              <b>${esc(a.k)}</b>
+              <div class="bar"><i style="width:${(a.v / totalAlloc * 100).toFixed(1)}%;background:${a.c}"></i></div>
+            </div>
+            <div style="flex:0 0 auto;text-align:right">
+              <div style="font-weight:900;font-size:15px">${(a.v / totalAlloc * 100).toFixed(1)}%</div>
+              <div style="font-size:11px;color:var(--muted)">${fmtUsd(a.v)}</div>
+            </div>
+          </div>`).join("")}
+      </div>
+      <div style="text-align:center">
+        ${donut(alloc, 180)}
+        <div style="margin-top:8px;font-size:12px;color:var(--muted)">合计</div>
+        <div style="font-size:22px;font-weight:900">${fmtUsd(totalAlloc)}</div>
+      </div>
+    </div>`;
+
+  /* --- 4 风险 --- */
+  const exposure = acc.cash_pct != null ? 100 - acc.cash_pct : null;
+  const maxW = pos.length ? Math.max(...pos.map(p => p.weight)) : null;
+  const withStop = pos.filter(p => p.signal && p.signal.stop_atr).length;
+  $("a4d").textContent = rm ? rm.mdd.toFixed(2) + "%" : "—";
+  $("a4c").textContent = acc.cash_pct != null ? acc.cash_pct + "%" : "—";
+  $("a4n").textContent = rm ? rm.n + " 个交易日" : "—";
+  $("p4hint").textContent = rm ? "样本 " + rm.n + " 个交易日" : "";
+  $("p4body").innerHTML = `
+    <div class="grid g5">
+      <div class="metric">
+        <div class="k">最大单一部位</div>
+        <div class="ico"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg></div>
+        <div class="sub">最重的一檔</div>
+        <div class="v">${maxW != null ? maxW.toFixed(0) + "%" : "—"}</div>
+        <div class="sub">${maxPos ? esc(maxPos.symbol) : ""}</div>
+        <div class="foot">${maxW != null && maxW > 60 ? "集中度偏高" : "在可接受范围"}</div>
+      </div>
+      <div class="metric">
+        <div class="k">投资组合曝险</div>
+        <div class="ico"><svg viewBox="0 0 24 24"><use href="#i-pie"/></svg></div>
+        <div class="sub">已投入市场</div>
+        <div class="v">${exposure != null ? exposure.toFixed(0) + "%" : "—"}</div>
+        <div class="bar"><i style="width:${exposure != null ? Math.min(100, exposure) : 0}%"></i></div>
+        <div class="barscale"><span>0%</span><span>50%</span><span>100%</span></div>
+        <div class="foot">现金 ${acc.cash_pct != null ? acc.cash_pct + "%" : "—"}</div>
+      </div>
+      <div class="metric">
+        <div class="k">年化波动率</div>
+        <div class="ico"><svg viewBox="0 0 24 24"><use href="#i-chart"/></svg></div>
+        <div class="sub">净值起伏幅度</div>
+        <div class="v">${rm ? rm.annVol.toFixed(1) + "%" : "—"}</div>
+        <div class="sub">日收益标准差年化</div>
+        <div class="foot">${rm && rm.annVol > 25 ? "波动偏大" : "尚属温和"}</div>
+      </div>
+      <div class="metric">
+        <div class="k">回撤状况</div>
+        <div class="ico"><svg viewBox="0 0 24 24"><use href="#i-dd"/></svg></div>
+        <div class="sub">最大回撤</div>
+        <div class="v" style="color:var(--red)">${rm ? rm.mdd.toFixed(1) + "%" : "—"}</div>
+        <div class="sub">目前：${rm ? rm.curDd.toFixed(1) + "%" : "—"}</div>
+        <div class="foot">${rm && rm.curDd > -1 ? "接近新高" : "回撤中"}</div>
+      </div>
+      <div class="metric">
+        <div class="k">止损参考位</div>
+        <div class="ico"><svg viewBox="0 0 24 24"><use href="#i-stop"/></svg></div>
+        <div class="sub">已算出参考价</div>
+        <div class="v ink">${pos.length ? Math.round(withStop / pos.length * 100) + "%" : "—"}</div>
+        <div class="sub">${withStop} / ${pos.length} 檔部位</div>
+        <div class="foot">依 ATR 计算，参考用</div>
+      </div>
+    </div>
+    <div class="summary" style="margin-top:14px">
+      <div><div class="k">单日风险值 VaR（95%）</div><div class="v" style="color:var(--red)">${rm ? rm.var95.toFixed(2) + "%" : "—"}</div><div class="u">20 天里约 1 天会更糟</div></div>
+      <div><div class="k">预期损失 ES</div><div class="v" style="color:var(--red)">${rm ? rm.es.toFixed(2) + "%" : "—"}</div><div class="u">真的更糟时，平均亏这么多</div></div>
+      <div><div class="k">实际最差单日</div><div class="v" style="color:var(--red)">${rm ? rm.worst.r.toFixed(2) + "%" : "—"}</div><div class="u">${rm ? esc(rm.worst.d) : ""}</div></div>
+      <div><div class="k">实际最佳单日</div><div class="v" style="color:var(--green)">${rm ? "+" + rm.best.r.toFixed(2) + "%" : "—"}</div><div class="u">${rm ? esc(rm.best.d) : ""}</div></div>
+      <div><div class="k">风险状态</div>
+        <div class="v" style="color:${acts.some(a => a.startsWith("⚠️")) ? "var(--orange)" : "var(--green)"}">${acts.some(a => a.startsWith("⚠️")) ? "有提示" : "正常"}</div>
+        <div class="u">${acts.length ? acts.filter(a => a.startsWith("⚠️")).length + " 项待看" : "无待办"}</div></div>
+    </div>
+    <div class="note">VaR 与 ES 用历史模拟法（直接取过去日收益的分位数），不假设常态分布；样本只有 ${rm ? rm.n : 0} 个交易日，
+      样本外的极端情况它没见过。这些数字描述已发生的波动，不是对未来跌幅的保证。</div>`;
+
+  /* --- 5 监控 --- */
+  const totUpnl = pos.reduce((a, p) => a + (p.upnl || 0), 0);
+  const totDaily = pos.reduce((a, p) => a + (p.daily_pnl || 0), 0);
+  const totVal = pos.reduce((a, p) => a + (p.value || 0), 0);
+  $("a5u").textContent = fmtUsd(totUpnl);
+  $("a5t").textContent = fmtUsd(totDaily);
+  $("a5a").textContent = acts.length + " 项";
+  $("p5hint").textContent = pos.length + " 项部位 · 更新于 " + (PRIV.generated_at || "—");
+  $("p5body").innerHTML = `
+    <div style="display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px" class="monwrap">
+      <div class="tblwrap">
+        <table class="tbl">
+          <thead><tr><th>代号</th><th>数量</th><th>市值</th><th>未实现损益</th><th>报酬率</th><th>权重</th></tr></thead>
+          <tbody>
+            ${pos.map(p => `<tr>
+              <td><div class="sym"><div class="tag">${esc(p.symbol.slice(0, 4))}</div><span>${esc(p.symbol)}</span></div></td>
+              <td>${p.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+              <td>${fmtUsd(p.value)}</td>
+              <td class="${cls(p.upnl)}">${fmtUsd(p.upnl)}</td>
+              <td class="${cls(p.upct)}">${fmtPct(p.upct)}</td>
+              <td>${p.weight}%</td></tr>`).join("")}
+          </tbody>
+          <tfoot><tr>
+            <td>合计</td><td></td><td>${fmtUsd(totVal)}</td>
+            <td class="${cls(totUpnl)}">${fmtUsd(totUpnl)}</td>
+            <td class="${cls(totUpnl)}">${totVal - totUpnl > 0 ? fmtPct(totUpnl / (totVal - totUpnl) * 100) : "—"}</td>
+            <td></td></tr></tfoot>
+        </table>
+      </div>
+      <div>
+        <div class="metric" style="text-align:left">
+          <div class="k" style="justify-content:flex-start;min-height:auto">未实现损益</div>
+          <div class="v ${vcls(totUpnl)}" style="font-size:clamp(24px,5vw,34px)">${fmtUsd(totUpnl)}</div>
+          <div class="sub">今日变动 <span class="${cls(totDaily)}">${fmtUsd(totDaily)}</span></div>
+          <div style="margin-top:10px">${rm ? areaChart(rm.curve.slice(-60), 220, 70, rm.curve[rm.curve.length - 1] >= rm.curve[Math.max(0, rm.curve.length - 60)]) : ""}</div>
+          <div class="barscale"><span>近 60 个交易日</span><span>合成净值</span></div>
+        </div>
+        <div class="metric" style="text-align:left;margin-top:12px">
+          <div class="k" style="justify-content:flex-start;min-height:auto">近期报酬</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            ${[["今日", perf["1d"]], ["近 7 日", perf["7d"]], ["本月", perf.mtd], ["年初至今", perf.ytd]].map(([k, v]) => `
+              <div><div style="font-size:11px;color:var(--muted)">${k}</div>
+                <div class="${cls(v)}" style="font-weight:900;font-size:16px">${fmtPct(v)}</div></div>`).join("")}
+          </div>
+        </div>
+      </div>
+    </div>
+    <h3 style="margin:18px 0 12px;font-size:14px">系统提示 <span class="hint" style="float:right;font-size:11px;font-weight:600;color:var(--muted)">由规则自动产生</span></h3>
+    <div class="list">
+      ${acts.length ? acts.map(a => {
+        const warn = a.startsWith("⚠️");
+        const txt = a.replace(/^[⚠️✅]\s*/, "");
+        return `<div class="item"><div class="ic ${warn ? "warn" : "ok"}">${warn ? "!" : "✓"}</div><div class="tx">${esc(txt)}</div></div>`;
+      }).join("") : `<div class="item"><div class="ic ok">✓</div><div class="tx">目前没有需要处理的提示。</div></div>`}
+    </div>
+    ${PRIV.ai_note ? `<div class="note" style="margin-top:14px;padding:12px;border:1px solid var(--line2);border-radius:10px;background:#fff;color:var(--ink);font-size:12.5px">
+      <b style="color:var(--orange)">帐户点评</b>（${esc(PRIV.ai_note_date || "")}）<br>${esc(PRIV.ai_note)}</div>` : ""}`;
+
+  /* --- 6 再平衡 --- */
+  const targets = PRIV.targets || null;
+  $("a6c").textContent = fmtUsd(cash);
+  if (targets && Object.keys(targets).length) {
+    const syms = [...new Set([...Object.keys(targets), ...pos.map(p => p.symbol)])];
+    const rows = syms.map(s => {
+      const p = pos.find(x => x.symbol === s);
+      const cur = p ? p.weight : 0, tgt = targets[s] != null ? targets[s] : 0;
+      return { s, cur, tgt, diff: cur - tgt, value: p ? p.value : 0 };
+    }).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+    const maxDiff = rows.length ? rows[0] : null;
+    $("a6t").textContent = Object.entries(targets).map(([k, v]) => k + " " + v + "%").join(" / ");
+    $("a6d").textContent = maxDiff ? maxDiff.s + " " + (maxDiff.diff > 0 ? "+" : "") + maxDiff.diff.toFixed(1) + "%" : "—";
+    $("p6hint").textContent = "目标 " + Object.entries(targets).map(([k, v]) => k + " " + v + "%").join(" / ");
+    $("p6body").innerHTML = `
+      <div class="tblwrap"><table class="tbl">
+        <thead><tr><th>代号</th><th>目前权重</th><th>目标权重</th><th>差额</th><th>大约要调整</th></tr></thead>
+        <tbody>${rows.map(r => {
+          const amt = netLiq ? (r.tgt - r.cur) / 100 * netLiq : null;
+          return `<tr>
+            <td><div class="sym"><div class="tag">${esc(r.s.slice(0, 4))}</div><span>${esc(r.s)}</span></div></td>
+            <td>${r.cur.toFixed(1)}%<div class="bar"><i style="width:${Math.min(100, r.cur)}%"></i></div></td>
+            <td>${r.tgt.toFixed(1)}%<div class="bar g"><i style="width:${Math.min(100, r.tgt)}%"></i></div></td>
+            <td class="${cls(-r.diff)}">${(r.diff > 0 ? "+" : "") + r.diff.toFixed(1)}%</td>
+            <td class="${cls(amt)}">${amt == null ? "—" : (amt > 0 ? "买进 " : "卖出 ") + fmtUsd(Math.abs(amt))}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table></div>
+      <div class="note">差额是「目前 − 目标」：正数代表这檔涨过头、占比超出目标，负数代表落后该补。
+        「大约要调整」按目前净资产 ${fmtUsd(netLiq)} 估算，未计手续费与最小交易单位，实际下单前请再核对。</div>`;
+  } else {
+    $("a6t").textContent = "尚未设定";
+    $("p6hint").textContent = "";
+    $("p6body").innerHTML = `<div class="locked"><b>还没有设定目标配置</b>
+      <span>目标比例存在加密的 <code>state.enc</code> 里。设定之后，这里会自动算出每檔要买进或卖出多少。</span></div>`;
+  }
+
+  /* --- 7 帐户总览 --- */
+  const longN = pos.length;
+  $("p7hint").textContent = "同步于 " + (acc.synced || "—");
+  $("p7body").innerHTML = `
+    <div class="grid g4">
+      <div class="metric" style="text-align:left">
+        <div class="k" style="justify-content:flex-start;min-height:auto">系统状态</div>
+        <div class="v green" style="font-size:22px">运作中</div>
+        <div class="sub">最近运算 ${esc(PRIV.generated_at || "—")}</div>
+        <div class="foot">券商数据同步于 ${esc(acc.synced || "—")}</div>
+      </div>
+      <div class="metric" style="text-align:left">
+        <div class="k" style="justify-content:flex-start;min-height:auto">帐户净资产</div>
+        <div class="v ink" style="font-size:clamp(20px,4.2vw,28px)">${fmtUsd(netLiq)}</div>
+        <div class="sub">今日 <span class="${cls(perf["1d"])}">${fmtPct(perf["1d"])}</span></div>
+        <div class="foot">${navs.length ? navs.length + " 天净值记录" : ""}</div>
+      </div>
+      <div class="metric" style="text-align:left">
+        <div class="k" style="justify-content:flex-start;min-height:auto">年初至今</div>
+        <div class="v ${vcls(perf.ytd)}" style="font-size:clamp(20px,4.2vw,28px)">${fmtPct(perf.ytd)}</div>
+        <div class="sub">本月 <span class="${cls(perf.mtd)}">${fmtPct(perf.mtd)}</span></div>
+        <div class="foot">时间加权，已剔除出入金</div>
+      </div>
+      <div class="metric" style="text-align:left">
+        <div class="k" style="justify-content:flex-start;min-height:auto">持有部位</div>
+        <div class="v ink" style="font-size:clamp(20px,4.2vw,28px)">${longN}</div>
+        <div class="sub">全为多单 · 无融资无放空</div>
+        <div class="foot">现金 ${acc.cash_pct != null ? acc.cash_pct + "%" : "—"}</div>
+      </div>
+    </div>`;
+
+  runSelfTest();
+}
+
+/* ---------------- 页内自检：验算法，不是验数据 ---------------- */
+function runSelfTest() {
+  const fails = [];
+  const dayList = (n, from) => Array.from({ length: n }, (_, i) =>
+    new Date(Date.UTC(2026, 0, 5) + (from + i) * 86400000).toISOString().slice(0, 10));
+
+  // --- A. 主路径（twr_daily）：+10%、-20%、+25%，其余平盘 ---
+  const facs = [1.10, 0.80, 1.25].concat(Array(30).fill(1));
+  const twr = {};
+  dayList(facs.length, 0).forEach((d, i) => { twr[d] = facs[i]; });
+  const m = riskMetrics(null, twr);
+  if (!m) fails.push("riskMetrics 对合法的 twr_daily 回传 null");
+  else {
+    if (m.mode !== "twr") fails.push(`有 twr_daily 时应走 twr 模式，实走 ${m.mode}`);
+    if (m.dropped !== 0) fails.push(`twr 模式不该剔除任何一天，实剔 ${m.dropped}`);
+    // 1.10 → 0.88（相对起点），最深回撤 = 0.88/1.10 - 1 = -20%
+    if (Math.abs(m.mdd - (-20)) > 0.01) fails.push(`最大回撤应为 -20%，实得 ${m.mdd.toFixed(3)}%`);
+    // 累积：1.10 × 0.80 × 1.25 = 1.10
+    if (Math.abs(m.cumRet - 10) > 0.01) fails.push(`累积报酬应为 +10%，实得 ${m.cumRet.toFixed(3)}%`);
+    if (Math.abs(m.curDd) > 0.01) fails.push(`目前回撤应为 0%，实得 ${m.curDd.toFixed(3)}%`);
+    // 关键：-20% 这天必须留在样本里，不能被当成转帐剔掉
+    if (Math.abs(m.worst.r - (-20)) > 0.01) fails.push(`最差单日应为 -20%（暴跌不得被误剔），实得 ${m.worst.r.toFixed(3)}%`);
+    if (Math.abs(m.best.r - 25) > 0.01) fails.push(`最佳单日应为 +25%，实得 ${m.best.r.toFixed(3)}%`);
+  }
+
+  // --- B. 退路（只有 nav_series）：单日 +50% 的入金跳点要被剔除 ---
+  const vals = [100];
+  for (let i = 0; i < 24; i++) vals.push(vals[vals.length - 1] * (i % 2 ? 1.01 : 0.995));
+  const navA = dayList(vals.length, 0).map((d, i) => [d, vals[i]]);
+  const mA = riskMetrics(navA, null);
+  const navB = navA.map(([d, v], i) => [d, i >= 12 ? v * 1.5 : v]);   // 第 12 天一笔大额入金
+  const mB = riskMetrics(navB, null);
+  if (!mA || !mB) fails.push("riskMetrics 对合法的 nav_series 回传 null");
+  else {
+    if (mA.mode !== "nav") fails.push(`没有 twr_daily 时应走 nav 模式，实走 ${mA.mode}`);
+    if (mB.dropped !== 1) fails.push(`应剔除 1 个出入金跳点，实得 ${mB.dropped}`);
+    // 注意：退路法剔掉跳点那天时，会连带丢掉那天的真实行情收益（信息不足，无法分离），
+    // 所以只能要求它落在「一天收益」的量级内，不能要求与原样本完全一致。
+    // 真正要挡的是「+50% 入金被当成绩效」——那会让累积报酬冲到 50% 以上。
+    if (Math.abs(mB.cumRet - mA.cumRet) > 2)
+      fails.push(`剔除出入金后累积报酬应贴近原样本（${mA.cumRet.toFixed(2)}%±2），实得 ${mB.cumRet.toFixed(2)}%`);
+    if (mB.cumRet > mA.cumRet + 10)
+      fails.push(`出入金被误当成绩效：累积报酬冲到 ${mB.cumRet.toFixed(2)}%`);
+  }
+
+  // --- C. 零波动：不得算出 NaN ---
+  const flatTwr = {};
+  dayList(30, 0).forEach(d => { flatTwr[d] = 1; });
+  const m3 = riskMetrics(null, flatTwr);
+  if (m3 && (Number.isNaN(m3.annVol) || Number.isNaN(m3.mdd) || Number.isNaN(m3.var95)))
+    fails.push("零波动样本算出 NaN");
+  if (m3 && Math.abs(m3.mdd) > 1e-9) fails.push(`零波动样本回撤应为 0，实得 ${m3.mdd}`);
+
+  // --- D. 样本太短要拒绝，不能拿 3 天算年化 ---
+  const shortTwr = {}; dayList(5, 0).forEach(d => { shortTwr[d] = 1.01; });
+  if (riskMetrics(null, shortTwr) !== null) fails.push("样本不足 20 天时应回传 null");
+
+  const box = $("selftest");
+  if (fails.length) {
+    box.style.display = "block";
+    box.innerHTML = "⚠️ 页面自检未通过（指标算法有问题，页上数字先别信）：<br>" + fails.map(esc).join("<br>");
+  } else {
+    box.style.display = "none";
+  }
+}
+
+/* ---------------- 解锁流程 ---------------- */
+async function unlockWith(password, silent) {
+  let envText;
+  try {
+    const r = await fetch("data-private.enc", { cache: "no-store" });
+    if (!r.ok) throw new Error("尚无私密数据文件");
+    envText = await r.text();
+  } catch (e) {
+    if (!silent) showErr(e.message);
+    return false;
+  }
+  try {
+    PRIV = await decryptEnvelope(envText, password);
+  } catch (e) {
+    if (!silent) showErr("密码不对，再试一次");
+    return false;
+  }
+  localStorage.setItem(PW_KEY, password);
+  $("lockBtn").textContent = "🔓 已解锁";
+  $("lockBtn").classList.add("open");
+  renderPrivate();
+  return true;
+}
+function showErr(msg) { const e = $("pwErr"); e.textContent = msg; e.style.display = "block"; }
+
+function openDlg() {
+  $("pwErr").style.display = "none";
+  $("pwInput").value = "";
+  $("pwDlg").showModal();
+  setTimeout(() => $("pwInput").focus(), 50);
+}
+
+/* ---------------- 导航 ---------------- */
+function initNav() {
+  const secs = [...document.querySelectorAll("section.page")];
+  $("navdots").innerHTML = secs.map((s, i) => `<a href="#${s.id}" data-t="${s.id}">${i + 1}</a>`).join("");
+  const links = [...$("navdots").querySelectorAll("a")];
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (en.isIntersecting) {
+        links.forEach(a => a.classList.toggle("on", a.dataset.t === en.target.id));
+      }
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  secs.forEach(s => io.observe(s));
+}
+
+/* ---------------- 启动 ---------------- */
+async function boot() {
+  initNav();
+  try {
+    const r = await fetch("data-public.json", { cache: "no-store" });
+    PUB = await r.json();
+    renderPublic();
+  } catch (e) {
+    $("mktLine").textContent = "公开数据载入失败：" + e.message;
+  }
+  runSelfTest();
+  const saved = localStorage.getItem(PW_KEY);
+  if (saved) {
+    const ok = await unlockWith(saved, true);
+    if (!ok) localStorage.removeItem(PW_KEY);
+  }
+}
+
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-unlock]") || e.target.closest("#lockBtn")) openDlg();
+});
+$("pwCancel").addEventListener("click", () => $("pwDlg").close());
+$("pwForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const v = $("pwInput").value.trim();
+  if (!v) return;
+  const ok = await unlockWith(v, false);
+  if (ok) $("pwDlg").close();
+});
+
+boot();
+</script>
+</body>
+</html>

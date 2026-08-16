@@ -55,6 +55,7 @@ CHECKS = [
     ("workflows", ["python3", "tools/check-workflows.py"], False),
     ("gamebot", ["python3", "tools/check-gamebot.py"], False),
     ("gamebot-logic", ["node", "tools/check-gamebot-logic.mjs"], False),
+    ("fund", ["node", "tools/check-fund.mjs"], True),
     ("company", ["node", "tools/check-expense-company.mjs"], True),
     ("inventory", ["node", "tools/check-inventory.mjs"], True),
     # 同事版跟 CI 一样拆两半并行，最慢那关的墙上时间才降得下来。

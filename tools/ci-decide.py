@@ -37,13 +37,15 @@ RULES = {
     "company":   ["expense-tracker.html", "tools/check-expense-company.mjs"],
     "inventory": ["expense-tracker.html", "staff/index.html", "inventory/**",
                   "tools/check-inventory.mjs", "tools/build-staff-page.py"],
+    # 作业系统简报页：页面本身、产出它数据的管线、以及自检脚本
+    "fund": ["trading/fund.html", "trading/analyzer.py", "tools/check-fund.mjs"],
     "staff":     ["staff/**", "expense-tracker.html", "tools/build-staff-page.py",
                   "tools/check-staff-page.mjs"],
     "gamebot":   ["game-bot/**", "tools/check-gamebot.py",
                   "tools/check-gamebot-logic.mjs"],
 }
 # 浏览器类检查（慢）额外也盯着共用步骤：它坏了这几项全瞎
-BROWSER = ["company", "inventory", "staff"]
+BROWSER = ["company", "inventory", "staff", "fund"]
 SHARED = ".github/actions/browser-check-setup/action.yml"
 
 
