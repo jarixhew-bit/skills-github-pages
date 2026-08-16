@@ -121,6 +121,31 @@ const PRIVATE_FIX = {
   ai_note_nav: 110000,
 };
 
+/* ---------- fixture：新闻 ---------- */
+// VOO 在持仓里、AAA 不在——用来验「解锁后才把持仓那几檔挑出来」这条。
+const NEWS_FIX = {
+  generated_at: '2026-08-13 14:30 UTC',
+  counts: { bull: 6, bear: 3, flat: 1 },
+  translated: true,
+  macro: [
+    { title: 'Fed holds rates steady', zh: '联准会维持利率不变', link: 'https://example.com/m1',
+      source: 'CNBC 市场', ts: '2026-08-13 12:00', sent: 'flat', id: 'm1' },
+    { title: 'Stocks rally on strong earnings', zh: '强劲财报带动股市走高', link: 'https://example.com/m2',
+      source: 'Yahoo 财经', ts: '2026-08-13 11:00', sent: 'bull', id: 'm2' },
+  ],
+  crypto: [
+    { title: 'Bitcoin ETF sees record inflow', zh: '比特币 ETF 出现纪录资金流入', link: 'https://example.com/c1',
+      source: 'CoinDesk', ts: '2026-08-13 10:00', sent: 'bull', id: 'c1' },
+  ],
+  by_symbol: {
+    VOO: [{ title: 'VOO tops estimates', zh: 'VOO 表现优于预期', link: 'https://example.com/v1',
+            source: '甲', ts: '2026-08-13 09:00', sent: 'bull', id: 'v1' }],
+    AAA: [{ title: 'AAA faces lawsuit', zh: 'AAA 面临诉讼', link: 'https://example.com/a1',
+            source: '甲公司', ts: '2026-08-13 08:00', sent: 'bear', id: 'a1' }],
+  },
+  n_symbols: 2,
+};
+
 /* ---------- 跑 ---------- */
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
@@ -137,6 +162,9 @@ await ctx.route('**/*', route => {
   if (u.includes('data-public.json')) {
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(PUBLIC_FIX) });
   }
+  if (u.includes('news.json')) {
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(NEWS_FIX) });
+  }
   if (u.includes('data-private.enc')) {
     return route.fulfill({ status: 200, contentType: 'text/plain', body: encryptJson(PRIVATE_FIX, PW) });
   }
@@ -152,6 +180,14 @@ check(lockedCount >= 4, `未解锁时私密区应显示锁（实得 ${lockedCoun
 const bodyBefore = await page.locator('body').innerText();
 check(!bodyBefore.includes('110,000'), '未解锁时不得出现帐户净值');
 check(!bodyBefore.includes('18.34'), '未解锁时不得出现绩效数字');
+
+/* ---- 1b. 新闻：未解锁也要看得到，但不得泄露哪几檔是持仓 ---- */
+const newsBefore = await page.locator('#newsBody').innerText();
+check(newsBefore.includes('联准会维持利率不变'), '未解锁也应显示宏观新闻（新闻是公开的）');
+check(newsBefore.includes('比特币 ETF'), '未解锁也应显示加密新闻');
+check(!newsBefore.includes('持仓'.repeat(1) + '的相关新闻'), '未解锁时不得出现「你持仓的相关新闻」区块');
+check((await page.locator('#newsBody .pill.mine').count()) === 0, '未解锁时不得把任何一檔标成持仓');
+check(newsBefore.includes('偏多'), '情绪统计应显示');
 
 /* ---- 2. 公开区渲染 ---- */
 check((await page.locator('#mktGrid .metric').count()) === 4, '市场概况应有 4 张卡');
@@ -218,6 +254,18 @@ const p7 = await page.locator('#p7body').innerText();
 check(p7.includes('$110,000'), '帐户净资产应为 $110,000');
 check(p7.includes('+18.34%'), '总览的 YTD 应为 +18.34%');
 check(p7.includes('3'), '持有部位应为 3');
+
+/* ---- 10b. 解锁后：持仓那几檔要被挑出来，非持仓的不得误标 ---- */
+const newsAfter = await page.locator('#newsBody').innerText();
+check(newsAfter.includes('你持仓的相关新闻'), '解锁后应出现持仓新闻区块');
+const minePills = await page.locator('#newsBody .pill.mine').allInnerTexts();
+check(minePills.length > 0 && minePills.every(t => t.includes('VOO')),
+  `只有持仓檔（VOO）能标成持仓，实得：${JSON.stringify(minePills)}`);
+check(newsAfter.includes('AAA'), '非持仓檔的新闻仍应显示在监控名单区');
+// 新闻连结一律新分页开，且带 noopener（防 tabnabbing）
+const badLinks = await page.evaluate(() => [...document.querySelectorAll('#newsBody a')]
+  .filter(a => a.target !== '_blank' || !a.rel.includes('noopener')).length);
+check(badLinks === 0, `新闻连结都要 target=_blank + rel=noopener（实得 ${badLinks} 个不合格）`);
 
 /* ---- 11. 解锁后页内自检仍需通过 ---- */
 check(!(await page.locator('#selftest').isVisible()), '解锁后页内自检仍应通过');
