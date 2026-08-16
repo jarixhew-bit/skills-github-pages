@@ -105,8 +105,7 @@
   等于没等。**等条件要写「我要的东西出现了」，不要写「我不要的东西不在」**；
   (3) 本地连跑两轮全绿不等于稳，要主动制造慢速（给假服务端注入 200ms～1.2s 延迟再跑）；
   (4) `node xxx | tee out.txt` 的退出码取自 `tee`，脚本崩了照样显示成功——**管道一律 `set -o pipefail`**；
-  而仓库 `package.json` 若是 `type: module`，`.js` 里的 `require` 直接失效（要写成 `.mjs`）。
-  两件叠起来 CI 绿了三分钟其实什么都没跑。`type: module` 这条已踩两次。
+  且 `package.json` 为 `type: module` 时 `.js` 里的 `require` 失效（要写 `.mjs`，已踩两次）。两件叠起来 CI 绿了三分钟其实什么都没跑。
   (5) 「双击生出两条一样的记录」这类闸门自测通过、真机仍重复：双击是两个各自跑到底的事件不是竞态，
   加解锁在同一执行栈内做完等于没挡，要用 `setTimeout` 延后解锁；测法必须 `el.click(); el.click();`
   连打两下（`page.evaluate` 连调两次是顺序调用、Playwright `page.click()` 会等元素可操作，都测不出来）。
@@ -114,28 +113,24 @@
   但不计入通过数也不影响退出码（2026-08-13 追加 8 项路税断言全绿，总结仍停在 66 项）。追加前先 grep
   `process.exit` 插到它之前，跑完看总结那行数字有没有变大。
   附带：往 `git cat-file --batch` 的 stdin 一次写几百 KB 会死锁（管道满了两边互等），要用独立线程喂。
-  另（2026-08-10，同属「自检全绿但其实有伤」）：要「不可能跟真实数据撞车」的占位符时，NUL（0x00）
-  要写 JS 转义（反斜杠 u0000）别写真实字节——功能全正常、自检全绿，唯一症状是 git/grep 从此把文件当
-  二进制，`git diff` 只剩「Binary files differ」，代码审查等于瞎了。踩过两次（第二次在管钱的文件上），
-  已由 `check-html.py` 的 `check_control_bytes` 守着别删。通则：**同一类错误出现第二次就变成脚本。**
+  另（2026-08-10）：占位符别写真实 NUL 字节（要写 JS 转义 \u0000）——自检全绿但 git/grep 从此把文件
+  当二进制，`git diff` 只剩「Binary files differ」。踩过两次，已由 `check-html.py` 的
+  `check_control_bytes` 守着别删。通则：**同一类错误出现第二次就变成脚本。**
 - [2026-08-11／2026-08-13][皆是] 情境：嫌慢、嫌 token 烧得凶——CI 跑太久、Actions 记录多到看不完，
   或「最近做什么都变慢」。总原则：**先量固定开销，别先怀疑手上这件事。**
   ① CI 侧先看三处，都不必动测试逻辑。(1) **同一份代码是不是验了两遍**——workflow 同时挂 `push` 与 `pull_request` 时，
   推分支跑一遍、开 PR 又跑一遍，而 concurrency 按 `github.ref` 分组，两者 ref 不同彼此不取消，
   白烧一倍；改成 `push` 只在 main 触发即可减半。(2) **最慢那一关决定墙上时间**——并行时只有拆开
-  最慢的那个才有意义（同事版自检加 `PART` 开关拆成两条腿，117 秒→70 秒）。(3) **重复样板**抽成
-  `.github/actions/*/action.yml` 的 composite action。
+  最慢的那个才有意义（同事版自检加 `PART` 开关拆成两条腿，117 秒→70 秒）。(3) **重复样板**抽成 `.github/actions/*/action.yml` 的 composite action。
   另：**改 CI 配置的 PR 往往一个检查都不跑**（各 workflow 的路径过滤里不含自己），等于改 CI 时
   CI 是瞎的——路径里要把 workflow 自己和它依赖的共用步骤都写进去。
-  另：**机器人不该开 PR**：`GITHUB_TOKEN` 开的 PR 不触发任何 workflow（防回圈），永远等不到
-  `all-green`；`gh pr create` 又受仓库开关管，一关就 `not permitted`——**功能依赖人手开关＝随时会再坏**。
-  正解是 required_status_checks 的官方用法：commit 先推到别的分支让 SHA 在服务端存在 → statuses API
-  盖章 → 再直推受保护的 ref，全程不开 PR。重试须整轮重来（中途 rebase 后 SHA 变了，旧章跟不过来）。
-  ② session 侧量**每轮的固定开销**，三个地方：(1) **`.claude/rules/` 是自动载入目录**——放进去的 `.md` 会被当 project instructions 塞进每一轮，而同在 `.claude/` 下的
-  `notes/`、`agents/` 不会（实测 notes/ 1084 行完全没进 context）。所以「路由表叫你按需读」
-  的设计放在 `rules/` 里等于自欺：档案早就全文在了，路由表省不到任何东西。本仓库已于当天把
-  它搬成 `.claude/playbook/`（非特殊目录名）让按需读变成真的。**要新增制度档时别再放回
-  `rules/`，除非你真的要它每轮都在。** (2) MCP server 的工具名与 skill 描述也是每轮固定成本，
+  另：**机器人不该开 PR**（`GITHUB_TOKEN` 开的 PR 不触发 workflow，永远等不到 `all-green`；`gh pr create`
+  又受仓库开关管，**功能依赖人手开关＝随时会再坏**）。正解：推暂存分支 → statuses API 盖章 → 直推受保护
+  ref，重试须整轮重来。完整的三轮踩坑记录在 `.github/workflows/trading-daily.yml`「提交数据」的注释里。
+  ② session 侧量**每轮的固定开销**，三个地方：(1) **`.claude/rules/` 是自动载入目录**——放进去的 `.md`
+  每轮都被当 project instructions 塞进 context，而 `notes/`、`agents/` 不会（实测 notes/ 1084 行完全没进）。
+  所以「路由表叫你按需读」放在 `rules/` 里等于自欺，本仓库已搬成 `.claude/playbook/`。**新增制度档别再
+  放回 `rules/`，除非真要它每轮都在。** (2) MCP server 的工具名与 skill 描述也是每轮固定成本，
   用不到的连接器要关（只有用户能关）。(3) 自检脚本数量会复利成长——「建东西必配自检」三周内
   把 tools/ 从 4 个撑到 27 个，而规则又要求「改完跑全部」，串行 5~6 分钟；解法是并行
   （`tools/check-all.py`）而不是少跑。来源：用户问「做其他项目也超久，是项目太多了吗」，
@@ -148,3 +143,8 @@
   的手动重跑也算**（当天手动跑七八次、每次烧两个请求，一边查一边加重病情）；限流类故障要减少重试、
   拉长间隔，并把「手动触发也去打那个 API」改成勾选才做。第三课：「手动跑得出来、程式跑不出来」
   正是限流的典型症状（网页走登入 session、不吃额度）。
+- [2026-08-16][雲端] 情境：workflow 用 `FOO: ${{ secrets.FOO }}` 傳**可選** secret。教訓：secret 未定義時
+  注入的是**空字串**而非「變數不存在」，`os.environ.get("FOO", 預設值)` 永遠拿不到預設值——一律寫
+  `.strip() or 預設值`（`trading/ai_note.py:230` 是正確範例）。附帶通則：**步驟耗時本身就是診斷訊號**
+  （`fetch_news.py` 那步只跑 2 秒＝請求根本沒發出去）。
+
