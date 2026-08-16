@@ -2578,7 +2578,9 @@ async function saveTxInner(){
       rawCurrency: state.rielMode ? 'KHR' : acc.currency,
       // 描述会跟着送进公司账本，显示在 Excel 的 DETAILS 后面（"LUNCH (BOSS) — 客户A招待"）。
       // 所以公司账户下这一栏的标签写明了「会写进公司 Excel」，别让用户以为只存在手机里。
-      note: description || null,
+      // 公司账不留备注（生成时改的，见 tools/build-staff-page.py）——
+      // 描述栏对同事是收起来的，送过去只会变成 Excel 上一段没人认领的字
+      note: null,
       status: alreadySent ? 'sent' : 'pending',
       error: null
     };
@@ -4434,7 +4436,8 @@ async function runReceiptSmartOCR(sourceCanvas){
       dateEl.value = parsed.date;
       prefilled = true;
     }
-    if(descEl && descEl.value.trim()==='' && parsed.merchant){
+    if(descEl && document.body.classList.contains('staff-boss')
+       && descEl.value.trim()==='' && parsed.merchant){
       descEl.value = String(parsed.merchant).slice(0, 40);
       autoDetectCat(descEl.value); // 复用现有关键词分类逻辑，不用 AI 猜类别 id
       prefilled = true;
@@ -5212,7 +5215,7 @@ async function editSentCompanyTx(prev){
     categoryRaw,
     amount: rawAmt,
     currency: rawCurrency,
-    note: description || null,
+    note: null,   // 公司账不留备注（生成时改的）
     plate: needsPlate ? plateRaw : null,
   });
   if(!r.ok){ showSaveNote(tt(`公司账本那条没改成：${r.message}`,`Could not update the company ledger: ${r.message}`));

@@ -272,6 +272,28 @@ def build(src: str) -> str:
         n = entry[3] if len(entry) > 3 else 1
         s = replace_n(s, old_js, new_js, what, n)
 
+    # ---------- 8.5) 公司账不留备注（2026-08-13 用户要求）----------
+    # 描述栏在公司账那边本来就用 CSS 收起来了，但 AI 认收据会把商户名填进去——同事看不到，
+    # 它却跟着送进公司账本、印在 Excel 的 DETAILS 上。所以两头都要堵：不填、也不送。
+    # 老板账（body.staff-boss）那边描述栏是露出来的，照旧填、照旧存。
+    s = replace_once(s,
+                     "    if(descEl && descEl.value.trim()==='' && parsed.merchant){",
+                     "    if(descEl && document.body.classList.contains('staff-boss')\n"
+                     "       && descEl.value.trim()==='' && parsed.merchant){",
+                     "AI 识别不填商户名进描述")
+    s = replace_once(s,
+                     "      note: description || null,",
+                     "      // 公司账不留备注（生成时改的，见 tools/build-staff-page.py）——\n"
+                     "      // 描述栏对同事是收起来的，送过去只会变成 Excel 上一段没人认领的字\n"
+                     "      note: null,",
+                     "公司账不送备注")
+    # 改已送出那笔的路径也一样（editSentCompanyTx 里那个 payload，缩排 4 格）：
+    # 不堵的话，编辑一笔旧的带备注记录会把旧备注原样再送一次
+    s = replace_once(s,
+                     "    note: description || null,",
+                     "    note: null,   // 公司账不留备注（生成时改的）",
+                     "改已送出那笔也不送备注")
+
     # ---------- 9) 注入同事版的引导逻辑 ----------
     s = replace_once(s, "init();\nrefreshCompanyCategories();\nflushCompanyQueue();",
                      STAFF_BOOTSTRAP + "\ninitStaffPage();", "启动区块")

@@ -1668,6 +1668,36 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【24】公司账不留备注 ----------
+// 2026-08-13：AI 认收据会把商户名填进「描述」栏，而那栏对同事是用 CSS 收起来的——
+// 他们看不到，它却跟着送进公司账本、印在 Excel 的 DETAILS 上（用户当天发现同事最近
+// 几笔都莫名带了备注）。两头都要堵：不填、也不送。
+console.log('\n【24】公司账不留备注（AI 认出的商户名不许溜进 Excel）');
+if (want()) {
+  const h = await newPage();
+  const { page, posted, errs } = h;
+  await signIn(h);
+
+  // 就算描述栏被硬塞了东西（模拟 AI 填过、或旧记录带着），送出去也不许带 note
+  await page.evaluate(() => showAddTx());
+  await page.waitForTimeout(400);
+  await page.fill('#tx-amount', '7.70');
+  await page.selectOption('#tx-company-category', 'Store');
+  await page.evaluate(() => { document.getElementById('tx-desc').value = 'ABC 便利店'; });
+  const n0 = posted.filter(x => x.items).length;
+  await page.evaluate(() => saveTx());
+  await until(() => posted.filter(x => x.items).length > n0, { what: '这一笔送到服务端' });
+  const sent = posted.filter(x => x.items).pop();
+  ok('送出去的那笔 note 是空的', !sent?.items?.[0]?.note, sent?.items?.[0]?.note);
+  ok('金额照常送到（没把整笔弄坏）', sent?.items?.[0]?.amount === 7.7, sent?.items?.[0]?.amount);
+
+  // 描述栏本身在公司账那边仍然是收起来的（这条本来就有，顺带守住别被改回来）
+  ok('描述栏对同事仍是收起来的',
+     !(await page.locator('#tx-desc-group').isVisible()));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {
