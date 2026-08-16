@@ -122,8 +122,8 @@
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
    `check-generated`（查「生成又提交进仓库」的产物有没有跟源文件脱节）/
-   `check-news-translate`（把 requests 打桩，验新闻译文分批时**位置不会错位**——
-   错位会把 A 公司的消息安到 B 公司头上，比没有译文危险得多）/
+   `check-news`（把 requests/feedparser 打桩，验新闻的两处易错：译文分批时**位置不会
+   错位**——错位会把 A 公司的消息安到 B 公司头上；以及同一条新闻**跨区块去重**）/
    `check-gamebot`（＋`check-gamebot-logic.mjs`：把安卓 API 打桩，用假屏幕实跑手机脚本，
    查语法查不出的行为问题）；浏览器类 `check-expense-company.mjs` /
    `check-staff-page.mjs` / `check-inventory.mjs` / `check-fund.mjs`（验 `trading/fund.html`

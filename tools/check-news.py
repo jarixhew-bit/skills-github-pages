@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""新闻翻译分批逻辑的自检。跑法：python3 tools/check-news-translate.py
+"""新闻抓取与翻译的自检。跑法：python3 tools/check-news.py
 
-不碰网络：把 requests 换成假的，所以 CI 与沙盒都跑得动
+不碰网络：把 requests 与 feedparser 都换成假的，所以 CI 与沙盒都跑得动
 （真的 RSS 与 Agnes 沙盒都连不上，见 CLAUDE.md）。
 
-守的是三件事，每件都真的出过或差点出：
+守的是四件事，每件都真的出过：
 
 1. **位置不错位**——这是最危险的一条。译文按编号回填，某一批失败时后面几批的译文
    绝不能往前挪去补空位，否则 A 公司的消息会安到 B 公司头上。金融页面上这种错
@@ -13,6 +13,10 @@
    整批超时作废，167 条新闻一条译文都没有。分批之后失败只损失那一批。
 3. **失败要说得出原因**——`translate_note` 会写进 news.json。CI 日志 API 的 tail
    取不到中段步骤的输出（实测两次都够不着），所以诊断必须跟着产出走。
+4. **跨区块去重**——同一篇文章常同时挂在好几檔的 RSS 上，也常同时进宏观与个股。
+   首版只在 macro/crypto 各自内部去重，页面上「NiSource」在 GOOGL 与 AMZN 底下
+   各出现一次、巴菲特那条在宏观与 KO 底下各一次，看起来像灌水。
+   这条 fixture 测不出来（假数据不会自然重复），是拿真实产出的页面截图看出来的。
 """
 import os
 import sys
@@ -67,6 +71,53 @@ def install_fakes(fail_on=()):
     sys.modules["requests"] = fake
     sys.modules.setdefault("feedparser", types.ModuleType("feedparser"))
     return calls
+
+
+def check_dedupe(fn):
+    """跑一次完整的 main()，用假 RSS 制造「同一篇文章挂在多处」的真实情况。"""
+    import tempfile
+
+    # 这一篇会同时出现在宏观、加密与两檔个股底下——正是页面上那个重复的成因
+    SHARED = "Shared headline everyone carries"
+
+    class Entry(dict):
+        __getattr__ = dict.get
+
+    def fake_parse(url):
+        entries = [{"title": SHARED, "link": "u0", "summary": "", "published_parsed": None}]
+        # 每个源再各带一条自己独有的
+        tag = url[-24:]
+        entries.append({"title": f"Unique for {tag}", "link": "u1", "summary": "",
+                        "published_parsed": None})
+        return types.SimpleNamespace(entries=[Entry(e) for e in entries])
+
+    fn.feedparser.parse = fake_parse
+    fn.AGNES_KEY = ""          # 这组不测翻译
+
+    with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=False) as f:
+        tmp = f.name
+    orig_out = fn.OUT
+    fn.OUT = tmp
+    try:
+        fn.main()
+        data = json.load(open(tmp, encoding="utf-8"))
+    finally:
+        fn.OUT = orig_out
+        os.unlink(tmp)
+
+    ids = ([i["id"] for i in data["macro"]] + [i["id"] for i in data["crypto"]] +
+           [i["id"] for items in data["by_symbol"].values() for i in items])
+    ok("全部条目的 id 互不重复", len(ids) == len(set(ids)),
+       f"{len(ids)} 条里只有 {len(set(ids))} 个不同 id")
+
+    shared_count = sum(1 for i in (data["macro"] + data["crypto"] +
+                                   [x for v in data["by_symbol"].values() for x in v])
+                       if i["title"] == SHARED)
+    ok("被多个源同时携带的那篇只留一次", shared_count == 1, shared_count)
+    ok("去重后仍有个股新闻（没把整个区块清空）",
+       len(data["by_symbol"]) > 0, len(data["by_symbol"]))
+    ok("by_symbol 里不留空清单",
+       all(len(v) > 0 for v in data["by_symbol"].values()), data["by_symbol"])
 
 
 def main():
@@ -132,13 +183,16 @@ def main():
     ok("AGNES_MODEL 同样处理",
        'os.environ.get("AGNES_MODEL", "").strip()' in src, None)
 
+    print("【7】跨区块去重：一条新闻只能出现在一个地方")
+    check_dedupe(fn)
+
     print(f"\n通过 {len(oks)} 项")
     if fails:
         print(f"未通过 {len(fails)} 项：", file=sys.stderr)
         for f in fails:
             print("  ✗ " + f, file=sys.stderr)
         return 1
-    print("新闻翻译分批自检全部通过")
+    print("新闻抓取与翻译自检全部通过")
     return 0
 
 
