@@ -68,9 +68,9 @@ const PUBLIC_FIX = {
   opportunities: ['AAA', 'BBB'],
   weak: ['CCC'],
   tickers: [
-    mkTicker('AAA', '甲公司'),
+    mkTicker('AAA', '甲公司', { news_score: 1 }),
     mkTicker('BBB', '乙公司', { etf: true }),
-    mkTicker('CCC', '丙公司', { action: '强烈卖出', act_cls: 'sell2', score: -4, chg1d: -2.5 }),
+    mkTicker('CCC', '丙公司', { action: '强烈卖出', act_cls: 'sell2', score: -4, chg1d: -2.5, news_score: -1 }),
     mkTicker('DDD', '丁公司', { action: '中性观望', act_cls: 'hold', score: 0 }),
   ],
   warnings: [],
@@ -142,8 +142,11 @@ const NEWS_FIX = {
             source: '甲', ts: '2026-08-13 09:00', sent: 'bull', id: 'v1' }],
     AAA: [{ title: 'AAA faces lawsuit', zh: 'AAA 面临诉讼', link: 'https://example.com/a1',
             source: '甲公司', ts: '2026-08-13 08:00', sent: 'bear', id: 'a1' }],
+    CCC: [{ title: 'CCC plunges on weak guidance', zh: 'CCC 因指引疲弱大跌', link: 'https://example.com/c9',
+            source: '丙公司', ts: '2026-08-13 07:00', sent: 'bear', id: 'c9' }],
   },
   n_symbols: 2,
+  spikes: [{ symbol: 'AAA', count: 9, avg: 2.3, ratio: 3.9 }],
 };
 
 /* ---------- 跑 ---------- */
@@ -195,6 +198,26 @@ check((await page.locator('#oppList .item').count()) === 2, '买入信号应列 
 check((await page.locator('#weakList .item').count()) === 1, '转弱应列 1 檔');
 check((await page.locator('#mktLine').innerText()).includes('测试用市场概况'), '市场概况文字应显示');
 check((await page.locator('#a2u').innerText()) === '4 檔', '监控名单檔数应为 4 檔');
+
+/* ---- 2b. 解释层：信号卡要带上那檔的新闻，并标出新闻分 ---- */
+const oppTxt = await page.locator('#oppList').innerText();
+check(oppTxt.includes('AAA 面临诉讼'), '买入信号卡应附上该檔最新一条新闻（解释层）');
+check(oppTxt.includes('新闻 +1'), 'news_score 为正时应标示「新闻 +1」');
+const weakTxt = await page.locator('#weakList').innerText();
+check(weakTxt.includes('新闻 -1'), 'news_score 为负时应标示「新闻 -1」');
+check(weakTxt.includes('CCC 因指引疲弱大跌'), '转弱卡也要附新闻');
+// 没有新闻分的那檔不该冒出标记
+check((await page.locator('#oppList .nsig').count()) === 1,
+  `只有带 news_score 的那檔能有新闻标记（实得 ${await page.locator('#oppList .nsig').count()} 个）`);
+
+/* ---- 2c. 新闻量异常：报「有事」但绝不报方向 ---- */
+const spikeTxt = await page.locator('#newsBody').innerText();
+check(spikeTxt.includes('忽然很多人在写'), '应显示新闻量异常区块');
+check(spikeTxt.includes('×3.9'), '应显示异常倍数');
+check(spikeTxt.includes('不代表该买或该卖'), '异常提醒必须写明它不是买卖建议');
+// 底线：异常区块不得出现方向性字眼
+const spikeBlock = await page.locator('#newsBody .spikes').innerText();
+check(!/买入|卖出|加仓|减仓/.test(spikeBlock), `异常区块不得出现买卖字眼（实得：${spikeBlock}）`);
 
 /* ---- 3. 页内自检（指标算法）必须通过 ---- */
 check(!(await page.locator('#selftest').isVisible()), '页内自检应通过（未通过代表指标算法出错）');

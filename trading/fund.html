@@ -157,6 +157,16 @@ section.page:first-of-type{border-top:0}
 .nrow .meta{font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .nrow .pill{font-size:10px;font-weight:800;padding:1px 6px;border-radius:20px;background:var(--line2);color:var(--muted)}
 .nrow .pill.mine{background:var(--orange);color:#fff}
+.nsig{font-size:10px;font-weight:800;padding:1px 6px;border-radius:20px;flex:0 0 auto}
+.nsig.up{background:#E9F6EE;color:var(--green)} .nsig.down{background:#FDEBE8;color:var(--red)}
+.newsline{font-size:11.5px;color:var(--muted);margin-top:4px;padding-left:10px;
+  border-left:2px solid var(--line);line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.spikes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.spike{border:1px solid var(--orange-dim);background:#FDF3EF;border-radius:9px;
+  padding:7px 11px;font-size:12px;display:flex;align-items:center;gap:7px}
+.spike b{font-weight:800}
+.spike .x{color:var(--orange);font-weight:800}
 .sentbar{display:flex;height:9px;border-radius:5px;overflow:hidden;margin:4px 0 8px;background:var(--line2)}
 .sentbar i{display:block;height:100%}
 .sentlegend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
@@ -575,7 +585,7 @@ footer.foot .disc{font-size:11.5px;color:var(--muted);line-height:1.6}
       <h3>系统边界 <span class="hint">它不做什么</span></h3>
       <div class="list">
         <div class="item"><div class="ic warn">✕</div><div class="tx"><b>不会自动下单</b><span>只产出建议清单，最后一步由我在券商手动执行。</span></div></div>
-        <div class="item"><div class="ic warn">✕</div><div class="tx"><b>新闻只读不判断</b><span>会抓名单与宏观新闻并按关键词分偏多偏空，但买卖信号仍只由价格与量决定，新闻不参与打分。</span></div></div>
+        <div class="item"><div class="ic warn">✕</div><div class="tx"><b>新闻只占 ±1 分</b><span>买卖阈值是 ±2，所以新闻<b>永远无法单独产生一个信号</b>，只在技术面已贴近阈值时推一把。哪一分是新闻给的，信号卡上都标了。</span></div></div>
         <div class="item"><div class="ic warn">✕</div><div class="tx"><b>不预测涨跌</b><span>技术指标只描述现况，不是对未来的判断。</span></div></div>
         <div class="item"><div class="ic ok">✓</div><div class="tx"><b>它真正省下的</b><span>每天手动核对持仓、算权重、翻 58 檔线图的时间。</span></div></div>
       </div>
@@ -771,11 +781,18 @@ function renderPublic() {
   const row = (sym, kind) => {
     const t = bySym(sym);
     if (!t) return `<div class="item"><div class="ic ${kind}">${kind === "buy" ? "↑" : "↓"}</div><div class="tx"><b>${esc(sym)}</b></div></div>`;
+    // 解释层：把这檔最新一条新闻附在信号下面，让你知道「它为什么动」。
+    // 这只是解释，不是理由——信号仍主要由价格与量决定。
+    const nItems = (NEWS && NEWS.by_symbol && NEWS.by_symbol[sym]) || [];
+    const top = nItems[0];
+    const ns = t.news_score;
     return `<div class="item">
       <div class="ic ${kind}">${kind === "buy" ? "↑" : "↓"}</div>
-      <div class="tx" style="flex:1">
-        <b>${esc(sym)} <span style="font-weight:500;color:var(--muted)">${esc(t.name || "")}</span></b>
+      <div class="tx" style="flex:1;min-width:0">
+        <b>${esc(sym)} <span style="font-weight:500;color:var(--muted)">${esc(t.name || "")}</span>
+          ${ns ? `<span class="nsig ${ns > 0 ? "up" : "down"}">新闻 ${ns > 0 ? "+" : ""}${ns}</span>` : ""}</b>
         <span>${esc(t.action)} · ${fmtUsd(t.price, 2)} <span class="${cls(t.chg1d)}">${fmtPct(t.chg1d)}</span> · RSI ${t.rsi}</span>
+        ${top ? `<div class="newsline">📰 ${esc(top.zh || top.title)}</div>` : ""}
       </div>
       <div style="flex:0 0 auto">${spark((t.spark || []).slice(-40), 56, 24)}</div>
     </div>`;
@@ -843,8 +860,24 @@ function renderNews() {
   const mineItems = mine ? symItems.filter(x => mine.has(x.sym)) : [];
   const otherItems = symItems.filter(x => !mine || !mine.has(x.sym));
 
+  // 新闻量异常：只说「这檔今天忽然很多人在写」，不说买还是卖——
+  // 方向靠关键词判不可靠，但「有事发生」是数出来的，不需要判断语义。
+  const spikes = (NEWS.spikes || []).slice(0, 6);
+  const spikeHtml = spikes.length ? `
+    <div style="font-size:13px;font-weight:800;margin-bottom:6px">📣 今天忽然很多人在写这几檔</div>
+    <div class="spikes">${spikes.map(sp => {
+      const t = (PUB && PUB.tickers || []).find(x => x.symbol === sp.symbol);
+      return `<div class="spike"><b>${esc(sp.symbol)}</b>
+        <span>${sp.count} 条</span><span class="x">×${sp.ratio}</span>
+        <span style="color:var(--muted)">日均 ${sp.avg}</span>
+        ${t ? `<span class="${cls(t.chg1d)}">${fmtPct(t.chg1d)}</span>` : ""}</div>`;
+    }).join("")}</div>
+    <div class="note" style="margin:0 0 14px">这只表示「有事发生、值得看一眼」，<b>不代表该买或该卖</b>——
+      涨跌方向靠新闻判断不可靠，但发文量本身是数出来的。</div>` : "";
+
   hint.textContent = `${tot} 条 · 更新于 ${NEWS.generated_at || "—"}`;
   box.innerHTML = `
+    ${spikeHtml}
     <div class="sentbar">
       <i style="width:${pct(c.bull)}%;background:var(--green)"></i>
       <i style="width:${pct(c.bear)}%;background:var(--red)"></i>
@@ -1292,6 +1325,7 @@ async function boot() {
     if (r.ok) NEWS = await r.json();
   } catch (e) { /* 没有新闻档不影响页面其余部分 */ }
   renderNews();
+  if (NEWS && PUB) renderPublic();   // 信号卡要带上新闻，NEWS 到齐后重画一次
 
   runSelfTest();
   const saved = localStorage.getItem(PW_KEY);

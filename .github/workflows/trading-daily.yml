@@ -103,13 +103,13 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
         continue-on-error: true
-      - name: 运行分析管线
-        env:
-          ANALYZER_PW: ${{ secrets.ANALYZER_PW }}
-        run: python trading/analyzer.py
-      # 新闻抓取（2026-08-16 加）。失败不阻断：新闻是页面上的加值区块，
-      # 抓不到就沿用上一份（页面自己会按 generated_at 标示新闻已过时），
-      # 绝不该因为某个 RSS 源挂了就让整条行情管线红掉。
+      # 新闻抓取（2026-08-16 加）。失败不阻断：新闻是加值资讯，抓不到就沿用上一份
+      # （页面自己会按 generated_at 标示已过时），绝不该因为某个 RSS 源挂了
+      # 就让整条行情管线红掉。
+      #
+      # **必须排在分析管线之前**（2026-08-16 调整）：analyzer 会读 news.json 算新闻
+      # 因子与新闻量异常。摆在后面的话，analyzer 每次读到的都是上一小时的旧新闻，
+      # 当天刚出的消息要等下一轮才进得了打分。
       - name: 抓新闻（失败不阻断）
         env:
           AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
@@ -117,6 +117,11 @@ jobs:
           AGNES_BASE_URL: ${{ secrets.AGNES_BASE_URL }}
         run: python .github/scripts/fetch_news.py || echo "新闻抓取失败，沿用上一份"
         continue-on-error: true
+
+      - name: 运行分析管线
+        env:
+          ANALYZER_PW: ${{ secrets.ANALYZER_PW }}
+        run: python trading/analyzer.py
 
       - name: 生成 AI 点评（Agnes，每天首次运行才生成，失败不阻断）
         env:
@@ -149,7 +154,7 @@ jobs:
           git config user.name "trading-bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add trading/history trading/data-public.json trading/data-private.enc \
-                  trading/state.enc trading/.flex-fetched trading/news.json
+                  trading/state.enc trading/.flex-fetched trading/news.json trading/news-history.json
           # 提交判据：history 或 state.enc 有实质变化就提交。data-public.json/data-private.enc
           # 都含 generated_at 时间戳，每次运行必有差异，不能单独作为判据；但 state.enc
           # 不含时间戳，只要 Flex 刷新了持仓/现金/NAV 就会变——2026-07-14 曾发生 Flex
