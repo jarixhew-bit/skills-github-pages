@@ -13,7 +13,12 @@
    整批超时作废，167 条新闻一条译文都没有。分批之后失败只损失那一批。
 3. **失败要说得出原因**——`translate_note` 会写进 news.json。CI 日志 API 的 tail
    取不到中段步骤的输出（实测两次都够不着），所以诊断必须跟着产出走。
-4. **跨区块去重**——同一篇文章常同时挂在好几檔的 RSS 上，也常同时进宏观与个股。
+4. **新闻因子的三道保险**——用户 2026-08-16 要求把新闻接进买卖打分，我说过不推荐
+   （RSS 滞后、关键词情绪表很粗、Yahoo 的 ticker RSS 常混进泛市场文章），他定了就做，
+   但加了三道保险：最多 ±1 分（买卖阈值是 ±2，所以新闻**永远无法单独产生一个信号**）、
+   少于 2 条不给分、给分要进 signals 清单让人看得见。**这三道是这个功能能存在的前提，
+   谁要放宽都得先过这里。**
+5. **跨区块去重**——同一篇文章常同时挂在好几檔的 RSS 上，也常同时进宏观与个股。
    首版只在 macro/crypto 各自内部去重，页面上「NiSource」在 GOOGL 与 AMZN 底下
    各出现一次、巴菲特那条在宏观与 KO 底下各一次，看起来像灌水。
    这条 fixture 测不出来（假数据不会自然重复），是拿真实产出的页面截图看出来的。
@@ -73,6 +78,55 @@ def install_fakes(fail_on=()):
     return calls
 
 
+def check_news_factor():
+    """验 analyzer 的新闻因子。用真实的 SPY 历史，只换新闻输入。"""
+    sys.path.insert(0, os.path.join(BASE, "trading"))
+    # analyzer 只需要标准库，但 encrypt 会 import cryptography——这里不碰加密路径
+    import importlib
+    A = importlib.import_module("analyzer")
+
+    hist_path = os.path.join(BASE, "trading", "history", "SPY.json")
+    if not os.path.exists(hist_path):
+        ok("找得到 SPY 历史（跳过新闻因子检查）", False, hist_path)
+        return
+    bars = json.load(open(hist_path, encoding="utf-8"))["bars"]
+    base = A.analyze_ticker(bars)
+
+    bull3 = [{"sent": "bull"}] * 3
+    bear3 = [{"sent": "bear"}] * 3
+    mixed = [{"sent": "bull"}, {"sent": "bear"}]
+    one = [{"sent": "bull"}]
+
+    r_bull = A.analyze_ticker(bars, bull3)
+    r_bear = A.analyze_ticker(bars, bear3)
+
+    # 保险 1：最多 ±1 分
+    ok("偏多新闻最多只加 1 分",
+       r_bull["score"] - base["score"] == 1, r_bull["score"] - base["score"])
+    ok("偏空新闻最多只减 1 分",
+       r_bear["score"] - base["score"] == -1, r_bear["score"] - base["score"])
+    # 这条是重点：阈值 ±2，所以新闻单独绝不可能把中性推成买卖信号
+    ok("新闻权重 < 买卖阈值（新闻无法单独产生信号）",
+       abs(r_bull["news_score"]) < 2, r_bull["news_score"])
+
+    # 保险 2：少于 2 条不给分、多空相等不给分
+    ok("只有 1 条新闻时不给分", A.analyze_ticker(bars, one)["news_score"] == 0)
+    ok("多空条数相等时不给分", A.analyze_ticker(bars, mixed)["news_score"] == 0)
+    ok("没有新闻时不给分", base.get("news_score", 0) == 0, base.get("news_score"))
+
+    # 保险 3：给分必须留痕，页面才标得出来
+    news_sigs = [x for x in r_bull["signals"] if x[0] == "新闻"]
+    ok("给分时在 signals 里留下一条「新闻」", len(news_sigs) == 1, r_bull["signals"])
+    ok("那条说明写出了多空条数",
+       news_sigs and "3 条偏多" in news_sigs[0][1], news_sigs and news_sigs[0][1])
+    ok("输出带 news_score 字段供页面标示", "news_score" in r_bull, list(r_bull)[:5])
+
+    # 开关
+    os.environ["NEWS_FACTOR"] = "0"
+    ok("NEWS_FACTOR=0 时不读新闻", A.load_news_by_symbol() == {})
+    os.environ.pop("NEWS_FACTOR", None)
+
+
 def check_dedupe(fn):
     """跑一次完整的 main()，用假 RSS 制造「同一篇文章挂在多处」的真实情况。"""
     import tempfile
@@ -96,14 +150,21 @@ def check_dedupe(fn):
 
     with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=False) as f:
         tmp = f.name
-    orig_out = fn.OUT
-    fn.OUT = tmp
+    # OUT 与 HIST 都要重定向。少了 HIST 那一行，这份自检会把新闻量基准写进
+    # 真实的 trading/news-history.json——自检污染真实数据，比不测还糟。
+    with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=False) as f:
+        tmp_hist = f.name
+    os.unlink(tmp_hist)          # 让它以「档案不存在」的状态开始
+    orig_out, orig_hist = fn.OUT, fn.HIST
+    fn.OUT, fn.HIST = tmp, tmp_hist
     try:
         fn.main()
         data = json.load(open(tmp, encoding="utf-8"))
     finally:
-        fn.OUT = orig_out
+        fn.OUT, fn.HIST = orig_out, orig_hist
         os.unlink(tmp)
+        if os.path.exists(tmp_hist):
+            os.unlink(tmp_hist)
 
     ids = ([i["id"] for i in data["macro"]] + [i["id"] for i in data["crypto"]] +
            [i["id"] for items in data["by_symbol"].values() for i in items])
@@ -118,6 +179,10 @@ def check_dedupe(fn):
        len(data["by_symbol"]) > 0, len(data["by_symbol"]))
     ok("by_symbol 里不留空清单",
        all(len(v) > 0 for v in data["by_symbol"].values()), data["by_symbol"])
+    # 自检不该碰真实数据——这条守着上面那两行重定向别被人拿掉
+    ok("跑完没有写进真实的 news-history.json",
+       not os.path.exists(os.path.join(BASE, "trading", "news-history.json")),
+       "自检污染了真实数据档")
 
 
 def main():
@@ -183,7 +248,10 @@ def main():
     ok("AGNES_MODEL 同样处理",
        'os.environ.get("AGNES_MODEL", "").strip()' in src, None)
 
-    print("【7】跨区块去重：一条新闻只能出现在一个地方")
+    print("【7】新闻因子的三道保险（放宽任何一道都要先过这里）")
+    check_news_factor()
+
+    print("【8】跨区块去重：一条新闻只能出现在一个地方")
     check_dedupe(fn)
 
     print(f"\n通过 {len(oks)} 项")

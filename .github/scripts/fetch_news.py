@@ -34,12 +34,21 @@ import feedparser
 BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UNIVERSE = os.path.join(BASE, "trading", "universe.json")
 OUT = os.path.join(BASE, "trading", "news.json")
+HIST = os.path.join(BASE, "trading", "news-history.json")
 
 MAX_AGE_HOURS = 48          # 超过这个时间的新闻不要，页面上摆旧闻比没有更糟
 PER_SYMBOL = 3              # 每檔最多留几条
 TRANSLATE_TOP = 40          # 只翻译最终入选的前几条，控制 API 用量
 TRANSLATE_BATCH = 12        # 每批几条。太大会整批超时（40 条实测 60 秒回不来）
 TRANSLATE_TIMEOUT = 45      # 单批超时秒数
+
+# 新闻量异常：拿今天的条数跟前几天比。
+# 只报「有事发生」，**不报方向**——方向靠关键词判太不可靠（见 CLAUDE.md 与
+# .claude/notes/trading.md 的说明），但「这檔今天忽然很多人在写」这件事本身是
+# 可以直接数出来的，不需要判断语义，所以统计上可靠得多。
+HIST_DAYS = 30              # 基准保留几天
+SPIKE_MIN_COUNT = 3         # 今天至少几条才谈得上异常（1-2 条是噪声）
+SPIKE_RATIO = 2.5           # 今天条数 / 近期日均，超过这个倍数算异常
 
 # ⚠️ 一定要用 `.strip() or 默认值`，不能用 os.environ.get(k, 默认值)：
 # workflow 里写了 `AGNES_MODEL: ${{ secrets.AGNES_MODEL }}` 而该 secret 未定义时，
@@ -223,6 +232,59 @@ def translate_batch(titles):
     return [out.get(i) for i in range(len(titles))], None
 
 
+def update_history_and_spikes(by_symbol):
+    """维护每檔的每日新闻条数，并挑出今天忽然爆量的。
+
+    为什么要自己存历史：RSS 只给最近 48 小时，没有任何地方能回头查「这檔上周
+    平均一天几条新闻」。所以基准只能从今天开始自己累积——存的是**条数**不是
+    内容，一天一个整数，档案很小。
+
+    每小时跑一次会重复看到同一批新闻，所以当天的值取「当天见过的不重复 id 数」
+    而不是累加——否则跑得越多天数越大，基准就废了。
+    """
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    try:
+        with open(HIST, encoding="utf-8") as f:
+            hist = json.load(f)
+    except Exception:
+        hist = {}
+    daily = hist.get("daily") or {}
+    seen_today = hist.get("seen_today") or {}
+    if hist.get("seen_date") != today:
+        seen_today = {}          # 换日重来
+
+    spikes = []
+    for sym, items in by_symbol.items():
+        ids = set(seen_today.get(sym) or []) | {it["id"] for it in items}
+        seen_today[sym] = sorted(ids)
+        per = daily.setdefault(sym, {})
+        per[today] = len(ids)
+        # 只留最近 HIST_DAYS 天
+        for d in sorted(per)[:-HIST_DAYS]:
+            per.pop(d, None)
+
+        past = [v for d, v in per.items() if d != today]
+        if len(past) >= 3 and len(ids) >= SPIKE_MIN_COUNT:
+            avg = sum(past) / len(past)
+            if avg > 0 and len(ids) / avg >= SPIKE_RATIO:
+                spikes.append({
+                    "symbol": sym, "count": len(ids),
+                    "avg": round(avg, 1), "ratio": round(len(ids) / avg, 1),
+                })
+    spikes.sort(key=lambda x: -x["ratio"])
+
+    with open(HIST, "w", encoding="utf-8") as f:
+        json.dump({"seen_date": today, "seen_today": seen_today, "daily": daily},
+                  f, ensure_ascii=False, separators=(",", ":"))
+    if spikes:
+        print("[news] 新闻量异常：" +
+              "、".join(f"{s['symbol']} {s['count']} 条（日均 {s['avg']}）" for s in spikes[:5]))
+    else:
+        print("[news] 没有新闻量异常的标的"
+              + ("" if any(len(v) >= 4 for v in daily.values()) else "（基准还在累积中，至少要 3 天）"))
+    return spikes
+
+
 def main():
     with open(UNIVERSE, encoding="utf-8") as f:
         universe = json.load(f)["tickers"]
@@ -286,6 +348,8 @@ def main():
     for it in flat:
         counts[it["sent"]] = counts.get(it["sent"], 0) + 1
 
+    spikes = update_history_and_spikes(by_symbol)
+
     out = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "counts": counts,
@@ -298,6 +362,7 @@ def main():
         "crypto": crypto,
         "by_symbol": by_symbol,
         "n_symbols": len(by_symbol),
+        "spikes": spikes,
     }
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
