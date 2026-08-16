@@ -38,6 +38,8 @@ OUT = os.path.join(BASE, "trading", "news.json")
 MAX_AGE_HOURS = 48          # 超过这个时间的新闻不要，页面上摆旧闻比没有更糟
 PER_SYMBOL = 3              # 每檔最多留几条
 TRANSLATE_TOP = 40          # 只翻译最终入选的前几条，控制 API 用量
+TRANSLATE_BATCH = 12        # 每批几条。太大会整批超时（40 条实测 60 秒回不来）
+TRANSLATE_TIMEOUT = 45      # 单批超时秒数
 
 # ⚠️ 一定要用 `.strip() or 默认值`，不能用 os.environ.get(k, 默认值)：
 # workflow 里写了 `AGNES_MODEL: ${{ secrets.AGNES_MODEL }}` 而该 secret 未定义时，
@@ -149,10 +151,40 @@ def fetch_symbol(item):
     return sym, parse_feed(url, item.get("name") or sym, PER_SYMBOL)
 
 
+def translate_all(titles):
+    """分批翻译。回 (译文列表, 说明)；整批失败的位置留 None，呼叫端保留英文原文。
+
+    为什么分批（2026-08-16 实测）：一次送 40 条，Agnes 60 秒还没回，整批超时作废——
+    抓新闻那步跑了 62 秒就是这么来的（60 秒 timeout + 2 秒抓取）。改成每批 12 条后
+    单批负载小得多，而且**一批失败只损失那一批**，不会像原来那样全军覆没。
+    """
+    if not AGNES_KEY:
+        return None, "没有 AGNES_API_KEY，保留英文原文"
+    if not titles:
+        return None, "没有要翻的标题"
+
+    out, errors, done = [None] * len(titles), [], 0
+    for i in range(0, len(titles), TRANSLATE_BATCH):
+        chunk = titles[i:i + TRANSLATE_BATCH]
+        got, err = translate_batch(chunk)
+        if got:
+            for j, t in enumerate(got):
+                if t:
+                    out[i + j] = t
+                    done += 1
+        elif err:
+            errors.append(err)
+
+    if done == 0:
+        return None, "翻译全部失败：" + "；".join(errors[:2]) if errors else "翻译全部失败"
+    note = f"翻了 {done}/{len(titles)} 条"
+    if errors:
+        note += f"，{len(errors)} 批失败：{errors[0]}"
+    return out, note
+
+
 def translate_batch(titles):
-    """用 Agnes 一次翻一批。失败回 None，呼叫端保留英文原文。"""
-    if not AGNES_KEY or not titles:
-        return None
+    """翻一批。回 (译文列表 或 None, 错误说明 或 None)。"""
     numbered = "\n".join(f"{i+1}. {t}" for i, t in enumerate(titles))
     prompt = (
         "把下面每条英文财经新闻标题翻成简体中文，要求：\n"
@@ -166,13 +198,14 @@ def translate_batch(titles):
             headers={"Authorization": f"Bearer {AGNES_KEY}"},
             json={"model": AGNES_MODEL, "temperature": 0,
                   "messages": [{"role": "user", "content": prompt}]},
-            timeout=60,
+            timeout=TRANSLATE_TIMEOUT,
         )
         r.raise_for_status()
         text = r.json()["choices"][0]["message"]["content"]
     except Exception as e:
-        print(f"[translate] 失败，保留英文：{e}")
-        return None
+        msg = f"{type(e).__name__}: {str(e)[:120]}"
+        print(f"[translate] 这批失败，保留英文：{msg}")
+        return None, msg
 
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     out = {}
@@ -184,9 +217,10 @@ def translate_batch(titles):
                 out[idx] = m.group(2).strip()
     # 条数对不上就整批放弃：错位的译文比没有译文危险得多
     if len(out) < len(titles) * 0.8:
-        print(f"[translate] 回传条数对不上（{len(out)}/{len(titles)}），整批放弃")
-        return None
-    return [out.get(i) for i in range(len(titles))]
+        msg = f"回传条数对不上（{len(out)}/{len(titles)}）"
+        print(f"[translate] {msg}，这批放弃")
+        return None, msg
+    return [out.get(i) for i in range(len(titles))], None
 
 
 def main():
@@ -231,7 +265,7 @@ def main():
     flat.extend(sym_items)
 
     targets = flat[:TRANSLATE_TOP]
-    zh = translate_batch([t["title"] for t in targets])
+    zh, translate_note = translate_all([t["title"] for t in targets])
     if zh:
         for it, t in zip(targets, zh):
             if t:
@@ -248,6 +282,10 @@ def main():
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "counts": counts,
         "translated": bool(zh),
+        # 翻译成不成、翻了几条、为什么失败，直接写进产出。
+        # 2026-08-16：CI 日志 API 的 tail 取不到中段步骤的输出，排查一次要试好几轮，
+        # 所以诊断跟着产出走——看 news.json 就知道，不必再去翻日志。
+        "translate_note": translate_note,
         "macro": macro,
         "crypto": crypto,
         "by_symbol": by_symbol,
