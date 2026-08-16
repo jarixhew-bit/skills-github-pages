@@ -93,6 +93,29 @@ CRYPTO_FEEDS = [
 ]
 
 
+# 内容农场/评论文的标题模式。这些不是「发生了什么」，是「你该买什么」——
+# Motley Fool、Zacks 那类长期供稿，跟当天事件无关，却满篇 beat/growth/millionaire，
+# 全被关键词判成偏多（2026-08-16 实测：119 条里有 25 条是这种，占 21%）。
+# 它们照常显示（用户想看就看），但**不参与多空计数**。
+OPINION_RE = re.compile(r"""(
+ \bvs\.?\b | \bversus\b
+ | ^\s*\d+\s+(reasons?|things?|stocks?|etfs?|ways?)\b
+ | \b\d+\s+(reasons?|top|best)\b
+ | \bwhich\b.*\?
+ | \bshould\s+you\b | \bis\s+it\s+(time|smart|too\s+late)\b
+ | \bis\s+\w+\s+a\s+(buy|sell|good)\b
+ | \bcould\s+make\s+you\b | \bmillionaire\b
+ | \bhere'?s?\s+(how\s+much|why|what)\b
+ | \bprediction\b | \bmy\s+top\b | \bthe\s+smartest\b
+ | \bbetter\s+buy\b | \bworth\s+buying\b
+ | \bbuy\s+now\b | \bto\s+buy\s+(and\s+hold\s+)?(now|today|forever|in\s+\d{4})\b
+)""", re.I | re.X)
+
+
+def is_opinion(title: str) -> bool:
+    return bool(OPINION_RE.search(title or ""))
+
+
 def clean(s: str) -> str:
     """RSS 里常混着 HTML 标签与实体，直接摆上页面会看到一堆 &nbsp; 和 <p>。"""
     s = re.sub(r"<[^>]+>", "", s or "")
@@ -138,6 +161,7 @@ def parse_feed(url, source, limit):
         if ts < cutoff:
             continue
         summary = clean(e.get("summary", ""))[:220]
+        opinion = is_opinion(title)
         out.append({
             "title": title,
             "summary": summary,
@@ -145,7 +169,9 @@ def parse_feed(url, source, limit):
             "source": source,
             "ts": ts.strftime("%Y-%m-%d %H:%M"),
             "_sort": ts.timestamp(),
-            "sent": score(title + " " + summary),
+            # 评论文一律记 flat：照常显示，但不参与多空计数
+            "sent": "flat" if opinion else score(title + " " + summary),
+            "kind": "opinion" if opinion else "news",
             "id": hashlib.md5(title.encode("utf-8")).hexdigest()[:10],
         })
         if len(out) >= limit:

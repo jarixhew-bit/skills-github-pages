@@ -121,15 +121,56 @@ def check_news_factor():
        news_sigs and "3 条偏多" in news_sigs[0][1], news_sigs and news_sigs[0][1])
     ok("输出带 news_score 字段供页面标示", "news_score" in r_bull, list(r_bull)[:5])
 
-    # 开关
-    os.environ["NEWS_FACTOR"] = "0"
-    ok("NEWS_FACTOR=0 时不读新闻", A.load_news_by_symbol() == {})
+    # 开关：默认关闭（2026-08-16 实测它是系统性偏多的常数偏移，见 analyzer.py 的说明）
     os.environ.pop("NEWS_FACTOR", None)
+    ok("默认关闭（不设环境变量时不读新闻）", A.load_news_by_symbol() == {},
+       "默认开着——实测证明它会把大部分股票的买入门槛降低 1 分")
+    os.environ["NEWS_FACTOR"] = "1"
+    ok("NEWS_FACTOR=1 可以打开", isinstance(A.load_news_by_symbol(), dict))
+    os.environ["NEWS_FACTOR"] = "0"
+    ok("NEWS_FACTOR=0 明确关闭", A.load_news_by_symbol() == {})
+    os.environ.pop("NEWS_FACTOR", None)
+
+
+def check_opinion_filter(fn):
+    """评论文不得参与多空计数——它们是内容农场的推荐稿，不是当天事件。"""
+    cases_op = [
+        "JEPQ vs. SPYI: Nearly Identical Yields",
+        "DIVO or JEPI: Which Monthly Dividend Actually Protects Your Principal?",
+        "3 Reasons This Top Dividend Stock Is a Buy",
+        "Investing $500 a Month Into These 3 ETFs Could Retire You a Millionaire",
+        "Should You Buy Nvidia Stock Before Earnings?",
+        "Here's How Much You'd Have If You Invested $1,000 in 1950",
+        "Prediction: This Stock Will Beat the Market",
+        "The Smartest ETF to Buy Now",
+    ]
+    cases_news = [
+        "Fed holds rates steady at September meeting",
+        "Nvidia beats earnings estimates, raises guidance",
+        "Meta to face social media addiction trial Tuesday",
+        "Sector Update: Healthcare Stocks Decline Late Afternoon",
+        "Third Point Exited Nvidia and Broadcom in Q2",
+        "Bitcoin price trades above $63,000",
+    ]
+    bad_op = [t for t in cases_op if not fn.is_opinion(t)]
+    bad_news = [t for t in cases_news if fn.is_opinion(t)]
+    ok("评论/推荐文全部被认出来", not bad_op, bad_op)
+    ok("真新闻不会被误判成评论文", not bad_news, bad_news)
+
+
+def _real_hist_snapshot():
+    """真实 news-history.json 的内容快照（不存在就回 None）。"""
+    try:
+        with open(os.path.join(BASE, "trading", "news-history.json"), "rb") as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
 
 
 def check_dedupe(fn):
     """跑一次完整的 main()，用假 RSS 制造「同一篇文章挂在多处」的真实情况。"""
     import tempfile
+    real_hist_before = _real_hist_snapshot()
 
     # 这一篇会同时出现在宏观、加密与两檔个股底下——正是页面上那个重复的成因
     SHARED = "Shared headline everyone carries"
@@ -179,10 +220,11 @@ def check_dedupe(fn):
        len(data["by_symbol"]) > 0, len(data["by_symbol"]))
     ok("by_symbol 里不留空清单",
        all(len(v) > 0 for v in data["by_symbol"].values()), data["by_symbol"])
-    # 自检不该碰真实数据——这条守着上面那两行重定向别被人拿掉
-    ok("跑完没有写进真实的 news-history.json",
-       not os.path.exists(os.path.join(BASE, "trading", "news-history.json")),
-       "自检污染了真实数据档")
+    # 自检不该碰真实数据——这条守着上面那两行重定向别被人拿掉。
+    # 判据是「内容没变」不是「档案不存在」：CI 每小时都会产出这个档，它本来就该
+    # 存在（第一版写成「不存在」，真实档案一落地就误报，2026-08-16 当场踩到）。
+    ok("跑完没有改动真实的 news-history.json",
+       _real_hist_snapshot() == real_hist_before, "自检污染了真实数据档")
 
 
 def main():
@@ -251,7 +293,10 @@ def main():
     print("【7】新闻因子的三道保险（放宽任何一道都要先过这里）")
     check_news_factor()
 
-    print("【8】跨区块去重：一条新闻只能出现在一个地方")
+    print("【8】评论文不得参与多空计数")
+    check_opinion_filter(fn)
+
+    print("【9】跨区块去重：一条新闻只能出现在一个地方")
     check_dedupe(fn)
 
     print(f"\n通过 {len(oks)} 项")
