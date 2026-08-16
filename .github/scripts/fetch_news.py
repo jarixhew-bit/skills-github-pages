@@ -243,18 +243,26 @@ def main():
     for r in crypto_res:
         crypto.extend(r)
 
-    # 跨来源去重：同一条新闻常同时出现在好几个 feed
-    def dedupe(items):
-        seen, out = set(), []
+    # 全局去重：一条新闻只出现在一个地方。
+    # 不能只在 macro/crypto 各自内部去重（2026-08-16 首版就是这样，页面上「NiSource」
+    # 在 GOOGL 与 AMZN 底下各出现一次、巴菲特那条在宏观与 KO 底下各一次）——
+    # 同一篇文章常同时挂在好几檔的 RSS 上，也常同时进宏观与个股。
+    # 优先级：宏观 > 加密 > 个股（个股按 universe 顺序，先到先得）。
+    seen_ids = set()
+
+    def take(items):
+        out = []
         for it in sorted(items, key=lambda x: -x["_sort"]):
-            if it["id"] in seen:
+            if it["id"] in seen_ids:
                 continue
-            seen.add(it["id"])
+            seen_ids.add(it["id"])
             out.append(it)
         return out
 
-    macro = dedupe(macro)[:10]
-    crypto = dedupe(crypto)[:8]
+    macro = take(macro)[:10]
+    crypto = take(crypto)[:8]
+    by_symbol = {sym: kept for sym, items in by_symbol.items()
+                 if (kept := take(items))}
 
     # 翻译：只翻最终会显示的，按「宏观 → 加密 → 个股（新到旧）」排优先序
     flat = []

@@ -38,7 +38,7 @@ jobs:
       company: ${{ steps.d.outputs.company }}
       inventory: ${{ steps.d.outputs.inventory }}
       fund: ${{ steps.d.outputs.fund }}
-      newstrans: ${{ steps.d.outputs.newstrans }}
+      news: ${{ steps.d.outputs.news }}
       staff: ${{ steps.d.outputs.staff }}
       gamebot: ${{ steps.d.outputs.gamebot }}
     steps:
@@ -159,14 +159,14 @@ jobs:
           health-url: http://localhost:8899/expense-tracker.html
       - run: node tools/check-inventory.mjs
 
-  newstrans:
-    name: 新闻翻译分批
+  news:
+    name: 新闻抓取与翻译
     needs: decide
-    if: needs.decide.outputs.newstrans == 'true'
+    if: needs.decide.outputs.news == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 tools/check-news-translate.py
+      - run: python3 tools/check-news.py
 
   fund:
     name: 作业系统简报页（真浏览器）

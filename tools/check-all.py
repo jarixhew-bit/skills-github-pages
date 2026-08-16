@@ -50,7 +50,7 @@ CHECKS = [
     ("notify", ["python3", "tools/check-ci-notify.py"], False),
     ("morningpos", ["python3", "tools/check-morning-positions.py"], False),
     ("generated", ["python3", "tools/check-generated.py"], False),
-    ("newstrans", ["python3", "tools/check-news-translate.py"], False),
+    ("news", ["python3", "tools/check-news.py"], False),
     ("rules", ["python3", "tools/check-rules.py", "--quiet"], False),
     ("rule-homes", ["python3", "tools/check-rule-homes.py"], False),
     ("workflows", ["python3", "tools/check-workflows.py"], False),
