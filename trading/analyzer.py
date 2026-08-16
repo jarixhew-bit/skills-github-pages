@@ -681,6 +681,10 @@ def main():
         "positions": positions,
         "actions": actions,
         "review": review,
+        "targets": state.get("targets"),
+        # 日 TWR 因子（已在此处剔除出入金），给前端算波动/回撤/VaR 用——
+        # 别让页面拿 nav_series 去猜哪天是转帐，猜法会把真实暴跌误当成入金剔掉
+        "twr_daily": dict(sorted(twr_daily.items())[-260:]),
         "ai_note": state.get("ai_note"),
         "ai_note_date": state.get("ai_note_date"),
         "ai_note_nav": state.get("ai_note_nav"),

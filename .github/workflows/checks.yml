@@ -37,6 +37,7 @@ jobs:
       workflows: ${{ steps.d.outputs.workflows }}
       company: ${{ steps.d.outputs.company }}
       inventory: ${{ steps.d.outputs.inventory }}
+      fund: ${{ steps.d.outputs.fund }}
       staff: ${{ steps.d.outputs.staff }}
       gamebot: ${{ steps.d.outputs.gamebot }}
     steps:
@@ -156,6 +157,18 @@ jobs:
         with:
           health-url: http://localhost:8899/expense-tracker.html
       - run: node tools/check-inventory.mjs
+
+  fund:
+    name: 作业系统简报页（真浏览器）
+    needs: decide
+    if: needs.decide.outputs.fund == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/browser-check-setup
+        with:
+          health-url: http://localhost:8899/trading/fund.html
+      - run: node tools/check-fund.mjs
 
   staff:
     # 名字里不放 matrix 变量：job 被跳过时 GitHub 不展开它，会原样显示 ${{ }}，
