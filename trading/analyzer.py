@@ -48,8 +48,16 @@ CASH_LIKE = {"SGOV"}  # 现金类持仓，不给技术信号建议
 #    （2026-08-16 去重时实证：同一篇同时挂在 GOOGL/AMZN/KO 底下）。
 # 2. **至少要 NEWS_MIN_ITEMS 条才给分**，一两条纯粹是噪声。
 # 3. **进 signals 清单**，页面上看得到哪一分是新闻给的，随时可以对照它准不准。
-# 想关掉：环境变量 NEWS_FACTOR=0（或把 NEWS_FACTOR_DEFAULT 改成 False）。
-NEWS_FACTOR_DEFAULT = True
+# ---- 2026-08-16 上线当天就默认关掉了，原因是实测数据 ----
+# 接上去跑一轮之后统计：58 檔里 +1 有 25 檔、-1 只有 4 檔，情绪分布偏多 41%／偏空 13%。
+# 也就是说它不是信号，是**系统性偏多的常数偏移**——等于把大部分股票的买入门槛
+# 降低 1 分。试过滤掉评论文、把门槛提到 2 和 3，多空比从 6.2:1 只降到 3.6:1，
+# 再提高门槛则是 -1 先归零（12:0），偏差更极端。**没有任何一组参数能消除它**，
+# 因为根因是关键词情绪判断对财经标题本来就不准，加上财经媒体基调本来就偏乐观。
+# 所以默认关闭，程式与资料照常保留：news-history.json 继续累积，等三到六个月后
+# 有历史资料能回测，再用数据决定要不要开、怎么开。
+# 想打开：环境变量 NEWS_FACTOR=1。
+NEWS_FACTOR_DEFAULT = False
 NEWS_MIN_ITEMS = 2
 NEWS_PATH = os.path.join(BASE, "news.json")
 # 宽基指数：跌了大概率涨回来，适用「打折加大定投」规则；单一资产（如 IBIT）不适用
@@ -137,7 +145,9 @@ def atr_last(bars, n=14):
 def load_news_by_symbol():
     """读 news.json，回 {symbol: [条目]}。读不到就回空 dict——新闻是加值资讯，
     没有它整条管线照跑，只是不给新闻分。"""
-    if os.environ.get("NEWS_FACTOR", "").strip() == "0" or not NEWS_FACTOR_DEFAULT:
+    flag = os.environ.get("NEWS_FACTOR", "").strip()
+    on = NEWS_FACTOR_DEFAULT if flag == "" else flag not in ("0", "false", "no")
+    if not on:
         return {}
     try:
         with open(NEWS_PATH, encoding="utf-8") as f:
