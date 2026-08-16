@@ -243,3 +243,21 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
       这页的原则是**没有的数据就不做那一块**，不填好看的数字。要加区块前先问「这个数
       我们真的有吗」。
 
+- **自动下单：个人帐户目前做不到（2026-08-16 查证）**。用户问过「扫到目标价就 Telegram
+  问我，我点确定就下单」。前半段已经做了（在 butler-bot，见下），**后半段卡在券商那端**：
+  IBKR 的 OAuth 1.0a 明确只开放给机构客户，OAuth 2.0 对个人「still being considered,
+  no ETA」；零售帐户存取 Web API **只被批准走 Client Portal Gateway**——那是一支要手动
+  输入帐密＋2FA 登入的 Java 程式，session 会过期，等于每天要人去点一次。
+  **所以不要再叫用户去申请 OAuth，他申请不到。** 想真的无人值守下单只有两条路：
+  养一台常开的机器跑 CP Gateway（每天手动登入），或等 IBKR 开放 OAuth 2.0。
+  两条都不划算时，现行做法（Telegram 推送＋下单参数卡片，用户在券商 App 按最后一下）
+  已经是成本最低的解。将来若 OAuth 开放，要改的只有 butler-bot 那支 `buildOrderTicket`
+  旁边加一段送单，其余流程不动。
+  来源：interactivebrokers.com/campus 的 Web API 文件（沙盒连不上该站，是用 WebSearch
+  查到的官方说明；要复查请走 CI 通道或本机）。
+- **目标价盯盘在 butler-bot，不在这个仓库**（2026-08-16）：`src/cron/watchlist.js`
+  每 5 分钟跑一次（Cloudflare cron），美东 04:00-20:00 含盘前盘后，行情走 Yahoo 的
+  chart 接口（`src/providers/quote.js`）。**为什么不放 GitHub Actions**：它的 cron 最短
+  5 分钟且免费档实际常延迟 10-20 分钟，盯目标价会漏。触发后那条会自动 disarm，等用户
+  按按钮才恢复——不这样做，价格在目标价附近来回穿越会每 5 分钟推一条。
+
