@@ -39,9 +39,15 @@ MAX_AGE_HOURS = 48          # 超过这个时间的新闻不要，页面上摆�
 PER_SYMBOL = 3              # 每檔最多留几条
 TRANSLATE_TOP = 40          # 只翻译最终入选的前几条，控制 API 用量
 
-AGNES_KEY = os.environ.get("AGNES_API_KEY")
-AGNES_MODEL = os.environ.get("AGNES_MODEL", "agnes-2.5-flash")
-AGNES_BASE = os.environ.get("AGNES_BASE_URL", "https://apihub.agnes-ai.com/v1")
+# ⚠️ 一定要用 `.strip() or 默认值`，不能用 os.environ.get(k, 默认值)：
+# workflow 里写了 `AGNES_MODEL: ${{ secrets.AGNES_MODEL }}` 而该 secret 未定义时，
+# GitHub 注入的是**空字符串**而不是「变量不存在」，get 的默认值根本轮不到。
+# 2026-08-16 第一次上线就踩了：base 变成 ""，请求 URL 成了 "/chat/completions"，
+# 瞬间失败 → 整批不翻译，页面上全是英文标题。ai_note.py:230 早就写对了，抄它。
+AGNES_KEY = os.environ.get("AGNES_API_KEY", "").strip()
+AGNES_MODEL = os.environ.get("AGNES_MODEL", "").strip() or "agnes-2.5-flash"
+AGNES_BASE = (os.environ.get("AGNES_BASE_URL", "").strip()
+              or "https://apihub.agnes-ai.com/v1").rstrip("/")
 
 # 情绪词表：跟 portfolio_news.py 同源，但这里独立维护（那边是推播文案用的，
 # 两边调整节奏不同，硬绑在一起反而会互相牵制）
@@ -61,10 +67,12 @@ BEARISH = [
 ]
 
 # 大盘与宏观：不绑单一个股的财经头条
+# 2026-08-16 首跑实测：Yahoo 与 MarketWatch 都有量，CNBC 一条都抓不到
+# （Actions 的出口 IP 疑似被挡）。留着它无害——单一源失败只是少那一块。
 MACRO_FEEDS = [
-    ("CNBC 市场", "https://www.cnbc.com/id/20910258/device/rss/rss.html"),
-    ("CNBC 经济", "https://www.cnbc.com/id/20910258/device/rss/rss.html"),
+    ("CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
     ("Yahoo 财经", "https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US"),
+    ("Yahoo 纳指", "https://feeds.finance.yahoo.com/rss/2.0/headline?s=^IXIC&region=US&lang=en-US"),
     ("MarketWatch", "https://feeds.content.dowjones.io/public/rss/mw_topstories"),
 ]
 # 加密：IBIT 部位相关
@@ -251,6 +259,15 @@ def main():
     total = len(macro) + len(crypto) + sum(len(v) for v in by_symbol.values())
     print(f"[news] {total} 条（宏观 {len(macro)}、加密 {len(crypto)}、"
           f"个股 {len(by_symbol)} 檔）；翻译：{'是' if zh else '否（保留英文）'}")
+    # 每个源各抓到几条——某个源哪天挂了，看这行就知道，不用去翻 news.json
+    per_source = {}
+    for it in macro + crypto:
+        per_source[it["source"]] = per_source.get(it["source"], 0) + 1
+    print("[news] 各源：" + "、".join(f"{k} {v}" for k, v in sorted(per_source.items())) or "（无）")
+    for name, _ in MACRO_FEEDS + CRYPTO_FEEDS:
+        if name not in per_source:
+            print(f"::warning::新闻源「{name}」这次一条都没抓到")
+    print(f"[news] 翻译设定：base={AGNES_BASE} model={AGNES_MODEL} key={'有' if AGNES_KEY else '无'}")
     if total == 0:
         print("::warning::一条新闻都没抓到，可能是 RSS 源全挂了")
     return 0
