@@ -45,9 +45,7 @@
 - 寫檔案一律用 Write／Edit 工具，禁止用 `echo >`、`Out-File`、`Set-Content` 寫有中文的內容。
   若逼不得已用 shell 寫檔，必加 `-Encoding utf8`。
 - POSIX 語法的腳本走 Bash 工具；PowerShell 只跑 Windows 專屬操作。兩者語法不可混用。
-- PowerShell 5.1 沒有 `&&`——用 `A; if ($?) { B }`。
-- **鐵律（所有環境適用）：同一指令失敗 2 次就換方法（換工具、換寫法、或查文件），
-  禁止第 3 次原樣重試。**
+- PowerShell 5.1 沒有 `&&`——用 `A; if ($?) { B }`。（同一指令失敗 2 次就換方法：CLAUDE.md 鐵律 3）
 
 ## 附帶發現〔本機限定，見 letter.md 第 1 件事〕
 
@@ -59,22 +57,20 @@
 - [2026-07-12][雲端] 情境：session 中途裝 plugin，想立刻用它的斜線指令，回報 `Unknown command`。
   教訓：斜線指令表在進程啟動時就固定，中途裝的不會熱更新（下次多半又是全新容器）。當下用 Bash 直接
   呼叫 plugin 內部腳本（`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`）；要長期可用就裝本機 CLI。
-- [2026-07-12／2026-08-11／2026-08-12][雲端] 情境：雲端 session 操作功能分支。三坑都踩過：
-  (1) **刪遠端分支**：git 代理禁止 `git push --delete`（403，策略性非暫時），別重試——觸發
-  `cleanup-branches.yml`（workflow_dispatch 傳分支名）由 CI 代刪，帶 main 保護與合併驗證。
+- [2026-07-12／2026-08-11／2026-08-12][雲端] 情境：雲端 session 操作功能分支。
+  (1) **刪遠端分支走 CI、收工切回 main**：兩者的做法都在 skill `publish-pages` 第 5、7 步（正本），
+  照著做即可；此處只記為什麼——雲端 git 代理禁止 `git push --delete`（403，策略性非暫時，別重試）。
   (2) **新開/重建分支前先 `git fetch origin main`**：本地 origin/main 過舊會讓分支基點落後，清理
   workflow 的「內容樹在 main」安全閥會攔下不刪；被攔時把分支 force-push 指到 origin/main 再觸發一次。
   (3) **每次 squash 合併後、開始下一件事前，先把分支重置到最新 main**（`git fetch origin main &&
   git checkout -B <分支> origin/main`）。不重置就繼續 commit，分支同時帶著合併前的舊 commit 和新改動，
   PR 開出來是 `mergeable_state: dirty`，而 **GitHub 對衝突的 PR 不跑任何檢查**（看起來像卡住）。
   判別法：開 PR 後遲遲沒有檢查記錄，先查 `mergeable_state`，別懷疑 workflow 配置。(3) 已踩三次。
-  重置後 stop hook 喊「有 N 個未推送的 commit」是**誤報**（GitHub 合併後自動刪了遠端分支，追蹤引用
-  懸空，把 squash 合併提交本身當成未推的工作）：先驗 `git branch -r --contains HEAD` 顯示 `origin/main`
-  ＋ `git status --short` 為空，再 `git fetch origin --prune` 後 `git push -u` 重建。**別用
-  `--force-with-lease`**（遠端分支已不存在，必回 `stale info`，白費一輪）。已踩兩次。
-  (4) **CI 綠了要當場合併，別「等下再回來」**：一個 session 連做好幾件事時，開完 PR 就地等幾分鐘、
-  綠了立刻合併＋刪分支，再開始下一件。2026-08-13 開了 #400 就轉頭做下一件，等使用者反問
-  「怎麼 Boss 還在」才發現 PR 躺著沒合、他以為功能沒做。真要並行，收工前逐一核對每個 PR 的狀態。
+  重置後 stop hook 喊「有 N 個未推送的 commit」是**誤報**（遠端分支已被自動刪掉、追蹤引用懸空）：
+  驗 `git branch -r --contains HEAD` 有 `origin/main` ＋ `git status --short` 為空，再
+  `git fetch origin --prune` ＋ `git push -u` 重建；**別用 `--force-with-lease`**（必回 `stale info`）。已踩兩次。
+  (4) **CI 綠了要當場合併，別「等下再回來」**：開完 PR 就地等幾分鐘、綠了立刻合併＋刪分支，再開始
+  下一件。2026-08-13 開了 #400 就轉頭做下一件，等使用者反問「怎麼 Boss 還在」才發現 PR 躺著沒合。
 - [2026-07-13／2026-08-03／2026-08-12][雲端] 情境：想確認改動「真的上線了／真的提交進去了」，
   或需要沙盒連不到的外部資料。教訓：沙盒出口代理**擋掉一票外部站**——`github.io`、`*.workers.dev`
   （403）、`play.google.com` 與 apkcombo 等 APK 鏡像（EGRESS_BLOCKED）。另外 `raw.githubusercontent`
@@ -98,8 +94,12 @@
   對**任何人、免登入**開放全庫讀寫，到期後又反過來拒絕所有人；上線前必須手動改成按 `request.auth.uid`
   限權。規則只在 Firebase Console 網頁 UI，repo 內看不到對應檔案——稽核要主動去 Console 確認。
   來源：expense-tracker 被查出仍是預設規則、且已公開暴露記帳資料一段時間。
-- [2026-08-05／2026-08-11／2026-08-12][皆是] 情境：写检查工具、或改它的等待方式，跑完报「通过」。
-  教训：**绿灯本身要先被验证——拿一个已知该报的东西试它，确认它真的会红。** 五种踩法：
+- [2026-08-05／2026-08-11／2026-08-12／2026-08-17][皆是] 情境：写检查工具、或改它的等待方式，跑完报「通过」。
+  教训：**绿灯本身要先被验证——拿一个已知该报的东西试它，确认它真的会红。**
+  **红灯同样要被验证**：会自动开 issue 的检查，误报成本比漏报高——走网络的断言先分
+  「暂时性 vs 确定性」再决定红不红（2026-08-17 live-check 红灯，实为 17 个页面里一个回 503、
+  其余全绿的 CDN 抖动；判别法就是看同一次 run 里别人是不是好的。已让 `check-live.py`
+  对 5xx/429/连线异常重试两次，404/403 照旧立刻判死）。五种踩法：
   (1) check-secrets 扫 git 历史，0.13 秒扫完 4844 个对象报通过，实际是遇到第一个 tree 对象就 `break`；
   (2) 把死等换成 `until(条件)` 时条件写成**否定式**（「没有『加载中』」）——还没开始加载时就成立，
   等于没等。**等条件要写「我要的东西出现了」，不要写「我不要的东西不在」**；
