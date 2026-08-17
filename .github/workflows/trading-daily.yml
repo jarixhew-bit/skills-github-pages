@@ -190,17 +190,28 @@ jobs:
 
           # 三步一轮，整轮重试。**不能只重试最后那一下 push**：一旦中途 rebase，
           # HEAD 就是新的 SHA，旧 SHA 上的状态跟不过来，重试必然再被拒。
+          # ⚠️ 这个 step 跑在 `bash -e` 下：循环里的**裸命令**一失败就直接结束整个
+          # step，轮不到下一轮——2026-08-17 GitHub 的 statuses API 回 503，(2) 当场
+          # 摔死，注释里承诺的「整轮重试」一次都没跑到。所以 (1)(2) 一律用 if 包住，
+          # 失败就退避后进下一轮。加东西进这个循环也要照办，已由 check-workflows.py
+          # 的 check_retry_loops 守着。
           BRANCH="bot/trading-data"
           for i in 1 2 3; do
             # (1) 推到暂存分支——目的只是让这个 SHA 在服务端存在，
             #     否则没有对象可以挂状态（状态挂在 commit 上，不是分支上）
-            git push -f origin "HEAD:refs/heads/$BRANCH"
+            if ! git push -f origin "HEAD:refs/heads/$BRANCH"; then
+              LAST_ERR="推暂存分支失败"
+              echo "$LAST_ERR（第 $i 轮），退避后再来…"; sleep $((i * 10)); continue
+            fi
 
             # (2) 给这个 SHA 盖 all-green
             SHA=$(git rev-parse HEAD)
-            gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$SHA" \
+            if ! gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$SHA" \
               -f state=success -f context=all-green \
-              -f description="行情数据更新：已实跑 check-secrets"
+              -f description="行情数据更新：已实跑 check-secrets"; then
+              LAST_ERR="盖 all-green 失败（多半是 GitHub 暂时性 5xx）"
+              echo "$LAST_ERR（第 $i 轮），退避后再来…"; sleep $((i * 10)); continue
+            fi
 
             # (3) 带着状态直接快转推 main。状态写入到规则引擎认账之间有几秒
             #     延迟，第一轮被拒是正常的
@@ -216,7 +227,8 @@ jobs:
             git rebase origin/main || exit 1
           done
           if [ -z "$PUSHED" ]; then
-            echo "::error::盖了 all-green 仍推不进 main，请检查 main 的保护规则"
+            # 报最后一次真正的败因：卡在盖章还是卡在保护规则，处理方式完全不同
+            echo "::error::三轮都没能推进 main。最后一次的败因：${LAST_ERR:-盖了 all-green 仍被保护规则拒绝}"
             exit 1
           fi
 

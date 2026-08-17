@@ -22,6 +22,11 @@
    写 `${{ contains(x, ''y'') }}`，以为 `''` 是转义（那是 YAML 引号字符串的规则，
    字面块里不适用），实际送给 GitHub 的就是两个引号 → 表达式语法错 → 整个文件
    「解析不了」，运行记录的名字会显示成文件路径。PyYAML 照样解析成功，所以本地全绿。
+6. **总闸 all-green 的 needs 要列满同档所有 job** —— 漏掉的那项红了总闸照样绿
+   （2026-08-17 发现 fund 与 news 从来没被列进去，等于白跑）
+7. **重试循环里的 git push / gh 要被 if 或 || 接住** —— 跑在 `bash -e` 下，裸命令
+   一失败整个 step 当场结束，写了循环也重试不到（2026-08-17 trading-daily 就是
+   这样被一次 503 摔死的）
 
 退出码：0 = 全过；1 = 有问题。
 """
@@ -111,6 +116,36 @@ def check_workflow(path: Path) -> list:
     return problems
 
 
+def check_retry_loops(path: Path) -> list:
+    """for 循环里的裸网络命令 —— 在 `bash -e` 下等于没有循环。
+
+    2026-08-17 踩到：trading-daily 的「推暂存分支 → 盖 all-green → 推 main」写成
+    `for i in 1 2 3` 的整轮重试，但前两步是裸命令；GitHub 的 statuses API 回 503 时
+    第一轮就把整个 step 摔死，那圈重试一次都没跑到，注释写的保护是假的。
+
+    只看 `git push` 与 `gh`（会走网络、会遇到 5xx 的那两个），且只在 for 循环体里看。
+    `if`/`while`/`until` 开头或带 `||` 的都算已经接住了失败，不报。
+    """
+    text = path.read_text(encoding="utf-8")
+    problems = []
+    in_loop = 0
+    for n, raw in enumerate(text.splitlines(), 1):
+        line = raw.strip()
+        if re.match(r"^(for|while|until)\b.*;\s*do\b", line):
+            in_loop += 1
+            continue
+        if line == "done" and in_loop:
+            in_loop -= 1
+            continue
+        if not in_loop or line.startswith("#"):
+            continue
+        if re.match(r"^(git\s+push|gh)\b", line) and "||" not in line:
+            problems.append(
+                f"{rel(path)}:{n}：重试循环里的 `{line[:40]}…` 没被 if 或 || 接住 —— "
+                f"跑在 bash -e 下会让整个 step 当场结束，等于这圈重试不存在")
+    return problems
+
+
 def check_gate(path: Path) -> list:
     """总闸 all-green 必须 needs 到同一个 workflow 里的每一个 job。
 
@@ -159,6 +194,7 @@ def main() -> int:
         problems += check_workflow(f)
         problems += check_expressions(f)
         problems += check_gate(f)
+        problems += check_retry_loops(f)
     for a in actions:
         problems += check_action(a)
         problems += check_expressions(a)
