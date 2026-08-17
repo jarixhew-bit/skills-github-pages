@@ -111,6 +111,30 @@ def check_workflow(path: Path) -> list:
     return problems
 
 
+def check_gate(path: Path) -> list:
+    """总闸 all-green 必须 needs 到同一个 workflow 里的每一个 job。
+
+    2026-08-17 发现 `fund` 与 `news` 两项从来没被 needs 进去——它们红了，
+    all-green 照样绿，而分支保护只看 all-green，等于这两项白跑。加 job 时
+    忘记回头改 needs 是必然会再发生的，所以做成断言而不是写进文件注释。
+    """
+    data, err = load(path)
+    if err:
+        return []                      # 解析问题已由 check_workflow 报过
+    jobs = data.get("jobs") or {}
+    gate = jobs.get("all-green")
+    if not isinstance(gate, dict):
+        return []
+    needs = gate.get("needs") or []
+    if isinstance(needs, str):
+        needs = [needs]
+    missing = [j for j in jobs if j != "all-green" and j not in needs]
+    if missing:
+        return [f"{rel(path)}：all-green 的 needs 漏了 {', '.join(sorted(missing))} —— "
+                f"这几项红了总闸照样绿，分支保护会放行"]
+    return []
+
+
 def check_action(path: Path) -> list:
     problems = []
     data, err = load(path)
@@ -134,6 +158,7 @@ def main() -> int:
     for f in files:
         problems += check_workflow(f)
         problems += check_expressions(f)
+        problems += check_gate(f)
     for a in actions:
         problems += check_action(a)
         problems += check_expressions(a)

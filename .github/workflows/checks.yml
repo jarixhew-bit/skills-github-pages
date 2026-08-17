@@ -39,6 +39,7 @@ jobs:
       inventory: ${{ steps.d.outputs.inventory }}
       fund: ${{ steps.d.outputs.fund }}
       news: ${{ steps.d.outputs.news }}
+      prices: ${{ steps.d.outputs.prices }}
       staff: ${{ steps.d.outputs.staff }}
       gamebot: ${{ steps.d.outputs.gamebot }}
     steps:
@@ -168,6 +169,15 @@ jobs:
       - uses: actions/checkout@v4
       - run: python3 tools/check-news.py
 
+  prices:
+    name: 行情校验
+    needs: decide
+    if: needs.decide.outputs.prices == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-prices.py
+
   fund:
     name: 作业系统简报页（真浏览器）
     needs: decide
@@ -230,7 +240,10 @@ jobs:
   all-green:
     name: all-green
     if: always()
-    needs: [decide, html, secrets, pwa, ainote, notify, morningpos, generated, rules, workflows, company, inventory, staff, gamebot]
+    # 这一串必须列满同一个文件里的每个 job：漏掉的那项红了总闸照样绿、分支保护会放行
+    # （2026-08-17 发现 fund 与 news 从来没被列进来）。已由 check-workflows.py 的
+    # check_gate 断言守着，加 job 忘了回头改这里会在 CI 上被挡下。
+    needs: [decide, html, secrets, pwa, ainote, notify, morningpos, generated, rules, workflows, company, inventory, staff, gamebot, fund, news, prices]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——

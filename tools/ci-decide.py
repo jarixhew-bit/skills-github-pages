@@ -41,6 +41,7 @@ RULES = {
     "fund": ["trading/fund.html", "trading/analyzer.py", "tools/check-fund.mjs",
              ".github/scripts/fetch_news.py"],
     "news": [".github/scripts/fetch_news.py", "tools/check-news.py"],
+    "prices": ["trading/fetch_prices.py", "tools/check-prices.py"],
     "staff":     ["staff/**", "expense-tracker.html", "tools/build-staff-page.py",
                   "tools/check-staff-page.mjs"],
     "gamebot":   ["game-bot/**", "tools/check-gamebot.py",
