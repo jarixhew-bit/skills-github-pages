@@ -155,6 +155,11 @@ def check_dedupe(fn):
     with tempfile.NamedTemporaryFile("w+", suffix=".json", delete=False) as f:
         tmp_hist = f.name
     os.unlink(tmp_hist)          # 让它以「档案不存在」的状态开始
+    # 记下真实数据档跑之前的样子，跑完比对有没有被动到（2026-08-16 起
+    # trading/news-history.json 由 trading-daily.yml 提交进仓库，所以不能再用
+    # 「档案不存在」当判准——那样在 CI 上必红，跟污染与否无关）。
+    real_hist = os.path.join(BASE, "trading", "news-history.json")
+    hist_before = open(real_hist, "rb").read() if os.path.exists(real_hist) else None
     orig_out, orig_hist = fn.OUT, fn.HIST
     fn.OUT, fn.HIST = tmp, tmp_hist
     try:
@@ -180,8 +185,8 @@ def check_dedupe(fn):
     ok("by_symbol 里不留空清单",
        all(len(v) > 0 for v in data["by_symbol"].values()), data["by_symbol"])
     # 自检不该碰真实数据——这条守着上面那两行重定向别被人拿掉
-    ok("跑完没有写进真实的 news-history.json",
-       not os.path.exists(os.path.join(BASE, "trading", "news-history.json")),
+    hist_after = open(real_hist, "rb").read() if os.path.exists(real_hist) else None
+    ok("跑完没有动到真实的 news-history.json", hist_after == hist_before,
        "自检污染了真实数据档")
 
 
