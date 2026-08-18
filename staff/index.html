@@ -503,7 +503,8 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
 /* 这几个栏位共用的脚本会去读，删掉会让记账当场抛错，所以留在 DOM 里收起来。
    真正属于个人账本的整块界面（概览/统计/设置/账户切换）是**根本没生成进来**，
    不在这张单子上。 */
-#hdr-cloud, #hdr-acc-pill, #tx-reporter-group, #tx-reftag-group{display:none !important}
+#hdr-cloud, #hdr-acc-pill, #tx-reporter-group, #tx-reftag-group,
+#tx-date-group{display:none !important}
 /* 下面这几个只在**公司账**那边收起来。老板账那边它们就是普通的记账栏位，要留着用
    （描述、收入/支出、瑞尔换算、筛选）——所以用 body.staff-boss 分开，而不是写两套。 */
 body:not(.staff-boss) #tx-type-tabs,
@@ -819,7 +820,7 @@ body.staff-boss #staff-boss-cash{display:block}
       </div>
     </div>
     <!-- date -->
-    <div class="form-group">
+    <div class="form-group" id="tx-date-group">
       <label class="form-label" data-en="Date">日期</label>
       <input class="form-input" id="tx-date" type="date"
              oninput="state.dateTouchedByUser=true;syncDateHint()">
@@ -2521,7 +2522,7 @@ async function saveTxInner(){
     type: state.txType,
     categoryId: state.selectedCatId,
     description: description,
-    date: document.getElementById('tx-date').value || today(),
+    date: today(),   // 同事版一律记当天（生成时改的，见 tools/build-staff-page.py）
     updatedAt: Date.now()
   };
   if(state.pendingAttachmentId) tx.attachmentId = state.pendingAttachmentId;
