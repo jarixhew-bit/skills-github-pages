@@ -809,26 +809,11 @@ if (want()) {
   const hint = page.locator('#tx-date-hint');
   ok('刚打开时是今天，没有多余提醒', !(await hint.isVisible()));
 
-  await page.fill('#tx-date', LEDGER_DAY);
-  await page.waitForTimeout(200);
-  ok('改成别的日子：提醒出现', await hint.isVisible());
-  ok('提醒里写明记在哪天', (await hint.textContent() || '').includes(LEDGER_DAY));
-
-  // 英文模式下不能漏成中文——同事有人只读英文。语言键在表单底下点不到，
-  // 按钮本身在【8】已经点过了，这里直接调切换函数
-  await page.evaluate(() => staffToggleLang());
-  await until(() => page.evaluate(() => {
-    const b = document.getElementById('staff-lang-btn');
-    return !!b && (b.textContent.trim() === 'EN' || b.textContent.trim() === '中');
-  }), { what: '语言切换生效' });
-  ok('切语言后提醒当场跟着变成英文', (await hint.textContent() || '').includes('not today'),
-     await hint.textContent());
-
-  // 改回今天要收起来（不能一直挂着，挂着就没人看了）
-  const t = await page.evaluate(() => today());
-  await page.fill('#tx-date', t);
-  await page.waitForTimeout(200);
-  ok('改回今天：提醒收起', !(await hint.isVisible()));
+  // 2026-08-18 起同事版改不了日期（栏位整组收起来、存的时候一律用当天），所以
+  // 原本那几条「改成别的日子→提醒出现→切英文→改回今天收起」已经没有路径能触发，
+  // 全部拿掉。真正要守的那件事改由【25】验：**塞了别的日期，存进去的仍是当天**。
+  ok('日期栏对同事是收起来的（改不了就不会往回填）',
+     !(await page.locator('#tx-date-group').isVisible()));
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
@@ -1694,6 +1679,40 @@ if (want()) {
   // 描述栏本身在公司账那边仍然是收起来的（这条本来就有，顺带守住别被改回来）
   ok('描述栏对同事仍是收起来的',
      !(await page.locator('#tx-desc-group').isVisible()));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【25】同事版一律记当天，不许往回填日期 ----------
+// 2026-08-18：同事当天补记时在日期栏往回选（单号 57 选了 8/16、58 选了 8/17），
+// 账本里就冒出跟已结束那几天混在一起的记录。日期栏整组收起来，并且**存的时候一律
+// 用当天**——只收起来不够：AI 认收据会把票面日期写进那个栏位（备注那次就是栽在
+// 「隐藏 ≠ 不生效」）。
+console.log('\n【25】同事版一律记当天（就算栏位被塞了别的日期）');
+if (want()) {
+  const h = await newPage();
+  const { page, posted, errs } = h;
+  await signIn(h);
+
+  ok('日期栏对同事是收起来的', !(await page.locator('#tx-date-group').isVisible()));
+
+  await page.evaluate(() => showAddTx());
+  await page.waitForTimeout(400);
+  await page.fill('#tx-amount', '3.30');
+  await page.selectOption('#tx-company-category', 'Store');
+  // 模拟「AI 认出票面日期」或「有人绕过 UI 塞值」——两天前
+  await page.evaluate(() => {
+    const d = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+    document.getElementById('tx-date').value = d;
+  });
+  const n0 = posted.filter(x => x.items).length;
+  await page.evaluate(() => saveTx());
+  await until(() => posted.filter(x => x.items).length > n0, { what: '这一笔送到服务端' });
+  const sent = posted.filter(x => x.items).pop();
+  // 用页面自己的 today() 当基准：跨时区/跨午夜时才不会误判（服务端也用同一个日子对账）
+  const todayStr = await page.evaluate(() => today());
+  ok('送出去的日期是当天，不是栏位里那个', sent?.date === todayStr, [sent?.date, todayStr]);
+  ok('金额照常送到（没把整笔弄坏）', sent?.items?.[0]?.amount === 3.3, sent?.items?.[0]?.amount);
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }

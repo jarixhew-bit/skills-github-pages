@@ -153,6 +153,11 @@ def build(src: str) -> str:
     # ---------- 3) 给要收起来的栏位加 id ----------
     # 「收入/支出切换」的 id 已经在源码里了（2026-08-08 起：老板 App 自己也要用它，
     # 见 syncCompanyTxFields() 把公司账户下这个切换整块藏起来），这里不用再注入。
+    # 日期整组收起来（2026-08-18 用户要求）：同事补记时会往回选日期，账本里就冒出跟
+    # 已结束那几天混在一起的记录（单号 57/58 就是这样来的）。一律跟当天走，省掉这个决定。
+    s = replace_once(s, '<div class="form-group">\n      <label class="form-label">日期</label>',
+                     '<div class="form-group" id="tx-date-group">\n      <label class="form-label">日期</label>',
+                     "日期组")
     s = replace_once(s, '<div class="form-group">\n      <label class="form-label" id="tx-desc-label">',
                      '<div class="form-group" id="tx-desc-group">\n      <label class="form-label" id="tx-desc-label">',
                      "描述栏")
@@ -267,6 +272,13 @@ def build(src: str) -> str:
         s = replace_once(s, zh_html, add_en(zh_html, en), f"文案「{en}」")
     for old, new, what in LABEL_REWRITES:
         s = replace_once(s, old, new, what)
+    # 日期一律用当天：栏位收起来只是看不到，AI 认收据照样会把票面日期写进去，
+    # 不堵这一行等于没关（隐藏 ≠ 不生效，跟备注那次是同一个坑）。
+    s = replace_once(s,
+                     "    date: document.getElementById('tx-date').value || today(),",
+                     "    date: today(),   // 同事版一律记当天（生成时改的，见 tools/build-staff-page.py）",
+                     "日期一律当天")
+
     for entry in DYNAMIC_TEXT:
         old_js, new_js, what = entry[0], entry[1], entry[2]
         n = entry[3] if len(entry) > 3 else 1
@@ -532,7 +544,8 @@ STAFF_CSS = """
 /* 这几个栏位共用的脚本会去读，删掉会让记账当场抛错，所以留在 DOM 里收起来。
    真正属于个人账本的整块界面（概览/统计/设置/账户切换）是**根本没生成进来**，
    不在这张单子上。 */
-#hdr-cloud, #hdr-acc-pill, #tx-reporter-group, #tx-reftag-group{display:none !important}
+#hdr-cloud, #hdr-acc-pill, #tx-reporter-group, #tx-reftag-group,
+#tx-date-group{display:none !important}
 /* 下面这几个只在**公司账**那边收起来。老板账那边它们就是普通的记账栏位，要留着用
    （描述、收入/支出、瑞尔换算、筛选）——所以用 body.staff-boss 分开，而不是写两套。 */
 body:not(.staff-boss) #tx-type-tabs,

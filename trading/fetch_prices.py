@@ -61,11 +61,20 @@ def validate(sym, bars):
     last = datetime.strptime(bars[-1][0], "%Y-%m-%d").replace(tzinfo=timezone.utc)
     if datetime.now(timezone.utc) - last > timedelta(days=10):
         return f"{sym}: 最后日期 {bars[-1][0]} 过旧"
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     for i, b in enumerate(bars):
         d, o, h, l, c, v = b
         tol = c * 0.001
-        if not (h >= l and h >= c - tol and l <= c + tol and h >= o - tol and l <= o + tol):
+        # 当天那根还没走完，Yahoo 的 open 会停在上一交易日的开盘价（2026-08-17 开盘后
+        # 6 分钟实测：SPY/CRM/GE 报的 o 与前一根的 o 一模一样），h/l/c 却已是实时的。
+        # 于是当天有跳空的股票全被判成 OHLC 异常，那次 58 支里红了 22 支、超过 1/4
+        # 门槛把整条管线弄红。open 下游没人读（analyzer 只用 h/l/c 与日期），
+        # 所以当天这根只验 h/l/c 三者自洽，不验 open；隔天重抓会拿到定稿的值。
+        in_progress = i == len(bars) - 1 and d == today
+        if not (h >= l and h >= c - tol and l <= c + tol):
             return f"{sym} {d}: OHLC 异常 o={o} h={h} l={l} c={c}"
+        if not in_progress and not (h >= o - tol and l <= o + tol):
+            return f"{sym} {d}: 开盘价不在当日区间内 o={o} h={h} l={l} c={c}"
         if i and b[0] <= bars[i - 1][0]:
             return f"{sym} {d}: 日期未升序"
         if i and bars[i - 1][4] > 0 and abs(c / bars[i - 1][4] - 1) > 0.5:

@@ -35,6 +35,10 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 TIMEOUT = 30
 RETRY_WAIT = 90        # 部署还没跑完时的宽限时间
+# GitHub Pages 的 CDN 偶尔会回一下 5xx（2026-08-17 一个页面回 503，别的 16 个都好，
+# 隔一会儿自己就好了）。这类抖动重试一下就过，不重试就是误报＋自动开 issue。
+TRANSIENT_CODES = {408, 425, 429, 500, 502, 503, 504}
+TRANSIENT_WAITS = (5, 20)   # 抖动重试的等待秒数，共重试 2 次
 TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
 
 
@@ -49,16 +53,24 @@ def title_of(text: str) -> str:
     return htmllib.unescape(m.group(1)).strip() if m else ""
 
 
-def fetch(url: str):
-    """回传 (状态码或错误名, 内容字串)。"""
+def fetch(url: str, waits=TRANSIENT_WAITS):
+    """回传 (状态码或错误名, 内容字串)。
+
+    暂时性错误（5xx/429/连线异常）会等一下重试，避免 CDN 抖动被当成页面挂了；
+    404、403 这类明确的坏结果重试几次也一样，直接回报。
+    """
     req = urllib.request.Request(url, headers={"User-Agent": UA})
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-            return r.status, r.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as e:
-        return e.code, ""
-    except Exception as e:
-        return type(e).__name__, ""
+    for wait in (*waits, None):
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+                return r.status, r.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as e:
+            status = e.code
+        except Exception as e:
+            status = type(e).__name__     # 连线层面的失败，也算抖动
+        if wait is None or (isinstance(status, int) and status not in TRANSIENT_CODES):
+            return status, ""
+        time.sleep(wait)
 
 
 def normalize(s: str) -> str:

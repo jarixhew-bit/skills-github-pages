@@ -59,7 +59,9 @@
 - `boss-dinner.html` — 老板晚餐页（结构笔记见 `.claude/notes/travel-pages.md`）
 - `expense-tracker.html` — 记帐工具（PWA）
 - `fortune.html` — 运势页面
-- `trading/` — IBKR 交易脚本与页面
+- `trading/` — IBKR 交易脚本与页面（`fund.html` 是作业系统简报页，2026-08-16 建，
+  七区块仪表板：绩效／扫描／配置／风险／部位／再平衡／管线，风险指标由前端现算，
+  新闻由 `.github/scripts/fetch_news.py` 每小时产出 `news.json`）
 - `game-bot/` — 手机游戏每日自动签到脚本（AutoX.js，跑在安卓手机上）＋图文说明页
 - **`butler-bot`（独立私有仓库 jarixhew-bit/butler-bot，2026-07-14 建立）** — Telegram 私人
   管家 bot（酒库存/航班追踪/提醒/记账/手册查询）。架构：Cloudflare Worker（webhook＋cron）
@@ -115,14 +117,18 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有十七个，全部挂 CI（2026-08-12 校对过与 `tools/` 一致）：
+   交付时告诉用户自检怎么跑。现有十九个，全部挂 CI（2026-08-16 校对过与 `tools/` 一致）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
    `check-generated`（查「生成又提交进仓库」的产物有没有跟源文件脱节）/
+   `check-news`（把 requests/feedparser 打桩，验新闻的两处易错：译文分批时**位置不会
+   错位**——错位会把 A 公司的消息安到 B 公司头上；以及同一条新闻**跨区块去重**）/
    `check-gamebot`（＋`check-gamebot-logic.mjs`：把安卓 API 打桩，用假屏幕实跑手机脚本，
    查语法查不出的行为问题）；浏览器类 `check-expense-company.mjs` /
-   `check-staff-page.mjs` / `check-inventory.mjs`（跑前要先起
+   `check-staff-page.mjs` / `check-inventory.mjs` / `check-fund.mjs`（验 `trading/fund.html`
+   那些前端现算的钱的数字：夏普、回撤、VaR、再平衡差额，用手算得出答案的 fixture 去对；
+   两个数据档全用固定 fixture 拦掉，所以不随每天行情变动而误报）（跑前要先起
    `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）；
    线上类 `check-live`（每天验线上页面是不是 main 那一版，**只能在 CI 跑**，
    沙盒连不上 github.io）＋ `fetch-photos`（抓图通道，结果会写回触发分支）。

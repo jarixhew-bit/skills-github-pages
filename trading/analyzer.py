@@ -39,6 +39,19 @@ STATE_OUT = os.path.join(BASE, "state.enc")
 
 PBKDF2_ITER = 300_000
 CASH_LIKE = {"SGOV"}  # 现金类持仓，不给技术信号建议
+
+# ---- 新闻因子（2026-08-16 用户要求接进打分）----
+# 三道保险，别拿掉任何一道：
+# 1. **最多 ±1 分**。买卖阈值是 ±2（偏多/偏空）与 ±4（强烈），所以新闻**永远不可能
+#    单独产生一个买卖信号**，只能在技术面已经贴近阈值时推一把。这是刻意的：
+#    RSS 是滞后的、关键词情绪表很粗、Yahoo 的 ticker RSS 还常混进泛市场文章
+#    （2026-08-16 去重时实证：同一篇同时挂在 GOOGL/AMZN/KO 底下）。
+# 2. **至少要 NEWS_MIN_ITEMS 条才给分**，一两条纯粹是噪声。
+# 3. **进 signals 清单**，页面上看得到哪一分是新闻给的，随时可以对照它准不准。
+# 想关掉：环境变量 NEWS_FACTOR=0（或把 NEWS_FACTOR_DEFAULT 改成 False）。
+NEWS_FACTOR_DEFAULT = True
+NEWS_MIN_ITEMS = 2
+NEWS_PATH = os.path.join(BASE, "news.json")
 # 宽基指数：跌了大概率涨回来，适用「打折加大定投」规则；单一资产（如 IBIT）不适用
 BROAD_INDEX = {"VOO", "SPY", "VTI", "QQQ", "DIA", "IWM"}
 
@@ -121,8 +134,41 @@ def atr_last(bars, n=14):
     return atr
 
 
-def analyze_ticker(bars):
-    """输入升序日线，输出信号字典。至少需要 60 根。"""
+def load_news_by_symbol():
+    """读 news.json，回 {symbol: [条目]}。读不到就回空 dict——新闻是加值资讯，
+    没有它整条管线照跑，只是不给新闻分。"""
+    if os.environ.get("NEWS_FACTOR", "").strip() == "0" or not NEWS_FACTOR_DEFAULT:
+        return {}
+    try:
+        with open(NEWS_PATH, encoding="utf-8") as f:
+            return json.load(f).get("by_symbol") or {}
+    except Exception:
+        return {}
+
+
+def news_factor(items):
+    """把一檔的新闻算成 -1 / 0 / +1，外加一句人看得懂的说明。
+
+    只数偏多与偏空的条数差，不做任何语义判断——那层判断本来就不可靠，
+    在这里再叠一层只会把不可靠放大。
+    """
+    if not items or len(items) < NEWS_MIN_ITEMS:
+        return 0, None
+    bull = sum(1 for it in items if it.get("sent") == "bull")
+    bear = sum(1 for it in items if it.get("sent") == "bear")
+    if bull == bear:
+        return 0, None
+    d = 1 if bull > bear else -1
+    word = "偏多" if d > 0 else "偏空"
+    return d, f"近两日 {len(items)} 条新闻，{bull} 条偏多、{bear} 条偏空 → 整体{word}"
+
+
+def analyze_ticker(bars, news_items=None):
+    """输入升序日线，输出信号字典。至少需要 60 根。
+
+    news_items 是这檔最近的新闻（可选）。它最多只影响 ±1 分——见 NEWS_FACTOR_DEFAULT
+    旁边那三道保险的说明。
+    """
     closes = [b[4] for b in bars]
     vols = [b[5] for b in bars]
     n = len(closes)
@@ -198,6 +244,12 @@ def analyze_ticker(bars):
         if d:
             signals.append(["成交量", "放量（>1.5倍均量），信号增强", d]); score += d
 
+    # 新闻分放在最后加：它是加值资讯，不该参与「放量增强」那类基于技术面的放大
+    news_d, news_msg = news_factor(news_items)
+    if news_d:
+        signals.append(["新闻", news_msg, news_d])
+        score += news_d
+
     if score >= 4:
         action, act_cls = "强烈买入", "buy2"
     elif score >= 2:
@@ -225,6 +277,7 @@ def analyze_ticker(bars):
         "from_52w_low": round((price / lo_52w - 1) * 100, 1),
         "stop_atr": round(price - 2 * atr, 2) if atr else None,
         "signals": signals,
+        "news_score": news_d,
         "date": bars[-1][0],
         "spark": [round(c, 2) for c in closes[-90:]],
     }
@@ -406,6 +459,9 @@ def main():
         universe = json.load(f)["tickers"]
 
     # --- 公开部分：全名单信号 ---
+    # 新闻因子的输入。读不到就是空 dict，各檔照常只用技术面打分。
+    news_by_sym = load_news_by_symbol()
+
     tickers, latest_date = [], None
     for u in universe:
         hist = load_history(u["symbol"])
@@ -415,7 +471,7 @@ def main():
         errs = validate_bars(u["symbol"], hist["bars"])
         if errs:
             warnings.extend(errs[:2])
-        r = analyze_ticker(hist["bars"])
+        r = analyze_ticker(hist["bars"], news_by_sym.get(u["symbol"]))
         if "error" in r:
             warnings.append(f"{u['symbol']}: {r['error']}")
             continue

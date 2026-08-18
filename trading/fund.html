@@ -143,6 +143,37 @@ section.page:first-of-type{border-top:0}
 .item .tx b{display:block;font-size:13px}
 .item .tx span{color:var(--muted)}
 
+/* 新闻 */
+.news{display:flex;flex-direction:column;gap:0}
+.nrow{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line2)}
+.nrow:last-child{border-bottom:0}
+.nrow .sd{width:3px;border-radius:2px;align-self:stretch;flex:0 0 auto;background:var(--grey)}
+.nrow .sd.bull{background:var(--green)} .nrow .sd.bear{background:var(--red)}
+.nrow .nb{min-width:0;flex:1}
+.nrow a{color:var(--ink);text-decoration:none;font-weight:700;font-size:13px;line-height:1.4;display:block}
+.nrow a:hover{color:var(--orange)}
+.nrow .en{font-size:11.5px;color:var(--muted);font-weight:500;line-height:1.4;margin-top:2px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nrow .meta{font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.nrow .pill{font-size:10px;font-weight:800;padding:1px 6px;border-radius:20px;background:var(--line2);color:var(--muted)}
+.nrow .pill.mine{background:var(--orange);color:#fff}
+.nsig{font-size:10px;font-weight:800;padding:1px 6px;border-radius:20px;flex:0 0 auto}
+.nsig.up{background:#E9F6EE;color:var(--green)} .nsig.down{background:#FDEBE8;color:var(--red)}
+.newsline{font-size:11.5px;color:var(--muted);margin-top:4px;padding-left:10px;
+  border-left:2px solid var(--line);line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.spikes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.spike{border:1px solid var(--orange-dim);background:#FDF3EF;border-radius:9px;
+  padding:7px 11px;font-size:12px;display:flex;align-items:center;gap:7px}
+.spike b{font-weight:800}
+.spike .x{color:var(--orange);font-weight:800}
+.sentbar{display:flex;height:9px;border-radius:5px;overflow:hidden;margin:4px 0 8px;background:var(--line2)}
+.sentbar i{display:block;height:100%}
+.sentlegend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+.sentlegend b{font-weight:800}
+.sentlegend .k{display:inline-flex;align-items:center;gap:5px}
+.sentlegend .sw{width:9px;height:9px;border-radius:2px;display:inline-block}
+
 .log{display:flex;flex-direction:column;gap:0}
 .logrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px dashed var(--line2);font-size:12.5px}
 .logrow:last-child{border-bottom:0}
@@ -326,10 +357,16 @@ footer.foot .disc{font-size:11.5px;color:var(--muted);line-height:1.6}
     </div>
   </div>
 
+  <div class="panel">
+    <h3>市场新闻 <span class="hint" id="newsHint">载入中…</span></h3>
+    <div id="newsBody"><div class="note">载入中…</div></div>
+  </div>
+
   <div class="flow">
     <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-search"/></svg></div><b>抓行情</b><span>Stooq 主源<br>Yahoo 备援</span></div><div class="arw">→</div>
     <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-drop"/></svg></div><b>算指标</b><span>五类信号<br>各自加减分</span></div><div class="arw">→</div>
-    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg></div><b>排顺序</b><span>总分高的<br>排在前面</span></div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg></div><b>排顺序</b><span>总分高的<br>排在前面</span></div><div class="arw">→</div>
+    <div class="step"><div class="ico"><svg viewBox="0 0 24 24"><use href="#i-net"/></svg></div><b>读新闻</b><span>名单全数<br>＋宏观与加密</span></div>
   </div>
 </section>
 
@@ -548,7 +585,7 @@ footer.foot .disc{font-size:11.5px;color:var(--muted);line-height:1.6}
       <h3>系统边界 <span class="hint">它不做什么</span></h3>
       <div class="list">
         <div class="item"><div class="ic warn">✕</div><div class="tx"><b>不会自动下单</b><span>只产出建议清单，最后一步由我在券商手动执行。</span></div></div>
-        <div class="item"><div class="ic warn">✕</div><div class="tx"><b>不看新闻和财报</b><span>只吃价格与量。突发消息它不知道。</span></div></div>
+        <div class="item"><div class="ic warn">✕</div><div class="tx"><b>新闻只占 ±1 分</b><span>买卖阈值是 ±2，所以新闻<b>永远无法单独产生一个信号</b>，只在技术面已贴近阈值时推一把。哪一分是新闻给的，信号卡上都标了。</span></div></div>
         <div class="item"><div class="ic warn">✕</div><div class="tx"><b>不预测涨跌</b><span>技术指标只描述现况，不是对未来的判断。</span></div></div>
         <div class="item"><div class="ic ok">✓</div><div class="tx"><b>它真正省下的</b><span>每天手动核对持仓、算权重、翻 58 檔线图的时间。</span></div></div>
       </div>
@@ -593,7 +630,7 @@ footer.foot .disc{font-size:11.5px;color:var(--muted);line-height:1.6}
 "use strict";
 const PW_KEY = "tradingAnalyzerPw";
 const JUMP = 0.06;           // 单日 |涨跌| 超过此值视为出入金造成的净值跳变，剔除
-let PUB = null, PRIV = null;
+let PUB = null, PRIV = null, NEWS = null;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
@@ -744,11 +781,18 @@ function renderPublic() {
   const row = (sym, kind) => {
     const t = bySym(sym);
     if (!t) return `<div class="item"><div class="ic ${kind}">${kind === "buy" ? "↑" : "↓"}</div><div class="tx"><b>${esc(sym)}</b></div></div>`;
+    // 解释层：把这檔最新一条新闻附在信号下面，让你知道「它为什么动」。
+    // 这只是解释，不是理由——信号仍主要由价格与量决定。
+    const nItems = (NEWS && NEWS.by_symbol && NEWS.by_symbol[sym]) || [];
+    const top = nItems[0];
+    const ns = t.news_score;
     return `<div class="item">
       <div class="ic ${kind}">${kind === "buy" ? "↑" : "↓"}</div>
-      <div class="tx" style="flex:1">
-        <b>${esc(sym)} <span style="font-weight:500;color:var(--muted)">${esc(t.name || "")}</span></b>
+      <div class="tx" style="flex:1;min-width:0">
+        <b>${esc(sym)} <span style="font-weight:500;color:var(--muted)">${esc(t.name || "")}</span>
+          ${ns ? `<span class="nsig ${ns > 0 ? "up" : "down"}">新闻 ${ns > 0 ? "+" : ""}${ns}</span>` : ""}</b>
         <span>${esc(t.action)} · ${fmtUsd(t.price, 2)} <span class="${cls(t.chg1d)}">${fmtPct(t.chg1d)}</span> · RSI ${t.rsi}</span>
+        ${top ? `<div class="newsline">📰 ${esc(top.zh || top.title)}</div>` : ""}
       </div>
       <div style="flex:0 0 auto">${spark((t.spark || []).slice(-40), 56, 24)}</div>
     </div>`;
@@ -764,6 +808,115 @@ function renderPublic() {
   $("a7g").textContent = PUB.generated_at || "—";
   $("metaLine").innerHTML = `数据日期 ${esc(PUB.data_date || "—")} · 最近运算 ${esc(PUB.generated_at || "—")} · <a href="./" style="color:var(--muted)">回到分析器</a>`;
   renderPipeLog();
+}
+
+/* ---------------- 新闻 ---------------- */
+// 新闻档是公开的（只按 universe.json 的名单组织，不含持仓）。
+// 「哪几檔是我的」要等解锁后才知道，所以这个函式在载入时跑一次、解锁后再跑一次。
+function renderNews() {
+  const box = $("newsBody"), hint = $("newsHint");
+  if (!NEWS) {
+    hint.textContent = "暂无";
+    box.innerHTML = `<div class="note">还没有新闻数据。管线每小时抓一次，第一次跑完就会出现。</div>`;
+    return;
+  }
+  const c = NEWS.counts || {};
+  const tot = (c.bull || 0) + (c.bear || 0) + (c.flat || 0);
+  const pct = v => tot ? (v / tot * 100).toFixed(1) : 0;
+
+  // 解锁后才能知道持仓，用来把自己那几檔挑出来
+  const mine = PRIV && PRIV.positions ? new Set(PRIV.positions.map(p => p.symbol)) : null;
+  const bySym = NEWS.by_symbol || {};
+  const symName = sym => {
+    const t = (PUB && PUB.tickers || []).find(x => x.symbol === sym);
+    return t ? t.name : "";
+  };
+
+  const row = (it, sym) => {
+    const zh = it.zh && it.zh !== it.title ? it.zh : null;
+    const isMine = sym && mine && mine.has(sym);
+    return `<div class="nrow">
+      <div class="sd ${esc(it.sent || "flat")}"></div>
+      <div class="nb">
+        <a href="${esc(it.link || "#")}" target="_blank" rel="noopener noreferrer">${esc(zh || it.title)}</a>
+        ${zh ? `<div class="en">${esc(it.title)}</div>` : ""}
+        <div class="meta">
+          ${sym ? `<span class="pill${isMine ? " mine" : ""}">${esc(sym)}${isMine ? " · 持仓" : ""}</span>` : ""}
+          <span>${esc(it.source || "")}</span><span>${esc(it.ts || "")}</span>
+          <span>${it.sent === "bull" ? "偏多" : it.sent === "bear" ? "偏空" : "中性"}</span>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  // 个股新闻：持仓的排前面，其余按时间新到旧
+  const symItems = [];
+  Object.entries(bySym).forEach(([sym, items]) => items.forEach(it => symItems.push({ sym, it })));
+  symItems.sort((a, b) => {
+    const am = mine && mine.has(a.sym) ? 1 : 0, bm = mine && mine.has(b.sym) ? 1 : 0;
+    if (am !== bm) return bm - am;
+    return (b.it.ts || "").localeCompare(a.it.ts || "");
+  });
+  const mineItems = mine ? symItems.filter(x => mine.has(x.sym)) : [];
+  const otherItems = symItems.filter(x => !mine || !mine.has(x.sym));
+
+  // 新闻量异常：只说「这檔今天忽然很多人在写」，不说买还是卖——
+  // 方向靠关键词判不可靠，但「有事发生」是数出来的，不需要判断语义。
+  const spikes = (NEWS.spikes || []).slice(0, 6);
+  const spikeHtml = spikes.length ? `
+    <div style="font-size:13px;font-weight:800;margin-bottom:6px">📣 今天忽然很多人在写这几檔</div>
+    <div class="spikes">${spikes.map(sp => {
+      const t = (PUB && PUB.tickers || []).find(x => x.symbol === sp.symbol);
+      return `<div class="spike"><b>${esc(sp.symbol)}</b>
+        <span>${sp.count} 条</span><span class="x">×${sp.ratio}</span>
+        <span style="color:var(--muted)">日均 ${sp.avg}</span>
+        ${t ? `<span class="${cls(t.chg1d)}">${fmtPct(t.chg1d)}</span>` : ""}</div>`;
+    }).join("")}</div>
+    <div class="note" style="margin:0 0 14px">这只表示「有事发生、值得看一眼」，<b>不代表该买或该卖</b>——
+      涨跌方向靠新闻判断不可靠，但发文量本身是数出来的。</div>` : "";
+
+  hint.textContent = `${tot} 条 · 更新于 ${NEWS.generated_at || "—"}`;
+  box.innerHTML = `
+    ${spikeHtml}
+    <div class="sentbar">
+      <i style="width:${pct(c.bull)}%;background:var(--green)"></i>
+      <i style="width:${pct(c.bear)}%;background:var(--red)"></i>
+      <i style="width:${pct(c.flat)}%;background:var(--grey)"></i>
+    </div>
+    <div class="sentlegend">
+      <span class="k"><span class="sw" style="background:var(--green)"></span>偏多 <b>${c.bull || 0}</b></span>
+      <span class="k"><span class="sw" style="background:var(--red)"></span>偏空 <b>${c.bear || 0}</b></span>
+      <span class="k"><span class="sw" style="background:var(--grey)"></span>中性 <b>${c.flat || 0}</b></span>
+      ${NEWS.translated ? "" : `<span style="color:var(--orange)">译文暂缺，显示英文原文</span>`}
+    </div>
+
+    ${mineItems.length ? `
+      <h3 style="margin:18px 0 4px;font-size:13px">你持仓的相关新闻
+        <span class="hint" style="float:right;font-size:11px;font-weight:600;color:var(--muted)">${mineItems.length} 条</span></h3>
+      <div class="news">${mineItems.slice(0, 8).map(x => row(x.it, x.sym)).join("")}</div>` : ""}
+
+    <div class="grid g2" style="margin-top:16px">
+      <div>
+        <h3 style="margin:0 0 4px;font-size:13px">大盘与宏观</h3>
+        <div class="news">${(NEWS.macro || []).length
+          ? NEWS.macro.slice(0, 6).map(it => row(it, null)).join("")
+          : `<div class="note">暂无</div>`}</div>
+      </div>
+      <div>
+        <h3 style="margin:0 0 4px;font-size:13px">比特币与加密</h3>
+        <div class="news">${(NEWS.crypto || []).length
+          ? NEWS.crypto.slice(0, 6).map(it => row(it, null)).join("")
+          : `<div class="note">暂无</div>`}</div>
+      </div>
+    </div>
+
+    <h3 style="margin:18px 0 4px;font-size:13px">监控名单
+      <span class="hint" style="float:right;font-size:11px;font-weight:600;color:var(--muted)">${NEWS.n_symbols || 0} 檔有新闻</span></h3>
+    <div class="news">${otherItems.length
+      ? otherItems.slice(0, 10).map(x => row(x.it, x.sym)).join("")
+      : `<div class="note">暂无</div>`}</div>
+
+    ${mine ? "" : `<div class="note">解锁后，你持仓那几檔的新闻会单独挑出来排在最前面。</div>`}`;
 }
 
 function renderPipeLog() {
@@ -1130,6 +1283,7 @@ async function unlockWith(password, silent) {
   $("lockBtn").textContent = "🔓 已解锁";
   $("lockBtn").classList.add("open");
   renderPrivate();
+  renderNews();      // 解锁后才知道持仓，重跑一次把自己那几檔挑出来高亮
   return true;
 }
 function showErr(msg) { const e = $("pwErr"); e.textContent = msg; e.style.display = "block"; }
@@ -1166,6 +1320,13 @@ async function boot() {
   } catch (e) {
     $("mktLine").textContent = "公开数据载入失败：" + e.message;
   }
+  try {
+    const r = await fetch("news.json", { cache: "no-store" });
+    if (r.ok) NEWS = await r.json();
+  } catch (e) { /* 没有新闻档不影响页面其余部分 */ }
+  renderNews();
+  if (NEWS && PUB) renderPublic();   // 信号卡要带上新闻，NEWS 到齐后重画一次
+
   runSelfTest();
   const saved = localStorage.getItem(PW_KEY);
   if (saved) {

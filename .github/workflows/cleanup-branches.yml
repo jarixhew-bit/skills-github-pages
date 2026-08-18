@@ -36,7 +36,13 @@ jobs:
             fi
             tree=$(git rev-parse "origin/$b^{tree}")
             if echo "$main_trees" | grep -q "$tree"; then
-              git push origin --delete "$b" && echo "已删除 $b"
+              # 用 if 包住：跑在 `bash -e` 下，裸命令一失败会中断整个循环，
+              # 后面还没轮到的分支就白排队了（同 trading-daily 的教训）
+              if git push origin --delete "$b"; then
+                echo "已删除 $b"
+              else
+                echo "::warning::$b 删除失败（多半是暂时性错误），可重跑这个 workflow"
+              fi
             else
               echo "::warning::跳过 $b：内容树不在 main 历史中（可能未合并），请人工确认"
             fi

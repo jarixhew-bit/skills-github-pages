@@ -38,7 +38,10 @@ RULES = {
     "inventory": ["expense-tracker.html", "staff/index.html", "inventory/**",
                   "tools/check-inventory.mjs", "tools/build-staff-page.py"],
     # 作业系统简报页：页面本身、产出它数据的管线、以及自检脚本
-    "fund": ["trading/fund.html", "trading/analyzer.py", "tools/check-fund.mjs"],
+    "fund": ["trading/fund.html", "trading/analyzer.py", "tools/check-fund.mjs",
+             ".github/scripts/fetch_news.py"],
+    "news": [".github/scripts/fetch_news.py", "tools/check-news.py"],
+    "prices": ["trading/fetch_prices.py", "tools/check-prices.py"],
     "staff":     ["staff/**", "expense-tracker.html", "tools/build-staff-page.py",
                   "tools/check-staff-page.mjs"],
     "gamebot":   ["game-bot/**", "tools/check-gamebot.py",
