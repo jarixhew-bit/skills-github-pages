@@ -1,6 +1,6 @@
 # 旅游类页面结构笔记（给 AI 改页面用，不给游客看）
 
-读者：要修改这五个页面的模型。行号会漂移，**以 id/class 锚点为准**。
+读者：要修改这六个页面的模型。行号会漂移，**以 id/class 锚点为准**。
 改完必跑 `python3 tools/check-html.py 文件名.html`（标签平衡 + siteLangUser key 检查）。
 背景规则：`skills/bilingual-pages.md`、`skills/media-files.md`、CLAUDE.md 双语/媒体规则。
 
@@ -85,3 +85,27 @@ toggleLang:583/initLang:588-594)。
 双语：siteLangUser，无需旧key兜底(:590)，说明是key统一后新建的页面。
 PWA：不适用。
 已知坑：单行最长704字符；五页中改动风险相对最低。
+
+## singapore-trip/index.html（约 1060 行）
+新加坡手册，2026-09-23~27 五天四夜，7 人团（老板 Tan Chin Hooi 一行），双语。
+URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网址沿用不换）
+结构：topbar → `nav`（含 `#flights` FLT）→ `#flights`(01) → 酒店区块（MBS 三房 +
+分房名单 + MBS 贵宾接送 + 全程包车，都是 `.note green`）→ 特别节目 → `#itinerary`
+`.day#day01`~`#day05`（`data-date="2026-09-23"`…）→ 午餐候选 → 老板晚餐备选(05)。
+高频操作：
+1. 每天卡片开头必须有 `.wxbox`（`.wx[data-wx="YYYY-MM-DD"]` + `.rainplan` cn/en），
+   **加一天就要配一组**，否则 `tools/check-weather.mjs` 会红。
+2. D1/D2–D4 用 `.stop` 卡；**D5 用时间线** `.tl > .ev`（`.ev.hot` 强调、`.ev.fin` 收尾），
+   跟 japan-trip 同一套 CSS。
+3. 餐厅卡分两种：正文里的是**午餐**候选；05 区块是**老板晚餐备选**（用户 2026-08-19
+   明确：措辞不要用「请」）。
+牵一发：天气条是前端现抓 open-meteo，改动它必跑 `node tools/check-weather.mjs`
+（先起 `python3 -m http.server 8899`）；`jumpToToday()` 靠 `.day.today`。
+内容决定（勿擅自回退）：
+- Albert Centre 已删（周四休，用户 2026-08-19 说「吃不了就别放」）。
+- 机场贵宾服务是樟宜 **JetQuay CIP**（服务名 Quayside Arrival/Departure）。
+  旧的独立贵宾楼 60 Airport Boulevard **2025 年已拆**，现为 T2 内临时贵宾室、走
+  T2 VIP Drive 下客，2027 年才有新楼——**别把旧地址写回去**。JetQuay 官方要求
+  起飞前 120 分钟到，故 D5 写「10:25 是已订的车，能改建议 09:55–10:00」。
+  以上查证于 2026-08-19，来源全被沙盒挡、只有搜索摘要，页面上已标「以 MBS 礼宾
+  确认为准」；日后若拿到官网原文或 MBS 回覆，以那个为准。
