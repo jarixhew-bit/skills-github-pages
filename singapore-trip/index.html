@@ -1072,9 +1072,27 @@ function lbNav(dir) {
     return { i: '🌤', cn: '天气一般', en: 'Mixed' };
   }
   boxes.forEach(function (b) { fill(b, '🌤 天气载入中…（' + CLIMO_CN + '）', '🌤 Loading forecast… (' + CLIMO_EN + ')'); });
+  /* open-meteo 只给未来约 16 天。整趟都还在窗口外时连打都不要打——
+     打了会拿到 400，看起来就像「没网」，把人误导到去查 WiFi。 */
+  var DAY = 86400000, HORIZON_DAYS = 16;
+  var iso = function (d) { return d.toISOString().slice(0, 10); };
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var horizon = new Date(today.getTime() + HORIZON_DAYS * DAY);
+  var last = dates[dates.length - 1];
+  function outOfWindow() {
+    boxes.forEach(function (b) {
+      if (b.dataset.wx > iso(horizon) || b.dataset.wx < iso(today)) {
+        fill(b, '🌤 还没到能报的时候（出发前约两周才有）·' + CLIMO_CN,
+                '🌤 Too early for a forecast (arrives ~2 weeks out) · ' + CLIMO_EN);
+      }
+    });
+  }
+  if (dates[0] > iso(horizon)) { outOfWindow(); return; }
+  var start = dates[0] < iso(today) ? iso(today) : dates[0];
+  var end = last > iso(horizon) ? iso(horizon) : last;
   var url = 'https://api.open-meteo.com/v1/forecast?latitude=1.2897&longitude=103.8501'
     + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
-    + '&timezone=Asia%2FSingapore&start_date=' + dates[0] + '&end_date=' + dates[dates.length - 1];
+    + '&timezone=Asia%2FSingapore&start_date=' + start + '&end_date=' + end;
   fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (j) {
     var d = j && j.daily;
     if (!d || !d.time || !d.time.length) throw new Error('empty');
@@ -1083,8 +1101,8 @@ function lbNav(dir) {
     boxes.forEach(function (b) {
       var i = idx[b.dataset.wx];
       if (i === undefined || d.temperature_2m_max[i] === null || d.temperature_2m_max[i] === undefined) {
-        fill(b, '🌤 这一天还没进预报范围（约出发前两周才有）·' + CLIMO_CN,
-                '🌤 Beyond the forecast window (arrives ~2 weeks before) · ' + CLIMO_EN);
+        fill(b, '🌤 还没到能报的时候（出发前约两周才有）·' + CLIMO_CN,
+                '🌤 Too early for a forecast (arrives ~2 weeks out) · ' + CLIMO_EN);
         return;
       }
       var w = wmo(d.weather_code[i]);
