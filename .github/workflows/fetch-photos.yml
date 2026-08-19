@@ -71,6 +71,9 @@ jobs:
           cp photos-output.txt .photos/latest.txt
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .photos/latest.txt
+          # -f 不可省：.photos/ 在 .gitignore 里（这是暂存档、不进 main），
+          # 不加 -f 的话 git add 直接失败、整个任务红灯，明明图已经抓到了
+          # （2026-08-19 踩过：SkyPark 那次抓图成功却显示 failure）。
+          git add -f .photos/latest.txt
           git commit -m "抓图结果（自动产生的暂存档）" || exit 0
           git push origin HEAD:${{ github.ref_name }}
