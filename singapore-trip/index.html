@@ -165,6 +165,20 @@
   footer { text-align: center; padding: 30px 20px 20px; }
   footer .mark { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .2em; margin-bottom: 8px; }
   footer p { font-size: 10.5px; color: var(--faint); line-height: 1.7; }
+  .tl { border-left: 2px solid var(--line); margin: 4px 0 4px 8px; }
+  .tl .ev { position: relative; padding: 0 0 18px 22px; }
+  .tl .ev:last-child { padding-bottom: 4px; }
+  .tl .ev::before { content: ""; position: absolute; left: -7px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--card); border: 3px solid var(--faint); }
+  .tl .ev.hot::before { border-color: var(--red); }
+  .tl .ev.fin::before { border-color: var(--green); }
+  .tl .ev .t { font-size: 12px; font-weight: 800; color: var(--red); font-variant-numeric: tabular-nums; }
+  .tl .ev h4 { font-size: 13.5px; font-weight: 800; margin-top: 1px; }
+  .tl .ev .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .tl .ev.fin .t, .tl .ev.fin h4 { color: var(--green); }
+  .wxbox { margin: 10px 0 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  .wx { font-size: 12.5px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .wx.wet { color: var(--red); }
+  .rainplan { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -443,6 +457,11 @@
 <div class="badge">✈️ <span class="cn">抵达日 · 晚班机</span><span class="en">Arrival · Evening flight</span></div>
 </div>
 <div class="db">
+<div class="wxbox">
+<div class="wx" data-wx="2026-09-23"></div>
+<div class="rainplan"><span class="cn">☔ 雨天备案：当晚只有落地→酒店，下雨无影响；贵宾通道全程室内。</span><span class="en">☔ Rain plan: Only the airport→hotel run tonight — rain changes nothing; the VIP channel is indoors throughout.</span></div>
+</div>
+
 <div class="stop">
 <div class="pin must">★</div>
 <h4><span class="cn">16:00 金边家里出发 → 18:55 SQ0157 起飞</span><span class="en">16:00 Leave home in Phnom Penh → 18:55 SQ0157 departs</span></h4>
@@ -465,6 +484,11 @@
 <div class="badge">🚗 <span class="cn">市区日</span><span class="en">City Day</span></div>
 </div>
 <div class="db">
+<div class="wxbox">
+<div class="wx" data-wx="2026-09-24"></div>
+<div class="rainplan"><span class="cn">☔ 雨天备案：观音庙是半室外，雨大就先调头去 SuperPark／BOUNCE／SkyPark（全室内），Takashimaya 也在室内；傍晚滨海湾花园若下雨，改进花穹或云雾林（室内、要门票）。</span><span class="en">☔ Rain plan: The temple is semi-outdoor — if it pours, flip the order and do SuperPark / BOUNCE / SkyPark first (all indoors); Takashimaya is indoors too. If the evening at Gardens by the Bay is rained out, go into Flower Dome or Cloud Forest instead (indoors, ticketed).</span></div>
+</div>
+
 <div class="stop">
 <div class="pin must">★</div>
 <h4><span class="cn">上午 · Body Check @ Raffles Hospital</span><span class="en">Morning · Body Check @ Raffles Hospital</span></h4>
@@ -640,6 +664,11 @@
 <div class="badge">🎢 <span class="cn">全日 · 中秋节</span><span class="en">Full Day · Mid-Autumn Festival</span></div>
 </div>
 <div class="db">
+<div class="wxbox">
+<div class="wx" data-wx="2026-09-25"></div>
+<div class="rainplan"><span class="cn">☔ 雨天备案：环球影城照常营业，只有户外过山车会暂停；雨衣比伞好用（排队时撑伞会被劝收）。真下大雨就先转 VivoCity 或 S.E.A. 海洋馆避雨。</span><span class="en">☔ Rain plan: Universal stays open; only the outdoor coasters pause. Ponchos beat umbrellas in queues. In a heavy downpour, duck into VivoCity or the S.E.A. Aquarium.</span></div>
+</div>
+
 <div class="stop">
 <div class="pin must">★</div>
 <h4><span class="cn">上午 · Body Check @ Raffles Hospital</span><span class="en">Morning · Body Check @ Raffles Hospital</span></h4>
@@ -712,7 +741,7 @@
 <a class="btn-map" href="https://maps.google.com/?cid=18158058896293597998" target="_blank">📍 Google Maps</a>
 </div>
 </div>
-<div class="dayfoot"><span class="ftlb">🍽 <span class="cn">餐厅</span><span class="en">Dining</span></span><span class="tx"><span class="cn">三家任选：Syun（精致氛围）· Sushi Tei @ VivoCity（随性平价）· Seah Im（本地食阁，出园即达）</span><span class="en">Pick one: Syun (nicer ambience) · Sushi Tei @ VivoCity (casual) · Seah Im (local hawker, right outside Sentosa)</span></span></div>
+<div class="dayfoot"><span class="ftlb">🍽 <span class="cn">餐厅</span><span class="en">Dining</span></span><span class="tx"><span class="cn">午餐三家任选：Syun（精致氛围）· Sushi Tei @ VivoCity（随性平价）· Seah Im（本地食阁，出园即达）</span><span class="en">Pick one (lunch): Syun (nicer ambience) · Sushi Tei @ VivoCity (casual) · Seah Im (local hawker, right outside Sentosa)</span></span></div>
 </div>
 
 <!-- D04 -->
@@ -723,6 +752,11 @@
 <div class="badge">🧗 <span class="cn">半日+自由</span><span class="en">Half Day + Free</span></div>
 </div>
 <div class="db">
+<div class="wxbox">
+<div class="wx" data-wx="2026-09-26"></div>
+<div class="rainplan"><span class="cn">☔ 雨天备案：Adventure HQ 本来就是室内，全天不受影响；晚上若要看牛车水中秋灯饰，雨天改到隔天或车上绕一圈就好。</span><span class="en">☔ Rain plan: Adventure HQ is indoors, so the day is rain-proof. If the Chinatown lantern stroll gets wet, push it a day or just do a slow drive-by.</span></div>
+</div>
+
 <div class="stop">
 <div class="pin must">★</div>
 <h4><span class="cn">Adventure HQ @ HomeTeamNS Khatib</span></h4>
@@ -798,15 +832,16 @@
 <div class="badge">✈️ <span class="cn">回程日</span><span class="en">Departure</span></div>
 </div>
 <div class="db">
-<div class="stop">
-<div class="pin side">🕐</div>
-<h4><span class="cn">10:25 退房 · 前往机场</span><span class="en">10:25 Check out · Depart for airport</span></h4>
-<div class="desc"><span class="cn"><strong>10:25 贵宾专车已确认</strong>：Tower 1 B1 Paiza Lobby 出发 → CIP Terminal，Quayside 贵宾通道办理出境，衔接 12:25 航班（中间约2小时，VIP通道够用）。</span><span class="en"><strong>10:25 VIP limo confirmed</strong>: departs Tower 1 B1 Paiza Lobby → CIP Terminal, Quayside VIP-channel departure formalities, connecting to the 12:25 flight (~2h buffer, plenty via the VIP channel).</span></div>
+<div class="wxbox">
+<div class="wx" data-wx="2026-09-27"></div>
+<div class="rainplan"><span class="cn">☔ 雨天备案：只有退房→机场，雨天车程多留 5–10 分钟即可。</span><span class="en">☔ Rain plan: Just checkout→airport; in rain allow an extra 5–10 minutes of driving time.</span></div>
 </div>
-<div class="stop">
-<div class="pin must">★</div>
-<h4><span class="cn">12:25 SQ0156 起飞 → 13:40 抵达金边</span><span class="en">12:25 SQ0156 departs → 13:40 arrives Phnom Penh</span></h4>
-<div class="desc"><span class="cn">新航 SQ0156，樟宜 T2 出发。</span><span class="en">Singapore Airlines SQ0156, departing from Changi T2.</span></div>
+
+<div class="tl">
+<div class="ev"><div class="t">08:00</div><h4><span class="cn">🍳 早餐</span><span class="en">🍳 Breakfast</span></h4><div class="s"><span class="cn">酒店早餐，吃完回房收行李。</span><span class="en">Hotel breakfast, then back up to pack.</span></div></div>
+<div class="ev"><div class="t">09:45</div><h4><span class="cn">🧳 行李下楼 · 办退房</span><span class="en">🧳 Luggage down · check out</span></h4><div class="s"><span class="cn">三间房一起退，房内保险箱与浴室再检查一遍；行李先集中到 Tower 1 B1 Paiza Lobby。</span><span class="en">Check out all three rooms; sweep the safes and bathrooms once more. Bags staged at Tower 1 B1 Paiza Lobby.</span></div></div>
+<div class="ev hot"><div class="t">10:25</div><h4><span class="cn">🚘 贵宾专车出发 → CIP Terminal</span><span class="en">🚘 VIP limo departs → CIP Terminal</span></h4><div class="s"><span class="cn">已确认：Paiza Lobby 上车 → CIP Terminal，走 Quayside 贵宾通道办出境，距起飞约 2 小时。</span><span class="en">Confirmed: board at Paiza Lobby → CIP Terminal, departure formalities via the Quayside VIP channel, ~2h before wheels-up.</span></div></div>
+<div class="ev fin"><div class="t">12:25</div><h4><span class="cn">✈️ SQ0156 起飞 → 13:40 抵达金边</span><span class="en">✈️ SQ0156 departs → 13:40 Phnom Penh</span></h4><div class="s"><span class="cn">新航 SQ0156，樟宜 T2 出发。</span><span class="en">Singapore Airlines SQ0156 from Changi T2.</span></div></div>
 </div>
 </div>
 </div>
@@ -815,10 +850,10 @@
 
 <!-- ===== BOSS DINNERS ===== -->
 <section id="boss">
-<div class="sec-head"><span class="no">05</span><h2><span class="cn">老板晚餐候选</span><span class="en">Boss Dinner Shortlist</span></h2><span class="rule"></span></div>
+<div class="sec-head"><span class="no">05</span><h2><span class="cn">老板晚餐备选</span><span class="en">Boss Dinner Options</span></h2><span class="rule"></span></div>
 <div class="note amber">
-<span class="cn">这几家是<strong>请老板吃晚餐</strong>的候选，日期与哪一家未定，定了再更新。唯一限制：不吃牛。</span>
-<span class="en">Shortlist for <strong>the dinner with the boss</strong> — date and venue not fixed yet, to be updated once decided. Only constraint is no beef.</span>
+<span class="cn">这几家是<strong>老板晚餐的备选</strong>；吃不吃、哪一天、去哪家都还没定，到时候再说。唯一限制：不吃牛。</span>
+<span class="en"><strong>Options for the boss dinner</strong> — whether it happens, which day and which place are all still open. Only constraint is no beef.</span>
 </div>
 
 <div class="evt">
@@ -1013,6 +1048,64 @@ function lbNav(dir) {
     if (e.key === 'ArrowLeft') lbNav(-1);
     if (e.key === 'ArrowRight') lbNav(1);
   });
+})();
+
+/* 每日天气：开页时向 open-meteo 抓这五天的预报（免费、免 key）。
+   抓不到、或日期还在预报窗口外（大约出发前两周才有），就退回九月常态文案，
+   页面不会开天窗。雨天备案是写死的文字，不依赖网络。 */
+(function weather() {
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.wx[data-wx]'));
+  if (!boxes.length) return;
+  var dates = boxes.map(function (b) { return b.dataset.wx; }).sort();
+  var CLIMO_CN = '九月常态 26–32°C，午后阵雨常见';
+  var CLIMO_EN = 'typical September 26–32°C, afternoon showers common';
+  function fill(b, cn, en) { b.innerHTML = '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
+  function wmo(c) {
+    if (c === 0) return { i: '☀️', cn: '晴', en: 'Clear' };
+    if (c <= 2) return { i: '🌤', cn: '多云时晴', en: 'Mostly sunny' };
+    if (c === 3) return { i: '☁️', cn: '阴', en: 'Overcast' };
+    if (c <= 48) return { i: '🌫', cn: '有雾', en: 'Fog' };
+    if (c <= 57) return { i: '🌦', cn: '毛毛雨', en: 'Drizzle' };
+    if (c <= 67) return { i: '🌧', cn: '有雨', en: 'Rain' };
+    if (c <= 82) return { i: '🌧', cn: '阵雨', en: 'Showers' };
+    if (c <= 99) return { i: '⛈', cn: '雷阵雨', en: 'Thunderstorms' };
+    return { i: '🌤', cn: '天气一般', en: 'Mixed' };
+  }
+  boxes.forEach(function (b) { fill(b, '🌤 天气载入中…（' + CLIMO_CN + '）', '🌤 Loading forecast… (' + CLIMO_EN + ')'); });
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude=1.2897&longitude=103.8501'
+    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+    + '&timezone=Asia%2FSingapore&start_date=' + dates[0] + '&end_date=' + dates[dates.length - 1];
+  fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (j) {
+    var d = j && j.daily;
+    if (!d || !d.time || !d.time.length) throw new Error('empty');
+    var idx = {};
+    d.time.forEach(function (t, i) { idx[t] = i; });
+    boxes.forEach(function (b) {
+      var i = idx[b.dataset.wx];
+      if (i === undefined || d.temperature_2m_max[i] === null || d.temperature_2m_max[i] === undefined) {
+        fill(b, '🌤 这一天还没进预报范围（约出发前两周才有）·' + CLIMO_CN,
+                '🌤 Beyond the forecast window (arrives ~2 weeks before) · ' + CLIMO_EN);
+        return;
+      }
+      var w = wmo(d.weather_code[i]);
+      var hi = Math.round(d.temperature_2m_max[i]), lo = Math.round(d.temperature_2m_min[i]);
+      var pop = d.precipitation_probability_max[i];
+      fill(b, w.i + ' ' + w.cn + ' · ' + lo + '–' + hi + '°C · 降雨机率 ' + pop + '%',
+              w.i + ' ' + w.en + ' · ' + lo + '–' + hi + '°C · rain ' + pop + '%');
+      if (pop >= 60) b.classList.add('wet');
+    });
+  }).catch(function () {
+    boxes.forEach(function (b) {
+      fill(b, '🌤 天气暂时抓不到（可能没网）·' + CLIMO_CN, '🌤 Forecast unavailable (offline?) · ' + CLIMO_EN);
+    });
+  });
+})();
+
+/* 行程当天打开手册，直接跳到今天那一张卡片（不在行程日期内就不动）。 */
+(function jumpToToday() {
+  var el = document.querySelector('.day.today');
+  if (!el) return;
+  requestAnimationFrame(function () { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
 })();
 </script>
 </body>

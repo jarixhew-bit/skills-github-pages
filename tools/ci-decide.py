@@ -44,11 +44,13 @@ RULES = {
     "prices": ["trading/fetch_prices.py", "tools/check-prices.py"],
     "staff":     ["staff/**", "expense-tracker.html", "tools/build-staff-page.py",
                   "tools/check-staff-page.mjs"],
+    # 新加坡手册的每日天气条：前端现抓 open-meteo，只有真浏览器验得了
+    "weather": ["singapore-trip/index.html", "tools/check-weather.mjs"],
     "gamebot":   ["game-bot/**", "tools/check-gamebot.py",
                   "tools/check-gamebot-logic.mjs"],
 }
 # 浏览器类检查（慢）额外也盯着共用步骤：它坏了这几项全瞎
-BROWSER = ["company", "inventory", "staff", "fund"]
+BROWSER = ["company", "inventory", "staff", "fund", "weather"]
 SHARED = ".github/actions/browser-check-setup/action.yml"
 
 
