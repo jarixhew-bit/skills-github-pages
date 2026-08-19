@@ -36,6 +36,11 @@
 - 爬網頁、抓網頁內容、網路研究（單一 WebFetch/WebSearch 查一個小事實可以自己來）
 - 批次修改 3 個以上檔案
 - 瀏覽器多步操作（登入、填表、逐頁翻）
+- **等 CI／盯 PR 到合併**（2026-08-19 使用者要求「以後都派 subagent 省 token，你只負責驗收」）：輪詢狀態每一輪都要拉一大坨 JSON，塞在主對話純屬浪費。
+  委派 prompt 要寫死這幾條：查狀態只用 `pull_request_read` 的 `get_check_runs`（`perPage` 3~5），**不准**用 `actions_list` 的 `list_workflow_jobs`（回傳極大）；
+  等待用 Monitor 或背景 Bash，間隔 ≥60 秒；綠了之後的合併、刪分支、驗證進了 main，一律照 skill `publish-pages`（`.claude/skills/publish-pages/SKILL.md`，那是唯一正本），委派 prompt 直接要求它照那份做，不要在這裡復述步驟；
+  **不准改代碼、不准 force merge、不准繞過 all-green**；job 紅了停下來回報是哪一項、錯在哪幾行；卡在裝瀏覽器超過 15 分鐘最多重觸發兩次，兩次都卡就回報收手。
+  主對話這邊只做驗收：收到結論後自己確認一次 main 上的內容與線上網址，不重跑輪詢。
 
 **反例（不要派）**：讀一個已知路徑的小檔、跑一句指令、改一處文字、回答使用者的直接
 提問。派工本身有成本（subagent 冷啟動、要重新建立 context），小事派工反而更慢更貴。
