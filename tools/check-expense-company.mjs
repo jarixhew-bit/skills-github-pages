@@ -84,8 +84,11 @@ const browser = await chromium.launch(launchOpts);
       if (route.request().method() === 'GET')
         return route.fulfill({ status:200, contentType:'application/json', headers:h,
           body: JSON.stringify({
-            categories:['Beverage','Car Wash','Dinner','Lunch','Petrol','Postage','Store'],
-            plateCategories:['Car Wash','Petrol'],
+            categories:['Beverage','Car Wash','Dinner','Driver Meal','Lunch','Petrol','Postage','Store'],
+            plateCategories:['Car Wash','Driver Meal','Petrol'],
+            // 括号里填什么由服务端说了算：车牌那几类不给（App 按默认的车牌处理），
+            // 司机餐给「司机名字」——这条就是这次要验的差别
+            plateFields:{'Driver Meal':{what:'司机名字', whatEn:'Driver name', example:'Phal'}},
             // 正餐清单 + 「这一餐是老板的」该送什么原文（butler 的 BOSS_MEAL_RAW）。
             // 故意只给 Lunch/Dinner：清单是服务端说了算，App 不许自己补齐四餐。
             mealCategories:[{label:'Lunch', bossRaw:'老板午餐'}, {label:'Dinner', bossRaw:'老板晚餐'}],
@@ -381,7 +384,7 @@ const browser = await chromium.launch(launchOpts);
   // 车牌类也要在清单里——只能回 Telegram 记的话，App 里公司账户的合计会少一块
   ok('含车牌类（Petrol / Car Wash）', cats.includes('Petrol') && cats.includes('Car Wash'), cats);
   ok('车牌类清单也是服务端给的，不是 App 判断的',
-     JSON.stringify(await page.evaluate(()=>getCompanyPlateCats()))===JSON.stringify(['Car Wash','Petrol']),
+     JSON.stringify(await page.evaluate(()=>getCompanyPlateCats()))===JSON.stringify(['Car Wash','Driver Meal','Petrol']),
      await page.evaluate(()=>getCompanyPlateCats()));
 
   console.log('\n【4】记一笔公司账 —— 送出去的内容必须原样，不能在本地算');
@@ -540,6 +543,49 @@ const browser = await chromium.launch(launchOpts);
   ok('重开后选汽油，车牌栏还是会出现', await page.locator('#tx-company-plate-wrap').isVisible());
   await page.selectOption('#tx-company-category', 'Lunch');
   ok('换回一般类别，车牌栏收起来', !(await page.locator('#tx-company-plate-wrap').isVisible()));
+  await page.evaluate(()=>closeModal('modal-add-tx'));
+
+  console.log('\n【4d】司机餐：括号里填的是司机名字，不是车牌（2026-08-19 用户要求）');
+  // 为什么单独验：这栏原本写死「车牌号」，规则一改就有两个静静出错的地方——
+  // 提示还写车牌（同事照着填车牌，Excel 印出 DRIVER MEAL (2AH9988)），
+  // 以及名字被车牌那套规则强制大写（Phal → PHAL）／被挡下来（车牌规则不收纯字母外的字）。
+  posted = [];
+  await page.evaluate(()=>showAddTx());
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
+  await page.selectOption('#tx-company-category', 'Driver Meal');
+  ok('选了司机餐，那一栏出现', await page.locator('#tx-company-plate-wrap').isVisible());
+  ok('标题写的是「司机名字」不是「车牌号」',
+     (await page.textContent('#tx-company-plate-label') || '').includes('司机名字'),
+     await page.textContent('#tx-company-plate-label'));
+  ok('说明里不再提车牌',
+     !/车牌/.test(await page.textContent('#tx-company-plate-hint') || ''),
+     await page.textContent('#tx-company-plate-hint'));
+  await page.fill('#tx-amount', '3');
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(800);
+  ok('没填司机名字不准送出', posted.length===0, posted);
+  await page.fill('#tx-company-plate', 'Phal');
+  const _sentD = posted.length;
+  await page.evaluate(()=>saveTx());
+  await until(() => posted.length > _sentD, { what: '这一笔送到服务端' });
+  await page.waitForTimeout(120);
+  ok('名字不被转成大写（送出的是 Phal 不是 PHAL）',
+     posted[0]?.items?.[0]?.plate==='Phal', posted[0]?.items?.[0]);
+  ok('类别原样送出（拼接交给 butler）', posted[0]?.items?.[0]?.categoryRaw==='Driver Meal',
+     posted[0]?.items?.[0]);
+  // 切回汽油，那一栏要变回问车牌——两套规矩不能互相沾染
+  await page.evaluate(()=>showAddTx());
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
+  await page.selectOption('#tx-company-category', 'Petrol');
+  ok('换回汽油，标题变回「车牌号」',
+     (await page.textContent('#tx-company-plate-label') || '').includes('车牌号'),
+     await page.textContent('#tx-company-plate-label'));
   await page.evaluate(()=>closeModal('modal-add-tx'));
 
   console.log('\n【4b】同一个人报的非正餐要算到 Boss 头上（Excel 换到左边）');
