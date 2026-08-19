@@ -88,14 +88,6 @@ def cut_exact(s, block, what):
     return s.replace(block, "", 1)
 
 
-def replace_n(s, old, new, what, n):
-    """替换全部 n 处——数量对不上就报错（少一处就等于漏了一个存储位）。"""
-    got = s.count(old)
-    if got != n:
-        raise BuildError(f"「{what}」应出现 {n} 次，实际 {got} 次：{old[:60]!r}")
-    return s.replace(old, new)
-
-
 def add_en(html, en):
     """给一段 `<tag ...>中文</tag>` 加上 data-en。"""
     i = html.index(">")
@@ -360,7 +352,6 @@ STAFF_LABELS = [
      "I ate it"),
     ('<div class="type-tab" id="whose-boss" onclick="setCompanyWhose(\'boss\')">老板吃</div>',
      "The Boss ate it"),
-    ('<label class="form-label">车牌号</label>', "Plate number"),
     ('<button class="btn btn-primary" id="tx-save-btn" onclick="saveTx()">保存</button>', "Save"),
     # add_en 把 data-en 加在这段的第一个 '>' 上，也就是 div 的开标签末尾——所以锚点
     # 必须从 <div 开始带上（开标签因为 style 太长断成了两行）
@@ -401,14 +392,6 @@ LABEL_REWRITES = [
     ('<div class="nav-icon">📦</div>库存',
      '<div class="nav-icon">📦</div><span data-en="Stock">库存</span>',
      "底部导航（库存）"),
-    # 车牌栏的说明：选了汽油才展开，所以第一轮扫描没扫到（那时它是 display:none）
-    ('          车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。\n'
-     '          这类开销一律算在 Boss 头上（进左边那张表）。',
-     '          <span data-en="Vehicle costs need a plate number. It goes into the Excel as '
-     '&quot;Petrol (NS6868)&quot;. These are always charged to the Boss (the left-hand table).">'
-     '车辆相关的开销要记车牌，会写进 Excel 成「Petrol (NS6868)」这种格式。'
-     '这类开销一律算在 Boss 头上（进左边那张表）。</span>',
-     "车牌说明"),
     # 「这一餐算谁的」的说明：老板 App 那边讲的是「报账人」（他能替别人记账），
     # 同事版没有那个下拉、报账人永远是他自己，照抄过来会看不懂，所以整段换成他的口径。
     ('          买给老板的餐选「老板吃」，这笔算公司的，进 Excel 左边 Boss 表；\n'
@@ -417,8 +400,6 @@ LABEL_REWRITES = [
      'company\'s side. Your own meal stays on yours.">'
      '买给老板吃的那餐选「老板吃」，算公司的账；你自己吃的选「自己吃」，算你的。</span>',
      "这一餐算谁的 说明"),
-    # placeholder 不是 textContent，staffApplyLang 另外用 data-en-ph 处理
-    ('placeholder="例：NS6868"', 'placeholder="例：NS6868" data-en-ph="e.g. NS6868"', "车牌提示字"),
 ]
 
 # 脚本画出来的文字：包一层 tt() 才会跟着语言切换
@@ -471,9 +452,6 @@ DYNAMIC_TEXT = [
     ("""if(!categoryEn){ toast('请选择公司类别'); return; }""",
      """if(!categoryEn){ toast(tt('请选择公司类别','Please choose a category')); return; }""",
      "类别提示", 2),
-    ("""if(needsPlate && !plateRaw){ toast(`${categoryEn} 要填车牌号`); return; }""",
-     """if(needsPlate && !plateRaw){ toast(tt(`${categoryEn} 要填车牌号`,`${categoryEn} needs a plate number`)); return; }""",
-     "车牌提示", 2),
     # 2026-08-13：原本这里是「已报上去的改不了」那句提示，现在改成走 edit 就地改，
     # 那句提示已不存在，换成翻译新路径（editSentCompanyTx / postCompanyEdit）的提示语。
     ("""  if(same){ toast('没有改动'); closeModal('modal-add-tx'); return; }""",
@@ -524,6 +502,27 @@ DYNAMIC_TEXT = [
      """  if(attachmentId) deleteAttachmentBlob(attachmentId);
   toast(tt('已删除记录','Deleted'));""",
      "删除提示（左滑）"),
+    # 填错的时候才会看到的三句——刚好是同事最需要看懂的那三句（2026-08-19 补）。
+    # 这三句在「新增」和「改已送出那笔」两条路里各有一份，缩排不一样（4 空格那份是
+    # 6 空格那份的子串），所以不能用同一个锚点配 n=2，得连着上一行各自锚一次。
+    ("""    showSaveNote(`金额看不懂：「${amt0.shown}」——请只填数字，小数点用「.」（例：5.45）`);
+    toast('金额格式不对，看保存按钮上方那行字');
+    return;""",
+     """    showSaveNote(tt(`金额看不懂：「${amt0.shown}」——请只填数字，小数点用「.」（例：5.45）`,
+                    `Amount not understood: “${amt0.shown}” — digits only, use “.” for decimals (e.g. 5.45)`));
+    toast(tt('金额格式不对，看保存按钮上方那行字','Bad amount — see the line above the Save button'));
+    return;""",
+     "金额看不懂（新增）"),
+    ("""    showSaveNote(`金额看不懂：「${amt0.shown}」——请只填数字，小数点用「.」（例：5.45）`);
+    toast('金额格式不对，看保存按钮上方那行字'); return;""",
+     """    showSaveNote(tt(`金额看不懂：「${amt0.shown}」——请只填数字，小数点用「.」（例：5.45）`,
+                    `Amount not understood: “${amt0.shown}” — digits only, use “.” for decimals (e.g. 5.45)`));
+    toast(tt('金额格式不对，看保存按钮上方那行字','Bad amount — see the line above the Save button')); return;""",
+     "金额看不懂（改已送出）"),
+    ("""      toast('收据编号只能是 1~2 位数字（例：1、12）'); return;""",
+     """      toast(tt('收据编号只能是 1~2 位数字（例：1、12）',
+               'Receipt number must be 1–2 digits (e.g. 1, 12)')); return;""",
+     "收据编号格式"),
 ]
 
 
@@ -614,9 +613,10 @@ body.staff-boss #staff-boss-cash{display:block}
 #staff-install-tip.on{display:block}
 #staff-install-tip b{display:block;color:#9a3412;font-size:14.5px;margin-bottom:2px}
 #staff-install-tip .go{display:inline-block;margin-top:6px;color:#9a3412;font-weight:700}
-/* 车牌栏整格是 text-transform:uppercase（车牌本来就写大写），但提示字会跟着被
-   拉成大写——中文「例：NS6868」看不出来，英文「e.g. NS6868」变成「E.G. NS6868」，
-   像在喊。提示字不是用户输入的内容，不该跟着变形。 */
+/* 车牌那几类的输入框是 text-transform:uppercase（车牌本来就写大写，司机名字不是，
+   由 syncCompanyPlateField 按类别设），但提示字会跟着被拉成大写——中文「例：NS6868」
+   看不出来，英文「e.g. NS6868」变成「E.G. NS6868」，像在喊。提示字不是用户输入的
+   内容，不该跟着变形。 */
 #tx-company-plate::placeholder{text-transform:none}
 /* 备用金卡：老板给的那笔现金还剩多少。没设起点时整张不出现（见 staffLoadPetty）。 */
 #staff-petty{display:none;background:linear-gradient(135deg,#0f766e,#115e59);color:#fff;
