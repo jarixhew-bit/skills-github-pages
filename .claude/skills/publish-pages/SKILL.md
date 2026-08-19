@@ -17,7 +17,9 @@ description: 把本仓库的改动发布上线（commit、push、开 PR、合并
    有冲突先 `git merge origin/main` 解决再合。
 5. **删分支**：合并后删除功能分支（分支不用于分类，见 CLAUDE.md）。
    注意：网页版 session 的 git 代理不允许 `push --delete`（403）——改用 GitHub MCP 的
-   actions_run_trigger 触发 `cleanup-branches.yml` workflow（传入分支名），由 CI 代删；
+   actions_run_trigger 触发 `cleanup-branches.yml` workflow，由 CI 代删。
+   **输入参数名是 `branches`（复数，空格分隔可传多个）**，写成 `branch` 会被 GitHub
+   挡下来回 422 Unexpected inputs（2026-08-19 两次踩到，一次是我、一次是派去的 agent）；
    它有 main 保护和"内容已在 main"验证，删不掉的会在日志里警告而不是误删。
 6. **验证真的进了 main**：`git show origin/main:路径` 从 remote 读回抽验——工作区正确
    不代表 commit 进去了。
