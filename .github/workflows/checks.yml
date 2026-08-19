@@ -42,6 +42,7 @@ jobs:
       prices: ${{ steps.d.outputs.prices }}
       staff: ${{ steps.d.outputs.staff }}
       gamebot: ${{ steps.d.outputs.gamebot }}
+      weather: ${{ steps.d.outputs.weather }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -190,6 +191,18 @@ jobs:
           health-url: http://localhost:8899/trading/fund.html
       - run: node tools/check-fund.mjs
 
+  weather:
+    name: 手册天气条（真浏览器）
+    needs: decide
+    if: needs.decide.outputs.weather == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/browser-check-setup
+        with:
+          health-url: http://localhost:8899/singapore-trip/
+      - run: node tools/check-weather.mjs
+
   staff:
     # 名字里不放 matrix 变量：job 被跳过时 GitHub 不展开它，会原样显示 ${{ }}，
     # 看起来像坏了。分成哪两半在 job 内部的步骤名里写。
@@ -243,7 +256,7 @@ jobs:
     # 这一串必须列满同一个文件里的每个 job：漏掉的那项红了总闸照样绿、分支保护会放行
     # （2026-08-17 发现 fund 与 news 从来没被列进来）。已由 check-workflows.py 的
     # check_gate 断言守着，加 job 忘了回头改这里会在 CI 上被挡下。
-    needs: [decide, html, secrets, pwa, ainote, notify, morningpos, generated, rules, workflows, company, inventory, staff, gamebot, fund, news, prices]
+    needs: [decide, html, secrets, pwa, ainote, notify, morningpos, generated, rules, workflows, company, inventory, staff, gamebot, fund, news, prices, weather]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——

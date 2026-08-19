@@ -117,7 +117,7 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有十九个，全部挂 CI（2026-08-16 校对过与 `tools/` 一致）：
+   交付时告诉用户自检怎么跑。现有二十个，全部挂 CI（2026-08-19 校对过与 `tools/` 一致）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
@@ -128,7 +128,9 @@
    查语法查不出的行为问题）；浏览器类 `check-expense-company.mjs` /
    `check-staff-page.mjs` / `check-inventory.mjs` / `check-fund.mjs`（验 `trading/fund.html`
    那些前端现算的钱的数字：夏普、回撤、VaR、再平衡差额，用手算得出答案的 fixture 去对；
-   两个数据档全用固定 fixture 拦掉，所以不随每天行情变动而误报）（跑前要先起
+   两个数据档全用固定 fixture 拦掉，所以不随每天行情变动而误报）/ `check-weather.mjs`
+   （验新加坡手册每日天气条：拦住 open-meteo 造出「有预报／超出预报窗口／API 挂掉」
+   三种情境，确认每天读的是自己那一格、不会错位，也不会开天窗）（跑前要先起
    `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）；
    线上类 `check-live`（每天验线上页面是不是 main 那一版，**只能在 CI 跑**，
    沙盒连不上 github.io）＋ `fetch-photos`（抓图通道，结果会写回触发分支）。
