@@ -8,6 +8,7 @@
 |---|---|
 | [`japan-trip-2026.html`](https://jarixhew-bit.github.io/skills-github-pages/japan-trip-2026.html) | 日本旅游手册（双语） |
 | [`singapore-trip/`](https://jarixhew-bit.github.io/skills-github-pages/singapore-trip/) | 新加坡行程页 |
+| [`penang-trip/`](https://jarixhew-bit.github.io/skills-github-pages/penang-trip/) | 槟城家庭旅游手册（2026年10月） |
 | [`restaurant-guide.html`](https://jarixhew-bit.github.io/skills-github-pages/restaurant-guide.html) | 日本餐厅精选指南 |
 | [`usj-disney-restaurants.html`](https://jarixhew-bit.github.io/skills-github-pages/usj-disney-restaurants.html) | USJ / 迪士尼周边餐厅 |
 | [`boss-dinner.html`](https://jarixhew-bit.github.io/skills-github-pages/boss-dinner.html) | 老板晚餐页 |
