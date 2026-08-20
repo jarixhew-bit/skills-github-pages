@@ -111,3 +111,40 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
   「建议提早出发」写回去。
   以上查证于 2026-08-19，来源全被沙盒挡、只有搜索摘要，页面上已标「以 MBS 礼宾
   确认为准」；日后若拿到官网原文或 MBS 回覆，以那个为准。
+
+## penang-trip/index.html（1253 行）
+槟城家庭手册，2026-10-09~17 九天八夜，6 人（老板一家），双语。用户在外部做好上传，
+2026-08-20 由 html-editor 整体重做视觉与结构（内容一条没删，只重排＋补双语）。
+URL: .../penang-trip/
+风格：娘惹瓷砖（teal #0e6b63 / coral #c4432c / gold），`.tiles` 是纯 CSS 菱格纹
+（给 `.band` / `.sec-head .rule` / brand 小方块用，无外部资源）。手机优先：正文 16px。
+结构：`header.topbar`(:387) → `nav.navstrip`(:391) → `.cover`(:400，含 `#countdown`
+倒数，JS 算) → `.tip`(:416) → `#flights`(01,:425，4 张 `.bpass` ＋ `.transit` ＋行李表)
+→ `#stay`(02,:526) → `#dining`(03,:535，9 张 `.rcard`) → `#places`(04,:727，
+`.pfilter` 筛选:734 ＋ 4 个 `.pgroup` ＋ 12 张 `.rcard`) → `#weather`(05,:985)
+→ `#checklist`(06,:1010，6 条 `.ck`) → footer → `.fab`/`.sheet` 快速跳转(:1030)
+→ lightbox(:1048) → `<script>`(:1056)。
+卡片统一形态（`.rcard`，餐厅与去处同一套）：`.galwrap`（`.gal` 图带 `.gal-hint`
+浮标，`.idx` 序号由 JS 加）→ `.rb`（`h3`+`.star` / `.addr` / `.desc` / `.chips` /
+`.acts` 放 `.btn-map`＋`.btn-web`）。
+高频操作：
+1. **加去处卡片**：塞进对应 `.pgroup`（`data-cat="arcade|culture|outdoor|mall"`）里，
+   卡片上写 `data-cat` 与所属组相同即可；漏写也不会坏（JS :1085 会从父 `.pgroup` 补）。
+2. **一切数字都是 JS 现算，页面里没有写死的计数**（:1090-1105）：navstrip 徽章
+   `[data-count]`、筛选 chip `[data-catcount]`、组标题 `[data-groupcount]`、
+   卡片序号 `.idx`（`numberCards()` :1107，按组从 01 顺延）、`#pcount` 显示条数。
+   **加卡片不要去改任何数字**，改了反而错。加新分类才需要同时新增 `.pgroup` 与
+   一颗 `.pchip`（两边 `data-cat` 字符串必须一模一样，:1131 用 === 比对）。
+3. 加必办事项：`.ck` 直接加，`.ck-progress` 的「N / M」由 `renderProgress()`(:1174) 现算。
+牵一发：`applyLang/toggleLang/initLang`(:1058-1079，siteLangUser ＋ storage 事件同步)；
+`spy()`(:1196) 靠 navstrip href 与 section id 一致；`.sheet` 里的链接同理；
+lightbox(:1228) 从 `.gal>img` 的 src/alt 取图，`#lbImg` 的 alt 会跟着换。
+双语：siteLangUser，新页无旧 key 兜底。PWA：不适用。
+已知坑：
+- 单行最长 753 字符（图片外链）；地址等**卡片外壳文字也必须包 cn/en**——原上传版有两处
+  地址混着中文（「（总店）」「一带」），英文模式下会露出中文，已改成成对 span。
+- 沙盒抓不到 lh3.googleusercontent.com（403），截图自查时图片一律是空框，属正常。
+- 封面图与 RUTIN 第一张是同一个链接（用户原稿如此，未动）。
+内容决定（勿擅自回退）：日文行话已本地化（唐揚げ→日式炸鸡 / karaage→fried chicken、
+丼饭→盖饭、lor bak→braised pork rolls、Wagyu→和牛、Pizza→披萨）。
+「前2家是你发来的」那句留在 `#places` 的 amber note 里，是用户原稿的话。
