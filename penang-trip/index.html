@@ -5,214 +5,425 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>槟城行 · 9–17 Oct 2026 | Penang Trip</title>
 <style>
+  /* ============================================================
+     Penang Handbook — "Peranakan Shophouse" visual system
+     配色取自娘惹瓷砖：靛青/翡翠绿/砖红/姜黄 + 米白纸底
+     ============================================================ */
   :root {
-    --paper: #faf7f1;
+    --paper: #fbf6ec;
+    --paper-2: #f4ecdd;
     --card: #ffffff;
-    --ink: #1c1917;
-    --muted: #78716c;
-    --faint: #a8a29e;
-    --line: #e7e0d5;
-    --red: #c8102e;
-    --red-soft: #fdf0f2;
-    --gold: #b08d3e;
-    --gold-soft: #faf3e3;
-    --green: #2e7d4f;
-    --green-soft: #edf7f0;
-    --blue: #1d5c8f;
-    --blue-soft: #edf4fa;
-    --purple: #7c5295;
-    --purple-soft: #f2ecf5;
-    --serif: "Palatino Linotype", "Songti SC", "Noto Serif SC", Georgia, serif;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    --ink: #1d1b16;
+    --ink-2: #4a443a;
+    --muted: #736a5d;
+    --faint: #a49a8b;
+    --line: #e6dcc8;
+    --line-2: #d8cbb0;
+
+    --teal: #0e6b63;
+    --teal-soft: #e6f2ef;
+    --teal-line: #b9dcd5;
+    --coral: #c4432c;
+    --coral-soft: #fdeee9;
+    --coral-line: #f2c7ba;
+    --gold: #a97a18;
+    --gold-soft: #fbf1da;
+    --gold-line: #ecd9a8;
+    --green: #2c6e49;
+    --green-soft: #e9f4ec;
+    --green-line: #bfdfc9;
+    --blue: #1f4e79;
+    --blue-soft: #eaf1f8;
+    --blue-line: #c3d7ea;
+
+    --serif: "Palatino Linotype", "Songti SC", "Noto Serif SC", "Times New Roman", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --shadow: 0 2px 6px rgba(29,27,22,.06), 0 10px 24px -14px rgba(29,27,22,.24);
+    --topH: 50px;
+    --navH: 46px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html { scroll-behavior: smooth; }
-  body { font-family: var(--sans); background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.65; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: var(--sans); color: var(--ink);
+    font-size: 16px; line-height: 1.7;
+    background-color: var(--paper);
+    background-image:
+      radial-gradient(circle at 18% 12%, rgba(14,107,99,.05), transparent 42%),
+      radial-gradient(circle at 88% 60%, rgba(196,67,44,.05), transparent 40%);
+    overflow-x: hidden;
+  }
   img { display: block; }
+  :focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  a { -webkit-touch-callout: none; }
 
   body.lang-en .cn { display: none !important; }
   body:not(.lang-en) .en { display: none !important; }
 
-  .topbar {
-    position: sticky; top: 0; z-index: 300;
-    background: rgba(28,25,23,.97); backdrop-filter: blur(8px);
-    display: flex; align-items: stretch; height: 44px;
-    color: #fff;
-  }
-  .topbar .brand { flex: 1; display: flex; align-items: center; gap: 8px; padding: 0 14px; min-width: 0; }
-  .topbar .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex: none; }
-  .topbar .brand .t { font-size: 13px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .topbar button.lang {
-    display: flex; align-items: center; padding: 0 14px;
-    background: none; border: none; border-left: 1px solid rgba(255,255,255,.14);
-    color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--sans);
+  /* 娘惹瓷砖菱格纹（纯 CSS，无外部资源） */
+  .tiles {
+    background-image:
+      linear-gradient(135deg, currentColor 25%, transparent 25%),
+      linear-gradient(225deg, currentColor 25%, transparent 25%),
+      linear-gradient(45deg,  currentColor 25%, transparent 25%),
+      linear-gradient(315deg, currentColor 25%, transparent 25%);
+    background-size: 13px 13px;
   }
 
+  /* ===== TOP BAR ===== */
+  .topbar {
+    position: sticky; top: 0; z-index: 300;
+    height: var(--topH);
+    background: rgba(20,38,36,.97);
+    backdrop-filter: blur(10px);
+    display: flex; align-items: stretch; color: #fff;
+    border-bottom: 2px solid var(--gold);
+  }
+  .topbar .brand { flex: 1; display: flex; align-items: center; gap: 9px; padding: 0 14px; min-width: 0; }
+  .topbar .brand .dot { width: 22px; height: 22px; flex: none; border-radius: 6px; color: var(--gold); opacity: .85; }
+  .topbar .brand .t { font-size: 13.5px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .brand .t b { font-family: var(--serif); font-weight: 700; letter-spacing: .06em; }
+  .topbar button.lang {
+    display: flex; align-items: center; gap: 5px; margin: 8px 12px 8px 6px; padding: 0 14px;
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); border-radius: 999px;
+    color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; font-family: var(--sans);
+  }
+  .topbar button.lang:active { background: rgba(255,255,255,.26); }
+
+  /* ===== NAV STRIP ===== */
   .navstrip {
-    position: sticky; top: 44px; z-index: 290;
-    background: var(--paper); border-bottom: 1px solid var(--line);
-    display: flex; overflow-x: auto; gap: 6px; padding: 8px 12px;
-    scrollbar-width: none;
+    position: sticky; top: var(--topH); z-index: 290;
+    background: rgba(251,246,236,.97); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+    display: flex; overflow-x: auto; gap: 7px; padding: 7px 12px;
+    scrollbar-width: none; height: var(--navH);
   }
   .navstrip::-webkit-scrollbar { display: none; }
   .navstrip a {
-    flex: none; text-decoration: none; text-align: center;
-    border: 1px solid var(--line); border-radius: 10px;
-    padding: 6px 12px; background: var(--card); color: var(--ink);
-    line-height: 1.3; font-size: 12px; font-weight: 700;
+    flex: none; display: inline-flex; align-items: center; gap: 5px;
+    text-decoration: none; border: 1px solid var(--line-2); border-radius: 999px;
+    padding: 0 13px; background: var(--card); color: var(--ink-2);
+    font-size: 13px; font-weight: 700; line-height: 30px; white-space: nowrap;
+  }
+  .navstrip a .n {
+    font-size: 10.5px; font-weight: 800; color: var(--muted);
+    background: var(--paper-2); border-radius: 999px; padding: 0 6px; line-height: 16px;
+  }
+  .navstrip a.on { background: var(--teal); border-color: var(--teal); color: #fff; }
+  .navstrip a.on .n { background: rgba(255,255,255,.22); color: #fff; }
+
+  .wrap { max-width: 780px; margin: 0 auto; padding-bottom: 88px; }
+
+  /* ===== COVER ===== */
+  .cover { position: relative; background: #12211f; color: #fff; overflow: hidden; }
+  .cover img.bg { width: 100%; height: 340px; object-fit: cover; opacity: .52; }
+  .cover .inner {
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 22px 20px 26px;
+    background: linear-gradient(180deg, rgba(18,33,31,.15) 24%, rgba(18,33,31,.62) 62%, rgba(18,33,31,.93) 100%);
+  }
+  .cover .kicker {
+    display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 10px;
+  }
+  .cover .kicker::before { content: ""; width: 26px; height: 1px; background: var(--gold); }
+  .cover h1 { font-family: var(--serif); font-size: 36px; line-height: 1.14; font-weight: 700; letter-spacing: .01em; }
+  .cover h1 .sub { display: block; font-family: var(--sans); font-size: 12.5px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-top: 8px; }
+  .cover .dates { font-size: 14px; color: rgba(255,255,255,.9); font-weight: 600; margin-top: 12px; }
+  .cover .meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
+  .cover .meta-chip {
+    font-size: 11.5px; font-weight: 700; padding: 5px 11px;
+    border: 1px solid rgba(255,255,255,.34); border-radius: 999px; color: rgba(255,255,255,.94);
+    background: rgba(255,255,255,.08);
+  }
+  .cover .cd {
+    align-self: flex-start; margin-top: 14px; display: inline-flex; align-items: baseline; gap: 7px;
+    background: var(--coral); color: #fff; border-radius: 999px; padding: 6px 15px;
+    font-size: 13px; font-weight: 700; box-shadow: 0 6px 18px -8px rgba(0,0,0,.8);
+  }
+  .cover .cd b { font-family: var(--serif); font-size: 19px; font-weight: 700; }
+  .cover .band { height: 9px; color: var(--gold); opacity: .9; position: absolute; left: 0; right: 0; bottom: 0; }
+
+  /* ===== TIP ===== */
+  .tip {
+    display: flex; gap: 11px; margin: 16px 16px 0; padding: 13px 15px;
+    background: var(--gold-soft); border: 1px solid var(--gold-line);
+    border-left: 4px solid var(--gold); border-radius: 12px;
+    font-size: 13.5px; line-height: 1.65; color: #6b5216;
+  }
+  .tip .ico { flex: none; font-size: 16px; }
+
+  /* ===== SECTION HEAD ===== */
+  section { padding: 30px 16px 6px; scroll-margin-top: calc(var(--topH) + var(--navH) + 6px); }
+  .sec-head { display: flex; align-items: center; gap: 11px; margin-bottom: 15px; }
+  .sec-head .no {
+    flex: none; width: 34px; height: 34px; border-radius: 9px;
+    background: var(--teal); color: #fff; font-family: var(--serif); font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; letter-spacing: .04em;
+    box-shadow: 0 4px 12px -6px rgba(14,107,99,.9);
+  }
+  .sec-head h2 { font-family: var(--serif); font-size: 24px; font-weight: 700; letter-spacing: .01em; line-height: 1.2; }
+  .sec-head .rule { flex: 1; height: 7px; color: var(--line-2); align-self: center; opacity: .85; }
+
+  .bp-group-label {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 13px; font-weight: 800; letter-spacing: .06em; color: var(--teal);
+    margin: 22px 2px 10px;
+  }
+  .bp-group-label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  /* ===== BOARDING PASS ===== */
+  .bpass { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .bpass .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 16px; background: #142624; color: #fff; }
+  .bpass .head .airline { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; letter-spacing: .04em; }
+  .bpass .head .airline .code { background: var(--coral); border-radius: 6px; padding: 2px 8px; font-size: 12px; }
+  .bpass .head .craft { font-size: 11px; color: rgba(255,255,255,.68); font-weight: 600; text-align: right; }
+  .bpass .route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 17px 14px 13px; gap: 6px; }
+  .bpass .apt { text-align: center; min-width: 0; }
+  .bpass .apt .iata { font-family: var(--serif); font-size: 32px; font-weight: 700; line-height: 1.05; }
+  .bpass .apt .city { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 3px; }
+  .bpass .apt .time { font-size: 18px; font-weight: 800; color: var(--coral); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .bpass .mid { text-align: center; color: var(--faint); }
+  .bpass .mid .dur { font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .bpass .mid .line { position: relative; height: 1px; background: var(--line-2); margin: 7px 0; min-width: 62px; }
+  .bpass .mid .line::after { content: "✈"; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 13px; color: var(--coral); background: var(--card); padding: 0 5px; }
+  .bpass .perf { border-top: 1px dashed var(--line-2); position: relative; }
+  .bpass .perf::before, .bpass .perf::after { content: ""; position: absolute; top: -9px; width: 18px; height: 18px; border-radius: 50%; background: var(--paper); border: 1px solid var(--line); }
+  .bpass .perf::before { left: -10px; }
+  .bpass .perf::after { right: -10px; }
+  .bpass .pax { padding: 13px 16px 15px; }
+  .bpass .pax .cls { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; padding: 3px 9px; border-radius: 6px; margin-bottom: 8px; background: var(--blue-soft); color: var(--blue); border: 1px solid var(--blue-line); }
+  .bpass .pax .seats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .bpass .pax .seat { font-size: 11.5px; font-weight: 600; background: var(--paper); border: 1px solid var(--line); border-radius: 7px; padding: 4px 9px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .bpass .pax .seat.warn { background: var(--gold-soft); border-color: var(--gold-line); color: #6b5216; font-weight: 800; }
+  .transit { display: flex; gap: 10px; align-items: flex-start; border-left: 3px dotted var(--gold); margin: 0 4px 14px 22px; padding: 4px 0 6px 14px; }
+  .transit .tt { font-size: 13.5px; font-weight: 700; color: #7c6220; }
+  .transit .ts { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.6; }
+  .track {
+    display: inline-flex; align-items: center; gap: 6px; margin: 0 16px 15px;
+    font-size: 12.5px; font-weight: 700; color: var(--blue); background: var(--blue-soft);
+    border: 1px solid var(--blue-line); border-radius: 999px; padding: 8px 16px; text-decoration: none;
   }
 
-  .cover { position: relative; background: var(--ink); color: #fff; overflow: hidden; }
-  .cover img.bg { width: 100%; height: 260px; object-fit: cover; opacity: .5; }
-  .cover .inner { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 22px 20px 24px; background: linear-gradient(180deg, rgba(28,25,23,.1) 30%, rgba(28,25,23,.88) 100%); }
-  .cover .kicker { font-size: 11px; font-weight: 800; letter-spacing: .28em; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; }
-  .cover h1 { font-family: var(--serif); font-size: 30px; line-height: 1.2; font-weight: 700; margin-bottom: 8px; }
-  .cover .dates { font-size: 13px; color: rgba(255,255,255,.85); font-weight: 600; }
-  .cover .meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-  .cover .meta-chip { font-size: 10.5px; font-weight: 700; padding: 4px 10px; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; color: rgba(255,255,255,.92); }
-
-  .tip { display: flex; gap: 10px; margin: 14px 16px 0; padding: 12px 14px; background: var(--gold-soft); border: 1px solid #ecd9ae; border-radius: 12px; font-size: 12.5px; color: #6b5216; }
-  .tip .ico { flex: none; }
-
-  .wrap { max-width: 760px; margin: 0 auto; padding-bottom: 60px; }
-  section { padding: 26px 16px 4px; }
-  .sec-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
-  .sec-head .no { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--red); letter-spacing: .1em; }
-  .sec-head h2 { font-family: var(--serif); font-size: 21px; font-weight: 700; letter-spacing: .01em; }
-  .sec-head .rule { flex: 1; height: 1px; background: var(--line); align-self: center; }
-
-  .bp-group-label { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 16px 2px 8px; }
-  .bpass { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
-  .bpass .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--ink); color: #fff; }
-  .bpass .head .airline { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; letter-spacing: .05em; }
-  .bpass .head .airline .code { background: var(--red); border-radius: 6px; padding: 1px 7px; font-size: 11px; }
-  .bpass .head .craft { font-size: 10.5px; color: rgba(255,255,255,.7); font-weight: 600; }
-  .bpass .route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 16px 16px 12px; gap: 8px; }
-  .bpass .apt { text-align: center; }
-  .bpass .apt .iata { font-family: var(--serif); font-size: 28px; font-weight: 700; letter-spacing: .02em; line-height: 1.1; }
-  .bpass .apt .city { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 2px; }
-  .bpass .apt .time { font-size: 15px; font-weight: 800; color: var(--red); margin-top: 3px; font-variant-numeric: tabular-nums; }
-  .bpass .mid { text-align: center; color: var(--faint); }
-  .bpass .mid .dur { font-size: 10px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
-  .bpass .mid .line { position: relative; height: 1px; background: var(--line); margin: 6px 0; min-width: 66px; }
-  .bpass .mid .line::after { content: "✈"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--red); background: var(--card); padding: 0 4px; }
-  .bpass .perf { border-top: 1px dashed var(--line); position: relative; }
-  .bpass .perf::before, .bpass .perf::after { content: ""; position: absolute; top: -8px; width: 16px; height: 16px; border-radius: 50%; background: var(--paper); border: 1px solid var(--line); }
-  .bpass .perf::before { left: -9px; }
-  .bpass .perf::after { right: -9px; }
-  .bpass .pax { padding: 12px 16px; }
-  .bpass .pax .cls { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 2px 8px; border-radius: 5px; margin-bottom: 6px; background: var(--blue-soft); color: var(--blue); border: 1px solid #c9dced; }
-  .bpass .pax .seats { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
-  .bpass .pax .seat { font-size: 10.5px; font-weight: 600; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; color: var(--ink); font-variant-numeric: tabular-nums; }
-  .bpass .pax .seat.warn { background: var(--gold-soft); border-color: #ecd9ae; color: #6b5216; }
-  .transit { display: flex; gap: 10px; align-items: flex-start; background: none; border-left: 2px solid var(--gold); margin: 0 4px 12px 22px; padding: 4px 0 4px 12px; }
-  .transit .tt { font-size: 12.5px; font-weight: 700; color: #7c6220; }
-  .transit .ts { font-size: 11px; color: var(--muted); margin-top: 1px; }
-  .track { display: inline-flex; align-items: center; gap: 6px; margin: 0 16px 14px; font-size: 11.5px; font-weight: 700; color: var(--blue); background: var(--blue-soft); border: 1px solid #c9dced; border-radius: 999px; padding: 6px 14px; text-decoration: none; }
-
   /* ===== WEATHER ===== */
-  .wx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
-  .wx { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
-  .wx .city { font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .05em; }
-  .wx .temp { font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--red); margin: 2px 0; }
-  .wx .s { font-size: 11px; color: var(--muted); }
+  .wx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+  .wx { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 15px 16px; box-shadow: var(--shadow); }
+  .wx .city { font-size: 12.5px; font-weight: 800; color: var(--muted); letter-spacing: .04em; }
+  .wx .temp { font-family: var(--serif); font-size: 29px; font-weight: 700; color: var(--coral); margin: 3px 0 1px; }
+  .wx .s { font-size: 12px; color: var(--muted); line-height: 1.5; }
 
   /* ===== CHECKLIST ===== */
-  .cklist { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-  .ck { display: flex; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; align-items: flex-start; }
+  .cklist { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
+  .ck { display: flex; gap: 13px; padding: 15px 16px; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; align-items: flex-start; }
   .ck:last-child { border-bottom: none; }
-  .ck .box { flex: none; width: 20px; height: 20px; margin-top: 2px; border: 2px solid var(--faint); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; background: var(--card); }
+  .ck:active { background: var(--paper); }
+  .ck .box { flex: none; width: 24px; height: 24px; margin-top: 1px; border: 2px solid var(--faint); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; background: var(--card); }
   .ck.done .box { background: var(--green); border-color: var(--green); }
-  .ck .m { font-size: 13.5px; font-weight: 800; }
-  .ck .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ck.done .box::after { content: "✓"; }
+  .ck .m { font-size: 14.5px; font-weight: 700; line-height: 1.5; }
+  .ck .s { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
   .ck.done .m, .ck.done .s { opacity: .45; }
   .ck.done .m { text-decoration: line-through; }
-  .ck-progress { font-size: 11.5px; font-weight: 700; color: var(--muted); margin: 8px 2px 0; }
-  .ck .flag { flex: none; font-size: 9.5px; font-weight: 800; border-radius: 999px; padding: 2px 8px; margin-top: 4px; }
-  .ck .flag.amber { background: var(--gold-soft); color: #7c6220; }
+  .ck-progress { font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 10px 2px 0; }
+  .ck .flag { flex: none; font-size: 10.5px; font-weight: 800; border-radius: 999px; padding: 3px 9px; margin-top: 3px; }
+  .ck .flag.amber { background: var(--gold-soft); color: #7c6220; border: 1px solid var(--gold-line); }
 
-  .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 12px; margin-top: 8px; }
-  .tbl th { background: var(--ink); color: #fff; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 8px 10px; text-align: left; font-weight: 700; }
-  .tbl td { padding: 9px 10px; border-top: 1px solid var(--line); vertical-align: top; }
-  .note { font-size: 12px; border-radius: 10px; padding: 10px 13px; margin-top: 10px; }
-  .note.amber { background: var(--gold-soft); border: 1px solid #ecd9ae; color: #6b5216; }
-  .note.red { background: var(--red-soft); border: 1px solid #f3c6cd; color: #7c1024; }
-  .note.green { background: var(--green-soft); border: 1px solid #c4e3cf; color: #1d5637; }
+  /* ===== TABLE / NOTES ===== */
+  .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 13px; margin-top: 8px; }
+  .tbl th { background: #142624; color: #fff; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 9px 12px; text-align: left; font-weight: 700; }
+  .tbl td { padding: 11px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+  .note { font-size: 13.5px; line-height: 1.7; border-radius: 12px; padding: 12px 15px; margin-top: 12px; }
+  .note.amber { background: var(--gold-soft); border: 1px solid var(--gold-line); border-left: 4px solid var(--gold); color: #6b5216; }
+  .note.red { background: var(--coral-soft); border: 1px solid var(--coral-line); border-left: 4px solid var(--coral); color: #8a2a17; }
+  .note.green { background: var(--green-soft); border: 1px solid var(--green-line); border-left: 4px solid var(--green); color: #1d5637; }
 
-  .gal { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 10px; scrollbar-width: none; margin: 10px 0 4px; }
+  /* ===== GALLERY (full-bleed, top of card) ===== */
+  .galwrap { position: relative; background: var(--paper-2); }
+  .gal { display: flex; gap: 3px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
   .gal::-webkit-scrollbar { display: none; }
-  .gal img { scroll-snap-align: start; width: 78%; max-width: 340px; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; flex: none; background: var(--line); cursor: zoom-in; }
-  .gal-hint { font-size: 10px; color: var(--faint); margin-bottom: 6px; }
+  .gal img { scroll-snap-align: start; width: 86%; max-width: 420px; aspect-ratio: 16/10; object-fit: cover; flex: none; background: var(--line-2); cursor: zoom-in; }
+  .gal-hint {
+    position: absolute; right: 9px; bottom: 9px; pointer-events: none;
+    background: rgba(18,33,31,.62); color: rgba(255,255,255,.95); backdrop-filter: blur(3px);
+    font-size: 11px; font-weight: 700; letter-spacing: .02em;
+    border-radius: 999px; padding: 4px 11px;
+  }
+  .idx {
+    position: absolute; left: 0; top: 12px; z-index: 2;
+    font-family: var(--serif); font-size: 13px; font-weight: 700; letter-spacing: .06em;
+    background: rgba(18,33,31,.82); color: #fff; padding: 4px 11px 4px 12px;
+    border-radius: 0 999px 999px 0; box-shadow: 0 4px 12px -6px rgba(0,0,0,.7);
+  }
 
-  .lb { position: fixed; inset: 0; background: rgba(0,0,0,.93); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
+  /* ===== LIGHTBOX ===== */
+  .lb { position: fixed; inset: 0; background: rgba(10,14,13,.95); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
   .lb.open { display: flex; }
-  .lb img { max-width: 94%; max-height: 80vh; object-fit: contain; border-radius: 8px; }
-  .lb-counter { color: rgba(255,255,255,.55); font-size: 12px; margin-top: 10px; letter-spacing: .05em; }
-  .lb-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 19px; cursor: pointer; line-height: 36px; text-align: center; }
-  .lb-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.15); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 22px; cursor: pointer; line-height: 40px; text-align: center; }
+  .lb img { max-width: 94%; max-height: 78vh; object-fit: contain; border-radius: 10px; }
+  .lb-counter { color: rgba(255,255,255,.6); font-size: 13px; margin-top: 12px; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+  .lb-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,.16); color: #fff; border: none; width: 42px; height: 42px; border-radius: 50%; font-size: 20px; cursor: pointer; }
+  .lb-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.16); color: #fff; border: none; width: 46px; height: 46px; border-radius: 50%; font-size: 24px; cursor: pointer; }
   .lb-arrow.prev { left: 10px; }
   .lb-arrow.next { right: 10px; }
 
-  .btn-map { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--green); background: var(--green-soft); border: 1px solid #c4e3cf; border-radius: 999px; padding: 6px 14px; text-decoration: none; margin-top: 10px; margin-right: 6px; }
-  .btn-web { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--blue); background: var(--blue-soft); border: 1px solid #c9dced; border-radius: 999px; padding: 6px 14px; text-decoration: none; margin-top: 10px; }
+  /* ===== BUTTONS ===== */
+  .btn-map, .btn-web {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 40px;
+    font-size: 13px; font-weight: 700; border-radius: 999px; padding: 8px 16px;
+    text-decoration: none; margin: 12px 7px 0 0;
+  }
+  .btn-map { color: #fff; background: var(--green); border: 1px solid var(--green); }
+  .btn-web { color: var(--blue); background: var(--blue-soft); border: 1px solid var(--blue-line); }
 
-  .rcard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
-  .rcard .rb { padding: 14px 16px 16px; }
-  .rcard h3 { font-family: var(--serif); font-size: 17px; font-weight: 700; line-height: 1.35; }
-  .rcard h3 .star { color: var(--gold); font-weight: 700; font-size: 12.5px; margin-left: 4px; }
-  .rcard .addr { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
-  .rcard .desc { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
-  .rcard .desc strong { color: var(--ink); }
-  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-  .chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid; }
-  .chip.hours { color: var(--muted); border-color: var(--line); background: var(--paper); }
-  .chip.ok { color: var(--green); border-color: #c4e3cf; background: var(--green-soft); }
+  /* ===== PLACE / RESTAURANT CARD ===== */
+  .rcard {
+    background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+    margin-bottom: 16px; overflow: hidden; box-shadow: var(--shadow);
+  }
+  .rcard .rb { padding: 14px 16px 18px; }
+  .rcard h3 {
+    font-family: var(--serif); font-size: 20px; font-weight: 700; line-height: 1.35;
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px;
+  }
+  .rcard h3 .star {
+    font-family: var(--sans); font-size: 11.5px; font-weight: 800; color: var(--gold);
+    background: var(--gold-soft); border: 1px solid var(--gold-line); border-radius: 999px;
+    padding: 2px 9px; white-space: nowrap;
+  }
+  .rcard .addr { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.55; }
+  .rcard .addr::before { content: "📍 "; }
+  .rcard .desc { font-size: 14px; color: var(--ink-2); margin-top: 10px; line-height: 1.72; }
+  .rcard .desc strong { color: var(--ink); font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+  .chip { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid; line-height: 1.5; }
+  .chip.hours { color: var(--ink-2); border-color: var(--line-2); background: var(--paper); }
+  .chip.ok { color: var(--green); border-color: var(--green-line); background: var(--green-soft); }
   .chip.verify { color: #a33b00; border-color: #f2cdb3; background: #fdf2ea; }
-  .chip.warn { color: #7c1024; border-color: #f3c6cd; background: var(--red-soft); }
+  .chip.warn { color: #8a2a17; border-color: var(--coral-line); background: var(--coral-soft); }
+  .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+  .rcard .rb > .desc:first-child { margin-top: 0; }
 
-  footer { text-align: center; padding: 30px 20px 20px; }
-  footer .mark { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .2em; margin-bottom: 8px; }
-  footer p { font-size: 10.5px; color: var(--faint); line-height: 1.7; }
+  /* ===== PLACE GROUP ===== */
+  .pgroup { scroll-margin-top: calc(var(--topH) + var(--navH) + 54px); }
+  .bp-group-label .gn {
+    font-size: 11px; font-weight: 800; color: #fff; background: var(--teal);
+    border-radius: 999px; padding: 1px 8px; letter-spacing: .02em;
+  }
+
+  /* ===== PLACES FILTER ===== */
+  .pfilter {
+    position: sticky; top: calc(var(--topH) + var(--navH)); z-index: 240;
+    margin: 0 -16px 4px; padding: 9px 16px 8px;
+    background: rgba(251,246,236,.97); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  .pfilter .row { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; }
+  .pfilter .row::-webkit-scrollbar { display: none; }
+  .pchip {
+    flex: none; display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line-2); background: var(--card); color: var(--ink-2);
+    border-radius: 999px; padding: 0 13px; line-height: 32px;
+    font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--sans); white-space: nowrap;
+  }
+  .pchip .n { font-size: 10.5px; font-weight: 800; color: var(--muted); background: var(--paper-2); border-radius: 999px; padding: 0 6px; line-height: 16px; }
+  .pchip[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #fff; }
+  .pchip[aria-pressed="true"] .n { background: rgba(255,255,255,.25); color: #fff; }
+  .pcount { font-size: 11.5px; font-weight: 700; color: var(--muted); margin: 7px 2px 0; }
+  .pgroup.hide { display: none; }
+  .rcard.hide { display: none; }
+  .pempty { display: none; text-align: center; color: var(--muted); font-size: 13.5px; padding: 24px 10px; }
+  .pempty.show { display: block; }
+
+  .sec-meta { font-size: 12.5px; font-weight: 700; color: var(--muted); margin: -6px 2px 12px; }
+
+  /* ===== FLOATING QUICK NAV ===== */
+  .fab {
+    position: fixed; right: 16px; bottom: 20px; z-index: 500;
+    width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
+    background: var(--teal); color: #fff; font-size: 23px;
+    box-shadow: 0 10px 26px -8px rgba(14,107,99,.85);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fab:active { transform: scale(.94); }
+  .sheet { position: fixed; inset: 0; z-index: 600; display: none; }
+  .sheet.open { display: block; }
+  .sheet .mask { position: absolute; inset: 0; background: rgba(18,33,31,.55); }
+  .sheet .panel {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: var(--paper); border-radius: 20px 20px 0 0;
+    padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -12px 40px -14px rgba(0,0,0,.5);
+  }
+  .sheet .grip { width: 42px; height: 4px; border-radius: 999px; background: var(--line-2); margin: 8px auto 12px; }
+  .sheet .st { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 2px 10px; }
+  .sheet .links { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .sheet .links a {
+    display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 0 14px;
+    background: var(--card); border: 1px solid var(--line-2); border-radius: 14px;
+    text-decoration: none; color: var(--ink); font-size: 14.5px; font-weight: 700;
+  }
+  .sheet .links a .e { font-size: 18px; }
+  .sheet .top {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+    margin-top: 10px; min-height: 46px; border-radius: 14px; cursor: pointer;
+    background: var(--teal); color: #fff; border: none; font-size: 14px; font-weight: 700; font-family: var(--sans);
+  }
+
+  /* ===== FOOTER ===== */
+  footer { text-align: center; padding: 34px 20px 26px; }
+  footer .band { height: 9px; color: var(--line-2); max-width: 200px; margin: 0 auto 16px; }
+  footer .mark { font-family: var(--serif); font-size: 14px; font-weight: 700; color: var(--muted); letter-spacing: .22em; margin-bottom: 8px; }
+  footer p { font-size: 11.5px; color: var(--faint); line-height: 1.75; }
+
+  @media (min-width: 620px) {
+    .cover img.bg { height: 400px; }
+    .cover h1 { font-size: 44px; }
+    .sheet .links { grid-template-columns: repeat(3, 1fr); }
+  }
 </style>
 </head>
 <body>
-<div class="topbar">
-<div class="brand"><span class="dot"></span><span class="t"><span class="cn">槟城 · 9天8夜 · Oct 2026</span><span class="en">Penang · 9D8N · Oct 2026</span></span></div>
-<button class="lang" id="langBtn" onclick="toggleLang()">EN</button>
-</div>
-<nav class="navstrip">
+<a class="sr-only" href="#flights">跳到正文 / Skip to content</a>
+<header class="topbar">
+<div class="brand"><span class="dot tiles" aria-hidden="true"></span><span class="t"><b>PENANG</b> <span class="cn">· 9天8夜 · 2026年10月</span><span class="en">· 9D8N · Oct 2026</span></span></div>
+<button class="lang" id="langBtn" onclick="toggleLang()" aria-label="切换语言 / Switch language">EN</button>
+</header>
+<nav class="navstrip" id="navstrip" aria-label="章节导航 / Section navigation">
 <a href="#flights">✈️ <span class="cn">航班</span><span class="en">Flights</span></a>
 <a href="#stay">🏠 <span class="cn">住宿</span><span class="en">Stay</span></a>
-<a href="#dining">🍽 <span class="cn">餐厅</span><span class="en">Dining</span></a>
-<a href="#places">📍 <span class="cn">去处</span><span class="en">Places</span></a>
+<a href="#dining">🍽 <span class="cn">餐厅</span><span class="en">Dining</span><span class="n" data-count="dining"></span></a>
+<a href="#places">📍 <span class="cn">去处</span><span class="en">Places</span><span class="n" data-count="places"></span></a>
 <a href="#weather">🌡 <span class="cn">天气</span><span class="en">Weather</span></a>
 <a href="#checklist">✅ <span class="cn">必办</span><span class="en">Checklist</span></a>
 </nav>
 <div class="wrap">
 <div class="cover">
-<img alt="Penang" class="bg" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBk7A1BPiZgMLztznc6im9eOHacu5s3TwYYM2DV4BImYGwo8Jx0RG1JQ4GyA9a5h4kZ9MplI2RjKExWkouZ0ut8hrEXHiU4OGVI7b-xgRnAQZnQQajekJ4vyXDQCN20YYe-JGTUhmnPsWufIQ=s4800-w800-h600"/>
+<img alt="槟城乔治市街景 Penang, George Town" class="bg" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBk7A1BPiZgMLztznc6im9eOHacu5s3TwYYM2DV4BImYGwo8Jx0RG1JQ4GyA9a5h4kZ9MplI2RjKExWkouZ0ut8hrEXHiU4OGVI7b-xgRnAQZnQQajekJ4vyXDQCN20YYe-JGTUhmnPsWufIQ=s4800-w800-h600"/>
 <div class="inner">
-<div class="kicker"><span class="cn">行程手册</span><span class="en">Travel Handbook</span></div>
-<h1><span class="cn">槟城之行</span><span class="en">Penang Trip</span></h1>
-<div class="dates"><span class="cn">9天8夜 · 2026年10月9日 – 10月17日</span><span class="en">9 Days 8 Nights · Oct 9 – Oct 17, 2026</span></div>
+<div class="kicker"><span class="cn">家庭行程手册</span><span class="en">Family Travel Handbook</span></div>
+<h1><span class="cn">槟城之行</span><span class="en">Penang</span><span class="sub">Pulau Pinang · Malaysia</span></h1>
+<div class="dates"><span class="cn">9天8夜 · 2026年10月9日（五）– 10月17日（六）</span><span class="en">9 Days 8 Nights · Fri 9 Oct – Sat 17 Oct 2026</span></div>
 <div class="meta-row">
-<span class="meta-chip">✈ SQ</span>
+<span class="meta-chip">✈ <span class="cn">新航 · 经新加坡转机</span><span class="en">SQ · via Singapore</span></span>
 <span class="meta-chip">🏠 <span class="cn">老板自宅</span><span class="en">Family home</span></span>
-<span class="meta-chip">👨‍👩‍👧 <span class="cn">6人</span><span class="en">6 pax</span></span>
+<span class="meta-chip">👨‍👩‍👧 <span class="cn">6人同行</span><span class="en">6 pax</span></span>
+<span class="meta-chip">🍽 <span class="cn">全程不吃牛肉</span><span class="en">Beef-free</span></span>
 </div>
+<div class="cd" id="countdown"><span class="cn"></span><span class="en"></span></div>
 </div>
+<div class="band tiles" aria-hidden="true"></div>
 </div>
 <div class="tip">
-<span class="ico">👆</span>
+<span class="ico" aria-hidden="true">👆</span>
 <div>
-<span class="cn"><strong>绿色按钮</strong>（地图）与<strong>蓝色按钮</strong>（官网）可点击打开；标注「⚠ 需确认」的项目以实际预订为准。图片可左右滑动。</span>
-<span class="en"><strong>Green buttons</strong> (maps) and <strong>blue buttons</strong> (website) are tappable; items marked "⚠ verify" should be confirmed. Photo strips swipe sideways.</span>
+<span class="cn"><strong>怎么用这本手册：</strong>绿色按钮开地图、蓝色按钮开官网；照片可左右滑、点一下放大；「推荐去处」上方的彩色标签可筛选类型；右下角圆钮随时跳章节。标注「⚠ 需确认」的项目以实际预订为准。</span>
+<span class="en"><strong>How to use this handbook:</strong> green buttons open maps, blue buttons open websites; photo strips swipe sideways and tap to enlarge; the coloured chips above "Places to Visit" filter by type; the round button at the bottom-right jumps between sections. Items marked "⚠ verify" should be confirmed.</span>
 </div>
 </div>
 
 <!-- ===== FLIGHTS ===== -->
 <section id="flights">
-<div class="sec-head"><span class="no">01</span><h2><span class="cn">航班</span><span class="en">Flights</span></h2><span class="rule"></span></div>
+<div class="sec-head"><span class="no">01</span><h2><span class="cn">航班</span><span class="en">Flights</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 
 <div class="note amber">
 <span class="cn">⚠ 此团<strong>共6人</strong>：Hew Chern Yang、Tan Kuan Ze、Tan Chin Hooi（老板）、Thun Savry、Chet Pov、Tan Yong Liang。与常见的7人团不同，麻烦确认是否本来就是6人出行。</span>
@@ -313,7 +524,7 @@
 
 <!-- ===== STAY ===== -->
 <section id="stay">
-<div class="sec-head"><span class="no">02</span><h2><span class="cn">住宿</span><span class="en">Stay</span></h2><span class="rule"></span></div>
+<div class="sec-head"><span class="no">02</span><h2><span class="cn">住宿</span><span class="en">Stay</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 <div class="note green">
 <span class="cn">本次住老板自宅，无需酒店安排。</span>
 <span class="en">This trip stays at the family's own home — no hotel arrangement needed.</span>
@@ -322,179 +533,191 @@
 
 <!-- ===== DINING ===== -->
 <section id="dining">
-<div class="sec-head"><span class="no">03</span><h2><span class="cn">常去餐厅</span><span class="en">Regular Restaurants</span></h2><span class="rule"></span></div>
+<div class="sec-head"><span class="no">03</span><h2><span class="cn">常去餐厅</span><span class="en">Regular Restaurants</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 <div class="note amber">
-<span class="cn">以下6家为老板一家常去的餐厅，暂未分配到具体日期／时段，行程确定后可再排入每日安排。全程<strong>不吃牛肉</strong>，用餐以单点为主。</span>
-<span class="en">These 6 restaurants are the family's regular spots, not yet assigned to specific days. All meals are <strong>beef-free</strong> and à la carte.</span>
+<span class="cn">以下 <b data-count="dining">–</b> 家是老板一家常去的餐厅，暂未分配到具体日期／时段，行程确定后可再排入每日安排。全程<strong>不吃牛肉</strong>，用餐以单点为主。</span>
+<span class="en">These <b data-count="dining">–</b> restaurants are the family's regular spots, not yet assigned to specific days. All meals are <strong>beef-free</strong> and à la carte.</span>
 </div>
 
 <div class="rcard">
-<div class="rb">
-<h3><span class="cn">樂田 RUTIN</span><span class="en">RUTIN</span> <span class="star">⭐4.3</span></h3>
-<div class="addr">11A &amp; 15, Jalan Sentral Jaya, Bukit Mertajam, Penang</div>
+<div class="galwrap">
 <div class="gal">
 <img alt="RUTIN" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBk7A1BPiZgMLztznc6im9eOHacu5s3TwYYM2DV4BImYGwo8Jx0RG1JQ4GyA9a5h4kZ9MplI2RjKExWkouZ0ut8hrEXHiU4OGVI7b-xgRnAQZnQQajekJ4vyXDQCN20YYe-JGTUhmnPsWufIQ=s4800-w800-h600"/>
 <img alt="RUTIN" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDWu44PMdjLpgF4JXaWyOLeHGs6GUh4FelDUBfTFWfuqyjJJziGpmojMdO3pYc-y-4NYP7gdWkUN8uRpvP3VC8Fn6GI6IEqvnz0G6x2aeq3RlUXhWFR5lroinRGqmaZLFXXKjpqG8T-1DZ_ZmAsX0zPQw=s4800-w800-h600"/>
 <img alt="RUTIN" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAxwutxnQJNF9bbIK9c7G0wOF4UmmJXlOZglTAGX1jkTzxz-Ujza_Qdf78W4eNQdLhEmuRCB7Ek9eho8uhPrcP01-UQ0S4ZrC9LFofSJ4r-em0aqu1c8EZYEL440ZS2EMvhkNq_AMc7mavHpjfHkWaCyA=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
-<div class="desc"><span class="cn">中西合璧家常菜，招牌<strong>鱼汤米粉</strong>（酸辣汤/大骨浓汤两种汤底可选），另有Pizza、意大利面、椰浆饭套餐。座位宽敞，适合家庭聚餐。</span><span class="en">Chinese-Western fusion comfort food; signature <strong>fish soup noodles</strong> (choice of sour-spicy or milky broth), plus pizza, pasta, and nasi lemak sets. Spacious seating, good for family dining.</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">樂田 RUTIN</span><span class="en">RUTIN</span> <span class="star">⭐4.3</span></h3>
+<div class="addr">11A &amp; 15, Jalan Sentral Jaya, Bukit Mertajam, Penang</div>
+<div class="desc"><span class="cn">中西合璧家常菜，招牌<strong>鱼汤米粉</strong>（酸辣汤/大骨浓汤两种汤底可选），另有披萨、意大利面、椰浆饭套餐。座位宽敞，适合家庭聚餐。</span><span class="en">Chinese-Western fusion comfort food; signature <strong>fish soup noodles</strong> (choice of sour-spicy or milky broth), plus pizza, pasta, and nasi lemak sets. Spacious seating, good for family dining.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 8:30–22:00</span><span class="en">Daily 8:30 AM–10:00 PM</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=6645298319328116800" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=6645298319328116800" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
 </div>
 </div>
 
 <div class="rcard">
-<div class="rb">
-<h3><span class="cn">Miraku 味樂</span><span class="en">Miraku Japanese Cuisine</span> <span class="star">⭐4.1</span></h3>
-<div class="addr">1F, G Hotel Central Gurney, 168A Persiaran Gurney, George Town</div>
+<div class="galwrap">
 <div class="gal">
 <img alt="Miraku" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBj0J_AGByXlaO4LRbmuFPeVdMYqEWGoC-gS2_X6q2xea9vEqgAHxrQ763oXy-zvzLCx74MSSgCAJfUTxH9E9LEsx99hCtrfahqs1GUrf_ZZS9M-C13hiBrv0Jy6Mu4YShCXUrxdxhlCmE6Gw=s4800-w800-h600"/>
 <img alt="Miraku" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCt67lST5vt1vTfym03FYEDQyCiJdEt8uwujdgEpCOg2C_9SLOv7ihLlb_ju3xpWvrpHKItW6vYTepC9VDr8tlK7DmtKQXByLG7jX_EOsbb1dD53RB5jaGbrDGlPvzUa_VwIZMNkRBanSWkVXIhod7N=s4800-w800-h600"/>
 <img alt="Miraku" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBxJ0ZC6CMw00SA9zREt2vwvPSiQa9pZrHRKYlGOio97HoNGZGVYiz7U30WMdHt7ncFhSFh-SKpMaqcT0nt9W2iozCBXDYFzMZmQs9XHMHmsJ7m9EU3gymksMbkhn7Cju06vsXfh_L-CiAP6mTSlhkFyA=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Miraku 味樂</span><span class="en">Miraku Japanese Cuisine</span> <span class="star">⭐4.1</span></h3>
+<div class="addr">1F, G Hotel Central Gurney, 168A Persiaran Gurney, George Town</div>
 <div class="desc"><span class="cn">G Hotel内日本料理，寿司、刺身、天妇罗，出品稳定。<strong>菜单上有牛肉料理，周末另设自助餐时段</strong> — 用餐时请单点并避开牛肉品项。</span><span class="en">Japanese fine dining inside G Hotel — sushi, sashimi, tempura, consistently good. <strong>Menu includes beef dishes, and weekends offer a buffet slot</strong> — order à la carte and skip beef items.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 12:00–14:30 / 18:00–22:00</span><span class="en">Daily 12:00–2:30 PM / 6:00–10:00 PM</span></span>
 <span class="chip warn"><span class="cn">⚠ 含牛肉品项 · 周末有自助餐</span><span class="en">⚠ Has beef dishes · weekend buffet</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=7948710932161211900" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="https://mirakupng.wixsite.com/mysite" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=7948710932161211900" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://mirakupng.wixsite.com/mysite" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
 <div class="rcard">
-<div class="rb">
-<h3><span class="cn">七廊粿條湯</span><span class="en">7 Village Noodle House</span> <span class="star">⭐4.1</span></h3>
-<div class="addr">6, 8 &amp; 10, Lorong Ceri 6, Taman Aman Jaya, Butterworth（总店）</div>
+<div class="galwrap">
 <div class="gal">
 <img alt="7 Village" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCsl4sn7P9zJKeMRFcR8176cS91lcyrhPKP4GQo81gLBG65uwry9ONwtk2Vz2TTbggrEBGebrCAeepBf71etEMaPAiRJt0lL3DyYpFlNUcx9i7Ll4A7HAHN3TWxd5d_YTXcJr1BBRESt9aizQ=s4800-w800-h600"/>
 <img alt="7 Village" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBwYf1B6LQ_95ijztD3cnI-2UgBO_s2vxXPGq8o0cXR9B2fYidwCqkkNH1BnbOWZO1GV3mEgolZZuuijVPv8xQ3SNQH6uUqaUQjycXlTCrwAzHXOinYFHOr7SM2jgNp-rkouLl-uXSS-X7CR_cEin8V=s4800-w800-h600"/>
 <img alt="7 Village" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBpEjumJ-Fjtji3RPD4S7p3rnWaNS1CZBKrMo2ZcSTegjj_981GlWnYvuvBd5lzg4o7LgDlJTMGdyzfTjaJwoeWbVthdnjdiQb5ovbn-ZkjhxMY02ovqUdgaWq_GjL26fw_rptZUIYgCGc1_7wy0z8vZw=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
-<div class="desc"><span class="cn">槟城著名<strong>粿條汤</strong>连锁总店，猪肉汤底，另有卤肉、鸡脚、炸鱼等小食。清晨营业，适合早餐或简单一餐。</span><span class="en">Flagship branch of Penang's famous <strong>koay teow soup</strong> chain; pork-based broth, plus lor bak, chicken feet, fried fish sides. Opens early — good for breakfast or a simple meal.</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">七廊粿條湯</span><span class="en">7 Village Noodle House</span> <span class="star">⭐4.1</span></h3>
+<div class="addr">6, 8 &amp; 10, Lorong Ceri 6, Taman Aman Jaya, Butterworth<span class="cn">（总店）</span><span class="en"> (flagship branch)</span></div>
+<div class="desc"><span class="cn">槟城著名<strong>粿條汤</strong>连锁总店，猪肉汤底，另有卤肉卷、鸡脚、炸鱼等小食。清晨营业，适合早餐或简单一餐。</span><span class="en">Flagship branch of Penang's famous <strong>koay teow soup</strong> chain; pork-based broth, plus braised pork rolls, chicken feet and fried fish sides. Opens early — good for breakfast or a simple meal.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 周一至六 7:30–17:00 / 周日 7:30–13:00</span><span class="en">Mon–Sat 7:30 AM–5:00 PM / Sun 7:30–1:00 PM</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=16316090451728697683" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="http://www.7villagenoodlehouse.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=16316090451728697683" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="http://www.7villagenoodlehouse.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
 <div class="rcard">
-<div class="rb">
-<h3><span class="cn">筑地寿司</span><span class="en">Tsukiji Sushi Bar</span> <span class="star">⭐4.9</span></h3>
-<div class="addr">City Junction, Persiaran Lengkuas, Tanjung Tokong</div>
+<div class="galwrap">
 <div class="gal">
 <img alt="Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCNMTOZFE89rF7Y7L08WhBoEe9FUmT3DfShAkHN0sQUNRCQAABoasxoEylAYgEZhTceOJ00DkFQ2rseAlAXyp4JiWF-Nrp7dBCHobNGLTr2j0iex8cnVqdbuYB0buZcYew97HCkjLOZ2Tp9dA=s4800-w800-h600"/>
 <img alt="Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCozbTYhDmqNoPjvI2djnGGu2j1C6jVk4L2fY7izR3UvHbNAPRd9O1A-l74-5UFbmDdC64mNb9jQZb3BrM8FZ0BOuNU7nMwiwrI8NCFPMMM6CfWj2GKbw_aOPrfDCyw6zlKDbSwxfdLkqWMSpQ=s4800-w800-h600"/>
 <img alt="Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBnZRnQ0hM_sXQuuzjgC0XWXpovmgSbk-S3Aqcg_24k7FtjMgIVikGPWN7vhKf0xuUrsuIS2v1ARlB14Ba2GgXvBoL08k7RgJIDM1f_da0qZWRdf-FZ014D5IGNB694E-naFqkwAOH2mf0uTD--lUv1dw=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
-<div class="desc"><span class="cn">开放式寿司吧，握寿司现点现做（RM2起），也有生鱼片、Wagyu套餐等单点菜单。评分极高，槟城人气日本料理之一。</span><span class="en">Open sushi bar with made-to-order nigiri (from RM2), plus sashimi and à la carte set menus. Very highly rated — one of Penang's most popular Japanese spots.</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">筑地寿司</span><span class="en">Tsukiji Sushi Bar</span> <span class="star">⭐4.9</span></h3>
+<div class="addr">City Junction, Persiaran Lengkuas, Tanjung Tokong</div>
+<div class="desc"><span class="cn">开放式寿司吧，握寿司现点现做（RM2起），也有生鱼片、和牛套餐等单点菜单。评分极高，槟城人气日本料理之一。</span><span class="en">Open sushi bar with made-to-order nigiri (from RM2), plus sashimi and à la carte set menus. Very highly rated — one of Penang's most popular Japanese spots.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 周一至四 11:00–15:00, 18:00–22:00 / 周五至日 11:00–22:00</span><span class="en">Mon–Thu 11 AM–3 PM, 6–10 PM / Fri–Sun 11 AM–10 PM</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=17287566682074786653" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="https://www.tsukijisushi.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=17287566682074786653" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://www.tsukijisushi.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
 <div class="rcard">
-<div class="rb">
-<h3><span class="cn">大漁日本料理</span><span class="en">Tairyo Japanese Restaurant</span> <span class="star">⭐4.6</span></h3>
-<div class="addr">71, Jalan Icon City, Bukit Tengah, Bukit Mertajam</div>
+<div class="galwrap">
 <div class="gal">
 <img alt="Tairyo" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDsdr-8OK2QPf0BH_2OuVJ-foLDjO2nam_LUPLA1lJqTKEHOX_LlEaePsbGaJVggfOC-oZOcbO4dVAF30_au13mVFus_XbCclnOx5OAHK8Ags2R38b1O_F7o5MD_bXHdBneeSwXdV6dQgh8=s4800-w800-h600"/>
 <img alt="Tairyo" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDNuNdHy5dexcUHGOe5SK9UZaATN5M2gtF_PB_CDgWriaBA5r5STIQU22KoLNAoAxK6u0bZdruW0OA-D9QbgfuK1_eckOIcfNs2hanF7m3WLI17dVg5H4juDcJzWnwEeAOVGk0lK1_8a0T1RQ=s4800-w800-h600"/>
 <img alt="Tairyo" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBOn0oythGhvN8i4NgPnZzlR6NbKZZ0PPzsKfAYGadeBzBnyQ6lBp9LwzV1VKqJRCu6LOgJBURF9nX7iw0fNa0nX2rJ2XbuTK8Y13yJTAsxrgNPxOZ7UHenJoVEk5oxEUsqiCI66lAP7FZZNE-8H_i7Hg=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
-<div class="desc"><span class="cn">菜单大而全的日式居酒屋，<strong>刺身、唐揚げ（炸鸡）、寿司、丼饭</strong>一应俱全，符合家庭聚餐的单点风格。菜单上也有和牛铁板品项，单点时可避开。</span><span class="en">Large izakaya-style menu with <strong>sashimi, karaage, sushi, and rice bowls</strong> — matches the family's à la carte dining style. Wagyu teppan items on the menu can be skipped when ordering.</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">大漁日本料理</span><span class="en">Tairyo Japanese Restaurant</span> <span class="star">⭐4.6</span></h3>
+<div class="addr">71, Jalan Icon City, Bukit Tengah, Bukit Mertajam</div>
+<div class="desc"><span class="cn">菜单大而全的日式居酒屋，<strong>刺身、日式炸鸡、寿司、盖饭</strong>一应俱全，符合家庭聚餐的单点风格。菜单上也有和牛铁板品项，单点时可避开。</span><span class="en">Large izakaya-style menu with <strong>sashimi, fried chicken, sushi, and rice bowls</strong> — matches the family's à la carte dining style. Wagyu teppan items on the menu can be skipped when ordering.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 11:30–14:30, 17:30–22:00（五六至22:30/22:30）</span><span class="en">Daily 11:30 AM–2:30 PM, 5:30–10:00 PM (later Fri–Sat)</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=17783906310819733530" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=17783906310819733530" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
 </div>
 </div>
 
 <div class="rcard">
-<div class="rb">
-<h3><span class="cn">鸡饭店</span><span class="en">The Chicken Rice Shop</span> <span class="star">⭐3.5</span></h3>
-<div class="addr">LG-70, Sunway Carnival Mall, Seberang Jaya</div>
+<div class="galwrap">
 <div class="gal">
 <img alt="Chicken Rice Shop" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBntqheTFq0KMHJjLyt0-V17HzInnKjlraDC76AvXdxncqypAXI4dEdGwomPzi0LwpwA4yKlP7zYTknFRqhwdD0QsfWObZZP6w8sVGSr2tlVEnot_j5ng4QjNiNVlPHBIUAyhMRW3Bv0QeCm81KfWIKcA=s4800-w800-h600"/>
 <img alt="Chicken Rice Shop" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDxQW5CW4miYPqD4eM81rit1uHCdtIx025uOKsHZGwFveL5rXDj2CuQ_Ni4AbBYcLPf2iK98Kez_x3leRyqPdUvBGrLvfgGVdXQnhj9FIZm-s_3a-09RxkRdPBd0mtSowgXlIgziDx-YAe4rtXMi5ihvw=s4800-w800-h600"/>
 <img alt="Chicken Rice Shop" src="https://lh3.googleusercontent.com/place-photos/AG9NLjATt6zoAeRbnum1-90ETIaQN1_NPK9jiMS7Jp4hQ4PE_0oPNBp-UnGgL6zacAPnzFL2k4kPya72ErcZoO6WlLC2nUyQ4uY4PXRbfDuvXWxEnKYKvqayGePfRxgoA9h59_ImccomD9Oq0Vk_nrKYVqvE9A=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">鸡饭店</span><span class="en">The Chicken Rice Shop</span> <span class="star">⭐3.5</span></h3>
+<div class="addr">LG-70, Sunway Carnival Mall, Seberang Jaya</div>
 <div class="desc"><span class="cn">连锁鸡饭快餐，位于Sunway Carnival Mall内，适合商场逛街途中简单一餐。近期评价出餐较慢，建议避开用餐高峰。</span><span class="en">Chain chicken rice restaurant inside Sunway Carnival Mall — convenient for a quick meal while shopping. Recent reviews note slow service, best to avoid peak hours.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">Daily 10:00 AM–10:00 PM</span></span>
 <span class="chip verify"><span class="cn">⚠ 近期评价出餐偏慢</span><span class="en">⚠ Recent reviews note slow service</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=10648324139628194840" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="http://www.thechickenriceshop.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=10648324139628194840" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="http://www.thechickenriceshop.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
 <div class="rcard">
-<div class="rb">
-<h3><span class="cn">三希樓</span><span class="en">San Xi Lou</span> <span class="star">⭐4.6</span></h3>
-<div class="addr">Level 6, Gurney Paragon Mall, George Town</div>
+<div class="galwrap">
 <div class="gal">
 <img alt="San Xi Lou" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDF-m6FWSB9pl6PTdhnkxGshPmrDutKe0yaTw6Jlw9T2EedihpE4cLzeiEfZFa4HH47KBS3XNLX8e3FPbRU1G-S16C5PwEmMnrLPHDE-qqwhrwhKcciXXo1GvF9PLsR2Aje6CjledfeGCOGLw=s4800-w800-h600"/>
 <img alt="San Xi Lou" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDxteHSg2WueZZIvN_ybUEweYDhiK1C3ROTzRBLajj6V53_opQrjCOLZXVroTna4QKZxdi0l9VAzXJVq3jn_hkdTVyIZnLITQ5IpAo4vR2cQJygfydlkrygEFvBapgow3HBCxc180HO0e5cSqbEabXMqg=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">三希樓</span><span class="en">San Xi Lou</span> <span class="star">⭐4.6</span></h3>
+<div class="addr">Level 6, Gurney Paragon Mall, George Town</div>
 <div class="desc"><span class="cn">香港品牌，粤菜／川菜／点心三合一，招牌菜有烧鹅、脆皮鸡、点心。<strong>菜单上也有川式辣炒牛肉等牛肉品项</strong>，单点时避开即可。</span><span class="en">Hong Kong brand blending Cantonese, Sichuan, and dim sum — roasted goose and crispy chicken are signatures. <strong>Menu also includes Sichuan-style stir-fried beef</strong> — skip when ordering à la carte.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 11:00–15:30, 17:30–22:00</span><span class="en">Daily 11:00 AM–3:30 PM, 5:30–10:00 PM</span></span>
 <span class="chip warn"><span class="cn">⚠ 含牛肉品项</span><span class="en">⚠ Has beef dishes</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=15939087510710375959" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=15939087510710375959" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
 </div>
 </div>
 
 <div class="rcard">
-<div class="rb">
-<h3><span class="cn">鼎泰豐</span><span class="en">Din Tai Fung</span> <span class="star">⭐4.7</span></h3>
-<div class="addr">LG-28/29, Sunway Carnival Mall, Seberang Jaya</div>
+<div class="galwrap">
 <div class="gal">
 <img alt="Din Tai Fung" src="https://lh3.googleusercontent.com/place-photos/AG9NLjACmrtVlhE70JY4gfgeJGzh6fibFRHJ1IrWUx28EvRzCDE1x8PSCE2lQR-pYkQCJVOHF1WutbnjlRXMuduP0HG8yQpKc_syMUQLbzl39ltJzMuCXKk6HUVZ2ZaZuG11Wl8_T-CBhsDuvy_Qm4DF8hJ_=s4800-w800-h600"/>
 <img alt="Din Tai Fung" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAkMP_-Saht9YOAfzeMo070hn9P1-ZhagwZkpyudS5QER8m2kaCMvQFCET5Mv-WfEIhZQDnRi7oLRbxNRTApNhNmP4HqhtTO4zAEMq8qXBeXqOzfU6gkceJ49GvoS-cE9Rl0gXAeGKul6mZ5wbLuUGr=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">鼎泰豐</span><span class="en">Din Tai Fung</span> <span class="star">⭐4.7</span></h3>
+<div class="addr">LG-28/29, Sunway Carnival Mall, Seberang Jaya</div>
 <div class="desc"><span class="cn">台湾知名连锁，小笼包、葱油拌面为招牌，槟城北部新分店，评价出品稳定。<strong>菜单上牛肉面等品项含牛肉</strong>，单点避开即可，其余多为猪肉/虾馅点心。</span><span class="en">Famous Taiwanese chain — xiaolongbao and scallion noodles are the signatures; this is a newer branch, consistently well reviewed. <strong>Beef noodle soup on the menu contains beef</strong> — skip it; most other items are pork/shrimp-based.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 11:00–21:30（周末10:00起）</span><span class="en">Daily 11:00 AM–9:30 PM (weekends from 10 AM)</span></span>
 <span class="chip warn"><span class="cn">⚠ 牛肉面含牛肉</span><span class="en">⚠ Beef noodle soup has beef</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=8039283718126773766" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="https://www.dintaifung.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=8039283718126773766" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://www.dintaifung.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
 <div class="rcard">
-<div class="rb">
-<h3><span class="cn">龙依北京烤鸭</span><span class="en">Dragon-i Peking Duck Restaurant</span> <span class="star">⭐4.5</span></h3>
-<div class="addr">2F, Queensbay Mall, Bayan Lepas</div>
+<div class="galwrap">
 <div class="gal">
 <img alt="Dragon-i" src="https://lh3.googleusercontent.com/place-photos/AG9NLjD9rwhgmgTe07PqN1xWySaEIXXnUnXFHoijApUxEIcs8zHIfJV97MOB0Rkiy9f0uI2o7caiOA_NXrlu9U3bUKwrALV5wLL2qMoQ1GFBNPTkIkQJ7RHrtwEa827m3DXvWPfh3i8HJqL1v5H20A=s4800-w800-h600"/>
 <img alt="Dragon-i" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDUj3nK44L7TAjnYYAHyQsBRfn_tFr0e-b9nTtJS0_oEqtkd7De5cOyT2LuXZYzXzzI4TAB8Xz4hu64EDURxy50z_aCJDh8VgOUqpk2LDZywGVX-Lpo_JG6bWfj7WnWPJwgFZPpsi-G7-Vxmg=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">龙依北京烤鸭</span><span class="en">Dragon-i Peking Duck Restaurant</span> <span class="star">⭐4.5</span></h3>
+<div class="addr">2F, Queensbay Mall, Bayan Lepas</div>
 <div class="desc"><span class="cn">以<strong>北京烤鸭</strong>为招牌的中餐厅，也有小笼包、糖醋鱼等大众化中式菜，环境宽敞适合家庭聚餐。评价提到<strong>晚餐时段排队较长</strong>，建议早点前往或提前订位。</span><span class="en">Chinese restaurant known for <strong>Peking duck</strong>, also serves xiaolongbao, sweet-and-sour fish, and other crowd-pleasing dishes; spacious, good for family gatherings. Reviews note <strong>longer waits at dinner</strong> — go early or book ahead.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 11:00–21:30</span><span class="en">Daily 11:00 AM–9:30 PM</span></span>
 <span class="chip verify"><span class="cn">⚠ 晚餐时段建议提前订位</span><span class="en">⚠ Book ahead for dinner</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=14810997833472458554" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="http://www.dragon-i.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=14810997833472458554" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="http://www.dragon-i.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
@@ -502,233 +725,265 @@
 
 <!-- ===== PLACES ===== -->
 <section id="places">
-<div class="sec-head"><span class="no">04</span><h2><span class="cn">推荐去处</span><span class="en">Places to Visit</span></h2><span class="rule"></span></div>
+<div class="sec-head"><span class="no">04</span><h2><span class="cn">推荐去处</span><span class="en">Places to Visit</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
+<div class="sec-meta"><span class="cn">共 <b data-count="places">–</b> 个去处 · 不排日期，看天气与心情挑</span><span class="en"><b data-count="places">–</b> spots · not sequenced — pick by weather and mood</span></div>
 <div class="note amber">
 <span class="cn">不排日期／顺序，家人自己看当天心情、天气挑着去。前2家是你发来的，其余是我补充的槟城常见推荐点，仅供参考。</span>
 <span class="en">Not sequenced by day — pick based on mood and weather. The first 2 are from your links; the rest are my general Penang suggestions for reference.</span>
 </div>
+<div class="pfilter">
+<div class="row" role="group" aria-label="按类型筛选去处 / Filter places by type">
+<button class="pchip" type="button" data-cat="all" aria-pressed="true">🧭 <span class="cn">全部</span><span class="en">All</span><span class="n" data-catcount="all"></span></button>
+<button class="pchip" type="button" data-cat="arcade" aria-pressed="false">🎮 <span class="cn">电玩亲子</span><span class="en">Arcade</span><span class="n" data-catcount="arcade"></span></button>
+<button class="pchip" type="button" data-cat="culture" aria-pressed="false">🏛 <span class="cn">文化古迹</span><span class="en">Culture</span><span class="n" data-catcount="culture"></span></button>
+<button class="pchip" type="button" data-cat="outdoor" aria-pressed="false">🏖 <span class="cn">户外</span><span class="en">Outdoor</span><span class="n" data-catcount="outdoor"></span></button>
+<button class="pchip" type="button" data-cat="mall" aria-pressed="false">🛍 <span class="cn">商场</span><span class="en">Malls</span><span class="n" data-catcount="mall"></span></button>
+</div>
+</div>
+<div class="pcount" id="pcount" aria-live="polite"></div>
 
-<div class="bp-group-label"><span class="cn">🎮 室内娱乐 · 亲子</span><span class="en">🎮 Indoor / Family</span></div>
-
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">Neo Akedo</span><span class="en">Neo Akedo</span> <span class="star">⭐4.5</span></h3>
-<div class="addr">Sunway Carnival Shopping Complex, Seberang Jaya</div>
+<div class="pgroup" data-cat="arcade">
+<div class="bp-group-label" id="pg-arcade">🎮 <span class="cn">电玩 · 亲子游乐</span><span class="en">Arcades &amp; Family Fun</span><span class="gn" data-groupcount="arcade"></span></div>
+<div class="rcard" data-cat="arcade">
+<div class="galwrap">
 <div class="gal">
 <img alt="Neo Akedo" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCsmaDPutjTe42djjJ8FqFq_eZCp41OElLNcwRKhsohLvw117QQP9a07pi2HR-8kAUi3G-0NTUlB1fQp7KWe3M5H2qMT1wLUORIMw4NK7FhwLSoe8BmB1OuRjhvaZFbd-4DaaS_A_5AG0kY2o6xvC5C=s4800-w800-h600"/>
 <img alt="Neo Akedo" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCb6NpPSIPIBh6BSOkG3qDuKvEyhszXfBBc5g7RL2TvkNSYYd4G90WxtzYA8vK2tpbfb907Z5TwI5rne-_FLlzhIuHI_S_QfEKXo3DOeHEFgIgL_JLr0W-tB3_IUJATK0SPvRUR2xQKUzPAdzZkrTY4=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Neo Akedo</span><span class="en">Neo Akedo</span> <span class="star">⭐4.5</span></h3>
+<div class="addr">Sunway Carnival Shopping Complex, Seberang Jaya</div>
 <div class="desc"><span class="cn">主题电玩城，霓虹灯装潢，机台种类多，评价指出<strong>储值卡偶有重复扣款</strong>需当场核对。与鸡饭店同在Sunway Carnival Mall，可安排在一起。</span><span class="en">Themed arcade with neon decor and a wide game selection. Reviews note the <strong>prepaid card can occasionally double-charge</strong> — worth checking balance on the spot. Same mall as The Chicken Rice Shop.</span></div>
 <div class="chips"><span class="chip verify"><span class="cn">⚠ 储值卡建议现场核对余额</span><span class="en">⚠ Check card balance on site</span></span></div>
-<a class="btn-map" href="https://maps.google.com/?cid=16491656774087039190" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=16491656774087039190" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
 </div>
 </div>
 
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">Pado Fantasyland</span><span class="en">Pado Fantasyland</span> <span class="star">⭐4.8</span></h3>
-<div class="addr">Level 4, 1st Avenue Mall, George Town</div>
+<div class="rcard" data-cat="arcade">
+<div class="galwrap">
 <div class="gal">
 <img alt="Pado Fantasyland" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDVdcKl70HCb_yQtjR9gkVUVtjcVKGQuGuybrFxOtUVYwpSbFSAHhw_NFuEO3FJjQvOtXN9AEjldhb-bGu1-THwPrtYIDhKERS9IRAkMe3MXlwNuQXTnltbB7V3X01pD3RSlYY26H-EhZZ2TuUd8qdy=s4800-w800-h600"/>
 <img alt="Pado Fantasyland" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB_NkWWlRKTsf9CSJNJPmmgsB16NGrmLQ7NcoZAPZJC27k8cm1NMNUhWigC9NGLVcD19U0u2WiqD3YJlOJmnhmlLERZSMKYv9LTCKGsibHwqpkDq6IH1SB4xLi8cmLAZitO2IzgW4e5PWczqTU=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Pado Fantasyland</span><span class="en">Pado Fantasyland</span> <span class="star">⭐4.8</span></h3>
+<div class="addr">Level 4, 1st Avenue Mall, George Town</div>
 <div class="desc"><span class="cn">室内游乐场，VR、射箭、碰碰车等设施齐全，评价很高。<strong>需穿袜子入场</strong>（可现场购买RM5），另有寄物柜（RM5/天，押金RM10）。</span><span class="en">Indoor amusement center with VR, archery, bumper cars, and more — very highly rated. <strong>Socks required</strong> (buyable for RM5 on site); lockers available (RM5/day, RM10 deposit).</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">Daily 10:00 AM–10:00 PM</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=11966902015449968690" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=11966902015449968690" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
 </div>
 </div>
 
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">Molly Fantasy</span><span class="en">Molly Fantasy</span> <span class="star">⭐3.4</span></h3>
-<div class="addr">Level 1, AEON, Queensbay Mall, Bayan Lepas</div>
+<div class="rcard" data-cat="arcade">
+<div class="galwrap">
 <div class="gal">
 <img alt="Molly Fantasy" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDhvY3ZY03nhLli2QNthTE66JXjaXppnUPJVpCP1Sjt5dItxK3rnlhikaIvTtC8xT_L5HNB1gT33Cm25ePV8XCuh4X-eQEUWToTeG0RkF2sQYH2nOv9cRBQiVcPKpElbKM5WfJivHrsfr6mq0M=s4800-w800-h600"/>
 <img alt="Molly Fantasy" src="https://lh3.googleusercontent.com/place-photos/AG9NLjD0oeJ9ehlAoT3mJaQFJ6mAcNT3U0UmCfDd1JAMOLCEqNJTZ0J5MBHluEboRmKVrRF16To04TiDr8Nxcp50J8tZXGHjBKNMkC12eLCg3X9sYdxcqp2KrMTh86HNkEY4fex8BzeH1SJRIqMWYA=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Molly Fantasy</span><span class="en">Molly Fantasy</span> <span class="star">⭐3.4</span></h3>
+<div class="addr">Level 1, AEON, Queensbay Mall, Bayan Lepas</div>
 <div class="desc"><span class="cn">跟 Neo Akedo 同类型的连锁电玩城，夹娃娃机＋节奏游戏机（maimai、太鼓达人等）为主，是槟城岛内少数有 maimai 的地方。<strong>老实说评价一般</strong>：有玩家反映机台故障、夹娃娃机中奖率偏低、职员补货不积极。可以去，但别抱太高期待，也别投太多钱。</span><span class="en">Same type of chain arcade as Neo Akedo — claw machines plus rhythm games (maimai, Taiko no Tatsujin), one of the few places on Penang Island with maimai. <strong>Reviews are honestly mixed</strong>: some report broken machines, low claw payout rates, and slow restocking by staff. Worth a visit, but keep expectations (and spending) modest.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">Daily 10:00 AM–10:00 PM</span></span>
 <span class="chip verify"><span class="cn">⚠ 评价参差，机台偶有故障</span><span class="en">⚠ Mixed reviews, machines occasionally broken</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=2715876647459355917" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=2715876647459355917" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
 </div>
 </div>
 
-<div class="bp-group-label"><span class="cn">🏛 文化古迹</span><span class="en">🏛 Culture &amp; Heritage</span></div>
-
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">极乐寺</span><span class="en">Kek Lok Si Temple</span> <span class="star">⭐4.4</span></h3>
-<div class="addr">Air Itam, Penang</div>
+<div class="pgroup" data-cat="culture">
+<div class="bp-group-label" id="pg-culture">🏛 <span class="cn">文化古迹</span><span class="en">Culture &amp; Heritage</span><span class="gn" data-groupcount="culture"></span></div>
+<div class="rcard" data-cat="culture">
+<div class="galwrap">
 <div class="gal">
 <img alt="Kek Lok Si" src="https://lh3.googleusercontent.com/place-photos/AG9NLjANTWYoJkKObkRjcSuR-TCn768lDPGD4sh6duaMOuQunpFXzXg3Z5k69GY-1EKRFvSRkWTYoA4NJk-liPGnv6E8gn0i13DIZQ_bTYKVM9nIq5Ijtn8qPUYWCVBpg411n61TI86RWy_WJER9=s4800-w800-h600"/>
 <img alt="Kek Lok Si" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDZZ5PgNk7j7yiuxNj-B0_y9pkj9tkh7r_StYuKaMBrvmsT-ON2-t2FHj6iu9OqSBXQh3cSLhjWSerellGZPfaBKE57PxacpG0m7gGwaeLoyG39ImKS7FhZUzZcFmM0AXmGJd_IeDbo-lyL=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">极乐寺</span><span class="en">Kek Lok Si Temple</span> <span class="star">⭐4.4</span></h3>
+<div class="addr">Air Itam, Penang</div>
 <div class="desc"><span class="cn">东南亚数一数二的大型佛寺，占地广，<strong>约30米高观音像</strong>与万佛塔为主要地标，逛完全程约1.5–2小时。</span><span class="en">One of Southeast Asia's largest Buddhist temple complexes; the <strong>~30m Guan Yin statue</strong> and Pagoda of Ten Thousand Buddhas are the highlights. Allow 1.5–2 hours.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 8:30–17:30</span><span class="en">Daily 8:30 AM–5:30 PM</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=3211212677007490756" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="https://kekloksitemple.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=3211212677007490756" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://kekloksitemple.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">升旗山缆车</span><span class="en">Penang Hill Funicular</span> <span class="star">⭐4.2</span></h3>
-<div class="addr">Jalan Bukit Bendera, Air Itam</div>
+<div class="rcard" data-cat="culture">
+<div class="galwrap">
 <div class="gal">
 <img alt="Penang Hill" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBjYozGskXKEfOg0EzF39aSfyjv-hJ2jR-mXDINTP2Up0Gqs-k2QvJQsxcEOL-mIqLbICAwqvQ_3mHPAYUKSmcl-_oo9G9k3sAN0Xg6Rfau2KE_zRe11bNYs8fiWvKMRI8DfFboe3swba2EOw=s4800-w800-h600"/>
 <img alt="Penang Hill" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAkFxAWkylQ3ckhWPpT1uFy6XsbsbPwP-3FQbKH8v2kCFxE5NCk1Ctb8ak1VQFnytvrZkQKkWv59icn-XaAksAGq2hPDIpWFu1ZB4eqlJ1ZLxsDmJJfq6diLhMEG0TEQHzvCciKY3cN9qDt=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">升旗山缆车</span><span class="en">Penang Hill Funicular</span> <span class="star">⭐4.2</span></h3>
+<div class="addr">Jalan Bukit Bendera, Air Itam</div>
 <div class="desc"><span class="cn">缆车登顶约5分钟，山顶气温比市区低约10°C，可俯瞰乔治市全景。评价提醒<strong>周末排队久</strong>，建议早上或购买快速通道票。</span><span class="en">~5-min funicular ride to the summit, about 10°C cooler than town, with panoramic views over George Town. Reviews note <strong>long weekend queues</strong> — go early or buy a fast-track ticket.</span></div>
 <div class="chips">
 <span class="chip verify"><span class="cn">⚠ 周末排队较久，建议早上前往</span><span class="en">⚠ Long weekend queues — go early</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=9139778477464223867" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="https://penanghill.gov.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=9139778477464223867" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://penanghill.gov.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">乔治市壁画街</span><span class="en">Penang Street Art</span> <span class="star">⭐4.4</span></h3>
-<div class="addr">Beach St / Armenian St 一带, George Town</div>
+<div class="rcard" data-cat="culture">
+<div class="galwrap">
 <div class="gal">
 <img alt="Street Art" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDcBVwjiPn-gMcemzmuffzcee5xX9KWPxcfs92zrj9rW-kxRLXS61Z1V_Rs_0bkZlf3eSSZ7aIgNorAwrIRDgaeO647gxYsvqiiUvvCMVffZY7ZsZO2zhAraPWCA-zyTABRZog_Q0PrJw08n2E6oxhr8A=s4800-w800-h600"/>
 <img alt="Street Art" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBU6pLjkLGJBMgFFlIkRypDowCBwglHkiGOy8vmTJ3urjSiElVNqLHc9ZD-jSEzXNcPgYeOISYtSgYZ65oH1Has26eUQrTfepR895qKnNqWyLTkv6Y3q6Jst8xgR7XgRADbzHjGcfryfvk4Beg=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">乔治市壁画街</span><span class="en">Penang Street Art</span> <span class="star">⭐4.4</span></h3>
+<div class="addr">Beach St / Armenian St <span class="cn">一带</span><span class="en">area</span>, George Town</div>
 <div class="desc"><span class="cn">乔治市老城区壁画、古迹建筑与小吃店交错，最有名是「小孩骑脚踏车」壁画。<strong>傍晚5点后光线与气温都更舒服</strong>。</span><span class="en">Historic murals and heritage shophouses woven through George Town's old town — the "kids on a bicycle" mural is the most famous. <strong>After 5 PM is more comfortable</strong> (cooler, better light).</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 全天开放（户外）</span><span class="en">Open 24h (outdoor)</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=16675298182508337943" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="https://streetartpenang.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=16675298182508337943" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://streetartpenang.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
 </div>
 </div>
 
-<div class="bp-group-label"><span class="cn">🏖 户外 / 主题乐园</span><span class="en">🏖 Outdoor / Theme Parks</span></div>
-
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">Batu Ferringhi 海滩</span><span class="en">Batu Ferringhi Beach</span> <span class="star">⭐4.3</span></h3>
-<div class="addr">Batu Ferringhi, Penang</div>
+<div class="pgroup" data-cat="outdoor">
+<div class="bp-group-label" id="pg-outdoor">🏖 <span class="cn">户外 · 主题乐园</span><span class="en">Outdoors &amp; Theme Parks</span><span class="gn" data-groupcount="outdoor"></span></div>
+<div class="rcard" data-cat="outdoor">
+<div class="galwrap">
 <div class="gal">
 <img alt="Batu Ferringhi" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDIq9PXlkgPUd4Z0KbFCuMgx82RoqHWKK_3t6QOICPNnu7t2v0Qa-pKmiy1oHMz7zMwNQmilolc7QmYKBSKR0wGVa39q9nYGfpDFI29lHQ2bt7Yx3h59WnhqCDjQ4S7fe20mU5zSTQmaMpo5uCGL_9U=s4800-w800-h600"/>
 <img alt="Batu Ferringhi" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB0hmbZqFroHSXqJbc4Lj7gmI2pnSWcmF2n3exMKz8XxCxEV2isvkw4taRLrda9htYPedAWLoCXzPbbz6dBZXgHVRAPLs3FNaMiC0ugr9UfeJCuYJyNvPTZRxQP8Y3vMuolIoCVndMvu__s4w=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Batu Ferringhi 海滩</span><span class="en">Batu Ferringhi Beach</span> <span class="star">⭐4.3</span></h3>
+<div class="addr">Batu Ferringhi, Penang</div>
 <div class="desc"><span class="cn">槟城最热闹的海滩，日落景色好，可玩水上摩托、拖曳伞等水上活动，沿岸餐厅、按摩店多。评价也提到<strong>较商业化、水质一般</strong>，适合看日落、逛夜市而非纯净戏水。</span><span class="en">Penang's liveliest beach, great sunsets, jet-skiing and parasailing available, plenty of beachside restaurants. Reviews also note it's <strong>commercialized with average water quality</strong> — better for sunset/night market vibes than pristine swimming.</span></div>
-<a class="btn-map" href="https://maps.google.com/?cid=2956641074386871952" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=2956641074386871952" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
 </div>
 </div>
 
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">ESCAPE Penang</span><span class="en">ESCAPE Penang</span> <span class="star">⭐4.6</span></h3>
-<div class="addr">Teluk Bahang, Penang</div>
+<div class="rcard" data-cat="outdoor">
+<div class="galwrap">
 <div class="gal">
 <img alt="ESCAPE" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDud7Pv_ITG-5xCv5YFTH9KSvjBCNbH7dAMhzPXDUBQ_2OYHpdnIY2_Py2wGZ4D35D3K5Wxht94RpbSUX4t5lAM9O0XI7VfGDJso9vrMcjEG7MCXjUWFNzp8ziT7n2iyWAiTcXcG1aXTPYTEA=s4800-w600-h450"/>
 <img alt="ESCAPE" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCkBIF8k8qauLf0B6X2qi0VJAg-5sBbjt6XkJ_G7NUPMhBiBLlBAozkJzdBGOlaoWOjlWmQ9fgWoZF8HHrVNYJsv2NZJKTbebWia_FOlEilfnKLNfa2K7wu8C25dmDcpyPsOiLpUs63ycdoFg=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">ESCAPE Penang</span><span class="en">ESCAPE Penang</span> <span class="star">⭐4.6</span></h3>
+<div class="addr">Teluk Bahang, Penang</div>
 <div class="desc"><span class="cn">丛林探险主题乐园，含水上乐园与陆上探险设施（滑索、攀爬网等），园区大、遮荫多。<strong>建议玩一整天</strong>，适合有孩子的家庭。</span><span class="en">Jungle adventure park with a water park and land-based obstacle courses (zip lines, climbing nets), large and mostly shaded. <strong>Best planned as a full day</strong> — good for families with kids.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 10:00–18:00</span><span class="en">Daily 10:00 AM–6:00 PM</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=16526880740113953376" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="https://www.escape.my/park/pg" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=16526880740113953376" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://www.escape.my/park/pg" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">倒立博物馆</span><span class="en">Upside Down Museum</span> <span class="star">⭐4.2</span></h3>
-<div class="addr">Lebuh Kimberley, George Town</div>
+<div class="rcard" data-cat="outdoor">
+<div class="galwrap">
 <div class="gal">
 <img alt="Upside Down Museum" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBsNaNdQqcWd7CYfHOL1i9wNBPp-vU87sBPP1CAtaAuWgrItvtcliWLJkWZvE0XXVApdtkloHe9PTCP808qyoNvcNgfwdTl13FzImTTQb2odro3OwoRQInLRLCCwJRQV0LlLtcWP82Wx2K5=s4800-w800-h600"/>
 <img alt="Upside Down Museum" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAnAUHN3DjxX-uRJIueVd1-2DeV2c7tdtO8ReMfNnh-P0ILsxGyx-dSbpeq48SwnjkO_7_PfoGSIkK9b-OTpc_TMa_B9hsfRYzeoVotEpTPG0YKBRiXLXo4WjODJrscthcuUpO5zzfrgp-78teriKgG=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">倒立博物馆</span><span class="en">Upside Down Museum</span> <span class="star">⭐4.2</span></h3>
+<div class="addr">Lebuh Kimberley, George Town</div>
 <div class="desc"><span class="cn">室内打卡景点，房间家具全倒挂在天花板，照片翻转后有「悬空」错觉，<strong>工作人员会协助摆拍</strong>，游玩约15–25分钟，下雨天备案选项。</span><span class="en">Indoor photo-op attraction with furniture mounted upside-down on the ceiling — flip the photo for a "floating" illusion. <strong>Staff help pose for shots</strong>; takes 15–25 min. Good rainy-day backup.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 9:30–18:30</span><span class="en">Daily 9:30 AM–6:30 PM</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=10379161048850736976" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=10379161048850736976" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
 </div>
 </div>
 
-<div class="bp-group-label"><span class="cn">🛍 购物商场</span><span class="en">🛍 Shopping Malls</span></div>
-
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">Gurney Plaza</span><span class="en">Gurney Plaza</span> <span class="star">⭐4.4</span></h3>
-<div class="addr">170, Persiaran Gurney, Pulau Tikus</div>
+<div class="pgroup" data-cat="mall">
+<div class="bp-group-label" id="pg-mall">🛍 <span class="cn">购物商场</span><span class="en">Shopping Malls</span><span class="gn" data-groupcount="mall"></span></div>
+<div class="rcard" data-cat="mall">
+<div class="galwrap">
 <div class="gal">
 <img alt="Gurney Plaza" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDT7BZc5ZyfQ2LDBrrAs0mUfeeBLGiPgzVwFceCkXHSnBM27dyWNGBgkJ3fJHjlBqGLpHm8QKybhjq4jq1Aoqh39W2M6zFD6sM9Gb4kDHTNKneh4wemxE-E4plp0kamB6y_DaFVf5dsLE-_D7Q=s4800-w800-h600"/>
 <img alt="Gurney Plaza" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCRDHzPK-RKt8yp845hsUNSVIs3E-iSiauxOh3p0TiGPQtAciGOOYt8D5q9lFJj-xRWJO6ELa_bPh8mS6mgbCQ4X2FnxWqHwm5Uivoozm0dbTN322fqBQ4Fql8LL7Zq4JOxsvYPWoDd60Pnyi5fVltLtg=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Gurney Plaza</span><span class="en">Gurney Plaza</span> <span class="star">⭐4.4</span></h3>
+<div class="addr">170, Persiaran Gurney, Pulau Tikus</div>
 <div class="desc"><span class="cn">乔治市老牌大型商场，9层楼、380+商店，紧邻Gurney Drive海边，内有电影院与美食广场。<strong>与 Miraku 同栋（G Hotel）</strong>，逛街用餐可安排在一起。</span><span class="en">Established 9-floor mall with 380+ stores right by Gurney Drive, with a cinema and food court. <strong>Same complex as Miraku</strong> (G Hotel) — easy to pair shopping and dining.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">Daily 10:00 AM–10:00 PM</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=3730796889489573290" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="https://gurneyplaza.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=3730796889489573290" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://gurneyplaza.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">Queensbay Mall</span><span class="en">Queensbay Mall</span> <span class="star">⭐4.4</span></h3>
-<div class="addr">100, Persiaran Bayan Indah, Bayan Lepas</div>
+<div class="rcard" data-cat="mall">
+<div class="galwrap">
 <div class="gal">
 <img alt="Queensbay Mall" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDfpqcvMU8C0rLtGFHBRRzUo2bapBOTVBMzDd_Vq3YLcnwCZb-pBLGz2ymjjT8Q4rc5cRIRxa_OE6fktZt4lndbodVtV8dqrVChPBi7UaOCR5xMMcYqKj-sFSISvAHu_iaGygQv11lllzki7HxgULtj=s4800-w800-h600"/>
 <img alt="Queensbay Mall" src="https://lh3.googleusercontent.com/place-photos/AG9NLjA9iwxLEjCjXPSU8fXg2H4JDgNEpeYulRfUprzLtLuuWfgnX_8spBmUGBM4I4dvm6hTpg1CBVC9h-UcDorrjxpUz8c2NfBxYwMe7q2VYgsydW5yKS2lyiYoRh0yn34MFpnQ3j1-l9WH3CN4SQ=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Queensbay Mall</span><span class="en">Queensbay Mall</span> <span class="star">⭐4.4</span></h3>
+<div class="addr">100, Persiaran Bayan Indah, Bayan Lepas</div>
 <div class="desc"><span class="cn">槟城最大商场之一，滨海地带，AEON超市、大型美食广场。<strong>与龙依北京烤鸭同商场</strong>，可安排在一起。</span><span class="en">One of Penang's largest malls, waterfront location, AEON supermarket and a large food hall. <strong>Same mall as Dragon-i Peking Duck</strong> — easy to combine.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 10:30–22:30</span><span class="en">Daily 10:30 AM–10:30 PM</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=18074308093244101445" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="https://queensbaymallmalaysia.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=18074308093244101445" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://queensbaymallmalaysia.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 
-<div class="rcard">
-<div class="rb">
-<h3><span class="cn">Sunway Carnival Mall</span><span class="en">Sunway Carnival Mall</span> <span class="star">⭐4.3</span></h3>
-<div class="addr">Jalan Todak, Seberang Jaya</div>
+<div class="rcard" data-cat="mall">
+<div class="galwrap">
 <div class="gal">
 <img alt="Sunway Carnival Mall" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAqhjbYZsCjZavts8q_qVKD-JV6wF11FAkdlse-cioCoASLDL7dU4C-QA06jby0KikPEh1fPjSq-YkRH0mDH8jlp59aQq9nCgj9r_q8cqC0oiR6mFiIqhyyML_C0kFvghuGojMNvRqTe4f-Qg=s4800-w800-h600"/>
 <img alt="Sunway Carnival Mall" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDF0YdmMz4wozH1dNsZMwWoVd_F8WmVBbrZiGBQDaqQICZHjJxvUz8KSdKPnyzcr0-xhDuZ6l-nbTXclEF0D6sr_VfliSk-xsX9IxekpU107y1f1FFJ8t0ocvMXRhD1zVZv6LhOKS3irpq88ww5MijrEA=s4800-w720-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动看更多 →</span><span class="en">← swipe for more →</span></div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Sunway Carnival Mall</span><span class="en">Sunway Carnival Mall</span> <span class="star">⭐4.3</span></h3>
+<div class="addr">Jalan Todak, Seberang Jaya</div>
 <div class="desc"><span class="cn">槟城北部（Seberang Jaya）大型商场，<strong>与鸡饭店、Neo Akedo、鼎泰豐同商场</strong>，可安排一起逛。评价提到周末停车位较紧张。</span><span class="en">Large mall in the northern (Seberang Jaya) side of Penang — <strong>same mall as The Chicken Rice Shop, Neo Akedo, and Din Tai Fung</strong>. Reviews note weekend parking can be tight.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">Daily 10:00 AM–10:00 PM</span></span>
 <span class="chip verify"><span class="cn">⚠ 周末停车位较紧张</span><span class="en">⚠ Weekend parking can be tight</span></span>
 </div>
-<a class="btn-map" href="https://maps.google.com/?cid=4621355258783297564" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a>
-<a class="btn-web" href="https://www.sunwaycarnival.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=4621355258783297564" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://www.sunwaycarnival.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
-
+</div>
+<div class="pempty" id="pempty"><span class="cn">这个分类下暂时没有地点。</span><span class="en">No places in this category yet.</span></div>
 </section>
 
 <!-- ===== WEATHER ===== -->
 <section id="weather">
-<div class="sec-head"><span class="no">05</span><h2><span class="cn">天气</span><span class="en">Weather</span></h2><span class="rule"></span></div>
+<div class="sec-head"><span class="no">05</span><h2><span class="cn">天气</span><span class="en">Weather</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 <div class="note amber">
 <span class="cn">⚠ 出发日期（10月）距今超过7周，暂无逐日天气预报，以下为槟城10月<strong>历史平均气候</strong>数据，非实时预报，出发前一周请再查证。</span>
 <span class="en">⚠ Oct is more than 7 weeks out — no day-by-day forecast yet. Figures below are <strong>historical climate averages</strong> for Penang in October, not a live forecast; re-check about a week before departure.</span>
@@ -753,7 +1008,7 @@
 
 <!-- ===== CHECKLIST ===== -->
 <section id="checklist">
-<div class="sec-head"><span class="no">06</span><h2><span class="cn">必办事项</span><span class="en">Checklist</span></h2><span class="rule"></span></div>
+<div class="sec-head"><span class="no">06</span><h2><span class="cn">必办事项</span><span class="en">Checklist</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 <div class="cklist">
 <div class="ck"><div class="box"></div><div><div class="m"><span class="cn">确认6人名单是否正确（少了 Hor Bunseryi）</span><span class="en">Confirm 6-pax list is correct (Hor Bunseryi missing)</span></div><div class="s"><span class="cn">见航班区块提示</span><span class="en">See note in Flights section</span></div></div><span class="flag amber"><span class="cn">待确认</span><span class="en">Pending</span></span></div>
 <div class="ck"><div class="box"></div><div><div class="m"><span class="cn">跟航空公司确认回程末段（SIN→KTI）能否调整座位</span><span class="en">Check with airline on SIN→KTI seat split</span></div></div><span class="flag amber"><span class="cn">待确认</span><span class="en">Pending</span></span></div>
@@ -766,50 +1021,216 @@
 </section>
 
 <footer>
+<div class="band tiles" aria-hidden="true"></div>
 <div class="mark">PENANG · OCT 2026</div>
 <p><span class="cn">草稿版本 · 待补充每日行程后更新</span><span class="en">Draft version · to be updated once daily itinerary is confirmed</span></p>
 </footer>
 </div>
 
-<div class="lb" id="lb">
-<button class="lb-close" onclick="closeLb()">✕</button>
-<button class="lb-arrow prev" onclick="lbNav(-1)">‹</button>
-<img id="lbImg"/>
-<button class="lb-arrow next" onclick="lbNav(1)">›</button>
+<button class="fab" id="fab" type="button" aria-label="快速跳转章节 / Quick section jump" aria-haspopup="dialog">☰</button>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="快速跳转 / Quick jump">
+<div class="mask" id="sheetMask"></div>
+<div class="panel">
+<div class="grip" aria-hidden="true"></div>
+<div class="st"><span class="cn">快速跳转</span><span class="en">Quick jump</span></div>
+<div class="links">
+<a href="#flights"><span class="e" aria-hidden="true">✈️</span><span class="cn">航班</span><span class="en">Flights</span></a>
+<a href="#stay"><span class="e" aria-hidden="true">🏠</span><span class="cn">住宿</span><span class="en">Stay</span></a>
+<a href="#dining"><span class="e" aria-hidden="true">🍽</span><span class="cn">餐厅</span><span class="en">Dining</span></a>
+<a href="#places"><span class="e" aria-hidden="true">📍</span><span class="cn">去处</span><span class="en">Places</span></a>
+<a href="#weather"><span class="e" aria-hidden="true">🌡</span><span class="cn">天气</span><span class="en">Weather</span></a>
+<a href="#checklist"><span class="e" aria-hidden="true">✅</span><span class="cn">必办</span><span class="en">Checklist</span></a>
+</div>
+<button class="top" id="toTop" type="button">↑ <span class="cn">回到顶部</span><span class="en">Back to top</span></button>
+</div>
+</div>
+
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="图片放大 / Photo viewer">
+<button class="lb-close" onclick="closeLb()" aria-label="关闭 / Close">✕</button>
+<button class="lb-arrow prev" onclick="lbNav(-1)" aria-label="上一张 / Previous">‹</button>
+<img id="lbImg" alt="放大显示的地点照片 / Enlarged photo of the selected place"/>
+<button class="lb-arrow next" onclick="lbNav(1)" aria-label="下一张 / Next">›</button>
 <div class="lb-counter" id="lbCounter"></div>
 </div>
 
 <script>
-document.querySelectorAll('.ck').forEach(function(ck){
-  ck.addEventListener('click', function(){
-    ck.classList.toggle('done');
-    const total = document.querySelectorAll('.ck').length;
-    const done = document.querySelectorAll('.ck.done').length;
-    const p = document.querySelector('.ck-progress');
-    if(p){
-      p.querySelector('.cn').textContent = done + ' / ' + total + ' 已完成';
-      p.querySelector('.en').textContent = done + ' / ' + total + ' done';
-    }
+/* ---------- 语言：优先手选(siteLangUser) > 系统语言 ---------- */
+function applyLang(lang){
+  var en = lang === 'en';
+  document.body.classList.toggle('lang-en', en);
+  document.documentElement.lang = en ? 'en' : 'zh';
+  var b = document.getElementById('langBtn');
+  if (b) b.textContent = en ? '中' : 'EN';
+}
+function toggleLang(){
+  var next = document.body.classList.contains('lang-en') ? 'zh' : 'en';
+  applyLang(next);
+  try { localStorage.setItem('siteLangUser', next); } catch (e) {}
+}
+window.addEventListener('storage', function(e){
+  if (e.key === 'siteLangUser' && e.newValue) applyLang(e.newValue);
+});
+(function initLang(){
+  var lang = null;
+  try { lang = localStorage.getItem('siteLangUser'); } catch (e) {}
+  if (!lang) lang = (navigator.language || '').startsWith('zh') ? 'zh' : 'en';
+  applyLang(lang);
+})();
+
+/* ---------- 计数：全部由 JS 算，页面上不写死数字 ---------- */
+var diningCards = document.querySelectorAll('#dining .rcard');
+var placeCards  = Array.prototype.slice.call(document.querySelectorAll('#places .rcard'));
+placeCards.forEach(function(c){
+  if (!c.dataset.cat){
+    var g = c.closest('.pgroup');
+    if (g && g.dataset.cat) c.dataset.cat = g.dataset.cat;
+  }
+});
+function fillCount(attr, n){
+  document.querySelectorAll('[' + attr + ']').forEach(function(el){ el.textContent = n; });
+}
+document.querySelectorAll('[data-count]').forEach(function(el){
+  var k = el.getAttribute('data-count');
+  el.textContent = (k === 'dining' ? diningCards.length : placeCards.length);
+});
+document.querySelectorAll('[data-catcount]').forEach(function(el){
+  var cat = el.getAttribute('data-catcount');
+  el.textContent = cat === 'all' ? placeCards.length
+    : placeCards.filter(function(c){ return c.dataset.cat === cat; }).length;
+});
+document.querySelectorAll('[data-groupcount]').forEach(function(el){
+  var cat = el.getAttribute('data-groupcount');
+  el.textContent = placeCards.filter(function(c){ return c.dataset.cat === cat; }).length;
+});
+
+/* ---------- 卡片序号（按区块自动编号，不手打） ---------- */
+function numberCards(list){
+  list.forEach(function(card, i){
+    var wrap = card.querySelector('.galwrap');
+    if (!wrap || wrap.querySelector('.idx')) return;
+    var b = document.createElement('span');
+    b.className = 'idx';
+    b.setAttribute('aria-hidden', 'true');
+    b.textContent = (i + 1 < 10 ? '0' : '') + (i + 1);
+    wrap.appendChild(b);
+  });
+}
+numberCards(Array.prototype.slice.call(diningCards));
+document.querySelectorAll('#places .pgroup').forEach(function(g){
+  numberCards(Array.prototype.slice.call(g.querySelectorAll('.rcard')));
+});
+
+/* ---------- 去处筛选 ---------- */
+var pchips = document.querySelectorAll('.pchip');
+var pcount = document.getElementById('pcount');
+var pempty = document.getElementById('pempty');
+function filterPlaces(cat){
+  var shown = 0;
+  document.querySelectorAll('#places .pgroup').forEach(function(g){
+    var vis = 0;
+    g.querySelectorAll('.rcard').forEach(function(c){
+      var show = (cat === 'all') || (c.dataset.cat === cat);
+      c.classList.toggle('hide', !show);
+      if (show) vis++;
+    });
+    g.classList.toggle('hide', vis === 0);
+    shown += vis;
+  });
+  pchips.forEach(function(ch){
+    ch.setAttribute('aria-pressed', ch.dataset.cat === cat ? 'true' : 'false');
+  });
+  if (pempty) pempty.classList.toggle('show', shown === 0);
+  if (pcount){
+    pcount.innerHTML = '<span class="cn">显示 ' + shown + ' 个去处</span>'
+                     + '<span class="en">Showing ' + shown + ' place' + (shown === 1 ? '' : 's') + '</span>';
+  }
+}
+pchips.forEach(function(ch){
+  ch.addEventListener('click', function(){
+    filterPlaces(ch.dataset.cat);
+    var sec = document.getElementById('places');
+    var top = sec.getBoundingClientRect().top + window.pageYOffset - 96;
+    if (window.pageYOffset > top) window.scrollTo({ top: top, behavior: 'smooth' });
   });
 });
-function toggleLang(){
-  document.body.classList.toggle('lang-en');
-  document.getElementById('langBtn').textContent = document.body.classList.contains('lang-en') ? '中' : 'EN';
+filterPlaces('all');
+
+/* ---------- 倒数 ---------- */
+(function countdown(){
+  var el = document.getElementById('countdown');
+  if (!el) return;
+  var start = new Date(2026, 9, 9), end = new Date(2026, 9, 17);
+  var now = new Date(); now = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var days = Math.round((start - now) / 86400000);
+  var cn, en;
+  if (days > 0){ cn = '距出发还有 <b>' + days + '</b> 天'; en = '<b>' + days + '</b> day' + (days === 1 ? '' : 's') + ' to departure'; }
+  else if (now <= end){ var d = Math.round((now - start) / 86400000) + 1; cn = '行程进行中 · 第 <b>' + d + '</b> 天'; en = 'Day <b>' + d + '</b> of the trip'; }
+  else { cn = '行程已结束 · 谢谢一路同行'; en = 'Trip completed'; }
+  el.querySelector('.cn').innerHTML = cn;
+  el.querySelector('.en').innerHTML = en;
+})();
+
+/* ---------- 必办事项 ---------- */
+function renderProgress(){
+  var total = document.querySelectorAll('.ck').length;
+  var done  = document.querySelectorAll('.ck.done').length;
+  var p = document.querySelector('.ck-progress');
+  if (!p) return;
+  p.querySelector('.cn').textContent = done + ' / ' + total + ' 已完成';
+  p.querySelector('.en').textContent = done + ' / ' + total + ' done';
 }
-let lbImages = [], lbIndex = 0;
+document.querySelectorAll('.ck').forEach(function(ck){
+  ck.setAttribute('role', 'button');
+  ck.setAttribute('tabindex', '0');
+  function flip(){ ck.classList.toggle('done'); renderProgress(); }
+  ck.addEventListener('click', flip);
+  ck.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); flip(); }
+  });
+});
+renderProgress();
+
+/* ---------- 章节高亮 ---------- */
+var navLinks = Array.prototype.slice.call(document.querySelectorAll('.navstrip a'));
+var secs = navLinks.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+function spy(){
+  var y = window.pageYOffset + 120, cur = 0;
+  secs.forEach(function(sec, i){ if (sec && sec.offsetTop <= y) cur = i; });
+  navLinks.forEach(function(a, i){ a.classList.toggle('on', i === cur); });
+}
+window.addEventListener('scroll', spy, { passive: true });
+spy();
+
+/* ---------- 快速跳转面板 ---------- */
+var sheet = document.getElementById('sheet');
+function openSheet(){ sheet.classList.add('open'); }
+function closeSheet(){ sheet.classList.remove('open'); }
+document.getElementById('fab').addEventListener('click', openSheet);
+document.getElementById('sheetMask').addEventListener('click', closeSheet);
+sheet.querySelectorAll('.links a').forEach(function(a){ a.addEventListener('click', closeSheet); });
+document.getElementById('toTop').addEventListener('click', function(){
+  closeSheet();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+/* ---------- 灯箱 ---------- */
+var lbImages = [], lbIndex = 0;
 document.querySelectorAll('.gal').forEach(function(gal){
-  const imgs = Array.from(gal.querySelectorAll('img'));
+  var imgs = Array.prototype.slice.call(gal.querySelectorAll('img'));
   imgs.forEach(function(img, i){
     img.addEventListener('click', function(){
-      lbImages = imgs.map(function(im){ return im.src; });
+      lbImages = imgs.map(function(im){ return { src: im.src, alt: im.alt }; });
       lbIndex = i;
       openLb();
     });
   });
 });
 function openLb(){
-  document.getElementById('lbImg').src = lbImages[lbIndex];
-  document.getElementById('lbCounter').textContent = (lbIndex+1) + ' / ' + lbImages.length;
+  var it = lbImages[lbIndex];
+  var im = document.getElementById('lbImg');
+  im.src = it.src;
+  im.alt = it.alt || '放大显示的地点照片 / Enlarged photo';
+  document.getElementById('lbCounter').textContent = (lbIndex + 1) + ' / ' + lbImages.length;
   document.getElementById('lb').classList.add('open');
 }
 function closeLb(){ document.getElementById('lb').classList.remove('open'); }
@@ -817,6 +1238,16 @@ function lbNav(d){
   lbIndex = (lbIndex + d + lbImages.length) % lbImages.length;
   openLb();
 }
+document.getElementById('lb').addEventListener('click', function(e){
+  if (e.target === this) closeLb();
+});
+document.addEventListener('keydown', function(e){
+  if (document.getElementById('lb').classList.contains('open')){
+    if (e.key === 'Escape') closeLb();
+    if (e.key === 'ArrowLeft') lbNav(-1);
+    if (e.key === 'ArrowRight') lbNav(1);
+  } else if (e.key === 'Escape') closeSheet();
+});
 </script>
 </body>
 </html>
