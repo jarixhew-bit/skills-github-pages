@@ -213,6 +213,20 @@
   .wx .city { font-size: 12.5px; font-weight: 800; color: var(--muted); letter-spacing: .04em; }
   .wx .temp { font-family: var(--serif); font-size: 29px; font-weight: 700; color: var(--coral); margin: 3px 0 1px; }
   .wx .s { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  /* 逐日预报：出发前约两周内、open-meteo 抓得到时才会填内容并显示 */
+  .wxdaily { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-bottom: 12px; }
+  .wxdaily::-webkit-scrollbar { display: none; }
+  .wxdaily[hidden] { display: none; }
+  .wxd {
+    scroll-snap-align: start; flex: none; width: 84px; text-align: center;
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 10px 6px 11px; box-shadow: var(--shadow);
+  }
+  .wxd-d { font-size: 12px; font-weight: 800; color: var(--ink-2); line-height: 1.4; }
+  .wxd-i { font-size: 22px; margin: 5px 0 2px; }
+  .wxd-t { font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--ink); }
+  .wxd-p { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .wxd.wet .wxd-p { color: var(--coral); font-weight: 800; }
 
   /* ===== TABLE / NOTES ===== */
   .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 13px; margin-top: 8px; }
@@ -954,10 +968,11 @@
 <!-- ===== WEATHER ===== -->
 <section id="weather">
 <div class="sec-head"><span class="no">04</span><h2><span class="cn">天气</span><span class="en">Weather</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
-<div class="note amber">
-<span class="cn">⚠ 出发日期（10月）距今超过7周，暂无逐日天气预报，以下为槟城10月<strong>历史平均气候</strong>数据，非实时预报，出发前一周请再查证。</span>
-<span class="en">⚠ Oct is more than 7 weeks out — no day-by-day forecast yet. Figures below are <strong>historical climate averages</strong> for Penang in October, not a live forecast; re-check about a week before departure.</span>
+<div class="note amber" id="wxNote">
+<span class="cn">⚠ 天气载入中…</span>
+<span class="en">⚠ Loading weather info…</span>
 </div>
+<div class="wxdaily" id="wxdaily" hidden></div>
 <div class="wx-grid">
 <div class="wx">
 <div class="city"><span class="cn">日间高温</span><span class="en">Avg. High</span></div>
@@ -1160,6 +1175,102 @@ document.addEventListener('keydown', function(e){
     if (e.key === 'ArrowRight') lbNav(1);
   }
 });
+
+/* 天气：#weather 区块。行程 10/9–10/17 共9天。open-meteo 只给未来约16天，
+   整趟还在窗口外时（现在就是）连请求都不发，只显示倒数提示 + 历史气候平均（一直显示，
+   在 .wx-grid 里，不受本段影响）。进窗口后抓到就渲染逐日卡片；抓失败/不完整则静默
+   退回倒数提示样式，绝不留空卡片。三种情境见 tools/check-weather.mjs。 */
+(function weather() {
+  var note = document.getElementById('wxNote');
+  var daily = document.getElementById('wxdaily');
+  if (!note || !daily) return;
+  var DATES = ['2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13',
+               '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17'];
+  var WD_CN = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  var WD_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var CLIMO_LO = 24, CLIMO_HI = 32; /* 与下方 .wx-grid 历史平均一致，逐日卡片抓不到时用它垫底 */
+  function fill(el, cn, en) { el.innerHTML = '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
+  function wmo(c) {
+    if (c === 0) return { i: '☀️', cn: '晴', en: 'Clear' };
+    if (c <= 2) return { i: '🌤', cn: '多云时晴', en: 'Mostly sunny' };
+    if (c === 3) return { i: '☁️', cn: '阴', en: 'Overcast' };
+    if (c <= 48) return { i: '🌫', cn: '有雾', en: 'Fog' };
+    if (c <= 57) return { i: '🌦', cn: '毛毛雨', en: 'Drizzle' };
+    if (c <= 67) return { i: '🌧', cn: '有雨', en: 'Rain' };
+    if (c <= 82) return { i: '🌧', cn: '阵雨', en: 'Showers' };
+    if (c <= 99) return { i: '⛈', cn: '雷阵雨', en: 'Thunderstorms' };
+    return { i: '🌤', cn: '天气一般', en: 'Mixed' };
+  }
+  var DAY = 86400000, HORIZON_DAYS = 16;
+  var iso = function (d) { return d.toISOString().slice(0, 10); };
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var horizon = new Date(today.getTime() + HORIZON_DAYS * DAY);
+  var start = DATES[0], end = DATES[DATES.length - 1];
+  function daysUntil(dateStr) {
+    return Math.round((new Date(dateStr + 'T00:00:00').getTime() - today.getTime()) / DAY);
+  }
+  function dayLabel(dateStr) {
+    var mm = parseInt(dateStr.slice(5, 7), 10), dd = parseInt(dateStr.slice(8, 10), 10);
+    var dow = new Date(dateStr + 'T00:00:00').getDay();
+    return '<div class="wxd-d">' + mm + '/' + dd + '<br><span class="cn">' + WD_CN[dow]
+      + '</span><span class="en">' + WD_EN[dow] + '</span></div>';
+  }
+  function showCountdown(reason) {
+    var n = daysUntil(start);
+    var extraCn = reason ? '（' + reason.cn + '）' : '';
+    var extraEn = reason ? ' (' + reason.en + ')' : '';
+    var cn, en;
+    if (n > 0) {
+      cn = '⚠ 距出发还有 ' + n + ' 天，暂无逐日天气预报' + extraCn + '，以下为槟城10月<strong>历史平均气候</strong>数据，非实时预报，出发前约2周会自动改成逐日预报。';
+      en = '⚠ ' + n + ' days to departure — no day-by-day forecast yet' + extraEn + '. Figures below are <strong>historical climate averages</strong> for Penang in October, not a live forecast; a daily forecast appears automatically about 2 weeks out.';
+    } else {
+      cn = '⚠ 暂无逐日天气预报' + extraCn + '，以下为槟城10月<strong>历史平均气候</strong>数据，非实时预报。';
+      en = '⚠ No day-by-day forecast available' + extraEn + '. Figures below are <strong>historical climate averages</strong> for Penang in October, not a live forecast.';
+    }
+    fill(note, cn, en);
+    daily.hidden = true;
+    daily.innerHTML = '';
+  }
+  /* 整趟都在16天窗口外：不发请求（发了会拿到400，看起来像没网，误导人去查WiFi） */
+  if (start > iso(horizon)) { showCountdown(); return; }
+  var reqStart = start < iso(today) ? iso(today) : start;
+  var reqEnd = end > iso(horizon) ? iso(horizon) : end;
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude=5.4141&longitude=100.3288'
+    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+    + '&timezone=Asia%2FKuala_Lumpur&start_date=' + reqStart + '&end_date=' + reqEnd;
+  fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (j) {
+    var d = j && j.daily;
+    if (!d || !d.time || !d.time.length) throw new Error('empty');
+    var idx = {};
+    d.time.forEach(function (t, i) { idx[t] = i; });
+    var html = '', haveAny = false;
+    DATES.forEach(function (dateStr) {
+      var i = idx[dateStr];
+      var label = dayLabel(dateStr);
+      if (i === undefined || d.temperature_2m_max[i] === null || d.temperature_2m_max[i] === undefined) {
+        /* 这一天还没进 open-meteo 窗口（只有出发前约16天内的日子有），用历史平均垫底，不留空格 */
+        html += '<div class="wxd" data-wx="' + dateStr + '">' + label
+          + '<div class="wxd-i">🌤</div><div class="wxd-t">' + CLIMO_LO + '–' + CLIMO_HI + '°</div>'
+          + '<div class="wxd-p"><span class="cn">常态</span><span class="en">avg</span></div></div>';
+        return;
+      }
+      haveAny = true;
+      var w = wmo(d.weather_code[i]);
+      var hi = Math.round(d.temperature_2m_max[i]), lo = Math.round(d.temperature_2m_min[i]);
+      var pop = d.precipitation_probability_max[i];
+      html += '<div class="wxd' + (pop >= 60 ? ' wet' : '') + '" data-wx="' + dateStr + '">' + label
+        + '<div class="wxd-i">' + w.i + '</div><div class="wxd-t">' + lo + '–' + hi + '°</div>'
+        + '<div class="wxd-p">' + pop + '%</div></div>';
+    });
+    if (!haveAny) throw new Error('none-in-range');
+    daily.innerHTML = html;
+    daily.hidden = false;
+    fill(note, '☀ 以下是槟城10月9–17日<strong>逐日天气预报</strong>（open-meteo，出发前约16天内可查），灰色「常态」格是还没进预报窗口的日子，用历史气候平均垫底；再往下 .wx-grid 是整月的历史平均参考。',
+      '☀ Day-by-day <strong>forecast</strong> for Oct 9–17 in Penang below (open-meteo, available within ~16 days of each date); gray "avg" cards are days not in the forecast window yet, filled with historical climate averages; the figures further down are the full-month historical averages for reference.');
+  }).catch(function () {
+    showCountdown({ cn: '暂时取不到实时预报', en: 'live forecast unavailable right now' });
+  });
+})();
 </script>
 </body>
 </html>

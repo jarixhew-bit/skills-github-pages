@@ -146,6 +146,17 @@ URL: .../penang-trip/
 `spy()` 靠 navstrip href 与 section id 一致（现在只有 4 个 section，删区块必须同步删导航项）；
 lightbox 从 `.gal>img` 的 src/alt 取图，`#lbImg` 的 alt 会跟着换（所以每张图的 alt
 写成「名称 照片 N / Name photo N」，别写空 alt）。
+天气区块（04,:955起）跟 singapore-trip 共用同一套「前端现抓 open-meteo」机制，但落地方式
+不同——singapore 是挂在每天行程卡上的 `.wx[data-wx]`，penang **没有逐日行程列**，改成
+`#weather` 区块里 `#wxNote`（状态/倒数提示，JS 现算「距出发还有 N 天」）+ `#wxdaily`
+（默认 `hidden`，只有「进入16天预报窗口且抓到数据」才显示，内含 9 张
+`.wxd[data-wx="2026-10-0X"]` 逐日卡，横向可滑动）。三态：①整趟在窗口外（现在就是，距10/9
+约49天）→ 不发请求，只显示倒数 ＋ 下方 `.wx-grid` 历史气候平均；②进窗口抓到→渲染9卡，
+个别天若API没给就用历史平均「常态」垫底（不留空卡）；③API失败→静默退回倒数提示+一句
+「暂时取不到实时预报」，`#wxdaily`仍hidden。坐标
+`latitude=5.4141&longitude=100.3288&timezone=Asia/Kuala_Lumpur`。改这段必跑
+`node tools/check-weather.mjs`（该脚本已扩充为同时验 singapore + penang 两页，先起
+`python3 -m http.server 8899`）。
 双语：siteLangUser，新页无旧 key 兜底。PWA：不适用。
 已知坑：
 - 单行最长约 750 字符（图片外链）；地址等**卡片外壳文字也必须包 cn/en**（如七廊粿條湯的
