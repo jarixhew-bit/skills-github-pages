@@ -214,22 +214,6 @@
   .wx .temp { font-family: var(--serif); font-size: 29px; font-weight: 700; color: var(--coral); margin: 3px 0 1px; }
   .wx .s { font-size: 12px; color: var(--muted); line-height: 1.5; }
 
-  /* ===== CHECKLIST ===== */
-  .cklist { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
-  .ck { display: flex; gap: 13px; padding: 15px 16px; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; align-items: flex-start; }
-  .ck:last-child { border-bottom: none; }
-  .ck:active { background: var(--paper); }
-  .ck .box { flex: none; width: 24px; height: 24px; margin-top: 1px; border: 2px solid var(--faint); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; background: var(--card); }
-  .ck.done .box { background: var(--green); border-color: var(--green); }
-  .ck.done .box::after { content: "✓"; }
-  .ck .m { font-size: 14.5px; font-weight: 700; line-height: 1.5; }
-  .ck .s { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
-  .ck.done .m, .ck.done .s { opacity: .45; }
-  .ck.done .m { text-decoration: line-through; }
-  .ck-progress { font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 10px 2px 0; }
-  .ck .flag { flex: none; font-size: 10.5px; font-weight: 800; border-radius: 999px; padding: 3px 9px; margin-top: 3px; }
-  .ck .flag.amber { background: var(--gold-soft); color: #7c6220; border: 1px solid var(--gold-line); }
-
   /* ===== TABLE / NOTES ===== */
   .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 13px; margin-top: 8px; }
   .tbl th { background: #142624; color: #fff; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 9px 12px; text-align: left; font-weight: 700; }
@@ -326,6 +310,7 @@
     border-radius: 999px; padding: 0 13px; line-height: 32px;
     font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--sans); white-space: nowrap;
   }
+  .pchip[hidden] { display: none; }
   .pchip .n { font-size: 10.5px; font-weight: 800; color: var(--muted); background: var(--paper-2); border-radius: 999px; padding: 0 6px; line-height: 16px; }
   .pchip[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #fff; }
   .pchip[aria-pressed="true"] .n { background: rgba(255,255,255,.25); color: #fff; }
@@ -337,38 +322,6 @@
 
   .sec-meta { font-size: 12.5px; font-weight: 700; color: var(--muted); margin: -6px 2px 12px; }
 
-  /* ===== FLOATING QUICK NAV ===== */
-  .fab {
-    position: fixed; right: 16px; bottom: 20px; z-index: 500;
-    width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
-    background: var(--teal); color: #fff; font-size: 23px;
-    box-shadow: 0 10px 26px -8px rgba(14,107,99,.85);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .fab:active { transform: scale(.94); }
-  .sheet { position: fixed; inset: 0; z-index: 600; display: none; }
-  .sheet.open { display: block; }
-  .sheet .mask { position: absolute; inset: 0; background: rgba(18,33,31,.55); }
-  .sheet .panel {
-    position: absolute; left: 0; right: 0; bottom: 0;
-    background: var(--paper); border-radius: 20px 20px 0 0;
-    padding: 8px 16px calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -12px 40px -14px rgba(0,0,0,.5);
-  }
-  .sheet .grip { width: 42px; height: 4px; border-radius: 999px; background: var(--line-2); margin: 8px auto 12px; }
-  .sheet .st { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 2px 10px; }
-  .sheet .links { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-  .sheet .links a {
-    display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 0 14px;
-    background: var(--card); border: 1px solid var(--line-2); border-radius: 14px;
-    text-decoration: none; color: var(--ink); font-size: 14.5px; font-weight: 700;
-  }
-  .sheet .links a .e { font-size: 18px; }
-  .sheet .top {
-    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
-    margin-top: 10px; min-height: 46px; border-radius: 14px; cursor: pointer;
-    background: var(--teal); color: #fff; border: none; font-size: 14px; font-weight: 700; font-family: var(--sans);
-  }
-
   /* ===== FOOTER ===== */
   footer { text-align: center; padding: 34px 20px 26px; }
   footer .band { height: 9px; color: var(--line-2); max-width: 200px; margin: 0 auto 16px; }
@@ -378,7 +331,6 @@
   @media (min-width: 620px) {
     .cover img.bg { height: 400px; }
     .cover h1 { font-size: 44px; }
-    .sheet .links { grid-template-columns: repeat(3, 1fr); }
   }
 </style>
 </head>
@@ -390,11 +342,9 @@
 </header>
 <nav class="navstrip" id="navstrip" aria-label="章节导航 / Section navigation">
 <a href="#flights">✈️ <span class="cn">航班</span><span class="en">Flights</span></a>
-<a href="#stay">🏠 <span class="cn">住宿</span><span class="en">Stay</span></a>
 <a href="#dining">🍽 <span class="cn">餐厅</span><span class="en">Dining</span><span class="n" data-count="dining"></span></a>
 <a href="#places">📍 <span class="cn">去处</span><span class="en">Places</span><span class="n" data-count="places"></span></a>
 <a href="#weather">🌡 <span class="cn">天气</span><span class="en">Weather</span></a>
-<a href="#checklist">✅ <span class="cn">必办</span><span class="en">Checklist</span></a>
 </nav>
 <div class="wrap">
 <div class="cover">
@@ -416,19 +366,14 @@
 <div class="tip">
 <span class="ico" aria-hidden="true">👆</span>
 <div>
-<span class="cn"><strong>怎么用这本手册：</strong>绿色按钮开地图、蓝色按钮开官网；照片可左右滑、点一下放大；「推荐去处」上方的彩色标签可筛选类型；右下角圆钮随时跳章节。标注「⚠ 需确认」的项目以实际预订为准。</span>
-<span class="en"><strong>How to use this handbook:</strong> green buttons open maps, blue buttons open websites; photo strips swipe sideways and tap to enlarge; the coloured chips above "Places to Visit" filter by type; the round button at the bottom-right jumps between sections. Items marked "⚠ verify" should be confirmed.</span>
+<span class="cn"><strong>怎么用这本手册：</strong>绿色按钮开地图、蓝色按钮开官网；照片可左右滑、点一下放大；「推荐去处」上方的彩色标签可筛选类型；顶部的章节条可随时跳到别的区块。标注「⚠ 需确认」的项目以实际预订为准。</span>
+<span class="en"><strong>How to use this handbook:</strong> green buttons open maps, blue buttons open websites; photo strips swipe sideways and tap to enlarge; the coloured chips above "Places to Visit" filter by type; the sticky bar at the top jumps between sections. Items marked "⚠ verify" should be confirmed.</span>
 </div>
 </div>
 
 <!-- ===== FLIGHTS ===== -->
 <section id="flights">
 <div class="sec-head"><span class="no">01</span><h2><span class="cn">航班</span><span class="en">Flights</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
-
-<div class="note amber">
-<span class="cn">⚠ 此团<strong>共6人</strong>：Hew Chern Yang、Tan Kuan Ze、Tan Chin Hooi（老板）、Thun Savry、Chet Pov、Tan Yong Liang。与常见的7人团不同，麻烦确认是否本来就是6人出行。</span>
-<span class="en">⚠ This trip has <strong>6 passengers</strong>: Hew Chern Yang, Tan Kuan Ze, Tan Chin Hooi (Boss), Thun Savry, Chet Pov, Tan Yong Liang — different from the usual 7-pax group. Please confirm this is intentional.</span>
-</div>
 
 <div class="bp-group-label"><span class="cn">🛫 去程 · 10月9日（五）· 金边 → 槟城</span><span class="en">🛫 Outbound · Oct 9 (Fri) · Phnom Penh → Penang</span></div>
 
@@ -506,45 +451,29 @@
 <a class="track" href="https://www.flightaware.com/live/flight/SIA158" target="_blank">📡 <span class="cn">追踪 SQ158</span><span class="en">Track SQ158</span></a>
 </div>
 
-<div class="note amber">
-<span class="cn">⚠ 最后一段（SIN→KTI）座位<strong>没有全部坐在一起</strong>：Hew Chern Yang（50C）与 Chet Pov（50B）在标准座位区，其余4人在45排；前面三段大家都在同一区。建议出发前跟航空公司确认是否能调整。</span>
-<span class="en">⚠ On the final leg (SIN→KTI), seats are <strong>not all together</strong>: Hew Chern Yang (50C) and Chet Pov (50B) are in Standard Seats, while the other 4 are in row 45; all previous legs kept everyone together. Worth checking with the airline before departure.</span>
-</div>
-
 <div class="bp-group-label"><span class="cn">🧳 行李额</span><span class="en">🧳 Baggage Allowance</span></div>
 <table class="tbl">
 <tr><th><span class="cn">乘客</span><span class="en">Passenger</span></th><th><span class="cn">托运</span><span class="en">Checked</span></th><th><span class="cn">手提</span><span class="en">Carry-on</span></th></tr>
 <tr><td><span class="cn">全员（经济舱）</span><span class="en">All pax (Economy)</span></td><td>30 kg</td><td>7 kg</td></tr>
 </table>
-<div class="note green">
-<span class="cn">订位代号 EC966J（Trip.com Booking No. 1688900912474363），全员经济舱，行李均已直挂至最终目的地。</span>
-<span class="en">Booking ref EC966J (Trip.com Booking No. 1688900912474363), all Economy, baggage checked through to final destination.</span>
-</div>
-</section>
-
-<!-- ===== STAY ===== -->
-<section id="stay">
-<div class="sec-head"><span class="no">02</span><h2><span class="cn">住宿</span><span class="en">Stay</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
-<div class="note green">
-<span class="cn">本次住老板自宅，无需酒店安排。</span>
-<span class="en">This trip stays at the family's own home — no hotel arrangement needed.</span>
-</div>
 </section>
 
 <!-- ===== DINING ===== -->
 <section id="dining">
-<div class="sec-head"><span class="no">03</span><h2><span class="cn">常去餐厅</span><span class="en">Regular Restaurants</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
+<div class="sec-head"><span class="no">02</span><h2><span class="cn">餐厅</span><span class="en">Restaurants</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 <div class="note amber">
-<span class="cn">以下 <b data-count="dining">–</b> 家是老板一家常去的餐厅，暂未分配到具体日期／时段，行程确定后可再排入每日安排。全程<strong>不吃牛肉</strong>，用餐以单点为主。</span>
-<span class="en">These <b data-count="dining">–</b> restaurants are the family's regular spots, not yet assigned to specific days. All meals are <strong>beef-free</strong> and à la carte.</span>
+<span class="cn">以下餐厅暂未分配到具体日期／时段，行程确定后可再排入每日安排。全程<strong>不吃牛肉</strong>，用餐以单点为主。</span>
+<span class="en">These restaurants are not yet assigned to specific days. All meals are <strong>beef-free</strong> and à la carte.</span>
 </div>
 
 <div class="rcard">
 <div class="galwrap">
 <div class="gal">
-<img alt="RUTIN" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBk7A1BPiZgMLztznc6im9eOHacu5s3TwYYM2DV4BImYGwo8Jx0RG1JQ4GyA9a5h4kZ9MplI2RjKExWkouZ0ut8hrEXHiU4OGVI7b-xgRnAQZnQQajekJ4vyXDQCN20YYe-JGTUhmnPsWufIQ=s4800-w800-h600"/>
-<img alt="RUTIN" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDWu44PMdjLpgF4JXaWyOLeHGs6GUh4FelDUBfTFWfuqyjJJziGpmojMdO3pYc-y-4NYP7gdWkUN8uRpvP3VC8Fn6GI6IEqvnz0G6x2aeq3RlUXhWFR5lroinRGqmaZLFXXKjpqG8T-1DZ_ZmAsX0zPQw=s4800-w800-h600"/>
-<img alt="RUTIN" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAxwutxnQJNF9bbIK9c7G0wOF4UmmJXlOZglTAGX1jkTzxz-Ujza_Qdf78W4eNQdLhEmuRCB7Ek9eho8uhPrcP01-UQ0S4ZrC9LFofSJ4r-em0aqu1c8EZYEL440ZS2EMvhkNq_AMc7mavHpjfHkWaCyA=s4800-w800-h600"/>
+<img alt="RUTIN 照片 1 / RUTIN photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAmTql4sWWZhXCE6uXLAOZBKm_6k-Sz49a0wSLgIBOL7EXx2HrAlQxlqZtZ3VvJ6fpb6tHY_HYmNs4wRbMuh1yxxtYoZpjvtSB9hOy8LpzwlJQz4xWItHQEsyvwjQTWnSxN7Rzfi2A_tAptSA=s4800-w800-h600"/>
+<img alt="RUTIN 照片 2 / RUTIN photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDWu44PMdjLpgF4JXaWyOLeHGs6GUh4FelDUBfTFWfuqyjJJziGpmojMdO3pYc-y-4NYP7gdWkUN8uRpvP3VC8Fn6GI6IEqvnz0G6x2aeq3RlUXhWFR5lroinRGqmaZLFXXKjpqG8T-1DZ_ZmAsX0zPQw=s4800-w800-h600"/>
+<img alt="RUTIN 照片 3 / RUTIN photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAW8cE50Mu4Aj7G30Xpg2S7psKQXed-tOGCS5Pjj9y-nHOcEh65yAJD0wPrF7GYpEoUB3qYWi9gfrs3YxPX9VTVrLYAHnXQn4LBee_ChVMRZtqrhX_zhPjzwXrwwyKegC1I5oe4u0uNPx3JlttDdQQNzw=s4800-w800-h600"/>
+<img alt="RUTIN 照片 4 / RUTIN photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDnweT5xmPG-75gAO5OUIaRoJFXhfAP_wEJtoNcV2kTNVTjOAydi1dA2s-_IBG_GmnLHiQhwvaQoaz8N06P84V3fXcfHIyh_LErDN6XEqYgY1MnzxblvDghP9v-KAzW3YCGcMayPU8tcAkOMgWZ51NT=s4800-w800-h600"/>
+<img alt="RUTIN 照片 5 / RUTIN photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBD-4Ev7LyCt_XEpStDJ_HY3w8zh_At4BCQ0Py4te1sCqKJr6yXlxYEMbsMJadQmBJIkf0c39OKeJGP-haZO2b8RtnuiDBBJF7smXCtZYzaTnhZe4ORr5-SLxRMLbt23Pq0v8gZ3clrGAHOzVgVT9NdWA=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -562,9 +491,11 @@
 <div class="rcard">
 <div class="galwrap">
 <div class="gal">
-<img alt="Miraku" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBj0J_AGByXlaO4LRbmuFPeVdMYqEWGoC-gS2_X6q2xea9vEqgAHxrQ763oXy-zvzLCx74MSSgCAJfUTxH9E9LEsx99hCtrfahqs1GUrf_ZZS9M-C13hiBrv0Jy6Mu4YShCXUrxdxhlCmE6Gw=s4800-w800-h600"/>
-<img alt="Miraku" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCt67lST5vt1vTfym03FYEDQyCiJdEt8uwujdgEpCOg2C_9SLOv7ihLlb_ju3xpWvrpHKItW6vYTepC9VDr8tlK7DmtKQXByLG7jX_EOsbb1dD53RB5jaGbrDGlPvzUa_VwIZMNkRBanSWkVXIhod7N=s4800-w800-h600"/>
-<img alt="Miraku" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBxJ0ZC6CMw00SA9zREt2vwvPSiQa9pZrHRKYlGOio97HoNGZGVYiz7U30WMdHt7ncFhSFh-SKpMaqcT0nt9W2iozCBXDYFzMZmQs9XHMHmsJ7m9EU3gymksMbkhn7Cju06vsXfh_L-CiAP6mTSlhkFyA=s4800-w800-h600"/>
+<img alt="Miraku Japanese Cuisine 照片 1 / Miraku Japanese Cuisine photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBj0J_AGByXlaO4LRbmuFPeVdMYqEWGoC-gS2_X6q2xea9vEqgAHxrQ763oXy-zvzLCx74MSSgCAJfUTxH9E9LEsx99hCtrfahqs1GUrf_ZZS9M-C13hiBrv0Jy6Mu4YShCXUrxdxhlCmE6Gw=s4800-w800-h600"/>
+<img alt="Miraku Japanese Cuisine 照片 2 / Miraku Japanese Cuisine photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCrpfYF4lwZdgQXu8FmDbevMo15FX8y5QjjWIXDl2XLqnI8xAeYxZa9d9JQK_PfdV6gmm75Rd9K5YZlyPWehqOxwZroPu3raUrVfyc2Z0sE_IsLg3UyEoo4ytlpktF3EE4i-JBnX6bg6xm7554sALZF=s4800-w800-h600"/>
+<img alt="Miraku Japanese Cuisine 照片 3 / Miraku Japanese Cuisine photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAttx8AiH-uFzgTNxieOn1Ky9CoQrQYoGTODmMo-It13UVUn54qBQnWYAqx67WH_GazaOuSp5YJlFHdD0OmNxIuaPwXh8ikEsOi5xZW5vVUpKrwmL9ONcCujCugnqCBhPywiJDejPGwf6mJwn8=s4800-w720-h600"/>
+<img alt="Miraku Japanese Cuisine 照片 4 / Miraku Japanese Cuisine photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBxJ0ZC6CMw00SA9zREt2vwvPSiQa9pZrHRKYlGOio97HoNGZGVYiz7U30WMdHt7ncFhSFh-SKpMaqcT0nt9W2iozCBXDYFzMZmQs9XHMHmsJ7m9EU3gymksMbkhn7Cju06vsXfh_L-CiAP6mTSlhkFyA=s4800-w800-h600"/>
+<img alt="Miraku Japanese Cuisine 照片 5 / Miraku Japanese Cuisine photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjD4-UVE-3Bgny-S5QNpG4F_herSLbxDX1o_pGQme-8OV_rwDQntGOdIJdVqbqm-UL2wOA3Wj8H-d3xcTrOs5KCvkITI-3gyGxfnkT8xviPgZ-JWk7RRcPNTqY30mGVKzmrnzxG-qdhDG9CkpRc5r-At=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -583,9 +514,11 @@
 <div class="rcard">
 <div class="galwrap">
 <div class="gal">
-<img alt="7 Village" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCsl4sn7P9zJKeMRFcR8176cS91lcyrhPKP4GQo81gLBG65uwry9ONwtk2Vz2TTbggrEBGebrCAeepBf71etEMaPAiRJt0lL3DyYpFlNUcx9i7Ll4A7HAHN3TWxd5d_YTXcJr1BBRESt9aizQ=s4800-w800-h600"/>
-<img alt="7 Village" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBwYf1B6LQ_95ijztD3cnI-2UgBO_s2vxXPGq8o0cXR9B2fYidwCqkkNH1BnbOWZO1GV3mEgolZZuuijVPv8xQ3SNQH6uUqaUQjycXlTCrwAzHXOinYFHOr7SM2jgNp-rkouLl-uXSS-X7CR_cEin8V=s4800-w800-h600"/>
-<img alt="7 Village" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBpEjumJ-Fjtji3RPD4S7p3rnWaNS1CZBKrMo2ZcSTegjj_981GlWnYvuvBd5lzg4o7LgDlJTMGdyzfTjaJwoeWbVthdnjdiQb5ovbn-ZkjhxMY02ovqUdgaWq_GjL26fw_rptZUIYgCGc1_7wy0z8vZw=s4800-w800-h600"/>
+<img alt="7 Village Noodle House 照片 1 / 7 Village Noodle House photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCsl4sn7P9zJKeMRFcR8176cS91lcyrhPKP4GQo81gLBG65uwry9ONwtk2Vz2TTbggrEBGebrCAeepBf71etEMaPAiRJt0lL3DyYpFlNUcx9i7Ll4A7HAHN3TWxd5d_YTXcJr1BBRESt9aizQ=s4800-w800-h600"/>
+<img alt="7 Village Noodle House 照片 2 / 7 Village Noodle House photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBwYf1B6LQ_95ijztD3cnI-2UgBO_s2vxXPGq8o0cXR9B2fYidwCqkkNH1BnbOWZO1GV3mEgolZZuuijVPv8xQ3SNQH6uUqaUQjycXlTCrwAzHXOinYFHOr7SM2jgNp-rkouLl-uXSS-X7CR_cEin8V=s4800-w800-h600"/>
+<img alt="7 Village Noodle House 照片 3 / 7 Village Noodle House photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBXoSar5SSmkFGsao2Ugca_H8DLhewtWqghHOBU7z2TY8J6bAnW3diExM-O9UH7Wh_xfsUIs0K-N8rab9iqj2vW7UnPufKDqeaFbpd6Lunsnxk2GglhxF_cZcaBBCEDpxaoCInz6ma5zxmMbUazf9Y8ZQ=s4800-w800-h600"/>
+<img alt="7 Village Noodle House 照片 4 / 7 Village Noodle House photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBhiChIVzUm3tx_VW9rnlYhzk0M6NQ3vvlul9sLiMnJM-bFyF7dHXrOD77Acfz4jAw1zMbY-vXVjq8jraI29n-wPI_O6zyi-IKjr7oULlgmKpp86JVwnDy8MfX4LGbBTn9O9LtNvvjH16D45RSqoRKZtw=s4800-w800-h600"/>
+<img alt="7 Village Noodle House 照片 5 / 7 Village Noodle House photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDiBS0ByUlJa4BfGXe4j8-pmm7QoVg6qes_GZyUaGBZdD9bdQd5NHPZNeGVVhgVemeBb5X7cApilznS26n3DvMgjgk-vGqTkobyStSykIaJeBDKAZBl9pQSbeKpos-OCHa2zOGTg88Taa7QguLf9cwZkg=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -594,7 +527,7 @@
 <div class="addr">6, 8 &amp; 10, Lorong Ceri 6, Taman Aman Jaya, Butterworth<span class="cn">（总店）</span><span class="en"> (flagship branch)</span></div>
 <div class="desc"><span class="cn">槟城著名<strong>粿條汤</strong>连锁总店，猪肉汤底，另有卤肉卷、鸡脚、炸鱼等小食。清晨营业，适合早餐或简单一餐。</span><span class="en">Flagship branch of Penang's famous <strong>koay teow soup</strong> chain; pork-based broth, plus braised pork rolls, chicken feet and fried fish sides. Opens early — good for breakfast or a simple meal.</span></div>
 <div class="chips">
-<span class="chip hours"><span class="cn">📅 周一至六 7:30–17:00 / 周日 7:30–13:00</span><span class="en">Mon–Sat 7:30 AM–5:00 PM / Sun 7:30–1:00 PM</span></span>
+<span class="chip hours"><span class="cn">📅 周一至六 7:30–17:00 / 周日 7:30–13:00</span><span class="en">Mon–Sat 7:30 AM–5:00 PM / Sun 7:30 AM–1:00 PM</span></span>
 </div>
 <div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=16316090451728697683" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="http://www.7villagenoodlehouse.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
@@ -603,9 +536,11 @@
 <div class="rcard">
 <div class="galwrap">
 <div class="gal">
-<img alt="Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCNMTOZFE89rF7Y7L08WhBoEe9FUmT3DfShAkHN0sQUNRCQAABoasxoEylAYgEZhTceOJ00DkFQ2rseAlAXyp4JiWF-Nrp7dBCHobNGLTr2j0iex8cnVqdbuYB0buZcYew97HCkjLOZ2Tp9dA=s4800-w800-h600"/>
-<img alt="Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCozbTYhDmqNoPjvI2djnGGu2j1C6jVk4L2fY7izR3UvHbNAPRd9O1A-l74-5UFbmDdC64mNb9jQZb3BrM8FZ0BOuNU7nMwiwrI8NCFPMMM6CfWj2GKbw_aOPrfDCyw6zlKDbSwxfdLkqWMSpQ=s4800-w800-h600"/>
-<img alt="Tsukiji" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBnZRnQ0hM_sXQuuzjgC0XWXpovmgSbk-S3Aqcg_24k7FtjMgIVikGPWN7vhKf0xuUrsuIS2v1ARlB14Ba2GgXvBoL08k7RgJIDM1f_da0qZWRdf-FZ014D5IGNB694E-naFqkwAOH2mf0uTD--lUv1dw=s4800-w800-h600"/>
+<img alt="Tsukiji Sushi Bar 照片 1 / Tsukiji Sushi Bar photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCNMTOZFE89rF7Y7L08WhBoEe9FUmT3DfShAkHN0sQUNRCQAABoasxoEylAYgEZhTceOJ00DkFQ2rseAlAXyp4JiWF-Nrp7dBCHobNGLTr2j0iex8cnVqdbuYB0buZcYew97HCkjLOZ2Tp9dA=s4800-w800-h600"/>
+<img alt="Tsukiji Sushi Bar 照片 2 / Tsukiji Sushi Bar photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBxOeVZk8QqItDEjgh6J0CpW5u89SVuDQmxJtoiAEpkif3vOQOEqu7K7HCAECYET8V_bpY1FVup1Nr_CbEUdFO8eBxC4N4zdWOzWgrxP5a566dUbNdxYsDxGVdGjH33OFTCFWYAOORckFA6VcA=s4800-w800-h600"/>
+<img alt="Tsukiji Sushi Bar 照片 3 / Tsukiji Sushi Bar photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCii3Mu3MAd4BcowRQs3QVlMmtHt4m0rPbLBCCvPf7ohexR9BGdrCb2Oa0ou_EnP8G1zwFS8GJQA5UkqwGYq_EOyPMZ3W-X5qp2oRFMAjPsEQ0eWFk4-AUet--VP-S1GVN8zOL_ZM87xYZrq0X2wdXc9w=s4800-w800-h600"/>
+<img alt="Tsukiji Sushi Bar 照片 4 / Tsukiji Sushi Bar photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjArxXgW6xPV6viPgbz4dTjz1p76Kl8epM7_0wFjcL9yfzr1ckh56wM9BH8htvi1a23CdaryHWSxFayZi6KEOg0YN4fEA_frWTGRZBTNxGPrc1MaM_3L7JDnXU9my1BIJvJOhyXhUwPAFnDht3h_ffR31A=s4800-w800-h600"/>
+<img alt="Tsukiji Sushi Bar 照片 5 / Tsukiji Sushi Bar photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjC-L1A8UjVG0DDpLL2iRGxl3xkVAa9lAXuywpRmUjfXNLm1jay31dre2Us15bI6oHeP7bARuhjr2MGhxZZSyKFpBh2SpGtaGj5QPNvH0Jw07Y6fxz5D7T81tPkxRgCuFAG3fCSkBQgAfU9oI1YqDs9UBw=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -623,18 +558,20 @@
 <div class="rcard">
 <div class="galwrap">
 <div class="gal">
-<img alt="Tairyo" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDsdr-8OK2QPf0BH_2OuVJ-foLDjO2nam_LUPLA1lJqTKEHOX_LlEaePsbGaJVggfOC-oZOcbO4dVAF30_au13mVFus_XbCclnOx5OAHK8Ags2R38b1O_F7o5MD_bXHdBneeSwXdV6dQgh8=s4800-w800-h600"/>
-<img alt="Tairyo" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDNuNdHy5dexcUHGOe5SK9UZaATN5M2gtF_PB_CDgWriaBA5r5STIQU22KoLNAoAxK6u0bZdruW0OA-D9QbgfuK1_eckOIcfNs2hanF7m3WLI17dVg5H4juDcJzWnwEeAOVGk0lK1_8a0T1RQ=s4800-w800-h600"/>
-<img alt="Tairyo" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBOn0oythGhvN8i4NgPnZzlR6NbKZZ0PPzsKfAYGadeBzBnyQ6lBp9LwzV1VKqJRCu6LOgJBURF9nX7iw0fNa0nX2rJ2XbuTK8Y13yJTAsxrgNPxOZ7UHenJoVEk5oxEUsqiCI66lAP7FZZNE-8H_i7Hg=s4800-w800-h600"/>
+<img alt="Tairyo Japanese Restaurant 照片 1 / Tairyo Japanese Restaurant photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDsdr-8OK2QPf0BH_2OuVJ-foLDjO2nam_LUPLA1lJqTKEHOX_LlEaePsbGaJVggfOC-oZOcbO4dVAF30_au13mVFus_XbCclnOx5OAHK8Ags2R38b1O_F7o5MD_bXHdBneeSwXdV6dQgh8=s4800-w800-h600"/>
+<img alt="Tairyo Japanese Restaurant 照片 2 / Tairyo Japanese Restaurant photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAHScQDV_Guk7rbEPa1NdvIOw88cTqS_avJ0Y67EenWYk3v8KcxBciUDRBG_6qseq6RXnky631_yeEDB1nJ36xCv_6XNzMbhl7yN3dHcRXYdKzvkrw-ZQTKkyyWql42MhfBJmnyI4UHTBiLSg=s4800-w800-h600"/>
+<img alt="Tairyo Japanese Restaurant 照片 3 / Tairyo Japanese Restaurant photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBOn0oythGhvN8i4NgPnZzlR6NbKZZ0PPzsKfAYGadeBzBnyQ6lBp9LwzV1VKqJRCu6LOgJBURF9nX7iw0fNa0nX2rJ2XbuTK8Y13yJTAsxrgNPxOZ7UHenJoVEk5oxEUsqiCI66lAP7FZZNE-8H_i7Hg=s4800-w800-h600"/>
+<img alt="Tairyo Japanese Restaurant 照片 4 / Tairyo Japanese Restaurant photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBOW1DbEa1JnbD4_QUnEeLxpNirKcRFzwFrJOxbMr7Pd1sn-shpyIfxb7gBCe-hnTaI2pC8DCppteMyQylNGVc03zs-AGD9FxPusk7ickQswmqMnQeXHPcyUSqr9PjCQmzcnvM1Ek6qAPEF0zdb0Icolw=s4800-w800-h600"/>
+<img alt="Tairyo Japanese Restaurant 照片 5 / Tairyo Japanese Restaurant photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAv2_0Ff772wyp8qvXiczZWvlBIcj5VYKj7CBtbW9xr4kFrQWGopk5L5gkxPODGwqosACFyoUFZv0_87l78mZuavzCmBSAK_JWPXR8ocKnyEwdNq7WEmo7K4TMiXOo4kjksDKIlj4DWyRWnPBvLOPAqNQ=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
 <div class="rb">
 <h3><span class="cn">大漁日本料理</span><span class="en">Tairyo Japanese Restaurant</span> <span class="star">⭐4.6</span></h3>
 <div class="addr">71, Jalan Icon City, Bukit Tengah, Bukit Mertajam</div>
-<div class="desc"><span class="cn">菜单大而全的日式居酒屋，<strong>刺身、日式炸鸡、寿司、盖饭</strong>一应俱全，符合家庭聚餐的单点风格。菜单上也有和牛铁板品项，单点时可避开。</span><span class="en">Large izakaya-style menu with <strong>sashimi, fried chicken, sushi, and rice bowls</strong> — matches the family's à la carte dining style. Wagyu teppan items on the menu can be skipped when ordering.</span></div>
+<div class="desc"><span class="cn">菜单大而全的日式居酒屋，<strong>刺身、日式炸鸡、寿司、盖饭</strong>一应俱全，符合家庭聚餐的单点风格。菜单上也有和牛铁板品项，单点时可避开。</span><span class="en">Large izakaya-style menu with <strong>sashimi, fried chicken, sushi, and rice bowls</strong> — matches the family's à la carte dining style. Wagyu teppanyaki items on the menu can be skipped when ordering.</span></div>
 <div class="chips">
-<span class="chip hours"><span class="cn">📅 每日 11:30–14:30, 17:30–22:00（五六至22:30/22:30）</span><span class="en">Daily 11:30 AM–2:30 PM, 5:30–10:00 PM (later Fri–Sat)</span></span>
+<span class="chip hours"><span class="cn">📅 每日 11:30–14:30, 17:30–22:00（周五、六延至 22:30）</span><span class="en">Daily 11:30 AM–2:30 PM, 5:30–10:00 PM (Fri–Sat until 10:30 PM)</span></span>
 </div>
 <div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=17783906310819733530" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
 </div>
@@ -643,9 +580,11 @@
 <div class="rcard">
 <div class="galwrap">
 <div class="gal">
-<img alt="Chicken Rice Shop" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBntqheTFq0KMHJjLyt0-V17HzInnKjlraDC76AvXdxncqypAXI4dEdGwomPzi0LwpwA4yKlP7zYTknFRqhwdD0QsfWObZZP6w8sVGSr2tlVEnot_j5ng4QjNiNVlPHBIUAyhMRW3Bv0QeCm81KfWIKcA=s4800-w800-h600"/>
-<img alt="Chicken Rice Shop" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDxQW5CW4miYPqD4eM81rit1uHCdtIx025uOKsHZGwFveL5rXDj2CuQ_Ni4AbBYcLPf2iK98Kez_x3leRyqPdUvBGrLvfgGVdXQnhj9FIZm-s_3a-09RxkRdPBd0mtSowgXlIgziDx-YAe4rtXMi5ihvw=s4800-w800-h600"/>
-<img alt="Chicken Rice Shop" src="https://lh3.googleusercontent.com/place-photos/AG9NLjATt6zoAeRbnum1-90ETIaQN1_NPK9jiMS7Jp4hQ4PE_0oPNBp-UnGgL6zacAPnzFL2k4kPya72ErcZoO6WlLC2nUyQ4uY4PXRbfDuvXWxEnKYKvqayGePfRxgoA9h59_ImccomD9Oq0Vk_nrKYVqvE9A=s4800-w800-h600"/>
+<img alt="The Chicken Rice Shop 照片 1 / The Chicken Rice Shop photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBntqheTFq0KMHJjLyt0-V17HzInnKjlraDC76AvXdxncqypAXI4dEdGwomPzi0LwpwA4yKlP7zYTknFRqhwdD0QsfWObZZP6w8sVGSr2tlVEnot_j5ng4QjNiNVlPHBIUAyhMRW3Bv0QeCm81KfWIKcA=s4800-w800-h600"/>
+<img alt="The Chicken Rice Shop 照片 2 / The Chicken Rice Shop photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDxQW5CW4miYPqD4eM81rit1uHCdtIx025uOKsHZGwFveL5rXDj2CuQ_Ni4AbBYcLPf2iK98Kez_x3leRyqPdUvBGrLvfgGVdXQnhj9FIZm-s_3a-09RxkRdPBd0mtSowgXlIgziDx-YAe4rtXMi5ihvw=s4800-w800-h600"/>
+<img alt="The Chicken Rice Shop 照片 3 / The Chicken Rice Shop photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDAW6yX0lUKZd-oqCX4RHigOUup2cRTknfCY6_qeZvxYIbxrKnqUL55KqE85AwawtolmXephvaMd59k9uugTUL0WF8srQYWEF09s6uz5ogrV-39909C70HH0pUMRSM_xWF4bIxwDd1wTsd4VcYZb6Qr8Q=s4800-w800-h600"/>
+<img alt="The Chicken Rice Shop 照片 4 / The Chicken Rice Shop photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBPLylxiP7Ok86lMCKJwIKcYzlaf9IRN2W46ZcZLaL5_74tClb0EVWtyfHbDfVP5iZJdm5AmPC5__dKddTub3XupzapF0LyQGz-PrWCBUJqJc-yWjZtSX_JqWw69btTW4intk3cMdr9RKgdA4LG2e5Yqg=s4800-w800-h600"/>
+<img alt="The Chicken Rice Shop 照片 5 / The Chicken Rice Shop photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB6KTf9PnX7nFmmPx7iA5FxyYEBTo3dJNeRVVEikhoD6PKepqjKg0jtXN75BQc9lK5uOyNPNZp-7T5JCZY_Z_mrMackSZMOSDe1IjlCR0yxUeO0ECZWVxH5zhCevQ3lfqNota4pknPazWbT2-mUin4x-g=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -664,8 +603,11 @@
 <div class="rcard">
 <div class="galwrap">
 <div class="gal">
-<img alt="San Xi Lou" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDF-m6FWSB9pl6PTdhnkxGshPmrDutKe0yaTw6Jlw9T2EedihpE4cLzeiEfZFa4HH47KBS3XNLX8e3FPbRU1G-S16C5PwEmMnrLPHDE-qqwhrwhKcciXXo1GvF9PLsR2Aje6CjledfeGCOGLw=s4800-w800-h600"/>
-<img alt="San Xi Lou" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDxteHSg2WueZZIvN_ybUEweYDhiK1C3ROTzRBLajj6V53_opQrjCOLZXVroTna4QKZxdi0l9VAzXJVq3jn_hkdTVyIZnLITQ5IpAo4vR2cQJygfydlkrygEFvBapgow3HBCxc180HO0e5cSqbEabXMqg=s4800-w800-h600"/>
+<img alt="San Xi Lou 照片 1 / San Xi Lou photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAuYIFbZFGGg2PigsbCNF1L5vFLoDaj6Ed58EItONu3kUH972V5VeeL0DPnFhMMc_45iY2RpfO8Py7tgGtt0GlJLSucZlsI1DyK3guSWUhPOL5V3SFM3LjZe5anlTpoIN2z7iRYmCo8ZXKtJA=s4800-w800-h600"/>
+<img alt="San Xi Lou 照片 2 / San Xi Lou photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDxteHSg2WueZZIvN_ybUEweYDhiK1C3ROTzRBLajj6V53_opQrjCOLZXVroTna4QKZxdi0l9VAzXJVq3jn_hkdTVyIZnLITQ5IpAo4vR2cQJygfydlkrygEFvBapgow3HBCxc180HO0e5cSqbEabXMqg=s4800-w800-h600"/>
+<img alt="San Xi Lou 照片 3 / San Xi Lou photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBCxGkKznUk9Jow-95nGacdGA0UMlKxcJSeb7ciZHoMNrpCbg7VmTbbGIGOpBUE-a_gUN88QLvTYhoBfFnAKygwdSA7rtzx3DQo0_SVqOa0PFtP92yeH0-QSJAw-xouARhZASC4fewivdqKXHpDF2mkqg=s4800-w800-h600"/>
+<img alt="San Xi Lou 照片 4 / San Xi Lou photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBbH86Di6ZFk2putyNw740iTx3pKa_4Tvp75W0PY-W9cHfLKwCQznSmNmJwO_2uJXMCJ9fgyrY1vdLPW4hvDeKD3Hb0nnLfqoISwApk27AFvJOYJmoDUhWt5c12FgfaUhxQAur0bWH7D6CR_E0GIvPt=s4800-w800-h600"/>
+<img alt="San Xi Lou 照片 5 / San Xi Lou photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDO05paeo_1GeeEVND4J46CPIaPLJgliF0wEfnu5i0D1veswgNQqEXcdLpmn-hQFQkVt1AqWNswaMuD8vMnqHpIB9g0L9YqhnSnICb4RUuKGopNW3KwsNIw0058FTgtciLz9jdXt_z4VCk7WdbW-SjIdw=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -684,8 +626,11 @@
 <div class="rcard">
 <div class="galwrap">
 <div class="gal">
-<img alt="Din Tai Fung" src="https://lh3.googleusercontent.com/place-photos/AG9NLjACmrtVlhE70JY4gfgeJGzh6fibFRHJ1IrWUx28EvRzCDE1x8PSCE2lQR-pYkQCJVOHF1WutbnjlRXMuduP0HG8yQpKc_syMUQLbzl39ltJzMuCXKk6HUVZ2ZaZuG11Wl8_T-CBhsDuvy_Qm4DF8hJ_=s4800-w800-h600"/>
-<img alt="Din Tai Fung" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAkMP_-Saht9YOAfzeMo070hn9P1-ZhagwZkpyudS5QER8m2kaCMvQFCET5Mv-WfEIhZQDnRi7oLRbxNRTApNhNmP4HqhtTO4zAEMq8qXBeXqOzfU6gkceJ49GvoS-cE9Rl0gXAeGKul6mZ5wbLuUGr=s4800-w800-h600"/>
+<img alt="Din Tai Fung 照片 1 / Din Tai Fung photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB5pWq-XI906fRICFAoQAdQ1KB3MRzdTXfL5Ulxk4YkwxwxGmDsQLJKZXeDxvLr67tSSO47D-QCTmDmlmkmhuvwFr-2ylXWKwmiXbdRzNzNTQzpmEd4SBtkCWGNbn8amYkFP9Quy6K_95qR7BYqU2lm=s4800-w800-h600"/>
+<img alt="Din Tai Fung 照片 2 / Din Tai Fung photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAkMP_-Saht9YOAfzeMo070hn9P1-ZhagwZkpyudS5QER8m2kaCMvQFCET5Mv-WfEIhZQDnRi7oLRbxNRTApNhNmP4HqhtTO4zAEMq8qXBeXqOzfU6gkceJ49GvoS-cE9Rl0gXAeGKul6mZ5wbLuUGr=s4800-w800-h600"/>
+<img alt="Din Tai Fung 照片 3 / Din Tai Fung photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDERevLv95orpxhBGie24OrS9RYMMj9mSp7fp_N1vwCu34DZqe8rOgEvL_6CaPwKlgzziqwt_ZbZ2NeDETIYoNmyj_PJSEDvXCtFEjtWHgBNT-S5eWNNhUFH-1inSgXI_VzNBUM1yPNU9OmAjj1CJxR=s4800-w800-h600"/>
+<img alt="Din Tai Fung 照片 4 / Din Tai Fung photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDkILJt6QyFq8slFbZXU8LPgbi8P9VHXy-tJOemdChXyt6AbS_2EnshWoZUhYcR-t5c7mWloQ_FOavdP1ywfLjQIaevGlnLe2m5_lTeNS9LYixIAit3rSQbWJzRdzf85ogEbRbHKqi2NAyxUf6WySu_gA=s4800-w800-h600"/>
+<img alt="Din Tai Fung 照片 5 / Din Tai Fung photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAjUfaSCLbPrI8mQMa_XIIdJawrfgOAvziMaWJ362ZJlO4ppO-6OgW0bxnETHhaIGoIvQyAWdnUF19HCky3PFSo0VI6vARCCQcBDnj7HeQXm18cVY6mqxV-vNBplpqd4hO4yv0o_wnauEu3p239D_W4lg=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -704,13 +649,16 @@
 <div class="rcard">
 <div class="galwrap">
 <div class="gal">
-<img alt="Dragon-i" src="https://lh3.googleusercontent.com/place-photos/AG9NLjD9rwhgmgTe07PqN1xWySaEIXXnUnXFHoijApUxEIcs8zHIfJV97MOB0Rkiy9f0uI2o7caiOA_NXrlu9U3bUKwrALV5wLL2qMoQ1GFBNPTkIkQJ7RHrtwEa827m3DXvWPfh3i8HJqL1v5H20A=s4800-w800-h600"/>
-<img alt="Dragon-i" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDUj3nK44L7TAjnYYAHyQsBRfn_tFr0e-b9nTtJS0_oEqtkd7De5cOyT2LuXZYzXzzI4TAB8Xz4hu64EDURxy50z_aCJDh8VgOUqpk2LDZywGVX-Lpo_JG6bWfj7WnWPJwgFZPpsi-G7-Vxmg=s4800-w800-h600"/>
+<img alt="Dragon-i Peking Duck Restaurant 照片 1 / Dragon-i Peking Duck Restaurant photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjARIYrgbGghViFfgfC7V6Pjp7deH-vNKHqHsQqIw-QyrlQCCWjVpx2qCS9zL0MxVoYCoD7ovWcTS83NUQe2MqEM1fRgHhGAA0Q-hl9LBVl-BRyP0Z7XqDU0hsgBakanOGvGEpSX6AjUrgXEDQ=s4800-w800-h600"/>
+<img alt="Dragon-i Peking Duck Restaurant 照片 2 / Dragon-i Peking Duck Restaurant photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDUj3nK44L7TAjnYYAHyQsBRfn_tFr0e-b9nTtJS0_oEqtkd7De5cOyT2LuXZYzXzzI4TAB8Xz4hu64EDURxy50z_aCJDh8VgOUqpk2LDZywGVX-Lpo_JG6bWfj7WnWPJwgFZPpsi-G7-Vxmg=s4800-w800-h600"/>
+<img alt="Dragon-i Peking Duck Restaurant 照片 3 / Dragon-i Peking Duck Restaurant photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDfheSHkgyTZoBS6Set-01ch0f7-NRWGoYvsQRWDhPnkDju87XazKMYLY_QpgOrzbn1kS4nicW2RlMJh6-cuUdfWTC8xHQfSA06-8oUHJBRTFruGnQAGANs7ZBpmmjOzhBzVbLK3dPHefwm8a1pphDg=s4800-w800-h600"/>
+<img alt="Dragon-i Peking Duck Restaurant 照片 4 / Dragon-i Peking Duck Restaurant photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBN_JbcUPXs8xINYVkTYBqvnt-sM6JAJSe4CvuqJc3JZQkRHRLomWM0K2hk-Qrtcm_ZxTqcyt56u6jqwxaJ-wxRYiFaqLnJmGG_JoUcubkzrIFafTBC7jN_ZtpcM-liv-pNTHbMlyhWfj-S5dTORdv6WQ=s4800-w800-h600"/>
+<img alt="Dragon-i Peking Duck Restaurant 照片 5 / Dragon-i Peking Duck Restaurant photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBUMk8GTf_KPo5CtEu7Ve--4a8uwFd2bMPMOL3QdWbCgLerYQdXiFScJ6rxkP5SKJFVvw0krPkWhb37zfNntURUrDlnFtPrH9FfgmXu4YMpfDnZZqRAK-SoJlKb7xn092DpgstKdhlUrnj8XfyNfEpEFg=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
 <div class="rb">
-<h3><span class="cn">龙依北京烤鸭</span><span class="en">Dragon-i Peking Duck Restaurant</span> <span class="star">⭐4.5</span></h3>
+<h3><span class="cn">笼的传人</span><span class="en">Dragon-i Peking Duck Restaurant</span> <span class="star">⭐4.5</span></h3>
 <div class="addr">2F, Queensbay Mall, Bayan Lepas</div>
 <div class="desc"><span class="cn">以<strong>北京烤鸭</strong>为招牌的中餐厅，也有小笼包、糖醋鱼等大众化中式菜，环境宽敞适合家庭聚餐。评价提到<strong>晚餐时段排队较长</strong>，建议早点前往或提前订位。</span><span class="en">Chinese restaurant known for <strong>Peking duck</strong>, also serves xiaolongbao, sweet-and-sour fish, and other crowd-pleasing dishes; spacious, good for family gatherings. Reviews note <strong>longer waits at dinner</strong> — go early or book ahead.</span></div>
 <div class="chips">
@@ -721,22 +669,67 @@
 </div>
 </div>
 
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="Tono Izakaya Penang 照片 1 / Tono Izakaya Penang photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjD3YWEq2TKPDkZwfW6d1D-4umYkNGuUdERYxJVT3tcV_KeeN06q4WhRgDWncqYf-37sHzumYNG4j4oBmjP173nCuKAm2Mr894bBrb7pPCeAjXZ_MouedQtYobWYvxX5rIVC0c8usSMGdrdj5cCkXNT98A=s4800-w800-h600"/>
+<img alt="Tono Izakaya Penang 照片 2 / Tono Izakaya Penang photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB2msJphJY-SdMcLTkyoawfx0GlLGRso07qeaeEblxQ3kBmCkDkKrjNRih-l_NK1bQfrj1LbTcg8WKj9bvS_DW7X7SiM-jcPUpMdOnGicwdcxSQr_J0hCxwpYSVJQN3D1cz7FM5CTe6WQeF5dSDRDtGiA=s4800-w800-h600"/>
+<img alt="Tono Izakaya Penang 照片 3 / Tono Izakaya Penang photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBNm7YBu2U65mYikua8hkKYJ_nkqCdXk_naPrd8jSBQkBRGyzmDrIaOeZKsK0FnebqsqSBzP7Ty2LM4SdadMl9g_v_saLidhP8Ubdis6S064RdokvTL0A7V7ei42oZs6GMzQ96mndr_APPHWcZfQI6PRQ=s4800-w800-h600"/>
+<img alt="Tono Izakaya Penang 照片 4 / Tono Izakaya Penang photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCZFrtib1lkz_MxhEN3LPHgaWP1mXUp_ZDQWbSk5Drkov3XdU0I-QLBIkLDBvUQt7-Jn_xUmEtL0UCs9S3NAoO158QtmkAFT1dxaEDh-kBUQTwo5uaXgEckeHgT9iY1XodiMtfBMtyonre7q3mc4UJc=s4800-w800-h600"/>
+<img alt="Tono Izakaya Penang 照片 5 / Tono Izakaya Penang photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCHwF3Qh0iFr2IzfrM-_fm4mjgIhPEIPQHeQRXXOe76CFDyoI23Uxjs2YTZpd4Fc-oXLTe5TeaCDMCujjsUINeEz7wA8QBhl-omXLoKPkc8YymuSjBkrEXla7r3cE1hMTr1fK7gLVizPGsSul9WyGGW=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Tono Izakaya</span><span class="en">Tono Izakaya Penang</span> <span class="star">⭐4.7</span></h3>
+<div class="addr">80, Lebuh Tye Sin, George Town</div>
+<div class="desc"><span class="cn">乔治市人气居酒屋，蓝鳍吞拿鱼、刺身、烧物评价都很好，评分槟城数一数二高。<strong>有自助餐时段（RM98++/人）</strong>，但也可以纯单点，用餐时指定要单点菜单即可。</span><span class="en">Popular George Town izakaya — bluefin tuna, sashimi and grilled items are well reviewed, one of the highest-rated in Penang. <strong>Has a buffet option (RM98++/pax)</strong>, but à la carte is available too — just ask for the à la carte menu.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 11:30–15:00, 17:00–24:00</span><span class="en">Daily 11:30 AM–3:00 PM, 5:00 PM–12:00 AM</span></span>
+<span class="chip warn"><span class="cn">⚠ 有自助餐时段，需指定单点</span><span class="en">⚠ Has a buffet option — ask for à la carte</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=11019786699336800443" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="Kaze Japanese Restaurant 照片 1 / Kaze Japanese Restaurant photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjANYsP701h81_sdy1qmapvI9_gHHBlEuQhqymWqmNJI1YDRYNcdQ13SZEz-99uwSMCrv14SKuzgBQ0hsNk6_4DUPRQG2iEfmsNv9mYvLhjD4z7koBKl9dwssb_w8nuwmTU5QV_igTRD8UAa0A=s4800-w800-h600"/>
+<img alt="Kaze Japanese Restaurant 照片 2 / Kaze Japanese Restaurant photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCfTqTg8SXVxX-iV_kkjPy_0Eg5NbECIdHX8VBh4Eh_t8cjqin7mC2OahClH9kn3E9u7WLXGWBXW1taZHYHGw-UV1BDhoQ6x3-0q2DZfETmFc_-2C2tsaL5VLXm5LWdz5bRXyZMQ2FUbadZRMHsmrWJhg=s4800-w800-h600"/>
+<img alt="Kaze Japanese Restaurant 照片 3 / Kaze Japanese Restaurant photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjD11vbSRoeSdEzoLLtJlN2kQnlRnxGNdZjB_0d1ehyCsAvPzJVZvqQa0YXKb6TxFvQT6Hcf0HFVbCUzOTqhrxj-sQSiH02It1jlPx_eHhrOZDDWNBg_NZQ_-xnhy6UV3o1uWurYEo3GNwFpoehyOjMGfw=s4800-w800-h600"/>
+<img alt="Kaze Japanese Restaurant 照片 4 / Kaze Japanese Restaurant photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB1FEad9scBFLyv03uRKIBcG_mJMPvrCxZzZ7vP7XO6EpCn3Co0uHrSOt6CuBiMcBbjF7Dz-E5A3oREdrx5QBtJnypd5TQl6ZX5kDIswNN6mZgW8-daT3TfqQQmYX8sLXfCln-iVxaeo3AjrcVhl8i6Wg=s4800-w800-h600"/>
+<img alt="Kaze Japanese Restaurant 照片 5 / Kaze Japanese Restaurant photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDFZQ1QDTLTgYRBp38fv5tIPD9T7sjIko9r1Sfb-mj0aLLRNa31MlDk3RCoJo-HoDnrcqU6TSEX8KiUEO1mu1sytltAz_qxCrIhOJXAH6KWqxwa-E8DxEW5khVDY865f-rbwf32IVwhFfNUOvzn6Yhofg=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Kaze 日本料理</span><span class="en">Kaze Japanese Restaurant</span> <span class="star">⭐4.2</span></h3>
+<div class="addr">22, Jalan Icon City, Bukit Mertajam</div>
+<div class="desc"><span class="cn">评价很高的日本料理，刺身寿司新鲜，价格合理。<strong>菜单上有网烤烧肉套餐（含牛肉／猪肉）</strong>，单点时可避开牛肉品项。周六人潮较多，容易客满。</span><span class="en">Highly rated Japanese restaurant with fresh sashimi and sushi at reasonable prices. <strong>Grilled meat sets on the menu include beef/pork options</strong> — skip the beef when ordering. Gets busy on Saturday evenings.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 11:30–14:15, 18:00–21:30（周末至22:00）</span><span class="en">Daily 11:30 AM–2:15 PM, 6:00–9:30 PM (weekends until 10 PM)</span></span>
+<span class="chip warn"><span class="cn">⚠ 含牛肉选项</span><span class="en">⚠ Has beef options</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=17102666725830265280" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
+</div>
 </section>
 
 <!-- ===== PLACES ===== -->
 <section id="places">
-<div class="sec-head"><span class="no">04</span><h2><span class="cn">推荐去处</span><span class="en">Places to Visit</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
-<div class="sec-meta"><span class="cn">共 <b data-count="places">–</b> 个去处 · 不排日期，看天气与心情挑</span><span class="en"><b data-count="places">–</b> spots · not sequenced — pick by weather and mood</span></div>
+<div class="sec-head"><span class="no">03</span><h2><span class="cn">推荐去处</span><span class="en">Places to Visit</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 <div class="note amber">
-<span class="cn">不排日期／顺序，家人自己看当天心情、天气挑着去。最早的2家是你发来的，其余是我补充的槟城常见推荐点（含电玩城与亲子游乐场所），评分均取自 Google 地图实测，仅供参考。</span>
-<span class="en">Not sequenced by day — pick based on mood and weather. The first 2 are from your links; the rest are places I've added (including arcades and family-friendly play spots) as general Penang suggestions, with ratings pulled live from Google Maps — for reference only.</span>
+<span class="cn">不排日期／顺序，家人自己看当天心情、天气挑着去。前2家是你发来的，其余是我补充的槟城常见推荐点，仅供参考。</span>
+<span class="en">Not sequenced by day — pick based on mood and weather. The first 2 are from your links; the rest are my general Penang suggestions for reference.</span>
 </div>
+
 <div class="pfilter">
 <div class="row" role="group" aria-label="按类型筛选去处 / Filter places by type">
 <button class="pchip" type="button" data-cat="all" aria-pressed="true">🧭 <span class="cn">全部</span><span class="en">All</span><span class="n" data-catcount="all"></span></button>
 <button class="pchip" type="button" data-cat="arcade" aria-pressed="false">🎮 <span class="cn">电玩亲子</span><span class="en">Arcade</span><span class="n" data-catcount="arcade"></span></button>
 <button class="pchip" type="button" data-cat="culture" aria-pressed="false">🏛 <span class="cn">文化古迹</span><span class="en">Culture</span><span class="n" data-catcount="culture"></span></button>
-<button class="pchip" type="button" data-cat="outdoor" aria-pressed="false">🏖 <span class="cn">户外</span><span class="en">Outdoor</span><span class="n" data-catcount="outdoor"></span></button>
+<button class="pchip" type="button" data-cat="outdoor" aria-pressed="false">🏖 <span class="cn">户外观景</span><span class="en">Outdoor</span><span class="n" data-catcount="outdoor"></span></button>
 <button class="pchip" type="button" data-cat="mall" aria-pressed="false">🛍 <span class="cn">商场</span><span class="en">Malls</span><span class="n" data-catcount="mall"></span></button>
 </div>
 </div>
@@ -744,11 +737,15 @@
 
 <div class="pgroup" data-cat="arcade">
 <div class="bp-group-label" id="pg-arcade">🎮 <span class="cn">电玩 · 亲子游乐</span><span class="en">Arcades &amp; Family Fun</span><span class="gn" data-groupcount="arcade"></span></div>
+
 <div class="rcard" data-cat="arcade">
 <div class="galwrap">
 <div class="gal">
-<img alt="Neo Akedo" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCsmaDPutjTe42djjJ8FqFq_eZCp41OElLNcwRKhsohLvw117QQP9a07pi2HR-8kAUi3G-0NTUlB1fQp7KWe3M5H2qMT1wLUORIMw4NK7FhwLSoe8BmB1OuRjhvaZFbd-4DaaS_A_5AG0kY2o6xvC5C=s4800-w800-h600"/>
-<img alt="Neo Akedo" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCb6NpPSIPIBh6BSOkG3qDuKvEyhszXfBBc5g7RL2TvkNSYYd4G90WxtzYA8vK2tpbfb907Z5TwI5rne-_FLlzhIuHI_S_QfEKXo3DOeHEFgIgL_JLr0W-tB3_IUJATK0SPvRUR2xQKUzPAdzZkrTY4=s4800-w800-h600"/>
+<img alt="Neo Akedo 照片 1 / Neo Akedo photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCsmaDPutjTe42djjJ8FqFq_eZCp41OElLNcwRKhsohLvw117QQP9a07pi2HR-8kAUi3G-0NTUlB1fQp7KWe3M5H2qMT1wLUORIMw4NK7FhwLSoe8BmB1OuRjhvaZFbd-4DaaS_A_5AG0kY2o6xvC5C=s4800-w800-h600"/>
+<img alt="Neo Akedo 照片 2 / Neo Akedo photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCCcHQonMXC4MkjdW1X10r5-ACcUJrZaGNHPBKbINvkJXgICijrqzMpbXD7JcUoK0Cllqz4eE7-zQ61SmV6P5yE9WNbDv--EVb12gtvZ6Pj1EUxxv2sDxKNT32oG4htfhlXyhROTJaj8jaKjdZwIMJ7=s4800-w800-h600"/>
+<img alt="Neo Akedo 照片 3 / Neo Akedo photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBm-HS-3iBfLWlTUsYI3a4Mp5EqBVucGoNvuOFWl9zcFHArgyK2FLUq7-L8x77775k5SrsC1rCsXQM9LCny-99sk2kAHUr4kiMu_cd1HjDFZuk3Pp7JJYhqq31JFHOOgCD9j2e2WcA_0TGaqf21pJffxQ=s4800-w800-h600"/>
+<img alt="Neo Akedo 照片 4 / Neo Akedo photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjA5QkqLgMo0E40_6UMkhRlNtCrvxDOmo426V_aYckmHodCA_rgjlPF2x4FIzfh_iBKK2di33qowYMpWsBMQT-HAURlAPsp34CdjUejISg_1ibj-mHnEssJkm-xQsty4nSH3y-zr5vs6xSqUDmA7w1xJhQ=s4800-w800-h600"/>
+<img alt="Neo Akedo 照片 5 / Neo Akedo photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDUi6tBwPL1VqfaQJITAK4_wsERBaE1BOFNaZIjtmnNG51kpftY8XreToDwq1TTAAYa4gPkl73-IBkvYwzJVFzKYEFl-_bCWUM4DiqESULedvGYoAVbrC69quba_tkUxDnANpNwamDWurpvi_U-0gxztQ=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -764,8 +761,11 @@
 <div class="rcard" data-cat="arcade">
 <div class="galwrap">
 <div class="gal">
-<img alt="Pado Fantasyland" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDVdcKl70HCb_yQtjR9gkVUVtjcVKGQuGuybrFxOtUVYwpSbFSAHhw_NFuEO3FJjQvOtXN9AEjldhb-bGu1-THwPrtYIDhKERS9IRAkMe3MXlwNuQXTnltbB7V3X01pD3RSlYY26H-EhZZ2TuUd8qdy=s4800-w800-h600"/>
-<img alt="Pado Fantasyland" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB_NkWWlRKTsf9CSJNJPmmgsB16NGrmLQ7NcoZAPZJC27k8cm1NMNUhWigC9NGLVcD19U0u2WiqD3YJlOJmnhmlLERZSMKYv9LTCKGsibHwqpkDq6IH1SB4xLi8cmLAZitO2IzgW4e5PWczqTU=s4800-w800-h600"/>
+<img alt="Pado Fantasyland 照片 1 / Pado Fantasyland photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB9JUxbYT3m32OYZhxgF1nPmgmH1ijj3y5Gw1PvMP6yFPIAiJ0eUJ1lfcysSClYplBdNCOJIhhV4J-Kwt6V7OXrij3HZUu_PdoxOjc8TnVHmyrqczzfPyhReV-KoAanQUSBx1Tu-C1NbuPFBTbkyriy=s4800-w800-h600"/>
+<img alt="Pado Fantasyland 照片 2 / Pado Fantasyland photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjC5LZw5q0C8CPu1Dd9vUWNGLhsW4gjCI6wuz0TzfsJz_Oq6S2BrvVeriukFdXvrF9VnfYxP5c7w1FKVBvw4dLIOZV0_P1pOHjYxaIHzONggJXP0r1HC0xSF2QGDyik2Vlg0xP1L1ElVrY5799E=s4800-w800-h600"/>
+<img alt="Pado Fantasyland 照片 3 / Pado Fantasyland photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCt2m183RCtIYla59qHqBW_g84jipZbycw-aZ2S4wxfoIu532r4s4MiQW3HSgCykQQ5MZicKxfeamuOl4KQjwqtVhfdskfF0y4m3YDXliayaZBDpxDl9qa0nKmlfazWEwDN-aAe92n0OMC2jw=s4800-w800-h600"/>
+<img alt="Pado Fantasyland 照片 4 / Pado Fantasyland photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB73y3op6k5VFXTXZBJm2OmP5eWMOxDXiwv3utQnJO3naEBWYb54sdDfKGNwQNzS3yGwF_lHWrQfXvyPHJbPFh1Ria_p_vbXDQdJ65LELQ1PGh92bmBNZFIJo-tffU6gXGegblfOE5UneGU6Q=s4800-w800-h600"/>
+<img alt="Pado Fantasyland 照片 5 / Pado Fantasyland photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBdCRC--1w3ks2UzvVt8mwsfkx4FVu5c2hdS293s58vtbrmwOMf0uYwb52u99WrWhepOxyYFgg44QcZs3m4WOYIn9cgYLWSOvg9bxz5q852Oae9kyQMGGeMR9EWUT5hBAJO1D9XPDKLf9YNMg=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -783,217 +783,37 @@
 <div class="rcard" data-cat="arcade">
 <div class="galwrap">
 <div class="gal">
-<img alt="Molly Fantasy" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDhvY3ZY03nhLli2QNthTE66JXjaXppnUPJVpCP1Sjt5dItxK3rnlhikaIvTtC8xT_L5HNB1gT33Cm25ePV8XCuh4X-eQEUWToTeG0RkF2sQYH2nOv9cRBQiVcPKpElbKM5WfJivHrsfr6mq0M=s4800-w800-h600"/>
-<img alt="Molly Fantasy" src="https://lh3.googleusercontent.com/place-photos/AG9NLjD0oeJ9ehlAoT3mJaQFJ6mAcNT3U0UmCfDd1JAMOLCEqNJTZ0J5MBHluEboRmKVrRF16To04TiDr8Nxcp50J8tZXGHjBKNMkC12eLCg3X9sYdxcqp2KrMTh86HNkEY4fex8BzeH1SJRIqMWYA=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">Molly Fantasy</span><span class="en">Molly Fantasy</span> <span class="star">⭐3.4</span></h3>
-<div class="addr">Level 1, AEON, Queensbay Mall, Bayan Lepas</div>
-<div class="desc"><span class="cn">跟 Neo Akedo 同类型的连锁电玩城，夹娃娃机＋节奏游戏机（maimai、太鼓达人等）为主，是槟城岛内少数有 maimai 的地方。<strong>老实说评价一般</strong>：有玩家反映机台故障、夹娃娃机中奖率偏低、职员补货不积极。可以去，但别抱太高期待，也别投太多钱。</span><span class="en">Same type of chain arcade as Neo Akedo — claw machines plus rhythm games (maimai, Taiko no Tatsujin), one of the few places on Penang Island with maimai. <strong>Reviews are honestly mixed</strong>: some report broken machines, low claw payout rates, and slow restocking by staff. Worth a visit, but keep expectations (and spending) modest.</span></div>
-<div class="chips">
-<span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">Daily 10:00 AM–10:00 PM</span></span>
-<span class="chip verify"><span class="cn">⚠ 评价参差，机台偶有故障</span><span class="en">⚠ Mixed reviews, machines occasionally broken</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=2715876647459355917" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="arcade">
-<div class="galwrap">
-<div class="gal">
-<img alt="Games4Life Gurney Plaza" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWltldvPP3gMOBeKtgaYKKBTtMW8MuSN5S1rzHL-4wRyml2FDGbXFR_DNxEEh6ycLpPrHx3q_XVG8h50qOVoPz7TvdhcD2ueh8oQcmEa70NvF2ZFAlffmX1JxHiG3pHqoee8-aUpBALhLFuz=s4800-w800-h600"/>
-<img alt="Games4Life Gurney Plaza" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmZU_dmH5gXrcXbjMJ9v-U8J659fK3FC5mePvu7qgbhVXxjmoq9mWdk6Lx3ttLhaEdHbvSkdEZAlt2mFh39i_VJ4yBvB8quNoJ1UCQcWqbYpUYA_3iOqYmWPZARG-nB6BaUpRpWMIFCPdk=s4800-w800-h600"/>
-<img alt="Games4Life Gurney Plaza" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkkPyhShpxD6A_NlUl7PJUjPcGbvlGVuFis9LBcoLcSIywe2IWBWb3sMyNEzjMviwVkf3qzwOhKY3omnZ5i_VgWVOY0XRS_fkm40OnXsNpOBVhD5KenKrv4zNwdPtUnkpqZXh3Zxrrl2UM=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">Games4Life</span><span class="en">Games4Life</span> <span class="star">⭐4.7</span></h3>
-<div class="addr">Unit 170-07-13A, Gurney Plaza, 170 Persiaran Gurney, Pulau Tikus</div>
-<div class="desc"><span class="cn">Gurney Plaza 商场官方目录收录的电玩娱乐店，评分在槟城几家电玩城中数一数二。<strong>无法确认是否为原本的「Future Land Fun Zone」改名而来</strong>——两个名字目前各自有独立资料，建议直接认准「Games4Life」这个店名，避免找错店。</span><span class="en">Listed in Gurney Plaza's official mall directory, with one of the higher arcade ratings in Penang. <strong>Unconfirmed whether this replaced the previously known "Future Land Fun Zone"</strong> at the same mall — both names still have separate listings online, so look for "Games4Life" specifically to avoid confusion.</span></div>
-<div class="chips">
-<span class="chip verify"><span class="cn">⚠ 营业时间/价格以现场为准（估计随商场约 10:00–22:00）</span><span class="en">⚠ Hours/prices unconfirmed — check on site (mall is roughly 10 AM–10 PM)</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Games4Life%20Gurney%20Plaza%20170%20Persiaran%20Gurney%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="arcade">
-<div class="galwrap">
-<div class="gal">
-<img alt="Timezone Queensbay Mall" src="https://lh3.googleusercontent.com/gps-proxy/ALd4DhEvimlSNj-XImKcUo_IjcpAtyCWqeT_srD_RASBnPnh7T98aOiw9-BgdXbrMgWHZc5nlW4VnSTtLe-SMt4sy07xH-YqWLjZ0gvENOVEYstpY1Gkj6Gt0e7-LbtHOSRZ2W-HBMih0pkuloVzWpaGZT0zQZs1qdP4zhnkJd3Og0uyg0zfCcjaY3pc5fjxBGB6Tngfuw=s4800-w800-h600"/>
-<img alt="Timezone Queensbay Mall" src="https://lh3.googleusercontent.com/gps-proxy/ALd4DhGR9ggQeBwWGcegEaD5S-c_nKBUrS4Jn1TDbKE6onAleF356gGmBoXf1wXnaU2e7iL6Hj1CSdj5wLV1e1KU6olB8R8CTunS5GW7uf9ORtKcR2u2zlzXyttV6QNhAkBmYdVsN3PzgCtMwJcN8SqYzbzCnUoehS4RxXbWhe91-Vg_NH3Q5JmxqYtzrMUvLJAD2c7eX_U=s4800-w800-h600"/>
-<img alt="Timezone Queensbay Mall" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnHMEqQHR1tcoG9muTSqUrHUeQvlh3T7cxZrWStizzSp8S4DpTZTgtMTUT3FA2xhh-EBerTomGH4Xsdyary3fh2Ice7myOAeiVl4EimXLhejs7W1nIR9Wp_yV1JxLR0US2ioo2Kpr2mXGg=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">Timezone 槟城（Queensbay分店）</span><span class="en">Timezone (Queensbay Mall)</span> <span class="star">⭐4.3</span></h3>
-<div class="addr">Queensbay Mall, 100 Persiaran Bayan Indah, Bayan Lepas</div>
-<div class="desc"><span class="cn">国际知名电玩连锁 Timezone 的槟城分店，设在 Queensbay Mall 内。比起本地小型电玩城，机台更新较勤、场地更明亮整洁，适合逛街途中顺路玩一下，采用储值卡＋代币制。</span><span class="en">The Penang outlet of Timezone, a well-known international arcade chain, located inside Queensbay Mall. Machines tend to be newer and the space brighter and cleaner than smaller local arcades — a convenient stop while shopping. Uses a prepaid card + token system.</span></div>
-<div class="chips">
-<span class="chip verify"><span class="cn">⚠ 具体楼层、储值卡余额规则、价格以现场为准</span><span class="en">⚠ Exact floor, card balance rules, and prices — check on site</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Timezone%20Queensbay%20Mall%20Bayan%20Lepas%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="arcade">
-<div class="galwrap">
-<div class="gal">
-<img alt="CYC Mega Leisure World Queensbay Mall" src="https://lh3.googleusercontent.com/gps-proxy/ALd4DhEmSKZH2OhY5J65XtpWwgbIHJtZozMRyr-L3sAfsHejpLURqlsyTU_DSzCxhp-5jLHBC8XuxTPXJoIyr5twvW99Desjd4gBn0VQsxgmvHbKzcfme7tOS7Ht983uAaoqQ1G420L7_MYcu7NsL0IL0ycj6REWvT2GkyuLO7rEUOP4SHm7sjUmtHlNOvW5MZRwshqVGIk=s4800-w800-h600"/>
-<img alt="CYC Mega Leisure World Queensbay Mall" src="https://lh3.googleusercontent.com/gps-proxy/ALd4DhEIbWjsDfj7SPqNwhfvQz_hA2_RdJu1fVDhpLpaJkvYCArr78qCRuXMKEYInE5IsPee1_DFWJPcsZMjG1uWNaTep8dXIKEJRIrP9q_Mxcz9cmc0VrYBWucmQL4Xs4fXdzc6k5qO857UyPmmdHPdyNlqFcNmAGUor9JzqLm6z53Q9m0LbIliHxvFA2jk-ps3B2FxePk=s4800-w800-h600"/>
-<img alt="CYC Mega Leisure World Queensbay Mall" src="https://lh3.googleusercontent.com/gps-proxy/ALd4DhFT8v_fTJT_0a_Xa5QgW1W54MAqlqycq1W6wybqscVY0bmTb3R8F-6fomlwAt_v7_8-6VxHvBxlKHe11HYPJeAdF61un5pUI0KT0Vho46F6qIaNWaL3_MnN6nTakSblLtvkP84dpJwNqK1d9leaydqtAwwT-d6OInZjHcBcc9pE_BBMUx2jTKN6yXmxjP4wTFBBZUM=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">CYC 美加游乐世界</span><span class="en">CYC Mega Leisure World</span> <span class="star">⭐5.0</span></h3>
-<div class="addr">3F-29, South Zone, Queensbay Mall, 100 Persiaran Bayan Indah, Bayan Lepas</div>
-<div class="desc"><span class="cn">马来西亚老牌电玩连锁 CYC 在 Queensbay Mall 南区 3 楼的分店，与同层的儿童游乐场相邻，方便小孩玩完游乐场接着玩机台。</span><span class="en">An outlet of CYC, a long-running Malaysian arcade chain, on Level 3 (South Zone) of Queensbay Mall — right next to a kids' playground on the same floor, handy for combining both.</span></div>
-<div class="chips">
-<span class="chip verify"><span class="cn">⚠ Google 评论仅 1 则，2026 年是否仍营业未确认，建议先电话 +604-575 6362 确认后再前往</span><span class="en">⚠ Only 1 Google review — 2026 operating status unconfirmed. Call +604-575 6362 to confirm before visiting</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=CYC%20Mega%20Leisure%20World%20Queensbay%20Mall%20Bayan%20Lepas%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="arcade">
-<div class="galwrap">
-<div class="gal">
-<img alt="Penang Bowl Lebuh Farquhar" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmBIB-ZKSV2gaEnKXYlezLbUNWO3wdeq3gpJMZxJLzg89SrRjqhaET529m4jXL0qO6vHo1LSrelmDg9hlusVA_LEy_AnCKxlQvnk_I0R8bFIotl-Ju9s-dNefPE-VSOxMihl-A-Cw=s4800-w800-h600"/>
-<img alt="Penang Bowl Lebuh Farquhar" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlXtrJ1b1g-b-_skk4SF60aOaPpbhp77Y8WtjmwiKwkT-yAHK27pOVMa73-M1fOIpxvK9zlHGaVcTwFNwshWyPuXpoai2LY9J2APNwG8hdrh_1H3qBXreWOAWrobF_t9NLkw8mzDmvWs44=s4800-w800-h600"/>
-<img alt="Penang Bowl Lebuh Farquhar" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnZax47omvxn5CuC4uCH71CRN9fPXssSMJqMqdFPh0rwJpwHhL7GVltxs5GMgeQttDzvMFGPpjXj4kpAHwQMKKgCy01i1E7UwqG7T3tnFn0uApTMbNrMEGEiJjxPegSM3Z11ROM=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">槟城保龄球馆</span><span class="en">Penang Bowl</span> <span class="star">⭐4.1</span></h3>
-<div class="addr">38-B, Lebuh Farquhar, George Town</div>
-<div class="desc"><span class="cn">槟城历史最久的保龄球馆之一（1973年开业），位于乔治市老城区，交通方便，球道与设备维护不错，价格亲民，适合带孩子体验第一次打保龄球。</span><span class="en">One of Penang's oldest bowling centres (established 1973), located in the heart of George Town's heritage area. Lanes and equipment are well maintained and prices are affordable — a good spot for kids to try bowling for the first time.</span></div>
-<div class="chips">
-<span class="chip hours"><span class="cn">📅 平日约 13:00–23:00，周五/周六延长至次日凌晨（以官网当周公告为准）</span><span class="en">📅 Weekdays ~1–11 PM, extended past midnight Fri/Sat (check website for the current week)</span></span>
-<span class="chip verify"><span class="cn">⚠ 价格两个来源不一致，以现场/官网为准；儿童保护栏是否提供请现场询问</span><span class="en">⚠ Prices vary by source — confirm on site/website; ask about bumper lanes for kids</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Penang%20Bowl%2038-B%20Lebuh%20Farquhar%20George%20Town%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="arcade">
-<div class="galwrap">
-<div class="gal">
-<img alt="Kart Hauz Design Village rooftop go-kart" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWns3q9S84V9y-dwDi1O_KKn8G3Vfz7Vc5lK7Tktwnd2r0YRqQgXXrcNWEXzRibPZj5FR-pHjF7jzvMzk9PJJu5OVCSNmZMrN0CVpijsasEtCW31Hqk2OcCcONT0Po5LAS65paXR=s4800-w800-h600"/>
-<img alt="Kart Hauz Design Village rooftop go-kart" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlPjAedTXhgG5LwJfsNjjUn-9tYehyVqTUuWTUcZiS9fIcTkI4Z-ZhRkViM7E-rUuopA7KSWtHHp2ZalZbKXlDo8j0LQrzth0jG6T4Ms26FXmPRoo05wrTZ5XFyBoFmYCLKB8E=s4800-w800-h600"/>
-<img alt="Kart Hauz Design Village rooftop go-kart" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnODURKlHh12qHJUnG30zI2U6l2u_keQZy8zW18US0b0o46f9SM2T8j953DQvDT76qse9YBwKtMFLrAGgJyNL_uDsYtymJU2Wb1wGOHNOKfIXyFmfrJR8tN11-S4vVKFMJxXTMXx0CaTxeG=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">Kart Hauz 屋顶卡丁车</span><span class="en">Kart Hauz Penang</span> <span class="star">⭐4.6</span></h3>
-<div class="addr">Level 6, Design Village Penang Mall, Batu Kawan</div>
-<div class="desc"><span class="cn">槟城第一条屋顶卡丁车赛道，2022年开幕，位于 Batu Kawan 名品城顶楼，一边飙车一边能看到开阔的天空景色，赛道长350米，弯道设计有挑战性，适合全家一起体验刺激感。</span><span class="en">Penang's first rooftop go-kart track, opened in 2022 atop Design Village Outlet Mall in Batu Kawan. The 350-metre track offers open-sky views while racing, with enough turns to keep it exciting for the whole family.</span></div>
-<div class="chips">
-<span class="chip hours"><span class="cn">📅 每日 15:00–23:00</span><span class="en">📅 Daily 3 PM–11 PM</span></span>
-<span class="chip verify"><span class="cn">⚠ 儿童RM35/10分钟起、成人RM50/10分钟起（以现场为准）；最低年龄/身高限制建议先电话确认，需穿包鞋</span><span class="en">⚠ From RM35/10min (kids) and RM50/10min (adults), confirm on site; call ahead about minimum age/height, closed-toe shoes required</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Kart%20Hauz%20Design%20Village%20Batu%20Kawan%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="arcade">
-<div class="galwrap">
-<div class="gal">
-<img alt="UFOREA Indoor Children's Playground" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlBLF32FycM8SQ5t3sCle5XjhpNBVHKpS0u5y93ZR_tP4iP12SNmPs8aW7f4R56ZmPrX5Z1Ksk2gEYNBE51RMQ3eM0pzQPRrDV5cF1xMW0BfmpP7YcWMOEdQOY_ry1z9E-wWnloo753F3KN=s4800-w800-h600"/>
-<img alt="UFOREA Indoor Children's Playground" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmmsIaCxXyEJq14j7tT6IqDGDDgvGXQLALvyIM18mDRtHNhs7gNoez57SK8Iqa2zQKlZxrEX3YaA5Fu7Wy6ovUWqH6CvAKa96kq5TF27KFNGcI-F_-dkQNRPm7v3v9x-ZqMEfF1ryf4xFnz=s4800-w800-h600"/>
-<img alt="UFOREA Indoor Children's Playground" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm_FxY4Xwqc0aAFW0iamhWfdWOvoJuPxqIAeaLGcwtZ_KkgKlaAEMWYeRT5ZnTtj5mRUu6bW4tcp3SDeSzRKuLZ_OJyTojGGwEmf1y4yTKvp4O7ioxVBkE1IGxkcKDkmxjtnjDG=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">UFOREA 未来幻想乐园</span><span class="en">UFOREA Indoor Children's Playground</span> <span class="star">⭐4.9</span></h3>
-<div class="addr">3-10, 3-11 & 3-12, Island 88, 118 Jalan Tanjong Tokong</div>
-<div class="desc"><span class="cn">2024年10月开幕，是槟城目前最大的室内游乐场（近2万平方尺），九大未来主题区含攀爬、滑梯、变装、角色扮演，不限时长玩到尽兴，家长评价最常提到环境干净、工作人员细心。</span><span class="en">Opened Oct 2024, UFOREA is Penang's largest indoor playground (~20,000 sq ft) with nine futuristic themed zones — climbing, slides, dress-up, and role-play. Entry is unlimited-time; parents consistently praise the cleanliness and attentive staff.</span></div>
-<div class="chips">
-<span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">📅 Daily 10 AM–10 PM</span></span>
-<span class="chip verify"><span class="cn">⚠ 平日儿童RM78/大人RM18，周末儿童RM98/大人RM28（1岁以下、60岁以上免费），需穿袜子，储物柜/陪同票具体金额以现场为准</span><span class="en">⚠ Weekday RM78 child/RM18 adult, weekend RM98 child/RM28 adult (free under 1 &amp; over 60); socks required, confirm locker/companion fees on site</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=UFOREA%20Island%2088%20118%20Jalan%20Tanjong%20Tokong%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="arcade">
-<div class="galwrap">
-<div class="gal">
-<img alt="Jungle Jumpscape Kids Indoor Playground" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWldvRo0C7dEFzLBgZoC4jOqDclNDos20-Rwnp-Bj38G9FKErOPjb4o68WVY6nxMr9irUvCWMIS-9xWRB4634fM4FJ3HKj5oCjNogC1glf7CEQDdAaoPrVbX1u1-rMukGoY92qY=s4800-w800-h600"/>
-<img alt="Jungle Jumpscape Kids Indoor Playground" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm3JqA0MqMpe0WcJsEOrEr07B_GYEU75PalxCoSjmJlx6fU8Gl9aCqw1ituTq3SEiibmhhAJtl-WruGaw25d8BD8bRzUQIkHXWjrkh45Kr3ixg_J8m6YPndMArT4lrw10_dhe_9CSFQdvCN=s4800-w800-h600"/>
-<img alt="Jungle Jumpscape Kids Indoor Playground" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmnM6HqYrYUaqKDPVQ6m3biu_hk8GfhLkuRX6P0hoCQeK897O1MO5e_sRl1SI_r7aVIismn7HeGI70kRuwbf3x1kDcgbDz2i3cMAouRyTjfXFwECnSW0Q7DVX7qlkbKIxWp52fZsA8rHp4=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">Jungle Jumpscape 丛林探险乐园</span><span class="en">Jungle Jumpscape Kids Indoor Playground</span> <span class="star">⭐4.8</span></h3>
-<div class="addr">8-1-19, 20, 21 & 22, I-Santorini, Jalan Seri Tanjung Pinang 1, Tanjong Tokong</div>
-<div class="desc"><span class="cn">2024年11月开幕，主打丛林与农场主题，除常见的蹦床、攀岩，还有喂小牛、挤牛奶等少见的农场互动体验，加上乐高积木王国与模拟厨房角色扮演，适合喜欢多样玩法的小孩。</span><span class="en">Opened Nov 2024 with a jungle/farm theme, Jungle Jumpscape stands out with hands-on farm experiences like calf feeding and cow milking, on top of the usual trampolines and climbing walls, plus a LEGO block kingdom and a pretend-play kitchen.</span></div>
-<div class="chips">
-<span class="chip hours"><span class="cn">📅 平日 11:00–20:00，周末 11:00–21:30</span><span class="en">📅 Weekdays 11 AM–8 PM, weekends 11 AM–9:30 PM</span></span>
-<span class="chip verify"><span class="cn">⚠ 平日RM48／周末RM58，需穿袜子；周末较贵且人多，建议平日前往</span><span class="en">⚠ RM48 weekdays / RM58 weekends; socks required. Weekends are pricier and busier — go on a weekday if possible</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Jungle%20Jumpscape%20I-Santorini%20Jalan%20Seri%20Tanjung%20Pinang%20Tanjong%20Tokong%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="arcade">
-<div class="galwrap">
-<div class="gal">
-<img alt="Adventure Zone Golden Sands Resort" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlz8o1hhLm8OyNrUtEUMo0xC7iuInUK2rcLw8f9Nx0Rz9Vkkl6SvYz0z9fQM6RvDnY18_MpTxD11JBty_9gEQdxU8BuIIii8A2WnjugjG7wqVDwfa5oazkyTpryyM-MpL4-k66r4A=s4800-w800-h600"/>
-<img alt="Adventure Zone Golden Sands Resort" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkUsTX0NDK7BmFkSH30WJ2sht0uL34v2BglHDmktUc30JvsHrxf3iCw_XGGmJpuNeg8AouyDhauD0qV7egpMn7T8xFZe0EDL8_AJnZ4db_RhTz33482SpuB0hRqZ5HF2Yt-G8k2=s4800-w800-h600"/>
-<img alt="Adventure Zone Golden Sands Resort" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkgO2cCACzPbxrwB7iQhJIgM68UYMP2ZQZuampuX2WzXsHggjnfh1_dk8TOzRamn-nWK48cK1kOs_1jD4yC7XuYjSWelWXORCsaTnHMg_lomT5Ti59ztkWntp71rab5chdU4_FN=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">黄金沙滩度假村儿童探险乐园</span><span class="en">Adventure Zone at Golden Sands Resort</span> <span class="star">⭐4.3</span></h3>
-<div class="addr">Golden Sands Resort, Kampung Tanjung Huma, Batu Ferringhi</div>
-<div class="desc"><span class="cn">位于沙滩度假村 Shangri-La Golden Sands 内的室内儿童探险乐园，分为大童挑战区（滚轮杆、翻越网、荡绳网）与幼儿专区（滑梯、波波池、扮家家酒厨房），非住店客人也能付费入场，适合安排在浮罗山背/巴都丁宜海滩行程里顺路玩。</span><span class="en">An indoor adventure playground inside Shangri-La's Golden Sands Resort in Batu Ferringhi, with separate zones for older kids (climbing/net challenges) and toddlers (slides, ball pits, pretend kitchen). Non-resort guests can pay to enter — an easy add-on to a Batu Ferringhi beach day.</span></div>
-<div class="chips">
-<span class="chip hours"><span class="cn">📅 每日 10:00–19:00</span><span class="en">📅 Daily 10 AM–7 PM</span></span>
-<span class="chip verify"><span class="cn">⚠ 住店客人2小时RM30/3小时RM38，非住店2小时RM40/3小时RM49（含税，1名家长随行免费）；每6名孩童需1名成人全程陪同，建议先电话 (604) 886 1911 预约确认名额</span><span class="en">⚠ Resort guests RM30/2h, RM38/3h; walk-ins RM40/2h, RM49/3h (tax incl., 1 parent free); 1 adult must supervise every 6 kids — call (604) 886 1911 ahead to confirm a slot</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Adventure%20Zone%20Golden%20Sands%20Resort%20Batu%20Ferringhi%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="arcade">
-<div class="galwrap">
-<div class="gal">
-<img alt="Tech Dome Penang KOMTAR" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkC3Gt3uMtg6VrujGJeJ6CshTUu3Qt71Bw4c7TAsx_GwAJ6RCPEK79QVrI_7Nqe01IRZj5Enxy990RzLPQ_3F4IGAjUj8iBhGrG-OMDjkxMpIqtLpdPrb1PVV89hn3DsTH4aqim=s4800-w800-h600"/>
-<img alt="Tech Dome Penang KOMTAR" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlTg5uJc_tm_ZoG-juZ_vx77XUE8Ae0BxRlt8t9GbZ3sb14J4hlE_gEyCCbCxvR1k0r6Uutjonng5C-8EMNPWcaU0UXZiA-7XdGDT2GVdn8OjVtfwNnqQijwmvBhv2nqs_MnUhLIl1I0BCR=s4800-w800-h600"/>
-<img alt="Tech Dome Penang KOMTAR" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlImluVhr-S1XT_bvEuXQWn0EFIdLiw4_BEWIIYdtNRbX_JTvYTRlEpsQHJBdyRq7w2JuhhTXNiUCFBWmcxtCzfCAjbu29IK_to6snwGZHy4qZ5O7TWQdFylxOVXQJ-J8PGFuaQsw=s4800-w800-h600"/>
+<img alt="Tech Dome Penang 照片 1 / Tech Dome Penang photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAkzNATpeFuTpe4qijTSm4jFktDSL3dp8UgS7NJDLdAH2rxp9kCnR22_nbMKzCp8FWI8mGA2XCfK1euZkQCMVpagdiKUKOf8ngkGHYqfLPAPARTmi0dr_qFN2MFNDII3VvuWDOQaHnAJio6WQ=s4800-w800-h600"/>
+<img alt="Tech Dome Penang 照片 2 / Tech Dome Penang photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBjYPb_x8Olvq3a0GONqjfMXE_trFZ4QrMzAGtwKPmHzSQJ4dE9UR68CNce2izped6KnfqShmp2lrYZlIX3mXfbrp2J_UFfOfLek-OjQYSG9_3I8t3iwnoKM0my2lur0AJYuN1xIOJvEODmNw=s4800-w800-h600"/>
+<img alt="Tech Dome Penang 照片 3 / Tech Dome Penang photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCu-IcdQLFbCZQUG_iCq3gZbZ_Tq8WbEsu0iXFyzxsnyNPqcy7T8Vf_9-TSeLir8WAVQTwM1FMsakiLPaaQA6CTBoQS_-4dlufSS5m8vE-V3eU6YSIQZ2GQZieWJ3PZiPIPporOw3D2_BtBTktizbAP7A=s4800-w800-h600"/>
+<img alt="Tech Dome Penang 照片 4 / Tech Dome Penang photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCSdtRsOCtusPa_JoepKGEWFkINvn9YUPojG_v0f832Spuam7BATqgl2du-ywpisEab0SPvPxo1aEStpyzf5c9rQIlvAnbM_Qh1qjRBhLMMlC_rSCuxmhWnFZ2y2r9UeLU4BkkHJFcfg_6PRw=s4800-w800-h600"/>
+<img alt="Tech Dome Penang 照片 5 / Tech Dome Penang photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjA1BKWJe3T-b12VaneJ1_YLEEmt_-e2g8USb1QUNez3wwnz6fzsUwnkA-AJN10QYCbu4_wZqiCTbcWutQGV1gducJZ8YwoMEEY-EG2POI5Pgg2RAPK4Y2Uaq3JzZ6mvhZuXZz8TL2GCZbthsw=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
 <div class="rb">
 <h3><span class="cn">槟城科技探索馆</span><span class="en">Tech Dome Penang</span> <span class="star">⭐4.4</span></h3>
-<div class="addr">Level 4–5, KOMTAR, Jalan Penang, George Town</div>
-<div class="desc"><span class="cn">占地约4.5万平方尺，120多个互动科学展项，分机械人、力与运动、光学、电磁学、资讯科技、生命科技六大单元，招牌项目 G-Drop 让小孩坐上高空滑梯体验重力，边玩边学。</span><span class="en">Spanning ~45,000 sq ft with over 120 hands-on science exhibits across six zones (Robotics, Force &amp; Motion, Optics, Electromagnetism, IT, LifeTech). The signature G-Drop slide lets kids experience gravity first-hand — fun and educational.</span></div>
+<div class="addr">Level 4 &amp; 5, KOMTAR, George Town</div>
+<div class="desc"><span class="cn">位于Komtar大厦4-5楼的互动科学馆，攀岩墙、VR、G-Drop高空体验等设施齐全，寓教于乐，适合亲子。评价提到工作人员服务贴心。</span><span class="en">Interactive science museum on Levels 4-5 of Komtar — wall climbing, VR, the G-Drop free-fall experience and more; educational and fun, good for families. Reviews note attentive staff.</span></div>
 <div class="chips">
-<span class="chip hours"><span class="cn">📅 每日 10:00–19:00</span><span class="en">📅 Daily 10 AM–7 PM</span></span>
-<span class="chip verify"><span class="cn">⚠ 参考票价成人RM28／儿童RM16（年份未标注），建议出发前上官网/官方FB核实最新票价</span><span class="en">⚠ Reference price adult RM28 / child RM16 (year unstated) — verify current pricing on the official website/FB before visiting</span></span>
+<span class="chip hours"><span class="cn">📅 每日 10:00–19:00（周四至18:00）</span><span class="en">Daily 10:00 AM–7:00 PM (Thu until 6:00 PM)</span></span>
 </div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Tech%20Dome%20Penang%20KOMTAR%20George%20Town%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=18330303951363231144" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="http://www.techdomepenang.org/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 </div>
 
 <div class="pgroup" data-cat="culture">
 <div class="bp-group-label" id="pg-culture">🏛 <span class="cn">文化古迹</span><span class="en">Culture &amp; Heritage</span><span class="gn" data-groupcount="culture"></span></div>
+
 <div class="rcard" data-cat="culture">
 <div class="galwrap">
 <div class="gal">
-<img alt="Kek Lok Si" src="https://lh3.googleusercontent.com/place-photos/AG9NLjANTWYoJkKObkRjcSuR-TCn768lDPGD4sh6duaMOuQunpFXzXg3Z5k69GY-1EKRFvSRkWTYoA4NJk-liPGnv6E8gn0i13DIZQ_bTYKVM9nIq5Ijtn8qPUYWCVBpg411n61TI86RWy_WJER9=s4800-w800-h600"/>
-<img alt="Kek Lok Si" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDZZ5PgNk7j7yiuxNj-B0_y9pkj9tkh7r_StYuKaMBrvmsT-ON2-t2FHj6iu9OqSBXQh3cSLhjWSerellGZPfaBKE57PxacpG0m7gGwaeLoyG39ImKS7FhZUzZcFmM0AXmGJd_IeDbo-lyL=s4800-w800-h600"/>
+<img alt="Kek Lok Si Temple 照片 1 / Kek Lok Si Temple photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjANTWYoJkKObkRjcSuR-TCn768lDPGD4sh6duaMOuQunpFXzXg3Z5k69GY-1EKRFvSRkWTYoA4NJk-liPGnv6E8gn0i13DIZQ_bTYKVM9nIq5Ijtn8qPUYWCVBpg411n61TI86RWy_WJER9=s4800-w800-h600"/>
+<img alt="Kek Lok Si Temple 照片 2 / Kek Lok Si Temple photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDZZ5PgNk7j7yiuxNj-B0_y9pkj9tkh7r_StYuKaMBrvmsT-ON2-t2FHj6iu9OqSBXQh3cSLhjWSerellGZPfaBKE57PxacpG0m7gGwaeLoyG39ImKS7FhZUzZcFmM0AXmGJd_IeDbo-lyL=s4800-w800-h600"/>
+<img alt="Kek Lok Si Temple 照片 3 / Kek Lok Si Temple photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjC-JvwWE561psY2i8xkXb6Ju-HpW5afLVTxBIaFDtGgCkPyKOCpb03tRt2-KMuKM0Pkls_rwswE_s3lAC0blD7-AbtjqT7vum_zxA7sm_Y4w8FEY2AMPQQmCapNdSG2b_BONeYDKiWqUAm5s98=s4800-w800-h600"/>
+<img alt="Kek Lok Si Temple 照片 4 / Kek Lok Si Temple photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjConYvzN64ZJo9qLB1hvhsvSzcia1saSw9fwRuaRQ7-L8XpwzANQ9Ss-ZkY4hRtglThqMvu55VLV0_uTdFjU3QOh0AT7b3chn2in7KC3IclpSl59RWX1x376SXE-ACKZlSLWJJb_jWCZtNNE_9R-qqmiQ=s4800-w800-h600"/>
+<img alt="Kek Lok Si Temple 照片 5 / Kek Lok Si Temple photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjD1Fc7-jBf_zefO6e_0o1kpBda_dB-0wkQep4PLbUWRVZ7y7DBhHepyCB39GiNYEwDbZWyoNXBi23R3_fgq9am-mGVaQGrkbdrPQv9IMNbC08QdvL63kkdV05eTre72PuXh_pyMQU2aHaBhg2g=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -1011,8 +831,11 @@
 <div class="rcard" data-cat="culture">
 <div class="galwrap">
 <div class="gal">
-<img alt="Penang Hill" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBjYozGskXKEfOg0EzF39aSfyjv-hJ2jR-mXDINTP2Up0Gqs-k2QvJQsxcEOL-mIqLbICAwqvQ_3mHPAYUKSmcl-_oo9G9k3sAN0Xg6Rfau2KE_zRe11bNYs8fiWvKMRI8DfFboe3swba2EOw=s4800-w800-h600"/>
-<img alt="Penang Hill" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAkFxAWkylQ3ckhWPpT1uFy6XsbsbPwP-3FQbKH8v2kCFxE5NCk1Ctb8ak1VQFnytvrZkQKkWv59icn-XaAksAGq2hPDIpWFu1ZB4eqlJ1ZLxsDmJJfq6diLhMEG0TEQHzvCciKY3cN9qDt=s4800-w800-h600"/>
+<img alt="Penang Hill Funicular 照片 1 / Penang Hill Funicular photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBhQ7loQ4wo6Macds5tMi0bY0mS5BEkFPbosU5l5vD7TqneXd_uA4chxN_qSfIPp2P9WMlaAwOjTbf4DKdhSuHn-apMZ2d8qj4S8LpDTKH7SnKbpv42lmaehMxwXqxnfaiPpps5fRXULOp-EQ=s4800-w800-h600"/>
+<img alt="Penang Hill Funicular 照片 2 / Penang Hill Funicular photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjApW2OEjElN7I4gg_EOzyclO8-NgKKxZXXbyJiOye1oWlcQj9m8DHZGnmbTDwv-mJfZagI2UDeZMDTaj7nv5inBE09hDTNmBRMVYrE_iK1KUNNrmHsEhUbqDEKo8Ow79VSg1xhdlkoQrpDq=s4800-w800-h600"/>
+<img alt="Penang Hill Funicular 照片 3 / Penang Hill Funicular photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjA82sckyU9BPcqfH51gu71SNLKQIHi0-3RLSUJrRseYWFW8ek0Y1yi9pv2VAWBD-K5nT9W9Lodei8xVYT2fxlu1HZyLoV5yjZLXVuUZfp1kdT9Y5gPD1JhbknP3VcIZMOACUu2ghI4WDvNhLg=s4800-w800-h600"/>
+<img alt="Penang Hill Funicular 照片 4 / Penang Hill Funicular photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDVPH_ZgMuApNN79kUFPavsjBRAmTVuV676ef9bKBNOIu8Tj9woMyXyTkqxxrKJowEvVUE6dGt63sKlOU3MApIBcmkuMlQ37bcXKOzS8aQ9uojsK5D2v_RT3eRFWA_7m9QNZHWbpBl7wyr3Tw=s4800-w800-h600"/>
+<img alt="Penang Hill Funicular 照片 5 / Penang Hill Funicular photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjA76ohm43-R07xrZ8U7nH2-23CRq3VXmMwH4utPa2QpNtbLA1pw6de1rat3SaRVxxfvv14aNsUDq4ffhJREARE7ydcCOCd0lJEn3H0PgKZPG0TH2xp6dxbm6V-u4WWqVDcXwK_N5UcIK8j31ekxUXfa=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -1026,133 +849,45 @@
 <div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=9139778477464223867" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://penanghill.gov.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
-
-<div class="rcard" data-cat="culture">
-<div class="galwrap">
-<div class="gal">
-<img alt="Street Art" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDcBVwjiPn-gMcemzmuffzcee5xX9KWPxcfs92zrj9rW-kxRLXS61Z1V_Rs_0bkZlf3eSSZ7aIgNorAwrIRDgaeO647gxYsvqiiUvvCMVffZY7ZsZO2zhAraPWCA-zyTABRZog_Q0PrJw08n2E6oxhr8A=s4800-w800-h600"/>
-<img alt="Street Art" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBU6pLjkLGJBMgFFlIkRypDowCBwglHkiGOy8vmTJ3urjSiElVNqLHc9ZD-jSEzXNcPgYeOISYtSgYZ65oH1Has26eUQrTfepR895qKnNqWyLTkv6Y3q6Jst8xgR7XgRADbzHjGcfryfvk4Beg=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">乔治市壁画街</span><span class="en">Penang Street Art</span> <span class="star">⭐4.4</span></h3>
-<div class="addr">Beach St / Armenian St <span class="cn">一带</span><span class="en">area</span>, George Town</div>
-<div class="desc"><span class="cn">乔治市老城区壁画、古迹建筑与小吃店交错，最有名是「小孩骑脚踏车」壁画。<strong>傍晚5点后光线与气温都更舒服</strong>。</span><span class="en">Historic murals and heritage shophouses woven through George Town's old town — the "kids on a bicycle" mural is the most famous. <strong>After 5 PM is more comfortable</strong> (cooler, better light).</span></div>
-<div class="chips">
-<span class="chip hours"><span class="cn">📅 全天开放（户外）</span><span class="en">Open 24h (outdoor)</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=16675298182508337943" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://streetartpenang.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="culture">
-<div class="galwrap">
-<div class="gal">
-<img alt="Wonderfood Museum George Town" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk2Fcf3RWov005-DwJZuYAyptadwtFf9qUfZ2T8UAtVmejWRY1mHVTMuvwWv0KpTPeHDIhK8JBTmaID1v39wq13WqstYaa3VaE30eiuhs0Be0ZZariecLB6eLjVc-npV9WwrKnW=s4800-w800-h600"/>
-<img alt="Wonderfood Museum George Town" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWntpqXfsZ_hFMiFvhea91fXhnuBHu66w8dCrvsO8P-SvcpTXRneoJBvPq5T-LgQODO9mI6RJnHoUqITKwOOUuIIn3MIs_rdhN34yWHJxNWDARLG03N-bwSIVifZ6vl2s2naZusxGIzc4-u-=s4800-w800-h600"/>
-<img alt="Wonderfood Museum George Town" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn8cxWirZS9n_tXoiFhc6nnQbTxdI51Ym-kpdK8SXxUd9d-L9QVc_GTRTh7mQLWljKv55Fwtx3KRQmPWrdH4eGslYY5IEU2s3G8RAWXyppoiVX8GIw31ZlZJh7IIW8k81TNETgV=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">世界美食博物馆</span><span class="en">Wonderfood Museum</span> <span class="star">⭐4.6</span></h3>
-<div class="addr">49, Lebuh Pantai, George Town</div>
-<div class="desc"><span class="cn">馆内用超逼真的食物模型仿制各国美食（榴莲、叻沙、汉堡等），场景色彩鲜艳很好拍照，小孩不用吃真食物也能沉浸式认识各国美食文化，是雨天备用行程的好选择。</span><span class="en">A quirky museum filled with hyper-realistic oversized food models (durian, laksa, burgers and more) in colourful photo-friendly sets — kids get an immersive introduction to world cuisines without eating anything. A solid rainy-day backup.</span></div>
-<div class="chips">
-<span class="chip hours"><span class="cn">📅 每日 09:00–18:00</span><span class="en">📅 Daily 9 AM–6 PM</span></span>
-<span class="chip verify"><span class="cn">⚠ 外国游客成人RM30/儿童RM20，大马身份证成人RM20/儿童RM12（0-2岁免费），周边停车不便建议步行/叫车</span><span class="en">⚠ Foreign visitors RM30 adult/RM20 child; MyKad holders RM20 adult/RM12 child (free under 2). Parking nearby is tight — walk or grab a ride</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Wonderfood%20Museum%2049%20Lebuh%20Pantai%20George%20Town%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
 </div>
 
 <div class="pgroup" data-cat="outdoor">
-<div class="bp-group-label" id="pg-outdoor">🏖 <span class="cn">户外 · 主题乐园</span><span class="en">Outdoors &amp; Theme Parks</span><span class="gn" data-groupcount="outdoor"></span></div>
-<div class="rcard" data-cat="outdoor">
-<div class="galwrap">
-<div class="gal">
-<img alt="Batu Ferringhi" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDIq9PXlkgPUd4Z0KbFCuMgx82RoqHWKK_3t6QOICPNnu7t2v0Qa-pKmiy1oHMz7zMwNQmilolc7QmYKBSKR0wGVa39q9nYGfpDFI29lHQ2bt7Yx3h59WnhqCDjQ4S7fe20mU5zSTQmaMpo5uCGL_9U=s4800-w800-h600"/>
-<img alt="Batu Ferringhi" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB0hmbZqFroHSXqJbc4Lj7gmI2pnSWcmF2n3exMKz8XxCxEV2isvkw4taRLrda9htYPedAWLoCXzPbbz6dBZXgHVRAPLs3FNaMiC0ugr9UfeJCuYJyNvPTZRxQP8Y3vMuolIoCVndMvu__s4w=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">Batu Ferringhi 海滩</span><span class="en">Batu Ferringhi Beach</span> <span class="star">⭐4.3</span></h3>
-<div class="addr">Batu Ferringhi, Penang</div>
-<div class="desc"><span class="cn">槟城最热闹的海滩，日落景色好，可玩水上摩托、拖曳伞等水上活动，沿岸餐厅、按摩店多。评价也提到<strong>较商业化、水质一般</strong>，适合看日落、逛夜市而非纯净戏水。</span><span class="en">Penang's liveliest beach, great sunsets, jet-skiing and parasailing available, plenty of beachside restaurants. Reviews also note it's <strong>commercialized with average water quality</strong> — better for sunset/night market vibes than pristine swimming.</span></div>
-<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=2956641074386871952" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
+<div class="bp-group-label" id="pg-outdoor">🏖 <span class="cn">户外观景</span><span class="en">Outdoors &amp; Views</span><span class="gn" data-groupcount="outdoor"></span></div>
 
 <div class="rcard" data-cat="outdoor">
 <div class="galwrap">
 <div class="gal">
-<img alt="ESCAPE" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDud7Pv_ITG-5xCv5YFTH9KSvjBCNbH7dAMhzPXDUBQ_2OYHpdnIY2_Py2wGZ4D35D3K5Wxht94RpbSUX4t5lAM9O0XI7VfGDJso9vrMcjEG7MCXjUWFNzp8ziT7n2iyWAiTcXcG1aXTPYTEA=s4800-w600-h450"/>
-<img alt="ESCAPE" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCkBIF8k8qauLf0B6X2qi0VJAg-5sBbjt6XkJ_G7NUPMhBiBLlBAozkJzdBGOlaoWOjlWmQ9fgWoZF8HHrVNYJsv2NZJKTbebWia_FOlEilfnKLNfa2K7wu8C25dmDcpyPsOiLpUs63ycdoFg=s4800-w800-h600"/>
+<img alt="The TOP Penang 照片 1 / The TOP Penang photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCdyVmSVucBW2cvAJS-5X0iSqfBF9sgesxLKziDhbrv-fLWKk1Z_eMPn-CJxepVja_tsPgZbBmDN7E6lrxz1jFxQETQ5K0RhrIKgZNLNrE6HXtg_3qDgnqd8izmC-Y317Kpmbz3rYiMSVuXIwA=s4800-w800-h600"/>
+<img alt="The TOP Penang 照片 2 / The TOP Penang photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBh_C0EQp3uxkDQ52XW4UZTcqW6I13EVEt9n_T8eqTHNVIxCL2Txwt4fXIUN64AbGzhBkiajC3wHASDd4dj75fWvdrvQi-p595HYX5s5lpILUaElA_RY0-srMZBGNy-ncWK4fCgK8Z3bFTxNw=s4800-w800-h600"/>
+<img alt="The TOP Penang 照片 3 / The TOP Penang photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBcaTxNN_PVAFDT5dFh66WBQVxVtSCzxR12IOY1Uxlz3Op9VO-a_PLqh0KP6mHZxZ2ypDMf1gp6j4Xx-7PusIzUXUR4JR0kQtJMCQCO1ZSMnh_ti8ukyHFQWvaHwVUfG_ptuD1nw_V_8fhIIQ=s4800-w800-h600"/>
+<img alt="The TOP Penang 照片 4 / The TOP Penang photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDrohgNYT5TfAal5iJ7Nb4eZFKbECvBgVdVBuqNaCoxLt3vp2KRz36Ctr6IyL9-LMWgHsUs-bBSl_0OSk9NxkLxkCUXIAu8hCUP0bwSDMPjy-6d2GqcnI31nejfPrHVHClRR0EIa_Ibh3Wbig=s4800-w800-h600"/>
+<img alt="The TOP Penang 照片 5 / The TOP Penang photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBCUV9G44WILLEZR-AMyTjH9_umJ7DdX-AuuNzDIySxSQmIJaTwXfyiyvPdi67dT6mYusTpu9WXvSQAmiD5SzocRa9iDoP4bz7tz6d2VSOV6N4JtLJwPm66vV16hV59OL5LaI8npHdfhQWQQOI=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
 <div class="rb">
-<h3><span class="cn">ESCAPE Penang</span><span class="en">ESCAPE Penang</span> <span class="star">⭐4.6</span></h3>
-<div class="addr">Teluk Bahang, Penang</div>
-<div class="desc"><span class="cn">丛林探险主题乐园，含水上乐园与陆上探险设施（滑索、攀爬网等），园区大、遮荫多。<strong>建议玩一整天</strong>，适合有孩子的家庭。</span><span class="en">Jungle adventure park with a water park and land-based obstacle courses (zip lines, climbing nets), large and mostly shaded. <strong>Best planned as a full day</strong> — good for families with kids.</span></div>
+<h3><span class="cn">The TOP Penang</span><span class="en">The TOP Penang</span> <span class="star">⭐4.3</span></h3>
+<div class="addr">Komtar Tower, Jalan Penang, George Town</div>
+<div class="desc"><span class="cn">Komtar塔顶多层娱乐综合体：彩虹天空步道、观景台、水族馆、侏罗纪主题展、4D动感剧院等，一栋楼可以玩一整天，各项目需<strong>分别购票</strong>。<strong>与槟城科技探索馆同一栋大楼</strong>，可安排在一起逛。评价提醒建议一早前往，玩到的项目更多。</span><span class="en">Multi-level entertainment complex atop Komtar tower — Rainbow Skywalk, observation deck, aquarium, Jurassic-themed exhibit, 4D motion theatre and more; easily a full day, with <strong>separate tickets per attraction</strong>. <strong>Same tower as Tech Dome Penang</strong> — easy to combine. Reviews suggest arriving early to fit in more attractions.</span></div>
 <div class="chips">
-<span class="chip hours"><span class="cn">📅 每日 10:00–18:00</span><span class="en">Daily 10:00 AM–6:00 PM</span></span>
+<span class="chip hours"><span class="cn">📅 每日 10:00–22:00（周二至19:00）</span><span class="en">Daily 10:00 AM–10:00 PM (Tue until 7:00 PM)</span></span>
 </div>
-<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=16526880740113953376" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://www.escape.my/park/pg" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="outdoor">
-<div class="galwrap">
-<div class="gal">
-<img alt="Upside Down Museum" src="https://lh3.googleusercontent.com/place-photos/AG9NLjBsNaNdQqcWd7CYfHOL1i9wNBPp-vU87sBPP1CAtaAuWgrItvtcliWLJkWZvE0XXVApdtkloHe9PTCP808qyoNvcNgfwdTl13FzImTTQb2odro3OwoRQInLRLCCwJRQV0LlLtcWP82Wx2K5=s4800-w800-h600"/>
-<img alt="Upside Down Museum" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAnAUHN3DjxX-uRJIueVd1-2DeV2c7tdtO8ReMfNnh-P0ILsxGyx-dSbpeq48SwnjkO_7_PfoGSIkK9b-OTpc_TMa_B9hsfRYzeoVotEpTPG0YKBRiXLXo4WjODJrscthcuUpO5zzfrgp-78teriKgG=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">倒立博物馆</span><span class="en">Upside Down Museum</span> <span class="star">⭐4.2</span></h3>
-<div class="addr">Lebuh Kimberley, George Town</div>
-<div class="desc"><span class="cn">室内打卡景点，房间家具全倒挂在天花板，照片翻转后有「悬空」错觉，<strong>工作人员会协助摆拍</strong>，游玩约15–25分钟，下雨天备案选项。</span><span class="en">Indoor photo-op attraction with furniture mounted upside-down on the ceiling — flip the photo for a "floating" illusion. <strong>Staff help pose for shots</strong>; takes 15–25 min. Good rainy-day backup.</span></div>
-<div class="chips">
-<span class="chip hours"><span class="cn">📅 每日 9:30–18:30</span><span class="en">Daily 9:30 AM–6:30 PM</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=10379161048850736976" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-</div>
-
-<div class="rcard" data-cat="outdoor">
-<div class="galwrap">
-<div class="gal">
-<img alt="Entopia by Penang Butterfly Farm" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlDtLgGt1m7ks5l4Sn2AErj6CGqU64zDgQ9ren3g7EckR0nURdLpTBakVXzQY-WjjPGkABKopRjaknlQVZjGqITDyzO7IbNr4cetd5RnO5pyMLEbCpWw-xoaGeltIfMBQ-uU2E_=s4800-w800-h600"/>
-<img alt="Entopia by Penang Butterfly Farm" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl1Hng4eky5sJxOOscK3YgYu4qvNe94BR-Ahox6agCP1AzsErBCcf_uJk5My4WqhlrVlQIIVC6v8C-_tCddOKwx9c2ppkZni20KMv4n_9Qg4EtRWcWI2qD8rbZXYrIsbGY7b8SAdOKkF5zO=s4800-w800-h600"/>
-<img alt="Entopia by Penang Butterfly Farm" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl1HljREwWZ3Zg99oMeBV9azCCD8_QNvOT2m-iogwHwGHr9fuJJup_apaLa9QcLno_wBm3joN858DCpUTOIlgm5bYoFHnIQbm2LrMeymXHYHvQDh5OOh9BKAEt8eyXM_8VAc_OX=s4800-w800-h600"/>
-</div>
-<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
-</div>
-<div class="rb">
-<h3><span class="cn">Entopia 蝴蝶生态园</span><span class="en">Entopia by Penang Butterfly Farm</span> <span class="star">⭐4.5</span></h3>
-<div class="addr">No. 830, Jalan Teluk Bahang, Teluk Bahang</div>
-<div class="desc"><span class="cn">超过15,000只、60多个品种的活体蝴蝶在大型生态玻璃屋里自由飞舞，还有互动昆虫馆、瀑布造景，是槟城少数能近距离接触活体蝴蝶与昆虫的自然教育景点，适合喜欢动植物的小孩。</span><span class="en">Home to over 15,000 live butterflies from 60+ species flying freely in a large glasshouse ecosystem, plus an interactive insect house and waterfall features — one of Penang's best nature-education spots for kids who love animals and insects.</span></div>
-<div class="chips">
-<span class="chip hours"><span class="cn">📅 每日 09:00–18:00，最晚入场17:00</span><span class="en">📅 Daily 9 AM–6 PM, last admission 5 PM</span></span>
-<span class="chip verify"><span class="cn">⚠ 每周三休馆，安排行程时要避开；门票约RM65起（随季节浮动，出发前查官网当日价）</span><span class="en">⚠ Closed every Wednesday — plan around it; tickets from ~RM65 (varies seasonally, check official site for the day's price)</span></span>
-</div>
-<div class="acts"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Entopia%20by%20Penang%20Butterfly%20Farm%20830%20Jalan%20Teluk%20Bahang%20Penang" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=8676810005730272390" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://thetop.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
 </div>
 </div>
 </div>
 
 <div class="pgroup" data-cat="mall">
 <div class="bp-group-label" id="pg-mall">🛍 <span class="cn">购物商场</span><span class="en">Shopping Malls</span><span class="gn" data-groupcount="mall"></span></div>
+
 <div class="rcard" data-cat="mall">
 <div class="galwrap">
 <div class="gal">
-<img alt="Gurney Plaza" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDT7BZc5ZyfQ2LDBrrAs0mUfeeBLGiPgzVwFceCkXHSnBM27dyWNGBgkJ3fJHjlBqGLpHm8QKybhjq4jq1Aoqh39W2M6zFD6sM9Gb4kDHTNKneh4wemxE-E4plp0kamB6y_DaFVf5dsLE-_D7Q=s4800-w800-h600"/>
-<img alt="Gurney Plaza" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCRDHzPK-RKt8yp845hsUNSVIs3E-iSiauxOh3p0TiGPQtAciGOOYt8D5q9lFJj-xRWJO6ELa_bPh8mS6mgbCQ4X2FnxWqHwm5Uivoozm0dbTN322fqBQ4Fql8LL7Zq4JOxsvYPWoDd60Pnyi5fVltLtg=s4800-w800-h600"/>
+<img alt="Gurney Plaza 照片 1 / Gurney Plaza photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDT7BZc5ZyfQ2LDBrrAs0mUfeeBLGiPgzVwFceCkXHSnBM27dyWNGBgkJ3fJHjlBqGLpHm8QKybhjq4jq1Aoqh39W2M6zFD6sM9Gb4kDHTNKneh4wemxE-E4plp0kamB6y_DaFVf5dsLE-_D7Q=s4800-w800-h600"/>
+<img alt="Gurney Plaza 照片 2 / Gurney Plaza photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCRDHzPK-RKt8yp845hsUNSVIs3E-iSiauxOh3p0TiGPQtAciGOOYt8D5q9lFJj-xRWJO6ELa_bPh8mS6mgbCQ4X2FnxWqHwm5Uivoozm0dbTN322fqBQ4Fql8LL7Zq4JOxsvYPWoDd60Pnyi5fVltLtg=s4800-w800-h600"/>
+<img alt="Gurney Plaza 照片 3 / Gurney Plaza photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDVRjrQpOGANVwdWzIUF7I6AsBUYItZTsjPRkJVLrrxLahsh_Zts9NrJYW6nwZGf2QabZLUra3E97Qk5PEsFHuZwTknMnpSPutX07A0pbUmLDjM1kFODYTxvU6DMxiowNkSkV6Lhw2wG6qp=s4800-w800-h600"/>
+<img alt="Gurney Plaza 照片 4 / Gurney Plaza photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjC3FFbBqa0AHpff1nQ3wNDM9L24NGCwDk7UoCjq2qpvvJl37o0QxTCSbMxmvQ6Wxjw3KMMU-fap4Ee_tQPuS56D7rdw3RyAkPrgtANhtRUlrcndesaBRTm6Z1yPnyLa2xROzTXeYlWpYUaqvA=s4800-w800-h600"/>
+<img alt="Gurney Plaza 照片 5 / Gurney Plaza photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDH-ri-UtbGxjyzDy6a-CLVp2I-g9DgLSILtGlcqpiR7I089qIISCm1Qja_rw_F4voRJXVqctUJi1pQCGDfZ3kexv8SI6vZHJqrdK01zYxtF8lKLZRY6teAbotU4KmXiyRVjSbQXF9ELUsa5Q=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -1170,15 +905,18 @@
 <div class="rcard" data-cat="mall">
 <div class="galwrap">
 <div class="gal">
-<img alt="Queensbay Mall" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDfpqcvMU8C0rLtGFHBRRzUo2bapBOTVBMzDd_Vq3YLcnwCZb-pBLGz2ymjjT8Q4rc5cRIRxa_OE6fktZt4lndbodVtV8dqrVChPBi7UaOCR5xMMcYqKj-sFSISvAHu_iaGygQv11lllzki7HxgULtj=s4800-w800-h600"/>
-<img alt="Queensbay Mall" src="https://lh3.googleusercontent.com/place-photos/AG9NLjA9iwxLEjCjXPSU8fXg2H4JDgNEpeYulRfUprzLtLuuWfgnX_8spBmUGBM4I4dvm6hTpg1CBVC9h-UcDorrjxpUz8c2NfBxYwMe7q2VYgsydW5yKS2lyiYoRh0yn34MFpnQ3j1-l9WH3CN4SQ=s4800-w800-h600"/>
+<img alt="Queensbay Mall 照片 1 / Queensbay Mall photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDVccxUx8bGhmjKuOiqAzhSzxKhcu8ARMJ6uEji-eGXUb_E9g4qH5X3mYna2vqzGUPt-LnhxjfPAgyA_DEW1ZkLrib9vT1Tavv3gzev_tCaz7nTBJ9rHsxupkI-U1H0R2CKyK9PW_ifbTXx6Au9KYPF=s4800-w800-h600"/>
+<img alt="Queensbay Mall 照片 2 / Queensbay Mall photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjA9iwxLEjCjXPSU8fXg2H4JDgNEpeYulRfUprzLtLuuWfgnX_8spBmUGBM4I4dvm6hTpg1CBVC9h-UcDorrjxpUz8c2NfBxYwMe7q2VYgsydW5yKS2lyiYoRh0yn34MFpnQ3j1-l9WH3CN4SQ=s4800-w800-h600"/>
+<img alt="Queensbay Mall 照片 3 / Queensbay Mall photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAGkfPxSDj0DU274Fne3_iYX5IHtAatbR_PsUbkScQV_Wd5fxtHrY54L8-hKeh6wL3QCti_XB2fvIapLBCdyuUobqY0ZAzdfB_JSoQJOvZQThmpUqJLXtu7fhDTYNkPKkEPRy1tt-ZNABlPAQ=s4800-w800-h600"/>
+<img alt="Queensbay Mall 照片 4 / Queensbay Mall photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjC_8fq8FwhbUahEUewecGHGQDuzKaXC-frZsQ0DWUwDvI2xFdy8qyj0MJqBmWigDSLVGoB94iaEBNiLDYXyp6jNQ_lBetgO2-6Z2QUUV3cxctAXeoGCDpupV1pZlsThRhJ3xEnc81DdLPZyvA=s4800-w800-h600"/>
+<img alt="Queensbay Mall 照片 5 / Queensbay Mall photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjB5OmBQNYF8823xdpMQ3oB7WdUh1BZE309h63_H1p5Y74EUuWaia7d1wflvbW3od-OT4mce9vrnxtx5VudvUwOAjyEyrKL3uAZjo-B1zBOv8dmFIf1e-k1vb4W8IAqWdcrmF6HEseUlZ4aW-PM=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
 <div class="rb">
 <h3><span class="cn">Queensbay Mall</span><span class="en">Queensbay Mall</span> <span class="star">⭐4.4</span></h3>
 <div class="addr">100, Persiaran Bayan Indah, Bayan Lepas</div>
-<div class="desc"><span class="cn">槟城最大商场之一，滨海地带，AEON超市、大型美食广场。<strong>与龙依北京烤鸭同商场</strong>，可安排在一起。</span><span class="en">One of Penang's largest malls, waterfront location, AEON supermarket and a large food hall. <strong>Same mall as Dragon-i Peking Duck</strong> — easy to combine.</span></div>
+<div class="desc"><span class="cn">槟城最大商场之一，滨海地带，AEON超市、大型美食广场。<strong>与笼的传人同商场</strong>，可安排在一起。</span><span class="en">One of Penang's largest malls, waterfront location, AEON supermarket and a large food hall. <strong>Same mall as Dragon-i Peking Duck</strong> — easy to combine.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 10:30–22:30</span><span class="en">Daily 10:30 AM–10:30 PM</span></span>
 </div>
@@ -1189,8 +927,11 @@
 <div class="rcard" data-cat="mall">
 <div class="galwrap">
 <div class="gal">
-<img alt="Sunway Carnival Mall" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAqhjbYZsCjZavts8q_qVKD-JV6wF11FAkdlse-cioCoASLDL7dU4C-QA06jby0KikPEh1fPjSq-YkRH0mDH8jlp59aQq9nCgj9r_q8cqC0oiR6mFiIqhyyML_C0kFvghuGojMNvRqTe4f-Qg=s4800-w800-h600"/>
-<img alt="Sunway Carnival Mall" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDF0YdmMz4wozH1dNsZMwWoVd_F8WmVBbrZiGBQDaqQICZHjJxvUz8KSdKPnyzcr0-xhDuZ6l-nbTXclEF0D6sr_VfliSk-xsX9IxekpU107y1f1FFJ8t0ocvMXRhD1zVZv6LhOKS3irpq88ww5MijrEA=s4800-w720-h600"/>
+<img alt="Sunway Carnival Mall 照片 1 / Sunway Carnival Mall photo 1" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAqhjbYZsCjZavts8q_qVKD-JV6wF11FAkdlse-cioCoASLDL7dU4C-QA06jby0KikPEh1fPjSq-YkRH0mDH8jlp59aQq9nCgj9r_q8cqC0oiR6mFiIqhyyML_C0kFvghuGojMNvRqTe4f-Qg=s4800-w800-h600"/>
+<img alt="Sunway Carnival Mall 照片 2 / Sunway Carnival Mall photo 2" src="https://lh3.googleusercontent.com/place-photos/AG9NLjDF0YdmMz4wozH1dNsZMwWoVd_F8WmVBbrZiGBQDaqQICZHjJxvUz8KSdKPnyzcr0-xhDuZ6l-nbTXclEF0D6sr_VfliSk-xsX9IxekpU107y1f1FFJ8t0ocvMXRhD1zVZv6LhOKS3irpq88ww5MijrEA=s4800-w720-h600"/>
+<img alt="Sunway Carnival Mall 照片 3 / Sunway Carnival Mall photo 3" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAUKi9E8N1JiiuouFfvJJMQnu93RDcVTlPJVBBAHsIRjWytVSg6KYCDOP-1Uzy7D3C1RITx94ne4lbwDvZ-88HfqpJNICYWrNr0KcmniOVovVhgn0q0K8qdgasFettFFBGMb_rZ3i5mZUwRQjYAPz_0=s4800-w800-h600"/>
+<img alt="Sunway Carnival Mall 照片 4 / Sunway Carnival Mall photo 4" src="https://lh3.googleusercontent.com/place-photos/AG9NLjAHts5vVWM1sjscXU6Cl-TPsYDDE543gPEED3Nph2-ytbTbXRFgO0gPXYb4i3m3gHXT-HTj-WWQx6JlilAvcWgWrbPqy0ttDaLXf7CfU_DxewvHDJzOUmohqYm6dMbm7nxhaDwif8TMu7WaSg=s4800-w800-h600"/>
+<img alt="Sunway Carnival Mall 照片 5 / Sunway Carnival Mall photo 5" src="https://lh3.googleusercontent.com/place-photos/AG9NLjCT7zm3NzvGTdLrgDGEQq0CJR3moNK8xuajv6Uoswtxra7ABkmYX3aZ59Z45tQgBFyof4MegCLZdQEu5JJ6GyTM2ySctoEYXT0w75rlPWum57iykatPi5UEnSW8yS5HgA_g-6Bo-upwm7juZA=s4800-w800-h600"/>
 </div>
 <span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
 </div>
@@ -1206,12 +947,13 @@
 </div>
 </div>
 </div>
+
 <div class="pempty" id="pempty"><span class="cn">这个分类下暂时没有地点。</span><span class="en">No places in this category yet.</span></div>
 </section>
 
 <!-- ===== WEATHER ===== -->
 <section id="weather">
-<div class="sec-head"><span class="no">05</span><h2><span class="cn">天气</span><span class="en">Weather</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
+<div class="sec-head"><span class="no">04</span><h2><span class="cn">天气</span><span class="en">Weather</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 <div class="note amber">
 <span class="cn">⚠ 出发日期（10月）距今超过7周，暂无逐日天气预报，以下为槟城10月<strong>历史平均气候</strong>数据，非实时预报，出发前一周请再查证。</span>
 <span class="en">⚠ Oct is more than 7 weeks out — no day-by-day forecast yet. Figures below are <strong>historical climate averages</strong> for Penang in October, not a live forecast; re-check about a week before departure.</span>
@@ -1234,43 +976,11 @@
 </div>
 </section>
 
-<!-- ===== CHECKLIST ===== -->
-<section id="checklist">
-<div class="sec-head"><span class="no">06</span><h2><span class="cn">必办事项</span><span class="en">Checklist</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
-<div class="cklist">
-<div class="ck"><div class="box"></div><div><div class="m"><span class="cn">确认6人名单是否正确（少了 Hor Bunseryi）</span><span class="en">Confirm 6-pax list is correct (Hor Bunseryi missing)</span></div><div class="s"><span class="cn">见航班区块提示</span><span class="en">See note in Flights section</span></div></div><span class="flag amber"><span class="cn">待确认</span><span class="en">Pending</span></span></div>
-<div class="ck"><div class="box"></div><div><div class="m"><span class="cn">跟航空公司确认回程末段（SIN→KTI）能否调整座位</span><span class="en">Check with airline on SIN→KTI seat split</span></div></div><span class="flag amber"><span class="cn">待确认</span><span class="en">Pending</span></span></div>
-<div class="ck"><div class="box"></div><div><div class="m"><span class="cn">Miraku / Tairyo 用餐前提醒单点，避开牛肉品项</span><span class="en">Remind à la carte + skip beef at Miraku / Tairyo</span></div></div></div>
-<div class="ck"><div class="box"></div><div><div class="m"><span class="cn">线上值机（起飞前48小时开放）</span><span class="en">Online check-in (opens 48h before departure)</span></div></div></div>
-<div class="ck"><div class="box"></div><div><div class="m"><span class="cn">随身携带雨伞 / 轻便雨具</span><span class="en">Pack a compact umbrella / light rain gear</span></div><div class="s"><span class="cn">10月为雨季高峰</span><span class="en">Peak of rainy season</span></div></div></div>
-<div class="ck"><div class="box"></div><div><div class="m"><span class="cn">防晒用品（SPF30+）</span><span class="en">Sunscreen (SPF30+)</span></div></div></div>
-</div>
-<div class="ck-progress"><span class="cn">0 / 6 已完成</span><span class="en">0 / 6 done</span></div>
-</section>
-
 <footer>
 <div class="band tiles" aria-hidden="true"></div>
 <div class="mark">PENANG · OCT 2026</div>
 <p><span class="cn">草稿版本 · 待补充每日行程后更新</span><span class="en">Draft version · to be updated once daily itinerary is confirmed</span></p>
 </footer>
-</div>
-
-<button class="fab" id="fab" type="button" aria-label="快速跳转章节 / Quick section jump" aria-haspopup="dialog">☰</button>
-<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="快速跳转 / Quick jump">
-<div class="mask" id="sheetMask"></div>
-<div class="panel">
-<div class="grip" aria-hidden="true"></div>
-<div class="st"><span class="cn">快速跳转</span><span class="en">Quick jump</span></div>
-<div class="links">
-<a href="#flights"><span class="e" aria-hidden="true">✈️</span><span class="cn">航班</span><span class="en">Flights</span></a>
-<a href="#stay"><span class="e" aria-hidden="true">🏠</span><span class="cn">住宿</span><span class="en">Stay</span></a>
-<a href="#dining"><span class="e" aria-hidden="true">🍽</span><span class="cn">餐厅</span><span class="en">Dining</span></a>
-<a href="#places"><span class="e" aria-hidden="true">📍</span><span class="cn">去处</span><span class="en">Places</span></a>
-<a href="#weather"><span class="e" aria-hidden="true">🌡</span><span class="cn">天气</span><span class="en">Weather</span></a>
-<a href="#checklist"><span class="e" aria-hidden="true">✅</span><span class="cn">必办</span><span class="en">Checklist</span></a>
-</div>
-<button class="top" id="toTop" type="button">↑ <span class="cn">回到顶部</span><span class="en">Back to top</span></button>
-</div>
 </div>
 
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="图片放大 / Photo viewer">
@@ -1325,6 +1035,12 @@ document.querySelectorAll('[data-catcount]').forEach(function(el){
   var cat = el.getAttribute('data-catcount');
   el.textContent = cat === 'all' ? placeCards.length
     : placeCards.filter(function(c){ return c.dataset.cat === cat; }).length;
+});
+document.querySelectorAll('.pchip').forEach(function(ch){
+  var cat = ch.getAttribute('data-cat');
+  if (cat === 'all') return;
+  var n = placeCards.filter(function(c){ return c.dataset.cat === cat; }).length;
+  ch.hidden = (n === 0);
 });
 document.querySelectorAll('[data-groupcount]').forEach(function(el){
   var cat = el.getAttribute('data-groupcount');
@@ -1398,26 +1114,6 @@ filterPlaces('all');
   el.querySelector('.en').innerHTML = en;
 })();
 
-/* ---------- 必办事项 ---------- */
-function renderProgress(){
-  var total = document.querySelectorAll('.ck').length;
-  var done  = document.querySelectorAll('.ck.done').length;
-  var p = document.querySelector('.ck-progress');
-  if (!p) return;
-  p.querySelector('.cn').textContent = done + ' / ' + total + ' 已完成';
-  p.querySelector('.en').textContent = done + ' / ' + total + ' done';
-}
-document.querySelectorAll('.ck').forEach(function(ck){
-  ck.setAttribute('role', 'button');
-  ck.setAttribute('tabindex', '0');
-  function flip(){ ck.classList.toggle('done'); renderProgress(); }
-  ck.addEventListener('click', flip);
-  ck.addEventListener('keydown', function(e){
-    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); flip(); }
-  });
-});
-renderProgress();
-
 /* ---------- 章节高亮 ---------- */
 var navLinks = Array.prototype.slice.call(document.querySelectorAll('.navstrip a'));
 var secs = navLinks.map(function(a){ return document.querySelector(a.getAttribute('href')); });
@@ -1428,18 +1124,6 @@ function spy(){
 }
 window.addEventListener('scroll', spy, { passive: true });
 spy();
-
-/* ---------- 快速跳转面板 ---------- */
-var sheet = document.getElementById('sheet');
-function openSheet(){ sheet.classList.add('open'); }
-function closeSheet(){ sheet.classList.remove('open'); }
-document.getElementById('fab').addEventListener('click', openSheet);
-document.getElementById('sheetMask').addEventListener('click', closeSheet);
-sheet.querySelectorAll('.links a').forEach(function(a){ a.addEventListener('click', closeSheet); });
-document.getElementById('toTop').addEventListener('click', function(){
-  closeSheet();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
 
 /* ---------- 灯箱 ---------- */
 var lbImages = [], lbIndex = 0;
@@ -1474,7 +1158,7 @@ document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') closeLb();
     if (e.key === 'ArrowLeft') lbNav(-1);
     if (e.key === 'ArrowRight') lbNav(1);
-  } else if (e.key === 'Escape') closeSheet();
+  }
 });
 </script>
 </body>
