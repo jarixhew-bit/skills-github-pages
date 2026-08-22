@@ -43,6 +43,29 @@ function normalize(src) {
   return src.split('?')[0];
 }
 
+/**
+ * 高德手机版把照片放在 API 回应里，**DOM 上一张都没有**（2026-08-22 第一次试跑：
+ * 三家店 diag 全是 ssr-next.amap.com 的界面图，照片零张）。所以真正管用的是
+ * 拦截网络回应、从 JSON 里正则捞照片网址。DOM 那条留着当补充。
+ */
+function harvestFromText(text, sink) {
+  const clean = text.replace(/\\\//g, '/').replace(/\\u002F/gi, '/');
+  const re = /https?:\/\/[A-Za-z0-9._-]*(?:aos-comment\.amap\.com|store\.is\.autonavi\.com|aos-cdn-image\.amap\.com)\/[A-Za-z0-9._~%!$&'()*+,;=:@/-]+/g;
+  for (const m of clean.match(re) || []) sink.push(m);
+}
+
+function watchResponses(page, sink) {
+  page.on('response', async res => {
+    try {
+      const ct = (res.headers()['content-type'] || '');
+      if (!/json|javascript|text/.test(ct)) return;
+      const body = await res.text();
+      if (body.length > 4_000_000) return;
+      harvestFromText(body, sink);
+    } catch (e) { /* 回应读不到就算了 */ }
+  });
+}
+
 async function collect(page) {
   const urls = await page.$$eval('img', imgs =>
     imgs.map(i => i.currentSrc || i.src).filter(Boolean));
@@ -63,6 +86,8 @@ function merge(map, urls) {
 async function fetchOne(ctx, query) {
   const page = await ctx.newPage();
   const out = { query, ok: false, count: 0, method: 'none', urls: [], title: '' };
+  const fromNetwork = [];
+  watchResponses(page, fromNetwork);
   try {
     const url = /^https?:\/\//.test(query)
       ? query
@@ -73,13 +98,15 @@ async function fetchOne(ctx, query) {
     out.landed = page.url().slice(0, 120);
 
     const collected = new Map();
+    merge(collected, fromNetwork);
     merge(collected, await collect(page));
-    out.method = 'placepage';
+    out.method = fromNetwork.length ? 'network' : 'placepage';
 
     // 页面往下滚，把懒加载的相册与点评图都带出来
     for (let i = 0; i < 10 && collected.size < WANT * 2; i++) {
       await page.evaluate(() => window.scrollBy(0, 900));
       await page.waitForTimeout(1200);
+      merge(collected, fromNetwork);
       merge(collected, await collect(page));
     }
 
@@ -92,6 +119,22 @@ async function fetchOne(ctx, query) {
       const before = collected.size;
       merge(collected, await collect(page));
       if (collected.size > before) { out.method = 'gallery'; break; }
+    }
+
+    // 手机版还抓不满时，用落地网址里的 POI id 再开一次桌面版店铺页
+    const poi = (out.landed.match(/__p=([A-Z0-9]+)/) || [])[1];
+    if (collected.size < WANT && poi) {
+      const p2 = await page.context().newPage();
+      const sink2 = [];
+      watchResponses(p2, sink2);
+      try {
+        await p2.goto('https://www.amap.com/place/' + poi, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await p2.waitForTimeout(8000);
+        for (let i = 0; i < 5; i++) { await p2.evaluate(() => window.scrollBy(0, 800)); await p2.waitForTimeout(1200); }
+        merge(collected, sink2);
+        merge(collected, await collect(p2));
+        if (collected.size > 0) out.method += '+desktop';
+      } catch (e) { /* 桌面版打不开就算了 */ } finally { await p2.close().catch(() => {}); }
     }
 
     out.urls = [...collected.values()].slice(0, WANT);
