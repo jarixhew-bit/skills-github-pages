@@ -1,7 +1,8 @@
 name: Fetch place photos
 
-# 抓 Google 地图的地点照片给手册卡片用（沙盒连不上 Google，只能在 CI 抓）。
-# 抓取逻辑在 tools/fetch-photos.mjs，每家店进照片图库抓 5 张以上不重复照片。
+# 抓地点照片给手册卡片用（沙盒连不上 Google 与高德，只能在 CI 抓）。
+# 抓取逻辑：Google 走 tools/fetch-photos.mjs（进照片图库抓），
+# 高德走 tools/fetch-photos-amap.mjs（大陆中小店家 Google 常常无图，高德才有）。
 
 on:
   workflow_dispatch:
@@ -13,6 +14,12 @@ on:
         description: "每家店要几张不重复照片"
         required: false
         default: "5"
+      source:
+        description: "从哪抓：google（预设）或 amap（大陆店家 Google 常常没图）"
+        required: false
+        default: "google"
+        type: choice
+        options: [google, amap]
 
 permissions:
   contents: write
@@ -52,7 +59,13 @@ jobs:
           WANT: ${{ github.event.inputs.want }}
         run: |
           set -o pipefail
-          node tools/fetch-photos.mjs | tee photos-output.txt
+          # 高德那条通道是给「Google 上一张照片都没有」的大陆店家用的
+          # （2026-08-22 第稻客家菜馆，四组关键字全抓回别家同名店）。
+          if [ "${{ github.event.inputs.source }}" = "amap" ]; then
+            node tools/fetch-photos-amap.mjs | tee photos-output.txt
+          else
+            node tools/fetch-photos.mjs | tee photos-output.txt
+          fi
 
       - name: Upload result
         if: always()
