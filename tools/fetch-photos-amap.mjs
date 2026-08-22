@@ -9,6 +9,14 @@
  * 这一套专门收拾「Google 没有、高德有」的大陆店家。输出格式刻意保持一致，
  * 好让插图的脚本两边通吃。
  *
+ * ⚠ **实测结论（2026-08-22，两次 CI 试跑）：这条通道目前抓不到照片。**
+ * 高德手机版与桌面版的店铺页上都没有照片元素，照片只走它 App 端的接口；
+ * 拦截网络回应也只捞到界面图与用户头像。第一版还因为把 img.alicdn.com
+ * 放进白名单而「假成功」——回报抓满 5 张，全是 48x48 图标。
+ * 过滤已收紧成只认 aos-comment / store.is.autonavi 两个真照片域名，
+ * 所以现在它会诚实地回报 0 张。**除非有新思路（例如找到公开的照片接口），
+ * 不要再拿这条通道烧 CI**；大陆店家 Google 又没图时，直接向用户要图更快。
+ *
  * 铁律沿用：**宁可少给，绝不补重复**。抓不满就如实回报数量。
  *
  * 用法（只能在 GitHub Actions 上跑，沙盒连不上高德）：
@@ -24,8 +32,12 @@ const WANT = parseInt(process.env.WANT || '5', 10);
 /** 高德的照片走这几个 CDN；其余（图标、地图瓦片、头像）一律不要。 */
 function isPlacePhoto(src) {
   if (!src) return false;
-  if (!/(aos-comment\.amap\.com|store\.is\.autonavi\.com|aos-cdn-image\.amap\.com|img\.alicdn\.com)/.test(src)) return false;
-  if (/\/avatar|head_img|icon|logo/i.test(src)) return false;
+  // img.alicdn.com 是阿里的**界面** CDN（按钮、二维码、48x48 图标），一张店家照片都没有。
+  // 第一版把它放进白名单，结果三家店都「抓满 5 张」，全是图标——**假成功比失败更糟**，
+  // 所以这里只认高德真正放照片的两个域名（2026-08-22 踩过）。
+  if (!/(aos-comment\.amap\.com|store\.is\.autonavi\.com)/.test(src)) return false;
+  if (/\/avatar|head_img|icon|logo|qrcode/i.test(src)) return false;
+  if (/tps-\d{1,3}-\d{1,3}\./.test(src)) return false;  // tps-48-48 这种尺寸标记 = 图标
   return true;
 }
 
@@ -50,7 +62,7 @@ function normalize(src) {
  */
 function harvestFromText(text, sink) {
   const clean = text.replace(/\\\//g, '/').replace(/\\u002F/gi, '/');
-  const re = /https?:\/\/[A-Za-z0-9._-]*(?:aos-comment\.amap\.com|store\.is\.autonavi\.com|aos-cdn-image\.amap\.com)\/[A-Za-z0-9._~%!$&'()*+,;=:@/-]+/g;
+  const re = /https?:\/\/[A-Za-z0-9._-]*(?:aos-comment\.amap\.com|store\.is\.autonavi\.com)\/[A-Za-z0-9._~%!$&'()*+,;=:@/-]+/g;
   for (const m of clean.match(re) || []) sink.push(m);
 }
 
