@@ -58,6 +58,7 @@
   `usj-disney-restaurants-v2.html` 保留为跳转页，服务已发出去的旧链接，勿删）
 - `boss-dinner.html` — 老板晚餐页（结构笔记见 `.claude/notes/travel-pages.md`）
 - `penang-trip/` — 槟城家庭旅游手册（2026年10月，结构笔记见 `.claude/notes/travel-pages.md`）
+- `xiamen-trip/` — 厦门自由行手册（2026-08-24~27，2人，结构笔记见 `.claude/notes/travel-pages.md`）
 - `expense-tracker.html` — 记帐工具（PWA）
 - `fortune.html` — 运势页面
 - `trading/` — IBKR 交易脚本与页面（`fund.html` 是作业系统简报页，2026-08-16 建，

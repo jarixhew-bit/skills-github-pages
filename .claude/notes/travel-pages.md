@@ -175,3 +175,34 @@ lightbox 从 `.gal>img` 的 src/alt 取图，`#lbImg` 的 alt 会跟着换（所
   以及壁画街／海滩／ESCAPE／倒立博物馆）**用户 2026-08-21 全部删掉了，不要加回来**。
 - 航班区块只有登机牌＋转机条＋行李表，用户重上传时把之前的三条 note（6人名单确认、
   末段座位分开、订位代号 EC966J）都拿掉了，别自己补回去。
+
+## xiamen-trip/index.html（约 830 行）
+厦门自由行手册，2026-08-24~27 三晚四天，2 人（HEW/CHERN YANG ＋ TAN/CHIN HOOI），双语。
+2026-08-22 新建，**CSS 与 JS 整套复制自 singapore-trip/index.html**（同一套 `.day`／`.stop`／
+`.bpass`／`.tl`／lightbox／天气条），改动只有坐标与常态文案。
+URL: .../xiamen-trip/
+结构：topbar → `nav#daystrip`（FLT/STAY/INFO ＋ D1–D4）→ cover → tip → `#flights`(01，
+去程 MF896 金边→厦门、续程 MF8705 厦门→槟城 ＋ 行李表 ＋ 槟城段说明) → `#hotel`(02，
+**酒店未定，占位卡**) → `#tips`(03，7 张 `.stop`：南普陀预约／船票／支付／交通／上网／
+天气／入境) → `#itinerary`(04) → `.day#day01`~`#day04`（`data-date="2026-08-24"`…）→ footer。
+高频操作：
+1. 每天开头一组 `.wxbox`（`.wx[data-wx]` ＋ `.rainplan` cn/en），加一天就配一组。
+   坐标 `latitude=24.4798&longitude=118.0894&timezone=Asia/Shanghai`。
+   ⚠ `tools/check-weather.mjs` **目前只验 singapore 与 penang 两页，没有涵盖本页**——
+   改天气逻辑时要嘛手动用浏览器验，要嘛顺手把本页加进那个脚本。
+2. D1–D3 用 `.stop` 卡，**D4 用时间线** `.tl > .ev`（`.ev.hot` 强调、`.ev.fin` 收尾）。
+3. 餐厅六家（乌糖沙茶面／好食来大排档／第稻／闽和南／宴遇／同安饭店）与
+   南普陀寺、万象城、SM 三个地点是**用户指定**的，地图按钮用用户给的**高德短链**
+   （`surl.amap.com/...`），其余地点才用 Google 地图搜索链接。
+双语：siteLangUser，新页无旧 key 兜底。PWA：不适用。
+已知坑：
+- 沙盒连不上 lh3.googleusercontent.com 与 google.com（curl 与 `tools/check-images.py` 一律
+  URLError，singapore-trip 这种已知好页也一样），**图片有没有失效只能靠 CI**
+  （`check-images.yml` 支持 workflow_dispatch，`file` 输入填单一页面）。
+- 第稻客家菜馆在 Google 地图上查无照片（换过三组关键字，第三次抓回台湾的同名店），
+  卡片改用所在的 **SM 城市广场三期**照片，并在卡片里写明图是商场不是餐厅——
+  别把那段说明删掉，也别把台湾那家的照片放进来。
+内容决定（勿擅自回退）：
+- 乌糖沙茶面的 ⭐4.4 是**大众点评**分数（Google 只有 4.1／48 则），卡片上已标明出处。
+- D4 排同安饭店（金尚店）不是随便选的：它 10:30 开门、离高崎机场 15 分钟，
+  是唯一能塞进 14:05 起飞前的一餐；11:45 离席是硬时间。
