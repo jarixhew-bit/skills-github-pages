@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>厦门自由行 · 24–27 Aug 2026 | Xiamen Trip</title>
+<style>
+  :root {
+    --paper: #faf7f1;
+    --card: #ffffff;
+    --ink: #1c1917;
+    --muted: #78716c;
+    --faint: #a8a29e;
+    --line: #e7e0d5;
+    --red: #c8102e;
+    --red-soft: #fdf0f2;
+    --gold: #b08d3e;
+    --gold-soft: #faf3e3;
+    --green: #2e7d4f;
+    --green-soft: #edf7f0;
+    --blue: #1d5c8f;
+    --blue-soft: #edf4fa;
+    --purple: #7c5295;
+    --purple-soft: #f2ecf5;
+    --serif: "Palatino Linotype", "Songti SC", "Noto Serif SC", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--sans); background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.65; }
+  img { display: block; }
+  body.lang-en .cn { display: none !important; }
+  body:not(.lang-en) .en { display: none !important; }
+  .topbar { position: sticky; top: 0; z-index: 300; background: rgba(28,25,23,.97); backdrop-filter: blur(8px); display: flex; align-items: stretch; height: 44px; color: #fff; }
+  .topbar .brand { flex: 1; display: flex; align-items: center; gap: 8px; padding: 0 14px; min-width: 0; }
+  .topbar .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex: none; }
+  .topbar .brand .t { font-size: 13px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar button.lang { display: flex; align-items: center; padding: 0 14px; background: none; border: none; border-left: 1px solid rgba(255,255,255,.14); color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--sans); }
+  .daystrip { position: sticky; top: 44px; z-index: 290; background: var(--paper); border-bottom: 1px solid var(--line); display: flex; overflow-x: auto; gap: 6px; padding: 8px 12px; scrollbar-width: none; }
+  .daystrip::-webkit-scrollbar { display: none; }
+  .daystrip a { flex: none; text-decoration: none; text-align: center; border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px; background: var(--card); color: var(--ink); line-height: 1.3; min-width: 46px; }
+  .daystrip a .d { display: block; font-size: 12px; font-weight: 800; }
+  .daystrip a .m { display: block; font-size: 9px; color: var(--faint); font-weight: 600; letter-spacing: .03em; }
+  .daystrip a.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .daystrip a.active .m { color: rgba(255,255,255,.65); }
+  .daystrip a.today-chip { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+  .daystrip a.today-chip .m { color: var(--red); }
+  .cover { position: relative; background: var(--ink); color: #fff; overflow: hidden; }
+  .cover img.bg { width: 100%; height: 300px; object-fit: cover; opacity: .55; }
+  .cover .inner { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 22px 20px 24px; background: linear-gradient(180deg, rgba(28,25,23,.1) 30%, rgba(28,25,23,.88) 100%); }
+  .cover .kicker { font-size: 11px; font-weight: 800; letter-spacing: .28em; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; }
+  .cover h1 { font-family: var(--serif); font-size: 30px; line-height: 1.2; font-weight: 700; margin-bottom: 8px; }
+  .cover .dates { font-size: 13px; color: rgba(255,255,255,.85); font-weight: 600; }
+  .cover .meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .cover .meta-chip { font-size: 10.5px; font-weight: 700; padding: 4px 10px; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; color: rgba(255,255,255,.92); }
+  .tip { display: flex; gap: 10px; margin: 14px 16px 0; padding: 12px 14px; background: var(--gold-soft); border: 1px solid #ecd9ae; border-radius: 12px; font-size: 12.5px; color: #6b5216; }
+  .tip .ico { flex: none; }
+  .wrap { max-width: 760px; margin: 0 auto; padding-bottom: 60px; }
+  section { padding: 26px 16px 4px; }
+  .sec-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .sec-head .no { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--red); letter-spacing: .1em; }
+  .sec-head h2 { font-family: var(--serif); font-size: 21px; font-weight: 700; letter-spacing: .01em; }
+  .sec-head .rule { flex: 1; height: 1px; background: var(--line); align-self: center; }
+  .bp-group-label { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 16px 2px 8px; }
+  .bpass { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
+  .bpass .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--ink); color: #fff; }
+  .bpass .head .airline { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; letter-spacing: .05em; }
+  .bpass .head .airline .code { background: var(--red); border-radius: 6px; padding: 1px 7px; font-size: 11px; }
+  .bpass .head .craft { font-size: 10.5px; color: rgba(255,255,255,.7); font-weight: 600; }
+  .bpass .route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 16px 16px 12px; gap: 8px; }
+  .bpass .apt { text-align: center; }
+  .bpass .apt .iata { font-family: var(--serif); font-size: 30px; font-weight: 700; letter-spacing: .02em; line-height: 1.1; }
+  .bpass .apt .city { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+  .bpass .apt .time { font-size: 15px; font-weight: 800; color: var(--red); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .bpass .mid { text-align: center; color: var(--faint); }
+  .bpass .mid .dur { font-size: 10px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+  .bpass .mid .line { position: relative; height: 1px; background: var(--line); margin: 6px 0; min-width: 74px; }
+  .bpass .mid .line::after { content: "✈"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--red); background: var(--card); padding: 0 4px; }
+  .bpass .perf { border-top: 1px dashed var(--line); position: relative; }
+  .bpass .perf::before, .bpass .perf::after { content: ""; position: absolute; top: -8px; width: 16px; height: 16px; border-radius: 50%; background: var(--paper); border: 1px solid var(--line); }
+  .bpass .perf::before { left: -9px; }
+  .bpass .perf::after { right: -9px; }
+  .bpass .pax { padding: 12px 16px; }
+  .bpass .pax .cls { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 2px 8px; border-radius: 5px; margin-bottom: 6px; }
+  .bpass .pax .cls.biz { background: var(--gold-soft); color: #7c6220; border: 1px solid #e5d3a4; }
+  .bpass .pax .cls.eco { background: var(--blue-soft); color: var(--blue); border: 1px solid #c9dced; }
+  .bpass .pax .seats { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+  .bpass .pax .seat { font-size: 10.5px; font-weight: 600; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .track { display: inline-flex; align-items: center; gap: 6px; margin: 0 16px 14px; font-size: 11.5px; font-weight: 700; color: var(--blue); background: var(--blue-soft); border: 1px solid #c9dced; border-radius: 999px; padding: 6px 14px; text-decoration: none; }
+  .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 12px; }
+  .tbl th { background: var(--ink); color: #fff; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 8px 10px; text-align: left; font-weight: 700; }
+  .tbl td { padding: 9px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+  .note { font-size: 12px; border-radius: 10px; padding: 10px 13px; margin-top: 10px; }
+  .note.amber { background: var(--gold-soft); border: 1px solid #ecd9ae; color: #6b5216; }
+  .note.red { background: var(--red-soft); border: 1px solid #f3c6cd; color: #7c1024; }
+  .note.green { background: var(--green-soft); border: 1px solid #c4e3cf; color: #1d5637; }
+  .gal { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 10px; scrollbar-width: none; margin: 10px 0 4px; }
+  .gal::-webkit-scrollbar { display: none; }
+  .gal img { scroll-snap-align: start; width: 78%; max-width: 340px; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; flex: none; background: var(--line); cursor: zoom-in; }
+  .gal-hint { font-size: 10px; color: var(--faint); margin-bottom: 6px; }
+  .lb { position: fixed; inset: 0; background: rgba(0,0,0,.93); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
+  .lb.open { display: flex; }
+  .lb img { max-width: 94%; max-height: 80vh; object-fit: contain; border-radius: 8px; }
+  .lb-counter { color: rgba(255,255,255,.55); font-size: 12px; margin-top: 10px; letter-spacing: .05em; }
+  .lb-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 19px; cursor: pointer; line-height: 36px; text-align: center; }
+  .lb-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.15); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 22px; cursor: pointer; line-height: 40px; text-align: center; }
+  .lb-arrow.prev { left: 10px; }
+  .lb-arrow.next { right: 10px; }
+  .hotel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
+  .hotel .stay { display: flex; justify-content: space-between; align-items: center; padding: 9px 16px; background: var(--gold-soft); border-bottom: 1px solid #ecd9ae; font-size: 11.5px; font-weight: 800; color: #7c6220; letter-spacing: .03em; }
+  .hotel .bd { padding: 14px 16px 16px; }
+  .hotel h3 { font-family: var(--serif); font-size: 18px; font-weight: 700; }
+  .hotel .addr { font-size: 11.5px; color: var(--muted); margin: 4px 0 2px; }
+  .hotel .tel { font-size: 11.5px; color: var(--muted); }
+  .btn-map { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--green); background: var(--green-soft); border: 1px solid #c4e3cf; border-radius: 999px; padding: 6px 14px; text-decoration: none; margin-top: 10px; }
+  .day { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 18px; overflow: hidden; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
+  .day.today { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 4px 14px rgba(200,16,46,.12); }
+  .day .dh { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .day .dh .dn { font-family: var(--serif); font-size: 34px; font-weight: 700; color: var(--red); line-height: 1; min-width: 44px; }
+  .day .dh .dn small { display: block; font-family: var(--sans); font-size: 8.5px; font-weight: 800; letter-spacing: .22em; color: var(--faint); margin-top: 2px; }
+  .day .dh .dt { flex: 1; min-width: 0; }
+  .day .dh .dt h3 { font-size: 15.5px; font-weight: 800; line-height: 1.3; }
+  .day .dh .dt .dd { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 1px; }
+  .day .dh .badge { flex: none; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .day .today-tag { display: none; }
+  .day.today .today-tag { display: inline-block; font-size: 9.5px; font-weight: 800; background: var(--red); color: #fff; border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+  .day .db { padding: 6px 16px 14px; }
+  .stop { position: relative; padding: 12px 0 12px 26px; border-bottom: 1px solid var(--line); }
+  .stop:last-of-type { border-bottom: none; }
+  .stop::before { content: ""; position: absolute; left: 7px; top: 22px; bottom: -4px; width: 2px; background: var(--line); }
+  .stop:last-of-type::before { display: none; }
+  .stop .pin { position: absolute; left: 0; top: 16px; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #fff; }
+  .stop .pin.must { background: var(--red); }
+  .stop .pin.side { background: var(--faint); }
+  .stop .pin.dine { background: var(--gold); }
+  .stop .pin.maybe { background: var(--blue); }
+  .stop h4 { font-size: 14.5px; font-weight: 800; line-height: 1.35; }
+  .stop h4 .star { color: var(--gold); font-weight: 700; font-size: 12.5px; }
+  .stop .desc { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .stop .desc strong { color: var(--ink); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid; }
+  .chip.hours { color: var(--muted); border-color: var(--line); background: var(--paper); }
+  .chip.ticket { color: #7c6220; border-color: #e5d3a4; background: var(--gold-soft); }
+  .chip.book { color: var(--green); border-color: #c4e3cf; background: var(--green-soft); }
+  .chip.verify { color: #a33b00; border-color: #f2cdb3; background: #fdf2ea; }
+  .chip.ok { color: var(--green); border-color: #c4e3cf; background: var(--green-soft); }
+  .backup { margin: 10px 0 4px 26px; border: 1px dashed var(--purple); border-radius: 12px; padding: 12px 14px; background: var(--paper); }
+  .backup .bk-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--purple); margin-bottom: 4px; }
+  .backup h4 { font-size: 13.5px; font-weight: 800; }
+  .backup .desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .dayfoot { border-top: 1px solid var(--line); background: var(--paper); padding: 10px 16px; display: flex; gap: 10px; font-size: 12px; }
+  .dayfoot + .dayfoot { border-top: 1px dashed var(--line); }
+  .dayfoot .ftlb { flex: none; font-weight: 800; font-size: 11px; color: var(--muted); min-width: 58px; }
+  .dayfoot .tx { color: var(--ink); }
+  /* ===== EVENT CARD (limited-time) ===== */
+  .evt { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
+  .evt .eh { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--red-soft); border-bottom: 1px solid #f3c6cd; }
+  .evt .eh .et { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--red); }
+  .evt .eh .ed { font-size: 11px; font-weight: 800; color: var(--red); white-space: nowrap; }
+  .evt .eb { padding: 14px 16px 16px; }
+  .evt h3 { font-size: 16px; font-weight: 800; }
+  .evt .desc { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .evt .meta { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+  footer { text-align: center; padding: 30px 20px 20px; }
+  footer .mark { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .2em; margin-bottom: 8px; }
+  footer p { font-size: 10.5px; color: var(--faint); line-height: 1.7; }
+  .tl { border-left: 2px solid var(--line); margin: 4px 0 4px 8px; }
+  .tl .ev { position: relative; padding: 0 0 18px 22px; }
+  .tl .ev:last-child { padding-bottom: 4px; }
+  .tl .ev::before { content: ""; position: absolute; left: -7px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--card); border: 3px solid var(--faint); }
+  .tl .ev.hot::before { border-color: var(--red); }
+  .tl .ev.fin::before { border-color: var(--green); }
+  .tl .ev .t { font-size: 12px; font-weight: 800; color: var(--red); font-variant-numeric: tabular-nums; }
+  .tl .ev h4 { font-size: 13.5px; font-weight: 800; margin-top: 1px; }
+  .tl .ev .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .tl .ev.fin .t, .tl .ev.fin h4 { color: var(--green); }
+  .wxbox { margin: 10px 0 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  .wx { font-size: 12.5px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .wx.wet { color: var(--red); }
+  .rainplan { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="topbar">
+<div class="brand"><span class="dot"></span><span class="t"><span class="cn">厦门 · 3晚4天 · Aug 2026</span><span class="en">Xiamen · 3N4D · Aug 2026</span></span></div>
+<button class="lang" id="langBtn" onclick="toggleLang()">EN</button>
+</div>
+<nav class="daystrip" id="daystrip">
+<a href="#flights"><span class="d">✈️</span><span class="m"><span class="cn">航班</span><span class="en">FLT</span></span></a>
+<a href="#hotel"><span class="d">🏨</span><span class="m"><span class="cn">住宿</span><span class="en">STAY</span></span></a>
+<a href="#tips"><span class="d">📌</span><span class="m"><span class="cn">须知</span><span class="en">INFO</span></span></a>
+<a data-date="2026-08-24" href="#day01"><span class="d">D1</span><span class="m">24</span></a>
+<a data-date="2026-08-25" href="#day02"><span class="d">D2</span><span class="m">25</span></a>
+<a data-date="2026-08-26" href="#day03"><span class="d">D3</span><span class="m">26</span></a>
+<a data-date="2026-08-27" href="#day04"><span class="d">D4</span><span class="m">27</span></a>
+</nav>
+<div class="wrap">
+<!-- COVER -->
+<div class="cover">
+<img alt="鼓浪屿 Gulangyu Island, Xiamen" class="bg" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkhA0SGhCZrQHPgFeM-8Q7UMhbhlzHJgh1JJLNcY44RIlDHLyajRMACOtbKuwh5piQCgG8ZZqfdwjKLy7B00XwLOwQQG1EOcpHa8c5q0KVTqToqMjF0ykyd9N-LV3qvitntxji2=s4800-w800-h600"/>
+<div class="inner">
+<div class="kicker"><span class="cn">行程手册</span><span class="en">Travel Handbook</span></div>
+<h1><span class="cn">厦门自由行</span><span class="en">Xiamen Getaway</span></h1>
+<div class="dates"><span class="cn">3晚4天 · 2026年8月24日 – 8月27日</span><span class="en">3 Nights 4 Days · Aug 24 – Aug 27, 2026</span></div>
+<div class="meta-row">
+<span class="meta-chip">✈ MF 896 / MF 8705</span>
+<span class="meta-chip">👥 <span class="cn">2人</span><span class="en">2 pax</span></span>
+<span class="meta-chip">🍜 <span class="cn">餐厅6家</span><span class="en">6 restaurants</span></span>
+<span class="meta-chip">🛬 <span class="cn">接槟城段</span><span class="en">On to Penang</span></span>
+</div>
+</div>
+</div>
+<!-- TIP -->
+<div class="tip">
+<span class="ico">👆</span>
+<div>
+<span class="cn"><strong>绿色按钮</strong>是地图，点了直接导航（餐厅与三个指定地点用的是<strong>高德地图</strong>链接，手机装了高德会自动开 App）。标「⚠ 需查证」的时间、票价出发前请再确认一次。</span>
+<span class="en"><strong>Green buttons</strong> open maps (restaurants and the three named spots use <strong>Amap / Gaode</strong> links, which open the Amap app if installed). Anything tagged "⚠ verify" should be reconfirmed before departure.</span>
+</div>
+</div>
+
+<!-- ===== FLIGHTS ===== -->
+<section id="flights">
+<div class="sec-head"><span class="no">01</span><h2><span class="cn">航班</span><span class="en">Flights</span></h2><span class="rule"></span></div>
+
+<div class="bp-group-label"><span class="cn">🛫 去程 · 8月24日 (一) · 金边 → 厦门</span><span class="en">🛫 Outbound · Aug 24 (Mon) · Phnom Penh → Xiamen</span></div>
+<div class="bpass">
+<div class="head"><span class="airline"><span class="code">MF</span>MF 896</span><span class="craft">Xiamen Airlines</span></div>
+<div class="route">
+<div class="apt"><div class="iata">KTI</div><div class="city"><span class="cn">金边 Techo</span><span class="en">Phnom Penh Techo</span></div><div class="time">18:00</div></div>
+<div class="mid"><div class="dur">2h 55m</div><div class="line"></div></div>
+<div class="apt"><div class="iata">XMN</div><div class="city"><span class="cn">厦门 高崎 T3</span><span class="en">Xiamen Gaoqi T3</span></div><div class="time">21:55</div></div>
+</div>
+<div class="perf"></div>
+<div class="pax">
+<span class="cls eco">ECONOMY · 2 PAX</span>
+<div class="seats"><span class="seat">HEW/CHERN YANG 41K</span><span class="seat">TAN/CHIN HOOI 41J</span></div>
+</div>
+<a class="track" href="https://www.flightaware.com/live/flight/CXA896" target="_blank">📡 <span class="cn">追踪 MF896</span><span class="en">Track MF896</span></a>
+</div>
+<div class="note amber" style="margin-top:-4px">
+<span class="cn">🕘 厦门比金边快 1 小时（飞行实际约 2小时55分）。落地 21:55，过关取行李后进市区大约 23:00 —— D1 当晚不排行程。</span>
+<span class="en">🕘 Xiamen is 1 hour ahead of Phnom Penh (actual flying time ~2h55m). Landing at 21:55 means reaching the city around 23:00 after immigration and bags — nothing is scheduled for the evening of D1.</span>
+</div>
+
+<div class="bp-group-label"><span class="cn">🛬 续程 · 8月27日 (四) · 厦门 → 槟城</span><span class="en">🛬 Onward · Aug 27 (Thu) · Xiamen → Penang</span></div>
+<div class="bpass">
+<div class="head"><span class="airline"><span class="code">MF</span>MF 8705</span><span class="craft">Xiamen Airlines</span></div>
+<div class="route">
+<div class="apt"><div class="iata">XMN</div><div class="city"><span class="cn">厦门 高崎 T3</span><span class="en">Xiamen Gaoqi T3</span></div><div class="time">14:05</div></div>
+<div class="mid"><div class="dur">3h 55m</div><div class="line"></div></div>
+<div class="apt"><div class="iata">PEN</div><div class="city"><span class="cn">槟城</span><span class="en">Penang</span></div><div class="time">18:00</div></div>
+</div>
+<div class="perf"></div>
+<div class="pax">
+<span class="cls biz">BUSINESS · 2 PAX</span>
+<div class="seats"><span class="seat">HEW/CHERN YANG 12A</span><span class="seat">TAN/CHIN HOOI 12C</span></div>
+</div>
+<a class="track" href="https://www.flightaware.com/live/flight/CXA8705" target="_blank">📡 <span class="cn">追踪 MF8705</span><span class="en">Track MF8705</span></a>
+</div>
+
+<div class="bp-group-label"><span class="cn">🧳 行李额</span><span class="en">🧳 Baggage Allowance</span></div>
+<table class="tbl">
+<tr><th><span class="cn">航段</span><span class="en">Sector</span></th><th><span class="cn">舱位</span><span class="en">Cabin</span></th><th><span class="cn">托运</span><span class="en">Checked</span></th></tr>
+<tr>
+<td><strong><span class="cn">金边 → 厦门</span><span class="en">Phnom Penh → Xiamen</span></strong></td>
+<td><span class="cn">经济</span><span class="en">Economy</span></td>
+<td><span class="cn">1件（每人）</span><span class="en">1 piece each</span></td>
+</tr>
+<tr>
+<td><strong><span class="cn">厦门 → 槟城</span><span class="en">Xiamen → Penang</span></strong></td>
+<td><span class="cn">商务</span><span class="en">Business</span></td>
+<td><span class="cn">2件（每人）</span><span class="en">2 pieces each</span></td>
+</tr>
+</table>
+<div class="note amber">
+<span class="cn">⚠ 需查证：机票上只写件数、没写每件公斤上限，厦航国际线一般单件 23kg。行李超重现场加钱很贵，出发前打厦航 <strong>95557</strong> 确认一句。</span>
+<span class="en">⚠ Verify: the ticket lists piece counts but no per-piece weight cap; Xiamen Air international is normally 23kg per piece. Excess baggage at the counter is expensive — a quick call to Xiamen Air <strong>95557</strong> settles it.</span>
+</div>
+<div class="note green">
+<span class="cn">🇲🇾 <strong>接下来的槟城段</strong>：8月27日晚抵达槟城，9月1日 MH1145 槟城 13:30 → 吉隆坡 14:35，转 MH762 吉隆坡 16:30 → 金边 17:25（商务舱，两人座位 01F）。槟城那几天的行程另外做一本。</span>
+<span class="en">🇲🇾 <strong>The Penang leg</strong>: arriving Penang on the evening of Aug 27; on Sep 1, MH1145 Penang 13:30 → KL 14:35, connecting to MH762 KL 16:30 → Phnom Penh 17:25 (Business, seat 01F for both). The Penang days get their own handbook.</span>
+</div>
+</section>
+
+<!-- ===== HOTEL ===== -->
+<section id="hotel">
+<div class="sec-head"><span class="no">02</span><h2><span class="cn">住宿</span><span class="en">Hotel</span></h2><span class="rule"></span></div>
+<div class="hotel">
+<div class="stay"><span><span class="cn">厦门 · 8月24–27日</span><span class="en">Xiamen · Aug 24–27</span></span><span><span class="cn">3晚 · ⚠待确认</span><span class="en">3 nights · ⚠TBC</span></span></div>
+<div class="bd">
+<h3><span class="cn">酒店未定</span><span class="en">Hotel not yet booked</span></h3>
+<div class="addr"><span class="cn">📍 把订好的酒店名字发我，这一格会换成地址、电话、照片和地图按钮。</span><span class="en">📍 Send me the hotel once it is booked and this card becomes address, phone, photos and a map button.</span></div>
+<div class="note amber" style="margin-top:10px">
+<span class="cn"><strong>选哪一区？</strong>这份行程的重心在<strong>思明区</strong>：① <strong>中山路／轮渡一带</strong>——离八市、沙坡尾、鼓浪屿码头都走得到，老城生活感最强，D2、D3 上午最省车程；② <strong>湖滨／SM 一带</strong>——离万象城、SM 新生活广场近，吃饭逛街方便，去机场也快（约20分钟）。两区之间打车约15分钟。</span>
+<span class="en"><strong>Which area?</strong> This trip sits in <strong>Siming District</strong>: ① <strong>Zhongshan Road / Ferry area</strong> — walking distance to Bashi market, Shapowei and the Gulangyu ferry; best for the D2 and D3 mornings; ② <strong>Hubin / SM area</strong> — next to MIXC and SM Lifestyle Plaza for meals and shopping, and a quick ~20 min run to the airport. The two areas are about 15 minutes apart by taxi.</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ===== TIPS ===== -->
+<section id="tips">
+<div class="sec-head"><span class="no">03</span><h2><span class="cn">出发前须知</span><span class="en">Before You Go</span></h2><span class="rule"></span></div>
+
+<div class="stop">
+<div class="pin must">★</div>
+<h4><span class="cn">南普陀寺要先预约（免费，但没预约进不去）</span><span class="en">Nanputuo Temple needs a booking (free, but no walk-ins)</span></h4>
+<div class="desc"><span class="cn">唯一官方渠道是微信小程序「<strong>南普陀寺预约服务平台</strong>」，<strong>最多提前4天</strong>放号，一小时一个时段。带预约码<strong>从东山门进、西山门出</strong>。开放 8:00–18:00，<strong>后山 16:00 就停止上山</strong>。门票免费。</span><span class="en">The only official channel is the WeChat mini-program "南普陀寺预约服务平台", opening <strong>up to 4 days ahead</strong> in one-hour slots. Enter at the <strong>East Gate</strong> with your code and leave by the West Gate. Open 8:00–18:00; the <strong>hillside trail closes at 16:00</strong>. Entry is free.</span></div>
+<div class="chips"><span class="chip book">📱 <span class="cn">微信小程序预约</span><span class="en">WeChat mini-program</span></span><span class="chip hours">8:00–18:00</span><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span></div>
+</div>
+
+<div class="stop">
+<div class="pin must">★</div>
+<h4><span class="cn">鼓浪屿船票也要先买</span><span class="en">Book the Gulangyu ferry in advance too</span></h4>
+<div class="desc"><span class="cn">白天游客从<strong>厦门国际邮轮中心 厦鼓码头</strong>上船（不是老轮渡码头），<strong>35元／人</strong>，买去程<strong>送回程票</strong>（20天内有效一次）。购票走官方微信公众号或支付宝搜「厦门轮渡有限公司」，也可现场买但旺季会没票。<strong>提前30–60分钟到码头候船</strong>，返程从内厝澳码头或钢琴码头上船。</span><span class="en">By day, visitors sail from the <strong>Xiamen International Cruise Terminal (Xiagu Pier)</strong> — not the old downtown ferry pier — at <strong>¥35 per person</strong>, with the <strong>return leg included</strong> (valid once within 20 days). Buy through the operator's official WeChat account or Alipay ("厦门轮渡有限公司"); counter sales exist but sell out in peak season. <strong>Be at the pier 30–60 minutes early</strong>; coming back, board at Neicuo'ao or Piano Pier.</span></div>
+<div class="chips"><span class="chip ticket">¥35 <span class="cn">往返</span><span class="en">round trip</span></span><span class="chip hours"><span class="cn">首班 07:10</span><span class="en">first sailing 07:10</span></span><span class="chip verify">⚠ <span class="cn">旺季提前买</span><span class="en">buy early in peak season</span></span></div>
+</div>
+
+<div class="stop">
+<div class="pin side">💳</div>
+<h4><span class="cn">手机支付：出发前先绑好卡</span><span class="en">Mobile payment: link a card before you fly</span></h4>
+<div class="desc"><span class="cn">厦门几乎所有店（包括大排档和市场摊位）都收<strong>支付宝／微信</strong>，现金反而找零麻烦。支付宝和微信都能<strong>绑外国 Visa／Mastercard</strong>，但绑定要验证、有时要几分钟到几小时，<strong>在家先弄好，别落地才试</strong>。小额消费免手续费，大额会收 3%。</span><span class="en">Almost everything in Xiamen — street stalls and wet markets included — takes <strong>Alipay or WeChat Pay</strong>; cash is the awkward option. Both apps accept <strong>foreign Visa/Mastercard</strong>, but verification can take minutes to hours, so <strong>set it up at home, not on arrival</strong>. Small payments are fee-free; larger ones carry about 3%.</span></div>
+</div>
+
+<div class="stop">
+<div class="pin side">🚕</div>
+<h4><span class="cn">交通：打车 + 地铁</span><span class="en">Getting around: taxi and metro</span></h4>
+<div class="desc"><span class="cn">用<strong>高德地图</strong>或<strong>滴滴</strong>叫车最省事（App 内直接付款，不用讲中文）。<strong>高崎机场 T3 → 思明市区</strong>约 10–15 公里，车程 20–30 分钟、<strong>约 30–45 元</strong>；T3 到达层 7 号门外排队上出租车。机场没有直通地铁，要先坐公交或 BRT 换乘。市区地铁末班约 22:30。</span><span class="en">The easiest option is hailing a car in <strong>Amap</strong> or <strong>Didi</strong> (pay in-app, no Chinese needed). <strong>Gaoqi T3 to the Siming city area</strong> is 10–15 km, 20–30 minutes, <strong>about ¥30–45</strong>; the taxi rank is outside door 7 on the arrivals level. There is no metro station at the airport — you would have to bus or BRT to one. Last metro in the city is around 22:30.</span></div>
+</div>
+
+<div class="stop">
+<div class="pin side">📶</div>
+<h4><span class="cn">上网：大马号码开漫游，或买中国 eSIM</span><span class="en">Data: roam on your Malaysian number, or buy a China eSIM</span></h4>
+<div class="desc"><span class="cn">中国境内连不上 Google、WhatsApp、Instagram。<strong>用大马／柬埔寨号码国际漫游</strong>时流量走境外出口，这些 App 照常能用，是最省事的做法；买中国本地 SIM 卡反而会被挡。中国 eSIM 也要选写明「国际路由」的那种。</span><span class="en">Google, WhatsApp and Instagram are blocked on mainland networks. <strong>International roaming on your Malaysian or Cambodian number</strong> routes data offshore, so those apps keep working — much the simplest route; a local Chinese SIM would be blocked. If you buy a China eSIM, pick one that states it routes internationally.</span></div>
+</div>
+
+<div class="stop">
+<div class="pin side">🌦</div>
+<h4><span class="cn">八月的厦门：热、湿、台风季</span><span class="en">Xiamen in August: hot, humid, typhoon season</span></h4>
+<div class="desc"><span class="cn">白天 30–34°C，湿度高，午后常有雷阵雨。<strong>8–9月是台风季</strong>，台风来时轮渡会全线停航、鼓浪屿上不去——出发前一天看一次天气，行程里 D3 的鼓浪屿和 D2 的商场可以对调。防晒、伞、轻便透气衣物必备。</span><span class="en">Daytime 30–34°C, high humidity, frequent afternoon thunderstorms. <strong>August–September is typhoon season</strong>, and a typhoon suspends every ferry — Gulangyu simply closes. Check the forecast the day before; D3 (Gulangyu) and D2 (malls) can swap if needed. Bring sunscreen, an umbrella and light breathable clothes.</span></div>
+</div>
+
+<div class="stop">
+<div class="pin side">🛂</div>
+<h4><span class="cn">入境：马来西亚护照免签30天</span><span class="en">Entry: 30-day visa-free for Malaysian passports</span></h4>
+<div class="desc"><span class="cn">中马互免签证，持马来西亚普通护照赴中国旅游<strong>可停留30天</strong>，这趟只待3晚，绰绰有余。落地后填的入境卡与健康申报现在多为<strong>扫码线上填</strong>，T3 有指示牌。⚠ 免签政策会调整，出发前一周再看一次中国驻马大使馆公告。</span><span class="en">Malaysia and China waive visas for each other, so an ordinary Malaysian passport gets <strong>30 days</strong> for tourism — far more than these 3 nights. Arrival and health declarations are now mostly <strong>filled in online via QR code</strong>; signage at T3 points the way. ⚠ Visa-waiver terms do change — check the Chinese Embassy in Malaysia notice the week before you fly.</span></div>
+</div>
+</section>
+
+<!-- ===== ITINERARY ===== -->
+<section id="itinerary">
+<div class="sec-head"><span class="no">04</span><h2><span class="cn">逐日行程</span><span class="en">Day by Day</span></h2><span class="rule"></span></div>
+
+<!-- D01 -->
+<div class="day" data-date="2026-08-24" id="day01">
+<div class="dh">
+<div class="dn">01<small>DAY</small></div>
+<div class="dt"><h3><span class="cn">金边 → 厦门 · 抵达</span><span class="en">Phnom Penh → Xiamen · Arrival</span><span class="today-tag"><span class="cn">今天</span><span class="en">TODAY</span></span></h3><div class="dd">24 Aug <span class="cn">(一)</span><span class="en">(Mon)</span></div></div>
+<div class="badge">✈️ <span class="cn">抵达日 · 晚班机</span><span class="en">Arrival · Evening flight</span></div>
+</div>
+<div class="db">
+<div class="wxbox">
+<div class="wx" data-wx="2026-08-24"></div>
+<div class="rainplan"><span class="cn">☔ 雨天备案：当晚只有机场→酒店一段，下雨无影响。</span><span class="en">☔ Rain plan: only the airport-to-hotel run tonight — rain changes nothing.</span></div>
+</div>
+
+<div class="stop">
+<div class="pin must">★</div>
+<h4><span class="cn">15:30 出发去金边 Techo 机场 → 18:00 MF896 起飞</span><span class="en">15:30 Leave for Phnom Penh Techo → 18:00 MF896 departs</span></h4>
+<div class="desc"><span class="cn">国际航班提前 2.5 小时到机场。Techo 机场离金边市区较远，塞车要算进去。</span><span class="en">Be at the airport 2.5 hours ahead for an international flight. Techo is well outside central Phnom Penh, so allow for traffic.</span></div>
+</div>
+
+<div class="stop">
+<div class="pin must">★</div>
+<h4><span class="cn">21:55 落地厦门高崎机场 T3</span><span class="en">21:55 Land at Xiamen Gaoqi T3</span></h4>
+<div class="desc"><span class="cn">T3 是国际到达航站楼。入境 + 取行李估 40 分钟，<strong>22:40 左右出关</strong>。到达层 <strong>7 号门</strong>外排队坐出租车，或用高德／滴滴叫车，进思明市区 20–30 分钟、约 30–45 元。</span><span class="en">T3 handles international arrivals. Allow ~40 minutes for immigration and bags — <strong>out by about 22:40</strong>. The taxi rank is outside <strong>door 7</strong> on the arrivals level, or hail one in Amap/Didi; 20–30 minutes and ¥30–45 into the Siming city area.</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8E%A6%E9%97%A8%E9%AB%98%E5%B4%8E%E5%9B%BD%E9%99%85%E6%9C%BA%E5%9C%BA T3" target="_blank">🗺 <span class="cn">高崎机场 T3</span><span class="en">Gaoqi Airport T3</span></a>
+</div>
+
+<div class="stop">
+<div class="pin side">🌙</div>
+<h4><span class="cn">23:00 到酒店 · 今晚就休息</span><span class="en">23:00 At the hotel · call it a night</span></h4>
+<div class="desc"><span class="cn">这个点街上还开的多是烧烤摊和便利店。想吃点东西的话，<strong>好食来大排档营业到 23:30</strong>——行李顺利、酒店又在湖滨一带才赶得上，否则留到 D2 晚餐（行程已经排了）。</span><span class="en">At this hour it is mostly barbecue stalls and convenience stores. If you want a bite, <strong>Hao Shi Lai serves until 23:30</strong> — only worth trying if bags come out fast and the hotel is in the Hubin area; otherwise it is already on the plan for D2 dinner.</span></div>
+</div>
+</div>
+<div class="dayfoot"><span class="ftlb">🌙 <span class="cn">当晚</span><span class="en">Tonight</span></span><span class="tx"><span class="cn">不排行程，早点睡——D2 是走路最多的一天</span><span class="en">Nothing scheduled — get some sleep, D2 is the most walking</span></span></div>
+</div>
+
+<!-- D02 -->
+<div class="day" data-date="2026-08-25" id="day02">
+<div class="dh">
+<div class="dn">02<small>DAY</small></div>
+<div class="dt"><h3><span class="cn">老厦门 · 八市 · 中山路 · 南普陀寺</span><span class="en">Old Xiamen · Bashi · Zhongshan Rd · Nanputuo</span></h3><div class="dd">25 Aug <span class="cn">(二)</span><span class="en">(Tue)</span></div></div>
+<div class="badge">🚶 <span class="cn">步行日</span><span class="en">Walking Day</span></div>
+</div>
+<div class="db">
+<div class="wxbox">
+<div class="wx" data-wx="2026-08-25"></div>
+<div class="rainplan"><span class="cn">☔ 雨天备案：中山路整条是骑楼，下雨照走；八市有顶棚。雨太大就把南普陀寺挪到 D3 上午（记得改预约时段），下午提前进万象城。</span><span class="en">☔ Rain plan: Zhongshan Road is arcaded end to end and Bashi market is covered, so light rain is fine. In heavy rain, move Nanputuo to the D3 morning (rebook the time slot) and head into MIXC earlier.</span></div>
+</div>
+
+<div class="stop">
+<div class="pin side">🥢</div>
+<h4><span class="cn">08:30 八市（第八菜市场）</span><span class="en">08:30 Bashi (No. 8 Market)</span></h4>
+<div class="desc"><span class="cn">厦门最老的菜市场，海鲜、水果、小吃摊挤在一起，本地人早上真正在这买菜。<strong>不用买东西，就是看和吃</strong>：现开的海蛎、炸五香、花生汤。就在中山路后面，走过去 5 分钟。</span><span class="en">Xiamen's oldest wet market, where locals actually shop in the morning — seafood, fruit and snack stalls packed together. <strong>Come to look and graze</strong> rather than buy: freshly shucked oysters, five-spice rolls, peanut soup. Five minutes' walk behind Zhongshan Road.</span></div>
+<div class="gal">
+<img alt="厦门八市 Bashi (No. 8) Market, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlUBrn6XPkPPuz_rdSYjlz8Xszp1LivmjI5a9EIojfUS84a2RrEMzBU5bJBVVZum4-9wSoa9zmMnbztTwcVo8_JJ7JOCuunR7NG9rDPODU61v6TFB-bjXDAWBnVNCaleXZaviswUQ=s4800-w800-h600"/>
+<img alt="厦门八市 Bashi (No. 8) Market, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWklnh0TBi5lE3H2cyo6GzFE7srBaemZ6aUAcLbNmIj-ift2IojShnutSOqiFVpQ0EqFDHoD4aUvI7m3uxiXPJh-dHGUXYXF-uxPuT1H2WmQbgtkMZKQqPDnEQuRHGCKOWqycGmWR4MKCiHg=s4800-w800-h600"/>
+<img alt="厦门八市 Bashi (No. 8) Market, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmOOJMSVAKV62lAjnztXodnsk8z5EhSYux9SGz7vy8MspaMgR3O-a8w-PIezWdd8zmEw0Fw6Y-XAjtn9heV8RSVmY6YYzigm1ursnrOYtzWhNfXD3yCgEvU2Obl9TK2RlSdMLAbWc0MOAM0=s4800-w800-h600"/>
+<img alt="厦门八市 Bashi (No. 8) Market, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk3QygbAsWlYX9dXn65_NBPDKNKOYYe145IO94SVLtHqUR5w-ydMOHpJKtC5H9A0sHGj9C1-BouXqTgU9xj90bjQuM2Df9nTe3Wyc5s484DPpBaZxaSYIj4StQeuw4sYBIySh2p1Ho27tz2=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">清晨最热闹</span><span class="en">busiest early morning</span></span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8E%A6%E9%97%A8%E7%AC%AC%E5%85%AB%E8%8F%9C%E5%B8%82%E5%9C%BA" target="_blank">🗺 <span class="cn">八市</span><span class="en">Bashi Market</span></a>
+</div>
+
+<div class="stop">
+<div class="pin dine">🍜</div>
+<h4><span class="cn">10:30 乌糖沙茶面（民族路店）</span><span class="en">10:30 Wu Tang Satay Noodles (Minzu Rd)</span> <span class="star">⭐ 4.4 <span class="cn">大众点评</span><span class="en">Dianping</span></span></h4>
+<div class="desc"><span class="cn">厦门沙茶面的头牌，<strong>自家熬的沙茶汤底</strong>，二十多种配料自己指：豆干、猪肝、鱼丸、鱿鱼、海蛎、大肠头、虾仁。店面很朴素，两层楼还有露天座。<strong>14:30 就打烊</strong>，别留到晚上。人均约 41 元。</span><span class="en">The best-known bowl of satay noodles in Xiamen, with a <strong>house-made satay broth</strong> and twenty-odd toppings you point at: beancurd, pork liver, fish balls, squid, oysters, pork intestine, prawns. Plain two-storey shop with open-air seats. <strong>Closes at 14:30</strong> — this is not a dinner option. About ¥41 a head.</span></div>
+<div class="gal">
+<img alt="乌糖沙茶面 Wutang satay noodles, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnIHQmJqJoWmq2dxwHCQNiNsbl34Ml3NqaS8dAtaVKwWLB5AG9k_kw0mZqfl5dj1j53kRmpi1MfxK7i_QN_1rSGzmQytD2yRtf2-uXHYJAiRX4SReSCN2ilS2SxhvqzbAR6nKAvLNM7KeJd=s4800-w800-h600"/>
+<img alt="乌糖沙茶面 Wutang satay noodles, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl6PO5YCs_sB51L16buvwzDksiiT3B4osTB0XbJMz_4RcmbkmalsLrwUeMz_SHOYRjqi05KZ0OBGqRud63y7nusdG25L1v4tT9VU6wQYUEtLU4Y9Gda3gaZoJZHFNkwJ7EL26CrhmPIcZ6B=s4800-w800-h600"/>
+<img alt="乌糖沙茶面 Wutang satay noodles, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmYy2capssxOyEtZ39SOeiZirrNR5PczHg-2lJKLrueB7S7EjNCDVCLd4qarUyNeAZ_C3gyFk6NzS_KEz5DsylFa5kECjqTkQYYUSYdglt9gh6rj7yf3qqewz54s04dxjVifC0DvA=s4800-w800-h600"/>
+<img alt="乌糖沙茶面 Wutang satay noodles, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlpqKmLL0dRnb0E0n6YebSkex-5A4ZKNxgnTtK6fCDK_fSdJKh0MizPK89bmFxFLZJBa34Rt_gOsa0bx0lKZWLui3Z1IcsLGe_pysXn43vxvzuwwxz2Sr0hGfrBnjqxbusmjEC3jg=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip hours">06:00–14:30</span><span class="chip ok"><span class="cn">人均 ¥41</span><span class="en">~¥41/person</span></span><span class="chip hours"><span class="cn">民族路76号</span><span class="en">76 Minzu Rd</span></span></div>
+<a class="btn-map" href="https://surl.amap.com/l6qgac1121FU" target="_blank">🗺 <span class="cn">高德地图</span><span class="en">Amap</span></a>
+</div>
+
+<div class="stop">
+<div class="pin side">🏛</div>
+<h4><span class="cn">11:30 中山路步行街</span><span class="en">11:30 Zhongshan Road Pedestrian Street</span></h4>
+<div class="desc"><span class="cn">南洋骑楼老街，一路走到底就是海边和轮渡码头。手信、老字号、街头小吃都在这条上。<strong>骑楼有遮阴</strong>，是这一天最耐晒的一段路。</span><span class="en">A street of Straits-style arcaded shophouses running all the way down to the waterfront and the ferry pier — souvenirs, old-name shops and street food along the way. The <strong>arcades give shade</strong>, which makes this the most bearable stretch of the day.</span></div>
+<div class="gal">
+<img alt="中山路步行街 Zhongshan Road pedestrian street, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm84m1tq3XqM53ODZyChPLFEm9iw_WgLwG7kjl7yQAB_3YqY1ykVg0jZBDM1y1NJI0J9DZ2mNRAqayu8Fp7xrCUolI1-0RkDhhjBVpqvNcD7JZsRhvUo2DfNznvgAnIM0zaAQEC=s4800-w800-h600"/>
+<img alt="中山路步行街 Zhongshan Road pedestrian street, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkn8K7AfkqITljE2K69OMo3tFEUpbuoLs6MKefcXSaOSbpuvaYVbE-65flMDUjXI3pFIwww70xi5hbho3ZhzXKYZ1ChJWodmWRZWd-Ck-LAymZN6OLAK-_1TxDD_VU60DoTLu2ofg=s4800-w800-h600"/>
+<img alt="中山路步行街 Zhongshan Road pedestrian street, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn7LBeHt1evtpTsp1nBUXVsB8OGz3E5W9zzRIdGSWSWMnWMFAFCxQCF8TByt-nj9lbb3ut4g9eYAeLLT8XljguK6bit8r8oKHWqPdpLqyRm1Am9Hai9ZYiEWdRMaYZP1M4TplY=s4800-w800-h600"/>
+<img alt="中山路步行街 Zhongshan Road pedestrian street, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmMYzyJcm5RtAus0vERvuXJWeCytbu7mDgYvnk7iHKhYFXgAfX9Rnt0XjtC7xdSTw86BJO9o4rbWF1pmjITR_p1LaQFCCFCzBuoaRIAEkHwxiNB4w25GS-lA-QdiCea3YDrlyOVFA=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8E%A6%E9%97%A8%E4%B8%AD%E5%B1%B1%E8%B7%AF%E6%AD%A5%E8%A1%8C%E8%A1%97" target="_blank">🗺 <span class="cn">中山路</span><span class="en">Zhongshan Road</span></a>
+</div>
+
+<div class="stop">
+<div class="pin side">🎨</div>
+<h4><span class="cn">13:00 沙坡尾避风坞</span><span class="en">13:00 Shapowei Harbour</span></h4>
+<div class="desc"><span class="cn">厦门最后一个老渔港改成的文艺街区，泊着旧渔船，两旁是咖啡馆、小店和艺术西区。<strong>适合下午最热那两个钟头</strong>——找家咖啡馆坐着吹冷气，再往厦大方向走。</span><span class="en">Xiamen's last old fishing harbour, now a creative quarter: retired fishing boats moored in the basin, cafés, small shops and the Art West Zone around it. <strong>A good place for the hottest two hours</strong> — sit in a café with the air-conditioning before walking on towards the university.</span></div>
+<div class="gal">
+<img alt="沙坡尾避风坞 Shapowei harbour, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm1abG8DeyMoTZ1PoOVxIor0RKSERzFzHSZ5QfUbc9JDb6f3584-JTjmbj-vAfDNDAVk2nhOQEM70QxAhaYre5Q3MWZPj8NRUrYWzJdtVnz2DFaprOOak80jF2oEy2Xj0yOBD4f=s4800-w800-h600"/>
+<img alt="沙坡尾避风坞 Shapowei harbour, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWloRAA9X0BM0747zDmiz7b6SdedAh7NxGQDaAQXMXBan9Q9qlt6FlY1kg6PkE-Zp9LrXbdisHwsYkRmErJ7He7n1Mh72YSc6VdM3kBXYwXqAJCOaNAM1hCdq8pSSalvrqiiJutlgA=s4800-w800-h600"/>
+<img alt="沙坡尾避风坞 Shapowei harbour, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWniHeFNKoEhQHWeUBnW2wDKooVgzn-zMv1WogQ9O79CmCJaZqFgJGkSlmQ71nOh9HjcFPuL7T-hTy1ax-tm3zCARGCkY3zFgwrx-IWnAcpZZGC60__H8JpMVVY1Ncuc0zPml4Rg3g=s4800-w800-h600"/>
+<img alt="沙坡尾避风坞 Shapowei harbour, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn5YZRZ7HZdrBH975oaZXwD0J2AGSJ9XnkrTbXLlmyYgvSZ6s__FqDYxmvYG48bvb5C-R1_w9tUDzQ6Bh9y0WyhVTVGLrPdf2218AR0CM2NHQcA6mXZgqCAcErRG-D5X2NnmfTT=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8E%A6%E9%97%A8%E6%B2%99%E5%9D%A1%E5%B0%BE%E9%81%BF%E9%A3%8E%E5%9D%9E" target="_blank">🗺 <span class="cn">沙坡尾</span><span class="en">Shapowei</span></a>
+</div>
+
+<div class="stop">
+<div class="pin must">★</div>
+<h4><span class="cn">14:30 南普陀寺</span><span class="en">14:30 Nanputuo Temple</span></h4>
+<div class="desc"><span class="cn">厦门最重要的寺院，唐代始建，靠着五老峰、面朝大海，就在厦门大学旁边。天王殿、大雄宝殿、大悲殿一路往上，后山还能爬到<strong>五老峰</strong>看海景。<strong>务必先在微信小程序预约今天这个时段</strong>，凭码从东山门进、西山门出。免费。</span><span class="en">Xiamen's principal Buddhist temple, founded in the Tang dynasty, backed by Wulao Peak and facing the sea, right beside Xiamen University. The halls climb the slope one behind the next, and the trail behind carries on up <strong>Wulao Peak</strong> for a sea view. <strong>Book this exact time slot in the WeChat mini-program first</strong>; enter at the East Gate with the code, leave by the West Gate. Free.</span></div>
+<div class="gal">
+<img alt="南普陀寺 Nanputuo Temple, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmJrs4DcbcW4k2rTmTvKluQlIyGWDiUoi-iZuKUY8ibYz-9rKBa4AbqbrxpuJQs9OfqsKXm8AGWTQqtaN2_U6uooam-y95t3bCENdKKDfyE5eTEEKcsoq9CPLGYcXpq8wp8Jmh5=s4800-w800-h600"/>
+<img alt="南普陀寺 Nanputuo Temple, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnMDVPMIJIt5haN68BNQ4VT-BFJwJWo9AARZyop7qZZE7vAuddvsZkhFlDeBlsMUuum6-xxH9MUfLte95232XgTDAi8jozg9VGgClE9Y_v1VrqHaQCc1YUiInaaSham1rrEGXHfKTJRgTE=s4800-w800-h600"/>
+<img alt="南普陀寺 Nanputuo Temple, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnNgDH6diN3H62HPHIn1gu7Gf93ocWIDecoC8q90RwubTMmbJahr2oVBKRuoy2lbuUNIaQFc0xo5GPf1BtfLZcqVY6nViDwyQ8lWQgwYV767D-cAu-y1S7JTya0hwOxMUCduTus=s4800-w800-h600"/>
+<img alt="南普陀寺 Nanputuo Temple, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlFrzQ1K_bSNkyG6N_qmAltw0P3q4rVp07-exqxncQh3DjmftfGXxvHJL1uLZj_IOqf02lV37Y_OQP4zQHExofNSoeLdLSRXsDN7QoJxTBq8Zd3wQclT72MWL6zx4S3ufJA5MCb=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip hours">8:00–18:00</span><span class="chip book">📱 <span class="cn">需预约（提前4天）</span><span class="en">booking required (4 days ahead)</span></span><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span><span class="chip verify">⚠ <span class="cn">后山16:00停</span><span class="en">hill trail closes 16:00</span></span></div>
+<a class="btn-map" href="https://surl.amap.com/d73ftSW7fWA" target="_blank">🗺 <span class="cn">高德地图</span><span class="en">Amap</span></a>
+</div>
+
+<div class="stop">
+<div class="pin side">🎓</div>
+<h4><span class="cn">16:00 厦门大学 · 白城沙滩 · 环岛路</span><span class="en">16:00 Xiamen University · Baicheng Beach · Island Ring Road</span></h4>
+<div class="desc"><span class="cn">厦大就在南普陀隔壁，号称中国最美校园之一（<strong>校外人士入校要网上预约、名额少</strong>，进不去也不必强求）。旁边的<strong>白城沙滩</strong>和<strong>环岛路</strong>不需要预约，傍晚风大凉快，看海、看跨海大桥，是这天最舒服的一段。</span><span class="en">The university sits next door to the temple and is billed as one of China's prettiest campuses (<strong>visitors need an online booking and slots are scarce</strong> — no great loss if you skip it). <strong>Baicheng Beach</strong> and the <strong>Island Ring Road</strong> beside it need no booking, and the late-afternoon sea breeze makes this the most pleasant stretch of the day.</span></div>
+<div class="gal">
+<img alt="厦门大学与白城沙滩 Xiamen University and Baicheng Beach" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk2yCzCuINu8Ym7pRNNKMqr7V0lZenzUW_UQOETBW1Auay-BJ8xtszjq-zSVLwGxpzjyk8iEM4bdCjoY7QbtieH4HdmblWmXhQroCMTG9brWs7IuZftWxs8A3GU8CK894Ik-f0n=s4800-w800-h600"/>
+<img alt="厦门大学与白城沙滩 Xiamen University and Baicheng Beach" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkb3DCNjHCz4yFwRVWIFiOnK4VVMpb3xPgOO-9L9TVXbI6PP9auzwS8FdYo2VhTYVE6g1T7vXDGjqxPJ_YoMDZAmA3nbRAFM1Nm4OwdP81tj9ZTL5JhbOufVreHk4AQIlmNL3M5=s4800-w800-h600"/>
+<img alt="厦门大学与白城沙滩 Xiamen University and Baicheng Beach" src="https://lh3.googleusercontent.com/grass-cs/ACvplmP1yeCu-7BuZtZynqc7EOXL7EYY6dndkDffaHCJLa0gQcyuzMeDpo_PjdH7zijsu5P1h2JCIL0Gr4iUYqlrDaI1X1EOBGwIY5jpHtmujnrJRe1Ct-OGLJl5c8NYcImnKcTkZECS=s4800-w800-h600"/>
+<img alt="厦门大学与白城沙滩 Xiamen University and Baicheng Beach" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkdHOO47ZjYU1SxKqJS0St-FYno6yantIvL8jA4dnHcmPLaFYtyIh9XB1nN0QLW-m6X1vc5DxVBnPyeg8BMwYXyej5Ym7cFX5I4r4BHCgrCWIugiDjsSmlpOu4QqYt-FekzgcJn=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip verify">⚠ <span class="cn">厦大入校需预约</span><span class="en">campus entry needs booking</span></span><span class="chip ok"><span class="cn">沙滩免费</span><span class="en">beach free</span></span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8E%A6%E9%97%A8%E5%A4%A7%E5%AD%A6%E6%80%9D%E6%98%8E%E6%A0%A1%E5%8C%BA" target="_blank">🗺 <span class="cn">厦门大学</span><span class="en">Xiamen University</span></a>
+</div>
+
+<div class="stop">
+<div class="pin dine">🦐</div>
+<h4><span class="cn">18:30 好食来大排档（美食航标店）· 晚餐</span><span class="en">18:30 Hao Shi Lai Dai Pai Dong · Dinner</span></h4>
+<div class="desc"><span class="cn">开了二十多年的<strong>海鲜大排档</strong>，湖滨南路上，本地人吃宵夜的老地方。海鲜是活的、现点现做，闽南家常菜分量足价格实在。招牌吃法：挑鱼虾蟹现杀，配一份姜母鸭或炒面线。</span><span class="en">A <strong>seafood dai pai dong</strong> of more than twenty years on Hubin South Road — where locals come for a late, unfussy dinner. The tanks are live, everything is cooked to order, and the Minnan home-style dishes are generous and cheap. The way to order: pick your fish, prawns or crab from the tank, then add a ginger duck or fried noodles.</span></div>
+<div class="gal">
+<img alt="好食来大排档 Hao Shi Lai seafood dai pai dong, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn05Hr2vev_HzcnQ7DwQV5epZro9qlXI63v9kU7yMIenQYGF879wPylYomJfn0yVW0mJpCvUVfAdMnWIrgrukmBoftqtxj4HgcsVXrLgj1SiJE287dv8Ru5lI070KSujPxI6_AxoZI0o0c5=s4800-w800-h600"/>
+<img alt="好食来大排档 Hao Shi Lai seafood dai pai dong, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlU2f36fH4Vi5AF5K7tGOes4eB5czK48w0pzYoagLCZg3FHBAbQq9xjux0vrhuChfBlGIpTDqYPLUMuVs9jMNm7-GBUGv73rCXPm4gs5iWnFa0mY2PO_oV3dfjzSXqQXL7iNv-UrESxAqUe=s4800-w800-h600"/>
+<img alt="好食来大排档 Hao Shi Lai seafood dai pai dong, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnnIXgpLR7tuZdUVpsMiH8qgj8RogsQrxCBl4c5imJyvQznEmIuAiAbzlk1hB-ULKjT2Wgq-0EJsq0SdKCOnlQ_m76PvbLt8DrRGYREhMV6Dw_oeR3oSzCZvXhdThuZmkQNaB8rTw=s4800-w800-h600"/>
+<img alt="好食来大排档 Hao Shi Lai seafood dai pai dong, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlVdW9cit70dLn6GYp1QH5VaqPcI5-DnL08FybIiKm1xYdluyqOeB-K68dpkAbfhuQyYQWs3G0fclmiKhbYNI3u2vX8JK1U2dFtuzGtvt1x0Qv-shuevwWPELSBlTeJKfiinIsBtg=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip hours">10:00–14:30 · 16:00–23:30</span><span class="chip hours"><span class="cn">湖滨南路24号</span><span class="en">24 Hubin South Rd</span></span></div>
+<a class="btn-map" href="https://surl.amap.com/m5KUjVn1AaeJ" target="_blank">🗺 <span class="cn">高德地图</span><span class="en">Amap</span></a>
+</div>
+</div>
+<div class="dayfoot"><span class="ftlb">🚶 <span class="cn">今日</span><span class="en">Today</span></span><span class="tx"><span class="cn">八市 → 中山路 → 沙坡尾这一段可以全程步行，之后打车</span><span class="en">Bashi → Zhongshan Rd → Shapowei is all walkable; taxi from there on</span></span></div>
+<div class="dayfoot"><span class="ftlb">📱 <span class="cn">前一天</span><span class="en">Day before</span></span><span class="tx"><span class="cn">出发前 4 天内抢好南普陀寺 14:00–15:00 时段</span><span class="en">Grab the Nanputuo 14:00–15:00 slot within 4 days of the visit</span></span></div>
+</div>
+
+<!-- D03 -->
+<div class="day" data-date="2026-08-26" id="day03">
+<div class="dh">
+<div class="dn">03<small>DAY</small></div>
+<div class="dt"><h3><span class="cn">鼓浪屿 · SM · 万象城</span><span class="en">Gulangyu · SM · MIXC</span></h3><div class="dd">26 Aug <span class="cn">(三)</span><span class="en">(Wed)</span></div></div>
+<div class="badge">⛴ <span class="cn">离岛 + 逛街</span><span class="en">Island + Shopping</span></div>
+</div>
+<div class="db">
+<div class="wxbox">
+<div class="wx" data-wx="2026-08-26"></div>
+<div class="rainplan"><span class="cn">☔ 雨天备案：<strong>台风或大风会全线停航</strong>，出门前先看轮渡公众号有没有停航公告。上不了岛就把今天倒过来：整天泡 SM 新生活广场 + 万象城（全室内），鼓浪屿改 D4 上午（要赶 14:05 的飞机，只够走三丘田码头一带）。</span><span class="en">☔ Rain plan: <strong>a typhoon or strong winds suspend all sailings</strong> — check the ferry operator's notices before setting off. If the island is closed, flip the day: SM Lifestyle Plaza and MIXC all day (both indoors), and try Gulangyu on the D4 morning (with a 14:05 flight, only the area near Sanqiutian Pier is realistic).</span></div>
+</div>
+
+<div class="stop">
+<div class="pin must">★</div>
+<h4><span class="cn">07:30 厦鼓码头 → 08:00 上岛</span><span class="en">07:30 Xiagu Pier → 08:00 on the island</span></h4>
+<div class="desc"><span class="cn">从<strong>厦门国际邮轮中心 厦鼓码头</strong>出发（白天游客只能从这里上岛），船程约 20 分钟到<strong>三丘田码头</strong>。<strong>早去的理由</strong>：九点后旅行团涌进来，龙头路会挤到走不动，太阳也毒。船票前一天在支付宝／微信买好。</span><span class="en">Sail from the <strong>Xiamen International Cruise Terminal (Xiagu Pier)</strong> — the only daytime option for visitors — about 20 minutes to <strong>Sanqiutian Pier</strong>. <strong>Why so early</strong>: after nine the tour groups arrive, Longtou Road becomes shoulder-to-shoulder and the sun is brutal. Buy tickets the day before in Alipay or WeChat.</span></div>
+<div class="chips"><span class="chip ticket">¥35 <span class="cn">往返</span><span class="en">round trip</span></span><span class="chip hours"><span class="cn">船程约20分钟</span><span class="en">~20 min crossing</span></span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8E%A6%E9%97%A8%E5%9B%BD%E9%99%85%E9%82%AE%E8%BD%AE%E4%B8%AD%E5%BF%83%E5%8E%A6%E9%BC%93%E7%A0%81%E5%A4%B4" target="_blank">🗺 <span class="cn">厦鼓码头</span><span class="en">Xiagu Pier</span></a>
+</div>
+
+<div class="stop">
+<div class="pin must">★</div>
+<h4><span class="cn">08:30–12:30 鼓浪屿</span><span class="en">08:30–12:30 Gulangyu Island</span></h4>
+<div class="desc"><span class="cn">世界文化遗产，岛上<strong>全岛禁行机动车</strong>，只能走路——所以穿好走的鞋。经典路线：<strong>日光岩</strong>（全岛制高点，看厦门全景，另收门票）→ <strong>菽庄花园＋钢琴博物馆</strong>（临海园林）→ 万国建筑群的老别墅巷子 → <strong>龙头路</strong>吃小吃买手信。<strong>12:30 前往钢琴码头或内厝澳码头</strong>坐回程船。</span><span class="en">A UNESCO World Heritage site with <strong>no motor vehicles anywhere on the island</strong> — it is all on foot, so wear proper shoes. The classic loop: <strong>Sunlight Rock</strong> (the high point, panorama over Xiamen, separate ticket) → <strong>Shuzhuang Garden and the Piano Museum</strong> (seafront garden) → the lanes of old international-style villas → <strong>Longtou Road</strong> for snacks and souvenirs. <strong>Head to Piano Pier or Neicuo'ao Pier by 12:30</strong> for the boat back.</span></div>
+<div class="gal">
+<img alt="鼓浪屿 Gulangyu Island, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm4HVFsU1UFqiRqmwWgzpBhbw6ZxWCUkrT-hl1v4N_PxKnWD7nykeKuYt6vivSleOVC6TxWGdlIDMUrRb8hp7zyYWKTFvQZEmpX6CeOQRcVTThyOSVEetY96hopHdwt2Ef_d3Bf3lQp2g24=s4800-w800-h600"/>
+<img alt="鼓浪屿 Gulangyu Island, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk6NkLwnJHfOqXJZIZj1sHu3e9eKwx-SCdDXhhMAS2nlYgtWONchj1gNcl4eB9fvR2m5Knzih4ZLPFu1qmctzmBEZyvS6APbAfOy9cTxBYwgZA71X5af0Vbb3TBLCPBrsZ1bpjcxXaDEQA=s4800-w800-h600"/>
+<img alt="鼓浪屿 Gulangyu Island, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn5iTIdnsRy-it94Y5t_PHyayDo2B9Xv32-Yw-10oILffPJX6cZBoxW9y-tT9B8DSlPTi_kDRUamTfR3pswnbovvJVXgGMpzKtNJCNfxTJ_9g92BAobAtMDPXGzJUUuy1oXQn8=s4800-w800-h600"/>
+<img alt="鼓浪屿 Gulangyu Island, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnfJGhESPtLosXHkF5FyYShiH8kjv_LhnIWqDYAAYchUc4T1lXwuHvmlAKTIdxaxa752dPjIQ6p_Syxpa2_Oo1CBMta0eXhEbSIs8qgeO7SXol8aLkk_HVZIUmAoN-5wr8B99qM=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip verify">⚠ <span class="cn">日光岩另收门票</span><span class="en">Sunlight Rock ticketed separately</span></span><span class="chip hours"><span class="cn">全程步行</span><span class="en">walking only</span></span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%BC%93%E6%B5%AA%E5%B1%BF" target="_blank">🗺 <span class="cn">鼓浪屿</span><span class="en">Gulangyu</span></a>
+</div>
+
+<div class="stop">
+<div class="pin dine">🍲</div>
+<h4><span class="cn">13:30 第稻客家菜馆（SM厦门3期店）· 午餐</span><span class="en">13:30 Di Dao Hakka Restaurant (SM Phase 3) · Lunch</span></h4>
+<div class="desc"><span class="cn">福建客家菜，跟前两天吃的海边闽南口味完全不同：<strong>重油盐、讲究原味</strong>，酿豆腐、盐焗鸡、梅菜扣肉、客家小炒这一路。开在 SM 三期商场里，吃完直接上楼逛街，冷气不断。人均约 70 元。</span><span class="en">Fujian Hakka cooking, a different register from the coastal Minnan food of the past two days: <strong>heartier and saltier, built on plain strong flavours</strong> — stuffed beancurd, salt-baked chicken, preserved-vegetable pork belly, Hakka stir-fry. It sits inside the SM Phase 3 mall, so shopping starts the moment lunch ends, air-conditioned throughout. About ¥70 a head.</span></div>
+<div class="gal">
+<img alt="SM城市广场三期（第稻客家菜馆所在商场）SM City Plaza Phase 3, where Di Dao Hakka Restaurant is" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk85vXMNVG2f-HEcR6bxDQlFCklwZcEjLVfI7l9Na5gK9ywCyYMENQ35yZ62aY5GKNvDDd0trsswT7gkwrTG97k0IG-W_0Uyq2MnxNuMbcpa_3IyPPIiTbuqb--erQD8hvZmtpIEg=s4800-w800-h600"/>
+<img alt="SM城市广场三期（第稻客家菜馆所在商场）SM City Plaza Phase 3, where Di Dao Hakka Restaurant is" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmSmDWXVpUKlo00BLeHaDh6_qN7ENVq3v5DUN_FAcZC5PFukRlXOoLrnYkvYT5F8KMA19Jf5l9QFcBnvPhBkWPcYl5tgjIwJdY3qnNNea6m7cn40zGsQOkgYfa055xkpTIT-vE=s4800-w800-h600"/>
+<img alt="SM城市广场三期（第稻客家菜馆所在商场）SM City Plaza Phase 3, where Di Dao Hakka Restaurant is" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkK-qtbPcGzedfM8g_em8kxdMezw_PDT3oUTwDsg2kOk5L_jz3dVgzySrS0slmH54iHlKaAe-CyiYPR2Nb-PjmSlPH6cPJsd3Yx9iC0rfBjo3YV9HnpsUTASQX_CldgYOS0ijQ=s4800-w800-h600"/>
+<img alt="SM城市广场三期（第稻客家菜馆所在商场）SM City Plaza Phase 3, where Di Dao Hakka Restaurant is" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmXBzlXELDfiPGBPwxwVL1JmcTEpSmKV9ALX_aHozyF6IdtzrXZJ808mQuH2rMbdfVvhD-xwWe8MH9MLyoeGBnks-710SREHrKxpC0CM3TPTd5fwK6BVeZpTUcLUqxQyXrMFPey83WbyCQv=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="note amber" style="margin-top:6px"><span class="cn">📷 图为餐厅所在的 SM 城市广场三期——这家店在 Google 地图上没有照片，菜色图请到大众点评看。</span><span class="en">📷 The photos show SM City Plaza Phase 3, where the restaurant sits — Google Maps has no photos of the restaurant itself; look it up on Dianping for dish photos.</span></div>
+<div class="chips"><span class="chip verify">⚠ <span class="cn">营业时间需查证（商场约10:00–22:00）</span><span class="en">hours to verify (mall ~10:00–22:00)</span></span><span class="chip ok"><span class="cn">人均约 ¥70</span><span class="en">~¥70/person</span></span></div>
+<a class="btn-map" href="https://surl.amap.com/lkvyS651z0kf" target="_blank">🗺 <span class="cn">高德地图</span><span class="en">Amap</span></a>
+</div>
+
+<div class="stop">
+<div class="pin side">🛍</div>
+<h4><span class="cn">14:30 SM 新生活广场 + SM 城市广场</span><span class="en">14:30 SM Lifestyle Plaza + SM City Plaza</span></h4>
+<div class="desc"><span class="cn">嘉禾路上的老牌商圈，几期连在一起，<strong>大众品牌、超市、儿童玩乐、电影院都有</strong>，是厦门本地人周末逛的地方。买伴手礼（馅饼、茶叶、海产干货）在这里一次买齐，比景区便宜。</span><span class="en">The long-established shopping cluster on Jiahe Road, several phases joined together — <strong>mass-market brands, a supermarket, kids' play areas and a cinema</strong> — where locals spend their weekends. It is also the cheapest single stop for gifts home (pastries, tea, dried seafood) compared with the tourist streets.</span></div>
+<div class="gal">
+<img alt="SM新生活广场 SM Lifestyle Plaza, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmd9KcxtWQ6e8Q70_VE1AcBG_4uqYKYwJQ76IP3_McGavBM7_sB7hSrDnBopwecy7ckt62OqcxbEmjT29bwGw-UkE8gLWbcjv1lq7yeJ4NLWUZoBHWWQJv3HPCToDvxKndMnH7XTHpJ8tX5=s4800-w800-h600"/>
+<img alt="SM新生活广场 SM Lifestyle Plaza, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl0eabMMDLdRitVK98QmdaaJzXLnYvVDm1xgw_I3j9eaUCKEGF9GYhyIm7UfOjRFHrp8yNxuWEUnv2YMaBmlZWdQyPX2crpHSJ82JUUY21o5OoO8Oa1q_zgQlVY_do5bj5qT_pBZkje6w0=s4800-w800-h600"/>
+<img alt="SM新生活广场 SM Lifestyle Plaza, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnGzkGqB1x_BmsHkLpP1lpWeGXJMNYlQu2ABst48lWKS9fweI03XPD9bOzNjRuDN4orhIsJXPlm8xRN6qZRfYeRANfz_jrmDDEjUmU8kJdjycjYEes_W48q110rYSWo4Ep_gjlW=s4800-w800-h600"/>
+<img alt="SM新生活广场 SM Lifestyle Plaza, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm4MlxR9MGtH0-hn9i8Mk9AycRTnDC8FKuI19ByJiJUmV-7YJ3g5qgXogPSs9LLgpprSQVjAYIlsbT0YAw3CleO7E-c2GQ1W6z0Q96hweWZ7-i3RJ8EdyM8drewR0y0v8bzDQv1=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">约 10:00–22:00</span><span class="en">approx 10:00–22:00</span></span><span class="chip hours"><span class="cn">嘉禾路399号</span><span class="en">399 Jiahe Rd</span></span></div>
+<a class="btn-map" href="https://surl.amap.com/vvKEUb71866G" target="_blank">🗺 <span class="cn">高德地图</span><span class="en">Amap</span></a>
+</div>
+
+<div class="stop">
+<div class="pin side">🛍</div>
+<h4><span class="cn">17:30 厦门万象城</span><span class="en">17:30 Xiamen MIXC</span></h4>
+<div class="desc"><span class="cn">湖滨东路上的高端商场，从 SM 打车过去约 15 分钟。<strong>国际品牌、设计感强、餐厅集中</strong>，晚饭前先逛一圈，吃完再回来收尾也行。</span><span class="en">The upmarket mall on Hubin East Road, about 15 minutes by taxi from SM. <strong>International brands, a sharper design, and most of the good restaurants under one roof</strong> — walk it before dinner, or come back after.</span></div>
+<div class="gal">
+<img alt="厦门万象城 Xiamen MIXC mall" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkZnfNMAMFVkkK4-N9pCud2xBFJi_VRJTBvpmBvf5rEP1Hmacf4BgM4kdF7fjfmvoVEwt7I43FIjSwDRFqxiL5T5tMaSNrMwfSat_6PhASTfUJhdO2xSBhGCDwiMMWSLywwtRbm=s4800-w800-h600"/>
+<img alt="厦门万象城 Xiamen MIXC mall" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkw8KWKQMa_XKaCgK0rEiUzq1tlyNsIPuySfRdF9tv8ozJMhWJF631GDqhO_oIzRVwiLlwMeKEQlCNOGeykrPh6gNnl0oJuJwjLTO0z_5JwkJfhH7Y90qd_ixFX-w1I6-j8R4uM=s4800-w800-h600"/>
+<img alt="厦门万象城 Xiamen MIXC mall" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnlkjJfkcScBBkJ_Yyq1lgbDr0p0zZDVCZfIxXkv5PlHfs9XT-pkVNycmE2kzy54663j42Ge7C7LjA0yFC0or1iDsHrokrHU5wijovVLxreXTqXxrm_v_ObQjUU3BNXYVlWBgtGMYPdEhE=s4800-w800-h600"/>
+<img alt="厦门万象城 Xiamen MIXC mall" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnw9imGIHfGx04v9UgMVK3b5oX2Vow2LTFGh-h0Kex6g0yKQ3XKXB4FAhPAKWr-PKOHsSGwcjpK7OWTa9_2mDxiN9Jsi9oc2bdmx_wa07ilgJj-CTNscvyOJQpHmI4yUUsi_O4=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">约 10:00–22:00</span><span class="en">approx 10:00–22:00</span></span><span class="chip hours"><span class="cn">湖滨东路99号</span><span class="en">99 Hubin East Rd</span></span></div>
+<a class="btn-map" href="https://surl.amap.com/eTjiHrAb9J" target="_blank">🗺 <span class="cn">高德地图</span><span class="en">Amap</span></a>
+</div>
+
+<div class="stop">
+<div class="pin dine">🥟</div>
+<h4><span class="cn">18:30 闽和南（厦门万象城店）· 晚餐</span><span class="en">18:30 Min He Nan (MIXC) · Dinner</span></h4>
+<div class="desc"><span class="cn">精致闽菜，就在万象城 3 楼 328 号，逛完直接吃。<strong>做的是老闽南味道的细致版本</strong>：侨乡葱茸包、红焖雪花猪肉是招牌，佛跳墙、海蛎煎这类也稳。环境安静适合坐下来好好吃一顿，人均 120 元起。</span><span class="en">Refined Fujianese, on level 3 of MIXC at unit 328, so dinner follows the shopping directly. <strong>It does the polished version of old Minnan cooking</strong> — the signature scallion buns and red-braised marbled pork, with Buddha Jumps Over the Wall and oyster omelette done properly too. A quiet room for a proper sit-down meal; from about ¥120 a head.</span></div>
+<div class="gal">
+<img alt="闽和南 Min He Nan restaurant, Xiamen MIXC" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlWxXsBlxrBnkXT1-cBvkn5Py25PK6FJVHFcHGJQg1qvF62M1DfAYvGqvrNockuvW3u-FCNe45I00tVVyDzKqK5VY5SbO2mdUygA7Ab2qB1EZ4U5RPPAPWIvpKq7HB0eTLzGaVRxAEg5DE=s4800-w800-h600"/>
+<img alt="闽和南 Min He Nan restaurant, Xiamen MIXC" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlIZ1wdP027HJTvGs5Slvv8kpa3e0aj7-EsoXA25tJ8vr-qbN1lOZSsX2twW5m0BE2tvnS2phVN2qZQNqdoII7mlWpyvOx72_9kfYMpfzlZULzEfu5fRyNnlA_V8PXt-mTTz5tx=s4800-w800-h600"/>
+<img alt="闽和南 Min He Nan restaurant, Xiamen MIXC" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk8kpzo0wbbjD7efA8VJhJWLcCicBrNqWkTgLWhHcGkkOt8lzLP9QiMxct0xBsr7azQASeFf-QsdVz_XpZYSyStLgyHvQrkfdlOZEJZAW2je1VLpbQGhxxTThDUy4n8IuR4-Co=s4800-w800-h600"/>
+<img alt="闽和南 Min He Nan restaurant, Xiamen MIXC" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkTRaf77L8ZhroV9pj3WpVL8wxOaDcrtpu1iSqdnMIILP0U8ULQ5g-1YjOFPvjrzoe1W9nZdkpED4k6W5BdHJMTWZGFkk80PW2qgp4_EkFZh2I6VoZp76wc1auvdw3dQo9H0Z8o=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">11:00 起</span><span class="en">from 11:00</span></span><span class="chip ok"><span class="cn">人均 ¥120+</span><span class="en">¥120+/person</span></span><span class="chip hours"><span class="cn">万象城3楼328</span><span class="en">MIXC L3-328</span></span></div>
+<a class="btn-map" href="https://surl.amap.com/lc27V1D177bl" target="_blank">🗺 <span class="cn">高德地图</span><span class="en">Amap</span></a>
+</div>
+
+<div class="backup">
+<div class="bk-label"><span class="cn">备选晚餐</span><span class="en">Alternative dinner</span></div>
+<h4><span class="cn">宴遇（SM 新生活广场店）</span><span class="en">Yan Yu (SM Lifestyle Plaza)</span></h4>
+<div class="desc"><span class="cn">不想从 SM 挪去万象城，就在 SM 四楼吃这家。<strong>创意闽菜</strong>，摆盘漂亮、复古装潢，是厦门请客的常客名单。人均约 130 元。周一至周五 11:00–14:30、17:00–21:30；周末 11:00–21:30 连续营业。</span><span class="en">If you would rather not move from SM to MIXC, this one is on SM level 4. <strong>Creative Fujianese</strong>, handsome plating and a retro room — a standing choice in Xiamen for entertaining guests. About ¥130 a head. Mon–Fri 11:00–14:30 and 17:00–21:30; weekends 11:00–21:30 straight through.</span></div>
+<div class="gal">
+<img alt="宴遇 Yan Yu Fujianese restaurant, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkWaTCJpcLRtuhaIroZUwYosbjpZoyo29fG547S2O8FYTEJAMKNC3QVvkdjp0LwohmnxndMXfcLzjQRMVuxF2p6kRISH4i2pgRQtWRr3HO0HvAB2KazRknyXaBxLBQLj0fRrlV8=s4800-w800-h600"/>
+<img alt="宴遇 Yan Yu Fujianese restaurant, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm__VjliSAE4BGgJNmbZbZLryvIiX2_6o5e5Bd2DRJI4khKyKbwulQ-7Qmx5I3kLdcbZDoBJ7rfgX5wq9CRDOzIvoqOQF2FH60MvXFbEG5XScPDVB1L5o8QhXhY5Q5Sd3QUPIt4Wj6Psmg9=s4800-w800-h600"/>
+<img alt="宴遇 Yan Yu Fujianese restaurant, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmjocmbVuTOsxFdF4XCZ7ajXvIZLYtqt61mOXjrEHKQAskIsS9F9CrrxWvRA4skGDWZHNlQdjQaAIJ4zXUKYO-v1eCzUgf3yo9sjdnNyqLtLwa3TAhSHYZ6ia5AJAM-sq1q3t2n=s4800-w800-h600"/>
+<img alt="宴遇 Yan Yu Fujianese restaurant, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkqWPTk_vqARmw0S3bT_5MRFxucxytF1sDRa_eDEqOdCvjwmgxjPePbsjpOmgDdz7QziRhaVvobjVy2bvJycLkzPsatkrk6aVvOKeglxtMISHQMYoKB9yABThQJxiV3kKF6_w3Pn8e3GUY=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">周三 11:00–14:30 · 17:00–21:30</span><span class="en">Wed 11:00–14:30 · 17:00–21:30</span></span><span class="chip ok"><span class="cn">人均 ¥130</span><span class="en">~¥130/person</span></span><span class="chip hours"><span class="cn">SM新生活广场 F4</span><span class="en">SM Lifestyle Plaza L4</span></span></div>
+<a class="btn-map" href="https://surl.amap.com/kZXtdrb1e1f1" target="_blank">🗺 <span class="cn">高德地图</span><span class="en">Amap</span></a>
+</div>
+</div>
+<div class="dayfoot"><span class="ftlb">⛴ <span class="cn">前一天</span><span class="en">Day before</span></span><span class="tx"><span class="cn">买好来回船票，出门前再看一次有没有停航公告</span><span class="en">Buy the return ferry ticket, and recheck for suspension notices before leaving</span></span></div>
+<div class="dayfoot"><span class="ftlb">🍽 <span class="cn">晚餐</span><span class="en">Dinner</span></span><span class="tx"><span class="cn">两家任选：闽和南（万象城·精致闽菜）· 宴遇（SM·创意闽菜，不用换场）</span><span class="en">Pick one: Min He Nan (MIXC, refined Fujianese) · Yan Yu (SM, creative Fujianese, no need to move)</span></span></div>
+</div>
+
+<!-- D04 -->
+<div class="day" data-date="2026-08-27" id="day04">
+<div class="dh">
+<div class="dn">04<small>DAY</small></div>
+<div class="dt"><h3><span class="cn">闽南土菜 · 飞槟城</span><span class="en">One last Minnan meal · On to Penang</span></h3><div class="dd">27 Aug <span class="cn">(四)</span><span class="en">(Thu)</span></div></div>
+<div class="badge">🛫 <span class="cn">离开日 · 下午班机</span><span class="en">Departure · Afternoon flight</span></div>
+</div>
+<div class="db">
+<div class="wxbox">
+<div class="wx" data-wx="2026-08-27"></div>
+<div class="rainplan"><span class="cn">☔ 雨天备案：今天全在室内和车上，下雨只影响路况——雨天把去机场的时间往前挪 20 分钟。</span><span class="en">☔ Rain plan: today is indoors and in the car; rain only affects traffic — leave for the airport 20 minutes earlier if it is wet.</span></div>
+</div>
+
+<div class="tl">
+<div class="ev">
+<div class="t">08:30</div>
+<h4><span class="cn">早餐 · 收行李</span><span class="en">Breakfast and packing</span></h4>
+<div class="s"><span class="cn">酒店解决，把托运行李整理好（回程商务舱每人 2 件）。</span><span class="en">At the hotel; sort the checked bags (2 pieces each in Business on the way out).</span></div>
+</div>
+<div class="ev">
+<div class="t">10:00</div>
+<h4><span class="cn">退房，寄存行李或直接带走</span><span class="en">Check out, store bags or take them along</span></h4>
+<div class="s"><span class="cn">餐厅在机场方向，行李直接带上车最省事。</span><span class="en">The restaurant is on the way to the airport, so the simplest thing is to take the bags with you.</span></div>
+</div>
+<div class="ev hot">
+<div class="t">10:30</div>
+<h4><span class="cn">同安饭店·闽南土菜（金尚店）· 早午餐</span><span class="en">Tong An Restaurant (Jinshang) · Early lunch</span></h4>
+<div class="s"><span class="cn">10:30 一开门就到，吃完正好走。这家做的是<strong>老派闽南土菜</strong>——姜母鸭、封肉、炸五香、海蛎煎、面线糊这一路，是本地人办酒席的老店，跟前几天的海鲜、精致闽菜都不一样，很适合当告别的一餐。<strong>位置在金尚路一带，离高崎机场只要 15 分钟车程</strong>，这也是排在今天的原因。</span><span class="en">Arrive as it opens at 10:30 and you leave right on time. This is <strong>old-school Minnan country cooking</strong> — ginger duck, braised pork, five-spice rolls, oyster omelette, mee sua soup — a long-standing banquet place for locals, different again from the seafood and the refined Fujianese of the previous days, and a fitting last meal. <strong>It is out by Jinshang Road, only 15 minutes from Gaoqi Airport</strong>, which is exactly why it lands on today.</span></div>
+</div>
+<div class="ev">
+<div class="t">11:45</div>
+<h4><span class="cn">出发去高崎机场 T3</span><span class="en">Leave for Gaoqi Airport T3</span></h4>
+<div class="s"><span class="cn">车程约 15 分钟，12:05 前到，距 14:05 起飞正好 2 小时。<strong>吃饭别拖过 11:45</strong>——这是今天唯一的硬时间点。</span><span class="en">About 15 minutes; be there by 12:05, a clean 2 hours before the 14:05 departure. <strong>Do not let the meal run past 11:45</strong> — it is the one hard deadline of the day.</span></div>
+</div>
+<div class="ev fin">
+<div class="t">14:05</div>
+<h4><span class="cn">MF8705 起飞 → 18:00 抵达槟城</span><span class="en">MF8705 departs → 18:00 arrive Penang</span></h4>
+<div class="s"><span class="cn">商务舱，座位 12A／12C。槟城段行程另出一本。</span><span class="en">Business class, seats 12A and 12C. The Penang leg gets its own handbook.</span></div>
+</div>
+</div>
+
+<div class="stop">
+<div class="pin dine">🦆</div>
+<h4><span class="cn">同安饭店·闽南土菜（金尚店）</span><span class="en">Tong An Restaurant · Minnan Country Cooking (Jinshang)</span></h4>
+<div class="desc"><span class="cn">地址在坂上社471号（金尚路与枋湖北二路交界，尚忠公交站旁）。营业 10:30–22:00，电话 0592-5716757。<strong>时间紧，建议前一天先打电话订位</strong>，到了直接开吃。</span><span class="en">At 471 Banshangshe, where Jinshang Road meets Fanghu North 2nd Road, next to the Shangzhong bus stop. Open 10:30–22:00, phone 0592-5716757. <strong>Time is tight — call the day before to book a table</strong> so the food starts arriving as soon as you sit down.</span></div>
+<div class="gal">
+<img alt="同安饭店金尚店 Tong An Restaurant, Jinshang branch, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlubtwMYC9rDewHOiCz_BxHqN5WLt9G9j5ZgCoCCUgGz8Zh67vomHDO8n759Bo6_DhEscQuM39dSrPCL8s-H8oGP3D3FnhfSQLQInrlcoOAEZBKBWGMZxvu0NXBnDZQV9lZRTN8=s4800-w800-h600"/>
+<img alt="同安饭店金尚店 Tong An Restaurant, Jinshang branch, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnG0nKVa6T-V85ShW6td5Gk2juUd7cQqU8aXM_PRGIorljlrtfWZR9ZLBkQzwxyA7P64Pf3PJMg8dDcgkPZml4p0xIqkb6nOwWP3VdapuHzZ4ARLpMxbkMAlBSWx6WjIWfC-4HK=s4800-w800-h600"/>
+<img alt="同安饭店金尚店 Tong An Restaurant, Jinshang branch, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkonYz_EDYWZtXc_m6po2-pmqBcyUvzODfQD5QtK7Obt6z1unj4wNSES6prRDIkOwbrktFszb5VYGLa9Jp8cldfs1tvtVOV7py2E0YRphfzerLZlEH8uk3Ss4W_4QrJPYKIDdDx9g=s4800-w800-h600"/>
+<img alt="同安饭店金尚店 Tong An Restaurant, Jinshang branch, Xiamen" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlidLievYJufgvIJzdF0BZ6mvFtPLryUBxnnjjFHKVs606d57j69i6lCG8XRUWzPYUACNHCWN0BmijDsHu1V-k6AXywOwdSey5Fs9zVE3Vzy9kL9EmQAx1Nus-V3JIgB6LFuvk=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<div class="chips"><span class="chip hours">10:30–22:00</span><span class="chip book">📞 0592-5716757</span><span class="chip ok"><span class="cn">离机场约15分钟</span><span class="en">~15 min to airport</span></span></div>
+<a class="btn-map" href="https://surl.amap.com/mpwadsBK6qb" target="_blank">🗺 <span class="cn">高德地图</span><span class="en">Amap</span></a>
+</div>
+</div>
+<div class="dayfoot"><span class="ftlb">⏰ <span class="cn">硬时间</span><span class="en">Hard time</span></span><span class="tx"><span class="cn">11:45 离席去机场 · 12:05 到 T3 · 14:05 起飞</span><span class="en">Leave the table 11:45 · at T3 by 12:05 · airborne 14:05</span></span></div>
+</div>
+</section>
+
+<footer>
+<div class="mark">XIAMEN · 2026</div>
+<p><span class="cn">厦门自由行手册 · 2026年8月24–27日 · 2人<br/>餐厅与地点由用户指定，营业时间与票价整理自公开资料，标「⚠ 需查证」者出发前请再确认。</span><span class="en">Xiamen handbook · Aug 24–27, 2026 · 2 travellers<br/>Restaurants and spots were chosen by the traveller; hours and prices are compiled from public sources — anything marked "⚠ verify" should be reconfirmed before departure.</span></p>
+</footer>
+</div>
+<div class="lb" id="lb">
+<button class="lb-close" onclick="lbClose()">✕</button>
+<button class="lb-arrow prev" onclick="lbNav(-1)">‹</button>
+<img alt="" id="lbImg" src=""/>
+<button class="lb-arrow next" onclick="lbNav(1)">›</button>
+<div class="lb-counter" id="lbCounter"></div>
+</div>
+<script>
+function applyLang(lang) {
+  document.body.classList.toggle('lang-en', lang === 'en');
+  document.documentElement.lang = lang === 'en' ? 'en' : 'zh';
+  document.getElementById('langBtn').textContent = lang === 'en' ? '中' : 'EN';
+}
+function toggleLang() {
+  const next = document.body.classList.contains('lang-en') ? 'cn' : 'en';
+  applyLang(next);
+  try { localStorage.setItem('siteLangUser', next); } catch (e) {}
+}
+(function initLang() {
+  let lang = null;
+  try {
+    lang = localStorage.getItem('siteLangUser');
+  } catch (e) {}
+  if (!lang) lang = (navigator.language || '').toLowerCase().startsWith('zh') ? 'cn' : 'en';
+  applyLang(lang);
+})();
+
+(function markToday() {
+  const now = new Date();
+  const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
+  const todayStr = y + '-' + m + '-' + d;
+  document.querySelectorAll('.day[data-date]').forEach(el => {
+    if (el.dataset.date === todayStr) el.classList.add('today');
+  });
+  document.querySelectorAll('.daystrip a[data-date]').forEach(el => {
+    if (el.dataset.date === todayStr) el.classList.add('today-chip');
+  });
+})();
+
+(function navSetup() {
+  const strip = document.getElementById('daystrip');
+  const links = Array.from(strip.querySelectorAll('a[href^="#"]'));
+  const offset = () => document.querySelector('.topbar').offsetHeight + strip.offsetHeight + 8;
+  links.forEach(a => {
+    a.addEventListener('click', function (e) {
+      const target = document.querySelector(this.getAttribute('href'));
+      if (!target) return;
+      e.preventDefault();
+      const top = target.getBoundingClientRect().top + window.pageYOffset - offset();
+      window.scrollTo({ top: top, behavior: 'smooth' });
+    });
+  });
+  const targets = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  function setActive() {
+    const pos = window.pageYOffset + offset() + 4;
+    let current = null;
+    targets.forEach(t => { if (t.offsetTop <= pos) current = t; });
+    links.forEach(a => {
+      const on = current && a.getAttribute('href') === '#' + current.id;
+      a.classList.toggle('active', !!on);
+      if (on) a.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+  }
+  window.addEventListener('scroll', setActive, { passive: true });
+  setActive();
+})();
+
+let lbImgs = [], lbIdx = 0;
+function lbOpen(imgs, idx) {
+  lbImgs = imgs; lbIdx = idx;
+  document.getElementById('lbImg').src = lbImgs[lbIdx].src;
+  document.getElementById('lbCounter').textContent = (lbIdx + 1) + ' / ' + lbImgs.length;
+  document.getElementById('lb').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function lbClose() {
+  document.getElementById('lb').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function lbNav(dir) {
+  lbIdx = (lbIdx + dir + lbImgs.length) % lbImgs.length;
+  document.getElementById('lbImg').src = lbImgs[lbIdx].src;
+  document.getElementById('lbCounter').textContent = (lbIdx + 1) + ' / ' + lbImgs.length;
+}
+(function galLightbox() {
+  document.querySelectorAll('.gal').forEach(gal => {
+    const imgs = Array.from(gal.querySelectorAll('img'));
+    imgs.forEach((img, i) => {
+      img.addEventListener('click', () => lbOpen(imgs, i));
+    });
+  });
+  const lb = document.getElementById('lb');
+  lb.addEventListener('click', e => { if (e.target === lb) lbClose(); });
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') lbClose();
+    if (e.key === 'ArrowLeft') lbNav(-1);
+    if (e.key === 'ArrowRight') lbNav(1);
+  });
+})();
+
+/* 每日天气：开页时向 open-meteo 抓这五天的预报（免费、免 key）。
+   抓不到、或日期还在预报窗口外（大约出发前两周才有），就退回九月常态文案，
+   页面不会开天窗。雨天备案是写死的文字，不依赖网络。 */
+(function weather() {
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.wx[data-wx]'));
+  if (!boxes.length) return;
+  var dates = boxes.map(function (b) { return b.dataset.wx; }).sort();
+  var CLIMO_CN = '八月常态 27–33°C，湿热、午后雷阵雨常见';
+  var CLIMO_EN = 'typical August 27–33°C, humid with afternoon thunderstorms';
+  function fill(b, cn, en) { b.innerHTML = '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
+  function wmo(c) {
+    if (c === 0) return { i: '☀️', cn: '晴', en: 'Clear' };
+    if (c <= 2) return { i: '🌤', cn: '多云时晴', en: 'Mostly sunny' };
+    if (c === 3) return { i: '☁️', cn: '阴', en: 'Overcast' };
+    if (c <= 48) return { i: '🌫', cn: '有雾', en: 'Fog' };
+    if (c <= 57) return { i: '🌦', cn: '毛毛雨', en: 'Drizzle' };
+    if (c <= 67) return { i: '🌧', cn: '有雨', en: 'Rain' };
+    if (c <= 82) return { i: '🌧', cn: '阵雨', en: 'Showers' };
+    if (c <= 99) return { i: '⛈', cn: '雷阵雨', en: 'Thunderstorms' };
+    return { i: '🌤', cn: '天气一般', en: 'Mixed' };
+  }
+  boxes.forEach(function (b) { fill(b, '🌤 天气载入中…（' + CLIMO_CN + '）', '🌤 Loading forecast… (' + CLIMO_EN + ')'); });
+  /* open-meteo 只给未来约 16 天。整趟都还在窗口外时连打都不要打——
+     打了会拿到 400，看起来就像「没网」，把人误导到去查 WiFi。 */
+  var DAY = 86400000, HORIZON_DAYS = 16;
+  var iso = function (d) { return d.toISOString().slice(0, 10); };
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var horizon = new Date(today.getTime() + HORIZON_DAYS * DAY);
+  var last = dates[dates.length - 1];
+  function outOfWindow() {
+    boxes.forEach(function (b) {
+      if (b.dataset.wx > iso(horizon) || b.dataset.wx < iso(today)) {
+        fill(b, '🌤 还没到能报的时候（出发前约两周才有）·' + CLIMO_CN,
+                '🌤 Too early for a forecast (arrives ~2 weeks out) · ' + CLIMO_EN);
+      }
+    });
+  }
+  if (dates[0] > iso(horizon)) { outOfWindow(); return; }
+  var start = dates[0] < iso(today) ? iso(today) : dates[0];
+  var end = last > iso(horizon) ? iso(horizon) : last;
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude=24.4798&longitude=118.0894'
+    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+    + '&timezone=Asia%2FShanghai&start_date=' + start + '&end_date=' + end;
+  fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (j) {
+    var d = j && j.daily;
+    if (!d || !d.time || !d.time.length) throw new Error('empty');
+    var idx = {};
+    d.time.forEach(function (t, i) { idx[t] = i; });
+    boxes.forEach(function (b) {
+      var i = idx[b.dataset.wx];
+      if (i === undefined || d.temperature_2m_max[i] === null || d.temperature_2m_max[i] === undefined) {
+        fill(b, '🌤 还没到能报的时候（出发前约两周才有）·' + CLIMO_CN,
+                '🌤 Too early for a forecast (arrives ~2 weeks out) · ' + CLIMO_EN);
+        return;
+      }
+      var w = wmo(d.weather_code[i]);
+      var hi = Math.round(d.temperature_2m_max[i]), lo = Math.round(d.temperature_2m_min[i]);
+      var pop = d.precipitation_probability_max[i];
+      fill(b, w.i + ' ' + w.cn + ' · ' + lo + '–' + hi + '°C · 降雨机率 ' + pop + '%',
+              w.i + ' ' + w.en + ' · ' + lo + '–' + hi + '°C · rain ' + pop + '%');
+      if (pop >= 60) b.classList.add('wet');
+    });
+  }).catch(function () {
+    boxes.forEach(function (b) {
+      fill(b, '🌤 天气暂时抓不到（可能没网）·' + CLIMO_CN, '🌤 Forecast unavailable (offline?) · ' + CLIMO_EN);
+    });
+  });
+})();
+
+/* 行程当天打开手册，直接跳到今天那一张卡片（不在行程日期内就不动）。 */
+(function jumpToToday() {
+  var el = document.querySelector('.day.today');
+  if (!el) return;
+  requestAnimationFrame(function () { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+})();
+</script>
+</body>
+</html>
