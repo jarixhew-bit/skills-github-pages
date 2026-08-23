@@ -1,0 +1,53 @@
+name: Photo preview
+
+# 让 Claude 亲眼看照片对不对。沙盒连不上 googleusercontent，抓回来的照片
+# 只有网址、看不到内容，先前就因此把商场照片当成餐厅照片交出去（2026-08-22 第稻）。
+# 这个任务把候选照片下载、缩到 500px、提交回触发分支，Claude 直接读图判断再决定用哪几张。
+# 用完记得删掉 .photos/preview/（暂存档，不进 main）。
+
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: "照片网址，用 | 分隔"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载并缩图
+        env:
+          URLS: ${{ github.event.inputs.urls }}
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          import os, urllib.request, io
+          from PIL import Image
+          urls = [u.strip() for u in os.environ['URLS'].split('|') if u.strip()]
+          os.makedirs('.photos/preview', exist_ok=True)
+          for i, u in enumerate(urls, 1):
+              try:
+                  raw = urllib.request.urlopen(u, timeout=30).read()
+                  im = Image.open(io.BytesIO(raw)).convert('RGB')
+                  im.thumbnail((500, 500))
+                  im.save(f'.photos/preview/{i:02d}.jpg', 'JPEG', quality=75)
+                  print(f'{i:02d} ok {im.size}')
+              except Exception as e:
+                  print(f'{i:02d} FAIL {e}')
+          PY
+
+      - name: 把缩图提交回分支
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f .photos/preview
+          git commit -m "照片缩图预览（自动产生的暂存档）" || exit 0
+          git pull --rebase origin ${{ github.ref_name }}
+          git push origin HEAD:${{ github.ref_name }}
