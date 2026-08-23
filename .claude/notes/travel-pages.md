@@ -194,6 +194,10 @@ URL: .../xiamen-trip/
    南普陀寺、万象城、SM 三个地点是**用户指定**的，地图按钮用用户给的**高德短链**
    （`surl.amap.com/...`）；其余地点用 `https://uri.amap.com/search?keyword=<编码>`。
    **本页不准出现 Google 地图链接**（2026-08-22 用户明确要求全部走高德）。
+   **2026-08-23 起再加一条：地图链接一律用用户给的 `surl.amap.com` 短链，
+   不准自己拼 `uri.amap.com/search?keyword=`**（用户：「你自己搞的链接有时候会打不开」）。
+   页面上 13 个按钮现已全部是用户给的短链（含酒店 `95GGLlQd91o`、高崎T3 `984FvTM139uf`）。
+   遇到用户没给链接的新地点：**跟他要**，不要自己生成。
 双语：siteLangUser，新页无旧 key 兜底。PWA：不适用。
 已知坑：
 - 沙盒连不上 lh3.googleusercontent.com 与 google.com（curl 与 `tools/check-images.py` 一律
