@@ -4316,6 +4316,63 @@ const AI_PROVIDER_NAMES = {
 
 function getAiProvider(){ return (localStorage.getItem(AI_PROVIDER_STORAGE) || '').trim(); }
 
+// ===================== 换机准备：把只存在本机的几样列出来 =====================
+/**
+ * 记账、账户、收据照片都跟着 Google 帐号走，但公司报账密钥、AI 的 key、交易分析器
+ * 密码只在这台手机的 localStorage 里——正本在 Cloudflare 的 secret 里，谁都读不回来，
+ * 换机前**只能从这台手机抄走**。而这三样的输入框都是 password 型的、又不回填，
+ * 原本抄不到（2026-08-21 用户要换手机时发现）。这里把它们列出来给他抄。
+ *
+ * 只在他自己点开时显示，且同事版整块删掉（见 tools/build-staff-page.py）。
+ */
+function migrateKeyRows(){
+  const rows = [];
+  const token = (localStorage.getItem(COMPANY_TOKEN_STORAGE) || '').trim();
+  rows.push({ label:'公司报账密钥', hint:'新手机：设置 → 公司报账 → 粘贴 → 保存', value:token });
+  // AI 的 key 可能配过好几家，全列出来——只列当前那家的话，换回另一家时又要重找
+  Object.keys(AI_PROVIDER_NAMES).forEach(pv => {
+    const k = getAiKey(pv);
+    if(k) rows.push({ label:`AI key（${AI_PROVIDER_NAMES[pv]}）`,
+                      hint:'新手机：设置 → 拍收据自动识别 → 选同一家 → 粘贴 → 保存', value:k });
+  });
+  const pw = (localStorage.getItem(IBKR_PW_KEY) || '').trim();
+  rows.push({ label:'交易分析器密码（IBKR 余额）', hint:'新手机：首页那张 IBKR 卡片点「解锁」时填', value:pw });
+  return rows;
+}
+function toggleMigrateKeys(){
+  const box = document.getElementById('migrate-keys');
+  const btn = document.getElementById('migrate-toggle');
+  if(!box) return;
+  const showing = box.style.display !== 'none';
+  if(showing){
+    box.style.display = 'none';
+    box.innerHTML = '';                     // 收起来时清空，别留在 DOM 里
+    if(btn) btn.textContent = '点这里显示';
+    return;
+  }
+  box.innerHTML = migrateKeyRows().map(r => {
+    const has = !!r.value;
+    return `<div style="padding:10px 0;border-top:1px solid var(--line)">
+      <div style="font-size:13px;font-weight:600">${r.label}</div>
+      <div style="font-size:12px;color:var(--sub);margin:2px 0 6px">${r.hint}</div>
+      ${has ? `<div style="display:flex;gap:8px;align-items:center">
+          <code style="flex:1;min-width:0;font-size:12px;word-break:break-all;background:var(--bg);
+            padding:8px;border-radius:8px;user-select:all">${ledEsc(r.value)}</code>
+          <button class="btn btn-outline btn-sm" onclick="copyMigrateValue(this)"
+            data-v="${ledEsc(r.value)}">复制</button>
+        </div>`
+       : `<div style="font-size:12px;color:var(--sub)">（这台手机没设过，不用抄）</div>`}
+    </div>`;
+  }).join('');
+  box.style.display = 'block';
+  if(btn) btn.textContent = '收起来';
+}
+async function copyMigrateValue(btn){
+  const v = btn.getAttribute('data-v') || '';
+  try{ await navigator.clipboard.writeText(v); toast('已复制'); }
+  catch(e){ toast('复制不了，长按上面那串字自己选'); }
+}
+
 function getAiKey(provider){
   if(!provider) return '';
   const v = (localStorage.getItem(AI_KEY_STORAGE_PREFIX + provider) || '').trim();
@@ -5428,7 +5485,8 @@ const ledState = { month: null, data: null, loading: false, error: null, fetched
 
 function ledMonthNow(){ return today().slice(0, 7); }
 
-// 备注是从服务端来的自由文本（同事在 Telegram 里打的字），拼进 innerHTML 前要转义
+// 拼进 innerHTML 前的转义。原本只给公司账本的备注用（同事在 Telegram 里打的自由
+// 文本），换机准备那块列 key 时也用它——名字留着不改，免得动一堆调用点。
 function ledEsc(s){
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

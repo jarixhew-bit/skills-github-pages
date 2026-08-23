@@ -1672,6 +1672,53 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   await ctx.close();
 }
 
+// ---------- 【23】换机准备：把只存在这台手机的几样列得出来 ----------
+{
+  console.log('\n【23】换机准备：公司密钥 / AI key / 交易密码要列得出来');
+  // 为什么要验：这三样的正本在 Cloudflare 的 secret 里，谁都读不回来；输入框又是
+  // password 型的、不回填。这块要是列不出来，用户换机之后就真的只能全部重新申请。
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_companyToken', 'company-key-abc');
+    localStorage.setItem('expenseTracker_aiKey_mistral', 'mistral-key-xyz');
+    localStorage.setItem('tradingAnalyzerPw', 'ibkr-pw-789');
+  });
+  await page.evaluate(()=>switchTab('settings'));
+  ok('没点开之前不显示', !(await page.locator('#migrate-keys').isVisible()));
+
+  await page.click('#migrate-toggle');
+  await page.waitForTimeout(200);
+  const shown = (await page.textContent('#migrate-keys')) || '';
+  ok('列出公司报账密钥', shown.includes('company-key-abc'), shown.slice(0,200));
+  ok('列出 AI key', shown.includes('mistral-key-xyz'), shown.slice(0,200));
+  ok('列出交易分析器密码', shown.includes('ibkr-pw-789'), shown.slice(0,200));
+  // 光给一串字没用——他要知道新手机填到哪里去
+  ok('每一样都写了新手机填在哪', (shown.match(/新手机/g) || []).length >= 3, shown.slice(0,300));
+
+  // 收起来要真的清掉，别留在 DOM 里让人截图时误拍进去
+  await page.click('#migrate-toggle');
+  await page.waitForTimeout(200);
+  ok('收起来之后不显示', !(await page.locator('#migrate-keys').isVisible()));
+  ok('收起来之后 DOM 里也不留',
+     !((await page.evaluate(() => document.getElementById('migrate-keys').innerHTML)) || '').includes('company-key-abc'));
+
+  // 没设过的那几样要说「不用抄」，不能显示成空白让人以为坏了
+  await page.evaluate(() => { localStorage.removeItem('tradingAnalyzerPw'); });
+  await page.click('#migrate-toggle');
+  await page.waitForTimeout(200);
+  const shown2 = (await page.textContent('#migrate-keys')) || '';
+  ok('没设过的写明「不用抄」', shown2.includes('不用抄'), shown2.slice(0,300));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
