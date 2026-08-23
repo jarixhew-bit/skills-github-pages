@@ -1867,6 +1867,29 @@ function txHtml(t, currency){
   </div>`;
 }
 
+/**
+ * 清单空的时候补一句「为什么空」。三种情况分开说，因为处理方法完全不同：
+ * 没登录（帐在云端，登录就回来）／登录了但云端也空（多半是登错帐号）／
+ * 连不上 Google（等有网，别急着重记一遍）。
+ */
+function emptyListCloudHint(){
+  // 同事版不接云同步，没有「没登录所以看不到」这回事（生成时改的，见 tools/build-staff-page.py）
+  return '';
+  // eslint-disable-next-line no-unreachable
+  const box = (t)=>`<div style="font-size:12.5px;color:var(--sub);margin-top:10px;
+    line-height:1.7;max-width:280px">${t}</div>`;
+  if(!cloudAvailable){
+    return box('现在连不上 Google 服务，云端那份拉不下来。<b>先别重记一遍</b>——等有网再打开就会自己补上。');
+  }
+  if(!currentUser){
+    return box('这台设备<b>还没登录 Google</b>，帐都在云端。'
+      + '<div style="margin-top:8px"><button class="btn btn-outline btn-sm" '
+      + 'onclick="signInWithGoogle()">登录 Google 把帐拉回来</button></div>');
+  }
+  return box(`已登录 <b>${ledEsc(currentUser.email || '')}</b>，云端这个月也没有记录。`
+    + '若你平常用的是另一个 Google 帐号，请在设置里退出、换那个帐号登录。');
+}
+
 function renderTxList(){
   const acc = curAcc(); if(!acc) return;
   document.getElementById('tx-month-text').textContent = monthName(state.txYear, state.txMonth);
@@ -1875,7 +1898,11 @@ function renderTxList(){
   txs.sort((a,b)=>new Date(b.date)-new Date(a.date));
   const el = document.getElementById('tx-list');
   if(txs.length===0){
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🗒️</div><div class="empty-text">${tt('这个月还没有记录','Nothing recorded this month')}</div></div>`;
+    // 空清单要说清楚是「真的没记」还是「这台设备没接上云端」——2026-08-23 用户在备用机上
+    // 看到空白，只写「这个月还没有记录」的话，看起来就像记录丢了。帐其实在云端，
+    // 差的只是这台设备没登录。
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🗒️</div>
+      <div class="empty-text">${tt('这个月还没有记录','Nothing recorded this month')}</div>${emptyListCloudHint()}</div>`;
     return;
   }
   // Group by date
