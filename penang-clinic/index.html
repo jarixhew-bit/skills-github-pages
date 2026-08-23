@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>槟城就诊 · 28 Aug 2026 | Penang Appointments</title>
+<style>
+  :root {
+    --paper: #faf7f1;
+    --card: #ffffff;
+    --ink: #1c1917;
+    --muted: #78716c;
+    --faint: #a8a29e;
+    --line: #e7e0d5;
+    --red: #c8102e;
+    --red-soft: #fdf0f2;
+    --gold: #b08d3e;
+    --gold-soft: #faf3e3;
+    --green: #2e7d4f;
+    --green-soft: #edf7f0;
+    --blue: #1d5c8f;
+    --blue-soft: #edf4fa;
+    --purple: #7c5295;
+    --purple-soft: #f2ecf5;
+    --serif: "Palatino Linotype", "Songti SC", "Noto Serif SC", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--sans); background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.65; }
+  img { display: block; }
+  body.lang-en .cn { display: none !important; }
+  body:not(.lang-en) .en { display: none !important; }
+  .topbar { position: sticky; top: 0; z-index: 300; background: rgba(28,25,23,.97); backdrop-filter: blur(8px); display: flex; align-items: stretch; height: 44px; color: #fff; }
+  .topbar .brand { flex: 1; display: flex; align-items: center; gap: 8px; padding: 0 14px; min-width: 0; }
+  .topbar .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex: none; }
+  .topbar .brand .t { font-size: 13px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar button.lang { display: flex; align-items: center; padding: 0 14px; background: none; border: none; border-left: 1px solid rgba(255,255,255,.14); color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--sans); }
+  .daystrip { position: sticky; top: 44px; z-index: 290; background: var(--paper); border-bottom: 1px solid var(--line); display: flex; overflow-x: auto; gap: 6px; padding: 8px 12px; scrollbar-width: none; }
+  .daystrip::-webkit-scrollbar { display: none; }
+  .daystrip a { flex: none; text-decoration: none; text-align: center; border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px; background: var(--card); color: var(--ink); line-height: 1.3; min-width: 46px; }
+  .daystrip a .d { display: block; font-size: 12px; font-weight: 800; }
+  .daystrip a .m { display: block; font-size: 9px; color: var(--faint); font-weight: 600; letter-spacing: .03em; }
+  .daystrip a.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .daystrip a.active .m { color: rgba(255,255,255,.65); }
+  .daystrip a.today-chip { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+  .daystrip a.today-chip .m { color: var(--red); }
+  .cover { position: relative; background: var(--ink); color: #fff; overflow: hidden; }
+  .cover img.bg { width: 100%; height: 300px; object-fit: cover; opacity: .55; }
+  .cover .inner { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 22px 20px 24px; background: linear-gradient(180deg, rgba(28,25,23,.1) 30%, rgba(28,25,23,.88) 100%); }
+  .cover .kicker { font-size: 11px; font-weight: 800; letter-spacing: .28em; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; }
+  .cover h1 { font-family: var(--serif); font-size: 30px; line-height: 1.2; font-weight: 700; margin-bottom: 8px; }
+  .cover .dates { font-size: 13px; color: rgba(255,255,255,.85); font-weight: 600; }
+  .cover .meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .cover .meta-chip { font-size: 10.5px; font-weight: 700; padding: 4px 10px; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; color: rgba(255,255,255,.92); }
+  .tip { display: flex; gap: 10px; margin: 14px 16px 0; padding: 12px 14px; background: var(--gold-soft); border: 1px solid #ecd9ae; border-radius: 12px; font-size: 12.5px; color: #6b5216; }
+  .tip .ico { flex: none; }
+  .wrap { max-width: 760px; margin: 0 auto; padding-bottom: 60px; }
+  section { padding: 26px 16px 4px; }
+  .sec-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .sec-head .no { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--red); letter-spacing: .1em; }
+  .sec-head h2 { font-family: var(--serif); font-size: 21px; font-weight: 700; letter-spacing: .01em; }
+  .sec-head .rule { flex: 1; height: 1px; background: var(--line); align-self: center; }
+  .bp-group-label { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 16px 2px 8px; }
+  .bpass { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
+  .bpass .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--ink); color: #fff; }
+  .bpass .head .airline { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; letter-spacing: .05em; }
+  .bpass .head .airline .code { background: var(--red); border-radius: 6px; padding: 1px 7px; font-size: 11px; }
+  .bpass .head .craft { font-size: 10.5px; color: rgba(255,255,255,.7); font-weight: 600; }
+  .bpass .route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 16px 16px 12px; gap: 8px; }
+  .bpass .apt { text-align: center; }
+  .bpass .apt .iata { font-family: var(--serif); font-size: 30px; font-weight: 700; letter-spacing: .02em; line-height: 1.1; }
+  .bpass .apt .city { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+  .bpass .apt .time { font-size: 15px; font-weight: 800; color: var(--red); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .bpass .mid { text-align: center; color: var(--faint); }
+  .bpass .mid .dur { font-size: 10px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+  .bpass .mid .line { position: relative; height: 1px; background: var(--line); margin: 6px 0; min-width: 74px; }
+  .bpass .mid .line::after { content: "✈"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--red); background: var(--card); padding: 0 4px; }
+  .bpass .perf { border-top: 1px dashed var(--line); position: relative; }
+  .bpass .perf::before, .bpass .perf::after { content: ""; position: absolute; top: -8px; width: 16px; height: 16px; border-radius: 50%; background: var(--paper); border: 1px solid var(--line); }
+  .bpass .perf::before { left: -9px; }
+  .bpass .perf::after { right: -9px; }
+  .bpass .pax { padding: 12px 16px; }
+  .bpass .pax .cls { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 2px 8px; border-radius: 5px; margin-bottom: 6px; }
+  .bpass .pax .cls.biz { background: var(--gold-soft); color: #7c6220; border: 1px solid #e5d3a4; }
+  .bpass .pax .cls.eco { background: var(--blue-soft); color: var(--blue); border: 1px solid #c9dced; }
+  .bpass .pax .seats { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+  .bpass .pax .seat { font-size: 10.5px; font-weight: 600; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .track { display: inline-flex; align-items: center; gap: 6px; margin: 0 16px 14px; font-size: 11.5px; font-weight: 700; color: var(--blue); background: var(--blue-soft); border: 1px solid #c9dced; border-radius: 999px; padding: 6px 14px; text-decoration: none; }
+  .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 12px; }
+  .tbl th { background: var(--ink); color: #fff; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 8px 10px; text-align: left; font-weight: 700; }
+  .tbl td { padding: 9px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+  .note { font-size: 12px; border-radius: 10px; padding: 10px 13px; margin-top: 10px; }
+  .note.amber { background: var(--gold-soft); border: 1px solid #ecd9ae; color: #6b5216; }
+  .note.red { background: var(--red-soft); border: 1px solid #f3c6cd; color: #7c1024; }
+  .note.green { background: var(--green-soft); border: 1px solid #c4e3cf; color: #1d5637; }
+  .gal { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 10px; scrollbar-width: none; margin: 10px 0 4px; }
+  .gal::-webkit-scrollbar { display: none; }
+  .gal img { scroll-snap-align: start; width: 78%; max-width: 340px; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; flex: none; background: var(--line); cursor: zoom-in; }
+  .gal-hint { font-size: 10px; color: var(--faint); margin-bottom: 6px; }
+  .lb { position: fixed; inset: 0; background: rgba(0,0,0,.93); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
+  .lb.open { display: flex; }
+  .lb img { max-width: 94%; max-height: 80vh; object-fit: contain; border-radius: 8px; }
+  .lb-counter { color: rgba(255,255,255,.55); font-size: 12px; margin-top: 10px; letter-spacing: .05em; }
+  .lb-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 19px; cursor: pointer; line-height: 36px; text-align: center; }
+  .lb-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.15); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 22px; cursor: pointer; line-height: 40px; text-align: center; }
+  .lb-arrow.prev { left: 10px; }
+  .lb-arrow.next { right: 10px; }
+  .hotel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
+  .hotel .stay { display: flex; justify-content: space-between; align-items: center; padding: 9px 16px; background: var(--gold-soft); border-bottom: 1px solid #ecd9ae; font-size: 11.5px; font-weight: 800; color: #7c6220; letter-spacing: .03em; }
+  .hotel .bd { padding: 14px 16px 16px; }
+  .hotel h3 { font-family: var(--serif); font-size: 18px; font-weight: 700; }
+  .hotel .addr { font-size: 11.5px; color: var(--muted); margin: 4px 0 2px; }
+  .hotel .tel { font-size: 11.5px; color: var(--muted); }
+  .btn-map { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--green); background: var(--green-soft); border: 1px solid #c4e3cf; border-radius: 999px; padding: 6px 14px; text-decoration: none; margin-top: 10px; }
+  .day { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 18px; overflow: hidden; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
+  .day.today { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 4px 14px rgba(200,16,46,.12); }
+  .day .dh { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .day .dh .dn { font-family: var(--serif); font-size: 34px; font-weight: 700; color: var(--red); line-height: 1; min-width: 44px; }
+  .day .dh .dn small { display: block; font-family: var(--sans); font-size: 8.5px; font-weight: 800; letter-spacing: .22em; color: var(--faint); margin-top: 2px; }
+  .day .dh .dt { flex: 1; min-width: 0; }
+  .day .dh .dt h3 { font-size: 15.5px; font-weight: 800; line-height: 1.3; }
+  .day .dh .dt .dd { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 1px; }
+  .day .dh .badge { flex: none; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .day .today-tag { display: none; }
+  .day.today .today-tag { display: inline-block; font-size: 9.5px; font-weight: 800; background: var(--red); color: #fff; border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+  .day .db { padding: 6px 16px 14px; }
+  .stop { position: relative; padding: 12px 0 12px 26px; border-bottom: 1px solid var(--line); }
+  .stop:last-of-type { border-bottom: none; }
+  .stop::before { content: ""; position: absolute; left: 7px; top: 22px; bottom: -4px; width: 2px; background: var(--line); }
+  .stop:last-of-type::before { display: none; }
+  .stop .pin { position: absolute; left: 0; top: 16px; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #fff; }
+  .stop .pin.must { background: var(--red); }
+  .stop .pin.side { background: var(--faint); }
+  .stop .pin.dine { background: var(--gold); }
+  .stop .pin.maybe { background: var(--blue); }
+  .stop h4 { font-size: 14.5px; font-weight: 800; line-height: 1.35; }
+  .stop h4 .star { color: var(--gold); font-weight: 700; font-size: 12.5px; }
+  .stop .desc { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .stop .desc strong { color: var(--ink); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid; }
+  .chip.hours { color: var(--muted); border-color: var(--line); background: var(--paper); }
+  .chip.ticket { color: #7c6220; border-color: #e5d3a4; background: var(--gold-soft); }
+  .chip.book { color: var(--green); border-color: #c4e3cf; background: var(--green-soft); }
+  .chip.verify { color: #a33b00; border-color: #f2cdb3; background: #fdf2ea; }
+  .chip.ok { color: var(--green); border-color: #c4e3cf; background: var(--green-soft); }
+  .backup { margin: 10px 0 4px 26px; border: 1px dashed var(--purple); border-radius: 12px; padding: 12px 14px; background: var(--paper); }
+  .backup .bk-label { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--purple); margin-bottom: 4px; }
+  .backup h4 { font-size: 13.5px; font-weight: 800; }
+  .backup .desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .dayfoot { border-top: 1px solid var(--line); background: var(--paper); padding: 10px 16px; display: flex; gap: 10px; font-size: 12px; }
+  .dayfoot + .dayfoot { border-top: 1px dashed var(--line); }
+  .dayfoot .ftlb { flex: none; font-weight: 800; font-size: 11px; color: var(--muted); min-width: 58px; }
+  .dayfoot .tx { color: var(--ink); }
+  /* ===== EVENT CARD (limited-time) ===== */
+  .evt { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
+  .evt .eh { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--red-soft); border-bottom: 1px solid #f3c6cd; }
+  .evt .eh .et { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--red); }
+  .evt .eh .ed { font-size: 11px; font-weight: 800; color: var(--red); white-space: nowrap; }
+  .evt .eb { padding: 14px 16px 16px; }
+  .evt h3 { font-size: 16px; font-weight: 800; }
+  .evt .desc { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .evt .meta { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+  footer { text-align: center; padding: 30px 20px 20px; }
+  footer .mark { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .2em; margin-bottom: 8px; }
+  footer p { font-size: 10.5px; color: var(--faint); line-height: 1.7; }
+  .tl { border-left: 2px solid var(--line); margin: 4px 0 4px 8px; }
+  .tl .ev { position: relative; padding: 0 0 18px 22px; }
+  .tl .ev:last-child { padding-bottom: 4px; }
+  .tl .ev::before { content: ""; position: absolute; left: -7px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--card); border: 3px solid var(--faint); }
+  .tl .ev.hot::before { border-color: var(--red); }
+  .tl .ev.fin::before { border-color: var(--green); }
+  .tl .ev .t { font-size: 12px; font-weight: 800; color: var(--red); font-variant-numeric: tabular-nums; }
+  .tl .ev h4 { font-size: 13.5px; font-weight: 800; margin-top: 1px; }
+  .tl .ev .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .tl .ev.fin .t, .tl .ev.fin h4 { color: var(--green); }
+  .wxbox { margin: 10px 0 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  .wx { font-size: 12.5px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .wx.wet { color: var(--red); }
+  .rainplan { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+  /* ===== 本页专用 ===== */
+  .hero { background: var(--ink); color: #fff; padding: 26px 20px 24px; }
+  .hero .kicker { font-size: 11px; font-weight: 800; letter-spacing: .28em; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; }
+  .hero h1 { font-family: var(--serif); font-size: 28px; line-height: 1.25; font-weight: 700; margin-bottom: 8px; }
+  .hero .dates { font-size: 13px; color: rgba(255,255,255,.85); font-weight: 600; }
+  .hero .meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .hero .meta-chip { font-size: 10.5px; font-weight: 700; padding: 4px 10px; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; color: rgba(255,255,255,.92); }
+  .place { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
+  .place .ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--ink); color: #fff; }
+  .place .ph .seq { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.72); }
+  .place .ph .hr { font-size: 13px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+  .place .pb { padding: 14px 16px 16px; }
+  .place h3 { font-family: var(--serif); font-size: 19px; font-weight: 700; line-height: 1.3; }
+  .place .sub { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+  .place .addr { font-size: 12.5px; color: var(--ink); margin-top: 8px; }
+  .place .desc { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .place .acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .btn-tel { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--blue); background: var(--blue-soft); border: 1px solid #c9dced; border-radius: 999px; padding: 6px 14px; text-decoration: none; margin-top: 10px; }
+  .bring { display: grid; gap: 8px; }
+  .bring .it { display: flex; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; font-size: 12.5px; }
+  .bring .it .ic { flex: none; }
+  .bring .it .tx strong { display: block; font-size: 13px; margin-bottom: 2px; }
+  .bring .it .tx span.cn, .bring .it .tx span.en { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="topbar">
+<div class="brand"><span class="dot"></span><span class="t"><span class="cn">槟城就诊 · 8月28日（五）</span><span class="en">Penang Appointments · Fri 28 Aug</span></span></div>
+<button class="lang" id="langBtn" onclick="toggleLang()">EN</button>
+</div>
+<div class="wrap">
+
+<div class="hero">
+<div class="kicker"><span class="cn">就诊信息</span><span class="en">Appointment Card</span></div>
+<h1><span class="cn">槟城就诊安排</span><span class="en">Penang Medical Appointments</span></h1>
+<div class="dates"><span class="cn">2026年8月28日（星期五）· 同日两个约诊</span><span class="en">Friday, 28 August 2026 · Two appointments, same day</span></div>
+<div class="meta-row">
+<span class="meta-chip">🩺 <span class="cn">下午 · Lim Skin 皮肤专科</span><span class="en">Afternoon · Lim Skin</span></span>
+<span class="meta-chip">🏥 17:00 · Island Hospital</span>
+<span class="meta-chip">📍 <span class="cn">同在 Macalister 路</span><span class="en">Both on Macalister Rd</span></span>
+</div>
+</div>
+
+<div class="tip">
+<span class="ico">👆</span>
+<div>
+<span class="cn"><strong>绿色按钮</strong>开 Google 地图，<strong>蓝色按钮</strong>直接拨号。两个地点在同一条 Macalister 路上，相距约 1.5 公里、车程 5 分钟。</span>
+<span class="en"><strong>Green buttons</strong> open Google Maps; <strong>blue buttons</strong> dial the number. Both addresses sit on the same road, Macalister — about 1.5 km apart, a 5-minute drive.</span>
+</div>
+</div>
+
+<!-- ===== 当天流程 ===== -->
+<section id="plan">
+<div class="sec-head"><span class="no">01</span><h2><span class="cn">当天流程</span><span class="en">The Day</span></h2><span class="rule"></span></div>
+<div class="day">
+<div class="dh">
+<div class="dn">28<small>AUG</small></div>
+<div class="dt"><h3><span class="cn">星期五 · 皮肤专科 + Island Hospital</span><span class="en">Friday · Skin specialist, then Island Hospital</span></h3><div class="dd"><span class="cn">两处相距 5 分钟车程</span><span class="en">Five minutes apart by car</span></div></div>
+<div class="badge"><span class="cn">2 个约诊</span><span class="en">2 visits</span></div>
+</div>
+<div class="db">
+<div class="tl">
+<div class="ev hot">
+<div class="t"><span class="cn">下午</span><span class="en">Afternoon</span></div>
+<h4><span class="cn">Lim Skin 皮肤专科诊所</span><span class="en">Lim Skin Specialist Clinic</span></h4>
+<div class="s"><span class="cn">111 Jalan Macalister。诊所周五营业到 17:30，务必在此之前完成，才接得上 17:00 那一场——两个时间贴得近，建议把皮肤科排在 15:00 前后。</span><span class="en">111 Jalan Macalister. The clinic closes at 17:30 on Fridays, and the 17:00 slot follows immediately after, so aim to be seen around 15:00.</span></div>
+</div>
+<div class="ev">
+<div class="t">16:40</div>
+<h4><span class="cn">动身前往 Island Hospital</span><span class="en">Leave for Island Hospital</span></h4>
+<div class="s"><span class="cn">沿 Macalister 路往东约 1.5 公里，车程 5 分钟；下班时段车流较密，预留 15 分钟。</span><span class="en">About 1.5 km east along Macalister Road, a 5-minute drive; allow 15 minutes in the evening traffic.</span></div>
+</div>
+<div class="ev fin">
+<div class="t">17:00</div>
+<h4><span class="cn">Island Hospital 约诊</span><span class="en">Island Hospital appointment</span></h4>
+<div class="s"><span class="cn">308 Macalister Road。建议 16:45 到，先到柜台登记（初诊要办病历号，需要护照）。</span><span class="en">308 Macalister Road. Arrive by 16:45 to register at the counter — a first visit means opening a patient file, which needs the passport.</span></div>
+</div>
+</div>
+</div>
+<div class="dayfoot">
+<div class="ftlb"><span class="cn">交通</span><span class="en">Transport</span></div>
+<div class="tx"><span class="cn">两地都在乔治市市区，Grab 随叫随到；两处门口都有停车场。</span><span class="en">Both are in central George Town — Grab is readily available, and both have on-site parking.</span></div>
+</div>
+</div>
+</section>
+
+<!-- ===== 两个地点 ===== -->
+<section id="places">
+<div class="sec-head"><span class="no">02</span><h2><span class="cn">地点与联络</span><span class="en">Addresses &amp; Contacts</span></h2><span class="rule"></span></div>
+
+<div class="place">
+<div class="ph"><span class="seq"><span class="cn">第一场</span><span class="en">First visit</span></span><span class="hr"><span class="cn">下午</span><span class="en">Afternoon</span></span></div>
+<div class="pb">
+<h3>Lim Skin Specialist Clinic</h3>
+<div class="sub"><span class="cn">皮肤专科 · Klinik Pakar Kulit Lim</span><span class="en">Dermatology · Klinik Pakar Kulit Lim</span></div>
+<div class="addr">111, Jalan Macalister, 10400 George Town, Pulau Pinang</div>
+<div class="desc"><span class="cn">1980 年开业的私人皮肤专科诊所，就在 Macalister 路上、Island Hospital 往市区方向约 1.5 公里处。</span><span class="en">A private dermatology clinic open since 1980, on Macalister Road about 1.5 km towards town from Island Hospital.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">周五 09:00–17:30</span><span class="en">Fri 09:00–17:30</span></span>
+<span class="chip verify"><span class="cn">⚠ 约诊具体时间待确认</span><span class="en">⚠ Exact time to confirm</span></span>
+</div>
+<div class="acts">
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Lim%20Skin%20Specialist%20Clinic%2C%20111%20Jalan%20Macalister%2C%2010400%20George%20Town%2C%20Penang" rel="noopener" target="_blank">🗺 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-tel" href="tel:+6042263767">📞 +604-226 3767</a>
+</div>
+</div>
+</div>
+
+<div class="place">
+<div class="ph"><span class="seq"><span class="cn">第二场</span><span class="en">Second visit</span></span><span class="hr">17:00</span></div>
+<div class="pb">
+<h3>Island Hospital</h3>
+<div class="sub"><span class="cn">私立综合医院 · 门诊在同一栋楼</span><span class="en">Private general hospital · Outpatient in the same building</span></div>
+<div class="addr">308, Macalister Road, 10450 George Town, Pulau Pinang</div>
+<div class="desc"><span class="cn">槟城主要私立医院之一，位于 Macalister 路与 Peel Avenue 路口，外籍病人多，柜台可用英语沟通。急诊 24 小时。</span><span class="en">One of Penang's main private hospitals, at the junction of Macalister Road and Peel Avenue. It handles many international patients and the counters work in English. Emergency department open 24 hours.</span></div>
+<div class="chips">
+<span class="chip ok"><span class="cn">✅ 已确认约诊</span><span class="en">✅ Appointment confirmed</span></span>
+<span class="chip hours"><span class="cn">建议 16:45 到</span><span class="en">Arrive 16:45</span></span>
+</div>
+<div class="acts">
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Island%20Hospital%2C%20308%20Macalister%20Road%2C%2010450%20George%20Town%2C%20Penang" rel="noopener" target="_blank">🗺 <span class="cn">地图</span><span class="en">Map</span></a>
+<a class="btn-tel" href="tel:+6042383388">📞 +604-238 3388</a>
+<a class="btn-tel" href="tel:+6042268527">🚑 <span class="cn">急诊 +604-226 8527</span><span class="en">A&amp;E +604-226 8527</span></a>
+</div>
+</div>
+</div>
+</section>
+
+<!-- ===== 带什么 ===== -->
+<section id="bring">
+<div class="sec-head"><span class="no">03</span><h2><span class="cn">当天带什么</span><span class="en">What to Bring</span></h2><span class="rule"></span></div>
+<div class="bring">
+<div class="it"><span class="ic">🛂</span><div class="tx"><strong><span class="cn">护照</span><span class="en">Passport</span></strong><span class="cn">两家都要看证件登记；Island Hospital 初诊要用护照开病历号。</span><span class="en">Both register by ID; Island Hospital needs the passport to open a patient file on a first visit.</span></div></div>
+<div class="it"><span class="ic">💳</span><div class="tx"><strong><span class="cn">付款方式</span><span class="en">Payment</span></strong><span class="cn">信用卡与现金（马币）都带上。私立医院按次结清，诊金现场付。</span><span class="en">Bring a credit card and cash in ringgit — private clinics settle per visit, paid on the spot.</span></div></div>
+<div class="it"><span class="ic">📋</span><div class="tx"><strong><span class="cn">病历与用药清单</span><span class="en">Records and medication list</span></strong><span class="cn">以前的检查报告、正在吃的药（拍照或带药盒都行）、过敏史。</span><span class="en">Earlier reports, whatever medication is currently taken (a photo of the box is enough), and any allergies.</span></div></div>
+<div class="it"><span class="ic">🧾</span><div class="tx"><strong><span class="cn">保险资料</span><span class="en">Insurance details</span></strong><span class="cn">若有医疗保险，带保单号；需要理赔的话记得跟柜台要收据与医生报告。</span><span class="en">If covered, bring the policy number; ask the counter for the receipt and doctor's report if a claim is needed.</span></div></div>
+<div class="it"><span class="ic">🕒</span><div class="tx"><strong><span class="cn">两场之间留 20 分钟</span><span class="en">Leave 20 minutes between the two</span></strong><span class="cn">皮肤科看完到 Island Hospital 登记，路上加登记大约需要 20 分钟。</span><span class="en">Getting from the skin clinic to the Island Hospital counter, including registration, takes about 20 minutes.</span></div></div>
+</div>
+<div class="note amber"><span class="cn">Lim Skin 这一场目前只确认在下午，具体时间确认后会更新本页。</span><span class="en">The Lim Skin visit is confirmed for the afternoon; the exact time will be added to this page once known.</span></div>
+</section>
+
+<footer>
+<div class="mark">PENANG · 28 AUG 2026</div>
+<p><span class="cn">就诊信息卡 · 内容有更新时刷新本页即可</span><span class="en">Appointment card · refresh this page for the latest version</span></p>
+</footer>
+</div>
+<script>
+function applyLang(lang) {
+  document.body.classList.toggle('lang-en', lang === 'en');
+  document.documentElement.lang = lang === 'en' ? 'en' : 'zh';
+  document.getElementById('langBtn').textContent = lang === 'en' ? '中' : 'EN';
+}
+function toggleLang() {
+  const next = document.body.classList.contains('lang-en') ? 'cn' : 'en';
+  applyLang(next);
+  try { localStorage.setItem('siteLangUser', next); } catch (e) {}
+}
+(function initLang() {
+  let lang = null;
+  try { lang = localStorage.getItem('siteLangUser'); } catch (e) {}
+  if (!lang) lang = (navigator.language || '').toLowerCase().startsWith('zh') ? 'cn' : 'en';
+  applyLang(lang);
+})();
+window.addEventListener('storage', function (e) {
+  if (e.key === 'siteLangUser' && e.newValue) applyLang(e.newValue);
+});
+</script>
+</body>
+</html>
