@@ -365,3 +365,27 @@ Google 上「临家闽南菜」只有一个地点条目，**各分店照片混�
 - **植物园用户有支付宝**，「刷外卡未确认／建议备足现金」拿掉，改成「收现金也收支付宝」
 剩下唯一的 ⚠：安达仕早餐时间与是否含房价（入住时问前台）。
 
+
+## penang-clinic/index.html（351 行，2026-08-23 建）
+槟城 2026-08-28（五）就诊信息卡，双语，**不是行程手册**——用户明确说槟城段不做手册，
+只有医院这一件事要落页面（决定见上一节「2026-08-23 槟城段：不做手册」）。
+URL: .../penang-clinic/
+样式：整段 CSS **从 xiamen-trip/index.html 复制**（同一套 paper/red/serif 系统），
+末尾追加本页专用块：`.hero`（无图封面，取代 xiamen 的 `.cover`）、`.place`（地点卡）、
+`.btn-tel`（蓝色拨号钮）、`.bring`（带什么清单）。
+结构：topbar → `.wrap` → `.hero` → `.tip` → `#plan`(01，一张 `.day` 内含 `.tl` 三个 `.ev`
+＋ `.dayfoot`) → `#places`(02，两张 `.place`) → `#bring`(03，五个 `.bring .it` ＋ 一条
+`.note.amber`) → footer → `<script>`。
+**没有** daystrip / 图片 / lightbox / 天气，所以脚本只有 applyLang/toggleLang/initLang
+＋ storage 事件同步（siteLangUser）。别把 navSetup / markToday / galLightbox 抄过来，
+页面里没有对应 DOM。
+内容事实（2026-08-23 用户给＋网络查证）：
+- 第一场 **Lim Skin Specialist Clinic**（Klinik Pakar Kulit Lim），111 Jalan Macalister,
+  10400 George Town；电话 +604-226 3767 / +604-226 1355；周五 09:00–17:30。
+  用户只给了「Afternoon」，**具体时间未定**，卡上留 `.chip.verify` ＋ 底部 amber 提示，
+  拿到时间后改这两处。
+- 第二场 **Island Hospital**，308 Macalister Road, 10450 George Town；总机 +604-238 3388，
+  急诊 +604-226 8527；约诊 **17:00**（已确认），页面建议 16:45 到。
+- 两地同在 Macalister 路，相距约 1.5 公里、车程 5 分钟——时间线里的 16:40 出发是据此推的。
+- 用户口径是「两个约诊」（2026-08-23 用 AskUserQuestion 确认过，别再自己合并成一个）。
+地图：马来西亚段用 **Google Maps** `search/?api=1&query=` 链接（高德只在厦门段用）。
