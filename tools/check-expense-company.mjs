@@ -1719,6 +1719,56 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   await ctx.close();
 }
 
+// ---------- 【24】清单空的时候要说清楚「为什么空」 ----------
+{
+  console.log('\n【24】空清单：分清「真的没记」和「这台设备没接上云端」');
+  // 为什么要验：2026-08-23 用户在备用机上看到一片空白，第一反应是「记录丢了」。
+  // 帐其实好好在云端，差的只是那台设备没登录。空清单只写「这个月还没有记录」，
+  // 等于把一个一键可解的问题伪装成数据丢失。
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  const emptyText = async () => (await page.textContent('#tx-list')) || '';
+
+  // ① 连得上云端、没登录 → 要说「没登录」，还要给得出登录按钮
+  await page.evaluate(() => { cloudAvailable = true; currentUser = null; switchTab('transactions'); renderTxList(); });
+  let t = await emptyText();
+  ok('没登录时说明帐在云端', t.includes('还没登录'), t.slice(0,160));
+  ok('没登录时给得出登录按钮',
+     await page.locator('#tx-list button:has-text("登录")').count() > 0);
+
+  // ② 登录了但云端也空 → 要把当前帐号显示出来（登错帐号是最常见的原因）
+  await page.evaluate(() => { currentUser = { email:'someone@example.com' }; renderTxList(); });
+  t = await emptyText();
+  ok('登录后显示当前帐号', t.includes('someone@example.com'), t.slice(0,160));
+  ok('登录后不再叫人去登录', !t.includes('还没登录'), t.slice(0,160));
+
+  // ③ 连不上 Google → 别叫人重记一遍（重记会变成两笔）
+  await page.evaluate(() => { cloudAvailable = false; currentUser = null; renderTxList(); });
+  t = await emptyText();
+  ok('连不上时叫人别急着重记', t.includes('别重记'), t.slice(0,160));
+  ok('连不上时不叫人去登录（登不了）', !t.includes('还没登录'), t.slice(0,160));
+
+  // ④ 有记录时不要出现这些话
+  await page.evaluate(() => {
+    cloudAvailable = true; currentUser = null;
+    const acc = data.accounts[0];
+    data.transactions.push({ id:'t_hint', accountId:acc.id, type:'expense', amount:1,
+      date:new Date().toISOString().slice(0,10), categoryId:(data.categories[0]||{}).id, desc:'' });
+    saveData(); renderTxList();
+  });
+  t = await emptyText();
+  ok('有记录时不显示这些提示', !t.includes('还没登录') && !t.includes('别重记'), t.slice(0,160));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

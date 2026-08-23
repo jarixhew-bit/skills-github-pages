@@ -431,6 +431,14 @@ DYNAMIC_TEXT = [
   return tt(`${year} 年 ${month+1} 月`, `${EN[month]} ${year}`);
 }""",
      "月份栏"),
+    # 空清单那句「为什么空」是给老板 App 讲云同步的（没登录 Google / 登错帐号）。
+    # 同事版没有登录入口、帐也不走云同步，照抄过去会叫他去登录一个根本不存在的东西。
+    ("""function emptyListCloudHint(){""",
+     """function emptyListCloudHint(){
+  // 同事版不接云同步，没有「没登录所以看不到」这回事（生成时改的，见 tools/build-staff-page.py）
+  return '';
+  // eslint-disable-next-line no-unreachable""",
+     "空清单的云同步提示"),
     ("""<div class="empty-text">这个月还没有记录</div>""",
      """<div class="empty-text">${tt('这个月还没有记录','Nothing recorded this month')}</div>""",
      "空清单"),
