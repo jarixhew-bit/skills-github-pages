@@ -1,2 +1,0 @@
-RESULT {"query":"厦门安达仕酒店","ok":false,"count":0,"method":"none","urls":[],"title":"","error":"TimeoutError: page.goto: Timeout 60000ms exceeded.\nCall log:\n  - navigating to \"https://www.amap.com/search?query=%E5%8E%A6%E9%97%A8%E5%AE%89%E8%BE%BE%E4%BB%95%E9%85%92%E5%BA%97\", waiting until \"domco"}
-SUMMARY {"total":1,"ok":0,"short":[{"query":"厦门安达仕酒店","count":0}]}
