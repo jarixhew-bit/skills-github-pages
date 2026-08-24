@@ -1726,6 +1726,12 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   // 帐其实好好在云端，差的只是那台设备没登录。空清单只写「这个月还没有记录」，
   // 等于把一个一键可解的问题伪装成数据丢失。
   const ctx = await browser.newContext();
+    // 只放行本地那台 http server：CI 的 runner 有外网，Firebase SDK 会真的从 gstatic
+  // 载进来、把 cloudAvailable / db / currentUser 抢回去，本地沙盒却连不出去——同一份
+  // 测试在两边跑出不同结果（2026-08-24 就是这样 CI 红、本地绿）。这两组要自己摆布
+  // 云同步的状态，所以把外网整个掐掉，两边环境一致。
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', e => errs.push(String(e)));
@@ -1777,6 +1783,12 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   // 从此每台设备拉下来都是空的，并集合并也救不回来（空 ∪ 空 还是空）。
   // 2026-08-24 用户回报「主机 Chrome 里过往记录一笔都没有」之后补的。
   const ctx = await browser.newContext();
+    // 只放行本地那台 http server：CI 的 runner 有外网，Firebase SDK 会真的从 gstatic
+  // 载进来、把 cloudAvailable / db / currentUser 抢回去，本地沙盒却连不出去——同一份
+  // 测试在两边跑出不同结果（2026-08-24 就是这样 CI 红、本地绿）。这两组要自己摆布
+  // 云同步的状态，所以把外网整个掐掉，两边环境一致。
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', e => errs.push(String(e)));
