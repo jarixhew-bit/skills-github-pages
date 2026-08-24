@@ -1911,6 +1911,36 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
     return mergeData(local, cloud).transactions.map(t=>t.id).sort();
   });
   ok('记录仍然取并集（两边的都在）', JSON.stringify(txIds) === '["t_a","t_b"]', txIds);
+
+  // 删掉的账户不许从云端并回来——用户 2026-08-24 回报「我没建，是无端端跑出来的
+  // 两个公司账」，病根就是这个：账户删除没有墓碑，下次同步原样并回来，还被推给每台设备。
+  const afterDelete = await page.evaluate(() => {
+    const local = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    local.accounts = local.accounts.filter(a => a.id !== 'acc_boss');   // 这台删掉了
+    local.deletedAccountIds = [{ id:'acc_boss', at: Date.now() }];
+    local.transactions=[]; local.deletedTxIds=[]; local.recurring=[]; local.deletedCategoryIds=[];
+    const cloud = JSON.parse(JSON.stringify(DEFAULT_DATA));   // 云端还留着
+    cloud.transactions=[]; cloud.deletedTxIds=[]; cloud.recurring=[];
+    cloud.deletedAccountIds=[]; cloud.deletedCategoryIds=[];
+    const out = mergeData(local, cloud);
+    return { ids: out.accounts.map(a=>a.id), tombs: (out.deletedAccountIds||[]).map(t=>t.id) };
+  });
+  ok('删掉的账户没有被云端并回来', !afterDelete.ids.includes('acc_boss'), afterDelete.ids);
+  ok('没删的那个还在（不是把账户全清了）', afterDelete.ids.includes('acc_yang'), afterDelete.ids);
+  ok('墓碑本身也跟着同步（其他设备才知道要删）',
+     afterDelete.tombs.includes('acc_boss'), afterDelete.tombs);
+  // 类别同理
+  const catAfter = await page.evaluate(() => {
+    const local = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    local.categories = local.categories.filter(c => c.id !== 'cat_food');
+    local.deletedCategoryIds = [{ id:'cat_food', at: Date.now() }];
+    local.transactions=[]; local.deletedTxIds=[]; local.recurring=[]; local.deletedAccountIds=[];
+    const cloud = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    cloud.transactions=[]; cloud.deletedTxIds=[]; cloud.recurring=[];
+    cloud.deletedAccountIds=[]; cloud.deletedCategoryIds=[];
+    return mergeData(local, cloud).categories.map(c=>c.id);
+  });
+  ok('删掉的类别也没有被并回来', !catAfter.includes('cat_food'), catAfter.slice(0,4));
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
 }
