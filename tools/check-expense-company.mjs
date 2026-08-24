@@ -1726,6 +1726,12 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   // 帐其实好好在云端，差的只是那台设备没登录。空清单只写「这个月还没有记录」，
   // 等于把一个一键可解的问题伪装成数据丢失。
   const ctx = await browser.newContext();
+    // 只放行本地那台 http server：CI 的 runner 有外网，Firebase SDK 会真的从 gstatic
+  // 载进来、把 cloudAvailable / db / currentUser 抢回去，本地沙盒却连不出去——同一份
+  // 测试在两边跑出不同结果（2026-08-24 就是这样 CI 红、本地绿）。这两组要自己摆布
+  // 云同步的状态，所以把外网整个掐掉，两边环境一致。
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', e => errs.push(String(e)));
@@ -1765,6 +1771,85 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   });
   t = await emptyText();
   ok('有记录时不显示这些提示', !t.includes('还没登录') && !t.includes('别重记'), t.slice(0,160));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---------- 【25】拉云端失败时，绝不许把本机这份推上去覆盖 ----------
+{
+  console.log('\n【25】没成功读到云端，就一次都不许往上推（推上去=整份覆盖）');
+  // 这一组守的是**丢账**那条路，不是显示问题：saveToCloud 是 .set 整份 payload，
+  // 不是合并。开 App → 拉云端失败 → data 还是空的 → 随手记一笔 → 空的那份盖掉云端 →
+  // 从此每台设备拉下来都是空的，并集合并也救不回来（空 ∪ 空 还是空）。
+  // 2026-08-24 用户回报「主机 Chrome 里过往记录一笔都没有」之后补的。
+  const ctx = await browser.newContext();
+    // 只放行本地那台 http server：CI 的 runner 有外网，Firebase SDK 会真的从 gstatic
+  // 载进来、把 cloudAvailable / db / currentUser 抢回去，本地沙盒却连不出去——同一份
+  // 测试在两边跑出不同结果（2026-08-24 就是这样 CI 红、本地绿）。这两组要自己摆布
+  // 云同步的状态，所以把外网整个掐掉，两边环境一致。
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // 装一个假的 Firestore：记下每一次 set 上去的内容
+  await page.evaluate(() => {
+    window.__pushes = [];
+    window.__pullMode = 'fail';          // 先演「拉不到」
+    // saveToCloud 里会用 firebase.firestore.FieldValue.serverTimestamp()；
+    // 沙盒里没载入 Firebase SDK，不打桩的话它抛错、被 saveToCloud 自己的 catch 吞掉，
+    // 于是「没推上去」这件事会因为错的理由成立——假绿灯。
+    window.firebase = { firestore: { FieldValue: { serverTimestamp: () => 'ts' } } };
+    currentUser = { uid:'u1', email:'y@example.com' };
+    cloudAvailable = true;
+    cloudPulledOk = false;
+    db = { collection: () => ({ doc: () => ({
+      get: async () => {
+        if(window.__pullMode === 'fail') throw new Error('unavailable');
+        return { exists:true, data: () => ({ payload: JSON.stringify(window.__cloud) }) };
+      },
+      set: async (o) => { window.__pushes.push(JSON.parse(o.payload)); },
+      collection: () => ({ doc: () => ({ set: async()=>{}, get: async()=>({exists:false}) }) }),
+    }) }) };
+  });
+
+  // ① 拉失败之后记一笔：本机要存下来，但一个字都不许上传
+  await page.evaluate(async () => { await syncFromCloud(); });
+  await page.waitForTimeout(200);
+  ok('拉失败后闸门是关着的', await page.evaluate(()=>cloudPulledOk === false));
+  await page.evaluate(() => {
+    const acc = data.accounts[0];
+    data.transactions.push({ id:'t_local', accountId:acc.id, type:'expense', amount:9,
+      date:new Date().toISOString().slice(0,10), categoryId:(data.categories[0]||{}).id, desc:'' });
+    saveData();
+  });
+  await page.waitForTimeout(300);
+  ok('拉失败后没有往云端推任何东西', await page.evaluate(()=>window.__pushes.length) === 0,
+     await page.evaluate(()=>window.__pushes.length));
+  ok('但本机确实存下来了（不是把这笔丢掉）',
+     await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_v2')).transactions.some(t=>t.id==='t_local')));
+
+  // ② 云端恢复得上之后：拉下来要合并，且推上去的那份必须两边都在
+  await page.evaluate(async () => {
+    window.__cloud = { accounts:data.accounts, categories:data.categories, recurring:[],
+      transactions:[{ id:'t_cloud', accountId:data.accounts[0].id, type:'expense', amount:5,
+        date:new Date().toISOString().slice(0,10), categoryId:(data.categories[0]||{}).id, desc:'' }],
+      deletedTxIds:[], currentAccountId:data.accounts[0].id };
+    window.__pullMode = 'ok';
+    await syncFromCloud();
+  });
+  await page.waitForTimeout(300);
+  ok('拉成功后闸门打开', await page.evaluate(()=>cloudPulledOk === true));
+  const pushed = await page.evaluate(()=>window.__pushes[window.__pushes.length-1]);
+  const ids = (pushed?.transactions || []).map(t=>t.id);
+  ok('推上去的那份带着云端原有那笔', ids.includes('t_cloud'), ids);
+  ok('推上去的那份也带着刚才攒下的那笔', ids.includes('t_local'), ids);
+
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
 }

@@ -1047,6 +1047,7 @@ async function signOutUser(){
   if(!cloudAvailable) return;
   if(!confirm('Sign out? Your data stays on this device.')) return;
   await auth.signOut();
+  cloudPulledOk = false;   // 换帐号要重新拉过才算数
   toast('Signed out');
 }
 
@@ -1054,8 +1055,39 @@ async function signOutUser(){
 // 原本是「正在推就直接 return」——那次改动等于没上传过，云端停在旧状态。
 // 删除记录时最容易撞上（删远端账本那条要等网络，回来 saveData 可能正好赶上前一次推送）。
 let cloudSaveDirty = false;
-async function saveToCloud(){
+// 【这个闸不能拿掉】saveToCloud 是**整份覆盖**（.set 一个完整 payload），不是合并。
+// 所以「这台设备现在手上的 data」一旦是空的又推上去，云端那份就没了，而且每台设备
+// 下次拉下来的都是空的——并集合并救不回来，空 ∪ 空 还是空。
+//
+// 会走到那一步的路径很短：开 App → 拉云端失败（没网/慢/规则抖动）→ data 还是空的
+// → 他随手记一笔 → saveData() → saveToCloud() → 云端被这份空的盖掉。
+// 所以规定：**这一轮没有成功拉过云端，就一次都不许往上推**，改成攒着（pendingSync），
+// 等哪次拉成功了，syncFromCloud 结尾那次推送会把攒的一起带上去。
+// 2026-08-24 用户回报「主机 Chrome 里过往记录一笔都没有」之后加的。
+let cloudPulledOk = false;
+/**
+ * 设置里那个「↑ Push to cloud」。它跟自动推送不一样，是用户明确按的，所以允许
+ * 越过 cloudPulledOk 那道闸——但**没拉成功过就按，等于拿手机这份去盖掉云端那份**，
+ * 手机这份可能是空的。所以先说清楚会发生什么，让他自己决定。
+ */
+async function pushToCloudManually(){
   if(!currentUser) return;
+  if(!cloudPulledOk){
+    const n = (data.transactions || []).length;
+    const okToGo = confirm(
+      `还没成功读到云端那份，现在上传会用这台设备的 ${n} 笔记录**整份覆盖**云端。\n\n` +
+      `如果这台设备看起来是空的、或记录比你印象中少，请按取消——先按「↓ Pull from cloud」把云端那份读下来。\n\n` +
+      `确定要用这 ${n} 笔覆盖云端吗？`
+    );
+    if(!okToGo) return;
+  }
+  await saveToCloud(true);
+  toast('已上传');
+}
+
+async function saveToCloud(force){
+  if(!currentUser) return;
+  if(!cloudPulledOk && !force){ setPendingSync(true); return; }
   if(cloudSaving){ cloudSaveDirty = true; return; }
   cloudSaving = true;
   try{
@@ -1156,20 +1188,28 @@ async function syncFromCloud(){
         if(state.currentTab==='analytics') renderAnalytics();
         const added = data.transactions.length - before;
         toast(added>0 ? `☁️ 已合并云端 ${added} 笔新记录` : '☁️ 已同步（无新增）');
+        // 拉到了、也合并进来了，从这一刻起才允许往上推
+        cloudPulledOk = true;
         await saveToCloud(); // push merged result back so both sides converge
       } else {
         // Cloud doc exists but payload didn't parse to anything usable — push local up
+        cloudPulledOk = true;
         await saveToCloud();
         toast('☁️ Local data backed up to cloud');
       }
     } else {
+      // 云端本来就没有这份（第一次用，或登的是另一个 Google 帐号）——这是正常的开局，
+      // 不是「拉失败」，可以推。
+      cloudPulledOk = true;
       await saveToCloud();
       toast('☁️ Local data backed up to cloud');
     }
     setCloudIcon('synced');
   }catch(e){
     console.error('Cloud sync:', e);
-    toast('Sync failed: ' + (e.code || e.message || 'unknown'));
+    // 拉失败时闸门保持关着：这台设备手上的 data 可能是空的或过时的，推上去就是覆盖。
+    cloudPulledOk = false;
+    toast('云端没读到（' + (e.code || e.message || 'unknown') + '）——这次记的先存在手机里，等读到了再一起上传');
     setCloudIcon('error');
   }
   renderSyncSection();
@@ -1222,7 +1262,7 @@ function renderSyncSection(){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" onclick="syncFromCloud()">↓ Pull from cloud</button>
-        <button class="btn btn-outline btn-sm" onclick="saveToCloud()">↑ Push to cloud</button>
+        <button class="btn btn-outline btn-sm" onclick="pushToCloudManually()">↑ Push to cloud</button>
         <button class="btn btn-danger btn-sm" onclick="signOutUser()">Sign out</button>
       </div>`;
   } else {
