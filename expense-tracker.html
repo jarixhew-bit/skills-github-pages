@@ -1415,12 +1415,41 @@ function mergeById(localArr, cloudArr, preferNewer, skipIds){
 // Union-merge local + cloud so neither side's records get silently dropped.
 // 取并集是刻意的：旧行为（二选一「保留云端／保留本机」）会整片抹掉一边的数据。
 // 并集唯一的代价是「删掉的会复活」，这一条由上面的墓碑机制堵住。
+/**
+ * 账户和类别的合并：跟记录不一样，这两样在 mergeById 里是「本机无条件盖过云端」的。
+ * 在一台**本机还是空的**设备上，data 是内建的 DEFAULT_DATA——那份 acc_boss 身上
+ * 没有 isCompany 这个标记。它盖过云端那份之后，「公司账户」这个身份就没了，而且这个
+ * 结果还会被推回云端：从此每台设备的公司账那块都不见了，私人记录却完好无损。
+ * （2026-08-24 用户回报「私人还在，只有公司的看不到」——症状正好是这样。）
+ *
+ * 所以规矩改成：**本机这份如果跟内建预设一模一样，就是「这台设备没有意见」，让云端那份赢。**
+ * 他自己动过的（改名、改币种、按过「设为公司」）就跟预设不同了，照旧本机赢。
+ */
+function isUntouchedDefault(item, defaults){
+  const def = (defaults || []).find(d => d && d.id === item.id);
+  if(!def) return false;
+  // createdAt 是每次载入现取的时间戳，不能拿来比
+  const strip = (o)=>{ const c = {...o}; delete c.createdAt; return JSON.stringify(Object.keys(c).sort().map(k=>[k,c[k]])); };
+  return strip(item) === strip(def);
+}
+function mergeSettings(localArr, cloudArr, defaults){
+  const map = new Map();
+  (cloudArr||[]).forEach(item=>map.set(item.id, item));
+  (localArr||[]).forEach(item=>{
+    const existing = map.get(item.id);
+    if(!existing){ map.set(item.id, item); return; }
+    if(isUntouchedDefault(item, defaults)) return;   // 这台设备没有意见，保留云端那份
+    map.set(item.id, item);
+  });
+  return Array.from(map.values());
+}
+
 function mergeData(local, cloud){
   const tombs = pruneTombstones(mergeById(local.deletedTxIds, cloud.deletedTxIds));
   const dead = new Set(tombs.map(x=>x.id));
   return {
-    accounts: mergeById(local.accounts, cloud.accounts),
-    categories: mergeById(local.categories, cloud.categories),
+    accounts: mergeSettings(local.accounts, cloud.accounts, DEFAULT_DATA.accounts),
+    categories: mergeSettings(local.categories, cloud.categories, DEFAULT_DATA.categories),
     recurring: mergeById(local.recurring, cloud.recurring),
     transactions: mergeById(local.transactions, cloud.transactions, true, dead),
     deletedTxIds: tombs,
