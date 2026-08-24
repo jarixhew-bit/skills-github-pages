@@ -1854,6 +1854,97 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   await ctx.close();
 }
 
+// ---------- 【26】一台空设备的预设账户，不许把「公司账户」这个身份洗掉 ----------
+{
+  console.log('\n【26】空设备的预设账户不许盖掉云端的账户设定');
+  // 账户和类别在 mergeById 里是「本机无条件盖过云端」。一台本机还空着的设备，data 是
+  // 内建 DEFAULT_DATA，那份 acc_boss 身上没有 isCompany——它盖过云端之后「公司账户」
+  // 这个身份就没了，而且会被推回云端：从此每台设备的公司账那块都不见了，私人记录却
+  // 完好无损。2026-08-24 用户回报的正是这个症状。
+  const ctx = await browser.newContext();
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  const merged = await page.evaluate(() => {
+    // 本机＝刚开机的空设备（内建预设，acc_boss 没有 isCompany）
+    const fresh = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    // 云端＝他真正在用的那份：acc_boss 被设成公司账户、还改了名
+    const cloud = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    cloud.accounts = cloud.accounts.map(a => a.id === 'acc_boss'
+      ? { ...a, isCompany: true, name: '公司账' } : a);
+    cloud.transactions = []; cloud.deletedTxIds = []; cloud.recurring = [];
+    fresh.transactions = []; fresh.deletedTxIds = []; fresh.recurring = [];
+    const out = mergeData(fresh, cloud);
+    return out.accounts.find(a => a.id === 'acc_boss');
+  });
+  ok('公司账户的身份没被空设备洗掉', merged && merged.isCompany === true, merged);
+  ok('账户名也保住了', merged && merged.name === '公司账', merged && merged.name);
+
+  // 反过来：他自己按了「取消公司」，那是真的改动，必须赢过云端
+  const afterOptOut = await page.evaluate(() => {
+    const local = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    local.accounts = local.accounts.map(a => a.id === 'acc_boss'
+      ? { ...a, name: '公司账' } : a);          // 动过名字＝不是原封不动的预设
+    const cloud = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    cloud.accounts = cloud.accounts.map(a => a.id === 'acc_boss'
+      ? { ...a, isCompany: true, name: '公司账' } : a);
+    for(const d of [local, cloud]){ d.transactions=[]; d.deletedTxIds=[]; d.recurring=[]; }
+    return mergeData(local, cloud).accounts.find(a => a.id === 'acc_boss');
+  });
+  ok('他自己取消公司时，本机那份仍然赢', afterOptOut && !afterOptOut.isCompany, afterOptOut);
+
+  // 记录本身照旧取并集，不受这条影响
+  const txIds = await page.evaluate(() => {
+    const local = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    local.transactions = [{id:'t_a', accountId:'acc_boss', amount:1}];
+    local.deletedTxIds = []; local.recurring = [];
+    const cloud = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    cloud.transactions = [{id:'t_b', accountId:'acc_boss', amount:2}];
+    cloud.deletedTxIds = []; cloud.recurring = [];
+    return mergeData(local, cloud).transactions.map(t=>t.id).sort();
+  });
+  ok('记录仍然取并集（两边的都在）', JSON.stringify(txIds) === '["t_a","t_b"]', txIds);
+
+  // 删掉的账户不许从云端并回来——用户 2026-08-24 回报「我没建，是无端端跑出来的
+  // 两个公司账」，病根就是这个：账户删除没有墓碑，下次同步原样并回来，还被推给每台设备。
+  const afterDelete = await page.evaluate(() => {
+    const local = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    local.accounts = local.accounts.filter(a => a.id !== 'acc_boss');   // 这台删掉了
+    local.deletedAccountIds = [{ id:'acc_boss', at: Date.now() }];
+    local.transactions=[]; local.deletedTxIds=[]; local.recurring=[]; local.deletedCategoryIds=[];
+    const cloud = JSON.parse(JSON.stringify(DEFAULT_DATA));   // 云端还留着
+    cloud.transactions=[]; cloud.deletedTxIds=[]; cloud.recurring=[];
+    cloud.deletedAccountIds=[]; cloud.deletedCategoryIds=[];
+    const out = mergeData(local, cloud);
+    return { ids: out.accounts.map(a=>a.id), tombs: (out.deletedAccountIds||[]).map(t=>t.id) };
+  });
+  ok('删掉的账户没有被云端并回来', !afterDelete.ids.includes('acc_boss'), afterDelete.ids);
+  ok('没删的那个还在（不是把账户全清了）', afterDelete.ids.includes('acc_yang'), afterDelete.ids);
+  ok('墓碑本身也跟着同步（其他设备才知道要删）',
+     afterDelete.tombs.includes('acc_boss'), afterDelete.tombs);
+  // 类别同理
+  const catAfter = await page.evaluate(() => {
+    const local = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    local.categories = local.categories.filter(c => c.id !== 'cat_food');
+    local.deletedCategoryIds = [{ id:'cat_food', at: Date.now() }];
+    local.transactions=[]; local.deletedTxIds=[]; local.recurring=[]; local.deletedAccountIds=[];
+    const cloud = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    cloud.transactions=[]; cloud.deletedTxIds=[]; cloud.recurring=[];
+    cloud.deletedAccountIds=[]; cloud.deletedCategoryIds=[];
+    return mergeData(local, cloud).categories.map(c=>c.id);
+  });
+  ok('删掉的类别也没有被并回来', !catAfter.includes('cat_food'), catAfter.slice(0,4));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
