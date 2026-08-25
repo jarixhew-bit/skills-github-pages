@@ -381,6 +381,63 @@ def build_review(trades):
 
 # ---------------- 加仓建议（规则式，仅供参考） ----------------
 
+# 决策日志：|缺口| 小于这个百分点就算「在目标线上」。刻意跟 build_add_suggestions
+# 里 gap>=2 的提示门槛取同一个数——两处若不一致，会出现日志说「该补」而建议区没提
+# （或反过来）的情况，事后复盘时根本分不清哪个是对的。
+REBALANCE_TOLERANCE = 2.0
+DECISION_LOG_KEEP = 400          # state 里留多少天
+DECISION_LOG_SHOW = 120          # 发到页面的只留最近这些天
+
+
+def build_decision_entry(date, net_liq, cash, positions, targets, trades):
+    """记一笔当天的决策快照——**重点是记下「什么都没做」以及为什么**。
+
+    只记成交的话，事后无法回答「那几个月明明差了 5 个百分点，我为什么一直没补」。
+    「选择不动作」同样是决策，不留痕就没法复盘自己有没有按策略执行。
+
+    每天一笔；管线工作日每小时跑，同日重跑由调用方覆盖当天那笔，不叠加。
+    """
+    w = {p["symbol"]: p["weight"] for p in positions}
+    gaps = {sym: round(tgt - w.get(sym, 0.0), 1) for sym, tgt in (targets or {}).items()}
+
+    # 台账用的是 trade_time（ISO 时间戳），不是 date——取前 10 位比日期
+    traded = [t for t in (trades or []) if str(t.get("trade_time") or "")[:10] == date]
+
+    if traded:
+        syms = "、".join(sorted({t.get("symbol") or "?" for t in traded}))
+        why = f"当天有成交（{syms}），共 {len(traded)} 笔"
+    elif not gaps:
+        why = "未设目标配置，无再平衡动作"
+    else:
+        short = {s: g for s, g in gaps.items() if g >= REBALANCE_TOLERANCE}
+        if not short:
+            why = f"各标的都在目标线上（偏离不足 {REBALANCE_TOLERANCE:.0f} 个百分点），无需动作"
+        else:
+            # 全部列出，不要只报最大的那个：两个标的可能同时欠配（现金和 SGOV 占掉了
+            # 权重），只报一个会让人以为另一个已经到位
+            parts = [f"{s} 差 {g}" for s, g in sorted(short.items(), key=lambda kv: -kv[1])]
+            need = sum(short.values()) / 100 * net_liq if net_liq else 0
+            avail = max((cash or 0) - 100, 0)     # 留 $100 缓冲，与加仓建议同口径
+            word = "合计需" if len(short) > 1 else "补齐需"
+            head = "、".join(parts) + f" 个百分点（{word} ${need:,.0f}）"
+            if avail >= need:
+                why = f"{head}，现金 ${cash or 0:,.0f} 足够，未执行"
+            elif avail >= 100:
+                why = f"{head}，现金只够先投 ${avail:,.0f}，未执行"
+            else:
+                why = f"{head}，现金 ${cash or 0:,.0f} 不足，未执行"
+
+    return {
+        "date": date,
+        "nav": round(net_liq, 2) if net_liq else None,
+        "cash": round(cash, 2) if cash is not None else None,
+        "weights": dict(sorted(w.items())),
+        "gaps": gaps,
+        "traded": len(traded),
+        "why": why,
+    }
+
+
 def build_add_suggestions(positions, cash, net_liq, sig_by_sym, targets=None):
     tips = []
     covered = set()
@@ -724,6 +781,16 @@ def main():
         state["ai_note_date"] = public["generated_at"][:10]
         state["ai_note_nav"] = round(net_liq, 2) if net_liq else None
 
+    # ---- 决策日志：每天一笔，含「没动作」及其原因 ----
+    dlog = state.get("decision_log") or []
+    entry = build_decision_entry(public["generated_at"][:10], net_liq, cash, positions,
+                                 state.get("targets"), state.get("trades"))
+    if dlog and dlog[-1].get("date") == entry["date"]:
+        dlog[-1] = entry          # 同日重跑覆盖，别把每小时那 8 次都留下来
+    else:
+        dlog.append(entry)
+    state["decision_log"] = dlog[-DECISION_LOG_KEEP:]
+
     private = {
         "generated_at": public["generated_at"],
         "account": {
@@ -744,6 +811,7 @@ def main():
         "ai_note": state.get("ai_note"),
         "ai_note_date": state.get("ai_note_date"),
         "ai_note_nav": state.get("ai_note_nav"),
+        "decision_log": state["decision_log"][-DECISION_LOG_SHOW:],
     }
     with open(PRIV_OUT, "w", encoding="utf-8") as f:
         f.write(encrypt_json(private, password))

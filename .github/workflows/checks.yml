@@ -30,6 +30,7 @@ jobs:
       secrets: ${{ steps.d.outputs.secrets }}
       pwa: ${{ steps.d.outputs.pwa }}
       ainote: ${{ steps.d.outputs.ainote }}
+      declog: ${{ steps.d.outputs.declog }}
       notify: ${{ steps.d.outputs.notify }}
       morningpos: ${{ steps.d.outputs.morningpos }}
       generated: ${{ steps.d.outputs.generated }}
@@ -88,6 +89,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/check-ai-note.py
+
+  declog:
+    name: 决策日志
+    needs: decide
+    if: needs.decide.outputs.declog == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-decision-log.py
 
   notify:
     name: 出事通知器
@@ -256,7 +266,7 @@ jobs:
     # 这一串必须列满同一个文件里的每个 job：漏掉的那项红了总闸照样绿、分支保护会放行
     # （2026-08-17 发现 fund 与 news 从来没被列进来）。已由 check-workflows.py 的
     # check_gate 断言守着，加 job 忘了回头改这里会在 CI 上被挡下。
-    needs: [decide, html, secrets, pwa, ainote, notify, morningpos, generated, rules, workflows, company, inventory, staff, gamebot, fund, news, prices, weather]
+    needs: [decide, html, secrets, pwa, ainote, declog, notify, morningpos, generated, rules, workflows, company, inventory, staff, gamebot, fund, news, prices, weather]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——
