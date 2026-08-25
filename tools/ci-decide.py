@@ -24,6 +24,7 @@ RULES = {
     "secrets":   ["**"],                       # 秘钥扫描每次都跑，很快
     "pwa":       ["**/*.webmanifest", "tools/check-pwa-scopes.py"],
     "ainote":    ["trading/ai_note.py", "tools/check-ai-note.py"],
+    "declog":    ["trading/analyzer.py", "tools/check-decision-log.py"],
     "notify":    ["tools/ci-notify.py", "tools/check-ci-notify.py"],
     "morningpos": [".github/scripts/portfolio_news.py", "trading/analyzer.py",
                    "tools/check-morning-positions.py"],

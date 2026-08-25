@@ -105,6 +105,17 @@
   .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin-top: 8px; color: var(--muted); }
   .kv-grid b { color: var(--text); font-weight: 600; }
 
+  /* 决策日志 */
+  .dl-why { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 12px; }
+  .dl-why b { color: var(--text); }
+  #dlTable td { vertical-align: top; }
+  .dl-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .dl-w { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .dl-why-cell { text-align: left; line-height: 1.6; }
+  tr.dl-acted { background: rgba(34,197,94,.07); }
+  tr.dl-acted .dl-why-cell { color: var(--green); }
+  @media (max-width: 700px) { .dl-w { display: none; } }
+
   /* 复盘 */
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { text-align: right; padding: 8px 10px; color: var(--muted); font-weight: 500; font-size: 12px; border-bottom: 1px solid var(--border); }
@@ -181,6 +192,15 @@
     <div class="card">
       <div class="table-wrap"><table id="rvTable"></table></div>
       <div class="insights" id="rvInsights"></div>
+    </div>
+  </section>
+
+  <section id="secDecision" style="display:none">
+    <div class="sec-title">🗒️ 决策日志 <span class="sub" id="dlSub"></span></div>
+    <div class="card">
+      <p class="dl-why">每个交易日记一笔，<b>包括「什么都没做」以及为什么</b>——只记成交的话，
+        事后没法回答「那几个月明明差了几个百分点，我为什么一直没补」。</p>
+      <div class="table-wrap"><table id="dlTable"></table></div>
     </div>
   </section>
 
@@ -345,6 +365,27 @@ function jumpTo(sym) {
 }
 
 // ---------- 私密渲染 ----------
+// 决策日志：最新的排最前。有成交的那几天标绿，一眼能找到自己真正动手的时点
+function renderDecisionLog(log) {
+  if (!log.length) return;
+  $("secDecision").style.display = "";
+  const acted = log.filter(e => e.traded > 0).length;
+  $("dlSub").textContent = `最近 ${log.length} 个交易日 · 其中 ${acted} 天有成交`;
+  const rows = log.slice().reverse().map(e => {
+    const w = e.weights || {};
+    const wStr = Object.keys(w).map(s => `${s} ${w[s]}%`).join(" · ") || "—";
+    return `<tr class="${e.traded > 0 ? "dl-acted" : ""}">
+      <td class="dl-date">${esc(e.date)}</td>
+      <td>${fmtUsd(e.nav)}</td>
+      <td class="dl-w">${esc(wStr)}</td>
+      <td class="dl-why-cell">${e.traded > 0 ? "✅ " : ""}${esc(e.why)}</td>
+    </tr>`;
+  }).join("");
+  $("dlTable").innerHTML =
+    `<thead><tr><th>日期</th><th>净值</th><th>配置</th><th>做了什么 / 为什么没做</th></tr></thead>`
+    + `<tbody>${rows}</tbody>`;
+}
+
 function renderPrivate() {
   $("lockBtn").textContent = "🔓 已解锁";
   $("lockBtn").classList.add("unlocked");
@@ -405,6 +446,8 @@ function renderPrivate() {
       ? `⚠️ 以下点评写于${noteDate || "上次对账时"}，之后账户数字已变化，仅供参考\n` + P.ai_note.trim()
       : `🤖 AI 点评（${noteDate}）：` + P.ai_note.trim();
   }
+
+  renderDecisionLog(P.decision_log || []);
 
   const R = P.review;
   if (R) {
