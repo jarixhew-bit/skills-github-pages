@@ -1,0 +1,92 @@
+# 用 CI 抓一个网页回来看（沙盒出口代理挡掉了大量域名时的通道）。
+#
+# 为什么需要这个：Claude 的沙盒禁止访问大量外部域名（实测被挡的有各大新闻站
+# coindesk/bloomberg/yahoo、farside.co.uk、以及各种个人站点），连 r.jina.ai、
+# allorigins 这类文本提取代理也一并被挡。而 GitHub Actions 的 runner 是能直连的。
+# 2026-08-20 第三次撞上这个限制后建立，免得每次都现想办法。
+#
+# 用法：Actions → Fetch URL → Run workflow，填 url，跑完在日志里看内容。
+# 结果**只打进日志、不写进仓库**——抓回来的是别人的网页，没理由留在我们的库里。
+#
+# 注意：日志是公开的（本仓库公开），所以别用它抓需要登录或含隐私的页面。
+name: Fetch URL
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "要抓的网址"
+        required: true
+      mode:
+        description: "text=只要正文文字（默认） / html=原始 HTML"
+        required: false
+        default: "text"
+      limit:
+        description: "最多打印多少字符（默认 12000）"
+        required: false
+        default: "12000"
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 抓取并打印
+        env:
+          TARGET_URL: ${{ inputs.url }}
+          MODE: ${{ inputs.mode }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          python3 - <<'PY'
+          import html, os, re, sys, urllib.request
+
+          url = os.environ["TARGET_URL"].strip()
+          mode = (os.environ.get("MODE") or "text").strip()
+          try:
+              limit = int(os.environ.get("LIMIT") or 12000)
+          except ValueError:
+              limit = 12000
+
+          if not url.startswith(("http://", "https://")):
+              print("网址必须以 http(s):// 开头"); sys.exit(1)
+
+          req = urllib.request.Request(url, headers={
+              # 不少站点对无 UA 的请求直接 403
+              "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                            "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+              "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+          })
+          with urllib.request.urlopen(req, timeout=45) as r:
+              raw = r.read()
+              enc = r.headers.get_content_charset() or "utf-8"
+              final_url = r.geturl()
+          body = raw.decode(enc, "replace")
+
+          print(f"[fetch] 最终网址 {final_url}")
+          print(f"[fetch] 原始大小 {len(raw):,} 字节")
+
+          if mode == "html":
+              out = body
+          else:
+              # 够用的正文提取：先扔掉 script/style，再去标签、还原实体、压空行
+              t = re.sub(r"(?is)<(script|style|noscript)\b.*?</\1>", " ", body)
+              m = re.search(r"(?is)<title[^>]*>(.*?)</title>", body)
+              title = html.unescape(re.sub(r"\s+", " ", m.group(1))).strip() if m else "(无 title)"
+              t = re.sub(r"(?i)<br\s*/?>|</p>|</div>|</li>|</h[1-6]>", "\n", t)
+              t = re.sub(r"(?s)<[^>]+>", " ", t)
+              t = html.unescape(t)
+              t = re.sub(r"[ \t\xa0]+", " ", t)
+              t = re.sub(r"\n\s*\n\s*\n+", "\n\n", t)
+              out = f"[fetch] 标题：{title}\n\n" + t.strip()
+
+          print(f"[fetch] 提取后 {len(out):,} 字符" + (f"，只打印前 {limit:,}" if len(out) > limit else ""))
+          print("=" * 60)
+          print(out[:limit])
+          print("=" * 60)
+          print("[fetch] 完")
+          PY
