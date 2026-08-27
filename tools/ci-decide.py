@@ -23,6 +23,8 @@ RULES = {
     "html":      ["**/*.html", "tools/check-html.py", "tools/jargon-whitelist.txt"],
     "secrets":   ["**"],                       # 秘钥扫描每次都跑，很快
     "pwa":       ["**/*.webmanifest", "tools/check-pwa-scopes.py"],
+    "swver":     ["**/*sw*.js", "xisui/sw.js", "boss/index.html", "expense-tracker.html",
+                  "staff/index.html", "xisui/index.html", "tools/check-sw-version.py"],
     "ainote":    ["trading/ai_note.py", "tools/check-ai-note.py"],
     "declog":    ["trading/analyzer.py", "tools/check-decision-log.py"],
     "notify":    ["tools/ci-notify.py", "tools/check-ci-notify.py"],

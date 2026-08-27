@@ -46,6 +46,7 @@ CHECKS = [
     ("html-staff", ["python3", "tools/check-html.py", "staff/index.html"], False),
     ("secrets", ["python3", "tools/check-secrets.py"], False),
     ("pwa", ["python3", "tools/check-pwa-scopes.py"], False),
+    ("swver", ["python3", "tools/check-sw-version.py"], False),
     ("ainote", ["python3", "tools/check-ai-note.py"], False),
     ("notify", ["python3", "tools/check-ci-notify.py"], False),
     ("morningpos", ["python3", "tools/check-morning-positions.py"], False),
