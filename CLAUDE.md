@@ -60,6 +60,12 @@
 - `penang-trip/` — 槟城家庭旅游手册（2026年10月，结构笔记见 `.claude/notes/travel-pages.md`）
 - `xiamen-trip/` — 厦门自由行手册（2026-08-24~27，2人，结构笔记见 `.claude/notes/travel-pages.md`）
 - `expense-tracker.html` — 记帐工具（PWA）
+- `boss/` — 老板专用 App（PWA，2026-08-27 建）：当日/未来行程、跳转旅游手册、每月或
+  每程账单 PDF、酒茶虫草库存，**老板只读**。数据不住本仓库（账单敏感），全部走
+  butler-bot 的 `/boss` 接口。老板那把钥匙是 `BOSS_VIEW_TOKEN`（只能 feed/bill，
+  写操作在 handleBoss 与 bossHandle 两层都拦成 403）；YANG 用 `APP_SHARED_TOKEN`
+  进去是 admin，多一个管理面板可传账单/改行程。开通与收回权限只动 butler-bot 的
+  GitHub Secret 再跑一次 deploy workflow。结构笔记见 `.claude/notes/boss-app.md`
 - `fortune.html` — 运势页面
 - `trading/` — IBKR 交易脚本与页面（`fund.html` 是作业系统简报页，2026-08-16 建，
   七区块仪表板：绩效／扫描／配置／风险／部位／再平衡／管线，风险指标由前端现算，
@@ -121,7 +127,7 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有二十个，全部挂 CI（2026-08-19 校对过与 `tools/` 一致）：
+   交付时告诉用户自检怎么跑。现有二十一个，全部挂 CI（2026-08-27 校对过与 `tools/` 一致）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
@@ -134,7 +140,9 @@
    那些前端现算的钱的数字：夏普、回撤、VaR、再平衡差额，用手算得出答案的 fixture 去对；
    两个数据档全用固定 fixture 拦掉，所以不随每天行情变动而误报）/ `check-weather.mjs`
    （验新加坡手册每日天气条：拦住 open-meteo 造出「有预报／超出预报窗口／API 挂掉」
-   三种情境，确认每天读的是自己那一格、不会错位，也不会开天窗）（跑前要先起
+   三种情境，确认每天读的是自己那一格、不会错位，也不会开天窗）/ `check-boss.mjs`
+   （守老板 App 的安全不变量：viewer 身份下写操作控件必须一个都不进 DOM，**并带 admin
+   对照组**——没有对照组的话，整个管理功能坏掉也会显示「通过」）（跑前要先起
    `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）；
    线上类 `check-live`（每天验线上页面是不是 main 那一版，**只能在 CI 跑**，
    沙盒连不上 github.io）＋ `fetch-photos`（抓图通道，结果会写回触发分支）。
