@@ -8,7 +8,7 @@
 //
 // 改了页面内容记得同步升这里的版本号（v1 → v2 这样升），否则已安装的
 // 老板手机会一直看到旧版壳（PWA 页面规则，见 skills/pwa-pages.md）。
-const CACHE = 'boss-app-v2';
+const CACHE = 'boss-app-v3';
 const ASSETS = ['./', './index.html', './manifest.webmanifest'];
 
 self.addEventListener('install', e => {
@@ -42,4 +42,37 @@ self.addEventListener('fetch', e => {
   }
   // 其余静态资源：缓存优先
   e.respondWith(caches.match(req).then(r => r || fetch(req)));
+});
+
+// 推送：后端在 tripsSave/billUpload 成功后发，载荷是 {title, body, url}（见接口合约）。
+// 弹通知＋标个角标；badge API 不是所有平台都支持，用可选链，不支持不能报错。
+self.addEventListener('push', e => {
+  let data = {};
+  try{ data = e.data ? e.data.json() : {}; }catch(err){ data = {}; }
+  const title = data.title || '老板 App';
+  const body = data.body || '';
+  const url = data.url || './';
+  e.waitUntil((async () => {
+    try{ await self.registration.showNotification(title, { body, data: { url } }); }catch(err){}
+    try{ navigator.setAppBadge?.(); }catch(err){}
+  })());
+});
+
+// 点通知：聚焦已开着的分页（并跳去对应网址），没有就开一个新的。
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil((async () => {
+    const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for(const c of list){
+      if('focus' in c){
+        try{
+          await c.focus();
+          if('navigate' in c) await c.navigate(url);
+          return;
+        }catch(err){}
+      }
+    }
+    if(clients.openWindow) await clients.openWindow(url);
+  })());
 });
