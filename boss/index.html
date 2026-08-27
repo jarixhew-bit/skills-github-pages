@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>老板 · Boss</title>
+<meta name="theme-color" content="#1E3A5F">
+<meta name="robots" content="noindex">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="老板">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --p:#1E3A5F;--p2:#E9EEF4;--gold:#C9A24B;
+  --bg:#F1F3F6;--card:#fff;--text:#1F2A37;--sub:#66727F;--border:#E4E8ED;
+  --danger:#E63946;--ok:#1E7A42;
+  --radius:16px;--shadow:0 2px 14px rgba(0,0,0,.08);
+}
+html{overflow-x:hidden}
+body{overflow-x:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg);color:var(--text);max-width:520px;margin:0 auto;
+  min-height:100vh;padding-bottom:86px;position:relative;font-size:15px}
+
+/* ===== 双语：中/英成对 span，CSS 直接切换，不需要重新渲染静态文案 ===== */
+body.lang-en .cn{display:none !important}
+body:not(.lang-en) .en{display:none !important}
+
+/* ===== 闸门：访问码 ===== */
+#gate{position:fixed;inset:0;z-index:400;background:var(--bg);
+  display:flex;flex-direction:column;justify-content:center;padding:28px}
+#gate.off{display:none}
+#gate h2{margin:0 0 10px;font-size:21px;color:var(--text)}
+#gate p{color:var(--sub);font-size:14.5px;margin:0 0 20px;line-height:1.7}
+#gate-input{width:100%;padding:14px 16px;border:1.5px solid var(--border);border-radius:12px;
+  font-size:17px;letter-spacing:2px;margin-bottom:14px;font-family:inherit}
+#gate-input:focus{outline:none;border-color:var(--p)}
+#gate-btn{width:100%;padding:14px;border:none;border-radius:12px;background:var(--p);
+  color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+#gate-btn:disabled{opacity:.6}
+#gate-msg{margin-top:14px;font-size:14px;color:var(--danger);min-height:20px;line-height:1.6}
+
+/* ===== 离线提示条 ===== */
+#offlineBanner{background:#fff7ed;border-bottom:1px solid #fed7aa;color:#7c2d12;
+  font-size:13px;text-align:center;padding:8px 12px;line-height:1.5}
+#offlineBanner.off{display:none}
+
+/* ===== 头部 ===== */
+.hdr{background:var(--p);color:#fff;padding:16px 20px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(30,58,95,.35)}
+.hdr-title{font-size:18px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.hdr-title .dot{width:8px;height:8px;border-radius:50%;background:var(--gold)}
+#langBtn{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);
+  border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+
+#app.app-hidden{display:none}
+
+/* ===== TAB 容器 ===== */
+.tab{display:none;padding:16px 16px 8px}
+.tab.active{display:block}
+
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-title{font-size:15px;font-weight:700;color:var(--text)}
+
+/* ===== 空状态 / 错误状态 ===== */
+.empty-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:32px 20px;text-align:center;color:var(--sub);margin-bottom:14px}
+.empty-card.small{padding:16px 20px;font-size:13.5px}
+.empty-icon{font-size:38px;margin-bottom:10px}
+.empty-next{margin-top:10px;font-size:13.5px;color:var(--p);font-weight:600}
+
+/* ===== 今日 / 逐条行程 ===== */
+.item-list{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  overflow:hidden;margin-bottom:14px}
+.item-row{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;
+  border-bottom:1px solid var(--border)}
+.item-row:last-child{border-bottom:none}
+.item-time{flex:none;font-size:13px;font-weight:700;color:var(--p);min-width:44px;padding-top:1px}
+.item-body{flex:1;min-width:0}
+.item-title{font-size:15px;font-weight:600;line-height:1.4}
+.item-note{font-size:13px;color:var(--sub);margin-top:3px;line-height:1.5}
+.item-map{flex:none;font-size:12.5px;font-weight:600;color:var(--p);background:var(--p2);
+  border-radius:999px;padding:6px 10px;text-decoration:none;white-space:nowrap;align-self:center}
+
+/* ===== 行程卡片 ===== */
+.trip-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  margin-bottom:14px;overflow:hidden}
+.trip-card-hd{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 16px 14px;cursor:pointer}
+.trip-range{font-size:16px;font-weight:700}
+.trip-loc{font-size:13.5px;color:var(--sub);margin-top:4px}
+.trip-arrow{color:var(--sub);font-size:14px;transition:.2s;flex:none;margin-left:10px}
+.trip-card.expanded .trip-arrow{transform:rotate(180deg)}
+.trip-guide-btn{display:block;margin:0 16px 14px;padding:11px;text-align:center;
+  border-radius:10px;background:var(--p);color:#fff;text-decoration:none;
+  font-size:14px;font-weight:700}
+.trip-items{display:none;border-top:1px solid var(--border)}
+.trip-card.expanded .trip-items{display:block}
+
+.past-toggle{text-align:center;padding:12px;color:var(--sub);font-size:13.5px;
+  font-weight:600;cursor:pointer}
+.past-list.off{display:none}
+
+/* ===== 账单 ===== */
+.bill-list{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.bill-row{display:flex;align-items:center;gap:12px;padding:14px 16px;
+  border-bottom:1px solid var(--border);cursor:pointer}
+.bill-row:last-child{border-bottom:none}
+.bill-row:active{background:#f8f8f8}
+.bill-icon{font-size:22px;flex:none}
+.bill-info{flex:1;min-width:0}
+.bill-title{font-size:14.5px;font-weight:600}
+.bill-sub{font-size:12.5px;color:var(--sub);margin-top:2px}
+.bill-arrow{color:var(--sub);font-size:18px;flex:none}
+
+/* ===== 账单查看弹层 ===== */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;
+  display:none;flex-direction:column}
+.overlay.open{display:flex}
+.overlay-hdr{background:var(--p);color:#fff;padding:14px 16px;display:flex;
+  align-items:center;justify-content:space-between;flex:none}
+.overlay-title{font-size:15px;font-weight:700}
+.overlay-close{background:rgba(255,255,255,.2);border:none;color:#fff;width:30px;height:30px;
+  border-radius:50%;font-size:15px;cursor:pointer}
+.overlay-body{flex:1;background:#525659;position:relative}
+.overlay-body iframe{width:100%;height:100%;border:none;background:#fff}
+.overlay-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:14px}
+.overlay-foot{flex:none;padding:12px 16px;background:#fff}
+.overlay-foot button{width:100%;padding:13px;border:none;border-radius:10px;
+  background:var(--p);color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* ===== 库存 ===== */
+.inv-list{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  overflow:hidden;margin-bottom:6px}
+.inv-row{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.inv-row:last-child{border-bottom:none}
+.inv-name{flex:1;font-size:14.5px;font-weight:600;min-width:0}
+.inv-qty{flex:none;font-size:13.5px;color:var(--p);font-weight:700}
+.inv-loc{flex:none;font-size:12px;color:var(--sub);max-width:110px;text-align:right;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== 管理面板（只在 role=admin 时由 JS 注入） ===== */
+.admin-block{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:16px;margin-bottom:16px}
+.admin-block h3{font-size:14.5px;margin-bottom:12px;color:var(--p)}
+.admin-field{margin-bottom:12px}
+.admin-field label{display:block;font-size:12.5px;color:var(--sub);margin-bottom:5px;font-weight:600}
+.admin-field input[type=text],.admin-field textarea{width:100%;padding:10px 12px;
+  border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;color:var(--text)}
+.admin-field textarea{min-height:160px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
+  white-space:pre;resize:vertical}
+.admin-radio-row{display:flex;gap:14px;font-size:13.5px;align-items:center}
+.admin-btn{width:100%;padding:12px;border:none;border-radius:10px;background:var(--p);
+  color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px}
+.admin-btn:disabled{opacity:.5}
+.admin-status{margin-top:10px;font-size:13px;color:var(--sub);min-height:18px}
+.admin-status.err{color:var(--danger)}
+.admin-status.ok{color:var(--ok)}
+.admin-bill-del{background:#FDECEA;color:var(--danger);border:none;border-radius:8px;
+  padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;flex:none}
+.admin-bill-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.admin-bill-row:last-child{border-bottom:none}
+.admin-bill-info{flex:1;min-width:0;font-size:13.5px}
+.admin-bill-info .sub{font-size:12px;color:var(--sub)}
+
+/* ===== BOTTOM NAV ===== */
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:520px;background:#fff;border-top:1px solid var(--border);
+  display:flex;z-index:100;box-shadow:0 -2px 10px rgba(0,0,0,.06)}
+.nav-btn{flex:1;padding:10px 0 8px;display:flex;flex-direction:column;
+  align-items:center;gap:3px;cursor:pointer;border:none;background:none;
+  color:var(--sub);font-size:11px;font-family:inherit;position:relative}
+.nav-btn.active{color:var(--p)}
+.nav-icon-wrap{position:relative;line-height:1}
+.nav-icon{font-size:20px}
+.nav-dot{display:none;position:absolute;top:-2px;right:-6px;width:8px;height:8px;
+  border-radius:50%;background:var(--danger)}
+.nav-btn.has-dot .nav-dot{display:block}
+</style>
+</head>
+<body>
+
+<!-- 访问码闸门：默认盖着，验证成功才拿掉 -->
+<div id="gate">
+  <h2>🔑 <span class="cn">访问码</span><span class="en">Access Code</span></h2>
+  <p>
+    <span class="cn">向 YANG 索取访问码，填一次这台手机会记住。</span>
+    <span class="en">Ask YANG for the access code — enter it once and this phone will remember it.</span>
+  </p>
+  <input id="gate-input" type="password" autocomplete="off" placeholder="••••••••">
+  <button id="gate-btn" onclick="gateSubmit()">
+    <span class="cn">进入</span><span class="en">Enter</span>
+  </button>
+  <div id="gate-msg"></div>
+</div>
+
+<!-- 离线提示条：只在读的是本机缓存而不是最新数据时出现 -->
+<div id="offlineBanner" class="off"></div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-title"><span class="dot"></span>
+    <span class="cn">老板</span><span class="en">Boss</span>
+  </div>
+  <button id="langBtn" onclick="toggleLang()">EN</button>
+</div>
+
+<div id="app" class="app-hidden">
+  <!-- 今日 -->
+  <div class="tab active" id="tab-today"></div>
+  <!-- 行程 -->
+  <div class="tab" id="tab-trips"></div>
+  <!-- 账单 -->
+  <div class="tab" id="tab-bills"></div>
+  <!-- 库存 -->
+  <div class="tab" id="tab-inventory"></div>
+  <!-- 管理：内容完全由 JS 在 role===admin 时才注入，viewer 身份下这个容器永远是空的 -->
+  <div class="tab" id="tab-admin"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="nav" id="bottomNav">
+  <button class="nav-btn active" data-tab="today" onclick="switchTab('today')">
+    <span class="nav-icon-wrap"><span class="nav-icon">🏠</span><span class="nav-dot" aria-hidden="true"></span></span>
+    <span class="cn">今日</span><span class="en">Today</span>
+  </button>
+  <button class="nav-btn" data-tab="trips" onclick="switchTab('trips')">
+    <span class="nav-icon-wrap"><span class="nav-icon">🧳</span><span class="nav-dot" aria-hidden="true"></span></span>
+    <span class="cn">行程</span><span class="en">Trips</span>
+  </button>
+  <button class="nav-btn" data-tab="bills" onclick="switchTab('bills')">
+    <span class="nav-icon-wrap"><span class="nav-icon">🧾</span><span class="nav-dot" aria-hidden="true"></span></span>
+    <span class="cn">账单</span><span class="en">Bills</span>
+  </button>
+  <button class="nav-btn" data-tab="inventory" onclick="switchTab('inventory')">
+    <span class="nav-icon-wrap"><span class="nav-icon">📦</span><span class="nav-dot" aria-hidden="true"></span></span>
+    <span class="cn">库存</span><span class="en">Stock</span>
+  </button>
+  <!-- 管理入口按钮由 JS 在 role===admin 时才追加进来 -->
+</div>
+
+<!-- 账单查看弹层 -->
+<div class="overlay" id="billOverlay">
+  <div class="overlay-hdr">
+    <div class="overlay-title"><span class="cn">账单</span><span class="en">Bill</span></div>
+    <button class="overlay-close" onclick="closeBillOverlay()" aria-label="关闭 Close">✕</button>
+  </div>
+  <div class="overlay-body">
+    <iframe id="billFrame" title="PDF"></iframe>
+    <div class="overlay-status" id="billStatus"></div>
+  </div>
+  <div class="overlay-foot">
+    <button id="billOpenNew" onclick="openBillNewTab()" style="display:none">
+      <span class="cn">在新分页打开</span><span class="en">Open in a new tab</span>
+    </button>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+ * 老板专用 App —— 只读行程/账单/库存，YANG 用管理钥匙可维护数据。
+ * 单文件 App（无构建步骤），接口合约见 butler-bot /boss 端点。
+ * ========================================================================= */
+
+/* ---------- 常量 ---------- */
+const BOSS_API_URL = 'https://butler-bot.jarixhew.workers.dev/boss';
+const TOKEN_KEY = 'bossApp_token';
+const FEED_CACHE_KEY = 'bossApp_feedCache';   // {fetchedAt, data}
+const SEEN_KEY = 'bossApp_seen';              // {trips,bills,inventory}
+const MONTHS_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ---------- 本地存储：全部包 try/catch（无痕模式会 throw） ---------- */
+function safeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function safeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function safeRemove(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+/* ---------- 全局状态 ---------- */
+let curLang = 'cn';         // 'cn' | 'en'
+let TOKEN = '';
+let feedData = null;        // 最近一次成功拿到（或缓存）的 feed
+let feedFetchedAt = null;   // 这份 feed 是什么时候拿到的（ISO）
+let role = 'viewer';
+let currentBillBlobUrl = null;
+
+/* ============================= 双语 ============================= */
+/* 照抄 japan-trip-2026.html 的 initLang() 模式：手选 > 系统语言 > 英文；
+   key 全站统一 siteLangUser。静态文案用 cn/en 成对 span，CSS 直接切换；
+   数据驱动的内容用 bl()/pick() 在渲染时生成双语标记，无需重新渲染即可切换。 */
+function applyLang(lang){
+  curLang = lang;
+  document.body.classList.toggle('lang-en', lang === 'en');
+  document.documentElement.lang = lang === 'en' ? 'en' : 'zh';
+  const btn = document.getElementById('langBtn');
+  if(btn) btn.textContent = lang === 'en' ? '中' : 'EN';
+}
+function toggleLang(){
+  const next = document.body.classList.contains('lang-en') ? 'cn' : 'en';
+  applyLang(next);
+  try{ localStorage.setItem('siteLangUser', next); }catch(e){}
+  // 部分文案（空状态、库存量、管理面板）是按当前语言现算的字符串，切换后要重画一次
+  if(feedData){ renderAll(); updateDots(); }
+}
+(function initLang(){
+  let lang = null;
+  try{ lang = localStorage.getItem('siteLangUser'); }catch(e){}
+  if(!lang) lang = (navigator.language || '').toLowerCase().startsWith('zh') ? 'cn' : 'en';
+  applyLang(lang);
+  window.addEventListener('storage', e => {
+    if(e.key === 'siteLangUser' && e.newValue){
+      applyLang(e.newValue);
+      if(feedData){ renderAll(); updateDots(); }
+    }
+  });
+})();
+
+function escapeHtml(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+/** 单一字符串场景（alert/confirm/属性值等无法嵌套标签的地方）按当前语言取一个。 */
+function pick(zh, en){ return curLang === 'en' ? (en || zh || '') : (zh || en || ''); }
+/** 双语 HTML 片段：中英都有就成对显示（CSS 切换）；只有一种语言时两侧都显示同一段文字。 */
+function bl(zh, en){
+  zh = (zh == null ? '' : String(zh)).trim();
+  en = (en == null ? '' : String(en)).trim();
+  if(!zh && !en) return '';
+  if(zh && en) return `<span class="cn">${escapeHtml(zh)}</span><span class="en">${escapeHtml(en)}</span>`;
+  const only = zh || en;
+  return `<span class="cn">${escapeHtml(only)}</span><span class="en">${escapeHtml(only)}</span>`;
+}
+/** 数据里 {zh,en} 对象版本的 bl()。 */
+function blObj(o){ return bl(o && o.zh, o && o.en); }
+
+/* ============================= 日期工具 ============================= */
+function pad2(n){ return String(n).padStart(2,'0'); }
+function isoDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function fmtDateBoth(iso){
+  const parts = String(iso || '').split('-').map(Number);
+  const y = parts[0], m = parts[1], d = parts[2];
+  if(!y || !m || !d) return { zh:'', en:'' };
+  return { zh:`${y}年${m}月${d}日`, en:`${MONTHS_EN[m-1]} ${d}, ${y}` };
+}
+function fmtRangeBoth(startIso, endIso){
+  const s = fmtDateBoth(startIso);
+  if(!endIso || endIso === startIso) return s;
+  const e = fmtDateBoth(endIso);
+  return { zh:`${s.zh} – ${e.zh}`, en:`${s.en} – ${e.en}` };
+}
+function fmtDateTimeBoth(iso){
+  if(!iso) return { zh:'', en:'' };
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return { zh:'', en:'' };
+  const zh = d.toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
+  const en = d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  return { zh, en };
+}
+
+/* ============================= 与后端通信 ============================= */
+async function bossCall(action, extra){
+  if(!TOKEN) throw { kind:'app', message: pick('缺少访问码','Missing access code') };
+  let res;
+  try{
+    res = await fetch(BOSS_API_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(Object.assign({ token: TOKEN, action }, extra || {}))
+    });
+  }catch(e){
+    throw { kind:'network', message: pick('连不上服务器，稍后再试','Cannot reach the server — please try again later') };
+  }
+  let json = null;
+  try{ json = await res.json(); }catch(e){ /* 下面按状态码兜底 */ }
+  if(res.status === 401){
+    throw { kind:'http', status:401, message: (json && json.message) || pick('访问码不对，请再检查一次','Wrong access code — please check again') };
+  }
+  if(!res.ok){
+    throw { kind:'http', status:res.status, message: (json && json.message) || pick('服务器出错，请稍后再试','Server error — please try again later') };
+  }
+  if(!json || json.status !== 'ok'){
+    throw { kind:'app', message: (json && json.message) || pick('服务器返回异常','Unexpected response from server') };
+  }
+  return json;
+}
+
+/* ============================= 本地缓存 ============================= */
+function saveToken(v){ TOKEN = v; safeSet(TOKEN_KEY, v); }
+function clearToken(){ TOKEN = ''; safeRemove(TOKEN_KEY); }
+function saveCachedFeed(feed, fetchedAtIso){
+  safeSet(FEED_CACHE_KEY, JSON.stringify({ fetchedAt: fetchedAtIso, data: feed }));
+}
+function loadCachedFeed(){
+  const raw = safeGet(FEED_CACHE_KEY);
+  if(!raw) return null;
+  try{ return JSON.parse(raw); }catch(e){ return null; }
+}
+function loadSeen(){
+  const raw = safeGet(SEEN_KEY);
+  if(!raw) return {};
+  try{ return JSON.parse(raw) || {}; }catch(e){ return {}; }
+}
+function saveSeen(seen){ safeSet(SEEN_KEY, JSON.stringify(seen)); }
+
+/* ============================= 闸门 ============================= */
+function openGate(){ document.getElementById('gate').classList.remove('off'); }
+function closeGate(){ document.getElementById('gate').classList.add('off'); }
+
+async function gateSubmit(){
+  const input = document.getElementById('gate-input');
+  const btn = document.getElementById('gate-btn');
+  const msg = document.getElementById('gate-msg');
+  const v = (input.value || '').trim();
+  if(!v){ msg.textContent = pick('请先填访问码','Please enter the access code'); return; }
+  btn.disabled = true;
+  msg.textContent = pick('验证中…','Checking…');
+  const prevToken = TOKEN;
+  TOKEN = v;
+  try{
+    const feed = await bossCall('feed', {});
+    saveToken(v);
+    handleFeed(feed, { fromNetwork:true });
+    input.value = '';
+    msg.textContent = '';
+    closeGate();
+  }catch(err){
+    TOKEN = prevToken;
+    msg.textContent = err && err.message ? err.message : pick('连不上服务器，稍后再试','Cannot reach the server — please try again later');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ============================= 红点 / 已读 ============================= */
+const DOT_KEYS = ['trips','bills','inventory'];
+function markSeen(tab){
+  if(!feedData || DOT_KEYS.indexOf(tab) === -1) return;
+  const seen = loadSeen();
+  seen[tab] = (feedData.updated && feedData.updated[tab]) || null;
+  saveSeen(seen);
+  updateDots();
+}
+function updateDots(){
+  if(!feedData) return;
+  const seen = loadSeen();
+  let unread = 0;
+  DOT_KEYS.forEach(k => {
+    const updated = feedData.updated && feedData.updated[k];
+    const has = !!updated && (!seen[k] || seen[k] < updated);
+    const btn = document.querySelector('.nav-btn[data-tab="' + k + '"]');
+    if(btn) btn.classList.toggle('has-dot', has);
+    if(has) unread++;
+  });
+  try{
+    if(navigator.setAppBadge){
+      if(unread > 0) navigator.setAppBadge(unread); else navigator.clearAppBadge && navigator.clearAppBadge();
+    }
+  }catch(e){}
+}
+
+/* ============================= tab 切换 ============================= */
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  const pane = document.getElementById('tab-' + tab);
+  if(pane) pane.classList.add('active');
+  const btn = document.querySelector('.nav-btn[data-tab="' + tab + '"]');
+  if(btn) btn.classList.add('active');
+  markSeen(tab);
+}
+
+/* ============================= 离线提示 ============================= */
+function markOffline(fetchedAtIso){
+  const banner = document.getElementById('offlineBanner');
+  const t = fmtDateTimeBoth(fetchedAtIso);
+  banner.innerHTML = `<span class="cn">📴 离线 · 数据为 ${escapeHtml(t.zh || '—')}</span>` +
+                      `<span class="en">📴 Offline · data as of ${escapeHtml(t.en || '—')}</span>`;
+  banner.classList.remove('off');
+}
+function hideOffline(){ document.getElementById('offlineBanner').classList.add('off'); }
+
+/* ============================= 主渲染入口 ============================= */
+function handleFeed(feed, opts){
+  feedData = feed;
+  role = feed.role === 'admin' ? 'admin' : 'viewer';
+  if(opts && opts.fromNetwork){
+    feedFetchedAt = new Date().toISOString();
+    saveCachedFeed(feed, feedFetchedAt);
+    hideOffline();
+  }else{
+    feedFetchedAt = (opts && opts.fetchedAt) || null;
+    markOffline(feedFetchedAt);
+  }
+  closeGate();
+  document.getElementById('app').classList.remove('app-hidden');
+  ensureAdminUI();
+  renderAll();
+  updateDots();
+}
+function renderAll(){
+  renderToday();
+  renderTrips();
+  renderBills();
+  renderInventory();
+  if(role === 'admin') renderAdmin();
+}
+
+/* ============================= 今日 ============================= */
+function findNextItineraryDate(afterIso){
+  let min = null;
+  (feedData.trips || []).forEach(trip => {
+    (trip.items || []).forEach(it => {
+      if(it.date && it.date > afterIso){
+        if(min === null || it.date < min) min = it.date;
+      }
+    });
+  });
+  return min;
+}
+function itemRowHtml(it){
+  const hasNote = it.note && ((it.note.zh || '').trim() || (it.note.en || '').trim());
+  return `<div class="item-row">
+      <div class="item-time">${escapeHtml(it.time || '')}</div>
+      <div class="item-body">
+        <div class="item-title">${blObj(it.title)}</div>
+        ${ hasNote ? `<div class="item-note">${blObj(it.note)}</div>` : '' }
+      </div>
+      ${ it.mapUrl ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+    </div>`;
+}
+function renderToday(){
+  const pane = document.getElementById('tab-today');
+  if(!feedData){ pane.innerHTML = ''; return; }
+  const todayIso = isoDate(new Date());
+  const tomorrowIso = isoDate(new Date(Date.now() + 86400000));
+  const all = [];
+  (feedData.trips || []).forEach(trip => {
+    (trip.items || []).forEach(it => {
+      if(it.date === todayIso || it.date === tomorrowIso) all.push(it);
+    });
+  });
+  all.sort((a,b) => a.date === b.date ? (a.time||'').localeCompare(b.time||'') : a.date.localeCompare(b.date));
+  const todayItems = all.filter(it => it.date === todayIso);
+  const tomorrowItems = all.filter(it => it.date === tomorrowIso);
+
+  let html = `<div class="sec-hdr"><span class="sec-title">${bl('今天','Today')}</span></div>`;
+  if(todayItems.length){
+    html += `<div class="item-list">${todayItems.map(itemRowHtml).join('')}</div>`;
+  }else{
+    const next = findNextItineraryDate(todayIso);
+    html += `<div class="empty-card">
+        <div class="empty-icon">🗓️</div>
+        <div>${bl('今天没有安排的行程','Nothing scheduled for today')}</div>
+        <div class="empty-next">${ next
+          ? bl('下一个行程是 ' + fmtDateBoth(next).zh, 'Next trip item: ' + fmtDateBoth(next).en)
+          : bl('近期没有排定的行程','No upcoming items scheduled') }</div>
+      </div>`;
+  }
+  if(tomorrowItems.length){
+    html += `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('明天','Tomorrow')}</span></div>`;
+    html += `<div class="item-list">${tomorrowItems.map(itemRowHtml).join('')}</div>`;
+  }
+  pane.innerHTML = html;
+}
+
+/* ============================= 行程 ============================= */
+function tripItemsHtml(trip){
+  const items = (trip.items || []).slice().sort((a,b) => {
+    if(a.date !== b.date) return (a.date||'').localeCompare(b.date||'');
+    return (a.time||'').localeCompare(b.time||'');
+  });
+  return items.map(it => {
+    const hasNote = it.note && ((it.note.zh||'').trim() || (it.note.en||'').trim());
+    return `<div class="item-row">
+        <div class="item-time">${escapeHtml((it.date||'').slice(5).replace('-','/'))}<br>${escapeHtml(it.time||'')}</div>
+        <div class="item-body">
+          <div class="item-title">${blObj(it.title)}</div>
+          ${ hasNote ? `<div class="item-note">${blObj(it.note)}</div>` : '' }
+        </div>
+        ${ it.mapUrl ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">🗺</a>` : '' }
+      </div>`;
+  }).join('');
+}
+function tripCardHtml(trip){
+  const range = fmtRangeBoth(trip.start, trip.end);
+  return `<div class="trip-card">
+      <div class="trip-card-hd" onclick="this.parentElement.classList.toggle('expanded')">
+        <div>
+          <div class="trip-range">${bl(range.zh, range.en)}</div>
+          <div class="trip-loc">${blObj(trip.location)}</div>
+        </div>
+        <div class="trip-arrow" aria-hidden="true">▾</div>
+      </div>
+      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📖 ${bl('打开手册','Open Guide')}</a>` : '' }
+      <div class="trip-items">${tripItemsHtml(trip)}</div>
+    </div>`;
+}
+function togglePast(){
+  const el = document.getElementById('past-list');
+  if(el) el.classList.toggle('off');
+}
+function renderTrips(){
+  const pane = document.getElementById('tab-trips');
+  if(!feedData){ pane.innerHTML = ''; return; }
+  const todayIso = isoDate(new Date());
+  const trips = (feedData.trips || []).slice();
+  const upcoming = trips.filter(t => (t.end || t.start || '') >= todayIso)
+    .sort((a,b) => (a.start||'').localeCompare(b.start||''));
+  const past = trips.filter(t => (t.end || t.start || '') < todayIso)
+    .sort((a,b) => (b.start||'').localeCompare(a.start||''));
+
+  let html = '';
+  if(!upcoming.length && !past.length){
+    html += `<div class="empty-card"><div class="empty-icon">🧳</div><div>${bl('还没有行程安排','No trips yet')}</div></div>`;
+  }
+  html += upcoming.map(tripCardHtml).join('');
+  if(past.length){
+    html += `<div class="past-toggle" onclick="togglePast()">${bl('以往行程（' + past.length + '）▾', 'Past Trips (' + past.length + ') ▾')}</div>`;
+    html += `<div class="past-list off" id="past-list">${past.map(tripCardHtml).join('')}</div>`;
+  }
+  pane.innerHTML = html;
+}
+
+/* ============================= 账单 ============================= */
+function renderBills(){
+  const pane = document.getElementById('tab-bills');
+  if(!feedData){ pane.innerHTML = ''; return; }
+  const bills = (feedData.bills || []).slice().sort((a,b) => {
+    const pc = (b.period||'').localeCompare(a.period||'');
+    if(pc !== 0) return pc;
+    return (b.uploadedAt||'').localeCompare(a.uploadedAt||'');
+  });
+  if(!bills.length){
+    pane.innerHTML = `<div class="empty-card"><div class="empty-icon">🧾</div><div>${bl('还没有账单','No bills yet')}</div></div>`;
+    return;
+  }
+  pane.innerHTML = `<div class="bill-list">${bills.map(b => `
+      <div class="bill-row" onclick="openBill('${escapeHtml(b.id)}')">
+        <div class="bill-icon">📄</div>
+        <div class="bill-info">
+          <div class="bill-title">${blObj(b.title)}</div>
+          <div class="bill-sub">${escapeHtml(b.period || '')}${ b.kind === 'trip' ? ' · ' + pick('行程账单','Trip Bill') : '' }</div>
+        </div>
+        <div class="bill-arrow" aria-hidden="true">›</div>
+      </div>`).join('')}</div>`;
+}
+function base64ToBlobUrl(b64, mime){
+  const bin = atob(b64 || '');
+  const arr = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([arr], { type: mime || 'application/pdf' }));
+}
+async function openBill(id){
+  const overlay = document.getElementById('billOverlay');
+  const frame = document.getElementById('billFrame');
+  const openNewBtn = document.getElementById('billOpenNew');
+  const statusEl = document.getElementById('billStatus');
+  overlay.classList.add('open');
+  frame.src = 'about:blank';
+  openNewBtn.style.display = 'none';
+  statusEl.textContent = pick('加载中…','Loading…');
+  try{
+    const res = await bossCall('bill', { id });
+    if(currentBillBlobUrl){ URL.revokeObjectURL(currentBillBlobUrl); currentBillBlobUrl = null; }
+    currentBillBlobUrl = base64ToBlobUrl(res.contentBase64, res.mime || 'application/pdf');
+    frame.src = currentBillBlobUrl;
+    openNewBtn.style.display = 'block';
+    statusEl.textContent = '';
+  }catch(err){
+    statusEl.textContent = (err && err.message) || pick('打开失败','Failed to open');
+  }
+}
+function closeBillOverlay(){
+  document.getElementById('billOverlay').classList.remove('open');
+  document.getElementById('billFrame').src = 'about:blank';
+  if(currentBillBlobUrl){ URL.revokeObjectURL(currentBillBlobUrl); currentBillBlobUrl = null; }
+}
+function openBillNewTab(){
+  if(currentBillBlobUrl) window.open(currentBillBlobUrl, '_blank');
+}
+
+/* ============================= 库存（只读） ============================= */
+const INV_GROUPS = [
+  { key:'wine', icon:'🍷', zh:'酒', en:'Wine' },
+  { key:'tea', icon:'🍵', zh:'茶', en:'Tea' },
+  { key:'herb', icon:'🌿', zh:'虫草', en:'Herb' }
+];
+function invRowHtml(it){
+  const qty = (it.count != null) ? it.count : (it.qty != null ? it.qty : (it.quantity != null ? it.quantity : '-'));
+  return `<div class="inv-row">
+      <div class="inv-name">${escapeHtml(it.name || '')}</div>
+      <div class="inv-qty">${escapeHtml(String(qty))} ${escapeHtml(it.unit || '')}</div>
+      <div class="inv-loc">${escapeHtml(it.location || '')}</div>
+    </div>`;
+}
+function renderInventory(){
+  const pane = document.getElementById('tab-inventory');
+  if(!feedData){ pane.innerHTML = ''; return; }
+  if(!feedData.inventory){
+    pane.innerHTML = `<div class="empty-card"><div class="empty-icon">📦</div>
+      <div>${bl('库存暂时无法读取','Inventory unavailable right now')}</div></div>`;
+    return;
+  }
+  let html = '';
+  INV_GROUPS.forEach(g => {
+    const list = feedData.inventory[g.key] || [];
+    html += `<div class="sec-hdr" style="margin-top:16px">
+        <span class="sec-title">${g.icon} ${bl(g.zh, g.en)}</span>
+      </div>`;
+    if(!list.length){
+      html += `<div class="empty-card small">${bl('暂无记录','No items')}</div>`;
+    }else{
+      html += `<div class="inv-list">${list.map(invRowHtml).join('')}</div>`;
+    }
+  });
+  pane.innerHTML = html;
+}
+
+/* ============================= 管理面板（仅 role===admin 才由 JS 建立） =============================
+ * 硬规则：viewer 身份下，这些控件的 markup 一律不出现在 DOM 里（不是 CSS 隐藏）。
+ * 做法：这一整段渲染函数只在 ensureAdminUI() 判定 role==='admin' 时才会被调用；
+ * 静态 HTML 里 #tab-admin 永远是空容器。 */
+function tripSelectOptionsHtml(){
+  const trips = feedData.trips || [];
+  return '<option value="">' + escapeHtml(pick('（不属于某次行程）','(not tied to a trip)')) + '</option>' +
+    trips.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml((t.title && (t.title.zh || t.title.en)) || t.id)}</option>`).join('');
+}
+function renderAdmin(){
+  if(role !== 'admin') return;
+  const pane = document.getElementById('tab-admin');
+  if(!pane) return;
+  const bills = (feedData.bills || []).slice().sort((a,b) => (b.uploadedAt||'').localeCompare(a.uploadedAt||''));
+  pane.innerHTML = `
+    <div class="admin-block">
+      <h3>⬆️ ${pick('上传账单 PDF','Upload a Bill PDF')}</h3>
+      <div class="admin-field">
+        <label>${pick('PDF 文件（上限 8MB）','PDF file (max 8MB)')}</label>
+        <input type="file" id="admin-bill-file" accept="application/pdf">
+      </div>
+      <div class="admin-field">
+        <label>${pick('标题（中文）','Title (Chinese)')}</label>
+        <input type="text" id="admin-bill-title-zh" placeholder="例：8月账单">
+      </div>
+      <div class="admin-field">
+        <label>${pick('标题（英文）','Title (English)')}</label>
+        <input type="text" id="admin-bill-title-en" placeholder="e.g. August bill">
+      </div>
+      <div class="admin-field">
+        <label>${pick('类型','Kind')}</label>
+        <div class="admin-radio-row">
+          <label><input type="radio" name="admin-bill-kind" value="month" checked> ${pick('月结','Monthly')}</label>
+          <label><input type="radio" name="admin-bill-kind" value="trip"> ${pick('行程','Trip')}</label>
+        </div>
+      </div>
+      <div class="admin-field">
+        <label>${pick('账期（如 2026-08）','Period (e.g. 2026-08)')}</label>
+        <input type="text" id="admin-bill-period" placeholder="2026-08">
+      </div>
+      <div class="admin-field">
+        <label>${pick('关联行程（可选）','Linked trip (optional)')}</label>
+        <select id="admin-bill-trip" class="admin-select" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit">
+          ${tripSelectOptionsHtml()}
+        </select>
+      </div>
+      <button class="admin-btn" onclick="adminUploadBill()">${pick('上传','Upload')}</button>
+      <div class="admin-status" id="admin-upload-status"></div>
+    </div>
+
+    <div class="admin-block">
+      <h3>🗑️ ${pick('管理已上传的账单','Manage Uploaded Bills')}</h3>
+      ${ bills.length ? bills.map(b => `
+        <div class="admin-bill-row">
+          <div class="admin-bill-info">
+            <div>${escapeHtml((b.title && (b.title.zh || b.title.en)) || b.filename || b.id)}</div>
+            <div class="sub">${escapeHtml(b.period || '')} · ${escapeHtml(b.filename || '')}</div>
+          </div>
+          <button class="admin-bill-del" onclick="adminDeleteBill('${escapeHtml(b.id)}')">${pick('删除','Delete')}</button>
+        </div>`).join('') : `<div class="admin-status">${pick('还没有账单','No bills yet')}</div>` }
+    </div>
+
+    <div class="admin-block">
+      <h3>✏️ ${pick('直接编辑行程 JSON','Edit Trip Data (JSON)')}</h3>
+      <div class="admin-field">
+        <textarea id="admin-trips-json" spellcheck="false">${escapeHtml(JSON.stringify(feedData.trips || [], null, 2))}</textarea>
+      </div>
+      <div class="admin-status err" id="admin-trips-err"></div>
+      <button class="admin-btn" id="admin-trips-save" onclick="adminSaveTrips()">${pick('保存','Save')}</button>
+      <div class="admin-status" id="admin-trips-status"></div>
+    </div>
+  `;
+  const ta = document.getElementById('admin-trips-json');
+  if(ta) ta.addEventListener('input', adminValidateTripsJSON);
+}
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const result = String(r.result || '');
+      const idx = result.indexOf(',');
+      resolve(idx >= 0 ? result.slice(idx + 1) : result);
+    };
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+async function adminUploadBill(){
+  const fileInput = document.getElementById('admin-bill-file');
+  const statusEl = document.getElementById('admin-upload-status');
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  if(!file){ statusEl.className='admin-status err'; statusEl.textContent = pick('请先选择 PDF 文件','Please choose a PDF file first'); return; }
+  if(file.size > 8 * 1024 * 1024){ statusEl.className='admin-status err'; statusEl.textContent = pick('PDF 太大（超过 8MB）','PDF is too large (over 8MB)'); return; }
+  const period = (document.getElementById('admin-bill-period').value || '').trim();
+  if(!period){ statusEl.className='admin-status err'; statusEl.textContent = pick('请填账期','Please fill in the period'); return; }
+  const titleZh = (document.getElementById('admin-bill-title-zh').value || '').trim();
+  const titleEn = (document.getElementById('admin-bill-title-en').value || '').trim();
+  const kind = (document.querySelector('input[name="admin-bill-kind"]:checked') || {}).value || 'month';
+  const tripId = document.getElementById('admin-bill-trip').value || null;
+  statusEl.className = 'admin-status';
+  statusEl.textContent = pick('上传中…','Uploading…');
+  try{
+    const contentBase64 = await fileToBase64(file);
+    await bossCall('billUpload', {
+      filename: file.name, title: { zh: titleZh, en: titleEn },
+      kind, period, tripId, contentBase64
+    });
+    statusEl.className = 'admin-status ok';
+    statusEl.textContent = pick('上传成功','Uploaded successfully');
+    await refreshFeed();
+  }catch(err){
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = (err && err.message) || pick('上传失败','Upload failed');
+  }
+}
+async function adminDeleteBill(id){
+  if(!confirm(pick('确定删除这份账单？','Delete this bill?'))) return;
+  try{
+    await bossCall('billDelete', { id });
+    await refreshFeed();
+  }catch(err){
+    alert((err && err.message) || pick('删除失败','Delete failed'));
+  }
+}
+function adminValidateTripsJSON(){
+  const ta = document.getElementById('admin-trips-json');
+  const err = document.getElementById('admin-trips-err');
+  const saveBtn = document.getElementById('admin-trips-save');
+  if(!ta) return null;
+  try{
+    const parsed = JSON.parse(ta.value);
+    if(!Array.isArray(parsed)) throw new Error(pick('必须是一个 JSON 数组','Must be a JSON array'));
+    err.textContent = '';
+    if(saveBtn) saveBtn.disabled = false;
+    return parsed;
+  }catch(e){
+    err.textContent = pick('JSON 格式不对：','Invalid JSON: ') + e.message;
+    if(saveBtn) saveBtn.disabled = true;
+    return null;
+  }
+}
+async function adminSaveTrips(){
+  const parsed = adminValidateTripsJSON();
+  if(!parsed) return;
+  const statusEl = document.getElementById('admin-trips-status');
+  statusEl.className = 'admin-status';
+  statusEl.textContent = pick('保存中…','Saving…');
+  try{
+    await bossCall('tripsSave', { trips: parsed });
+    statusEl.className = 'admin-status ok';
+    statusEl.textContent = pick('已保存','Saved');
+    await refreshFeed();
+  }catch(err){
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = (err && err.message) || pick('保存失败','Save failed');
+  }
+}
+async function refreshFeed(){
+  try{
+    const feed = await bossCall('feed', {});
+    handleFeed(feed, { fromNetwork:true });
+  }catch(e){ /* 静默失败：用户下次操作或下次开页面还会再试 */ }
+}
+
+/* ensureAdminUI：管理入口按钮 + 面板内容只在 role==='admin' 时存在于 DOM 里，
+   viewer 身份下这个函数什么都不建立（如果之前是 admin 现在变回 viewer，还要负责拆掉）。 */
+function ensureAdminUI(){
+  const nav = document.getElementById('bottomNav');
+  let btn = document.getElementById('nav-admin-btn');
+  if(role === 'admin'){
+    if(!btn){
+      btn = document.createElement('button');
+      btn.className = 'nav-btn';
+      btn.id = 'nav-admin-btn';
+      btn.setAttribute('data-tab', 'admin');
+      btn.onclick = function(){ switchTab('admin'); };
+      btn.innerHTML = '<span class="nav-icon-wrap"><span class="nav-icon">🛠️</span></span>' + bl('管理','Admin');
+      nav.appendChild(btn);
+    }
+  }else if(btn){
+    btn.remove();
+    const pane = document.getElementById('tab-admin');
+    if(pane) pane.innerHTML = '';
+  }
+}
+
+/* ============================= 启动 ============================= */
+async function init(){
+  TOKEN = safeGet(TOKEN_KEY) || '';
+  if(!TOKEN){ openGate(); return; }
+  const cached = loadCachedFeed();
+  if(cached && cached.data){ handleFeed(cached.data, { fromNetwork:false, fetchedAt: cached.fetchedAt }); }
+  try{
+    const feed = await bossCall('feed', {});
+    handleFeed(feed, { fromNetwork:true });
+  }catch(err){
+    if(err && err.kind === 'http' && err.status === 401){
+      clearToken();
+      safeRemove(FEED_CACHE_KEY);
+      feedData = null;
+      document.getElementById('app').classList.add('app-hidden');
+      openGate();
+      document.getElementById('gate-msg').textContent = pick('访问码已失效，请重新输入','Access code expired — please re-enter it');
+    }else if(!cached){
+      document.getElementById('app').classList.remove('app-hidden');
+      document.getElementById('tab-today').innerHTML =
+        `<div class="empty-card"><div class="empty-icon">📡</div><div>${bl('连不上服务器，请稍后再试','Cannot reach the server — please try again later')}</div></div>`;
+    }else{
+      markOffline(feedFetchedAt);
+    }
+  }
+}
+document.addEventListener('DOMContentLoaded', init);
+
+/* ============================= Service Worker ============================= */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('boss-sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
