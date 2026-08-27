@@ -83,6 +83,11 @@ function forceZh(ctx){
   return ctx.addInitScript(() => { try{ localStorage.setItem('siteLangUser', 'cn'); }catch(e){} });
 }
 
+// 真的 4 页 PDF（pypdf 生成的空白页）。**不能用假字符串**：假的 PDF 会让 PDF.js
+// 解析失败、直接走错误分支，等于账单预览这条路径从来没被测过——2026-08-27
+// 「账单只显示一页、滑不动」就是这样漏出去的。
+const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5cGRmKQo+PgplbmRvYmoKMiAwIG9iago8PAovVHlwZSAvUGFnZXMKL0NvdW50IDQKL0tpZHMgWyA0IDAgUiA1IDAgUiA2IDAgUiA3IDAgUiBdCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9DYXRhbG9nCi9QYWdlcyAyIDAgUgo+PgplbmRvYmoKNCAwIG9iago8PAovVHlwZSAvUGFnZQovUmVzb3VyY2VzIDw8Cj4+Ci9NZWRpYUJveCBbIDAuMCAwLjAgNTk1IDg0MiBdCi9QYXJlbnQgMiAwIFIKPj4KZW5kb2JqCjUgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1Jlc291cmNlcyA8PAo+PgovTWVkaWFCb3ggWyAwLjAgMC4wIDU5NSA4NDIgXQovUGFyZW50IDIgMCBSCj4+CmVuZG9iago2IDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9SZXNvdXJjZXMgPDwKPj4KL01lZGlhQm94IFsgMC4wIDAuMCA1OTUgODQyIF0KL1BhcmVudCAyIDAgUgo+PgplbmRvYmoKNyAwIG9iago8PAovVHlwZSAvUGFnZQovUmVzb3VyY2VzIDw8Cj4+Ci9NZWRpYUJveCBbIDAuMCAwLjAgNTk1IDg0MiBdCi9QYXJlbnQgMiAwIFIKPj4KZW5kb2JqCnhyZWYKMCA4CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDU0IDAwMDAwIG4gCjAwMDAwMDAxMzEgMDAwMDAgbiAKMDAwMDAwMDE4MCAwMDAwMCBuIAowMDAwMDAwMjc0IDAwMDAwIG4gCjAwMDAwMDAzNjggMDAwMDAgbiAKMDAwMDAwMDQ2MiAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDgKL1Jvb3QgMyAwIFIKL0luZm8gMSAwIFIKPj4Kc3RhcnR4cmVmCjU1NgolJUVPRgo=';
+
 function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory() } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
@@ -104,7 +109,7 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
       }
       if (req.action === 'bill'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
-          body: JSON.stringify({ status: 'ok', contentBase64: Buffer.from('%PDF-1.4 fake').toString('base64'), mime: 'application/pdf' }) });
+          body: JSON.stringify({ status: 'ok', contentBase64: FOUR_PAGE_PDF_B64, mime: 'application/pdf' }) });
       }
       return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
         body: JSON.stringify({ status: 'ok' }) });
@@ -292,6 +297,62 @@ async function gotoTab(page, tab){
   ok('发了一个 action:bill 的请求', rec.calls.some(c => c.action === 'bill'), rec.calls);
   const frameSrc = await page.evaluate(() => document.getElementById('billFrame').src);
   ok('iframe.src 是 blob URL', frameSrc.startsWith('blob:'), frameSrc);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+
+  await ctx.close();
+}
+
+// ---------- 场景六之二：账单真的画出来了，而且用手指能滑到后面几页 ----------
+// 这一节守两件在 2026-08-27 真实踩到的事：
+// 1. Android Chrome 没有内建 PDF 阅读器，iframe 塞 PDF 只会出乱码，所以必须自己
+//    用 PDF.js 画成 canvas——要断言 canvas 真的出现，不是「没报错」。
+// 2. 滚动**必须用真实滚轮/触摸事件**，不许用 element.scrollTop = x。后者绕过
+//    「手指点在哪个元素上」的判定：当时 .overlay-status 整片盖在账单上面又没设
+//    pointer-events:none，程序设 scrollTop 一切正常，真人却怎么滑都不动，
+//    只看得到第一页。用 scrollTop 的测法完全测不出来。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+
+  console.log('\n【6b】账单真的渲染出来，且能用真实滚轮滑到后面几页');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成' });
+  await gotoTab(page, 'bills');
+  await until(() => page.locator('.bill-row').count().then(n => n > 0), { what: '账单列表画出来' });
+  await page.click('.bill-row');
+
+  await until(() => page.evaluate(() =>
+    document.querySelectorAll('#billPages canvas').length > 0),
+    { what: '账单被画成 canvas（不是靠浏览器自己读 PDF）', timeout: 20000 });
+
+  const before = await page.evaluate(() => {
+    const p = document.getElementById('billPages');
+    return { canvases: p.querySelectorAll('canvas').length,
+             holders: p.querySelectorAll('.bill-page-holder').length,
+             scrollable: p.scrollHeight > p.clientHeight + 10 };
+  });
+  ok('每一页都有占位块（4 页）', before.holders === 4, before);
+  ok('至少画出了一页', before.canvases >= 1, before);
+  ok('内容比一屏高，也就是真的需要滚动', before.scrollable, before);
+
+  // 真实滚轮：不许改成 scrollTop = x，理由见本节顶部注释
+  await page.mouse.move(195, 400);
+  for (let i = 0; i < 10; i++) { await page.mouse.wheel(0, 600); await page.waitForTimeout(120); }
+
+  const after = await page.evaluate(() => {
+    const p = document.getElementById('billPages');
+    return { scrollTop: Math.round(p.scrollTop), canvases: p.querySelectorAll('canvas').length };
+  });
+  ok('用滚轮真的滚动了（没有被上层元素挡住）', after.scrollTop > 100, after);
+  // 断言「每一页都画出来了」而不是「比之前多」：懒渲染本来就会多画一页，
+  // 用「比之前多」的话，滑不动时也会蒙混过关（2026-08-27 第一版就写松了）。
+  ok('滚到底后每一页都画出来了', after.canvases === before.holders, { before, after });
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
 
   await ctx.close();
