@@ -90,6 +90,16 @@ body:not(.lang-en) .en{display:none !important}
 .item-map{flex:none;font-size:12.5px;font-weight:600;color:var(--p);background:var(--p2);
   border-radius:999px;padding:6px 10px;text-decoration:none;white-space:nowrap;align-self:center}
 
+/* ===== 「今天/明天」页里覆盖当天的行程横幅（哪怕这趟行程还没排具体条目也要看得到） ===== */
+.today-trip-banner{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:16px;margin-bottom:14px}
+.today-trip-banner-title{font-size:17.5px;font-weight:800;line-height:1.35}
+.today-trip-banner-day{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;
+  background:var(--p2);color:var(--p);font-size:12.5px;font-weight:700}
+.today-trip-banner .trip-guide-btn{margin:12px 0 0}
+.today-trip-empty-note{padding:14px 16px;font-size:13.5px;color:var(--sub);background:var(--card);
+  border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px}
+
 /* ===== 行程卡片 ===== */
 .trip-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
   margin-bottom:14px;overflow:hidden}
@@ -202,6 +212,12 @@ body:not(.lang-en) .en{display:none !important}
 .admin-btn-sm{padding:7px 12px;border:none;border-radius:8px;background:var(--p2);color:var(--p);
   font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;flex:none}
 .admin-btn-sm-danger{background:#FDECEA;color:var(--danger)}
+/* 比 -sm 明显、但不像 .admin-btn 那样占满整行——用在「新增条目」这种挤在标题旁边的入口，
+   实心主色让它不再是容易被忽略的小字号按钮 */
+.admin-btn-md{padding:10px 16px;border:none;border-radius:9px;background:var(--p);color:#fff;
+  font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;flex:none}
+.admin-empty-items{padding:14px;border:1.5px dashed var(--border);border-radius:12px;margin-bottom:10px}
+.admin-empty-items .admin-status{margin-top:0;margin-bottom:10px}
 .admin-select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
   font-size:14px;font-family:inherit;color:var(--text);background:#fff}
 .admin-json-summary{cursor:pointer;font-weight:700;color:var(--p);font-size:14.5px;list-style:revert}
@@ -428,6 +444,16 @@ function blObj(o){ return bl(o && o.zh, o && o.en); }
 /* ============================= 日期工具 ============================= */
 function pad2(n){ return String(n).padStart(2,'0'); }
 function isoDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+/** 把 "YYYY-MM-DD" 解回本地日期（午夜）——刻意不用 `new Date(iso)`/`toISOString()`，
+ * 那两个走 UTC，在 UTC+7 这类时区会跟 isoDate() 产出的字符串对不上，差一天。 */
+function parseIsoLocal(iso){
+  const p = String(iso || '').split('-').map(Number);
+  return new Date(p[0] || 1970, (p[1] || 1) - 1, p[2] || 1);
+}
+/** 两个 "YYYY-MM-DD" 相差几天（本地日期，不经过 UTC）。 */
+function diffDaysIso(aIso, bIso){
+  return Math.round((parseIsoLocal(bIso) - parseIsoLocal(aIso)) / 86400000);
+}
 function fmtDateBoth(iso){
   const parts = String(iso || '').split('-').map(Number);
   const y = parts[0], m = parts[1], d = parts[2];
@@ -662,6 +688,45 @@ function itemRowHtml(it){
       ${ it.mapUrl ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
     </div>`;
 }
+/** 覆盖某一天的行程（start~end 含首尾）——没有就 null。多趟重叠时取第一条，
+ * 现实里很少发生，也没有产品需求要处理这种重叠。 */
+function activeTripForDate(dateIso){
+  return (feedData.trips || []).find(t => t.start && dateIso >= t.start && dateIso <= (t.end || t.start)) || null;
+}
+/** 「今天/明天」页顶部的行程横幅：哪怕这趟行程一条具体条目都还没排，人也知道
+ * 「自己正在第几天」，不会误以为 App 把数据弄丢了（2026-08-27 用户反馈的根因）。 */
+function todayTripBannerHtml(dateIso, trip){
+  const titleHtml = blObj(trip.title) || bl('未命名行程','Untitled trip');
+  const hasLoc = trip.location && ((trip.location.zh||'').trim() || (trip.location.en||'').trim());
+  const totalDays = diffDaysIso(trip.start, trip.end || trip.start) + 1;
+  const dayNum = diffDaysIso(trip.start, dateIso) + 1;
+  return `<div class="today-trip-banner">
+      <div class="today-trip-banner-title">${titleHtml}</div>
+      ${ hasLoc ? `<div class="trip-loc">${blObj(trip.location)}</div>` : '' }
+      <div class="today-trip-banner-day">${bl(`第 ${dayNum} 天 / 共 ${totalDays} 天`, `Day ${dayNum} of ${totalDays}`)}</div>
+      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener">📖 ${bl('打开手册','Open Guide')}</a>` : '' }
+    </div>`;
+}
+/** 一段（今天或明天）的正文：行程横幅（如果有覆盖当天的行程）＋ 条目列表／空态。
+ * 只有「没有行程覆盖这天、也没有条目」才用原本那张"没有安排"的空状态卡——
+ * 人正在旅途中但还没排细节时，那句话是错的，会让人以为数据丢了。 */
+function todaySectionBodyHtml(dateIso, items, isTomorrow){
+  const trip = activeTripForDate(dateIso);
+  if(trip){
+    let html = todayTripBannerHtml(dateIso, trip);
+    const emptyNote = isTomorrow
+      ? bl('明天还没排具体安排','No specific plan yet for tomorrow')
+      : bl('今天还没排具体安排','No specific plan yet for today');
+    html += items.length
+      ? `<div class="item-list">${items.map(itemRowHtml).join('')}</div>`
+      : `<div class="today-trip-empty-note">${emptyNote}</div>`;
+    return html;
+  }
+  if(items.length){
+    return `<div class="item-list">${items.map(itemRowHtml).join('')}</div>`;
+  }
+  return null; // 交给调用方决定要不要显示"没有安排"的空状态卡
+}
 function renderToday(){
   const pane = document.getElementById('tab-today');
   if(!feedData){ pane.innerHTML = ''; return; }
@@ -678,8 +743,9 @@ function renderToday(){
   const tomorrowItems = all.filter(it => it.date === tomorrowIso);
 
   let html = `<div class="sec-hdr"><span class="sec-title">${bl('今天','Today')}</span></div>`;
-  if(todayItems.length){
-    html += `<div class="item-list">${todayItems.map(itemRowHtml).join('')}</div>`;
+  const todayBody = todaySectionBodyHtml(todayIso, todayItems);
+  if(todayBody !== null){
+    html += todayBody;
   }else{
     const next = findNextItineraryDate(todayIso);
     html += `<div class="empty-card">
@@ -690,9 +756,11 @@ function renderToday(){
           : bl('近期没有排定的行程','No upcoming items scheduled') }</div>
       </div>`;
   }
-  if(tomorrowItems.length){
+  // 明天：有条目、或者明天也在某趟行程区间内，才显示这一段——都没有就整段不出现（跟原行为一致）。
+  const tomorrowBody = todaySectionBodyHtml(tomorrowIso, tomorrowItems, true);
+  if(tomorrowBody !== null){
     html += `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('明天','Tomorrow')}</span></div>`;
-    html += `<div class="item-list">${tomorrowItems.map(itemRowHtml).join('')}</div>`;
+    html += tomorrowBody;
   }
   pane.innerHTML = html;
 }
@@ -1043,7 +1111,7 @@ function adminItemRowHtml(trip, tripIdx, itemIdx){
         <div style="flex:1"><label>${pick('日期','Date')}</label>
           <input type="date" value="${escapeHtml(it.date||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'date',this.value)"></div>
         <div style="flex:1"><label>${pick('时间','Time')}</label>
-          <input type="time" value="${escapeHtml(it.time||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'time',this.value)"></div>
+          <input type="time" id="admin-item-${tripIdx}-${itemIdx}-time" value="${escapeHtml(it.time||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'time',this.value)"></div>
       </div>
       <div id="admin-item-${tripIdx}-${itemIdx}-warn" class="admin-item-warn" style="${outOfRange?'':'display:none'}">
         ⚠️ ${pick('日期不在行程范围内（如果是前后站可以不管）','Date is outside the trip range (fine if this is before/after the main trip)')}
@@ -1063,7 +1131,14 @@ function adminItemRowHtml(trip, tripIdx, itemIdx){
 }
 function adminItemsListHtml(trip, tripIdx){
   const items = trip.items || [];
-  if(!items.length) return `<div class="admin-status">${pick('还没有条目','No items yet')}</div>`;
+  if(!items.length){
+    // 空条目列表不能只留一句灰字——这正是用户反馈「没得填时间」的根源，
+    // 入口必须明显（跟「新增行程」同一量级的按钮），不能靠一个不起眼的小按钮
+    return `<div class="admin-empty-items">
+        <div class="admin-status">${pick('还没有行程条目 —— 加一条来写「几点做什么」','No itinerary items yet — add one to say what happens and when')}</div>
+        <button type="button" class="admin-btn" onclick="adminAddItem(${tripIdx})">+ ${pick('新增条目','Add item')}</button>
+      </div>`;
+  }
   // 按日期+时间排好序显示，但保留原数组下标（data 都用下标寻址，排序不影响读写）
   const order = items.map((_, i) => i).sort((a, b) => {
     const ia = items[a], ib = items[b];
@@ -1101,7 +1176,7 @@ function adminTripFormHtml(trip, idx){
       <div class="admin-item-editor">
         <div class="sec-hdr" style="margin:14px 0 8px">
           <span class="sec-title" style="font-size:13.5px">${pick('行程条目','Itinerary items')}</span>
-          <button type="button" class="admin-btn-sm" onclick="adminAddItem(${idx})">+ ${pick('新增条目','Add item')}</button>
+          <button type="button" class="admin-btn-md" onclick="adminAddItem(${idx})">+ ${pick('新增条目','Add item')}</button>
         </div>
         <div id="admin-trip-${idx}-items">${adminItemsListHtml(trip, idx)}</div>
       </div>
@@ -1145,7 +1220,7 @@ function adminTripsSectionHtml(){
     inner = adminTripsDraft.map((t, idx) =>
       (adminExpandedTrip === idx) ? adminTripFormHtml(t, idx) : adminTripSummaryHtml(t, idx)).join('');
   }
-  return `<div class="admin-block">
+  return `<div class="admin-block" id="admin-trips-section">
       <h3>🧳 ${pick('行程管理','Manage Trips')}</h3>
       <div id="admin-trips-list">${inner}</div>
       <button type="button" class="admin-btn" onclick="adminAddTrip()">+ ${pick('新增行程','Add trip')}</button>
@@ -1158,10 +1233,16 @@ function adminTripsSectionHtml(){
 function adminAddTrip(){
   ensureAdminTripsDraft();
   const id = 'trip-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  adminTripsDraft.push({ id, title:{zh:'',en:''}, start:'', end:'', location:{zh:'',en:''}, guideUrl:'', items:[] });
+  // 新行程自带一条空条目：日期/时间框一进来就看得见，不用他再去找「新增条目」按钮
+  // （2026-08-27 用户反馈「没得填时间」——其实有，只是藏在第三层）。
+  // 完全空着不填也没关系，保存时会被 adminSaveTripsForm() 自动丢弃，不会报错拦人。
+  adminTripsDraft.push({ id, title:{zh:'',en:''}, start:'', end:'', location:{zh:'',en:''}, guideUrl:'',
+    items:[{ date:'', time:'', title:{zh:'',en:''}, note:{zh:'',en:''}, mapUrl:'' }] });
   adminExpandedTrip = adminTripsDraft.length - 1;
   markTripsDirty();
   rerenderAdminTripsSection();
+  const card = document.getElementById('admin-trip-' + adminExpandedTrip + '-items');
+  if(card) card.scrollIntoView({ block: 'center' });
 }
 function adminExpandTrip(idx){
   adminExpandedTrip = (adminExpandedTrip === idx) ? null : idx;
@@ -1183,8 +1264,15 @@ function adminAddItem(tripIdx){
   if(!trip) return;
   if(!trip.items) trip.items = [];
   trip.items.push({ date: trip.start || '', time:'', title:{zh:'',en:''}, note:{zh:'',en:''}, mapUrl:'' });
+  const newIdx = trip.items.length - 1;
   markTripsDirty();
   rerenderAdminTripsSection();
+  // 新增条目后直接滚过去、把焦点放进时间框，让他知道接下来该填什么
+  const timeInput = document.getElementById(`admin-item-${tripIdx}-${newIdx}-time`);
+  if(timeInput){
+    timeInput.scrollIntoView({ block: 'center' });
+    timeInput.focus();
+  }
 }
 function adminDeleteItem(tripIdx, itemIdx){
   if(!confirm(pick('确定删除这条行程条目？','Delete this item?'))) return;
@@ -1194,6 +1282,14 @@ function adminDeleteItem(tripIdx, itemIdx){
 }
 
 /* ============================= 行程表单：校验与保存 ============================= */
+/** 全空条目（标题/时间/备注/地点全没填）——新行程/新条目默认带的那种，用户没动过就
+ * 保存的话，不该拦人报错，直接悄悄丢掉。 */
+function isEmptyTripItem(it){
+  if(!it) return true;
+  const hasTitle = !!((it.title && (it.title.zh||'').trim()) || (it.title && (it.title.en||'').trim()));
+  const hasNote = !!((it.note && (it.note.zh||'').trim()) || (it.note && (it.note.en||'').trim()));
+  return !hasTitle && !hasNote && !(it.time||'').trim() && !(it.mapUrl||'').trim();
+}
 function adminValidateTripsDraft(){
   const errors = [];
   adminTripsDraft.forEach((t, idx) => {
@@ -1220,10 +1316,16 @@ async function adminSaveTripsForm(){
   statusEl.className = 'admin-status';
   statusEl.textContent = pick('保存中…','Saving…');
 
+  // 全空条目（新行程/新条目自带的默认那条，用户没填就点保存）在这里悄悄丢掉，
+  // 不进 adminValidateTripsDraft() 的报错——只影响发给服务器的内容，不改屏幕上
+  // 的工作副本，避免中途报错时把还在编辑的东西也一起改没了。
+  const tripsForSave = adminTripsDraft.map(t => Object.assign({}, t,
+    { items: (t.items || []).filter(it => !isEmptyTripItem(it)) }));
+
   // 「存」和「拉最新」分成两段 try，不许合在一起：合起来的话，存成功但刷新时断网
   // 会被 catch 成「保存失败」——用户以为没存上，回头再存一次。谎报失败比不报还糟。
   try{
-    await bossCall('tripsSave', { trips: adminTripsDraft });
+    await bossCall('tripsSave', { trips: tripsForSave });
   }catch(err){
     statusEl.className = 'admin-status err';
     statusEl.textContent = (err && err.message) || pick('保存失败','Save failed');
@@ -1559,6 +1661,17 @@ function adminCopyAccessCode(){
    直接切到对应分页——「点通知能带到对应分页」。 */
 function applyHashTab(){
   const h = (location.hash || '').replace('#', '');
+  const qAdmin = new URLSearchParams(location.search).get('admin') === '1';
+  if(h === 'admin' || qAdmin){
+    // 记账 app 的「行程管理」入口用 ?admin=1，直接落到管理页并定位到行程表单。
+    // 不是 admin 的人带这个参数进来（例如误点了链接）——安静忽略，留在默认分页，
+    // 绝不能因此暴露任何管理 UI（此时 #tab-admin 仍是空容器，见 ensureAdminUI）。
+    if(role !== 'admin') return;
+    switchTab('admin');
+    const tripsSection = document.getElementById('admin-trips-section');
+    if(tripsSection) tripsSection.scrollIntoView({ block: 'start' });
+    return;
+  }
   if(['trips','bills','inventory','today'].indexOf(h) !== -1) switchTab(h);
 }
 
