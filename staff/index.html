@@ -5227,6 +5227,54 @@ function saveCompanyToken(){
   renderCompanySettings();
 }
 
+// 查老板 App 的访问码：用这台设备已存的公司报账密钥去换，换来的码直接显示、
+// 附复制按钮。密钥没配 / 换不到（401、网络失败）都给人话提示，不报错弹窗。
+async function fetchBossAccessCode(){
+  const statusEl = document.getElementById('boss-code-status');
+  if(!statusEl) return;
+  const token = getCompanyToken();
+  if(!token){
+    statusEl.textContent = '还没配上面的公司报账密钥，配好才能查看老板那串访问码';
+    return;
+  }
+  statusEl.textContent = '查询中…';
+  try{
+    const res = await fetch('https://butler-bot.jarixhew.workers.dev/boss', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action: 'accessCode' })
+    });
+    if(res.status === 401 || res.status === 403){
+      statusEl.textContent = '密钥不对，去上面公司报账那里检查一下';
+      return;
+    }
+    if(!res.ok){
+      statusEl.textContent = '查询失败，稍后再试';
+      return;
+    }
+    let body = null;
+    try{ body = await res.json(); }catch(e){}
+    const code = body && body.code;
+    if(!code){
+      statusEl.textContent = '服务器没有返回访问码';
+      return;
+    }
+    const source = body && body.source;
+    statusEl.innerHTML = `<div style="display:flex;gap:8px;align-items:center">
+        <code style="flex:1;min-width:0;font-size:14px;font-weight:700;word-break:break-all;
+          background:var(--bg);padding:8px;border-radius:8px;user-select:all">${ledEsc(code)}</code>
+        <button class="btn btn-outline btn-sm" onclick="copyBossAccessCode(this)"
+          data-v="${ledEsc(code)}">复制</button>
+      </div>` + (source ? `<div style="margin-top:6px;color:var(--sub)">来源：${ledEsc(source)}</div>` : '');
+  }catch(e){
+    statusEl.textContent = '连不上服务器，稍后再试';
+  }
+}
+async function copyBossAccessCode(btn){
+  const v = btn.getAttribute('data-v') || '';
+  try{ await navigator.clipboard.writeText(v); toast('已复制'); }
+  catch(e){ toast('复制不了，长按上面那串字自己选'); }
+}
+
 function getCompanyCatsCache(){
   try{
     const raw = JSON.parse(localStorage.getItem(COMPANY_CATS_CACHE) || 'null');
