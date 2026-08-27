@@ -3560,6 +3560,39 @@ async function buildStatementPDF(){
   `;
 
   try{
+    // 正表整张渲染成一张长图，A4 单页装不下时要跨页。
+    // 不能像旧版那样固定按页高（ph）切——图有多高、切在第几 pt 全凭巧合，
+    // 正好切在表格某一行中间就会把那一行斩断，看起来像「断层」。
+    // 做法：先在渲染成图之前量出 DOM 里每个「不可切割单元」（表格的每一 <tr>、
+    // 以及信息栏/标题/页脚等区块）各自的底边位置，换算成图片里的 mm 坐标，
+    // 当作「安全切点」；分页时只在安全切点上切，切不满一页就把多画出来的
+    // 那一小段（其实是下一行）用白色盖住，留一条空白，换到下一页再画那一行，
+    // 这样每一页都不会在行中间断开，也不会让同一行在两页里重复出现。
+    function collectAtomicUnits(el, out){
+      Array.from(el.children).forEach(child=>{
+        if(child.tagName === 'TABLE'){
+          // 表格允许在行与行之间分页，所以拆到 <tr> 这一级
+          child.querySelectorAll('tr').forEach(tr=>out.push(tr));
+        } else if(child.querySelector('table')){
+          collectAtomicUnits(child, out);
+        } else {
+          // 不含表格的区块（横幅/信息栏/小标题/页脚等）整块不可切割
+          out.push(child);
+        }
+      });
+    }
+    const pageRootEl = reportEl.querySelector('.st-page');
+    const atomicEls = [];
+    if(pageRootEl) collectAtomicUnits(pageRootEl, atomicEls);
+    // 用同一次 getBoundingClientRect 读数，避免测量基准和内容基准不一致
+    const reportRect = reportEl.getBoundingClientRect();
+    const reportRectTop = reportRect.top;
+    const totalCssH = reportRect.height;
+    const unitBottomsCss = atomicEls
+      .map(el=>el.getBoundingClientRect().bottom - reportRectTop)
+      .filter(v=>v>0 && v<=totalCssH+0.5)
+      .sort((a,b)=>a-b);
+
     const canvas = await html2canvas(reportEl, {scale:2, useCORS:true, logging:false});
     const imgData = canvas.toDataURL('image/jpeg', 0.85);
     const {jsPDF} = window.jspdf;
@@ -3568,15 +3601,61 @@ async function buildStatementPDF(){
     const ph = pdf.internal.pageSize.getHeight();
     const imgW = pw;
     const imgH = (canvas.height * pw) / canvas.width;
-    let y = 0;
-    while(y < imgH){
-      if(y>0) pdf.addPage();
-      pdf.addImage(imgData,'JPEG',0,-y,imgW,imgH);
-      y += ph;
+
+    // css px（渲染前量的）-> mm（图片坐标系）的换算比例。
+    // #pdf-statement 没有 overflow 裁切，html2canvas 是整块从上到下等比截图，
+    // 所以这个比例对整张图统一成立，不受 scale 具体取值影响。
+    const mmPerCssPx = totalCssH > 0 ? imgH / totalCssH : 0;
+    const safeCutSet = Array.from(new Set(
+      unitBottomsCss
+        .map(v => Math.round(v * mmPerCssPx * 100) / 100)
+        .filter(v => v > 0 && v < imgH - 0.01)
+    )).sort((a,b)=>a-b);
+    safeCutSet.push(imgH); // 内容真正的结尾，也是一个安全切点
+
+    let cur = 0;
+    let pageNum = 0;
+    let hadHardCut = false; // 是否遇到「单个不可切割单元本身比一页还高」，只能硬切
+    let guard = 0;
+    while(cur < imgH - 0.01 && guard < 500){
+      guard++;
+      pageNum++;
+      if(pageNum > 1) pdf.addPage();
+      const maxY = Math.min(cur + ph, imgH);
+      // 在安全切点里找「大于 cur、且不超过 maxY」的最大值
+      let nextCut = -1;
+      for(const c of safeCutSet){
+        if(c > cur + 0.01 && c <= maxY + 0.01) nextCut = c;
+        if(c > maxY + 0.01) break;
+      }
+      if(nextCut < 0){
+        // 本页范围内一个安全切点都放不下：说明紧接着的那个不可切割单元
+        // （某一行/某个区块）本身就比一整页还高，没法回避，只能按页高硬切。
+        // 用 maxY 保证每轮 cur 一定推进，不会死循环。
+        nextCut = maxY;
+        hadHardCut = true;
+      }
+      pdf.addImage(imgData,'JPEG',0,-cur,imgW,imgH);
+      if(nextCut < maxY - 0.01){
+        // 提前换页是为了不切断下一行：把本页多画出来的那一段盖成白色，
+        // 避免它在本页底部和下一页顶部重复出现
+        pdf.setFillColor(255,255,255);
+        pdf.rect(0, nextCut - cur, imgW, ph - (nextCut - cur), 'F');
+      }
+      cur = nextCut;
+    }
+    if(hadHardCut){
+      console.warn('账户明细正表分页：存在单个不可切割行/区块高度超过整页，该处已按页高硬切，无法完全避免断层');
     }
 
     // 附件页：每张单据一页，深蓝三段式标题条（沿用 canvas 画中文再嵌图的技巧）
-    let pageIdx = 2;
+    // ⚠️ 页码接着正表实际用掉的页数往下数，**不能写死从 2 开始**：正表以前恰好两页，
+    // 写死 2 能蒙对（其实也已经差一页）；改成按行分页之后正表可能 1 页也可能 5 页，
+    // 写死就会让附件页脚印的「第 N 页」跟实际页码对不上——账单上页码对不上会让人
+    // 怀疑缺页。用上面分页循环自己数出来的 pageNum，不依赖 jsPDF 的内部 API
+    // （2026-08-27 试过 pdf.internal.getNumberOfPages()，这个版本上会让整段抛错、
+    // 连 PDF 都生不出来，被 check-expense-company 的 27a 当场抓住）。
+    let pageIdx = pageNum + 1;
     for(const t of withAttachments){
       let blob = await getAttachmentBlob(t.attachmentId);
       if(!blob) blob = await tryFetchRemoteAttachment(t.attachmentId);
