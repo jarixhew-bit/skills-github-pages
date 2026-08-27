@@ -235,6 +235,13 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   align-items:center;justify-content:center;font-size:16px}
 .setting-name{font-size:14px;font-weight:500}
 .setting-sub{font-size:12px;color:var(--sub);margin-top:1px}
+/* 可点的设置行（如「老板 App」那组卡片）：整块可点 + 按下反馈，圆角方块图标
+   区分于普通圆形 icon，暗示"这是个入口"而不是一条普通设置项 */
+.setting-item-link{cursor:pointer;text-decoration:none;color:inherit;
+  transition:transform .12s,background-color .12s}
+.setting-item-link:active{transform:scale(.98);background:var(--p2)}
+.setting-item-chevron{font-size:20px;color:var(--sub);line-height:1;margin-left:8px;flex-shrink:0}
+.setting-icon-sq{border-radius:10px}
 .del-btn{background:#FDECEA;border:none;color:var(--exp);padding:6px 10px;
   border-radius:7px;cursor:pointer;font-size:12px;font-weight:600}
 

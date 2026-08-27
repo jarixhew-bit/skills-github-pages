@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="老板">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -92,17 +93,29 @@ body:not(.lang-en) .en{display:none !important}
 /* ===== 行程卡片 ===== */
 .trip-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
   margin-bottom:14px;overflow:hidden}
-.trip-card-hd{display:flex;align-items:center;justify-content:space-between;
-  padding:16px 16px 14px;cursor:pointer}
-.trip-range{font-size:16px;font-weight:700}
-.trip-loc{font-size:13.5px;color:var(--sub);margin-top:4px}
-.trip-arrow{color:var(--sub);font-size:14px;transition:.2s;flex:none;margin-left:10px}
+.trip-card-hd{display:flex;align-items:flex-start;justify-content:space-between;
+  padding:16px 16px 10px;cursor:pointer}
+.trip-title{font-size:17.5px;font-weight:800;line-height:1.35}
+.trip-range{font-size:13.5px;color:var(--sub);font-weight:600;margin-top:4px}
+.trip-loc{font-size:13px;color:var(--sub);margin-top:2px}
+.trip-arrow{color:var(--sub);font-size:14px;transition:.2s;flex:none;margin-left:10px;margin-top:2px}
 .trip-card.expanded .trip-arrow{transform:rotate(180deg)}
 .trip-guide-btn{display:block;margin:0 16px 14px;padding:11px;text-align:center;
   border-radius:10px;background:var(--p);color:#fff;text-decoration:none;
   font-size:14px;font-weight:700}
+/* 收起态预览：前几条条目的时间+标题，一眼看出「这趟去哪、做什么」 */
+.trip-preview{padding:0 16px 14px;cursor:pointer}
+.trip-card.expanded .trip-preview{display:none}
+.trip-preview-empty{font-size:13.5px;color:var(--sub)}
+.trip-preview-row{display:flex;gap:10px;padding:3px 0;font-size:13.5px;line-height:1.4}
+.trip-preview-time{flex:none;font-weight:700;color:var(--p);min-width:44px}
+.trip-preview-title{flex:1;min-width:0;color:var(--text)}
+.trip-preview-more{margin-top:4px;font-size:12.5px;color:var(--p);font-weight:600}
+/* 展开态：全部条目，按日期分组，组间插入日期分隔条 */
 .trip-items{display:none;border-top:1px solid var(--border)}
 .trip-card.expanded .trip-items{display:block}
+.trip-items-empty{padding:16px;font-size:13.5px;color:var(--sub)}
+.trip-day-hdr{padding:9px 16px 5px;font-size:12px;font-weight:700;color:var(--sub);background:#F8FAFC}
 
 .past-toggle{text-align:center;padding:12px;color:var(--sub);font-size:13.5px;
   font-weight:600;cursor:pointer}
@@ -144,8 +157,12 @@ body:not(.lang-en) .en{display:none !important}
 .inv-row:last-child{border-bottom:none}
 .inv-name{flex:1;font-size:14.5px;font-weight:600;min-width:0}
 .inv-qty{flex:none;font-size:13.5px;color:var(--p);font-weight:700}
-.inv-loc{flex:none;font-size:12px;color:var(--sub);max-width:110px;text-align:right;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 类别标题右边的合计件数 */
+.inv-cat-total{font-size:12.5px;color:var(--sub);font-weight:600}
+/* 类别下面按地点分组的小标题 + 该组合计 */
+.inv-loc-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px 6px;font-size:12.5px;font-weight:700;color:var(--sub)}
+.inv-loc-total{color:var(--p);font-weight:700}
 
 /* ===== 管理面板（只在 role=admin 时由 JS 注入） ===== */
 .admin-block{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
@@ -431,6 +448,17 @@ function fmtDateTimeBoth(iso){
   const en = d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
   return { zh, en };
 }
+/** 行程条目按日期分组时的分隔条文案：「9月12日 周五」/「Fri, Sep 12」。 */
+const WEEKDAYS_ZH = ['周日','周一','周二','周三','周四','周五','周六'];
+const WEEKDAYS_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function fmtDateWeekdayBoth(iso){
+  const parts = String(iso || '').split('-').map(Number);
+  const y = parts[0], m = parts[1], d = parts[2];
+  if(!y || !m || !d) return { zh:'', en:'' };
+  const dt = new Date(y, m - 1, d);
+  const wd = dt.getDay();
+  return { zh:`${m}月${d}日 ${WEEKDAYS_ZH[wd]}`, en:`${WEEKDAYS_EN[wd]}, ${MONTHS_EN[m-1]} ${d}` };
+}
 
 /* ============================= 与后端通信 ============================= */
 async function bossCall(action, extra){
@@ -670,33 +698,66 @@ function renderToday(){
 }
 
 /* ============================= 行程 ============================= */
-function tripItemsHtml(trip){
-  const items = (trip.items || []).slice().sort((a,b) => {
+/** 行程条目按日期＋时间排好序（收起态预览、展开态全列表共用同一份排序）。 */
+function sortedTripItems(trip){
+  return (trip.items || []).slice().sort((a,b) => {
     if(a.date !== b.date) return (a.date||'').localeCompare(b.date||'');
     return (a.time||'').localeCompare(b.time||'');
   });
-  return items.map(it => {
-    const hasNote = it.note && ((it.note.zh||'').trim() || (it.note.en||'').trim());
-    return `<div class="item-row">
-        <div class="item-time">${escapeHtml((it.date||'').slice(5).replace('-','/'))}<br>${escapeHtml(it.time||'')}</div>
-        <div class="item-body">
-          <div class="item-title">${blObj(it.title)}</div>
-          ${ hasNote ? `<div class="item-note">${blObj(it.note)}</div>` : '' }
-        </div>
-        ${ it.mapUrl ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">🗺</a>` : '' }
-      </div>`;
-  }).join('');
+}
+/** 收起态预览：前 3 条「时间 + 标题」，多的显示「还有 N 项」；没有条目给一句提示，不留空白。 */
+function tripPreviewHtml(trip){
+  const items = sortedTripItems(trip);
+  if(!items.length){
+    return `<div class="trip-preview-empty">${bl('暂无详细安排','No detailed itinerary yet')}</div>`;
+  }
+  const LIMIT = 3;
+  const shown = items.slice(0, LIMIT);
+  let html = shown.map(it => `
+      <div class="trip-preview-row">
+        <span class="trip-preview-time">${escapeHtml(it.time || '')}</span>
+        <span class="trip-preview-title">${blObj(it.title)}</span>
+      </div>`).join('');
+  const more = items.length - shown.length;
+  if(more > 0){
+    html += `<div class="trip-preview-more">${bl(`还有 ${more} 项 ▾`, `${more} more ▾`)}</div>`;
+  }
+  return html;
+}
+/** 展开态：全部条目，按日期分组，组间插入「9月12日 周五」这样的分隔条，
+ *  不让不同天的条目糊成一片。单条渲染沿用「今日」分页的 itemRowHtml()，风格保持一致。 */
+function tripItemsHtml(trip){
+  const items = sortedTripItems(trip);
+  if(!items.length){
+    return `<div class="trip-items-empty">${bl('暂无详细安排','No detailed itinerary yet')}</div>`;
+  }
+  let html = '';
+  let lastDate = null;
+  items.forEach(it => {
+    if(it.date !== lastDate){
+      lastDate = it.date;
+      const dw = fmtDateWeekdayBoth(it.date);
+      const label = (dw.zh || dw.en) ? bl(dw.zh, dw.en) : bl('日期待定','Date TBD');
+      html += `<div class="trip-day-hdr">${label}</div>`;
+    }
+    html += itemRowHtml(it);
+  });
+  return html;
 }
 function tripCardHtml(trip){
   const range = fmtRangeBoth(trip.start, trip.end);
+  const titleHtml = blObj(trip.title) || bl('未命名行程','Untitled trip');
+  const hasLoc = trip.location && ((trip.location.zh||'').trim() || (trip.location.en||'').trim());
   return `<div class="trip-card">
       <div class="trip-card-hd" onclick="this.parentElement.classList.toggle('expanded')">
-        <div>
+        <div style="min-width:0">
+          <div class="trip-title">${titleHtml}</div>
           <div class="trip-range">${bl(range.zh, range.en)}</div>
-          <div class="trip-loc">${blObj(trip.location)}</div>
+          ${ hasLoc ? `<div class="trip-loc">${blObj(trip.location)}</div>` : '' }
         </div>
         <div class="trip-arrow" aria-hidden="true">▾</div>
       </div>
+      <div class="trip-preview" onclick="this.parentElement.classList.toggle('expanded')">${tripPreviewHtml(trip)}</div>
       ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📖 ${bl('打开手册','Open Guide')}</a>` : '' }
       <div class="trip-items">${tripItemsHtml(trip)}</div>
     </div>`;
@@ -786,39 +847,86 @@ function openBillNewTab(){
 }
 
 /* ============================= 库存（只读） ============================= */
+/* 旧接口固定三个类别（酒/茶/虫草）的兜底——只在 feed 还没带 inventory.categories
+   时才用（例如本机缓存着旧版数据）。后端已改成 inventory.categories 动态给类别，
+   新类别（如「氢水」）不需要前端改代码就能显示，见下面 renderInventory()。 */
 const INV_GROUPS = [
   { key:'wine', icon:'🍷', zh:'酒', en:'Wine' },
   { key:'tea', icon:'🍵', zh:'茶', en:'Tea' },
   { key:'herb', icon:'🌿', zh:'虫草', en:'Herb' }
 ];
+// 动态类别没有专属图标（后端只给 key/label），已知的老类别沿用原图标，其余给个通用箱子。
+// 类别图标：认识的给专属图标，不认识的落到 📦。类别本身是后端动态给的，
+// 这张表只管好看，漏了一个不会让类别消失——这跟之前写死类别名单是两回事。
+const INV_ICON_MAP = { wine:'🍷', tea:'🍵', herb:'🌿', hydrogen:'💧' };
+function invCategoryIcon(key){ return INV_ICON_MAP[key] || '📦'; }
 function invRowHtml(it){
   const qty = (it.count != null) ? it.count : (it.qty != null ? it.qty : (it.quantity != null ? it.quantity : '-'));
   return `<div class="inv-row">
       <div class="inv-name">${escapeHtml(it.name || '')}</div>
       <div class="inv-qty">${escapeHtml(String(qty))} ${escapeHtml(it.unit || '')}</div>
-      <div class="inv-loc">${escapeHtml(it.location || '')}</div>
     </div>`;
+}
+/** 一组品项的合计件数（对 count 求和，非数字当 0，不让 NaN 漏出去）。 */
+function sumInvCount(list){
+  return (list || []).reduce((s, it) => {
+    const c = (it.count != null) ? it.count : (it.qty != null ? it.qty : (it.quantity != null ? it.quantity : 0));
+    return s + (Number(c) || 0);
+  }, 0);
+}
+/** 按 location 字段分组：有名字的地点按第一次出现的顺序排在前面，
+ *  location 为空的统一归到「未标注地点」，永远排最后。 */
+function invLocationGroups(items){
+  const map = new Map();
+  const order = [];
+  (items || []).forEach(it => {
+    const loc = (it.location || '').trim();
+    if(!map.has(loc)){ map.set(loc, []); order.push(loc); }
+    map.get(loc).push(it);
+  });
+  const groups = order.filter(l => l !== '').map(l => ({ loc:l, items: map.get(l) }));
+  if(map.has('')) groups.push({ loc:'', items: map.get('') });
+  return groups;
+}
+/** 一个类别的完整渲染：标题＋合计，下面按地点分组，每组也有小标题＋合计。 */
+function invCategoryBlockHtml(labelHtml, icon, items){
+  let html = `<div class="sec-hdr" style="margin-top:16px">
+      <span class="sec-title">${icon} ${labelHtml}</span>
+      <span class="inv-cat-total">${bl(`合计 ${sumInvCount(items)}`, `Total ${sumInvCount(items)}`)}</span>
+    </div>`;
+  if(!items.length){
+    html += `<div class="empty-card small">${bl('暂无记录','No items')}</div>`;
+    return html;
+  }
+  invLocationGroups(items).forEach(g => {
+    const locLabel = g.loc ? escapeHtml(g.loc) : pick('未标注地点','No location noted');
+    html += `<div class="inv-loc-hdr"><span>${locLabel}</span><span class="inv-loc-total">${sumInvCount(g.items)}</span></div>`;
+    html += `<div class="inv-list">${g.items.map(invRowHtml).join('')}</div>`;
+  });
+  return html;
 }
 function renderInventory(){
   const pane = document.getElementById('tab-inventory');
   if(!feedData){ pane.innerHTML = ''; return; }
-  if(!feedData.inventory){
+  const inv = feedData.inventory;
+  if(!inv){
     pane.innerHTML = `<div class="empty-card"><div class="empty-icon">📦</div>
       <div>${bl('库存暂时无法读取','Inventory unavailable right now')}</div></div>`;
     return;
   }
   let html = '';
-  INV_GROUPS.forEach(g => {
-    const list = feedData.inventory[g.key] || [];
-    html += `<div class="sec-hdr" style="margin-top:16px">
-        <span class="sec-title">${g.icon} ${bl(g.zh, g.en)}</span>
-      </div>`;
-    if(!list.length){
-      html += `<div class="empty-card small">${bl('暂无记录','No items')}</div>`;
-    }else{
-      html += `<div class="inv-list">${list.map(invRowHtml).join('')}</div>`;
-    }
-  });
+  if(Array.isArray(inv.categories) && inv.categories.length){
+    // 优先用后端动态给的类别列表——以后加类别（比如氢水）前端不用改代码。
+    // label 目前后端只给一种语言的文本，中英两侧暂时显示同一段文字。
+    inv.categories.forEach(cat => {
+      html += invCategoryBlockHtml(bl(cat.label, cat.label), invCategoryIcon(cat.key), cat.items || []);
+    });
+  }else{
+    // 兜底：本机缓存的是还没带 categories 字段的旧版 feed。
+    INV_GROUPS.forEach(g => {
+      html += invCategoryBlockHtml(bl(g.zh, g.en), g.icon, inv[g.key] || []);
+    });
+  }
   pane.innerHTML = html;
 }
 

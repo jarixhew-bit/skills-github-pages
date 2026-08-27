@@ -225,6 +225,13 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   align-items:center;justify-content:center;font-size:16px}
 .setting-name{font-size:14px;font-weight:500}
 .setting-sub{font-size:12px;color:var(--sub);margin-top:1px}
+/* 可点的设置行（如「老板 App」那组卡片）：整块可点 + 按下反馈，圆角方块图标
+   区分于普通圆形 icon，暗示"这是个入口"而不是一条普通设置项 */
+.setting-item-link{cursor:pointer;text-decoration:none;color:inherit;
+  transition:transform .12s,background-color .12s}
+.setting-item-link:active{transform:scale(.98);background:var(--p2)}
+.setting-item-chevron{font-size:20px;color:var(--sub);line-height:1;margin-left:8px;flex-shrink:0}
+.setting-icon-sq{border-radius:10px}
 .del-btn{background:#FDECEA;border:none;color:var(--exp);padding:6px 10px;
   border-radius:7px;cursor:pointer;font-size:12px;font-weight:600}
 
@@ -688,18 +695,6 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       </div>
       <div id="import-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
     </div>
-    <!-- 老板的访问码（2026-08-27 加）：老板 App 要输的访问码其实就是这把公司报账
-         密钥换来的一次性显示码，直接在这里给用户看，不用再让他自己去凑。
-         不主动打网络，点了按钮才拉，省得每次开设置页都请求一次。 -->
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-      <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
-        把这串和安装说明网址发给老板：<a
-          href="https://jarixhew-bit.github.io/skills-github-pages/boss/install.html"
-          target="_blank" rel="noopener">boss/install.html</a>
-      </div>
-      <button class="btn btn-outline btn-sm" onclick="fetchBossAccessCode()">查看老板访问码</button>
-      <div id="boss-code-status" style="font-size:12px;color:var(--sub);margin-top:8px"></div>
-    </div>
   </div>
   <div class="setting-section">
     <div class="setting-title">同事投递箱</div>
@@ -715,16 +710,45 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
     </div>
     <div id="inbox-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
   </div>
-  <!-- 行程管理入口（2026-08-27 加）：只是链接到老板 App 的管理面板，行程编辑功能本身
-       在 boss/index.html 里，这里不做。 -->
+  <!-- 「老板 App」这一组（2026-08-27 加，2026-08-27 改成卡片＋归组）：
+       两件事是同一件事的两面——行程管理是去改老板看到的内容，访问码是把钥匙给老板，
+       所以放在同一个 setting-title 下面，视觉上归成一组。
+       行程管理只是链接到老板 App 的管理面板，行程编辑功能本身在 boss/index.html 里，
+       这里不做。老板的访问码是拿这把公司报账密钥换来的一次性显示码，点了才拉，
+       不主动打网络，省得每次开设置页都请求一次；结果（含复制按钮）显示在
+       #boss-code-status 里，逻辑见 fetchBossAccessCode()，一个字没动。 -->
   <div class="setting-section">
     <div class="setting-title">老板 App</div>
-    <a class="btn btn-outline btn-sm"
-       style="display:inline-block;text-decoration:none;text-align:center"
+    <a class="setting-item setting-item-link"
        href="https://jarixhew-bit.github.io/skills-github-pages/boss/?admin=1"
-       target="_blank" rel="noopener">🧳 行程管理</a>
-    <div style="font-size:12px;color:var(--sub);margin-top:6px">
-      用你的公司钥匙进去，可以改老板看到的行程
+       target="_blank" rel="noopener">
+      <div class="setting-item-left">
+        <div class="setting-icon setting-icon-sq" style="background:var(--p2);color:var(--p);font-size:18px">🧳</div>
+        <div>
+          <div class="setting-name">行程管理</div>
+          <div class="setting-sub">编辑老板看到的行程安排</div>
+        </div>
+      </div>
+      <div class="setting-item-chevron">›</div>
+    </a>
+    <div class="setting-item setting-item-link" role="button" tabindex="0"
+         onclick="fetchBossAccessCode()"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fetchBossAccessCode()}"
+         aria-label="查看老板访问码">
+      <div class="setting-item-left">
+        <div class="setting-icon setting-icon-sq" style="background:var(--p2);color:var(--p);font-size:18px">🔑</div>
+        <div>
+          <div class="setting-name">老板的访问码</div>
+          <div class="setting-sub">拿这个和安装说明发给老板</div>
+        </div>
+      </div>
+      <div class="setting-item-chevron">›</div>
+    </div>
+    <div id="boss-code-status" style="font-size:12px;color:var(--sub);margin:2px 4px 8px"></div>
+    <div style="font-size:12px;color:var(--sub);margin:0 4px">
+      安装说明网址：<a
+        href="https://jarixhew-bit.github.io/skills-github-pages/boss/install.html"
+        target="_blank" rel="noopener">boss/install.html</a>
     </div>
   </div>
   <div class="setting-section">
