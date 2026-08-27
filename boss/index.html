@@ -155,7 +155,16 @@ body:not(.lang-en) .en{display:none !important}
 .overlay-body{flex:1;background:#525659;position:relative}
 .overlay-body iframe{width:100%;height:100%;border:none;background:#fff}
 .overlay-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  color:#fff;font-size:14px}
+  color:#fff;font-size:14px;text-align:center;padding:0 20px}
+/* 账单用 PDF.js 自己画成 canvas 的滚动容器（原因见 openBill()/renderBillPdf() 顶部的
+   长注释：iframe 直接塞 PDF 在 Android Chrome 上根本不会渲染）。每页一个占位块，
+   宽高比先用 A4 竖版估一个，真正 canvas 画出来后会被替换掉，允许有一点点跳动。 */
+.bill-pages{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:10px 0;box-sizing:border-box;display:none}
+.bill-page-holder{width:calc(100% - 20px);max-width:700px;margin:0 auto 10px;background:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.35);aspect-ratio:1/1.414;display:flex;align-items:center;
+  justify-content:center;color:#8a8a8a;font-size:12.5px;overflow:hidden}
+.bill-page-holder canvas{display:block;width:100%;height:auto}
 .overlay-foot{flex:none;padding:12px 16px;background:#fff}
 .overlay-foot button{width:100%;padding:13px;border:none;border-radius:10px;
   background:var(--p);color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit}
@@ -333,7 +342,11 @@ body:not(.lang-en) .en{display:none !important}
     <button class="overlay-close" onclick="closeBillOverlay()" aria-label="关闭 Close">✕</button>
   </div>
   <div class="overlay-body">
-    <iframe id="billFrame" title="PDF"></iframe>
+    <!-- iframe 保留但不再靠它显示 PDF 内容（一直隐藏）：Android Chrome 没有内建 PDF
+         阅读器，塞进 iframe 的 PDF 根本不会被渲染，这正是"账单打开是一排乱码"的根因，
+         详见 renderBillPdf() 顶部注释。这里只是把 blob URL 挂着当"新分页打开"的退路。 -->
+    <iframe id="billFrame" title="PDF" style="display:none" aria-hidden="true"></iframe>
+    <div class="bill-pages" id="billPages"></div>
     <div class="overlay-status" id="billStatus"></div>
   </div>
   <div class="overlay-foot">
@@ -885,28 +898,172 @@ function renderBills(){
         <div class="bill-arrow" aria-hidden="true">›</div>
       </div>`).join('')}</div>`;
 }
-function base64ToBlobUrl(b64, mime){
+function base64ToUint8Array(b64){
   const bin = atob(b64 || '');
   const arr = new Uint8Array(bin.length);
   for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return URL.createObjectURL(new Blob([arr], { type: mime || 'application/pdf' }));
+  return arr;
 }
+function base64ToBlobUrl(b64, mime){
+  return URL.createObjectURL(new Blob([base64ToUint8Array(b64)], { type: mime || 'application/pdf' }));
+}
+
+/* ---------------------------------------------------------------------------
+ * 账单 PDF 渲染（PDF.js，首次点开账单才懒加载，不拖慢首屏）。
+ *
+ * 【踩过的坑，别改回去】以前是把账单的 blob URL 直接塞进 <iframe>，指望浏览器自己
+ * 把 PDF 渲染出来——这在 iOS Safari 上凑合能用（虽然只显示第一页，所以才有下面
+ * openBillNewTab() 这条退路）。但 **Android Chrome 没有内建 PDF 阅读器**，iframe 里的
+ * PDF 根本不会被渲染，某些版本还会把 PDF 的原始字节当纯文本画出来——这就是老板反馈
+ * "账单打开是一排乱码"的真正原因。结论：不能依赖"浏览器会不会读 PDF"这件事，
+ * 必须自己解码、自己画。于是这里改成用 PDF.js 把每一页解码成 canvas，纵向排列在
+ * 弹层里可以滚动看——这样在任何平台上看到的都是我们自己画出来的真实画面，不再依赖
+ * 系统有没有装 PDF 阅读器。iframe 元素保留，但只用来当"新分页打开"按钮的数据来源，
+ * 一直是隐藏的。
+ * --------------------------------------------------------------------------- */
+const PDFJS_VERSION = '3.11.174'; // Mozilla 从 v4 起 pdf.js 只发 ESM(.mjs)，不再有挂 window 全局
+                                   // 的经典 <script> 版本；3.11.174 是最后一个经典构建，
+                                   // 跟本页/expense-tracker.html 现有的 <script src=cdnjs> 用法一致
+const PDFJS_LIB_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
+const PDFJS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+const BILL_EAGER_PAGES = 2; // 打开账单立刻画的页数，不等滚动——第一眼就该看到内容
+let _pdfjsLoadPromise = null;
+let currentPdfDoc = null;       // 当前打开的 PDFDocumentProxy，关闭弹层要 destroy() 释放
+let currentPdfPageObserver = null; // 懒渲染用的 IntersectionObserver，关闭弹层要 disconnect()
+
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if(_pdfjsLoadPromise) return _pdfjsLoadPromise;
+  _pdfjsLoadPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = PDFJS_LIB_URL;
+    s.onload = () => {
+      if(!window.pdfjsLib){ reject(new Error('pdfjsLib init failed')); return; }
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+      resolve(window.pdfjsLib);
+    };
+    s.onerror = () => reject(new Error('PDF.js CDN load failed'));
+    document.head.appendChild(s);
+  });
+  // 加载失败的话别把失败结果缓存死——用户关掉弹层再点一次账单，应该允许重新尝试
+  // （比如网络暂时不通，下次可能就好了），不能让页面此后永远认定"PDF.js 加载不了"
+  _pdfjsLoadPromise.catch(() => { _pdfjsLoadPromise = null; });
+  return _pdfjsLoadPromise;
+}
+
+/** 把某一页画进它的占位 div：按容器实际宽度自适应缩放，devicePixelRatio 封顶 2x
+ *  （账单可能十几页，每页都按手机真实 dpr 3x 画高清位图很容易把内存占爆，2x 在手机
+ *  屏幕上已经够清晰）。画完调 page.cleanup() 释放这一页在 PDF.js 内部的缓存。 */
+async function renderBillPage(pdfDoc, pageNum, dpr){
+  const holder = document.querySelector(`#billPages .bill-page-holder[data-page-index="${pageNum}"]`);
+  if(!holder || holder.dataset.rendered === '1') return;
+  holder.dataset.rendered = '1';
+  try{
+    const page = await pdfDoc.getPage(pageNum);
+    const containerWidth = holder.clientWidth || 320;
+    const viewport1 = page.getViewport({ scale: 1 });
+    const renderScale = (containerWidth / viewport1.width) * dpr;
+    const viewport = page.getViewport({ scale: renderScale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(viewport.width));
+    canvas.height = Math.max(1, Math.round(viewport.height));
+    holder.style.aspectRatio = `${viewport1.width} / ${viewport1.height}`;
+    holder.textContent = '';
+    holder.appendChild(canvas);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    page.cleanup();
+  }catch(err){
+    holder.textContent = pick('这一页画不出来','Could not render this page');
+  }
+}
+
+/** 把整份账单画出来：先给每页建占位块（滚动条长度立刻对），前 BILL_EAGER_PAGES 页
+ *  立刻画，其余用 IntersectionObserver 滚到附近才画——十几页的账单在手机上不会
+ *  一次性卡死。bytes 是解码好的 PDF 字节（Uint8Array），不依赖 blob URL 的内部网络
+ *  请求，直接把数据交给 PDF.js，更稳。 */
+async function renderBillPdf(bytes){
+  const pagesEl = document.getElementById('billPages');
+  const statusEl = document.getElementById('billStatus');
+  pagesEl.innerHTML = '';
+  pagesEl.style.display = 'none';
+  statusEl.textContent = pick('正在加载 PDF 组件…','Loading PDF viewer…');
+
+  let pdfjsLib;
+  try{
+    pdfjsLib = await loadPdfJs();
+  }catch(err){
+    // CDN 加载失败：不能白屏、不能卡在"加载中"——给人话提示，
+    // openBill() 已经把 iframe.src 设成 blob URL 了，"新分页打开"按钮仍然可用
+    statusEl.textContent = pick(
+      '预览组件加载失败（可能是网络问题），可以点下面「在新分页打开」查看',
+      'Preview failed to load (possibly a network issue) — try "Open in a new tab" below');
+    return;
+  }
+
+  try{
+    const pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
+    if(currentPdfDoc) currentPdfDoc.destroy();
+    currentPdfDoc = pdfDoc;
+    const numPages = pdfDoc.numPages;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    if(currentPdfPageObserver) currentPdfPageObserver.disconnect();
+    currentPdfPageObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if(!entry.isIntersecting) return;
+        const idx = Number(entry.target.dataset.pageIndex);
+        renderBillPage(pdfDoc, idx, dpr);
+        currentPdfPageObserver.unobserve(entry.target);
+      });
+    }, { root: pagesEl, rootMargin: '600px 0px' }); // 提前一屏多触发，滚动时不会先看到空白
+
+    for(let i = 1; i <= numPages; i++){
+      const holder = document.createElement('div');
+      holder.className = 'bill-page-holder';
+      holder.dataset.pageIndex = String(i);
+      holder.textContent = pick(`第 ${i} 页`, `Page ${i}`);
+      pagesEl.appendChild(holder);
+    }
+    pagesEl.style.display = 'block';
+
+    for(let i = 1; i <= Math.min(BILL_EAGER_PAGES, numPages); i++){
+      statusEl.textContent = pick(`正在渲染第 ${i} / ${numPages} 页…`, `Rendering page ${i} of ${numPages}…`);
+      await renderBillPage(pdfDoc, i, dpr);
+    }
+    statusEl.textContent = '';
+    // 其余页交给 observer 懒渲染
+    pagesEl.querySelectorAll('.bill-page-holder').forEach(h => {
+      if(h.dataset.rendered !== '1') currentPdfPageObserver.observe(h);
+    });
+  }catch(err){
+    statusEl.textContent = pick(
+      '这份 PDF 解析失败，可以点下面「在新分页打开」查看',
+      'Could not parse this PDF — try "Open in a new tab" below');
+  }
+}
+
 async function openBill(id){
   const overlay = document.getElementById('billOverlay');
   const frame = document.getElementById('billFrame');
   const openNewBtn = document.getElementById('billOpenNew');
   const statusEl = document.getElementById('billStatus');
+  const pagesEl = document.getElementById('billPages');
   overlay.classList.add('open');
   frame.src = 'about:blank';
+  pagesEl.innerHTML = '';
+  pagesEl.style.display = 'none';
   openNewBtn.style.display = 'none';
   statusEl.textContent = pick('加载中…','Loading…');
   try{
     const res = await bossCall('bill', { id });
     if(currentBillBlobUrl){ URL.revokeObjectURL(currentBillBlobUrl); currentBillBlobUrl = null; }
-    currentBillBlobUrl = base64ToBlobUrl(res.contentBase64, res.mime || 'application/pdf');
+    const bytes = base64ToUint8Array(res.contentBase64);
+    currentBillBlobUrl = URL.createObjectURL(new Blob([bytes], { type: res.mime || 'application/pdf' }));
+    // 这行不是为了给浏览器渲染 PDF（见上面大段注释），只是留一条系统级退路：
+    // "新分页打开"按钮靠这个 blob URL 把 PDF 交给系统/浏览器自己的查看器或下载
     frame.src = currentBillBlobUrl;
     openNewBtn.style.display = 'block';
-    statusEl.textContent = '';
+    await renderBillPdf(bytes);
   }catch(err){
     statusEl.textContent = (err && err.message) || pick('打开失败','Failed to open');
   }
@@ -914,6 +1071,9 @@ async function openBill(id){
 function closeBillOverlay(){
   document.getElementById('billOverlay').classList.remove('open');
   document.getElementById('billFrame').src = 'about:blank';
+  if(currentPdfPageObserver){ currentPdfPageObserver.disconnect(); currentPdfPageObserver = null; }
+  if(currentPdfDoc){ currentPdfDoc.destroy(); currentPdfDoc = null; }
+  document.getElementById('billPages').innerHTML = ''; // 清空 canvas 释放内存
   if(currentBillBlobUrl){ URL.revokeObjectURL(currentBillBlobUrl); currentBillBlobUrl = null; }
 }
 function openBillNewTab(){
