@@ -1050,17 +1050,33 @@ async function adminSaveTripsForm(){
   }
   statusEl.className = 'admin-status';
   statusEl.textContent = pick('保存中…','Saving…');
+
+  // 「存」和「拉最新」分成两段 try，不许合在一起：合起来的话，存成功但刷新时断网
+  // 会被 catch 成「保存失败」——用户以为没存上，回头再存一次。谎报失败比不报还糟。
   try{
     await bossCall('tripsSave', { trips: adminTripsDraft });
-    statusEl.className = 'admin-status ok';
-    statusEl.textContent = pick('已保存','Saved');
-    adminTripsDirty = false;
-    adminTripsDraft = null;   // 用服务器最新数据重新建立工作副本
-    adminExpandedTrip = null;
-    await refreshFeed();
   }catch(err){
     statusEl.className = 'admin-status err';
     statusEl.textContent = (err && err.message) || pick('保存失败','Save failed');
+    return;
+  }
+
+  adminTripsDirty = false;
+  adminTripsDraft = null;   // 用服务器最新数据重新建立工作副本
+  adminExpandedTrip = null;
+  try{
+    await refreshFeed();
+  }catch(e){
+    // 已经存进服务器了，只是没拉回最新的。不影响正确性，下次进这一页自然会拉到。
+  }
+
+  // refreshFeed() 会用最新数据整块重建 #tab-admin，上面那个 statusEl 已经被换掉了，
+  // 所以确认消息必须在重建之后重新写一次。用户是非工程师，点完保存什么反馈都没有的话，
+  // 他会以为没存上而反复点。
+  const afterEl = document.getElementById('admin-trips-form-status');
+  if(afterEl){
+    afterEl.className = 'admin-status ok';
+    afterEl.textContent = pick('已保存','Saved');
   }
 }
 

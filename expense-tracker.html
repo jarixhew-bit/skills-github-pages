@@ -3701,17 +3701,17 @@ async function sendStatementToBoss(){
     }
     if(res.status === 401 || res.status === 403){
       const msg = '发给老板失败：公司钥匙不对，去设置里检查一下\nPDF 已下载到本机，可以手动发';
-      toast(msg); setStatus('❌ 公司钥匙不对，去设置里检查一下（PDF 已下载到本机）');
+      toast(msg); setStatus('❌ 公司钥匙不对，去设置里检查一下（PDF 已下载到本机，可以手动发）');
       return;
     }
     let serverMsg = '';
     try{ const body = await res.json(); serverMsg = (body && body.message) || ''; }catch(e){}
     const msg = `发给老板失败${serverMsg?'：'+serverMsg:''}\nPDF 已下载到本机，可以手动发`;
-    toast(msg); setStatus(`❌ 发送失败${serverMsg?'：'+serverMsg:''}（PDF 已下载到本机）`);
+    toast(msg); setStatus(`❌ 发送失败${serverMsg?'：'+serverMsg:''}（PDF 已下载到本机，可以手动发）`);
   }catch(e){
     console.error(e);
     const msg = '发给老板失败：网络连不上\nPDF 已下载到本机，可以手动发';
-    toast(msg); setStatus('❌ 网络连不上，稍后再试（PDF 已下载到本机）');
+    toast(msg); setStatus('❌ 网络连不上，稍后再试（PDF 已下载到本机，可以手动发）');
   }
 }
 
