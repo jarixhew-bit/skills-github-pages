@@ -148,7 +148,8 @@ body:not(.lang-en) .en{display:none !important}
 .admin-block h3{font-size:14.5px;margin-bottom:12px;color:var(--p)}
 .admin-field{margin-bottom:12px}
 .admin-field label{display:block;font-size:12.5px;color:var(--sub);margin-bottom:5px;font-weight:600}
-.admin-field input[type=text],.admin-field textarea{width:100%;padding:10px 12px;
+.admin-field input[type=text],.admin-field input[type=date],.admin-field input[type=time],
+.admin-field textarea{width:100%;padding:10px 12px;
   border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;color:var(--text)}
 .admin-field textarea{min-height:160px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
   white-space:pre;resize:vertical}
@@ -165,6 +166,23 @@ body:not(.lang-en) .en{display:none !important}
 .admin-bill-row:last-child{border-bottom:none}
 .admin-bill-info{flex:1;min-width:0;font-size:13.5px}
 .admin-bill-info .sub{font-size:12px;color:var(--sub)}
+
+/* ===== 管理面板：行程表单（取代原来的 JSON textarea） ===== */
+.admin-trip-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer}
+.admin-trip-summary .sub{font-size:12px;color:var(--sub);margin-top:3px}
+.admin-trip-card{background:#F8FAFC;border:1.5px solid var(--border);border-radius:12px;
+  padding:14px;margin-bottom:12px}
+.admin-item-editor{border-top:1px solid var(--border);padding-top:10px;margin-top:4px}
+.admin-item-row{border:1.5px solid var(--border);border-radius:10px;padding:12px;
+  margin-bottom:10px;background:#fff}
+.admin-item-warn{color:var(--danger);font-size:12px;margin:2px 0 8px;font-weight:600}
+.admin-btn-sm{padding:7px 12px;border:none;border-radius:8px;background:var(--p2);color:var(--p);
+  font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;flex:none}
+.admin-btn-sm-danger{background:#FDECEA;color:var(--danger)}
+.admin-select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
+  font-size:14px;font-family:inherit;color:var(--text);background:#fff}
+.admin-json-summary{cursor:pointer;font-weight:700;color:var(--p);font-size:14.5px;list-style:revert}
 
 /* ===== BOTTOM NAV ===== */
 .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);
@@ -284,6 +302,23 @@ let feedData = null;        // 最近一次成功拿到（或缓存）的 feed
 let feedFetchedAt = null;   // 这份 feed 是什么时候拿到的（ISO）
 let role = 'viewer';
 let currentBillBlobUrl = null;
+
+/* ---------- 管理面板：行程表单的工作副本（只在内存里，保存成功才落地） ---------- */
+let adminTripsDraft = null;   // feedData.trips 的深拷贝，null 表示还没建立
+let adminTripsDirty = false;  // 有没有还没保存的改动（离开前要提醒）
+let adminExpandedTrip = null; // 当前展开编辑的行程在 adminTripsDraft 里的下标，null=都收起
+
+/* 手册下拉选项：路径对应仓库根目录下现有的旅游手册（2026-08-27 核对过都存在）。
+   选中后拼成完整网址存进 trip.guideUrl，不让老板手打。 */
+const GUIDE_BASE = 'https://jarixhew-bit.github.io/skills-github-pages/';
+const GUIDE_OPTIONS = [
+  { path:'japan-trip-2026.html', zh:'日本旅游手册', en:'Japan Trip Guide' },
+  { path:'penang-trip/', zh:'槟城旅游手册', en:'Penang Trip Guide' },
+  { path:'xiamen-trip/', zh:'厦门旅游手册', en:'Xiamen Trip Guide' },
+  { path:'singapore-trip/', zh:'新加坡旅游手册', en:'Singapore Trip Guide' },
+  { path:'usj-disney-restaurants.html', zh:'USJ/迪士尼餐厅指南', en:'USJ/Disney Restaurant Guide' },
+  { path:'restaurant-guide.html', zh:'餐厅指南', en:'Restaurant Guide' },
+];
 
 /* ============================= 双语 ============================= */
 /* 照抄 japan-trip-2026.html 的 initLang() 模式：手选 > 系统语言 > 英文；
@@ -462,6 +497,14 @@ function updateDots(){
 
 /* ============================= tab 切换 ============================= */
 function switchTab(tab){
+  const curActive = document.querySelector('.tab.active');
+  const curTabId = curActive ? curActive.id.replace('tab-', '') : null;
+  if(curTabId === 'admin' && tab !== 'admin' && adminTripsDirty){
+    const leave = confirm(pick(
+      '行程还有没保存的修改，确定要离开吗？未保存的内容会丢失。',
+      'You have unsaved trip changes. Leave without saving?'));
+    if(!leave) return;
+  }
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
   const pane = document.getElementById('tab-' + tab);
@@ -727,12 +770,309 @@ function tripSelectOptionsHtml(){
   return '<option value="">' + escapeHtml(pick('（不属于某次行程）','(not tied to a trip)')) + '</option>' +
     trips.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml((t.title && (t.title.zh || t.title.en)) || t.id)}</option>`).join('');
 }
+
+/* ============================= 行程表单：数据层小工具 ============================= */
+/** 把 'title.zh' 这样的路径写进对象（自动补齐中间层）。 */
+function setPath(obj, path, val){
+  const parts = path.split('.');
+  let o = obj;
+  for(let i = 0; i < parts.length - 1; i++){
+    if(!o[parts[i]] || typeof o[parts[i]] !== 'object') o[parts[i]] = {};
+    o = o[parts[i]];
+  }
+  o[parts[parts.length - 1]] = val;
+}
+function markTripsDirty(){ adminTripsDirty = true; }
+/** 建立行程表单的工作副本；已存在就不覆盖，避免弄丢正在编辑的内容。 */
+function ensureAdminTripsDraft(){
+  if(adminTripsDraft === null){
+    adminTripsDraft = JSON.parse(JSON.stringify(feedData.trips || []));
+    adminTripsDirty = false;
+  }
+}
+
+/* ============================= 行程表单：手册下拉 ============================= */
+function guideSelectOptionsHtml(trip){
+  const cur = trip.guideUrl || '';
+  const matched = GUIDE_OPTIONS.find(g => cur === GUIDE_BASE + g.path);
+  const selVal = cur === '' ? 'none' : (matched ? matched.path : 'custom');
+  let opts = `<option value="none"${selVal==='none'?' selected':''}>${escapeHtml(pick('（不关联手册）','(no guide)'))}</option>`;
+  opts += GUIDE_OPTIONS.map(g =>
+    `<option value="${escapeHtml(g.path)}"${selVal===g.path?' selected':''}>${escapeHtml(pick(g.zh, g.en))}</option>`).join('');
+  opts += `<option value="custom"${selVal==='custom'?' selected':''}>${escapeHtml(pick('（自己填网址）','(custom URL)'))}</option>`;
+  return opts;
+}
+function adminGuideSelectChange(idx, sel){
+  const trip = adminTripsDraft[idx];
+  if(!trip) return;
+  const wrap = document.getElementById(`admin-trip-${idx}-guide-custom-wrap`);
+  if(sel.value === 'none'){
+    trip.guideUrl = '';
+    if(wrap) wrap.style.display = 'none';
+  }else if(sel.value === 'custom'){
+    if(wrap) wrap.style.display = '';
+    const inp = document.getElementById(`admin-trip-${idx}-guide-custom`);
+    trip.guideUrl = inp ? (inp.value || '') : '';
+  }else{
+    trip.guideUrl = GUIDE_BASE + sel.value;
+    if(wrap) wrap.style.display = 'none';
+  }
+  markTripsDirty();
+}
+function adminGuideCustomInput(idx, el){
+  if(!adminTripsDraft[idx]) return;
+  adminTripsDraft[idx].guideUrl = el.value || '';
+  markTripsDirty();
+}
+
+/* ============================= 行程表单：字段读写 ============================= */
+function adminTripFieldInput(el){
+  const idx = Number(el.getAttribute('data-trip'));
+  const field = el.getAttribute('data-field');
+  if(!adminTripsDraft || !adminTripsDraft[idx]) return;
+  setPath(adminTripsDraft[idx], field, el.value);
+  markTripsDirty();
+}
+function adminItemFieldInput(tripIdx, itemIdx, field, val){
+  const trip = adminTripsDraft && adminTripsDraft[tripIdx];
+  if(!trip || !trip.items || !trip.items[itemIdx]) return;
+  setPath(trip.items[itemIdx], field, val);
+  markTripsDirty();
+}
+function adminItemFieldChange(tripIdx, itemIdx, field, val){
+  adminItemFieldInput(tripIdx, itemIdx, field, val);
+  adminRevalidateItemDates(tripIdx);
+}
+/** 地图链接：粘的是完整链接就原样用，否则当地点名自动生成 Google 地图搜索链接。 */
+function adminItemMapInput(tripIdx, itemIdx, el){
+  const trip = adminTripsDraft && adminTripsDraft[tripIdx];
+  if(!trip || !trip.items || !trip.items[itemIdx]) return;
+  const v = (el.value || '').trim();
+  const url = v === '' ? '' : (/^https?:\/\//i.test(v) ? v : ('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(v)));
+  trip.items[itemIdx].mapUrl = url;
+  el.value = url; // 回填成生成后的完整链接，方便确认/复制
+  markTripsDirty();
+}
+/** 条目日期超出行程日期范围时只提示、不阻止保存（可能是前后站行程）。 */
+function adminRevalidateItemDates(tripIdx){
+  const trip = adminTripsDraft && adminTripsDraft[tripIdx];
+  if(!trip) return;
+  (trip.items || []).forEach((it, itemIdx) => {
+    const warnEl = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-warn`);
+    if(!warnEl) return;
+    const outOfRange = !!(it.date && trip.start && trip.end && (it.date < trip.start || it.date > trip.end));
+    warnEl.style.display = outOfRange ? '' : 'none';
+  });
+}
+
+/* ============================= 行程表单：渲染 ============================= */
+function adminItemRowHtml(trip, tripIdx, itemIdx){
+  const it = trip.items[itemIdx];
+  const outOfRange = !!(it.date && trip.start && trip.end && (it.date < trip.start || it.date > trip.end));
+  return `<div class="admin-item-row">
+      <div style="display:flex;gap:10px">
+        <div style="flex:1"><label>${pick('日期','Date')}</label>
+          <input type="date" value="${escapeHtml(it.date||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'date',this.value)"></div>
+        <div style="flex:1"><label>${pick('时间','Time')}</label>
+          <input type="time" value="${escapeHtml(it.time||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'time',this.value)"></div>
+      </div>
+      <div id="admin-item-${tripIdx}-${itemIdx}-warn" class="admin-item-warn" style="${outOfRange?'':'display:none'}">
+        ⚠️ ${pick('日期不在行程范围内（如果是前后站可以不管）','Date is outside the trip range (fine if this is before/after the main trip)')}
+      </div>
+      <div class="admin-field"><label>${pick('标题（中文）','Title (Chinese)')}</label>
+        <input type="text" value="${escapeHtml(it.title && it.title.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'title.zh',this.value)"></div>
+      <div class="admin-field"><label>${pick('标题（英文）','Title (English)')}</label>
+        <input type="text" value="${escapeHtml(it.title && it.title.en || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'title.en',this.value)"></div>
+      <div class="admin-field"><label>${pick('备注（中文，选填）','Note (Chinese, optional)')}</label>
+        <input type="text" value="${escapeHtml(it.note && it.note.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'note.zh',this.value)"></div>
+      <div class="admin-field"><label>${pick('备注（英文，选填）','Note (English, optional)')}</label>
+        <input type="text" value="${escapeHtml(it.note && it.note.en || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'note.en',this.value)"></div>
+      <div class="admin-field"><label>${pick('地点名称（或直接粘贴地图链接）','Place name (or paste a map link)')}</label>
+        <input type="text" value="${escapeHtml(it.mapUrl||'')}" placeholder="${escapeHtml(pick('例：浅草寺','e.g. Senso-ji Temple'))}" onchange="adminItemMapInput(${tripIdx},${itemIdx},this)"></div>
+      <button type="button" class="admin-btn-sm admin-btn-sm-danger" onclick="adminDeleteItem(${tripIdx},${itemIdx})">${pick('删除条目','Delete item')}</button>
+    </div>`;
+}
+function adminItemsListHtml(trip, tripIdx){
+  const items = trip.items || [];
+  if(!items.length) return `<div class="admin-status">${pick('还没有条目','No items yet')}</div>`;
+  // 按日期+时间排好序显示，但保留原数组下标（data 都用下标寻址，排序不影响读写）
+  const order = items.map((_, i) => i).sort((a, b) => {
+    const ia = items[a], ib = items[b];
+    if((ia.date||'') !== (ib.date||'')) return (ia.date||'').localeCompare(ib.date||'');
+    return (ia.time||'').localeCompare(ib.time||'');
+  });
+  return order.map(i => adminItemRowHtml(trip, tripIdx, i)).join('');
+}
+function adminTripFormHtml(trip, idx){
+  const guideCur = trip.guideUrl || '';
+  const isCustom = guideCur !== '' && !GUIDE_OPTIONS.some(g => guideCur === GUIDE_BASE + g.path);
+  return `<div class="admin-trip-card">
+      <div class="admin-field"><label>${pick('标题（中文）','Title (Chinese)')}</label>
+        <input type="text" data-trip="${idx}" data-field="title.zh" value="${escapeHtml(trip.title && trip.title.zh || '')}" oninput="adminTripFieldInput(this)"></div>
+      <div class="admin-field"><label>${pick('标题（英文）','Title (English)')}</label>
+        <input type="text" data-trip="${idx}" data-field="title.en" value="${escapeHtml(trip.title && trip.title.en || '')}" oninput="adminTripFieldInput(this)"></div>
+      <div class="admin-field" style="display:flex;gap:10px">
+        <div style="flex:1"><label>${pick('开始日期','Start date')}</label>
+          <input type="date" data-trip="${idx}" data-field="start" value="${escapeHtml(trip.start||'')}" oninput="adminTripFieldInput(this); adminRevalidateItemDates(${idx})"></div>
+        <div style="flex:1"><label>${pick('结束日期','End date')}</label>
+          <input type="date" data-trip="${idx}" data-field="end" value="${escapeHtml(trip.end||'')}" oninput="adminTripFieldInput(this); adminRevalidateItemDates(${idx})"></div>
+      </div>
+      <div class="admin-field"><label>${pick('地点（中文）','Location (Chinese)')}</label>
+        <input type="text" data-trip="${idx}" data-field="location.zh" value="${escapeHtml(trip.location && trip.location.zh || '')}" oninput="adminTripFieldInput(this)"></div>
+      <div class="admin-field"><label>${pick('地点（英文）','Location (English)')}</label>
+        <input type="text" data-trip="${idx}" data-field="location.en" value="${escapeHtml(trip.location && trip.location.en || '')}" oninput="adminTripFieldInput(this)"></div>
+      <div class="admin-field"><label>${pick('关联手册','Linked guide')}</label>
+        <select class="admin-select" data-trip="${idx}" onchange="adminGuideSelectChange(${idx}, this)">
+          ${guideSelectOptionsHtml(trip)}
+        </select></div>
+      <div class="admin-field" id="admin-trip-${idx}-guide-custom-wrap" style="${isCustom?'':'display:none'}">
+        <label>${pick('手册网址','Guide URL')}</label>
+        <input type="text" id="admin-trip-${idx}-guide-custom" placeholder="https://..." value="${escapeHtml(isCustom?guideCur:'')}" oninput="adminGuideCustomInput(${idx}, this)"></div>
+
+      <div class="admin-item-editor">
+        <div class="sec-hdr" style="margin:14px 0 8px">
+          <span class="sec-title" style="font-size:13.5px">${pick('行程条目','Itinerary items')}</span>
+          <button type="button" class="admin-btn-sm" onclick="adminAddItem(${idx})">+ ${pick('新增条目','Add item')}</button>
+        </div>
+        <div id="admin-trip-${idx}-items">${adminItemsListHtml(trip, idx)}</div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button type="button" class="admin-btn" style="background:var(--danger)" onclick="adminDeleteTrip(${idx})">${pick('删除此行程','Delete this trip')}</button>
+        <button type="button" class="admin-btn" style="background:var(--sub)" onclick="adminCollapseTrip()">${pick('收起','Collapse')}</button>
+      </div>
+    </div>`;
+}
+function adminTripSummaryHtml(trip, idx){
+  const title = (trip.title && (trip.title.zh || trip.title.en)) || pick('（未命名行程）','(untitled trip)');
+  const hasRange = !!trip.start;
+  const range = hasRange ? fmtRangeBoth(trip.start, trip.end || trip.start) : null;
+  const rangeText = hasRange ? pick(range.zh, range.en) : pick('未设日期','No date set');
+  const itemCount = (trip.items || []).length;
+  return `<div class="admin-trip-summary" onclick="adminExpandTrip(${idx})">
+      <div style="min-width:0">
+        <div style="font-weight:700">${escapeHtml(title)}</div>
+        <div class="sub">${escapeHtml(rangeText)} · ${itemCount} ${pick('个条目','items')}</div>
+      </div>
+      <button type="button" class="admin-btn-sm" onclick="event.stopPropagation(); adminExpandTrip(${idx})">${pick('编辑','Edit')}</button>
+    </div>`;
+}
+function rerenderAdminTripsSection(){
+  const list = document.getElementById('admin-trips-list');
+  if(!list || !adminTripsDraft) return;
+  if(!adminTripsDraft.length){
+    list.innerHTML = `<div class="admin-status">${pick('还没有行程，点下面加一个','No trips yet — add one below')}</div>`;
+    return;
+  }
+  list.innerHTML = adminTripsDraft.map((t, idx) =>
+    (adminExpandedTrip === idx) ? adminTripFormHtml(t, idx) : adminTripSummaryHtml(t, idx)).join('');
+}
+function adminTripsSectionHtml(){
+  ensureAdminTripsDraft();
+  let inner;
+  if(!adminTripsDraft.length){
+    inner = `<div class="admin-status">${pick('还没有行程，点下面加一个','No trips yet — add one below')}</div>`;
+  }else{
+    inner = adminTripsDraft.map((t, idx) =>
+      (adminExpandedTrip === idx) ? adminTripFormHtml(t, idx) : adminTripSummaryHtml(t, idx)).join('');
+  }
+  return `<div class="admin-block">
+      <h3>🧳 ${pick('行程管理','Manage Trips')}</h3>
+      <div id="admin-trips-list">${inner}</div>
+      <button type="button" class="admin-btn" onclick="adminAddTrip()">+ ${pick('新增行程','Add trip')}</button>
+      <button type="button" class="admin-btn" style="margin-top:10px" onclick="adminSaveTripsForm()">💾 ${pick('保存全部行程','Save all trips')}</button>
+      <div class="admin-status" id="admin-trips-form-status"></div>
+    </div>`;
+}
+
+/* ============================= 行程表单：增删 ============================= */
+function adminAddTrip(){
+  ensureAdminTripsDraft();
+  const id = 'trip-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  adminTripsDraft.push({ id, title:{zh:'',en:''}, start:'', end:'', location:{zh:'',en:''}, guideUrl:'', items:[] });
+  adminExpandedTrip = adminTripsDraft.length - 1;
+  markTripsDirty();
+  rerenderAdminTripsSection();
+}
+function adminExpandTrip(idx){
+  adminExpandedTrip = (adminExpandedTrip === idx) ? null : idx;
+  rerenderAdminTripsSection();
+}
+function adminCollapseTrip(){
+  adminExpandedTrip = null;
+  rerenderAdminTripsSection();
+}
+function adminDeleteTrip(idx){
+  if(!confirm(pick('确定删除这个行程？条目也会一起删除。','Delete this trip? Its items will be deleted too.'))) return;
+  adminTripsDraft.splice(idx, 1);
+  adminExpandedTrip = null;
+  markTripsDirty();
+  rerenderAdminTripsSection();
+}
+function adminAddItem(tripIdx){
+  const trip = adminTripsDraft[tripIdx];
+  if(!trip) return;
+  if(!trip.items) trip.items = [];
+  trip.items.push({ date: trip.start || '', time:'', title:{zh:'',en:''}, note:{zh:'',en:''}, mapUrl:'' });
+  markTripsDirty();
+  rerenderAdminTripsSection();
+}
+function adminDeleteItem(tripIdx, itemIdx){
+  if(!confirm(pick('确定删除这条行程条目？','Delete this item?'))) return;
+  adminTripsDraft[tripIdx].items.splice(itemIdx, 1);
+  markTripsDirty();
+  rerenderAdminTripsSection();
+}
+
+/* ============================= 行程表单：校验与保存 ============================= */
+function adminValidateTripsDraft(){
+  const errors = [];
+  adminTripsDraft.forEach((t, idx) => {
+    const label = (t.title && (t.title.zh || t.title.en)) || pick('第 ' + (idx+1) + ' 个行程', 'Trip #' + (idx+1));
+    const hasTitle = !!((t.title && (t.title.zh||'').trim()) || (t.title && (t.title.en||'').trim()));
+    if(!hasTitle) errors.push(pick(label + '：标题不能为空', label + ': title cannot be empty'));
+    if(!t.start) errors.push(pick(label + '：请填开始日期', label + ': please fill in the start date'));
+    if(!t.end) errors.push(pick(label + '：请填结束日期', label + ': please fill in the end date'));
+    if(t.start && t.end && t.end < t.start){
+      errors.push(pick(label + '：结束日期不能早于开始日期', label + ': end date cannot be before the start date'));
+    }
+  });
+  return errors;
+}
+async function adminSaveTripsForm(){
+  ensureAdminTripsDraft();
+  const statusEl = document.getElementById('admin-trips-form-status');
+  const errors = adminValidateTripsDraft();
+  if(errors.length){
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = errors.join('；');
+    return;
+  }
+  statusEl.className = 'admin-status';
+  statusEl.textContent = pick('保存中…','Saving…');
+  try{
+    await bossCall('tripsSave', { trips: adminTripsDraft });
+    statusEl.className = 'admin-status ok';
+    statusEl.textContent = pick('已保存','Saved');
+    adminTripsDirty = false;
+    adminTripsDraft = null;   // 用服务器最新数据重新建立工作副本
+    adminExpandedTrip = null;
+    await refreshFeed();
+  }catch(err){
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = (err && err.message) || pick('保存失败','Save failed');
+  }
+}
+
 function renderAdmin(){
   if(role !== 'admin') return;
   const pane = document.getElementById('tab-admin');
   if(!pane) return;
+  ensureAdminTripsDraft();
   const bills = (feedData.bills || []).slice().sort((a,b) => (b.uploadedAt||'').localeCompare(a.uploadedAt||''));
   pane.innerHTML = `
+    ${adminTripsSectionHtml()}
+
     <div class="admin-block">
       <h3>⬆️ ${pick('上传账单 PDF','Upload a Bill PDF')}</h3>
       <div class="admin-field">
@@ -760,7 +1100,7 @@ function renderAdmin(){
       </div>
       <div class="admin-field">
         <label>${pick('关联行程（可选）','Linked trip (optional)')}</label>
-        <select id="admin-bill-trip" class="admin-select" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit">
+        <select id="admin-bill-trip" class="admin-select">
           ${tripSelectOptionsHtml()}
         </select>
       </div>
@@ -781,17 +1121,21 @@ function renderAdmin(){
     </div>
 
     <div class="admin-block">
-      <h3>✏️ ${pick('直接编辑行程 JSON','Edit Trip Data (JSON)')}</h3>
-      <div class="admin-field">
-        <textarea id="admin-trips-json" spellcheck="false">${escapeHtml(JSON.stringify(feedData.trips || [], null, 2))}</textarea>
-      </div>
-      <div class="admin-status err" id="admin-trips-err"></div>
-      <button class="admin-btn" id="admin-trips-save" onclick="adminSaveTrips()">${pick('保存','Save')}</button>
-      <div class="admin-status" id="admin-trips-status"></div>
+      <details id="admin-json-details">
+        <summary class="admin-json-summary">⚙️ ${pick('高级：直接编辑 JSON','Advanced: edit raw JSON')}</summary>
+        <div style="margin-top:12px">
+          <div class="admin-field">
+            <textarea id="admin-trips-json" spellcheck="false">${escapeHtml(JSON.stringify(adminTripsDraft || [], null, 2))}</textarea>
+          </div>
+          <div class="admin-status err" id="admin-trips-err"></div>
+          <button class="admin-btn" id="admin-trips-save" onclick="adminSaveTrips()">${pick('保存 JSON','Save JSON')}</button>
+          <div class="admin-status" id="admin-trips-status"></div>
+        </div>
+      </details>
     </div>
   `;
   const ta = document.getElementById('admin-trips-json');
-  if(ta) ta.addEventListener('input', adminValidateTripsJSON);
+  if(ta) ta.addEventListener('input', () => { adminValidateTripsJSON(); markTripsDirty(); });
 }
 function fileToBase64(file){
   return new Promise((resolve, reject) => {
@@ -869,6 +1213,10 @@ async function adminSaveTrips(){
     await bossCall('tripsSave', { trips: parsed });
     statusEl.className = 'admin-status ok';
     statusEl.textContent = pick('已保存','Saved');
+    // JSON 保存的是完整数组，跟表单工作副本一起重置，下次打开面板从服务器最新数据重建
+    adminTripsDirty = false;
+    adminTripsDraft = null;
+    adminExpandedTrip = null;
     await refreshFeed();
   }catch(err){
     statusEl.className = 'admin-status err';
@@ -931,6 +1279,11 @@ async function init(){
   }
 }
 document.addEventListener('DOMContentLoaded', init);
+
+// 行程表单有未保存改动时，关闭/刷新页面前提醒一下（切 tab 的提醒在 switchTab() 里）。
+window.addEventListener('beforeunload', function(e){
+  if(adminTripsDirty){ e.preventDefault(); e.returnValue = ''; }
+});
 
 /* ============================= Service Worker ============================= */
 if('serviceWorker' in navigator){
