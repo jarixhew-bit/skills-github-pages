@@ -1945,6 +1945,233 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   await ctx.close();
 }
 
+// ---------- 【27】发给老板（billUpload 直送 /boss）----------
+// 2026-08-27 新功能：账户明细 PDF 生成后旁边多一个「📤 发给老板」，直接 POST 到
+// butler 的 /boss（action:billUpload），省掉「导出→存手机→开老板App→找文件→上传」。
+// buildStatementPDF() 依赖 html2canvas / jsPDF 两个 CDN 库——这份自检的基线是把
+// localhost 以外全部断掉（模拟白名单 WiFi），真去连 cdnjs 在这个环境里本来就连不上，
+// 所以用 addInitScript 打两个最小桩替身：只实现 buildStatementPDF() 真正调用到的
+// 几个方法（没有收据附件时用不到 addPage 之外的绘图细节），行为本身（发不发请求、
+// 发的是什么、失败提示说什么）才是这份自检要守的，不是 PDF 渲染像不像。
+const BOSS_API = 'https://butler-bot.jarixhew.workers.dev/boss';
+function stubPdfLibs(ctx){
+  return ctx.addInitScript(() => {
+    window.__pdfSaves = 0;
+    window.html2canvas = async () => ({
+      width: 100, height: 100,
+      toDataURL: () => 'data:image/jpeg;base64,ZmFrZQ=='
+    });
+    function FakeJsPDF(){}
+    FakeJsPDF.prototype.internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
+    FakeJsPDF.prototype.addImage = function(){};
+    FakeJsPDF.prototype.addPage = function(){};
+    FakeJsPDF.prototype.setDrawColor = function(){};
+    FakeJsPDF.prototype.setLineWidth = function(){};
+    FakeJsPDF.prototype.rect = function(){};
+    // 真实的 datauristring 会带 data:application/pdf;base64, 前缀——
+    // sendStatementToBoss() 自己会 slice 掉，这里保留前缀正是为了验证那一步真的做了。
+    FakeJsPDF.prototype.output = function(type){
+      return type === 'datauristring' ? 'data:application/pdf;base64,ZmFrZXBkZg==' : '';
+    };
+    FakeJsPDF.prototype.save = function(){ window.__pdfSaves++; };  // 不触发真实下载
+    window.jspdf = { jsPDF: FakeJsPDF };
+  });
+}
+/** 挂路由：localhost 放行，/boss 按 bossMode 给假回应，其余（含另一个公司账 API）一律挡掉。 */
+function mountBossRoutes(ctx, calls, bossModeRef){
+  return ctx.route('**/*', async route => {
+    const u = route.request().url();
+    if (u.startsWith(`http://localhost:${PORT}`)) return route.continue();
+    if (u.startsWith(BOSS_API)) {
+      calls.push(JSON.parse(route.request().postData() || '{}'));
+      const h = { 'Access-Control-Allow-Origin': '*' };
+      if (bossModeRef.v === '401')
+        return route.fulfill({ status:401, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'error', message:'access denied' }) });
+      if (bossModeRef.v === '400big')
+        return route.fulfill({ status:400, contentType:'application/json', headers:h,
+          body: JSON.stringify({ status:'error', message:'账单文件太大，服务器拒收了这份' }) });
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'ok' }) });
+    }
+    return route.abort('failed');
+  });
+}
+async function setupCompanyAccount(page, token){
+  await page.evaluate((tk) => {
+    if (tk) localStorage.setItem('expenseTracker_companyToken', tk);
+    const acc = data.accounts[0]; acc.isCompany = true; saveData();
+  }, token);
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 重新启动完成' });
+}
+async function gotoAnalyticsWithBossBtn(page){
+  await page.click('#nav-analytics');
+  await page.waitForSelector('button[onclick="sendStatementToBoss()"]', { state:'visible' });
+}
+/** 包一层 toast()，记下最后一次弹的文字——toast 只显示 2.2 秒，
+ * #send-boss-status 常驻栏位有时只留精简版，「可以手动发」这句完整版只在 toast 里。 */
+async function installToastSpy(page){
+  await page.evaluate(() => {
+    window.__lastToast = null;
+    const orig = window.toast;
+    window.toast = (m) => { window.__lastToast = m; return orig(m); };
+  });
+}
+async function lastToast(page){ return page.evaluate(() => window.__lastToast); }
+
+// ---- 27a：点「发给老板」会发出 action:billUpload，字段形状对得上 ----
+{
+  console.log('\n【27a】点「发给老板」：billUpload 请求的字段形状');
+  const ctx = await browser.newContext();
+  await stubPdfLibs(ctx);
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  const calls = []; const bossMode = { v:'ok' };
+  await mountBossRoutes(ctx, calls, bossMode);
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what:'App 启动完成' });
+  await setupCompanyAccount(page, 'boss-token');
+  await gotoAnalyticsWithBossBtn(page);
+
+  await page.click('button[onclick="sendStatementToBoss()"]');
+  await until(() => calls.length > 0, { what:'billUpload 请求送出' });
+
+  ok('只发了一个请求', calls.length === 1, calls.length);
+  const req = calls[0];
+  ok('action 是 billUpload', req.action === 'billUpload', req.action);
+  ok('period 形如 YYYY-MM（两位月份）', /^\d{4}-\d{2}$/.test(req.period || ''), req.period);
+  ok('kind 是 month', req.kind === 'month', req.kind);
+  ok('contentBase64 非空', typeof req.contentBase64 === 'string' && req.contentBase64.length > 0, req.contentBase64);
+  ok('contentBase64 不含 data:application/pdf;base64, 前缀（已经 slice 掉了）',
+     !(req.contentBase64 || '').includes('data:application/pdf;base64,'), req.contentBase64);
+  const statusText = await page.textContent('#send-boss-status');
+  ok('状态栏显示已发给老板', (statusText || '').includes('已发给老板'), statusText);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---- 27b：只点「导出账户明细」——不许有任何请求打到 /boss（导出是自己看的草稿）----
+{
+  console.log('\n【27b】不点「发给老板」就不发：只导出不该有任何 /boss 请求');
+  const ctx = await browser.newContext();
+  await stubPdfLibs(ctx);
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  const calls = []; const bossMode = { v:'ok' };
+  await mountBossRoutes(ctx, calls, bossMode);
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what:'App 启动完成' });
+  await setupCompanyAccount(page, 'boss-token');
+  await gotoAnalyticsWithBossBtn(page);
+
+  await page.click('button[onclick="exportStatementPDF()"]');
+  await until(() => page.evaluate(() => window.__pdfSaves > 0), { what:'PDF 导出完成（save 被调用）' });
+  // 断言「没有发生」只能真的等一下，等不到条件就用固定等待（跟本文件其它地方同一个理由）
+  await page.waitForTimeout(500);
+
+  ok('导出账户明细本身会走到 pdf.save()', await page.evaluate(() => window.__pdfSaves) > 0);
+  ok('没有任何请求打到 /boss', calls.length === 0, calls);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---- 27c：服务端回 401 —— 提示说钥匙问题，且告诉用户 PDF 已下载可以手动发 ----
+{
+  console.log('\n【27c】服务端 401：提示是钥匙问题，且说明 PDF 已下载、能手动发');
+  const ctx = await browser.newContext();
+  await stubPdfLibs(ctx);
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  const calls = []; const bossMode = { v:'401' };
+  await mountBossRoutes(ctx, calls, bossMode);
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what:'App 启动完成' });
+  await setupCompanyAccount(page, 'wrong-token');
+  await gotoAnalyticsWithBossBtn(page);
+  await installToastSpy(page);
+
+  await page.click('button[onclick="sendStatementToBoss()"]');
+  await until(() => calls.length > 0, { what:'billUpload 请求送出' });
+  await until(() => page.evaluate(() =>
+    (document.getElementById('send-boss-status').textContent || '').startsWith('❌')),
+    { what:'状态栏出现失败提示' });
+
+  const statusText = await page.textContent('#send-boss-status');
+  const toastText = await lastToast(page);
+  ok('提示说的是钥匙问题', (statusText || '').includes('钥匙'), statusText);
+  ok('状态栏说明 PDF 已下载到本机', (statusText || '').includes('已下载'), statusText);
+  ok('toast 完整版告诉用户可以手动发（2.2 秒那条比常驻栏位多这句话）',
+     (toastText || '').includes('已下载') && (toastText || '').includes('手动发'), toastText);
+  ok('确实已经 pdf.save() 过（不是白说）', await page.evaluate(() => window.__pdfSaves) > 0);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---- 27d：服务端回 400「PDF 太大」—— 提示翻成了人话（不是原始 JSON）----
+{
+  console.log('\n【27d】服务端 400（PDF 太大）：提示翻成人话，不是甩一坨原始 JSON');
+  const ctx = await browser.newContext();
+  await stubPdfLibs(ctx);
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  const calls = []; const bossMode = { v:'400big' };
+  await mountBossRoutes(ctx, calls, bossMode);
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what:'App 启动完成' });
+  await setupCompanyAccount(page, 'boss-token');
+  await gotoAnalyticsWithBossBtn(page);
+
+  await page.click('button[onclick="sendStatementToBoss()"]');
+  await until(() => calls.length > 0, { what:'billUpload 请求送出' });
+  await until(() => page.evaluate(() =>
+    (document.getElementById('send-boss-status').textContent || '').startsWith('❌')),
+    { what:'状态栏出现失败提示' });
+
+  const statusText = await page.textContent('#send-boss-status');
+  ok('提示里带着服务端给的人话原因', (statusText || '').includes('账单文件太大'), statusText);
+  ok('不是甩一坨原始 JSON（不含花括号）', !(statusText || '').includes('{'), statusText);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---- 27e：没配公司钥匙——提示去设置里填，且压根不发请求 ----
+{
+  console.log('\n【27e】没配公司钥匙：提示去设置里填，且不发请求');
+  const ctx = await browser.newContext();
+  await stubPdfLibs(ctx);
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  const calls = []; const bossMode = { v:'ok' };
+  await mountBossRoutes(ctx, calls, bossMode);
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what:'App 启动完成' });
+  // 故意不设公司钥匙——注意账户也不必标 isCompany，未配钥匙本来就该在最前面拦下
+  await gotoAnalyticsWithBossBtn(page);
+
+  await page.click('button[onclick="sendStatementToBoss()"]');
+  await page.waitForTimeout(500);   // 断言「没发生」，只能真的等（同上）
+
+  const statusText = await page.textContent('#send-boss-status');
+  ok('提示说去设置里填', (statusText || '').includes('设置') && (statusText || '').includes('钥匙'), statusText);
+  ok('没发任何请求到 /boss', calls.length === 0, calls);
+  ok('压根没走到生成 PDF 那一步', await page.evaluate(() => window.__pdfSaves) === 0);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

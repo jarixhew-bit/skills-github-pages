@@ -50,7 +50,7 @@ function fakeUpdated(){
 }
 function fakeTrips(){
   return [{
-    id: 't1', start: '2026-01-01', end: '2026-01-03',
+    id: 't1', title: { zh: '大阪行', en: 'Osaka trip' }, start: '2026-01-01', end: '2026-01-03',
     location: { zh: '大阪', en: 'Osaka' },
     guideUrl: 'https://example.com/guide',
     items: [
@@ -347,6 +347,204 @@ async function gotoTab(page, tab){
      (await page.textContent('#tab-inventory') || '').includes('暂时无法读取'));
   ok('页面主体没有变空白（body 仍有内容）',
      (await page.evaluate(() => document.body.innerText.trim().length)) > 20);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+
+  await ctx.close();
+}
+
+// ---------- 场景九：admin 表单——新增行程 / 新增条目，行程条目的输入框都齐全 ----------
+// 2026-08-27：行程 JSON textarea 换成了真表单（用户是非工程师，这是他唯一会用的入口）。
+// 「高级：直接编辑 JSON」还留着（折叠着，当兜底），场景二守的「textarea 存在」不受影响。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+
+  console.log('\n【9】admin 表单：「+ 新增行程」能新增一组行程输入框');
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+
+  const cardsBefore = await page.locator('.admin-trip-card').count();
+  await page.click('button[onclick="adminAddTrip()"]');
+  const cardsAfter = await page.locator('.admin-trip-card').count();
+  ok('点「+ 新增行程」后多出一组行程输入框', cardsAfter === cardsBefore + 1, { cardsBefore, cardsAfter });
+  ok('新行程默认是展开的表单（能直接填），不是收起状态',
+     await page.locator('.admin-trip-card').count() > 0);
+  // 假数据（fakeTrips）本来就带 1 条行程，新增的这条不一定排在下标 0——
+  // 用 adminExpandedTrip（新增后自动展开的那条）拿真实下标，不要硬编 0。
+  const idx = await page.evaluate(() => adminExpandedTrip);
+
+  console.log('\n【10】填了标题和日期后，「+ 新增条目」能新增一条带日期/时间/标题的条目');
+  await page.fill(`input[data-trip="${idx}"][data-field="title.zh"]`, '测试行程');
+  await page.fill(`input[data-trip="${idx}"][data-field="start"]`, '2026-09-01');
+  await page.fill(`input[data-trip="${idx}"][data-field="end"]`, '2026-09-03');
+  const itemsBefore = await page.locator('.admin-item-row').count();
+  await page.click(`button[onclick="adminAddItem(${idx})"]`);
+  const itemsAfter = await page.locator('.admin-item-row').count();
+  ok('点「+ 新增条目」后多出一条条目', itemsAfter === itemsBefore + 1, { itemsBefore, itemsAfter });
+  const row = page.locator('.admin-item-row').first();
+  ok('条目有日期输入框', await row.locator('input[type="date"]').count() >= 1);
+  ok('条目有时间输入框', await row.locator('input[type="time"]').count() >= 1);
+  ok('条目有标题（中文）输入框', await row.locator('input[type="text"]').count() >= 1);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+
+  await ctx.close();
+}
+
+// ---------- 场景十：地点名称自动生成地图链接（CLAUDE.md 硬规则的自动化保障）----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+
+  console.log('\n【11】地点名称框填地名，自动生成 Google 地图搜索链接（本仓库硬规则：提到地点必须带地图链接）');
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await page.click('button[onclick="adminAddTrip()"]');
+  const idx10 = await page.evaluate(() => adminExpandedTrip);
+  await page.click(`button[onclick="adminAddItem(${idx10})"]`);
+
+  const mapInput = page.locator('.admin-item-row').first().locator('.admin-field').last().locator('input');
+  await mapInput.fill('大阪城');
+  await mapInput.dispatchEvent('change');
+  const generated = await mapInput.inputValue();
+  const expected = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('大阪城');
+  ok('地点名称自动生成的地图链接跟 encodeURIComponent 后的地名逐字符对得上',
+     generated === expected, { generated, expected });
+
+  console.log('\n【12】直接粘贴 https:// 开头的地图链接时，原样保留、不被重新编码');
+  const pasted = 'https://maps.app.goo.gl/abc123XYZ';
+  await mapInput.fill(pasted);
+  await mapInput.dispatchEvent('change');
+  const kept = await mapInput.inputValue();
+  ok('粘贴的完整链接原样保留，没有被 encodeURIComponent 再包一层', kept === pasted, { kept, pasted });
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+
+  await ctx.close();
+}
+
+// ---------- 场景十一：校验生效——结束日期早于开始日期时，保存被拦下且有提示 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+
+  console.log('\n【13】校验：结束日期早于开始日期时，保存被拦下，且有提示（不是静默失败）');
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await page.click('button[onclick="adminAddTrip()"]');
+  const idx13 = await page.evaluate(() => adminExpandedTrip);
+  await page.fill(`input[data-trip="${idx13}"][data-field="title.zh"]`, '倒着填日期');
+  await page.fill(`input[data-trip="${idx13}"][data-field="start"]`, '2026-09-10');
+  await page.fill(`input[data-trip="${idx13}"][data-field="end"]`, '2026-09-01'); // 早于开始日期
+
+  await page.click('button[onclick="adminSaveTripsForm()"]');
+  await until(() => page.evaluate(() =>
+    (document.getElementById('admin-trips-form-status').textContent || '').trim() !== ''),
+    { what: '保存表单出现提示' });
+  const statusTxt = await page.textContent('#admin-trips-form-status');
+  const statusCls = await page.evaluate(() => document.getElementById('admin-trips-form-status').className);
+  ok('提示不是空的（不是静默失败）', (statusTxt || '').trim() !== '', statusTxt);
+  ok('提示是错误样式（err class）', statusCls.includes('err'), statusCls);
+  ok('提示内容提到结束日期不能早于开始日期', (statusTxt || '').includes('结束日期不能早于开始日期'), statusTxt);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+
+  await ctx.close();
+}
+
+// ---------- 场景十二：保存调 bossCall('tripsSave', ...)，送出去的 JSON 结构符合 Trip 合约 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+
+  console.log('\n【14】保存会调 bossCall(\'tripsSave\', ...)，送出去的 JSON 结构逐字段符合 Trip 合约');
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await page.click('button[onclick="adminAddTrip()"]');
+  const idx14 = await page.evaluate(() => adminExpandedTrip);
+  await page.fill(`input[data-trip="${idx14}"][data-field="title.zh"]`, '大阪三日游');
+  await page.fill(`input[data-trip="${idx14}"][data-field="title.en"]`, 'Osaka 3 Days');
+  await page.fill(`input[data-trip="${idx14}"][data-field="start"]`, '2026-09-01');
+  await page.fill(`input[data-trip="${idx14}"][data-field="end"]`, '2026-09-03');
+  await page.click(`button[onclick="adminAddItem(${idx14})"]`);
+  const row = page.locator('.admin-item-row').first();
+  await row.locator('input[type="date"]').fill('2026-09-01');
+  await row.locator('input[type="text"]').first().fill('入住酒店'); // 标题（中文）
+  const mapInput = row.locator('.admin-field').last().locator('input');
+  await mapInput.fill('大阪城');
+  await mapInput.dispatchEvent('change');
+
+  rec.calls.length = 0;
+  await page.click('button[onclick="adminSaveTripsForm()"]');
+  await until(() => rec.calls.some(c => c.action === 'tripsSave'), { what: '发出 tripsSave 请求' });
+
+  const call = rec.calls.find(c => c.action === 'tripsSave');
+  ok('调用的 action 是 tripsSave', !!call, call);
+  const trips = call && call.trips;
+  // 假数据（fakeTrips）本来带 1 条（t1），新增的这条是第 2 条——按 id 找新增的那条，
+  // 不能假设它排在下标 0（跟场景九同一个理由）。
+  ok('trips 是数组，且有 2 条（原本 1 条 ＋ 新增 1 条）', Array.isArray(trips) && trips.length === 2, trips);
+  const t = trips && trips.find(x => x.id !== 't1');
+  ok('trip.title 是 {zh,en} 对象', t && typeof t.title === 'object' && 'zh' in t.title && 'en' in t.title, t && t.title);
+  ok('trip.title.zh 逐字对得上', t && t.title.zh === '大阪三日游', t && t.title.zh);
+  ok('trip.start / trip.end 字段名逐字对得上', t && t.start === '2026-09-01' && t.end === '2026-09-03', t);
+  ok('trip.items 是数组，且有 1 条', t && Array.isArray(t.items) && t.items.length === 1, t && t.items);
+  const it = t && t.items && t.items[0];
+  ok('item.mapUrl 字段名逐字对得上，且是生成出来的地图链接',
+     it && it.mapUrl === 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('大阪城'), it && it.mapUrl);
+  ok('item.title 是 {zh,en} 对象，且 zh 对得上',
+     it && typeof it.title === 'object' && it.title.zh === '入住酒店', it && it.title);
+  // 注：没有断言「保存成功后状态栏显示已保存」——实测 adminSaveTripsForm() 里
+  // statusEl.textContent='已保存' 之后紧跟着 await refreshFeed() 立刻用新数据整块
+  // 重建 #tab-admin（renderAdmin() 重新 innerHTML），"已保存" 那条消息在用户看到之前
+  // 就被冲掉了，这是真实存在的 UX 缺陷，写进委派回报，不在这里自己改 boss/index.html。
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+
+  await ctx.close();
+}
+
+// ---------- 场景十三：「高级：直接编辑 JSON」默认是折叠的 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+
+  console.log('\n【15】「高级：直接编辑 JSON」默认折叠，不会一进管理面板就吓到非工程师用户');
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+
+  const isOpen = await page.evaluate(() => {
+    const d = document.getElementById('admin-json-details');
+    return d ? d.open : null;
+  });
+  ok('#admin-json-details 存在（第 2 条对照组守的 textarea 就在里面）', isOpen !== null, isOpen);
+  ok('默认是折叠的（<details> 没有 open 属性）', isOpen === false, isOpen);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
 
   await ctx.close();

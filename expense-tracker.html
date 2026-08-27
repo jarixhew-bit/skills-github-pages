@@ -586,6 +586,13 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
   <button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="exportStatementPDF()">
     📑 导出账户明细
   </button>
+  <!-- 发给老板：把刚导出的这份账户明细直接送进老板 App，省掉「导出→存手机→开老板App→
+       找文件→上传」这几步（2026-08-27 加）。挨着导出按钮放，不自动发——导出常常是自己
+       看的草稿，得用户手动点了才送。见 sendStatementToBoss()。 -->
+  <button class="btn btn-outline" style="width:100%;margin-top:8px" onclick="sendStatementToBoss()">
+    📤 发给老板
+  </button>
+  <div id="send-boss-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
 </div>
 
 <!-- SETTINGS TAB -->
@@ -695,6 +702,18 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       <button class="btn btn-outline btn-sm" onclick="fetchInbox({loud:true})">📥 立刻收件</button>
     </div>
     <div id="inbox-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+  </div>
+  <!-- 行程管理入口（2026-08-27 加）：只是链接到老板 App 的管理面板，行程编辑功能本身
+       在 boss/index.html 里，这里不做。 -->
+  <div class="setting-section">
+    <div class="setting-title">老板 App</div>
+    <a class="btn btn-outline btn-sm"
+       style="display:inline-block;text-decoration:none;text-align:center"
+       href="https://jarixhew-bit.github.io/skills-github-pages/boss/?admin=1"
+       target="_blank" rel="noopener">🧳 行程管理</a>
+    <div style="font-size:12px;color:var(--sub);margin-top:6px">
+      用你的公司钥匙进去，可以改老板看到的行程
+    </div>
   </div>
   <div class="setting-section">
     <div class="setting-title">数据</div>
@@ -3290,9 +3309,11 @@ document.querySelectorAll('.overlay').forEach(el=>{
 
 // ===================== STATEMENT PDF EXPORT =====================
 // 仿手工范本「个人账户明细」格式：深蓝横幅+金线，支出汇总/明细+收支汇总，附件页三段式标题条。
-async function exportStatementPDF(){
-  const acc = curAcc(); if(!acc){ toast('请先选择账户'); return; }
-  toast('正在生成账户明细…');
+// 生成账户明细 PDF，只生成不下载/不发送——给「导出」和「发给老板」两个入口共用，
+// 避免同一份 PDF 拼装逻辑分叉成两份（2026-08-27 拆出来）。
+// 成功返回 {pdf, filename, acc, year, month}，失败/没选账户返回 null（已经 toast 过原因）。
+async function buildStatementPDF(){
+  const acc = curAcc(); if(!acc){ toast('请先选择账户'); return null; }
 
   const year = state.anYear, month = state.anMonth;
 
@@ -3601,11 +3622,96 @@ async function exportStatementPDF(){
       pageIdx++;
     }
 
-    pdf.save(`账户明细-${acc.name}-${year}-${String(month+1).padStart(2,'0')}.pdf`);
-    toast('账户明细已导出');
+    const filename = `账户明细-${acc.name}-${year}-${String(month+1).padStart(2,'0')}.pdf`;
+    return {pdf, filename, acc, year, month};
   }catch(e){
     console.error(e);
     toast('账户明细生成失败，请重试');
+    return null;
+  }
+}
+
+async function exportStatementPDF(){
+  toast('正在生成账户明细…');
+  const built = await buildStatementPDF();
+  if(!built) return;
+  built.pdf.save(built.filename);
+  toast('账户明细已导出');
+}
+
+// 8MB 是 butler /boss 服务端的硬限制（handlers/boss.js MAX_BILL_BYTES），本机先算一遍，
+// 超了就不必白跑一趟网络——base64 比原始二进制大约 4/3。
+const BOSS_BILL_MAX_BYTES = 8 * 1024 * 1024;
+const MONTH_NAMES_EN = ['January','February','March','April','May','June',
+  'July','August','September','October','November','December'];
+
+// 把账户明细 PDF 直接送进老板 App（butler-bot 的 /boss，action:billUpload），
+// 省掉「导出→存手机→开老板App→找文件→上传」这几步（2026-08-27 加）。
+// 必须用户手动点了才发——导出常常是自己看的草稿，自动发会把没定稿的东西推给老板。
+async function sendStatementToBoss(){
+  const statusEl = document.getElementById('send-boss-status');
+  const setStatus = (msg) => { if(statusEl) statusEl.textContent = msg || ''; };
+
+  const token = getCompanyToken();
+  if(!token){ toast('先在设置里填公司钥匙'); setStatus('先在设置里填公司钥匙'); return; }
+
+  toast('正在生成账单…');
+  setStatus('正在生成账单…');
+  const built = await buildStatementPDF();
+  if(!built) { setStatus(''); return; }
+
+  // 照旧下载一份：就算接下来发送失败，用户手上也不会两手空空
+  built.pdf.save(built.filename);
+
+  const dataUri = built.pdf.output('datauristring');
+  const base64 = dataUri.slice(dataUri.indexOf(',') + 1);
+  const approxBytes = base64.length * 3 / 4;
+  if(approxBytes > BOSS_BILL_MAX_BYTES){
+    const msg = '单据太多，PDF 超过 8MB，试试分开导出\nPDF 已下载到本机，可以手动发';
+    toast(msg); setStatus('❌ 单据太多，PDF 超过 8MB，试试分开导出（已下载到本机）');
+    return;
+  }
+
+  toast('正在发给老板…');
+  setStatus('正在发给老板…');
+  const monthNum = String(built.month+1).padStart(2,'0');
+  const payload = {
+    token,
+    action: 'billUpload',
+    filename: built.filename,
+    title: {
+      zh: `${built.year}年${monthNum}月 ${built.acc.name} 账单`,
+      en: `${MONTH_NAMES_EN[built.month]} ${built.year} · ${built.acc.name}`
+    },
+    kind: 'month',
+    period: `${built.year}-${monthNum}`,
+    tripId: null,
+    contentBase64: base64
+  };
+
+  try{
+    const res = await fetch('https://butler-bot.jarixhew.workers.dev/boss', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(res.ok){
+      toast('已发给老板，他刷新就能看到');
+      setStatus('✅ 已发给老板，他刷新就能看到');
+      return;
+    }
+    if(res.status === 401 || res.status === 403){
+      const msg = '发给老板失败：公司钥匙不对，去设置里检查一下\nPDF 已下载到本机，可以手动发';
+      toast(msg); setStatus('❌ 公司钥匙不对，去设置里检查一下（PDF 已下载到本机，可以手动发）');
+      return;
+    }
+    let serverMsg = '';
+    try{ const body = await res.json(); serverMsg = (body && body.message) || ''; }catch(e){}
+    const msg = `发给老板失败${serverMsg?'：'+serverMsg:''}\nPDF 已下载到本机，可以手动发`;
+    toast(msg); setStatus(`❌ 发送失败${serverMsg?'：'+serverMsg:''}（PDF 已下载到本机，可以手动发）`);
+  }catch(e){
+    console.error(e);
+    const msg = '发给老板失败：网络连不上\nPDF 已下载到本机，可以手动发';
+    toast(msg); setStatus('❌ 网络连不上，稍后再试（PDF 已下载到本机，可以手动发）');
   }
 }
 
@@ -5110,7 +5216,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-13';
+const APP_BUILD = '2026-08-27';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
