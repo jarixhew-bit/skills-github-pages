@@ -46,6 +46,11 @@ body:not(.lang-en) .en{display:none !important}
   font-size:13px;text-align:center;padding:8px 12px;line-height:1.5}
 #offlineBanner.off{display:none}
 
+/* ===== 借用记账 app 钥匙提示条 ===== */
+#borrowedTokenBanner{background:#eff6ff;border-bottom:1px solid #bfdbfe;color:#1e3a5f;
+  font-size:13px;text-align:center;padding:8px 12px;line-height:1.5}
+#borrowedTokenBanner.off{display:none}
+
 /* ===== 头部 ===== */
 .hdr{background:var(--p);color:#fff;padding:16px 20px 14px;
   display:flex;align-items:center;justify-content:space-between;
@@ -235,6 +240,11 @@ body:not(.lang-en) .en{display:none !important}
 <!-- 离线提示条：只在读的是本机缓存而不是最新数据时出现 -->
 <div id="offlineBanner" class="off"></div>
 
+<!-- 借用记账 app 钥匙提示条：admin 用记账 app 的钥匙免输访问码进来时提示一次 -->
+<div id="borrowedTokenBanner" class="off">
+  <span class="cn">已用记账 App 的钥匙进入（管理员）</span><span class="en">Signed in with the expense-tracker key (admin)</span>
+</div>
+
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-title"><span class="dot"></span>
@@ -303,6 +313,9 @@ body:not(.lang-en) .en{display:none !important}
 /* ---------- 常量 ---------- */
 const BOSS_API_URL = 'https://butler-bot.jarixhew.workers.dev/boss';
 const TOKEN_KEY = 'bossApp_token';
+// 记账 app 跟这个 App 同源（github.io），localStorage 共通。YANG 的管理钥匙
+// 已经存在那边了，这里只借用不复制——记账 app 改钥匙这边自动跟着改。
+const EXPENSE_TOKEN_KEY = 'expenseTracker_companyToken';
 const FEED_CACHE_KEY = 'bossApp_feedCache';   // {fetchedAt, data}
 const SEEN_KEY = 'bossApp_seen';              // {trips,bills,inventory}
 const MONTHS_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -563,6 +576,10 @@ function markOffline(fetchedAtIso){
   banner.classList.remove('off');
 }
 function hideOffline(){ document.getElementById('offlineBanner').classList.add('off'); }
+function showBorrowedTokenBanner(){
+  const el = document.getElementById('borrowedTokenBanner');
+  if(el) el.classList.remove('off');
+}
 
 /* ============================= 主渲染入口 ============================= */
 function handleFeed(feed, opts){
@@ -1462,7 +1479,26 @@ function ensureAdminUI(){
 /* ============================= 启动 ============================= */
 async function init(){
   TOKEN = safeGet(TOKEN_KEY) || '';
-  if(!TOKEN){ openGate(); return; }
+  if(!TOKEN){
+    // 没存过自己的访问码：先试试记账 app 那把钥匙（同源共用 localStorage）。
+    // 拿不到、无效、或不是 admin，都安静回退到正常闸门，不弹错误——那把钥匙
+    // 本来就可能没配，不算异常。成功也不落地进 bossApp_token，保持单一来源。
+    const borrowed = safeGet(EXPENSE_TOKEN_KEY);
+    if(borrowed){
+      TOKEN = borrowed;
+      try{
+        const feed = await fetchFeed();
+        if(feed.role === 'admin'){
+          handleFeed(feed, { fromNetwork:true });
+          showBorrowedTokenBanner();
+          return;
+        }
+      }catch(e){ /* 安静回退 */ }
+      TOKEN = '';
+    }
+    openGate();
+    return;
+  }
   const cached = loadCachedFeed();
   if(cached && cached.data){ handleFeed(cached.data, { fromNetwork:false, fetchedAt: cached.fetchedAt }); }
   try{

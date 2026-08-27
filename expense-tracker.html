@@ -688,6 +688,18 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       </div>
       <div id="import-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
     </div>
+    <!-- 老板的访问码（2026-08-27 加）：老板 App 要输的访问码其实就是这把公司报账
+         密钥换来的一次性显示码，直接在这里给用户看，不用再让他自己去凑。
+         不主动打网络，点了按钮才拉，省得每次开设置页都请求一次。 -->
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
+        把这串和安装说明网址发给老板：<a
+          href="https://jarixhew-bit.github.io/skills-github-pages/boss/install.html"
+          target="_blank" rel="noopener">boss/install.html</a>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="fetchBossAccessCode()">查看老板访问码</button>
+      <div id="boss-code-status" style="font-size:12px;color:var(--sub);margin-top:8px"></div>
+    </div>
   </div>
   <div class="setting-section">
     <div class="setting-title">同事投递箱</div>
@@ -5499,6 +5511,54 @@ function saveCompanyToken(){
   }
   input.value = '';
   renderCompanySettings();
+}
+
+// 查老板 App 的访问码：用这台设备已存的公司报账密钥去换，换来的码直接显示、
+// 附复制按钮。密钥没配 / 换不到（401、网络失败）都给人话提示，不报错弹窗。
+async function fetchBossAccessCode(){
+  const statusEl = document.getElementById('boss-code-status');
+  if(!statusEl) return;
+  const token = getCompanyToken();
+  if(!token){
+    statusEl.textContent = '还没配上面的公司报账密钥，配好才能查看老板那串访问码';
+    return;
+  }
+  statusEl.textContent = '查询中…';
+  try{
+    const res = await fetch('https://butler-bot.jarixhew.workers.dev/boss', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action: 'accessCode' })
+    });
+    if(res.status === 401 || res.status === 403){
+      statusEl.textContent = '密钥不对，去上面公司报账那里检查一下';
+      return;
+    }
+    if(!res.ok){
+      statusEl.textContent = '查询失败，稍后再试';
+      return;
+    }
+    let body = null;
+    try{ body = await res.json(); }catch(e){}
+    const code = body && body.code;
+    if(!code){
+      statusEl.textContent = '服务器没有返回访问码';
+      return;
+    }
+    const source = body && body.source;
+    statusEl.innerHTML = `<div style="display:flex;gap:8px;align-items:center">
+        <code style="flex:1;min-width:0;font-size:14px;font-weight:700;word-break:break-all;
+          background:var(--bg);padding:8px;border-radius:8px;user-select:all">${ledEsc(code)}</code>
+        <button class="btn btn-outline btn-sm" onclick="copyBossAccessCode(this)"
+          data-v="${ledEsc(code)}">复制</button>
+      </div>` + (source ? `<div style="margin-top:6px;color:var(--sub)">来源：${ledEsc(source)}</div>` : '');
+  }catch(e){
+    statusEl.textContent = '连不上服务器，稍后再试';
+  }
+}
+async function copyBossAccessCode(btn){
+  const v = btn.getAttribute('data-v') || '';
+  try{ await navigator.clipboard.writeText(v); toast('已复制'); }
+  catch(e){ toast('复制不了，长按上面那串字自己选'); }
 }
 
 function getCompanyCatsCache(){
