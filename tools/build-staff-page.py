@@ -122,8 +122,10 @@ def build(src: str) -> str:
                      '  </button>',
                      "底部导航加老板账入口")
 
-    # 底部导航只留「明细」
-    for nav_id, label in (("nav-overview", "概览"), ("nav-analytics", "统计"), ("nav-settings", "设置")):
+    # 底部导航只留「明细」（「行程」是老板专用快捷入口，同事跟老板行程无关，
+    # 2026-08-27 加按钮时一起排除，见 CLAUDE.md 跟记账 app 的连接那节）
+    for nav_id, label in (("nav-overview", "概览"), ("nav-analytics", "统计"),
+                          ("nav-settings", "设置"), ("nav-trips", "行程")):
         i = once(s, f'id="{nav_id}"', f"底部导航的{label}")
         start = s.rindex("<button", 0, i)
         end = s.index("</button>", i) + len("</button>")
