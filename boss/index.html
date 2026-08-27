@@ -205,7 +205,13 @@ body:not(.lang-en) .en{display:none !important}
 .admin-trip-summary .sub{font-size:12px;color:var(--sub);margin-top:3px}
 .admin-trip-card{background:#F8FAFC;border:1.5px solid var(--border);border-radius:12px;
   padding:14px;margin-bottom:12px}
-.admin-item-editor{border-top:1px solid var(--border);padding-top:10px;margin-top:4px}
+/* 表单里两个层次（这趟行程整体 / 每天的行程条目）分开装：白底+边框的小盒子，
+   在灰底大卡片里视觉上明显是两块，不是一长串输入框（2026-08-27 用户误读成新旧两版残留） */
+.admin-form-section{background:#fff;border:1.5px solid var(--border);border-radius:10px;
+  padding:14px;margin-bottom:12px}
+.admin-form-section:last-of-type{margin-bottom:0}
+.admin-section-note{display:block;font-size:12px;color:var(--sub);font-weight:500;margin-top:2px}
+.admin-item-editor{margin-top:4px}
 .admin-item-row{border:1.5px solid var(--border);border-radius:10px;padding:12px;
   margin-bottom:10px;background:#fff}
 .admin-item-warn{color:var(--danger);font-size:12px;margin:2px 0 8px;font-weight:600}
@@ -1151,33 +1157,40 @@ function adminTripFormHtml(trip, idx){
   const guideCur = trip.guideUrl || '';
   const isCustom = guideCur !== '' && !GUIDE_OPTIONS.some(g => guideCur === GUIDE_BASE + g.path);
   return `<div class="admin-trip-card">
-      <div class="admin-field"><label>${pick('标题（中文）','Title (Chinese)')}</label>
-        <input type="text" data-trip="${idx}" data-field="title.zh" value="${escapeHtml(trip.title && trip.title.zh || '')}" oninput="adminTripFieldInput(this)"></div>
-      <div class="admin-field"><label>${pick('标题（英文）','Title (English)')}</label>
-        <input type="text" data-trip="${idx}" data-field="title.en" value="${escapeHtml(trip.title && trip.title.en || '')}" oninput="adminTripFieldInput(this)"></div>
-      <div class="admin-field" style="display:flex;gap:10px">
-        <div style="flex:1"><label>${pick('开始日期','Start date')}</label>
-          <input type="date" data-trip="${idx}" data-field="start" value="${escapeHtml(trip.start||'')}" oninput="adminTripFieldInput(this); adminRevalidateItemDates(${idx})"></div>
-        <div style="flex:1"><label>${pick('结束日期','End date')}</label>
-          <input type="date" data-trip="${idx}" data-field="end" value="${escapeHtml(trip.end||'')}" oninput="adminTripFieldInput(this); adminRevalidateItemDates(${idx})"></div>
+      <div class="admin-form-section">
+        <div class="admin-section-title" style="margin-bottom:12px">
+          <span class="sec-title" style="font-size:13.5px">${pick('这趟行程','This trip')}</span>
+          <span class="admin-section-note">${pick('先填大概：叫什么、哪几天、去哪','The basics: name, dates, destination')}</span>
+        </div>
+        <div class="admin-field"><label>${pick('标题（中文）','Title (Chinese)')}</label>
+          <input type="text" data-trip="${idx}" data-field="title.zh" value="${escapeHtml(trip.title && trip.title.zh || '')}" oninput="adminTripFieldInput(this)"></div>
+        <div class="admin-field"><label>${pick('标题（英文）','Title (English)')}</label>
+          <input type="text" data-trip="${idx}" data-field="title.en" value="${escapeHtml(trip.title && trip.title.en || '')}" oninput="adminTripFieldInput(this)"></div>
+        <div class="admin-field" style="display:flex;gap:10px">
+          <div style="flex:1"><label>${pick('出发日','Departure')}</label>
+            <input type="date" data-trip="${idx}" data-field="start" value="${escapeHtml(trip.start||'')}" oninput="adminTripFieldInput(this); adminRevalidateItemDates(${idx})"></div>
+          <div style="flex:1"><label>${pick('回程日','Return')}</label>
+            <input type="date" data-trip="${idx}" data-field="end" value="${escapeHtml(trip.end||'')}" oninput="adminTripFieldInput(this); adminRevalidateItemDates(${idx})"></div>
+        </div>
+        <div class="admin-field"><label>${pick('地点（中文）','Location (Chinese)')}</label>
+          <input type="text" data-trip="${idx}" data-field="location.zh" value="${escapeHtml(trip.location && trip.location.zh || '')}" oninput="adminTripFieldInput(this)"></div>
+        <div class="admin-field"><label>${pick('地点（英文）','Location (English)')}</label>
+          <input type="text" data-trip="${idx}" data-field="location.en" value="${escapeHtml(trip.location && trip.location.en || '')}" oninput="adminTripFieldInput(this)"></div>
+        <div class="admin-field"><label>${pick('关联手册','Linked guide')}</label>
+          <select class="admin-select" data-trip="${idx}" onchange="adminGuideSelectChange(${idx}, this)">
+            ${guideSelectOptionsHtml(trip)}
+          </select></div>
+        <div class="admin-field" id="admin-trip-${idx}-guide-custom-wrap" style="${isCustom?'':'display:none'}">
+          <label>${pick('手册网址','Guide URL')}</label>
+          <input type="text" id="admin-trip-${idx}-guide-custom" placeholder="https://..." value="${escapeHtml(isCustom?guideCur:'')}" oninput="adminGuideCustomInput(${idx}, this)"></div>
       </div>
-      <div class="admin-field"><label>${pick('地点（中文）','Location (Chinese)')}</label>
-        <input type="text" data-trip="${idx}" data-field="location.zh" value="${escapeHtml(trip.location && trip.location.zh || '')}" oninput="adminTripFieldInput(this)"></div>
-      <div class="admin-field"><label>${pick('地点（英文）','Location (English)')}</label>
-        <input type="text" data-trip="${idx}" data-field="location.en" value="${escapeHtml(trip.location && trip.location.en || '')}" oninput="adminTripFieldInput(this)"></div>
-      <div class="admin-field"><label>${pick('关联手册','Linked guide')}</label>
-        <select class="admin-select" data-trip="${idx}" onchange="adminGuideSelectChange(${idx}, this)">
-          ${guideSelectOptionsHtml(trip)}
-        </select></div>
-      <div class="admin-field" id="admin-trip-${idx}-guide-custom-wrap" style="${isCustom?'':'display:none'}">
-        <label>${pick('手册网址','Guide URL')}</label>
-        <input type="text" id="admin-trip-${idx}-guide-custom" placeholder="https://..." value="${escapeHtml(isCustom?guideCur:'')}" oninput="adminGuideCustomInput(${idx}, this)"></div>
 
-      <div class="admin-item-editor">
-        <div class="sec-hdr" style="margin:14px 0 8px">
+      <div class="admin-form-section admin-item-editor">
+        <div class="sec-hdr" style="margin:0 0 4px">
           <span class="sec-title" style="font-size:13.5px">${pick('行程条目','Itinerary items')}</span>
           <button type="button" class="admin-btn-md" onclick="adminAddItem(${idx})">+ ${pick('新增条目','Add item')}</button>
         </div>
+        <div class="admin-section-note" style="margin-bottom:10px">${pick('这几天每天几点做什么，可以加很多条','What happens each day — add as many as you need')}</div>
         <div id="admin-trip-${idx}-items">${adminItemsListHtml(trip, idx)}</div>
       </div>
 
