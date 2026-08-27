@@ -154,8 +154,14 @@ body:not(.lang-en) .en{display:none !important}
   border-radius:50%;font-size:15px;cursor:pointer}
 .overlay-body{flex:1;background:#525659;position:relative}
 .overlay-body iframe{width:100%;height:100%;border:none;background:#fff}
+/* ⚠️ pointer-events:none 不能拿掉（2026-08-27 踩过）：这一层是 inset:0 整片盖在账单
+   上面的状态字，它自己不可滚动。不设 pointer-events:none 的话，手指划到的是它、
+   而不是底下的 .bill-pages，结果就是「账单只看得到第一页、怎么滑都不动」。
+   自动化测试如果用 element.scrollTop = x 去滚是**测不出**这个的——那样绕过了
+   「手指点在哪个元素上」的判定，必须用真实的滚轮/触摸事件才抓得到。 */
 .overlay-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  color:#fff;font-size:14px;text-align:center;padding:0 20px}
+  color:#fff;font-size:14px;text-align:center;padding:0 20px;pointer-events:none}
+.overlay-status:empty{display:none}
 /* 账单用 PDF.js 自己画成 canvas 的滚动容器（原因见 openBill()/renderBillPdf() 顶部的
    长注释：iframe 直接塞 PDF 在 Android Chrome 上根本不会渲染）。每页一个占位块，
    宽高比先用 A4 竖版估一个，真正 canvas 画出来后会被替换掉，允许有一点点跳动。 */
@@ -924,8 +930,11 @@ function base64ToBlobUrl(b64, mime){
 const PDFJS_VERSION = '3.11.174'; // Mozilla 从 v4 起 pdf.js 只发 ESM(.mjs)，不再有挂 window 全局
                                    // 的经典 <script> 版本；3.11.174 是最后一个经典构建，
                                    // 跟本页/expense-tracker.html 现有的 <script src=cdnjs> 用法一致
-const PDFJS_LIB_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
-const PDFJS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+// PDF.js 放在本仓库里，不走 CDN（2026-08-27）：账单是老板在外面随时要打开的东西，
+// 多一个第三方域名就多一个「今天刚好连不上就什么都看不到」的可能。仓库里已有
+// vendor/tesseract 同样的做法。用的是 legacy 版，对旧一点的安卓浏览器更稳。
+const PDFJS_LIB_URL = '../vendor/pdfjs/pdf.min.mjs';
+const PDFJS_WORKER_URL = '../vendor/pdfjs/pdf.worker.min.mjs';
 const BILL_EAGER_PAGES = 2; // 打开账单立刻画的页数，不等滚动——第一眼就该看到内容
 let _pdfjsLoadPromise = null;
 let currentPdfDoc = null;       // 当前打开的 PDFDocumentProxy，关闭弹层要 destroy() 释放
@@ -934,16 +943,13 @@ let currentPdfPageObserver = null; // 懒渲染用的 IntersectionObserver，关
 function loadPdfJs(){
   if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
   if(_pdfjsLoadPromise) return _pdfjsLoadPromise;
-  _pdfjsLoadPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = PDFJS_LIB_URL;
-    s.onload = () => {
-      if(!window.pdfjsLib){ reject(new Error('pdfjsLib init failed')); return; }
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
-      resolve(window.pdfjsLib);
-    };
-    s.onerror = () => reject(new Error('PDF.js CDN load failed'));
-    document.head.appendChild(s);
+  // 本地那份是 ES module，得用 import() 载入（CDN 那份是传统脚本，改本地后写法也要跟着改）
+  _pdfjsLoadPromise = import(PDFJS_LIB_URL).then((mod) => {
+    const lib = mod && (mod.getDocument ? mod : mod.default);
+    if(!lib || !lib.getDocument) throw new Error('pdfjsLib init failed');
+    lib.GlobalWorkerOptions.workerSrc = new URL(PDFJS_WORKER_URL, location.href).href;
+    window.pdfjsLib = lib;
+    return lib;
   });
   // 加载失败的话别把失败结果缓存死——用户关掉弹层再点一次账单，应该允许重新尝试
   // （比如网络暂时不通，下次可能就好了），不能让页面此后永远认定"PDF.js 加载不了"
