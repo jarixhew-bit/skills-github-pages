@@ -90,6 +90,32 @@ body:not(.lang-en) .en{display:none !important}
 .item-map{flex:none;font-size:12.5px;font-weight:600;color:var(--p);background:var(--p2);
   border-radius:999px;padding:6px 10px;text-decoration:none;white-space:nowrap;align-self:center}
 
+/* ===== 航班信息（条目带 flight 时，在标题/备注下多出这一块） ===== */
+.flight-info{margin-top:8px;padding:10px 12px;background:#F8FAFC;border:1px solid var(--border);
+  border-radius:10px;font-size:12.5px}
+.flight-info-hd{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-weight:700}
+.flight-badge{color:var(--p)}
+.flight-route{color:var(--sub);font-weight:600}
+.flight-status{margin-left:auto;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700}
+.flight-status-scheduled{background:var(--p2);color:var(--p)}
+.flight-status-flying{background:#E6F4EA;color:var(--ok)}
+.flight-status-landed{background:#E6F4EA;color:var(--ok)}
+.flight-status-delay{background:#FDECEA;color:var(--danger)}
+.flight-status-cancel{background:#F1F1F1;color:var(--sub)}
+.flight-info-times{margin-top:6px;display:flex;flex-direction:column;gap:3px;color:var(--text)}
+.flight-time-actual{font-weight:700}
+.flight-delay-tag{margin-left:6px;color:var(--danger);font-weight:700}
+.flight-early-tag{margin-left:6px;color:var(--ok);font-weight:700}
+.flight-time-unknown{color:var(--sub)}
+.flight-info-gate{margin-top:6px;color:var(--sub)}
+
+/* ===== 转机等待（同一趟行程里，相邻两个航班条目之间自动算出来插入的一行） ===== */
+.transfer-row{margin:8px 16px;padding:9px 12px;background:#EFF6FF;border:1px dashed #BFDBFE;
+  border-radius:10px;font-size:12.5px;color:#1e3a5f;font-weight:600}
+.transfer-row.transfer-warn{background:#FDECEA;border-color:#F5B5B5;color:var(--danger)}
+.transfer-hint{margin-top:3px;font-size:11.5px;font-weight:700}
+.transfer-hint-warn{color:#B45309}
+
 /* ===== 「今天/明天」页里覆盖当天的行程横幅（哪怕这趟行程还没排具体条目也要看得到） ===== */
 .today-trip-banner{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
   padding:16px;margin-bottom:14px}
@@ -238,6 +264,14 @@ body:not(.lang-en) .en{display:none !important}
 .admin-btn-md{padding:10px 16px;border:none;border-radius:9px;background:var(--p);color:#fff;
   font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;flex:none}
 .admin-empty-items{padding:14px;border:1.5px dashed var(--border);border-radius:12px;margin-bottom:10px}
+/* ===== 管理面板：条目表单里「航班（选填）」小块 ===== */
+.flight-lookup-block{border:1.5px dashed var(--border);border-radius:10px;padding:10px 12px;margin:10px 0}
+.flight-lookup-hd{font-size:12.5px;font-weight:700;color:var(--p);margin-bottom:8px}
+.flight-lookup-current{font-size:12.5px;color:var(--sub);margin-bottom:8px;display:flex;
+  align-items:center;gap:8px;flex-wrap:wrap}
+.flight-lookup-status{margin-top:8px;font-size:12.5px;min-height:16px;color:var(--sub)}
+.flight-lookup-status.err{color:var(--danger)}
+.flight-lookup-status.ok{color:var(--ok)}
 .admin-empty-items .admin-status{margin-top:0;margin-bottom:10px}
 .admin-select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
   font-size:14px;font-family:inherit;color:var(--text);background:#fff}
@@ -511,6 +545,141 @@ function fmtDateWeekdayBoth(iso){
   return { zh:`${m}月${d}日 ${WEEKDAYS_ZH[wd]}`, en:`${WEEKDAYS_EN[wd]}, ${MONTHS_EN[m-1]} ${d}` };
 }
 
+/* ============================= 航班：时间/时长小工具 =============================
+ * 合约（flight-contract）明确要求：provider 回的时间是「各机场当地时间＋时区偏移量」
+ * 的字符串（例 "2026-09-12 09:30+07:00"），算时间差/延误一律自己解析这个偏移量，
+ * 不许用 `new Date(s)` 交给运行环境的本地时区去减——那样在 UTC+7/+8 这类场景会算错。 */
+/** 从当地时间字符串里直接取 "HH:MM" 显示用，不涉及时区换算。 */
+function extractHM(s){
+  const m = /(\d{2}):(\d{2})/.exec(String(s || ''));
+  return m ? `${m[1]}:${m[2]}` : '';
+}
+/** "YYYY-MM-DD HH:MM[:SS]±HH:MM" → 真实 UTC 毫秒数（解析不了返回 null）。 */
+function parseOffsetTs(s){
+  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?\s*([+-]\d{2}):?(\d{2})$/.exec(String(s || '').trim());
+  if(!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3], h = +m[4], mi = +m[5], se = +(m[6] || 0);
+  const offH = m[7], offM = +m[8];
+  const sign = offH.charAt(0) === '-' ? -1 : 1;
+  const offMinutes = sign * (Math.abs(parseInt(offH, 10)) * 60 + offM);
+  const asUtc = Date.UTC(y, mo - 1, d, h, mi, se);
+  return asUtc - offMinutes * 60000;
+}
+/** 毫秒时长 → 中/英文案（如 "3 小时 20 分" / "3h 20m"），不到 1 小时就不提小时。 */
+function formatDurationLabel(ms){
+  const totalMin = Math.round(Math.abs(ms) / 60000);
+  const h = Math.floor(totalMin / 60), mnt = totalMin % 60;
+  return { zh: h > 0 ? `${h} 小时 ${mnt} 分` : `${mnt} 分`, en: h > 0 ? `${h}h ${mnt}m` : `${mnt}m` };
+}
+// 常见机场 IATA 码 → 中文城市名，只收本仓库旅游手册涉及过的常见目的地，不追求穷举；
+// 查不到就只用代码本身（CLAUDE.md 规则：有中文名就用，没有就用 IATA 码）。
+const AIRPORT_NAMES_ZH = {
+  PNH:'金边', CAN:'广州', SZX:'深圳', HKG:'香港', XMN:'厦门', PEN:'槟城', SIN:'新加坡',
+  NRT:'东京', HND:'东京', KIX:'大阪', ITM:'大阪', FUK:'福冈', TPE:'台北', PEK:'北京',
+  PVG:'上海', SHA:'上海', CTU:'成都', KUL:'吉隆坡'
+};
+function airportLabelZh(code){
+  const c = String(code || '').toUpperCase();
+  const name = AIRPORT_NAMES_ZH[c];
+  return name ? `${name} ${c}` : c;
+}
+/** flightLookup 查到的资料 → 自动填的条目标题（有城市名就带上，没有就只用代码）。 */
+function flightTitleFromLookup(f){
+  const from = String(f.from || '').toUpperCase(), to = String(f.to || '').toUpperCase();
+  return { zh: `${airportLabelZh(from)} → ${airportLabelZh(to)}`, en: `${from} → ${to}` };
+}
+/** flightLookup 查到的资料 → 自动填的备注（航站楼/登机口，没有就留空字符串）。 */
+function flightNoteFromLookup(f){
+  const zhBits = [], enBits = [];
+  if(f.dep_terminal){ zhBits.push(f.dep_terminal); enBits.push(f.dep_terminal); }
+  if(f.dep_gate){ zhBits.push(`登机口 ${f.dep_gate}`); enBits.push(`Gate ${f.dep_gate}`); }
+  return { zh: zhBits.join(' · '), en: enBits.join(' · ') };
+}
+/** 起降某一时刻的显示：只有计划时间就显示计划时间；有实际/预计且跟计划不同，
+ * 把「实际 HH:MM（延误/提前 N 分）」显眼标出来，跟计划时间同一行方便对照。 */
+function flightTimePartHtml(sched, actualOrEst){
+  const schedHM = extractHM(sched);
+  if(!actualOrEst){
+    return schedHM || `<span class="flight-time-unknown">${bl('时间未知','time unknown')}</span>`;
+  }
+  const actualHM = extractHM(actualOrEst);
+  if(!actualHM || actualHM === schedHM) return schedHM;
+  const schedTs = parseOffsetTs(sched);
+  const actTs = parseOffsetTs(actualOrEst);
+  let delayHtml = '';
+  if(schedTs != null && actTs != null){
+    const diffMin = Math.round((actTs - schedTs) / 60000);
+    if(diffMin > 0) delayHtml = `<span class="flight-delay-tag">${bl(`延误 ${diffMin} 分`, `${diffMin} min late`)}</span>`;
+    else if(diffMin < 0) delayHtml = `<span class="flight-early-tag">${bl(`提前 ${-diffMin} 分`, `${-diffMin} min early`)}</span>`;
+  }
+  return `<span class="flight-time-sched">${schedHM}</span> → <span class="flight-time-actual">${bl('实际','Actual')} ${actualHM}</span>${delayHtml}`;
+}
+function flightStatusMeta(status){
+  const s = String(status || '').toLowerCase();
+  if(s === 'delayed') return { cls:'delay', zh:'延误', en:'Delayed' };
+  if(['landed','arrived'].includes(s)) return { cls:'landed', zh:'已落地', en:'Landed' };
+  if(['enroute','active','departed','airborne','en-route'].includes(s)) return { cls:'flying', zh:'已起飞', en:'Departed' };
+  if(['cancelled','canceled'].includes(s)) return { cls:'cancel', zh:'已取消', en:'Cancelled' };
+  return { cls:'scheduled', zh:'未起飞', en:'Scheduled' };
+}
+/** 条目带 flight 时，标题/备注下面多出来的一小块：航班号、起降机场、实时状态。
+ * `live` 是 null（追踪没了/后端还没 join 上）时只显示已存的航班号，不报错不吓人。 */
+function flightInfoHtml(it){
+  if(!it.flight) return '';
+  const f = it.flight;
+  const live = f.live || null;
+  const noLabel = escapeHtml(f.no || '');
+  if(!live){
+    return `<div class="flight-info"><span class="flight-badge">✈️ ${noLabel}</span></div>`;
+  }
+  const from = live.from || '', to = live.to || '';
+  const routeLabel = (from || to) ? `<span class="flight-route">${escapeHtml(from)} → ${escapeHtml(to)}</span>` : '';
+  const meta = flightStatusMeta(live.status);
+  const gateBits = [];
+  if(live.terminal) gateBits.push(escapeHtml(live.terminal));
+  if(live.gate) gateBits.push(bl(`登机口 ${live.gate}`, `Gate ${live.gate}`));
+  return `<div class="flight-info">
+      <div class="flight-info-hd">
+        <span class="flight-badge">✈️ ${noLabel}</span>
+        ${routeLabel}
+        <span class="flight-status flight-status-${meta.cls}">${bl(meta.zh, meta.en)}</span>
+      </div>
+      <div class="flight-info-times">
+        <div>${bl('起飞','Dep')} ${flightTimePartHtml(live.sched_dep, live.act_dep || live.est_dep)}</div>
+        <div>${bl('到达','Arr')} ${flightTimePartHtml(live.sched_arr, live.act_arr || live.est_arr)}</div>
+      </div>
+      ${ gateBits.length ? `<div class="flight-info-gate">${gateBits.join(' · ')}</div>` : '' }
+    </div>`;
+}
+/** 同一趟行程里，相邻两个航班条目：前一班到达机场 == 后一班出发机场时，
+ * 自动算出转机等待时长插入一行。等待为负（日期/航班可能填错）或 <90 分钟（偏紧）都要显眼提示。
+ * 用 `live` 里各机场当地时间＋偏移量算，不涉及 flight-contract 里点名警告的本地时区陷阱。 */
+function transferRowHtml(prevItem, nextItem){
+  const pf = prevItem && prevItem.flight && prevItem.flight.live;
+  const nf = nextItem && nextItem.flight && nextItem.flight.live;
+  if(!pf || !nf) return '';
+  const arrCode = String(pf.to || '').toUpperCase();
+  const depCode = String(nf.from || '').toUpperCase();
+  if(!arrCode || !depCode || arrCode !== depCode) return '';
+  const arrTs = parseOffsetTs(pf.act_arr || pf.est_arr || pf.sched_arr);
+  const depTs = parseOffsetTs(nf.act_dep || nf.est_dep || nf.sched_dep);
+  if(arrTs == null || depTs == null) return '';
+  const diffMs = depTs - arrTs;
+  const dur = formatDurationLabel(diffMs);
+  const cityZh = airportLabelZh(arrCode);
+  if(diffMs < 0){
+    return `<div class="transfer-row transfer-warn">
+        ⚠️ ${bl('转机时间异常','Unusual layover')}：-${bl(dur.zh, dur.en)} @ ${bl(cityZh, arrCode)}
+        <div class="transfer-hint">${bl('日期或航班可能填错了','The date or flight number may be wrong')}</div>
+      </div>`;
+  }
+  const tight = diffMs < 90 * 60000;
+  return `<div class="transfer-row">
+      🔄 ${bl('转机等待','Layover')} ${bl(dur.zh, dur.en)} @ ${bl(cityZh, arrCode)}
+      ${ tight ? `<div class="transfer-hint transfer-hint-warn">${bl('转机时间偏紧','Layover is tight')}</div>` : '' }
+    </div>`;
+}
+
 /* ============================= 与后端通信 ============================= */
 async function bossCall(action, extra){
   if(!TOKEN) throw { kind:'app', message: pick('缺少访问码','Missing access code') };
@@ -709,6 +878,7 @@ function itemRowHtml(it){
       <div class="item-body">
         <div class="item-title">${blObj(it.title)}</div>
         ${ hasNote ? `<div class="item-note">${blObj(it.note)}</div>` : '' }
+        ${ it.flight ? flightInfoHtml(it) : '' }
       </div>
       ${ it.mapUrl ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
     </div>`;
@@ -826,7 +996,7 @@ function tripItemsHtml(trip){
   }
   let html = '';
   let lastDate = null;
-  items.forEach(it => {
+  items.forEach((it, i) => {
     if(it.date !== lastDate){
       lastDate = it.date;
       const dw = fmtDateWeekdayBoth(it.date);
@@ -834,6 +1004,8 @@ function tripItemsHtml(trip){
       html += `<div class="trip-day-hdr">${label}</div>`;
     }
     html += itemRowHtml(it);
+    const next = items[i + 1];
+    if(next) html += transferRowHtml(it, next); // 同一趟行程里相邻两个航班条目，自动算转机等待
   });
   return html;
 }
@@ -1278,7 +1450,13 @@ function adminRevalidateItemDates(tripIdx){
 function adminItemRowHtml(trip, tripIdx, itemIdx){
   const it = trip.items[itemIdx];
   const outOfRange = !!(it.date && trip.start && trip.end && (it.date < trip.start || it.date > trip.end));
-  return `<div class="admin-item-row">
+  // ⚠️ 航班小块刻意放在 .admin-item-row 外面（跟其它条目字段不同层）：它自己也有一个
+  // input[type=date]（航班日期），如果塞进 .admin-item-row 里，会跟这一行本来就有的
+  // 「条目日期」input[type=date] 撞在一起，让 check-boss.mjs 里按
+  // `.admin-item-row → input[type=date]` 定位「条目日期」那个唯一输入框的断言失效
+  // （2026-08-27 踩过：strict mode violation，resolved to 2 elements）。
+  return `<div class="admin-item-wrap">
+    <div class="admin-item-row">
       <div style="display:flex;gap:10px">
         <div style="flex:1"><label>${pick('日期','Date')}</label>
           <input type="date" value="${escapeHtml(it.date||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'date',this.value)"></div>
@@ -1289,17 +1467,120 @@ function adminItemRowHtml(trip, tripIdx, itemIdx){
         ⚠️ ${pick('日期不在行程范围内（如果是前后站可以不管）','Date is outside the trip range (fine if this is before/after the main trip)')}
       </div>
       <div class="admin-field"><label>${pick('标题（中文）','Title (Chinese)')}</label>
-        <input type="text" value="${escapeHtml(it.title && it.title.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'title.zh',this.value)"></div>
+        <input type="text" id="admin-item-${tripIdx}-${itemIdx}-title-zh" value="${escapeHtml(it.title && it.title.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'title.zh',this.value)"></div>
       <div class="admin-field"><label>${pick('标题（英文）','Title (English)')}</label>
-        <input type="text" value="${escapeHtml(it.title && it.title.en || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'title.en',this.value)"></div>
+        <input type="text" id="admin-item-${tripIdx}-${itemIdx}-title-en" value="${escapeHtml(it.title && it.title.en || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'title.en',this.value)"></div>
       <div class="admin-field"><label>${pick('备注（中文，选填）','Note (Chinese, optional)')}</label>
-        <input type="text" value="${escapeHtml(it.note && it.note.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'note.zh',this.value)"></div>
+        <input type="text" id="admin-item-${tripIdx}-${itemIdx}-note-zh" value="${escapeHtml(it.note && it.note.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'note.zh',this.value)"></div>
       <div class="admin-field"><label>${pick('备注（英文，选填）','Note (English, optional)')}</label>
-        <input type="text" value="${escapeHtml(it.note && it.note.en || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'note.en',this.value)"></div>
+        <input type="text" id="admin-item-${tripIdx}-${itemIdx}-note-en" value="${escapeHtml(it.note && it.note.en || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'note.en',this.value)"></div>
       <div class="admin-field"><label>${pick('地点名称（或直接粘贴地图链接）','Place name (or paste a map link)')}</label>
         <input type="text" value="${escapeHtml(it.mapUrl||'')}" placeholder="${escapeHtml(pick('例：浅草寺','e.g. Senso-ji Temple'))}" onchange="adminItemMapInput(${tripIdx},${itemIdx},this)"></div>
       <button type="button" class="admin-btn-sm admin-btn-sm-danger" onclick="adminDeleteItem(${tripIdx},${itemIdx})">${pick('删除条目','Delete item')}</button>
+    </div>
+    ${flightLookupBlockHtml(trip, tripIdx, itemIdx)}
+  </div>`;
+}
+/** 条目表单里的「航班（选填）」小块：航班号 + 日期 → 查询按钮；已关联航班时多显示
+ * 一行「已关联航班...清除航班」。用 outerHTML 整块替换刷新（跟其它条目字段用
+ * oninput/onchange 直接改 value 不同），因为查到/清除后要连带切换这一小块本身的展示形态。 */
+function flightLookupBlockHtml(trip, tripIdx, itemIdx){
+  const it = trip.items[itemIdx];
+  const f = it.flight || null;
+  const noVal = (f && f.no) || '';
+  const dateVal = (f && f.date) || it.date || '';
+  return `<div class="flight-lookup-block" id="admin-item-${tripIdx}-${itemIdx}-flightblock">
+      <div class="flight-lookup-hd">✈️ ${pick('航班（选填）','Flight (optional)')}</div>
+      ${ f ? `<div class="flight-lookup-current">
+          <span>${pick('已关联航班','Linked flight')} <b>${escapeHtml(f.no||'')}</b>（${escapeHtml(f.date||'')}）</span>
+          <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
+        </div>` : '' }
+      <div style="display:flex;gap:10px">
+        <div style="flex:1"><label>${pick('航班号','Flight no.')}</label>
+          <input type="text" id="admin-item-${tripIdx}-${itemIdx}-flightno" value="${escapeHtml(noVal)}" placeholder="CZ3096"></div>
+        <div style="flex:1"><label>${pick('日期','Date')}</label>
+          <input type="date" id="admin-item-${tripIdx}-${itemIdx}-flightdate" value="${escapeHtml(dateVal)}"></div>
+      </div>
+      <button type="button" class="admin-btn-sm" id="admin-item-${tripIdx}-${itemIdx}-flightbtn" onclick="adminFlightLookup(${tripIdx},${itemIdx})">🔍 ${pick('查询','Look up')}</button>
+      <div id="admin-item-${tripIdx}-${itemIdx}-flightstatus" class="flight-lookup-status"></div>
     </div>`;
+}
+/** 直接写某个已渲染 input 的 value（跟 adminItemMapInput() 自动填地图链接同一手法），
+ * 不整段重渲染表单——避免打断正在编辑其它条目的人、也不丢焦点/滚动位置。 */
+function setInputVal(id, val){
+  const el = document.getElementById(id);
+  if(el) el.value = val == null ? '' : val;
+}
+/** 航班号+日期 → 查一次（会花 AeroDataBox 额度，所以只在这里手动触发），查到后
+ * 自动填这个条目的标题/时间/备注，并把 {no,date,trackId} 存进 it.flight——
+ * 填完仍可手改，不锁死（不覆盖用户后续手动改动，只在本次查询成功那一刻写入）。 */
+async function adminFlightLookup(tripIdx, itemIdx){
+  const trip = adminTripsDraft && adminTripsDraft[tripIdx];
+  const it = trip && trip.items && trip.items[itemIdx];
+  if(!it) return;
+  const noInput = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightno`);
+  const dateInput = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightdate`);
+  const statusEl = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightstatus`);
+  const btn = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightbtn`);
+  const no = ((noInput && noInput.value) || '').trim().toUpperCase();
+  const date = ((dateInput && dateInput.value) || '').trim();
+  if(!no || !date){
+    if(statusEl){ statusEl.className = 'flight-lookup-status err'; statusEl.textContent = pick('请先填航班号和日期','Please fill in the flight number and date'); }
+    return;
+  }
+  if(btn) btn.disabled = true;
+  if(statusEl){ statusEl.className = 'flight-lookup-status'; statusEl.textContent = pick('查询中…','Looking up…'); }
+  let res;
+  try{
+    res = await bossCall('flightLookup', { no, date });
+  }catch(err){
+    if(btn) btn.disabled = false;
+    if(statusEl){
+      statusEl.className = 'flight-lookup-status err';
+      statusEl.textContent = (err && err.message) || pick('查不到这个航班号，确认一下日期对不对','Could not find this flight — please check the number and date');
+    }
+    return;
+  }
+  if(btn) btn.disabled = false;
+  const f = res && res.flight;
+  if(!f){
+    if(statusEl){ statusEl.className = 'flight-lookup-status err'; statusEl.textContent = pick('查不到这个航班号，确认一下日期对不对','Could not find this flight — please check the number and date'); }
+    return;
+  }
+  const title = flightTitleFromLookup(f);
+  const note = flightNoteFromLookup(f);
+  const time = extractHM(f.sched_dep) || it.time || '';
+  it.title = title;
+  it.note = note;
+  it.time = time;
+  it.flight = { no: f.no || no, date: f.date || date, trackId: f.trackId || '' };
+  markTripsDirty();
+
+  setInputVal(`admin-item-${tripIdx}-${itemIdx}-time`, time);
+  setInputVal(`admin-item-${tripIdx}-${itemIdx}-title-zh`, title.zh);
+  setInputVal(`admin-item-${tripIdx}-${itemIdx}-title-en`, title.en);
+  setInputVal(`admin-item-${tripIdx}-${itemIdx}-note-zh`, note.zh);
+  setInputVal(`admin-item-${tripIdx}-${itemIdx}-note-en`, note.en);
+  // ⚠️ 先整块重画（要连带切换出「已关联航班...清除航班」那一行），确认消息必须在
+  // 重画**之后**再写一次——不然新画出来的状态栏是空的，用户点完查询什么反馈都看不到
+  // （跟 adminSaveTripsForm() 里「存完刷新会冲掉提示」是同一类坑，2026-08-27 踩过一次）。
+  const block = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightblock`);
+  if(block) block.outerHTML = flightLookupBlockHtml(trip, tripIdx, itemIdx);
+  const afterStatusEl = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightstatus`);
+  if(afterStatusEl){
+    afterStatusEl.className = 'flight-lookup-status ok';
+    afterStatusEl.textContent = pick('已查到并自动填入','Found — filled in automatically');
+  }
+}
+/** 清除已关联的航班——标题/时间/备注是用户可能已经手改过的内容，原样保留，只去掉 flight。 */
+function adminClearFlight(tripIdx, itemIdx){
+  const trip = adminTripsDraft && adminTripsDraft[tripIdx];
+  const it = trip && trip.items && trip.items[itemIdx];
+  if(!it) return;
+  delete it.flight;
+  markTripsDirty();
+  const block = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightblock`);
+  if(block) block.outerHTML = flightLookupBlockHtml(trip, tripIdx, itemIdx);
 }
 function adminItemsListHtml(trip, tripIdx){
   const items = trip.items || [];
