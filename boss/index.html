@@ -184,6 +184,23 @@ body:not(.lang-en) .en{display:none !important}
   font-size:14px;font-family:inherit;color:var(--text);background:#fff}
 .admin-json-summary{cursor:pointer;font-weight:700;color:var(--p);font-size:14.5px;list-style:revert}
 
+/* ===== 推送通知条：viewer/admin 都能用，跟 tab 切换无关，放在 #app 顶部 ===== */
+.push-bar{background:var(--card);margin:12px 16px 0;border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 14px}
+.push-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.push-label{font-size:14px;font-weight:700;color:var(--text)}
+.push-toggle-btn{padding:7px 16px;border:none;border-radius:999px;background:var(--p2);color:var(--p);
+  font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex:none}
+.push-toggle-btn.on{background:var(--p);color:#fff}
+.push-toggle-btn:disabled{opacity:.5}
+.push-hint{margin-top:8px;font-size:12.5px;color:var(--sub);line-height:1.6}
+.push-hint a{color:var(--p);font-weight:600}
+.push-hint-warn{color:var(--danger)}
+
+/* ===== 管理面板：访问码 ===== */
+.admin-code-box{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px;font-weight:700;
+  letter-spacing:.5px;padding:10px 12px;background:#F8FAFC;border:1.5px solid var(--border);
+  border-radius:10px;word-break:break-all}
+
 /* ===== BOTTOM NAV ===== */
 .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);
   width:100%;max-width:520px;background:#fff;border-top:1px solid var(--border);
@@ -303,6 +320,12 @@ let feedFetchedAt = null;   // 这份 feed 是什么时候拿到的（ISO）
 let role = 'viewer';
 let currentBillBlobUrl = null;
 
+/* ---------- 推送通知 ---------- */
+let pushInfo = null;          // feed 回的 {publicKey, subscribed}——subscribed 是服务端视角，不代表本机浏览器状态
+let pushSubscription = null;  // 本机浏览器当前的订阅对象（null = 未订阅），由 refreshPushSubscriptionState() 核对
+let pushBusy = false;         // 订阅/取消订阅进行中，防止重复点击
+let adminAccessCode = null;   // 管理面板缓存的访问码，避免每次重渲染都闪一下「加载中」
+
 /* ---------- 管理面板：行程表单的工作副本（只在内存里，保存成功才落地） ---------- */
 let adminTripsDraft = null;   // feedData.trips 的深拷贝，null 表示还没建立
 let adminTripsDirty = false;  // 有没有还没保存的改动（离开前要提醒）
@@ -337,6 +360,7 @@ function toggleLang(){
   try{ localStorage.setItem('siteLangUser', next); }catch(e){}
   // 部分文案（空状态、库存量、管理面板）是按当前语言现算的字符串，切换后要重画一次
   if(feedData){ renderAll(); updateDots(); }
+  ensurePushUI();
 }
 (function initLang(){
   let lang = null;
@@ -347,6 +371,7 @@ function toggleLang(){
     if(e.key === 'siteLangUser' && e.newValue){
       applyLang(e.newValue);
       if(feedData){ renderAll(); updateDots(); }
+      ensurePushUI();
     }
   });
 })();
@@ -420,6 +445,21 @@ async function bossCall(action, extra){
   }
   return json;
 }
+/** 拉 feed 时带上本机当前的推送订阅 endpoint（如果有），让服务端的 push.subscribed
+ *  跟本机浏览器状态对齐——合约里明确「没带就回 false」，所以能带就带。 */
+async function fetchFeed(){
+  let ep;
+  try{
+    if(pushSupported()){
+      const reg = await navigator.serviceWorker.getRegistration();
+      if(reg){
+        const sub = await reg.pushManager.getSubscription();
+        if(sub) ep = sub.endpoint;
+      }
+    }
+  }catch(e){}
+  return bossCall('feed', ep ? { pushEndpoint: ep } : {});
+}
 
 /* ============================= 本地缓存 ============================= */
 function saveToken(v){ TOKEN = v; safeSet(TOKEN_KEY, v); }
@@ -454,7 +494,7 @@ async function gateSubmit(){
   const prevToken = TOKEN;
   TOKEN = v;
   try{
-    const feed = await bossCall('feed', {});
+    const feed = await fetchFeed();
     saveToken(v);
     handleFeed(feed, { fromNetwork:true });
     input.value = '';
@@ -528,6 +568,7 @@ function hideOffline(){ document.getElementById('offlineBanner').classList.add('
 function handleFeed(feed, opts){
   feedData = feed;
   role = feed.role === 'admin' ? 'admin' : 'viewer';
+  pushInfo = feed.push || null;
   if(opts && opts.fromNetwork){
     feedFetchedAt = new Date().toISOString();
     saveCachedFeed(feed, feedFetchedAt);
@@ -541,6 +582,9 @@ function handleFeed(feed, opts){
   ensureAdminUI();
   renderAll();
   updateDots();
+  ensurePushUI();
+  refreshPushSubscriptionState(); // 异步核对本机真实订阅状态，核对完再刷新一次推送条
+  applyHashTab();
 }
 function renderAll(){
   renderToday();
@@ -1090,6 +1134,16 @@ function renderAdmin(){
     ${adminTripsSectionHtml()}
 
     <div class="admin-block">
+      <h3>🔑 <span class="cn">老板的访问码</span><span class="en">Boss's Access Code</span></h3>
+      <div class="admin-field">
+        <label>${pick('把这串和安装说明网址发给老板','Send this code and the install guide link to your boss')}</label>
+        <div id="admin-access-code" class="admin-code-box">${escapeHtml(adminAccessCode || pick('加载中…','Loading…'))}</div>
+      </div>
+      <button type="button" class="admin-btn-sm" onclick="adminCopyAccessCode()">📋 ${pick('复制','Copy')}</button>
+      <span id="admin-access-code-status" style="margin-left:8px;font-size:12.5px;color:var(--ok)"></span>
+    </div>
+
+    <div class="admin-block">
       <h3>⬆️ ${pick('上传账单 PDF','Upload a Bill PDF')}</h3>
       <div class="admin-field">
         <label>${pick('PDF 文件（上限 8MB）','PDF file (max 8MB)')}</label>
@@ -1152,6 +1206,7 @@ function renderAdmin(){
   `;
   const ta = document.getElementById('admin-trips-json');
   if(ta) ta.addEventListener('input', () => { adminValidateTripsJSON(); markTripsDirty(); });
+  adminLoadAccessCode();
 }
 function fileToBase64(file){
   return new Promise((resolve, reject) => {
@@ -1241,9 +1296,145 @@ async function adminSaveTrips(){
 }
 async function refreshFeed(){
   try{
-    const feed = await bossCall('feed', {});
+    const feed = await fetchFeed();
     handleFeed(feed, { fromNetwork:true });
   }catch(e){ /* 静默失败：用户下次操作或下次开页面还会再试 */ }
+}
+
+/* ============================= 推送通知 ============================= */
+function pushSupported(){
+  return ('serviceWorker' in navigator) && ('PushManager' in window) && (typeof Notification !== 'undefined');
+}
+/** iOS 硬约束：只有「已加到主屏」的 PWA 才能收 Web Push。 */
+function isStandalonePwa(){
+  try{
+    return window.navigator.standalone === true ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  }catch(e){ return false; }
+}
+/** VAPID 公钥 base64url → Uint8Array，subscribe() 要这个格式。 */
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for(let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+/** 拿本机浏览器当前真实的订阅状态（不依赖服务端说法），刷新完重画一次推送条。 */
+async function refreshPushSubscriptionState(){
+  if(!pushSupported()){ pushSubscription = null; ensurePushUI(); return; }
+  try{
+    const reg = await navigator.serviceWorker.getRegistration();
+    pushSubscription = reg ? await reg.pushManager.getSubscription() : null;
+  }catch(e){ pushSubscription = null; }
+  ensurePushUI();
+}
+function pushBarInnerHtml(){
+  const subscribed = !!pushSubscription;
+  const denied = (typeof Notification !== 'undefined' && Notification.permission === 'denied');
+  const needStandalone = !isStandalonePwa();
+  let hint = '';
+  if(subscribed){
+    hint = `<div class="push-hint">${bl('已开启，有更新会推送到这台设备', 'On — updates will be pushed to this device')}</div>`;
+  }else if(denied){
+    hint = `<div class="push-hint push-hint-warn">${bl(
+      '通知权限被拒绝了，去 iPhone「设置 → 该 App → 通知」里重新打开',
+      'Notifications were blocked — re-enable them in iPhone Settings → this app → Notifications')}</div>`;
+  }else if(needStandalone){
+    hint = `<div class="push-hint">${bl('先把这个 App 加到主屏才能收通知，', 'Add this app to your Home Screen first to enable notifications, ')}` +
+      `<a href="install.html" target="_blank" rel="noopener">${bl('安装说明','install guide')}</a></div>`;
+  }
+  const btnLabel = subscribed ? bl('关闭通知','Turn off') : bl('开启通知','Turn on');
+  return `<div class="push-row">
+      <div class="push-label">🔔 ${bl('推送通知','Notifications')}</div>
+      <button type="button" id="pushToggleBtn" class="push-toggle-btn${subscribed ? ' on' : ''}"
+        onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${btnLabel}</button>
+    </div>${hint}`;
+}
+/** 建立/更新/拆掉顶部的推送条。浏览器不支持 PushManager 时整块不渲染（不是 CSS 隐藏）。 */
+function ensurePushUI(){
+  const app = document.getElementById('app');
+  if(!app) return;
+  let bar = document.getElementById('pushBar');
+  if(!pushSupported()){
+    if(bar) bar.remove();
+    return;
+  }
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'pushBar';
+    bar.className = 'push-bar';
+    app.insertBefore(bar, app.firstChild);
+  }
+  bar.innerHTML = pushBarInnerHtml();
+}
+/** 开关按钮：iOS 的两条硬约束在这里守——非主屏环境不弹权限，
+ *  requestPermission() 必须由这个点击回调直接触发（用户手势），不能异步绕一圈再弹。 */
+async function togglePush(){
+  if(pushBusy || !pushSupported()) return;
+  if(pushSubscription){
+    pushBusy = true; ensurePushUI();
+    try{
+      const endpoint = pushSubscription.endpoint;
+      await pushSubscription.unsubscribe();
+      pushSubscription = null;
+      await bossCall('pushUnsubscribe', { endpoint });
+    }catch(e){ /* 本机已经取消订阅了，服务端没删也不影响——下次订阅会覆盖同一 endpoint */ }
+    pushBusy = false; ensurePushUI();
+    return;
+  }
+  if(!isStandalonePwa()) return; // 提示已经在 pushBarInnerHtml() 里，不弹权限
+  if(typeof Notification !== 'undefined' && Notification.permission === 'denied') return; // 浏览器不会再弹第二次
+  if(!pushInfo || !pushInfo.publicKey){
+    alert(pick('服务器还没准备好推送功能，请稍后再试','Push isn’t ready on the server yet — please try again later'));
+    return;
+  }
+  pushBusy = true; ensurePushUI();
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){ pushBusy = false; ensurePushUI(); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(pushInfo.publicKey)
+    });
+    const j = sub.toJSON();
+    await bossCall('pushSubscribe', { subscription: { endpoint: j.endpoint, keys: j.keys } });
+    pushSubscription = sub;
+  }catch(e){
+    alert((e && e.message) || pick('开启通知失败，请稍后再试','Failed to enable notifications — please try again later'));
+  }
+  pushBusy = false; ensurePushUI();
+}
+
+/* ============================= 管理面板：老板的访问码 ============================= */
+async function adminLoadAccessCode(){
+  const el = document.getElementById('admin-access-code');
+  if(!el) return;
+  try{
+    const res = await bossCall('accessCode', {});
+    adminAccessCode = res.code || '';
+    el.textContent = adminAccessCode || pick('（服务器未返回访问码）','(server did not return a code)');
+  }catch(err){
+    el.textContent = (err && err.message) || pick('读取失败','Failed to load');
+  }
+}
+function adminCopyAccessCode(){
+  if(!adminAccessCode) return;
+  const s = document.getElementById('admin-access-code-status');
+  try{
+    navigator.clipboard.writeText(adminAccessCode).then(() => {
+      if(s){ s.textContent = pick('已复制','Copied'); setTimeout(() => { if(s) s.textContent = ''; }, 2000); }
+    }).catch(() => {});
+  }catch(e){}
+}
+
+/* 从推送通知点进来时，url 若带 #trips / #bills / #inventory / #today 这样的锚点，
+   直接切到对应分页——「点通知能带到对应分页」。 */
+function applyHashTab(){
+  const h = (location.hash || '').replace('#', '');
+  if(['trips','bills','inventory','today'].indexOf(h) !== -1) switchTab(h);
 }
 
 /* ensureAdminUI：管理入口按钮 + 面板内容只在 role==='admin' 时存在于 DOM 里，
@@ -1275,7 +1466,7 @@ async function init(){
   const cached = loadCachedFeed();
   if(cached && cached.data){ handleFeed(cached.data, { fromNetwork:false, fetchedAt: cached.fetchedAt }); }
   try{
-    const feed = await bossCall('feed', {});
+    const feed = await fetchFeed();
     handleFeed(feed, { fromNetwork:true });
   }catch(err){
     if(err && err.kind === 'http' && err.status === 401){
