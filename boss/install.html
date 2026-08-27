@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>老板 App 安装说明 / Install Guide</title>
+<meta name="theme-color" content="#1E3A5F">
+<meta name="robots" content="noindex">
+<style>
+:root{
+  --navy:#1E3A5F; --navy-dk:#152b47; --navy-lt:#E9EEF4;
+  --bg:#f6f7f6; --card:#fff; --text:#17201f; --sub:#6b7a78; --line:#e2e8e6;
+  --hi:#e11d48;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  line-height:1.65;padding-bottom:48px;font-size:15px}
+.wrap{max-width:600px;margin:0 auto;padding:0 16px}
+body.lang-en .cn{display:none !important}
+body:not(.lang-en) .en{display:none !important}
+
+header{background:var(--navy);color:#fff;padding:24px 0 26px;margin-bottom:18px}
+header .wrap{display:flex;align-items:flex-start;gap:12px}
+.h-txt{flex:1}
+h1{margin:0 0 6px;font-size:21px;font-weight:700;letter-spacing:.3px}
+.sub{margin:0;font-size:13.5px;opacity:.92}
+#lang-btn{flex:none;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.45);
+  border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer}
+
+.why{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;
+  padding:14px 16px;margin-bottom:20px;font-size:14.5px;color:#7c2d12}
+.why b{color:#9a3412}
+
+.ok{display:none;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:14px;
+  padding:14px 16px;margin-bottom:20px;font-size:15px;color:#065f46;font-weight:600}
+.ok.on{display:block}
+
+.urlbox{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;margin-bottom:22px}
+.urlbox .lbl{font-size:12px;color:var(--sub);margin-bottom:6px}
+.urlbox a{display:block;word-break:break-all;color:var(--navy);font-weight:600;
+  font-size:15px;text-decoration:none}
+
+.step{background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:18px 16px 8px;margin-bottom:16px}
+.step-hd{display:flex;align-items:flex-start;gap:11px;margin-bottom:4px}
+.num{flex:none;width:27px;height:27px;border-radius:50%;background:var(--navy);color:#fff;
+  font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.step-t{font-size:16.5px;font-weight:700;margin:0}
+.step-d{margin:2px 0 0 38px;font-size:14px;color:var(--sub)}
+.pic{text-align:center;padding:14px 0 10px}
+.pic svg{max-width:100%;height:auto}
+
+.tips{background:var(--navy-lt);border-radius:16px;padding:16px 18px;margin-top:22px}
+.tips h2{margin:0 0 10px;font-size:16px;color:var(--navy-dk)}
+.tips dt{font-weight:700;font-size:14.5px;margin-top:12px}
+.tips dt:first-of-type{margin-top:0}
+.tips dd{margin:3px 0 0;font-size:14px;color:#3d4b49}
+.foot{text-align:center;color:var(--sub);font-size:12px;margin-top:26px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="h-txt">
+      <h1><span class="cn">把「老板」App 装到手机上</span><span class="en">Put the “Boss” app on your phone</span></h1>
+      <p class="sub"><span class="cn">iPhone · Safari · 四步，一分钟</span><span class="en">iPhone · Safari · 4 steps, one minute</span></p>
+    </div>
+    <button id="lang-btn" onclick="toggleLang()">EN</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="ok" id="ok-box">
+    <span class="cn">✅ 你已经装好了，这一页可以关掉。</span>
+    <span class="en">✅ You are already set up — you can close this page.</span>
+  </div>
+
+  <div class="why">
+    <span class="cn">⚠️ 一定要装。直接在 Safari 里打开网页，iPhone 可能会自己清掉缓存的数据，之前存的访问码就要重填。装到主屏幕之后它是一个独立的 App，苹果不会去动它。</span>
+    <span class="en">⚠️ Please do install it. If you just use the web page inside Safari, iPhone may clear its cached data on its own, and you would have to re-enter the access code. Once it sits on your Home Screen it is a real app and iOS leaves it alone.</span>
+  </div>
+
+  <div class="urlbox">
+    <div class="lbl"><span class="cn">第一步要打开的网址（请用 Safari）</span><span class="en">The address to open — in Safari</span></div>
+    <a href="https://jarixhew-bit.github.io/skills-github-pages/boss/">jarixhew-bit.github.io/skills-github-pages/boss/</a>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <div class="step-hd">
+      <div class="num">1</div>
+      <div>
+        <p class="step-t"><span class="cn">用 Safari 打开这个网址</span><span class="en">Open the address in Safari</span></p>
+      </div>
+    </div>
+    <p class="step-d"><span class="cn">必须是 Safari。用微信、Chrome 打开的话，下一步找不到那个按钮。</span><span class="en">It must be Safari. Chrome or an in-app browser will not show the button in step 2.</span></p>
+    <div class="pic">
+      <svg width="200" height="330" viewBox="0 0 200 330" role="img" aria-labelledby="t1">
+        <title id="t1"><tspan>示意图 / Illustration</tspan></title>
+        <rect x="4" y="4" width="192" height="322" rx="26" fill="#fff" stroke="#c9d4d2" stroke-width="2"/>
+        <rect x="12" y="12" width="176" height="20" rx="10" fill="#f1f5f4"/>
+        <rect x="12" y="36" width="176" height="46" fill="#1E3A5F"/>
+        <text x="26" y="65" font-size="14" fill="#fff" font-family="sans-serif">👔 Boss</text>
+        <rect x="24" y="96" width="152" height="30" rx="8" fill="#f7faf9"/>
+        <rect x="24" y="134" width="152" height="30" rx="8" fill="#f7faf9"/>
+        <rect x="24" y="172" width="152" height="30" rx="8" fill="#f7faf9"/>
+        <rect x="12" y="286" width="176" height="32" rx="8" fill="#f1f5f4"/>
+        <g stroke="#94a3a1" stroke-width="1.8" stroke-linecap="round" fill="none">
+          <path d="M34 302 l-6 -6 6 -6"/>
+          <path d="M64 290 l6 6 -6 6"/>
+          <rect x="96" y="290" width="12" height="12" rx="2"/>
+          <rect x="127" y="290" width="12" height="12" rx="2"/>
+          <rect x="160" y="290" width="12" height="12" rx="2"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <div class="step-hd">
+      <div class="num">2</div>
+      <div>
+        <p class="step-t"><span class="cn">点最下面中间的「分享」</span><span class="en">Tap the Share button at the bottom</span></p>
+      </div>
+    </div>
+    <p class="step-d"><span class="cn">就是那个「方框里一支往上的箭头」。找不到的话，先往下滑一下页面，工具栏会出来。</span><span class="en">It is the square with an arrow pointing up. If you cannot see it, scroll the page down a little and the toolbar comes back.</span></p>
+    <div class="pic">
+      <svg width="230" height="180" viewBox="0 0 230 180" role="img" aria-labelledby="t2">
+        <title id="t2"><tspan>示意图 / Illustration</tspan></title>
+        <rect x="10" y="52" width="210" height="52" rx="12" fill="#f1f5f4" stroke="#dde5e3"/>
+        <g stroke="#94a3a1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M40 78 l-8 -8 8 -8"/>
+          <path d="M78 62 l8 8 -8 8"/>
+          <rect x="160" y="70" width="16" height="16" rx="3"/>
+          <rect x="196" y="70" width="16" height="16" rx="3"/>
+        </g>
+        <circle cx="122" cy="78" r="26" fill="none" stroke="#e11d48" stroke-width="3"/>
+        <g stroke="#1E3A5F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M122 82 v-22"/>
+          <path d="M115 67 l7 -7 7 7"/>
+          <path d="M112 76 v14 h20 v-14"/>
+        </g>
+        <path d="M122 116 l0 30" stroke="#e11d48" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M116 140 l6 8 6 -8" fill="none" stroke="#e11d48" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="122" y="30" font-size="14" fill="#e11d48" text-anchor="middle" font-family="sans-serif" font-weight="bold">Tap</text>
+        <text x="122" y="172" font-size="12" fill="#6b7a78" text-anchor="middle" font-family="sans-serif">Share</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <div class="step-hd">
+      <div class="num">3</div>
+      <div>
+        <p class="step-t"><span class="cn">往下滑，选「加到主屏幕」</span><span class="en">Scroll down and choose “Add to Home Screen”</span></p>
+      </div>
+    </div>
+    <p class="step-d"><span class="cn">面板里那一列要往下滑一段才看得到，图标是「方框里一个加号」。</span><span class="en">You need to scroll that list down a bit. The icon is a plus inside a square.</span></p>
+    <div class="pic">
+      <svg width="240" height="230" viewBox="0 0 240 230" role="img" aria-labelledby="t3">
+        <title id="t3"><tspan>示意图 / Illustration</tspan></title>
+        <rect x="8" y="8" width="224" height="214" rx="18" fill="#fff" stroke="#dde5e3" stroke-width="2"/>
+        <rect x="96" y="18" width="48" height="4" rx="2" fill="#cbd5d3"/>
+        <rect x="20" y="34" width="200" height="34" rx="9" fill="#f4f7f6"/>
+        <rect x="20" y="74" width="200" height="34" rx="9" fill="#f4f7f6"/>
+        <rect x="20" y="114" width="200" height="34" rx="9" fill="#f4f7f6"/>
+        <rect x="16" y="154" width="208" height="42" rx="10" fill="#E9EEF4" stroke="#e11d48" stroke-width="2.5"/>
+        <g stroke="#1E3A5F" stroke-width="2.2" fill="none" stroke-linecap="round">
+          <rect x="32" y="164" width="22" height="22" rx="5"/>
+          <path d="M43 170 v10 M38 175 h10"/>
+        </g>
+        <text x="66" y="181" font-size="13" fill="#152b47" font-family="sans-serif" font-weight="bold">Add to Home Screen</text>
+        <text x="120" y="216" font-size="11" fill="#6b7a78" text-anchor="middle" font-family="sans-serif">↓ scroll down</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step">
+    <div class="step-hd">
+      <div class="num">4</div>
+      <div>
+        <p class="step-t"><span class="cn">右上角按「添加」，完成</span><span class="en">Tap “Add” at the top right — done</span></p>
+      </div>
+    </div>
+    <p class="step-d"><span class="cn">名字保持默认就好。按完回到桌面，会多一个新图标——以后每天都点它，不要再用 Safari 开。</span><span class="en">Keep the default name. Go back to your Home Screen and you will see a new icon — use that one from now on, not Safari.</span></p>
+    <div class="pic">
+      <svg width="240" height="150" viewBox="0 0 240 150" role="img" aria-labelledby="t4">
+        <title id="t4"><tspan>示意图 / Illustration</tspan></title>
+        <rect x="8" y="8" width="224" height="74" rx="14" fill="#fff" stroke="#dde5e3" stroke-width="2"/>
+        <text x="26" y="34" font-size="11" fill="#94a3a1" font-family="sans-serif">Cancel</text>
+        <rect x="182" y="22" width="36" height="18" rx="9" fill="#e11d48"/>
+        <text x="200" y="35" font-size="10.5" fill="#fff" text-anchor="middle" font-family="sans-serif" font-weight="bold">Add</text>
+        <rect x="26" y="50" width="24" height="24" rx="6" fill="#1E3A5F"/>
+        <text x="38" y="67" font-size="12" text-anchor="middle" font-family="sans-serif">👔</text>
+        <rect x="58" y="54" width="160" height="16" rx="5" fill="#f1f5f4"/>
+        <text x="120" y="102" font-size="18" fill="#94a3a1" text-anchor="middle" font-family="sans-serif">↓</text>
+        <rect x="90" y="114" width="60" height="30" rx="9" fill="#eef4f3" stroke="#e11d48" stroke-width="2.5"/>
+        <text x="120" y="134" font-size="16" text-anchor="middle" font-family="sans-serif">👔</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="tips">
+    <h2><span class="cn">常见问题</span><span class="en">If something goes wrong</span></h2>
+    <dl>
+      <dt><span class="cn">面板里找不到「加到主屏幕」</span><span class="en">I cannot find “Add to Home Screen”</span></dt>
+      <dd><span class="cn">两个原因：一是那一列没滑到底；二是你不是用 Safari 开的（微信、Chrome 里没有这个功能）。把网址复制出来，用 Safari 重开一次。</span><span class="en">Two reasons: you have not scrolled that list to the bottom, or you are not in Safari (Chrome and in-app browsers do not have it). Copy the address and open it in Safari.</span></dd>
+
+      <dt><span class="cn">还要再填一次访问码吗？</span><span class="en">Do I have to enter the access code again?</span></dt>
+      <dd><span class="cn">要，但只要一次。新图标是一个全新的 App，第一次打开会让你填访问码，填完就不用再填了。忘了就问 YANG。</span><span class="en">Yes, once. The new icon is a fresh app, so it asks for the access code the first time and then remembers it. Ask YANG if you forgot it.</span></dd>
+
+      <dt><span class="cn">装好了要怎么确认？</span><span class="en">How do I know it worked?</span></dt>
+      <dd><span class="cn">点新图标打开，上面没有网址栏、没有底下那排 Safari 按钮，整页满屏，就对了。</span><span class="en">Open the new icon: no address bar at the top, no Safari toolbar at the bottom, the page fills the whole screen. That is it.</span></dd>
+    </dl>
+  </div>
+
+  <p class="foot"><span class="cn">装好后每天打开新图标即可看到最新行程和账单。</span><span class="en">Use the new icon every day to see the latest itinerary and bills.</span></p>
+</div>
+
+<script>
+/* 双语：手选优先 → 系统语言 → 英文。key 全站统一 siteLangUser（CLAUDE.md 双语页面规则）。 */
+function applyLang(lang){
+  const l = (lang === 'en') ? 'en' : 'cn';
+  document.body.classList.toggle('lang-en', l === 'en');
+  document.documentElement.lang = l === 'en' ? 'en' : 'zh';
+  const btn = document.getElementById('lang-btn');
+  if(btn) btn.textContent = l === 'en' ? '中' : 'EN';
+}
+function toggleLang(){
+  const next = document.body.classList.contains('lang-en') ? 'cn' : 'en';
+  try{ localStorage.setItem('siteLangUser', next); }catch(e){}
+  applyLang(next);
+}
+(function initLang(){
+  let lang = null;
+  try{ lang = localStorage.getItem('siteLangUser'); }catch(e){}
+  if(!lang) lang = (navigator.language || '').toLowerCase().startsWith('zh') ? 'cn' : 'en';
+  applyLang(lang);
+  window.addEventListener('storage', e => {
+    if(e.key === 'siteLangUser' && e.newValue) applyLang(e.newValue);
+  });
+})();
+
+/* 已经装好的人从图标里打开这一页时，直接告诉他不用再看了。 */
+(function(){
+  const standalone = window.navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  if(standalone) document.getElementById('ok-box').classList.add('on');
+})();
+</script>
+</body>
+</html>
