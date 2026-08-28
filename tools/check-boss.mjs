@@ -1298,6 +1298,58 @@ function localAt(daysFromNow, hm, offset){
   await ctx.close();
 }
 
+// ---------- 场景十二：航站楼不能只印一个光秃秃的数字 ----------
+// 2026-08-28 用户：「行程里显示 KTI 1 2 槟城这些，1 是什么东西」——接口给的
+// terminal 常常就是 "1"，之前原样塞进备注/航班卡，行程里就多出一个没头没尾的数字。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const withTerminal = [{
+    id:'t', title:{zh:'带航站楼的航班',en:''}, start:'2026-09-01', end:'2026-09-01',
+    location:{zh:'',en:''}, guideUrl:'',
+    items: [
+      (() => { const it = flightItem('2026-09-01','16:30','KUL','KTI',
+        '2026-09-01 16:30+08:00','2026-09-01 17:25+07:00');
+        it.flight.live.terminal = '1'; it.flight.live.gate = 'C7'; return it; })(),
+    ],
+  }];
+  mountRoutes(ctx, { role:'viewer', trips: withTerminal });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.trip-card')), { what: '行程卡渲染完' });
+  await gotoTab(page, 'trips');
+
+  console.log('\n[场景十二] 航站楼要写成人看得懂的');
+  const gate = await page.evaluate(() => {
+    const el = document.querySelector('#tab-trips .flight-info-gate');
+    if(!el) return null;
+    return { zh: Array.from(el.querySelectorAll('.cn')).map(e => e.textContent.trim()),
+             all: el.textContent.replace(/\s+/g, ' ').trim() };
+  });
+  ok('航班卡上有航站楼那一行', !!gate, gate);
+  ok('中文写成「1 号航站楼」，不是光秃秃一个 1',
+     !!gate && gate.zh.includes('1 号航站楼'), gate);
+  ok('英文写成「Terminal 1」', !!gate && gate.all.includes('Terminal 1'), gate);
+  ok('登机口照旧', !!gate && gate.all.includes('C7'), gate);
+
+  // 自动填备注那条路径（查到航班后写进 it.note）也要走同一套说法
+  const note = await page.evaluate(() =>
+    flightNoteFromLookup({ dep_terminal: '2', dep_gate: 'A11' }));
+  ok('自动填的备注：中文是「2 号航站楼 · 登机口 A11」',
+     note.zh === '2 号航站楼 · 登机口 A11', note);
+  ok('自动填的备注：英文是「Terminal 2 · Gate A11」',
+     note.en === 'Terminal 2 · Gate A11', note);
+  // 已经带字母的别被改坏
+  const t1 = await page.evaluate(() => [terminalLabel('T3','zh'), terminalLabel('T3','en'),
+                                        terminalLabel('2E','zh'), terminalLabel('','zh')]);
+  ok('已经写成 T3 的不会变成「T3 号航站楼」',
+     JSON.stringify(t1) === JSON.stringify(['航站楼 3', 'Terminal 3', '航站楼 2E', '']), t1);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);

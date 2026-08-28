@@ -673,9 +673,19 @@ function flightTitleFromLookup(f){
   };
 }
 /** flightLookup 查到的资料 → 自动填的备注（航站楼/登机口，没有就留空字符串）。 */
+/** 航站楼编号 → 看得懂的说法。接口给的常常只是一个「1」「2」，直接塞进备注就变成
+ * 行程里孤零零一个数字，没人知道那是什么（2026-08-28 用户问：「KTI 1 2 这些 1 是
+ * 什么东西」）。纯数字的补成「1 号航站楼 / Terminal 1」；已经带字母的（T1、2E）
+ * 原样保留、只补上「航站楼 / Terminal」。 */
+function terminalLabel(v, lang){
+  const t = String(v == null ? '' : v).trim();
+  if(!t) return '';
+  if(lang === 'en') return /^T/i.test(t) ? `Terminal ${t.replace(/^T/i, '')}` : `Terminal ${t}`;
+  return /^\d+$/.test(t) ? `${t} 号航站楼` : `航站楼 ${t.replace(/^T/i, '')}`;
+}
 function flightNoteFromLookup(f){
   const zhBits = [], enBits = [];
-  if(f.dep_terminal){ zhBits.push(f.dep_terminal); enBits.push(f.dep_terminal); }
+  if(f.dep_terminal){ zhBits.push(terminalLabel(f.dep_terminal, 'zh')); enBits.push(terminalLabel(f.dep_terminal, 'en')); }
   if(f.dep_gate){ zhBits.push(`登机口 ${f.dep_gate}`); enBits.push(`Gate ${f.dep_gate}`); }
   return { zh: zhBits.join(' · '), en: enBits.join(' · ') };
 }
@@ -772,7 +782,8 @@ function flightInfoHtml(it){
   const routeLabel = (from || to) ? `<span class="flight-route">${escapeHtml(from)} → ${escapeHtml(to)}</span>` : '';
   const meta = flightStatusMeta(live.status);
   const gateBits = [];
-  if(live.terminal) gateBits.push(escapeHtml(live.terminal));
+  // 航班卡上的航站楼同样不能只印一个数字（见 terminalLabel 的注释）
+  if(live.terminal) gateBits.push(bl(terminalLabel(live.terminal, 'zh'), terminalLabel(live.terminal, 'en')));
   if(live.gate) gateBits.push(bl(`登机口 ${live.gate}`, `Gate ${live.gate}`));
   return `<div class="flight-info">
       <div class="flight-info-hd">
@@ -2195,7 +2206,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v23</div>
+    <div class="admin-ver" id="adminVer">boss-app-v24</div>
 
     ${adminTripsSectionHtml()}
 
