@@ -272,6 +272,12 @@ body:not(.lang-en) .en{display:none !important}
 .flight-lookup-status{margin-top:8px;font-size:12.5px;min-height:16px;color:var(--sub)}
 .flight-lookup-status.err{color:var(--danger)}
 .flight-lookup-status.ok{color:var(--ok)}
+/* 查询失败的显眼标记（2026-08-28）：光靠状态字一行小字用户根本不会注意，
+   红边框 + 红字提示行让这条「有航班号但没查到」的条目一眼就能看见 */
+.flight-lookup-block-err{border-color:var(--danger);border-style:solid}
+.flight-lookup-current-err{color:var(--danger);font-weight:700}
+.flight-input-err{border:1.5px solid var(--danger)!important;border-radius:10px;padding:10px 12px;
+  font-size:14px;font-family:inherit;color:var(--text);width:100%;box-sizing:border-box}
 .admin-empty-items .admin-status{margin-top:0;margin-bottom:10px}
 .admin-select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
   font-size:14px;font-family:inherit;color:var(--text);background:#fff}
@@ -435,6 +441,12 @@ let adminAccessCode = null;   // 管理面板缓存的访问码，避免每次�
 let adminTripsDraft = null;   // feedData.trips 的深拷贝，null 表示还没建立
 let adminTripsDirty = false;  // 有没有还没保存的改动（离开前要提醒）
 let adminExpandedTrip = null; // 当前展开编辑的行程在 adminTripsDraft 里的下标，null=都收起
+/* 每个行程条目最近一次自动查询过的「航班号+日期」组合，key 是 `${tripIdx}:${itemIdx}`，
+ * value 形如 { lastComboKey, inFlight }。用来防止「失焦就查」重复打 AeroDataBox 额度、
+ * 也防止连点/连触发打两次请求。tripIdx/itemIdx 会因为增删条目/行程而错位，所以在那几个
+ * 结构性改动的地方整体清空（见 adminAddTrip/adminDeleteTrip/adminAddItem/adminDeleteItem）；
+ * 单纯展开/收起、编辑其它字段不会清空——展开收起后同一组合还是不该重查。 */
+let flightLookupState = {};
 
 /* 手册下拉选项：路径对应仓库根目录下现有的旅游手册（2026-08-27 核对过都存在）。
    选中后拼成完整网址存进 trip.guideUrl，不让老板手打。 */
@@ -574,19 +586,45 @@ function formatDurationLabel(ms){
 // 常见机场 IATA 码 → 中文城市名，只收本仓库旅游手册涉及过的常见目的地，不追求穷举；
 // 查不到就只用代码本身（CLAUDE.md 规则：有中文名就用，没有就用 IATA 码）。
 const AIRPORT_NAMES_ZH = {
-  PNH:'金边', CAN:'广州', SZX:'深圳', HKG:'香港', XMN:'厦门', PEN:'槟城', SIN:'新加坡',
+  PNH:'金边', KTI:'金边新机场', CAN:'广州', SZX:'深圳', HKG:'香港', XMN:'厦门', PEN:'槟城', SIN:'新加坡',
   NRT:'东京', HND:'东京', KIX:'大阪', ITM:'大阪', FUK:'福冈', TPE:'台北', PEK:'北京',
   PVG:'上海', SHA:'上海', CTU:'成都', KUL:'吉隆坡'
 };
-function airportLabelZh(code){
+/** 机场名不许写死（2026-08-27 教训）：这张表原本只有 18 个常去的机场，用户的行程
+ * 一旦飞到表外的地方，就只显示光秃秃的三字代码，人看不懂。跟同一天「氢水在库存里
+ * 整个不见」是同一个错——写死的枚举迟早会烂。
+ * （注：当时用户还反映过一次「KTI 不是德累斯顿」，那句的来源始终没查清——我们代码里
+ * 从来没有「德累斯顿」这三个字。别把它当成已确认的事实往下推论。KTI 是金边新机场
+ * 德崇国际，这条是用户亲口说的，已加进下面的表。）
+ * 三级优先级：
+ * 1. 这张表里有 → 中文名 + 代码（"金边 PNH"，常去的地方显示中文更好读，继续保留）；
+ * 2. 表里没有，但后端 flightLookup/feed 把接口给的机场全名一起递过来了（apiName，
+ *    见 butler-bot src/providers/aerodatabox.js 的 from_name/to_name）→ 用那个名字 + 代码；
+ * 3. 两者都没有 → 只显示代码。
+ * apiName 缺省不传时行为等同旧版（表里没有就退回代码），不影响没接到新字段的旧数据。 */
+function airportLabelZh(code, apiName){
   const c = String(code || '').toUpperCase();
-  const name = AIRPORT_NAMES_ZH[c];
-  return name ? `${name} ${c}` : c;
+  if(!c) return '';
+  const zhName = AIRPORT_NAMES_ZH[c];
+  if(zhName) return `${zhName} ${c}`;
+  if(apiName) return `${apiName} ${c}`;
+  return c;
 }
-/** flightLookup 查到的资料 → 自动填的条目标题（有城市名就带上，没有就只用代码）。 */
+/** 英文侧同样的优先级，只是没有中文对照表这一级：接口给了名字就用「名字 + 代码」，
+ * 没有就只用代码——不写死机场名单，跟 airportLabelZh 是同一件事的英文版。 */
+function airportLabelEn(code, apiName){
+  const c = String(code || '').toUpperCase();
+  if(!c) return '';
+  return apiName ? `${apiName} ${c}` : c;
+}
+/** flightLookup 查到的资料 → 自动填的条目标题（中文侧有中文对照或接口名字就带上，
+ * 英文侧有接口名字就带上，两者都没有的场景才退回只显示代码）。 */
 function flightTitleFromLookup(f){
   const from = String(f.from || '').toUpperCase(), to = String(f.to || '').toUpperCase();
-  return { zh: `${airportLabelZh(from)} → ${airportLabelZh(to)}`, en: `${from} → ${to}` };
+  return {
+    zh: `${airportLabelZh(from, f.from_name)} → ${airportLabelZh(to, f.to_name)}`,
+    en: `${airportLabelEn(from, f.from_name)} → ${airportLabelEn(to, f.to_name)}`
+  };
 }
 /** flightLookup 查到的资料 → 自动填的备注（航站楼/登机口，没有就留空字符串）。 */
 function flightNoteFromLookup(f){
@@ -666,16 +704,19 @@ function transferRowHtml(prevItem, nextItem){
   if(arrTs == null || depTs == null) return '';
   const diffMs = depTs - arrTs;
   const dur = formatDurationLabel(diffMs);
-  const cityZh = airportLabelZh(arrCode);
+  // 转机机场用的是「到达那一段」的 live 数据（pf.to），apiName 同理取 pf.to_name——
+  // 跟 airportLabelZh 的三级优先级保持一致，表外机场也能显示名字，不只是代码。
+  const cityZh = airportLabelZh(arrCode, pf.to_name);
+  const cityEn = airportLabelEn(arrCode, pf.to_name);
   if(diffMs < 0){
     return `<div class="transfer-row transfer-warn">
-        ⚠️ ${bl('转机时间异常','Unusual layover')}：-${bl(dur.zh, dur.en)} @ ${bl(cityZh, arrCode)}
+        ⚠️ ${bl('转机时间异常','Unusual layover')}：-${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
         <div class="transfer-hint">${bl('日期或航班可能填错了','The date or flight number may be wrong')}</div>
       </div>`;
   }
   const tight = diffMs < 90 * 60000;
   return `<div class="transfer-row">
-      🔄 ${bl('转机等待','Layover')} ${bl(dur.zh, dur.en)} @ ${bl(cityZh, arrCode)}
+      🔄 ${bl('转机等待','Layover')} ${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
       ${ tight ? `<div class="transfer-hint transfer-hint-warn">${bl('转机时间偏紧','Layover is tight')}</div>` : '' }
     </div>`;
 }
@@ -1369,6 +1410,7 @@ function ensureAdminTripsDraft(){
   if(adminTripsDraft === null){
     adminTripsDraft = JSON.parse(JSON.stringify(feedData.trips || []));
     adminTripsDirty = false;
+    flightLookupState = {}; // 换了一份新的工作副本，下标对应的条目也变了，查询记忆一起重置
   }
 }
 
@@ -1487,23 +1529,65 @@ function adminItemRowHtml(trip, tripIdx, itemIdx){
 function flightLookupBlockHtml(trip, tripIdx, itemIdx){
   const it = trip.items[itemIdx];
   const f = it.flight || null;
+  // f.unresolved 标记「查过但没查到」——查询失败也会把 no/date 存进 it.flight（见
+  // adminFlightLookup 的失败分支），不然「填过航班号但查询失败」这件事在重新渲染
+  // （切换条目、保存后刷新）之后就彻底没有痕迹，用户根本不知道自己填过、也不知道
+  // 要自己手动填时间。这就是这次要修的事故本身：失败是无声的（2026-08-28）。
+  const failed = !!(f && f.unresolved);
   const noVal = (f && f.no) || '';
   const dateVal = (f && f.date) || it.date || '';
-  return `<div class="flight-lookup-block" id="admin-item-${tripIdx}-${itemIdx}-flightblock">
+  const persistentHint = failed
+    ? pick('这条航班还没查到资料，时间要自己填', 'This flight has not been resolved yet — please fill in the time yourself')
+    : '';
+  return `<div class="flight-lookup-block${failed ? ' flight-lookup-block-err' : ''}" id="admin-item-${tripIdx}-${itemIdx}-flightblock">
       <div class="flight-lookup-hd">✈️ ${pick('航班（选填）','Flight (optional)')}</div>
-      ${ f ? `<div class="flight-lookup-current">
+      ${ f && !failed ? `<div class="flight-lookup-current">
           <span>${pick('已关联航班','Linked flight')} <b>${escapeHtml(f.no||'')}</b>（${escapeHtml(f.date||'')}）</span>
+          <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
+        </div>` : '' }
+      ${ failed ? `<div class="flight-lookup-current flight-lookup-current-err">
+          <span>⚠️ ${pick('没查到，时间要自己填','Not found — please fill in the time yourself')}</span>
           <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
         </div>` : '' }
       <div style="display:flex;gap:10px">
         <div style="flex:1"><label>${pick('航班号','Flight no.')}</label>
-          <input type="text" id="admin-item-${tripIdx}-${itemIdx}-flightno" value="${escapeHtml(noVal)}" placeholder="CZ3096"></div>
+          <input type="text" class="${failed ? 'flight-input-err' : ''}" id="admin-item-${tripIdx}-${itemIdx}-flightno" value="${escapeHtml(noVal)}" placeholder="CZ3096"
+            onblur="adminFlightAutoTrigger(${tripIdx},${itemIdx})"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"></div>
         <div style="flex:1"><label>${pick('日期','Date')}</label>
-          <input type="date" id="admin-item-${tripIdx}-${itemIdx}-flightdate" value="${escapeHtml(dateVal)}"></div>
+          <input type="date" id="admin-item-${tripIdx}-${itemIdx}-flightdate" value="${escapeHtml(dateVal)}" onchange="adminFlightAutoTrigger(${tripIdx},${itemIdx})"></div>
       </div>
       <button type="button" class="admin-btn-sm" id="admin-item-${tripIdx}-${itemIdx}-flightbtn" onclick="adminFlightLookup(${tripIdx},${itemIdx})">🔍 ${pick('查询','Look up')}</button>
-      <div id="admin-item-${tripIdx}-${itemIdx}-flightstatus" class="flight-lookup-status"></div>
+      <div id="admin-item-${tripIdx}-${itemIdx}-flightstatus" class="flight-lookup-status${failed ? ' err' : ''}">${persistentHint}</div>
     </div>`;
+}
+/** 航班号／日期两个输入框失焦或改动时自动触发——**用户要的是填完就自动查，
+ * 不是填完还要再点一次「查询」按钮**（2026-08-28 教训：上一版只绑了按钮的
+ * onclick，输入框本身没绑任何事件，用户填完号码直接保存，查询压根没跑过，
+ * 两条航班全程没时间、没 ✈️ 标记，也没有任何报错——因为根本没查过）。
+ * 「查询」按钮继续保留，当作日期改了想手动重查一次的备用入口。 */
+function adminFlightAutoTrigger(tripIdx, itemIdx){
+  const trip = adminTripsDraft && adminTripsDraft[tripIdx];
+  const it = trip && trip.items && trip.items[itemIdx];
+  if(!it) return;
+  const noInput = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightno`);
+  const dateInput = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightdate`);
+  const no = ((noInput && noInput.value) || '').trim().toUpperCase();
+  const date = ((dateInput && dateInput.value) || '').trim();
+  if(!no || !date) return; // 两个都填了才查，缺一个先不动，等填完/交给「查询」按钮手动点
+  const comboKey = no + '|' + date;
+  const key = `${tripIdx}:${itemIdx}`;
+  const state = flightLookupState[key] || (flightLookupState[key] = {});
+  if(state.inFlight) return; // 防重入：正在查就别再触发一次
+  // it.flight 里已经存的组合（不管当年查到还是没查到）跟当前一样，就当作「查过了」，
+  // 不用真的再打一次请求——覆盖「页面刚打开」「收起再展开」这类没经过下面成功/失败
+  // 分支、但值其实没变的场景。
+  if(!state.lastComboKey && it.flight){
+    const savedComboKey = String(it.flight.no || '').toUpperCase() + '|' + (it.flight.date || '');
+    if(savedComboKey === comboKey) state.lastComboKey = comboKey;
+  }
+  if(state.lastComboKey === comboKey) return; // 同一组合查过了，别再花额度重查
+  adminFlightLookup(tripIdx, itemIdx);
 }
 /** 直接写某个已渲染 input 的 value（跟 adminItemMapInput() 自动填地图链接同一手法），
  * 不整段重渲染表单——避免打断正在编辑其它条目的人、也不丢焦点/滚动位置。 */
@@ -1511,9 +1595,14 @@ function setInputVal(id, val){
   const el = document.getElementById(id);
   if(el) el.value = val == null ? '' : val;
 }
-/** 航班号+日期 → 查一次（会花 AeroDataBox 额度，所以只在这里手动触发），查到后
- * 自动填这个条目的标题/时间/备注，并把 {no,date,trackId} 存进 it.flight——
- * 填完仍可手改，不锁死（不覆盖用户后续手动改动，只在本次查询成功那一刻写入）。 */
+/** 航班号+日期 → 查一次（会花 AeroDataBox 额度，所以要记住查过的组合、别重复打），
+ * 查到后自动填这个条目的标题/时间/备注，并把 {no,date,trackId} 存进 it.flight——
+ * 填完仍可手改，不锁死（不覆盖用户后续手动改动，只在本次查询成功那一刻写入）。
+ * 查不到也不会什么都不留：把 {no,date,unresolved:true} 存进 it.flight，让
+ * flightLookupBlockHtml() 能在任何一次重渲染里都继续显眼提示「没查到」
+ * （见该函数顶部注释，2026-08-28 事故教训）。
+ * 由 adminFlightAutoTrigger()（失焦/改动自动触发）或「查询」按钮（手动重试）调用，
+ * 两条路都走这一个函数，保证行为一致。 */
 async function adminFlightLookup(tripIdx, itemIdx){
   const trip = adminTripsDraft && adminTripsDraft[tripIdx];
   const it = trip && trip.items && trip.items[itemIdx];
@@ -1528,25 +1617,34 @@ async function adminFlightLookup(tripIdx, itemIdx){
     if(statusEl){ statusEl.className = 'flight-lookup-status err'; statusEl.textContent = pick('请先填航班号和日期','Please fill in the flight number and date'); }
     return;
   }
+  const key = `${tripIdx}:${itemIdx}`;
+  const state = flightLookupState[key] || (flightLookupState[key] = {});
+  if(state.inFlight) return; // 防重入：查询进行中，按钮点两下/失焦+点按钮撞一起都不重复打请求
+  const comboKey = no + '|' + date;
+  state.inFlight = true;
   if(btn) btn.disabled = true;
   if(statusEl){ statusEl.className = 'flight-lookup-status'; statusEl.textContent = pick('查询中…','Looking up…'); }
   let res;
   try{
     res = await bossCall('flightLookup', { no, date });
   }catch(err){
+    state.inFlight = false;
+    state.lastComboKey = comboKey; // 失败也算查过这组合，不重复打请求；号或日期改了才会再查
     if(btn) btn.disabled = false;
-    if(statusEl){
-      statusEl.className = 'flight-lookup-status err';
-      statusEl.textContent = (err && err.message) || pick('查不到这个航班号，确认一下日期对不对','Could not find this flight — please check the number and date');
-    }
+    adminFlightLookupFailed(tripIdx, itemIdx, it, trip, no, date,
+      (err && err.message) || pick('查不到这个航班号，确认一下日期对不对','Could not find this flight — please check the number and date'));
     return;
   }
+  state.inFlight = false;
   if(btn) btn.disabled = false;
   const f = res && res.flight;
   if(!f){
-    if(statusEl){ statusEl.className = 'flight-lookup-status err'; statusEl.textContent = pick('查不到这个航班号，确认一下日期对不对','Could not find this flight — please check the number and date'); }
+    state.lastComboKey = comboKey;
+    adminFlightLookupFailed(tripIdx, itemIdx, it, trip, no, date,
+      pick('查不到这个航班号，确认一下日期对不对','Could not find this flight — please check the number and date'));
     return;
   }
+  state.lastComboKey = comboKey;
   const title = flightTitleFromLookup(f);
   const note = flightNoteFromLookup(f);
   const time = extractHM(f.sched_dep) || it.time || '';
@@ -1572,12 +1670,27 @@ async function adminFlightLookup(tripIdx, itemIdx){
     afterStatusEl.textContent = pick('已查到并自动填入','Found — filled in automatically');
   }
 }
+/** 查询失败的收尾：把 {no,date,unresolved:true} 记进 it.flight（不碰 title/time/note，
+ * 那些要用户自己填），整块重画让红边和警示行显眼地留下来，再补一次状态字——
+ * 跟成功分支同一坑：重画会冲掉状态栏，必须在重画**之后**再写一次。 */
+function adminFlightLookupFailed(tripIdx, itemIdx, it, trip, no, date, message){
+  it.flight = { no, date, unresolved: true };
+  markTripsDirty();
+  const block = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightblock`);
+  if(block) block.outerHTML = flightLookupBlockHtml(trip, tripIdx, itemIdx);
+  const statusEl = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightstatus`);
+  if(statusEl){
+    statusEl.className = 'flight-lookup-status err';
+    statusEl.textContent = message;
+  }
+}
 /** 清除已关联的航班——标题/时间/备注是用户可能已经手改过的内容，原样保留，只去掉 flight。 */
 function adminClearFlight(tripIdx, itemIdx){
   const trip = adminTripsDraft && adminTripsDraft[tripIdx];
   const it = trip && trip.items && trip.items[itemIdx];
   if(!it) return;
   delete it.flight;
+  delete flightLookupState[`${tripIdx}:${itemIdx}`]; // 清掉记忆，改完号码重新失焦要能再查
   markTripsDirty();
   const block = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightblock`);
   if(block) block.outerHTML = flightLookupBlockHtml(trip, tripIdx, itemIdx);
@@ -1716,6 +1829,9 @@ function adminDeleteTrip(idx){
   if(!confirm(pick('确定删除这个行程？条目也会一起删除。','Delete this trip? Its items will be deleted too.'))) return;
   adminTripsDraft.splice(idx, 1);
   adminExpandedTrip = null;
+  // 删掉一个行程，后面所有行程的下标都会往前挪——查询记忆是按下标存的，不清空的话
+  // 会把别的行程的「查过了」状态错套到挪过来的这个行程头上，整个清空最安全
+  flightLookupState = {};
   markTripsDirty();
   rerenderAdminTripsSection();
 }
@@ -1737,6 +1853,8 @@ function adminAddItem(tripIdx){
 function adminDeleteItem(tripIdx, itemIdx){
   if(!confirm(pick('确定删除这条行程条目？','Delete this item?'))) return;
   adminTripsDraft[tripIdx].items.splice(itemIdx, 1);
+  // 同上：删条目会让同一行程里后面条目的下标往前挪，查询记忆整个清空最安全
+  flightLookupState = {};
   markTripsDirty();
   rerenderAdminTripsSection();
 }
@@ -1748,7 +1866,10 @@ function isEmptyTripItem(it){
   if(!it) return true;
   const hasTitle = !!((it.title && (it.title.zh||'').trim()) || (it.title && (it.title.en||'').trim()));
   const hasNote = !!((it.note && (it.note.zh||'').trim()) || (it.note && (it.note.en||'').trim()));
-  return !hasTitle && !hasNote && !(it.time||'').trim() && !(it.mapUrl||'').trim();
+  // 有 it.flight（哪怕是查询失败留下的 unresolved 标记）也不算空——不然填了航班号但
+  // 没查到、又没顺手填别的字段时，保存会把这条连同「查询失败」的痕迹一起悄悄丢掉，
+  // 用户完全不知道自己填过东西（2026-08-28：这正是这次事故「失败无声」的另一种翻版）。
+  return !hasTitle && !hasNote && !(it.time||'').trim() && !(it.mapUrl||'').trim() && !it.flight;
 }
 function adminValidateTripsDraft(){
   const errors = [];
