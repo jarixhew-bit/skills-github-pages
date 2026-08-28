@@ -204,6 +204,7 @@ body:not(.lang-en) .en{display:none !important}
 .bill-page-holder canvas{display:block;width:100%;height:auto}
 /* 放大 = 把这层撑宽（applyBillZoom），横向拖动交给 .bill-pages 的 overflow-x */
 .bill-zoom-wrap{width:100%;margin:0 auto}
+.admin-ver{text-align:right;font-size:11.5px;color:var(--sub);opacity:.75;margin:-4px 2px 8px}
 .bill-zoom-ctl{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:2px;
   background:rgba(30,58,95,.9);border-radius:22px;padding:4px 6px;z-index:5;
   box-shadow:0 2px 8px rgba(0,0,0,.35)}
@@ -2132,6 +2133,11 @@ function renderAdmin(){
   const bills = (feedData.bills || []).slice().sort((a,b) => (b.uploadedAt||'').localeCompare(a.uploadedAt||''));
   pane.innerHTML = `
     <div id="adminPushSlot"></div>
+
+    <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
+         每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
+         同源，改版时那边升、这里跟着升。 -->
+    <div class="admin-ver" id="adminVer">boss-app-v17</div>
 
     ${adminTripsSectionHtml()}
 

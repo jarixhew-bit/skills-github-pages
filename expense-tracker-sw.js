@@ -1,4 +1,4 @@
-const CACHE = 'expense-tracker-v16';
+const CACHE = 'expense-tracker-v17';
 const ASSETS = [
   'expense-tracker.html',
   'expense-tracker-icon.svg',
@@ -64,7 +64,11 @@ self.addEventListener('fetch', e => {
   }
   // HTML: network-first so updates are always picked up immediately
   if(e.request.destination === 'document'){
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  // ⚠️ 必须带 cache:'reload'（2026-08-28 教训）：光「网络优先」还不够——GitHub Pages
+  // 给 HTML 带 10 分钟的浏览器 HTTP 缓存，普通 fetch() 会吃那层缓存，于是用户关掉
+  // App 重开、甚至重开两次，拿到的仍是旧页面。今天为此反复困惑了好几轮（「你说改了
+  // 怎么还是老样子」）。reload 会绕过 HTTP 缓存直接问服务器，离线时照旧回落缓存。
+    e.respondWith(fetch(e.request, { cache: 'reload' }).catch(() => caches.match(e.request)));
     return;
   }
   // Other assets (icons, manifest, SW): cache-first

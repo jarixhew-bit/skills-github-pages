@@ -8,7 +8,7 @@
 //
 // 改了页面内容记得同步升这里的版本号（v1 → v2 这样升），否则已安装的
 // 老板手机会一直看到旧版壳（PWA 页面规则，见 skills/pwa-pages.md）。
-const CACHE = 'boss-app-v16';
+const CACHE = 'boss-app-v17';
 const ASSETS = ['./', './index.html', './manifest.webmanifest',
   './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
@@ -38,7 +38,11 @@ self.addEventListener('fetch', e => {
   if(req.method !== 'GET') return;
   // 页面本身：网络优先，这样改了版老板一刷新就拿到新的；没网才回落到缓存
   if(req.destination === 'document'){
-    e.respondWith(fetch(req).catch(() => caches.match(req) || caches.match('./index.html')));
+  // ⚠️ 必须带 cache:'reload'（2026-08-28 教训）：光「网络优先」还不够——GitHub Pages
+  // 给 HTML 带 10 分钟的浏览器 HTTP 缓存，普通 fetch() 会吃那层缓存，于是用户关掉
+  // App 重开、甚至重开两次，拿到的仍是旧页面。今天为此反复困惑了好几轮（「你说改了
+  // 怎么还是老样子」）。reload 会绕过 HTTP 缓存直接问服务器，离线时照旧回落缓存。
+    e.respondWith(fetch(req, { cache: 'reload' }).catch(() => caches.match(req) || caches.match('./index.html')));
     return;
   }
   // 其余静态资源：缓存优先
