@@ -88,7 +88,10 @@ function forceZh(ctx){
 // 「账单只显示一页、滑不动」就是这样漏出去的。
 const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5cGRmKQo+PgplbmRvYmoKMiAwIG9iago8PAovVHlwZSAvUGFnZXMKL0NvdW50IDQKL0tpZHMgWyA0IDAgUiA1IDAgUiA2IDAgUiA3IDAgUiBdCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9DYXRhbG9nCi9QYWdlcyAyIDAgUgo+PgplbmRvYmoKNCAwIG9iago8PAovVHlwZSAvUGFnZQovUmVzb3VyY2VzIDw8Cj4+Ci9NZWRpYUJveCBbIDAuMCAwLjAgNTk1IDg0MiBdCi9QYXJlbnQgMiAwIFIKPj4KZW5kb2JqCjUgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1Jlc291cmNlcyA8PAo+PgovTWVkaWFCb3ggWyAwLjAgMC4wIDU5NSA4NDIgXQovUGFyZW50IDIgMCBSCj4+CmVuZG9iago2IDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9SZXNvdXJjZXMgPDwKPj4KL01lZGlhQm94IFsgMC4wIDAuMCA1OTUgODQyIF0KL1BhcmVudCAyIDAgUgo+PgplbmRvYmoKNyAwIG9iago8PAovVHlwZSAvUGFnZQovUmVzb3VyY2VzIDw8Cj4+Ci9NZWRpYUJveCBbIDAuMCAwLjAgNTk1IDg0MiBdCi9QYXJlbnQgMiAwIFIKPj4KZW5kb2JqCnhyZWYKMCA4CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMDU0IDAwMDAwIG4gCjAwMDAwMDAxMzEgMDAwMDAgbiAKMDAwMDAwMDE4MCAwMDAwMCBuIAowMDAwMDAwMjc0IDAwMDAwIG4gCjAwMDAwMDAzNjggMDAwMDAgbiAKMDAwMDAwMDQ2MiAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDgKL1Jvb3QgMyAwIFIKL0luZm8gMSAwIFIKPj4Kc3RhcnR4cmVmCjU1NgolJUVPRgo=';
 
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory() } = {}){
+// flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
+// 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
+// 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -110,6 +113,10 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
       if (req.action === 'bill'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify({ status: 'ok', contentBase64: FOUR_PAGE_PDF_B64, mime: 'application/pdf' }) });
+      }
+      if (req.action === 'flightLookup'){
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
+          body: JSON.stringify(flightLookupFlight ? { status: 'ok', flight: flightLookupFlight } : { status: 'ok' }) });
       }
       return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
         body: JSON.stringify({ status: 'ok' }) });
@@ -642,6 +649,87 @@ async function gotoTab(page, tab){
   ok('英文侧没有接口名字 → 只用代码', flightChecks.enNoName === 'DRS', flightChecks.enNoName);
   ok('flightTitleFromLookup 中文侧表外机场带出接口名字', flightChecks.title && flightChecks.title.zh === 'Dresden DRS → 金边 PNH', flightChecks.title);
   ok('flightTitleFromLookup 英文侧同样带出接口名字（没有就退回代码）', flightChecks.title && flightChecks.title.en === 'Dresden DRS → PNH', flightChecks.title);
+
+  await ctx.close();
+}
+
+// ---------- 场景十四：航班号填完自动查询——不用再点一下「查询」按钮 ----------
+// 2026-08-28 事故：上一版航班号输入框没绑任何事件，只有按钮能触发查询。用户填完
+// 航班号直接保存，查询压根没跑过，两条航班全程没时间、没 ✈️ 标记，也没有任何报错。
+// 这四条断言分别守：自动触发、同组合去重（省 API 额度）、日期改了要重查、失败要显眼。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin' }); // 默认「查不到」（见 mountRoutes 顶部注释）
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  // fakeTrips 只有一条行程（t1），展开它，条目在下标 0——不用新增行程/条目，
+  // 直接用假数据自带的那一条，省得再走一遍新增流程。
+  await page.evaluate(() => adminExpandTrip(0));
+  // 注意：until() 的判定函数必须整体是 async（或直接返回 promise），
+  // `() => page.locator(...).count() === 1` 是错的——.count() 返回 promise，
+  // 拿 promise 对象去跟数字比较永远是 false，会一直等到超时（这份自检本身踩过一次）。
+  await until(async () => (await page.locator('#admin-item-0-0-flightno').count()) === 1,
+    { what: '航班号输入框出现' });
+
+  console.log('\n【17】填完航班号失焦，不用点「查询」按钮就自动发出请求');
+  rec.calls.length = 0;
+  await page.fill('#admin-item-0-0-flightdate', '2026-09-01');
+  await page.fill('#admin-item-0-0-flightno', 'CZ3096');
+  await page.locator('#admin-item-0-0-flightno').blur();
+  await until(() => rec.calls.some(c => c.action === 'flightLookup'), { what: '自动发出 flightLookup 请求' });
+  const firstCallCount = rec.calls.filter(c => c.action === 'flightLookup').length;
+  ok('没点「查询」按钮，失焦就自动发出了 action:flightLookup 请求', firstCallCount === 1, rec.calls);
+
+  console.log('\n【18】同一组合（号+日期没变）再失焦一次，不重复发请求（省 API 额度）');
+  await page.locator('#admin-item-0-0-flightno').focus();
+  await page.locator('#admin-item-0-0-flightno').blur();
+  await page.waitForTimeout(300); // 等得到就是没发；用 until 反而会一直等到超时，故意固定等一下看有没有多出请求
+  const secondCallCount = rec.calls.filter(c => c.action === 'flightLookup').length;
+  ok('号和日期都没变，第二次失焦不再打请求', secondCallCount === firstCallCount, { firstCallCount, secondCallCount });
+
+  console.log('\n【19】日期改了，会重新发起查询（同一个号但组合变了）');
+  await page.fill('#admin-item-0-0-flightdate', '2026-09-02');
+  // fill() 只保证触发 input 事件，日期框绑的是 onchange——显式补发一次 change，
+  // 跟本文件其它场景里 mapInput.dispatchEvent('change') 是同一手法，避免测试本身不稳。
+  await page.locator('#admin-item-0-0-flightdate').dispatchEvent('change');
+  await until(() => rec.calls.filter(c => c.action === 'flightLookup').length > secondCallCount,
+    { what: '日期改动后重新发出 flightLookup 请求' });
+  const thirdCallCount = rec.calls.filter(c => c.action === 'flightLookup').length;
+  ok('日期改动后又发起了一次新查询', thirdCallCount === secondCallCount + 1, { secondCallCount, thirdCallCount });
+
+  console.log('\n【20】查询失败（mountRoutes 默认查不到）时，条目上要有明显标记，不能只是一行小字');
+  await until(() => page.evaluate(() =>
+    document.getElementById('admin-item-0-0-flightblock').classList.contains('flight-lookup-block-err')),
+    { what: '航班块出现失败态的红边框 class' });
+  const failState = await page.evaluate(() => ({
+    blockErr: document.getElementById('admin-item-0-0-flightblock').classList.contains('flight-lookup-block-err'),
+    inputErr: document.getElementById('admin-item-0-0-flightno').classList.contains('flight-input-err'),
+    statusTxt: (document.getElementById('admin-item-0-0-flightstatus').textContent || '').trim(),
+    flight: adminTripsDraft[0].items[0].flight,
+  }));
+  ok('航班块本身带上失败态的红边框 class（不是只有状态字变红）', failState.blockErr, failState);
+  ok('航班号输入框带上红边框 class', failState.inputErr, failState);
+  ok('状态字不是空的（有具体的失败原因文字）', failState.statusTxt !== '', failState);
+  ok('查询失败也把 {no,date,unresolved:true} 记进 it.flight，不是完全没留痕迹',
+     failState.flight && failState.flight.unresolved === true && failState.flight.no === 'CZ3096', failState);
+
+  console.log('\n【21】重新渲染表单（模拟保存后 renderAdmin() 整块重画，跟 refreshFeed() 后的效果一样）后，失败提示仍然在，不是一闪而过');
+  await page.evaluate(() => renderAdmin()); // renderAdmin() 会重建 #tab-admin，adminExpandedTrip 还是 0，展开态不变
+  await until(async () => (await page.locator('#admin-item-0-0-flightblock').count()) === 1, { what: '航班块重新渲染出来' });
+  const afterRerender = await page.evaluate(() => ({
+    blockErr: document.getElementById('admin-item-0-0-flightblock').classList.contains('flight-lookup-block-err'),
+    statusTxt: (document.getElementById('admin-item-0-0-flightstatus').textContent || '').trim(),
+  }));
+  ok('重新渲染后失败标记还在（不是只在查询那一刻闪一下）', afterRerender.blockErr, afterRerender);
+  ok('重新渲染后状态字仍有提示文字', afterRerender.statusTxt !== '', afterRerender);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
 
   await ctx.close();
 }
