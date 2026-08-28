@@ -1989,6 +1989,8 @@ function renderAdmin(){
   ensureAdminTripsDraft();
   const bills = (feedData.bills || []).slice().sort((a,b) => (b.uploadedAt||'').localeCompare(a.uploadedAt||''));
   pane.innerHTML = `
+    <div id="adminPushSlot"></div>
+
     ${adminTripsSectionHtml()}
 
     <div class="admin-block">
@@ -2064,6 +2066,7 @@ function renderAdmin(){
   const ta = document.getElementById('admin-trips-json');
   if(ta) ta.addEventListener('input', () => { adminValidateTripsJSON(); markTripsDirty(); });
   adminLoadAccessCode();
+  ensurePushUI();   // 管理页重画之后把推送条挂回插槽（innerHTML 会把上一次挂的冲掉）
 }
 function fileToBase64(file){
   return new Promise((resolve, reject) => {
@@ -2218,11 +2221,21 @@ function ensurePushUI(){
     if(bar) bar.remove();
     return;
   }
-  if(!bar){
+  // 挂在哪里看身份（2026-08-28 用户反映：他用管理员身份进来时，顶上一直挂着一条
+  // 「开启通知」很碍事——那条本来就是给老板看的）。
+  // admin：收进管理页的插槽，仍然能用（他要先在自己手机上试通知发不发得出来），
+  //        但不再占着每一页的顶部。管理页还没渲染出来时插槽不存在，那就先不挂。
+  // viewer（老板本人）：照旧挂在最顶上，他就是要被提醒开通知的那个人。
+  const slot = (role === 'admin') ? document.getElementById('adminPushSlot') : null;
+  const host = (role === 'admin') ? slot : app;
+  if(!host){ if(bar) bar.remove(); return; }
+  if(!bar || bar.parentElement !== host){
+    if(bar) bar.remove();
     bar = document.createElement('div');
     bar.id = 'pushBar';
     bar.className = 'push-bar';
-    app.insertBefore(bar, app.firstChild);
+    if(host === app) host.insertBefore(bar, host.firstChild);
+    else host.appendChild(bar);
   }
   bar.innerHTML = pushBarInnerHtml();
 }
