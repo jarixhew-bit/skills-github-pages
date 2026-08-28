@@ -195,12 +195,22 @@ body:not(.lang-en) .en{display:none !important}
 /* 账单用 PDF.js 自己画成 canvas 的滚动容器（原因见 openBill()/renderBillPdf() 顶部的
    长注释：iframe 直接塞 PDF 在 Android Chrome 上根本不会渲染）。每页一个占位块，
    宽高比先用 A4 竖版估一个，真正 canvas 画出来后会被替换掉，允许有一点点跳动。 */
-.bill-pages{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+.bill-pages{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;
+  touch-action:pan-x pan-y;
   padding:10px 0;box-sizing:border-box;display:none}
 .bill-page-holder{width:calc(100% - 20px);max-width:700px;margin:0 auto 10px;background:#fff;
   box-shadow:0 1px 4px rgba(0,0,0,.35);aspect-ratio:1/1.414;display:flex;align-items:center;
   justify-content:center;color:#8a8a8a;font-size:12.5px;overflow:hidden}
 .bill-page-holder canvas{display:block;width:100%;height:auto}
+/* 放大 = 把这层撑宽（applyBillZoom），横向拖动交给 .bill-pages 的 overflow-x */
+.bill-zoom-wrap{width:100%;margin:0 auto}
+.bill-zoom-ctl{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:2px;
+  background:rgba(30,58,95,.9);border-radius:22px;padding:4px 6px;z-index:5;
+  box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.bill-zoom-ctl button{width:36px;height:36px;border:none;border-radius:50%;background:transparent;
+  color:#fff;font-size:19px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1}
+.bill-zoom-ctl button:disabled{opacity:.35;cursor:default}
+.bill-zoom-ctl span{color:#fff;font-size:12.5px;font-weight:700;min-width:44px;text-align:center}
 .overlay-foot{flex:none;padding:12px 16px;background:#fff}
 .overlay-foot button{width:100%;padding:13px;border:none;border-radius:10px;
   background:var(--p);color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit}
@@ -406,7 +416,14 @@ body:not(.lang-en) .en{display:none !important}
          阅读器，塞进 iframe 的 PDF 根本不会被渲染，这正是"账单打开是一排乱码"的根因，
          详见 renderBillPdf() 顶部注释。这里只是把 blob URL 挂着当"新分页打开"的退路。 -->
     <iframe id="billFrame" title="PDF" style="display:none" aria-hidden="true"></iframe>
-    <div class="bill-pages" id="billPages"></div>
+    <div class="bill-pages" id="billPages" ondblclick="billZoomToggle()"></div>
+    <!-- 缩放控件：捏合在有些设备上不好使，加减按钮是兜底，也方便单手。
+         悬在右下角、半透明，不挡账单内容。 -->
+    <div class="bill-zoom-ctl" id="billZoomCtl">
+      <button type="button" id="billZoomOut" onclick="billZoomBy(-BILL_ZOOM_STEP)" aria-label="缩小 Zoom out">−</button>
+      <span id="billZoomLabel">100%</span>
+      <button type="button" id="billZoomIn" onclick="billZoomBy(BILL_ZOOM_STEP)" aria-label="放大 Zoom in">＋</button>
+    </div>
     <div class="overlay-status" id="billStatus"></div>
   </div>
   <div class="overlay-foot">
@@ -1203,6 +1220,9 @@ const PDFJS_VERSION = '3.11.174'; // Mozilla 从 v4 起 pdf.js 只发 ESM(.mjs)�
 const PDFJS_LIB_URL = '../vendor/pdfjs/pdf.min.mjs';
 const PDFJS_WORKER_URL = '../vendor/pdfjs/pdf.worker.min.mjs';
 const BILL_EAGER_PAGES = 2; // 打开账单立刻画的页数，不等滚动——第一眼就该看到内容
+const BILL_ZOOM_MIN = 1, BILL_ZOOM_MAX = 4, BILL_ZOOM_STEP = 0.5;
+const BILL_MAX_CANVAS_PX = 2600;   // 单页画布宽度上限（像素），防止高倍时内存爆掉
+let billZoom = 1;                  // 当前缩放倍率；关掉浮层会重置回 1
 let _pdfjsLoadPromise = null;
 let currentPdfDoc = null;       // 当前打开的 PDFDocumentProxy，关闭弹层要 destroy() 释放
 let currentPdfPageObserver = null; // 懒渲染用的 IntersectionObserver，关闭弹层要 disconnect()
@@ -1231,11 +1251,18 @@ async function renderBillPage(pdfDoc, pageNum, dpr){
   const holder = document.querySelector(`#billPages .bill-page-holder[data-page-index="${pageNum}"]`);
   if(!holder || holder.dataset.rendered === '1') return;
   holder.dataset.rendered = '1';
+  holder.dataset.renderedZoom = String(billZoom);
   try{
     const page = await pdfDoc.getPage(pageNum);
     const containerWidth = holder.clientWidth || 320;
     const viewport1 = page.getViewport({ scale: 1 });
-    const renderScale = (containerWidth / viewport1.width) * dpr;
+    // 放大是靠「把容器撑宽再按新宽度重画」，不是 CSS 拉大位图——账单上的数字很小，
+    // 拉大只会更糊，等于没放大（2026-08-28 用户要求「窗口能不能放大」时定的做法）。
+    // 但画布不能无限大：高倍时按 BILL_MAX_CANVAS_PX 收一下 dpr，否则十几页高倍位图会爆内存。
+    let effDpr = dpr;
+    const wantW = containerWidth * effDpr;
+    if(wantW > BILL_MAX_CANVAS_PX) effDpr = Math.max(1, BILL_MAX_CANVAS_PX / containerWidth);
+    const renderScale = (containerWidth / viewport1.width) * effDpr;
     const viewport = page.getViewport({ scale: renderScale });
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(viewport.width));
@@ -1248,6 +1275,69 @@ async function renderBillPage(pdfDoc, pageNum, dpr){
   }catch(err){
     holder.textContent = pick('这一页画不出来','Could not render this page');
   }
+}
+
+/**
+ * 设定账单缩放倍率。
+ *
+ * 做法：把包裹层撑宽到 `倍率 × 100%`，然后把**当前看得见的页**标记成未渲染、按新宽度
+ * 重画。不是 CSS transform 拉大位图——账单上的数字本来就小，拉大只会更糊，
+ * 用户要的是「看清」不是「看大」（2026-08-28）。
+ * 看不见的页不立刻重画，交给原有的 IntersectionObserver 滚到附近再画，省内存。
+ */
+function applyBillZoom(z, opts){
+  const pagesEl = document.getElementById('billPages');
+  const wrap = document.getElementById('billZoomWrap');
+  if(!pagesEl || !wrap) return;
+  const next = Math.min(BILL_ZOOM_MAX, Math.max(BILL_ZOOM_MIN, Math.round(z * 100) / 100));
+  const changed = next !== billZoom;
+  billZoom = next;
+  wrap.style.width = (billZoom * 100) + '%';
+  updateBillZoomLabel();
+  if(!changed && !(opts && opts.silent)) return;
+  if(opts && opts.silent) return;
+
+  // 只重画看得见的那几页
+  const holders = Array.from(wrap.querySelectorAll('.bill-page-holder'));
+  const top = pagesEl.scrollTop, bottom = top + pagesEl.clientHeight;
+  holders.forEach(h => {
+    const hTop = h.offsetTop, hBottom = hTop + h.offsetHeight;
+    const visible = hBottom > top - 200 && hTop < bottom + 200;
+    if(h.dataset.renderedZoom === String(billZoom)) return;
+    h.dataset.rendered = '';
+    if(visible && currentPdfDoc){
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      renderBillPage(currentPdfDoc, Number(h.dataset.pageIndex), dpr);
+    }else if(currentPdfPageObserver){
+      currentPdfPageObserver.observe(h);   // 滚到附近再按新倍率画
+    }
+  });
+}
+function updateBillZoomLabel(){
+  const el = document.getElementById('billZoomLabel');
+  if(el) el.textContent = Math.round(billZoom * 100) + '%';
+  const minus = document.getElementById('billZoomOut');
+  const plus = document.getElementById('billZoomIn');
+  if(minus) minus.disabled = billZoom <= BILL_ZOOM_MIN + 0.001;
+  if(plus) plus.disabled = billZoom >= BILL_ZOOM_MAX - 0.001;
+}
+function billZoomBy(delta){ applyBillZoom(billZoom + delta); }
+/** 双击（手机上是双点）在 1x 和 2.5x 之间切——单手看一眼细节最快的方式 */
+function billZoomToggle(){ applyBillZoom(billZoom > 1.01 ? 1 : 2.5); }
+
+/** 双指捏合。只在两指时接管，单指仍然是正常滚动/横向拖动。 */
+function bindBillPinch(pagesEl){
+  let startDist = 0, startZoom = 1;
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  pagesEl.addEventListener('touchstart', (e) => {
+    if(e.touches.length === 2){ startDist = dist(e.touches); startZoom = billZoom; }
+  }, { passive: true });
+  pagesEl.addEventListener('touchmove', (e) => {
+    if(e.touches.length !== 2 || !startDist) return;
+    e.preventDefault();                       // 阻止浏览器自己的页面缩放
+    applyBillZoom(startZoom * (dist(e.touches) / startDist));
+  }, { passive: false });
+  pagesEl.addEventListener('touchend', () => { startDist = 0; }, { passive: true });
 }
 
 /** 把整份账单画出来：先给每页建占位块（滚动条长度立刻对），前 BILL_EAGER_PAGES 页
@@ -1290,13 +1380,21 @@ async function renderBillPdf(bytes){
       });
     }, { root: pagesEl, rootMargin: '600px 0px' }); // 提前一屏多触发，滚动时不会先看到空白
 
+    // 所有页放进一个包裹层里，放大就是把这层撑宽（见 applyBillZoom）。
+    // 横向拖动由 #billPages 的 overflow-x 负责，不用自己写拖拽。
+    const wrap = document.createElement('div');
+    wrap.className = 'bill-zoom-wrap';
+    wrap.id = 'billZoomWrap';
     for(let i = 1; i <= numPages; i++){
       const holder = document.createElement('div');
       holder.className = 'bill-page-holder';
       holder.dataset.pageIndex = String(i);
       holder.textContent = pick(`第 ${i} 页`, `Page ${i}`);
-      pagesEl.appendChild(holder);
+      wrap.appendChild(holder);
     }
+    pagesEl.appendChild(wrap);
+    applyBillZoom(1, { silent: true });
+    if(!pagesEl.dataset.pinchBound){ bindBillPinch(pagesEl); pagesEl.dataset.pinchBound = '1'; }
     pagesEl.style.display = 'block';
 
     for(let i = 1; i <= Math.min(BILL_EAGER_PAGES, numPages); i++){
@@ -1347,6 +1445,7 @@ function closeBillOverlay(){
   if(currentPdfPageObserver){ currentPdfPageObserver.disconnect(); currentPdfPageObserver = null; }
   if(currentPdfDoc){ currentPdfDoc.destroy(); currentPdfDoc = null; }
   document.getElementById('billPages').innerHTML = ''; // 清空 canvas 释放内存
+  billZoom = 1; updateBillZoomLabel();   // 下次打开从 100% 开始，不带上一份账单的倍率
   if(currentBillBlobUrl){ URL.revokeObjectURL(currentBillBlobUrl); currentBillBlobUrl = null; }
 }
 function openBillNewTab(){
@@ -2091,23 +2190,7 @@ function renderAdmin(){
           <button class="admin-bill-del" onclick="adminDeleteBill('${escapeHtml(b.id)}')">${pick('删除','Delete')}</button>
         </div>`).join('') : `<div class="admin-status">${pick('还没有账单','No bills yet')}</div>` }
     </div>
-
-    <div class="admin-block">
-      <details id="admin-json-details">
-        <summary class="admin-json-summary">⚙️ ${pick('高级：直接编辑 JSON','Advanced: edit raw JSON')}</summary>
-        <div style="margin-top:12px">
-          <div class="admin-field">
-            <textarea id="admin-trips-json" spellcheck="false">${escapeHtml(JSON.stringify(adminTripsDraft || [], null, 2))}</textarea>
-          </div>
-          <div class="admin-status err" id="admin-trips-err"></div>
-          <button class="admin-btn" id="admin-trips-save" onclick="adminSaveTrips()">${pick('保存 JSON','Save JSON')}</button>
-          <div class="admin-status" id="admin-trips-status"></div>
-        </div>
-      </details>
-    </div>
   `;
-  const ta = document.getElementById('admin-trips-json');
-  if(ta) ta.addEventListener('input', () => { adminValidateTripsJSON(); markTripsDirty(); });
   adminLoadAccessCode();
   ensurePushUI();   // 管理页重画之后把推送条挂回插槽（innerHTML 会把上一次挂的冲掉）
 }
@@ -2158,43 +2241,6 @@ async function adminDeleteBill(id){
     await refreshFeed();
   }catch(err){
     alert((err && err.message) || pick('删除失败','Delete failed'));
-  }
-}
-function adminValidateTripsJSON(){
-  const ta = document.getElementById('admin-trips-json');
-  const err = document.getElementById('admin-trips-err');
-  const saveBtn = document.getElementById('admin-trips-save');
-  if(!ta) return null;
-  try{
-    const parsed = JSON.parse(ta.value);
-    if(!Array.isArray(parsed)) throw new Error(pick('必须是一个 JSON 数组','Must be a JSON array'));
-    err.textContent = '';
-    if(saveBtn) saveBtn.disabled = false;
-    return parsed;
-  }catch(e){
-    err.textContent = pick('JSON 格式不对：','Invalid JSON: ') + e.message;
-    if(saveBtn) saveBtn.disabled = true;
-    return null;
-  }
-}
-async function adminSaveTrips(){
-  const parsed = adminValidateTripsJSON();
-  if(!parsed) return;
-  const statusEl = document.getElementById('admin-trips-status');
-  statusEl.className = 'admin-status';
-  statusEl.textContent = pick('保存中…','Saving…');
-  try{
-    await bossCall('tripsSave', { trips: parsed });
-    statusEl.className = 'admin-status ok';
-    statusEl.textContent = pick('已保存','Saved');
-    // JSON 保存的是完整数组，跟表单工作副本一起重置，下次打开面板从服务器最新数据重建
-    adminTripsDirty = false;
-    adminTripsDraft = null;
-    adminExpandedTrip = null;
-    await refreshFeed();
-  }catch(err){
-    statusEl.className = 'admin-status err';
-    statusEl.textContent = (err && err.message) || pick('保存失败','Save failed');
   }
 }
 async function refreshFeed(){
