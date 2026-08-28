@@ -700,6 +700,19 @@ const FLIGHT_ETA_HORIZON_MS = 24 * 60 * 60 * 1000;
  * 3. 只有 est 但还早（超过 24 小时）→ **只显示计划时间**，不提预计也不提延误。
  *    这么早的预测是按历史规律推的，摆出来只会让人白紧张、甚至误判。
  */
+/** 这一格**最终显示出来的**是哪个时间（规则见 flightTimePartHtml 的三种情况）。
+ * 转机等待必须用这个，不能自己另挑一个——否则屏幕上写着「14:35 到、16:30 走」，
+ * 底下却说「等 1 小时 29 分」（拿了没显示出来的预计到达 15:01 去算），
+ * 数字自己对不上（2026-08-28 用户当场抓到：「13:30 到 16:30 飞不是 3 个小时？」）。 */
+function flightShownTime(sched, act, est){
+  if(act) return act;
+  if(est){
+    const schedTs = parseOffsetTs(sched);
+    // 还早的预测根本没显示出来（超过 24 小时），那就不能拿它去算
+    if(schedTs != null && schedTs - Date.now() <= FLIGHT_ETA_HORIZON_MS) return est;
+  }
+  return sched || null;
+}
 function flightTimePartHtml(sched, act, est){
   const schedHM = extractHM(sched);
   const schedTs = parseOffsetTs(sched);
@@ -784,8 +797,9 @@ function transferRowHtml(prevItem, nextItem){
   const arrCode = String(pf.to || '').toUpperCase();
   const depCode = String(nf.from || '').toUpperCase();
   if(!arrCode || !depCode || arrCode !== depCode) return '';
-  const arrTs = parseOffsetTs(pf.act_arr || pf.est_arr || pf.sched_arr);
-  const depTs = parseOffsetTs(nf.act_dep || nf.est_dep || nf.sched_dep);
+  // 用「屏幕上真的写着的那个时间」去算，跟上面两张航班卡显示的完全一致
+  const arrTs = parseOffsetTs(flightShownTime(pf.sched_arr, pf.act_arr, pf.est_arr));
+  const depTs = parseOffsetTs(flightShownTime(nf.sched_dep, nf.act_dep, nf.est_dep));
   if(arrTs == null || depTs == null) return '';
   const diffMs = depTs - arrTs;
   // 相隔超过一天的两段，根本不是转机——是「去程」和「回程」。
@@ -2181,7 +2195,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v22</div>
+    <div class="admin-ver" id="adminVer">boss-app-v23</div>
 
     ${adminTripsSectionHtml()}
 
