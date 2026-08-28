@@ -37,6 +37,19 @@ async function until(fn, { timeout = 6000, interval = 20, what = '条件' } = {}
   }
 }
 
+/**
+ * 「让 App 把服务端回应写回本机记录」不能用固定 waitForTimeout(120) 赌——
+ * 2026-08-28 用真实数据抓到根因：check-all.py 并发 6，这台沙盒只有 4 核，
+ * 7 个 chromium 同时跑时 company 这份自检稳定复现失败（5 次里 2 次红，
+ * 都红在这类「送出后立刻读本机状态」的断言）。120ms 是「机器不忙」时的
+ * 经验值，机器忙的时候 JS 事件循环被抢占，这段回写可能要几百 ms 才跑到，
+ * 断言读早了就看到半成品状态。改成轮询实际写回的条件（复用 until()，
+ * 6 秒超时）——机器快就几十 ms 通过，机器慢就多等一会，不假设固定时长。
+ */
+async function untilWriteback(page, evalFn, what) {
+  await until(() => page.evaluate(evalFn), { what: what || '服务端回应写回本机记录' });
+}
+
 const ok = (n, c, got) => {
   if (c) { pass++; console.log(`  ✅ ${n}`); }
   else { fails.push(n); console.log(`  ❌ ${n} — 实际: ${JSON.stringify(got)}`); }
@@ -427,7 +440,9 @@ const browser = await chromium.launch(launchOpts);
   const _sent1 = posted.length;
   await page.evaluate(()=>saveTx());
   await until(() => posted.length > _sent1, { what: '这一笔送到服务端' });
-  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
+  await untilWriteback(page,
+    () => data.transactions[data.transactions.length-1]?.company?.status==='sent',
+    '12.34 那笔写回 sent 状态');
   const p = posted[0] || {};
   ok('送出 1 个请求', posted.length===1, posted.length);
   ok('带了密钥', p.token==='test-token-123', p.token);
@@ -460,7 +475,9 @@ const browser = await chromium.launch(launchOpts);
   const _sent2 = posted.length;
   await page.evaluate(()=>saveTx());
   await until(() => posted.length > _sent2, { what: '这一笔送到服务端' });
-  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
+  await untilWriteback(page,
+    () => !!data.transactions.filter(t=>t.amount===6.6).pop()?.company?.refTag,
+    '服务端派的单号写回本机');
   ok('留空时不往服务端塞编号', posted[0]?.items?.[0]?.refTag===null, posted[0]?.items?.[0]);
   const numbered = await page.evaluate(()=>data.transactions.filter(t=>t.amount===6.6).pop());
   ok('存下服务端派的单号', !!numbered?.company?.refTag, numbered?.company);
@@ -601,7 +618,9 @@ const browser = await chromium.launch(launchOpts);
   const _sent5 = posted.length;
   await page.evaluate(()=>saveTx());
   await until(() => posted.length > _sent5, { what: '这一笔送到服务端' });
-  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
+  await untilWriteback(page,
+    () => data.transactions[data.transactions.length-1]?.company?.person==='Boss',
+    '服务端算的 person 写回本机');
   const txStore = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
   ok('reporter 仍原样送出 Seryi', posted[0]?.reporter==='Seryi', posted[0]?.reporter);
   ok('但 person 是服务端算的 Boss（→ Excel 左边）', txStore?.company?.person==='Boss', txStore?.company);
@@ -629,7 +648,9 @@ const browser = await chromium.launch(launchOpts);
   const _sent7 = posted.length;
   await page.evaluate(()=>flushCompanyQueue({loud:true}));
   await until(() => posted.length > _sent7, { what: '这一笔送到服务端' });
-  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
+  await untilWriteback(page,
+    () => JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]').length===0,
+    '补送后队列清空写回本机');
   ok('恢复后队列清空', (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_companyQueue')||'[]'))).length===0);
   ok('补送的正是那笔 5.60 Store', posted.some(x=>x.items?.[0]?.amount===5.6 && x.items?.[0]?.categoryRaw==='Store'), posted);
 
@@ -685,7 +706,9 @@ const browser = await chromium.launch(launchOpts);
   const _sent8 = posted.length;
   await page.evaluate(()=>saveTx());
   await until(() => posted.length > _sent8, { what: '这一笔送到服务端' });
-  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
+  await untilWriteback(page,
+    () => !!data.transactions.filter(t=>t.amount===33.33).pop()?.company?.recordId,
+    '服务端记录 id 写回本机');
   const delTx = await page.evaluate(()=>data.transactions.filter(t=>t.amount===33.33).pop());
   ok('入账后存下了服务端的记录 id', !!delTx?.company?.recordId, delTx?.company);
   const bookBefore = serverBook.length;
@@ -708,7 +731,9 @@ const browser = await chromium.launch(launchOpts);
   const _sent9 = posted.length;
   await page.evaluate(()=>saveTx());
   await until(() => posted.length > _sent9, { what: '这一笔送到服务端' });
-  await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
+  await untilWriteback(page,
+    () => !!data.transactions.filter(t=>t.amount===44.44).pop()?.company?.recordId,
+    '服务端记录 id 写回本机');
   const keepTx = await page.evaluate(()=>data.transactions.filter(t=>t.amount===44.44).pop());
   butlerMode = 'offline';
   await page.evaluate(id=>deleteTxById(id), keepTx.id);
@@ -1000,7 +1025,9 @@ const browser = await chromium.launch(launchOpts);
     const _sent10 = posted.length;
     await page.evaluate(()=>saveTx());
     await until(() => posted.length > _sent10, { what: '这一笔送到服务端' });
-    await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
+    await untilWriteback(page,
+      () => data.transactions.filter(x=>x.amount===8.8).pop()?.company?.person==='Boss',
+      '服务端算的 person 写回本机');
     const pb = posted[0] || {};
     ok('送出去的 categoryRaw 是服务端给的「老板午餐」',
        pb.items?.[0]?.categoryRaw==='老板午餐', pb.items?.[0]?.categoryRaw);
@@ -1030,7 +1057,9 @@ const browser = await chromium.launch(launchOpts);
     const _sent11 = posted.length;
     await page.evaluate(()=>saveTx());
     await until(() => posted.length > _sent11, { what: '这一笔送到服务端' });
-    await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
+    await untilWriteback(page,
+      () => data.transactions.filter(x=>x.amount===7.7).pop()?.company?.person==='Seryi',
+      '服务端算的 person 写回本机');
     ok('对照：不点「老板的」就送标准类别 Lunch',
        posted[0]?.items?.[0]?.categoryRaw==='Lunch', posted[0]?.items?.[0]?.categoryRaw);
     ok('对照：仍记到 Seryi 头上', await page.evaluate(()=>{
@@ -1069,7 +1098,9 @@ const browser = await chromium.launch(launchOpts);
     const _sent12 = posted.length;
     await page.evaluate(()=>saveTx());
     await until(() => posted.length > _sent12, { what: '这一笔送到服务端' });
-    await page.waitForTimeout(120);   // 让 App 把服务端回应写回本机记录
+    await untilWriteback(page,
+      () => data.transactions.filter(x=>x.amount===11.78).pop()?.company?.status==='sent',
+      '11.78 那笔写回 sent 状态');
     const txId = await page.evaluate(()=>{
       const t = data.transactions.filter(x=>x.amount===11.78).pop(); return t && t.id;
     });
@@ -2049,6 +2080,16 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   ok('contentBase64 非空', typeof req.contentBase64 === 'string' && req.contentBase64.length > 0, req.contentBase64);
   ok('contentBase64 不含 data:application/pdf;base64, 前缀（已经 slice 掉了）',
      !(req.contentBase64 || '').includes('data:application/pdf;base64,'), req.contentBase64);
+  // 2026-08-28 修：calls.length>0 只说明请求被 route 拦截、进了 calls 数组——
+  // 这发生在 route.fulfill() 把假回应送回页面**之前**。真正的状态栏文字要等
+  // sendStatementToBoss() 里 `await fetch(...)` 拿到回应、走到 setStatus() 才写上。
+  // 原本这里拦截后立刻同步读 #send-boss-status，机器不忙时两件事间隔够小看不出来，
+  // 机器忙（并发跑很多个 chromium）时 JS 事件循环被抢占，读的时候文字还没写上，
+  // 这条断言就稳定复现失败——单独跑永远绿，并发跑偶发红，正是这个原因。改成轮询
+  // 实际状态，而不是假设"请求进了 calls 数组=页面已经处理完响应"。
+  await untilWriteback(page,
+    () => (document.getElementById('send-boss-status')?.textContent || '').includes('已发给老板'),
+    '状态栏写上「已发给老板」');
   const statusText = await page.textContent('#send-boss-status');
   ok('状态栏显示已发给老板', (statusText || '').includes('已发给老板'), statusText);
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
