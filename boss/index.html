@@ -285,6 +285,7 @@ body:not(.lang-en) .en{display:none !important}
 .flight-lookup-current{font-size:12.5px;color:var(--sub);margin-bottom:8px;display:flex;
   align-items:center;gap:8px;flex-wrap:wrap}
 .flight-lookup-status{margin-top:8px;font-size:12.5px;min-height:16px;color:var(--sub)}
+.flight-lookup-date{font-size:12.5px;color:var(--sub);margin:2px 0 8px}
 .flight-lookup-status.err{color:var(--danger)}
 .flight-lookup-status.ok{color:var(--ok)}
 /* 查询失败的显眼标记（2026-08-28）：光靠状态字一行小字用户根本不会注意，
@@ -781,6 +782,12 @@ function transferRowHtml(prevItem, nextItem){
   const depTs = parseOffsetTs(nf.act_dep || nf.est_dep || nf.sched_dep);
   if(arrTs == null || depTs == null) return '';
   const diffMs = depTs - arrTs;
+  // 相隔超过一天的两段，根本不是转机——是「去程」和「回程」。
+  // （2026-08-28 用户新加坡行踩到：23 号去、27 号回，落地机场跟起飞机场都是 SIN，
+  //  旧写法照样当成转机，算出一个跨了 4 天的「等待」；日期再填错一点就变成负数、
+  //  显示「转机时间异常」。真正的转机不可能隔一天以上，直接不显示这一行。）
+  const TRANSFER_WINDOW_MS = 24 * 60 * 60 * 1000;
+  if(Math.abs(diffMs) >= TRANSFER_WINDOW_MS) return '';
   const dur = formatDurationLabel(diffMs);
   // 转机机场用的是「到达那一段」的 live 数据（pf.to），apiName 同理取 pf.to_name——
   // 跟 airportLabelZh 的三级优先级保持一致，表外机场也能显示名字，不只是代码。
@@ -1625,6 +1632,15 @@ function adminItemFieldInput(tripIdx, itemIdx, field, val){
 function adminItemFieldChange(tripIdx, itemIdx, field, val){
   adminItemFieldInput(tripIdx, itemIdx, field, val);
   adminRevalidateItemDates(tripIdx);
+  // 日期改了，这条如果绑了航班就得按新日期重查一次——否则时间还停在旧日期那一班
+  // （2026-08-28 事故的另一半：改日期完全不影响已经查过的航班资料）。
+  if(field === 'date'){
+    const trip = adminTripsDraft && adminTripsDraft[tripIdx];
+    const it = trip && trip.items && trip.items[itemIdx];
+    const block = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightblock`);
+    if(block && trip) block.outerHTML = flightLookupBlockHtml(trip, tripIdx, itemIdx);
+    if(it && it.flight && it.flight.no) adminFlightAutoTrigger(tripIdx, itemIdx);
+  }
 }
 /** 地图链接：粘的是完整链接就原样用，否则当地点名自动生成 Google 地图搜索链接。 */
 function adminItemMapInput(tripIdx, itemIdx, el){
@@ -1717,14 +1733,18 @@ function flightLookupBlockHtml(trip, tripIdx, itemIdx){
   // （切换条目、保存后刷新）之后就彻底没有痕迹，用户根本不知道自己填过、也不知道
   // 要自己手动填时间。这就是这次要修的事故本身：失败是无声的（2026-08-28）。
   const failed = !!(f && f.unresolved);
-  // 航班日期默认跟条目日期走（不用再单独填一遍）：还没关联过航班时用 it.date，
-  // 已关联/已查过时用查询留下的 f.date（可能被用户在这里手动改过）。
-  const dateVal = (f && f.date) || it.date || '';
+  // 航班日期**只跟条目日期走**，不再有独立的日期框（2026-08-28 事故：他把回程条目
+  // 的日期改成 27 号，但航班日期框还停在 23 号——两个日期各走各的，查回来的是 23 号
+  // 那班的时间，于是「去程 23 号 22:00 落地、回程 23 号 12:25 起飞」，算出负数等待，
+  // 页面报「转机时间异常」。唯一的日期只有一个，就不可能对不上）。
+  const dateVal = it.date || '';
+  // 旧数据可能留着跟条目日期对不上的 f.date，这种要显眼提示他点一次查询更新。
+  const staleDate = !!(f && !failed && f.date && dateVal && f.date !== dateVal);
   const persistentHint = failed
     ? pick('这条航班还没查到资料，时间要自己填', 'This flight has not been resolved yet — please fill in the time yourself')
     : '';
   return `<div class="flight-lookup-block${failed ? ' flight-lookup-block-err' : ''}" id="admin-item-${tripIdx}-${itemIdx}-flightblock">
-      <div class="flight-lookup-hd">✈️ ${pick('航班日期','Flight date')}</div>
+      <div class="flight-lookup-hd">✈️ ${pick('航班','Flight')}</div>
       ${ f && !failed ? `<div class="flight-lookup-current">
           <span>${pick('已关联航班','Linked flight')} <b>${escapeHtml(f.no||'')}</b>（${escapeHtml(f.date||'')}）</span>
           <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
@@ -1733,8 +1753,12 @@ function flightLookupBlockHtml(trip, tripIdx, itemIdx){
           <span>⚠️ ${pick('没查到，时间要自己填','Not found — please fill in the time yourself')}</span>
           <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
         </div>` : '' }
-      <div class="admin-field"><label>${pick('航班日期','Flight date')}</label>
-        <input type="date" id="admin-item-${tripIdx}-${itemIdx}-flightdate" value="${escapeHtml(dateVal)}" onchange="adminFlightAutoTrigger(${tripIdx},${itemIdx})"></div>
+      <div class="flight-lookup-date">${
+        dateVal ? `${pick('用上面填的日期','Uses the date above')}：<b>${escapeHtml(dateVal)}</b>`
+                : `⚠️ ${pick('上面的「日期」还没填，填了才能查','Fill in the Date field above first')}` }</div>
+      ${ staleDate ? `<div class="flight-lookup-current flight-lookup-current-err">
+          <span>⚠️ ${pick('这条航班是按 ' + escapeHtml(f.date) + ' 查的，跟上面的日期对不上','Looked up for ' + escapeHtml(f.date) + ', which differs from the date above')}</span>
+        </div>` : '' }
       <button type="button" class="admin-btn-sm" id="admin-item-${tripIdx}-${itemIdx}-flightbtn" onclick="adminFlightLookup(${tripIdx},${itemIdx})">🔍 ${pick('查询','Look up')}</button>
       <div id="admin-item-${tripIdx}-${itemIdx}-flightstatus" class="flight-lookup-status${failed ? ' err' : ''}">${persistentHint}</div>
     </div>`;
@@ -1749,10 +1773,9 @@ function adminFlightAutoTrigger(tripIdx, itemIdx){
   const it = trip && trip.items && trip.items[itemIdx];
   if(!it) return;
   const noInput = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightno`);
-  const dateInput = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightdate`);
   const no = ((noInput && noInput.value) || '').trim().toUpperCase();
-  const date = ((dateInput && dateInput.value) || '').trim();
-  if(!no || !date) return; // 两个都填了才查，缺一个先不动，等填完/交给「查询」按钮手动点
+  const date = (it.date || '').trim(); // 日期只有一个来源：条目自己的日期
+  if(!no || !date) return; // 两个都有才查，缺一个先不动，等填完/交给「查询」按钮手动点
   const comboKey = no + '|' + date;
   const key = `${tripIdx}:${itemIdx}`;
   const state = flightLookupState[key] || (flightLookupState[key] = {});
@@ -1786,11 +1809,10 @@ async function adminFlightLookup(tripIdx, itemIdx){
   const it = trip && trip.items && trip.items[itemIdx];
   if(!it) return;
   const noInput = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightno`);
-  const dateInput = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightdate`);
   const statusEl = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightstatus`);
   const btn = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightbtn`);
   const no = ((noInput && noInput.value) || '').trim().toUpperCase();
-  const date = ((dateInput && dateInput.value) || '').trim();
+  const date = (it.date || '').trim(); // 同上：只认条目日期
   if(!no || !date){
     if(statusEl){ statusEl.className = 'flight-lookup-status err'; statusEl.textContent = pick('请先填航班号和日期','Please fill in the flight number and date'); }
     return;
@@ -1829,7 +1851,7 @@ async function adminFlightLookup(tripIdx, itemIdx){
   it.title = title;
   it.note = note;
   it.time = time;
-  it.flight = { no: f.no || no, date: f.date || date, trackId: f.trackId || '' };
+  it.flight = { no: f.no || no, date: date, trackId: f.trackId || '' };
   markTripsDirty();
 
   setInputVal(`admin-item-${tripIdx}-${itemIdx}-time`, time);
@@ -2143,7 +2165,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v18</div>
+    <div class="admin-ver" id="adminVer">boss-app-v19</div>
 
     ${adminTripsSectionHtml()}
 

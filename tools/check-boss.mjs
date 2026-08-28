@@ -712,7 +712,8 @@ async function gotoTab(page, tab){
 
   console.log('\n【17】填完航班号失焦，不用点「查询」按钮就自动发出请求');
   rec.calls.length = 0;
-  await page.fill('#admin-item-0-0-flightdate', '2026-09-01');
+  // 航班日期没有独立输入框了——它就是条目自己的日期（2026-08-28 改）
+  await page.evaluate(() => { adminTripsDraft[0].items[0].date = '2026-09-01'; });
   await page.fill('#admin-item-0-0-flightno', 'CZ3096');
   await page.locator('#admin-item-0-0-flightno').blur();
   await until(() => rec.calls.some(c => c.action === 'flightLookup'), { what: '自动发出 flightLookup 请求' });
@@ -726,15 +727,19 @@ async function gotoTab(page, tab){
   const secondCallCount = rec.calls.filter(c => c.action === 'flightLookup').length;
   ok('号和日期都没变，第二次失焦不再打请求', secondCallCount === firstCallCount, { firstCallCount, secondCallCount });
 
-  console.log('\n【19】日期改了，会重新发起查询（同一个号但组合变了）');
-  await page.fill('#admin-item-0-0-flightdate', '2026-09-02');
+  console.log('\n【19】改「条目日期」就会按新日期重查（同一个号但日期变了）');
+  await page.fill('#admin-item-0-0-date', '2026-09-02');
   // fill() 只保证触发 input 事件，日期框绑的是 onchange——显式补发一次 change，
   // 跟本文件其它场景里 mapInput.dispatchEvent('change') 是同一手法，避免测试本身不稳。
-  await page.locator('#admin-item-0-0-flightdate').dispatchEvent('change');
+  await page.locator('#admin-item-0-0-date').dispatchEvent('change');
   await until(() => rec.calls.filter(c => c.action === 'flightLookup').length > secondCallCount,
     { what: '日期改动后重新发出 flightLookup 请求' });
   const thirdCallCount = rec.calls.filter(c => c.action === 'flightLookup').length;
   ok('日期改动后又发起了一次新查询', thirdCallCount === secondCallCount + 1, { secondCallCount, thirdCallCount });
+  // 这一条是 2026-08-28 那次事故的核心：他把回程条目改成 27 号，查询却仍然按 23 号发出去，
+  // 拿回来的是另一天的航班时间。所以不能只验「有没有再查一次」，要验「查的是不是新日期」。
+  const lastLookup = rec.calls.filter(c => c.action === 'flightLookup').pop();
+  ok('重查用的是改后的条目日期，不是旧日期', lastLookup && lastLookup.date === '2026-09-02', lastLookup);
 
   console.log('\n【20】查询失败（mountRoutes 默认查不到）时，条目上要有明显标记，不能只是一行小字');
   await until(() => page.evaluate(() =>
@@ -807,15 +812,22 @@ async function gotoTab(page, tab){
   ok('点开「更多」后地点输入框可见了', await page.locator(`#admin-item-${idx22}-0-map`).isVisible() === true);
   ok('点开「更多」后日期输入框可见了', await page.locator(`#admin-item-${idx22}-0-date`).isVisible() === true);
   ok('点开「更多」后备注输入框可见了', await page.locator(`#admin-item-${idx22}-0-note-zh`).isVisible() === true);
-  ok('点开「更多」后航班日期输入框可见了', await page.locator(`#admin-item-${idx22}-0-flightdate`).isVisible() === true);
+  // 航班日期的独立输入框已经**整个拿掉**（2026-08-28）：它是「两个日期各走各的」这类
+  // 事故的唯一来源。这里反过来验它不在 DOM 里，防止哪天又被加回来。
+  ok('航班日期不再有独立输入框（唯一日期就是上面那个）',
+     await page.locator(`#admin-item-${idx22}-0-flightdate`).count() === 0);
+  ok('航班块里写明了用的是哪个日期', await page.locator(`#admin-item-${idx22}-0-flightblock .flight-lookup-date`).count() === 1);
 
   console.log('\n【25】日期与航班日期自动带出，不用每条都填');
   await page.fill(`input[data-trip="${idx22}"][data-field="start"]`, '2026-10-01');
   await page.click(`button[onclick="adminAddItem(${idx22})"]`); // 新增第 2 条，日期应自动带出行程出发日
   const autoDate = await page.evaluate((i) => adminTripsDraft[i].items[1].date, idx22);
   ok('新条目日期自动带成行程出发日（不用手选）', autoDate === '2026-10-01', autoDate);
-  const flightDateVal = await page.locator(`#admin-item-${idx22}-1-flightdate`).inputValue();
-  ok('航班日期默认跟着条目日期走（不用单独再填一遍，inputValue 不要求可见）', flightDateVal === '2026-10-01', flightDateVal);
+  const flightDateTxt = await page.evaluate((i) => {
+    const el = document.querySelector(`#admin-item-${i}-1-flightblock .flight-lookup-date`);
+    return el ? el.textContent.trim() : null;
+  }, idx22);
+  ok('航班块显示的日期就是条目日期', !!flightDateTxt && flightDateTxt.includes('2026-10-01'), flightDateTxt);
 
   console.log('\n【26】条目已经有备注时，「更多」默认展开，不会把已填内容藏没——双向验证的第二步（跟场景 23 折叠生效对照）');
   await page.evaluate((i) => {
@@ -1053,6 +1065,84 @@ async function gotoTab(page, tab){
   ok('admin：推送条在管理页插槽里（不在每页顶部）', bar.exists && bar.parent === 'adminPushSlot', bar);
   ok('admin：开关还在，能用', bar.toggle === true, bar);
   ok('admin：那条不给 ×（关掉就找不回来了）', bar.dismiss === false, bar);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景九：往返不是转机（2026-08-28 新加坡行踩到）----------
+// 他 23 号飞 SIN、27 号从 SIN 飞回来。两段相邻、落地机场＝起飞机场，旧写法一律当转机；
+// 日期又因为「航班日期框没跟着条目日期走」查成同一天，算出负数 → 页面报「转机时间异常」。
+// 这里守两件事：① 隔了一天以上的两段不算转机，整行不显示；
+// ② 【对照组】同一天真的转机照样算得出来 —— 没有 ② 的话，把 transferRowHtml 改成
+// 永远 return '' 也能让 ① 变绿。
+function flightItem(date, time, from, to, schedDep, schedArr){
+  return { date, time, title: { zh: `${from} → ${to}`, en: '' }, note: { zh: '', en: '' }, mapUrl: '',
+    flight: { no: 'XX1', date, trackId: 't', live: {
+      from, to, from_iata: from, to_iata: to, from_name: from, to_name: to,
+      sched_dep: schedDep, est_dep: null, act_dep: null,
+      sched_arr: schedArr, est_arr: null, act_arr: null,
+      gate: null, terminal: null, status: 'expected', verified: true } } };
+}
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const roundTrip = [{
+    id: 'rt', title: { zh: '新加坡小旅行', en: '' }, start: '2026-09-23', end: '2026-09-27',
+    location: { zh: '', en: '' }, guideUrl: '',
+    items: [
+      flightItem('2026-09-23', '18:55', 'KTI', 'SIN', '2026-09-23 18:55+07:00', '2026-09-23 22:00+08:00'),
+      flightItem('2026-09-27', '12:25', 'SIN', 'KTI', '2026-09-27 12:25+08:00', '2026-09-27 13:40+07:00'),
+    ],
+  }];
+  mountRoutes(ctx, { role: 'viewer', trips: roundTrip });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.trip-card')), { what: '行程卡渲染完' });
+  await gotoTab(page, 'trips');
+
+  console.log('\n[场景九] 往返（去程/回程）不能被当成转机');
+  const rt = await page.evaluate(() => ({
+    rows: document.querySelectorAll('#tab-trips .transfer-row').length,
+    warn: document.querySelectorAll('#tab-trips .transfer-warn').length,
+    txt: document.getElementById('tab-trips').textContent,
+  }));
+  ok('隔了 4 天的两段完全不显示转机行', rt.rows === 0, rt.rows);
+  ok('也不会报「转机时间异常」', rt.warn === 0 && !rt.txt.includes('转机时间异常'), rt.warn);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+// ---------- 场景九之对照组：同一天真的转机，照样要算得出来 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const realTransfer = [{
+    id: 'tr', title: { zh: '金边回程', en: '' }, start: '2026-09-01', end: '2026-09-01',
+    location: { zh: '', en: '' }, guideUrl: '',
+    items: [
+      flightItem('2026-09-01', '13:30', 'PEN', 'KUL', '2026-09-01 13:30+08:00', '2026-09-01 14:35+08:00'),
+      flightItem('2026-09-01', '16:30', 'KUL', 'KTI', '2026-09-01 16:30+08:00', '2026-09-01 17:25+07:00'),
+    ],
+  }];
+  mountRoutes(ctx, { role: 'viewer', trips: realTransfer });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.trip-card')), { what: '行程卡渲染完' });
+  await gotoTab(page, 'trips');
+
+  const tr = await page.evaluate(() => {
+    const row = document.querySelector('#tab-trips .transfer-row');
+    return { has: !!row, warn: !!document.querySelector('#tab-trips .transfer-warn'),
+             txt: row ? row.textContent.replace(/\s+/g, ' ').trim() : null };
+  });
+  ok('同一天的真转机照样显示转机行', tr.has === true, tr);
+  ok('算出来是 1 小时 55 分（14:35 到、16:30 走）', !!tr.txt && tr.txt.includes('1 小时 55 分'), tr);
+  ok('机场名是吉隆坡（转机地取「到达那一段」的落点）', !!tr.txt && tr.txt.includes('吉隆坡'), tr);
+  ok('这个间隔不算偏紧（>90 分）', !!tr.txt && !tr.txt.includes('偏紧'), tr);
+  ok('不是异常态', tr.warn === false, tr);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
