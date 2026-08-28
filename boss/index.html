@@ -322,6 +322,12 @@ body:not(.lang-en) .en{display:none !important}
 .push-hint-warn{color:var(--danger)}
 .push-dismiss{border:none;background:none;color:var(--sub);font-size:20px;line-height:1;
   padding:2px 4px;cursor:pointer;font-family:inherit;flex:none}
+/* 通知已经开好之后，那张卡就没有存在的必要了——缩成一行灰字，别再占版面
+   （2026-08-28 用户第三次反映：「我去开了通知也是还在」）。 */
+.push-bar.push-bar-mini{background:none;box-shadow:none;padding:0;margin:2px 16px 10px}
+.push-mini{font-size:12px;color:var(--sub)}
+.push-mini button{border:none;background:none;padding:0;margin-left:6px;color:var(--p);
+  font-size:12px;font-family:inherit;cursor:pointer;text-decoration:underline}
 
 /* ===== 管理面板：访问码 ===== */
 .admin-code-box{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px;font-weight:700;
@@ -2165,7 +2171,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v19</div>
+    <div class="admin-ver" id="adminVer">boss-app-v20</div>
 
     ${adminTripsSectionHtml()}
 
@@ -2315,6 +2321,13 @@ async function refreshPushSubscriptionState(){
 }
 function pushBarInnerHtml(){
   const subscribed = !!pushSubscription;
+  // 已经开好了：不再画那张「🔔 推送通知 ［关闭通知］」的卡片，只留一行灰字＋一个
+  // 文字链接当关闭入口。开关还在（他要能关掉），但不再像个待办事项一样杵在那里。
+  if(subscribed){
+    return `<div class="push-mini">${bl('通知已开启','Notifications are on')}
+      <button type="button" id="pushToggleBtn" onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${bl('关闭','turn off')}</button>
+    </div>`;
+  }
   const denied = (typeof Notification !== 'undefined' && Notification.permission === 'denied');
   const needStandalone = !isStandalonePwa();
   let hint = '';
@@ -2369,6 +2382,7 @@ function ensurePushUI(){
     else host.appendChild(bar);
   }
   bar.innerHTML = pushBarInnerHtml();
+  bar.classList.toggle('push-bar-mini', !!pushSubscription);
 }
 /** 手动关掉顶部推送条，记住不再弹。管理页里那条开关照旧在，随时能开回来。 */
 function dismissPushBar(){

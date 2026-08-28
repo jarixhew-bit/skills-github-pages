@@ -1065,6 +1065,29 @@ async function gotoTab(page, tab){
   ok('admin：推送条在管理页插槽里（不在每页顶部）', bar.exists && bar.parent === 'adminPushSlot', bar);
   ok('admin：开关还在，能用', bar.toggle === true, bar);
   ok('admin：那条不给 ×（关掉就找不回来了）', bar.dismiss === false, bar);
+
+  // 2026-08-28 用户第三次反映「我去开了通知也是还在」：admin 插槽里那条不受
+  // 「已订阅就不挂」的限制（那条只管顶部），所以开好通知之后它照样是一整张卡。
+  // 开好之后要缩成一行灰字：卡片样式没了、「🔔 推送通知」标题没了、大按钮没了，
+  // 只剩「通知已开启 关闭」。
+  await page.evaluate(() => { pushSubscription = { endpoint: 'https://example.test/x' }; ensurePushUI(); });
+  const mini = await page.evaluate(() => {
+    const b = document.getElementById('pushBar');
+    if(!b) return { exists: false };
+    return { exists: true, isMini: b.classList.contains('push-bar-mini'),
+             hasCard: !!b.querySelector('.push-row'), hasLabel: !!b.querySelector('.push-label'),
+             hasBigBtn: !!b.querySelector('.push-toggle-btn'),
+             hasOff: !!b.querySelector('#pushToggleBtn'),
+             // 双语文案中英两份都在 DOM 里、靠 CSS 藏一份；管理页此刻不是当前分页
+             // （整块 display:none），innerText 会退化成 textContent 把英文也带出来，
+             // 所以直接取中文那几个 span 拼起来判断。
+             txt: Array.from(b.querySelectorAll('.cn')).map(e => e.textContent.trim()).join('|') };
+  });
+  ok('admin：开好通知后不再是一整张卡', mini.exists && mini.isMini && !mini.hasCard, mini);
+  ok('admin：开好后「🔔 推送通知」那行标题也没了', mini.hasLabel === false, mini);
+  ok('admin：开好后那颗大按钮也没了', mini.hasBigBtn === false, mini);
+  ok('admin：但关闭入口还留着（不然开了就关不掉）', mini.hasOff === true, mini);
+  ok('admin：只剩一行「通知已开启 · 关闭」', mini.txt === '通知已开启|关闭', mini);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
