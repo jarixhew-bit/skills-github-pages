@@ -578,15 +578,36 @@ const AIRPORT_NAMES_ZH = {
   NRT:'东京', HND:'东京', KIX:'大阪', ITM:'大阪', FUK:'福冈', TPE:'台北', PEK:'北京',
   PVG:'上海', SHA:'上海', CTU:'成都', KUL:'吉隆坡'
 };
-function airportLabelZh(code){
+/** 机场名不许写死（2026-08-28 教训：老板行程里查了德累斯顿 KTI/DRS，不在这张 18 个
+ * 机场的表里，之前只会显示光秃秃的三字代码，用户看不懂）。三级优先级：
+ * 1. 这张表里有 → 中文名 + 代码（"金边 PNH"，常去的地方显示中文更好读，继续保留）；
+ * 2. 表里没有，但后端 flightLookup/feed 把接口给的机场全名一起递过来了（apiName，
+ *    见 butler-bot src/providers/aerodatabox.js 的 from_name/to_name）→ 用那个名字 + 代码；
+ * 3. 两者都没有 → 只显示代码。
+ * apiName 缺省不传时行为等同旧版（表里没有就退回代码），不影响没接到新字段的旧数据。 */
+function airportLabelZh(code, apiName){
   const c = String(code || '').toUpperCase();
-  const name = AIRPORT_NAMES_ZH[c];
-  return name ? `${name} ${c}` : c;
+  if(!c) return '';
+  const zhName = AIRPORT_NAMES_ZH[c];
+  if(zhName) return `${zhName} ${c}`;
+  if(apiName) return `${apiName} ${c}`;
+  return c;
 }
-/** flightLookup 查到的资料 → 自动填的条目标题（有城市名就带上，没有就只用代码）。 */
+/** 英文侧同样的优先级，只是没有中文对照表这一级：接口给了名字就用「名字 + 代码」，
+ * 没有就只用代码——不写死机场名单，跟 airportLabelZh 是同一件事的英文版。 */
+function airportLabelEn(code, apiName){
+  const c = String(code || '').toUpperCase();
+  if(!c) return '';
+  return apiName ? `${apiName} ${c}` : c;
+}
+/** flightLookup 查到的资料 → 自动填的条目标题（中文侧有中文对照或接口名字就带上，
+ * 英文侧有接口名字就带上，两者都没有的场景才退回只显示代码）。 */
 function flightTitleFromLookup(f){
   const from = String(f.from || '').toUpperCase(), to = String(f.to || '').toUpperCase();
-  return { zh: `${airportLabelZh(from)} → ${airportLabelZh(to)}`, en: `${from} → ${to}` };
+  return {
+    zh: `${airportLabelZh(from, f.from_name)} → ${airportLabelZh(to, f.to_name)}`,
+    en: `${airportLabelEn(from, f.from_name)} → ${airportLabelEn(to, f.to_name)}`
+  };
 }
 /** flightLookup 查到的资料 → 自动填的备注（航站楼/登机口，没有就留空字符串）。 */
 function flightNoteFromLookup(f){
@@ -666,16 +687,19 @@ function transferRowHtml(prevItem, nextItem){
   if(arrTs == null || depTs == null) return '';
   const diffMs = depTs - arrTs;
   const dur = formatDurationLabel(diffMs);
-  const cityZh = airportLabelZh(arrCode);
+  // 转机机场用的是「到达那一段」的 live 数据（pf.to），apiName 同理取 pf.to_name——
+  // 跟 airportLabelZh 的三级优先级保持一致，表外机场也能显示名字，不只是代码。
+  const cityZh = airportLabelZh(arrCode, pf.to_name);
+  const cityEn = airportLabelEn(arrCode, pf.to_name);
   if(diffMs < 0){
     return `<div class="transfer-row transfer-warn">
-        ⚠️ ${bl('转机时间异常','Unusual layover')}：-${bl(dur.zh, dur.en)} @ ${bl(cityZh, arrCode)}
+        ⚠️ ${bl('转机时间异常','Unusual layover')}：-${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
         <div class="transfer-hint">${bl('日期或航班可能填错了','The date or flight number may be wrong')}</div>
       </div>`;
   }
   const tight = diffMs < 90 * 60000;
   return `<div class="transfer-row">
-      🔄 ${bl('转机等待','Layover')} ${bl(dur.zh, dur.en)} @ ${bl(cityZh, arrCode)}
+      🔄 ${bl('转机等待','Layover')} ${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
       ${ tight ? `<div class="transfer-hint transfer-hint-warn">${bl('转机时间偏紧','Layover is tight')}</div>` : '' }
     </div>`;
 }

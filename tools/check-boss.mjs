@@ -608,6 +608,41 @@ async function gotoTab(page, tab){
   ok('默认是折叠的（<details> 没有 open 属性）', isOpen === false, isOpen);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
 
+  console.log('\n【16】机场名不许写死：extractHM 两种时间格式、airportLabelZh/flightTitleFromLookup 三级优先级');
+  const flightChecks = await page.evaluate(() => {
+    const r = {};
+    // extractHM：真实接口时间格式我们没验证过，至少这两种常见写法＋边界情况要抓得到
+    r.hmIso = extractHM('2026-09-12T09:30:00+07:00');
+    r.hmSpace = extractHM('2026-09-12 09:30+07:00');
+    r.hmDateOnly = extractHM('2026-09-12');
+    r.hmEmpty = extractHM('');
+    r.hmNull = extractHM(null);
+    // airportLabelZh：1. 表里有 → 中文名+代码
+    r.zhInTable = airportLabelZh('PNH', null);
+    // 2. 表里没有，但接口给了名字（如德累斯顿 DRS，这次真实反馈的那个缺陷）→ 名字+代码
+    r.zhOutOfTableWithName = airportLabelZh('DRS', 'Dresden');
+    // 3. 两者都没有 → 只剩代码
+    r.zhOutOfTableNoName = airportLabelZh('DRS', null);
+    // airportLabelEn：没有中文表这一级，接口给了名字就用，没有就只用代码
+    r.enWithName = airportLabelEn('DRS', 'Dresden');
+    r.enNoName = airportLabelEn('DRS', null);
+    // flightTitleFromLookup：模拟后端新字段 from_name/to_name（表外机场也要显示得出名字）
+    r.title = flightTitleFromLookup({ from: 'DRS', to: 'PNH', from_name: 'Dresden', to_name: null });
+    return r;
+  });
+  ok('extractHM 抓到 ISO 格式', flightChecks.hmIso === '09:30', flightChecks.hmIso);
+  ok('extractHM 抓到带空格格式', flightChecks.hmSpace === '09:30', flightChecks.hmSpace);
+  ok('extractHM 只有日期没时间时回空字符串、不报错', flightChecks.hmDateOnly === '', flightChecks.hmDateOnly);
+  ok('extractHM 空字符串输入回空字符串', flightChecks.hmEmpty === '', flightChecks.hmEmpty);
+  ok('extractHM null 输入回空字符串、不报错', flightChecks.hmNull === '', flightChecks.hmNull);
+  ok('表里有 → 中文名+代码', flightChecks.zhInTable === '金边 PNH', flightChecks.zhInTable);
+  ok('表外但接口给了名字 → 名字+代码（不再是光秃秃的代码）', flightChecks.zhOutOfTableWithName === 'Dresden DRS', flightChecks.zhOutOfTableWithName);
+  ok('表外且接口也没给名字 → 只剩代码', flightChecks.zhOutOfTableNoName === 'DRS', flightChecks.zhOutOfTableNoName);
+  ok('英文侧有接口名字 → 名字+代码', flightChecks.enWithName === 'Dresden DRS', flightChecks.enWithName);
+  ok('英文侧没有接口名字 → 只用代码', flightChecks.enNoName === 'DRS', flightChecks.enNoName);
+  ok('flightTitleFromLookup 中文侧表外机场带出接口名字', flightChecks.title && flightChecks.title.zh === 'Dresden DRS → 金边 PNH', flightChecks.title);
+  ok('flightTitleFromLookup 英文侧同样带出接口名字（没有就退回代码）', flightChecks.title && flightChecks.title.en === 'Dresden DRS → PNH', flightChecks.title);
+
   await ctx.close();
 }
 
