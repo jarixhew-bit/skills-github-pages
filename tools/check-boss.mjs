@@ -1042,7 +1042,11 @@ async function gotoTab(page, tab){
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
-// ---------- 场景八之对照组：admin ----------
+// ---------- 场景八之对照组：admin 身上一条都不该有 ----------
+// 2026-08-28 第四轮：之前把这条收进管理页插槽，想着「他可能要自己试通知」。
+// 他连着三轮反映「还是看得见」——admin 身上就不该有这个提示（他不是收通知的人）。
+// 这一节验的是「admin 一条都没有」，跟上一节「viewer 有」正好构成对照：
+// 只删代码会让上一节红，只保留会让这一节红。
 {
   const ctx = await browser.newContext();
   await forceZh(ctx);
@@ -1050,48 +1054,20 @@ async function gotoTab(page, tab){
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
-  // admin 也先把「关掉」的记号写上：那个记号只该管顶部那条，不该把管理页那条一起弄没
-  await page.addInitScript(() => localStorage.setItem('bossApp_pushBarDismissed', '1'));
   await page.goto(URL);
-  await until(() => page.evaluate(() => !!document.getElementById('adminPushSlot')),
+  await until(() => page.evaluate(() => !!document.getElementById('admin-trips-section')),
     { what: 'admin 管理页渲染完' });
 
-  const bar = await page.evaluate(() => {
-    const b = document.getElementById('pushBar');
-    return { exists: !!b, parent: b && b.parentElement && b.parentElement.id,
-             dismiss: !!(b && b.querySelector('.push-dismiss')),
-             toggle: !!(b && b.querySelector('#pushToggleBtn')) };
-  });
-  ok('admin：推送条在管理页插槽里（不在每页顶部）', bar.exists && bar.parent === 'adminPushSlot', bar);
-  ok('admin：开关还在，能用', bar.toggle === true, bar);
-  ok('admin：那条不给 ×（关掉就找不回来了）', bar.dismiss === false, bar);
-
-  // 2026-08-28 用户第三次反映「我去开了通知也是还在」：admin 插槽里那条不受
-  // 「已订阅就不挂」的限制（那条只管顶部），所以开好通知之后它照样是一整张卡。
-  // 开好之后要缩成一行灰字：卡片样式没了、「🔔 推送通知」标题没了、大按钮没了，
-  // 只剩「通知已开启 关闭」。
-  await page.evaluate(() => { pushSubscription = { endpoint: 'https://example.test/x' }; ensurePushUI(); });
-  const mini = await page.evaluate(() => {
-    const b = document.getElementById('pushBar');
-    if(!b) return { exists: false };
-    return { exists: true, isMini: b.classList.contains('push-bar-mini'),
-             hasCard: !!b.querySelector('.push-row'), hasLabel: !!b.querySelector('.push-label'),
-             hasBigBtn: !!b.querySelector('.push-toggle-btn'),
-             hasOff: !!b.querySelector('#pushToggleBtn'),
-             // 双语文案中英两份都在 DOM 里、靠 CSS 藏一份；管理页此刻不是当前分页
-             // （整块 display:none），innerText 会退化成 textContent 把英文也带出来，
-             // 所以直接取中文那几个 span 拼起来判断。
-             txt: Array.from(b.querySelectorAll('.cn')).map(e => e.textContent.trim()).join('|') };
-  });
-  ok('admin：开好通知后不再是一整张卡', mini.exists && mini.isMini && !mini.hasCard, mini);
-  ok('admin：开好后「🔔 推送通知」那行标题也没了', mini.hasLabel === false, mini);
-  ok('admin：开好后那颗大按钮也没了', mini.hasBigBtn === false, mini);
-  ok('admin：但关闭入口还留着（不然开了就关不掉）', mini.hasOff === true, mini);
-  ok('admin：只剩一行「通知已开启 · 关闭」', mini.txt === '通知已开启|关闭', mini);
+  ok('admin：整个页面里没有推送条', await page.locator('#pushBar').count() === 0);
+  ok('admin：管理页那个插槽也一并拿掉了', await page.locator('#adminPushSlot').count() === 0);
+  ok('admin：看不到「开启通知」这几个字',
+     (await page.locator('#tab-admin').innerText()).includes('开启通知') === false);
+  // 订阅状态变化也不该把它招回来（refreshPushSubscriptionState 会再调一次 ensurePushUI）
+  await page.evaluate(() => { pushSubscription = null; ensurePushUI(); });
+  ok('admin：刷新推送状态后也没冒出来', await page.locator('#pushBar').count() === 0);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
-
 // ---------- 场景九：往返不是转机（2026-08-28 新加坡行踩到）----------
 // 他 23 号飞 SIN、27 号从 SIN 飞回来。两段相邻、落地机场＝起飞机场，旧写法一律当转机；
 // 日期又因为「航班日期框没跟着条目日期走」查成同一天，算出负数 → 页面报「转机时间异常」。
