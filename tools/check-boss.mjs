@@ -1074,13 +1074,20 @@ async function gotoTab(page, tab){
 // 这里守两件事：① 隔了一天以上的两段不算转机，整行不显示；
 // ② 【对照组】同一天真的转机照样算得出来 —— 没有 ② 的话，把 transferRowHtml 改成
 // 永远 return '' 也能让 ① 变绿。
-function flightItem(date, time, from, to, schedDep, schedArr){
+function flightItem(date, time, from, to, schedDep, schedArr, est){
+  est = est || {};
   return { date, time, title: { zh: `${from} → ${to}`, en: '' }, note: { zh: '', en: '' }, mapUrl: '',
     flight: { no: 'XX1', date, trackId: 't', live: {
       from, to, from_iata: from, to_iata: to, from_name: from, to_name: to,
-      sched_dep: schedDep, est_dep: null, act_dep: null,
-      sched_arr: schedArr, est_arr: null, act_arr: null,
+      sched_dep: schedDep, est_dep: est.dep || null, act_dep: null,
+      sched_arr: schedArr, est_arr: est.arr || null, act_arr: null,
       gate: null, terminal: null, status: 'expected', verified: true } } };
+}
+/** 生成「距今 N 天后」的当地时刻字符串，时区固定 +08:00。 */
+function localAt(daysFromNow, hm, offset){
+  const d = new Date(Date.now() + daysFromNow * 86400000);
+  const iso = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  return { date: iso, at: `${iso} ${hm}${offset || '+08:00'}` };
 }
 {
   const ctx = await browser.newContext();
@@ -1207,6 +1214,86 @@ function flightItem(date, time, from, to, schedDep, schedArr){
   // 必须跟喂进去的记录顺序不同（喂的是 Pavie 在前、茅台 15 年在后）。
   ok('西港组的显示顺序确实跟记录顺序不同（证明真的排过）',
      JSON.stringify(xigang) !== JSON.stringify(['Pavie', '茅台 15 年']), xigang);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景十一：转机等待要跟屏幕上写着的时间对得上 ----------
+// 2026-08-28 用户：「转机怎么 1 小时 29 分？13:30 到 16:30 飞不是 3 个小时？」
+// 真相：航班还有 4 天才飞，卡片上按规矩只显示计划时间（14:35 到、16:30 走），
+// 但转机那行**偷偷用了没显示出来的预计到达 15:01** 去算 → 1 小时 29 分。
+// 屏幕上的数字自己对不上，比算错更糟——他没法验证，只能怀疑全部。
+// ① 远期航班：卡片显示计划时间，转机就必须按计划时间算（1 小时 55 分）。
+// ② 【对照组】24 小时内的航班：预计时间是显示出来的，转机就该跟着预计走，
+//    否则「显示延误了、等待时间却纹丝不动」同样是自相矛盾。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const far = localAt(4, '13:30');           // 4 天后 —— 超过 24 小时预测窗口
+  const legs = [
+    flightItem(far.date, '13:30', 'PEN', 'KUL', `${far.date} 13:30+08:00`, `${far.date} 14:35+08:00`,
+               { arr: `${far.date} 15:01+08:00` }),   // 预计晚 26 分，但这么早不该显示
+    flightItem(far.date, '16:30', 'KUL', 'KTI', `${far.date} 16:30+08:00`, `${far.date} 17:25+07:00`),
+  ];
+  mountRoutes(ctx, { role: 'viewer', trips: [{ id:'f', title:{zh:'远期转机',en:''},
+    start: far.date, end: far.date, location:{zh:'',en:''}, guideUrl:'', items: legs }] });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.trip-card')), { what: '行程卡渲染完' });
+  await gotoTab(page, 'trips');
+
+  console.log('\n[场景十一] 转机等待必须跟卡片上显示的时间一致');
+  const far1 = await page.evaluate(() => {
+    const pane = document.getElementById('tab-trips');
+    const row = pane.querySelector('.transfer-row');
+    return { txt: row ? row.textContent.replace(/\s+/g, ' ').trim() : null,
+             pane: pane.textContent.replace(/\s+/g, ' ') };
+  });
+  ok('远期航班的卡片上没有出现预计到达 15:01', far1.pane.includes('15:01') === false, far1.pane.slice(0, 200));
+  ok('转机按显示出来的计划时间算 = 1 小时 55 分',
+     !!far1.txt && far1.txt.includes('1 小时 55 分'), far1.txt);
+  ok('绝不是拿没显示的预计时间算出来的 1 小时 29 分',
+     !!far1.txt && !far1.txt.includes('1 小时 29 分'), far1.txt);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+{
+  // ② 对照组：同样的两段，但改成 6 小时后起飞 —— 预计时间这时是显示出来的，
+  //    转机就该按预计算（15:01 → 16:30 = 1 小时 29 分）。
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  // 时刻一律用「此刻 + N 分钟」生成（UTC+00:00），免得跨日/跨时区把断言算歪
+  const mk = (offsetMin) => {
+    const d = new Date(Date.now() + offsetMin * 60000);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}+00:00`;
+  };
+  const day = new Date(Date.now() + 6 * 3600000).toISOString().slice(0, 10);
+  const legs = [
+    flightItem(day, '', 'PEN', 'KUL', mk(6 * 60), mk(7 * 60), { arr: mk(7 * 60 + 26) }), // 预计晚 26 分
+    flightItem(day, '', 'KUL', 'KTI', mk(9 * 60), mk(10 * 60)),
+  ];
+  mountRoutes(ctx, { role: 'viewer', trips: [{ id:'n', title:{zh:'近期转机',en:''},
+    start: day, end: day, location:{zh:'',en:''}, guideUrl:'', items: legs }] });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.trip-card')), { what: '行程卡渲染完' });
+  await gotoTab(page, 'trips');
+
+  const near = await page.evaluate(() => {
+    const pane = document.getElementById('tab-trips');
+    const row = pane.querySelector('.transfer-row');
+    return { txt: row ? row.textContent.replace(/\s+/g, ' ').trim() : null,
+             hasEta: pane.textContent.includes('预计') };
+  });
+  ok('24 小时内的航班会显示「预计」', near.hasEta === true, near);
+  // 计划：7:00 到、9:00 走 = 2 小时；预计到 7:26 → 1 小时 34 分
+  ok('转机跟着显示出来的预计走 = 1 小时 34 分（不是按计划的 2 小时）',
+     !!near.txt && near.txt.includes('1 小时 34 分'), near.txt);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
