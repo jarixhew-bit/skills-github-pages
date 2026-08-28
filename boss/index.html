@@ -282,6 +282,16 @@ body:not(.lang-en) .en{display:none !important}
 .admin-select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
   font-size:14px;font-family:inherit;color:var(--text);background:#fff}
 .admin-json-summary{cursor:pointer;font-weight:700;color:var(--p);font-size:14.5px;list-style:revert}
+/* ===== 简化表单（2026-08-28）：条目/行程默认只露最常填的几样，其余收进原生 <details> ===== */
+/* 条目紧凑行：时间/做什么/航班号横排，做什么那格吃掉多余宽度，手机上也能一行放下 */
+.admin-item-row-compact{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;border:1.5px solid var(--border);
+  border-radius:10px;padding:10px;margin-bottom:8px;background:#fff}
+.admin-field-compact{margin-bottom:0;flex:1 1 90px;min-width:80px}
+.admin-field-grow{flex:2 1 140px}
+.admin-item-more,.admin-trip-more{margin-top:2px}
+.admin-item-more summary,.admin-trip-more summary{cursor:pointer;font-weight:700;color:var(--p);
+  font-size:12.5px;list-style:revert;padding:4px 0}
+.admin-more-badge{color:var(--sub);font-weight:500}
 
 /* ===== 推送通知条：viewer/admin 都能用，跟 tab 切换无关，放在 #app 顶部 ===== */
 .push-bar{background:var(--card);margin:12px 16px 0;border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 14px}
@@ -586,7 +596,7 @@ function formatDurationLabel(ms){
 // 常见机场 IATA 码 → 中文城市名，只收本仓库旅游手册涉及过的常见目的地，不追求穷举；
 // 查不到就只用代码本身（CLAUDE.md 规则：有中文名就用，没有就用 IATA 码）。
 const AIRPORT_NAMES_ZH = {
-  PNH:'金边', KTI:'金边新机场', CAN:'广州', SZX:'深圳', HKG:'香港', XMN:'厦门', PEN:'槟城', SIN:'新加坡',
+  PNH:'金边', KTI:'金边德崇', CAN:'广州', SZX:'深圳', HKG:'香港', XMN:'厦门', PEN:'槟城', SIN:'新加坡',
   NRT:'东京', HND:'东京', KIX:'大阪', ITM:'大阪', FUK:'福冈', TPE:'台北', PEK:'北京',
   PVG:'上海', SHA:'上海', CTU:'成都', KUL:'吉隆坡'
 };
@@ -594,8 +604,9 @@ const AIRPORT_NAMES_ZH = {
  * 一旦飞到表外的地方，就只显示光秃秃的三字代码，人看不懂。跟同一天「氢水在库存里
  * 整个不见」是同一个错——写死的枚举迟早会烂。
  * （注：当时用户还反映过一次「KTI 不是德累斯顿」，那句的来源始终没查清——我们代码里
- * 从来没有「德累斯顿」这三个字。别把它当成已确认的事实往下推论。KTI 是金边新机场
- * 德崇国际，这条是用户亲口说的，已加进下面的表。）
+ * 从来没有「德累斯顿」这三个字。别把它当成已确认的事实往下推论。
+ * 2026-08-28 更正：KTI 原写「金边新机场」不准确，正确名称是 Techo International
+ * Airport（德崇国际机场），已改成「金边德崇」，这条是用户亲口告知的，已改进下面的表。）
  * 三级优先级：
  * 1. 这张表里有 → 中文名 + 代码（"金边 PNH"，常去的地方显示中文更好读，继续保留）；
  * 2. 表里没有，但后端 flightLookup/feed 把接口给的机场全名一起递过来了（apiName，
@@ -1489,43 +1500,66 @@ function adminRevalidateItemDates(tripIdx){
 }
 
 /* ============================= 行程表单：渲染 ============================= */
+/** 判断一个条目的「更多」里是否已经有内容——有就默认展开，不许把已填的东西藏没
+ * （2026-08-28 简化表单时新加：上次「时间框藏太深」是同类教训，这次换成「有内容
+ * 就自动展开」而不是逼用户每次都点开确认）。备注/地点/日期越界/旧英文值/航班关联
+ * （不管查到还是没查到）都算「有内容」。 */
+function adminItemMoreHasContent(trip, it){
+  const outOfRange = !!(it.date && trip.start && trip.end && (it.date < trip.start || it.date > trip.end));
+  const hasNote = !!((it.note && (it.note.zh||'').trim()) || (it.note && (it.note.en||'').trim()));
+  const hasTitleEn = !!(it.title && (it.title.en||'').trim());
+  const hasMap = !!(it.mapUrl||'').trim();
+  return outOfRange || hasNote || hasTitleEn || hasMap || !!it.flight;
+}
+/** 条目默认只露「时间／做什么／航班号」三样（2026-08-28 用户反馈「填一个行程条目要
+ * 面对 9 个输入框，一半是英文根本不会填」）：
+ * - 英文标题/英文备注的输入框整个不再渲染（不是隐藏）——数据结构仍然是 {zh,en}，
+ *   只是不再逼用户填第二遍；老板切到英文时会看到中文内容（回退逻辑本来就有），
+ *   已经填过的旧英文值原样保留在 adminTripsDraft 里，保存时照样带出去，不会丢。
+ * - 日期／备注／地点名称／航班日期收进原生 <details>「更多」，默认收起；
+ *   已有内容时（见 adminItemMoreHasContent）默认展开，不把已填的东西藏起来。
+ * - 条目日期不再要求每条都选：新建时已经在 adminAddItem() 里带出默认值
+ *   （沿用上一条日期，没有就用行程出发日），这里只是把输入框挪进「更多」，
+ *   值本身照旧带着，展开才需要改。 */
 function adminItemRowHtml(trip, tripIdx, itemIdx){
   const it = trip.items[itemIdx];
   const outOfRange = !!(it.date && trip.start && trip.end && (it.date < trip.start || it.date > trip.end));
-  // ⚠️ 航班小块刻意放在 .admin-item-row 外面（跟其它条目字段不同层）：它自己也有一个
-  // input[type=date]（航班日期），如果塞进 .admin-item-row 里，会跟这一行本来就有的
-  // 「条目日期」input[type=date] 撞在一起，让 check-boss.mjs 里按
-  // `.admin-item-row → input[type=date]` 定位「条目日期」那个唯一输入框的断言失效
-  // （2026-08-27 踩过：strict mode violation，resolved to 2 elements）。
+  const hasExtra = adminItemMoreHasContent(trip, it);
+  const extraBadge = hasExtra ? ` <span class="admin-more-badge">${pick('（有备注/地点/航班详情）','(has notes/location/flight details)')}</span>` : '';
   return `<div class="admin-item-wrap">
-    <div class="admin-item-row">
-      <div style="display:flex;gap:10px">
-        <div style="flex:1"><label>${pick('日期','Date')}</label>
-          <input type="date" value="${escapeHtml(it.date||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'date',this.value)"></div>
-        <div style="flex:1"><label>${pick('时间','Time')}</label>
-          <input type="time" id="admin-item-${tripIdx}-${itemIdx}-time" value="${escapeHtml(it.time||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'time',this.value)"></div>
-      </div>
+    <div class="admin-item-row admin-item-row-compact">
+      <div class="admin-field admin-field-compact"><label>${pick('时间','Time')}</label>
+        <input type="time" id="admin-item-${tripIdx}-${itemIdx}-time" value="${escapeHtml(it.time||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'time',this.value)"></div>
+      <div class="admin-field admin-field-compact admin-field-grow"><label>${pick('做什么','What')}</label>
+        <input type="text" id="admin-item-${tripIdx}-${itemIdx}-title-zh" placeholder="${escapeHtml(pick('例：晚上七点晚餐','e.g. Dinner at 7pm'))}" value="${escapeHtml(it.title && it.title.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'title.zh',this.value)"></div>
+      <div class="admin-field admin-field-compact"><label>${pick('航班号（选填）','Flight no. (optional)')}</label>
+        <input type="text" class="${(it.flight && it.flight.unresolved) ? 'flight-input-err' : ''}" id="admin-item-${tripIdx}-${itemIdx}-flightno" value="${escapeHtml((it.flight && it.flight.no) || '')}" placeholder="CZ3096"
+          onblur="adminFlightAutoTrigger(${tripIdx},${itemIdx})"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"></div>
+      <button type="button" class="admin-btn-sm admin-btn-sm-danger" onclick="adminDeleteItem(${tripIdx},${itemIdx})">${pick('删除','Delete')}</button>
+    </div>
+    <details class="admin-item-more" id="admin-item-${tripIdx}-${itemIdx}-more"${hasExtra ? ' open' : ''}>
+      <summary>⋯ ${pick('更多','More')}${extraBadge}</summary>
       <div id="admin-item-${tripIdx}-${itemIdx}-warn" class="admin-item-warn" style="${outOfRange?'':'display:none'}">
         ⚠️ ${pick('日期不在行程范围内（如果是前后站可以不管）','Date is outside the trip range (fine if this is before/after the main trip)')}
       </div>
-      <div class="admin-field"><label>${pick('标题（中文）','Title (Chinese)')}</label>
-        <input type="text" id="admin-item-${tripIdx}-${itemIdx}-title-zh" value="${escapeHtml(it.title && it.title.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'title.zh',this.value)"></div>
-      <div class="admin-field"><label>${pick('标题（英文）','Title (English)')}</label>
-        <input type="text" id="admin-item-${tripIdx}-${itemIdx}-title-en" value="${escapeHtml(it.title && it.title.en || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'title.en',this.value)"></div>
-      <div class="admin-field"><label>${pick('备注（中文，选填）','Note (Chinese, optional)')}</label>
+      <div class="admin-field"><label>${pick('日期','Date')}</label>
+        <input type="date" id="admin-item-${tripIdx}-${itemIdx}-date" value="${escapeHtml(it.date||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'date',this.value)"></div>
+      <div class="admin-field"><label>${pick('备注（选填）','Note (optional)')}</label>
         <input type="text" id="admin-item-${tripIdx}-${itemIdx}-note-zh" value="${escapeHtml(it.note && it.note.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'note.zh',this.value)"></div>
-      <div class="admin-field"><label>${pick('备注（英文，选填）','Note (English, optional)')}</label>
-        <input type="text" id="admin-item-${tripIdx}-${itemIdx}-note-en" value="${escapeHtml(it.note && it.note.en || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'note.en',this.value)"></div>
       <div class="admin-field"><label>${pick('地点名称（或直接粘贴地图链接）','Place name (or paste a map link)')}</label>
-        <input type="text" value="${escapeHtml(it.mapUrl||'')}" placeholder="${escapeHtml(pick('例：浅草寺','e.g. Senso-ji Temple'))}" onchange="adminItemMapInput(${tripIdx},${itemIdx},this)"></div>
-      <button type="button" class="admin-btn-sm admin-btn-sm-danger" onclick="adminDeleteItem(${tripIdx},${itemIdx})">${pick('删除条目','Delete item')}</button>
-    </div>
-    ${flightLookupBlockHtml(trip, tripIdx, itemIdx)}
+        <input type="text" id="admin-item-${tripIdx}-${itemIdx}-map" value="${escapeHtml(it.mapUrl||'')}" placeholder="${escapeHtml(pick('例：浅草寺','e.g. Senso-ji Temple'))}" onchange="adminItemMapInput(${tripIdx},${itemIdx},this)"></div>
+      ${flightLookupBlockHtml(trip, tripIdx, itemIdx)}
+    </details>
   </div>`;
 }
-/** 条目表单里的「航班（选填）」小块：航班号 + 日期 → 查询按钮；已关联航班时多显示
- * 一行「已关联航班...清除航班」。用 outerHTML 整块替换刷新（跟其它条目字段用
- * oninput/onchange 直接改 value 不同），因为查到/清除后要连带切换这一小块本身的展示形态。 */
+/** 条目表单「更多」里的「航班日期」小块：航班号已经挪到紧凑行去了，这里只剩日期 +
+ * 查询按钮；已关联航班时多显示一行「已关联航班...清除航班」。用 outerHTML 整块替换
+ * 刷新（跟其它条目字段用 oninput/onchange 直接改 value 不同），因为查到/清除后要
+ * 连带切换这一小块本身的展示形态。
+ * ⚠️ 航班号输入框（id ...-flightno）不在这个块里——它在紧凑行，这个函数替换
+ * outerHTML 时碰不到它，所以查询失败/成功/清除时要另外用 classList 去改它的错误态
+ * （见 adminFlightLookup / adminFlightLookupFailed / adminClearFlight 里的 noEl）。 */
 function flightLookupBlockHtml(trip, tripIdx, itemIdx){
   const it = trip.items[itemIdx];
   const f = it.flight || null;
@@ -1534,13 +1568,14 @@ function flightLookupBlockHtml(trip, tripIdx, itemIdx){
   // （切换条目、保存后刷新）之后就彻底没有痕迹，用户根本不知道自己填过、也不知道
   // 要自己手动填时间。这就是这次要修的事故本身：失败是无声的（2026-08-28）。
   const failed = !!(f && f.unresolved);
-  const noVal = (f && f.no) || '';
+  // 航班日期默认跟条目日期走（不用再单独填一遍）：还没关联过航班时用 it.date，
+  // 已关联/已查过时用查询留下的 f.date（可能被用户在这里手动改过）。
   const dateVal = (f && f.date) || it.date || '';
   const persistentHint = failed
     ? pick('这条航班还没查到资料，时间要自己填', 'This flight has not been resolved yet — please fill in the time yourself')
     : '';
   return `<div class="flight-lookup-block${failed ? ' flight-lookup-block-err' : ''}" id="admin-item-${tripIdx}-${itemIdx}-flightblock">
-      <div class="flight-lookup-hd">✈️ ${pick('航班（选填）','Flight (optional)')}</div>
+      <div class="flight-lookup-hd">✈️ ${pick('航班日期','Flight date')}</div>
       ${ f && !failed ? `<div class="flight-lookup-current">
           <span>${pick('已关联航班','Linked flight')} <b>${escapeHtml(f.no||'')}</b>（${escapeHtml(f.date||'')}）</span>
           <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
@@ -1549,14 +1584,8 @@ function flightLookupBlockHtml(trip, tripIdx, itemIdx){
           <span>⚠️ ${pick('没查到，时间要自己填','Not found — please fill in the time yourself')}</span>
           <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
         </div>` : '' }
-      <div style="display:flex;gap:10px">
-        <div style="flex:1"><label>${pick('航班号','Flight no.')}</label>
-          <input type="text" class="${failed ? 'flight-input-err' : ''}" id="admin-item-${tripIdx}-${itemIdx}-flightno" value="${escapeHtml(noVal)}" placeholder="CZ3096"
-            onblur="adminFlightAutoTrigger(${tripIdx},${itemIdx})"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"></div>
-        <div style="flex:1"><label>${pick('日期','Date')}</label>
-          <input type="date" id="admin-item-${tripIdx}-${itemIdx}-flightdate" value="${escapeHtml(dateVal)}" onchange="adminFlightAutoTrigger(${tripIdx},${itemIdx})"></div>
-      </div>
+      <div class="admin-field"><label>${pick('航班日期','Flight date')}</label>
+        <input type="date" id="admin-item-${tripIdx}-${itemIdx}-flightdate" value="${escapeHtml(dateVal)}" onchange="adminFlightAutoTrigger(${tripIdx},${itemIdx})"></div>
       <button type="button" class="admin-btn-sm" id="admin-item-${tripIdx}-${itemIdx}-flightbtn" onclick="adminFlightLookup(${tripIdx},${itemIdx})">🔍 ${pick('查询','Look up')}</button>
       <div id="admin-item-${tripIdx}-${itemIdx}-flightstatus" class="flight-lookup-status${failed ? ' err' : ''}">${persistentHint}</div>
     </div>`;
@@ -1656,14 +1685,18 @@ async function adminFlightLookup(tripIdx, itemIdx){
 
   setInputVal(`admin-item-${tripIdx}-${itemIdx}-time`, time);
   setInputVal(`admin-item-${tripIdx}-${itemIdx}-title-zh`, title.zh);
-  setInputVal(`admin-item-${tripIdx}-${itemIdx}-title-en`, title.en);
-  setInputVal(`admin-item-${tripIdx}-${itemIdx}-note-zh`, note.zh);
-  setInputVal(`admin-item-${tripIdx}-${itemIdx}-note-en`, note.en);
+  // 注：title.en / note.en 不再有对应输入框（2026-08-28 简化表单砍掉了），但 it.title/
+  // it.note 仍然是完整的 {zh,en} 对象、上面几行已经整个赋值过了——查到的英文描述照样
+  // 存进数据里，只是没有 UI 能看/改它，不是丢了。
   // ⚠️ 先整块重画（要连带切换出「已关联航班...清除航班」那一行），确认消息必须在
   // 重画**之后**再写一次——不然新画出来的状态栏是空的，用户点完查询什么反馈都看不到
   // （跟 adminSaveTripsForm() 里「存完刷新会冲掉提示」是同一类坑，2026-08-27 踩过一次）。
   const block = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightblock`);
   if(block) block.outerHTML = flightLookupBlockHtml(trip, tripIdx, itemIdx);
+  // 航班号输入框（id ...-flightno）不在上面这个块里——它挪到紧凑行去了，outerHTML
+  // 替换碰不到它，查到了要单独把之前可能留下的错误态红边框摘掉。
+  const noElOk = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightno`);
+  if(noElOk) noElOk.classList.remove('flight-input-err');
   const afterStatusEl = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightstatus`);
   if(afterStatusEl){
     afterStatusEl.className = 'flight-lookup-status ok';
@@ -1678,6 +1711,10 @@ function adminFlightLookupFailed(tripIdx, itemIdx, it, trip, no, date, message){
   markTripsDirty();
   const block = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightblock`);
   if(block) block.outerHTML = flightLookupBlockHtml(trip, tripIdx, itemIdx);
+  // 航班号输入框不在上面那个块里（挪到紧凑行了），红边框要单独补上——
+  // 这正是「查询失败要显眼」这条要求落到紧凑行上唯一能看见的痕迹。
+  const noEl = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightno`);
+  if(noEl) noEl.classList.add('flight-input-err');
   const statusEl = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightstatus`);
   if(statusEl){
     statusEl.className = 'flight-lookup-status err';
@@ -1694,6 +1731,19 @@ function adminClearFlight(tripIdx, itemIdx){
   markTripsDirty();
   const block = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightblock`);
   if(block) block.outerHTML = flightLookupBlockHtml(trip, tripIdx, itemIdx);
+  const noEl = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightno`);
+  if(noEl) noEl.classList.remove('flight-input-err');
+}
+/** 行程层「更多」：只剩地点（中文）。英文标题/英文地点的输入框整个不再渲染
+ * （2026-08-28，跟条目层同一条规则）——地点已经填过（旧数据或本仓库带来的）时
+ * 默认展开，不藏。 */
+function adminTripMoreHtml(trip, idx){
+  const hasLoc = !!(trip.location && ((trip.location.zh||'').trim() || (trip.location.en||'').trim()));
+  return `<details class="admin-trip-more" id="admin-trip-${idx}-more"${hasLoc ? ' open' : ''}>
+      <summary>⋯ ${pick('更多','More')}${hasLoc ? ` <span class="admin-more-badge">${pick('（有地点）','(has location)')}</span>` : ''}</summary>
+      <div class="admin-field"><label>${pick('地点（中文）','Location (Chinese)')}</label>
+        <input type="text" data-trip="${idx}" data-field="location.zh" value="${escapeHtml(trip.location && trip.location.zh || '')}" oninput="adminTripFieldInput(this)"></div>
+    </details>`;
 }
 function adminItemsListHtml(trip, tripIdx){
   const items = trip.items || [];
@@ -1722,20 +1772,14 @@ function adminTripFormHtml(trip, idx){
           <span class="sec-title" style="font-size:13.5px">${pick('这趟行程','This trip')}</span>
           <span class="admin-section-note">${pick('先填大概：叫什么、哪几天、去哪','The basics: name, dates, destination')}</span>
         </div>
-        <div class="admin-field"><label>${pick('标题（中文）','Title (Chinese)')}</label>
+        <div class="admin-field"><label>${pick('行程名称','Trip name')}</label>
           <input type="text" data-trip="${idx}" data-field="title.zh" value="${escapeHtml(trip.title && trip.title.zh || '')}" oninput="adminTripFieldInput(this)"></div>
-        <div class="admin-field"><label>${pick('标题（英文）','Title (English)')}</label>
-          <input type="text" data-trip="${idx}" data-field="title.en" value="${escapeHtml(trip.title && trip.title.en || '')}" oninput="adminTripFieldInput(this)"></div>
         <div class="admin-field" style="display:flex;gap:10px">
           <div style="flex:1"><label>${pick('出发日','Departure')}</label>
             <input type="date" data-trip="${idx}" data-field="start" value="${escapeHtml(trip.start||'')}" oninput="adminTripFieldInput(this); adminRevalidateItemDates(${idx})"></div>
           <div style="flex:1"><label>${pick('回程日','Return')}</label>
             <input type="date" data-trip="${idx}" data-field="end" value="${escapeHtml(trip.end||'')}" oninput="adminTripFieldInput(this); adminRevalidateItemDates(${idx})"></div>
         </div>
-        <div class="admin-field"><label>${pick('地点（中文）','Location (Chinese)')}</label>
-          <input type="text" data-trip="${idx}" data-field="location.zh" value="${escapeHtml(trip.location && trip.location.zh || '')}" oninput="adminTripFieldInput(this)"></div>
-        <div class="admin-field"><label>${pick('地点（英文）','Location (English)')}</label>
-          <input type="text" data-trip="${idx}" data-field="location.en" value="${escapeHtml(trip.location && trip.location.en || '')}" oninput="adminTripFieldInput(this)"></div>
         <div class="admin-field"><label>${pick('关联手册','Linked guide')}</label>
           <select class="admin-select" data-trip="${idx}" onchange="adminGuideSelectChange(${idx}, this)">
             ${guideSelectOptionsHtml(trip)}
@@ -1743,6 +1787,7 @@ function adminTripFormHtml(trip, idx){
         <div class="admin-field" id="admin-trip-${idx}-guide-custom-wrap" style="${isCustom?'':'display:none'}">
           <label>${pick('手册网址','Guide URL')}</label>
           <input type="text" id="admin-trip-${idx}-guide-custom" placeholder="https://..." value="${escapeHtml(isCustom?guideCur:'')}" oninput="adminGuideCustomInput(${idx}, this)"></div>
+        ${adminTripMoreHtml(trip, idx)}
       </div>
 
       <div class="admin-form-section admin-item-editor">
@@ -1839,7 +1884,12 @@ function adminAddItem(tripIdx){
   const trip = adminTripsDraft[tripIdx];
   if(!trip) return;
   if(!trip.items) trip.items = [];
-  trip.items.push({ date: trip.start || '', time:'', title:{zh:'',en:''}, note:{zh:'',en:''}, mapUrl:'' });
+  // 日期默认自动带出，不用每条都选（2026-08-28 简化表单）：跟着「已有的最后一条」的
+  // 日期走——多天行程一条接一条往下加时，通常还在同一天或紧接着的下一天，比每次
+  // 都跳回行程出发日更省事；一条都没有时才退回行程出发日。
+  const lastDate = trip.items.length ? (trip.items[trip.items.length - 1].date || '') : '';
+  const defaultDate = lastDate || trip.start || '';
+  trip.items.push({ date: defaultDate, time:'', title:{zh:'',en:''}, note:{zh:'',en:''}, mapUrl:'' });
   const newIdx = trip.items.length - 1;
   markTripsDirty();
   rerenderAdminTripsSection();
@@ -1958,12 +2008,11 @@ function renderAdmin(){
         <input type="file" id="admin-bill-file" accept="application/pdf">
       </div>
       <div class="admin-field">
-        <label>${pick('标题（中文）','Title (Chinese)')}</label>
+        <!-- 跟行程表单同一条规矩（2026-08-28 用户明确要求）：不再要求他把内容写两遍。
+             英文标题的输入框砍掉，但数据结构仍是 {zh,en}，显示端本来就会在只有一种
+             语言时回退到有的那个。 -->
+        <label>${pick('标题','Title')}</label>
         <input type="text" id="admin-bill-title-zh" placeholder="例：8月账单">
-      </div>
-      <div class="admin-field">
-        <label>${pick('标题（英文）','Title (English)')}</label>
-        <input type="text" id="admin-bill-title-en" placeholder="e.g. August bill">
       </div>
       <div class="admin-field">
         <label>${pick('类型','Kind')}</label>
@@ -2037,7 +2086,7 @@ async function adminUploadBill(){
   const period = (document.getElementById('admin-bill-period').value || '').trim();
   if(!period){ statusEl.className='admin-status err'; statusEl.textContent = pick('请填账期','Please fill in the period'); return; }
   const titleZh = (document.getElementById('admin-bill-title-zh').value || '').trim();
-  const titleEn = (document.getElementById('admin-bill-title-en').value || '').trim();
+  const titleEn = '';   // 英文标题的输入框已砍掉，字段保留空字符串（结构不变）
   const kind = (document.querySelector('input[name="admin-bill-kind"]:checked') || {}).value || 'month';
   const tripId = document.getElementById('admin-bill-trip').value || null;
   statusEl.className = 'admin-status';

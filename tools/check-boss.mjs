@@ -456,9 +456,15 @@ async function gotoTab(page, tab){
   const itemsAfter = await page.locator('.admin-item-row').count();
   ok('点「+ 新增条目」后多出一条条目', itemsAfter === itemsBefore + 1, { itemsBefore, itemsAfter });
   const row = page.locator('.admin-item-row').first();
-  ok('条目有日期输入框', await row.locator('input[type="date"]').count() >= 1);
-  ok('条目有时间输入框', await row.locator('input[type="time"]').count() >= 1);
-  ok('条目有标题（中文）输入框', await row.locator('input[type="text"]').count() >= 1);
+  // 2026-08-28 简化表单后，日期输入框收进了紧凑行旁边的「更多」（原生 <details>），
+  // 跟紧凑行是兄弟节点、不再是 .admin-item-row 的子元素——按委派说明「先展开再断言，
+  // 不弱化」：展开第一条（下标 0，两个条目里较早那个）的「更多」，改用外层
+  // .admin-item-wrap（涵盖紧凑行＋更多两块）作查找范围，日期/时间/标题三样仍然都要有。
+  await page.click(`#admin-item-${idx}-0-more summary`);
+  const wrap = page.locator('.admin-item-wrap').first();
+  ok('条目有日期输入框', await wrap.locator('input[type="date"]').count() >= 1);
+  ok('条目有时间输入框', await wrap.locator('input[type="time"]').count() >= 1);
+  ok('条目有标题（中文）输入框', await wrap.locator('input[type="text"]').count() >= 1);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
 
   await ctx.close();
@@ -480,9 +486,11 @@ async function gotoTab(page, tab){
   await gotoTab(page, 'admin');
   await page.click('button[onclick="adminAddTrip()"]');
   const idx10 = await page.evaluate(() => adminExpandedTrip);
-  await page.click(`button[onclick="adminAddItem(${idx10})"]`);
-
-  const mapInput = page.locator('.admin-item-row').first().locator('.admin-field').last().locator('input');
+  // adminAddTrip() 自带一条空条目，下标 0——2026-08-28 简化表单后地点名称挪进了
+  // 「更多」，默认收起（内容全空，没有东西可藏）。按委派说明「先展开再断言，不弱化」，
+  // 这里先点开「更多」再定位地点输入框（换成 id，不再靠 .admin-field 在行内的位置）。
+  await page.click(`#admin-item-${idx10}-0-more summary`);
+  const mapInput = page.locator(`#admin-item-${idx10}-0-map`);
   await mapInput.fill('大阪城');
   await mapInput.dispatchEvent('change');
   const generated = await mapInput.inputValue();
@@ -552,14 +560,25 @@ async function gotoTab(page, tab){
   await page.click('button[onclick="adminAddTrip()"]');
   const idx14 = await page.evaluate(() => adminExpandedTrip);
   await page.fill(`input[data-trip="${idx14}"][data-field="title.zh"]`, '大阪三日游');
-  await page.fill(`input[data-trip="${idx14}"][data-field="title.en"]`, 'Osaka 3 Days');
+  // 2026-08-28 简化表单：行程标题（英文）输入框整个不再渲染，砍不掉的是数据结构——
+  // 直接写工作副本模拟「旧数据本来就带着英文」，断言下面保存后这个值原样带出去，
+  // 不是靠 UI 填第二遍（对应委派要求 E：已经填过英文的旧数据不许弄丢）。
+  await page.evaluate((i) => { adminTripsDraft[i].title.en = 'Osaka 3 Days'; }, idx14);
   await page.fill(`input[data-trip="${idx14}"][data-field="start"]`, '2026-09-01');
   await page.fill(`input[data-trip="${idx14}"][data-field="end"]`, '2026-09-03');
-  await page.click(`button[onclick="adminAddItem(${idx14})"]`);
+  // adminAddTrip() 自带一条空条目，下标 0——不用再点「新增条目」，直接用它。
+  // 「更多」默认收起（内容全空），先展开才能填日期和地点（委派说明允许的「先展开
+  // 再断言」，选择器从 .admin-field 的相对位置换成明确 id，不再依赖行内顺序）。
+  await page.click(`#admin-item-${idx14}-0-more summary`);
   const row = page.locator('.admin-item-row').first();
-  await row.locator('input[type="date"]').fill('2026-09-01');
+  await page.fill(`#admin-item-${idx14}-0-date`, '2026-09-01');
   await row.locator('input[type="text"]').first().fill('入住酒店'); // 标题（中文）
-  const mapInput = row.locator('.admin-field').last().locator('input');
+  // 同一条目的英文标题/英文备注也直接写工作副本模拟旧数据，跟标题英文同一个理由。
+  await page.evaluate((i) => {
+    adminTripsDraft[i].items[0].title.en = 'Check in (old EN)';
+    adminTripsDraft[i].items[0].note.en = 'Bring umbrella (old EN)';
+  }, idx14);
+  const mapInput = page.locator(`#admin-item-${idx14}-0-map`);
   await mapInput.fill('大阪城');
   await mapInput.dispatchEvent('change');
 
@@ -576,6 +595,7 @@ async function gotoTab(page, tab){
   const t = trips && trips.find(x => x.id !== 't1');
   ok('trip.title 是 {zh,en} 对象', t && typeof t.title === 'object' && 'zh' in t.title && 'en' in t.title, t && t.title);
   ok('trip.title.zh 逐字对得上', t && t.title.zh === '大阪三日游', t && t.title.zh);
+  ok('trip.title.en 是砍掉输入框之前就有的旧值，保存后没弄丢', t && t.title.en === 'Osaka 3 Days', t && t.title.en);
   ok('trip.start / trip.end 字段名逐字对得上', t && t.start === '2026-09-01' && t.end === '2026-09-03', t);
   ok('trip.items 是数组，且有 1 条', t && Array.isArray(t.items) && t.items.length === 1, t && t.items);
   const it = t && t.items && t.items[0];
@@ -583,6 +603,10 @@ async function gotoTab(page, tab){
      it && it.mapUrl === 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('大阪城'), it && it.mapUrl);
   ok('item.title 是 {zh,en} 对象，且 zh 对得上',
      it && typeof it.title === 'object' && it.title.zh === '入住酒店', it && it.title);
+  ok('item.title.en 是砍掉输入框之前就有的旧值，保存后没弄丢（结构没被简化表单改坏）',
+     it && it.title.en === 'Check in (old EN)', it && it.title.en);
+  ok('item.note.en 是砍掉输入框之前就有的旧值，保存后没弄丢（结构没被简化表单改坏）',
+     it && it.note.en === 'Bring umbrella (old EN)', it && it.note.en);
   // 注：没有断言「保存成功后状态栏显示已保存」——实测 adminSaveTripsForm() 里
   // statusEl.textContent='已保存' 之后紧跟着 await refreshFeed() 立刻用新数据整块
   // 重建 #tab-admin（renderAdmin() 重新 innerHTML），"已保存" 那条消息在用户看到之前
@@ -731,6 +755,87 @@ async function gotoTab(page, tab){
   ok('重新渲染后状态字仍有提示文字', afterRerender.statusTxt !== '', afterRerender);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
 
+  await ctx.close();
+}
+
+// ---------- 场景十五：条目/行程表单简化——默认只露最常填的几样，英文输入框整个不再渲染 ----------
+// 2026-08-28：用户反馈「填一个条目要面对 9 个输入框，一半是英文根本不会填」。
+// 这份场景守四件事：(1) 默认只有时间/做什么/航班号三样看得见 (2) 英文标题/英文备注
+// 输入框压根不进 DOM（不是隐藏） (3) 点「更多」才出现日期/备注/地点/航班日期，
+// 日期与航班日期自动带出不用手填 (4) 已有内容的条目「更多」默认展开，不会被藏没。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await page.click('button[onclick="adminAddTrip()"]');
+  const idx22 = await page.evaluate(() => adminExpandedTrip);
+  // adminAddTrip() 自带一条空条目，下标 0，不用再点「新增条目」。
+
+  console.log('\n【22】新建条目：默认只看得到时间／做什么／航班号，英文标题/英文备注输入框压根不进 DOM');
+  ok('默认能看到「时间」输入框', await page.locator(`#admin-item-${idx22}-0-time`).count() === 1);
+  ok('默认能看到「做什么」（标题中文）输入框', await page.locator(`#admin-item-${idx22}-0-title-zh`).count() === 1);
+  ok('默认能看到「航班号」输入框', await page.locator(`#admin-item-${idx22}-0-flightno`).count() === 1);
+  ok('条目英文标题输入框整个不渲染（数量为 0，不是 CSS 隐藏）', await page.locator(`#admin-item-${idx22}-0-title-en`).count() === 0);
+  ok('条目英文备注输入框整个不渲染（数量为 0，不是 CSS 隐藏）', await page.locator(`#admin-item-${idx22}-0-note-en`).count() === 0);
+  ok('行程层英文标题输入框也整个不渲染', await page.locator(`input[data-trip="${idx22}"][data-field="title.en"]`).count() === 0);
+  ok('行程层英文地点输入框也整个不渲染', await page.locator(`input[data-trip="${idx22}"][data-field="location.en"]`).count() === 0);
+
+  console.log('\n【23】新建条目内容全空时，「更多」默认收起（<details> 没有 open 属性）——折叠是真的挡住了字段，不是摆设');
+  const moreOpenEmpty = await page.evaluate((i) => document.getElementById(`admin-item-${i}-0-more`).open, idx22);
+  ok('全空条目的「更多」默认收起', moreOpenEmpty === false, moreOpenEmpty);
+  ok('折叠时地点输入框不可见（用 isVisible 判断，不真的去 fill 卡住整份自检）',
+     await page.locator(`#admin-item-${idx22}-0-map`).isVisible() === false);
+
+  console.log('\n【24】点开「更多」后，日期／备注／地点名称／航班日期才出现');
+  await page.click(`#admin-item-${idx22}-0-more summary`);
+  ok('点开「更多」后地点输入框可见了', await page.locator(`#admin-item-${idx22}-0-map`).isVisible() === true);
+  ok('点开「更多」后日期输入框可见了', await page.locator(`#admin-item-${idx22}-0-date`).isVisible() === true);
+  ok('点开「更多」后备注输入框可见了', await page.locator(`#admin-item-${idx22}-0-note-zh`).isVisible() === true);
+  ok('点开「更多」后航班日期输入框可见了', await page.locator(`#admin-item-${idx22}-0-flightdate`).isVisible() === true);
+
+  console.log('\n【25】日期与航班日期自动带出，不用每条都填');
+  await page.fill(`input[data-trip="${idx22}"][data-field="start"]`, '2026-10-01');
+  await page.click(`button[onclick="adminAddItem(${idx22})"]`); // 新增第 2 条，日期应自动带出行程出发日
+  const autoDate = await page.evaluate((i) => adminTripsDraft[i].items[1].date, idx22);
+  ok('新条目日期自动带成行程出发日（不用手选）', autoDate === '2026-10-01', autoDate);
+  const flightDateVal = await page.locator(`#admin-item-${idx22}-1-flightdate`).inputValue();
+  ok('航班日期默认跟着条目日期走（不用单独再填一遍，inputValue 不要求可见）', flightDateVal === '2026-10-01', flightDateVal);
+
+  console.log('\n【26】条目已经有备注时，「更多」默认展开，不会把已填内容藏没——双向验证的第二步（跟场景 23 折叠生效对照）');
+  await page.evaluate((i) => {
+    adminTripsDraft[i].items[0].note = { zh: '记得带伞', en: '' };
+    rerenderAdminTripsSection();
+  }, idx22);
+  const moreOpenWithNote = await page.evaluate((i) => document.getElementById(`admin-item-${i}-0-more`).open, idx22);
+  ok('已有备注的条目，「更多」默认展开', moreOpenWithNote === true, moreOpenWithNote);
+  const summaryTxt = await page.locator(`#admin-item-${idx22}-0-more summary`).textContent();
+  ok('「更多」标题上有提示已有内容的文字', (summaryTxt || '').includes('备注'), summaryTxt);
+
+  console.log('\n【27】保存后，条目的英文标题/英文备注字段仍在数据里（数据结构没有被简化表单改坏）');
+  await page.evaluate((i) => {
+    adminTripsDraft[i].title.zh = '福冈两日游';
+    adminTripsDraft[i].end = '2026-10-02';
+    adminTripsDraft[i].items[0].title.en = 'Old English Title';
+    adminTripsDraft[i].items[0].note.en = 'Old English Note';
+  }, idx22);
+  rec.calls.length = 0;
+  await page.click('button[onclick="adminSaveTripsForm()"]');
+  await until(() => rec.calls.some(c => c.action === 'tripsSave'), { what: '发出 tripsSave 请求' });
+  const call27 = rec.calls.find(c => c.action === 'tripsSave');
+  const trip27 = call27 && call27.trips && call27.trips.find(x => x.id !== 't1');
+  const item27 = trip27 && trip27.items && trip27.items[0];
+  ok('保存后 item.title.en 仍在数据里，没被简化表单改坏', item27 && item27.title.en === 'Old English Title', item27);
+  ok('保存后 item.note.en 仍在数据里，没被简化表单改坏', item27 && item27.note.en === 'Old English Note', item27);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
 
