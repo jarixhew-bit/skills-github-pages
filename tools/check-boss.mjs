@@ -1146,6 +1146,71 @@ function flightItem(date, time, from, to, schedDep, schedArr){
   await ctx.close();
 }
 
+// ---------- 场景十：库存要排序（2026-08-28「金边那个酒的排序还是不顺序」）----------
+// 真实数据里同一款酒的不同年份是分好几天陆续加进去的，按记录顺序显示就会
+// 1996 → 2006 → 2009 → 2010 → 2001 这样跳。用跟记账 App 同一套排序规则：
+// 中文按拼音、数字按数值。地点本身也要排，未标地点的垫底。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  // 故意打乱：地点交错、年份倒错、还夹一条没写地点的
+  const messyInv = { wine: [
+    { id:'a', name:'拉菲古堡 2010', count:6,  unit:'瓶', location:'金边' },
+    { id:'b', name:'茅台精品',      count:12, unit:'瓶', location:'金边' },
+    { id:'c', name:'Pavie',        count:17, unit:'瓶', location:'西港' },
+    { id:'d', name:'拉菲古堡 1996', count:6,  unit:'瓶', location:'金边' },
+    { id:'e', name:'Dalmore',      count:124,unit:'瓶', location:'金边' },
+    { id:'f', name:'拉菲古堡 2001', count:18, unit:'瓶', location:'金边' },
+    { id:'g', name:'来路不明的酒',   count:1,  unit:'瓶', location:'' },
+    { id:'h', name:'茅台 15 年',    count:6,  unit:'瓶', location:'西港' },
+  ], tea: [], herb: [] };
+  mountRoutes(ctx, { role: 'viewer', inventory: messyInv });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.inv-row')), { what: '库存画出来' });
+  await gotoTab(page, 'inventory');
+
+  console.log('\n[场景十] 库存排序：同款酒的年份要顺、地点要顺');
+  const shown = await page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('#tab-inventory .inv-loc-hdr, #tab-inventory .inv-row').forEach(el => {
+      if(el.classList.contains('inv-loc-hdr')) out.push('@' + el.querySelector('span').textContent.trim());
+      else {
+        const cn = el.querySelector('.cn');
+        out.push((cn ? cn.textContent : el.textContent).trim().split('\n')[0]);
+      }
+    });
+    return out;
+  });
+  const locs = shown.filter(x => x.startsWith('@'));
+  ok('地点按名字排，未标地点的垫底', JSON.stringify(locs) === JSON.stringify(['@金边', '@西港', '@未标注地点']), locs);
+
+  const jinbian = shown.slice(shown.indexOf('@金边') + 1, shown.indexOf('@西港'));
+  ok('金边组：拉菲三个年份从小到大挨在一起',
+     jinbian.join('|').includes('拉菲古堡 1996|拉菲古堡 2001|拉菲古堡 2010'), jinbian);
+  // 中文和拉丁字母谁在前，取决于浏览器带的 ICU 排序表（这台机器上是中文在前）。
+  // 写死顺序会让这份自检绑死某个浏览器版本，所以改成「跟同一套 collator 排出来的
+  // 结果一致」——两个 App 用的是同一套规则，一致才是真正要守的东西。
+  const sortedBy = (arr) => page.evaluate((names) => {
+    const c = new Intl.Collator('zh-Hans-CN', { numeric: true, sensitivity: 'base' });
+    return names.slice().sort((a, b) => c.compare(a, b));
+  }, arr);
+  ok('金边组整体顺序 == collator 排出来的顺序',
+     JSON.stringify(jinbian) === JSON.stringify(await sortedBy(jinbian)), jinbian);
+
+  const xigang = shown.slice(shown.indexOf('@西港') + 1, shown.indexOf('@未标注地点'));
+  ok('西港组也排了（对照组：不是只排了第一组）',
+     JSON.stringify(xigang) === JSON.stringify(await sortedBy(xigang)), xigang);
+  // 上面两条如果页面根本没排，也可能碰巧成立——所以再钉一条：西港组的显示顺序
+  // 必须跟喂进去的记录顺序不同（喂的是 Pavie 在前、茅台 15 年在后）。
+  ok('西港组的显示顺序确实跟记录顺序不同（证明真的排过）',
+     JSON.stringify(xigang) !== JSON.stringify(['Pavie', '茅台 15 年']), xigang);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);

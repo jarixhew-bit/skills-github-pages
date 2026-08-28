@@ -299,15 +299,26 @@ await page.reload({ waitUntil: 'networkidle' });
 await page.click('#lockBtn');
 await page.fill('#pwInput', 'wrong-password');
 await page.click('#pwForm .ok');
-await page.waitForTimeout(600);
+// 等条件成立，不要死等固定时间（2026-08-28：check-all 并行跑七个 chromium 时，
+// 600ms 有时不够，这条会假红——跟 check-expense-company 修过的是同一类问题）。
+try{
+  await page.locator('#pwErr').waitFor({ state: 'visible', timeout: 8000 });
+}catch(e){ /* 等不到就让下面那条 check 报出来 */ }
 check(await page.locator('#pwErr').isVisible(), '密码错误应显示错误提示');
 check((await page.locator('#p5body .locked').count()) === 1, '密码错误时私密区应维持锁住');
 
 /* ---- 13. 窄屏不得横向溢出 ---- */
 await page.setViewportSize({ width: 390, height: 844 });
-await page.waitForTimeout(300);
-const overflow = await page.evaluate(() =>
-  document.documentElement.scrollWidth - document.documentElement.clientWidth);
+// 同上：等版面真的按新宽度重排完（连续两次量到同一个值就算稳），别拿固定 300ms 赌
+let overflow = null, prev = null;
+for(let i = 0; i < 200; i++){
+  const v = await page.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  if(prev !== null && v === prev){ overflow = v; break; }
+  prev = v;
+  await page.waitForTimeout(20);
+}
+if(overflow === null) overflow = prev;
 check(overflow <= 2, `窄屏不应横向溢出（实得溢出 ${overflow}px）`);
 
 check(errors.length === 0, `不应有 JS 错误（实得：${errors.slice(0, 3).join(' | ')}）`);

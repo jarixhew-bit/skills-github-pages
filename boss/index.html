@@ -1502,16 +1502,27 @@ function sumInvCount(list){
 }
 /** 按 location 字段分组：有名字的地点按第一次出现的顺序排在前面，
  *  location 为空的统一归到「未标注地点」，永远排最后。 */
+// zh-Hans-CN 让中文按拼音排（茅台归到 M 那一档），不是按 Unicode 码位乱排；
+// numeric:true 让「拉菲古堡 1996 / 2001 / 2014」按年份数字排，不是按字符串排。
+// 跟 expense-tracker.html 的 INV_NAME_COLLATOR 是同一套规则——同一批酒在两个 App 里
+// 顺序必须一致，不然对着念的时候一个人看第三行、另一个人看第五行。
+const INV_NAME_COLLATOR = new Intl.Collator('zh-Hans-CN', { numeric: true, sensitivity: 'base' });
+function invByName(a, b){
+  return INV_NAME_COLLATOR.compare(String((a && a.name) || ''), String((b && b.name) || ''));
+}
 function invLocationGroups(items){
   const map = new Map();
-  const order = [];
   (items || []).forEach(it => {
     const loc = (it.location || '').trim();
-    if(!map.has(loc)){ map.set(loc, []); order.push(loc); }
+    if(!map.has(loc)) map.set(loc, []);
     map.get(loc).push(it);
   });
-  const groups = order.filter(l => l !== '').map(l => ({ loc:l, items: map.get(l) }));
-  if(map.has('')) groups.push({ loc:'', items: map.get('') });
+  // 地点本身也要排（未标地点的永远垫底）：地点先后原本跟着记录顺序走，
+  // 加一条酒就可能整组跳位置（2026-08-28 用户反映「金边那个酒的排序还是不顺序」）。
+  const groups = Array.from(map.keys()).filter(l => l !== '')
+    .sort((a, b) => INV_NAME_COLLATOR.compare(a, b))
+    .map(l => ({ loc: l, items: map.get(l).slice().sort(invByName) }));
+  if(map.has('')) groups.push({ loc:'', items: map.get('').slice().sort(invByName) });
   return groups;
 }
 /** 一个类别的完整渲染：标题＋合计，下面按地点分组，每组也有小标题＋合计。 */
@@ -2170,7 +2181,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v21</div>
+    <div class="admin-ver" id="adminVer">boss-app-v22</div>
 
     ${adminTripsSectionHtml()}
 
