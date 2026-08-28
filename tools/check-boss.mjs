@@ -980,6 +980,83 @@ async function gotoTab(page, tab){
   await ctx.close();
 }
 
+// ---------- 场景八：顶部推送条不能赖着不走（2026-08-28 用户第二次反映「通知还是看得见」）----------
+// 守三件事：① 老板（viewer）能自己按 × 关掉，关了刷新还是不出现；
+// ② 通知已经开好之后顶部那条自动消失（没什么好提示了，一直挂着就是碍事）；
+// ③ 【对照组】admin 那条仍然在管理页里活着，而且不给 × —— 关掉就找不回来了。
+// 没有 ③ 的话，把 ensurePushUI() 整个改成 return 也能让 ①② 变绿。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.trip-card, .empty-card')),
+    { what: 'viewer 首屏渲染完' });
+
+  console.log('\n[场景八] 顶部推送条：viewer 能关、开好后自动消失、admin 对照组还在');
+  const supported = await page.evaluate(() => pushSupported());
+  ok('这台浏览器支持 Push（不支持的话下面几条等于没测）', supported === true, supported);
+
+  const bar1 = await page.evaluate(() => {
+    const b = document.getElementById('pushBar');
+    return { exists: !!b, parent: b && b.parentElement && b.parentElement.id,
+             dismiss: !!(b && b.querySelector('.push-dismiss')) };
+  });
+  ok('viewer 没开通知时，顶部有推送条', bar1.exists && bar1.parent === 'app', bar1);
+  ok('推送条上有 × 可以关', bar1.dismiss === true, bar1);
+
+  await page.click('#pushBar .push-dismiss');
+  ok('按了 × 就没了', await page.locator('#pushBar').count() === 0);
+  const remembered = await page.evaluate(() => localStorage.getItem('bossApp_pushBarDismissed'));
+  ok('关掉这件事被记住了', remembered === '1', remembered);
+
+  await page.reload();
+  await until(() => page.evaluate(() => !!document.querySelector('.trip-card, .empty-card')),
+    { what: 'viewer 刷新后渲染完' });
+  ok('刷新后仍然不出现', await page.locator('#pushBar').count() === 0);
+
+  // 换个干净身份验②：没按过 ×，但已经订阅成功 → 顶部那条自己消失
+  await page.evaluate(() => {
+    localStorage.removeItem('bossApp_pushBarDismissed');
+    pushSubscription = null; ensurePushUI();
+  });
+  ok('清掉记号后又出现（证明上一条不是因为整块坏了）', await page.locator('#pushBar').count() === 1);
+  await page.evaluate(() => { pushSubscription = { endpoint: 'https://example.test/x' }; ensurePushUI(); });
+  ok('通知开好之后顶部那条自动消失', await page.locator('#pushBar').count() === 0);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+// ---------- 场景八之对照组：admin ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  // admin 也先把「关掉」的记号写上：那个记号只该管顶部那条，不该把管理页那条一起弄没
+  await page.addInitScript(() => localStorage.setItem('bossApp_pushBarDismissed', '1'));
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('adminPushSlot')),
+    { what: 'admin 管理页渲染完' });
+
+  const bar = await page.evaluate(() => {
+    const b = document.getElementById('pushBar');
+    return { exists: !!b, parent: b && b.parentElement && b.parentElement.id,
+             dismiss: !!(b && b.querySelector('.push-dismiss')),
+             toggle: !!(b && b.querySelector('#pushToggleBtn')) };
+  });
+  ok('admin：推送条在管理页插槽里（不在每页顶部）', bar.exists && bar.parent === 'adminPushSlot', bar);
+  ok('admin：开关还在，能用', bar.toggle === true, bar);
+  ok('admin：那条不给 ×（关掉就找不回来了）', bar.dismiss === false, bar);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);

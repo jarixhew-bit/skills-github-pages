@@ -319,6 +319,8 @@ body:not(.lang-en) .en{display:none !important}
 .push-hint{margin-top:8px;font-size:12.5px;color:var(--sub);line-height:1.6}
 .push-hint a{color:var(--p);font-weight:600}
 .push-hint-warn{color:var(--danger)}
+.push-dismiss{border:none;background:none;color:var(--sub);font-size:20px;line-height:1;
+  padding:2px 4px;cursor:pointer;font-family:inherit;flex:none}
 
 /* ===== 管理面板：访问码 ===== */
 .admin-code-box{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px;font-weight:700;
@@ -454,6 +456,10 @@ const MONTHS_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','
 function safeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function safeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 function safeRemove(k){ try{ localStorage.removeItem(k); }catch(e){} }
+// 推送条被手动关掉的记号（2026-08-28）：用户反映顶上那条通知「还是看得见」。
+// 之前只按身份藏（admin 收进管理页），但他在自己手机上是用老板访问码进的＝viewer，
+// 所以照旧挂在顶部。改成谁都能按 × 关掉，关了就记住。
+const PUSH_BAR_DISMISS_KEY = 'bossApp_pushBarDismissed';
 
 /* ---------- 全局状态 ---------- */
 let curLang = 'cn';         // 'cn' | 'en'
@@ -2137,7 +2143,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v17</div>
+    <div class="admin-ver" id="adminVer">boss-app-v18</div>
 
     ${adminTripsSectionHtml()}
 
@@ -2301,10 +2307,15 @@ function pushBarInnerHtml(){
       `<a href="install.html" target="_blank" rel="noopener">${bl('安装说明','install guide')}</a></div>`;
   }
   const btnLabel = subscribed ? bl('关闭通知','Turn off') : bl('开启通知','Turn on');
+  // × 只出现在顶部那条（admin 收在管理页里的那条不给关，不然就找不回来了）
+  const dismissBtn = (role === 'admin') ? '' :
+    `<button type="button" class="push-dismiss" onclick="dismissPushBar()"
+       aria-label="${bl('关掉这条提示','Dismiss')}" title="${bl('关掉这条提示','Dismiss')}">×</button>`;
   return `<div class="push-row">
       <div class="push-label">🔔 ${bl('推送通知','Notifications')}</div>
       <button type="button" id="pushToggleBtn" class="push-toggle-btn${subscribed ? ' on' : ''}"
         onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${btnLabel}</button>
+      ${dismissBtn}
     </div>${hint}`;
 }
 /** 建立/更新/拆掉顶部的推送条。浏览器不支持 PushManager 时整块不渲染（不是 CSS 隐藏）。 */
@@ -2322,7 +2333,10 @@ function ensurePushUI(){
   //        但不再占着每一页的顶部。管理页还没渲染出来时插槽不存在，那就先不挂。
   // viewer（老板本人）：照旧挂在最顶上，他就是要被提醒开通知的那个人。
   const slot = (role === 'admin') ? document.getElementById('adminPushSlot') : null;
-  const host = (role === 'admin') ? slot : app;
+  let host = (role === 'admin') ? slot : app;
+  // 顶部那条只在「还没开通知、也还没被关掉」时才挂。已经开好了就没什么好提示的，
+  // 一直挂着反而碍事；被 × 关过也不再挂。管理页里那条不受这两条限制（要留个开关）。
+  if(host === app && (pushSubscription || safeGet(PUSH_BAR_DISMISS_KEY) === '1')) host = null;
   if(!host){ if(bar) bar.remove(); return; }
   if(!bar || bar.parentElement !== host){
     if(bar) bar.remove();
@@ -2333,6 +2347,12 @@ function ensurePushUI(){
     else host.appendChild(bar);
   }
   bar.innerHTML = pushBarInnerHtml();
+}
+/** 手动关掉顶部推送条，记住不再弹。管理页里那条开关照旧在，随时能开回来。 */
+function dismissPushBar(){
+  safeSet(PUSH_BAR_DISMISS_KEY, '1');
+  const bar = document.getElementById('pushBar');
+  if(bar) bar.remove();
 }
 /** 开关按钮：iOS 的两条硬约束在这里守——非主屏环境不弹权限，
  *  requestPermission() 必须由这个点击回调直接触发（用户手势），不能异步绕一圈再弹。 */
