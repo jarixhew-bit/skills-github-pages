@@ -91,7 +91,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -108,7 +108,7 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
       if (req.action === 'feed'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify({ status: 'ok', who, role, updated: fakeUpdated(),
-            trips: fakeTrips(), bills: fakeBills(), inventory }) });
+            trips: trips || fakeTrips(), bills: fakeBills(), inventory }) });
       }
       if (req.action === 'bill'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
@@ -837,6 +837,74 @@ async function gotoTab(page, tab){
 
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
+}
+
+
+// ---------- 场景二十八：预计时间不许冒充实际时间 ----------
+// ⚠️ 用户当场抓到的 bug（2026-08-28）：他刚填完一个 9 月 1 日的航班（当天才 8 月 28 日），
+// App 就告诉他「实际 10:12　延误 42 分」。原因是显示逻辑写的是 `act || est`，拿不到实际
+// 时间就退而用预计时间、却照样标成「实际」。而 est 来自接口的 predictedTime，起飞前
+// 好几天就有。那不是显示错误，是**把预测当成既成事实播报给老板**，他可能据此改行程。
+// 这一节守三件事，改回 `act || est` 的话第一条会立刻红。
+{
+  const p2 = n => String(n).padStart(2, '0');
+  const isoOff = (ms) => { const d = new Date(ms);
+    return `${d.getUTCFullYear()}-${p2(d.getUTCMonth()+1)}-${p2(d.getUTCDate())} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}+07:00`; };
+  const now = Date.now();
+  const mkTrip = (sched, act, est) => ([{
+    id: 't-eta', title: { zh: '时间测试', en: 'ETA' },
+    start: sched.slice(0, 10), end: sched.slice(0, 10),
+    location: { zh: '', en: '' }, guideUrl: '',
+    items: [{ date: sched.slice(0, 10), time: '09:00', title: { zh: '航班', en: 'F' },
+      note: { zh: '', en: '' }, mapUrl: '',
+      flight: { no: 'XX123', date: sched.slice(0, 10), trackId: 't',
+        live: { from: 'PNH', to: 'CAN', sched_dep: sched, est_dep: est, act_dep: act,
+          sched_arr: null, est_arr: null, act_arr: null, gate: null, terminal: null,
+          status: 'scheduled', verified: true } } }],
+  }]);
+
+  async function timesText(trips){
+    const ctx = await browser.newContext();
+    await forceZh(ctx);
+    mountRoutes(ctx, { role: 'viewer', trips });
+    const page = await ctx.newPage();
+    await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+    await page.goto(URL, { waitUntil: 'domcontentloaded' });
+    await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+      { what: 'App 加载完成' });
+    await gotoTab(page, 'trips');
+    await until(() => page.locator('.trip-card-hd').count().then(n => n > 0), { what: '行程卡出现' });
+    await page.click('.trip-card-hd');
+    await page.waitForTimeout(200);
+    const txt = await page.evaluate(() => {
+      const el = document.querySelector('.flight-info-times');
+      return el ? el.innerText : '';
+    });
+    await ctx.close();
+    return txt;
+  }
+
+  console.log('\n【28】预计时间不许冒充实际时间');
+
+  // 1) 还早（4 天后）+ 只有预计 → 只显示计划时间，不许出现「延误」「实际」「预计」
+  const far = isoOff(now + 4 * 86400000);
+  const tFar = await timesText(mkTrip(far, null, isoOff(now + 4 * 86400000 + 42 * 60000)));
+  ok('4 天后的航班不显示「延误」', !tFar.includes('延误'), tFar);
+  ok('4 天后的航班不把预测标成「实际」', !tFar.includes('实际'), tFar);
+  ok('4 天后的航班连「预计」也不显示（这么早的预测是噪音）', !tFar.includes('预计'), tFar);
+
+  // 2) 快起飞了（6 小时内）+ 只有预计 → 显示「预计」，且明确写成预计不是实际
+  const near = isoOff(now + 6 * 3600000);
+  const tNear = await timesText(mkTrip(near, null, isoOff(now + 6 * 3600000 + 42 * 60000)));
+  ok('6 小时内的航班显示「预计」', tNear.includes('预计'), tNear);
+  ok('6 小时内的航班不冒充「实际」', !tNear.includes('实际'), tNear);
+  ok('措辞是「预计晚 N 分」而不是「延误 N 分」', tNear.includes('预计晚 42 分') && !tNear.includes('延误 42 分'), tNear);
+
+  // 3) 真的飞了 → 才是「实际」＋「延误」
+  const past = isoOff(now - 3600000);
+  const tPast = await timesText(mkTrip(past, isoOff(now - 3600000 + 42 * 60000), null));
+  ok('已起飞的航班显示「实际」', tPast.includes('实际'), tPast);
+  ok('已起飞的航班才说「延误 42 分」', tPast.includes('延误 42 分'), tPast);
 }
 
 await browser.close();
