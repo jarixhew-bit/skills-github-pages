@@ -2166,12 +2166,11 @@ function renderAdmin(){
   ensureAdminTripsDraft();
   const bills = (feedData.bills || []).slice().sort((a,b) => (b.uploadedAt||'').localeCompare(a.uploadedAt||''));
   pane.innerHTML = `
-    <div id="adminPushSlot"></div>
 
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v20</div>
+    <div class="admin-ver" id="adminVer">boss-app-v21</div>
 
     ${adminTripsSectionHtml()}
 
@@ -2232,7 +2231,6 @@ function renderAdmin(){
     </div>
   `;
   adminLoadAccessCode();
-  ensurePushUI();   // 管理页重画之后把推送条挂回插槽（innerHTML 会把上一次挂的冲掉）
 }
 function fileToBase64(file){
   return new Promise((resolve, reject) => {
@@ -2342,10 +2340,10 @@ function pushBarInnerHtml(){
       `<a href="install.html" target="_blank" rel="noopener">${bl('安装说明','install guide')}</a></div>`;
   }
   const btnLabel = subscribed ? bl('关闭通知','Turn off') : bl('开启通知','Turn on');
-  // × 只出现在顶部那条（admin 收在管理页里的那条不给关，不然就找不回来了）
-  const dismissBtn = (role === 'admin') ? '' :
-    `<button type="button" class="push-dismiss" onclick="dismissPushBar()"
+  // 这条只有 viewer（老板）看得到，一律给 ×
+  const dismissBtn = `<button type="button" class="push-dismiss" onclick="dismissPushBar()"
        aria-label="${bl('关掉这条提示','Dismiss')}" title="${bl('关掉这条提示','Dismiss')}">×</button>`;
+
   return `<div class="push-row">
       <div class="push-label">🔔 ${bl('推送通知','Notifications')}</div>
       <button type="button" id="pushToggleBtn" class="push-toggle-btn${subscribed ? ' on' : ''}"
@@ -2362,29 +2360,26 @@ function ensurePushUI(){
     if(bar) bar.remove();
     return;
   }
-  // 挂在哪里看身份（2026-08-28 用户反映：他用管理员身份进来时，顶上一直挂着一条
-  // 「开启通知」很碍事——那条本来就是给老板看的）。
-  // admin：收进管理页的插槽，仍然能用（他要先在自己手机上试通知发不发得出来），
-  //        但不再占着每一页的顶部。管理页还没渲染出来时插槽不存在，那就先不挂。
-  // viewer（老板本人）：照旧挂在最顶上，他就是要被提醒开通知的那个人。
-  const slot = (role === 'admin') ? document.getElementById('adminPushSlot') : null;
-  let host = (role === 'admin') ? slot : app;
-  // 顶部那条只在「还没开通知、也还没被关掉」时才挂。已经开好了就没什么好提示的，
-  // 一直挂着反而碍事；被 × 关过也不再挂。管理页里那条不受这两条限制（要留个开关）。
-  if(host === app && (pushSubscription || safeGet(PUSH_BAR_DISMISS_KEY) === '1')) host = null;
+  // admin（YANG 自己）：**整条不渲染**。这是一个提醒老板去开通知的提示，
+  // 他不是老板；之前想着「他可能要在自己手机上试一下通知发不发得出来」而留在管理页，
+  // 结果他连着三轮反映「还是看得见」（2026-08-28）。不是他要的东西就别放。
+  // viewer（老板本人）：挂在最顶上——他就是要被提醒开通知的那个人；
+  //   已经开好了、或者他自己按过 × 关掉，就不再挂。
+  if(role === 'admin'){ if(bar) bar.remove(); return; }
+  let host = app;
+  if(pushSubscription || safeGet(PUSH_BAR_DISMISS_KEY) === '1') host = null;
   if(!host){ if(bar) bar.remove(); return; }
   if(!bar || bar.parentElement !== host){
     if(bar) bar.remove();
     bar = document.createElement('div');
     bar.id = 'pushBar';
     bar.className = 'push-bar';
-    if(host === app) host.insertBefore(bar, host.firstChild);
-    else host.appendChild(bar);
+    host.insertBefore(bar, host.firstChild);
   }
   bar.innerHTML = pushBarInnerHtml();
   bar.classList.toggle('push-bar-mini', !!pushSubscription);
 }
-/** 手动关掉顶部推送条，记住不再弹。管理页里那条开关照旧在，随时能开回来。 */
+/** 老板手动关掉顶部推送条，记住不再弹。 */
 function dismissPushBar(){
   safeSet(PUSH_BAR_DISMISS_KEY, '1');
   const bar = document.getElementById('pushBar');
