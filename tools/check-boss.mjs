@@ -149,11 +149,14 @@ async function gotoTab(page, tab){
     { what: 'App 加载完成（闸门放行）' });
 
   const fileCnt = await page.locator('input[type=file]').count();
-  const taCnt = await page.locator('textarea').count();
+  // 原来这一对守的是「编辑行程 JSON」那个 textarea，该功能 2026-08-28 已整块移除
+  // （用户说没在用）。移除后两边都是 0，这对断言就失去意义了——换成行程表单的日期框，
+  // 它同样是只有 admin 才该有的写入控件，对照组才继续成立。
+  const billTitleCnt = await page.locator('#admin-bill-title-zh').count();
   const writeBtnCnt = await page.evaluate(() =>
     [...document.querySelectorAll('button')].filter(b => /上传|删除|保存/.test(b.textContent || '')).length);
   ok('viewer 下 input[type=file] 数量为 0 —— 否则老板能改数据了', fileCnt === 0, fileCnt);
-  ok('viewer 下 textarea 数量为 0 —— 否则老板能改数据了', taCnt === 0, taCnt);
+  ok('viewer 下 #admin-bill-title-zh（上传账单的标题框）不存在 —— 否则老板能改数据了', billTitleCnt === 0, billTitleCnt);
   ok('viewer 下含「上传/删除/保存」文案的按钮数量为 0 —— 否则老板能改数据了', writeBtnCnt === 0, writeBtnCnt);
   ok('viewer 下底部导航没有「管理」入口', await page.locator('#nav-admin-btn').count() === 0);
   ok('viewer 下 #tab-admin 容器是空的（不是 CSS 隐藏，是压根没渲染）',
@@ -180,11 +183,11 @@ async function gotoTab(page, tab){
   await gotoTab(page, 'admin');
 
   const fileCnt = await page.locator('input[type=file]').count();
-  const taCnt = await page.locator('textarea').count();
+  const billTitleCnt = await page.locator('#admin-bill-title-zh').count();
   const writeBtnCnt = await page.evaluate(() =>
     [...document.querySelectorAll('button')].filter(b => /上传|删除|保存/.test(b.textContent || '')).length);
   ok('admin 下 input[type=file]（上传账单）存在', fileCnt >= 1, fileCnt);
-  ok('admin 下 textarea（编辑行程 JSON）存在', taCnt >= 1, taCnt);
+  ok('admin 下 #admin-bill-title-zh（上传账单的标题框）存在', billTitleCnt === 1, billTitleCnt);
   ok('admin 下含「上传/删除/保存」文案的按钮存在（上传按钮＋删除账单＋保存行程，至少 3 个）',
      writeBtnCnt >= 3, writeBtnCnt);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
@@ -422,7 +425,8 @@ async function gotoTab(page, tab){
 
 // ---------- 场景九：admin 表单——新增行程 / 新增条目，行程条目的输入框都齐全 ----------
 // 2026-08-27：行程 JSON textarea 换成了真表单（用户是非工程师，这是他唯一会用的入口）。
-// 「高级：直接编辑 JSON」还留着（折叠着，当兜底），场景二守的「textarea 存在」不受影响。
+// 注：「高级：直接编辑 JSON」已于 2026-08-28 整块移除，下面 admin 对照组守的
+// textarea 现在指的是行程表单里的那些输入框，不是那个 JSON 框。
 {
   const ctx = await browser.newContext();
   await forceZh(ctx);
@@ -616,7 +620,9 @@ async function gotoTab(page, tab){
   await ctx.close();
 }
 
-// ---------- 场景十三：「高级：直接编辑 JSON」默认是折叠的 ----------
+// ---------- 场景十三：机场名与时间格式（原来这一节还验「高级：直接编辑 JSON」默认折叠，
+// 该功能 2026-08-28 已按用户要求整块移除——「我没有用」——所以那三条断言一并删掉。
+// 这是功能没了，不是把判定标准放宽。） ----------
 {
   const ctx = await browser.newContext();
   await forceZh(ctx);
@@ -625,18 +631,20 @@ async function gotoTab(page, tab){
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
 
-  console.log('\n【15】「高级：直接编辑 JSON」默认折叠，不会一进管理面板就吓到非工程师用户');
   await page.goto(URL, { waitUntil: 'domcontentloaded' });
   await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
     { what: 'App 加载完成（闸门放行）' });
   await gotoTab(page, 'admin');
 
-  const isOpen = await page.evaluate(() => {
-    const d = document.getElementById('admin-json-details');
-    return d ? d.open : null;
-  });
-  ok('#admin-json-details 存在（第 2 条对照组守的 textarea 就在里面）', isOpen !== null, isOpen);
-  ok('默认是折叠的（<details> 没有 open 属性）', isOpen === false, isOpen);
+  console.log('\n【15】「高级：直接编辑 JSON」已整块移除（用户说没在用）');
+  const jsonGone = await page.evaluate(() => ({
+    details: !!document.getElementById('admin-json-details'),
+    textarea: !!document.getElementById('admin-trips-json'),
+    fn: typeof window.adminSaveTrips,
+  }));
+  ok('JSON 折叠块不在了', jsonGone.details === false, jsonGone);
+  ok('JSON textarea 不在了', jsonGone.textarea === false, jsonGone);
+  ok('只服务它的 adminSaveTrips 也清掉了（不留悬空函数）', jsonGone.fn === 'undefined', jsonGone);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
 
   console.log('\n【16】机场名不许写死：extractHM 两种时间格式、airportLabelZh/flightTitleFromLookup 三级优先级');
@@ -905,6 +913,71 @@ async function gotoTab(page, tab){
   const tPast = await timesText(mkTrip(past, isoOff(now - 3600000 + 42 * 60000), null));
   ok('已起飞的航班显示「实际」', tPast.includes('实际'), tPast);
   ok('已起飞的航班才说「延误 42 分」', tPast.includes('延误 42 分'), tPast);
+}
+
+
+// ---------- 场景二十九：账单能放大，而且放大后是真的清晰 ----------
+// 用户 2026-08-28 要求：「PDF 的这个窗口不能放大吗？」账单上的数字很小、老板年纪不小。
+// 关键不是「能变大」，是**变大之后看得清**——所以断言要盯**画布像素数变多**（=按新
+// 尺寸重画了），而不是只看有没有 transform。纯 CSS 拉大位图会更糊，等于没做。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+
+  console.log('\n【29】账单能放大，且放大后是重画的（不是把位图拉糊）');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成' });
+  await gotoTab(page, 'bills');
+  await until(() => page.locator('.bill-row').count().then(n => n > 0), { what: '账单列表画出来' });
+  await page.click('.bill-row');
+  await until(() => page.evaluate(() => document.querySelectorAll('#billPages canvas').length > 0),
+    { what: '账单画成 canvas', timeout: 20000 });
+
+  const snap = () => page.evaluate(() => {
+    const c = document.querySelector('#billPages canvas');
+    const w = document.getElementById('billZoomWrap');
+    return { zoom: (document.getElementById('billZoomLabel') || {}).textContent || '',
+             wrapW: w ? Math.round(w.getBoundingClientRect().width) : 0,
+             canvasPx: c ? c.width : 0 };
+  });
+
+  const before = await snap();
+  ok('缩放控件在（加减按钮都有）',
+    await page.locator('#billZoomIn').count() === 1 && await page.locator('#billZoomOut').count() === 1);
+  ok('一开始是 100%', before.zoom === '100%', before);
+
+  await page.click('#billZoomIn');
+  await page.click('#billZoomIn');
+  await until(() => snap().then(a => a.canvasPx > before.canvasPx),
+    { what: '放大后按新尺寸重画（画布像素变多）', timeout: 20000 });
+  const zoomed = await snap();
+  ok('倍率变大了', zoomed.wrapW > before.wrapW, { before, zoomed });
+  ok('画布像素数变多 —— 是重画的，不是把位图拉糊', zoomed.canvasPx > before.canvasPx, { before, zoomed });
+
+  // 一直点减号：停在 100%，不许缩到看不见
+  for (let i = 0; i < 8; i++) { await page.click('#billZoomOut').catch(() => {}); await page.waitForTimeout(120); }
+  const minned = await snap();
+  ok('一直缩最小停在 100%，不会缩到看不见', minned.zoom === '100%', minned);
+
+  // 关掉再打开要回到 100%，不带上一份账单的倍率
+  await page.click('#billZoomIn'); await page.waitForTimeout(400);
+  await page.evaluate(() => closeBillOverlay());
+  await page.waitForTimeout(200);
+  await page.click('.bill-row');
+  await until(() => page.evaluate(() => document.querySelectorAll('#billPages canvas').length > 0),
+    { what: '重新打开账单', timeout: 20000 });
+  const reopened = await snap();
+  ok('关掉再打开回到 100%', reopened.zoom === '100%', reopened);
+  ok('「在新分页打开」的退路还在', await page.locator('#billOpenNew').count() === 1);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+
+  await ctx.close();
 }
 
 await browser.close();
