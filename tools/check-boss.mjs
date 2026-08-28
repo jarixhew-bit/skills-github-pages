@@ -91,7 +91,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -114,9 +114,17 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify({ status: 'ok', contentBase64: FOUR_PAGE_PDF_B64, mime: 'application/pdf' }) });
       }
-      if (req.action === 'flightLookup'){
+      if (req.action === 'ticketParse'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
-          body: JSON.stringify(flightLookupFlight ? { status: 'ok', flight: flightLookupFlight } : { status: 'ok' }) });
+          body: JSON.stringify(ticketParseResult || { status:'ok', title:'', start:null, end:null, legs: [] }) });
+      }
+      if (req.action === 'flightLookup'){
+        // byNo：按航班号给不同结果，用来一次跑出「查得到」和「查不到」两种分支
+        const f = (flightLookupFlight && flightLookupFlight.byNo)
+          ? (flightLookupFlight.byNo[req.no] || null)
+          : flightLookupFlight;
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
+          body: JSON.stringify(f ? { status: 'ok', flight: f } : { status: 'ok' }) });
       }
       return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
         body: JSON.stringify({ status: 'ok' }) });
@@ -1347,6 +1355,98 @@ function localAt(daysFromNow, hm, offset){
   ok('已经写成 T3 的不会变成「T3 号航站楼」',
      JSON.stringify(t1) === JSON.stringify(['航站楼 3', 'Terminal 3', '航站楼 2E', '']), t1);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景十三：丢机票进来自动填行程 ----------
+// 分工要守住：AI 只给「航班号 + 日期」，时间必须去查真接口。
+// ① 选完文件 → 发出 ticketParse，且**原件不带进任何写操作**；
+// ② 认出几段就建几个条目，并且每段都真的去查了 flightLookup（带的是 AI 给的号和日期）；
+// ③ 查到的真时间要覆盖票面时间（这是整个设计的重点：不让 AI 报时间）；
+// ④ 【对照组】查不到的那段退回票面时间，并且明确标出来没核对。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin',
+    ticketParseResult: { status:'ok', title:'新加坡小旅行', start:'2026-09-23', end:'2026-09-27',
+      legs: [
+        { flight_no:'SQ157', date:'2026-09-23', from:'KTI', to:'SIN', dep_time:'18:55', terminal:'1' },
+        { flight_no:'SQ156', date:'2026-09-27', from:'SIN', to:'KTI', dep_time:'12:25', terminal:'2' },
+      ] },
+    // 真接口只认得第一段，第二段查不到 —— 一次跑出「覆盖」和「退回票面」两种结果
+    flightLookupFlight: { byNo: { SQ157: { no:'SQ157', date:'2026-09-23', trackId:'tk1', from:'KTI', to:'SIN',
+      from_name:'Phnom Penh Techo', to_name:'Singapore Changi',
+      sched_dep:'2026-09-23 19:40+07:00', sched_arr:'2026-09-23 22:45+08:00',
+      dep_terminal:'3', dep_gate:'B5' } } } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-trips-section')),
+    { what: '管理页渲染完' });
+
+  console.log('\n[场景十三] 丢机票进来自动填行程');
+  ok('管理页有「丢机票进来」的按钮', await page.locator('#admin-ticket-input').count() === 1);
+
+  rec.calls.length = 0;
+  await page.setInputFiles('#admin-ticket-input', {
+    name: 'ticket.pdf', mimeType: 'application/pdf', buffer: Buffer.from(FOUR_PAGE_PDF_B64, 'base64'),
+  });
+  await until(() => rec.calls.some(c => c.action === 'ticketParse'), { what: '发出 ticketParse' });
+  const tp = rec.calls.find(c => c.action === 'ticketParse');
+  ok('文件是以 base64 传上去的', !!(tp.files && tp.files[0] && tp.files[0].contentBase64), Object.keys(tp || {}));
+  ok('带了 mime（PDF 要让后端认得出来）', tp.files[0].mime === 'application/pdf', tp.files[0].mime);
+
+  await until(() => page.evaluate(() => (adminTripsDraft || []).some(t => (t.items || []).length === 2)),
+    { what: '两段航班都建出来' });
+  await until(() => page.evaluate(() =>
+    !!(document.getElementById('admin-ticket-status').textContent || '').match(/已填好/)),
+    { what: '识别流程跑完' });
+
+  const lookups = rec.calls.filter(c => c.action === 'flightLookup');
+  ok('两段都去查了真接口', lookups.length === 2, lookups);
+  ok('查的是 AI 给的号和日期', JSON.stringify(lookups.map(c => c.no + '|' + c.date))
+     === JSON.stringify(['SQ157|2026-09-23', 'SQ156|2026-09-27']), lookups);
+  ok('机票原件没有混进任何一次 flightLookup', lookups.every(c => !c.files && !c.contentBase64), lookups);
+
+  const trip = await page.evaluate(() => adminTripsDraft[adminTripsDraft.length - 1]);
+  ok('行程名用了识别出来的名字', trip.title.zh === '新加坡小旅行', trip.title);
+  ok('起讫日期填好了', trip.start === '2026-09-23' && trip.end === '2026-09-27', trip);
+
+  // ③ 第一段：查到了 → 时间用真数据 19:40，不是票面的 18:55
+  ok('查到的那段用真接口的时间（19:40），不是票面的 18:55',
+     trip.items[0].time === '19:40', trip.items[0]);
+  ok('查到的那段标题换成真接口的机场名', trip.items[0].title.zh.includes('金边德崇'), trip.items[0].title);
+  ok('查到的那段备注是真数据的航站楼 3 ＋ 登机口，不带「票面」字样',
+     trip.items[0].note.zh.includes('3 号航站楼') && trip.items[0].note.zh.includes('B5')
+     && !trip.items[0].note.zh.includes('票面'), trip.items[0].note);
+  ok('查到的那段没有 unresolved 标记', !trip.items[0].flight.unresolved, trip.items[0].flight);
+
+  // ④ 第二段：查不到 → 退回票面时间，并且标明没核对
+  ok('查不到的那段退回票面时间 12:25', trip.items[1].time === '12:25', trip.items[1]);
+  ok('查不到的那段备注保留票面航站楼且注明「票面」',
+     trip.items[1].note.zh.includes('2 号航站楼') && trip.items[1].note.zh.includes('票面'),
+     trip.items[1].note);
+  ok('查不到的那段带 unresolved 标记（界面上会显眼提示）',
+     trip.items[1].flight.unresolved === true, trip.items[1].flight);
+
+  const status = await page.locator('#admin-ticket-status').innerText();
+  ok('状态栏说清楚有几段没核对', status.includes('1 段没查到'), status);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+// ---------- 场景十三之对照组：viewer 身上不能有这个入口 ----------
+// 机票识别会花 AI 额度、而且是写行程的前半段——老板不该有。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.trip-card, .empty-card')),
+    { what: 'viewer 首屏渲染完' });
+  ok('viewer：DOM 里没有机票上传的入口', await page.locator('#admin-ticket-input').count() === 0);
   await ctx.close();
 }
 
