@@ -285,6 +285,7 @@ body:not(.lang-en) .en{display:none !important}
 .flight-lookup-current{font-size:12.5px;color:var(--sub);margin-bottom:8px;display:flex;
   align-items:center;gap:8px;flex-wrap:wrap}
 .flight-lookup-status{margin-top:8px;font-size:12.5px;min-height:16px;color:var(--sub)}
+.admin-btn-ticket{background:var(--p2);color:var(--p)}
 .flight-lookup-date{font-size:12.5px;color:var(--sub);margin:2px 0 8px}
 .flight-lookup-status.err{color:var(--danger)}
 .flight-lookup-status.ok{color:var(--ok)}
@@ -2054,10 +2055,115 @@ function adminTripsSectionHtml(){
   return `<div class="admin-block" id="admin-trips-section">
       <h3>🧳 ${pick('行程管理','Manage Trips')}</h3>
       <div id="admin-trips-list">${inner}</div>
+      <button type="button" class="admin-btn admin-btn-ticket" onclick="adminPickTicket()">📄 ${pick('丢机票进来（PDF／照片，可多选）','Drop in tickets (PDF/photo, multi-select)')}</button>
+      <input type="file" id="admin-ticket-input" accept="application/pdf,image/*" multiple
+        style="display:none" onchange="adminTicketPicked(this)">
+      <div class="admin-status" id="admin-ticket-status"></div>
       <button type="button" class="admin-btn" onclick="adminAddTrip()">+ ${pick('新增行程','Add trip')}</button>
       <button type="button" class="admin-btn" style="margin-top:10px" onclick="adminSaveTripsForm()">💾 ${pick('保存全部行程','Save all trips')}</button>
       <div class="admin-status" id="admin-trips-form-status"></div>
     </div>`;
+}
+
+/* ===================== 机票识别：丢进 PDF/照片，自动生成一趟行程 =====================
+ * 分工是刻意的（2026-08-28 建）：
+ *   AI 只负责认出「航班号 + 日期」——读错了你一眼看得出来；
+ *   时间/航站楼/登机口一律拿这两个去查真航班接口（既有的 flightLookup）。
+ * 反过来让 AI 报时间的话，它会编出一份看起来跟真的一样的资料（这个坑今天刚踩过）。
+ * 票面上的时间照样带回来，但只在真接口查不到时垫底，并且标明「票面」。
+ * ⚠️ 机票原件不上传存档（上面有护照号/订位号），识别完就丢。 */
+let adminTicketBusy = false;
+function adminTicketStatus(msg, cls){
+  const el = document.getElementById('admin-ticket-status');
+  if(!el) return;
+  el.className = 'admin-status' + (cls ? ' ' + cls : '');
+  el.textContent = msg || '';
+}
+function adminPickTicket(){
+  if(adminTicketBusy) return;
+  const el = document.getElementById('admin-ticket-input');
+  if(el){ el.value = ''; el.click(); }
+}
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error('读不出这个文件'));
+    r.onload = () => {
+      const s = String(r.result || '');
+      const i = s.indexOf(',');
+      resolve(i >= 0 ? s.slice(i + 1) : s);
+    };
+    r.readAsDataURL(file);
+  });
+}
+async function adminTicketPicked(input){
+  const files = Array.from((input && input.files) || []);
+  if(!files.length || adminTicketBusy) return;
+  adminTicketBusy = true;
+  adminTicketStatus(pick(`正在识别 ${files.length} 个文件…`, `Reading ${files.length} file(s)…`));
+  try{
+    const payload = [];
+    for(const f of files){
+      payload.push({ contentBase64: await fileToBase64(f), mime: f.type || 'application/octet-stream' });
+    }
+    const res = await bossCall('ticketParse', { files: payload });
+    const legs = (res && res.legs) || [];
+    if(!legs.length){
+      adminTicketStatus(pick('没认出航班号，可能是图太糊或不是机票——手动填一下吧',
+                             'No flights found — the file may be blurry or not a ticket; please fill it in manually'), 'err');
+      return;
+    }
+    adminTicketBuildTrip(res, legs);
+  }catch(err){
+    adminTicketStatus((err && err.message) || pick('识别失败','Failed to read the ticket'), 'err');
+  }finally{
+    adminTicketBusy = false;
+    if(input) input.value = '';
+  }
+}
+/** 把识别出来的航段变成一趟新行程，然后逐段去查真航班资料。 */
+async function adminTicketBuildTrip(res, legs){
+  ensureAdminTripsDraft();
+  const id = 'trip-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const items = legs.map(l => {
+    const route = (l.from && l.to) ? `${l.from} → ${l.to}` : '';
+    // 票面信息先当垫底填上——真接口查到了会被覆盖成真数据（见 adminFlightLookup）
+    const noteZh = l.terminal ? `${terminalLabel(l.terminal, 'zh')}（${pick('票面','from ticket')}）` : '';
+    const noteEn = l.terminal ? `${terminalLabel(l.terminal, 'en')} (from ticket)` : '';
+    return { date: l.date, time: l.dep_time || '', title: { zh: route, en: route },
+             note: { zh: noteZh, en: noteEn }, mapUrl: '',
+             flight: { no: l.flight_no, date: l.date } };
+  });
+  const title = res.title || pick('新行程', 'New trip');
+  adminTripsDraft.push({ id, title: { zh: title, en: '' },
+    start: res.start || (items[0] && items[0].date) || '',
+    end: res.end || (items[items.length - 1] && items[items.length - 1].date) || '',
+    location: { zh: '', en: '' }, guideUrl: '', items });
+  const tripIdx = adminTripsDraft.length - 1;
+  adminExpandedTrip = tripIdx;
+  markTripsDirty();
+  rerenderAdminTripsSection();
+
+  // 逐段查真数据。一段一段来（不并发）：额度是按次算的，也免得同时改同一份草稿。
+  adminTicketStatus(pick(`认出 ${legs.length} 段航班，正在查真实时间…`,
+                         `Found ${legs.length} flight(s) — looking up real times…`));
+  for(let i = 0; i < items.length; i++){
+    delete flightLookupState[`${tripIdx}:${i}`];   // 这是全新的条目，别沿用别人的「查过了」
+    const ticketNote = items[i].note;              // 查成功会整个覆盖 note，先留一份
+    await adminFlightLookup(tripIdx, i);
+    // 真接口没给航站楼、但票面上写了的话，把票面那条留着（标了「票面」，不会被当成已核对）
+    const after = adminTripsDraft[tripIdx].items[i];
+    if(after && ticketNote && ticketNote.zh && !(after.note && after.note.zh)) after.note = ticketNote;
+  }
+  const unresolved = adminTripsDraft[tripIdx].items.filter(it => it.flight && it.flight.unresolved).length;
+  adminTicketStatus(unresolved
+    ? pick(`已填好 ${items.length} 段，其中 ${unresolved} 段没查到真实时间（用的是票面时间，请核对）`,
+           `Filled ${items.length} leg(s); ${unresolved} could not be verified — ticket times used, please check`)
+    : pick(`已填好 ${items.length} 段航班，确认后按「保存全部行程」`,
+           `Filled ${items.length} leg(s) — press "Save all trips" when it looks right`),
+    unresolved ? 'err' : 'ok');
+  const card = document.getElementById('admin-trip-' + tripIdx + '-items');
+  if(card) card.scrollIntoView({ block: 'center' });
 }
 
 /* ============================= 行程表单：增删 ============================= */
@@ -2206,7 +2312,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v24</div>
+    <div class="admin-ver" id="adminVer">boss-app-v25</div>
 
     ${adminTripsSectionHtml()}
 
