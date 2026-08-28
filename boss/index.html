@@ -105,6 +105,10 @@ body:not(.lang-en) .en{display:none !important}
 .flight-info-times{margin-top:6px;display:flex;flex-direction:column;gap:3px;color:var(--text)}
 .flight-time-actual{font-weight:700}
 .flight-delay-tag{margin-left:6px;color:var(--danger);font-weight:700}
+/* 「预计」必须跟「实际」在视觉上分得开——只改措辞不够，颜色一样重的话人照样
+   当成既成事实。预计用灰、不加粗，比计划时间还低调一点。 */
+.flight-time-eta{font-weight:600;opacity:.8}
+.flight-eta-tag{margin-left:6px;color:var(--sub);font-weight:600;font-style:italic}
 .flight-early-tag{margin-left:6px;color:var(--ok);font-weight:700}
 .flight-time-unknown{color:var(--sub)}
 .flight-info-gate{margin-top:6px;color:var(--sub)}
@@ -646,22 +650,61 @@ function flightNoteFromLookup(f){
 }
 /** 起降某一时刻的显示：只有计划时间就显示计划时间；有实际/预计且跟计划不同，
  * 把「实际 HH:MM（延误/提前 N 分）」显眼标出来，跟计划时间同一行方便对照。 */
-function flightTimePartHtml(sched, actualOrEst){
+/** 预测时间只有在起飞前这么久之内才值得显示（毫秒）。
+ *  超出这个范围的 predictedTime 是航司/数据源按历史规律推的，不是真实状况。 */
+const FLIGHT_ETA_HORIZON_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 一段起飞/到达时间怎么显示。
+ *
+ * ⚠️ 教训（2026-08-28，用户当场抓到）：原来写的是 `act || est`，拿不到实际时间就
+ * 退而用预计时间，然后**照样标成「实际 10:12　延误 42 分」**。但 est 来自接口的
+ * `revisedTime || predictedTime`，**predictedTime 在起飞前好几天就有**——用户刚填完
+ * 一个 9 月 1 日的航班（当天才 8 月 28 日），App 就告诉他已经延误了。
+ * 那不是显示错误，是**把一个预测当成既成事实播报给老板**，他可能据此改行程。
+ *
+ * 所以分三种，措辞和把握程度必须对得上：
+ * 1. 有 act（真的飞了/落了）→「实际 HH:MM」＋「延误/提前 N 分」，这是事实；
+ * 2. 只有 est 且距计划时间在 24 小时内 →「预计 HH:MM」＋「预计晚 N 分」，讲明是预计；
+ * 3. 只有 est 但还早（超过 24 小时）→ **只显示计划时间**，不提预计也不提延误。
+ *    这么早的预测是按历史规律推的，摆出来只会让人白紧张、甚至误判。
+ */
+function flightTimePartHtml(sched, act, est){
   const schedHM = extractHM(sched);
-  if(!actualOrEst){
-    return schedHM || `<span class="flight-time-unknown">${bl('时间未知','time unknown')}</span>`;
-  }
-  const actualHM = extractHM(actualOrEst);
-  if(!actualHM || actualHM === schedHM) return schedHM;
   const schedTs = parseOffsetTs(sched);
-  const actTs = parseOffsetTs(actualOrEst);
-  let delayHtml = '';
-  if(schedTs != null && actTs != null){
-    const diffMin = Math.round((actTs - schedTs) / 60000);
-    if(diffMin > 0) delayHtml = `<span class="flight-delay-tag">${bl(`延误 ${diffMin} 分`, `${diffMin} min late`)}</span>`;
-    else if(diffMin < 0) delayHtml = `<span class="flight-early-tag">${bl(`提前 ${-diffMin} 分`, `${-diffMin} min early`)}</span>`;
+  const plain = schedHM || `<span class="flight-time-unknown">${bl('时间未知','time unknown')}</span>`;
+
+  let value = act, isActual = true;
+  if(!value){
+    value = est; isActual = false;
+    // 还早的预测不显示（见上面第 3 种）。算不出计划时间戳时保守处理：也不显示预测。
+    if(value){
+      if(schedTs == null) value = null;
+      else if(schedTs - Date.now() > FLIGHT_ETA_HORIZON_MS) value = null;
+    }
   }
-  return `<span class="flight-time-sched">${schedHM}</span> → <span class="flight-time-actual">${bl('实际','Actual')} ${actualHM}</span>${delayHtml}`;
+  if(!value) return plain;
+
+  const valueHM = extractHM(value);
+  if(!valueHM || valueHM === schedHM) return plain;
+  const valueTs = parseOffsetTs(value);
+
+  let diffHtml = '';
+  if(schedTs != null && valueTs != null){
+    const diffMin = Math.round((valueTs - schedTs) / 60000);
+    if(diffMin > 0){
+      diffHtml = isActual
+        ? `<span class="flight-delay-tag">${bl(`延误 ${diffMin} 分`, `${diffMin} min late`)}</span>`
+        : `<span class="flight-eta-tag">${bl(`预计晚 ${diffMin} 分`, `est. ${diffMin} min late`)}</span>`;
+    }else if(diffMin < 0){
+      diffHtml = isActual
+        ? `<span class="flight-early-tag">${bl(`提前 ${-diffMin} 分`, `${-diffMin} min early`)}</span>`
+        : `<span class="flight-eta-tag">${bl(`预计早 ${-diffMin} 分`, `est. ${-diffMin} min early`)}</span>`;
+    }
+  }
+  const label = isActual ? bl('实际','Actual') : bl('预计','Est.');
+  const cls = isActual ? 'flight-time-actual' : 'flight-time-eta';
+  return `<span class="flight-time-sched">${schedHM}</span> → <span class="${cls}">${label} ${valueHM}</span>${diffHtml}`;
 }
 function flightStatusMeta(status){
   const s = String(status || '').toLowerCase();
@@ -694,8 +737,8 @@ function flightInfoHtml(it){
         <span class="flight-status flight-status-${meta.cls}">${bl(meta.zh, meta.en)}</span>
       </div>
       <div class="flight-info-times">
-        <div>${bl('起飞','Dep')} ${flightTimePartHtml(live.sched_dep, live.act_dep || live.est_dep)}</div>
-        <div>${bl('到达','Arr')} ${flightTimePartHtml(live.sched_arr, live.act_arr || live.est_arr)}</div>
+        <div>${bl('起飞','Dep')} ${flightTimePartHtml(live.sched_dep, live.act_dep, live.est_dep)}</div>
+        <div>${bl('到达','Arr')} ${flightTimePartHtml(live.sched_arr, live.act_arr, live.est_arr)}</div>
       </div>
       ${ gateBits.length ? `<div class="flight-info-gate">${gateBits.join(' · ')}</div>` : '' }
     </div>`;
