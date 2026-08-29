@@ -58,6 +58,7 @@ CHECKS = [
     ("workflows", ["python3", "tools/check-workflows.py"], False),
     ("gamebot", ["python3", "tools/check-gamebot.py"], False),
     ("gamebot-logic", ["node", "tools/check-gamebot-logic.mjs"], False),
+    ("boss-sw", ["node", "tools/check-boss-sw.mjs"], False),
     ("fund", ["node", "tools/check-fund.mjs"], True),
     ("weather", ["node", "tools/check-weather.mjs"], True),
     ("company", ["node", "tools/check-expense-company.mjs"], True),

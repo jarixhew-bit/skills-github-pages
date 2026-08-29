@@ -40,6 +40,7 @@ jobs:
       company: ${{ steps.d.outputs.company }}
       inventory: ${{ steps.d.outputs.inventory }}
       boss: ${{ steps.d.outputs.boss }}
+      bosssw: ${{ steps.d.outputs.bosssw }}
       fund: ${{ steps.d.outputs.fund }}
       news: ${{ steps.d.outputs.news }}
       prices: ${{ steps.d.outputs.prices }}
@@ -278,6 +279,17 @@ jobs:
       # 语法检查看不出「板块失败会不会把后面带塌」这类行为问题，这个看得出。
       - run: node tools/check-gamebot-logic.mjs
 
+  boss-sw:
+    name: 老板 App 的 Service Worker
+    needs: decide
+    if: needs.decide.outputs.bosssw == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 推送事件没法从 Playwright 那边发出来，所以 SW 里最要紧的那段
+      # （收到推送怎么弹通知）只能打桩单独跑。
+      - run: node tools/check-boss-sw.mjs
+
   # 总闸：给分支保护用的唯一一个必过项目。
   #
   # 为什么需要它（2026-08-11）：上面十个 job 会按改动路径跳过用不到的，而分支保护
@@ -293,7 +305,7 @@ jobs:
     # 这一串必须列满同一个文件里的每个 job：漏掉的那项红了总闸照样绿、分支保护会放行
     # （2026-08-17 发现 fund 与 news 从来没被列进来）。已由 check-workflows.py 的
     # check_gate 断言守着，加 job 忘了回头改这里会在 CI 上被挡下。
-    needs: [decide, html, secrets, pwa, swver, ainote, declog, notify, morningpos, generated, rules, workflows, company, inventory, boss, staff, gamebot, fund, news, prices, weather]
+    needs: [decide, html, secrets, pwa, swver, ainote, declog, notify, morningpos, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, news, prices, weather]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——
