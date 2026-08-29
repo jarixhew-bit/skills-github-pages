@@ -1075,13 +1075,40 @@ async function gotoTab(page, tab){
   await until(() => page.evaluate(() => !!document.getElementById('admin-trips-section')),
     { what: 'admin 管理页渲染完' });
 
-  ok('admin：整个页面里没有推送条', await page.locator('#pushBar').count() === 0);
+  ok('admin：整个页面里没有顶部推送条', await page.locator('#pushBar').count() === 0);
   ok('admin：管理页那个插槽也一并拿掉了', await page.locator('#adminPushSlot').count() === 0);
-  ok('admin：看不到「开启通知」这几个字',
-     (await page.locator('#tab-admin').innerText()).includes('开启通知') === false);
-  // 订阅状态变化也不该把它招回来（refreshPushSubscriptionState 会再调一次 ensurePushUI）
+  // 订阅状态变化也不该把顶部那条招回来（refreshPushSubscriptionState 会再调一次 ensurePushUI）
   await page.evaluate(() => { pushSubscription = null; ensurePushUI(); });
-  ok('admin：刷新推送状态后也没冒出来', await page.locator('#pushBar').count() === 0);
+  ok('admin：刷新推送状态后顶部也没冒出来', await page.locator('#pushBar').count() === 0);
+
+  // 2026-08-29：上一版删过头了——顶部那条该删，但他自己那台机器的订阅被 FCM 判 410
+  // 失效之后，手上**没有任何入口**能重开。所以管理页里要有一个安静的开关（一行，
+  // 不是杵在首页的待办卡片）。这两组断言合起来才是完整的意思：
+  //   顶部不许有（上面）＋ 管理页必须有（下面）。
+  ok('admin：管理页里有通知开关（订阅失效了要能自己重开）',
+     await page.locator('#admin-push-btn').count() === 1);
+  ok('admin：开关旁边写着当前状态',
+     await page.locator('#admin-push-state').count() === 1);
+  const pushSecCn = (await page.locator('#admin-push-section .cn').allTextContents()).join(' ')
+    || (await page.locator('#admin-push-section').innerText());
+  ok('admin：未订阅时状态显示「未开启」、按钮写「开启」',
+     /未开启/.test(pushSecCn) && /开启/.test(await page.locator('#admin-push-btn').innerText()), pushSecCn);
+  ok('admin：写明了订阅可能失效、收不到就回来按一次',
+     /失效/.test(pushSecCn), pushSecCn);
+
+  // 订阅上了之后，同一行要变成「已开启／关闭」，而且**不重建整个管理页**
+  // （重建会把正在编辑的行程表单冲掉）
+  await page.evaluate(() => {
+    document.getElementById('admin-trips-section').setAttribute('data-probe', '1');
+    pushSubscription = { endpoint: 'https://push.example.com/x' };
+    ensurePushUI();
+  });
+  ok('admin：订阅后状态变「已开启」',
+     /已开启/.test(await page.locator('#admin-push-state').innerText()));
+  ok('admin：按钮变成「关闭」',
+     /关闭/.test(await page.locator('#admin-push-btn').innerText()));
+  ok('admin：只重画那一行，没把整个管理页（连同正在编辑的表单）重建掉',
+     await page.locator('#admin-trips-section[data-probe="1"]').count() === 1);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
