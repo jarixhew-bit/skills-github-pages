@@ -1067,6 +1067,9 @@ async function gotoTab(page, tab){
 {
   const ctx = await browser.newContext();
   await forceZh(ctx);
+  // 「试一下本机通知」那条要真的走到 showNotification，得先有通知权限——
+  // 不给的话它会停在「权限没给」那一步，验不到我们要验的东西。
+  await ctx.grantPermissions(['notifications'], { origin: `http://localhost:${PORT}` });
   mountRoutes(ctx, { role: 'admin' });
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
@@ -1109,6 +1112,25 @@ async function gotoTab(page, tab){
      /关闭/.test(await page.locator('#admin-push-btn').innerText()));
   ok('admin：只重画那一行，没把整个管理页（连同正在编辑的表单）重建掉',
      await page.locator('#admin-trips-section[data-probe="1"]').count() === 1);
+
+  // 2026-08-29：FCM 回 201 但手机什么都没跳。光看服务端分不出是「投递没到」还是
+  // 「显示被挡」，所以要有一个绕开推送服务、直接让本机 SW 弹一条的按钮。
+  ok('admin：有「试一下本机通知」按钮（把显示和投递拆开查）',
+     await page.locator('#admin-push-local-btn').count() === 1);
+  // 点了要真的调 registration.showNotification，而不是只改一行字充数
+  const localFired = await page.evaluate(async () => {
+    const reg = await navigator.serviceWorker.ready.catch(() => null);
+    if(!reg) return 'no-sw';
+    let called = null;
+    reg.showNotification = (title, opts) => { called = { title, body: opts && opts.body }; return Promise.resolve(); };
+    await adminTestLocalNotification();
+    return called;
+  });
+  ok('admin：点了确实调用了 showNotification（不是只改一行提示文字）',
+     localFired && localFired.title && /本机通知测试/.test(localFired.title), localFired);
+  ok('admin：弹完给出的说明能把「没看到」指向正确的方向',
+     /手机\/浏览器挡掉|通知栏/.test(await page.locator('#admin-push-local-status').innerText()),
+     await page.locator('#admin-push-local-status').innerText());
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
