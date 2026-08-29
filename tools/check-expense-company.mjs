@@ -50,6 +50,21 @@ async function untilWriteback(page, evalFn, what) {
   await until(() => page.evaluate(evalFn), { what: what || '服务端回应写回本机记录' });
 }
 
+/** fill() 之后确认值真的留在框里——页面可能在两次操作之间重渲染把输入清掉
+ *  （2026-08-29：check-all 并行跑时「描述作为备注送出」偶发假红，单独跑就过）。
+ *  值没留住就补填一次，再等它稳定；等条件而不是等固定时长。 */
+async function fillStable(page, sel, val) {
+  await page.fill(sel, val);
+  try {
+    await until(async () => (await page.inputValue(sel)) === val,
+      { timeout: 2000, what: `${sel} 的值稳定在「${val}」` });
+  } catch (e) {
+    await page.fill(sel, val);
+    await until(async () => (await page.inputValue(sel)) === val,
+      { what: `${sel} 补填后的值稳定在「${val}」` });
+  }
+}
+
 const ok = (n, c, got) => {
   if (c) { pass++; console.log(`  ✅ ${n}`); }
   else { fails.push(n); console.log(`  ❌ ${n} — 实际: ${JSON.stringify(got)}`); }
@@ -432,11 +447,16 @@ const browser = await chromium.launch(launchOpts);
   ok('清单里没有 Boss（买给老板的餐走「这一餐算谁的」那个开关）',
      !repOpts.some(o=>o.v==='Boss'), repOpts);
 
-  await page.fill('#tx-amount', '12.34');
-  await page.fill('#tx-desc', '跟客户午餐');
+  await fillStable(page, '#tx-amount', '12.34');
+  await fillStable(page, '#tx-desc', '跟客户午餐');
   await page.selectOption('#tx-company-category', 'Lunch');
   await page.selectOption('#tx-company-reporter', 'Seryi');
-  await page.fill('#tx-company-reftag', '7');
+  await fillStable(page, '#tx-company-reftag', '7');
+  // 送出前再确认一次这几格都还在——重渲染清空过就会在这里被逮到，而不是
+  // 让断言在「note 是空的」上假红，看不出真因。
+  await until(async () => (await page.inputValue('#tx-desc')) === '跟客户午餐'
+    && (await page.inputValue('#tx-amount')) === '12.34',
+    { what: '金额与描述在送出前都还在框里' });
   const _sent1 = posted.length;
   await page.evaluate(()=>saveTx());
   await until(() => posted.length > _sent1, { what: '这一笔送到服务端' });

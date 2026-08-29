@@ -270,7 +270,24 @@ body:not(.lang-en) .en{display:none !important}
 .admin-item-editor{margin-top:4px}
 .admin-item-row{border:1.5px solid var(--border);border-radius:10px;padding:12px;
   margin-bottom:10px;background:#fff}
-.admin-item-warn{color:var(--danger);font-size:12px;margin:2px 0 8px;font-weight:600}
+.admin-item-warn{display:block;width:100%;text-align:left;background:none;border:0;padding:2px 0;
+  color:var(--danger);font-size:12px;margin:2px 0 8px;font-weight:600;cursor:pointer;font-family:inherit}
+.admin-item-warn:hover{text-decoration:underline}
+.admin-day-hdr{display:flex;align-items:center;gap:8px;margin:14px 0 6px;padding:5px 10px;
+  background:var(--p2);border-radius:8px;font-size:12.5px;font-weight:700;color:var(--sub)}
+.admin-day-hdr-warn{background:#fdecec;color:var(--danger)}
+.admin-day-nth{margin-left:auto;font-weight:600;opacity:.75}
+.admin-err-hd{font-weight:700;margin-bottom:6px}
+.admin-err-item{display:block;width:100%;text-align:left;margin:4px 0;padding:8px 10px;
+  background:#fdecec;border:1px solid rgba(0,0,0,.06);border-radius:8px;color:var(--danger);
+  font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.admin-err-item:hover{filter:brightness(.97)}
+.admin-err-go{float:right;opacity:.8;font-weight:700}
+.admin-jump-flash{animation:adminFlash 1.6s ease-out 1}
+@keyframes adminFlash{
+  0%,100%{box-shadow:0 0 0 0 rgba(214,69,65,0)}
+  15%,60%{box-shadow:0 0 0 3px rgba(214,69,65,.45)}
+}
 .admin-btn-sm{padding:7px 12px;border:none;border-radius:8px;background:var(--p2);color:var(--p);
   font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;flex:none}
 .admin-btn-sm-danger{background:#FDECEA;color:var(--danger)}
@@ -1780,7 +1797,9 @@ function adminItemRowHtml(trip, tripIdx, itemIdx){
     </div>
     <details class="admin-item-more" id="admin-item-${tripIdx}-${itemIdx}-more"${hasExtra ? ' open' : ''}>
       <summary>⋯ ${pick('更多','More')}${extraBadge}</summary>
-      <div id="admin-item-${tripIdx}-${itemIdx}-warn" class="admin-item-warn" style="${dateWarn?'':'display:none'}">${escapeHtml(dateWarn ? pick(dateWarn.zh, dateWarn.en) : '')}</div>
+      <button type="button" id="admin-item-${tripIdx}-${itemIdx}-warn" class="admin-item-warn"
+        onclick="adminFocusItemField(${tripIdx},${itemIdx},'date')"
+        style="${dateWarn?'':'display:none'}">${escapeHtml(dateWarn ? pick(dateWarn.zh, dateWarn.en) : '')}</button>
       <div class="admin-field"><label>${pick('日期','Date')}</label>
         <input type="date" id="admin-item-${tripIdx}-${itemIdx}-date" value="${escapeHtml(it.date||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'date',this.value)"></div>
       <div class="admin-field"><label>${pick('备注（选填）','Note (optional)')}</label>
@@ -1989,6 +2008,27 @@ function adminTripMoreHtml(trip, idx){
         <input type="text" data-trip="${idx}" data-field="location.zh" value="${escapeHtml(trip.location && trip.location.zh || '')}" oninput="adminTripFieldInput(this)"></div>
     </details>`;
 }
+/** 某个日期是这趟行程的第几天（从出发日算起，出发日 = 第 1 天）；算不出就返回 null。 */
+function dayNumberInTrip(trip, dateIso){
+  if(!trip || !trip.start || !dateIso) return null;
+  const a = Date.parse(trip.start + 'T00:00:00Z');
+  const b = Date.parse(dateIso + 'T00:00:00Z');
+  if(isNaN(a) || isNaN(b)) return null;
+  const n = Math.round((b - a) / 86400000) + 1;
+  return n >= 1 ? n : null; // 早于出发日（前站）就不编号，免得出现「第 0 天」
+}
+/** 直接把某个条目的某个输入框推到眼前：展开「更多」、滚过去、聚焦、闪一下。 */
+function adminFocusItemField(tripIdx, itemIdx, field){
+  const more = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-more`);
+  if(more) more.open = true;
+  const el = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-${field}`);
+  if(!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  try{ el.focus({ preventScroll: true }); }catch(e){ try{ el.focus(); }catch(e2){} }
+  el.classList.remove('admin-jump-flash');
+  void el.offsetWidth;
+  el.classList.add('admin-jump-flash');
+}
 function adminItemsListHtml(trip, tripIdx){
   const items = trip.items || [];
   if(!items.length){
@@ -2005,7 +2045,25 @@ function adminItemsListHtml(trip, tripIdx){
     if((ia.date||'') !== (ib.date||'')) return (ia.date||'').localeCompare(ib.date||'');
     return (ia.time||'').localeCompare(ib.time||'');
   });
-  return order.map(i => adminItemRowHtml(trip, tripIdx, i)).join('');
+  // 插日期分隔条：一趟行程填到四五条以上，条目长得一模一样，很容易串行
+  // （2026-08-29 用户：「我每次填 4-5 个以上都会搞混」）。跟老板端的行程页同一个做法。
+  let lastDate = null;
+  let html = '';
+  order.forEach(i => {
+    const d = (items[i].date || '').trim();
+    if(d !== lastDate){
+      lastDate = d;
+      const dw = d ? fmtDateWeekdayBoth(d) : null;
+      const label = dw ? pick(dw.zh, dw.en) : pick('还没填日期','No date yet');
+      const nth = d && trip.start ? dayNumberInTrip(trip, d) : null;
+      html += `<div class="admin-day-hdr${d ? '' : ' admin-day-hdr-warn'}">
+          <span>${escapeHtml(label)}</span>
+          ${nth ? `<span class="admin-day-nth">${pick('第 ' + nth + ' 天', 'Day ' + nth)}</span>` : ''}
+        </div>`;
+    }
+    html += adminItemRowHtml(trip, tripIdx, i);
+  });
+  return html;
 }
 function adminTripFormHtml(trip, idx){
   const guideCur = trip.guideUrl || '';
@@ -2270,16 +2328,19 @@ function isEmptyTripItem(it){
   // 用户完全不知道自己填过东西（2026-08-28：这正是这次事故「失败无声」的另一种翻版）。
   return !hasTitle && !hasNote && !(it.time||'').trim() && !(it.mapUrl||'').trim() && !it.flight;
 }
+/** 每条错误都带「在哪儿」，保存被拦下时才能做成可点击的跳转
+ *  （2026-08-29 用户：「有什么填了显示警告的地方，直接跳转去那个错误的地方能吗」）。 */
 function adminValidateTripsDraft(){
   const errors = [];
   adminTripsDraft.forEach((t, idx) => {
     const label = (t.title && (t.title.zh || t.title.en)) || pick('第 ' + (idx+1) + ' 个行程', 'Trip #' + (idx+1));
+    const push = (msg, where) => errors.push(Object.assign({ msg: msg, tripIdx: idx }, where || {}));
     const hasTitle = !!((t.title && (t.title.zh||'').trim()) || (t.title && (t.title.en||'').trim()));
-    if(!hasTitle) errors.push(pick(label + '：标题不能为空', label + ': title cannot be empty'));
-    if(!t.start) errors.push(pick(label + '：请填开始日期', label + ': please fill in the start date'));
-    if(!t.end) errors.push(pick(label + '：请填结束日期', label + ': please fill in the end date'));
+    if(!hasTitle) push(pick(label + '：标题不能为空', label + ': title cannot be empty'), { tripField: 'title.zh' });
+    if(!t.start) push(pick(label + '：请填开始日期', label + ': please fill in the start date'), { tripField: 'start' });
+    if(!t.end) push(pick(label + '：请填结束日期', label + ': please fill in the end date'), { tripField: 'end' });
     if(t.start && t.end && t.end < t.start){
-      errors.push(pick(label + '：结束日期不能早于开始日期', label + ': end date cannot be before the start date'));
+      push(pick(label + '：结束日期不能早于开始日期', label + ': end date cannot be before the start date'), { tripField: 'end' });
     }
     // 填了内容却没日期的条目：拦下来，不许存。老板的「今日」分页是按日期抓条目的，
     // 没日期的条目在那里永远不会出现，行程里也只掉进「日期待定」一组——存进去等于
@@ -2288,20 +2349,61 @@ function adminValidateTripsDraft(){
       if(isEmptyTripItem(it)) return;
       if((it.date||'').trim()) return;
       const name = (it.title && (it.title.zh || it.title.en)) || (it.time||'') || pick('某个条目','an item');
-      errors.push(pick(`${label}：「${name}」还没填日期`, `${label}: "${name}" has no date yet`));
+      push(pick(`${label}：「${name}」还没填日期`, `${label}: "${name}" has no date yet`),
+           { itemIdx: (t.items || []).indexOf(it), itemField: 'date' });
     });
   });
   return errors;
+}
+/** 保存被拦下时记住每条错误在哪儿，供 adminJumpToError() 用。 */
+let adminSaveErrors = [];
+/** 跳到出问题的那个输入框：先把行程展开、把「更多」打开，再滚过去、聚焦、闪一下。
+ *  「闪一下」不是装饰——手机屏幕小，滚过去之后不给个记号，人不知道该看哪一格。 */
+function adminJumpToError(i){
+  const e = adminSaveErrors[i];
+  if(!e) return;
+  const go = () => {
+    let el = null;
+    if(e.itemField != null && e.itemIdx != null){
+      const more = document.getElementById(`admin-item-${e.tripIdx}-${e.itemIdx}-more`);
+      if(more) more.open = true;
+      el = document.getElementById(`admin-item-${e.tripIdx}-${e.itemIdx}-${e.itemField}`);
+    }else if(e.tripField){
+      el = document.querySelector(`input[data-trip="${e.tripIdx}"][data-field="${e.tripField}"]`);
+    }
+    if(!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    try{ el.focus({ preventScroll: true }); }catch(err){ try{ el.focus(); }catch(e2){} }
+    el.classList.remove('admin-jump-flash');
+    void el.offsetWidth; // 强制重排，同一个元素连点两次也要重新播动画
+    el.classList.add('admin-jump-flash');
+  };
+  if(adminExpandedTrip !== e.tripIdx){
+    adminExpandedTrip = e.tripIdx;
+    rerenderAdminTripsSection();
+    // 重渲染是同步的，但 <details>/滚动要等这一帧画完才有正确位置
+    requestAnimationFrame(go);
+  }else{
+    go();
+  }
 }
 async function adminSaveTripsForm(){
   ensureAdminTripsDraft();
   const statusEl = document.getElementById('admin-trips-form-status');
   const errors = adminValidateTripsDraft();
   if(errors.length){
+    // 每条错误做成可点的一行：点了直接跳到出问题的那个输入框并高亮
+    // ——不能只报「某某没填」然后让人自己在 5 个条目里翻。
     statusEl.className = 'admin-status err';
-    statusEl.textContent = errors.join('；');
+    adminSaveErrors = errors;
+    statusEl.innerHTML = `<div class="admin-err-hd">${pick('还差这些才能存：','Fix these before saving:')}</div>` +
+      errors.map((e, i) => `<button type="button" class="admin-err-item" onclick="adminJumpToError(${i})">
+          ${escapeHtml(e.msg)} <span class="admin-err-go">${pick('去修 ›','fix ›')}</span>
+        </button>`).join('');
+    adminJumpToError(0); // 直接把人送到第一个问题跟前，不用自己找
     return;
   }
+  adminSaveErrors = [];
   statusEl.className = 'admin-status';
   statusEl.textContent = pick('保存中…','Saving…');
 
@@ -2351,7 +2453,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v26</div>
+    <div class="admin-ver" id="adminVer">boss-app-v27</div>
 
     ${adminTripsSectionHtml()}
 
@@ -2473,6 +2575,19 @@ async function refreshFeed(){
 function pushSupported(){
   return ('serviceWorker' in navigator) && ('PushManager' in window) && (typeof Notification !== 'undefined');
 }
+/** iPhone / iPad。iPadOS 13+ 的 Safari 谎报成 Macintosh，靠触点数补一刀。 */
+function isIosLike(){
+  try{
+    const ua = navigator.userAgent || '';
+    return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1);
+  }catch(e){ return false; }
+}
+/** iOS 上「还没加到主屏」时，window.PushManager 根本不存在——pushSupported() 是 false，
+ *  于是整条提示被移除，老板打开 Safari 什么都看不到，也就永远不知道要先加到主屏。
+ *  这个函数专门认这种情况：现在不支持，但装上就支持。 */
+function pushNeedsInstallFirst(){
+  return !pushSupported() && isIosLike() && !isStandalonePwa();
+}
 /** iOS 硬约束：只有「已加到主屏」的 PWA 才能收 Web Push。 */
 function isStandalonePwa(){
   try{
@@ -2498,6 +2613,11 @@ async function refreshPushSubscriptionState(){
   }catch(e){ pushSubscription = null; }
   ensurePushUI();
 }
+/** 顶部提示条的 × —— 这条只有 viewer（老板）看得到，一律给 ×。 */
+function dismissBtnHtml(){
+  return `<button type="button" class="push-dismiss" onclick="dismissPushBar()"
+       aria-label="${bl('关掉这条提示','Dismiss')}" title="${bl('关掉这条提示','Dismiss')}">×</button>`;
+}
 function pushBarInnerHtml(){
   const subscribed = !!pushSubscription;
   // 已经开好了：不再画那张「🔔 推送通知 ［关闭通知］」的卡片，只留一行灰字＋一个
@@ -2506,6 +2626,18 @@ function pushBarInnerHtml(){
     return `<div class="push-mini">${bl('通知已开启','Notifications are on')}
       <button type="button" id="pushToggleBtn" onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${bl('关闭','turn off')}</button>
     </div>`;
+  }
+  if(pushNeedsInstallFirst()){
+    // 没有开关按钮：这个环境里点它必定失败（Notification/PushManager 都不存在）。
+    // 给的是唯一有用的下一步——先加到主屏。
+    return `<div class="push-row">
+        <div class="push-label">🔔 ${bl('推送通知','Notifications')}</div>
+        ${dismissBtnHtml()}
+      </div>
+      <div class="push-hint">${bl(
+        'iPhone 要先把这个 App 加到主屏才能收通知：点下面那排的「分享」→「添加到主屏幕」，之后从主屏图标打开再来开通知。',
+        'On iPhone you must add this app to the Home Screen first: tap Share → Add to Home Screen, then open it from the Home Screen icon and turn notifications on.')}
+        <a href="install.html" target="_blank" rel="noopener">${bl('安装说明','install guide')}</a></div>`;
   }
   const denied = (typeof Notification !== 'undefined' && Notification.permission === 'denied');
   const needStandalone = !isStandalonePwa();
@@ -2522,8 +2654,7 @@ function pushBarInnerHtml(){
   }
   const btnLabel = subscribed ? bl('关闭通知','Turn off') : bl('开启通知','Turn on');
   // 这条只有 viewer（老板）看得到，一律给 ×
-  const dismissBtn = `<button type="button" class="push-dismiss" onclick="dismissPushBar()"
-       aria-label="${bl('关掉这条提示','Dismiss')}" title="${bl('关掉这条提示','Dismiss')}">×</button>`;
+  const dismissBtn = dismissBtnHtml();
 
   return `<div class="push-row">
       <div class="push-label">🔔 ${bl('推送通知','Notifications')}</div>
@@ -2537,7 +2668,7 @@ function ensurePushUI(){
   const app = document.getElementById('app');
   if(!app) return;
   let bar = document.getElementById('pushBar');
-  if(!pushSupported()){
+  if(!pushSupported() && !pushNeedsInstallFirst()){
     if(bar) bar.remove();
     return;
   }
