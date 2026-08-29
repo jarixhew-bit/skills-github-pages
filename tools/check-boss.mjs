@@ -472,7 +472,9 @@ async function gotoTab(page, tab){
   // 跟紧凑行是兄弟节点、不再是 .admin-item-row 的子元素——按委派说明「先展开再断言，
   // 不弱化」：展开第一条（下标 0，两个条目里较早那个）的「更多」，改用外层
   // .admin-item-wrap（涵盖紧凑行＋更多两块）作查找范围，日期/时间/标题三样仍然都要有。
-  await page.click(`#admin-item-${idx}-0-more summary`);
+  // 「更多」可能已经自动展开（没填日期时会自动打开），这里用 open=true 确保展开，
+  // 不能用 click——已经开着的话点一下反而会收起来。
+  await page.evaluate(id => { const d = document.getElementById(id); if(d) d.open = true; }, `admin-item-${idx}-0-more`);
   const wrap = page.locator('.admin-item-wrap').first();
   ok('条目有日期输入框', await wrap.locator('input[type="date"]').count() >= 1);
   ok('条目有时间输入框', await wrap.locator('input[type="time"]').count() >= 1);
@@ -501,7 +503,9 @@ async function gotoTab(page, tab){
   // adminAddTrip() 自带一条空条目，下标 0——2026-08-28 简化表单后地点名称挪进了
   // 「更多」，默认收起（内容全空，没有东西可藏）。按委派说明「先展开再断言，不弱化」，
   // 这里先点开「更多」再定位地点输入框（换成 id，不再靠 .admin-field 在行内的位置）。
-  await page.click(`#admin-item-${idx10}-0-more summary`);
+  // 「更多」可能已经自动展开（没填日期时会自动打开），这里用 open=true 确保展开，
+  // 不能用 click——已经开着的话点一下反而会收起来。
+  await page.evaluate(id => { const d = document.getElementById(id); if(d) d.open = true; }, `admin-item-${idx10}-0-more`);
   const mapInput = page.locator(`#admin-item-${idx10}-0-map`);
   await mapInput.fill('大阪城');
   await mapInput.dispatchEvent('change');
@@ -581,7 +585,9 @@ async function gotoTab(page, tab){
   // adminAddTrip() 自带一条空条目，下标 0——不用再点「新增条目」，直接用它。
   // 「更多」默认收起（内容全空），先展开才能填日期和地点（委派说明允许的「先展开
   // 再断言」，选择器从 .admin-field 的相对位置换成明确 id，不再依赖行内顺序）。
-  await page.click(`#admin-item-${idx14}-0-more summary`);
+  // 「更多」可能已经自动展开（没填日期时会自动打开），这里用 open=true 确保展开，
+  // 不能用 click——已经开着的话点一下反而会收起来。
+  await page.evaluate(id => { const d = document.getElementById(id); if(d) d.open = true; }, `admin-item-${idx14}-0-more`);
   const row = page.locator('.admin-item-row').first();
   await page.fill(`#admin-item-${idx14}-0-date`, '2026-09-01');
   await row.locator('input[type="text"]').first().fill('入住酒店'); // 标题（中文）
@@ -816,7 +822,9 @@ async function gotoTab(page, tab){
      await page.locator(`#admin-item-${idx22}-0-map`).isVisible() === false);
 
   console.log('\n【24】点开「更多」后，日期／备注／地点名称／航班日期才出现');
-  await page.click(`#admin-item-${idx22}-0-more summary`);
+  // 「更多」可能已经自动展开（没填日期时会自动打开），这里用 open=true 确保展开，
+  // 不能用 click——已经开着的话点一下反而会收起来。
+  await page.evaluate(id => { const d = document.getElementById(id); if(d) d.open = true; }, `admin-item-${idx22}-0-more`);
   ok('点开「更多」后地点输入框可见了', await page.locator(`#admin-item-${idx22}-0-map`).isVisible() === true);
   ok('点开「更多」后日期输入框可见了', await page.locator(`#admin-item-${idx22}-0-date`).isVisible() === true);
   ok('点开「更多」后备注输入框可见了', await page.locator(`#admin-item-${idx22}-0-note-zh`).isVisible() === true);
@@ -1447,6 +1455,97 @@ function localAt(daysFromNow, hm, offset){
   await until(() => page.evaluate(() => !!document.querySelector('.trip-card, .empty-card')),
     { what: 'viewer 首屏渲染完' });
   ok('viewer：DOM 里没有机票上传的入口', await page.locator('#admin-ticket-input').count() === 0);
+  await ctx.close();
+}
+
+// ---------- 场景十五：条目没填日期，必须当场看得见 ----------
+// 2026-08-29 收工体检时在真实数据里逮到两条没日期的条目（「出发机场」「金边家里出发」）。
+// 后果不是显示难看，是**老板的「今日」分页永远不会显示它们**——那一页是按 it.date
+// 抓当天条目的。成因：日期框收在「更多」里默认收起，空着又不报警，填的人看不见。
+// 这一节守「空日期要报警＋自动展开」，并带**对照组**（日期正常的条目不能误报，
+// 否则警告到处都是等于没有警告）。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const noDateTrips = [{
+    id: 't1', title: { zh: '测试行程', en: '' }, start: '2026-09-01', end: '2026-09-03',
+    location: { zh: '', en: '' },
+    items: [
+      { date: '', time: '10:30', title: { zh: '出发机场', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+      { date: '2026-09-01', time: '13:30', title: { zh: '午餐', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+    ],
+  }];
+  const rec = mountRoutes(ctx, { role: 'admin', trips: noDateTrips });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await page.evaluate(() => adminExpandTrip(0));
+  await until(async () => (await page.locator('#admin-item-0-0-date').count()) === 1,
+    { what: '条目表单出现' });
+
+  console.log('\n【没填日期的条目】');
+  const noDate = await page.evaluate(() => {
+    const warn = document.getElementById('admin-item-0-0-warn');
+    const more = document.getElementById('admin-item-0-0-more');
+    return {
+      warnShown: warn && warn.style.display !== 'none',
+      warnTxt: warn ? (warn.textContent || '').trim() : '',
+      moreOpen: !!(more && more.open),
+      badge: more ? ((more.querySelector('.admin-more-badge') || {}).textContent || '').trim() : '',
+    };
+  });
+  ok('空日期：警告是显示出来的', noDate.warnShown, noDate);
+  ok('空日期：警告说清楚后果——不会出现在「今日」', /今日/.test(noDate.warnTxt), noDate.warnTxt);
+  ok('空日期：「更多」自动展开，日期框不再藏着', noDate.moreOpen, noDate);
+  ok('空日期：折叠条上有 ⚠️ 提示', noDate.badge.includes('⚠️'), noDate.badge);
+
+  console.log('\n【最后一道闸：没日期的条目不许存出去】');
+  await page.click('button[onclick="adminSaveTripsForm()"]');
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('admin-trips-form-status');
+    return !!el && el.className.includes('err');
+  }), { what: '保存被拦下并报错' });
+  const saveErr = await page.locator('#admin-trips-form-status').textContent();
+  ok('保存被拦下，而且点名是哪一条没日期', /出发机场/.test(saveErr) && /日期/.test(saveErr), saveErr);
+  ok('拦下时一次请求都没发出去', rec.calls.every(c => c.action !== 'tripsSave'), rec.calls.map(c => c.action));
+
+  console.log('\n【对照组：日期正常的条目不能误报】');
+  const good = await page.evaluate(() => {
+    const warn = document.getElementById('admin-item-0-1-warn');
+    const more = document.getElementById('admin-item-0-1-more');
+    return {
+      warnShown: warn && warn.style.display !== 'none',
+      moreOpen: !!(more && more.open),
+      badge: more ? ((more.querySelector('.admin-more-badge') || {}).textContent || '').trim() : '',
+    };
+  });
+  ok('日期正常：不报警', good.warnShown === false, good);
+  ok('日期正常：「更多」保持收起（没别的内容就别打扰）', good.moreOpen === false, good);
+  ok('日期正常：没有 ⚠️ 徽章', !good.badge.includes('⚠️'), good.badge);
+
+  console.log('\n【把日期填上，警告要自己消失】');
+  await page.fill('#admin-item-0-0-date', '2026-09-01');
+  await page.locator('#admin-item-0-0-date').dispatchEvent('change');
+  await until(() => page.evaluate(() => {
+    const w = document.getElementById('admin-item-0-0-warn');
+    return !!w && w.style.display === 'none';
+  }), { what: '填上日期后警告消失' });
+  ok('填上日期后警告消失', true);
+  ok('填上的日期真的写进了数据', await page.evaluate(() => adminTripsDraft[0].items[0].date) === '2026-09-01');
+
+  console.log('\n【超范围仍然只是提示，不能被空日期那条盖掉】');
+  await page.fill('#admin-item-0-0-date', '2026-08-30');
+  await page.locator('#admin-item-0-0-date').dispatchEvent('change');
+  await until(() => page.evaluate(() => {
+    const w = document.getElementById('admin-item-0-0-warn');
+    return !!w && w.style.display !== 'none' && /范围/.test(w.textContent || '');
+  }), { what: '出现「不在行程范围内」提示' });
+  ok('日期早于行程起点：显示的是「不在行程范围内」，不是「没填日期」', true);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
 
