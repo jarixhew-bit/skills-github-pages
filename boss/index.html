@@ -2261,7 +2261,10 @@ function adminPushSectionHtml(){
         <button type="button" class="admin-btn-sm" id="admin-push-btn" onclick="togglePush()"${
           pushBusy || denied ? ' disabled' : ''}>${
           on ? pick('关闭','Turn off') : pick('开启','Turn on')}</button>
+        <button type="button" class="admin-btn-sm" id="admin-push-local-btn" onclick="adminTestLocalNotification()"${
+          denied ? ' disabled' : ''}>${pick('试一下本机通知','Test locally')}</button>
       </div>
+      <div class="admin-status" id="admin-push-local-status"></div>
       ${ denied ? `<div class="admin-status err">${pick(
         '这个浏览器把通知权限拒了，要去手机「设置 → 浏览器/该 App → 通知」里重新打开',
         'Notifications are blocked in this browser — re-enable them in your phone settings')}</div>` : '' }
@@ -2269,6 +2272,37 @@ function adminPushSectionHtml(){
         '行程或账单有更新时推到这台设备。订阅偶尔会被系统判失效（收不到了就回来按一次「开启」）。',
         'Pushes trip and bill updates to this device. Subscriptions can expire — tap Turn on again if they stop arriving.')}</div>
     </div>`;
+}
+/** 「试一下本机通知」：绕开推送服务，直接让本机的 Service Worker 弹一条通知。
+ *  这一步是把「手机能不能显示通知」和「推送能不能送到手机」拆开——
+ *  2026-08-29 遇到的正是这个岔路：FCM 回 201（收下了），手机却什么都没跳，
+ *  光看服务端日志分不出是投递没到还是显示被挡。
+ *  弹得出来 → 显示这一段没问题，要查的是投递（省电优化、Google 服务、后台限制）；
+ *  弹不出来 → 根本不是推送的事，是这台手机/浏览器不让显示通知。 */
+async function adminTestLocalNotification(){
+  const el = document.getElementById('admin-push-local-status');
+  const say = (msg, cls) => { if(el){ el.className = 'admin-status' + (cls ? ' ' + cls : ''); el.textContent = msg; } };
+  if(typeof Notification === 'undefined' || !('serviceWorker' in navigator)){
+    say(pick('这个浏览器不支持通知','This browser does not support notifications'), 'err');
+    return;
+  }
+  try{
+    let perm = Notification.permission;
+    if(perm === 'default') perm = await Notification.requestPermission();
+    if(perm !== 'granted'){
+      say(pick('通知权限没给，先在手机设置里允许','Permission not granted — allow notifications in your phone settings'), 'err');
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification(pick('本机通知测试','Local test'), {
+      body: pick('看到这条＝这台手机能显示通知','If you see this, this phone can show notifications'),
+      data: { url: './' },
+    });
+    say(pick('已经让手机弹了——现在去看通知栏。没看到就说明是手机/浏览器挡掉了显示，跟推送无关。',
+             'Fired — check your notification shade. Nothing there means this device is blocking display, not push.'), 'ok');
+  }catch(err){
+    say(pick('弹不出来：','Failed: ') + ((err && err.message) || String(err)), 'err');
+  }
 }
 function adminDentalSectionHtml(){
   const d = (feedData && feedData.dental) || {};
@@ -2647,7 +2681,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v30</div>
+    <div class="admin-ver" id="adminVer">boss-app-v31</div>
 
     ${adminTripsSectionHtml()}
 

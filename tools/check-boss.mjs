@@ -1067,6 +1067,9 @@ async function gotoTab(page, tab){
 {
   const ctx = await browser.newContext();
   await forceZh(ctx);
+  // 「试一下本机通知」那条要真的走到 showNotification，得先有通知权限——
+  // 不给的话它会停在「权限没给」那一步，验不到我们要验的东西。
+  await ctx.grantPermissions(['notifications']); // 真机行为对齐；CI 无头环境不一定认，所以下面还会在页面内打桩
   mountRoutes(ctx, { role: 'admin' });
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
@@ -1109,6 +1112,35 @@ async function gotoTab(page, tab){
      /关闭/.test(await page.locator('#admin-push-btn').innerText()));
   ok('admin：只重画那一行，没把整个管理页（连同正在编辑的表单）重建掉',
      await page.locator('#admin-trips-section[data-probe="1"]').count() === 1);
+
+  // 2026-08-29：FCM 回 201 但手机什么都没跳。光看服务端分不出是「投递没到」还是
+  // 「显示被挡」，所以要有一个绕开推送服务、直接让本机 SW 弹一条的按钮。
+  ok('admin：有「试一下本机通知」按钮（把显示和投递拆开查）',
+     await page.locator('#admin-push-local-btn').count() === 1);
+  // 点了要真的调 registration.showNotification，而不是只改一行字充数
+  // 这条断言验的是「点了会不会真的调 showNotification」。跟它无关、却会让它在 CI 上
+  // 假红的外部条件有两个，全部在页面内打桩掉（沙盒过、CI 连红两次都栽在这上面：
+  // 先是 SW 还没 active，改掉之后又栽在无头浏览器的通知权限上——grantPermissions
+  // 在这个环境里没把 Notification.permission 变成 granted）：
+  //   ① navigator.serviceWorker.ready 什么时候 resolve
+  //   ② Notification.permission 是不是 granted
+  const localFired = await page.evaluate(async () => {
+    let called = null;
+    const fakeReg = {
+      showNotification: (title, opts) => { called = { title, body: opts && opts.body }; return Promise.resolve(); },
+    };
+    Object.defineProperty(navigator.serviceWorker, 'ready', {
+      configurable: true, get: () => Promise.resolve(fakeReg),
+    });
+    Object.defineProperty(Notification, 'permission', { configurable: true, get: () => 'granted' });
+    await adminTestLocalNotification();
+    return called;
+  });
+  ok('admin：点了确实调用了 showNotification（不是只改一行提示文字）',
+     localFired && localFired.title && /本机通知测试/.test(localFired.title), localFired);
+  ok('admin：弹完给出的说明能把「没看到」指向正确的方向',
+     /手机\/浏览器挡掉|通知栏/.test(await page.locator('#admin-push-local-status').innerText()),
+     await page.locator('#admin-push-local-status').innerText());
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
