@@ -1918,6 +1918,56 @@ function localAt(daysFromNow, hm, offset){
   await ctx.close();
 }
 
+// ---------- 场景十九：交接给老板时，红点要全部重新亮起来 ----------
+// 2026-08-29 用户：「把他的那一版改成全未读」。老板那台机器试用时已经把红点点掉了，
+// 交接时他一进来会以为里面没东西。做法是给已读记号加一个版号（SEEN_EPOCH），
+// 版号一改，所有设备的已读状态作废一次。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  // 装一份「旧版号」的已读记号：三个分页全标成已读，而且时间比服务端还新
+  await page.addInitScript(t => {
+    localStorage.setItem('bossApp_token', t);
+    localStorage.setItem('bossApp_seen', JSON.stringify({
+      __epoch: '2020-01-01', trips: '2099-01-01T00:00:00.000Z',
+      bills: '2099-01-01T00:00:00.000Z', inventory: '2099-01-01T00:00:00.000Z',
+    }));
+  }, GOOD_TOKEN);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !!document.querySelector('.trip-card, .empty-card')),
+    { what: '首屏渲染完' });
+
+  console.log('\n【红点重置】');
+  ok('旧版号的已读记号一律作废，三个分页全部重新变成未读',
+     await page.locator('.nav-btn.has-dot').count() === 3);
+
+  // 双向验证，都在同一页里做——「更新时间」在打桩接口里每次请求都是当下，
+  // 所以不能靠「重开一次」来验已读，只能拿页面自己那份 feedData 的时间来比。
+  const both = await page.evaluate(() => {
+    const u = feedData.updated;
+    saveSeen({ trips: u.trips, bills: u.bills, inventory: u.inventory }); // 会带上当前版号
+    updateDots();
+    const afterRead = document.querySelectorAll('.nav-btn.has-dot').length;
+    const stored = JSON.parse(localStorage.getItem('bossApp_seen') || '{}');
+    // 把版号改旧，模拟「下一次交接又要重置」
+    localStorage.setItem('bossApp_seen',
+      JSON.stringify(Object.assign({}, stored, { __epoch: '2020-01-01' })));
+    updateDots();
+    return { afterRead, afterEpochChange: document.querySelectorAll('.nav-btn.has-dot').length,
+             epoch: stored.__epoch || null };
+  });
+  // 对照组：没有这一条的话，「loadSeen 永远返回 {}」也能让上面那条变绿——
+  // 那样红点就永远消不掉，等于天天在喊狼来了。
+  ok('版号对得上时，已读还是已读（红点消得掉）', both.afterRead === 0, both);
+  ok('版号一改，三个红点立刻全部重新亮起来', both.afterEpochChange === 3, both);
+  ok('写回去的是当前版号，不是那个旧的', both.epoch && both.epoch !== '2020-01-01', both);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);

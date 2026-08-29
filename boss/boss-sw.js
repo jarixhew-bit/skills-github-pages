@@ -8,7 +8,7 @@
 //
 // 改了页面内容记得同步升这里的版本号（v1 → v2 这样升），否则已安装的
 // 老板手机会一直看到旧版壳（PWA 页面规则，见 skills/pwa-pages.md）。
-const CACHE = 'boss-app-v32';
+const CACHE = 'boss-app-v34';
 const ASSETS = ['./', './index.html', './manifest.webmanifest',
   './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
@@ -36,13 +36,46 @@ self.addEventListener('fetch', e => {
   try{ url = new URL(req.url); }catch(e2){ return; }
   if(url.origin !== self.location.origin) return;
   if(req.method !== 'GET') return;
-  // 页面本身：网络优先，这样改了版老板一刷新就拿到新的；没网才回落到缓存
+  // 页面本身：**先给缓存、同时后台回源**（2026-08-29 改）。
+  //
+  // 上一版是「网络优先」，正确但慢：每次打开都要等一个完整的网络往返才画得出东西，
+  // 手机网差的时候尤其难受（用户：「加载能不能快一点」）。
+  //
+  // ⚠️ 后台那次回源必须带 cache:'reload'（2026-08-28 教训，这条不能丢）：GitHub Pages
+  // 给 HTML 带 10 分钟的浏览器 HTTP 缓存，普通 fetch() 会吃那层缓存，于是改了版
+  // 老板重开两次还是旧页面。reload 绕过 HTTP 缓存直接问服务器。
+  //
+  // 拿回来跟缓存里那份不一样时，通知页面（index.html 那边收到就静默重载一次；
+  // 正在编辑的话只提示不重载）。所以「快」和「改了就能看到」两个都保住了：
+  // 画面立刻出来，新版在一两秒内自己顶上。
   if(req.destination === 'document'){
-  // ⚠️ 必须带 cache:'reload'（2026-08-28 教训）：光「网络优先」还不够——GitHub Pages
-  // 给 HTML 带 10 分钟的浏览器 HTTP 缓存，普通 fetch() 会吃那层缓存，于是用户关掉
-  // App 重开、甚至重开两次，拿到的仍是旧页面。今天为此反复困惑了好几轮（「你说改了
-  // 怎么还是老样子」）。reload 会绕过 HTTP 缓存直接问服务器，离线时照旧回落缓存。
-    e.respondWith(fetch(req, { cache: 'reload' }).catch(() => caches.match(req) || caches.match('./index.html')));
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match(req) || await cache.match('./index.html');
+      // ⚠️ 比较用的副本必须**现在**就克隆好（2026-08-29 自检逮到）：cached 一旦作为
+      // 响应交给页面，body 就被读走了，那时候再 clone() 会抛错 → 被 catch 成
+      // 「内容变了」→ 发消息 → 页面重载 → 再来一遍，无限转圈。
+      const cachedForCompare = cached ? cached.clone() : null;
+      const network = (async () => {
+        const res = await fetch(req, { cache: 'reload' });
+        if(!res || !res.ok) return res;
+        const fresh = res.clone();
+        // 只有内容真的变了才惊动页面——每次都发的话会无谓地重载
+        let changed = true;
+        if(cachedForCompare){
+          try{ changed = (await cachedForCompare.text()) !== (await res.clone().text()); }
+          catch(err){ changed = true; }
+        }
+        await cache.put(req, fresh);
+        if(changed && cached){
+          const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+          for(const c of list){ try{ c.postMessage({ type: 'shell-updated' }); }catch(err){} }
+        }
+        return res;
+      })();
+      if(cached){ e.waitUntil(network.catch(() => {})); return cached; } // 有缓存就秒开
+      return network.catch(() => caches.match('./index.html')); // 第一次装，只能等网络
+    })());
     return;
   }
   // 其余静态资源：缓存优先
