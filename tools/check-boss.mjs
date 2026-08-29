@@ -1549,6 +1549,142 @@ function localAt(daysFromNow, hm, offset){
   await ctx.close();
 }
 
+// ---------- 场景十六：填行程要好填——按天分组 ＋ 报错能点着跳过去 ----------
+// 2026-08-29 用户：「我每次填 4-5 个以上都会搞混」「有什么填了显示警告的地方，
+// 直接跳转去那个错误的地方能吗」。条目长得一模一样是串行的根源，报错只报「某某
+// 没填」而不带人过去，等于把找的活儿丢回给他。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const manyTrips = [{
+    id: 't1', title: { zh: '多条目行程', en: '' }, start: '2026-09-01', end: '2026-09-03',
+    location: { zh: '', en: '' },
+    items: [
+      { date: '2026-09-01', time: '10:30', title: { zh: '出发机场', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+      { date: '2026-09-01', time: '13:30', title: { zh: '午餐', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+      { date: '2026-09-02', time: '09:00', title: { zh: '开会', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+      { date: '2026-09-02', time: '19:00', title: { zh: '晚餐', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+      { date: '', time: '08:00', title: { zh: '回程', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+    ],
+  }];
+  const rec = mountRoutes(ctx, { role: 'admin', trips: manyTrips });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await page.evaluate(() => adminExpandTrip(0));
+  await until(async () => (await page.locator('#admin-item-0-0-time').count()) === 1,
+    { what: '条目表单出现' });
+
+  console.log('\n【按天分组：5 个条目不再糊成一片】');
+  const hdrs = await page.locator('.admin-day-hdr').allTextContents();
+  const clean = hdrs.map(t => t.replace(/\s+/g, ' ').trim());
+  ok('两个不同日期各有一条分隔条，没日期的也单独一组', clean.length === 3, clean);
+  // 没日期的排在最前面（空字符串排序在前）——正好也是该先处理的那一组，不改。
+  ok('没日期的那组排在最前面且明确写「还没填日期」', /还没填日期/.test(clean[0]), clean[0]);
+  ok('接着是 9 月 1 日并标「第 1 天」',
+     /9月1日/.test(clean[1]) && /第 1 天/.test(clean[1]), clean[1]);
+  ok('再来是 9 月 2 日并标「第 2 天」',
+     /9月2日/.test(clean[2]) && /第 2 天/.test(clean[2]), clean[2]);
+  ok('没日期那组的分隔条是警示样式（不是普通灰条）',
+     await page.locator('.admin-day-hdr-warn').count() === 1);
+  // 对照组：分隔条只是显示，不能把条目弄丢
+  ok('5 个条目一个都没少', await page.locator('.admin-item-wrap').count() === 5);
+
+  console.log('\n【保存被拦下：错误是可以点的，点了直接送到那一格】');
+  await page.click('button[onclick="adminSaveTripsForm()"]');
+  await until(async () => (await page.locator('.admin-err-item').count()) > 0,
+    { what: '错误列表出现' });
+  const errItems = await page.locator('.admin-err-item').allTextContents();
+  ok('错误列表渲染成可点的按钮，不是一行纯文字', errItems.length === 1, errItems);
+  ok('错误点名是哪一条（「回程」）', /回程/.test(errItems[0]), errItems[0]);
+  ok('拦下时一次 tripsSave 都没发', rec.calls.every(c => c.action !== 'tripsSave'),
+     rec.calls.map(c => c.action));
+
+  // 报错后应该已经自动跳到第一个问题：该条目的「更多」被打开、日期框拿到焦点
+  const jumped = await page.evaluate(() => ({
+    moreOpen: !!(document.getElementById('admin-item-0-4-more') || {}).open,
+    focused: document.activeElement ? document.activeElement.id : null,
+    flashed: !!(document.getElementById('admin-item-0-4-date') || {}).classList
+             && document.getElementById('admin-item-0-4-date').classList.contains('admin-jump-flash'),
+  }));
+  ok('自动展开了出问题那条的「更多」', jumped.moreOpen, jumped);
+  ok('焦点落在出问题的那个日期框上', jumped.focused === 'admin-item-0-4-date', jumped);
+  ok('那一格闪了一下（手机上不给记号就找不到）', jumped.flashed, jumped);
+
+  console.log('\n【条目上那条 ⚠️ 警告本身也能点】');
+  await page.evaluate(() => { document.activeElement && document.activeElement.blur(); });
+  await page.click('#admin-item-0-4-warn');
+  const afterWarnClick = await page.evaluate(() => document.activeElement ? document.activeElement.id : null);
+  ok('点警告直接跳到该条目的日期框', afterWarnClick === 'admin-item-0-4-date', afterWarnClick);
+
+  console.log('\n【修好之后就能存出去了】');
+  await page.fill('#admin-item-0-4-date', '2026-09-03');
+  await page.locator('#admin-item-0-4-date').dispatchEvent('change');
+  rec.calls.length = 0;
+  await page.click('button[onclick="adminSaveTripsForm()"]');
+  await until(() => rec.calls.some(c => c.action === 'tripsSave'), { what: '发出 tripsSave 请求' });
+  ok('补上日期后保存放行', true);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景十七：iPhone 上还没「加到主屏」时，不能一片空白 ----------
+// iOS Safari 里 window.PushManager 根本不存在 → pushSupported() 为 false →
+// 上一版直接把整条提示移除，老板打开 Safari 什么都看不到，也就永远不知道
+// 要先加到主屏。这一节验「认出这种情况并给出唯一有用的下一步」。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  // 假扮 iPhone Safari（未安装）：拿掉 PushManager，改 userAgent
+  await page.addInitScript(() => {
+    try{ delete window.PushManager; }catch(e){ window.PushManager = undefined; }
+    Object.defineProperty(navigator, 'userAgent', {
+      get: () => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Version/17.5 Mobile/15E148 Safari/604.1',
+    });
+  });
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !!document.getElementById('pushBar')),
+    { what: 'iPhone 未安装时仍然出现提示条' });
+  const barTxt = (await page.locator('#pushBar').innerText()).replace(/\s+/g, ' ');
+  ok('iPhone 未安装：提示条没有被整条抹掉', barTxt.length > 0, barTxt);
+  ok('说清楚要做什么：加到主屏幕', /主屏/.test(barTxt), barTxt);
+  ok('给了具体路径「分享」', /分享/.test(barTxt), barTxt);
+  ok('还带一条安装说明链接', await page.locator('#pushBar a[href="install.html"]').count() === 1);
+  // 关键对照：这个环境里点开关必定失败，所以开关按钮**不能**出现
+  ok('不给会失败的「开启通知」按钮', await page.locator('#pushToggleBtn').count() === 0);
+  ok('× 还在，老板嫌烦可以关掉', await page.locator('#pushBar .push-dismiss').count() === 1);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+// ---------- 场景十七之对照组：不是 iOS 又确实不支持推送 → 一条都不该冒出来 ----------
+// 没有这个对照组的话，「什么环境都挂一条提示」也会显示通过。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.addInitScript(() => {
+    try{ delete window.PushManager; }catch(e){ window.PushManager = undefined; }
+    Object.defineProperty(navigator, 'userAgent', {
+      get: () => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+    });
+  });
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !!document.querySelector('.trip-card, .empty-card')),
+    { what: '首屏渲染完' });
+  ok('非 iOS 且不支持推送：一条提示都不冒出来', await page.locator('#pushBar').count() === 0);
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);
