@@ -2371,14 +2371,36 @@ async function adminSaveDental(){
   const after = document.getElementById('admin-dental-status');
   if(after){ after.className = 'admin-status ok'; after.textContent = pick('已保存','Saved'); }
 }
+/** 行程卡的显示顺序：**保留原数组下标**，只换渲染顺序。
+ *  下标不能动——adminExpandedTrip、data-trip、flightLookupState 全是按下标寻址的，
+ *  真去 sort 数组会让「点开甲、改到乙」。这跟条目列表 adminItemsListHtml 是同一招。
+ *
+ *  排法跟老板端的行程页一致（2026-08-30 用户：「行程管理里能按照日期顺序排列吗」）：
+ *  还没结束的按出发日由近到远排在前面——那才是他天天要改的；已经结束的按日期
+ *  由新到旧垫在后面，不占地方但也不藏起来。没填日期的排最前，因为它多半正在填。 */
+function adminTripDisplayOrder(trips){
+  const today = isoDate(new Date());
+  return trips.map((_, i) => i).sort((a, b) => {
+    const ta = trips[a] || {}, tb = trips[b] || {};
+    const sa = (ta.start || '').trim(), sb = (tb.start || '').trim();
+    if(!sa !== !sb) return sa ? 1 : -1;              // 没填日期的排最前（正在填）
+    if(!sa && !sb) return a - b;                      // 都没日期就按原顺序，不乱跳
+    const pastA = (ta.end || ta.start || '') < today;
+    const pastB = (tb.end || tb.start || '') < today;
+    if(pastA !== pastB) return pastA ? 1 : -1;        // 已结束的垫底
+    return pastA ? sb.localeCompare(sa)               // 过去的：新的在前
+                 : sa.localeCompare(sb);              // 未来的：近的在前
+  });
+}
 function adminTripsSectionHtml(){
   ensureAdminTripsDraft();
   let inner;
   if(!adminTripsDraft.length){
     inner = `<div class="admin-status">${pick('还没有行程，点下面加一个','No trips yet — add one below')}</div>`;
   }else{
-    inner = adminTripsDraft.map((t, idx) =>
-      (adminExpandedTrip === idx) ? adminTripFormHtml(t, idx) : adminTripSummaryHtml(t, idx)).join('');
+    inner = adminTripDisplayOrder(adminTripsDraft).map(idx =>
+      (adminExpandedTrip === idx) ? adminTripFormHtml(adminTripsDraft[idx], idx)
+                                  : adminTripSummaryHtml(adminTripsDraft[idx], idx)).join('');
   }
   return `<div class="admin-block" id="admin-trips-section">
       <h3>🧳 ${pick('行程管理','Manage Trips')}</h3>
@@ -2736,7 +2758,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v35</div>
+    <div class="admin-ver" id="adminVer">boss-app-v36</div>
 
     ${adminTripsSectionHtml()}
 
