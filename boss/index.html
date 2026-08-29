@@ -1695,15 +1695,45 @@ function adminItemMapInput(tripIdx, itemIdx, el){
   el.value = url; // 回填成生成后的完整链接，方便确认/复制
   markTripsDirty();
 }
-/** 条目日期超出行程日期范围时只提示、不阻止保存（可能是前后站行程）。 */
+/** 条目日期的两种提醒，都只提示、不阻止保存：
+ *  - 没填日期：**最要命的那种**——「今日」分页是按 it.date 抓当天条目的，没日期的
+ *    条目永远不会在那里出现，行程里也只会掉进「日期待定」那一组。2026-08-29 收工
+ *    体检时在真实数据里逮到两条（「出发机场」「金边家里出发」），就是因为日期框
+ *    收在「更多」里默认收起、空着又不报警，填的人根本看不见。
+ *  - 超出行程范围：可能是前后站行程，提示即可。 */
+function adminItemDateWarn(trip, it){
+  const date = (it && it.date || '').trim();
+  // 全空条目（新增行程/新增条目自带的那条占位）不报警——人还没开始填就先挨骂，
+  // 警告到处都是就等于没有警告。填了东西却没日期才是真问题。
+  if(!date) return isEmptyTripItem(it) ? null
+    : { zh: '⚠️ 还没填日期，这条不会出现在「今日」', en: '⚠️ No date yet — this item will not show up on Today' };
+  if(trip && trip.start && trip.end && (date < trip.start || date > trip.end)){
+    return { zh: '⚠️ 日期不在行程范围内（如果是前后站可以不管）', en: '⚠️ Date is outside the trip range (fine if this is before/after the main trip)' };
+  }
+  return null;
+}
+/** 填了行程出发日之后，把还空着日期的条目补上——「新增行程」自带的那条占位条目
+ *  是在出发日填之前就建好的，不补的话它永远是空日期，人一填内容就撞上保存拦截。
+ *  只补空的，已经选过日期的一律不动。 */
+function adminBackfillItemDates(tripIdx){
+  const trip = adminTripsDraft && adminTripsDraft[tripIdx];
+  if(!trip || !trip.start) return;
+  (trip.items || []).forEach((it, i) => {
+    if((it.date || '').trim()) return;
+    it.date = trip.start;
+    const el = document.getElementById(`admin-item-${tripIdx}-${i}-date`);
+    if(el) el.value = trip.start; // 直接改值，不整块重渲染——避免用户还在日期框里就被抢焦点
+  });
+}
 function adminRevalidateItemDates(tripIdx){
   const trip = adminTripsDraft && adminTripsDraft[tripIdx];
   if(!trip) return;
   (trip.items || []).forEach((it, itemIdx) => {
     const warnEl = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-warn`);
     if(!warnEl) return;
-    const outOfRange = !!(it.date && trip.start && trip.end && (it.date < trip.start || it.date > trip.end));
-    warnEl.style.display = outOfRange ? '' : 'none';
+    const warn = adminItemDateWarn(trip, it);
+    warnEl.style.display = warn ? '' : 'none';
+    if(warn) warnEl.textContent = pick(warn.zh, warn.en);
   });
 }
 
@@ -1713,7 +1743,7 @@ function adminRevalidateItemDates(tripIdx){
  * 就自动展开」而不是逼用户每次都点开确认）。备注/地点/日期越界/旧英文值/航班关联
  * （不管查到还是没查到）都算「有内容」。 */
 function adminItemMoreHasContent(trip, it){
-  const outOfRange = !!(it.date && trip.start && trip.end && (it.date < trip.start || it.date > trip.end));
+  const outOfRange = !!adminItemDateWarn(trip, it); // 含「没填日期」——有警告就必须展开给人看见
   const hasNote = !!((it.note && (it.note.zh||'').trim()) || (it.note && (it.note.en||'').trim()));
   const hasTitleEn = !!(it.title && (it.title.en||'').trim());
   const hasMap = !!(it.mapUrl||'').trim();
@@ -1731,9 +1761,11 @@ function adminItemMoreHasContent(trip, it){
  *   值本身照旧带着，展开才需要改。 */
 function adminItemRowHtml(trip, tripIdx, itemIdx){
   const it = trip.items[itemIdx];
-  const outOfRange = !!(it.date && trip.start && trip.end && (it.date < trip.start || it.date > trip.end));
+  const dateWarn = adminItemDateWarn(trip, it);
   const hasExtra = adminItemMoreHasContent(trip, it);
-  const extraBadge = hasExtra ? ` <span class="admin-more-badge">${pick('（有备注/地点/航班详情）','(has notes/location/flight details)')}</span>` : '';
+  const extraBadge = dateWarn
+    ? ` <span class="admin-more-badge">${pick('⚠️ 日期要看一下','⚠️ check the date')}</span>`
+    : (hasExtra ? ` <span class="admin-more-badge">${pick('（有备注/地点/航班详情）','(has notes/location/flight details)')}</span>` : '');
   return `<div class="admin-item-wrap">
     <div class="admin-item-row admin-item-row-compact">
       <div class="admin-field admin-field-compact"><label>${pick('时间','Time')}</label>
@@ -1748,9 +1780,7 @@ function adminItemRowHtml(trip, tripIdx, itemIdx){
     </div>
     <details class="admin-item-more" id="admin-item-${tripIdx}-${itemIdx}-more"${hasExtra ? ' open' : ''}>
       <summary>⋯ ${pick('更多','More')}${extraBadge}</summary>
-      <div id="admin-item-${tripIdx}-${itemIdx}-warn" class="admin-item-warn" style="${outOfRange?'':'display:none'}">
-        ⚠️ ${pick('日期不在行程范围内（如果是前后站可以不管）','Date is outside the trip range (fine if this is before/after the main trip)')}
-      </div>
+      <div id="admin-item-${tripIdx}-${itemIdx}-warn" class="admin-item-warn" style="${dateWarn?'':'display:none'}">${escapeHtml(dateWarn ? pick(dateWarn.zh, dateWarn.en) : '')}</div>
       <div class="admin-field"><label>${pick('日期','Date')}</label>
         <input type="date" id="admin-item-${tripIdx}-${itemIdx}-date" value="${escapeHtml(it.date||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'date',this.value)"></div>
       <div class="admin-field"><label>${pick('备注（选填）','Note (optional)')}</label>
@@ -1990,7 +2020,7 @@ function adminTripFormHtml(trip, idx){
           <input type="text" data-trip="${idx}" data-field="title.zh" value="${escapeHtml(trip.title && trip.title.zh || '')}" oninput="adminTripFieldInput(this)"></div>
         <div class="admin-field" style="display:flex;gap:10px">
           <div style="flex:1"><label>${pick('出发日','Departure')}</label>
-            <input type="date" data-trip="${idx}" data-field="start" value="${escapeHtml(trip.start||'')}" oninput="adminTripFieldInput(this); adminRevalidateItemDates(${idx})"></div>
+            <input type="date" data-trip="${idx}" data-field="start" value="${escapeHtml(trip.start||'')}" oninput="adminTripFieldInput(this); adminBackfillItemDates(${idx}); adminRevalidateItemDates(${idx})"></div>
           <div style="flex:1"><label>${pick('回程日','Return')}</label>
             <input type="date" data-trip="${idx}" data-field="end" value="${escapeHtml(trip.end||'')}" oninput="adminTripFieldInput(this); adminRevalidateItemDates(${idx})"></div>
         </div>
@@ -2251,6 +2281,15 @@ function adminValidateTripsDraft(){
     if(t.start && t.end && t.end < t.start){
       errors.push(pick(label + '：结束日期不能早于开始日期', label + ': end date cannot be before the start date'));
     }
+    // 填了内容却没日期的条目：拦下来，不许存。老板的「今日」分页是按日期抓条目的，
+    // 没日期的条目在那里永远不会出现，行程里也只掉进「日期待定」一组——存进去等于
+    // 悄悄丢掉。2026-08-29 在真实数据里逮到两条（「出发机场」「金边家里出发」）。
+    (t.items || []).forEach(it => {
+      if(isEmptyTripItem(it)) return;
+      if((it.date||'').trim()) return;
+      const name = (it.title && (it.title.zh || it.title.en)) || (it.time||'') || pick('某个条目','an item');
+      errors.push(pick(`${label}：「${name}」还没填日期`, `${label}: "${name}" has no date yet`));
+    });
   });
   return errors;
 }
@@ -2312,7 +2351,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v25</div>
+    <div class="admin-ver" id="adminVer">boss-app-v26</div>
 
     ${adminTripsSectionHtml()}
 
