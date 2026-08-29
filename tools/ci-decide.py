@@ -41,6 +41,8 @@ RULES = {
     "inventory": ["expense-tracker.html", "staff/index.html", "inventory/**",
                   "tools/check-inventory.mjs", "tools/build-staff-page.py"],
     "boss": ["boss/**", "tools/check-boss.mjs"],
+    # SW 的推送处理：真浏览器发不出 push 事件，只能单独打桩跑
+    "bosssw": ["boss/boss-sw.js", "tools/check-boss-sw.mjs"],
     # 作业系统简报页：页面本身、产出它数据的管线、以及自检脚本
     "fund": ["trading/fund.html", "trading/analyzer.py", "tools/check-fund.mjs",
              ".github/scripts/fetch_news.py"],

@@ -8,7 +8,7 @@
 //
 // 改了页面内容记得同步升这里的版本号（v1 → v2 这样升），否则已安装的
 // 老板手机会一直看到旧版壳（PWA 页面规则，见 skills/pwa-pages.md）。
-const CACHE = 'boss-app-v31';
+const CACHE = 'boss-app-v32';
 const ASSETS = ['./', './index.html', './manifest.webmanifest',
   './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
@@ -49,16 +49,24 @@ self.addEventListener('fetch', e => {
   e.respondWith(caches.match(req).then(r => r || fetch(req)));
 });
 
-// 推送：后端在 tripsSave/billUpload 成功后发，载荷是 {title, body, url}（见接口合约）。
+// 推送：后端在 tripsSave/billUpload 成功后发，载荷是 {title, body, url, tag}（见接口合约）。
 // 弹通知＋标个角标；badge API 不是所有平台都支持，用可选链，不支持不能报错。
+//
+// tag 必须用上（2026-08-29 补）：后端一直在发 tag（trips/bills），这里以前直接丢掉，
+// 结果同一类通知会在通知栏堆成一长列——行程改三次就有三条一模一样的。带上 tag 之后
+// 新的一条会替换旧的，配 renotify 让它替换时仍然出声，不会被无声地盖掉。
+// icon 也一并给上：不给的话安卓只显示一个通用的浏览器小铃铛，看不出是哪个 App。
 self.addEventListener('push', e => {
   let data = {};
   try{ data = e.data ? e.data.json() : {}; }catch(err){ data = {}; }
   const title = data.title || '老板 App';
   const body = data.body || '';
   const url = data.url || './';
+  const tag = data.tag || '';
+  const opts = { body, data: { url }, icon: 'icon-192.png', badge: 'icon-192.png' };
+  if(tag){ opts.tag = tag; opts.renotify = true; } // renotify 只在有 tag 时有意义
   e.waitUntil((async () => {
-    try{ await self.registration.showNotification(title, { body, data: { url } }); }catch(err){}
+    try{ await self.registration.showNotification(title, opts); }catch(err){}
     try{ navigator.setAppBadge?.(); }catch(err){}
   })());
 });
