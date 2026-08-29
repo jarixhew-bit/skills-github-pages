@@ -2064,6 +2064,84 @@ function localAt(daysFromNow, hm, offset){
   await ctx.close();
 }
 
+// ---------- 场景二十一：行程管理里的行程卡按日期排 ----------
+// 2026-08-30 用户：「行程管理里能按照日期顺序排列吗」。以前是按存进去的顺序排，
+// 存的时候什么样就什么样。条目在卡片里早就排好了，卡片本身没排。
+//
+// 这一节最要紧的不是顺序本身，而是**下标不能跟着动**：adminExpandedTrip、
+// data-trip、flightLookupState 全按下标寻址，真去 sort 数组会变成「点开甲、改到乙」。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  await ctx.addInitScript(() => {
+    const FIXED = Date.parse('2026-09-05T12:00:00Z');   // 让「过去/未来」有确定答案
+    const _D = Date;
+    // eslint-disable-next-line no-global-assign
+    Date = class extends _D {
+      constructor(...a){ if(a.length === 0) super(FIXED); else super(...a); }
+      static now(){ return FIXED; }
+    };
+  });
+  // 刻意打乱：存进去的顺序跟日期顺序完全不一样
+  const messy = [
+    { id:'a', title:{zh:'十月槟城',en:''}, start:'2026-10-09', end:'2026-10-17', location:{zh:'',en:''}, items:[] },
+    { id:'b', title:{zh:'七月旧行程',en:''}, start:'2026-07-01', end:'2026-07-05', location:{zh:'',en:''}, items:[] },
+    { id:'c', title:{zh:'九月新加坡',en:''}, start:'2026-09-23', end:'2026-09-27', location:{zh:'',en:''}, items:[] },
+    { id:'d', title:{zh:'还没填日期',en:''}, start:'', end:'', location:{zh:'',en:''}, items:[] },
+    { id:'e', title:{zh:'八月旧行程',en:''}, start:'2026-08-24', end:'2026-08-27', location:{zh:'',en:''}, items:[] },
+  ];
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  mountRoutes(ctx, { role: 'admin', trips: messy });
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await until(async () => (await page.locator('#admin-trips-list .admin-trip-summary, #admin-trips-list .admin-trip-card').count()) >= 5,
+    { what: '五张行程卡都渲染出来' });
+
+  console.log('\n【行程管理：按日期排】');
+  // 直接按卡片顺序取标题：卡片是 pick() 出来的纯文字，不是 bl() 的双语 span
+  const names = await page.evaluate(() => {
+    const titles = ['十月槟城','七月旧行程','九月新加坡','还没填日期','八月旧行程'];
+    return Array.from(document.querySelectorAll('#admin-trips-list .admin-trip-summary'))
+      .map(el => titles.find(t => el.textContent.includes(t)) || '(认不出)');
+  });
+  ok('没填日期的排最前（多半正在填）', names[0] === '还没填日期', names);
+  ok('未来的按近到远：九月新加坡在十月槟城前面',
+     names.indexOf('九月新加坡') < names.indexOf('十月槟城'), names);
+  ok('已经结束的垫在未来行程后面',
+     names.indexOf('十月槟城') < names.indexOf('八月旧行程'), names);
+  ok('过去的按新到旧：八月在七月前面',
+     names.indexOf('八月旧行程') < names.indexOf('七月旧行程'), names);
+  ok('确实跟存进去的顺序不一样（否则这一节等于没验）',
+     JSON.stringify(names) !== JSON.stringify(['十月槟城','七月旧行程','九月新加坡','还没填日期','八月旧行程']),
+     names);
+
+  // 关键对照：显示顺序变了，**数据下标不能跟着变**
+  console.log('\n【对照组：只换显示顺序，下标一个都不许动】');
+  const draftOrder = await page.evaluate(() => adminTripsDraft.map(t => t.title.zh));
+  ok('底层数组顺序原封不动',
+     JSON.stringify(draftOrder) === JSON.stringify(['十月槟城','七月旧行程','九月新加坡','还没填日期','八月旧行程']),
+     draftOrder);
+  // 点开显示在最前面的那张（「还没填日期」＝原数组下标 3），改个名字，看改到谁头上
+  const firstCardIdx = await page.evaluate(() => {
+    const btn = document.querySelector('#admin-trips-list [onclick^="adminExpandTrip("]');
+    return btn ? Number(btn.getAttribute('onclick').match(/adminExpandTrip\((\d+)\)/)[1]) : null;
+  });
+  ok('第一张卡挂的是它在原数组里的下标 3，不是显示位置 0', firstCardIdx === 3, firstCardIdx);
+  await page.evaluate(() => adminExpandTrip(3));
+  await until(async () => (await page.locator('input[data-trip="3"][data-field="title.zh"]').count()) === 1,
+    { what: '展开的是原下标 3 那一张' });
+  await page.fill('input[data-trip="3"][data-field="title.zh"]', '改到我了吗');
+  const after = await page.evaluate(() => adminTripsDraft.map(t => t.title.zh));
+  ok('改的是「还没填日期」那一趟，没改到别人头上',
+     after[3] === '改到我了吗' && after[0] === '十月槟城' && after[2] === '九月新加坡', after);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);
