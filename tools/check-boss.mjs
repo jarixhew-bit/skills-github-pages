@@ -109,7 +109,7 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify({ status: 'ok', who, role, updated: fakeUpdated(),
             trips: trips || fakeTrips(), bills: fakeBills(), inventory,
-            dental: dental || { lastVisit: null, nextVisit: null, note: '' } }) });
+            dental: dental || { lastVisit: null, nextVisit: null, intervalMonths: 3, note: '' } }) });
       }
       if (req.action === 'bill'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
@@ -1706,7 +1706,7 @@ function localAt(daysFromNow, hm, offset){
       static now(){ return FIXED; }
     };
   });
-  mountRoutes(ctx, { role: 'viewer', dental: { lastVisit: '2026-07-13', nextVisit: null, note: '' } });
+  mountRoutes(ctx, { role: 'viewer', dental: { lastVisit: '2026-07-13', nextVisit: null, intervalMonths: 3, note: '' } });
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
@@ -1720,8 +1720,10 @@ function localAt(daysFromNow, hm, offset){
   ok('按自然月算「多久以前」＝1 个月 16 天（不是除以 30 得出的 17 天）',
      /1 个月 16 天前/.test(cardCn), cardCn);
   ok('没约下次时明说「还没约」', /还没约/.test(cardCn), cardCn);
-  ok('给出半年后的参考日期，并写明这是建议不是已约',
-     /一般半年一次/.test(cardCn) && /2027年1月13日/.test(cardCn), cardCn);
+  ok('按他的复诊间隔（三个月）给参考日期＝10月13日，并写明这是建议不是已约',
+     /每 3 个月一次/.test(cardCn) && /2026年10月13日/.test(cardCn), cardCn);
+  ok('三个月的间隔不会被写死成半年', !/2027年1月13日/.test(cardCn), cardCn);
+  ok('还没到期就不说「该约了」', !/该约了/.test(cardCn), cardCn);
   ok('牙医卡在今日页上，不是另开一个分页',
      await page.locator('#tab-today .dental-card').count() === 1);
   ok('老板身上没有任何牙医的写操作控件', await page.locator('#admin-dental-last').count() === 0);
@@ -1745,7 +1747,7 @@ function localAt(daysFromNow, hm, offset){
   const ctx = await browser.newContext();
   await forceZh(ctx);
   mountRoutes(ctx, { role: 'viewer',
-    dental: { lastVisit: '2026-07-13', nextVisit: '2026-09-20', note: '补牙第二次' } });
+    dental: { lastVisit: '2026-07-13', nextVisit: '2026-09-20', intervalMonths: 3, note: '补牙第二次' } });
   const page = await ctx.newPage();
   await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
   await page.goto(URL);
@@ -1755,7 +1757,7 @@ function localAt(daysFromNow, hm, offset){
   console.log('\n【对照组：已经约好下次】');
   ok('显示下次预约的日期', /9月20日/.test(cardCn), cardCn);
   ok('已经约好了就不再说「还没约」', !/还没约/.test(cardCn), cardCn);
-  ok('也不再显示那句「一般半年一次」的建议', !/一般半年一次/.test(cardCn), cardCn);
+  ok('也不再显示那句「每 N 个月一次」的建议', !/个月一次/.test(cardCn), cardCn);
   ok('备注显示出来了', /补牙第二次/.test(cardAll), cardAll);
   await ctx.close();
 }
@@ -1764,7 +1766,7 @@ function localAt(daysFromNow, hm, offset){
   const ctx = await browser.newContext();
   await forceZh(ctx);
   const rec = mountRoutes(ctx, { role: 'admin',
-    dental: { lastVisit: '2026-07-13', nextVisit: null, note: '' } });
+    dental: { lastVisit: '2026-07-13', nextVisit: null, intervalMonths: 3, note: '' } });
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
@@ -1797,9 +1799,63 @@ function localAt(daysFromNow, hm, offset){
   await page.click('button[onclick="adminSaveDental()"]');
   await until(() => rec.calls.some(c => c.action === 'dentalSave'), { what: '发出 dentalSave 请求' });
   const saved = rec.calls.find(c => c.action === 'dentalSave');
-  ok('送出的是三个字段，形状对得上后端合约',
-     saved.lastVisit === '2026-07-13' && saved.nextVisit === '2026-09-20' && saved.note === '补牙第二次', saved);
+  ok('送出的字段形状对得上后端合约（含复诊间隔）',
+     saved.lastVisit === '2026-07-13' && saved.nextVisit === '2026-09-20'
+     && saved.intervalMonths === 3 && saved.note === '补牙第二次', saved);
+  // 上面那次保存成功后会 refreshFeed()、整块重建管理页——必须等「已保存」出现
+  // （它是重建之后才写的）再往下填，否则 fill 的值会被重建冲掉，后面的断言就假红。
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('admin-dental-status');
+    return !!el && el.className.includes('ok');
+  }), { what: '保存完成、管理页重建完毕' });
+
+  console.log('\n【对照组：复诊间隔可改，越界会被拦下】');
+  ok('管理页带出复诊间隔 3',
+     await page.locator('#admin-dental-interval').inputValue() === '3');
+  rec.calls.length = 0;
+  await page.fill('#admin-dental-interval', '0');
+  await page.click('button[onclick="adminSaveDental()"]');
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('admin-dental-status');
+    return !!el && el.className.includes('err') && /1/.test(el.textContent || '');
+  }), { what: '越界的间隔被拦下' });
+  ok('间隔填 0 被拦下', true);
+  ok('拦下时一个请求都没发', rec.calls.every(c => c.action !== 'dentalSave'),
+     rec.calls.map(c => c.action));
+  await page.fill('#admin-dental-interval', '6');
+  await page.click('button[onclick="adminSaveDental()"]');
+  await until(() => rec.calls.some(c => c.action === 'dentalSave'), { what: '改成 6 个月存出去' });
+  ok('改成 6 个月照样能存', rec.calls.find(c => c.action === 'dentalSave').intervalMonths === 6,
+     rec.calls.find(c => c.action === 'dentalSave'));
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+// ---------- 场景十八之对照组四：间隔到了还没约 → 明说「该约了」并标红 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  await ctx.addInitScript(() => {
+    const FIXED = Date.parse('2026-08-29T12:00:00Z');
+    const _D = Date;
+    // eslint-disable-next-line no-global-assign
+    Date = class extends _D {
+      constructor(...a){ if(a.length === 0) super(FIXED); else super(...a); }
+      static now(){ return FIXED; }
+    };
+  });
+  // 三个月前的 5 月 1 日看的，到 8 月 1 日就该约了——今天已经过期近一个月
+  mountRoutes(ctx, { role: 'viewer',
+    dental: { lastVisit: '2026-05-01', nextVisit: null, intervalMonths: 3, note: '' } });
+  const page = await ctx.newPage();
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(async () => (await page.locator('.dental-card').count()) === 1, { what: '牙医小卡出现' });
+  const cardCn = (await page.locator('.dental-card .cn').allTextContents()).join(' ').replace(/\s+/g, ' ');
+  console.log('\n【对照组：该约了】');
+  ok('过期了就明说「该约了」，不再是温吞的「还没约」',
+     /该约了/.test(cardCn) && !/还没约/.test(cardCn), cardCn);
+  ok('参考日期是 8 月 1 日（5月1日 + 3 个月）', /2026年8月1日/.test(cardCn), cardCn);
+  ok('那一行标了红（dental-overdue）', await page.locator('.dental-overdue').count() === 1);
   await ctx.close();
 }
 
