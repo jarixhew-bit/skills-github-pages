@@ -2383,7 +2383,7 @@ function adminTripsSectionHtml(){
   return `<div class="admin-block" id="admin-trips-section">
       <h3>🧳 ${pick('行程管理','Manage Trips')}</h3>
       <div id="admin-trips-list">${inner}</div>
-      <button type="button" class="admin-btn admin-btn-ticket" onclick="adminPickTicket()">📄 ${pick('丢机票进来（PDF／照片，可多选）','Drop in tickets (PDF/photo, multi-select)')}</button>
+      <button type="button" class="admin-btn admin-btn-ticket" onclick="adminPickTicket()">📄 ${pick('丢机票／酒店确认单进来（PDF／照片，可多选）','Drop in tickets or hotel vouchers (PDF/photo, multi-select)')}</button>
       <input type="file" id="admin-ticket-input" accept="application/pdf,image/*" multiple
         style="display:none" onchange="adminTicketPicked(this)">
       <div class="admin-status" id="admin-ticket-status"></div>
@@ -2436,12 +2436,13 @@ async function adminTicketPicked(input){
     }
     const res = await bossCall('ticketParse', { files: payload });
     const legs = (res && res.legs) || [];
-    if(!legs.length){
-      adminTicketStatus(pick('没认出航班号，可能是图太糊或不是机票——手动填一下吧',
-                             'No flights found — the file may be blurry or not a ticket; please fill it in manually'), 'err');
+    const stays = (res && res.stays) || [];
+    if(!legs.length && !stays.length){
+      adminTicketStatus(pick('没认出航班或住宿，可能是图太糊或不是机票／酒店确认单——手动填一下吧',
+                             'No flights or hotel stays found — the file may be blurry or not a ticket/hotel voucher; please fill it in manually'), 'err');
       return;
     }
-    adminTicketBuildTrip(res, legs);
+    adminTicketBuildTrip(res, legs, stays);
   }catch(err){
     adminTicketStatus((err && err.message) || pick('识别失败','Failed to read the ticket'), 'err');
   }finally{
@@ -2449,8 +2450,39 @@ async function adminTicketPicked(input){
     if(input) input.value = '';
   }
 }
-/** 把识别出来的航段变成一趟新行程，然后逐段去查真航班资料。 */
-async function adminTicketBuildTrip(res, legs){
+/** 一段住宿 → 两条行程条目（入住 / 退房）。
+ *  只订一晚、或者单子没写退房日时，就只有入住那一条。
+ *  时间一律照单子：**没写就空着**，不按常识填 15:00／12:00——猜出来的数字他到了
+ *  酒店会照着走，错了是真的会吃闭门羹（这是本仓库「钱和时间不猜」的同一条规矩）。
+ *  地点一律带地图链接（仓库硬规矩：提到地点必须能点开地图）。 */
+function staysToItems(stays){
+  const out = [];
+  (stays || []).forEach(h => {
+    const name = h.name || '';
+    const mapQuery = [name, h.address || ''].filter(Boolean).join(' ');
+    const mapUrl = mapQuery ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapQuery) : '';
+    const bits = [];
+    if(h.room) bits.push(h.room);
+    if(h.confirmation) bits.push(pick('确认号 ', 'Confirmation ') + h.confirmation);
+    if(h.address) bits.push(h.address);
+    const note = bits.join(' · ');
+    out.push({
+      date: h.check_in, time: h.check_in_time || '',
+      title: { zh: '入住 ' + name, en: 'Check in · ' + name },
+      note: { zh: note, en: note }, mapUrl,
+    });
+    if(h.check_out && h.check_out !== h.check_in){
+      out.push({
+        date: h.check_out, time: h.check_out_time || '',
+        title: { zh: '退房 ' + name, en: 'Check out · ' + name },
+        note: { zh: '', en: '' }, mapUrl,
+      });
+    }
+  });
+  return out;
+}
+/** 把识别出来的航段和住宿变成一趟新行程，然后逐段去查真航班资料。 */
+async function adminTicketBuildTrip(res, legs, stays){
   ensureAdminTripsDraft();
   const id = 'trip-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const items = legs.map(l => {
@@ -2462,10 +2494,15 @@ async function adminTicketBuildTrip(res, legs){
              note: { zh: noteZh, en: noteEn }, mapUrl: '',
              flight: { no: l.flight_no, date: l.date } };
   });
+  // 住宿排在航班后面进数组——查真航班是按下标走的，位置不能被住宿挤掉。
+  // 显示顺序不受影响：表单和老板端都按日期+时间排（见 adminItemsListHtml / sortedTripItems）。
+  const stayItems = staysToItems(stays);
+  items.push(...stayItems);
+  const allDates = items.map(it => it.date).filter(Boolean).sort();
   const title = res.title || pick('新行程', 'New trip');
   adminTripsDraft.push({ id, title: { zh: title, en: '' },
-    start: res.start || (items[0] && items[0].date) || '',
-    end: res.end || (items[items.length - 1] && items[items.length - 1].date) || '',
+    start: res.start || allDates[0] || '',
+    end: res.end || (allDates.length ? allDates[allDates.length - 1] : '') || '',
     location: { zh: '', en: '' }, guideUrl: '', items });
   const tripIdx = adminTripsDraft.length - 1;
   adminExpandedTrip = tripIdx;
@@ -2473,9 +2510,12 @@ async function adminTicketBuildTrip(res, legs){
   rerenderAdminTripsSection();
 
   // 逐段查真数据。一段一段来（不并发）：额度是按次算的，也免得同时改同一份草稿。
-  adminTicketStatus(pick(`认出 ${legs.length} 段航班，正在查真实时间…`,
-                         `Found ${legs.length} flight(s) — looking up real times…`));
-  for(let i = 0; i < items.length; i++){
+  const stayNote = stayItems.length ? pick(`、${stays.length} 段住宿`, ` and ${stays.length} stay(s)`) : '';
+  adminTicketStatus(legs.length
+    ? pick(`认出 ${legs.length} 段航班${stayNote}，正在查真实时间…`,
+           `Found ${legs.length} flight(s)${stayNote} — looking up real times…`)
+    : pick(`认出 ${stays.length} 段住宿`, `Found ${stays.length} stay(s)`));
+  for(let i = 0; i < legs.length; i++){
     delete flightLookupState[`${tripIdx}:${i}`];   // 这是全新的条目，别沿用别人的「查过了」
     const ticketNote = items[i].note;              // 查成功会整个覆盖 note，先留一份
     await adminFlightLookup(tripIdx, i);
@@ -2484,12 +2524,15 @@ async function adminTicketBuildTrip(res, legs){
     if(after && ticketNote && ticketNote.zh && !(after.note && after.note.zh)) after.note = ticketNote;
   }
   const unresolved = adminTripsDraft[tripIdx].items.filter(it => it.flight && it.flight.unresolved).length;
+  const noTime = stayItems.filter(it => !it.time).length; // 单子没写入住/退房时间的
+  const tail = noTime ? pick(`；住宿有 ${noTime} 条单子上没写时间，要自己补`,
+                             `; ${noTime} stay row(s) had no time on the voucher — please fill them in`) : '';
   adminTicketStatus(unresolved
-    ? pick(`已填好 ${items.length} 段，其中 ${unresolved} 段没查到真实时间（用的是票面时间，请核对）`,
-           `Filled ${items.length} leg(s); ${unresolved} could not be verified — ticket times used, please check`)
-    : pick(`已填好 ${items.length} 段航班，确认后按「保存全部行程」`,
-           `Filled ${items.length} leg(s) — press "Save all trips" when it looks right`),
-    unresolved ? 'err' : 'ok');
+    ? pick(`已填好 ${items.length} 条，其中 ${unresolved} 段航班没查到真实时间（用的是票面时间，请核对）${tail}`,
+           `Filled ${items.length} row(s); ${unresolved} flight(s) could not be verified — ticket times used, please check${tail}`)
+    : pick(`已填好 ${items.length} 条，确认后按「保存全部行程」${tail}`,
+           `Filled ${items.length} row(s) — press "Save all trips" when it looks right${tail}`),
+    (unresolved || noTime) ? 'err' : 'ok');
   const card = document.getElementById('admin-trip-' + tripIdx + '-items');
   if(card) card.scrollIntoView({ block: 'center' });
 }
@@ -2693,7 +2736,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v34</div>
+    <div class="admin-ver" id="adminVer">boss-app-v35</div>
 
     ${adminTripsSectionHtml()}
 

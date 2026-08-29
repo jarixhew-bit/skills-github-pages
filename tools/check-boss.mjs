@@ -117,7 +117,7 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
       }
       if (req.action === 'ticketParse'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
-          body: JSON.stringify(ticketParseResult || { status:'ok', title:'', start:null, end:null, legs: [] }) });
+          body: JSON.stringify(ticketParseResult || { status:'ok', title:'', start:null, end:null, legs: [], stays: [] }) });
       }
       if (req.action === 'flightLookup'){
         // byNo：按航班号给不同结果，用来一次跑出「查得到」和「查不到」两种分支
@@ -1499,7 +1499,7 @@ function localAt(daysFromNow, hm, offset){
      trip.items[1].flight.unresolved === true, trip.items[1].flight);
 
   const status = await page.locator('#admin-ticket-status').innerText();
-  ok('状态栏说清楚有几段没核对', status.includes('1 段没查到'), status);
+  ok('状态栏说清楚有几段没核对', /1 段航班没查到/.test(status), status);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
@@ -1964,6 +1964,102 @@ function localAt(daysFromNow, hm, offset){
   ok('版号对得上时，已读还是已读（红点消得掉）', both.afterRead === 0, both);
   ok('版号一改，三个红点立刻全部重新亮起来', both.afterEpochChange === 3, both);
   ok('写回去的是当前版号，不是那个旧的', both.epoch && both.epoch !== '2020-01-01', both);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十：丢酒店确认单进来也能建行程 ----------
+// 2026-08-29 用户：「丢酒店 check in voucher 也能识别」。
+// 两条不许破的规矩在这里各有断言：
+//   ① 时间不猜——单子没写入住时间就空着，绝不按常识填 15:00（填错了他会吃闭门羹）
+//   ② 提到地点必须带地图链接（本仓库硬规矩）
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin', ticketParseResult: {
+    status: 'ok', title: '新加坡小旅行', start: '2026-09-23', end: '2026-09-27',
+    legs: [],
+    stays: [
+      { name: 'Marina Bay Sands', address: '10 Bayfront Ave, Singapore',
+        check_in: '2026-09-23', check_out: '2026-09-27',
+        check_in_time: '15:00', check_out_time: null,
+        confirmation: 'ABC12345', room: 'Deluxe King' },
+    ],
+  } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await page.setInputFiles('#admin-ticket-input', {
+    name: 'hotel.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 fake voucher'),
+  });
+  await until(() => page.evaluate(() =>
+    adminTripsDraft && adminTripsDraft.length && adminTripsDraft[adminTripsDraft.length-1].items.length >= 2),
+    { what: '酒店建出入住/退房两条' });
+
+  const trip = await page.evaluate(() => adminTripsDraft[adminTripsDraft.length - 1]);
+  console.log('\n【酒店确认单】');
+  ok('一段住宿建出「入住」「退房」两条', trip.items.length === 2, trip.items.map(i => i.title.zh));
+  const ci = trip.items.find(i => /入住/.test(i.title.zh)) || {};
+  const co = trip.items.find(i => /退房/.test(i.title.zh)) || {};
+  ok('入住那条日期是入住日', ci.date === '2026-09-23', ci);
+  ok('退房那条日期是退房日', co.date === '2026-09-27', co);
+  ok('标题带上酒店名', /Marina Bay Sands/.test(ci.title.zh), ci.title);
+  ok('单子写了入住时间就用它', ci.time === '15:00', ci);
+  // ① 不猜：单子没写退房时间 → 留空，而不是自作主张填 12:00
+  ok('单子没写退房时间就留空，不按常识填 12:00', co.time === '', co);
+  // ② 地图链接（仓库硬规矩）
+  ok('入住那条带 Google 地图链接',
+     /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/.test(ci.mapUrl || ''), ci.mapUrl);
+  ok('地图链接里带了酒店名和地址', /Marina/.test(decodeURIComponent(ci.mapUrl || ''))
+     && /Bayfront/.test(decodeURIComponent(ci.mapUrl || '')), ci.mapUrl);
+  ok('退房那条也带地图链接（他退房当天可能还要回去拿行李）', !!co.mapUrl, co.mapUrl);
+  ok('确认号和房型放进备注（前台要用）',
+     /ABC12345/.test(ci.note.zh) && /Deluxe King/.test(ci.note.zh), ci.note);
+  ok('行程起讫按住宿算', trip.start === '2026-09-23' && trip.end === '2026-09-27', trip);
+  // 没有航班就不该去打航班接口——那要花 AeroDataBox 额度
+  ok('纯酒店单不去查航班接口（省额度）',
+     rec.calls.every(c => c.action !== 'flightLookup'), rec.calls.map(c => c.action));
+  const status = await page.locator('#admin-ticket-status').innerText();
+  ok('状态栏点明「没写时间的有几条，要自己补」', /没写时间/.test(status), status);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+// ---------- 场景二十之对照组：机票＋酒店混在一起时，两边都要建出来 ----------
+// 只验纯酒店的话，「把航班那段代码删了」也能绿。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin', ticketParseResult: {
+    status: 'ok', title: '混合行程', start: '2026-09-23', end: '2026-09-27',
+    legs: [{ flight_no: 'SQ157', date: '2026-09-23', from: 'KTI', to: 'SIN', dep_time: '18:55', terminal: '3' }],
+    stays: [{ name: '樟宜酒店', address: null, check_in: '2026-09-23', check_out: '2026-09-25',
+              check_in_time: null, check_out_time: null, confirmation: null, room: null }],
+  } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await page.setInputFiles('#admin-ticket-input', {
+    name: 'both.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 fake'),
+  });
+  await until(() => page.evaluate(() =>
+    adminTripsDraft && adminTripsDraft.length && adminTripsDraft[adminTripsDraft.length-1].items.length >= 3),
+    { what: '航班＋住宿都建出来' });
+  const trip = await page.evaluate(() => adminTripsDraft[adminTripsDraft.length - 1]);
+  console.log('\n【对照组：机票＋酒店混在一起】');
+  ok('航班那条还在', trip.items.some(i => i.flight && i.flight.no === 'SQ157'), trip.items);
+  ok('住宿也建出来了', trip.items.some(i => /入住 樟宜酒店/.test(i.title.zh)), trip.items.map(i => i.title.zh));
+  ok('航班那条排在数组前面（查真数据是按下标走的，不能被住宿挤掉）',
+     trip.items[0].flight && trip.items[0].flight.no === 'SQ157', trip.items[0]);
+  ok('有航班就照样去查真接口', rec.calls.some(c => c.action === 'flightLookup'),
+     rec.calls.map(c => c.action));
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
