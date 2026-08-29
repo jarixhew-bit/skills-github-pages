@@ -74,6 +74,14 @@ body:not(.lang-en) .en{display:none !important}
 .empty-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
   padding:32px 20px;text-align:center;color:var(--sub);margin-bottom:14px}
 .empty-card.small{padding:16px 20px;font-size:13.5px}
+.dental-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.dental-row{display:flex;gap:12px;align-items:baseline;padding:4px 0;font-size:14.5px}
+.dental-k{flex:none;color:var(--sub);font-size:13px;min-width:76px}
+.dental-v{flex:1;font-weight:600}
+.dental-next{color:var(--p)}
+.dental-overdue{color:var(--danger)}
+.dental-note{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);
+  color:var(--sub);font-size:13px}
 .empty-icon{font-size:38px;margin-bottom:10px}
 .empty-next{margin-top:10px;font-size:13.5px;color:var(--p);font-weight:600}
 
@@ -1132,7 +1140,85 @@ function renderToday(){
     html += `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('明天','Tomorrow')}</span></div>`;
     html += tomorrowBody;
   }
+  html += dentalCardHtml();
   pane.innerHTML = html;
+}
+
+/* ============================= 牙医 ============================= */
+/** 两个日期相差几个月零几天，用来说「上次是多久以前」。
+ *  按自然月走（不是「除以 30 天」）：7月13日→8月29日 是「1 个月 16 天」，
+ *  除以 30 会说成「1 个月 17 天」，老板拿日历一对就发现对不上。 */
+function monthsDaysBetween(fromIso, toIso){
+  const a = String(fromIso||'').split('-').map(Number);
+  const b = String(toIso||'').split('-').map(Number);
+  if(a.length !== 3 || b.length !== 3 || !a[0] || !b[0]) return null;
+  let months = (b[0]-a[0])*12 + (b[1]-a[1]);
+  let days = b[2] - a[2];
+  if(days < 0){
+    months -= 1;
+    // 借一个「上个月的天数」——不是固定 30，2 月和大小月都靠这行走对
+    const prevMonthDays = new Date(Date.UTC(b[0], b[1]-1, 0)).getUTCDate();
+    days += prevMonthDays;
+  }
+  if(months < 0) return null; // 未来的日期不该走到这里
+  return { months, days };
+}
+function humanSince(fromIso, todayIso){
+  const d = monthsDaysBetween(fromIso, todayIso);
+  if(!d) return { zh:'', en:'' };
+  if(d.months === 0){
+    return { zh: `${d.days} 天前`, en: `${d.days} day${d.days===1?'':'s'} ago` };
+  }
+  return {
+    zh: d.days ? `${d.months} 个月 ${d.days} 天前` : `${d.months} 个月前`,
+    en: d.days ? `${d.months} mo ${d.days} d ago` : `${d.months} month${d.months===1?'':'s'} ago`,
+  };
+}
+/** 牙医小卡：只回答老板真正会问的那一件事——「上次什么时候看的，该不该约了」。
+ *  没有任何记录时整张卡不画（不给他一张写着「暂无」的空卡占版面）。 */
+function dentalCardHtml(){
+  const d = feedData && feedData.dental;
+  if(!d || (!d.lastVisit && !d.nextVisit)) return '';
+  const todayIso = isoDate(new Date());
+  let rows = '';
+  if(d.lastVisit){
+    const dw = fmtDateBoth(d.lastVisit);
+    const since = humanSince(d.lastVisit, todayIso);
+    rows += `<div class="dental-row">
+        <span class="dental-k">${bl('上次就诊','Last visit')}</span>
+        <span class="dental-v">${bl(dw.zh, dw.en)}${ since.zh ? bl(`（${since.zh}）`, ` (${since.en})`) : '' }</span>
+      </div>`;
+  }
+  if(d.nextVisit){
+    const nw = fmtDateWeekdayBoth(d.nextVisit);
+    const soon = d.nextVisit >= todayIso;
+    rows += `<div class="dental-row">
+        <span class="dental-k">${bl('下次预约','Next appointment')}</span>
+        <span class="dental-v${soon ? ' dental-next' : ''}">${bl(nw.zh, nw.en)}</span>
+      </div>`;
+  }else if(d.lastVisit){
+    // 没排下次：给一句「一般半年一次」的参考，但**说明白这是建议不是已约**，
+    // 免得老板以为诊所已经帮他约好了。
+    const due = addMonthsIso(d.lastVisit, 6);
+    const overdue = due && due < todayIso;
+    rows += `<div class="dental-row">
+        <span class="dental-k">${bl('下次预约','Next appointment')}</span>
+        <span class="dental-v${overdue ? ' dental-overdue' : ''}">${bl('还没约','Not booked yet')}${
+          due ? bl(`（一般半年一次，约 ${fmtDateBoth(due).zh}）`, ` (usually every 6 months, around ${fmtDateBoth(due).en})`) : '' }</span>
+      </div>`;
+  }
+  const note = d.note && String(d.note).trim();
+  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🦷 ${bl('牙医','Dentist')}</span></div>
+    <div class="dental-card">${rows}${ note ? `<div class="dental-note">${escapeHtml(note)}</div>` : '' }</div>`;
+}
+/** 加 n 个月，月底自动收敛到该月最后一天（8月31日 + 6 个月 = 2月28/29日，不会溢出到 3 月）。 */
+function addMonthsIso(iso, n){
+  const p = String(iso||'').split('-').map(Number);
+  if(p.length !== 3 || !p[0]) return null;
+  const y = p[0], m = p[1] - 1 + n, d = p[2];
+  const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const dt = new Date(Date.UTC(y, m, Math.min(d, last)));
+  return `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth()+1)}-${pad2(dt.getUTCDate())}`;
 }
 
 /* ============================= 行程 ============================= */
@@ -2131,6 +2217,55 @@ function rerenderAdminTripsSection(){
   list.innerHTML = adminTripsDraft.map((t, idx) =>
     (adminExpandedTrip === idx) ? adminTripFormHtml(t, idx) : adminTripSummaryHtml(t, idx)).join('');
 }
+/* ===================== 牙医：一张小卡，只记日期 =====================
+ * 老板真正会问的只有一句「上次什么时候看的，该不该约了」。所以这里只有三格：
+ * 上次就诊、下次预约（还没约就空着）、备注。日期都用原生 date 框，不让人手打。 */
+let adminDentalBusy = false;
+function adminDentalSectionHtml(){
+  const d = (feedData && feedData.dental) || {};
+  return `<div class="admin-block" id="admin-dental-section">
+      <h3>🦷 ${pick('牙医','Dentist')}</h3>
+      <div class="admin-field"><label>${pick('上次就诊','Last visit')}</label>
+        <input type="date" id="admin-dental-last" value="${escapeHtml(d.lastVisit || '')}"></div>
+      <div class="admin-field"><label>${pick('下次预约（还没约就空着）','Next appointment (leave empty if not booked)')}</label>
+        <input type="date" id="admin-dental-next" value="${escapeHtml(d.nextVisit || '')}"></div>
+      <div class="admin-field"><label>${pick('备注（选填）','Note (optional)')}</label>
+        <input type="text" id="admin-dental-note" maxlength="200" value="${escapeHtml(d.note || '')}"
+          placeholder="${escapeHtml(pick('例：补牙第二次','e.g. filling, 2nd session'))}"></div>
+      <button type="button" class="admin-btn" onclick="adminSaveDental()">💾 ${pick('保存牙医记录','Save dentist record')}</button>
+      <div class="admin-status" id="admin-dental-status"></div>
+    </div>`;
+}
+async function adminSaveDental(){
+  if(adminDentalBusy) return;
+  const statusEl = document.getElementById('admin-dental-status');
+  const last = (document.getElementById('admin-dental-last').value || '').trim();
+  const next = (document.getElementById('admin-dental-next').value || '').trim();
+  const note = (document.getElementById('admin-dental-note').value || '').trim();
+  // 下次不能早于上次——这种颠倒的日期存进去，老板那张卡会显示得莫名其妙。
+  if(last && next && next < last){
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = pick('下次预约不能早于上次就诊','The next appointment cannot be before the last visit');
+    return;
+  }
+  adminDentalBusy = true;
+  statusEl.className = 'admin-status';
+  statusEl.textContent = pick('保存中…','Saving…');
+  try{
+    await bossCall('dentalSave', { lastVisit: last, nextVisit: next, note: note });
+  }catch(err){
+    adminDentalBusy = false;
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = (err && err.message) || pick('保存失败','Save failed');
+    return;
+  }
+  adminDentalBusy = false;
+  try{ await refreshFeed(); }catch(e){ /* 已经存好了，没拉到最新不影响 */ }
+  // refreshFeed() 会整块重建管理页，上面那个 statusEl 已经被换掉了——
+  // 确认消息必须在重建之后重新写一次（跟 adminSaveTripsForm 同一个坑）。
+  const after = document.getElementById('admin-dental-status');
+  if(after){ after.className = 'admin-status ok'; after.textContent = pick('已保存','Saved'); }
+}
 function adminTripsSectionHtml(){
   ensureAdminTripsDraft();
   let inner;
@@ -2453,9 +2588,11 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v27</div>
+    <div class="admin-ver" id="adminVer">boss-app-v28</div>
 
     ${adminTripsSectionHtml()}
+
+    ${adminDentalSectionHtml()}
 
     <div class="admin-block">
       <h3>🔑 <span class="cn">老板的访问码</span><span class="en">Boss's Access Code</span></h3>

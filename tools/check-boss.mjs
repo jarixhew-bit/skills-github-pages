@@ -91,7 +91,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -108,7 +108,8 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
       if (req.action === 'feed'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify({ status: 'ok', who, role, updated: fakeUpdated(),
-            trips: trips || fakeTrips(), bills: fakeBills(), inventory }) });
+            trips: trips || fakeTrips(), bills: fakeBills(), inventory,
+            dental: dental || { lastVisit: null, nextVisit: null, note: '' } }) });
       }
       if (req.action === 'bill'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
@@ -1682,6 +1683,123 @@ function localAt(daysFromNow, hm, offset){
   await until(() => page.evaluate(() => !!document.querySelector('.trip-card, .empty-card')),
     { what: '首屏渲染完' });
   ok('非 iOS 且不支持推送：一条提示都不冒出来', await page.locator('#pushBar').count() === 0);
+  await ctx.close();
+}
+
+// ---------- 场景十八：牙医小卡 ----------
+// 老板真正会问的只有一句「上次什么时候看的，该不该约了」。这一节验它答得对，
+// 并且**没有记录时整张卡不出现**（不给他一张写着「暂无」的空卡占版面）。
+// 「多久以前」按自然月算：7月13日 → 8月29日 是「1 个月 16 天」，
+// 用「除以 30 天」会说成 17 天，老板拿日历一对就发现对不上。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  // 时间钉死，否则「几个月前」会随着跑自检的日子变。
+  await ctx.addInitScript(() => {
+    // 用正午定死：取 UTC 边缘的时刻（比如 +07:00 的凌晨 4 点）会让浏览器按自己的
+    // 时区算成前一天，「几个月前」就差一天——差的是测试的假设，不是被测的算法。
+    const FIXED = Date.parse('2026-08-29T12:00:00Z');
+    const _D = Date;
+    // eslint-disable-next-line no-global-assign
+    Date = class extends _D {
+      constructor(...a){ if(a.length === 0) super(FIXED); else super(...a); }
+      static now(){ return FIXED; }
+    };
+  });
+  mountRoutes(ctx, { role: 'viewer', dental: { lastVisit: '2026-07-13', nextVisit: null, note: '' } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(async () => (await page.locator('.dental-card').count()) === 1,
+    { what: '牙医小卡出现在今日页' });
+
+  const cardCn = (await page.locator('.dental-card .cn').allTextContents()).join(' ').replace(/\s+/g, ' ');
+  console.log('\n【牙医小卡：上次就诊】');
+  ok('写出上次就诊的日期', /7月13日/.test(cardCn), cardCn);
+  ok('按自然月算「多久以前」＝1 个月 16 天（不是除以 30 得出的 17 天）',
+     /1 个月 16 天前/.test(cardCn), cardCn);
+  ok('没约下次时明说「还没约」', /还没约/.test(cardCn), cardCn);
+  ok('给出半年后的参考日期，并写明这是建议不是已约',
+     /一般半年一次/.test(cardCn) && /2027年1月13日/.test(cardCn), cardCn);
+  ok('牙医卡在今日页上，不是另开一个分页',
+     await page.locator('#tab-today .dental-card').count() === 1);
+  ok('老板身上没有任何牙医的写操作控件', await page.locator('#admin-dental-last').count() === 0);
+  await ctx.close();
+}
+// ---------- 场景十八之对照组一：没有任何记录 → 整张卡不出现 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer', dental: { lastVisit: null, nextVisit: null, note: '' } });
+  const page = await ctx.newPage();
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('#tab-today .empty-card, #tab-today .sec-hdr')),
+    { what: '今日页渲染完' });
+  ok('没有任何牙医记录时，整张卡不画出来', await page.locator('.dental-card').count() === 0);
+  await ctx.close();
+}
+// ---------- 场景十八之对照组二：已经约好下次 → 显示预约日，不再劝他去约 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer',
+    dental: { lastVisit: '2026-07-13', nextVisit: '2026-09-20', note: '补牙第二次' } });
+  const page = await ctx.newPage();
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(async () => (await page.locator('.dental-card').count()) === 1, { what: '牙医小卡出现' });
+  const cardCn = (await page.locator('.dental-card .cn').allTextContents()).join(' ').replace(/\s+/g, ' ');
+  const cardAll = (await page.locator('.dental-card').innerText()).replace(/\s+/g, ' ');
+  console.log('\n【对照组：已经约好下次】');
+  ok('显示下次预约的日期', /9月20日/.test(cardCn), cardCn);
+  ok('已经约好了就不再说「还没约」', !/还没约/.test(cardCn), cardCn);
+  ok('也不再显示那句「一般半年一次」的建议', !/一般半年一次/.test(cardCn), cardCn);
+  ok('备注显示出来了', /补牙第二次/.test(cardAll), cardAll);
+  await ctx.close();
+}
+// ---------- 场景十八之对照组三：admin 能改，而且改错日期会被拦 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin',
+    dental: { lastVisit: '2026-07-13', nextVisit: null, note: '' } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await until(async () => (await page.locator('#admin-dental-last').count()) === 1,
+    { what: '牙医表单出现在管理页' });
+
+  console.log('\n【对照组：管理页】');
+  ok('管理页带出已存的上次就诊日期',
+     await page.locator('#admin-dental-last').inputValue() === '2026-07-13');
+
+  // 下次早于上次 → 拦下，且不发请求
+  rec.calls.length = 0;
+  await page.fill('#admin-dental-next', '2026-07-01');
+  await page.click('button[onclick="adminSaveDental()"]');
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('admin-dental-status');
+    return !!el && el.className.includes('err');
+  }), { what: '颠倒的日期被拦下' });
+  ok('下次早于上次会被拦下', true);
+  ok('拦下时一个请求都没发', rec.calls.every(c => c.action !== 'dentalSave'),
+     rec.calls.map(c => c.action));
+
+  // 正常保存
+  await page.fill('#admin-dental-next', '2026-09-20');
+  await page.fill('#admin-dental-note', '补牙第二次');
+  await page.click('button[onclick="adminSaveDental()"]');
+  await until(() => rec.calls.some(c => c.action === 'dentalSave'), { what: '发出 dentalSave 请求' });
+  const saved = rec.calls.find(c => c.action === 'dentalSave');
+  ok('送出的是三个字段，形状对得上后端合约',
+     saved.lastVisit === '2026-07-13' && saved.nextVisit === '2026-09-20' && saved.note === '补牙第二次', saved);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
 
