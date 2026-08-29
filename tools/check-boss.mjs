@@ -1069,7 +1069,7 @@ async function gotoTab(page, tab){
   await forceZh(ctx);
   // 「试一下本机通知」那条要真的走到 showNotification，得先有通知权限——
   // 不给的话它会停在「权限没给」那一步，验不到我们要验的东西。
-  await ctx.grantPermissions(['notifications']); // 不限 origin——限定 origin 在 CI 上没生效过一次
+  await ctx.grantPermissions(['notifications']); // 真机行为对齐；CI 无头环境不一定认，所以下面还会在页面内打桩
   mountRoutes(ctx, { role: 'admin' });
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
@@ -1118,9 +1118,12 @@ async function gotoTab(page, tab){
   ok('admin：有「试一下本机通知」按钮（把显示和投递拆开查）',
      await page.locator('#admin-push-local-btn').count() === 1);
   // 点了要真的调 registration.showNotification，而不是只改一行字充数
-  // 连 navigator.serviceWorker.ready 一起打桩：真 SW 什么时候 active 跟这条断言无关，
-  // 但它会让断言在 CI 上偶发假红（本地过、CI 红了一次，就是等不到 SW）。
-  // 我们要验的是「点了会不会真的调 showNotification」，不是「SW 注册快不快」。
+  // 这条断言验的是「点了会不会真的调 showNotification」。跟它无关、却会让它在 CI 上
+  // 假红的外部条件有两个，全部在页面内打桩掉（沙盒过、CI 连红两次都栽在这上面：
+  // 先是 SW 还没 active，改掉之后又栽在无头浏览器的通知权限上——grantPermissions
+  // 在这个环境里没把 Notification.permission 变成 granted）：
+  //   ① navigator.serviceWorker.ready 什么时候 resolve
+  //   ② Notification.permission 是不是 granted
   const localFired = await page.evaluate(async () => {
     let called = null;
     const fakeReg = {
@@ -1129,6 +1132,7 @@ async function gotoTab(page, tab){
     Object.defineProperty(navigator.serviceWorker, 'ready', {
       configurable: true, get: () => Promise.resolve(fakeReg),
     });
+    Object.defineProperty(Notification, 'permission', { configurable: true, get: () => 'granted' });
     await adminTestLocalNotification();
     return called;
   });
