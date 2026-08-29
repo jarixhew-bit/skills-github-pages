@@ -919,12 +919,24 @@ function loadCachedFeed(){
   if(!raw) return null;
   try{ return JSON.parse(raw); }catch(e){ return null; }
 }
+/** 已读记号的「版号」。改动这个字符串 = 让所有设备的已读状态作废一次，
+ *  下次打开时三个分页全部重新变成未读（红点全亮）。
+ *  2026-08-29：App 要交给老板了，他手上那台之前试用时已经把红点点掉了，
+ *  得让他一进来就看到「这里面有东西」。以后想再来一次，改日期即可。 */
+const SEEN_EPOCH = '2026-08-29';
 function loadSeen(){
   const raw = safeGet(SEEN_KEY);
   if(!raw) return {};
-  try{ return JSON.parse(raw) || {}; }catch(e){ return {}; }
+  let obj;
+  try{ obj = JSON.parse(raw) || {}; }catch(e){ return {}; }
+  // 版号对不上（老记号、或者从没写过版号）→ 当作全部没读过
+  if(obj.__epoch !== SEEN_EPOCH) return {};
+  return obj;
 }
-function saveSeen(seen){ safeSet(SEEN_KEY, JSON.stringify(seen)); }
+function saveSeen(seen){
+  const out = Object.assign({}, seen, { __epoch: SEEN_EPOCH });
+  safeSet(SEEN_KEY, JSON.stringify(out));
+}
 
 /* ============================= 闸门 ============================= */
 function openGate(){ document.getElementById('gate').classList.remove('off'); }
@@ -2681,7 +2693,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v32</div>
+    <div class="admin-ver" id="adminVer">boss-app-v34</div>
 
     ${adminTripsSectionHtml()}
 
@@ -3101,6 +3113,23 @@ window.addEventListener('beforeunload', function(e){
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('boss-sw.js').catch(() => {});
+  });
+  // SW 现在是「先给缓存、同时后台回源」，所以页面壳可能比服务器上的旧一版。
+  // 后台那份取回来发现不一样时，SW 会发这条消息过来。
+  //   - 没在编辑东西 → 直接静默重载一次，用户下一眼看到的就是新版
+  //   - 正在编辑（管理页有未保存改动）→ 绝不重载，只提示，不能把人填的东西冲掉
+  // shellReloaded 这个闩很重要：不加的话「重载 → 又收到消息 → 再重载」会转圈。
+  let shellReloaded = false;
+  navigator.serviceWorker.addEventListener('message', e => {
+    if(!e.data || e.data.type !== 'shell-updated' || shellReloaded) return;
+    shellReloaded = true;
+    if(typeof adminTripsDirty !== 'undefined' && adminTripsDirty){
+      // 新版壳已经写进缓存了，下次打开自然就是新的；这里只说一声，不动他的输入框。
+      const el = document.getElementById('admin-trips-form-status');
+      if(el){ el.className = 'admin-status'; el.textContent = pick('有新版本，存好之后重开一次就会更新','A new version is ready — reopen after saving'); }
+      return;
+    }
+    location.reload();
   });
 }
 </script>

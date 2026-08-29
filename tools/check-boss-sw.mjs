@@ -64,6 +64,79 @@ function loadSw() {
   return { firePush, shown, badges, listeners };
 }
 
+/** 跑一遍 SW，回传「派发一个 document fetch 事件」的函数。
+ *  Response/Request 用极简替身：只需要 text()/clone()/ok 这几样。 */
+function loadSwFetch({ noCache = false } = {}) {
+  const listeners = {};
+  const fetches = [];
+  const puts = [];
+  const posted = [];
+  const waits = [];
+  const mkRes = (body) => ({
+    ok: true,
+    _body: body,
+    text: async () => body,
+    clone() { return mkRes(body); },
+  });
+  const cacheObj = {
+    match: async () => (noCache ? undefined : mkRes('缓存版')),
+    put: async (req, res) => { puts.push(res._body); },
+    addAll: async () => {},
+  };
+  const self = {
+    addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); },
+    registration: { showNotification: async () => {} },
+    skipWaiting: () => {},
+    location: { origin: 'https://example.test' },
+    clients: {
+      claim: () => {},
+      matchAll: async () => [{ postMessage: (m) => posted.push(m) }],
+      openWindow: async () => {},
+    },
+  };
+  let pendingFetch = null;
+  const sandbox = {
+    self,
+    caches: { open: async () => cacheObj, keys: async () => [], delete: async () => true,
+              match: async () => (noCache ? undefined : mkRes('缓存版')) },
+    clients: self.clients,
+    fetch: (req, init) => {
+      fetches.push({ req, init });
+      const p = new Promise((resolve) => {
+        const done = () => resolve(mkRes(pendingFetch.body));
+        if (pendingFetch.slow) setTimeout(done, pendingFetch.slow); else done();
+      });
+      return p;
+    },
+    navigator: { setAppBadge: () => {} },
+    console, URL, Promise, setTimeout,
+  };
+  sandbox.self.caches = sandbox.caches;
+  vm.createContext(sandbox);
+  vm.runInContext(SRC, sandbox, { filename: 'boss-sw.js' });
+
+  async function handleDocument({ body = '新版', slow = 0 } = {}) {
+    pendingFetch = { body, slow: 0 }; // 「慢」用另一条路模拟：先不等它
+    if (slow) pendingFetch.slow = slow;
+    let responded = null;
+    const evt = {
+      request: { url: 'https://example.test/boss/index.html', method: 'GET', destination: 'document' },
+      respondWith: (p) => { responded = p; },
+      waitUntil: (p) => waits.push(p),
+    };
+    for (const fn of (listeners.fetch || [])) fn(evt);
+    if (!responded) throw new Error('SW 没有接管 document 请求');
+    return responded;
+  }
+  const settle = async () => {
+    // 等后台那条链跑完（含 slow 的定时器）
+    await new Promise((r) => setTimeout(r, 50));
+    await Promise.all(waits.map((p) => Promise.resolve(p).catch(() => {})));
+    await new Promise((r) => setTimeout(r, 50));
+  };
+  return { handleDocument, settle, fetches, puts, posted };
+}
+
 console.log('【1】收到推送要弹通知，标题/正文/点击网址都照载荷来');
 {
   const sw = loadSw();
@@ -131,6 +204,56 @@ console.log('\n【6】showNotification 抛错也不能让整个 push 处理炸�
   ok('showNotification 包在 try 里', /try\s*\{\s*await self\.registration\.showNotification/.test(seg), seg.slice(0, 200));
   ok('setAppBadge 也包在 try 里（不是所有平台都支持）',
      /try\s*\{\s*navigator\.setAppBadge/.test(seg), seg.slice(0, 400));
+}
+
+console.log('\n【7】页面壳：有缓存就先给缓存（秒开），同时后台回源');
+// 2026-08-29：上一版是网络优先，每次打开都要等一个完整往返才画得出东西
+// （用户：「加载能不能快一点」）。现在改成先给缓存、后台更新。
+{
+  const sw = loadSwFetch();
+  const t0 = Date.now();
+  const res = await sw.handleDocument({ slow: 3000, body: '新版' });
+  ok('立刻拿到响应，没等那个 3 秒的网络', Date.now() - t0 < 500, Date.now() - t0);
+  ok('拿到的是缓存里那份', await res.text() === '缓存版', res);
+  await sw.settle();
+  ok('后台确实回源了一次', sw.fetches.length === 1, sw.fetches.length);
+  ok('后台那次带 cache:reload（绕开 GitHub Pages 的 10 分钟 HTTP 缓存）',
+     sw.fetches[0].init && sw.fetches[0].init.cache === 'reload', sw.fetches[0].init);
+  ok('新版写回了缓存', sw.puts.length === 1 && sw.puts[0] === '新版', sw.puts);
+  ok('内容变了要通知页面（页面收到会重载一次）',
+     sw.posted.some(m => m && m.type === 'shell-updated'), sw.posted);
+}
+
+console.log('\n【7b】比较用的副本必须在把 cached 交出去之前就克隆好');
+// 真实浏览器里 cached 一旦当成响应交给页面，body 就被读走，那时候再 clone() 会抛错
+// → 被当成「内容变了」→ 页面重载 → 再来一遍，无限转圈（2026-08-29 被 check-boss 逮到）。
+// 打桩的 clone 不会失败，所以这条改成盯源码顺序：clone 必须出现在 respondWith 返回之前。
+{
+  const seg = SRC.slice(SRC.indexOf("destination === 'document'"), SRC.indexOf('其余静态资源'));
+  const iClone = seg.indexOf('cachedForCompare');
+  const iReturn = seg.indexOf('return cached');
+  ok('先克隆、后交出去（顺序不能反）', iClone > -1 && iReturn > -1 && iClone < iReturn,
+     { iClone, iReturn });
+  ok('比较时用的是那个副本，不是已经交出去的那个',
+     /cachedForCompare\.text\(\)/.test(seg), seg.slice(0, 0));
+}
+
+console.log('\n【8】对照组：内容没变时不要惊动页面 —— 每次都发的话会无谓地重载');
+{
+  const sw = loadSwFetch();
+  const res = await sw.handleDocument({ body: '缓存版' });
+  ok('照样秒开', await res.text() === '缓存版');
+  await sw.settle();
+  ok('内容一样就不发消息', sw.posted.length === 0, sw.posted);
+}
+
+console.log('\n【9】第一次装（没有缓存）时只能等网络，但要真的等到、不能给空白');
+{
+  const sw = loadSwFetch({ noCache: true });
+  const res = await sw.handleDocument({ body: '首次' });
+  ok('回的是网络那份', await res.text() === '首次');
+  await sw.settle();
+  ok('第一次装不发「有新版」消息（本来就是新的）', sw.posted.length === 0, sw.posted);
 }
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);
