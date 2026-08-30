@@ -91,7 +91,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -108,7 +108,7 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
       if (req.action === 'feed'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify({ status: 'ok', who, role, updated: fakeUpdated(),
-            trips: trips || fakeTrips(), bills: fakeBills(), inventory,
+            trips: trips || fakeTrips(), bills: bills || fakeBills(), inventory,
             dental: dental || { lastVisit: null, nextVisit: null, intervalMonths: 3, note: '' } }) });
       }
       if (req.action === 'bill'){
@@ -2138,6 +2138,83 @@ function localAt(daysFromNow, hm, offset){
   const after = await page.evaluate(() => adminTripsDraft.map(t => t.title.zh));
   ok('改的是「还没填日期」那一趟，没改到别人头上',
      after[3] === '改到我了吗' && after[0] === '十月槟城' && after[2] === '九月新加坡', after);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十二：管理页要看得出「哪几份老板已经看了」 ----------
+// 2026-08-30 用户：「老板已读的账单PDF管理这边能显示吗？方便我删」。
+// readAt 由后端在老板打开账单那一刻写进 bills.json（不是老板 App 上报的，
+// viewer 依旧没有任何写入接口）。这里验前端有没有把它显示出来。
+{
+  const twoBills = [
+    { id:'b1', title:{zh:'8月账单',en:''}, period:'2026-08', uploadedAt:'2026-08-01T00:00:00Z',
+      kind:'month', filename:'aug.pdf', readAt:'2026-08-30T06:30:00Z' },
+    { id:'b2', title:{zh:'9月账单',en:''}, period:'2026-09', uploadedAt:'2026-09-01T00:00:00Z',
+      kind:'month', filename:'sep.pdf' },
+  ];
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin', bills: twoBills });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'admin');
+  await until(async () => (await page.locator('.admin-bill-row').count()) === 2, { what: '两条账单都渲染出来' });
+
+  console.log('\n【管理页：老板看了没】');
+  const rows = await page.evaluate(() => Array.from(document.querySelectorAll('.admin-bill-row')).map(r => ({
+    text: r.textContent,
+    badge: (r.querySelector('.admin-bill-read') || {}).className || '',
+  })));
+  const aug = rows.find(r => r.text.includes('8月账单'));
+  const sep = rows.find(r => r.text.includes('9月账单'));
+  ok('看过的那份标「老板已看」', !!aug && aug.text.includes('老板已看'), aug && aug.text);
+  ok('看过的那份带时间，不是光一句话', !!aug && /8月30日|8\/30/.test(aug.text), aug && aug.text);
+  ok('没看过的那份标「老板还没看」', !!sep && sep.text.includes('老板还没看'), sep && sep.text);
+  ok('两份的标记不一样（否则等于没分辨）',
+     !!aug && !!sep && aug.badge !== sep.badge, [aug && aug.badge, sep && sep.badge]);
+  ok('两份都还留着删除按钮', (await page.locator('.admin-bill-del').count()) === 2);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十二之对照组：老板自己那边看不到这行字 ----------
+// 「老板已看」是给 YANG 看的管理信息，不该出现在老板的账单列表里。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer', bills: [
+    { id:'b1', title:{zh:'8月账单',en:''}, period:'2026-08', uploadedAt:'2026-08-01T00:00:00Z',
+      kind:'month', filename:'aug.pdf', readAt:'2026-08-30T06:30:00Z' },
+  ] });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成（闸门放行）' });
+  await gotoTab(page, 'bills');
+  await until(async () => (await page.locator('.bill-row').count()) === 1, { what: '老板看到一条账单' });
+
+  console.log('\n【对照组：老板那边不出现「已看」标记】');
+  // 只看**渲染出来的**内容：document.body.textContent 会把内联 <script> 的源码
+  // 也算进去，那里当然有这几个字（函数就写在那），拿它断言必定误报。
+  const shown = await page.evaluate(() => {
+    const parts = [];
+    document.querySelectorAll('.tab, .app-header, .nav-bar').forEach(el => {
+      const clone = el.cloneNode(true);
+      clone.querySelectorAll('script, style').forEach(n => n.remove());
+      parts.push(clone.textContent);
+    });
+    return parts.join(' ');
+  });
+  ok('账单还是照常列出来', await page.locator('.bill-row').count() === 1);
+  ok('老板看不到「老板已看／还没看」', !/老板已看|老板还没看/.test(shown), shown.slice(0, 200));
+  ok('页面上一个 .admin-bill-read 都没有', (await page.locator('.admin-bill-read').count()) === 0);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
