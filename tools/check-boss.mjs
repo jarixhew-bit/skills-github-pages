@@ -91,7 +91,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -108,6 +108,7 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
       if (req.action === 'feed'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify({ status: 'ok', who, role, updated: fakeUpdated(),
+            ...(seen ? { seen } : {}),
             trips: trips || fakeTrips(), bills: bills || fakeBills(), inventory,
             dental: dental || { lastVisit: null, nextVisit: null, intervalMonths: 3, note: '' } }) });
       }
@@ -2347,6 +2348,79 @@ function localAt(daysFromNow, hm, offset){
   ok('admin 的「今天」底下没有那一行', await page.locator('#todayPush').count() === 0);
   ok('admin 仍然有管理页那一行开关（他的入口在那）',
      await page.locator('#admin-push-btn').count() === 1);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十五：管理页看得出「老板到底装上了没有」 ----------
+// 2026-08-30 YANG 问「有什么办法知道他已经装上了吗」。三种状态必须分得开：
+// 没打开过 / 打开了但还在浏览器里（**通知一定收不到**）/ 已装到主屏。
+// 中间那种最容易被忽略，所以它必须带警告，不能跟「装好了」长得一样。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin',
+    seen: { firstSeen: '2026-08-20T00:00:00.000Z', lastSeen: '2026-08-30T01:02:03.000Z', standalone: true } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-trips-section')),
+    { what: 'admin 管理页渲染完' });
+
+  console.log('\n【二十五】管理页看得出老板装上了没有');
+  const feedCall = rec.calls.find(c => c.action === 'feed');
+  ok('拉 feed 时带上了 standalone（服务端靠它判断装没装到主屏）',
+     feedCall && typeof feedCall.standalone === 'boolean', feedCall);
+
+  ok('有「老板那边」这一块', await page.locator('#admin-seen-section').count() === 1);
+  let txt = await page.locator('#admin-seen-section').innerText();
+  ok('写出最后一次打开的时间', /8月30日|8\/30/.test(txt), txt);
+  ok('装好了就说「已装到主屏」', /已装到主屏/.test(txt), txt);
+  ok('装好了就不该有警告', await page.locator('#admin-seen-section .admin-status.err').count() === 0, txt);
+
+  // 打开了、但还在浏览器里 —— 这种最容易被当成「装好了」，必须带警告
+  await page.evaluate(() => { feedData.seen = { lastSeen: '2026-08-30T01:02:03.000Z', standalone: false }; renderAdmin(); });
+  txt = await page.locator('#admin-seen-section').innerText();
+  ok('★没装到主屏时说清楚「还在浏览器里」', /还在浏览器里/.test(txt), txt);
+  ok('★并且警告收不到通知', /收不到通知/.test(txt), txt);
+  ok('警告是显眼的那一种，不是一行灰字',
+     await page.locator('#admin-seen-section .admin-status.err').count() === 1);
+
+  // 从没打开过
+  await page.evaluate(() => { feedData.seen = { lastSeen: null, standalone: null }; renderAdmin(); });
+  txt = await page.locator('#admin-seen-section').innerText();
+  ok('从没打开过时说「还没打开过」', /还没打开过/.test(txt), txt);
+  ok('★不会误报成「已装到主屏」', !/已装到主屏/.test(txt), txt);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十五的对照组：老板那边看不到这一块 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer',
+    seen: { lastSeen: '2026-08-30T01:02:03.000Z', standalone: true } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.nav-btn')), { what: '老板那边渲染完' });
+
+  console.log('\n【对照组：老板看不到「老板那边」这一块】');
+  ok('老板页面里没有这一块', await page.locator('#admin-seen-section').count() === 0);
+  const shown = await page.evaluate(() => {
+    const parts = [];
+    document.querySelectorAll('.tab, .app-header, .nav-bar').forEach(el => {
+      const clone = el.cloneNode(true);
+      clone.querySelectorAll('script, style').forEach(n => n.remove());
+      parts.push(clone.textContent);
+    });
+    return parts.join(' ');
+  });
+  ok('页面上也看不到「已装到主屏／还没打开过」这些字',
+     !/已装到主屏|还没打开过|还在浏览器里/.test(shown), shown.slice(0, 200));
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
