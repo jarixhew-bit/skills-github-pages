@@ -265,6 +265,9 @@ body:not(.lang-en) .en{display:none !important}
 .admin-bill-row:last-child{border-bottom:none}
 .admin-bill-info{flex:1;min-width:0;font-size:13.5px}
 .admin-bill-info .sub{font-size:12px;color:var(--sub)}
+.admin-bill-read{display:inline-block;margin-top:3px;font-size:11.5px;padding:1px 7px;border-radius:999px}
+.admin-bill-read.yes{background:#E8F5E9;color:#1B5E20}
+.admin-bill-read.no{background:#F1F3F4;color:var(--sub)}
 
 /* ===== 管理面板：行程表单（取代原来的 JSON textarea） ===== */
 .admin-trip-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -2747,6 +2750,17 @@ async function adminSaveTripsForm(){
   }
 }
 
+/* 「老板看了没」标记（2026-08-30 用户要求：他要照这个决定哪几份可以删）。
+ * readAt 由后端在老板打开账单那一刻写进 bills.json——不是老板 App 上报的，
+ * 也没有给 viewer 新开任何写入接口。没有 readAt 就是还没看过。
+ * 只在管理页出现；老板自己那边看不到这行字。 */
+function adminBillReadHtml(b){
+  const at = b && b.readAt;
+  if(!at) return `<span class="admin-bill-read no">${pick('老板还没看','Boss hasn\'t opened it')}</span>`;
+  const t = fmtDateTimeBoth(at);
+  const when = pick(t.zh, t.en);
+  return `<span class="admin-bill-read yes">${pick('老板已看','Boss opened it')}${ when ? ' · ' + escapeHtml(when) : '' }</span>`;
+}
 function renderAdmin(){
   if(role !== 'admin') return;
   const pane = document.getElementById('tab-admin');
@@ -2758,7 +2772,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v36</div>
+    <div class="admin-ver" id="adminVer">boss-app-v37</div>
 
     ${adminTripsSectionHtml()}
 
@@ -2817,6 +2831,7 @@ function renderAdmin(){
           <div class="admin-bill-info">
             <div>${escapeHtml((b.title && (b.title.zh || b.title.en)) || b.filename || b.id)}</div>
             <div class="sub">${escapeHtml(b.period || '')} · ${escapeHtml(b.filename || '')}</div>
+            <div>${adminBillReadHtml(b)}</div>
           </div>
           <button class="admin-bill-del" onclick="adminDeleteBill('${escapeHtml(b.id)}')">${pick('删除','Delete')}</button>
         </div>`).join('') : `<div class="admin-status">${pick('还没有账单','No bills yet')}</div>` }

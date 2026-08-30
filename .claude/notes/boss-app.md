@@ -70,6 +70,25 @@ URL: https://jarixhew-bit.github.io/skills-github-pages/boss/
   构不成越权。改完 `expense-tracker.html` **必须重跑 `build-staff-page.py`**，
   否则 `check-generated` 会红。
 
+## 「老板看了没」（2026-08-30 加）
+管理页每份账单下面一行「老板已看 · 8月30日 14:20」／「老板还没看」，YANG 照这个
+决定哪几份可以删。
+
+标记怎么来的：**后端在老板打开账单那一刻写的**，不是老板 App 上报的。
+`doBill()` 成功读出 PDF 后往 `bills.json` 那条记录写 `readAt`。这样做的理由和
+四条不许改回去的规矩：
+- **不新开写入接口**：老板只读是这个 App 的地基（三层拦）。走 `doBill` 的副作用，
+  viewer 依旧不能主动写任何东西。
+- **只记 viewer**：YANG 自己在管理页预览不算「老板看过」，否则他一验货就变已看。
+- **只记第一次**：已经有 `readAt` 就不写——不然老板每翻一次账单就多一个 commit，
+  第一次看的时间也会被覆盖掉。
+- **不动 `updatedAt`**：那是老板 App 算红点用的，一动老板刚看完的账单又变未读。
+- 整段包 `try`：记不上最多是管理页少一行字，绝不能害老板打不开账单。
+
+老板那边**不用更新 App**（后端行为），只有 YANG 的管理页要 ≥v37 才看得到这行字。
+自检：`tools/check-boss.mjs` 场景二十二（含「老板那边不出现这行字」的对照组）、
+butler-bot `tests/boss-bill-read.test.mjs`（18 项）。
+
 ## 已知坑 / 未做
 - **通知只做了一半**：现在是「打开 App 才看到红点」。「不打开也会响」在 iPhone 上
   只有 Web Push 一条路（Worker 里手写 VAPID 签名 + aes128gcm 载荷加密），
