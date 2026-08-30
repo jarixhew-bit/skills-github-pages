@@ -2277,6 +2277,80 @@ function localAt(daysFromNow, hm, offset){
   await ctx.close();
 }
 
+// ---------- 场景二十四：老板按掉顶上的横幅之后，仍然有地方能开通知 ----------
+// 顶上那条横幅有个 ×，按了永久不再出现（记在 localStorage）——那是刻意的。
+// 但只有那一个入口的话，他按完 × 就再也开不了通知，跟 2026-08-29 admin 那次
+// 踩的坑一模一样。所以「今天」最底下常驻一行安静的入口，这一节守的就是它。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.nav-btn')), { what: '老板那边渲染完' });
+  // 无头浏览器不是「已加到主屏」的 PWA，isStandalonePwa() 必定 false，
+  // 那样只会渲染「先加到主屏」的提示，验不到开关。这两个是环境条件，打桩掉。
+  await page.evaluate(() => {
+    isStandalonePwa = () => true;
+    pushSupported = () => true;
+    pushSubscription = null;
+    ensurePushUI(); renderToday();
+  });
+
+  console.log('\n【二十四】老板按掉顶上的通知横幅之后，仍然找得到地方开通知');
+  ok('一开始顶上有通知横幅', await page.locator('#pushBar').count() === 1);
+  ok('「今天」底下也常驻一行通知入口', await page.locator('#todayPush').count() === 1);
+  ok('那一行写着还没开，并且有「开启」按钮',
+     /还没开/.test(await page.locator('#todayPush').innerText()) &&
+     await page.locator('#todayPushBtn').count() === 1,
+     await page.locator('#todayPush').innerText());
+
+  await page.click('.push-dismiss');
+  ok('按 × 之后顶上那条真的没了（他的选择要算数）', await page.locator('#pushBar').count() === 0);
+  ok('★但底下那一行还在——不然他就永远开不了通知了',
+     await page.locator('#todayPush').count() === 1);
+  ok('★按钮也还在，点得到', await page.locator('#todayPushBtn').count() === 1);
+
+  // 订阅成功之后：顶上那条本来就不挂了，底下这一行是他唯一能看到状态、也是唯一
+  // 能关掉的地方，所以状态必须跟着变。
+  await page.evaluate(() => {
+    pushSubscription = { endpoint: 'https://web.push.apple.com/x' };
+    ensurePushUI();
+  });
+  ok('开启之后那一行变「通知已开启」',
+     /已开启/.test(await page.locator('#todayPush').innerText()),
+     await page.locator('#todayPush').innerText());
+  ok('并且给得出「关闭」（开了之后要能关）',
+     /关闭/.test(await page.locator('#todayPushBtn').innerText()));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十四的对照组：admin 那边不出现这一行 ----------
+// 2026-08-28 他连着三轮反映「我去开了通知也还是看得见」——不是他要的东西就别放。
+// 没有这个对照组的话，这行字哪天渗回 admin 页面也不会有人发现。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-trips-section')),
+    { what: 'admin 管理页渲染完' });
+  await page.evaluate(() => { isStandalonePwa = () => true; pushSupported = () => true; ensurePushUI(); renderToday(); });
+
+  console.log('\n【对照组：YANG 自己那边不出现「今天」底下那行通知】');
+  ok('admin 的「今天」底下没有那一行', await page.locator('#todayPush').count() === 0);
+  ok('admin 仍然有管理页那一行开关（他的入口在那）',
+     await page.locator('#admin-push-btn').count() === 1);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);

@@ -358,6 +358,10 @@ body:not(.lang-en) .en{display:none !important}
    （2026-08-28 用户第三次反映：「我去开了通知也是还在」）。 */
 .push-bar.push-bar-mini{background:none;box-shadow:none;padding:0;margin:2px 16px 10px}
 .push-mini{font-size:12px;color:var(--sub)}
+/* 「今天」最底下那行安静的通知入口——不催、不能关（见 viewerPushFooterHtml 的注释） */
+.today-push{margin:22px 4px 4px;font-size:12px;color:var(--sub);text-align:center;line-height:1.7}
+.today-push button,.today-push a{border:none;background:none;padding:0;margin-left:6px;color:var(--p);
+  font-size:12px;font-family:inherit;cursor:pointer;text-decoration:underline}
 .push-mini button{border:none;background:none;padding:0;margin-left:6px;color:var(--p);
   font-size:12px;font-family:inherit;cursor:pointer;text-decoration:underline}
 
@@ -1159,6 +1163,7 @@ function renderToday(){
     html += tomorrowBody;
   }
   html += dentalCardHtml();
+  html += viewerPushFooterHtml();
   pane.innerHTML = html;
 }
 
@@ -2834,7 +2839,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v38</div>
+    <div class="admin-ver" id="adminVer">boss-app-v39</div>
 
     ${adminTripsSectionHtml()}
 
@@ -3067,6 +3072,7 @@ function ensurePushUI(){
   if(!pushSupported() && !pushNeedsInstallFirst()){
     if(bar) bar.remove();
     refreshAdminPushRow();
+    refreshViewerPushFooter();
     return;
   }
   // admin（YANG 自己）：**整条不渲染**。这是一个提醒老板去开通知的提示，
@@ -3079,6 +3085,9 @@ function ensurePushUI(){
     refreshAdminPushRow(); // 顶部不挂，但管理页那一行的状态要跟着变
     return;
   }
+  // 老板：顶上那条会因为「已订阅」或「按过 ×」而消失，所以底下那一行必须跟着刷新——
+  // 订阅成功之后，那一行是他唯一能看到状态、也是唯一能关掉的地方。
+  refreshViewerPushFooter();
   let host = app;
   if(pushSubscription || safeGet(PUSH_BAR_DISMISS_KEY) === '1') host = null;
   if(!host){ if(bar) bar.remove(); return; }
@@ -3093,6 +3102,33 @@ function ensurePushUI(){
   bar.classList.toggle('push-bar-mini', !!pushSubscription);
 }
 /** 老板手动关掉顶部推送条，记住不再弹。 */
+/* 「今天」分页最底下那行通知入口（2026-08-30）。
+ * 顶上那条横幅有个 ×，按下去就永久不再出现（记在 localStorage）——那是刻意的，
+ * 老板不该被一条待办事项天天杵着。但**只有那一个入口**的话，他按完 × 就再也
+ * 开不了通知了，跟 2026-08-29 admin 那次踩的是同一个坑（订阅失效却没有入口重开）。
+ * 所以入口要有第二个：不催、不带 ×、永远待在「今天」最底下一行。
+ * admin 不看这行——他有管理页那一行。 */
+function viewerPushFooterHtml(){
+  if(role === 'admin') return '';
+  if(!pushSupported() && !pushNeedsInstallFirst()) return '';
+  // 没装到主屏：togglePush() 在这种环境下会直接 return（iOS 硬约束），
+  // 给按钮等于给一颗按了没反应的按钮，所以这里给的是唯一有用的下一步。
+  if(pushNeedsInstallFirst() || !isStandalonePwa()){
+    return `<div class="today-push" id="todayPush">🔔 ${bl('想收到提醒的话，要先把这个 App 加到主屏','To get alerts, add this app to your Home Screen first')}<a href="install.html" target="_blank" rel="noopener">${bl('怎么装','how')}</a></div>`;
+  }
+  const on = !!pushSubscription;
+  return `<div class="today-push" id="todayPush">🔔 ${on ? bl('通知已开启','Notifications are on') : bl('通知还没开','Notifications are off')}<button type="button" id="todayPushBtn" onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${on ? bl('关闭','turn off') : bl('开启','turn on')}</button></div>`;
+}
+/** 只重画这一行，不重建整个「今天」分页。行不在（还没渲染过）就什么都不做，
+ *  下一次 renderToday() 自然会带上。 */
+function refreshViewerPushFooter(){
+  const el = document.getElementById('todayPush');
+  if(!el) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = viewerPushFooterHtml();
+  const next = tmp.firstElementChild;
+  if(next) el.replaceWith(next); else el.remove();
+}
 function dismissPushBar(){
   safeSet(PUSH_BAR_DISMISS_KEY, '1');
   const bar = document.getElementById('pushBar');
