@@ -89,10 +89,29 @@ URL: https://jarixhew-bit.github.io/skills-github-pages/boss/
 自检：`tools/check-boss.mjs` 场景二十二（含「老板那边不出现这行字」的对照组）、
 butler-bot `tests/boss-bill-read.test.mjs`（18 项）。
 
+## 「发一条到老板手机」（2026-08-30 加）
+管理页通知那一块，除了「开启／关闭」和「试一下本机通知」，还有第三颗
+「发一条到老板手机」——打 admin-only 的 `pushTest`，往**所有**已登记设备各发一条，
+把每台的 HTTP 状态码原样列出来（`adminTestRemotePush()` / `pushHostLabel()`）。
+
+为什么要有它：YANG 手上**没有 iPhone**，老板那台机器到底收不收得到，除了真发一条
+看苹果服务器怎么回，没有别的办法。三颗按钮分工别搞混：
+- 开启／关闭 → 这台设备自己的订阅
+- 试一下本机通知 → 「这台手机肯不肯**显示**通知」（绕开推送服务）
+- 发一条到老板手机 → 「消息**送不送得到**」（201 = 推送服务收下了）
+
+后端只回 endpoint 的**主机名**（完整 endpoint 算设备凭据），所以前端只能靠主机名认
+平台：`apple.com`→iPhone/iPad、`googleapis.com`→安卓/Chrome。
+自检：`tools/check-boss.mjs` 场景二十三（含「老板那边没有这颗按钮」的对照组）。
+
 ## 已知坑 / 未做
-- **通知只做了一半**：现在是「打开 App 才看到红点」。「不打开也会响」在 iPhone 上
-  只有 Web Push 一条路（Worker 里手写 VAPID 签名 + aes128gcm 载荷加密），
-  2026-08-27 交付时刻意没做，避免拖住主交付。要补的话当独立任务做。
+- **推送已经做完了**（butler `src/push.js`：手写 VAPID 签名 + aes128gcm 载荷加密），
+  行程更新和新账单会推。**但 iPhone 上从没在真机验过**（2026-08-30 确认：安卓已验，
+  YANG 没有 iPhone）。服务端那边对苹果的要求都对得上（aud 取 endpoint 的 origin、
+  exp 12 小时 < 24 小时上限、sub 是 mailto、带 TTL 头）；前端 `togglePush()` 里
+  `Notification.requestPermission()` 是点击后的**第一个 await**，用户手势没丢——
+  这两处是 iOS 上最常翻车的地方，已经排除。剩下的只能等老板真的开一次通知，
+  再用「发一条到老板手机」看状态码。
 - 库存字段来自 butler `inventoryHandle({action:"list"})` 的 `normalizeItem`：
   `{id,name,count,unit,location,note,added_at}`。`count` 是整数、`location` 是字符串。
 - 库存服务挂掉时 `feed` 仍回 200 且 `inventory:null`，行程账单照常显示——
