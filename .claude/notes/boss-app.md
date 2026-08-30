@@ -104,6 +104,16 @@ butler-bot `tests/boss-bill-read.test.mjs`（18 项）。
 平台：`apple.com`→iPhone/iPad、`googleapis.com`→安卓/Chrome。
 自检：`tools/check-boss.mjs` 场景二十三（含「老板那边没有这颗按钮」的对照组）。
 
+## 老板那边的通知入口有两个（2026-08-30 加）
+1. 顶上那条横幅（`pushBar`）——带 ×，按了**永久**不再出现（`PUSH_BAR_DISMISS_KEY`）。
+2. 「今天」分页最底下常驻一行（`viewerPushFooterHtml()` / `refreshViewerPushFooter()`）
+   ——不催、不带 ×、admin 看不到。
+
+第 2 个是必须的，别以为重复了就删：横幅按过 × 之后会永久消失，订阅成功之后也不再挂，
+只有一个入口的话老板就**再也开不了／关不了通知**——2026-08-29 admin 那次踩的正是
+这个坑（订阅被 FCM 判 410 失效，手上没有任何入口能重开）。
+自检：`tools/check-boss.mjs` 场景二十四（按 × 之后底下那行必须还在）＋ admin 对照组。
+
 ## 已知坑 / 未做
 - **推送已经做完了**（butler `src/push.js`：手写 VAPID 签名 + aes128gcm 载荷加密），
   行程更新和新账单会推。**但 iPhone 上从没在真机验过**（2026-08-30 确认：安卓已验，
