@@ -2264,6 +2264,7 @@ function adminPushSectionHtml(){
     return `<div class="admin-block" id="admin-push-section">
         <h3>🔔 ${pick('通知','Notifications')}</h3>
         <div class="admin-status">${escapeHtml(hint)}</div>
+        ${adminRemotePushHtml()}
       </div>`;
   }
   const on = !!pushSubscription;
@@ -2280,6 +2281,7 @@ function adminPushSectionHtml(){
           denied ? ' disabled' : ''}>${pick('试一下本机通知','Test locally')}</button>
       </div>
       <div class="admin-status" id="admin-push-local-status"></div>
+      ${adminRemotePushHtml()}
       ${ denied ? `<div class="admin-status err">${pick(
         '这个浏览器把通知权限拒了，要去手机「设置 → 浏览器/该 App → 通知」里重新打开',
         'Notifications are blocked in this browser — re-enable them in your phone settings')}</div>` : '' }
@@ -2287,6 +2289,66 @@ function adminPushSectionHtml(){
         '行程或账单有更新时推到这台设备。订阅偶尔会被系统判失效（收不到了就回来按一次「开启」）。',
         'Pushes trip and bill updates to this device. Subscriptions can expire — tap Turn on again if they stop arriving.')}</div>
     </div>`;
+}
+/** 「发一条到老板手机」（2026-08-30）：YANG 手上没有 iPhone，老板那台机器到底收不收
+ *  得到，没有别的办法能确定——只能真发一条，看苹果/谷歌的推送服务器怎么回。
+ *  后端 pushTest 往**所有**已登记设备各发一条，把每台的 HTTP 状态码原样交回来
+ *  （201 = 推送服务收下了）。跟旁边那颗「试一下本机通知」的分工：
+ *    · 本机通知 → 验「这台手机肯不肯显示通知」
+ *    · 这一颗   → 验「消息送不送得到那台手机」
+ *  两颗都过了还没跳，才轮到怀疑手机的省电/后台限制。 */
+function adminRemotePushHtml(){
+  return `<div class="admin-push-row" style="margin-top:6px">
+      <button type="button" class="admin-btn-sm" id="admin-push-test-btn"
+        onclick="adminTestRemotePush()">${pick('发一条到老板手机','Send a test push')}</button>
+    </div>
+    <div class="admin-status" id="admin-push-test-status"></div>`;
+}
+/** endpoint 的主机名 → 人看得懂的平台名。后端刻意只回主机名，不回完整 endpoint
+ *  （那串本身算设备凭据），所以这里只能靠主机名认。 */
+function pushHostLabel(host){
+  const h = String(host || '');
+  if(/apple\.com$/.test(h)) return pick('iPhone / iPad','iPhone / iPad');
+  if(/googleapis\.com$/.test(h) || /google\.com$/.test(h)) return pick('安卓 / Chrome','Android / Chrome');
+  if(/mozilla\.com$/.test(h)) return 'Firefox';
+  if(/windows\.com$/.test(h)) return 'Windows';
+  return h || pick('未知设备','unknown');
+}
+async function adminTestRemotePush(){
+  const el = document.getElementById('admin-push-test-status');
+  const btn = document.getElementById('admin-push-test-btn');
+  const say = (html, cls) => { if(el){ el.className = 'admin-status' + (cls ? ' ' + cls : ''); el.innerHTML = html; } };
+  if(btn) btn.disabled = true;
+  say(pick('发送中…','Sending…'));
+  try{
+    const res = await bossCall('pushTest', {});
+    const list = (res && res.results) || [];
+    if(!list.length){
+      say(pick('一台设备都没登记——说明「开启通知」那一步根本没成功过。',
+               'No device is registered — the "turn on notifications" step never succeeded.'), 'err');
+      return;
+    }
+    const lines = list.map(r => {
+      const who = escapeHtml(r.who || pick('（没记名字）','(unnamed)'));
+      const plat = escapeHtml(pushHostLabel(r.host));
+      const ok = r.ok
+        ? pick('✅ 推送服务收下了（' + r.httpStatus + '）','✅ accepted (' + r.httpStatus + ')')
+        : (r.dead
+            ? pick('❌ 这个订阅已失效（' + r.httpStatus + '），要请对方重开一次通知',
+                   '❌ subscription expired (' + r.httpStatus + ') — ask them to turn notifications on again')
+            : pick('❌ 发不出去（' + r.httpStatus + '）','❌ failed (' + r.httpStatus + ')'));
+      const detail = (!r.ok && (r.detail || r.error)) ? '<br><span class="sub">' + escapeHtml(String(r.detail || r.error)) + '</span>' : '';
+      return who + ' · ' + plat + '：' + ok + detail;
+    });
+    const tail = pick('收下了不等于跳出来了——请对方看一眼通知栏。',
+                      'Accepted is not the same as displayed — ask them to check their notification shade.');
+    say(lines.join('<br>') + '<br><span class="sub">' + tail + '</span>',
+        list.every(r => r.ok) ? 'ok' : 'err');
+  }catch(err){
+    say(pick('发不出去：','Failed: ') + escapeHtml((err && err.message) || String(err)), 'err');
+  }finally{
+    if(btn) btn.disabled = false;
+  }
 }
 /** 「试一下本机通知」：绕开推送服务，直接让本机的 Service Worker 弹一条通知。
  *  这一步是把「手机能不能显示通知」和「推送能不能送到手机」拆开——
@@ -2772,7 +2834,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v37</div>
+    <div class="admin-ver" id="adminVer">boss-app-v38</div>
 
     ${adminTripsSectionHtml()}
 

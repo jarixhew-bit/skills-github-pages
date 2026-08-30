@@ -91,7 +91,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -114,6 +114,10 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
       if (req.action === 'bill'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify({ status: 'ok', contentBase64: FOUR_PAGE_PDF_B64, mime: 'application/pdf' }) });
+      }
+      if (req.action === 'pushTest'){
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
+          body: JSON.stringify(pushTestResult || { status: 'ok', sent: 0, total: 0, results: [] }) });
       }
       if (req.action === 'ticketParse'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
@@ -2215,6 +2219,60 @@ function localAt(daysFromNow, hm, offset){
   ok('账单还是照常列出来', await page.locator('.bill-row').count() === 1);
   ok('老板看不到「老板已看／还没看」', !/老板已看|老板还没看/.test(shown), shown.slice(0, 200));
   ok('页面上一个 .admin-bill-read 都没有', (await page.locator('.admin-bill-read').count()) === 0);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十三：管理页「发一条到老板手机」 ----------
+// 2026-08-30：YANG 手上没有 iPhone，老板那台机器收不收得到没有别的办法验，
+// 只能真发一条看推送服务怎么回。这一节验两件事：结果按设备逐台列出来（分得清
+// 哪台是 iPhone），以及失效的订阅要说人话（不能只丢一个 410）。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin', pushTestResult: { status: 'ok', sent: 1, total: 2, results: [
+    { who: '老板', host: 'web.push.apple.com', ok: true, httpStatus: 201, dead: false, error: null, detail: null },
+    { who: 'YANG', host: 'fcm.googleapis.com', ok: false, httpStatus: 410, dead: true, error: null, detail: 'unsubscribed' },
+  ] } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-trips-section')),
+    { what: 'admin 管理页渲染完' });
+
+  console.log('\n【二十三】管理页能往已登记的设备真发一条测试推送');
+  ok('有「发一条到老板手机」按钮', await page.locator('#admin-push-test-btn').count() === 1);
+  await gotoTab(page, 'admin');   // 按钮在管理分页里，不切过去它是隐藏的，点不到
+  await page.click('#admin-push-test-btn');
+  await until(async () => /iPhone|安卓/.test(await page.locator('#admin-push-test-status').innerText()),
+    { what: '测试推送结果出来' });
+  const txt = await page.locator('#admin-push-test-status').innerText();
+  ok('逐台列出来，认得出哪台是 iPhone', /iPhone/.test(txt), txt);
+  ok('也认得出安卓那台', /安卓|Android/.test(txt), txt);
+  ok('成功那台写明推送服务收下了（带状态码）', /201/.test(txt), txt);
+  ok('失效那台说人话，不是只丢一个 410', /失效/.test(txt) && /410/.test(txt), txt);
+  ok('提醒「收下了不等于跳出来了」', /收下了不等于/.test(txt), txt);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十三的对照组：老板那边没有这颗按钮 ----------
+// 没有对照组的话，这颗按钮哪天漏进 viewer 的 DOM 也不会有人发现——
+// 它打的是 admin-only 的 pushTest，老板点了只会 403，但控件本身就不该存在。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.nav-btn')), { what: '老板那边渲染完' });
+
+  console.log('\n【对照组：老板那边没有「发一条到老板手机」】');
+  ok('老板看不到这颗按钮', await page.locator('#admin-push-test-btn').count() === 0);
+  ok('结果区也不存在', await page.locator('#admin-push-test-status').count() === 0);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
