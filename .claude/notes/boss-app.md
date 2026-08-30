@@ -114,6 +114,21 @@ butler-bot `tests/boss-bill-read.test.mjs`（18 项）。
 这个坑（订阅被 FCM 判 410 失效，手上没有任何入口能重开）。
 自检：`tools/check-boss.mjs` 场景二十四（按 × 之后底下那行必须还在）＋ admin 对照组。
 
+## 「老板到底装上了没有」（2026-08-30 加）
+管理页顶上一块「📱 老板那边」，三种状态：
+- 还没打开过 → 链接根本没被点
+- **打开了但还在浏览器里** → 点了链接没装到主屏，**通知一定收不到**，这一种带红字警告
+- 已装到主屏 → 装好了
+
+数据怎么来：老板每次拉 feed 时服务端落一笔（butler `data/boss-app/seen.json`，
+`recordSeen()`）。前端在 feed 参数里带 `standalone: isStandalonePwa()`，这就是
+「装到主屏了没有」。四条不许改回去的规矩，跟账单 `readAt` 同一套：
+- **不新开写入接口**（走 feed 的副作用，viewer 依旧不能主动写）
+- **只记 viewer**（YANG 开管理页不算）
+- **节流 6 小时**，但 `standalone` 一变就立刻记（那正是要等的信号）
+- **「没来过」是 `standalone: null`，不是 `false`**——跟「来了没装」不是一回事
+自检：`tools/check-boss.mjs` 场景二十五（含 viewer 对照组）、butler `tests/boss-seen.test.mjs`（21 项）。
+
 ## 已知坑 / 未做
 - **推送已经做完了**（butler `src/push.js`：手写 VAPID 签名 + aes128gcm 载荷加密），
   行程更新和新账单会推。**但 iPhone 上从没在真机验过**（2026-08-30 确认：安卓已验，
