@@ -64,6 +64,17 @@ const ok = (name, cond, got) => {
   else { fails.push(name); console.log(`  ❌ ${name} —— 实际: ${JSON.stringify(got)}`); }
 };
 
+/**
+ * 「找回本月」只跟服务端要**当月**的记录，清单也只显示当月——所以下面那几条假记录的
+ * 日期必须跟着今天走。写死成某个月份的话，日历一翻页这块就永远找不回来了：
+ * 2026-09-01 就是这么红的（fixture 停在 2026-08，程式码一行没改）。
+ */
+const THIS_MONTH = (() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+})();
+const dayThisMonth = (n) => `${THIS_MONTH}-${String(n).padStart(2, '0')}`;
+
 const SERYI_KEY = 'seryi-key-xyz';
 const BOSS_KEY = 'boss-key-abc';
 
@@ -89,14 +100,6 @@ const LEDGER_FIXTURE = {
   byReporter:[{ name:'Seryi', count:1, total:4.49 }, { name:'Kuang', count:1, total:20.00 }],
   orphan:0,
 };
-
-// 「找回本月记录」那几组用的日期必须跟**跑自检的当月**对齐。
-// 2026-09-01 踩过：fixture 写死 2026-08-02，跨月之后 App 只显示本月记录，
-// 清单一片空白，三条断言集体变红——而代码一个字都没改。日期相关的 fixture
-// 一律从今天算，别再写死年月。
-const NOW = new Date();
-const THIS_MONTH = `${NOW.getFullYear()}-${String(NOW.getMonth() + 1).padStart(2, '0')}`;
-const dayOfThisMonth = (d) => `${THIS_MONTH}-${String(d).padStart(2, '0')}`;
 
 // 假 butler：只认一把钥匙，按钥匙回身份。「看不到别人的记录」那条守在服务端
 // （butler-bot 的 tests/staff-access.test.mjs），这份只守页面这一侧。
@@ -535,10 +538,10 @@ if (want()) {
 
   // 现在服务端有他本月报过的两笔（模拟他之前在别的手机上报的）
   book[SERYI_KEY].records = [
-    { id:'srv_1', date:dayOfThisMonth(2), categoryEn:'Lunch',   billNo:'1', side:'assist',
+    { id:'srv_1', date:dayThisMonth(2), categoryEn:'Lunch',   billNo:'1', side:'assist',
       amountUsd:4.49, originalAmount:null, note:null, hasPhoto:true },
     // 车牌类项目服务端存的就是 "Petrol (车牌)"（见 butler 的 plateLabelOf），照实摆
-    { id:'srv_2', date:dayOfThisMonth(3), categoryEn:'Petrol (2AB-1234)', billNo:'2', side:'boss',
+    { id:'srv_2', date:dayThisMonth(3), categoryEn:'Petrol (2AB-1234)', billNo:'2', side:'boss',
       amountUsd:20.00, originalAmount:null, note:null, hasPhoto:false },
   ];
 
@@ -666,7 +669,7 @@ if (want()) {
   const h = await signIn(await newPage());
   const { page, errs, book } = h;
   book[SERYI_KEY].records = [
-    { id:'srv_9', date:dayOfThisMonth(2), categoryEn:'Lunch', billNo:'1', side:'assist',
+    { id:'srv_9', date:dayThisMonth(2), categoryEn:'Lunch', billNo:'1', side:'assist',
       amountUsd:4.49, originalAmount:null, note:null, hasPhoto:true },
   ];
   await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));
@@ -1206,10 +1209,17 @@ if (want()) {
   const { page, posted, errs } = h;
   await signIn(h);
   await addOne(page, { amount: '6.60', category: 'Store' });
-  const txId = await page.evaluate(() => {
+  // 「送达」是异步的：addOne 只等到弹窗关上，标成 sent 还要等那个 POST 回来。
+  // 机器忙的时候（CI 上并发跑好几个 chromium）它收尾那 100ms 等不到，这条就偶发红、
+  // 后面 8 条跟着一起倒——2026-09-01 在 CI 上真踩过一次，重跑就绿。
+  // 所以等条件成立，别读一次就断言（跟 check-expense-company.mjs 那次同一个道理）。
+  const lastSentId = () => page.evaluate(() => {
     const t = data.transactions.filter(x => x.company && x.company.status === 'sent').pop();
     return t ? t.id : null;
   });
+  // 等超时不抛出去：真的一直没送达时，要让下面那条断言红着报出来，而不是整份自检崩掉
+  await until(async () => !!(await lastSentId()), { what: '这一笔标成已送达' }).catch(() => {});
+  const txId = await lastSentId();
   ok('先记一笔并送达', !!txId, txId);
 
   await page.evaluate(id => editTx(id), txId);

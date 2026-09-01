@@ -2233,6 +2233,244 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await ctx.close();
 }
 
+// ---- 27f：自订期间导出的（跨月行程）发给老板时，算 trip 不算某个月的账单 ----
+{
+  console.log('\n【27f】自订期间发给老板：kind 是 trip，period 用起讫日期');
+  // butler 的 doBillUpload 只收 kind 'month' 或 'trip'，并按 kind+period 去重。
+  // 一段 10/28~11/03 的行程要是照旧报成 kind:'month'、period:'2026-10'，
+  // 老板那边会看到一份标着「2026年10月账单」的东西，还会把真正的 10 月账单顶掉。
+  const ctx = await browser.newContext();
+  await stubPdfLibs(ctx);
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  const calls = []; const bossMode = { v:'ok' };
+  await mountBossRoutes(ctx, calls, bossMode);
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what:'App 启动完成' });
+  await setupCompanyAccount(page, 'boss-token');
+  await gotoAnalyticsWithBossBtn(page);
+
+  await page.check('#stmt-range-on');
+  await page.fill('#stmt-range-from', '2026-10-28');
+  await page.fill('#stmt-range-to', '2026-11-03');
+  await page.fill('#stmt-range-name', '2026 日本行');
+  await page.click('button[onclick="sendStatementToBoss()"]');
+  await until(() => calls.length > 0, { what:'billUpload 请求送出' });
+
+  const req = calls[0];
+  ok('kind 是 trip，不是 month', req.kind === 'trip', req.kind);
+  ok('period 用起讫日期（同一段重传会替换掉旧的那份）',
+     req.period === '2026-10-28_2026-11-03', req.period);
+  ok('抬头带行程名字', (req.title && req.title.zh || '').includes('2026 日本行'), req.title);
+  ok('抬头不会写成某年某月的账单', !/^\d{4}年\d{2}月/.test((req.title && req.title.zh) || ''), req.title);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---------- 【28】账户明细可以导一整段行程，不必按月切成两张 ----------
+{
+  console.log('\n【28】导出账户明细：自订期间（跨月的旅游行程出成一张）');
+  // 2026-09-01 用户要求：行程跨月（例如 10/28 出发、11/03 回来）按月导会变成两张单，
+  // 期初/期末余额还得自己接。勾「自订期间」填起讫日期，整段出一张。
+  // 这里验的是**挑哪些账进这张单**和**抬头/档名怎么写**——PDF 长相不在这份自检范围内。
+  const ctx = await browser.newContext();
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // 造一段跨月行程：10/28 出发、11/03 回来，前后各埋一笔不该被算进去的
+  await page.evaluate(() => {
+    const acc = data.accounts[0];
+    data.currentAccountId = acc.id;
+    const mk = (date, amount) => ({ id:'t_'+date+'_'+amount, accountId:acc.id, type:'expense',
+      amount, date, categoryId:null, description:'d'+date });
+    data.transactions = [
+      mk('2026-10-20', 100),   // 行程前，不算（但要进期初余额）
+      mk('2026-10-28', 10),    // 出发当天，含头
+      mk('2026-10-31', 20),
+      mk('2026-11-01', 30),    // 跨到下个月
+      mk('2026-11-03', 40),    // 回来当天，含尾
+      mk('2026-11-05', 200),   // 行程后，不算
+    ];
+    state.anYear = 2026; state.anMonth = 9;   // 统计页停在 10 月
+  });
+  // 导出那一块住在统计分页里，不切过去它是隐藏的，点不到。
+  // 统计页会画饼图，而 Chart.js 是 CDN 来的、在这份自检里被断网挡掉了——
+  // 打个桩让它别炸；这一块要验的是日期范围，不是图表。
+  await page.evaluate(() => {
+    if (typeof Chart === 'undefined') {
+      window.Chart = function(){ return { destroy(){}, update(){}, data:{}, options:{} }; };
+    }
+    switchTab('analytics');
+  });
+  await page.waitForSelector('#stmt-range-on', { state:'visible' });
+
+  // 不勾＝照旧按统计页选的那个月
+  const byMonth = await page.evaluate(() => {
+    const r = stmtRange();
+    return { r, ids: rangeTxs(data.currentAccountId, r.from, r.to).map(t=>t.date) };
+  });
+  ok('不勾时仍是整月（起讫日对）',
+     byMonth.r.from === '2026-10-01' && byMonth.r.to === '2026-10-31', byMonth.r);
+  ok('不勾时抬头照旧写月份', byMonth.r.label === '2026年10月', byMonth.r.label);
+  ok('不勾时只收当月那几笔',
+     JSON.stringify(byMonth.ids) === JSON.stringify(['2026-10-20','2026-10-28','2026-10-31']),
+     byMonth.ids);
+
+  // 勾开：起讫日期要预填成当前那个月，省得从空白点起
+  await page.check('#stmt-range-on');
+  const prefill = await page.evaluate(() => ({
+    shown: document.getElementById('stmt-range-box').style.display !== 'none',
+    from: document.getElementById('stmt-range-from').value,
+    to: document.getElementById('stmt-range-to').value,
+  }));
+  ok('勾开之后日期栏出现', prefill.shown, prefill);
+  ok('起讫日期预填成当前月份', prefill.from === '2026-10-01' && prefill.to === '2026-10-31', prefill);
+
+  // 填成行程的日期
+  await page.fill('#stmt-range-from', '2026-10-28');
+  await page.fill('#stmt-range-to', '2026-11-03');
+  await page.fill('#stmt-range-name', '2026 日本行');
+  const trip = await page.evaluate(() => {
+    const r = stmtRange();
+    return { r, dates: rangeTxs(data.currentAccountId, r.from, r.to).map(t=>t.date) };
+  });
+  // 这是这一整块的重点：跨月的四笔一次到齐，前后两笔不进来
+  ok('跨月四笔一次到齐、含头含尾、前后两笔不算',
+     JSON.stringify(trip.dates) === JSON.stringify(['2026-10-28','2026-10-31','2026-11-01','2026-11-03']),
+     trip.dates);
+  ok('抬头带行程名字和起讫日', trip.r.label === '2026 日本行 · 2026-10-28 ~ 2026-11-03', trip.r.label);
+  ok('档名用行程名字', trip.r.fileTag === '2026 日本行', trip.r.fileTag);
+  ok('自订期间时文案改用「本期」', trip.r.isMonth === false && trip.r.periodWord === '本期', trip.r);
+
+  // 期初余额＝起始日之前的累计（行程前那笔 100 要算进来，之后的 200 不算）
+  const opening = await page.evaluate(() => {
+    const r = stmtRange();
+    let o = 0;
+    data.transactions.forEach(t => {
+      if (t.accountId !== data.currentAccountId) return;
+      if (t.date < r.from) o += (t.type === 'income' ? t.amount : -t.amount);
+    });
+    return o;
+  });
+  ok('期初余额只算起始日之前的（-100）', opening === -100, opening);
+
+  // 名字留空就用日期当抬头和档名
+  await page.fill('#stmt-range-name', '');
+  const noName = await page.evaluate(() => stmtRange());
+  ok('没填名字就用起讫日当抬头', noName.label === '2026-10-28 ~ 2026-11-03', noName.label);
+  ok('没填名字时档名也用日期', noName.fileTag === '2026-10-28_2026-11-03', noName.fileTag);
+
+  // 档名里不能留下 Windows 存不下的字元
+  await page.fill('#stmt-range-name', 'A/B:C*?"<>|D');
+  const dirty = await page.evaluate(() => stmtRange().fileTag);
+  ok('档名把非法字元清掉', dirty === 'ABCD', dirty);
+
+  // 填错要挡住，而且要说得出哪里错
+  await page.fill('#stmt-range-name', '');
+  await page.fill('#stmt-range-to', '');
+  ok('少填一头就挡住', (await page.evaluate(() => stmtRange().error || '')).length > 0);
+  await page.fill('#stmt-range-from', '2026-11-03');
+  await page.fill('#stmt-range-to', '2026-10-28');
+  const reversed = await page.evaluate(() => stmtRange().error || '');
+  ok('起讫填反了要挡住', reversed.includes('晚'), reversed);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---------- 【29】「claim 回来了」一键填好，但金额仍然改得动 ----------
+{
+  console.log('\n【29】对账：一键 claim 回来（填好，不代按保存）');
+  // 2026-09-01 用户要求：「claim 回来的再做个一键 claim 回来，输入数额也保留以防数目有错误」。
+  // 这一块守的正是那句「也保留」——公司实际给回来的数常常跟系统里的不一样（少给一笔、
+  // 汇率差、扣了什么）。要是做成「按一下直接存」，对不上就得先撤销再重记，比手打还麻烦。
+  // 所以这颗按钮只负责把数字填好，保存仍走原本那条路（同一个确认框、同一个接口）。
+  const ctx = await browser.newContext();
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // 摆好三块数据：三人余额、本月开销、待claim——对账那块要三样齐了才算得出来
+  const setup = (claim) => page.evaluate((c) => {
+    pettyState.data = [{ person:'Seryi', status:'ok', balance: 100 }];
+    ledState.data = { total: 200 };
+    pendingClaimState.total = c;
+    pendingClaimState.history = [];
+    pendingClaimState.last = null;
+    showModal('modal-reconcile');    // 按钮住在对账弹窗里，不开它点不到
+    renderReconcile();
+  }, claim);
+
+  await setup(1763.59);
+  const html = await page.innerHTML('#reconcile-body');
+  ok('待claim > 0 时按钮出现，并写着金额',
+     html.includes('claim 回来了') && html.includes('1763.59'), html.slice(0, 400));
+
+  await page.click('button[onclick="reconcileOpenClaimBack()"]');
+  const filled = await page.evaluate(() => ({
+    amount: document.getElementById('reconcile-add-amount').value,
+    note: document.getElementById('reconcile-add-note-input').value,
+    title: document.getElementById('reconcile-add-title').textContent,
+    hint: document.getElementById('reconcile-add-note').textContent,
+    disabled: document.getElementById('reconcile-add-amount').disabled,
+    readOnly: document.getElementById('reconcile-add-amount').readOnly,
+    hidden: document.getElementById('reconcile-add-amount').offsetParent === null,
+  }));
+  // 这是这一整块的重点：填的是**负数**（负数才是「claim 回来了」），而且是整笔
+  ok('金额自动填成负的整笔（-1763.59）', filled.amount === '-1763.59', filled.amount);
+  ok('备注也带上了', filled.note === 'claim 回来', filled.note);
+  ok('弹窗标题改成「claim 回来了」', filled.title === 'claim 回来了', filled.title);
+  // 用户明确要的那半：数目可能有错，所以输入框必须还在、还能改
+  ok('金额栏没有被禁用', filled.disabled === false, filled);
+  ok('金额栏不是只读', filled.readOnly === false, filled);
+  ok('金额栏看得见（不是藏起来只留个按钮）', filled.hidden === false, filled);
+  ok('提示告诉他数字可以改', filled.hint.includes('改'), filled.hint);
+  // 提示这一栏平时是错误红，填好了不该也印成红的
+  const hintColor = await page.evaluate(() =>
+    getComputedStyle(document.getElementById('reconcile-add-note')).color);
+  const errColor = await page.evaluate(() => {
+    const d = document.createElement('div');
+    d.style.color = 'var(--exp)'; document.body.appendChild(d);
+    const c = getComputedStyle(d).color; d.remove(); return c;
+  });
+  ok('填好了的提示不是错误红', hintColor !== errColor, { hintColor, errColor });
+
+  // 改成公司实际给的数，仍然走得通原本那条保存路（这里只验它读得到改后的值）
+  await page.fill('#reconcile-add-amount', '-1700');
+  ok('改得动金额', await page.inputValue('#reconcile-add-amount') === '-1700');
+
+  // 没有待claim时不该出现这颗按钮——按了只会记出一笔莫名其妙的负数
+  await page.evaluate(() => closeModal('modal-reconcile-add'));
+  await setup(0);
+  const html0 = await page.innerHTML('#reconcile-body');
+  ok('待claim是 0 时按钮不出现', !html0.includes('claim 回来了'), html0.slice(0, 300));
+  // 就算硬调它也要挡住（按钮藏了不等于函数调不到）
+  await setup(0);
+  const guarded = await page.evaluate(() => {
+    reconcileOpenClaimBack();
+    return document.getElementById('modal-reconcile-add').classList.contains('open');
+  });
+  ok('硬调也不会开出一个填了 0 的弹窗', guarded === false, guarded);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
