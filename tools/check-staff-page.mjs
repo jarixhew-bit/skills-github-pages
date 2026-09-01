@@ -1209,10 +1209,17 @@ if (want()) {
   const { page, posted, errs } = h;
   await signIn(h);
   await addOne(page, { amount: '6.60', category: 'Store' });
-  const txId = await page.evaluate(() => {
+  // 「送达」是异步的：addOne 只等到弹窗关上，标成 sent 还要等那个 POST 回来。
+  // 机器忙的时候（CI 上并发跑好几个 chromium）它收尾那 100ms 等不到，这条就偶发红、
+  // 后面 8 条跟着一起倒——2026-09-01 在 CI 上真踩过一次，重跑就绿。
+  // 所以等条件成立，别读一次就断言（跟 check-expense-company.mjs 那次同一个道理）。
+  const lastSentId = () => page.evaluate(() => {
     const t = data.transactions.filter(x => x.company && x.company.status === 'sent').pop();
     return t ? t.id : null;
   });
+  // 等超时不抛出去：真的一直没送达时，要让下面那条断言红着报出来，而不是整份自检崩掉
+  await until(async () => !!(await lastSentId()), { what: '这一笔标成已送达' }).catch(() => {});
+  const txId = await lastSentId();
   ok('先记一笔并送达', !!txId, txId);
 
   await page.evaluate(id => editTx(id), txId);
