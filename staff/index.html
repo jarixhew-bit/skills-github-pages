@@ -6337,6 +6337,9 @@ function renderReconcile(){
     <div class="led-sub" style="margin:10px 0 4px">合计 ${fmt(r.sum,'USD')} · 应该是 ${fmt(PENDING_CLAIM_TARGET_USD,'USD')}
       · <b style="${diffAbs<0.01 ? '' : 'color:var(--exp)'}">${diffLabel}</b></div>
     ${r.missing.length ? `<div class="led-sub led-warn">⚠️ ${r.missing.join('、')} 还没设起点，三人余额这块不完整</div>` : ''}
+    ${r.claim > 0.01 ? `<button class="btn btn-primary" style="width:100%;margin-top:14px"
+        onclick="reconcileOpenClaimBack()">✅ claim 回来了（${fmt(r.claim,'USD')}）</button>
+      <div class="led-sub" style="margin-top:6px">按了会把整笔填好，金额还能改——公司给的数不一样就直接改。</div>` : ''}
     <div class="sec-hdr" style="margin-top:16px">
       <div class="sec-title">待claim 记录</div>
       <button class="btn btn-outline btn-sm" onclick="reconcileOpenAdd()">+ 记一笔</button>
@@ -6354,14 +6357,42 @@ function reconcileOpenAdd(){
   if(el) el.value = '';
   const noteEl = document.getElementById('reconcile-add-note-input');
   if(noteEl) noteEl.value = '';
+  const title = document.getElementById('reconcile-add-title');
+  if(title) title.textContent = '记一笔待claim';
   showReconcileAddNote('');
   showModal('modal-reconcile-add');
   setTimeout(()=>{ const a = document.getElementById('reconcile-add-amount'); if(a) a.focus(); }, 120);
 }
 
-function showReconcileAddNote(msg){
+/**
+ * 「claim 回来了」一键版（2026-09-01 用户要求）：把待claim整笔填成负数，一按就好。
+ *
+ * 为什么不做成「按一下直接存」：公司实际给回来的数**常常跟系统里的不一样**（少给一笔、
+ * 汇率差、扣了什么）。直接存的话，数字对不上要先撤销再重记，比手打还麻烦。所以这颗
+ * 按钮只负责**填好**，金额栏照旧露着可以改，最后还是走同一个保存流程（同一个确认框、
+ * 同一条服务端接口）——省掉的是打字，不是那道确认。
+ */
+function reconcileOpenClaimBack(){
+  const r = reconcileCompute();
+  const claim = r ? r.claim : null;
+  if(claim === null || claim <= 0.01){ toast('现在没有待claim的钱'); return; }
+  reconcileOpenAdd();
+  const title = document.getElementById('reconcile-add-title');
+  if(title) title.textContent = 'claim 回来了';
+  const el = document.getElementById('reconcile-add-amount');
+  // 负数＝claim 回来了（跟手动填的是同一套规则，没有第二条路径）
+  if(el) el.value = String(-claim);
+  const noteEl = document.getElementById('reconcile-add-note-input');
+  if(noteEl && !noteEl.value) noteEl.value = 'claim 回来';
+  showReconcileAddNote(`已经帮你填上全部 ${fmt(claim,'USD')}。公司实际给的不一样就直接改这个数。`, 'info');
+}
+
+/** kind:'info' 是「填好了」这种提示，不是错误——这一栏平时是红的，别把好消息也印成红的。 */
+function showReconcileAddNote(msg, kind){
   const el = document.getElementById('reconcile-add-note');
-  if(el) el.textContent = msg || '';
+  if(!el) return;
+  el.textContent = msg || '';
+  el.style.color = kind === 'info' ? 'var(--sub)' : 'var(--exp)';
 }
 
 async function reconcileSubmit(){

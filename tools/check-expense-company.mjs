@@ -2387,6 +2387,90 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await ctx.close();
 }
 
+// ---------- 【29】「claim 回来了」一键填好，但金额仍然改得动 ----------
+{
+  console.log('\n【29】对账：一键 claim 回来（填好，不代按保存）');
+  // 2026-09-01 用户要求：「claim 回来的再做个一键 claim 回来，输入数额也保留以防数目有错误」。
+  // 这一块守的正是那句「也保留」——公司实际给回来的数常常跟系统里的不一样（少给一笔、
+  // 汇率差、扣了什么）。要是做成「按一下直接存」，对不上就得先撤销再重记，比手打还麻烦。
+  // 所以这颗按钮只负责把数字填好，保存仍走原本那条路（同一个确认框、同一个接口）。
+  const ctx = await browser.newContext();
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // 摆好三块数据：三人余额、本月开销、待claim——对账那块要三样齐了才算得出来
+  const setup = (claim) => page.evaluate((c) => {
+    pettyState.data = [{ person:'Seryi', status:'ok', balance: 100 }];
+    ledState.data = { total: 200 };
+    pendingClaimState.total = c;
+    pendingClaimState.history = [];
+    pendingClaimState.last = null;
+    showModal('modal-reconcile');    // 按钮住在对账弹窗里，不开它点不到
+    renderReconcile();
+  }, claim);
+
+  await setup(1763.59);
+  const html = await page.innerHTML('#reconcile-body');
+  ok('待claim > 0 时按钮出现，并写着金额',
+     html.includes('claim 回来了') && html.includes('1763.59'), html.slice(0, 400));
+
+  await page.click('button[onclick="reconcileOpenClaimBack()"]');
+  const filled = await page.evaluate(() => ({
+    amount: document.getElementById('reconcile-add-amount').value,
+    note: document.getElementById('reconcile-add-note-input').value,
+    title: document.getElementById('reconcile-add-title').textContent,
+    hint: document.getElementById('reconcile-add-note').textContent,
+    disabled: document.getElementById('reconcile-add-amount').disabled,
+    readOnly: document.getElementById('reconcile-add-amount').readOnly,
+    hidden: document.getElementById('reconcile-add-amount').offsetParent === null,
+  }));
+  // 这是这一整块的重点：填的是**负数**（负数才是「claim 回来了」），而且是整笔
+  ok('金额自动填成负的整笔（-1763.59）', filled.amount === '-1763.59', filled.amount);
+  ok('备注也带上了', filled.note === 'claim 回来', filled.note);
+  ok('弹窗标题改成「claim 回来了」', filled.title === 'claim 回来了', filled.title);
+  // 用户明确要的那半：数目可能有错，所以输入框必须还在、还能改
+  ok('金额栏没有被禁用', filled.disabled === false, filled);
+  ok('金额栏不是只读', filled.readOnly === false, filled);
+  ok('金额栏看得见（不是藏起来只留个按钮）', filled.hidden === false, filled);
+  ok('提示告诉他数字可以改', filled.hint.includes('改'), filled.hint);
+  // 提示这一栏平时是错误红，填好了不该也印成红的
+  const hintColor = await page.evaluate(() =>
+    getComputedStyle(document.getElementById('reconcile-add-note')).color);
+  const errColor = await page.evaluate(() => {
+    const d = document.createElement('div');
+    d.style.color = 'var(--exp)'; document.body.appendChild(d);
+    const c = getComputedStyle(d).color; d.remove(); return c;
+  });
+  ok('填好了的提示不是错误红', hintColor !== errColor, { hintColor, errColor });
+
+  // 改成公司实际给的数，仍然走得通原本那条保存路（这里只验它读得到改后的值）
+  await page.fill('#reconcile-add-amount', '-1700');
+  ok('改得动金额', await page.inputValue('#reconcile-add-amount') === '-1700');
+
+  // 没有待claim时不该出现这颗按钮——按了只会记出一笔莫名其妙的负数
+  await page.evaluate(() => closeModal('modal-reconcile-add'));
+  await setup(0);
+  const html0 = await page.innerHTML('#reconcile-body');
+  ok('待claim是 0 时按钮不出现', !html0.includes('claim 回来了'), html0.slice(0, 300));
+  // 就算硬调它也要挡住（按钮藏了不等于函数调不到）
+  await setup(0);
+  const guarded = await page.evaluate(() => {
+    reconcileOpenClaimBack();
+    return document.getElementById('modal-reconcile-add').classList.contains('open');
+  });
+  ok('硬调也不会开出一个填了 0 的弹窗', guarded === false, guarded);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
