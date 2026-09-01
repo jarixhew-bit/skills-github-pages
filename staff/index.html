@@ -417,7 +417,9 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 /* 缩进一格，让「这几笔是这个人的」一眼看得出来 */
 .led-person-rows{padding-left:10px;border-left:2px solid var(--border)}
 .led-row{display:flex;align-items:baseline;gap:8px;padding:5px 0;font-size:13px}
-.led-no{flex:none;min-width:26px;font-weight:700;color:var(--p)}
+/* 单号跟其它字一样用正文色（2026-09-01 用户要求改回黑色）。
+   仍然保留加粗——这个号要抄到纸本单据上，得一眼扫得到。 */
+.led-no{flex:none;min-width:26px;font-weight:700;color:var(--text)}
 .led-mid{flex:1;min-width:0}
 .led-who{font-size:11px;color:var(--sub)}
 .led-amt{flex:none;font-weight:600}
