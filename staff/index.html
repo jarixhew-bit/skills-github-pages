@@ -3572,7 +3572,9 @@ async function sendStatementToBoss(){
   toast('正在发给老板…');
   setStatus('正在发给老板…');
   // 自订期间导出的（跨月的旅游行程）在老板那边算 trip，不算某个月的账单——
-  // 服务端按 kind+period 去重，period 用起讫日期，重传同一段会替换掉旧的那份。
+  // 服务端按 kind+period+**账户** 去重，重传同一个账户的同一段会替换掉旧的那份。
+  // 账户那一项是 2026-09-01 补的：在那之前同一个月里不同账户的账单会互相顶掉，
+  // 他发了三张老板那边只看到两张，Boss 八月那份无声无息没了。account 必须带。
   // kind 只收 'month' 或 'trip'（butler handlers/boss.js doBillUpload）。
   const monthNum = String(built.month+1).padStart(2,'0');
   const r = built.range;
@@ -3587,6 +3589,7 @@ async function sendStatementToBoss(){
           en: `${r.label} · ${built.acc.name}` },
     kind: r.isMonth ? 'month' : 'trip',
     period: r.isMonth ? `${built.year}-${monthNum}` : `${r.from}_${r.to}`,
+    account: built.acc.name,
     tripId: null,
     contentBase64: base64
   };
