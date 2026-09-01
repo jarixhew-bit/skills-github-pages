@@ -6,7 +6,7 @@
 // 跟老板 App 的 expense-tracker-sw.js 是两个独立的 SW：这个注册在 /staff/ 目录下，
 // 作用域只到这个目录，不会去缓存或接管 App 那边的页面。缓存名也是分开的。
 // 这个文件是手写的（不是生成的）——它跟 App 的 SW 没有共用逻辑，各管各的目录。
-const CACHE = 'staff-expense-v3';
+const CACHE = 'staff-expense-v4';
 const ASSETS = ['./', './index.html', './manifest.webmanifest'];
 
 self.addEventListener('install', e => {

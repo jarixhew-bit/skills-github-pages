@@ -590,16 +590,44 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
     <div class="chart-wrap"><canvas id="pie-chart"></canvas></div>
     <div id="cat-bars" class="cat-bars"></div>
   </div>
-  <button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="exportStatementPDF()">
-    📑 导出账户明细
-  </button>
-  <!-- 发给老板：把刚导出的这份账户明细直接送进老板 App，省掉「导出→存手机→开老板App→
-       找文件→上传」这几步（2026-08-27 加）。挨着导出按钮放，不自动发——导出常常是自己
-       看的草稿，得用户手动点了才送。见 sendStatementToBoss()。 -->
-  <button class="btn btn-outline" style="width:100%;margin-top:8px" onclick="sendStatementToBoss()">
-    📤 发给老板
-  </button>
-  <div id="send-boss-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+  <!-- 导出账户明细（2026-09-01 加自订期间）：默认导出上面月份选择器选的那个月。
+       旅游行程常常跨月（例如 10/28 出发 11/03 回来），按月导就变成两张单，对不起来。
+       勾「自订期间」填起讫日期，整段出成一张。名称会印在单子抬头和档名上。 -->
+  <div class="card" style="padding:14px;margin-top:4px">
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+      <input type="checkbox" id="stmt-range-on" onchange="toggleStmtRange()" style="width:16px;height:16px">
+      <span>自订期间（旅游行程用，可跨月）</span>
+    </label>
+    <div id="stmt-range-box" style="display:none;margin-top:12px">
+      <div class="form-group">
+        <label class="form-label">行程名称（可留空）</label>
+        <input class="form-input" id="stmt-range-name" placeholder="例：2026 日本行" maxlength="40">
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">开始</label>
+          <input class="form-input" id="stmt-range-from" type="date">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">结束</label>
+          <input class="form-input" id="stmt-range-to" type="date">
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--sub);margin:-4px 0 12px;line-height:1.6">
+        上面的图表还是按月显示，<b>导出的单子以这里的日期为准</b>（含头含尾）。
+      </div>
+    </div>
+    <button class="btn btn-outline" style="width:100%" onclick="exportStatementPDF()">
+      📑 导出账户明细
+    </button>
+    <!-- 发给老板：把这份账户明细直接送进老板 App，省掉「导出→存手机→开老板App→
+         找文件→上传」这几步（2026-08-27 加）。挨着导出按钮放，不自动发——导出常常是自己
+         看的草稿，得用户手动点了才送。它跟导出走同一个期间设定，见 sendStatementToBoss()。 -->
+    <button class="btn btn-outline" style="width:100%;margin-top:8px" onclick="sendStatementToBoss()">
+      📤 发给老板
+    </button>
+    <div id="send-boss-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+  </div>
 </div>
 
 <!-- SETTINGS TAB -->
@@ -3351,26 +3379,91 @@ document.querySelectorAll('.overlay').forEach(el=>{
 
 // ===================== STATEMENT PDF EXPORT =====================
 // 仿手工范本「个人账户明细」格式：深蓝横幅+金线，支出汇总/明细+收支汇总，附件页三段式标题条。
+/**
+ * 勾/取消「自订期间」。第一次勾开时把起讫日期预填成上面选的那个月，
+ * 省得每次从空白开始点——大多数行程就落在那附近，改几天就好。
+ */
+function toggleStmtRange(){
+  const on = document.getElementById('stmt-range-on');
+  const box = document.getElementById('stmt-range-box');
+  if(!on || !box) return;
+  box.style.display = on.checked ? '' : 'none';
+  if(!on.checked) return;
+  const from = document.getElementById('stmt-range-from');
+  const to = document.getElementById('stmt-range-to');
+  if(from && !from.value) from.value = monthBounds(state.anYear, state.anMonth).from;
+  if(to && !to.value) to.value = monthBounds(state.anYear, state.anMonth).to;
+}
+
+function monthBounds(year, month){
+  const pad = n => String(n).padStart(2,'0');
+  const lastDay = new Date(year, month+1, 0).getDate();
+  return {from:`${year}-${pad(month+1)}-01`, to:`${year}-${pad(month+1)}-${pad(lastDay)}`};
+}
+
+/**
+ * 这份明细要涵盖哪一段。默认＝统计页选的那个月；勾了「自订期间」＝填的起讫日期（含头含尾）。
+ *
+ * 为什么要有自订这条路（2026-09-01）：旅游行程跨月是常态，按月导会切成两张单，
+ * 期初/期末余额还得自己接起来。整段出一张才对得上。
+ *
+ * 日期一律用 'YYYY-MM-DD' 字串比大小，不要转 Date：交易日期存的是本地日历日，
+ * `new Date('2026-08-01')` 解成 UTC 午夜，跟本地午夜差一个时区，边界那天会算错边。
+ *
+ * 回传 {from,to,label,fileTag,isMonth,periodWord}；填得不对回传 {error:'…'}。
+ */
+function stmtRange(){
+  const on = document.getElementById('stmt-range-on');
+  if(on && on.checked){
+    const from = (document.getElementById('stmt-range-from').value || '').trim();
+    const to   = (document.getElementById('stmt-range-to').value   || '').trim();
+    if(!from || !to) return {error:'请把开始和结束日期都填上'};
+    if(from > to)    return {error:'开始日期比结束日期还晚了'};
+    const name = (document.getElementById('stmt-range-name').value || '').trim();
+    const span = `${from} ~ ${to}`;
+    return {
+      from, to,
+      label: name ? `${name} · ${span}` : span,
+      // 档名不能带这些字元，Windows 存不下来
+      fileTag: (name ? name : `${from}_${to}`).replace(/[\\/:*?"<>|]/g, '').trim() || `${from}_${to}`,
+      isMonth: false, periodWord: '本期',
+    };
+  }
+  const year = state.anYear, month = state.anMonth;
+  const b = monthBounds(year, month);
+  return {
+    from: b.from, to: b.to,
+    label: `${year}年${String(month+1).padStart(2,'0')}月`,
+    fileTag: `${year}-${String(month+1).padStart(2,'0')}`,
+    isMonth: true, periodWord: '本月',
+  };
+}
+
+function rangeTxs(accId, from, to){
+  return data.transactions.filter(t => t.accountId === accId && t.date >= from && t.date <= to);
+}
+
 // 生成账户明细 PDF，只生成不下载/不发送——给「导出」和「发给老板」两个入口共用，
 // 避免同一份 PDF 拼装逻辑分叉成两份（2026-08-27 拆出来）。
-// 成功返回 {pdf, filename, acc, year, month}，失败/没选账户返回 null（已经 toast 过原因）。
+// 成功返回 {pdf, filename, acc, range}，失败/没选账户返回 null（已经 toast 过原因）。
 async function buildStatementPDF(){
   const acc = curAcc(); if(!acc){ toast('请先选择账户'); return null; }
+  const range = stmtRange();
+  if(range.error){ toast(range.error); return null; }
 
   const year = state.anYear, month = state.anMonth;
+  const P = range.periodWord;   // 「本月」或「本期」，下面所有文案共用
 
-  // 期初余额：该账户本月 1 号之前所有交易的（收入−支出）累计
-  const monthStart = new Date(year, month, 1);
+  // 期初余额：该账户在起始日**之前**所有交易的（收入−支出）累计
   let openingBalance = 0;
   data.transactions.forEach(t=>{
     if(t.accountId !== acc.id) return;
-    const d = new Date(t.date);
-    if(d < monthStart){
+    if(t.date < range.from){
       openingBalance += (t.type==='income' ? t.amount : -t.amount);
     }
   });
 
-  const txs = monthTxs(acc.id, year, month);
+  const txs = rangeTxs(acc.id, range.from, range.to);
   const incomeTxs = txs.filter(t=>t.type==='income').sort((a,b)=>a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   const incomeTotal = incomeTxs.reduce((s,t)=>s+t.amount,0);
   const expenseTxs = txs.filter(t=>t.type==='expense').sort((a,b)=>a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
@@ -3394,14 +3487,18 @@ async function buildStatementPDF(){
   const catSorted = Object.values(catMap).sort((a,b)=>b.total-a.total);
   const totalReceipts = withAttachments.length;
 
-  const monthLabel = `${year}年${String(month+1).padStart(2,'0')}月`;
+  const monthLabel = range.label;
   const pageNoLabel = (n)=>`第 ${n} 页`;
-  // 收支汇总说明栏（范本第三栏）：注资说明按本月收入自动生成
+  // 收支汇总说明栏（范本第三栏）：注资说明按本期收入自动生成
   const prevMonthNum = month===0 ? 12 : month;
-  const incomeNote = incomeTotal>0 ? `新增注资 ${incomeTxs.length}笔` : '本月无新增注资';
-  const expenseNote = expenseTxs.length>0 ? `${expenseTxs.length}笔，详见上方拆解` : '本月暂无支出';
-  const lastDay = new Date(year, month+1, 0).getDate();
-  const closingNote = `截至${month+1}/${lastDay}`;
+  const incomeNote = incomeTotal>0 ? `新增注资 ${incomeTxs.length}笔` : `${P}无新增注资`;
+  const expenseNote = expenseTxs.length>0 ? `${expenseTxs.length}笔，详见上方拆解` : `${P}暂无支出`;
+  const closingNote = `截至${range.to.slice(5).replace('-','/')}`;
+  // 自订期间时「承上月」这种说法不成立，改说「起始日之前」
+  const openingLabel = range.isMonth ? `期初余额 (承${prevMonthNum}月结余)` : '期初余额 (起始日之前累计)';
+  const openingNote = range.isMonth ? '承上月结余' : '起始日之前累计';
+  const openingDesc = range.isMonth ? '承接上月' : `截至${range.from.slice(5).replace('-','/')}前`;
+  const incomeLabel = range.isMonth ? `${month+1}月收入` : '本期收入';
 
   const reportEl = document.getElementById('pdf-statement');
   reportEl.innerHTML = `
@@ -3418,13 +3515,13 @@ async function buildStatementPDF(){
             <div class="st-info-val">${acc.name}</div>
           </div>
           <div class="st-info-cell">
-            <div class="st-info-label">月份</div>
+            <div class="st-info-label">期间</div>
             <div class="st-info-val">${monthLabel}</div>
           </div>
           <div class="st-info-cell">
             <div class="st-info-label">期初余额</div>
             <div class="st-info-val">${openingBalance>=0?'+':''}${fmtThousands(openingBalance)} ${acc.currency}</div>
-            <div class="st-info-note">承上月结余</div>
+            <div class="st-info-note">${openingNote}</div>
           </div>
           <div class="st-info-cell">
             <div class="st-info-label">期末余额</div>
@@ -3452,7 +3549,7 @@ async function buildStatementPDF(){
                 <td class="st-num-col">${s.receipts}</td>
               </tr>
             `).join('')}
-            ${catSorted.length===0?'<tr><td colspan="4" style="text-align:center;color:#999">本月暂无支出</td></tr>':''}
+            ${catSorted.length===0?`<tr><td colspan="4" style="text-align:center;color:#999">${P}暂无支出</td></tr>`:''}
             <tr class="st-total-row">
               <td>总计</td>
               <td class="st-num-col">${expenseTxs.length}</td>
@@ -3483,7 +3580,7 @@ async function buildStatementPDF(){
                 <td class="st-voucher-col">${pMap[t.id]||'—'}</td>
               </tr>`;
             }).join('')}
-            ${expenseTxs.length===0?'<tr><td colspan="4" style="text-align:center;color:#999">本月暂无支出</td></tr>':''}
+            ${expenseTxs.length===0?`<tr><td colspan="4" style="text-align:center;color:#999">${P}暂无支出</td></tr>`:''}
             <tr class="st-total-row">
               <td colspan="2">总计</td>
               <td class="st-amt-col">${fmtThousands(expenseTotal)}</td>
@@ -3511,7 +3608,7 @@ async function buildStatementPDF(){
                 <td class="st-amt-col">${fmtThousands(t.amount)}</td>
               </tr>`;
             }).join('')}
-            ${incomeTxs.length===0?'<tr><td colspan="3" style="text-align:center;color:#999">本月无新增注资</td></tr>':''}
+            ${incomeTxs.length===0?`<tr><td colspan="3" style="text-align:center;color:#999">${P}无新增注资</td></tr>`:''}
             <tr class="st-total-row">
               <td colspan="2">总计</td>
               <td class="st-amt-col">${fmtThousands(incomeTotal)}</td>
@@ -3530,12 +3627,12 @@ async function buildStatementPDF(){
           </thead>
           <tbody>
             <tr>
-              <td class="st-cash-label">期初余额 (承${prevMonthNum}月结余)</td>
+              <td class="st-cash-label">${openingLabel}</td>
               <td class="st-cash-val">${openingBalance>=0?'+':''}${fmtThousands(openingBalance)}</td>
-              <td class="st-cash-desc">承接上月</td>
+              <td class="st-cash-desc">${openingDesc}</td>
             </tr>
             <tr>
-              <td class="st-cash-label">${month+1}月收入</td>
+              <td class="st-cash-label">${incomeLabel}</td>
               <td class="st-cash-val">+${fmtThousands(incomeTotal)}</td>
               <td class="st-cash-desc">${incomeNote}</td>
             </tr>
@@ -3743,8 +3840,8 @@ async function buildStatementPDF(){
       pageIdx++;
     }
 
-    const filename = `账户明细-${acc.name}-${year}-${String(month+1).padStart(2,'0')}.pdf`;
-    return {pdf, filename, acc, year, month};
+    const filename = `账户明细-${acc.name}-${range.fileTag}.pdf`;
+    return {pdf, filename, acc, range, year, month};
   }catch(e){
     console.error(e);
     toast('账户明细生成失败，请重试');
@@ -3795,17 +3892,22 @@ async function sendStatementToBoss(){
 
   toast('正在发给老板…');
   setStatus('正在发给老板…');
+  // 自订期间导出的（跨月的旅游行程）在老板那边算 trip，不算某个月的账单——
+  // 服务端按 kind+period 去重，period 用起讫日期，重传同一段会替换掉旧的那份。
+  // kind 只收 'month' 或 'trip'（butler handlers/boss.js doBillUpload）。
   const monthNum = String(built.month+1).padStart(2,'0');
+  const r = built.range;
   const payload = {
     token,
     action: 'billUpload',
     filename: built.filename,
-    title: {
-      zh: `${built.year}年${monthNum}月 ${built.acc.name} 账单`,
-      en: `${MONTH_NAMES_EN[built.month]} ${built.year} · ${built.acc.name}`
-    },
-    kind: 'month',
-    period: `${built.year}-${monthNum}`,
+    title: r.isMonth
+      ? { zh: `${built.year}年${monthNum}月 ${built.acc.name} 账单`,
+          en: `${MONTH_NAMES_EN[built.month]} ${built.year} · ${built.acc.name}` }
+      : { zh: `${r.label} ${built.acc.name} 账单`,
+          en: `${r.label} · ${built.acc.name}` },
+    kind: r.isMonth ? 'month' : 'trip',
+    period: r.isMonth ? `${built.year}-${monthNum}` : `${r.from}_${r.to}`,
     tripId: null,
     contentBase64: base64
   };
