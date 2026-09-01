@@ -2874,7 +2874,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v40</div>
+    <div class="admin-ver" id="adminVer">boss-app-v41</div>
 
     ${adminTripsSectionHtml()}
 
@@ -2897,7 +2897,7 @@ function renderAdmin(){
     <div class="admin-block">
       <h3>⬆️ ${pick('上传账单 PDF','Upload a Bill PDF')}</h3>
       <div class="admin-field">
-        <label>${pick('PDF 文件（上限 8MB）','PDF file (max 8MB)')}</label>
+        <label>${pick('PDF 文件（上限 ' + BOSS_BILL_MAX_MB + 'MB）','PDF file (max ' + BOSS_BILL_MAX_MB + 'MB)')}</label>
         <input type="file" id="admin-bill-file" accept="application/pdf">
       </div>
       <div class="admin-field">
@@ -2960,7 +2960,7 @@ async function adminUploadBill(){
   const statusEl = document.getElementById('admin-upload-status');
   const file = fileInput && fileInput.files && fileInput.files[0];
   if(!file){ statusEl.className='admin-status err'; statusEl.textContent = pick('请先选择 PDF 文件','Please choose a PDF file first'); return; }
-  if(file.size > 8 * 1024 * 1024){ statusEl.className='admin-status err'; statusEl.textContent = pick('PDF 太大（超过 8MB）','PDF is too large (over 8MB)'); return; }
+  if(file.size > BOSS_BILL_MAX_MB * 1024 * 1024){ statusEl.className='admin-status err'; statusEl.textContent = pick('PDF 太大（超过 ' + BOSS_BILL_MAX_MB + 'MB）','PDF is too large (over ' + BOSS_BILL_MAX_MB + 'MB)'); return; }
   const period = (document.getElementById('admin-bill-period').value || '').trim();
   if(!period){ statusEl.className='admin-status err'; statusEl.textContent = pick('请填账期','Please fill in the period'); return; }
   const titleZh = (document.getElementById('admin-bill-title-zh').value || '').trim();
@@ -2998,6 +2998,11 @@ async function refreshFeed(){
     handleFeed(feed, { fromNetwork:true });
   }catch(e){ /* 静默失败：用户下次操作或下次开页面还会再试 */ }
 }
+
+/* 账单上传上限。**跟 butler 的 MAX_BILL_BYTES 和记账 App 的 BOSS_BILL_MAX_MB
+ * 必须是同一个数**（2026-08-30 一起从 8 改成 20）。服务端才是正本，这里只是
+ * 让用户不必白传一趟；三处任何一处改了，另外两处也要改。 */
+const BOSS_BILL_MAX_MB = 20;
 
 /* ============================= 推送通知 ============================= */
 function pushSupported(){
