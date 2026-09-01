@@ -52,7 +52,13 @@ URL: https://jarixhew-bit.github.io/skills-github-pages/boss/
    {date, time, title:{zh,en}, note:{zh,en}, mapUrl}]}`。`guideUrl` 指向本仓库现有手册。
    按 CLAUDE.md 规则，行程条目**提到地点就要带 `mapUrl`**。
 3. **Bill 字段**：`{id, title:{zh,en}, kind:"month"|"trip", period, tripId, filename,
-   size, uploadedAt}`。上传上限 8MB。
+   size, uploadedAt, readAt}`。**上传上限 20MB**（2026-08-30 从 8MB 提上来）。
+   这个数字写在**三处**，改一处就要改三处：butler `MAX_BILL_MB`（正本）、
+   `expense-tracker.html` 的 `BOSS_BILL_MAX_MB`、`boss/index.html` 的同名常量。
+   为什么是 20 不是更大：一次上传路上同一串 base64 同时存在好几份（请求体原文、
+   解析出来的对象、再发给 GitHub 的那份），Worker 只有 128MB 内存，20MB ≈ 80MB 峰值。
+   还要往上加**先跑 butler 的 workflow「Boss App 账单上限体检」**（真传真读真删），
+   拿结果说话，别只改数字。
 4. **开通/收回老板权限**：只动 butler-bot 的 GitHub Secret `BOSS_VIEW_TOKEN`，
    再跑一次 `deploy.yml`。删掉 Secret 再跑 = 立刻收回。**不要在代码里做权限开关。**
 

@@ -90,11 +90,19 @@ const LEDGER_FIXTURE = {
   orphan:0,
 };
 
+// 「找回本月记录」那几组用的日期必须跟**跑自检的当月**对齐。
+// 2026-09-01 踩过：fixture 写死 2026-08-02，跨月之后 App 只显示本月记录，
+// 清单一片空白，三条断言集体变红——而代码一个字都没改。日期相关的 fixture
+// 一律从今天算，别再写死年月。
+const NOW = new Date();
+const THIS_MONTH = `${NOW.getFullYear()}-${String(NOW.getMonth() + 1).padStart(2, '0')}`;
+const dayOfThisMonth = (d) => `${THIS_MONTH}-${String(d).padStart(2, '0')}`;
+
 // 假 butler：只认一把钥匙，按钥匙回身份。「看不到别人的记录」那条守在服务端
 // （butler-bot 的 tests/staff-access.test.mjs），这份只守页面这一侧。
 function makeBook() {
   return {
-    [SERYI_KEY]: { status:'ok', reporter:'Seryi', month:'2026-08', total:0, missingPhoto:0, records:[] },
+    [SERYI_KEY]: { status:'ok', reporter:'Seryi', month:THIS_MONTH, total:0, missingPhoto:0, records:[] },
   };
 }
 
@@ -527,10 +535,10 @@ if (want()) {
 
   // 现在服务端有他本月报过的两笔（模拟他之前在别的手机上报的）
   book[SERYI_KEY].records = [
-    { id:'srv_1', date:'2026-08-02', categoryEn:'Lunch',   billNo:'1', side:'assist',
+    { id:'srv_1', date:dayOfThisMonth(2), categoryEn:'Lunch',   billNo:'1', side:'assist',
       amountUsd:4.49, originalAmount:null, note:null, hasPhoto:true },
     // 车牌类项目服务端存的就是 "Petrol (车牌)"（见 butler 的 plateLabelOf），照实摆
-    { id:'srv_2', date:'2026-08-03', categoryEn:'Petrol (2AB-1234)', billNo:'2', side:'boss',
+    { id:'srv_2', date:dayOfThisMonth(3), categoryEn:'Petrol (2AB-1234)', billNo:'2', side:'boss',
       amountUsd:20.00, originalAmount:null, note:null, hasPhoto:false },
   ];
 
@@ -553,7 +561,7 @@ if (want()) {
   // 真正会让钱翻倍的路径：找回来的那笔如果没标成「已送出」，同事一编辑它
   // saveTx 就当成还没报过、真的再送一次。所以要走一遍编辑，确认一个字都没送出去。
   posted.length = 0;
-  await page.click('.tx-item >> nth=1');   // 第 2 条是 08-02 那笔午餐（清单按日期倒序）
+  await page.click('.tx-item >> nth=1');   // 第 2 条是本月 2 号那笔午餐（清单按日期倒序）
   await page.waitForTimeout(500);
   // 2026-08-08 起表单会锁住（见【18】），所以这里直接绕过锁硬存一次——
   // 要测的是「就算改得动，也绝不会再报一次账」
@@ -658,7 +666,7 @@ if (want()) {
   const h = await signIn(await newPage());
   const { page, errs, book } = h;
   book[SERYI_KEY].records = [
-    { id:'srv_9', date:'2026-08-02', categoryEn:'Lunch', billNo:'1', side:'assist',
+    { id:'srv_9', date:dayOfThisMonth(2), categoryEn:'Lunch', billNo:'1', side:'assist',
       amountUsd:4.49, originalAmount:null, note:null, hasPhoto:true },
   ];
   await page.evaluate(() => localStorage.removeItem('staffExpense_v2'));

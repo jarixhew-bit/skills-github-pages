@@ -3462,9 +3462,12 @@ async function exportStatementPDF(){
   toast('账户明细已导出');
 }
 
-// 8MB 是 butler /boss 服务端的硬限制（handlers/boss.js MAX_BILL_BYTES），本机先算一遍，
-// 超了就不必白跑一趟网络——base64 比原始二进制大约 4/3。
-const BOSS_BILL_MAX_BYTES = 8 * 1024 * 1024;
+// 服务端的硬限制（handlers/boss.js MAX_BILL_BYTES，2026-08-30 从 8MB 提到 20MB），
+// 本机先算一遍，超了就不必白跑一趟网络——base64 比原始二进制大约 4/3。
+// 提示文案里的数字统一从 BOSS_BILL_MAX_MB 拼出来：写死的话跟服务端一改就对不上，
+// 用户会照着一个过期的数字去压缩文件。
+const BOSS_BILL_MAX_MB = 20;
+const BOSS_BILL_MAX_BYTES = BOSS_BILL_MAX_MB * 1024 * 1024;
 const MONTH_NAMES_EN = ['January','February','March','April','May','June',
   'July','August','September','October','November','December'];
 
@@ -3490,8 +3493,8 @@ async function sendStatementToBoss(){
   const base64 = dataUri.slice(dataUri.indexOf(',') + 1);
   const approxBytes = base64.length * 3 / 4;
   if(approxBytes > BOSS_BILL_MAX_BYTES){
-    const msg = '单据太多，PDF 超过 8MB，试试分开导出\nPDF 已下载到本机，可以手动发';
-    toast(msg); setStatus('❌ 单据太多，PDF 超过 8MB，试试分开导出（已下载到本机）');
+    const msg = `单据太多，PDF 超过 ${BOSS_BILL_MAX_MB}MB，试试分开导出\nPDF 已下载到本机，可以手动发`;
+    toast(msg); setStatus(`❌ 单据太多，PDF 超过 ${BOSS_BILL_MAX_MB}MB，试试分开导出（已下载到本机）`);
     return;
   }
 
