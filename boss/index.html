@@ -1277,12 +1277,17 @@ function dentalCardHtml(){
         <span class="dental-v">${bl(dw.zh, dw.en)}${ since.zh ? bl(`（${since.zh}）`, ` (${since.en})`) : '' }</span>
       </div>`;
   }
-  if(d.nextVisit){
-    const nw = fmtDateWeekdayBoth(d.nextVisit);
-    const soon = d.nextVisit >= todayIso;
+  // **已经过去的预约不算「下次预约」**（2026-09-02 修）：原本只要 nextVisit 有值就照印，
+  // 于是看完诊的第二天起，老板那张卡会一直挂着一个过去的日期当成「下次预约」。
+  // 过期的就当成没约，走下面那条「还没约／该约了」的分支——那句话是对的。
+  // 「那次到底去了没有」由 YANG 在管理页确认（他那边有一键「去了」），不在这里猜：
+  // 挂在日历上不等于人真的去了，替他认定就诊记录是在编数据。
+  const upcoming = d.nextVisit && d.nextVisit >= todayIso ? d.nextVisit : '';
+  if(upcoming){
+    const nw = fmtDateWeekdayBoth(upcoming);
     rows += `<div class="dental-row">
         <span class="dental-k">${bl('下次预约','Next appointment')}</span>
-        <span class="dental-v${soon ? ' dental-next' : ''}">${bl(nw.zh, nw.en)}</span>
+        <span class="dental-v dental-next">${bl(nw.zh, nw.en)}</span>
       </div>`;
   }else if(d.lastVisit){
     // 没排下次：按他的复诊间隔（默认三个月，管理页可改）给一个参考日期，但
@@ -2488,9 +2493,36 @@ function adminDentalSectionHtml(){
       <div class="admin-field"><label>${pick('备注（选填）','Note (optional)')}</label>
         <input type="text" id="admin-dental-note" maxlength="200" value="${escapeHtml(d.note || '')}"
           placeholder="${escapeHtml(pick('例：补牙第二次','e.g. filling, 2nd session'))}"></div>
+      ${dentalDonePromptHtml(d)}
       <button type="button" class="admin-btn" onclick="adminSaveDental()">💾 ${pick('保存牙医记录','Save dentist record')}</button>
       <div class="admin-status" id="admin-dental-status"></div>
     </div>`;
+}
+/**
+ * 预约日子过了就问一句「去了吗」，按一下就把它转成上次就诊。
+ *
+ * 为什么要有（2026-09-02 用户问「他今晚会自动更新吗」）：不会——没有任何定时任务
+ * 碰牙医这份数据。而**故意不做成自动的**：日历上排了不等于人真的去了，系统替他
+ * 认定就诊记录就是在编数据，医疗记录编错比放着不更新糟得多。
+ * 所以做成一键确认：判断留给人，动手的部分省掉。
+ */
+function dentalDonePromptHtml(d){
+  const next = (d && d.nextVisit) || '';
+  if(!next || next >= isoDate(new Date())) return '';
+  const w = fmtDateBoth(next);
+  return `<div class="admin-status err" id="admin-dental-done" style="margin-bottom:8px">
+      ${pick(`${w.zh}那次预约已经过了——去了吗？`, `The appointment on ${w.en} has passed — did it happen?`)}
+      <button type="button" class="admin-btn" style="margin-top:6px"
+        onclick="adminDentalDone('${escapeHtml(next)}')">✅ ${pick('去了，记成上次就诊','Yes — record as last visit')}</button>
+    </div>`;
+}
+/** 一键：把过期的预约转成「上次就诊」，并清掉下次预约（还没约新的）。 */
+async function adminDentalDone(dateIso){
+  const lastEl = document.getElementById('admin-dental-last');
+  const nextEl = document.getElementById('admin-dental-next');
+  if(lastEl) lastEl.value = dateIso;
+  if(nextEl) nextEl.value = '';
+  await adminSaveDental();
 }
 async function adminSaveDental(){
   if(adminDentalBusy) return;

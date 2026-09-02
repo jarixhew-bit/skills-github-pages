@@ -2537,6 +2537,96 @@ function localAt(daysFromNow, hm, offset){
   await ctx.close();
 }
 
+// ---------- 场景二十七：过去的预约不许当成「下次预约」 ----------
+// 2026-09-02 用户问「牙医今天去完了，他今晚会自动更新吗」——不会，没有任何定时
+// 任务碰这份数据。而原本的显示更糟：只要 nextVisit 有值就照印，看完诊的第二天起
+// 老板那张卡会一直挂着一个**过去的日期**当成下次预约。
+// 刻意**不做成自动**把它转成就诊记录：排了不等于去了，替他认定是在编医疗记录。
+// 所以老板那边当成「还没约」，由 YANG 在管理页一键确认。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const past = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  const future = new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10);
+  mountRoutes(ctx, { role: 'viewer',
+    dental: { lastVisit: '2026-07-13', nextVisit: past, intervalMonths: 3, note: '' } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.dental-card')), { what: '牙医卡渲染完' });
+
+  console.log('\n【二十七】过去的预约不许当成「下次预约」');
+  let txt = await page.locator('.dental-card').innerText();
+  const pastZh = `${Number(past.slice(5,7))}月${Number(past.slice(8,10))}日`;
+  ok('★过期的预约日期不再印在「下次预约」那一行', !txt.includes(pastZh), txt);
+  ok('★改口说「还没约／该约了」（那句话才是对的）', /还没约|该约了/.test(txt), txt);
+  ok('上次就诊照旧显示', /7月13日/.test(txt), txt);
+  ok('老板那边没有任何确认按钮（只读）',
+     await page.locator('#admin-dental-done, [onclick*="adminDentalDone"]').count() === 0);
+
+  // 对照组：还没到的预约必须照常显示，而且是高亮那种
+  await page.evaluate(f => { feedData.dental.nextVisit = f; renderToday(); }, future);
+  txt = await page.locator('.dental-card').innerText();
+  const futZh = `${Number(future.slice(5,7))}月${Number(future.slice(8,10))}日`;
+  ok('★还没到的预约照常显示（别把好的一起挡掉）', txt.includes(futZh), txt);
+  ok('这时候不该再说「还没约」', !/还没约|该约了/.test(txt), txt);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十七的对照组：YANG 那边要问「去了吗」，一键记成就诊 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const past = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  const rec = mountRoutes(ctx, { role: 'admin',
+    dental: { lastVisit: '2026-07-13', nextVisit: past, intervalMonths: 3, note: '' } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-dental-section')),
+    { what: '管理页渲染完' });
+  await gotoTab(page, 'admin');
+
+  console.log('\n【对照组：管理页问「那次去了吗」，一键记成就诊】');
+  ok('★过期预约时管理页出现提示', await page.locator('#admin-dental-done').count() === 1);
+  ok('提示是显眼的那一种，不是一行灰字',
+     await page.locator('#admin-dental-done.err').count() === 1);
+  await page.click('#admin-dental-done .admin-btn');
+  await until(() => rec.calls.some(c => c.action === 'dentalSave'), { what: '存出去' });
+  const sent = rec.calls.filter(c => c.action === 'dentalSave').pop();
+  ok('★把那一天记成上次就诊', sent.lastVisit === past, sent);
+  ok('★同时清掉下次预约（新的还没约）', !sent.nextVisit, sent);
+  ok('复诊间隔没被顺手改掉', sent.intervalMonths === 3, sent);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 对照组：预约还没到时不许问「去了吗」 ----------
+// 少了这一条的话，把提示改成「永远显示」也会全绿——而那会让 YANG 在预约当天
+// 之前就把它记成已就诊，等于凭空造一条没发生过的医疗记录。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const future = new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10);
+  mountRoutes(ctx, { role: 'admin',
+    dental: { lastVisit: '2026-07-13', nextVisit: future, intervalMonths: 3, note: '' } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-dental-section')),
+    { what: '管理页渲染完' });
+
+  console.log('\n【对照组：预约还没到，不许问「去了吗」】');
+  ok('★还没到的预约不出现确认提示', await page.locator('#admin-dental-done').count() === 0);
+  ok('牙医表单本身照旧在', await page.locator('#admin-dental-section').count() === 1);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);
