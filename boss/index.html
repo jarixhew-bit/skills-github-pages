@@ -1218,21 +1218,38 @@ function dentalIntervalMonths(d){
  *  天天挂一行「今天没有人请假」是噪音，有事才说话。
  *  数据来自 feed 的 leaveToday（同事在报账页自己登记、司机由 YANG 代录），
  *  老板这边**纯只读**：这个 App 一个登记入口都没有。 */
+function leaveRowHtml(r, extra){
+  const name = escapeHtml(String((r && r.person) || '').trim());
+  if(!name) return '';
+  const why = r.reason ? String(r.reason).trim() : '';
+  const right = [extra || '', why ? escapeHtml(why) : ''].filter(Boolean).join(' · ');
+  return `<div class="dental-row">
+      <span class="dental-v" style="flex:1">${name}</span>
+      ${ right ? `<span class="dental-k" style="min-width:0;text-align:right">${right}</span>` : '' }
+    </div>`;
+}
 function leaveTodayCardHtml(){
-  const rows = (feedData && feedData.leaveToday) || [];
-  if(!rows.length) return '';
-  const list = rows.map(r => {
-    const name = escapeHtml(String(r.person || '').trim());
-    if(!name) return '';
-    const why = r.reason ? String(r.reason).trim() : '';
-    return `<div class="dental-row">
-        <span class="dental-v" style="flex:1">${name}</span>
-        ${ why ? `<span class="dental-k" style="min-width:0;text-align:right">${escapeHtml(why)}</span>` : '' }
-      </div>`;
-  }).join('');
-  if(!list) return '';
-  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🏖 ${bl('今天请假','Off today')}</span></div>
-    <div class="dental-card">${list}</div>`;
+  const today = (feedData && feedData.leaveToday) || [];
+  // 接下来两周要开始的假也要列出来（2026-09-02 加）：只报「今天谁没来」的话，
+  // 老板要到当天早上才知道有人一整个星期不在，那时候再安排事情已经晚了。
+  const soon = (feedData && feedData.leaveUpcoming) || [];
+  const todayList = today.map(r => leaveRowHtml(r)).join('');
+  const soonList = soon.map(r => leaveRowHtml(r, bl(fmtRangeBoth(r.start, r.end).zh, fmtRangeBoth(r.start, r.end).en))).join('');
+  // 两边都没有就整段不出现——老板天天开这一屏，挂一句「没有人请假」是噪音
+  if(!todayList && !soonList) return '';
+  let body = '';
+  if(todayList){
+    if(soonList) body += `<div class="dental-row" style="padding-top:0"><span class="dental-k">${bl('今天','Today')}</span></div>`;
+    body += todayList;
+  }
+  if(soonList){
+    body += `<div class="dental-row" style="${todayList ? 'margin-top:6px;padding-top:10px;border-top:1px solid rgba(128,128,128,.18)' : 'padding-top:0'}">
+        <span class="dental-k">${bl('接下来','Coming up')}</span>
+      </div>` + soonList;
+  }
+  const title = todayList ? bl('今天请假','Off today') : bl('请假安排','Upcoming leave');
+  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🏖 ${title}</span></div>
+    <div class="dental-card">${body}</div>`;
 }
 
 function dentalCardHtml(){
