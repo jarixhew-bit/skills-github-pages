@@ -140,9 +140,9 @@ total is parsed from.
 - Span truncated ("+N more lines"): open the file at that exact range.
 - A node lacks a detail: ask a more specific question; only then read source at
   the exact `file:line`, never a whole file to rebuild understanding graft gives.
-- You may also grep / ls / cat inside `graft/` directly (plain markdown;
-  `graft/INDEX.md` indexes the nodes), but the tools above are faster and
-  exhaustive where it matters, so reach for them first.
+- You may also explore `graft/` directly (contains cached graph data), but
+  the tools above are faster and exhaustive where it matters, so reach for
+  them first.
 
 When the graft MCP server is connected, these are exposed as tools too:
 `graft_find_code`, `graft_find_all`, `graft_file_api`, `graft_trace_calls` (with
