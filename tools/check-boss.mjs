@@ -91,7 +91,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null, leaveUpcoming = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -110,6 +110,7 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
           body: JSON.stringify({ status: 'ok', who, role, updated: fakeUpdated(),
             ...(seen ? { seen } : {}),
             ...(leaveToday ? { leaveToday } : {}),
+            ...(leaveUpcoming ? { leaveUpcoming } : {}),
             trips: trips || fakeTrips(), bills: bills || fakeBills(), inventory,
             dental: dental || { lastVisit: null, nextVisit: null, intervalMonths: 3, note: '' } }) });
       }
@@ -2452,16 +2453,33 @@ function localAt(daysFromNow, hm, offset){
   ok('★没有任何登记假的入口进 DOM',
      await page.locator('#modal-leave, #leave-person, [onclick*="leaveSubmit"], [onclick*="openLeaveModal"]').count() === 0);
 
-  // 对照组：没人请假 → 整段不出现
+  // 接下来两周要开始的假也要看得到——2026-09-02 用户当场发现的缺口：他 9/10 起
+  // 回国一个星期，只报「今天谁没来」的话老板要到当天早上才知道。
+  await page.evaluate(() => {
+    feedData.leaveUpcoming = [{ person: 'Yang', reason: '回国祭拜母亲', start: '2026-09-10', end: '2026-09-17' }];
+    renderToday();
+  });
+  txt = await page.locator('#tab-today').innerText();
+  ok('★还没到的假也列出来（不用等到当天）', /Yang/.test(txt), txt.slice(0, 400));
+  ok('写明是哪几天到哪几天', /9月10日/.test(txt) && /9月17日/.test(txt), txt.slice(0, 400));
+  ok('分得出「今天」和「接下来」', /今天/.test(txt) && /接下来/.test(txt), txt.slice(0, 400));
+
+  // 对照组：今天没人、但有将来的假 → 这一段仍要出现（换个抬头）
   await page.evaluate(() => { feedData.leaveToday = []; renderToday(); });
   txt = await page.locator('#tab-today').innerText();
-  ok('★没人请假时整段不出现（不留一行废话）', !/今天请假/.test(txt), txt.slice(0, 300));
+  ok('★今天没人请假，但将来的假仍然看得到', /Yang/.test(txt) && /请假安排/.test(txt), txt.slice(0, 400));
+  ok('这时候不该说「今天请假」', !/今天请假/.test(txt), txt.slice(0, 400));
+
+  // 对照组：两边都空 → 整段不出现
+  await page.evaluate(() => { feedData.leaveToday = []; feedData.leaveUpcoming = []; renderToday(); });
+  txt = await page.locator('#tab-today').innerText();
+  ok('★两边都没有时整段不出现（不留一行废话）', !/今天请假|请假安排/.test(txt), txt.slice(0, 300));
   ok('行程本身照常还在', await page.locator('#tab-today').count() === 1);
 
-  // 后端老版本没有这个字段时也不能炸
-  await page.evaluate(() => { delete feedData.leaveToday; renderToday(); });
+  // 后端老版本没有这两个字段时也不能炸
+  await page.evaluate(() => { delete feedData.leaveToday; delete feedData.leaveUpcoming; renderToday(); });
   txt = await page.locator('#tab-today').innerText();
-  ok('后端没给这个字段也不炸', !/今天请假/.test(txt) && errs.length === 0, errs.slice(0, 3));
+  ok('后端没给这些字段也不炸', !/今天请假|请假安排/.test(txt) && errs.length === 0, errs.slice(0, 3));
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
