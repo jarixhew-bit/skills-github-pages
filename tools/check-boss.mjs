@@ -2484,6 +2484,59 @@ function localAt(daysFromNow, hm, offset){
   await ctx.close();
 }
 
+// ---------- 场景二十六b：请假那张卡不许把字顶出框外 ----------
+// 2026-09-02 用户实机看到：日期＋事由那一串借用了牙医卡的 .dental-k，而那个类是
+// flex:none——收不了缩，长一点就直接冲出卡片。这类毛病肉眼才看得出来，除非**量**
+// 真实宽度，所以这一节全部用 scrollWidth/clientWidth 和 getBoundingClientRect 判定，
+// 不看文字内容。窄屏（360px，常见手机）跑，宽屏上看不出来的正是这个问题。
+{
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 740 } });
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer',
+    leaveToday: [{ person: '司机 Sok', reason: '家里有事要回乡下一趟', start: '2026-09-02', end: '2026-09-02' }],
+    leaveUpcoming: [{ person: 'Yang', reason: '回国祭拜母亲并处理房产事宜', start: '2026-09-10', end: '2026-09-17' }],
+  });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.leave-row')), { what: '请假卡渲染完' });
+
+  console.log('\n【二十六b】请假卡在窄屏上不许溢出');
+  // 量之前先确保不会因为「某个元素不存在」而抛错——测量块崩掉的话，整份自检当场
+  // 中断，看不出是哪一条不过；要的是一个干净的红灯（回退验证时确认过这件事）。
+  const m = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.leave-row')];
+    const card = rows.length ? rows[0].closest('.dental-card') : null;
+    if(!card) return { noCard: true };
+    const inner = card.getBoundingClientRect().right - parseFloat(getComputedStyle(card).paddingRight);
+    let worst = -1e9, rowOverflow = 0;
+    for(const row of rows){
+      rowOverflow = Math.max(rowOverflow, row.scrollWidth - row.clientWidth);
+      for(const el of [row, ...row.querySelectorAll('*')]){
+        worst = Math.max(worst, el.getBoundingClientRect().right - inner);
+      }
+    }
+    const meta = document.querySelector('.leave-meta');
+    return {
+      noCard: false,
+      cardOverflow: card.scrollWidth - card.clientWidth,
+      rowOverflow,
+      worstRight: Math.round(worst * 10) / 10,
+      pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      metaLines: meta ? meta.getBoundingClientRect().height : 0,
+    };
+  });
+  ok('请假卡真的画出来了（没画出来的话下面几条等于没测）', m.noCard === false, m);
+  ok('★每一行自己没有横向溢出', m.rowOverflow <= 1, m);
+  ok('★卡片内没有横向溢出', m.cardOverflow <= 1, m);
+  ok('★每一行都没有超出卡片的内边界', m.worstRight <= 1, m);
+  ok('★整页不会变成可以左右拖（溢出会把整屏拖歪）', m.pageOverflow <= 1, m);
+  ok('长事由是换行而不是撑宽（第二行占得比一行高）', m.metaLines > 18, m);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
 await browser.close();
 
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);
