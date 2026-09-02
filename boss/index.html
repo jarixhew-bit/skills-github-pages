@@ -1160,6 +1160,8 @@ function renderToday(){
           : bl('近期没有排定的行程','No upcoming items scheduled') }</div>
       </div>`;
   }
+  // 今天谁请假紧跟在今天的行程后面（讲的是今天的事，不该跟牙医那些卡片混在一起）
+  html += leaveTodayCardHtml();
   // 明天：有条目、或者明天也在某趟行程区间内，才显示这一段——都没有就整段不出现（跟原行为一致）。
   const tomorrowBody = todaySectionBodyHtml(tomorrowIso, tomorrowItems, true);
   if(tomorrowBody !== null){
@@ -1211,6 +1213,28 @@ function dentalIntervalMonths(d){
   const n = Math.round(Number(d && d.intervalMonths));
   return (isFinite(n) && n >= 1 && n <= 24) ? n : DENTAL_DEFAULT_MONTHS;
 }
+/* ============================= 今天谁请假 ============================= */
+/** 今天请假的人。没人请假就整段不出现——老板每天都看这一屏，
+ *  天天挂一行「今天没有人请假」是噪音，有事才说话。
+ *  数据来自 feed 的 leaveToday（同事在报账页自己登记、司机由 YANG 代录），
+ *  老板这边**纯只读**：这个 App 一个登记入口都没有。 */
+function leaveTodayCardHtml(){
+  const rows = (feedData && feedData.leaveToday) || [];
+  if(!rows.length) return '';
+  const list = rows.map(r => {
+    const name = escapeHtml(String(r.person || '').trim());
+    if(!name) return '';
+    const why = r.reason ? String(r.reason).trim() : '';
+    return `<div class="dental-row">
+        <span class="dental-v" style="flex:1">${name}</span>
+        ${ why ? `<span class="dental-k" style="min-width:0;text-align:right">${escapeHtml(why)}</span>` : '' }
+      </div>`;
+  }).join('');
+  if(!list) return '';
+  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🏖 ${bl('今天请假','Off today')}</span></div>
+    <div class="dental-card">${list}</div>`;
+}
+
 function dentalCardHtml(){
   const d = feedData && feedData.dental;
   if(!d || (!d.lastVisit && !d.nextVisit)) return '';

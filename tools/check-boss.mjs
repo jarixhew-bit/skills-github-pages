@@ -91,7 +91,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -109,6 +109,7 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify({ status: 'ok', who, role, updated: fakeUpdated(),
             ...(seen ? { seen } : {}),
+            ...(leaveToday ? { leaveToday } : {}),
             trips: trips || fakeTrips(), bills: bills || fakeBills(), inventory,
             dental: dental || { lastVisit: null, nextVisit: null, intervalMonths: 3, note: '' } }) });
       }
@@ -2421,6 +2422,46 @@ function localAt(daysFromNow, hm, offset){
   });
   ok('页面上也看不到「已装到主屏／还没打开过」这些字',
      !/已装到主屏|还没打开过|还在浏览器里/.test(shown), shown.slice(0, 200));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十六：今天谁请假（老板只读，有人才说话）----------
+// 2026-09-02 加。同事在报账页自己登记、司机由 YANG 代录，老板这一屏只是显示。
+// 两件事必须同时成立，所以对照组是「没人请假时整段不出现」——老板每天开这一屏，
+// 天天挂一行「今天没有人请假」是噪音；而漏显示又会让他以为人齐了。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer', leaveToday: [
+    { person: '司机 Sok', reason: '回乡', start: '2026-09-02', end: '2026-09-04' },
+    { person: 'Seryi', reason: null, start: '2026-09-02', end: '2026-09-02' },
+  ] });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.nav-btn')), { what: '老板那边渲染完' });
+
+  console.log('\n【二十六】今天谁请假');
+  let txt = await page.locator('#tab-today').innerText();
+  ok('★今天请假的人都在', /司机 Sok/.test(txt) && /Seryi/.test(txt), txt.slice(0, 300));
+  ok('有事由的把事由也写出来', /回乡/.test(txt), txt.slice(0, 300));
+  ok('有「今天请假」这个抬头', /今天请假/.test(txt), txt.slice(0, 300));
+  // 老板只读：这一屏不许出现任何登记/销假的控件（不是藏起来，是根本不存在）
+  ok('★没有任何登记假的入口进 DOM',
+     await page.locator('#modal-leave, #leave-person, [onclick*="leaveSubmit"], [onclick*="openLeaveModal"]').count() === 0);
+
+  // 对照组：没人请假 → 整段不出现
+  await page.evaluate(() => { feedData.leaveToday = []; renderToday(); });
+  txt = await page.locator('#tab-today').innerText();
+  ok('★没人请假时整段不出现（不留一行废话）', !/今天请假/.test(txt), txt.slice(0, 300));
+  ok('行程本身照常还在', await page.locator('#tab-today').count() === 1);
+
+  // 后端老版本没有这个字段时也不能炸
+  await page.evaluate(() => { delete feedData.leaveToday; renderToday(); });
+  txt = await page.locator('#tab-today').innerText();
+  ok('后端没给这个字段也不炸', !/今天请假/.test(txt) && errs.length === 0, errs.slice(0, 3));
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }

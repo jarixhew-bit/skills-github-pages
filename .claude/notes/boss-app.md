@@ -135,6 +135,34 @@ butler-bot `tests/boss-bill-read.test.mjs`（18 项）。
 - **「没来过」是 `standalone: null`，不是 `false`**——跟「来了没装」不是一回事
 自检：`tools/check-boss.mjs` 场景二十五（含 viewer 对照组）、butler `tests/boss-seen.test.mjs`（21 项）。
 
+## 「今天谁请假」（2026-09-02 加）
+老板 App「今天」那一屏，今天的行程底下多一张卡（`leaveTodayCardHtml()`）。
+**没人请假就整段不出现**——老板天天开这一屏，挂一行「今天没有人请假」是噪音。
+
+数据从哪来（这一块的设计重点全在这里）：
+- **同事自己登记**：同事版报账页底部导航多一个「🏖 请假」。靠人代录的名单必然过期，
+  老板看到「今天没人请假」而实际有人没来，比这一栏根本不存在更糟。
+- **司机这类人由 YANG 代录**：他们不用同事版页面、也不在名册里，所以主记账 App
+  设置页「员工 → 请假登记」那一栏名字是**自由文本**，不限名册。
+- 老板那边**一个写入接口都没有多开**：feed 里多一个 `leaveToday` 字段而已，
+  三层只读不变（跟账单 `readAt`、`seen.json` 同一条规矩）。
+
+后端：butler `src/handlers/staff_leave.js` + `data/staff-leave.json`
+（`{leaves:[{id,person,start,end,reason,createdBy,createdAt}]}`，start/end 含头含尾），
+挂在 `/company-expense` 上（`leaveList` / `leaveAdd` / `leaveDelete`），认证沿用报账那一套。
+**person 由钥匙决定**：staff 一律用钥匙推出来的名字，请求里写谁都不算数；owner 才读
+请求里的名字。前端同一段代码两边共用，差别只有「是谁请假」那个输入框——
+**scope==='owner' 时才画进 DOM**，同事那边压根没有它。
+
+弹窗（`#modal-leave`）刻意放在 `<!-- PDF REPORT (hidden) -->` **之后**：
+ACCOUNT SWITCHER～PDF REPORT 那一整段生成同事版时会被切掉，而这个弹窗两边都要有。
+
+自检：butler `tests/staff-leave.test.mjs`（40 项）＋ `tests/company-expense-http.test.mjs`
+【5】（HTTP 层的 person 取舍）＋ `tools/check-boss.mjs` 场景二十六（含「没人请假时
+整段不出现」的对照组）＋ `tools/check-staff-page.mjs` 【26】/【26b】
+（同事那边没有代录栏 **＋老板 App 那边必须有**的对照组——少了对照组的话，
+代录整个坏掉也会显示通过，司机的假就再也录不进去）。
+
 ## 已知坑 / 未做
 - **推送已经做完了**（butler `src/push.js`：手写 VAPID 签名 + aes128gcm 载荷加密），
   行程更新和新账单会推。**但 iPhone 上从没在真机验过**（2026-08-30 确认：安卓已验，

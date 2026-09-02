@@ -377,6 +377,15 @@ CSS 在 `STAFF_CSS`、脚本在 `STAFF_BOOTSTRAP`），生成后连同 `staff/in
 没装才显示、装好自动消失，点它去 `install.html`。改动这块要保证「装好的人看不到」——
 天天被念的提示等于没有提示。
 
+## 请假登记（2026-09-02）
+
+设置页「员工 → 请假登记」和同事版底部导航的「🏖 请假」是**同一个弹窗**
+（`#modal-leave` / `renderLeaveBody()`），差别只有一个：「是谁请假」那个输入框
+只有服务端说 `scope==='owner'` 时才画进 DOM。弹窗放在 `<!-- PDF REPORT (hidden) -->`
+**之后**——放进 ACCOUNT SWITCHER～PDF REPORT 那个区间会被生成脚本整段切掉。
+设计理由、数据落在哪、权限怎么分、自检清单，正本在 `.claude/notes/boss-app.md`
+的「今天谁请假」那一节。
+
 ## 双击「保存」不能生出两条一样的记录（2026-08-08）
 
 用户实机在主 App 遇到「两条一样的」。根因：`saveTxInner()` 全程同步（唯一异步的
