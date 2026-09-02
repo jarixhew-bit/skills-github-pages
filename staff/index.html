@@ -3123,6 +3123,56 @@ function rangeTxs(accId, from, to){
   return data.transactions.filter(t => t.accountId === accId && t.date >= from && t.date <= to);
 }
 
+// ---- 账户明细 PDF 的体积控制（2026-09-02）----
+// 附件多的月份这份 PDF 会大到十几 MB，发给老板那一步要么被服务端 20MB 挡下，
+// 要么在手机上传半天。胖的地方就两处，都是「塞进去的像素远多于印得出来的像素」：
+//
+//   1. 收据照片：手机拍的动辄 3000px 宽，在 A4 上只印约 190mm。
+//      按 120dpi 算 190mm 只要 900px——多出来的那 2000px 一个也印不出来。
+//      （butler-bot 的月结收据 PDF 2026-09-01 用同一套算法从 12.17MB 降到 6.98MB。）
+//   2. 每张附件页上那三条中文横幅/标题条/页脚：jsPDF 内置字体不支持中文，只能画到
+//      canvas 再当图片嵌进去。原本一律画 2400px 宽，铺在 210mm 上等于 290dpi，
+//      同样是印不出来的精度，却每页都要来三张。
+//
+// 只缩不放：本来就小的收据原样通过，不会被放大糊掉。
+const PDF_PHOTO_DPI = 120;        // 收据照片按印出来的尺寸折算的目标精度
+const PDF_PHOTO_QUALITY = 0.7;    // 收据重编码的 JPEG 质量
+const PDF_BAND_PX = 1200;         // 中文横条的 canvas 宽度（铺满 210mm ≈ 145dpi）
+const PDF_BAND_QUALITY = 0.82;
+
+/**
+ * 把收据照片缩到「PDF 里真正印出来的那么大」再重新编码。
+ * dims 是原图像素尺寸，drawWmm/drawHmm 是它在页面上占的毫米数。
+ * 压不动或出任何差错都退回原图——账单生不出来比文件大得多要糟。
+ */
+async function shrinkPhotoForPDF(dataUrl, dims, drawWmm, drawHmm){
+  try{
+    const maxW = Math.max(1, Math.round(drawWmm / 25.4 * PDF_PHOTO_DPI));
+    const maxH = Math.max(1, Math.round(drawHmm / 25.4 * PDF_PHOTO_DPI));
+    const scale = Math.min(maxW / dims.w, maxH / dims.h, 1);   // 只缩不放
+    const w = Math.max(1, Math.round(dims.w * scale));
+    const h = Math.max(1, Math.round(dims.h * scale));
+    const img = await new Promise((resolve, reject)=>{
+      const im = new Image();
+      im.onload = ()=>resolve(im);
+      im.onerror = ()=>reject(new Error('收据图片读不出来'));
+      im.src = dataUrl;
+    });
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const cx = c.getContext('2d');
+    // 透明底的图（少数 PNG 收据）不先铺白，转成 JPEG 会变成一片黑
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
+    cx.drawImage(img, 0, 0, w, h);
+    const out = c.toDataURL('image/jpeg', PDF_PHOTO_QUALITY);
+    // 原图本来就压得很狠时，重编码有可能反而更大——那就用原图
+    return (out && out.length < dataUrl.length) ? out : dataUrl;
+  }catch(e){
+    console.warn('收据压缩跳过，用原图', e);
+    return dataUrl;
+  }
+}
+
 // 生成账户明细 PDF，只生成不下载/不发送——给「导出」和「发给老板」两个入口共用，
 // 避免同一份 PDF 拼装逻辑分叉成两份（2026-08-27 拆出来）。
 // 成功返回 {pdf, filename, acc, range}，失败/没选账户返回 null（已经 toast 过原因）。
@@ -3457,38 +3507,40 @@ async function buildStatementPDF(){
       // 顶部横幅：深蓝底 + 标题 + 金线
       const bandY = 0, bandH = 16;
       const bandCanvas = document.createElement('canvas');
-      bandCanvas.width = 2400; bandCanvas.height = 220;
+      bandCanvas.width = PDF_BAND_PX; bandCanvas.height = Math.round(PDF_BAND_PX * 220 / 2400);
       let bctx = bandCanvas.getContext('2d');
       bctx.fillStyle = '#1e3a5f';
       bctx.fillRect(0,0,bandCanvas.width,bandCanvas.height*0.86);
       bctx.fillStyle = '#c9a24b';
       bctx.fillRect(0,bandCanvas.height*0.86,bandCanvas.width,bandCanvas.height*0.14);
-      bctx.font = 'bold 64px sans-serif';
+      // 字号和坐标全部按 canvas 宽度折算，改 PDF_BAND_PX 时版面不会跑掉
+      bctx.font = `bold ${Math.round(PDF_BAND_PX * 64 / 2400)}px sans-serif`;
       bctx.fillStyle = '#fff';
       bctx.textBaseline = 'middle';
       bctx.textAlign = 'left';
-      bctx.fillText('附件单据 / RECEIPTS', 30, bandCanvas.height*0.4);
+      bctx.fillText('附件单据 / RECEIPTS', Math.round(PDF_BAND_PX * 30 / 2400), bandCanvas.height*0.4);
       // 注意：canvas PNG 带 alpha 通道会被 jsPDF 解码成未压缩位图（每条约 2MB），必须用 JPEG
-      pdf.addImage(bandCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, bandY, pw, bandH);
+      pdf.addImage(bandCanvas.toDataURL('image/jpeg', PDF_BAND_QUALITY), 'JPEG', 0, bandY, pw, bandH);
 
       // 三段式标题条：左 P编号+说明，中 日期，右 金额币种
       const stripY = bandY + bandH + 6, stripH = 12;
       const tc = document.createElement('canvas');
-      tc.width = 2400; tc.height = 140;
+      tc.width = PDF_BAND_PX; tc.height = Math.round(PDF_BAND_PX * 140 / 2400);
+      const tcPad = Math.round(PDF_BAND_PX * 24 / 2400);
       let tctx = tc.getContext('2d');
       tctx.fillStyle = '#1e3a5f';
       tctx.fillRect(0,0,tc.width,tc.height);
-      tctx.font = '44px sans-serif';
+      tctx.font = `${Math.round(PDF_BAND_PX * 44 / 2400)}px sans-serif`;
       tctx.fillStyle = '#fff';
       tctx.textBaseline = 'middle';
       tctx.textAlign = 'left';
-      tctx.fillText(leftText, 24, tc.height/2);
+      tctx.fillText(leftText, tcPad, tc.height/2);
       tctx.textAlign = 'center';
       tctx.fillText(midText, tc.width/2, tc.height/2);
       tctx.textAlign = 'right';
       tctx.fillStyle = '#d4af6a';
-      tctx.fillText(rightText, tc.width-24, tc.height/2);
-      pdf.addImage(tc.toDataURL('image/jpeg', 0.9), 'JPEG', 0, stripY, pw, stripH);
+      tctx.fillText(rightText, tc.width-tcPad, tc.height/2);
+      pdf.addImage(tc.toDataURL('image/jpeg', PDF_BAND_QUALITY), 'JPEG', 0, stripY, pw, stripH);
 
       const margin = 10, topOffset = stripY + stripH + 8;
       const footH = 10;
@@ -3499,23 +3551,26 @@ async function buildStatementPDF(){
       pdf.setDrawColor(180,180,180);
       pdf.setLineWidth(0.3);
       pdf.rect(x-1, topOffset-1, drawW+2, drawH+2);
-      pdf.addImage(dataUrl, 'JPEG', x, topOffset, drawW, drawH);
+      // 缩到实际印出来那么大再嵌——PDF 里塞进 3000px 宽的原图，印出来跟 900px 的一样
+      const photoData = await shrinkPhotoForPDF(dataUrl, dims, drawW, drawH);
+      pdf.addImage(photoData, 'JPEG', x, topOffset, drawW, drawH);
 
       // 页脚深蓝横条
       const footY = ph - footH;
       const footCanvas = document.createElement('canvas');
-      footCanvas.width = 2400; footCanvas.height = 140;
+      footCanvas.width = PDF_BAND_PX; footCanvas.height = Math.round(PDF_BAND_PX * 140 / 2400);
+      const footPad = Math.round(PDF_BAND_PX * 24 / 2400);
       let fctx = footCanvas.getContext('2d');
       fctx.fillStyle = '#1e3a5f';
       fctx.fillRect(0,0,footCanvas.width,footCanvas.height);
-      fctx.font = '38px sans-serif';
+      fctx.font = `${Math.round(PDF_BAND_PX * 38 / 2400)}px sans-serif`;
       fctx.fillStyle = '#d4af6a';
       fctx.textBaseline = 'middle';
       fctx.textAlign = 'left';
-      fctx.fillText('仅供内部记录 · INTERNAL RECORD ONLY', 24, footCanvas.height/2);
+      fctx.fillText('仅供内部记录 · INTERNAL RECORD ONLY', footPad, footCanvas.height/2);
       fctx.textAlign = 'right';
-      fctx.fillText(`第 ${pageIdx} 页`, footCanvas.width-24, footCanvas.height/2);
-      pdf.addImage(footCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, footY, pw, footH);
+      fctx.fillText(`第 ${pageIdx} 页`, footCanvas.width-footPad, footCanvas.height/2);
+      pdf.addImage(footCanvas.toDataURL('image/jpeg', PDF_BAND_QUALITY), 'JPEG', 0, footY, pw, footH);
 
       pageIdx++;
     }

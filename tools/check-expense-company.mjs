@@ -2099,7 +2099,11 @@ function stubPdfLibs(ctx){
     });
     function FakeJsPDF(){}
     FakeJsPDF.prototype.internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
-    FakeJsPDF.prototype.addImage = function(){};
+    // 记下每一张嵌进 PDF 的图（【30】要靠它量体积和像素尺寸；对 27 那几块无影响）
+    window.__pdfImages = [];
+    FakeJsPDF.prototype.addImage = function(d, fmt, x, y, w, h){
+      window.__pdfImages.push({ d: String(d || ''), fmt, x, y, w, h });
+    };
     FakeJsPDF.prototype.addPage = function(){};
     FakeJsPDF.prototype.setDrawColor = function(){};
     FakeJsPDF.prototype.setLineWidth = function(){};
@@ -2551,6 +2555,119 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
     return document.getElementById('modal-reconcile-add').classList.contains('open');
   });
   ok('硬调也不会开出一个填了 0 的弹窗', guarded === false, guarded);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---------- 【30】账户明细 PDF 不把印不出来的像素也塞进去 ----------
+{
+  console.log('\n【30】账户明细 PDF：收据按印出来的尺寸压过再嵌');
+  // 2026-09-02 用户要求「要的都压」。附件多的月份这份 PDF 会到十几 MB，
+  // 发给老板那一步要么被服务端 20MB 挡下，要么在手机上传半天。
+  // 胖的地方是「塞进去的像素远多于印得出来的像素」，所以这一块守三件事：
+  //   1. 收据缩到 A4 上实际占位对应的 120dpi（3000px 宽的手机照片印出来跟 900px 一样）
+  //   2. 但不许缩过头——低于目标精度就是把单据压到看不清，账单就废了
+  //   3. 本来就小的收据原样通过（只缩不放，放大只会糊）
+  // 外加一条底线：压缩这一步出任何差错，账单都还是要生得出来（用原图）。
+  //
+  // 这份自检验过会红（2026-09-02 实测四种改法）：
+  //   · shrinkPhotoForPDF 末行改成 return dataUrl（等于没压）→「宽度已经缩到」「体积明显小于原图」失败
+  //   · PDF_PHOTO_DPI 改成 40（压过头）→「但没缩过头」失败
+  //   · PDF_BAND_PX 改回 2400 →「横条不再画成 2400px」失败
+  // 注：「小图不会被放大」有两道保险（scale 的 `,1` 上限，和「重编码更大就用原图」那一步），
+  // 只拆掉其中一道不会红——这是对的，两道都在守同一个结果。
+  const ctx = await browser.newContext();
+  await stubPdfLibs(ctx);
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  /** 摆一笔带收据的支出，收据是 w×h 的噪点图（噪点压不掉，体积假不了）。
+   *  回传原图 base64 长度，好跟嵌进 PDF 的那张比。 */
+  const runWithPhoto = (w, h) => page.evaluate(async ({ w, h }) => {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const cx = c.getContext('2d');
+    const im = cx.createImageData(w, h);
+    for (let i = 0; i < im.data.length; i += 4) {
+      im.data[i] = Math.random()*255; im.data[i+1] = Math.random()*255;
+      im.data[i+2] = Math.random()*255; im.data[i+3] = 255;
+    }
+    cx.putImageData(im, 0, 0);
+    const src = c.toDataURL('image/jpeg', 0.92);
+
+    const acc = data.accounts[0];
+    const today = new Date();
+    const d = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-15`;
+    data.transactions = [{ id:'pdfimg1', accountId:acc.id, type:'expense', amount:12.5,
+      date:d, description:'收据压缩测试', categoryId:(data.categories[0]||{}).id,
+      attachmentId:'att-pdfimg1' }];
+    state.anYear = today.getFullYear(); state.anMonth = today.getMonth();
+    state.currentAccountId = acc.id;
+    // 附件本来住 IndexedDB，这里直接给回一个 blob，省掉写库那一圈
+    window.getAttachmentBlob = async () => await (await fetch(src)).blob();
+
+    window.__pdfImages = [];
+    await buildStatementPDF();
+
+    // 量出每张嵌进 PDF 的图的真实像素尺寸
+    const sized = [];
+    for (const rec of window.__pdfImages) {
+      const px = await new Promise(res => {
+        const i2 = new Image();
+        i2.onload = () => res({ w:i2.naturalWidth, h:i2.naturalHeight });
+        i2.onerror = () => res(null);
+        i2.src = rec.d;
+      });
+      sized.push({ len:rec.d.length, mmW:rec.w, mmH:rec.h, px });
+    }
+    return { srcLen: src.length, srcW: w, images: sized };
+  }, { w, h });
+
+  // ---- 大图：手机拍的那种 ----
+  const big = await runWithPhoto(2400, 1800);
+  // 收据是唯一一张不铺满整页宽（210mm）的图，其余是横幅/标题条/页脚
+  const photo = big.images.find(im => im.mmW && Math.abs(im.mmW - 210) > 1);
+  // 铺满页宽的图有两种：正表那张长图（html2canvas 是打的桩，解不出像素）和三条中文横条
+  const bands = big.images.filter(im => im.mmW && Math.abs(im.mmW - 210) <= 1 && im.px);
+  ok('收据确实嵌进 PDF 了', !!(photo && photo.px), big.images.map(i=>i.mmW));
+  if (photo && photo.px) {
+    const target = photo.mmW / 25.4 * 120;   // 120dpi 下这个占位该有多少像素
+    ok('收据宽度已经缩到印得出来的尺寸（≤120dpi）',
+       photo.px.w <= Math.ceil(target) + 1, { got: photo.px.w, target });
+    ok('但没缩过头——单据还得看得清（≥目标的 80%）',
+       photo.px.w >= target * 0.8, { got: photo.px.w, target });
+    ok('体积明显小于原图（少于四成）',
+       photo.len < big.srcLen * 0.4, { after: photo.len, before: big.srcLen });
+    ok('长宽比没被拉歪',
+       Math.abs((photo.px.w / photo.px.h) - (2400 / 1800)) < 0.02,
+       photo.px);
+  }
+  ok('三条中文横条都在（横幅/标题条/页脚）', bands.length === 3, bands.length);
+  ok('横条不再画成 2400px（210mm 上那是 290dpi，印不出来）',
+     bands.every(b => b.px && b.px.w === 1200), bands.map(b => b.px && b.px.w));
+
+  // ---- 小图：本来就小的收据不许被放大糊掉 ----
+  const small = await runWithPhoto(120, 90);
+  const smallPhoto = small.images.find(im => im.mmW && Math.abs(im.mmW - 210) > 1);
+  ok('小图不会被放大（只缩不放）',
+     !!(smallPhoto && smallPhoto.px && smallPhoto.px.w <= 120),
+     smallPhoto && smallPhoto.px);
+
+  // ---- 底线：压不动也不能让账单生不出来 ----
+  const fallback = await page.evaluate(async () => {
+    const bogus = 'data:image/jpeg;base64,bm90LWFuLWltYWdl';
+    const out = await shrinkPhotoForPDF(bogus, { w:100, h:100 }, 100, 100);
+    return out === bogus;
+  });
+  ok('图片读不出来时退回原图，不让整份账单挂掉', fallback === true, fallback);
 
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
