@@ -78,6 +78,15 @@ body:not(.lang-en) .en{display:none !important}
 .dental-row{display:flex;gap:12px;align-items:baseline;padding:4px 0;font-size:14.5px}
 .dental-k{flex:none;color:var(--sub);font-size:13px;min-width:76px}
 .dental-v{flex:1;font-weight:600}
+/* 请假那张卡自己的排版。**不要再借用 .dental-k**：它是 flex:none（牙医那边
+   左栏是「上次就诊」这种定长标签），拿去放「9月10日 – 9月17日 · 回国祭拜母亲」
+   这种长度，收不了缩就直接顶出卡片外（2026-09-02 用户实机看到）。
+   这里改成两行：名字一行、日期与事由一行，允许换行。 */
+.leave-row{padding:6px 0;font-size:14.5px}
+.leave-name{font-weight:600;overflow-wrap:anywhere}
+.leave-meta{margin-top:2px;color:var(--sub);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.leave-sub{color:var(--sub);font-size:12px;padding:2px 0}
+.leave-sep{margin-top:8px;padding-top:10px;border-top:1px solid var(--border)}
 .dental-next{color:var(--p)}
 .dental-overdue{color:var(--danger)}
 .dental-note{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);
@@ -1218,14 +1227,16 @@ function dentalIntervalMonths(d){
  *  天天挂一行「今天没有人请假」是噪音，有事才说话。
  *  数据来自 feed 的 leaveToday（同事在报账页自己登记、司机由 YANG 代录），
  *  老板这边**纯只读**：这个 App 一个登记入口都没有。 */
-function leaveRowHtml(r, extra){
+function leaveRowHtml(r, whenBl){
   const name = escapeHtml(String((r && r.person) || '').trim());
   if(!name) return '';
-  const why = r.reason ? String(r.reason).trim() : '';
-  const right = [extra || '', why ? escapeHtml(why) : ''].filter(Boolean).join(' · ');
-  return `<div class="dental-row">
-      <span class="dental-v" style="flex:1">${name}</span>
-      ${ right ? `<span class="dental-k" style="min-width:0;text-align:right">${right}</span>` : '' }
+  const why = r.reason ? escapeHtml(String(r.reason).trim()) : '';
+  // 日期与事由放第二行：手机上「9月10日 – 9月17日 · 回国祭拜母亲」跟名字挤在同一行
+  // 一定放不下，硬挤的结果是顶出卡片外（2026-09-02 踩过）。
+  const meta = [whenBl || '', why].filter(Boolean);
+  return `<div class="leave-row">
+      <div class="leave-name">${name}</div>
+      ${ meta.length ? `<div class="leave-meta">${meta.join(' · ')}</div>` : '' }
     </div>`;
 }
 function leaveTodayCardHtml(){
@@ -1234,18 +1245,19 @@ function leaveTodayCardHtml(){
   // 老板要到当天早上才知道有人一整个星期不在，那时候再安排事情已经晚了。
   const soon = (feedData && feedData.leaveUpcoming) || [];
   const todayList = today.map(r => leaveRowHtml(r)).join('');
-  const soonList = soon.map(r => leaveRowHtml(r, bl(fmtRangeBoth(r.start, r.end).zh, fmtRangeBoth(r.start, r.end).en))).join('');
+  const soonList = soon.map(r => {
+    const w = fmtRangeBoth(r.start, r.end);
+    return leaveRowHtml(r, bl(w.zh, w.en));
+  }).join('');
   // 两边都没有就整段不出现——老板天天开这一屏，挂一句「没有人请假」是噪音
   if(!todayList && !soonList) return '';
   let body = '';
   if(todayList){
-    if(soonList) body += `<div class="dental-row" style="padding-top:0"><span class="dental-k">${bl('今天','Today')}</span></div>`;
+    if(soonList) body += `<div class="leave-sub">${bl('今天','Today')}</div>`;
     body += todayList;
   }
   if(soonList){
-    body += `<div class="dental-row" style="${todayList ? 'margin-top:6px;padding-top:10px;border-top:1px solid rgba(128,128,128,.18)' : 'padding-top:0'}">
-        <span class="dental-k">${bl('接下来','Coming up')}</span>
-      </div>` + soonList;
+    body += `<div class="leave-sub${todayList ? ' leave-sep' : ''}">${bl('接下来','Coming up')}</div>` + soonList;
   }
   const title = todayList ? bl('今天请假','Off today') : bl('请假安排','Upcoming leave');
   return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🏖 ${title}</span></div>

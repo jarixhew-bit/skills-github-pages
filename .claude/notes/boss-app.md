@@ -163,7 +163,14 @@ butler-bot `tests/boss-bill-read.test.mjs`（18 项）。
 弹窗（`#modal-leave`）刻意放在 `<!-- PDF REPORT (hidden) -->` **之后**：
 ACCOUNT SWITCHER～PDF REPORT 那一整段生成同事版时会被切掉，而这个弹窗两边都要有。
 
-自检：butler `tests/staff-leave.test.mjs`（40 项）＋ `tests/company-expense-http.test.mjs`
+**排版别再借用牙医那张卡的类**（2026-09-02 用户实机看到字顶出框外）：`.dental-k`
+是 `flex:none`（牙医左栏是「上次就诊」这种定长标签），拿去放
+「9月10日 – 9月17日 · 回国祭拜母亲」这种长度收不了缩，在 360px 的手机上溢出 125px。
+现在用自己的 `.leave-row/.leave-name/.leave-meta`，名字一行、日期与事由一行、允许换行。
+守它的是 `check-boss.mjs` 场景二十六b——**量真实宽度**（scrollWidth/clientWidth ＋
+getBoundingClientRect），不看文字内容，而且钉在 360px 窄屏跑：宽屏上看不出这个问题。
+
+自检：butler `tests/staff-leave.test.mjs`（47 项）＋ `tests/company-expense-http.test.mjs`
 【5】（HTTP 层的 person 取舍）＋ `tools/check-boss.mjs` 场景二十六（含「没人请假时
 整段不出现」的对照组）＋ `tools/check-staff-page.mjs` 【26】/【26b】
 （同事那边没有代录栏 **＋老板 App 那边必须有**的对照组——少了对照组的话，
