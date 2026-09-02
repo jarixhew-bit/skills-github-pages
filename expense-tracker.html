@@ -739,6 +739,10 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       <button class="btn btn-outline btn-sm" onclick="fetchInbox({loud:true})">📥 立刻收件</button>
     </div>
     <div id="inbox-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+    <!-- 该付同事多少（2026-09-01 用户要求）：投递箱这些账都是同事**自己先垫的钱**，
+         收进来只是把「钱花掉了」记进账本，并没有回答「我欠他多少还没还」。
+         算法就一句：他记的支出总额 − 已经标过「付清」的那些。 -->
+    <div id="inbox-owed" style="margin-top:14px"></div>
   </div>
   <!-- 「老板 App」这一组（2026-08-27 加，2026-08-27 改成卡片＋归组）：
        两件事是同一件事的两面——行程管理是去改老板看到的内容，访问码是把钥匙给老板，
@@ -3223,6 +3227,10 @@ async function deleteTx(){
   // 先删公司账本那条，删不成就整个中止——不留「本机没了、公司账本还在」的状态
   if(!(await deleteCompanyRecord(t))) return;
   const attachmentId = t ? t.attachmentId : null;
+  // 同事版在这里把「删掉这一笔」也送进投递箱，老板那边收到就一起删
+  // （tools/build-staff-page.py 注入 onTxDeleted）。老板 App 里没有这个函数。
+  // **每一处删除都要叫它**——漏一处，那条路删掉的记录在老板那边就永远留着。
+  if(typeof onTxDeleted === 'function') onTxDeleted(t);
   tombstoneTx(state.editingTxId);
   data.transactions = data.transactions.filter(t=>t.id!==state.editingTxId);
   saveData();
@@ -3478,6 +3486,56 @@ function stmtRange(){
 
 function rangeTxs(accId, from, to){
   return data.transactions.filter(t => t.accountId === accId && t.date >= from && t.date <= to);
+}
+
+// ---- 账户明细 PDF 的体积控制（2026-09-02）----
+// 附件多的月份这份 PDF 会大到十几 MB，发给老板那一步要么被服务端 20MB 挡下，
+// 要么在手机上传半天。胖的地方就两处，都是「塞进去的像素远多于印得出来的像素」：
+//
+//   1. 收据照片：手机拍的动辄 3000px 宽，在 A4 上只印约 190mm。
+//      按 120dpi 算 190mm 只要 900px——多出来的那 2000px 一个也印不出来。
+//      （butler-bot 的月结收据 PDF 2026-09-01 用同一套算法从 12.17MB 降到 6.98MB。）
+//   2. 每张附件页上那三条中文横幅/标题条/页脚：jsPDF 内置字体不支持中文，只能画到
+//      canvas 再当图片嵌进去。原本一律画 2400px 宽，铺在 210mm 上等于 290dpi，
+//      同样是印不出来的精度，却每页都要来三张。
+//
+// 只缩不放：本来就小的收据原样通过，不会被放大糊掉。
+const PDF_PHOTO_DPI = 120;        // 收据照片按印出来的尺寸折算的目标精度
+const PDF_PHOTO_QUALITY = 0.7;    // 收据重编码的 JPEG 质量
+const PDF_BAND_PX = 1200;         // 中文横条的 canvas 宽度（铺满 210mm ≈ 145dpi）
+const PDF_BAND_QUALITY = 0.82;
+
+/**
+ * 把收据照片缩到「PDF 里真正印出来的那么大」再重新编码。
+ * dims 是原图像素尺寸，drawWmm/drawHmm 是它在页面上占的毫米数。
+ * 压不动或出任何差错都退回原图——账单生不出来比文件大得多要糟。
+ */
+async function shrinkPhotoForPDF(dataUrl, dims, drawWmm, drawHmm){
+  try{
+    const maxW = Math.max(1, Math.round(drawWmm / 25.4 * PDF_PHOTO_DPI));
+    const maxH = Math.max(1, Math.round(drawHmm / 25.4 * PDF_PHOTO_DPI));
+    const scale = Math.min(maxW / dims.w, maxH / dims.h, 1);   // 只缩不放
+    const w = Math.max(1, Math.round(dims.w * scale));
+    const h = Math.max(1, Math.round(dims.h * scale));
+    const img = await new Promise((resolve, reject)=>{
+      const im = new Image();
+      im.onload = ()=>resolve(im);
+      im.onerror = ()=>reject(new Error('收据图片读不出来'));
+      im.src = dataUrl;
+    });
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const cx = c.getContext('2d');
+    // 透明底的图（少数 PNG 收据）不先铺白，转成 JPEG 会变成一片黑
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
+    cx.drawImage(img, 0, 0, w, h);
+    const out = c.toDataURL('image/jpeg', PDF_PHOTO_QUALITY);
+    // 原图本来就压得很狠时，重编码有可能反而更大——那就用原图
+    return (out && out.length < dataUrl.length) ? out : dataUrl;
+  }catch(e){
+    console.warn('收据压缩跳过，用原图', e);
+    return dataUrl;
+  }
 }
 
 // 生成账户明细 PDF，只生成不下载/不发送——给「导出」和「发给老板」两个入口共用，
@@ -3814,38 +3872,40 @@ async function buildStatementPDF(){
       // 顶部横幅：深蓝底 + 标题 + 金线
       const bandY = 0, bandH = 16;
       const bandCanvas = document.createElement('canvas');
-      bandCanvas.width = 2400; bandCanvas.height = 220;
+      bandCanvas.width = PDF_BAND_PX; bandCanvas.height = Math.round(PDF_BAND_PX * 220 / 2400);
       let bctx = bandCanvas.getContext('2d');
       bctx.fillStyle = '#1e3a5f';
       bctx.fillRect(0,0,bandCanvas.width,bandCanvas.height*0.86);
       bctx.fillStyle = '#c9a24b';
       bctx.fillRect(0,bandCanvas.height*0.86,bandCanvas.width,bandCanvas.height*0.14);
-      bctx.font = 'bold 64px sans-serif';
+      // 字号和坐标全部按 canvas 宽度折算，改 PDF_BAND_PX 时版面不会跑掉
+      bctx.font = `bold ${Math.round(PDF_BAND_PX * 64 / 2400)}px sans-serif`;
       bctx.fillStyle = '#fff';
       bctx.textBaseline = 'middle';
       bctx.textAlign = 'left';
-      bctx.fillText('附件单据 / RECEIPTS', 30, bandCanvas.height*0.4);
+      bctx.fillText('附件单据 / RECEIPTS', Math.round(PDF_BAND_PX * 30 / 2400), bandCanvas.height*0.4);
       // 注意：canvas PNG 带 alpha 通道会被 jsPDF 解码成未压缩位图（每条约 2MB），必须用 JPEG
-      pdf.addImage(bandCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, bandY, pw, bandH);
+      pdf.addImage(bandCanvas.toDataURL('image/jpeg', PDF_BAND_QUALITY), 'JPEG', 0, bandY, pw, bandH);
 
       // 三段式标题条：左 P编号+说明，中 日期，右 金额币种
       const stripY = bandY + bandH + 6, stripH = 12;
       const tc = document.createElement('canvas');
-      tc.width = 2400; tc.height = 140;
+      tc.width = PDF_BAND_PX; tc.height = Math.round(PDF_BAND_PX * 140 / 2400);
+      const tcPad = Math.round(PDF_BAND_PX * 24 / 2400);
       let tctx = tc.getContext('2d');
       tctx.fillStyle = '#1e3a5f';
       tctx.fillRect(0,0,tc.width,tc.height);
-      tctx.font = '44px sans-serif';
+      tctx.font = `${Math.round(PDF_BAND_PX * 44 / 2400)}px sans-serif`;
       tctx.fillStyle = '#fff';
       tctx.textBaseline = 'middle';
       tctx.textAlign = 'left';
-      tctx.fillText(leftText, 24, tc.height/2);
+      tctx.fillText(leftText, tcPad, tc.height/2);
       tctx.textAlign = 'center';
       tctx.fillText(midText, tc.width/2, tc.height/2);
       tctx.textAlign = 'right';
       tctx.fillStyle = '#d4af6a';
-      tctx.fillText(rightText, tc.width-24, tc.height/2);
-      pdf.addImage(tc.toDataURL('image/jpeg', 0.9), 'JPEG', 0, stripY, pw, stripH);
+      tctx.fillText(rightText, tc.width-tcPad, tc.height/2);
+      pdf.addImage(tc.toDataURL('image/jpeg', PDF_BAND_QUALITY), 'JPEG', 0, stripY, pw, stripH);
 
       const margin = 10, topOffset = stripY + stripH + 8;
       const footH = 10;
@@ -3856,23 +3916,26 @@ async function buildStatementPDF(){
       pdf.setDrawColor(180,180,180);
       pdf.setLineWidth(0.3);
       pdf.rect(x-1, topOffset-1, drawW+2, drawH+2);
-      pdf.addImage(dataUrl, 'JPEG', x, topOffset, drawW, drawH);
+      // 缩到实际印出来那么大再嵌——PDF 里塞进 3000px 宽的原图，印出来跟 900px 的一样
+      const photoData = await shrinkPhotoForPDF(dataUrl, dims, drawW, drawH);
+      pdf.addImage(photoData, 'JPEG', x, topOffset, drawW, drawH);
 
       // 页脚深蓝横条
       const footY = ph - footH;
       const footCanvas = document.createElement('canvas');
-      footCanvas.width = 2400; footCanvas.height = 140;
+      footCanvas.width = PDF_BAND_PX; footCanvas.height = Math.round(PDF_BAND_PX * 140 / 2400);
+      const footPad = Math.round(PDF_BAND_PX * 24 / 2400);
       let fctx = footCanvas.getContext('2d');
       fctx.fillStyle = '#1e3a5f';
       fctx.fillRect(0,0,footCanvas.width,footCanvas.height);
-      fctx.font = '38px sans-serif';
+      fctx.font = `${Math.round(PDF_BAND_PX * 38 / 2400)}px sans-serif`;
       fctx.fillStyle = '#d4af6a';
       fctx.textBaseline = 'middle';
       fctx.textAlign = 'left';
-      fctx.fillText('仅供内部记录 · INTERNAL RECORD ONLY', 24, footCanvas.height/2);
+      fctx.fillText('仅供内部记录 · INTERNAL RECORD ONLY', footPad, footCanvas.height/2);
       fctx.textAlign = 'right';
-      fctx.fillText(`第 ${pageIdx} 页`, footCanvas.width-24, footCanvas.height/2);
-      pdf.addImage(footCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, footY, pw, footH);
+      fctx.fillText(`第 ${pageIdx} 页`, footCanvas.width-footPad, footCanvas.height/2);
+      pdf.addImage(footCanvas.toDataURL('image/jpeg', PDF_BAND_QUALITY), 'JPEG', 0, footY, pw, footH);
 
       pageIdx++;
     }
@@ -4027,6 +4090,10 @@ async function deleteTxById(id){
   if(!confirmDeleteTx(t)) return;
   if(!(await deleteCompanyRecord(t))) return;
   const attachmentId = t ? t.attachmentId : null;
+  // 同事版在这里把「删掉这一笔」也送进投递箱，老板那边收到就一起删
+  // （tools/build-staff-page.py 注入 onTxDeleted）。老板 App 里没有这个函数。
+  // **每一处删除都要叫它**——漏一处，那条路删掉的记录在老板那边就永远留着。
+  if(typeof onTxDeleted === 'function') onTxDeleted(t);
   tombstoneTx(id);
   data.transactions = data.transactions.filter(t=>t.id!==id);
   saveData();
@@ -7226,17 +7293,50 @@ async function fetchInbox(opts){
 
   inboxState.error = null;
   const dead = new Set((data.deletedTxIds || []).map(d => d.id));
-  let added = 0, skipped = 0;
+  let added = 0, skipped = 0, removed = 0;
 
-  for(const doc of snap.docs){
+  // 分两轮：先收账，再处理「同事把那笔删了」。同一次拿到的这两种文档没有先后顺序，
+  // 删的那条要是先跑，等一下收账那一轮又会把它加回来（同事删过的账在老板这边复活，
+  // 正是这条路最要命的错）。反过来「先加再删」在两种顺序下结果都对。
+  // 另一种情形也接得住：删的那条落在这 50 份里、原本那笔在下一批——
+  // 删的时候会落墓碑，下一批收到原本那笔时被 dead 挡掉。
+  const isDel = (doc) => {
+    try{ const r = JSON.parse((doc.data() || {}).tx); return !!(r && r.op === 'delete'); }
+    catch(e){ return false; }
+  };
+  const ordered = [...snap.docs.filter(d => !isDel(d)), ...snap.docs.filter(isDel)];
+
+  for(const doc of ordered){
     const d = doc.data() || {};
     let raw = null;
     try{ raw = JSON.parse(d.tx); }catch(e){ raw = null; }
-    // 坏数据不留在箱子里堵着后面的（箱子是别人能写的地方，必须假设会收到垃圾）
-    if(!raw || !(Number(raw.amount) >= 0) || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.date||''))){
+    // 坏数据不留在箱子里堵着后面的（箱子是别人能写的地方，必须假设会收到垃圾）。
+    // 注意：删除请求没有 amount/date，所以先认出它（下面那段），别在这里就被当垃圾丢掉。
+    if(!raw || (raw.op !== 'delete'
+        && (!(Number(raw.amount) >= 0) || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.date||''))))){
       await inboxDrop(doc); skipped++; continue;
     }
     const id = 'ix_' + String(raw.srcId || doc.id).slice(0, 40);
+
+    // 同事把自己记的那笔删了（2026-09-01 用户要求：「一删我这边就能看到」）。
+    // 走的是同一个投递箱、同一条规则——payload 只是 tx 那个字符串里多个 op:'delete'，
+    // Firestore 规则一个字都不用改（它只校验 tx 是字符串、长度够短）。
+    if(raw.op === 'delete'){
+      const i = data.transactions.findIndex(t => t.id === id);
+      if(i >= 0){
+        const att = data.transactions[i].attachmentId;
+        data.transactions.splice(i, 1);
+        if(att) deleteAttachmentBlob(att);
+        removed++;
+      }
+      // 不管本机现在有没有那笔都要落墓碑：可能还没收到（下一批才来），
+      // 也可能别的设备上有——墓碑跟着同步走，那边也会跟着删。
+      tombstoneTx(id);
+      dead.add(id);
+      await inboxDrop(doc);
+      continue;
+    }
+
     if(dead.has(id)){ await inboxDrop(doc); skipped++; continue; }
 
     const isIncome = raw.type === 'income';
@@ -7271,13 +7371,18 @@ async function fetchInbox(opts){
     await inboxDrop(doc);
   }
 
-  if(added) saveData();
+  if(added || removed) saveData();
   inboxState.added = added;
+  inboxState.removed = removed;
   inboxState.last = Date.now();
   inboxState.running = false;
 
-  if(added){
-    toast(`收到同事记的 ${added} 笔\n已进「${(getAcc(accId)||{}).name}」`);
+  if(added || removed){
+    const parts = [];
+    if(added) parts.push(`收到同事记的 ${added} 笔\n已进「${(getAcc(accId)||{}).name}」`);
+    // 删掉的一定要说出来：账目自己少了一笔而没人告诉他，比不删还糟
+    if(removed) parts.push(`同事删掉了 ${removed} 笔，这边也一起删了`);
+    toast(parts.join('\n'));
     if(state.currentTab === 'overview') renderOverview();
     if(state.currentTab === 'transactions') renderTxList();
   } else if(loud){
@@ -7286,7 +7391,73 @@ async function fetchInbox(opts){
   renderInboxSettings();
 }
 
+/**
+ * 该付给每个同事多少。投递箱那些账是他们垫的钱——收进账本只表示「钱花掉了」，
+ * 不表示「已经还给他了」。这里把每个人还没结清的加起来。
+ *
+ * 只算支出：他们偶尔也会记一笔收入（老板给现金），那是钱进他们口袋，不是垫付。
+ * 标记付清写在那几笔上（fromStaff.paidAt），不另记一笔支出——那笔钱在账本里已经
+ * 花掉一次了，再记一次就是同一笔钱数两次（跟对账那边「不要顺手记进账户」同一个道理）。
+ */
+function inboxOwedByPerson(){
+  const map = new Map();
+  for(const t of (data.transactions || [])){
+    if(!t.fromStaff || t.type !== 'expense' || t.fromStaff.paidAt) continue;
+    const who = String(t.fromStaff.by || '同事');
+    const cur = (getAcc(t.accountId) || {}).currency || 'USD';
+    const key = who + '\u0000' + cur;
+    if(!map.has(key)) map.set(key, { who, currency: cur, total: 0, count: 0 });
+    const e = map.get(key);
+    e.total = Math.round((e.total + Number(t.amount || 0)) * 100) / 100;
+    e.count += 1;
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total);
+}
+
+// 名字是同事那边送上来的自由文本，绝不能拼进 onclick 的引号里（一个单引号就把
+// 属性撑破，后面那段照样会被当成代码跑）。所以按钮只带**行号**，名字留在这个数组里。
+let inboxOwedRows = [];
+
+function renderInboxOwed(){
+  const el = document.getElementById('inbox-owed');
+  if(!el) return;
+  inboxOwedRows = inboxOwedByPerson();
+  if(!inboxOwedRows.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="sec-hdr" style="margin-bottom:8px">
+      <div class="sec-title">该付同事（他们垫的）</div>
+    </div>
+    ${inboxOwedRows.map((r, i) => `<div class="petty-row">
+      <div><div class="petty-name">🙋 ${ledEsc(r.who)}</div>
+        <div class="petty-meta">${r.count} 笔</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="petty-bal">${fmt(r.total, r.currency)}</div>
+        <button class="btn btn-outline btn-sm" onclick="inboxMarkPaid(${i})">已付</button>
+      </div></div>`).join('')}
+    <div class="led-sub" style="margin-top:6px">按「已付」只是记下你还过钱了，不会再记一笔支出——那笔钱在账本里已经花掉一次了。</div>`;
+}
+
+/** 把某个人还没结清的那几笔标成已付。不动金额、不新增记录，只盖一个时间戳。 */
+function inboxMarkPaid(i){
+  const row = inboxOwedRows[i];
+  if(!row) return;
+  const who = row.who, currency = row.currency;
+  const hit = (data.transactions || []).filter(t =>
+    t.fromStaff && t.type === 'expense' && !t.fromStaff.paidAt
+    && String(t.fromStaff.by || '同事') === who
+    && ((getAcc(t.accountId) || {}).currency || 'USD') === currency);
+  if(!hit.length) return;
+  const total = Math.round(hit.reduce((n, t) => n + Number(t.amount || 0), 0) * 100) / 100;
+  if(!confirm(`已经把 ${fmt(total, currency)} 还给${who}了？\n（${hit.length} 笔会标成已付，账目金额不动）`)) return;
+  const at = Date.now();
+  hit.forEach(t => { t.fromStaff = Object.assign({}, t.fromStaff, { paidAt: at }); });
+  saveData();
+  renderInboxOwed();
+  toast(`已记下：${who} 那 ${hit.length} 笔付清了`);
+}
+
 function renderInboxSettings(){
+  renderInboxOwed();
   const sel = document.getElementById('inbox-acc-select');
   if(!sel) return;
   const cur = getInboxAccountId();

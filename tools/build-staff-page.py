@@ -1416,28 +1416,105 @@ function renderBossQueue(){
   const parts = [];
   if(pend) parts.push(tt(`⏳ 有 ${pend} 笔还没送到，有网时自动送`,
                          `⏳ ${pend} record(s) not sent yet — will go out when you are online`));
+  // 删除也会排队（没网时）。不显示的话，同事以为删干净了，其实老板那边还没收到通知。
+  const delPend = loadBossDelQueue().length;
+  if(delPend) parts.push(tt(`⏳ 有 ${delPend} 笔的删除还没通知到老板，有网时自动通知`,
+                            `⏳ ${delPend} deletion(s) not yet sent to the Boss — will go out when you are online`));
   if(failed.length) parts.push(tt(
     `⚠️ 有 ${failed.length} 笔送不出去：${failed[0].inbox.error || ''}`,
     `⚠️ ${failed.length} record(s) failed: ${failed[0].inbox.error || ''}`));
   el.innerHTML = parts.join('<br>');
 }
 
-/* 已经送到老板那边的，删掉只是删自己手机上这条——老板的账本里那条还在，
-   App 没有回收的路。不讲清楚的话，同事会以为删干净了。 */
+/* 已经送到老板那边的，删掉时**连老板那边一起删**（2026-09-01 用户要求：
+   「让他们能删除掉自己的记录，一删我这边就能看到」）。
+   在这之前删除只删本机、老板账本里那条还留着，同事以为删干净了，其实没有。 */
 const _staffConfirmDeleteTx = confirmDeleteTx;
 confirmDeleteTx = function(t){
   if(t && t.inbox && t.inbox.status === 'sent'){
     return confirm(tt(
-      '这笔已经送到老板那边了。\\n\\n删除只会删掉你手机上这条，老板账本里那条还在——'
-      + '要更正请直接跟老板说。\\n\\n仍要删除？',
-      'This one already went to the Boss.\\n\\nDeleting only removes it from your phone — '
-      + 'the Boss still has it. Tell the Boss to fix it.\\n\\nDelete anyway?'));
+      '这笔已经送到老板那边了。\\n\\n删除会**同时**通知老板那边一起删掉'
+      + '（他下次开 App 收件时生效）。\\n\\n确定删除？',
+      'This one already went to the Boss.\\n\\nDeleting will also remove it on the Boss side '
+      + '(it takes effect next time the Boss opens the app).\\n\\nDelete?'));
   }
   return _staffConfirmDeleteTx.apply(this, arguments);
 };
 
+/* —— 把「这笔删掉了」也送进投递箱 ————————————————————————
+ *
+ * 走的是**同一个投递箱、同一条 Firestore 规则**：payload 形状一模一样，只是 tx 那个
+ * 字符串里多一个 op:'delete'。规则只校验「tx 是字符串、够短」，所以后台那份规则
+ * 一个字都不用改——要是新开一个集合或多一个字段，老板就得再去 Console 贴一次规则，
+ * 那是他唯一必须亲自动手的地方，能不碰就不碰。
+ *
+ * 队列跟记账那条分开存：那条按 tx.id 去 data.transactions 里捞完整的账，
+ * 而这笔账已经被删掉了，捞不到——共用一条队列的话删除请求会被当成「找不到，丢弃」。
+ */
+const STAFF_BOSS_DEL_QUEUE = 'staffExpense_bossDelQueue';
+function loadBossDelQueue(){
+  try{ return JSON.parse(localStorage.getItem(STAFF_BOSS_DEL_QUEUE) || '[]'); }catch(e){ return []; }
+}
+function saveBossDelQueue(q){
+  try{ localStorage.setItem(STAFF_BOSS_DEL_QUEUE, JSON.stringify(q)); }catch(e){}
+}
+
+async function submitInboxDelete(srcId){
+  const k = staffBossKey();
+  if(!k) return { ok:false, retriable:false };
+  if(!(await staffEnsureAnon())) return { ok:false, retriable:true };
+  try{
+    await db.collection(INBOX_COLLECTION).add({
+      k,
+      from: (staffIdentity ? staffIdentity.reporter : '同事').slice(0, 40),
+      tx: JSON.stringify({ op:'delete', srcId: String(srcId).slice(0, 40) })
+    });
+    return { ok:true };
+  }catch(e){
+    // 口令不对／规则没设好：重试多少次都一样，别把它永远留在队列里堵着
+    if(e && e.code === 'permission-denied') return { ok:false, retriable:false };
+    return { ok:false, retriable:true };
+  }
+}
+
+async function flushBossDelQueue(opts){
+  const loud = !!(opts && opts.loud);
+  let q = loadBossDelQueue();
+  if(!q.length || !staffBossOn()) return;
+  for(const srcId of [...q]){
+    const r = await submitInboxDelete(srcId);
+    if(r.ok){
+      q = q.filter(x => x !== srcId); saveBossDelQueue(q);
+      if(loud) toast(tt('✅ 已通知老板那边一起删掉','✅ The Boss side will remove it too'));
+    } else if(r.retriable){
+      if(loud) toast(tt('现在连不上，有网时会自动通知老板','Offline — the Boss will be told when you are back online'));
+      break;                      // 没网，剩下的留着下次
+    } else {
+      q = q.filter(x => x !== srcId); saveBossDelQueue(q);
+      if(loud) toast(tt('⚠️ 通知不了老板那边（口令或权限的问题），请直接跟他说',
+                        '⚠️ Could not notify the Boss (passcode/permission) — tell him directly'));
+    }
+  }
+  renderBossQueue();
+}
+
+/**
+ * expense-tracker.html 的两处删除路径都会叫这里（钩子 onTxDeleted）。
+ * 只管已经送到老板那边的那种：还没送出去的，老板压根没见过，不用通知。
+ * 记账队列里若还排着它（送出去之前就删了），顺手撤掉，免得等一下又把它送上去。
+ */
+function onTxDeleted(t){
+  if(!t || t.accountId !== STAFF_BOSS_ACC_ID) return;
+  const q0 = loadBossQueue();
+  if(q0.includes(t.id)) saveBossQueue(q0.filter(x => x !== t.id));
+  if(!(t.inbox && t.inbox.status === 'sent')) return;
+  const q = loadBossDelQueue();
+  if(!q.includes(t.id)){ q.push(t.id); saveBossDelQueue(q); }
+  flushBossDelQueue({ loud:true });
+}
+
 // 网络恢复时把没送到的补上（跟公司账那条队列同一个思路）
-window.addEventListener('online', ()=>flushBossQueue());
+window.addEventListener('online', ()=>{ flushBossQueue(); flushBossDelQueue(); });
 """
 
 

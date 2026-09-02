@@ -1719,6 +1719,91 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   await fetchNow(); await page.waitForTimeout(300);
   ok('没登录时根本不去读投递箱',
      (await page.evaluate(() => window.__box.readFrom)) === null);
+
+  // ---- 同事把自己那笔删了，这边也要跟着删（2026-09-01 用户要求）----
+  // 在这之前删除只删同事手机上那条，老板账本里那条一直留着：
+  // 「刚刚让他们删了记录还在」就是这个。
+  await page.evaluate(() => { currentUser = { uid:'boss' }; window.__box.docs = []; });
+  await seed('e1', { srcId:'k1', date:'2026-08-10', amount:8.80, type:'expense',
+                     categoryId:'cat_food', description:'替老板买的水' }, 'Kuang');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('先收进来一笔', await page.evaluate(() => !!data.transactions.find(t => t.id === 'ix_k1')));
+
+  await page.evaluate(() => { window.__box.docs = []; });
+  await seed('e1del', { op:'delete', srcId:'k1' }, 'Kuang');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('同事删了，这边也删掉了',
+     (await page.evaluate(() => data.transactions.some(t => t.id === 'ix_k1'))) === false);
+  ok('删除请求也从箱子里清掉',
+     (await page.evaluate(() => window.__box.deleted)).includes('e1del'));
+  ok('落了墓碑（别的设备同步时也会删）',
+     await page.evaluate(() => (data.deletedTxIds || []).some(d => d.id === 'ix_k1')));
+
+  // 同一批里「加」和「删」一起来：删的那条不管排在前排在后，结果都必须是删掉。
+  // 没有先加后删这个顺序的话，删的先跑、加的后跑，那笔会当场复活——
+  // 而这是最难发现的一种：箱子清空了、账却还在。
+  await page.evaluate(() => { window.__box.docs = []; });
+  await seed('e2del', { op:'delete', srcId:'k2' }, 'Kuang');            // 删的先放进箱子
+  await seed('e2', { srcId:'k2', date:'2026-08-11', amount:3.30, type:'expense',
+                     categoryId:'cat_food', description:'同一批里加又删' }, 'Kuang');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('同一批里加又删：最后是删掉，不会复活',
+     (await page.evaluate(() => data.transactions.some(t => t.id === 'ix_k2'))) === false);
+
+  // 删除请求没有 amount/date——不能被「坏数据」那道闸当垃圾丢掉
+  ok('删除请求不会被当成坏数据丢掉（上面两条已证明它真的生效了）',
+     (await page.evaluate(() => window.__box.deleted)).includes('e2del'));
+
+  // ---- 该付同事多少：投递箱这些是他们垫的钱 ----
+  await page.evaluate(() => {
+    // 重来一份干净的：两个人、三笔垫付，外加一笔老板自己记的（不该算进去）
+    data.transactions = [
+      { id:'ix_p1', accountId:'acc_boss', amount:10, type:'expense', categoryId:'cat_food',
+        date:'2026-08-01', fromStaff:{ by:'Seryi', at:1 } },
+      { id:'ix_p2', accountId:'acc_boss', amount:5.5, type:'expense', categoryId:'cat_food',
+        date:'2026-08-02', fromStaff:{ by:'Seryi', at:1 } },
+      { id:'ix_p3', accountId:'acc_boss', amount:7, type:'expense', categoryId:'cat_food',
+        date:'2026-08-03', fromStaff:{ by:'Kuang', at:1 } },
+      // 老板给的现金＝钱进同事口袋，不是垫付，不能算进「该付他多少」
+      { id:'ix_p4', accountId:'acc_boss', amount:50, type:'income', categoryId:'cat_other_inc',
+        date:'2026-08-04', fromStaff:{ by:'Seryi', at:1 } },
+      // 老板自己记的那笔跟投递箱无关
+      { id:'own1', accountId:'acc_boss', amount:99, type:'expense', categoryId:'cat_food',
+        date:'2026-08-05' },
+    ];
+    renderInboxOwed();
+  });
+  let owed = await page.evaluate(() => inboxOwedByPerson());
+  ok('按人分开算', owed.length === 2, owed);
+  ok('Seryi 垫了 15.50（两笔）',
+     owed[0].who === 'Seryi' && owed[0].total === 15.5 && owed[0].count === 2, owed[0]);
+  ok('Kuang 垫了 7.00', owed[1].who === 'Kuang' && owed[1].total === 7, owed[1]);
+  ok('老板自己记的那笔不算进去',
+     owed.reduce((n, r) => n + r.total, 0) === 22.5, owed);
+  const owedHtml = await page.innerHTML('#inbox-owed');
+  ok('画出来了，写着人名和金额',
+     owedHtml.includes('Seryi') && owedHtml.includes('15.50'), owedHtml.slice(0, 300));
+
+  // 「已付」只盖时间戳：金额一分不动、也不会新增一笔支出（那会把同一笔钱数两次）
+  // 直接把 confirm 打桩成「按了确定」。不用 Playwright 的 dialog 事件——
+  // 这一页别处已经挂过 dialog 处理，两个都去 accept 会互相打架。
+  await page.evaluate(() => { window.confirm = () => true; });
+  const beforeN = await page.evaluate(() => data.transactions.length);
+  const beforeSum = await page.evaluate(() =>
+    data.transactions.filter(t=>t.type==='expense').reduce((n,t)=>n+t.amount,0));
+  await page.evaluate(() => inboxMarkPaid(0));
+  await page.waitForTimeout(200);
+  owed = await page.evaluate(() => inboxOwedByPerson());
+  ok('标了已付之后 Seryi 不再出现', !owed.some(r => r.who === 'Seryi'), owed);
+  ok('Kuang 的 7.00 不受影响', owed.length === 1 && owed[0].total === 7, owed);
+  ok('没有新增任何记录', await page.evaluate(() => data.transactions.length) === beforeN);
+  ok('支出总额一分没变（不是又记一笔）',
+     await page.evaluate(() =>
+       data.transactions.filter(t=>t.type==='expense').reduce((n,t)=>n+t.amount,0)) === beforeSum);
+  ok('那两笔身上盖了 paidAt',
+     await page.evaluate(() =>
+       ['ix_p1','ix_p2'].every(id => !!data.transactions.find(t=>t.id===id).fromStaff.paidAt)));
+
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
 }
@@ -2014,7 +2099,11 @@ function stubPdfLibs(ctx){
     });
     function FakeJsPDF(){}
     FakeJsPDF.prototype.internal = { pageSize: { getWidth: () => 210, getHeight: () => 297 } };
-    FakeJsPDF.prototype.addImage = function(){};
+    // 记下每一张嵌进 PDF 的图（【30】要靠它量体积和像素尺寸；对 27 那几块无影响）
+    window.__pdfImages = [];
+    FakeJsPDF.prototype.addImage = function(d, fmt, x, y, w, h){
+      window.__pdfImages.push({ d: String(d || ''), fmt, x, y, w, h });
+    };
     FakeJsPDF.prototype.addPage = function(){};
     FakeJsPDF.prototype.setDrawColor = function(){};
     FakeJsPDF.prototype.setLineWidth = function(){};
@@ -2466,6 +2555,119 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
     return document.getElementById('modal-reconcile-add').classList.contains('open');
   });
   ok('硬调也不会开出一个填了 0 的弹窗', guarded === false, guarded);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---------- 【30】账户明细 PDF 不把印不出来的像素也塞进去 ----------
+{
+  console.log('\n【30】账户明细 PDF：收据按印出来的尺寸压过再嵌');
+  // 2026-09-02 用户要求「要的都压」。附件多的月份这份 PDF 会到十几 MB，
+  // 发给老板那一步要么被服务端 20MB 挡下，要么在手机上传半天。
+  // 胖的地方是「塞进去的像素远多于印得出来的像素」，所以这一块守三件事：
+  //   1. 收据缩到 A4 上实际占位对应的 120dpi（3000px 宽的手机照片印出来跟 900px 一样）
+  //   2. 但不许缩过头——低于目标精度就是把单据压到看不清，账单就废了
+  //   3. 本来就小的收据原样通过（只缩不放，放大只会糊）
+  // 外加一条底线：压缩这一步出任何差错，账单都还是要生得出来（用原图）。
+  //
+  // 这份自检验过会红（2026-09-02 实测四种改法）：
+  //   · shrinkPhotoForPDF 末行改成 return dataUrl（等于没压）→「宽度已经缩到」「体积明显小于原图」失败
+  //   · PDF_PHOTO_DPI 改成 40（压过头）→「但没缩过头」失败
+  //   · PDF_BAND_PX 改回 2400 →「横条不再画成 2400px」失败
+  // 注：「小图不会被放大」有两道保险（scale 的 `,1` 上限，和「重编码更大就用原图」那一步），
+  // 只拆掉其中一道不会红——这是对的，两道都在守同一个结果。
+  const ctx = await browser.newContext();
+  await stubPdfLibs(ctx);
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  /** 摆一笔带收据的支出，收据是 w×h 的噪点图（噪点压不掉，体积假不了）。
+   *  回传原图 base64 长度，好跟嵌进 PDF 的那张比。 */
+  const runWithPhoto = (w, h) => page.evaluate(async ({ w, h }) => {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const cx = c.getContext('2d');
+    const im = cx.createImageData(w, h);
+    for (let i = 0; i < im.data.length; i += 4) {
+      im.data[i] = Math.random()*255; im.data[i+1] = Math.random()*255;
+      im.data[i+2] = Math.random()*255; im.data[i+3] = 255;
+    }
+    cx.putImageData(im, 0, 0);
+    const src = c.toDataURL('image/jpeg', 0.92);
+
+    const acc = data.accounts[0];
+    const today = new Date();
+    const d = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-15`;
+    data.transactions = [{ id:'pdfimg1', accountId:acc.id, type:'expense', amount:12.5,
+      date:d, description:'收据压缩测试', categoryId:(data.categories[0]||{}).id,
+      attachmentId:'att-pdfimg1' }];
+    state.anYear = today.getFullYear(); state.anMonth = today.getMonth();
+    state.currentAccountId = acc.id;
+    // 附件本来住 IndexedDB，这里直接给回一个 blob，省掉写库那一圈
+    window.getAttachmentBlob = async () => await (await fetch(src)).blob();
+
+    window.__pdfImages = [];
+    await buildStatementPDF();
+
+    // 量出每张嵌进 PDF 的图的真实像素尺寸
+    const sized = [];
+    for (const rec of window.__pdfImages) {
+      const px = await new Promise(res => {
+        const i2 = new Image();
+        i2.onload = () => res({ w:i2.naturalWidth, h:i2.naturalHeight });
+        i2.onerror = () => res(null);
+        i2.src = rec.d;
+      });
+      sized.push({ len:rec.d.length, mmW:rec.w, mmH:rec.h, px });
+    }
+    return { srcLen: src.length, srcW: w, images: sized };
+  }, { w, h });
+
+  // ---- 大图：手机拍的那种 ----
+  const big = await runWithPhoto(2400, 1800);
+  // 收据是唯一一张不铺满整页宽（210mm）的图，其余是横幅/标题条/页脚
+  const photo = big.images.find(im => im.mmW && Math.abs(im.mmW - 210) > 1);
+  // 铺满页宽的图有两种：正表那张长图（html2canvas 是打的桩，解不出像素）和三条中文横条
+  const bands = big.images.filter(im => im.mmW && Math.abs(im.mmW - 210) <= 1 && im.px);
+  ok('收据确实嵌进 PDF 了', !!(photo && photo.px), big.images.map(i=>i.mmW));
+  if (photo && photo.px) {
+    const target = photo.mmW / 25.4 * 120;   // 120dpi 下这个占位该有多少像素
+    ok('收据宽度已经缩到印得出来的尺寸（≤120dpi）',
+       photo.px.w <= Math.ceil(target) + 1, { got: photo.px.w, target });
+    ok('但没缩过头——单据还得看得清（≥目标的 80%）',
+       photo.px.w >= target * 0.8, { got: photo.px.w, target });
+    ok('体积明显小于原图（少于四成）',
+       photo.len < big.srcLen * 0.4, { after: photo.len, before: big.srcLen });
+    ok('长宽比没被拉歪',
+       Math.abs((photo.px.w / photo.px.h) - (2400 / 1800)) < 0.02,
+       photo.px);
+  }
+  ok('三条中文横条都在（横幅/标题条/页脚）', bands.length === 3, bands.length);
+  ok('横条不再画成 2400px（210mm 上那是 290dpi，印不出来）',
+     bands.every(b => b.px && b.px.w === 1200), bands.map(b => b.px && b.px.w));
+
+  // ---- 小图：本来就小的收据不许被放大糊掉 ----
+  const small = await runWithPhoto(120, 90);
+  const smallPhoto = small.images.find(im => im.mmW && Math.abs(im.mmW - 210) > 1);
+  ok('小图不会被放大（只缩不放）',
+     !!(smallPhoto && smallPhoto.px && smallPhoto.px.w <= 120),
+     smallPhoto && smallPhoto.px);
+
+  // ---- 底线：压不动也不能让账单生不出来 ----
+  const fallback = await page.evaluate(async () => {
+    const bogus = 'data:image/jpeg;base64,bm90LWFuLWltYWdl';
+    const out = await shrinkPhotoForPDF(bogus, { w:100, h:100 }, 100, 100);
+    return out === bogus;
+  });
+  ok('图片读不出来时退回原图，不让整份账单挂掉', fallback === true, fallback);
 
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();

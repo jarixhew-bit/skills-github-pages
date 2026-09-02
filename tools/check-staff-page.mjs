@@ -1515,6 +1515,73 @@ if (want()) {
   await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   ok('公司那套栏位回来了', await page.locator('#tx-company-wrap').isVisible());
   ok('描述栏又收起来了', !(await page.locator('#tx-desc-group').isVisible()));
+
+  // ---- 删掉已经送出去的那笔，要连老板那边一起删（2026-09-01 用户要求）----
+  // 在这之前删除只删本机，老板账本里那条一直留着——「刚刚让他们删了记录还在」。
+  await page.evaluate(() => {
+    window.__inbox = [];
+    // 上面那段刻意把 db 换成会失败的（测「送不出去」），这里要换回能送成功的
+    db = { collection: (c) => ({ add: async (p) => { window.__inbox.push({ c, p }); return { id:'dx' }; } }) };
+    localStorage.setItem('staffExpense_bossDelQueue', '[]');
+    window.confirm = () => true;      // 删除要确认，这里一律按确定
+    data.transactions = [{ id:'t_sent', accountId:'acc_boss_inbox', amount: 4.5,
+      type:'expense', categoryId:'cat_food', date:'2026-08-10', description:'替老板买的',
+      inbox:{ status:'sent', error:null } }];
+    saveData();
+    deleteTxById('t_sent');
+  });
+  await until(() => page.evaluate(() => window.__inbox.length > 0),
+              { what:'删除请求送进投递箱' });
+  const del = await page.evaluate(() => window.__inbox[0]);
+  ok('删除请求送进的是同一个投递箱', del.c === 'inbox_boss', del.c);
+  const delTx = JSON.parse(del.p.tx);
+  ok('送的是 op:delete + 那笔的 id', delTx.op === 'delete' && delTx.srcId === 't_sent', delTx);
+  // 这条最要紧：payload 的字段形状必须跟记账那条一模一样，否则老板得再去 Firebase
+  // 后台改一次规则——那是他唯一必须亲自动手的地方
+  ok('字段还是 k / from / tx 三样，没有多出新字段（规则一个字都不用改）',
+     JSON.stringify(Object.keys(del.p).sort()) === JSON.stringify(['from','k','tx']),
+     Object.keys(del.p));
+  ok('本机那条也删掉了',
+     (await page.evaluate(() => data.transactions.some(t => t.id === 't_sent'))) === false);
+  ok('送出去之后队列清空',
+     (await page.evaluate(() =>
+       JSON.parse(localStorage.getItem('staffExpense_bossDelQueue') || '[]'))).length === 0);
+
+  // 还没送到老板那边的，删掉不必通知——他压根没见过那笔
+  await page.evaluate(() => {
+    window.__inbox = [];
+    data.transactions = [{ id:'t_pend', accountId:'acc_boss_inbox', amount: 1,
+      type:'expense', categoryId:'cat_food', date:'2026-08-10',
+      inbox:{ status:'pending', error:null } }];
+    localStorage.setItem('staffExpense_bossQueue', JSON.stringify(['t_pend']));
+    saveData();
+    deleteTxById('t_pend');
+  });
+  await page.waitForTimeout(400);   // 断言「没有送出去」，只能真的等
+  ok('还没送到的那笔：删掉不发删除请求',
+     (await page.evaluate(() => window.__inbox.length)) === 0);
+  ok('也从待送队列里撤掉（免得等一下又把它送上去）',
+     (await page.evaluate(() =>
+       JSON.parse(localStorage.getItem('staffExpense_bossQueue') || '[]'))).length === 0);
+
+  // 没网时删除要排队，而且说明条上要看得见——不然同事以为删干净了
+  await page.evaluate(() => {
+    window.__inbox = [];
+    db = { collection: () => ({ add: async () => { const e = new Error('offline'); throw e; } }) };
+    data.transactions = [{ id:'t_off', accountId:'acc_boss_inbox', amount: 2,
+      type:'expense', categoryId:'cat_food', date:'2026-08-10',
+      inbox:{ status:'sent', error:null } }];
+    saveData();
+    deleteTxById('t_off');
+  });
+  await page.waitForTimeout(400);
+  ok('没网时删除请求留在队列里',
+     (await page.evaluate(() =>
+       JSON.parse(localStorage.getItem('staffExpense_bossDelQueue') || '[]'))).length === 1);
+  ok('说明条上写着删除还没通知到老板',
+     (await page.locator('#staff-boss-queue').innerText()).includes('删除还没通知'),
+     await page.locator('#staff-boss-queue').innerText());
+
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
