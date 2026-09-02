@@ -732,6 +732,9 @@ body.staff-boss #staff-boss-cash{display:block}
   <button class="nav-btn" id="nav-transactions" onclick="staffGoCompany()">
     <div class="nav-icon">📋</div><span data-en="Records">明细</span>
   </button>
+  <button class="nav-btn" id="nav-leave" onclick="openLeaveModal()">
+    <div class="nav-icon">🏖</div><span data-en="Leave">请假</span>
+  </button>
   <button class="nav-btn" id="nav-boss" style="display:none" onclick="staffGoBoss()">
     <div class="nav-icon">👔</div><span data-en="Boss">老板账</span>
   </button>
@@ -930,6 +933,22 @@ body.staff-boss #staff-boss-cash{display:block}
 
 <!-- PDF REPORT (hidden) -->
 <div id="pdf-statement"></div>
+
+<!-- MODAL: LEAVE（请假登记，2026-09-02 加）
+     跟库存弹窗同理放在 PDF REPORT 之后，**不能**放进 ACCOUNT SWITCHER～PDF REPORT
+     那个区间——那一整段生成同事版时会被切掉，而这个弹窗两边都要有：
+     同事在同事版替自己登记，YANG 在主 App 替司机这类不用同事版的人代录。
+     里面的内容全部由 renderLeaveBody() 画：代录用的「是谁」那一栏**只有服务端说
+     scope==='owner' 时才会进 DOM**（不是 CSS 藏），同事那边压根没有这个输入框。 -->
+<div class="overlay" id="modal-leave">
+  <div class="modal" style="max-height:88vh">
+    <div class="modal-hdr">
+      <div class="modal-title" data-en="🏖 Leave">🏖 请假</div>
+      <button class="modal-close" onclick="closeModal('modal-leave')" aria-label="关闭">✕</button>
+    </div>
+    <div id="leave-body" style="overflow-y:auto"></div>
+  </div>
+</div>
 
 <!-- MODAL: INVENTORY ADD/EDIT/LOG（放在 PDF REPORT 之后，不在同事版会切掉的
      ACCOUNT SWITCHER～PDF REPORT 区间里——同事也要能用库存） -->
@@ -5114,7 +5133,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-08-27';
+const APP_BUILD = '2026-09-02';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -6224,6 +6243,226 @@ async function pettyUndo(){
     renderAccCards();
   }catch(e){
     toast('现在连不上，等有网再试');
+  }
+}
+
+/* ===================== 请假登记（2026-09-02 加）=====================
+ * 老板 App「今天」那一屏要显示「今天谁请假」。数据怎么来，是这一块唯一重要的设计：
+ *
+ * - **同事自己登记**（同事版页面）：靠人代录的名单三个星期后必然过期，老板看到
+ *   「今天没人请假」而实际有人没来，比这一栏根本不存在更糟。
+ * - **司机这类人由 YANG 代录**（就是这个主 App）：他们不用同事版页面，也不在名册里。
+ *
+ * 两条路共用同一个弹窗和同一段代码，差别只有一个：「是谁请假」那一栏
+ * **只有服务端说 scope==='owner' 时才会画进 DOM**。同事那边压根没有这个输入框，
+ * 就算他改前端也没用——真正的拦截在 butler（报账人由钥匙推出来，请求里写谁都不算数）。
+ *
+ * 老板那边**一个写入接口都没有多开**：他的 App 只是在 feed 里多读一个 leaveToday。
+ */
+let leaveState = { loading:false, data:null, error:'', busy:false };
+
+function leaveEsc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+/** 同事版有中英切换（tt 由生成脚本注入），主 App 里没有就照原样显示中文。 */
+function leaveT(zh, en){ return (typeof tt === 'function') ? tt(zh, en) : zh; }
+
+/** `2026-09-02` → `9月2日`（英文 `Sep 2`）。只给显示用，存的一律是 YYYY-MM-DD。 */
+function leaveDayLabel(d){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d || ''));
+  if(!m) return String(d || '');
+  const mm = Number(m[2]), dd = Number(m[3]);
+  const EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return leaveT(`${mm}月${dd}日`, `${EN[mm-1]} ${dd}`);
+}
+function leaveRangeLabel(row){
+  return row.start === row.end
+    ? leaveDayLabel(row.start)
+    : `${leaveDayLabel(row.start)} － ${leaveDayLabel(row.end)}`;
+}
+
+async function leaveCall(action, extra){
+  const res = await fetch(COMPANY_EXPENSE_URL, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(Object.assign({ token: getCompanyToken(), action }, extra || {}))
+  });
+  const body = await res.json().catch(()=>({}));
+  return { ok: res.ok && body.status === 'ok', body, httpStatus: res.status };
+}
+
+async function openLeaveModal(){
+  if(!getCompanyToken()){
+    toast(leaveT('先去设置里填公司报账密钥', 'Set the company key first'));
+    return;
+  }
+  leaveState = { loading:true, data:null, error:'', busy:false };
+  showModal('modal-leave');
+  renderLeaveBody();
+  await refreshLeave();
+}
+
+async function refreshLeave(){
+  leaveState.loading = true;
+  renderLeaveBody();
+  try{
+    const r = await leaveCall('leaveList');
+    if(!r.ok){
+      leaveState.error = r.body.message || leaveT(`读不到（${r.httpStatus}）`, `Could not load (${r.httpStatus})`);
+      leaveState.data = null;
+    }else{
+      leaveState.data = r.body;
+      leaveState.error = '';
+    }
+  }catch(e){
+    leaveState.error = leaveT('现在连不上，等有网再开一次', 'Offline — try again when connected');
+    leaveState.data = null;
+  }
+  leaveState.loading = false;
+  renderLeaveBody();
+}
+
+function renderLeaveBody(){
+  const el = document.getElementById('leave-body');
+  if(!el) return;
+  if(leaveState.loading && !leaveState.data){
+    el.innerHTML = `<div class="petty-hint">${leaveT('读取中…','Loading…')}</div>`;
+    return;
+  }
+  if(leaveState.error && !leaveState.data){
+    el.innerHTML = `<div class="petty-hint" style="color:var(--exp)">${leaveEsc(leaveState.error)}</div>`
+      + `<button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="refreshLeave()">${leaveT('再试一次','Retry')}</button>`;
+    return;
+  }
+  const d = leaveState.data || { leaves:[], todayOff:[], scope:'staff', today:'' };
+  const isOwner = d.scope === 'owner';
+
+  // 今天谁没来——这一行跟老板 App 上看到的是同一份数据
+  const off = d.todayOff || [];
+  let html = `<div style="background:var(--p2);border-radius:12px;padding:12px;margin-bottom:14px">`
+    + `<div style="font-size:12px;color:var(--sub);margin-bottom:4px">${leaveT('今天','Today')} ${leaveEsc(d.today)}</div>`
+    + (off.length
+        ? `<div style="font-size:15px;font-weight:600">🏖 ${off.map(x=>leaveEsc(x.person)
+            + (x.reason ? `<span style="font-weight:400;color:var(--sub)">（${leaveEsc(x.reason)}）</span>` : '')).join('、')}</div>`
+        : `<div style="font-size:15px;font-weight:600">${leaveT('没有人请假','Nobody is off')}</div>`)
+    + `</div>`;
+
+  // 登记表单。「是谁」只有 owner 有——同事那边这一段根本不进 DOM
+  html += `<div class="form-group">`;
+  if(isOwner){
+    const opts = (d.people || []).map(p=>`<option value="${leaveEsc(p)}"></option>`).join('');
+    html += `<label class="form-label">${leaveT('是谁请假','Who is off')}</label>`
+      + `<input class="form-input" id="leave-person" list="leave-people" autocomplete="off"`
+      + ` placeholder="${leaveT('例如 司机 Sok','e.g. Driver Sok')}">`
+      + `<datalist id="leave-people">${opts}</datalist>`
+      + `<div class="petty-hint" style="margin-top:6px">${leaveT(
+          '名字可以随便打，不限于名册里的人（司机就是这么记的）。同事自己在报账页登记的不用你管。',
+          'Any name works — not limited to the roster. Staff record their own leave in the reporting page.')}</div>`;
+  }else{
+    html += `<div class="petty-hint">${leaveT(
+      '在这里登记你自己的假，老板那边「今天」那一屏就看得到。',
+      'Record your own leave here — it shows up on the Boss\'s Today screen.')}</div>`;
+  }
+  html += `</div>`;
+
+  const t0 = d.today || '';
+  html += `<div style="display:flex;gap:10px">`
+    + `<div class="form-group" style="flex:1">`
+    + `<label class="form-label">${leaveT('从','From')}</label>`
+    + `<input class="form-input" id="leave-start" type="date" value="${leaveEsc(t0)}" onchange="leaveSyncEnd()">`
+    + `</div>`
+    + `<div class="form-group" style="flex:1">`
+    + `<label class="form-label">${leaveT('到','To')}</label>`
+    + `<input class="form-input" id="leave-end" type="date" value="${leaveEsc(t0)}">`
+    + `</div></div>`
+    + `<div class="form-group">`
+    + `<label class="form-label">${leaveT('事由（选填）','Reason (optional)')}</label>`
+    + `<input class="form-input" id="leave-reason" type="text" maxlength="60" autocomplete="off"`
+    + ` placeholder="${leaveT('例如 看医生','e.g. doctor')}">`
+    + `</div>`
+    + `<button class="btn btn-primary" onclick="leaveSubmit()">${leaveT('登记','Save')}</button>`
+    + `<div id="leave-note" style="font-size:12px;color:var(--exp);margin-top:10px;line-height:1.6"></div>`;
+
+  // 已登记的假条（同事只看得到自己的，服务端已经筛过了）
+  const rows = d.leaves || [];
+  html += `<div style="margin-top:18px;font-size:13px;color:var(--sub)">`
+    + (isOwner ? leaveT('已登记的假','Recorded leave') : leaveT('我登记的假','My leave')) + `</div>`;
+  if(!rows.length){
+    html += `<div class="petty-hint" style="margin-top:6px">${leaveT('还没有','None yet')}</div>`;
+  }else{
+    html += `<div style="margin-top:6px">` + rows.map(r=>{
+      const isToday = r.start <= t0 && t0 <= r.end;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">`
+        + `<div style="flex:1;min-width:0">`
+        + `<div style="font-weight:600">${leaveEsc(r.person)}`
+        + (isToday ? `<span style="font-weight:400;color:var(--p);font-size:12px"> · ${leaveT('今天','today')}</span>` : '')
+        + `</div>`
+        + `<div style="font-size:12px;color:var(--sub)">${leaveRangeLabel(r)}`
+        + (r.reason ? ` · ${leaveEsc(r.reason)}` : '') + `</div>`
+        + `</div>`
+        + `<button class="btn btn-outline btn-sm" onclick="leaveRemove('${leaveEsc(r.id)}')">${leaveT('销假','Remove')}</button>`
+        + `</div>`;
+    }).join('') + `</div>`;
+  }
+  el.innerHTML = html;
+}
+
+/** 改了「从」而「到」还停在更早的日期时，把「到」一起推过去——不然一按登记就被服务端挡下。 */
+function leaveSyncEnd(){
+  const s = document.getElementById('leave-start');
+  const e = document.getElementById('leave-end');
+  if(s && e && s.value && (!e.value || e.value < s.value)) e.value = s.value;
+}
+
+function showLeaveNote(msg){
+  const el = document.getElementById('leave-note');
+  if(el) el.textContent = msg || '';
+}
+
+async function leaveSubmit(){
+  if(leaveState.busy) return;
+  const d = leaveState.data || {};
+  const isOwner = d.scope === 'owner';
+  const personEl = document.getElementById('leave-person');
+  // 同事那边根本没有这个输入框，送 undefined 让服务端用钥匙推出来的名字
+  const person = isOwner && personEl ? personEl.value.trim() : undefined;
+  if(isOwner && !person){ showLeaveNote(leaveT('要填是谁请假','Enter who is off')); return; }
+  const start = (document.getElementById('leave-start') || {}).value || '';
+  const end = (document.getElementById('leave-end') || {}).value || start;
+  if(!start){ showLeaveNote(leaveT('要选开始日期','Pick a start date')); return; }
+  if(end && end < start){ showLeaveNote(leaveT('结束日期不能早于开始日期','End date is before the start date')); return; }
+  const reason = ((document.getElementById('leave-reason') || {}).value || '').trim();
+
+  leaveState.busy = true;
+  showLeaveNote(leaveT('正在登记…','Saving…'));
+  try{
+    const r = await leaveCall('leaveAdd', { person, start, end, reason });
+    if(!r.ok){ showLeaveNote(r.body.message || leaveT(`登记失败（${r.httpStatus}）`, `Failed (${r.httpStatus})`)); return; }
+    toast(leaveT(`已登记：${r.body.entry.person}`, `Recorded: ${r.body.entry.person}`));
+    await refreshLeave();
+  }catch(e){
+    showLeaveNote(leaveT('现在连不上，这一条没有记进去','Offline — nothing was recorded'));
+  }finally{
+    leaveState.busy = false;
+  }
+}
+
+async function leaveRemove(id){
+  if(leaveState.busy) return;
+  const row = ((leaveState.data || {}).leaves || []).find(x=>x.id === id);
+  if(!row) return;
+  if(!confirm(leaveT(`销掉这条假？\n${row.person} ${leaveRangeLabel(row)}`,
+                     `Remove this leave?\n${row.person} ${leaveRangeLabel(row)}`))) return;
+  leaveState.busy = true;
+  try{
+    const r = await leaveCall('leaveDelete', { id });
+    if(!r.ok){ toast(r.body.message || leaveT('销假失败','Failed')); return; }
+    toast(leaveT('已销假','Removed'));
+    await refreshLeave();
+  }catch(e){
+    toast(leaveT('现在连不上，等有网再试','Offline — try again later'));
+  }finally{
+    leaveState.busy = false;
   }
 }
 
@@ -7680,6 +7919,8 @@ function staffApplyLang(){
   syncDateHint();
   // 标题（🧾 Seryi ／ 👔 老板账）和老板账那块说明也是脚本画的，同上
   if(staffIdentity) staffSyncMode();
+  // 请假弹窗的内容也是脚本画的（renderLeaveBody 里用 leaveT 翻），开着的时候要重画
+  if(document.getElementById('modal-leave')?.classList.contains('open')) renderLeaveBody();
 }
 function staffToggleLang(){
   staffLang = staffLang === 'en' ? 'zh' : 'en';

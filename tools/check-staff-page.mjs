@@ -124,6 +124,8 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   // 就地改：测试把 editFails 设成 true 就能制造「账本改不成」，用来验本机不会偷偷改掉
   const edit = { fails: false };
   const aiProxyCalls = [];   // 拍收据时打去 /ai-proxy 的请求
+  // 请假：测试可以改 leaveFake.leaves 摆布服务端手上有哪几条
+  const leaveFake = { today: new Date().toISOString().slice(0, 10), leaves: [] };
   let mode = offline ? 'offline' : 'online';
   let nextNo = 7;
   await ctx.route('**/*', async route => {
@@ -182,6 +184,26 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
         body: JSON.stringify({ status:'ok', record:{ id:req.recordId, person, amountUsd:req.amount } }) });
     }
+    // 请假：服务端按钥匙决定 scope，同事拿到的永远是 'staff'（而且没有 people 名单）
+    if (req.action === 'leaveList')
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'ok', scope:'staff', today: leaveFake.today,
+          leaves: leaveFake.leaves, todayOff: leaveFake.leaves.filter(
+            r => r.start <= leaveFake.today && leaveFake.today <= r.end) }) });
+    if (req.action === 'leaveAdd') {
+      // 真服务端一律用钥匙推出来的名字。假的照做——这样「同事送了别人的名字」
+      // 会在断言里现形成「记的还是 Seryi」，跟线上行为一致。
+      const entry = { id:'lv_fake1', person:'Seryi', start:req.start, end:req.end,
+                      reason: req.reason || null };
+      leaveFake.leaves.push(entry);
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'ok', entry, leaves: leaveFake.leaves }) });
+    }
+    if (req.action === 'leaveDelete') {
+      leaveFake.leaves = leaveFake.leaves.filter(r => r.id !== req.id);
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'ok', leaves: leaveFake.leaves }) });
+    }
     // 认不得的 action 一律拒绝。别把它当成「新增」——真服务端不会那样做，
     // 而且会让「送出了几笔」这类断言被别的请求悄悄污染（踩过：同事版误调 ledger，
     // 假服务端当成新增，单号就多跳了一号）。
@@ -204,7 +226,7 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   const dialogs = [];
   page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
   // book 交出去：测「从公司账本找回记录」时要能摆布服务端手上有哪几笔
-  return { ctx, page, posted, errs, book, dialogs, petty, edit, aiProxyCalls,
+  return { ctx, page, posted, errs, book, dialogs, petty, edit, aiProxyCalls, leaveFake,
            setMode: m => { mode = m; } };
 }
 
@@ -288,13 +310,15 @@ if (want()) {
   // 云同步/账户切换按钮留在 DOM 里（共用脚本会读），但必须看不见、点不到
   ok('云同步图标看不见', !(await page.locator('#hdr-cloud').isVisible()));
   ok('账户切换按钮看不见', !(await page.locator('#hdr-acc-pill').isVisible()));
-  // 底部只有「明细」「老板账」「库存」三个入口，而老板账要有口令才看得见——
-  // 没口令的同事看到的是明细＋库存两个按钮。
+  // 底部只有「明细」「请假」「老板账」「库存」四个入口，而老板账要有口令才看得见——
+  // 没口令的同事看到的是明细＋请假＋库存三个按钮。
   // 库存是 2026-08-10 从独立的 inventory/index.html 并进来的第五个分页：老板与同事在
   // 服务端的库存权限相同，所以生成同事版时**刻意保留**（概览/统计/设置那三个才删）。
-  // 这条守的是「除了这三个之外没有别的入口漏进来」，不是「必须是 2 个」。
-  ok('底部只有明细/老板账/库存三个入口', (await page.locator('.nav-btn').count()) === 3,
+  // 请假是 2026-09-02 加的（同事自己登记，老板 App「今天」那屏会显示）。
+  // 这条守的是「除了这四个之外没有别的入口漏进来」，不是「必须是 3 个」。
+  ok('底部只有明细/请假/老板账/库存四个入口', (await page.locator('.nav-btn').count()) === 4,
      await page.locator('.nav-btn').count());
+  ok('请假入口在（同事自己登记）', await page.locator('#nav-leave').isVisible());
   ok('没填口令时看不到老板账入口', !(await page.locator('#nav-boss').isVisible()));
   ok('库存入口在（同事也要能查库存）', await page.locator('#nav-inventory').isVisible());
   ok('概览/统计/设置三个入口一个都没有',
@@ -1733,6 +1757,96 @@ if (want()) {
   ok('金额照常送到（没把整笔弄坏）', sent?.items?.[0]?.amount === 3.3, sent?.items?.[0]?.amount);
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
+}
+
+// ---------- 【26】请假登记：同事只管自己的，「是谁」那一栏不该进 DOM ----------
+// 2026-09-02 加。这一栏的两个用途天生冲突——同事只能替自己请假，而 YANG 要能替
+// 司机代录。两边共用同一段代码，差别只有「是谁请假」那个输入框画不画。
+// **必须带老板 App 的对照组**：只断言「同事那边没有」的话，代录功能整个坏掉
+// （谁那边都不画）也会显示通过，而司机的假就再也没人录得进去。
+console.log('\n【26】请假：同事替自己登记，代录那一栏只有老板 App 有');
+if (want()) {
+  const h = await newPage();
+  const { page, posted, errs } = h;
+  await signIn(h);
+
+  ok('底部导航有请假入口', await page.locator('#nav-leave').count() === 1);
+  await page.click('#nav-leave');
+  await until(() => page.evaluate(() => document.getElementById('modal-leave')?.classList.contains('open')),
+    { what: '请假弹窗打开' });
+  await until(() => page.evaluate(() => !!document.getElementById('leave-start')), { what: '表单画好' });
+
+  ok('★「是谁请假」那一栏根本不在 DOM 里（不是藏起来）',
+     await page.locator('#leave-person').count() === 0);
+  ok('也没有可选人名的下拉', await page.locator('#leave-people').count() === 0);
+  ok('日期预设成今天', await page.inputValue('#leave-start') === h.leaveFake.today,
+     await page.inputValue('#leave-start'));
+
+  const n0 = posted.filter(x => x.action === 'leaveAdd').length;
+  await page.fill('#leave-reason', '看医生');
+  await page.click('button[onclick="leaveSubmit()"]');
+  await until(() => posted.filter(x => x.action === 'leaveAdd').length > n0, { what: '假条送出去' });
+  const sent = posted.filter(x => x.action === 'leaveAdd').pop();
+  ok('★同事送出去的请求里没有 person（名字由钥匙决定）', sent.person === undefined, sent);
+  ok('日期与事由照送', sent.start === h.leaveFake.today && sent.reason === '看医生', sent);
+
+  await until(() => page.locator('#leave-body').innerText().then(t => /Seryi/.test(t)),
+    { what: '登记完列表里出现自己那条' });
+  const txt = await page.locator('#leave-body').innerText();
+  ok('登记完列表里看得到自己那条', /Seryi/.test(txt) && /看医生/.test(txt), txt.slice(0, 200));
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【26b】对照组：老板 App 那边代录那一栏必须在 ----------
+console.log('\n【26b】对照组：老板 App 里代录「是谁请假」那一栏必须在（司机就靠它）');
+if (want()) {
+  const ctx = await browser.newContext();
+  await ctx.addInitScript(() => {
+    localStorage.setItem('siteLangUser', 'zh');
+    localStorage.setItem('expenseTracker_companyToken', 'boss-key');
+  });
+  const posted = [];
+  await ctx.route('**/*', async route => {
+    const u = route.request().url();
+    if (u.startsWith(`http://localhost:${PORT}`)) return route.continue();
+    if (!u.startsWith(BUTLER)) return route.abort('failed');
+    const h2 = { 'Access-Control-Allow-Origin': '*' };
+    if (route.request().method() === 'GET')
+      return route.fulfill({ status:200, contentType:'application/json', headers:h2,
+        body: JSON.stringify({ categories:['Store'], plateCategories:[], mealCategories:[], people:[] }) });
+    const req = JSON.parse(route.request().postData() || '{}');
+    posted.push(req);
+    if (req.action === 'leaveList')
+      return route.fulfill({ status:200, contentType:'application/json', headers:h2,
+        body: JSON.stringify({ status:'ok', scope:'owner', today:'2026-09-02',
+          people:['Kuang','Seryi','司机 Sok'], leaves:[], todayOff:[] }) });
+    if (req.action === 'leaveAdd')
+      return route.fulfill({ status:200, contentType:'application/json', headers:h2,
+        body: JSON.stringify({ status:'ok',
+          entry:{ id:'lv_x', person:req.person, start:req.start, end:req.end, reason:req.reason || null } }) });
+    return route.fulfill({ status:200, contentType:'application/json', headers:h2,
+      body: JSON.stringify({ status:'ok' }) });
+  });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await page.goto(APP, { waitUntil:'domcontentloaded' });
+  await page.evaluate(() => openLeaveModal());
+  await until(() => page.evaluate(() => !!document.getElementById('leave-start')), { what: '老板 App 的请假表单画好' });
+
+  ok('★老板 App 里「是谁请假」那一栏在', await page.locator('#leave-person').count() === 1);
+  ok('★带上以前代录过的名字，省得重打', 
+     (await page.locator('#leave-people option').allTextContents()).length >= 0
+     && await page.evaluate(() => [...document.querySelectorAll('#leave-people option')].map(o => o.value).includes('司机 Sok')));
+
+  await page.fill('#leave-person', '司机 Sok');
+  await page.click('button[onclick="leaveSubmit()"]');
+  await until(() => posted.filter(x => x.action === 'leaveAdd').length > 0, { what: '代录送出去' });
+  const sent = posted.filter(x => x.action === 'leaveAdd').pop();
+  ok('★代录时名字真的送出去了', sent.person === '司机 Sok', sent);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await ctx.close();
 }
 
 await browser.close();

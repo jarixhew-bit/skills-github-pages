@@ -117,10 +117,13 @@ def build(src: str) -> str:
                      '  <button class="nav-btn" id="nav-transactions" onclick="staffGoCompany()">\n'
                      '    <div class="nav-icon">📋</div>明细\n'
                      '  </button>\n'
+                     '  <button class="nav-btn" id="nav-leave" onclick="openLeaveModal()">\n'
+                     '    <div class="nav-icon">🏖</div><span data-en="Leave">请假</span>\n'
+                     '  </button>\n'
                      '  <button class="nav-btn" id="nav-boss" style="display:none" onclick="staffGoBoss()">\n'
                      '    <div class="nav-icon">👔</div><span data-en="Boss">老板账</span>\n'
                      '  </button>',
-                     "底部导航加老板账入口")
+                     "底部导航加老板账入口＋请假入口")
 
     # 底部导航只留「明细」（「行程」是老板专用快捷入口，同事跟老板行程无关，
     # 2026-08-27 加按钮时一起排除，见 CLAUDE.md 跟记账 app 的连接那节）
@@ -1058,6 +1061,8 @@ function staffApplyLang(){
   syncDateHint();
   // 标题（🧾 Seryi ／ 👔 老板账）和老板账那块说明也是脚本画的，同上
   if(staffIdentity) staffSyncMode();
+  // 请假弹窗的内容也是脚本画的（renderLeaveBody 里用 leaveT 翻），开着的时候要重画
+  if(document.getElementById('modal-leave')?.classList.contains('open')) renderLeaveBody();
 }
 function staffToggleLang(){
   staffLang = staffLang === 'en' ? 'zh' : 'en';
