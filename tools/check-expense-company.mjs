@@ -1719,6 +1719,91 @@ console.log('\n【21】同事投递箱：把同事记的账收进来');
   await fetchNow(); await page.waitForTimeout(300);
   ok('没登录时根本不去读投递箱',
      (await page.evaluate(() => window.__box.readFrom)) === null);
+
+  // ---- 同事把自己那笔删了，这边也要跟着删（2026-09-01 用户要求）----
+  // 在这之前删除只删同事手机上那条，老板账本里那条一直留着：
+  // 「刚刚让他们删了记录还在」就是这个。
+  await page.evaluate(() => { currentUser = { uid:'boss' }; window.__box.docs = []; });
+  await seed('e1', { srcId:'k1', date:'2026-08-10', amount:8.80, type:'expense',
+                     categoryId:'cat_food', description:'替老板买的水' }, 'Kuang');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('先收进来一笔', await page.evaluate(() => !!data.transactions.find(t => t.id === 'ix_k1')));
+
+  await page.evaluate(() => { window.__box.docs = []; });
+  await seed('e1del', { op:'delete', srcId:'k1' }, 'Kuang');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('同事删了，这边也删掉了',
+     (await page.evaluate(() => data.transactions.some(t => t.id === 'ix_k1'))) === false);
+  ok('删除请求也从箱子里清掉',
+     (await page.evaluate(() => window.__box.deleted)).includes('e1del'));
+  ok('落了墓碑（别的设备同步时也会删）',
+     await page.evaluate(() => (data.deletedTxIds || []).some(d => d.id === 'ix_k1')));
+
+  // 同一批里「加」和「删」一起来：删的那条不管排在前排在后，结果都必须是删掉。
+  // 没有先加后删这个顺序的话，删的先跑、加的后跑，那笔会当场复活——
+  // 而这是最难发现的一种：箱子清空了、账却还在。
+  await page.evaluate(() => { window.__box.docs = []; });
+  await seed('e2del', { op:'delete', srcId:'k2' }, 'Kuang');            // 删的先放进箱子
+  await seed('e2', { srcId:'k2', date:'2026-08-11', amount:3.30, type:'expense',
+                     categoryId:'cat_food', description:'同一批里加又删' }, 'Kuang');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('同一批里加又删：最后是删掉，不会复活',
+     (await page.evaluate(() => data.transactions.some(t => t.id === 'ix_k2'))) === false);
+
+  // 删除请求没有 amount/date——不能被「坏数据」那道闸当垃圾丢掉
+  ok('删除请求不会被当成坏数据丢掉（上面两条已证明它真的生效了）',
+     (await page.evaluate(() => window.__box.deleted)).includes('e2del'));
+
+  // ---- 该付同事多少：投递箱这些是他们垫的钱 ----
+  await page.evaluate(() => {
+    // 重来一份干净的：两个人、三笔垫付，外加一笔老板自己记的（不该算进去）
+    data.transactions = [
+      { id:'ix_p1', accountId:'acc_boss', amount:10, type:'expense', categoryId:'cat_food',
+        date:'2026-08-01', fromStaff:{ by:'Seryi', at:1 } },
+      { id:'ix_p2', accountId:'acc_boss', amount:5.5, type:'expense', categoryId:'cat_food',
+        date:'2026-08-02', fromStaff:{ by:'Seryi', at:1 } },
+      { id:'ix_p3', accountId:'acc_boss', amount:7, type:'expense', categoryId:'cat_food',
+        date:'2026-08-03', fromStaff:{ by:'Kuang', at:1 } },
+      // 老板给的现金＝钱进同事口袋，不是垫付，不能算进「该付他多少」
+      { id:'ix_p4', accountId:'acc_boss', amount:50, type:'income', categoryId:'cat_other_inc',
+        date:'2026-08-04', fromStaff:{ by:'Seryi', at:1 } },
+      // 老板自己记的那笔跟投递箱无关
+      { id:'own1', accountId:'acc_boss', amount:99, type:'expense', categoryId:'cat_food',
+        date:'2026-08-05' },
+    ];
+    renderInboxOwed();
+  });
+  let owed = await page.evaluate(() => inboxOwedByPerson());
+  ok('按人分开算', owed.length === 2, owed);
+  ok('Seryi 垫了 15.50（两笔）',
+     owed[0].who === 'Seryi' && owed[0].total === 15.5 && owed[0].count === 2, owed[0]);
+  ok('Kuang 垫了 7.00', owed[1].who === 'Kuang' && owed[1].total === 7, owed[1]);
+  ok('老板自己记的那笔不算进去',
+     owed.reduce((n, r) => n + r.total, 0) === 22.5, owed);
+  const owedHtml = await page.innerHTML('#inbox-owed');
+  ok('画出来了，写着人名和金额',
+     owedHtml.includes('Seryi') && owedHtml.includes('15.50'), owedHtml.slice(0, 300));
+
+  // 「已付」只盖时间戳：金额一分不动、也不会新增一笔支出（那会把同一笔钱数两次）
+  // 直接把 confirm 打桩成「按了确定」。不用 Playwright 的 dialog 事件——
+  // 这一页别处已经挂过 dialog 处理，两个都去 accept 会互相打架。
+  await page.evaluate(() => { window.confirm = () => true; });
+  const beforeN = await page.evaluate(() => data.transactions.length);
+  const beforeSum = await page.evaluate(() =>
+    data.transactions.filter(t=>t.type==='expense').reduce((n,t)=>n+t.amount,0));
+  await page.evaluate(() => inboxMarkPaid(0));
+  await page.waitForTimeout(200);
+  owed = await page.evaluate(() => inboxOwedByPerson());
+  ok('标了已付之后 Seryi 不再出现', !owed.some(r => r.who === 'Seryi'), owed);
+  ok('Kuang 的 7.00 不受影响', owed.length === 1 && owed[0].total === 7, owed);
+  ok('没有新增任何记录', await page.evaluate(() => data.transactions.length) === beforeN);
+  ok('支出总额一分没变（不是又记一笔）',
+     await page.evaluate(() =>
+       data.transactions.filter(t=>t.type==='expense').reduce((n,t)=>n+t.amount,0)) === beforeSum);
+  ok('那两笔身上盖了 paidAt',
+     await page.evaluate(() =>
+       ['ix_p1','ix_p2'].every(id => !!data.transactions.find(t=>t.id===id).fromStaff.paidAt)));
+
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
 }

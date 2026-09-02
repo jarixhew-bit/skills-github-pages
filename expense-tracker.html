@@ -739,6 +739,10 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       <button class="btn btn-outline btn-sm" onclick="fetchInbox({loud:true})">📥 立刻收件</button>
     </div>
     <div id="inbox-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+    <!-- 该付同事多少（2026-09-01 用户要求）：投递箱这些账都是同事**自己先垫的钱**，
+         收进来只是把「钱花掉了」记进账本，并没有回答「我欠他多少还没还」。
+         算法就一句：他记的支出总额 − 已经标过「付清」的那些。 -->
+    <div id="inbox-owed" style="margin-top:14px"></div>
   </div>
   <!-- 「老板 App」这一组（2026-08-27 加，2026-08-27 改成卡片＋归组）：
        两件事是同一件事的两面——行程管理是去改老板看到的内容，访问码是把钥匙给老板，
@@ -3188,6 +3192,10 @@ async function deleteTx(){
   // 先删公司账本那条，删不成就整个中止——不留「本机没了、公司账本还在」的状态
   if(!(await deleteCompanyRecord(t))) return;
   const attachmentId = t ? t.attachmentId : null;
+  // 同事版在这里把「删掉这一笔」也送进投递箱，老板那边收到就一起删
+  // （tools/build-staff-page.py 注入 onTxDeleted）。老板 App 里没有这个函数。
+  // **每一处删除都要叫它**——漏一处，那条路删掉的记录在老板那边就永远留着。
+  if(typeof onTxDeleted === 'function') onTxDeleted(t);
   tombstoneTx(state.editingTxId);
   data.transactions = data.transactions.filter(t=>t.id!==state.editingTxId);
   saveData();
@@ -3992,6 +4000,10 @@ async function deleteTxById(id){
   if(!confirmDeleteTx(t)) return;
   if(!(await deleteCompanyRecord(t))) return;
   const attachmentId = t ? t.attachmentId : null;
+  // 同事版在这里把「删掉这一笔」也送进投递箱，老板那边收到就一起删
+  // （tools/build-staff-page.py 注入 onTxDeleted）。老板 App 里没有这个函数。
+  // **每一处删除都要叫它**——漏一处，那条路删掉的记录在老板那边就永远留着。
+  if(typeof onTxDeleted === 'function') onTxDeleted(t);
   tombstoneTx(id);
   data.transactions = data.transactions.filter(t=>t.id!==id);
   saveData();
@@ -6971,17 +6983,50 @@ async function fetchInbox(opts){
 
   inboxState.error = null;
   const dead = new Set((data.deletedTxIds || []).map(d => d.id));
-  let added = 0, skipped = 0;
+  let added = 0, skipped = 0, removed = 0;
 
-  for(const doc of snap.docs){
+  // 分两轮：先收账，再处理「同事把那笔删了」。同一次拿到的这两种文档没有先后顺序，
+  // 删的那条要是先跑，等一下收账那一轮又会把它加回来（同事删过的账在老板这边复活，
+  // 正是这条路最要命的错）。反过来「先加再删」在两种顺序下结果都对。
+  // 另一种情形也接得住：删的那条落在这 50 份里、原本那笔在下一批——
+  // 删的时候会落墓碑，下一批收到原本那笔时被 dead 挡掉。
+  const isDel = (doc) => {
+    try{ const r = JSON.parse((doc.data() || {}).tx); return !!(r && r.op === 'delete'); }
+    catch(e){ return false; }
+  };
+  const ordered = [...snap.docs.filter(d => !isDel(d)), ...snap.docs.filter(isDel)];
+
+  for(const doc of ordered){
     const d = doc.data() || {};
     let raw = null;
     try{ raw = JSON.parse(d.tx); }catch(e){ raw = null; }
-    // 坏数据不留在箱子里堵着后面的（箱子是别人能写的地方，必须假设会收到垃圾）
-    if(!raw || !(Number(raw.amount) >= 0) || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.date||''))){
+    // 坏数据不留在箱子里堵着后面的（箱子是别人能写的地方，必须假设会收到垃圾）。
+    // 注意：删除请求没有 amount/date，所以先认出它（下面那段），别在这里就被当垃圾丢掉。
+    if(!raw || (raw.op !== 'delete'
+        && (!(Number(raw.amount) >= 0) || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.date||''))))){
       await inboxDrop(doc); skipped++; continue;
     }
     const id = 'ix_' + String(raw.srcId || doc.id).slice(0, 40);
+
+    // 同事把自己记的那笔删了（2026-09-01 用户要求：「一删我这边就能看到」）。
+    // 走的是同一个投递箱、同一条规则——payload 只是 tx 那个字符串里多个 op:'delete'，
+    // Firestore 规则一个字都不用改（它只校验 tx 是字符串、长度够短）。
+    if(raw.op === 'delete'){
+      const i = data.transactions.findIndex(t => t.id === id);
+      if(i >= 0){
+        const att = data.transactions[i].attachmentId;
+        data.transactions.splice(i, 1);
+        if(att) deleteAttachmentBlob(att);
+        removed++;
+      }
+      // 不管本机现在有没有那笔都要落墓碑：可能还没收到（下一批才来），
+      // 也可能别的设备上有——墓碑跟着同步走，那边也会跟着删。
+      tombstoneTx(id);
+      dead.add(id);
+      await inboxDrop(doc);
+      continue;
+    }
+
     if(dead.has(id)){ await inboxDrop(doc); skipped++; continue; }
 
     const isIncome = raw.type === 'income';
@@ -7016,13 +7061,18 @@ async function fetchInbox(opts){
     await inboxDrop(doc);
   }
 
-  if(added) saveData();
+  if(added || removed) saveData();
   inboxState.added = added;
+  inboxState.removed = removed;
   inboxState.last = Date.now();
   inboxState.running = false;
 
-  if(added){
-    toast(`收到同事记的 ${added} 笔\n已进「${(getAcc(accId)||{}).name}」`);
+  if(added || removed){
+    const parts = [];
+    if(added) parts.push(`收到同事记的 ${added} 笔\n已进「${(getAcc(accId)||{}).name}」`);
+    // 删掉的一定要说出来：账目自己少了一笔而没人告诉他，比不删还糟
+    if(removed) parts.push(`同事删掉了 ${removed} 笔，这边也一起删了`);
+    toast(parts.join('\n'));
     if(state.currentTab === 'overview') renderOverview();
     if(state.currentTab === 'transactions') renderTxList();
   } else if(loud){
@@ -7031,7 +7081,73 @@ async function fetchInbox(opts){
   renderInboxSettings();
 }
 
+/**
+ * 该付给每个同事多少。投递箱那些账是他们垫的钱——收进账本只表示「钱花掉了」，
+ * 不表示「已经还给他了」。这里把每个人还没结清的加起来。
+ *
+ * 只算支出：他们偶尔也会记一笔收入（老板给现金），那是钱进他们口袋，不是垫付。
+ * 标记付清写在那几笔上（fromStaff.paidAt），不另记一笔支出——那笔钱在账本里已经
+ * 花掉一次了，再记一次就是同一笔钱数两次（跟对账那边「不要顺手记进账户」同一个道理）。
+ */
+function inboxOwedByPerson(){
+  const map = new Map();
+  for(const t of (data.transactions || [])){
+    if(!t.fromStaff || t.type !== 'expense' || t.fromStaff.paidAt) continue;
+    const who = String(t.fromStaff.by || '同事');
+    const cur = (getAcc(t.accountId) || {}).currency || 'USD';
+    const key = who + '\u0000' + cur;
+    if(!map.has(key)) map.set(key, { who, currency: cur, total: 0, count: 0 });
+    const e = map.get(key);
+    e.total = Math.round((e.total + Number(t.amount || 0)) * 100) / 100;
+    e.count += 1;
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total);
+}
+
+// 名字是同事那边送上来的自由文本，绝不能拼进 onclick 的引号里（一个单引号就把
+// 属性撑破，后面那段照样会被当成代码跑）。所以按钮只带**行号**，名字留在这个数组里。
+let inboxOwedRows = [];
+
+function renderInboxOwed(){
+  const el = document.getElementById('inbox-owed');
+  if(!el) return;
+  inboxOwedRows = inboxOwedByPerson();
+  if(!inboxOwedRows.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="sec-hdr" style="margin-bottom:8px">
+      <div class="sec-title">该付同事（他们垫的）</div>
+    </div>
+    ${inboxOwedRows.map((r, i) => `<div class="petty-row">
+      <div><div class="petty-name">🙋 ${ledEsc(r.who)}</div>
+        <div class="petty-meta">${r.count} 笔</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="petty-bal">${fmt(r.total, r.currency)}</div>
+        <button class="btn btn-outline btn-sm" onclick="inboxMarkPaid(${i})">已付</button>
+      </div></div>`).join('')}
+    <div class="led-sub" style="margin-top:6px">按「已付」只是记下你还过钱了，不会再记一笔支出——那笔钱在账本里已经花掉一次了。</div>`;
+}
+
+/** 把某个人还没结清的那几笔标成已付。不动金额、不新增记录，只盖一个时间戳。 */
+function inboxMarkPaid(i){
+  const row = inboxOwedRows[i];
+  if(!row) return;
+  const who = row.who, currency = row.currency;
+  const hit = (data.transactions || []).filter(t =>
+    t.fromStaff && t.type === 'expense' && !t.fromStaff.paidAt
+    && String(t.fromStaff.by || '同事') === who
+    && ((getAcc(t.accountId) || {}).currency || 'USD') === currency);
+  if(!hit.length) return;
+  const total = Math.round(hit.reduce((n, t) => n + Number(t.amount || 0), 0) * 100) / 100;
+  if(!confirm(`已经把 ${fmt(total, currency)} 还给${who}了？\n（${hit.length} 笔会标成已付，账目金额不动）`)) return;
+  const at = Date.now();
+  hit.forEach(t => { t.fromStaff = Object.assign({}, t.fromStaff, { paidAt: at }); });
+  saveData();
+  renderInboxOwed();
+  toast(`已记下：${who} 那 ${hit.length} 笔付清了`);
+}
+
 function renderInboxSettings(){
+  renderInboxOwed();
   const sel = document.getElementById('inbox-acc-select');
   if(!sel) return;
   const cur = getInboxAccountId();
