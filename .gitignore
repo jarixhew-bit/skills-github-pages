@@ -48,3 +48,6 @@ package-lock.json
 
 # CI 抓图的暂存结果（fetch-photos.yml 写回分支用），不进 main
 .photos/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
