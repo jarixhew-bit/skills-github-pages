@@ -172,7 +172,8 @@ body:not(.lang-en) .en{display:none !important}
 .trip-items{display:none;border-top:1px solid var(--border)}
 .trip-card.expanded .trip-items{display:block}
 .trip-items-empty{padding:16px;font-size:13.5px;color:var(--sub)}
-.trip-day-hdr{padding:9px 16px 5px;font-size:12px;font-weight:700;color:var(--sub);background:#F8FAFC}
+.trip-day-hdr{padding:9px 16px 5px;font-size:12px;font-weight:700;color:var(--sub);background:#F8FAFC;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
 
 .past-toggle{text-align:center;padding:12px;color:var(--sub);font-size:13.5px;
   font-weight:600;cursor:pointer}
@@ -232,6 +233,42 @@ body:not(.lang-en) .en{display:none !important}
 .overlay-foot{flex:none;padding:12px 16px;background:#fff}
 .overlay-foot button{width:100%;padding:13px;border:none;border-radius:10px;
   background:var(--p);color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* ===== 收藏餐厅 ===== */
+.rest-region-hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:4px 2px 8px;font-size:13px;font-weight:700;color:var(--sub)}
+.rest-list{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  overflow:hidden;margin-bottom:16px}
+.rest-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.rest-row:last-child{border-bottom:none}
+/* 店名可能很长（「快乐小羊火锅餐厅（半岛湾店）」），允许换行——别再犯请假卡那个
+   「拿定长标签的类去装长内容、直接顶出框外」的错（2026-09-02）。 */
+.rest-body{flex:1;min-width:0}
+.rest-name{font-size:14.5px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+.rest-meta{margin-top:3px;font-size:12.5px;color:var(--sub);line-height:1.5;overflow-wrap:anywhere}
+.rest-acts{flex:none;display:flex;flex-direction:column;gap:6px;align-items:stretch}
+
+/* ===== 分享（一键发去 WhatsApp） ===== */
+.share-btn{flex:none;background:var(--p2);border:none;color:var(--p);border-radius:999px;
+  padding:6px 10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.share-btn:active{opacity:.65}
+.share-box{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:320;display:none;
+  align-items:flex-end;justify-content:center}
+.share-box.open{display:flex}
+.share-panel{background:var(--card);width:100%;max-width:560px;border-radius:16px 16px 0 0;
+  padding:16px;box-sizing:border-box;max-height:88vh;display:flex;flex-direction:column;gap:10px}
+.share-hd{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.share-title{font-size:15px;font-weight:700}
+.share-hint{font-size:12.5px;color:var(--sub);line-height:1.5}
+#share-text{width:100%;box-sizing:border-box;flex:1;min-height:170px;resize:vertical;
+  font-family:inherit;font-size:13.5px;line-height:1.6;padding:10px;border-radius:10px;
+  border:1px solid var(--border);background:var(--bg);color:var(--text)}
+.share-acts{display:flex;gap:8px}
+.share-acts button{flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;
+  font-weight:700;cursor:pointer;font-family:inherit}
+.share-wa{background:#25D366;color:#fff}
+.share-copy{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+.share-msg{font-size:12.5px;color:var(--ok);min-height:16px}
 
 /* ===== 库存 ===== */
 .inv-list{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
@@ -435,6 +472,8 @@ body:not(.lang-en) .en{display:none !important}
   <div class="tab" id="tab-bills"></div>
   <!-- 库存 -->
   <div class="tab" id="tab-inventory"></div>
+  <!-- 收藏餐厅 -->
+  <div class="tab" id="tab-restaurants"></div>
   <!-- 管理：内容完全由 JS 在 role===admin 时才注入，viewer 身份下这个容器永远是空的 -->
   <div class="tab" id="tab-admin"></div>
 </div>
@@ -456,6 +495,10 @@ body:not(.lang-en) .en{display:none !important}
   <button class="nav-btn" data-tab="inventory" onclick="switchTab('inventory')">
     <span class="nav-icon-wrap"><span class="nav-icon">📦</span><span class="nav-dot" aria-hidden="true"></span></span>
     <span class="cn">库存</span><span class="en">Stock</span>
+  </button>
+  <button class="nav-btn" data-tab="restaurants" onclick="switchTab('restaurants')">
+    <span class="nav-icon-wrap"><span class="nav-icon">🍜</span><span class="nav-dot" aria-hidden="true"></span></span>
+    <span class="cn">餐厅</span><span class="en">Food</span>
   </button>
   <!-- 管理入口按钮由 JS 在 role===admin 时才追加进来 -->
 </div>
@@ -488,6 +531,25 @@ body:not(.lang-en) .en{display:none !important}
   </div>
 </div>
 
+<!-- 分享弹层：先给人看一眼要发出去的文字（还能改），再决定发不发。
+     刻意不做成「点了直接跳 WhatsApp」——发出去的东西收不回来。 -->
+<div class="share-box" id="shareBox">
+  <div class="share-panel">
+    <div class="share-hd">
+      <div class="share-title" id="share-title"></div>
+      <button class="overlay-close" style="background:var(--p2);color:var(--p)"
+        onclick="closeShare()" aria-label="关闭 Close">✕</button>
+    </div>
+    <div class="share-hint" id="share-hint"></div>
+    <textarea id="share-text" spellcheck="false"></textarea>
+    <div class="share-acts">
+      <button type="button" class="share-wa" id="share-wa-btn" onclick="shareToWhatsApp()"></button>
+      <button type="button" class="share-copy" id="share-copy-btn" onclick="shareCopy()"></button>
+    </div>
+    <div class="share-msg" id="share-msg"></div>
+  </div>
+</div>
+
 <script>
 /* =========================================================================
  * 老板专用 App —— 只读行程/账单/库存，YANG 用管理钥匙可维护数据。
@@ -501,7 +563,7 @@ const TOKEN_KEY = 'bossApp_token';
 // 已经存在那边了，这里只借用不复制——记账 app 改钥匙这边自动跟着改。
 const EXPENSE_TOKEN_KEY = 'expenseTracker_companyToken';
 const FEED_CACHE_KEY = 'bossApp_feedCache';   // {fetchedAt, data}
-const SEEN_KEY = 'bossApp_seen';              // {trips,bills,inventory}
+const SEEN_KEY = 'bossApp_seen';              // {trips,bills,inventory,restaurants}
 const MONTHS_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 /* ---------- 本地存储：全部包 try/catch（无痕模式会 throw） ---------- */
@@ -601,6 +663,9 @@ function bl(zh, en){
 }
 /** 数据里 {zh,en} 对象版本的 bl()。 */
 function blObj(o){ return bl(o && o.zh, o && o.en); }
+/** {zh,en} 对象的单语版本（分享出去的纯文字用——WhatsApp 里没有 CSS 切语言这回事，
+ *  只能按当前界面语言挑一个）。 */
+function pickObj(o){ return pick(o && o.zh, o && o.en); }
 
 /* ============================= 日期工具 ============================= */
 function pad2(n){ return String(n).padStart(2,'0'); }
@@ -768,11 +833,13 @@ function flightShownTime(sched, act, est){
   }
   return sched || null;
 }
-function flightTimePartHtml(sched, act, est){
+/** 上面那三种情况的**判定**本身，抽出来给「屏幕上怎么画」和「分享出去怎么写」共用。
+ *  两边各写一份的话，迟早出现「App 上写着预计晚 22 分、发给老板的文字却说准点」这种
+ *  自相矛盾——同一件事只能有一处说了算。
+ *  回 {schedHM, valueHM, isActual, diffMin}；valueHM 为 null = 只显示计划时间。 */
+function flightTimeParts(sched, act, est){
   const schedHM = extractHM(sched);
   const schedTs = parseOffsetTs(sched);
-  const plain = schedHM || `<span class="flight-time-unknown">${bl('时间未知','time unknown')}</span>`;
-
   let value = act, isActual = true;
   if(!value){
     value = est; isActual = false;
@@ -782,15 +849,21 @@ function flightTimePartHtml(sched, act, est){
       else if(schedTs - Date.now() > FLIGHT_ETA_HORIZON_MS) value = null;
     }
   }
-  if(!value) return plain;
-
-  const valueHM = extractHM(value);
-  if(!valueHM || valueHM === schedHM) return plain;
+  const valueHM = value ? extractHM(value) : null;
+  if(!valueHM || valueHM === schedHM) return { schedHM, valueHM:null, isActual, diffMin:null };
   const valueTs = parseOffsetTs(value);
+  const diffMin = (schedTs != null && valueTs != null) ? Math.round((valueTs - schedTs) / 60000) : null;
+  return { schedHM, valueHM, isActual, diffMin };
+}
+function flightTimePartHtml(sched, act, est){
+  const parts = flightTimeParts(sched, act, est);
+  const schedHM = parts.schedHM;
+  const plain = schedHM || `<span class="flight-time-unknown">${bl('时间未知','time unknown')}</span>`;
+  if(!parts.valueHM) return plain;
+  const valueHM = parts.valueHM, isActual = parts.isActual, diffMin = parts.diffMin;
 
   let diffHtml = '';
-  if(schedTs != null && valueTs != null){
-    const diffMin = Math.round((valueTs - schedTs) / 60000);
+  if(diffMin != null){
     if(diffMin > 0){
       diffHtml = isActual
         ? `<span class="flight-delay-tag">${bl(`延误 ${diffMin} 分`, `${diffMin} min late`)}</span>`
@@ -804,6 +877,22 @@ function flightTimePartHtml(sched, act, est){
   const label = isActual ? bl('实际','Actual') : bl('预计','Est.');
   const cls = isActual ? 'flight-time-actual' : 'flight-time-eta';
   return `<span class="flight-time-sched">${schedHM}</span> → <span class="${cls}">${label} ${valueHM}</span>${diffHtml}`;
+}
+/** 同一份判定的纯文字版（分享给老板的文字里用）。 */
+function flightTimePartText(sched, act, est){
+  const p = flightTimeParts(sched, act, est);
+  const schedHM = p.schedHM || pick('时间未知','time unknown');
+  if(!p.valueHM) return schedHM;
+  const label = p.isActual ? pick('实际','actual') : pick('预计','est.');
+  let diff = '';
+  if(p.diffMin > 0){
+    diff = p.isActual ? pick(`，延误 ${p.diffMin} 分`, `, ${p.diffMin} min late`)
+                      : pick(`，预计晚 ${p.diffMin} 分`, `, est. ${p.diffMin} min late`);
+  }else if(p.diffMin < 0){
+    diff = p.isActual ? pick(`，提前 ${-p.diffMin} 分`, `, ${-p.diffMin} min early`)
+                      : pick(`，预计早 ${-p.diffMin} 分`, `, est. ${-p.diffMin} min early`);
+  }
+  return `${schedHM}（${label} ${p.valueHM}${diff}）`;
 }
 function flightStatusMeta(status){
   const s = String(status || '').toLowerCase();
@@ -988,7 +1077,7 @@ async function gateSubmit(){
 }
 
 /* ============================= 红点 / 已读 ============================= */
-const DOT_KEYS = ['trips','bills','inventory'];
+const DOT_KEYS = ['trips','bills','inventory','restaurants'];
 function markSeen(tab){
   if(!feedData || DOT_KEYS.indexOf(tab) === -1) return;
   const seen = loadSeen();
@@ -1074,6 +1163,7 @@ function renderAll(){
   renderTrips();
   renderBills();
   renderInventory();
+  renderRestaurants();
   if(role === 'admin') renderAdmin();
 }
 
@@ -1155,7 +1245,7 @@ function renderToday(){
   const todayItems = all.filter(it => it.date === todayIso);
   const tomorrowItems = all.filter(it => it.date === tomorrowIso);
 
-  let html = `<div class="sec-hdr"><span class="sec-title">${bl('今天','Today')}</span></div>`;
+  let html = `<div class="sec-hdr"><span class="sec-title">${bl('今天','Today')}</span>${shareDayBtnHtml(todayIso)}</div>`;
   const todayBody = todaySectionBodyHtml(todayIso, todayItems);
   if(todayBody !== null){
     html += todayBody;
@@ -1174,7 +1264,7 @@ function renderToday(){
   // 明天：有条目、或者明天也在某趟行程区间内，才显示这一段——都没有就整段不出现（跟原行为一致）。
   const tomorrowBody = todaySectionBodyHtml(tomorrowIso, tomorrowItems, true);
   if(tomorrowBody !== null){
-    html += `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('明天','Tomorrow')}</span></div>`;
+    html += `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('明天','Tomorrow')}</span>${shareDayBtnHtml(tomorrowIso)}</div>`;
     html += tomorrowBody;
   }
   html += dentalCardHtml();
@@ -1358,7 +1448,7 @@ function tripItemsHtml(trip){
       lastDate = it.date;
       const dw = fmtDateWeekdayBoth(it.date);
       const label = (dw.zh || dw.en) ? bl(dw.zh, dw.en) : bl('日期待定','Date TBD');
-      html += `<div class="trip-day-hdr">${label}</div>`;
+      html += `<div class="trip-day-hdr"><span>${label}</span>${ it.date ? shareDayBtnHtml(it.date) : '' }</div>`;
     }
     html += itemRowHtml(it);
     const next = items[i + 1];
@@ -1790,6 +1880,206 @@ function renderInventory(){
     });
   }
   pane.innerHTML = html;
+}
+
+
+/* ============================= 收藏餐厅 =============================
+ * YANG 平时用 Telegram 往 butler 的 data/restaurants.json 里记，这一屏只是把同一份
+ * 端出来给老板看。**没有任何写入口**——要加店还是回 Telegram 说一句，
+ * 这个 App 的「老板只能看」不为了一份餐厅清单破例。 */
+function restRowHtml(r){
+  const metaBits = [r.region, r.category].filter(x => (x||'').trim());
+  const meta = metaBits.join(' · ');
+  return `<div class="rest-row">
+      <div class="rest-body">
+        <div class="rest-name">${escapeHtml(r.name || '')}</div>
+        ${ meta ? `<div class="rest-meta">${escapeHtml(meta)}</div>` : '' }
+        ${ (r.note||'').trim() ? `<div class="rest-meta">${escapeHtml(r.note)}</div>` : '' }
+      </div>
+      <div class="rest-acts">
+        ${ r.mapUrl ? `<a class="item-map" href="${escapeHtml(r.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+        <button type="button" class="share-btn" onclick="shareRestaurant('${escapeHtml(r.id)}')">📤 ${bl('分享','Share')}</button>
+      </div>
+    </div>`;
+}
+/** 按地区分组，保持数据里的先后顺序（先记的排前面，跟 Telegram 那边列出来的一致）。 */
+function restGroups(){
+  const groups = [];
+  const idx = {};
+  (feedData && feedData.restaurants || []).forEach(r => {
+    const key = (r.region || '').trim() || pick('未分类地区','Unsorted');
+    if(idx[key] === undefined){ idx[key] = groups.length; groups.push({ region: key, items: [] }); }
+    groups[idx[key]].items.push(r);
+  });
+  return groups;
+}
+function renderRestaurants(){
+  const pane = document.getElementById('tab-restaurants');
+  if(!feedData){ pane.innerHTML = ''; return; }
+  const groups = restGroups();
+  if(!groups.length){
+    pane.innerHTML = `<div class="empty-card"><div class="empty-icon">🍜</div>
+      <div>${bl('还没有收藏的餐厅','No saved restaurants yet')}</div></div>`;
+    return;
+  }
+  pane.innerHTML = groups.map(g => `
+      <div class="rest-region-hdr">
+        <span>${escapeHtml(g.region)}　${bl(g.items.length + ' 家', g.items.length + ' places')}</span>
+        <button type="button" class="share-btn"
+          onclick="shareRestRegion('${encodeURIComponent(g.region)}')">📤 ${bl('分享这一区','Share these')}</button>
+      </div>
+      <div class="rest-list">${g.items.map(restRowHtml).join('')}</div>`).join('');
+}
+
+/* ============================= 分享（一键发去 WhatsApp） =============================
+ * 为什么要有这个：老板到现在都还没打开过 App（2026-09-03）。他不开，行程就等于没送到。
+ * 所以先给 YANG 一条「排好了直接发给他」的路——WhatsApp 是他们本来就在用的。
+ * 三条刻意的设计：
+ * 1. **先给人看一眼再发**：弹窗里是一个可以改的文本框，不是点了就跳出去。发出去收不回来。
+ * 2. **纯文字，不发链接卡片**：老板不用装任何东西、不用登录就看得懂，
+ *    地图/手册网址原样写在文字里，WhatsApp 自己会变成能点的链接。
+ * 3. **语言跟当前界面走**：WhatsApp 里没有 CSS 切语言这回事，只能挑一种发出去。 */
+function openShare(titleText, hintText, text){
+  document.getElementById('share-title').textContent = titleText;
+  document.getElementById('share-hint').textContent = hintText;
+  document.getElementById('share-text').value = text;
+  document.getElementById('share-msg').textContent = '';
+  document.getElementById('share-wa-btn').textContent = pick('📲 发到 WhatsApp','📲 Send via WhatsApp');
+  document.getElementById('share-copy-btn').textContent = pick('📋 复制文字','📋 Copy text');
+  document.getElementById('shareBox').classList.add('open');
+}
+function closeShare(){ document.getElementById('shareBox').classList.remove('open'); }
+/** 发出去的是**文本框里当下的内容**，不是生成时那一份——YANG 常常要补一句
+ *  「司机 8 点在楼下等」，改完却发出旧文字的话，这个功能就是在骗人。 */
+function shareToWhatsApp(){
+  const text = (document.getElementById('share-text').value || '').trim();
+  if(!text){ document.getElementById('share-msg').textContent = pick('没有可发送的内容','Nothing to send'); return; }
+  // wa.me 不指定号码 = 由 WhatsApp 自己弹联系人列表让他选发给谁（老板、司机、群都行）
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+}
+function shareCopy(){
+  const el = document.getElementById('share-text');
+  const msg = document.getElementById('share-msg');
+  const done = () => { msg.textContent = pick('已复制，去哪贴都行','Copied — paste it anywhere'); };
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(el.value).then(done, fallback);
+      return;
+    }
+  }catch(e){}
+  fallback();
+  // 旧版 WebView / 非 https 场景下 clipboard API 不给用，退回选中 + execCommand
+  function fallback(){
+    try{
+      el.focus(); el.setSelectionRange(0, el.value.length);
+      document.execCommand('copy');
+      done();
+    }catch(e){
+      msg.textContent = pick('复制不了，请手动长按选取','Copy failed — please select the text manually');
+    }
+  }
+}
+
+/* ---------- 当天行程 → 一段能发出去的文字 ---------- */
+function itemsForDate(dateIso){
+  const out = [];
+  (feedData && feedData.trips || []).forEach(t => (t.items || []).forEach(it => {
+    if(it && it.date === dateIso) out.push(it);
+  }));
+  out.sort((a,b) => (a.time||'').localeCompare(b.time||''));
+  return out;
+}
+/** 航班那几行。**跟屏幕上显示的完全一致**：延误/预计的判定共用 flightTimeParts()，
+ *  不另写一套——否则会出现「App 上写预计晚 22 分、发给老板的文字说准点」。 */
+function flightShareLines(it){
+  const f = it && it.flight;
+  if(!f) return [];
+  const live = f.live || null;
+  if(!live) return ['✈️ ' + (f.no || '')];
+  const zh = curLang !== 'en';
+  const from = zh ? airportLabelZh(live.from, live.from_name) : airportLabelEn(live.from, live.from_name);
+  const to = zh ? airportLabelZh(live.to, live.to_name) : airportLabelEn(live.to, live.to_name);
+  const meta = flightStatusMeta(live.status);
+  const lines = [];
+  lines.push(['✈️ ' + (f.no || ''), (from || to) ? `${from} → ${to}` : '', pick(meta.zh, meta.en)]
+    .filter(Boolean).join(' · '));
+  lines.push(pick('起飞','Dep') + ' ' + flightTimePartText(live.sched_dep, live.act_dep, live.est_dep));
+  lines.push(pick('到达','Arr') + ' ' + flightTimePartText(live.sched_arr, live.act_arr, live.est_arr));
+  const gate = [];
+  if(live.terminal) gate.push(terminalLabel(live.terminal, zh ? 'zh' : 'en'));
+  if(live.gate) gate.push(pick('登机口 ' + live.gate, 'Gate ' + live.gate));
+  if(gate.length) lines.push(gate.join(' · '));
+  return lines;
+}
+function shareDayText(dateIso){
+  const dw = fmtDateWeekdayBoth(dateIso);
+  const trip = activeTripForDate(dateIso);
+  const items = itemsForDate(dateIso);
+  const lines = [];
+  let head = '📅 ' + (pick(dw.zh, dw.en) || dateIso);
+  if(trip){
+    const total = diffDaysIso(trip.start, trip.end || trip.start) + 1;
+    const day = diffDaysIso(trip.start, dateIso) + 1;
+    const name = pickObj(trip.title) || pick('行程','Trip');
+    head += ` · ${name}（${pick(`第 ${day} 天 / 共 ${total} 天`, `Day ${day} of ${total}`)}）`;
+  }
+  lines.push(head);
+  if(!items.length){
+    lines.push('');
+    lines.push(pick('这一天还没有排具体安排。','Nothing scheduled for this day yet.'));
+  }
+  items.forEach(it => {
+    lines.push('');
+    const time = (it.time || '').trim();
+    const title = pickObj(it.title) || pick('（未命名）','(untitled)');
+    lines.push(time ? `${time}  ${title}` : title);
+    const note = pickObj(it.note);
+    if(note) lines.push(note);
+    flightShareLines(it).forEach(l => lines.push(l));
+    // 地图网址原样写出来（不缩短、不包装）——WhatsApp 会自己变成能点的链接，
+    // 这是 CLAUDE.md「提到地点就要附地图链接」在分享文字里的落地。
+    if((it.mapUrl || '').trim()) lines.push('🗺 ' + it.mapUrl.trim());
+  });
+  if(trip && (trip.guideUrl || '').trim()){
+    lines.push('');
+    lines.push(pick('📖 完整手册：','📖 Full guide: ') + trip.guideUrl.trim());
+  }
+  return lines.join('\n');
+}
+function shareDay(dateIso){
+  const dw = fmtDateWeekdayBoth(dateIso);
+  openShare(
+    pick('分享行程','Share itinerary'),
+    pick(`${dw.zh} 的安排。可以先改一改再发。`, `Plan for ${dw.en}. You can edit it before sending.`),
+    shareDayText(dateIso));
+}
+function shareDayBtnHtml(dateIso){
+  return `<button type="button" class="share-btn" onclick="shareDay('${escapeHtml(dateIso)}')">📤 ${bl('分享','Share')}</button>`;
+}
+
+/* ---------- 餐厅 → 一段能发出去的文字 ---------- */
+function restShareBlock(r){
+  const lines = ['🍽 ' + (r.name || '')];
+  const meta = [r.region, r.category].filter(x => (x||'').trim()).join(' · ');
+  if(meta) lines.push(meta);
+  if((r.note || '').trim()) lines.push(r.note.trim());
+  if((r.mapUrl || '').trim()) lines.push(r.mapUrl.trim());
+  return lines.join('\n');
+}
+function shareRestaurant(id){
+  const r = (feedData && feedData.restaurants || []).find(x => x && x.id === id);
+  if(!r) return;
+  openShare(pick('分享餐厅','Share restaurant'), pick('可以先改一改再发。','You can edit it before sending.'),
+    restShareBlock(r));
+}
+function shareRestRegion(regionEnc){
+  let region = regionEnc;
+  try{ region = decodeURIComponent(regionEnc); }catch(e){}
+  const g = restGroups().find(x => x.region === region);
+  if(!g || !g.items.length) return;
+  const head = pick(`🍽 ${region} 推荐餐厅（${g.items.length} 家）`, `🍽 ${region} — restaurants (${g.items.length})`);
+  openShare(pick('分享餐厅','Share restaurants'), pick('可以先改一改再发。','You can edit it before sending.'),
+    [head].concat(g.items.map(restShareBlock)).join('\n\n'));
 }
 
 /* ============================= 管理面板（仅 role===admin 才由 JS 建立） =============================
@@ -3337,7 +3627,7 @@ function applyHashTab(){
     if(tripsSection) tripsSection.scrollIntoView({ block: 'start' });
     return;
   }
-  if(['trips','bills','inventory','today'].indexOf(h) !== -1) switchTab(h);
+  if(['trips','bills','inventory','restaurants','today'].indexOf(h) !== -1) switchTab(h);
 }
 
 /* ensureAdminUI：管理入口按钮 + 面板内容只在 role==='admin' 时存在于 DOM 里，
