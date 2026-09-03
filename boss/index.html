@@ -1908,7 +1908,7 @@ function restRowHtml(r){
       </div>
       <div class="rest-acts">
         ${ r.mapUrl ? `<a class="item-map" href="${escapeHtml(r.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
-        <button type="button" class="share-btn" onclick="shareRestaurant('${escapeHtml(r.id)}')">📤 ${bl('分享','Share')}</button>
+        ${ canShare() ? `<button type="button" class="share-btn" onclick="shareRestaurant('${escapeHtml(r.id)}')">📤 ${bl('分享','Share')}</button>` : '' }
       </div>
     </div>`;
 }
@@ -1935,8 +1935,8 @@ function renderRestaurants(){
   pane.innerHTML = groups.map(g => `
       <div class="rest-region-hdr">
         <span>${escapeHtml(g.region)}　${bl(g.items.length + ' 家', g.items.length + ' places')}</span>
-        <button type="button" class="share-btn"
-          onclick="shareRestRegion('${encodeURIComponent(g.region)}')">📤 ${bl('分享这一区','Share these')}</button>
+        ${ canShare() ? `<button type="button" class="share-btn"
+          onclick="shareRestRegion('${encodeURIComponent(g.region)}')">📤 ${bl('分享这一区','Share these')}</button>` : '' }
       </div>
       <div class="rest-list">${g.items.map(restRowHtml).join('')}</div>`).join('');
 }
@@ -2063,7 +2063,12 @@ function shareDay(dateIso){
     pick(`${dw.zh} 的安排。可以先改一改再发。`, `Plan for ${dw.en}. You can edit it before sending.`),
     shareDayText(dateIso));
 }
+/** 分享按钮是**给 YANG 用的工具**，不是给老板的功能（2026-09-03 用户：「老板不必有
+ *  分享」）。老板那边一颗都不画进 DOM——他要的是「今天要去哪」，不是一个转发工具。
+ *  ⚠️ 地图链接不在此列：老板那边**照旧要有**（同一次交代：「地图链接可以有」）。 */
+function canShare(){ return role === 'admin'; }
 function shareDayBtnHtml(dateIso){
+  if(!canShare()) return '';
   return `<button type="button" class="share-btn" onclick="shareDay('${escapeHtml(dateIso)}')">📤 ${bl('分享','Share')}</button>`;
 }
 
@@ -3353,7 +3358,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v47</div>
+    <div class="admin-ver" id="adminVer">boss-app-v48</div>
 
     ${adminTripsSectionHtml()}
 

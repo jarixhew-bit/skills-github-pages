@@ -157,6 +157,16 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
   return rec;
 }
 
+/** 点一个「应该在」的控件：不在就记一条红并回 false，**绝不让整份自检崩掉**。
+ *  2026-09-02 学过一次：回退验证时测量块抛错，整个 run 当场中断，看不出哪几条会红，
+ *  等于假红验证白做。凡是「按钮不在就会 timeout」的点击都要走这里。 */
+async function clickHere(page, sel, what){
+  const n = await page.locator(sel).count();
+  if(n === 0){ ok(`★${what}（按钮不在，后面几条等于没测）`, false, sel); return false; }
+  await page.locator(sel).first().click();
+  return true;
+}
+
 async function gotoTab(page, tab){
   await page.click(`.nav-btn[data-tab="${tab}"]`);
   await until(() => page.evaluate(t => {
@@ -2690,9 +2700,9 @@ function localAt(daysFromNow, hm, offset){
 
   console.log('\n【二十八】一键分享当天行程去 WhatsApp');
   ok('「今天」标题栏上有分享按钮', await page.locator('.sec-hdr .share-btn').count() >= 1);
-  await page.click('.sec-hdr .share-btn');
+  await clickHere(page, '.sec-hdr .share-btn', '「今天」那颗分享按钮点得到');
   await until(() => page.evaluate(() => document.getElementById('shareBox').classList.contains('open')),
-    { what: '分享弹窗打开' });
+    { timeout: 3000 }).catch(() => { /* 没开就让下面的断言把内容为空报出来 */ });
   const txt = await page.inputValue('#share-text');
   ok('★弹窗里先给人看到要发的文字（不是点了就直接跳出去）',
      await page.evaluate(() => window.__opened.length) === 0, txt.slice(0, 40));
@@ -2721,8 +2731,10 @@ function localAt(daysFromNow, hm, offset){
   ok('★发出去的文字跟屏幕说的是同一件事', /预计晚 22 分/.test(txt), txt);
 
   // 发出去的是「文本框里当下的内容」
-  await page.fill('#share-text', txt + '\n\n（另外：晚餐我另外安排）');
-  await page.click('#share-wa-btn');
+  // 弹窗没开时这两下会 timeout 把整份自检打断——回退验证就白做了（2026-09-02 的教训）。
+  // 点不到就让下面的断言用「没发出去」这个事实报红，而不是让 run 当场死掉。
+  await page.fill('#share-text', txt + '\n\n（另外：晚餐我另外安排）', { timeout: 3000 }).catch(() => {});
+  await page.locator('#share-wa-btn').click({ timeout: 3000 }).catch(() => {});
   const opened = await page.evaluate(() => window.__opened);
   ok('★点了才会去 WhatsApp', opened.length === 1, opened.length);
   ok('★走的是 wa.me（不指定号码，由他自己选发给谁）',
@@ -2733,7 +2745,7 @@ function localAt(daysFromNow, hm, offset){
      sentText.includes('https://maps.app.goo.gl/D7Zjz9GAJX9hbVyQA'), sentText.slice(0, 80));
 
   // 明天、以及行程分页上未来的每一天，都要能发（「我排好了再分享给他」＝常常不是今天）
-  await page.click('.share-box .overlay-close');
+  await page.locator('.share-box .overlay-close').click().catch(() => {});
   const secBtns = await page.locator('.sec-hdr .share-btn').count();
   ok('「明天」那一栏也有分享按钮', secBtns === 2, secBtns);
   await gotoTab(page, 'trips');
@@ -2741,7 +2753,8 @@ function localAt(daysFromNow, hm, offset){
   ok('★行程分页里每一天的小标题也有（排好未来某天就能直接发）',
      await page.locator('.trip-day-hdr .share-btn').count() === 2,
      await page.locator('.trip-day-hdr .share-btn').count());
-  await page.locator('.trip-day-hdr .share-btn').nth(1).click();
+  const dayBtns = page.locator('.trip-day-hdr .share-btn');
+  if(await dayBtns.count() > 1) await dayBtns.nth(1).click();
   const txt2 = await page.inputValue('#share-text');
   ok('★发的是那一天的内容，不是今天的', txt2.includes('滨海湾花园') && !txt2.includes('家里出发'), txt2);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
@@ -2762,7 +2775,7 @@ function localAt(daysFromNow, hm, offset){
   await until(() => page.evaluate(() => !!document.querySelector('.empty-card')), { what: '空状态渲染完' });
 
   console.log('\n【二十八b】对照组：这一天没有安排时，分享出来不能是一片空白');
-  await page.click('.sec-hdr .share-btn');
+  await clickHere(page, '.sec-hdr .share-btn', '空白那天也有分享按钮');
   const txt = await page.inputValue('#share-text');
   ok('★仍然有日期', /月.*日/.test(txt), txt);
   ok('★明说「还没有排具体安排」，不是空白', txt.includes('还没有排具体安排'), txt);
@@ -2803,21 +2816,18 @@ function localAt(daysFromNow, hm, offset){
     }));
   ok('★每一家都有能点的地图链接', maps.length === 3 && maps.every(h => /^https?:\/\//.test(h || '')), maps);
 
-  // 分享单店
-  await page.click('.rest-row .share-btn');
-  const one = await page.inputValue('#share-text');
-  ok('★单店分享带店名', one.includes('胖姐领头羊'), one);
-  ok('★单店分享带地区类别', one.includes('西港') && one.includes('火锅'), one);
-  ok('★单店分享带完整地图网址', one.includes('https://maps.app.goo.gl/mWSd7EYvVpVSbKie9'), one);
-  await page.click('.share-box .overlay-close');
-
-  // 分享整个地区
-  await page.click('.rest-region-hdr .share-btn');
-  const many = await page.inputValue('#share-text');
-  ok('★整区分享把那一区都带上', many.includes('胖姐领头羊') && many.includes('快乐小羊'), many);
-  ok('★不会把别的地区混进来', !many.includes('Chhne Meas'), many);
-  ok('★整区分享每一家都有网址', (many.match(/https?:\/\//g) || []).length === 2, many);
-  await page.click('.share-box .overlay-close');
+  // 分享按钮是给 YANG 的工具，老板那边一颗都不该有（2026-09-03 用户：「老板不必有分享」）。
+  // 对照组在场景二十九c——没有它，「整个分享功能坏掉」也会让下面这几条绿着过。
+  ok('★餐厅这一屏老板看不到任何分享按钮',
+     await page.locator('#tab-restaurants .share-btn').count() === 0);
+  await gotoTab(page, 'today');
+  ok('★「今天」那一屏也没有分享按钮', await page.locator('#tab-today .share-btn').count() === 0);
+  await gotoTab(page, 'trips');
+  await page.evaluate(() => { const c = document.querySelector('.trip-card'); if(c) c.classList.add('expanded'); });
+  ok('★行程分页每一天的小标题上也没有', await page.locator('.trip-day-hdr .share-btn').count() === 0);
+  ok('★整个页面一颗分享按钮都没有', await page.locator('.share-btn').count() === 0,
+     await page.locator('.share-btn').count());
+  await gotoTab(page, 'restaurants');
 
   // 安全不变量：这一屏也是只读的。老板要加店回 Telegram 说一句，App 不为此开写入口。
   const writeCnt = await page.evaluate(() =>
@@ -2849,6 +2859,42 @@ function localAt(daysFromNow, hm, offset){
   ok('★没有任何一格超出卡片边界', m.worstRight <= 1, m);
   ok('★整页不会变成可以左右拖', m.pageOverflow <= 1, m);
   ok('★底部导航多一个按钮之后仍然塞得下（360px 窄屏）', m.navOverflow <= 1, m);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十九c：对照组 —— 分享这件事在 YANG 那边必须是好的 ----------
+// 上一节断言「老板那边一颗分享按钮都没有」。少了这一组，把分享整个删掉也会全绿，
+// 而那正是 2026-09-03 这次改动最容易改过头的地方（前科：2026-08-28 推送提示
+// 从 admin 身上删过头，连他自己都开不了通知）。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成' });
+  await gotoTab(page, 'restaurants');
+
+  console.log('\n【二十九c】对照组：YANG 那边分享照旧能用（老板那边为 0 不是因为功能坏了）');
+  ok('★餐厅每一家都有分享按钮', await page.locator('.rest-row .share-btn').count() === 3,
+     await page.locator('.rest-row .share-btn').count());
+  await clickHere(page, '.rest-row .share-btn', '单店分享按钮点得到');
+  const one = await page.inputValue('#share-text');
+  ok('★单店分享带店名', one.includes('胖姐领头羊'), one);
+  ok('★单店分享带地区类别', one.includes('西港') && one.includes('火锅'), one);
+  ok('★单店分享带完整地图网址', one.includes('https://maps.app.goo.gl/mWSd7EYvVpVSbKie9'), one);
+  await page.locator('.share-box .overlay-close').click().catch(() => {});
+
+  await clickHere(page, '.rest-region-hdr .share-btn', '整区分享按钮点得到');
+  const many = await page.inputValue('#share-text');
+  ok('★整区分享把那一区都带上', many.includes('胖姐领头羊') && many.includes('快乐小羊'), many);
+  ok('★不会把别的地区混进来', !many.includes('Chhne Meas'), many);
+  ok('★整区分享每一家都有网址', (many.match(/https?:\/\//g) || []).length === 2, many);
+  await page.locator('.share-box .overlay-close').click().catch(() => {});
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
