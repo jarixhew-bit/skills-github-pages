@@ -46,7 +46,7 @@ const browser = await chromium.launch(launchOpts);
 /* ---------- 假数据：跟真接口形状一致 ---------- */
 function fakeUpdated(){
   const now = new Date().toISOString();
-  return { trips: now, bills: now, inventory: now };
+  return { trips: now, bills: now, inventory: now, restaurants: now };
 }
 function fakeTrips(){
   return [{
@@ -63,6 +63,20 @@ function fakeBills(){
     id: 'b1', title: { zh: '8月账单', en: 'August bill' },
     period: '2026-08', uploadedAt: '2026-08-01T00:00:00Z', kind: 'month', filename: 'aug.pdf',
   }];
+}
+// 收藏餐厅：后端 restaurantsForBoss() 出来的形状（备注里的链接已经摘成 mapUrl）。
+// 第二家刻意用长店名 + 全角括号——窄屏排版那一节要靠它。
+function fakeRestaurants(){
+  return [
+    { id: 'r1', name: '胖姐领头羊', region: '西港', category: '火锅', note: '',
+      mapUrl: 'https://maps.app.goo.gl/mWSd7EYvVpVSbKie9', added_at: '2026-08-01T11:36:09' },
+    { id: 'r2', name: '快乐小羊火锅餐厅（半岛湾店）', region: '西港', category: '火锅',
+      note: '老板说这家汤底好，要提前订位',
+      mapUrl: 'https://www.google.com/maps/search/?api=1&query=%E5%BF%AB%E4%B9%90%E5%B0%8F%E7%BE%8A%20%E8%A5%BF%E6%B8%AF',
+      added_at: '2026-08-20T09:00:00' },
+    { id: 'r3', name: 'Chhne Meas', region: '金边', category: '柬式', note: '',
+      mapUrl: 'https://maps.app.goo.gl/abc', added_at: '2026-08-21T09:00:00' },
+  ];
 }
 // 真实形状：id/name/count/unit/location/note/added_at，count 是整数、location 是字符串
 function fakeInventory(){
@@ -91,7 +105,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null, leaveUpcoming = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null, leaveUpcoming = null, restaurants = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -112,6 +126,7 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
             ...(leaveToday ? { leaveToday } : {}),
             ...(leaveUpcoming ? { leaveUpcoming } : {}),
             trips: trips || fakeTrips(), bills: bills || fakeBills(), inventory,
+            restaurants: restaurants || fakeRestaurants(),
             dental: dental || { lastVisit: null, nextVisit: null, intervalMonths: 3, note: '' } }) });
       }
       if (req.action === 'bill'){
@@ -1941,6 +1956,7 @@ function localAt(daysFromNow, hm, offset){
     localStorage.setItem('bossApp_seen', JSON.stringify({
       __epoch: '2020-01-01', trips: '2099-01-01T00:00:00.000Z',
       bills: '2099-01-01T00:00:00.000Z', inventory: '2099-01-01T00:00:00.000Z',
+      restaurants: '2099-01-01T00:00:00.000Z',
     }));
   }, GOOD_TOKEN);
   await page.goto(URL, { waitUntil: 'domcontentloaded' });
@@ -1948,14 +1964,14 @@ function localAt(daysFromNow, hm, offset){
     { what: '首屏渲染完' });
 
   console.log('\n【红点重置】');
-  ok('旧版号的已读记号一律作废，三个分页全部重新变成未读',
-     await page.locator('.nav-btn.has-dot').count() === 3);
+  ok('旧版号的已读记号一律作废，四个分页全部重新变成未读（含餐厅）',
+     await page.locator('.nav-btn.has-dot').count() === 4);
 
   // 双向验证，都在同一页里做——「更新时间」在打桩接口里每次请求都是当下，
   // 所以不能靠「重开一次」来验已读，只能拿页面自己那份 feedData 的时间来比。
   const both = await page.evaluate(() => {
     const u = feedData.updated;
-    saveSeen({ trips: u.trips, bills: u.bills, inventory: u.inventory }); // 会带上当前版号
+    saveSeen({ trips: u.trips, bills: u.bills, inventory: u.inventory, restaurants: u.restaurants }); // 会带上当前版号
     updateDots();
     const afterRead = document.querySelectorAll('.nav-btn.has-dot').length;
     const stored = JSON.parse(localStorage.getItem('bossApp_seen') || '{}');
@@ -1969,7 +1985,7 @@ function localAt(daysFromNow, hm, offset){
   // 对照组：没有这一条的话，「loadSeen 永远返回 {}」也能让上面那条变绿——
   // 那样红点就永远消不掉，等于天天在喊狼来了。
   ok('版号对得上时，已读还是已读（红点消得掉）', both.afterRead === 0, both);
-  ok('版号一改，三个红点立刻全部重新亮起来', both.afterEpochChange === 3, both);
+  ok('版号一改，四个红点立刻全部重新亮起来', both.afterEpochChange === 4, both);
   ok('写回去的是当前版号，不是那个旧的', both.epoch && both.epoch !== '2020-01-01', both);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
@@ -2623,6 +2639,238 @@ function localAt(daysFromNow, hm, offset){
   console.log('\n【对照组：预约还没到，不许问「去了吗」】');
   ok('★还没到的预约不出现确认提示', await page.locator('#admin-dental-done').count() === 0);
   ok('牙医表单本身照旧在', await page.locator('#admin-dental-section').count() === 1);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十八：一键分享当天行程去 WhatsApp ----------
+// 2026-09-03 用户：老板到现在都没打开过 App，「你做个一键分享当天行程去 WhatsApp
+// 的功能给我，我排好了再分享给他」。三件他点名要的事，这一节逐条量：
+//   1. 地图链接要**能点**——所以文字里必须是完整网址原文，不能是「🗺 地图」这种
+//      在 WhatsApp 里点不了的字。
+//   2. 班机讯息尽量还原——航班号/起降机场/状态/起降时间/航站楼登机口。
+//   3. 发出去的是**文本框里当下的内容**（他常常要补一句），不是生成时那一份。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  // 起飞时间就在今天（24 小时内），预计到达比计划晚 22 分——屏幕上会显示「预计晚 22 分」，
+  // 分享出去的文字必须说同一件事（两边共用 flightTimeParts()，这一条就是守它的）。
+  const trips = [{
+    id: 't1', title: { zh: '新加坡', en: 'Singapore' }, start: today, end: tomorrow,
+    location: { zh: '新加坡', en: 'Singapore' },
+    guideUrl: 'https://jarixhew-bit.github.io/skills-github-pages/singapore-trip/',
+    items: [
+      { date: today, time: '16:00', title: { zh: '家里出发', en: 'Leave home' },
+        note: { zh: '司机楼下等', en: 'Driver waits downstairs' },
+        mapUrl: 'https://maps.app.goo.gl/D7Zjz9GAJX9hbVyQA' },
+      { date: today, time: '18:55', title: { zh: '金边德崇 KTI → 新加坡 SIN', en: 'KTI → SIN' },
+        note: { zh: '', en: '' }, mapUrl: '',
+        flight: { no: 'SQ157', date: today, live: {
+          from: 'KTI', to: 'SIN', from_name: 'Phnom Penh Techo', to_name: 'Singapore Changi',
+          sched_dep: `${today} 18:55+07:00`, est_dep: `${today} 18:55+07:00`, act_dep: null,
+          sched_arr: `${today} 22:00+08:00`, est_arr: `${today} 22:22+08:00`, act_arr: null,
+          gate: 'C12', terminal: '2', status: 'expected' } } },
+      { date: tomorrow, time: '09:00', title: { zh: '滨海湾花园', en: 'Gardens by the Bay' },
+        note: { zh: '', en: '' }, mapUrl: 'https://maps.app.goo.gl/gardens' },
+    ],
+  }];
+  mountRoutes(ctx, { role: 'admin', trips });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => {
+    localStorage.setItem('bossApp_token', t);
+    // 拦下 window.open：要验「点了到底会发出去什么」，不能真的跳出去
+    window.__opened = [];
+    window.open = (u) => { window.__opened.push(u); return null; };
+  }, GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.item-row')), { what: '今天那一屏渲染完' });
+
+  console.log('\n【二十八】一键分享当天行程去 WhatsApp');
+  ok('「今天」标题栏上有分享按钮', await page.locator('.sec-hdr .share-btn').count() >= 1);
+  await page.click('.sec-hdr .share-btn');
+  await until(() => page.evaluate(() => document.getElementById('shareBox').classList.contains('open')),
+    { what: '分享弹窗打开' });
+  const txt = await page.inputValue('#share-text');
+  ok('★弹窗里先给人看到要发的文字（不是点了就直接跳出去）',
+     await page.evaluate(() => window.__opened.length) === 0, txt.slice(0, 40));
+  const todayZh = `${Number(today.slice(5,7))}月${Number(today.slice(8,10))}日`;
+  ok('文字里有日期', txt.includes(todayZh), txt);
+  ok('文字里有行程名和第几天', txt.includes('新加坡') && /第 1 天 \/ 共 2 天/.test(txt), txt);
+  ok('条目的时间和标题都在', txt.includes('16:00') && txt.includes('家里出发'), txt);
+  ok('备注也带上了', txt.includes('司机楼下等'), txt);
+  ok('★地图是完整网址原文（WhatsApp 里点得开）',
+     txt.includes('https://maps.app.goo.gl/D7Zjz9GAJX9hbVyQA'), txt);
+  ok('★不是「🗺 地图」这种点不了的字', !/🗺\s*地图/.test(txt), txt);
+  ok('★航班号在', txt.includes('SQ157'), txt);
+  // 机场名跟屏幕上同一套（airportLabelZh：中文对照 → 接口名 → 只剩代码），
+  // 要的是「不是光秃秃一个 KTI」，老板看得懂那是哪里。
+  ok('★起降机场带名字，不是光秃秃的代码', /金边.*KTI/.test(txt) && /新加坡.*SIN/.test(txt), txt);
+  ok('★航班状态在', txt.includes('未起飞'), txt);
+  ok('★起飞时间在', txt.includes('18:55'), txt);
+  ok('★到达时间在', txt.includes('22:00'), txt);
+  ok('★航站楼和登机口都还原了', txt.includes('2 号航站楼') && txt.includes('登机口 C12'), txt);
+  ok('★手册网址带上了',
+     txt.includes('https://jarixhew-bit.github.io/skills-github-pages/singapore-trip/'), txt);
+  // 屏幕上写「预计晚 22 分」，发出去的文字也必须这么说——两边各写一套判定的话，
+  // 迟早出现「App 说延误、发给老板的说准点」，而这种矛盾没人会去核对。
+  const onScreen = await page.locator('.flight-info-times').first().innerText();
+  ok('★屏幕上确实显示了预计晚点（不然下一条等于没测）', /预计晚 22 分/.test(onScreen), onScreen);
+  ok('★发出去的文字跟屏幕说的是同一件事', /预计晚 22 分/.test(txt), txt);
+
+  // 发出去的是「文本框里当下的内容」
+  await page.fill('#share-text', txt + '\n\n（另外：晚餐我另外安排）');
+  await page.click('#share-wa-btn');
+  const opened = await page.evaluate(() => window.__opened);
+  ok('★点了才会去 WhatsApp', opened.length === 1, opened.length);
+  ok('★走的是 wa.me（不指定号码，由他自己选发给谁）',
+     (opened[0] || '').startsWith('https://wa.me/?text='), opened[0]);
+  const sentText = decodeURIComponent((opened[0] || '').split('?text=')[1] || '');
+  ok('★发的是改过之后的内容，不是生成时那一份', sentText.includes('晚餐我另外安排'), sentText.slice(-40));
+  ok('★网址在发出去的内容里原样保留（没被二次编码毁掉）',
+     sentText.includes('https://maps.app.goo.gl/D7Zjz9GAJX9hbVyQA'), sentText.slice(0, 80));
+
+  // 明天、以及行程分页上未来的每一天，都要能发（「我排好了再分享给他」＝常常不是今天）
+  await page.click('.share-box .overlay-close');
+  const secBtns = await page.locator('.sec-hdr .share-btn').count();
+  ok('「明天」那一栏也有分享按钮', secBtns === 2, secBtns);
+  await gotoTab(page, 'trips');
+  await page.evaluate(() => document.querySelector('.trip-card').classList.add('expanded'));
+  ok('★行程分页里每一天的小标题也有（排好未来某天就能直接发）',
+     await page.locator('.trip-day-hdr .share-btn').count() === 2,
+     await page.locator('.trip-day-hdr .share-btn').count());
+  await page.locator('.trip-day-hdr .share-btn').nth(1).click();
+  const txt2 = await page.inputValue('#share-text');
+  ok('★发的是那一天的内容，不是今天的', txt2.includes('滨海湾花园') && !txt2.includes('家里出发'), txt2);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十八b：对照组 —— 那一天什么都没排时，发出去的也得是句人话 ----------
+// 少了这一条的话，「文字生成器整个坏掉、永远回空字符串」也能让上面几条绿着过
+// （上面测的都是「有内容时对不对」）。空白讯息发给老板比不发更糟。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin', trips: [] });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.empty-card')), { what: '空状态渲染完' });
+
+  console.log('\n【二十八b】对照组：这一天没有安排时，分享出来不能是一片空白');
+  await page.click('.sec-hdr .share-btn');
+  const txt = await page.inputValue('#share-text');
+  ok('★仍然有日期', /月.*日/.test(txt), txt);
+  ok('★明说「还没有排具体安排」，不是空白', txt.includes('还没有排具体安排'), txt);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十九：收藏餐厅（Telegram 那份清单，老板 App 只读 + 可分享） ----------
+{
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 740 } });
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => {
+    localStorage.setItem('bossApp_token', t);
+    window.__opened = [];
+    window.open = (u) => { window.__opened.push(u); return null; };
+  }, GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成' });
+
+  console.log('\n【二十九】收藏餐厅');
+  ok('底部导航多了餐厅入口', await page.locator('.nav-btn[data-tab="restaurants"]').count() === 1);
+  await gotoTab(page, 'restaurants');
+  ok('按地区分了组', await page.locator('.rest-region-hdr').count() === 2,
+     await page.locator('.rest-region-hdr').count());
+  ok('三家都在', await page.locator('.rest-row').count() === 3, await page.locator('.rest-row').count());
+  const paneText = await page.locator('#tab-restaurants').innerText();
+  ok('店名/地区/类别都看得到', /胖姐领头羊/.test(paneText) && /西港/.test(paneText) && /火锅/.test(paneText), paneText);
+  ok('备注也看得到', /提前订位/.test(paneText), paneText);
+  // CLAUDE.md：提到地点就要有能点的地图链接。少了这条，清单对老板等于半废。
+  const maps = await page.evaluate(() =>
+    [...document.querySelectorAll('.rest-row')].map(r => {
+      const a = r.querySelector('a.item-map');
+      return a ? a.getAttribute('href') : null;
+    }));
+  ok('★每一家都有能点的地图链接', maps.length === 3 && maps.every(h => /^https?:\/\//.test(h || '')), maps);
+
+  // 分享单店
+  await page.click('.rest-row .share-btn');
+  const one = await page.inputValue('#share-text');
+  ok('★单店分享带店名', one.includes('胖姐领头羊'), one);
+  ok('★单店分享带地区类别', one.includes('西港') && one.includes('火锅'), one);
+  ok('★单店分享带完整地图网址', one.includes('https://maps.app.goo.gl/mWSd7EYvVpVSbKie9'), one);
+  await page.click('.share-box .overlay-close');
+
+  // 分享整个地区
+  await page.click('.rest-region-hdr .share-btn');
+  const many = await page.inputValue('#share-text');
+  ok('★整区分享把那一区都带上', many.includes('胖姐领头羊') && many.includes('快乐小羊'), many);
+  ok('★不会把别的地区混进来', !many.includes('Chhne Meas'), many);
+  ok('★整区分享每一家都有网址', (many.match(/https?:\/\//g) || []).length === 2, many);
+  await page.click('.share-box .overlay-close');
+
+  // 安全不变量：这一屏也是只读的。老板要加店回 Telegram 说一句，App 不为此开写入口。
+  const writeCnt = await page.evaluate(() =>
+    [...document.querySelectorAll('#tab-restaurants button')]
+      .filter(b => /新增|添加|删除|保存|编辑/.test(b.textContent || '')).length);
+  ok('★餐厅这一屏没有任何写入控件（老板只读）', writeCnt === 0, writeCnt);
+  ok('★也没有输入框', await page.locator('#tab-restaurants input, #tab-restaurants textarea').count() === 0);
+
+  // 窄屏排版：长店名要换行，不能顶出框外（跟请假卡那次同一种毛病，量真实宽度）
+  const m = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.rest-row')];
+    let worst = -1e9, rowOverflow = 0;
+    for(const row of rows){
+      const list = row.closest('.rest-list');
+      const inner = list.getBoundingClientRect().right;
+      rowOverflow = Math.max(rowOverflow, row.scrollWidth - row.clientWidth);
+      for(const el of [row, ...row.querySelectorAll('*')]){
+        worst = Math.max(worst, el.getBoundingClientRect().right - inner);
+      }
+    }
+    return { rowOverflow, worstRight: Math.round(worst * 10) / 10,
+             pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+             navOverflow: (() => { const n = document.getElementById('bottomNav');
+               return n.scrollWidth - n.clientWidth; })() };
+  });
+  ok('★长店名那一行没有横向溢出', m.rowOverflow <= 1, m);
+  ok('★没有任何一格超出卡片边界', m.worstRight <= 1, m);
+  ok('★整页不会变成可以左右拖', m.pageOverflow <= 1, m);
+  ok('★底部导航多一个按钮之后仍然塞得下（360px 窄屏）', m.navOverflow <= 1, m);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景二十九b：对照组 —— 清单是空的（或旧版缓存没这个字段）时的样子 ----------
+// 少了这一条，「renderRestaurants 整个不画」也会让上面那些「数量对不对」的断言
+// 变成 0===0 之外的红——但空态本身没人测，老板会看到一片空白不知道是坏了还是没有。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer', restaurants: [] });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成' });
+  await gotoTab(page, 'restaurants');
+
+  console.log('\n【二十九b】对照组：还没有收藏餐厅时');
+  const t = await page.locator('#tab-restaurants').innerText();
+  ok('★明说「还没有收藏的餐厅」，不是一片空白', t.includes('还没有收藏的餐厅'), t);
+  ok('★这时候没有分享按钮（没东西可分享）',
+     await page.locator('#tab-restaurants .share-btn').count() === 0);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
