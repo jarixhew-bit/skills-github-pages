@@ -248,6 +248,29 @@ body:not(.lang-en) .en{display:none !important}
 .rest-meta{margin-top:3px;font-size:12.5px;color:var(--sub);line-height:1.5;overflow-wrap:anywhere}
 .rest-acts{flex:none;display:flex;flex-direction:column;gap:6px;align-items:stretch}
 
+/* 备忘卡（老板端）。**自己一个容器类，不要借用 .dental-card**：那个类被自检拿来
+   数「牙医卡有几张」（count === 1），借用会让那条断言看见两张、当场红。
+   排版规矩跟请假卡一样：允许换行、别用定长栏，长句子在 360px 上才不会顶出框外。 */
+.memo-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.memo-row{padding:7px 0;font-size:14.5px;line-height:1.5;overflow-wrap:anywhere}
+.memo-row + .memo-row{border-top:1px solid var(--border)}
+.memo-when{margin-top:2px;color:var(--p);font-size:13px;font-weight:600;overflow-wrap:anywhere}
+
+.admin-check{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:4px 0;font-weight:500}
+.admin-check input{width:18px;height:18px}
+.admin-check input:disabled + *, .admin-check:has(input:disabled){opacity:.45}
+/* 管理页的备忘清单 */
+.admin-memo-row{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)}
+.admin-memo-body{flex:1;min-width:0}
+.admin-memo-text{font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.admin-memo-text.done{text-decoration:line-through;color:var(--sub)}
+.admin-memo-meta{margin-top:3px;font-size:12px;color:var(--sub);overflow-wrap:anywhere}
+.admin-memo-tag{color:var(--p);font-weight:600}
+.admin-memo-acts{flex:none;display:flex;gap:4px}
+.admin-memo-acts button{background:transparent;border:1px solid var(--border);border-radius:8px;
+  width:32px;height:32px;font-size:14px;cursor:pointer;font-family:inherit}
+.admin-memo-list{margin-top:10px;border-top:1px solid var(--border)}
+
 /* 管理页的餐厅清单 */
 .admin-rest-list{margin-top:10px;border-top:1px solid var(--border)}
 .admin-rest-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
@@ -1271,6 +1294,7 @@ function renderToday(){
   }
   // 今天谁请假紧跟在今天的行程后面（讲的是今天的事，不该跟牙医那些卡片混在一起）
   html += leaveTodayCardHtml();
+  html += memoCardHtml();
   // 明天：有条目、或者明天也在某趟行程区间内，才显示这一段——都没有就整段不出现（跟原行为一致）。
   const tomorrowBody = todaySectionBodyHtml(tomorrowIso, tomorrowItems, true);
   if(tomorrowBody !== null){
@@ -1362,6 +1386,33 @@ function leaveTodayCardHtml(){
   const title = todayList ? bl('今天请假','Off today') : bl('请假安排','Upcoming leave');
   return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🏖 ${title}</span></div>
     <div class="dental-card">${body}</div>`;
+}
+
+/* ============================= 备忘（老板端只读） =============================
+ * 只显示 **标了「给老板看」而且还没勾掉** 的那些（服务端就已经筛过了，前端拿到的
+ * 本来就只有这些）。没有就整段不出现——跟请假卡同一条规矩，老板天天开这一屏，
+ * 挂一句「暂无备忘」是噪音。 */
+function memoWhenBl(m){
+  if(!m || !m.datetime) return '';
+  const [d, t] = String(m.datetime).split('T');
+  const w = fmtDateWeekdayBoth(d);
+  const rep = m.repeat === 'daily' ? bl('每天','daily') : m.repeat === 'weekly' ? bl('每周','weekly') : '';
+  return `${bl(w.zh, w.en)} ${escapeHtml(t || '')}${rep ? ' · ' + rep : ''}`;
+}
+function memoCardHtml(){
+  // 服务端已经筛过一遍了（viewer 只拿得到 audience==="boss" 且没勾掉的，而且不带
+  // audience 字段）。这里**再筛一次**是刻意的冗余，跟「老板只读」那三层同一个道理：
+  // 万一以后有人把 memosForBoss 改坏，漏出去的是 YANG 的私事，而这种错没人会发现。
+  // 判定写成「明确标了 me 的、或已经勾掉的，一律不画」——老板那份本来就没有
+  // audience 字段，所以正常情况下这一层什么都不会挡掉。
+  const list = ((feedData && feedData.memos) || []).filter(m => m && m.audience !== 'me' && !m.done);
+  if(!list.length) return '';
+  const rows = list.map(m => `<div class="memo-row">
+      <div>${escapeHtml(m.text || '')}</div>
+      ${ m.datetime ? `<div class="memo-when">⏰ ${memoWhenBl(m)}</div>` : '' }
+    </div>`).join('');
+  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">📌 ${bl('备忘','Notes')}</span></div>
+    <div class="memo-card">${rows}</div>`;
 }
 
 function dentalCardHtml(){
@@ -3253,6 +3304,173 @@ function adminBillReadHtml(b){
   const when = pick(t.zh, t.en);
   return `<span class="admin-bill-read yes">${pick('老板已看','Boss opened it')}${ when ? ' · ' + escapeHtml(when) : '' }</span>`;
 }
+/* ---------- 备忘 / 提醒（管理页，只有 admin 画得出来） ----------
+ * 2026-09-03 用户要的「备忘录 + 提醒模式」，选的是「两边都要」：每条自己决定
+ * 「只有我看」还是「给老板也看」，到点提醒也自己决定推给谁。
+ *
+ * 两条不许改回去的规矩：
+ * 1. **默认是私人的**：新写一条预设「只有我看」。认错了顶多是老板少看到一条；
+ *    反过来会把私事直接推到他手机上。服务端 normalizeMemo 也是同一边默认。
+ * 2. **不填时间就是纯备忘**：不会响、也不会被勾成过期。所以没填时间时那两个
+ *    「推给谁」的开关会灰掉——留着能按只会让人以为它会响。 */
+let adminMemoBusy = false;
+let adminMemoEditId = '';   // 空 = 新增；有值 = 正在改那一条
+function adminMemoRowHtml(m){
+  const bits = [];
+  if(m.datetime){
+    const [d, t] = String(m.datetime).split('T');
+    bits.push(`⏰ ${escapeHtml(d)} ${escapeHtml(t || '')}`);
+    if(m.repeat === 'daily') bits.push(pick('每天','daily'));
+    if(m.repeat === 'weekly') bits.push(pick('每周','weekly'));
+    const to = [];
+    if(m.notify && m.notify.telegram) to.push('Telegram');
+    if(m.notify && m.notify.boss) to.push(pick('老板手机',"boss's phone"));
+    if(to.length) bits.push(pick('推给 ','to ') + to.join(' + '));
+  }
+  const audience = m.audience === 'boss'
+    ? `<span class="admin-memo-tag">${pick('老板看得到','visible to boss')}</span>`
+    : pick('只有我看','private');
+  return `<div class="admin-memo-row">
+      <div class="admin-memo-body">
+        <div class="admin-memo-text${m.done ? ' done' : ''}">${escapeHtml(m.text || '')}</div>
+        <div class="admin-memo-meta">${audience}${bits.length ? ' · ' + bits.join(' · ') : ''}</div>
+      </div>
+      <div class="admin-memo-acts">
+        <button type="button" onclick="adminMemoToggleDone('${escapeHtml(m.id)}', ${m.done ? 'false' : 'true'})"
+          aria-label="${escapeHtml(m.done ? pick('取消完成','Undo') : pick('完成','Done'))}">${m.done ? '↩' : '✓'}</button>
+        <button type="button" onclick="adminMemoEdit('${escapeHtml(m.id)}')" aria-label="${escapeHtml(pick('修改','Edit'))}">✏️</button>
+        <button type="button" onclick="adminMemoDelete('${escapeHtml(m.id)}')" aria-label="${escapeHtml(pick('删除','Delete'))}">🗑</button>
+      </div>
+    </div>`;
+}
+function adminMemosSectionHtml(){
+  const list = (feedData && feedData.memos) || [];
+  // 每次重画表单都是空的 → 「正在改哪一条」必须一起清掉。
+  // 不清的话：点了 ✏️ 之后又去勾掉别的一条（会触发重画），表单变空但 id 还留着，
+  // 接着写一条新的按保存，会**悄悄覆盖掉刚才那条**。
+  adminMemoEditId = '';
+  return `<div class="admin-block" id="admin-memo-section">
+      <h3>📌 ${pick('备忘 / 提醒','Notes & reminders')}</h3>
+      <div class="admin-field"><label>${pick('内容','Text')}</label>
+        <input type="text" id="admin-memo-text" maxlength="300"
+          placeholder="${escapeHtml(pick('例：护照放在保险箱第二层','e.g. passport is in the safe'))}"></div>
+      <div class="admin-field"><label>${pick('给谁看','Who sees it')}</label>
+        <select id="admin-memo-audience">
+          <option value="me">${pick('只有我看','Only me')}</option>
+          <option value="boss">${pick('老板也看得到','The boss too')}</option>
+        </select></div>
+      <div class="admin-field"><label>${pick('什么时候提醒（留空＝只是备忘，不会响）','When to remind (empty = just a note)')}</label>
+        <input type="datetime-local" id="admin-memo-when" onchange="adminMemoSyncNotify()"></div>
+      <div class="admin-field"><label>${pick('重复','Repeat')}</label>
+        <select id="admin-memo-repeat">
+          <option value="">${pick('不重复','No repeat')}</option>
+          <option value="daily">${pick('每天','Daily')}</option>
+          <option value="weekly">${pick('每周','Weekly')}</option>
+        </select></div>
+      <div class="admin-field"><label>${pick('到点推给谁','Notify whom')}</label>
+        <label class="admin-check"><input type="checkbox" id="admin-memo-nt" checked> ${pick('我的 Telegram','My Telegram')}</label>
+        <label class="admin-check"><input type="checkbox" id="admin-memo-nb"> ${pick('老板手机','The boss’s phone')}</label></div>
+      <button type="button" class="admin-btn" id="admin-memo-save" onclick="adminMemoSave()">💾 ${pick('保存备忘','Save note')}</button>
+      <div class="admin-status" id="admin-memo-status"></div>
+      ${ list.length ? `<div class="admin-memo-list">${list.map(adminMemoRowHtml).join('')}</div>`
+                     : `<div class="admin-rest-hint">${pick('还没有备忘','No notes yet')}</div>` }
+    </div>`;
+}
+/** 没填时间＝不会响，那两个「推给谁」就该灰掉（能按会让人以为它会响）。 */
+function adminMemoSyncNotify(){
+  const has = !!(document.getElementById('admin-memo-when') || {}).value;
+  ['admin-memo-nt','admin-memo-nb','admin-memo-repeat'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.disabled = !has;
+  });
+}
+function adminMemoEdit(id){
+  const m = ((feedData && feedData.memos) || []).find(x => x && x.id === id);
+  if(!m) return;
+  adminMemoEditId = id;
+  document.getElementById('admin-memo-text').value = m.text || '';
+  document.getElementById('admin-memo-audience').value = m.audience === 'boss' ? 'boss' : 'me';
+  document.getElementById('admin-memo-when').value = m.datetime || '';
+  document.getElementById('admin-memo-repeat').value = m.repeat || '';
+  document.getElementById('admin-memo-nt').checked = !!(m.notify && m.notify.telegram);
+  document.getElementById('admin-memo-nb').checked = !!(m.notify && m.notify.boss);
+  adminMemoSyncNotify();
+  const btn = document.getElementById('admin-memo-save');
+  if(btn) btn.textContent = '💾 ' + pick('保存修改','Save changes');
+  const sec = document.getElementById('admin-memo-section');
+  if(sec) sec.scrollIntoView({ block: 'start' });
+}
+async function adminMemoSave(){
+  if(adminMemoBusy) return;
+  const statusEl = document.getElementById('admin-memo-status');
+  const text = (document.getElementById('admin-memo-text').value || '').trim();
+  if(!text){
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = pick('要先写内容','Please write something first');
+    return;
+  }
+  const when = (document.getElementById('admin-memo-when').value || '').trim();
+  const payload = {
+    text,
+    audience: document.getElementById('admin-memo-audience').value === 'boss' ? 'boss' : 'me',
+    datetime: when ? when.slice(0, 16) : '',   // datetime-local 可能带秒，服务端只收到分
+    repeat: document.getElementById('admin-memo-repeat').value || '',
+    notifyTelegram: !!document.getElementById('admin-memo-nt').checked,
+    notifyBoss: !!document.getElementById('admin-memo-nb').checked,
+  };
+  if(adminMemoEditId) payload.id = adminMemoEditId;
+  adminMemoBusy = true;
+  statusEl.className = 'admin-status';
+  statusEl.textContent = pick('保存中…','Saving…');
+  // 「存」和「拉最新」分成两段 try（跟行程表单同一个坑：存成功但刷新时断网，
+  // 会被报成「保存失败」，人以为没存上再存一次）
+  try{
+    await bossCall('memoSave', payload);
+  }catch(err){
+    adminMemoBusy = false;
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = (err && err.message) || pick('保存失败','Save failed');
+    return;
+  }
+  adminMemoBusy = false;
+  adminMemoEditId = '';
+  try{ await refreshFeed(); }catch(e){ /* 已经存好了 */ }
+  const after = document.getElementById('admin-memo-status');
+  if(after){ after.className = 'admin-status ok'; after.textContent = pick('已保存','Saved'); }
+}
+async function adminMemoToggleDone(id, done){
+  if(adminMemoBusy) return;
+  adminMemoBusy = true;
+  try{ await bossCall('memoDone', { id, done: done }); }
+  catch(err){
+    adminMemoBusy = false;
+    const el = document.getElementById('admin-memo-status');
+    if(el){ el.className = 'admin-status err'; el.textContent = (err && err.message) || pick('操作失败','Failed'); }
+    return;
+  }
+  adminMemoBusy = false;
+  try{ await refreshFeed(); }catch(e){}
+}
+async function adminMemoDelete(id){
+  if(adminMemoBusy) return;
+  const m = ((feedData && feedData.memos) || []).find(x => x && x.id === id);
+  const label = m ? m.text : '';
+  if(!confirm(pick(`确定要删掉「${label}」吗？`, `Delete “${label}”?`))) return;
+  adminMemoBusy = true;
+  try{ await bossCall('memoDelete', { id }); }
+  catch(err){
+    adminMemoBusy = false;
+    const el = document.getElementById('admin-memo-status');
+    if(el){ el.className = 'admin-status err'; el.textContent = (err && err.message) || pick('删除失败','Delete failed'); }
+    return;
+  }
+  adminMemoBusy = false;
+  if(adminMemoEditId === id) adminMemoEditId = '';
+  try{ await refreshFeed(); }catch(e){}
+  const after = document.getElementById('admin-memo-status');
+  if(after){ after.className = 'admin-status ok'; after.textContent = pick('已删除','Deleted'); }
+}
+
 /* ---------- 收藏餐厅（管理页，只有 admin 画得出来） ----------
  * 2026-09-03 用户问「餐厅要在 app 里自己加能吗」。在这之前只能回 Telegram 说一句。
  * 增删都是 **admin-only 的写操作**（butler 的 ADMIN_ACTIONS 里），老板那把钥匙打过来
@@ -3358,11 +3576,13 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v48</div>
+    <div class="admin-ver" id="adminVer">boss-app-v49</div>
 
     ${adminTripsSectionHtml()}
 
     ${adminDentalSectionHtml()}
+
+    ${adminMemosSectionHtml()}
 
     ${adminRestaurantsSectionHtml()}
 
@@ -3427,6 +3647,8 @@ function renderAdmin(){
         </div>`).join('') : `<div class="admin-status">${pick('还没有账单','No bills yet')}</div>` }
     </div>
   `;
+  // 表单刚画出来是空的（没填时间）→ 那两个「推给谁」和「重复」要跟着灰掉
+  adminMemoSyncNotify();
   adminLoadAccessCode();
 }
 function fileToBase64(file){
