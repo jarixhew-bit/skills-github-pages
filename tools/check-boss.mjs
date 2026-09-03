@@ -78,6 +78,25 @@ function fakeRestaurants(){
       mapUrl: 'https://maps.app.goo.gl/abc', added_at: '2026-08-21T09:00:00' },
   ];
 }
+// 备忘：admin 拿到全部（带 audience/notify），viewer 只拿到「给老板看」而且没勾掉的那些。
+function fakeMemosAdmin(){
+  return [
+    { id: 'g1', text: '周三 8:30 见客户', datetime: '2026-09-10T08:30', repeat: null,
+      audience: 'boss', notify: { telegram: true, boss: true }, done: false },
+    { id: 'g2', text: '护照放在保险箱第二层', datetime: null, repeat: null,
+      audience: 'boss', notify: { telegram: false, boss: false }, done: false },
+    { id: 'p1', text: '给老婆买生日礼物', datetime: '2026-09-20T18:00', repeat: null,
+      audience: 'me', notify: { telegram: true, boss: false }, done: false },
+    { id: 'd1', text: '已经办好的事', datetime: null, repeat: null,
+      audience: 'boss', notify: { telegram: false, boss: false }, done: true },
+  ];
+}
+function fakeMemosBoss(){
+  return [
+    { id: 'g1', text: '周三 8:30 见客户', datetime: '2026-09-10T08:30', repeat: null },
+    { id: 'g2', text: '护照放在保险箱第二层', datetime: null, repeat: null },
+  ];
+}
 // 真实形状：id/name/count/unit/location/note/added_at，count 是整数、location 是字符串
 function fakeInventory(){
   return {
@@ -105,7 +124,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null, leaveUpcoming = null, restaurants = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null, leaveUpcoming = null, restaurants = null, memos = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -127,6 +146,9 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
             ...(leaveUpcoming ? { leaveUpcoming } : {}),
             trips: trips || fakeTrips(), bills: bills || fakeBills(), inventory,
             restaurants: restaurants || fakeRestaurants(),
+            // 服务端已经按身份筛过了：viewer 拿到的**只有**「给老板看」的那些，
+            // 而且不带 audience/notify。这里照实模拟，别让自检活在一个更宽松的世界里。
+            memos: memos || (role === 'admin' ? fakeMemosAdmin() : fakeMemosBoss()),
             dental: dental || { lastVisit: null, nextVisit: null, intervalMonths: 3, note: '' } }) });
       }
       if (req.action === 'bill'){
@@ -2984,6 +3006,182 @@ function localAt(daysFromNow, hm, offset){
   await until(() => rec.calls.some(c => c.action === 'restaurantDelete'), { what: '删除送出去' });
   const del = rec.calls.filter(c => c.action === 'restaurantDelete').pop();
   ok('★删的是那一条的 id（不是名字，同名店才不会删错）', del.id === 'r1', del);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十一：备忘 —— 老板那屏只看得到「给他看」的那些 ----------
+// 2026-09-03 用户要「备忘录 + 提醒模式」，选的是「两边都要（可选给谁看）」。
+// 备忘跟提醒共用 butler 那份 reminders.json，而那里面躺着三十几条 YANG 自己的旧记录，
+// 所以这一节最要紧的不是「功能有没有坏」，而是**私事有没有漏到老板那屏**。
+{
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 740 } });
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.memo-row')), { what: '备忘卡渲染完' });
+
+  console.log('\n【三十一】备忘：老板那屏');
+  const pane = await page.locator('#tab-today').innerText();
+  ok('给老板看的那两条都在', pane.includes('周三 8:30 见客户') && pane.includes('护照放在保险箱第二层'), pane);
+  ok('★有时间的那条印出了时间', /9月10日/.test(pane) && pane.includes('08:30'), pane);
+  ok('★老板那屏一个「完成/删除/修改」的按钮都没有（他只能看）',
+     await page.evaluate(() => [...document.querySelectorAll('#tab-today button')]
+       .filter(b => /完成|删除|修改|保存/.test(b.textContent || '')).length) === 0);
+  ok('★管理页那块备忘表单压根不在 DOM 里',
+     await page.locator('#admin-memo-section, #admin-memo-text').count() === 0);
+
+  // 窄屏排版：长句子要换行，不能顶出框外（跟请假卡同一种毛病，量真实宽度）
+  const m = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.memo-row')];
+    const card = rows.length ? rows[0].closest('.memo-card') : null;
+    if(!card) return { noCard: true };
+    const inner = card.getBoundingClientRect().right - parseFloat(getComputedStyle(card).paddingRight);
+    let worst = -1e9, rowOverflow = 0;
+    for(const row of rows){
+      rowOverflow = Math.max(rowOverflow, row.scrollWidth - row.clientWidth);
+      for(const el of [row, ...row.querySelectorAll('*')]){
+        worst = Math.max(worst, el.getBoundingClientRect().right - inner);
+      }
+    }
+    return { noCard: false, rowOverflow, worstRight: Math.round(worst * 10) / 10,
+             pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+  });
+  ok('备忘卡真的画出来了', m.noCard === false, m);
+  ok('★每一行没有横向溢出', m.rowOverflow <= 1, m);
+  ok('★没有超出卡片内边界', m.worstRight <= 1, m);
+  ok('★整页不会变成可以左右拖', m.pageOverflow <= 1, m);
+
+  // 一条都没有时整段不出现（老板天天开这一屏，挂一句「暂无备忘」是噪音）
+  await page.evaluate(() => { feedData.memos = []; renderToday(); });
+  ok('★一条都没有时，整张卡不出现', await page.locator('.memo-row').count() === 0);
+  ok('★连「备忘」这两个字都不该留着', !(await page.locator('#tab-today').innerText()).includes('📌'),
+     await page.locator('#tab-today').innerText());
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十一b：对照组 —— 私人那条绝不许出现在老板那屏 ----------
+// 这一组是整个功能的安全底线。上一节用的是服务端已经筛过的假数据（照实模拟），
+// 这里**故意把私人那条也塞进 viewer 的 feed**：真实世界里服务端漏筛、或者以后有人
+// 把 memosForBoss 改坏，前端是最后一道。老板那屏必须自己也认 audience。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer', memos: fakeMemosAdmin() });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.memo-row')), { what: '备忘卡渲染完' });
+
+  console.log('\n【三十一b】对照组：服务端万一漏筛，前端也不能把私事印给老板');
+  const pane = await page.locator('#tab-today').innerText();
+  ok('★私人那条没有出现在老板那屏', !pane.includes('给老婆买生日礼物'), pane);
+  ok('★已经勾掉的也不出现', !pane.includes('已经办好的事'), pane);
+  ok('给老板看的那两条照常在', pane.includes('周三 8:30 见客户') && pane.includes('护照放在保险箱第二层'), pane);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十一c：管理页那半（写、改、勾、删） ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-memo-section')), { what: '管理页渲染完' });
+  await gotoTab(page, 'admin');
+
+  console.log('\n【三十一c】备忘：管理页那半');
+  ok('★表单在', await page.locator('#admin-memo-text').count() === 1);
+  ok('★四条都列出来了（含私人的和已完成的）', await page.locator('.admin-memo-row').count() === 4,
+     await page.locator('.admin-memo-row').count());
+  const listText = await page.locator('#admin-memo-section').innerText();
+  ok('★哪条老板看得到，一眼看得出来', listText.includes('老板看得到') && listText.includes('只有我看'), listText);
+
+  // 默认必须是「只有我看」——认错这一边会把私事推到老板手机上
+  ok('★新写一条预设是「只有我看」',
+     await page.inputValue('#admin-memo-audience') === 'me', await page.inputValue('#admin-memo-audience'));
+  // 没填时间＝不会响，那几个开关要灰掉（能按会让人以为它会响）
+  const disabled = await page.evaluate(() => ({
+    nt: document.getElementById('admin-memo-nt').disabled,
+    nb: document.getElementById('admin-memo-nb').disabled,
+    rp: document.getElementById('admin-memo-repeat').disabled,
+  }));
+  ok('★没填时间时「推给谁」和「重复」是灰的', disabled.nt && disabled.nb && disabled.rp, disabled);
+
+  // 不填内容不许送
+  const before = rec.calls.filter(c => c.action === 'memoSave').length;
+  await page.click('#admin-memo-save');
+  ok('★没写内容时一个请求都不发',
+     rec.calls.filter(c => c.action === 'memoSave').length === before, rec.calls.length);
+
+  // 正常新增：纯备忘（不填时间）
+  await page.fill('#admin-memo-text', '  记得带黄本  ');
+  await page.click('#admin-memo-save');
+  await until(() => rec.calls.some(c => c.action === 'memoSave'), { what: '新增送出去' });
+  let sent = rec.calls.filter(c => c.action === 'memoSave').pop();
+  ok('★内容送出去了（前后空白修掉）', sent.text === '记得带黄本', sent);
+  ok('★预设送的是 audience=me', sent.audience === 'me', sent);
+  ok('★没填时间就送空的 datetime（服务端据此当成纯备忘）', !sent.datetime, sent);
+  ok('★没有偷偷带上 id（这是新增不是修改）', !sent.id, sent);
+  // ⚠️ 存完会 refreshFeed() → 整块重建管理页。不等重建结束就填下一条，
+  // 填进去的字会被重建清掉，下一次保存看到的是空内容、请求根本不会发出去
+  // （第一版就是这么超时的，而且报的是「第二条没送出去」，跟真正的原因隔了一层）。
+  const memoSaved = () => page.evaluate(() => {
+    const el = document.getElementById('admin-memo-status');
+    return !!el && /已保存|已删除/.test(el.textContent || '');
+  });
+  await until(memoSaved, { what: '第一条存完、管理页重建完' });
+
+  // 带时间 + 推给老板
+  await page.fill('#admin-memo-text', '周五交报告');
+  await page.selectOption('#admin-memo-audience', 'boss');
+  await page.fill('#admin-memo-when', '2026-09-11T09:00');
+  await page.evaluate(() => { adminMemoSyncNotify(); });
+  await page.check('#admin-memo-nb');
+  await page.selectOption('#admin-memo-repeat', 'weekly');
+  await page.click('#admin-memo-save');
+  await until(() => rec.calls.filter(c => c.action === 'memoSave').length >= 2, { what: '第二条送出去' });
+  sent = rec.calls.filter(c => c.action === 'memoSave').pop();
+  ok('★时间照送（到分钟）', sent.datetime === '2026-09-11T09:00', sent);
+  ok('★「给老板看」送出去了', sent.audience === 'boss', sent);
+  ok('★「推老板手机」送出去了', sent.notifyBoss === true, sent);
+  ok('★重复也送了', sent.repeat === 'weekly', sent);
+
+  // 修改：点 ✏️ 会把那条填回表单，并且带上 id
+  await until(memoSaved, { what: '第二条存完、管理页重建完' });
+  await page.click('.admin-memo-row:nth-child(3) button[aria-label="修改"]');
+  ok('★点修改会把内容填回表单',
+     (await page.inputValue('#admin-memo-text')).length > 0, await page.inputValue('#admin-memo-text'));
+  await page.click('#admin-memo-save');
+  await until(() => rec.calls.filter(c => c.action === 'memoSave').length >= 3, { what: '修改送出去' });
+  sent = rec.calls.filter(c => c.action === 'memoSave').pop();
+  ok('★修改时带上了 id（不然会变成又新增一条）', !!sent.id, sent);
+
+  // 勾掉 / 删除
+  await page.click('.admin-memo-row:first-child button[aria-label="完成"]');
+  await until(() => rec.calls.some(c => c.action === 'memoDone'), { what: '勾掉送出去' });
+  ok('★勾掉送的是 done=true', rec.calls.filter(c => c.action === 'memoDone').pop().done === true,
+     rec.calls.filter(c => c.action === 'memoDone').pop());
+
+  const delBefore = rec.calls.filter(c => c.action === 'memoDelete').length;
+  page.once('dialog', d => d.dismiss());
+  await page.click('.admin-memo-row:first-child button[aria-label="删除"]');
+  ok('★确认框按取消时不发删除请求',
+     rec.calls.filter(c => c.action === 'memoDelete').length === delBefore, delBefore);
+  page.once('dialog', d => d.accept());
+  await page.click('.admin-memo-row:first-child button[aria-label="删除"]');
+  await until(() => rec.calls.some(c => c.action === 'memoDelete'), { what: '删除送出去' });
+  ok('★删除带的是 id', !!rec.calls.filter(c => c.action === 'memoDelete').pop().id,
+     rec.calls.filter(c => c.action === 'memoDelete').pop());
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
