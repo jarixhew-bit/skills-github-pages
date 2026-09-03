@@ -256,6 +256,18 @@ console.log('\n【9】第一次装（没有缓存）时只能等网络，但要�
   ok('第一次装不发「有新版」消息（本来就是新的）', sw.posted.length === 0, sw.posted);
 }
 
+console.log('\n【10】管理页印出来的版本号，必须跟 SW 的 CACHE 是同一版');
+// 管理页右上角那行小字存在的唯一意义，就是「一眼看出他手上是哪一版」——
+// 2026-09-03 发现它停在 v41、SW 已经 v46，落后五版。一个会说谎的版本号比没有更糟：
+// 排查「你改了怎么还是老样子」时，人会照着它下判断。所以这里钉死两者相等。
+{
+  const html = readFileSync(new URL('../boss/index.html', import.meta.url), 'utf8');
+  const shown = (html.match(/id="adminVer"[^>]*>([^<]+)</) || [])[1];
+  const cache = (SRC.match(/const CACHE = '([^']+)'/) || [])[1];
+  ok('管理页有印版本号', !!shown, shown);
+  ok('★管理页印的版本号 === SW 的 CACHE', !!cache && shown && shown.trim() === cache, { shown, cache });
+}
+
 console.log(`\n结果：${pass} 通过，${fails.length} 失败`);
 if (fails.length) { console.log('失败项：' + fails.join('；')); process.exit(1); }
 console.log('全绿');
