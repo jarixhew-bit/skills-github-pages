@@ -248,6 +248,16 @@ body:not(.lang-en) .en{display:none !important}
 .rest-meta{margin-top:3px;font-size:12.5px;color:var(--sub);line-height:1.5;overflow-wrap:anywhere}
 .rest-acts{flex:none;display:flex;flex-direction:column;gap:6px;align-items:stretch}
 
+/* 管理页的餐厅清单 */
+.admin-rest-list{margin-top:10px;border-top:1px solid var(--border)}
+.admin-rest-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.admin-rest-body{flex:1;min-width:0}
+.admin-rest-name{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.admin-rest-meta{font-size:12px;color:var(--sub);margin-top:2px;overflow-wrap:anywhere}
+.admin-rest-del{flex:none;background:transparent;border:1px solid var(--border);border-radius:8px;
+  width:34px;height:34px;font-size:15px;cursor:pointer;font-family:inherit}
+.admin-rest-hint{margin-top:8px;font-size:12px;color:var(--sub);line-height:1.5}
+
 /* ===== 分享（一键发去 WhatsApp） ===== */
 .share-btn{flex:none;background:var(--p2);border:none;color:var(--p);border-radius:999px;
   padding:6px 10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
@@ -3238,6 +3248,100 @@ function adminBillReadHtml(b){
   const when = pick(t.zh, t.en);
   return `<span class="admin-bill-read yes">${pick('老板已看','Boss opened it')}${ when ? ' · ' + escapeHtml(when) : '' }</span>`;
 }
+/* ---------- 收藏餐厅（管理页，只有 admin 画得出来） ----------
+ * 2026-09-03 用户问「餐厅要在 app 里自己加能吗」。在这之前只能回 Telegram 说一句。
+ * 增删都是 **admin-only 的写操作**（butler 的 ADMIN_ACTIONS 里），老板那把钥匙打过来
+ * 是 403——「老板只能看」那三层一层都没松。
+ * 只做「加」和「删」：改一条＝删了重加；Telegram 那边本来就有 restaurant_edit 可以改。 */
+let adminRestBusy = false;
+function adminRestaurantsSectionHtml(){
+  const list = (feedData && feedData.restaurants) || [];
+  const rows = list.map(r => `<div class="admin-rest-row">
+      <div class="admin-rest-body">
+        <div class="admin-rest-name">${escapeHtml(r.name || '')}</div>
+        <div class="admin-rest-meta">${escapeHtml([r.region, r.category].filter(x => (x||'').trim()).join(' · '))}</div>
+      </div>
+      <button type="button" class="admin-rest-del" onclick="adminDeleteRestaurant('${escapeHtml(r.id)}')"
+        aria-label="${escapeHtml(pick('删除','Delete'))}">🗑</button>
+    </div>`).join('');
+  return `<div class="admin-block" id="admin-rest-section">
+      <h3>🍜 ${pick('收藏餐厅','Saved restaurants')}</h3>
+      <div class="admin-field"><label>${pick('店名（必填）','Name (required)')}</label>
+        <input type="text" id="admin-rest-name" maxlength="60"
+          placeholder="${escapeHtml(pick('例：胖姐领头羊','e.g. Fat Sister Hot Pot'))}"></div>
+      <div class="admin-field"><label>${pick('地区','Area')}</label>
+        <input type="text" id="admin-rest-region" maxlength="40"
+          placeholder="${escapeHtml(pick('例：西港','e.g. Sihanoukville'))}"></div>
+      <div class="admin-field"><label>${pick('类别','Type')}</label>
+        <input type="text" id="admin-rest-category" maxlength="40"
+          placeholder="${escapeHtml(pick('例：火锅','e.g. hot pot'))}"></div>
+      <div class="admin-field"><label>${pick('备注（选填）','Note (optional)')}</label>
+        <input type="text" id="admin-rest-note" maxlength="200"
+          placeholder="${escapeHtml(pick('例：要提前订位；或直接贴地图链接','e.g. book ahead; or paste a map link'))}"></div>
+      <button type="button" class="admin-btn" onclick="adminAddRestaurant()">＋ ${pick('加进清单','Add to list')}</button>
+      <div class="admin-status" id="admin-rest-status"></div>
+      <div class="admin-rest-hint">${pick(
+        '不填地图链接也行：老板那边会用「店名＋地区」自动生成一条能点的地图。',
+        'A map link is optional: the app builds one from the name and area.')}</div>
+      ${ rows ? `<div class="admin-rest-list">${rows}</div>`
+              : `<div class="admin-rest-hint">${pick('清单还是空的','The list is empty')}</div>` }
+    </div>`;
+}
+async function adminAddRestaurant(){
+  if(adminRestBusy) return;
+  const statusEl = document.getElementById('admin-rest-status');
+  const name = (document.getElementById('admin-rest-name').value || '').trim();
+  if(!name){
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = pick('要先填店名','Please enter a name first');
+    return;
+  }
+  const payload = {
+    name,
+    region: (document.getElementById('admin-rest-region').value || '').trim(),
+    category: (document.getElementById('admin-rest-category').value || '').trim(),
+    note: (document.getElementById('admin-rest-note').value || '').trim(),
+  };
+  adminRestBusy = true;
+  statusEl.className = 'admin-status';
+  statusEl.textContent = pick('保存中…','Saving…');
+  // 「存」和「拉最新」分成两段 try：合在一起的话，存成功但刷新时断网会被报成
+  // 「保存失败」，人以为没存上就再存一次（跟 adminSaveTripsForm 同一个坑）。
+  try{
+    await bossCall('restaurantAdd', payload);
+  }catch(err){
+    adminRestBusy = false;
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = (err && err.message) || pick('保存失败','Save failed');
+    return;
+  }
+  adminRestBusy = false;
+  try{ await refreshFeed(); }catch(e){ /* 已经存好了，没拉到最新不影响 */ }
+  // refreshFeed() 会整块重建管理页，上面那个 statusEl 已经被换掉了
+  const after = document.getElementById('admin-rest-status');
+  if(after){ after.className = 'admin-status ok'; after.textContent = pick('已加进清单','Added'); }
+}
+async function adminDeleteRestaurant(id){
+  if(adminRestBusy) return;
+  const r = ((feedData && feedData.restaurants) || []).find(x => x && x.id === id);
+  const label = r ? r.name : '';
+  // 删掉就回不来了，先问一句（跟删行程、删账单同一条规矩）
+  if(!confirm(pick(`确定要把「${label}」从清单里删掉吗？`, `Remove "${label}" from the list?`))) return;
+  adminRestBusy = true;
+  const statusEl = document.getElementById('admin-rest-status');
+  if(statusEl){ statusEl.className = 'admin-status'; statusEl.textContent = pick('删除中…','Deleting…'); }
+  try{
+    await bossCall('restaurantDelete', { id });
+  }catch(err){
+    adminRestBusy = false;
+    if(statusEl){ statusEl.className = 'admin-status err'; statusEl.textContent = (err && err.message) || pick('删除失败','Delete failed'); }
+    return;
+  }
+  adminRestBusy = false;
+  try{ await refreshFeed(); }catch(e){}
+  const after = document.getElementById('admin-rest-status');
+  if(after){ after.className = 'admin-status ok'; after.textContent = pick('已删除','Deleted'); }
+}
 function renderAdmin(){
   if(role !== 'admin') return;
   const pane = document.getElementById('tab-admin');
@@ -3249,11 +3353,13 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v41</div>
+    <div class="admin-ver" id="adminVer">boss-app-v47</div>
 
     ${adminTripsSectionHtml()}
 
     ${adminDentalSectionHtml()}
+
+    ${adminRestaurantsSectionHtml()}
 
     ${adminSeenSectionHtml()}
 

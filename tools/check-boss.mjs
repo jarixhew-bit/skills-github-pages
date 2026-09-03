@@ -2825,6 +2825,8 @@ function localAt(daysFromNow, hm, offset){
       .filter(b => /新增|添加|删除|保存|编辑/.test(b.textContent || '')).length);
   ok('★餐厅这一屏没有任何写入控件（老板只读）', writeCnt === 0, writeCnt);
   ok('★也没有输入框', await page.locator('#tab-restaurants input, #tab-restaurants textarea').count() === 0);
+  ok('★管理页那块「加餐厅」的表单压根不在 DOM 里（不是藏起来）',
+     await page.locator('#admin-rest-section, #admin-rest-name').count() === 0);
 
   // 窄屏排版：长店名要换行，不能顶出框外（跟请假卡那次同一种毛病，量真实宽度）
   const m = await page.evaluate(() => {
@@ -2871,6 +2873,71 @@ function localAt(daysFromNow, hm, offset){
   ok('★明说「还没有收藏的餐厅」，不是一片空白', t.includes('还没有收藏的餐厅'), t);
   ok('★这时候没有分享按钮（没东西可分享）',
      await page.locator('#tab-restaurants .share-btn').count() === 0);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十：管理页自己加／删餐厅（admin only） ----------
+// 2026-09-03 用户问「餐厅要在 app 里自己加能吗」。之前只能回 Telegram 说一句。
+// 这一节是场景二十九那条「viewer 一个写入控件都没有」的**对照组**：没有它，
+// 整个增删功能坏掉也会一路绿灯，而那正是「viewer 下数量为 0」的另一种解释。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-rest-section')),
+    { what: '管理页渲染完' });
+  await gotoTab(page, 'admin');
+
+  console.log('\n【三十】管理页加／删餐厅（老板那边一个都没有，见场景二十九）');
+  ok('★表单在', await page.locator('#admin-rest-name').count() === 1);
+  ok('★现有的清单也列出来了', await page.locator('.admin-rest-row').count() === 3,
+     await page.locator('.admin-rest-row').count());
+  ok('每一条都有删除键', await page.locator('.admin-rest-del').count() === 3);
+
+  // 不填店名：不许发请求，而且要说人话
+  const before = rec.calls.filter(c => c.action === 'restaurantAdd').length;
+  await page.click('#admin-rest-section .admin-btn');
+  ok('★没填店名时一个请求都不发',
+     rec.calls.filter(c => c.action === 'restaurantAdd').length === before, rec.calls.length);
+  ok('★而且明说要先填店名', /要先填店名/.test(await page.locator('#admin-rest-status').innerText()),
+     await page.locator('#admin-rest-status').innerText());
+
+  // 正常新增
+  await page.fill('#admin-rest-name', '  阿玛尼海鲜  ');
+  await page.fill('#admin-rest-region', ' 金边 ');
+  await page.fill('#admin-rest-category', '海鲜');
+  await page.fill('#admin-rest-note', '要提前订位');
+  await page.click('#admin-rest-section .admin-btn');
+  await until(() => rec.calls.some(c => c.action === 'restaurantAdd'), { what: '新增送出去' });
+  const sent = rec.calls.filter(c => c.action === 'restaurantAdd').pop();
+  ok('★店名送出去了（前后空白修掉）', sent.name === '阿玛尼海鲜', sent);
+  ok('★地区也修掉空白', sent.region === '金边', sent);
+  ok('类别与备注照送', sent.category === '海鲜' && sent.note === '要提前订位', sent);
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('admin-rest-status');
+    return !!el && /已加进清单/.test(el.textContent || '');
+  }), { what: '重建之后确认消息还在' });
+  // 这一条守的是踩过两次的坑：refreshFeed() 会整块重建管理页，确认消息必须在重建
+  // **之后**重新写一次，否则人按完保存看不到任何反馈，会以为没存上再存一次。
+  ok('★重建管理页之后，确认消息仍然看得到', true);
+
+  // 删除：先按「取消」——这一条不能省，不然「confirm 形同虚设」也会全绿
+  page.once('dialog', d => d.dismiss());
+  const delBefore = rec.calls.filter(c => c.action === 'restaurantDelete').length;
+  await page.click('.admin-rest-del');
+  ok('★确认框按取消时，一个删除请求都不发',
+     rec.calls.filter(c => c.action === 'restaurantDelete').length === delBefore, delBefore);
+
+  page.once('dialog', d => d.accept());
+  await page.click('.admin-rest-del');
+  await until(() => rec.calls.some(c => c.action === 'restaurantDelete'), { what: '删除送出去' });
+  const del = rec.calls.filter(c => c.action === 'restaurantDelete').pop();
+  ok('★删的是那一条的 id（不是名字，同名店才不会删错）', del.id === 'r1', del);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
