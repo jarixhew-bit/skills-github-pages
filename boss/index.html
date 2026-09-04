@@ -256,6 +256,11 @@ body:not(.lang-en) .en{display:none !important}
 .memo-row + .memo-row{border-top:1px solid var(--border)}
 .memo-when{margin-top:2px;color:var(--p);font-size:13px;font-weight:600;overflow-wrap:anywhere}
 
+.admin-say-block{margin-bottom:12px}
+.admin-say-label{display:block;font-size:12.5px;color:var(--sub);margin-bottom:5px;font-weight:600}
+#admin-say-text{width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;line-height:1.6;
+  padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);
+  resize:vertical;margin-bottom:8px}
 .admin-check{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:4px 0;font-weight:500}
 .admin-check input{width:18px;height:18px}
 .admin-check input:disabled + *, .admin-check:has(input:disabled){opacity:.45}
@@ -2951,6 +2956,14 @@ function adminTripsSectionHtml(){
   return `<div class="admin-block" id="admin-trips-section">
       <h3>🧳 ${pick('行程管理','Manage Trips')}</h3>
       <div id="admin-trips-list">${inner}</div>
+      <div class="admin-say-block">
+        <label class="admin-say-label">✍️ ${pick('用讲的：写一段话，自动排成行程','Just write it: a paragraph becomes itinerary rows')}</label>
+        <textarea id="admin-say-text" rows="3" spellcheck="false"
+          placeholder="${escapeHtml(pick('例：9月10号早上8点半从家里出发去金边机场，中午到新加坡，下午两点入住滨海湾金沙，晚上七点在天空餐厅吃饭',
+                                          'e.g. Sep 10, leave home 8:30am for the airport, arrive Singapore at noon, check in at Marina Bay Sands 2pm, dinner 7pm'))}"></textarea>
+        <button type="button" class="admin-btn" id="admin-say-btn" onclick="adminSayParse()">${pick('排成行程','Turn into rows')}</button>
+        <div class="admin-status" id="admin-say-status"></div>
+      </div>
       <button type="button" class="admin-btn admin-btn-ticket" onclick="adminPickTicket()">📄 ${pick('丢机票／酒店确认单进来（PDF／照片，可多选）','Drop in tickets or hotel vouchers (PDF/photo, multi-select)')}</button>
       <input type="file" id="admin-ticket-input" accept="application/pdf,image/*" multiple
         style="display:none" onchange="adminTicketPicked(this)">
@@ -2959,6 +2972,114 @@ function adminTripsSectionHtml(){
       <button type="button" class="admin-btn" style="margin-top:10px" onclick="adminSaveTripsForm()">💾 ${pick('保存全部行程','Save all trips')}</button>
       <div class="admin-status" id="admin-trips-form-status"></div>
     </div>`;
+}
+
+/* ===================== 用讲的：一段话 → 行程条目（2026-09-04 建） =====================
+ * 用户：「这些输入行程的有没有办法更加简化一点？」——填一条要碰时间／做什么／
+ * 展开「更多」填日期／填地点，一天五个点就是五轮。这条路让他把整天用中文写一段，
+ * AI 拆成条目直接填进表单。
+ *
+ * 分工跟机票识别那条路**一模一样**，原因也一样：
+ *   AI 只负责**把他自己写的话拆开**，不负责补他没写的东西。
+ *   没写时间就空着（「早上」不许变成 08:00）、没写日期就空着，服务端那层洗过一遍。
+ *   航班号交给真接口去查时间——让 AI 报时间的话，它会编出一份看起来跟真的一样的资料。
+ * 而且**只填进表单，不直接落盘**：他看过一眼按「保存全部行程」才算数。
+ *
+ * 落在哪一趟：正在展开某一趟就加进那一趟（他多半在补当天的安排）；没展开就新建一趟。
+ * 这条规则会写在状态栏里告诉他，不让他猜。 */
+let adminSayBusy = false;
+function adminSayStatus(msg, cls){
+  const el = document.getElementById('admin-say-status');
+  if(!el) return;
+  el.className = 'admin-status' + (cls ? ' ' + cls : '');
+  el.textContent = msg || '';
+}
+/** 地点名 → 能点的 Google 地图链接（跟酒店那条路同一个做法，仓库硬规矩：
+ *  提到地点就要能点开地图）。 */
+function sayPlaceToMapUrl(place){
+  const q = String(place || '').trim();
+  return q ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q) : '';
+}
+function sayItemsToTripItems(items){
+  return (items || []).map(it => {
+    const o = {
+      date: it.date || '',
+      time: it.time || '',
+      title: { zh: it.title || '', en: '' },
+      note: { zh: it.note || '', en: '' },
+      mapUrl: sayPlaceToMapUrl(it.place),
+    };
+    if(it.flightNo) o.flight = { no: it.flightNo, date: it.date || '' };
+    return o;
+  });
+}
+async function adminSayParse(){
+  if(adminSayBusy) return;
+  const el = document.getElementById('admin-say-text');
+  const text = ((el && el.value) || '').trim();
+  if(!text){
+    adminSayStatus(pick('先写一段话，例如「明天早上八点半去机场」',
+                        'Write something first, e.g. "leave for the airport at 8:30 tomorrow"'), 'err');
+    return;
+  }
+  adminSayBusy = true;
+  adminSayStatus(pick('正在拆成条目…','Working…'));
+  let res;
+  try{
+    res = await bossCall('itineraryParse', { text });
+  }catch(err){
+    adminSayBusy = false;
+    adminSayStatus((err && err.message) || pick('识别失败','Failed'), 'err');
+    return;
+  }
+  adminSayBusy = false;
+  const items = sayItemsToTripItems((res && res.items) || []);
+  if(!items.length){
+    adminSayStatus(pick('没拆出条目来——换个说法再试，或者手动加一条',
+                        'Nothing could be extracted — try rephrasing, or add a row manually'), 'err');
+    return;
+  }
+  ensureAdminTripsDraft();
+  // 正在展开某一趟 → 加进那一趟；否则新建一趟
+  let tripIdx = adminExpandedTrip;
+  let intoExisting = tripIdx !== null && tripIdx >= 0 && adminTripsDraft[tripIdx];
+  let base = 0;
+  if(intoExisting){
+    base = (adminTripsDraft[tripIdx].items || []).length;
+    adminTripsDraft[tripIdx].items = (adminTripsDraft[tripIdx].items || []).concat(items);
+  }else{
+    const dates = items.map(i => i.date).filter(Boolean).sort();
+    const title = (res && res.title) || pick('新行程','New trip');
+    adminTripsDraft.push({ id: 'trip-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      title: { zh: title, en: '' }, start: dates[0] || '', end: dates[dates.length - 1] || '',
+      location: { zh: '', en: '' }, guideUrl: '', items });
+    tripIdx = adminTripsDraft.length - 1;
+    adminExpandedTrip = tripIdx;
+  }
+  markTripsDirty();
+  rerenderAdminTripsSection();
+  if(el) el.value = '';
+
+  // 有航班号的去查真实时间（跟机票那条路同一个函数，一条一条来不并发）
+  const flightRows = items.map((it, i) => it.flight ? base + i : -1).filter(i => i >= 0);
+  if(flightRows.length){
+    adminSayStatus(pick(`已填好 ${items.length} 条，正在查 ${flightRows.length} 段航班的真实时间…`,
+                        `Filled ${items.length} row(s) — looking up ${flightRows.length} flight(s)…`));
+    for(const i of flightRows){
+      delete flightLookupState[`${tripIdx}:${i}`];
+      await adminFlightLookup(tripIdx, i);
+    }
+  }
+  const noDate = items.filter(it => !it.date).length;
+  const where = intoExisting ? pick('（加进正在编辑的那一趟）','(added to the trip you were editing)')
+                             : pick('（新建了一趟）','(created a new trip)');
+  const tail = noDate ? pick(`；有 ${noDate} 条没说是哪一天，要自己补上日期`,
+                             `; ${noDate} row(s) have no date — please fill it in`) : '';
+  adminSayStatus(pick(`已填好 ${items.length} 条${where}，确认后按「保存全部行程」${tail}`,
+                      `Filled ${items.length} row(s) ${where} — press "Save all trips" when it looks right${tail}`),
+                 noDate ? 'err' : 'ok');
+  const card = document.getElementById('admin-trip-' + tripIdx + '-items');
+  if(card) card.scrollIntoView({ block: 'center' });
 }
 
 /* ===================== 机票识别：丢进 PDF/照片，自动生成一趟行程 =====================
@@ -3580,7 +3701,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v50</div>
+    <div class="admin-ver" id="adminVer">boss-app-v51</div>
 
     ${adminTripsSectionHtml()}
 

@@ -124,7 +124,7 @@ const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgKHB5c
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null, leaveUpcoming = null, restaurants = null, memos = null } = {}){
+function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null, leaveUpcoming = null, restaurants = null, memos = null, itineraryResult = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -158,6 +158,10 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
       if (req.action === 'pushTest'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify(pushTestResult || { status: 'ok', sent: 0, total: 0, results: [] }) });
+      }
+      if (req.action === 'itineraryParse'){
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
+          body: JSON.stringify(itineraryResult || { status: 'ok', title: '', items: [] }) });
       }
       if (req.action === 'ticketParse'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
@@ -3186,6 +3190,105 @@ function localAt(daysFromNow, hm, offset){
   await until(() => rec.calls.some(c => c.action === 'memoDelete'), { what: '删除送出去' });
   ok('★删除带的是 id', !!rec.calls.filter(c => c.action === 'memoDelete').pop().id,
      rec.calls.filter(c => c.action === 'memoDelete').pop());
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十二：用讲的 —— 一段话变成行程条目 ----------
+// 2026-09-04 用户：「这些输入行程的有没有办法更加简化一点？」
+// 这一节守的**不是**「AI 认得准不准」（那测不了），而是这条路上真正危险的两件事：
+//   1. AI 出来的东西**只进表单、不进仓库**——人看过一眼才按保存；
+//   2. 地点要变成**能点的地图链接**（仓库硬规矩），航班时间要去查真接口、不许用 AI 编的。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin', trips: [],
+    itineraryResult: { status: 'ok', title: '新加坡小旅行', items: [
+      { date: '2026-09-10', time: '08:30', title: '家里出发去机场', note: '司机楼下等',
+        place: '金边德崇国际机场', flightNo: '' },
+      { date: '2026-09-10', time: '10:15', title: '金边 → 新加坡', note: '',
+        place: '', flightNo: 'SQ157' },
+      { date: '', time: '', title: '晚餐 天空餐厅', note: '', place: '滨海湾金沙', flightNo: '' },
+    ] },
+    flightLookupFlight: { no: 'SQ157', date: '2026-09-10', from: 'KTI', to: 'SIN',
+      sched_dep: '2026-09-10 10:15+07:00', sched_arr: '2026-09-10 13:40+08:00', flightStatus: 'scheduled' },
+  });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-say-text')), { what: '管理页渲染完' });
+  await gotoTab(page, 'admin');
+
+  console.log('\n【三十二】用讲的：一段话变成行程条目');
+  ok('★输入框和按钮都在', await page.locator('#admin-say-text').count() === 1
+     && await page.locator('#admin-say-btn').count() === 1);
+
+  // 空文字不许白花一次 AI 额度
+  const before = rec.calls.filter(c => c.action === 'itineraryParse').length;
+  await page.click('#admin-say-btn');
+  ok('★没写字时一个请求都不发',
+     rec.calls.filter(c => c.action === 'itineraryParse').length === before, rec.calls.length);
+  ok('★而且提示他先写点什么', /先写一段话/.test(await page.locator('#admin-say-status').innerText()),
+     await page.locator('#admin-say-status').innerText());
+
+  await page.fill('#admin-say-text', '9月10号早上8点半从家里出发去机场，10点15的 SQ157 去新加坡，晚上在天空餐厅吃饭');
+  await page.click('#admin-say-btn');
+  await until(() => rec.calls.some(c => c.action === 'itineraryParse'), { what: '送出去' });
+  const sent = rec.calls.filter(c => c.action === 'itineraryParse').pop();
+  ok('★原话照送（没有在前端先切一刀）', /SQ157/.test(sent.text || ''), sent);
+
+  await until(() => page.locator('.admin-item-row').count().then(n => n >= 3), { what: '条目填进表单' });
+  const rows = await page.locator('.admin-item-row').count();
+  ok('★三条都填进表单了', rows === 3, rows);
+  ok('★时间填对了', await page.inputValue('#admin-item-0-0-time') === '08:30',
+     await page.inputValue('#admin-item-0-0-time'));
+  ok('★「做什么」填对了', (await page.inputValue('#admin-item-0-0-title-zh')).includes('家里出发'),
+     await page.inputValue('#admin-item-0-0-title-zh'));
+  ok('★日期填对了', await page.inputValue('#admin-item-0-0-date') === '2026-09-10',
+     await page.inputValue('#admin-item-0-0-date'));
+  ok('★备注也带上了', (await page.inputValue('#admin-item-0-0-note-zh')).includes('司机'),
+     await page.inputValue('#admin-item-0-0-note-zh'));
+  // 仓库硬规矩：提到地点就要有能点的地图链接
+  const map0 = await page.inputValue('#admin-item-0-0-map');
+  ok('★地点变成了能点的 Google 地图链接', /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/.test(map0), map0);
+  ok('★链接里是那个地点的名字', decodeURIComponent(map0.split('query=')[1] || '').includes('金边德崇'), map0);
+  ok('★没提地点的那条不会硬塞一个链接', (await page.inputValue('#admin-item-0-1-map')) === '',
+     await page.inputValue('#admin-item-0-1-map'));
+
+  // 航班号交给真接口去查——不许用 AI 编的时间
+  ok('★带航班号的那条去查了真航班', rec.calls.some(c => c.action === 'flightLookup' && c.no === 'SQ157'),
+     rec.calls.filter(c => c.action === 'flightLookup'));
+
+  // 最要紧的一条：只填进表单，没有落盘
+  ok('★★没有偷偷保存进仓库（要他自己按「保存全部行程」）',
+     !rec.calls.some(c => c.action === 'tripsSave'), rec.calls.map(c => c.action));
+  const st = await page.locator('#admin-say-status').innerText();
+  ok('★状态栏说清楚了还要按保存', /保存全部行程/.test(st), st);
+  ok('★没说日期的那条被点名出来（不然他不会发现）', /没说是哪一天/.test(st), st);
+  ok('★输入框已经清空（免得再按一次重复加一遍）', (await page.inputValue('#admin-say-text')) === '',
+     await page.inputValue('#admin-say-text'));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十二b：对照组 —— 老板那边没有这条路 ----------
+// 它要花 AI 额度、而且会改行程。真正的拦截在服务端（itineraryParse 在 ADMIN_ACTIONS
+// 里），这一条守前端那层：老板身上连这个输入框都不该存在。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成' });
+
+  console.log('\n【三十二b】对照组：老板那边连这个输入框都没有');
+  ok('★#admin-say-text 不在 DOM 里', await page.locator('#admin-say-text').count() === 0);
+  ok('★那颗按钮也不在', await page.locator('#admin-say-btn').count() === 0);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
