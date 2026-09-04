@@ -159,6 +159,10 @@ function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInven
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify(pushTestResult || { status: 'ok', sent: 0, total: 0, results: [] }) });
       }
+      if (req.action === 'accessCode'){
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
+          body: JSON.stringify({ status: 'ok', code: 'fake-access-code' }) });
+      }
       if (req.action === 'itineraryParse'){
         return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
           body: JSON.stringify(itineraryResult || { status: 'ok', title: '', items: [] }) });
@@ -3289,6 +3293,103 @@ function localAt(daysFromNow, hm, offset){
   console.log('\n【三十二b】对照组：老板那边连这个输入框都没有');
   ok('★#admin-say-text 不在 DOM 里', await page.locator('#admin-say-text').count() === 0);
   ok('★那颗按钮也不在', await page.locator('#admin-say-btn').count() === 0);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十三：链接里带访问码，点开就是登入状态 ----------
+// 2026-09-04 用户：老板到今天还是没打开，「下个月账单发给他，然后直接发链接和访问码
+// 就行了，install 对他来说太麻烦」。光发码不够稳——他不装到主屏的话，iOS 放着一周
+// 会清掉 localStorage，存的码会掉、下次又要重输。所以码做进链接里。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  // 刻意**不**预先塞 token：模拟老板那台从没打开过的机器
+  await page.goto(URL + '#k=' + GOOD_TOKEN);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: '直接进 App' });
+
+  console.log('\n【三十三】链接里带访问码：老板点开就能看');
+  ok('★不用输码就进来了（闸门没挡他）',
+     await page.evaluate(() => document.getElementById('gate').classList.contains('off')));
+  ok('★访问码存下来了（下次没网也认得他）',
+     await page.evaluate(() => localStorage.getItem('bossApp_token')) === GOOD_TOKEN);
+  // 码不该一直挂在网址栏：截图、转发、浏览器历史都会带着它
+  ok('★进来之后网址栏里的码被抹掉了', !(await page.evaluate(() => location.hash)).includes('k='),
+     await page.evaluate(() => location.href));
+  ok('★进来的身份仍然是 viewer（链接不会让他变成管理员）',
+     await page.locator('#nav-admin-btn').count() === 0);
+  ok('★管理页容器仍然是空的',
+     (await page.evaluate(() => document.getElementById('tab-admin').innerHTML.trim())) === '');
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十三b：★错的码不许落地 ----------
+// 老坑（gateSubmit 那条路早就守着）：错的码存进这台机器的话，他以后每次打开都拿着
+// 一把错钥匙一直失败，而且自己不知道为什么。链接这条路必须守同一条规矩。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.goto(URL + '#k=wrong-code-123');
+  await until(() => page.evaluate(() => !document.getElementById('gate').classList.contains('off')),
+    { what: '闸门出现' });
+
+  console.log('\n【三十三b】对照组：链接里的码是错的');
+  ok('★错的码没有存进这台机器',
+     await page.evaluate(() => localStorage.getItem('bossApp_token')) === null,
+     await page.evaluate(() => localStorage.getItem('bossApp_token')));
+  ok('★闸门挡下来了，没让他看到任何内容',
+     await page.evaluate(() => document.getElementById('app').classList.contains('app-hidden')));
+  ok('★说清楚是链接的问题，不是他打错了',
+     /链接里的访问码不对/.test(await page.locator('#gate-msg').innerText()),
+     await page.locator('#gate-msg').innerText());
+  ok('★错的码也从网址栏抹掉了（免得他一直重试同一条坏链接）',
+     !(await page.evaluate(() => location.hash)).includes('k='),
+     await page.evaluate(() => location.href));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十三c：管理页给出的那条链接必须是能用的 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('admin-boss-link');
+    return !!el && /#k=/.test(el.textContent || '');
+  }), { what: '链接算出来' });
+  await gotoTab(page, 'admin');
+
+  console.log('\n【三十三c】管理页：一条可以直接转出去的链接');
+  const link = await page.locator('#admin-boss-link').innerText();
+  ok('★链接里带着访问码', link.includes('#k='), link);
+  ok('★带的是服务端给的那一串（打桩接口回的是 fake-access-code）',
+     link.includes('fake-access-code'), link);
+  ok('★指向的是老板 App 本身', /\/boss\//.test(link), link);
+  ok('★三颗复制按钮都在（整条消息／只链接／只访问码）',
+     await page.evaluate(() => [...document.querySelectorAll('#tab-admin button')]
+       .filter(b => /复制/.test(b.textContent || '')).length) >= 3);
+  // 不装到主屏就收不到通知——这句必须写在他看得到的地方，不然他会以为发了链接就万事大吉
+  const block = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('#tab-admin .admin-block')]
+      .find(b => /发给老板的链接/.test(b.textContent || ''));
+    return el ? el.innerText : '';
+  });
+  ok('★写明了不装就收不到通知', /收不到通知/.test(block), block);
+  ok('★安装说明的链接还留着（他哪天想装还找得到）',
+     await page.evaluate(() => !!document.querySelector('#tab-admin a[href="./install.html"]')));
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }

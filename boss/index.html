@@ -3701,7 +3701,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v51</div>
+    <div class="admin-ver" id="adminVer">boss-app-v52</div>
 
     ${adminTripsSectionHtml()}
 
@@ -3716,13 +3716,21 @@ function renderAdmin(){
     ${adminPushSectionHtml()}
 
     <div class="admin-block">
-      <h3>🔑 <span class="cn">老板的访问码</span><span class="en">Boss's Access Code</span></h3>
+      <h3>🔑 <span class="cn">发给老板的链接</span><span class="en">Link to send the boss</span></h3>
       <div class="admin-field">
-        <label>${pick('把这串和安装说明网址发给老板','Send this code and the install guide link to your boss')}</label>
-        <div id="admin-access-code" class="admin-code-box">${escapeHtml(adminAccessCode || pick('加载中…','Loading…'))}</div>
+        <label>${pick('这条链接里已经带了访问码——他点开就是登入状态，不用打字、不用安装',
+                      'This link carries the access code — he just taps it, no typing, no install')}</label>
+        <div id="admin-boss-link" class="admin-code-box">${escapeHtml(adminAccessCode ? bossShareUrl() : pick('加载中…','Loading…'))}</div>
       </div>
-      <button type="button" class="admin-btn-sm" onclick="adminCopyAccessCode()">📋 ${pick('复制','Copy')}</button>
+      <button type="button" class="admin-btn" onclick="adminCopyBossMessage()">📋 ${pick('复制整条消息（可直接贴去 WhatsApp）','Copy the whole message (paste into WhatsApp)')}</button>
+      <button type="button" class="admin-btn-sm" onclick="adminCopyBossLink()">${pick('只复制链接','Copy link only')}</button>
+      <button type="button" class="admin-btn-sm" onclick="adminCopyAccessCode()">${pick('只复制访问码','Copy code only')}</button>
       <span id="admin-access-code-status" style="margin-left:8px;font-size:12.5px;color:var(--ok)"></span>
+      <div id="admin-access-code" style="display:none">${escapeHtml(adminAccessCode || '')}</div>
+      <div class="admin-rest-hint">${pick(
+        '⚠️ 不装到主屏也能看，但**收不到通知**（行程改了、有新账单都不会提醒他）。想装的话另有一页说明：',
+        '⚠️ It works without installing, but push notifications will NOT arrive. Install guide:')}
+        <a href="./install.html" target="_blank" rel="noopener">install.html</a></div>
     </div>
 
     <div class="admin-block">
@@ -4055,19 +4063,49 @@ async function adminLoadAccessCode(){
   try{
     const res = await bossCall('accessCode', {});
     adminAccessCode = res.code || '';
-    el.textContent = adminAccessCode || pick('（服务器未返回访问码）','(server did not return a code)');
+    el.textContent = adminAccessCode;
+    const linkEl = document.getElementById('admin-boss-link');
+    if(linkEl) linkEl.textContent = adminAccessCode ? bossShareUrl()
+      : pick('（服务器未返回访问码）','(server did not return a code)');
   }catch(err){
     el.textContent = (err && err.message) || pick('读取失败','Failed to load');
   }
 }
+/** 发给老板的那条链接（把访问码做进 hash 里）。 */
+function bossShareUrl(){
+  const base = location.origin + location.pathname.replace(/index\.html$/, '');
+  return base + '#k=' + encodeURIComponent(adminAccessCode || '');
+}
+function adminCopyStatus(msg){
+  const s = document.getElementById('admin-access-code-status');
+  if(!s) return;
+  s.textContent = msg;
+  setTimeout(() => { if(s) s.textContent = ''; }, 2000);
+}
+function adminCopyText(text, okMsg){
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(() => adminCopyStatus(okMsg)).catch(() => {});
+      return;
+    }
+  }catch(e){}
+  adminCopyStatus(pick('复制不了，请手动长按选取','Copy failed — please select it manually'));
+}
+function adminCopyBossLink(){
+  if(!adminAccessCode) return;
+  adminCopyText(bossShareUrl(), pick('链接已复制','Link copied'));
+}
+/** 整条可以直接转出去的消息：一句话说明 ＋ 链接 ＋ 访问码（万一他清了缓存要手输）。 */
+function adminCopyBossMessage(){
+  if(!adminAccessCode) return;
+  const msg = pick(
+    `账单和行程都在这里，点开就能看（不用装、不用登记）：\n${bossShareUrl()}\n\n万一它问访问码，输入：${adminAccessCode}`,
+    `Your bills and itinerary are here — just tap to open (no install, no sign-up):\n${bossShareUrl()}\n\nIf it asks for a code, enter: ${adminAccessCode}`);
+  adminCopyText(msg, pick('整条消息已复制','Message copied'));
+}
 function adminCopyAccessCode(){
   if(!adminAccessCode) return;
-  const s = document.getElementById('admin-access-code-status');
-  try{
-    navigator.clipboard.writeText(adminAccessCode).then(() => {
-      if(s){ s.textContent = pick('已复制','Copied'); setTimeout(() => { if(s) s.textContent = ''; }, 2000); }
-    }).catch(() => {});
-  }catch(e){}
+  adminCopyText(adminAccessCode, pick('访问码已复制','Code copied'));
 }
 
 /* 从推送通知点进来时，url 若带 #trips / #bills / #inventory / #today 这样的锚点，
@@ -4111,7 +4149,55 @@ function ensureAdminUI(){
 }
 
 /* ============================= 启动 ============================= */
+/* ---------- 链接里带访问码：#k=xxxx ----------
+ * 2026-09-04 用户：老板到今天还是没打开，「下个月账单发给他，然后直接发链接和访问码
+ * 就行了，上次那个 install 可能对他来说太麻烦了」。
+ *
+ * 光发「链接＋访问码」还不够稳：他不装到主屏的话，iOS Safari 放着一星期不用会把
+ * localStorage 清掉——存下来的访问码会掉，他下次点开又要重输一次，等于每次都要
+ * 找回那条消息。把码做进链接里，他每次点同一条消息进来都直接是登入状态。
+ *
+ * 三条规矩：
+ * - **验证通过才落地**（跟手输那条路同一条规矩）：错的码不许存进这台机器，
+ *   不然下次打开会拿着一把错钥匙一直失败。
+ * - 进去之后**把码从网址栏抹掉**（history.replaceState）：不让它一直挂在那里被
+ *   截图、被转发、被浏览器历史记着。localStorage 里已经有了，不影响下次打开。
+ * - 链接里的码**优先于**已经存着的：轮换过访问码之后发新链接，点一下就换成新的。 */
+function readCodeFromHash(){
+  const h = String(location.hash || '');
+  const m = h.match(/[#&]k=([^&]+)/);
+  if(!m) return '';
+  try{ return decodeURIComponent(m[1]).trim(); }catch(e){ return m[1].trim(); }
+}
+function stripCodeFromUrl(){
+  try{
+    if(!readCodeFromHash()) return;
+    history.replaceState(null, '', location.pathname + location.search);
+  }catch(e){ /* 老浏览器没有 replaceState 就算了，不影响能不能用 */ }
+}
+
 async function init(){
+  // 链接里带码的话先走这条路。成功就直接进 App，老板一个字都不用打。
+  const linkCode = readCodeFromHash();
+  if(linkCode){
+    const prev = TOKEN;
+    TOKEN = linkCode;
+    try{
+      const feed = await fetchFeed();
+      saveToken(linkCode);      // 验证通过才落地
+      stripCodeFromUrl();
+      handleFeed(feed, { fromNetwork:true });
+      return;
+    }catch(err){
+      TOKEN = prev;
+      stripCodeFromUrl();
+      openGate();
+      const msg = document.getElementById('gate-msg');
+      if(msg) msg.textContent = pick('链接里的访问码不对，请手动输入或找 YANG 要新的',
+                                     'The code in the link is not valid — please enter it manually or ask YANG for a new link');
+      return;
+    }
+  }
   TOKEN = safeGet(TOKEN_KEY) || '';
   if(!TOKEN){
     // 没存过自己的访问码：先试试记账 app 那把钥匙（同源共用 localStorage）。
