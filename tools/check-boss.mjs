@@ -30,12 +30,24 @@ const ok = (n, c, got) => {
   else { fails.push(n); console.log(`  ❌ ${n} — 实际: ${JSON.stringify(got)}`); }
 };
 
-/** 等条件成立，而不是死等固定时间（跟其他几份自检一致）。 */
+/**
+ * 等条件成立，而不是死等固定时间。
+ *
+ * ⚠️ **超时不抛异常**，改成记一条红继续跑（2026-09-05 改）。
+ * 原本超时是 throw，一超时整份自检当场中断——后面几十条断言根本没跑到。
+ * 平常还好，**回退验证时是致命的**：故意退掉一处之后，看到的是一行崩溃信息，
+ * 而不是「哪几条会红」，等于假红验证白做。2026-09-03 和 09-04 各踩过一次，
+ * 两次都是在出事的那个 until 上单独打补丁——治标不治本，所以这次改在源头。
+ * 超时之后继续往下跑，后面的断言会拿真实状态（多半也红）把症状一起报出来。
+ */
 async function until(fn, { timeout = 8000, interval = 20, what = '条件' } = {}) {
   const t0 = Date.now();
   for (;;) {
-    if (await fn()) return;
-    if (Date.now() - t0 > timeout) throw new Error(`等不到「${what}」（超时 ${timeout}ms）`);
+    if (await fn()) return true;
+    if (Date.now() - t0 > timeout) {
+      ok(`★等不到「${what}」（超时 ${timeout}ms）`, false, what);
+      return false;
+    }
     await new Promise(r => setTimeout(r, interval));
   }
 }
@@ -3559,6 +3571,56 @@ function localAt(daysFromNow, hm, offset){
              pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
   });
   ok('★360px 窄屏上没有溢出', m.noList === false && m.worst <= 1 && m.pageOverflow <= 1, m);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十六：今天没安排时，空态底下补一条最近的账单 ----------
+// 「今天」是老板的默认首屏。今天没安排时他原本看到的是一句「今天没有安排的行程」
+// ——全 App 最没用的一屏，而它正是第一眼。他打开这个 App 十次有八次是为了那个数字。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer', trips: [], bills: fakeBillsMixed() });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('#tab-today .empty-card')),
+    { what: '空态渲染完' });
+
+  console.log('\n【三十六】今天没安排时，空态底下有最近一份账单');
+  const txt = await page.locator('#tab-today').innerText();
+  ok('★空态底下出现最近一份账单', await page.locator('#tab-today .tbill-row').count() === 1,
+     await page.locator('#tab-today .tbill-row').count());
+  ok('★带金额（他要的就是这个数字）', /3,240\.50/.test(txt) && /USD/.test(txt), txt);
+  ok('★挑的是最新上传的那一份（不是列表里第一条）', /Boss 账单/.test(txt), txt);
+  ok('★原本那句「今天没有安排」还在（不是把空态换掉）', /今天没有安排的行程/.test(txt), txt);
+  // 一点就打开那份账单：他打开 App 多半就为这个，能少一次点就少一次
+  await page.click('#tab-today .tbill-row');
+  await until(() => page.evaluate(() =>
+    document.getElementById('billOverlay').classList.contains('open')), { what: '账单打开' });
+  ok('★一点就直接打开那份账单（不是跳到账单分页再让他点一次）',
+     await page.evaluate(() => document.getElementById('billOverlay').classList.contains('open')));
+  await page.click('.overlay-close');
+
+  // 对照组一：今天有安排时不该出现（那一屏已经有内容了，再塞一张卡是噪音）
+  await page.evaluate(() => {
+    const today = new Date();
+    const iso = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    feedData.trips = [{ id:'t', title:{zh:'有事',en:''}, start: iso, end: iso,
+      items: [{ date: iso, time: '09:00', title:{zh:'开会',en:''}, note:{zh:'',en:''}, mapUrl:'' }] }];
+    renderToday();
+  });
+  ok('★★今天有安排时不出现（不是无条件挂一张卡）',
+     await page.locator('#tab-today .tbill-row').count() === 0);
+  ok('今天的安排照常显示', /开会/.test(await page.locator('#tab-today').innerText()));
+
+  // 对照组二：一份账单都没有时整段不出现
+  await page.evaluate(() => { feedData.trips = []; feedData.bills = []; renderToday(); });
+  ok('★一份账单都没有时整段不出现（不挂一句「还没有账单」的废话）',
+     await page.locator('#tab-today .tbill-row').count() === 0);
+  ok('★空态本身还在', /今天没有安排的行程/.test(await page.locator('#tab-today').innerText()));
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
