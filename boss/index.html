@@ -189,6 +189,9 @@ body:not(.lang-en) .en{display:none !important}
 .bill-info{flex:1;min-width:0}
 .bill-title{font-size:14.5px;font-weight:600}
 .bill-sub{font-size:12.5px;color:var(--sub);margin-top:2px}
+/* 金额是老板打开这一屏最想看到的东西，字要够大、够显眼 */
+.bill-amt{font-size:19px;font-weight:800;color:var(--text);margin-top:3px;letter-spacing:.2px}
+.bill-count{font-size:12.5px;font-weight:600;color:var(--sub);margin-left:8px;letter-spacing:0}
 .bill-arrow{color:var(--sub);font-size:18px;flex:none}
 
 /* ===== 账单查看弹层 ===== */
@@ -1584,10 +1587,40 @@ function renderBills(){
         <div class="bill-icon">📄</div>
         <div class="bill-info">
           <div class="bill-title">${blObj(b.title)}</div>
-          <div class="bill-sub">${escapeHtml(b.period || '')}${ b.kind === 'trip' ? ' · ' + pick('行程账单','Trip Bill') : '' }</div>
+          ${billAmountHtml(b)}
+          <div class="bill-sub">${billSubHtml(b)}</div>
         </div>
         <div class="bill-arrow" aria-hidden="true">›</div>
       </div>`).join('')}</div>`;
+}
+/** 金额显示：**币别一定要印出来**。Boss 账户是 USD、Yang 是 HKD，光一个数字会让人
+ *  照着错的币别下判断。千分位用 Intl，跑不动就退回原样，绝不显示 NaN。 */
+function fmtBillMoney(n, cur){
+  if(typeof n !== 'number' || !isFinite(n)) return '';
+  let body;
+  try{
+    body = n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }catch(e){ body = n.toFixed(2); }
+  return (cur ? cur + ' ' : '') + body;
+}
+/** 账单那一行的第二排字：账户 · 期间 ·（有摘要的话）金额 · 几笔。
+ *  ⚠️ 老账单没有 summary（这个字段 2026-09-05 才加），那时**什么都不印**——
+ *  绝不能退成「0.00」，那是在告诉老板那个月一分钱没花。 */
+function billSubHtml(b){
+  const bits = [];
+  if(b.account) bits.push(escapeHtml(b.account));
+  if(b.period) bits.push(escapeHtml(b.period));
+  if(b.kind === 'trip') bits.push(pick('行程账单','Trip Bill'));
+  return bits.join(' · ');
+}
+function billAmountHtml(b){
+  const sm = b && b.summary;
+  if(!sm || typeof sm.expense !== 'number' || !sm.currency) return '';
+  const money = fmtBillMoney(sm.expense, sm.currency);
+  if(!money) return '';
+  const n = (typeof sm.count === 'number' && sm.count >= 0)
+    ? `<span class="bill-count">${bl(sm.count + ' 笔', sm.count + ' items')}</span>` : '';
+  return `<div class="bill-amt">${escapeHtml(money)}${n}</div>`;
 }
 function base64ToUint8Array(b64){
   const bin = atob(b64 || '');
@@ -3705,7 +3738,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v53</div>
+    <div class="admin-ver" id="adminVer">boss-app-v54</div>
 
     ${adminTripsSectionHtml()}
 

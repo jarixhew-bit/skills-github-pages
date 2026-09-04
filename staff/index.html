@@ -3595,7 +3595,12 @@ async function buildStatementPDF(){
     }
 
     const filename = `账户明细-${acc.name}-${range.fileTag}.pdf`;
-    return {pdf, filename, acc, range, year, month};
+    // 摘要跟着一起回传：「发给老板」会把它送上去，老板 App 的账单那一行直接印出
+    // 「花了多少·几笔」，他不必点进 PDF 才看得到数字（2026-09-05 加）。
+    // **币别一定要带**：Boss 是 USD、Yang 是 HKD，光一个数字是错的。
+    const summary = { expense: expenseTotal, income: incomeTotal, closing: closingBalance,
+                      count: expenseTxs.length, currency: acc.currency || '' };
+    return {pdf, filename, acc, range, year, month, summary};
   }catch(e){
     console.error(e);
     toast('账户明细生成失败，请重试');
@@ -3668,6 +3673,7 @@ async function sendStatementToBoss(){
     kind: r.isMonth ? 'month' : 'trip',
     period: r.isMonth ? `${built.year}-${monthNum}` : `${r.from}_${r.to}`,
     account: built.acc.name,
+    summary: built.summary || null,
     tripId: null,
     contentBase64: base64
   };

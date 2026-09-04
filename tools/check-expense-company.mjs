@@ -2358,6 +2358,63 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await ctx.close();
 }
 
+// ---------- 【27g】发给老板时带上金额摘要 ----------
+{
+  console.log('\n【27g】发给老板：带上金额摘要（老板那一屏直接看得到花了多少）');
+  // 2026-09-05 加。老板的账单列表在这之前一个数字都没有，他得点进 PDF 自己找总额。
+  // 这里验的是**那个数字是真的账**——不是随便凑一个：故意在期间前后各埋一笔不该算的，
+  // 摘要里的总额必须刚好等于期间内那几笔。**币别也必须带**（Boss 是 USD、Yang 是 HKD，
+  // 光一个数字会让人照着错的币别下判断）。
+  const ctx = await browser.newContext();
+  await stubPdfLibs(ctx);
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  const calls = []; const bossMode = { v:'ok' };
+  await mountBossRoutes(ctx, calls, bossMode);
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what:'App 启动完成' });
+  await setupCompanyAccount(page, 'boss-token');
+
+  const seeded = await page.evaluate(() => {
+    const acc = data.accounts[0];
+    acc.currency = 'USD';
+    data.currentAccountId = acc.id;
+    const mk = (date, amount, type) => ({ id:'t_'+date+'_'+amount, accountId:acc.id,
+      type: type || 'expense', amount, date, categoryId:null, description:'d'+date });
+    data.transactions = [
+      mk('2026-09-30', 999),          // 上个月，不该算进 10 月这一张
+      mk('2026-10-02', 100.25),
+      mk('2026-10-11', 20),
+      mk('2026-10-20', 5.75),
+      mk('2026-11-02', 888),          // 下个月，不该算
+      mk('2026-10-05', 500, 'income'),// 收入不算进「花了多少」
+    ];
+    state.anYear = 2026; state.anMonth = 9;   // 停在 10 月
+    if (typeof Chart === 'undefined') {
+      window.Chart = function(){ return { destroy(){}, update(){}, data:{}, options:{} }; };
+    }
+    return { currency: acc.currency };
+  });
+  await gotoAnalyticsWithBossBtn(page);
+  await page.click('button[onclick="sendStatementToBoss()"]');
+  await until(() => calls.length > 0, { what:'billUpload 请求送出' });
+
+  const req = calls[0];
+  ok('★请求里带了摘要', !!req.summary, req.summary);
+  // 100.25 + 20 + 5.75 = 126，前后两笔和那笔收入都不该算进来
+  ok('★★金额是期间内支出的真实总额（126，不是把前后那两笔也算进去）',
+     req.summary && Math.abs(req.summary.expense - 126) < 0.001, req.summary);
+  ok('★收入没有被算成「花了多少」', req.summary && req.summary.expense !== 626, req.summary);
+  ok('★笔数对得上（3 笔支出）', req.summary && req.summary.count === 3, req.summary);
+  ok('★★币别跟着账户走', req.summary && req.summary.currency === seeded.currency, req.summary);
+  ok('顺带把收入和期末结余也带上（以后要用）',
+     req.summary && typeof req.summary.income === 'number' && typeof req.summary.closing === 'number', req.summary);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 // ---------- 【28】账户明细可以导一整段行程，不必按月切成两张 ----------
 {
   console.log('\n【28】导出账户明细：自订期间（跨月的旅游行程出成一张）');
