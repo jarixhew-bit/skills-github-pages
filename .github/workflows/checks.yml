@@ -188,16 +188,27 @@ jobs:
       - run: node tools/check-inventory.mjs
 
   boss:
+    # 名字里不放 matrix 变量：job 被跳过时 GitHub 不展开它，会原样显示 ${{ }}。
+    # 前半/后半是两份不同的场景档，不是同一份跑两遍。
     name: 老板 App（真浏览器）
     needs: decide
     if: needs.decide.outputs.boss == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: 前半
+            script: tools/check-boss.mjs
+          - part: 后半
+            script: tools/check-boss-2.mjs
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/browser-check-setup
         with:
           health-url: http://localhost:8899/boss/index.html
-      - run: node tools/check-boss.mjs
+      - name: 跑${{ matrix.part }}
+        run: node ${{ matrix.script }}
 
   news:
     name: 新闻抓取与翻译

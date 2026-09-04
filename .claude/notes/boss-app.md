@@ -434,3 +434,21 @@ today/trips/bills/inventory/restaurants，看不懂的一律忽略）。发「�
   一次。谎报失败比不报还糟。另外 `refreshFeed()` 会整块重建 `#tab-admin`，
   确认消息必须在重建**之后**重新写一次，否则用户点完保存看不到任何反馈。
   （两条都是 2026-08-27 自检查出来的真缺陷，别在重构时改回去。）
+
+## 自检拆成前半／后半两个档并行跑（2026-09-05）
+一份 566 项的浏览器自检串起来跑三分半，是 `check-all` 最慢的那一关。现在拆成：
+- `tools/lib/boss-check-kit.mjs` —— 共用的打桩接口、假数据、计分（`ok`/`fails`）、
+  `until`、`finish(label)`。两份都 import 它。
+- `tools/check-boss.mjs` —— **前半**，场景一~十八（权限、红点、分页、账单预览、库存、
+  行程表单、航班、牙医），269 项。
+- `tools/check-boss-2.mjs` —— **后半**，场景十九~三十六（交接红点重置、机票识别、排序、
+  已读、推送、请假、备忘、餐厅、分享、链接带访问码、账单金额），297 项。
+
+⚠️ **拆的是场景，不是断言：269 + 297 必须还是 566。** 少一项就是漏了一条，
+而漏掉的那条正好可能是守着「老板只能看」的那一条——那种漏法自检还是全绿。
+改动之后要对总数，别只看两边各自「全绿」。
+
+同事版的「拆两半」是假的（同一份档跑两遍，脚本根本不认 `PART`），**别照抄**。
+接线三处：`tools/check-all.py`（boss-1 / boss-2）、`tools/ci-decide.py`（"boss" 的
+路径 glob 要含 `tools/check-boss-2.mjs` 与 `tools/lib/**`，否则改了 kit 不会触发这关）、
+`.github/workflows/checks.yml` 的 `boss` job（matrix，两个不同的 script）。
