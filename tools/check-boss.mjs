@@ -2437,13 +2437,17 @@ function localAt(daysFromNow, hm, offset){
   ok('装好了就说「已装到主屏」', /已装到主屏/.test(txt), txt);
   ok('装好了就不该有警告', await page.locator('#admin-seen-section .admin-status.err').count() === 0, txt);
 
-  // 打开了、但还在浏览器里 —— 这种最容易被当成「装好了」，必须带警告
+  // 打开了、但没装到主屏 —— 这种最容易被当成「装好了」，事实必须摆出来。
+  // ⚠️ 2026-09-04 起这**不再报红**：用户改了方针（直接发链接、不再要求他装），
+  // 「在浏览器里看」从此是预期中的正常状态。原本那条红字会天天亮着，把正常状态
+  // 说成故障——红灯天天亮的话，以后真出事也没人会看。所以这里断言的是
+  // 「说清楚 ＋ 不报红」，别再改回去要求 .err（详见 notes 里那一节）。
   await page.evaluate(() => { feedData.seen = { lastSeen: '2026-08-30T01:02:03.000Z', standalone: false }; renderAdmin(); });
   txt = await page.locator('#admin-seen-section').innerText();
-  ok('★没装到主屏时说清楚「还在浏览器里」', /还在浏览器里/.test(txt), txt);
-  ok('★并且警告收不到通知', /收不到通知/.test(txt), txt);
-  ok('警告是显眼的那一种，不是一行灰字',
-     await page.locator('#admin-seen-section .admin-status.err').count() === 1);
+  ok('★没装到主屏这件事有说清楚', /没装到主屏/.test(txt), txt);
+  ok('★并且点明收不到通知', /收不到通知/.test(txt), txt);
+  ok('★但不报红（这是正常状态，不是故障）',
+     await page.locator('#admin-seen-section .admin-status.err').count() === 0);
 
   // 从没打开过
   await page.evaluate(() => { feedData.seen = { lastSeen: null, standalone: null }; renderAdmin(); });
@@ -3390,6 +3394,100 @@ function localAt(daysFromNow, hm, offset){
   ok('★写明了不装就收不到通知', /收不到通知/.test(block), block);
   ok('★安装说明的链接还留着（他哪天想装还找得到）',
      await page.evaluate(() => !!document.querySelector('#tab-admin a[href="./install.html"]')));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十四：「账单来了」那条链接要直接落在账单那一屏 ----------
+// 发出去的消息写的是「账单好了」，他点开却落在「今天」那一屏；当天没安排的话，
+// 第一眼看到的是「今天没有安排的行程」——一个从没打开过的人很可能就此关掉。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.goto(URL + '#k=' + GOOD_TOKEN + '&t=bills');
+  // 等不到就**别把整份自检打断**：让下面的断言把「没落在账单页」这个事实报成红灯。
+  // （2026-09-03 学过一次：回退验证时 run 中途死掉，后面几条根本没跑到，等于白验。）
+  await until(() => page.evaluate(() => document.getElementById('tab-bills').classList.contains('active')),
+    { timeout: 4000 }).catch(() => {});
+
+  console.log('\n【三十四】链接指定落地分页');
+  ok('★点开就在账单那一屏', await page.evaluate(() =>
+     document.getElementById('tab-bills').classList.contains('active')));
+  ok('★不是停在「今天」', !(await page.evaluate(() =>
+     document.getElementById('tab-today').classList.contains('active'))));
+  ok('★真的看得到账单（不是一个空壳分页）',
+     await page.locator('.bill-row').count() >= 1, await page.locator('.bill-row').count());
+  ok('★访问码照样存下来了', await page.evaluate(() => localStorage.getItem('bossApp_token')) === GOOD_TOKEN);
+  ok('★网址栏抹干净（码和分页参数都不留）', !(await page.evaluate(() => location.hash)).includes('k='),
+     await page.evaluate(() => location.href));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十四b：对照组 —— 不指定就还是「今天」；名字不认得就忽略 ----------
+// 少了这一组，「不管给什么都跳账单」也会让上面那几条全绿，而那会把每天开 App 看
+// 行程的人天天丢进账单页。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.goto(URL + '#k=' + GOOD_TOKEN);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: '进 App' });
+  console.log('\n【三十四b】对照组：没指定分页 / 指定了看不懂的分页');
+  ok('★没带 t= 时还是落在「今天」', await page.evaluate(() =>
+     document.getElementById('tab-today').classList.contains('active')));
+  await ctx.close();
+
+  const ctx2 = await browser.newContext();
+  await forceZh(ctx2);
+  mountRoutes(ctx2, { role: 'viewer' });
+  const page2 = await ctx2.newPage();
+  page2.on('pageerror', e => errs.push(e.message));
+  await page2.goto(URL + '#k=' + GOOD_TOKEN + '&t=admin');
+  await until(() => page2.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: '进 App' });
+  ok('★★链接里写 t=admin 也进不了管理页（老板不是管理员）', await page2.evaluate(() =>
+     !document.getElementById('tab-admin').classList.contains('active')));
+  ok('★看不懂的分页名一律忽略，留在「今天」', await page2.evaluate(() =>
+     document.getElementById('tab-today').classList.contains('active')));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx2.close();
+}
+
+// ---------- 场景三十四c：不装到主屏是「正常」，不是故障 ----------
+// 2026-09-04 用户改了方针（直接发链接，不再要求他装）。原本那条红字会天天亮着，
+// 把预期中的正常状态报成故障——红灯天天亮的话，以后真出事也没人会看。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin',
+    seen: { firstSeen: '2026-09-05T01:00:00.000Z', lastSeen: '2026-09-05T01:00:00.000Z', standalone: false } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-seen-section')), { what: '管理页渲染完' });
+  await gotoTab(page, 'admin');
+
+  console.log('\n【三十四c】老板在浏览器里看 —— 这是正常状态');
+  const block = await page.locator('#admin-seen-section').innerText();
+  ok('★仍然说清楚他没装到主屏（事实要摆出来）', /没装到主屏/.test(block), block);
+  ok('★但不再报红（不是故障）',
+     await page.locator('#admin-seen-section .admin-status.err').count() === 0, block);
+  ok('★也不再叫他「照安装说明再做一次」', !/再做一次/.test(block), block);
+  ok('★仍然点明收不到通知（这件事不能不说）', /收不到通知/.test(block), block);
+
+  // 对照组：装好了的话，那句「收不到通知」就不该再出现
+  await page.evaluate(() => { feedData.seen.standalone = true; renderAdmin(); });
+  const block2 = await page.locator('#admin-seen-section').innerText();
+  ok('★装好了就显示「已装到主屏」', /已装到主屏/.test(block2), block2);
+  ok('★装好了就不再说收不到通知', !/收不到通知/.test(block2), block2);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
