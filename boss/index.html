@@ -3324,6 +3324,7 @@ function adminMemoRowHtml(m){
     if(m.repeat === 'weekly') bits.push(pick('每周','weekly'));
     const to = [];
     if(m.notify && m.notify.telegram) to.push('Telegram');
+    if(m.notify && m.notify.me) to.push(pick('我的手机','my phone'));
     if(m.notify && m.notify.boss) to.push(pick('老板手机',"boss's phone"));
     if(to.length) bits.push(pick('推给 ','to ') + to.join(' + '));
   }
@@ -3369,6 +3370,7 @@ function adminMemosSectionHtml(){
         </select></div>
       <div class="admin-field"><label>${pick('到点推给谁','Notify whom')}</label>
         <label class="admin-check"><input type="checkbox" id="admin-memo-nt" checked> ${pick('我的 Telegram','My Telegram')}</label>
+        <label class="admin-check"><input type="checkbox" id="admin-memo-nm"> ${pick('我的手机（这个 App）','My phone (this app)')}</label>
         <label class="admin-check"><input type="checkbox" id="admin-memo-nb"> ${pick('老板手机','The boss’s phone')}</label></div>
       <button type="button" class="admin-btn" id="admin-memo-save" onclick="adminMemoSave()">💾 ${pick('保存备忘','Save note')}</button>
       <div class="admin-status" id="admin-memo-status"></div>
@@ -3379,7 +3381,7 @@ function adminMemosSectionHtml(){
 /** 没填时间＝不会响，那两个「推给谁」就该灰掉（能按会让人以为它会响）。 */
 function adminMemoSyncNotify(){
   const has = !!(document.getElementById('admin-memo-when') || {}).value;
-  ['admin-memo-nt','admin-memo-nb','admin-memo-repeat'].forEach(id => {
+  ['admin-memo-nt','admin-memo-nm','admin-memo-nb','admin-memo-repeat'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.disabled = !has;
   });
@@ -3393,6 +3395,7 @@ function adminMemoEdit(id){
   document.getElementById('admin-memo-when').value = m.datetime || '';
   document.getElementById('admin-memo-repeat').value = m.repeat || '';
   document.getElementById('admin-memo-nt').checked = !!(m.notify && m.notify.telegram);
+  document.getElementById('admin-memo-nm').checked = !!(m.notify && m.notify.me);
   document.getElementById('admin-memo-nb').checked = !!(m.notify && m.notify.boss);
   adminMemoSyncNotify();
   const btn = document.getElementById('admin-memo-save');
@@ -3416,6 +3419,7 @@ async function adminMemoSave(){
     datetime: when ? when.slice(0, 16) : '',   // datetime-local 可能带秒，服务端只收到分
     repeat: document.getElementById('admin-memo-repeat').value || '',
     notifyTelegram: !!document.getElementById('admin-memo-nt').checked,
+    notifyMe: !!document.getElementById('admin-memo-nm').checked,
     notifyBoss: !!document.getElementById('admin-memo-nb').checked,
   };
   if(adminMemoEditId) payload.id = adminMemoEditId;
@@ -3576,7 +3580,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v49</div>
+    <div class="admin-ver" id="adminVer">boss-app-v50</div>
 
     ${adminTripsSectionHtml()}
 

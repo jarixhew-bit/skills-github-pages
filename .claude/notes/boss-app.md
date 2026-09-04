@@ -282,8 +282,14 @@ YANG 平时用 Telegram 往 butler 的 `data/restaurants.json` 记，老板 App 
   `ADMIN_ACTIONS` 里，连「勾掉」都不行。
 - **备忘卡自己一个 `.memo-card` 类**，别借用 `.dental-card`：那个类被自检拿来数
   「牙医卡有几张」，借用会让那条断言看见两张、当场红。
-- 推给老板走 `pushToBossDevices()`（`boss.js` 导出，cron 用），只发 `who === BOSS_REPORTER`
-  那几台；YANG 自己那台由 Telegram 那条路负责，两边同时响是噪音。
+- 推给谁有**三条独立的路**（2026-09-03 用户追问「如果推去我的 app 行吗」——行，
+  他自己那台早就在推送名单里）：`notify.telegram`（Telegram）、`notify.me`
+  （`pushToOwnerDevices()`，推 YANG 自己那几台）、`notify.boss`（`pushToBossDevices()`，
+  只推老板那几台）。三个各自独立，他要几条响就勾几条。
+  两个函数都靠 `s.who !== / === BOSS_REPORTER` 分边——**不是**比对 YANG 的名字：
+  订阅名单里只可能有这两种人（同事打 /boss 会 403），而名字改过的话，
+  「等于某个名字」会静静地推给零台设备。**推错边＝把私事送到老板手机上**，
+  自检里那条「只推我手机的那条没推给老板」就是守它的。
   `BOSS_REPORTER` 是导出常量，`index.js` 判身份时用的是同一个——各写一份字面量的话，
   哪天改了称呼，「推给老板」会静静地推给零台设备。
 
