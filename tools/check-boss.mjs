@@ -914,6 +914,21 @@ import {
   ok('viewer 没开通知时，顶部有推送条', bar1.exists && bar1.parent === 'app', bar1);
   ok('推送条上有 × 可以关', bar1.dismiss === true, bar1);
 
+  // 属性值里塞了 bl() 会漏成可见文字：bl() 回的是 <span class="cn">…，那个引号把
+  // aria-label="" 提前收掉，`title="关掉这条提示…` 就整串印在老板首屏上，排版也垮。
+  // 2026-09-05 截图时逮到的真实故障。整页扫一遍，不只扫推送条——同一种写法哪里都可能犯。
+  const leak = await page.evaluate(() => {
+    const t = document.body.innerText || '';
+    const bar = document.getElementById('pushBar');
+    const btn = bar && bar.querySelector('.push-dismiss');
+    return { hasTitleAttr: t.includes('title="'), hasSpanCn: t.includes('class="cn"'),
+             label: btn ? btn.getAttribute('aria-label') : null };
+  });
+  ok('★页面上看不到漏出来的 HTML 属性（title="）', leak.hasTitleAttr === false, leak);
+  ok('★页面上看不到漏出来的标签（class="cn"）', leak.hasSpanCn === false, leak);
+  ok('★× 的 aria-label 是纯文字，不是一段 HTML',
+    !!leak.label && !leak.label.includes('<') && !leak.label.includes('"'), leak);
+
   await page.click('#pushBar .push-dismiss');
   ok('按了 × 就没了', await page.locator('#pushBar').count() === 0);
   const remembered = await page.evaluate(() => localStorage.getItem('bossApp_pushBarDismissed'));

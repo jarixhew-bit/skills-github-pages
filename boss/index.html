@@ -3772,7 +3772,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v55</div>
+    <div class="admin-ver" id="adminVer">boss-app-v56</div>
 
     ${adminTripsSectionHtml()}
 
@@ -3959,10 +3959,15 @@ async function refreshPushSubscriptionState(){
   }catch(e){ pushSubscription = null; }
   ensurePushUI();
 }
-/** 顶部提示条的 × —— 这条只有 viewer（老板）看得到，一律给 ×。 */
+/** 顶部提示条的 × —— 这条只有 viewer（老板）看得到，一律给 ×。
+ *  ⚠️ 属性值里**绝不能用 `bl()`**：bl() 回的是 `<span class="cn">…` 这段 HTML，
+ *  里头那个引号会把 aria-label="" 提前收掉，后面整串 `title="关掉这条提示…` 就漏成
+ *  可见文字，还把这一条的排版挤垮（2026-09-05 截图时逮到，老板首屏第一眼就是它）。
+ *  属性里要双语一律走 `escapeHtml(pick(zh,en))` —— 纯文字、按当前语言给一个。 */
 function dismissBtnHtml(){
+  const label = escapeHtml(pick('关掉这条提示','Dismiss'));
   return `<button type="button" class="push-dismiss" onclick="dismissPushBar()"
-       aria-label="${bl('关掉这条提示','Dismiss')}" title="${bl('关掉这条提示','Dismiss')}">×</button>`;
+       aria-label="${label}" title="${label}">×</button>`;
 }
 function pushBarInnerHtml(){
   const subscribed = !!pushSubscription;
