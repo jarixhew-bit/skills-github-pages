@@ -452,3 +452,22 @@ today/trips/bills/inventory/restaurants，看不懂的一律忽略）。发「�
 接线三处：`tools/check-all.py`（boss-1 / boss-2）、`tools/ci-decide.py`（"boss" 的
 路径 glob 要含 `tools/check-boss-2.mjs` 与 `tools/lib/**`，否则改了 kit 不会触发这关）、
 `.github/workflows/checks.yml` 的 `boss` job（matrix，两个不同的 script）。
+
+## 属性值里绝不能塞 bl()（2026-09-05）
+`bl(zh,en)` 回的是 `<span class="cn">…</span>` **一段 HTML**，不是文字。塞进
+`aria-label="${bl(...)}"` 这种属性里，里头的引号会把属性提前收掉，后面整串
+`title="关掉这条提示…` 就以可见文字印在页面上，那一行的 flex 排版也跟着垮。
+
+真的发生过：`dismissBtnHtml()` 犯了这个，老板首屏最上面那条推送提示长这样——
+`🔔 推 送 通 知 [开启通知] 关掉这条提示" title="关掉这...`，而且是他打开 App
+第一眼的位置。是截图检查别的功能时顺手看到的，自检当时全绿（只验了「× 在不在、
+按了会不会消失」，没验它长什么样）。
+
+规矩：**属性里要双语，一律 `escapeHtml(pick(zh, en))`**——纯文字、按当前语言给一个。
+守它的是 `check-boss.mjs` 场景八新增的三条：整页 `innerText` 不含 `title="`、
+不含 `class="cn"`、`×` 的 `aria-label` 必须是纯文字。假红验证时第二条没红
+（`<span class="cn">` 那半段被浏览器当标签吃掉，不进 innerText），留着当别处的
+守门，但**逮住这次的是第一和第三条**。
+
+更一般的一条教训：**「控件在不在」验不出「它长什么样」**。会渲染成文字的东西，
+自检至少要看一眼可见文本里有没有 HTML 的痕迹。
