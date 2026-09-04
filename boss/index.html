@@ -2701,12 +2701,16 @@ function adminSeenSectionHtml(){
     const t = fmtDateTimeBoth(at);
     const when = escapeHtml(pick(t.zh, t.en));
     const installed = seen.standalone === true;
+    // 2026-09-04 起「不装」是**预期的正常状态**（用户决定：直接发链接，不再要求他装），
+    // 所以这里不再报红。原来那条红字会天天亮着把正常状态说成故障——红灯天天亮的话，
+    // 以后真出事也没人会看。剩下的只是一句陈述：不装就收不到通知。
+    // 访问码掉了的问题已经由链接里的 #k= 解决，那半句也一并删掉（见 readCodeFromHash）。
     const badge = installed
       ? `<span class="admin-bill-read yes">${pick('已装到主屏','Installed to Home Screen')}</span>`
-      : `<span class="admin-bill-read no">${pick('还在浏览器里，没装到主屏','Still in the browser — not installed')}</span>`;
-    const warn = installed ? '' : `<div class="admin-status err">${pick(
-      '没装到主屏的话，iPhone 会自己清掉数据，而且**收不到通知**——请他照安装说明再做一次。',
-      'Without installing to the Home Screen, iOS may clear its data and push notifications will never arrive.')}</div>`;
+      : `<span class="admin-bill-read no">${pick('在浏览器里看（没装到主屏）','Viewing in the browser (not installed)')}</span>`;
+    const warn = installed ? '' : `<div class="admin-status">${pick(
+      '这样也能看，只是收不到通知——你传了新账单要自己跟他说一声。',
+      'That works fine; he just will not get push notifications — tell him when a new bill is up.')}</div>`;
     body = `<div class="admin-status">${pick('最后一次打开：','Last opened: ')}${when}</div>
       <div>${badge}</div>${warn}`;
   }
@@ -3701,7 +3705,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v52</div>
+    <div class="admin-ver" id="adminVer">boss-app-v53</div>
 
     ${adminTripsSectionHtml()}
 
@@ -3723,6 +3727,7 @@ function renderAdmin(){
         <div id="admin-boss-link" class="admin-code-box">${escapeHtml(adminAccessCode ? bossShareUrl() : pick('加载中…','Loading…'))}</div>
       </div>
       <button type="button" class="admin-btn" onclick="adminCopyBossMessage()">📋 ${pick('复制整条消息（可直接贴去 WhatsApp）','Copy the whole message (paste into WhatsApp)')}</button>
+      <button type="button" class="admin-btn" onclick="adminCopyBillMessage()">🧾 ${pick('复制「账单来了」的消息（点开直接看账单）','Copy a "new bill" message (opens straight to Bills)')}</button>
       <button type="button" class="admin-btn-sm" onclick="adminCopyBossLink()">${pick('只复制链接','Copy link only')}</button>
       <button type="button" class="admin-btn-sm" onclick="adminCopyAccessCode()">${pick('只复制访问码','Copy code only')}</button>
       <span id="admin-access-code-status" style="margin-left:8px;font-size:12.5px;color:var(--ok)"></span>
@@ -4095,6 +4100,16 @@ function adminCopyBossLink(){
   if(!adminAccessCode) return;
   adminCopyText(bossShareUrl(), pick('链接已复制','Link copied'));
 }
+/** 「账单来了」那条：链接直接落在账单那一屏。
+ *  他点开就看到账单本身，不用先经过「今天没有安排的行程」那一屏。 */
+function adminCopyBillMessage(){
+  if(!adminAccessCode) return;
+  const url = bossShareUrl() + '&t=bills';
+  const msg = pick(
+    `账单好了，点这里看：\n${url}\n\n万一它问访问码，输入：${adminAccessCode}`,
+    `Your bill is ready — tap here:\n${url}\n\nIf it asks for a code, enter: ${adminAccessCode}`);
+  adminCopyText(msg, pick('账单消息已复制','Bill message copied'));
+}
 /** 整条可以直接转出去的消息：一句话说明 ＋ 链接 ＋ 访问码（万一他清了缓存要手输）。 */
 function adminCopyBossMessage(){
   if(!adminAccessCode) return;
@@ -4163,6 +4178,16 @@ function ensureAdminUI(){
  * - 进去之后**把码从网址栏抹掉**（history.replaceState）：不让它一直挂在那里被
  *   截图、被转发、被浏览器历史记着。localStorage 里已经有了，不影响下次打开。
  * - 链接里的码**优先于**已经存着的：轮换过访问码之后发新链接，点一下就换成新的。 */
+/** 链接里可以指定「点开先看哪一屏」：#k=xxx&t=bills
+ *  发「账单来了」那条消息时，他点开就该直接看到账单——落在「今天」那一屏、
+ *  而当天又没安排的话，他看到的是一句「今天没有安排的行程」，一个从没打开过的人
+ *  很可能就此关掉。名字不认得就忽略（留在默认分页），绝不猜。 */
+const LINK_TABS = ['today','trips','bills','inventory','restaurants'];
+function readTabFromHash(){
+  const m = String(location.hash || '').match(/[#&]t=([a-z]+)/);
+  const t = m ? m[1] : '';
+  return LINK_TABS.indexOf(t) !== -1 ? t : '';
+}
 function readCodeFromHash(){
   const h = String(location.hash || '');
   const m = h.match(/[#&]k=([^&]+)/);
@@ -4171,7 +4196,7 @@ function readCodeFromHash(){
 }
 function stripCodeFromUrl(){
   try{
-    if(!readCodeFromHash()) return;
+    if(!readCodeFromHash() && !readTabFromHash()) return;
     history.replaceState(null, '', location.pathname + location.search);
   }catch(e){ /* 老浏览器没有 replaceState 就算了，不影响能不能用 */ }
 }
@@ -4179,6 +4204,7 @@ function stripCodeFromUrl(){
 async function init(){
   // 链接里带码的话先走这条路。成功就直接进 App，老板一个字都不用打。
   const linkCode = readCodeFromHash();
+  const linkTab = readTabFromHash();   // 要在抹掉网址之前先读出来
   if(linkCode){
     const prev = TOKEN;
     TOKEN = linkCode;
@@ -4187,6 +4213,7 @@ async function init(){
       saveToken(linkCode);      // 验证通过才落地
       stripCodeFromUrl();
       handleFeed(feed, { fromNetwork:true });
+      if(linkTab) switchTab(linkTab);
       return;
     }catch(err){
       TOKEN = prev;
@@ -4221,9 +4248,12 @@ async function init(){
   }
   const cached = loadCachedFeed();
   if(cached && cached.data){ handleFeed(cached.data, { fromNetwork:false, fetchedAt: cached.fetchedAt }); }
+  // 已经存过码的人（第二次以后点同一条链接）同样要落在指定的那一屏
+  if(linkTab){ stripCodeFromUrl(); }
   try{
     const feed = await fetchFeed();
     handleFeed(feed, { fromNetwork:true });
+    if(linkTab) switchTab(linkTab);
   }catch(err){
     if(err && err.kind === 'http' && err.status === 401){
       clearToken();

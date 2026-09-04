@@ -8,7 +8,7 @@
 //
 // 改了页面内容记得同步升这里的版本号（v1 → v2 这样升），否则已安装的
 // 老板手机会一直看到旧版壳（PWA 页面规则，见 skills/pwa-pages.md）。
-const CACHE = 'boss-app-v52';
+const CACHE = 'boss-app-v53';
 const ASSETS = ['./', './index.html', './manifest.webmanifest',
   './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
