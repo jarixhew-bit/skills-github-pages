@@ -62,7 +62,22 @@ function fakeBills(){
   return [{
     id: 'b1', title: { zh: '8月账单', en: 'August bill' },
     period: '2026-08', uploadedAt: '2026-08-01T00:00:00Z', kind: 'month', filename: 'aug.pdf',
+    account: 'Boss', summary: { expense: 3240.5, currency: 'USD', count: 47 },
   }];
+}
+/** 三份不同账户的账单 ＋ 一份**没有摘要的老账单**（summary 这个字段 2026-09-05 才有）。
+ *  最后那一份是这一节最要紧的对照组：它绝不能被印成 0.00。 */
+function fakeBillsMixed(){
+  return [
+    { id: 'b1', title: { zh: '2026年08月 Boss 账单', en: '' }, period: '2026-08', kind: 'month',
+      account: 'Boss', filename: 'a.pdf', uploadedAt: '2026-09-01T03:00:00Z',
+      summary: { expense: 3240.5, currency: 'USD', count: 47 } },
+    { id: 'b2', title: { zh: '2026年08月 Xiamen trip 账单', en: '' }, period: '2026-08', kind: 'month',
+      account: 'Xiamen trip', filename: 'b.pdf', uploadedAt: '2026-09-01T02:00:00Z',
+      summary: { expense: 860, currency: 'HKD', count: 12 } },
+    { id: 'b3', title: { zh: '旧的那份（没有摘要）', en: '' }, period: '2026-07', kind: 'month',
+      account: 'Boss', filename: 'c.pdf', uploadedAt: '2026-08-01T02:00:00Z' },
+  ];
 }
 // 收藏餐厅：后端 restaurantsForBoss() 出来的形状（备注里的链接已经摘成 mapUrl）。
 // 第二家刻意用长店名 + 全角括号——窄屏排版那一节要靠它。
@@ -3488,6 +3503,62 @@ function localAt(daysFromNow, hm, offset){
   const block2 = await page.locator('#admin-seen-section').innerText();
   ok('★装好了就显示「已装到主屏」', /已装到主屏/.test(block2), block2);
   ok('★装好了就不再说收不到通知', !/收不到通知/.test(block2), block2);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十五：账单那一行直接显示花了多少 ----------
+// 在这之前那一行只有期间，一个数字都没有——而老板打开这一屏，想知道的八成就是那个
+// 数字。他得点进去等 PDF 画出来自己找总额。
+// 这一节最要紧的是**别显示错的数字**：老账单没有摘要，那时候什么都不印，
+// 绝不能退成「0.00」——那是在告诉老板那个月一分钱没花。
+{
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 740 } });
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer', bills: fakeBillsMixed() });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: 'App 加载完成' });
+  await gotoTab(page, 'bills');
+
+  console.log('\n【三十五】账单列表直接显示金额');
+  const rows = await page.locator('.bill-row').count();
+  ok('三份都列出来了（不藏起来任何一份）', rows === 3, rows);
+
+  const texts = await page.evaluate(() =>
+    [...document.querySelectorAll('.bill-row')].map(r => r.innerText));
+  const boss = texts.find(t => /Boss 账单/.test(t)) || '';
+  const xm = texts.find(t => /Xiamen/.test(t)) || '';
+  const old = texts.find(t => /旧的那份/.test(t)) || '';
+
+  ok('★金额印出来了', /3,240\.50/.test(boss), boss);
+  ok('★★币别也印出来了（Boss 是 USD、Xiamen 那份是 HKD，光一个数字是错的）',
+     /USD/.test(boss) && /HKD/.test(xm), [boss, xm]);
+  ok('★两份不同账户各显示各的金额，没有混在一起', /860\.00/.test(xm) && !/860/.test(boss), [boss, xm]);
+  ok('★笔数也有（他一眼知道这个数字是几笔凑出来的）', /47 笔/.test(boss), boss);
+  ok('★账户名摆出来（不然三份长得一样，分不出谁是谁）', /Boss/.test(boss) && /Xiamen trip/.test(xm), [boss, xm]);
+
+  // 这一条是整节的重点
+  ok('★★没有摘要的老账单：一个数字都不印', !/0\.00|NaN|undefined/.test(old), old);
+  ok('★老账单其余内容照常显示（不是整行坏掉）', /旧的那份/.test(old) && /2026-07/.test(old), old);
+  ok('★金额没有把标题挤掉（点开还是那份 PDF）',
+     await page.locator('.bill-row .bill-title').count() === 3);
+
+  // 窄屏不许溢出
+  const m = await page.evaluate(() => {
+    const list = document.querySelector('.bill-list');
+    if(!list) return { noList: true };
+    let worst = -1e9;
+    for(const el of [list, ...list.querySelectorAll('*')]){
+      worst = Math.max(worst, el.getBoundingClientRect().right - list.getBoundingClientRect().right);
+    }
+    return { noList: false, worst: Math.round(worst * 10) / 10,
+             pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+  });
+  ok('★360px 窄屏上没有溢出', m.noList === false && m.worst <= 1 && m.pageOverflow <= 1, m);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
