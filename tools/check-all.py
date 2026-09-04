@@ -63,7 +63,10 @@ CHECKS = [
     ("weather", ["node", "tools/check-weather.mjs"], True),
     ("company", ["node", "tools/check-expense-company.mjs"], True),
     ("inventory", ["node", "tools/check-inventory.mjs"], True),
-    ("boss", ["node", "tools/check-boss.mjs"], True),
+    # 老板 App 真的拆成两份不同的场景（前半/后半），并行跑；
+    # 两份加起来的断言数必须还是 566 项。
+    ("boss-1", ["node", "tools/check-boss.mjs"], True),
+    ("boss-2", ["node", "tools/check-boss-2.mjs"], True),
     # 同事版跟 CI 一样拆两半并行，最慢那关的墙上时间才降得下来。
     ("staff-1", ["node", "tools/check-staff-page.mjs"], True),
     ("staff-2", ["node", "tools/check-staff-page.mjs"], True),

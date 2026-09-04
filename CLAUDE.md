@@ -142,8 +142,10 @@
    两个数据档全用固定 fixture 拦掉，所以不随每天行情变动而误报）/ `check-weather.mjs`
    （验新加坡手册每日天气条：拦住 open-meteo 造出「有预报／超出预报窗口／API 挂掉」
    三种情境，确认每天读的是自己那一格、不会错位，也不会开天窗）/ `check-boss.mjs`
-   （守老板 App 的安全不变量：viewer 身份下写操作控件必须一个都不进 DOM，**并带 admin
-   对照组**——没有对照组的话，整个管理功能坏掉也会显示「通过」）（跑前要先起
+   ＋`check-boss-2.mjs`（同一份自检拆成前半／后半两个档并行跑，共用
+   `tools/lib/boss-check-kit.mjs`；守老板 App 的安全不变量：viewer 身份下写操作控件
+   必须一个都不进 DOM，**并带 admin 对照组**——没有对照组的话，整个管理功能坏掉也会
+   显示「通过」）（跑前要先起
    `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）；
    线上类 `check-live`（每天验线上页面是不是 main 那一版，**只能在 CI 跑**，
    沙盒连不上 github.io）＋ `fetch-photos`（抓图通道，结果会写回触发分支）。
