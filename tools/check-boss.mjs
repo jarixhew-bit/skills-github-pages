@@ -82,7 +82,7 @@ function fakeRestaurants(){
 function fakeMemosAdmin(){
   return [
     { id: 'g1', text: '周三 8:30 见客户', datetime: '2026-09-10T08:30', repeat: null,
-      audience: 'boss', notify: { telegram: true, boss: true }, done: false },
+      audience: 'boss', notify: { telegram: true, boss: true, me: false }, done: false },
     { id: 'g2', text: '护照放在保险箱第二层', datetime: null, repeat: null,
       audience: 'boss', notify: { telegram: false, boss: false }, done: false },
     { id: 'p1', text: '给老婆买生日礼物', datetime: '2026-09-20T18:00', repeat: null,
@@ -3112,10 +3112,12 @@ function localAt(daysFromNow, hm, offset){
   // 没填时间＝不会响，那几个开关要灰掉（能按会让人以为它会响）
   const disabled = await page.evaluate(() => ({
     nt: document.getElementById('admin-memo-nt').disabled,
+    nm: document.getElementById('admin-memo-nm').disabled,
     nb: document.getElementById('admin-memo-nb').disabled,
     rp: document.getElementById('admin-memo-repeat').disabled,
   }));
-  ok('★没填时间时「推给谁」和「重复」是灰的', disabled.nt && disabled.nb && disabled.rp, disabled);
+  ok('★没填时间时「推给谁」和「重复」全是灰的（三个勾都在内）',
+     disabled.nt && disabled.nm && disabled.nb && disabled.rp, disabled);
 
   // 不填内容不许送
   const before = rec.calls.filter(c => c.action === 'memoSave').length;
@@ -3147,6 +3149,7 @@ function localAt(daysFromNow, hm, offset){
   await page.fill('#admin-memo-when', '2026-09-11T09:00');
   await page.evaluate(() => { adminMemoSyncNotify(); });
   await page.check('#admin-memo-nb');
+  await page.check('#admin-memo-nm');   // 2026-09-03 用户：「如果推去我的app行吗」
   await page.selectOption('#admin-memo-repeat', 'weekly');
   await page.click('#admin-memo-save');
   await until(() => rec.calls.filter(c => c.action === 'memoSave').length >= 2, { what: '第二条送出去' });
@@ -3154,6 +3157,7 @@ function localAt(daysFromNow, hm, offset){
   ok('★时间照送（到分钟）', sent.datetime === '2026-09-11T09:00', sent);
   ok('★「给老板看」送出去了', sent.audience === 'boss', sent);
   ok('★「推老板手机」送出去了', sent.notifyBoss === true, sent);
+  ok('★「推我自己手机」也送出去了（跟 Telegram 是两条独立的路）', sent.notifyMe === true, sent);
   ok('★重复也送了', sent.repeat === 'weekly', sent);
 
   // 修改：点 ✏️ 会把那条填回表单，并且带上 id
