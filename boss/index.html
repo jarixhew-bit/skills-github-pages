@@ -196,6 +196,12 @@ body:not(.lang-en) .en{display:none !important}
 /* 金额是老板打开这一屏最想看到的东西，字要够大、够显眼 */
 .bill-amt{font-size:19px;font-weight:800;color:var(--text);margin-top:3px;letter-spacing:.2px}
 .bill-count{font-size:12.5px;font-weight:600;color:var(--sub);margin-left:8px;letter-spacing:0}
+/* 「花费」两个字（2026-09-05 加）：光一个数字，他第一眼读成了结余。数字要大，
+   标注要小但看得见——所以是同一行的小字前缀，不是另起一行。 */
+.bill-amt-k{font-size:12.5px;font-weight:700;color:var(--sub);margin-right:6px;letter-spacing:0}
+.seen-devs{margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+.seen-devs-h{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px}
+.seen-dev{font-size:13px;color:var(--text);line-height:1.7}
 .bill-arrow,.tbill-arrow{color:var(--sub);font-size:18px;flex:none}
 
 /* ===== 账单查看弹层 ===== */
@@ -609,6 +615,10 @@ const TOKEN_KEY = 'bossApp_token';
 const EXPENSE_TOKEN_KEY = 'expenseTracker_companyToken';
 const FEED_CACHE_KEY = 'bossApp_feedCache';   // {fetchedAt, data}
 const SEEN_KEY = 'bossApp_seen';              // {trips,bills,inventory,restaurants}
+// 设备号：随机一串，只存在这台机器上，不含任何个人信息。作用只有一个——让管理页
+// 分得出「老板那台」和「我自己那台」。2026-09-05 加：在这之前只有一笔全局的
+// 「最后一次打开」，YANG 看到有人开了 App 却判断不出是谁，只能猜。
+const DEVICE_KEY = 'bossApp_deviceId';
 const MONTHS_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 /* ---------- 本地存储：全部包 try/catch（无痕模式会 throw） ---------- */
@@ -1042,6 +1052,27 @@ async function bossCall(action, extra){
   }
   return json;
 }
+/** 这台机器的设备号：没有就现生一个存起来。存不下（无痕模式）就回 null——
+ *  那种情况下这台每次都算「不带设备号」，退回旧行为，不会每开一次就灌一台新设备进去。 */
+function deviceId(){
+  let v = safeGet(DEVICE_KEY);
+  if(v && /^[A-Za-z0-9]{6,32}$/.test(v)) return v;
+  v = 'd' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
+  safeSet(DEVICE_KEY, v);
+  return safeGet(DEVICE_KEY) === v ? v : null;
+}
+/** 机型：分得出「iPhone / iPad / Android / Mac / Windows / 其他」这几档就够了——
+ *  够回答「是他那台 iPhone 开的，还是我那台 Android」。服务端另有白名单，
+ *  这里送什么它都不会原样存下来。 */
+function devicePlatform(){
+  const ua = String((navigator && navigator.userAgent) || '');
+  if(/iPhone/i.test(ua)) return 'iPhone';
+  if(/iPad/i.test(ua)) return 'iPad';
+  if(/Android/i.test(ua)) return 'Android';
+  if(/Macintosh|Mac OS X/i.test(ua)) return (navigator.maxTouchPoints > 1) ? 'iPad' : 'Mac';
+  if(/Windows/i.test(ua)) return 'Windows';
+  return '其他';
+}
 /** 拉 feed 时带上本机当前的推送订阅 endpoint（如果有），让服务端的 push.subscribed
  *  跟本机浏览器状态对齐——合约里明确「没带就回 false」，所以能带就带。 */
 async function fetchFeed(){
@@ -1057,7 +1088,9 @@ async function fetchFeed(){
   }catch(e){}
   // standalone：这台设备是不是「已加到主屏」的 PWA。服务端拿它回答 YANG 的
   // 「老板到底装上了没有」——iOS 上还在 Safari 里的话它是 false，通知也一定收不到。
-  const args = { standalone: isStandalonePwa() };
+  const args = { standalone: isStandalonePwa(), platform: devicePlatform() };
+  const dev = deviceId();
+  if(dev) args.deviceId = dev;
   if(ep) args.pushEndpoint = ep;
   return bossCall('feed', args);
 }
@@ -1652,7 +1685,11 @@ function billAmountHtml(b){
   if(!money) return '';
   const n = (typeof sm.count === 'number' && sm.count >= 0)
     ? `<span class="bill-count">${bl(sm.count + ' 笔', sm.count + ' items')}</span>` : '';
-  return `<div class="bill-amt">${escapeHtml(money)}${n}</div>`;
+  // ⚠️ 「花费」这两个字不能省（2026-09-05 用户：「我一打开看我以为是结余」）。
+  // 这里印的是这段期间**花掉多少**，不是账上还剩多少——两个数字差得远，
+  // 他照着看错的那个下判断就麻烦了。
+  const k = `<span class="bill-amt-k">${pick('花费','Spent')}</span>`;
+  return `<div class="bill-amt">${k}${escapeHtml(money)}${n}</div>`;
 }
 function base64ToUint8Array(b64){
   const bin = atob(b64 || '');
@@ -2756,6 +2793,28 @@ let adminDentalBusy = false;
  *   打开过但还在浏览器里 → 他点了链接但没装到主屏（**通知一定收不到**）
  *   已装到主屏 → 装好了
  * 最后那种才算交付完成。 */
+/** 每台设备各自一行（2026-09-05 加）。
+ *  在这之前只有一笔全局的「最后一次打开」，YANG 看到有人开了 App 却分不出是老板
+ *  还是自己那台借了他钥匙的机器——他真的为这个问过一次，而且当时只能靠猜。
+ *  ⚠️ 次数写「至少几次」不是「几次」：服务端 6 小时才记一笔，连开五次只算一次。
+ *  写成「5 次」是在骗人，宁可写得保守。 */
+function seenDevicesHtml(devices){
+  const list = Array.isArray(devices) ? devices : [];
+  if(!list.length) return '';
+  const rows = list.map(d => {
+    const t = fmtDateTimeBoth(d && d.lastSeen);
+    const when = escapeHtml(pick(t.zh, t.en));
+    const plat = escapeHtml(String((d && d.platform) || '其他'));
+    const where = d && d.standalone === true
+      ? pick('主屏','Home Screen') : pick('浏览器','browser');
+    const opens = (d && typeof d.opens === 'number' && d.opens > 0)
+      ? ` · ${pick('至少 ' + d.opens + ' 次', 'at least ' + d.opens + '×')}` : '';
+    return `<div class="seen-dev"><b>${plat}</b> · ${escapeHtml(where)} · ${when}${opens}</div>`;
+  }).join('');
+  return `<div class="seen-devs">
+      <div class="seen-devs-h">${pick('分别是哪几台','Which devices')}</div>${rows}
+    </div>`;
+}
 function adminSeenSectionHtml(){
   const seen = (feedData && feedData.seen) || null;
   const at = seen && seen.lastSeen;
@@ -2777,7 +2836,7 @@ function adminSeenSectionHtml(){
       '这样也能看，只是收不到通知——你传了新账单要自己跟他说一声。',
       'That works fine; he just will not get push notifications — tell him when a new bill is up.')}</div>`;
     body = `<div class="admin-status">${pick('最后一次打开：','Last opened: ')}${when}</div>
-      <div>${badge}</div>${warn}`;
+      <div>${badge}</div>${warn}${seenDevicesHtml(seen.devices)}`;
   }
   return `<div class="admin-block" id="admin-seen-section">
       <h3>📱 ${pick('老板那边','The boss\'s device')}</h3>
@@ -3772,7 +3831,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v56</div>
+    <div class="admin-ver" id="adminVer">boss-app-v57</div>
 
     ${adminTripsSectionHtml()}
 

@@ -465,6 +465,13 @@ import {
   const feedCall = rec.calls.find(c => c.action === 'feed');
   ok('拉 feed 时带上了 standalone（服务端靠它判断装没装到主屏）',
      feedCall && typeof feedCall.standalone === 'boolean', feedCall);
+  // 设备号与机型（2026-09-05 加）：没这两样，管理页就分不出「老板那台」和
+  // 「我自己那台借了他钥匙的机器」——YANG 真为这个问过一次，当时只能靠猜。
+  ok('拉 feed 时带上了设备号', feedCall && /^[A-Za-z0-9]{6,32}$/.test(String(feedCall.deviceId || '')), feedCall);
+  ok('拉 feed 时带上了机型', feedCall && typeof feedCall.platform === 'string' && feedCall.platform.length > 0, feedCall);
+  const devAgain = await page.evaluate(() => deviceId());
+  ok('★设备号是稳定的，不是每次现编一个（否则每开一次就多出一台设备）',
+     devAgain === feedCall.deviceId, { devAgain, sent: feedCall.deviceId });
 
   ok('有「老板那边」这一块', await page.locator('#admin-seen-section').count() === 1);
   let txt = await page.locator('#admin-seen-section').innerText();
@@ -483,6 +490,33 @@ import {
   ok('★并且点明收不到通知', /收不到通知/.test(txt), txt);
   ok('★但不报红（这是正常状态，不是故障）',
      await page.locator('#admin-seen-section .admin-status.err').count() === 0);
+
+  // 每台设备各自一行：机型 + 在哪开的 + 最后一次什么时候
+  await page.evaluate(() => {
+    feedData.seen = { lastSeen: '2026-09-04T15:37:10.000Z', standalone: true, devices: [
+      { id: 'dev11111', platform: 'iPhone', standalone: true, firstSeen: '2026-09-01T00:00:00.000Z',
+        lastSeen: '2026-09-04T15:37:10.000Z', opens: 3 },
+      { id: 'dev22222', platform: 'Android', standalone: false, firstSeen: '2026-08-29T00:00:00.000Z',
+        lastSeen: '2026-09-02T05:48:00.000Z', opens: 1 },
+    ] };
+    renderAdmin();
+  });
+  txt = await page.locator('#admin-seen-section').innerText();
+  ok('★两台设备各占一行', await page.locator('#admin-seen-section .seen-dev').count() === 2, txt);
+  ok('★iPhone 那台认得出来', /iPhone/.test(txt), txt);
+  ok('★Android 那台也认得出来', /Android/.test(txt), txt);
+  ok('★分得出一台在主屏、一台在浏览器', /主屏/.test(txt) && /浏览器/.test(txt), txt);
+  ok('★次数写「至少 N 次」（服务端 6 小时才记一笔，写死 N 次是骗人）', /至少 3 次/.test(txt), txt);
+
+  // 对照组：服务端没给设备列表（老数据）时，整块不出现，也不能崩
+  await page.evaluate(() => {
+    feedData.seen = { lastSeen: '2026-09-04T15:37:10.000Z', standalone: true };
+    renderAdmin();
+  });
+  ok('★没有设备列表时那一块整个不出现（不是印一行空的）',
+     await page.locator('#admin-seen-section .seen-dev').count() === 0);
+  ok('★但上面「最后一次打开」还在（证明上一条不是因为整块坏了）',
+     /最后一次打开/.test(await page.locator('#admin-seen-section').innerText()));
 
   // 从没打开过
   await page.evaluate(() => { feedData.seen = { lastSeen: null, standalone: null }; renderAdmin(); });
@@ -1559,6 +1593,10 @@ import {
      /USD/.test(boss) && /HKD/.test(xm), [boss, xm]);
   ok('★两份不同账户各显示各的金额，没有混在一起', /860\.00/.test(xm) && !/860/.test(boss), [boss, xm]);
   ok('★笔数也有（他一眼知道这个数字是几笔凑出来的）', /47 笔/.test(boss), boss);
+  // 2026-09-05 用户：「那个花了多少你要备注，因为我一打开看我以为是结余」。
+  // 花费和结余是两个差很远的数字，他照着看错的那个下判断就麻烦了。
+  ok('★★数字前面写着「花费」（没有这两个字，他第一眼读成结余）', /花费/.test(boss), boss);
+  ok('★没有摘要的老账单不会凭空冒出「花费」两个字', !/花费/.test(old), old);
   ok('★账户名摆出来（不然三份长得一样，分不出谁是谁）', /Boss/.test(boss) && /Xiamen trip/.test(xm), [boss, xm]);
 
   // 这一条是整节的重点
