@@ -32,17 +32,19 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ hashFiles('package.json') }}
+        # key 跟 **package-lock.json** 走：真正决定要哪一版浏览器的是锁定的
+        # playwright 版本，不是 package.json 里那个 ^ 范围。
+        key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
     - name: 装 playwright
       shell: bash
       run: |
-        npm install
-        if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
-          # 浏览器本体已经从缓存拿回来了，只要补系统依赖（这一步很快）
-          npx playwright install-deps chromium
-        else
-          npx playwright install --with-deps chromium
-        fi
+        # npm ci 而不是 npm install：照锁定版本装，CI 上不许悄悄升版本。
+        npm ci || npm install
+        # ⚠️ 缓存命中**也要**跑 install：2026-09-05 踩过——缓存是命中了，可是里头
+        # 少了 chrome-headless-shell，于是所有浏览器自检当场崩在 launch()，
+        # 而且崩得跟自检本身完全无关。install 在文件齐全时就是几秒的 no-op，
+        # 缺什么补什么；靠「命中就跳过」等于赌缓存内容永远是完整的。
+        npx playwright install --with-deps chromium
     - name: 起本地服务器
       shell: bash
       run: |
