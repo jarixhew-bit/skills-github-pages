@@ -295,3 +295,14 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
   VOO 和 IBIT 可能同時欠配（實跑真實數據才發現，兩者都差 2.4 點），只報一個會讓人
   以為另一個已到位。
   自檢：`python3 tools/check-decision-log.py`（11 個用例，合成數據、不需密碼，已掛 CI）。
+
+- **長橋（Longbridge）：評估過，決定不接（2026-08-25）**。別再從頭查一遍。
+  查到的事實：claude.ai 的 skill 庫與 MCP 連接器registry **都沒有**長橋；但長橋自己站上
+  （`https://open.longbridge.com/zh-HK`）有 AI Skill 與 Claude Connector，認證是 OAuth 2.0
+  （`https://openapi.longbridge.com/oauth2/token`，REST 走 `/v1/...` Bearer，要註冊 client_id）。
+  **不接的理由是用戶在長橋沒有實際倉位**——所以頁面上的淨值、VOO/IBIT 占比、配置缺口、
+  `plan.html` 的年數本來就是完整的，接進來只多一個沒在用的券商行情，代價卻是多一套會過期的
+  OAuth、多一個會掛的環節、以及**多一個能下單的憑證**（違反本系統只讀的原則）。
+  **重新評估的唯一觸發條件：用戶真的在長橋開了倉。** 那時是必須做，因為第二個帳戶一出現，
+  頁面的淨值與配置就真的殘缺，`plan.html` 算出的年數會偏。
+  副產物：`.github/workflows/fetch-url.yml`（沙盒連不上 `open.longbridge.com`，靠 CI 抓回來的）。
