@@ -467,7 +467,12 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   border-bottom:1px solid var(--border);cursor:pointer}
 .inv-item-row:last-child{border-bottom:none}
 .inv-item-thumb{width:40px;height:40px;border-radius:8px;flex-shrink:0;object-fit:cover;
-  background:var(--p2)}
+  background:var(--p2);cursor:zoom-in}
+.inv-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;
+  display:none;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
+.inv-lightbox.open{display:flex}
+.inv-lightbox img{max-width:100%;max-height:100%;border-radius:12px;
+  box-shadow:0 8px 40px rgba(0,0,0,.5)}
 .inv-item-info{flex:1;min-width:0}
 .inv-item-name{font-size:15px;font-weight:600;word-break:break-word}
 .inv-item-note{font-size:12px;color:var(--sub);margin-top:2px}
@@ -1041,6 +1046,11 @@ body.staff-boss #staff-boss-cash{display:block}
     </div>
     <div id="inv-log-list"></div>
   </div>
+</div>
+
+<!-- 库存缩略图点击放大，跟其它弹窗分开：全屏看图、点哪里都关，不需要表单那一套 -->
+<div class="inv-lightbox" id="inv-lightbox" onclick="closeInvLightbox()">
+  <img id="inv-lightbox-img" src="" alt="">
 </div>
 
 <!-- TOAST -->
@@ -7503,8 +7513,22 @@ function invOnListClick(e){
     invShareText(invBuildShareText(shareBtn.dataset.invCat, shareBtn.dataset.invLoc));
     return;
   }
+  // 缩略图点了是放大看图，不是进编辑——两个动作分开，不然想看图会被拉进编辑表单。
+  const thumb = e.target.closest('.inv-item-thumb');
+  if(thumb){
+    openInvLightbox(thumb.src);
+    return;
+  }
   const row = e.target.closest('.inv-item-row');
   if(row) invOpenEdit(row.dataset.invCategory, row.dataset.invId);
+}
+function openInvLightbox(src){
+  document.getElementById('inv-lightbox-img').src = src;
+  document.getElementById('inv-lightbox').classList.add('open');
+}
+function closeInvLightbox(){
+  document.getElementById('inv-lightbox').classList.remove('open');
+  document.getElementById('inv-lightbox-img').src = '';
 }
 
 // ---------- 存放位置下拉 ----------
