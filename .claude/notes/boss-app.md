@@ -426,7 +426,11 @@ today/trips/bills/inventory/restaurants，看不懂的一律忽略）。发「�
   这两处是 iOS 上最常翻车的地方，已经排除。剩下的只能等老板真的开一次通知，
   再用「发一条到老板手机」看状态码。
 - 库存字段来自 butler `inventoryHandle({action:"list"})` 的 `normalizeItem`：
-  `{id,name,count,unit,location,note,added_at}`。`count` 是整数、`location` 是字符串。
+  `{id,name,count,unit,location,note,added_at,image}`。`count` 是整数、`location` 是字符串。
+  `image`（2026-09-08 加，酒库存缩略图）是**选填**字段，老记录没有这个 key——渲染时
+  `it.image` 存在才画 `<img>`，加载失败（链接失效/被对方网站挡热链）就 `onerror`
+  直接把 `<img>` 拿掉，绝不留一个破图标。图片是外链（不下载存进本仓库，做法跟旅游手册
+  的 Google Places 图一致），所以链接会不会哪天失效是已知且接受的风险。
 - 库存服务挂掉时 `feed` 仍回 200 且 `inventory:null`，行程账单照常显示——
   这是刻意的，别改成「一处挂掉整个 App 白屏」。
 - **保存行程时「存」和「拉最新」必须分成两段 try**（`adminSaveTripsForm()`）：

@@ -326,6 +326,7 @@ body:not(.lang-en) .en{display:none !important}
   overflow:hidden;margin-bottom:6px}
 .inv-row{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)}
 .inv-row:last-child{border-bottom:none}
+.inv-thumb{width:36px;height:36px;border-radius:8px;flex-shrink:0;object-fit:cover;background:var(--p2)}
 .inv-name{flex:1;font-size:14.5px;font-weight:600;min-width:0}
 .inv-qty{flex:none;font-size:13.5px;color:var(--p);font-weight:700}
 /* 类别标题右边的合计件数 */
@@ -1971,7 +1972,12 @@ const INV_ICON_MAP = { wine:'🍷', tea:'🍵', herb:'🌿', hydrogen:'💧' };
 function invCategoryIcon(key){ return INV_ICON_MAP[key] || '📦'; }
 function invRowHtml(it){
   const qty = (it.count != null) ? it.count : (it.qty != null ? it.qty : (it.quantity != null ? it.quantity : '-'));
+  // 老板端只读，图片加载失败（链接失效/热链被挡）就直接拿掉这个 <img>，不留破图标。
+  const thumb = it.image
+    ? `<img class="inv-thumb" src="${escapeHtml(it.image)}" alt="" loading="lazy" onerror="this.remove()">`
+    : '';
   return `<div class="inv-row">
+      ${thumb}
       <div class="inv-name">${escapeHtml(it.name || '')}</div>
       <div class="inv-qty">${escapeHtml(String(qty))} ${escapeHtml(it.unit || '')}</div>
     </div>`;
@@ -3831,7 +3837,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v57</div>
+    <div class="admin-ver" id="adminVer">boss-app-v58</div>
 
     ${adminTripsSectionHtml()}
 

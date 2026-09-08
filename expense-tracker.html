@@ -456,6 +456,8 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .inv-item-row{display:flex;align-items:center;gap:10px;padding:12px 14px;
   border-bottom:1px solid var(--border);cursor:pointer}
 .inv-item-row:last-child{border-bottom:none}
+.inv-item-thumb{width:40px;height:40px;border-radius:8px;flex-shrink:0;object-fit:cover;
+  background:var(--p2)}
 .inv-item-info{flex:1;min-width:0}
 .inv-item-name{font-size:15px;font-weight:600;word-break:break-word}
 .inv-item-note{font-size:12px;color:var(--sub);margin-top:2px}
@@ -1339,6 +1341,10 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       <label class="form-label">备注（选填）</label>
       <input class="form-input" id="inv-add-note" type="text" placeholder="例如 老板留用">
     </div>
+    <div class="form-group">
+      <label class="form-label">图片链接（选填）</label>
+      <input class="form-input" id="inv-add-image" type="text" placeholder="酒标图片网址">
+    </div>
     <button class="btn btn-primary" id="inv-add-submit" onclick="invAddSubmit()">保存</button>
   </div>
 </div>
@@ -1370,6 +1376,10 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
     <div class="form-group">
       <label class="form-label">备注（选填）</label>
       <input class="form-input" id="inv-edit-note" type="text">
+    </div>
+    <div class="form-group">
+      <label class="form-label">图片链接（选填）</label>
+      <input class="form-input" id="inv-edit-image" type="text" placeholder="酒标图片网址">
     </div>
     <button class="btn btn-primary" id="inv-edit-submit" onclick="invEditSubmit()">保存</button>
     <button class="btn btn-danger" id="inv-edit-delete" onclick="invEditDelete()"
@@ -7689,7 +7699,13 @@ function invShareAll(){ invShareText(invBuildShareText(invState.currentCat)); }
 // ---------- 渲染 ----------
 function invRenderRow(cat, it){
   const qty = Number(it.count) || 0;
+  // 图片是选填字段（老记录没有），加载失败（链接失效/热链被挡）就直接把这个 <img> 拿掉，
+  // 不留一个破图标——列表照常能用，只是这一行没有缩略图。
+  const thumb = it.image
+    ? `<img class="inv-item-thumb" src="${invEsc(it.image)}" alt="" loading="lazy" onerror="this.remove()">`
+    : '';
   return `<div class="inv-item-row" data-inv-category="${cat.key}" data-inv-id="${invEsc(it.id)}">
+    ${thumb}
     <div class="inv-item-info">
       <div class="inv-item-name">${invEsc(it.name)}</div>
       ${it.note ? `<div class="inv-item-note">${invEsc(it.note)}</div>` : ''}
@@ -7866,6 +7882,7 @@ function invOpenAdd(){
   document.getElementById('inv-add-count').value = '1';
   document.getElementById('inv-add-unit').value = invGetCat(invState.currentCat).defaultUnit;
   document.getElementById('inv-add-note').value = '';
+  document.getElementById('inv-add-image').value = '';
   const sel = document.getElementById('inv-add-location-select');
   invFillLocations(sel, invState.currentCat, null);
   document.getElementById('inv-add-location-new').value = '';
@@ -7883,11 +7900,12 @@ async function invAddSubmit(){
     ? document.getElementById('inv-add-location-new').value.trim()
     : sel.value;
   const note = document.getElementById('inv-add-note').value.trim();
+  const image = document.getElementById('inv-add-image').value.trim();
   const btn = document.getElementById('inv-add-submit');
   if(btn.disabled) return;
   btn.disabled = true;
   try{
-    const body = await invApiCall('add', { category: invState.currentCat, name, count, unit, location, note });
+    const body = await invApiCall('add', { category: invState.currentCat, name, count, unit, location, note, image });
     toast(body.merged ? '已合并到同名同位置的记录' : '已添加');
     closeModal('inv-modal-add');
     await invRefresh();
@@ -7908,6 +7926,7 @@ function invOpenEdit(category, id){
   document.getElementById('inv-edit-count').value = it.count;
   document.getElementById('inv-edit-unit').value = it.unit || cat.defaultUnit;
   document.getElementById('inv-edit-note').value = it.note || '';
+  document.getElementById('inv-edit-image').value = it.image || '';
   const sel = document.getElementById('inv-edit-location-select');
   invFillLocations(sel, category, it.location);
   document.getElementById('inv-edit-location-new').value = '';
@@ -7927,11 +7946,12 @@ async function invEditSubmit(){
     ? document.getElementById('inv-edit-location-new').value.trim()
     : sel.value;
   const note = document.getElementById('inv-edit-note').value.trim();
+  const image = document.getElementById('inv-edit-image').value.trim();
   const btn = document.getElementById('inv-edit-submit');
   if(btn.disabled) return;
   btn.disabled = true;
   try{
-    await invApiCall('update', { category, id, name, count, unit, location, note });
+    await invApiCall('update', { category, id, name, count, unit, location, note, image });
     toast('已保存');
     closeModal('inv-modal-edit');
     await invRefresh();
