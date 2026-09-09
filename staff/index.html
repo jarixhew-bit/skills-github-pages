@@ -8385,6 +8385,46 @@ async function staffEnsureAnon(){
   }catch(e){ console.warn('匿名登录失败', e); return false; }
 }
 
+/**
+ * 收据照片塞进老板账投递箱前先压一压——Firestore 单个文档硬顶 1MB，手机拍的收据
+ * 原图动辄 3~8MB base64 之后一定塞不进去。之前的做法是「≥700KB 就直接放弃这张
+ * 照片、只送文字」，同事完全不会被告知图丢了（2026-09-08 用户实机踩到：Kuang
+ * 传了收据，他那边显示提交成功，老板收到的记录却没有图，两边都不知道哪里错了）。
+ *
+ * 现在先压一压，压完还是太大才真的放弃。只缩不放、分两级质量试——多数手机拍的
+ * 收据缩到 1600px 宽、JPEG 0.75 就能塞进去，极少数还是太大再降到 0.5。都不行就
+ * 返回 null，让调用方老实告诉同事「这次没带图」，而不是悄悄丢掉。
+ */
+async function compressPhotoForInbox(dataUrl){
+  const LIMIT = 700 * 1024;
+  if(dataUrl.length < LIMIT) return dataUrl;   // 本来就够小，不折腾
+  try{
+    const img = await new Promise((resolve, reject)=>{
+      const im = new Image();
+      im.onload = ()=>resolve(im);
+      im.onerror = ()=>reject(new Error('照片读不出来'));
+      im.src = dataUrl;
+    });
+    const maxSide = 1600;
+    const scale = Math.min(maxSide / img.width, maxSide / img.height, 1);
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const cx = c.getContext('2d');
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);   // 透明底的 PNG 收据转 JPEG 不会变黑
+    cx.drawImage(img, 0, 0, w, h);
+    for(const q of [0.75, 0.5]){
+      const out = c.toDataURL('image/jpeg', q);
+      if(out.length < LIMIT) return out;
+    }
+    return null;   // 压到 0.5 还是太大，放弃
+  }catch(e){
+    console.warn('照片压缩失败，只送文字', e);
+    return null;
+  }
+}
+
 async function submitInboxTx(tx){
   const k = staffBossKey();
   if(!k) return { ok:false, retriable:false, message: tt('还没填老板账口令','No Boss passcode yet') };
@@ -8404,21 +8444,25 @@ async function submitInboxTx(tx){
     // 等于让这条路多依赖一个全局对象；而「什么时候收到的」老板那边收件时自己盖章
     // （fromStaff.at）就够了。规则允许这个字段存在，只是我们不送。
   };
-  // 收据照片一起送，老板那份账户明细 PDF 的凭证页才有图。太大就只送文字——
-  // 照片没了还能回头问人补，账送不出去才是真丢。
+  // 收据照片一起送，老板那份账户明细 PDF 的凭证页才有图。先压一压再判断大小
+  // （见 compressPhotoForInbox），压完还是太大才真的放弃——放弃时要让调用方
+  // 告诉同事一声，不能悄悄丢图。
+  let photoDropped = false;
   if(tx.attachmentId){
     try{
       const blob = await getAttachmentBlob(tx.attachmentId);
       if(blob){
         const dataUrl = await blobToBase64(blob);
-        if(dataUrl.length < 700 * 1024) payload.photo = dataUrl;
+        const compressed = await compressPhotoForInbox(dataUrl);
+        if(compressed) payload.photo = compressed;
+        else photoDropped = true;
       }
-    }catch(e){ console.warn('照片读不出来，只送文字', e); }
+    }catch(e){ console.warn('照片读不出来，只送文字', e); photoDropped = true; }
   }
 
   try{
     await db.collection(INBOX_COLLECTION).add(payload);
-    return { ok:true };
+    return { ok:true, photoDropped };
   }catch(e){
     // 口令不对 / 老板还没设好权限：重试一百次也是同样结果，要当场说清楚
     if(e && e.code === 'permission-denied')
@@ -8467,6 +8511,11 @@ async function flushBossQueue(opts){
       if(local) local.inbox = { status:'sent', error:null };
       q = q.filter(x => x !== txId); saveBossQueue(q);
       if(loud) toast(tt('✅ 已送到老板那边','✅ Sent to the Boss'));
+      // 图丢了一定要说出来，不看 loud——「传了却没图」这种事只有老板发现的话，
+      // 同事自己都不知道要补发，比不传还糟（2026-09-08 用户实机踩过）
+      if(r.photoDropped) toast(tt(
+        '⚠️ 这张收据照片太大，只送了文字，麻烦另外把照片发给老板',
+        '⚠️ The receipt photo was too large — only the text went through. Please send the photo to the Boss another way'));
     } else if(r.retriable){
       if(local) local.inbox = { status:'pending', error:null };
       if(loud) toast(r.message);
