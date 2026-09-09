@@ -7273,13 +7273,14 @@ function renderBossCashGiftModal(){
   body.innerHTML = `
     <div class="form-group">
       <label class="form-label">给谁</label>
-      <select class="form-input" id="boss-cash-gift-person">${
+      <select class="form-input" id="boss-cash-gift-person" onchange="refreshBossCashGiftPersonSummary()">${
         people.map(p=>`<option value="${ledEsc(p.label)}">${ledEsc(p.label)}</option>`).join('')}</select>
+      <div id="boss-cash-gift-person-summary" class="led-sub" style="margin-top:4px"></div>
     </div>
     <div class="form-group">
       <label class="form-label">从哪个账户出</label>
       <select class="form-input" id="boss-cash-gift-acc"
-        onchange="saveBossCashGiftAccount(this.value); bossCashGiftEcho();">${
+        onchange="saveBossCashGiftAccount(this.value); bossCashGiftEcho(); refreshBossCashGiftPersonSummary();">${
         data.accounts.map(a=>`<option value="${a.id}"${
           a.id===bossCashGiftAccountId() ? ' selected' : ''}>${ledEsc(a.name)}（${a.currency}）</option>`).join('')}</select>
       <div class="led-sub" style="margin-top:4px">币种跟着账户走，这笔会同时记一笔支出扣在这个账户上——
@@ -7300,6 +7301,54 @@ function renderBossCashGiftModal(){
     <div id="boss-cash-gift-recent"></div>`;
   setTimeout(()=>{ const a = document.getElementById('boss-cash-gift-person'); if(a) a.focus(); }, 120);
   refreshBossCashGiftRecent();
+  refreshBossCashGiftPersonSummary();
+}
+
+/** 名字比对不分大小写/首尾空格——跟同事版的 samePersonName 同一个原因：
+ *  自由输入过的历史记录（比如那笔 KUANG 全大写的旧账）大小写可能对不上「给谁」
+ *  下拉现在用的标准拼法，精确比对会把它们漏算。 */
+function samePersonName(a, b){
+  return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+}
+
+/** 「给谁」选好之后，显示这个人「给了多少 / 他花了多少 / 还剩多少」——不用再跑去问
+ *  同事、也不用开他手机看。「花了多少」来自同事投递箱收进来的账（tx.fromStaff.by），
+ *  **只统计已经收件的部分**——投递箱还没点「立刻收件」的账不会算进去，所以这个数字
+ *  没有服务端权威性，只是"你这台设备上最后一次收件时看到的情况"，跟同事手机上
+ *  「手上现金」卡那个真正实时的数字不是一回事，标签里要说清楚，别让人当成两者一致。 */
+async function refreshBossCashGiftPersonSummary(){
+  const el = document.getElementById('boss-cash-gift-person-summary');
+  if(!el) return;
+  const person = (document.getElementById('boss-cash-gift-person') || {}).value;
+  const k = bossCashKeySaved();
+  if(!person || !k){ el.textContent = ''; return; }
+  el.textContent = '算中…';
+
+  // 只算「从哪个账户出」那个账户里的记录——你说过投递箱收 Kuang 的账跟给现金用的是
+  // 同一个账户，锁定同一个账户能避免把别的账户/别的币种的钱也混进「他花了多少」。
+  const accId = bossCashGiftAccountId();
+  const spent = (data.transactions || [])
+    .filter(t => t.fromStaff && t.type === 'expense' && t.accountId === accId
+      && samePersonName(t.fromStaff.by, person))
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+  const cur = (getAcc(accId) || {}).currency || 'USD';
+  if(!cloudAvailable || !currentUser){
+    el.textContent = `他已花（已收件的部分）：${fmt(spent, cur)}——没登录看不到「给了多少」`;
+    return;
+  }
+  try{
+    const snap = await db.collection('boss_cash_gifts').where('k', '==', k).get();
+    let given = 0;
+    snap.forEach(doc => {
+      const d = doc.data();
+      if(samePersonName(d.person, person)) given += Number(d.amount) || 0;
+    });
+    el.innerHTML = `已给 ${fmt(given, cur)} · 他已花（已收件的部分）${fmt(spent, cur)} · 剩 ${fmt(given - spent, cur)}`;
+  }catch(e){
+    el.textContent = `他已花（已收件的部分）：${fmt(spent, cur)}——「给了多少」查不到（${
+      e && e.code === 'permission-denied' ? '口令或权限问题' : '现在连不上'}）`;
+  }
 }
 
 // 撤回列表用的临时缓存：doc id -> {person, amount, currency}，只为了删除时不用再读一次云端
@@ -7367,6 +7416,7 @@ async function deleteBossCashGift(id){
     toast(`已撤回给 ${g.person} 的 ${amountText}`);
     renderOverview();
     refreshBossCashGiftRecent();
+    refreshBossCashGiftPersonSummary();
   }catch(e){
     toast(e && e.code === 'permission-denied'
       ? '撤不掉：口令不对，或者你不是老板本人（Firestore 规则只认老板的账号），也可能是规则还没贴上撤回那条'
@@ -7436,6 +7486,7 @@ async function sendBossCashGift(){
     bossCashGiftEcho();
     renderOverview();
     refreshBossCashGiftRecent();
+    refreshBossCashGiftPersonSummary();
   }catch(e){
     setStatus(e && e.code === 'permission-denied'
       ? '口令不对，或者 Firebase 规则还没加这条'

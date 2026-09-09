@@ -3094,6 +3094,98 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await ctx.close();
 }
 
+// ---------- 【33】给同事现金：弹窗里显示「给了多少 / 他花了多少 / 还剩多少」----------
+// 2026-09-09 用户要求：给了现金之后，不想每次都要去问同事或看他手机才知道花了多少。
+// 「给了多少」现查 Firestore（按 person 筛，客户端做，不靠服务端精确匹配——跟同事端
+// 的 samePersonName 同一个理由）；「他花了多少」来自同事投递箱收进来的账
+// （tx.fromStaff.by），只统计已经收件、且落在「从哪个账户出」那个账户里的部分——
+// 这两条铁律都要测到：换个人要重算、换个账户也要重算、没登录时至少还看得到「花了
+// 多少」（本机数据不需要登录）。
+{
+  console.log('\n【33】给同事现金：弹窗显示「给了多少/花了多少/剩多少」');
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashKey', 'pass-1234');
+    cloudAvailable = true; currentUser = { uid: 'boss' };
+    // 假的投递箱收件结果：Kuang 在 acc_boss（USD）花了 100+50，Seryi 花了 999
+    // （不该被算进 Kuang 的「他花了多少」）；再塞一笔 Kuang 在别的账户花的钱
+    // （不该被算进来，因为「从哪个账户出」没选那个账户）。
+    data.transactions.push(
+      { id:'tx-k1', accountId:'acc_boss', type:'expense', amount:100, date:today(),
+        categoryId:'cat_other_exp', fromStaff:{ by:'Kuang', at:1 } },
+      { id:'tx-k2', accountId:'acc_boss', type:'expense', amount:50, date:today(),
+        categoryId:'cat_other_exp', fromStaff:{ by:'kuang  ', at:2 } },   // 大小写/空格不同也要认得出
+      { id:'tx-s1', accountId:'acc_boss', type:'expense', amount:999, date:today(),
+        categoryId:'cat_other_exp', fromStaff:{ by:'Seryi', at:3 } },
+      { id:'tx-k3', accountId:'acc_hkd_test', type:'expense', amount:7777, date:today(),
+        categoryId:'cat_other_exp', fromStaff:{ by:'Kuang', at:4 } }
+    );
+    if(!data.accounts.some(a=>a.id==='acc_hkd_test'))
+      data.accounts.push({ id:'acc_hkd_test', name:'测试用', currency:'HKD', color:'#999' });
+    saveData();
+    window.__giftQueries = [];
+    db = { collection: (c) => ({ where: (f,o,v) => ({ get: async () => {
+      window.__giftQueries.push(v);
+      return { forEach: fn => {
+        fn({ data: () => ({ k:'pass-1234', person:'Kuang', amount:500 }) });
+        fn({ data: () => ({ k:'pass-1234', person:'KUANG', amount:200 }) });   // 大小写不同也要算
+        fn({ data: () => ({ k:'pass-1234', person:'Seryi', amount:9999 }) });  // 不该算进 Kuang
+      } };
+    } }) }) };
+  });
+  await page.click('#ov-boss-cash-gift');
+  await page.waitForTimeout(200);
+  await page.selectOption('#boss-cash-gift-acc', 'acc_boss');
+  await page.selectOption('#boss-cash-gift-person', 'Kuang');
+  await until(async () => (await page.innerText('#boss-cash-gift-person-summary')).includes('已给'),
+    { what: '摘要算完' });
+  let summary = await page.innerText('#boss-cash-gift-person-summary');
+  ok('「给了多少」按 person 客户端筛、大小写不同也认得出（500+200=700，Seryi 的 9999 不算）',
+     summary.includes('US$700.00'), summary);
+  ok('「他花了多少」只算选中账户里、fromStaff 是他的（100+50=150，大小写/空格不同也认得出，Seryi 的 999 不算，另一个账户的 7777 也不算）',
+     summary.includes('US$150.00'), summary);
+  ok('「还剩」＝给了－花了（700－150＝550）', summary.includes('US$550.00'), summary);
+
+  // ---- 换个人要重算 ----
+  await page.selectOption('#boss-cash-gift-person', 'Seryi');
+  await until(async () => (await page.innerText('#boss-cash-gift-person-summary')).includes('US$9,999.00')
+      || (await page.innerText('#boss-cash-gift-person-summary')).includes('US$9999.00'),
+    { what: '换成 Seryi 后摘要重算' });
+  summary = await page.innerText('#boss-cash-gift-person-summary');
+  ok('换个人，摘要跟着换成那个人的数字（Seryi 给了 9999、花了 999）',
+     (summary.includes('US$9,999.00') || summary.includes('US$9999.00')) && summary.includes('US$999.00'), summary);
+
+  // ---- 换个账户要重算：Seryi 在这个假账户里没有任何 fromStaff 记录，花了应该是 0 ----
+  await page.selectOption('#boss-cash-gift-acc', 'acc_hkd_test');
+  await until(async () => (await page.innerText('#boss-cash-gift-person-summary')).includes('HK$0.00'),
+    { what: '换账户后摘要重算' });
+  summary = await page.innerText('#boss-cash-gift-person-summary');
+  ok('换个账户，币种跟着变、花了的部分也重新按这个账户算（Seryi 在这个账户没记录，花了 0）',
+     summary.includes('HK$0.00'), summary);
+
+  // ---- 没登录：至少「他花了多少」这个本机数据还看得到，不用整段消失 ----
+  await page.evaluate(() => { currentUser = null; });
+  await page.selectOption('#boss-cash-gift-acc', 'acc_boss');
+  await page.selectOption('#boss-cash-gift-person', 'Kuang');
+  await until(async () => (await page.innerText('#boss-cash-gift-person-summary')).includes('登录'),
+    { what: '未登录提示出现' });
+  summary = await page.innerText('#boss-cash-gift-person-summary');
+  ok('没登录时，「他花了多少」这个本机数据依然看得到（不用整段消失）', summary.includes('US$150.00'), summary);
+  ok('没登录时说清楚「给了多少」看不到的原因', summary.includes('登录'), summary);
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

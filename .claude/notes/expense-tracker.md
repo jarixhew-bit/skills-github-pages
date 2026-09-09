@@ -813,3 +813,100 @@ resolve 出的 `docRef` 带 `.id`）紧接着 `data.transactions.push({...giftId
 自检：`check-staff-page.mjs`【27】追加一条（云端 `person:'  SERYI  '` 大小写+空格都不
 一样，也照样同步进 `staffSyncBossGifts()`）；【28】追加一条（`staffPruneBossGifts()` 同样
 场景下也认得出是自己的、不会被误删）。
+
+### 「给谁」改成固定下拉（2026-09-09，同一天再追加）
+
+同一次 KUANG 大小写事故的另一半修法——`samePersonName` 治好了"比对时不分大小写"，
+但没治好"一开始就打错"这件事本身。用户明确要求："直接把同事名字固定在名字列表里面吧
+我点开就能选，省得手残"。`#boss-cash-gift-person` 从 `<input list=... >`（自由文本 + 自动
+补全 datalist）改成 `<select>`，选项来自 `getCompanyPeople()`（跟公司报账人共用同一份
+服务端名册，排除 `code==='Boss'`）——从设计上让"打错名字"这件事变得不可能，不是靠比对
+兜底。连带删掉不再需要的"记住用过的名字"辅助逻辑（`bossCashGiftNames()`/
+`rememberBossCashGiftName()`/`expenseTracker_bossCashGiftNames`），改成固定名册后这套
+自由文本辅助完全没用了。
+
+### 首屏卡片「最近」没跟着撤回一起消失（2026-09-09）
+
+用户实机撤回一笔之后，Overview 卡片（`#ov-boss-cash-gift`）「最近」那行还显示已经撤回的
+那笔——查下来 `deleteBossCashGift()` 只处理了 Firestore 文档删除和本地那笔支出
+（`tombstoneTx`），完全没碰卡片读的那份**独立**本地日志 `bossCashGiftLog()`
+（`logBossCashGift()`/`renderOvBossCashGift()`）。
+
+新增 `forgetBossCashGift(id, g)`：优先按 `id` 精确摘除（`sendBossCashGift()` 现在会把
+`docRef.id` 一并存进 `logBossCashGift({id: docRef.id, ...})`）；对没有 `id` 的老记录
+（这次修复上线之前送出的）退回按「人名+金额+币种」摘除兜底。`deleteBossCashGift()` 撤回
+成功后调用它。另外在卡片上加了一个手动「清除这行显示」的兜底链接
+（`clearBossCashGiftLog()`）——纯本地显示缓存，不涉及金额，不用二次确认，给万一摘不掉的
+极端情况兜底（比如兜底匹配也没对上）。
+
+### 两个必须手动建的 Firestore 复合索引（2026-09-09，容易漏掉，务必记住）
+
+`boss_cash_gifts` 集合上有**两个不同形状的查询**，各自需要一个独立的 Firestore 复合索引，
+**Console 不会自动建**，且这类索引缺失在浏览器里的 mock 测试**完全测不出来**（mock
+Firestore 不做真实的索引校验），只有连真实 Firestore 才会报 `FAILED_PRECONDITION`：
+
+1. `refreshBossCashGiftRecent()`：`where('k','==',X).orderBy('at','desc').limit(10)` →
+   需要 `(k ASC, at DESC)`。
+2. `staffSyncBossGifts()`：`where('k','==',X).where('at','>',Y)` → 需要 `(k ASC, at ASC)`
+   ——**跟上面那个方向不一样**，Firestore 对索引方向要求很严格，`(k,at DESC)` 那个索引
+   救不了这条查询。
+
+这两个索引都**没建**的时候会怎样：`refreshBossCashGiftRecent()` 的 catch 块把
+`FAILED_PRECONDITION` 也归类成"连不上云端"（跟真的网络问题显示同一句话），完全看不出是
+索引问题；`staffSyncBossGifts()` 的 catch 块更狠——直接 `return`，**安静跳过**，连一个
+错误提示都没有。这是 2026-09-09 那次"同事收不到钱"排查里，比 `person` 大小写更隐蔽的
+第二个真根因：光修好大小写比对，**这套自动同步从功能上线起就没有真的跑通过一次**，因为
+查询本身一直在被 Firestore 拒绝。
+
+排查手法：拿 Firebase 的 REST API（`identitytoolkit.googleapis.com` 匿名登录换
+`idToken`，然后打 `firestore.googleapis.com` 的 `runQuery`），照抄前端实际发的查询形状去
+跑一遍，`FAILED_PRECONDITION` 的报错里会带一个"点这里建索引"的直达链接
+（`console.firebase.google.com/v1/r/project/.../indexes?create_composite=...`），比自己去
+Console 手动填字段可靠。**这个排查方法比"看代码猜"快得多，以后同一类"查询在 mock 测试
+里全绿、真实环境却报错"的故障都可以先用这招**。
+
+### 并发重复计入（2026-09-09，索引建好之后才第一次显现的 bug）
+
+索引建好、`staffSyncBossGifts()` 第一次真的能拉到数据后，用户实机踩到：转一笔 5000，
+同事端卡片显示**两笔**5000、总额变成 10000。根因：这个函数（还有反方向的
+`staffPruneBossGifts()`）挂在多个触发点上（2.5 秒轮询、`visibilitychange`、切进「老板账」
+tab 的 `staffSyncMode()`），几乎同时触发时，两次调用会各自从 `localStorage` 读到同一份
+「还没处理过」的旧 `seen` 状态，都判断「这是新的」各加一次。**这个并发 bug 从函数写出来
+那天就存在，只是前面那个索引缺失让查询每次都提前失败、从没有机会真正跑到会重复的那一步
+——直到索引修好，这条路径才第一次被真正跑通，也是这条路径的并发问题第一次显现。**
+教训：一个必要条件长期不满足会把它依赖的下游 bug 一起"雪藏"起来，修好上游之后要预期
+下游可能藏着从没暴露过的问题，不能因为"之前一直没事"就掉以轻心。
+
+修法：加一把两个函数共用的锁 `bossGiftsOpBusy`（module 级变量，函数入口检查+设
+true，`finally` 里解开）——任一个在跑时，另一个直接放弃这次，等下一轮触发再试，不需要
+排队重跑。两个函数共用同一把锁，因为它们读改的是同一份本机存储
+（`loadBossCash()`/`saveBossCash()`），不能让"发现新的就加"和"发现没了的就删"同时改。
+
+自检：`check-staff-page.mjs`【27】追加——故意把 mock 的 `.get()` 拖慢 100ms，
+`Promise.all` 同时触发两次 `staffSyncBossGifts()`，验证同一笔礼物只计入一次、总额不翻倍
+（不加这个延迟的话，两次 `page.evaluate` 本身的网络往返时间可能刚好错开，测不出没锁时的
+真实故障）。
+
+用户实机复位：本地已经重复计入的数据要用卡片上的「重填」按钮清掉重来，索引和锁修好之后
+**不会自动改正历史上已经错的本地数据**。
+
+### 弹窗显示「给了多少 / 他花了多少 / 还剩多少」（2026-09-09）
+
+用户要求：给了现金之后，不想每次都要去问同事或看他手机才知道花了多少。新增
+`refreshBossCashGiftPersonSummary()`，「给谁」下拉一变就重算：
+- **给了多少**：现查 `db.collection('boss_cash_gifts').where('k','==',k).get()`（只按口令
+  一个等值条件，不需要额外建索引），客户端用 `samePersonName` 按选中的人筛加总——**故意
+  不在 Firestore 查询里加 `where('person','==',...)`**，理由跟 `staffPruneBossGifts()`
+  一样：服务端精确匹配认不出大小写不同的历史记录。
+- **他花了多少**：来自同事投递箱收进来的账（`tx.fromStaff.by`），**只统计已经收件、且
+  落在「从哪个账户出」那个账户里的部分**——这个数字**没有服务端权威性**，只是"这台设备
+  上最后一次点「立刻收件」时看到的情况"，界面文案特地写成「已收件的部分」，不能让人以为
+  这跟同事手机上「手上现金」卡那个实时数字是同一回事。锁定同一个账户是因为这个功能设计
+  上就假设"投递箱收 Kuang 的账"跟"给现金用"是同一个账户（2026-09-09 用户确认过这个
+  假设成立）——如果哪天两者不再是同一账户，这个数字会算错，需要重新设计。
+- **还剩** = 给了 − 花了，不做任何汇率换算（两边金额都在同一个账户的币种下）。
+- 没登录（`!currentUser`）时，「他花了多少」是纯本机数据依然显示；「给了多少」查不到会
+  说明原因，不是整段消失。
+
+自检：`check-expense-company.mjs`【33】（大小写不同也认得出、换人重算、换账户重算且币种
+跟着变、未登录时本机数据仍可见）。
