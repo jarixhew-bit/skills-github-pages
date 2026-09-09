@@ -1694,6 +1694,7 @@ const DEFAULT_DATA = {
     {id:'cat_insurance',name:'保险',icon:'🛡️',type:'expense',color:'#9B59B6'},
     {id:'cat_donation',name:'捐款',icon:'❤️',type:'expense',color:'#E74C3C'},
     {id:'cat_other_exp',name:'其他支出',icon:'📦',type:'expense',color:'#C0C0C0'},
+    {id:'cat_cash_gift',name:'给同事现金',icon:'🤝',type:'expense',color:'#7c3aed'},
     {id:'cat_salary',name:'薪资',icon:'💰',type:'income',color:'#27AE60'},
     {id:'cat_bonus',name:'奖金',icon:'🎁',type:'income',color:'#2ECC71'},
     {id:'cat_investment',name:'投资收益',icon:'📈',type:'income',color:'#1ABC9C'},
@@ -7173,6 +7174,20 @@ function renderInboxSettings(){
 const BOSS_CASH_KEY_STORAGE = 'expenseTracker_bossCashKey';
 const BOSS_CASH_GIFT_NAMES_STORAGE = 'expenseTracker_bossCashGiftNames';
 const BOSS_CASH_GIFT_LOG_STORAGE = 'expenseTracker_bossCashGiftLog';
+const BOSS_CASH_GIFT_ACCOUNT_STORAGE = 'expenseTracker_bossCashGiftAccount';
+
+/** 上次选的「从哪个账户出」，弹窗打开时预填。没存过就默认选第一个非公司账户
+ *  （公司账户走公司报账那一套，这里给同事的现金是老板自己的钱）。 */
+function bossCashGiftAccountId(){
+  const saved = localStorage.getItem(BOSS_CASH_GIFT_ACCOUNT_STORAGE);
+  if(saved && data.accounts.some(a=>a.id===saved)) return saved;
+  const guess = data.accounts.find(a=>!a.isCompany) || data.accounts[0];
+  return guess ? guess.id : null;
+}
+function saveBossCashGiftAccount(id){
+  if(!data.accounts.some(a=>a.id===id)) return;
+  localStorage.setItem(BOSS_CASH_GIFT_ACCOUNT_STORAGE, id);
+}
 function bossCashKeySaved(){ return (localStorage.getItem(BOSS_CASH_KEY_STORAGE) || '').trim(); }
 function saveBossCashKey(v){
   localStorage.setItem(BOSS_CASH_KEY_STORAGE, (v || '').trim());
@@ -7249,13 +7264,18 @@ function renderBossCashGiftModal(){
         names.map(n=>`<option value="${ledEsc(n)}"></option>`).join('')}</datalist>
     </div>
     <div class="form-group">
+      <label class="form-label">从哪个账户出</label>
+      <select class="form-input" id="boss-cash-gift-acc"
+        onchange="saveBossCashGiftAccount(this.value); bossCashGiftEcho();">${
+        data.accounts.map(a=>`<option value="${a.id}"${
+          a.id===bossCashGiftAccountId() ? ' selected' : ''}>${ledEsc(a.name)}（${a.currency}）</option>`).join('')}</select>
+      <div class="led-sub" style="margin-top:4px">币种跟着账户走，这笔会同时记一笔支出扣在这个账户上——
+        跟当初那笔转错币种（选了 HKD 结果账户是 USD）不会再发生。</div>
+    </div>
+    <div class="form-group">
       <label class="form-label">金额</label>
-      <div style="display:flex;gap:8px">
-        <input class="form-input" id="boss-cash-gift-amount" type="text" inputmode="decimal"
-          autocomplete="off" placeholder="0.00" style="flex:1" oninput="bossCashGiftEcho()">
-        <select class="form-input" id="boss-cash-gift-cur" style="width:90px" onchange="bossCashGiftEcho()">${
-          Object.keys(CUR_SYMBOLS).map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
-      </div>
+      <input class="form-input" id="boss-cash-gift-amount" type="text" inputmode="decimal"
+        autocomplete="off" placeholder="0.00" oninput="bossCashGiftEcho()">
       <div id="boss-cash-gift-echo" style="display:none;font-size:12px;color:var(--p);margin-top:6px"></div>
     </div>
     <div class="form-group">
@@ -7263,8 +7283,81 @@ function renderBossCashGiftModal(){
       <input class="form-input" id="boss-cash-gift-note" maxlength="199" placeholder="例如：买菜用">
     </div>
     <button class="btn btn-primary" onclick="sendBossCashGift()">💵 转钱给他</button>
-    <div id="boss-cash-gift-status" style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.6"></div>`;
+    <div id="boss-cash-gift-status" style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.6"></div>
+    <div id="boss-cash-gift-recent"></div>`;
   setTimeout(()=>{ const a = document.getElementById('boss-cash-gift-person'); if(a) a.focus(); }, 120);
+  refreshBossCashGiftRecent();
+}
+
+// 撤回列表用的临时缓存：doc id -> {person, amount, currency}，只为了删除时不用再读一次云端
+let bossCashGiftRecentCache = {};
+
+/** 弹窗里的「最近转过」清单：拉最近 10 笔，每条带撤回按钮。
+ *  刷新时机：弹窗打开时（上面 renderBossCashGiftModal 结尾已调）、转账成功后（sendBossCashGift 结尾）。 */
+async function refreshBossCashGiftRecent(){
+  const el = document.getElementById('boss-cash-gift-recent');
+  if(!el) return;
+  const k = bossCashKeySaved();
+  if(!k){ el.innerHTML = ''; return; }
+  if(!cloudAvailable){ el.innerHTML = `<div class="led-sub" style="margin-top:14px">现在连不上 Google 服务，看不到最近记录</div>`; return; }
+  if(!currentUser){ el.innerHTML = `<div class="led-sub" style="margin-top:14px">要先在上面登录 Google 才能看最近记录</div>`; return; }
+  try{
+    const snap = await db.collection('boss_cash_gifts').where('k', '==', k).orderBy('at', 'desc').limit(10).get();
+    bossCashGiftRecentCache = {};
+    if(snap.empty){ el.innerHTML = `<div class="led-sub" style="margin-top:14px">还没转过</div>`; return; }
+    el.innerHTML = `<div class="form-label" style="margin-top:14px">最近转过（转错了可以撤回）</div>` +
+      snap.docs.map(doc => {
+        const g = doc.data();
+        bossCashGiftRecentCache[doc.id] = g;
+        return renderBossCashGiftRow(doc.id, g);
+      }).join('');
+  }catch(e){
+    el.innerHTML = `<div class="led-sub" style="margin-top:14px">最近记录读不到：${
+      e && e.code === 'permission-denied' ? '口令不对，或者 Firebase 规则还没加这条' : '连不上云端'}</div>`;
+  }
+}
+
+function renderBossCashGiftRow(id, g){
+  const when = g.at ? new Date(g.at).toLocaleString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
+  const person = ledEsc(g.person || '');
+  return `<div class="led-row" id="boss-cash-gift-row-${id}">
+      <div class="led-mid">
+        <div>${person}　<span class="led-amt">${fmt(g.amount, g.currency || 'USD')}</span></div>
+        <div class="led-who">${when}${g.note ? '　· ' + ledEsc(g.note) : ''}</div>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" style="flex:none;padding:4px 8px"
+        aria-label="撤回给${person}的这笔现金" onclick="deleteBossCashGift('${id}')">🗑</button>
+    </div>`;
+}
+
+/** 撤回一笔：这是钱，而且对方那边会跟着少一笔提醒——多按一次确认（跟转账那边同一条规矩）。
+ *  失败要说清楚为什么（不是老板本人操作、规则还没贴、还是单纯没网），不能吞掉错误。
+ *  Firestore 那份删掉之后，顺手把当初在这台设备记的那笔支出也撤销（按 giftId 找）——
+ *  找不到就静默跳过（可能是别台设备发的、或本地记录已经被别的方式清掉），Firestore
+ *  那边已经删成功了，本地这步只是尽力而为的配套动作，不该因为找不到就报错。 */
+async function deleteBossCashGift(id){
+  const g = bossCashGiftRecentCache[id];
+  if(!g) return;
+  const amountText = fmt(g.amount, g.currency || 'USD');
+  if(!confirm(`确定撤回给 ${g.person} 的 ${amountText}？他那边下次打开会自动消失`)) return;
+  try{
+    await db.collection('boss_cash_gifts').doc(id).delete();
+    // 每一处从 data.transactions 移除记录的地方都必须调 tombstoneTx()，
+    // 漏了这步云同步合并时这笔"撤销的支出"会莫名其妙复活（见 tombstoneTx 附近的注释）。
+    const localTx = data.transactions.find(t => t.giftId === id);
+    if(localTx){
+      tombstoneTx(localTx.id);
+      data.transactions = data.transactions.filter(t => t.id !== localTx.id);
+      saveData();
+    }
+    toast(`已撤回给 ${g.person} 的 ${amountText}`);
+    renderOverview();
+    refreshBossCashGiftRecent();
+  }catch(e){
+    toast(e && e.code === 'permission-denied'
+      ? '撤不掉：口令不对，或者你不是老板本人（Firestore 规则只认老板的账号），也可能是规则还没贴上撤回那条'
+      : '现在撤不掉，等有网再试一次');
+  }
 }
 
 function bossCashGiftEcho(){
@@ -7272,7 +7365,8 @@ function bossCashGiftEcho(){
   const input = document.getElementById('boss-cash-gift-amount');
   if(!el || !input) return;
   const { shown, num } = parseAmountText(input.value);
-  const cur = (document.getElementById('boss-cash-gift-cur') || {}).value || 'USD';
+  const accId = (document.getElementById('boss-cash-gift-acc') || {}).value;
+  const cur = (getAcc(accId) || {}).currency || 'USD';
   const plain = /^-?\d*\.?\d*$/.test(shown);
   if(shown === '' || isNaN(num) || plain){ el.style.display = 'none'; return; }
   el.style.display = 'block';
@@ -7293,22 +7387,42 @@ async function sendBossCashGift(){
   if(amount >= 1000000){ setStatus('单笔上限 999,999，分开转两笔'); return; }
   if(!cloudAvailable){ setStatus('现在连不上 Google 服务，送不了'); return; }
   if(!currentUser){ setStatus('要先在上面登录 Google 才能送'); return; }
-  const cur = document.getElementById('boss-cash-gift-cur').value || 'USD';
+  const accId = (document.getElementById('boss-cash-gift-acc') || {}).value;
+  const acc = getAcc(accId);
+  if(!acc){ setStatus('先选是从哪个账户出的'); return; }
+  const cur = acc.currency;
   const note = (document.getElementById('boss-cash-gift-note').value || '').trim().slice(0, 199);
   // 这是钱，而且同事那边当场就看得到——多按一次确认，换掉「多打一个 0」（跟备用金那边同一条规矩）
-  if(!confirm(`确定给 ${person} 转 ${fmt(amount, cur)}？`)) return;
+  if(!confirm(`确定给 ${person} 转 ${fmt(amount, cur)}？会从「${acc.name}」账户扣`)) return;
   setStatus('正在送出…');
   try{
     const payload = { k, person, amount, currency: cur, at: Date.now() };
     if(note) payload.note = note;
-    await db.collection('boss_cash_gifts').add(payload);
+    const docRef = await db.collection('boss_cash_gifts').add(payload);
+    // 钱是从老板自己口袋出的，账户余额要跟着少——本地记一笔支出，giftId 记住跟这份
+    // Firestore 礼物的关联（撤回时靠它找回并撤销这笔支出，见 deleteBossCashGift）。
+    // 只在**这台设备**上记，没有服务端权威余额（跟备用金不一样，见结构笔记）。
+    data.transactions.push({
+      id: uid(),
+      accountId: accId,
+      date: today(),
+      type: 'expense',
+      amount,
+      categoryId: 'cat_cash_gift',
+      description: `给 ${person} 的现金${note ? '：' + note : ''}`,
+      updatedAt: Date.now(),
+      giftId: docRef.id
+    });
+    saveData();
+    saveBossCashGiftAccount(accId);
     rememberBossCashGiftName(person);
     logBossCashGift({ person, amount, currency: cur, at: Date.now() });
     setStatus(`已送出：${fmt(amount, cur)} 给 ${person}，他那边下次打开老板账页会自动看到`);
     amtInput.value = '';
     document.getElementById('boss-cash-gift-note').value = '';
     bossCashGiftEcho();
-    renderOvBossCashGift();
+    renderOverview();
+    refreshBossCashGiftRecent();
   }catch(e){
     setStatus(e && e.code === 'permission-denied'
       ? '口令不对，或者 Firebase 规则还没加这条'
@@ -8261,7 +8375,7 @@ saveTx = function(){
   setTimeout(()=>{ staffLoadPetty(); staffSyncBossGifts(); }, 2500);
 };
 document.addEventListener('visibilitychange', ()=>{
-  if(!document.hidden && staffIdentity){ staffLoadPetty(); staffSyncBossGifts(); }
+  if(!document.hidden && staffIdentity){ staffLoadPetty(); staffSyncBossGifts(); staffPruneBossGifts(); }
 });
 
 /* 弹窗标题是脚本写死的中文，包一层让它跟着语言走 */
@@ -8415,6 +8529,18 @@ function bossCashReset(){
   renderBossCash();
 }
 
+/**
+ * person 比对要大小写/首尾空格不敏感（2026-09-09 生产 bug）：老板端 person 是自由文本
+ * 手打的（比如打成 KUANG），staffIdentity.reporter 是服务端身份识别给的固定值（Kuang）——
+ * 两个值来自完全不同的输入源，几乎肯定会撞上大小写不一致。精确比对会让礼物永远
+ * 「安静地」同步不过去：老板以为送了，同事以为没收到，两边都看不出哪里错——这正是
+ * CLAUDE.md 反复强调要杜绝的「沉默失败」。所有比对 person 的地方都要走这个函数，
+ * 不要再直接用 !== 比。
+ */
+function samePersonName(a, b){
+  return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+}
+
 const STAFF_BOSS_GIFTS_SEEN = 'staffExpense_bossGiftsSeen';
 function loadBossGiftsSeen(){
   try{
@@ -8466,7 +8592,7 @@ async function staffSyncBossGifts(){
   snap.forEach(doc => {
     const d = doc.data();
     if(typeof d.at === 'number' && d.at > maxAt) maxAt = d.at;   // 推进游标，不管是不是给我的
-    if(d.person !== me) return;                                  // 不是给我的，不认（不落 seen，反正 maxAt 已经过了它）
+    if(!samePersonName(d.person, me)) return;                    // 不是给我的，不认（大小写/空格不敏感比对，见 samePersonName）
     if(seen.ids.includes(doc.id)) return;
     seen.ids.push(doc.id);
     const amt = Number(d.amount) || 0;
@@ -8493,6 +8619,61 @@ async function staffSyncBossGifts(){
       `⚠️ 有 ${mismatched.length} 笔现金币别跟目前设定不一样，没算进总额，请去「手上现金」卡确认`,
       `⚠️ ${mismatched.length} cash gift(s) use a different currency than your current setting — `
       + `not added to the total, please check the Cash on hand card`));
+  }
+}
+
+/**
+ * 核对一遍："我手机上记着的、老板给的现金，云端是不是已经被撤回了"——跟 staffSyncBossGifts
+ * 方向相反：那个是「发现新的就加」，这个是「发现没了的就删」，语义不同、触发频率也不同
+ * （老板打错币种要撤回不常见、也没那么急，不用挂在 saveTx 后 2.5 秒那个快速轮询上，那是
+ * 为「礼物到账要快」设计的），所以是独立函数，不跟 staffSyncBossGifts 合并。
+ *
+ * 只影响带 giftId 的 topup（老板转的那些）——bossCashAdd() 手动记的条目没有 giftId，
+ * 天然完全不受这套核对影响，不用另外判断。
+ *
+ * 没有服务端推送撤回通知这回事：老板删了 Firestore 文档，同事这边不会自动知道，只能
+ * 靠客户端下次核对时自己发现——这是为什么需要这个独立函数，而不是只指望云端删了自动消失。
+ *
+ * **查询故意不带 person 条件**：Firestore 的 where('person','==',...) 是精确匹配，
+ * 没法做大小写/空格不敏感比对，而 person 就是那种几乎肯定会撞上大小写不一致的字段
+ * （见 samePersonName 注释）。改成只按口令 k 拉这个口令下的全部记录，再在客户端用
+ * samePersonName 筛——反正一个人手上带 giftId 的记录量很小，不用担心效率。
+ */
+async function staffPruneBossGifts(){
+  if(!staffBossOn() || !cloudAvailable || !staffIdentity) return;
+  if(!(await staffEnsureAnon())) return;
+  const o = loadBossCash();
+  const withGift = o.topups.filter(t => t.giftId);
+  if(!withGift.length) return; // 没有可核对的，不用发请求
+
+  let snap;
+  try{
+    snap = await db.collection('boss_cash_gifts')
+      .where('k', '==', staffBossKey())
+      .get();
+  }catch(e){ return; } // 查询失败：安静跳过，不用一次网络失败打扰用户
+
+  const me = staffIdentity.reporter;
+  const alive = new Set();
+  snap.forEach(doc => {
+    const d = doc.data();
+    if(samePersonName(d.person, me)) alive.add(doc.id);
+  });
+
+  let removed = 0;
+  o.topups = o.topups.filter(t => {
+    if(!t.giftId) return true;          // 手动记录，不受这套核对影响
+    if(alive.has(t.giftId)) return true; // 云端还在，留着
+    removed++;
+    return false;
+  });
+
+  if(removed){
+    saveBossCash(o);
+    renderBossCash();
+    toast(tt(
+      `老板收回了 ${removed} 笔现金记录（可能是打错了在修正），已经从你的余额里扣掉`,
+      `The Boss withdrew ${removed} cash record(s) (probably fixing a mistake) — removed from your balance`));
   }
 }
 
@@ -8592,7 +8773,7 @@ function staffSyncMode(){
   renderBossCfg();
   renderBossCash();
   // 切进「老板账」页时马上拉一次最新的现金，不用等 2.5 秒轮询
-  if(onBoss) staffSyncBossGifts();
+  if(onBoss){ staffSyncBossGifts(); staffPruneBossGifts(); }
 }
 
 /** 说明块底下那一行设定：这本账用什么钱。 */

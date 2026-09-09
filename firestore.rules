@@ -84,7 +84,11 @@ service cloud.firestore {
 
       // 同事：口令对得上才能读（不能改、不能删——历史不能被后来改掉）
       allow read: if request.auth != null && resource.data.k == 'PASSCODE_HERE';
-      allow update, delete: if false;
+
+      // 撤回：只有老板本人能删整笔（比如币种打错了）。update 继续禁止——
+      // 不许悄悄改金额，只许整笔撤回，撤回后同事那边下次核对时会自己发现少了这笔。
+      allow delete: if request.auth != null && request.auth.uid == 'BOSS_UID_HERE';
+      allow update: if false;
     }
   }
 }

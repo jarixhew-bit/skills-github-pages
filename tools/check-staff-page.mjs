@@ -17,6 +17,7 @@
 //
 // 用假服务端（route 拦截）跑，不碰真的 butler，也不需要任何钥匙。
 import { chromium } from 'playwright';
+import { readFileSync } from 'fs';
 
 const PORT = 8899;
 const BASE = `http://localhost:${PORT}/staff/index.html`;
@@ -2042,6 +2043,122 @@ if (want()) {
   ok('游标已经推进过 g3 那笔的 at，不会每次轮询都重新收到它（这里改口给 empty，若游标没推进，v2 该还是 2000）',
      (await page.evaluate(() => window.__giftQueries[window.__giftQueries.length-1]?.v2)) === 3000,
      await page.evaluate(() => window.__giftQueries[window.__giftQueries.length-1]));
+
+  // ---- person 大小写/空格不敏感（2026-09-09 生产 bug）：老板端 person 是自由文本手打的
+  //      （比如打成 KUANG），staffIdentity.reporter 是服务端给的固定值（这里是 'Seryi'）——
+  //      两个值来自完全不同的输入源，精确比对会让礼物「安静地」永远同步不过去 ----
+  await page.evaluate(() => {
+    window.__giftSnap = { empty:false, forEach: fn => fn({
+      id:'g4', data: () => ({ k:'pass-1234', person:'  SERYI  ', amount: 100, currency:'USD', at: 4000 })
+    }) };
+  });
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('person 大小写/首尾空格跟 reporter 不完全一样，也照样同步进来（600+100=700，不是安静漏掉）',
+     card.includes('US$700.00'), card);
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【28】核对撤回：staffPruneBossGifts 发现云端已经没有的礼物就从本机移除 ----------
+// 跟【27】staffSyncBossGifts 方向相反（那个是「发现新的就加」，这个是「发现没了的就删」）。
+// 老板在主 App 撤回一笔打错的现金后，Firestore 那份文档没了，但没有任何服务端推送
+// 通知同事——只能靠这个函数下次核对时自己发现。
+console.log('\n【28】核对撤回：staffPruneBossGifts 发现云端已经没有的礼物就从本机移除');
+if (want()) {
+  // ---- 静态检查：触发时机只在 staffSyncMode()／visibilitychange，不在 saveTx 后
+  //      2.5 秒那个快速轮询里（那是为「礼物到账要快」设计的，核对撤回没那么急，
+  //      而且每次都要多打一发请求）----
+  const staffSrc = readFileSync(new URL('../staff/index.html', import.meta.url), 'utf8');
+  const quickPollLine = staffSrc.split('\n').find(l => l.includes('staffLoadPetty();') && l.includes('2500'));
+  ok('saveTx 后 2.5 秒的快速轮询那一行不含 staffPruneBossGifts',
+     !!quickPollLine && !quickPollLine.includes('staffPruneBossGifts'), quickPollLine);
+  const visLine = staffSrc.split('\n').find(l => l.includes('document.hidden') && l.includes('staffLoadPetty'));
+  ok('visibilitychange 监听器里含 staffPruneBossGifts',
+     !!visLine && visLine.includes('staffPruneBossGifts'), visLine);
+  const modeLine = staffSrc.split('\n').find(l => l.includes('if(onBoss){') && l.includes('staffSyncBossGifts'));
+  ok('staffSyncMode() 切进老板账页那一行含 staffPruneBossGifts',
+     !!modeLine && modeLine.includes('staffPruneBossGifts'), modeLine);
+
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);   // reporter = 'Seryi'
+
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    window.__pruneQueries = [];
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    // staffPruneBossGifts 只用了一层 where('k','==',...).get()（不像 staffSyncBossGifts
+    // 那样两层 where——person 的比对故意搬到客户端做，见 build-staff-page.py 的注释）
+    db = { collection: (c) => ({ where: (f,o,v) => ({
+      get: async () => { window.__pruneQueries.push({ c,f,o,v }); return window.__pruneSnap; }
+    }) }) };
+    cloudAvailable = true;
+  });
+
+  // ---- 本地没有任何带 giftId 的记录：一个 Firestore 请求都不发 ----
+  await page.evaluate(() => {
+    window.__pruneSnap = { empty:true, forEach: () => {} };
+    localStorage.setItem('staffExpense_bossCash', JSON.stringify({ topups: [
+      { date:'2026-09-01', amount: 200 },   // 手动记录（bossCashAdd() 那种），没有 giftId
+    ]}));
+  });
+  await page.evaluate(() => staffPruneBossGifts());
+  await page.waitForTimeout(300);
+  ok('本地没有带 giftId 的记录时，一个 Firestore 请求都不发',
+     (await page.evaluate(() => window.__pruneQueries.length)) === 0);
+  let topups = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')||'{"topups":[]}').topups);
+  ok('手动记录本身完全不受这套核对影响', topups.length === 1 && !topups[0].giftId, topups);
+
+  // ---- 有带 giftId 的记录：云端没了的移除，云端还在的留着（对照组），手动记录不受影响 ----
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossCash', JSON.stringify({ topups: [
+      { date:'2026-09-01', amount: 200 },                                  // 手动记录，无 giftId
+      { date:'2026-09-02', amount: 600, giftId:'g-alive', cur:'USD' },     // 云端还在
+      { date:'2026-09-03', amount: 300, giftId:'g-gone',  cur:'USD' },     // 云端已经被老板撤回
+    ]}));
+    window.__pruneSnap = { empty:false, forEach: fn => {
+      fn({ id:'g-alive', data: () => ({ person:'Seryi' }) });
+      // g-gone 不在快照里，代表老板已经把这份文档删了
+    } };
+  });
+  await page.evaluate(() => staffPruneBossGifts());
+  await until(() => page.evaluate(() => window.__pruneQueries.length > 0), { what: '核对请求送出' });
+  ok('核对查询只按口令筛（不按 person——person 的比对留在客户端做，见上面大小写不敏感那条）',
+     (await page.evaluate(() => window.__pruneQueries[window.__pruneQueries.length-1]?.v)) === 'pass-1234');
+  topups = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')||'{"topups":[]}').topups);
+  ok('云端已经没有的那笔（g-gone）被移除了', !topups.some(t=>t.giftId==='g-gone'), topups);
+  ok('云端还在的那笔（g-alive）留着（对照组：正常情况不受影响，不是「清空重来」那种粗暴实现）',
+     topups.some(t=>t.giftId==='g-alive'), topups);
+  ok('手动记录（无 giftId）完全不受影响', topups.some(t=>!t.giftId && t.amount===200), topups);
+  const toastText = await page.textContent('#toast');
+  ok('toast 说清楚是「收回一条记录」，不是「扣钱」（别让同事误以为自己被倒扣）',
+     (toastText||'').includes('收回') && !(toastText||'').includes('扣钱'), toastText);
+
+  // ---- person 大小写/空格不同，客户端比对也要认得出是自己的、不会被误删 ----
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossCash', JSON.stringify({ topups: [
+      { date:'2026-09-04', amount: 400, giftId:'g-case', cur:'USD' },
+    ]}));
+    window.__pruneSnap = { empty:false, forEach: fn => fn({
+      id:'g-case', data: () => ({ person:'  seryi  ' })   // 大小写+首尾空格都跟 'Seryi' 不一样
+    }) };
+  });
+  await page.evaluate(() => staffPruneBossGifts());
+  await page.waitForTimeout(300);
+  topups = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')||'{"topups":[]}').topups);
+  ok('person 大小写/空格不同，客户端比对也认得出是自己的、不会被误删',
+     topups.some(t=>t.giftId==='g-case'), topups);
 
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();

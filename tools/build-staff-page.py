@@ -1026,7 +1026,7 @@ saveTx = function(){
   setTimeout(()=>{ staffLoadPetty(); staffSyncBossGifts(); }, 2500);
 };
 document.addEventListener('visibilitychange', ()=>{
-  if(!document.hidden && staffIdentity){ staffLoadPetty(); staffSyncBossGifts(); }
+  if(!document.hidden && staffIdentity){ staffLoadPetty(); staffSyncBossGifts(); staffPruneBossGifts(); }
 });
 
 /* 弹窗标题是脚本写死的中文，包一层让它跟着语言走 */
@@ -1180,6 +1180,18 @@ function bossCashReset(){
   renderBossCash();
 }
 
+/**
+ * person 比对要大小写/首尾空格不敏感（2026-09-09 生产 bug）：老板端 person 是自由文本
+ * 手打的（比如打成 KUANG），staffIdentity.reporter 是服务端身份识别给的固定值（Kuang）——
+ * 两个值来自完全不同的输入源，几乎肯定会撞上大小写不一致。精确比对会让礼物永远
+ * 「安静地」同步不过去：老板以为送了，同事以为没收到，两边都看不出哪里错——这正是
+ * CLAUDE.md 反复强调要杜绝的「沉默失败」。所有比对 person 的地方都要走这个函数，
+ * 不要再直接用 !== 比。
+ */
+function samePersonName(a, b){
+  return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+}
+
 const STAFF_BOSS_GIFTS_SEEN = 'staffExpense_bossGiftsSeen';
 function loadBossGiftsSeen(){
   try{
@@ -1231,7 +1243,7 @@ async function staffSyncBossGifts(){
   snap.forEach(doc => {
     const d = doc.data();
     if(typeof d.at === 'number' && d.at > maxAt) maxAt = d.at;   // 推进游标，不管是不是给我的
-    if(d.person !== me) return;                                  // 不是给我的，不认（不落 seen，反正 maxAt 已经过了它）
+    if(!samePersonName(d.person, me)) return;                    // 不是给我的，不认（大小写/空格不敏感比对，见 samePersonName）
     if(seen.ids.includes(doc.id)) return;
     seen.ids.push(doc.id);
     const amt = Number(d.amount) || 0;
@@ -1258,6 +1270,61 @@ async function staffSyncBossGifts(){
       `⚠️ 有 ${mismatched.length} 笔现金币别跟目前设定不一样，没算进总额，请去「手上现金」卡确认`,
       `⚠️ ${mismatched.length} cash gift(s) use a different currency than your current setting — `
       + `not added to the total, please check the Cash on hand card`));
+  }
+}
+
+/**
+ * 核对一遍："我手机上记着的、老板给的现金，云端是不是已经被撤回了"——跟 staffSyncBossGifts
+ * 方向相反：那个是「发现新的就加」，这个是「发现没了的就删」，语义不同、触发频率也不同
+ * （老板打错币种要撤回不常见、也没那么急，不用挂在 saveTx 后 2.5 秒那个快速轮询上，那是
+ * 为「礼物到账要快」设计的），所以是独立函数，不跟 staffSyncBossGifts 合并。
+ *
+ * 只影响带 giftId 的 topup（老板转的那些）——bossCashAdd() 手动记的条目没有 giftId，
+ * 天然完全不受这套核对影响，不用另外判断。
+ *
+ * 没有服务端推送撤回通知这回事：老板删了 Firestore 文档，同事这边不会自动知道，只能
+ * 靠客户端下次核对时自己发现——这是为什么需要这个独立函数，而不是只指望云端删了自动消失。
+ *
+ * **查询故意不带 person 条件**：Firestore 的 where('person','==',...) 是精确匹配，
+ * 没法做大小写/空格不敏感比对，而 person 就是那种几乎肯定会撞上大小写不一致的字段
+ * （见 samePersonName 注释）。改成只按口令 k 拉这个口令下的全部记录，再在客户端用
+ * samePersonName 筛——反正一个人手上带 giftId 的记录量很小，不用担心效率。
+ */
+async function staffPruneBossGifts(){
+  if(!staffBossOn() || !cloudAvailable || !staffIdentity) return;
+  if(!(await staffEnsureAnon())) return;
+  const o = loadBossCash();
+  const withGift = o.topups.filter(t => t.giftId);
+  if(!withGift.length) return; // 没有可核对的，不用发请求
+
+  let snap;
+  try{
+    snap = await db.collection('boss_cash_gifts')
+      .where('k', '==', staffBossKey())
+      .get();
+  }catch(e){ return; } // 查询失败：安静跳过，不用一次网络失败打扰用户
+
+  const me = staffIdentity.reporter;
+  const alive = new Set();
+  snap.forEach(doc => {
+    const d = doc.data();
+    if(samePersonName(d.person, me)) alive.add(doc.id);
+  });
+
+  let removed = 0;
+  o.topups = o.topups.filter(t => {
+    if(!t.giftId) return true;          // 手动记录，不受这套核对影响
+    if(alive.has(t.giftId)) return true; // 云端还在，留着
+    removed++;
+    return false;
+  });
+
+  if(removed){
+    saveBossCash(o);
+    renderBossCash();
+    toast(tt(
+      `老板收回了 ${removed} 笔现金记录（可能是打错了在修正），已经从你的余额里扣掉`,
+      `The Boss withdrew ${removed} cash record(s) (probably fixing a mistake) — removed from your balance`));
   }
 }
 
@@ -1357,7 +1424,7 @@ function staffSyncMode(){
   renderBossCfg();
   renderBossCash();
   // 切进「老板账」页时马上拉一次最新的现金，不用等 2.5 秒轮询
-  if(onBoss) staffSyncBossGifts();
+  if(onBoss){ staffSyncBossGifts(); staffPruneBossGifts(); }
 }
 
 /** 说明块底下那一行设定：这本账用什么钱。 */
