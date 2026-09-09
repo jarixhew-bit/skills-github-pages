@@ -706,3 +706,110 @@ handler 本身的算术、0 值拒绝、撤销、历史截断/排序。
 数字必须完全对齐（尤其注意"小于"和"小于等于"这种差一错误），否则用户会撞见一种自己
 束手无策、错误提示还指错方向的失败——这类边界不对齐的 bug，只测"正常值通过"和"超大值
 被拒"两种情况测不出来，要专门测"卡在规则边界那个数字"。
+
+### 撤回：老板转错了能删（2026-09-09）
+
+真实事故起因：用户手滑把币种打错（该给 KUANG 转 USD，选成了 HKD），当时
+`boss_cash_gifts` 的规则是 `allow update, delete: if false`——**谁都删不掉，包括老板
+本人**，历史记录不能被事后偷改。放宽成「只有老板能删整笔，不能改」：
+`allow delete: if request.auth.uid == 'BOSS_UID_HERE'; allow update: if false;`——
+不许改金额（防悄悄改账），只许整笔撤回。
+
+**为什么"删 Firestore 文档"不等于"同事手机自动更新"**：没有服务端推送撤回通知这回事，
+Firestore 的 `delete()` 只是让那份文档从云端消失，同事那边的手机不会收到任何主动通知
+——它只能靠**下次自己核对时发现**「咦，这个 giftId 我记着，但云端查不到了」。这是新增
+`staffPruneBossGifts()`（跟 `staffSyncBossGifts()` 反方向：那个是「发现新的就加」，这个
+是「发现没了的就删」）的根本原因。
+
+**核对为什么不能挂在 saveTx 后 2.5 秒那个快速轮询上**：那个轮询是为「礼物到账要快」
+设计的——老板刚转了钱，同事记账时能尽快看到。撤回不常见、也没那么急，而且每次核对都要
+多打一发 Firestore 请求，没必要那么频繁。所以只挂在 `staffSyncMode()`（切进「老板账」
+tab 时）和 `visibilitychange`（App 从背景切回前台）这两处，跟 `staffSyncBossGifts()` 放
+在一起调用，不新开计时器。
+
+**`giftId` 是唯一的关联桥梁**：`staffSyncBossGifts()` 合并礼物时会把 Firestore doc id
+存进 `topup.giftId`；`bossCashAdd()` 手动记的条目完全没有这个字段。`staffPruneBossGifts()`
+只处理带 `giftId` 的 topup——本地一笔 `giftId` 都没有时直接 `return`，连请求都不发（比照
+"没必要查的时候不要查"那条铁律）。查询故意**不带 `person` 条件**（只按口令 `k` 拉这个
+口令下的全部记录，客户端再筛）——原因见下面这条大小写修复，`where('person','==',...)`
+是精确匹配，没法做大小写不敏感比对。
+
+主 App 弹窗（`#modal-boss-cash-gift`）里新增「最近转过」清单
+（`refreshBossCashGiftRecent()`/`renderBossCashGiftRow()`，弹窗打开和转账成功后都会刷新）
+＋ `deleteBossCashGift()`：点 🗑 要 `confirm()`（这是钱，删错了对方就少一笔提醒，跟
+`sendBossCashGift()` 同一条规矩），确认后 `db.collection('boss_cash_gifts').doc(id).delete()`，
+`permission-denied` 单独讲清楚（不是老板本人操作/规则还没贴），其余失败提示等有网再试。
+
+自检：`check-expense-company.mjs`【32】（清单渲染、撤回按钮的确认框、确认后真调
+`delete()`、取消不发请求、清单跟着刷新、删除失败讲清楚原因）；`check-staff-page.mjs`
+【28】（`staffPruneBossGifts()`：无 `giftId` 不发请求、云端没了的移除＋toast 用词准确
+「收回」不是「扣钱」、云端还在的留着当对照组、手动记录不受影响、触发时机的静态检查——
+`saveTx` 后 2.5 秒那行不含它、`visibilitychange`／`staffSyncMode()` 那两行含它）。
+
+### 本地也记一笔支出：老板自己的账户余额要跟着少（2026-09-09，同一天追加）
+
+用户发现的缺口："我那个钱转过去了，我这个余额也要跟着减少啊，就像公司账一样"——原本
+`sendBossCashGift()` 只写 Firestore，完全不碰 `data.transactions`，钱明明是从老板自己
+口袋出去的，主 App 里任何账户的余额都不会跟着减少。这跟公司账那边"转钱给他"会在**服务端**
+镜像 Yang 的备用金余额是类似的效果（`renderAccCards()` 那段"转钱给 Seryi/Kuang 的现金实际
+是从 Yang 手上出的"注释），但这次要的是同一个效果发生在**本地 `data.transactions`**——
+老板账没有服务端权威余额这回事，只能在发送这台设备上记一笔。
+
+**币种下拉换成账户下拉**：弹窗里原本 `#boss-cash-gift-cur` 是独立的币种 `<select>`
+（选项来自 `CUR_SYMBOLS`），这次改成 `#boss-cash-gift-acc`（选项来自 `data.accounts`，
+预填 `bossCashGiftAccountId()` 记住的上次选择，没存过默认选第一个非公司账户）——**币种
+不再单独选，直接取被选中账户的 `currency`**。这样从设计上就杜绝了"账户是 USD、却选了
+HKD 送出去"这种货币对不上的输入错误（那次 KUANG 收错币种的事故，根源正是币种是独立选
+的、跟哪个账户没关系，人容易选错）。`bossCashGiftEcho()`（即时回显）也跟着改成读选中
+账户的 `currency`。
+
+**新增默认分类 `cat_cash_gift`**（🤝 给同事现金，`DEFAULT_DATA.categories`）：
+`migrateCategories()` 会在下次 `loadData()` 时自动帮所有现有用户补上，不用额外写迁移代码
+（见"高频操作 1"）。
+
+**`sendBossCashGift()` 送出成功后**（`await db.collection('boss_cash_gifts').add(payload)`
+resolve 出的 `docRef` 带 `.id`）紧接着 `data.transactions.push({...giftId: docRef.id})`
+记一笔支出，`accountId` 是选中的账户、`categoryId: 'cat_cash_gift'`、描述带收件人和备注、
+`saveData()`，然后 `renderOverview()`（不是只调 `renderOvBossCashGift()`——账户卡片
+`renderAccCards()` 也要跟着刷新余额）。**`giftId` 字段是关联桥梁**：跟同事版
+`staffSyncBossGifts()` 存 `topup.giftId` 是同一个设计语言，这边对应的是本地
+`data.transactions` 那条记录。
+
+**撤回联动**：`deleteBossCashGift()` 删掉 Firestore 那份文档成功后，按
+`t.giftId === 那个被删的 docId` 在 `data.transactions` 里找回对应的支出，找到就照抄
+`deleteTxById()` 的写法 `tombstoneTx(id)` + 从数组里过滤掉 + `saveData()`（**铁律没有
+例外**：每一处从 `data.transactions` 移除记录的地方都必须调 `tombstoneTx`，漏了这步云
+同步合并时这笔"撤销的支出"会复活）。**找不到就静默跳过，不报错**——可能是这台设备不是
+当初发送那台、或者本地记录已经被别的方式清掉，Firestore 那边已经删成功了，本地这步只是
+尽力而为的配套动作。
+
+⚠️ **这笔支出只存在发送那台设备上，换一台设备或者本地数据被清过就不会出现在别的设备上**
+——这不是 bug，是这个功能从一开始就没有"服务端权威余额"这个设计（跟备用金不一样，备用金
+的权威数在 butler 服务端）。以后维护的人别去"修"这个"缺陷"。
+
+自检：`check-expense-company.mjs`【31】追加（账户下拉取代币种下拉、默认预选、选中账户
+记住、送出成功后本地多一笔支出且字段都对、账户卡片余额确实少了这笔、Firestore 送不出去
+时本地不留痕迹）；【32】追加（撤回联动删掉本地支出、真的走了 `tombstoneTx`、余额恢复、
+本地没有对应交易时撤回照样成功不报错）。
+
+### person 大小写不敏感（2026-09-09 生产 bug，同一天补的）
+
+真实故障：老板送礼物时 `person` 填的是 `KUANG`（全大写，弹窗里手打的自由文本），
+同事端 `staffIdentity.reporter` 是服务端身份识别给的固定值 `Kuang`（首字母大写）——
+两个值来自完全不同的输入源，`staffSyncBossGifts()` 原本用精确字符串比对
+（`d.person !== me`），大小写不一致就判定「不是给我的」，**礼物永远同步不过去，且没有
+任何提示**：老板以为送了，同事以为没收到，两边都不知道发生了什么。这正是 CLAUDE.md
+反复强调要杜绝的"沉默失败"。
+
+修法：新增 `samePersonName(a, b)`（`String(a||'').trim().toLowerCase() === String(b||'')
+.trim().toLowerCase()`），`staffSyncBossGifts()` 和 `staffPruneBossGifts()` 两处比对
+`person` 的地方都改用它——**以后任何新增比对 `person` 的地方也要走这个函数，不要再直接
+用 `!==` 比**。连带把 `staffPruneBossGifts()` 的查询从「服务端 `where('person','==',...)`
+精确匹配」改成「只按口令拉全部记录，客户端用 `samePersonName` 筛」，因为 Firestore 查询
+做不了大小写不敏感比对（这个人带 `giftId` 的记录量很小，不用担心效率）。主 App 端
+`sendBossCashGift()` 存 `person` 时本来就有 `.trim()`（只去空格，不强制大小写，保留用户
+输入原样方便他自己认），这次没有再改。
+
+自检：`check-staff-page.mjs`【27】追加一条（云端 `person:'  SERYI  '` 大小写+空格都不
+一样，也照样同步进 `staffSyncBossGifts()`）；【28】追加一条（`staffPruneBossGifts()` 同样
+场景下也认得出是自己的、不会被误删）。

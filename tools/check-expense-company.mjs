@@ -2785,9 +2785,16 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await page.waitForTimeout(200);
   ok('弹窗里出现「给谁」输入框', await page.locator('#boss-cash-gift-person').isVisible());
   ok('金额栏在', await page.locator('#boss-cash-gift-amount').isVisible());
-  ok('币种下拉在，且选项来自 CUR_SYMBOLS',
-     (await page.locator('#boss-cash-gift-cur option').count()) ===
-       (await page.evaluate(()=>Object.keys(CUR_SYMBOLS).length)));
+  // 2026-09-09 追加：币种不再单独选，改成选账户，币种跟着账户走——从设计上杜绝
+  // 「账户是 USD、却选了 HKD 送出去」这种货币对不上的输入错误（那次 KUANG 收错币种
+  // 的事故根源就是币种是独立选的，跟哪个账户没关系）。
+  ok('不再有独立的币种下拉', (await page.locator('#boss-cash-gift-cur').count()) === 0);
+  ok('账户下拉在，选项数等于账户数',
+     (await page.locator('#boss-cash-gift-acc option').count()) ===
+       (await page.evaluate(()=>data.accounts.length)));
+  ok('默认预选第一个非公司账户',
+     (await page.evaluate(()=>document.getElementById('boss-cash-gift-acc').value)) ===
+       (await page.evaluate(()=>(data.accounts.find(a=>!a.isCompany)||data.accounts[0]).id)));
   // 199 不是 200：Firestore 规则要求 note.size() < 200（严格小于），maxlength 卡在 199
   // 才不会让用户填满 200 字送出去被规则秒拒、却看不懂为什么（2026-09-09 验收查出的边界差一）。
   ok('备注栏在，且限长 199（对齐规则的 note.size()<200）',
@@ -2833,10 +2840,14 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   ok('金额过大时提示单笔上限',
      (await page.textContent('#boss-cash-gift-status')||'').includes('上限'));
 
-  // ---- 正常送出：内容必须原样，不做汇率换算，且带上 person ----
+  // ---- 正常送出：内容必须原样，不做汇率换算，且带上 person；账户的币种就是送出的币种 ----
+  const balBefore = await page.evaluate(()=>{
+    const txs = data.transactions.filter(t=>t.accountId==='acc_boss');
+    return txs.reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0);
+  });
   await page.fill('#boss-cash-gift-person', 'Seryi');
   await page.fill('#boss-cash-gift-amount', '600');
-  await page.selectOption('#boss-cash-gift-cur', 'JPY');
+  await page.selectOption('#boss-cash-gift-acc', 'acc_boss');   // acc_boss 币种是 USD
   await page.fill('#boss-cash-gift-note', '给 Seryi 买菜');
   await page.evaluate(()=>sendBossCashGift());
   await page.waitForTimeout(300);
@@ -2845,7 +2856,7 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   ok('口令原样', sent?.p.k === 'pass-1234', sent?.p);
   ok('带上收件人 person', sent?.p.person === 'Seryi', sent?.p);
   ok('金额原样，不做任何换算', sent?.p.amount === 600, sent?.p.amount);
-  ok('币种原样（JPY 不会被悄悄转成 USD）', sent?.p.currency === 'JPY', sent?.p.currency);
+  ok('币种取自选中账户（USD），不再单独选', sent?.p.currency === 'USD', sent?.p.currency);
   ok('备注一起送', sent?.p.note === '给 Seryi 买菜', sent?.p.note);
   ok('带上 at 时间戳', typeof sent?.p.at === 'number', sent?.p.at);
   ok('状态行显示已送出',
@@ -2855,24 +2866,179 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   ok('名字记住了，下次填「给谁」有得选',
      (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_bossCashGiftNames')||'[]')))
        .includes('Seryi'));
+  ok('选中的账户记住了，下次弹窗打开预填同一个',
+     (await page.evaluate(()=>localStorage.getItem('expenseTracker_bossCashGiftAccount'))) === 'acc_boss');
+
+  // ---- 老板自己的账户余额要跟着少：本地记一笔支出，giftId 关联这份 Firestore 礼物 ----
+  const localTx = await page.evaluate(()=>data.transactions.find(t=>t.giftId==='g1'));
+  ok('送出成功后本地记了一笔支出', !!localTx, localTx);
+  ok('这笔支出扣在选中的账户上', localTx?.accountId === 'acc_boss', localTx);
+  ok('分类是「给同事现金」', localTx?.categoryId === 'cat_cash_gift', localTx);
+  ok('金额和送出的一致', localTx?.amount === 600, localTx);
+  ok('类型是支出', localTx?.type === 'expense', localTx);
+  ok('描述带上收件人和备注', /Seryi/.test(localTx?.description||'') && /买菜/.test(localTx?.description||''), localTx?.description);
+  const balAfter = await page.evaluate(()=>{
+    const txs = data.transactions.filter(t=>t.accountId==='acc_boss');
+    return txs.reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0);
+  });
+  ok('账户余额确实少了这笔（不是只记了 Firestore、本机没变化）', balAfter === balBefore - 600,
+     { balBefore, balAfter });
+  ok('账户卡片上显示的余额也跟着更新了（renderOverview 被调用）',
+     (await page.innerText('#acc-cards-row')).includes('−US$600.00')
+     || (await page.innerText('#acc-cards-row')).includes('-US$600.00'));
 
   await page.evaluate(()=>closeModal('modal-boss-cash-gift'));   // 关掉弹窗，回首屏看卡片
   await page.waitForTimeout(200);
   ok('首屏卡片显示最近送过的那一笔',
      (await page.innerText('#ov-boss-cash-gift')).includes('Seryi'));
 
-  // ---- 权限被拒 / 网络问题：分开说明 ----
+  // ---- 权限被拒 / 网络问题：分开说明，且失败时不该有本地支出（送都没送出去）----
   await page.click('#ov-boss-cash-gift');
   await page.waitForTimeout(200);
   await page.evaluate(() => {
     db = { collection: () => ({ add: async () => { const e = new Error('nope'); e.code='permission-denied'; throw e; } }) };
   });
+  const txCountBefore = await page.evaluate(()=>data.transactions.length);
   await page.fill('#boss-cash-gift-person', 'Kuang');
   await page.fill('#boss-cash-gift-amount', '10');
   await page.evaluate(()=>sendBossCashGift());
   await page.waitForTimeout(200);
   ok('权限被拒时提示口令或规则问题',
      (await page.textContent('#boss-cash-gift-status')||'').includes('口令不对'));
+  ok('Firestore 送不出去时，本地也没有多出一笔支出',
+     (await page.evaluate(()=>data.transactions.length)) === txCountBefore);
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+// ---------- 【32】给同事现金：弹窗里的「最近转过」清单 + 撤回 ----------
+// 用户手滑打错币种转错钱的真实案例（2026-09-09，boss_cash_gifts/ZgvvM81TZv8X1xrtNs35）
+// 之后加的：弹窗里列最近 10 笔，每笔能撤回。这里只守「清单渲染对不对」「确认框真的挡了
+// 一下」「确认后真的调 Firestore delete()」「取消不发请求」「删除失败讲清楚原因」——
+// 不测 Firestore 规则本身（那份规则只在 Firebase Console 生效）。
+{
+  console.log('\n【32】给同事现金：最近转过清单 + 撤回（确认框、真的删、取消不发请求、失败讲清楚）');
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  let dialogAction = 'accept', dialogMsg = '';
+  page.on('dialog', d => { dialogMsg = d.message(); dialogAction === 'dismiss' ? d.dismiss() : d.accept(); });
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashKey', 'pass-1234');
+    cloudAvailable = true; currentUser = { uid: 'boss' };
+    // 假的云端：两笔记录，g100 是最近那笔。delete() 真的把它从假数据里拿掉，
+    // 这样「删除成功后清单刷新」和「失败时清单不变」都能验到。
+    window.__docs = [
+      { id:'g100', data:()=>({ person:'Seryi', amount:600, currency:'JPY', note:'买菜', at: Date.now()-1000 }) },
+      { id:'g99',  data:()=>({ person:'Kuang', amount:50,  currency:'USD', at: Date.now()-2000 }) },
+    ];
+    window.__deletedIds = [];
+    window.__forceDeleteError = null;
+    // g100 在这台设备上有对应的本地支出记录（模拟当初就是这台设备送出去的）；
+    // g99 没有（模拟"这台设备不是当初发送那台"——删除时要能静默跳过，不报错）。
+    data.transactions.push({
+      id: 'tx-g100', accountId: 'acc_boss', date: today(), type: 'expense',
+      amount: 600, categoryId: 'cat_cash_gift', description: '给 Seryi 的现金：买菜',
+      updatedAt: Date.now(), giftId: 'g100'
+    });
+    saveData();
+    db = {
+      collection: (name) => ({
+        where: () => ({
+          where: () => ({}),   // 只有 boss_cash_gifts 会连用两个 where，这里用不到第二层
+          orderBy: () => ({ limit: () => ({ get: async () => ({
+            empty: window.__docs.length === 0,
+            docs: window.__docs.slice(),
+          }) }) }),
+        }),
+        doc: (id) => ({ delete: async () => {
+          if (window.__forceDeleteError) {
+            const e = new Error('nope'); e.code = window.__forceDeleteError; throw e;
+          }
+          window.__deletedIds.push(id);
+          window.__docs = window.__docs.filter(d => d.id !== id);
+        } }),
+      }),
+    };
+  });
+
+  await page.click('#ov-boss-cash-gift');
+  await until(async () => (await page.innerText('#boss-cash-gift-recent')).includes('Seryi'),
+    { what: '清单载入' });
+
+  ok('弹窗打开时清单自动出现，两笔都在',
+     (await page.innerText('#boss-cash-gift-recent')).includes('Seryi')
+     && (await page.innerText('#boss-cash-gift-recent')).includes('Kuang'));
+  ok('金额+币种格式化正确显示', (await page.innerText('#boss-cash-gift-recent')).includes('¥600.00'));
+  ok('备注一起显示', (await page.innerText('#boss-cash-gift-recent')).includes('买菜'));
+  ok('每一笔都有撤回按钮', (await page.locator('#boss-cash-gift-recent button[aria-label*="撤回"]').count()) === 2);
+
+  // ---- 取消：不发删除请求，清单不变 ----
+  dialogAction = 'dismiss';
+  await page.click('#boss-cash-gift-row-g100 button');
+  await page.waitForTimeout(200); // 断言「没发生」，只能真的等一下
+  ok('取消撤回时弹出确认框', dialogMsg.includes('Seryi') && dialogMsg.includes('撤回'), dialogMsg);
+  ok('取消后没有调 delete()', (await page.evaluate(()=>window.__deletedIds.length)) === 0);
+  ok('取消后清单里那一笔还在', (await page.innerText('#boss-cash-gift-recent')).includes('Seryi'));
+
+  // ---- 确认：真的调 Firestore delete()，清单刷新掉那一笔 ----
+  dialogAction = 'accept';
+  await page.click('#boss-cash-gift-row-g100 button');
+  await until(() => page.evaluate(()=>window.__deletedIds.length > 0), { what: '撤回请求送出' });
+  ok('确认后真的调了 delete()，且删的是对的 doc id',
+     (await page.evaluate(()=>window.__deletedIds)).includes('g100'),
+     await page.evaluate(()=>window.__deletedIds));
+  await until(async () => !(await page.innerText('#boss-cash-gift-recent')).includes('Seryi'),
+    { what: '清单刷新掉已撤回那一笔' });
+  ok('清单里已经看不到撤回的那一笔', !(await page.innerText('#boss-cash-gift-recent')).includes('Seryi'));
+  ok('没删的那笔还在', (await page.innerText('#boss-cash-gift-recent')).includes('Kuang'));
+
+  // ---- 撤回联动：对应的本地支出记录也要撤销（不是只删了 Firestore、老板自己的
+  //      余额还是少的），且要走 tombstoneTx（不然云同步合并时这笔"撤销的支出"会复活）----
+  const localTxAfterDelete = await page.evaluate(()=>data.transactions.find(t=>t.id==='tx-g100'));
+  ok('本地对应的支出记录被移除了', !localTxAfterDelete, localTxAfterDelete);
+  ok('移除时调用了 tombstoneTx（写进了 deletedTxIds，防云同步合并复活）',
+     await page.evaluate(()=>(data.deletedTxIds||[]).some(d=>d.id==='tx-g100')));
+  const balAfterDelete = await page.evaluate(()=>{
+    const txs = data.transactions.filter(t=>t.accountId==='acc_boss');
+    return txs.reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0);
+  });
+  ok('账户余额跟着恢复（那笔支出被撤销了，不是只删了云端）', balAfterDelete === 0, balAfterDelete);
+
+  // ---- 找不到对应本地交易时撤回不报错（比如这台设备不是当初发送那台）----
+  await page.evaluate(() => {
+    window.__docs.push({ id:'g98', data:()=>({ person:'Nomatch', amount:20, currency:'USD', at: Date.now()-500 }) });
+  });
+  await page.evaluate(()=>refreshBossCashGiftRecent());
+  await until(async () => (await page.innerText('#boss-cash-gift-recent')).includes('Nomatch'),
+    { what: 'g98 出现在清单里' });
+  const txCountBeforeG98 = await page.evaluate(()=>data.transactions.length);
+  await page.click('#boss-cash-gift-row-g98 button');
+  await until(() => page.evaluate(()=>window.__deletedIds.includes('g98')), { what: 'g98 撤回请求送出' });
+  ok('本地没有对应交易时，撤回照样成功，也不报错',
+     (await page.evaluate(()=>data.transactions.length)) === txCountBeforeG98);
+  const noMatchToast = await page.evaluate(()=>document.getElementById('toast').textContent);
+  ok('依然显示撤回成功的提示', (noMatchToast||'').includes('已撤回'), noMatchToast);
+
+  // ---- 删除失败：讲清楚原因，不吞掉错误 ----
+  const prevToast = await page.evaluate(()=>document.getElementById('toast').textContent);
+  await page.evaluate(() => { window.__forceDeleteError = 'permission-denied'; });
+  await page.click('#boss-cash-gift-row-g99 button');
+  await until(async () => (await page.evaluate(()=>document.getElementById('toast').textContent)) !== prevToast,
+    { what: '失败提示出现（toast 内容变化）' });
+  const failToast = await page.evaluate(()=>document.getElementById('toast').textContent);
+  ok('删除失败时提示讲清楚是权限问题，不是笼统的失败',
+     failToast.includes('口令不对') || failToast.includes('老板本人') || failToast.includes('规则'),
+     failToast);
+  ok('失败时那一笔没被真的删掉', (await page.evaluate(()=>window.__docs.some(d=>d.id==='g99'))));
 
   ok('无 JS 报错', errs.length===0, errs);
   await ctx.close();
