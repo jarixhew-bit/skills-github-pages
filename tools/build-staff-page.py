@@ -1192,6 +1192,17 @@ function samePersonName(a, b){
   return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 }
 
+/**
+ * 两个函数（staffSyncBossGifts/staffPruneBossGifts）都读改同一份本机存的「手上现金」
+ * 状态（loadBossCash/saveBossCash），触发点又不只一个（2500ms 轮询、visibilitychange、
+ * 切进「老板账」页）——多个触发几乎同时发生时，两次调用会各自从 localStorage 读到
+ * 同一份「还没处理过」的旧状态，各自判断「这是新的」各加一次，钱就被算重复了
+ * （2026-09-09 用户实机踩到：转一笔 5000，卡片显示两笔 5000，总额变 10000）。
+ * 单一个"正在跑"标记堵住这个窗口：任何一个在跑，另一个直接放弃这次，等下一轮
+ * 触发再试，不需要排队重跑。两个函数共用同一把锁——它们碰的是同一份本机存储，
+ * 不能让"发现新的就加"和"发现没了的就删"同时改。 */
+let bossGiftsOpBusy = false;
+
 const STAFF_BOSS_GIFTS_SEEN = 'staffExpense_bossGiftsSeen';
 function loadBossGiftsSeen(){
   try{
@@ -1223,53 +1234,59 @@ function saveBossGiftsSeen(o){
  */
 async function staffSyncBossGifts(){
   if(!staffBossOn() || !cloudAvailable || !staffIdentity) return;
-  if(!(await staffEnsureAnon())) return;
-  const seen = loadBossGiftsSeen();
-  let snap;
+  if(bossGiftsOpBusy) return;   // 另一次调用正在跑，这次让路，下一轮触发再试
+  bossGiftsOpBusy = true;
   try{
-    snap = await db.collection('boss_cash_gifts')
-      .where('k', '==', staffBossKey())
-      .where('at', '>', seen.lastAt)
-      .get();
-  }catch(e){ return; } // 权限错误/离线：安静跳过，下次轮询再试，不打扰用户
+    if(!(await staffEnsureAnon())) return;
+    const seen = loadBossGiftsSeen();
+    let snap;
+    try{
+      snap = await db.collection('boss_cash_gifts')
+        .where('k', '==', staffBossKey())
+        .where('at', '>', seen.lastAt)
+        .get();
+    }catch(e){ return; } // 权限错误/离线：安静跳过，下次轮询再试，不打扰用户
 
-  if(snap.empty) return;
-  const o = loadBossCash();
-  const cur = staffBossCur();
-  const me = staffIdentity.reporter;
-  let addedTotal = 0, mismatched = [];
-  let maxAt = seen.lastAt;
+    if(snap.empty) return;
+    const o = loadBossCash();
+    const cur = staffBossCur();
+    const me = staffIdentity.reporter;
+    let addedTotal = 0, mismatched = [];
+    let maxAt = seen.lastAt;
 
-  snap.forEach(doc => {
-    const d = doc.data();
-    if(typeof d.at === 'number' && d.at > maxAt) maxAt = d.at;   // 推进游标，不管是不是给我的
-    if(!samePersonName(d.person, me)) return;                    // 不是给我的，不认（大小写/空格不敏感比对，见 samePersonName）
-    if(seen.ids.includes(doc.id)) return;
-    seen.ids.push(doc.id);
-    const amt = Number(d.amount) || 0;
-    if(amt <= 0) return;
-    const giftCur = (d.currency || '').toUpperCase();
-    const entry = { date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
-                     from: 'admin', giftId: doc.id, cur: giftCur || cur };
-    o.topups.push(entry);
-    if(giftCur && giftCur !== cur){ mismatched.push(entry); }
-    else { addedTotal += entry.amount; }
-  });
+    snap.forEach(doc => {
+      const d = doc.data();
+      if(typeof d.at === 'number' && d.at > maxAt) maxAt = d.at;   // 推进游标，不管是不是给我的
+      if(!samePersonName(d.person, me)) return;                    // 不是给我的，不认（大小写/空格不敏感比对，见 samePersonName）
+      if(seen.ids.includes(doc.id)) return;
+      seen.ids.push(doc.id);
+      const amt = Number(d.amount) || 0;
+      if(amt <= 0) return;
+      const giftCur = (d.currency || '').toUpperCase();
+      const entry = { date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
+                       from: 'admin', giftId: doc.id, cur: giftCur || cur };
+      o.topups.push(entry);
+      if(giftCur && giftCur !== cur){ mismatched.push(entry); }
+      else { addedTotal += entry.amount; }
+    });
 
-  seen.lastAt = maxAt;
-  saveBossGiftsSeen(seen);
-  saveBossCash(o);
-  renderBossCash();
+    seen.lastAt = maxAt;
+    saveBossGiftsSeen(seen);
+    saveBossCash(o);
+    renderBossCash();
 
-  if(addedTotal > 0){
-    toast(tt(`老板给了你现金 ${fmt(addedTotal, cur)}，已经记进「手上现金」`,
-              `The Boss sent you ${fmt(addedTotal, cur)} — added to Cash on hand`));
-  }
-  if(mismatched.length){
-    toast(tt(
-      `⚠️ 有 ${mismatched.length} 笔现金币别跟目前设定不一样，没算进总额，请去「手上现金」卡确认`,
-      `⚠️ ${mismatched.length} cash gift(s) use a different currency than your current setting — `
-      + `not added to the total, please check the Cash on hand card`));
+    if(addedTotal > 0){
+      toast(tt(`老板给了你现金 ${fmt(addedTotal, cur)}，已经记进「手上现金」`,
+                `The Boss sent you ${fmt(addedTotal, cur)} — added to Cash on hand`));
+    }
+    if(mismatched.length){
+      toast(tt(
+        `⚠️ 有 ${mismatched.length} 笔现金币别跟目前设定不一样，没算进总额，请去「手上现金」卡确认`,
+        `⚠️ ${mismatched.length} cash gift(s) use a different currency than your current setting — `
+        + `not added to the total, please check the Cash on hand card`));
+    }
+  } finally {
+    bossGiftsOpBusy = false;
   }
 }
 
@@ -1292,39 +1309,45 @@ async function staffSyncBossGifts(){
  */
 async function staffPruneBossGifts(){
   if(!staffBossOn() || !cloudAvailable || !staffIdentity) return;
-  if(!(await staffEnsureAnon())) return;
-  const o = loadBossCash();
-  const withGift = o.topups.filter(t => t.giftId);
-  if(!withGift.length) return; // 没有可核对的，不用发请求
-
-  let snap;
+  if(bossGiftsOpBusy) return;   // 跟 staffSyncBossGifts 共用同一把锁，见那边的注释
+  bossGiftsOpBusy = true;
   try{
-    snap = await db.collection('boss_cash_gifts')
-      .where('k', '==', staffBossKey())
-      .get();
-  }catch(e){ return; } // 查询失败：安静跳过，不用一次网络失败打扰用户
+    if(!(await staffEnsureAnon())) return;
+    const o = loadBossCash();
+    const withGift = o.topups.filter(t => t.giftId);
+    if(!withGift.length) return; // 没有可核对的，不用发请求
 
-  const me = staffIdentity.reporter;
-  const alive = new Set();
-  snap.forEach(doc => {
-    const d = doc.data();
-    if(samePersonName(d.person, me)) alive.add(doc.id);
-  });
+    let snap;
+    try{
+      snap = await db.collection('boss_cash_gifts')
+        .where('k', '==', staffBossKey())
+        .get();
+    }catch(e){ return; } // 查询失败：安静跳过，不用一次网络失败打扰用户
 
-  let removed = 0;
-  o.topups = o.topups.filter(t => {
-    if(!t.giftId) return true;          // 手动记录，不受这套核对影响
-    if(alive.has(t.giftId)) return true; // 云端还在，留着
-    removed++;
-    return false;
-  });
+    const me = staffIdentity.reporter;
+    const alive = new Set();
+    snap.forEach(doc => {
+      const d = doc.data();
+      if(samePersonName(d.person, me)) alive.add(doc.id);
+    });
 
-  if(removed){
-    saveBossCash(o);
-    renderBossCash();
-    toast(tt(
-      `老板收回了 ${removed} 笔现金记录（可能是打错了在修正），已经从你的余额里扣掉`,
-      `The Boss withdrew ${removed} cash record(s) (probably fixing a mistake) — removed from your balance`));
+    let removed = 0;
+    o.topups = o.topups.filter(t => {
+      if(!t.giftId) return true;          // 手动记录，不受这套核对影响
+      if(alive.has(t.giftId)) return true; // 云端还在，留着
+      removed++;
+      return false;
+    });
+
+    if(removed){
+      saveBossCash(o);
+      renderBossCash();
+      toast(tt(
+        `老板收回了 ${removed} 笔现金记录（可能是打错了在修正），已经从你的余额里扣掉`,
+        `The Boss withdrew ${removed} cash record(s) (probably fixing a mistake) — removed from your balance`));
+    }
+  } finally {
+    bossGiftsOpBusy = false;
   }
 }
 

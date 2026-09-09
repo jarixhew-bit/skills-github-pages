@@ -2058,6 +2058,38 @@ if (want()) {
   ok('person 大小写/首尾空格跟 reporter 不完全一样，也照样同步进来（600+100=700，不是安静漏掉）',
      card.includes('US$700.00'), card);
 
+  // ---- 并发不重复计入（2026-09-09 用户实机踩到的真实事故：转一笔 5000，两个几乎同时
+  //      触发的轮询都以为是新的、各加一次，卡片变成两笔 5000、总额变 10000）。这里把
+  //      .get() 故意拖慢，在它还没 resolve 时就发起第二次调用，模拟两个触发点几乎同时
+  //      发生——如果没有 bossGiftsOpBusy 这把锁，两次调用都会读到同一份「还没处理过」
+  //      的旧 seen 状态，各自把同一笔礼物记一次。 ----
+  const totalBefore = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')||'{"topups":[]}')
+      .topups.filter(t=>t.giftId==='g5').length);
+  await page.evaluate(() => {
+    // .get() 故意拖 100ms 才回：给第二次调用足够的窗口在第一次还卡在这一步时就
+    // 开始跑，真实还原「两个触发点几乎同时发生」——没有这个延迟，两次 page.evaluate
+    // 的网络往返本身就可能刚好错开，测不出没锁时的真实故障。
+    db = { collection: (c) => ({ where: (f1,o1,v1) => ({ where: (f2,o2,v2) => ({
+      get: async () => {
+        await new Promise(r => setTimeout(r, 100));
+        return window.__giftSnap;
+      }
+    }) }) }) };
+    window.__giftSnap = { empty:false, forEach: fn => fn({
+      id:'g5', data: () => ({ k:'pass-1234', person:'Seryi', amount: 5000, currency:'USD', at: 5000 })
+    }) };
+  });
+  await Promise.all([ page.evaluate(() => staffSyncBossGifts()), page.evaluate(() => staffSyncBossGifts()) ]);
+  await page.waitForTimeout(300);
+  const g5Count = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')||'{"topups":[]}')
+      .topups.filter(t=>t.giftId==='g5').length);
+  ok('两个几乎同时的同步不会把同一笔礼物计入两次（防重复的那把锁真的挡住了）',
+     g5Count === totalBefore + 1, { totalBefore, g5Count });
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('总额也没有翻倍（700+5000=5700，不是 700+10000）', card.includes('US$5,700.00') || card.includes('US$5700.00'), card);
+
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }
