@@ -626,3 +626,83 @@ handler 本身的算术、0 值拒绝、撤销、历史截断/排序。
 
 ⚠️ 另一个坑（`pendingClaimUndo` 的已知限制，butler 那边写在注释里）：撤销 claim 事件
 **不会**连带撤掉 Yang 那笔镜像加款——要撤得自己去备用金那边手工记一笔「调整」冲回去。
+
+## 给同事现金：反向同步进「手上现金」卡（2026-09-09）
+
+同事投递箱（上面那节）是「同事 → 老板」单向；这个是反过来的「老板 → 同事」，架构完全
+照抄同一套原理：新增 Firestore 集合 `boss_cash_gifts`，一条一个文档、只增不改，物理上
+没有覆盖任何账本的路径。老板在主 App 记一笔「给了谁多少现金」，同事版「老板账」页
+`#staff-boss-cash`（手上现金卡）轮询到这个集合后自动把这笔加进 `topups`——原本这张卡
+的钱完全靠同事自己手动按「＋ 收到现金」，现在老板这边转了就自动出现。
+
+**UI 不在设置页表单，在首屏卡片＋弹窗**（跟公司账「💵 备用金」`#ov-petty`/`openPetty()`
+同一套体验，2026-09-09 用户看完第一版设置页表单的方案后要求改成这样）：
+- `#ov-boss-cash-gift`（Overview tab，`renderOvBossCashGift()`）：永远显示（不像备用金卡
+  要挂公司账户才出现），没设口令时提示去设置页、点了直接跳转；设了口令显示最近送过的
+  几笔当参考（本机 log，`expenseTracker_bossCashGiftLog`，纯 UI 用，不是权威数据）。
+- `#modal-boss-cash-gift`（`openBossCashGift()`/`renderBossCashGiftModal()`）：选同事
+  （`#boss-cash-gift-person`，自由文本＋datalist 记住用过的名字，不是正式名册——老板账
+  本来就没有花名册）、金额＋币种（`bossCashGiftEcho()` 抄 `pettyEcho()` 的即时回显）、
+  备注（可留空，≤200 字）、「转钱给他」按钮＝`sendBossCashGift()`。
+- 设置页只留口令输入框（`#boss-cash-key-input`，`oninput="saveBossCashKey(...)"` 即时存，
+  不用按保存），口令是一次性设定，跟金额/同事这些每次都要填的东西分开。
+- 这个模态放在 `<!-- MODAL: ACCOUNT SWITCHER -->`～`<!-- PDF REPORT (hidden) -->` 那段
+  cut 区间内（跟 `modal-petty`/`modal-petty-add` 同一个理由：老板专属，同事版生成时
+  整块消失）；`#ov-boss-cash-gift` 卡片在 OVERVIEW TAB 里，同事版**整个 overview tab**
+  都被切掉（`cut_between("<!-- OVERVIEW TAB -->", "<!-- TRANSACTIONS TAB -->")`），
+  所以也不用另外处理。JS 函数（`renderOvBossCashGift`/`sendBossCashGift` 等）留在同事版
+  的 JS 里没关系——DOM 元素不存在，函数只是拿不到 `getElementById`，安全 return，不会
+  被同事的 UI 调用到。
+
+**按人分流，不广播（2026-09-09 用户追问后补的关键设计）**：老板账口令是**共用**的——
+不止一个同事可能在用同一个口令，而「手上现金」是**每个同事本机各自算**的。第一版方案
+里 gift 文档只带口令没带收件人，会让转给 A 的钱被**所有**持有这个口令的同事同时收到、
+同时加进各自余额。修法：`boss_cash_gifts` 文档必填 `person`（收件人名字，老板发送时
+填的自由文本）；同事版 `staffSyncBossGifts()`（`tools/build-staff-page.py`）借用同事版
+已有的身份机制 `staffIdentity.reporter`，只认 `doc.data().person === staffIdentity.reporter`
+的那几笔，其余一律忽略（哪怕口令一样也不认）。**过滤是客户端做的**，Firestore 查询本身
+仍然只按 `k`（口令）和 `at`（游标）两个字段筛——不为 `person` 另建复合索引，省得还要
+请用户去 Firebase Console 建索引；被过滤掉的文档照样推进 `seen.lastAt` 游标（否则下次
+轮询会一直重新拉到它，白跑请求）。Firestore 规则的 `create` 校验相应加了
+`person is string && size() 在 (0,40)`；`read` 规则不额外按 person 收紧——跟 `inbox_boss`
+一样，规则只守口令这一道闸，person 过滤纯粹是前端逻辑。
+
+**币别铁律跟公司账那套一样**：gift 文档的 `currency` 如果跟同事这本账当前设定的
+`staffBossCur()` 不一样，**不许悄悄按面值 1:1 加进总额**——那等于编了个错的汇率。做法：
+仍然记进 `topups`（带上自己的原始币种 `cur` 字段），`renderBossCash()` 算 `got` 总额时
+只累计 `!t.cur || t.cur === cur` 的那些，币种不匹配的那几笔在清单里显示**自己的原始
+币种**（不是被当成卡片币种）＋一个 ⚠️ 标记，`staffSyncBossGifts()` 结尾用 toast 明确
+提醒「有几笔币别不一样，没算进总额」。
+
+**去重／幂等**：`STAFF_BOSS_GIFTS_SEEN`（`staffExpense_bossGiftsSeen`，`{lastAt, ids}`）——
+`ids` 记最近 300 个已处理的 doc id（够去重用，不无限长），`lastAt` 是游标，查询用
+`.where('at', '>', seen.lastAt)` 只拉新的。轮询挂在跟 `staffLoadPetty` 一样的触发点
+（`saveTx` 之后 2.5 秒、`visibilitychange`、切进「老板账」页时的 `staffSyncMode()`），
+不新开计时器。
+
+**App 侧铁律没变**：`sendBossCashGift()` 绝不做任何汇率换算或猜币种，原样把用户填的
+数字、币种、收件人送出去——跟公司报账那条「分类归拢、汇率换算…一个字都不许在 App 里
+算」是同一条精神。
+
+自检：`check-expense-company.mjs`【31】（首屏卡片状态、跳转设置页、弹窗表单四要素、
+未登录/没填收件人/金额 0 或空都不发请求、正常送出内容原样含 person、权限被拒的提示）；
+`check-staff-page.mjs`【27】（没设口令零请求、币种匹配计入总额+toast、同一 doc id 幂等、
+币种不匹配不计入总额但列清单带警示、**给别人的那笔总额和 topups 都不受影响**、
+过滤后游标仍然推进不会重复白跑请求）。
+
+⚠️ **Firestore 规则改动只在仓库里留底稿，真正生效要用户自己去 Firebase Console 贴一次**
+——这件事 AI 做不了，`firestore.rules` 里 `boss_cash_gifts` 那个 `match` 块只是底稿，
+用户需要把它贴进 Firebase Console（跟 `inbox_boss` 当初一样的位置），并确认
+`BOSS_UID_HERE`/`PASSCODE_HERE` 两个占位符已经替换成真值（应该已经在 Console 里替换过
+一次，这次只是多加一段规则，不用重新替换）。
+
+**前端校验要跟 Firestore 规则的边界严格对齐，不能只对齐"大概"（2026-09-09 验收查出）**：
+第一版 `sendBossCashGift()` 漏了金额上限校验（规则要求 `amount<1000000`），且
+`note`/`person` 的 `maxlength`/`slice()` 卡在跟规则相同的数字（200/40）而不是"严格小于"
+那个数字（199/39）——后果是用户填到刚好卡在边界的值，前端放行，送到 Firestore 才被规则
+拒绝，报错却是「口令不对，或者规则还没加这条」，完全查不出真正原因。已修正：金额校验
+`amount>=1000000` 提前挡并提示「单笔上限 999,999」，`note` maxlength 改 199，`person`
+`slice(0,39)`。**教训**：任何"前端校验 + 后端/规则再校验一次"的双闸设计，两道闸的边界
+数字必须完全对齐（尤其注意"小于"和"小于等于"这种差一错误），否则用户会撞见一种自己
+束手无策、错误提示还指错方向的失败——这类边界不对齐的 bug，只测"正常值通过"和"超大值
+被拒"两种情况测不出来，要专门测"卡在规则边界那个数字"。

@@ -1916,6 +1916,137 @@ if (want()) {
   await ctx.close();
 }
 
+// ---------- 【27】老板给的现金自动同步进「手上现金」卡 ----------
+// 跟投递箱方向相反、原理相同：老板 App 推一笔进 boss_cash_gifts，这边轮询到就
+// 合进 topups。守的是：只认 person 跟自己（staffIdentity.reporter）一样的那几笔
+// （老板账口令是共用的，广播会让好几台手机都多出同一笔钱）、币种匹配才计入总额
+// （不匹配的话不许悄悄按 1:1 算）、同一个 doc id 第二次轮询不重复计入、
+// 没设口令时压根不发请求。这里用的钥匙是 SERYI_KEY，对应 reporter 'Seryi'。
+console.log('\n【27】老板给的现金自动同步进「手上现金」卡');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+
+  // ---- 没设老板账口令：staffSyncBossGifts 直接返回，一个 Firestore 请求都不发 ----
+  await page.evaluate(() => {
+    window.__giftQueryCalls = 0;
+    db = { collection: () => ({ where: () => ({ where: () => ({ get: async () => {
+      window.__giftQueryCalls++;
+      return { empty: true, forEach: () => {} };
+    } }) }) }) };
+    cloudAvailable = true;
+  });
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  ok('没设口令时，staffSyncBossGifts 一个 Firestore 请求都不发',
+     (await page.evaluate(() => window.__giftQueryCalls)) === 0);
+
+  // ---- 设好口令，进老板账页 ----
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // 假的 boss_cash_gifts 查询：window.__giftSnap 摆布这次 .get() 回什么，
+  // window.__giftQueries 记下每次查询用的条件，供断言用
+  await page.evaluate(() => {
+    window.__giftSnap = { empty: true, forEach: () => {} };
+    window.__giftQueries = [];
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    db = { collection: (c) => ({ where: (f1,o1,v1) => ({ where: (f2,o2,v2) => ({
+      get: async () => {
+        window.__giftQueries.push({ c, f1,o1,v1, f2,o2,v2 });
+        return window.__giftSnap;
+      }
+    }) }) }) };
+    cloudAvailable = true;
+  });
+  await page.click('#nav-boss');
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('hdr-title');
+    return !!el && /老板|Boss/i.test(el.textContent || '');
+  }), { what: '切到老板账' });
+  // 切进老板账页会主动同步一次（staffSyncMode 里那行），先等它跑完（这次
+  // window.__giftSnap 还是空的，不会动到 topups），再清掉查询记录——
+  // 后面的断言只看接下来手动触发的那几次
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { window.__giftQueries = []; });
+
+  // ---- 币种匹配：合进 topups，总额跟着涨，toast 出现 ----
+  await page.evaluate(() => {
+    window.__giftSnap = { empty:false, forEach: fn => fn({
+      id:'g1', data: () => ({ k:'pass-1234', person:'Seryi', amount: 600, currency:'USD', at: 1000, note:'第一笔' })
+    }) };
+  });
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  ok('用对的口令去查（跟老板端共用同一把）',
+     (await page.evaluate(() => window.__giftQueries[0]?.v1)) === 'pass-1234');
+  let card = await page.locator('#staff-boss-cash').innerText();
+  ok('币种匹配的那笔合进了手上现金，总额涨到 600', card.includes('US$600.00'), card);
+  const toastText = await page.textContent('#toast');
+  ok('toast 提示老板给了现金', (toastText||'').includes('老板给了你现金'), toastText);
+
+  // ---- 同一个 doc id 第二次轮询到：不能重复计入（幂等）----
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('同一笔第二次轮询不会重复计入（还是 600，不是 1200）', card.includes('US$600.00'), card);
+  ok('本机只记了一条', (await page.evaluate(() =>
+     JSON.parse(localStorage.getItem('staffExpense_bossCash')||'{"topups":[]}').topups.length)) === 1);
+
+  // ---- 币种不匹配：不计入总额，但列进清单、带警示，toast 提到「币别不一样」----
+  await page.evaluate(() => {
+    window.__giftSnap = { empty:false, forEach: fn => fn({
+      id:'g2', data: () => ({ k:'pass-1234', person:'Seryi', amount: 5000, currency:'JPY', at: 2000 })
+    }) };
+  });
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('币种不匹配的那笔没有被算进总额（还是 600）', card.includes('US$600.00'), card);
+  ok('但它出现在清单里，显示自己的原始币种', card.includes('¥5000.00'), card);
+  const toastText2 = await page.textContent('#toast');
+  ok('toast 提到币别不一样', (toastText2||'').includes('币别') , toastText2);
+  const topups = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')||'{"topups":[]}').topups);
+  ok('不匹配那笔仍然记进了 topups（供人核对，不是被丢掉）',
+     topups.some(t => t.giftId === 'g2' && t.cur === 'JPY'), topups);
+
+  // ---- 按人分流：口令一样，但 person 是别人的名字——一个字都不许合进来 ----
+  // 这是防广播的关键：老板账口令是共用的，不止一个同事可能用同一个口令，
+  // 「手上现金」却是每个同事本机各自算的，person 不对就必须整条无视。
+  await page.evaluate(() => {
+    window.__giftSnap = { empty:false, forEach: fn => fn({
+      id:'g3', data: () => ({ k:'pass-1234', person:'Kuang', amount: 9999, currency:'USD', at: 3000 })
+    }) };
+  });
+  const countBefore = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')||'{"topups":[]}').topups.length);
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('给别人（Kuang）的那笔，总额完全不受影响（还是 600，不是 10599）',
+     card.includes('US$600.00'), card);
+  ok('给别人的那笔也没有被记进本机 topups（不是「计入总额时排除、清单里还留着」那种半吊子）',
+     (await page.evaluate(() =>
+       JSON.parse(localStorage.getItem('staffExpense_bossCash')||'{"topups":[]}').topups.length))
+       === countBefore, countBefore);
+  ok('查询条件本身还是只按口令筛（按人过滤是客户端做的，不用为了 person 另建 Firestore 复合索引）',
+     (await page.evaluate(() => window.__giftQueries[window.__giftQueries.length-1]?.v1)) === 'pass-1234');
+  // 游标（seen.lastAt）仍然要推进到这一笔的 at，否则下次轮询会一直重新拉到它、白跑请求
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  ok('游标已经推进过 g3 那笔的 at，不会每次轮询都重新收到它（这里改口给 empty，若游标没推进，v2 该还是 2000）',
+     (await page.evaluate(() => window.__giftQueries[window.__giftQueries.length-1]?.v2)) === 3000,
+     await page.evaluate(() => window.__giftQueries[window.__giftQueries.length-1]));
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

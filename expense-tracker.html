@@ -548,6 +548,9 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
          的月度对账法，2026-08-08）。摆在备用金下面——这三张卡是同一件事从三个
          角度看：今天花了多少、谁手上还有多少、加起来对不对得上。 -->
     <div id="ov-reconcile" class="led-card" style="display:none" onclick="openReconcile()"></div>
+    <!-- 给同事现金（老板账，2026-09-09）：跟备用金卡同一套体验——点开弹窗选同事、
+         填金额，送出去之后同事那边「手上现金」卡自动多出这一笔。 -->
+    <div id="ov-boss-cash-gift" class="led-card" onclick="openBossCashGift()"></div>
     <div class="sec-hdr">
       <div class="sec-title">最近记录</div>
       <div class="sec-link" onclick="switchTab('transactions')">全部 →</div>
@@ -750,6 +753,20 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
          收进来只是把「钱花掉了」记进账本，并没有回答「我欠他多少还没还」。
          算法就一句：他记的支出总额 − 已经标过「付清」的那些。 -->
     <div id="inbox-owed" style="margin-top:14px"></div>
+  </div>
+  <!-- 给同事现金（老板账，2026-09-09 加）：跟投递箱方向相反、原理相同——
+       单据一条一个 Firestore 文档，物理上没有覆盖任何账本的路径。真正的「选同事 / 填
+       金额 / 送出」体验搬到首屏卡片＋弹窗（跟公司账「💵 备用金」那套一样，见
+       #ov-boss-cash-gift / openBossCashGift()）；这里只留口令——它是一次性设定，
+       不用每次送钱都重填。 -->
+  <div class="setting-section">
+    <div class="setting-title">给同事现金（老板账）</div>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
+      填一次口令（跟同事「老板账」那边一致），首页「👔 给同事现金」卡片就能转钱给他们——
+      转过去之后，同事那边「手上现金」卡会自动多出这一笔，不用他自己动手输入。
+    </div>
+    <input class="form-input" id="boss-cash-key-input" placeholder="口令（跟同事那边一致）"
+      oninput="saveBossCashKey(this.value)">
   </div>
   <!-- 「老板 App」这一组（2026-08-27 加，2026-08-27 改成卡片＋归组）：
        两件事是同一件事的两面——行程管理是去改老板看到的内容，访问码是把钥匙给老板，
@@ -1247,6 +1264,19 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
     <button class="btn btn-primary" onclick="pettySubmit()">保存</button>
     <div id="petty-add-note" style="font-size:12px;color:var(--exp);margin-top:10px;
          line-height:1.6;min-height:0"></div>
+  </div>
+</div>
+
+<!-- MODAL: BOSS CASH GIFT（给同事现金——跟投递箱方向相反、原理相同的反向同步；
+     体验照抄备用金那套：卡片点开 → 选人 → 填金额 → 送出，同事那边「手上现金」
+     卡自动多出这一笔） -->
+<div class="overlay" id="modal-boss-cash-gift">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">👔 给同事现金</div>
+      <button class="modal-close" onclick="closeModal('modal-boss-cash-gift')">✕</button>
+    </div>
+    <div id="boss-cash-gift-body"></div>
   </div>
 </div>
 
@@ -2216,6 +2246,7 @@ function renderOverview(){
   renderOvCompany();
   renderOvPetty();
   renderOvReconcile();
+  renderOvBossCashGift();
   const acc = curAcc(); if(!acc) return;
   const now = new Date();
   const txs = monthTxs(acc.id, now.getFullYear(), now.getMonth());
@@ -2518,6 +2549,7 @@ function renderSettings(){
   renderCompanySettings();
   renderImportReporterOptions();
   renderInboxSettings();
+  renderBossCashKeySettings();
   renderBuildInfo();
 }
 
@@ -5575,7 +5607,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-09-02';
+const APP_BUILD = '2026-09-09';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -7506,6 +7538,164 @@ function renderInboxSettings(){
     ? `上次收件：${new Date(inboxState.last).toLocaleString('zh-CN')}` +
       (inboxState.added ? `，收到 ${inboxState.added} 笔` : '，没有新的')
     : '还没收过件') + uidLine;
+}
+
+// ===================== 给同事现金（老板账，反向同步）=====================
+// 跟投递箱方向相反、原理相同：这里在 App 记一笔「给了谁多少现金」，写进 Firestore
+// 的 boss_cash_gifts 集合（单据一条一个文档、只增不改，物理上没有覆盖任何账本的
+// 路径）；同事版「老板账」页的「手上现金」卡轮询到这个集合后自动加进去。
+// 铁律：这里绝不做任何汇率换算或猜币种——原样把用户填的数字和币种送出去。
+//
+// 【为什么必须带 person】老板账口令是共用的——不止一个同事可能在用同一个口令，
+// 而「手上现金」是每个同事手机本机各自算的。如果 gift 文档只带口令不带收件人，
+// 转给 A 的钱会被所有持有这个口令的同事的手机同时读到、同时加进各自的余额，
+// 一笔钱在好几台手机上都多出来。所以每个 gift 文档必须带 person（收件人名字），
+// 同事那边按 person === staffIdentity.reporter 过滤，不匹配的一律忽略（哪怕
+// 口令一样也不认）——见 build-staff-page.py 的 staffSyncBossGifts()。
+const BOSS_CASH_KEY_STORAGE = 'expenseTracker_bossCashKey';
+const BOSS_CASH_GIFT_NAMES_STORAGE = 'expenseTracker_bossCashGiftNames';
+const BOSS_CASH_GIFT_LOG_STORAGE = 'expenseTracker_bossCashGiftLog';
+function bossCashKeySaved(){ return (localStorage.getItem(BOSS_CASH_KEY_STORAGE) || '').trim(); }
+function saveBossCashKey(v){
+  localStorage.setItem(BOSS_CASH_KEY_STORAGE, (v || '').trim());
+  renderOvBossCashGift();
+}
+/** 设置页那个口令输入框：填过的值回填进去，正在打字时不要打断他。 */
+function renderBossCashKeySettings(){
+  const inp = document.getElementById('boss-cash-key-input');
+  if(inp && document.activeElement !== inp) inp.value = bossCashKeySaved();
+}
+
+/** 用过的同事名字，记住方便下次不用重打（自由文本，不限名册——老板账本来就没有正式花名册）。 */
+function bossCashGiftNames(){
+  try{ return JSON.parse(localStorage.getItem(BOSS_CASH_GIFT_NAMES_STORAGE) || '[]'); }catch(e){ return []; }
+}
+function rememberBossCashGiftName(name){
+  const list = bossCashGiftNames().filter(n => n !== name);
+  list.unshift(name);
+  try{ localStorage.setItem(BOSS_CASH_GIFT_NAMES_STORAGE, JSON.stringify(list.slice(0, 20))); }catch(e){}
+}
+function bossCashGiftLog(){
+  try{ return JSON.parse(localStorage.getItem(BOSS_CASH_GIFT_LOG_STORAGE) || '[]'); }catch(e){ return []; }
+}
+function logBossCashGift(entry){
+  const list = [entry, ...bossCashGiftLog()].slice(0, 10);
+  try{ localStorage.setItem(BOSS_CASH_GIFT_LOG_STORAGE, JSON.stringify(list)); }catch(e){}
+}
+
+/** 首屏卡片：跟「💵 备用金」同一套视觉。永远显示（不像备用金要挂公司账户才出现），
+ *  没设口令时给一句提示＋链接去设置页，设了就显示最近送过的那几笔当参考。 */
+function renderOvBossCashGift(){
+  const el = document.getElementById('ov-boss-cash-gift');
+  if(!el) return;
+  const k = bossCashKeySaved();
+  if(!k){
+    el.innerHTML = `<div class="led-card-top">
+        <div class="led-card-title">👔 给同事现金</div><div class="led-card-link">去设置口令 →</div></div>
+      <div class="led-sub">先在设置页「给同事现金（老板账）」填一次口令，才能转钱给同事。</div>`;
+    return;
+  }
+  const log = bossCashGiftLog();
+  el.innerHTML = `<div class="led-card-top">
+      <div class="led-card-title">👔 给同事现金</div><div class="led-card-link">转钱 →</div></div>
+    ${log.length
+      ? `<div class="led-sub">最近：${log.slice(0,3).map(e =>
+          `${ledEsc(e.person)} ${fmt(e.amount, e.currency)}`).join('、')}</div>`
+      : `<div class="led-sub">转给同事的现金，会自动进他们的「手上现金」卡。</div>`}`;
+}
+
+function openBossCashGift(){
+  showModal('modal-boss-cash-gift');
+  renderBossCashGiftModal();
+}
+
+function renderBossCashGiftModal(){
+  const body = document.getElementById('boss-cash-gift-body');
+  if(!body) return;
+  const k = bossCashKeySaved();
+  if(!k){
+    body.innerHTML = `<div class="led-sub">还没设口令。去设置页「给同事现金（老板账）」填一次
+      （跟同事「老板账」那边一致），填好回来这里就能转钱了。</div>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="
+        closeModal('modal-boss-cash-gift'); switchTab('settings');
+      ">去设置页 →</button>`;
+    return;
+  }
+  const names = bossCashGiftNames();
+  body.innerHTML = `
+    <div class="form-group">
+      <label class="form-label">给谁</label>
+      <input class="form-input" id="boss-cash-gift-person" list="boss-cash-gift-people"
+        autocomplete="off" placeholder="同事名字，例如 Seryi">
+      <datalist id="boss-cash-gift-people">${
+        names.map(n=>`<option value="${ledEsc(n)}"></option>`).join('')}</datalist>
+    </div>
+    <div class="form-group">
+      <label class="form-label">金额</label>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="boss-cash-gift-amount" type="text" inputmode="decimal"
+          autocomplete="off" placeholder="0.00" style="flex:1" oninput="bossCashGiftEcho()">
+        <select class="form-input" id="boss-cash-gift-cur" style="width:90px" onchange="bossCashGiftEcho()">${
+          Object.keys(CUR_SYMBOLS).map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+      </div>
+      <div id="boss-cash-gift-echo" style="display:none;font-size:12px;color:var(--p);margin-top:6px"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">备注（可留空）</label>
+      <input class="form-input" id="boss-cash-gift-note" maxlength="199" placeholder="例如：买菜用">
+    </div>
+    <button class="btn btn-primary" onclick="sendBossCashGift()">💵 转钱给他</button>
+    <div id="boss-cash-gift-status" style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.6"></div>`;
+  setTimeout(()=>{ const a = document.getElementById('boss-cash-gift-person'); if(a) a.focus(); }, 120);
+}
+
+function bossCashGiftEcho(){
+  const el = document.getElementById('boss-cash-gift-echo');
+  const input = document.getElementById('boss-cash-gift-amount');
+  if(!el || !input) return;
+  const { shown, num } = parseAmountText(input.value);
+  const cur = (document.getElementById('boss-cash-gift-cur') || {}).value || 'USD';
+  const plain = /^-?\d*\.?\d*$/.test(shown);
+  if(shown === '' || isNaN(num) || plain){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.textContent = `＝ ${fmt(num, cur)}`;
+}
+
+async function sendBossCashGift(){
+  const statusEl = document.getElementById('boss-cash-gift-status');
+  const setStatus = msg => { if(statusEl) statusEl.textContent = msg; };
+  const k = bossCashKeySaved();
+  if(!k){ setStatus('先去设置页填一次口令'); return; }
+  const person = (document.getElementById('boss-cash-gift-person').value || '').trim().slice(0, 39);
+  if(!person){ setStatus('先填是给哪个同事的'); return; }
+  const amtInput = document.getElementById('boss-cash-gift-amount');
+  const { shown, num } = parseAmountText(amtInput.value);
+  if(!(num > 0)){ setStatus(shown ? `金额看不懂：「${shown}」——请只填数字` : '请填金额'); return; }
+  const amount = Math.round(num * 100) / 100;
+  if(amount >= 1000000){ setStatus('单笔上限 999,999，分开转两笔'); return; }
+  if(!cloudAvailable){ setStatus('现在连不上 Google 服务，送不了'); return; }
+  if(!currentUser){ setStatus('要先在上面登录 Google 才能送'); return; }
+  const cur = document.getElementById('boss-cash-gift-cur').value || 'USD';
+  const note = (document.getElementById('boss-cash-gift-note').value || '').trim().slice(0, 199);
+  // 这是钱，而且同事那边当场就看得到——多按一次确认，换掉「多打一个 0」（跟备用金那边同一条规矩）
+  if(!confirm(`确定给 ${person} 转 ${fmt(amount, cur)}？`)) return;
+  setStatus('正在送出…');
+  try{
+    const payload = { k, person, amount, currency: cur, at: Date.now() };
+    if(note) payload.note = note;
+    await db.collection('boss_cash_gifts').add(payload);
+    rememberBossCashGiftName(person);
+    logBossCashGift({ person, amount, currency: cur, at: Date.now() });
+    setStatus(`已送出：${fmt(amount, cur)} 给 ${person}，他那边下次打开老板账页会自动看到`);
+    amtInput.value = '';
+    document.getElementById('boss-cash-gift-note').value = '';
+    bossCashGiftEcho();
+    renderOvBossCashGift();
+  }catch(e){
+    setStatus(e && e.code === 'permission-denied'
+      ? '口令不对，或者 Firebase 规则还没加这条'
+      : '现在送不出去，等有网再试一次');
+  }
 }
 
 // 开 App 和网络恢复时自动补送（静默，不打扰）

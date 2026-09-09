@@ -1859,6 +1859,7 @@ function renderOverview(){
   renderOvCompany();
   renderOvPetty();
   renderOvReconcile();
+  renderOvBossCashGift();
   const acc = curAcc(); if(!acc) return;
   const now = new Date();
   const txs = monthTxs(acc.id, now.getFullYear(), now.getMonth());
@@ -2165,6 +2166,7 @@ function renderSettings(){
   renderCompanySettings();
   renderImportReporterOptions();
   renderInboxSettings();
+  renderBossCashKeySettings();
   renderBuildInfo();
 }
 
@@ -5222,7 +5224,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-09-02';
+const APP_BUILD = '2026-09-09';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -7156,6 +7158,164 @@ function renderInboxSettings(){
     : '还没收过件') + uidLine;
 }
 
+// ===================== 给同事现金（老板账，反向同步）=====================
+// 跟投递箱方向相反、原理相同：这里在 App 记一笔「给了谁多少现金」，写进 Firestore
+// 的 boss_cash_gifts 集合（单据一条一个文档、只增不改，物理上没有覆盖任何账本的
+// 路径）；同事版「老板账」页的「手上现金」卡轮询到这个集合后自动加进去。
+// 铁律：这里绝不做任何汇率换算或猜币种——原样把用户填的数字和币种送出去。
+//
+// 【为什么必须带 person】老板账口令是共用的——不止一个同事可能在用同一个口令，
+// 而「手上现金」是每个同事手机本机各自算的。如果 gift 文档只带口令不带收件人，
+// 转给 A 的钱会被所有持有这个口令的同事的手机同时读到、同时加进各自的余额，
+// 一笔钱在好几台手机上都多出来。所以每个 gift 文档必须带 person（收件人名字），
+// 同事那边按 person === staffIdentity.reporter 过滤，不匹配的一律忽略（哪怕
+// 口令一样也不认）——见 build-staff-page.py 的 staffSyncBossGifts()。
+const BOSS_CASH_KEY_STORAGE = 'expenseTracker_bossCashKey';
+const BOSS_CASH_GIFT_NAMES_STORAGE = 'expenseTracker_bossCashGiftNames';
+const BOSS_CASH_GIFT_LOG_STORAGE = 'expenseTracker_bossCashGiftLog';
+function bossCashKeySaved(){ return (localStorage.getItem(BOSS_CASH_KEY_STORAGE) || '').trim(); }
+function saveBossCashKey(v){
+  localStorage.setItem(BOSS_CASH_KEY_STORAGE, (v || '').trim());
+  renderOvBossCashGift();
+}
+/** 设置页那个口令输入框：填过的值回填进去，正在打字时不要打断他。 */
+function renderBossCashKeySettings(){
+  const inp = document.getElementById('boss-cash-key-input');
+  if(inp && document.activeElement !== inp) inp.value = bossCashKeySaved();
+}
+
+/** 用过的同事名字，记住方便下次不用重打（自由文本，不限名册——老板账本来就没有正式花名册）。 */
+function bossCashGiftNames(){
+  try{ return JSON.parse(localStorage.getItem(BOSS_CASH_GIFT_NAMES_STORAGE) || '[]'); }catch(e){ return []; }
+}
+function rememberBossCashGiftName(name){
+  const list = bossCashGiftNames().filter(n => n !== name);
+  list.unshift(name);
+  try{ localStorage.setItem(BOSS_CASH_GIFT_NAMES_STORAGE, JSON.stringify(list.slice(0, 20))); }catch(e){}
+}
+function bossCashGiftLog(){
+  try{ return JSON.parse(localStorage.getItem(BOSS_CASH_GIFT_LOG_STORAGE) || '[]'); }catch(e){ return []; }
+}
+function logBossCashGift(entry){
+  const list = [entry, ...bossCashGiftLog()].slice(0, 10);
+  try{ localStorage.setItem(BOSS_CASH_GIFT_LOG_STORAGE, JSON.stringify(list)); }catch(e){}
+}
+
+/** 首屏卡片：跟「💵 备用金」同一套视觉。永远显示（不像备用金要挂公司账户才出现），
+ *  没设口令时给一句提示＋链接去设置页，设了就显示最近送过的那几笔当参考。 */
+function renderOvBossCashGift(){
+  const el = document.getElementById('ov-boss-cash-gift');
+  if(!el) return;
+  const k = bossCashKeySaved();
+  if(!k){
+    el.innerHTML = `<div class="led-card-top">
+        <div class="led-card-title">👔 给同事现金</div><div class="led-card-link">去设置口令 →</div></div>
+      <div class="led-sub">先在设置页「给同事现金（老板账）」填一次口令，才能转钱给同事。</div>`;
+    return;
+  }
+  const log = bossCashGiftLog();
+  el.innerHTML = `<div class="led-card-top">
+      <div class="led-card-title">👔 给同事现金</div><div class="led-card-link">转钱 →</div></div>
+    ${log.length
+      ? `<div class="led-sub">最近：${log.slice(0,3).map(e =>
+          `${ledEsc(e.person)} ${fmt(e.amount, e.currency)}`).join('、')}</div>`
+      : `<div class="led-sub">转给同事的现金，会自动进他们的「手上现金」卡。</div>`}`;
+}
+
+function openBossCashGift(){
+  showModal('modal-boss-cash-gift');
+  renderBossCashGiftModal();
+}
+
+function renderBossCashGiftModal(){
+  const body = document.getElementById('boss-cash-gift-body');
+  if(!body) return;
+  const k = bossCashKeySaved();
+  if(!k){
+    body.innerHTML = `<div class="led-sub">还没设口令。去设置页「给同事现金（老板账）」填一次
+      （跟同事「老板账」那边一致），填好回来这里就能转钱了。</div>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="
+        closeModal('modal-boss-cash-gift'); switchTab('settings');
+      ">去设置页 →</button>`;
+    return;
+  }
+  const names = bossCashGiftNames();
+  body.innerHTML = `
+    <div class="form-group">
+      <label class="form-label">给谁</label>
+      <input class="form-input" id="boss-cash-gift-person" list="boss-cash-gift-people"
+        autocomplete="off" placeholder="同事名字，例如 Seryi">
+      <datalist id="boss-cash-gift-people">${
+        names.map(n=>`<option value="${ledEsc(n)}"></option>`).join('')}</datalist>
+    </div>
+    <div class="form-group">
+      <label class="form-label">金额</label>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="boss-cash-gift-amount" type="text" inputmode="decimal"
+          autocomplete="off" placeholder="0.00" style="flex:1" oninput="bossCashGiftEcho()">
+        <select class="form-input" id="boss-cash-gift-cur" style="width:90px" onchange="bossCashGiftEcho()">${
+          Object.keys(CUR_SYMBOLS).map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+      </div>
+      <div id="boss-cash-gift-echo" style="display:none;font-size:12px;color:var(--p);margin-top:6px"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">备注（可留空）</label>
+      <input class="form-input" id="boss-cash-gift-note" maxlength="199" placeholder="例如：买菜用">
+    </div>
+    <button class="btn btn-primary" onclick="sendBossCashGift()">💵 转钱给他</button>
+    <div id="boss-cash-gift-status" style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.6"></div>`;
+  setTimeout(()=>{ const a = document.getElementById('boss-cash-gift-person'); if(a) a.focus(); }, 120);
+}
+
+function bossCashGiftEcho(){
+  const el = document.getElementById('boss-cash-gift-echo');
+  const input = document.getElementById('boss-cash-gift-amount');
+  if(!el || !input) return;
+  const { shown, num } = parseAmountText(input.value);
+  const cur = (document.getElementById('boss-cash-gift-cur') || {}).value || 'USD';
+  const plain = /^-?\d*\.?\d*$/.test(shown);
+  if(shown === '' || isNaN(num) || plain){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.textContent = `＝ ${fmt(num, cur)}`;
+}
+
+async function sendBossCashGift(){
+  const statusEl = document.getElementById('boss-cash-gift-status');
+  const setStatus = msg => { if(statusEl) statusEl.textContent = msg; };
+  const k = bossCashKeySaved();
+  if(!k){ setStatus('先去设置页填一次口令'); return; }
+  const person = (document.getElementById('boss-cash-gift-person').value || '').trim().slice(0, 39);
+  if(!person){ setStatus('先填是给哪个同事的'); return; }
+  const amtInput = document.getElementById('boss-cash-gift-amount');
+  const { shown, num } = parseAmountText(amtInput.value);
+  if(!(num > 0)){ setStatus(shown ? `金额看不懂：「${shown}」——请只填数字` : '请填金额'); return; }
+  const amount = Math.round(num * 100) / 100;
+  if(amount >= 1000000){ setStatus('单笔上限 999,999，分开转两笔'); return; }
+  if(!cloudAvailable){ setStatus('现在连不上 Google 服务，送不了'); return; }
+  if(!currentUser){ setStatus('要先在上面登录 Google 才能送'); return; }
+  const cur = document.getElementById('boss-cash-gift-cur').value || 'USD';
+  const note = (document.getElementById('boss-cash-gift-note').value || '').trim().slice(0, 199);
+  // 这是钱，而且同事那边当场就看得到——多按一次确认，换掉「多打一个 0」（跟备用金那边同一条规矩）
+  if(!confirm(`确定给 ${person} 转 ${fmt(amount, cur)}？`)) return;
+  setStatus('正在送出…');
+  try{
+    const payload = { k, person, amount, currency: cur, at: Date.now() };
+    if(note) payload.note = note;
+    await db.collection('boss_cash_gifts').add(payload);
+    rememberBossCashGiftName(person);
+    logBossCashGift({ person, amount, currency: cur, at: Date.now() });
+    setStatus(`已送出：${fmt(amount, cur)} 给 ${person}，他那边下次打开老板账页会自动看到`);
+    amtInput.value = '';
+    document.getElementById('boss-cash-gift-note').value = '';
+    bossCashGiftEcho();
+    renderOvBossCashGift();
+  }catch(e){
+    setStatus(e && e.code === 'permission-denied'
+      ? '口令不对，或者 Firebase 规则还没加这条'
+      : '现在送不出去，等有网再试一次');
+  }
+}
+
 // 开 App 和网络恢复时自动补送（静默，不打扰）
 window.addEventListener('online', ()=>flushCompanyQueue());
 window.addEventListener('online', ()=>fetchInbox());
@@ -8098,10 +8258,10 @@ function staffRenderSummary(){
 const _staffSaveTx = saveTx;
 saveTx = function(){
   _staffSaveTx.apply(this, arguments);
-  setTimeout(staffLoadPetty, 2500);
+  setTimeout(()=>{ staffLoadPetty(); staffSyncBossGifts(); }, 2500);
 };
 document.addEventListener('visibilitychange', ()=>{
-  if(!document.hidden && staffIdentity) staffLoadPetty();
+  if(!document.hidden && staffIdentity){ staffLoadPetty(); staffSyncBossGifts(); }
 });
 
 /* 弹窗标题是脚本写死的中文，包一层让它跟着语言走 */
@@ -8255,12 +8415,97 @@ function bossCashReset(){
   renderBossCash();
 }
 
+const STAFF_BOSS_GIFTS_SEEN = 'staffExpense_bossGiftsSeen';
+function loadBossGiftsSeen(){
+  try{
+    const o = JSON.parse(localStorage.getItem(STAFF_BOSS_GIFTS_SEEN) || 'null');
+    return (o && typeof o.lastAt === 'number' && Array.isArray(o.ids)) ? o : { lastAt: 0, ids: [] };
+  }catch(e){ return { lastAt: 0, ids: [] }; }
+}
+function saveBossGiftsSeen(o){
+  o.ids = o.ids.slice(-300); // 只留最近 300 个 id，够去重用，不无限长
+  try{ localStorage.setItem(STAFF_BOSS_GIFTS_SEEN, JSON.stringify(o)); }catch(e){}
+}
+
+/**
+ * 拉「老板给的现金」，合进「手上现金」卡。跟 staffLoadPetty 挂同一套触发时机
+ * （2500ms 轮询 + visibilitychange），不新开计时器。
+ *
+ * 【按人分流，不广播】老板账口令是共用的——不止一个同事可能用同一个口令，而
+ * 「手上现金」是每个同事本机各自算的。gift 文档带的 person 就是收件人（老板送
+ * 出时填的同事名字），这里只认 person 跟 staffIdentity.reporter 一模一样的那几笔，
+ * 其余一律忽略（哪怕口令一样也不认）——不然给 A 的钱会被所有持有这个口令的同事
+ * 同时收到。过滤是客户端做的（查询本身只按 k/at 筛，不额外按 person 建 Firestore
+ * 复合索引，省得还要请用户去 Console 建索引）。
+ *
+ * 币别铁律：doc 里的 currency 如果跟这本账目前设定的 staffBossCur() 不一样，
+ * **不许悄悄按面值加进总额**（那等于编了个错的汇率 1:1）。做法是仍然记进
+ * topups（带上它自己的原始币种 cur 字段），但算 got 总额时只加 cur 匹配的那些，
+ * 币种不匹配的单独在卡片上警示、列出金额+原币种，请人自己确认——宁可让人多看一眼，
+ * 不能让余额数字看起来对、其实混了两种货币。
+ */
+async function staffSyncBossGifts(){
+  if(!staffBossOn() || !cloudAvailable || !staffIdentity) return;
+  if(!(await staffEnsureAnon())) return;
+  const seen = loadBossGiftsSeen();
+  let snap;
+  try{
+    snap = await db.collection('boss_cash_gifts')
+      .where('k', '==', staffBossKey())
+      .where('at', '>', seen.lastAt)
+      .get();
+  }catch(e){ return; } // 权限错误/离线：安静跳过，下次轮询再试，不打扰用户
+
+  if(snap.empty) return;
+  const o = loadBossCash();
+  const cur = staffBossCur();
+  const me = staffIdentity.reporter;
+  let addedTotal = 0, mismatched = [];
+  let maxAt = seen.lastAt;
+
+  snap.forEach(doc => {
+    const d = doc.data();
+    if(typeof d.at === 'number' && d.at > maxAt) maxAt = d.at;   // 推进游标，不管是不是给我的
+    if(d.person !== me) return;                                  // 不是给我的，不认（不落 seen，反正 maxAt 已经过了它）
+    if(seen.ids.includes(doc.id)) return;
+    seen.ids.push(doc.id);
+    const amt = Number(d.amount) || 0;
+    if(amt <= 0) return;
+    const giftCur = (d.currency || '').toUpperCase();
+    const entry = { date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
+                     from: 'admin', giftId: doc.id, cur: giftCur || cur };
+    o.topups.push(entry);
+    if(giftCur && giftCur !== cur){ mismatched.push(entry); }
+    else { addedTotal += entry.amount; }
+  });
+
+  seen.lastAt = maxAt;
+  saveBossGiftsSeen(seen);
+  saveBossCash(o);
+  renderBossCash();
+
+  if(addedTotal > 0){
+    toast(tt(`老板给了你现金 ${fmt(addedTotal, cur)}，已经记进「手上现金」`,
+              `The Boss sent you ${fmt(addedTotal, cur)} — added to Cash on hand`));
+  }
+  if(mismatched.length){
+    toast(tt(
+      `⚠️ 有 ${mismatched.length} 笔现金币别跟目前设定不一样，没算进总额，请去「手上现金」卡确认`,
+      `⚠️ ${mismatched.length} cash gift(s) use a different currency than your current setting — `
+      + `not added to the total, please check the Cash on hand card`));
+  }
+}
+
 function renderBossCash(){
   const el = document.getElementById('staff-boss-cash');
   if(!el) return;
   const cur = staffBossCur();
   const o = loadBossCash();
-  const got = o.topups.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  // 币别铁律：老板给的现金如果币种跟这本账目前设定的不一样，不许悄悄按面值加进
+  // 总额（那等于编了个错的汇率 1:1）。只累计币种匹配的那些，不匹配的仍然记进
+  // topups、列在下面，但不计进这个总额——见 renderBossCash 下面 mismatched 那段。
+  const got = o.topups.filter(t => !t.cur || t.cur === cur)
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
   // 还没填收到多少：不编一个 0 出来（那看起来像「花光了」），直接请他填
   if(!o.topups.length){
@@ -8285,8 +8530,13 @@ function renderBossCash(){
   const over = left < 0;
   el.classList.toggle('low', over || left < got * 0.15);
 
-  const rows = o.topups.slice(-5).reverse().map(t => `
-      <div class="bcash-line"><span>${t.date}</span><span>+${fmt(t.amount, cur)}</span></div>`).join('');
+  // 币种不匹配的那几笔要显示自己的原始币种（不是被当成卡片的 cur），并加个 ⚠️
+  // 提醒——宁可让人多看一眼，不能让余额数字看起来对、其实混了两种货币。
+  const rows = o.topups.slice(-5).reverse().map(t => {
+    const mismatch = t.cur && t.cur !== cur;
+    return `<div class="bcash-line"><span>${t.date}${mismatch ? ' ⚠️' : ''}</span>` +
+      `<span>+${fmt(t.amount, mismatch ? t.cur : cur)}</span></div>`;
+  }).join('');
 
   el.innerHTML = `
     <div class="bcash-label">${over ? tt('超支了','Over budget') : tt('手上现金','Cash on hand')}</div>
@@ -8341,6 +8591,8 @@ function staffSyncMode(){
   renderBossQueue();
   renderBossCfg();
   renderBossCash();
+  // 切进「老板账」页时马上拉一次最新的现金，不用等 2.5 秒轮询
+  if(onBoss) staffSyncBossGifts();
 }
 
 /** 说明块底下那一行设定：这本账用什么钱。 */
