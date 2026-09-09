@@ -53,5 +53,38 @@ service cloud.firestore {
       // 塞进来的东西谁也改不了（防止事后偷偷改金额）
       allow update: if false;
     }
+
+    // ── 给同事现金：老板 App 推一笔，同事版「手上现金」卡自动看到 ──
+    // 跟 inbox_boss 方向相反、原理相同：单据一条一个文档、只增不改，
+    // 物理上没有覆盖任何账本的路径。
+    match /boss_cash_gifts/{docId} {
+
+      // 老板本人：能新增（给现金）。person 是收件人（同事的名字）——老板账口令是
+      // 共用的，不止一个同事可能用同一个口令，「手上现金」却是每个同事本机各自算的；
+      // 没有 person，这笔钱会被所有持有这个口令的同事同时收到。person 只用来给
+      // 同事那边过滤（doc.data().person === 他自己的名字），这里不用为它加读取限制
+      // ——跟 inbox_boss 一样，规则只守口令这一道闸。
+      allow create: if request.auth != null
+                    && request.auth.uid == 'BOSS_UID_HERE'
+                    && request.resource.data.k == 'PASSCODE_HERE'
+                    && request.resource.data.keys().hasAll(['k','person','amount','currency','at'])
+                    && request.resource.data.keys().hasOnly(['k','person','amount','currency','at','note'])
+                    && request.resource.data.person is string
+                    && request.resource.data.person.size() > 0
+                    && request.resource.data.person.size() < 40
+                    && request.resource.data.amount is number
+                    && request.resource.data.amount > 0
+                    && request.resource.data.amount < 1000000
+                    && request.resource.data.currency is string
+                    && request.resource.data.currency.size() < 6
+                    && request.resource.data.at is number
+                    && (!('note' in request.resource.data)
+                        || (request.resource.data.note is string
+                            && request.resource.data.note.size() < 200));
+
+      // 同事：口令对得上才能读（不能改、不能删——历史不能被后来改掉）
+      allow read: if request.auth != null && resource.data.k == 'PASSCODE_HERE';
+      allow update, delete: if false;
+    }
   }
 }

@@ -2730,6 +2730,154 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await ctx.close();
 }
 
+// ---------- 【31】给同事现金：首屏卡片＋弹窗（跟备用金同一套体验）----------
+// 跟投递箱方向相反、原理相同——这里只守「送出去的东西对不对」和「不该发请求的
+// 时候真的不发」，不测 Firestore 规则本身（那份规则只在 Firebase Console 生效，
+// 仓库里的 firestore.rules 只是底稿）。
+// 2026-09-09 用户追问后改版：UI 从设置页表单搬到 Overview 卡片 + 弹窗，且新增
+// 必填的 person（收件人）——老板账口令是共用的，没有 person 会广播给所有持有
+// 同一口令的同事，见 firestore.rules 和 build-staff-page.py 里的说明。
+{
+  console.log('\n【31】给同事现金：首屏卡片 + 弹窗 + 送出去的内容（含 person 收件人）');
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());   // sendBossCashGift 会 confirm 一次
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // ---- 首屏卡片：没设口令时提示去设置，点了能跳过去 ----
+  ok('首屏卡片出现（不像备用金要挂公司账户，这张永远在）',
+     await page.locator('#ov-boss-cash-gift').isVisible());
+  ok('没设口令时提示先去设置口令',
+     (await page.innerText('#ov-boss-cash-gift')).includes('去设置口令'));
+  await page.click('#ov-boss-cash-gift');
+  await page.waitForTimeout(200);
+  ok('弹窗打开，提示还没设口令', (await page.innerText('#boss-cash-gift-body')).includes('还没设口令'));
+  ok('弹窗里没有金额栏（口令都没有，不该让人填金额）',
+     (await page.locator('#boss-cash-gift-amount').count()) === 0);
+  await page.click('#boss-cash-gift-body button');   // 「去设置页 →」
+  await page.waitForTimeout(200);
+  ok('点了直接跳去设置页', await page.evaluate(()=>state.currentTab === 'settings'));
+  ok('设置页上看得到口令输入框', await page.locator('#boss-cash-key-input').isVisible());
+  ok('设置页不再有金额/币种/备注这几栏（已经搬进弹窗了）',
+     (await page.locator('#boss-cash-gift-amount').count()) === 0);
+
+  // ---- 填了口令：卡片和弹窗都要能正常用 ----
+  await page.fill('#boss-cash-key-input', 'pass-1234');
+  await page.waitForTimeout(200);
+  ok('口令即时存住（不用另外按保存）',
+     (await page.evaluate(()=>localStorage.getItem('expenseTracker_bossCashKey'))) === 'pass-1234');
+  ok('首屏卡片跟着变成可用状态',
+     !(await page.innerText('#ov-boss-cash-gift')).includes('去设置口令'));
+
+  await page.evaluate(() => {
+    window.__gifts = [];
+    cloudAvailable = true; currentUser = null;
+    db = { collection: (c) => ({ add: async (p) => { window.__gifts.push({c,p}); return {id:'g1'}; } }) };
+    switchTab('overview');   // 上面跳去了设置页，卡片在 overview tab，切回来才点得到
+  });
+  await page.click('#ov-boss-cash-gift');
+  await page.waitForTimeout(200);
+  ok('弹窗里出现「给谁」输入框', await page.locator('#boss-cash-gift-person').isVisible());
+  ok('金额栏在', await page.locator('#boss-cash-gift-amount').isVisible());
+  ok('币种下拉在，且选项来自 CUR_SYMBOLS',
+     (await page.locator('#boss-cash-gift-cur option').count()) ===
+       (await page.evaluate(()=>Object.keys(CUR_SYMBOLS).length)));
+  // 199 不是 200：Firestore 规则要求 note.size() < 200（严格小于），maxlength 卡在 199
+  // 才不会让用户填满 200 字送出去被规则秒拒、却看不懂为什么（2026-09-09 验收查出的边界差一）。
+  ok('备注栏在，且限长 199（对齐规则的 note.size()<200）',
+     await page.getAttribute('#boss-cash-gift-note', 'maxlength') === '199');
+
+  // ---- 没登录：按钮点了要说清楚，不能发请求 ----
+  await page.fill('#boss-cash-gift-person', 'Seryi');
+  await page.fill('#boss-cash-gift-amount', '50');
+  await page.evaluate(()=>sendBossCashGift());
+  await page.waitForTimeout(200);
+  ok('未登录时不发请求', (await page.evaluate(()=>window.__gifts.length)) === 0);
+  ok('未登录时提示要先登录',
+     (await page.textContent('#boss-cash-gift-status')||'').includes('登录'));
+
+  // ---- 没填「给谁」：不发请求（这是防广播的第一道闸）----
+  await page.evaluate(() => { currentUser = { uid:'boss' }; });
+  await page.fill('#boss-cash-gift-person', '');
+  await page.evaluate(()=>sendBossCashGift());
+  await page.waitForTimeout(200);
+  ok('没填收件人不发请求', (await page.evaluate(()=>window.__gifts.length)) === 0);
+  ok('没填收件人时提示先填是给谁的',
+     (await page.textContent('#boss-cash-gift-status')||'').includes('哪个同事'));
+
+  // ---- 金额为 0 / 空：不发请求 ----
+  await page.fill('#boss-cash-gift-person', 'Seryi');
+  await page.fill('#boss-cash-gift-amount', '0');
+  await page.evaluate(()=>sendBossCashGift());
+  await page.waitForTimeout(200);
+  ok('金额 0 不发请求', (await page.evaluate(()=>window.__gifts.length)) === 0);
+
+  await page.fill('#boss-cash-gift-amount', '');
+  await page.evaluate(()=>sendBossCashGift());
+  await page.waitForTimeout(200);
+  ok('金额空白不发请求', (await page.evaluate(()=>window.__gifts.length)) === 0);
+
+  // ---- 金额 ≥ 100 万：不发请求（Firestore 规则要求 amount < 1000000，本地要提前挡，
+  //      不能让用户填了、送到 Firestore 才被规则拒绝却看不懂为什么，2026-09-09 验收查出）----
+  await page.fill('#boss-cash-gift-amount', '1000000');
+  await page.evaluate(()=>sendBossCashGift());
+  await page.waitForTimeout(200);
+  ok('金额 100 万不发请求（对齐规则的 amount<1000000）',
+     (await page.evaluate(()=>window.__gifts.length)) === 0);
+  ok('金额过大时提示单笔上限',
+     (await page.textContent('#boss-cash-gift-status')||'').includes('上限'));
+
+  // ---- 正常送出：内容必须原样，不做汇率换算，且带上 person ----
+  await page.fill('#boss-cash-gift-person', 'Seryi');
+  await page.fill('#boss-cash-gift-amount', '600');
+  await page.selectOption('#boss-cash-gift-cur', 'JPY');
+  await page.fill('#boss-cash-gift-note', '给 Seryi 买菜');
+  await page.evaluate(()=>sendBossCashGift());
+  await page.waitForTimeout(300);
+  const sent = await page.evaluate(()=>window.__gifts[0]);
+  ok('送进了 boss_cash_gifts 集合', sent && sent.c === 'boss_cash_gifts', sent);
+  ok('口令原样', sent?.p.k === 'pass-1234', sent?.p);
+  ok('带上收件人 person', sent?.p.person === 'Seryi', sent?.p);
+  ok('金额原样，不做任何换算', sent?.p.amount === 600, sent?.p.amount);
+  ok('币种原样（JPY 不会被悄悄转成 USD）', sent?.p.currency === 'JPY', sent?.p.currency);
+  ok('备注一起送', sent?.p.note === '给 Seryi 买菜', sent?.p.note);
+  ok('带上 at 时间戳', typeof sent?.p.at === 'number', sent?.p.at);
+  ok('状态行显示已送出',
+     (await page.textContent('#boss-cash-gift-status')||'').includes('已送出'));
+  ok('送出后金额栏清空',
+     (await page.evaluate(()=>document.getElementById('boss-cash-gift-amount').value)) === '');
+  ok('名字记住了，下次填「给谁」有得选',
+     (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_bossCashGiftNames')||'[]')))
+       .includes('Seryi'));
+
+  await page.evaluate(()=>closeModal('modal-boss-cash-gift'));   // 关掉弹窗，回首屏看卡片
+  await page.waitForTimeout(200);
+  ok('首屏卡片显示最近送过的那一笔',
+     (await page.innerText('#ov-boss-cash-gift')).includes('Seryi'));
+
+  // ---- 权限被拒 / 网络问题：分开说明 ----
+  await page.click('#ov-boss-cash-gift');
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    db = { collection: () => ({ add: async () => { const e = new Error('nope'); e.code='permission-denied'; throw e; } }) };
+  });
+  await page.fill('#boss-cash-gift-person', 'Kuang');
+  await page.fill('#boss-cash-gift-amount', '10');
+  await page.evaluate(()=>sendBossCashGift());
+  await page.waitForTimeout(200);
+  ok('权限被拒时提示口令或规则问题',
+     (await page.textContent('#boss-cash-gift-status')||'').includes('口令不对'));
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

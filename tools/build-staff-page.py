@@ -1023,10 +1023,10 @@ function staffRenderSummary(){
 const _staffSaveTx = saveTx;
 saveTx = function(){
   _staffSaveTx.apply(this, arguments);
-  setTimeout(staffLoadPetty, 2500);
+  setTimeout(()=>{ staffLoadPetty(); staffSyncBossGifts(); }, 2500);
 };
 document.addEventListener('visibilitychange', ()=>{
-  if(!document.hidden && staffIdentity) staffLoadPetty();
+  if(!document.hidden && staffIdentity){ staffLoadPetty(); staffSyncBossGifts(); }
 });
 
 /* 弹窗标题是脚本写死的中文，包一层让它跟着语言走 */
@@ -1180,12 +1180,97 @@ function bossCashReset(){
   renderBossCash();
 }
 
+const STAFF_BOSS_GIFTS_SEEN = 'staffExpense_bossGiftsSeen';
+function loadBossGiftsSeen(){
+  try{
+    const o = JSON.parse(localStorage.getItem(STAFF_BOSS_GIFTS_SEEN) || 'null');
+    return (o && typeof o.lastAt === 'number' && Array.isArray(o.ids)) ? o : { lastAt: 0, ids: [] };
+  }catch(e){ return { lastAt: 0, ids: [] }; }
+}
+function saveBossGiftsSeen(o){
+  o.ids = o.ids.slice(-300); // 只留最近 300 个 id，够去重用，不无限长
+  try{ localStorage.setItem(STAFF_BOSS_GIFTS_SEEN, JSON.stringify(o)); }catch(e){}
+}
+
+/**
+ * 拉「老板给的现金」，合进「手上现金」卡。跟 staffLoadPetty 挂同一套触发时机
+ * （2500ms 轮询 + visibilitychange），不新开计时器。
+ *
+ * 【按人分流，不广播】老板账口令是共用的——不止一个同事可能用同一个口令，而
+ * 「手上现金」是每个同事本机各自算的。gift 文档带的 person 就是收件人（老板送
+ * 出时填的同事名字），这里只认 person 跟 staffIdentity.reporter 一模一样的那几笔，
+ * 其余一律忽略（哪怕口令一样也不认）——不然给 A 的钱会被所有持有这个口令的同事
+ * 同时收到。过滤是客户端做的（查询本身只按 k/at 筛，不额外按 person 建 Firestore
+ * 复合索引，省得还要请用户去 Console 建索引）。
+ *
+ * 币别铁律：doc 里的 currency 如果跟这本账目前设定的 staffBossCur() 不一样，
+ * **不许悄悄按面值加进总额**（那等于编了个错的汇率 1:1）。做法是仍然记进
+ * topups（带上它自己的原始币种 cur 字段），但算 got 总额时只加 cur 匹配的那些，
+ * 币种不匹配的单独在卡片上警示、列出金额+原币种，请人自己确认——宁可让人多看一眼，
+ * 不能让余额数字看起来对、其实混了两种货币。
+ */
+async function staffSyncBossGifts(){
+  if(!staffBossOn() || !cloudAvailable || !staffIdentity) return;
+  if(!(await staffEnsureAnon())) return;
+  const seen = loadBossGiftsSeen();
+  let snap;
+  try{
+    snap = await db.collection('boss_cash_gifts')
+      .where('k', '==', staffBossKey())
+      .where('at', '>', seen.lastAt)
+      .get();
+  }catch(e){ return; } // 权限错误/离线：安静跳过，下次轮询再试，不打扰用户
+
+  if(snap.empty) return;
+  const o = loadBossCash();
+  const cur = staffBossCur();
+  const me = staffIdentity.reporter;
+  let addedTotal = 0, mismatched = [];
+  let maxAt = seen.lastAt;
+
+  snap.forEach(doc => {
+    const d = doc.data();
+    if(typeof d.at === 'number' && d.at > maxAt) maxAt = d.at;   // 推进游标，不管是不是给我的
+    if(d.person !== me) return;                                  // 不是给我的，不认（不落 seen，反正 maxAt 已经过了它）
+    if(seen.ids.includes(doc.id)) return;
+    seen.ids.push(doc.id);
+    const amt = Number(d.amount) || 0;
+    if(amt <= 0) return;
+    const giftCur = (d.currency || '').toUpperCase();
+    const entry = { date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
+                     from: 'admin', giftId: doc.id, cur: giftCur || cur };
+    o.topups.push(entry);
+    if(giftCur && giftCur !== cur){ mismatched.push(entry); }
+    else { addedTotal += entry.amount; }
+  });
+
+  seen.lastAt = maxAt;
+  saveBossGiftsSeen(seen);
+  saveBossCash(o);
+  renderBossCash();
+
+  if(addedTotal > 0){
+    toast(tt(`老板给了你现金 ${fmt(addedTotal, cur)}，已经记进「手上现金」`,
+              `The Boss sent you ${fmt(addedTotal, cur)} — added to Cash on hand`));
+  }
+  if(mismatched.length){
+    toast(tt(
+      `⚠️ 有 ${mismatched.length} 笔现金币别跟目前设定不一样，没算进总额，请去「手上现金」卡确认`,
+      `⚠️ ${mismatched.length} cash gift(s) use a different currency than your current setting — `
+      + `not added to the total, please check the Cash on hand card`));
+  }
+}
+
 function renderBossCash(){
   const el = document.getElementById('staff-boss-cash');
   if(!el) return;
   const cur = staffBossCur();
   const o = loadBossCash();
-  const got = o.topups.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  // 币别铁律：老板给的现金如果币种跟这本账目前设定的不一样，不许悄悄按面值加进
+  // 总额（那等于编了个错的汇率 1:1）。只累计币种匹配的那些，不匹配的仍然记进
+  // topups、列在下面，但不计进这个总额——见 renderBossCash 下面 mismatched 那段。
+  const got = o.topups.filter(t => !t.cur || t.cur === cur)
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
   // 还没填收到多少：不编一个 0 出来（那看起来像「花光了」），直接请他填
   if(!o.topups.length){
@@ -1210,8 +1295,13 @@ function renderBossCash(){
   const over = left < 0;
   el.classList.toggle('low', over || left < got * 0.15);
 
-  const rows = o.topups.slice(-5).reverse().map(t => `
-      <div class="bcash-line"><span>${t.date}</span><span>+${fmt(t.amount, cur)}</span></div>`).join('');
+  // 币种不匹配的那几笔要显示自己的原始币种（不是被当成卡片的 cur），并加个 ⚠️
+  // 提醒——宁可让人多看一眼，不能让余额数字看起来对、其实混了两种货币。
+  const rows = o.topups.slice(-5).reverse().map(t => {
+    const mismatch = t.cur && t.cur !== cur;
+    return `<div class="bcash-line"><span>${t.date}${mismatch ? ' ⚠️' : ''}</span>` +
+      `<span>+${fmt(t.amount, mismatch ? t.cur : cur)}</span></div>`;
+  }).join('');
 
   el.innerHTML = `
     <div class="bcash-label">${over ? tt('超支了','Over budget') : tt('手上现金','Cash on hand')}</div>
@@ -1266,6 +1356,8 @@ function staffSyncMode(){
   renderBossQueue();
   renderBossCfg();
   renderBossCash();
+  // 切进「老板账」页时马上拉一次最新的现金，不用等 2.5 秒轮询
+  if(onBoss) staffSyncBossGifts();
 }
 
 /** 说明块底下那一行设定：这本账用什么钱。 */
