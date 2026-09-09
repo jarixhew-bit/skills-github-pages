@@ -2996,6 +2996,17 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   ok('取消后没有调 delete()', (await page.evaluate(()=>window.__deletedIds.length)) === 0);
   ok('取消后清单里那一笔还在', (await page.innerText('#boss-cash-gift-recent')).includes('Seryi'));
 
+  // 首屏卡片「最近」是独立的本地显示缓存（bossCashGiftLog），撤回时也要连带摘掉，
+  // 不然卡片会一直显示已经撤回的那笔（2026-09-09 用户实机撤回后发现卡片没跟着变）。
+  // 带 id 是新版送出时才会写的（见 sendBossCashGift 的 logBossCashGift 调用）。
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashGiftLog', JSON.stringify([
+      { id: 'g100', person: 'Seryi', amount: 600, currency: 'JPY', at: Date.now() }
+    ]));
+  });
+  await page.evaluate(()=>renderOvBossCashGift());
+  ok('撤回前，首屏卡片「最近」显示这一笔', (await page.innerText('#ov-boss-cash-gift')).includes('Seryi'));
+
   // ---- 确认：真的调 Firestore delete()，清单刷新掉那一笔 ----
   dialogAction = 'accept';
   await page.click('#boss-cash-gift-row-g100 button');
@@ -3007,6 +3018,38 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
     { what: '清单刷新掉已撤回那一笔' });
   ok('清单里已经看不到撤回的那一笔', !(await page.innerText('#boss-cash-gift-recent')).includes('Seryi'));
   ok('没删的那笔还在', (await page.innerText('#boss-cash-gift-recent')).includes('Kuang'));
+  ok('撤回后，首屏卡片「最近」那行也跟着摘掉了（不是只有弹窗里的清单更新）',
+     !(await page.innerText('#ov-boss-cash-gift')).includes('Seryi'));
+
+  // ---- 老记录没有 id（在「撤回联动摘卡片」这个机制上线之前送出的）：退回按人名+金额+
+  //      币种摘除兜底。直接调 forgetBossCashGift 单测这条兜底路径，不通过真实撤回
+  //      按钮——g99（Kuang）这条 fixture 后面的「找不到对应本地交易」场景还要用，
+  //      走真实撤回会把它删掉，干扰后面的断言。 ----
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashGiftLog', JSON.stringify([
+      { person: '老记录同事', amount: 77, currency: 'USD', at: Date.now() }   // 没有 id，模拟旧记录
+    ]));
+  });
+  await page.evaluate(()=>renderOvBossCashGift());
+  ok('（老记录兜底）没有 id 的旧记录先正常显示', (await page.innerText('#ov-boss-cash-gift')).includes('老记录同事'));
+  await page.evaluate(() => forgetBossCashGift('some-other-doc-id', { person: '老记录同事', amount: 77, currency: 'USD' }));
+  await page.evaluate(()=>renderOvBossCashGift());
+  ok('（老记录兜底）按人名+金额+币种摘掉了这笔没有 id 的旧记录',
+     !(await page.innerText('#ov-boss-cash-gift')).includes('老记录同事'));
+
+  // ---- 首屏卡片本身也有一个手动「清除这行显示」的兜底链接（给摘不掉的极端情况用）----
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashGiftLog', JSON.stringify([
+      { person: '某个残留', amount: 1, currency: 'USD', at: Date.now() }
+    ]));
+  });
+  await page.evaluate(()=>renderOvBossCashGift());
+  ok('（手动清除）点「清除这行显示」之前卡片有内容', (await page.innerText('#ov-boss-cash-gift')).includes('某个残留'));
+  await page.evaluate(()=>clearBossCashGiftLog());
+  ok('（手动清除）点了之后卡片显示回「转给同事的现金…」那句默认文案',
+     (await page.innerText('#ov-boss-cash-gift')).includes('会自动进他们的「手上现金」卡'));
+  ok('（手动清除）localStorage 里的记录真的清空了',
+     (await page.evaluate(()=>localStorage.getItem('expenseTracker_bossCashGiftLog'))) === null);
 
   // ---- 撤回联动：对应的本地支出记录也要撤销（不是只删了 Firestore、老板自己的
   //      余额还是少的），且要走 tombstoneTx（不然云同步合并时这笔"撤销的支出"会复活）----
