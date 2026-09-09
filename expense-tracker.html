@@ -7587,6 +7587,17 @@ function logBossCashGift(entry){
   const list = [entry, ...bossCashGiftLog()].slice(0, 10);
   try{ localStorage.setItem(BOSS_CASH_GIFT_LOG_STORAGE, JSON.stringify(list)); }catch(e){}
 }
+/** 撤回时要把首屏卡片「最近」那行也摘掉，否则删完卡片还在显示已经撤回的那笔。
+ *  优先按 id 精确摘除；这个字段是 2026-09-09 才加的，撤回一笔更早送出、log 里还没有
+ *  id 的记录时退回按「人名+金额+币种」摘除兜底（老记录只有这一条路能认出是哪一笔）。 */
+function forgetBossCashGift(id, g){
+  const list = bossCashGiftLog().filter(e => {
+    if(e.id) return e.id !== id;
+    if(!g) return true;
+    return !(e.person === g.person && e.amount === g.amount && e.currency === g.currency);
+  });
+  try{ localStorage.setItem(BOSS_CASH_GIFT_LOG_STORAGE, JSON.stringify(list)); }catch(e){}
+}
 
 /** 首屏卡片：跟「💵 备用金」同一套视觉。永远显示（不像备用金要挂公司账户才出现），
  *  没设口令时给一句提示＋链接去设置页，设了就显示最近送过的那几笔当参考。 */
@@ -7605,8 +7616,19 @@ function renderOvBossCashGift(){
       <div class="led-card-title">👔 给同事现金</div><div class="led-card-link">转钱 →</div></div>
     ${log.length
       ? `<div class="led-sub">最近：${log.slice(0,3).map(e =>
-          `${ledEsc(e.person)} ${fmt(e.amount, e.currency)}`).join('、')}</div>`
+          `${ledEsc(e.person)} ${fmt(e.amount, e.currency)}`).join('、')}
+          　<span style="color:var(--sub);text-decoration:underline;cursor:pointer"
+            onclick="event.stopPropagation(); clearBossCashGiftLog();">清除这行显示</span></div>`
       : `<div class="led-sub">转给同事的现金，会自动进他们的「手上现金」卡。</div>`}`;
+}
+
+/** 首屏卡片「最近」那行是纯本地显示缓存，跟钱和撤回无关（撤回走 forgetBossCashGift，
+ *  会精确摘掉那一条）。这里是给"手动清空显示、眼不见为净"用的兜底——比如撤回发生在
+ *  这个精确摘除机制上线之前，留下的旧记录摘不掉，让用户自己按一下清空即可，不涉及
+ *  任何金额，不用像转账/撤回那样二次确认。 */
+function clearBossCashGiftLog(){
+  try{ localStorage.removeItem(BOSS_CASH_GIFT_LOG_STORAGE); }catch(e){}
+  renderOvBossCashGift();
 }
 
 function openBossCashGift(){
@@ -7723,6 +7745,7 @@ async function deleteBossCashGift(id){
       data.transactions = data.transactions.filter(t => t.id !== localTx.id);
       saveData();
     }
+    forgetBossCashGift(id, g);
     toast(`已撤回给 ${g.person} 的 ${amountText}`);
     renderOverview();
     refreshBossCashGiftRecent();
@@ -7788,7 +7811,7 @@ async function sendBossCashGift(){
     });
     saveData();
     saveBossCashGiftAccount(accId);
-    logBossCashGift({ person, amount, currency: cur, at: Date.now() });
+    logBossCashGift({ id: docRef.id, person, amount, currency: cur, at: Date.now() });
     setStatus(`已送出：${fmt(amount, cur)} 给 ${person}，他那边下次打开老板账页会自动看到`);
     amtInput.value = '';
     document.getElementById('boss-cash-gift-note').value = '';
