@@ -2783,7 +2783,15 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   });
   await page.click('#ov-boss-cash-gift');
   await page.waitForTimeout(200);
-  ok('弹窗里出现「给谁」输入框', await page.locator('#boss-cash-gift-person').isVisible());
+  ok('弹窗里出现「给谁」下拉', await page.locator('#boss-cash-gift-person').isVisible());
+  // 2026-09-09 那次事故之后追加：「给谁」不再是自由输入框（会打错大小写），改成固定下拉，
+  // 选项跟公司报账人共用同一份服务端名册（getCompanyPeople()）——保证同事名字拼法
+  // 永远跟 staffIdentity.reporter 对得上，这类打字错误从设计上就不可能发生。
+  ok('「给谁」是下拉不是输入框（防止手滑打错名字）',
+     (await page.evaluate(()=>document.getElementById('boss-cash-gift-person').tagName)) === 'SELECT');
+  ok('下拉选项来自公司报账人名册，且不含 Boss',
+     (await page.evaluate(()=>Array.from(document.querySelectorAll('#boss-cash-gift-person option')).map(o=>o.value)))
+       .every(v => v !== 'Boss'));
   ok('金额栏在', await page.locator('#boss-cash-gift-amount').isVisible());
   // 2026-09-09 追加：币种不再单独选，改成选账户，币种跟着账户走——从设计上杜绝
   // 「账户是 USD、却选了 HKD 送出去」这种货币对不上的输入错误（那次 KUANG 收错币种
@@ -2801,7 +2809,7 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
      await page.getAttribute('#boss-cash-gift-note', 'maxlength') === '199');
 
   // ---- 没登录：按钮点了要说清楚，不能发请求 ----
-  await page.fill('#boss-cash-gift-person', 'Seryi');
+  await page.selectOption('#boss-cash-gift-person', 'Seryi');
   await page.fill('#boss-cash-gift-amount', '50');
   await page.evaluate(()=>sendBossCashGift());
   await page.waitForTimeout(200);
@@ -2809,17 +2817,19 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   ok('未登录时提示要先登录',
      (await page.textContent('#boss-cash-gift-status')||'').includes('登录'));
 
-  // ---- 没填「给谁」：不发请求（这是防广播的第一道闸）----
+  // ---- 「给谁」不可能没填：下拉本来就没有空白选项，UI 上做不出这个场景。
+  // 用 JS 硬把 value 清空来模拟「万一」，验证服务端防线（sendBossCashGift 里的
+  // if(!person) 判断）还留着，不是因为改成下拉就把这道闸拆了。----
   await page.evaluate(() => { currentUser = { uid:'boss' }; });
-  await page.fill('#boss-cash-gift-person', '');
+  await page.evaluate(() => { document.getElementById('boss-cash-gift-person').value = ''; });
   await page.evaluate(()=>sendBossCashGift());
   await page.waitForTimeout(200);
-  ok('没填收件人不发请求', (await page.evaluate(()=>window.__gifts.length)) === 0);
-  ok('没填收件人时提示先填是给谁的',
+  ok('（防御性闸门仍在）person 为空时不发请求', (await page.evaluate(()=>window.__gifts.length)) === 0);
+  ok('（防御性闸门仍在）person 为空时提示先填是给谁的',
      (await page.textContent('#boss-cash-gift-status')||'').includes('哪个同事'));
 
   // ---- 金额为 0 / 空：不发请求 ----
-  await page.fill('#boss-cash-gift-person', 'Seryi');
+  await page.selectOption('#boss-cash-gift-person', 'Seryi');
   await page.fill('#boss-cash-gift-amount', '0');
   await page.evaluate(()=>sendBossCashGift());
   await page.waitForTimeout(200);
@@ -2845,7 +2855,7 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
     const txs = data.transactions.filter(t=>t.accountId==='acc_boss');
     return txs.reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0);
   });
-  await page.fill('#boss-cash-gift-person', 'Seryi');
+  await page.selectOption('#boss-cash-gift-person', 'Seryi');
   await page.fill('#boss-cash-gift-amount', '600');
   await page.selectOption('#boss-cash-gift-acc', 'acc_boss');   // acc_boss 币种是 USD
   await page.fill('#boss-cash-gift-note', '给 Seryi 买菜');
@@ -2863,9 +2873,6 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
      (await page.textContent('#boss-cash-gift-status')||'').includes('已送出'));
   ok('送出后金额栏清空',
      (await page.evaluate(()=>document.getElementById('boss-cash-gift-amount').value)) === '');
-  ok('名字记住了，下次填「给谁」有得选',
-     (await page.evaluate(()=>JSON.parse(localStorage.getItem('expenseTracker_bossCashGiftNames')||'[]')))
-       .includes('Seryi'));
   ok('选中的账户记住了，下次弹窗打开预填同一个',
      (await page.evaluate(()=>localStorage.getItem('expenseTracker_bossCashGiftAccount'))) === 'acc_boss');
 
@@ -2899,7 +2906,7 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
     db = { collection: () => ({ add: async () => { const e = new Error('nope'); e.code='permission-denied'; throw e; } }) };
   });
   const txCountBefore = await page.evaluate(()=>data.transactions.length);
-  await page.fill('#boss-cash-gift-person', 'Kuang');
+  await page.selectOption('#boss-cash-gift-person', 'Kuang');
   await page.fill('#boss-cash-gift-amount', '10');
   await page.evaluate(()=>sendBossCashGift());
   await page.waitForTimeout(200);
