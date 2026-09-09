@@ -7172,7 +7172,6 @@ function renderInboxSettings(){
 // 同事那边按 person === staffIdentity.reporter 过滤，不匹配的一律忽略（哪怕
 // 口令一样也不认）——见 build-staff-page.py 的 staffSyncBossGifts()。
 const BOSS_CASH_KEY_STORAGE = 'expenseTracker_bossCashKey';
-const BOSS_CASH_GIFT_NAMES_STORAGE = 'expenseTracker_bossCashGiftNames';
 const BOSS_CASH_GIFT_LOG_STORAGE = 'expenseTracker_bossCashGiftLog';
 const BOSS_CASH_GIFT_ACCOUNT_STORAGE = 'expenseTracker_bossCashGiftAccount';
 
@@ -7199,15 +7198,6 @@ function renderBossCashKeySettings(){
   if(inp && document.activeElement !== inp) inp.value = bossCashKeySaved();
 }
 
-/** 用过的同事名字，记住方便下次不用重打（自由文本，不限名册——老板账本来就没有正式花名册）。 */
-function bossCashGiftNames(){
-  try{ return JSON.parse(localStorage.getItem(BOSS_CASH_GIFT_NAMES_STORAGE) || '[]'); }catch(e){ return []; }
-}
-function rememberBossCashGiftName(name){
-  const list = bossCashGiftNames().filter(n => n !== name);
-  list.unshift(name);
-  try{ localStorage.setItem(BOSS_CASH_GIFT_NAMES_STORAGE, JSON.stringify(list.slice(0, 20))); }catch(e){}
-}
 function bossCashGiftLog(){
   try{ return JSON.parse(localStorage.getItem(BOSS_CASH_GIFT_LOG_STORAGE) || '[]'); }catch(e){ return []; }
 }
@@ -7254,14 +7244,15 @@ function renderBossCashGiftModal(){
       ">去设置页 →</button>`;
     return;
   }
-  const names = bossCashGiftNames();
+  // 给谁：固定下拉，不给自由输入——跟公司报账人共用同一份服务端名册（getCompanyPeople()）。
+  // 2026-09-09 那次事故就是自由输入打错大小写（KUANG vs Kuang）导致同事完全收不到钱，
+  // 还没有任何提示；固定下拉从根源上让这类打字错误变得不可能。
+  const people = getCompanyPeople().filter(p => p && p.code !== 'Boss');
   body.innerHTML = `
     <div class="form-group">
       <label class="form-label">给谁</label>
-      <input class="form-input" id="boss-cash-gift-person" list="boss-cash-gift-people"
-        autocomplete="off" placeholder="同事名字，例如 Seryi">
-      <datalist id="boss-cash-gift-people">${
-        names.map(n=>`<option value="${ledEsc(n)}"></option>`).join('')}</datalist>
+      <select class="form-input" id="boss-cash-gift-person">${
+        people.map(p=>`<option value="${ledEsc(p.label)}">${ledEsc(p.label)}</option>`).join('')}</select>
     </div>
     <div class="form-group">
       <label class="form-label">从哪个账户出</label>
@@ -7415,7 +7406,6 @@ async function sendBossCashGift(){
     });
     saveData();
     saveBossCashGiftAccount(accId);
-    rememberBossCashGiftName(person);
     logBossCashGift({ person, amount, currency: cur, at: Date.now() });
     setStatus(`已送出：${fmt(amount, cur)} 给 ${person}，他那边下次打开老板账页会自动看到`);
     amtInput.value = '';
