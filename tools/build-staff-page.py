@@ -1470,17 +1470,14 @@ function bossCashLeft(){
   return Math.round((got - spent + back) * 100) / 100;
 }
 
-/** 自己先垫的钱一共多少（`paidFrom==='own'` 的那些，含旧数据回落）。**这本机看不到
- *  老板有没有已经还给你**——还款状态（`fromStaff.paidAt` / 转账先抵欠款）记在老板
- *  自己的账本里，这台手机完全看不到、也拿不到。所以这不是「老板还欠我多少」的权威
- *  数字，只是「这本机记录里我自己出过多少钱」，显示时要把这个限制讲清楚，别让人
- *  以为是一个会自动结清的实时进度条。 */
-function bossCashOwnSpent(){
-  const o = loadBossCash();
-  const mine = (data.transactions || []).filter(t => t.accountId === STAFF_BOSS_ACC_ID);
-  const own = mine.filter(t => t.type !== 'income' && effectivePaidFrom(t, o) === 'own')
-    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  return Math.round(own * 100) / 100;
+/** 这个月（跟随页面月份切换器 state.txYear/state.txMonth）该本账支出合计——不分是
+ *  用老板给的现金付的还是自己先垫的，两种都算。「手上现金」卡的『花掉』
+ *  （`renderBossCash()`）和『本月合计』卡（`renderBossSummary()`）现在显示的是
+ *  同一个数，两处共用这个函数，别各自重算一遍（那种不一致最难查，2026-09-10 五度
+ *  改版新增，取代原本各自独立的 cashPart/ownPart 计算）。 */
+function bossCashMonthSpend(){
+  const txs = monthTxs(STAFF_BOSS_ACC_ID, state.txYear, state.txMonth).filter(t => t.type === 'expense');
+  return { total: Math.round(txs.reduce((s,t)=>s+t.amount,0) * 100) / 100, count: txs.length };
 }
 
 function renderBossCash(){
@@ -1493,13 +1490,6 @@ function renderBossCash(){
   // topups、列在下面，但不计进这个总额——见 renderBossCash 下面 mismatched 那段。
   const got = o.topups.filter(t => !t.cur || t.cur === cur)
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  // 老板端转钱前如果先抵掉了旧欠款（见 .claude/notes/expense-tracker.md「代管账户」
-  // 那节「转钱给他之前先抵掉旧欠款」），boss_cash_gifts 那份文档会带 offsetTotal——
-  // 只有这个数字是同事这边**拿得到**的信息（跟着 gift 文档一起同步过来），拿不到的
-  // 就不硬凑，这里只做「另有 X 结清了你垫付的」这一句附加说明，不试图算出「老板欠我
-  // 多少」这种需要老板那边权威数据的东西。
-  const offsetTotal = o.topups.filter(t => (!t.cur || t.cur === cur) && Number(t.offsetTotal) > 0)
-    .reduce((s, t) => s + Number(t.offsetTotal), 0);
 
   // 还没填收到多少：不编一个 0 出来（那看起来像「花光了」），直接请他填
   if(!o.topups.length){
@@ -1517,17 +1507,24 @@ function renderBossCash(){
   }
 
   const mine = (data.transactions || []).filter(t => t.accountId === STAFF_BOSS_ACC_ID);
-  const spent = mine.filter(t => t.type !== 'income' && effectivePaidFrom(t, o) === 'cash')
-    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const back = mine.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  // bossCashLeft()（只减「用现金付的」）**保留原样、不在这次改动**——归还按钮的
+  // 默认值/是否出现、paidFrom 自动判定阈值、归还完成通知里的 left，都还是用这个
+  // 真正的内部权威余额，本次只改这张卡「显示」出来的数字，不碰底层记账逻辑
+  // （用户原话「这次只改显示，不改账」）。
   const left = bossCashLeft();
-  const ownSpent = bossCashOwnSpent();
   const notSent = mine.filter(t => t.inbox && t.inbox.status !== 'sent').length;
-  // 理论上不该再出现负数了（自己垫的钱不再从这个余额扣）——留着当异常兜底显示，
-  // 不裸露负数，跟原本的设计精神一样，只是措辞不再暗示「你自己先垫了」（那件事现在
-  // 由下面 ownSpent 那行单独说明，两者是不同的概念，混在一起就是这次要修的 bug）。
-  const over = left < 0;
-  el.classList.toggle('low', over || left < got * 0.15);
+
+  // 2026-09-10 五度改版（用户明确要求「他垫付的这些不必出现了，只出现他那边花了
+  // 多少就好，不然我自己也乱」）：卡片头部这个数不再是 bossCashLeft()（那个只减
+  // 「用现金付的」），改成「收到 − 这个月支出合计（现金付的和自己垫的都算）」——
+  // 跟老板端首屏卡片 renderOvBossCashGift() 同一口径（老板转账当下若结清了他的
+  // 垫付，会另开一对配平转账，这台手机看不到那笔账，只能靠「这个月支出全算」这种
+  // 口径才能跟老板端对上，见那边 renderOvBossCashGift() 顶部注释）。
+  const { total: monthSpend } = bossCashMonthSpend();
+  const cardRemain = Math.round((got - monthSpend) * 100) / 100;
+  const over = cardRemain < 0;
+  el.classList.toggle('low', over || cardRemain < got * 0.15);
 
   // 币种不匹配的那几笔要显示自己的原始币种（不是被当成卡片的 cur），并加个 ⚠️
   // 提醒——宁可让人多看一眼，不能让余额数字看起来对、其实混了两种货币。
@@ -1543,26 +1540,17 @@ function renderBossCash(){
       `<span>+${fmt(t.amount, mismatch ? t.cur : cur)}</span></div>`;
   }).join('');
 
-  const subZh = `收到 ${fmt(got, cur)}` +
-    (offsetTotal > 0 ? `（另有 ${fmt(offsetTotal, cur)} 结清了你垫付的）` : '') +
-    ` · 用现金花掉 ${fmt(spent, cur)}`;
-  const subEn = `Received ${fmt(got, cur)}` +
-    (offsetTotal > 0 ? ` (plus ${fmt(offsetTotal, cur)} used to settle what you fronted)` : '') +
-    ` · spent ${fmt(spent, cur)}`;
+  const subZh = `收到 ${fmt(got, cur)} · 花掉 ${fmt(monthSpend, cur)}`;
+  const subEn = `Received ${fmt(got, cur)} · Spent ${fmt(monthSpend, cur)}`;
 
   el.innerHTML = `
     <div class="bcash-label">${over ? tt('数字对不上了','Numbers do not add up') : tt('手上现金','Cash on hand')}</div>
-    <div class="bcash-total">${fmt(over ? -left : left, cur)}</div>
+    <div class="bcash-total">${fmt(over ? -cardRemain : cardRemain, cur)}</div>
     <div class="bcash-sub">${tt(subZh, subEn)}${
       back ? tt(` · 退回 ${fmt(back, cur)}`, ` · refunds ${fmt(back, cur)}`) : ''}</div>
-    ${ownSpent > 0 ? `<div class="bcash-warn">${tt(
-      `📝 这本机记录你自己先垫了 ${fmt(ownSpent, cur)}（这台手机看不到老板有没有还你，自己跟他对一下）`,
-      `📝 This device shows you fronted ${fmt(ownSpent, cur)} yourself (this phone cannot tell if the Boss `
-      + `has paid you back — please check with them)`)}</div>` : ''}
     ${over ? `<div class="bcash-warn">${tt(
-      `⚠️ 用现金花掉的比收到的还多，请核对一下（可能有笔该标「自己先垫的」被标成了「现金」）`,
-      `⚠️ Cash spent is more than cash received — please check (a record that should be `
-      + `"fronted yourself" may be marked "cash")`)}</div>` : ''}
+      `⚠️ 花掉的比收到的还多，请核对一下`,
+      `⚠️ Spent is more than received — please check`)}</div>` : ''}
     ${notSent ? `<div class="bcash-warn">${tt(
       `⏳ 有 ${notSent} 笔还没送到老板那边（这个余额已经扣过了）`,
       `⏳ ${notSent} record(s) not sent to the Boss yet (already deducted above)`)}</div>` : ''}
@@ -1581,27 +1569,21 @@ function renderBossCash(){
  *  总额，**不分是用老板给的现金付、还是自己先垫的**：两种花法都是这个月替老板花掉
  *  的钱，都要算进合计。跟 bossCashLeft() 不是同一件事：bossCashLeft() 只关心「手上
  *  现金还剩多少」，所以只减 paidFrom==='cash' 那部分；这张卡关心的是「这个月总共
- *  花了多少」，全部要算。底下小字拆一行现金/自己垫各多少（沿用 effectivePaidFrom()
- *  的判定），让他一眼看出组成，但不影响合计本身。 */
+ *  花了多少」，全部要算。
+ *  **2026-09-10 五度改版，拆行拿掉**（用户：「他垫付的这些不必出现了...不然我自己
+ *  也乱」）：底下不再拆「用现金/自己垫」两行，只留合计与笔数。口径本身（全部要算、
+ *  沿用 effectivePaidFrom() 判定）完全没变，现在用共用的 bossCashMonthSpend()
+ *  ——跟「手上现金」卡（renderBossCash()）的『花掉』是同一个数、同一个函数算出来的，
+ *  不是碰巧数字一样。 */
 function renderBossSummary(){
   const box = document.getElementById('staff-boss-summary');
   if(!box) return;
   const cur = staffBossCur();
-  const o = loadBossCash();
-  const txs = monthTxs(STAFF_BOSS_ACC_ID, state.txYear, state.txMonth)
-    .filter(t => t.type === 'expense');
-  const total = txs.reduce((s,t)=>s+t.amount, 0);
-  const cashPart = txs.filter(t => effectivePaidFrom(t, o) === 'cash')
-    .reduce((s,t)=>s+t.amount, 0);
-  const ownPart = txs.filter(t => effectivePaidFrom(t, o) === 'own')
-    .reduce((s,t)=>s+t.amount, 0);
+  const { total, count } = bossCashMonthSpend();
   box.innerHTML = `
     <div class="staff-sum-label">${tt('本月合计','This month')}</div>
     <div class="staff-sum-total staff-sum-month">${fmt(total, cur)}</div>
-    <div class="staff-sum-sub">${tt(`${txs.length} 笔`, `${txs.length} record(s)`)}</div>
-    <div class="staff-sum-sub">${tt(
-      `用现金 ${fmt(cashPart, cur)} · 自己垫 ${fmt(ownPart, cur)}`,
-      `Cash ${fmt(cashPart, cur)} · Fronted ${fmt(ownPart, cur)}`)}</div>`;
+    <div class="staff-sum-sub">${tt(`${count} 笔`, `${count} record(s)`)}</div>`;
 }
 
 /* —— 这笔钱是谁出的（'cash'／'own'）—————————————————————
