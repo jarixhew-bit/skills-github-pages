@@ -2582,6 +2582,24 @@ if (want()) {
      ((await page.textContent('#toast')) || '').includes('收据照片太大'),
      await page.textContent('#toast'));
 
+  // ---- 第二种「有记录没账单」：附件还挂在账上，但本机存储里那张图已经不见了 ----
+  // （手机系统清掉网页离线存储时会这样。旧版这一支完全静默，是最难猜的那种。）
+  await page.evaluate(() => {
+    window.__sent = [];
+    getAttachmentBlob = async () => null;          // 图不见了
+    document.getElementById('toast').textContent = '';
+    data.transactions.push({ id:'t5', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-10',
+      amount: 7, type:'expense', categoryId:'cat_food', description:'图不见了', attachmentId:'a5' });
+    saveBossQueue(['t5']);
+  });
+  await page.evaluate(() => flushBossQueue());
+  await page.waitForTimeout(300);
+  ok('照片在本机不见了时，账照样送出去', (await page.evaluate(() => window.__sent.length)) === 1);
+  const missTip = (await page.textContent('#toast')) || '';
+  ok('照片不见了要单独讲清楚（不能跟「太大」混为一谈——该做的事不一样：这个要重拍）',
+     missTip.includes('找不到那张收据照片'), missTip);
+  ok('对照组：这种情况不能说成「太大」', !missTip.includes('太大'), missTip);
+
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
 }

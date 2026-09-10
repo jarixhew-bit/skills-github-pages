@@ -3388,8 +3388,10 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
        return a === b && b === c;
      }));
 
-  // ---- 投递箱按人路由：Kuang（有代管账户）报的账要扣他的代管账户；NoHolding（没转过
-  //      现金、对照组）报的账落回设置页选的默认账户，行为跟以前一样不受影响 ----
+  // ---- 投递箱按人路由（2026-09-10 二次改版）：Kuang（有代管账户）报的账现在要落进
+  //      「当初转钱出去的那个真实账户」（holdingRealAccountId，这里就是 acc_boss，
+  //      因为他两次都是从 acc_boss 转的），并且带两条配平腿；NoHolding（没转过现金、
+  //      对照组）报的账仍落回设置页选的默认账户，一条腿都不加，行为跟以前一样不受影响 ----
   await page.evaluate(() => {
     window.__box = { docs: [], deleted: [] };
     window.__put = (id, d) => window.__box.docs.push({
@@ -3405,22 +3407,40 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
     categoryId:'cat_food', description:'Kuang 买的午饭' }, 'Kuang');
   await seed('inbox2', { srcId:'r2', date:'2026-09-09', amount:40, type:'expense',
     categoryId:'cat_food', description:'没代管账户的人报的账' }, 'NoHoldingPerson');
+  const kuangHoldBalBeforeInbox = await page.evaluate((id)=>data.transactions.filter(t=>t.accountId===id)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), await page.evaluate(()=>holdingAccountId('Kuang')));
   await page.evaluate(()=>fetchInbox());
   await page.waitForTimeout(300);
   const kuangIx = await page.evaluate(()=>data.transactions.find(t=>t.id==='ix_r1'));
-  ok('Kuang 报的账进了他自己的代管账户（不是配置的默认账户）',
-     kuangIx && kuangIx.accountId === (await page.evaluate(()=>holdingAccountId('Kuang'))), kuangIx);
+  ok('Kuang 报的账明细进了「当初转钱出去的那个真实账户」（acc_boss），不是代管账户本身',
+     kuangIx && kuangIx.accountId === 'acc_boss', kuangIx);
+  ok('这笔明细带 staffSpendId（等于自己的 id），供撤销/去重用',
+     kuangIx && kuangIx.staffSpendId === 'ix_r1', kuangIx);
+  ok('这笔明细没有打 xfer（是真支出，不是配平腿）', kuangIx && !kuangIx.xfer, kuangIx);
+  const kuangHoldId = await page.evaluate(()=>holdingAccountId('Kuang'));
+  const kuangLegs = await page.evaluate(()=>data.transactions.filter(t=>t.staffSpendId==='ix_r1'));
+  ok('一共 3 条腿（真支出 + 2 条配平腿）', kuangLegs.length === 3, kuangLegs);
+  const balLeg = kuangLegs.find(t=>t.accountId==='acc_boss' && t.type==='income' && t.xfer);
+  const holdLeg = kuangLegs.find(t=>t.accountId===kuangHoldId && t.type==='expense' && t.xfer);
+  ok('配平腿一：真实账户收入 60（钱早就转出去了，不能再扣一次）', balLeg && balLeg.amount === 60, balLeg);
+  ok('配平腿二：代管账户支出 60（他手上代管的钱因此变少）', holdLeg && holdLeg.amount === 60, holdLeg);
+  const kuangHoldBalAfterInbox = await page.evaluate((id)=>data.transactions.filter(t=>t.accountId===id)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), kuangHoldId);
+  ok('Kuang 的代管余额少了这 60（配平腿三体现的）',
+     kuangHoldBalAfterInbox === kuangHoldBalBeforeInbox - 60, { kuangHoldBalBeforeInbox, kuangHoldBalAfterInbox });
   const noHoldIx = await page.evaluate(()=>data.transactions.find(t=>t.id==='ix_r2'));
-  ok('（对照组）没有代管账户的人，账落回设置页选的默认账户——行为跟以前一样',
-     noHoldIx && noHoldIx.accountId === (await page.evaluate(()=>getInboxAccountId())), noHoldIx);
+  ok('（对照组）没有代管账户的人，账落回设置页选的默认账户，只有一条腿——行为跟以前一样',
+     noHoldIx && noHoldIx.accountId === (await page.evaluate(()=>getInboxAccountId())) && !noHoldIx.staffSpendId, noHoldIx);
+  ok('（对照组）没有代管账户的人这笔，没有任何配平腿',
+     (await page.evaluate(()=>data.transactions.filter(t=>t.staffSpendId==='ix_r2').length)) === 0);
   const seryiHoldBalAfterInbox = await page.evaluate((id)=>data.transactions.filter(t=>t.accountId===id)
     .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), seryiHoldId);
   ok('（对照组）Kuang 报账不影响 Seryi 的代管余额，还是 300',
      seryiHoldBalAfterInbox === 300, seryiHoldBalAfterInbox);
 
-  // ---- 该付同事名单要排除落进代管账户的支出（那是老板早就转给他的钱，不是他自己垫的）----
+  // ---- 该付同事名单要排除有 staffSpendId 的支出（那是老板早就转给他的钱，不是他自己垫的）----
   const owed = await page.evaluate(()=>inboxOwedByPerson());
-  ok('「该付同事」名单里没有 Kuang（他花的是代管账户里的钱，不是自己垫付）',
+  ok('「该付同事」名单里没有 Kuang（他花的是代管现金，用 staffSpendId 判断，不是自己垫付）',
      !owed.some(r=>r.who==='Kuang'), owed);
   ok('（对照组）没代管账户的人照样出现在「该付同事」名单里，机制没被误伤',
      owed.some(r=>r.who==='NoHoldingPerson'), owed);
@@ -3694,7 +3714,7 @@ console.log('\n【37】首屏卡片「还剩/已花」+ 整理旧记录进代管
 }
 
 {
-  console.log('\n【37】整理旧记录：搬家预览、只改 accountId、币种不一致跳过、幂等');
+  console.log('\n【37】整理旧记录（2026-09-10 二次改版，方向反过来了）：从代管账户搬出去、补配平腿，币种不一致跳过，幂等');
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e=>errs.push(e.message));
@@ -3713,46 +3733,89 @@ console.log('\n【37】首屏卡片「还剩/已花」+ 整理旧记录进代管
   ok('一笔都没有时不弹确认框', dialogCount === 0, dialogCount);
   ok('提示「没有需要整理的」', (await page.textContent('#toast')||'').includes('没有需要整理的'));
 
-  // ---- 造旧数据：Kuang 的代管账户已存在（HKD），另建一个普通 HKD 账户当"当时的默认收件账户"，
-  //      里面塞两笔带 fromStaff.by='Kuang' 的旧记录（模拟代管账户出现之前收进来的账）；
-  //      再塞一笔币种不一致的（USD 账户里的旧记录，但 Kuang 是 HKD），应该被跳过 ----
+  // ---- 造旧数据：Kuang 的代管账户（HKD）里还直接躺着 2 笔旧格式真消费（没有 xfer、
+  //      没有 staffSpendId——2026-09-10 二次改版之前，消费就是这样直接记进代管账户的），
+  //      srcAccountId 指向一个真实 HKD 账户，币种对得上，应该能搬；另造一个 Weird 的
+  //      代管账户（USD），srcAccountId 却指向一个 HKD 账户（故意币种不一致），里面 1 笔
+  //      旧格式消费，应该被跳过 ----
   const txCountBefore = await page.evaluate(() => {
-    const holdAcc = getOrCreateHoldingAccount('Kuang', 'HKD');
-    data.accounts.push({ id:'acc_old_default', name:'旧默认收件账户', currency:'HKD', color:'#999' });
-    data.accounts.push({ id:'acc_old_usd', name:'旧默认收件账户(USD)', currency:'USD', color:'#999' });
     const now = Date.now();
+    data.accounts.push({ id:'acc_hkd_real', name:'真实HKD账户', currency:'HKD', color:'#999' });
+    data.accounts.push({ id:'acc_hkd_other', name:'另一个HKD账户', currency:'HKD', color:'#999' });
+    const kuangHold = getOrCreateHoldingAccount('Kuang', 'HKD');
+    kuangHold.srcAccountId = 'acc_hkd_real';
+    const weirdHold = getOrCreateHoldingAccount('Weird', 'USD');
+    weirdHold.srcAccountId = 'acc_hkd_other';   // 故意币种不一致（USD 代管账户 → HKD 真实账户）
     data.transactions.push(
-      { id:'oldtx1', accountId:'acc_old_default', date:'2026-08-01', type:'expense', amount:120,
+      { id:'oldtx1', accountId: kuangHold.id, date:'2026-08-01', type:'expense', amount:120,
         categoryId:'cat_food', description:'旧记录1', updatedAt: now, fromStaff:{by:'Kuang', at: now} },
-      { id:'oldtx2', accountId:'acc_old_default', date:'2026-08-02', type:'expense', amount:80,
+      { id:'oldtx2', accountId: kuangHold.id, date:'2026-08-02', type:'expense', amount:80,
         categoryId:'cat_food', description:'旧记录2', updatedAt: now, fromStaff:{by:'Kuang', at: now} },
-      { id:'oldtx3', accountId:'acc_old_usd', date:'2026-08-03', type:'expense', amount:50,
-        categoryId:'cat_food', description:'币种不一致的旧记录', updatedAt: now, fromStaff:{by:'Kuang', at: now} }
+      { id:'oldtx3', accountId: weirdHold.id, date:'2026-08-03', type:'expense', amount:50,
+        categoryId:'cat_food', description:'币种不一致的旧记录', updatedAt: now, fromStaff:{by:'Weird', at: now} }
     );
     saveData();
     return data.transactions.length;
   });
 
+  const kuangHoldId = await page.evaluate(()=>holdingAccountId('Kuang'));
+  const weirdHoldId = await page.evaluate(()=>holdingAccountId('Weird'));
+  const holdBal = (id) => page.evaluate((i)=>data.transactions.filter(t=>t.accountId===i)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), id);
+  const kuangHoldBalBefore = await holdBal(kuangHoldId);
+  const realBalBefore = await page.evaluate(()=>data.transactions.filter(t=>t.accountId==='acc_hkd_real')
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+
   const scan = await page.evaluate(() => bossCashCleanupScan());
-  ok('扫描结果：Kuang 有2笔能搬、1笔币种不一致跳过', (() => {
+  ok('扫描结果：Kuang 有 2 笔能搬（币种对得上）、0 笔跳过', (() => {
     const g = scan.find(x => x.person === 'Kuang');
-    return g && g.move.length === 2 && g.skip.length === 1;
+    return g && g.move.length === 2 && g.skip.length === 0;
+  })(), scan);
+  ok('扫描结果：Weird 有 1 笔因为币种不一致被跳过、0 笔能搬', (() => {
+    const g = scan.find(x => x.person === 'Weird');
+    return g && g.move.length === 0 && g.skip.length === 1;
   })(), scan);
 
   dialogCount = 0;
   await page.evaluate(()=>openBossCashCleanup());
   ok('有能搬的记录时会弹一次确认框', dialogCount === 1, dialogCount);
-  const holdId = await page.evaluate(()=>holdingAccountId('Kuang'));
-  const moved = await page.evaluate((h)=>data.transactions.filter(t=>['oldtx1','oldtx2'].includes(t.id) && t.accountId===h).length, holdId);
-  ok('确认后，2笔旧记录的 accountId 改到了代管账户', moved === 2);
-  const skippedStill = await page.evaluate(()=>{
-    const t = data.transactions.find(t=>t.id==='oldtx3');
-    return t && t.accountId === 'acc_old_usd';
-  });
-  ok('币种不一致的那笔（oldtx3）没被搬走，还在原账户', skippedStill);
+
+  const movedToReal = await page.evaluate(()=>['oldtx1','oldtx2']
+    .every(id => data.transactions.find(t=>t.id===id).accountId === 'acc_hkd_real'));
+  ok('确认后，2 笔旧记录的 accountId 改成了真实账户（不再是代管账户本身）', movedToReal);
+  const oldtx1 = await page.evaluate(()=>data.transactions.find(t=>t.id==='oldtx1'));
+  ok('搬走的记录带上了 staffSpendId（等于自己的 id）', oldtx1?.staffSpendId === 'oldtx1', oldtx1);
+  const legs1 = await page.evaluate(()=>data.transactions.filter(t=>t.staffSpendId==='oldtx1' && t.id!=='oldtx1'));
+  const legs2 = await page.evaluate(()=>data.transactions.filter(t=>t.staffSpendId==='oldtx2' && t.id!=='oldtx2'));
+  ok('每笔搬走的记录都补上了 2 条配平腿', legs1.length === 2 && legs2.length === 2, {legs1, legs2});
+  ok('配平腿一在真实账户、是收入、xfer', legs1.some(t=>t.accountId==='acc_hkd_real' && t.type==='income' && t.xfer && t.amount===120), legs1);
+  ok('配平腿二在代管账户、是支出、xfer', legs1.some(t=>t.accountId===kuangHoldId && t.type==='expense' && t.xfer && t.amount===120), legs1);
+
+  const oldtx3StillInWeirdHold = await page.evaluate((id)=>data.transactions.find(t=>t.id==='oldtx3').accountId===id, weirdHoldId);
+  ok('币种不一致的那笔（oldtx3）没被搬走，还在原代管账户里', oldtx3StillInWeirdHold);
+  ok('这笔没有 staffSpendId（没搬，也没补配平腿）',
+     !(await page.evaluate(()=>data.transactions.find(t=>t.id==='oldtx3').staffSpendId)));
   ok('提示里说明跳过了几笔', (await page.textContent('#toast')||'').includes('1'));
+
   const txCountAfter = await page.evaluate(()=>data.transactions.length);
-  ok('交易条数不变（只改归属，没有新增或删除）', txCountAfter === txCountBefore, {txCountBefore, txCountAfter});
+  ok('交易条数增加了 4 笔（2 笔搬走的各补 2 条配平腿，原记录不删不增）',
+     txCountAfter === txCountBefore + 4, {txCountBefore, txCountAfter});
+
+  const kuangHoldBalAfter = await holdBal(kuangHoldId);
+  ok('★ 代管账户余额不变（原本直接记在代管账户里的 −金额，换成配平腿在代管账户里，数字没变）',
+     kuangHoldBalAfter === kuangHoldBalBefore, {kuangHoldBalBefore, kuangHoldBalAfter});
+  const realBalAfter = await page.evaluate(()=>data.transactions.filter(t=>t.accountId==='acc_hkd_real')
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+  ok('★ 真实账户净变化为零（配平腿抵消）', realBalAfter === realBalBefore, {realBalBefore, realBalAfter});
+
+  // 旧记录日期是 2026-08（刻意造的历史数据），不一定落在"这个月"，所以不用 monthTxs
+  // 卡当月——直接看这个真实账户的非 xfer 支出总额，验证的是同一件事："以前只有代管
+  // 账户自己看得到的这 200，现在这个真实账户的支出视角也看得到了"。
+  const realExpTotal = await page.evaluate(()=>data.transactions
+    .filter(t=>t.accountId==='acc_hkd_real' && t.type==='expense' && !t.xfer)
+    .reduce((s,t)=>s+t.amount,0));
+  ok('搬完之后，真实账户的支出明细里多出这 200（120+80，以前只有代管账户自己看得到）',
+     realExpTotal === 200, realExpTotal);
 
   // ---- 重复点第二次：能搬的都搬完了，不会重复搬，给「没有需要整理的」（还有1笔跳过的，提示要带上）----
   dialogCount = 0;
@@ -3760,8 +3823,8 @@ console.log('\n【37】首屏卡片「还剩/已花」+ 整理旧记录进代管
   ok('第二次点不弹确认框（没有新的可搬）', dialogCount === 0, dialogCount);
   const toast2 = await page.textContent('#toast');
   ok('第二次点提示「没有需要整理的」，且仍提到跳过的那 1 笔', toast2.includes('没有需要整理的') && toast2.includes('1'), toast2);
-  const oldtx1After2ndClick = await page.evaluate((h)=>data.transactions.find(t=>t.id==='oldtx1').accountId===h, holdId);
-  ok('第二次点没有把已搬过的记录再动一次', oldtx1After2ndClick);
+  const txCountAfter2ndClick = await page.evaluate(()=>data.transactions.length);
+  ok('第二次点没有重复搬（交易条数不再变化）', txCountAfter2ndClick === txCountAfter, {txCountAfter, txCountAfter2ndClick});
 
   ok('无 JS 报错（整理旧记录段）', errs.length===0, errs);
   await ctx.close();
@@ -3813,6 +3876,357 @@ console.log('\n【38】同事重送「以前删过」的记录：跳过不复活
   ok('提示里讲明了「有几笔是以前删掉过的记录」，不再静默吞掉',
      tip.includes('以前在这边删掉过') && tip.includes('1 笔'), tip);
   ok('提示里同时报了正常收到的笔数', tip.includes('收到同事记的'), tip);
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+
+// ---------- 【39】同事花代管现金：手算 fixture（转 5000→花 3000）+ 对照组 + 同事删除 3 条腿都消失 ----------
+// 2026-09-10 二次改版核心场景：用户明确要求「全部整合去对应的账户里，不然这样账会
+// 分开」——同事花的钱不再单独记进代管账户，而是记 3 条腿，明细落进「当初转钱出去的
+// 那个真实账户」。这里用用户自己举的例子手算断言，一个数都不许对不上。
+console.log('\n【39】同事花代管现金：手算 fixture（转5000→花3000）+ 对照组 + 同事删除 3 条腿一起消失');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  const accBossBalBefore = await page.evaluate(()=>data.transactions.filter(t=>t.accountId==='acc_boss')
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+
+  // ---- 转 5000（直接构造转账两条腿，等同 sendBossCashGift() 的效果，省去走 UI）----
+  await page.evaluate(() => {
+    const holdAcc = getOrCreateHoldingAccount('Kuang', 'USD');
+    holdAcc.srcAccountId = 'acc_boss';
+    const now = Date.now();
+    data.transactions.push(
+      { id: uid(), accountId:'acc_boss', type:'expense', amount:5000, date: today(),
+        categoryId:'cat_cash_gift', description:'给 Kuang 的现金', updatedAt: now, giftId:'g39', xfer:true },
+      { id: uid(), accountId: holdAcc.id, type:'income', amount:5000, date: today(),
+        categoryId:'cat_cash_gift_in', description:'从「主账户」转入', updatedAt: now, giftId:'g39', xfer:true }
+    );
+    saveData();
+  });
+
+  // ---- 花 3000：通过投递箱收件（走真实的 fetchInbox() 路径，不是直接塞 3 条腿）----
+  await page.evaluate(() => {
+    window.__box = { docs: [], deleted: [] };
+    window.__put = (id, d) => window.__box.docs.push({
+      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
+    cloudAvailable = true; currentUser = { uid:'boss' };
+    db = { collection: () => ({ limit: () => ({ get: async () => ({ docs: window.__box.docs }) }) }) };
+    window.__put('spend1', { k:'x', from:'Kuang', tx: JSON.stringify({ srcId:'sp1',
+      date: today(), amount: 3000, type:'expense', categoryId:'cat_food', description:'旅行开销' }) });
+    // 对照组：没有代管账户的人（NoHoldPerson39）报的账，同一批一起收
+    window.__put('spend2', { k:'x', from:'NoHoldPerson39', tx: JSON.stringify({ srcId:'sp2',
+      date: today(), amount: 40, type:'expense', categoryId:'cat_food', description:'没代管账户的对照组' }) });
+  });
+  await page.evaluate(()=>fetchInbox());
+  await page.waitForTimeout(300);
+
+  const accBossBalAfterSpend = await page.evaluate(()=>data.transactions.filter(t=>t.accountId==='acc_boss')
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+  ok('★ A（acc_boss）净变化只有 −5000（不是 −8000 也不是 −2000）：转账 −5000，花钱那笔 −3000+3000 互相抵消',
+     accBossBalAfterSpend === accBossBalBefore - 5000 - 40, // 另外还有对照组那笔真支出 40（没有配平腿）
+     { accBossBalBefore, accBossBalAfterSpend });
+
+  const kuangHoldId = await page.evaluate(()=>holdingAccountId('Kuang'));
+  const holdBalNow = await page.evaluate((id)=>data.transactions.filter(t=>t.accountId===id)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), kuangHoldId);
+  ok('★ 代管余额 ＝ 2000（5000−3000）', holdBalNow === 2000, holdBalNow);
+
+  const monthExpAccBoss = await page.evaluate(()=>{
+    const d = new Date();
+    return monthTxs('acc_boss', d.getFullYear(), d.getMonth())
+      .filter(t=>t.type==='expense' && !t.xfer).reduce((s,t)=>s+t.amount,0);
+  });
+  ok('★ 本月支出（acc_boss 视角）＝ 3040（3000 花的 + 40 对照组那笔，转账 5000 不算）',
+     monthExpAccBoss === 3040, monthExpAccBoss);
+
+  const spendTx = await page.evaluate(()=>data.transactions.find(t=>t.id==='ix_sp1'));
+  ok('★ 那笔消费明细出现在 A（acc_boss）的明细里，不是代管账户', spendTx && spendTx.accountId === 'acc_boss', spendTx);
+  ok('这笔明细没有打 xfer（是真支出）', spendTx && !spendTx.xfer, spendTx);
+  const spendLegs = await page.evaluate(()=>data.transactions.filter(t=>t.staffSpendId==='ix_sp1'));
+  ok('一共 3 条腿，共用同一个 staffSpendId', spendLegs.length === 3, spendLegs);
+
+  // ---- 对照组：没有代管账户的人，只记一笔真支出，没有配平腿 ----
+  const noHoldTx = await page.evaluate(()=>data.transactions.find(t=>t.id==='ix_sp2'));
+  ok('对照组：没有代管账户的人只记一笔真支出', noHoldTx && !noHoldTx.xfer && !noHoldTx.staffSpendId, noHoldTx);
+  ok('对照组：没有任何配平腿', (await page.evaluate(()=>data.transactions.filter(t=>t.staffSpendId==='ix_sp2').length)) === 0);
+
+  // ---- 同事删掉那笔已送出的消费：3 条腿一起消失，每条都落墓碑 ----
+  const idsBeforeDelete = spendLegs.map(t=>t.id).concat(['ix_sp1']);
+  await page.evaluate(() => {
+    window.__put('spend1del', { k:'x', from:'Kuang', tx: JSON.stringify({ op:'delete', srcId:'sp1' }) });
+  });
+  await page.evaluate(()=>fetchInbox());
+  await page.waitForTimeout(300);
+  const remaining = await page.evaluate((ids)=>ids.filter(id=>data.transactions.some(t=>t.id===id)),
+    [...new Set(idsBeforeDelete)]);
+  ok('删除后 3 条腿全部消失（每条都被摘除，不留孤儿配平腿）', remaining.length === 0, remaining);
+  const tombIds = await page.evaluate(()=>data.deletedTxIds.map(d=>d.id));
+  const uniqueIds = [...new Set(idsBeforeDelete)];
+  const allHaveTombstone = uniqueIds.every(id => tombIds.includes(id));
+  ok('每一条移除的记录都落了墓碑（云端合并不会把它们复活）', allHaveTombstone, { uniqueIds, tombIds });
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+// ---------- 【40】代管账户在界面上一律隐藏（对照组：真实账户照常出现）----------
+console.log('\n【40】代管账户不出现在账户列表/切换器/首屏卡片/各下拉里（对照组：真实账户照常出现）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    const holdAcc = getOrCreateHoldingAccount('HideMe40', 'USD');
+    data.transactions.push({ id: uid(), accountId: holdAcc.id, type:'income', amount:100,
+      date: today(), categoryId:'cat_cash_gift_in', updatedAt: Date.now(), xfer:true });
+    saveData();
+    renderOverview();
+    renderSettings();
+  });
+
+  const accCardsTxt = await page.innerText('#acc-cards-row');
+  ok('首屏账户卡片：不出现代管账户（名字含"手上"）', !accCardsTxt.includes('手上'), accCardsTxt);
+  ok('（对照组）首屏账户卡片：真实账户（acc_boss）照常出现', accCardsTxt.includes('acc_boss') || /US\$/.test(accCardsTxt), accCardsTxt);
+
+  await page.evaluate(()=>switchTab('settings'));
+  const settingsTxt = await page.innerText('#settings-accs');
+  ok('设置页账户管理列表：不出现代管账户', !settingsTxt.includes('手上'), settingsTxt);
+  ok('（对照组）设置页账户管理列表：真实账户照常出现',
+     (await page.evaluate(()=>data.accounts.filter(a=>!a.isHolding).length)) > 0 && settingsTxt.length > 0, settingsTxt);
+
+  await page.evaluate(()=>openAccSwitch());
+  await page.waitForTimeout(150);
+  const switchTxt = await page.innerText('#acc-switch-list');
+  ok('账户切换器：不出现代管账户', !switchTxt.includes('手上'), switchTxt);
+  await page.evaluate(()=>closeModal('modal-acc-switch'));
+
+  const recAccOptions = await page.evaluate(()=>{
+    showModal('modal-add-recurring');
+    return Array.from(document.querySelectorAll('#rec-acc option')).map(o=>o.value);
+  });
+  const holdAccId40 = await page.evaluate(()=>holdingAccountId('HideMe40'));
+  ok('月固定开销账户下拉：不含代管账户', !recAccOptions.includes(holdAccId40), recAccOptions);
+  ok('（对照组）月固定开销账户下拉：含真实账户', recAccOptions.includes('acc_boss'), recAccOptions);
+  await page.evaluate(()=>closeModal('modal-add-recurring'));
+
+  await page.evaluate(()=>{ switchTab('settings'); renderInboxSettings(); });
+  const inboxAccOptions = await page.evaluate(()=>Array.from(document.querySelectorAll('#inbox-acc-select option')).map(o=>o.value));
+  ok('投递箱默认收件账户下拉：不含代管账户', !inboxAccOptions.includes(holdAccId40), inboxAccOptions);
+  ok('（对照组）投递箱默认收件账户下拉：含真实账户', inboxAccOptions.includes('acc_boss'), inboxAccOptions);
+
+  // ---- 防御性闸门：即使硬调也切不进代管账户/选不中代管账户 ----
+  const curBefore = await page.evaluate(()=>data.currentAccountId);
+  await page.evaluate((id)=>switchAccount(id), holdAccId40);
+  ok('switchAccount() 挡住代管账户 id，currentAccountId 不变',
+     (await page.evaluate(()=>data.currentAccountId)) === curBefore);
+  await page.evaluate((id)=>setInboxAccount(id), holdAccId40);
+  ok('setInboxAccount() 挡住代管账户 id，不写进 localStorage',
+     (await page.evaluate(()=>localStorage.getItem('expenseTracker_inboxAccount'))) !== holdAccId40);
+  await page.evaluate((id)=>saveBossCashGiftAccount(id), holdAccId40);
+  ok('saveBossCashGiftAccount() 挡住代管账户 id，不写进 localStorage',
+     (await page.evaluate(()=>localStorage.getItem('expenseTracker_bossCashGiftAccount'))) !== holdAccId40);
+
+  // ---- ensureCurrentAccountUsable()：老状态停在代管账户上的要收口回真实账户 ----
+  await page.evaluate((id) => { data.currentAccountId = id; ensureCurrentAccountUsable(); }, holdAccId40);
+  ok('ensureCurrentAccountUsable() 把停在代管账户上的 currentAccountId 收口回真实账户',
+     (await page.evaluate((id)=>data.currentAccountId !== id && !getAcc(data.currentAccountId).isHolding, holdAccId40)));
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+// ---------- 【41】转钱给同事之前先抵掉他垫付的旧欠款（+ 对照组 + 撤回 + 重算旧数据）----------
+// 用户真实数据：转 5000 之前 Kuang 已经自己垫付过 189，要求转完之后欠款归零、
+// 代管现金是 4811（不是 5000）。
+console.log('\n【41】转钱先抵欠款：手算 fixture（欠189转5000）+ 两组对照 + 撤回还原 + 旧数据重算');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashKey', 'pass-1234');
+    cloudAvailable = true; currentUser = { uid:'boss' };
+    window.__gifts = [];
+    window.__giftSeq = 0;
+    // 每次 add() 都要给不同的 doc id——同一个 id 会让不同人的转账共用一个 giftId，
+    // 撤回一笔会连带误删别人的（这里特地测多个人的转账，必须给不同 id）。
+    db = { collection: (c) => ({ add: async (p) => { window.__gifts.push({c,p});
+      window.__giftSeq++; return {id:'g41_' + window.__giftSeq}; } }) };
+  });
+
+  const accBossBalBefore41 = await page.evaluate(()=>data.transactions.filter(t=>t.accountId==='acc_boss')
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+
+  // ---- 欠 189：Kuang 自己垫付的一笔真支出（记在 acc_boss，不是代管账户）----
+  await page.evaluate(() => {
+    data.transactions.push({ id:'debt189', accountId:'acc_boss', type:'expense', amount:189,
+      date: today(), categoryId:'cat_other_exp', description:'Kuang 垫付的车费',
+      updatedAt: Date.now(), fromStaff:{ by:'Kuang', at: Date.now() } });
+    saveData();
+  });
+  const owedBefore = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
+  ok('转账前，Kuang 欠款 189', owedBefore && owedBefore.total === 189, owedBefore);
+
+  await page.click('#ov-boss-cash-gift');
+  await page.waitForTimeout(150);
+  await page.selectOption('#boss-cash-gift-acc', 'acc_boss');
+  await page.selectOption('#boss-cash-gift-person', 'Kuang');
+  await page.fill('#boss-cash-gift-amount', '5000');
+  await page.evaluate(()=>sendBossCashGift());
+  await page.waitForTimeout(250);
+
+  const sentPayload41 = await page.evaluate(()=>window.__gifts[0]?.p);
+  ok('★ Firestore 记的是净额 4811（5000-189），不是原始输入 5000', sentPayload41?.amount === 4811, sentPayload41);
+  ok('Firestore 带上 offsetTxIds，记着抵了哪几笔', Array.isArray(sentPayload41?.offsetTxIds) && sentPayload41.offsetTxIds.includes('debt189'), sentPayload41);
+
+  const owedAfter = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
+  ok('★ 欠款归零（debt189 已标记已付，「该付同事」名单里没有 Kuang 了）', !owedAfter, owedAfter);
+  const kuangHoldId41 = await page.evaluate(()=>holdingAccountId('Kuang'));
+  const kuangHoldBal41 = await page.evaluate((id)=>data.transactions.filter(t=>t.accountId===id)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), kuangHoldId41);
+  ok('★ 代管现金是 4811，不是 5000', kuangHoldBal41 === 4811, kuangHoldBal41);
+  const accBossBalAfter41 = await page.evaluate(()=>data.transactions.filter(t=>t.accountId==='acc_boss')
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+  ok('★ 来源账户这次只减少 4811（189 之前已经扣过了，不能再扣一次）',
+     accBossBalAfter41 === accBossBalBefore41 - 189 - 4811, { accBossBalBefore41, accBossBalAfter41 });
+  const monthExpAfter41 = await page.evaluate(()=>{
+    const d = new Date();
+    return monthTxs('acc_boss', d.getFullYear(), d.getMonth())
+      .filter(t=>t.type==='expense' && !t.xfer).reduce((s,t)=>s+t.amount,0);
+  });
+  ok('支出统计没有因为这次转账再增加（189 那笔早就算过一次了，转账本身是 xfer）',
+     monthExpAfter41 === 189, monthExpAfter41);
+
+  // ---- 对照组一：不欠钱的人，转账拿满整额，没有任何 paidAt 被标记 ----
+  await page.selectOption('#boss-cash-gift-person', 'Seryi');
+  await page.fill('#boss-cash-gift-amount', '5000');
+  await page.evaluate(()=>sendBossCashGift());
+  await page.waitForTimeout(250);
+  const seryiSent = await page.evaluate(()=>window.__gifts[window.__gifts.length-1]?.p);
+  ok('对照组一：不欠钱时净额等于原始输入 5000', seryiSent?.amount === 5000, seryiSent);
+  ok('对照组一：没有 offsetTxIds', !seryiSent?.offsetTxIds, seryiSent);
+  const seryiHoldId41 = await page.evaluate(()=>holdingAccountId('Seryi'));
+  const seryiHoldBal41 = await page.evaluate((id)=>data.transactions.filter(t=>t.accountId===id)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), seryiHoldId41);
+  ok('对照组一：代管拿到整整 5000', seryiHoldBal41 === 5000, seryiHoldBal41);
+
+  // ---- 对照组二：欠得比转账金额还多（欠 6500：4000+2500 两笔），只转 5000 ----
+  //      逐笔累加到不超过 5000：4000 可以（累计4000），再加 2500 会到 6500 超过 5000，
+  //      整段停手——只抵 4000，2500 那笔还欠着，不拆单笔 ----
+  await page.evaluate(() => {
+    data.transactions.push(
+      { id:'debtA', accountId:'acc_boss', type:'expense', amount:4000, date:'2026-01-01',
+        categoryId:'cat_other_exp', description:'垫付A（较旧）', updatedAt: Date.now(),
+        fromStaff:{ by:'DebtHeavy41', at: 1 } },
+      { id:'debtB', accountId:'acc_boss', type:'expense', amount:2500, date:'2026-02-01',
+        categoryId:'cat_other_exp', description:'垫付B（较新）', updatedAt: Date.now(),
+        fromStaff:{ by:'DebtHeavy41', at: 2 } }
+    );
+    saveData();
+  });
+  // 「给谁」下拉只认公司报账名册（Seryi/Kuang/Yang），DebtHeavy41 这个名字选不到——
+  // 这里直接调算法本身（pickDebtOffset 是纯函数，不改任何数据），端到端走 UI 的部分
+  // 已经在上面 Kuang（欠 189 转 5000）和 Seryi（不欠钱）两个场景里覆盖过了。
+  const r = await page.evaluate(() => {
+    const unpaid = unpaidDebtTxs('DebtHeavy41', 'USD');
+    return { picked: unpaid.map(t=>t.id), result: pickDebtOffset(unpaid, 5000) };
+  });
+  ok('对照组二：只抵 4000（较旧那笔 debtA），不拆单笔、不超额',
+     r.result.total === 4000 && r.result.picked.length === 1 && r.result.picked[0].id === 'debtA', r);
+  ok('对照组二：不会跳过较旧的去选较新的、也不会两笔都选（6500 超过 5000）',
+     r.picked.length === 2 && r.picked.includes('debtA') && r.picked.includes('debtB'), r);
+
+  // ---- 撤回 Kuang 那笔转账：欠款要还原成 189，paidAt 被清掉 ----
+  await page.evaluate(()=>closeModal('modal-boss-cash-gift'));
+  await page.click('#ov-boss-cash-gift');
+  await page.waitForTimeout(150);
+  await page.evaluate(() => {
+    db = { collection: (c) => ({
+      doc: () => ({ delete: async () => {} }),
+      where: () => ({ orderBy: () => ({ limit: () => ({ get: async () => ({ empty:true, docs:[] }) }) }) }),
+    }) };
+    bossCashGiftRecentCache['g41_1'] = { person:'Kuang', amount:4811, currency:'USD',
+      offsetTxIds:['debt189'], offsetTotal:189 };
+  });
+  await page.evaluate(()=>deleteBossCashGift('g41_1'));
+  await page.waitForTimeout(250);
+  const debt189After = await page.evaluate(()=>data.transactions.find(t=>t.id==='debt189'));
+  ok('撤回后，debt189 的 paidAt 被清掉（欠款恢复未付）', debt189After && !debt189After.fromStaff.paidAt, debt189After);
+  const owedAfterUndo = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
+  ok('撤回后，「该付同事」名单里 Kuang 的欠款恢复成 189', owedAfterUndo && owedAfterUndo.total === 189, owedAfterUndo);
+
+  // ---- 旧数据重算：模拟改版之前已经转出去的钱（代管里有余额，但对应欠款还没抵）----
+  await page.evaluate(() => {
+    const holdAcc = getOrCreateHoldingAccount('OldGift41', 'USD');
+    data.transactions.push(
+      { id:'oldgiftIn', accountId: holdAcc.id, type:'income', amount:1000, date:'2026-01-01',
+        categoryId:'cat_cash_gift_in', description:'改版前转的', updatedAt: Date.now(), xfer:true },
+      { id:'oldDebt41', accountId:'acc_boss', type:'expense', amount:300, date:'2026-01-01',
+        categoryId:'cat_other_exp', description:'改版前的垫付', updatedAt: Date.now(),
+        fromStaff:{ by:'OldGift41', at: 1 } }
+    );
+    saveData();
+  });
+  const holdBalBeforeRecalc = await page.evaluate(()=>{
+    const id = holdingAccountId('OldGift41');
+    return data.transactions.filter(t=>t.accountId===id).reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0);
+  });
+  const accBossBalBeforeRecalc = await page.evaluate(()=>data.transactions.filter(t=>t.accountId==='acc_boss')
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+  const txCountBeforeRecalc = await page.evaluate(()=>data.transactions.length);
+
+  const scan41 = await page.evaluate(()=>bossDebtRecalcScan());
+  ok('重算预览：OldGift41 有 1 笔共 300', (() => {
+    const g = scan41.find(x=>x.person==='OldGift41');
+    return g && g.picked.length === 1 && g.total === 300;
+  })(), scan41);
+
+  await page.evaluate(()=>openBossDebtRecalc());
+  await page.waitForTimeout(150);
+  const oldDebtAfter = await page.evaluate(()=>data.transactions.find(t=>t.id==='oldDebt41'));
+  ok('重算后，oldDebt41 标记已付', oldDebtAfter && !!oldDebtAfter.fromStaff.paidAt, oldDebtAfter);
+  const holdBalAfterRecalc = await page.evaluate(()=>{
+    const id = holdingAccountId('OldGift41');
+    return data.transactions.filter(t=>t.accountId===id).reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0);
+  });
+  ok('★ 重算前后代管余额不变（只改 paidAt，不碰交易）', holdBalAfterRecalc === holdBalBeforeRecalc, { holdBalBeforeRecalc, holdBalAfterRecalc });
+  const accBossBalAfterRecalc = await page.evaluate(()=>data.transactions.filter(t=>t.accountId==='acc_boss')
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+  ok('★ 重算前后来源账户余额也不变', accBossBalAfterRecalc === accBossBalBeforeRecalc, { accBossBalBeforeRecalc, accBossBalAfterRecalc });
+  const txCountAfterRecalc = await page.evaluate(()=>data.transactions.length);
+  ok('重算不新增/删除任何交易', txCountAfterRecalc === txCountBeforeRecalc, { txCountBeforeRecalc, txCountAfterRecalc });
+
+  // ---- 重复点：已经没有可重算的了 ----
+  const scan41b = await page.evaluate(()=>bossDebtRecalcScan());
+  ok('第二次扫描：没有 OldGift41 了（已经处理过）', !scan41b.some(g=>g.person==='OldGift41'), scan41b);
+
   ok('无 JS 报错', errs.length===0, errs);
   await ctx.close();
 }

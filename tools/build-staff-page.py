@@ -1556,7 +1556,13 @@ async function shrinkPhotoForInbox(dataUrl, limit){
     });
     const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
     if(!w0 || !h0) return null;
-    for(const maxSide of [1600, 1200, 900, 700, 500]){
+    // 从「够清楚」的那一端开始试，不是从「保证塞得下」那一端——收据要看得清金额、
+    // 店名、日期，糊掉的凭证等于没有。实测一般收据在 2400px / q0.85 大约 300~600KB，
+    // 本来就塞得下；真的塞不下才一级一级往下让。
+    // ⚠️ 上限**不能**再往上调：Firestore 那份规则写死 photo < 760000 字符
+    // （firestore.rules 第 51 行），客户端调高只会变成 permission-denied，
+    // 而且改规则要用户自己去 Firebase Console 贴一次。要更清楚，只能在上限内争取。
+    for(const maxSide of [2400, 2000, 1600, 1200, 900, 700, 500]){
       const scale = Math.min(maxSide / Math.max(w0, h0), 1);   // 只缩不放
       const w = Math.max(1, Math.round(w0 * scale));
       const h = Math.max(1, Math.round(h0 * scale));
@@ -1566,7 +1572,7 @@ async function shrinkPhotoForInbox(dataUrl, limit){
       // 透明底的 PNG 不先铺白，转成 JPEG 会变一片黑（跟 shrinkPhotoForPDF 同一个坑）
       cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
       cx.drawImage(img, 0, 0, w, h);
-      for(const q of [0.7, 0.55, 0.4]){
+      for(const q of [0.85, 0.7, 0.55, 0.4]){
         const out = c.toDataURL('image/jpeg', q);
         if(out && out.length < limit) return out;
       }
@@ -1603,26 +1609,34 @@ async function submitInboxTx(tx){
   // 真的压不下去才放弃，并且**一定要告诉同事**（见 flushBossQueue 里 photoDropped 那段），
   // 让他知道要另外把照片发给老板。丢照片可以，闷声丢不行——跟老板端「以前删过的记录
   // 要讲出来」是同一条原则。
-  let photoDropped = false;
+  let photoDropped = false, photoReason = '';
   if(tx.attachmentId){
     try{
       const blob = await getAttachmentBlob(tx.attachmentId);
-      if(blob){
+      if(!blob){
+        // ⚠️ 这一支以前是**静默**的（只有 if(blob){...}，没有 else），是「记录有、
+        // 账单没有」的第二个来源，而且比「太大」更难猜：这笔账明明附了照片
+        // （tx.attachmentId 还在），但这台手机的本地存储里已经找不到那张图了。
+        // 常见原因是手机系统清掉了网页的离线存储（iOS 对长期没打开的网站尤其积极），
+        // 照片没了、账目本身还在。这种情况**一定要讲出来**，否则同事以为送成功了、
+        // 老板以为同事没拍。
+        photoDropped = true; photoReason = 'missing';
+      }else{
         const dataUrl = await blobToBase64(blob);
         if(dataUrl.length < INBOX_PHOTO_LIMIT){
           payload.photo = dataUrl;
         }else{
           const small = await shrinkPhotoForInbox(dataUrl, INBOX_PHOTO_LIMIT);
           if(small) payload.photo = small;
-          else photoDropped = true;
+          else { photoDropped = true; photoReason = 'toobig'; }
         }
       }
-    }catch(e){ console.warn('照片读不出来，只送文字', e); photoDropped = true; }
+    }catch(e){ console.warn('照片读不出来，只送文字', e); photoDropped = true; photoReason = 'error'; }
   }
 
   try{
     await db.collection(INBOX_COLLECTION).add(payload);
-    return { ok:true, photoDropped };
+    return { ok:true, photoDropped, photoReason };
   }catch(e){
     // 口令不对 / 老板还没设好权限：重试一百次也是同样结果，要当场说清楚
     if(e && e.code === 'permission-denied')
@@ -1673,8 +1687,13 @@ async function flushBossQueue(opts){
       // 照片没送成要讲出来，而且**不管是不是 loud**（自动补送时同事没在看提示，
       // 但这件事他必须知道：老板那边会看到一笔没有凭证的账）。
       if(r.photoDropped){
-        toast(tt('⚠️ 这笔的账已经送到老板那边，但收据照片太大送不过去，请另外把照片发给他',
-                 '⚠️ Sent, but the receipt photo was too large to upload — please send it to the Boss separately'));
+        // 分开讲原因：两种情况同事该做的事不一样——「太大」重拍一张小一点的就行，
+        // 「找不到了」是本机存储被清掉，重拍才有用，光重送没用。
+        toast(r.photoReason === 'missing'
+          ? tt('⚠️ 账已经送到老板那边，但这台手机上找不到那张收据照片了（可能被系统清掉）——请重新拍一张贴上去，或直接把照片发给老板',
+               '⚠️ Sent, but the receipt photo is no longer stored on this phone — please re-attach a photo, or send it to the Boss directly')
+          : tt('⚠️ 这笔的账已经送到老板那边，但收据照片太大送不过去，请另外把照片发给他',
+               '⚠️ Sent, but the receipt photo was too large to upload — please send it to the Boss separately'));
       }else if(loud) toast(tt('✅ 已送到老板那边','✅ Sent to the Boss'));
     } else if(r.retriable){
       if(local) local.inbox = { status:'pending', error:null };
