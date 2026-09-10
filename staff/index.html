@@ -1901,9 +1901,10 @@ function renderOverview(){
   document.getElementById('ov-income').textContent = fmt(inc, acc.currency);
   document.getElementById('ov-expense').textContent = fmt(exp, acc.currency);
 
-  // Recent 5
+  // Recent 5——配平腿不给人看（见 isPairedSpendLeg()），过滤要放在 slice 之前，
+  // 不然它占掉一个名额，用户会觉得"少了一笔"。
   const recent = [...data.transactions]
-    .filter(t=>t.accountId===acc.id)
+    .filter(t=>t.accountId===acc.id && !isPairedSpendLeg(t))
     .sort((a,b)=>new Date(b.date)-new Date(a.date))
     .slice(0,5);
   const el = document.getElementById('ov-recent');
@@ -2078,6 +2079,8 @@ function renderTxList(){
   const acc = curAcc(); if(!acc) return;
   document.getElementById('tx-month-text').textContent = monthName(state.txYear, state.txMonth);
   let txs = monthTxs(acc.id, state.txYear, state.txMonth);
+  // 配平腿不给人看，只在幕后抵消余额——见 isPairedSpendLeg() 的注释。
+  txs = txs.filter(t=>!isPairedSpendLeg(t));
   if(state.txFilter!=='all') txs = txs.filter(t=>t.type===state.txFilter);
   txs.sort((a,b)=>new Date(b.date)-new Date(a.date));
   const el = document.getElementById('tx-list');
@@ -3290,6 +3293,11 @@ async function buildStatementPDF(){
   const expenseTxs = txs.filter(t=>t.type==='expense').sort((a,b)=>a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   const expenseTotal = expenseTxs.reduce((s,t)=>s+t.amount,0);
   const closingBalance = openingBalance + incomeTotal - expenseTotal;
+  // 配平腿（isPairedSpendLeg()）不列进明细行——但**总计沿用上面未过滤的
+  // incomeTotal/expenseTotal**，「期初＋收入－支出＝期末」这条恒等式要保住
+  // （见下面「收支汇总」那段既有注释）；这两个 Shown 数组只给行渲染用。
+  const incomeTxsShown = incomeTxs.filter(t=>!isPairedSpendLeg(t));
+  const expenseTxsShown = expenseTxs.filter(t=>!isPairedSpendLeg(t));
 
   // 凭证编号：按明细顺序，明细行与附件页共用
   const withAttachments = expenseTxs.filter(t=>t.attachmentId);
@@ -3400,7 +3408,7 @@ async function buildStatementPDF(){
             </tr>
           </thead>
           <tbody>
-            ${expenseTxs.map(t=>{
+            ${expenseTxsShown.map(t=>{
               const cat = getCat(t.categoryId);
               const label = t.description || (cat?cat.name:'未分类');
               return `<tr>
@@ -3410,7 +3418,7 @@ async function buildStatementPDF(){
                 <td class="st-voucher-col">${pMap[t.id]||'—'}</td>
               </tr>`;
             }).join('')}
-            ${expenseTxs.length===0?`<tr><td colspan="4" style="text-align:center;color:#999">${P}暂无支出</td></tr>`:''}
+            ${expenseTxsShown.length===0?`<tr><td colspan="4" style="text-align:center;color:#999">${P}暂无支出</td></tr>`:''}
             <tr class="st-total-row">
               <td colspan="2">总计</td>
               <td class="st-amt-col">${fmtThousands(expenseTotal)}</td>
@@ -3429,7 +3437,7 @@ async function buildStatementPDF(){
             </tr>
           </thead>
           <tbody>
-            ${incomeTxs.map(t=>{
+            ${incomeTxsShown.map(t=>{
               const cat = getCat(t.categoryId);
               const label = t.description || (cat?cat.name:'未分类');
               return `<tr>
@@ -3438,7 +3446,7 @@ async function buildStatementPDF(){
                 <td class="st-amt-col">${fmtThousands(t.amount)}</td>
               </tr>`;
             }).join('')}
-            ${incomeTxs.length===0?`<tr><td colspan="3" style="text-align:center;color:#999">${P}无新增注资</td></tr>`:''}
+            ${incomeTxsShown.length===0?`<tr><td colspan="3" style="text-align:center;color:#999">${P}无新增注资</td></tr>`:''}
             <tr class="st-total-row">
               <td colspan="2">总计</td>
               <td class="st-amt-col">${fmtThousands(incomeTotal)}</td>
@@ -7289,8 +7297,10 @@ async function fetchInbox(opts){
 
 /**
  * 一笔支出算不算「同事自己垫的、老板还没还」——`inboxOwedByPerson()`／
- * `unpaidDebtTxs()`／`inboxMarkPaid()` 三处都要用**同一个**判断，否则"欠多少"跟
- * "转钱时抵掉多少"会各算各的、对不上（2026-09-10 用户明确要求"两件事要互相一致"）。
+ * `inboxMarkPaid()` 两处都要用**同一个**判断，否则「欠多少」会各算各的、对不上。
+ * ⚠️ 2026-09-10 用户实机跑完后明确要求拿掉「转钱先抵欠款」那条规则：转现金＝全额进
+ * 代管，不再自动抵扣任何欠款；欠款独立存在，只有老板手动按「已付」才结清。这个函数
+ * 判断的是「欠不欠」，跟转账逻辑已经彻底分开，不要再把两件事往一起想。
  *
  * **排除有配平腿的**（2026-09-10 这次改版新增）：这次改版把"同事花代管现金"也记成
  * 真支出（`fromStaff`+`type:'expense'`），乍看跟"他自己垫的钱"长得一样，但那笔钱
@@ -7317,6 +7327,22 @@ function mergeInboxTx(prev, tx){
     merged.fromStaff = Object.assign({}, tx.fromStaff, { paidAt: prev.fromStaff.paidAt });
   }
   return merged;
+}
+
+/** 同事用代管现金消费时补的「配平腿」（`fetchInbox()` 腿二／`bossCashCleanupScan()`
+ *  补搬时新增的那条：真实账户 income、xfer:true、staffSpendId 指回那笔真消费的 id）——
+ *  存在的唯一目的是把「代管现金花掉」这件事在真实账户里抵消掉，**不是给人看的**。
+ *  2026-09-10 用户实机看到明细里混着这些配平记录，明确要求「我不要看到这些东西」，
+ *  已经手动删过一批（后果是真实账户被多扣一次，见 `repairSpendLegs()`）。
+ *  ⚠️ 只隐藏、不能删：删掉这条会让真支出腿失去抵消，账户余额立刻多扣一次——
+ *  凡是要"列出交易给人看"的地方（明细列表、账户明细 PDF 的收支明细表）都要用这个
+ *  判断过滤掉；**余额、统计（本月支出/收入汇总/期末结余）不受影响，照常把它算进去**，
+ *  因为那正是它存在的意义。用 `xfer && staffSpendId` 这组明确标记判断，不猜描述文字——
+ *  真支出腿（`fetchInbox()` 腿一）虽然也带 `staffSpendId`（就是它自己的 id），但没有
+ *  `xfer`，不会被这条误伤；「给同事现金」转账腿（`giftId`）、「他还钱了」／「一键归还」
+ *  （`repayId`）都没有 `staffSpendId`，也不会被误伤，继续正常显示。 */
+function isPairedSpendLeg(t){
+  return !!(t && t.xfer && t.staffSpendId);
 }
 
 function isUnpaidStaffAdvance(t){
@@ -7348,31 +7374,11 @@ function inboxOwedByPerson(){
   return [...map.values()].sort((a, b) => b.total - a.total);
 }
 
-/** 这个人、这个币种，还没结清的垫付有哪几笔，按日期从旧到新排——`sendBossCashGift()`
- *  转钱抵欠款、`openBossDebtRecalc()` 重算旧数据都靠它拿到「可以抵的名单」，用的是跟
- *  `inboxOwedByPerson()` 完全同一条判断（`isUnpaidStaffAdvance`），保证"欠多少"这个
- *  数字在两处不会各算各的。 */
-function unpaidDebtTxs(person, currency){
-  return data.transactions.filter(t => isUnpaidStaffAdvance(t) &&
-    samePersonName(t.fromStaff.by, person) &&
-    ((getAcc(t.accountId) || {}).currency || 'USD') === currency
-  ).sort((a, b) => new Date(a.date) - new Date(b.date) || (a.fromStaff.at || 0) - (b.fromStaff.at || 0));
-}
-
-/** 从最旧的欠款开始逐笔累加，加到「再加下一笔就会超过 cap」为止就整段停手——不拆
- *  单笔、也不会跳过一笔大的去凑后面更小的（用户明确要求「不拆分单笔」，这是最简单、
- *  最不会算错的做法）。返回选中的记录和它们的合计。 */
-function pickDebtOffset(unpaid, cap){
-  let total = 0;
-  const picked = [];
-  for(const t of unpaid){
-    const amt = Number(t.amount) || 0;
-    if(total + amt > cap + 0.005) break;
-    picked.push(t);
-    total = Math.round((total + amt) * 100) / 100;
-  }
-  return { picked, total };
-}
+// 2026-09-10 用户实机跑完后明确拿掉「转钱先抵欠款」规则：转现金＝全额进代管，不再
+// 自动抵扣任何欠款，欠款独立存在。原本这里的 `unpaidDebtTxs()`/`pickDebtOffset()`
+// 只给 `sendBossCashGift()` 抵扣与 `openBossDebtRecalc()` 重算旧数据两处用，两处
+// 都已删除，这两个函数没有别的调用者，一并删掉不留死代码。「该付同事多少」仍然靠
+// `isUnpaidStaffAdvance()`／`inboxOwedByPerson()`／`inboxMarkPaid()` 那一套，原样保留。
 
 // 名字是同事那边送上来的自由文本，绝不能拼进 onclick 的引号里（一个单引号就把
 // 属性撑破，后面那段照样会被当成代码跑）。所以按钮只带**行号**，名字留在这个数组里。
@@ -7711,71 +7717,11 @@ function openBossCashCleanup(){
   toast(`已整理 ${totalMove} 笔${skipNote}`);
 }
 
-/** 「按新规则重算欠款」（2026-09-10）：`sendBossCashGift()` 现在转钱会先抵掉旧欠款，
- *  但改版之前已经转出去的钱没有做这一步。这里补一次：对每个「代管有余额、又有未结清
- *  垫付」的人，用 `sendBossCashGift()` 同一套算法（`unpaidDebtTxs` + `pickDebtOffset`，
- *  从最旧的欠款逐笔累加，抵到不超过他代管余额为止）把对应的垫付标记已付。 */
-function bossDebtRecalcScan(){
-  const groups = [];
-  data.accounts.filter(a => a.isHolding).forEach(acc => {
-    const person = acc.name.replace(/^在\s*/, '').replace(/\s*手上$/, '') || acc.name;
-    const remain = holdingBalance(acc);
-    if(!(remain > 0)) return;             // 手上没有代管余额，没有什么好拿来抵的
-    const unpaid = unpaidDebtTxs(person, acc.currency);
-    if(!unpaid.length) return;
-    const { picked, total } = pickDebtOffset(unpaid, remain);
-    if(!picked.length) return;
-    groups.push({ person, holdAcc: acc, picked, total });
-  });
-  return groups;
-}
-
-/** 这个人「单纯的现金转账」两条腿（源账户支出 + 代管账户收入，giftId 相同，
- *  不是消费配平腿也不是归还），按日期从旧到新——`applyDebtRecalcOffset()` 靠这个
- *  找到「当初应该被这笔转账吸收掉的旧欠款」到底对应哪一次转账。只抓两条腿都还在的
- *  （giftId 落单，比如那条腿被别的方式动过手脚，不敢碰）。 */
-function bossCashGiftLegPairs(holdAcc){
-  const byGift = {};
-  data.transactions.forEach(t => {
-    if(!t.giftId || t.staffSpendId || t.repayId) return;
-    if(t.accountId === holdAcc.id && t.type === 'income'){
-      (byGift[t.giftId] = byGift[t.giftId] || {}).holdLeg = t;
-    } else if(t.type === 'expense' && t.xfer){
-      const acc = getAcc(t.accountId);
-      if(acc && !acc.isHolding) (byGift[t.giftId] = byGift[t.giftId] || {}).srcLeg = t;
-    }
-  });
-  return Object.values(byGift).filter(p => p.holdLeg && p.srcLeg)
-    .sort((a, b) => new Date(a.holdLeg.date) - new Date(b.holdLeg.date));
-}
-
-/** 2026-09-10 三度改版新增：重算欠款时，如果找得到「当初应该吸收这笔欠款的那次
- *  转账」（两条腿都还在、还带着 giftId），把这两条腿的金额一起退回去——不能只标
- *  paidAt、放着代管余额（和当初来源账户被扣的那笔）还是原始的整数不变，那正是用户
- *  实机报的 4776 bug 的由来（应该退回 189.53，却只标了「已付」，代管账户还挂着 5000）。
- *  找不到可退的转账（比如代管余额本来就是拼凑出来的旧格式数据，没有 giftId 可对）就
- *  退回旧行为：只标 paidAt，账户余额原样不动——宁可少退一点，也不能瞎猜一笔转账去扣。
- *  从最旧的转账开始退，退到 total 退完为止（同一条精神：不拆着退超过实际找到的钱）。
- *  返回退回了多少、以及退了哪几个 giftId（`openBossDebtRecalc()` 用来顺手同步 Firestore）。 */
-function applyDebtRecalcOffset(holdAcc, total){
-  const pairs = bossCashGiftLegPairs(holdAcc);
-  let remain = Math.round(total * 100) / 100;
-  const touched = [];
-  for(const pr of pairs){
-    if(remain <= 0.005) break;
-    const avail = Number(pr.holdLeg.amount) || 0;
-    if(avail <= 0) continue;
-    const take = Math.min(remain, avail);
-    const now = Date.now();
-    pr.holdLeg.amount = Math.round((avail - take) * 100) / 100;
-    pr.srcLeg.amount = Math.round((Number(pr.srcLeg.amount) - take) * 100) / 100;
-    pr.holdLeg.updatedAt = now;
-    pr.srcLeg.updatedAt = now;
-    remain = Math.round((remain - take) * 100) / 100;
-    touched.push({ giftId: pr.holdLeg.giftId, take, newAmount: pr.holdLeg.amount });
-  }
-  return { refunded: Math.round((total - remain) * 100) / 100, touched };
-}
+// 2026-09-10 用户实机跑完后明确拿掉「转钱先抵欠款」规则，原本住在这里的
+// `bossDebtRecalcScan()`/`bossCashGiftLegPairs()`/`applyDebtRecalcOffset()`（补做
+// 「按新规则重算旧数据」这件事）连带的抵扣概念一起没了，三个函数只有
+// `openBossDebtRecalc()` 一个调用者、而那个函数也已经被下面的「撤销抵扣（改回全额）」
+// `undoBossDebtOffset()` 取代，一并删掉不留死代码。新写法见下面 `offsetGiftGroups()`。
 
 /**
  * ↩️ 撤销「标记已付」。按 `fromStaff.paidAt` 这个时间戳分批——同一次操作标的那几笔
@@ -7825,68 +7771,180 @@ function openUndoMarkPaid(){
   toast(`已撤销：${b.txs.length} 笔回到「还没付」，欠款 ${fmt(b.total, b.currency)}`);
 }
 
-function openBossDebtRecalc(){
-  const groups = bossDebtRecalcScan();
-  if(!groups.length){ toast('没有需要重算的：没人同时符合「代管有余额」和「有未结清垫付」'); return; }
-  const detail = groups.map(g => `${g.person} ${g.picked.length} 笔共 ${fmt(g.total, g.holdAcc.currency)}`).join('、');
-  if(!confirm(`按新规则重算欠款：${detail}，将标记为已付。找得到当初对应转账的部分，会\n把多转的那部分从代管余额和来源账户一起退回去；找不到的仍然只标已付、账户余额不变。确定吗？`)) return;
+/** 找出所有「抵过欠款」的转账——两条腿（源账户支出腿 + 代管账户收入腿，同一个
+ *  giftId）都还带着 `offsetTxIds`（旧规则抵扣时写的字段，见 `sendBossCashGift()`
+ *  当年的注释，现已删除那段逻辑）。`undoBossDebtOffset()` 靠这个拿到「要改回全额的
+ *  名单」。找不到成对两条腿的（比如其中一条被别的方式动过手脚）不收进名单，宁可少撤
+ *  一笔也不猜。 */
+function offsetGiftGroups(){
+  const byGift = {};
+  data.transactions.forEach(t => {
+    if(!t.giftId || !Array.isArray(t.offsetTxIds) || !t.offsetTxIds.length) return;
+    (byGift[t.giftId] = byGift[t.giftId] || []).push(t);
+  });
+  const groups = [];
+  Object.entries(byGift).forEach(([giftId, legs]) => {
+    const holdLeg = legs.find(t => (getAcc(t.accountId) || {}).isHolding);
+    const srcLeg = legs.find(t => t !== holdLeg);
+    if(!holdLeg || !srcLeg) return;
+    const holdAcc = getAcc(holdLeg.accountId);
+    if(!holdAcc) return;
+    const person = holdAcc.name.replace(/^在\s*/, '').replace(/\s*手上$/, '') || holdAcc.name;
+    const offsetIds = holdLeg.offsetTxIds || [];
+    const offsetTotal = Math.round((Number(holdLeg.offsetTotal) || 0) * 100) / 100;
+    const netAmount = Math.round((Number(holdLeg.amount) || 0) * 100) / 100;
+    const fullAmount = Math.round((netAmount + offsetTotal) * 100) / 100;
+    groups.push({ giftId, holdLeg, srcLeg, holdAcc, person, offsetIds, offsetTotal, netAmount, fullAmount,
+                  currency: holdAcc.currency });
+  });
+  return groups;
+}
+
+/**
+ * ↩️ 撤销抵扣（改回全额）——2026-09-10 用户实机跑完后明确要求拿掉「转钱先抵欠款」：
+ * 「他那边的卡片应该显示 5000−506，我这里应该也是显示 5000 给他，不是 4810.47」
+ * 「我转个 5000 给他 然后我这边的卡和他那边就是 5000 扣掉这个月他记的就好了不是吗？」
+ * 新规则：转现金＝全额进代管，欠款独立存在、只有手动按「已付」才结清。这个函数是给
+ * 已经被旧规则抵过的资料一条路走回全额模型，取代原本的「🔁 按新规则重算欠款」。
+ *
+ * 先预览再动手，绝不自动挑——同一条精神照抄 `openUndoMarkPaid()`。
+ */
+async function undoBossDebtOffset(){
+  const groups = offsetGiftGroups();
+  if(!groups.length){ toast('没有需要撤销的：找不到任何抵过欠款的转账'); return; }
+  const detail = groups.map(g => `${g.person}：${fmt(g.netAmount, g.currency)} 会改回 ${fmt(g.fullAmount, g.currency)}`
+    + `（被抵掉的 ${g.offsetIds.length} 笔垫付共 ${fmt(g.offsetTotal, g.currency)} 会恢复成还欠着）`).join('\n');
+  if(!confirm(`撤销抵扣（改回全额）：\n${detail}\n\n确定吗？`)) return;
   const now = Date.now();
-  let n = 0, anyRefunded = false;
-  groups.forEach(g => {
-    g.picked.forEach(t => { t.fromStaff = Object.assign({}, t.fromStaff, { paidAt: now }); n++; });
-    const { refunded, touched } = applyDebtRecalcOffset(g.holdAcc, g.total);
-    if(refunded > 0){
-      anyRefunded = true;
-      // 尽力顺手把 Firestore 那份 boss_cash_gifts 文档也改成新的净额——同事那边
-      // 「手上现金」卡读的是这份数据，不改的话他手机上还是显示旧的（更大的）数字。
-      // 失败/没网都不打断这次重算：本机这份账才是权威，这里只是尽力同步。
-      // 这些都是"改版之前转出去、从没做过 offset"的旧转账（能找到 giftId 两条腿才会
-      // 走到这里），文档原本不会有 offsetTotal/offsetTxIds，所以直接写死这次退掉的
-      // 数字就够，不用读旧值再累加（避免多一趟异步读、也不依赖 FieldValue.increment/
-      // arrayUnion——这两个要连上真正的 Firebase SDK 才有，跟别处「不必要地多依赖
-      // 一个全局对象」的教训一致，能不用就不用）。
-      if(cloudAvailable && currentUser){
-        const debtIds = g.picked.map(p => p.id);
-        const k = bossCashKeySaved();
-        touched.forEach(t => {
-          // ⚠️ **不能用 .update()**（2026-09-10 验收抓到）：firestore.rules 对
-          // boss_cash_gifts 写死 `allow update: if false`（只许整笔撤回，不许悄悄改
-          // 金额），打过去一定 permission-denied，还会被 catch 静默吞掉。而且就算
-          // 规则放行也没用——同事端 staffSyncBossGifts() 按 giftId 一次性去重，
-          // 已经拉过的那份文档**永远不会再读第二次**。
-          // 改成「删掉旧的、另建一份净额的新的」：规则允许 delete 与 create，同事端
-          // 也刚好接得住——prune 发现旧 giftId 不见了会把那笔从他余额里扣掉，sync
-          // 看到新文档（at 是现在，比他的游标新）会把净额加回去，两边就对齐了。
-          // 字段只能是规则允许的那几个，抵扣明细一律留在本机的腿上。
-          if(!k) return;
-          const fresh = { k, person: g.person, amount: t.newAmount,
-                          currency: g.holdAcc.currency, at: Date.now() };
-          db.collection('boss_cash_gifts').doc(t.giftId).delete()
-            .then(() => db.collection('boss_cash_gifts').add(fresh))
-            .then(ref => {
-              if(!ref || !ref.id) return;
-              // 本机两条腿要改挂到新的 giftId 上，否则以后撤回这笔找不到云端那份；
-              // 抵扣明细顺手记上去，撤回时要靠它把垫付还原成未付。
-              data.transactions.forEach(x => {
-                if(x.giftId !== t.giftId) return;
-                x.giftId = ref.id;
-                x.offsetTxIds = debtIds;
-                x.offsetTotal = t.take;
-                x.updatedAt = Date.now();
-              });
-              saveData();
-            })
-            .catch(()=>{});
-        });
+  let n = 0, restored = 0;
+  for(const g of groups){
+    g.holdLeg.amount = g.fullAmount;
+    g.srcLeg.amount = g.fullAmount;
+    delete g.holdLeg.offsetTxIds; delete g.holdLeg.offsetTotal;
+    delete g.srcLeg.offsetTxIds; delete g.srcLeg.offsetTotal;
+    g.holdLeg.updatedAt = now; g.srcLeg.updatedAt = now;
+    g.offsetIds.forEach(id => {
+      const t = data.transactions.find(x => x.id === id);
+      if(t && t.fromStaff && t.fromStaff.paidAt){
+        const f = Object.assign({}, t.fromStaff);
+        delete f.paidAt;
+        t.fromStaff = f;
+        t.updatedAt = Date.now();
+        restored++;
       }
+    });
+    n++;
+    // 云端那份 boss_cash_gifts 文档不许 update（firestore.rules 写死
+    // `allow update: if false`），照 openBossDebtRecalc() 当年那套「删掉旧的、
+    // 另建一份新的」写法：规则允许 delete/create，同事端 staffSyncBossGifts() 按
+    // giftId 去重也刚好接得住。字段只能是规则允许的那几个
+    // （hasOnly(['k','person','amount','currency','at','note'])）。失败/没网不打断
+    // 撤销本身——本机这份账才是权威，这里只是尽力同步。
+    if(cloudAvailable && currentUser){
+      const k = bossCashKeySaved();
+      if(k){
+        try{
+          await db.collection('boss_cash_gifts').doc(g.giftId).delete();
+          const ref = await db.collection('boss_cash_gifts').add(
+            { k, person: g.person, amount: g.fullAmount, currency: g.currency, at: Date.now() });
+          if(ref && ref.id){ g.holdLeg.giftId = ref.id; g.srcLeg.giftId = ref.id; }
+        }catch(e){ /* 尽力而为，本机数据已经是对的了 */ }
+      }
+    }
+  }
+  saveData();
+  renderOverview();
+  renderInboxOwed();
+  refreshBossCashGiftRecent();
+  refreshBossCashGiftPersonSummary();
+  toast(`已撤销 ${n} 笔转账的抵扣，改回全额；${restored} 笔垫付恢复成还欠着`);
+}
+
+/** 找出「代管现金消费」缺了配平腿的记录（2026-09-10：用户手动删掉了一批
+ *  `isPairedSpendLeg()` 挡住不给看的配平记录——那些记录既然显示出来了，他就当成
+ *  垃圾删掉了，后果是真实账户被多扣了一次：真支出腿扣了，抵消的配平腿没了）。
+ *  扫描规则：真支出腿（腿一——`type==='expense'`、不带 `xfer`、`staffSpendId` 等于
+ *  它自己的 id，`fetchInbox()`／`bossCashCleanupScan()` 都是这样写的）存在，但对应的
+ *  配平腿缺了哪一条：真实账户那条（腿二，income，跟腿一同一个账户）和／或代管账户
+ *  那条（腿三，expense，落在这个人的代管账户）。代管账户本身找不到（比如连账户都被删了）
+ *  的整条跳过——没地方补代管那条腿，这种极端情况留给用户自己处理，不硬造一个账户。 */
+function missingSpendLegs(){
+  const out = [];
+  data.transactions.forEach(spend => {
+    if(spend.type !== 'expense' || spend.xfer) return;
+    if(!spend.staffSpendId || spend.staffSpendId !== spend.id) return;   // 只认腿一（staffSpendId 是它自己的 id）
+    if(!spend.fromStaff || !spend.fromStaff.by) return;
+    const holdAcc = getAcc(holdingAccountId(spend.fromStaff.by));
+    if(!holdAcc) return;
+    const hasReal = data.transactions.some(t =>
+      t.id !== spend.id && t.staffSpendId === spend.id && t.xfer && t.accountId === spend.accountId);
+    const hasHold = data.transactions.some(t =>
+      t.staffSpendId === spend.id && t.xfer && t.accountId === holdAcc.id);
+    if(hasReal && hasHold) return;
+    out.push({ spend, holdAcc, missingReal: !hasReal, missingHold: !hasHold });
+  });
+  return out;
+}
+
+/**
+ * 🔧 补回缺失的配平记录——2026-09-10 用户原话：「我刚才下午把代管现金支付删掉了
+ * 我去看了单子也有这些东西 我不要看到这些东西」。配平记录现在已经不给看了
+ * （`isPairedSpendLeg()`），但他已经手动删掉的那一批需要一条路补救：不补的话，
+ * 那几个真实账户的余额永远比实际多扣了一截。
+ *
+ * 先预览再动手：按「缺了真实账户那条配平」的记录汇总每个账户会补回多少钱，
+ * 讲清楚补完之后余额怎么变，用户不确认什么都不做。
+ *
+ * ⚠️ 补回来的是**新的交易 id**（`uid()`），跟墓碑（`tombstoneTx`/`deletedTxIds`）
+ * 无关——墓碑按 id 精确匹配（见 `mergeData()`），当初删掉的是旧 id，新建的 id
+ * 不会撞上那份墓碑，不会被云同步过滤掉。
+ */
+function repairSpendLegs(){
+  const missing = missingSpendLegs();
+  if(!missing.length){ toast('没有需要修复的：配平记录都齐全'); return; }
+  const byAcc = new Map();
+  missing.forEach(m => {
+    if(!m.missingReal) return;
+    const acc = getAcc(m.spend.accountId);
+    const key = m.spend.accountId;
+    const e = byAcc.get(key) || { acc, amount: 0, count: 0 };
+    e.amount = Math.round((e.amount + Number(m.spend.amount || 0)) * 100) / 100;
+    e.count += 1;
+    byAcc.set(key, e);
+  });
+  const detail = [...byAcc.values()]
+    .map(e => `「${e.acc ? e.acc.name : '？'}」余额会 +${fmt(e.amount, e.acc ? e.acc.currency : 'USD')}（${e.count} 笔）`)
+    .join('、');
+  const holdOnlyCount = missing.filter(m => !m.missingReal && m.missingHold).length;
+  const holdNote = holdOnlyCount ? `\n另外 ${holdOnlyCount} 笔只缺代管账户那条（不影响真实账户余额），一并补上` : '';
+  if(!confirm(`找到 ${missing.length} 笔缺了配平记录，补回来之后：${detail || '（都只缺代管账户那条，不影响真实账户余额）'}${holdNote}\n确定要补吗？`)) return;
+  const now = Date.now();
+  let nReal = 0, nHold = 0;
+  missing.forEach(({ spend, holdAcc, missingReal, missingHold }) => {
+    if(missingReal){
+      data.transactions.push({
+        id: uid(), accountId: spend.accountId, date: spend.date, type: 'income', amount: spend.amount,
+        categoryId: 'cat_cash_gift_in',
+        description: `${spend.fromStaff.by} 用代管现金支付（配平·补回）`,
+        updatedAt: now, xfer: true, staffSpendId: spend.id
+      });
+      nReal++;
+    }
+    if(missingHold){
+      data.transactions.push({
+        id: uid(), accountId: holdAcc.id, date: spend.date, type: 'expense', amount: spend.amount,
+        categoryId: 'cat_cash_gift',
+        description: `${spend.fromStaff.by} 用代管现金支付（配平·补回）`,
+        updatedAt: now, xfer: true, staffSpendId: spend.id
+      });
+      nHold++;
     }
   });
   saveData();
-  renderInboxOwed();
+  renderOverview();
+  if(state.currentTab === 'transactions') renderTxList();
   refreshBossCashGiftPersonSummary();
-  toast(`已重算：${n} 笔垫付标记已付` + (anyRefunded
-    ? '，找得到原始转账的部分已经把代管余额和来源账户一起退回'
-    : '（这几笔找不到对应的原始转账，只标记已付，账户余额不变）'));
+  toast(`已补回 ${nReal} 笔真实账户配平、${nHold} 笔代管账户配平`);
 }
 
 /** 打开弹窗时先静默收一次同事投递箱的件（fetchInbox() 不传 opts 就是静默模式，
@@ -7950,10 +8008,12 @@ function renderBossCashGiftModal(){
         >清除本机残留显示缓存</span>
       　<span style="text-decoration:underline;cursor:pointer" onclick="openBossCashCleanup()"
         >🧹 整理旧记录</span>
-      　<span style="text-decoration:underline;cursor:pointer" onclick="openBossDebtRecalc()"
-        >🔁 按新规则重算欠款</span>
+      　<span style="text-decoration:underline;cursor:pointer" onclick="undoBossDebtOffset()"
+        >↩️ 撤销抵扣（改回全额）</span>
       　<span style="text-decoration:underline;cursor:pointer" onclick="openUndoMarkPaid()"
         >↩️ 撤销标记已付</span>
+      　<span style="text-decoration:underline;cursor:pointer" onclick="repairSpendLegs()"
+        >🔧 补回缺失的配平记录</span>
     </div>`;
   setTimeout(()=>{ const a = document.getElementById('boss-cash-gift-person'); if(a) a.focus(); }, 120);
   refreshBossCashGiftRecent();
@@ -8210,43 +8270,27 @@ async function sendBossCashGift(){
   }
   const note = (document.getElementById('boss-cash-gift-note').value || '').trim().slice(0, 199);
 
-  // 2026-09-10 用户新增规则：转钱给他之前，先拿这笔钱抵掉他还没结清的垫付欠款——
-  // 那些欠款在他报账进来的时候已经记成真支出、已经扣过账户余额了（虽然当时钱是他
-  // 垫的），还钱这件事不能再记一次支出、也不能再扣一次余额（就像现有「标记已付」
-  // 那样，只盖 paidAt，不另记交易）。从最旧的欠款开始逐笔累加，抵到不超过这次转账
-  // 金额为止（不拆分单笔）；抵掉的部分不进代管账户，剩下的才是他手上的代管现金。
-  const unpaid = unpaidDebtTxs(person, cur);
-  const { picked: offsetPicked, total: offsetTotal } = pickDebtOffset(unpaid, amount);
-  const netAmount = Math.round((amount - offsetTotal) * 100) / 100;
-
-  // 这是钱，而且同事那边当场就看得到——多按一次确认，换掉「多打一个 0」（跟备用金那边同一条规矩）
-  const offsetNote = offsetTotal > 0
-    ? `，其中 ${fmt(offsetTotal, cur)} 先结清他垫付的 ${offsetPicked.length} 笔，剩下 ${fmt(netAmount, cur)} 才进代管账户`
-    : '';
-  if(!confirm(`确定给 ${person} 转 ${fmt(amount, cur)}？会从「${acc.name}」账户扣，转进他的代管账户（不算「花掉」）${offsetNote}`)) return;
+  // 2026-09-10 用户实机跑完「先抵欠款」那版之后明确要求拿掉：「我转个 5000 给他 然后
+  // 我这边的卡和他那边就是 5000 扣掉这个月他记的就好了不是吗？」新规则：转现金＝
+  // **全额**进代管，不再自动抵扣任何欠款；老板欠同事的垫付款独立存在，只有老板手动
+  // 按「已付」（inboxMarkPaid()）才结清。两件事各归各的，不再纠缠。
+  // 已经被旧规则抵过的资料，撤销路见 undoBossDebtOffset()。
+  if(!confirm(`确定给 ${person} 转 ${fmt(amount, cur)}？会从「${acc.name}」账户扣，转进他的代管账户（不算「花掉」）`)) return;
   setStatus('正在送出…');
   try{
-    // Firestore 记的 amount 用抵扣后的净额，不是原始输入——同事那边「手上现金」卡
-    // 同步的就是这份数据，两边要保持同一个数字：净额才是他手上真正待处理的代管现金，
-    // 被抵掉的那部分本质是拿这笔钱结清旧账，不该再算进他手上还要交代的钱。
     // ⚠️ 这份 payload 的字段**只能是规则允许的那几个**（firestore.rules 对
     // boss_cash_gifts 写的是 hasOnly(['k','person','amount','currency','at','note'])）。
-    // 2026-09-10 验收抓到的事故：这里一度多送 offsetTxIds/offsetTotal，规则直接
-    // permission-denied——**只要抵到过欠款，这笔转账就送不出去**，而且错误被
-    // catch 掉，表面上像是没事。抵扣的明细同事那边根本用不到（他只需要净额），
-    // 所以改成**只存在本机的两条腿上**（见下面 legs 的 offsetTxIds/offsetTotal）。
-    // 以后要往这份文档加字段，先改 Console 里的规则，否则一定被挡。
-    const payload = { k, person, amount: netAmount, currency: cur, at: Date.now() };
+    // 以后要往这份文档加字段，先改 Console 里的规则，否则一定被挡（2026-09-10 验收
+    // 抓到过一次：多送 offsetTxIds/offsetTotal 直接 permission-denied，且被 catch
+    // 静默吞掉，表面上像没事——新规则已经不产生这两个字段了，但别再犯同类错误）。
+    const payload = { k, person, amount, currency: cur, at: Date.now() };
     if(note) payload.note = note;
     const docRef = await db.collection('boss_cash_gifts').add(payload);
     const now = Date.now();
-    // 先标记被抵掉的垫付已付——用同一个 giftId 关联，撤回这笔转账时要把这几笔的
-    // paidAt 还原（见 deleteBossCashGift），否则撤回之后欠款会凭空消失。
-    offsetPicked.forEach(t => { t.fromStaff = Object.assign({}, t.fromStaff, { paidAt: now }); });
     // 钱是从老板自己口袋出的，但不是「花掉」，是过给他保管——记一对转账（一进一出，
     // 净额为零），不是一笔支出：源账户扣一笔支出，「在 X 手上」代管账户加一笔收入，
     // 两笔都打 xfer:true（转账，不算进收入/支出汇总，但明细照常看得到）、都带同一个
-    // giftId（撤回时靠它找回这两笔，见 deleteBossCashGift）。金额用抵扣后的净额。
+    // giftId（撤回时靠它找回这两笔，见 deleteBossCashGift）。金额是老板输入的全额。
     // 只在**这台设备**上记，没有服务端权威余额（跟备用金不一样，见结构笔记）。
     const holdAcc = getOrCreateHoldingAccount(person, cur);
     // 记下这次的来源账户——同事花这笔钱的时候（fetchInbox()），明细要整合进「当初
@@ -8257,35 +8301,29 @@ async function sendBossCashGift(){
       accountId: accId,
       date: today(),
       type: 'expense',
-      amount: netAmount,
+      amount,
       categoryId: 'cat_cash_gift',
       description: `给 ${person} 的现金${note ? '：' + note : ''}`,
       updatedAt: now,
       giftId: docRef.id,
-      xfer: true,
-      // 抵扣明细只留在本机（云端那份文档不准带这两个字段，见上面 payload 的注释）。
-      // 撤回这笔转账时要靠它把那几笔垫付还原成「还欠着」，见 deleteBossCashGift。
-      ...(offsetPicked.length ? { offsetTxIds: offsetPicked.map(t => t.id), offsetTotal } : {})
+      xfer: true
     });
     data.transactions.push({
       id: uid(),
       accountId: holdAcc.id,
       date: today(),
       type: 'income',
-      amount: netAmount,
+      amount,
       categoryId: 'cat_cash_gift_in',
       description: `从「${acc.name}」转入${note ? '：' + note : ''}`,
       updatedAt: now,
       giftId: docRef.id,
-      xfer: true,
-      ...(offsetPicked.length ? { offsetTxIds: offsetPicked.map(t => t.id), offsetTotal } : {})
+      xfer: true
     });
     saveData();
     saveBossCashGiftAccount(accId);
-    logBossCashGift({ id: docRef.id, person, amount: netAmount, currency: cur, at: now });
-    setStatus(`已送出：${fmt(amount, cur)}，${offsetTotal > 0
-      ? `其中 ${fmt(offsetTotal, cur)} 结清了他垫付的 ${offsetPicked.length} 笔，${fmt(netAmount, cur)} 记进他手上的现金`
-      : `已进他的代管账户`}，他那边下次打开老板账页会自动看到`);
+    logBossCashGift({ id: docRef.id, person, amount, currency: cur, at: now });
+    setStatus(`已送出：${fmt(amount, cur)}，已进他的代管账户，他那边下次打开老板账页会自动看到`);
     amtInput.value = '';
     document.getElementById('boss-cash-gift-note').value = '';
     bossCashGiftEcho();
