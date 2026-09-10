@@ -2196,6 +2196,118 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【29】一键归还：同事把手上现金还给老板（2026-09-10）----------
+// 走的是投递箱同一套机制（跟记账/删除同一个 Firestore 集合、同样的 k/from/tx 形状，
+// 只是 tx 里多个 op:'repay'），送不出去要进独立的排队（STAFF_BOSS_REPAY_QUEUE）、
+// 有网自动补送。**绝不能写进 data.transactions**——那会被 onTxSaved() 钩子当成
+// 一笔普通消费再送一次投递箱，变成又报了一笔账。
+console.log('\n【29】一键归还：同事把手上现金还给老板（走投递箱同一套机制）');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.evaluate(() => {
+    window.__inbox = [];
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    db = { collection: () => ({ add: async (p) => { window.__inbox.push(p); return { id:'r1' }; } }) };
+    cloudAvailable = true;
+  });
+  await page.click('#nav-boss');
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('hdr-title');
+    return !!el && /老板|Boss/i.test(el.textContent || '');
+  }), { what: '切到老板账' });
+
+  ok('还没收到现金（余额 0）时，卡片上没有归还按钮',
+     (await page.locator('button[onclick="staffRepayBossCash()"]').count()) === 0);
+
+  // ---- 收到现金 600：余额 > 0，归还按钮出现 ----
+  await page.evaluate(() => { window.prompt = () => '600'; });
+  await page.evaluate(() => bossCashAdd());
+  await page.waitForTimeout(300);
+  ok('余额 600 > 0，归还按钮出现',
+     await page.locator('button[onclick="staffRepayBossCash()"]').isVisible());
+
+  // ---- 点归还：prompt 默认值 = 当前余额，送出的 payload 带归还标记和正确金额 ----
+  await page.evaluate(() => {
+    window.__promptDefault = null;
+    window.prompt = (msg, def) => { window.__promptDefault = def; return def; };  // 直接接受默认值＝全部归还
+    window.confirm = () => true;
+  });
+  await page.evaluate(() => staffRepayBossCash());
+  await page.waitForTimeout(300);
+  ok('prompt 默认值＝当前余额（600）',
+     (await page.evaluate(() => window.__promptDefault)) === '600',
+     await page.evaluate(() => window.__promptDefault));
+
+  ok('本机余额立刻减少到 0（不用等网络送出去）',
+     (await page.locator('#staff-boss-cash').innerText()).includes('US$0.00'),
+     await page.locator('#staff-boss-cash').innerText());
+  ok('绝不写进 data.transactions（不然 onTxSaved 会当成消费再送一次，变成重复报账）',
+     (await page.evaluate(() => data.transactions.filter(t => t.accountId === 'acc_boss_inbox').length)) === 0);
+  ok('余额归零后，归还按钮跟着消失',
+     (await page.locator('button[onclick="staffRepayBossCash()"]').count()) === 0);
+  ok('「收到的钱」清单里这条负数记录显示成「归还」，不是裸负数',
+     (await page.locator('#staff-boss-cash').innerText()).includes('归还'),
+     await page.locator('#staff-boss-cash').innerText());
+
+  await until(() => page.evaluate(() => window.__inbox.length > 0), { what: '归还请求送出' });
+  const sentRepay = await page.evaluate(() => window.__inbox[0]);
+  ok('送进同一个投递箱，字段跟记账/删除一样（k/from/tx，规则一个字都不用改）',
+     JSON.stringify(Object.keys(sentRepay).sort()) === JSON.stringify(['from','k','tx']),
+     Object.keys(sentRepay));
+  ok('口令原样', sentRepay.k === 'pass-1234', sentRepay.k);
+  const repayTx = JSON.parse(sentRepay.tx);
+  ok('tx 里带归还标记 op:repay', repayTx.op === 'repay', repayTx);
+  ok('金额正确（全部归还＝600）', repayTx.amount === 600, repayTx.amount);
+  ok('带 srcId（幂等要靠它）', !!repayTx.srcId, repayTx.srcId);
+
+  // ---- 归还超过余额要被挡下：先再收 200（余额变 200），试着还 9999 ----
+  await page.evaluate(() => { window.prompt = () => '200'; });
+  await page.evaluate(() => bossCashAdd());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { window.__inbox = []; window.prompt = () => '9999'; });
+  await page.evaluate(() => staffRepayBossCash());
+  await page.waitForTimeout(300);
+  ok('归还超过余额（9999 > 200）被挡下，不发请求', (await page.evaluate(() => window.__inbox.length)) === 0);
+  ok('余额没有被扣（挡下的那次不该改任何数字）',
+     (await page.locator('#staff-boss-cash').innerText()).includes('US$200.00'),
+     await page.locator('#staff-boss-cash').innerText());
+
+  // ---- 没网时进队列，不丢；本机余额还是照扣（现金离开口袋不等网络）----
+  await page.evaluate(() => {
+    window.prompt = () => '200';
+    db = { collection: () => ({ add: async () => { throw new Error('offline'); } }) };
+  });
+  await page.evaluate(() => staffRepayBossCash());
+  await page.waitForTimeout(300);
+  ok('没网时归还进了排队，不会丢',
+     (await page.evaluate(() =>
+       JSON.parse(localStorage.getItem('staffExpense_bossRepayQueue') || '[]'))).length === 1);
+  ok('本机余额照样立刻扣掉',
+     (await page.locator('#staff-boss-cash').innerText()).includes('US$0.00'),
+     await page.locator('#staff-boss-cash').innerText());
+
+  // ---- 网络恢复，排队的那笔自动补送 ----
+  await page.evaluate(() => {
+    window.__inbox = [];
+    db = { collection: () => ({ add: async (p) => { window.__inbox.push(p); return { id:'r2' }; } }) };
+  });
+  await page.evaluate(() => flushRepayQueue());
+  await until(() => page.evaluate(() => window.__inbox.length > 0), { what: '排队的归还补送出去' });
+  ok('补送成功后队列清空',
+     (await page.evaluate(() =>
+       JSON.parse(localStorage.getItem('staffExpense_bossRepayQueue') || '[]'))).length === 0);
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

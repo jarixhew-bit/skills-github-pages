@@ -3474,6 +3474,152 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await ctx.close();
 }
 
+// ---------- 【36】一键归还：投递箱收到 op:'repay' 记两条腿转账，不是一笔消费 ----------
+// 同事按下「一键归还」送进的还是同一个投递箱（inbox_boss），只是 tx 字符串里多个
+// op:'repay'。这不能落进 fetchInbox() 普通消费那条入账路径——那样会把「归还」记成
+// 他又花了一笔钱，代管账户余额不减反增，钱凭空消失。要记成跟 repayBossCashGift()
+// 一样的两条腿转账（代管账户 expense + 目标账户 income，都打 xfer:true）。
+console.log('\n【36】一键归还：投递箱收到 op:repay 记两条腿转账，币种不对/没有代管账户不硬记');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    window.__box = { docs: [], deleted: [] };
+    window.__put = (id, d) => window.__box.docs.push({
+      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
+    cloudAvailable = true;
+    currentUser = { uid: 'boss' };
+    db = { collection: () => ({ limit: () => ({ get: async () => ({ docs: window.__box.docs }) }) }) };
+    saveBossCashGiftAccount('acc_boss');            // 目标账户固定成 USD，跟代管账户同币种
+    getOrCreateHoldingAccount('Seryi', 'USD');       // 先手动建好代管账户（模拟老板转过现金）
+    getOrCreateHoldingAccount('Kuang', 'HKD');       // 故意跟目标账户（USD）不同币种
+    data.transactions.push({ id: uid(), accountId: holdingAccountId('Seryi'), date:'2026-09-01',
+      type:'income', amount:500, categoryId:'cat_cash_gift_in', description:'给 Seryi 的现金转入',
+      updatedAt: Date.now(), xfer:true });
+    saveData();
+  });
+
+  const seed = (id, tx, from) => page.evaluate(([id, tx, from]) =>
+    window.__put(id, { k:'x', from, tx: JSON.stringify(tx) }), [id, tx, from]);
+  const fetchNow = () => page.evaluate(() => fetchInbox());
+  const holdSeryi = await page.evaluate(()=>holdingAccountId('Seryi'));
+  const holdBal = () => page.evaluate((id)=>data.transactions.filter(t=>t.accountId===id)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), holdSeryi);
+
+  ok('代管账户先有 500（模拟老板早前转过现金）', await holdBal() === 500, await holdBal());
+
+  // ---- 对照组：同一批里的普通消费照旧记成一笔支出，不打 xfer（不能被新逻辑误判成归还）----
+  await seed('normal1', { srcId:'n1', date:'2026-09-10', amount:9.99, type:'expense',
+                          categoryId:'cat_food', description:'普通消费' }, 'X');
+  // ---- 归还：Seryi 归还 200 ----
+  await seed('r1', { op:'repay', srcId:'rs1', amount:200, date:'2026-09-10' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+
+  const normalTx = await page.evaluate(()=>data.transactions.find(t=>t.id==='ix_n1'));
+  ok('对照组：普通消费照旧记成一笔支出，不打 xfer（少了这条对照，「都当归还处理」也会全绿）',
+     !!normalTx && normalTx.type==='expense' && !normalTx.xfer, normalTx);
+
+  const legs = await page.evaluate(()=>data.transactions.filter(t=>t.repayId==='ix_repay_rs1'));
+  ok('归还记成两条腿，不是一笔消费', legs.length === 2, legs);
+  const holdLeg = legs.find(t=>t.accountId===holdSeryi);
+  const backLeg = legs.find(t=>t.accountId==='acc_boss');
+  ok('代管账户那条是支出，金额正确', holdLeg?.type==='expense' && holdLeg?.amount===200, holdLeg);
+  ok('目标账户那条是收入，金额正确', backLeg?.type==='income' && backLeg?.amount===200, backLeg);
+  ok('两条都打了 xfer:true（转账，不算进收支汇总）', holdLeg?.xfer===true && backLeg?.xfer===true, {holdLeg, backLeg});
+  ok('代管账户余额从 500 减到 300（他手上还剩的变少）', await holdBal() === 300, await holdBal());
+
+  const monthExpNoXfer = await page.evaluate(()=>{
+    const now = new Date();
+    return monthTxs('acc_boss', now.getFullYear(), now.getMonth())
+      .filter(t=>t.type==='expense' && !t.xfer).reduce((s,t)=>s+t.amount,0);
+  });
+  // 目标账户本来就有对照组那笔普通消费（9.99）——归还的 200 不该加进这个数字，
+  // 所以断言是「还是 9.99，没多」，不是断言「等于 0」（这个账户本来就不是 0）。
+  ok('目标账户「本月支出」不受归还影响（归还不是花钱，数字还是对照组那笔 9.99，没多）',
+     monthExpNoXfer === normalTx.amount, { monthExpNoXfer, normalAmount: normalTx.amount });
+
+  // ---- 幂等：文档没删掉又被收一次（模拟删除失败后重试），不能记两次 ----
+  await seed('r1b', { op:'repay', srcId:'rs1', amount:200, date:'2026-09-10' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  const legs2 = await page.evaluate(()=>data.transactions.filter(t=>t.repayId==='ix_repay_rs1'));
+  ok('同一笔归还重复收到不会记第二次（幂等）', legs2.length === 2, legs2);
+
+  // ---- 币种不一致：不许硬记（那等于编了个假汇率），留在箱子里请老板手动处理 ----
+  const beforeLen = await page.evaluate(()=>data.transactions.length);
+  await seed('r2', { op:'repay', srcId:'rs2', amount:50, date:'2026-09-10' }, 'Kuang');
+  await fetchNow(); await page.waitForTimeout(300);
+  const afterLen = await page.evaluate(()=>data.transactions.length);
+  ok('代管账户跟目标账户币种不一致时不硬记（不新增交易）', afterLen === beforeLen, {beforeLen, afterLen});
+  ok('这份文档没被删掉，留着等下次收件、也等老板手动处理',
+     await page.evaluate(()=>window.__box.docs.some(d=>d.id==='r2')));
+  ok('提示明确说要用「他还钱了」按钮手动处理',
+     (await page.textContent('#toast')||'').includes('他还钱了'));
+
+  // ---- 没有代管账户的人送归还：同样不硬记（理论上不该发生，但要接得住）----
+  const beforeLen2 = await page.evaluate(()=>data.transactions.length);
+  await seed('r3', { op:'repay', srcId:'rs3', amount:20, date:'2026-09-10' }, '从来没转过钱的人');
+  await fetchNow(); await page.waitForTimeout(300);
+  const afterLen2 = await page.evaluate(()=>data.transactions.length);
+  ok('没有代管账户的人送归还，同样不硬记', afterLen2 === beforeLen2, {beforeLen2, afterLen2});
+
+  // ---- 还的比他手上代管的还多：老板端这道也要挡（金额是同事那台手机报上来的，
+  //      本机这份账才是正本）。硬记会把代管账户记成负数，总账就乱了。----
+  const balBefore = await holdBal();                       // 此时代管账户剩 300
+  const beforeLen3 = await page.evaluate(()=>data.transactions.length);
+  await seed('rover', { op:'repay', srcId:'rsover', amount: balBefore + 1, date:'2026-09-10' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('归还金额超过代管余额时不入账（老板端第二道关，不信任同事端报的数字）',
+     await page.evaluate(()=>data.transactions.length) === beforeLen3,
+     { beforeLen3, after: await page.evaluate(()=>data.transactions.length) });
+  ok('超额那份文档没被删掉，钱不会因为挡下来就凭空消失',
+     await page.evaluate(()=>window.__box.docs.some(d=>d.id==='rover')));
+  ok('代管账户余额没被记成负数', await holdBal() === balBefore, await holdBal());
+  ok('提示说明是超额，不是币种问题',
+     (await page.textContent('#toast')||'').includes('超过'), await page.textContent('#toast'));
+
+  // 对照：刚好等于余额的一笔要放行（否则「全部归还」这个主用例会被自己挡住）
+  await seed('rexact', { op:'repay', srcId:'rsexact', amount: balBefore, date:'2026-09-10' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('对照组：刚好等于余额的「全部归还」照常入账（挡的是超额，不是全额）',
+     (await page.evaluate(()=>data.transactions.filter(t=>t.repayId==='ix_repay_rsexact'))).length === 2);
+  ok('全部归还后代管账户归零', await holdBal() === 0, await holdBal());
+  // 后面的用例还要再收一笔归还（r4），把余额补回去
+  await page.evaluate(()=>{ data.transactions.push({ id: uid(), accountId: holdingAccountId('Seryi'),
+    date:'2026-09-01', type:'income', amount:100, categoryId:'cat_cash_gift_in',
+    description:'补一笔转入，给后面的用例用', updatedAt: Date.now(), xfer:true }); saveData(); });
+
+  // ---- 坏数据：金额<=0 或日期格式不对，当垃圾丢掉，不堵住箱子 ----
+  await seed('rbad', { op:'repay', srcId:'rsbad', amount:-5, date:'不是日期' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  // 这个假投递箱的 ref.delete() 只把 id 记进 __box.deleted，不会真的把文档从
+  // __box.docs 里摘掉（跟测【21】同一个 mock 的语义）——判断「丢掉了没有」要看
+  // deleted 列表，不是看 docs 还在不在。
+  ok('坏的归还数据被当垃圾丢掉',
+     (await page.evaluate(()=>window.__box.deleted)).includes('rbad'),
+     await page.evaluate(()=>window.__box.deleted));
+
+  // ---- 打开「给同事现金」弹窗要顺手静默收一次件，不用手动点「立刻收件」----
+  await page.evaluate(()=>{ data.currentAccountId = 'acc_boss'; switchTab('overview'); });
+  await seed('r4', { op:'repay', srcId:'rs4', amount:30, date:'2026-09-10' }, 'Seryi');
+  await page.click('#ov-boss-cash-gift');
+  await until(async ()=> await page.evaluate(()=>data.transactions.some(t=>t.repayId==='ix_repay_rs4')),
+    { what: '打开弹窗顺手收件' });
+  ok('打开「给同事现金」弹窗会顺手静默收一次件（不用手动点「立刻收件」）',
+     await page.evaluate(()=>data.transactions.some(t=>t.repayId==='ix_repay_rs4')));
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

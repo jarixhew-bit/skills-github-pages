@@ -848,6 +848,7 @@ function staffStart(){
   flushCompanyQueue();
   staffSyncMode();
   flushBossQueue();
+  flushRepayQueue();
   staffApplyLang();
   staffShowInstallTip();
   staffLoadPetty();
@@ -1351,6 +1352,21 @@ async function staffPruneBossGifts(){
   }
 }
 
+/** 手上现金余额：收到的钱（含归还记进去的负数）－ 已花 ＋ 收到的退回。跟 renderBossCash()
+ *  卡片上显示的数字必须是**同一个公式**——staffRepayBossCash() 的校验和 prompt 默认值
+ *  都要读它，不能一个地方一套算法（那种不一致最难查，参见老板端 bossCashGiftRemain
+ *  的同一条注释）。 */
+function bossCashLeft(){
+  const cur = staffBossCur();
+  const o = loadBossCash();
+  const got = o.topups.filter(t => !t.cur || t.cur === cur)
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const mine = (data.transactions || []).filter(t => t.accountId === STAFF_BOSS_ACC_ID);
+  const spent = mine.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const back = mine.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  return Math.round((got - spent + back) * 100) / 100;
+}
+
 function renderBossCash(){
   const el = document.getElementById('staff-boss-cash');
   if(!el) return;
@@ -1380,14 +1396,20 @@ function renderBossCash(){
   const mine = (data.transactions || []).filter(t => t.accountId === STAFF_BOSS_ACC_ID);
   const spent = mine.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const back = mine.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const left = Math.round((got - spent + back) * 100) / 100;
+  const left = bossCashLeft();
   const notSent = mine.filter(t => t.inbox && t.inbox.status !== 'sent').length;
   const over = left < 0;
   el.classList.toggle('low', over || left < got * 0.15);
 
   // 币种不匹配的那几笔要显示自己的原始币种（不是被当成卡片的 cur），并加个 ⚠️
   // 提醒——宁可让人多看一眼，不能让余额数字看起来对、其实混了两种货币。
+  // 归还（repay:true）的那几笔是负数，显示成「归还 −X」这种人话，不是裸负数
+  // （2026-09-10「一键归还」新增，见 staffRepayBossCash()）。
   const rows = o.topups.slice(-5).reverse().map(t => {
+    if(t.repay){
+      return `<div class="bcash-line"><span>${t.date} ${tt('归还','Returned')}</span>` +
+        `<span>−${fmt(-t.amount, cur)}</span></div>`;
+    }
     const mismatch = t.cur && t.cur !== cur;
     return `<div class="bcash-line"><span>${t.date}${mismatch ? ' ⚠️' : ''}</span>` +
       `<span>+${fmt(t.amount, mismatch ? t.cur : cur)}</span></div>`;
@@ -1408,6 +1430,8 @@ function renderBossCash(){
       `⏳ ${notSent} record(s) not sent to the Boss yet (already deducted above)`)}</div>` : ''}
     <div class="bcash-btns">
       <button class="bcash-btn" onclick="bossCashAdd()">${tt('＋ 又收到现金','+ Got more cash')}</button>
+      ${left > 0 ? `<button class="bcash-btn" onclick="staffRepayBossCash()">${
+        tt('💰 全部归还给老板','💰 Return it to the Boss')}</button>` : ''}
       <button class="bcash-btn" onclick="bossCashReset()">${tt('重填','Start over')}</button>
     </div>
     <div class="bcash-list">
@@ -1695,8 +1719,122 @@ function onTxDeleted(t){
   flushBossDelQueue({ loud:true });
 }
 
+/* —— 一键归还：同事把手上还剩的现金还给老板（2026-09-10）——————————————
+ *
+ * 走的是投递箱**同一套机制**：跟 submitInboxTx()/submitInboxDelete() 一样用 Firestore
+ * 的 inbox_boss 集合、一样的 payload 形状（k/from/tx，tx 是一整串 JSON 字符串），只是
+ * 这次 tx 里多个 op:'repay' 标记——跟「删除」当初复用同一个投递箱是同一条精神：Firestore
+ * 规则只校验 tx 是字符串、够短，不逐字段校验，所以新增这种用途**不需要老板去 Console
+ * 改规则**。
+ *
+ * 老板那边 fetchInbox() 认出 op:'repay' 后，不会当成一笔普通消费入账，而是记成两条腿的
+ * 转账（代管账户 expense + 目标账户 income），详见 expense-tracker.html 里 fetchInbox()
+ * 的注释和 .claude/notes/expense-tracker.md「一键归还」那一节。
+ *
+ * 队列跟记账/删除那两条队列一样各自独立存（STAFF_BOSS_QUEUE 存的是 tx id、要去
+ * data.transactions 里捞；STAFF_BOSS_DEL_QUEUE 存的是已经不存在于本机的 srcId）——
+ * 这条「归还」从头到尾就不对应 data.transactions 里的任何记录，所以队列里直接存
+ * 归还这个动作本身的 payload（{id, amount, date}），不是某笔账的 id。
+ */
+const STAFF_BOSS_REPAY_QUEUE = 'staffExpense_bossRepayQueue';
+function loadRepayQueue(){
+  try{ return JSON.parse(localStorage.getItem(STAFF_BOSS_REPAY_QUEUE) || '[]'); }catch(e){ return []; }
+}
+function saveRepayQueue(q){
+  try{ localStorage.setItem(STAFF_BOSS_REPAY_QUEUE, JSON.stringify(q)); }catch(e){}
+}
+
+async function submitInboxRepay(item){
+  const k = staffBossKey();
+  if(!k) return { ok:false, retriable:false, message: tt('还没填老板账口令','No Boss passcode yet') };
+  if(!(await staffEnsureAnon()))
+    return { ok:false, retriable:true, message: tt('现在连不上，等有网自动送','Offline — will send later') };
+  try{
+    await db.collection(INBOX_COLLECTION).add({
+      k,
+      from: (staffIdentity ? staffIdentity.reporter : '同事').slice(0, 40),
+      tx: JSON.stringify({ op:'repay', srcId: String(item.id).slice(0, 40),
+                           amount: item.amount, date: item.date })
+    });
+    return { ok:true };
+  }catch(e){
+    // 口令不对／老板还没设好权限：重试多少次都一样，别把它永远留在队列里堵着
+    if(e && e.code === 'permission-denied')
+      return { ok:false, retriable:false,
+               message: tt('口令不对，或者老板那边还没设好','Wrong passcode, or the Boss has not set it up') };
+    return { ok:false, retriable:true, message: tt('现在送不出去，等有网自动送','Offline — will send later') };
+  }
+}
+
+async function flushRepayQueue(opts){
+  const loud = !!(opts && opts.loud);
+  let q = loadRepayQueue();
+  if(!q.length || !staffBossOn()) return;
+  for(const item of [...q]){
+    const r = await submitInboxRepay(item);
+    if(r.ok){
+      q = q.filter(x => x.id !== item.id); saveRepayQueue(q);
+      if(loud) toast(tt('✅ 已通知老板你归还了','✅ The Boss has been notified of your repayment'));
+    } else if(r.retriable){
+      if(loud) toast(r.message);
+      break;                      // 还是没网，剩下的留着下次
+    } else {
+      q = q.filter(x => x.id !== item.id); saveRepayQueue(q);
+      if(loud) toast('⚠️ ' + r.message);
+    }
+  }
+}
+
+/**
+ * 「💰 全部归还给老板」按钮：只在 bossCashLeft() > 0 时会被渲染出来（见 renderBossCash()），
+ * 但这里仍然重新判一次——直接从控制台调用这个函数、或者按钮渲染和点击之间数据发生变化，
+ * 都不该允许一个没有余额可还的人还出钱来。
+ *
+ * prompt 默认值＝当前余额（bossCashLeft()，跟卡片显示的必须是同一个数），最常见的情况
+ * 是全部还清，一点确定就好；要还一部分就改数字——跟老板端 repayBossCashGift() 同一套 UX。
+ *
+ * **绝不写进 data.transactions**：那会被 onTxSaved() 钩子当成一笔普通消费再送一次
+ * 投递箱，变成又报了一笔账。本机余额靠往 topups 里塞一条**负数**记录立刻反映
+ * （bossCashLeft()/renderBossCash() 算 got 时自然减掉；清单里显示成「归还 −X」，
+ * 不是裸负数，见 renderBossCash() 的 rows）。
+ *
+ * 送出去的动作走投递箱同一套机制，送不出去绝不丢——见上面 submitInboxRepay/
+ * flushRepayQueue 的注释。
+ */
+function staffRepayBossCash(){
+  const cur = staffBossCur();
+  const left = bossCashLeft();
+  if(!(left > 0)){ toast(tt('没有可归还的余额','No balance to return')); return; }
+  const v = prompt(tt(
+    `归还多少给老板？（最多 ${fmt(left, cur)}）`,
+    `How much to return to the Boss? (up to ${fmt(left, cur)})`),
+    String(left));
+  if(v === null) return;
+  const n = Number(String(v).replace(/[^\\d.\\-]/g, ''));
+  if(!(n > 0)){ toast(tt('请填一个大于 0 的数', 'Please enter a number above 0')); return; }
+  const amount = Math.round(n * 100) / 100;
+  // 留一点点浮点误差余量（0.005），不然「全部归还」把 bossCashLeft() 的值原样填回来
+  // 时，两边各自四舍五入的路径不完全一样，会出现「明明是全部却被判超额」的假阳性。
+  if(amount > left + 0.005){
+    toast(tt(`不能超过手上现金 ${fmt(left, cur)}`, `Cannot exceed your cash on hand of ${fmt(left, cur)}`));
+    return;
+  }
+  if(!confirm(tt(`确定归还 ${fmt(amount, cur)} 给老板？`, `Return ${fmt(amount, cur)} to the Boss?`))) return;
+
+  const id = uid();
+  const o = loadBossCash();
+  o.topups.push({ date: today(), amount: -amount, repay: true });
+  saveBossCash(o);
+  renderBossCash();
+
+  const q = loadRepayQueue();
+  q.push({ id, amount, date: today() });
+  saveRepayQueue(q);
+  flushRepayQueue({ loud: true });
+}
+
 // 网络恢复时把没送到的补上（跟公司账那条队列同一个思路）
-window.addEventListener('online', ()=>{ flushBossQueue(); flushBossDelQueue(); });
+window.addEventListener('online', ()=>{ flushBossQueue(); flushBossDelQueue(); flushRepayQueue(); });
 """
 
 
