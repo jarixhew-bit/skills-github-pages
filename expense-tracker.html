@@ -7586,7 +7586,7 @@ async function fetchInbox(opts){
       if(i >= 0){
         // 重复收到同一份文档（比如上次 inboxDrop 失败）：只更新腿一，配平腿已经
         // 记过了，不要再叠加一次，否则钱会被配平两次。
-        data.transactions[i] = Object.assign({}, data.transactions[i], tx);
+        data.transactions[i] = mergeInboxTx(data.transactions[i], tx);
       } else {
         data.transactions.push(tx);
         // 腿二：真实账户收入（配平，钱早就转出去了，不能再扣一次）。
@@ -7633,7 +7633,7 @@ async function fetchInbox(opts){
     await attachInboxPhoto(tx);
 
     const i = data.transactions.findIndex(t => t.id === id);
-    if(i >= 0) data.transactions[i] = Object.assign({}, data.transactions[i], tx);
+    if(i >= 0) data.transactions[i] = mergeInboxTx(data.transactions[i], tx);
     else { data.transactions.push(tx); added++; }
     await inboxDrop(doc);
   }
@@ -7685,6 +7685,24 @@ async function fetchInbox(opts){
  * 两条判断都要留着：一条挡新格式，一条挡老格式，缺一个都会把"花老板的钱"重新算成
  * "欠他的钱"，那是钱的错误。
  */
+/**
+ * 收件时更新一笔「以前收过的」记录：新资料覆盖旧的，但**本机自己加上去的结算状态
+ * 不能被冲掉**。目前就是 `fromStaff.paidAt`（「这笔垫付我已经还他了」）——同事那边
+ * 送过来的 payload 里根本没有这个字段，它是老板这台设备自己标的。
+ *
+ * ⚠️ 2026-09-10 自检抓到的真实 bug：同一份投递箱文档被处理两次（上次 inboxDrop
+ * 失败、或同事重送）时，原本的写法会用一份不带 paidAt 的 fromStaff 覆盖回去，
+ * **已经结清的垫付就自己活过来了**，「该付同事多少」凭空多出一笔。钱的方向上这是
+ * 会让老板重复付款的错误，务必保留。
+ */
+function mergeInboxTx(prev, tx){
+  const merged = Object.assign({}, prev, tx);
+  if(prev && prev.fromStaff && prev.fromStaff.paidAt){
+    merged.fromStaff = Object.assign({}, tx.fromStaff, { paidAt: prev.fromStaff.paidAt });
+  }
+  return merged;
+}
+
 function isUnpaidStaffAdvance(t){
   if(!t.fromStaff || t.type !== 'expense' || t.fromStaff.paidAt) return false;
   if(t.staffSpendId) return false;
