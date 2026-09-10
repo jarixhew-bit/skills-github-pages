@@ -4548,6 +4548,101 @@ console.log('\n【44】真实数据端到端：欠189.53 → 转5000 → 花224�
   await ctx.close();
 }
 
+// ---------- 【45】用户已经踩下去了：旧版重算之后的补救路径（2026-09-10）----------
+// 用户在旧版按了「🔁 按新规则重算欠款」，那版只标已付、没有把多转的钱从代管余额和
+// 来源账户退回去——于是他实机看到「Kuang 还剩 4776」而不是 4586.47。
+// 新版的重算只挑「还没结清」的垫付，扫不到已经被标成已付的那几笔，所以修不了。
+// 补救路径：先「↩️ 撤销标记已付」把那一次还原，再按新版重算，一次算对。
+// 这一段就是把他的真实处境重演一遍，证明这条路真的走得通。
+console.log('\n【45】旧版重算踩过之后的补救：撤销标记已付 → 新版重算 → 数字归位');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  const bal45 = (id) => page.evaluate((a)=>data.transactions.filter(t=>t.accountId===a)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), id);
+
+  // ---- 重演他现在的资料：旧版全额转 5000（没抵欠款）＋ 垫付 189.53 已被标已付 ＋ 花掉 224 ----
+  await page.evaluate(() => {
+    cloudAvailable = false; currentUser = null;
+    const now = Date.now();
+    const hold = getOrCreateHoldingAccount('Kuang', 'USD');
+    // 垫付那笔（已经被旧版按钮标成已付，但账户余额没退过）
+    data.transactions.push({ id:'d45', accountId:'acc_boss', type:'expense', amount:189.53,
+      date: today(), categoryId:'cat_other_exp', description:'Kuang 垫付的车费',
+      updatedAt: now, fromStaff:{ by:'Kuang', at: now, paidAt: now } });
+    // 旧版转账：全额 5000，两条腿
+    data.transactions.push({ id:'g45a', accountId:'acc_boss', type:'expense', amount:5000,
+      date: today(), categoryId:'cat_cash_gift', description:'给 Kuang 的现金',
+      updatedAt: now, xfer:true, giftId:'g45' });
+    data.transactions.push({ id:'g45b', accountId: hold.id, type:'income', amount:5000,
+      date: today(), categoryId:'cat_cash_gift_in', description:'老板给的现金',
+      updatedAt: now, xfer:true, giftId:'g45' });
+    // 他用现金花掉 224（3 条腿）
+    data.transactions.push({ id:'s45', accountId:'acc_boss', type:'expense', amount:224,
+      date: today(), categoryId:'cat_food', description:'Kuang 用现金付的',
+      updatedAt: now, fromStaff:{ by:'Kuang', at: now }, staffSpendId:'s45' });
+    data.transactions.push({ id:'s45b', accountId:'acc_boss', type:'income', amount:224,
+      date: today(), categoryId:'cat_cash_gift_in', description:'配平',
+      updatedAt: now, xfer:true, staffSpendId:'s45' });
+    data.transactions.push({ id:'s45c', accountId: hold.id, type:'expense', amount:224,
+      date: today(), categoryId:'cat_cash_gift', description:'配平',
+      updatedAt: now, xfer:true, staffSpendId:'s45' });
+    saveData();
+  });
+  const hold45 = await page.evaluate(()=>holdingAccountId('Kuang'));
+
+  ok('重演成功：现在正是他实机看到的「还剩 4776」', Math.abs((await bal45(hold45)) - 4776) < 0.005,
+     await bal45(hold45));
+  ok('重演成功：欠款显示 0（旧版按钮标掉了）',
+     !(await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'))));
+
+  // ---- 关键：新版重算此时**扫不到**，所以必须先撤销 ----
+  const scanEmpty = await page.evaluate(()=>bossDebtRecalcScan().length);
+  ok('★新版重算此时扫不到（所以「再按一次就好了」是行不通的，必须先撤销）',
+     scanEmpty === 0, scanEmpty);
+
+  // ---- 第一步：撤销标记已付 ----
+  await page.evaluate(()=>openUndoMarkPaid());
+  await page.waitForTimeout(200);
+  const owedBack = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
+  ok('★撤销之后，欠款 189.53 回来了', owedBack && Math.abs(owedBack.total - 189.53) < 0.005, owedBack);
+  ok('撤销只动标记、不动金额：代管余额还是 4776',
+     Math.abs((await bal45(hold45)) - 4776) < 0.005, await bal45(hold45));
+
+  // ---- 第二步：新版重算（这次会连带把多转的退回来）----
+  const bossBefore45 = await bal45('acc_boss');
+  await page.evaluate(()=>openBossDebtRecalc());
+  await page.waitForTimeout(300);
+
+  ok('★①重算后他手上还剩 4586.47（4776−189.53）',
+     Math.abs((await bal45(hold45)) - 4586.47) < 0.005, await bal45(hold45));
+  ok('★②欠款归零', !(await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'))));
+  ok('★③来源账户拿回 189.53（当初多转出去的那部分）',
+     Math.abs(((await bal45('acc_boss')) - bossBefore45) - 189.53) < 0.005,
+     { bossBefore45, after: await bal45('acc_boss') });
+
+  // ---- 全局核对：来源账户对 Kuang 这条线的净变化正好 −5000 ----
+  const net45 = await page.evaluate(()=>data.transactions
+    .filter(t=>t.accountId==='acc_boss' && ['d45','g45a','s45','s45b'].includes(t.id))
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+  const refund45 = await page.evaluate(()=>data.transactions
+    .filter(t=>t.accountId==='acc_boss' && t.debtRefund).reduce((s,t)=>s+t.amount,0));
+  ok('★④来源账户净变化 −5000（−189.53 −5000 −224 +224 +189.53 退回）',
+     Math.abs((net45 + refund45) + 5000) < 0.005, { net45, refund45 });
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

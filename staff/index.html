@@ -7777,6 +7777,54 @@ function applyDebtRecalcOffset(holdAcc, total){
   return { refunded: Math.round((total - remain) * 100) / 100, touched };
 }
 
+/**
+ * ↩️ 撤销「标记已付」。按 `fromStaff.paidAt` 这个时间戳分批——同一次操作标的那几笔
+ * 时间戳一模一样，所以「一批」＝「一次操作」，撤销一批就是精确地把那一次还原掉。
+ *
+ * 为什么需要它（2026-09-10）：用户在旧版按了「🔁 按新规则重算欠款」，那版只标了
+ * 已付、**没有**把多转的钱从代管余额和来源账户退回去（这就是他实机看到「Kuang 还剩
+ * 4776」而不是 4586.47 的由来）。新版的重算会连带退回，但它只挑「还没结清」的垫付，
+ * 已经被标成已付的那几笔它扫不到、也就修不了。所以要有一条路把那一次操作还原掉，
+ * 让新版的重算能重新接手，一次算对。
+ *
+ * 手动按过「已付」（真的另外拿现金还了他）的那些也会列出来——所以**一定要先预览再动手**，
+ * 让用户自己认哪一批是要撤的，绝不能自动挑。
+ */
+function paidBatches(){
+  const map = new Map();
+  for(const t of (data.transactions || [])){
+    if(!t.fromStaff || t.type !== 'expense' || !t.fromStaff.paidAt) continue;
+    const who = String(t.fromStaff.by || '同事');
+    const key = who + '\u0000' + t.fromStaff.paidAt;
+    if(!map.has(key)) map.set(key, { who, at: t.fromStaff.paidAt, txs: [], total: 0,
+                                     currency: (getAcc(t.accountId) || {}).currency || 'USD' });
+    const e = map.get(key);
+    e.txs.push(t);
+    e.total = Math.round((e.total + Number(t.amount || 0)) * 100) / 100;
+  }
+  return [...map.values()].sort((a, b) => b.at - a.at);   // 最近的排前面
+}
+
+function openUndoMarkPaid(){
+  const batches = paidBatches();
+  if(!batches.length){ toast('没有标记过已付的记录，没有什么好撤销的'); return; }
+  const b = batches[0];                      // 只撤最近那一次，避免一次动太多
+  const when = new Date(b.at).toLocaleString();
+  if(!confirm(`撤销最近一次「标记已付」：\n${b.who} ${b.txs.length} 笔共 ${fmt(b.total, b.currency)}\n`
+    + `（${when} 标的）\n\n撤销后这几笔会回到「该付同事多少」名单里，账目金额一分都不动。\n`
+    + `确定吗？`)) return;
+  b.txs.forEach(t => {
+    const f = Object.assign({}, t.fromStaff);
+    delete f.paidAt;
+    t.fromStaff = f;
+    t.updatedAt = Date.now();
+  });
+  saveData();
+  renderInboxOwed();
+  refreshBossCashGiftPersonSummary();
+  toast(`已撤销：${b.txs.length} 笔回到「还没付」，欠款 ${fmt(b.total, b.currency)}`);
+}
+
 function openBossDebtRecalc(){
   const groups = bossDebtRecalcScan();
   if(!groups.length){ toast('没有需要重算的：没人同时符合「代管有余额」和「有未结清垫付」'); return; }
@@ -7880,6 +7928,8 @@ function renderBossCashGiftModal(){
         >🧹 整理旧记录</span>
       　<span style="text-decoration:underline;cursor:pointer" onclick="openBossDebtRecalc()"
         >🔁 按新规则重算欠款</span>
+      　<span style="text-decoration:underline;cursor:pointer" onclick="openUndoMarkPaid()"
+        >↩️ 撤销标记已付</span>
     </div>`;
   setTimeout(()=>{ const a = document.getElementById('boss-cash-gift-person'); if(a) a.focus(); }, 120);
   refreshBossCashGiftRecent();
