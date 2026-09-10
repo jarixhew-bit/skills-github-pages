@@ -6991,7 +6991,7 @@ async function fetchInbox(opts){
 
   inboxState.error = null;
   const dead = new Set((data.deletedTxIds || []).map(d => d.id));
-  let added = 0, skipped = 0, removed = 0, anyHoldingRouted = false, repaid = 0, repayBlocked = 0;
+  let added = 0, skipped = 0, removed = 0, anyHoldingRouted = false, repaid = 0, repayBlocked = 0, repayOver = 0;
 
   // 分两轮：先收账，再处理「同事把那笔删了」。同一次拿到的这两种文档没有先后顺序，
   // 删的那条要是先跑，等一下收账那一轮又会把它加回来（同事删过的账在老板这边复活，
@@ -7063,6 +7063,14 @@ async function fetchInbox(opts){
         repayBlocked++;
         continue;
       }
+      // 还的钱不能多过他手上代管的钱——多出来的部分不知道从哪来，硬记会把代管账户
+      // 记成负数，总账就乱了。同事端已经挡过一次，这里是老板端的第二道：金额是同事
+      // 那台手机报上来的，本机这份账才是正本。留 0.005 的零头容差（分位四舍五入）。
+      // 时序上不会误挡：同一批里归还先处理，他新花的钱还没扣，这时余额只会偏高。
+      if(amt > holdingBalance(holdAcc) + 0.005){
+        repayOver++;
+        continue;
+      }
       const now = Date.now();
       data.transactions.push({
         id: uid(), accountId: holdAcc.id, date: raw.date, type: 'expense', amount: amt,
@@ -7129,7 +7137,7 @@ async function fetchInbox(opts){
   inboxState.last = Date.now();
   inboxState.running = false;
 
-  if(added || removed || repaid || repayBlocked){
+  if(added || removed || repaid || repayBlocked || repayOver){
     const parts = [];
     // 不再统一说「已进「X」」——有代管账户的人现在会被单独路由进各自的代管账户，
     // 不是全部都进设置页选的那个默认账户，笼统报一个账户名字会误导。
@@ -7140,6 +7148,7 @@ async function fetchInbox(opts){
     if(removed) parts.push(`同事删掉了 ${removed} 笔，这边也一起删了`);
     if(repaid) parts.push(`收到同事的归还 ${repaid} 笔，已经转回代管账户对应的账户`);
     if(repayBlocked) parts.push(`⚠️ 有 ${repayBlocked} 笔归还记录处理不了（没有代管账户，或者币种对不上），请用「💰 他还钱了」按钮手动处理`);
+    if(repayOver) parts.push(`⚠️ 有 ${repayOver} 笔归还超过他手上代管的金额，没有入账——请核对后用「💰 他还钱了」按钮手动处理`);
     toast(parts.join('\n'));
     if(state.currentTab === 'overview') renderOverview();
     if(state.currentTab === 'transactions') renderTxList();

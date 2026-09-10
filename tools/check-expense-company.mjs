@@ -3571,6 +3571,32 @@ console.log('\n【36】一键归还：投递箱收到 op:repay 记两条腿转�
   const afterLen2 = await page.evaluate(()=>data.transactions.length);
   ok('没有代管账户的人送归还，同样不硬记', afterLen2 === beforeLen2, {beforeLen2, afterLen2});
 
+  // ---- 还的比他手上代管的还多：老板端这道也要挡（金额是同事那台手机报上来的，
+  //      本机这份账才是正本）。硬记会把代管账户记成负数，总账就乱了。----
+  const balBefore = await holdBal();                       // 此时代管账户剩 300
+  const beforeLen3 = await page.evaluate(()=>data.transactions.length);
+  await seed('rover', { op:'repay', srcId:'rsover', amount: balBefore + 1, date:'2026-09-10' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('归还金额超过代管余额时不入账（老板端第二道关，不信任同事端报的数字）',
+     await page.evaluate(()=>data.transactions.length) === beforeLen3,
+     { beforeLen3, after: await page.evaluate(()=>data.transactions.length) });
+  ok('超额那份文档没被删掉，钱不会因为挡下来就凭空消失',
+     await page.evaluate(()=>window.__box.docs.some(d=>d.id==='rover')));
+  ok('代管账户余额没被记成负数', await holdBal() === balBefore, await holdBal());
+  ok('提示说明是超额，不是币种问题',
+     (await page.textContent('#toast')||'').includes('超过'), await page.textContent('#toast'));
+
+  // 对照：刚好等于余额的一笔要放行（否则「全部归还」这个主用例会被自己挡住）
+  await seed('rexact', { op:'repay', srcId:'rsexact', amount: balBefore, date:'2026-09-10' }, 'Seryi');
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('对照组：刚好等于余额的「全部归还」照常入账（挡的是超额，不是全额）',
+     (await page.evaluate(()=>data.transactions.filter(t=>t.repayId==='ix_repay_rsexact'))).length === 2);
+  ok('全部归还后代管账户归零', await holdBal() === 0, await holdBal());
+  // 后面的用例还要再收一笔归还（r4），把余额补回去
+  await page.evaluate(()=>{ data.transactions.push({ id: uid(), accountId: holdingAccountId('Seryi'),
+    date:'2026-09-01', type:'income', amount:100, categoryId:'cat_cash_gift_in',
+    description:'补一笔转入，给后面的用例用', updatedAt: Date.now(), xfer:true }); saveData(); });
+
   // ---- 坏数据：金额<=0 或日期格式不对，当垃圾丢掉，不堵住箱子 ----
   await seed('rbad', { op:'repay', srcId:'rsbad', amount:-5, date:'不是日期' }, 'Seryi');
   await fetchNow(); await page.waitForTimeout(300);
