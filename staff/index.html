@@ -7982,6 +7982,88 @@ async function undoBossDebtOffset(){
   toast(`已撤销 ${n} 笔转账的抵扣，改回全额；${restored} 笔垫付恢复成还欠着`);
 }
 
+/**
+ * 🔁 把旧格式转成最终格式（第三版结清机制上线后新增，2026-09-10 同一天）——用户现有
+ * 资料是「转账 4810.47（净额）＋ 垫付已标已付」这种**第一版**旧格式（历史脉络见上面
+ * 「转账记全额，结清垫付另开一对配平转账」那节）。跟 `undoBossDebtOffset()`（纯撤销，
+ * 撤完欠款回到「还欠着」）不是同一件事——这个工具是**一键转成最终形态**：转账金额
+ * 改回全额（跟撤销一样），但**不清 paidAt**，而是**补记结清那一对新格式的配平腿**
+ * （`settleAdvanceIds`），让这笔垫付继续保持「已结清」，只是换成新机制记录，卡片上
+ * 的「给了」也会从净额变回全额。两个按钮都留着：真的想撤销掉、让欠款恢复成还欠着的，
+ * 用 `undoBossDebtOffset()`；只想把旧格式换成新格式、不改变"已经结清"这个事实的，
+ * 用这个。
+ *
+ * **先预览再动手**：`confirm()` 讲清楚每个人转换前后的四个数字——给了多少、本月替你
+ * 花多少、还剩多少、欠他多少——用户要求的正是这四个，其中「本月替你花/还剩/欠他」
+ * 转换前后其实不变（这次转换只是换一种方式记账，不改变经济事实），只有「给了」会从
+ * 净额变回全额，预览里连"不变"也明写出来，不能让用户自己猜哪些会变。
+ */
+async function convertOldOffsetToSettle(){
+  const groups = offsetGiftGroups();
+  if(!groups.length){ toast('没有旧格式的抵扣转账，不需要转换'); return; }
+  const now = Date.now();
+  const detail = groups.map(g => {
+    const remain = holdingBalance(g.holdAcc);
+    const ms = personMonthSpend(g.person);
+    const monthSpend = Math.round((ms.cash + ms.own) * 100) / 100;
+    const owedRow = inboxOwedByPerson().find(r => samePersonName(r.who, g.person));
+    const owed = owedRow ? owedRow.total : 0;
+    return `${g.person}：\n`
+      + `  给了：${fmt(g.netAmount, g.currency)} → ${fmt(g.fullAmount, g.currency)}\n`
+      + `  本月替你花：${fmt(monthSpend, g.currency)} → ${fmt(monthSpend, g.currency)}（不变）\n`
+      + `  还剩：${fmt(remain, g.currency)} → ${fmt(remain, g.currency)}（不变）\n`
+      + `  欠他：${fmt(owed, g.currency)} → ${fmt(owed, g.currency)}（不变，仍是已结清）`;
+  }).join('\n');
+  if(!confirm(`把 ${groups.length} 笔旧格式的转账换成新格式（转账金额改回全额＋补记结清那一对腿）：\n\n${detail}\n\n确定吗？`)) return;
+  let n = 0;
+  for(const g of groups){
+    g.holdLeg.amount = g.fullAmount;
+    g.srcLeg.amount = g.fullAmount;
+    delete g.holdLeg.offsetTxIds; delete g.holdLeg.offsetTotal;
+    delete g.srcLeg.offsetTxIds; delete g.srcLeg.offsetTotal;
+    g.holdLeg.updatedAt = now; g.srcLeg.updatedAt = now;
+    // 补记结清那一对配平腿——跟 sendBossCashGift() 新转账时补记的写法一模一样，只是
+    // 这里是给历史资料补齐。paidAt 不动：这笔垫付本来就已经结清了，新机制一样认它
+    // 已结清，不需要重设。
+    if(g.offsetTotal > 0.005){
+      data.transactions.push({
+        id: uid(), accountId: g.holdAcc.id, date: g.holdLeg.date || today(), type:'expense',
+        amount: g.offsetTotal, categoryId:'cat_cash_gift',
+        description: `结清 ${g.person} 垫付的 ${g.offsetIds.length} 笔（配平·旧资料转换）`,
+        updatedAt: now, xfer:true, giftId: g.giftId, settleAdvanceIds: g.offsetIds
+      });
+      data.transactions.push({
+        id: uid(), accountId: g.srcLeg.accountId, date: g.srcLeg.date || today(), type:'income',
+        amount: g.offsetTotal, categoryId:'cat_cash_gift_in',
+        description: `结清 ${g.person} 垫付的 ${g.offsetIds.length} 笔（旧资料转换）`,
+        updatedAt: now, xfer:true, giftId: g.giftId, settleAdvanceIds: g.offsetIds
+      });
+    }
+    n++;
+    // 云端那份不许 update，照抄「删旧建新」写法；补记的两条新配平腿也要一起改挂到
+    // 新 giftId 上（此时它们还带着旧 giftId，用旧 giftId 当筛选条件正好能连它们一起找到）。
+    if(cloudAvailable && currentUser){
+      const k = bossCashKeySaved();
+      if(k){
+        try{
+          await db.collection('boss_cash_gifts').doc(g.giftId).delete();
+          const ref = await db.collection('boss_cash_gifts').add(
+            { k, person: g.person, amount: g.fullAmount, currency: g.currency, at: Date.now() });
+          if(ref && ref.id){
+            data.transactions.forEach(t => { if(t.giftId === g.giftId) t.giftId = ref.id; });
+          }
+        }catch(e){ /* 尽力而为，本机数据已经是对的了 */ }
+      }
+    }
+  }
+  saveData();
+  renderOverview();
+  renderInboxOwed();
+  refreshBossCashGiftRecent();
+  refreshBossCashGiftPersonSummary();
+  toast(`已把 ${n} 笔旧格式转账换成新格式：转账金额改回全额，补记了结清垫付的配平腿`);
+}
+
 /** 找出「代管现金消费」缺了配平腿的记录（2026-09-10：用户手动删掉了一批
  *  `isPairedSpendLeg()` 挡住不给看的配平记录——那些记录既然显示出来了，他就当成
  *  垃圾删掉了，后果是真实账户被多扣了一次：真支出腿扣了，抵消的配平腿没了）。
@@ -8130,8 +8212,10 @@ function renderBossCashGiftModal(){
         >清除本机残留显示缓存</span>
       　<span style="text-decoration:underline;cursor:pointer" onclick="openBossCashCleanup()"
         >🧹 整理旧记录</span>
+      　<span style="text-decoration:underline;cursor:pointer" onclick="convertOldOffsetToSettle()"
+        >🔁 把旧格式转成新格式（全额＋结清记录）</span>
       　<span style="text-decoration:underline;cursor:pointer" onclick="undoBossDebtOffset()"
-        >↩️ 撤销抵扣（改回全额）</span>
+        >↩️ 撤销抵扣（改回全额、欠款恢复未付）</span>
       　<span style="text-decoration:underline;cursor:pointer" onclick="openUndoMarkPaid()"
         >↩️ 撤销标记已付</span>
       　<span style="text-decoration:underline;cursor:pointer" onclick="repairSpendLegs()"
