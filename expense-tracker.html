@@ -976,6 +976,22 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
           style="flex:none;width:auto;padding:4px 12px;background:#e67e22;color:#fff">对的</button>
       </div>
     </div>
+    <!-- 老板账专用：这笔钱是谁出的。只有同事记「老板账」那笔时会显示——见
+         tools/build-staff-page.py 里的 syncBossPaidFromField()/setPaidFrom()。
+         老板自己的 App 没有「老板账」这个账户（STAFF_BOSS_ACC_ID 只在同事版存在），
+         这个块在老板 App 里永远是 display:none，纯粹是共用一份源码留下的死代码占位。
+         2026-09-10 三度改版新增：同事收到现金之前自己先垫的钱，不该被当成「花掉了
+         老板给的现金」，见 .claude/notes/expense-tracker.md「代管账户」那节的真实 bug。 -->
+    <div class="form-group" id="tx-paidfrom-wrap" style="display:none">
+      <label class="form-label">这笔钱是谁出的</label>
+      <div class="type-tabs" style="margin-bottom:8px">
+        <div class="type-tab" id="paidfrom-cash" onclick="setPaidFrom('cash')">用老板给的现金</div>
+        <div class="type-tab" id="paidfrom-own" onclick="setPaidFrom('own')">自己先垫的</div>
+      </div>
+      <div style="font-size:12px;color:var(--sub);line-height:1.6">
+        不填也会自动判断（手上现金够不够这笔金额），觉得不对就点上面手动改。
+      </div>
+    </div>
     <!-- description：公司账户下会一并送进公司账本，标签由 syncCompanyTxFields() 改写 -->
     <div class="form-group">
       <label class="form-label" id="tx-desc-label">描述（选填）</label>
@@ -2797,6 +2813,8 @@ function onAmountInput(){
   confirmAmount();
   updateRielHint();
   updateAmountEcho();
+  // 老板 App 没有这个函数（老板账户是同事版专属的），typeof 挡一下就是安全的
+  if(typeof syncBossPaidFromAuto === 'function') syncBossPaidFromAuto();
 }
 
 /**
@@ -2857,6 +2875,7 @@ function showAddTx(){
   state.amountFromOcr = false; confirmAmount();
   onAmountInput();
   syncCompanyTxFields(null);
+  if(typeof syncBossPaidFromField === 'function') syncBossPaidFromField(null);
   // 保底：万一上一笔保存后 400ms 延迟解锁还没到就又开了新记录，这里强制解开，
   // 不然明明是新的一笔却按不动保存键（见 saveTx() 顶上的注释）
   const saveBtnA = document.getElementById('tx-save-btn');
@@ -2890,6 +2909,7 @@ function editTx(id){
   renderCatGrid();
   loadAttachStateForTx(t);
   syncCompanyTxFields(t);
+  if(typeof syncBossPaidFromField === 'function') syncBossPaidFromField(t);
   // 保底：理由同 showAddTx()。已送出的那笔 syncCompanyTxFields 会再次隐藏保存键，
   // 这里的 disabled=false 不影响那个（一个管 display，一个管 disabled，互不冲突）
   const saveBtnE = document.getElementById('tx-save-btn');
@@ -3116,6 +3136,9 @@ async function saveTxInner(){
     updatedAt: Date.now()
   };
   if(state.pendingAttachmentId) tx.attachmentId = state.pendingAttachmentId;
+  // 老板账户（同事版专属）：标一下这笔钱是用老板给的现金付的、还是自己先垫的——
+  // 见 tools/build-staff-page.py 的 applyBossPaidFrom()。老板 App 没有这个函数。
+  if(typeof applyBossPaidFrom === 'function') applyBossPaidFrom(tx);
 
   if(acc.isCompany){
     // 第二道防线：公司账本没有「收入」这个概念（见 syncCompanyTxFields 里的注释），
@@ -7527,8 +7550,14 @@ async function fetchInbox(opts){
     // 收入类型不受影响（少见，比如老板直接在这台设备记他收到的钱），维持原本单笔入账。
     const holdAcc = getAcc(holdingAccountId(personName));
     if(holdAcc) anyHoldingRouted = true;
+    // 2026-09-10 三度改版：3 条腿只给「确实用老板现金付的」那些——同事这边在记账
+    // 当下已经标过 raw.paidFrom（'cash'/'own'，见 tools/build-staff-page.py 的
+    // syncBossPaidFromField()）。「own」代表他自己先垫的，即使这个人现在已经有代管
+    // 账户，也不能走 3 条腿（那样会误当成"花掉了老板的现金"）；旧数据没有这个字段
+    // 时按原本"有代管账户就当 3 条腿"的行为回落，不改动既有记录的入账结果。
+    const paidOwn = raw.paidFrom === 'own';
 
-    if(holdAcc && !isIncome){
+    if(holdAcc && !isIncome && !paidOwn){
       const realAccId = holdingRealAccountId(holdAcc);
       const realAcc = getAcc(realAccId);
       // 币种不一致（或者一个真实账户都找不到，理论上不该发生）：不许硬记，那等于凭空
@@ -7580,9 +7609,16 @@ async function fetchInbox(opts){
       continue;
     }
 
-    // 没有代管账户的人（老板没转过现金给他），或者这笔是收入：维持原本单笔入账的行为，
-    // 不加任何配平腿——这是必须保留的对照情况。
-    const routedAccId = holdAcc ? holdAcc.id : accId;
+    // 没有代管账户的人（老板没转过现金给他）、这笔是收入、或者明确标了「自己先垫的」：
+    // 单笔入账，不加任何配平腿——这是必须保留的对照情况。
+    // 「own」即使这个人有代管账户，也**不能**落进代管账户本身——isUnpaidStaffAdvance()
+    // 把落进 isHolding 账户的记录排除在「欠款」名单之外（那是给旧格式兜底的判断），
+    // 落进代管账户会让这笔垫付彻底从「该付同事多少」里消失，老板永远不会知道要还他。
+    // 要落进「当初转钱给他的那个真实账户」（跟 3 条腿的腿一同一个账户），没转过钱
+    // 就落回投递箱默认收件账户——两种情况都会被 isUnpaidStaffAdvance() 正确认成欠款。
+    const routedAccId = paidOwn
+      ? (holdAcc ? (holdingRealAccountId(holdAcc) || accId) : accId)
+      : (holdAcc ? holdAcc.id : accId);
     const tx = {
       id,
       accountId: routedAccId,
@@ -8044,10 +8080,7 @@ function openBossCashCleanup(){
 /** 「按新规则重算欠款」（2026-09-10）：`sendBossCashGift()` 现在转钱会先抵掉旧欠款，
  *  但改版之前已经转出去的钱没有做这一步。这里补一次：对每个「代管有余额、又有未结清
  *  垫付」的人，用 `sendBossCashGift()` 同一套算法（`unpaidDebtTxs` + `pickDebtOffset`，
- *  从最旧的欠款逐笔累加，抵到不超过他代管余额为止）把对应的垫付标记已付。
- *  **只改 paidAt，不新增/删除任何交易，不碰任何账户余额**——这纯粹是把"记重了的欠款"
- *  改成"已经结清"，钱本身从头到尾没有再挪动一次，`账户余额不变`是刻意的设计，不是
- *  漏改。可以重复点：标过的下次会被 `unpaidDebtTxs` 排除，天然收敛到「没有需要重算的」。 */
+ *  从最旧的欠款逐笔累加，抵到不超过他代管余额为止）把对应的垫付标记已付。 */
 function bossDebtRecalcScan(){
   const groups = [];
   data.accounts.filter(a => a.isHolding).forEach(acc => {
@@ -8063,19 +8096,91 @@ function bossDebtRecalcScan(){
   return groups;
 }
 
+/** 这个人「单纯的现金转账」两条腿（源账户支出 + 代管账户收入，giftId 相同，
+ *  不是消费配平腿也不是归还），按日期从旧到新——`applyDebtRecalcOffset()` 靠这个
+ *  找到「当初应该被这笔转账吸收掉的旧欠款」到底对应哪一次转账。只抓两条腿都还在的
+ *  （giftId 落单，比如那条腿被别的方式动过手脚，不敢碰）。 */
+function bossCashGiftLegPairs(holdAcc){
+  const byGift = {};
+  data.transactions.forEach(t => {
+    if(!t.giftId || t.staffSpendId || t.repayId) return;
+    if(t.accountId === holdAcc.id && t.type === 'income'){
+      (byGift[t.giftId] = byGift[t.giftId] || {}).holdLeg = t;
+    } else if(t.type === 'expense' && t.xfer){
+      const acc = getAcc(t.accountId);
+      if(acc && !acc.isHolding) (byGift[t.giftId] = byGift[t.giftId] || {}).srcLeg = t;
+    }
+  });
+  return Object.values(byGift).filter(p => p.holdLeg && p.srcLeg)
+    .sort((a, b) => new Date(a.holdLeg.date) - new Date(b.holdLeg.date));
+}
+
+/** 2026-09-10 三度改版新增：重算欠款时，如果找得到「当初应该吸收这笔欠款的那次
+ *  转账」（两条腿都还在、还带着 giftId），把这两条腿的金额一起退回去——不能只标
+ *  paidAt、放着代管余额（和当初来源账户被扣的那笔）还是原始的整数不变，那正是用户
+ *  实机报的 4776 bug 的由来（应该退回 189.53，却只标了「已付」，代管账户还挂着 5000）。
+ *  找不到可退的转账（比如代管余额本来就是拼凑出来的旧格式数据，没有 giftId 可对）就
+ *  退回旧行为：只标 paidAt，账户余额原样不动——宁可少退一点，也不能瞎猜一笔转账去扣。
+ *  从最旧的转账开始退，退到 total 退完为止（同一条精神：不拆着退超过实际找到的钱）。
+ *  返回退回了多少、以及退了哪几个 giftId（`openBossDebtRecalc()` 用来顺手同步 Firestore）。 */
+function applyDebtRecalcOffset(holdAcc, total){
+  const pairs = bossCashGiftLegPairs(holdAcc);
+  let remain = Math.round(total * 100) / 100;
+  const touched = [];
+  for(const pr of pairs){
+    if(remain <= 0.005) break;
+    const avail = Number(pr.holdLeg.amount) || 0;
+    if(avail <= 0) continue;
+    const take = Math.min(remain, avail);
+    const now = Date.now();
+    pr.holdLeg.amount = Math.round((avail - take) * 100) / 100;
+    pr.srcLeg.amount = Math.round((Number(pr.srcLeg.amount) - take) * 100) / 100;
+    pr.holdLeg.updatedAt = now;
+    pr.srcLeg.updatedAt = now;
+    remain = Math.round((remain - take) * 100) / 100;
+    touched.push({ giftId: pr.holdLeg.giftId, take, newAmount: pr.holdLeg.amount });
+  }
+  return { refunded: Math.round((total - remain) * 100) / 100, touched };
+}
+
 function openBossDebtRecalc(){
   const groups = bossDebtRecalcScan();
   if(!groups.length){ toast('没有需要重算的：没人同时符合「代管有余额」和「有未结清垫付」'); return; }
   const detail = groups.map(g => `${g.person} ${g.picked.length} 笔共 ${fmt(g.total, g.holdAcc.currency)}`).join('、');
-  if(!confirm(`按新规则重算欠款：${detail}，将标记为已付（不影响任何账户余额）。确定吗？`)) return;
+  if(!confirm(`按新规则重算欠款：${detail}，将标记为已付。找得到当初对应转账的部分，会\n把多转的那部分从代管余额和来源账户一起退回去；找不到的仍然只标已付、账户余额不变。确定吗？`)) return;
   const now = Date.now();
-  let n = 0;
+  let n = 0, anyRefunded = false;
   groups.forEach(g => {
     g.picked.forEach(t => { t.fromStaff = Object.assign({}, t.fromStaff, { paidAt: now }); n++; });
+    const { refunded, touched } = applyDebtRecalcOffset(g.holdAcc, g.total);
+    if(refunded > 0){
+      anyRefunded = true;
+      // 尽力顺手把 Firestore 那份 boss_cash_gifts 文档也改成新的净额——同事那边
+      // 「手上现金」卡读的是这份数据，不改的话他手机上还是显示旧的（更大的）数字。
+      // 失败/没网都不打断这次重算：本机这份账才是权威，这里只是尽力同步。
+      // 这些都是"改版之前转出去、从没做过 offset"的旧转账（能找到 giftId 两条腿才会
+      // 走到这里），文档原本不会有 offsetTotal/offsetTxIds，所以直接写死这次退掉的
+      // 数字就够，不用读旧值再累加（避免多一趟异步读、也不依赖 FieldValue.increment/
+      // arrayUnion——这两个要连上真正的 Firebase SDK 才有，跟别处「不必要地多依赖
+      // 一个全局对象」的教训一致，能不用就不用）。
+      if(cloudAvailable && currentUser){
+        const debtIds = g.picked.map(p => p.id);
+        touched.forEach(t => {
+          db.collection('boss_cash_gifts').doc(t.giftId).update({
+            amount: t.newAmount,
+            offsetTotal: t.take,
+            offsetTxIds: debtIds
+          }).catch(()=>{});
+        });
+      }
+    }
   });
   saveData();
   renderInboxOwed();
-  toast(`已重算：${n} 笔垫付标记已付`);
+  refreshBossCashGiftPersonSummary();
+  toast(`已重算：${n} 笔垫付标记已付` + (anyRefunded
+    ? '，找得到原始转账的部分已经把代管余额和来源账户一起退回'
+    : '（这几笔找不到对应的原始转账，只标记已付，账户余额不变）'));
 }
 
 /** 打开弹窗时先静默收一次同事投递箱的件（fetchInbox() 不传 opts 就是静默模式，
