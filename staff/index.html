@@ -400,6 +400,11 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .led-today{font-size:26px;font-weight:700;color:var(--text);margin-top:4px}
 .led-sub{font-size:12px;color:var(--sub);margin-top:4px;line-height:1.6}
 .led-warn{color:var(--exp);font-weight:600}
+/* 「给同事现金」卡片每人一块（还剩/已花 + 本月合计两行），人多时横排会挤爆手机屏幕，
+   改竖排；块与块之间留一点分隔（2026-09-10 加「本月共替你花」那行时一起改的版面）。 */
+.led-cash-person{margin-top:6px}
+.led-cash-person:first-child{margin-top:0}
+.led-cash-month{color:var(--sub);opacity:.85}
 /* 当天小计要够大——这是老板每天真正要跟纸单核对的那个数 */
 .led-day{display:flex;align-items:baseline;justify-content:space-between;
   padding:12px 0 6px;border-bottom:1px solid var(--border);margin-bottom:6px}
@@ -7572,6 +7577,40 @@ function forgetBossCashGift(id, g){
   try{ localStorage.setItem(BOSS_CASH_GIFT_LOG_STORAGE, JSON.stringify(list)); }catch(e){}
 }
 
+/**
+ * 「本月共替你花」——跟同事版「老板账」页的 renderBossSummary()
+ * （tools/build-staff-page.py）是**同一笔钱的两个视角**，务必同口径：同事那台手机记账
+ * 当下按 `paidFrom` 标「用现金付的／自己先垫的」，送进投递箱；这台设备的 fetchInbox()
+ * 收件时按同一个标记分岔成两种落法——'cash' 记 3 条腿（真支出腿带
+ * `staffSpendId===自己的id`），'own' 记单腿（`fromStaff` 有、没有 `staffSpendId`，
+ * 且不落进代管账户本身，见 isUnpaidStaffAdvance() 那段注释）。所以这里只要认出这两种
+ * 形状、按 `t.date` 落在当月，就一定跟同事那边报出来的月合计对得上。
+ *
+ * 「用现金」＝真支出腿：`t.staffSpendId === t.id`。
+ * 「他垫」＝**不管 `fromStaff.paidAt` 有没有标**：`paidAt` 只代表「老板已经用别的方式
+ * 还给他了」，跟「这笔钱是不是这个月替老板垫的」是两件事——已经还过的垫付，那个月
+ * 照样是他替老板花了这笔钱，本月合计不该因为「什么时候还的」而跳动（还款那一刻不会
+ * 改 `t.date`，所以排掉已付的话，这个月的合计会在老板按下「已付」的瞬间凭空变小，
+ * 那是错的）。跟 inboxOwedByPerson()「该付同事多少」故意用的是不同口径，那边只关心
+ * 「还欠不欠」，这里关心「这个月总共替你花了多少」，两者不能共用同一个判断。
+ */
+function personMonthSpend(person){
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  let cash = 0, own = 0;
+  for(const t of data.transactions){
+    if(t.type !== 'expense' || !t.fromStaff || t.fromStaff.by !== person) continue;
+    const d = new Date(t.date);
+    if(d.getFullYear() !== y || d.getMonth() !== m) continue;
+    if(t.staffSpendId && t.staffSpendId === t.id){
+      cash += t.amount;
+    } else if(!t.staffSpendId && !(getAcc(t.accountId) || {}).isHolding){
+      own += t.amount;
+    }
+  }
+  return { cash: Math.round(cash * 100) / 100, own: Math.round(own * 100) / 100 };
+}
+
 /** 首屏卡片：跟「💵 备用金」同一套视觉。永远显示（不像备用金要挂公司账户才出现），
  *  没设口令时给一句提示＋链接去设置页。
  *  2026-09-10 改版：原本这里显示的是 bossCashGiftLog()（本地"最近转过谁多少"显示缓存），
@@ -7615,12 +7654,26 @@ function renderOvBossCashGift(){
   }
   const shown = people.slice(0, 3);
   const restCount = people.length - shown.length;
-  const line = shown.map(p =>
-    `${ledEsc(p.person)} 还剩 ${fmt(p.remain, p.currency)}（已花 ${fmt(p.spent, p.currency)}）`
-  ).join('　');
+  // 每人两行：第一行「还剩/已花」不变；第二行「本月共替你花」是新加的，跟同事版
+  // 「老板账」页的本月合计同口径（见 personMonthSpend() 顶部注释）。人多时横排一行
+  // 会挤爆手机屏幕，改成每人一块竖排。
+  const rows = shown.map(p => {
+    const ms = personMonthSpend(p.person);
+    const total = Math.round((ms.cash + ms.own) * 100) / 100;
+    const parts = [];
+    if(ms.cash > 0) parts.push(`用现金 ${fmt(ms.cash, p.currency)}`);
+    if(ms.own > 0) parts.push(`他垫 ${fmt(ms.own, p.currency)}`);
+    const monthLine = total > 0
+      ? `<div class="led-cash-month">本月共替你花 ${fmt(total, p.currency)}（${parts.join(' · ')}）</div>`
+      : '';
+    return `<div class="led-cash-person">
+        <div>${ledEsc(p.person)} 还剩 ${fmt(p.remain, p.currency)}（已花 ${fmt(p.spent, p.currency)}）</div>
+        ${monthLine}
+      </div>`;
+  }).join('');
   el.innerHTML = `<div class="led-card-top">
       <div class="led-card-title">👔 给同事现金</div><div class="led-card-link">转钱 →</div></div>
-    <div class="led-sub">${line}${restCount > 0 ? `　等 ${restCount} 人` : ''}</div>`;
+    <div class="led-sub">${rows}${restCount > 0 ? `<div>等 ${restCount} 人</div>` : ''}</div>`;
 }
 
 /** 2026-09-10 改版后，首屏卡片不再显示 bossCashGiftLog()（那是本地"最近转过谁多少"的

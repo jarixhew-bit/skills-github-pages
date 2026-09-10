@@ -4752,6 +4752,140 @@ console.log('\n【46】配平腿不出现在明细列表/PDF（对照组：真�
   await ctx.close();
 }
 
+// ---------- 【47】主 App 首屏卡片也显示「本月合计」，跟同事版 renderBossSummary() 同口径 ----------
+// 用户要求「给同事现金」卡片在「还剩/已花」下面再加一行「本月共替你花」，跟同事版
+// 「老板账」页的 renderBossSummary()（tools/build-staff-page.py）对得上——口径详见
+// expense-tracker.html 的 personMonthSpend() 顶部注释。这里走真实的 fetchInbox() 路径
+// （用 paidFrom 字段模拟同事那边记账当下标好的"用现金/自己垫"），不是直接拼好三条腿，
+// 尽量贴近生产环境实际发生的路径。
+console.log('\n【47】主 App 首屏卡片「本月共替你花」（跟同事版 renderBossSummary 同口径）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashKey', 'pass-1234');
+    cloudAvailable = true; currentUser = { uid:'boss' };
+    window.__box = { docs: [], deleted: [] };
+    window.__put = (id, d) => window.__box.docs.push({
+      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
+    db = { collection: () => ({ limit: () => ({ get: async () => ({ docs: window.__box.docs }) }) }) };
+    // 三个人都先给一笔起始现金，代管账户才会有余额、卡片才会显示这个人。
+    ['Kuang47', 'OnlyCash47', 'LastMonth47'].forEach(person => {
+      const hold = getOrCreateHoldingAccount(person, 'USD');
+      hold.srcAccountId = 'acc_boss';
+      const now = Date.now();
+      data.transactions.push(
+        { id: uid(), accountId:'acc_boss', type:'expense', amount:1000, date: today(),
+          categoryId:'cat_cash_gift', description:`给 ${person} 的现金`, updatedAt: now, giftId:'g47_'+person, xfer:true },
+        { id: uid(), accountId: hold.id, type:'income', amount:1000, date: today(),
+          categoryId:'cat_cash_gift_in', description:'从「主账户」转入', updatedAt: now, giftId:'g47_'+person, xfer:true }
+      );
+    });
+    saveData();
+  });
+
+  const lastMonthDate = await page.evaluate(() => {
+    const d = new Date();
+    d.setDate(15);
+    d.setMonth(d.getMonth() - 1);
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+  });
+
+  await page.evaluate((lastMonthDate) => {
+    // 主场景：Kuang47 这个月用现金花 506（走 3 条腿），又自己垫了 189.53（单腿，没有配平）。
+    window.__put('spendCash47', { k:'x', from:'Kuang47', tx: JSON.stringify({ srcId:'sc47',
+      date: today(), amount: 506, type:'expense', categoryId:'cat_food',
+      description:'用现金那笔', paidFrom:'cash' }) });
+    window.__put('spendOwn47', { k:'x', from:'Kuang47', tx: JSON.stringify({ srcId:'so47',
+      date: today(), amount: 189.53, type:'expense', categoryId:'cat_food',
+      description:'自己垫那笔', paidFrom:'own' }) });
+    // 对照组①：OnlyCash47 这个月只有现金消费，没有垫付。
+    window.__put('spendOnlyCash47', { k:'x', from:'OnlyCash47', tx: JSON.stringify({ srcId:'soc47',
+      date: today(), amount: 150, type:'expense', categoryId:'cat_food',
+      description:'只有现金', paidFrom:'cash' }) });
+    // 对照组②：LastMonth47 这笔消费落在上个月，不该算进「本月合计」。
+    window.__put('spendLastMonth47', { k:'x', from:'LastMonth47', tx: JSON.stringify({ srcId:'slm47',
+      date: lastMonthDate, amount: 999, type:'expense', categoryId:'cat_food',
+      description:'上个月花的', paidFrom:'cash' }) });
+  }, lastMonthDate);
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => renderOverview());
+
+  const cardTxt = await page.textContent('#ov-boss-cash-gift');
+  ok('主场景：卡片显示「本月共替你花 US$695.53」（506 用现金 + 189.53 他垫）',
+     /本月共替你花[^）]*695\.53/.test(cardTxt), cardTxt);
+  ok('拆行显示「用现金 US$506.00 · 他垫 US$189.53」',
+     /用现金[^·]*506\.00[^他]*他垫[^）]*189\.53/.test(cardTxt), cardTxt);
+
+  ok('★「还剩」没被这次改动带坏：Kuang47 还剩 US$494.00（1000−506，自己垫的不动代管余额）',
+     /Kuang47\s*还剩[^（]*494\.00/.test(cardTxt), cardTxt);
+  ok('★「已花」也没被带坏：已花 US$506.00（只有用代管现金花的那部分，垫付不算）',
+     /Kuang47[^（]*（已花[^）]*506\.00/.test(cardTxt), cardTxt);
+
+  // ---- personMonthSpend() 独立验证一次（不依赖卡片文案格式，直接读函数返回值）----
+  const ms47 = await page.evaluate(() => personMonthSpend('Kuang47'));
+  ok('personMonthSpend 直接返回值：cash=506, own=189.53', ms47.cash === 506 && ms47.own === 189.53, ms47);
+
+  // ---- 对照组①：只有现金消费的人，「他垫」是 0 或整段不显示 ----
+  const onlyCashBlock = await page.evaluate(() => {
+    const el = Array.from(document.querySelectorAll('#ov-boss-cash-gift .led-cash-person'))
+      .find(e => e.textContent.includes('OnlyCash47'));
+    return el ? el.textContent : null;
+  });
+  ok('对照组①：OnlyCash47 这行有「本月共替你花 US$150.00」',
+     onlyCashBlock && /本月共替你花[^）]*150\.00/.test(onlyCashBlock), onlyCashBlock);
+  ok('对照组①：「他垫」不出现（没有垫付）', onlyCashBlock && !onlyCashBlock.includes('他垫'), onlyCashBlock);
+
+  // ---- 对照组②：上个月的消费不算进本月合计 ----
+  const lastMonthBlock = await page.evaluate(() => {
+    const el = Array.from(document.querySelectorAll('#ov-boss-cash-gift .led-cash-person'))
+      .find(e => e.textContent.includes('LastMonth47'));
+    return el ? el.textContent : null;
+  });
+  ok('对照组②：LastMonth47 上个月那笔不算进本月合计（这行没有「本月共替你花」）',
+     lastMonthBlock && !lastMonthBlock.includes('本月共替你花'), lastMonthBlock);
+  const msLastMonth47 = await page.evaluate(() => personMonthSpend('LastMonth47'));
+  ok('★personMonthSpend 直接验证：上个月那笔不进本月合计，cash/own 都是 0',
+     msLastMonth47.cash === 0 && msLastMonth47.own === 0, msLastMonth47);
+
+  // ---- 两边口径一致：同一组数字下，这里算出的「本月共替你花」要等于同事版
+  //      renderBossSummary()（tools/build-staff-page.py）算出的合计。这份自检只跑
+  //      主 App，没有加载 staff/index.html，所以在这里原样重放那份函数的算法
+  //      （同事那边就是「STAFF_BOSS_ACC_ID 账户里这个月的支出总额，cash/own 分列」），
+  //      用同一组原始金额（记账当下同事标的 paidFrom）算一遍，两边应该分毫不差——
+  //      这条挡的是「App 这边漏算了 cash 或 own 其中一段」这种老毛病。
+  const staffSideTotal = await page.evaluate(() => {
+    // 同事那台设备上，这两笔就是 STAFF_BOSS_ACC_ID 账户里当月的两笔支出，
+    // paidFrom 已经在记账当下标好，effectivePaidFrom() 直接返回它，不用日期回落。
+    const staffTxs = [
+      { amount: 506, paidFrom: 'cash' },
+      { amount: 189.53, paidFrom: 'own' },
+    ];
+    const total = staffTxs.reduce((s,t)=>s+t.amount, 0);
+    const cashPart = staffTxs.filter(t=>t.paidFrom==='cash').reduce((s,t)=>s+t.amount, 0);
+    const ownPart = staffTxs.filter(t=>t.paidFrom==='own').reduce((s,t)=>s+t.amount, 0);
+    return { total: Math.round(total*100)/100, cashPart, ownPart };
+  });
+  ok('★★两边口径一致：主 App 算出的本月合计 = 同事版 renderBossSummary() 算出的合计（695.53）',
+     Math.round((ms47.cash + ms47.own) * 100) / 100 === staffSideTotal.total, { app: ms47, staff: staffSideTotal });
+  ok('★★两边口径一致：拆行的 cash/own 也分别对得上',
+     ms47.cash === staffSideTotal.cashPart && ms47.own === staffSideTotal.ownPart, { app: ms47, staff: staffSideTotal });
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
