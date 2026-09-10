@@ -1512,3 +1512,29 @@ base64 大约是原图的 1.33 倍（也就是原图 500KB 以内可以原样送
 **通则**：往这份文档加任何字段之前，先改 Console 里的规则，否则一定被挡；而且因为失败
 是静默的，不会有人发现。自检里有一条专门守这个——断言送出的 payload 里没有一个字段是
 规则不允许的。
+
+
+## 老板账「本月合计」卡（2026-09-10 新增）
+
+同事版之前老板账那页只有「今天」的小计，没有整月合计，用户要求照抄「明细」页
+`#staff-summary` 那张卡的样式（`renderBossSummary()`，`tools/build-staff-page.py`；
+生成到 `staff/index.html` 的 `#staff-boss-summary`，挂在跟月份切换器同样的位置，
+紧接在 `#staff-boss-cash` 之后）。
+
+**口径，别自己发明**：合计＝这本老板账账户（`STAFF_BOSS_ACC_ID`）里**当前所选月份**的
+**支出**总额，**不分是用老板给的现金付（`paidFrom==='cash'`）还是自己先垫的
+（`paidFrom==='own'`）**——两种花法都是这个月替老板花掉的钱，都要算。底下小字拆一行
+「用现金 X · 自己垫 Y」（判定沿用 `effectivePaidFrom()`），只是给他看组成，不影响合计。
+
+**跟「手上现金」卡（`#staff-boss-cash`／`bossCashLeft()`）是两个不同的问题，别混**：
+`bossCashLeft()` 回答「手上还剩多少现金能花」，所以只减 `paidFrom==='cash'` 那部分
+（自己垫的钱从头到尾不是老板给的现金，不该从这个余额扣）。`renderBossSummary()`
+回答「这个月总共替老板花了多少」，全部要算。两个函数各自独立计算，改一个时不要
+以为另一个会自动跟着对——这次新增没有改动 `bossCashLeft()`/`renderBossCash()` 半个字。
+
+跟着页面上的月份切换器走（`state.txYear`/`state.txMonth`），挂在跟 `renderBossCash()`
+同一个重画时机（`renderTxList` 包一层那段），记账、删除、切月份都会跟着更新。
+
+自检：`check-staff-page.mjs`【35】（三笔混合场景 245.53／3 笔／拆行 56.00+189.53，
+对照组：切到没有记录的月份归零、别的账户不算进去、手上现金卡数字不受影响）。做过
+false-red：把总额算法改成只算 `paidFrom==='cash'`（漏掉自己垫的部分），对应断言立刻红。

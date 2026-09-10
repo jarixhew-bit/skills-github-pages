@@ -2763,6 +2763,87 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【35】老板账「本月合计」卡：不分现金付/自己垫，都要算进去（2026-09-10）----------
+// 用户反馈：老板账那页只有「今天」的小计，没有整月合计。照抄「明细」页 #staff-summary
+// 那张卡的样式，但口径不一样——这里合计的是记在老板账账户里的**支出**总额，**不分**是
+// 用老板给的现金付、还是自己先垫的：两种花法都是这个月替老板花掉的钱，都要算进去
+// （跟 bossCashLeft() 只减 paidFrom==='cash' 那部分是两回事，别混）。
+console.log('\n【35】老板账「本月合计」卡：现金付＋自己垫都要算进去，笔数跟着月份切换器走');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    db = { collection: () => ({ where: () => ({ where: () => ({
+      get: async () => ({ empty:true, forEach: () => {} }) }) }) }) };
+    cloudAvailable = true;
+  });
+  await page.click('#nav-boss');
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('hdr-title');
+    return !!el && /老板|Boss/i.test(el.textContent || '');
+  }), { what: '切到老板账' });
+
+  ok('这张卡出现在老板账页', await page.locator('#staff-boss-summary').isVisible());
+
+  // —— 对照组：这个月还没有任何一笔记录时，合计是 0，不是漏掉不画 ——
+  let card = await page.locator('#staff-boss-summary').innerText();
+  ok('对照组：本月还没有记录时，合计是 US$0.00、0 笔',
+     card.includes('US$0.00') && /0\s*笔/.test(card), card);
+
+  await page.evaluate(() => {
+    // 三笔：用现金付 35、用现金付 21、自己先垫 189.53——不分是哪种，都要算进合计
+    data.transactions.push({ id:'b1', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-05',
+      type:'expense', amount:35, categoryId:'cat_food', paidFrom:'cash', updatedAt: Date.now() });
+    data.transactions.push({ id:'b2', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-06',
+      type:'expense', amount:21, categoryId:'cat_food', paidFrom:'cash', updatedAt: Date.now() });
+    data.transactions.push({ id:'b3', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-07',
+      type:'expense', amount:189.53, categoryId:'cat_other_exp', paidFrom:'own', updatedAt: Date.now() });
+    // 对照组：不属于老板账的那笔（别的账户）不能被算进去
+    data.transactions.push({ id:'bOther', accountId: (data.accounts.find(a=>a.id!==STAFF_BOSS_ACC_ID)||{}).id
+      || 'acc_other', date:'2026-09-08', type:'expense', amount:999, categoryId:'cat_food',
+      updatedAt: Date.now() });
+    saveData();
+    renderBossSummary();
+  });
+
+  card = await page.locator('#staff-boss-summary').innerText();
+  ok('★合计＝US$245.53（现金付 35+21 ＋ 自己垫 189.53，两种花法都要算）',
+     card.includes('US$245.53'), card);
+  ok('★笔数是 3（不包含别的账户那一笔）', /3\s*笔/.test(card), card);
+  ok('★小字拆开写：用现金 US$56.00 · 自己垫 US$189.53',
+     card.includes('US$56.00') && card.includes('US$189.53'), card);
+  ok('对照组：别的账户那一笔 999 没有被算进合计里', !card.includes('999'), card);
+
+  // —— 对照组：切到没有记录的月份，合计要归零，不是停在旧数字上 ——
+  await page.evaluate(() => { state.txYear = 2026; state.txMonth = 5; renderBossSummary(); }); // 6月，没有记录
+  card = await page.locator('#staff-boss-summary').innerText();
+  ok('对照组：切到没有记录的月份，合计变回 US$0.00、0 笔（不是继续显示上个月的数）',
+     card.includes('US$0.00') && /0\s*笔/.test(card) && !card.includes('245.53'), card);
+  await page.evaluate(() => { state.txYear = 2026; state.txMonth = 8; renderBossSummary(); }); // 切回 9 月
+
+  // —— 「手上现金」那张卡不能被这次改动带坏 ——
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('手上现金卡数字不受影响：还没设起点时仍是老样子（这次没动 bossCashLeft/renderBossCash）',
+     card.includes('收到现金'), card);
+  await page.evaluate(() => { window.prompt = () => '500'; });
+  await page.evaluate(() => bossCashAdd());
+  await page.waitForTimeout(300);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('手上现金＝收到 500 − 用现金花掉的 56（35+21，自己垫的 189.53 不算）＝ US$444.00',
+     card.includes('US$444.00') && card.includes('用现金花掉 US$56.00'), card);
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

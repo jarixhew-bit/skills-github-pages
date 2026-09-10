@@ -188,6 +188,7 @@ def build(src: str) -> str:
                      '    <div id="staff-boss-cfg"></div>\n'
                      '  </div>\n'
                      '  <div id="staff-boss-cash"></div>\n'
+                     '  <div id="staff-boss-summary"></div>\n'
                      '  <div id="staff-petty"></div>\n'
                      '  <div id="staff-summary"></div>',
                      "明细页（放本月合计）")
@@ -612,6 +613,12 @@ body.staff-boss #staff-boss-cash{display:block}
   padding:7px 14px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer}
 .bcash-list{margin-top:10px;border-top:1px solid rgba(255,255,255,.25);padding-top:8px}
 .bcash-line{display:flex;justify-content:space-between;font-size:12.5px;opacity:.92;padding:2px 0}
+/* 老板账「本月合计」卡：跟「手上现金」不是同一件事——手上现金只减用现金付的那部分，
+   这张卡回答的是「这个月总共替老板花了多少」，用现金付的、自己垫的都要算（见
+   renderBossSummary()）。样式借用跟公司账那张一样的 .staff-sum-* 类，只是换一个
+   容器 id、挂在跟 #staff-boss-cash 相反的开关上。 */
+#staff-boss-summary{display:none;background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+body.staff-boss #staff-boss-summary{display:block}
 
 #staff-gate{position:fixed;inset:0;z-index:300;background:var(--bg);
   display:flex;flex-direction:column;justify-content:center;padding:24px}
@@ -996,6 +1003,7 @@ renderTxList = function(){
   // 找回记录、收件后重画全都会经过 renderTxList，逐个入口去补一定会漏，
   // 而漏掉的表现是余额停在旧数字上——那种错要人肉比对才发现。
   renderBossCash();
+  renderBossSummary();
 };
 function staffRenderSummary(){
   const box = document.getElementById('staff-summary');
@@ -1566,6 +1574,34 @@ function renderBossCash(){
     </div>
     <div class="bcash-list">
       <div class="bcash-label">${tt('收到的钱','Cash received')}</div>${rows}</div>`;
+}
+
+/** 老板账「本月合计」卡：跟随页面上的月份切换器（state.txYear/state.txMonth）。
+ *  口径（2026-09-10 用户明确要求，别自己发明）——这本账记在老板账账户里的**支出**
+ *  总额，**不分是用老板给的现金付、还是自己先垫的**：两种花法都是这个月替老板花掉
+ *  的钱，都要算进合计。跟 bossCashLeft() 不是同一件事：bossCashLeft() 只关心「手上
+ *  现金还剩多少」，所以只减 paidFrom==='cash' 那部分；这张卡关心的是「这个月总共
+ *  花了多少」，全部要算。底下小字拆一行现金/自己垫各多少（沿用 effectivePaidFrom()
+ *  的判定），让他一眼看出组成，但不影响合计本身。 */
+function renderBossSummary(){
+  const box = document.getElementById('staff-boss-summary');
+  if(!box) return;
+  const cur = staffBossCur();
+  const o = loadBossCash();
+  const txs = monthTxs(STAFF_BOSS_ACC_ID, state.txYear, state.txMonth)
+    .filter(t => t.type === 'expense');
+  const total = txs.reduce((s,t)=>s+t.amount, 0);
+  const cashPart = txs.filter(t => effectivePaidFrom(t, o) === 'cash')
+    .reduce((s,t)=>s+t.amount, 0);
+  const ownPart = txs.filter(t => effectivePaidFrom(t, o) === 'own')
+    .reduce((s,t)=>s+t.amount, 0);
+  box.innerHTML = `
+    <div class="staff-sum-label">${tt('本月合计','This month')}</div>
+    <div class="staff-sum-total staff-sum-month">${fmt(total, cur)}</div>
+    <div class="staff-sum-sub">${tt(`${txs.length} 笔`, `${txs.length} record(s)`)}</div>
+    <div class="staff-sum-sub">${tt(
+      `用现金 ${fmt(cashPart, cur)} · 自己垫 ${fmt(ownPart, cur)}`,
+      `Cash ${fmt(cashPart, cur)} · Fronted ${fmt(ownPart, cur)}`)}</div>`;
 }
 
 /* —— 这笔钱是谁出的（'cash'／'own'）—————————————————————
