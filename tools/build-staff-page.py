@@ -346,6 +346,15 @@ STAFF_LABELS = [
     ('<label class="form-label">日期</label>', "Date"),
     ('<label class="form-label">公司类别</label>', "Category"),
     ('<label class="form-label">这一餐算谁的</label>', "Who was this meal for?"),
+    ('<label class="form-label">这笔钱是谁出的</label>', "Who paid for this?"),
+    ('<div class="type-tab" id="paidfrom-cash" onclick="setPaidFrom(\'cash\')">用老板给的现金</div>',
+     "With the Boss's cash"),
+    ('<div class="type-tab" id="paidfrom-own" onclick="setPaidFrom(\'own\')">自己先垫的</div>',
+     "I paid it myself"),
+    ('<div style="font-size:12px;color:var(--sub);line-height:1.6">\n'
+     '        不填也会自动判断（手上现金够不够这笔金额），觉得不对就点上面手动改。\n'
+     '      </div>',
+     "Auto-guessed from whether your cash on hand covers this amount — tap above to change it."),
     ('<span style="flex:1">👀 这个数是从照片认出来的，请跟收据核对一遍</span>',
      "👀 This amount was read from the photo — check it against the receipt"),
     ('<button type="button" class="btn btn-sm" id="tx-amount-ok" onclick="confirmAmount()"\n'
@@ -1264,8 +1273,14 @@ async function staffSyncBossGifts(){
       const amt = Number(d.amount) || 0;
       if(amt <= 0) return;
       const giftCur = (d.currency || '').toUpperCase();
+      // offsetTotal（2026-09-10 三度改版）：老板转钱前如果先拿这笔抵掉了我垫付的旧欠款，
+      // 这份文档会带这个数字。带过来只是为了在「手上现金」卡多补一句「另有 X 结清了你
+      // 垫付的」说明——不用来算任何余额（余额已经是 d.amount 这个净额了），单纯是让人
+      // 看得懂「怎么给的比我以为的少」，不解释清楚会被误以为算错了。
+      const offsetTotal = Number(d.offsetTotal) || 0;
       pending.push({ date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
-                     from: 'admin', giftId: doc.id, cur: giftCur || cur });
+                     from: 'admin', giftId: doc.id, cur: giftCur || cur,
+                     offsetTotal: offsetTotal > 0 ? Math.round(offsetTotal * 100) / 100 : undefined });
     });
 
     // ⚠️ 这里**必须重新读一次** localStorage，而且要按 giftId 去重（2026-09-10 教训）。
@@ -1372,19 +1387,60 @@ async function staffPruneBossGifts(){
   }
 }
 
-/** 手上现金余额：收到的钱（含归还记进去的负数）－ 已花 ＋ 收到的退回。跟 renderBossCash()
- *  卡片上显示的数字必须是**同一个公式**——staffRepayBossCash() 的校验和 prompt 默认值
- *  都要读它，不能一个地方一套算法（那种不一致最难查，参见老板端 bossCashGiftRemain
- *  的同一条注释）。 */
+/**
+ * 一笔支出「谁出的钱」——**不能靠「这个账户现在有没有代管账户」去猜**，同事很可能在
+ * 收到现金之前就自己先垫过（2026-09-10 用户实测踩到的真实 bug：老板转 5000 给 Kuang
+ * 之前，Kuang 已经自己垫付过 189.53；旧算法把「记在老板账账户里的所有支出」都当成
+ * 「花掉了老板给的现金」，这笔也被算了进去，害「手上现金」比老板那边少算了整整 189.53，
+ * 转账之前甚至会显示成负数）。
+ *
+ * 新记录都会带 `tx.paidFrom`（'cash'／'own'，见下面 `syncBossPaidFromField()`/
+ * `setPaidFrom()`，记账表单里有个可以手动改的开关）。**旧数据没有这个字段时的回落
+ * 规则**：按「这笔的日期是不是在第一次收到现金之后」判断——在第一次收到现金之前，
+ * 手上根本没有老板给的钱可以花，只可能是自己垫的；在那之后按老规矩当成用现金付的。
+ * 这条回落规则专门核对过 Kuang 的真实数据：189.53 那笔日期在第一次收现金之前 →
+ * 回落成 'own'；224 那笔在之后 → 回落成 'cash'，跟目标状态一致。
+ */
+function firstCashDate(o){
+  const dates = (o.topups || []).filter(t => Number(t.amount) > 0 && !t.repay).map(t => t.date).sort();
+  return dates.length ? dates[0] : null;
+}
+function effectivePaidFrom(t, o){
+  if(t.paidFrom === 'cash' || t.paidFrom === 'own') return t.paidFrom;
+  const first = firstCashDate(o);
+  if(!first) return 'own';              // 从没收到过现金，只可能是自己垫的
+  return (String(t.date || '') >= first) ? 'cash' : 'own';
+}
+
+/** 手上现金余额：收到的钱（含归还记进去的负数）－ **用现金花掉的**（`paidFrom==='cash'`，
+ *  含旧数据回落，见上面 effectivePaidFrom）＋ 收到的退回。**自己先垫的（'own'）不算
+ *  「花掉」**——那笔钱从头到尾不是老板给的现金，不该从这个余额里扣，这正是上面那条
+ *  注释描述的 bug 的修法。跟 renderBossCash() 卡片上显示的必须是**同一个公式**——
+ *  staffRepayBossCash() 的校验和 prompt 默认值都要读它，不能一个地方一套算法
+ *  （那种不一致最难查，参见老板端 bossCashGiftRemain 的同一条注释）。 */
 function bossCashLeft(){
   const cur = staffBossCur();
   const o = loadBossCash();
   const got = o.topups.filter(t => !t.cur || t.cur === cur)
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const mine = (data.transactions || []).filter(t => t.accountId === STAFF_BOSS_ACC_ID);
-  const spent = mine.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const spent = mine.filter(t => t.type !== 'income' && effectivePaidFrom(t, o) === 'cash')
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const back = mine.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
   return Math.round((got - spent + back) * 100) / 100;
+}
+
+/** 自己先垫的钱一共多少（`paidFrom==='own'` 的那些，含旧数据回落）。**这本机看不到
+ *  老板有没有已经还给你**——还款状态（`fromStaff.paidAt` / 转账先抵欠款）记在老板
+ *  自己的账本里，这台手机完全看不到、也拿不到。所以这不是「老板还欠我多少」的权威
+ *  数字，只是「这本机记录里我自己出过多少钱」，显示时要把这个限制讲清楚，别让人
+ *  以为是一个会自动结清的实时进度条。 */
+function bossCashOwnSpent(){
+  const o = loadBossCash();
+  const mine = (data.transactions || []).filter(t => t.accountId === STAFF_BOSS_ACC_ID);
+  const own = mine.filter(t => t.type !== 'income' && effectivePaidFrom(t, o) === 'own')
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  return Math.round(own * 100) / 100;
 }
 
 function renderBossCash(){
@@ -1397,6 +1453,13 @@ function renderBossCash(){
   // topups、列在下面，但不计进这个总额——见 renderBossCash 下面 mismatched 那段。
   const got = o.topups.filter(t => !t.cur || t.cur === cur)
     .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  // 老板端转钱前如果先抵掉了旧欠款（见 .claude/notes/expense-tracker.md「代管账户」
+  // 那节「转钱给他之前先抵掉旧欠款」），boss_cash_gifts 那份文档会带 offsetTotal——
+  // 只有这个数字是同事这边**拿得到**的信息（跟着 gift 文档一起同步过来），拿不到的
+  // 就不硬凑，这里只做「另有 X 结清了你垫付的」这一句附加说明，不试图算出「老板欠我
+  // 多少」这种需要老板那边权威数据的东西。
+  const offsetTotal = o.topups.filter(t => (!t.cur || t.cur === cur) && Number(t.offsetTotal) > 0)
+    .reduce((s, t) => s + Number(t.offsetTotal), 0);
 
   // 还没填收到多少：不编一个 0 出来（那看起来像「花光了」），直接请他填
   if(!o.topups.length){
@@ -1414,10 +1477,15 @@ function renderBossCash(){
   }
 
   const mine = (data.transactions || []).filter(t => t.accountId === STAFF_BOSS_ACC_ID);
-  const spent = mine.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const spent = mine.filter(t => t.type !== 'income' && effectivePaidFrom(t, o) === 'cash')
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const back = mine.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const left = bossCashLeft();
+  const ownSpent = bossCashOwnSpent();
   const notSent = mine.filter(t => t.inbox && t.inbox.status !== 'sent').length;
+  // 理论上不该再出现负数了（自己垫的钱不再从这个余额扣）——留着当异常兜底显示，
+  // 不裸露负数，跟原本的设计精神一样，只是措辞不再暗示「你自己先垫了」（那件事现在
+  // 由下面 ownSpent 那行单独说明，两者是不同的概念，混在一起就是这次要修的 bug）。
   const over = left < 0;
   el.classList.toggle('low', over || left < got * 0.15);
 
@@ -1435,16 +1503,26 @@ function renderBossCash(){
       `<span>+${fmt(t.amount, mismatch ? t.cur : cur)}</span></div>`;
   }).join('');
 
+  const subZh = `收到 ${fmt(got, cur)}` +
+    (offsetTotal > 0 ? `（另有 ${fmt(offsetTotal, cur)} 结清了你垫付的）` : '') +
+    ` · 用现金花掉 ${fmt(spent, cur)}`;
+  const subEn = `Received ${fmt(got, cur)}` +
+    (offsetTotal > 0 ? ` (plus ${fmt(offsetTotal, cur)} used to settle what you fronted)` : '') +
+    ` · spent ${fmt(spent, cur)}`;
+
   el.innerHTML = `
-    <div class="bcash-label">${over ? tt('超支了','Over budget') : tt('手上现金','Cash on hand')}</div>
+    <div class="bcash-label">${over ? tt('数字对不上了','Numbers do not add up') : tt('手上现金','Cash on hand')}</div>
     <div class="bcash-total">${fmt(over ? -left : left, cur)}</div>
-    <div class="bcash-sub">${tt(
-      `收到 ${fmt(got, cur)} · 已花 ${fmt(spent, cur)}`,
-      `Received ${fmt(got, cur)} · spent ${fmt(spent, cur)}`)}${
+    <div class="bcash-sub">${tt(subZh, subEn)}${
       back ? tt(` · 退回 ${fmt(back, cur)}`, ` · refunds ${fmt(back, cur)}`) : ''}</div>
+    ${ownSpent > 0 ? `<div class="bcash-warn">${tt(
+      `📝 这本机记录你自己先垫了 ${fmt(ownSpent, cur)}（这台手机看不到老板有没有还你，自己跟他对一下）`,
+      `📝 This device shows you fronted ${fmt(ownSpent, cur)} yourself (this phone cannot tell if the Boss `
+      + `has paid you back — please check with them)`)}</div>` : ''}
     ${over ? `<div class="bcash-warn">${tt(
-      `⚠️ 你自己先垫了 ${fmt(-left, cur)}，记得跟老板要回来`,
-      `⚠️ You are ${fmt(-left, cur)} out of pocket — ask the Boss to pay you back`)}</div>` : ''}
+      `⚠️ 用现金花掉的比收到的还多，请核对一下（可能有笔该标「自己先垫的」被标成了「现金」）`,
+      `⚠️ Cash spent is more than cash received — please check (a record that should be `
+      + `"fronted yourself" may be marked "cash")`)}</div>` : ''}
     ${notSent ? `<div class="bcash-warn">${tt(
       `⏳ 有 ${notSent} 笔还没送到老板那边（这个余额已经扣过了）`,
       `⏳ ${notSent} record(s) not sent to the Boss yet (already deducted above)`)}</div>` : ''}
@@ -1456,6 +1534,68 @@ function renderBossCash(){
     </div>
     <div class="bcash-list">
       <div class="bcash-label">${tt('收到的钱','Cash received')}</div>${rows}</div>`;
+}
+
+/* —— 这笔钱是谁出的（'cash'／'own'）—————————————————————
+ *
+ * 2026-09-10 三度改版新增。记账表单「老板账」那页多一个开关，让同事自己标一下这笔钱
+ * 是用老板给的现金付的、还是自己先垫的——不标的话，老板那边只能靠「这个人现在有没有
+ * 代管账户」去猜，猜错的那一种（收到现金之前自己垫的钱）就是这次真实 bug 的根因。
+ * 详见 .claude/notes/expense-tracker.md「代管账户」那节。
+ *
+ * **预设值不增加同事的操作**：打开表单/改金额时自动按「bossCashLeft() 够不够这笔
+ * 金额」判断，够 → 'cash'，不够 → 'own'。一旦手动点过开关（`state.txPaidFromTouched`），
+ * 在这次开表单期间就不再被自动判断覆盖——开新的一笔/编辑另一笔时才重新解封。
+ */
+function paintPaidFromTabs(){
+  const cashEl = document.getElementById('paidfrom-cash');
+  const ownEl = document.getElementById('paidfrom-own');
+  if(!cashEl || !ownEl) return;
+  cashEl.classList.toggle('active', state.txPaidFrom === 'cash');
+  ownEl.classList.toggle('active', state.txPaidFrom === 'own');
+}
+function setPaidFrom(v){
+  state.txPaidFrom = (v === 'own') ? 'own' : 'cash';
+  state.txPaidFromTouched = true;
+  paintPaidFromTabs();
+}
+/** 打开新增/编辑弹窗时调用（expense-tracker.html 的 showAddTx()/editTx() 里有 typeof
+ *  挡一层的调用）。tx 为 null 代表新增。非老板账户整块隐藏——库存/公司账户/个人账户
+ *  都不需要这个开关。 */
+function syncBossPaidFromField(tx){
+  const wrap = document.getElementById('tx-paidfrom-wrap');
+  if(!wrap) return;
+  const onBoss = data.currentAccountId === STAFF_BOSS_ACC_ID;
+  wrap.style.display = onBoss ? 'block' : 'none';
+  if(!onBoss) return;
+  if(tx && (tx.paidFrom === 'cash' || tx.paidFrom === 'own')){
+    // 编辑一笔已经标过的记录：尊重当初的选择，不用自动判断覆盖它
+    state.txPaidFrom = tx.paidFrom;
+    state.txPaidFromTouched = true;
+    paintPaidFromTabs();
+  } else {
+    state.txPaidFromTouched = false;
+    syncBossPaidFromAuto();
+  }
+}
+/** 金额栏变化时重算预设值（expense-tracker.html 的 onAmountInput() 里有 typeof 挡一层
+ *  的调用）——已经手动改过的（state.txPaidFromTouched）不会被这里覆盖。 */
+function syncBossPaidFromAuto(){
+  if(state.txPaidFromTouched) return;
+  const wrap = document.getElementById('tx-paidfrom-wrap');
+  if(!wrap || wrap.style.display === 'none') return;
+  const amt = readAmountInput().num;
+  const left = bossCashLeft();
+  state.txPaidFrom = (Number.isFinite(amt) && left >= amt) ? 'cash' : 'own';
+  paintPaidFromTabs();
+}
+/** saveTxInner() 组好 tx 之后调用（expense-tracker.html 里有 typeof 挡一层的调用）。
+ *  只在老板账户、支出类型下才写这个字段——收入没有「谁出的钱」这回事，其它账户也
+ *  用不到，不多存无意义的字段。 */
+function applyBossPaidFrom(tx){
+  if(tx.accountId !== STAFF_BOSS_ACC_ID) return;
+  if(tx.type === 'income') return;
+  tx.paidFrom = (state.txPaidFrom === 'own') ? 'own' : 'cash';
 }
 
 /** 填/换/清掉老板账口令。填错了送不出去时会说明白（见 submitInboxTx 的 permission-denied）。 */
@@ -1592,9 +1732,15 @@ async function submitInboxTx(tx){
     from: (staffIdentity ? staffIdentity.reporter : '同事').slice(0, 40),
     // 整笔账压成一个字符串送（规则里只校验长度，不逐字段校验——字段校验住老板 App
     // 那边，收进来时不认的类别会退回「其他」，坏数据直接丢掉不入账）
+    //
+    // paidFrom（'cash'/'own'，2026-09-10 三度改版新增）放在这个字符串里面，**不是**
+    // payload 的新顶层字段——firestore.rules 对 inbox_boss 写的是
+    // hasOnly(['k','tx','photo','from','createdAt'])，加顶层字段会被规则挡下，而且
+    // 改规则要用户自己去 Firebase Console 贴一次。放进这个字符串里则一个字都不用改，
+    // 老板那边 fetchInbox() 解析这份 JSON 时自然就读得到（见那边 raw.paidFrom）。
     tx: JSON.stringify({
       srcId: tx.id, date: tx.date, amount: tx.amount, type: tx.type,
-      categoryId: tx.categoryId, description: tx.description || ''
+      categoryId: tx.categoryId, description: tx.description || '', paidFrom: tx.paidFrom
     })
     // 刻意不带 createdAt：那要用 firebase.firestore.FieldValue.serverTimestamp()，
     // 等于让这条路多依赖一个全局对象；而「什么时候收到的」老板那边收件时自己盖章

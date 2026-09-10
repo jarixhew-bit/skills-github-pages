@@ -1662,7 +1662,7 @@ if (want()) {
   await page.waitForTimeout(100);   // 让送出与本机写入收尾
   card = await page.locator('#staff-boss-cash').innerText();
   ok('花了 100 之后余额变 500（是算出来的，不是写死的）', card.includes('¥500.00'), card);
-  ok('卡上写明收到多少、花掉多少', card.includes('收到 ¥600.00') && card.includes('已花 ¥100.00'), card);
+  ok('卡上写明收到多少、用现金花掉多少', card.includes('收到 ¥600.00') && card.includes('用现金花掉 ¥100.00'), card);
 
   // —— 送不出去的那笔照样扣：现金离开口袋就没了 ——
   await page.evaluate(() => {
@@ -1692,17 +1692,26 @@ if (want()) {
   await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
   await page.waitForTimeout(100);   // 让送出与本机写入收尾
   card = await page.locator('#staff-boss-cash').innerText();
-  ok('花超了显示「超支了」而不是一个负数余额', card.includes('超支了'), card);
-  ok('说清楚是他自己先垫的、该跟老板要回来', card.includes('先垫了'), card);
-  ok('超支时卡片换成警示色', await page.evaluate(() =>
-     document.getElementById('staff-boss-cash').classList.contains('low')));
+  // 2026-09-10 三度改版：手上现金花完之后再记的账，会被自动判成「他自己先垫的」
+  // （paidFrom='own'），**不再有「超支」这个状态**——那本来就是个假象：他不可能
+  // 花掉口袋里没有的钱，超出去的部分必然是自己垫的。所以这里断言的是新语义。
+  ok('花超的部分自动算成「他自己先垫的」，不是超支', card.includes('先垫了'), card);
+  ok('手上现金**永远不会变成负数**（这是这次改版的硬不变量）',
+     !/手上现金[\s\S]{0,30}-¥/.test(card) && !card.includes('超支了'), card);
+  ok('说清楚是他自己先垫的、该跟老板要回来', card.includes('跟他对一下') || card.includes('先垫了'), card);
 
   // —— 老板又给钱：加上去 ——
   await page.evaluate(() => { window.prompt = () => '1000'; });
   await page.evaluate(() => bossCashAdd());
   await page.waitForTimeout(400);
   card = await page.locator('#staff-boss-cash').innerText();
-  ok('又收到 1000 之后余额回正（600+1000-650=950）', card.includes('¥950.00'), card);
+  // 旧模型这里是 600+1000-650=950（把自己垫的 500 也从现金里扣）。新模型下那 500 是
+  // 垫付、不动现金：收到 1600、用现金花掉 150 → 手上 1450，另外老板欠他 500。
+  // **不要**因为后来收到钱就把先前那笔垫付改判成现金付——它当时就已经带着 own 送到
+  // 老板那边了，回头改判两边又会对不上（正是这次要修的那个 bug）。
+  ok('又收到 1000 之后：手上现金 1600−150=1450（自己垫的 500 不从现金扣）',
+     card.includes('¥1450.00'), card);
+  ok('先前那笔垫付不会因为后来收到钱就被改判成现金付', card.includes('¥500.00'), card);
 
   // —— 重填只清收到的钱，账目一笔都不许动 ——
   const txCount = await page.evaluate(() =>
