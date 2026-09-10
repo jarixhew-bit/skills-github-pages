@@ -5631,7 +5631,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-09-09';
+const APP_BUILD = '2026-09-10';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -7375,7 +7375,7 @@ async function fetchInbox(opts){
 
   inboxState.error = null;
   const dead = new Set((data.deletedTxIds || []).map(d => d.id));
-  let added = 0, skipped = 0, removed = 0, anyHoldingRouted = false;
+  let added = 0, skipped = 0, removed = 0, anyHoldingRouted = false, repaid = 0, repayBlocked = 0;
 
   // 分两轮：先收账，再处理「同事把那笔删了」。同一次拿到的这两种文档没有先后顺序，
   // 删的那条要是先跑，等一下收账那一轮又会把它加回来（同事删过的账在老板这边复活，
@@ -7393,8 +7393,9 @@ async function fetchInbox(opts){
     let raw = null;
     try{ raw = JSON.parse(d.tx); }catch(e){ raw = null; }
     // 坏数据不留在箱子里堵着后面的（箱子是别人能写的地方，必须假设会收到垃圾）。
-    // 注意：删除请求没有 amount/date，所以先认出它（下面那段），别在这里就被当垃圾丢掉。
-    if(!raw || (raw.op !== 'delete'
+    // 注意：删除/归还请求没有正常账目的 amount/date 形状要求，所以先认出它们
+    // （下面那两段），别在这里就被当垃圾丢掉。
+    if(!raw || ((raw.op !== 'delete' && raw.op !== 'repay')
         && (!(Number(raw.amount) >= 0) || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.date||''))))){
       await inboxDrop(doc); skipped++; continue;
     }
@@ -7415,6 +7416,49 @@ async function fetchInbox(opts){
       // 也可能别的设备上有——墓碑跟着同步走，那边也会跟着删。
       tombstoneTx(id);
       dead.add(id);
+      await inboxDrop(doc);
+      continue;
+    }
+
+    // 同事按了「一键归还」（2026-09-10）。走的也是同一个投递箱、同一条规则——payload
+    // 只是 tx 字符串里多个 op:'repay'，规则一个字都不用改。**这不是一笔消费**，不能
+    // 落进下面的普通消费入账路径：那样会把「归还」记成他又花了一笔钱，代管账户余额
+    // 不减反增，钱凭空消失。要记成跟 repayBossCashGift() 完全一样的两条腿转账。
+    // 详见 .claude/notes/expense-tracker.md「一键归还」那一节。
+    if(raw.op === 'repay'){
+      const amt = Number(raw.amount);
+      if(!(amt > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.date || ''))){
+        await inboxDrop(doc); skipped++; continue;                 // 坏数据，当垃圾丢
+      }
+      const repayId = 'ix_repay_' + String(raw.srcId || doc.id).slice(0, 40);
+      if(data.transactions.some(t => t.repayId === repayId)){
+        // 已经记过这一笔了（比如上次收件成功、但箱子里那份文档没删掉），
+        // 不要重复记账，把箱子清干净就好，免得每次收件都被同一条卡住。
+        await inboxDrop(doc); continue;
+      }
+      const personName = String(d.from || '同事').slice(0, 40);
+      const holdAcc = getAcc(holdingAccountId(personName));
+      const backAcc = getAcc(bossCashGiftAccountId());
+      // 没有代管账户（理论上不该发生），或者代管账户跟接收账户币种对不上：不许硬记
+      // ——那等于凭空编了个 1:1 汇率。宁可让这条留在箱子里、老板每次收件都被提醒，
+      // 也不能悄悄记错钱；请老板改用「💰 他还钱了」按钮手动处理。**不 inboxDrop**，
+      // 留着这份文档，下次收件还会再看到。
+      if(!holdAcc || !backAcc || holdAcc.currency !== backAcc.currency){
+        repayBlocked++;
+        continue;
+      }
+      const now = Date.now();
+      data.transactions.push({
+        id: uid(), accountId: holdAcc.id, date: raw.date, type: 'expense', amount: amt,
+        categoryId: 'cat_cash_gift', description: `${personName} 归还的现金（转回「${backAcc.name}」）`,
+        updatedAt: now, xfer: true, repayId
+      });
+      data.transactions.push({
+        id: uid(), accountId: backAcc.id, date: raw.date, type: 'income', amount: amt,
+        categoryId: 'cat_cash_gift_in', description: `${personName} 归还的现金（从代管账户转回）`,
+        updatedAt: now, xfer: true, repayId
+      });
+      repaid++;
       await inboxDrop(doc);
       continue;
     }
@@ -7462,13 +7506,14 @@ async function fetchInbox(opts){
     await inboxDrop(doc);
   }
 
-  if(added || removed) saveData();
+  if(added || removed || repaid) saveData();
   inboxState.added = added;
   inboxState.removed = removed;
+  inboxState.repaid = repaid;
   inboxState.last = Date.now();
   inboxState.running = false;
 
-  if(added || removed){
+  if(added || removed || repaid || repayBlocked){
     const parts = [];
     // 不再统一说「已进「X」」——有代管账户的人现在会被单独路由进各自的代管账户，
     // 不是全部都进设置页选的那个默认账户，笼统报一个账户名字会误导。
@@ -7477,6 +7522,8 @@ async function fetchInbox(opts){
       : `\n已进「${(getAcc(accId)||{}).name}」`));
     // 删掉的一定要说出来：账目自己少了一笔而没人告诉他，比不删还糟
     if(removed) parts.push(`同事删掉了 ${removed} 笔，这边也一起删了`);
+    if(repaid) parts.push(`收到同事的归还 ${repaid} 笔，已经转回代管账户对应的账户`);
+    if(repayBlocked) parts.push(`⚠️ 有 ${repayBlocked} 笔归还记录处理不了（没有代管账户，或者币种对不上），请用「💰 他还钱了」按钮手动处理`);
     toast(parts.join('\n'));
     if(state.currentTab === 'overview') renderOverview();
     if(state.currentTab === 'transactions') renderTxList();
@@ -7720,9 +7767,15 @@ function clearBossCashGiftLog(){
   renderOvBossCashGift();
 }
 
+/** 打开弹窗时先静默收一次同事投递箱的件（fetchInbox() 不传 opts 就是静默模式，
+ *  不会弹 toast），这样同事按了「一键归还」之后老板打开这个弹窗大概率能马上看到——
+ *  ⚠️ 这不是推送：真实时效是「你打开这个弹窗时会去收一次」，不是同事一点老板手机就响。
+ *  收件失败（没网/没登录/规则没贴）不许打断弹窗本身的正常使用，所以吞掉失败、
+ *  只在成功且有变化时才重新刷新摘要。 */
 function openBossCashGift(){
   showModal('modal-boss-cash-gift');
   renderBossCashGiftModal();
+  fetchInbox().then(()=>{ refreshBossCashGiftPersonSummary(); }).catch(()=>{});
 }
 
 function renderBossCashGiftModal(){
