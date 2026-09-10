@@ -4231,6 +4231,173 @@ console.log('\n【41】转钱先抵欠款：手算 fixture（欠189转5000）+ �
   await ctx.close();
 }
 
+// ---------- 【42】同事花代管现金，但币种对不上/找不到真实账户：不硬记、不吞云端文档 ----------
+// 对应 fetchInbox() 里 holdCurMismatch 那条分支（理论上不该发生——sendBossCashGift()
+// 会在转账当下就挡住这种组合，但代管账户是靠 srcAccountId 这个字段反推来源，旧数据/
+// 别的路径不保证一定守规矩）。少了这条自检，「币种不一致就不许硬记」这道闸门被谁
+// 不小心删掉，会静静编出一个 1:1 汇率记错账，或者更糟：文档被当场 inboxDrop 掉，
+// 老板这笔钱的凭据就此从投递箱消失，问都没法问同事「这笔到底是多少」。
+console.log('\n【42】同事花代管现金但币种对不上：不硬记、不吞云端文档（对照组：币种一致的照常记 3 条腿）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    // 币种对不上的那个人：代管账户建成 USD，但记下的来源账户（srcAccountId）是 KHR。
+    data.accounts.push({ id:'acc_khr42', name:'KHR账户42', currency:'KHR', color:'#000', createdAt: Date.now() });
+    const badHold = getOrCreateHoldingAccount('Mismatch42', 'USD');
+    badHold.srcAccountId = 'acc_khr42';
+    // 对照组：币种一致的人，同一批一起收，必须照常记账——少了这组对照，「整批都不记」
+    // 这种更严重的 bug（比如闸门条件写反，把正常的也一起挡了）也会看起来全绿。
+    const goodHold = getOrCreateHoldingAccount('Good42', 'USD');
+    goodHold.srcAccountId = 'acc_boss';
+    saveData();
+
+    window.__box = { docs: [], deleted: [] };
+    window.__put = (id, d) => window.__box.docs.push({
+      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
+    cloudAvailable = true; currentUser = { uid:'boss' };
+    db = { collection: () => ({ limit: () => ({ get: async () => ({ docs: window.__box.docs }) }) }) };
+    window.__put('mm1', { k:'x', from:'Mismatch42', tx: JSON.stringify({ srcId:'mm1',
+      date: today(), amount: 300, type:'expense', categoryId:'cat_food', description:'币种对不上' }) });
+    window.__put('gd1', { k:'x', from:'Good42', tx: JSON.stringify({ srcId:'gd1',
+      date: today(), amount: 60, type:'expense', categoryId:'cat_food', description:'对照组' }) });
+  });
+  await page.evaluate(()=>fetchInbox());
+  await page.waitForTimeout(300);
+
+  ok('★ 币种对不上：不生成任何交易（不硬记 1:1 汇率）',
+     !(await page.evaluate(()=>data.transactions.some(t=>t.staffSpendId==='ix_mm1' || t.id==='ix_mm1'))));
+  ok('★ 币种对不上：文档没被丢弃，还留在箱子里（下次收件还看得到）',
+     !(await page.evaluate(()=>window.__box.deleted.includes('mm1'))));
+  const toastTxt42 = await page.textContent('#toast');
+  ok('提示里说明有几笔处理不了', (toastTxt42||'').includes('1 笔同事消费因为账户币种对不上'), toastTxt42);
+
+  // ---- 对照组：同一批里币种正常的那笔照常记 3 条腿 ----
+  const goodLegs42 = await page.evaluate(()=>data.transactions.filter(t=>t.staffSpendId==='ix_gd1'));
+  ok('（对照组）币种一致的那笔正常记 3 条腿', goodLegs42.length === 3, goodLegs42);
+  ok('（对照组）那份文档正常被丢弃（币种正常的不受这道闸门影响）',
+     await page.evaluate(()=>window.__box.deleted.includes('gd1')));
+
+  // ---- 再收一次：还是看得到、还是不硬记——不是"提醒过一次之后第二次就悄悄吞掉" ----
+  await page.evaluate(()=>fetchInbox());
+  await page.waitForTimeout(300);
+  ok('第二次收件：币种不一致的还是没有被记账',
+     !(await page.evaluate(()=>data.transactions.some(t=>t.staffSpendId==='ix_mm1'))));
+  const toastTxt42b = await page.textContent('#toast');
+  ok('第二次收件：提示仍然出现（不是"提醒过一次就不再提醒"）', (toastTxt42b||'').includes('币种对不上'), toastTxt42b);
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+// ---------- 【43】同一份投递箱文档重复收到，不会叠加配平腿 ----------
+// 现实会发生：inboxDrop() 网络失败没删掉、或者同事手滑重送同一笔。对应 fetchInbox()
+// 里「findIndex(t=>t.id===id)，i>=0 时只更新腿一、不重新 push 腿二腿三」那段判重。
+// 少了这条自检，这段判重被谁不小心删掉，会让同一笔消费每次重收都多记一组 3 条腿，
+// 源账户/代管账户余额跟着越滚越错——光数「有没有交易」数不出这个 bug（交易确实都在），
+// 必须手算余额、支出、代管三个数字才能抓到，所以下面每个数字都手算断言，不只数条数。
+console.log('\n【43】同一份投递箱文档重复收到，不叠加配平腿（对照组：不同 srcId 的新一笔照样记得进来）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // ---- 转 1000 给 Dup43，来源账户是 acc_boss，然后布好投递箱 mock ----
+  await page.evaluate(() => {
+    const holdAcc = getOrCreateHoldingAccount('Dup43', 'USD');
+    holdAcc.srcAccountId = 'acc_boss';
+    const now = Date.now();
+    data.transactions.push(
+      { id: uid(), accountId:'acc_boss', type:'expense', amount:1000, date: today(),
+        categoryId:'cat_cash_gift', description:'给 Dup43 的现金', updatedAt: now, giftId:'g43', xfer:true },
+      { id: uid(), accountId: holdAcc.id, type:'income', amount:1000, date: today(),
+        categoryId:'cat_cash_gift_in', description:'从「Boss」转入', updatedAt: now, giftId:'g43', xfer:true }
+    );
+    saveData();
+    window.__box = { docs: [], deleted: [] };
+    // 注意：这个 mock 里 inboxDrop() 只把 id 记进 __box.deleted，不会真的把文档从
+    // __box.docs 里拿掉——这正是要测的场景（"删不掉/没删掉"），docs 天然会在
+    // 下一次 get() 里再被拿回来，等同「同一份文档又被收到一次」。
+    window.__put = (id, d) => window.__box.docs.push({
+      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
+    cloudAvailable = true; currentUser = { uid:'boss' };
+    db = { collection: () => ({ limit: () => ({ get: async () => ({ docs: window.__box.docs }) }) }) };
+    window.__put('spendA', { k:'x', from:'Dup43', tx: JSON.stringify({ srcId:'dup1',
+      date: today(), amount: 456, type:'expense', categoryId:'cat_food', description:'第一次收到' }) });
+  });
+
+  const readState43 = async () => page.evaluate(() => {
+    const d = new Date();
+    return {
+      accBossBal: data.transactions.filter(t=>t.accountId==='acc_boss')
+        .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0),
+      monthExp: monthTxs('acc_boss', d.getFullYear(), d.getMonth())
+        .filter(t=>t.type==='expense' && !t.xfer).reduce((s,t)=>s+t.amount,0),
+      holdBal: (() => {
+        const id = holdingAccountId('Dup43');
+        return data.transactions.filter(t=>t.accountId===id)
+          .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0);
+      })(),
+      dup1Legs: data.transactions.filter(t=>t.staffSpendId==='ix_dup1').length
+    };
+  });
+
+  // ---- 第一次收件：正常记 3 条腿 ----
+  await page.evaluate(()=>fetchInbox());
+  await page.waitForTimeout(300);
+  const s1 = await readState43();
+  ok('★ 第一次收件：3 条腿都记上了', s1.dup1Legs === 3, s1);
+  ok('★ 第一次收件：来源账户净变化只有转账的 −1000（花的 456 一进一出互相抵消）',
+     s1.accBossBal === -1000, s1);
+  ok('★ 第一次收件：代管余额 = 544（1000−456）', s1.holdBal === 544, s1);
+  ok('★ 第一次收件：本月支出 = 456', s1.monthExp === 456, s1);
+
+  // ---- 第二次收件：同一份文档还在箱子里（模拟 inboxDrop 失败/同事重送），
+  //      来源账户余额、本月支出、代管余额三个数字必须原封不动，条数也不能翻倍 ----
+  await page.evaluate(()=>fetchInbox());
+  await page.waitForTimeout(300);
+  const s2 = await readState43();
+  ok('★ 重复收到同一笔：不多记一组配平腿（还是 3 条，不是 6 条）', s2.dup1Legs === 3, s2);
+  ok('★ 重复收到同一笔：来源账户余额不变', s2.accBossBal === s1.accBossBal, { s1, s2 });
+  ok('★ 重复收到同一笔：本月支出不变', s2.monthExp === s1.monthExp, { s1, s2 });
+  ok('★ 重复收到同一笔：代管余额不变', s2.holdBal === s1.holdBal, { s1, s2 });
+
+  // ---- 对照组：同一批里混一笔真的新的一笔（不同 srcId）——证明判重没有连累到
+  //      新记录，不是靠"整批跳过"蒙混过关 ----
+  await page.evaluate(() => {
+    window.__put('spendB', { k:'x', from:'Dup43', tx: JSON.stringify({ srcId:'dup2',
+      date: today(), amount: 77, type:'expense', categoryId:'cat_food', description:'真的是新的一笔' }) });
+  });
+  await page.evaluate(()=>fetchInbox());
+  await page.waitForTimeout(300);
+  const s3 = await readState43();
+  const dup2Legs = await page.evaluate(()=>data.transactions.filter(t=>t.staffSpendId==='ix_dup2').length);
+  ok('（对照组）不同 srcId 的新一笔照样记得进来（3 条腿）', dup2Legs === 3, dup2Legs);
+  ok('（对照组）新一笔记进去后代管余额随之减少 77', s3.holdBal === s1.holdBal - 77, { s1, s3 });
+  ok('（对照组）新一笔记进去后本月支出随之增加 77', s3.monthExp === s1.monthExp + 77, { s1, s3 });
+  ok('重复的那笔（dup1）依然只有 3 条，没被这次批次连累叠加',
+     (await page.evaluate(()=>data.transactions.filter(t=>t.staffSpendId==='ix_dup1').length)) === 3);
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
