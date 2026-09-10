@@ -1538,3 +1538,21 @@ base64 大约是原图的 1.33 倍（也就是原图 500KB 以内可以原样送
 自检：`check-staff-page.mjs`【35】（三笔混合场景 245.53／3 笔／拆行 56.00+189.53，
 对照组：切到没有记录的月份归零、别的账户不算进去、手上现金卡数字不受影响）。做过
 false-red：把总额算法改成只算 `paidFrom==='cash'`（漏掉自己垫的部分），对应断言立刻红。
+
+**主 App「给同事现金」卡也有同一口径的一行（2026-09-10）**：`renderOvBossCashGift()`
+（`expense-tracker.html`）每人那行「还剩/已花」下面多一行「本月共替你花 X（用现金
+Y · 他垫 Z）」——算法是 `personMonthSpend(person)`（挂在 `renderOvBossCashGift()`
+之前），用「代管账户」那套字段判定：`用现金`＝真支出腿（`t.staffSpendId===t.id`），
+`他垫`＝有 `fromStaff` 没有 `staffSpendId` 且不落在代管账户本身的那种（`isUnpaidStaffAdvance()`
+同一套形状），**不管 `fromStaff.paidAt` 有没有标**——已经还清的垫付那个月照样算，
+理由跟同事版一样：合计不该因为"什么时候还的"而跳动。这是**同一笔钱经过投递箱
+（`fetchInbox()`）之后的另一半视角**：同事那边记账当下用 `paidFrom` 标好、送进
+`inbox_boss`，这边收件按同一个标记分岔成 3 条腿（cash）或单腿（own）——两边理应
+分毫不差，改任何一边都要保持这条等式成立。「还剩」那行沿用原本的代管账户余额算法，
+没有动。
+
+自检：`check-expense-company.mjs`【47】，真走 `fetchInbox()` 路径（`paidFrom` 字段模拟
+同事那边标好的现金/垫付），含对照组（只有现金消费的人不显示「他垫」、上个月的消费不
+算进本月合计）＋跟同事版 `renderBossSummary()` 算法重放比对（两边口径一致）。做过两次
+false-red：改坏卡片渲染那一行、改坏 `personMonthSpend()` 本身，两条路都能让"两边口径
+一致"那两条断言当场变红。
