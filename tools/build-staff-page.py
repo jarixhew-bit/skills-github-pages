@@ -1249,11 +1249,11 @@ async function staffSyncBossGifts(){
     }catch(e){ return; } // 权限错误/离线：安静跳过，下次轮询再试，不打扰用户
 
     if(snap.empty) return;
-    const o = loadBossCash();
     const cur = staffBossCur();
     const me = staffIdentity.reporter;
     let addedTotal = 0, mismatched = [];
     let maxAt = seen.lastAt;
+    const pending = [];
 
     snap.forEach(doc => {
       const d = doc.data();
@@ -1264,12 +1264,30 @@ async function staffSyncBossGifts(){
       const amt = Number(d.amount) || 0;
       if(amt <= 0) return;
       const giftCur = (d.currency || '').toUpperCase();
-      const entry = { date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
-                       from: 'admin', giftId: doc.id, cur: giftCur || cur };
-      o.topups.push(entry);
-      if(giftCur && giftCur !== cur){ mismatched.push(entry); }
-      else { addedTotal += entry.amount; }
+      pending.push({ date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
+                     from: 'admin', giftId: doc.id, cur: giftCur || cur });
     });
+
+    // ⚠️ 这里**必须重新读一次** localStorage，而且要按 giftId 去重（2026-09-10 教训）。
+    // 上面那句 .get() 是一趟网络往返，中间几百毫秒里这本账可能已经被别人改过：
+    //   1. 同一台手机同时开着「浏览器分页」和「桌面图标 App」——那是两个各自独立的
+    //      JS 环境，bossGiftsOpBusy 这把锁**只锁得住自己那一边**，两边共用同一份
+    //      localStorage。两边同时收到同一笔现金，各推一条，老板发一笔他收到两笔。
+    //      （用户 2026-09-10 实际踩到：「我只发一笔5000 他又收到两笔」。）
+    //   2. 这几百毫秒里他自己记了一笔账、或按了归还，那些改动也在这本账里。
+    //      拿开头那份旧的 o 覆盖回去，他刚记的东西就凭空消失了。
+    // 所以：查完之后才读、只往里加没见过的 giftId、加完立刻存。giftId 是云端文档 id，
+    // 天生唯一，是判「这笔是不是已经进来过」最可靠的凭据——比游标 lastAt 可靠，
+    // 因为游标是每台/每个环境各自记的，去重必须看账本身。
+    const o = loadBossCash();
+    const already = new Set(o.topups.filter(t => t.giftId).map(t => t.giftId));
+    for(const entry of pending){
+      if(already.has(entry.giftId)) continue;   // 另一边（分页/App）已经收过这一笔了
+      already.add(entry.giftId);
+      o.topups.push(entry);
+      if(entry.cur && entry.cur !== cur){ mismatched.push(entry); }
+      else { addedTotal += entry.amount; }
+    }
 
     seen.lastAt = maxAt;
     saveBossGiftsSeen(seen);
@@ -1314,8 +1332,7 @@ async function staffPruneBossGifts(){
   bossGiftsOpBusy = true;
   try{
     if(!(await staffEnsureAnon())) return;
-    const o = loadBossCash();
-    const withGift = o.topups.filter(t => t.giftId);
+    const withGift = loadBossCash().topups.filter(t => t.giftId);
     if(!withGift.length) return; // 没有可核对的，不用发请求
 
     let snap;
@@ -1332,6 +1349,9 @@ async function staffPruneBossGifts(){
       if(samePersonName(d.person, me)) alive.add(doc.id);
     });
 
+    // 跟 staffSyncBossGifts 同一条教训：查询是一趟网络往返，回来之后才能读这本账，
+    // 否则会拿旧的覆盖掉这期间他自己记的账 / 按的归还。
+    const o = loadBossCash();
     let removed = 0;
     o.topups = o.topups.filter(t => {
       if(!t.giftId) return true;          // 手动记录，不受这套核对影响
@@ -1516,6 +1536,45 @@ async function staffEnsureAnon(){
   }catch(e){ console.warn('匿名登录失败', e); return false; }
 }
 
+// 投递箱单份文档的照片上限。Firestore 一份文档最大 1MB，账目字段本身还要占一点，
+// 留 700KB 给 base64 之后的照片是安全边界（base64 比原图大约 1.33 倍，
+// 也就是原图约 500KB 以内可以原样送）。
+const INBOX_PHOTO_LIMIT = 700 * 1024;
+
+/**
+ * 把太大的收据照片缩到能塞进投递箱。长边逐级缩、JPEG 质量逐级降，第一个塞得下的就用。
+ * 目的是**留下能看清楚金额和店名的凭证**，不是留原画质——凭证只要读得出来就有用。
+ * 压不到／读不出图就回 null，由调用方去提示同事另外把照片发给老板。
+ */
+async function shrinkPhotoForInbox(dataUrl, limit){
+  try{
+    const img = await new Promise((resolve, reject)=>{
+      const im = new Image();
+      im.onload = ()=>resolve(im);
+      im.onerror = ()=>reject(new Error('照片读不出来'));
+      im.src = dataUrl;
+    });
+    const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
+    if(!w0 || !h0) return null;
+    for(const maxSide of [1600, 1200, 900, 700, 500]){
+      const scale = Math.min(maxSide / Math.max(w0, h0), 1);   // 只缩不放
+      const w = Math.max(1, Math.round(w0 * scale));
+      const h = Math.max(1, Math.round(h0 * scale));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const cx = c.getContext('2d');
+      // 透明底的 PNG 不先铺白，转成 JPEG 会变一片黑（跟 shrinkPhotoForPDF 同一个坑）
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
+      cx.drawImage(img, 0, 0, w, h);
+      for(const q of [0.7, 0.55, 0.4]){
+        const out = c.toDataURL('image/jpeg', q);
+        if(out && out.length < limit) return out;
+      }
+    }
+    return null;
+  }catch(e){ console.warn('照片压不下去，只送文字', e); return null; }
+}
+
 async function submitInboxTx(tx){
   const k = staffBossKey();
   if(!k) return { ok:false, retriable:false, message: tt('还没填老板账口令','No Boss passcode yet') };
@@ -1535,21 +1594,35 @@ async function submitInboxTx(tx){
     // 等于让这条路多依赖一个全局对象；而「什么时候收到的」老板那边收件时自己盖章
     // （fromStaff.at）就够了。规则允许这个字段存在，只是我们不送。
   };
-  // 收据照片一起送，老板那份账户明细 PDF 的凭证页才有图。太大就只送文字——
-  // 照片没了还能回头问人补，账送不出去才是真丢。
+  // 收据照片一起送，老板那份账户明细 PDF 的凭证页才有图。
+  //
+  // ⚠️ 2026-09-10 用户反馈「他那两张有记录但是没有账单」，根因就在这里：以前的写法是
+  // 「超过 700KB 就不送照片」，而现在手机随手一拍就是 2~5MB，base64 之后更大——于是
+  // **绝大多数照片都被默默丢掉**，账进去了、凭证没了，而且同事和老板两边都没有任何提示。
+  // 现在改成：太大先**缩图重压**（长边逐级缩、JPEG 质量逐级降），压到能送为止；
+  // 真的压不下去才放弃，并且**一定要告诉同事**（见 flushBossQueue 里 photoDropped 那段），
+  // 让他知道要另外把照片发给老板。丢照片可以，闷声丢不行——跟老板端「以前删过的记录
+  // 要讲出来」是同一条原则。
+  let photoDropped = false;
   if(tx.attachmentId){
     try{
       const blob = await getAttachmentBlob(tx.attachmentId);
       if(blob){
         const dataUrl = await blobToBase64(blob);
-        if(dataUrl.length < 700 * 1024) payload.photo = dataUrl;
+        if(dataUrl.length < INBOX_PHOTO_LIMIT){
+          payload.photo = dataUrl;
+        }else{
+          const small = await shrinkPhotoForInbox(dataUrl, INBOX_PHOTO_LIMIT);
+          if(small) payload.photo = small;
+          else photoDropped = true;
+        }
       }
-    }catch(e){ console.warn('照片读不出来，只送文字', e); }
+    }catch(e){ console.warn('照片读不出来，只送文字', e); photoDropped = true; }
   }
 
   try{
     await db.collection(INBOX_COLLECTION).add(payload);
-    return { ok:true };
+    return { ok:true, photoDropped };
   }catch(e){
     // 口令不对 / 老板还没设好权限：重试一百次也是同样结果，要当场说清楚
     if(e && e.code === 'permission-denied')
@@ -1595,9 +1668,14 @@ async function flushBossQueue(opts){
     const r = await submitInboxTx(tx);
     const local = data.transactions.find(t => t.id === txId);
     if(r.ok){
-      if(local) local.inbox = { status:'sent', error:null };
+      if(local) local.inbox = { status:'sent', error:null, photoDropped: !!r.photoDropped };
       q = q.filter(x => x !== txId); saveBossQueue(q);
-      if(loud) toast(tt('✅ 已送到老板那边','✅ Sent to the Boss'));
+      // 照片没送成要讲出来，而且**不管是不是 loud**（自动补送时同事没在看提示，
+      // 但这件事他必须知道：老板那边会看到一笔没有凭证的账）。
+      if(r.photoDropped){
+        toast(tt('⚠️ 这笔的账已经送到老板那边，但收据照片太大送不过去，请另外把照片发给他',
+                 '⚠️ Sent, but the receipt photo was too large to upload — please send it to the Boss separately'));
+      }else if(loud) toast(tt('✅ 已送到老板那边','✅ Sent to the Boss'));
     } else if(r.retriable){
       if(local) local.inbox = { status:'pending', error:null };
       if(loud) toast(r.message);

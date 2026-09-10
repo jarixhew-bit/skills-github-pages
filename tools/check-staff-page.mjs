@@ -2404,6 +2404,188 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【31】同一笔现金不会被收两次（2026-09-10 实际踩到的 bug）----------
+// 老板只发了一笔 5000，同事那边显示两笔。原因：同事手机上同时开着「浏览器分页」和
+// 「桌面图标 App」——两个各自独立的 JS 环境，bossGiftsOpBusy 那把锁只锁得住自己那边，
+// 但两边共用同一份 localStorage，于是各收一次、各推一条。
+// 修法：查询回来之后**重新读一次**这本账，按 giftId 去重（giftId 是云端文档 id，天生唯一）。
+console.log('\n【31】同一笔现金不会被收两次（另一个分页/App 已经收过就不再加）');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);   // reporter = 'Seryi'
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    db = { collection: () => ({ where: () => ({ where: () => ({
+      get: async () => window.__giftSnap
+    }) }) }) };
+    cloudAvailable = true;
+    window.__mkSnap = (docs) => ({
+      empty: docs.length === 0,
+      forEach: (cb) => docs.forEach(d => cb({ id: d.id, data: () => d }))
+    });
+  });
+
+  // ---- 情境：另一个分页已经把 g5000 记进这本账了（本机 seen 游标还不知道这件事）----
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossCash', JSON.stringify({ topups: [
+      { date:'2026-09-10', amount: 5000, from:'admin', giftId:'g5000', cur:'USD' },
+    ]}));
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify({ lastAt: 0, ids: [] }));
+    window.__giftSnap = window.__mkSnap([
+      { id:'g5000', person:'Seryi', amount:5000, currency:'USD', at: 1000 },
+    ]);
+  });
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  const after = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups);
+  ok('同一笔现金（同一个 giftId）不会被记第二次——老板发一笔，这边就只有一笔',
+     after.filter(t => t.giftId === 'g5000').length === 1, after);
+  ok('余额还是 5000，不是 10000',
+     (await page.locator('#staff-boss-cash').innerText()).includes('US$5000.00'),
+     await page.locator('#staff-boss-cash').innerText());
+
+  // ---- 对照组：真的是新的一笔（不同 giftId）照样要收进来，去重不能变成「什么都不收」----
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify({ lastAt: 0, ids: [] }));
+    window.__giftSnap = window.__mkSnap([
+      { id:'g5000', person:'Seryi', amount:5000, currency:'USD', at: 1000 },
+      { id:'g0800', person:'Seryi', amount: 800, currency:'USD', at: 2000 },
+    ]);
+  });
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  const after2 = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups);
+  ok('对照组：新的那一笔（不同 giftId）照样收得进来（少了这条对照，「一律不收」也会全绿）',
+     after2.filter(t => t.giftId === 'g0800').length === 1, after2);
+  ok('对照组：旧的那笔仍然只有一条', after2.filter(t => t.giftId === 'g5000').length === 1, after2);
+  ok('余额 5800', (await page.locator('#staff-boss-cash').innerText()).includes('US$5800.00'),
+     await page.locator('#staff-boss-cash').innerText());
+
+  // ---- 查询期间他自己记了一笔：不能被查询回来的旧快照覆盖掉 ----
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify({ lastAt: 0, ids: [] }));
+    db = { collection: () => ({ where: () => ({ where: () => ({
+      get: async () => {
+        // 网络往返期间，他在另一边手动记了一笔 300（模拟真实的并发写）
+        const o = JSON.parse(localStorage.getItem('staffExpense_bossCash'));
+        o.topups.push({ date:'2026-09-10', amount: 300 });
+        localStorage.setItem('staffExpense_bossCash', JSON.stringify(o));
+        return window.__giftSnap;
+      }
+    }) }) }) };
+  });
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  const after3 = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups);
+  ok('查询期间别处写进来的记录不会被旧快照覆盖掉（否则他刚记的东西会凭空消失）',
+     after3.some(t => !t.giftId && t.amount === 300), after3);
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【32】收据照片太大：缩图重压后照送，不再默默丢掉（2026-09-10）----------
+// 用户反馈「他那两张有记录但是没有账单」。旧写法是「超过 700KB 就不送照片」，而手机
+// 随手一拍就 2~5MB，base64 之后更大——等于绝大多数照片都被默默丢掉，账进去了凭证没了，
+// 两边都没有任何提示。现在改成先缩图重压，真的压不下去才放弃并且明确告诉同事。
+console.log('\n【32】收据照片太大先缩图重压，压不下去才放弃且要出声');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  const LIMIT = 700 * 1024;
+  await page.evaluate(() => {
+    window.__sent = [];
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    db = { collection: () => ({ add: async (p) => { window.__sent.push(p); return { id:'x1' }; } }) };
+    cloudAvailable = true;
+    // 造一张「真的很大」的照片：3000×3000 的随机噪声，压缩率最差的那种，最接近坏情况
+    const c = document.createElement('canvas'); c.width = 3000; c.height = 3000;
+    const cx = c.getContext('2d');
+    const d = cx.createImageData(3000, 3000);
+    for(let i = 0; i < d.data.length; i += 4){
+      d.data[i] = Math.random()*255; d.data[i+1] = Math.random()*255;
+      d.data[i+2] = Math.random()*255; d.data[i+3] = 255;
+    }
+    cx.putImageData(d, 0, 0);
+    window.__bigPhoto = c.toDataURL('image/jpeg', 0.95);
+    // 一张小图（对照组）
+    const c2 = document.createElement('canvas'); c2.width = 40; c2.height = 40;
+    const cx2 = c2.getContext('2d'); cx2.fillStyle = '#c33'; cx2.fillRect(0,0,40,40);
+    window.__smallPhoto = c2.toDataURL('image/jpeg', 0.8);
+    getAttachmentBlob = async () => ({});                 // 只要 truthy
+    blobToBase64 = async () => window.__photoNow;
+  });
+
+  ok('测试用的大图确实超过上限（不然这条测试等于没测）',
+     (await page.evaluate(() => window.__bigPhoto.length)) > LIMIT,
+     await page.evaluate(() => window.__bigPhoto.length));
+
+  // ---- 大图：要被压小后照样送出去，不能变成「没有账单」----
+  const rBig = await page.evaluate(() => {
+    window.__photoNow = window.__bigPhoto;
+    return submitInboxTx({ id:'t1', date:'2026-09-10', amount: 12, type:'expense',
+                           categoryId:'cat_food', description:'大图', attachmentId:'a1' });
+  });
+  const sentBig = await page.evaluate(() => window.__sent[0]);
+  ok('大图不再被丢掉——照片跟着账一起送出去了', !!sentBig.photo, Object.keys(sentBig));
+  ok('送出去的照片确实压到了上限以内', sentBig.photo.length < LIMIT, sentBig.photo.length);
+  ok('压成功时不报「照片没送到」', rBig.photoDropped === false, rBig);
+
+  // ---- 对照组：本来就够小的图要原样送，不该被重压（少了这条对照，「一律重压」也会全绿）----
+  await page.evaluate(() => { window.__sent = []; window.__photoNow = window.__smallPhoto; });
+  await page.evaluate(() => submitInboxTx({ id:'t2', date:'2026-09-10', amount: 8, type:'expense',
+                        categoryId:'cat_food', description:'小图', attachmentId:'a2' }));
+  ok('对照组：本来就够小的照片原样送，不重压',
+     (await page.evaluate(() => window.__sent[0].photo === window.__smallPhoto)));
+
+  // ---- 真的压不下去：要回报 photoDropped，并且**不管 loud 与否**都出声告诉同事 ----
+  await page.evaluate(() => {
+    window.__sent = [];
+    shrinkPhotoForInbox = async () => null;      // 模拟怎么压都塞不进去
+    window.__photoNow = window.__bigPhoto;
+  });
+  const rDrop = await page.evaluate(() => submitInboxTx({ id:'t3', date:'2026-09-10', amount: 5,
+                    type:'expense', categoryId:'cat_food', description:'压不下去', attachmentId:'a3' }));
+  ok('压不下去时回报 photoDropped', rDrop.photoDropped === true, rDrop);
+  ok('压不下去时账本身照样送出去（凭证没了可以补，账送不出去才是真丢）',
+     (await page.evaluate(() => window.__sent.length)) === 1);
+  ok('压不下去时送出去的是纯文字，不带半张图',
+     !(await page.evaluate(() => 'photo' in window.__sent[0])));
+
+  // flushBossQueue 那条路：静默补送（loud 为 false）时也要弹提示
+  await page.evaluate(() => {
+    data.transactions.push({ id:'t4', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-10',
+      amount: 9, type:'expense', categoryId:'cat_food', description:'补送', attachmentId:'a4' });
+    saveBossQueue(['t4']);
+    document.getElementById('toast').textContent = '';
+  });
+  await page.evaluate(() => flushBossQueue());        // 注意：没有 loud
+  await page.waitForTimeout(300);
+  ok('自动补送（没有 loud）时，照片没送成也一定会告诉同事',
+     ((await page.textContent('#toast')) || '').includes('收据照片太大'),
+     await page.textContent('#toast'));
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {
