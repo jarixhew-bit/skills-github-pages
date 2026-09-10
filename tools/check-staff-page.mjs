@@ -2613,6 +2613,89 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【33】老板「重算」换掉云端那笔之后，同事这边不能被改判（2026-09-10）----------
+// 老板按「🔁 按新规则重算欠款」时，会把云端那笔转账**删掉、另建一份净额的新的**
+// （规则不许改金额，只能这样做）。同事这边同步到新文档时记的是「同步那天」的日期。
+// 如果「第一次收到现金是哪一天」这条分界线跟着往后跑，原本判成「花老板现金」的那几笔
+// 会突然被改判成自己垫的，他的手上现金凭空变多——两边又对不上，正是整轮要修的毛病。
+// 所以那个日期只能往前、绝不能往后。
+console.log('\n【33】老板重算换掉云端记录之后，同事这边的分界线不能往后跑');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);   // reporter = 'Seryi'
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    cloudAvailable = true;
+    window.__mk = (docs) => ({ empty: docs.length === 0,
+      forEach: (cb) => docs.forEach(d => cb({ id: d.id, data: () => d })) });
+    // sync 用两层 where，prune 用一层——两个都指到同一份 __snap
+    db = { collection: () => ({
+      where: () => ({ where: () => ({ get: async () => window.__snap }),
+                      get: async () => window.__snap })
+    }) };
+    // 手动铺好「旧版那天」的状态：收到 5000（9/10）、花了 224（9/10）、更早垫了 189.53（9/09）
+    localStorage.setItem('staffExpense_bossCash', JSON.stringify({ topups: [
+      { date:'2026-09-01', amount: 5000, from:'admin', giftId:'gOld', cur:'USD' },
+    ]}));
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify({ lastAt: 1000, ids:['gOld'] }));
+    data.transactions.push({ id:'e224', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-02',
+      type:'expense', amount:224, categoryId:'cat_food', description:'用老板现金付的', updatedAt: Date.now() });
+    data.transactions.push({ id:'e189', accountId: STAFF_BOSS_ACC_ID, date:'2026-08-30',
+      type:'expense', amount:189.53, categoryId:'cat_other_exp', description:'自己先垫的', updatedAt: Date.now() });
+    saveData();
+    renderBossCash();
+  });
+
+  ok('换掉之前：手上现金 5000−224＝4776（189.53 是收到现金之前垫的，不从现金扣）',
+     Math.abs((await page.evaluate(()=>bossCashLeft())) - 4776) < 0.005,
+     await page.evaluate(()=>bossCashLeft()));
+
+  // ---- 老板重算：云端那笔被换成净额 4810.47 的新文档（新 id、at 更新、同步日期是今天）----
+  await page.evaluate(() => {
+    window.__snap = window.__mk([
+      { id:'gNew', person:'Seryi', amount:4810.47, currency:'USD', at: 9999 },
+    ]);
+  });
+  await page.evaluate(() => staffPruneBossGifts());     // 旧文档没了 → 那笔要扣掉
+  await page.waitForTimeout(200);
+  await page.evaluate(() => staffSyncBossGifts());      // 新文档 → 净额加回来
+  await page.waitForTimeout(200);
+
+  const topupsNow = await page.evaluate(()=>JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups);
+  ok('旧的那笔被换掉了，剩下净额那笔', topupsNow.length === 1 && topupsNow[0].giftId === 'gNew', topupsNow);
+  ok('新那笔记的是「同步当天」的日期，比 224 那笔（9/02）还晚——正是会出事的条件',
+     topupsNow[0].date > '2026-09-02', topupsNow[0].date);
+
+  ok('★换掉之后，224 仍然算「花老板的现金」，没有被改判成自己垫的',
+     Math.abs((await page.evaluate(()=>bossCashLeft())) - 4586.47) < 0.005,
+     await page.evaluate(()=>bossCashLeft()));
+  ok('★两边对得上：这个数就是老板端算出来的 4586.47',
+     (await page.locator('#staff-boss-cash').innerText()).includes('4586.47'),
+     await page.locator('#staff-boss-cash').innerText());
+
+  // 对照组：真的比现有分界线更早的一笔进来，分界线要往前挪（只禁往后，不禁往前）
+  await page.evaluate(() => {
+    const seen = JSON.parse(localStorage.getItem('staffExpense_bossGiftsSeen'));
+    const o = JSON.parse(localStorage.getItem('staffExpense_bossCash'));
+    o.topups.push({ date:'2026-08-15', amount: 100, from:'admin', giftId:'gEarly', cur:'USD' });
+    localStorage.setItem('staffExpense_bossCash', JSON.stringify(o));
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify(seen));
+  });
+  ok('对照组：出现更早的一笔时，分界线要往前挪（只禁往后跑，不是禁止变动）',
+     (await page.evaluate(()=>firstCashDate(loadBossCash()))) === '2026-08-15',
+     await page.evaluate(()=>firstCashDate(loadBossCash())));
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

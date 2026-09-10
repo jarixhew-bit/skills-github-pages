@@ -1401,9 +1401,33 @@ async function staffPruneBossGifts(){
  * 这条回落规则专门核对过 Kuang 的真实数据：189.53 那笔日期在第一次收现金之前 →
  * 回落成 'own'；224 那笔在之后 → 回落成 'cash'，跟目标状态一致。
  */
+/**
+ * 「第一次收到老板现金是哪一天」——旧数据判断 `paidFrom` 的分界线。
+ *
+ * ⚠️ 这个日期**只能往前、绝不能往后跑**（2026-09-10 上线前抓到）。老板那边按
+ * 「重算欠款」时，会把云端那笔转账**删掉、另建一份净额的新的**（规则不许改金额，
+ * 只能这样做）。同事这边同步到新文档时，记的是「同步那天」的日期——如果分界线跟着
+ * 往后跑，原本判成「花老板现金」的那几笔会**突然被改判成自己垫的**，他的手上现金
+ * 凭空变多、两边又对不上，正是这一整轮要修的那个毛病。
+ *
+ * 所以第一次算出来就钉在 `staffExpense_bossGiftsSeen` 里，之后只取更早的那个，
+ * 永远不往后。真的从来没收过现金（还没有任何一笔）才回 null。
+ */
 function firstCashDate(o){
   const dates = (o.topups || []).filter(t => Number(t.amount) > 0 && !t.repay).map(t => t.date).sort();
-  return dates.length ? dates[0] : null;
+  const now = dates.length ? dates[0] : null;
+  let pinned = null;
+  try{ pinned = (JSON.parse(localStorage.getItem(STAFF_BOSS_GIFTS_SEEN) || 'null') || {}).firstCashDate || null; }catch(e){}
+  if(now && (!pinned || now < pinned)){
+    // 更早的日期出现（第一次算、或补收到一笔更早的）：往前钉。
+    try{
+      const seen = loadBossGiftsSeen();
+      seen.firstCashDate = now;
+      saveBossGiftsSeen(seen);
+    }catch(e){}
+    return now;
+  }
+  return pinned || now;
 }
 function effectivePaidFrom(t, o){
   if(t.paidFrom === 'cash' || t.paidFrom === 'own') return t.paidFrom;
