@@ -1036,7 +1036,15 @@ saveTx = function(){
   setTimeout(()=>{ staffLoadPetty(); staffSyncBossGifts(); }, 2500);
 };
 document.addEventListener('visibilitychange', ()=>{
-  if(!document.hidden && staffIdentity){ staffLoadPetty(); staffSyncBossGifts(); staffPruneBossGifts(); }
+  // ⚠️ 一定要**串起来**，不能并排叫（2026-09-10 实机踩到）：两个函数共用
+  // bossGiftsOpBusy 这把锁，sync 在第一个 await 之前就同步把锁抢走了，紧接着叫的
+  // prune 一进门看到 busy 就 return——于是**prune 从来没跑过**。后果是老板撤回或
+  // 重算之后，同事那边的旧记录永远扣不掉：他重开几次都还是看到两笔（中午那笔 5000
+  // 和刚换上的 4810.47 并存）。串起来才能保证 sync 做完之后 prune 真的会跑。
+  if(!document.hidden && staffIdentity){
+    staffLoadPetty();
+    staffSyncBossGifts().then(() => staffPruneBossGifts()).catch(()=>{});
+  }
 });
 
 /* 弹窗标题是脚本写死的中文，包一层让它跟着语言走 */
@@ -1401,9 +1409,33 @@ async function staffPruneBossGifts(){
  * 这条回落规则专门核对过 Kuang 的真实数据：189.53 那笔日期在第一次收现金之前 →
  * 回落成 'own'；224 那笔在之后 → 回落成 'cash'，跟目标状态一致。
  */
+/**
+ * 「第一次收到老板现金是哪一天」——旧数据判断 `paidFrom` 的分界线。
+ *
+ * ⚠️ 这个日期**只能往前、绝不能往后跑**（2026-09-10 上线前抓到）。老板那边按
+ * 「重算欠款」时，会把云端那笔转账**删掉、另建一份净额的新的**（规则不许改金额，
+ * 只能这样做）。同事这边同步到新文档时，记的是「同步那天」的日期——如果分界线跟着
+ * 往后跑，原本判成「花老板现金」的那几笔会**突然被改判成自己垫的**，他的手上现金
+ * 凭空变多、两边又对不上，正是这一整轮要修的那个毛病。
+ *
+ * 所以第一次算出来就钉在 `staffExpense_bossGiftsSeen` 里，之后只取更早的那个，
+ * 永远不往后。真的从来没收过现金（还没有任何一笔）才回 null。
+ */
 function firstCashDate(o){
   const dates = (o.topups || []).filter(t => Number(t.amount) > 0 && !t.repay).map(t => t.date).sort();
-  return dates.length ? dates[0] : null;
+  const now = dates.length ? dates[0] : null;
+  let pinned = null;
+  try{ pinned = (JSON.parse(localStorage.getItem(STAFF_BOSS_GIFTS_SEEN) || 'null') || {}).firstCashDate || null; }catch(e){}
+  if(now && (!pinned || now < pinned)){
+    // 更早的日期出现（第一次算、或补收到一笔更早的）：往前钉。
+    try{
+      const seen = loadBossGiftsSeen();
+      seen.firstCashDate = now;
+      saveBossGiftsSeen(seen);
+    }catch(e){}
+    return now;
+  }
+  return pinned || now;
 }
 function effectivePaidFrom(t, o){
   if(t.paidFrom === 'cash' || t.paidFrom === 'own') return t.paidFrom;
@@ -1631,7 +1663,7 @@ function staffSyncMode(){
   renderBossCfg();
   renderBossCash();
   // 切进「老板账」页时马上拉一次最新的现金，不用等 2.5 秒轮询
-  if(onBoss){ staffSyncBossGifts(); staffPruneBossGifts(); }
+  if(onBoss){ staffSyncBossGifts().then(() => staffPruneBossGifts()).catch(()=>{}); }   // 串起来，理由见上面 visibilitychange 那段
 }
 
 /** 说明块底下那一行设定：这本账用什么钱。 */

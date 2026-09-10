@@ -2116,9 +2116,11 @@ if (want()) {
   const quickPollLine = staffSrc.split('\n').find(l => l.includes('staffLoadPetty();') && l.includes('2500'));
   ok('saveTx 后 2.5 秒的快速轮询那一行不含 staffPruneBossGifts',
      !!quickPollLine && !quickPollLine.includes('staffPruneBossGifts'), quickPollLine);
-  const visLine = staffSrc.split('\n').find(l => l.includes('document.hidden') && l.includes('staffLoadPetty'));
-  ok('visibilitychange 监听器里含 staffPruneBossGifts',
-     !!visLine && visLine.includes('staffPruneBossGifts'), visLine);
+  // 2026-09-10 起两个触发点都改成「sync 做完再 prune」的串接写法（并排叫会被
+  // bossGiftsOpBusy 挡掉，prune 永远跑不到，见【34】），所以这里改成数串接的写法
+  // 出现几次：visibilitychange 与 staffSyncMode 各一处。
+  const chainCount = (staffSrc.match(/staffSyncBossGifts\(\)\.then\(\(\) => staffPruneBossGifts\(\)\)/g) || []).length;
+  ok('两个触发点都用「sync 做完再 prune」的串接写法', chainCount === 2, chainCount);
   const modeLine = staffSrc.split('\n').find(l => l.includes('if(onBoss){') && l.includes('staffSyncBossGifts'));
   ok('staffSyncMode() 切进老板账页那一行含 staffPruneBossGifts',
      !!modeLine && modeLine.includes('staffPruneBossGifts'), modeLine);
@@ -2608,6 +2610,154 @@ if (want()) {
   ok('照片不见了要单独讲清楚（不能跟「太大」混为一谈——该做的事不一样：这个要重拍）',
      missTip.includes('找不到那张收据照片'), missTip);
   ok('对照组：这种情况不能说成「太大」', !missTip.includes('太大'), missTip);
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【33】老板「重算」换掉云端那笔之后，同事这边不能被改判（2026-09-10）----------
+// 老板按「🔁 按新规则重算欠款」时，会把云端那笔转账**删掉、另建一份净额的新的**
+// （规则不许改金额，只能这样做）。同事这边同步到新文档时记的是「同步那天」的日期。
+// 如果「第一次收到现金是哪一天」这条分界线跟着往后跑，原本判成「花老板现金」的那几笔
+// 会突然被改判成自己垫的，他的手上现金凭空变多——两边又对不上，正是整轮要修的毛病。
+// 所以那个日期只能往前、绝不能往后。
+console.log('\n【33】老板重算换掉云端记录之后，同事这边的分界线不能往后跑');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);   // reporter = 'Seryi'
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    cloudAvailable = true;
+    window.__mk = (docs) => ({ empty: docs.length === 0,
+      forEach: (cb) => docs.forEach(d => cb({ id: d.id, data: () => d })) });
+    // sync 用两层 where，prune 用一层——两个都指到同一份 __snap
+    db = { collection: () => ({
+      where: () => ({ where: () => ({ get: async () => window.__snap }),
+                      get: async () => window.__snap })
+    }) };
+    // 手动铺好「旧版那天」的状态：收到 5000（9/10）、花了 224（9/10）、更早垫了 189.53（9/09）
+    localStorage.setItem('staffExpense_bossCash', JSON.stringify({ topups: [
+      { date:'2026-09-01', amount: 5000, from:'admin', giftId:'gOld', cur:'USD' },
+    ]}));
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify({ lastAt: 1000, ids:['gOld'] }));
+    data.transactions.push({ id:'e224', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-02',
+      type:'expense', amount:224, categoryId:'cat_food', description:'用老板现金付的', updatedAt: Date.now() });
+    data.transactions.push({ id:'e189', accountId: STAFF_BOSS_ACC_ID, date:'2026-08-30',
+      type:'expense', amount:189.53, categoryId:'cat_other_exp', description:'自己先垫的', updatedAt: Date.now() });
+    saveData();
+    renderBossCash();
+  });
+
+  ok('换掉之前：手上现金 5000−224＝4776（189.53 是收到现金之前垫的，不从现金扣）',
+     Math.abs((await page.evaluate(()=>bossCashLeft())) - 4776) < 0.005,
+     await page.evaluate(()=>bossCashLeft()));
+
+  // ---- 老板重算：云端那笔被换成净额 4810.47 的新文档（新 id、at 更新、同步日期是今天）----
+  await page.evaluate(() => {
+    window.__snap = window.__mk([
+      { id:'gNew', person:'Seryi', amount:4810.47, currency:'USD', at: 9999 },
+    ]);
+  });
+  await page.evaluate(() => staffPruneBossGifts());     // 旧文档没了 → 那笔要扣掉
+  await page.waitForTimeout(200);
+  await page.evaluate(() => staffSyncBossGifts());      // 新文档 → 净额加回来
+  await page.waitForTimeout(200);
+
+  const topupsNow = await page.evaluate(()=>JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups);
+  ok('旧的那笔被换掉了，剩下净额那笔', topupsNow.length === 1 && topupsNow[0].giftId === 'gNew', topupsNow);
+  ok('新那笔记的是「同步当天」的日期，比 224 那笔（9/02）还晚——正是会出事的条件',
+     topupsNow[0].date > '2026-09-02', topupsNow[0].date);
+
+  ok('★换掉之后，224 仍然算「花老板的现金」，没有被改判成自己垫的',
+     Math.abs((await page.evaluate(()=>bossCashLeft())) - 4586.47) < 0.005,
+     await page.evaluate(()=>bossCashLeft()));
+  ok('★两边对得上：这个数就是老板端算出来的 4586.47',
+     (await page.locator('#staff-boss-cash').innerText()).includes('4586.47'),
+     await page.locator('#staff-boss-cash').innerText());
+
+  // 对照组：真的比现有分界线更早的一笔进来，分界线要往前挪（只禁往后，不禁往前）
+  await page.evaluate(() => {
+    const seen = JSON.parse(localStorage.getItem('staffExpense_bossGiftsSeen'));
+    const o = JSON.parse(localStorage.getItem('staffExpense_bossCash'));
+    o.topups.push({ date:'2026-08-15', amount: 100, from:'admin', giftId:'gEarly', cur:'USD' });
+    localStorage.setItem('staffExpense_bossCash', JSON.stringify(o));
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify(seen));
+  });
+  ok('对照组：出现更早的一笔时，分界线要往前挪（只禁往后跑，不是禁止变动）',
+     (await page.evaluate(()=>firstCashDate(loadBossCash()))) === '2026-08-15',
+     await page.evaluate(()=>firstCashDate(loadBossCash())));
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【34】切进老板账那页时，prune 真的会跑（2026-09-10 实机踩到）----------
+// 实机症状：老板重算换掉云端那笔之后，同事重开好几次，卡上永远是两笔并存
+// （中午那笔 5000 ＋ 刚换上的 4810.47）。
+// 根因：两个触发点都是 `staffSyncBossGifts(); staffPruneBossGifts();` 并排叫，而两者
+// 共用 bossGiftsOpBusy 这把锁——sync 在第一个 await 之前就同步把锁抢走了，紧接着叫的
+// prune 一进门看到 busy 就 return。也就是说 **prune 从来没跑过**，云端删掉的记录
+// 在同事那边永远扣不掉。修法是串起来：sync 做完再 prune。
+console.log('\n【34】切进老板账那页时 prune 真的会跑（并排叫会被自己的锁挡掉）');
+if (want()) {
+  const staffSrc = readFileSync(new URL('../staff/index.html', import.meta.url), 'utf8');
+  const badPattern = /staffSyncBossGifts\(\);\s*staffPruneBossGifts\(\)/;
+  ok('源码里没有「并排叫」的写法（那会让 prune 永远被锁挡掉）',
+     !badPattern.test(staffSrc));
+
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);   // reporter = 'Seryi'
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    cloudAvailable = true;
+    window.__mk = (docs) => ({ empty: docs.length === 0,
+      forEach: (cb) => docs.forEach(d => cb({ id: d.id, data: () => d })) });
+    // 云端只剩换上去的那笔净额；中午那笔 5000 已经被老板端删掉了
+    window.__snap = window.__mk([
+      { id:'gNew', person:'Seryi', amount:4810.47, currency:'USD', at: 9999 },
+    ]);
+    // 让查询慢 60ms，重现「sync 还没做完 prune 就被叫」的真实时序
+    db = { collection: () => ({
+      where: () => ({ where: () => ({ get: async () => {
+                        await new Promise(r=>setTimeout(r,60)); return window.__snap; } }),
+                      get: async () => {
+                        await new Promise(r=>setTimeout(r,60)); return window.__snap; } })
+    }) };
+    localStorage.setItem('staffExpense_bossCash', JSON.stringify({ topups: [
+      { date:'2026-09-01', amount: 5000, from:'admin', giftId:'gOld', cur:'USD' },
+    ]}));
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify({ lastAt: 0, ids: [] }));
+  });
+
+  // 走真实触发点：切进「老板账」那一页
+  await page.click('#nav-boss');
+  await until(async () => (await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups.length)) === 1
+    && (await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups[0].giftId)) === 'gNew',
+    { what: 'prune 把云端已经没有的那笔扣掉' });
+
+  const topups34 = await page.evaluate(()=>JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups);
+  ok('★云端已经删掉的那笔，同事这边真的被扣掉了（不再两笔并存）',
+     topups34.length === 1 && topups34[0].giftId === 'gNew', topups34);
+  ok('★卡上「收到」是净额 4810.47，不是 9810.47',
+     Math.abs(topups34[0].amount - 4810.47) < 0.005, topups34[0].amount);
+  ok('对照组：新的那笔有被 sync 收进来（不是「两个都没跑」也过关）',
+     topups34.some(t => t.giftId === 'gNew'), topups34);
 
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();
