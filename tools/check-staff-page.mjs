@@ -2308,6 +2308,102 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【30】归还后顺手戳 butler-bot，让老板的 Telegram 响一声（2026-09-10）----------
+// 这条**跟钱无关**：钱走投递箱（Firestore），老板收件时才入账；这只是即时提醒。
+// 所以它必须「发完就忘」——失败一声不吭、不重试、绝不能影响归还本身。
+console.log('\n【30】归还后戳 butler-bot 发 Telegram 通知（纯提醒，失败不能影响记账）');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  // ⚠️ 公司报账钥匙**不能**在这里就写进 localStorage：页面一载入看到它就会去跑一次
+  // 「我是谁」的身份解析（staffWhoAmI），沙盒里连不出去，页面会卡在设定画面、
+  // #nav-boss 点不到。钥匙是 getCompanyToken() 现读现用的，等切到老板账之后再塞即可。
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.evaluate(() => {
+    window.__inbox = [];
+    window.__pings = [];
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    db = { collection: () => ({ add: async (p) => { window.__inbox.push(p); return { id:'p1' }; } }) };
+    cloudAvailable = true;
+    const realFetch = window.fetch;
+    window.fetch = (url, opt) => {
+      if(String(url).includes('/cash-notify')){
+        window.__pings.push({ url: String(url), body: JSON.parse(opt.body) });
+        return Promise.resolve({ ok:true, status:200, json: async () => ({ status:'ok', notified:true }) });
+      }
+      return realFetch(url, opt);
+    };
+  });
+  await page.click('#nav-boss');
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('hdr-title');
+    return !!el && /老板|Boss/i.test(el.textContent || '');
+  }), { what: '切到老板账' });
+
+  await page.evaluate(() => localStorage.setItem('staffExpense_token', 'tok-abc'));
+
+  // 收到 800，还 300 → 还剩 500
+  await page.evaluate(() => { window.prompt = () => '800'; });
+  await page.evaluate(() => bossCashAdd());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { window.prompt = () => '300'; window.confirm = () => true; });
+  await page.evaluate(() => staffRepayBossCash());
+  await until(() => page.evaluate(() => window.__pings.length > 0), { what: '通知发出去' });
+
+  const ping = await page.evaluate(() => window.__pings[0]);
+  ok('打的是 /cash-notify 这个端点（不是公司报账那个）',
+     ping.url.endsWith('/cash-notify'), ping.url);
+  ok('带上公司报账那把钥匙（服务端靠它认人）', ping.body.token === 'tok-abc', ping.body.token);
+  ok('kind 是 repay', ping.body.kind === 'repay', ping.body.kind);
+  ok('金额＝这次归还的 300', ping.body.amount === 300, ping.body.amount);
+  ok('币种跟这本账一致', ping.body.currency === 'USD', ping.body.currency);
+  ok('left＝还完之后还剩的 500（800−300），不是还之前的数字',
+     ping.body.left === 500, ping.body.left);
+  ok('不送 person（名字由服务端按钥匙决定，送了也没用，免得给人冒充的错觉）',
+     !('person' in ping.body), Object.keys(ping.body));
+  ok('只戳一次，不重复', (await page.evaluate(() => window.__pings.length)) === 1);
+
+  // ---- 对照组一：没填公司报账钥匙的人，没有通知，但**钱照样送**（降级不能变成断路）----
+  await page.evaluate(() => {
+    localStorage.removeItem('staffExpense_token');
+    window.__pings = []; window.__inbox = [];
+    window.prompt = () => '200';
+  });
+  await page.evaluate(() => staffRepayBossCash());
+  await until(() => page.evaluate(() => window.__inbox.length > 0), { what: '钱照样送进投递箱' });
+  await page.waitForTimeout(200);
+  ok('对照组：没钥匙就不发通知', (await page.evaluate(() => window.__pings.length)) === 0);
+  ok('对照组：没通知也不影响归还本身，钱照样送进投递箱（少了这条对照，「整条路都断了」也会全绿）',
+     (await page.evaluate(() => window.__inbox.length)) === 1);
+
+  // ---- 对照组二：通知那一端挂掉（fetch reject），归还本身必须毫发无伤 ----
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_token', 'tok-abc');
+    window.__pings = []; window.__inbox = [];
+    const realFetch = window.fetch;
+    window.fetch = (url, opt) => String(url).includes('/cash-notify')
+      ? Promise.reject(new Error('butler down'))
+      : realFetch(url, opt);
+    window.prompt = () => '100';
+  });
+  await page.evaluate(() => staffRepayBossCash());
+  await until(() => page.evaluate(() => window.__inbox.length > 0), { what: '通知挂掉时钱照样送' });
+  await page.waitForTimeout(300);
+  ok('通知服务挂了，归还照样送进投递箱', (await page.evaluate(() => window.__inbox.length)) === 1);
+  ok('通知服务挂了，归还队列没有被卡住',
+     (await page.evaluate(() =>
+       JSON.parse(localStorage.getItem('staffExpense_bossRepayQueue') || '[]'))).length === 0);
+  ok('通知失败不冒 JS 报错（发完就忘，连 unhandled rejection 都不该有）',
+     errs.length === 0, errs);
+
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

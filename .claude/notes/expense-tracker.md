@@ -1166,3 +1166,94 @@ payload 带 `op:'repay'`＋正确金额、本机余额立刻反映且不写进 `
 照旧记成不带 `xfer` 的支出，防止「把所有收件都当成归还」这种错误也全绿；幂等（同一笔
 重复收到不重复记账）；币种不一致/没有代管账户两种情况都不硬记、文档留在箱子里、
 toast 提示手动处理；坏数据当垃圾丢掉；打开「给同事现金」弹窗触发一次静默收件。
+
+## 首屏卡片改显示真实进度 + 一次性搬旧记录进代管账户（2026-09-10）
+
+### 卡片从「本地显示缓存」改成「真实账目」
+
+`renderOvBossCashGift()` 原本第二行显示 `bossCashGiftLog()`（本地"最近转过谁多少"的
+显示缓存），看不出钱现在的状态。改成遍历 `data.accounts` 里所有 `isHolding` 的账户，
+对每个人现算「还剩」（`holdingBalance(acc)`，账户余额类用途照算 xfer）和「已花」
+（该账户里 `type==='expense' && !t.xfer` 的合计，跟 `refreshBossCashGiftPersonSummary()`
+弹窗摘要同一个口径），全部本地现算、不连网、**不写死任何人名**——这是跟
+`holdingAccountId()` 同一条设计铁律。
+
+- 人名从 `getOrCreateHoldingAccount()` 写死的账户名 `在 ${person} 手上` 里正则抠出来
+  显示，没有另外存一个 `person` 字段（这个格式完全由我们自己控制，够稳）。
+- 过滤条件是 `remain !== 0 || spent !== 0`——余额为 0 且从没花过的人（没转过钱、或
+  懒创建但恰好没人用过的历史空账户）不显示，避免卡片被塞满。
+- 人多时 `slice(0, 3)`，剩下的用「等 N 人」带过；一个符合条件的人都没有时退回原有的
+  兜底文案「转给同事的现金，会自动进他们的「手上现金」卡。」。
+- 没设口令那段完全没动。
+
+**「清除这行显示」链接的取舍**：卡片显示的是真实账目、不再是缓存，这个链接不该再出现
+在卡片这一行。但 `clearBossCashGiftLog()` 本身不删——`bossCashGiftLog()`／
+`logBossCashGift()`／`forgetBossCashGift()` 这一整套仍在正常工作（`deleteBossCashGift()`
+撤回一笔时仍会调 `forgetBossCashGift()` 清理这份 log，给"按 id 精确摘除"失败时的老记录
+兜底），只是它的显示出口没了。挪到 `renderBossCashGiftModal()` 弹窗表单最下面，跟新增的
+「🧹 整理旧记录」放在同一行、字号缩小、不显眼——留给"万一 `forgetBossCashGift()` 的兜底
+摘除也没摘干净"这种极端情况手动清一下，不涉及金额，不用二次确认。`clearBossCashGiftLog()`
+内部不再调 `renderOvBossCashGift()`（卡片已经跟这份 log 无关），改成 `toast()` 提示。
+
+### 一次性搬家：`bossCashCleanupScan()` / `openBossCashCleanup()`
+
+背景：代管账户是 2026-09-09 才有的。在那之前，投递箱收进来的账（带 `fromStaff.by`）
+落在当时设置页配置的默认收件账户里，不在这个人的代管账户——导致「已花多少」从旧记录
+开始就是残缺的（`renderOvBossCashGift()`／`refreshBossCashGiftPersonSummary()` 的「已花」
+都是按代管账户里的记录现算，旧记录不在那个账户里，自然算不到）。
+
+- **扫描**（`bossCashCleanupScan()`）：遍历 `data.transactions`，挑出「带
+  `fromStaff.by`、这个人已经有代管账户（`getAcc(holdingAccountId(person))`）、且这笔
+  当前不在那个账户里」的记录，按人分组成 `{person, holdAcc, move:[...], skip:[...]}`。
+  `move` 是账户币种跟代管账户一致、真能搬的；`skip` 是币种不一致（或原账户已经不存在）
+  不敢搬的——**宁可留着不搬，也不能把不同货币的数字硬凑在一起**，那就是编了个错的
+  1:1 汇率，跟 `sendBossCashGift()`/`repayBossCashGift()` 那两道币种检查同一条精神。
+- **入口**：弹窗表单最下面「🧹 整理旧记录」，跟「清除本机残留显示缓存」放一起，
+  次要、不显眼（按用户要求）。
+- **先预览再动手**（`openBossCashCleanup()`）：`confirm()` 里列出「谁、几笔、合计
+  多少」，用户不确认什么都不做；一笔都能搬的都没有时**不弹确认框**，直接
+  `toast('没有需要整理的旧记录')`（有跳过的会在这句后面附上跳过几笔，不默默吞掉）。
+- **只改 `accountId`**：同一笔交易、同一个 id，不删不增——**不涉及 `tombstoneTx()`**
+  （那是给"从 `data.transactions` 移除记录"用的，这里没有移除任何记录，只是把它挪到
+  另一个账户名下）。改完 `updatedAt = Date.now()`（云端同步靠它）、`saveData()`、
+  `renderOverview()`（首屏卡片＋账户余额）、`refreshBossCashGiftPersonSummary()`
+  （弹窗摘要，若弹窗正开着）。
+- **可重复点**：第二次点，能搬的都搬完了，会走「没有需要整理的」那条分支，不会重复搬
+  （`bossCashCleanupScan()` 本身就是每次现扫描现算，扫不到已经在代管账户里的记录）。
+- **不做自动迁移的例外**：这个功能本身就是一次性迁移工具，跟「代管账户」那节末尾
+  「老数据兼容（不做自动迁移）」并不矛盾——那节说的是"不擅自静默改用户账目"，这个
+  功能是用户自己主动点开、看过预览、确认过才动手，两者对"要不要事先给用户看清楚在
+  改什么"的要求是一致的。
+
+自检：`check-expense-company.mjs`【37】两段——首屏卡片一段（手算 fixture：转入 5000、
+花 3000、还 500，断言"还剩 1500"；**对照组**：还回来的 500 是 xfer，不能被算进"已花"，
+断言显示的是"已花 3000"不是"已花 3500"；余额 0 且没花过的人不出现；5 人时最多显示 3 个
++ 「等 2 人」）；整理旧记录一段（一开始什么都没有→不弹确认框+「没有需要整理的」；造
+2 笔能搬 + 1 笔币种不一致的旧记录→扫描结果分组对、确认后只有能搬的 2 笔被搬走、
+交易条数不变、跳过的那笔原地不动、提示里说明跳过几笔；重复点第二次不再弹确认框、
+不再重复搬）。
+
+## 归还后戳一下 butler-bot 发 Telegram 通知（2026-09-10）
+
+同事按「一键归还」之后，老板的 Telegram 立刻收到一条提醒。做法是同事版页面在归还
+**成功送进投递箱之后**，顺手打一次 butler-bot 的 `POST /cash-notify`
+（`pingBossRepay()`，定义在 `tools/build-staff-page.py` 的 `STAFF_BOOTSTRAP` 里，
+就在 `submitInboxRepay()` 上面；调用点在 `flushRepayQueue()` 里 `r.ok` 那一支）。
+
+- **两条路是分开的，别搞混**：钱的记录走 Firestore 投递箱（老板收件才入账），
+  通知走 HTTP 打 Worker。通知只是提醒，**跟钱没有关系**。
+- **发完就忘**：不 `await`、不重试、不排队、失败一声不吭（`.catch(()=>{})`）。
+  没网时通知会掉，但钱照样补送。反过来若为通知做重试队列，就得回答「通知重复了
+  怎么办」，为一条提醒不值得。
+- **认人靠钥匙，不靠请求里的名字**：送的是公司报账那把 `getCompanyToken()`，
+  butler-bot 的 `/cash-notify` 用 `resolveAppCaller()` 按钥匙定人名，**丢掉请求里的
+  `person`**——同事之间冒充不了。没填过公司报账钥匙的人就没有这条通知，属于正常降级
+  （钱照样送）。
+- **`left` 是「还完还剩多少」**：调用点在归还已经记进本地之后，`bossCashLeft()`
+  这时算出来的就是还完之后的余额，正是老板要看的数。改动调用位置时要留意这点。
+- 端点契约（`kind`/`amount`/`currency`/`left`/`note` 的范围与回应形状）正本在
+  butler-bot 仓库的 `SETUP.md`，这里不复述。
+
+自检：`check-staff-page.mjs`【30】——打对端点、带对钥匙与金额/币种、`left` 是还完
+之后的数、不送 `person`、只戳一次；**两组对照**：没钥匙时不发通知但**钱照样送**、
+通知端挂掉（fetch reject）时归还照样送出且队列不卡住、不冒 JS 报错。

@@ -3024,16 +3024,19 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   ok('取消后没有调 delete()', (await page.evaluate(()=>window.__deletedIds.length)) === 0);
   ok('取消后清单里那一笔还在', (await page.innerText('#boss-cash-gift-recent')).includes('Seryi'));
 
-  // 首屏卡片「最近」是独立的本地显示缓存（bossCashGiftLog），撤回时也要连带摘掉，
-  // 不然卡片会一直显示已经撤回的那笔（2026-09-09 用户实机撤回后发现卡片没跟着变）。
+  // bossCashGiftLog() 曾是首屏卡片「最近」那行的数据源，2026-09-10 改版后卡片已经改成
+  // 显示代管账户真实余额、不再读这份 log（见 renderOvBossCashGift() 的改版说明）——但
+  // log 本身、写入它的 logBossCashGift()、靠它兜底摘除的 forgetBossCashGift()、手动
+  // 清空的 clearBossCashGiftLog() 都还在正常工作（deleteBossCashGift() 撤回一笔时仍会
+  // 调 forgetBossCashGift 清理这份 log）。以下直接读 localStorage/bossCashGiftLog()
+  // 断言这几个函数本身，不再断言卡片文字——卡片文字已经跟这份 log 无关。
   // 带 id 是新版送出时才会写的（见 sendBossCashGift 的 logBossCashGift 调用）。
   await page.evaluate(() => {
     localStorage.setItem('expenseTracker_bossCashGiftLog', JSON.stringify([
       { id: 'g100', person: 'Seryi', amount: 600, currency: 'JPY', at: Date.now() }
     ]));
   });
-  await page.evaluate(()=>renderOvBossCashGift());
-  ok('撤回前，首屏卡片「最近」显示这一笔', (await page.innerText('#ov-boss-cash-gift')).includes('Seryi'));
+  ok('撤回前，log 里有这一笔', (await page.evaluate(()=>bossCashGiftLog())).some(e=>e.id==='g100'));
 
   // ---- 确认：真的调 Firestore delete()，清单刷新掉那一笔 ----
   dialogAction = 'accept';
@@ -3046,8 +3049,8 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
     { what: '清单刷新掉已撤回那一笔' });
   ok('清单里已经看不到撤回的那一笔', !(await page.innerText('#boss-cash-gift-recent')).includes('Seryi'));
   ok('没删的那笔还在', (await page.innerText('#boss-cash-gift-recent')).includes('Kuang'));
-  ok('撤回后，首屏卡片「最近」那行也跟着摘掉了（不是只有弹窗里的清单更新）',
-     !(await page.innerText('#ov-boss-cash-gift')).includes('Seryi'));
+  ok('撤回后，deleteBossCashGift 仍会调 forgetBossCashGift 摘掉 log 里那一条',
+     !(await page.evaluate(()=>bossCashGiftLog())).some(e=>e.id==='g100'));
 
   // ---- 老记录没有 id（在「撤回联动摘卡片」这个机制上线之前送出的）：退回按人名+金额+
   //      币种摘除兜底。直接调 forgetBossCashGift 单测这条兜底路径，不通过真实撤回
@@ -3058,24 +3061,22 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
       { person: '老记录同事', amount: 77, currency: 'USD', at: Date.now() }   // 没有 id，模拟旧记录
     ]));
   });
-  await page.evaluate(()=>renderOvBossCashGift());
-  ok('（老记录兜底）没有 id 的旧记录先正常显示', (await page.innerText('#ov-boss-cash-gift')).includes('老记录同事'));
+  ok('（老记录兜底）没有 id 的旧记录先在 log 里', (await page.evaluate(()=>bossCashGiftLog())).some(e=>e.person==='老记录同事'));
   await page.evaluate(() => forgetBossCashGift('some-other-doc-id', { person: '老记录同事', amount: 77, currency: 'USD' }));
-  await page.evaluate(()=>renderOvBossCashGift());
   ok('（老记录兜底）按人名+金额+币种摘掉了这笔没有 id 的旧记录',
-     !(await page.innerText('#ov-boss-cash-gift')).includes('老记录同事'));
+     !(await page.evaluate(()=>bossCashGiftLog())).some(e=>e.person==='老记录同事'));
 
-  // ---- 首屏卡片本身也有一个手动「清除这行显示」的兜底链接（给摘不掉的极端情况用）----
+  // ---- 弹窗里那个手动「清除本机残留显示缓存」的兜底链接（给摘不掉的极端情况用，
+  //      2026-09-10 从首屏卡片挪到弹窗，因为卡片已经不显示这份 log 了）----
   await page.evaluate(() => {
     localStorage.setItem('expenseTracker_bossCashGiftLog', JSON.stringify([
       { person: '某个残留', amount: 1, currency: 'USD', at: Date.now() }
     ]));
   });
-  await page.evaluate(()=>renderOvBossCashGift());
-  ok('（手动清除）点「清除这行显示」之前卡片有内容', (await page.innerText('#ov-boss-cash-gift')).includes('某个残留'));
+  ok('（手动清除）点「清除本机残留显示缓存」之前 log 里有内容', (await page.evaluate(()=>bossCashGiftLog())).length > 0);
   await page.evaluate(()=>clearBossCashGiftLog());
-  ok('（手动清除）点了之后卡片显示回「转给同事的现金…」那句默认文案',
-     (await page.innerText('#ov-boss-cash-gift')).includes('会自动进他们的「手上现金」卡'));
+  ok('（手动清除）点了之后提示清除成功',
+     (await page.textContent('#toast')||'').includes('已清除本机残留的显示缓存'));
   ok('（手动清除）localStorage 里的记录真的清空了',
      (await page.evaluate(()=>localStorage.getItem('expenseTracker_bossCashGiftLog'))) === null);
 
