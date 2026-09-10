@@ -3024,16 +3024,19 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   ok('取消后没有调 delete()', (await page.evaluate(()=>window.__deletedIds.length)) === 0);
   ok('取消后清单里那一笔还在', (await page.innerText('#boss-cash-gift-recent')).includes('Seryi'));
 
-  // 首屏卡片「最近」是独立的本地显示缓存（bossCashGiftLog），撤回时也要连带摘掉，
-  // 不然卡片会一直显示已经撤回的那笔（2026-09-09 用户实机撤回后发现卡片没跟着变）。
+  // bossCashGiftLog() 曾是首屏卡片「最近」那行的数据源，2026-09-10 改版后卡片已经改成
+  // 显示代管账户真实余额、不再读这份 log（见 renderOvBossCashGift() 的改版说明）——但
+  // log 本身、写入它的 logBossCashGift()、靠它兜底摘除的 forgetBossCashGift()、手动
+  // 清空的 clearBossCashGiftLog() 都还在正常工作（deleteBossCashGift() 撤回一笔时仍会
+  // 调 forgetBossCashGift 清理这份 log）。以下直接读 localStorage/bossCashGiftLog()
+  // 断言这几个函数本身，不再断言卡片文字——卡片文字已经跟这份 log 无关。
   // 带 id 是新版送出时才会写的（见 sendBossCashGift 的 logBossCashGift 调用）。
   await page.evaluate(() => {
     localStorage.setItem('expenseTracker_bossCashGiftLog', JSON.stringify([
       { id: 'g100', person: 'Seryi', amount: 600, currency: 'JPY', at: Date.now() }
     ]));
   });
-  await page.evaluate(()=>renderOvBossCashGift());
-  ok('撤回前，首屏卡片「最近」显示这一笔', (await page.innerText('#ov-boss-cash-gift')).includes('Seryi'));
+  ok('撤回前，log 里有这一笔', (await page.evaluate(()=>bossCashGiftLog())).some(e=>e.id==='g100'));
 
   // ---- 确认：真的调 Firestore delete()，清单刷新掉那一笔 ----
   dialogAction = 'accept';
@@ -3046,8 +3049,8 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
     { what: '清单刷新掉已撤回那一笔' });
   ok('清单里已经看不到撤回的那一笔', !(await page.innerText('#boss-cash-gift-recent')).includes('Seryi'));
   ok('没删的那笔还在', (await page.innerText('#boss-cash-gift-recent')).includes('Kuang'));
-  ok('撤回后，首屏卡片「最近」那行也跟着摘掉了（不是只有弹窗里的清单更新）',
-     !(await page.innerText('#ov-boss-cash-gift')).includes('Seryi'));
+  ok('撤回后，deleteBossCashGift 仍会调 forgetBossCashGift 摘掉 log 里那一条',
+     !(await page.evaluate(()=>bossCashGiftLog())).some(e=>e.id==='g100'));
 
   // ---- 老记录没有 id（在「撤回联动摘卡片」这个机制上线之前送出的）：退回按人名+金额+
   //      币种摘除兜底。直接调 forgetBossCashGift 单测这条兜底路径，不通过真实撤回
@@ -3058,24 +3061,22 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
       { person: '老记录同事', amount: 77, currency: 'USD', at: Date.now() }   // 没有 id，模拟旧记录
     ]));
   });
-  await page.evaluate(()=>renderOvBossCashGift());
-  ok('（老记录兜底）没有 id 的旧记录先正常显示', (await page.innerText('#ov-boss-cash-gift')).includes('老记录同事'));
+  ok('（老记录兜底）没有 id 的旧记录先在 log 里', (await page.evaluate(()=>bossCashGiftLog())).some(e=>e.person==='老记录同事'));
   await page.evaluate(() => forgetBossCashGift('some-other-doc-id', { person: '老记录同事', amount: 77, currency: 'USD' }));
-  await page.evaluate(()=>renderOvBossCashGift());
   ok('（老记录兜底）按人名+金额+币种摘掉了这笔没有 id 的旧记录',
-     !(await page.innerText('#ov-boss-cash-gift')).includes('老记录同事'));
+     !(await page.evaluate(()=>bossCashGiftLog())).some(e=>e.person==='老记录同事'));
 
-  // ---- 首屏卡片本身也有一个手动「清除这行显示」的兜底链接（给摘不掉的极端情况用）----
+  // ---- 弹窗里那个手动「清除本机残留显示缓存」的兜底链接（给摘不掉的极端情况用，
+  //      2026-09-10 从首屏卡片挪到弹窗，因为卡片已经不显示这份 log 了）----
   await page.evaluate(() => {
     localStorage.setItem('expenseTracker_bossCashGiftLog', JSON.stringify([
       { person: '某个残留', amount: 1, currency: 'USD', at: Date.now() }
     ]));
   });
-  await page.evaluate(()=>renderOvBossCashGift());
-  ok('（手动清除）点「清除这行显示」之前卡片有内容', (await page.innerText('#ov-boss-cash-gift')).includes('某个残留'));
+  ok('（手动清除）点「清除本机残留显示缓存」之前 log 里有内容', (await page.evaluate(()=>bossCashGiftLog())).length > 0);
   await page.evaluate(()=>clearBossCashGiftLog());
-  ok('（手动清除）点了之后卡片显示回「转给同事的现金…」那句默认文案',
-     (await page.innerText('#ov-boss-cash-gift')).includes('会自动进他们的「手上现金」卡'));
+  ok('（手动清除）点了之后提示清除成功',
+     (await page.textContent('#toast')||'').includes('已清除本机残留的显示缓存'));
   ok('（手动清除）localStorage 里的记录真的清空了',
      (await page.evaluate(()=>localStorage.getItem('expenseTracker_bossCashGiftLog'))) === null);
 
@@ -3617,6 +3618,152 @@ console.log('\n【36】一键归还：投递箱收到 op:repay 记两条腿转�
      await page.evaluate(()=>data.transactions.some(t=>t.repayId==='ix_repay_rs4')));
 
   ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+// ---------- 【37】首屏「给同事现金」卡片显示真实进度 + 一次性搬旧记录进代管账户 ----------
+// 2026-09-10：卡片原本只显示本地"最近转过谁多少"的显示缓存，看不出钱现在的状态，
+// 改成直接读代管账户余额（还剩）+ 该账户里非 xfer 支出合计（已花）。同一次顺手做
+// 「🧹 整理旧记录」：代管账户是后来才有的，之前投递箱收进来的账落在别的账户，导致
+// 「已花多少」从旧记录起就是残缺的。
+console.log('\n【37】首屏卡片「还剩/已花」+ 整理旧记录进代管账户');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashKey', 'pass-1234');
+  });
+
+  // ---- 没有任何代管账户时，卡片显示兜底文案 ----
+  await page.evaluate(()=>renderOverview());
+  ok('还没转过钱时，卡片显示兜底文案',
+     (await page.textContent('#ov-boss-cash-gift')||'').includes('会自动进他们的「手上现金」卡'));
+
+  // ---- 手算 fixture：Kuang 转入 5000、花 3000（非xfer）、还回 500（xfer，不算已花）----
+  await page.evaluate(() => {
+    const holdAcc = getOrCreateHoldingAccount('Kuang', 'HKD');
+    const now = Date.now();
+    data.transactions.push(
+      { id: uid(), accountId: holdAcc.id, date:'2026-09-01', type:'income', amount:5000,
+        categoryId:'cat_cash_gift_in', description:'转入', updatedAt: now, xfer:true },
+      { id: uid(), accountId: holdAcc.id, date:'2026-09-02', type:'expense', amount:3000,
+        categoryId:'cat_food', description:'他花的', updatedAt: now, fromStaff:{by:'Kuang', at: now} },
+      { id: uid(), accountId: holdAcc.id, date:'2026-09-03', type:'expense', amount:500,
+        categoryId:'cat_cash_gift', description:'还回来', updatedAt: now, xfer:true }
+    );
+    saveData();
+    renderOverview();
+  });
+  const cardTxt1 = await page.textContent('#ov-boss-cash-gift');
+  ok('卡片显示 Kuang 还剩 1500（5000-3000-500），手算对得上',
+     cardTxt1.includes('Kuang') && cardTxt1.includes('还剩') && /1,?500\.00/.test(cardTxt1), cardTxt1);
+  ok('★对照组：还的那笔 500（xfer）不算进"已花"，卡片显示已花 3000 不是 3500',
+     /已花[^）]*3,?000\.00/.test(cardTxt1) && !/已花[^）]*3,?500\.00/.test(cardTxt1), cardTxt1);
+  ok('卡片上不再有旧版「清除这行显示」链接（那是给本地显示缓存用的，现在显示真实账目）',
+     !cardTxt1.includes('清除这行显示'));
+
+  // ---- 余额0且从没花过的人不出现（懒创建的空账户，理论上不该有，但函数要防得住）----
+  await page.evaluate(() => { getOrCreateHoldingAccount('NeverUsed', 'USD'); renderOverview(); });
+  const cardTxt2 = await page.textContent('#ov-boss-cash-gift');
+  ok('余额0且从没花过的人（NeverUsed）不出现在卡片上', !cardTxt2.includes('NeverUsed'), cardTxt2);
+
+  // ---- 人多时最多显示3个，其余用「等 N 人」带过 ----
+  await page.evaluate(() => {
+    ['A','B','C','D'].forEach(p => {
+      const acc = getOrCreateHoldingAccount(p, 'USD');
+      data.transactions.push({ id: uid(), accountId: acc.id, date:'2026-09-01', type:'income',
+        amount:100, categoryId:'cat_cash_gift_in', description:'转入', updatedAt: Date.now(), xfer:true });
+    });
+    saveData(); renderOverview();
+  });
+  const cardTxt3 = await page.textContent('#ov-boss-cash-gift');
+  ok('人多（Kuang+A+B+C+D=5人）时最多显示3个，用"等 N 人"带过',
+     /等\s*2\s*人/.test(cardTxt3), cardTxt3);
+
+  ok('无 JS 报错（首段）', errs.length===0, errs);
+  await ctx.close();
+}
+
+{
+  console.log('\n【37】整理旧记录：搬家预览、只改 accountId、币种不一致跳过、幂等');
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  let dialogCount = 0;
+  page.on('dialog', d => { dialogCount++; d.accept(); });
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // ---- 一开始什么都没有：不弹确认框、给「没有需要整理的」提示 ----
+  dialogCount = 0;
+  await page.evaluate(()=>openBossCashCleanup());
+  ok('一笔都没有时不弹确认框', dialogCount === 0, dialogCount);
+  ok('提示「没有需要整理的」', (await page.textContent('#toast')||'').includes('没有需要整理的'));
+
+  // ---- 造旧数据：Kuang 的代管账户已存在（HKD），另建一个普通 HKD 账户当"当时的默认收件账户"，
+  //      里面塞两笔带 fromStaff.by='Kuang' 的旧记录（模拟代管账户出现之前收进来的账）；
+  //      再塞一笔币种不一致的（USD 账户里的旧记录，但 Kuang 是 HKD），应该被跳过 ----
+  const txCountBefore = await page.evaluate(() => {
+    const holdAcc = getOrCreateHoldingAccount('Kuang', 'HKD');
+    data.accounts.push({ id:'acc_old_default', name:'旧默认收件账户', currency:'HKD', color:'#999' });
+    data.accounts.push({ id:'acc_old_usd', name:'旧默认收件账户(USD)', currency:'USD', color:'#999' });
+    const now = Date.now();
+    data.transactions.push(
+      { id:'oldtx1', accountId:'acc_old_default', date:'2026-08-01', type:'expense', amount:120,
+        categoryId:'cat_food', description:'旧记录1', updatedAt: now, fromStaff:{by:'Kuang', at: now} },
+      { id:'oldtx2', accountId:'acc_old_default', date:'2026-08-02', type:'expense', amount:80,
+        categoryId:'cat_food', description:'旧记录2', updatedAt: now, fromStaff:{by:'Kuang', at: now} },
+      { id:'oldtx3', accountId:'acc_old_usd', date:'2026-08-03', type:'expense', amount:50,
+        categoryId:'cat_food', description:'币种不一致的旧记录', updatedAt: now, fromStaff:{by:'Kuang', at: now} }
+    );
+    saveData();
+    return data.transactions.length;
+  });
+
+  const scan = await page.evaluate(() => bossCashCleanupScan());
+  ok('扫描结果：Kuang 有2笔能搬、1笔币种不一致跳过', (() => {
+    const g = scan.find(x => x.person === 'Kuang');
+    return g && g.move.length === 2 && g.skip.length === 1;
+  })(), scan);
+
+  dialogCount = 0;
+  await page.evaluate(()=>openBossCashCleanup());
+  ok('有能搬的记录时会弹一次确认框', dialogCount === 1, dialogCount);
+  const holdId = await page.evaluate(()=>holdingAccountId('Kuang'));
+  const moved = await page.evaluate((h)=>data.transactions.filter(t=>['oldtx1','oldtx2'].includes(t.id) && t.accountId===h).length, holdId);
+  ok('确认后，2笔旧记录的 accountId 改到了代管账户', moved === 2);
+  const skippedStill = await page.evaluate(()=>{
+    const t = data.transactions.find(t=>t.id==='oldtx3');
+    return t && t.accountId === 'acc_old_usd';
+  });
+  ok('币种不一致的那笔（oldtx3）没被搬走，还在原账户', skippedStill);
+  ok('提示里说明跳过了几笔', (await page.textContent('#toast')||'').includes('1'));
+  const txCountAfter = await page.evaluate(()=>data.transactions.length);
+  ok('交易条数不变（只改归属，没有新增或删除）', txCountAfter === txCountBefore, {txCountBefore, txCountAfter});
+
+  // ---- 重复点第二次：能搬的都搬完了，不会重复搬，给「没有需要整理的」（还有1笔跳过的，提示要带上）----
+  dialogCount = 0;
+  await page.evaluate(()=>openBossCashCleanup());
+  ok('第二次点不弹确认框（没有新的可搬）', dialogCount === 0, dialogCount);
+  const toast2 = await page.textContent('#toast');
+  ok('第二次点提示「没有需要整理的」，且仍提到跳过的那 1 笔', toast2.includes('没有需要整理的') && toast2.includes('1'), toast2);
+  const oldtx1After2ndClick = await page.evaluate((h)=>data.transactions.find(t=>t.id==='oldtx1').accountId===h, holdId);
+  ok('第二次点没有把已搬过的记录再动一次', oldtx1After2ndClick);
+
+  ok('无 JS 报错（整理旧记录段）', errs.length===0, errs);
   await ctx.close();
 }
 

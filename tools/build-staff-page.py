@@ -1744,6 +1744,33 @@ function saveRepayQueue(q){
   try{ localStorage.setItem(STAFF_BOSS_REPAY_QUEUE, JSON.stringify(q)); }catch(e){}
 }
 
+/**
+ * 归还送出去之后，顺手戳一下 butler-bot，让老板的 Telegram 立刻响一声（2026-09-10）。
+ *
+ * ⚠️ 这条跟钱**没有关系**，纯粹是提醒：钱的记录走的是上面那个投递箱（Firestore），
+ * 老板收件时才真正入账。所以这里一律**发完就忘**——不 await、不重试、不排队、
+ * 失败一声不吭。没网时通知就是会掉，但钱照样会补送；反过来如果为了通知去做重试队列，
+ * 就得回答「通知重复了怎么办」这类问题，为一条提醒不值得。
+ *
+ * 认人用的是公司报账那把钥匙（getCompanyToken）——**名字由服务端按钥匙决定**，
+ * 这边送什么名字都不算数（butler-bot 的 /cash-notify 会丢掉请求里的 person），
+ * 所以同事之间冒充不了。没填过公司报账钥匙的人就没有这条通知，属于正常降级。
+ *
+ * left 读的是 bossCashLeft()：调用点在归还**已经记进本地**之后，所以这时它已经是
+ * 「还完还剩多少」，正是老板要看的那个数。
+ */
+function pingBossRepay(amount){
+  try{
+    const token = getCompanyToken();
+    if(!token) return;
+    fetch(COMPANY_EXPENSE_URL.replace('/company-expense', '/cash-notify'), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, kind:'repay', amount,
+                             currency: staffBossCur(), left: bossCashLeft() })
+    }).catch(()=>{});
+  }catch(e){}
+}
+
 async function submitInboxRepay(item){
   const k = staffBossKey();
   if(!k) return { ok:false, retriable:false, message: tt('还没填老板账口令','No Boss passcode yet') };
@@ -1774,6 +1801,7 @@ async function flushRepayQueue(opts){
     const r = await submitInboxRepay(item);
     if(r.ok){
       q = q.filter(x => x.id !== item.id); saveRepayQueue(q);
+      pingBossRepay(item.amount);   // 顺手让老板的 Telegram 响一声，见 pingBossRepay 的注释
       if(loud) toast(tt('✅ 已通知老板你归还了','✅ The Boss has been notified of your repayment'));
     } else if(r.retriable){
       if(loud) toast(r.message);

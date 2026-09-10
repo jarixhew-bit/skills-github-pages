@@ -7361,7 +7361,15 @@ function forgetBossCashGift(id, g){
 }
 
 /** 首屏卡片：跟「💵 备用金」同一套视觉。永远显示（不像备用金要挂公司账户才出现），
- *  没设口令时给一句提示＋链接去设置页，设了就显示最近送过的那几笔当参考。 */
+ *  没设口令时给一句提示＋链接去设置页。
+ *  2026-09-10 改版：原本这里显示的是 bossCashGiftLog()（本地"最近转过谁多少"显示缓存），
+ *  看不出钱现在的状态。现在改成显示每个人「还剩多少／已花多少」这个真实账目——数据源是
+ *  代管账户（holdingAccountId()/holdingBalance()，见上面那一大段"代管账户"机制说明），
+ *  全部本地现算、不连网。口径跟 refreshBossCashGiftPersonSummary()（弹窗里的摘要）一致：
+ *  「还剩」＝代管账户余额（holdingBalance，账户余额类用途照算 xfer）；「已花」＝该账户里
+ *  真正花掉的部分（type==='expense' && !t.xfer——带 xfer 的是转账腿，比如"他还钱了"那条，
+ *  不算花掉）。**遍历所有 isHolding 账户生成，不写死任何人名**——这套要对名册里任何人都
+ *  通用，以后加人/改名不用改这段代码，跟 holdingAccountId() 的设计铁律一致。 */
 function renderOvBossCashGift(){
   const el = document.getElementById('ov-boss-cash-gift');
   if(!el) return;
@@ -7372,24 +7380,108 @@ function renderOvBossCashGift(){
       <div class="led-sub">先在设置页「给同事现金（老板账）」填一次口令，才能转钱给同事。</div>`;
     return;
   }
-  const log = bossCashGiftLog();
+  // 账户名固定是 getOrCreateHoldingAccount() 写死的 `在 ${person} 手上`——这是我们自己
+  // 控制的唯一格式，从里面抠出人名用于显示，不需要额外存一个 person 字段。
+  const people = data.accounts.filter(a => a.isHolding).map(acc => {
+    const person = acc.name.replace(/^在\s*/, '').replace(/\s*手上$/, '') || acc.name;
+    const remain = holdingBalance(acc);
+    const spent = data.transactions
+      .filter(t => t.accountId === acc.id && t.type === 'expense' && !t.xfer)
+      .reduce((s, t) => s + t.amount, 0);
+    return { person, remain, spent, currency: acc.currency };
+  }).filter(p => p.remain !== 0 || p.spent !== 0); // 余额0且从没花过的人（没转过钱/历史空账户）不显示
+
+  if(!people.length){
+    el.innerHTML = `<div class="led-card-top">
+        <div class="led-card-title">👔 给同事现金</div><div class="led-card-link">转钱 →</div></div>
+      <div class="led-sub">转给同事的现金，会自动进他们的「手上现金」卡。</div>`;
+    return;
+  }
+  const shown = people.slice(0, 3);
+  const restCount = people.length - shown.length;
+  const line = shown.map(p =>
+    `${ledEsc(p.person)} 还剩 ${fmt(p.remain, p.currency)}（已花 ${fmt(p.spent, p.currency)}）`
+  ).join('　');
   el.innerHTML = `<div class="led-card-top">
       <div class="led-card-title">👔 给同事现金</div><div class="led-card-link">转钱 →</div></div>
-    ${log.length
-      ? `<div class="led-sub">最近：${log.slice(0,3).map(e =>
-          `${ledEsc(e.person)} ${fmt(e.amount, e.currency)}`).join('、')}
-          　<span style="color:var(--sub);text-decoration:underline;cursor:pointer"
-            onclick="event.stopPropagation(); clearBossCashGiftLog();">清除这行显示</span></div>`
-      : `<div class="led-sub">转给同事的现金，会自动进他们的「手上现金」卡。</div>`}`;
+    <div class="led-sub">${line}${restCount > 0 ? `　等 ${restCount} 人` : ''}</div>`;
 }
 
-/** 首屏卡片「最近」那行是纯本地显示缓存，跟钱和撤回无关（撤回走 forgetBossCashGift，
- *  会精确摘掉那一条）。这里是给"手动清空显示、眼不见为净"用的兜底——比如撤回发生在
- *  这个精确摘除机制上线之前，留下的旧记录摘不掉，让用户自己按一下清空即可，不涉及
- *  任何金额，不用像转账/撤回那样二次确认。 */
+/** 2026-09-10 改版后，首屏卡片不再显示 bossCashGiftLog()（那是本地"最近转过谁多少"的
+ *  显示缓存，现在卡片显示的是代管账户真实余额，不再是缓存，所以原本挂在卡片上的
+ *  「清除这行显示」链接已经拿掉）——但 log 本身、写入它的 logBossCashGift()、以及靠它
+ *  做兜底摘除的 forgetBossCashGift() 都还在正常工作（deleteBossCashGift() 撤回一笔时
+ *  仍会调 forgetBossCashGift() 清理这份 log，给"精确按 id 摘除"失败时的老记录兜底）。
+ *  这个清空函数本身也不删——挪到弹窗「最近转过」清单下面当一个不显眼的维护性链接，
+ *  给万一 forgetBossCashGift() 的兜底摘除也没摘干净时手动清空用，不涉及任何金额，
+ *  不用像转账/撤回那样二次确认。 */
 function clearBossCashGiftLog(){
   try{ localStorage.removeItem(BOSS_CASH_GIFT_LOG_STORAGE); }catch(e){}
-  renderOvBossCashGift();
+  toast('已清除本机残留的显示缓存');
+}
+
+/** 一次性搬家：代管账户是后来才有的（2026-09-09），在那之前同事通过投递箱送来的账
+ *  （带 fromStaff.by）落在当时投递箱设置页配置的那个"默认收件账户"里，不在他自己的
+ *  代管账户——导致这个人「已花多少」从旧记录开始就是残缺的（renderOvBossCashGift()/
+ *  refreshBossCashGiftPersonSummary() 的"已花"都是按代管账户里的记录现算，旧记录不在
+ *  那个账户里，自然算不到）。
+ *  扫描规则：这笔账带 fromStaff.by、这个人已经有代管账户（没有代管账户＝这个人没收过
+ *  老板转的现金，压根没得搬）、且这笔账当前不在他的代管账户里。
+ *  按人分组返回 { person, holdAcc, move:[...], skip:[...] }——move 是币种对得上、真的
+ *  能搬的；skip 是账户币种跟代管账户不一致、不敢搬的（宁可留着不搬，也不能把不同货币的
+ *  数字硬凑在一起，等于编了个错的 1:1 汇率）。 */
+function bossCashCleanupScan(){
+  const groups = {};
+  data.transactions.forEach(t => {
+    if(!t.fromStaff || !t.fromStaff.by) return;
+    const person = String(t.fromStaff.by).trim();
+    if(!person) return;
+    const holdAcc = getAcc(holdingAccountId(person));
+    if(!holdAcc) return;                 // 这个人没有代管账户，没得搬
+    if(t.accountId === holdAcc.id) return; // 已经在代管账户里了，不用搬
+    const key = normalizePersonKey(person);
+    if(!groups[key]){
+      const displayName = holdAcc.name.replace(/^在\s*/, '').replace(/\s*手上$/, '') || person;
+      groups[key] = { person: displayName, holdAcc, move: [], skip: [] };
+    }
+    const srcAcc = getAcc(t.accountId);
+    if(!srcAcc || srcAcc.currency !== holdAcc.currency) groups[key].skip.push(t);
+    else groups[key].move.push(t);
+  });
+  return Object.values(groups);
+}
+
+/** 「🧹 整理旧记录」按钮：先给预览再动手，用户不确认什么都不做。
+ *  确认后**只改 accountId**——同一笔交易、同一个 id，不删不增，所以**不涉及
+ *  tombstoneTx()**（那是给"从 data.transactions 移除记录"用的，这里没有移除任何记录，
+ *  只是把它挪到另一个账户名下），别以为漏了这步。改完 updatedAt（云端同步靠它）、
+ *  saveData()、重画首屏卡片（账户余额、"已花多少"都跟着变）和弹窗摘要。
+ *  可以重复点：第二次点，能搬的都搬完了，会显示「没有需要整理的旧记录」。 */
+function openBossCashCleanup(){
+  const groups = bossCashCleanupScan();
+  const moveGroups = groups.filter(g => g.move.length);
+  const totalMove = moveGroups.reduce((s, g) => s + g.move.length, 0);
+  const totalSkip = groups.reduce((s, g) => s + g.skip.length, 0);
+  if(!totalMove){
+    toast(totalSkip
+      ? `没有需要整理的旧记录（另外 ${totalSkip} 笔因为账户币种跟代管账户不一致，没法自动搬，需手动处理）`
+      : '没有需要整理的旧记录');
+    return;
+  }
+  const detail = moveGroups.map(g => {
+    const sum = g.move.reduce((s, t) => s + t.amount, 0);
+    return `${g.person} ${g.move.length} 笔 ${fmt(sum, g.holdAcc.currency)}`;
+  }).join('、');
+  const skipNote = totalSkip ? `\n另外 ${totalSkip} 笔账户币种跟代管账户不一致，不会搬` : '';
+  if(!confirm(`找到 ${totalMove} 笔（${detail}），要把它们移进各自的代管账户吗？${skipNote}`)) return;
+  const now = Date.now();
+  moveGroups.forEach(g => {
+    g.move.forEach(t => { t.accountId = g.holdAcc.id; t.updatedAt = now; });
+  });
+  saveData();
+  renderOverview();
+  refreshBossCashGiftPersonSummary();
+  toast(`已整理 ${totalMove} 笔${skipNote}`);
 }
 
 /** 打开弹窗时先静默收一次同事投递箱的件（fetchInbox() 不传 opts 就是静默模式，
@@ -7447,7 +7539,13 @@ function renderBossCashGiftModal(){
     </div>
     <button class="btn btn-primary" onclick="sendBossCashGift()">💵 转钱给他</button>
     <div id="boss-cash-gift-status" style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.6"></div>
-    <div id="boss-cash-gift-recent"></div>`;
+    <div id="boss-cash-gift-recent"></div>
+    <div style="margin-top:16px;font-size:11px;color:var(--sub)">
+      <span style="text-decoration:underline;cursor:pointer" onclick="clearBossCashGiftLog()"
+        >清除本机残留显示缓存</span>
+      　<span style="text-decoration:underline;cursor:pointer" onclick="openBossCashCleanup()"
+        >🧹 整理旧记录</span>
+    </div>`;
   setTimeout(()=>{ const a = document.getElementById('boss-cash-gift-person'); if(a) a.focus(); }, 120);
   refreshBossCashGiftRecent();
   refreshBossCashGiftPersonSummary();
@@ -9393,6 +9491,33 @@ function saveRepayQueue(q){
   try{ localStorage.setItem(STAFF_BOSS_REPAY_QUEUE, JSON.stringify(q)); }catch(e){}
 }
 
+/**
+ * 归还送出去之后，顺手戳一下 butler-bot，让老板的 Telegram 立刻响一声（2026-09-10）。
+ *
+ * ⚠️ 这条跟钱**没有关系**，纯粹是提醒：钱的记录走的是上面那个投递箱（Firestore），
+ * 老板收件时才真正入账。所以这里一律**发完就忘**——不 await、不重试、不排队、
+ * 失败一声不吭。没网时通知就是会掉，但钱照样会补送；反过来如果为了通知去做重试队列，
+ * 就得回答「通知重复了怎么办」这类问题，为一条提醒不值得。
+ *
+ * 认人用的是公司报账那把钥匙（getCompanyToken）——**名字由服务端按钥匙决定**，
+ * 这边送什么名字都不算数（butler-bot 的 /cash-notify 会丢掉请求里的 person），
+ * 所以同事之间冒充不了。没填过公司报账钥匙的人就没有这条通知，属于正常降级。
+ *
+ * left 读的是 bossCashLeft()：调用点在归还**已经记进本地**之后，所以这时它已经是
+ * 「还完还剩多少」，正是老板要看的那个数。
+ */
+function pingBossRepay(amount){
+  try{
+    const token = getCompanyToken();
+    if(!token) return;
+    fetch(COMPANY_EXPENSE_URL.replace('/company-expense', '/cash-notify'), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, kind:'repay', amount,
+                             currency: staffBossCur(), left: bossCashLeft() })
+    }).catch(()=>{});
+  }catch(e){}
+}
+
 async function submitInboxRepay(item){
   const k = staffBossKey();
   if(!k) return { ok:false, retriable:false, message: tt('还没填老板账口令','No Boss passcode yet') };
@@ -9423,6 +9548,7 @@ async function flushRepayQueue(opts){
     const r = await submitInboxRepay(item);
     if(r.ok){
       q = q.filter(x => x.id !== item.id); saveRepayQueue(q);
+      pingBossRepay(item.amount);   // 顺手让老板的 Telegram 响一声，见 pingBossRepay 的注释
       if(loud) toast(tt('✅ 已通知老板你归还了','✅ The Boss has been notified of your repayment'));
     } else if(r.retriable){
       if(loud) toast(r.message);
