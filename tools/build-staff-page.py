@@ -1249,11 +1249,11 @@ async function staffSyncBossGifts(){
     }catch(e){ return; } // 权限错误/离线：安静跳过，下次轮询再试，不打扰用户
 
     if(snap.empty) return;
-    const o = loadBossCash();
     const cur = staffBossCur();
     const me = staffIdentity.reporter;
     let addedTotal = 0, mismatched = [];
     let maxAt = seen.lastAt;
+    const pending = [];
 
     snap.forEach(doc => {
       const d = doc.data();
@@ -1264,12 +1264,30 @@ async function staffSyncBossGifts(){
       const amt = Number(d.amount) || 0;
       if(amt <= 0) return;
       const giftCur = (d.currency || '').toUpperCase();
-      const entry = { date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
-                       from: 'admin', giftId: doc.id, cur: giftCur || cur };
-      o.topups.push(entry);
-      if(giftCur && giftCur !== cur){ mismatched.push(entry); }
-      else { addedTotal += entry.amount; }
+      pending.push({ date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
+                     from: 'admin', giftId: doc.id, cur: giftCur || cur });
     });
+
+    // ⚠️ 这里**必须重新读一次** localStorage，而且要按 giftId 去重（2026-09-10 教训）。
+    // 上面那句 .get() 是一趟网络往返，中间几百毫秒里这本账可能已经被别人改过：
+    //   1. 同一台手机同时开着「浏览器分页」和「桌面图标 App」——那是两个各自独立的
+    //      JS 环境，bossGiftsOpBusy 这把锁**只锁得住自己那一边**，两边共用同一份
+    //      localStorage。两边同时收到同一笔现金，各推一条，老板发一笔他收到两笔。
+    //      （用户 2026-09-10 实际踩到：「我只发一笔5000 他又收到两笔」。）
+    //   2. 这几百毫秒里他自己记了一笔账、或按了归还，那些改动也在这本账里。
+    //      拿开头那份旧的 o 覆盖回去，他刚记的东西就凭空消失了。
+    // 所以：查完之后才读、只往里加没见过的 giftId、加完立刻存。giftId 是云端文档 id，
+    // 天生唯一，是判「这笔是不是已经进来过」最可靠的凭据——比游标 lastAt 可靠，
+    // 因为游标是每台/每个环境各自记的，去重必须看账本身。
+    const o = loadBossCash();
+    const already = new Set(o.topups.filter(t => t.giftId).map(t => t.giftId));
+    for(const entry of pending){
+      if(already.has(entry.giftId)) continue;   // 另一边（分页/App）已经收过这一笔了
+      already.add(entry.giftId);
+      o.topups.push(entry);
+      if(entry.cur && entry.cur !== cur){ mismatched.push(entry); }
+      else { addedTotal += entry.amount; }
+    }
 
     seen.lastAt = maxAt;
     saveBossGiftsSeen(seen);
@@ -1314,8 +1332,7 @@ async function staffPruneBossGifts(){
   bossGiftsOpBusy = true;
   try{
     if(!(await staffEnsureAnon())) return;
-    const o = loadBossCash();
-    const withGift = o.topups.filter(t => t.giftId);
+    const withGift = loadBossCash().topups.filter(t => t.giftId);
     if(!withGift.length) return; // 没有可核对的，不用发请求
 
     let snap;
@@ -1332,6 +1349,9 @@ async function staffPruneBossGifts(){
       if(samePersonName(d.person, me)) alive.add(doc.id);
     });
 
+    // 跟 staffSyncBossGifts 同一条教训：查询是一趟网络往返，回来之后才能读这本账，
+    // 否则会拿旧的覆盖掉这期间他自己记的账 / 按的归还。
+    const o = loadBossCash();
     let removed = 0;
     o.topups = o.topups.filter(t => {
       if(!t.giftId) return true;          // 手动记录，不受这套核对影响

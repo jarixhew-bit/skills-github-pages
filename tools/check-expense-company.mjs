@@ -3767,6 +3767,56 @@ console.log('\n【37】首屏卡片「还剩/已花」+ 整理旧记录进代管
   await ctx.close();
 }
 
+// ---------- 【38】同事重送「以前删过」的记录：跳过，但必须讲出来（2026-09-10）----------
+// 用户实际反馈：「kuang上传的单子又少两笔」。原因是这些记录以前在老板这边被删过、
+// 留了墓碑（tombstoneTx），同事又送了一次——fetchInbox 认出墓碑就把云端文档丢掉、
+// 不重复记账（这是对的，否则删过的会复活），但**一声不吭**：同事送了 5 笔只进 3 笔，
+// 用户完全查不出另外 2 笔去哪了。修法不是别丢，而是把笔数报出来。
+console.log('\n【38】同事重送「以前删过」的记录：跳过不复活，但要讲出来（不能静默吞掉）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    window.__box = { docs: [], deleted: [] };
+    window.__put = (id, d) => window.__box.docs.push({
+      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
+    cloudAvailable = true;
+    currentUser = { uid: 'boss' };
+    db = { collection: () => ({ limit: () => ({ get: async () => ({ docs: window.__box.docs }) }) }) };
+    tombstoneTx('ix_dead1');            // 以前删过这一笔
+    saveData();
+  });
+
+  // 同事重送那一笔（srcId 对应已删的 ix_dead1）＋ 一笔全新的（对照组）
+  await page.evaluate(() => {
+    window.__put('d1', { k:'x', from:'Kuang', tx: JSON.stringify({ srcId:'dead1',
+      date:'2026-09-10', amount: 120, type:'expense', categoryId:'cat_food', description:'重送的' }) });
+    window.__put('d2', { k:'x', from:'Kuang', tx: JSON.stringify({ srcId:'fresh1',
+      date:'2026-09-10', amount: 60, type:'expense', categoryId:'cat_food', description:'新的' }) });
+  });
+  await page.evaluate(() => fetchInbox({ loud:true }));
+  await page.waitForTimeout(500);
+
+  ok('以前删过的那笔没有被复活', !(await page.evaluate(()=>data.transactions.some(t=>t.id==='ix_dead1'))));
+  ok('对照组：全新的那笔照样收进来（少了这条对照，「整批都不收」也会全绿）',
+     await page.evaluate(()=>data.transactions.some(t=>t.id==='ix_fresh1')));
+  const tip = (await page.textContent('#toast')) || '';
+  ok('提示里讲明了「有几笔是以前删掉过的记录」，不再静默吞掉',
+     tip.includes('以前在这边删掉过') && tip.includes('1 笔'), tip);
+  ok('提示里同时报了正常收到的笔数', tip.includes('收到同事记的'), tip);
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

@@ -2404,6 +2404,96 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【31】同一笔现金不会被收两次（2026-09-10 实际踩到的 bug）----------
+// 老板只发了一笔 5000，同事那边显示两笔。原因：同事手机上同时开着「浏览器分页」和
+// 「桌面图标 App」——两个各自独立的 JS 环境，bossGiftsOpBusy 那把锁只锁得住自己那边，
+// 但两边共用同一份 localStorage，于是各收一次、各推一条。
+// 修法：查询回来之后**重新读一次**这本账，按 giftId 去重（giftId 是云端文档 id，天生唯一）。
+console.log('\n【31】同一笔现金不会被收两次（另一个分页/App 已经收过就不再加）');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);   // reporter = 'Seryi'
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    db = { collection: () => ({ where: () => ({ where: () => ({
+      get: async () => window.__giftSnap
+    }) }) }) };
+    cloudAvailable = true;
+    window.__mkSnap = (docs) => ({
+      empty: docs.length === 0,
+      forEach: (cb) => docs.forEach(d => cb({ id: d.id, data: () => d }))
+    });
+  });
+
+  // ---- 情境：另一个分页已经把 g5000 记进这本账了（本机 seen 游标还不知道这件事）----
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossCash', JSON.stringify({ topups: [
+      { date:'2026-09-10', amount: 5000, from:'admin', giftId:'g5000', cur:'USD' },
+    ]}));
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify({ lastAt: 0, ids: [] }));
+    window.__giftSnap = window.__mkSnap([
+      { id:'g5000', person:'Seryi', amount:5000, currency:'USD', at: 1000 },
+    ]);
+  });
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  const after = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups);
+  ok('同一笔现金（同一个 giftId）不会被记第二次——老板发一笔，这边就只有一笔',
+     after.filter(t => t.giftId === 'g5000').length === 1, after);
+  ok('余额还是 5000，不是 10000',
+     (await page.locator('#staff-boss-cash').innerText()).includes('US$5000.00'),
+     await page.locator('#staff-boss-cash').innerText());
+
+  // ---- 对照组：真的是新的一笔（不同 giftId）照样要收进来，去重不能变成「什么都不收」----
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify({ lastAt: 0, ids: [] }));
+    window.__giftSnap = window.__mkSnap([
+      { id:'g5000', person:'Seryi', amount:5000, currency:'USD', at: 1000 },
+      { id:'g0800', person:'Seryi', amount: 800, currency:'USD', at: 2000 },
+    ]);
+  });
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  const after2 = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups);
+  ok('对照组：新的那一笔（不同 giftId）照样收得进来（少了这条对照，「一律不收」也会全绿）',
+     after2.filter(t => t.giftId === 'g0800').length === 1, after2);
+  ok('对照组：旧的那笔仍然只有一条', after2.filter(t => t.giftId === 'g5000').length === 1, after2);
+  ok('余额 5800', (await page.locator('#staff-boss-cash').innerText()).includes('US$5800.00'),
+     await page.locator('#staff-boss-cash').innerText());
+
+  // ---- 查询期间他自己记了一笔：不能被查询回来的旧快照覆盖掉 ----
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossGiftsSeen', JSON.stringify({ lastAt: 0, ids: [] }));
+    db = { collection: () => ({ where: () => ({ where: () => ({
+      get: async () => {
+        // 网络往返期间，他在另一边手动记了一笔 300（模拟真实的并发写）
+        const o = JSON.parse(localStorage.getItem('staffExpense_bossCash'));
+        o.topups.push({ date:'2026-09-10', amount: 300 });
+        localStorage.setItem('staffExpense_bossCash', JSON.stringify(o));
+        return window.__giftSnap;
+      }
+    }) }) }) };
+  });
+  await page.evaluate(() => staffSyncBossGifts());
+  await page.waitForTimeout(300);
+  const after3 = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossCash')).topups);
+  ok('查询期间别处写进来的记录不会被旧快照覆盖掉（否则他刚记的东西会凭空消失）',
+     after3.some(t => !t.giftId && t.amount === 300), after3);
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

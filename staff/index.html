@@ -6992,6 +6992,12 @@ async function fetchInbox(opts){
   inboxState.error = null;
   const dead = new Set((data.deletedTxIds || []).map(d => d.id));
   let added = 0, skipped = 0, removed = 0, anyHoldingRouted = false, repaid = 0, repayBlocked = 0, repayOver = 0;
+  // 「以前在这边删过、同事又送了一次」的笔数。**一定要单独数出来报给用户**
+  // （2026-09-10 教训）：以前这种情况跟坏数据一起塞进 skipped，而 skipped 只在
+  // 「什么都没收到」时才显示一句「箱子里没有新的账」——同事明明送了 5 笔、这边
+  // 只进 3 笔，另外 2 笔连云端文档都被丢掉，用户完全不知道发生过什么，只看到
+  // 「单子又少两笔」。丢掉本身是对的（那是重送已删的记录，不该复活），但绝不能不吭声。
+  let skippedDead = 0;
 
   // 分两轮：先收账，再处理「同事把那笔删了」。同一次拿到的这两种文档没有先后顺序，
   // 删的那条要是先跑，等一下收账那一轮又会把它加回来（同事删过的账在老板这边复活，
@@ -7087,7 +7093,7 @@ async function fetchInbox(opts){
       continue;
     }
 
-    if(dead.has(id)){ await inboxDrop(doc); skipped++; continue; }
+    if(dead.has(id)){ await inboxDrop(doc); skipped++; skippedDead++; continue; }
 
     const isIncome = raw.type === 'income';
     const known = data.categories.some(c => c.id === raw.categoryId);
@@ -7137,7 +7143,7 @@ async function fetchInbox(opts){
   inboxState.last = Date.now();
   inboxState.running = false;
 
-  if(added || removed || repaid || repayBlocked || repayOver){
+  if(added || removed || repaid || repayBlocked || repayOver || skippedDead){
     const parts = [];
     // 不再统一说「已进「X」」——有代管账户的人现在会被单独路由进各自的代管账户，
     // 不是全部都进设置页选的那个默认账户，笼统报一个账户名字会误导。
@@ -7149,6 +7155,9 @@ async function fetchInbox(opts){
     if(repaid) parts.push(`收到同事的归还 ${repaid} 笔，已经转回代管账户对应的账户`);
     if(repayBlocked) parts.push(`⚠️ 有 ${repayBlocked} 笔归还记录处理不了（没有代管账户，或者币种对不上），请用「💰 他还钱了」按钮手动处理`);
     if(repayOver) parts.push(`⚠️ 有 ${repayOver} 笔归还超过他手上代管的金额，没有入账——请核对后用「💰 他还钱了」按钮手动处理`);
+    // 同事重送了「这边以前删掉过」的记录：跳过是对的（不然删过的会复活），但要讲出来，
+    // 否则用户只会看到「他送的单子少了几笔」而查不出原因。
+    if(skippedDead) parts.push(`ℹ️ 有 ${skippedDead} 笔是你以前在这边删掉过的记录，同事又送了一次，已经跳过没有重复记账`);
     toast(parts.join('\n'));
     if(state.currentTab === 'overview') renderOverview();
     if(state.currentTab === 'transactions') renderTxList();
@@ -8996,11 +9005,11 @@ async function staffSyncBossGifts(){
     }catch(e){ return; } // 权限错误/离线：安静跳过，下次轮询再试，不打扰用户
 
     if(snap.empty) return;
-    const o = loadBossCash();
     const cur = staffBossCur();
     const me = staffIdentity.reporter;
     let addedTotal = 0, mismatched = [];
     let maxAt = seen.lastAt;
+    const pending = [];
 
     snap.forEach(doc => {
       const d = doc.data();
@@ -9011,12 +9020,30 @@ async function staffSyncBossGifts(){
       const amt = Number(d.amount) || 0;
       if(amt <= 0) return;
       const giftCur = (d.currency || '').toUpperCase();
-      const entry = { date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
-                       from: 'admin', giftId: doc.id, cur: giftCur || cur };
-      o.topups.push(entry);
-      if(giftCur && giftCur !== cur){ mismatched.push(entry); }
-      else { addedTotal += entry.amount; }
+      pending.push({ date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
+                     from: 'admin', giftId: doc.id, cur: giftCur || cur });
     });
+
+    // ⚠️ 这里**必须重新读一次** localStorage，而且要按 giftId 去重（2026-09-10 教训）。
+    // 上面那句 .get() 是一趟网络往返，中间几百毫秒里这本账可能已经被别人改过：
+    //   1. 同一台手机同时开着「浏览器分页」和「桌面图标 App」——那是两个各自独立的
+    //      JS 环境，bossGiftsOpBusy 这把锁**只锁得住自己那一边**，两边共用同一份
+    //      localStorage。两边同时收到同一笔现金，各推一条，老板发一笔他收到两笔。
+    //      （用户 2026-09-10 实际踩到：「我只发一笔5000 他又收到两笔」。）
+    //   2. 这几百毫秒里他自己记了一笔账、或按了归还，那些改动也在这本账里。
+    //      拿开头那份旧的 o 覆盖回去，他刚记的东西就凭空消失了。
+    // 所以：查完之后才读、只往里加没见过的 giftId、加完立刻存。giftId 是云端文档 id，
+    // 天生唯一，是判「这笔是不是已经进来过」最可靠的凭据——比游标 lastAt 可靠，
+    // 因为游标是每台/每个环境各自记的，去重必须看账本身。
+    const o = loadBossCash();
+    const already = new Set(o.topups.filter(t => t.giftId).map(t => t.giftId));
+    for(const entry of pending){
+      if(already.has(entry.giftId)) continue;   // 另一边（分页/App）已经收过这一笔了
+      already.add(entry.giftId);
+      o.topups.push(entry);
+      if(entry.cur && entry.cur !== cur){ mismatched.push(entry); }
+      else { addedTotal += entry.amount; }
+    }
 
     seen.lastAt = maxAt;
     saveBossGiftsSeen(seen);
@@ -9061,8 +9088,7 @@ async function staffPruneBossGifts(){
   bossGiftsOpBusy = true;
   try{
     if(!(await staffEnsureAnon())) return;
-    const o = loadBossCash();
-    const withGift = o.topups.filter(t => t.giftId);
+    const withGift = loadBossCash().topups.filter(t => t.giftId);
     if(!withGift.length) return; // 没有可核对的，不用发请求
 
     let snap;
@@ -9079,6 +9105,9 @@ async function staffPruneBossGifts(){
       if(samePersonName(d.person, me)) alive.add(doc.id);
     });
 
+    // 跟 staffSyncBossGifts 同一条教训：查询是一趟网络往返，回来之后才能读这本账，
+    // 否则会拿旧的覆盖掉这期间他自己记的账 / 按的归还。
+    const o = loadBossCash();
     let removed = 0;
     o.topups = o.topups.filter(t => {
       if(!t.giftId) return true;          // 手动记录，不受这套核对影响
