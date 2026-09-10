@@ -4104,7 +4104,20 @@ console.log('\n【41】转钱先抵欠款：手算 fixture（欠189转5000）+ �
 
   const sentPayload41 = await page.evaluate(()=>window.__gifts[0]?.p);
   ok('★ Firestore 记的是净额 4811（5000-189），不是原始输入 5000', sentPayload41?.amount === 4811, sentPayload41);
-  ok('Firestore 带上 offsetTxIds，记着抵了哪几笔', Array.isArray(sentPayload41?.offsetTxIds) && sentPayload41.offsetTxIds.includes('debt189'), sentPayload41);
+  // ⚠️ 送到 Firestore 的字段**只能是规则允许的那几个**：firestore.rules 对
+  // boss_cash_gifts 写的是 hasOnly(['k','person','amount','currency','at','note'])。
+  // 2026-09-10 验收抓到的事故：这里一度多送 offsetTxIds/offsetTotal，规则直接
+  // permission-denied——**只要抵到过欠款，这笔转账就送不出去**，而且错误被 catch
+  // 静默吞掉，表面上像没事。这条断言就是拿来守这个的。
+  const ALLOWED_GIFT_KEYS = ['k','person','amount','currency','at','note'];
+  ok('★送到 Firestore 的字段没有一个是规则不允许的（多送一个字段整笔转账就会被挡下）',
+     Object.keys(sentPayload41 || {}).every(k => ALLOWED_GIFT_KEYS.includes(k)),
+     Object.keys(sentPayload41 || {}));
+  // 抵扣明细改存在本机两条腿上——撤回时要靠它把垫付还原成「还欠着」
+  const legOffset41 = await page.evaluate(()=>data.transactions
+    .find(t => Array.isArray(t.offsetTxIds) && t.offsetTxIds.includes('debt189')));
+  ok('抵扣明细留在本机的转账腿上（云端带不了，但撤回时非有不可）',
+     !!legOffset41 && legOffset41.offsetTotal === 189, legOffset41);
 
   const owedAfter = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
   ok('★ 欠款归零（debt189 已标记已付，「该付同事」名单里没有 Kuang 了）', !owedAfter, owedAfter);

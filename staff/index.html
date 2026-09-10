@@ -7847,12 +7847,36 @@ function openBossDebtRecalc(){
       // 一个全局对象」的教训一致，能不用就不用）。
       if(cloudAvailable && currentUser){
         const debtIds = g.picked.map(p => p.id);
+        const k = bossCashKeySaved();
         touched.forEach(t => {
-          db.collection('boss_cash_gifts').doc(t.giftId).update({
-            amount: t.newAmount,
-            offsetTotal: t.take,
-            offsetTxIds: debtIds
-          }).catch(()=>{});
+          // ⚠️ **不能用 .update()**（2026-09-10 验收抓到）：firestore.rules 对
+          // boss_cash_gifts 写死 `allow update: if false`（只许整笔撤回，不许悄悄改
+          // 金额），打过去一定 permission-denied，还会被 catch 静默吞掉。而且就算
+          // 规则放行也没用——同事端 staffSyncBossGifts() 按 giftId 一次性去重，
+          // 已经拉过的那份文档**永远不会再读第二次**。
+          // 改成「删掉旧的、另建一份净额的新的」：规则允许 delete 与 create，同事端
+          // 也刚好接得住——prune 发现旧 giftId 不见了会把那笔从他余额里扣掉，sync
+          // 看到新文档（at 是现在，比他的游标新）会把净额加回去，两边就对齐了。
+          // 字段只能是规则允许的那几个，抵扣明细一律留在本机的腿上。
+          if(!k) return;
+          const fresh = { k, person: g.person, amount: t.newAmount,
+                          currency: g.holdAcc.currency, at: Date.now() };
+          db.collection('boss_cash_gifts').doc(t.giftId).delete()
+            .then(() => db.collection('boss_cash_gifts').add(fresh))
+            .then(ref => {
+              if(!ref || !ref.id) return;
+              // 本机两条腿要改挂到新的 giftId 上，否则以后撤回这笔找不到云端那份；
+              // 抵扣明细顺手记上去，撤回时要靠它把垫付还原成未付。
+              data.transactions.forEach(x => {
+                if(x.giftId !== t.giftId) return;
+                x.giftId = ref.id;
+                x.offsetTxIds = debtIds;
+                x.offsetTotal = t.take;
+                x.updatedAt = Date.now();
+              });
+              saveData();
+            })
+            .catch(()=>{});
         });
       }
     }
@@ -8103,21 +8127,29 @@ async function deleteBossCashGift(id){
   const g = bossCashGiftRecentCache[id];
   if(!g) return;
   const amountText = fmt(g.amount, g.currency || 'USD');
-  const offsetNote = (g.offsetTxIds && g.offsetTxIds.length)
-    ? `\n（他垫付的 ${g.offsetTxIds.length} 笔、共 ${fmt(g.offsetTotal || 0, g.currency || 'USD')} 会恢复成未付）` : '';
+  const legOffset = (data.transactions.find(t => t.giftId === id && Array.isArray(t.offsetTxIds)) || {});
+  const noteIds = (legOffset.offsetTxIds && legOffset.offsetTxIds.length) ? legOffset.offsetTxIds : g.offsetTxIds;
+  const noteTotal = legOffset.offsetTotal || g.offsetTotal || 0;
+  const offsetNote = (noteIds && noteIds.length)
+    ? `\n（他垫付的 ${noteIds.length} 笔、共 ${fmt(noteTotal, g.currency || 'USD')} 会恢复成未付）` : '';
   if(!confirm(`确定撤回给 ${g.person} 的 ${amountText}？他那边下次打开会自动消失${offsetNote}`)) return;
   try{
     await db.collection('boss_cash_gifts').doc(id).delete();
     let changed = false;
     const localTxs = data.transactions.filter(t => t.giftId === id);
+    // 抵扣明细现在存在本机这两条腿上（云端那份文档不准带这两个字段，见
+    // sendBossCashGift 的注释）。**一定要在删掉它们之前先取出来**，否则撤回之后
+    // 那几笔垫付就永远回不到「还欠着」了。云端那份仍然当兼容回落读一次。
+    const localOffsetIds = (localTxs.find(t => Array.isArray(t.offsetTxIds)) || {}).offsetTxIds;
+    const offsetIds = (localOffsetIds && localOffsetIds.length) ? localOffsetIds : g.offsetTxIds;
     if(localTxs.length){
       localTxs.forEach(t => tombstoneTx(t.id));
       data.transactions = data.transactions.filter(t => t.giftId !== id);
       changed = true;
     }
     let restored = 0;
-    if(g.offsetTxIds && g.offsetTxIds.length){
-      g.offsetTxIds.forEach(txId => {
+    if(offsetIds && offsetIds.length){
+      offsetIds.forEach(txId => {
         const t = data.transactions.find(x => x.id === txId);
         if(t && t.fromStaff && t.fromStaff.paidAt){ delete t.fromStaff.paidAt; restored++; }
       });
@@ -8197,9 +8229,15 @@ async function sendBossCashGift(){
     // Firestore 记的 amount 用抵扣后的净额，不是原始输入——同事那边「手上现金」卡
     // 同步的就是这份数据，两边要保持同一个数字：净额才是他手上真正待处理的代管现金，
     // 被抵掉的那部分本质是拿这笔钱结清旧账，不该再算进他手上还要交代的钱。
+    // ⚠️ 这份 payload 的字段**只能是规则允许的那几个**（firestore.rules 对
+    // boss_cash_gifts 写的是 hasOnly(['k','person','amount','currency','at','note'])）。
+    // 2026-09-10 验收抓到的事故：这里一度多送 offsetTxIds/offsetTotal，规则直接
+    // permission-denied——**只要抵到过欠款，这笔转账就送不出去**，而且错误被
+    // catch 掉，表面上像是没事。抵扣的明细同事那边根本用不到（他只需要净额），
+    // 所以改成**只存在本机的两条腿上**（见下面 legs 的 offsetTxIds/offsetTotal）。
+    // 以后要往这份文档加字段，先改 Console 里的规则，否则一定被挡。
     const payload = { k, person, amount: netAmount, currency: cur, at: Date.now() };
     if(note) payload.note = note;
-    if(offsetPicked.length){ payload.offsetTxIds = offsetPicked.map(t => t.id); payload.offsetTotal = offsetTotal; }
     const docRef = await db.collection('boss_cash_gifts').add(payload);
     const now = Date.now();
     // 先标记被抵掉的垫付已付——用同一个 giftId 关联，撤回这笔转账时要把这几笔的
@@ -8224,7 +8262,10 @@ async function sendBossCashGift(){
       description: `给 ${person} 的现金${note ? '：' + note : ''}`,
       updatedAt: now,
       giftId: docRef.id,
-      xfer: true
+      xfer: true,
+      // 抵扣明细只留在本机（云端那份文档不准带这两个字段，见上面 payload 的注释）。
+      // 撤回这笔转账时要靠它把那几笔垫付还原成「还欠着」，见 deleteBossCashGift。
+      ...(offsetPicked.length ? { offsetTxIds: offsetPicked.map(t => t.id), offsetTotal } : {})
     });
     data.transactions.push({
       id: uid(),
@@ -8236,7 +8277,8 @@ async function sendBossCashGift(){
       description: `从「${acc.name}」转入${note ? '：' + note : ''}`,
       updatedAt: now,
       giftId: docRef.id,
-      xfer: true
+      xfer: true,
+      ...(offsetPicked.length ? { offsetTxIds: offsetPicked.map(t => t.id), offsetTotal } : {})
     });
     saveData();
     saveBossCashGiftAccount(accId);
