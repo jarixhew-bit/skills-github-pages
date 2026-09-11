@@ -3052,7 +3052,7 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   const errs = []; page.on('pageerror', e => errs.push(String(e)));
   page.on('dialog', d => d.accept());
 
-  const api = { people: [], last: null, calls: [], fail: false };
+  const api = { people: [], last: null, calls: [], fail: false, needsOpen: false };
   await ctx.route('**/*', async r => {
     const u = r.request().url();
     if (u.startsWith(`http://localhost:${PORT}`)) return r.continue();
@@ -3073,6 +3073,8 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
     if (req.action === 'petty') return json({ status:'ok', scope:'owner',
       people: api.people, lastEvent: api.last });
     if (req.action === 'pettyAdd') {
+      if (api.needsOpen && req.type !== 'open') return json({ status:'needs_open',
+        message: req.person + ' 还没设起点——先填一次他现在手上还剩多少' }, 400);
       api.people = [{ person: req.person, status:'ok', balance: 500, opened: 500, spent: 0 }];
       api.last = { person: req.person, type: req.type, amountUsd: req.amount, date:'2026-09-11' };
       return json({ status:'ok', event: api.last, people: api.people });
@@ -3128,6 +3130,39 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
      add.body.type === 'topup' && add.body.person === 'Kuang' && add.body.amount === 500, add.body);
   ok('**一次都没打到公司账那条路**（两本账的钱不能串）',
      api.calls.every(c => c.where === 'boss'), api.calls.map(c => c.where));
+
+  // ---- 还没设起点的人：点「转钱」要被拉回「设起点」，不能按了没反应 ----
+  // 2026-09-11 用户实机踩到：按了转钱 5000，服务端写进去了但算不出余额（没有起点），
+  // 卡片什么都没变 → 他以为没成功，又按一次 → 两笔 5000。
+  api.people = [{ person:'Kuang', status:'unset' }];
+  api.calls.length = 0;
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { bossPettyOpenAdd('Kuang', 'topup'); });
+  await page.waitForTimeout(200);
+  ok('没设起点时点「转钱」，被拉回「设起点」',
+     await page.evaluate(() => bossPettyForm.type) === 'open',
+     await page.evaluate(() => bossPettyForm.type));
+  ok('而且说明白为什么（不是默默换个 tab）',
+     (await page.innerText('#boss-petty-add-note')).includes('起点'),
+     await page.innerText('#boss-petty-add-note'));
+
+  // 服务端那一侧也要接得住：页面可能开着好几天没重载，跑的还是旧代码
+  api.people = [{ person:'Kuang', status:'ok', balance: 0, opened: 0, spent: 0 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await page.waitForTimeout(300);
+  api.needsOpen = true;
+  api.calls.length = 0;
+  await page.evaluate(() => { bossPettyOpenAdd('Kuang', 'topup'); });
+  await page.fill('#boss-petty-amount', '5000');
+  await page.evaluate(() => bossPettySubmit());
+  await page.waitForTimeout(400);
+  ok('服务端说 needs_open 时，直接把人带到「设起点」',
+     await page.evaluate(() => bossPettyForm.type) === 'open',
+     await page.evaluate(() => bossPettyForm.type));
+  ok('弹窗没关掉（关掉的话他又得自己找回来）',
+     await page.evaluate(() => document.getElementById('modal-boss-petty-add').classList.contains('open')));
+  api.needsOpen = false;
 
   // ---- 转钱不许负数（要往回收钱用「调整」）----
   api.calls.length = 0;
