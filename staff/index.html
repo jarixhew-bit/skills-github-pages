@@ -7392,7 +7392,7 @@ function mergeInboxTx(prev, tx){
  *  `settleAdvanceIds`（非空数组）但没有 `staffSpendId`，不会跟腿一/普通转账混淆；
  *  同样**只隐藏、不能删**，余额/统计不受影响的原因跟上面一致。 */
 function isPairedSpendLeg(t){
-  return !!(t && t.xfer && (t.staffSpendId || (Array.isArray(t.settleAdvanceIds) && t.settleAdvanceIds.length)));
+  return !!(t && t.xfer && (t.staffSpendId || t.reconcileAdj || (Array.isArray(t.settleAdvanceIds) && t.settleAdvanceIds.length)));
 }
 
 function isUnpaidStaffAdvance(t){
@@ -8121,6 +8121,79 @@ function missingSpendLegs(){
  * 这里会从 data.transactions 移除记录，所以**每一条都要落墓碑**（tombstoneTx），
  * 否则云端同步会把它复活——本仓库铁律。
  */
+/**
+ * 🧮 一键对账（2026-09-11）——**不管账上残留了什么，直接按第一性原理把两边拉正。**
+ *
+ * 为什么需要它：这两天改了五六版，用户资料里累积了各版本留下的半套记录（撤回没删干净
+ * 的结清腿、旧版加过的配平收入等等）。一条一条去考古既慢又容易错，所以改成：
+ *
+ *   他手上该有多少 ＝ 给过他的现金累计 − 他报上来的开销累计（**不分现金付还是他自己垫**，
+ *   因为老板给的那笔钱本来就包含还他垫付的）
+ *
+ * 算出目标之后跟现况比，差多少就记**一对转账**（代管账户 ⇄ 来源账户，都带 xfer 与
+ * `reconcileAdj`，隐藏不显示）把它拉到目标。用转账而不是凭空增减，是为了**总额不变**
+ * ——「你手上 ＋ 他手上」永远等于「老板的钱还剩多少」，这条是用户唯一要对的线。
+ *
+ * 只动分配、不动总额、不碰任何一笔真开销。可重复点：已经对上的人不会被再调一次。
+ */
+function reconcileHoldingScan(){
+  const rows = [];
+  (data.accounts || []).filter(a => a.isHolding).forEach(acc => {
+    const person = acc.name.replace(/^在\s*/, '').replace(/\s*手上$/, '') || acc.name;
+    // 给过他的现金累计：代管账户里带 giftId 的收入（每笔转账进来那条）
+    const given = (data.transactions || [])
+      .filter(t => t.accountId === acc.id && t.type === 'income' && t.giftId)
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    // 他报上来的开销累计：不分记在哪个账户、不分谁出的钱，只要是他报的真支出
+    const spent = (data.transactions || [])
+      .filter(t => t.type === 'expense' && !t.xfer && t.fromStaff && samePersonName(t.fromStaff.by, person))
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const target = Math.round((given - spent) * 100) / 100;
+    const now = holdingBalance(acc);
+    const diff = Math.round((target - now) * 100) / 100;
+    if(Math.abs(diff) < 0.005) return;                 // 已经对上了，不用动
+    const srcId = holdingRealAccountId(acc);
+    if(!srcId || !getAcc(srcId)) return;               // 找不到对应的真实账户，不硬做
+    rows.push({ person, acc, given: Math.round(given*100)/100, spent: Math.round(spent*100)/100,
+                target, now: Math.round(now*100)/100, diff, srcId });
+  });
+  return rows;
+}
+
+function openReconcileHolding(){
+  const rows = reconcileHoldingScan();
+  if(!rows.length){ toast('不用对账：每个人手上的钱都跟「给了 − 花了」对得上'); return; }
+  const detail = rows.map(r =>
+    `${r.person}：给了 ${fmt(r.given, r.acc.currency)} − 花了 ${fmt(r.spent, r.acc.currency)}\n`
+    + `　应该还剩 ${fmt(r.target, r.acc.currency)}，现在是 ${fmt(r.now, r.acc.currency)}\n`
+    + `　→ 他手上 ${r.diff > 0 ? '加' : '减'} ${fmt(Math.abs(r.diff), r.acc.currency)}，`
+    + `你的「${(getAcc(r.srcId)||{}).name}」跟着${r.diff > 0 ? '减' : '加'} ${fmt(Math.abs(r.diff), r.acc.currency)}`
+  ).join('\n\n');
+  if(!confirm(`一键对账：\n\n${detail}\n\n`
+    + `总额不变（你手上 ＋ 他手上 还是一样多），只是把分配拉正。\n`
+    + `不会动到任何一笔开销记录。确定吗？`)) return;
+  const now = Date.now();
+  rows.forEach(r => {
+    const amt = Math.abs(r.diff);
+    const holdType = r.diff > 0 ? 'income' : 'expense';
+    const srcType  = r.diff > 0 ? 'expense' : 'income';
+    data.transactions.push({
+      id: uid(), accountId: r.acc.id, date: today(), type: holdType, amount: amt,
+      categoryId: holdType === 'income' ? 'cat_cash_gift_in' : 'cat_cash_gift',
+      description: `对账调整（${r.person}）`, updatedAt: now, xfer: true, reconcileAdj: true
+    });
+    data.transactions.push({
+      id: uid(), accountId: r.srcId, date: today(), type: srcType, amount: amt,
+      categoryId: srcType === 'income' ? 'cat_cash_gift_in' : 'cat_cash_gift',
+      description: `对账调整（${r.person}）`, updatedAt: now, xfer: true, reconcileAdj: true
+    });
+  });
+  saveData();
+  renderOverview();
+  refreshBossCashGiftPersonSummary();
+  toast(`已对账：${rows.length} 个人的数字拉正了`);
+}
+
 function staleSettleCredits(){
   return (data.transactions || []).filter(t =>
     t.type === 'income' && t.xfer &&
@@ -8286,6 +8359,8 @@ function renderBossCashGiftModal(){
         >🔧 补回缺失的配平记录</span>
       　<span style="text-decoration:underline;cursor:pointer" onclick="openClearSettleCredits()"
         >🧽 清掉「结清」加进来的收入</span>
+      　<span style="text-decoration:underline;cursor:pointer" onclick="openReconcileHolding()"
+        >🧮 一键对账（把数字拉正）</span>
     </div>`;
   setTimeout(()=>{ const a = document.getElementById('boss-cash-gift-person'); if(a) a.focus(); }, 120);
   refreshBossCashGiftRecent();
