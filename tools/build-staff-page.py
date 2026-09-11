@@ -188,7 +188,6 @@ def build(src: str) -> str:
                      '    <div id="staff-boss-cfg"></div>\n'
                      '  </div>\n'
                      '  <div id="staff-boss-cash"></div>\n'
-                     '  <div id="staff-boss-summary"></div>\n'
                      '  <div id="staff-petty"></div>\n'
                      '  <div id="staff-summary"></div>',
                      "明细页（放本月合计）")
@@ -347,15 +346,6 @@ STAFF_LABELS = [
     ('<label class="form-label">日期</label>', "Date"),
     ('<label class="form-label">公司类别</label>', "Category"),
     ('<label class="form-label">这一餐算谁的</label>', "Who was this meal for?"),
-    ('<label class="form-label">这笔钱是谁出的</label>', "Who paid for this?"),
-    ('<div class="type-tab" id="paidfrom-cash" onclick="setPaidFrom(\'cash\')">用老板给的现金</div>',
-     "With the Boss's cash"),
-    ('<div class="type-tab" id="paidfrom-own" onclick="setPaidFrom(\'own\')">自己先垫的</div>',
-     "I paid it myself"),
-    ('<div style="font-size:12px;color:var(--sub);line-height:1.6">\n'
-     '        不填也会自动判断（手上现金够不够这笔金额），觉得不对就点上面手动改。\n'
-     '      </div>',
-     "Auto-guessed from whether your cash on hand covers this amount — tap above to change it."),
     ('<span style="flex:1">👀 这个数是从照片认出来的，请跟收据核对一遍</span>',
      "👀 This amount was read from the photo — check it against the receipt"),
     ('<button type="button" class="btn btn-sm" id="tx-amount-ok" onclick="confirmAmount()"\n'
@@ -613,12 +603,6 @@ body.staff-boss #staff-boss-cash{display:block}
   padding:7px 14px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer}
 .bcash-list{margin-top:10px;border-top:1px solid rgba(255,255,255,.25);padding-top:8px}
 .bcash-line{display:flex;justify-content:space-between;font-size:12.5px;opacity:.92;padding:2px 0}
-/* 老板账「本月合计」卡：跟「手上现金」不是同一件事——手上现金只减用现金付的那部分，
-   这张卡回答的是「这个月总共替老板花了多少」，用现金付的、自己垫的都要算（见
-   renderBossSummary()）。样式借用跟公司账那张一样的 .staff-sum-* 类，只是换一个
-   容器 id、挂在跟 #staff-boss-cash 相反的开关上。 */
-#staff-boss-summary{display:none;background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:12px}
-body.staff-boss #staff-boss-summary{display:block}
 
 #staff-gate{position:fixed;inset:0;z-index:300;background:var(--bg);
   display:flex;flex-direction:column;justify-content:center;padding:24px}
@@ -864,7 +848,6 @@ function staffStart(){
   flushCompanyQueue();
   staffSyncMode();
   flushBossQueue();
-  flushRepayQueue();
   staffApplyLang();
   staffShowInstallTip();
   staffLoadPetty();
@@ -1003,7 +986,6 @@ renderTxList = function(){
   // 找回记录、收件后重画全都会经过 renderTxList，逐个入口去补一定会漏，
   // 而漏掉的表现是余额停在旧数字上——那种错要人肉比对才发现。
   renderBossCash();
-  renderBossSummary();
 };
 function staffRenderSummary(){
   const box = document.getElementById('staff-summary');
@@ -1041,18 +1023,10 @@ function staffRenderSummary(){
 const _staffSaveTx = saveTx;
 saveTx = function(){
   _staffSaveTx.apply(this, arguments);
-  setTimeout(()=>{ staffLoadPetty(); staffSyncBossGifts(); }, 2500);
+  setTimeout(staffLoadPetty, 2500);
 };
 document.addEventListener('visibilitychange', ()=>{
-  // ⚠️ 一定要**串起来**，不能并排叫（2026-09-10 实机踩到）：两个函数共用
-  // bossGiftsOpBusy 这把锁，sync 在第一个 await 之前就同步把锁抢走了，紧接着叫的
-  // prune 一进门看到 busy 就 return——于是**prune 从来没跑过**。后果是老板撤回或
-  // 重算之后，同事那边的旧记录永远扣不掉：他重开几次都还是看到两笔（中午那笔 5000
-  // 和刚换上的 4810.47 并存）。串起来才能保证 sync 做完之后 prune 真的会跑。
-  if(!document.hidden && staffIdentity){
-    staffLoadPetty();
-    staffSyncBossGifts().then(() => staffPruneBossGifts()).catch(()=>{});
-  }
+  if(!document.hidden && staffIdentity) staffLoadPetty();
 });
 
 /* 弹窗标题是脚本写死的中文，包一层让它跟着语言走 */
@@ -1206,290 +1180,12 @@ function bossCashReset(){
   renderBossCash();
 }
 
-/**
- * person 比对要大小写/首尾空格不敏感（2026-09-09 生产 bug）：老板端 person 是自由文本
- * 手打的（比如打成 KUANG），staffIdentity.reporter 是服务端身份识别给的固定值（Kuang）——
- * 两个值来自完全不同的输入源，几乎肯定会撞上大小写不一致。精确比对会让礼物永远
- * 「安静地」同步不过去：老板以为送了，同事以为没收到，两边都看不出哪里错——这正是
- * CLAUDE.md 反复强调要杜绝的「沉默失败」。所有比对 person 的地方都要走这个函数，
- * 不要再直接用 !== 比。
- */
-function samePersonName(a, b){
-  return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
-}
-
-/**
- * 两个函数（staffSyncBossGifts/staffPruneBossGifts）都读改同一份本机存的「手上现金」
- * 状态（loadBossCash/saveBossCash），触发点又不只一个（2500ms 轮询、visibilitychange、
- * 切进「老板账」页）——多个触发几乎同时发生时，两次调用会各自从 localStorage 读到
- * 同一份「还没处理过」的旧状态，各自判断「这是新的」各加一次，钱就被算重复了
- * （2026-09-09 用户实机踩到：转一笔 5000，卡片显示两笔 5000，总额变 10000）。
- * 单一个"正在跑"标记堵住这个窗口：任何一个在跑，另一个直接放弃这次，等下一轮
- * 触发再试，不需要排队重跑。两个函数共用同一把锁——它们碰的是同一份本机存储，
- * 不能让"发现新的就加"和"发现没了的就删"同时改。 */
-let bossGiftsOpBusy = false;
-
-const STAFF_BOSS_GIFTS_SEEN = 'staffExpense_bossGiftsSeen';
-function loadBossGiftsSeen(){
-  try{
-    const o = JSON.parse(localStorage.getItem(STAFF_BOSS_GIFTS_SEEN) || 'null');
-    return (o && typeof o.lastAt === 'number' && Array.isArray(o.ids)) ? o : { lastAt: 0, ids: [] };
-  }catch(e){ return { lastAt: 0, ids: [] }; }
-}
-function saveBossGiftsSeen(o){
-  o.ids = o.ids.slice(-300); // 只留最近 300 个 id，够去重用，不无限长
-  try{ localStorage.setItem(STAFF_BOSS_GIFTS_SEEN, JSON.stringify(o)); }catch(e){}
-}
-
-/**
- * 拉「老板给的现金」，合进「手上现金」卡。跟 staffLoadPetty 挂同一套触发时机
- * （2500ms 轮询 + visibilitychange），不新开计时器。
- *
- * 【按人分流，不广播】老板账口令是共用的——不止一个同事可能用同一个口令，而
- * 「手上现金」是每个同事本机各自算的。gift 文档带的 person 就是收件人（老板送
- * 出时填的同事名字），这里只认 person 跟 staffIdentity.reporter 一模一样的那几笔，
- * 其余一律忽略（哪怕口令一样也不认）——不然给 A 的钱会被所有持有这个口令的同事
- * 同时收到。过滤是客户端做的（查询本身只按 k/at 筛，不额外按 person 建 Firestore
- * 复合索引，省得还要请用户去 Console 建索引）。
- *
- * 币别铁律：doc 里的 currency 如果跟这本账目前设定的 staffBossCur() 不一样，
- * **不许悄悄按面值加进总额**（那等于编了个错的汇率 1:1）。做法是仍然记进
- * topups（带上它自己的原始币种 cur 字段），但算 got 总额时只加 cur 匹配的那些，
- * 币种不匹配的单独在卡片上警示、列出金额+原币种，请人自己确认——宁可让人多看一眼，
- * 不能让余额数字看起来对、其实混了两种货币。
- */
-async function staffSyncBossGifts(){
-  if(!staffBossOn() || !cloudAvailable || !staffIdentity) return;
-  if(bossGiftsOpBusy) return;   // 另一次调用正在跑，这次让路，下一轮触发再试
-  bossGiftsOpBusy = true;
-  try{
-    if(!(await staffEnsureAnon())) return;
-    const seen = loadBossGiftsSeen();
-    let snap;
-    try{
-      snap = await db.collection('boss_cash_gifts')
-        .where('k', '==', staffBossKey())
-        .where('at', '>', seen.lastAt)
-        .get();
-    }catch(e){ return; } // 权限错误/离线：安静跳过，下次轮询再试，不打扰用户
-
-    if(snap.empty) return;
-    const cur = staffBossCur();
-    const me = staffIdentity.reporter;
-    let addedTotal = 0, mismatched = [];
-    let maxAt = seen.lastAt;
-    const pending = [];
-
-    snap.forEach(doc => {
-      const d = doc.data();
-      if(typeof d.at === 'number' && d.at > maxAt) maxAt = d.at;   // 推进游标，不管是不是给我的
-      if(!samePersonName(d.person, me)) return;                    // 不是给我的，不认（大小写/空格不敏感比对，见 samePersonName）
-      if(seen.ids.includes(doc.id)) return;
-      seen.ids.push(doc.id);
-      const amt = Number(d.amount) || 0;
-      if(amt <= 0) return;
-      const giftCur = (d.currency || '').toUpperCase();
-      // offsetTotal（2026-09-10 三度改版）：老板转钱前如果先拿这笔抵掉了我垫付的旧欠款，
-      // 这份文档会带这个数字。带过来只是为了在「手上现金」卡多补一句「另有 X 结清了你
-      // 垫付的」说明——不用来算任何余额（余额已经是 d.amount 这个净额了），单纯是让人
-      // 看得懂「怎么给的比我以为的少」，不解释清楚会被误以为算错了。
-      const offsetTotal = Number(d.offsetTotal) || 0;
-      pending.push({ date: today(), amount: Math.round(amt * 100) / 100, note: d.note || '',
-                     from: 'admin', giftId: doc.id, cur: giftCur || cur,
-                     offsetTotal: offsetTotal > 0 ? Math.round(offsetTotal * 100) / 100 : undefined });
-    });
-
-    // ⚠️ 这里**必须重新读一次** localStorage，而且要按 giftId 去重（2026-09-10 教训）。
-    // 上面那句 .get() 是一趟网络往返，中间几百毫秒里这本账可能已经被别人改过：
-    //   1. 同一台手机同时开着「浏览器分页」和「桌面图标 App」——那是两个各自独立的
-    //      JS 环境，bossGiftsOpBusy 这把锁**只锁得住自己那一边**，两边共用同一份
-    //      localStorage。两边同时收到同一笔现金，各推一条，老板发一笔他收到两笔。
-    //      （用户 2026-09-10 实际踩到：「我只发一笔5000 他又收到两笔」。）
-    //   2. 这几百毫秒里他自己记了一笔账、或按了归还，那些改动也在这本账里。
-    //      拿开头那份旧的 o 覆盖回去，他刚记的东西就凭空消失了。
-    // 所以：查完之后才读、只往里加没见过的 giftId、加完立刻存。giftId 是云端文档 id，
-    // 天生唯一，是判「这笔是不是已经进来过」最可靠的凭据——比游标 lastAt 可靠，
-    // 因为游标是每台/每个环境各自记的，去重必须看账本身。
-    const o = loadBossCash();
-    const already = new Set(o.topups.filter(t => t.giftId).map(t => t.giftId));
-    for(const entry of pending){
-      if(already.has(entry.giftId)) continue;   // 另一边（分页/App）已经收过这一笔了
-      already.add(entry.giftId);
-      o.topups.push(entry);
-      if(entry.cur && entry.cur !== cur){ mismatched.push(entry); }
-      else { addedTotal += entry.amount; }
-    }
-
-    seen.lastAt = maxAt;
-    saveBossGiftsSeen(seen);
-    saveBossCash(o);
-    renderBossCash();
-
-    if(addedTotal > 0){
-      toast(tt(`老板给了你现金 ${fmt(addedTotal, cur)}，已经记进「手上现金」`,
-                `The Boss sent you ${fmt(addedTotal, cur)} — added to Cash on hand`));
-    }
-    if(mismatched.length){
-      toast(tt(
-        `⚠️ 有 ${mismatched.length} 笔现金币别跟目前设定不一样，没算进总额，请去「手上现金」卡确认`,
-        `⚠️ ${mismatched.length} cash gift(s) use a different currency than your current setting — `
-        + `not added to the total, please check the Cash on hand card`));
-    }
-  } finally {
-    bossGiftsOpBusy = false;
-  }
-}
-
-/**
- * 核对一遍："我手机上记着的、老板给的现金，云端是不是已经被撤回了"——跟 staffSyncBossGifts
- * 方向相反：那个是「发现新的就加」，这个是「发现没了的就删」，语义不同、触发频率也不同
- * （老板打错币种要撤回不常见、也没那么急，不用挂在 saveTx 后 2.5 秒那个快速轮询上，那是
- * 为「礼物到账要快」设计的），所以是独立函数，不跟 staffSyncBossGifts 合并。
- *
- * 只影响带 giftId 的 topup（老板转的那些）——bossCashAdd() 手动记的条目没有 giftId，
- * 天然完全不受这套核对影响，不用另外判断。
- *
- * 没有服务端推送撤回通知这回事：老板删了 Firestore 文档，同事这边不会自动知道，只能
- * 靠客户端下次核对时自己发现——这是为什么需要这个独立函数，而不是只指望云端删了自动消失。
- *
- * **查询故意不带 person 条件**：Firestore 的 where('person','==',...) 是精确匹配，
- * 没法做大小写/空格不敏感比对，而 person 就是那种几乎肯定会撞上大小写不一致的字段
- * （见 samePersonName 注释）。改成只按口令 k 拉这个口令下的全部记录，再在客户端用
- * samePersonName 筛——反正一个人手上带 giftId 的记录量很小，不用担心效率。
- */
-async function staffPruneBossGifts(){
-  if(!staffBossOn() || !cloudAvailable || !staffIdentity) return;
-  if(bossGiftsOpBusy) return;   // 跟 staffSyncBossGifts 共用同一把锁，见那边的注释
-  bossGiftsOpBusy = true;
-  try{
-    if(!(await staffEnsureAnon())) return;
-    const withGift = loadBossCash().topups.filter(t => t.giftId);
-    if(!withGift.length) return; // 没有可核对的，不用发请求
-
-    let snap;
-    try{
-      snap = await db.collection('boss_cash_gifts')
-        .where('k', '==', staffBossKey())
-        .get();
-    }catch(e){ return; } // 查询失败：安静跳过，不用一次网络失败打扰用户
-
-    const me = staffIdentity.reporter;
-    const alive = new Set();
-    snap.forEach(doc => {
-      const d = doc.data();
-      if(samePersonName(d.person, me)) alive.add(doc.id);
-    });
-
-    // 跟 staffSyncBossGifts 同一条教训：查询是一趟网络往返，回来之后才能读这本账，
-    // 否则会拿旧的覆盖掉这期间他自己记的账 / 按的归还。
-    const o = loadBossCash();
-    let removed = 0;
-    o.topups = o.topups.filter(t => {
-      if(!t.giftId) return true;          // 手动记录，不受这套核对影响
-      if(alive.has(t.giftId)) return true; // 云端还在，留着
-      removed++;
-      return false;
-    });
-
-    if(removed){
-      saveBossCash(o);
-      renderBossCash();
-      toast(tt(
-        `老板收回了 ${removed} 笔现金记录（可能是打错了在修正），已经从你的余额里扣掉`,
-        `The Boss withdrew ${removed} cash record(s) (probably fixing a mistake) — removed from your balance`));
-    }
-  } finally {
-    bossGiftsOpBusy = false;
-  }
-}
-
-/**
- * 一笔支出「谁出的钱」——**不能靠「这个账户现在有没有代管账户」去猜**，同事很可能在
- * 收到现金之前就自己先垫过（2026-09-10 用户实测踩到的真实 bug：老板转 5000 给 Kuang
- * 之前，Kuang 已经自己垫付过 189.53；旧算法把「记在老板账账户里的所有支出」都当成
- * 「花掉了老板给的现金」，这笔也被算了进去，害「手上现金」比老板那边少算了整整 189.53，
- * 转账之前甚至会显示成负数）。
- *
- * 新记录都会带 `tx.paidFrom`（'cash'／'own'，见下面 `syncBossPaidFromField()`/
- * `setPaidFrom()`，记账表单里有个可以手动改的开关）。**旧数据没有这个字段时的回落
- * 规则**：按「这笔的日期是不是在第一次收到现金之后」判断——在第一次收到现金之前，
- * 手上根本没有老板给的钱可以花，只可能是自己垫的；在那之后按老规矩当成用现金付的。
- * 这条回落规则专门核对过 Kuang 的真实数据：189.53 那笔日期在第一次收现金之前 →
- * 回落成 'own'；224 那笔在之后 → 回落成 'cash'，跟目标状态一致。
- */
-/**
- * 「第一次收到老板现金是哪一天」——旧数据判断 `paidFrom` 的分界线。
- *
- * ⚠️ 这个日期**只能往前、绝不能往后跑**（2026-09-10 上线前抓到）。老板那边按
- * 「重算欠款」时，会把云端那笔转账**删掉、另建一份净额的新的**（规则不许改金额，
- * 只能这样做）。同事这边同步到新文档时，记的是「同步那天」的日期——如果分界线跟着
- * 往后跑，原本判成「花老板现金」的那几笔会**突然被改判成自己垫的**，他的手上现金
- * 凭空变多、两边又对不上，正是这一整轮要修的那个毛病。
- *
- * 所以第一次算出来就钉在 `staffExpense_bossGiftsSeen` 里，之后只取更早的那个，
- * 永远不往后。真的从来没收过现金（还没有任何一笔）才回 null。
- */
-function firstCashDate(o){
-  const dates = (o.topups || []).filter(t => Number(t.amount) > 0 && !t.repay).map(t => t.date).sort();
-  const now = dates.length ? dates[0] : null;
-  let pinned = null;
-  try{ pinned = (JSON.parse(localStorage.getItem(STAFF_BOSS_GIFTS_SEEN) || 'null') || {}).firstCashDate || null; }catch(e){}
-  if(now && (!pinned || now < pinned)){
-    // 更早的日期出现（第一次算、或补收到一笔更早的）：往前钉。
-    try{
-      const seen = loadBossGiftsSeen();
-      seen.firstCashDate = now;
-      saveBossGiftsSeen(seen);
-    }catch(e){}
-    return now;
-  }
-  return pinned || now;
-}
-function effectivePaidFrom(t, o){
-  if(t.paidFrom === 'cash' || t.paidFrom === 'own') return t.paidFrom;
-  const first = firstCashDate(o);
-  if(!first) return 'own';              // 从没收到过现金，只可能是自己垫的
-  return (String(t.date || '') >= first) ? 'cash' : 'own';
-}
-
-/** 手上现金余额：收到的钱（含归还记进去的负数）－ **用现金花掉的**（`paidFrom==='cash'`，
- *  含旧数据回落，见上面 effectivePaidFrom）＋ 收到的退回。**自己先垫的（'own'）不算
- *  「花掉」**——那笔钱从头到尾不是老板给的现金，不该从这个余额里扣，这正是上面那条
- *  注释描述的 bug 的修法。跟 renderBossCash() 卡片上显示的必须是**同一个公式**——
- *  staffRepayBossCash() 的校验和 prompt 默认值都要读它，不能一个地方一套算法
- *  （那种不一致最难查，参见老板端 bossCashGiftRemain 的同一条注释）。 */
-function bossCashLeft(){
-  const cur = staffBossCur();
-  const o = loadBossCash();
-  const got = o.topups.filter(t => !t.cur || t.cur === cur)
-    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const mine = (data.transactions || []).filter(t => t.accountId === STAFF_BOSS_ACC_ID);
-  const spent = mine.filter(t => t.type !== 'income' && effectivePaidFrom(t, o) === 'cash')
-    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  const back = mine.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  return Math.round((got - spent + back) * 100) / 100;
-}
-
-/** 这个月（跟随页面月份切换器 state.txYear/state.txMonth）该本账支出合计——不分是
- *  用老板给的现金付的还是自己先垫的，两种都算。「手上现金」卡的『花掉』
- *  （`renderBossCash()`）和『本月合计』卡（`renderBossSummary()`）现在显示的是
- *  同一个数，两处共用这个函数，别各自重算一遍（那种不一致最难查，2026-09-10 五度
- *  改版新增，取代原本各自独立的 cashPart/ownPart 计算）。 */
-function bossCashMonthSpend(){
-  const txs = monthTxs(STAFF_BOSS_ACC_ID, state.txYear, state.txMonth).filter(t => t.type === 'expense');
-  return { total: Math.round(txs.reduce((s,t)=>s+t.amount,0) * 100) / 100, count: txs.length };
-}
-
 function renderBossCash(){
   const el = document.getElementById('staff-boss-cash');
   if(!el) return;
   const cur = staffBossCur();
   const o = loadBossCash();
-  // 币别铁律：老板给的现金如果币种跟这本账目前设定的不一样，不许悄悄按面值加进
-  // 总额（那等于编了个错的汇率 1:1）。只累计币种匹配的那些，不匹配的仍然记进
-  // topups、列在下面，但不计进这个总额——见 renderBossCash 下面 mismatched 那段。
-  const got = o.topups.filter(t => !t.cur || t.cur === cur)
-    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const got = o.topups.reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
   // 还没填收到多少：不编一个 0 出来（那看起来像「花光了」），直接请他填
   if(!o.topups.length){
@@ -1507,145 +1203,35 @@ function renderBossCash(){
   }
 
   const mine = (data.transactions || []).filter(t => t.accountId === STAFF_BOSS_ACC_ID);
+  const spent = mine.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const back = mine.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
-  // bossCashLeft()（只减「用现金付的」）**保留原样、不在这次改动**——归还按钮的
-  // 默认值/是否出现、paidFrom 自动判定阈值、归还完成通知里的 left，都还是用这个
-  // 真正的内部权威余额，本次只改这张卡「显示」出来的数字，不碰底层记账逻辑
-  // （用户原话「这次只改显示，不改账」）。
-  const left = bossCashLeft();
+  const left = Math.round((got - spent + back) * 100) / 100;
   const notSent = mine.filter(t => t.inbox && t.inbox.status !== 'sent').length;
+  const over = left < 0;
+  el.classList.toggle('low', over || left < got * 0.15);
 
-  // 2026-09-10 五度改版（用户明确要求「他垫付的这些不必出现了，只出现他那边花了
-  // 多少就好，不然我自己也乱」）：卡片头部这个数不再是 bossCashLeft()（那个只减
-  // 「用现金付的」），改成「收到 − 这个月支出合计（现金付的和自己垫的都算）」——
-  // 跟老板端首屏卡片 renderOvBossCashGift() 同一口径（老板转账当下若结清了他的
-  // 垫付，会另开一对配平转账，这台手机看不到那笔账，只能靠「这个月支出全算」这种
-  // 口径才能跟老板端对上，见那边 renderOvBossCashGift() 顶部注释）。
-  const { total: monthSpend } = bossCashMonthSpend();
-  const cardRemain = Math.round((got - monthSpend) * 100) / 100;
-  const over = cardRemain < 0;
-  el.classList.toggle('low', over || cardRemain < got * 0.15);
-
-  // 币种不匹配的那几笔要显示自己的原始币种（不是被当成卡片的 cur），并加个 ⚠️
-  // 提醒——宁可让人多看一眼，不能让余额数字看起来对、其实混了两种货币。
-  // 归还（repay:true）的那几笔是负数，显示成「归还 −X」这种人话，不是裸负数
-  // （2026-09-10「一键归还」新增，见 staffRepayBossCash()）。
-  const rows = o.topups.slice(-5).reverse().map(t => {
-    if(t.repay){
-      return `<div class="bcash-line"><span>${t.date} ${tt('归还','Returned')}</span>` +
-        `<span>−${fmt(-t.amount, cur)}</span></div>`;
-    }
-    const mismatch = t.cur && t.cur !== cur;
-    return `<div class="bcash-line"><span>${t.date}${mismatch ? ' ⚠️' : ''}</span>` +
-      `<span>+${fmt(t.amount, mismatch ? t.cur : cur)}</span></div>`;
-  }).join('');
-
-  const subZh = `收到 ${fmt(got, cur)} · 花掉 ${fmt(monthSpend, cur)}`;
-  const subEn = `Received ${fmt(got, cur)} · Spent ${fmt(monthSpend, cur)}`;
+  const rows = o.topups.slice(-5).reverse().map(t => `
+      <div class="bcash-line"><span>${t.date}</span><span>+${fmt(t.amount, cur)}</span></div>`).join('');
 
   el.innerHTML = `
-    <div class="bcash-label">${over ? tt('数字对不上了','Numbers do not add up') : tt('手上现金','Cash on hand')}</div>
-    <div class="bcash-total">${fmt(over ? -cardRemain : cardRemain, cur)}</div>
-    <div class="bcash-sub">${tt(subZh, subEn)}${
+    <div class="bcash-label">${over ? tt('超支了','Over budget') : tt('手上现金','Cash on hand')}</div>
+    <div class="bcash-total">${fmt(over ? -left : left, cur)}</div>
+    <div class="bcash-sub">${tt(
+      `收到 ${fmt(got, cur)} · 已花 ${fmt(spent, cur)}`,
+      `Received ${fmt(got, cur)} · spent ${fmt(spent, cur)}`)}${
       back ? tt(` · 退回 ${fmt(back, cur)}`, ` · refunds ${fmt(back, cur)}`) : ''}</div>
     ${over ? `<div class="bcash-warn">${tt(
-      `⚠️ 花掉的比收到的还多，请核对一下`,
-      `⚠️ Spent is more than received — please check`)}</div>` : ''}
+      `⚠️ 你自己先垫了 ${fmt(-left, cur)}，记得跟老板要回来`,
+      `⚠️ You are ${fmt(-left, cur)} out of pocket — ask the Boss to pay you back`)}</div>` : ''}
     ${notSent ? `<div class="bcash-warn">${tt(
       `⏳ 有 ${notSent} 笔还没送到老板那边（这个余额已经扣过了）`,
       `⏳ ${notSent} record(s) not sent to the Boss yet (already deducted above)`)}</div>` : ''}
     <div class="bcash-btns">
       <button class="bcash-btn" onclick="bossCashAdd()">${tt('＋ 又收到现金','+ Got more cash')}</button>
-      ${left > 0 ? `<button class="bcash-btn" onclick="staffRepayBossCash()">${
-        tt('💰 全部归还给老板','💰 Return it to the Boss')}</button>` : ''}
       <button class="bcash-btn" onclick="bossCashReset()">${tt('重填','Start over')}</button>
     </div>
     <div class="bcash-list">
       <div class="bcash-label">${tt('收到的钱','Cash received')}</div>${rows}</div>`;
-}
-
-/** 老板账「本月合计」卡：跟随页面上的月份切换器（state.txYear/state.txMonth）。
- *  口径（2026-09-10 用户明确要求，别自己发明）——这本账记在老板账账户里的**支出**
- *  总额，**不分是用老板给的现金付、还是自己先垫的**：两种花法都是这个月替老板花掉
- *  的钱，都要算进合计。跟 bossCashLeft() 不是同一件事：bossCashLeft() 只关心「手上
- *  现金还剩多少」，所以只减 paidFrom==='cash' 那部分；这张卡关心的是「这个月总共
- *  花了多少」，全部要算。
- *  **2026-09-10 五度改版，拆行拿掉**（用户：「他垫付的这些不必出现了...不然我自己
- *  也乱」）：底下不再拆「用现金/自己垫」两行，只留合计与笔数。口径本身（全部要算、
- *  沿用 effectivePaidFrom() 判定）完全没变，现在用共用的 bossCashMonthSpend()
- *  ——跟「手上现金」卡（renderBossCash()）的『花掉』是同一个数、同一个函数算出来的，
- *  不是碰巧数字一样。 */
-function renderBossSummary(){
-  const box = document.getElementById('staff-boss-summary');
-  if(!box) return;
-  const cur = staffBossCur();
-  const { total, count } = bossCashMonthSpend();
-  box.innerHTML = `
-    <div class="staff-sum-label">${tt('本月合计','This month')}</div>
-    <div class="staff-sum-total staff-sum-month">${fmt(total, cur)}</div>
-    <div class="staff-sum-sub">${tt(`${count} 笔`, `${count} record(s)`)}</div>`;
-}
-
-/* —— 这笔钱是谁出的（'cash'／'own'）—————————————————————
- *
- * 2026-09-10 三度改版新增。记账表单「老板账」那页多一个开关，让同事自己标一下这笔钱
- * 是用老板给的现金付的、还是自己先垫的——不标的话，老板那边只能靠「这个人现在有没有
- * 代管账户」去猜，猜错的那一种（收到现金之前自己垫的钱）就是这次真实 bug 的根因。
- * 详见 .claude/notes/expense-tracker.md「代管账户」那节。
- *
- * **预设值不增加同事的操作**：打开表单/改金额时自动按「bossCashLeft() 够不够这笔
- * 金额」判断，够 → 'cash'，不够 → 'own'。一旦手动点过开关（`state.txPaidFromTouched`），
- * 在这次开表单期间就不再被自动判断覆盖——开新的一笔/编辑另一笔时才重新解封。
- */
-function paintPaidFromTabs(){
-  const cashEl = document.getElementById('paidfrom-cash');
-  const ownEl = document.getElementById('paidfrom-own');
-  if(!cashEl || !ownEl) return;
-  cashEl.classList.toggle('active', state.txPaidFrom === 'cash');
-  ownEl.classList.toggle('active', state.txPaidFrom === 'own');
-}
-function setPaidFrom(v){
-  state.txPaidFrom = (v === 'own') ? 'own' : 'cash';
-  state.txPaidFromTouched = true;
-  paintPaidFromTabs();
-}
-/** 打开新增/编辑弹窗时调用（expense-tracker.html 的 showAddTx()/editTx() 里有 typeof
- *  挡一层的调用）。tx 为 null 代表新增。非老板账户整块隐藏——库存/公司账户/个人账户
- *  都不需要这个开关。 */
-function syncBossPaidFromField(tx){
-  const wrap = document.getElementById('tx-paidfrom-wrap');
-  if(!wrap) return;
-  const onBoss = data.currentAccountId === STAFF_BOSS_ACC_ID;
-  wrap.style.display = onBoss ? 'block' : 'none';
-  if(!onBoss) return;
-  if(tx && (tx.paidFrom === 'cash' || tx.paidFrom === 'own')){
-    // 编辑一笔已经标过的记录：尊重当初的选择，不用自动判断覆盖它
-    state.txPaidFrom = tx.paidFrom;
-    state.txPaidFromTouched = true;
-    paintPaidFromTabs();
-  } else {
-    state.txPaidFromTouched = false;
-    syncBossPaidFromAuto();
-  }
-}
-/** 金额栏变化时重算预设值（expense-tracker.html 的 onAmountInput() 里有 typeof 挡一层
- *  的调用）——已经手动改过的（state.txPaidFromTouched）不会被这里覆盖。 */
-function syncBossPaidFromAuto(){
-  if(state.txPaidFromTouched) return;
-  const wrap = document.getElementById('tx-paidfrom-wrap');
-  if(!wrap || wrap.style.display === 'none') return;
-  const amt = readAmountInput().num;
-  const left = bossCashLeft();
-  state.txPaidFrom = (Number.isFinite(amt) && left >= amt) ? 'cash' : 'own';
-  paintPaidFromTabs();
-}
-/** saveTxInner() 组好 tx 之后调用（expense-tracker.html 里有 typeof 挡一层的调用）。
- *  只在老板账户、支出类型下才写这个字段——收入没有「谁出的钱」这回事，其它账户也
- *  用不到，不多存无意义的字段。 */
-function applyBossPaidFrom(tx){
-  if(tx.accountId !== STAFF_BOSS_ACC_ID) return;
-  if(tx.type === 'income') return;
-  tx.paidFrom = (state.txPaidFrom === 'own') ? 'own' : 'cash';
 }
 
 /** 填/换/清掉老板账口令。填错了送不出去时会说明白（见 submitInboxTx 的 permission-denied）。 */
@@ -1680,8 +1266,6 @@ function staffSyncMode(){
   renderBossQueue();
   renderBossCfg();
   renderBossCash();
-  // 切进「老板账」页时马上拉一次最新的现金，不用等 2.5 秒轮询
-  if(onBoss){ staffSyncBossGifts().then(() => staffPruneBossGifts()).catch(()=>{}); }   // 串起来，理由见上面 visibilitychange 那段
 }
 
 /** 说明块底下那一行设定：这本账用什么钱。 */
@@ -1726,51 +1310,6 @@ async function staffEnsureAnon(){
   }catch(e){ console.warn('匿名登录失败', e); return false; }
 }
 
-// 投递箱单份文档的照片上限。Firestore 一份文档最大 1MB，账目字段本身还要占一点，
-// 留 700KB 给 base64 之后的照片是安全边界（base64 比原图大约 1.33 倍，
-// 也就是原图约 500KB 以内可以原样送）。
-const INBOX_PHOTO_LIMIT = 700 * 1024;
-
-/**
- * 把太大的收据照片缩到能塞进投递箱。长边逐级缩、JPEG 质量逐级降，第一个塞得下的就用。
- * 目的是**留下能看清楚金额和店名的凭证**，不是留原画质——凭证只要读得出来就有用。
- * 压不到／读不出图就回 null，由调用方去提示同事另外把照片发给老板。
- */
-async function shrinkPhotoForInbox(dataUrl, limit){
-  try{
-    const img = await new Promise((resolve, reject)=>{
-      const im = new Image();
-      im.onload = ()=>resolve(im);
-      im.onerror = ()=>reject(new Error('照片读不出来'));
-      im.src = dataUrl;
-    });
-    const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
-    if(!w0 || !h0) return null;
-    // 从「够清楚」的那一端开始试，不是从「保证塞得下」那一端——收据要看得清金额、
-    // 店名、日期，糊掉的凭证等于没有。实测一般收据在 2400px / q0.85 大约 300~600KB，
-    // 本来就塞得下；真的塞不下才一级一级往下让。
-    // ⚠️ 上限**不能**再往上调：Firestore 那份规则写死 photo < 760000 字符
-    // （firestore.rules 第 51 行），客户端调高只会变成 permission-denied，
-    // 而且改规则要用户自己去 Firebase Console 贴一次。要更清楚，只能在上限内争取。
-    for(const maxSide of [2400, 2000, 1600, 1200, 900, 700, 500]){
-      const scale = Math.min(maxSide / Math.max(w0, h0), 1);   // 只缩不放
-      const w = Math.max(1, Math.round(w0 * scale));
-      const h = Math.max(1, Math.round(h0 * scale));
-      const c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      const cx = c.getContext('2d');
-      // 透明底的 PNG 不先铺白，转成 JPEG 会变一片黑（跟 shrinkPhotoForPDF 同一个坑）
-      cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
-      cx.drawImage(img, 0, 0, w, h);
-      for(const q of [0.85, 0.7, 0.55, 0.4]){
-        const out = c.toDataURL('image/jpeg', q);
-        if(out && out.length < limit) return out;
-      }
-    }
-    return null;
-  }catch(e){ console.warn('照片压不下去，只送文字', e); return null; }
-}
-
 async function submitInboxTx(tx){
   const k = staffBossKey();
   if(!k) return { ok:false, retriable:false, message: tt('还没填老板账口令','No Boss passcode yet') };
@@ -1782,57 +1321,29 @@ async function submitInboxTx(tx){
     from: (staffIdentity ? staffIdentity.reporter : '同事').slice(0, 40),
     // 整笔账压成一个字符串送（规则里只校验长度，不逐字段校验——字段校验住老板 App
     // 那边，收进来时不认的类别会退回「其他」，坏数据直接丢掉不入账）
-    //
-    // paidFrom（'cash'/'own'，2026-09-10 三度改版新增）放在这个字符串里面，**不是**
-    // payload 的新顶层字段——firestore.rules 对 inbox_boss 写的是
-    // hasOnly(['k','tx','photo','from','createdAt'])，加顶层字段会被规则挡下，而且
-    // 改规则要用户自己去 Firebase Console 贴一次。放进这个字符串里则一个字都不用改，
-    // 老板那边 fetchInbox() 解析这份 JSON 时自然就读得到（见那边 raw.paidFrom）。
     tx: JSON.stringify({
       srcId: tx.id, date: tx.date, amount: tx.amount, type: tx.type,
-      categoryId: tx.categoryId, description: tx.description || '', paidFrom: tx.paidFrom
+      categoryId: tx.categoryId, description: tx.description || ''
     })
     // 刻意不带 createdAt：那要用 firebase.firestore.FieldValue.serverTimestamp()，
     // 等于让这条路多依赖一个全局对象；而「什么时候收到的」老板那边收件时自己盖章
     // （fromStaff.at）就够了。规则允许这个字段存在，只是我们不送。
   };
-  // 收据照片一起送，老板那份账户明细 PDF 的凭证页才有图。
-  //
-  // ⚠️ 2026-09-10 用户反馈「他那两张有记录但是没有账单」，根因就在这里：以前的写法是
-  // 「超过 700KB 就不送照片」，而现在手机随手一拍就是 2~5MB，base64 之后更大——于是
-  // **绝大多数照片都被默默丢掉**，账进去了、凭证没了，而且同事和老板两边都没有任何提示。
-  // 现在改成：太大先**缩图重压**（长边逐级缩、JPEG 质量逐级降），压到能送为止；
-  // 真的压不下去才放弃，并且**一定要告诉同事**（见 flushBossQueue 里 photoDropped 那段），
-  // 让他知道要另外把照片发给老板。丢照片可以，闷声丢不行——跟老板端「以前删过的记录
-  // 要讲出来」是同一条原则。
-  let photoDropped = false, photoReason = '';
+  // 收据照片一起送，老板那份账户明细 PDF 的凭证页才有图。太大就只送文字——
+  // 照片没了还能回头问人补，账送不出去才是真丢。
   if(tx.attachmentId){
     try{
       const blob = await getAttachmentBlob(tx.attachmentId);
-      if(!blob){
-        // ⚠️ 这一支以前是**静默**的（只有 if(blob){...}，没有 else），是「记录有、
-        // 账单没有」的第二个来源，而且比「太大」更难猜：这笔账明明附了照片
-        // （tx.attachmentId 还在），但这台手机的本地存储里已经找不到那张图了。
-        // 常见原因是手机系统清掉了网页的离线存储（iOS 对长期没打开的网站尤其积极），
-        // 照片没了、账目本身还在。这种情况**一定要讲出来**，否则同事以为送成功了、
-        // 老板以为同事没拍。
-        photoDropped = true; photoReason = 'missing';
-      }else{
+      if(blob){
         const dataUrl = await blobToBase64(blob);
-        if(dataUrl.length < INBOX_PHOTO_LIMIT){
-          payload.photo = dataUrl;
-        }else{
-          const small = await shrinkPhotoForInbox(dataUrl, INBOX_PHOTO_LIMIT);
-          if(small) payload.photo = small;
-          else { photoDropped = true; photoReason = 'toobig'; }
-        }
+        if(dataUrl.length < 700 * 1024) payload.photo = dataUrl;
       }
-    }catch(e){ console.warn('照片读不出来，只送文字', e); photoDropped = true; photoReason = 'error'; }
+    }catch(e){ console.warn('照片读不出来，只送文字', e); }
   }
 
   try{
     await db.collection(INBOX_COLLECTION).add(payload);
-    return { ok:true, photoDropped, photoReason };
+    return { ok:true };
   }catch(e){
     // 口令不对 / 老板还没设好权限：重试一百次也是同样结果，要当场说清楚
     if(e && e.code === 'permission-denied')
@@ -1878,19 +1389,9 @@ async function flushBossQueue(opts){
     const r = await submitInboxTx(tx);
     const local = data.transactions.find(t => t.id === txId);
     if(r.ok){
-      if(local) local.inbox = { status:'sent', error:null, photoDropped: !!r.photoDropped };
+      if(local) local.inbox = { status:'sent', error:null };
       q = q.filter(x => x !== txId); saveBossQueue(q);
-      // 照片没送成要讲出来，而且**不管是不是 loud**（自动补送时同事没在看提示，
-      // 但这件事他必须知道：老板那边会看到一笔没有凭证的账）。
-      if(r.photoDropped){
-        // 分开讲原因：两种情况同事该做的事不一样——「太大」重拍一张小一点的就行，
-        // 「找不到了」是本机存储被清掉，重拍才有用，光重送没用。
-        toast(r.photoReason === 'missing'
-          ? tt('⚠️ 账已经送到老板那边，但这台手机上找不到那张收据照片了（可能被系统清掉）——请重新拍一张贴上去，或直接把照片发给老板',
-               '⚠️ Sent, but the receipt photo is no longer stored on this phone — please re-attach a photo, or send it to the Boss directly')
-          : tt('⚠️ 这笔的账已经送到老板那边，但收据照片太大送不过去，请另外把照片发给他',
-               '⚠️ Sent, but the receipt photo was too large to upload — please send it to the Boss separately'));
-      }else if(loud) toast(tt('✅ 已送到老板那边','✅ Sent to the Boss'));
+      if(loud) toast(tt('✅ 已送到老板那边','✅ Sent to the Boss'));
     } else if(r.retriable){
       if(local) local.inbox = { status:'pending', error:null };
       if(loud) toast(r.message);
@@ -2012,150 +1513,8 @@ function onTxDeleted(t){
   flushBossDelQueue({ loud:true });
 }
 
-/* —— 一键归还：同事把手上还剩的现金还给老板（2026-09-10）——————————————
- *
- * 走的是投递箱**同一套机制**：跟 submitInboxTx()/submitInboxDelete() 一样用 Firestore
- * 的 inbox_boss 集合、一样的 payload 形状（k/from/tx，tx 是一整串 JSON 字符串），只是
- * 这次 tx 里多个 op:'repay' 标记——跟「删除」当初复用同一个投递箱是同一条精神：Firestore
- * 规则只校验 tx 是字符串、够短，不逐字段校验，所以新增这种用途**不需要老板去 Console
- * 改规则**。
- *
- * 老板那边 fetchInbox() 认出 op:'repay' 后，不会当成一笔普通消费入账，而是记成两条腿的
- * 转账（代管账户 expense + 目标账户 income），详见 expense-tracker.html 里 fetchInbox()
- * 的注释和 .claude/notes/expense-tracker.md「一键归还」那一节。
- *
- * 队列跟记账/删除那两条队列一样各自独立存（STAFF_BOSS_QUEUE 存的是 tx id、要去
- * data.transactions 里捞；STAFF_BOSS_DEL_QUEUE 存的是已经不存在于本机的 srcId）——
- * 这条「归还」从头到尾就不对应 data.transactions 里的任何记录，所以队列里直接存
- * 归还这个动作本身的 payload（{id, amount, date}），不是某笔账的 id。
- */
-const STAFF_BOSS_REPAY_QUEUE = 'staffExpense_bossRepayQueue';
-function loadRepayQueue(){
-  try{ return JSON.parse(localStorage.getItem(STAFF_BOSS_REPAY_QUEUE) || '[]'); }catch(e){ return []; }
-}
-function saveRepayQueue(q){
-  try{ localStorage.setItem(STAFF_BOSS_REPAY_QUEUE, JSON.stringify(q)); }catch(e){}
-}
-
-/**
- * 归还送出去之后，顺手戳一下 butler-bot，让老板的 Telegram 立刻响一声（2026-09-10）。
- *
- * ⚠️ 这条跟钱**没有关系**，纯粹是提醒：钱的记录走的是上面那个投递箱（Firestore），
- * 老板收件时才真正入账。所以这里一律**发完就忘**——不 await、不重试、不排队、
- * 失败一声不吭。没网时通知就是会掉，但钱照样会补送；反过来如果为了通知去做重试队列，
- * 就得回答「通知重复了怎么办」这类问题，为一条提醒不值得。
- *
- * 认人用的是公司报账那把钥匙（getCompanyToken）——**名字由服务端按钥匙决定**，
- * 这边送什么名字都不算数（butler-bot 的 /cash-notify 会丢掉请求里的 person），
- * 所以同事之间冒充不了。没填过公司报账钥匙的人就没有这条通知，属于正常降级。
- *
- * left 读的是 bossCashLeft()：调用点在归还**已经记进本地**之后，所以这时它已经是
- * 「还完还剩多少」，正是老板要看的那个数。
- */
-function pingBossRepay(amount){
-  try{
-    const token = getCompanyToken();
-    if(!token) return;
-    fetch(COMPANY_EXPENSE_URL.replace('/company-expense', '/cash-notify'), {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ token, kind:'repay', amount,
-                             currency: staffBossCur(), left: bossCashLeft() })
-    }).catch(()=>{});
-  }catch(e){}
-}
-
-async function submitInboxRepay(item){
-  const k = staffBossKey();
-  if(!k) return { ok:false, retriable:false, message: tt('还没填老板账口令','No Boss passcode yet') };
-  if(!(await staffEnsureAnon()))
-    return { ok:false, retriable:true, message: tt('现在连不上，等有网自动送','Offline — will send later') };
-  try{
-    await db.collection(INBOX_COLLECTION).add({
-      k,
-      from: (staffIdentity ? staffIdentity.reporter : '同事').slice(0, 40),
-      tx: JSON.stringify({ op:'repay', srcId: String(item.id).slice(0, 40),
-                           amount: item.amount, date: item.date })
-    });
-    return { ok:true };
-  }catch(e){
-    // 口令不对／老板还没设好权限：重试多少次都一样，别把它永远留在队列里堵着
-    if(e && e.code === 'permission-denied')
-      return { ok:false, retriable:false,
-               message: tt('口令不对，或者老板那边还没设好','Wrong passcode, or the Boss has not set it up') };
-    return { ok:false, retriable:true, message: tt('现在送不出去，等有网自动送','Offline — will send later') };
-  }
-}
-
-async function flushRepayQueue(opts){
-  const loud = !!(opts && opts.loud);
-  let q = loadRepayQueue();
-  if(!q.length || !staffBossOn()) return;
-  for(const item of [...q]){
-    const r = await submitInboxRepay(item);
-    if(r.ok){
-      q = q.filter(x => x.id !== item.id); saveRepayQueue(q);
-      pingBossRepay(item.amount);   // 顺手让老板的 Telegram 响一声，见 pingBossRepay 的注释
-      if(loud) toast(tt('✅ 已通知老板你归还了','✅ The Boss has been notified of your repayment'));
-    } else if(r.retriable){
-      if(loud) toast(r.message);
-      break;                      // 还是没网，剩下的留着下次
-    } else {
-      q = q.filter(x => x.id !== item.id); saveRepayQueue(q);
-      if(loud) toast('⚠️ ' + r.message);
-    }
-  }
-}
-
-/**
- * 「💰 全部归还给老板」按钮：只在 bossCashLeft() > 0 时会被渲染出来（见 renderBossCash()），
- * 但这里仍然重新判一次——直接从控制台调用这个函数、或者按钮渲染和点击之间数据发生变化，
- * 都不该允许一个没有余额可还的人还出钱来。
- *
- * prompt 默认值＝当前余额（bossCashLeft()，跟卡片显示的必须是同一个数），最常见的情况
- * 是全部还清，一点确定就好；要还一部分就改数字——跟老板端 repayBossCashGift() 同一套 UX。
- *
- * **绝不写进 data.transactions**：那会被 onTxSaved() 钩子当成一笔普通消费再送一次
- * 投递箱，变成又报了一笔账。本机余额靠往 topups 里塞一条**负数**记录立刻反映
- * （bossCashLeft()/renderBossCash() 算 got 时自然减掉；清单里显示成「归还 −X」，
- * 不是裸负数，见 renderBossCash() 的 rows）。
- *
- * 送出去的动作走投递箱同一套机制，送不出去绝不丢——见上面 submitInboxRepay/
- * flushRepayQueue 的注释。
- */
-function staffRepayBossCash(){
-  const cur = staffBossCur();
-  const left = bossCashLeft();
-  if(!(left > 0)){ toast(tt('没有可归还的余额','No balance to return')); return; }
-  const v = prompt(tt(
-    `归还多少给老板？（最多 ${fmt(left, cur)}）`,
-    `How much to return to the Boss? (up to ${fmt(left, cur)})`),
-    String(left));
-  if(v === null) return;
-  const n = Number(String(v).replace(/[^\\d.\\-]/g, ''));
-  if(!(n > 0)){ toast(tt('请填一个大于 0 的数', 'Please enter a number above 0')); return; }
-  const amount = Math.round(n * 100) / 100;
-  // 留一点点浮点误差余量（0.005），不然「全部归还」把 bossCashLeft() 的值原样填回来
-  // 时，两边各自四舍五入的路径不完全一样，会出现「明明是全部却被判超额」的假阳性。
-  if(amount > left + 0.005){
-    toast(tt(`不能超过手上现金 ${fmt(left, cur)}`, `Cannot exceed your cash on hand of ${fmt(left, cur)}`));
-    return;
-  }
-  if(!confirm(tt(`确定归还 ${fmt(amount, cur)} 给老板？`, `Return ${fmt(amount, cur)} to the Boss?`))) return;
-
-  const id = uid();
-  const o = loadBossCash();
-  o.topups.push({ date: today(), amount: -amount, repay: true });
-  saveBossCash(o);
-  renderBossCash();
-
-  const q = loadRepayQueue();
-  q.push({ id, amount, date: today() });
-  saveRepayQueue(q);
-  flushRepayQueue({ loud: true });
-}
-
 // 网络恢复时把没送到的补上（跟公司账那条队列同一个思路）
-window.addEventListener('online', ()=>{ flushBossQueue(); flushBossDelQueue(); flushRepayQueue(); });
+window.addEventListener('online', ()=>{ flushBossQueue(); flushBossDelQueue(); });
 """
 
 
