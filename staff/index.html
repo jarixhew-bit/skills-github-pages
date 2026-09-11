@@ -7470,7 +7470,10 @@ function bossPettySetType(type){
   if(title) title.textContent = (type === 'open' ? '设起点' : type === 'adjust' ? '调整' : '转钱给') + ' ' + who;
   if(hint){
     hint.textContent = type === 'open'
-      ? `填 ${who} 现在手上实际还剩多少（他一分没有就填 0）。设定这一刻之前录进系统的开销不再扣，之后录的自动扣。`
+      // 这是 textContent，不吃 markdown——星号会原样显示出来，别加
+      ? `填 ${who} 现在手上还剩多少老板的钱。一分没有就填 0；`
+        + `他先垫了钱、你欠他的话就填负数，例：-189。`
+        + `设定这一刻之前录进系统的开销不再扣，之后录的自动扣。`
       : type === 'adjust'
       ? `点现金对不上时用。可以填负数（例：-12.5 表示少了 12.5）。`
       : `你转给 ${who} 的现金，填多少加多少。他之前垫的钱会自动被抵掉，不用另外记一笔。`;
@@ -7506,10 +7509,7 @@ async function bossPettySubmit(){
     showBossPettyNote('转钱不能是负数——要往回收钱请选「调整」');
     return;
   }
-  if(bossPettyForm.type === 'open' && num < 0){
-    showBossPettyNote('起点填他手上实际还剩多少（一分没有就填 0）。他垫的钱不用填，系统会自己算出来');
-    return;
-  }
+
   const who = bossPettyForm.person;
   const verb = bossPettyForm.type === 'open' ? '把起点设为'
     : bossPettyForm.type === 'adjust' ? '调整' : '转';

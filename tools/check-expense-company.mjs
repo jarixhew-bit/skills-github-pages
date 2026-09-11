@@ -3175,14 +3175,24 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   ok('而且讲清楚该怎么做', (await page.innerText('#boss-petty-add-note')).includes('调整'),
      await page.innerText('#boss-petty-add-note'));
 
-  // ---- 起点也不许负数：「他垫了多少」是算出来的，不是填出来的 ----
+  // ---- 起点**要**收得下负数：上线之前垫的钱只能靠它带进来 ----
+  // 2026-09-11 一度写成不许，当场卡住用户：Kuang 之前垫了 189，那两笔账在老板
+  // 自己手机里、不在新账本里，备用金数不到。起点不让填负数的话，这笔历史欠款
+  // 就永远进不来，只能手工记在别处——那正是这次改造要消灭的东西。
+  api.people = [{ person:'Kuang', status:'unset' }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await page.waitForTimeout(300);
   api.calls.length = 0;
   await page.evaluate(() => { bossPettyOpenAdd('Kuang', 'open'); });
   await page.fill('#boss-petty-amount', '-189');
   await page.evaluate(() => bossPettySubmit());
-  await page.waitForTimeout(300);
-  ok('起点填负数被挡下来（填负起点＝又回到手工维护欠款那条老路）',
-     !api.calls.some(c => c.body.action === 'pettyAdd'), api.calls.map(c => c.body.action));
+  await until(() => api.calls.some(c => c.body.action === 'pettyAdd'), { what: '起点送出去' });
+  const openCall = api.calls.find(c => c.body.action === 'pettyAdd');
+  ok('起点收得下负数（他垫了钱、你欠他）',
+     openCall.body.type === 'open' && openCall.body.amount === -189, openCall.body);
+  ok('提示里讲明白负数是什么意思',
+     (await page.evaluate(() => document.getElementById('boss-petty-hint').textContent)).includes('负数'),
+     await page.evaluate(() => document.getElementById('boss-petty-hint').textContent));
 
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
