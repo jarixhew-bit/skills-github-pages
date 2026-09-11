@@ -252,6 +252,17 @@ def build(src: str) -> str:
                   ".then(()=>{ renderAccCards(); renderOvCompany(); renderOvReconcile(); });\n",
                   "就地改完重拉全员账本")
 
+    # 「这笔是谁记的」是老板端的东西：那个标记是老板收件时盖的，用来算「该付同事多少」。
+    # 同事自己这一版上出现这一栏只会让人困惑（他记的每一笔当然都是他自己记的），
+    # 而且他在这边改了也影响不到老板那边的欠款——留着就是一颗按了没反应的按钮。
+    s = cut_between(s,
+                    "    <!-- 这笔是谁记的（只在编辑时出现，2026-09-11 用户要求）。",
+                    "    <!-- delete btn (edit mode) -->",
+                    "「这笔是谁记的」那一栏")
+    # 元素没了，渲染函数就会走 `if(!wrap || !sel) return;` 那条路，不会报错；
+    # saveTx 那边 fromStaffFromForm() 拿不到元素回 undefined，等于「这一栏不参与」，
+    # 原本的白名单保留逻辑照旧。两边都不用再改。
+
     # 云同步整个不接：同事版没有登录入口，留着 auth 监听只是白等
     s = replace_once(s,
                      "  // 云同步连不上时 auth 是 null（见顶部 FIREBASE 那段）。这里必须挡一下，\n"
