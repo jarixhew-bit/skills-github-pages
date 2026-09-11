@@ -1483,8 +1483,12 @@ if (want()) {
   await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
   await page.waitForTimeout(100);   // 让送出与本机写入收尾
 
-  const sent = h.bossPosted[0] || {};
-  ok('送出去一笔（一笔一个请求）', h.bossPosted.length === 1, h.bossPosted.length);
+  // 只看「记账」那些请求：切进老板账时还会顺手拉一次备用金余额（action:'petty'），
+  // 那条不该被算成「送出去一笔账」
+  const adds = h.bossPosted.filter(r => !r.action);
+  const sent = adds[0] || {};
+  ok('送出去一笔（一笔一个请求）', adds.length === 1,
+     h.bossPosted.map(r => r.action || 'add'));
   ok('带上钥匙（服务端靠它判定这笔是谁记的）', sent.token === SERYI_KEY, sent.token);
   ok('金额原样送过去', sent.amount === 12.34, sent.amount);
   ok('描述一起送', sent.description === '老板的咖啡', sent.description);
@@ -2061,6 +2065,66 @@ if (want()) {
   ok('编辑一笔账照样存得下去（没有因为少了那个元素抛错）', r.desc === '午餐（改过）', r);
   ok('没多记出一笔', r.n === 1, r);
   ok('这一栏不参与时，原本的标记照旧保住', r.by === 'Kuang' && r.inbox === 'sent', r);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await h.ctx.close();
+}
+
+// ---------- 【29】同事版：老板设了起点之后，这张卡照抄他那边的数 ----------
+// 这是整次改造的重点之一：以前同事那张「手上现金」是本机自己算的（收到的钱 −
+// 自己记的账），老板那边另算一份，两边一有出入就对不上——9/10 实测差了 189.53。
+// 现在老板设了起点，就以他那份为准，两边是同一个数。
+// 拿不到（没网 / 老板还没设起点）才退回本机算法：空白比一个旧数字更糟。
+console.log('\n【29】同事版「手上现金」：老板设了起点就以他那边为准');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // 服务端说：起点 600、之后花了 150 → 手上还有 450
+  h.bossApi.body = { status:'ok', scope:'staff',
+    people:[{ person:'Seryi', status:'ok', balance:450, opened:600, spent:150 }] };
+  await page.click('#nav-boss');
+  // 这里不用 until 等「450 出现」：等不到的话整份自检会当场抛异常中断，
+  // 后面那十几条连跑都跑不到（做 false-red 时踩到）。给它一点时间，
+  // 然后让下面那几条断言自己说话——红要红得完整。
+  await page.waitForTimeout(1200);
+  let card = await page.locator('#staff-boss-cash').innerText();
+  ok('显示的是老板那边算的余额', card.includes('450'), card);
+  ok('写明这是老板那边算的（不是本机猜的）', card.includes('老板那边算的'), card);
+  ok('起点和花掉多少都摊开来', card.includes('600') && card.includes('150'), card);
+  // 这张卡以服务端为准之后，「收到现金」「重填」那两颗本机按钮就不该再出现——
+  // 按了只会改本机那份影子数据，画面上的数字一点都不会变，纯粹让人困惑
+  ok('本机那两颗按钮收起来了（按了也不会改变这个数）',
+     !card.includes('收到现金') && !card.includes('重填'), card);
+
+  // ---- 垫付：算出来是负数，要说成「你先垫的钱」，不是「手上现金 -189」----
+  h.bossApi.body = { status:'ok', scope:'staff',
+    people:[{ person:'Seryi', status:'ok', balance:-189, opened:0, spent:189 }] };
+  await page.evaluate(() => fetchBossPettyMine({ force:true }).then(() => renderBossCash()));
+  await page.waitForTimeout(600);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('垫了钱时标题变成「你先垫的钱」', card.includes('你先垫的钱'), card);
+  ok('金额显示成正数 189（不是 -189，那读起来像欠款方向反了）',
+     card.includes('189') && !card.includes('-189'), card);
+  ok('告诉他老板看得到、转钱就会自动抵掉', card.includes('自动抵掉'), card);
+
+  // ---- 老板还没设起点：退回本机那套，跟以前一模一样 ----
+  h.bossApi.body = { status:'ok', scope:'staff',
+    people:[{ person:'Seryi', status:'unset', balance:null }] };
+  await page.evaluate(() => {
+    bossPettyServer.row = null; bossPettyServer.fetchedAt = 0;
+  });
+  await page.evaluate(() => fetchBossPettyMine({ force:true }).then(() => renderBossCash()));
+  await page.waitForTimeout(400);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('老板还没设起点时，退回本机那套（「收到现金」按钮回来了）',
+     card.includes('收到现金'), card);
 
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await h.ctx.close();

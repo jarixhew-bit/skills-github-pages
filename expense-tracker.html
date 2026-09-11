@@ -746,6 +746,11 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       <button class="btn btn-outline btn-sm" onclick="fetchInbox({loud:true})">📥 立刻收件</button>
     </div>
     <div id="inbox-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+    <!-- 同事手上还剩多少老板的钱（2026-09-11 用户要求「转现金那边就套用公司账那一套」）。
+         算法跟公司备用金一模一样：（起点 ＋ 转给他的）−（起点之后他记的开销）。
+         **负数就是他自己先垫了这么多**——垫付不再需要任何配平记录，这正是这次
+         改造最重要的产出（旧版那一套配平腿被用户当垃圾删掉、一删账就乱）。 -->
+    <div id="boss-petty" style="margin-top:14px"></div>
     <!-- 该付同事多少（2026-09-01 用户要求）：投递箱这些账都是同事**自己先垫的钱**，
          收进来只是把「钱花掉了」记进账本，并没有回答「我欠他多少还没还」。
          算法就一句：他记的支出总额 − 已经标过「付清」的那些。 -->
@@ -1235,6 +1240,46 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       <button class="modal-close" onclick="closeModal('modal-petty')">✕</button>
     </div>
     <div id="petty-body" style="overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- MODAL: 老板账备用金（同事手上还剩多少老板的钱）。
+     刻意跟公司那套分开两组元素，不共用：两本账的钱不一样，共用一组 DOM 迟早会
+     出现「在老板账页面按了转钱、结果记进公司备用金」那种查不出来的错。 -->
+<div class="overlay" id="modal-boss-petty">
+  <div class="modal" style="max-height:88vh">
+    <div class="modal-hdr">
+      <div class="modal-title">💵 同事手上（老板的钱）</div>
+      <button class="modal-close" onclick="closeModal('modal-boss-petty')">✕</button>
+    </div>
+    <div id="boss-petty-body" style="overflow-y:auto"></div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-boss-petty-add">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title" id="boss-petty-add-title">转钱</div>
+      <button class="modal-close" onclick="closeModal('modal-boss-petty-add')">✕</button>
+    </div>
+    <div class="petty-types">
+      <button class="petty-type active" id="boss-petty-type-topup"
+        onclick="bossPettySetType('topup')">转钱给他</button>
+      <button class="petty-type" id="boss-petty-type-open"
+        onclick="bossPettySetType('open')">设起点</button>
+      <button class="petty-type" id="boss-petty-type-adjust"
+        onclick="bossPettySetType('adjust')">调整</button>
+    </div>
+    <div class="petty-hint" id="boss-petty-hint"></div>
+    <div class="form-group">
+      <label class="form-label">金额（美元）</label>
+      <input class="form-input" id="boss-petty-amount" type="text" inputmode="decimal"
+             autocomplete="off" placeholder="0.00" oninput="bossPettyEcho()">
+      <div id="boss-petty-echo" style="display:none;font-size:12px;color:var(--p);margin-top:6px"></div>
+    </div>
+    <button class="btn btn-primary" onclick="bossPettySubmit()">保存</button>
+    <div id="boss-petty-add-note" style="font-size:12px;color:var(--exp);margin-top:10px;
+         line-height:1.6;min-height:0"></div>
   </div>
 </div>
 
@@ -7668,6 +7713,241 @@ function fromStaffFromForm(prev){
   return { by: who, at: (prev && prev.at) || Date.now() };
 }
 
+/* ===================== 老板账备用金（同事手上还剩多少老板的钱）=====================
+ *
+ * 2026-09-11 用户拍板：「转现金那边就套用公司账那一套，因为公司账的基本上已经是
+ * 完整的系统了」。他看对了——这套算法在公司账那边跑了一个月没出过事：
+ *
+ *     他手上还剩 =（起点 ＋ 老板转给他的 ＋ 调整）−（起点之后他记的全部开销）
+ *
+ * **负数就是他自己先垫了这么多。** 不需要任何配平记录、对账调整、抵扣腿——
+ * 旧版那一套被用户当垃圾删掉过，一删账就乱，前后改了五六版最后整套退回。
+ *
+ * 「起点」这个概念正好解决他踩过的坑：月中才开始记，之前的历史不在系统里。
+ * 设起点＝「他现在手上实际还剩多少」，那一刻之前录进来的开销不再扣。
+ *
+ * 数据住 butler（data/boss-petty.json），跟公司备用金**分开两份**：
+ * 公司那笔现金和老板给的现金是两笔钱，混在一起两边余额都会错。
+ */
+const bossPettyState = { data: null, last: null, loading: false, error: null, fetchedAt: 0 };
+const bossPettyForm = { person: null, type: 'topup' };
+
+async function fetchBossPetty(opts){
+  const force = !!(opts && opts.force);
+  if(!force && bossPettyState.data && Date.now() - bossPettyState.fetchedAt < 60000)
+    return bossPettyState.data;
+  const token = getCompanyToken();
+  if(!token){ bossPettyState.error = 'no-token'; return null; }
+  bossPettyState.loading = true; bossPettyState.error = null;
+  try{
+    const res = await fetch(BOSS_LEDGER_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'petty' })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(res.ok && body.status === 'ok'){
+      bossPettyState.data = body.people || [];
+      bossPettyState.last = body.lastEvent || null;
+      bossPettyState.fetchedAt = Date.now(); bossPettyState.error = null;
+    }else{
+      bossPettyState.data = null;
+      bossPettyState.error = body.message || `拉不到（${res.status}）`;
+    }
+  }catch(e){
+    bossPettyState.data = null; bossPettyState.error = 'offline';
+  }
+  bossPettyState.loading = false;
+  return bossPettyState.data;
+}
+
+/** 设置页那张卡：一眼看出谁手上还有钱、谁垫了钱。 */
+function renderBossPetty(){
+  const el = document.getElementById('boss-petty');
+  if(!el) return;
+  if(!getCompanyToken()){ el.innerHTML = ''; return; }
+  const rows = bossPettyState.data;
+  if(!rows){
+    el.innerHTML = bossPettyState.error && bossPettyState.error !== 'no-token'
+      ? `<div class="sec-hdr" style="margin-bottom:8px"><div class="sec-title">同事手上（老板的钱）</div></div>
+         <div class="led-sub">${bossPettyState.error === 'offline' ? '现在连不上，等有网再看' : bossPettyState.error}</div>`
+      : '';
+    return;
+  }
+  const set = rows.filter(r => r.status === 'ok');
+  el.innerHTML = `
+    <div class="sec-hdr" style="margin-bottom:8px">
+      <div class="sec-title">同事手上（老板的钱）</div>
+      <div class="sec-link" onclick="openBossPetty()">转钱 / 设起点 →</div>
+    </div>
+    ${rows.map(r => `<div class="petty-row petty-pick" onclick="bossPettyOpenAdd('${ledEsc(r.person)}','${
+        r.status === 'ok' ? 'topup' : 'open'}')">
+      <div><div class="petty-name">${ledEsc(r.person)}</div>
+        <div class="petty-meta">${r.status === 'ok'
+          ? `起点 ${fmt(r.opened, 'USD')} · 之后花了 ${fmt(r.spent, 'USD')}`
+          : '还没设起点——点一下填他现在手上还剩多少'}</div></div>
+      ${r.status === 'ok'
+        ? `<div class="petty-bal ${r.balance < 0 ? 'low' : ''}">${fmt(r.balance, 'USD')}</div>`
+        : `<div class="petty-bal unset">还没设起点 ›</div>`}
+    </div>`).join('')}
+    ${set.some(r => r.balance < 0)
+      ? `<div class="led-sub" style="margin-top:6px">⚠️ ${set.filter(r => r.balance < 0).map(r =>
+          `${ledEsc(r.person)} 自己先垫了 ${fmt(-r.balance, 'USD')}`).join('、')}——转钱给他就自动抵掉，不用另外记一笔</div>`
+      : ''}`;
+}
+
+async function openBossPetty(){
+  showModal('modal-boss-petty');
+  renderBossPettyBody();
+  await fetchBossPetty({force:true});
+  renderBossPettyBody();
+  renderBossPetty();
+}
+
+function renderBossPettyBody(){
+  const body = document.getElementById('boss-petty-body');
+  if(!body) return;
+  const rows = bossPettyState.data;
+  if(!rows){
+    body.innerHTML = `<div class="led-sub">${bossPettyState.loading ? '正在拉取…'
+      : bossPettyState.error === 'offline' ? '现在连不上，等有网再看'
+      : (bossPettyState.error || '还没拉到数据')}</div>`;
+    return;
+  }
+  const last = bossPettyState.last;
+  body.innerHTML = rows.map(r => {
+    const bal = r.status === 'ok'
+      ? `<div class="petty-bal ${r.balance < 0 ? 'low' : ''}">${fmt(r.balance, 'USD')}</div>`
+      : `<div class="petty-bal unset">还没设起点 ›</div>`;
+    const meta = r.status === 'ok'
+      ? `<div class="petty-meta">起点 ${fmt(r.opened, 'USD')} · 之后花了 ${fmt(r.spent, 'USD')}${
+          r.balance < 0 ? ` · 他垫了 ${fmt(-r.balance, 'USD')}` : ''}</div>`
+      : `<div class="petty-meta">填一次他现在手上还剩多少，之后自动扣</div>`;
+    return `<div class="petty-row petty-pick" onclick="bossPettyOpenAdd('${ledEsc(r.person)}','${
+      r.status === 'ok' ? 'topup' : 'open'}')">
+      <div><div class="petty-name">${ledEsc(r.person)}</div>${meta}</div>${bal}</div>`;
+  }).join('')
+  + `<div class="petty-undo">${last
+      ? `上一笔：${ledEsc(last.person)} ${last.type === 'open' ? '设起点' : last.type === 'adjust' ? '调整' : '转钱'} ${
+          fmt(last.amountUsd, 'USD')}（${last.date}）<br>
+         <span style="color:var(--exp);cursor:pointer" onclick="bossPettyUndo()">记错了？撤销这一笔</span>`
+      : '还没有任何记录'}</div>`;
+}
+
+function bossPettyOpenAdd(person, type){
+  bossPettyForm.person = person;
+  bossPettySetType(type || 'topup');
+  const el = document.getElementById('boss-petty-amount');
+  if(el) el.value = '';
+  bossPettyEcho();
+  showBossPettyNote('');
+  showModal('modal-boss-petty-add');
+  setTimeout(()=>{ const a = document.getElementById('boss-petty-amount'); if(a) a.focus(); }, 120);
+}
+
+function bossPettySetType(type){
+  bossPettyForm.type = type;
+  ['topup','open','adjust'].forEach(t=>{
+    const b = document.getElementById('boss-petty-type-' + t);
+    if(b) b.classList.toggle('active', t === type);
+  });
+  const who = bossPettyForm.person || '';
+  const title = document.getElementById('boss-petty-add-title');
+  const hint = document.getElementById('boss-petty-hint');
+  if(title) title.textContent = (type === 'open' ? '设起点' : type === 'adjust' ? '调整' : '转钱给') + ' ' + who;
+  if(hint){
+    hint.textContent = type === 'open'
+      ? `填 ${who} 现在手上实际还剩多少（他一分没有就填 0）。设定这一刻之前录进系统的开销不再扣，之后录的自动扣。`
+      : type === 'adjust'
+      ? `点现金对不上时用。可以填负数（例：-12.5 表示少了 12.5）。`
+      : `你转给 ${who} 的现金，填多少加多少。他之前垫的钱会自动被抵掉，不用另外记一笔。`;
+  }
+}
+
+function bossPettyEcho(){
+  const el = document.getElementById('boss-petty-echo');
+  const input = document.getElementById('boss-petty-amount');
+  if(!el || !input) return;
+  const { shown, num } = parseAmountText(input.value);
+  const plain = /^-?\d*\.?\d*$/.test(shown);
+  if(shown === '' || isNaN(num) || plain){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.textContent = `＝ ${fmt(num, 'USD')}`;
+}
+
+function showBossPettyNote(msg){
+  const el = document.getElementById('boss-petty-add-note');
+  if(el) el.textContent = msg || '';
+}
+
+async function bossPettySubmit(){
+  const { shown, num } = parseAmountText((document.getElementById('boss-petty-amount') || {}).value);
+  if(isNaN(num)){
+    showBossPettyNote(shown ? `金额看不懂：「${shown}」——请只填数字` : '请填金额');
+    return;
+  }
+  // 转钱不可能是负的（要往回收钱用「调整」）。起点这边跟公司那套不同：
+  // 老板账的起点不收负数（服务端也挡），因为「他垫了多少」是**算出来的**，
+  // 不是填出来的——填一个负起点等于又回到「手工维护欠款」那条老路。
+  if(bossPettyForm.type === 'topup' && num < 0){
+    showBossPettyNote('转钱不能是负数——要往回收钱请选「调整」');
+    return;
+  }
+  if(bossPettyForm.type === 'open' && num < 0){
+    showBossPettyNote('起点填他手上实际还剩多少（一分没有就填 0）。他垫的钱不用填，系统会自己算出来');
+    return;
+  }
+  const who = bossPettyForm.person;
+  const verb = bossPettyForm.type === 'open' ? '把起点设为'
+    : bossPettyForm.type === 'adjust' ? '调整' : '转';
+  // 这是钱，而且写进去同事那边当场看得到——多按一次确认，换掉「多打一个 0」
+  if(!confirm(`确定给 ${who} ${verb} ${fmt(num, 'USD')}？`)) return;
+  showBossPettyNote('正在保存…');
+  try{
+    const res = await fetch(BOSS_LEDGER_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: getCompanyToken(), action:'pettyAdd',
+                             person: who, type: bossPettyForm.type, amount: num })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.status !== 'ok'){
+      showBossPettyNote(body.message || `保存失败（${res.status}）`);
+      return;
+    }
+    closeModal('modal-boss-petty-add');
+    const row = (body.people || []).find(r => r.person === who);
+    toast(row && row.status === 'ok' ? `已记下：${who} 手上 ${fmt(row.balance, 'USD')}` : '已记下');
+    bossPettyState.data = body.people || bossPettyState.data;
+    bossPettyState.fetchedAt = Date.now();
+    await fetchBossPetty({force:true});
+    renderBossPettyBody();
+    renderBossPetty();
+  }catch(e){
+    showBossPettyNote('现在连不上，等有网再存一次（这一笔没有记进去）');
+  }
+}
+
+async function bossPettyUndo(){
+  const last = bossPettyState.last;
+  if(!last) return;
+  if(!confirm(`撤销这一笔？\n${last.person} ${
+    last.type === 'open' ? '设起点' : last.type === 'adjust' ? '调整' : '转钱'} ${
+    fmt(last.amountUsd, 'USD')}（${last.date}）`)) return;
+  try{
+    const res = await fetch(BOSS_LEDGER_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: getCompanyToken(), action:'pettyUndo' })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.status !== 'ok'){ toast(body.message || '撤销失败'); return; }
+    toast('已撤销');
+    await fetchBossPetty({force:true});
+    renderBossPettyBody();
+    renderBossPetty();
+  }catch(e){
+    toast('现在连不上，等有网再试');
+  }
+}
+
 /**
  * 该付给每个同事多少。投递箱那些账是他们垫的钱——收进账本只表示「钱花掉了」，
  * 不表示「已经还给他了」。这里把每个人还没结清的加起来。
@@ -7735,6 +8015,10 @@ function inboxMarkPaid(i){
 
 function renderInboxSettings(){
   renderInboxOwed();
+  renderBossPetty();
+  // 拉一次余额（有缓存就不重拉）。不 await——设置页要马上画得出来，
+  // 数字晚一秒到位没关系，卡在网络上不画才是问题。
+  fetchBossPetty().then(() => renderBossPetty());
   const sel = document.getElementById('inbox-acc-select');
   if(!sel) return;
   const cur = getInboxAccountId();
