@@ -5392,6 +5392,80 @@ console.log('\n【50】用户真实数字：给了−花了＝还剩恒等式 + 
   await ctx.close();
 }
 
+// ---------- 【51】清掉「结清」加进来源账户的那条收入（2026-09-11 用户要求）----------
+// 2026-09-11 之前的版本，结清垫付会记一对腿：代管账户支出 ＋ 来源账户收入。用户明确
+// 反对来源账户那一条（「你都扣掉他垫付的了，你再还回来，死的是我吧」），新版不再产生
+// 它——但他**现有资料里已经有一条**，光藏起来没用，账上那 189.53 还在，要能真的清掉。
+// 只清「收入＋xfer＋settleAdvanceIds」那一种；代管账户那条**支出**同样带
+// settleAdvanceIds，是对的、必须留着（少了它代管余额会多算）。
+console.log('\n【51】清掉「结清」加进来源账户的收入（代管那条支出要留着）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    cloudAvailable = false; currentUser = null;
+    const now = Date.now();
+    const hold = getOrCreateHoldingAccount('Kuang51', 'USD');
+    data.transactions = [
+      // 转账两条腿（全额）
+      { id:'g51a', accountId:'acc_boss', type:'expense', amount:5000, date: today(),
+        categoryId:'cat_cash_gift', description:'给 Kuang51 的现金', updatedAt: now, xfer:true, giftId:'g51' },
+      { id:'g51b', accountId: hold.id, type:'income', amount:5000, date: today(),
+        categoryId:'cat_cash_gift_in', description:'老板给的现金', updatedAt: now, xfer:true, giftId:'g51' },
+      // 旧版留下的那一对结清腿
+      { id:'g51c', accountId: hold.id, type:'expense', amount:189.53, date: today(),
+        categoryId:'cat_cash_gift', description:'结清 Kuang51 垫付的 1 笔（配平）',
+        updatedAt: now, xfer:true, giftId:'g51', settleAdvanceIds:['d51'] },
+      { id:'g51d', accountId:'acc_boss', type:'income', amount:189.53, date: today(),
+        categoryId:'cat_cash_gift_in', description:'结清 Kuang51 垫付的 1 笔（从代管账户转回）',
+        updatedAt: now, xfer:true, giftId:'g51', settleAdvanceIds:['d51'] },
+    ];
+    saveData();
+  });
+  const hold51 = await page.evaluate(()=>holdingAccountId('Kuang51'));
+  const bal51 = (id) => page.evaluate((a)=>data.transactions.filter(t=>t.accountId===a)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), id);
+
+  ok('清之前：来源账户被那条收入垫高了（−5000＋189.53＝−4810.47）',
+     Math.abs((await bal51('acc_boss')) + 4810.47) < 0.005, await bal51('acc_boss'));
+
+  await page.evaluate(()=>openClearSettleCredits());
+  await page.waitForTimeout(300);
+
+  ok('★来源账户那条「结清」收入被清掉了', !(await page.evaluate(()=>data.transactions.some(t=>t.id==='g51d'))));
+  ok('★清掉之后来源账户就是 −5000（不再被加回 189.53）',
+     Math.abs((await bal51('acc_boss')) + 5000) < 0.005, await bal51('acc_boss'));
+  ok('★★对照组：代管账户那条「结清」支出**留着**（清错了代管余额会多 189.53）',
+     await page.evaluate(()=>data.transactions.some(t=>t.id==='g51c')));
+  ok('★★对照组：代管余额仍是 4810.47（5000−189.53）',
+     Math.abs((await bal51(hold51)) - 4810.47) < 0.005, await bal51(hold51));
+  ok('对照组：转账那两条腿一条都没动',
+     await page.evaluate(()=>data.transactions.some(t=>t.id==='g51a') && data.transactions.some(t=>t.id==='g51b')));
+  ok('★移除的那条有落墓碑（不落的话云端同步会把它复活）',
+     await page.evaluate(()=>(data.deletedTxIds||[]).some(x=>(x&&x.id)==='g51d')),
+     await page.evaluate(()=>data.deletedTxIds));
+
+  // 可重复点：第二次没有东西可清
+  await page.evaluate(()=>{ document.getElementById('toast').textContent=''; });
+  await page.evaluate(()=>openClearSettleCredits());
+  await page.waitForTimeout(200);
+  ok('可重复点：第二次提示没有需要清掉的',
+     ((await page.textContent('#toast'))||'').includes('没有需要清掉'),
+     await page.textContent('#toast'));
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

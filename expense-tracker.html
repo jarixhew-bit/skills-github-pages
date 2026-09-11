@@ -8484,6 +8484,54 @@ function missingSpendLegs(){
 }
 
 /**
+ * 🧽 清掉「结清垫付」那条**加进来源账户**的收入记录（2026-09-11 用户第三次拍板之后
+ * 的补救工具）。
+ *
+ * 背景：2026-09-11 之前的版本，结清垫付时会记**一对**腿——代管账户支出 ＋ 来源账户
+ * 收入。用户明确反对来源账户那一条（原话「你都扣掉他垫付的了，你再还回来，死的是
+ * 我吧」），新版已经不再产生它。但**他现有资料里已经有一条**，光把显示藏起来没用，
+ * 账上那 189.53 还在，所以要能真的清掉。
+ *
+ * 只清「收入 ＋ xfer ＋ 带 settleAdvanceIds」这一种——代管账户那条**支出**同样带
+ * settleAdvanceIds，那一条是对的、必须留着（少了它代管余额会多算）。
+ *
+ * 这里会从 data.transactions 移除记录，所以**每一条都要落墓碑**（tombstoneTx），
+ * 否则云端同步会把它复活——本仓库铁律。
+ */
+function staleSettleCredits(){
+  return (data.transactions || []).filter(t =>
+    t.type === 'income' && t.xfer &&
+    Array.isArray(t.settleAdvanceIds) && t.settleAdvanceIds.length);
+}
+
+function openClearSettleCredits(){
+  const hits = staleSettleCredits();
+  if(!hits.length){ toast('没有需要清掉的：账上没有「结清」那种收入记录'); return; }
+  const byAcc = new Map();
+  hits.forEach(t => {
+    const acc = getAcc(t.accountId) || {};
+    const key = t.accountId;
+    if(!byAcc.has(key)) byAcc.set(key, { name: acc.name || '账户', currency: acc.currency || 'USD', total: 0, n: 0 });
+    const e = byAcc.get(key);
+    e.total = Math.round((e.total + Number(t.amount || 0)) * 100) / 100;
+    e.n++;
+  });
+  const detail = [...byAcc.values()]
+    .map(e => `${e.name}：${e.n} 笔共 ${fmt(e.total, e.currency)}`).join('\n');
+  if(!confirm(`清掉「结清垫付」加进账户的那几笔收入：\n${detail}\n\n`
+    + `清掉之后这些账户的余额会各自减掉上面那个数（那笔钱在同事垫付当下就已经记过\n`
+    + `一次支出，不该再加回来）。账目金额不动，只是拿掉这几条记录。确定吗？`)) return;
+  hits.forEach(t => tombstoneTx(t.id));
+  const ids = new Set(hits.map(t => t.id));
+  data.transactions = data.transactions.filter(t => !ids.has(t.id));
+  saveData();
+  renderOverview();
+  renderInboxOwed();
+  refreshBossCashGiftPersonSummary();
+  toast(`已清掉 ${hits.length} 笔「结清」收入记录`);
+}
+
+/**
  * 🔧 补回缺失的配平记录——2026-09-10 用户原话：「我刚才下午把代管现金支付删掉了
  * 我去看了单子也有这些东西 我不要看到这些东西」。配平记录现在已经不给看了
  * （`isPairedSpendLeg()`），但他已经手动删掉的那一批需要一条路补救：不补的话，
@@ -8613,6 +8661,8 @@ function renderBossCashGiftModal(){
         >↩️ 撤销标记已付</span>
       　<span style="text-decoration:underline;cursor:pointer" onclick="repairSpendLegs()"
         >🔧 补回缺失的配平记录</span>
+      　<span style="text-decoration:underline;cursor:pointer" onclick="openClearSettleCredits()"
+        >🧽 清掉「结清」加进来的收入</span>
     </div>`;
   setTimeout(()=>{ const a = document.getElementById('boss-cash-gift-person'); if(a) a.focus(); }, 120);
   refreshBossCashGiftRecent();
