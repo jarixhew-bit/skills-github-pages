@@ -7431,20 +7431,38 @@ function renderBossPettyBody(){
 
 function bossPettyOpenAdd(person, type){
   bossPettyForm.person = person;
-  bossPettySetType(type || 'topup');
   const el = document.getElementById('boss-petty-amount');
   if(el) el.value = '';
   bossPettyEcho();
+  // 先清提示、再决定类型：反过来的话，bossPettySetType 里「还没设起点」那句
+  // 刚写上就被这行擦掉，画面上又变成「按了没反应」（正是这次要修的病）
   showBossPettyNote('');
+  bossPettySetType(type || 'topup');
   showModal('modal-boss-petty-add');
   setTimeout(()=>{ const a = document.getElementById('boss-petty-amount'); if(a) a.focus(); }, 120);
 }
 
 function bossPettySetType(type){
+  // 还没设起点的人：转钱/调整点了也没用（服务端会挡，见 butler 的 needs_open），
+  // 而且会让人以为按了没反应——2026-09-11 用户就是这样按出两笔 5000 的。
+  // 所以这里直接把他拉回「设起点」，并说明白为什么。
+  const row = (bossPettyState.data || []).find(r => r.person === bossPettyForm.person);
+  const noOpen = row && row.status !== 'ok';
+  if(noOpen && type !== 'open'){
+    bossPettySetType('open');
+    showBossPettyNote(`${bossPettyForm.person} 还没设起点——先填一次他现在手上还剩多少`
+      + `（一分没有就填 0），之后才转得了钱`);
+    return;
+  }
   bossPettyForm.type = type;
   ['topup','open','adjust'].forEach(t=>{
     const b = document.getElementById('boss-petty-type-' + t);
-    if(b) b.classList.toggle('active', t === type);
+    if(b){
+      b.classList.toggle('active', t === type);
+      // 没设起点时那两颗按钮画成不可用的样子：能点但会被拉回来，
+      // 灰着比「点了自己跳回去」少一次困惑
+      b.style.opacity = (noOpen && t !== 'open') ? '.45' : '';
+    }
   });
   const who = bossPettyForm.person || '';
   const title = document.getElementById('boss-petty-add-title');
@@ -7506,6 +7524,13 @@ async function bossPettySubmit(){
     });
     const body = await res.json().catch(()=>({}));
     if(!res.ok || body.status !== 'ok'){
+      // needs_open：服务端说这个人还没设起点。这一支要把人直接带到「设起点」，
+      // 不能只丢一句错误——错误讯息看完还得自己想下一步，那就又是一次「按了没用」。
+      if(body.status === 'needs_open'){
+        bossPettySetType('open');
+        showBossPettyNote(body.message || `${who} 还没设起点——先填一次他现在手上还剩多少`);
+        return;
+      }
       showBossPettyNote(body.message || `保存失败（${res.status}）`);
       return;
     }
