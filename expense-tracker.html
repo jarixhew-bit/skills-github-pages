@@ -3129,7 +3129,19 @@ async function saveTxInner(){
 
   if(state.editingTxId){
     const idx = data.transactions.findIndex(t=>t.id===state.editingTxId);
-    if(idx>=0) data.transactions[idx] = tx;
+    if(idx>=0){
+      // ⚠️ 这里是**整笔换掉**，所以编辑表单管不到的字段会被顺手抹掉——必须手动保住。
+      // 2026-09-11 用户实机踩到：同事送来的两笔账，老板帮他补了张收据照片，存完之后
+      // 「Kuang记的」这个标记就不见了。后果不只是显示——「该付同事多少」正是靠
+      // `fromStaff` 算的，标记丢了那笔就不算他垫的钱，欠款会少算；当天为此误判了好几轮。
+      // `inbox` 同理（那笔有没有送到老板那边、送失败的原因），它也是本机自己加的状态。
+      // 这两个都不是编辑表单的内容，编辑一笔账不该改变「这笔是谁送来的、送到了没有」。
+      // 用白名单逐个保留、而不是整份 Object.assign 合并：合并会把使用者**故意清掉**的
+      // 东西（例如把收据照片移除）又带回来。
+      if(prevTx && prevTx.fromStaff) tx.fromStaff = prevTx.fromStaff;
+      if(prevTx && prevTx.inbox) tx.inbox = prevTx.inbox;
+      data.transactions[idx] = tx;
+    }
     toast('已更新记录');
   } else {
     data.transactions.push(tx);

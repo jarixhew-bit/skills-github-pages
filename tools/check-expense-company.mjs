@@ -2730,6 +2730,94 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await ctx.close();
 }
 
+// ---------- 【31】编辑一笔账，不该把「谁记的、送到了没」弄丢 ----------
+{
+  console.log('\n【31】编辑记录：同事的标记与投递状态要保住');
+  // 2026-09-11 用户实机踩到：同事 Kuang 送来两笔账（晚餐 168、午餐 21），
+  // 老板打开那两笔补了张收据照片，存完之后「🙋Kuang记的」就不见了，变成自己记的。
+  // 这不只是显示难看——「该付同事多少」正是数 fromStaff 算出来的，标记一丢，
+  // 那两笔就不算他垫的钱，欠款少算 189 块，当天为此来回误判了好几轮。
+  // 根因：saveTx() 编辑时是**整笔换掉**，编辑表单管不到的字段一并被抹。
+  //
+  // 这一块守两个方向，缺一不可：
+  //   · 表单管不到的字段（fromStaff / inbox）编辑后必须还在；
+  //   · 但**故意清掉**的东西不许复活——所以带一组对照：把收据照片按掉再存，
+  //     照片要真的没了。没有这组对照的话，把修法写成整份合并（Object.assign）
+  //     也会「通过」，而那种写法会让用户永远删不掉一张照片。
+  //
+  // 这份自检验过会红（2026-09-11 实测）：
+  //   · 拿掉 `if(prevTx && prevTx.fromStaff)` 那行 →「Kuang记的标记还在」「已付清的时间戳还在」失败
+  //   · 拿掉 `if(prevTx && prevTx.inbox)` 那行 →「已送老板的状态还在」失败
+  //   · 改成 tx = Object.assign({}, prevTx, tx) →「按掉的收据照片不会自己回来」失败
+  const ctx = await browser.newContext();
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // 摆一笔「同事送来的、已送到老板、已标记付清、带收据」的支出
+  const seed = () => page.evaluate(() => {
+    const acc = data.accounts.find(a => !a.isCompany) || data.accounts[0];
+    const cat = data.categories.find(c => c.type === 'expense');
+    data.transactions = [{
+      id: 'edit-keep-1', accountId: acc.id, type: 'expense', amount: 168,
+      date: today(), description: 'Boss dinner', categoryId: cat.id,
+      attachmentId: 'att-keep-1',
+      fromStaff: { by: 'Kuang', at: 1757000000000, paidAt: 1757400000000 },
+      inbox: { status: 'sent' }
+    }];
+    state.currentAccountId = acc.id;
+    // 附件本来住 IndexedDB，这里给回一张一像素图，省掉写库那一圈
+    window.getAttachmentBlob = async () =>
+      await (await fetch('data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEAAAAALAAAAAABAAEAAAIBAAA=')).blob();
+  });
+
+  // ---- 正路：改描述（等同用户补照片那个动作：只动表单里的东西）----
+  await seed();
+  await page.evaluate(() => editTx('edit-keep-1'));
+  await until(() => page.evaluate(() => document.getElementById('tx-desc').value === 'Boss dinner'),
+    { what: '编辑弹窗把旧内容填好' });
+  await page.fill('#tx-desc', 'Boss dinner（补收据）');
+  await page.evaluate(() => saveTx());
+  await page.waitForTimeout(200);
+
+  const kept = await page.evaluate(() => {
+    const t = data.transactions.find(x => x.id === 'edit-keep-1');
+    return t ? { by: t.fromStaff && t.fromStaff.by, paidAt: t.fromStaff && t.fromStaff.paidAt,
+                 inbox: t.inbox && t.inbox.status, desc: t.description,
+                 att: t.attachmentId || null, n: data.transactions.length } : null;
+  });
+  ok('改描述真的存进去了', kept && kept.desc === 'Boss dinner（补收据）', kept);
+  ok('没多记出一笔（是改不是新增）', kept && kept.n === 1, kept);
+  ok('「Kuang记的」标记还在', kept && kept.by === 'Kuang', kept);
+  ok('已付清的时间戳还在（丢了会被当成还欠他钱，重复付一次）',
+     kept && kept.paidAt === 1757400000000, kept);
+  ok('「已送老板」的状态还在', kept && kept.inbox === 'sent', kept);
+  ok('收据照片没被动到', kept && kept.att === 'att-keep-1', kept);
+
+  // ---- 对照组：故意按掉收据，就不许自己回来 ----
+  await seed();
+  await page.evaluate(() => editTx('edit-keep-1'));
+  await until(() => page.evaluate(() => state.pendingAttachmentId === 'att-keep-1'),
+    { what: '编辑弹窗认得这笔有收据' });
+  await page.evaluate(() => { removePendingAttachment(); saveTx(); });
+  await page.waitForTimeout(200);
+  const dropped = await page.evaluate(() => {
+    const t = data.transactions.find(x => x.id === 'edit-keep-1');
+    return { att: t && t.attachmentId ? t.attachmentId : null, by: t && t.fromStaff && t.fromStaff.by };
+  });
+  ok('按掉的收据照片不会自己回来', dropped.att === null, dropped);
+  ok('删照片也没顺手把「Kuang记的」弄丢', dropped.by === 'Kuang', dropped);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
