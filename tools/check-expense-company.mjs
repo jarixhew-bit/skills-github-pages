@@ -3212,6 +3212,58 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
      (await page.evaluate(() => document.getElementById('boss-petty-hint').textContent)).includes('负数'),
      await page.evaluate(() => document.getElementById('boss-petty-hint').textContent));
 
+  // ---- 对账：大家手上加起来要等于账户余额 ----
+  // 2026-09-11 用户要求「我们都填上了，那个总合要对上老板总账」。
+  // 老板的钱只有两种去向：花掉了（账本有记录），或还在某个人手上。
+  await page.evaluate(() => {
+    const acc = getAcc(getInboxAccountId());
+    data.transactions = [
+      { id:'seed_in', accountId:acc.id, type:'income', amount:10000, date: today(),
+        description:'老板注资', categoryId:'cat_other_inc' },
+      { id:'seed_out', accountId:acc.id, type:'expense', amount:1000, date: today(),
+        description:'花掉的', categoryId:(data.categories.find(c=>c.type==='expense')||{}).id },
+    ];
+    saveData();
+  });
+  // 有人没设起点：**不给合计**，把 unset 当 0 会得出一个看起来像真的、其实少算一个人的数
+  api.people = [{ person:'Yang', status:'ok', balance:5000, opened:5000, spent:0 },
+                { person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
+                { person:'Seryi', status:'unset' }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await until(async () => (await page.innerText('#boss-petty')).includes('没设起点'),
+              { what: '提示还差谁' });
+  let card = await page.innerText('#boss-petty');
+  ok('有人没设起点时不给合计（unset 当 0 会少算一个人）',
+     !card.includes('大家手上合计'), card);
+  ok('但要说清楚还差谁', card.includes('Seryi'), card);
+
+  // 三个人都填上，而且刚好对得上
+  api.people = [{ person:'Yang', status:'ok', balance:5000, opened:5000, spent:0 },
+                { person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
+                { person:'Seryi', status:'ok', balance:0, opened:0, spent:0 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await until(async () => (await page.innerText('#boss-petty')).includes('大家手上合计'),
+              { what: '合计出现' });
+  card = await page.innerText('#boss-petty');
+  ok('三个人都填了就给合计', card.includes('大家手上合计'), card);
+  // 这个 App 的 fmt() 不加千分位，写成 9,000.00 会红——红的是断言不是产品
+  ok('账户余额 10000−1000 = 9000', card.includes('9000.00'), card);
+  ok('9000 = 5000+4000+0 → 对上了', card.includes('对上了'), card);
+
+  // 差 273.73：要摆出来，而且讲明白差在哪个方向
+  api.people = [{ person:'Yang', status:'ok', balance:4726.27, opened:4726.27, spent:0 },
+                { person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
+                { person:'Seryi', status:'ok', balance:0, opened:0, spent:0 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  // 不用 until 等「差额」出现：等不到会当场抛异常、把后面十几条一起弄哑
+  // （做 false-red 时踩到）。给它时间，然后让断言自己说话——红要红得完整。
+  await page.waitForTimeout(800);
+  card = await page.innerText('#boss-petty');
+  ok('对不上时摆出差额 273.73', card.includes('273.73'), card);
+  ok('讲明白是哪个方向（账户里比大家手上多）', card.includes('有人拿了钱还没记'), card);
+  ok('明写别用「调整」抹平（那正是上次账乱掉的开头）',
+     card.includes('别用「调整」把它抹平'), card);
+
   // ---- 一键归还：他把钱还回来，余额归零 ----
   // 2026-09-11 用户要求。底下走的是 adjust 取负——不另开一种事件类型，
   // 省得算余额时又多一条分支（多一条分支就多一个地方会算错）。
