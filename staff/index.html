@@ -5328,7 +5328,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-09-10';
+const APP_BUILD = '2026-09-11';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -7381,9 +7381,18 @@ function mergeInboxTx(prev, tx){
  *  因为那正是它存在的意义。用 `xfer && staffSpendId` 这组明确标记判断，不猜描述文字——
  *  真支出腿（`fetchInbox()` 腿一）虽然也带 `staffSpendId`（就是它自己的 id），但没有
  *  `xfer`，不会被这条误伤；「给同事现金」转账腿（`giftId`）、「他还钱了」／「一键归还」
- *  （`repayId`）都没有 `staffSpendId`，也不会被误伤，继续正常显示。 */
+ *  （`repayId`）都没有 `staffSpendId`，也不会被误伤，继续正常显示。
+ *
+ *  2026-09-11 用户实机又看到一条同类记录混进明细：「结清 X 垫付的 N 笔（从代管账户
+ *  转回）　+189.53」——这是 `sendBossCashGift()`/`convertOldOffsetToSettle()` 生成的
+ *  「结清垫付」配平腿（`xfer:true` + `settleAdvanceIds` 数组，见「转账记全额，结清垫付
+ *  另开一对配平转账」那节），跟 `staffSpendId` 那对是**同一类东西**：只是在代管账户和
+ *  来源账户之间把「拿这次转账顺便还掉旧账」这件事抵消掉，不是一笔新收到/花掉的钱，
+ *  同样不该给人看。判断思路照抄上面——**只认明确标记，不猜描述文字**：结清腿带
+ *  `settleAdvanceIds`（非空数组）但没有 `staffSpendId`，不会跟腿一/普通转账混淆；
+ *  同样**只隐藏、不能删**，余额/统计不受影响的原因跟上面一致。 */
 function isPairedSpendLeg(t){
-  return !!(t && t.xfer && t.staffSpendId);
+  return !!(t && t.xfer && (t.staffSpendId || (Array.isArray(t.settleAdvanceIds) && t.settleAdvanceIds.length)));
 }
 
 function isUnpaidStaffAdvance(t){

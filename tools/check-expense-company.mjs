@@ -5238,6 +5238,135 @@ console.log('\n【49】🔁 把旧格式转成新格式：预览四个数字（�
   await ctx.close();
 }
 
+// ---------- 【50】用户真实数字端到端：给了−花了＝还剩恒等式 + 「结清」配平腿也要隐藏 ----------
+// 用户实机报告：卡片显示「给了 5000　花了 513.97　还剩 4297.03」，5000−513.97≠4297.03，
+// 差的正是转账当下顺带结清那笔垫付（189.53）——「花了」漏算了已结清的垫付部分。同一次
+// 还报告明细/最近记录里混进一条「结清 Kuang 垫付的 1 笔（从代管账户转回）+189.53」，
+// 用户明确要求「不要再看到这些东西」（跟 2026-09-10 那次 staffSpendId 配平腿是同一个诉求）。
+// 这条自检用他的真实数字（转5000、垫付189.53被结清、现金花513.44）做端到端核对，
+// 两件事一次覆盖：①恒等式 给了−花了＝还剩 精确成立；②结清那对配平腿不出现在明细/
+// 最近记录（对照组：真开销、给同事现金的转账照常显示），且隐藏前后余额/本月收入/
+// 本月支出三个数字不受影响（本月收入必须是 0.00——结清那笔是 xfer，不能被当成收入）；
+// ③对照组：没有任何结清记录的人，「花了」就是他自己花掉的，不会凭空多一块。
+console.log('\n【50】用户真实数字：给了−花了＝还剩恒等式 + 「结清」配平腿隐藏（对照组：真开销/给现金照常显示，余额不受影响）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashKey', 'pass-1234');
+    cloudAvailable = true; currentUser = { uid:'boss' };
+    window.__gifts = []; window.__giftSeq = 0;
+    window.__box = { docs: [], deleted: [] };
+    window.__put = (id, d) => window.__box.docs.push({
+      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
+    db = { collection: (c) => ({
+      add: async (p) => { window.__gifts.push({c,p}); window.__giftSeq++;
+                          return { id:'g50_' + window.__giftSeq }; },
+      limit: () => ({ get: async () => ({ docs: window.__box.docs }) }),
+      doc: () => ({ update: async () => {}, delete: async () => {} })
+    }) };
+    setInboxAccount('acc_boss');
+  });
+
+  // ---- 他垫付 189.53（同事端标 paidFrom:'own'）----
+  await page.evaluate(() => {
+    window.__put('own50', { k:'x', from:'Kuang', tx: JSON.stringify({ srcId:'k_own50',
+      date: today(), amount: 189.53, type:'expense', categoryId:'cat_other_exp',
+      description:'Kuang 垫付的车费', paidFrom:'own' }) });
+  });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(300);
+
+  // ---- 转 5000 给 Kuang，转账当下自动结清那笔 189.53 ----
+  await page.click('#ov-boss-cash-gift');
+  await page.waitForTimeout(150);
+  await page.selectOption('#boss-cash-gift-acc', 'acc_boss');
+  await page.selectOption('#boss-cash-gift-person', 'Kuang');
+  await page.fill('#boss-cash-gift-amount', '5000');
+  await page.evaluate(() => sendBossCashGift());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => closeModal('modal-boss-cash-gift'));
+
+  // ---- 用代管现金花 513.44（同事端标 paidFrom:'cash'）----
+  await page.evaluate(() => {
+    window.__put('cash50', { k:'x', from:'Kuang', tx: JSON.stringify({ srcId:'k_cash50',
+      date: today(), amount: 513.44, type:'expense', categoryId:'cat_food',
+      description:'Kuang 用代管现金付的', paidFrom:'cash' }) });
+  });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(300);
+
+  // ---- ①恒等式：给了 − 花了 ＝ 还剩 ----
+  const ms50 = await page.evaluate(() => personMonthSpend('Kuang'));
+  ok('★personMonthSpend 直接返回值：cash=513.44, own=189.53（花了=702.97，已结清的垫付没有被漏算）',
+     ms50.cash === 513.44 && ms50.own === 189.53, ms50);
+
+  const holdId50 = await page.evaluate(() => holdingAccountId('Kuang'));
+  const remain50 = await page.evaluate((id) => holdingBalance(getAcc(id)), holdId50);
+  ok('★还剩 4297.03（5000−189.53结清−513.44现金花的）', Math.abs(remain50 - 4297.03) < 0.005, remain50);
+
+  await page.evaluate(() => switchAccount('acc_boss'));
+  const cardText50 = await page.evaluate(() => { renderOvBossCashGift(); return document.getElementById('ov-boss-cash-gift').textContent; });
+  ok('★卡片文字：给了 US$5000.00　花了 US$702.97　还剩 US$4297.03',
+     cardText50.includes('5000.00') && cardText50.includes('702.97') && cardText50.includes('4297.03'), cardText50);
+  ok('★恒等式精确成立：5000 − 702.97 ＝ 4297.03',
+     Math.abs((5000 - (ms50.cash + ms50.own)) - remain50) < 0.005, { spent: ms50.cash + ms50.own, remain50 });
+
+  // ---- ②「结清」配平腿不出现在明细/最近记录，对照组：真开销、给同事现金照常显示 ----
+  await page.click('#nav-transactions');
+  await page.waitForTimeout(150);
+  const listText50 = await page.evaluate(() => (document.getElementById('tx-list')||{}).textContent || '');
+  ok('★明细列表里看不到「结清」字样', !listText50.includes('结清'), listText50.slice(0,500));
+  ok('对照组：明细列表里「Kuang 垫付的车费」（真开销）照常显示', listText50.includes('Kuang 垫付的车费'));
+  ok('对照组：明细列表里「给 Kuang 的现金」（转账）照常显示', listText50.includes('给 Kuang 的现金'));
+
+  await page.click('#nav-overview');
+  await page.waitForTimeout(150);
+  const recentText50 = await page.evaluate(() => (document.getElementById('ov-recent')||{}).textContent || '');
+  ok('★首屏「最近记录」里也看不到「结清」字样', !recentText50.includes('结清'), recentText50.slice(0,500));
+
+  // ---- 隐藏前后：账户余额/本月收入/本月支出三个数字完全不变（isPairedSpendLeg 只管
+  // 显示，不参与这三个统计的计算，用真实数字断言这三个数没有因为「藏了一条」而跟着变）----
+  const balAcc50 = await page.evaluate(() => data.transactions.filter(t=>t.accountId==='acc_boss')
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+  ok('★来源账户余额净变化 −5000（不受隐藏影响，配平腿照样被算进去）', balAcc50 === -5000, balAcc50);
+  const monthStats50 = await page.evaluate(() => {
+    const d = new Date();
+    const txs = monthTxs('acc_boss', d.getFullYear(), d.getMonth());
+    return {
+      inc: txs.filter(t=>t.type==='income' && !t.xfer).reduce((s,t)=>s+t.amount,0),
+      exp: txs.filter(t=>t.type==='expense' && !t.xfer).reduce((s,t)=>s+t.amount,0),
+    };
+  });
+  ok('★本月收入仍是 0.00（结清那笔是 xfer，不能被算成收入）', monthStats50.inc === 0, monthStats50);
+  ok('★本月支出（非 xfer）＝702.97（189.53垫付+513.44现金花的），一分不多一分不少',
+     Math.abs(monthStats50.exp - 702.97) < 0.005, monthStats50);
+
+  // ---- ③对照组：没有任何结清记录的人，「花了」就只是他花掉的，不会凭空多一块 ----
+  await page.evaluate(() => {
+    window.__put('plain50', { k:'x', from:'Yang', tx: JSON.stringify({ srcId:'k_plain50',
+      date: today(), amount: 300, type:'expense', categoryId:'cat_food',
+      description:'Yang 没有结清记录的普通消费', paidFrom:'own' }) });
+  });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(300);
+  const msYang = await page.evaluate(() => personMonthSpend('Yang'));
+  ok('对照组：Yang 没有结清记录，「花了」就是 300（own），不会凭空多算别人的结清腿',
+     msYang.cash === 0 && msYang.own === 300, msYang);
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
