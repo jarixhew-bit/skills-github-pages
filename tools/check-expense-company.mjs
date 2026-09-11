@@ -3004,6 +3004,124 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await ctx.close();
 }
 
+// ---------- 【33】老板账备用金：转现金套用公司账那一套 ----------
+// 2026-09-11 用户拍板：「转现金那边就套用公司账那一套」。核心产出是**垫付不再需要
+// 任何配平记录**——余额算出来是负数，那就是他垫的钱。旧版那一套配平腿被用户当垃圾
+// 删掉过，一删账就乱，前后改了五六版最后整套退回。
+//
+// 这一块守四件事：
+//   1. 数字照抄服务端，App 不自己算（自己算就又变成「两边各算一份」）
+//   2. 负数要说成「他先垫了多少」，不能显示成「手上现金 -189」
+//   3. 还没设起点的人也要列得出来（否则没有入口去设）
+//   4. 转钱/设起点真的送到 /boss-expense，而且**不会误送进公司备用金那条路**
+console.log('\n【33】老板账备用金：转现金套用公司账那一套');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  page.on('dialog', d => d.accept());
+
+  const api = { people: [], last: null, calls: [], fail: false };
+  await ctx.route('**/*', async r => {
+    const u = r.request().url();
+    if (u.startsWith(`http://localhost:${PORT}`)) return r.continue();
+    const h2 = { 'Access-Control-Allow-Origin': '*' };
+    const json = (o, st = 200) => r.fulfill({ status: st, contentType: 'application/json',
+      headers: h2, body: JSON.stringify(o) });
+    if (!u.includes('/boss-expense')) {
+      // 公司账那条路也接住，好证明备用金这些动作**没有**误送过去
+      if (u.includes('/company-expense')) {
+        api.calls.push({ where: 'company', body: JSON.parse(r.request().postData() || '{}') });
+        return json({ status: 'ok', people: [] });
+      }
+      return r.abort('failed');
+    }
+    if (api.fail) return r.abort('failed');
+    const req = JSON.parse(r.request().postData() || '{}');
+    api.calls.push({ where: 'boss', body: req });
+    if (req.action === 'petty') return json({ status:'ok', scope:'owner',
+      people: api.people, lastEvent: api.last });
+    if (req.action === 'pettyAdd') {
+      api.people = [{ person: req.person, status:'ok', balance: 500, opened: 500, spent: 0 }];
+      api.last = { person: req.person, type: req.type, amountUsd: req.amount, date:'2026-09-11' };
+      return json({ status:'ok', event: api.last, people: api.people });
+    }
+    if (req.action === 'pettyUndo') { api.last = null; return json({ status:'ok', people: api.people }); }
+    if (req.action === 'ledger') return json({ status:'ok', month:req.month, records: [] });
+    return json({ status:'ok' });
+  });
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.evaluate(() => localStorage.setItem('expenseTracker_companyToken', 'boss-token'));
+
+  // ---- 还没设起点：要列得出来，而且不许编一个 0 ----
+  api.people = [{ person:'Kuang', status:'unset' }, { person:'Seryi', status:'unset' }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await until(async () => (await page.innerHTML('#boss-petty')).includes('Kuang'),
+              { what: '卡片画出来' });
+  let html = await page.innerText('#boss-petty');
+  ok('没设起点的人也列得出来（否则没有入口去设）',
+     html.includes('Kuang') && html.includes('Seryi'), html);
+  ok('不编一个 0 出来（0 读起来像「花光了」）', html.includes('还没设起点'), html);
+
+  // ---- 有余额：数字照抄服务端 ----
+  api.people = [{ person:'Kuang', status:'ok', balance: 311, opened: 0, spent: 189 },
+                { person:'Seryi', status:'unset' }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await until(async () => (await page.innerText('#boss-petty')).includes('311'),
+              { what: '余额更新' });
+  html = await page.innerText('#boss-petty');
+  ok('余额照抄服务端（App 不自己算）', html.includes('311'), html);
+  ok('把起点和花掉多少摊开', html.includes('189'), html);
+
+  // ---- 负数 = 他垫的钱 ----
+  api.people = [{ person:'Kuang', status:'ok', balance: -189, opened: 0, spent: 189 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await until(async () => (await page.innerText('#boss-petty')).includes('垫'),
+              { what: '垫付提示出现' });
+  html = await page.innerText('#boss-petty');
+  ok('负数说成「他自己先垫了多少」，不是「手上 -189」', html.includes('自己先垫了'), html);
+  ok('告诉他转钱就会自动抵掉（不用另外记一笔）', html.includes('自动抵掉'), html);
+
+  // ---- 转钱：真的送到 /boss-expense，不会误送进公司备用金 ----
+  api.calls.length = 0;
+  await page.evaluate(() => { bossPettyOpenAdd('Kuang', 'topup'); });
+  await page.fill('#boss-petty-amount', '500');
+  await page.evaluate(() => bossPettySubmit());
+  await until(() => api.calls.some(c => c.body.action === 'pettyAdd'), { what: '转钱送出去' });
+  const add = api.calls.find(c => c.body.action === 'pettyAdd');
+  ok('送到老板账那条路（不是公司备用金）', add.where === 'boss', add);
+  ok('送的是 topup、人和金额都对',
+     add.body.type === 'topup' && add.body.person === 'Kuang' && add.body.amount === 500, add.body);
+  ok('**一次都没打到公司账那条路**（两本账的钱不能串）',
+     api.calls.every(c => c.where === 'boss'), api.calls.map(c => c.where));
+
+  // ---- 转钱不许负数（要往回收钱用「调整」）----
+  api.calls.length = 0;
+  await page.evaluate(() => { bossPettyOpenAdd('Kuang', 'topup'); });
+  await page.fill('#boss-petty-amount', '-50');
+  await page.evaluate(() => bossPettySubmit());
+  await page.waitForTimeout(300);
+  ok('转钱填负数被挡下来，一个请求都没送出去',
+     !api.calls.some(c => c.body.action === 'pettyAdd'), api.calls.map(c => c.body.action));
+  ok('而且讲清楚该怎么做', (await page.innerText('#boss-petty-add-note')).includes('调整'),
+     await page.innerText('#boss-petty-add-note'));
+
+  // ---- 起点也不许负数：「他垫了多少」是算出来的，不是填出来的 ----
+  api.calls.length = 0;
+  await page.evaluate(() => { bossPettyOpenAdd('Kuang', 'open'); });
+  await page.fill('#boss-petty-amount', '-189');
+  await page.evaluate(() => bossPettySubmit());
+  await page.waitForTimeout(300);
+  ok('起点填负数被挡下来（填负起点＝又回到手工维护欠款那条老路）',
+     !api.calls.some(c => c.body.action === 'pettyAdd'), api.calls.map(c => c.body.action));
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

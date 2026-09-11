@@ -1191,12 +1191,67 @@ function bossCashReset(){
   renderBossCash();
 }
 
+/**
+ * 老板那边算的余额（2026-09-11 起）。老板设了起点之后，**以他那份为准**——
+ * 这张卡跟老板 App 上那张从此是同一个数，不再是两边各算各的。
+ *
+ * 拿不到（没网、老板还没设起点）就回 null，卡片退回本机那套算法，跟以前一样。
+ * 这不是「两套算法并存」，是「权威的那份拿不到时的退路」：本机那套只用收到的钱
+ * 减掉自己记的账，算出来的东西同事看得懂，也不会比空白更糟。
+ */
+const bossPettyServer = { row: null, fetchedAt: 0, loading: false };
+
+async function fetchBossPettyMine(opts){
+  const force = !!(opts && opts.force);
+  if(!force && bossPettyServer.row && Date.now() - bossPettyServer.fetchedAt < 60000) return bossPettyServer.row;
+  const token = getCompanyToken();
+  if(!token) return null;
+  if(bossPettyServer.loading) return bossPettyServer.row;
+  bossPettyServer.loading = true;
+  try{
+    const res = await fetch(BOSS_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'petty' }),
+    });
+    const body = await res.json().catch(()=>({}));
+    const row = (res.ok && body.status === 'ok' && (body.people || [])[0]) || null;
+    bossPettyServer.row = (row && row.status === 'ok') ? row : null;
+    bossPettyServer.fetchedAt = Date.now();
+  }catch(e){ /* 没网就留着上一次的，退回本机算法 */ }
+  bossPettyServer.loading = false;
+  return bossPettyServer.row;
+}
+
 function renderBossCash(){
   const el = document.getElementById('staff-boss-cash');
   if(!el) return;
   const cur = staffBossCur();
   const o = loadBossCash();
   const got = o.topups.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+  // 老板设了起点：这张卡直接照抄他那边的数字，两边从此是同一个数。
+  // 本机那套（收到的钱 − 自己记的账）只在拿不到服务端数字时才用。
+  const srv = bossPettyServer.row;
+  if(srv && srv.status === 'ok'){
+    const left = Number(srv.balance) || 0;
+    const over = left < 0;
+    const notSent = (data.transactions || []).filter(t =>
+      t.accountId === STAFF_BOSS_ACC_ID && t.inbox && t.inbox.status !== 'sent').length;
+    el.classList.toggle('low', over || (srv.opened > 0 && left < srv.opened * 0.15));
+    el.innerHTML = `
+      <div class="bcash-label">${over ? tt('你先垫的钱','You are out of pocket') : tt('手上现金','Cash on hand')}</div>
+      <div class="bcash-total">${fmt(over ? -left : left, cur)}</div>
+      <div class="bcash-sub">${tt(
+        `老板那边算的 · 起点 ${fmt(srv.opened, cur)} · 之后花了 ${fmt(srv.spent, cur)}`,
+        `From the Boss's ledger · start ${fmt(srv.opened, cur)} · spent since ${fmt(srv.spent, cur)}`)}</div>
+      ${over ? `<div class="bcash-warn">${tt(
+        `⚠️ 你自己先垫了 ${fmt(-left, cur)}，老板那边看得到，他转钱给你就会自动抵掉`,
+        `⚠️ You are ${fmt(-left, cur)} out of pocket — the Boss can see it; his next cash transfer clears it`)}</div>` : ''}
+      ${notSent ? `<div class="bcash-warn">${tt(
+        `⏳ 有 ${notSent} 笔还没送到老板那边（这个数还没算它们）`,
+        `⏳ ${notSent} record(s) not sent yet (not counted above)`)}</div>` : ''}`;
+    return;
+  }
 
   // 还没填收到多少：不编一个 0 出来（那看起来像「花光了」），直接请他填
   if(!o.topups.length){
@@ -1303,7 +1358,11 @@ function staffSwitchAcc(id){
 function staffGoCompany(){
   staffSwitchAcc((data.accounts.find(a => a.isCompany) || data.accounts[0]).id);
 }
-function staffGoBoss(){ staffSwitchAcc(STAFF_BOSS_ACC_ID); }
+function staffGoBoss(){
+  staffSwitchAcc(STAFF_BOSS_ACC_ID);
+  // 切进老板账时顺手拉一次余额（有缓存就不重拉）。不 await——页面要马上出来。
+  fetchBossPettyMine().then(() => renderBossCash());
+}
 
 // 2026-09-11 起，同事版**完全不碰 Firestore** 了：老板账从投递箱改走 butler 的
 // 中央账本（见下面 submitInboxTx）。原本这里有个 staffEnsureAnon()——投递箱要一个
