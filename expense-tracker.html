@@ -7821,7 +7821,53 @@ function renderBossPetty(){
     ${set.some(r => r.balance < 0)
       ? `<div class="led-sub led-warn">⚠️ ${set.filter(r => r.balance < 0).map(r =>
           `${ledEsc(r.person)} 自己先垫了 ${fmt(-r.balance, 'USD')}`).join('、')}——转钱给他就自动抵掉</div>`
-      : ''}`;
+      : ''}
+    ${bossPettyReconcileHtml(rows, acc)}`;
+}
+
+/**
+ * 对账那一段：**大家手上的现金加起来，应该等于这个账户还剩多少**。
+ *
+ * 老板的钱只有两种去向：花掉了（账本里有记录），或者还在某个人手上。所以
+ *
+ *     Yang 手上 ＋ Kuang 手上 ＋ Seryi 手上  ＝  账户余额
+ *
+ * 对不上就是有事情没记：有人拿了钱没记、有人花了钱没记、或者哪一格的起点填错了。
+ * 差额摆出来给人看，**绝不自动抹平**——2026-09-10 那次账乱掉，就是从「加一笔对账
+ * 调整把差额抹掉」开始的，过两天没人记得那个数代表什么。
+ *
+ * ⚠️ 有人还没设起点时**不给合计**，只说还差谁。把 unset 当成 0 加进去，会得出一个
+ * 看起来像真的、其实少算一个人的总数——那比不显示更糟。
+ */
+function bossPettyReconcileHtml(rows, acc){
+  if(!acc) return '';
+  const missing = rows.filter(r => r.status !== 'ok');
+  if(missing.length){
+    return `<div class="led-sub" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      还有 ${missing.map(r => ledEsc(r.person)).join('、')} 没设起点，合计对不了——
+      三个人都填上，这里会自动跟账户余额对一次</div>`;
+  }
+  const hand = Math.round(rows.reduce((n, r) => n + Number(r.balance || 0), 0) * 100) / 100;
+  // 账户余额跟首屏那张账户卡同一个算法（所有记录的收入减支出），不另写一份
+  const bal = Math.round(data.transactions.filter(t => t.accountId === acc.id)
+    .reduce((n, t) => t.type === 'income' ? n + t.amount : n - t.amount, 0) * 100) / 100;
+  const diff = Math.round((bal - hand) * 100) / 100;
+  const okNow = Math.abs(diff) < 0.005;
+  return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+    <div class="petty-row" style="border-bottom:0;padding:4px 0">
+      <div class="petty-meta">大家手上合计</div>
+      <div class="petty-meta">${fmt(hand, acc.currency)}</div></div>
+    <div class="petty-row" style="border-bottom:0;padding:4px 0">
+      <div class="petty-meta">${ledEsc(acc.name)} 账户余额</div>
+      <div class="petty-meta">${fmt(bal, acc.currency)}</div></div>
+    <div class="petty-row" style="border-bottom:0;padding:4px 0">
+      <div class="petty-name">${okNow ? '✅ 对上了' : '⚠️ 差额'}</div>
+      <div class="petty-bal ${okNow ? '' : 'low'}">${okNow ? '—' : fmt(diff, acc.currency)}</div></div>
+    ${okNow ? '' : `<div class="led-sub">${diff > 0
+      ? '账户里的钱比大家手上多——多半是有人拿了钱还没记，或者哪一格起点填少了'
+      : '大家手上比账户里多——多半是有花掉的钱还没记进账本'}。
+      <b>别用「调整」把它抹平</b>，先找出那几笔；找到之前这个数留着比抹掉安全。</div>`}
+  </div>`;
 }
 
 async function openBossPetty(){
