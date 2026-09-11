@@ -7763,8 +7763,8 @@ function mergeInboxTx(prev, tx){
  *  2026-09-11 用户实机又看到一条同类记录混进明细：「结清 X 垫付的 N 笔（从代管账户
  *  转回）　+189.53」——这是 `sendBossCashGift()`/`convertOldOffsetToSettle()` 生成的
  *  「结清垫付」配平腿（`xfer:true` + `settleAdvanceIds` 数组，见「转账记全额，结清垫付
- *  另开一对配平转账」那节），跟 `staffSpendId` 那对是**同一类东西**：只是在代管账户和
- *  来源账户之间把「拿这次转账顺便还掉旧账」这件事抵消掉，不是一笔新收到/花掉的钱，
+ *  只记代管账户那一条支出」那节），跟 `staffSpendId` 那对是**同一类东西**：只是把
+ *  「拿这次转账顺便还掉旧账」这件事从代管余额里扣掉，不是一笔新收到/花掉的钱，
  *  同样不该给人看。判断思路照抄上面——**只认明确标记，不猜描述文字**：结清腿带
  *  `settleAdvanceIds`（非空数组）但没有 `staffSpendId`，不会跟腿一/普通转账混淆；
  *  同样**只隐藏、不能删**，余额/统计不受影响的原因跟上面一致。 */
@@ -7807,19 +7807,25 @@ function inboxOwedByPerson(){
 // 都已删除，这两个函数没有别的调用者，一并删掉不留死代码。「该付同事多少」仍然靠
 // `isUnpaidStaffAdvance()`／`inboxOwedByPerson()`／`inboxMarkPaid()` 那一套，原样保留。
 //
-// 2026-09-10 同一天四度改版，用户拍板的最终形态（不是走回头路）：转账**仍然记全额**
-// （Firestore 文档、两条转账腿的金额都是老板输入的原始数字，不缩水），但转账当下
-// 如果这个人有未结清的垫付，**另外新增一对「代管账户→来源账户」的配平转账**把它
-// 结清，而不是像上一版那样直接把转账金额改小。用户原话：「我该填 5000 因为我是
-// 转了 5000 过去，难道你就不能直接把记录下去的和垫付的直接在 5000 里扣吗？」——
-// 他要的是「卡上写实际转出去的钱，从这笔钱里扣掉本月替他花的全部（现金付的＋他垫
-// 的）」，不是「转账金额本身缩水」。
+// 2026-09-10 同一天四度改版，2026-09-11 用户第三次纠正之后的最终形态（不是走回头路）：
+// 转账**仍然记全额**（Firestore 文档、两条转账腿的金额都是老板输入的原始数字，不
+// 缩水），但转账当下如果这个人有未结清的垫付，**只记一条「代管账户支出」**把它结清，
+// 而不是像上一版那样直接把转账金额改小。用户原话：「我该填 5000 因为我是转了 5000
+// 过去，难道你就不能直接把记录下去的和垫付的直接在 5000 里扣吗？」——他要的是
+// 「卡上写实际转出去的钱，从这笔钱里扣掉本月替他花的全部（现金付的＋他垫的）」，
+// 不是「转账金额本身缩水」。
 //
-// 为什么另开一对转账、不沿用上一版「转账金额减去欠款」的写法：那一版会让 Firestore
-// 记的金额和「实际转出去多少现金」这两件事脱节（转 5000 现金，云端却记 4810.47）——
-// 2026-09-10 用户实机跑完那版之后明确反对。新写法转账腿永远是老板输入的原始数字，
-// 「结清了多少」完全是另一对独立的转账在做，两件事分得清清楚楚，撤回时也各自独立
-// 可逆（见 deleteBossCashGift() 里 settleAdvanceIds 那段）。
+// 为什么只记代管账户这一条、不沿用上一版「转账金额减去欠款」的写法：那一版会让
+// Firestore 记的金额和「实际转出去多少现金」这两件事脱节（转 5000 现金，云端却记
+// 4810.47）——2026-09-10 用户实机跑完那版之后明确反对。新写法转账腿永远是老板输入
+// 的原始数字，「结清了多少」完全是另一条独立的支出在做，两件事分得清清楚楚，撤回时
+// 也能一起找回（见 deleteBossCashGift() 里 settleAdvanceIds 那段）。
+//
+// ⚠️ 2026-09-11 用户第三次坚持要求：这条支出**只记代管账户，不记来源账户那条
+// +settle.total 的配平收入**——他给同事的钱（含垫付部分）已经在「转 5000」那笔支出
+// 里从来源账户扣过一次了，结清时再让来源账户多收一笔等于把这笔钱记了两次。已知
+// 且用户接受的副作用：来源账户余额会比实际现金少 settle.total，这是用户拍板的取舍，
+// 不是 bug，不要自作主张把这条配平收入加回来（今天为这件事来回过三轮）。
 /**
  * 从最旧的开始累加这个人还没结清的垫付，抵到不超过这次转账金额为止，**不拆单笔**
  * ——加了下一笔就会超过转账金额，就停在它之前，那一笔整笔留着还欠。只挑币种跟这次
@@ -8376,10 +8382,10 @@ async function undoBossDebtOffset(){
 /**
  * 🔁 把旧格式转成最终格式（第三版结清机制上线后新增，2026-09-10 同一天）——用户现有
  * 资料是「转账 4810.47（净额）＋ 垫付已标已付」这种**第一版**旧格式（历史脉络见上面
- * 「转账记全额，结清垫付另开一对配平转账」那节）。跟 `undoBossDebtOffset()`（纯撤销，
- * 撤完欠款回到「还欠着」）不是同一件事——这个工具是**一键转成最终形态**：转账金额
- * 改回全额（跟撤销一样），但**不清 paidAt**，而是**补记结清那一对新格式的配平腿**
- * （`settleAdvanceIds`），让这笔垫付继续保持「已结清」，只是换成新机制记录，卡片上
+ * 「转账记全额，结清垫付只记代管账户那一条支出」那节）。跟 `undoBossDebtOffset()`
+ * （纯撤销，撤完欠款回到「还欠着」）不是同一件事——这个工具是**一键转成最终形态**：
+ * 转账金额改回全额（跟撤销一样），但**不清 paidAt**，而是**补记结清那一条新格式的
+ * 配平腿**（`settleAdvanceIds`），让这笔垫付继续保持「已结清」，只是换成新机制记录，卡片上
  * 的「给了」也会从净额变回全额。两个按钮都留着：真的想撤销掉、让欠款恢复成还欠着的，
  * 用 `undoBossDebtOffset()`；只想把旧格式换成新格式、不改变"已经结清"这个事实的，
  * 用这个。
@@ -8405,7 +8411,7 @@ async function convertOldOffsetToSettle(){
       + `  还剩：${fmt(remain, g.currency)} → ${fmt(remain, g.currency)}（不变）\n`
       + `  欠他：${fmt(owed, g.currency)} → ${fmt(owed, g.currency)}（不变，仍是已结清）`;
   }).join('\n');
-  if(!confirm(`把 ${groups.length} 笔旧格式的转账换成新格式（转账金额改回全额＋补记结清那一对腿）：\n\n${detail}\n\n确定吗？`)) return;
+  if(!confirm(`把 ${groups.length} 笔旧格式的转账换成新格式（转账金额改回全额＋补记结清那一条腿）：\n\n${detail}\n\n确定吗？`)) return;
   let n = 0;
   for(const g of groups){
     g.holdLeg.amount = g.fullAmount;
@@ -8413,9 +8419,11 @@ async function convertOldOffsetToSettle(){
     delete g.holdLeg.offsetTxIds; delete g.holdLeg.offsetTotal;
     delete g.srcLeg.offsetTxIds; delete g.srcLeg.offsetTotal;
     g.holdLeg.updatedAt = now; g.srcLeg.updatedAt = now;
-    // 补记结清那一对配平腿——跟 sendBossCashGift() 新转账时补记的写法一模一样，只是
+    // 补记结清那一条配平腿——跟 sendBossCashGift() 新转账时补记的写法一模一样，只是
     // 这里是给历史资料补齐。paidAt 不动：这笔垫付本来就已经结清了，新机制一样认它
-    // 已结清，不需要重设。
+    // 已结清，不需要重设。⚠️ 2026-09-11 用户第三次纠正：只记代管账户那一条支出，
+    // 不往来源账户（`g.srcLeg.accountId`）补那条 +offsetTotal 的配平收入——理由同
+    // sendBossCashGift() 顶部注释，来源账户已经在垫付发生当下扣过这笔钱了。
     if(g.offsetTotal > 0.005){
       data.transactions.push({
         id: uid(), accountId: g.holdAcc.id, date: g.holdLeg.date || today(), type:'expense',
@@ -8423,16 +8431,10 @@ async function convertOldOffsetToSettle(){
         description: `结清 ${g.person} 垫付的 ${g.offsetIds.length} 笔（配平·旧资料转换）`,
         updatedAt: now, xfer:true, giftId: g.giftId, settleAdvanceIds: g.offsetIds
       });
-      data.transactions.push({
-        id: uid(), accountId: g.srcLeg.accountId, date: g.srcLeg.date || today(), type:'income',
-        amount: g.offsetTotal, categoryId:'cat_cash_gift_in',
-        description: `结清 ${g.person} 垫付的 ${g.offsetIds.length} 笔（旧资料转换）`,
-        updatedAt: now, xfer:true, giftId: g.giftId, settleAdvanceIds: g.offsetIds
-      });
     }
     n++;
-    // 云端那份不许 update，照抄「删旧建新」写法；补记的两条新配平腿也要一起改挂到
-    // 新 giftId 上（此时它们还带着旧 giftId，用旧 giftId 当筛选条件正好能连它们一起找到）。
+    // 云端那份不许 update，照抄「删旧建新」写法；补记的新配平腿也要一起改挂到
+    // 新 giftId 上（此时它还带着旧 giftId，用旧 giftId 当筛选条件正好能连它找到）。
     if(cloudAvailable && currentUser){
       const k = bossCashKeySaved();
       if(k){
@@ -8883,10 +8885,17 @@ async function sendBossCashGift(){
 
   // 2026-09-10 四度改版（用户最终拍板）：转账本身永远是全额，但如果这个人有未结清
   // 的垫付，这次转账要顺带结清一部分——从最旧的欠款开始累加、不拆单笔、抵到不超过
-  // 这次转账金额为止（pickAdvancesToSettle()）。结清不是把转账金额缩水，是**另开
-  // 一对代管账户→来源账户的配平转账**，两件事分开记、各自可逆（见下面 settle 那段
-  // 和 deleteBossCashGift()）。旧版「先抵欠款」缩水转账金额那套已经拿掉，已经被那版
+  // 这次转账金额为止（pickAdvancesToSettle()）。结清不是把转账金额缩水，是**只记
+  // 代管账户那一条支出**，两件事分开记、各自可逆（见下面 settle 那段和
+  // deleteBossCashGift()）。旧版「先抵欠款」缩水转账金额那套已经拿掉，已经被那版
   // 抵过的旧资料撤销路见 undoBossDebtOffset()。
+  // ⚠️ 2026-09-11 用户第三次坚持要求拿掉「来源账户 +结清金额」那条配平收入——他给
+  // 同事的整笔钱（含垫付部分）本来就已经在「转 5000」这笔支出里扣过一次了，结清时
+  // 再让来源账户多收一笔等于把这笔钱记了两次收入。**已知且用户接受的副作用**：这样
+  // 记之后来源账户余额会比「实际现金」少 settle.total（因为那笔钱在垫付发生当下已经
+  // 记过一次支出，现在又整个包含在转出去的 5000 里）——用户对账看的是「注资－开销」
+  // 这条线，不是拿账户余额去对钞票，明确知道并接受。**后人不要自作主张把这条配平腿
+  // 加回来**，今天为这件事来回过三轮。
   const settle = pickAdvancesToSettle(person, amount, cur);
   const settleNote = settle.total > 0
     ? `\n其中 ${fmt(settle.total, cur)} 会用来结清他垫付的 ${settle.ids.length} 笔`
@@ -8936,23 +8945,21 @@ async function sendBossCashGift(){
       giftId: docRef.id,
       xfer: true
     });
-    // 结清垫付：另开一对「代管账户→来源账户」的配平转账，不动上面那两条转账腿的
-    // 金额（它们永远是老板输入的原始数字）。两条腿都带 settleAdvanceIds（哪几笔
-    // 垫付被这次结清）——deleteBossCashGift() 撤回这笔转账时靠它把 fromStaff.paidAt
-    // 撤回来，也靠它跟「花掉了多少」/「已还」两处统计分清楚（见
-    // refreshBossCashGiftPersonSummary() 顶部注释）。同一个 giftId：撤回时按
-    // giftId 一次性把这两条连同上面那两条转账腿一起找回、一起删掉。
+    // 结清垫付：只记**代管账户那一条支出**（钱从代管余额里扣掉，因为这部分实质上
+    // 不是给他花的新钱，是拿来还他垫付的旧账），不动上面那两条转账腿的金额（它们
+    // 永远是老板输入的原始数字），也**不**往来源账户记那条 +settle.total 的配平
+    // 收入——来源账户已经因为「转 5000」那笔支出扣过这笔钱了，再记一条收入等于
+    // 把它加回来两次（2026-09-11 用户第三次纠正，见上面 sendBossCashGift 顶部大段
+    // 注释）。这条支出带 settleAdvanceIds（哪几笔垫付被这次结清）——
+    // deleteBossCashGift() 撤回这笔转账时靠它把 fromStaff.paidAt 撤回来，也靠它跟
+    // 「花掉了多少」/「已还」两处统计分清楚（见 refreshBossCashGiftPersonSummary()
+    // 顶部注释）。同一个 giftId：撤回时按 giftId 一次性把它连同上面那两条转账腿
+    // 一起找回、一起删掉。
     if(settle.total > 0){
       data.transactions.push({
         id: uid(), accountId: holdAcc.id, date: today(), type: 'expense', amount: settle.total,
         categoryId: 'cat_cash_gift',
         description: `结清 ${person} 垫付的 ${settle.ids.length} 笔（配平）`,
-        updatedAt: now, xfer: true, giftId: docRef.id, settleAdvanceIds: settle.ids
-      });
-      data.transactions.push({
-        id: uid(), accountId: accId, date: today(), type: 'income', amount: settle.total,
-        categoryId: 'cat_cash_gift_in',
-        description: `结清 ${person} 垫付的 ${settle.ids.length} 笔（从代管账户转回）`,
         updatedAt: now, xfer: true, giftId: docRef.id, settleAdvanceIds: settle.ids
       });
       settle.ids.forEach(sid => {

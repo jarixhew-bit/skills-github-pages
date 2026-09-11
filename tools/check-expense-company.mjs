@@ -4176,11 +4176,17 @@ console.log('\n【41】转账记全额，结清垫付另开一对配平转账：
   const giftId41 = await page.evaluate(()=>(data.transactions.find(t=>t.accountId==='acc_boss'
     && t.giftId && !t.settleAdvanceIds && t.type==='expense') || {}).giftId);
   const legs41 = await page.evaluate((gid)=>data.transactions.filter(t=>t.giftId===gid), giftId41);
-  ok('★这一次转账共记了 4 条腿（转账 2 条全额 + 结清垫付 2 条配平）', legs41.length === 4, legs41);
+  // 2026-09-11 用户第三次拍板：结清垫付**只记代管账户那一条支出**，不往来源账户
+  // 补那条 +189.53 的配平收入。原话：「你在往我这里加一条他垫付的，总账就加一条
+  // 189 了，这样肯定不对」。所以这里是 3 条腿，不是 4 条。
+  ok('★这一次转账共记了 3 条腿（转账 2 条全额 + 结清 1 条，只在代管账户）', legs41.length === 3, legs41);
   const settleLegs41 = legs41.filter(t=>Array.isArray(t.settleAdvanceIds));
-  ok('★结清那两条腿都带 settleAdvanceIds=[debt189]、金额 189.53',
-     settleLegs41.length === 2 && settleLegs41.every(t=>t.settleAdvanceIds.includes('debt189') && t.amount===189.53),
+  ok('★结清只有一条腿，带 settleAdvanceIds=[debt189]、金额 189.53',
+     settleLegs41.length === 1 && settleLegs41.every(t=>t.settleAdvanceIds.includes('debt189') && t.amount===189.53),
      settleLegs41);
+  const kuangHoldIdChk41 = await page.evaluate(()=>holdingAccountId('Kuang'));
+  ok('★★结清那条只记在代管账户，来源账户没有多出任何一条（用户明确要求，别再加回来）',
+     settleLegs41.every(t => t.accountId === kuangHoldIdChk41), settleLegs41.map(t=>t.accountId));
   const transferLegs41 = legs41.filter(t=>!t.settleAdvanceIds);
   ok('★转账那两条腿金额都是全额 5000（不因为结清而缩水）',
      transferLegs41.length === 2 && transferLegs41.every(t=>t.amount===5000), transferLegs41);
@@ -4193,8 +4199,17 @@ console.log('\n【41】转账记全额，结清垫付另开一对配平转账：
   ok('★ 代管余额是 4810.47（5000−189.53，结清那笔从代管账户里扣掉了）',
      Math.abs((await bal41(kuangHoldId41)) - 4810.47) < 0.005, await bal41(kuangHoldId41));
   const accBossBalAfter41 = await bal41('acc_boss');
-  ok('★ 来源账户净变化正好 −5000（−189.53 记旧账 −5000 转账 +189.53 结清转回，三笔相抵后净变化＝实际转出去的现金）',
-     Math.abs((accBossBalAfter41 - accBossBalBefore41) + 5000) < 0.005, { accBossBalBefore41, accBossBalAfter41 });
+  // −5189.53 ＝ −189.53（记他垫付那笔）−5000（转账全额）。结清**不**往来源账户补
+  // 那条 +189.53 的收入，所以比「实际交出去的现金 5000」多 189.53——这是 2026-09-11
+  // 用户拍板并明确接受的取舍（他对账看的是「注资−开销」那条线，不是拿账户余额去
+  // 对钞票）。**不要**自作主张把配平收入加回来，今天为此来回过三轮。
+  ok('★来源账户净变化 −5189.53（转账全额扣 5000，结清不再往来源账户加任何一条）',
+     Math.abs((accBossBalAfter41 - accBossBalBefore41) + 5189.53) < 0.005,
+     { accBossBalBefore41, accBossBalAfter41 });
+  const srcSettle41 = await page.evaluate(()=>data.transactions.filter(t =>
+     t.accountId === 'acc_boss' && Array.isArray(t.settleAdvanceIds)));
+  ok('★★来源账户里一条「结清」记录都没有（这正是用户来回三轮要的结果）',
+     srcSettle41.length === 0, srcSettle41);
 
   // ---- 撤回这笔转账（趁还没花钱、状态干净的时候撤）：4 条腿都要消失、debt189 的
   // paidAt 要清掉、欠款恢复、来源账户余额回到转账前 ----
@@ -4588,8 +4603,12 @@ console.log('\n【44】真实数据端到端（结清垫付）：欠189.53 → �
   ok('这次转账顺带结清了 189.53（代管账户那条配平腿）', Math.abs(settledInHold44 - 189.53) < 0.005, settledInHold44);
 
   const bossBal44 = await bal('acc_boss');
-  ok('★③来源账户净变化正好 −5000（−189.53记旧账 −5000转账 +189.53结清转回 −224真花 +224配平，相抵后＝实际转出去的现金）',
-     Math.abs((bossBal44 - bossBal0) + 5000) < 0.005, { bossBal0, bossBal44 });
+  // 2026-09-11 用户拍板后的取舍：结清不往来源账户补收入，所以来源账户净变化是
+  // −189.53（记他垫付那笔）−5000（转账）＝ −5189.53，比「实际交出去的现金 5000」
+  // 多 189.53。**这是用户明确知道并接受的**（他对账看的是「注资−开销」那条线，
+  // 不是拿账户余额去对钞票）。不要自作主张把配平收入加回来——今天为此来回过三轮。
+  ok('★③来源账户净变化 −5189.53（−189.53 记他垫付 −5000 转账；结清不补收入，用户拍板的取舍）',
+     Math.abs((bossBal44 - bossBal0) + 5189.53) < 0.005, { bossBal0, bossBal44 });
 
   const expNoXfer44 = await page.evaluate(()=>{
     const now = new Date();
@@ -5214,11 +5233,13 @@ console.log('\n【49】🔁 把旧格式转成新格式：预览四个数字（�
   ok('★转换后：offsetTxIds/offsetTotal 被清掉', !srcAfter49.offsetTxIds && !srcAfter49.offsetTotal, srcAfter49);
   const newGiftId49 = srcAfter49.giftId;
   const legs49 = await page.evaluate((gid)=>data.transactions.filter(t=>t.giftId===gid), newGiftId49);
-  ok('★转换后共 4 条腿（转账 2 条全额 + 结清配平 2 条）', legs49.length === 4, legs49);
+  ok('★转换后共 3 条腿（转账 2 条全额 + 结清 1 条，只在代管账户）', legs49.length === 3, legs49);
   const settleLegs49 = legs49.filter(t=>Array.isArray(t.settleAdvanceIds));
-  ok('★补记的结清腿带 settleAdvanceIds=[debt49]、金额 189.53',
-     settleLegs49.length === 2 && settleLegs49.every(t=>t.settleAdvanceIds.includes('debt49') && t.amount===189.53),
+  ok('★补记的结清腿只有一条，带 settleAdvanceIds=[debt49]、金额 189.53',
+     settleLegs49.length === 1 && settleLegs49.every(t=>t.settleAdvanceIds.includes('debt49') && t.amount===189.53),
      settleLegs49);
+  ok('★★旧资料转换也不往来源账户补配平收入（跟新转账同一条规矩）',
+     settleLegs49.every(t => t.accountId !== 'acc_boss'), settleLegs49.map(t=>t.accountId));
   const debt49After = await page.evaluate(()=>data.transactions.find(t=>t.id==='debt49'));
   ok('★debt49 的 paidAt 没被动过（转换不改变"已结清"这个事实）',
      debt49After && debt49After.fromStaff.paidAt, debt49After);
@@ -5338,7 +5359,11 @@ console.log('\n【50】用户真实数字：给了−花了＝还剩恒等式 + 
   // 显示，不参与这三个统计的计算，用真实数字断言这三个数没有因为「藏了一条」而跟着变）----
   const balAcc50 = await page.evaluate(() => data.transactions.filter(t=>t.accountId==='acc_boss')
     .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
-  ok('★来源账户余额净变化 −5000（不受隐藏影响，配平腿照样被算进去）', balAcc50 === -5000, balAcc50);
+  // 结清不再往来源账户补收入（2026-09-11 用户拍板），所以这里是 −5189.53：
+  // −189.53（记他垫付）−5000（转账）。隐藏与否不影响这个数字，这条守的是「藏了
+  // 一条显示，余额不准跟着变」。
+  ok('★来源账户余额净变化 −5189.53（不受隐藏影响：藏的是显示，不是数字）',
+     Math.abs(balAcc50 + 5189.53) < 0.005, balAcc50);
   const monthStats50 = await page.evaluate(() => {
     const d = new Date();
     const txs = monthTxs('acc_boss', d.getFullYear(), d.getMonth());
