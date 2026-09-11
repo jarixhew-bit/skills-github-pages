@@ -2802,6 +2802,11 @@ async function saveTxInner(){
         tx.fromStaff = pickedFromStaff;
       }
       if(prevTx && prevTx.inbox) tx.inbox = prevTx.inbox;
+      // bossRec ＝「这笔是 butler 老板账本里的哪一条」。丢了就再也对不回去：
+      // 本机这笔会变成一笔无主记录，下次收件账本那条又同步下来 → 同一笔变两笔。
+      // （2026-09-11 加这个字段时当场撞上同一个坑，正是上面那段注释说的
+      //   「以后再加这种本机自己贴上去的字段，记得同步加进这份白名单」。）
+      if(prevTx && prevTx.bossRec) tx.bossRec = prevTx.bossRec;
       data.transactions[idx] = tx;
     }
     toast('已更新记录');
@@ -2859,6 +2864,22 @@ async function saveTxInner(){
       if(state.currentTab==='overview') renderOverview();
       if(state.currentTab==='transactions') renderTxList();
       if(state.currentTab==='settings') renderCompanySettings();
+    });
+  }
+
+  // 同事记的那笔（住在 butler 的老板账本里）被老板改了：账本那边也要跟着改。
+  // 不 await——本机已经存好了，不该让他对着网络干等；但**改不成要回退**，
+  // 不能留下「本机改了、账本还是旧的」，那正是这次改造要消灭的分叉。
+  if(prevTx && prevTx.bossRec && tx.bossRec){
+    const before = Object.assign({}, prevTx);
+    editBossLedgerRecord(tx).then(okRes => {
+      if(okRes) return;
+      const i2 = data.transactions.findIndex(x => x.id === before.id);
+      if(i2 >= 0) data.transactions[i2] = before;
+      saveData();
+      if(state.currentTab==='overview') renderOverview();
+      if(state.currentTab==='transactions') renderTxList();
+      toast('账本那边没改成，这笔已经改回原样');
     });
   }
 
@@ -2923,6 +2944,10 @@ async function deleteTx(){
   if(!confirmDeleteTx(t)) return;
   // 先删公司账本那条，删不成就整个中止——不留「本机没了、公司账本还在」的状态
   if(!(await deleteCompanyRecord(t))) return;
+  // 同事记的那笔住在 butler 的老板账本里：先删那边，删不成就整个中止。
+  // 顺序跟公司账那条一样是刻意的——反过来会留下「本机没了、账本还在」，
+  // 下次收件又把它同步回来，看起来就像「删不掉」。
+  if(!(await deleteBossLedgerRecord(t))) return;
   const attachmentId = t ? t.attachmentId : null;
   // 同事版在这里把「删掉这一笔」也送进投递箱，老板那边收到就一起删
   // （tools/build-staff-page.py 注入 onTxDeleted）。老板 App 里没有这个函数。
@@ -3792,6 +3817,10 @@ async function deleteTxById(id){
   const t = data.transactions.find(t=>t.id===id);
   if(!confirmDeleteTx(t)) return;
   if(!(await deleteCompanyRecord(t))) return;
+  // 同事记的那笔住在 butler 的老板账本里：先删那边，删不成就整个中止。
+  // 顺序跟公司账那条一样是刻意的——反过来会留下「本机没了、账本还在」，
+  // 下次收件又把它同步回来，看起来就像「删不掉」。
+  if(!(await deleteBossLedgerRecord(t))) return;
   const attachmentId = t ? t.attachmentId : null;
   // 同事版在这里把「删掉这一笔」也送进投递箱，老板那边收到就一起删
   // （tools/build-staff-page.py 注入 onTxDeleted）。老板 App 里没有这个函数。
@@ -6931,7 +6960,7 @@ function renderCompanySettings(){
 // （删文档失败、或者同事重发）也只是覆盖同一笔，变不出第二条。
 // 【删了不会复活】已经在墓碑里（deletedTxIds）的不再收回来——否则「删除没用」那个
 // 老问题会从这条新路径重新长出来（见 diagnosis.md 2026-08-03 那条）。
-const INBOX_COLLECTION = 'inbox_boss';
+const BOSS_LEDGER_URL = 'https://butler-bot.jarixhew.workers.dev/boss-expense';
 const INBOX_ACCOUNT_STORAGE = 'expenseTracker_inboxAccount';
 const inboxState = { last: 0, added: 0, error: null, running: false };
 
@@ -6957,14 +6986,37 @@ function setInboxAccount(id){
 }
 
 /** 把投递箱里那条删掉。删不掉不算错——下次靠 id 去重，不会变成两笔。 */
-async function inboxDrop(doc){
-  try{ await doc.ref.delete(); }catch(e){ console.warn('投递箱删除失败（已收到，忽略）', e); }
-}
-
+/**
+ * 把同事记的老板账拉回来（2026-09-11 起）。
+ *
+ * ## 以前是什么样，为什么换掉
+ *
+ * 以前同事把账写进 Firestore 的投递箱，这里收件、写进本机、再把投递箱那份删掉。
+ * 于是「一笔账」在同事手机和老板手机上各存一份，两边各自算「他手上还剩多少」、
+ * 「我欠他多少」——算法一有出入就对不上，9/9~9/11 为此改了五六版，最后整套退回。
+ *
+ * 现在 butler 那本账是**唯一真相**，这里只是把它同步下来：
+ *   · 账本里有、本机没有 → 加进来
+ *   · 两边都有           → 用账本那份覆盖（别人改过金额就跟着变）
+ *   · 本机有、账本没有   → 删掉（有人删了那笔），并落墓碑防云同步把它并回来
+ *
+ * 函数名留着不改：好几处（启动、上线、按钮、设置页）都在叫它，改名只是把同一件事
+ * 改得更难追。
+ *
+ * ## 为什么要同步进 data.transactions，而不是另存一份
+ *
+ * 明细、统计、月底那份账单 PDF 全都读 data.transactions。同步进去，这三样一个字
+ * 都不用改，**PDF 的版式也就原样保住**（用户明确要求）。这不是「又变回两边各存
+ * 一份」——本机这份是只读缓存，写永远先写 butler，冲突时以 butler 为准。
+ *
+ * 拉**本月和上月**两个月：月初那几天还要看得到上个月的账。再往前的不拉——
+ * 那些早就结过账了，每次开 App 都拖一整年的记录回来只是白等。
+ */
 async function fetchInbox(opts){
   const loud = !!(opts && opts.loud);
-  if(!cloudAvailable || !currentUser){
-    if(loud) toast('要先登录 Google 才能收件');
+  const token = getCompanyToken();
+  if(!token){
+    if(loud) toast('还没填公司报账密钥（设置 → 公司报账）');
     return;
   }
   if(inboxState.running) return;
@@ -6973,119 +7025,204 @@ async function fetchInbox(opts){
 
   inboxState.running = true;
   if(loud) toast('正在收件…');
-  let snap;
+
+  const now = new Date();
+  const ym = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const months = [ym(now), ym(prev)];
+
+  let added = 0, changed = 0, removed = 0;
   try{
-    snap = await db.collection(INBOX_COLLECTION).limit(50).get();
+    for(const month of months){
+      const res = await fetch(BOSS_LEDGER_URL, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ token, action:'ledger', month }),
+      });
+      const body = await res.json().catch(()=>({}));
+      if(!res.ok || body.status !== 'ok'){
+        throw new Error(body.message || body.error || `拉不到账本（${res.status}）`);
+      }
+      const r = await syncBossLedgerMonth(month, body.records || [], accId);
+      added += r.added; changed += r.changed; removed += r.removed;
+    }
+    inboxState.error = null;
   }catch(e){
     inboxState.running = false;
-    // permission-denied = 规则还没贴好（最常见），跟「没网」要分开说，
-    // 否则用户会对着一个「连不上」在 WiFi 里瞎找问题
-    inboxState.error = (e && e.code === 'permission-denied')
-      ? '权限规则还没设好（照 firestore.rules 贴进 Firebase 后台）'
-      : '连不上云端';
+    inboxState.error = (e && e.message) ? String(e.message) : '连不上';
     if(loud) toast('收件失败：\n' + inboxState.error);
     renderInboxSettings();
     return;
   }
 
-  inboxState.error = null;
-  const dead = new Set((data.deletedTxIds || []).map(d => d.id));
-  let added = 0, skipped = 0, removed = 0;
-
-  // 分两轮：先收账，再处理「同事把那笔删了」。同一次拿到的这两种文档没有先后顺序，
-  // 删的那条要是先跑，等一下收账那一轮又会把它加回来（同事删过的账在老板这边复活，
-  // 正是这条路最要命的错）。反过来「先加再删」在两种顺序下结果都对。
-  // 另一种情形也接得住：删的那条落在这 50 份里、原本那笔在下一批——
-  // 删的时候会落墓碑，下一批收到原本那笔时被 dead 挡掉。
-  const isDel = (doc) => {
-    try{ const r = JSON.parse((doc.data() || {}).tx); return !!(r && r.op === 'delete'); }
-    catch(e){ return false; }
-  };
-  const ordered = [...snap.docs.filter(d => !isDel(d)), ...snap.docs.filter(isDel)];
-
-  for(const doc of ordered){
-    const d = doc.data() || {};
-    let raw = null;
-    try{ raw = JSON.parse(d.tx); }catch(e){ raw = null; }
-    // 坏数据不留在箱子里堵着后面的（箱子是别人能写的地方，必须假设会收到垃圾）。
-    // 注意：删除请求没有 amount/date，所以先认出它（下面那段），别在这里就被当垃圾丢掉。
-    if(!raw || (raw.op !== 'delete'
-        && (!(Number(raw.amount) >= 0) || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.date||''))))){
-      await inboxDrop(doc); skipped++; continue;
-    }
-    const id = 'ix_' + String(raw.srcId || doc.id).slice(0, 40);
-
-    // 同事把自己记的那笔删了（2026-09-01 用户要求：「一删我这边就能看到」）。
-    // 走的是同一个投递箱、同一条规则——payload 只是 tx 那个字符串里多个 op:'delete'，
-    // Firestore 规则一个字都不用改（它只校验 tx 是字符串、长度够短）。
-    if(raw.op === 'delete'){
-      const i = data.transactions.findIndex(t => t.id === id);
-      if(i >= 0){
-        const att = data.transactions[i].attachmentId;
-        data.transactions.splice(i, 1);
-        if(att) deleteAttachmentBlob(att);
-        removed++;
-      }
-      // 不管本机现在有没有那笔都要落墓碑：可能还没收到（下一批才来），
-      // 也可能别的设备上有——墓碑跟着同步走，那边也会跟着删。
-      tombstoneTx(id);
-      dead.add(id);
-      await inboxDrop(doc);
-      continue;
-    }
-
-    if(dead.has(id)){ await inboxDrop(doc); skipped++; continue; }
-
-    const isIncome = raw.type === 'income';
-    const known = data.categories.some(c => c.id === raw.categoryId);
-    const tx = {
-      id,
-      accountId: accId,
-      amount: Number(raw.amount),
-      type: isIncome ? 'income' : 'expense',
-      categoryId: known ? raw.categoryId : (isIncome ? 'cat_other_inc' : 'cat_other_exp'),
-      description: String(raw.description || '').slice(0, 200),
-      date: raw.date,
-      updatedAt: Date.now(),
-      fromStaff: { by: String(d.from || '同事').slice(0, 40), at: Date.now() }
-    };
-
-    // 收据照片：存不下就只收文字。照片没了还能问人补，账丢了就真丢了——
-    // 所以照片这一步的任何失败都不许中断入账。
-    if(d.photo){
-      try{
-        const blob = base64ToBlob(d.photo);
-        const attId = 'att_' + id;
-        await putAttachmentBlob(attId, blob);
-        tx.attachmentId = attId;
-        uploadAttachmentToCloud(attId, blob, id);   // 不 await：备份慢不该拖住收件
-      }catch(e){ console.warn('投递箱照片存不下（只收文字）', e); }
-    }
-
-    const i = data.transactions.findIndex(t => t.id === id);
-    if(i >= 0) data.transactions[i] = Object.assign({}, data.transactions[i], tx);
-    else { data.transactions.push(tx); added++; }
-    await inboxDrop(doc);
-  }
-
-  if(added || removed) saveData();
+  if(added || changed || removed) saveData();
   inboxState.added = added;
   inboxState.removed = removed;
   inboxState.last = Date.now();
   inboxState.running = false;
 
-  if(added || removed){
+  if(added || removed || changed){
     const parts = [];
     if(added) parts.push(`收到同事记的 ${added} 笔\n已进「${(getAcc(accId)||{}).name}」`);
+    if(changed) parts.push(`${changed} 笔有改动，已更新`);
     // 删掉的一定要说出来：账目自己少了一笔而没人告诉他，比不删还糟
     if(removed) parts.push(`同事删掉了 ${removed} 笔，这边也一起删了`);
     toast(parts.join('\n'));
     if(state.currentTab === 'overview') renderOverview();
     if(state.currentTab === 'transactions') renderTxList();
   } else if(loud){
-    toast(skipped ? '箱子里没有新的账' : '箱子是空的');
+    toast('没有新的账');
   }
   renderInboxSettings();
+}
+
+/**
+ * 删掉 butler 老板账本里对应的那一条。回 true 表示「可以继续删本机了」。
+ *
+ * 不是账本里的记录（老板自己手记的、以前投递箱收来的旧账）直接放行。
+ * `not_found` 也算成功——那笔在账本里已经没了，本机这条正是该清掉的残留。
+ */
+async function deleteBossLedgerRecord(t){
+  if(!t || !t.bossRec) return true;
+  const token = getCompanyToken();
+  if(!token){ toast('还没填公司报账密钥，删不了账本里那条'); return false; }
+  let res;
+  try{
+    res = await fetch(BOSS_LEDGER_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'delete',
+        recordId: t.bossRec.id, month: t.bossRec.month }),
+    });
+  }catch(e){
+    toast('现在连不上，账本里那条删不掉——有网再删，免得两边对不上');
+    return false;
+  }
+  const body = await res.json().catch(()=>({}));
+  if(res.ok && body.status === 'ok') return true;
+  if(body.status === 'not_found') return true;
+  toast('账本里那条没删成：' + (body.message || body.error || res.status));
+  return false;
+}
+
+/**
+ * 老板在 App 里改了一笔同事记的账：账本那边也要跟着改。
+ *
+ * 跟删除同一条规矩——**先改账本，成功了才算数**。这里回 false 时调用方会把本机
+ * 那笔回退成改之前的样子，不留「本机改了、账本还是旧的」那种分叉。
+ */
+async function editBossLedgerRecord(t){
+  if(!t || !t.bossRec) return true;
+  const token = getCompanyToken();
+  if(!token){ toast('还没填公司报账密钥，改不了账本里那条'); return false; }
+  let res;
+  try{
+    res = await fetch(BOSS_LEDGER_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'edit',
+        recordId: t.bossRec.id, month: t.bossRec.month,
+        date: t.date, type: t.type, amount: t.amount,
+        categoryId: t.categoryId, description: t.description }),
+    });
+  }catch(e){
+    toast('现在连不上，这笔没改成——有网再改，免得两边对不上');
+    return false;
+  }
+  const body = await res.json().catch(()=>({}));
+  if(res.ok && body.status === 'ok') return true;
+  toast('账本里那条没改成：' + (body.message || body.error || res.status));
+  return false;
+}
+
+/** 账本里那笔在本机的 id。前缀是为了一眼认得出「这笔不是我自己记的」。 */
+function bossRecTxId(recId){ return 'bl_' + String(recId).slice(0, 40); }
+
+/**
+ * 把某个月的账本同步进本机。回传这个月加了/改了/删了几笔。
+ *
+ * 只动带 `bossRec` 标记的那些记录——老板自己手记的账、以前投递箱收来的旧账
+ * （id 是 ix_ 开头）都不在这条路的管辖范围内，绝不能因为「账本里没有」就被删掉。
+ */
+async function syncBossLedgerMonth(month, records, accId){
+  let added = 0, changed = 0, removed = 0;
+  const alive = new Set(records.map(r => bossRecTxId(r.id)));
+
+  // 先删：账本里没有了的（有人删了那笔）
+  for(let i = data.transactions.length - 1; i >= 0; i--){
+    const t = data.transactions[i];
+    if(!t.bossRec || t.bossRec.month !== month) continue;
+    if(alive.has(t.id)) continue;
+    if(t.attachmentId) deleteAttachmentBlob(t.attachmentId);
+    data.transactions.splice(i, 1);
+    tombstoneTx(t.id);     // 不落墓碑的话，云端旧快照一合并就把它并回来
+    removed++;
+  }
+
+  // 再加/改
+  for(const rec of records){
+    const id = bossRecTxId(rec.id);
+    const isIncome = rec.type === 'income';
+    const known = data.categories.some(c => c.id === rec.categoryId);
+    const tx = {
+      id,
+      accountId: accId,
+      amount: Number(rec.amount) || 0,
+      type: isIncome ? 'income' : 'expense',
+      categoryId: known ? rec.categoryId : (isIncome ? 'cat_other_inc' : 'cat_other_exp'),
+      description: String(rec.description || '').slice(0, 200),
+      date: rec.date,
+      updatedAt: Date.now(),
+      // 这笔是账本里的哪一条：改/删时要按 id 找回去，月份是删除时定位用的
+      bossRec: { id: rec.id, month, photoPath: rec.photoPath || null },
+      // 「该付同事多少」还是靠这个标记算（第三步改成看备用金余额之前先这样）
+      fromStaff: { by: String(rec.reporter || '同事').slice(0, 40), at: Date.now() },
+    };
+    const i = data.transactions.findIndex(t => t.id === id);
+    if(i >= 0){
+      const was = data.transactions[i];
+      // 老板自己标过「已付清」的不能被同步冲掉——那是他这边的状态，账本不知道
+      if(was.fromStaff && was.fromStaff.paidAt) tx.fromStaff.paidAt = was.fromStaff.paidAt;
+      if(was.attachmentId) tx.attachmentId = was.attachmentId;
+      const same = was.amount === tx.amount && was.date === tx.date
+        && was.description === tx.description && was.type === tx.type;
+      data.transactions[i] = Object.assign({}, was, tx);
+      if(!same) changed++;
+    }else{
+      data.transactions.push(tx);
+      added++;
+    }
+  }
+
+  // 收据照片单独一轮：慢，而且一张取不到不该影响别的（照片没了还能补，账不能等）
+  for(const rec of records){
+    if(!rec.photoPath) continue;
+    const id = bossRecTxId(rec.id);
+    const t = data.transactions.find(x => x.id === id);
+    if(!t || t.attachmentId) continue;      // 已经有图就不重复拉
+    try{
+      const blob = await fetchBossReceipt(rec.photoPath);
+      if(!blob) continue;
+      const attId = 'att_' + id;
+      await putAttachmentBlob(attId, blob);
+      t.attachmentId = attId;
+      uploadAttachmentToCloud(attId, blob, id);   // 不 await：备份慢不该拖住收件
+    }catch(e){ console.warn('收据照片取不回来（账已经收了）', e); }
+  }
+  return { added, changed, removed };
+}
+
+/**
+ * 取回一张收据原图。照片住在 butler 那个私有仓库里，网页下载不到，
+ * 要由服务端验过老板身份再代取（butler 的 action:"photo"）。
+ */
+async function fetchBossReceipt(path){
+  const token = getCompanyToken();
+  if(!token) return null;
+  const res = await fetch(BOSS_LEDGER_URL, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ token, action:'photo', path }),
+  });
+  const body = await res.json().catch(()=>({}));
+  if(!res.ok || body.status !== 'ok' || !body.base64) return null;
+  return base64ToBlob(`data:${body.mime || 'image/jpeg'};base64,${body.base64}`);
 }
 
 /**
@@ -8470,29 +8607,23 @@ function staffGoCompany(){
 }
 function staffGoBoss(){ staffSwitchAcc(STAFF_BOSS_ACC_ID); }
 
-/**
- * 投递箱要一个 Firebase 身份才写得进去（规则里 request.auth != null 那条）。
- * 用匿名登录：同事不用注册任何账号，打开就有一个临时身份。
- *
- * 注意：同事版的 onAuthStateChanged 在生成时已经被拿掉了（第 7 步），所以匿名登录
- * **不会**让 currentUser 变成非 null，也就不会有人把同事的账本推上老板的云端——
- * 改动这一段前先确认那条还在。
- */
-async function staffEnsureAnon(){
-  if(!cloudAvailable) return false;
-  try{
-    if(!auth.currentUser) await auth.signInAnonymously();
-    return !!auth.currentUser;
-  }catch(e){ console.warn('匿名登录失败', e); return false; }
-}
+// 2026-09-11 起，同事版**完全不碰 Firestore** 了：老板账从投递箱改走 butler 的
+// 中央账本（见下面 submitInboxTx）。原本这里有个 staffEnsureAnon()——投递箱要一个
+// Firebase 身份才写得进去，所以先做一次匿名登录——现在没有任何地方需要它，删掉。
+// 同事版的 onAuthStateChanged 在生成时也是被拿掉的（见「云同步整个不接」那一步），
+// 两条加起来：同事的账本上不了任何人的云端，只在他自己手机上。
 
-// 投递箱单份文档的照片上限。Firestore 一份文档最大 1MB，账目字段本身还要占一点，
-// 留 700KB 给 base64 之后的照片是安全边界（base64 比原图大约 1.33 倍，
-// 也就是原图约 500KB 以内可以原样送）。
-const INBOX_PHOTO_LIMIT = 700 * 1024;
+// 收据照片的压缩目标。
+//
+// 2026-09-11 之前这条路走 Firestore 投递箱，一份文档最大 1MB，只能留 700KB 给照片——
+// 而手机随手一拍就是 2~5MB，于是绝大多数照片都被默默丢掉（「有记录没账单」的病根）。
+// 现在改走 butler 的中央账本，服务端上限宽得多（约 5MB 原图），这个数就不再是
+// 「塞不塞得下」的生死线，只是「别让同事的流量和等待时间白白变三倍」。
+// 所以照压，但门槛放到 3MB：一般收据根本碰不到，碰到的也压得很轻、看得清。
+const BOSS_PHOTO_LIMIT = 3 * 1024 * 1024;
 
 /**
- * 把太大的收据照片缩到能塞进投递箱。长边逐级缩、JPEG 质量逐级降，第一个塞得下的就用。
+ * 把太大的收据照片缩小再送。长边逐级缩、JPEG 质量逐级降，第一个塞得下的就用。
  * 目的是**留下能看清楚金额和店名的凭证**，不是留原画质——凭证只要读得出来就有用。
  * 压不到／读不出图就回 null，由调用方去提示同事另外把照片发给老板。
  */
@@ -8507,11 +8638,7 @@ async function shrinkPhotoForInbox(dataUrl, limit){
     const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
     if(!w0 || !h0) return null;
     // 从「够清楚」的那一端开始试，不是从「保证塞得下」那一端——收据要看得清金额、
-    // 店名、日期，糊掉的凭证等于没有。实测一般收据在 2400px / q0.85 大约 300~600KB，
-    // 本来就塞得下；真的塞不下才一级一级往下让。
-    // ⚠️ 上限**不能**再往上调：Firestore 那份规则写死 photo < 760000 字符
-    // （firestore.rules 第 51 行），客户端调高只会变成 permission-denied，
-    // 而且改规则要用户自己去 Firebase Console 贴一次。要更清楚，只能在上限内争取。
+    // 店名、日期，糊掉的凭证等于没有。
     for(const maxSide of [2400, 2000, 1600, 1200, 900, 700, 500]){
       const scale = Math.min(maxSide / Math.max(w0, h0), 1);   // 只缩不放
       const w = Math.max(1, Math.round(w0 * scale));
@@ -8531,68 +8658,79 @@ async function shrinkPhotoForInbox(dataUrl, limit){
   }catch(e){ console.warn('照片压不下去，只送文字', e); return null; }
 }
 
-async function submitInboxTx(tx){
-  const k = staffBossKey();
-  if(!k) return { ok:false, retriable:false, message: tt('还没填老板账口令','No Boss passcode yet') };
-  if(!(await staffEnsureAnon()))
-    return { ok:false, retriable:true, message: tt('现在连不上，等有网自动送','Offline — will send later') };
+const BOSS_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/boss-expense';
 
-  const payload = {
-    k,
-    from: (staffIdentity ? staffIdentity.reporter : '同事').slice(0, 40),
-    // 整笔账压成一个字符串送（规则里只校验长度，不逐字段校验——字段校验住老板 App
-    // 那边，收进来时不认的类别会退回「其他」，坏数据直接丢掉不入账）
-    tx: JSON.stringify({
-      srcId: tx.id, date: tx.date, amount: tx.amount, type: tx.type,
-      categoryId: tx.categoryId, description: tx.description || ''
-    })
-    // 刻意不带 createdAt：那要用 firebase.firestore.FieldValue.serverTimestamp()，
-    // 等于让这条路多依赖一个全局对象；而「什么时候收到的」老板那边收件时自己盖章
-    // （fromStaff.at）就够了。规则允许这个字段存在，只是我们不送。
-  };
-  // 收据照片一起送，老板那份账户明细 PDF 的凭证页才有图。
-  //
-  // ⚠️ 2026-09-10 用户反馈「他那两张有记录但是没有账单」，根因就在这里：以前的写法是
-  // 「超过 700KB 就不送照片」，而现在手机随手一拍就是 2~5MB，base64 之后更大——于是
-  // **绝大多数照片都被默默丢掉**，账进去了、凭证没了，而且同事和老板两边都没有任何提示。
-  // 现在改成：太大先**缩图重压**（长边逐级缩、JPEG 质量逐级降），压到能送为止；
-  // 真的压不下去才放弃，并且**一定要告诉同事**（见 flushBossQueue 里 photoDropped 那段），
-  // 让他知道要另外把照片发给老板。丢照片可以，闷声丢不行。
+/**
+ * 把一笔老板账送到 butler 的中央账本（2026-09-11 起；在那之前走 Firestore 投递箱，
+ * 老板还得手动「收件」才入账）。
+ *
+ * **钥匙用公司报账那把**（同事设置里已经填过的那个），不是页面上的「老板账口令」。
+ * 服务端按钥匙判定记账人——同事送什么名字都不算数，也就冒名不了。页面上那个口令
+ * 现在只当本地开关用：填了才出现「老板账」这个页面，跟以前看到的一样。
+ *
+ * 日期不送：服务端一律记当天。同事版的日期栏本来就是收起来的，但**光收起来不算数**
+ * ——一份开着好几天没重载的旧页面照样送得出往回填的日期，所以那道闸门在服务端。
+ */
+async function submitInboxTx(tx){
+  const token = getCompanyToken();
+  if(!token) return { ok:false, retriable:false,
+    message: tt('还没填公司报账密钥（设置里那串）','No company passcode yet') };
+
+  // 收据照片一起送，老板那份账单的凭证页才有图。
+  // 送不出去的两种情况要**分开讲**，因为同事该做的事不一样：
+  //   toobig  → 重拍一张小一点的就行
+  //   missing → 这台手机的本地存储被系统清掉了，照片已经没了，只能重拍
+  // 丢照片可以，闷声丢不行——那正是 2026-09-10「有记录没账单」的病根。
   let photoDropped = false, photoReason = '';
+  const payload = {
+    token,
+    srcId: tx.id,
+    type: tx.type,
+    amount: tx.amount,
+    currency: staffBossCur(),
+    categoryId: tx.categoryId,
+    description: tx.description || '',
+  };
   if(tx.attachmentId){
     try{
       const blob = await getAttachmentBlob(tx.attachmentId);
       if(!blob){
-        // ⚠️ 这一支以前是**静默**的（只有 if(blob){...}，没有 else），是「记录有、
-        // 账单没有」的第二个来源，而且比「太大」更难猜：这笔账明明附了照片
-        // （tx.attachmentId 还在），但这台手机的本地存储里已经找不到那张图了。
-        // 常见原因是手机系统清掉了网页的离线存储（iOS 对长期没打开的网站尤其积极），
-        // 照片没了、账目本身还在。这种情况**一定要讲出来**，否则同事以为送成功了、
-        // 老板以为同事没拍。
         photoDropped = true; photoReason = 'missing';
       }else{
-        const dataUrl = await blobToBase64(blob);
-        if(dataUrl.length < INBOX_PHOTO_LIMIT){
-          payload.photo = dataUrl;
+        let dataUrl = await blobToBase64(blob);
+        if(dataUrl.length >= BOSS_PHOTO_LIMIT){
+          dataUrl = await shrinkPhotoForInbox(dataUrl, BOSS_PHOTO_LIMIT);
+        }
+        if(dataUrl){
+          const comma = dataUrl.indexOf(',');
+          payload.photoBase64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+          payload.photoMime = blob.type || 'image/jpeg';
         }else{
-          const small = await shrinkPhotoForInbox(dataUrl, INBOX_PHOTO_LIMIT);
-          if(small) payload.photo = small;
-          else { photoDropped = true; photoReason = 'toobig'; }
+          photoDropped = true; photoReason = 'toobig';
         }
       }
     }catch(e){ console.warn('照片读不出来，只送文字', e); photoDropped = true; photoReason = 'error'; }
   }
 
+  let res;
   try{
-    await db.collection(INBOX_COLLECTION).add(payload);
-    return { ok:true, photoDropped, photoReason };
+    res = await fetch(BOSS_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
   }catch(e){
-    // 口令不对 / 老板还没设好权限：重试一百次也是同样结果，要当场说清楚
-    if(e && e.code === 'permission-denied')
-      return { ok:false, retriable:false,
-               message: tt('口令不对，或者老板那边还没设好','Wrong passcode, or the Boss has not set it up') };
-    return { ok:false, retriable:true, message: tt('现在送不出去，等有网自动送','Offline — will send later') };
+    return { ok:false, retriable:true, message: tt('现在连不上，等有网自动送','Offline — will send later') };
   }
+  let body = {};
+  try{ body = await res.json(); }catch(e){}
+  if(res.ok && body.status === 'ok'){
+    return { ok:true, photoDropped, photoReason, recordId: body.record && body.record.id };
+  }
+  // 5xx 是服务端暂时的毛病（含 503「密钥还没配」），队列留着自动补送；
+  // 4xx 是这笔数据或钥匙本身的问题，重试一百次也一样，要当场说清楚。
+  const retriable = res.status >= 500;
+  const detail = body.message || body.error || tt(`送不进去（${res.status}）`, `Failed (${res.status})`);
+  return { ok:false, retriable, message: retriable ? tt('已存本机，等有网自动送','Saved locally — will retry') : detail };
 }
 
 function loadBossQueue(){
@@ -8711,22 +8849,31 @@ function saveBossDelQueue(q){
   try{ localStorage.setItem(STAFF_BOSS_DEL_QUEUE, JSON.stringify(q)); }catch(e){}
 }
 
+/**
+ * 同事删掉自己记的一笔时，中央账本那边也要删掉（2026-09-11 起走 butler）。
+ *
+ * 按 **srcId** 指认，不是服务端回的 recordId：那个 id 存在这台手机上，换手机、
+ * 清缓存就没了，而 srcId 是这笔账自己的一部分。服务端按钥匙判定这笔是不是他记的，
+ * 删别人的会被挡下来（挡在服务端，不是靠页面不显示按钮）。
+ *
+ * 找不到（not_found）算成功：队列重送时前一次可能已经删掉了，
+ * 把它永远留在队列里堵着，后面的删除请求就一笔都出不去。
+ */
 async function submitInboxDelete(srcId){
-  const k = staffBossKey();
-  if(!k) return { ok:false, retriable:false };
-  if(!(await staffEnsureAnon())) return { ok:false, retriable:true };
+  const token = getCompanyToken();
+  if(!token) return { ok:false, retriable:false };
+  let res;
   try{
-    await db.collection(INBOX_COLLECTION).add({
-      k,
-      from: (staffIdentity ? staffIdentity.reporter : '同事').slice(0, 40),
-      tx: JSON.stringify({ op:'delete', srcId: String(srcId).slice(0, 40) })
+    res = await fetch(BOSS_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'delete', srcId: String(srcId).slice(0, 60) }),
     });
-    return { ok:true };
-  }catch(e){
-    // 口令不对／规则没设好：重试多少次都一样，别把它永远留在队列里堵着
-    if(e && e.code === 'permission-denied') return { ok:false, retriable:false };
-    return { ok:false, retriable:true };
-  }
+  }catch(e){ return { ok:false, retriable:true }; }
+  let body = {};
+  try{ body = await res.json(); }catch(e){}
+  if(res.ok && body.status === 'ok') return { ok:true };
+  if(body.status === 'not_found') return { ok:true };
+  return { ok:false, retriable: res.status >= 500 };
 }
 
 async function flushBossDelQueue(opts){

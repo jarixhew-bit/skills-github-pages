@@ -1616,144 +1616,203 @@ const browser = await chromium.launch(launchOpts);
   await ctx.close();
 }
 
-// ---------- 【21】同事投递箱：把同事记的账收进来 ----------
-// 同事版的「老板账」页面把账写进 Firestore 的 inbox_boss，这台 App 收走、并进账户、
-// 清空箱子。要守的是三件「静静出错」的事：收两次不能变两笔、删掉的不能复活、
-// 别人能写的地方一定会收到垃圾数据（箱子不设防会被一条坏数据堵住）。
-console.log('\n【21】同事投递箱：把同事记的账收进来');
+// ---------- 【21】老板账：把 butler 中央账本同步下来 ----------
+// 2026-09-11 改造：同事记的老板账原本走 Firestore 投递箱（他写一份、老板收一份，
+// 两边各存各算，对不上账）。现在 butler 那本是唯一真相，这里只负责同步下来。
+//
+// 要守的都是「静静出错」的那几种：
+//   · 同一笔同步两次不能变两笔（这是旧版栽过最多次的坑）
+//   · 账本里改了、删了，本机要跟上（删了不跟＝账目多一笔，永远对不平）
+//   · **只能动账本来的那些**——老板自己手记的账不许被这条路删掉（对照组）
+//   · 老板在 App 里删/改：先动账本，账本没成功就不许动本机（不留分叉）
+console.log('\n【21】老板账：把 butler 中央账本同步下来');
 {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e=>errs.push(e.message));
   page.on('dialog', d => d.accept());
-  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
-    ? r.continue() : r.abort('failed'));
+
+  // 假 butler：ledger 回 book[month]，photo 回一张 1×1 的图。
+  // fail = true 模拟连不上（用来验「账本没删成就不许删本机」）。
+  const book = { '2026-08': [], '2026-09': [] };
+  const api = { fail: false, editFail: false, deleteFail: false, calls: [] };
+  const PNG1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  await ctx.route('**/*', async r => {
+    const u = r.request().url();
+    if (u.startsWith(`http://localhost:${PORT}`)) return r.continue();
+    if (!u.includes('/boss-expense')) return r.abort('failed');
+    if (api.fail) return r.abort('failed');
+    const req = JSON.parse(r.request().postData() || '{}');
+    api.calls.push(req);
+    const h = { 'Access-Control-Allow-Origin': '*' };
+    const json = (o, st=200) => r.fulfill({ status:st, contentType:'application/json',
+      headers:h, body: JSON.stringify(o) });
+    if (req.action === 'ledger') return json({ status:'ok', month:req.month,
+      records: book[req.month] || [] });
+    if (req.action === 'photo') return json({ status:'ok', path:req.path,
+      mime:'image/png', base64: PNG1 });
+    if (req.action === 'delete') {
+      if (api.deleteFail) return json({ status:'error', message:'假服务端故意不给删' }, 400);
+      for (const m of Object.keys(book)) book[m] = book[m].filter(x => x.id !== req.recordId);
+      return json({ status:'ok' });
+    }
+    if (req.action === 'edit') {
+      if (api.editFail) return json({ status:'error', message:'假服务端故意不给改' }, 400);
+      for (const m of Object.keys(book)) {
+        const hit = (book[m] || []).find(x => x.id === req.recordId);
+        if (hit) Object.assign(hit, { amount:req.amount, date:req.date,
+          description:req.description, type:req.type });
+      }
+      return json({ status:'ok' });
+    }
+    return json({ status:'error', message:'假服务端不认得：' + req.action }, 400);
+  });
   await page.goto(URL, { waitUntil:'domcontentloaded' });
   await until(() => page.evaluate(
     () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
     { what: 'App 启动完成' });
-
-  // 假投递箱。docs = 箱子里现在有哪几条，deleted = 收完之后哪几条被清掉了
+  // 钥匙：这条路靠它认身份（跟公司报账同一把）
   await page.evaluate(() => {
-    window.__box = { docs: [], deleted: [], mode: 'ok' };
-    window.__put = (id, d) => window.__box.docs.push({
-      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
-    cloudAvailable = true;
-    currentUser = { uid: 'boss' };
-    db = { collection: (c) => ({
-      limit: () => ({ get: async () => {
-        if (window.__box.mode === 'denied') { const e = new Error('nope'); e.code = 'permission-denied'; throw e; }
-        window.__box.readFrom = c;
-        return { docs: window.__box.docs };
-      } }),
-      // 照片备份走 users/{uid}/attachments，这里给个空壳免得 uploadAttachmentToCloud 报错
-      doc: () => ({ collection: () => ({ doc: () => ({ set: async () => {} }) }) }),
-    }) };
+    localStorage.setItem('expenseTracker_companyToken', 'boss-token');
+    // 照片备份走 users/{uid}/attachments，给个空壳免得 uploadAttachmentToCloud 报错
+    cloudAvailable = true; currentUser = { uid:'boss' };
+    db = { collection: () => ({ doc: () => ({ collection: () => ({ doc: () => ({ set: async () => {} }) }) }) }) };
   });
 
-  const seed = (id, tx, from) => page.evaluate(([id, tx, from]) =>
-    window.__put(id, { k:'x', from, tx: JSON.stringify(tx) }), [id, tx, from]);
+  const nowMonth = await page.evaluate(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  });
+  const today = await page.evaluate(() => today());
+  book[nowMonth] = book[nowMonth] || [];
   const fetchNow = () => page.evaluate(() => fetchInbox());
+
   const bossAcc = await page.evaluate(() => getInboxAccountId());
   ok('默认收进 Boss（USD）那个账户', bossAcc === 'acc_boss', bossAcc);
 
-  await seed('d1', { srcId:'s1', date:'2026-08-09', amount:12.34, type:'expense',
-                     categoryId:'cat_food', description:'老板的咖啡' }, 'Seryi');
+  // ---- 收一笔 ----
+  book[nowMonth] = [{ id:'r1', srcId:'s1', date: today, reporter:'Seryi', type:'expense',
+    amount:12.34, currency:'USD', categoryId:'cat_food', description:'老板的咖啡',
+    photoPath:null, createdAt:'2026-09-11T00:00:00.000Z' }];
   await fetchNow(); await page.waitForTimeout(300);
-  let tx = await page.evaluate(() => data.transactions.find(t => t.id === 'ix_s1'));
-  ok('收进来了，id 用同事那条的 srcId', !!tx, tx);
+  let tx = await page.evaluate(() => data.transactions.find(t => t.id === 'bl_r1'));
+  ok('收进来了，id 对得回账本那一条', !!tx, tx);
   ok('金额原样', tx?.amount === 12.34, tx?.amount);
   ok('进了指定账户', tx?.accountId === 'acc_boss', tx?.accountId);
   ok('记下是谁记的', tx?.fromStaff?.by === 'Seryi', tx?.fromStaff);
-  ok('收完把箱子里那条清掉', (await page.evaluate(() => window.__box.deleted)).includes('d1'));
+  ok('记下对应账本里哪一条（改/删要靠它找回去）',
+     tx?.bossRec?.id === 'r1' && tx?.bossRec?.month === nowMonth, tx?.bossRec);
   ok('列表上标出「Seryi记的」',
-     (await page.evaluate(() => staffTxNote(data.transactions.find(t=>t.id==='ix_s1')))).includes('Seryi'));
+     (await page.evaluate(() => staffTxNote(data.transactions.find(t=>t.id==='bl_r1')))).includes('Seryi'));
 
-  // 同一笔再送一次（同事重送、或上次删文档失败）：只能覆盖，不能变两条
-  await seed('d1b', { srcId:'s1', date:'2026-08-09', amount:12.34, type:'expense',
-                      categoryId:'cat_food', description:'老板的咖啡（改过）' }, 'Seryi');
+  // ---- 再同步一次：不能变两笔 ----
   await fetchNow(); await page.waitForTimeout(300);
-  const n = await page.evaluate(() => data.transactions.filter(t => t.id === 'ix_s1').length);
-  ok('收两次还是一笔，不是两笔', n === 1, n);
-  ok('内容跟着更新（同事改过再送）',
-     (await page.evaluate(() => data.transactions.find(t=>t.id==='ix_s1').description)).includes('改过'));
+  ok('同步两次还是一笔，不是两笔',
+     await page.evaluate(() => data.transactions.filter(t => t.id === 'bl_r1').length) === 1);
 
-  // 删掉之后不许再被收回来——「删了又出现」是这个 App 栽过的坑，别从新路径长回来
-  await page.evaluate(() => { deleteTxById('ix_s1'); });
+  // ---- 账本里改了金额：本机要跟上 ----
+  book[nowMonth][0].amount = 20;
+  book[nowMonth][0].description = '老板的咖啡（改过）';
+  await fetchNow(); await page.waitForTimeout(300);
+  tx = await page.evaluate(() => data.transactions.find(t => t.id === 'bl_r1'));
+  ok('账本改了金额，本机跟着改', tx?.amount === 20, tx?.amount);
+  ok('描述也跟着改', String(tx?.description).includes('改过'), tx?.description);
+
+  // ---- 老板标过「已付清」：不许被同步冲掉（那是他这边的状态，账本不知道）----
+  await page.evaluate(() => {
+    const t = data.transactions.find(x => x.id === 'bl_r1');
+    t.fromStaff = Object.assign({}, t.fromStaff, { paidAt: 1757400000000 });
+    saveData();
+  });
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('已付清的标记不会被同步冲掉（冲掉就会重复付一次钱）',
+     await page.evaluate(() =>
+       data.transactions.find(t => t.id === 'bl_r1').fromStaff.paidAt) === 1757400000000);
+
+  // ---- 账本里那条没了：本机要删掉，而且落墓碑 ----
+  book[nowMonth] = [];
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('账本里删了，本机也删掉',
+     (await page.evaluate(() => data.transactions.some(t => t.id === 'bl_r1'))) === false);
+  ok('落了墓碑（不落的话云端旧快照一合并又并回来）',
+     await page.evaluate(() => (data.deletedTxIds || []).some(d => d.id === 'bl_r1')));
+
+  // ---- 对照组：老板自己手记的账，绝不能被这条路删掉 ----
+  await page.evaluate(() => {
+    data.transactions.push({ id:'own1', accountId:'acc_boss', amount:99, type:'expense',
+      categoryId:'cat_food', date: today(), description:'我自己记的' });
+    saveData();
+  });
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('对照组：老板自己手记的账不受影响（账本里没有它，也不许删）',
+     await page.evaluate(() => data.transactions.some(t => t.id === 'own1')));
+
+  // ---- 收据照片：账本里有 photoPath 就取回来存成附件 ----
+  book[nowMonth] = [{ id:'r2', srcId:'s2', date: today, reporter:'Kuang', type:'expense',
+    amount:8, currency:'USD', categoryId:'cat_food', description:'带收据的',
+    photoPath:'data/boss-expenses/photos/x.png', createdAt:'2026-09-11T00:00:00.000Z' }];
+  await fetchNow();
+  await until(() => page.evaluate(() =>
+    !!(data.transactions.find(t => t.id === 'bl_r2') || {}).attachmentId),
+    { what: '收据照片取回来' });
+  ok('照片取回来了，挂在那笔账上（月底账单的凭证页就靠它）',
+     await page.evaluate(() =>
+       (data.transactions.find(t => t.id === 'bl_r2') || {}).attachmentId === 'att_bl_r2'));
+  const photoCalls = api.calls.filter(c => c.action === 'photo').length;
+  await fetchNow(); await page.waitForTimeout(400);
+  ok('已经有图就不重复拉（每次开 App 都重拉一遍是白等）',
+     api.calls.filter(c => c.action === 'photo').length === photoCalls, photoCalls);
+
+  // ---- 老板在 App 里删一笔：先删账本，账本没删成就不许动本机 ----
+  await page.evaluate(() => { window.confirm = () => true; });
+  api.deleteFail = true;
+  await page.evaluate(() => deleteTxById('bl_r2'));
   await page.waitForTimeout(300);
-  await seed('d1c', { srcId:'s1', date:'2026-08-09', amount:12.34, type:'expense',
-                      categoryId:'cat_food', description:'老板的咖啡' }, 'Seryi');
+  ok('账本没删成时，本机那笔留着（不留「本机没了、账本还在」）',
+     await page.evaluate(() => data.transactions.some(t => t.id === 'bl_r2')));
+  api.deleteFail = false;
+  await page.evaluate(() => deleteTxById('bl_r2'));
+  await page.waitForTimeout(300);
+  ok('账本删成了，本机才跟着删',
+     (await page.evaluate(() => data.transactions.some(t => t.id === 'bl_r2'))) === false);
+  ok('账本那边真的少了那一条', (book[nowMonth] || []).length === 0, book[nowMonth]);
+
+  // ---- 老板改一笔：账本没改成要回退，不留分叉 ----
+  book[nowMonth] = [{ id:'r3', srcId:'s3', date: today, reporter:'Seryi', type:'expense',
+    amount:30, currency:'USD', categoryId:'cat_food', description:'原本的',
+    photoPath:null, createdAt:'2026-09-11T00:00:00.000Z' }];
   await fetchNow(); await page.waitForTimeout(300);
-  ok('删掉的不会被再收回来（墓碑挡住）',
-     (await page.evaluate(() => data.transactions.some(t => t.id === 'ix_s1'))) === false);
+  api.editFail = true;
+  await page.evaluate(() => {
+    editTx('bl_r3');
+    document.getElementById('tx-amount').value = '55';
+    saveTx();
+  });
+  await until(() => page.evaluate(() =>
+    (data.transactions.find(t => t.id === 'bl_r3') || {}).amount === 30),
+    { what: '改不成时回退成原样' });
+  ok('账本没改成：本机这笔回退成原样（不留「本机改了、账本还是旧的」）',
+     await page.evaluate(() => data.transactions.find(t => t.id === 'bl_r3').amount) === 30);
+  api.editFail = false;
+  await page.evaluate(() => {
+    editTx('bl_r3');
+    document.getElementById('tx-amount').value = '55';
+    saveTx();
+  });
+  await page.waitForTimeout(400);
+  ok('账本改成了，本机就是新的金额',
+     await page.evaluate(() => data.transactions.find(t => t.id === 'bl_r3').amount) === 55);
+  ok('账本那边也是新的金额（两边不会分叉）', book[nowMonth][0].amount === 55, book[nowMonth][0]);
 
-  // 箱子是别人能写的地方，一定会收到垃圾——坏数据要丢掉，而且不能堵住后面的好数据
-  const before = await page.evaluate(() => data.transactions.length);
-  await seed('bad1', { srcId:'b1', date:'不是日期', amount:5, type:'expense', categoryId:'cat_food' }, 'X');
-  await seed('bad2', { srcId:'b2', date:'2026-08-09', amount:'很多钱', type:'expense', categoryId:'cat_food' }, 'X');
-  await seed('good', { srcId:'g1', date:'2026-08-09', amount:9.99, type:'expense', categoryId:'cat_food' }, 'Kuang');
-  await fetchNow(); await page.waitForTimeout(300);
-  const after = await page.evaluate(() => data.transactions.length);
-  ok('两条坏数据都没入账', after - before === 1, { before, after });
-  ok('坏数据后面的好数据照收', await page.evaluate(() => data.transactions.some(t => t.id === 'ix_g1')));
-  ok('坏数据也从箱子里清掉，不会堵着',
-     (await page.evaluate(() => window.__box.deleted)).filter(x => x.startsWith('bad')).length === 2);
-
-  // 不认得的类别退回「其他」，不是丢掉——账不能因为类别对不上就消失
-  await seed('d2', { srcId:'s2', date:'2026-08-09', amount:1, type:'expense',
-                     categoryId:'cat_不存在', description:'' }, 'Seryi');
-  await fetchNow(); await page.waitForTimeout(300);
-  ok('认不得的类别退回「其他」而不是丢掉',
-     (await page.evaluate(() => (data.transactions.find(t=>t.id==='ix_s2')||{}).categoryId)) === 'cat_other_exp');
-
-  // 规则没贴好 vs 没网，要分开说——不然用户对着「连不上」在 WiFi 里瞎找
-  await page.evaluate(() => { window.__box.mode = 'denied'; });
-  await fetchNow(); await page.waitForTimeout(300);
-  ok('权限被拒时说的是「规则没设好」',
-     (await page.evaluate(() => inboxState.error)).includes('权限规则'),
-     await page.evaluate(() => inboxState.error));
-
-  // 没登录不收（也收不到——规则那边只认老板的 uid）
-  await page.evaluate(() => { window.__box.mode = 'ok'; currentUser = null; window.__box.readFrom = null; });
-  await seed('d3', { srcId:'s3', date:'2026-08-09', amount:2, type:'expense', categoryId:'cat_food' }, 'Seryi');
-  await fetchNow(); await page.waitForTimeout(300);
-  ok('没登录时根本不去读投递箱',
-     (await page.evaluate(() => window.__box.readFrom)) === null);
-
-  // ---- 同事把自己那笔删了，这边也要跟着删（2026-09-01 用户要求）----
-  // 在这之前删除只删同事手机上那条，老板账本里那条一直留着：
-  // 「刚刚让他们删了记录还在」就是这个。
-  await page.evaluate(() => { currentUser = { uid:'boss' }; window.__box.docs = []; });
-  await seed('e1', { srcId:'k1', date:'2026-08-10', amount:8.80, type:'expense',
-                     categoryId:'cat_food', description:'替老板买的水' }, 'Kuang');
-  await fetchNow(); await page.waitForTimeout(300);
-  ok('先收进来一笔', await page.evaluate(() => !!data.transactions.find(t => t.id === 'ix_k1')));
-
-  await page.evaluate(() => { window.__box.docs = []; });
-  await seed('e1del', { op:'delete', srcId:'k1' }, 'Kuang');
-  await fetchNow(); await page.waitForTimeout(300);
-  ok('同事删了，这边也删掉了',
-     (await page.evaluate(() => data.transactions.some(t => t.id === 'ix_k1'))) === false);
-  ok('删除请求也从箱子里清掉',
-     (await page.evaluate(() => window.__box.deleted)).includes('e1del'));
-  ok('落了墓碑（别的设备同步时也会删）',
-     await page.evaluate(() => (data.deletedTxIds || []).some(d => d.id === 'ix_k1')));
-
-  // 同一批里「加」和「删」一起来：删的那条不管排在前排在后，结果都必须是删掉。
-  // 没有先加后删这个顺序的话，删的先跑、加的后跑，那笔会当场复活——
-  // 而这是最难发现的一种：箱子清空了、账却还在。
-  await page.evaluate(() => { window.__box.docs = []; });
-  await seed('e2del', { op:'delete', srcId:'k2' }, 'Kuang');            // 删的先放进箱子
-  await seed('e2', { srcId:'k2', date:'2026-08-11', amount:3.30, type:'expense',
-                     categoryId:'cat_food', description:'同一批里加又删' }, 'Kuang');
-  await fetchNow(); await page.waitForTimeout(300);
-  ok('同一批里加又删：最后是删掉，不会复活',
-     (await page.evaluate(() => data.transactions.some(t => t.id === 'ix_k2'))) === false);
-
-  // 删除请求没有 amount/date——不能被「坏数据」那道闸当垃圾丢掉
-  ok('删除请求不会被当成坏数据丢掉（上面两条已证明它真的生效了）',
-     (await page.evaluate(() => window.__box.deleted)).includes('e2del'));
-
+  // ---- 连不上：不许把本机已经收下来的账清掉 ----
+  const nBeforeOffline = await page.evaluate(() => data.transactions.length);
+  api.fail = true;
+  await page.evaluate(() => fetchInbox({ loud:true }));
+  await page.waitForTimeout(400);
+  ok('连不上时，本机的账一笔都没少（拉不到 ≠ 账本空了）',
+     await page.evaluate(() => data.transactions.length) === nBeforeOffline,
+     { before: nBeforeOffline, after: await page.evaluate(() => data.transactions.length) });
+  api.fail = false;
   // ---- 该付同事多少：投递箱这些是他们垫的钱 ----
   await page.evaluate(() => {
     // 重来一份干净的：两个人、三笔垫付，外加一笔老板自己记的（不该算进去）
@@ -2769,12 +2828,17 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
       date: today(), description: 'Boss dinner', categoryId: cat.id,
       attachmentId: 'att-keep-1',
       fromStaff: { by: 'Kuang', at: 1757000000000, paidAt: 1757400000000 },
-      inbox: { status: 'sent' }
+      inbox: { status: 'sent' },
+      bossRec: { id: 'brec_9', month: '2026-09', photoPath: null }
     }];
     state.currentAccountId = acc.id;
     // 附件本来住 IndexedDB，这里给回一张一像素图，省掉写库那一圈
     window.getAttachmentBlob = async () =>
       await (await fetch('data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEAAAAALAAAAAABAAEAAAIBAAA=')).blob();
+    // 这一笔带 bossRec（账本来的），存档时会顺手去改 butler 那一条。这块测的是
+    // 「表单管不到的字段有没有被保住」，不是那条网络路——打桩成成功，让它别插话。
+    // （真的那条路怎么验：见【21】「账本没改成要回退」那两条。）
+    window.editBossLedgerRecord = async () => true;
   });
 
   // ---- 正路：改描述（等同用户补照片那个动作：只动表单里的东西）----
@@ -2790,6 +2854,7 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
     const t = data.transactions.find(x => x.id === 'edit-keep-1');
     return t ? { by: t.fromStaff && t.fromStaff.by, paidAt: t.fromStaff && t.fromStaff.paidAt,
                  inbox: t.inbox && t.inbox.status, desc: t.description,
+                 rec: t.bossRec && t.bossRec.id,
                  att: t.attachmentId || null, n: data.transactions.length } : null;
   });
   ok('改描述真的存进去了', kept && kept.desc === 'Boss dinner（补收据）', kept);
@@ -2798,6 +2863,10 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   ok('已付清的时间戳还在（丢了会被当成还欠他钱，重复付一次）',
      kept && kept.paidAt === 1757400000000, kept);
   ok('「已送老板」的状态还在', kept && kept.inbox === 'sent', kept);
+  // bossRec 丢了就再也对不回 butler 账本里那一条：本机这笔变无主记录，
+  // 下次收件账本那条又同步下来，同一笔就变成两笔
+  ok('「这笔是账本里哪一条」的标记还在（丢了会变成同一笔出现两次）',
+     kept && kept.rec === 'brec_9', kept);
   ok('收据照片没被动到', kept && kept.att === 'att-keep-1', kept);
 
   // ---- 对照组：故意按掉收据，就不许自己回来 ----

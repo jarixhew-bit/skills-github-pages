@@ -1305,29 +1305,23 @@ function staffGoCompany(){
 }
 function staffGoBoss(){ staffSwitchAcc(STAFF_BOSS_ACC_ID); }
 
-/**
- * 投递箱要一个 Firebase 身份才写得进去（规则里 request.auth != null 那条）。
- * 用匿名登录：同事不用注册任何账号，打开就有一个临时身份。
- *
- * 注意：同事版的 onAuthStateChanged 在生成时已经被拿掉了（第 7 步），所以匿名登录
- * **不会**让 currentUser 变成非 null，也就不会有人把同事的账本推上老板的云端——
- * 改动这一段前先确认那条还在。
- */
-async function staffEnsureAnon(){
-  if(!cloudAvailable) return false;
-  try{
-    if(!auth.currentUser) await auth.signInAnonymously();
-    return !!auth.currentUser;
-  }catch(e){ console.warn('匿名登录失败', e); return false; }
-}
+// 2026-09-11 起，同事版**完全不碰 Firestore** 了：老板账从投递箱改走 butler 的
+// 中央账本（见下面 submitInboxTx）。原本这里有个 staffEnsureAnon()——投递箱要一个
+// Firebase 身份才写得进去，所以先做一次匿名登录——现在没有任何地方需要它，删掉。
+// 同事版的 onAuthStateChanged 在生成时也是被拿掉的（见「云同步整个不接」那一步），
+// 两条加起来：同事的账本上不了任何人的云端，只在他自己手机上。
 
-// 投递箱单份文档的照片上限。Firestore 一份文档最大 1MB，账目字段本身还要占一点，
-// 留 700KB 给 base64 之后的照片是安全边界（base64 比原图大约 1.33 倍，
-// 也就是原图约 500KB 以内可以原样送）。
-const INBOX_PHOTO_LIMIT = 700 * 1024;
+// 收据照片的压缩目标。
+//
+// 2026-09-11 之前这条路走 Firestore 投递箱，一份文档最大 1MB，只能留 700KB 给照片——
+// 而手机随手一拍就是 2~5MB，于是绝大多数照片都被默默丢掉（「有记录没账单」的病根）。
+// 现在改走 butler 的中央账本，服务端上限宽得多（约 5MB 原图），这个数就不再是
+// 「塞不塞得下」的生死线，只是「别让同事的流量和等待时间白白变三倍」。
+// 所以照压，但门槛放到 3MB：一般收据根本碰不到，碰到的也压得很轻、看得清。
+const BOSS_PHOTO_LIMIT = 3 * 1024 * 1024;
 
 /**
- * 把太大的收据照片缩到能塞进投递箱。长边逐级缩、JPEG 质量逐级降，第一个塞得下的就用。
+ * 把太大的收据照片缩小再送。长边逐级缩、JPEG 质量逐级降，第一个塞得下的就用。
  * 目的是**留下能看清楚金额和店名的凭证**，不是留原画质——凭证只要读得出来就有用。
  * 压不到／读不出图就回 null，由调用方去提示同事另外把照片发给老板。
  */
@@ -1342,11 +1336,7 @@ async function shrinkPhotoForInbox(dataUrl, limit){
     const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
     if(!w0 || !h0) return null;
     // 从「够清楚」的那一端开始试，不是从「保证塞得下」那一端——收据要看得清金额、
-    // 店名、日期，糊掉的凭证等于没有。实测一般收据在 2400px / q0.85 大约 300~600KB，
-    // 本来就塞得下；真的塞不下才一级一级往下让。
-    // ⚠️ 上限**不能**再往上调：Firestore 那份规则写死 photo < 760000 字符
-    // （firestore.rules 第 51 行），客户端调高只会变成 permission-denied，
-    // 而且改规则要用户自己去 Firebase Console 贴一次。要更清楚，只能在上限内争取。
+    // 店名、日期，糊掉的凭证等于没有。
     for(const maxSide of [2400, 2000, 1600, 1200, 900, 700, 500]){
       const scale = Math.min(maxSide / Math.max(w0, h0), 1);   // 只缩不放
       const w = Math.max(1, Math.round(w0 * scale));
@@ -1366,68 +1356,79 @@ async function shrinkPhotoForInbox(dataUrl, limit){
   }catch(e){ console.warn('照片压不下去，只送文字', e); return null; }
 }
 
-async function submitInboxTx(tx){
-  const k = staffBossKey();
-  if(!k) return { ok:false, retriable:false, message: tt('还没填老板账口令','No Boss passcode yet') };
-  if(!(await staffEnsureAnon()))
-    return { ok:false, retriable:true, message: tt('现在连不上，等有网自动送','Offline — will send later') };
+const BOSS_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/boss-expense';
 
-  const payload = {
-    k,
-    from: (staffIdentity ? staffIdentity.reporter : '同事').slice(0, 40),
-    // 整笔账压成一个字符串送（规则里只校验长度，不逐字段校验——字段校验住老板 App
-    // 那边，收进来时不认的类别会退回「其他」，坏数据直接丢掉不入账）
-    tx: JSON.stringify({
-      srcId: tx.id, date: tx.date, amount: tx.amount, type: tx.type,
-      categoryId: tx.categoryId, description: tx.description || ''
-    })
-    // 刻意不带 createdAt：那要用 firebase.firestore.FieldValue.serverTimestamp()，
-    // 等于让这条路多依赖一个全局对象；而「什么时候收到的」老板那边收件时自己盖章
-    // （fromStaff.at）就够了。规则允许这个字段存在，只是我们不送。
-  };
-  // 收据照片一起送，老板那份账户明细 PDF 的凭证页才有图。
-  //
-  // ⚠️ 2026-09-10 用户反馈「他那两张有记录但是没有账单」，根因就在这里：以前的写法是
-  // 「超过 700KB 就不送照片」，而现在手机随手一拍就是 2~5MB，base64 之后更大——于是
-  // **绝大多数照片都被默默丢掉**，账进去了、凭证没了，而且同事和老板两边都没有任何提示。
-  // 现在改成：太大先**缩图重压**（长边逐级缩、JPEG 质量逐级降），压到能送为止；
-  // 真的压不下去才放弃，并且**一定要告诉同事**（见 flushBossQueue 里 photoDropped 那段），
-  // 让他知道要另外把照片发给老板。丢照片可以，闷声丢不行。
+/**
+ * 把一笔老板账送到 butler 的中央账本（2026-09-11 起；在那之前走 Firestore 投递箱，
+ * 老板还得手动「收件」才入账）。
+ *
+ * **钥匙用公司报账那把**（同事设置里已经填过的那个），不是页面上的「老板账口令」。
+ * 服务端按钥匙判定记账人——同事送什么名字都不算数，也就冒名不了。页面上那个口令
+ * 现在只当本地开关用：填了才出现「老板账」这个页面，跟以前看到的一样。
+ *
+ * 日期不送：服务端一律记当天。同事版的日期栏本来就是收起来的，但**光收起来不算数**
+ * ——一份开着好几天没重载的旧页面照样送得出往回填的日期，所以那道闸门在服务端。
+ */
+async function submitInboxTx(tx){
+  const token = getCompanyToken();
+  if(!token) return { ok:false, retriable:false,
+    message: tt('还没填公司报账密钥（设置里那串）','No company passcode yet') };
+
+  // 收据照片一起送，老板那份账单的凭证页才有图。
+  // 送不出去的两种情况要**分开讲**，因为同事该做的事不一样：
+  //   toobig  → 重拍一张小一点的就行
+  //   missing → 这台手机的本地存储被系统清掉了，照片已经没了，只能重拍
+  // 丢照片可以，闷声丢不行——那正是 2026-09-10「有记录没账单」的病根。
   let photoDropped = false, photoReason = '';
+  const payload = {
+    token,
+    srcId: tx.id,
+    type: tx.type,
+    amount: tx.amount,
+    currency: staffBossCur(),
+    categoryId: tx.categoryId,
+    description: tx.description || '',
+  };
   if(tx.attachmentId){
     try{
       const blob = await getAttachmentBlob(tx.attachmentId);
       if(!blob){
-        // ⚠️ 这一支以前是**静默**的（只有 if(blob){...}，没有 else），是「记录有、
-        // 账单没有」的第二个来源，而且比「太大」更难猜：这笔账明明附了照片
-        // （tx.attachmentId 还在），但这台手机的本地存储里已经找不到那张图了。
-        // 常见原因是手机系统清掉了网页的离线存储（iOS 对长期没打开的网站尤其积极），
-        // 照片没了、账目本身还在。这种情况**一定要讲出来**，否则同事以为送成功了、
-        // 老板以为同事没拍。
         photoDropped = true; photoReason = 'missing';
       }else{
-        const dataUrl = await blobToBase64(blob);
-        if(dataUrl.length < INBOX_PHOTO_LIMIT){
-          payload.photo = dataUrl;
+        let dataUrl = await blobToBase64(blob);
+        if(dataUrl.length >= BOSS_PHOTO_LIMIT){
+          dataUrl = await shrinkPhotoForInbox(dataUrl, BOSS_PHOTO_LIMIT);
+        }
+        if(dataUrl){
+          const comma = dataUrl.indexOf(',');
+          payload.photoBase64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+          payload.photoMime = blob.type || 'image/jpeg';
         }else{
-          const small = await shrinkPhotoForInbox(dataUrl, INBOX_PHOTO_LIMIT);
-          if(small) payload.photo = small;
-          else { photoDropped = true; photoReason = 'toobig'; }
+          photoDropped = true; photoReason = 'toobig';
         }
       }
     }catch(e){ console.warn('照片读不出来，只送文字', e); photoDropped = true; photoReason = 'error'; }
   }
 
+  let res;
   try{
-    await db.collection(INBOX_COLLECTION).add(payload);
-    return { ok:true, photoDropped, photoReason };
+    res = await fetch(BOSS_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
   }catch(e){
-    // 口令不对 / 老板还没设好权限：重试一百次也是同样结果，要当场说清楚
-    if(e && e.code === 'permission-denied')
-      return { ok:false, retriable:false,
-               message: tt('口令不对，或者老板那边还没设好','Wrong passcode, or the Boss has not set it up') };
-    return { ok:false, retriable:true, message: tt('现在送不出去，等有网自动送','Offline — will send later') };
+    return { ok:false, retriable:true, message: tt('现在连不上，等有网自动送','Offline — will send later') };
   }
+  let body = {};
+  try{ body = await res.json(); }catch(e){}
+  if(res.ok && body.status === 'ok'){
+    return { ok:true, photoDropped, photoReason, recordId: body.record && body.record.id };
+  }
+  // 5xx 是服务端暂时的毛病（含 503「密钥还没配」），队列留着自动补送；
+  // 4xx 是这笔数据或钥匙本身的问题，重试一百次也一样，要当场说清楚。
+  const retriable = res.status >= 500;
+  const detail = body.message || body.error || tt(`送不进去（${res.status}）`, `Failed (${res.status})`);
+  return { ok:false, retriable, message: retriable ? tt('已存本机，等有网自动送','Saved locally — will retry') : detail };
 }
 
 function loadBossQueue(){
@@ -1546,22 +1547,31 @@ function saveBossDelQueue(q){
   try{ localStorage.setItem(STAFF_BOSS_DEL_QUEUE, JSON.stringify(q)); }catch(e){}
 }
 
+/**
+ * 同事删掉自己记的一笔时，中央账本那边也要删掉（2026-09-11 起走 butler）。
+ *
+ * 按 **srcId** 指认，不是服务端回的 recordId：那个 id 存在这台手机上，换手机、
+ * 清缓存就没了，而 srcId 是这笔账自己的一部分。服务端按钥匙判定这笔是不是他记的，
+ * 删别人的会被挡下来（挡在服务端，不是靠页面不显示按钮）。
+ *
+ * 找不到（not_found）算成功：队列重送时前一次可能已经删掉了，
+ * 把它永远留在队列里堵着，后面的删除请求就一笔都出不去。
+ */
 async function submitInboxDelete(srcId){
-  const k = staffBossKey();
-  if(!k) return { ok:false, retriable:false };
-  if(!(await staffEnsureAnon())) return { ok:false, retriable:true };
+  const token = getCompanyToken();
+  if(!token) return { ok:false, retriable:false };
+  let res;
   try{
-    await db.collection(INBOX_COLLECTION).add({
-      k,
-      from: (staffIdentity ? staffIdentity.reporter : '同事').slice(0, 40),
-      tx: JSON.stringify({ op:'delete', srcId: String(srcId).slice(0, 40) })
+    res = await fetch(BOSS_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'delete', srcId: String(srcId).slice(0, 60) }),
     });
-    return { ok:true };
-  }catch(e){
-    // 口令不对／规则没设好：重试多少次都一样，别把它永远留在队列里堵着
-    if(e && e.code === 'permission-denied') return { ok:false, retriable:false };
-    return { ok:false, retriable:true };
-  }
+  }catch(e){ return { ok:false, retriable:true }; }
+  let body = {};
+  try{ body = await res.json(); }catch(e){}
+  if(res.ok && body.status === 'ok') return { ok:true };
+  if(body.status === 'not_found') return { ok:true };
+  return { ok:false, retriable: res.status >= 500 };
 }
 
 async function flushBossDelQueue(opts){
