@@ -1038,14 +1038,14 @@ toast 里会讲清楚。
 "他还回来了"）。混在一起统计会把"花掉的钱"误算成"还回来的钱"，`refreshBossCashGiftPersonSummary()`
 的 `repaid` 用 `t.type==='expense' && t.xfer && !t.staffSpendId` 分开两者。
 
-### 配平腿不给人看，但余额/统计照旧要算（`isPairedSpendLeg()`，2026-09-10）
+### 配平腿不给人看，但余额/统计照旧要算（`isPairedSpendLeg()`，2026-09-10，2026-09-11 扩大覆盖）
 
 用户原话：「我刚才下午把代管现金支付删掉了 我去看了单子也有这些东西 我不要看到这些
 东西」——上表里 `xfer:true` + `staffSpendId` 那种「配平腿」（`fetchInbox()` 腿二／
 `bossCashCleanupScan()` 补搬时新增的那条：真实账户 income、xfer、`staffSpendId` 指回
 那笔真消费）本来就不是给人看的，只是在真实账户里把「代管现金花掉」这件事抵消掉。
 
-`isPairedSpendLeg(t)`（`return !!(t && t.xfer && t.staffSpendId)`）挡住这两处：
+`isPairedSpendLeg(t)`（`return !!(t && t.xfer && (t.staffSpendId || (Array.isArray(t.settleAdvanceIds) && t.settleAdvanceIds.length)))`）挡住这两处：
 - `renderTxList()`（明细列表）、`renderOverview()` 里首屏「最近」——`.filter(!isPairedSpendLeg(t))`。
 - `buildStatementPDF()`（账户明细 PDF）——`incomeTxsShown`/`expenseTxsShown` 两个过滤后
   的数组只给行渲染用，**`incomeTotal`/`expenseTotal`/`closingBalance` 继续用未过滤的
@@ -1055,6 +1055,14 @@ toast 里会讲清楚。
   `staffSpendId`（就是它自己的 id），但没有 `xfer`，不会被误伤；「给同事现金」转账腿
   （`giftId`）、「他还钱了」/「一键归还」（`repayId`）都没有 `staffSpendId`，也继续
   正常显示。
+- **2026-09-11 扩大覆盖「结清垫付」那对配平腿**：用户实机又看到一条同类记录混进明细——
+  「结清 X 垫付的 N 笔（从代管账户转回）　+189.53」（`sendBossCashGift()`/
+  `convertOldOffsetToSettle()` 生成，见上面「转账记全额，结清垫付另开一对配平转账」
+  那节，`xfer:true` + `settleAdvanceIds` 数组，没有 `staffSpendId`）。判断思路跟
+  `staffSpendId` 那对完全一样，只是多认一种明确标记，同样**只隐藏、不能删**——
+  `buildStatementPDF()` 那边不受影响（那里早就换成更宽的 `!t.xfer` 筛，天然盖住这对，
+  见「月底账单不列任何转账」那节），只有明细列表／首屏最近这两处窄筛（`isPairedSpendLeg`
+  本身）漏了这种腿，这次一并补上。
 
 ### 🔧 补回缺失的配平记录（`missingSpendLegs()` / `repairSpendLegs()`，2026-09-10）
 
@@ -1077,7 +1085,19 @@ toast 里会讲清楚。
 自检：`check-expense-company.mjs`【46】（明细列表/首屏最近/PDF 都不显示配平腿，对照组
 真支出与「给同事现金」照常显示，余额与统计手算 fixture 核对不受隐藏影响）；【45】
 （`missingSpendLegs`/`repairSpendLegs`：真实账户腿缺了/代管账户腿缺了/两条都缺三种
-组合、补完余额回到删之前、可重复点、完好资料点修复不会凭空多补）。
+组合、补完余额回到删之前、可重复点、完好资料点修复不会凭空多补）；【50】
+（用户真实数字端到端，2026-09-11：转5000、垫付189.53被转账当下顺带结清、再用代管
+现金花513.44——「结清」那条配平腿在明细列表/首屏最近都看不到，对照组真开销/给同事
+现金的转账照常显示；隐藏前后来源账户余额/本月收入/本月支出三个数字不受影响，本月
+收入精确是 0.00；`personMonthSpend('Kuang')` 直接返回 `{cash:513.44, own:189.53}`，
+跟卡片文字「给了 5000.00　花了 702.97　还剩 4297.03」一致，5000−702.97＝4297.03 这条
+恒等式精确成立；对照组：没有任何结清记录的人（Yang），「花了」就是他自己那笔 300，
+不会被别人的结清腿带偏）。做过 false-red：把 `isPairedSpendLeg()` 改回旧版（只认
+`staffSpendId`，不认 `settleAdvanceIds`），明细列表/首屏最近那两条断言立刻红，其余
+723 条（含恒等式那几条）仍然绿——**恒等式本身在这次改动前就已经成立**（`personMonthSpend()`
+的 `own` 分支本来就不看 `fromStaff.paidAt`，被转账结清过的垫付本来就照算），这次
+真正修的只是「结清」配平腿的隐藏，【50】把这两件事一次性用真实数字钉死，以后谁把
+其中任何一处改歪都会当场变红。
 
 ### 「该付同事多少」（`inboxOwedByPerson()`）现在跟 `staffSpendId` 挂钩
 
