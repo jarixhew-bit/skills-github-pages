@@ -4176,11 +4176,17 @@ console.log('\n【41】转账记全额，结清垫付另开一对配平转账：
   const giftId41 = await page.evaluate(()=>(data.transactions.find(t=>t.accountId==='acc_boss'
     && t.giftId && !t.settleAdvanceIds && t.type==='expense') || {}).giftId);
   const legs41 = await page.evaluate((gid)=>data.transactions.filter(t=>t.giftId===gid), giftId41);
-  ok('★这一次转账共记了 4 条腿（转账 2 条全额 + 结清垫付 2 条配平）', legs41.length === 4, legs41);
+  // 2026-09-11 用户第三次拍板：结清垫付**只记代管账户那一条支出**，不往来源账户
+  // 补那条 +189.53 的配平收入。原话：「你在往我这里加一条他垫付的，总账就加一条
+  // 189 了，这样肯定不对」。所以这里是 3 条腿，不是 4 条。
+  ok('★这一次转账共记了 3 条腿（转账 2 条全额 + 结清 1 条，只在代管账户）', legs41.length === 3, legs41);
   const settleLegs41 = legs41.filter(t=>Array.isArray(t.settleAdvanceIds));
-  ok('★结清那两条腿都带 settleAdvanceIds=[debt189]、金额 189.53',
-     settleLegs41.length === 2 && settleLegs41.every(t=>t.settleAdvanceIds.includes('debt189') && t.amount===189.53),
+  ok('★结清只有一条腿，带 settleAdvanceIds=[debt189]、金额 189.53',
+     settleLegs41.length === 1 && settleLegs41.every(t=>t.settleAdvanceIds.includes('debt189') && t.amount===189.53),
      settleLegs41);
+  const kuangHoldIdChk41 = await page.evaluate(()=>holdingAccountId('Kuang'));
+  ok('★★结清那条只记在代管账户，来源账户没有多出任何一条（用户明确要求，别再加回来）',
+     settleLegs41.every(t => t.accountId === kuangHoldIdChk41), settleLegs41.map(t=>t.accountId));
   const transferLegs41 = legs41.filter(t=>!t.settleAdvanceIds);
   ok('★转账那两条腿金额都是全额 5000（不因为结清而缩水）',
      transferLegs41.length === 2 && transferLegs41.every(t=>t.amount===5000), transferLegs41);
@@ -4193,8 +4199,17 @@ console.log('\n【41】转账记全额，结清垫付另开一对配平转账：
   ok('★ 代管余额是 4810.47（5000−189.53，结清那笔从代管账户里扣掉了）',
      Math.abs((await bal41(kuangHoldId41)) - 4810.47) < 0.005, await bal41(kuangHoldId41));
   const accBossBalAfter41 = await bal41('acc_boss');
-  ok('★ 来源账户净变化正好 −5000（−189.53 记旧账 −5000 转账 +189.53 结清转回，三笔相抵后净变化＝实际转出去的现金）',
-     Math.abs((accBossBalAfter41 - accBossBalBefore41) + 5000) < 0.005, { accBossBalBefore41, accBossBalAfter41 });
+  // −5189.53 ＝ −189.53（记他垫付那笔）−5000（转账全额）。结清**不**往来源账户补
+  // 那条 +189.53 的收入，所以比「实际交出去的现金 5000」多 189.53——这是 2026-09-11
+  // 用户拍板并明确接受的取舍（他对账看的是「注资−开销」那条线，不是拿账户余额去
+  // 对钞票）。**不要**自作主张把配平收入加回来，今天为此来回过三轮。
+  ok('★来源账户净变化 −5189.53（转账全额扣 5000，结清不再往来源账户加任何一条）',
+     Math.abs((accBossBalAfter41 - accBossBalBefore41) + 5189.53) < 0.005,
+     { accBossBalBefore41, accBossBalAfter41 });
+  const srcSettle41 = await page.evaluate(()=>data.transactions.filter(t =>
+     t.accountId === 'acc_boss' && Array.isArray(t.settleAdvanceIds)));
+  ok('★★来源账户里一条「结清」记录都没有（这正是用户来回三轮要的结果）',
+     srcSettle41.length === 0, srcSettle41);
 
   // ---- 撤回这笔转账（趁还没花钱、状态干净的时候撤）：4 条腿都要消失、debt189 的
   // paidAt 要清掉、欠款恢复、来源账户余额回到转账前 ----
@@ -4588,8 +4603,12 @@ console.log('\n【44】真实数据端到端（结清垫付）：欠189.53 → �
   ok('这次转账顺带结清了 189.53（代管账户那条配平腿）', Math.abs(settledInHold44 - 189.53) < 0.005, settledInHold44);
 
   const bossBal44 = await bal('acc_boss');
-  ok('★③来源账户净变化正好 −5000（−189.53记旧账 −5000转账 +189.53结清转回 −224真花 +224配平，相抵后＝实际转出去的现金）',
-     Math.abs((bossBal44 - bossBal0) + 5000) < 0.005, { bossBal0, bossBal44 });
+  // 2026-09-11 用户拍板后的取舍：结清不往来源账户补收入，所以来源账户净变化是
+  // −189.53（记他垫付那笔）−5000（转账）＝ −5189.53，比「实际交出去的现金 5000」
+  // 多 189.53。**这是用户明确知道并接受的**（他对账看的是「注资−开销」那条线，
+  // 不是拿账户余额去对钞票）。不要自作主张把配平收入加回来——今天为此来回过三轮。
+  ok('★③来源账户净变化 −5189.53（−189.53 记他垫付 −5000 转账；结清不补收入，用户拍板的取舍）',
+     Math.abs((bossBal44 - bossBal0) + 5189.53) < 0.005, { bossBal0, bossBal44 });
 
   const expNoXfer44 = await page.evaluate(()=>{
     const now = new Date();
@@ -5214,11 +5233,13 @@ console.log('\n【49】🔁 把旧格式转成新格式：预览四个数字（�
   ok('★转换后：offsetTxIds/offsetTotal 被清掉', !srcAfter49.offsetTxIds && !srcAfter49.offsetTotal, srcAfter49);
   const newGiftId49 = srcAfter49.giftId;
   const legs49 = await page.evaluate((gid)=>data.transactions.filter(t=>t.giftId===gid), newGiftId49);
-  ok('★转换后共 4 条腿（转账 2 条全额 + 结清配平 2 条）', legs49.length === 4, legs49);
+  ok('★转换后共 3 条腿（转账 2 条全额 + 结清 1 条，只在代管账户）', legs49.length === 3, legs49);
   const settleLegs49 = legs49.filter(t=>Array.isArray(t.settleAdvanceIds));
-  ok('★补记的结清腿带 settleAdvanceIds=[debt49]、金额 189.53',
-     settleLegs49.length === 2 && settleLegs49.every(t=>t.settleAdvanceIds.includes('debt49') && t.amount===189.53),
+  ok('★补记的结清腿只有一条，带 settleAdvanceIds=[debt49]、金额 189.53',
+     settleLegs49.length === 1 && settleLegs49.every(t=>t.settleAdvanceIds.includes('debt49') && t.amount===189.53),
      settleLegs49);
+  ok('★★旧资料转换也不往来源账户补配平收入（跟新转账同一条规矩）',
+     settleLegs49.every(t => t.accountId !== 'acc_boss'), settleLegs49.map(t=>t.accountId));
   const debt49After = await page.evaluate(()=>data.transactions.find(t=>t.id==='debt49'));
   ok('★debt49 的 paidAt 没被动过（转换不改变"已结清"这个事实）',
      debt49After && debt49After.fromStaff.paidAt, debt49After);
@@ -5233,6 +5254,213 @@ console.log('\n【49】🔁 把旧格式转成新格式：预览四个数字（�
   // ---- 可重复点：转换过的不会再出现 ----
   const groupsAfter49 = await page.evaluate(()=>offsetGiftGroups().some(g=>g.person==='Old49'));
   ok('第二次扫描找不到这一笔了（已经转换过）', !groupsAfter49, groupsAfter49);
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+// ---------- 【50】用户真实数字端到端：给了−花了＝还剩恒等式 + 「结清」配平腿也要隐藏 ----------
+// 用户实机报告：卡片显示「给了 5000　花了 513.97　还剩 4297.03」，5000−513.97≠4297.03，
+// 差的正是转账当下顺带结清那笔垫付（189.53）——「花了」漏算了已结清的垫付部分。同一次
+// 还报告明细/最近记录里混进一条「结清 Kuang 垫付的 1 笔（从代管账户转回）+189.53」，
+// 用户明确要求「不要再看到这些东西」（跟 2026-09-10 那次 staffSpendId 配平腿是同一个诉求）。
+// 这条自检用他的真实数字（转5000、垫付189.53被结清、现金花513.44）做端到端核对，
+// 两件事一次覆盖：①恒等式 给了−花了＝还剩 精确成立；②结清那对配平腿不出现在明细/
+// 最近记录（对照组：真开销、给同事现金的转账照常显示），且隐藏前后余额/本月收入/
+// 本月支出三个数字不受影响（本月收入必须是 0.00——结清那笔是 xfer，不能被当成收入）；
+// ③对照组：没有任何结清记录的人，「花了」就是他自己花掉的，不会凭空多一块。
+console.log('\n【50】用户真实数字：给了−花了＝还剩恒等式 + 「结清」配平腿隐藏（对照组：真开销/给现金照常显示，余额不受影响）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashKey', 'pass-1234');
+    cloudAvailable = true; currentUser = { uid:'boss' };
+    window.__gifts = []; window.__giftSeq = 0;
+    window.__box = { docs: [], deleted: [] };
+    window.__put = (id, d) => window.__box.docs.push({
+      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
+    db = { collection: (c) => ({
+      add: async (p) => { window.__gifts.push({c,p}); window.__giftSeq++;
+                          return { id:'g50_' + window.__giftSeq }; },
+      limit: () => ({ get: async () => ({ docs: window.__box.docs }) }),
+      doc: () => ({ update: async () => {}, delete: async () => {} })
+    }) };
+    setInboxAccount('acc_boss');
+  });
+
+  // ---- 他垫付 189.53（同事端标 paidFrom:'own'）----
+  await page.evaluate(() => {
+    window.__put('own50', { k:'x', from:'Kuang', tx: JSON.stringify({ srcId:'k_own50',
+      date: today(), amount: 189.53, type:'expense', categoryId:'cat_other_exp',
+      description:'Kuang 垫付的车费', paidFrom:'own' }) });
+  });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(300);
+
+  // ---- 转 5000 给 Kuang，转账当下自动结清那笔 189.53 ----
+  await page.click('#ov-boss-cash-gift');
+  await page.waitForTimeout(150);
+  await page.selectOption('#boss-cash-gift-acc', 'acc_boss');
+  await page.selectOption('#boss-cash-gift-person', 'Kuang');
+  await page.fill('#boss-cash-gift-amount', '5000');
+  await page.evaluate(() => sendBossCashGift());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => closeModal('modal-boss-cash-gift'));
+
+  // ---- 用代管现金花 513.44（同事端标 paidFrom:'cash'）----
+  await page.evaluate(() => {
+    window.__put('cash50', { k:'x', from:'Kuang', tx: JSON.stringify({ srcId:'k_cash50',
+      date: today(), amount: 513.44, type:'expense', categoryId:'cat_food',
+      description:'Kuang 用代管现金付的', paidFrom:'cash' }) });
+  });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(300);
+
+  // ---- ①恒等式：给了 − 花了 ＝ 还剩 ----
+  const ms50 = await page.evaluate(() => personMonthSpend('Kuang'));
+  ok('★personMonthSpend 直接返回值：cash=513.44, own=189.53（花了=702.97，已结清的垫付没有被漏算）',
+     ms50.cash === 513.44 && ms50.own === 189.53, ms50);
+
+  const holdId50 = await page.evaluate(() => holdingAccountId('Kuang'));
+  const remain50 = await page.evaluate((id) => holdingBalance(getAcc(id)), holdId50);
+  ok('★还剩 4297.03（5000−189.53结清−513.44现金花的）', Math.abs(remain50 - 4297.03) < 0.005, remain50);
+
+  await page.evaluate(() => switchAccount('acc_boss'));
+  const cardText50 = await page.evaluate(() => { renderOvBossCashGift(); return document.getElementById('ov-boss-cash-gift').textContent; });
+  ok('★卡片文字：给了 US$5000.00　花了 US$702.97　还剩 US$4297.03',
+     cardText50.includes('5000.00') && cardText50.includes('702.97') && cardText50.includes('4297.03'), cardText50);
+  ok('★恒等式精确成立：5000 − 702.97 ＝ 4297.03',
+     Math.abs((5000 - (ms50.cash + ms50.own)) - remain50) < 0.005, { spent: ms50.cash + ms50.own, remain50 });
+
+  // ---- ②「结清」配平腿不出现在明细/最近记录，对照组：真开销、给同事现金照常显示 ----
+  await page.click('#nav-transactions');
+  await page.waitForTimeout(150);
+  const listText50 = await page.evaluate(() => (document.getElementById('tx-list')||{}).textContent || '');
+  ok('★明细列表里看不到「结清」字样', !listText50.includes('结清'), listText50.slice(0,500));
+  ok('对照组：明细列表里「Kuang 垫付的车费」（真开销）照常显示', listText50.includes('Kuang 垫付的车费'));
+  ok('对照组：明细列表里「给 Kuang 的现金」（转账）照常显示', listText50.includes('给 Kuang 的现金'));
+
+  await page.click('#nav-overview');
+  await page.waitForTimeout(150);
+  const recentText50 = await page.evaluate(() => (document.getElementById('ov-recent')||{}).textContent || '');
+  ok('★首屏「最近记录」里也看不到「结清」字样', !recentText50.includes('结清'), recentText50.slice(0,500));
+
+  // ---- 隐藏前后：账户余额/本月收入/本月支出三个数字完全不变（isPairedSpendLeg 只管
+  // 显示，不参与这三个统计的计算，用真实数字断言这三个数没有因为「藏了一条」而跟着变）----
+  const balAcc50 = await page.evaluate(() => data.transactions.filter(t=>t.accountId==='acc_boss')
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0));
+  // 结清不再往来源账户补收入（2026-09-11 用户拍板），所以这里是 −5189.53：
+  // −189.53（记他垫付）−5000（转账）。隐藏与否不影响这个数字，这条守的是「藏了
+  // 一条显示，余额不准跟着变」。
+  ok('★来源账户余额净变化 −5189.53（不受隐藏影响：藏的是显示，不是数字）',
+     Math.abs(balAcc50 + 5189.53) < 0.005, balAcc50);
+  const monthStats50 = await page.evaluate(() => {
+    const d = new Date();
+    const txs = monthTxs('acc_boss', d.getFullYear(), d.getMonth());
+    return {
+      inc: txs.filter(t=>t.type==='income' && !t.xfer).reduce((s,t)=>s+t.amount,0),
+      exp: txs.filter(t=>t.type==='expense' && !t.xfer).reduce((s,t)=>s+t.amount,0),
+    };
+  });
+  ok('★本月收入仍是 0.00（结清那笔是 xfer，不能被算成收入）', monthStats50.inc === 0, monthStats50);
+  ok('★本月支出（非 xfer）＝702.97（189.53垫付+513.44现金花的），一分不多一分不少',
+     Math.abs(monthStats50.exp - 702.97) < 0.005, monthStats50);
+
+  // ---- ③对照组：没有任何结清记录的人，「花了」就只是他花掉的，不会凭空多一块 ----
+  await page.evaluate(() => {
+    window.__put('plain50', { k:'x', from:'Yang', tx: JSON.stringify({ srcId:'k_plain50',
+      date: today(), amount: 300, type:'expense', categoryId:'cat_food',
+      description:'Yang 没有结清记录的普通消费', paidFrom:'own' }) });
+  });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(300);
+  const msYang = await page.evaluate(() => personMonthSpend('Yang'));
+  ok('对照组：Yang 没有结清记录，「花了」就是 300（own），不会凭空多算别人的结清腿',
+     msYang.cash === 0 && msYang.own === 300, msYang);
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+// ---------- 【51】清掉「结清」加进来源账户的那条收入（2026-09-11 用户要求）----------
+// 2026-09-11 之前的版本，结清垫付会记一对腿：代管账户支出 ＋ 来源账户收入。用户明确
+// 反对来源账户那一条（「你都扣掉他垫付的了，你再还回来，死的是我吧」），新版不再产生
+// 它——但他**现有资料里已经有一条**，光藏起来没用，账上那 189.53 还在，要能真的清掉。
+// 只清「收入＋xfer＋settleAdvanceIds」那一种；代管账户那条**支出**同样带
+// settleAdvanceIds，是对的、必须留着（少了它代管余额会多算）。
+console.log('\n【51】清掉「结清」加进来源账户的收入（代管那条支出要留着）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    cloudAvailable = false; currentUser = null;
+    const now = Date.now();
+    const hold = getOrCreateHoldingAccount('Kuang51', 'USD');
+    data.transactions = [
+      // 转账两条腿（全额）
+      { id:'g51a', accountId:'acc_boss', type:'expense', amount:5000, date: today(),
+        categoryId:'cat_cash_gift', description:'给 Kuang51 的现金', updatedAt: now, xfer:true, giftId:'g51' },
+      { id:'g51b', accountId: hold.id, type:'income', amount:5000, date: today(),
+        categoryId:'cat_cash_gift_in', description:'老板给的现金', updatedAt: now, xfer:true, giftId:'g51' },
+      // 旧版留下的那一对结清腿
+      { id:'g51c', accountId: hold.id, type:'expense', amount:189.53, date: today(),
+        categoryId:'cat_cash_gift', description:'结清 Kuang51 垫付的 1 笔（配平）',
+        updatedAt: now, xfer:true, giftId:'g51', settleAdvanceIds:['d51'] },
+      { id:'g51d', accountId:'acc_boss', type:'income', amount:189.53, date: today(),
+        categoryId:'cat_cash_gift_in', description:'结清 Kuang51 垫付的 1 笔（从代管账户转回）',
+        updatedAt: now, xfer:true, giftId:'g51', settleAdvanceIds:['d51'] },
+    ];
+    saveData();
+  });
+  const hold51 = await page.evaluate(()=>holdingAccountId('Kuang51'));
+  const bal51 = (id) => page.evaluate((a)=>data.transactions.filter(t=>t.accountId===a)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), id);
+
+  ok('清之前：来源账户被那条收入垫高了（−5000＋189.53＝−4810.47）',
+     Math.abs((await bal51('acc_boss')) + 4810.47) < 0.005, await bal51('acc_boss'));
+
+  await page.evaluate(()=>openClearSettleCredits());
+  await page.waitForTimeout(300);
+
+  ok('★来源账户那条「结清」收入被清掉了', !(await page.evaluate(()=>data.transactions.some(t=>t.id==='g51d'))));
+  ok('★清掉之后来源账户就是 −5000（不再被加回 189.53）',
+     Math.abs((await bal51('acc_boss')) + 5000) < 0.005, await bal51('acc_boss'));
+  ok('★★对照组：代管账户那条「结清」支出**留着**（清错了代管余额会多 189.53）',
+     await page.evaluate(()=>data.transactions.some(t=>t.id==='g51c')));
+  ok('★★对照组：代管余额仍是 4810.47（5000−189.53）',
+     Math.abs((await bal51(hold51)) - 4810.47) < 0.005, await bal51(hold51));
+  ok('对照组：转账那两条腿一条都没动',
+     await page.evaluate(()=>data.transactions.some(t=>t.id==='g51a') && data.transactions.some(t=>t.id==='g51b')));
+  ok('★移除的那条有落墓碑（不落的话云端同步会把它复活）',
+     await page.evaluate(()=>(data.deletedTxIds||[]).some(x=>(x&&x.id)==='g51d')),
+     await page.evaluate(()=>data.deletedTxIds));
+
+  // 可重复点：第二次没有东西可清
+  await page.evaluate(()=>{ document.getElementById('toast').textContent=''; });
+  await page.evaluate(()=>openClearSettleCredits());
+  await page.waitForTimeout(200);
+  ok('可重复点：第二次提示没有需要清掉的',
+     ((await page.textContent('#toast'))||'').includes('没有需要清掉'),
+     await page.textContent('#toast'));
 
   ok('无 JS 报错', errs.length===0, errs);
   await ctx.close();
