@@ -2029,6 +2029,44 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【28】「这笔是谁记的」那一栏不该出现在同事版 ----------
+// 那个标记是老板收件时盖的，用来算「该付同事多少」；同事在自己这版改它影响不到老板那边，
+// 留着就是一颗按了没反应的按钮。元素拿掉之后，渲染和保存两条路都不能因此报错——
+// 这正是「少了一个元素就整页崩」最容易发生的地方。
+console.log('\n【28】同事版没有「这笔是谁记的」，而且少了这一栏也不会崩');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  ok('页面上没有这一栏', (await page.evaluate(
+     () => !document.getElementById('tx-fromstaff-wrap') && !document.getElementById('tx-fromstaff'))));
+
+  const r = await page.evaluate(() => {
+    const acc = data.accounts[0];
+    const cat = data.categories.find(c => c.type === 'expense');
+    data.transactions = [{ id:'stf1', accountId: acc.id, type:'expense', amount: 12,
+      date: today(), description:'午餐', categoryId: cat.id,
+      fromStaff:{ by:'Kuang', at: 1 }, inbox:{ status:'sent' } }];
+    state.currentAccountId = acc.id;
+    editTx('stf1');
+    document.getElementById('tx-desc').value = '午餐（改过）';
+    saveTx();
+    const t = data.transactions.find(x => x.id === 'stf1');
+    return { desc: t.description, by: t.fromStaff && t.fromStaff.by,
+             inbox: t.inbox && t.inbox.status, n: data.transactions.length };
+  });
+  ok('编辑一笔账照样存得下去（没有因为少了那个元素抛错）', r.desc === '午餐（改过）', r);
+  ok('没多记出一笔', r.n === 1, r);
+  ok('这一栏不参与时，原本的标记照旧保住', r.by === 'Kuang' && r.inbox === 'sent', r);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

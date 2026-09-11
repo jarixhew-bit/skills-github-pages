@@ -2818,6 +2818,123 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await ctx.close();
 }
 
+// ---------- 【32】手动改「这笔是谁记的」 ----------
+{
+  console.log('\n【32】编辑弹窗里可以把一笔账改成「同事垫的」，也可以改回自己');
+  // 2026-09-11 用户要求：「你要把我编辑过的改成他的账啊 不然永远少钱」。
+  // 背景：同事垫的账靠 fromStaff 这个标记算欠款，而这个标记只在投递箱收件时自动写上，
+  // 一旦丢了（旧版编辑一笔账会抹掉它，已修）或者是老板自己代同事补记的一笔，
+  // 就没有任何地方能把它加回来——那笔钱就永远不算他垫的，欠他的钱永远少一截。
+  //
+  // 这一块守四件事：标得上、标完真的进欠款清单、改得回自己、换人时不把「已付清」
+  // 跟着带走（带走的话等于白付一次钱）。
+  //
+  // 这份自检验过会红（2026-09-11 实测三种改法）：
+  //   · saveTx 里改回只认 prevTx.fromStaff（等于这一栏没接上）→「标成 Kuang 垫的」失败
+  //   · fromStaffFromForm 选「我自己」时回 prev 而不是 null →「改回自己」那两条失败
+  //   · 换人时把整个 prev 带过去（连 paidAt）→「换人之后不算已付清」失败
+  const ctx = await browser.newContext();
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  /** 摆一笔账；who 为空＝没有「谁记的」标记（就是用户那两笔被抹掉的状态）。 */
+  const seed = (who, paidAt) => page.evaluate(({ who, paidAt }) => {
+    const acc = data.accounts.find(a => !a.isCompany) || data.accounts[0];
+    const cat = data.categories.find(c => c.type === 'expense');
+    const t = { id:'whotx', accountId: acc.id, type:'expense', amount:168,
+                date: today(), description:'Boss dinner', categoryId: cat.id };
+    if(who) t.fromStaff = paidAt ? { by: who, at: 1757000000000, paidAt }
+                                 : { by: who, at: 1757000000000 };
+    data.transactions = [t];
+    state.currentAccountId = acc.id;
+  }, { who, paidAt });
+
+  const editPick = async (value) => {
+    await page.evaluate(() => editTx('whotx'));
+    await until(() => page.evaluate(
+      () => document.getElementById('tx-fromstaff-wrap').style.display === 'block'),
+      { what: '「这笔是谁记的」那一栏出现' });
+    await page.selectOption('#tx-fromstaff', value);
+    await page.evaluate(() => saveTx());
+    await page.waitForTimeout(150);
+    return page.evaluate(() => {
+      const t = data.transactions.find(x => x.id === 'whotx');
+      const owed = inboxOwedByPerson();
+      return { fs: t.fromStaff || null, amount: t.amount, desc: t.description,
+               owed: owed.map(o => ({ who:o.who, total:o.total })) };
+    });
+  };
+
+  // ---- 标上：一笔「没有标记」的账改成 Kuang 垫的 ----
+  await seed(null);
+  const marked = await editPick('Kuang');
+  ok('标成 Kuang 垫的', marked.fs && marked.fs.by === 'Kuang', marked.fs);
+  ok('新标上的不带「已付清」（＝还欠他，这正是用户要的）',
+     marked.fs && !marked.fs.paidAt, marked.fs);
+  ok('标完真的进了「该付同事」那份清单',
+     marked.owed.length === 1 && marked.owed[0].who === 'Kuang' && marked.owed[0].total === 168,
+     marked.owed);
+  ok('只动标记，金额和描述一个字不改',
+     marked.amount === 168 && marked.desc === 'Boss dinner', marked);
+
+  // ---- 改回自己：标记要真的拿掉，清单里也不能再有他 ----
+  await seed('Kuang');
+  const unmarked = await editPick('');
+  ok('改回「我自己记的」，标记拿掉', unmarked.fs === null, unmarked.fs);
+  ok('改回自己之后欠款清单里不再有他', unmarked.owed.length === 0, unmarked.owed);
+
+  // ---- 换人：已经付清给 Kuang 的时间戳，不许跟着送给 Seryi ----
+  // （跟过去的话 Seryi 那笔一上来就算「已经还过了」，等于白付一次钱）
+  await seed('Kuang', 1757400000000);
+  const swapped = await editPick('Seryi');
+  ok('换成 Seryi 垫的', swapped.fs && swapped.fs.by === 'Seryi', swapped.fs);
+  ok('换人之后不算已付清（付给 Kuang 的记录不能算成付给 Seryi）',
+     swapped.fs && !swapped.fs.paidAt, swapped.fs);
+  ok('换人之后欠的是 Seryi',
+     swapped.owed.length === 1 && swapped.owed[0].who === 'Seryi', swapped.owed);
+
+  // ---- 对照组：同一个人不改，「已付清」要留着（不然编辑一下就又欠一次）----
+  await seed('Kuang', 1757400000000);
+  const same = await editPick('Kuang');
+  ok('对照组：人没换时「已付清」留着，不会因为编辑一下又欠一次',
+     same.fs && same.fs.paidAt === 1757400000000, same.fs);
+  ok('对照组：已付清的不出现在欠款清单里', same.owed.length === 0, same.owed);
+
+  // ---- 新增记录时这一栏不该出现（新记的本来就是自己记的）----
+  const onAdd = await page.evaluate(() => {
+    showAddTx();
+    return document.getElementById('tx-fromstaff-wrap').style.display;
+  });
+  ok('新增记录时「这笔是谁记的」不出现', onAdd === 'none', onAdd);
+  await page.evaluate(() => closeModal('modal-add-tx'));
+
+  // ---- 名字是同事那边送上来的自由文本，不能撑破选项 ----
+  await page.evaluate(() => {
+    data.transactions.push({ id:'xsstx', accountId: data.transactions[0].accountId,
+      type:'expense', amount:5, date: today(), description:'x',
+      categoryId:(data.categories.find(c=>c.type==='expense')||{}).id,
+      fromStaff:{ by: '"><img src=x onerror=alert(1)>', at: 1 } });
+  });
+  const safe = await page.evaluate(() => {
+    renderFromStaffPicker(data.transactions.find(t => t.id === 'xsstx'));
+    const sel = document.getElementById('tx-fromstaff');
+    return { imgs: sel.querySelectorAll('img').length,
+             hit: [...sel.options].some(o => o.value === '"><img src=x onerror=alert(1)>') };
+  });
+  ok('带引号尖括号的名字不会撑破下拉（没有多出标签）', safe.imgs === 0, safe);
+  ok('这种名字仍然选得到（只是被转义，不是被丢掉）', safe.hit === true, safe);
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

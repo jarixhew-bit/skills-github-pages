@@ -1048,6 +1048,19 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
         </div>
       </div>
     </div>
+    <!-- 这笔是谁记的（只在编辑时出现，2026-09-11 用户要求）。
+         「该付同事多少」全靠每笔账上的 fromStaff 算，而这个标记只在同事从投递箱
+         送过来时自动写上去——一旦丢了（以前编辑一笔账会把它抹掉，已修）或者是
+         老板自己代同事补记的一笔，就没有任何地方能把它加回来，欠款会永远少算。
+         所以给它一个手动入口：改的是「这笔算谁垫的」，不动金额也不动账户。 -->
+    <div class="form-group" id="tx-fromstaff-wrap" style="display:none">
+      <label class="form-label">这笔是谁记的</label>
+      <select class="form-input" id="tx-fromstaff" onchange="onFromStaffPick()"></select>
+      <div style="font-size:12px;color:var(--sub);margin-top:6px;line-height:1.6">
+        选同事的名字＝<b>这笔是他先垫的钱</b>，会进设置里「该付同事（他们垫的）」那份清单
+        提醒你还钱；选「我自己记的」就不进那份清单。<b>金额、账户、日期都不会动。</b>
+      </div>
+    </div>
     <!-- delete btn (edit mode) -->
     <div id="tx-delete-wrap" style="display:none;margin-bottom:12px">
       <button class="btn btn-danger" onclick="deleteTx()">🗑 删除此记录</button>
@@ -2775,6 +2788,7 @@ function updateRielHint(){
 
 function showAddTx(){
   state.editingTxId = null;
+  renderFromStaffPicker(null);
   state.txType = 'expense';
   state.selectedCatId = null;
   state.catManuallySelected = false;
@@ -2828,6 +2842,7 @@ function editTx(id){
   document.getElementById('type-inc').classList.toggle('active', t.type==='income');
   renderCatGrid();
   loadAttachStateForTx(t);
+  renderFromStaffPicker(t);
   syncCompanyTxFields(t);
   // 保底：理由同 showAddTx()。已送出的那笔 syncCompanyTxFields 会再次隐藏保存键，
   // 这里的 disabled=false 不影响那个（一个管 display，一个管 disabled，互不冲突）
@@ -3138,7 +3153,14 @@ async function saveTxInner(){
       // 这两个都不是编辑表单的内容，编辑一笔账不该改变「这笔是谁送来的、送到了没有」。
       // 用白名单逐个保留、而不是整份 Object.assign 合并：合并会把使用者**故意清掉**的
       // 东西（例如把收据照片移除）又带回来。
-      if(prevTx && prevTx.fromStaff) tx.fromStaff = prevTx.fromStaff;
+      // 「这笔是谁记的」现在是表单里的一栏了（2026-09-11 加），所以它说了算：
+      // undefined＝这一栏没出现（新增记录）→ 沿用旧值；null＝选了「我自己记的」→ 拿掉。
+      const pickedFromStaff = fromStaffFromForm(prevTx && prevTx.fromStaff);
+      if(pickedFromStaff === undefined){
+        if(prevTx && prevTx.fromStaff) tx.fromStaff = prevTx.fromStaff;
+      } else if(pickedFromStaff){
+        tx.fromStaff = pickedFromStaff;
+      }
       if(prevTx && prevTx.inbox) tx.inbox = prevTx.inbox;
       data.transactions[idx] = tx;
     }
@@ -3165,6 +3187,8 @@ async function saveTxInner(){
   if(state.currentTab==='overview') renderOverview();
   if(state.currentTab==='transactions') renderTxList();
   if(state.currentTab==='analytics') renderAnalytics();
+  // 改了「这笔是谁记的」，设置页那份「该付同事（他们垫的）」清单要跟着变
+  if(state.currentTab==='settings') renderInboxSettings();
   // 公司账另外送一份进 butler 的公司账本。不 await——本机已经存好了，
   // 送不出去会进队列自动重试，不该让用户在这里干等网络。
   // status 已经是 sent 的不再送（见上面组 tx.company 时的注释：会造成重复记账）。
@@ -7427,6 +7451,84 @@ async function fetchInbox(opts){
     toast(skipped ? '箱子里没有新的账' : '箱子是空的');
   }
   renderInboxSettings();
+}
+
+/**
+ * 编辑弹窗里「这笔是谁记的」那一栏的名单。
+ *
+ * 三个来源合起来去重：账本里出现过的同事名字（投递箱送来时盖的 fromStaff.by）、
+ * 公司报账那份人员名册、还有正在编辑这笔自己的名字（他可能已经不在名册上了，
+ * 但这笔仍然是他垫的）。Yang 是老板自己，不算同事，排掉。
+ *
+ * 名册走 getCompanyPeople() 而不是去读 #tx-company-reporter 那个下拉：那个下拉只有在
+ * 账户勾了「公司账户」时才渲染，普通账户下是空的——而用户要补标记的那两笔正是记在
+ * 普通账户里，读 DOM 会得到一张空名单，他就只能手打名字。getCompanyPeople() 有缓存
+ * 也有兜底（Seryi/Kuang/Yang），离线照样给得出名字。
+ */
+function staffNameOptions(current){
+  const set = new Set();
+  for(const t of (data.transactions || [])){
+    if(t.fromStaff && t.fromStaff.by) set.add(String(t.fromStaff.by));
+  }
+  try{
+    for(const p of (getCompanyPeople() || [])){
+      const n = p && (p.code || p.label);
+      if(n) set.add(String(n));
+    }
+  }catch(e){}
+  if(current) set.add(String(current));
+  return [...set].filter(n => n && n.toLowerCase() !== 'yang').sort();
+}
+
+/** 编辑弹窗打开时填这一栏。新增记录时整块不出现——新记的就是自己记的。 */
+function renderFromStaffPicker(t){
+  const wrap = document.getElementById('tx-fromstaff-wrap');
+  const sel = document.getElementById('tx-fromstaff');
+  if(!wrap || !sel) return;
+  if(!t){ wrap.style.display = 'none'; return; }
+  const cur = (t.fromStaff && t.fromStaff.by) ? String(t.fromStaff.by) : '';
+  sel.innerHTML = `<option value="">我自己记的</option>`
+    + staffNameOptions(cur).map(n =>
+        `<option value="${ledEsc(n)}"${n === cur ? ' selected' : ''}>${ledEsc(n)} 垫的</option>`).join('')
+    + `<option value="__other__">其他人…（自己输入名字）</option>`;
+  sel.value = cur;
+  sel.dataset.prev = cur;     // 选「其他人…」又取消时要退回来的那个值
+  wrap.style.display = 'block';
+}
+
+/** 选「其他人…」时问一个名字。取消或留空就退回原来选的那个，不要停在 __other__ 上。 */
+function onFromStaffPick(){
+  const sel = document.getElementById('tx-fromstaff');
+  if(!sel) return;
+  if(sel.value !== '__other__'){ sel.dataset.prev = sel.value; return; }
+  const prev = sel.dataset.prev || '';
+  const name = (prompt('这笔是谁垫的？（填他的名字）') || '').trim().slice(0, 40);
+  if(!name){ sel.value = prev; return; }
+  if(![...sel.options].some(o => o.value === name)){
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name + ' 垫的';
+    sel.insertBefore(o, sel.options[sel.options.length - 1]);
+  }
+  sel.value = name;
+  sel.dataset.prev = name;
+}
+
+/**
+ * 存档时算出这笔的 fromStaff 该长什么样。
+ *   选「我自己记的」→ 回 null（整个字段拿掉）
+ *   名字没变        → 原样保留（连 paidAt 一起，已经付清的不要因为编辑一下就又欠一次）
+ *   换了人 / 新标上 → 重建，不带 paidAt（＝还没还给他，会进「该付同事」那份清单）
+ * `at`（什么时候收到这笔的）能留就留，那是投递箱盖的时间戳，跟谁垫的没关系。
+ */
+function fromStaffFromForm(prev){
+  const sel = document.getElementById('tx-fromstaff');
+  const wrap = document.getElementById('tx-fromstaff-wrap');
+  // 这一栏没出现（新增记录）时完全不参与，交给调用方的白名单保留逻辑
+  if(!sel || !wrap || wrap.style.display === 'none') return undefined;
+  const who = (sel.value === '__other__' ? '' : String(sel.value || '')).trim();
+  if(!who) return null;
+  if(prev && prev.by && String(prev.by) === who) return prev;
+  return { by: who, at: (prev && prev.at) || Date.now() };
 }
 
 /**
