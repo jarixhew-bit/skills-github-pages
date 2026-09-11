@@ -3091,9 +3091,27 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
 
   // ---- 还没设起点：要列得出来，而且不许编一个 0 ----
   api.people = [{ person:'Kuang', status:'unset' }, { person:'Seryi', status:'unset' }];
+  // 这张卡现在住在首屏，而且只在「收件账户」被选中时出现（2026-09-11 用户要求
+  // 从设置页移到老板账那一页）——摆在公司账或他私人账户上全是不相干的数字
+  await page.evaluate(() => { data.currentAccountId = getInboxAccountId(); });
   await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
   await until(async () => (await page.innerHTML('#boss-petty')).includes('Kuang'),
               { what: '卡片画出来' });
+  ok('卡片出现在首屏（不是设置页）',
+     await page.evaluate(() => {
+       const el = document.getElementById('boss-petty');
+       return !!el.closest('#tab-overview') && el.style.display === 'block';
+     }));
+  // 对照组：切到别的账户就不该出现
+  const otherAcc = await page.evaluate(() => {
+    const other = data.accounts.find(a => a.id !== getInboxAccountId());
+    if(!other) return null;
+    data.currentAccountId = other.id;
+    renderBossPetty();
+    return document.getElementById('boss-petty').style.display;
+  });
+  ok('对照组：切到别的账户这张卡就收起来', otherAcc === 'none' || otherAcc === null, otherAcc);
+  await page.evaluate(() => { data.currentAccountId = getInboxAccountId(); renderBossPetty(); });
   let html = await page.innerText('#boss-petty');
   ok('没设起点的人也列得出来（否则没有入口去设）',
      html.includes('Kuang') && html.includes('Seryi'), html);
@@ -3193,6 +3211,55 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   ok('提示里讲明白负数是什么意思',
      (await page.evaluate(() => document.getElementById('boss-petty-hint').textContent)).includes('负数'),
      await page.evaluate(() => document.getElementById('boss-petty-hint').textContent));
+
+  // ---- 一键归还：他把钱还回来，余额归零 ----
+  // 2026-09-11 用户要求。底下走的是 adjust 取负——不另开一种事件类型，
+  // 省得算余额时又多一条分支（多一条分支就多一个地方会算错）。
+  api.people = [{ person:'Kuang', status:'ok', balance: 4005.29, opened: -994.71, spent: 0 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await page.waitForTimeout(300);
+  await page.evaluate(() => openBossPetty());
+  await until(async () => (await page.innerHTML('#boss-petty-body')).includes('已还清'),
+              { what: '「已还清」那颗出现' });
+  ok('手上还有钱的人才有「已还清」那颗',
+     (await page.innerHTML('#boss-petty-body')).includes('已还清'));
+  api.calls.length = 0;
+  await page.evaluate(() => bossPettyPick(0, 'return'));
+  await page.waitForTimeout(200);
+  ok('预设填的是他手上全部（最常见的是全额还清）',
+     await page.inputValue('#boss-petty-amount') === '4005.29',
+     await page.inputValue('#boss-petty-amount'));
+  ok('提示说清楚可以只填实收的数',
+     (await page.evaluate(() => document.getElementById('boss-petty-hint').textContent)).includes('实际收到'),
+     await page.evaluate(() => document.getElementById('boss-petty-hint').textContent));
+
+  // 只还一部分：剩的要继续留在他名下
+  await page.fill('#boss-petty-amount', '4000');
+  await page.evaluate(() => bossPettySubmit());
+  await until(() => api.calls.some(c => c.body.action === 'pettyAdd'), { what: '归还送出去' });
+  const back = api.calls.find(c => c.body.action === 'pettyAdd');
+  ok('送出去的是 adjust（不另开一种事件类型）', back.body.type === 'adjust', back.body);
+  ok('金额取负：收回 4000 → -4000', back.body.amount === -4000, back.body);
+  ok('备注写明是归还（以后翻记录看得出来这不是随手调的）',
+     String(back.body.note || '').includes('归还'), back.body);
+  ok('送到老板账那条路', back.where === 'boss', back.where);
+
+  // 归还不许填 0 或负数
+  api.calls.length = 0;
+  await page.evaluate(() => bossPettyPick(0, 'return'));
+  await page.fill('#boss-petty-amount', '0');
+  await page.evaluate(() => bossPettySubmit());
+  await page.waitForTimeout(300);
+  ok('归还填 0 被挡下来，一个请求都没送出去',
+     !api.calls.some(c => c.body.action === 'pettyAdd'), api.calls.map(c => c.body.action));
+
+  // 他手上没钱（垫了钱）时，不该出现「已还清」——没东西可还
+  api.people = [{ person:'Kuang', status:'ok', balance: -189, opened: 0, spent: 189 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>{ renderBossPetty(); renderBossPettyBody(); }));
+  await page.waitForTimeout(300);
+  ok('对照组：他垫了钱的时候没有「已还清」那颗（没东西可还）',
+     !(await page.innerHTML('#boss-petty-body')).includes('已还清'));
+  await page.evaluate(() => closeModal('modal-boss-petty'));
 
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
