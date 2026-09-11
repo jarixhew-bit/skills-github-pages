@@ -4092,8 +4092,13 @@ async function buildStatementPDF(){
     // 摘要跟着一起回传：「发给老板」会把它送上去，老板 App 的账单那一行直接印出
     // 「花了多少·几笔」，他不必点进 PDF 才看得到数字（2026-09-05 加）。
     // **币别一定要带**：Boss 是 USD、Yang 是 HKD，光一个数字是错的。
-    const summary = { expense: expenseTotal, income: incomeTotal, closing: closingBalance,
-                      count: expenseTxs.length, currency: acc.currency || '' };
+    // ⚠️ 这里的数字**必须跟 PDF 里印出来的那几个一致**（2026-09-11）：PDF 从
+    // 2026-09-10 起只列非 xfer 的注资与开销（转账不该出现在给老板看的账单上），
+    // 所以摘要也只能用 Fund 那一组。用含 xfer 的总额会让老板 App 的账单卡写出一个
+    // 比实际开销大的数字，而他点进 PDF 又看不到那些转账，对不上又查不出来。
+    // closing 例外：那是账户真实余额，本来就该把转账算进去。
+    const summary = { expense: expenseFundTotal, income: incomeFundTotal, closing: closingBalance,
+                      count: expenseFundTxs.length, currency: acc.currency || '' };
     return {pdf, filename, acc, range, year, month, summary};
   }catch(e){
     console.error(e);

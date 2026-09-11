@@ -2726,6 +2726,36 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   });
   ok('图片读不出来时退回原图，不让整份账单挂掉', fallback === true, fallback);
 
+  // ---- 送给老板 App 的摘要必须跟 PDF 印出来的一致（2026-09-11）----
+  // PDF 从 2026-09-10 起只列非 xfer 的注资与开销（转账不该出现在给老板看的账单上）。
+  // 摘要如果还用含 xfer 的总额，老板 App 的账单卡会写出一个比实际开销大的数字，
+  // 而他点进 PDF 又找不到那些钱——对不上还查不出原因。
+  const sum = await page.evaluate(async () => {
+    const acc = data.accounts.find(a => a.id === 'acc_boss') || data.accounts[0];
+    const d = today();
+    data.transactions = [
+      { id:'s1', accountId: acc.id, date:d, type:'income',  amount:1000, categoryId:'cat_other_inc',
+        description:'老板注资', updatedAt: Date.now() },
+      { id:'s2', accountId: acc.id, date:d, type:'expense', amount:120,  categoryId:'cat_food',
+        description:'真开销', updatedAt: Date.now() },
+      // 转账腿：不该进摘要，但该进余额
+      { id:'s3', accountId: acc.id, date:d, type:'expense', amount:500,  categoryId:'cat_cash_gift',
+        description:'给 X 的现金', updatedAt: Date.now(), xfer:true, giftId:'gs1' },
+    ];
+    state.anYear = new Date().getFullYear(); state.anMonth = new Date().getMonth();
+    data.currentAccountId = acc.id;   // buildStatementPDF 用 curAcc()，读的是 data 不是 state
+    window.getAttachmentBlob = async () => null;
+    const out = await buildStatementPDF();
+    return out && out.summary;
+  });
+  ok('★摘要的「花了多少」只算真开销 120，不含转账的 500',
+     sum && Math.abs(sum.expense - 120) < 0.005, sum);
+  ok('★摘要的笔数只数真开销 1 笔', sum && sum.count === 1, sum);
+  ok('对照组：注资 1000 照常算进摘要（少了这条对照，「摘要整个归零」也会全绿）',
+     sum && Math.abs(sum.income - 1000) < 0.005, sum);
+  ok('对照组：期末余额仍然把转账算进去（1000−120−500＝380，那是账户真实余额）',
+     sum && Math.abs(sum.closing - 380) < 0.005, sum);
+
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
 }
