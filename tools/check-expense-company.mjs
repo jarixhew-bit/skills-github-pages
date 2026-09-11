@@ -3146,6 +3146,7 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   ok('送到老板账那条路（不是公司备用金）', add.where === 'boss', add);
   ok('送的是 topup、人和金额都对',
      add.body.type === 'topup' && add.body.person === 'Kuang' && add.body.amount === 500, add.body);
+  ok('转钱也带 mirror（这笔同时从 Yang 手上扣）', add.body.mirror === true, add.body);
   ok('**一次都没打到公司账那条路**（两本账的钱不能串）',
      api.calls.every(c => c.where === 'boss'), api.calls.map(c => c.where));
 
@@ -3192,6 +3193,19 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
      !api.calls.some(c => c.body.action === 'pettyAdd'), api.calls.map(c => c.body.action));
   ok('而且讲清楚该怎么做', (await page.innerText('#boss-petty-add-note')).includes('调整'),
      await page.innerText('#boss-petty-add-note'));
+
+  // ---- 对照组：手工「调整」不镜像（那是校准，钱没有在人之间移动）----
+  // 少了这组对照，把 mirror 写死成 true 也会全绿，而那会让每次校准都误动 Yang 那格
+  api.people = [{ person:'Kuang', status:'ok', balance: 100, opened: 100, spent: 0 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await page.waitForTimeout(300);
+  api.calls.length = 0;
+  await page.evaluate(() => { bossPettyOpenAdd('Kuang', 'adjust'); });
+  await page.fill('#boss-petty-amount', '-12.5');
+  await page.evaluate(() => bossPettySubmit());
+  await until(() => api.calls.some(c => c.body.action === 'pettyAdd'), { what: '调整送出去' });
+  const adj = api.calls.find(c => c.body.action === 'pettyAdd');
+  ok('对照组：手工调整不带 mirror（只动这一格）', !adj.body.mirror, adj.body);
 
   // ---- 起点**要**收得下负数：上线之前垫的钱只能靠它带进来 ----
   // 2026-09-11 一度写成不许，当场卡住用户：Kuang 之前垫了 189，那两笔账在老板
@@ -3291,6 +3305,9 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   await until(() => api.calls.some(c => c.body.action === 'pettyAdd'), { what: '归还送出去' });
   const back = api.calls.find(c => c.body.action === 'pettyAdd');
   ok('送出去的是 adjust（不另开一种事件类型）', back.body.type === 'adjust', back.body);
+  // 钱换了口袋：服务端要在 Yang 名下记一笔等额反向的，否则「大家手上合计 ＝ 账户余额」
+  // 永远对不上（2026-09-11 用户实机指出「归还全部都回去 Yang 那边」）
+  ok('归还带 mirror（钱要回到 Yang 手上）', back.body.mirror === true, back.body);
   ok('金额取负：收回 4000 → -4000', back.body.amount === -4000, back.body);
   ok('备注写明是归还（以后翻记录看得出来这不是随手调的）',
      String(back.body.note || '').includes('归还'), back.body);

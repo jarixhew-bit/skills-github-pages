@@ -7570,13 +7570,16 @@ function bossPettySetType(type){
         + `他先垫了钱、你欠他的话就填负数，例：-189。`
         + `设定这一刻之前录进系统的开销不再扣，之后录的自动扣。`
       : type === 'adjust'
-      ? `点现金对不上时用。可以填负数（例：-12.5 表示少了 12.5）。`
+      ? `点现金对不上时用，只动 ${who} 这一格（不会加到别人身上）。`
+        + `可以填负数（例：-12.5 表示少了 12.5）。`
       : type === 'return'
       ? (bal != null && bal > 0
           ? `${who} 把钱还回来了，填你实际收到多少（预设是他手上全部 ${fmt(bal, 'USD')}）。`
             + `收到多少填多少——只还了一部分的话，剩的会继续留在他名下。`
+            + `这笔会同时加回你（Yang）手上。`
           : `${who} 手上现在没有你的钱，不用归还。`)
-      : `你转给 ${who} 的现金，填多少加多少。他之前垫的钱会自动被抵掉，不用另外记一笔。`;
+      : `你转给 ${who} 的现金，填多少加多少——这笔会同时从你（Yang）手上扣掉。`
+        + `他之前垫的钱会自动被抵掉，不用另外记一笔。`;
   }
 }
 
@@ -7632,7 +7635,12 @@ async function bossPettySubmit(){
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ token: getCompanyToken(), action:'pettyAdd',
                              person: who, type: sendType, amount: sendAmount,
-                             note: isReturn ? '归还现金' : null })
+                             note: isReturn ? '归还现金' : null,
+                             // 转钱和归还是**钱换了口袋**：服务端会在 Yang 名下记一笔
+                             // 等额反向的，否则「大家手上合计 ＝ 账户余额」永远对不上
+                             // （2026-09-11 用户实机指出「归还全部都回去 Yang 那边」）。
+                             // 设起点和手工调整不算钱的移动，不镜像。
+                             mirror: isReturn || bossPettyForm.type === 'topup' })
     });
     const body = await res.json().catch(()=>({}));
     if(!res.ok || body.status !== 'ok'){
