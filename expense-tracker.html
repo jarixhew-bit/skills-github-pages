@@ -7591,6 +7591,12 @@ async function syncBossLedgerMonth(month, records, accId){
       // 老板自己标过「已付清」的不能被同步冲掉——那是他这边的状态，账本不知道
       if(was.fromStaff && was.fromStaff.paidAt) tx.fromStaff.paidAt = was.fromStaff.paidAt;
       if(was.attachmentId) tx.attachmentId = was.attachmentId;
+      // ⚠️ 收进哪个账户**只在第一次收的时候决定**，之后同步一律沿用原来那个。
+      // 用户出国会另开一个账户（例如「日本行程」）并把收件账户改过去——如果这里
+      // 每次都写成「当前设定的账户」，上个月已经收在 Boss 账户里的记录会在下一次
+      // 同步时被整批搬进日本那本（同步窗口是本月＋上月），两个月的账当场混在一起。
+      // 那是要翻账才查得出来的错，而且他不会想到是「改了一个下拉」造成的。
+      if(was.accountId) tx.accountId = was.accountId;
       const same = was.amount === tx.amount && was.date === tx.date
         && was.description === tx.description && was.type === tx.type;
       data.transactions[i] = Object.assign({}, was, tx);

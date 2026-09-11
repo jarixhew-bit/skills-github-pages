@@ -1737,6 +1737,37 @@ console.log('\n【21】老板账：把 butler 中央账本同步下来');
   ok('落了墓碑（不落的话云端旧快照一合并又并回来）',
      await page.evaluate(() => (data.deletedTxIds || []).some(d => d.id === 'bl_r1')));
 
+  // ---- 改了「收件收进哪个账户」：已经收下来的不许被搬走 ----
+  // 用户出国会另开一个账户（例如「日本行程」）再把收件账户改过去。已经收在 Boss
+  // 账户里的旧记录如果跟着被搬进新账户，两个月的账当场混在一起——而且他不会想到
+  // 是「改了一个下拉」造成的。所以：收进哪个账户只在第一次收的时候决定。
+  book[nowMonth] = [{ id:'r9', srcId:'s9', date: today, reporter:'Kuang', type:'expense',
+    amount:7, currency:'USD', categoryId:'cat_food', description:'出国前记的',
+    photoPath:null, createdAt:'2026-09-11T00:00:00.000Z' }];
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('先收进原本那个账户',
+     await page.evaluate(() => (data.transactions.find(t=>t.id==='bl_r9')||{}).accountId) === 'acc_boss');
+  const newAccId = await page.evaluate(() => {
+    const a = { id:'acc_trip_jp', name:'日本行程', currency:'JPY', balance:0 };
+    data.accounts.push(a);
+    setInboxAccount('acc_trip_jp');
+    return getInboxAccountId();
+  });
+  ok('收件账户确实改过去了', newAccId === 'acc_trip_jp', newAccId);
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('改了收件账户之后，已经收下来的那笔留在原账户（不会被搬走）',
+     await page.evaluate(() => (data.transactions.find(t=>t.id==='bl_r9')||{}).accountId) === 'acc_boss');
+  // 对照组：新的一笔要进新账户，否则「改那个下拉」就完全没作用了
+  book[nowMonth].push({ id:'r10', srcId:'s10', date: today, reporter:'Kuang', type:'expense',
+    amount:9, currency:'JPY', categoryId:'cat_food', description:'出国后记的',
+    photoPath:null, createdAt:'2026-09-11T00:00:00.000Z' });
+  await fetchNow(); await page.waitForTimeout(300);
+  ok('对照组：改完之后新收的那笔进新账户',
+     await page.evaluate(() => (data.transactions.find(t=>t.id==='bl_r10')||{}).accountId) === 'acc_trip_jp');
+  await page.evaluate(() => setInboxAccount('acc_boss'));
+  book[nowMonth] = [];
+  await fetchNow(); await page.waitForTimeout(300);
+
   // ---- 对照组：老板自己手记的账，绝不能被这条路删掉 ----
   await page.evaluate(() => {
     data.transactions.push({ id:'own1', accountId:'acc_boss', amount:99, type:'expense',
