@@ -124,6 +124,10 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   // 就地改：测试把 editFails 设成 true 就能制造「账本改不成」，用来验本机不会偷偷改掉
   const edit = { fails: false };
   const aiProxyCalls = [];   // 拍收据时打去 /ai-proxy 的请求
+  // 老板账（2026-09-11 起走 butler 的中央账本，不再经 Firestore 投递箱）。
+  // bossApi.fail = true 就是「送不出去」，用来验没网时账不会丢。
+  const bossPosted = [];
+  const bossApi = { fail: false, status: 200, body: null };
   // 请假：测试可以改 leaveFake.leaves 摆布服务端手上有哪几条
   const leaveFake = { today: new Date().toISOString().slice(0, 10), leaves: [] };
   let mode = offline ? 'offline' : 'online';
@@ -141,6 +145,21 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
       aiProxyCalls.push(JSON.parse(route.request().postData() || '{}'));
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
         body: JSON.stringify({ text: '{"amount":12.34,"date":null,"merchant":"Test Shop"}' }) });
+    }
+    // 老板账那条路：独立的端点、独立的假服务端，绝不跟公司账那本混
+    // （这正是这次改造的地基：两本账分开）
+    if (u.startsWith(BUTLER + '/boss-expense')) {
+      if (bossApi.fail) return route.abort('failed');
+      const req = JSON.parse(route.request().postData() || '{}');
+      bossPosted.push(req);
+      if (!book[req.token]) return route.fulfill({ status:401, contentType:'application/json',
+        headers:h, body: JSON.stringify({ error:'密钥不对' }) });
+      if (bossApi.body) return route.fulfill({ status: bossApi.status,
+        contentType:'application/json', headers:h, body: JSON.stringify(bossApi.body) });
+      if (req.action === 'delete') return route.fulfill({ status:200,
+        contentType:'application/json', headers:h, body: JSON.stringify({ status:'ok' }) });
+      return route.fulfill({ status:200, contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'ok', record:{ id:'brec_1', srcId: req.srcId } }) });
     }
     if (route.request().method() === 'GET') {
       return route.fulfill({ status:200, contentType:'application/json', headers:h,
@@ -227,6 +246,7 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
   // book 交出去：测「从公司账本找回记录」时要能摆布服务端手上有哪几笔
   return { ctx, page, posted, errs, book, dialogs, petty, edit, aiProxyCalls, leaveFake,
+           bossPosted, bossApi,
            setMode: m => { mode = m; } };
 }
 
@@ -1406,14 +1426,19 @@ if (want()) {
   await h.ctx.close();
 }
 
-// ---------- 【22】老板账（投递箱）：拿到口令才有，记的账送去 inbox_boss ----------
-// 这一页跟公司报账是两本完全不同的账：公司账进 butler 出月底 Excel，老板账直接进
-// 老板自己的账本。走错一个是要翻账才查得出来的，所以这里守三件事：
-//   1. 没口令的人根本看不到这个入口（跟以前一模一样的页面）
+// ---------- 【22】老板账：拿到口令才有，记的账送进 butler 的中央账本 ----------
+// 这一页跟公司报账是两本完全不同的账：公司账进 butler 的公司账本、出月底 Excel；
+// 老板账进 butler 的**另一本**（老板私人的钱，绝不能出现在交给公司的 Excel 里）。
+// 走错一本是要翻账才查得出来的，所以这里守四件事：
+//   1. 没口令的人根本看不到这个入口
 //   2. 切过去之后表单是**个人账本**那套（描述/收入支出/类别宫格），不是公司那套
-//   3. 记一笔真的送进 inbox_boss，payload 的字段跟 Firestore 规则对得上
-//      （规则要求 k/tx/from，可选 photo/createdAt，多一个字段就会被服务端拒绝）
-console.log('\n【22】老板账：拿到口令才有，记的账送进投递箱');
+//   3. 记一笔真的送到 /boss-expense（不是 /company-expense），带 srcId 好去重
+//   4. 送不出去绝不丢账：本机先存好、进队列等有网
+//
+// 2026-09-11 之前这条路走 Firestore 投递箱（老板还得手动「收件」才入账），
+// 改成中央账本是为了根治「两边各存一份、各自算，对不上账」——详见
+// butler-bot 的 src/handlers/boss_expense.js 顶部注释。
+console.log('\n【22】老板账：拿到口令才有，记的账送进中央账本');
 if (want()) {
   const h = await newPage();
   const { page, errs } = h;
@@ -1429,14 +1454,9 @@ if (want()) {
     { what: 'App 启动完成' });
   ok('填了口令就看得到老板账入口', await page.locator('#nav-boss').isVisible());
 
-  // 把 Firestore 的写入换成假的：外部网域在这份自检里全被挡（模拟酒店 WiFi），
-  // 真发一定失败，测不到 payload 长什么样。
-  await page.evaluate(() => {
-    window.__inbox = [];
-    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
-    db = { collection: (c) => ({ add: async (p) => { window.__inbox.push({ c, p }); return { id:'d1' }; } }) };
-    cloudAvailable = true;
-  });
+  // 送去哪里由假 butler（见 newPage）接住，记进 h.bossPosted。
+  // 这里不用再 stub 任何东西：老板账从此走 HTTP，跟公司账同一条路数。
+  h.bossPosted.length = 0;
 
   await page.click('#nav-boss');
   // 「老板账」不是普通分页（staffGoBoss 切的是身份，没有 #tab-boss 这个元素），
@@ -1463,19 +1483,16 @@ if (want()) {
   await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
   await page.waitForTimeout(100);   // 让送出与本机写入收尾
 
-  const box = await page.evaluate(() => window.__inbox);
-  ok('送进 inbox_boss 集合，一笔一条', box.length === 1 && box[0].c === 'inbox_boss',
-     box.map(b => b.c));
-  const p = box[0]?.p || {};
-  ok('带上口令 k', p.k === 'pass-1234', p.k);
-  ok('带上谁记的', p.from === 'Seryi', p.from);
-  const sent = JSON.parse(p.tx || '{}');
+  const sent = h.bossPosted[0] || {};
+  ok('送出去一笔（一笔一个请求）', h.bossPosted.length === 1, h.bossPosted.length);
+  ok('带上钥匙（服务端靠它判定这笔是谁记的）', sent.token === SERYI_KEY, sent.token);
   ok('金额原样送过去', sent.amount === 12.34, sent.amount);
   ok('描述一起送', sent.description === '老板的咖啡', sent.description);
-  ok('带 srcId（老板那边靠它去重，送两次不会变两条）', !!sent.srcId, sent.srcId);
-  // 规则里 hasOnly(['k','tx','photo','from','createdAt'])：多一个字段整条会被拒
-  ok('字段没有超出规则允许的范围',
-     Object.keys(p).every(k => ['k','tx','photo','from','createdAt'].includes(k)), Object.keys(p));
+  ok('带 srcId（服务端靠它去重，重送不会变两条）', !!sent.srcId, sent.srcId);
+  ok('带收支类型（收入要反向算回备用金，不能漏）', sent.type === 'expense', sent.type);
+  // 这条是两本账分家的底线：送错端点，老板的私人开销会进公司的 Excel
+  ok('**不会**顺手送进公司账本那条路',
+     h.posted.every(r => !('srcId' in r)), h.posted.map(r => r.action || 'add'));
 
   const st = await page.evaluate(() =>
     (data.transactions.find(t => t.accountId === 'acc_boss_inbox') || {}).inbox);
@@ -1486,9 +1503,7 @@ if (want()) {
      (await page.locator('#tx-list').innerText()).includes('已送老板'));
 
   // 送不出去也绝不丢账：本机永远先存好，进队列等有网
-  await page.evaluate(() => {
-    db = { collection: () => ({ add: async () => { const e = new Error('offline'); throw e; } }) };
-  });
+  h.bossApi.fail = true;      // 从这里开始「送不出去」
   await page.click('.fab');
   await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '5.00');
@@ -1518,10 +1533,9 @@ if (want()) {
 
   // ---- 删掉已经送出去的那笔，要连老板那边一起删（2026-09-01 用户要求）----
   // 在这之前删除只删本机，老板账本里那条一直留着——「刚刚让他们删了记录还在」。
+  h.bossApi.fail = false;     // 上面刻意让它送不出去，这里换回送得出去
+  h.bossPosted.length = 0;
   await page.evaluate(() => {
-    window.__inbox = [];
-    // 上面那段刻意把 db 换成会失败的（测「送不出去」），这里要换回能送成功的
-    db = { collection: (c) => ({ add: async (p) => { window.__inbox.push({ c, p }); return { id:'dx' }; } }) };
     localStorage.setItem('staffExpense_bossDelQueue', '[]');
     window.confirm = () => true;      // 删除要确认，这里一律按确定
     data.transactions = [{ id:'t_sent', accountId:'acc_boss_inbox', amount: 4.5,
@@ -1530,17 +1544,13 @@ if (want()) {
     saveData();
     deleteTxById('t_sent');
   });
-  await until(() => page.evaluate(() => window.__inbox.length > 0),
-              { what:'删除请求送进投递箱' });
-  const del = await page.evaluate(() => window.__inbox[0]);
-  ok('删除请求送进的是同一个投递箱', del.c === 'inbox_boss', del.c);
-  const delTx = JSON.parse(del.p.tx);
-  ok('送的是 op:delete + 那笔的 id', delTx.op === 'delete' && delTx.srcId === 't_sent', delTx);
-  // 这条最要紧：payload 的字段形状必须跟记账那条一模一样，否则老板得再去 Firebase
-  // 后台改一次规则——那是他唯一必须亲自动手的地方
-  ok('字段还是 k / from / tx 三样，没有多出新字段（规则一个字都不用改）',
-     JSON.stringify(Object.keys(del.p).sort()) === JSON.stringify(['from','k','tx']),
-     Object.keys(del.p));
+  await until(() => h.bossPosted.length > 0, { what:'删除请求送出去' });
+  const del = h.bossPosted[0];
+  ok('送的是 delete + 那笔的 srcId', del.action === 'delete' && del.srcId === 't_sent', del);
+  // 按 srcId 而不是服务端回的 recordId：那个 id 换手机、清缓存就没了，
+  // srcId 是这笔账自己的一部分，只要账还在就一定在
+  ok('不靠本机存的 recordId 指认', !del.recordId, del);
+  ok('删除也带钥匙（服务端要验这笔是不是他记的）', del.token === SERYI_KEY, del.token);
   ok('本机那条也删掉了',
      (await page.evaluate(() => data.transactions.some(t => t.id === 't_sent'))) === false);
   ok('送出去之后队列清空',
@@ -1548,8 +1558,8 @@ if (want()) {
        JSON.parse(localStorage.getItem('staffExpense_bossDelQueue') || '[]'))).length === 0);
 
   // 还没送到老板那边的，删掉不必通知——他压根没见过那笔
+  h.bossPosted.length = 0;
   await page.evaluate(() => {
-    window.__inbox = [];
     data.transactions = [{ id:'t_pend', accountId:'acc_boss_inbox', amount: 1,
       type:'expense', categoryId:'cat_food', date:'2026-08-10',
       inbox:{ status:'pending', error:null } }];
@@ -1558,16 +1568,15 @@ if (want()) {
     deleteTxById('t_pend');
   });
   await page.waitForTimeout(400);   // 断言「没有送出去」，只能真的等
-  ok('还没送到的那笔：删掉不发删除请求',
-     (await page.evaluate(() => window.__inbox.length)) === 0);
+  ok('还没送到的那笔：删掉不发删除请求', h.bossPosted.length === 0, h.bossPosted);
   ok('也从待送队列里撤掉（免得等一下又把它送上去）',
      (await page.evaluate(() =>
        JSON.parse(localStorage.getItem('staffExpense_bossQueue') || '[]'))).length === 0);
 
   // 没网时删除要排队，而且说明条上要看得见——不然同事以为删干净了
+  h.bossPosted.length = 0;
+  h.bossApi.fail = true;      // 没网
   await page.evaluate(() => {
-    window.__inbox = [];
-    db = { collection: () => ({ add: async () => { const e = new Error('offline'); throw e; } }) };
     data.transactions = [{ id:'t_off', accountId:'acc_boss_inbox', amount: 2,
       type:'expense', categoryId:'cat_food', date:'2026-08-10',
       inbox:{ status:'sent', error:null } }];
@@ -1605,12 +1614,6 @@ if (want()) {
   await until(() => page.evaluate(
     () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
     { what: 'App 启动完成' });
-  await page.evaluate(() => {
-    window.__inbox = [];
-    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
-    db = { collection: () => ({ add: async (p) => { window.__inbox.push(p); return { id:'d1' }; } }) };
-    cloudAvailable = true;
-  });
   await page.click('#nav-boss');
   // 「老板账」不是普通分页（staffGoBoss 切的是身份，没有 #tab-boss 这个元素），
   // 所以这里等的是切换后标题变成老板账那一版
@@ -1664,9 +1667,7 @@ if (want()) {
   ok('卡上写明收到多少、花掉多少', card.includes('收到 ¥600.00') && card.includes('已花 ¥100.00'), card);
 
   // —— 送不出去的那笔照样扣：现金离开口袋就没了 ——
-  await page.evaluate(() => {
-    db = { collection: () => ({ add: async () => { throw new Error('offline'); } }) };
-  });
+  h.bossApi.fail = true;
   await page.click('.fab');
   await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '50');
@@ -1680,9 +1681,7 @@ if (want()) {
      card.includes('还没送到老板那边'), card);
 
   // —— 超支：他自己先垫了钱，要看得出来 ——
-  await page.evaluate(() => {
-    db = { collection: () => ({ add: async (p) => { window.__inbox.push(p); return { id:'d2' }; } }) };
-  });
+  h.bossApi.fail = false;
   await page.click('.fab');
   await until(() => txModalOpen(page), { what: '记账弹窗打开' });
   await typeAmount(page, '500');
@@ -1931,12 +1930,9 @@ if (want()) {
     () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
     { what: 'App 启动完成' });
 
-  const LIMIT = 700 * 1024;
+  const LIMIT = 3 * 1024 * 1024;      // 跟页面里的 BOSS_PHOTO_LIMIT 对齐
+  h.bossPosted.length = 0;
   await page.evaluate(() => {
-    window.__sent = [];
-    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
-    db = { collection: () => ({ add: async (p) => { window.__sent.push(p); return { id:'x1' }; } }) };
-    cloudAvailable = true;
     // 造一张「真的很大」的照片：3000×3000 的随机噪声，压缩率最差的那种，最接近坏情况
     const c = document.createElement('canvas'); c.width = 3000; c.height = 3000;
     const cx = c.getContext('2d');
@@ -1965,24 +1961,27 @@ if (want()) {
     return submitInboxTx({ id:'t1', date:'2026-09-10', amount: 12, type:'expense',
                            categoryId:'cat_food', description:'大图', attachmentId:'a1' });
   });
-  const sentBig = await page.evaluate(() => window.__sent[0]);
-  ok('大图不再被丢掉——照片跟着账一起送出去了', !!sentBig.photo, Object.keys(sentBig));
-  // 上一条红了的话这里 photo 是 undefined——要报成一条失败，不能让整份自检抛异常中断
-  // （后面还有十几条要跑，中断等于把它们一起弄哑）
+  const sentBig = h.bossPosted[0] || {};
+  ok('大图不再被丢掉——照片跟着账一起送出去了', !!sentBig.photoBase64, Object.keys(sentBig));
+  // 上一条红了的话这里 photoBase64 是 undefined——要报成一条失败，不能让整份自检抛异常
+  // 中断（后面还有十几条要跑，中断等于把它们一起弄哑）
   ok('送出去的照片确实压到了上限以内',
-     !!sentBig.photo && sentBig.photo.length < LIMIT, sentBig.photo && sentBig.photo.length);
+     !!sentBig.photoBase64 && sentBig.photoBase64.length < LIMIT,
+     sentBig.photoBase64 && sentBig.photoBase64.length);
   ok('压成功时不报「照片没送到」', rBig.photoDropped === false, rBig);
 
   // ---- 对照组：本来就够小的图要原样送，不该被重压（少了这条对照，「一律重压」也会全绿）----
-  await page.evaluate(() => { window.__sent = []; window.__photoNow = window.__smallPhoto; });
+  h.bossPosted.length = 0;
+  await page.evaluate(() => { window.__photoNow = window.__smallPhoto; });
   await page.evaluate(() => submitInboxTx({ id:'t2', date:'2026-09-10', amount: 8, type:'expense',
                         categoryId:'cat_food', description:'小图', attachmentId:'a2' }));
   ok('对照组：本来就够小的照片原样送，不重压',
-     (await page.evaluate(() => window.__sent[0].photo === window.__smallPhoto)));
+     await page.evaluate((sent) => sent === window.__smallPhoto.slice(window.__smallPhoto.indexOf(',') + 1),
+                         (h.bossPosted[0] || {}).photoBase64));
 
   // ---- 真的压不下去：要回报 photoDropped，并且**不管 loud 与否**都出声告诉同事 ----
+  h.bossPosted.length = 0;
   await page.evaluate(() => {
-    window.__sent = [];
     shrinkPhotoForInbox = async () => null;      // 模拟怎么压都塞不进去
     window.__photoNow = window.__bigPhoto;
   });
@@ -1990,9 +1989,9 @@ if (want()) {
                     type:'expense', categoryId:'cat_food', description:'压不下去', attachmentId:'a3' }));
   ok('压不下去时回报 photoDropped', rDrop.photoDropped === true, rDrop);
   ok('压不下去时账本身照样送出去（凭证没了可以补，账送不出去才是真丢）',
-     (await page.evaluate(() => window.__sent.length)) === 1);
+     h.bossPosted.length === 1, h.bossPosted.length);
   ok('压不下去时送出去的是纯文字，不带半张图',
-     !(await page.evaluate(() => 'photo' in window.__sent[0])));
+     !('photoBase64' in (h.bossPosted[0] || {})), Object.keys(h.bossPosted[0] || {}));
 
   // flushBossQueue 那条路：静默补送（loud 为 false）时也要弹提示
   await page.evaluate(() => {
@@ -2009,8 +2008,8 @@ if (want()) {
 
   // ---- 第二种「有记录没账单」：附件还挂在账上，但本机存储里那张图已经不见了 ----
   // （手机系统清掉网页离线存储时会这样。旧版这一支完全静默，是最难猜的那种。）
+  h.bossPosted.length = 0;
   await page.evaluate(() => {
-    window.__sent = [];
     getAttachmentBlob = async () => null;          // 图不见了
     document.getElementById('toast').textContent = '';
     data.transactions.push({ id:'t5', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-10',
@@ -2019,7 +2018,7 @@ if (want()) {
   });
   await page.evaluate(() => flushBossQueue());
   await page.waitForTimeout(300);
-  ok('照片在本机不见了时，账照样送出去', (await page.evaluate(() => window.__sent.length)) === 1);
+  ok('照片在本机不见了时，账照样送出去', h.bossPosted.length === 1, h.bossPosted.length);
   const missTip = (await page.textContent('#toast')) || '';
   ok('照片不见了要单独讲清楚（不能跟「太大」混为一谈——该做的事不一样：这个要重拍）',
      missTip.includes('找不到那张收据照片'), missTip);
