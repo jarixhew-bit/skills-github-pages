@@ -1662,7 +1662,7 @@ if (want()) {
   await page.waitForTimeout(100);   // 让送出与本机写入收尾
   card = await page.locator('#staff-boss-cash').innerText();
   ok('花了 100 之后余额变 500（是算出来的，不是写死的）', card.includes('¥500.00'), card);
-  ok('卡上写明收到多少、用现金花掉多少', card.includes('收到 ¥600.00') && card.includes('用现金花掉 ¥100.00'), card);
+  ok('卡上写明收到多少、花掉多少', card.includes('收到 ¥600.00') && card.includes('花掉 ¥100.00'), card);
 
   // —— 送不出去的那笔照样扣：现金离开口袋就没了 ——
   await page.evaluate(() => {
@@ -1680,7 +1680,13 @@ if (want()) {
   ok('但要写明有几笔还没送到，别让人以为账丢了',
      card.includes('还没送到老板那边'), card);
 
-  // —— 超支：他自己先垫了钱，要看得出来 ——
+  // —— 花超：这次五度改版之后，卡片头部这个数不再是纯现金余额（那是 bossCashLeft()，
+  // 内部还留着，见 renderBossCash() 注释），改成「收到 − 这个月支出合计（现金＋自己
+  // 垫的都算）」——花超的部分照样自动判成「自己先垫的」（paidFrom='own'，这条内部
+  // 逻辑完全没动），但因为卡片头部现在把「自己垫的」也算进「花了」，这个月合计一旦
+  // 超过收到的钱，卡片会呈现「数字对不上了」而不是像三度改版那样恒非负——这是这次
+  // 拆行简化刻意接受的取舍（用户要的是跟老板端同一口径），跟 bossCashLeft() 那个
+  // 「手上现金永远不会是负数」的内部不变量是两回事，那个不变量本身没有被破坏 ——
   await page.evaluate(() => {
     db = { collection: () => ({ add: async (p) => { window.__inbox.push(p); return { id:'d2' }; } }) };
   });
@@ -1692,26 +1698,30 @@ if (want()) {
   await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
   await page.waitForTimeout(100);   // 让送出与本机写入收尾
   card = await page.locator('#staff-boss-cash').innerText();
-  // 2026-09-10 三度改版：手上现金花完之后再记的账，会被自动判成「他自己先垫的」
-  // （paidFrom='own'），**不再有「超支」这个状态**——那本来就是个假象：他不可能
-  // 花掉口袋里没有的钱，超出去的部分必然是自己垫的。所以这里断言的是新语义。
-  ok('花超的部分自动算成「他自己先垫的」，不是超支', card.includes('先垫了'), card);
-  ok('手上现金**永远不会变成负数**（这是这次改版的硬不变量）',
-     !/手上现金[\s\S]{0,30}-¥/.test(card) && !card.includes('超支了'), card);
-  ok('说清楚是他自己先垫的、该跟老板要回来', card.includes('跟他对一下') || card.includes('先垫了'), card);
+  const own500Tx = await page.evaluate(() =>
+    data.transactions.find(t => t.accountId === 'acc_boss_inbox' && t.amount === 500));
+  ok('花超的部分内部仍然自动判成「自己先垫的」（paidFrom=own，这条判断没有变）',
+     own500Tx && own500Tx.paidFrom === 'own', own500Tx);
+  ok('★卡片头部这次改成「数字对不上了」（100+50+500=650 已经超过收到的 600）',
+     card.includes('数字对不上了'), card);
+  ok('★卡片显示 ¥50.00（这个月合计比收到的多花了 50，不是裸负数）',
+     card.includes('¥50.00') && !/数字对不上了[\s\S]{0,30}-¥/.test(card), card);
+  ok('有讲清楚花掉的比收到的还多，请核对一下', card.includes('请核对一下'), card);
 
   // —— 老板又给钱：加上去 ——
   await page.evaluate(() => { window.prompt = () => '1000'; });
   await page.evaluate(() => bossCashAdd());
   await page.waitForTimeout(400);
   card = await page.locator('#staff-boss-cash').innerText();
-  // 旧模型这里是 600+1000-650=950（把自己垫的 500 也从现金里扣）。新模型下那 500 是
-  // 垫付、不动现金：收到 1600、用现金花掉 150 → 手上 1450，另外老板欠他 500。
-  // **不要**因为后来收到钱就把先前那笔垫付改判成现金付——它当时就已经带着 own 送到
-  // 老板那边了，回头改判两边又会对不上（正是这次要修的那个 bug）。
-  ok('又收到 1000 之后：手上现金 1600−150=1450（自己垫的 500 不从现金扣）',
-     card.includes('¥1450.00'), card);
-  ok('先前那笔垫付不会因为后来收到钱就被改判成现金付', card.includes('¥500.00'), card);
+  // 又收到 1000（got=1600）之后：这个月支出合计还是 650（100+50+500，日期没变，
+  // 还在同一个月），650 已经小于 1600 了，卡片回到「手上现金」正常状态：
+  // 1600−650＝950。
+  ok('又收到 1000 之后：手上现金变正常，1600−650=950（花超那笔自己垫的也一并算了）',
+     card.includes('¥950.00') && card.includes('手上现金'), card);
+  const own500After = await page.evaluate(() =>
+    data.transactions.find(t => t.accountId === 'acc_boss_inbox' && t.amount === 500));
+  ok('★先前那笔垫付不会因为后来收到钱就被改判成现金付（paidFrom 仍是 own）',
+     own500After && own500After.paidFrom === 'own', own500After);
 
   // —— 重填只清收到的钱，账目一笔都不许动 ——
   const txCount = await page.evaluate(() =>
@@ -2758,6 +2768,90 @@ if (want()) {
      Math.abs(topups34[0].amount - 4810.47) < 0.005, topups34[0].amount);
   ok('对照组：新的那笔有被 sync 收进来（不是「两个都没跑」也过关）',
      topups34.some(t => t.giftId === 'gNew'), topups34);
+
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
+// ---------- 【35】老板账「本月合计」卡：不分现金付/自己垫，都要算进去（2026-09-10）----------
+// 用户反馈：老板账那页只有「今天」的小计，没有整月合计。照抄「明细」页 #staff-summary
+// 那张卡的样式，但口径不一样——这里合计的是记在老板账账户里的**支出**总额，**不分**是
+// 用老板给的现金付、还是自己先垫的：两种花法都是这个月替老板花掉的钱，都要算进去
+// （跟 bossCashLeft() 只减 paidFrom==='cash' 那部分是两回事，别混）。
+console.log('\n【35】老板账「本月合计」卡：现金付＋自己垫都要算进去，笔数跟着月份切换器走');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  await page.evaluate(() => localStorage.setItem('staffExpense_bossKey', 'pass-1234'));
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    auth = { currentUser:{ uid:'anon1' }, signInAnonymously: async () => ({}) };
+    db = { collection: () => ({ where: () => ({ where: () => ({
+      get: async () => ({ empty:true, forEach: () => {} }) }) }) }) };
+    cloudAvailable = true;
+  });
+  await page.click('#nav-boss');
+  await until(() => page.evaluate(() => {
+    const el = document.getElementById('hdr-title');
+    return !!el && /老板|Boss/i.test(el.textContent || '');
+  }), { what: '切到老板账' });
+
+  ok('这张卡出现在老板账页', await page.locator('#staff-boss-summary').isVisible());
+
+  // —— 对照组：这个月还没有任何一笔记录时，合计是 0，不是漏掉不画 ——
+  let card = await page.locator('#staff-boss-summary').innerText();
+  ok('对照组：本月还没有记录时，合计是 US$0.00、0 笔',
+     card.includes('US$0.00') && /0\s*笔/.test(card), card);
+
+  await page.evaluate(() => {
+    // 三笔：用现金付 35、用现金付 21、自己先垫 189.53——不分是哪种，都要算进合计
+    data.transactions.push({ id:'b1', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-05',
+      type:'expense', amount:35, categoryId:'cat_food', paidFrom:'cash', updatedAt: Date.now() });
+    data.transactions.push({ id:'b2', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-06',
+      type:'expense', amount:21, categoryId:'cat_food', paidFrom:'cash', updatedAt: Date.now() });
+    data.transactions.push({ id:'b3', accountId: STAFF_BOSS_ACC_ID, date:'2026-09-07',
+      type:'expense', amount:189.53, categoryId:'cat_other_exp', paidFrom:'own', updatedAt: Date.now() });
+    // 对照组：不属于老板账的那笔（别的账户）不能被算进去
+    data.transactions.push({ id:'bOther', accountId: (data.accounts.find(a=>a.id!==STAFF_BOSS_ACC_ID)||{}).id
+      || 'acc_other', date:'2026-09-08', type:'expense', amount:999, categoryId:'cat_food',
+      updatedAt: Date.now() });
+    saveData();
+    renderBossSummary();
+  });
+
+  card = await page.locator('#staff-boss-summary').innerText();
+  ok('★合计＝US$245.53（现金付 35+21 ＋ 自己垫 189.53，两种花法都要算）',
+     card.includes('US$245.53'), card);
+  ok('★笔数是 3（不包含别的账户那一笔）', /3\s*笔/.test(card), card);
+  // 2026-09-10 五度改版：拆行（用现金/自己垫）拿掉了，只留合计与笔数。
+  ok('★不再拆行显示「用现金/自己垫」', !card.includes('用现金') && !card.includes('自己垫'), card);
+  ok('对照组：别的账户那一笔 999 没有被算进合计里', !card.includes('999'), card);
+
+  // —— 对照组：切到没有记录的月份，合计要归零，不是停在旧数字上 ——
+  await page.evaluate(() => { state.txYear = 2026; state.txMonth = 5; renderBossSummary(); }); // 6月，没有记录
+  card = await page.locator('#staff-boss-summary').innerText();
+  ok('对照组：切到没有记录的月份，合计变回 US$0.00、0 笔（不是继续显示上个月的数）',
+     card.includes('US$0.00') && /0\s*笔/.test(card) && !card.includes('245.53'), card);
+  await page.evaluate(() => { state.txYear = 2026; state.txMonth = 8; renderBossSummary(); }); // 切回 9 月
+
+  // —— 「手上现金」那张卡不能被这次改动带坏 ——
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('手上现金卡数字不受影响：还没设起点时仍是老样子（这次没动 bossCashLeft/renderBossCash）',
+     card.includes('收到现金'), card);
+  await page.evaluate(() => { window.prompt = () => '500'; });
+  await page.evaluate(() => bossCashAdd());
+  await page.waitForTimeout(300);
+  card = await page.locator('#staff-boss-cash').innerText();
+  // 2026-09-10 五度改版：这张卡的头部数字不再是 bossCashLeft()（那个只减现金付的
+  // 56），改成「收到 − 这个月支出合计（现金＋自己垫都算，跟上面 #staff-boss-summary
+  // 那张卡同一个数）」：500 − 245.53 ＝ 254.47。
+  ok('★手上现金＝收到 500 − 花掉 245.53（35+21+189.53，跟本月合计卡同一口径）＝ US$254.47',
+     card.includes('US$254.47') && card.includes('花掉 US$245.53'), card);
 
   ok('无 JS 报错', errs.length === 0, errs);
   await h.ctx.close();

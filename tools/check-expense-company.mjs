@@ -2726,6 +2726,36 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   });
   ok('图片读不出来时退回原图，不让整份账单挂掉', fallback === true, fallback);
 
+  // ---- 送给老板 App 的摘要必须跟 PDF 印出来的一致（2026-09-11）----
+  // PDF 从 2026-09-10 起只列非 xfer 的注资与开销（转账不该出现在给老板看的账单上）。
+  // 摘要如果还用含 xfer 的总额，老板 App 的账单卡会写出一个比实际开销大的数字，
+  // 而他点进 PDF 又找不到那些钱——对不上还查不出原因。
+  const sum = await page.evaluate(async () => {
+    const acc = data.accounts.find(a => a.id === 'acc_boss') || data.accounts[0];
+    const d = today();
+    data.transactions = [
+      { id:'s1', accountId: acc.id, date:d, type:'income',  amount:1000, categoryId:'cat_other_inc',
+        description:'老板注资', updatedAt: Date.now() },
+      { id:'s2', accountId: acc.id, date:d, type:'expense', amount:120,  categoryId:'cat_food',
+        description:'真开销', updatedAt: Date.now() },
+      // 转账腿：不该进摘要，但该进余额
+      { id:'s3', accountId: acc.id, date:d, type:'expense', amount:500,  categoryId:'cat_cash_gift',
+        description:'给 X 的现金', updatedAt: Date.now(), xfer:true, giftId:'gs1' },
+    ];
+    state.anYear = new Date().getFullYear(); state.anMonth = new Date().getMonth();
+    data.currentAccountId = acc.id;   // buildStatementPDF 用 curAcc()，读的是 data 不是 state
+    window.getAttachmentBlob = async () => null;
+    const out = await buildStatementPDF();
+    return out && out.summary;
+  });
+  ok('★摘要的「花了多少」只算真开销 120，不含转账的 500',
+     sum && Math.abs(sum.expense - 120) < 0.005, sum);
+  ok('★摘要的笔数只数真开销 1 笔', sum && sum.count === 1, sum);
+  ok('对照组：注资 1000 照常算进摘要（少了这条对照，「摘要整个归零」也会全绿）',
+     sum && Math.abs(sum.income - 1000) < 0.005, sum);
+  ok('对照组：期末余额仍然把转账算进去（1000−120−500＝380，那是账户真实余额）',
+     sum && Math.abs(sum.closing - 380) < 0.005, sum);
+
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
 }
@@ -3449,13 +3479,14 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
   await ctx.close();
 }
 
-// ---------- 【35】账户明细 PDF：「代管转回」不能被写成「新增注资」----------
-// 代管账户改造（2026-09-09）之后，收入里会混进「同事把没花完的现金还回来」这种
-// xfer 收入腿。PDF **刻意**把 xfer 算进收支（否则「期初＋收入−支出＝期末」这条恒等式
-// 会对不上），这是对的；但「收支汇总」那栏原本笼统写「新增注资 N笔」，会把还回来的钱
-// 说成新投进来的本金——看这份 PDF 的人（老板）照着这个数字下判断就错了。
+// ---------- 【35】账户明细 PDF：「代管转回」（转账）整个不出现，只留真注资 ----------
+// 2026-09-09 代管账户改造之后，收入里会混进「同事把没花完的现金还回来」这种 xfer
+// 收入腿；当时的做法是 PDF 里把它跟「新增注资」分开标注（这样不会把还回来的钱说成
+// 新投进来的本金）。2026-09-10 用户进一步明确要求「月底账单里我也不要出现转账给谁，
+// 这些是不该显示的，该出现的只有老板注资和开销」——所以现在不是「分开标注」，是
+// **转账（含代管转回）整个不进收支汇总/明细**，「新增注资」这行现在只反映真收入。
 {
-  console.log('\n【35】账户明细 PDF：「代管转回」与「新增注资」分开写');
+  console.log('\n【35】账户明细 PDF：转账（含代管转回）整个不出现，只留真注资');
   const ctx = await browser.newContext();
   await stubPdfLibs(ctx);
   await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
@@ -3487,10 +3518,10 @@ async function lastToast(page){ return page.evaluate(() => window.__lastToast); 
     return document.getElementById('pdf-statement').innerText;
   });
 
-  ok('注资那笔照常写成「新增注资 1笔」', /新增注资\s*1\s*笔/.test(noteText), noteText.slice(0, 600));
-  ok('代管转回单独写出来，不混进注资', /代管转回\s*1\s*笔/.test(noteText), noteText.slice(0, 600));
-  ok('★不会把两笔笼统算成「新增注资 2笔」（那会把还回来的钱说成新投进来的本金）',
-     !/新增注资\s*2\s*笔/.test(noteText), noteText.slice(0, 600));
+  ok('注资那笔照常写成「1笔」（只算真收入 inc-fund）', /\b1\s*笔/.test(noteText), noteText.slice(0, 600));
+  ok('★代管转回（inc-xfer）不出现在 PDF 任何地方（转账整个不给看）',
+     !noteText.includes('Kuang 还回来的现金') && !noteText.includes('代管转回'), noteText.slice(0, 600));
+  ok('对照组：真开销「买菜」照常出现', noteText.includes('买菜'), noteText.slice(0, 600));
   ok('无 JS 报错', errs.length===0, errs);
   await ctx.close();
 }
@@ -3686,8 +3717,14 @@ console.log('\n【37】首屏卡片「还剩/已花」+ 整理旧记录进代管
   const cardTxt1 = await page.textContent('#ov-boss-cash-gift');
   ok('卡片显示 Kuang 还剩 1500（5000-3000-500），手算对得上',
      cardTxt1.includes('Kuang') && cardTxt1.includes('还剩') && /1,?500\.00/.test(cardTxt1), cardTxt1);
-  ok('★对照组：还的那笔 500（xfer）不算进"已花"，卡片显示已花 3000 不是 3500',
-     /已花[^）]*3,?000\.00/.test(cardTxt1) && !/已花[^）]*3,?500\.00/.test(cardTxt1), cardTxt1);
+  // 2026-09-10 五度改版：卡片不再显示「已花」（累计、直接躺在代管账户里那种旧格式
+  // 消费的合计），改成「花了」（personMonthSpend() 本月合计，只认新格式——真消费
+  // 落在真实账户、staffSpendId 指回自己）。这里的 3000 是旧格式（直接记在代管账户
+  // 本身，没有 staffSpendId），personMonthSpend() 认不出它，所以「花了」显示 0——
+  // 这正是「🧹 整理旧记录」要解决的问题，不是这次改动引入的新缺口。
+  const ms37 = await page.evaluate(()=>personMonthSpend('Kuang'));
+  ok('★对照组：还的那笔 500（xfer）不会被 personMonthSpend() 当成支出算进去（own 仍是 0）',
+     ms37.own === 0, ms37);
   ok('卡片上不再有旧版「清除这行显示」链接（那是给本地显示缓存用的，现在显示真实账目）',
      !cardTxt1.includes('清除这行显示'));
 
@@ -4054,17 +4091,18 @@ console.log('\n【40】代管账户不出现在账户列表/切换器/首屏卡�
   await ctx.close();
 }
 
-// ---------- 【41】转现金不再抵欠款：全额进代管，欠款独立存在（+ 对照组 + 撤销抵扣）----------
-// 2026-09-10 用户实机跑完「先抵欠款」那版之后明确要求拿掉，原话：
-// 「我转个 5000 给他 然后我这边的卡和他那边就是 5000 扣掉这个月他记的就好了不是吗？」
-// 新规则：转现金＝全额进代管，不再自动抵扣任何欠款；欠款独立存在，只有手动按
-// 「已付」才结清。这段连带覆盖给"旧规则已经抵过"的资料一条撤销路（undoBossDebtOffset()）。
-console.log('\n【41】转现金不再抵欠款：手算 fixture（欠189.53转5000→花506）+ 对照组 + 撤销抵扣');
+// ---------- 【41】转账记全额，结清垫付另开一对配平转账（+ 对照组 + 撤销）----------
+// 2026-09-10 四度改版，用户最终拍板：转账永远是全额，转账当下如果这个人有未结清的
+// 垫付，从最旧的开始累加、不拆单笔、抵到不超过转账金额为止，用**另一对「代管账户→
+// 来源账户」的配平转账**结清（不是把转账金额本身改小——那是上一版「先抵欠款」的
+// 做法，已经被 2026-09-10 用户实机跑完那版之后明确否决）。
+console.log('\n【41】转账记全额，结清垫付另开一对配平转账：手算 fixture（欠189.53转5000→花506）+ 对照组 + 撤销');
 {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e=>errs.push(e.message));
-  page.on('dialog', d => d.accept());
+  let dialogMsg41 = '';
+  page.on('dialog', d => { dialogMsg41 = d.message(); d.accept(); });
   await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
     ? r.continue() : r.abort('failed'));
   await page.goto(URL, { waitUntil:'domcontentloaded' });
@@ -4106,6 +4144,14 @@ console.log('\n【41】转现金不再抵欠款：手算 fixture（欠189.53转5
   });
   const owedBefore = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
   ok('转账前，Kuang 欠款 189.53', owedBefore && Math.abs(owedBefore.total - 189.53) < 0.005, owedBefore);
+  // ---- 对照组（重要）：这时 Kuang 还没有任何代管账户（从没收过现金），只有垫付
+  // ——「该付同事多少」名单必须照样看得到他和金额，不能因为「没转过钱」就漏掉，
+  // 少了这条对照，「把垫付整个功能砍掉」也会全绿。 ----
+  ok('对照组：这时 Kuang 没有代管账户（还没转过钱）', !(await page.evaluate(()=>getAcc(holdingAccountId('Kuang')))));
+  await page.evaluate(()=>renderInboxOwed());
+  const owedDom41 = await page.textContent('#inbox-owed');
+  ok('对照组：「该付同事」名单在 DOM 上也看得到 Kuang 和 189.53（不靠有没有代管账户）',
+     owedDom41.includes('Kuang') && owedDom41.includes('189.53'), owedDom41);
 
   await page.click('#ov-boss-cash-gift');
   await page.waitForTimeout(150);
@@ -4115,22 +4161,71 @@ console.log('\n【41】转现金不再抵欠款：手算 fixture（欠189.53转5
   await page.evaluate(()=>sendBossCashGift());
   await page.waitForTimeout(250);
 
+  ok('★确认框讲清楚这次会结清多少笔垫付',
+     dialogMsg41.includes('189.53') && dialogMsg41.includes('结清') && dialogMsg41.includes('1 笔'), dialogMsg41);
+
   const sentPayload41 = await page.evaluate(()=>window.__gifts[0]?.p);
-  ok('★ Firestore 记的是全额 5000，不再自动抵掉欠款', sentPayload41?.amount === 5000, sentPayload41);
+  ok('★ Firestore 记的是全额 5000（转账金额本身不缩水）', sentPayload41?.amount === 5000, sentPayload41);
   const ALLOWED_GIFT_KEYS = ['k','person','amount','currency','at','note'];
-  ok('★送到 Firestore 的字段没有一个是规则不允许的',
+  ok('★送到 Firestore 的字段没有一个是规则不允许的（settleAdvanceIds 只住本机腿上）',
      Object.keys(sentPayload41 || {}).every(k => ALLOWED_GIFT_KEYS.includes(k)),
      Object.keys(sentPayload41 || {}));
   const legOffset41 = await page.evaluate(()=>data.transactions.some(t => t.giftId && Array.isArray(t.offsetTxIds)));
-  ok('★两条转账腿都不带 offsetTxIds（新规则里根本没有"抵扣"这回事）', !legOffset41, legOffset41);
+  ok('★两条转账腿都不带 offsetTxIds（那是旧规则的字段，新机制不用它）', !legOffset41, legOffset41);
+
+  const giftId41 = await page.evaluate(()=>(data.transactions.find(t=>t.accountId==='acc_boss'
+    && t.giftId && !t.settleAdvanceIds && t.type==='expense') || {}).giftId);
+  const legs41 = await page.evaluate((gid)=>data.transactions.filter(t=>t.giftId===gid), giftId41);
+  ok('★这一次转账共记了 4 条腿（转账 2 条全额 + 结清垫付 2 条配平）', legs41.length === 4, legs41);
+  const settleLegs41 = legs41.filter(t=>Array.isArray(t.settleAdvanceIds));
+  ok('★结清那两条腿都带 settleAdvanceIds=[debt189]、金额 189.53',
+     settleLegs41.length === 2 && settleLegs41.every(t=>t.settleAdvanceIds.includes('debt189') && t.amount===189.53),
+     settleLegs41);
+  const transferLegs41 = legs41.filter(t=>!t.settleAdvanceIds);
+  ok('★转账那两条腿金额都是全额 5000（不因为结清而缩水）',
+     transferLegs41.length === 2 && transferLegs41.every(t=>t.amount===5000), transferLegs41);
 
   const owedAfter = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
-  ok('★ 欠款仍然是 189.53，没有被自动结清', owedAfter && Math.abs(owedAfter.total - 189.53) < 0.005, owedAfter);
+  ok('★ 欠款被这次转账顺带结清了（不再出现在「该付同事」名单里）', !owedAfter, owedAfter);
+  const debt189After = await page.evaluate(()=>data.transactions.find(t=>t.id==='debt189'));
+  ok('★ debt189 标上了 fromStaff.paidAt', debt189After && !!debt189After.fromStaff.paidAt, debt189After);
   const kuangHoldId41 = await page.evaluate(()=>holdingAccountId('Kuang'));
-  ok('★ 代管现金是整额 5000，不是净额', (await bal41(kuangHoldId41)) === 5000, await bal41(kuangHoldId41));
+  ok('★ 代管余额是 4810.47（5000−189.53，结清那笔从代管账户里扣掉了）',
+     Math.abs((await bal41(kuangHoldId41)) - 4810.47) < 0.005, await bal41(kuangHoldId41));
   const accBossBalAfter41 = await bal41('acc_boss');
-  ok('★ 来源账户这次减少 5000（欠款 189.53 是另一笔独立的旧支出，早就扣过了，这次没再扣）',
-     accBossBalAfter41 === accBossBalBefore41 - 189.53 - 5000, { accBossBalBefore41, accBossBalAfter41 });
+  ok('★ 来源账户净变化正好 −5000（−189.53 记旧账 −5000 转账 +189.53 结清转回，三笔相抵后净变化＝实际转出去的现金）',
+     Math.abs((accBossBalAfter41 - accBossBalBefore41) + 5000) < 0.005, { accBossBalBefore41, accBossBalAfter41 });
+
+  // ---- 撤回这笔转账（趁还没花钱、状态干净的时候撤）：4 条腿都要消失、debt189 的
+  // paidAt 要清掉、欠款恢复、来源账户余额回到转账前 ----
+  await page.evaluate((gid)=>{ bossCashGiftRecentCache[gid] = { person:'Kuang', amount:5000, currency:'USD' }; }, giftId41);
+  await page.evaluate((gid)=>deleteBossCashGift(gid), giftId41);
+  await page.waitForTimeout(200);
+  const legsAfterUndo41 = await page.evaluate((gid)=>data.transactions.filter(t=>t.giftId===gid), giftId41);
+  ok('★撤回后 4 条腿全部消失', legsAfterUndo41.length === 0, legsAfterUndo41);
+  const debt189AfterUndo = await page.evaluate(()=>data.transactions.find(t=>t.id==='debt189'));
+  ok('★撤回后 debt189 的 paidAt 被清掉（恢复成还欠着）',
+     debt189AfterUndo && !debt189AfterUndo.fromStaff.paidAt, debt189AfterUndo);
+  const owedAfterUndo41 = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
+  ok('★撤回后欠款恢复成 189.53', owedAfterUndo41 && Math.abs(owedAfterUndo41.total - 189.53) < 0.005, owedAfterUndo41);
+  ok('★撤回后代管余额归零', Math.abs(await bal41(kuangHoldId41)) < 0.005, await bal41(kuangHoldId41));
+  // 撤回只撤转账/结清那两条腿，不撤 debt189 本身（那是转账之前就已经真实发生的一笔
+  // 支出，从头到尾没被这次转账动过），所以来源账户应该回到「只扣了 debt189」的状态，
+  // 不是回到转账前的原始数字。
+  ok('★撤回后来源账户余额回到「只扣了 debt189」的状态（−189.53，不是回到转账前）',
+     Math.abs((await bal41('acc_boss')) - (accBossBalBefore41 - 189.53)) < 0.005,
+     { accBossBalBefore41, after: await bal41('acc_boss') });
+
+  // ---- 重新转一次（撤回之后再转，状态要能重新干净地走一遍，不留半吊子痕迹）----
+  await page.evaluate(()=>{ window.__deletedGifts = []; });
+  await page.selectOption('#boss-cash-gift-person', 'Kuang');
+  await page.fill('#boss-cash-gift-amount', '5000');
+  await page.evaluate(()=>sendBossCashGift());
+  await page.waitForTimeout(250);
+  ok('★重新转账后又顺带结清了 189.53（撤回没有把这笔垫付永久弄丢）',
+     !(await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'))));
+  ok('★重新转账后代管余额回到 4810.47', Math.abs((await bal41(kuangHoldId41)) - 4810.47) < 0.005,
+     await bal41(kuangHoldId41));
 
   // ---- 花 506（用代管现金付，paidFrom:'cash'）----
   await page.evaluate(() => {
@@ -4140,24 +4235,36 @@ console.log('\n【41】转现金不再抵欠款：手算 fixture（欠189.53转5
   });
   await page.evaluate(() => fetchInbox());
   await page.waitForTimeout(300);
-  ok('★ 花 506 之后，代管现金是 4494（5000−506）', Math.abs((await bal41(kuangHoldId41)) - 4494) < 0.005,
+  ok('★ 花 506 之后，代管余额是 4304.47（4810.47−506）', Math.abs((await bal41(kuangHoldId41)) - 4304.47) < 0.005,
      await bal41(kuangHoldId41));
   const monthExpAfter41 = await page.evaluate(()=>{
     const d = new Date();
     return monthTxs('acc_boss', d.getFullYear(), d.getMonth())
       .filter(t=>t.type==='expense' && !t.xfer).reduce((s,t)=>s+t.amount,0);
   });
-  ok('★ 本月支出含那 506（189.53+506=695.53）', Math.abs(monthExpAfter41 - 695.53) < 0.005, monthExpAfter41);
+  ok('★ 本月支出含那 506（189.53+506=695.53，结清那对配平腿是 xfer，不计入）',
+     Math.abs(monthExpAfter41 - 695.53) < 0.005, monthExpAfter41);
 
-  // ---- 对照组：不欠钱的人，转账行为跟欠钱的人完全一样（证明"不抵扣"不是靠某个特例分支）----
+  // ---- 首屏卡片：三个数（给了/花了/还剩），不拆「用现金/他垫」----
+  await page.evaluate(()=>renderOverview());
+  const cardTxt41 = await page.textContent('#ov-boss-cash-gift');
+  ok('★卡片显示「给了 US$5000.00　花了 US$695.53　还剩 US$4304.47」',
+     /给了[^花]*5,?000\.00/.test(cardTxt41) && /花了[^还]*695\.53/.test(cardTxt41)
+     && /还剩[^\n<]*4,?304\.47/.test(cardTxt41), cardTxt41);
+  ok('★卡片不出现「他垫」「自己垫」这类拆行字样', !cardTxt41.includes('他垫') && !cardTxt41.includes('自己垫'), cardTxt41);
+
+  // ---- 对照组：不欠钱的人，转账行为跟欠钱的人唯一的差别是没有结清那一对腿 ----
   await page.selectOption('#boss-cash-gift-person', 'Seryi');
   await page.fill('#boss-cash-gift-amount', '5000');
   await page.evaluate(()=>sendBossCashGift());
   await page.waitForTimeout(250);
+  ok('对照组：确认框不提结清（不欠钱，没有可结清的）', !dialogMsg41.includes('结清'), dialogMsg41);
   const seryiSent = await page.evaluate(()=>window.__gifts[window.__gifts.length-1]?.p);
-  ok('对照组：不欠钱时也是全额 5000（"不抵扣"不是特例分支，是通用行为）', seryiSent?.amount === 5000, seryiSent);
+  ok('对照组：不欠钱时也是全额 5000（转账金额本身从来不变）', seryiSent?.amount === 5000, seryiSent);
   const seryiHoldId41 = await page.evaluate(()=>holdingAccountId('Seryi'));
   ok('对照组：代管拿到整整 5000', (await bal41(seryiHoldId41)) === 5000, await bal41(seryiHoldId41));
+  const seryiLegs41 = await page.evaluate(()=>data.transactions.filter(t=>t.giftId==='g41_'+window.__giftSeq).length);
+  ok('对照组：不欠钱时只有 2 条腿，没有多出结清那一对', seryiLegs41 === 2, seryiLegs41);
 
   // ---- 撤销抵扣：造一笔"旧规则已经抵过"的资料 ----
   await page.evaluate(()=>closeModal('modal-boss-cash-gift'));
@@ -4386,7 +4493,10 @@ console.log('\n【43】同一份投递箱文档重复收到，不叠加配平腿
 // 用户实测过「先抵欠款」那版之后，明确要求拿掉自动抵扣（见【41】）。这段沿用他的真实
 // 数字重新核对：转账不再吃掉欠款，Firestore 送的是全额，「该付同事多少」独立存在；
 // paidFrom（'cash'/'own'）让老板端和同事端两边口径一致这件事本身**没有变**，继续守住。
-console.log('\n【44】真实数据端到端（新规则）：欠189.53 → 转5000（全额）→ 花224，五个数字逐一核对');
+// 2026-09-10 四度改版：这份真实数据（用户历史上真的遇到过 4776 vs 4586.47 那次
+// 差额事故的数字）现在应该自动对上——转账当下顺带结清了 189.53 那笔垫付，两边不用
+// 再靠「paidFrom 分拆」这种事后近似口径去凑，直接就是同一个数。
+console.log('\n【44】真实数据端到端（结清垫付）：欠189.53 → 转5000（自动结清）→ 花224，五个数字逐一核对');
 {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
@@ -4434,7 +4544,7 @@ console.log('\n【44】真实数据端到端（新规则）：欠189.53 → 转5
   const owed1 = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
   ok('★ 自己垫的钱算进「该付同事多少」＝189.53', owed1 && owed1.total === 189.53, owed1);
 
-  // ---- 转 5000 给 Kuang：新规则不抵欠款，全额进代管 ----
+  // ---- 转 5000 给 Kuang：转账本身记全额，但顺带结清那笔 189.53 的垫付 ----
   await page.click('#ov-boss-cash-gift');
   await page.waitForTimeout(150);
   await page.selectOption('#boss-cash-gift-acc', 'acc_boss');
@@ -4445,9 +4555,9 @@ console.log('\n【44】真实数据端到端（新规则）：欠189.53 → 转5
   await page.evaluate(()=>closeModal('modal-boss-cash-gift'));
 
   const sent44 = await page.evaluate(()=>window.__gifts[0]?.p);
-  ok('★ 送到同事那边的是全额 5000，不再扣掉 189.53', sent44 && sent44.amount === 5000, sent44);
+  ok('★ 送到同事那边的是全额 5000（转账金额本身不缩水）', sent44 && sent44.amount === 5000, sent44);
   const owed2 = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
-  ok('★ 欠款仍然是 189.53，转账没有自动结清它', owed2 && Math.abs(owed2.total - 189.53) < 0.005, owed2);
+  ok('★ 欠款被这次转账顺带结清了（不再出现在「该付同事」名单里）', !owed2, owed2);
 
   // ---- 第二笔：用老板给的现金花掉 224（同事端标 paidFrom:'cash'）----
   await page.evaluate(() => {
@@ -4461,21 +4571,25 @@ console.log('\n【44】真实数据端到端（新规则）：欠189.53 → 转5
   const cashLegs = await page.evaluate(()=>data.transactions.filter(t=>t.staffSpendId==='ix_k_cash1'));
   ok('用现金付的那笔记成 3 条腿', cashLegs.length === 3, cashLegs.length);
   const owed3 = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
-  ok('★ 用老板现金花的钱不算欠他（欠款还是原来那 189.53，没多也没少）',
-     owed3 && Math.abs(owed3.total - 189.53) < 0.005, owed3);
+  ok('★ 用老板现金花的钱不算欠他（结清之后没有新欠款冒出来）', !owed3, owed3);
 
-  // ---- 五个数字逐一核对（手算：5000 全额进代管，花掉 224，欠款独立存在）----
+  // ---- 五个数字逐一核对（手算：5000 全额进代管，转账当下顺带结清 189.53，再花掉 224）----
   const holdId44 = await page.evaluate(()=>holdingAccountId('Kuang'));
   const holdBal44 = await bal(holdId44);
-  ok('★①他手上还剩 4776（5000−224）', Math.abs(holdBal44 - 4776) < 0.005, holdBal44);
+  ok('★①他手上还剩 4586.47（5000−189.53结清−224用现金花的）', Math.abs(holdBal44 - 4586.47) < 0.005, holdBal44);
 
+  // 只算「真支出配平腿」（staffSpendId），跟「结清垫付」那条配平腿（settleAdvanceIds）
+  // 分开算——两者含义不同：前者是他真花了多少，后者是这次转账顺带还了多少旧账。
   const spentCash44 = await page.evaluate((id)=>data.transactions
-    .filter(t=>t.accountId===id && t.type==='expense').reduce((s,t)=>s+t.amount,0), holdId44);
+    .filter(t=>t.accountId===id && t.type==='expense' && t.staffSpendId).reduce((s,t)=>s+t.amount,0), holdId44);
   ok('★②用现金花掉 224.00', Math.abs(spentCash44 - 224) < 0.005, spentCash44);
+  const settledInHold44 = await page.evaluate((id)=>data.transactions
+    .filter(t=>t.accountId===id && t.type==='expense' && Array.isArray(t.settleAdvanceIds)).reduce((s,t)=>s+t.amount,0), holdId44);
+  ok('这次转账顺带结清了 189.53（代管账户那条配平腿）', Math.abs(settledInHold44 - 189.53) < 0.005, settledInHold44);
 
   const bossBal44 = await bal('acc_boss');
-  ok('★③来源账户净变化正好 −5189.53（−189.53 −5000 −224 +224）',
-     Math.abs((bossBal44 - bossBal0) + 5189.53) < 0.005, { bossBal0, bossBal44 });
+  ok('★③来源账户净变化正好 −5000（−189.53记旧账 −5000转账 +189.53结清转回 −224真花 +224配平，相抵后＝实际转出去的现金）',
+     Math.abs((bossBal44 - bossBal0) + 5000) < 0.005, { bossBal0, bossBal44 });
 
   const expNoXfer44 = await page.evaluate(()=>{
     const now = new Date();
@@ -4485,12 +4599,13 @@ console.log('\n【44】真实数据端到端（新规则）：欠189.53 → 转5
   ok('★④本月支出里 Kuang 相关合计 413.53（189.53+224），一分不多一分不少',
      Math.abs(expNoXfer44 - 413.53) < 0.005, expNoXfer44);
 
-  ok('★⑤欠 Kuang 还是 189.53（新规则下转账不会替他把欠款还了）',
-     (await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang')))?.total === 189.53);
+  ok('★⑤欠 Kuang 归零（这次转账自动结清了那笔旧账）',
+     !(await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'))));
 
   // ---- 两边口径一致：老板端算的「他还剩」＝同事端算的「手上还剩」----
-  // 同事端公式：收到的现金（这次是全额 5000）− 用现金花掉的（paidFrom==='cash' 的 224）
-  const staffSideLeft = Math.round((sent44.amount - 224) * 100) / 100;
+  // 同事端公式（2026-09-10 五度改版）：收到的现金（全额 5000）− 这个月支出合计
+  // （现金付的 224 ＋ 自己垫的 189.53，都算，见 build-staff-page.py bossCashMonthSpend()）。
+  const staffSideLeft = Math.round((sent44.amount - (224 + 189.53)) * 100) / 100;
   ok('★★两边口径一致：老板端「他还剩」跟同事端「手上还剩」是同一个数',
      Math.abs(staffSideLeft - holdBal44) < 0.005, { staffSideLeft, holdBal44 });
 
@@ -4509,28 +4624,29 @@ console.log('\n【44】真实数据端到端（新规则）：欠189.53 → 转5
   ok('对照组：标 own 的那笔不动代管余额（他花的是自己的钱）',
      Math.abs((await bal(holdId44)) - holdBeforeOwn2) < 0.005, await bal(holdId44));
   const owed4 = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
-  ok('对照组：欠款累加成 239.53（189.53+50，两笔垫付都还没结清，互不冲抵）',
-     owed4 && Math.abs(owed4.total - 239.53) < 0.005, owed4);
+  ok('对照组：欠款是 50（之前那 189.53 转账时已经结清了，这里只剩新垫的这笔）',
+     owed4 && Math.abs(owed4.total - 50) < 0.005, owed4);
 
   // ---- 回归：手动标「已付」之后，同一份投递箱文档被重复处理，已结清的垫付不能自己活过来 ----
   // 这是写这段自检时抓到的真实 bug：更新旧记录时用一份不带 paidAt 的 fromStaff 覆盖回去，
-  // 已经标付清的垫付又回到「该付同事」名单里——照着付就是重复付款。
-  // 新规则下欠款不再靠转账自动结清，改用「已付」按钮手动结清来触发同一条回归路径。
+  // 已经标付清的垫付又回到「该付同事」名单里——照着付就是重复付款。这里同时覆盖两条
+  // 触发路径：189.53 那笔是被**转账自动结清**的，50 那笔是**手动标已付**的，重复收件
+  // 都不该让它们复活。
   await page.evaluate(() => {
     renderInboxOwed();
     const i = inboxOwedRows.findIndex(r => r.who === 'Kuang');
     inboxMarkPaid(i);
   });
   const owedAfterMark = await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Kuang'));
-  ok('手动按「已付」之后，Kuang 的欠款归零（239.53 两笔一起标掉）', !owedAfterMark, owedAfterMark);
+  ok('手动按「已付」之后，Kuang 的欠款归零（50 那笔标掉）', !owedAfterMark, owedAfterMark);
 
   await page.evaluate(() => fetchInbox());
   await page.waitForTimeout(300);
   const owedAfterRe = await page.evaluate(()=>{
     const r = inboxOwedByPerson().find(x=>x.who==='Kuang'); return r ? r.total : 0; });
-  ok('★重复收件不会让「已经还过的垫付」复活（复活＝老板会重复付款）', owedAfterRe === 0, owedAfterRe);
+  ok('★重复收件不会让「已经还过/已经结清的垫付」复活（复活＝老板会重复付款）', owedAfterRe === 0, owedAfterRe);
   ok('★重复收件后，他手上还剩的钱也不变',
-     Math.abs((await bal(holdId44)) - 4776) < 0.005, await bal(holdId44));
+     Math.abs((await bal(holdId44)) - 4586.47) < 0.005, await bal(holdId44));
 
   ok('无 JS 报错', errs.length===0, errs);
   await ctx.close();
@@ -4720,33 +4836,403 @@ console.log('\n【46】配平腿不出现在明细列表/PDF（对照组：真�
   });
   ok('★本月支出（非 xfer）只算真支出 80，配平腿本来就是 xfer 不进这个统计', monthExp46 === 80, monthExp46);
 
-  // ---- 账户明细 PDF：支出/收入明细表不列配平腿，但总计沿用未过滤的真实统计 ----
+  // ---- 账户明细 PDF：支出/收入明细行不列任何转账（含配平腿），真实统计（用来对
+  // 「期末余额」这条恒等式）沿用未过滤的数字 ----
   // buildStatementPDF() 依赖 jsPDF（懒加载 CDN，这个测试把外部网域全断了拿不到），
-  // 所以不整份跑 PDF 生成，改成照抄 buildStatementPDF() 里同一段算法（rangeTxs → 过滤
-  // isPairedSpendLeg），直接验证 incomeTxsShown/expenseTxsShown 有没有把配平腿过滤对、
-  // 总计有没有沿用未过滤的真实统计。
+  // 所以不整份跑 PDF 生成，改成照抄 buildStatementPDF() 里同一段算法（2026-09-10
+  // 之后已经不是 isPairedSpendLeg 那套、改成更宽的 !t.xfer，见那边注释），直接验证
+  // incomeFundTxs/expenseFundTxs 有没有把所有转账（含配平腿）都过滤掉。
   const rowsCheck46 = await page.evaluate(() => {
     const acc = getAcc('acc_boss');
     const range = stmtRange();
     const txs = rangeTxs(acc.id, range.from, range.to);
     const incomeTxs = txs.filter(t=>t.type==='income');
     const expenseTxs = txs.filter(t=>t.type==='expense');
-    const incomeTxsShown = incomeTxs.filter(t=>!isPairedSpendLeg(t));
-    const expenseTxsShown = expenseTxs.filter(t=>!isPairedSpendLeg(t));
+    const incomeFundTxs = incomeTxs.filter(t=>!t.xfer);
+    const expenseFundTxs = expenseTxs.filter(t=>!t.xfer);
     return {
       incomeTotal: incomeTxs.reduce((s,t)=>s+t.amount,0),
-      incomeShownHasPair: incomeTxsShown.some(t=>t.id==='pairReal46'),
-      expenseShownHasHold: expenseTxsShown.some(t=>t.id==='pairHold46'),
-      expenseShownHasSpend: expenseTxsShown.some(t=>t.id==='spend46'),
-      expenseShownHasGift: expenseTxsShown.some(t=>t.id==='gift46'),
+      incomeShownHasPair: incomeFundTxs.some(t=>t.id==='pairReal46'),
+      expenseShownHasHold: expenseFundTxs.some(t=>t.id==='pairHold46'),
+      expenseShownHasSpend: expenseFundTxs.some(t=>t.id==='spend46'),
+      expenseShownHasGift: expenseFundTxs.some(t=>t.id==='gift46'),
     };
   });
   ok('PDF 收入明细行不含配平腿 pairReal46', !rowsCheck46.incomeShownHasPair, rowsCheck46);
   ok('PDF 支出明细行不含配平腿 pairHold46（本来就在隐藏的代管账户，双重保险）', !rowsCheck46.expenseShownHasHold, rowsCheck46);
   ok('对照组：PDF 支出明细行照常含真支出 spend46', rowsCheck46.expenseShownHasSpend, rowsCheck46);
-  ok('对照组：PDF 支出明细行照常含「给同事现金」gift46', rowsCheck46.expenseShownHasGift, rowsCheck46);
-  ok('★incomeTotal 这个统计沿用未过滤数组，包含 pairReal46 的 80（总计不能少算）',
+  ok('★PDF 支出明细行不再含「给同事现金」gift46（2026-09-10：转账整个不给看，不只是配平腿）',
+     !rowsCheck46.expenseShownHasGift, rowsCheck46);
+  ok('★incomeTotal 这个真实统计沿用未过滤数组，包含 pairReal46 的 80（期末余额这条恒等式要用）',
      rowsCheck46.incomeTotal >= 80, rowsCheck46);
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+// ---------- 【48】账户明细 PDF：所有转账都不出现，加一行「在同事手上的现金」对得平 ----------
+// 用户原话：「月底账单里我也不要出现转账给谁，这些是不该显示的，该出现的只有老板
+// 注资和开销」；但藏归藏，账要对得平——藏掉转账之后「注资－开销」会跟真实的期末
+// 余额差一截，差的正是「这段期间净转出去、还没转回来的钱」，所以在合计区新增一行
+// 「在同事手上的现金」把这段差额显式写出来（推导与已知局限见 buildStatementPDF()
+// 里 holdingLine 那段注释）。这条自检不整份跑 PDF（jsPDF 懒加载 CDN，外部网域已断），
+// 照抄 buildStatementPDF() 同一段算法直接验证数字，跟【46】用的是同一个验证手法。
+console.log('\n【48】账户明细 PDF：不出现任何转账 + 「在同事手上的现金」对得平（手算 fixture）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // 照搬【41】那组真实数字：欠 189.53 → 转 5000（顺带结清 189.53）→ 花 506（现金）。
+  await page.evaluate(() => {
+    const now = Date.now();
+    switchAccount('acc_boss');
+    // 老板注资（真收入，非 xfer）——「该出现」的两类之一
+    data.transactions.push({ id:'fund48', accountId:'acc_boss', type:'income', amount:6000,
+      date: today(), categoryId:'cat_income_other', description:'老板注资',
+      updatedAt: now });
+    // Kuang 垫付的车费 189.53（真支出，非 xfer）
+    data.transactions.push({ id:'debt48', accountId:'acc_boss', type:'expense', amount:189.53,
+      date: today(), categoryId:'cat_other_exp', description:'Kuang 垫付的车费',
+      updatedAt: now, fromStaff:{ by:'Kuang48', at: now } });
+    // 转账 5000（全额，xfer）+ 结清那 189.53（另一对配平，xfer）——都不该出现
+    const hold = getOrCreateHoldingAccount('Kuang48', 'USD');
+    hold.srcAccountId = 'acc_boss';
+    data.transactions.push(
+      { id:'giftSrc48', accountId:'acc_boss', type:'expense', amount:5000, date: today(),
+        categoryId:'cat_cash_gift', description:'给 Kuang48 的现金', updatedAt: now, xfer:true, giftId:'g48' },
+      { id:'giftHold48', accountId: hold.id, type:'income', amount:5000, date: today(),
+        categoryId:'cat_cash_gift_in', description:'从「Boss」转入', updatedAt: now, xfer:true, giftId:'g48' },
+      { id:'settleHold48', accountId: hold.id, type:'expense', amount:189.53, date: today(),
+        categoryId:'cat_cash_gift', description:'结清 Kuang48 垫付的 1 笔（配平）',
+        updatedAt: now, xfer:true, giftId:'g48', settleAdvanceIds:['debt48'] },
+      { id:'settleSrc48', accountId:'acc_boss', type:'income', amount:189.53, date: today(),
+        categoryId:'cat_cash_gift_in', description:'结清 Kuang48 垫付的 1 笔（从代管账户转回）',
+        updatedAt: now, xfer:true, giftId:'g48', settleAdvanceIds:['debt48'] }
+    );
+    // 用现金花 506（3 条腿：真支出 + 配平×2，配平那两条都不该出现）
+    data.transactions.push(
+      { id:'spend48', accountId:'acc_boss', type:'expense', amount:506, date: today(),
+        categoryId:'cat_food', description:'Kuang48 用代管现金付的',
+        updatedAt: now, fromStaff:{ by:'Kuang48', at: now }, staffSpendId:'spend48' },
+      { id:'spendPairReal48', accountId:'acc_boss', type:'income', amount:506, date: today(),
+        categoryId:'cat_cash_gift_in', description:'Kuang48 用代管现金支付（配平）',
+        updatedAt: now, xfer:true, staffSpendId:'spend48' },
+      { id:'spendPairHold48', accountId: hold.id, type:'expense', amount:506, date: today(),
+        categoryId:'cat_cash_gift', description:'Kuang48 用代管现金支付（配平）',
+        updatedAt: now, xfer:true, staffSpendId:'spend48' }
+    );
+    saveData();
+  });
+
+  const pdf48 = await page.evaluate(() => {
+    const acc = getAcc('acc_boss');
+    const range = stmtRange();
+    let openingBalance = 0;
+    data.transactions.forEach(t=>{
+      if(t.accountId !== acc.id) return;
+      if(t.date < range.from) openingBalance += (t.type==='income' ? t.amount : -t.amount);
+    });
+    const txs = rangeTxs(acc.id, range.from, range.to);
+    const incomeTxs = txs.filter(t=>t.type==='income');
+    const expenseTxs = txs.filter(t=>t.type==='expense');
+    const incomeTotal = incomeTxs.reduce((s,t)=>s+t.amount,0);
+    const expenseTotal = expenseTxs.reduce((s,t)=>s+t.amount,0);
+    const closingBalance = openingBalance + incomeTotal - expenseTotal;
+    const incomeFundTxs = incomeTxs.filter(t=>!t.xfer);
+    const expenseFundTxs = expenseTxs.filter(t=>!t.xfer);
+    const incomeFundTotal = incomeFundTxs.reduce((s,t)=>s+t.amount,0);
+    const expenseFundTotal = expenseFundTxs.reduce((s,t)=>s+t.amount,0);
+    const expenseXferTotal = expenseTxs.filter(t=>t.xfer).reduce((s,t)=>s+t.amount,0);
+    const incomeXferTotal = incomeTxs.filter(t=>t.xfer).reduce((s,t)=>s+t.amount,0);
+    const holdingLine = Math.round((expenseXferTotal - incomeXferTotal) * 100) / 100;
+    return {
+      openingBalance, closingBalance, incomeFundTotal, expenseFundTotal, holdingLine,
+      shownDescs: [].concat(incomeFundTxs, expenseFundTxs).map(t=>t.description),
+    };
+  });
+
+  ok('★支出明细只有「老板注资」不在这——注资是收入，检查它在收入明细里',
+     pdf48.shownDescs.includes('老板注资'), pdf48.shownDescs);
+  ok('对照组：Kuang48 垫付的车费（真开销）照常出现', pdf48.shownDescs.includes('Kuang 垫付的车费'), pdf48.shownDescs);
+  ok('对照组：Kuang48 用代管现金付的（真开销）照常出现', pdf48.shownDescs.includes('Kuang48 用代管现金付的'), pdf48.shownDescs);
+  const hasAnyXferWord48 = pdf48.shownDescs.some(d =>
+    d.includes('给') && d.includes('的现金') || d.includes('配平') || d.includes('结清') || d.includes('转入') || d.includes('转回'));
+  ok('★显示出来的描述里没有任何转账字样（给X的现金/配平/结清/转入/转回）', !hasAnyXferWord48, pdf48.shownDescs);
+
+  ok('★「在同事手上的现金」＝ US$4,304.47（5000−189.53结清−506现金花的）',
+     Math.abs(pdf48.holdingLine - 4304.47) < 0.005, pdf48);
+  ok('★对得平：期初＋注资－开销－在同事手上的现金＝期末（恒等式，不是凑出来的）',
+     Math.abs((pdf48.openingBalance + pdf48.incomeFundTotal - pdf48.expenseFundTotal - pdf48.holdingLine)
+       - pdf48.closingBalance) < 0.005, pdf48);
+
+  // ---- 对照组：没有任何代管余额时，holdingLine 应该是 0，那一行在真实模板里就不会出现 ----
+  const noHolding48 = await page.evaluate(() => {
+    const acc = getAcc('acc_boss');
+    // 切一个全新、从没转过账的账户
+    data.accounts.push({ id:'acc_clean48', name:'干净账户48', currency:'USD', color:'#000', createdAt: Date.now() });
+    switchAccount('acc_clean48');
+    data.transactions.push({ id:'cleanInc48', accountId:'acc_clean48', type:'income', amount:100,
+      date: today(), categoryId:'cat_income_other', description:'注资', updatedAt: Date.now() });
+    saveData();
+    const range = stmtRange();
+    const txs = rangeTxs('acc_clean48', range.from, range.to);
+    const expenseXferTotal = txs.filter(t=>t.type==='expense' && t.xfer).reduce((s,t)=>s+t.amount,0);
+    const incomeXferTotal = txs.filter(t=>t.type==='income' && t.xfer).reduce((s,t)=>s+t.amount,0);
+    return Math.round((expenseXferTotal - incomeXferTotal) * 100) / 100;
+  });
+  ok('对照组：没有代管余额时「在同事手上的现金」是 0（这一行不该出现）', noHolding48 === 0, noHolding48);
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+// ---------- 【47】主 App 首屏卡片：给了/花了/还剩三个数，不拆「用现金/他垫」 ----------
+// 2026-09-10 五度改版，用户明确要求「他垫付的这些不必出现了，只出现他那边花了多少
+// 就好，不然我自己也乱」——卡片从两行（还剩/已花 + 本月共替你花的拆行）收成一行
+// 「给了 X　花了 Y　还剩 Z」。「花了」的口径没变，还是 personMonthSpend()（本月，
+// 现金付的和自己垫的都算），跟同事版「老板账」页的 renderBossSummary()
+// （tools/build-staff-page.py）对得上——口径详见 expense-tracker.html 的
+// personMonthSpend() 顶部注释。这里走真实的 fetchInbox() 路径（用 paidFrom 字段模拟
+// 同事那边记账当下标好的"用现金/自己垫"），不是直接拼好三条腿，尽量贴近生产环境
+// 实际发生的路径。
+console.log('\n【47】主 App 首屏卡片：给了/花了/还剩三个数（不拆「用现金/他垫」）');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashKey', 'pass-1234');
+    cloudAvailable = true; currentUser = { uid:'boss' };
+    window.__box = { docs: [], deleted: [] };
+    window.__put = (id, d) => window.__box.docs.push({
+      id, data: () => d, ref: { delete: async () => { window.__box.deleted.push(id); } } });
+    db = { collection: () => ({ limit: () => ({ get: async () => ({ docs: window.__box.docs }) }) }) };
+    // 三个人都先给一笔起始现金，代管账户才会有余额、卡片才会显示这个人。
+    ['Kuang47', 'OnlyCash47', 'LastMonth47'].forEach(person => {
+      const hold = getOrCreateHoldingAccount(person, 'USD');
+      hold.srcAccountId = 'acc_boss';
+      const now = Date.now();
+      data.transactions.push(
+        { id: uid(), accountId:'acc_boss', type:'expense', amount:1000, date: today(),
+          categoryId:'cat_cash_gift', description:`给 ${person} 的现金`, updatedAt: now, giftId:'g47_'+person, xfer:true },
+        { id: uid(), accountId: hold.id, type:'income', amount:1000, date: today(),
+          categoryId:'cat_cash_gift_in', description:'从「主账户」转入', updatedAt: now, giftId:'g47_'+person, xfer:true }
+      );
+    });
+    saveData();
+  });
+
+  const lastMonthDate = await page.evaluate(() => {
+    const d = new Date();
+    d.setDate(15);
+    d.setMonth(d.getMonth() - 1);
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+  });
+
+  await page.evaluate((lastMonthDate) => {
+    // 主场景：Kuang47 这个月用现金花 506（走 3 条腿），又自己垫了 189.53（单腿，没有配平）。
+    window.__put('spendCash47', { k:'x', from:'Kuang47', tx: JSON.stringify({ srcId:'sc47',
+      date: today(), amount: 506, type:'expense', categoryId:'cat_food',
+      description:'用现金那笔', paidFrom:'cash' }) });
+    window.__put('spendOwn47', { k:'x', from:'Kuang47', tx: JSON.stringify({ srcId:'so47',
+      date: today(), amount: 189.53, type:'expense', categoryId:'cat_food',
+      description:'自己垫那笔', paidFrom:'own' }) });
+    // 对照组①：OnlyCash47 这个月只有现金消费，没有垫付。
+    window.__put('spendOnlyCash47', { k:'x', from:'OnlyCash47', tx: JSON.stringify({ srcId:'soc47',
+      date: today(), amount: 150, type:'expense', categoryId:'cat_food',
+      description:'只有现金', paidFrom:'cash' }) });
+    // 对照组②：LastMonth47 这笔消费落在上个月，不该算进「本月合计」。
+    window.__put('spendLastMonth47', { k:'x', from:'LastMonth47', tx: JSON.stringify({ srcId:'slm47',
+      date: lastMonthDate, amount: 999, type:'expense', categoryId:'cat_food',
+      description:'上个月花的', paidFrom:'cash' }) });
+  }, lastMonthDate);
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(300);
+  await page.evaluate(() => renderOverview());
+
+  const cardTxt = await page.textContent('#ov-boss-cash-gift');
+  ok('★卡片不出现「他垫」「自己垫」这类拆行字样（用户明确要求拿掉）',
+     !cardTxt.includes('他垫') && !cardTxt.includes('自己垫'), cardTxt);
+
+  // ---- 主场景：Kuang47 给了 1000、花了 695.53（506现金+189.53他垫）、还剩 494 ----
+  const kuangBlock47 = await page.evaluate(() => {
+    const el = Array.from(document.querySelectorAll('#ov-boss-cash-gift .led-cash-person'))
+      .find(e => e.textContent.includes('Kuang47'));
+    return el ? el.textContent : null;
+  });
+  ok('主场景：Kuang47 这行「给了 US$1,000.00　花了 US$695.53　还剩 US$494.00」',
+     kuangBlock47 && /给了[^花]*1,?000\.00/.test(kuangBlock47) && /花了[^还]*695\.53/.test(kuangBlock47)
+     && /还剩[^\n<]*494\.00/.test(kuangBlock47), kuangBlock47);
+
+  // ---- personMonthSpend() 独立验证一次（不依赖卡片文案格式，直接读函数返回值）----
+  const ms47 = await page.evaluate(() => personMonthSpend('Kuang47'));
+  ok('personMonthSpend 直接返回值：cash=506, own=189.53', ms47.cash === 506 && ms47.own === 189.53, ms47);
+
+  // ---- 对照组①：只有现金消费的人，「花了」照样出现，没有垫付时数字就是现金那部分 ----
+  const onlyCashBlock = await page.evaluate(() => {
+    const el = Array.from(document.querySelectorAll('#ov-boss-cash-gift .led-cash-person'))
+      .find(e => e.textContent.includes('OnlyCash47'));
+    return el ? el.textContent : null;
+  });
+  ok('对照组①：OnlyCash47 这行「给了 US$1,000.00　花了 US$150.00　还剩 US$850.00」',
+     onlyCashBlock && /给了[^花]*1,?000\.00/.test(onlyCashBlock) && /花了[^还]*150\.00/.test(onlyCashBlock)
+     && /还剩[^\n<]*850\.00/.test(onlyCashBlock), onlyCashBlock);
+
+  // ---- 对照组②：上个月的消费不算进「花了」（那是本月合计），但账户余额是累计的、照算 ----
+  const lastMonthBlock = await page.evaluate(() => {
+    const el = Array.from(document.querySelectorAll('#ov-boss-cash-gift .led-cash-person'))
+      .find(e => e.textContent.includes('LastMonth47'));
+    return el ? el.textContent : null;
+  });
+  ok('对照组②：LastMonth47 上个月那笔不算进「花了」（这行「花了 US$0.00」）',
+     lastMonthBlock && /花了[^还]*0\.00/.test(lastMonthBlock), lastMonthBlock);
+  ok('对照组②：但「还剩」是累计余额，照样反映上个月那笔真花掉的钱（1000−999=1）',
+     lastMonthBlock && /还剩[^\n<]*1\.00/.test(lastMonthBlock), lastMonthBlock);
+  const msLastMonth47 = await page.evaluate(() => personMonthSpend('LastMonth47'));
+  ok('★personMonthSpend 直接验证：上个月那笔不进本月合计，cash/own 都是 0',
+     msLastMonth47.cash === 0 && msLastMonth47.own === 0, msLastMonth47);
+
+  // ---- 该付同事多少：独立于这张卡的口径，即便这里已给的人也照样能欠钱 ----
+  // 这行放在这里只是重申「该付同事多少」不受这次拆行简化影响，完整的「没收到过
+  // 现金、只有垫付的人也要出现在名单里」对照组见【41】的转账测试。
+
+  // ---- 两边口径一致：同一组数字下，这里算出的「本月共替你花」要等于同事版
+  //      renderBossSummary()（tools/build-staff-page.py）算出的合计。这份自检只跑
+  //      主 App，没有加载 staff/index.html，所以在这里原样重放那份函数的算法
+  //      （同事那边就是「STAFF_BOSS_ACC_ID 账户里这个月的支出总额，cash/own 分列」），
+  //      用同一组原始金额（记账当下同事标的 paidFrom）算一遍，两边应该分毫不差——
+  //      这条挡的是「App 这边漏算了 cash 或 own 其中一段」这种老毛病。
+  const staffSideTotal = await page.evaluate(() => {
+    // 同事那台设备上，这两笔就是 STAFF_BOSS_ACC_ID 账户里当月的两笔支出，
+    // paidFrom 已经在记账当下标好，effectivePaidFrom() 直接返回它，不用日期回落。
+    const staffTxs = [
+      { amount: 506, paidFrom: 'cash' },
+      { amount: 189.53, paidFrom: 'own' },
+    ];
+    const total = staffTxs.reduce((s,t)=>s+t.amount, 0);
+    const cashPart = staffTxs.filter(t=>t.paidFrom==='cash').reduce((s,t)=>s+t.amount, 0);
+    const ownPart = staffTxs.filter(t=>t.paidFrom==='own').reduce((s,t)=>s+t.amount, 0);
+    return { total: Math.round(total*100)/100, cashPart, ownPart };
+  });
+  ok('★★两边口径一致：主 App 算出的本月合计 = 同事版 renderBossSummary() 算出的合计（695.53）',
+     Math.round((ms47.cash + ms47.own) * 100) / 100 === staffSideTotal.total, { app: ms47, staff: staffSideTotal });
+  ok('★★两边口径一致：拆行的 cash/own 也分别对得上',
+     ms47.cash === staffSideTotal.cashPart && ms47.own === staffSideTotal.ownPart, { app: ms47, staff: staffSideTotal });
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
+// ---------- 【49】🔁 一键把旧格式（净额）转成新格式（全额＋补记结清）----------
+// 用户现有资料是「转账 4810.47（净额）＋ 垫付已标已付」这种第一版旧格式。这个工具
+// 跟 undoBossDebtOffset()（纯撤销，欠款恢复还欠着）不是同一件事：这个是一键转成
+// 最终形态——转账金额改回全额，但不清 paidAt，改成补记新格式的结清配平腿。
+console.log('\n【49】🔁 把旧格式转成新格式：预览四个数字（给了/本月替你花/还剩/欠他）+ 转换后结构对');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  let dialogMsg49 = '';
+  page.on('dialog', d => { dialogMsg49 = d.message(); d.accept(); });
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_bossCashKey', 'pass-1234');
+    cloudAvailable = true; currentUser = { uid:'boss' };
+    window.__gifts = []; window.__deletedGifts = [];
+    db = { collection: () => ({
+      add: async (p) => { window.__gifts.push(p); return { id:'gNew49' }; },
+      doc: (id) => ({ delete: async () => { window.__deletedGifts.push(id); } })
+    }) };
+    // 手算 fixture：欠 189.53、老规则转 5000 抵掉之后记净额 4810.47，垫付已标已付。
+    const now = Date.now();
+    const hold = getOrCreateHoldingAccount('Old49', 'USD');
+    data.transactions.push({ id:'debt49', accountId:'acc_boss', type:'expense', amount:189.53,
+      date:'2026-09-01', categoryId:'cat_other_exp', description:'Old49 垫付的车费',
+      updatedAt: now, fromStaff:{ by:'Old49', at: now, paidAt: now } });
+    data.transactions.push({ id:'src49', accountId:'acc_boss', type:'expense', amount:4810.47,
+      date:'2026-09-02', categoryId:'cat_cash_gift', description:'给 Old49 的现金',
+      updatedAt: now, xfer:true, giftId:'oldGift49', offsetTxIds:['debt49'], offsetTotal:189.53 });
+    data.transactions.push({ id:'hold49', accountId: hold.id, type:'income', amount:4810.47,
+      date:'2026-09-02', categoryId:'cat_cash_gift_in', description:'从「Boss」转入',
+      updatedAt: now, xfer:true, giftId:'oldGift49', offsetTxIds:['debt49'], offsetTotal:189.53 });
+    // 这个月又用代管现金花了 506（3 条腿）
+    data.transactions.push(
+      { id:'spend49', accountId:'acc_boss', type:'expense', amount:506, date: today(),
+        categoryId:'cat_food', description:'Old49 用代管现金付的',
+        updatedAt: now, fromStaff:{ by:'Old49', at: now }, staffSpendId:'spend49' },
+      { id:'spendPairReal49', accountId:'acc_boss', type:'income', amount:506, date: today(),
+        categoryId:'cat_cash_gift_in', description:'Old49 用代管现金支付（配平）',
+        updatedAt: now, xfer:true, staffSpendId:'spend49' },
+      { id:'spendPairHold49', accountId: hold.id, type:'expense', amount:506, date: today(),
+        categoryId:'cat_cash_gift', description:'Old49 用代管现金支付（配平）',
+        updatedAt: now, xfer:true, staffSpendId:'spend49' }
+    );
+    saveData();
+  });
+
+  const holdId49 = await page.evaluate(()=>holdingAccountId('Old49'));
+  const bal49 = (id) => page.evaluate((a)=>data.transactions.filter(t=>t.accountId===a)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), id);
+  const remainBefore49 = await bal49(holdId49);
+  ok('转换前：代管余额 4304.47（4810.47−506）', Math.abs(remainBefore49 - 4304.47) < 0.005, remainBefore49);
+  ok('转换前：Old49 不欠钱（旧格式已经标了已付）',
+     !(await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Old49'))));
+
+  await page.evaluate(()=>convertOldOffsetToSettle());
+  await page.waitForTimeout(200);
+
+  ok('★预览讲清楚「给了」会从 4810.47 变 5000.00',
+     dialogMsg49.includes('4810.47') && /5,?000\.00/.test(dialogMsg49), dialogMsg49);
+  ok('★预览讲清楚「本月替你花/还剩/欠他」三项不变',
+     (dialogMsg49.match(/不变/g) || []).length >= 3, dialogMsg49);
+
+  const srcAfter49 = await page.evaluate(()=>data.transactions.find(t=>t.id==='src49'));
+  ok('★转换后：转账腿改回全额 5000', srcAfter49 && srcAfter49.amount === 5000, srcAfter49);
+  ok('★转换后：offsetTxIds/offsetTotal 被清掉', !srcAfter49.offsetTxIds && !srcAfter49.offsetTotal, srcAfter49);
+  const newGiftId49 = srcAfter49.giftId;
+  const legs49 = await page.evaluate((gid)=>data.transactions.filter(t=>t.giftId===gid), newGiftId49);
+  ok('★转换后共 4 条腿（转账 2 条全额 + 结清配平 2 条）', legs49.length === 4, legs49);
+  const settleLegs49 = legs49.filter(t=>Array.isArray(t.settleAdvanceIds));
+  ok('★补记的结清腿带 settleAdvanceIds=[debt49]、金额 189.53',
+     settleLegs49.length === 2 && settleLegs49.every(t=>t.settleAdvanceIds.includes('debt49') && t.amount===189.53),
+     settleLegs49);
+  const debt49After = await page.evaluate(()=>data.transactions.find(t=>t.id==='debt49'));
+  ok('★debt49 的 paidAt 没被动过（转换不改变"已结清"这个事实）',
+     debt49After && debt49After.fromStaff.paidAt, debt49After);
+  ok('★转换后：Old49 仍然不欠钱', !(await page.evaluate(()=>inboxOwedByPerson().find(r=>r.who==='Old49'))));
+  const remainAfter49 = await bal49(holdId49);
+  ok('★转换后：代管余额不变，仍是 4304.47（转换不改变经济事实，只是换个记法）',
+     Math.abs(remainAfter49 - 4304.47) < 0.005, { remainBefore49, remainAfter49 });
+  ok('★云端走「删旧建新」：旧 giftId 被删掉了', await page.evaluate(()=>window.__deletedGifts.includes('oldGift49')));
+  const newDoc49 = await page.evaluate(()=>window.__gifts.find(g=>g.person==='Old49'&&g.amount===5000));
+  ok('★云端新建文档金额是全额 5000', !!newDoc49, newDoc49);
+
+  // ---- 可重复点：转换过的不会再出现 ----
+  const groupsAfter49 = await page.evaluate(()=>offsetGiftGroups().some(g=>g.person==='Old49'));
+  ok('第二次扫描找不到这一笔了（已经转换过）', !groupsAfter49, groupsAfter49);
 
   ok('无 JS 报错', errs.length===0, errs);
   await ctx.close();
