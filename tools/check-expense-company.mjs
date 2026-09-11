@@ -5466,6 +5466,99 @@ console.log('\n【51】清掉「结清」加进来源账户的收入（代管那
   await ctx.close();
 }
 
+// ---------- 【52】一键对账：不管残留什么，按「给了−花了」把两边拉正（2026-09-11）----------
+// 用户资料里累积了五六版留下的半套记录，一条条考古既慢又容易错。改成按第一性原理重算：
+//   他手上该有 ＝ 给过他的现金累计 − 他报的开销累计（不分现金付还是他自己垫）
+// 差多少就记一对转账（代管 ⇄ 来源）拉平。**用转账是为了总额不变**——「你手上＋他手上」
+// 永远等于「老板的钱还剩多少」，那是用户唯一要对的线。
+console.log('\n【52】一键对账：按「给了−花了」拉正，总额不变');
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e=>errs.push(e.message));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // 重演用户真实处境：给了 5000、他花了 513.97（现金）＋189.00（自己垫），
+  // 但代管账户里多了一条 +189.53 的残留，于是分配错了。
+  await page.evaluate(() => {
+    cloudAvailable = false; currentUser = null;
+    const now = Date.now();
+    const hold = getOrCreateHoldingAccount('K52', 'USD');
+    hold.srcAccountId = 'acc_boss';
+    data.transactions = [
+      { id:'i52', accountId:'acc_boss', type:'income', amount:14059.71, date: today(),
+        categoryId:'cat_other_inc', description:'老板注资', updatedAt: now },
+      // 转账两条腿
+      { id:'g52a', accountId:'acc_boss', type:'expense', amount:5000, date: today(),
+        categoryId:'cat_cash_gift', description:'给 K52 的现金', updatedAt: now, xfer:true, giftId:'g52' },
+      { id:'g52b', accountId: hold.id, type:'income', amount:5000, date: today(),
+        categoryId:'cat_cash_gift_in', description:'老板给的现金', updatedAt: now, xfer:true, giftId:'g52' },
+      // 他报的开销：现金付的 513.97 ＋ 自己垫的 189.00（都是真支出）
+      { id:'s52a', accountId: hold.id, type:'expense', amount:513.97, date: today(),
+        categoryId:'cat_food', description:'K52 用现金付的', updatedAt: now,
+        fromStaff:{ by:'K52', at: now } },
+      { id:'s52b', accountId:'acc_boss', type:'expense', amount:189.00, date: today(),
+        categoryId:'cat_food', description:'K52 自己垫的', updatedAt: now,
+        fromStaff:{ by:'K52', at: now } },
+      // 残留：旧版留下的一条 +189.53，让分配歪掉
+      { id:'junk52', accountId: hold.id, type:'income', amount:189.53, date: today(),
+        categoryId:'cat_cash_gift_in', description:'旧版残留', updatedAt: now,
+        xfer:true, settleAdvanceIds:['x'] },
+    ];
+    saveData();
+  });
+  const h52 = await page.evaluate(()=>holdingAccountId('K52'));
+  const bal = (id) => page.evaluate((a)=>data.transactions.filter(t=>t.accountId===a)
+    .reduce((s,t)=>t.type==='income'?s+t.amount:s-t.amount,0), id);
+
+  const before = { src: await bal('acc_boss'), hold: await bal(h52) };
+  const totalBefore = Math.round((before.src + before.hold) * 100) / 100;
+  ok('对账前：分配是歪的（他手上被残留垫高了）',
+     Math.abs(before.hold - 4675.56) < 0.005, before);
+
+  await page.evaluate(()=>openReconcileHolding());
+  await page.waitForTimeout(300);
+
+  const after = { src: await bal('acc_boss'), hold: await bal(h52) };
+  ok('★他手上拉正成 4297.03（给了 5000 − 花了 702.97）',
+     Math.abs(after.hold - 4297.03) < 0.005, after.hold);
+  ok('★你手上跟着拉正（两边刚好互补）',
+     Math.abs(after.src - (totalBefore - 4297.03)) < 0.005, after.src);
+  ok('★★总额一分没变（这是用户唯一要对的那条线）',
+     Math.abs((after.src + after.hold) - totalBefore) < 0.005,
+     { totalBefore, totalAfter: Math.round((after.src+after.hold)*100)/100 });
+  ok('★真开销一笔都没动（对账只动分配）',
+     await page.evaluate(()=>{
+       const a = data.transactions.find(t=>t.id==='s52a'), b = data.transactions.find(t=>t.id==='s52b');
+       return !!a && a.amount===513.97 && !!b && b.amount===189.00;
+     }));
+  const monthExp52 = await page.evaluate(()=>data.transactions
+    .filter(t=>t.type==='expense' && !t.xfer).reduce((s,t)=>s+t.amount,0));
+  ok('★本月支出还是 702.97（对账那两条是 xfer，不进统计）',
+     Math.abs(monthExp52 - 702.97) < 0.005, monthExp52);
+  ok('对账那两条被隐藏，不出现在明细里',
+     await page.evaluate(()=>data.transactions.filter(t=>t.reconcileAdj).every(t=>isPairedSpendLeg(t))));
+
+  // 可重复点：已经对上就不再动
+  const snap = await page.evaluate(()=>data.transactions.length);
+  await page.evaluate(()=>{ document.getElementById('toast').textContent=''; });
+  await page.evaluate(()=>openReconcileHolding());
+  await page.waitForTimeout(200);
+  ok('★可重复点：已经对上的不会被再调一次',
+     (await page.evaluate(()=>data.transactions.length)) === snap
+     && ((await page.textContent('#toast'))||'').includes('不用对账'),
+     await page.textContent('#toast'));
+
+  ok('无 JS 报错', errs.length===0, errs);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
