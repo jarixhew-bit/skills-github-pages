@@ -263,6 +263,12 @@ def build(src: str) -> str:
     # saveTx 那边 fromStaffFromForm() 拿不到元素回 undefined，等于「这一栏不参与」，
     # 原本的白名单保留逻辑照旧。两边都不用再改。
 
+    # 类别是老板定的：他那边往上推，同事这边往下拉。同事版没有设置页、改不了类别，
+    # 推上去只会被服务端回 forbidden，白打一个请求。
+    s = replace_once(s,
+                     "  pushBossCategories();",
+                     "  pullBossCategories();", "开机同步类别的方向")
+
     # 云同步整个不接：同事版没有登录入口，留着 auth 监听只是白等
     s = replace_once(s,
                      "  // 云同步连不上时 auth 是 null（见顶部 FIREBASE 那段）。这里必须挡一下，\n"
@@ -1416,6 +1422,51 @@ async function shrinkPhotoForInbox(dataUrl, limit){
 }
 
 const BOSS_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/boss-expense';
+
+/**
+ * 把老板那份消费类别拉下来（2026-09-11 用户要求「消费项目老板有的都加下去」）。
+ *
+ * 老板在他自己 App 里加过一批类别（人情往来、出差、邮费、银行…），那些只存在他
+ * 手机里。没有这一步，同事记账时挑不到对的类别就会随便塞一个，月底账本上那笔
+ * 到底是什么就没人知道了。
+ *
+ * **老板是唯一权威**：同事版没有设置页、改不了类别，所以这里直接按 id 补齐＋更新
+ * 名称和图标，不做双向合并。**只补不删**——万一老板那份还没同步上来（回空数组），
+ * 不能把同事本机现有的类别清光，那会让他当场一个类别都挑不到。
+ */
+async function pullBossCategories(){
+  const token = getCompanyToken();
+  if(!token) return;
+  let cats = [];
+  try{
+    const res = await fetch(BOSS_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'categories' }),
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.status !== 'ok' || !Array.isArray(body.categories)) return;
+    cats = body.categories;
+  }catch(e){ return; }        // 没网就照旧用本机那份
+  if(!cats.length) return;    // 老板还没同步上来：绝不把本机现有的清光
+  let changed = 0;
+  for(const c of cats){
+    if(!c || !c.id || !c.name) continue;
+    const hit = (data.categories || []).find(x => x.id === c.id);
+    if(!hit){
+      data.categories.push({ id:c.id, name:c.name, icon:c.icon || '📦',
+                             type: c.type === 'income' ? 'income' : 'expense',
+                             color: c.color || '#C0C0C0' });
+      changed++;
+    }else if(hit.name !== c.name || hit.icon !== c.icon){
+      hit.name = c.name; hit.icon = c.icon || hit.icon;
+      changed++;
+    }
+  }
+  if(changed){
+    saveData();
+    if(state.currentTab === 'transactions') renderCatGrid();
+  }
+}
 
 /**
  * 把一笔老板账送到 butler 的中央账本（2026-09-11 起；在那之前走 Firestore 投递箱，
