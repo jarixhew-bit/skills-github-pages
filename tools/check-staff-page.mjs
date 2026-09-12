@@ -2149,6 +2149,67 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【30】老板加的消费类别，同事这边也要有 ----------
+// 2026-09-11 用户要求「消费项目老板有的都加下去」。老板在自己 App 里加过一批
+// （人情往来、出差、邮费、银行…），那些只存在他手机里——同事记账挑不到对的类别
+// 就会随便塞一个，月底账本上那笔到底是什么就没人知道了。
+//
+// 守两件事：拉得到要补上；**拉不到绝不把本机现有的清光**（那会让同事当场一个
+// 类别都挑不到，比少几个糟得多）。
+console.log('\n【30】老板加的消费类别，同事这边也要有');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.categories)), { what: 'App 启动完成' });
+
+  const before = await page.evaluate(() => data.categories.length);
+  ok('本机本来就有内建那些', before >= 15, before);
+  ok('本来没有「人情往来」',
+     (await page.evaluate(() => data.categories.some(c => c.id === 'cat_gift'))) === false);
+
+  h.bossApi.body = { status:'ok', categories: [
+    { id:'cat_gift', name:'人情往来', icon:'🤝', type:'expense', color:'#E67E22' },
+    { id:'cat_spa', name:'Spa', icon:'💆', type:'expense', color:'#C0C0C0' },
+    // 已经有的那个：名字改了，本机要跟着改
+    { id:'cat_food', name:'餐饮（改过）', icon:'🍽️', type:'expense', color:'#FF6B6B' },
+  ]};
+  await page.evaluate(() => pullBossCategories());
+  await until(() => page.evaluate(() => data.categories.some(c => c.id === 'cat_gift')),
+              { what: '类别拉下来' });
+  ok('老板加的「人情往来」补进来了',
+     await page.evaluate(() => !!data.categories.find(c => c.id === 'cat_gift' && c.name === '人情往来')));
+  ok('Spa 也补进来了',
+     await page.evaluate(() => data.categories.some(c => c.id === 'cat_spa')));
+  ok('老板改过名字的，本机跟着改',
+     await page.evaluate(() => (data.categories.find(c => c.id === 'cat_food') || {}).name) === '餐饮（改过）');
+  ok('存回了本机（重开还在）',
+     await page.evaluate(() => {
+       const raw = JSON.parse(localStorage.getItem('staffExpense_v2') || localStorage.getItem('expenseTracker_v2') || '{}');
+       return (raw.categories || []).some(c => c.id === 'cat_gift');
+     }));
+
+  // ---- 拉不到／老板还没同步上来：绝不把本机现有的清光 ----
+  const now = await page.evaluate(() => data.categories.length);
+  h.bossApi.body = { status:'ok', categories: [] };
+  await page.evaluate(() => pullBossCategories());
+  await page.waitForTimeout(400);
+  ok('老板那份是空的时候，本机类别一个都没少（不然他当场挑不到类别）',
+     await page.evaluate(() => data.categories.length) === now,
+     { now, after: await page.evaluate(() => data.categories.length) });
+
+  h.bossApi.body = null;
+  h.bossApi.fail = true;
+  await page.evaluate(() => pullBossCategories());
+  await page.waitForTimeout(400);
+  ok('没网时也一个都没少', await page.evaluate(() => data.categories.length) === now);
+  h.bossApi.fail = false;
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await h.ctx.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {

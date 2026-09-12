@@ -5270,6 +5270,12 @@ function init(){
   setCloudIcon('off');
   checkShareTarget();
 
+  // 把自己那份消费类别同步给同事版（他们记账要挑同一批类别）。不 await，
+  // 同步不上去也不影响自己记账——见 pushBossCategories。
+  // ⚠️ 刻意摆在上面那三行**之外**：那一段整块会被 tools/build-staff-page.py 剪掉
+  // （同事版不拉全员账本），混在里面这一行会跟着消失。
+  pullBossCategories();
+
   return;   // 同事版不接云同步（没有登录入口），公司账走 butler 那条路
   auth.onAuthStateChanged(async user => {
     currentUser = user;
@@ -7153,6 +7159,34 @@ async function editBossLedgerRecord(t){
   if(res.ok && body.status === 'ok') return true;
   toast('账本里那条没改成：' + (body.message || body.error || res.status));
   return false;
+}
+
+/**
+ * 把老板自己那份消费类别同步到 butler，给同事版用（2026-09-11 用户要求
+ * 「消费项目老板有的都加下去」）。
+ *
+ * 为什么需要：老板在设置里加过一批类别（人情往来、出差、邮费、银行…），那些只存在
+ * 他手机的 localStorage 里。同事版**永远不会有**——同事记账挑不到类别就随便塞一个，
+ * 月底账本上那笔到底是什么就没人知道了。
+ *
+ * 老板是唯一权威（同事版没有设置页，本来也改不了），所以这里是整份覆盖，
+ * 不做双向合并。服务端内容一样就不写，不会每次开 App 都多一个 commit。
+ *
+ * 注：同事版里**不会调到这个函数**——生成时那一行被换成 `pullBossCategories()`
+ * （见 tools/build-staff-page.py）。函数本体还在只是因为整份代码是共用的；
+ * 就算被调到，服务端也只认老板那把钥匙，同事推不上去。
+ */
+async function pushBossCategories(){
+  const token = getCompanyToken();
+  if(!token || !Array.isArray(data.categories)) return;
+  try{
+    await fetch(BOSS_LEDGER_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'categoriesPut',
+        categories: data.categories.map(c => ({
+          id: c.id, name: c.name, icon: c.icon, type: c.type, color: c.color })) }),
+    });
+  }catch(e){ /* 同步不上去不影响自己记账，下次开 App 再试 */ }
 }
 
 /** 账本里那笔在本机的 id。前缀是为了一眼认得出「这笔不是我自己记的」。 */
@@ -9119,6 +9153,51 @@ async function shrinkPhotoForInbox(dataUrl, limit){
 }
 
 const BOSS_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/boss-expense';
+
+/**
+ * 把老板那份消费类别拉下来（2026-09-11 用户要求「消费项目老板有的都加下去」）。
+ *
+ * 老板在他自己 App 里加过一批类别（人情往来、出差、邮费、银行…），那些只存在他
+ * 手机里。没有这一步，同事记账时挑不到对的类别就会随便塞一个，月底账本上那笔
+ * 到底是什么就没人知道了。
+ *
+ * **老板是唯一权威**：同事版没有设置页、改不了类别，所以这里直接按 id 补齐＋更新
+ * 名称和图标，不做双向合并。**只补不删**——万一老板那份还没同步上来（回空数组），
+ * 不能把同事本机现有的类别清光，那会让他当场一个类别都挑不到。
+ */
+async function pullBossCategories(){
+  const token = getCompanyToken();
+  if(!token) return;
+  let cats = [];
+  try{
+    const res = await fetch(BOSS_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'categories' }),
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.status !== 'ok' || !Array.isArray(body.categories)) return;
+    cats = body.categories;
+  }catch(e){ return; }        // 没网就照旧用本机那份
+  if(!cats.length) return;    // 老板还没同步上来：绝不把本机现有的清光
+  let changed = 0;
+  for(const c of cats){
+    if(!c || !c.id || !c.name) continue;
+    const hit = (data.categories || []).find(x => x.id === c.id);
+    if(!hit){
+      data.categories.push({ id:c.id, name:c.name, icon:c.icon || '📦',
+                             type: c.type === 'income' ? 'income' : 'expense',
+                             color: c.color || '#C0C0C0' });
+      changed++;
+    }else if(hit.name !== c.name || hit.icon !== c.icon){
+      hit.name = c.name; hit.icon = c.icon || hit.icon;
+      changed++;
+    }
+  }
+  if(changed){
+    saveData();
+    if(state.currentTab === 'transactions') renderCatGrid();
+  }
+}
 
 /**
  * 把一笔老板账送到 butler 的中央账本（2026-09-11 起；在那之前走 Firestore 投递箱，

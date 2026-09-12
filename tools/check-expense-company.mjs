@@ -2212,7 +2212,10 @@ function mountBossRoutes(ctx, calls, bossModeRef){
   return ctx.route('**/*', async route => {
     const u = route.request().url();
     if (u.startsWith(`http://localhost:${PORT}`)) return route.continue();
-    if (u.startsWith(BOSS_API)) {
+    // ⚠️ 要**精确**比对，不能用 startsWith：老板账那条路是 /boss-expense，
+    // 它也以 /boss 开头——用前缀匹配会把它的请求一起收进 calls，
+    // 下面那些「只发了一个请求」「action 是 billUpload」当场全红（2026-09-11 踩过）。
+    if (u === BOSS_API || u.startsWith(BOSS_API + '?')) {
       calls.push(JSON.parse(route.request().postData() || '{}'));
       const h = { 'Access-Control-Allow-Origin': '*' };
       if (bossModeRef.v === '401')
