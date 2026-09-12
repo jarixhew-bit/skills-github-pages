@@ -1506,6 +1506,25 @@ if (want()) {
   ok('列表上看得出「已送老板」',
      (await page.locator('#tx-list').innerText()).includes('已送老板'));
 
+  // ---- 0 元也要记得下来（2026-09-11 用户要求）----
+  // 赠品、招待、金额待补的都该记。挡掉 0 的话同事只能乱填一个数或干脆不记，
+  // 两种都比记一笔 0 糟。
+  h.bossPosted.length = 0;
+  await page.click('.fab');
+  await until(() => txModalOpen(page), { what: '记账弹窗打开' });
+  await typeAmount(page, '0');
+  await page.locator('#cat-grid > *').first().click();
+  await page.fill('#tx-desc', '招待（免费）');
+  await page.click('button[onclick="saveTx()"]');
+  await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
+  await page.waitForTimeout(150);
+  const zeroAdds = h.bossPosted.filter(r => !r.action);
+  ok('0 元记得下来，而且真的送出去了', zeroAdds.length === 1, h.bossPosted.map(r => r.action || 'add'));
+  ok('送的金额就是 0（不是被当成空的丢掉）',
+     zeroAdds[0] && zeroAdds[0].amount === 0, zeroAdds[0]);
+  ok('本机也存了这一笔', await page.evaluate(() =>
+     data.transactions.some(t => t.amount === 0 && t.description === '招待（免费）')));
+
   // 送不出去也绝不丢账：本机永远先存好，进队列等有网
   h.bossApi.fail = true;      // 从这里开始「送不出去」
   await page.click('.fab');

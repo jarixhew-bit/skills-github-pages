@@ -2157,9 +2157,24 @@ let state = {
 };
 
 // ===================== PERSIST =====================
+/**
+ * 把内建类别里本机还没有的补进去。
+ *
+ * 为什么需要：`loadData()` 读到 localStorage 里有东西就直接用那一份，而那是这台设备
+ * **第一次打开时**的类别表。之后版本里新增的类别，老设备永远不会有——同事那几台
+ * 手机装得早，选类别时就比老板少好几个（云同步那条路有 `mergeSettings()` 会补，
+ * 但同事版不接云同步，帮不到他们）。
+ *
+ * ⚠️ **删过的不补回来**（2026-09-11 补上的闸门）：以前这里不看墓碑，用户嫌用不到
+ * 删掉的类别会在下次开 App 时**全部长回来**，而且他会以为是自己没删成。
+ * `deleteCategory()` 落的是 `deletedCategoryIds`，这里照它跳过。
+ */
 function migrateCategories(){
+  if(!Array.isArray(data.categories)) return;
+  const dead = new Set((data.deletedCategoryIds || []).map(x => x && x.id).filter(Boolean));
   DEFAULT_DATA.categories.forEach(def=>{
-    if(!data.categories.find(c=>c.id===def.id)) data.categories.push(def);
+    if(dead.has(def.id)) return;
+    if(!data.categories.find(c=>c.id===def.id)) data.categories.push(Object.assign({}, def));
   });
 }
 function loadData(){

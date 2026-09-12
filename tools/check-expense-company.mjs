@@ -3334,6 +3334,77 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   await ctx.close();
 }
 
+// ---------- 【34】类别补齐：新版加的类别，老设备也要有 ----------
+// 2026-09-11 用户要求「消费项目老板有的都加下去」。同事那几台手机装得早，
+// localStorage 里存的是**第一次打开时**的类别表，之后版本新增的他们永远不会有——
+// 选类别时就比老板少好几个。云同步那条路有 mergeSettings 会补，但同事版不接云同步。
+//
+// 这一块守两件事：缺的要补上；**删过的绝不补回来**（不看墓碑的话，用户嫌用不到
+// 删掉的类别会在下次开 App 时全部长回来，而且他会以为是自己没删成）。
+console.log('\n【34】内建类别自动补齐，但删过的不复活');
+{
+  const ctx = await browser.newContext();
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.categories) && data.categories.length > 0),
+    { what: 'App 启动完成' });
+
+  const total = await page.evaluate(() => DEFAULT_DATA.categories.length);
+  ok('内建类别不只一两个（不然这条测试等于没测）', total >= 15, total);
+
+  // 模拟一台装得早的设备：只留前三个类别
+  await page.evaluate(() => {
+    const keep = data.categories.slice(0, 3).map(c => c.id);
+    const trimmed = data.categories.filter(c => keep.includes(c.id));
+    localStorage.setItem('expenseTracker_v2', JSON.stringify(
+      Object.assign({}, data, { categories: trimmed, deletedCategoryIds: [] })));
+  });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.categories)), { what: '重开完成' });
+  const after = await page.evaluate(() => data.categories.length);
+  ok('开 App 时把缺的类别补齐了', after === total, { after, total });
+  ok('补的是内建那些（id 对得上）',
+     await page.evaluate(() => DEFAULT_DATA.categories.every(
+       c => data.categories.some(x => x.id === c.id))));
+  // 补齐发生在 loadData() 里，本身不写盘——存回本机的时机是下一次 saveData()。
+  // 这里断言的是「记一笔账之后，补好的那份真的落到本机了」，那才是用户看得到的效果。
+  await page.evaluate(() => saveData());
+  ok('记一笔之后补好的类别真的落到本机了',
+     await page.evaluate(() => {
+       const raw = JSON.parse(localStorage.getItem('expenseTracker_v2') || '{}');
+       return (raw.categories || []).length;
+     }) === total, await page.evaluate(() => {
+       const raw = JSON.parse(localStorage.getItem('expenseTracker_v2') || '{}');
+       return (raw.categories || []).length;
+     }));
+
+  // ---- 对照组：自己删掉的类别，绝不复活 ----
+  const killed = await page.evaluate(() => {
+    const victim = data.categories.find(c => c.type === 'expense' && c.id !== 'cat_other_exp');
+    // 照 deleteCategory 的做法落墓碑＋移除，不依赖那颗按钮长什么样
+    tombstoneOf('category', victim.id);
+    data.categories = data.categories.filter(c => c.id !== victim.id);
+    saveData();
+    return victim.id;
+  });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.categories)), { what: '再重开一次' });
+  ok('对照组：删过的类别不会被补回来',
+     (await page.evaluate(id => data.categories.some(c => c.id === id), killed)) === false, killed);
+  ok('对照组：其他类别还在（不是整份没补）',
+     await page.evaluate(() => data.categories.length) === total - 1,
+     await page.evaluate(() => data.categories.length));
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
