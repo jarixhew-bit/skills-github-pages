@@ -2190,6 +2190,34 @@ if (want()) {
        return (raw.categories || []).some(c => c.id === 'cat_gift');
      }));
 
+  // ---- 老板删掉的类别，同事这边也要消失 ----
+  // 「只补不删」那道保护不能拿掉，所以删除要照**名单**走，不是「新列表里没有就删」。
+  h.bossApi.body = { status:'ok',
+    categories: [{ id:'cat_food', name:'餐饮', icon:'🍽️', type:'expense', color:'#FF6B6B' }],
+    deleted: ['cat_gift', 'cat_spa'] };
+  await page.evaluate(() => pullBossCategories());
+  await until(() => page.evaluate(() => !data.categories.some(c => c.id === 'cat_gift')),
+              { what: '被删的类别消失' });
+  ok('老板删掉的「人情往来」，同事这边也没了',
+     (await page.evaluate(() => data.categories.some(c => c.id === 'cat_gift'))) === false);
+  ok('没在名单上的类别不受影响（不是「列表里没有就删」）',
+     await page.evaluate(() => data.categories.some(c => c.id === 'cat_transport')));
+
+  // 对照组：本机有记录用到那个类别时，**不删**——删了他之前记的账会变「未分类」
+  await page.evaluate(() => {
+    data.categories.push({ id:'cat_used', name:'用过的', icon:'📌', type:'expense', color:'#888' });
+    data.transactions.push({ id:'t_used', accountId: data.accounts[0].id, type:'expense',
+      amount: 5, date: today(), categoryId:'cat_used' });
+    saveData();
+  });
+  h.bossApi.body = { status:'ok',
+    categories: [{ id:'cat_food', name:'餐饮', icon:'🍽️', type:'expense', color:'#FF6B6B' }],
+    deleted: ['cat_used'] };
+  await page.evaluate(() => pullBossCategories());
+  await page.waitForTimeout(400);
+  ok('对照组：本机有记录用到的类别不删（不然那些账会变「未分类」）',
+     await page.evaluate(() => data.categories.some(c => c.id === 'cat_used')));
+
   // ---- 拉不到／老板还没同步上来：绝不把本机现有的清光 ----
   const now = await page.evaluate(() => data.categories.length);
   h.bossApi.body = { status:'ok', categories: [] };
