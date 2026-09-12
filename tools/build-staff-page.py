@@ -1437,7 +1437,7 @@ const BOSS_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/boss-expense';
 async function pullBossCategories(){
   const token = getCompanyToken();
   if(!token) return;
-  let cats = [];
+  let cats = [], body_deleted = [];
   try{
     const res = await fetch(BOSS_EXPENSE_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -1446,9 +1446,21 @@ async function pullBossCategories(){
     const body = await res.json().catch(()=>({}));
     if(!res.ok || body.status !== 'ok' || !Array.isArray(body.categories)) return;
     cats = body.categories;
+    body_deleted = Array.isArray(body.deleted) ? body.deleted : [];
   }catch(e){ return; }        // 没网就照旧用本机那份
   if(!cats.length) return;    // 老板还没同步上来：绝不把本机现有的清光
   let changed = 0;
+  // 老板删掉的那些：**照名单删**，不是「新列表里没有就删」——后者在老板那份还没
+  // 同步上来时会把同事本机清光。而且只删**本机没有任何记录用到**的：用到了还删，
+  // 他之前记的账会变成「未分类」，那比多一个用不到的类别糟得多。
+  for(const id of (body_deleted || [])){
+    const i = (data.categories || []).findIndex(c => c.id === id);
+    if(i < 0) continue;
+    const used = (data.transactions || []).some(t => t.categoryId === id);
+    if(used) continue;
+    data.categories.splice(i, 1);
+    changed++;
+  }
   for(const c of cats){
     if(!c || !c.id || !c.name) continue;
     const hit = (data.categories || []).find(x => x.id === c.id);

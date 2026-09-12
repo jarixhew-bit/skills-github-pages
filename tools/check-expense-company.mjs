@@ -3229,6 +3229,27 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
      (await page.evaluate(() => document.getElementById('boss-petty-hint').textContent)).includes('负数'),
      await page.evaluate(() => document.getElementById('boss-petty-hint').textContent));
 
+  // ---- 类别同步：推上去的那份要带删除名单 ----
+  // 同事版是「只补不删」，光靠「新的列表里没有它」，老板删掉的类别在同事那边
+  // 不会消失。少了这条断言，把 deleted 改成永远送空阵列也全绿（2026-09-11 踩过）。
+  await page.evaluate(() => {
+    tombstoneOf('category', 'cat_gone');
+    saveData();
+  });
+  api.calls.length = 0;
+  await page.evaluate(() => pushBossCategories());
+  await until(() => api.calls.some(c => c.body.action === 'categoriesPut'),
+              { what: '类别推上去' });
+  const put = api.calls.find(c => c.body.action === 'categoriesPut');
+  ok('推上去的是自己那份类别（至少有内建那些）',
+     Array.isArray(put.body.categories) && put.body.categories.length >= 15,
+     put.body.categories && put.body.categories.length);
+  ok('删除名单一起送（不然老板删掉的类别在同事那边不会消失）',
+     Array.isArray(put.body.deleted) && put.body.deleted.includes('cat_gone'),
+     put.body.deleted);
+  ok('送的是 id 的阵列，不是整个墓碑物件',
+     put.body.deleted.every(x => typeof x === 'string'), put.body.deleted);
+
   // ---- 对账：大家手上加起来要等于账户余额 ----
   // 2026-09-11 用户要求「我们都填上了，那个总合要对上老板总账」。
   // 老板的钱只有两种去向：花掉了（账本有记录），或还在某个人手上。

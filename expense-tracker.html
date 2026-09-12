@@ -7598,7 +7598,10 @@ async function pushBossCategories(){
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ token, action:'categoriesPut',
         categories: data.categories.map(c => ({
-          id: c.id, name: c.name, icon: c.icon, type: c.type, color: c.color })) }),
+          id: c.id, name: c.name, icon: c.icon, type: c.type, color: c.color })),
+        // 删除名单也要送：同事版是「只补不删」（拉到空或没网时不能清光他本机的），
+        // 所以光靠「新的列表里没有它」，老板删掉的类别在同事那边不会消失
+        deleted: (data.deletedCategoryIds || []).map(d => d && d.id).filter(Boolean) }),
     });
   }catch(e){ /* 同步不上去不影响自己记账，下次开 App 再试 */ }
 }
