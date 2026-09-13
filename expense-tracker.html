@@ -232,6 +232,13 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .setting-item-link:active{transform:scale(.98);background:var(--p2)}
 .setting-item-chevron{font-size:20px;color:var(--sub);line-height:1;margin-left:8px;flex-shrink:0}
 .setting-icon-sq{border-radius:10px}
+/* 「更多设置」那条可折叠的标题（2026-09-13）：标题本身就是按钮，右边一个箭头
+   指示开合。保留 .setting-title 的排版，只多加 flex 与可点反馈。 */
+.setting-more-toggle{display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;user-select:none;padding:4px 0}
+.setting-more-toggle:active{opacity:.6}
+.setting-more-arrow{font-size:14px;transition:transform .15s}
+.setting-more-toggle[aria-expanded="true"] .setting-more-arrow{transform:rotate(180deg)}
 .del-btn{background:#FDECEA;border:none;color:var(--exp);padding:6px 10px;
   border-radius:7px;cursor:pointer;font-size:12px;font-weight:600}
 
@@ -645,97 +652,14 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
 
 <!-- SETTINGS TAB -->
 <div class="tab" id="tab-settings">
+  <!-- 警示条（2026-09-13 从「公司报账」里搬到最上面）：没能进公司账本的那几笔、
+       等着补送的那几笔，原本埋在设置页中段；现在「公司报账」收进了「更多设置」、
+       默认是折起来的，警示再留在里面就等于看不见。元素 id 一个字没改，
+       renderCompanySettings() 照旧往这里写，空的时候这一条不占位。 -->
+  <div id="company-queue-status" style="font-size:12px"></div>
   <div class="setting-section">
-    <div class="setting-title">Cloud Sync</div>
+    <div class="setting-title">云端同步</div>
     <div class="card" id="sync-status" style="padding:16px;font-size:13px;color:var(--sub)">Loading…</div>
-  </div>
-  <!-- 换机准备（2026-08-21 加）：记账、账户、照片都跟着 Google 帐号走，但下面这几样
-       只存在这台手机的 localStorage 里，换机一定丢。它们的正本在 Cloudflare 的
-       secret 里（`wrangler secret put`，谁都读不回来），所以换机前**只能从这台手机
-       抄走**——原本抄不到，因为输入框是 password 型的、也不回填。这一块就是为了
-       让他抄得到。默认收着，点开才显示。 -->
-  <div class="setting-section">
-    <div class="setting-title">换机准备</div>
-    <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
-      下面这几样<b>只存在这台手机</b>，换手机不会跟着走（记账、账户、收据照片会跟着
-      Google 帐号走，这几样不会）。换机前点开抄下来，新手机要重填一次。
-    </div>
-    <button class="btn btn-outline btn-sm" id="migrate-toggle" onclick="toggleMigrateKeys()">
-      点这里显示
-    </button>
-    <div id="migrate-keys" style="display:none;margin-top:12px"></div>
-  </div>
-  <div class="setting-section">
-    <div class="setting-title">账户管理</div>
-    <div id="settings-accs"></div>
-    <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-acc')">＋ 新增账户</button>
-  </div>
-  <div class="setting-section">
-    <div class="setting-title">消费类别</div>
-    <div class="type-tabs" style="margin-bottom:12px">
-      <div class="type-tab active" onclick="setCatFilterType('expense',this)">支出类别</div>
-      <div class="type-tab" onclick="setCatFilterType('income',this)">收入类别</div>
-    </div>
-    <div id="settings-cats"></div>
-    <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-cat')">＋ 新增类别</button>
-  </div>
-  <div class="setting-section">
-    <div class="setting-title">月固定开销</div>
-    <div id="settings-recurring"></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-      <button class="btn btn-primary btn-sm" onclick="addMonthlyRecurring()">📅 一键录入本月</button>
-      <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-recurring')">＋ 新增项目</button>
-    </div>
-  </div>
-  <div class="setting-section">
-    <div class="setting-title">拍照智能识别（可选）</div>
-    <div style="font-size:12px;color:var(--sub);margin-bottom:8px">
-      配置后拍收据会用 AI 识别金额、日期、商户，比默认的本地识别更准；不填也没关系，会自动退回本地识别。
-      key 只存在这台设备本地，不会上传到任何服务器（除 Gemini 外都会经 butler-bot 转发一次，
-      只用于绕开浏览器的跨域限制，不会被存下来）。
-    </div>
-    <select class="form-input" id="ai-provider-select" onchange="onAiProviderChange()" style="margin-bottom:8px">
-      <option value="">不用，仅本地识别</option>
-      <option value="qwen">Qwen 中国站（通义千问，中文识图最强）</option>
-      <option value="qwen-intl">Qwen 国际站（不用中国手机号也能注册）</option>
-      <option value="mistral">Mistral（免注册门槛低）</option>
-      <option value="gemini">Gemini（Google）</option>
-      <option value="agnes">Agnes（agnes-ai.com）</option>
-    </select>
-    <div style="display:flex;gap:8px">
-      <input class="form-input" id="ai-key-input" type="password" placeholder="粘贴对应的 API Key" style="flex:1">
-      <button class="btn btn-outline btn-sm" onclick="saveAiKey()">保存</button>
-    </div>
-    <div id="ai-key-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
-  </div>
-  <div class="setting-section">
-    <div class="setting-title">公司报账</div>
-    <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
-      填好密钥后，标记为「公司账户」的账户记账时会同时送进公司账本，跟 Telegram 记的
-      进同一本、出同一份 Excel。密钥只存在这台设备本地。
-      设置方法见 butler-bot 仓库的 SETUP.md。
-    </div>
-    <div style="display:flex;gap:8px">
-      <input class="form-input" id="company-token-input" type="password"
-        placeholder="粘贴 APP_SHARED_TOKEN" style="flex:1">
-      <button class="btn btn-outline btn-sm" onclick="saveCompanyToken()">保存</button>
-    </div>
-    <div id="company-token-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
-    <div id="company-queue-status" style="font-size:12px;margin-top:8px"></div>
-    <!-- 从公司账本把某个人本月记过的账找回这台 App（2026-08-13 加）：Yang 之前用同事版
-         记账，转用主 App 后那些记录只在公司账本里、这台 App 的清单看不到。已经有的不会
-         重复加（靠公司账本那条记录的 id 比对）。 -->
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-      <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
-        从公司账本找回本月的记录：把某个人这个月记过的账拉进这台 App 的清单
-        （之前用同事版记的、或换手机之后清单空了，用这个补回来）。已经有的不会重复加。
-      </div>
-      <div style="display:flex;gap:8px">
-        <select class="form-input" id="import-reporter-select" style="flex:1"></select>
-        <button class="btn btn-outline btn-sm" onclick="importMyCompanyRecords()">找回本月</button>
-      </div>
-      <div id="import-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
-    </div>
   </div>
   <div class="setting-section">
     <div class="setting-title">同事投递箱</div>
@@ -755,18 +679,46 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
          算法就一句：他记的支出总额 − 已经标过「付清」的那些。 -->
     <div id="inbox-owed" style="margin-top:14px"></div>
   </div>
-  <!-- 「老板 App」这一组（2026-08-27 加，2026-08-27 改成卡片＋归组）：
-       两件事是同一件事的两面——行程管理是去改老板看到的内容，访问码是把钥匙给老板，
-       所以放在同一个 setting-title 下面，视觉上归成一组。
-       行程管理只是链接到老板 App 的管理面板，行程编辑功能本身在 boss/index.html 里，
-       这里不做。老板的访问码是拿这把公司报账密钥换来的一次性显示码，点了才拉，
-       不主动打网络，省得每次开设置页都请求一次；结果（含复制按钮）显示在
-       #boss-code-status 里，逻辑见 fetchBossAccessCode()，一个字没动。 -->
-  <!-- 「员工」这一组（2026-09-02 加）：请假登记。同事在同事版自己登记，
-       这里是 YANG 代录用的——司机这类人不用同事版页面，只能他代填。
-       登记的结果会出现在老板 App「今天」那一屏。 -->
   <div class="setting-section">
-    <div class="setting-title">员工</div>
+    <div class="setting-title">账户管理</div>
+    <div id="settings-accs"></div>
+    <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-acc')">＋ 新增账户</button>
+  </div>
+  <!-- 消费类别也折起来（2026-09-13）：这一块自己就有二十几行，占掉设置页快一半的
+       高度，可是平常根本不用动。标题旁边写清楚有几项，点开才展开管理。 -->
+  <div class="setting-section">
+    <div class="setting-title setting-more-toggle" id="cats-toggle" role="button" tabindex="0"
+         aria-expanded="false" aria-controls="cats-body"
+         onclick="toggleCatsBox()"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCatsBox()}">
+      <span>消费类别</span>
+      <span class="setting-more-arrow" aria-hidden="true">▾</span>
+    </div>
+    <div style="font-size:12px;color:var(--sub);margin:-4px 0 0" id="cats-hint"></div>
+    <div id="cats-body" hidden>
+      <div class="type-tabs" style="margin:8px 0 12px">
+        <div class="type-tab active" onclick="setCatFilterType('expense',this)">支出类别</div>
+        <div class="type-tab" onclick="setCatFilterType('income',this)">收入类别</div>
+      </div>
+      <div id="settings-cats"></div>
+      <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-cat')">＋ 新增类别</button>
+    </div>
+  </div>
+  <div class="setting-section">
+    <div class="setting-title">月固定开销</div>
+    <div id="settings-recurring"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-primary btn-sm" onclick="addMonthlyRecurring()">📅 一键录入本月</button>
+      <button class="btn btn-outline btn-sm" onclick="showModal('modal-add-recurring')">＋ 新增项目</button>
+    </div>
+  </div>
+  <!-- 「老板与员工」这一组（2026-09-13 把原本的「员工」和「老板 App」两块并成一块）：
+       三行都是入口，不是设置项——请假登记是 YANG 代录用的（司机这类人不用同事版页面）；
+       行程管理链到老板 App 的管理面板，编辑功能本身在 boss/index.html 里，这里不做；
+       老板的访问码是拿公司报账密钥换来的一次性显示码，点了才拉，不主动打网络，
+       结果（含复制按钮）显示在 #boss-code-status 里，逻辑见 fetchBossAccessCode()。 -->
+  <div class="setting-section">
+    <div class="setting-title">老板与员工</div>
     <div class="setting-item setting-item-link" role="button" tabindex="0"
          onclick="openLeaveModal()"
          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openLeaveModal()}"
@@ -780,9 +732,6 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       </div>
       <div class="setting-item-chevron">›</div>
     </div>
-  </div>
-  <div class="setting-section">
-    <div class="setting-title">老板 App</div>
     <a class="setting-item setting-item-link"
        href="https://jarixhew-bit.github.io/skills-github-pages/boss/?admin=1"
        target="_blank" rel="noopener">
@@ -815,18 +764,102 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
         target="_blank" rel="noopener">boss/install.html</a>
     </div>
   </div>
+
+  <!-- 更多设置（2026-09-13 用户要求「设置页太多东西」）：底下这五块都是**设一次
+       就不用再管**的——公司报账密钥、AI key、换机准备、导出 CSV。默认折起来，
+       点开状态记在 localStorage（expenseTracker_moreSettingsOpen），下次开 App 还在。
+       注意：折起来用的是 hidden，元素照样在 DOM 里，只是看不见也点不到——
+       自检要点里面的东西，得先把这一组展开（见 check-expense-company 【23】）。 -->
   <div class="setting-section">
-    <div class="setting-title">数据</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
+    <div class="setting-title setting-more-toggle" id="more-settings-toggle" role="button" tabindex="0"
+         aria-expanded="false" aria-controls="more-settings"
+         onclick="toggleMoreSettings()"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleMoreSettings()}">
+      <span>更多设置</span>
+      <span class="setting-more-arrow" id="more-settings-arrow" aria-hidden="true">▾</span>
+    </div>
+    <div style="font-size:12px;color:var(--sub);margin:-4px 0 0" id="more-settings-hint">
+      公司报账密钥、拍照识别、换机准备、导出 CSV
     </div>
   </div>
-  <div class="setting-section">
-    <div class="setting-title">版本</div>
-    <div id="app-build-info" style="font-size:12px;color:var(--sub);line-height:1.6"></div>
-    <div style="margin-top:8px">
-      <button class="btn btn-outline btn-sm" onclick="forceReload()">🔄 检查更新并重载</button>
+  <div id="more-settings" hidden>
+    <div class="setting-section">
+      <div class="setting-title">公司报账</div>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
+        填好密钥后，标记为「公司账户」的账户记账时会同时送进公司账本，跟 Telegram 记的
+        进同一本、出同一份 Excel。密钥只存在这台设备本地。
+        设置方法见 butler-bot 仓库的 SETUP.md。
+      </div>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="company-token-input" type="password"
+          placeholder="粘贴 APP_SHARED_TOKEN" style="flex:1">
+        <button class="btn btn-outline btn-sm" onclick="saveCompanyToken()">保存</button>
+      </div>
+      <div id="company-token-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+      <!-- 从公司账本把某个人本月记过的账找回这台 App（2026-08-13 加）：Yang 之前用同事版
+           记账，转用主 App 后那些记录只在公司账本里、这台 App 的清单看不到。已经有的不会
+           重复加（靠公司账本那条记录的 id 比对）。 -->
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+        <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
+          从公司账本找回本月的记录：把某个人这个月记过的账拉进这台 App 的清单
+          （之前用同事版记的、或换手机之后清单空了，用这个补回来）。已经有的不会重复加。
+        </div>
+        <div style="display:flex;gap:8px">
+          <select class="form-input" id="import-reporter-select" style="flex:1"></select>
+          <button class="btn btn-outline btn-sm" onclick="importMyCompanyRecords()">找回本月</button>
+        </div>
+        <div id="import-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+      </div>
     </div>
+    <div class="setting-section">
+      <div class="setting-title">拍照智能识别（可选）</div>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px">
+        配置后拍收据会用 AI 识别金额、日期、商户，比默认的本地识别更准；不填也没关系，会自动退回本地识别。
+        key 只存在这台设备本地，不会上传到任何服务器（除 Gemini 外都会经 butler-bot 转发一次，
+        只用于绕开浏览器的跨域限制，不会被存下来）。
+      </div>
+      <select class="form-input" id="ai-provider-select" onchange="onAiProviderChange()" style="margin-bottom:8px">
+        <option value="">不用，仅本地识别</option>
+        <option value="qwen">Qwen 中国站（通义千问，中文识图最强）</option>
+        <option value="qwen-intl">Qwen 国际站（不用中国手机号也能注册）</option>
+        <option value="mistral">Mistral（免注册门槛低）</option>
+        <option value="gemini">Gemini（Google）</option>
+        <option value="agnes">Agnes（agnes-ai.com）</option>
+      </select>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="ai-key-input" type="password" placeholder="粘贴对应的 API Key" style="flex:1">
+        <button class="btn btn-outline btn-sm" onclick="saveAiKey()">保存</button>
+      </div>
+      <div id="ai-key-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
+    </div>
+    <!-- 换机准备（2026-08-21 加）：记账、账户、照片都跟着 Google 帐号走，但下面这几样
+         只存在这台手机的 localStorage 里，换机一定丢。它们的正本在 Cloudflare 的
+         secret 里（`wrangler secret put`，谁都读不回来），所以换机前**只能从这台手机
+         抄走**——原本抄不到，因为输入框是 password 型的、也不回填。这一块就是为了
+         让他抄得到。默认收着，点开才显示。 -->
+    <div class="setting-section">
+      <div class="setting-title">换机准备</div>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
+        下面这几样<b>只存在这台手机</b>，换手机不会跟着走（记账、账户、收据照片会跟着
+        Google 帐号走，这几样不会）。换机前点开抄下来，新手机要重填一次。
+      </div>
+      <button class="btn btn-outline btn-sm" id="migrate-toggle" onclick="toggleMigrateKeys()">
+        点这里显示
+      </button>
+      <div id="migrate-keys" style="display:none;margin-top:12px"></div>
+    </div>
+    <div class="setting-section">
+      <div class="setting-title">数据</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 导出 CSV</button>
+      </div>
+    </div>
+  </div>
+  <!-- 版本号摆在最底下、永远看得见（2026-09-13）：要排查「他手上是不是旧版」的时候，
+       正好是最不该让人去翻折叠的时候，所以这一行不收进「更多设置」。 -->
+  <div style="text-align:center;margin:4px 0 10px">
+    <div id="app-build-info" style="font-size:12px;color:var(--sub);line-height:1.6"></div>
+    <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="forceReload()">🔄 检查更新并重载</button>
   </div>
 </div>
 
@@ -2715,6 +2748,13 @@ function renderSettingsAccs(){
 function renderSettingsCats(){
   const el = document.getElementById('settings-cats');
   const cats = data.categories.filter(c=>c.type===state.catFilterType);
+  // 折起来的时候，标题底下这句就是唯一能看出「里面有几项」的地方
+  const hint = document.getElementById('cats-hint');
+  if(hint){
+    const ex = data.categories.filter(c=>c.type==='expense').length;
+    const inc = data.categories.filter(c=>c.type==='income').length;
+    hint.textContent = `支出 ${ex} 项 · 收入 ${inc} 项`;
+  }
   el.innerHTML = cats.map(cat=>{
     const kw = (cat.keywords||[]).join(', ');
     return `<div class="setting-item" style="flex-wrap:wrap;gap:6px">
@@ -5311,6 +5351,53 @@ function migrateKeyRows(){
   rows.push({ label:'交易分析器密码（IBKR 余额）', hint:'新手机：首页那张 IBKR 卡片点「解锁」时填', value:pw });
   return rows;
 }
+// 「更多设置」的折叠（2026-09-13 用户要求「设置页太多东西」）。
+// 开合状态记在 localStorage，下次开 App 还在原来的样子。
+// 注意：这里用 hidden 属性，不是把元素拿掉——里面的输入框、#app-build-info 这些
+// 照样在 DOM 里，renderCompanySettings() / renderBuildInfo() 不受影响。
+const MORE_SETTINGS_KEY = 'expenseTracker_moreSettingsOpen';
+function applyMoreSettings(open){
+  const box = document.getElementById('more-settings');
+  const tog = document.getElementById('more-settings-toggle');
+  const hint = document.getElementById('more-settings-hint');
+  if(!box) return;
+  box.hidden = !open;
+  if(tog) tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if(hint) hint.hidden = !!open;   // 展开之后那句摘要就多余了
+}
+function toggleMoreSettings(){
+  const box = document.getElementById('more-settings');
+  if(!box) return;
+  const open = !!box.hidden;       // 现在是收着的 → 这一点就是要打开
+  applyMoreSettings(open);
+  try{ localStorage.setItem(MORE_SETTINGS_KEY, open ? '1' : '0'); }catch(e){}
+}
+function initMoreSettings(){
+  let open = false;
+  try{ open = localStorage.getItem(MORE_SETTINGS_KEY) === '1'; }catch(e){}
+  applyMoreSettings(open);
+}
+// 消费类别那块的折叠（2026-09-13），跟「更多设置」同一套写法。
+const CATS_OPEN_KEY = 'expenseTracker_catsOpen';
+function applyCatsBox(open){
+  const box = document.getElementById('cats-body');
+  const tog = document.getElementById('cats-toggle');
+  if(!box) return;
+  box.hidden = !open;
+  if(tog) tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function toggleCatsBox(){
+  const box = document.getElementById('cats-body');
+  if(!box) return;
+  const open = !!box.hidden;
+  applyCatsBox(open);
+  try{ localStorage.setItem(CATS_OPEN_KEY, open ? '1' : '0'); }catch(e){}
+}
+function initCatsBox(){
+  let open = false;
+  try{ open = localStorage.getItem(CATS_OPEN_KEY) === '1'; }catch(e){}
+  applyCatsBox(open);
+}
 function toggleMigrateKeys(){
   const box = document.getElementById('migrate-keys');
   const btn = document.getElementById('migrate-toggle');
@@ -5676,6 +5763,8 @@ function init(){
   loadIBKR();
   setCloudIcon('off');
   checkShareTarget();
+  initMoreSettings();   // 设置页「更多设置」的折叠状态，恢复上次的样子
+  initCatsBox();        // 设置页「消费类别」的折叠状态，同上
 
   // 公司账本（全员）：开 App 时后台拉一次，首屏那张卡才有「今天」的数。
   // 不 await——拉不到就是卡上写一句「连不上」，不该拖住启动。
@@ -5718,7 +5807,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-09-02';
+const APP_BUILD = '2026-09-13';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
