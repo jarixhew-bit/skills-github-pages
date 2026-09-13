@@ -242,6 +242,13 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .setting-item-link:active{transform:scale(.98);background:var(--p2)}
 .setting-item-chevron{font-size:20px;color:var(--sub);line-height:1;margin-left:8px;flex-shrink:0}
 .setting-icon-sq{border-radius:10px}
+/* 「更多设置」那条可折叠的标题（2026-09-13）：标题本身就是按钮，右边一个箭头
+   指示开合。保留 .setting-title 的排版，只多加 flex 与可点反馈。 */
+.setting-more-toggle{display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;user-select:none;padding:4px 0}
+.setting-more-toggle:active{opacity:.6}
+.setting-more-arrow{font-size:14px;transition:transform .15s}
+.setting-more-toggle[aria-expanded="true"] .setting-more-arrow{transform:rotate(180deg)}
 .del-btn{background:#FDECEA;border:none;color:var(--exp);padding:6px 10px;
   border-radius:7px;cursor:pointer;font-size:12px;font-weight:600}
 
@@ -2300,6 +2307,13 @@ function renderSettingsAccs(){
 function renderSettingsCats(){
   const el = document.getElementById('settings-cats');
   const cats = data.categories.filter(c=>c.type===state.catFilterType);
+  // 折起来的时候，标题底下这句就是唯一能看出「里面有几项」的地方
+  const hint = document.getElementById('cats-hint');
+  if(hint){
+    const ex = data.categories.filter(c=>c.type==='expense').length;
+    const inc = data.categories.filter(c=>c.type==='income').length;
+    hint.textContent = `支出 ${ex} 项 · 收入 ${inc} 项`;
+  }
   el.innerHTML = cats.map(cat=>{
     const kw = (cat.keywords||[]).join(', ');
     return `<div class="setting-item" style="flex-wrap:wrap;gap:6px">
@@ -4903,6 +4917,53 @@ function migrateKeyRows(){
   rows.push({ label:'交易分析器密码（IBKR 余额）', hint:'新手机：首页那张 IBKR 卡片点「解锁」时填', value:pw });
   return rows;
 }
+// 「更多设置」的折叠（2026-09-13 用户要求「设置页太多东西」）。
+// 开合状态记在 localStorage，下次开 App 还在原来的样子。
+// 注意：这里用 hidden 属性，不是把元素拿掉——里面的输入框、#app-build-info 这些
+// 照样在 DOM 里，renderCompanySettings() / renderBuildInfo() 不受影响。
+const MORE_SETTINGS_KEY = 'expenseTracker_moreSettingsOpen';
+function applyMoreSettings(open){
+  const box = document.getElementById('more-settings');
+  const tog = document.getElementById('more-settings-toggle');
+  const hint = document.getElementById('more-settings-hint');
+  if(!box) return;
+  box.hidden = !open;
+  if(tog) tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if(hint) hint.hidden = !!open;   // 展开之后那句摘要就多余了
+}
+function toggleMoreSettings(){
+  const box = document.getElementById('more-settings');
+  if(!box) return;
+  const open = !!box.hidden;       // 现在是收着的 → 这一点就是要打开
+  applyMoreSettings(open);
+  try{ localStorage.setItem(MORE_SETTINGS_KEY, open ? '1' : '0'); }catch(e){}
+}
+function initMoreSettings(){
+  let open = false;
+  try{ open = localStorage.getItem(MORE_SETTINGS_KEY) === '1'; }catch(e){}
+  applyMoreSettings(open);
+}
+// 消费类别那块的折叠（2026-09-13），跟「更多设置」同一套写法。
+const CATS_OPEN_KEY = 'expenseTracker_catsOpen';
+function applyCatsBox(open){
+  const box = document.getElementById('cats-body');
+  const tog = document.getElementById('cats-toggle');
+  if(!box) return;
+  box.hidden = !open;
+  if(tog) tog.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function toggleCatsBox(){
+  const box = document.getElementById('cats-body');
+  if(!box) return;
+  const open = !!box.hidden;
+  applyCatsBox(open);
+  try{ localStorage.setItem(CATS_OPEN_KEY, open ? '1' : '0'); }catch(e){}
+}
+function initCatsBox(){
+  let open = false;
+  try{ open = localStorage.getItem(CATS_OPEN_KEY) === '1'; }catch(e){}
+  applyCatsBox(open);
+}
 function toggleMigrateKeys(){
   const box = document.getElementById('migrate-keys');
   const btn = document.getElementById('migrate-toggle');
@@ -5269,6 +5330,8 @@ function init(){
   switchTab('transactions');
   setCloudIcon('off');
   checkShareTarget();
+  initMoreSettings();   // 设置页「更多设置」的折叠状态，恢复上次的样子
+  initCatsBox();        // 设置页「消费类别」的折叠状态，同上
 
   // 把自己那份消费类别同步给同事版（他们记账要挑同一批类别）。不 await，
   // 同步不上去也不影响自己记账——见 pushBossCategories。
@@ -5303,7 +5366,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-09-02';
+const APP_BUILD = '2026-09-13';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';

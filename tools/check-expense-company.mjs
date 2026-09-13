@@ -1917,6 +1917,15 @@ console.log('\n【21】老板账：把 butler 中央账本同步下来');
     localStorage.setItem('tradingAnalyzerPw', 'ibkr-pw-789');
   });
   await page.evaluate(()=>switchTab('settings'));
+  // 换机准备 2026-09-13 起收在「更多设置」里，默认折起来——先展开，否则底下
+  // 那个按钮点不到（Playwright 会等它可见然后超时）。
+  await page.click('#more-settings-toggle');
+  await page.waitForTimeout(150);
+  // 展开失败的话，下面每一次 page.click 都会卡到超时、整份自检直接中断（看不出是哪红的）。
+  // 所以先断言一次、断言不过就干脆利落地收场。
+  const moreOpen = await page.locator('#migrate-toggle').isVisible();
+  ok('「更多设置」展开之后，换机准备那块点得到', moreOpen);
+  if(!moreOpen){ await ctx.close(); } else {
   ok('没点开之前不显示', !(await page.locator('#migrate-keys').isVisible()));
 
   await page.click('#migrate-toggle');
@@ -1943,6 +1952,7 @@ console.log('\n【21】老板账：把 butler 中央账本同步下来');
   ok('没设过的写明「不用抄」', shown2.includes('不用抄'), shown2.slice(0,300));
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
+  }
 }
 
 // ---------- 【24】清单空的时候要说清楚「为什么空」 ----------
@@ -3424,6 +3434,104 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   ok('对照组：其他类别还在（不是整份没补）',
      await page.evaluate(() => data.categories.length) === total - 1,
      await page.evaluate(() => data.categories.length));
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---------- 【35】设置页「更多设置」折叠：收起来不等于弄丢 ----------
+{
+  console.log('\n【35】设置页折叠：收着的那五块要点得开，展开状态要记住');
+  // 为什么要验：2026-09-13 把 12 个区块压成「常用 + 更多设置」。折叠最怕两件事——
+  // 一是收进去的东西再也找不回来（等于功能没了），二是常用的那几块被误收进去。
+  // 所以这里既验「点开之后每一样都在」，也**带对照组**验「常用那几块一直看得见」。
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.evaluate(()=>switchTab('settings'));
+
+  // 常用那几块：任何时候都看得见（对照组——没有这一组的话，整个设置页被折没了也会「通过」）
+  const always = ['#sync-status','#inbox-acc-select','#settings-accs',
+                  '#settings-recurring','#app-build-info'];
+  for(const sel of always){
+    ok(`常用区一直看得见 ${sel}`, await page.locator(sel).isVisible(), sel);
+  }
+  for(const t of ['请假登记','行程管理','老板的访问码']){
+    ok(`「老板与员工」那组入口看得见：${t}`,
+       await page.locator(`#tab-settings .setting-item:has-text("${t}")`).first().isVisible(), t);
+  }
+
+  // 收着的那五块：默认看不见
+  const folded = ['#company-token-input','#ai-provider-select','#migrate-toggle'];
+  for(const sel of folded){
+    ok(`默认收着 ${sel}`, !(await page.locator(sel).isVisible()), sel);
+  }
+  ok('默认收着：导出 CSV',
+     !(await page.locator('#more-settings button:has-text("导出 CSV")').isVisible()));
+
+  // 点开 → 每一样都要出来
+  await page.click('#more-settings-toggle');
+  await page.waitForTimeout(200);
+  for(const sel of folded){
+    ok(`★点开之后出得来 ${sel}`, await page.locator(sel).isVisible(), sel);
+  }
+  ok('★点开之后出得来：导出 CSV',
+     await page.locator('#more-settings button:has-text("导出 CSV")').isVisible());
+  ok('展开时箭头状态跟着改',
+     await page.getAttribute('#more-settings-toggle','aria-expanded') === 'true');
+
+  // 消费类别那块也折起来了：默认收着，但标题底下必须写清楚里面有几项，
+  // 否则看起来就像「类别整个不见了」。
+  ok('消费类别默认收着', !(await page.locator('#settings-cats').isVisible()));
+  const catHint = (await page.textContent('#cats-hint')) || '';
+  ok('★折起来也看得出里面有几项',
+     /支出\s*\d+\s*项/.test(catHint) && /收入\s*\d+\s*项/.test(catHint), catHint);
+  ok('类别项数跟数据对得上', catHint.includes(
+     String(await page.evaluate(()=>data.categories.filter(c=>c.type==='expense').length))), catHint);
+  await page.click('#cats-toggle');
+  await page.waitForTimeout(200);
+  ok('★点开之后类别列得出来', await page.locator('#settings-cats').isVisible());
+  ok('★点开之后「新增类别」点得到',
+     await page.locator('#cats-body button:has-text("新增类别")').isVisible());
+
+  // 再点一次收回去
+  await page.click('#more-settings-toggle');
+  await page.waitForTimeout(200);
+  ok('再点一次收回去', !(await page.locator('#company-token-input').isVisible()));
+
+  // 展开状态要记住：重开 App 还是展开的
+  await page.click('#more-settings-toggle');
+  await page.waitForTimeout(200);
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts)), { what: '重开 App' });
+  await page.evaluate(()=>switchTab('settings'));
+  ok('★重开 App 还记得展开过', await page.locator('#company-token-input').isVisible());
+
+  // 公司账本送不进去的警示：搬到最上面了，不能跟着折叠一起被收起来
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_moreSettingsOpen','0');
+  });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.transactions)), { what: '再重开一次' });
+  await page.evaluate(() => {
+    data.transactions.unshift({ id:'qq1', type:'expense', amount:10, date:'2026-09-01',
+      categoryId:data.categories[0].id, accountId:data.accounts[0].id,
+      company:{ status:'failed', categoryEn:'Meal', error:'密钥不对' } });
+    switchTab('settings');
+    renderCompanySettings();
+  });
+  await page.waitForTimeout(150);
+  ok('★收着的时候，送不进公司账本的警示照样看得见',
+     await page.locator('#company-queue-status').isVisible()
+     && ((await page.textContent('#company-queue-status')) || '').includes('没能进公司账本'),
+     await page.textContent('#company-queue-status'));
 
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
