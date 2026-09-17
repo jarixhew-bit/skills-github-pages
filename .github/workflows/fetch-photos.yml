@@ -45,11 +45,13 @@ jobs:
       - name: 装 playwright
         run: |
           npm install
-          if [ "${{ steps.pw-cache.outputs.cache-hit }}" != "true" ]; then
-            npx playwright install --with-deps chromium
-          else
-            npx playwright install-deps chromium
-          fi
+          # 不看 cache-hit 决定装不装浏览器：缓存键是 package.json 的哈希，而
+          # package.json 里写的是 "playwright": "^1.62.1"（浮动版本、仓库没有 lock 档），
+          # 所以 package.json 没变、npm 却可能装上新版 playwright——缓存「命中」，
+          # 里面却是旧版的浏览器，脚本一启动就报「Please run npx playwright install」，
+          # 整轮抓图产出空文件（2026-09-17 踩过，当时正在抢修全页破图）。
+          # install 在浏览器已经就位时是秒过的，所以无条件跑才是对的。
+          npx playwright install --with-deps chromium
 
       # pipefail 不可省：没有它时 `node ... | tee` 的退出码取自 tee，
       # 抓取脚本崩溃了这一步照样显示成功，绿灯是假的（2026-08-11 踩过）。
@@ -80,6 +82,12 @@ jobs:
       - name: 把结果提交回分支
         if: always() && github.ref_name != 'main'
         run: |
+          # 抓取失败时产出的是空文件，照样 commit 会让人以为「抓到了但结果是空的」，
+          # 而真相是根本没跑起来——2026-09-17 就这样多绕了一圈。空的就不提交。
+          if [ ! -s photos-output.txt ]; then
+            echo "抓图结果是空的，不提交（上一步应该已经报错，去看 Run scraper 那步的日志）"
+            exit 0
+          fi
           mkdir -p .photos
           cp photos-output.txt .photos/latest.txt
           git config user.name "github-actions[bot]"
