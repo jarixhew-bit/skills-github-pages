@@ -14,6 +14,10 @@
    才算失效，403／超时归入「存疑」不报错（见 DEAD_CODES 注释）。
 
 判定：HTTP 2xx/3xx = 活着；4xx/5xx 或连不上 = 坏了。
+**图片额外验内容**（2026-09-17 加）：Google Places 的图片网址带令牌，过期后
+**照样回 200**，只是内容不再是图片——只看状态码的话这里会判「活着」，而用户
+打开页面看到的是破图。2026-08-29 与 09-17 两次都是用户先看到、机器没看到，
+所以图片类链接现在还要求 Content-Type 是 image/* 且内容不是空壳。
 为了不误报（误报会让人开始忽略警报，等于白做），每个失败的链接会重试 2 次，
 三次都失败才算数。
 
@@ -56,38 +60,64 @@ SKIP_HOSTS = ("jarixhew-bit.github.io", "github.com", "instagram.com",
 DEAD_CODES = {"404", "410", "451"}
 DEAD_ERRORS = {"URLError", "gaierror"}   # DNS 查无此站 = 域名都没了
 
+# 图片内容验证：小于这个字节数的多半是占位图或错误页，不是真照片。
+# 只读开头这一小段就够判定，不必把整张图拉下来（810 个链接全下载会很慢）。
+IMAGE_MIN_BYTES = 1024
+
 
 def extract(path: str) -> list:
-    """回传 [(种类, url), ...]，去重。"""
+    """回传 [(种类, url, 行号), ...]，去重。
+
+    带行号是为了让修的人直接跳到那一行——只给网址的话，一页 166 张图里
+    要靠肉眼比对字符串才找得到是哪张（2026-09-17 修破图时吃过这个亏）。
+    """
     html = open(path, encoding="utf-8", errors="replace").read()
+
+    def lineno(pos):
+        return html.count("\n", 0, pos) + 1
+
     found = []
-    for url in IMG_RE.findall(html):
-        found.append(("图片", url.replace("&amp;", "&")))
+    for m in IMG_RE.finditer(html):
+        found.append(("图片", m.group(1).replace("&amp;", "&"), lineno(m.start())))
     maps = set()
-    for url in MAP_RE.findall(html):
-        clean = url.replace("&amp;", "&")
+    for m in MAP_RE.finditer(html):
+        clean = m.group(1).replace("&amp;", "&")
         maps.add(clean)
-        found.append(("地图", clean))
+        found.append(("地图", clean, lineno(m.start())))
     # 店家官网／订位页（tabelog、餐厅自家网站）。官网 404 通常就等于店歇业，
     # 是「该换这张卡片了」的早期警报——手册发出去后没人会主动发现这件事。
-    for url in HREF_RE.findall(html):
-        clean = url.replace("&amp;", "&")
+    for m in HREF_RE.finditer(html):
+        clean = m.group(1).replace("&amp;", "&")
         if clean in maps:
             continue
         host = urllib.parse.urlparse(clean).netloc.lower()
         if any(h in host for h in SKIP_HOSTS):
             continue
-        found.append(("官网", clean))
+        found.append(("官网", clean, lineno(m.start())))
     seen, out = set(), []
-    for kind, url in found:
+    for kind, url, line in found:
         if url not in seen:
             seen.add(url)
-            out.append((kind, url))
+            out.append((kind, url, line))
     return out
 
 
-def probe(url: str):
-    """回传 (是否活着, 说明)。2xx/3xx 算活着。"""
+def verify_image(resp):
+    """图片除了通之外还要真的是图。回传 (是否是图, 说明)。
+
+    过期的 Google Places 图片网址会回 200＋非图片内容，只看状态码看不出来。
+    """
+    ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+    if not ctype.startswith("image/"):
+        return False, f"200但不是图片({ctype or '无类型'})"
+    head = resp.read(IMAGE_MIN_BYTES + 1)
+    if len(head) <= IMAGE_MIN_BYTES:
+        return False, f"200但内容只有{len(head)}字节"
+    return True, "200"
+
+
+def probe(url: str, kind: str = ""):
+    """回传 (是否活着, 说明)。2xx/3xx 算活着；图片还要通过内容验证。"""
     # 地图链接里常带中文店名（如 .../search/鶏Soba+座銀+総本店/），非 ASCII 字符
     # 直接丢进 urllib 会 UnicodeEncodeError，要先 percent-encode。
     safe = urllib.parse.quote(url, safe=":/?#[]@!$&'()*+,;=~-._%")
@@ -98,6 +128,12 @@ def probe(url: str):
         try:
             with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
                 if 200 <= r.status < 400:
+                    if kind == "图片":
+                        ok, why = verify_image(r)
+                        if ok:
+                            return True, why
+                        # 内容不对不是网络抖动，重试没有意义，直接判坏
+                        return False, why
                     return True, str(r.status)
                 last = str(r.status)
         except urllib.error.HTTPError as e:
@@ -120,8 +156,8 @@ def main():
 
     jobs = []
     for f in files:
-        for kind, url in extract(f):
-            jobs.append((f, kind, url))
+        for kind, url, line in extract(f):
+            jobs.append((f, kind, url, line))
 
     if not jobs:
         print("没有找到任何外链图片或地图链接")
@@ -131,15 +167,15 @@ def main():
 
     broken, unknown = [], []
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
-        results = pool.map(lambda j: probe(j[2]), jobs)
-        for (f, kind, url), (ok, info) in zip(jobs, results):
+        results = pool.map(lambda j: probe(j[2], j[1]), jobs)
+        for (f, kind, url, line), (ok, info) in zip(jobs, results):
             if ok:
                 continue
             # 官网只有「确定没了」才算失效，其余归入存疑（见 DEAD_CODES 注释）
             if kind == "官网" and info not in DEAD_CODES and info not in DEAD_ERRORS:
                 unknown.append((f, url, info))
             else:
-                broken.append((f, kind, url, info))
+                broken.append((f, kind, url, info, line))
 
     if unknown:
         print(f"存疑（不算失效）：{len(unknown)} 个店家官网没能确认，"
@@ -157,16 +193,16 @@ def main():
     # 失败多的时候，逐条列清单会刷屏且把统计埋掉。改为先分组统计、每组只列样本，
     # 摘要放最后（CI 日志与 issue 都是从尾部看起）。
     by_file, by_code = {}, {}
-    for f, kind, url, info in broken:
-        by_file.setdefault(f, []).append((kind, url, info))
+    for f, kind, url, info, line in broken:
+        by_file.setdefault(f, []).append((kind, url, info, line))
         by_code[info] = by_code.get(info, 0) + 1
 
     print("失效样本（每个页面最多列 3 条）：")
     for f in sorted(by_file, key=lambda x: -len(by_file[x])):
         items = by_file[f]
         print(f"\n  {f} —— {len(items)} 个失效")
-        for kind, url, info in items[:3]:
-            print(f"    ✗ [{info}] {kind}：{url[:110]}")
+        for kind, url, info, line in items[:3]:
+            print(f"    ✗ [{info}] {kind} 第{line}行：{url[:110]}")
         if len(items) > 3:
             print(f"    …另有 {len(items) - 3} 个未列出")
 
@@ -179,6 +215,14 @@ def main():
     print("\n按状态码：")
     for code in sorted(by_code, key=lambda c: -by_code[c]):
         print(f"  {code}: {by_code[code]} 个")
+
+    # 修的人需要的是**每一条**，不是样本。样本用来快速判断严重程度，
+    # 这段用来照着改：一行一条、带行号，可直接对照源码定位。
+    imgs = [b for b in broken if b[1] == "图片"]
+    if imgs:
+        print(f"\n失效图片完整清单（{len(imgs)} 条，格式：文件:行号 [原因] 网址）：")
+        for f, kind, url, info, line in sorted(imgs, key=lambda b: (b[0], b[4])):
+            print(f"  {f}:{line} [{info}] {url}")
 
     # 403 的成因有两种，处理方式完全不同，必须让人能分辨：
     # (a) Google Places 图片链接带签名、会过期 → 真失效，要重抓；
