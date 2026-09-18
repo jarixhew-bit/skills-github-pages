@@ -62,7 +62,13 @@ function merge(map, urls) {
 /** 尝试打开店铺的照片图库。回传是否成功打开。 */
 async function openGallery(page) {
   // 依次尝试多种入口：Google 会改版，单一选择器一定会有失效的一天。
+  // 2026-09-18：实跑回报显示这几个选择器**一个都没中**，20 家店全部退回
+  // 「从地点页抓」——而地点页顶部那排缩图里就有一张是「菜单」分类的封面，
+  // 这正是用户看到「第二张老是菜单」的原因。回报里的按钮清单显示真正的入口
+  // 叫「See more photos」，补在最前面。
   const candidates = [
+    'button[aria-label*="See more photos"]',
+    'button[aria-label*="更多照片"]',
     'button[jsaction*="heroHeaderImage"]',
     'button[aria-label*="Photo of"]',
     'button[aria-label*="照片"]',
@@ -231,6 +237,26 @@ async function fetchOne(ctx, query) {
     if (collected.size < WANT) {
       merge(collected, await collectFromSource(page));
       out.method += '+source';
+    }
+
+    // 进不了图库时的保险：地点页顶部那排缩图里，有一张是「菜单」分类的封面，
+    // 它会被当成普通照片收走（用户看到的「第二张是菜单」就是它）。
+    // 这里把带菜单字样的那几张挑出来排到最后，能用别的就不用它。
+    if (!out.cat) {
+      const menuish = await page.$$eval('img', imgs => imgs
+        .filter(i => /menu|菜单|菜單/i.test(
+          (i.getAttribute('aria-label') || '') + ' ' +
+          (i.closest('button,a')?.getAttribute('aria-label') || '') + ' ' +
+          (i.closest('button,a')?.innerText || '')))
+        .map(i => i.src.split('=')[0])).catch(() => []);
+      if (menuish.length) {
+        out.demotedMenu = menuish.length;
+        const keys = new Set(menuish);
+        const all = [...collected.entries()];
+        collected.clear();
+        for (const [k, v] of all) if (!keys.has(k)) collected.set(k, v);
+        for (const [k, v] of all) if (keys.has(k)) collected.set(k, v);
+      }
     }
 
     // 抓不满时报出页面里到底有几个候选、长什么样，好判断是「这家店真的没照片」
