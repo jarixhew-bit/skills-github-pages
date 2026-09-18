@@ -242,6 +242,20 @@ async function fetchOne(ctx, query) {
       );
     }
 
+    // 诊断：地点页那排缩图分别挂在什么按钮底下。用户反映「第二张老是菜单」，
+    // 要挡掉它就得先知道它长什么标签——猜一轮要烧一次 CI，不如让脚本报回来。
+    out.thumbs = await page.$$eval('img', imgs => imgs
+      .filter(i => (i.src || '').includes('googleusercontent.com'))
+      .slice(0, 12)
+      .map(i => {
+        const host = i.closest('button,a,div[role="button"]');
+        return {
+          k: (i.src.split('googleusercontent.com/')[1] || '').slice(0, 14),
+          al: (i.getAttribute('aria-label') || host?.getAttribute('aria-label') || '').slice(0, 40),
+          tx: (host?.innerText || '').replace(/\s+/g, ' ').slice(0, 30),
+        };
+      })).catch(() => []);
+
     if (collected.size < WANT) {
       merge(collected, await collectFromSource(page));
       out.method += '+source';
