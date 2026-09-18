@@ -53,6 +53,7 @@ CHECKS = [
     ("generated", ["python3", "tools/check-generated.py"], False),
     ("news", ["python3", "tools/check-news.py"], False),
     ("prices", ["python3", "tools/check-prices.py"], False),
+    ("flights", ["python3", "tools/check-flight-times.py"], False),
     ("rules", ["python3", "tools/check-rules.py", "--quiet"], False),
     ("rule-homes", ["python3", "tools/check-rule-homes.py"], False),
     ("workflows", ["python3", "tools/check-workflows.py"], False),

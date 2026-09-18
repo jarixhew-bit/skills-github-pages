@@ -93,6 +93,17 @@ async function load(handler, now, psiHandler) {
     () => [...document.querySelectorAll('.wx[data-wx]')].every(b => b.textContent && !/载入中|Loading/.test(b.textContent)),
     null, { timeout: 10000 },
   );
+  /* 空气质量是另一条独立的 fetch，跟天气那几条谁先回来没保证。只等天气就去读 #psi，
+     在慢一点的机器上会读到还没填完的「载入中」——2026-09-18 在 CI 上就这样红过一次
+     （本地全过、CI 三条 PSI 断言全红）。所以这里单独等它落定。
+     等不到就不硬抛：让后面的断言把「实得什么」原样印出来，比栈追踪好读。 */
+  await page.waitForFunction(
+    () => {
+      const el = document.getElementById('psi');
+      return !!el && !!el.textContent && !/载入中|Loading/.test(el.textContent);
+    },
+    null, { timeout: 10000 },
+  ).catch(() => {});
   const texts = await page.evaluate(() => {
     const out = {};
     document.querySelectorAll('.wx[data-wx]').forEach(b => { out[b.dataset.wx] = b.textContent; });
