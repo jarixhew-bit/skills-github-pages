@@ -60,28 +60,89 @@ function merge(map, urls) {
 }
 
 /** 尝试打开店铺的照片图库。回传是否成功打开。 */
-async function openGallery(page) {
+async function openGallery(page, out) {
   // 依次尝试多种入口：Google 会改版，单一选择器一定会有失效的一天。
+  // 2026-09-18：实跑回报显示这几个选择器**一个都没中**，20 家店全部退回
+  // 「从地点页抓」——而地点页顶部那排缩图里就有一张是「菜单」分类的封面，
+  // 这正是用户看到「第二张老是菜单」的原因。回报里的按钮清单显示真正的入口
+  // 叫「See more photos」，补在最前面。
   const candidates = [
+    'button[aria-label*="See more photos"]',
+    'button[aria-label*="更多照片"]',
     'button[jsaction*="heroHeaderImage"]',
     'button[aria-label*="Photo of"]',
     'button[aria-label*="照片"]',
     'button[aria-label*="写真"]',
     'button[aria-label*="Photos"]',
   ];
+  const tries = [];
+  const before = (await collectFromDom(page)).length;
   for (const sel of candidates) {
     const el = await page.$(sel);
-    if (!el) continue;
+    if (!el) { tries.push({ sel, found: false }); continue; }
     try {
       await el.click({ timeout: 5000 });
-      await page.waitForTimeout(2500);
-      // 图库打开的判据：页面上地点照片数量明显变多
+      await page.waitForTimeout(3000);
+      // 判据放宽：只要照片明显变多、或网址换到照片页，就当图库开了。
+      // 原本卡在「n > 3」，而地点页本来就有 5~8 张缩图，等于永远判不出差别——
+      // 2026-09-18 查出来最近两轮 23 家店全部退回地点页，就是卡在这里
+      // （连带让「选分类、不要菜单」那段从来没机会跑）。
       const n = (await collectFromDom(page)).length;
-      if (n > 3) return sel;
+      const url = page.url();
+      tries.push({ sel, found: true, before, after: n, url: url.slice(0, 60) });
+      // 主图那颗（heroHeaderImage）点下去会进单张浏览器，DOM 里的照片反而变少，
+      // 所以「变多」这个判据对它永远不成立。但它确实是入口——进去之后才有
+      // 分类页签可选，也才滚得出整个图库。所以它只要点得动就当成功，
+      // 后面滚不出东西自然会退回地点页那条路（collected 不够时会补抓页面源码）。
+      if (n > before + 2 || /\/photo/.test(url) || /heroHeaderImage/.test(sel)) {
+        out.tries = tries;
+        return sel;
+      }
     } catch (e) {
-      /* 换下一个入口 */
+      tries.push({ sel, found: true, err: String(e.message || e).slice(0, 40) });
     }
   }
+  out.tries = tries;
+  return null;
+}
+
+/**
+ * 图库顶部的分类页签：Google 默认停在「全部」，而餐厅的「全部」里塞满了
+ * 用户拍的菜单照——手册卡片的第二张常常就是一张菜单（2026-09-18 用户反映：
+ * 「为什么最近改图片第二张都是跑菜单出来」）。
+ *
+ * 做法：进图库后先切到「食物与饮品」（没有就「氛围/外观」），**绝不选「菜单」**。
+ * 非餐厅的地点没有这些页签，就留在「全部」，行为跟以前一样。
+ * 页签文字随语言变，所以中英都匹配；实际看到哪些页签一律回报（out.cats），
+ * Google 改版时不用靠猜。
+ */
+const CAT_PREFER = [/food\s*&?\s*drink/i, /食物|饮品|美食|菜肴/];
+const CAT_FALLBACK = [/vibe/i, /氛围|环境/, /exterior|outside/i, /外观/];
+const CAT_AVOID = [/\bmenu\b/i, /菜单|菜單|价目/];
+
+async function pickCategory(page, out) {
+  const tabs = await page.$$('button, [role="tab"], [role="radio"]');
+  const labels = [];
+  for (const t of tabs) {
+    const txt = ((await t.getAttribute('aria-label')) || (await t.innerText().catch(() => '')) || '')
+      .replace(/\s+/g, ' ').trim().slice(0, 30);
+    if (txt) labels.push(txt);
+  }
+  out.cats = labels.slice(0, 20);
+  for (const want of [CAT_PREFER, CAT_FALLBACK]) {
+    for (const t of tabs) {
+      const txt = ((await t.getAttribute('aria-label')) || (await t.innerText().catch(() => '')) || '').trim();
+      if (!txt || CAT_AVOID.some(r => r.test(txt))) continue;
+      if (!want.some(r => r.test(txt))) continue;
+      try {
+        await t.click({ timeout: 4000 });
+        await page.waitForTimeout(2500);
+        out.cat = txt.slice(0, 30);
+        return txt;
+      } catch (e) { /* 换下一个 */ }
+    }
+  }
+  out.cat = '(全部)';
   return null;
 }
 
@@ -165,10 +226,15 @@ async function fetchOne(ctx, query) {
     const collected = new Map();
     merge(collected, await collectFromDom(page));
 
-    const entry = await openGallery(page);
+    const entry = await openGallery(page, out);
     if (entry) {
       out.method = 'gallery';
       out.entry = entry;
+      const cat = await pickCategory(page, out);
+      if (cat) {
+        // 切了分类就把「全部」页收到的那批丢掉——留着的话菜单照还是排在最前面
+        collected.clear();
+      }
       await scrollGallery(page, collected, WANT);
     } else {
       out.method = 'placepage';
@@ -183,9 +249,43 @@ async function fetchOne(ctx, query) {
       );
     }
 
+    // 诊断：地点页那排缩图分别挂在什么按钮底下。用户反映「第二张老是菜单」，
+    // 要挡掉它就得先知道它长什么标签——猜一轮要烧一次 CI，不如让脚本报回来。
+    out.thumbs = await page.$$eval('img', imgs => imgs
+      .filter(i => (i.src || '').includes('googleusercontent.com'))
+      .slice(0, 12)
+      .map(i => {
+        const host = i.closest('button,a,div[role="button"]');
+        return {
+          k: (i.src.split('googleusercontent.com/')[1] || '').slice(0, 14),
+          al: (i.getAttribute('aria-label') || host?.getAttribute('aria-label') || '').slice(0, 40),
+          tx: (host?.innerText || '').replace(/\s+/g, ' ').slice(0, 30),
+        };
+      })).catch(() => []);
+
     if (collected.size < WANT) {
       merge(collected, await collectFromSource(page));
       out.method += '+source';
+    }
+
+    // 进不了图库时的保险：地点页顶部那排缩图里，有一张是「菜单」分类的封面，
+    // 它会被当成普通照片收走（用户看到的「第二张是菜单」就是它）。
+    // 这里把带菜单字样的那几张挑出来排到最后，能用别的就不用它。
+    if (!out.cat) {
+      const menuish = await page.$$eval('img', imgs => imgs
+        .filter(i => /menu|菜单|菜單/i.test(
+          (i.getAttribute('aria-label') || '') + ' ' +
+          (i.closest('button,a')?.getAttribute('aria-label') || '') + ' ' +
+          (i.closest('button,a')?.innerText || '')))
+        .map(i => i.src.split('=')[0])).catch(() => []);
+      if (menuish.length) {
+        out.demotedMenu = menuish.length;
+        const keys = new Set(menuish);
+        const all = [...collected.entries()];
+        collected.clear();
+        for (const [k, v] of all) if (!keys.has(k)) collected.set(k, v);
+        for (const [k, v] of all) if (keys.has(k)) collected.set(k, v);
+      }
     }
 
     // 抓不满时报出页面里到底有几个候选、长什么样，好判断是「这家店真的没照片」

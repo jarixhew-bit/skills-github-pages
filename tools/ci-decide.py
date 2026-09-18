@@ -56,6 +56,9 @@ RULES = {
                 "tools/check-weather.mjs"],
     # 手册航班时长：跨时区那几段最容易直接拿两地时刻相减，差一小时看不出来
     "flights": ["*.html", "*/index.html", "tools/check-flight-times.py"],
+    # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验
+    "refreshphotos": ["tools/refresh-photos.py", "tools/check-refresh-photos.py",
+                      "tools/fetch-photos.mjs", "tools/check-images.py"],
     "gamebot":   ["game-bot/**", "tools/check-gamebot.py",
                   "tools/check-gamebot-logic.mjs"],
 }

@@ -1,0 +1,97 @@
+# 破图自动补。
+#
+# 建立原因（2026-09-18 用户要求）：「想说让你搞自动化，结果我还是一直要手动选图
+# 什么的，不能搞简单化一点吗」。在这之前，一张图坏掉要走五步：家人看到破图 →
+# 告诉用户 → 用户告诉 Claude → Claude 抓图换图 → 开 PR。五步里三步是人，
+# 而整件事没有一步需要判断力。
+#
+# 现在：check-images 每周一 01:00 体检（那支只报告、不动手），这支 02:00 接着跑，
+# 直接把死掉的图换成同一家店新抓的照片，有改动就开 PR 等用户点一下合并。
+# 用户要做的只剩「看一眼 PR」——挑图（哪张好看）仍然是人的事，补破图不是。
+#
+# 为什么开 PR 而不是直接推 main：换的是已经发给家人的手册，
+# 让用户有机会瞄一眼再上线；PR 里会列出换了哪几张。
+name: 自动补破图
+
+on:
+  schedule:
+    # 每周一 UTC 02:00，排在 check-images（01:00）之后，让体检先把问题摊开
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+    inputs:
+      file:
+        description: "只补单一 HTML（留空 = 全部手册）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 跟 fetch-photos.yml 同一个理由：不看 cache-hit 决定装不装浏览器，
+      # 缓存键是 package.json 的哈希，而版本号是浮动的，命中也可能是旧版浏览器。
+      - name: 装 playwright
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: 找出破图并补上
+        id: fix
+        env:
+          TARGET: ${{ github.event.inputs.file }}
+          # 抓图器跑在 runner 上，出得去；沙盒连不上 Google，所以这件事只能在这里做
+          WANT: '8'
+        run: |
+          set -o pipefail
+          python3 tools/refresh-photos.py $TARGET 2>&1 | tee refresh.log
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 有改动就开 PR
+        if: steps.fix.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="auto/refresh-photos-$(date -u +%Y%m%d-%H%M)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          # 只提交手册本身：抓图产生的暂存档不进来
+          git add '*.html'
+          git commit -m "自动补破图（每周体检后）
+
+          $(grep -E '^  ✓|^  ✗|^合计' refresh.log | head -40)"
+          git push -u origin "$BRANCH"
+          {
+            echo "每周体检发现手册有图片失效，已自动换成**同一家店**新抓的照片。"
+            echo
+            echo '```'
+            cat refresh.log
+            echo '```'
+            echo
+            echo "## 要不要挑图"
+            echo
+            echo "这里只做「把死掉的换成活的」，没有挑好不好看。"
+            echo "想换别张就跟 Claude 说「某某卡片第几张换几号」，它会照选图页换。"
+            echo
+            echo "补不上的（如果有）通常是那家店在 Google 上照片本来就少，需要人工处理。"
+          } > pr.md
+          gh pr create --title "自动补破图（$(date -u +%Y-%m-%d)）" --body-file pr.md --head "$BRANCH"
+
+      - name: 没有破图就说一声
+        if: steps.fix.outputs.changed != 'true'
+        run: echo "这轮没有需要补的图（或补不上的已在日志里列出）。"
