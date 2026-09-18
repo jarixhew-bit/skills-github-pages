@@ -41,6 +41,28 @@ async function until(fn, { timeout = 8000, interval = 20, what = '条件' } = {}
     await new Promise(r => setTimeout(r, interval));
   }
 }
+/**
+ * 跟 until 一样轮询等条件，但**等不到只回 false、不抛**，而且默认等得久
+ * （30 秒，够撑并行跑全套时 4 核被 20 多个检查抢光的情况）。
+ * 给「等不到也要报成一条失败」的地方用：那些块后面还有十几条断言，
+ * 抛出去等于把它们一起弄哑（见【27】里的注释）。
+ */
+async function settle(fn, { timeout = 30000, interval = 20 } = {}) {
+  const t0 = Date.now();
+  for (;;) {
+    if (await fn()) return true;
+    if (Date.now() - t0 > timeout) return false;
+    await new Promise(r => setTimeout(r, interval));
+  }
+}
+/** 等假 butler 那边安静下来：ms 毫秒内没有新请求进来就算安静（等不到回 false）。 */
+async function settleQuiet(list, ms = 200, timeout = 5000) {
+  return settle(async () => {
+    const n = list.length;
+    await new Promise(r => setTimeout(r, ms));
+    return list.length === n;
+  }, { timeout, interval: 0 });
+}
 /** 记账弹窗是开着还是关着（overlay 拿到 .open 才算开）。 */
 const txModalOpen = page => page.evaluate(() => {
   const m = document.getElementById('modal-add-tx');
@@ -1954,6 +1976,14 @@ if (want()) {
     { what: 'App 启动完成' });
 
   const LIMIT = 3 * 1024 * 1024;      // 跟页面里的 BOSS_PHOTO_LIMIT 对齐
+  // 开机时 pullBossCategories() 也会往 /boss-expense 打一发（action:'categories'），
+  // 跟这一块要看的记账请求走同一个假服务端、进同一个 bossPosted。机器满载时
+  // （并行跑全套自检，4 核抢 20 多个检查）它会慢到「清空之后」才落地，于是
+  // bossPosted[0] 变成它，下面两条照片断言就假失败——2026-09-18 复现确认，
+  // 不是压缩没压完，压缩那一步是 await 过的。
+  // 所以先等背景请求落地、等假服务端安静下来，再清空：清空才真的是干净的起点。
+  await settle(() => h.bossPosted.some(r => r.action === 'categories'));
+  await settleQuiet(h.bossPosted);
   h.bossPosted.length = 0;
   await page.evaluate(() => {
     // 造一张「真的很大」的照片：3000×3000 的随机噪声，压缩率最差的那种，最接近坏情况
@@ -1984,7 +2014,10 @@ if (want()) {
     return submitInboxTx({ id:'t1', date:'2026-09-10', amount: 12, type:'expense',
                            categoryId:'cat_food', description:'大图', attachmentId:'a1' });
   });
-  const sentBig = h.bossPosted[0] || {};
+  // 按 srcId 认自己那一笔，不靠下标——万一还有别的背景请求插在前面也不会认错人。
+  // 等不到就让下面两条报成失败（settle 不抛），不要中断后面十几条。
+  await settle(() => h.bossPosted.some(r => r.srcId === 't1'));
+  const sentBig = h.bossPosted.find(r => r.srcId === 't1') || {};
   ok('大图不再被丢掉——照片跟着账一起送出去了', !!sentBig.photoBase64, Object.keys(sentBig));
   // 上一条红了的话这里 photoBase64 是 undefined——要报成一条失败，不能让整份自检抛异常
   // 中断（后面还有十几条要跑，中断等于把它们一起弄哑）
@@ -1998,9 +2031,10 @@ if (want()) {
   await page.evaluate(() => { window.__photoNow = window.__smallPhoto; });
   await page.evaluate(() => submitInboxTx({ id:'t2', date:'2026-09-10', amount: 8, type:'expense',
                         categoryId:'cat_food', description:'小图', attachmentId:'a2' }));
+  await settle(() => h.bossPosted.some(r => r.srcId === 't2'));
   ok('对照组：本来就够小的照片原样送，不重压',
      await page.evaluate((sent) => sent === window.__smallPhoto.slice(window.__smallPhoto.indexOf(',') + 1),
-                         (h.bossPosted[0] || {}).photoBase64));
+                         (h.bossPosted.find(r => r.srcId === 't2') || {}).photoBase64));
 
   // ---- 真的压不下去：要回报 photoDropped，并且**不管 loud 与否**都出声告诉同事 ----
   h.bossPosted.length = 0;
@@ -2024,7 +2058,8 @@ if (want()) {
     document.getElementById('toast').textContent = '';
   });
   await page.evaluate(() => flushBossQueue());        // 注意：没有 loud
-  await page.waitForTimeout(300);
+  // 等提示真的出现，不是干等 300ms——满载时 300ms 不够
+  await settle(() => page.textContent('#toast').then(t => !!(t || '').trim()));
   ok('自动补送（没有 loud）时，照片没送成也一定会告诉同事',
      ((await page.textContent('#toast')) || '').includes('收据照片太大'),
      await page.textContent('#toast'));
@@ -2040,7 +2075,7 @@ if (want()) {
     saveBossQueue(['t5']);
   });
   await page.evaluate(() => flushBossQueue());
-  await page.waitForTimeout(300);
+  await settle(() => page.textContent('#toast').then(t => !!(t || '').trim()));
   ok('照片在本机不见了时，账照样送出去', h.bossPosted.length === 1, h.bossPosted.length);
   const missTip = (await page.textContent('#toast')) || '';
   ok('照片不见了要单独讲清楚（不能跟「太大」混为一谈——该做的事不一样：这个要重拍）',
