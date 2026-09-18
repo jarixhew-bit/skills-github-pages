@@ -85,6 +85,46 @@ async function openGallery(page) {
   return null;
 }
 
+/**
+ * 图库顶部的分类页签：Google 默认停在「全部」，而餐厅的「全部」里塞满了
+ * 用户拍的菜单照——手册卡片的第二张常常就是一张菜单（2026-09-18 用户反映：
+ * 「为什么最近改图片第二张都是跑菜单出来」）。
+ *
+ * 做法：进图库后先切到「食物与饮品」（没有就「氛围/外观」），**绝不选「菜单」**。
+ * 非餐厅的地点没有这些页签，就留在「全部」，行为跟以前一样。
+ * 页签文字随语言变，所以中英都匹配；实际看到哪些页签一律回报（out.cats），
+ * Google 改版时不用靠猜。
+ */
+const CAT_PREFER = [/food\s*&?\s*drink/i, /食物|饮品|美食|菜肴/];
+const CAT_FALLBACK = [/vibe/i, /氛围|环境/, /exterior|outside/i, /外观/];
+const CAT_AVOID = [/\bmenu\b/i, /菜单|菜單|价目/];
+
+async function pickCategory(page, out) {
+  const tabs = await page.$$('button, [role="tab"], [role="radio"]');
+  const labels = [];
+  for (const t of tabs) {
+    const txt = ((await t.getAttribute('aria-label')) || (await t.innerText().catch(() => '')) || '')
+      .replace(/\s+/g, ' ').trim().slice(0, 30);
+    if (txt) labels.push(txt);
+  }
+  out.cats = labels.slice(0, 20);
+  for (const want of [CAT_PREFER, CAT_FALLBACK]) {
+    for (const t of tabs) {
+      const txt = ((await t.getAttribute('aria-label')) || (await t.innerText().catch(() => '')) || '').trim();
+      if (!txt || CAT_AVOID.some(r => r.test(txt))) continue;
+      if (!want.some(r => r.test(txt))) continue;
+      try {
+        await t.click({ timeout: 4000 });
+        await page.waitForTimeout(2500);
+        out.cat = txt.slice(0, 30);
+        return txt;
+      } catch (e) { /* 换下一个 */ }
+    }
+  }
+  out.cat = '(全部)';
+  return null;
+}
+
 /** 在图库里滚动，触发懒加载，边滚边收。 */
 async function scrollGallery(page, collected, want) {
   for (let i = 0; i < 8 && collected.size < want * 2; i++) {
@@ -169,6 +209,11 @@ async function fetchOne(ctx, query) {
     if (entry) {
       out.method = 'gallery';
       out.entry = entry;
+      const cat = await pickCategory(page, out);
+      if (cat) {
+        // 切了分类就把「全部」页收到的那批丢掉——留着的话菜单照还是排在最前面
+        collected.clear();
+      }
       await scrollGallery(page, collected, WANT);
     } else {
       out.method = 'placepage';
