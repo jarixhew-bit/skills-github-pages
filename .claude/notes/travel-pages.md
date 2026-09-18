@@ -157,6 +157,13 @@ lightbox 从 `.gal>img` 的 src/alt 取图，`#lbImg` 的 alt 会跟着换（所
 `latitude=5.4141&longitude=100.3288&timezone=Asia/Kuala_Lumpur`。改这段必跑
 `node tools/check-weather.mjs`（该脚本已扩充为同时验 singapore + penang 两页，先起
 `python3 -m http.server 8899`）。
+**实时空气质量条**（2026-09-18 加，用户要求「槟城那本也要有 haze 提示」）：`#weather`
+标题下第一条 `.airbox`＋`#air`，跟天气**分开抓**、也不受 16 天窗口那套逻辑影响——烟霾
+只有实时值没有预报，任何时候打开都抓一次。接口是 open-meteo 的空气质量
+（`air-quality-api.open-meteo.com/v1/air-quality?...&current=us_aqi,pm2_5`，跟天气同一家、
+免钥匙、允许浏览器直抓；马来西亚官方的 API 指数没有这种接口，所以文案写明是美国 AQI
+口径并给了 APIMS 链接）。两条行动线：>100 标 `.warn`（老人小孩少户外）、>150 标 `.bad`
+（整团改室内）。这两条线是 check-weather.mjs 里验的，别随手改数字。
 双语：siteLangUser，新页无旧 key 兜底。PWA：不适用。
 已知坑：
 - 单行最长约 750 字符（图片外链）；地址等**卡片外壳文字也必须包 cn/en**（如七廊粿條湯的
