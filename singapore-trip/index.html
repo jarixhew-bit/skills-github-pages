@@ -179,6 +179,12 @@
   .wx { font-size: 12.5px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
   .wx.wet { color: var(--red); }
   .rainplan { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .psibox { margin: 0 0 14px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  .psi { font-size: 12.5px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .psi.warn { color: #9a6b00; }
+  .psi.bad { color: var(--red); }
+  .psinote { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .psinote a { color: inherit; }
 </style>
 </head>
 <body>
@@ -448,6 +454,11 @@
 <!-- ===== ITINERARY ===== -->
 <section id="itinerary">
 <div class="sec-head"><span class="no">04</span><h2><span class="cn">逐日行程</span><span class="en">Day by Day</span></h2><span class="rule"></span></div>
+
+<div class="psibox">
+<div class="psi" id="psi"><span class="cn">🌫 空气质量载入中…</span><span class="en">🌫 Loading air quality…</span></div>
+<div class="psinote"><span class="cn">9–10 月是印尼烧芭的季节，新加坡可能有烟霾。上面是新加坡环境局的<strong>实时读数</strong>（每小时更新）：PSI 100 以内日常活动照常；<strong>超过 100（不健康）就把户外行程改成室内</strong>——Kiztopia、BOUNCE、SkyPark、Takashimaya 都在手册里。敏感体质与小孩建议带 N95（一般外科口罩挡不住 PM2.5）。<a href="https://www.haze.gov.sg/" target="_blank">官方烟霾网站</a></span><span class="en">Sep–Oct is the Indonesian burning season, so Singapore can get haze. Above is the <strong>live reading</strong> from Singapore's NEA (hourly): under PSI 100, carry on as normal; <strong>above 100 (Unhealthy), switch outdoor plans to indoor ones</strong> — Kiztopia, BOUNCE, SkyPark and Takashimaya are all in this handbook. Bring N95 masks for kids and anyone sensitive (surgical masks do not stop PM2.5). <a href="https://www.haze.gov.sg/" target="_blank">Official haze site</a></span></div>
+</div>
 
 <!-- D01 -->
 <div class="day" data-date="2026-09-23" id="day01">
@@ -1127,6 +1138,49 @@ function lbNav(dir) {
       fill(b, '🌤 天气暂时抓不到（可能没网）·' + CLIMO_CN, '🌤 Forecast unavailable (offline?) · ' + CLIMO_EN);
     });
   });
+})();
+
+/* 实时空气质量（PSI）。9–10 月是印尼烧芭季，烟霾是这趟最可能打乱户外行程的变量，
+   而它没有多日预报、只能看当下——所以这里抓的是新加坡环境局的实时读数
+   （data.gov.sg 开放数据，免费免 key，每小时更新）。
+   取「中部」是因为酒店与大半行程都在滨海湾一带；同时给全岛最高值，
+   因为要去圣淘沙、义顺的那几天，最高值才是该看的数。 */
+(function airQuality() {
+  var box = document.getElementById('psi');
+  if (!box) return;
+  function fill(cn, en) { box.innerHTML = '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
+  function band(v) {
+    if (v <= 50) return { cn: '良好', en: 'Good', cls: '' };
+    if (v <= 100) return { cn: '中等', en: 'Moderate', cls: '' };
+    if (v <= 200) return { cn: '不健康', en: 'Unhealthy', cls: 'bad' };
+    if (v <= 300) return { cn: '非常不健康', en: 'Very unhealthy', cls: 'bad' };
+    return { cn: '危害', en: 'Hazardous', cls: 'bad' };
+  }
+  fetch('https://api.data.gov.sg/v1/environment/psi')
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (j) {
+      var it = j && j.items && j.items[0];
+      var rd = it && it.readings && it.readings.psi_twenty_four_hourly;
+      if (!rd || typeof rd.central !== 'number') throw new Error('empty');
+      var mid = Math.round(rd.central);
+      var vals = ['north', 'south', 'east', 'west', 'central']
+        .map(function (k) { return rd[k]; })
+        .filter(function (v) { return typeof v === 'number'; });
+      var max = Math.round(Math.max.apply(null, vals));
+      var b = band(max);
+      /* 标色看全岛最高值：手册里有义顺、圣淘沙这种离酒店很远的行程 */
+      if (b.cls) box.classList.add(b.cls);
+      else if (max > 80) box.classList.add('warn');
+      var t = (it.timestamp || '').slice(11, 16);
+      fill('🌫 空气质量 ' + b.cn + ' · 滨海湾一带 PSI <strong>' + mid + '</strong> · 全岛最高 ' + max
+             + (t ? ' · ' + t + ' 更新' : ''),
+           '🌫 Air quality: ' + b.en + ' · Marina Bay area PSI <strong>' + mid + '</strong> · island max ' + max
+             + (t ? ' · updated ' + t : ''));
+    })
+    .catch(function () {
+      fill('🌫 空气质量暂时抓不到（可能没网）——出发前后请看官方烟霾网站',
+           '🌫 Air quality unavailable (offline?) — check the official haze site');
+    });
 })();
 
 /* 行程当天打开手册，直接跳到今天那一张卡片（不在行程日期内就不动）。 */

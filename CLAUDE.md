@@ -140,8 +140,10 @@
    `check-staff-page.mjs` / `check-inventory.mjs` / `check-fund.mjs`（验 `trading/fund.html`
    那些前端现算的钱的数字：夏普、回撤、VaR、再平衡差额，用手算得出答案的 fixture 去对；
    两个数据档全用固定 fixture 拦掉，所以不随每天行情变动而误报）/ `check-weather.mjs`
-   （验新加坡手册每日天气条：拦住 open-meteo 造出「有预报／超出预报窗口／API 挂掉」
-   三种情境，确认每天读的是自己那一格、不会错位，也不会开天窗）/ `check-boss.mjs`
+   （验新加坡与槟城手册的天气条：拦住 open-meteo 造出「有预报／超出预报窗口／API 挂掉」
+   三种情境，确认每天读的是自己那一格、不会错位，也不会开天窗；2026-09-18 起一并守
+   新加坡手册的**实时空气质量条**——拦住 data.gov.sg 造出良好／中等／不健康／API 挂掉
+   四种读数，确认 PSI 超过 100 一定标红，那是「户外改室内」的触发线）/ `check-boss.mjs`
    ＋`check-boss-2.mjs`（同一份自检拆成前半／后半两个档并行跑，共用
    `tools/lib/boss-check-kit.mjs`；守老板 App 的安全不变量：viewer 身份下写操作控件
    必须一个都不进 DOM，**并带 admin 对照组**——没有对照组的话，整个管理功能坏掉也会
