@@ -90,7 +90,14 @@ async function openGallery(page, out) {
       const n = (await collectFromDom(page)).length;
       const url = page.url();
       tries.push({ sel, found: true, before, after: n, url: url.slice(0, 60) });
-      if (n > before + 2 || /\/photo/.test(url)) { out.tries = tries; return sel; }
+      // 主图那颗（heroHeaderImage）点下去会进单张浏览器，DOM 里的照片反而变少，
+      // 所以「变多」这个判据对它永远不成立。但它确实是入口——进去之后才有
+      // 分类页签可选，也才滚得出整个图库。所以它只要点得动就当成功，
+      // 后面滚不出东西自然会退回地点页那条路（collected 不够时会补抓页面源码）。
+      if (n > before + 2 || /\/photo/.test(url) || /heroHeaderImage/.test(sel)) {
+        out.tries = tries;
+        return sel;
+      }
     } catch (e) {
       tries.push({ sel, found: true, err: String(e.message || e).slice(0, 40) });
     }
