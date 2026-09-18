@@ -39,6 +39,7 @@ const SG_URL = `http://localhost:${PORT}/singapore-trip/`;
 const PGT_URL = `http://localhost:${PORT}/penang-trip/`;
 const API = 'https://api.open-meteo.com/**';
 const PSI_API = 'https://api.data.gov.sg/**';
+const AIR_API = 'https://air-quality-api.open-meteo.com/**';
 
 /* 实时空气质量的假资料。烟霾是这趟最可能打乱户外行程的变量，而它只有实时值、
    没有多日预报——所以要验的是「数字对不对、该不该标红、抓不到时会不会开天窗」。 */
@@ -48,6 +49,13 @@ const psiPayload = (readings) => ({
 const PSI_MODERATE = psiPayload({ north: 70, south: 67, east: 74, west: 84, central: 90 });
 const PSI_GOOD = psiPayload({ north: 30, south: 28, east: 33, west: 35, central: 40 });
 const PSI_UNHEALTHY = psiPayload({ north: 110, south: 105, east: 120, west: 131, central: 118 });
+
+/* 槟城那本用的是 open-meteo 的空气质量接口（马来西亚没有免钥匙又允许浏览器直抓的官方接口），
+   口径是美国 AQI：>100 老人小孩少户外、>150 整团改室内——两条线都要验，颜色也要跟着换。 */
+const airPayload = (us_aqi, pm2_5) => ({ current: { time: '2026-10-11T14:00', us_aqi, pm2_5 } });
+const AIR_GOOD = airPayload(38, 9.1);
+const AIR_SENSITIVE = airPayload(121, 44.3);
+const AIR_UNHEALTHY = airPayload(176, 104.6);
 
 const fails = [];
 const ok = [];
@@ -242,9 +250,12 @@ const pgtPage = await browser.newPage({ timezoneId: 'Asia/Kuala_Lumpur' });
 const pgtErrors = [];
 pgtPage.on('pageerror', e => pgtErrors.push(String(e)));
 
-async function loadPGT(handler, now) {
+async function loadPGT(handler, now, airHandler) {
   let called = false;
   await pgtPage.route(API, r => { called = true; return handler(r); });
+  /* 空气质量预设给一份好读数：天气那几个情境不该因为它的网络行为而改变结果。
+     不拦的话 CI 上会去打真的 open-meteo，结果就随当天空气变动了。 */
+  await pgtPage.route(AIR_API, r => (airHandler || (x => x.fulfill({ json: AIR_GOOD })))(r));
   await pgtPage.clock.setFixedTime(new Date(now));
   await pgtPage.goto(PGT_URL, { waitUntil: 'domcontentloaded' });
   await pgtPage.waitForFunction(
@@ -254,12 +265,23 @@ async function loadPGT(handler, now) {
     },
     null, { timeout: 10000 },
   );
+  /* 空气质量是另一条独立的 fetch，跟天气谁先回来没保证——只等天气就读它，
+     慢一点的机器会读到还没填的「载入中」（新加坡那边 2026-09-18 在 CI 上踩过）。 */
+  await pgtPage.waitForFunction(
+    () => {
+      const el = document.getElementById('air');
+      return !!el && !!el.textContent && !/载入中|Loading air/.test(el.textContent);
+    },
+    null, { timeout: 10000 },
+  ).catch(() => {});
   const state = await pgtPage.evaluate(() => {
     const note = document.getElementById('wxNote');
     const daily = document.getElementById('wxdaily');
     const cards = {};
     daily.querySelectorAll('.wxd[data-wx]').forEach(c => { cards[c.dataset.wx] = c.textContent; });
+    const air = document.getElementById('air');
     return {
+      air: air ? { text: air.textContent, cls: air.className } : null,
       noteText: note.textContent,
       dailyHidden: daily.hidden,
       cardDates: [...daily.querySelectorAll('.wxd[data-wx]')].map(c => c.dataset.wx),
@@ -268,6 +290,7 @@ async function loadPGT(handler, now) {
     };
   });
   await pgtPage.unroute(API);
+  await pgtPage.unroute(AIR_API);
   return { ...state, called };
 }
 
@@ -314,6 +337,46 @@ check(pgtDown.dailyHidden === true, '[penang] API 挂掉时 #wxdaily 应隐藏�
 check(/暂时取不到实时预报|live forecast unavailable/.test(pgtDown.noteText),
   `[penang] API 挂掉应提示「暂时取不到实时预报」（实得：${pgtDown.noteText}）`);
 check(pgtDown.noteText.trim().length > 0, '[penang] API 挂掉时提示文字不能是空白');
+
+/* ---- 5. 实时空气质量条（烧芭季烟霾）---- */
+const pgtSkeleton = await pgtPage.evaluate(() => {
+  const note = document.querySelector('.airnote');
+  return {
+    exists: !!document.getElementById('air'),
+    cn: !!note?.querySelector('.cn'),
+    en: !!note?.querySelector('.en'),
+    apims: !!document.querySelector('.airnote a[href*="apims.doe.gov.my"]'),
+  };
+});
+check(pgtSkeleton.exists, '[penang] 应有实时空气质量条 #air');
+check(pgtSkeleton.cn && pgtSkeleton.en, '[penang] 空气质量的说明要中英文都有');
+check(pgtSkeleton.apims, '[penang] 说明要给马来西亚官方 APIMS 的链接（现场自己查得到）');
+
+const pgtAirGood = await loadPGT(r => r.fulfill({ json: PGT_FULL }), PGT_IN_WINDOW,
+  r => r.fulfill({ json: AIR_GOOD }));
+check(/良好/.test(pgtAirGood.air.text), `[penang] AQI 38 应判「良好」（实得：${pgtAirGood.air.text}）`);
+check(/38/.test(pgtAirGood.air.text) && /9\s*µg/.test(pgtAirGood.air.text),
+  `[penang] 良好情境要显示 AQI 38 与 PM2.5 9（实得：${pgtAirGood.air.text}）`);
+check(!/warn|bad/.test(pgtAirGood.air.cls), `[penang] 空气好的时候不该标色（实得 class：${pgtAirGood.air.cls}）`);
+
+const pgtAirSens = await loadPGT(r => r.fulfill({ json: PGT_FULL }), PGT_IN_WINDOW,
+  r => r.fulfill({ json: AIR_SENSITIVE }));
+check(/敏感人群/.test(pgtAirSens.air.text), `[penang] AQI 121 应判「敏感人群不健康」（实得：${pgtAirSens.air.text}）`);
+check(/warn/.test(pgtAirSens.air.cls) && !/bad/.test(pgtAirSens.air.cls),
+  `[penang] 超过 100 要标提醒色而非红色——那是「老人小孩少户外」的线（实得 class：${pgtAirSens.air.cls}）`);
+
+const pgtAirBad = await loadPGT(r => r.fulfill({ json: PGT_FULL }), PGT_IN_WINDOW,
+  r => r.fulfill({ json: AIR_UNHEALTHY }));
+check(/不健康/.test(pgtAirBad.air.text) && !/敏感人群/.test(pgtAirBad.air.text),
+  `[penang] AQI 176 应判「不健康」（实得：${pgtAirBad.air.text}）`);
+check(/bad/.test(pgtAirBad.air.cls),
+  `[penang] 超过 150 必须标红——那是「整团改室内」的触发线（实得 class：${pgtAirBad.air.cls}）`);
+
+const pgtAirDown = await loadPGT(r => r.fulfill({ json: PGT_FULL }), PGT_IN_WINDOW,
+  r => r.fulfill({ status: 500, body: 'boom' }));
+check(/抓不到|unavailable/i.test(pgtAirDown.air.text),
+  `[penang] 空气质量 API 挂掉时要说明白（实得：${pgtAirDown.air.text}）`);
+check(!/载入中|Loading/.test(pgtAirDown.air.text), '[penang] API 挂掉时不该卡在「载入中」');
 
 check(pgtErrors.length === 0, `[penang] 不应有 JS 错误（实得：${pgtErrors.slice(0, 3).join(' | ')}）`);
 

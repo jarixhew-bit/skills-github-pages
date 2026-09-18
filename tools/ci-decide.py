@@ -50,8 +50,10 @@ RULES = {
     "prices": ["trading/fetch_prices.py", "tools/check-prices.py"],
     "staff":     ["staff/**", "expense-tracker.html", "tools/build-staff-page.py",
                   "tools/check-staff-page.mjs"],
-    # 新加坡手册的每日天气条：前端现抓 open-meteo，只有真浏览器验得了
-    "weather": ["singapore-trip/index.html", "tools/check-weather.mjs"],
+    # 两本手册的天气条与实时空气质量条：前端现抓 open-meteo / data.gov.sg，
+    # 只有真浏览器验得了（check-weather.mjs 一支同时验 singapore ＋ penang）
+    "weather": ["singapore-trip/index.html", "penang-trip/index.html",
+                "tools/check-weather.mjs"],
     # 手册航班时长：跨时区那几段最容易直接拿两地时刻相减，差一小时看不出来
     "flights": ["*.html", "*/index.html", "tools/check-flight-times.py"],
     "gamebot":   ["game-bot/**", "tools/check-gamebot.py",

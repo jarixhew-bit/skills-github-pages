@@ -217,6 +217,13 @@
   .wxdaily { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-bottom: 12px; }
   .wxdaily::-webkit-scrollbar { display: none; }
   .wxdaily[hidden] { display: none; }
+  /* 实时空气质量（烧芭季烟霾）：跟天气同一个区块，配色沿用娘惹瓷砖那套 */
+  .airbox { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 10px 13px; margin-bottom: 12px; }
+  .air { font-size: 13px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .air.warn { color: var(--gold); }
+  .air.bad { color: var(--coral); }
+  .airnote { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.6; }
+  .airnote a { color: inherit; }
   .wxd {
     scroll-snap-align: start; flex: none; width: 84px; text-align: center;
     background: var(--card); border: 1px solid var(--line); border-radius: 14px;
@@ -973,6 +980,10 @@
 <!-- ===== WEATHER ===== -->
 <section id="weather">
 <div class="sec-head"><span class="no">04</span><h2><span class="cn">天气</span><span class="en">Weather</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
+<div class="airbox">
+<div class="air" id="air"><span class="cn">🌫 空气质量载入中…</span><span class="en">🌫 Loading air quality…</span></div>
+<div class="airnote"><span class="cn">6–10 月是印尼与本地烧芭的季节，槟城可能有烟霾。上面是<strong>实时读数</strong>（open-meteo，每小时更新，美国 AQI 口径）：100 以内照常；<strong>超过 100 时老人小孩少排户外</strong>；<strong>超过 150 就整团改室内</strong>——Gurney Plaza、Queensbay Mall、Tech Dome、Neo Akedo、Pado Fantasyland 都在手册里，升旗山缆车与极乐寺那种户外行程往后挪。烟霾天建议戴 N95（一般外科口罩挡不住 PM2.5）。马来西亚官方用的是 API 指数，正式读数以环境局 <a href="https://apims.doe.gov.my/public_v2/api_table.html" target="_blank">APIMS</a> 为准。</span><span class="en">Jun–Oct is the burning season in Indonesia and locally, so Penang can get haze. Above is a <strong>live reading</strong> (open-meteo, hourly, US AQI scale): under 100, carry on; <strong>above 100, keep the kids and older family members off long outdoor stretches</strong>; <strong>above 150, move the whole group indoors</strong> — Gurney Plaza, Queensbay Mall, Tech Dome, Neo Akedo and Pado Fantasyland are all in this handbook, and outdoor plans like the Penang Hill funicular or Kek Lok Si can wait. Wear N95 masks on hazy days (surgical masks do not stop PM2.5). Malaysia&#39;s official measure is the API index — see the DOE&#39;s <a href="https://apims.doe.gov.my/public_v2/api_table.html" target="_blank">APIMS</a> for the official figure.</span></div>
+</div>
 <div class="note amber" id="wxNote">
 <span class="cn">⚠ 天气载入中…</span>
 <span class="en">⚠ Loading weather info…</span>
@@ -1275,6 +1286,44 @@ document.addEventListener('keydown', function(e){
   }).catch(function () {
     showCountdown({ cn: '暂时取不到实时预报', en: 'live forecast unavailable right now' });
   });
+})();
+
+/* 实时空气质量：烧芭季的烟霾只有实时值、没有预报，所以跟天气分开抓，也不受
+   「16天预报窗口」那套逻辑影响——任何时候打开都抓一次当下的读数。
+   用 open-meteo 的空气质量接口（跟天气同一家，免钥匙、允许浏览器直接抓）。
+   马来西亚官方指数是 API，口径跟这里的美国 AQI 不完全一样，所以文案写明了并给 APIMS 链接。 */
+(function airQuality() {
+  var box = document.getElementById('air');
+  if (!box) return;
+  function fill(cn, en) { box.innerHTML = '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
+  function band(v) {
+    if (v <= 50) return { cn: '良好', en: 'Good', cls: '' };
+    if (v <= 100) return { cn: '中等', en: 'Moderate', cls: '' };
+    if (v <= 150) return { cn: '敏感人群不健康', en: 'Unhealthy for sensitive groups', cls: 'warn' };
+    if (v <= 200) return { cn: '不健康', en: 'Unhealthy', cls: 'bad' };
+    if (v <= 300) return { cn: '非常不健康', en: 'Very unhealthy', cls: 'bad' };
+    return { cn: '危害', en: 'Hazardous', cls: 'bad' };
+  }
+  fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=5.4141&longitude=100.3288'
+        + '&current=us_aqi,pm2_5&timezone=Asia%2FKuala_Lumpur')
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (j) {
+      var c = j && j.current;
+      if (!c || typeof c.us_aqi !== 'number') throw new Error('empty');
+      var aqi = Math.round(c.us_aqi);
+      var b = band(aqi);
+      if (b.cls) box.classList.add(b.cls);
+      var pm = (typeof c.pm2_5 === 'number') ? Math.round(c.pm2_5) : null;
+      var t = (c.time || '').slice(11, 16);
+      fill('🌫 空气质量 ' + b.cn + ' · 乔治市 AQI <strong>' + aqi + '</strong>'
+             + (pm !== null ? ' · PM2.5 ' + pm + ' µg/m³' : '') + (t ? ' · ' + t + ' 更新' : ''),
+           '🌫 Air quality: ' + b.en + ' · George Town AQI <strong>' + aqi + '</strong>'
+             + (pm !== null ? ' · PM2.5 ' + pm + ' µg/m³' : '') + (t ? ' · updated ' + t : ''));
+    })
+    .catch(function () {
+      fill('🌫 空气质量暂时抓不到（可能没网）——请看官方 APIMS 网站',
+           '🌫 Air quality unavailable (offline?) — check the official APIMS site');
+    });
 })();
 </script>
 </body>
