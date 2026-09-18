@@ -13,9 +13,15 @@
 抓出来，各自减掉机场所在时区换成 UTC 再相减（跨午夜自动 +24h），跟卡上写的时长比对。
 机场时区查下面的表；遇到表里没有的机场直接报错——宁可要求补一行，也不要默默放过。
 
+它还查第二件事：**两个不同航段的座位表一模一样**。2026-09-18 槟城手册的回程
+两段（PEN→SIN 与 SIN→金边）写着完全相同的六个座位号，用户拿航司 App 一对，
+PEN→SIN 那段整组是错的。不同班机各自排座，六个人六个号码全都撞在一起不是巧合，
+而是同一笔来路不明的资料被填进了两段——这一点机器看得出来，所以让机器看。
+（现有四本手册 12 个航段里没有任何一组重复，所以这条不会误报。）
+
 跑法：
     python3 tools/check-flight-times.py
-退出码 0 = 全对，1 = 有对不上的（或有机场不在表里）。
+退出码 0 = 全对，1 = 有对不上的（或有机场不在表里、或两段座位撞号）。
 """
 import glob
 import os
@@ -90,18 +96,41 @@ def check(path: str, problems: list) -> int:
     return seen
 
 
+def seats(path: str, problems: list) -> int:
+    """同一本手册里，两个航段的座位表完全相同 → 几乎一定是抄串了。"""
+    text = open(path, encoding="utf-8").read()
+    blocks = list(re.finditer(r'<div class="seats">(.*?)</div>', text, re.S))
+    seen: dict = {}
+    for m in blocks:
+        key = tuple(x.strip() for x in re.findall(r">([^<>]+)<", m.group(1)) if x.strip())
+        if len(key) < 2:
+            continue
+        # 用 match 的实际位置算行号：两段内容相同时，text.index 会两次都指向第一段
+        line = text[:m.start()].count("\n") + 1
+        if key in seen:
+            problems.append(f"{path}:{line} 这一段的座位表跟第 {seen[key]} 行那一段完全相同"
+                            f"（{'、'.join(key[:3])}…）——不同班机各自排座，"
+                            f"整组撞号通常是同一笔资料被填进了两段，请各自核对航司 App")
+        else:
+            seen[key] = line
+    return len(blocks)
+
+
 def main() -> int:
     problems: list = []
     total = 0
+    segs = 0
     for p in pages():
         total += check(p, problems)
+        segs += seats(p, problems)
     if problems:
-        print(f"❌ 航班时长有 {len(problems)} 处对不上（共查 {total} 段）：")
+        print(f"❌ 航班卡有 {len(problems)} 处问题（查了 {total} 段时长、{segs} 组座位）：")
         for p in problems:
             print("  " + p)
-        print("\n算法：到达当地时刻 − 该机场时区，减去 出发当地时刻 − 该机场时区。")
+        if any("算进时差" in p for p in problems):
+            print("\n算法：到达当地时刻 − 该机场时区，减去 出发当地时刻 − 该机场时区。")
         return 1
-    print(f"✅ 航班时长全部对得上时差（共 {total} 段）")
+    print(f"✅ 航班时长全部对得上时差（{total} 段），{segs} 组座位没有撞号")
     return 0
 
 
