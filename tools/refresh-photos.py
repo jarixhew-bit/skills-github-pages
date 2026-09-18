@@ -121,6 +121,24 @@ def main() -> int:
         grand_dead += len(dead)
         print(f"{path}：{len(imgs)} 张图里有 {len(dead)} 张失效")
 
+        # 对照组：一次死掉大半，通常不是图真的全过期，而是 Google 把这台机器挡了
+        # （沙盒 100% 会这样，CI 偶尔也会）。没有对照组就直接换的话，等于把一整本
+        # 手册的好图换掉。所以先抓一张**刚出炉**的图来探：新图也打不开 → 是这台
+        # 机器的问题，整轮罢工；新图打得开 → 那是真的成批过期，照常补。
+        if len(dead) > len(imgs) * 0.5:
+            probe_q, _ = card_of(html, dead[0][1])
+            fresh_probe = fetch([probe_q]).get(probe_q, []) if probe_q else []
+            if not fresh_probe:
+                print("  ⚠ 失效过半，且抓不到任何新图——判定是这台机器连不上 Google，"
+                      "本轮不动任何文件")
+                return 0
+            alive, why = check_images.probe(fresh_probe[0], "图片")
+            if not alive:
+                print(f"  ⚠ 失效过半，但刚抓的新图同样打不开（{why}）——"
+                      f"判定是这台机器被挡，本轮不动任何文件")
+                return 0
+            print("  · 失效过半，但新抓的图打得开：确认是成批过期，继续补")
+
         # 按店归类。同一家店死了好几张，只抓一次。
         by_query = {}
         for url, pos, why in dead:

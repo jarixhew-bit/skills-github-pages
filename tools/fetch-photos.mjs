@@ -60,7 +60,7 @@ function merge(map, urls) {
 }
 
 /** 尝试打开店铺的照片图库。回传是否成功打开。 */
-async function openGallery(page) {
+async function openGallery(page, out) {
   // 依次尝试多种入口：Google 会改版，单一选择器一定会有失效的一天。
   // 2026-09-18：实跑回报显示这几个选择器**一个都没中**，20 家店全部退回
   // 「从地点页抓」——而地点页顶部那排缩图里就有一张是「菜单」分类的封面，
@@ -75,19 +75,27 @@ async function openGallery(page) {
     'button[aria-label*="写真"]',
     'button[aria-label*="Photos"]',
   ];
+  const tries = [];
+  const before = (await collectFromDom(page)).length;
   for (const sel of candidates) {
     const el = await page.$(sel);
-    if (!el) continue;
+    if (!el) { tries.push({ sel, found: false }); continue; }
     try {
       await el.click({ timeout: 5000 });
-      await page.waitForTimeout(2500);
-      // 图库打开的判据：页面上地点照片数量明显变多
+      await page.waitForTimeout(3000);
+      // 判据放宽：只要照片明显变多、或网址换到照片页，就当图库开了。
+      // 原本卡在「n > 3」，而地点页本来就有 5~8 张缩图，等于永远判不出差别——
+      // 2026-09-18 查出来最近两轮 23 家店全部退回地点页，就是卡在这里
+      // （连带让「选分类、不要菜单」那段从来没机会跑）。
       const n = (await collectFromDom(page)).length;
-      if (n > 3) return sel;
+      const url = page.url();
+      tries.push({ sel, found: true, before, after: n, url: url.slice(0, 60) });
+      if (n > before + 2 || /\/photo/.test(url)) { out.tries = tries; return sel; }
     } catch (e) {
-      /* 换下一个入口 */
+      tries.push({ sel, found: true, err: String(e.message || e).slice(0, 40) });
     }
   }
+  out.tries = tries;
   return null;
 }
 
@@ -211,7 +219,7 @@ async function fetchOne(ctx, query) {
     const collected = new Map();
     merge(collected, await collectFromDom(page));
 
-    const entry = await openGallery(page);
+    const entry = await openGallery(page, out);
     if (entry) {
       out.method = 'gallery';
       out.entry = entry;
