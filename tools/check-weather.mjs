@@ -38,6 +38,16 @@ const PORT = process.env.CHECK_PORT || 8899;
 const SG_URL = `http://localhost:${PORT}/singapore-trip/`;
 const PGT_URL = `http://localhost:${PORT}/penang-trip/`;
 const API = 'https://api.open-meteo.com/**';
+const PSI_API = 'https://api.data.gov.sg/**';
+
+/* 实时空气质量的假资料。烟霾是这趟最可能打乱户外行程的变量，而它只有实时值、
+   没有多日预报——所以要验的是「数字对不对、该不该标红、抓不到时会不会开天窗」。 */
+const psiPayload = (readings) => ({
+  items: [{ timestamp: '2026-09-25T12:00:00+08:00', readings: { psi_twenty_four_hourly: readings } }],
+});
+const PSI_MODERATE = psiPayload({ north: 70, south: 67, east: 74, west: 84, central: 90 });
+const PSI_GOOD = psiPayload({ north: 30, south: 28, east: 33, west: 35, central: 40 });
+const PSI_UNHEALTHY = psiPayload({ north: 110, south: 105, east: 120, west: 131, central: 118 });
 
 const fails = [];
 const ok = [];
@@ -72,9 +82,11 @@ const page = await browser.newPage();
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 
-async function load(handler, now) {
+async function load(handler, now, psiHandler) {
   let called = false;
   await page.route(API, r => { called = true; return handler(r); });
+  /* PSI 预设给一份正常读数：天气那几个情境不该因为空气质量的网络行为而改变结果 */
+  await page.route(PSI_API, r => (psiHandler || (x => x.fulfill({ json: PSI_MODERATE })))(r));
   await page.clock.setFixedTime(new Date(now));
   await page.goto(SG_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(
@@ -86,8 +98,13 @@ async function load(handler, now) {
     document.querySelectorAll('.wx[data-wx]').forEach(b => { out[b.dataset.wx] = b.textContent; });
     return out;
   });
+  const psi = await page.evaluate(() => {
+    const el = document.getElementById('psi');
+    return el ? { text: el.textContent, cls: el.className } : null;
+  });
   await page.unroute(API);
-  return { texts, called };
+  await page.unroute(PSI_API);
+  return { texts, called, psi };
 }
 
 /* ---- 1. 每天都要有天气条与雨天备案，日期还得对得上 ---- */
@@ -100,6 +117,20 @@ const structure = await page.evaluate(() =>
     rainEn: !!d.querySelector('.rainplan .en')?.textContent.trim(),
   })));
 check(structure.length === 5, `行程应有 5 天（实得 ${structure.length}）`);
+
+/* ---- 1b. 空气质量条的骨架：元素在、中英说明都在、官方网站链接在 ---- */
+const psiSkeleton = await page.evaluate(() => {
+  const note = document.querySelector('.psinote');
+  return {
+    exists: !!document.getElementById('psi'),
+    cn: !!note?.querySelector('.cn')?.textContent.trim(),
+    en: !!note?.querySelector('.en')?.textContent.trim(),
+    haze: !!document.querySelector('.psinote a[href*="haze.gov.sg"]'),
+  };
+});
+check(psiSkeleton.exists, '应有实时空气质量条 #psi');
+check(psiSkeleton.cn && psiSkeleton.en, '空气质量的说明要中英文都有');
+check(psiSkeleton.haze, '空气质量说明要给官方烟霾网站的链接（现场自己查得到）');
 structure.forEach(d => {
   check(d.wx === d.date, `${d.date} 的天气条日期要跟当天一致（实得 ${d.wx}）`);
   check(d.rain && d.rainEn, `${d.date} 的雨天备案中英文都要有`);
@@ -142,6 +173,31 @@ DATES.forEach(d => {
     `${d} 应写「还没到能报的时候」而不是抓不到（实得：${early[d]}）`);
   check(!/抓不到|unavailable/i.test(early[d]), `${d} 不该显示成「抓不到（可能没网）」`);
 });
+
+/* ---- 6. 空气质量：三档读数 ＋ API 挂掉 ---- */
+const { psi: psiMod } = await load(r => r.fulfill({ json: FULL }), IN_WINDOW,
+  r => r.fulfill({ json: PSI_MODERATE }));
+check(/中等/.test(psiMod.text), `PSI 90 应判「中等」（实得：${psiMod.text}）`);
+check(/90/.test(psiMod.text), 'PSI 中等情境应显示滨海湾一带的数字 90');
+check(/warn/.test(psiMod.cls) && !/bad/.test(psiMod.cls),
+  `全岛最高 90 应标提醒色而非红色（实得 class：${psiMod.cls}）`);
+
+const { psi: psiGood } = await load(r => r.fulfill({ json: FULL }), IN_WINDOW,
+  r => r.fulfill({ json: PSI_GOOD }));
+check(/良好/.test(psiGood.text), `PSI 40 应判「良好」（实得：${psiGood.text}）`);
+check(!/warn|bad/.test(psiGood.cls), `空气好的时候不该标色（实得 class：${psiGood.cls}）`);
+
+const { psi: psiBad } = await load(r => r.fulfill({ json: FULL }), IN_WINDOW,
+  r => r.fulfill({ json: PSI_UNHEALTHY }));
+check(/不健康/.test(psiBad.text), `PSI 131 应判「不健康」（实得：${psiBad.text}）`);
+check(/bad/.test(psiBad.cls), `超过 100 必须标红——这是「改走室内」的触发线（实得 class：${psiBad.cls}）`);
+check(/131/.test(psiBad.text), '不健康情境要显示全岛最高值 131（去圣淘沙、义顺那几天看的是最高值）');
+
+const { psi: psiDown } = await load(r => r.fulfill({ json: FULL }), IN_WINDOW,
+  r => r.fulfill({ status: 500, body: 'boom' }));
+check(/抓不到|unavailable/i.test(psiDown.text),
+  `空气质量 API 挂掉时要说明白（实得：${psiDown.text}）`);
+check(!/载入中|Loading/.test(psiDown.text), 'API 挂掉时不该卡在「载入中」');
 
 check(errors.length === 0, `[singapore] 不应有 JS 错误（实得：${errors.slice(0, 3).join(' | ')}）`);
 
