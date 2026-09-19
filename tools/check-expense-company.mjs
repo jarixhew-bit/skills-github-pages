@@ -3108,16 +3108,20 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   // 从设置页移到老板账那一页）——摆在公司账或他私人账户上全是不相干的数字
   await page.evaluate(() => { data.currentAccountId = getInboxAccountId(); });
   await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
-  await until(async () => (await page.innerHTML('#boss-petty')).includes('Kuang'),
-              { what: '卡片画出来' });
-  ok('卡片出现在首屏（不是设置页）',
-     await page.evaluate(() => {
-       const el = document.getElementById('boss-petty');
-       return !!el.closest('#tab-overview') && el.style.display === 'block';
-     }));
-  // 切到别的账户也要在——2026-09-19 改掉的就是这里。
-  // 原本写成「只在 Boss 账户那一页显示」，用户切到 Yang 账户时整张卡消失，
-  // 而「转钱给同事」是他每天要按的入口，藏起来＝功能没了。
+  // 这里原本用 until 等卡片出现——卡片整个不画时它会抛异常、把后面几十条一起弄哑
+  //（做假故障时踩到：明明该红一整串，屏幕上一条 ❌ 都没有）。
+  // 改成给它时间、然后让断言自己说话；画不出来就当场收场，红得完整。
+  await page.waitForTimeout(1200);
+  const cardUp = await page.evaluate(() => {
+    const el = document.getElementById('boss-petty');
+    return !!el.closest('#tab-overview') && el.style.display === 'block'
+           && el.innerHTML.includes('Kuang');
+  });
+  ok('卡片出现在首屏（不是设置页）', cardUp);
+  if(!cardUp){ await ctx.close(); } else {
+  // 对照组：切到别的账户就不该出现。
+  // ⚠️ 2026-09-19 一度把这条翻成「每个账户都显示」，当天就被用户退回来了
+  //（「只显示在 boss 账户的那一页，不是让你全部户口都显示」）。别再翻。
   const otherAcc = await page.evaluate(() => {
     const other = data.accounts.find(a => a.id !== getInboxAccountId());
     if(!other) return null;
@@ -3125,8 +3129,8 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
     renderBossPetty();
     return document.getElementById('boss-petty').style.display;
   });
-  ok('★切到别的账户，这张卡照样在', otherAcc === 'block' || otherAcc === null, otherAcc);
-  // 对照组：没填公司报账密钥才收起来（那时候根本拉不到数据，摆个空卡没意义）
+  ok('★切到别的账户这张卡就收起来', otherAcc === 'none' || otherAcc === null, otherAcc);
+  // 第二个收起来的条件：没填公司报账密钥（那时候根本拉不到数据，摆个空卡没意义）
   const noToken = await page.evaluate(() => {
     const t = localStorage.getItem('expenseTracker_companyToken');
     localStorage.removeItem('expenseTracker_companyToken');
@@ -3137,8 +3141,11 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
     renderBossPetty();
     return d;
   });
-  ok('对照组：没填密钥时才收起来（不然卡片永远显示＝断言测了个寂寞）',
-     noToken === 'none', noToken);
+  ok('没填密钥时也收起来', noToken === 'none', noToken);
+  // 上面两条都是「该收起来」。**必须有一条正向的**——不然把卡片写成永远隐藏，
+  // 这一组照样全绿。正向那条在上面「首屏那张卡在概览里」，这里再确认一次它回得来。
+  ok('★对照组：切回 Boss 账户、密钥还在，卡片要回得来',
+     await page.evaluate(() => document.getElementById('boss-petty').style.display) === 'block');
   await page.evaluate(() => { data.currentAccountId = getInboxAccountId(); renderBossPetty(); });
   let html = await page.innerText('#boss-petty');
   ok('没设起点的人也列得出来（否则没有入口去设）',
@@ -3293,28 +3300,6 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
     ];
     saveData();
   });
-  // ---- 切到别的账户，这张卡照样在（2026-09-19 用户踩到：整张卡消失了）----
-  // 「转钱给同事」是他每天要按的入口，只在 Boss 账户那一页显示＝藏起来＝功能没了。
-  // 数字固定跟着投递箱那个账户算，跟当下选哪个账户无关。
-  api.people = [{ person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
-                { person:'Seryi', status:'ok', balance:0, opened:0, spent:0 }];
-  await page.evaluate(() => {
-    const other = data.accounts.find(a => a.id !== getInboxAccountId());
-    if(other){ data.currentAccountId = other.id; saveData(); }
-    return fetchBossPetty({force:true}).then(()=>{ renderOverview(); });
-  });
-  await page.waitForTimeout(600);
-  ok('★切到别的账户，卡片照样在（这是他每天按的转钱入口）',
-     await page.locator('#boss-petty').isVisible());
-  let otherCard = await page.innerText('#boss-petty');
-  ok('★而且算的还是老板账那个账户（不是当下这个账户的余额）',
-     otherCard.includes('Boss 账户余额'), otherCard);
-  ok('数字也没跟着变（9000 − 4000 = 5000）',
-     /你（Yang）手上\s*US\$5000\.00/.test(otherCard), otherCard);
-  // 切回来，后面几组接着用老板账
-  await page.evaluate(() => { data.currentAccountId = getInboxAccountId(); saveData(); renderOverview(); });
-  await page.waitForTimeout(300);
-
   // 有同事没设起点：**不给数**，把 unset 当 0 减会得出一个看起来像真的、其实少算一个人的数
   api.people = [{ person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
                 { person:'Seryi', status:'unset' }];
@@ -3422,6 +3407,7 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
 
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
+  }
 }
 
 // ---------- 【34】类别补齐：新版加的类别，老设备也要有 ----------
