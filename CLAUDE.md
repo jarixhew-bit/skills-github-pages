@@ -193,6 +193,7 @@
 | 想修改制度档或本档 | `.claude/playbook/maintenance.md` |
 | 新 session 开始较大工作之前 | `.claude/playbook/letter.md`（背景与注意事项） |
 | 选浏览器／爬网工具拿不定主意 | `.claude/playbook/diagnosis.md` 问题 #2 的路由表 |
+| 用户报了一个新城市／要新手册（「以后要去某某」「帮我看看有什么好吃好玩的」） | skill `new-city-trip`（问什么、怎么派研究员、抓图、**自己先看一眼照片**、生成候选清单页给用户按编号挑、出手册） |
 | 要动手做具体的事（放媒体、算数字、控范围、组织新档案） | `skills/INDEX.md` 查表选一份 |
 
 ### 制度档的同步与分支

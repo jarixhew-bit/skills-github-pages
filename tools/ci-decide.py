@@ -61,6 +61,8 @@ RULES = {
                       "tools/fetch-photos.mjs", "tools/check-images.py"],
     # 菜单照过滤：决定卡片上会不会出现菜单，只能在装了 OCR 的机器（CI）上验
     "photofilter": ["tools/photo-filter.py", "tools/check-photo-filter.py"],
+    # 候选清单页：用户就是靠它按编号挑地点，编号或评分印错等于挑错
+    "shortlist": ["tools/build-shortlist.py", "tools/check-shortlist.py"],
     "gamebot":   ["game-bot/**", "tools/check-gamebot.py",
                   "tools/check-gamebot-logic.mjs"],
 }

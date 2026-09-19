@@ -36,6 +36,14 @@ GENERATED = [
         "check": ["tools/build-staff-page.py", "--check"],
         "regen": "python3 tools/build-staff-page.py",
     },
+    # 一次性生成器：没有固定的「源 → 产物」可以比对，所以不查脱节，只要求**登记**。
+    # 登记本身才是重点——新增生成器却没人管，才是这支检查要挡的事。
+    {
+        "builder": "tools/build-shortlist.py",
+        "oneoff": "每趟行程各生成一页候选清单，源是研究员一次性产出的 JSON、"
+                  "不进仓库，所以没有可比对的源→产物关系；它的行为由 "
+                  "tools/check-shortlist.py 守着",
+    },
 ]
 
 
@@ -53,6 +61,13 @@ def main():
 
     # 第一层：登记在案的生成物，逐个问它「你还是最新的吗」
     for g in GENERATED:
+        if g.get("oneoff"):
+            if not os.path.exists(os.path.join(REPO, g["builder"])):
+                fails.append((g["builder"], "登记了却找不到这个档案",
+                              "把它从 GENERATED 拿掉，或补回档案"))
+            else:
+                print(f"  · {g['builder']}：一次性生成器，不查脱节（{g['oneoff']}）")
+            continue
         for rel in (g["out"], g["src"], g["builder"]):
             if not os.path.exists(os.path.join(REPO, rel)):
                 fails.append((g["out"], f"找不到 {rel}", g["regen"]))
@@ -84,8 +99,10 @@ def main():
             print(f"      修法：{how}")
         return 1
 
-    print(f"\n通过：{len(GENERATED)} 个生成物都是最新的，"
-          f"{len(found)} 个生成器都已登记")
+    tracked = [g for g in GENERATED if not g.get("oneoff")]
+    print(f"\n通过：{len(tracked)} 个生成物都是最新的，"
+          f"{len(found)} 个生成器都已登记"
+          f"（其中 {len(GENERATED) - len(tracked)} 个是一次性生成器）")
     return 0
 
 
