@@ -3065,7 +3065,7 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   const errs = []; page.on('pageerror', e => errs.push(String(e)));
   page.on('dialog', d => d.accept());
 
-  const api = { people: [], holder: 'Yang', last: null, calls: [], fail: false, needsOpen: false };
+  const api = { people: [], holder: 'Yang', last: null, counts: [], calls: [], fail: false, needsOpen: false };
   await ctx.route('**/*', async r => {
     const u = r.request().url();
     if (u.startsWith(`http://localhost:${PORT}`)) return r.continue();
@@ -3093,6 +3093,18 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
       return json({ status:'ok', event: api.last, people: api.people });
     }
     if (req.action === 'pettyUndo') { api.last = null; return json({ status:'ok', people: api.people }); }
+    // 盘点：真服务端存什么这边就回什么，差额由服务端算（App 只负责送两个数）
+    if (req.action === 'count')
+      return json({ status:'ok', last: api.counts[api.counts.length-1] || null,
+                    counts: api.counts.slice().reverse() });
+    if (req.action === 'countAdd') {
+      const ev = { id:'c'+api.counts.length, date:'2026-09-19', countedUsd:req.counted,
+                   expectedUsd: req.expected == null ? null : req.expected,
+                   diffUsd: req.expected == null ? null
+                            : Math.round((req.counted - req.expected)*100)/100 };
+      api.counts.push(ev);
+      return json({ status:'ok', count:ev, last:ev, counts: api.counts.slice().reverse() });
+    }
     if (req.action === 'ledger') return json({ status:'ok', month:req.month, records: [] });
     return json({ status:'ok' });
   });
@@ -3574,6 +3586,158 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
      await page.locator('#company-queue-status').isVisible()
      && ((await page.textContent('#company-queue-status')) || '').includes('没能进公司账本'),
      await page.textContent('#company-queue-status'));
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---------- 【36】盘点：拿手上真实的现金去对账面 ----------
+{
+  console.log('\n【36】盘点：账面 vs 实际数到，差额只记录不抹平');
+  // 2026-09-19 用户要的。同一天把「你手上有多少」改成算出来的（账户余额 − 同事手上），
+  // 对账那一行就没了——同一个数不再算两遍，就没有第二个数可以对。
+  // 盘点是把那道保护换个正确的方式装回来：拿人数出来的真实现金去对账面。
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  const api = { people: [], holder:'Yang', counts: [], calls: [] };
+  const json = (o, st=200) => ({ status:st, contentType:'application/json',
+    headers:{'Access-Control-Allow-Origin':'*'}, body: JSON.stringify(o) });
+  await ctx.route('**/*', async r => {
+    const u = r.request().url();
+    if (u.startsWith(`http://localhost:${PORT}`)) return r.continue();
+    if (!/boss-expense/.test(u)) return r.abort('failed');
+    const req = JSON.parse(r.request().postData() || '{}');
+    api.calls.push(req);
+    if (req.action === 'petty')
+      return r.fulfill(json({ status:'ok', scope:'owner', people: api.people, holder: api.holder }));
+    if (req.action === 'count')
+      return r.fulfill(json({ status:'ok', last: api.counts[api.counts.length-1] || null,
+                              counts: api.counts.slice().reverse() }));
+    if (req.action === 'countAdd') {
+      const ev = { id:'c'+api.counts.length, date:'2026-09-19', countedUsd:req.counted,
+                   expectedUsd: req.expected == null ? null : req.expected,
+                   diffUsd: req.expected == null ? null
+                            : Math.round((req.counted - req.expected)*100)/100 };
+      api.counts.push(ev);
+      return r.fulfill(json({ status:'ok', count:ev, last:ev, counts: api.counts.slice().reverse() }));
+    }
+    return r.fulfill(json({ status:'ok', records: [] }));
+  });
+  page.on('dialog', d => d.accept());
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  // 账户：注资 10000 − 花掉 1000 = 9000；同事手上 4000 → 账面你手上 5000
+  api.people = [{ person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
+                { person:'Seryi', status:'ok', balance:0, opened:0, spent:0 }];
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_companyToken', 'boss-token');
+    // 投递箱账户由 getInboxAccountId() 说了算（没设过时它自己猜 acc_boss）。
+    // 这里直接问它，别自己挑 accounts[0]——挑错的话账户余额是 0，
+    // 红的是测试不是产品（写这组时正是这样红了一片）。
+    const acc = getAcc(getInboxAccountId());
+    data.currentAccountId = acc.id;
+    data.transactions = [
+      { id:'s_in', accountId:acc.id, type:'income', amount:10000, date: today(),
+        description:'注资', categoryId:(data.categories.find(c=>c.type==='income')||{}).id },
+      { id:'s_out', accountId:acc.id, type:'expense', amount:1000, date: today(),
+        description:'花掉', categoryId:(data.categories.find(c=>c.type==='expense')||{}).id },
+    ];
+    saveData();
+  });
+  await page.evaluate(() => Promise.all([fetchBossPetty({force:true}), fetchBossCount({force:true})])
+    .then(()=>renderBossPetty()));
+  await page.waitForTimeout(800);
+
+  ok('★账面你手上 = 9000 − 4000 = 5000',
+     await page.evaluate(() => bossExpectedOnHand().mine) === 5000,
+     await page.evaluate(() => bossExpectedOnHand().mine));
+  let card = await page.innerText('#boss-petty');
+  ok('没盘过时卡片上劝他盘一次（不是留白）', card.includes('还没盘过点'), card);
+  ok('卡片上有盘点按钮', await page.locator('#boss-petty button:has-text("盘点现金")').count() === 1);
+
+  // ---- 数到的比账面少：差额是负的，而且讲明白方向 ----
+  await page.evaluate(() => openBossCount());
+  await page.waitForTimeout(400);
+  ok('弹窗先告诉他账面该有多少（不然他不知道在对什么）',
+     (await page.innerText('#boss-count-expected')).includes('5000.00'),
+     await page.innerText('#boss-count-expected'));
+  await page.fill('#boss-count-amount', '4800');
+  await page.waitForTimeout(200);
+  const echo = await page.innerText('#boss-count-echo');
+  ok('★边打边算差额（按下去才知道的话他会先自己心算一遍）',
+     /[-−]200\.00/.test(echo), echo);
+  ok('讲明白方向：手上比账面少', echo.includes('有开销还没记'), echo);
+
+  api.calls.length = 0;
+  await page.evaluate(() => bossCountSubmit());
+  await until(() => api.calls.some(c => c.action === 'countAdd'), { what: '盘点送出去' });
+  const add = api.calls.find(c => c.action === 'countAdd');
+  ok('★送出去的是「数到多少」和「账面多少」两个数',
+     add.counted === 4800 && add.expected === 5000, add);
+  // 这是这个功能的命根子：差额只记录，**绝不自动抹平**
+  ok('★★盘点一个备用金事件都没生（差额绝不自动抹平）',
+     !api.calls.some(c => c.action === 'pettyAdd'), api.calls.map(c => c.action));
+  ok('本机账本也没多出一笔「对账调整」',
+     await page.evaluate(() => data.transactions.length) === 2,
+     await page.evaluate(() => data.transactions.map(t=>t.description)));
+
+  await page.waitForTimeout(500);
+  card = await page.innerText('#boss-petty');
+  ok('★卡片上留着那个差额（找到那几笔之前，留着比抹掉安全）',
+     /[-−]200\.00/.test(card), card);
+  ok('卡片上也讲方向', card.includes('有开销还没记'), card);
+
+  // ---- 对照组：对得上时要说「对得上」，不能也摆一个警告 ----
+  // 少了这组，把卡片写成「永远显示差额警告」也会全绿
+  await page.evaluate(() => openBossCount());
+  await page.waitForTimeout(400);
+  await page.fill('#boss-count-amount', '5000');
+  await page.waitForTimeout(200);
+  ok('对照组：对得上时边打边算说「对得上」',
+     (await page.innerText('#boss-count-echo')).includes('对得上'),
+     await page.innerText('#boss-count-echo'));
+  await page.evaluate(() => bossCountSubmit());
+  await page.waitForTimeout(700);
+  card = await page.innerText('#boss-petty');
+  ok('★对照组：对得上时卡片说对得上，不摆警告',
+     card.includes('对得上') && !/差 US\$/.test(card), card);
+
+  // ---- 有同事没设起点：账面算不出来，只记「数到多少」，不许拿 0 当账面算假差额 ----
+  api.people = [{ person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
+                { person:'Seryi', status:'unset' }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await page.waitForTimeout(500);
+  ok('★算不出来时 mine 是 null（不拿 0 顶替少算一个人）',
+     await page.evaluate(() => bossExpectedOnHand().mine) === null,
+     await page.evaluate(() => bossExpectedOnHand().mine));
+  await page.evaluate(() => openBossCount());
+  await page.waitForTimeout(400);
+  ok('弹窗说清楚这次不算差额',
+     (await page.innerText('#boss-count-expected')).includes('不算差额'),
+     await page.innerText('#boss-count-expected'));
+  api.calls.length = 0;
+  await page.fill('#boss-count-amount', '123');
+  await page.evaluate(() => bossCountSubmit());
+  await until(() => api.calls.some(c => c.action === 'countAdd'), { what: '盘点送出去（无账面）' });
+  const bare = api.calls.find(c => c.action === 'countAdd');
+  ok('★算不出账面时 expected 送 null（不送 0）', bare.expected === null, bare);
+
+  // ---- 负数挡下来：手上的现金不会是负的 ----
+  await page.evaluate(() => openBossCount());
+  await page.waitForTimeout(300);
+  api.calls.length = 0;
+  await page.fill('#boss-count-amount', '-5');
+  await page.evaluate(() => bossCountSubmit());
+  await page.waitForTimeout(400);
+  ok('填负数被挡下来，一个请求都没送出去',
+     !api.calls.some(c => c.action === 'countAdd'), api.calls.map(c => c.action));
+  ok('而且说清楚为什么',
+     (await page.innerText('#boss-count-note')).includes('负数'),
+     await page.innerText('#boss-count-note'));
 
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();

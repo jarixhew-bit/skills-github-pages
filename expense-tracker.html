@@ -1288,6 +1288,32 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
   </div>
 </div>
 
+<!-- 盘点（2026-09-19 用户要的）：数一次手上真实的现金，跟账面对一次。
+     为什么需要它：同一天把「你手上有多少」改成算出来的（账户余额 − 同事手上），
+     对账那一行就没了——同一个数不再算两遍，就没有第二个数可以对。
+     这里换个正确的方式装回来：拿**人数出来的现金**去对账面。
+     ⚠️ 差额只记录，**绝不给一键抹平的按钮**（2026-09-10 账乱掉就是从那里开始的）。 -->
+<div class="overlay" id="modal-boss-count">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">📋 盘点现金</div>
+      <button class="modal-close" onclick="closeModal('modal-boss-count')">✕</button>
+    </div>
+    <div class="petty-hint" id="boss-count-expected"></div>
+    <div class="form-group">
+      <label class="form-label">你实际数到多少（美元）</label>
+      <input class="form-input" id="boss-count-amount" type="text" inputmode="decimal"
+             autocomplete="off" placeholder="0.00" oninput="bossCountEcho()">
+      <div id="boss-count-echo" style="display:none;font-size:13px;margin-top:8px;
+           line-height:1.6"></div>
+    </div>
+    <button class="btn btn-primary" onclick="bossCountSubmit()">记下这次盘点</button>
+    <div id="boss-count-note" style="font-size:12px;color:var(--exp);margin-top:10px;
+         line-height:1.6;min-height:0"></div>
+    <div id="boss-count-history" style="margin-top:16px"></div>
+  </div>
+</div>
+
 <div class="overlay" id="modal-boss-petty-add">
   <div class="modal">
     <div class="modal-hdr">
@@ -2333,6 +2359,7 @@ function renderOverview(){
   const bossAcc0 = curAcc();
   if(bossAcc0 && bossAcc0.id === getInboxAccountId()){
     fetchBossPetty().then(() => renderBossPetty());
+    fetchBossCount().then(() => renderBossPetty());
   }
   const acc = curAcc(); if(!acc) return;
   const now = new Date();
@@ -7970,7 +7997,12 @@ function renderBossPetty(){
       ? `<div class="led-sub led-warn">⚠️ ${set.filter(r => r.balance < 0).map(r =>
           `${ledEsc(r.person)} 自己先垫了 ${fmt(-r.balance, 'USD')}`).join('、')}——转钱给他就自动抵掉</div>`
       : ''}
-    ${bossPettyHolderHtml(rows, acc)}`;
+    ${bossPettyHolderHtml(rows, acc)}
+    ${bossCountLineHtml()}
+    <div style="margin-top:10px">
+      <button class="btn btn-outline btn-sm"
+        onclick="event.stopPropagation();openBossCount()">📋 盘点现金</button>
+    </div>`;
 }
 
 /**
@@ -8006,6 +8038,183 @@ function renderBossPetty(){
  * ⚠️ 有同事还没设起点时**不给数**，只说还差谁。把 unset 当成 0 减，会得出一个
  * 看起来像真的、其实少算一个人的数——那比不显示更糟。
  */
+// ===================== 盘点（数一次手上的现金，跟账面对一次）=====================
+//
+// 2026-09-19 用户要的。同一天把「你手上有多少」改成算出来的（账户余额 − 同事手上），
+// 对账那一行就没了——同一个数不再算两遍，就没有第二个数可以对。
+// 盘点是把那道保护换个**正确**的方式装回来：拿人数出来的真实现金去对账面。
+//
+// ⚠️ 差额**只记录，绝不给一键抹平的按钮**。2026-09-10 那次账乱掉，就是从
+// 「加一笔调整把差额抹掉」开始的，过两天没人记得那个数代表什么。
+// 要修就去把漏记的那几笔补上，补完再盘一次，差额自然归零。
+
+const bossCountState = { last: null, counts: [], loading: false, error: null, fetchedAt: 0 };
+
+async function fetchBossCount(opts){
+  const force = !!(opts && opts.force);
+  if(!force && bossCountState.fetchedAt && Date.now() - bossCountState.fetchedAt < 60000)
+    return bossCountState.last;
+  const token = getCompanyToken();
+  if(!token){ bossCountState.error = 'no-token'; return null; }
+  bossCountState.loading = true; bossCountState.error = null;
+  try{
+    const res = await fetch(BOSS_LEDGER_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'count' })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(res.ok && body.status === 'ok'){
+      bossCountState.last = body.last || null;
+      bossCountState.counts = body.counts || [];
+      bossCountState.fetchedAt = Date.now(); bossCountState.error = null;
+    }else{
+      bossCountState.error = body.message || `拉不到（${res.status}）`;
+    }
+  }catch(e){
+    bossCountState.error = 'offline';
+  }
+  bossCountState.loading = false;
+  return bossCountState.last;
+}
+
+/** 卡片底下那一行：上次盘点是什么时候、差多少。没盘过就劝他盘一次。 */
+function bossCountLineHtml(){
+  const c = bossCountState.last;
+  if(!c){
+    return `<div class="led-sub" style="margin-top:8px">还没盘过点——
+      <span style="color:var(--p)">数一次手上的现金</span>，就知道账面对不对得上</div>`;
+  }
+  const d = c.diffUsd;
+  if(d === null || d === undefined){
+    return `<div class="led-sub" style="margin-top:8px">上次盘点 ${ledEsc(c.date)}：
+      数到 ${fmt(c.countedUsd, 'USD')}（当时没记账面，对不了）</div>`;
+  }
+  if(Math.abs(d) < 0.005){
+    return `<div class="led-sub" style="margin-top:8px;color:var(--inc)">
+      ✅ ${ledEsc(c.date)} 盘过，对得上（${fmt(c.countedUsd, 'USD')}）</div>`;
+  }
+  return `<div class="led-sub led-warn" style="margin-top:8px">⚠️ ${ledEsc(c.date)} 盘点差
+    ${fmt(d, 'USD')}（数到 ${fmt(c.countedUsd, 'USD')}，账面 ${fmt(c.expectedUsd, 'USD')}）——
+    ${d < 0 ? '手上比账面少，多半有开销还没记' : '手上比账面多，多半有收入还没记'}。
+    补上那几笔再盘一次</div>`;
+}
+
+async function openBossCount(){
+  showModal('modal-boss-count');
+  const el = document.getElementById('boss-count-amount');
+  if(el) el.value = '';
+  showBossCountNote('');
+  bossCountEcho();
+  renderBossCountExpected();
+  await fetchBossCount({force:true});
+  renderBossCountExpected();
+  renderBossCountHistory();
+}
+
+function renderBossCountExpected(){
+  const el = document.getElementById('boss-count-expected');
+  if(!el) return;
+  const { mine } = bossExpectedOnHand();
+  el.textContent = mine === null
+    ? '账面算不出来（还有同事没设起点），这次只会记下你数到多少，不算差额。'
+    : `账面说你手上该有 ${fmt(mine, 'USD')}。数一数实际有多少，填在下面。`;
+}
+
+/** 边打边算差额——按下去才知道差多少的话，他会先自己心算一遍，那就白做了。 */
+function bossCountEcho(){
+  const el = document.getElementById('boss-count-echo');
+  const input = document.getElementById('boss-count-amount');
+  if(!el || !input) return;
+  const { num } = parseAmountText(input.value);
+  const { mine } = bossExpectedOnHand();
+  if(isNaN(num) || mine === null){ el.style.display = 'none'; return; }
+  const diff = Math.round((num - mine) * 100) / 100;
+  el.style.display = 'block';
+  el.innerHTML = Math.abs(diff) < 0.005
+    ? `<span style="color:var(--inc)">✅ 对得上</span>`
+    : `<span style="color:var(--exp)">差 ${fmt(diff, 'USD')}</span>
+       <span style="color:var(--sub)">（${diff < 0
+         ? '手上比账面少，多半有开销还没记' : '手上比账面多，多半有收入还没记'}）</span>`;
+}
+
+function showBossCountNote(msg){
+  const el = document.getElementById('boss-count-note');
+  if(el) el.textContent = msg || '';
+}
+
+function renderBossCountHistory(){
+  const el = document.getElementById('boss-count-history');
+  if(!el) return;
+  const list = bossCountState.counts || [];
+  if(!list.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="setting-title" style="margin-bottom:6px">以前盘过的</div>`
+    + list.slice(0, 8).map(c => `<div class="petty-row" style="padding:6px 0">
+        <div><div class="petty-meta">${ledEsc(c.date)}</div></div>
+        <div class="petty-meta">数到 ${fmt(c.countedUsd, 'USD')}${
+          c.diffUsd === null || c.diffUsd === undefined ? ''
+          : Math.abs(c.diffUsd) < 0.005 ? '　·　对得上'
+          : `　·　差 ${fmt(c.diffUsd, 'USD')}`}</div>
+      </div>`).join('');
+}
+
+async function bossCountSubmit(){
+  const { shown, num } = parseAmountText((document.getElementById('boss-count-amount') || {}).value);
+  if(isNaN(num)){
+    showBossCountNote(shown ? `看不懂：「${shown}」——请只填数字` : '请填你数到多少');
+    return;
+  }
+  if(num < 0){ showBossCountNote('手上的现金不会是负数'); return; }
+  const { mine } = bossExpectedOnHand();
+  const diff = mine === null ? null : Math.round((num - mine) * 100) / 100;
+  if(!confirm(`记下这次盘点？\n数到 ${fmt(num, 'USD')}${
+    diff === null ? '' : `，账面 ${fmt(mine, 'USD')}，差 ${fmt(diff, 'USD')}`}`)) return;
+  showBossCountNote('正在保存…');
+  try{
+    const res = await fetch(BOSS_LEDGER_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: getCompanyToken(), action:'countAdd',
+                             counted: num, expected: mine })
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok || body.status !== 'ok'){
+      showBossCountNote(body.message || `保存失败（${res.status}）`);
+      return;
+    }
+    bossCountState.last = body.last || null;
+    bossCountState.counts = body.counts || [];
+    bossCountState.fetchedAt = Date.now();
+    closeModal('modal-boss-count');
+    toast(diff === null ? '已记下这次盘点'
+      : Math.abs(diff) < 0.005 ? '✅ 对得上' : `已记下：差 ${fmt(diff, 'USD')}`);
+    renderBossPetty();
+  }catch(e){
+    showBossCountNote('现在连不上，等有网再存一次（这一笔没有记进去）');
+  }
+}
+
+/**
+ * 账面上「你手上该有多少」。盘点那边跟卡片那边**共用这一份**——抄成两份的话，
+ * 两边迟早算出不同的数，而这正是这套账上个星期出的那个病。
+ *
+ * 有同事还没设起点就返回 mine:null（算不出来），**不许拿 0 顶替**：
+ * 把 unset 当 0 会得出一个看起来像真的、其实少算一个人的数。
+ */
+function bossOnHand(rows, acc){
+  if(!acc || !Array.isArray(rows)) return { hand:null, bal:null, mine:null };
+  // 账户余额跟首屏那张账户卡同一个算法（所有记录的收入减支出），不另写一份
+  const bal = Math.round(data.transactions.filter(t => t.accountId === acc.id)
+    .reduce((n, t) => t.type === 'income' ? n + t.amount : n - t.amount, 0) * 100) / 100;
+  if(rows.some(r => r.status !== 'ok')) return { hand:null, bal, mine:null };
+  const hand = Math.round(rows.reduce((n, r) => n + Number(r.balance || 0), 0) * 100) / 100;
+  return { hand, bal, mine: Math.round((bal - hand) * 100) / 100 };
+}
+
+/** 卡片跟盘点弹窗都要问「账面上我手上该有多少」，统一从这里拿。 */
+function bossExpectedOnHand(){
+  const acc = getAcc(getInboxAccountId());
+  return bossOnHand(bossPettyState.data, acc);
+}
+
 function bossPettyHolderHtml(rows, acc){
   if(!acc) return '';
   const who = bossPettyState.holder || 'Yang';
@@ -8015,11 +8224,7 @@ function bossPettyHolderHtml(rows, acc){
       还有 ${missing.map(r => ledEsc(r.person)).join('、')} 没设起点，
       算不出你手上还剩多少——他们都填上就自动算</div>`;
   }
-  const hand = Math.round(rows.reduce((n, r) => n + Number(r.balance || 0), 0) * 100) / 100;
-  // 账户余额跟首屏那张账户卡同一个算法（所有记录的收入减支出），不另写一份
-  const bal = Math.round(data.transactions.filter(t => t.accountId === acc.id)
-    .reduce((n, t) => t.type === 'income' ? n + t.amount : n - t.amount, 0) * 100) / 100;
-  const mine = Math.round((bal - hand) * 100) / 100;
+  const { hand, bal, mine } = bossOnHand(rows, acc);
   return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
     <div class="petty-row" style="border-bottom:0;padding:4px 0">
       <div class="petty-meta">${ledEsc(acc.name)} 账户余额</div>
