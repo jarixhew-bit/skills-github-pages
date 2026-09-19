@@ -134,6 +134,36 @@ out, log = run(before, set(), {Q1: [NEW1], Q2: [NEW2]})
 check(out == before, "没有破图时，文件必须一字不改")
 check("全部正常" in log, "没有破图时要明讲全部正常")
 
+# ---- 7. 走完的行程不再碰（2026-09-19 用户要求）----
+import datetime  # noqa: E402
+sys.path.insert(0, os.path.join(REPO, "tools", "lib"))
+import trips  # noqa: E402
+
+mod = load()
+scan = mod.pages([])
+check(all("japan-trip" not in p and "xiamen" not in p for p in scan),
+      "已经走完的行程（日本、厦门）不该再被扫")
+check(any("penang-trip/index.html" in p for p in scan),
+      "还没出发的行程（槟城）要照常扫")
+# 边界：最后一天当天仍算进行中——那天大家正在用手册，破图最要命。
+# 日期写死在这里，不从登记表读：从表里读的话，表少了一行会变成 KeyError 崩掉，
+# 而不是干净地报「这本没登记」（2026-09-19 写这条自检时踩过）。
+trips.TRIPS["__自检用的假手册.html"] = "2026-10-17"
+end = datetime.date(2026, 10, 17)
+check(not trips.is_over("__自检用的假手册.html", end), "行程最后一天当天仍算进行中")
+check(trips.is_over("__自检用的假手册.html", end + datetime.timedelta(days=1)),
+      "过了最后一天才算结束")
+del trips.TRIPS["__自检用的假手册.html"]
+check(not trips.is_over("没登记过的新手册.html"),
+      "没登记的页面要当常青页照常检查（宁可多跑，也不要让正在用的手册悄悄漏掉）")
+# 漏登记最难发现：新手册建好、体检照跑，但没人知道它该不该停
+import glob as _glob  # noqa: E402
+os.chdir(REPO)
+handbooks = [f for f in _glob.glob("*/index.html") + _glob.glob("*.html")
+             if 'class="gal"' in open(f, encoding="utf-8").read()]
+missing = [f for f in handbooks if f not in trips.TRIPS]
+check(not missing, f"每本带照片的手册都要登记行程日期（漏了：{missing}）")
+
 print(f"通过 {len(ok)} 项")
 if fails:
     print(f"\n未通过 {len(fails)} 项：")

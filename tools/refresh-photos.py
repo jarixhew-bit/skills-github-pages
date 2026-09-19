@@ -44,6 +44,9 @@ _spec = importlib.util.spec_from_file_location(
 check_images = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(check_images)
 
+sys.path.insert(0, os.path.join(REPO, "tools", "lib"))
+import trips  # noqa: E402  哪几趟还没走完——正本在 tools/lib/trips.py
+
 IMG_LINE = re.compile(r'<img\b[^>]*\bsrc="([^"]+)"[^>]*>')
 CID = re.compile(r'<a[^>]+class="btn-map"[^>]+href="([^"]*cid=(\d+)[^"]*)"')
 TITLE = re.compile(r"<h[34][^>]*>(.*?)</h[34]>", re.S)
@@ -54,10 +57,15 @@ def pages(argv: list) -> list:
     files = [a for a in argv if not a.startswith("--")]
     if files:
         return files
-    out = []
-    for p in PAGES:
-        out += glob.glob(p)
-    return sorted(out)
+    # 只碰登记在案的旅游手册：App（记账、老板版）与同事版那些页面里的 <img>
+    # 是模板字符串（`${...}`），既不是外链也轮不到这支脚本管。
+    out = [p for p in sorted(trips.TRIPS) if os.path.exists(p)]
+    # 走完的行程不补图（2026-09-19 用户要求：「行程过了的就不用再跑了」）。
+    # 点名单一档案时不套这条——真想补哪一本，指名就补得到。
+    live, over = trips.split(out)
+    if over:
+        print(f"跳过 {len(over)} 个已结束行程的页面：{'、'.join(over)}")
+    return live
 
 
 def card_of(html: str, pos: int):

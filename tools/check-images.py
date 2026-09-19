@@ -30,6 +30,7 @@
 
 退出码：0 = 全部活着；1 = 有失效链接。
 """
+import os
 import re
 import subprocess
 import sys
@@ -37,6 +38,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import trips  # noqa: E402  哪几趟还没走完——正本在 tools/lib/trips.py
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
@@ -123,9 +127,11 @@ def probe(url: str, kind: str = ""):
     safe = urllib.parse.quote(url, safe=":/?#[]@!$&'()*+,;=~-._%")
     last = ""
     for _ in range(RETRIES):
-        req = urllib.request.Request(
-            safe, headers={"User-Agent": UA, "Referer": REFERER})
         try:
+            # Request() 本身就会对不是网址的字符串抛 ValueError（例如页面模板里的
+            # `${escapeHtml(it.image)}`），所以它也要在 try 里面——2026-09-19 踩过
+            req = urllib.request.Request(
+                safe, headers={"User-Agent": UA, "Referer": REFERER})
             with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
                 if 200 <= r.status < 400:
                     if kind == "图片":
@@ -146,11 +152,20 @@ def probe(url: str, kind: str = ""):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if a != "--all"]
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if "--all" in sys.argv[1:] or not args:
         out = subprocess.run(["git", "ls-files", "*.html"],
                              capture_output=True, text=True)
         files = out.stdout.split()
+        # 走完的行程不再体检（2026-09-19 用户要求：「行程过了的就不用再跑了」）。
+        # 日本那趟 7 月就走完了，它那 178 张过期图每周报一次，修好也没人会再打开。
+        # 日期表在 tools/lib/trips.py，是这条规则的唯一正本。
+        # 点名单一档案时不套这条——想看就看得到。
+        if "--include-past" not in sys.argv[1:]:
+            files, over = trips.split(files)
+            if over:
+                print(f"跳过 {len(over)} 个已结束行程的页面："
+                      f"{'、'.join(over)}（要一起查加 --include-past）\n")
     else:
         files = args
 
