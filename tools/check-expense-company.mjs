@@ -3065,7 +3065,7 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   const errs = []; page.on('pageerror', e => errs.push(String(e)));
   page.on('dialog', d => d.accept());
 
-  const api = { people: [], last: null, calls: [], fail: false, needsOpen: false };
+  const api = { people: [], holder: 'Yang', last: null, calls: [], fail: false, needsOpen: false };
   await ctx.route('**/*', async r => {
     const u = r.request().url();
     if (u.startsWith(`http://localhost:${PORT}`)) return r.continue();
@@ -3084,7 +3084,7 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
     const req = JSON.parse(r.request().postData() || '{}');
     api.calls.push({ where: 'boss', body: req });
     if (req.action === 'petty') return json({ status:'ok', scope:'owner',
-      people: api.people, lastEvent: api.last });
+      people: api.people, holder: api.holder, lastEvent: api.last });
     if (req.action === 'pettyAdd') {
       if (api.needsOpen && req.type !== 'open') return json({ status:'needs_open',
         message: req.person + ' 还没设起点——先填一次他现在手上还剩多少' }, 400);
@@ -3159,7 +3159,9 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   ok('送到老板账那条路（不是公司备用金）', add.where === 'boss', add);
   ok('送的是 topup、人和金额都对',
      add.body.type === 'topup' && add.body.person === 'Kuang' && add.body.amount === 500, add.body);
-  ok('转钱也带 mirror（这笔同时从 Yang 手上扣）', add.body.mirror === true, add.body);
+  // 2026-09-19 起不送 mirror 了：「你手上」是算出来的（账户余额 − 同事手上），
+  // Kuang 那格 +500 已经自动让你少 500，服务端再补一笔就是同一笔钱扣两次
+  ok('★转钱不再送 mirror（补了就是同一笔钱扣两次）', !add.body.mirror, add.body);
   ok('**一次都没打到公司账那条路**（两本账的钱不能串）',
      api.calls.every(c => c.where === 'boss'), api.calls.map(c => c.where));
 
@@ -3207,8 +3209,9 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   ok('而且讲清楚该怎么做', (await page.innerText('#boss-petty-add-note')).includes('调整'),
      await page.innerText('#boss-petty-add-note'));
 
-  // ---- 对照组：手工「调整」不镜像（那是校准，钱没有在人之间移动）----
-  // 少了这组对照，把 mirror 写死成 true 也会全绿，而那会让每次校准都误动 Yang 那格
+  // ---- 对照组：拿掉 mirror，别把别的字段一起弄丢 ----
+  // 「不送 mirror」这种否定断言，把整个请求体删空也会全绿。所以同一个请求
+  // 要再验一次人、类型、金额都还在——否则这组测试测了个寂寞。
   api.people = [{ person:'Kuang', status:'ok', balance: 100, opened: 100, spent: 0 }];
   await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
   await page.waitForTimeout(300);
@@ -3218,7 +3221,9 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   await page.evaluate(() => bossPettySubmit());
   await until(() => api.calls.some(c => c.body.action === 'pettyAdd'), { what: '调整送出去' });
   const adj = api.calls.find(c => c.body.action === 'pettyAdd');
-  ok('对照组：手工调整不带 mirror（只动这一格）', !adj.body.mirror, adj.body);
+  ok('对照组：手工调整也不带 mirror', !adj.body.mirror, adj.body);
+  ok('对照组：人、类型、金额一样都没少',
+     adj.body.person === 'Kuang' && adj.body.type === 'adjust' && adj.body.amount === -12.5, adj.body);
 
   // ---- 起点**要**收得下负数：上线之前垫的钱只能靠它带进来 ----
   // 2026-09-11 一度写成不许，当场卡住用户：Kuang 之前垫了 189，那两笔账在老板
@@ -3273,44 +3278,59 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
     ];
     saveData();
   });
-  // 有人没设起点：**不给合计**，把 unset 当 0 会得出一个看起来像真的、其实少算一个人的数
-  api.people = [{ person:'Yang', status:'ok', balance:5000, opened:5000, spent:0 },
-                { person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
+  // 有同事没设起点：**不给数**，把 unset 当 0 减会得出一个看起来像真的、其实少算一个人的数
+  api.people = [{ person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
                 { person:'Seryi', status:'unset' }];
   await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
   await until(async () => (await page.innerText('#boss-petty')).includes('没设起点'),
               { what: '提示还差谁' });
   let card = await page.innerText('#boss-petty');
-  ok('有人没设起点时不给合计（unset 当 0 会少算一个人）',
-     !card.includes('大家手上合计'), card);
+  ok('有人没设起点时不给数（unset 当 0 会少算一个人）',
+     !card.includes('你（Yang）手上'), card);
   ok('但要说清楚还差谁', card.includes('Seryi'), card);
 
-  // 三个人都填上，而且刚好对得上
-  api.people = [{ person:'Yang', status:'ok', balance:5000, opened:5000, spent:0 },
-                { person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
+  // 同事都填上了 → 「你手上」＝ 账户余额 − 同事手上合计
+  // 账户：注资 10000 − 花掉 1000 = 9000；同事手上 4000+0 → 你手上 5000
+  api.people = [{ person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
                 { person:'Seryi', status:'ok', balance:0, opened:0, spent:0 }];
   await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
-  await until(async () => (await page.innerText('#boss-petty')).includes('大家手上合计'),
-              { what: '合计出现' });
+  await until(async () => (await page.innerText('#boss-petty')).includes('你（Yang）手上'),
+              { what: '「你手上」那一行出现' });
   card = await page.innerText('#boss-petty');
-  ok('三个人都填了就给合计', card.includes('大家手上合计'), card);
   // 这个 App 的 fmt() 不加千分位，写成 9,000.00 会红——红的是断言不是产品
   ok('账户余额 10000−1000 = 9000', card.includes('9000.00'), card);
-  ok('9000 = 5000+4000+0 → 对上了', card.includes('对上了'), card);
+  ok('同事手上合计 4000', card.includes('4000.00'), card);
+  const mineLine = /你（Yang）手上\s*US\$(-?[\d.]+)/;
+  ok('★你手上 = 9000 − 4000 = 5000',
+     (card.match(mineLine) || [])[1] === '5000.00', (card.match(mineLine) || [])[1]);
+  ok('三个数都摆出来（只给答案的话，对不上时没法自己查）',
+     card.includes('账户余额') && card.includes('同事手上合计'), card);
+  ok('★管钱的人不再出现在持有人清单里（那正是这次要拆掉的双重记账）',
+     !/Yang[\s\S]{0,40}起点/.test(card), card);
 
-  // 差 273.73：要摆出来，而且讲明白差在哪个方向
-  api.people = [{ person:'Yang', status:'ok', balance:4726.27, opened:4726.27, spent:0 },
-                { person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
+  // 对照组：同事手上一变，你手上要跟着变——不是写死的数
+  // 少了这组，把「你手上」直接印成账户余额也会全绿，而那正是算错的那一版
+  api.people = [{ person:'Kuang', status:'ok', balance:4500, opened:4500, spent:0 },
                 { person:'Seryi', status:'ok', balance:0, opened:0, spent:0 }];
   await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
-  // 不用 until 等「差额」出现：等不到会当场抛异常、把后面十几条一起弄哑
-  // （做 false-red 时踩到）。给它时间，然后让断言自己说话——红要红得完整。
+  await page.waitForTimeout(600);
+  card = await page.innerText('#boss-petty');
+  ok('★对照组：同事多拿 500，你手上就少 500（4500）',
+     (card.match(mineLine) || [])[1] === '4500.00', (card.match(mineLine) || [])[1]);
+
+  // 同事手上比账户余额还多 → 算出来是负的，要摆出来说明可能是什么原因
+  api.people = [{ person:'Kuang', status:'ok', balance:9500, opened:9500, spent:0 },
+                { person:'Seryi', status:'ok', balance:0, opened:0, spent:0 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  // 不用 until 等：等不到会当场抛异常、把后面十几条一起弄哑（做 false-red 时踩到）。
+  // 给它时间，然后让断言自己说话——红要红得完整。
   await page.waitForTimeout(800);
   card = await page.innerText('#boss-petty');
-  ok('对不上时摆出差额 273.73', card.includes('273.73'), card);
-  ok('讲明白是哪个方向（账户里比大家手上多）', card.includes('有人拿了钱还没记'), card);
-  ok('明写别用「调整」抹平（那正是上次账乱掉的开头）',
-     card.includes('别用「调整」把它抹平'), card);
+  ok('算出来是负的时候摆出来（-500）',
+     /^[-−]500\.00$/.test(((card.match(mineLine) || [])[1] || '')),
+     (card.match(mineLine) || [])[1]);
+  ok('讲明白可能是什么原因，不是干摆一个负数',
+     card.includes('起点填多了') || card.includes('收入还没记'), card);
 
   // ---- 一键归还：他把钱还回来，余额归零 ----
   // 2026-09-11 用户要求。底下走的是 adjust 取负——不另开一种事件类型，
@@ -3339,9 +3359,8 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   await until(() => api.calls.some(c => c.body.action === 'pettyAdd'), { what: '归还送出去' });
   const back = api.calls.find(c => c.body.action === 'pettyAdd');
   ok('送出去的是 adjust（不另开一种事件类型）', back.body.type === 'adjust', back.body);
-  // 钱换了口袋：服务端要在 Yang 名下记一笔等额反向的，否则「大家手上合计 ＝ 账户余额」
-  // 永远对不上（2026-09-11 用户实机指出「归还全部都回去 Yang 那边」）
-  ok('归还带 mirror（钱要回到 Yang 手上）', back.body.mirror === true, back.body);
+  ok('★归还也不送 mirror（钱自动回到你手上，靠的是减法不是补记）',
+     !back.body.mirror, back.body);
   ok('金额取负：收回 4000 → -4000', back.body.amount === -4000, back.body);
   ok('备注写明是归还（以后翻记录看得出来这不是随手调的）',
      String(back.body.note || '').includes('归还'), back.body);
