@@ -5366,7 +5366,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-09-13';
+const APP_BUILD = '2026-09-19';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';
@@ -7448,7 +7448,7 @@ function fromStaffFromForm(prev){
  * 数据住 butler（data/boss-petty.json），跟公司备用金**分开两份**：
  * 公司那笔现金和老板给的现金是两笔钱，混在一起两边余额都会错。
  */
-const bossPettyState = { data: null, last: null, loading: false, error: null, fetchedAt: 0 };
+const bossPettyState = { data: null, last: null, holder: 'Yang', loading: false, error: null, fetchedAt: 0 };
 const bossPettyForm = { person: null, type: 'topup' };
 
 async function fetchBossPetty(opts){
@@ -7467,6 +7467,9 @@ async function fetchBossPetty(opts){
     if(res.ok && body.status === 'ok'){
       bossPettyState.data = body.people || [];
       bossPettyState.last = body.lastEvent || null;
+      // 管钱的是谁由服务端说了算（换人管钱＝改 butler 的 OWNER_REPORTER_NAME），
+      // 页面不写死。拉不到就沿用上一次的，别退回预设把名字换掉
+      if(body.holder) bossPettyState.holder = String(body.holder);
       bossPettyState.fetchedAt = Date.now(); bossPettyState.error = null;
     }else{
       bossPettyState.data = null;
@@ -7510,7 +7513,7 @@ function renderBossPetty(){
       <div class="led-card-title">💵 同事手上（你的钱）</div>
       <div class="led-card-link">转钱 / 归还 →</div>
     </div>
-    ${rows.map(r => `<div class="petty-row">
+    ${rows.length ? rows.map(r => `<div class="petty-row">
       <div><div class="petty-name">${ledEsc(r.person)}</div>
         <div class="petty-meta">${r.status === 'ok'
           ? `起点 ${fmt(r.opened, 'USD')} · 之后花了 ${fmt(r.spent, 'USD')}`
@@ -7518,56 +7521,73 @@ function renderBossPetty(){
       ${r.status === 'ok'
         ? `<div class="petty-bal ${r.balance < 0 ? 'low' : ''}">${fmt(r.balance, 'USD')}</div>`
         : `<div class="petty-bal unset">还没设起点 ›</div>`}
-    </div>`).join('')}
+    </div>`).join('') : '<div class="led-sub">同事手上现在没有钱</div>'}
     ${set.some(r => r.balance < 0)
       ? `<div class="led-sub led-warn">⚠️ ${set.filter(r => r.balance < 0).map(r =>
           `${ledEsc(r.person)} 自己先垫了 ${fmt(-r.balance, 'USD')}`).join('、')}——转钱给他就自动抵掉</div>`
       : ''}
-    ${bossPettyReconcileHtml(rows, acc)}`;
+    ${bossPettyHolderHtml(rows, acc)}`;
 }
 
 /**
- * 对账那一段：**大家手上的现金加起来，应该等于这个账户还剩多少**。
+ * 「你手上有多少」那一段。
  *
- * 老板的钱只有两种去向：花掉了（账本里有记录），或者还在某个人手上。所以
+ * ## 2026-09-19 改过一次方向，改之前的做法是错的
  *
- *     Yang 手上 ＋ Kuang 手上 ＋ Seryi 手上  ＝  账户余额
+ * 旧做法：Yang 跟同事一样是一个「持有人」，自己有起点、自己算余额，然后拿
+ * 「大家手上合计」去跟账户余额对，差额摆出来当警报。
  *
- * 对不上就是有事情没记：有人拿了钱没记、有人花了钱没记、或者哪一格的起点填错了。
- * 差额摆出来给人看，**绝不自动抹平**——2026-09-10 那次账乱掉，就是从「加一笔对账
- * 调整把差额抹掉」开始的，过两天没人记得那个数代表什么。
+ * 那个对账从第一天起就不可能对上。Yang 自己记的账**从来不进 butler 那本账本**
+ * （那本只收 Telegram 和同事版记的），所以他那格的「之后花了」永远是 0.00，
+ * 余额只增不减。2026-09-19 查证：账本里 17 笔全是 Kuang 的，Yang 一笔都没有。
+ * 他每记一笔开销，差额就多一笔——用户先后看到的 273.73、475.00 都是这么来的，
+ * 不是真的少钱。我之前让他「去找那几笔」，找不到的，那几笔不存在。
  *
- * ⚠️ 有人还没设起点时**不给合计**，只说还差谁。把 unset 当成 0 加进去，会得出一个
- * 看起来像真的、其实少算一个人的总数——那比不显示更糟。
+ * 新做法（用户原话：「Yang 是管钱的，boss 的账户有多少就是 Yang 的现金」）：
+ *
+ *     你手上  ＝  账户余额  −  同事手上合计
+ *
+ * 老板的钱只有三种去向：花掉了（账本里有记录，已经从余额里扣掉）、在同事手上、
+ * 剩下的都在管钱的人手上。所以第三项是**算出来的**，不再单独记一份。
+ * 转 5000 给 Kuang，Kuang 那格 +5000，这个减法自动让你少 5000——
+ * 这也是为什么服务端那边的「镜像事件」一并取消了（补了就是同一笔钱扣两次）。
+ *
+ * ## 代价，以及还剩什么保护
+ *
+ * 差额那一行没了——同一个数不再算两遍，就没有第二个数可以对。剩下的保护是
+ * 同事那半边：他们每一格仍然是「起点 + 转给他的 − 他记的开销」独立算出来的，
+ * 对不上照样看得出来。要把「点一下现金跟账面对一次」找回来，得另外做一个
+ * 「盘点」功能（让他输入实际数了多少），那是另一件事，没做。
+ *
+ * ⚠️ 有同事还没设起点时**不给数**，只说还差谁。把 unset 当成 0 减，会得出一个
+ * 看起来像真的、其实少算一个人的数——那比不显示更糟。
  */
-function bossPettyReconcileHtml(rows, acc){
+function bossPettyHolderHtml(rows, acc){
   if(!acc) return '';
+  const who = bossPettyState.holder || 'Yang';
   const missing = rows.filter(r => r.status !== 'ok');
   if(missing.length){
     return `<div class="led-sub" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-      还有 ${missing.map(r => ledEsc(r.person)).join('、')} 没设起点，合计对不了——
-      三个人都填上，这里会自动跟账户余额对一次</div>`;
+      还有 ${missing.map(r => ledEsc(r.person)).join('、')} 没设起点，
+      算不出你手上还剩多少——他们都填上就自动算</div>`;
   }
   const hand = Math.round(rows.reduce((n, r) => n + Number(r.balance || 0), 0) * 100) / 100;
   // 账户余额跟首屏那张账户卡同一个算法（所有记录的收入减支出），不另写一份
   const bal = Math.round(data.transactions.filter(t => t.accountId === acc.id)
     .reduce((n, t) => t.type === 'income' ? n + t.amount : n - t.amount, 0) * 100) / 100;
-  const diff = Math.round((bal - hand) * 100) / 100;
-  const okNow = Math.abs(diff) < 0.005;
+  const mine = Math.round((bal - hand) * 100) / 100;
   return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-    <div class="petty-row" style="border-bottom:0;padding:4px 0">
-      <div class="petty-meta">大家手上合计</div>
-      <div class="petty-meta">${fmt(hand, acc.currency)}</div></div>
     <div class="petty-row" style="border-bottom:0;padding:4px 0">
       <div class="petty-meta">${ledEsc(acc.name)} 账户余额</div>
       <div class="petty-meta">${fmt(bal, acc.currency)}</div></div>
     <div class="petty-row" style="border-bottom:0;padding:4px 0">
-      <div class="petty-name">${okNow ? '✅ 对上了' : '⚠️ 差额'}</div>
-      <div class="petty-bal ${okNow ? '' : 'low'}">${okNow ? '—' : fmt(diff, acc.currency)}</div></div>
-    ${okNow ? '' : `<div class="led-sub">${diff > 0
-      ? '账户里的钱比大家手上多——多半是有人拿了钱还没记，或者哪一格起点填少了'
-      : '大家手上比账户里多——多半是有花掉的钱还没记进账本'}。
-      <b>别用「调整」把它抹平</b>，先找出那几笔；找到之前这个数留着比抹掉安全。</div>`}
+      <div class="petty-meta">− 同事手上合计</div>
+      <div class="petty-meta">${fmt(hand, acc.currency)}</div></div>
+    <div class="petty-row" style="border-bottom:0;padding:4px 0">
+      <div class="petty-name">💰 你（${ledEsc(who)}）手上</div>
+      <div class="petty-bal ${mine < 0 ? 'low' : ''}">${fmt(mine, acc.currency)}</div></div>
+    ${mine < 0 ? `<div class="led-sub led-warn">⚠️ 算出来是负的——同事手上的钱比账户余额还多，
+      多半是有同事那一格的起点填多了，或者有笔收入还没记进账本</div>` : ''}
   </div>`;
 }
 
@@ -7691,10 +7711,10 @@ function bossPettySetType(type){
       ? (bal != null && bal > 0
           ? `${who} 把钱还回来了，填你实际收到多少（预设是他手上全部 ${fmt(bal, 'USD')}）。`
             + `收到多少填多少——只还了一部分的话，剩的会继续留在他名下。`
-            + `这笔会同时加回你（Yang）手上。`
+            + `收回来的钱自动回到你手上（你手上＝账户余额 − 同事手上）。`
           : `${who} 手上现在没有你的钱，不用归还。`)
-      : `你转给 ${who} 的现金，填多少加多少——这笔会同时从你（Yang）手上扣掉。`
-        + `他之前垫的钱会自动被抵掉，不用另外记一笔。`;
+      : `你转给 ${who} 的现金，填多少加多少——你手上自动少这么多`
+        + `（你手上＝账户余额 − 同事手上）。他之前垫的钱会自动被抵掉，不用另外记一笔。`;
   }
 }
 
@@ -7748,14 +7768,12 @@ async function bossPettySubmit(){
   try{
     const res = await fetch(BOSS_LEDGER_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
+      // 不再送 mirror：2026-09-19 起「你手上」是算出来的（账户余额 − 同事手上），
+      // 同事那格一动你这边自动跟着动，再让服务端补一笔镜像就是同一笔钱扣两次。
+      // 服务端那边也挡了，旧页面送过来一样不生效。
       body: JSON.stringify({ token: getCompanyToken(), action:'pettyAdd',
                              person: who, type: sendType, amount: sendAmount,
-                             note: isReturn ? '归还现金' : null,
-                             // 转钱和归还是**钱换了口袋**：服务端会在 Yang 名下记一笔
-                             // 等额反向的，否则「大家手上合计 ＝ 账户余额」永远对不上
-                             // （2026-09-11 用户实机指出「归还全部都回去 Yang 那边」）。
-                             // 设起点和手工调整不算钱的移动，不镜像。
-                             mirror: isReturn || bossPettyForm.type === 'topup' })
+                             note: isReturn ? '归还现金' : null })
     });
     const body = await res.json().catch(()=>({}));
     if(!res.ok || body.status !== 'ok'){
