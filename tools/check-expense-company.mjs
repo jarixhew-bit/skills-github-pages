@@ -3115,7 +3115,9 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
        const el = document.getElementById('boss-petty');
        return !!el.closest('#tab-overview') && el.style.display === 'block';
      }));
-  // 对照组：切到别的账户就不该出现
+  // 切到别的账户也要在——2026-09-19 改掉的就是这里。
+  // 原本写成「只在 Boss 账户那一页显示」，用户切到 Yang 账户时整张卡消失，
+  // 而「转钱给同事」是他每天要按的入口，藏起来＝功能没了。
   const otherAcc = await page.evaluate(() => {
     const other = data.accounts.find(a => a.id !== getInboxAccountId());
     if(!other) return null;
@@ -3123,7 +3125,20 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
     renderBossPetty();
     return document.getElementById('boss-petty').style.display;
   });
-  ok('对照组：切到别的账户这张卡就收起来', otherAcc === 'none' || otherAcc === null, otherAcc);
+  ok('★切到别的账户，这张卡照样在', otherAcc === 'block' || otherAcc === null, otherAcc);
+  // 对照组：没填公司报账密钥才收起来（那时候根本拉不到数据，摆个空卡没意义）
+  const noToken = await page.evaluate(() => {
+    const t = localStorage.getItem('expenseTracker_companyToken');
+    localStorage.removeItem('expenseTracker_companyToken');
+    renderBossPetty();
+    const d = document.getElementById('boss-petty').style.display;
+    localStorage.setItem('expenseTracker_companyToken', t);
+    data.currentAccountId = getInboxAccountId();
+    renderBossPetty();
+    return d;
+  });
+  ok('对照组：没填密钥时才收起来（不然卡片永远显示＝断言测了个寂寞）',
+     noToken === 'none', noToken);
   await page.evaluate(() => { data.currentAccountId = getInboxAccountId(); renderBossPetty(); });
   let html = await page.innerText('#boss-petty');
   ok('没设起点的人也列得出来（否则没有入口去设）',
@@ -3278,6 +3293,28 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
     ];
     saveData();
   });
+  // ---- 切到别的账户，这张卡照样在（2026-09-19 用户踩到：整张卡消失了）----
+  // 「转钱给同事」是他每天要按的入口，只在 Boss 账户那一页显示＝藏起来＝功能没了。
+  // 数字固定跟着投递箱那个账户算，跟当下选哪个账户无关。
+  api.people = [{ person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
+                { person:'Seryi', status:'ok', balance:0, opened:0, spent:0 }];
+  await page.evaluate(() => {
+    const other = data.accounts.find(a => a.id !== getInboxAccountId());
+    if(other){ data.currentAccountId = other.id; saveData(); }
+    return fetchBossPetty({force:true}).then(()=>{ renderOverview(); });
+  });
+  await page.waitForTimeout(600);
+  ok('★切到别的账户，卡片照样在（这是他每天按的转钱入口）',
+     await page.locator('#boss-petty').isVisible());
+  let otherCard = await page.innerText('#boss-petty');
+  ok('★而且算的还是老板账那个账户（不是当下这个账户的余额）',
+     otherCard.includes('Boss 账户余额'), otherCard);
+  ok('数字也没跟着变（9000 − 4000 = 5000）',
+     /你（Yang）手上\s*US\$5000\.00/.test(otherCard), otherCard);
+  // 切回来，后面几组接着用老板账
+  await page.evaluate(() => { data.currentAccountId = getInboxAccountId(); saveData(); renderOverview(); });
+  await page.waitForTimeout(300);
+
   // 有同事没设起点：**不给数**，把 unset 当 0 减会得出一个看起来像真的、其实少算一个人的数
   api.people = [{ person:'Kuang', status:'ok', balance:4000, opened:4000, spent:0 },
                 { person:'Seryi', status:'unset' }];
