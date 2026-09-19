@@ -2273,6 +2273,67 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【31】老板手上有多少钱、盘点差多少，同事一个字都看不到 ----------
+// 2026-09-19 加了「盘点」之后补的。同事版是从主 App 生成的，「同事手上」那张卡
+// （含「你（Yang）手上」和盘点差额）的代码会跟着进同事版的档案里——那是老板私人的
+// 现金部位，同事看到就是泄露。服务端已经挡了（butler 那边 count/countAdd/countUndo
+// 对同事一律 forbidden），这里守的是**页面这一侧也不许画出来**。
+// **必须带主 App 的对照组**：只断言「同事看不到」的话，整张卡在两边都坏掉也会显示通过。
+console.log('\n【31】老板的现金部位与盘点，同事版一个字都不许出现');
+{
+  const h = await newPage();
+  await h.page.goto(BASE, { waitUntil:'domcontentloaded' });
+  await h.page.waitForTimeout(1200);
+  const staffCard = await h.page.evaluate(() => {
+    const el = document.getElementById('boss-petty');
+    return { exists: !!el, shown: el ? el.style.display : null,
+             text: el ? el.innerText : '' };
+  });
+  ok('同事版看不到「同事手上」那张卡',
+     !staffCard.exists || staffCard.shown === 'none', staffCard);
+  ok('同事版画面上没有「你（Yang）手上」', !staffCard.text.includes('手上'), staffCard.text);
+  ok('同事版没有盘点按钮',
+     await h.page.locator('button:has-text("盘点现金")').count() === 0);
+  ok('同事版也没打开过盘点弹窗',
+     await h.page.evaluate(() => {
+       const m = document.getElementById('modal-boss-count');
+       return !m || !m.classList.contains('open');
+     }));
+  await h.ctx.close();
+
+  // 对照组：主 App 那边这张卡要真的画得出来（否则上面四条测了个寂寞）
+  const ctx2 = await browser.newContext();
+  const page2 = await ctx2.newPage();
+  await ctx2.route('**/*', async r => {
+    const u = r.request().url();
+    if (u.startsWith(`http://localhost:${PORT}`)) return r.continue();
+    if (!/boss-expense/.test(u)) return r.abort('failed');
+    const req = JSON.parse(r.request().postData() || '{}');
+    const j = o => r.fulfill({ status:200, contentType:'application/json',
+      headers:{'Access-Control-Allow-Origin':'*'}, body: JSON.stringify(o) });
+    if (req.action === 'petty') return j({ status:'ok', holder:'Yang',
+      people:[{ person:'Kuang', status:'ok', balance:0, opened:0, spent:0 }] });
+    if (req.action === 'count') return j({ status:'ok', last:null, counts:[] });
+    return j({ status:'ok', records: [] });
+  });
+  await page2.goto(APP, { waitUntil:'domcontentloaded' });
+  await page2.waitForFunction(() => typeof data !== 'undefined'
+    && Array.isArray(data.accounts) && data.accounts.length > 0);
+  await page2.evaluate(() => {
+    localStorage.setItem('expenseTracker_companyToken', 'boss-token');
+    data.currentAccountId = getInboxAccountId();
+    saveData();
+    return Promise.all([fetchBossPetty({force:true}), fetchBossCount({force:true})])
+      .then(() => renderBossPetty());
+  });
+  await page2.waitForTimeout(900);
+  ok('★对照组：主 App 那边这张卡画得出来',
+     await page2.locator('#boss-petty').isVisible());
+  ok('★对照组：主 App 那边有盘点按钮',
+     await page2.locator('#boss-petty button:has-text("盘点现金")').count() === 1);
+  await ctx2.close();
+}
+
 await browser.close();
 console.log();
 if (fails.length) {
