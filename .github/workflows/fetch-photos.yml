@@ -14,6 +14,10 @@ on:
         description: "每家店要几张不重复照片"
         required: false
         default: "5"
+      measure_only:
+        description: "菜单过滤只量不改（校准用，填 true）"
+        required: false
+        default: "false"
       source:
         description: "从哪抓：google（预设）或 amap（大陆店家 Google 常常没图）"
         required: false
@@ -68,6 +72,19 @@ jobs:
           else
             node tools/fetch-photos.mjs | tee photos-output.txt
           fi
+
+      # 看图关卡：把「菜单照」排到每家最后（2026-09-19 用户要求「店＋食物，不要菜单」）。
+      # 抓图器已改从「Food & drink」分类取图，但商场/庙/电玩城没有那个页签，
+      # Google 自己也会把菜单归进食物分类，所以再用 OCR 数一次字：
+      # 满屏文字＋一排价格＝菜单。Claude 看不到这些图（沙盒连不上 Google），
+      # 但认字不需要审美，交给这台机器数。
+      - name: 装 OCR
+        if: ${{ github.event.inputs.source != 'amap' }}
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-chi-sim
+
+      - name: 把菜单照排到最后
+        if: ${{ github.event.inputs.source != 'amap' }}
+        run: python3 tools/photo-filter.py photos-output.txt ${{ github.event.inputs.measure_only == 'true' && '--measure' || '' }}
 
       - name: Upload result
         if: always()
