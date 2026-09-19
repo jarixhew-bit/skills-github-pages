@@ -121,9 +121,21 @@ async function load(handler, now, psiHandler) {
     const el = document.getElementById('psi');
     return el ? { text: el.textContent, cls: el.className } : null;
   });
+  /* 当天那张卡的烟霾行：只有「今天」该露出来，而且要带真实数字 */
+  const dayHaze = await page.evaluate(() => {
+    const shown = [...document.querySelectorAll('.day[data-date]')]
+      .filter(d => d.querySelector('.hazeplan') && !d.querySelector('.hazeplan').hidden)
+      .map(d => ({
+        date: d.dataset.date,
+        now: d.querySelector('.hazenow')?.textContent || '',
+        actHidden: d.querySelector('.hazeact')?.hidden,
+        cls: d.querySelector('.hazeplan')?.className || '',
+      }));
+    return shown;
+  });
   await page.unroute(API);
   await page.unroute(PSI_API);
-  return { texts, called, psi };
+  return { texts, called, psi, dayHaze };
 }
 
 /* ---- 1. 每天都要有天气条与雨天备案，日期还得对得上 ---- */
@@ -134,6 +146,13 @@ const structure = await page.evaluate(() =>
     wx: d.querySelector('.wx[data-wx]')?.dataset.wx || null,
     rain: !!d.querySelector('.rainplan .cn')?.textContent.trim(),
     rainEn: !!d.querySelector('.rainplan .en')?.textContent.trim(),
+    /* 烟霾备案跟雨天备案同一条规矩：加一天就要配一条，否则那天 PSI 高了
+       没人知道该改去哪。差别是它**预设隐藏**、只有当天抓到读数才露出来
+       （2026-09-19 用户：「别写死的，只在当天抓完数据写上当天的空气质量」），
+       所以这里查的是「文案在不在 DOM 里」，可见与否由下面的情境测试管。 */
+    haze: !!d.querySelector('.hazeact .cn')?.textContent.trim(),
+    hazeEn: !!d.querySelector('.hazeact .en')?.textContent.trim(),
+    hazeHidden: d.querySelector('.hazeplan')?.hasAttribute('hidden') ?? null,
   })));
 check(structure.length === 5, `行程应有 5 天（实得 ${structure.length}）`);
 
@@ -153,6 +172,8 @@ check(psiSkeleton.haze, '空气质量说明要给官方烟霾网站的链接（�
 structure.forEach(d => {
   check(d.wx === d.date, `${d.date} 的天气条日期要跟当天一致（实得 ${d.wx}）`);
   check(d.rain && d.rainEn, `${d.date} 的雨天备案中英文都要有`);
+  check(d.haze && d.hazeEn, `${d.date} 的烟霾备案中英文都要有`);
+  check(d.hazeHidden === true, `${d.date} 的烟霾备案预设要隐藏（没抓到数据就不该占版面）`);
 });
 
 /* ---- 2. 预报正常 ---- */
@@ -217,6 +238,49 @@ const { psi: psiDown } = await load(r => r.fulfill({ json: FULL }), IN_WINDOW,
 check(/抓不到|unavailable/i.test(psiDown.text),
   `空气质量 API 挂掉时要说明白（实得：${psiDown.text}）`);
 check(!/载入中|Loading/.test(psiDown.text), 'API 挂掉时不该卡在「载入中」');
+
+/* ---- 5. 当天那张卡的烟霾行：只有今天、只在抓到数据之后 ---- */
+const D3 = '2026-09-25T09:00:00+08:00';   // 把「今天」固定在环球影城那天
+
+// 5a. 不在行程日期内（出发前一天）→ 五天一条都不该露出来
+const { dayHaze: beforeTrip } = await load(r => r.fulfill({ json: FULL }), IN_WINDOW,
+  r => r.fulfill({ json: PSI_MODERATE }));
+check(beforeTrip.length === 0,
+  `[singapore] 不是行程中的日子，当天烟霾行一条都不该显示（实得 ${JSON.stringify(beforeTrip)}）`);
+
+// 5b. 今天是 9/25 且空气中等（全岛最高 90）→ 只有 D3 露出，报数字、说照常、不摊开替代方案
+const { dayHaze: okDay } = await load(r => r.fulfill({ json: FULL }), D3,
+  r => r.fulfill({ json: PSI_MODERATE }));
+check(okDay.length === 1 && okDay[0].date === '2026-09-25',
+  `[singapore] 只有今天那张卡该显示烟霾行（实得 ${JSON.stringify(okDay.map(d => d.date))}）`);
+check(/90/.test(okDay[0]?.now || ''),
+  `[singapore] 当天烟霾行要写出实时数字 90（实得：${okDay[0]?.now}）`);
+check(/照常|unchanged/.test(okDay[0]?.now || ''),
+  `[singapore] PSI 100 以内要明说行程照常（实得：${okDay[0]?.now}）`);
+check(okDay[0]?.actHidden === true,
+  '[singapore] 空气没问题时不该把替代方案摊开（那就又变成一行废话了）');
+check(!/bad/.test(okDay[0]?.cls || ''), '[singapore] 空气没问题时不该标红');
+
+// 5c. 今天是 9/25 且不健康（全岛最高 131）→ 标红、摊开当天的替代方案
+const { dayHaze: badDay } = await load(r => r.fulfill({ json: FULL }), D3,
+  r => r.fulfill({ json: PSI_UNHEALTHY }));
+check(/131/.test(badDay[0]?.now || ''),
+  `[singapore] 超标那天要写出 131（实得：${badDay[0]?.now}）`);
+check(badDay[0]?.actHidden === false,
+  '[singapore] PSI 超过 100 要把当天的替代方案摊开——这才是要人改行程的那一刻');
+check(/bad/.test(badDay[0]?.cls || ''), '[singapore] PSI 超过 100 当天那行要标红');
+const actText = await page.evaluate(() =>
+  document.querySelector('.day[data-date="2026-09-25"] .hazeact')?.textContent || '');
+check(/VivoCity|海洋馆/.test(actText),
+  `[singapore] 9/25 摊开的替代方案要是这一天的（VivoCity／海洋馆），实得：${actText.slice(0, 60)}`);
+
+// 5d. API 挂掉但人在行程中 → 当天那行要讲明抓不到，并把替代方案摊开备用
+const { dayHaze: downDay } = await load(r => r.fulfill({ json: FULL }), D3,
+  r => r.fulfill({ status: 500, body: 'boom' }));
+check(downDay.length === 1 && /抓不到|Could not fetch/.test(downDay[0]?.now || ''),
+  `[singapore] 抓不到数据时当天要说明白（实得：${JSON.stringify(downDay)}）`);
+check(downDay[0]?.actHidden === false,
+  '[singapore] 抓不到数字时要把替代方案摊开备用（宁可多给资讯，也不要开天窗）');
 
 check(errors.length === 0, `[singapore] 不应有 JS 错误（实得：${errors.slice(0, 3).join(' | ')}）`);
 

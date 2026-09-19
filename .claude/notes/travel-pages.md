@@ -93,8 +93,15 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
 分房名单 + MBS 贵宾接送 + 全程包车，都是 `.note green`）→ 特别节目 → `#itinerary`
 `.day#day01`~`#day05`（`data-date="2026-09-23"`…）→ 午餐候选 → 老板晚餐备选(05)。
 高频操作：
-1. 每天卡片开头必须有 `.wxbox`（`.wx[data-wx="YYYY-MM-DD"]` + `.rainplan` cn/en），
-   **加一天就要配一组**，否则 `tools/check-weather.mjs` 会红。
+1. 每天卡片开头必须有 `.wxbox`（`.wx[data-wx="YYYY-MM-DD"]` + `.rainplan` cn/en
+   **＋ `.hazeplan` cn/en**），**加一天就要配一组**，否则 `tools/check-weather.mjs` 会红。
+   烟霾备案（`.hazeplan`）跟雨天备案不同：它**预设 hidden**，里面分两层——
+   `.hazenow`（JS 填的实时读数）与 `.hazeact`（写死的当天替代方案）。
+   只有「今天」那张卡（`.day.today`）在抓到 PSI 之后才露出来：≤100 只报数字说照常、
+   替代方案仍收着；>100 才标红并摊开 `.hazeact`；抓不到数字时也摊开备用。
+   这是 2026-09-19 用户两次要求的结果——先问「像雨天一样每天都有吗」，
+   再要求「别写死的，只在当天抓完数据写上当天的空气质量」。改这段必跑
+   `node tools/check-weather.mjs`（四个情境：非行程日／中等／不健康／API 挂掉）。
 2. D1/D2–D4 用 `.stop` 卡；**D5 用时间线** `.tl > .ev`（`.ev.hot` 强调、`.ev.fin` 收尾），
    跟 japan-trip 同一套 CSS。
 3. 餐厅卡分两种：正文里的是**午餐**候选；05 区块是**老板晚餐备选**（用户 2026-08-19

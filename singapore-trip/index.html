@@ -179,6 +179,12 @@
   .wx { font-size: 12.5px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
   .wx.wet { color: var(--red); }
   .rainplan { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .hazeplan { font-size: 12px; color: #6b5216; margin-top: 4px; line-height: 1.5; }
+  .hazeplan[hidden] { display: none; }
+  .hazenow { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .hazeplan.bad .hazenow { color: var(--red); }
+  .hazeact { margin-top: 2px; }
+  .hazeact[hidden] { display: none; }
   .psibox { margin: 0 0 14px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
   .psi { font-size: 12.5px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
   .psi.warn { color: #9a6b00; }
@@ -457,7 +463,7 @@
 
 <div class="psibox">
 <div class="psi" id="psi"><span class="cn">🌫 空气质量载入中…</span><span class="en">🌫 Loading air quality…</span></div>
-<div class="psinote"><span class="cn">9–10 月是印尼烧芭的季节，新加坡可能有烟霾。上面是新加坡环境局的<strong>实时读数</strong>（每小时更新）：PSI 100 以内日常活动照常；<strong>超过 100（不健康）就把户外行程改成室内</strong>——Kiztopia、BOUNCE、SkyPark、Takashimaya 都在手册里。敏感体质与小孩建议带 N95（一般外科口罩挡不住 PM2.5）。<a href="https://www.haze.gov.sg/" target="_blank">官方烟霾网站</a></span><span class="en">Sep–Oct is the Indonesian burning season, so Singapore can get haze. Above is the <strong>live reading</strong> from Singapore's NEA (hourly): under PSI 100, carry on as normal; <strong>above 100 (Unhealthy), switch outdoor plans to indoor ones</strong> — Kiztopia, BOUNCE, SkyPark and Takashimaya are all in this handbook. Bring N95 masks for kids and anyone sensitive (surgical masks do not stop PM2.5). <a href="https://www.haze.gov.sg/" target="_blank">Official haze site</a></span></div>
+<div class="psinote"><span class="cn">9–10 月是印尼烧芭的季节，新加坡可能有烟霾。上面是新加坡环境局的<strong>实时读数</strong>（每小时更新）：PSI 100 以内日常活动照常；<strong>超过 100（不健康）就把户外行程改成室内</strong>——Kiztopia、BOUNCE、SkyPark、Takashimaya 都在手册里。敏感体质与小孩建议带 N95（一般外科口罩挡不住 PM2.5）。<strong>每天具体怎么改，看当天卡片上的「🌫 烟霾备案」。</strong><a href="https://www.haze.gov.sg/" target="_blank">官方烟霾网站</a></span><span class="en">Sep–Oct is the Indonesian burning season, so Singapore can get haze. Above is the <strong>live reading</strong> from Singapore's NEA (hourly): under PSI 100, carry on as normal; <strong>above 100 (Unhealthy), switch outdoor plans to indoor ones</strong> — Kiztopia, BOUNCE, SkyPark and Takashimaya are all in this handbook. Bring N95 masks for kids and anyone sensitive (surgical masks do not stop PM2.5). <strong>What to change on each day is on that day's card under &quot;🌫 Haze plan&quot;.</strong> <a href="https://www.haze.gov.sg/" target="_blank">Official haze site</a></span></div>
 </div>
 
 <!-- D01 -->
@@ -471,6 +477,7 @@
 <div class="wxbox">
 <div class="wx" data-wx="2026-09-23"></div>
 <div class="rainplan"><span class="cn">☔ 雨天备案：当晚只有落地→酒店，下雨无影响；贵宾通道全程室内。</span><span class="en">☔ Rain plan: Only the airport→hotel run tonight — rain changes nothing; the VIP channel is indoors throughout.</span></div>
+<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：当晚只有落地→贵宾通道→车→酒店，全程室内，PSI 再高也不影响。</span><span class="en">🌫 Haze plan: Tonight is landing → VIP channel → car → hotel, all indoors. Haze changes nothing.</span></div></div>
 </div>
 
 <div class="stop">
@@ -503,6 +510,7 @@
 <div class="wxbox">
 <div class="wx" data-wx="2026-09-24"></div>
 <div class="rainplan"><span class="cn">☔ 雨天备案：观音庙是半室外，雨大就先调头去 SuperPark／BOUNCE／SkyPark（全室内），Takashimaya 也在室内；傍晚滨海湾花园若下雨，改进花穹或云雾林（室内、要门票）。</span><span class="en">☔ Rain plan: The temple is semi-outdoor — if it pours, flip the order and do SuperPark / BOUNCE / SkyPark first (all indoors); Takashimaya is indoors too. If the evening at Gardens by the Bay is rained out, go into Flower Dome or Cloud Forest instead (indoors, ticketed).</span></div>
+<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：观音庙与傍晚的滨海湾花园是户外。<strong>PSI 超过 100</strong> 就把这两段换成 SuperPark／BOUNCE／SkyPark／Takashimaya（都在本手册里、全室内）；小孩与长辈戴 N95（一般外科口罩挡不住 PM2.5）。</span><span class="en">🌫 Haze plan: The temple and the evening at Gardens by the Bay are outdoors. <strong>Above PSI 100</strong>, swap them for SuperPark / BOUNCE / SkyPark / Takashimaya (all in this handbook, all indoors); N95 masks for the kids and older family members (surgical masks do not stop PM2.5).</span></div></div>
 </div>
 
 <div class="stop">
@@ -683,6 +691,7 @@
 <div class="wxbox">
 <div class="wx" data-wx="2026-09-25"></div>
 <div class="rainplan"><span class="cn">☔ 雨天备案：环球影城照常营业，只有户外过山车会暂停；雨衣比伞好用（排队时撑伞会被劝收）。真下大雨就先转 VivoCity 或 S.E.A. 海洋馆避雨。</span><span class="en">☔ Rain plan: Universal stays open; only the outdoor coasters pause. Ponchos beat umbrellas in queues. In a heavy downpour, duck into VivoCity or the S.E.A. Aquarium.</span></div>
+<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：环球影城几乎全户外、排队时间长，是这趟最受烟霾影响的一天。<strong>PSI 100–200</strong> 缩短排队、多进室内游乐设施与餐厅休息，戴 N95；<strong>超过 200</strong> 建议整天改室内——VivoCity 或 S.E.A. 海洋馆（同在圣淘沙，车程几分钟）。</span><span class="en">🌫 Haze plan: Universal is mostly outdoors with long queues — the day most exposed to haze. <strong>PSI 100–200</strong>: shorten queue time, use indoor rides and restaurants for breaks, wear N95. <strong>Above 200</strong>: move the day indoors — VivoCity or the S.E.A. Aquarium (both minutes away on Sentosa).</span></div></div>
 </div>
 
 <div class="stop">
@@ -771,6 +780,7 @@
 <div class="wxbox">
 <div class="wx" data-wx="2026-09-26"></div>
 <div class="rainplan"><span class="cn">☔ 雨天备案：Adventure HQ 本来就是室内，全天不受影响；晚上若要看牛车水中秋灯饰，雨天改到隔天或车上绕一圈就好。</span><span class="en">☔ Rain plan: Adventure HQ is indoors, so the day is rain-proof. If the Chinatown lantern stroll gets wet, push it a day or just do a slow drive-by.</span></div>
+<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：Adventure HQ 全程室内，白天不受影响；晚上牛车水灯饰是户外街景，<strong>PSI 超过 100</strong> 就改成坐车绕一圈看，不下车走。</span><span class="en">🌫 Haze plan: Adventure HQ is fully indoors, so the daytime is unaffected. The Chinatown lantern stroll is an outdoor street scene — <strong>above PSI 100</strong>, see it from the car instead of walking it.</span></div></div>
 </div>
 
 <div class="stop">
@@ -851,6 +861,7 @@
 <div class="wxbox">
 <div class="wx" data-wx="2026-09-27"></div>
 <div class="rainplan"><span class="cn">☔ 雨天备案：只有退房→机场，雨天车程多留 5–10 分钟即可。</span><span class="en">☔ Rain plan: Just checkout→airport; in rain allow an extra 5–10 minutes of driving time.</span></div>
+<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：只有退房→贵宾通道→登机，全程室内。</span><span class="en">🌫 Haze plan: Just checkout → VIP channel → boarding, all indoors.</span></div></div>
 </div>
 
 <div class="tl">
@@ -1176,11 +1187,43 @@ function lbNav(dir) {
              + (t ? ' · ' + t + ' 更新' : ''),
            '🌫 Air quality: ' + b.en + ' · Marina Bay area PSI <strong>' + mid + '</strong> · island max ' + max
              + (t ? ' · updated ' + t : ''));
+      today(b, max, t);
     })
     .catch(function () {
       fill('🌫 空气质量暂时抓不到（可能没网）——出发前后请看官方烟霾网站',
            '🌫 Air quality unavailable (offline?) — check the official haze site');
+      today(null);
     });
+
+  /* 只写「今天」那张卡：烟霾没有预报，写在别天等于瞎猜；预设隐藏，
+     抓到数据才露出来，所以平常不会有一行废话挂在每天的卡片上
+     （2026-09-19 用户：「别写死的，只在当天抓完数据写上当天的空气质量」）。
+     PSI ≤100 就只报数字、说照常；超过 100 才把当天的替代方案摊开。 */
+  function today(b, max, t) {
+    var day = document.querySelector('.day.today');
+    var plan = day && day.querySelector('.hazeplan');
+    if (!plan) return;                       // 不在行程日期内，什么都不做
+    var now = plan.querySelector('.hazenow');
+    var act = plan.querySelector('.hazeact');
+    if (!b) {
+      now.innerHTML = '<span class="cn">🌫 今天的空气质量抓不到（可能没网）——'
+        + '出门前看一眼官方烟霾网站 haze.gov.sg</span>'
+        + '<span class="en">🌫 Could not fetch today\'s air quality (offline?) — '
+        + 'check haze.gov.sg before heading out</span>';
+      act.hidden = false;                    // 拿不到数字时，把当天的替代方案摊开备用
+      plan.hidden = false;
+      return;
+    }
+    var bad = max > 100;
+    now.innerHTML =
+      '<span class="cn">🌫 今天空气' + b.cn + ' · 全岛最高 PSI ' + max
+        + (t ? '（' + t + ' 更新）' : '') + (bad ? ' · 建议改室内 ↓' : ' · 行程照常') + '</span>' +
+      '<span class="en">🌫 Air today: ' + b.en + ' · island max PSI ' + max
+        + (t ? ' (updated ' + t + ')' : '') + (bad ? ' · move indoors ↓' : ' · plans unchanged') + '</span>';
+    act.hidden = !bad;
+    if (bad) plan.classList.add('bad');
+    plan.hidden = false;
+  }
 })();
 
 /* 行程当天打开手册，直接跳到今天那一张卡片（不在行程日期内就不动）。 */
