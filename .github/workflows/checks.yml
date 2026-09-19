@@ -50,6 +50,7 @@ jobs:
       flights: ${{ steps.d.outputs.flights }}
       refreshphotos: ${{ steps.d.outputs.refreshphotos }}
       photofilter: ${{ steps.d.outputs.photofilter }}
+      shortlist: ${{ steps.d.outputs.shortlist }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -255,6 +256,15 @@ jobs:
           health-url: http://localhost:8899/singapore-trip/
       - run: node tools/check-weather.mjs
 
+  shortlist:
+    name: 候选清单页
+    needs: decide
+    if: needs.decide.outputs.shortlist == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/check-shortlist.py
+
   photofilter:
     name: 菜单照过滤
     needs: decide
@@ -352,7 +362,7 @@ jobs:
     # 这一串必须列满同一个文件里的每个 job：漏掉的那项红了总闸照样绿、分支保护会放行
     # （2026-08-17 发现 fund 与 news 从来没被列进来）。已由 check-workflows.py 的
     # check_gate 断言守着，加 job 忘了回头改这里会在 CI 上被挡下。
-    needs: [decide, html, secrets, pwa, swver, ainote, declog, notify, morningpos, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, news, prices, weather, flights, refreshphotos, photofilter]
+    needs: [decide, html, secrets, pwa, swver, ainote, declog, notify, morningpos, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, news, prices, weather, flights, refreshphotos, photofilter, shortlist]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——
