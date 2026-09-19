@@ -7932,14 +7932,13 @@ async function fetchBossPetty(opts){
 function renderBossPetty(){
   const el = document.getElementById('boss-petty');
   if(!el) return;
-  // ⚠️ 这张卡**不看当下选的是哪个账户**（2026-09-19 用户：「那张卡对我很重要，
-  // 我给他们钱时要转……怎么不见了，放回本来应该在的位置」）。
-  // 原本写成「只在 Boss 账户那一页显示」，结果他切到 Yang 账户时整张卡消失，
-  // 而「转钱给同事」是他每天要按的入口——藏起来等于功能没了。
-  // 数字固定跟着**投递箱那个账户**（老板账）算，跟当下选哪个账户无关，
-  // 所以底下一律用 bossAcc，不要用 curAcc()。
-  const acc = getAcc(getInboxAccountId());
-  if(!getCompanyToken()){ el.style.display = 'none'; return; }
+  // ⚠️ 这张卡**只在老板账那一页显示**（2026-09-19 用户两次明确：
+  // 「只显示在 boss 账户的那一页，不是让你全部户口都显示」）。
+  // 中间一度改成每个账户都显示，当天就被他退回来了——别再改。
+  // 他找不到这张卡时，答案是「切到 Boss 账户」，不是把它摊开到每一页。
+  const acc = curAcc();
+  const onBossAcc = !!acc && acc.id === getInboxAccountId();
+  if(!onBossAcc || !getCompanyToken()){ el.style.display = 'none'; return; }
   const rows = bossPettyState.data;
   if(!rows){
     // 拉不到就先不占位置；真出错（不是没网）才摆一句出来说明为什么
@@ -8008,10 +8007,7 @@ function renderBossPetty(){
  * 看起来像真的、其实少算一个人的数——那比不显示更糟。
  */
 function bossPettyHolderHtml(rows, acc){
-  // 还没在设置里选投递箱账户：算不出「你手上」，但要说清楚为什么、去哪里设，
-  // 不能默默少一段（少一段的话，看起来就跟「这功能坏了」一模一样）
-  if(!acc) return `<div class="led-sub" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-    还没选老板账那个账户，算不出你手上还剩多少——设置 → 同事投递箱，选一个账户</div>`;
+  if(!acc) return '';
   const who = bossPettyState.holder || 'Yang';
   const missing = rows.filter(r => r.status !== 'ok');
   if(missing.length){
