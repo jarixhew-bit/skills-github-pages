@@ -134,6 +134,10 @@ const structure = await page.evaluate(() =>
     wx: d.querySelector('.wx[data-wx]')?.dataset.wx || null,
     rain: !!d.querySelector('.rainplan .cn')?.textContent.trim(),
     rainEn: !!d.querySelector('.rainplan .en')?.textContent.trim(),
+    /* 烟霾备案跟雨天备案同一条规矩：加一天就要配一条，否则那天没人知道
+       PSI 高了该改去哪（2026-09-19 用户问「空气质量会显示在每天行程吗，像雨天一样」）*/
+    haze: !!d.querySelector('.hazeplan .cn')?.textContent.trim(),
+    hazeEn: !!d.querySelector('.hazeplan .en')?.textContent.trim(),
   })));
 check(structure.length === 5, `行程应有 5 天（实得 ${structure.length}）`);
 
@@ -153,6 +157,7 @@ check(psiSkeleton.haze, '空气质量说明要给官方烟霾网站的链接（�
 structure.forEach(d => {
   check(d.wx === d.date, `${d.date} 的天气条日期要跟当天一致（实得 ${d.wx}）`);
   check(d.rain && d.rainEn, `${d.date} 的雨天备案中英文都要有`);
+  check(d.haze && d.hazeEn, `${d.date} 的烟霾备案中英文都要有`);
 });
 
 /* ---- 2. 预报正常 ---- */

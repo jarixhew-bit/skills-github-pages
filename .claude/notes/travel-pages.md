@@ -93,8 +93,10 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
 分房名单 + MBS 贵宾接送 + 全程包车，都是 `.note green`）→ 特别节目 → `#itinerary`
 `.day#day01`~`#day05`（`data-date="2026-09-23"`…）→ 午餐候选 → 老板晚餐备选(05)。
 高频操作：
-1. 每天卡片开头必须有 `.wxbox`（`.wx[data-wx="YYYY-MM-DD"]` + `.rainplan` cn/en），
-   **加一天就要配一组**，否则 `tools/check-weather.mjs` 会红。
+1. 每天卡片开头必须有 `.wxbox`（`.wx[data-wx="YYYY-MM-DD"]` + `.rainplan` cn/en
+   **＋ `.hazeplan` cn/en**），**加一天就要配一组**，否则 `tools/check-weather.mjs` 会红。
+   烟霾备案是 2026-09-19 用户问「空气质量会显示在每天行程吗，像雨天一样」才补的：
+   PSI 只有实时值、没有预报，所以**数字**在顶上那条实时读数，**当天怎么改**写在各天卡片上。
 2. D1/D2–D4 用 `.stop` 卡；**D5 用时间线** `.tl > .ev`（`.ev.hot` 强调、`.ev.fin` 收尾），
    跟 japan-trip 同一套 CSS。
 3. 餐厅卡分两种：正文里的是**午餐**候选；05 区块是**老板晚餐备选**（用户 2026-08-19
