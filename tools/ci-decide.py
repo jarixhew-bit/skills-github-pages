@@ -59,6 +59,8 @@ RULES = {
     # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验
     "refreshphotos": ["tools/refresh-photos.py", "tools/check-refresh-photos.py",
                       "tools/fetch-photos.mjs", "tools/check-images.py"],
+    # 菜单照过滤：决定卡片上会不会出现菜单，只能在装了 OCR 的机器（CI）上验
+    "photofilter": ["tools/photo-filter.py", "tools/check-photo-filter.py"],
     "gamebot":   ["game-bot/**", "tools/check-gamebot.py",
                   "tools/check-gamebot-logic.mjs"],
 }
