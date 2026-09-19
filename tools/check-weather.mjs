@@ -344,8 +344,16 @@ async function loadPGT(handler, now, airHandler) {
     const cards = {};
     daily.querySelectorAll('.wxd[data-wx]').forEach(c => { cards[c.dataset.wx] = c.textContent; });
     const air = document.getElementById('air');
+    const plan = document.querySelector('.airplan');
     return {
       air: air ? { text: air.textContent, cls: air.className } : null,
+      /* 当天那块：行程之外应该整块隐藏，行程当天才写实时读数 */
+      plan: plan ? {
+        hidden: plan.hidden,
+        now: plan.querySelector('.airnow')?.textContent || '',
+        actHidden: plan.querySelector('.airact')?.hidden,
+        cls: plan.className,
+      } : null,
       noteText: note.textContent,
       dailyHidden: daily.hidden,
       cardDates: [...daily.querySelectorAll('.wxd[data-wx]')].map(c => c.dataset.wx),
@@ -441,6 +449,53 @@ const pgtAirDown = await loadPGT(r => r.fulfill({ json: PGT_FULL }), PGT_IN_WIND
 check(/抓不到|unavailable/i.test(pgtAirDown.air.text),
   `[penang] 空气质量 API 挂掉时要说明白（实得：${pgtAirDown.air.text}）`);
 check(!/载入中|Loading/.test(pgtAirDown.air.text), '[penang] API 挂掉时不该卡在「载入中」');
+
+/* ---- 6. 当天那块：只在行程期间、抓到读数之后才出现 ---- */
+const PGT_DAY = '2026-10-11T09:00:00+08:00';   // 行程第三天
+
+// 6a. 不在行程期间（出发前 4 天）→ 整块隐藏
+const notTrip = await loadPGT(r => r.fulfill({ json: PGT_FULL }), PGT_IN_WINDOW,
+  r => r.fulfill({ json: AIR_GOOD }));
+check(notTrip.plan?.hidden === true,
+  '[penang] 不在行程期间时，当天那块要整块隐藏（不占版面）');
+
+// 6b. 行程当天 + 空气良好（38）→ 露出、报数字、说照常、不摊开替代方案
+const dayGood = await loadPGT(r => r.fulfill({ json: PGT_FULL }), PGT_DAY,
+  r => r.fulfill({ json: AIR_GOOD }));
+check(dayGood.plan?.hidden === false, '[penang] 行程当天抓到读数后要露出来');
+check(/38/.test(dayGood.plan?.now || ''),
+  `[penang] 当天那行要写出实时数字 38（实得：${dayGood.plan?.now}）`);
+check(/照常|unchanged/.test(dayGood.plan?.now || ''),
+  `[penang] 空气好的时候要明说行程照常（实得：${dayGood.plan?.now}）`);
+check(dayGood.plan?.actHidden === true,
+  '[penang] 空气好的时候不该摊开「改去哪」（那就又变成一行废话了）');
+
+// 6c. 行程当天 + 敏感人群不健康（121，>100 但 ≤150）→ 摊开替代方案，但先不标红
+const daySens = await loadPGT(r => r.fulfill({ json: PGT_FULL }), PGT_DAY,
+  r => r.fulfill({ json: AIR_SENSITIVE }));
+check(daySens.plan?.actHidden === false,
+  '[penang] AQI 超过 100 就要摊开「改去哪」');
+check(!/bad/.test(daySens.plan?.cls || ''),
+  '[penang] 100–150 之间还不到整团改室内，别标红');
+
+// 6d. 行程当天 + 不健康（176 > 150）→ 标红
+const dayBad = await loadPGT(r => r.fulfill({ json: PGT_FULL }), PGT_DAY,
+  r => r.fulfill({ json: AIR_UNHEALTHY }));
+check(/bad/.test(dayBad.plan?.cls || ''),
+  '[penang] AQI 超过 150 当天那行要标红（整团改室内的线）');
+const pgtAct = await pgtPage.evaluate(() => document.querySelector('.airact')?.textContent || '');
+check(/Gurney|Queensbay|Tech Dome/.test(pgtAct),
+  `[penang] 摊开的替代方案要点名手册里的室内去处（实得：${pgtAct.slice(0, 50)}）`);
+check(/升旗山|Penang Hill/.test(pgtAct),
+  '[penang] 也要讲明哪些户外行程该往后挪');
+
+// 6e. 行程当天 + API 挂掉 → 说明抓不到，并把替代方案摊开备用
+const dayDown = await loadPGT(r => r.fulfill({ json: PGT_FULL }), PGT_DAY,
+  r => r.fulfill({ status: 500, body: 'boom' }));
+check(/抓不到|Could not fetch/.test(dayDown.plan?.now || ''),
+  `[penang] 抓不到数据时当天要说明白（实得：${dayDown.plan?.now}）`);
+check(dayDown.plan?.actHidden === false,
+  '[penang] 抓不到数字时要把替代方案摊开备用');
 
 check(pgtErrors.length === 0, `[penang] 不应有 JS 错误（实得：${pgtErrors.slice(0, 3).join(' | ')}）`);
 

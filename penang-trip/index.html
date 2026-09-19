@@ -224,6 +224,12 @@
   .air.bad { color: var(--coral); }
   .airnote { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.6; }
   .airnote a { color: inherit; }
+  .airplan { font-size: 12.5px; color: #6b5216; margin-top: 6px; line-height: 1.6; }
+  .airplan[hidden] { display: none; }
+  .airnow { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .airplan.bad .airnow { color: var(--coral); }
+  .airact { margin-top: 3px; }
+  .airact[hidden] { display: none; }
   .wxd {
     scroll-snap-align: start; flex: none; width: 84px; text-align: center;
     background: var(--card); border: 1px solid var(--line); border-radius: 14px;
@@ -982,7 +988,9 @@
 <div class="sec-head"><span class="no">04</span><h2><span class="cn">天气</span><span class="en">Weather</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 <div class="airbox">
 <div class="air" id="air"><span class="cn">🌫 空气质量载入中…</span><span class="en">🌫 Loading air quality…</span></div>
-<div class="airnote"><span class="cn">6–10 月是印尼与本地烧芭的季节，槟城可能有烟霾。上面是<strong>实时读数</strong>（open-meteo，每小时更新，美国 AQI 口径）：100 以内照常；<strong>超过 100 时老人小孩少排户外</strong>；<strong>超过 150 就整团改室内</strong>——Gurney Plaza、Queensbay Mall、Tech Dome、Neo Akedo、Pado Fantasyland 都在手册里，升旗山缆车与极乐寺那种户外行程往后挪。烟霾天建议戴 N95（一般外科口罩挡不住 PM2.5）。马来西亚官方用的是 API 指数，正式读数以环境局 <a href="https://apims.doe.gov.my/public_v2/api_table.html" target="_blank">APIMS</a> 为准。</span><span class="en">Jun–Oct is the burning season in Indonesia and locally, so Penang can get haze. Above is a <strong>live reading</strong> (open-meteo, hourly, US AQI scale): under 100, carry on; <strong>above 100, keep the kids and older family members off long outdoor stretches</strong>; <strong>above 150, move the whole group indoors</strong> — Gurney Plaza, Queensbay Mall, Tech Dome, Neo Akedo and Pado Fantasyland are all in this handbook, and outdoor plans like the Penang Hill funicular or Kek Lok Si can wait. Wear N95 masks on hazy days (surgical masks do not stop PM2.5). Malaysia&#39;s official measure is the API index — see the DOE&#39;s <a href="https://apims.doe.gov.my/public_v2/api_table.html" target="_blank">APIMS</a> for the official figure.</span></div>
+<div class="airplan" hidden><div class="airnow"></div>
+<div class="airact" hidden><span class="cn">今天改这样走：户外的<strong>升旗山缆车、极乐寺、The TOP 观景台</strong>往后挪，改去室内的 <strong>Gurney Plaza／Queensbay Mall／Sunway Carnival／Tech Dome／Neo Akedo／Pado Fantasyland</strong>（都在本手册里）。老人小孩戴 N95，一般外科口罩挡不住 PM2.5。</span><span class="en">What to change today: push back the outdoor items — <strong>Penang Hill funicular, Kek Lok Si, The TOP observation deck</strong> — and head indoors instead: <strong>Gurney Plaza / Queensbay Mall / Sunway Carnival / Tech Dome / Neo Akedo / Pado Fantasyland</strong> (all in this handbook). N95 masks for kids and older family members; surgical masks do not stop PM2.5.</span></div></div>
+<div class="airnote"><span class="cn">6–10 月是印尼与本地烧芭的季节，槟城可能有烟霾。上面是<strong>实时读数</strong>（open-meteo，每小时更新，美国 AQI 口径）：100 以内照常；<strong>超过 100 时老人小孩少排户外</strong>；<strong>超过 150 就整团改室内</strong>（行程当天会在这下面直接告诉你改去哪）。烟霾天建议戴 N95（一般外科口罩挡不住 PM2.5）。马来西亚官方用的是 API 指数，正式读数以环境局 <a href="https://apims.doe.gov.my/public_v2/api_table.html" target="_blank">APIMS</a> 为准。</span><span class="en">Jun–Oct is the burning season in Indonesia and locally, so Penang can get haze. Above is a <strong>live reading</strong> (open-meteo, hourly, US AQI scale): under 100, carry on; <strong>above 100, keep the kids and older family members off long outdoor stretches</strong>; <strong>above 150, move the whole group indoors</strong> (during the trip, the line below tells you exactly where). Wear N95 masks on hazy days (surgical masks do not stop PM2.5). Malaysia&#39;s official measure is the API index — see the DOE&#39;s <a href="https://apims.doe.gov.my/public_v2/api_table.html" target="_blank">APIMS</a> for the official figure.</span></div>
 </div>
 <div class="note amber" id="wxNote">
 <span class="cn">⚠ 天气载入中…</span>
@@ -1319,11 +1327,51 @@ document.addEventListener('keydown', function(e){
              + (pm !== null ? ' · PM2.5 ' + pm + ' µg/m³' : '') + (t ? ' · ' + t + ' 更新' : ''),
            '🌫 Air quality: ' + b.en + ' · George Town AQI <strong>' + aqi + '</strong>'
              + (pm !== null ? ' · PM2.5 ' + pm + ' µg/m³' : '') + (t ? ' · updated ' + t : ''));
+      today(b, aqi, pm, t);
     })
     .catch(function () {
       fill('🌫 空气质量暂时抓不到（可能没网）——请看官方 APIMS 网站',
            '🌫 Air quality unavailable (offline?) — check the official APIMS site');
+      today(null);
     });
+
+  /* 只在**行程当天**写一行「今天怎么走」。烟霾没有预报，写在别的日子等于瞎猜；
+     预设隐藏，所以行程之外这块完全不占版面（2026-09-19 用户：「别写死的，
+     只在当天抓完数据写上当天的空气质量」，新加坡那本先做，这里照搬）。
+     槟城这本没有逐日行程卡，所以落点是天气区块的实时读数底下。
+     AQI ≤100 只报数字说照常；超过 100 才把「改去哪」摊开。 */
+  function today(b, aqi, pm, t) {
+    var TRIP = ['2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13',
+                '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17'];
+    var n = new Date();
+    var iso = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0')
+            + '-' + String(n.getDate()).padStart(2, '0');
+    if (TRIP.indexOf(iso) < 0) return;          // 不在行程期间，什么都不做
+    var plan = document.querySelector('.airplan');
+    if (!plan) return;
+    var now = plan.querySelector('.airnow');
+    var act = plan.querySelector('.airact');
+    if (!b) {
+      now.innerHTML = '<span class="cn">🌫 今天的空气质量抓不到（可能没网）——'
+        + '出门前看一眼官方 APIMS</span>'
+        + '<span class="en">🌫 Could not fetch today\'s air quality (offline?) — '
+        + 'check APIMS before heading out</span>';
+      act.hidden = false;                        // 没数字时把替代方案摊开备用
+      plan.hidden = false;
+      return;
+    }
+    var bad = aqi > 100;
+    now.innerHTML =
+      '<span class="cn">🌫 今天空气' + b.cn + ' · 乔治市 AQI ' + aqi
+        + (pm !== null ? '（PM2.5 ' + pm + '）' : '') + (t ? ' · ' + t + ' 更新' : '')
+        + (bad ? ' · 建议改室内 ↓' : ' · 行程照常') + '</span>' +
+      '<span class="en">🌫 Air today: ' + b.en + ' · George Town AQI ' + aqi
+        + (pm !== null ? ' (PM2.5 ' + pm + ')' : '') + (t ? ' · updated ' + t : '')
+        + (bad ? ' · move indoors ↓' : ' · plans unchanged') + '</span>';
+    act.hidden = !bad;
+    if (aqi > 150) plan.classList.add('bad');    // 150 以上才标红，跟上面那条实时读数同一条线
+    plan.hidden = false;
+  }
 })();
 </script>
 </body>
