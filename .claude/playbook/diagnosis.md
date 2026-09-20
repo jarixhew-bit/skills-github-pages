@@ -67,7 +67,7 @@
   判別法：開 PR 後遲遲沒有檢查記錄，先查 `mergeable_state`，別懷疑 workflow 配置。(3) 已踩三次。
   重置後 stop hook 喊「有 N 個未推送的 commit」是**誤報**（遠端分支已被自動刪掉、追蹤引用懸空）：
   驗 `git branch -r --contains HEAD` 有 `origin/main` ＋ `git status --short` 為空，再
-  `git fetch origin --prune` ＋ `git push -u` 重建；**別用 `--force-with-lease`**（必回 `stale info`）。已踩兩次。
+  `git fetch origin --prune` ＋ `git push -u` 重建；**別用 `--force-with-lease`**（必回 `stale info`）。已踩三次。
   (4) **CI 綠了要當場合併，別「等下再回來」**：開完 PR 就地等幾分鐘、綠了立刻合併＋刪分支，再開始
   下一件。2026-08-13 開了 #400 就轉頭做下一件，等使用者反問「怎麼 Boss 還在」才發現 PR 躺著沒合。
 - [2026-07-13／2026-08-03／2026-08-12][雲端] 情境：想確認改動「真的上線了／真的提交進去了」，
