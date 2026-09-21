@@ -12,7 +12,7 @@
  * （`python3 tools/check-all.py` 会自动起 server 并带上 CHROMIUM_PATH。）
  */
 import {
-  URL, GOOD_TOKEN, ok, until, browser, forceZh, mountRoutes, clickHere, gotoTab,
+  URL, GOOD_TOKEN, ok, until, browser, forceZh, freezeClock, mountRoutes, clickHere, gotoTab,
   fakeTrips, fakeBills, fakeBillsMixed, fakeRestaurants, fakeMemosAdmin, fakeMemosBoss,
   fakeInventory, finish, API, FOUR_PAGE_PDF_B64,
 } from './lib/boss-check-kit.mjs';
@@ -1646,17 +1646,7 @@ function localAt(daysFromNow, hm, offset){
   const ctx = await browser.newContext();
   await forceZh(ctx);
   // 时间钉死，否则「几个月前」会随着跑自检的日子变。
-  await ctx.addInitScript(() => {
-    // 用正午定死：取 UTC 边缘的时刻（比如 +07:00 的凌晨 4 点）会让浏览器按自己的
-    // 时区算成前一天，「几个月前」就差一天——差的是测试的假设，不是被测的算法。
-    const FIXED = Date.parse('2026-08-29T12:00:00Z');
-    const _D = Date;
-    // eslint-disable-next-line no-global-assign
-    Date = class extends _D {
-      constructor(...a){ if(a.length === 0) super(FIXED); else super(...a); }
-      static now(){ return FIXED; }
-    };
-  });
+  await freezeClock(ctx, '2026-08-29');
   mountRoutes(ctx, { role: 'viewer', dental: { lastVisit: '2026-07-13', nextVisit: null, intervalMonths: 3, note: '' } });
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
@@ -1697,6 +1687,7 @@ function localAt(daysFromNow, hm, offset){
 {
   const ctx = await browser.newContext();
   await forceZh(ctx);
+  await freezeClock(ctx, '2026-08-29');   // 不钉的话 9/20 一过就变成「过去的预约」
   mountRoutes(ctx, { role: 'viewer',
     dental: { lastVisit: '2026-07-13', nextVisit: '2026-09-20', intervalMonths: 3, note: '补牙第二次' } });
   const page = await ctx.newPage();
@@ -1785,15 +1776,7 @@ function localAt(daysFromNow, hm, offset){
 {
   const ctx = await browser.newContext();
   await forceZh(ctx);
-  await ctx.addInitScript(() => {
-    const FIXED = Date.parse('2026-08-29T12:00:00Z');
-    const _D = Date;
-    // eslint-disable-next-line no-global-assign
-    Date = class extends _D {
-      constructor(...a){ if(a.length === 0) super(FIXED); else super(...a); }
-      static now(){ return FIXED; }
-    };
-  });
+  await freezeClock(ctx, '2026-08-29');
   // 三个月前的 5 月 1 日看的，到 8 月 1 日就该约了——今天已经过期近一个月
   mountRoutes(ctx, { role: 'viewer',
     dental: { lastVisit: '2026-05-01', nextVisit: null, intervalMonths: 3, note: '' } });

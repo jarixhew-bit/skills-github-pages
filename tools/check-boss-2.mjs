@@ -10,7 +10,7 @@
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/check-boss-2.mjs
  */
 import {
-  URL, GOOD_TOKEN, ok, until, browser, forceZh, mountRoutes, clickHere, gotoTab,
+  URL, GOOD_TOKEN, ok, until, browser, forceZh, freezeClock, mountRoutes, clickHere, gotoTab,
   fakeTrips, fakeBills, fakeBillsMixed, fakeRestaurants, fakeMemosAdmin, fakeMemosBoss,
   fakeInventory, finish,
 } from './lib/boss-check-kit.mjs';
@@ -171,15 +171,7 @@ import {
 {
   const ctx = await browser.newContext();
   await forceZh(ctx);
-  await ctx.addInitScript(() => {
-    const FIXED = Date.parse('2026-09-05T12:00:00Z');   // 让「过去/未来」有确定答案
-    const _D = Date;
-    // eslint-disable-next-line no-global-assign
-    Date = class extends _D {
-      constructor(...a){ if(a.length === 0) super(FIXED); else super(...a); }
-      static now(){ return FIXED; }
-    };
-  });
+  await freezeClock(ctx, '2026-09-05');   // 让「过去/未来」有确定答案
   // 刻意打乱：存进去的顺序跟日期顺序完全不一样
   const messy = [
     { id:'a', title:{zh:'十月槟城',en:''}, start:'2026-10-09', end:'2026-10-17', location:{zh:'',en:''}, items:[] },

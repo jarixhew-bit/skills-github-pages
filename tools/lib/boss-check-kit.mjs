@@ -146,6 +146,23 @@ export function forceZh(ctx){
   return ctx.addInitScript(() => { try{ localStorage.setItem('siteLangUser', 'cn'); }catch(e){} });
 }
 
+// 把页面里的「今天」钉死在某一刻。**凡是断言里出现日期、天数、或「过去/未来」的场景
+// 都必须钉**，否则自检会随着跑的日子腐坏：2026-09-21 就是这样红的——「已经约好下次」
+// 那组把预约日写成 2026-09-20，日子一过就变成过去的预约，App 正确地判成「还没约」，
+// 红的是自检自己不是 App。
+// 传 UTC 正午：取 UTC 边缘的时刻（比如 +07:00 的凌晨 4 点）会让浏览器按自己的时区
+// 算成前一天，「几个月前」就差一天——差的是测试的假设，不是被测的算法。
+export function freezeClock(ctx, isoDay){
+  return ctx.addInitScript(fixed => {
+    const _D = Date;
+    // eslint-disable-next-line no-global-assign
+    Date = class extends _D {
+      constructor(...a){ if(a.length === 0) super(fixed); else super(...a); }
+      static now(){ return fixed; }
+    };
+  }, Date.parse(`${isoDay}T12:00:00Z`));
+}
+
 // 真的 4 页 PDF（pypdf 生成的空白页）。**不能用假字符串**：假的 PDF 会让 PDF.js
 // 解析失败、直接走错误分支，等于账单预览这条路径从来没被测过——2026-08-27
 // 「账单只显示一页、滑不动」就是这样漏出去的。
