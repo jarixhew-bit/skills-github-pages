@@ -2273,6 +2273,52 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【32】同事出国把这本账切成新币：手上现金那张卡看的是新币钱包 ----------
+// 2026-09-23 起老板账的备用金每种币各一个钱包。同事在新加坡把这本账切成 SGD，
+// 那张卡要显示老板给他的**新币**还剩多少——拿美金那格来显示，他会以为新币没到。
+console.log('\n【32】同事切成新币，手上现金看的是新币那个钱包');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossKey', 'pass-1234');
+    localStorage.setItem('staffExpense_bossCur', 'SGD');
+  });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  h.bossApi.body = { status:'ok', scope:'staff', currency:'SGD',
+    people:[{ person:'Seryi', status:'ok', currency:'SGD', balance:320, opened:0, spent:180 }] };
+  h.bossPosted.length = 0;
+  await page.evaluate(() => fetchBossPettyMine({ force:true }).then(() => renderBossCash()));
+  await page.waitForTimeout(600);
+  const req = h.bossPosted.find(r => r.action === 'petty');
+  ok('★同事切成新币时，要的是新币钱包', req && req.currency === 'SGD', req);
+  await page.click('#nav-boss');
+  await page.waitForTimeout(600);
+  let card = await page.locator('#staff-boss-cash').innerText();
+  ok('卡上是新币的数（S$320）', /S\$\s*320/.test(card), card);
+
+  // 对照组：切回美金要马上重拉美金钱包——不然卡上还挂着新币的 320，
+  // 而且把「currency」整个拿掉（永远不送）上面那条也会红，这条守的是「会跟着换」
+  h.bossApi.body = { status:'ok', scope:'staff', currency:'USD',
+    people:[{ person:'Seryi', status:'ok', currency:'USD', balance:75, opened:100, spent:25 }] };
+  h.bossPosted.length = 0;
+  // harness 已经统一接管了弹窗（page.on('dialog')），这里再挂一个会撞车——
+  // 直接把 prompt 换成回 'USD'，走的还是 staffSetBossCur 那一整条真路径
+  await page.evaluate(() => { window.prompt = () => 'USD'; staffSetBossCur(); });
+  await page.waitForTimeout(900);
+  const req2 = h.bossPosted.find(r => r.action === 'petty');
+  ok('★对照组：切回美金马上重拉，而且要的是美金钱包', req2 && req2.currency === 'USD', req2);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('★对照组：卡上换成美金的数（75），不再挂着新币的 320',
+     card.includes('75') && !card.includes('320'), card);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await h.ctx.close();
+}
+
 // ---------- 【31】老板手上有多少钱、盘点差多少，同事一个字都看不到 ----------
 // 2026-09-19 加了「盘点」之后补的。同事版是从主 App 生成的，「同事手上」那张卡
 // （含「你（Yang）手上」和盘点差额）的代码会跟着进同事版的档案里——那是老板私人的

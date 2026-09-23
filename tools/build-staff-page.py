@@ -1152,6 +1152,11 @@ function staffSetBossCur(){
   updateHeader();
   renderTxList();
   staffSyncMode();
+  // 换了币种＝换了一个钱包：手上现金那张卡要马上换成那种币的数，
+  // 不然切成新币之后卡上还挂着美金余额，他会以为老板的新币没到
+  bossPettyServer.row = null;
+  renderBossCash();
+  fetchBossPettyMine({ force: true }).then(() => renderBossCash());
   toast(tt('这本账改用 ' + code, 'This ledger now uses ' + code));
 }
 
@@ -1205,11 +1210,16 @@ function bossCashReset(){
  * 这不是「两套算法并存」，是「权威的那份拿不到时的退路」：本机那套只用收到的钱
  * 减掉自己记的账，算出来的东西同事看得懂，也不会比空白更糟。
  */
-const bossPettyServer = { row: null, fetchedAt: 0, loading: false };
+const bossPettyServer = { row: null, currency: null, fetchedAt: 0, loading: false };
 
 async function fetchBossPettyMine(opts){
   const force = !!(opts && opts.force);
-  if(!force && bossPettyServer.row && Date.now() - bossPettyServer.fetchedAt < 60000) return bossPettyServer.row;
+  // 看的是**这本账那种币**的钱包（2026-09-23 起每种币各算各的）：
+  // 出国时同事把这本账切成新币，看到的就是老板给他的新币还剩多少，不会拿美金那格来显示。
+  // 换了币种就得重拉，缓存是上一种币的
+  const cur = staffBossCur();
+  if(!force && bossPettyServer.row && bossPettyServer.currency === cur
+     && Date.now() - bossPettyServer.fetchedAt < 60000) return bossPettyServer.row;
   const token = getCompanyToken();
   if(!token) return null;
   if(bossPettyServer.loading) return bossPettyServer.row;
@@ -1217,11 +1227,12 @@ async function fetchBossPettyMine(opts){
   try{
     const res = await fetch(BOSS_EXPENSE_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ token, action:'petty' }),
+      body: JSON.stringify({ token, action:'petty', currency: cur }),
     });
     const body = await res.json().catch(()=>({}));
     const row = (res.ok && body.status === 'ok' && (body.people || [])[0]) || null;
     bossPettyServer.row = (row && row.status === 'ok') ? row : null;
+    bossPettyServer.currency = cur;
     bossPettyServer.fetchedAt = Date.now();
   }catch(e){ /* 没网就留着上一次的，退回本机算法 */ }
   bossPettyServer.loading = false;
