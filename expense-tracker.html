@@ -1301,7 +1301,7 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
     </div>
     <div class="petty-hint" id="boss-count-expected"></div>
     <div class="form-group">
-      <label class="form-label">你实际数到多少（美元）</label>
+      <label class="form-label" id="boss-count-amount-label">你实际数到多少</label>
       <input class="form-input" id="boss-count-amount" type="text" inputmode="decimal"
              autocomplete="off" placeholder="0.00" oninput="bossCountEcho()">
       <div id="boss-count-echo" style="display:none;font-size:13px;margin-top:8px;
@@ -1335,7 +1335,7 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
     </div>
     <div class="petty-hint" id="boss-petty-hint"></div>
     <div class="form-group">
-      <label class="form-label">金额（美元）</label>
+      <label class="form-label" id="boss-petty-amount-label">金额</label>
       <input class="form-input" id="boss-petty-amount" type="text" inputmode="decimal"
              autocomplete="off" placeholder="0.00" oninput="bossPettyEcho()">
       <div id="boss-petty-echo" style="display:none;font-size:12px;color:var(--p);margin-top:6px"></div>
@@ -5834,7 +5834,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-09-19';
+const APP_BUILD = '2026-09-23';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -7521,7 +7521,7 @@ function renderCompanySettings(){
 // 老问题会从这条新路径重新长出来（见 diagnosis.md 2026-08-03 那条）。
 const BOSS_LEDGER_URL = 'https://butler-bot.jarixhew.workers.dev/boss-expense';
 const INBOX_ACCOUNT_STORAGE = 'expenseTracker_inboxAccount';
-const inboxState = { last: 0, added: 0, error: null, running: false };
+const inboxState = { last: 0, added: 0, noAcc: {}, error: null, running: false };
 
 /**
  * 收件收进哪个账户。默认 Boss（USD 那个），可以在设置页改。
@@ -7591,6 +7591,7 @@ async function fetchInbox(opts){
   const months = [ym(now), ym(prev)];
 
   let added = 0, changed = 0, removed = 0;
+  const landed = {}, noAcc = {};
   try{
     for(const month of months){
       const res = await fetch(BOSS_LEDGER_URL, {
@@ -7603,6 +7604,8 @@ async function fetchInbox(opts){
       }
       const r = await syncBossLedgerMonth(month, body.records || [], accId);
       added += r.added; changed += r.changed; removed += r.removed;
+      for(const [k, v] of Object.entries(r.landed || {})) landed[k] = (landed[k] || 0) + v;
+      for(const [k, v] of Object.entries(r.noAcc || {})) noAcc[k] = (noAcc[k] || 0) + v;
     }
     inboxState.error = null;
   }catch(e){
@@ -7616,12 +7619,20 @@ async function fetchInbox(opts){
   if(added || changed || removed) saveData();
   inboxState.added = added;
   inboxState.removed = removed;
+  // 没地方放的那几笔要一直挂在设置页，直到他开了那种币的账户——
+  // 只 toast 一次的话，一闪而过就没人记得还有账没收
+  inboxState.noAcc = noAcc;
   inboxState.last = Date.now();
   inboxState.running = false;
 
   if(added || removed || changed){
     const parts = [];
-    if(added) parts.push(`收到同事记的 ${added} 笔\n已进「${(getAcc(accId)||{}).name}」`);
+    if(added){
+      // 按币种分流之后可能进了好几本，每一本都讲出来
+      const where = Object.entries(landed)
+        .map(([id, n]) => `「${(getAcc(id)||{}).name || '?'}」${n} 笔`).join('、');
+      parts.push(`收到同事记的 ${added} 笔\n已进${where}`);
+    }
     if(changed) parts.push(`${changed} 笔有改动，已更新`);
     // 删掉的一定要说出来：账目自己少了一笔而没人告诉他，比不删还糟
     if(removed) parts.push(`同事删掉了 ${removed} 笔，这边也一起删了`);
@@ -7630,6 +7641,11 @@ async function fetchInbox(opts){
     if(state.currentTab === 'transactions') renderTxList();
   } else if(loud){
     toast('没有新的账');
+  }
+  const missing = Object.entries(noAcc);
+  if(missing.length){
+    toast(missing.map(([c, n]) => `有 ${n} 笔是 ${c}，但你没有 ${c} 的账户——先没收，`
+      + `开一个 ${c} 账户就会自动收进去`).join('\n'));
   }
   renderInboxSettings();
 }
@@ -7731,8 +7747,38 @@ function bossRecTxId(recId){ return 'bl_' + String(recId).slice(0, 40); }
  * 只动带 `bossRec` 标记的那些记录——老板自己手记的账、以前投递箱收来的旧账
  * （id 是 ix_ 开头）都不在这条路的管辖范围内，绝不能因为「账本里没有」就被删掉。
  */
+/**
+ * 同事记的一笔该收进哪个账户——**按币种分流**（2026-09-23）。
+ *
+ * 为什么：出国时不一定全员都去。Kuang 在新加坡记新币、Seryi 留在金边记美金，
+ * 原本全塞进投递箱那一个账户，数字照抄不看币种——S$50 进了美金账户就变成 US$50，
+ * 两种钱混在同一本里，事后要一笔一笔翻才分得开。
+ *
+ * 挑法（从严到松）：
+ *   1. 投递箱账户正好是这种币 → 就它
+ *   2. 已经收过同事账、而且是这种币的账户 → 那个（出国回来把投递箱切回 Boss 之后，
+ *      晚到的新币账照样进新加坡那本，不会流进美金账户）
+ *   3. 任何一个这种币的个人账户（不挑公司账户：那是另一本账）→ 最新开的那个
+ *   4. 都没有 → **不收**，回 null。宁可先不收、说清楚缺什么账户，
+ *      也不把新币的数字当美金塞进去——塞错了是要翻账才查得出来的错。
+ */
+function bossAccountForCurrency(cur, inboxId){
+  const want = String(cur || 'USD').toUpperCase();
+  const inbox = getAcc(inboxId);
+  if(inbox && (inbox.currency || 'USD') === want) return inbox.id;
+  const same = data.accounts.filter(a => (a.currency || 'USD') === want && !a.isCompany);
+  if(!same.length) return null;
+  const used = same.filter(a => data.transactions.some(t => t.accountId === a.id && t.bossRec));
+  const pool = used.length ? used : same;
+  pool.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  return pool[0].id;
+}
+
 async function syncBossLedgerMonth(month, records, accId){
   let added = 0, changed = 0, removed = 0;
+  // 这一轮进了哪些账户、哪种币找不到账户（toast 和设置页要讲清楚）
+  const landed = {};     // accountId → 笔数
+  const noAcc = {};      // 币种 → 笔数（没有这种币的账户，先不收）
   const alive = new Set(records.map(r => bossRecTxId(r.id)));
 
   // 先删：账本里没有了的（有人删了那笔）
@@ -7766,6 +7812,17 @@ async function syncBossLedgerMonth(month, records, accId){
       fromStaff: { by: String(rec.reporter || '同事').slice(0, 40), at: Date.now() },
     };
     const i = data.transactions.findIndex(t => t.id === id);
+    // 新的那笔按币种挑账户（见 bossAccountForCurrency）。已经收过的不动：
+    // 收进哪个账户只在第一次收的时候决定（理由见下面 was.accountId 那段）
+    if(i < 0){
+      const target = bossAccountForCurrency(rec.currency, accId);
+      if(!target){
+        const c = String(rec.currency || 'USD').toUpperCase();
+        noAcc[c] = (noAcc[c] || 0) + 1;
+        continue;
+      }
+      tx.accountId = target;
+    }
     if(i >= 0){
       const was = data.transactions[i];
       // 老板自己标过「已付清」的不能被同步冲掉——那是他这边的状态，账本不知道
@@ -7784,6 +7841,7 @@ async function syncBossLedgerMonth(month, records, accId){
     }else{
       data.transactions.push(tx);
       added++;
+      landed[tx.accountId] = (landed[tx.accountId] || 0) + 1;
     }
   }
 
@@ -7802,7 +7860,7 @@ async function syncBossLedgerMonth(month, records, accId){
       uploadAttachmentToCloud(attId, blob, id);   // 不 await：备份慢不该拖住收件
     }catch(e){ console.warn('收据照片取不回来（账已经收了）', e); }
   }
-  return { added, changed, removed };
+  return { added, changed, removed, landed, noAcc };
 }
 
 /**
@@ -7915,12 +7973,36 @@ function fromStaffFromForm(prev){
  * 数据住 butler（data/boss-petty.json），跟公司备用金**分开两份**：
  * 公司那笔现金和老板给的现金是两笔钱，混在一起两边余额都会错。
  */
-const bossPettyState = { data: null, last: null, holder: 'Yang', loading: false, error: null, fetchedAt: 0 };
+/**
+ * 老板账这一整套（同事手上、转钱、盘点）用哪种币——**跟投递箱那个账户走**。
+ *
+ * 2026-09-23 用户开了一个新币的「Singapore trip」账户、把投递箱切过去之后，
+ * 转钱给同事那里还是显示 US$。原本这一段全写死美金；服务端那边更糟，
+ * 不分币种全加在一起（Kuang 花 S$50 被当成 US$50 从美金里扣）。
+ * 现在每种币一个钱包：在新币那一页看的、转的、盘的都是新币；切回 Boss 账户就是美金。
+ */
+function bossCur(){
+  const acc = getAcc(getInboxAccountId());
+  return (acc && acc.currency) || 'USD';
+}
+
+/** 输入框上方那行标签：「金额（SGD · S$）」。填钱之前一定看得到是哪种币，
+ *  美金跟新币只差三成，多打少打一眼看不出来——标签写清楚比事后对账便宜。 */
+function bossCurLabel(prefix){
+  const c = bossCur();
+  return `${prefix}（${c} · ${symOf(c).trim()}）`;
+}
+
+const bossPettyState = { data: null, last: null, holder: 'Yang', currency: null, loading: false, error: null, fetchedAt: 0 };
 const bossPettyForm = { person: null, type: 'topup' };
 
 async function fetchBossPetty(opts){
   const force = !!(opts && opts.force);
-  if(!force && bossPettyState.data && Date.now() - bossPettyState.fetchedAt < 60000)
+  const cur = bossCur();
+  // 换了币种（投递箱切到另一种币的账户）就得重拉——拿美金那份缓存当新币显示，
+  // 数字看起来像真的，其实是另一个钱包的
+  if(!force && bossPettyState.data && bossPettyState.currency === cur
+     && Date.now() - bossPettyState.fetchedAt < 60000)
     return bossPettyState.data;
   const token = getCompanyToken();
   if(!token){ bossPettyState.error = 'no-token'; return null; }
@@ -7928,12 +8010,13 @@ async function fetchBossPetty(opts){
   try{
     const res = await fetch(BOSS_LEDGER_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ token, action:'petty' })
+      body: JSON.stringify({ token, action:'petty', currency: cur })
     });
     const body = await res.json().catch(()=>({}));
     if(res.ok && body.status === 'ok'){
       bossPettyState.data = body.people || [];
       bossPettyState.last = body.lastEvent || null;
+      bossPettyState.currency = cur;
       // 管钱的是谁由服务端说了算（换人管钱＝改 butler 的 OWNER_REPORTER_NAME），
       // 页面不写死。拉不到就沿用上一次的，别退回预设把名字换掉
       if(body.holder) bossPettyState.holder = String(body.holder);
@@ -7981,21 +8064,21 @@ function renderBossPetty(){
   el.style.display = 'block';
   el.innerHTML = `
     <div class="led-card-top">
-      <div class="led-card-title">💵 同事手上（你的钱）</div>
+      <div class="led-card-title">💵 同事手上（你的钱 · ${bossCur()}）</div>
       <div class="led-card-link">转钱 / 归还 →</div>
     </div>
     ${rows.length ? rows.map(r => `<div class="petty-row">
       <div><div class="petty-name">${ledEsc(r.person)}</div>
         <div class="petty-meta">${r.status === 'ok'
-          ? `起点 ${fmt(r.opened, 'USD')} · 之后花了 ${fmt(r.spent, 'USD')}`
+          ? `起点 ${fmt(r.opened, (r.currency || bossCur()))} · 之后花了 ${fmt(r.spent, (r.currency || bossCur()))}`
           : '还没设起点'}</div></div>
       ${r.status === 'ok'
-        ? `<div class="petty-bal ${r.balance < 0 ? 'low' : ''}">${fmt(r.balance, 'USD')}</div>`
+        ? `<div class="petty-bal ${r.balance < 0 ? 'low' : ''}">${fmt(r.balance, (r.currency || bossCur()))}</div>`
         : `<div class="petty-bal unset">还没设起点 ›</div>`}
     </div>`).join('') : '<div class="led-sub">同事手上现在没有钱</div>'}
     ${set.some(r => r.balance < 0)
       ? `<div class="led-sub led-warn">⚠️ ${set.filter(r => r.balance < 0).map(r =>
-          `${ledEsc(r.person)} 自己先垫了 ${fmt(-r.balance, 'USD')}`).join('、')}——转钱给他就自动抵掉</div>`
+          `${ledEsc(r.person)} 自己先垫了 ${fmt(-r.balance, (r.currency || bossCur()))}`).join('、')}——转钱给他就自动抵掉</div>`
       : ''}
     ${bossPettyHolderHtml(rows, acc)}
     ${bossCountLineHtml()}
@@ -8048,11 +8131,13 @@ function renderBossPetty(){
 // 「加一笔调整把差额抹掉」开始的，过两天没人记得那个数代表什么。
 // 要修就去把漏记的那几笔补上，补完再盘一次，差额自然归零。
 
-const bossCountState = { last: null, counts: [], loading: false, error: null, fetchedAt: 0 };
+const bossCountState = { last: null, counts: [], currency: null, loading: false, error: null, fetchedAt: 0 };
 
 async function fetchBossCount(opts){
   const force = !!(opts && opts.force);
-  if(!force && bossCountState.fetchedAt && Date.now() - bossCountState.fetchedAt < 60000)
+  const cur = bossCur();
+  if(!force && bossCountState.fetchedAt && bossCountState.currency === cur
+     && Date.now() - bossCountState.fetchedAt < 60000)
     return bossCountState.last;
   const token = getCompanyToken();
   if(!token){ bossCountState.error = 'no-token'; return null; }
@@ -8060,12 +8145,13 @@ async function fetchBossCount(opts){
   try{
     const res = await fetch(BOSS_LEDGER_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ token, action:'count' })
+      body: JSON.stringify({ token, action:'count', currency: cur })
     });
     const body = await res.json().catch(()=>({}));
     if(res.ok && body.status === 'ok'){
       bossCountState.last = body.last || null;
       bossCountState.counts = body.counts || [];
+      bossCountState.currency = cur;
       bossCountState.fetchedAt = Date.now(); bossCountState.error = null;
     }else{
       bossCountState.error = body.message || `拉不到（${res.status}）`;
@@ -8087,20 +8173,22 @@ function bossCountLineHtml(){
   const d = c.diffUsd;
   if(d === null || d === undefined){
     return `<div class="led-sub" style="margin-top:8px">上次盘点 ${ledEsc(c.date)}：
-      数到 ${fmt(c.countedUsd, 'USD')}（当时没记账面，对不了）</div>`;
+      数到 ${fmt(c.countedUsd, (c.currency || bossCur()))}（当时没记账面，对不了）</div>`;
   }
   if(Math.abs(d) < 0.005){
     return `<div class="led-sub" style="margin-top:8px;color:var(--inc)">
-      ✅ ${ledEsc(c.date)} 盘过，对得上（${fmt(c.countedUsd, 'USD')}）</div>`;
+      ✅ ${ledEsc(c.date)} 盘过，对得上（${fmt(c.countedUsd, (c.currency || bossCur()))}）</div>`;
   }
   return `<div class="led-sub led-warn" style="margin-top:8px">⚠️ ${ledEsc(c.date)} 盘点差
-    ${fmt(d, 'USD')}（数到 ${fmt(c.countedUsd, 'USD')}，账面 ${fmt(c.expectedUsd, 'USD')}）——
+    ${fmt(d, (c.currency || bossCur()))}（数到 ${fmt(c.countedUsd, (c.currency || bossCur()))}，账面 ${fmt(c.expectedUsd, (c.currency || bossCur()))}）——
     ${d < 0 ? '手上比账面少，多半有开销还没记' : '手上比账面多，多半有收入还没记'}。
     补上那几笔再盘一次</div>`;
 }
 
 async function openBossCount(){
   showModal('modal-boss-count');
+  const lbl = document.getElementById('boss-count-amount-label');
+  if(lbl) lbl.textContent = bossCurLabel('你实际数到多少');
   const el = document.getElementById('boss-count-amount');
   if(el) el.value = '';
   showBossCountNote('');
@@ -8117,7 +8205,7 @@ function renderBossCountExpected(){
   const { mine } = bossExpectedOnHand();
   el.textContent = mine === null
     ? '账面算不出来（还有同事没设起点），这次只会记下你数到多少，不算差额。'
-    : `账面说你手上该有 ${fmt(mine, 'USD')}。数一数实际有多少，填在下面。`;
+    : `账面说你手上该有 ${fmt(mine, bossCur())}。数一数实际有多少，填在下面。`;
 }
 
 /** 边打边算差额——按下去才知道差多少的话，他会先自己心算一遍，那就白做了。 */
@@ -8132,7 +8220,7 @@ function bossCountEcho(){
   el.style.display = 'block';
   el.innerHTML = Math.abs(diff) < 0.005
     ? `<span style="color:var(--inc)">✅ 对得上</span>`
-    : `<span style="color:var(--exp)">差 ${fmt(diff, 'USD')}</span>
+    : `<span style="color:var(--exp)">差 ${fmt(diff, bossCur())}</span>
        <span style="color:var(--sub)">（${diff < 0
          ? '手上比账面少，多半有开销还没记' : '手上比账面多，多半有收入还没记'}）</span>`;
 }
@@ -8150,10 +8238,10 @@ function renderBossCountHistory(){
   el.innerHTML = `<div class="setting-title" style="margin-bottom:6px">以前盘过的</div>`
     + list.slice(0, 8).map(c => `<div class="petty-row" style="padding:6px 0">
         <div><div class="petty-meta">${ledEsc(c.date)}</div></div>
-        <div class="petty-meta">数到 ${fmt(c.countedUsd, 'USD')}${
+        <div class="petty-meta">数到 ${fmt(c.countedUsd, (c.currency || bossCur()))}${
           c.diffUsd === null || c.diffUsd === undefined ? ''
           : Math.abs(c.diffUsd) < 0.005 ? '　·　对得上'
-          : `　·　差 ${fmt(c.diffUsd, 'USD')}`}</div>
+          : `　·　差 ${fmt(c.diffUsd, (c.currency || bossCur()))}`}</div>
       </div>`).join('');
 }
 
@@ -8166,14 +8254,14 @@ async function bossCountSubmit(){
   if(num < 0){ showBossCountNote('手上的现金不会是负数'); return; }
   const { mine } = bossExpectedOnHand();
   const diff = mine === null ? null : Math.round((num - mine) * 100) / 100;
-  if(!confirm(`记下这次盘点？\n数到 ${fmt(num, 'USD')}${
-    diff === null ? '' : `，账面 ${fmt(mine, 'USD')}，差 ${fmt(diff, 'USD')}`}`)) return;
+  if(!confirm(`记下这次盘点？\n数到 ${fmt(num, bossCur())}${
+    diff === null ? '' : `，账面 ${fmt(mine, bossCur())}，差 ${fmt(diff, bossCur())}`}`)) return;
   showBossCountNote('正在保存…');
   try{
     const res = await fetch(BOSS_LEDGER_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ token: getCompanyToken(), action:'countAdd',
-                             counted: num, expected: mine })
+                             counted: num, expected: mine, currency: bossCur() })
     });
     const body = await res.json().catch(()=>({}));
     if(!res.ok || body.status !== 'ok'){
@@ -8185,7 +8273,7 @@ async function bossCountSubmit(){
     bossCountState.fetchedAt = Date.now();
     closeModal('modal-boss-count');
     toast(diff === null ? '已记下这次盘点'
-      : Math.abs(diff) < 0.005 ? '✅ 对得上' : `已记下：差 ${fmt(diff, 'USD')}`);
+      : Math.abs(diff) < 0.005 ? '✅ 对得上' : `已记下：差 ${fmt(diff, bossCur())}`);
     renderBossPetty();
   }catch(e){
     showBossCountNote('现在连不上，等有网再存一次（这一笔没有记进去）');
@@ -8265,11 +8353,11 @@ function renderBossPettyBody(){
   bossPettyRows = rows;
   body.innerHTML = rows.map((r, i) => {
     const bal = r.status === 'ok'
-      ? `<div class="petty-bal ${r.balance < 0 ? 'low' : ''}">${fmt(r.balance, 'USD')}</div>`
+      ? `<div class="petty-bal ${r.balance < 0 ? 'low' : ''}">${fmt(r.balance, (r.currency || bossCur()))}</div>`
       : `<div class="petty-bal unset">还没设起点 ›</div>`;
     const meta = r.status === 'ok'
-      ? `<div class="petty-meta">起点 ${fmt(r.opened, 'USD')} · 之后花了 ${fmt(r.spent, 'USD')}${
-          r.balance < 0 ? ` · 他垫了 ${fmt(-r.balance, 'USD')}` : ''}</div>`
+      ? `<div class="petty-meta">起点 ${fmt(r.opened, (r.currency || bossCur()))} · 之后花了 ${fmt(r.spent, (r.currency || bossCur()))}${
+          r.balance < 0 ? ` · 他垫了 ${fmt(-r.balance, (r.currency || bossCur()))}` : ''}</div>`
       : `<div class="petty-meta">填一次他现在手上还剩多少，之后自动扣</div>`;
     // 手上还有钱的人多给一颗「已还清」：这是「一键归还」最常走的那一步，
     // 不该让人先点进去再切换类型
@@ -8283,7 +8371,7 @@ function renderBossPettyBody(){
   }).join('')
   + `<div class="petty-undo">${last
       ? `上一笔：${ledEsc(last.person)} ${last.type === 'open' ? '设起点' : last.type === 'adjust' ? '调整' : '转钱'} ${
-          fmt(last.amountUsd, 'USD')}（${last.date}）<br>
+          fmt(last.amountUsd, last.currency || bossCur())}（${last.date}）<br>
          <span style="color:var(--exp);cursor:pointer" onclick="bossPettyUndo()">记错了？撤销这一笔</span>`
       : '还没有任何记录'}</div>`;
 }
@@ -8323,6 +8411,8 @@ function bossPettySetType(type){
     return;
   }
   bossPettyForm.type = type;
+  const lbl = document.getElementById('boss-petty-amount-label');
+  if(lbl) lbl.textContent = bossCurLabel('金额');
   ['topup','open','adjust','return'].forEach(t=>{
     const b = document.getElementById('boss-petty-type-' + t);
     if(b){
@@ -8358,7 +8448,7 @@ function bossPettySetType(type){
         + `可以填负数（例：-12.5 表示少了 12.5）。`
       : type === 'return'
       ? (bal != null && bal > 0
-          ? `${who} 把钱还回来了，填你实际收到多少（预设是他手上全部 ${fmt(bal, 'USD')}）。`
+          ? `${who} 把钱还回来了，填你实际收到多少（预设是他手上全部 ${fmt(bal, bossCur())}）。`
             + `收到多少填多少——只还了一部分的话，剩的会继续留在他名下。`
             + `收回来的钱自动回到你手上（你手上＝账户余额 − 同事手上）。`
           : `${who} 手上现在没有你的钱，不用归还。`)
@@ -8375,7 +8465,7 @@ function bossPettyEcho(){
   const plain = /^-?\d*\.?\d*$/.test(shown);
   if(shown === '' || isNaN(num) || plain){ el.style.display = 'none'; return; }
   el.style.display = 'block';
-  el.textContent = `＝ ${fmt(num, 'USD')}`;
+  el.textContent = `＝ ${fmt(num, bossCur())}`;
 }
 
 function showBossPettyNote(msg){
@@ -8409,9 +8499,9 @@ async function bossPettySubmit(){
   const sendAmount = isReturn ? -num : num;
   // 这是钱，而且写进去同事那边当场看得到——多按一次确认，换掉「多打一个 0」
   const question = isReturn
-    ? `确定收到 ${who} 还的 ${fmt(num, 'USD')}？`
+    ? `确定收到 ${who} 还的 ${fmt(num, bossCur())}？`
     : `确定给 ${who} ${bossPettyForm.type === 'open' ? '把起点设为'
-        : bossPettyForm.type === 'adjust' ? '调整' : '转'} ${fmt(num, 'USD')}？`;
+        : bossPettyForm.type === 'adjust' ? '调整' : '转'} ${fmt(num, bossCur())}？`;
   if(!confirm(question)) return;
   showBossPettyNote('正在保存…');
   try{
@@ -8422,6 +8512,7 @@ async function bossPettySubmit(){
       // 服务端那边也挡了，旧页面送过来一样不生效。
       body: JSON.stringify({ token: getCompanyToken(), action:'pettyAdd',
                              person: who, type: sendType, amount: sendAmount,
+                             currency: bossCur(),
                              note: isReturn ? '归还现金' : null })
     });
     const body = await res.json().catch(()=>({}));
@@ -8438,7 +8529,7 @@ async function bossPettySubmit(){
     }
     closeModal('modal-boss-petty-add');
     const row = (body.people || []).find(r => r.person === who);
-    toast(row && row.status === 'ok' ? `已记下：${who} 手上 ${fmt(row.balance, 'USD')}` : '已记下');
+    toast(row && row.status === 'ok' ? `已记下：${who} 手上 ${fmt(row.balance, bossCur())}` : '已记下');
     bossPettyState.data = body.people || bossPettyState.data;
     bossPettyState.fetchedAt = Date.now();
     await fetchBossPetty({force:true});
@@ -8454,11 +8545,11 @@ async function bossPettyUndo(){
   if(!last) return;
   if(!confirm(`撤销这一笔？\n${last.person} ${
     last.type === 'open' ? '设起点' : last.type === 'adjust' ? '调整' : '转钱'} ${
-    fmt(last.amountUsd, 'USD')}（${last.date}）`)) return;
+    fmt(last.amountUsd, last.currency || bossCur())}（${last.date}）`)) return;
   try{
     const res = await fetch(BOSS_LEDGER_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ token: getCompanyToken(), action:'pettyUndo' })
+      body: JSON.stringify({ token: getCompanyToken(), action:'pettyUndo', currency: bossCur() })
     });
     const body = await res.json().catch(()=>({}));
     if(!res.ok || body.status !== 'ok'){ toast(body.message || '撤销失败'); return; }
@@ -8556,10 +8647,17 @@ function renderInboxSettings(){
     el.innerHTML = `<span style="color:#e74c3c">⚠️ ${inboxState.error}</span>${uidLine}`;
     return;
   }
+  // 同事记了某种币、你却没有那种币的账户：那几笔先没收（见 bossAccountForCurrency）。
+  // 这句要一直挂着，直到他开了账户——只 toast 一次的话，一闪而过就没人记得还有账没收
+  const miss = Object.entries(inboxState.noAcc || {});
+  const missLine = miss.length
+    ? `<div style="color:#e74c3c;margin-top:6px">⚠️ ${miss.map(([c, n]) =>
+        `有 ${n} 笔是 ${c}，你还没有 ${c} 的账户，这几笔先没收——开一个 ${c} 账户就会自动收进去`
+      ).join('<br>')}</div>` : '';
   el.innerHTML = (inboxState.last
     ? `上次收件：${new Date(inboxState.last).toLocaleString('zh-CN')}` +
       (inboxState.added ? `，收到 ${inboxState.added} 笔` : '，没有新的')
-    : '还没收过件') + uidLine;
+    : '还没收过件') + missLine + uidLine;
 }
 
 // 开 App 和网络恢复时自动补送（静默，不打扰）

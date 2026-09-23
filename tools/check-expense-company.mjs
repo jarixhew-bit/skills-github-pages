@@ -3743,6 +3743,175 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   await ctx.close();
 }
 
+// ---------- 【37】出国：新币跟美金各算各的 ----------
+{
+  console.log('\n【37】出国开新币账户：卡片、转钱、盘点跟着那种币走，收件按币种分流');
+  // 2026-09-23 用户去新加坡前开了一个新币的「Singapore trip」账户，转钱给同事那里
+  // 却还是显示美金。查下去更糟：服务端不分币种全加在一起，收件也不看币种——
+  // S$50 进了美金账户就变成 US$50。现金是实物，两种钱是两个钱包，不能混。
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  const api = { calls: [], records: [] };
+  const json = (o) => ({ status:200, contentType:'application/json',
+    headers:{'Access-Control-Allow-Origin':'*'}, body: JSON.stringify(o) });
+  await ctx.route('**/*', async r => {
+    const u = r.request().url();
+    if (u.startsWith(`http://localhost:${PORT}`)) return r.continue();
+    if (!/boss-expense/.test(u)) return r.abort('failed');
+    const req = JSON.parse(r.request().postData() || '{}');
+    api.calls.push(req);
+    const c = req.currency || 'USD';
+    // 假服务端照真服务端的样子：每种币一个钱包
+    if (req.action === 'petty') return r.fulfill(json({ status:'ok', holder:'Yang', currency:c,
+      people: c === 'SGD'
+        ? [{ person:'Kuang', status:'ok', currency:'SGD', balance:800, opened:0, spent:200 },
+           { person:'Seryi', status:'ok', currency:'SGD', balance:0, opened:0, spent:0 }]
+        : [{ person:'Kuang', status:'ok', currency:'USD', balance:0, opened:-994.71, spent:332.9 },
+           { person:'Seryi', status:'ok', currency:'USD', balance:0, opened:0, spent:0 }] }));
+    if (req.action === 'count') return r.fulfill(json({ status:'ok', last:null, counts:[] }));
+    if (req.action === 'countAdd') {
+      const ev = { id:'c1', date:'2026-09-23', countedUsd:req.counted, expectedUsd:req.expected,
+                   currency:c, diffUsd: Math.round((req.counted-req.expected)*100)/100 };
+      return r.fulfill(json({ status:'ok', count:ev, last:ev, counts:[ev] }));
+    }
+    if (req.action === 'pettyAdd') return r.fulfill(json({ status:'ok', currency:c, people:[] }));
+    if (req.action === 'ledger') return r.fulfill(json({ status:'ok', month:req.month,
+      records: api.records.filter(x => x.month === req.month) }));
+    return r.fulfill(json({ status:'ok' }));
+  });
+  page.on('dialog', d => d.accept());
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // 开一个新币账户，把投递箱切过去（用户实际的做法）
+  await page.evaluate(() => {
+    localStorage.setItem('expenseTracker_companyToken', 'boss-token');
+    data.accounts.push({ id:'acc_sg', name:'Singapore trip', currency:'SGD', color:'#e11d48',
+                         createdAt: Date.now() });
+    setInboxAccount('acc_sg');
+    data.currentAccountId = 'acc_sg';
+    data.transactions = [{ id:'sg_in', accountId:'acc_sg', type:'income', amount:3000,
+      date: today(), description:'带去的新币', categoryId:(data.categories.find(c=>c.type==='income')||{}).id }];
+    saveData();
+  });
+  api.calls.length = 0;
+  await page.evaluate(() => Promise.all([fetchBossPetty({force:true}), fetchBossCount({force:true})])
+    .then(() => renderBossPetty()));
+  await page.waitForTimeout(700);
+
+  ok('★投递箱是新币账户时，bossCur() 是 SGD',
+     await page.evaluate(() => bossCur()) === 'SGD', await page.evaluate(() => bossCur()));
+  const pettyReq = api.calls.find(c => c.action === 'petty');
+  ok('★向服务端要的是新币那个钱包', pettyReq && pettyReq.currency === 'SGD', pettyReq);
+  let card = await page.innerText('#boss-petty');
+  ok('★卡片上是 S$，不是 US$', card.includes('S$') && !card.includes('US$'), card);
+  ok('卡片标题写明是哪种币（同一张卡在两页长得一样，容易看错页）', card.includes('SGD'), card);
+  ok('Kuang 的新币余额 S$800', /S\$\s*800\.00/.test(card), card);
+  // 你手上 = 新币账户余额 3000 − 同事手上 800 = 2200（全部是新币，没有混美金）
+  ok('★你手上用的是新币账户余额减新币钱包（3000 − 800 = 2200）',
+     /你（Yang）手上\s*S\$\s*2200\.00/.test(card), card);
+
+  // 转钱：标签写新币、送出去带新币
+  await page.evaluate(() => bossPettyOpenAdd('Kuang', 'topup'));
+  await page.waitForTimeout(300);
+  const lbl = await page.innerText('#boss-petty-amount-label');
+  ok('★转钱弹窗的金额标签写着 SGD', lbl.includes('SGD'), lbl);
+  api.calls.length = 0;
+  await page.fill('#boss-petty-amount', '500');
+  await page.evaluate(() => bossPettySubmit());
+  await page.waitForTimeout(500);
+  const add = api.calls.find(c => c.action === 'pettyAdd');
+  ok('★转钱送出去带 currency: SGD', add && add.currency === 'SGD' && add.amount === 500, add);
+
+  // 盘点：标签和送出去的都是新币
+  await page.evaluate(() => openBossCount());
+  await page.waitForTimeout(400);
+  ok('盘点弹窗标签写着 SGD',
+     (await page.innerText('#boss-count-amount-label')).includes('SGD'),
+     await page.innerText('#boss-count-amount-label'));
+  ok('盘点里的账面是新币',
+     (await page.innerText('#boss-count-expected')).includes('S$'),
+     await page.innerText('#boss-count-expected'));
+  api.calls.length = 0;
+  await page.fill('#boss-count-amount', '2200');
+  await page.evaluate(() => bossCountSubmit());
+  await page.waitForTimeout(500);
+  const cnt = api.calls.find(c => c.action === 'countAdd');
+  ok('★盘点送出去带 currency: SGD', cnt && cnt.currency === 'SGD', cnt);
+
+  // ---- 对照组：切回美金账户，要重拉美金那个钱包，不能拿新币的缓存当美金显示 ----
+  // 少了这组，把 bossCur() 写死成 SGD 也会全绿
+  const bossId = await page.evaluate(() => {
+    const b = data.accounts.find(a => a.id === 'acc_boss') || data.accounts.find(a => a.currency === 'USD');
+    setInboxAccount(b.id); data.currentAccountId = b.id; saveData(); return b.id;
+  });
+  api.calls.length = 0;
+  await page.evaluate(() => fetchBossPetty().then(() => renderBossPetty()));   // 不 force：验缓存按币种失效
+  await page.waitForTimeout(600);
+  const usdReq = api.calls.find(c => c.action === 'petty');
+  ok('★对照组：切回美金账户时自己重拉（缓存按币种失效）', !!usdReq, api.calls.map(c => c.action));
+  ok('★对照组：重拉的是美金钱包', usdReq && usdReq.currency === 'USD', usdReq);
+  card = await page.innerText('#boss-petty');
+  ok('★对照组：美金那页显示 US$', card.includes('US$') && !/S\$\s*800/.test(card), card);
+
+  // ---- 收件按币种分流 ----
+  // 投递箱在新币账户；同事一个记新币、一个记美金。新币进新加坡那本、美金进 Boss，
+  // 而且**数字原样**（S$50 就是 50，不换算，也不会变成 US$50）
+  await page.evaluate(() => { setInboxAccount('acc_sg'); saveData(); });
+  const month = await page.evaluate(() => today().slice(0, 7));
+  const day = await page.evaluate(() => today());
+  api.records = [
+    { id:'r_sgd', month, reporter:'Kuang', type:'expense', amount:50, currency:'SGD',
+      date:day, description:'新加坡打车', createdAt:new Date().toISOString() },
+    { id:'r_usd', month, reporter:'Seryi', type:'expense', amount:20, currency:'USD',
+      date:day, description:'金边午餐', createdAt:new Date().toISOString() },
+  ];
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(800);
+  const placed = await page.evaluate(() => {
+    const f = rid => data.transactions.find(t => t.bossRec && t.bossRec.id === rid);
+    const a = f('r_sgd'), b = f('r_usd');
+    return { sgd: a && { acc: a.accountId, amt: a.amount }, usd: b && { acc: b.accountId, amt: b.amount } };
+  });
+  ok('★新币那笔进新加坡那本', placed.sgd && placed.sgd.acc === 'acc_sg', placed);
+  ok('★美金那笔进 Boss（没有因为投递箱切到新币就被塞进新币账户）',
+     placed.usd && placed.usd.acc === bossId, placed);
+  ok('数字原样不换算（S$50 就是 50）', placed.sgd && placed.sgd.amt === 50, placed);
+
+  // ---- 没有那种币的账户：先不收，而且要一直讲清楚 ----
+  api.records.push({ id:'r_jpy', month, reporter:'Kuang', type:'expense', amount:3000,
+    currency:'JPY', date:day, description:'日本拉面', createdAt:new Date().toISOString() });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(800);
+  ok('★没有日元账户时，日元那笔先不收（不把 ¥3000 当成新币塞进去）',
+     await page.evaluate(() => !data.transactions.some(t => t.bossRec && t.bossRec.id === 'r_jpy')));
+  await page.evaluate(() => { switchTab('settings'); renderInboxSettings(); });
+  await page.waitForTimeout(300);
+  const st = await page.evaluate(() => document.getElementById('inbox-status').innerText);
+  // 设置页那句要等登录 Google 才画得出来（沙盒里没登录），所以同时看 inboxState 本身
+  const noAcc = await page.evaluate(() => inboxState.noAcc);
+  ok('★记住了有几笔日元没地方放（设置页靠这个一直挂着）', noAcc && noAcc.JPY === 1, noAcc);
+  // 对照组：开了日元账户之后，下一次收件自动收进去
+  await page.evaluate(() => { data.accounts.push({ id:'acc_jp', name:'Japan trip', currency:'JPY',
+    createdAt: Date.now() }); saveData(); });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(800);
+  const jp = await page.evaluate(() => {
+    const t = data.transactions.find(x => x.bossRec && x.bossRec.id === 'r_jpy');
+    return t && { acc: t.accountId, amt: t.amount };
+  });
+  ok('★对照组：开了日元账户，下一次收件就自己收进去', jp && jp.acc === 'acc_jp' && jp.amt === 3000, jp);
+  ok('开了账户之后那句警告就消失', Object.keys(await page.evaluate(() => inboxState.noAcc)).length === 0,
+     await page.evaluate(() => inboxState.noAcc));
+
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
