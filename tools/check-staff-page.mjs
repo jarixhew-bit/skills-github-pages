@@ -2330,7 +2330,9 @@ if (want()) {
 // 老板把投递箱切到新币账户 → 主 App 写 SGD → 同事版读到自动换，同事一个按钮都不用按。
 console.log('\n【33】同事版币种跟着老板那边自动换；没网时记的那笔不会被换错币');
 if (want()) {
-  const h = await newPage();
+  // 钉在新加坡时区：这一组验的是「出国的那个人跟着老板走」。
+  // 不钉的话跑在哪台机器上就是哪个时区，万一是 UTC+7 就会被当成人在金边
+  const h = await newPage({ tz: 'Asia/Singapore' });
   const { page, errs } = h;
   await signIn(h);
   await page.evaluate(() => {
@@ -2418,6 +2420,89 @@ if (want()) {
   ok('老板那边回 null 时保持原样', await page.evaluate(() => staffBossCur()) === 'USD');
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await h.ctx.close();
+}
+
+// ---------- 【34】留在金边的同事不跟着换 ----------
+// 2026-09-23 用户：「你美金再怎么录也是新币，还是你有办法把留在金边的同事不切换币种」。
+// 投递箱一切新币，原本全员都换；现在看手机时区——人在金边一律美金，人在外地才跟老板走。
+console.log('\n【34】老板投递箱是新币时：人在金边的还是美金，人在新加坡的变新币');
+if (want()) {
+  const setup = async (tz) => {
+    const h = await newPage({ tz });
+    await signIn(h);
+    await h.page.evaluate(() => {
+      localStorage.setItem('staffExpense_bossKey', 'pass-1234');
+      localStorage.setItem('staffExpense_bossCur', 'USD');
+    });
+    await h.page.reload({ waitUntil:'domcontentloaded' });
+    await until(() => h.page.evaluate(
+      () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+      { what: 'App 启动完成' });
+    h.bossApi.cur = 'SGD';           // 老板的投递箱是新币
+    await h.page.evaluate(() => staffPullBossCur());
+    await h.page.waitForTimeout(600);
+    return h;
+  };
+
+  // Seryi 留在金边
+  const pp = await setup('Asia/Phnom_Penh');
+  ok('★人在金边：老板投递箱是新币，这边还是美金',
+     await pp.page.evaluate(() => staffBossCur()) === 'USD', await pp.page.evaluate(() => staffBossCur()));
+  ok('人在金边：根本不用去问老板那边（省一个请求）',
+     !pp.bossPosted.some(r => r.action === 'settings'), pp.bossPosted.map(r => r.action));
+  // 他记一笔，送出去的是美金
+  pp.bossPosted.length = 0;
+  await pp.page.evaluate(() => {
+    staffGoBoss();
+    const tx = { id:'pp1', accountId: STAFF_BOSS_ACC_ID, type:'expense', amount:12, date: today(),
+      description:'金边午餐', categoryId:(data.categories.find(c=>c.type==='expense')||{}).id };
+    data.transactions.push(tx); saveData(); onTxSaved(tx);
+  });
+  await pp.page.waitForTimeout(800);
+  const s1 = pp.bossPosted.find(r => r.srcId === 'pp1');
+  ok('★★留在金边的人记的账，送出去是美金（不会被当成新币）', s1 && s1.currency === 'USD', s1);
+  ok('设定那一行写明「人在金边，自动用美金」',
+     (await pp.page.locator('#staff-boss-cfg').innerText()).includes('金边'),
+     await pp.page.locator('#staff-boss-cfg').innerText());
+
+  // 在金边手动改过：同一个地方照他的（手机时区没自己换时的退路）
+  await pp.page.evaluate(() => { window.prompt = () => 'SGD'; staffSetBossCur(); });
+  await pp.page.waitForTimeout(400);
+  await pp.page.evaluate(() => staffPullBossCur());
+  await pp.page.waitForTimeout(400);
+  ok('在同一个地方手动改过的，不会被自动换回去',
+     await pp.page.evaluate(() => staffBossCur()) === 'SGD');
+  // 手机时区一变（上次是在东京改的），手动那次作废，回到自动＝人在金边用美金
+  await pp.page.evaluate(() => localStorage.setItem('staffExpense_bossCurManual',
+    JSON.stringify({ code:'SGD', zone:'Asia/Tokyo' })));
+  await pp.page.evaluate(() => staffPullBossCur());
+  await pp.page.waitForTimeout(400);
+  ok('★换了地方，手动那次作废、回到自动（回金边就回美金）',
+     await pp.page.evaluate(() => staffBossCur()) === 'USD');
+  await pp.ctx.close();
+
+  // 柬埔寨的手机有时报成曼谷时区：一样当成人在金边
+  const bk = await setup('Asia/Bangkok');
+  ok('手机报成曼谷时区也当人在金边（分不出来，宁可不换）',
+     await bk.page.evaluate(() => staffBossCur()) === 'USD');
+  await bk.ctx.close();
+
+  // 对照组：同一个老板设定、人在新加坡，就要变新币——不然把整个自动换拿掉上面也全绿
+  const sg = await setup('Asia/Singapore');
+  ok('★对照组：人在新加坡，跟着老板变新币',
+     await sg.page.evaluate(() => staffBossCur()) === 'SGD', await sg.page.evaluate(() => staffBossCur()));
+  await sg.ctx.close();
+
+  // 用户问「去马来西亚呢、印尼呢、越南」：这几个都要认得出「不在金边」。
+  // 雅加达、胡志明市跟金边同一个钟点（UTC+7），靠的是时区名字不同——
+  // 第一版把胡志明市算成在家，越南就永远不会自动换，这组就是为了钉住那个洞
+  for (const [tz, where] of [['Asia/Kuala_Lumpur', '马来西亚'], ['Asia/Jakarta', '印尼（跟金边同一个钟点）'],
+                             ['Asia/Ho_Chi_Minh', '越南（跟金边同一个钟点）'], ['Asia/Vientiane', '老挝（跟金边同一个钟点）']]) {
+    const h = await setup(tz);
+    ok(`★人在${where}：认得出不在金边，跟着老板走`,
+       await h.page.evaluate(() => staffBossCur()) === 'SGD', await h.page.evaluate(() => staffBossCur()));
+    await h.ctx.close();
+  }
 }
 
 // ---------- 【31】老板手上有多少钱、盘点差多少，同事一个字都看不到 ----------

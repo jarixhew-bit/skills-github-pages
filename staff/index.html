@@ -9271,31 +9271,84 @@ function staffBossAcc(){
 }
 
 /**
- * 老板账用哪种币——**跟着老板那边走**（2026-09-23 用户：「就不能直接跟着信箱的币种就好，
- * 我放新币全部自动跳新币」）。老板在主 App 把投递箱切到新币账户，那边写一次 SGD，
- * 这里开机、切回前台都读一次，自动换过来。同事一个按钮都不用按。
+ * 老板账用哪种币——**老板的投递箱决定这趟用什么钱，手机在哪里决定谁在这趟里**。
  *
- * 老板那边还没设过（回 null）或没网：保持原样，不乱猜。
- * 老板说了算：同事手动改过也会被下一次读到的覆盖掉（用户要的就是「全部自动跳」）。
+ * 2026-09-23 同一天改了三次，最后这版的来由：
+ *  1. 用户：「我放新币全部自动跳新币」→ 跟着老板投递箱的币种走（主 App 写、这里读）
+ *  2. 用户马上发现漏洞：「你美金再怎么录也是新币，还是你有办法把留在金边的同事不切换」
+ *     ——投递箱一切新币，留在金边的人也被换成新币，手动切回美金，下次打开又被换回去。
+ *  3. 所以加上**手机时区**这一道：人在金边（柬埔寨那个时区）一律美金，
+ *     人不在金边才跟着老板的投递箱走。Kuang 落地新加坡自动变新币，
+ *     Seryi 留在金边一直是美金，谁都不用按。
+ *
+ * 看的是**时区的名字**，不只是钟点：雅加达、胡志明市、万象都跟金边同一个钟点（UTC+7），
+ * 但名字各不相同，手机报的就是那个名字——所以印尼、越南、老挝都分得出来。
+ *
+ 2026-09-23 实测（Chromium 141，安卓 Chrome 用的是同一套）浏览器实际报的名字：
+ *   金边 → Asia/Phnom_Penh（**没有**报成曼谷）   胡志明市 → Asia/Saigon（旧名！）
+ *   曼谷 → Asia/Bangkok   万象 → Asia/Vientiane   雅加达 → Asia/Jakarta
+ *   吉隆坡 → Asia/Kuala_Lumpur   新加坡 → Asia/Singapore
+ * 所以要往名单里加越南，得加 Asia/Saigon，加 Asia/Ho_Chi_Minh 是对不上的
+ * （写假故障时踩到：加了新名，自检照样全绿，因为浏览器报的是旧名）。
+ *
+ * ⚠️ 曼谷**保守地**也算「在家」：国际时区资料（tzdb）里 Asia/Phnom_Penh 是挂在
+ * Asia/Bangkok 底下的别名，Chromium 实测会保留金边这个名字，但 iPhone 的 Safari
+ * **没实测过**。人在金边却被当成出国，就是用户刚抱怨的那个错（美金被记成新币），
+ * 比「去泰国时要手动点一次币种」糟得多，所以宁可泰国不自动。
+ *
+ * 2026-09-23 第一版把胡志明市、万象也算成在家（怕柬埔寨手机报错），用户问
+ * 「去马来西亚呢、印尼呢、越南」时发现：那样越南、老挝就永远不会自动换。已拿掉。
+ *
+ * 手动改过的：记下「在哪个时区改的」，同一个地方照他的；手机时区一变就回到自动。
+ * 这是给「手机时区没自己换」那种少见情况留的退路，平常没人需要碰。
+ *
+ * 老板那边还没设过（回 null）或没网、而且人不在金边：保持原样，不乱猜。
  */
+// 只有这两个名字算「人在金边」。别再往里加 UTC+7 的其他城市——加一个，
+// 去那个国家就永远不会自动换（见上面 2026-09-23 那段）
+const STAFF_HOME_ZONES = ['Asia/Phnom_Penh', 'Asia/Bangkok'];
+/** 在家用的钱：老板账上线时就是美金，柬埔寨日常也用美金 */
+const STAFF_HOME_CUR = 'USD';
+/** 手动选过的币种＋当时在哪个时区。换了地方就作废，回到自动 */
+const STAFF_BOSS_CUR_MANUAL = 'staffExpense_bossCurManual';
+
+function staffZone(){
+  try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }catch(e){ return ''; }
+}
+function staffAtHome(){ return STAFF_HOME_ZONES.includes(staffZone()); }
+
 async function staffPullBossCur(){
   if(!staffBossOn()) return;
-  const token = getCompanyToken();
-  if(!token) return;
-  let cur = null;
-  try{
-    const res = await fetch(BOSS_EXPENSE_URL, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ token, action:'settings' }),
-    });
-    const body = await res.json().catch(()=>({}));
-    if(res.ok && body.status === 'ok' && typeof body.currency === 'string') cur = body.currency;
-  }catch(e){ return; }
-  if(!cur || !CUR_SYMBOLS[cur] || cur === staffBossCur()) return;
-  staffApplyBossCur(cur);
+  // 在同一个地方手动改过：照他的。换了地方就作废——不然去过一次泰国，回金边还卡在泰铢
+  let manual = null;
+  try{ manual = JSON.parse(localStorage.getItem(STAFF_BOSS_CUR_MANUAL) || 'null'); }catch(e){}
+  if(manual && manual.zone === staffZone()) return;
+  if(manual) localStorage.removeItem(STAFF_BOSS_CUR_MANUAL);
+
+  let want = null, why = '';
+  if(staffAtHome()){
+    // 人在金边：不管老板投递箱切到哪里都是美金——他没跟着出国
+    want = STAFF_HOME_CUR; why = 'home';
+  }else{
+    const token = getCompanyToken();
+    if(!token) return;
+    try{
+      const res = await fetch(BOSS_EXPENSE_URL, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ token, action:'settings' }),
+      });
+      const body = await res.json().catch(()=>({}));
+      if(res.ok && body.status === 'ok' && typeof body.currency === 'string') want = body.currency;
+    }catch(e){ return; }
+    why = 'boss';
+  }
+  if(!want || !CUR_SYMBOLS[want] || want === staffBossCur()) return;
+  staffApplyBossCur(want);
   // 换了一定要讲：不然他会以为自己记错了钱
-  toast(tt(`老板账现在用 ${cur}（跟着老板那边自动换）`,
-           `Boss ledger now uses ${cur} (set by the Boss)`));
+  toast(why === 'home'
+    ? tt(`你在金边，老板账用 ${want}`, `You're in Phnom Penh — Boss ledger uses ${want}`)
+    : tt(`老板账现在用 ${want}（跟着老板那边自动换）`,
+         `Boss ledger now uses ${want} (set by the Boss)`));
 }
 
 /** 真正换币种的那几步（跟着老板自动换、手动改，共用这一份） */
@@ -9322,6 +9375,8 @@ function staffSetBossCur(){
   if(v === null) return;
   const code = v.trim().toUpperCase();
   if(!CUR_SYMBOLS[code]){ toast(tt('不认得这个代码：' + code, 'Unknown code: ' + code)); return; }
+  // 记下在哪个时区改的：同一个地方照他的，手机时区一变就回到自动（见 staffPullBossCur）
+  localStorage.setItem(STAFF_BOSS_CUR_MANUAL, JSON.stringify({ code, zone: staffZone() }));
   staffApplyBossCur(code);
   toast(tt('这本账改用 ' + code, 'This ledger now uses ' + code));
 }
@@ -9524,7 +9579,9 @@ function renderBossCfg(){
   // 币种跟着老板那边自动换（staffPullBossCur），这里写明白，免得同事以为要自己选
   el.innerHTML = tt('这本账用的钱：', 'This ledger uses: ')
     + `<span onclick="staffSetBossCur()">${staffBossCur()} ✎</span>`
-    + `<span style="margin-left:6px;opacity:.7">${tt('（跟着老板那边自动换）', '(follows the Boss)')}</span>`;
+    + `<span style="margin-left:6px;opacity:.7">${staffAtHome()
+        ? tt('（人在金边，自动用美金）', '(in Phnom Penh — USD)')
+        : tt('（跟着老板那边自动换）', '(follows the Boss)')}</span>`;
 }
 
 /**
