@@ -149,7 +149,7 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
   // 老板账（2026-09-11 起走 butler 的中央账本，不再经 Firestore 投递箱）。
   // bossApi.fail = true 就是「送不出去」，用来验没网时账不会丢。
   const bossPosted = [];
-  const bossApi = { fail: false, status: 200, body: null };
+  const bossApi = { fail: false, status: 200, body: null, cur: null };
   // 请假：测试可以改 leaveFake.leaves 摆布服务端手上有哪几条
   const leaveFake = { today: new Date().toISOString().slice(0, 10), leaves: [] };
   let mode = offline ? 'offline' : 'online';
@@ -176,6 +176,12 @@ async function newPage({ offline = false, lang = 'zh', tz = null } = {}) {
       bossPosted.push(req);
       if (!book[req.token]) return route.fulfill({ status:401, contentType:'application/json',
         headers:h, body: JSON.stringify({ error:'密钥不对' }) });
+      // 老板定的币种（2026-09-23）：测试改 bossApi.cur 摆布老板那边现在用什么钱；
+      // 没设就回 null（老板还没设过）。单独拦出来，不跟 bossApi.body 混——
+      // 否则每个把 bossApi.body 设成余额的测试都会被当成「老板改了币种」
+      if (req.action === 'settings') return route.fulfill({ status:200,
+        contentType:'application/json', headers:h,
+        body: JSON.stringify({ status:'ok', currency: bossApi.cur || null }) });
       if (bossApi.body) return route.fulfill({ status: bossApi.status,
         contentType:'application/json', headers:h, body: JSON.stringify(bossApi.body) });
       if (req.action === 'delete') return route.fulfill({ status:200,
@@ -2315,6 +2321,101 @@ if (want()) {
   card = await page.locator('#staff-boss-cash').innerText();
   ok('★对照组：卡上换成美金的数（75），不再挂着新币的 320',
      card.includes('75') && !card.includes('320'), card);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await h.ctx.close();
+}
+
+// ---------- 【33】币种跟着老板那边自动换，而且每一笔记账当下就钉住币种 ----------
+// 2026-09-23 用户：「就不能直接跟着信箱的币种就好，我放新币全部自动跳新币」。
+// 老板把投递箱切到新币账户 → 主 App 写 SGD → 同事版读到自动换，同事一个按钮都不用按。
+console.log('\n【33】同事版币种跟着老板那边自动换；没网时记的那笔不会被换错币');
+if (want()) {
+  const h = await newPage();
+  const { page, errs } = h;
+  await signIn(h);
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossKey', 'pass-1234');
+    localStorage.setItem('staffExpense_bossCur', 'USD');
+  });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.waitForTimeout(500);
+
+  // 老板还没设过：保持原样，不乱猜
+  ok('老板还没设过时保持美金', await page.evaluate(() => staffBossCur()) === 'USD');
+
+  // 先在美金时记一笔，而且**送不出去**（没网）——它得带着美金在队列里等
+  h.bossApi.fail = true;
+  await page.evaluate(() => {
+    staffGoBoss();
+    const tx = { id:'q_usd', accountId: STAFF_BOSS_ACC_ID, type:'expense', amount:20,
+                 date: today(), description:'金边机场咖啡',
+                 categoryId:(data.categories.find(c=>c.type==='expense')||{}).id };
+    data.transactions.push(tx); saveData(); onTxSaved(tx);
+  });
+  await page.waitForTimeout(600);
+  ok('★记账当下就把美金钉在那一笔上',
+     await page.evaluate(() => (data.transactions.find(t => t.id === 'q_usd') || {}).bossCur) === 'USD');
+
+  // 没网时读不到老板那边：保持原样（不换）——这一条顺手验了
+  h.bossApi.cur = 'SGD';
+  await page.evaluate(() => staffPullBossCur());
+  await page.waitForTimeout(500);
+  ok('没网时读不到老板那边，不乱换', await page.evaluate(() => staffBossCur()) === 'USD');
+
+  // 有网了、老板那边是新币 → 同事这边读到就自动换。那笔美金还在队列里没送
+  h.bossApi.fail = false;
+  await page.evaluate(() => staffPullBossCur());
+  await page.waitForTimeout(700);
+  ok('★老板那边切成新币，同事这边自动跟着换', await page.evaluate(() => staffBossCur()) === 'SGD',
+     await page.evaluate(() => staffBossCur()));
+  ok('设定那一行写明是跟着老板那边',
+     (await page.locator('#staff-boss-cfg').innerText()).includes('跟着老板'),
+     await page.locator('#staff-boss-cfg').innerText());
+
+  // 那笔美金现在才送出去：要带美金，不是现在这本账的新币
+  h.bossPosted.length = 0;
+  await page.evaluate(() => flushBossQueue());
+  await page.waitForTimeout(800);
+  const sentUsd = h.bossPosted.find(r => r.srcId === 'q_usd');
+  ok('★★没网时记的美金，换成新币之后才送出去，送的还是美金',
+     sentUsd && sentUsd.currency === 'USD', sentUsd);
+
+  // 对照组：换成新币之后记的那笔，送的是新币——不然把币种写死成美金，上面那条也会绿
+  h.bossPosted.length = 0;
+  await page.evaluate(() => {
+    const tx = { id:'q_sgd', accountId: STAFF_BOSS_ACC_ID, type:'expense', amount:15,
+                 date: today(), description:'新加坡打车',
+                 categoryId:(data.categories.find(c=>c.type==='expense')||{}).id };
+    data.transactions.push(tx); saveData(); onTxSaved(tx);
+  });
+  await page.waitForTimeout(900);
+  const sentSgd = h.bossPosted.find(r => r.srcId === 'q_sgd');
+  ok('★对照组：换成新币之后记的那笔送新币', sentSgd && sentSgd.currency === 'SGD', sentSgd);
+
+  // 本月合计：只加现在这种币，另一种另外讲（两种钱加成一个数，抄到纸单上就错了）
+  await page.evaluate(() => renderTxList());
+  await page.waitForTimeout(300);
+  const sum = await page.locator('#staff-summary').innerText();
+  ok('★本月合计只算新币（15，不是 20+15）', /15\.00/.test(sum) && !/35\.00/.test(sum), sum);
+  ok('另一种币的写明「另有 1 笔」', sum.includes('另有 1 笔') && sum.includes('USD'), sum);
+  // 清单里每一笔用它自己的币种显示：金边那杯咖啡是 US$，不会被标成 S$
+  const list = await page.evaluate(() => document.body.innerText);
+  ok('★清单里金边那笔还是 US$20', /US\$\s*20\.00/.test(list), list.slice(0, 400));
+
+  // 老板切回美金：再跟着换回来
+  h.bossApi.cur = 'USD';
+  await page.evaluate(() => staffPullBossCur());
+  await page.waitForTimeout(700);
+  ok('★对照组：老板切回美金，同事这边也换回来', await page.evaluate(() => staffBossCur()) === 'USD');
+
+  // 老板那边回 null（没网／还没设）：保持现在的，不乱改
+  h.bossApi.cur = null;
+  await page.evaluate(() => staffPullBossCur());
+  await page.waitForTimeout(500);
+  ok('老板那边回 null 时保持原样', await page.evaluate(() => staffBossCur()) === 'USD');
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await h.ctx.close();
 }
