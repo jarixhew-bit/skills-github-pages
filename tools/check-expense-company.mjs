@@ -3912,6 +3912,65 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   await ctx.close();
 }
 
+// ---------- 【38】切投递箱时把币种写上去，同事版跟着换 ----------
+{
+  console.log('\n【38】切投递箱＝告诉同事版现在用哪种币');
+  // 2026-09-23 用户：「就不能直接跟着信箱的币种就好，我放新币全部自动跳新币」。
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  const calls = [];
+  await ctx.route('**/*', async r => {
+    const u = r.request().url();
+    if (u.startsWith(`http://localhost:${PORT}`)) return r.continue();
+    if (!/boss-expense/.test(u)) return r.abort('failed');
+    const req = JSON.parse(r.request().postData() || '{}');
+    calls.push(req);
+    return r.fulfill({ status:200, contentType:'application/json',
+      headers:{'Access-Control-Allow-Origin':'*'}, body: JSON.stringify({ status:'ok', records:[] }) });
+  });
+  // 开机前就放好钥匙：验「开 App 就写一次」
+  await ctx.addInitScript(() => localStorage.setItem('expenseTracker_companyToken', 'boss-token'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.waitForTimeout(800);
+  const boot = calls.find(c => c.action === 'settingsPut');
+  ok('★开 App 就把现在的币种写一次（同事版才有东西读）', !!boot, calls.map(c => c.action));
+  ok('写的是投递箱账户的币种', boot && boot.currency === await page.evaluate(() => bossCur()), boot);
+
+  // 切到新币账户 → 马上写 SGD
+  calls.length = 0;
+  await page.evaluate(() => {
+    data.accounts.push({ id:'acc_sg', name:'Singapore trip', currency:'SGD', createdAt: Date.now() });
+    saveData();
+    setInboxAccount('acc_sg');
+  });
+  await page.waitForTimeout(500);
+  const put = calls.find(c => c.action === 'settingsPut');
+  ok('★投递箱切到新币账户，马上写 SGD', put && put.currency === 'SGD', put);
+
+  // 对照组：切回美金账户写 USD——不然把币种写死成 SGD 上面也会绿
+  calls.length = 0;
+  await page.evaluate(() => {
+    const b = data.accounts.find(a => a.currency === 'USD' && a.id !== 'acc_sg');
+    setInboxAccount(b.id);
+  });
+  await page.waitForTimeout(500);
+  const back = calls.find(c => c.action === 'settingsPut');
+  ok('★对照组：切回美金账户写 USD', back && back.currency === 'USD', back);
+
+  // 没填钥匙：不写（写了也会被服务端拒，白打一个请求）
+  calls.length = 0;
+  await page.evaluate(() => { localStorage.removeItem('expenseTracker_companyToken'); setInboxAccount('acc_sg'); });
+  await page.waitForTimeout(400);
+  ok('没填钥匙时不写', !calls.some(c => c.action === 'settingsPut'), calls.map(c => c.action));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

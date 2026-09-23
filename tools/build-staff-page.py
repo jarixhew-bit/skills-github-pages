@@ -268,6 +268,10 @@ def build(src: str) -> str:
     s = replace_once(s,
                      "  pushBossCategories();",
                      "  pullBossCategories();", "开机同步类别的方向")
+    # 币种也一样：老板那边写，同事这边读（2026-09-23 用户要「我放新币全部自动跳新币」）
+    s = replace_once(s,
+                     "  pushBossCurrency();\n",
+                     "  staffPullBossCur();\n", "开机同步币种的方向")
 
     # 云同步整个不接：同事版没有登录入口，留着 auth 监听只是白等
     s = replace_once(s,
@@ -1008,7 +1012,14 @@ function staffRenderSummary(){
   const box = document.getElementById('staff-summary');
   const acc = curAcc();
   if(!box || !acc) return;
-  const txs = monthTxs(acc.id, state.txYear, state.txMonth).filter(t => t.type === 'expense');
+  const all = monthTxs(acc.id, state.txYear, state.txMonth).filter(t => t.type === 'expense');
+  // 老板账这个月可能美金新币都有（出国那个月）：合计只加这本账现在那种币，
+  // 另一种币的另外讲——两种钱加成一个数，抄到纸单上就错了。
+  // 没钉过币种的（2026-09-23 之前记的）一律当这本账现在的币，跟以前显示的一样
+  const onBoss = acc.id === STAFF_BOSS_ACC_ID;
+  const txCur = t => t.bossCur || acc.currency;
+  const txs = onBoss ? all.filter(t => txCur(t) === acc.currency) : all;
+  const others = onBoss ? all.filter(t => txCur(t) !== acc.currency) : [];
   const total = txs.reduce((s,t)=>s+t.amount, 0);
   // 缺收据 = 这笔没有存照片。月底纸质单据要跟 Excel 对上，缺一张就得回头找。
   const noPhoto = txs.filter(t => !t.attachmentId).length;
@@ -1026,6 +1037,9 @@ function staffRenderSummary(){
     <div class="staff-sum-label">${tt('本月合计','This month')}</div>
     <div class="staff-sum-total staff-sum-month">${fmt(total, acc.currency)}</div>
     <div class="staff-sum-sub">${tt(`${txs.length} 笔`, `${txs.length} record(s)`)}</div>
+    ${others.length ? `<div class="staff-sum-sub">${tt(
+        `另有 ${others.length} 笔是别的币（${[...new Set(others.map(txCur))].join('、')}），没加进上面这个数`,
+        `${others.length} more in other currencies (${[...new Set(others.map(txCur))].join(', ')}) — not in this total`)}</div>` : ''}
     ${noPhoto ? `<div class="staff-sum-warn">${tt(
         `⚠️ 有 ${noPhoto} 笔没有收据照片`,
         `⚠️ ${noPhoto} record(s) without a receipt photo`)}</div>` : ''}`;
@@ -1044,6 +1058,8 @@ saveTx = function(){
 };
 document.addEventListener('visibilitychange', ()=>{
   if(!document.hidden && staffIdentity) staffLoadPetty();
+  // 老板可能刚把投递箱切到新币：切回前台时再读一次，跟着换
+  if(!document.hidden && staffIdentity) staffPullBossCur();
 });
 
 /* 弹窗标题是脚本写死的中文，包一层让它跟着语言走 */
@@ -1137,15 +1153,36 @@ function staffBossAcc(){
            createdAt: Date.now() };
 }
 
-/** 换币种。只认 App 本来就支持的那几种（CUR_SYMBOLS），乱填会变成「XYZ 300.00」。 */
-function staffSetBossCur(){
-  const list = Object.keys(CUR_SYMBOLS);
-  const v = prompt(tt(
-    '这本账用什么钱？填代码即可：\\n' + list.join(' / '),
-    'Which currency does this ledger use? Type the code:\\n' + list.join(' / ')), staffBossCur());
-  if(v === null) return;
-  const code = v.trim().toUpperCase();
-  if(!CUR_SYMBOLS[code]){ toast(tt('不认得这个代码：' + code, 'Unknown code: ' + code)); return; }
+/**
+ * 老板账用哪种币——**跟着老板那边走**（2026-09-23 用户：「就不能直接跟着信箱的币种就好，
+ * 我放新币全部自动跳新币」）。老板在主 App 把投递箱切到新币账户，那边写一次 SGD，
+ * 这里开机、切回前台都读一次，自动换过来。同事一个按钮都不用按。
+ *
+ * 老板那边还没设过（回 null）或没网：保持原样，不乱猜。
+ * 老板说了算：同事手动改过也会被下一次读到的覆盖掉（用户要的就是「全部自动跳」）。
+ */
+async function staffPullBossCur(){
+  if(!staffBossOn()) return;
+  const token = getCompanyToken();
+  if(!token) return;
+  let cur = null;
+  try{
+    const res = await fetch(BOSS_EXPENSE_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, action:'settings' }),
+    });
+    const body = await res.json().catch(()=>({}));
+    if(res.ok && body.status === 'ok' && typeof body.currency === 'string') cur = body.currency;
+  }catch(e){ return; }
+  if(!cur || !CUR_SYMBOLS[cur] || cur === staffBossCur()) return;
+  staffApplyBossCur(cur);
+  // 换了一定要讲：不然他会以为自己记错了钱
+  toast(tt(`老板账现在用 ${cur}（跟着老板那边自动换）`,
+           `Boss ledger now uses ${cur} (set by the Boss)`));
+}
+
+/** 真正换币种的那几步（跟着老板自动换、手动改，共用这一份） */
+function staffApplyBossCur(code){
   localStorage.setItem(STAFF_BOSS_CUR_STORAGE, code);
   const acc = (data.accounts || []).find(a => a.id === STAFF_BOSS_ACC_ID);
   if(acc){ acc.currency = code; saveData(); }
@@ -1157,6 +1194,18 @@ function staffSetBossCur(){
   bossPettyServer.row = null;
   renderBossCash();
   fetchBossPettyMine({ force: true }).then(() => renderBossCash());
+}
+
+/** 换币种。只认 App 本来就支持的那几种（CUR_SYMBOLS），乱填会变成「XYZ 300.00」。 */
+function staffSetBossCur(){
+  const list = Object.keys(CUR_SYMBOLS);
+  const v = prompt(tt(
+    '这本账用什么钱？填代码即可：\\n' + list.join(' / '),
+    'Which currency does this ledger use? Type the code:\\n' + list.join(' / ')), staffBossCur());
+  if(v === null) return;
+  const code = v.trim().toUpperCase();
+  if(!CUR_SYMBOLS[code]){ toast(tt('不认得这个代码：' + code, 'Unknown code: ' + code)); return; }
+  staffApplyBossCur(code);
   toast(tt('这本账改用 ' + code, 'This ledger now uses ' + code));
 }
 
@@ -1355,8 +1404,10 @@ function staffSyncMode(){
 function renderBossCfg(){
   const el = document.getElementById('staff-boss-cfg');
   if(!el) return;
+  // 币种跟着老板那边自动换（staffPullBossCur），这里写明白，免得同事以为要自己选
   el.innerHTML = tt('这本账用的钱：', 'This ledger uses: ')
-    + `<span onclick="staffSetBossCur()">${staffBossCur()} ✎</span>`;
+    + `<span onclick="staffSetBossCur()">${staffBossCur()} ✎</span>`
+    + `<span style="margin-left:6px;opacity:.7">${tt('（跟着老板那边自动换）', '(follows the Boss)')}</span>`;
 }
 
 /**
@@ -1518,7 +1569,8 @@ async function submitInboxTx(tx){
     srcId: tx.id,
     type: tx.type,
     amount: tx.amount,
-    currency: staffBossCur(),
+    // 记账当下钉住的那个（见 onTxSaved）；更早之前记的没钉过，退回现在这本账的
+    currency: tx.bossCur || staffBossCur(),
     categoryId: tx.categoryId,
     description: tx.description || '',
   };
@@ -1581,7 +1633,14 @@ function saveBossQueue(q){
 function onTxSaved(tx){
   if(tx.accountId !== STAFF_BOSS_ACC_ID) return;
   const local = data.transactions.find(t => t.id === tx.id);
-  if(local){ local.inbox = { status:'pending', error:null }; saveData(); }
+  // ⚠️ 币种在**记账当下**钉在这一笔上，不是送出去那一刻才看。
+  // 没网时记了一笔美金，等有网才送出去——那时候老板可能已经把这本账换成新币，
+  // 送出去那一刻才看的话，这笔美金就被当成新币了。已经钉过的（编辑旧的那笔）不改。
+  if(local){
+    if(!local.bossCur) local.bossCur = staffBossCur();
+    local.inbox = { status:'pending', error:null };
+    saveData();
+  }
   const q = loadBossQueue();
   if(!q.includes(tx.id)){ q.push(tx.id); saveBossQueue(q); }
   renderTxList();

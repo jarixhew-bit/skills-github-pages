@@ -2499,7 +2499,9 @@ function txHtml(t, currency){
   const color = cat?cat.color:'#ccc';
   const sign = t.type==='expense'?'-':'+';
   const cls = t.type==='expense'?'exp':'inc';
-  const cur = currency || (curAcc()?curAcc().currency:'HKD');
+  // bossCur：同事版老板账每一笔记账当下钉住的币种（主 App 的记录没有这个字段，不受影响）。
+  // 出国那个月美金新币都在同一本里，照这本账现在的币种显示会把金边那几笔美金标成新币
+  const cur = t.bossCur || currency || (curAcc()?curAcc().currency:'HKD');
   const clip = t.attachmentId ? `<span class="tx-attach-flag" onclick="event.stopPropagation();openAttachmentViewer('${t.id}')">📎</span>` : '';
   return `<div class="tx-swipe-wrap">
     <div class="tx-del-btn" onclick="deleteTxById('${t.id}')">🗑<br>删除</div>
@@ -5804,6 +5806,9 @@ function init(){
   // ⚠️ 刻意摆在上面那三行**之外**：那一段整块会被 tools/build-staff-page.py 剪掉
   // （同事版不拉全员账本），混在里面这一行会跟着消失。
   pushBossCategories();
+  // 同理：老板账现在用哪种币也写上去，同事版读到就自动换（见 pushBossCurrency）。
+  // 这一行在同事版会被 build-staff-page.py 换成 staffPullBossCur()（方向相反）
+  pushBossCurrency();
 
   // 云同步连不上时 auth 是 null（见顶部 FIREBASE 那段）。这里必须挡一下，
   // 否则 init() 会抛错，后面的启动步骤全都不会执行。
@@ -7540,6 +7545,9 @@ function getInboxAccountId(){
 function setInboxAccount(id){
   if(!data.accounts.some(a=>a.id===id)) return;
   localStorage.setItem(INBOX_ACCOUNT_STORAGE, id);
+  // 投递箱切到哪种币的账户，同事那边就跟着换成哪种币（2026-09-23 用户要全自动）。
+  // 这一行末尾的注释别删：它让这行跟开机那行字面不同，生成同事版时只换开机那行
+  pushBossCurrency();   // 切投递箱
   renderInboxSettings();
   toast(`以后同事记的账收进\n「${(getAcc(id)||{}).name}」`);
 }
@@ -7988,6 +7996,23 @@ function bossCur(){
 
 /** 输入框上方那行标签：「金额（SGD · S$）」。填钱之前一定看得到是哪种币，
  *  美金跟新币只差三成，多打少打一眼看不出来——标签写清楚比事后对账便宜。 */
+/**
+ * 把「老板账现在用哪种币」写到 butler，同事版读到就自动换（2026-09-23 用户：
+ * 「就不能直接跟着信箱的币种就好，我放新币全部自动跳新币」）。
+ *
+ * 什么时候写：开 App 时一次、切投递箱时一次。服务端遇到一样的币种不会重写，
+ * 所以开机那一次几乎是空转，不心疼。不 await、失败不吭声：
+ * 写不上去的后果只是同事那边晚一点换，不该打断他记账。
+ */
+function pushBossCurrency(){
+  const token = getCompanyToken();
+  if(!token) return;
+  fetch(BOSS_LEDGER_URL, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ token, action:'settingsPut', currency: bossCur() })
+  }).catch(()=>{});
+}
+
 function bossCurLabel(prefix){
   const c = bossCur();
   return `${prefix}（${c} · ${symOf(c).trim()}）`;
