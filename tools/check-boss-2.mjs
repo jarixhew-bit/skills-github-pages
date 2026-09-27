@@ -1683,6 +1683,87 @@ console.log('\n【三十三g】第二次打开：先摆上次的内容，不转�
   await ctx.close();
 }
 
+// ---------- 场景三十三h：★老板那台 iPhone 看了什么（只记 iPhone、只记老板那把码） ----------
+// 2026-09-27 用户问「能看看他还点了哪一个页吗」，看过预览后说「只锁定 iPhone 的」。
+const UA_IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+const UA_ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36';
+async function browseAndHide({ role, ua }){
+  const ctx = await browser.newContext({ userAgent: ua });
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')), { what: '打开' });
+  await page.waitForTimeout(300);
+  await gotoTab(page, 'bills');
+  await page.evaluate(() => openBill('b1'));
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => closeBillOverlay());
+  await gotoTab(page, 'trips');
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));   // 模拟切到背景
+  await page.waitForTimeout(400);
+  const logs = rec.calls.filter(c => c.action === 'viewLog');
+  await ctx.close();
+  return { logs, errs };
+}
+console.log('\n【三十三h】老板那台 iPhone 看了什么');
+{
+  const r = await browseAndHide({ role: 'viewer', ua: UA_IPHONE });
+  const s = r.logs.length ? r.logs[r.logs.length - 1].session : null;
+  const seq = s ? s.steps.map(x => x.tab || ('bill:' + x.bill)).join(' → ') : '';
+  ok('★★老板那把码 + iPhone：切到背景时把浏览记录送出去了', r.logs.length >= 1, r.logs.length);
+  ok('★顺序对：今天 → 账单 → 那份账单 → 行程', seq === 'today → bills → bill:b1 → trips', seq);
+  ok('★账单看了多久也记了（秒）', !!s && s.steps.some(x => x.bill === 'b1' && x.secs >= 1), s && s.steps);
+  ok('★标明是 iPhone', !!s && s.platform === 'iPhone', s);
+  ok('无 JS 报错', r.errs.length === 0, r.errs.slice(0, 3));
+}
+{
+  const r = await browseAndHide({ role: 'viewer', ua: UA_ANDROID });
+  ok('★★对照组：老板那把码但是 Android（YANG 测试）→ 一笔都不送', r.logs.length === 0, r.logs.length);
+}
+{
+  const r = await browseAndHide({ role: 'admin', ua: UA_IPHONE });
+  ok('★★对照组：YANG 自己（admin）用 iPhone 开 → 一笔都不送', r.logs.length === 0, r.logs.length);
+}
+// 管理页画出来
+{
+  const ctx = await browser.newContext({ timezoneId: 'Asia/Phnom_Penh' });
+  await forceZh(ctx);
+  const at = (hm) => new Date(`2026-09-27T${hm}:00+07:00`).toISOString();
+  mountRoutes(ctx, { role: 'admin', seen: { lastSeen: at('17:15'), standalone: false, devices: [],
+    views: [{ at: at('17:15'), platform: 'iPhone', standalone: false, steps: [
+      { at: at('17:15'), tab: 'today' }, { at: at('17:15'), tab: 'bills' },
+      { at: at('17:15'), bill: '新加坡账单', secs: 80 }, { at: at('17:17'), tab: 'trips' } ] }] } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-seen-section')), { what: '管理页' });
+  const txt = await page.locator('#admin-seen-section').innerText();
+  ok('★管理页有「他看了什么」这一块', /他看了什么/.test(txt), txt);
+  ok('★四步都列出来了', await page.locator('#admin-seen-section .vlog-row').count() === 4);
+  ok('★账单名和看了多久都在', /新加坡账单/.test(txt) && /1分20秒/.test(txt), txt);
+  ok('★时间按手机当地时间（17:15，不是 UTC 的 10:15）', /17:15/.test(txt) && !/10:15/.test(txt), txt);
+  await page.evaluate(() => { feedData.seen.views = []; renderAdmin(); });
+  ok('★对照组：没有记录时整块不出现', await page.locator('#admin-seen-section .vlog').count() === 0);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+// 对照组：老板自己的页面上绝没有这一块
+{
+  const ctx = await browser.newContext({ userAgent: UA_IPHONE });
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')), { what: '老板打开' });
+  ok('★★对照组：老板的页面里没有「他看了什么」', !/他看了什么/.test(await page.evaluate(() => document.body.innerText)));
+  await ctx.close();
+}
+
 // ---------- 场景三十三c：管理页给出的那条链接必须是能用的 ----------
 {
   const ctx = await browser.newContext();

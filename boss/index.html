@@ -211,6 +211,15 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .bill-amt-k{font-size:12.5px;font-weight:700;color:var(--sub);margin-right:6px;letter-spacing:0}
 .seen-devs{margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
 .seen-devs-h{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px}
+.vlog{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.vlog-h{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px}
+.vlog-s{margin-bottom:12px}
+.vlog-sh{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.vlog-sh small{font-weight:500;color:var(--sub)}
+.vlog-row{display:flex;gap:10px;font-size:13.5px;line-height:1.9;color:var(--text)}
+.vlog-t{flex:none;width:42px;color:var(--sub);font-variant-numeric:tabular-nums}
+.vlog-bill{font-weight:700}
+.vlog-dur{color:var(--sub);font-size:12.5px;margin-left:6px;white-space:nowrap}
 .seen-dev{font-size:13px;color:var(--text);line-height:1.7}
 .bill-arrow,.tbill-arrow{color:var(--sub);font-size:18px;flex:none}
 
@@ -1101,6 +1110,44 @@ function devicePlatform(){
   if(/Windows/i.test(ua)) return 'Windows';
   return '其他';
 }
+/* ---------- 老板那台 iPhone 看了什么（2026-09-27 加） ----------
+ * 用户看到老板点开了新加坡账单，问「能看看他还点了哪一个页吗」——切分页只是手机上
+ * 换画面，服务器原本一点都不知道。看过预览后用户说「只锁定 iPhone 的」。
+ * 只在「老板那把码 ＋ iPhone」时记：YANG 自己开（admin）不记，Android 测试也不记。
+ * 服务端（butler viewLog）另有同样两道闸，这里只是不白送请求。
+ * 平时只存在这台手机的内存里，切到背景（换 App、锁屏、关掉）时才整段送一次。 */
+let viewSession = null;
+let viewSentN = 0;
+let viewBillOpenedAt = 0;
+function viewLogEnabled(){ return role === 'viewer' && devicePlatform() === 'iPhone'; }
+function viewLogStart(){
+  if(viewSession || !viewLogEnabled()) return;
+  const now = new Date().toISOString();
+  viewSession = { id: 's' + Math.random().toString(36).slice(2, 12), deviceId: deviceId(),
+                  platform: 'iPhone', standalone: isStandalonePwa(), at: now, steps: [] };
+  const cur = document.querySelector('.tab.active');
+  if(cur) viewLogStep({ tab: cur.id.replace('tab-', '') });
+}
+function viewLogStep(step){
+  if(!viewSession) return;
+  const last = viewSession.steps[viewSession.steps.length - 1];
+  if(step.tab && last && last.tab === step.tab) return;   // 同一个分页连点不重复记
+  if(viewSession.steps.length >= 60) return;
+  viewSession.steps.push(Object.assign({ at: new Date().toISOString() }, step));
+}
+function viewLogFlush(){
+  if(!viewSession || !TOKEN || viewSession.steps.length === viewSentN) return;
+  viewSentN = viewSession.steps.length;
+  const body = JSON.stringify({ token: TOKEN, action: 'viewLog', session: viewSession });
+  // text/plain：不触发预检，keepalive 才能在页面收起时照样送出去
+  try{
+    fetch(BOSS_API_URL, { method:'POST', keepalive:true, headers:{ 'Content-Type':'text/plain' }, body }).catch(() => {});
+  }catch(e){
+    try{ navigator.sendBeacon && navigator.sendBeacon(BOSS_API_URL, body); }catch(e2){}
+  }
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') viewLogFlush(); });
+window.addEventListener('pagehide', viewLogFlush);
 /** 拉 feed 时带上本机当前的推送订阅 endpoint（如果有），让服务端的 push.subscribed
  *  跟本机浏览器状态对齐——合约里明确「没带就回 false」，所以能带就带。 */
 async function fetchFeed(){
@@ -1226,6 +1273,7 @@ function switchTab(tab){
   const btn = document.querySelector('.nav-btn[data-tab="' + tab + '"]');
   if(btn) btn.classList.add('active');
   markSeen(tab);
+  viewLogStep({ tab });
 }
 
 /* ============================= 离线提示 ============================= */
@@ -1281,6 +1329,7 @@ function handleFeed(feed, opts){
   ensurePushUI();
   refreshPushSubscriptionState(); // 异步核对本机真实订阅状态，核对完再刷新一次推送条
   applyHashTab();
+  if(opts && opts.fromNetwork) viewLogStart();   // 服务器认过身份才开始记
 }
 function renderAll(){
   renderToday();
@@ -1963,6 +2012,7 @@ async function renderBillPdf(bytes){
 }
 
 async function openBill(id){
+  viewLogStep({ bill: id }); viewBillOpenedAt = Date.now();
   const overlay = document.getElementById('billOverlay');
   const frame = document.getElementById('billFrame');
   const openNewBtn = document.getElementById('billOpenNew');
@@ -1989,6 +2039,12 @@ async function openBill(id){
   }
 }
 function closeBillOverlay(){
+  if(viewSession && viewBillOpenedAt){
+    const last = viewSession.steps[viewSession.steps.length - 1];
+    if(last && last.bill) last.secs = Math.max(1, Math.round((Date.now() - viewBillOpenedAt) / 1000));
+    viewBillOpenedAt = 0;
+    viewSentN = -1;   // 看了多久是后补上去的，下次收起要再送一次
+  }
   document.getElementById('billOverlay').classList.remove('open');
   document.getElementById('billFrame').src = 'about:blank';
   if(currentPdfPageObserver){ currentPdfPageObserver.disconnect(); currentPdfPageObserver = null; }
@@ -2875,6 +2931,31 @@ function seenDevicesHtml(devices){
       <div class="seen-devs-h">${pick('分别是哪几台','Which devices')}</div>${rows}
     </div>`;
 }
+/** 「他看了什么（最近几次）」：老板那台 iPhone 每次打开一段，按时间列出分页与账单。 */
+const VLOG_TAB = { today:['🏠 今天','🏠 Today'], trips:['🧳 行程','🧳 Trips'], bills:['🧾 账单','🧾 Bills'],
+                   inventory:['📦 库存','📦 Inventory'], restaurants:['🍜 餐厅','🍜 Restaurants'] };
+function viewLogHtml(sessions){
+  if(!Array.isArray(sessions) || !sessions.length) return '';
+  const hm = iso => { const d = new Date(iso); return isNaN(d) ? '' : String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); };
+  const body = sessions.map(sn => {
+    const t = fmtDateTimeBoth(sn.at);
+    const rows = (sn.steps || []).map(st => {
+      let what;
+      if(st.bill){
+        const m = Math.floor((st.secs || 0) / 60), sec = (st.secs || 0) % 60;
+        const dur = st.secs ? `<span class="vlog-dur">${pick('看了 ' + (m ? m + '分' : '') + sec + '秒', 'viewed ' + (m ? m + 'm ' : '') + sec + 's')}</span>` : '';
+        what = `<span class="vlog-bill">📄 ${escapeHtml(st.bill)}</span>${dur}`;
+      }else{
+        const lab = VLOG_TAB[st.tab];
+        what = escapeHtml(lab ? pick(lab[0], lab[1]) : String(st.tab || ''));
+      }
+      return `<div class="vlog-row"><span class="vlog-t">${hm(st.at)}</span><span>${what}</span></div>`;
+    }).join('');
+    const where = sn.standalone ? pick('主屏','Home Screen') : pick('浏览器','browser');
+    return `<div class="vlog-s"><div class="vlog-sh">${escapeHtml(pick(t.zh, t.en))} <small>· ${escapeHtml(sn.platform || '')} · ${escapeHtml(where)}</small></div>${rows}</div>`;
+  }).join('');
+  return `<div class="vlog"><div class="vlog-h">${pick('他看了什么（最近几次）','What he looked at (recent visits)')}</div>${body}</div>`;
+}
 function adminSeenSectionHtml(){
   const seen = (feedData && feedData.seen) || null;
   const at = seen && seen.lastSeen;
@@ -2896,7 +2977,7 @@ function adminSeenSectionHtml(){
       '这样也能看，只是收不到通知——你传了新账单要自己跟他说一声。',
       'That works fine; he just will not get push notifications — tell him when a new bill is up.')}</div>`;
     body = `<div class="admin-status">${pick('最后一次打开：','Last opened: ')}${when}</div>
-      <div>${badge}</div>${warn}${seenDevicesHtml(seen.devices)}`;
+      <div>${badge}</div>${warn}${viewLogHtml(seen.views)}${seenDevicesHtml(seen.devices)}`;
   }
   return `<div class="admin-block" id="admin-seen-section">
       <h3>📱 ${pick('老板那边','The boss\'s device')}</h3>
@@ -3891,7 +3972,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v62</div>
+    <div class="admin-ver" id="adminVer">boss-app-v63</div>
 
     ${adminTripsSectionHtml()}
 
