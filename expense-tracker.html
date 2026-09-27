@@ -7842,8 +7842,23 @@ async function syncBossLedgerMonth(month, records, accId){
       // 同步时被整批搬进日本那本（同步窗口是本月＋上月），两个月的账当场混在一起。
       // 那是要翻账才查得出来的错，而且他不会想到是「改了一个下拉」造成的。
       if(was.accountId) tx.accountId = was.accountId;
+      // 例外：**账本里的币种跟所在账户的币种对不上**，就按币种重挑一次账户
+      // （2026-09-27）。Seryi 新加坡回来才补记，手机币种停在 USD，五笔新币全进了
+      // 美金账户；账本那边照收据改成 SGD 之后，只要账户还钉死在原来那本，App 里
+      // S$12.80 就继续当 US$12.80 算——账本改对了、App 还是错的，而且看不出来。
+      // 只在「币种不同」时才搬；同币种账户之间照旧不动（上面那段的理由不变）。
+      if(was.accountId){
+        const cur = getAcc(was.accountId);
+        const want = String(rec.currency || 'USD').toUpperCase();
+        if(cur && (cur.currency || 'USD') !== want){
+          const target = bossAccountForCurrency(rec.currency, accId);
+          if(target) tx.accountId = target;
+          else noAcc[want] = (noAcc[want] || 0) + 1;   // 没有这种币的账户：先留原地，但讲清楚
+        }
+      }
       const same = was.amount === tx.amount && was.date === tx.date
-        && was.description === tx.description && was.type === tx.type;
+        && was.description === tx.description && was.type === tx.type
+        && was.accountId === tx.accountId;
       data.transactions[i] = Object.assign({}, was, tx);
       if(!same) changed++;
     }else{

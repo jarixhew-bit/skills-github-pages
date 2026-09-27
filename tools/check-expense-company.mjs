@@ -3908,6 +3908,30 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   ok('开了账户之后那句警告就消失', Object.keys(await page.evaluate(() => inboxState.noAcc)).length === 0,
      await page.evaluate(() => inboxState.noAcc));
 
+  // ---- 账本事后改了币种：已经收进来的那笔要跟着搬到对的币种账户（2026-09-27）----
+  // Seryi 回金边才补记，五笔新币记成了 USD、已经同步进 Boss；账本照收据改成 SGD 之后，
+  // 「账户只在第一次收的时候决定」会让它一直挂在美金账户——S$ 当 US$ 算，而且看不出来。
+  const rUsd = api.records.find(r => r.id === 'r_usd');
+  rUsd.currency = 'SGD';
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(800);
+  const moved = await page.evaluate(() => {
+    const f = rid => data.transactions.find(t => t.bossRec && t.bossRec.id === rid);
+    const a = f('r_usd'), b = f('r_sgd');
+    return { fixed: a && { acc: a.accountId, amt: a.amount }, other: b && b.accountId,
+             n: data.transactions.filter(t => t.bossRec && t.bossRec.id === 'r_usd').length };
+  });
+  ok('★账本把币种改成 SGD 后，那笔从美金账户搬进新加坡那本', moved.fixed && moved.fixed.acc === 'acc_sg', moved);
+  ok('搬的时候数字不动（还是 20，不换算）', moved.fixed && moved.fixed.amt === 20, moved);
+  ok('搬完不会变两笔', moved.n === 1, moved);
+  // 对照组：币种没变的那笔，投递箱切回 Boss 之后照样不搬（「只在第一次收的时候决定」仍然成立）
+  await page.evaluate(id => { setInboxAccount(id); saveData(); }, bossId);
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(800);
+  ok('★对照组：币种没变的新币那笔，投递箱切回 Boss 也不会被搬走',
+     await page.evaluate(() => { const t = data.transactions.find(x => x.bossRec && x.bossRec.id === 'r_sgd');
+                                 return t && t.accountId; }) === 'acc_sg');
+
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
 }
