@@ -294,7 +294,7 @@ def build(src: str) -> str:
     # 不堵这一行等于没关（隐藏 ≠ 不生效，跟备注那次是同一个坑）。
     s = replace_once(s,
                      "    date: document.getElementById('tx-date').value || today(),",
-                     "    date: today(),   // 同事版一律记当天（生成时改的，见 tools/build-staff-page.py）",
+                     "    date: staffTxDate(),   // 公司账一律当天；老板账可选过去 14 天内（见 tools/build-staff-page.py）",
                      "日期一律当天")
 
     for entry in DYNAMIC_TEXT:
@@ -577,8 +577,10 @@ STAFF_CSS = """
 /* 这几个栏位共用的脚本会去读，删掉会让记账当场抛错，所以留在 DOM 里收起来。
    真正属于个人账本的整块界面（概览/统计/设置/账户切换）是**根本没生成进来**，
    不在这张单子上。 */
-#hdr-cloud, #hdr-acc-pill, #tx-reporter-group, #tx-reftag-group,
-#tx-date-group{display:none !important}
+#hdr-cloud, #hdr-acc-pill, #tx-reporter-group, #tx-reftag-group{display:none !important}
+/* 日期：公司账一律当天（2026-08-18 用户要求，单号 57/58 那次）；老板账可以补记过去 14 天内
+   （2026-09-27 用户拍板：Seryi 新加坡回来才补记，全落在回来那天）。 */
+body:not(.staff-boss) #tx-date-group{display:none !important}
 /* 下面这几个只在**公司账**那边收起来。老板账那边它们就是普通的记账栏位，要留着用
    （描述、收入/支出、瑞尔换算、筛选）——所以用 body.staff-boss 分开，而不是写两套。 */
 body:not(.staff-boss) #tx-type-tabs,
@@ -1628,6 +1630,8 @@ async function submitInboxTx(tx){
     amount: tx.amount,
     // 记账当下钉住的那个（见 onTxSaved）；更早之前记的没钉过，退回现在这本账的
     currency: tx.bossCur || staffBossCur(),
+    // 补记的日期（2026-09-27 起老板账可选）；butler 那边只认过去 14 天内、不是未来的
+    date: tx.date,
     categoryId: tx.categoryId,
     description: tx.description || '',
   };
@@ -1687,6 +1691,50 @@ function saveBossQueue(q){
  * 网络问题进队列自动重试，口令错才标 failed 并写在列表上。
  * 重送安全：老板那边按 srcId 去重覆盖同一笔，送两次不会变成两条。
  */
+/** 老板账最多往回补几天——跟 butler 的 STAFF_BACKDATE_DAYS 一致 */
+const STAFF_BACKDATE_DAYS = 14;
+function staffShiftDay(n){
+  const t = new Date(Date.parse(today() + 'T00:00:00Z') + n * 86400000);
+  return t.toISOString().slice(0, 10);
+}
+/**
+ * 这一笔记在哪一天。公司账一律当天（2026-08-18 那条规矩不动）；老板账用日期栏，
+ * 夹在「14 天前 ~ 今天」之间——跟 butler 同一个窗口，本机跟账本才不会记成两个日子。
+ */
+function staffTxDate(){
+  if(!document.body.classList.contains('staff-boss')) return today();
+  const v = (document.getElementById('tx-date') || {}).value || '';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) return today();
+  const lo = staffShiftDay(-STAFF_BACKDATE_DAYS), hi = today();
+  return v < lo ? hi : (v > hi ? hi : v);
+}
+/**
+ * 补记旧账时，原本那句「这笔记在 X，不是今天」后面接着写明**这笔会记成哪种币**。
+ * 币种跟着手机所在的地方自动换（人在金边就是美金）——出国回来才补记的话，
+ * 新币收据会被记成美金，而且他自己看不出来（2026-09-27 Seryi 五笔全是这样）。
+ * 接在 syncDateHint 上：开表单、编辑、AI 认出收据日期、手动改日期都会走到它，
+ * 不用自己再挂一堆事件。只在老板账那边加（公司账的日期栏本来就藏着、一律当天）。
+ */
+const _staffOrigSyncDateHint = syncDateHint;
+syncDateHint = function(){
+  _staffOrigSyncDateHint();
+  const old = document.getElementById('staff-backdate-cur');
+  if(old) old.remove();                       // 上一次留下的那行先拿掉，不叠、不残留
+  const inp = document.getElementById('tx-date');
+  const el = document.getElementById('tx-date-hint');
+  if(!inp || !el || !document.body.classList.contains('staff-boss')) return;
+  inp.min = staffShiftDay(-STAFF_BACKDATE_DAYS);
+  inp.max = today();
+  if(!inp.value || inp.value >= today()) return;
+  const cur = staffBossCur();
+  const warn = document.createElement('div');
+  warn.id = 'staff-backdate-cur';
+  warn.style.cssText = 'margin-top:4px;color:#b45309;font-weight:700';
+  warn.textContent = tt('补记旧账：这笔会记成 ' + cur + '。收据是别的币的话，先点上面的「' + cur + ' ✎」改币种。',
+                        'Backdated entry: this will be recorded in ' + cur + '. If the receipt is in another currency, tap "' + cur + ' ✎" above first.');
+  el.appendChild(warn);
+};
+
 function onTxSaved(tx){
   if(tx.accountId !== STAFF_BOSS_ACC_ID) return;
   const local = data.transactions.find(t => t.id === tx.id);
