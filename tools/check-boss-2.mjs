@@ -1591,6 +1591,98 @@ console.log('\n【三十三f】老板的链接不许把管理员手机降级');
   ok('★对照组：老板手机直接打开也只发 1 次 feed', r.rec.feedCalls === 1, r.rec);
 }
 
+// ---------- 场景三十三g：★第二次打开不转圈，先摆上次的内容 ----------
+// 2026-09-27 用户：「不要转圈圈那么久能吗？」。服务端已经改成同时读，但再快也要一次来回；
+// 老板每次点同一条链接，上次的内容就在手机里——先摆出来，背后再拉最新的。
+function cachedFeed(role){
+  return JSON.stringify({ fetchedAt: new Date(Date.now() - 3600e3).toISOString(), data: {
+    status: 'ok', role, who: role === 'admin' ? 'YANG' : '老板', updated: fakeUpdated(),
+    trips: fakeTrips(), bills: fakeBills(), inventory: fakeInventory(), restaurants: fakeRestaurants(),
+    memos: role === 'admin' ? fakeMemosAdmin() : fakeMemosBoss(),
+    dental: { lastVisit: null, nextVisit: null, intervalMonths: 3, note: '' } } });
+}
+async function instantCase(label, { role, seed, url, reject }){
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role });
+  // 服务器慢 1.5 秒（或直接说码失效），看等待中间画面上是什么
+  await ctx.route('**/boss', async route => {
+    if (reject) return route.fulfill({ status: 401, contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ status: 'error', message: 'bad' }) });
+    await new Promise(r => setTimeout(r, 1500)); return route.fallback();
+  });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(kv => { for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, v); }, seed);
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(reject ? 800 : 300);
+  const mid = await page.evaluate(() => ({
+    appShown: !document.getElementById('app').classList.contains('app-hidden'),
+    bootShown: getComputedStyle(document.getElementById('boot')).display !== 'none',
+    gateShown: !document.getElementById('gate').classList.contains('off'),
+    admin: !!document.getElementById('nav-admin-btn'),
+    cache: localStorage.getItem('bossApp_feedCache'),
+    hasContent: document.getElementById('tab-today').innerText.trim().length > 0,
+  }));
+  await ctx.close();
+  return { mid, errs };
+}
+console.log('\n【三十三g】第二次打开：先摆上次的内容，不转圈');
+{
+  const r = await instantCase('老板再点同一条链接', { role: 'viewer', url: URL + '#k=' + GOOD_TOKEN,
+    seed: { bossApp_token: GOOD_TOKEN, bossApp_feedCache: cachedFeed('viewer') } });
+  ok('★★老板再点同一条链接：服务器还没回话，内容已经在了', r.mid.appShown && r.mid.hasContent, r.mid);
+  ok('★没有转圈', r.mid.bootShown === false, r.mid);
+  ok('★也没有输码界面', r.mid.gateShown === false, r.mid);
+  ok('★先摆出来的仍是只读版（没有管理页）', r.mid.admin === false, r.mid);
+  ok('无 JS 报错', r.errs.length === 0, r.errs.slice(0, 3));
+}
+{
+  const r = await instantCase('YANG 从记账 App 点进来', { role: 'admin', url: URL + '?admin=1',
+    seed: { expenseTracker_companyToken: GOOD_TOKEN, bossApp_feedCache: cachedFeed('admin') } });
+  ok('★★YANG 从记账 App 点进来：服务器还没回话，内容已经在了', r.mid.appShown && r.mid.hasContent, r.mid);
+  ok('★而且是管理员那一版', r.mid.admin === true, r.mid);
+  ok('★没有转圈', r.mid.bootShown === false, r.mid);
+}
+// 对照组一：链接里的码跟这台存的不一样（换了新码／头一次）→ 不能拿旧缓存冒充
+{
+  const r = await instantCase('码不一样', { role: 'viewer', url: URL + '#k=' + GOOD_TOKEN,
+    seed: { bossApp_token: 'some-older-code', bossApp_feedCache: cachedFeed('viewer') } });
+  ok('★对照组：码跟存着的不一样时，不先摆旧内容（老老实实转圈等）', r.mid.appShown === false && r.mid.bootShown === true, r.mid);
+}
+// 对照组二：先摆出来了，结果服务器说这把码已经失效 → 内容收掉、缓存清掉、闸门出来
+{
+  const r = await instantCase('码已失效', { role: 'viewer', reject: true, url: URL + '#k=revoked-code',
+    seed: { bossApp_token: 'revoked-code', bossApp_feedCache: cachedFeed('viewer') } });
+  ok('★★对照组：码失效了，先摆出来的内容被收掉（不留在闸门底下）', r.mid.appShown === false, r.mid);
+  ok('★对照组：缓存清掉了', r.mid.cache === null, r.mid);
+  ok('★对照组：闸门出来了', r.mid.gateShown === true, r.mid);
+}
+// 对照组三：记账 App 那把钥匙已经不是管理员 → 先摆出来的管理员内容必须收掉
+{
+  const r = await instantCase('记账钥匙不再是管理员', { role: 'viewer', url: URL + '?admin=1',
+    seed: { expenseTracker_companyToken: GOOD_TOKEN, bossApp_feedCache: cachedFeed('admin') } });
+  // 等服务器回话之后再看（1.5 秒）
+  ok('（仅确认先摆出来了）', r.mid.appShown === true, r.mid);
+}
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  await page.addInitScript(kv => { for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, v); },
+    { expenseTracker_companyToken: GOOD_TOKEN, bossApp_feedCache: cachedFeed('admin') });
+  await page.goto(URL + '?admin=1');
+  await until(() => page.evaluate(() => !document.getElementById('gate').classList.contains('off')),
+    { what: '记账钥匙不是管理员时闸门出现' });
+  const after = await page.evaluate(() => ({
+    appShown: !document.getElementById('app').classList.contains('app-hidden'),
+    admin: !!document.getElementById('nav-admin-btn'),
+  }));
+  ok('★★对照组：服务器说不是管理员之后，先摆出来的管理员内容被收掉', after.appShown === false, after);
+  await ctx.close();
+}
+
 // ---------- 场景三十三c：管理页给出的那条链接必须是能用的 ----------
 {
   const ctx = await browser.newContext();
