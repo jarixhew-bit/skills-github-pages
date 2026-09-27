@@ -1876,6 +1876,71 @@ if (want()) {
   await h.ctx.close();
 }
 
+// ---------- 【25b】老板账可以补记过去 14 天内（2026-09-27）----------
+// Seryi 新加坡回来才补记：日期一律当天、币种跟着金边变美金，五笔新币全记成回来那天的美金。
+// 用户拍板：老板账那边让同事选日期（14 天内），补记时日期栏底下写明这笔会记成哪种币。
+// 公司账那边照旧一律当天——【25】守着，这里不重复。
+console.log('\n【25b】老板账补记：日期照他选的（14 天内），还要写明会记成哪种币');
+if (want()) {
+  const h = await newPage({ tz: 'Asia/Phnom_Penh' });
+  const { page, errs } = h;
+  await signIn(h);
+  await page.evaluate(() => {
+    localStorage.setItem('staffExpense_bossKey', 'pass-1234');
+    localStorage.setItem('staffExpense_bossCur', 'USD');
+  });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.evaluate(() => staffGoBoss());
+  await page.waitForTimeout(300);
+  const shift = n => page.evaluate(n => staffShiftDay(n), n);
+  const saveWithDate = async (srcNote, d, amt) => {
+    await page.waitForTimeout(1200);          // 避开「双击保存」那道闸（连按两次只算一次）
+    await page.evaluate(() => showAddTx());
+    await page.waitForTimeout(300);
+    await page.fill('#tx-amount', amt);
+    await page.fill('#tx-desc', srcNote);
+    await page.fill('#tx-date', d);          // 真的在栏位里改（会触发 input → 提示）
+    await page.waitForTimeout(150);
+    // 只算「看得到」的提示：日期是今天时整块藏起来，里面残留的字不算
+    const hint = (await page.locator('#tx-date-hint').isVisible())
+      ? await page.locator('#tx-date-hint').innerText() : '';
+    // 类别要选（「鱼丸面」会被自动认成餐饮，其他描述不会）
+    await page.evaluate(() => { state.selectedCatId = (data.categories.find(c => c.type === 'expense') || {}).id; });
+    const n0 = h.bossPosted.length;
+    await page.evaluate(() => saveTx());
+    await until(() => h.bossPosted.length > n0, { what: '这一笔送到 butler' });
+    const sent = h.bossPosted.filter(r => r.description === srcNote).pop();
+    const local = await page.evaluate(n => { const t = data.transactions.find(x => x.description === n);
+                                             return t && t.date; }, srcNote);
+    return { hint, sent, local };
+  };
+
+  await page.evaluate(() => showAddTx());
+  await page.waitForTimeout(300);
+  ok('★老板账那边看得到日期栏（补记要能选）', await page.locator('#tx-date-group').isVisible());
+  await page.evaluate(() => closeModal('modal-add-tx'));
+  const d3 = await shift(-3);
+  const a = await saveWithDate('新加坡鱼丸面', d3, '12.80');
+  ok('★选 3 天前：送出去的日期就是那天', a.sent && a.sent.date === d3, a.sent);
+  ok('本机那笔也记在那天（跟账本同一天）', a.local === d3, a.local);
+  ok('★补记时提示写明「会记成 USD」', /补记旧账/.test(a.hint) && a.hint.includes('USD'), a.hint);
+  ok('送出去的币种是当时这本账的币种', a.sent && a.sent.currency === 'USD', a.sent);
+
+  const d20 = await shift(-20);
+  const b = await saveWithDate('太久以前的', d20, '7.10');
+  const todayStr = await page.evaluate(() => today());
+  ok('★选 20 天前（超过 14 天）：改成今天，本机跟送出去的一致', b.sent && b.sent.date === todayStr && b.local === todayStr,
+     [b.sent && b.sent.date, b.local, todayStr]);
+
+  const c = await saveWithDate('今天的', todayStr, '5.90');
+  ok('对照组：记今天的不出现「补记旧账」提示', !/补记旧账/.test(c.hint), c.hint);
+  ok('无 JS 报错', errs.length === 0, errs);
+  await h.ctx.close();
+}
+
 // ---------- 【26】请假登记：同事只管自己的，「是谁」那一栏不该进 DOM ----------
 // 2026-09-02 加。这一栏的两个用途天生冲突——同事只能替自己请假，而 YANG 要能替
 // 司机代录。两边共用同一段代码，差别只有「是谁请假」那个输入框画不画。
