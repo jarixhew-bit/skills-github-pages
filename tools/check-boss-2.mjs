@@ -1422,6 +1422,90 @@ import {
   await ctx.close();
 }
 
+// ---------- 场景三十三d：★连不上 ≠ 码不对 ----------
+// 2026-09-27 之前，链接登入那条路把**任何**失败都当成「码不对」：信号一抖，他就被
+// 丢回输入访问码的界面，还写着「链接里的访问码不对」——链接明明是好的。
+// 这条路存在的全部意义，就是让他不用碰那个界面。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  // 打桩：页面本身照常载入，API 一律连不上（模拟手机信号掉线）
+  ctx.route('**/*', route => {
+    const u = route.request().url();
+    if (u.startsWith('http://localhost:')) return route.continue();
+    return route.abort('failed');
+  });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.goto(URL + '#k=' + GOOD_TOKEN);
+  await until(() => page.evaluate(() => /连不上服务器/.test(document.body.innerText)),
+    { what: '连不上的提示出现' });
+
+  console.log('\n【三十三d】链接是好的、只是一时连不上');
+  ok('★★没有把他丢回输入访问码的界面',
+     await page.evaluate(() => document.getElementById('gate').classList.contains('off')));
+  ok('★★没有说「链接里的访问码不对」（链接是好的）',
+     !/链接里的访问码不对/.test(await page.evaluate(() => document.body.innerText)));
+  ok('★说清楚是连不上，叫他过一会儿再点',
+     /连不上服务器/.test(await page.evaluate(() => document.body.innerText)));
+  ok('★网址里的码留着（他再点一次／刷新就是拿同一条好链接重试）',
+     (await page.evaluate(() => location.hash)).includes('k='), await page.evaluate(() => location.href));
+  ok('★没验证过的码不落地（验证通过才存）',
+     await page.evaluate(() => localStorage.getItem('bossApp_token')) === null);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十三e：★等服务器回话的那一两秒，不许闪出输码界面 ----------
+// 2026-09-27 用户：「我开了，他会出现那个访问码的界面，要等一下——我不要出现这个
+// 访问码界面的」。原本闸门是「默认盖着、验证成功才拿掉」，所以每次打开都先闪一下。
+// 这里故意让服务器慢 1.5 秒回话，在等待中间取样。
+async function gateFlashCheck(label, setup){
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  // 在 mountRoutes 之上再挂一层：API 请求先等 1.5 秒再放行（后挂的路由先匹配）
+  await ctx.route('**/boss', async route => { await new Promise(r => setTimeout(r, 1500)); return route.fallback(); });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  const target = await setup(page);
+  await page.goto(target, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(500);   // 还在等服务器
+  const mid = await page.evaluate(() => ({
+    gateShown: !document.getElementById('gate').classList.contains('off'),
+    bootShown: getComputedStyle(document.getElementById('boot')).display !== 'none',
+  }));
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: label + '：App 出来' });
+  ok(`★★${label}：等待中没有闪出输码界面`, mid.gateShown === false, mid);
+  ok(`★${label}：等待中显示的是「正在打开…」，不是一片空白`, mid.bootShown === true, mid);
+  ok(`★${label}：打开之后「正在打开…」自己消失`,
+     await page.evaluate(() => getComputedStyle(document.getElementById('boot')).display === 'none'));
+  ok(`${label}：无 JS 报错`, errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+console.log('\n【三十三e】打开时不闪输码界面');
+await gateFlashCheck('点带码的链接', async () => URL + '#k=' + GOOD_TOKEN);
+await gateFlashCheck('已经存过码', async page => {
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  return URL;
+});
+// 对照组：真的没有码 → 输码界面**必须**出现（不然上面几条是因为闸门整个坏了才绿）
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !document.getElementById('gate').classList.contains('off')),
+    { what: '没码时闸门出现' });
+  ok('★对照组：真的没有码时，输码界面照样出现',
+     await page.evaluate(() => !document.getElementById('gate').classList.contains('off')));
+  ok('★对照组：这时「正在打开…」不在（不会跟输码界面叠在一起）',
+     await page.evaluate(() => getComputedStyle(document.getElementById('boot')).display === 'none'));
+  await ctx.close();
+}
+
 // ---------- 场景三十三c：管理页给出的那条链接必须是能用的 ----------
 {
   const ctx = await browser.newContext();
