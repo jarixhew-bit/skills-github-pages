@@ -1237,6 +1237,24 @@ function markOffline(fetchedAtIso){
   banner.classList.remove('off');
 }
 function hideOffline(){ document.getElementById('offlineBanner').classList.add('off'); }
+/** 拿一把码去问服务器：是管理员就回 feed，不是（或连不上）回 null。不动 TOKEN。 */
+async function tryAdminToken(t){
+  if(!t) return null;
+  const keep = TOKEN;
+  TOKEN = t;
+  try{
+    const feed = await fetchFeed();
+    return (feed && feed.role === 'admin') ? feed : null;
+  }catch(e){ return null; }
+  finally{ TOKEN = keep; }
+}
+/** 「这是发给老板的链接，你这台保持管理员」—— YANG 在自己手机上点老板的链接时显示。 */
+function showAdminKeptBanner(){
+  const el = document.getElementById('borrowedTokenBanner');
+  if(!el) return;
+  el.innerHTML = `<span class="cn">这是发给老板的链接。你这台是管理员，已保持管理员身份——老板点开看到的是只读版。</span><span class="en">This is the boss's link. This device is admin and stays admin — the boss sees the read-only version.</span>`;
+  el.classList.remove('off');
+}
 function showBorrowedTokenBanner(){
   const el = document.getElementById('borrowedTokenBanner');
   if(el) el.classList.remove('off');
@@ -3873,7 +3891,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v60</div>
+    <div class="admin-ver" id="adminVer">boss-app-v61</div>
 
     ${adminTripsSectionHtml()}
 
@@ -4379,6 +4397,30 @@ async function init(){
   const linkCode = readCodeFromHash();
   const linkTab = readTabFromHash();   // 要在抹掉网址之前先读出来
   if(linkCode){
+    // ⚠️ 2026-09-27 真实事故：YANG 在自己手机上点了「发给老板的链接」测试，链接里的
+    // 老板只读码把他手机上存着的码顶掉了——从此他从记账 App 点进来也只看得到老板那一版，
+    // 管理页整个不见。老板的链接**绝不能**把一台管理员手机降级成只读。
+    // 所以先看这台有没有管理员钥匙（记账 App 那把、或存在这里的另一把）：有就保持
+    // 管理员、不存链接里的码。老板手机上两样都没有（或存的就是这把只读码），
+    // 这里一个请求都不会多发。
+    const expenseTok = safeGet(EXPENSE_TOKEN_KEY);
+    const savedTok = safeGet(TOKEN_KEY);
+    for(const cand of [savedTok, expenseTok]){
+      if(!cand || cand === linkCode) continue;
+      const adminFeed = await tryAdminToken(cand);
+      if(!adminFeed) continue;
+      // 存着的那把如果就是被顶掉之后的只读码，顺手清掉，以后走记账 App 那把
+      if(cand === expenseTok && savedTok && savedTok !== expenseTok){
+        const savedAdmin = (savedTok === linkCode) ? null : await tryAdminToken(savedTok);
+        if(!savedAdmin) safeRemove(TOKEN_KEY);
+      }
+      TOKEN = cand;
+      stripCodeFromUrl();
+      handleFeed(adminFeed, { fromNetwork:true });
+      showAdminKeptBanner();
+      if(linkTab) switchTab(linkTab);
+      return;
+    }
     const prev = TOKEN;
     TOKEN = linkCode;
     try{
@@ -4444,6 +4486,23 @@ async function init(){
   if(linkTab){ stripCodeFromUrl(); }
   try{
     const feed = await fetchFeed();
+    // 自动恢复：存着的是只读码，但这台其实有管理员钥匙（记账 App 那把）——多半就是
+    // 上面那种「点了老板的链接被降级」。换回管理员，把那把只读码清掉。
+    // 老板手机上没有记账 App 的钥匙，这里一个请求都不会多发。
+    if(feed && feed.role !== 'admin'){
+      const expenseTok = safeGet(EXPENSE_TOKEN_KEY);
+      if(expenseTok && expenseTok !== TOKEN){
+        const adminFeed = await tryAdminToken(expenseTok);
+        if(adminFeed){
+          safeRemove(TOKEN_KEY);
+          TOKEN = expenseTok;
+          handleFeed(adminFeed, { fromNetwork:true });
+          showBorrowedTokenBanner();
+          if(linkTab) switchTab(linkTab);
+          return;
+        }
+      }
+    }
     handleFeed(feed, { fromNetwork:true });
     if(linkTab) switchTab(linkTab);
   }catch(err){
