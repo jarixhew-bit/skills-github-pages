@@ -12,7 +12,7 @@
 import {
   URL, GOOD_TOKEN, ok, until, browser, forceZh, freezeClock, mountRoutes, clickHere, gotoTab,
   fakeTrips, fakeBills, fakeBillsMixed, fakeRestaurants, fakeMemosAdmin, fakeMemosBoss,
-  fakeInventory, finish,
+  fakeInventory, finish, API, fakeUpdated,
 } from './lib/boss-check-kit.mjs';
 
 // ---------- 场景十九：交接给老板时，红点要全部重新亮起来 ----------
@@ -1504,6 +1504,91 @@ await gateFlashCheck('已经存过码', async page => {
   ok('★对照组：这时「正在打开…」不在（不会跟输码界面叠在一起）',
      await page.evaluate(() => getComputedStyle(document.getElementById('boot')).display === 'none'));
   await ctx.close();
+}
+
+// ---------- 场景三十三f：★老板的链接绝不能把管理员手机降级成只读 ----------
+// 2026-09-27 真实事故：YANG 在自己手机上点「发给老板的链接」测试，链接里的只读码把他
+// 手机上存着的码顶掉了，之后从记账 App 点进来，管理页整个不见。
+// 这里要两把**不同**的钥匙才测得出来，所以不用 mountRoutes，自己打桩。
+const VIEW_KEY = 'view-key-111', ADMIN_KEY = 'admin-key-999';
+function mountTwoKeys(ctx){
+  const rec = { feedCalls: 0, tokens: [] };
+  ctx.route('**/*', async route => {
+    const u = route.request().url();
+    if (u.startsWith('http://localhost:')) return route.continue();
+    const h = { 'Access-Control-Allow-Origin': '*' };
+    if (!u.startsWith(API)) return route.abort('failed');
+    const req = JSON.parse(route.request().postData() || '{}');
+    const role = req.token === ADMIN_KEY ? 'admin' : req.token === VIEW_KEY ? 'viewer' : null;
+    if (!role) return route.fulfill({ status: 401, contentType: 'application/json', headers: h,
+      body: JSON.stringify({ status: 'error', message: 'bad' }) });
+    if (req.action === 'feed'){
+      rec.feedCalls++; rec.tokens.push(req.token);
+      return route.fulfill({ status: 200, contentType: 'application/json', headers: h,
+        body: JSON.stringify({ status: 'ok', who: role === 'admin' ? 'YANG' : '老板', role, updated: fakeUpdated(),
+          trips: fakeTrips(), bills: fakeBills(), inventory: fakeInventory(), restaurants: fakeRestaurants(),
+          memos: role === 'admin' ? fakeMemosAdmin() : fakeMemosBoss(),
+          dental: { lastVisit: null, nextVisit: null, intervalMonths: 3, note: '' } }) });
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: h, body: JSON.stringify({ status: 'ok', code: VIEW_KEY }) });
+  });
+  return rec;
+}
+async function twoKeyCase(label, { expense, saved, url }){
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountTwoKeys(ctx);
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(([e, s]) => {
+    if (sessionStorage.getItem('__seeded')) return;       // 只在第一次载入时放，别在重载时又塞回去
+    sessionStorage.setItem('__seeded', '1');
+    if (e) localStorage.setItem('expenseTracker_companyToken', e);
+    if (s) localStorage.setItem('bossApp_token', s);
+  }, [expense || '', saved || '']);
+  await page.goto(url);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')),
+    { what: label + '：App 出来' });
+  await page.waitForTimeout(300);
+  const st = await page.evaluate(() => ({
+    admin: !!document.getElementById('nav-admin-btn'),
+    saved: localStorage.getItem('bossApp_token'),
+    hash: location.hash,
+    banner: (document.getElementById('borrowedTokenBanner') || {}).innerText || '',
+  }));
+  await ctx.close();
+  return { st, rec, errs };
+}
+console.log('\n【三十三f】老板的链接不许把管理员手机降级');
+{
+  const r = await twoKeyCase('YANG 手机点老板链接', { expense: ADMIN_KEY, saved: null, url: URL + '#k=' + VIEW_KEY });
+  ok('★★YANG 手机点了老板的链接，仍然是管理员（管理页入口还在）', r.st.admin === true, r.st);
+  ok('★★老板的只读码没有存进 YANG 的手机', r.st.saved !== VIEW_KEY, r.st);
+  ok('★写明了「这是发给老板的链接、你这台保持管理员」', /保持管理员/.test(r.st.banner), r.st.banner);
+  ok('★网址栏里的码照样抹掉', !r.st.hash.includes('k='), r.st.hash);
+  ok('无 JS 报错', r.errs.length === 0, r.errs.slice(0, 3));
+}
+{
+  const r = await twoKeyCase('已经被降级的手机', { expense: ADMIN_KEY, saved: VIEW_KEY, url: URL + '?admin=1' });
+  ok('★★已经被降级的手机，从记账 App 点进来自动恢复成管理员', r.st.admin === true, r.st);
+  ok('★那把顶掉他的只读码被清掉了（以后不会再降级）', r.st.saved === null, r.st);
+}
+{
+  const r = await twoKeyCase('已降级的手机又点一次老板链接', { expense: ADMIN_KEY, saved: VIEW_KEY, url: URL + '#k=' + VIEW_KEY });
+  ok('★已经被降级的手机再点老板的链接，也恢复成管理员', r.st.admin === true, r.st);
+  ok('★顺手清掉那把只读码', r.st.saved === null, r.st);
+}
+// 对照组：老板手机（没有记账 App 的钥匙）——照旧只读，而且**一个请求都不多发**
+{
+  const r = await twoKeyCase('老板手机点链接', { expense: null, saved: null, url: URL + '#k=' + VIEW_KEY });
+  ok('★对照组：老板手机点链接，照旧只读（没有管理页）', r.st.admin === false, r.st);
+  ok('★对照组：老板手机照旧把码存下来（下次不用再点链接也认得他）', r.st.saved === VIEW_KEY, r.st);
+  ok('★对照组：老板手机只发了 1 次 feed（没为了找管理员钥匙多打请求）', r.rec.feedCalls === 1, r.rec);
+}
+{
+  const r = await twoKeyCase('老板手机直接打开', { expense: null, saved: VIEW_KEY, url: URL });
+  ok('★对照组：老板手机直接打开，照旧只读', r.st.admin === false, r.st);
+  ok('★对照组：老板手机直接打开也只发 1 次 feed', r.rec.feedCalls === 1, r.rec);
 }
 
 // ---------- 场景三十三c：管理页给出的那条链接必须是能用的 ----------
