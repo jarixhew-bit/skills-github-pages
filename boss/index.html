@@ -3891,7 +3891,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v61</div>
+    <div class="admin-ver" id="adminVer">boss-app-v62</div>
 
     ${adminTripsSectionHtml()}
 
@@ -4421,6 +4421,12 @@ async function init(){
       if(linkTab) switchTab(linkTab);
       return;
     }
+    // ⚡ 老板每次都点同一条链接进来：码就是这台已经存着的那把 → 先把上次看过的内容
+    // 摆出来，同时在背后拉最新的（2026-09-27 用户：「不要转圈圈那么久能吗？」）。
+    // 码不一样（第一次点、或换了新码）就不先摆——那份缓存是别的码拉的，不能冒充。
+    const cachedEarly = (savedTok && savedTok === linkCode) ? loadCachedFeed() : null;
+    const shownEarly = !!(cachedEarly && cachedEarly.data && cachedEarly.data.role !== 'admin');
+    if(shownEarly) handleFeed(cachedEarly.data, { fromNetwork:false, fetchedAt: cachedEarly.fetchedAt });
     const prev = TOKEN;
     TOKEN = linkCode;
     try{
@@ -4438,6 +4444,11 @@ async function init(){
       if(err && err.kind === 'http' && err.status === 401){
         TOKEN = prev;
         stripCodeFromUrl();
+        if(shownEarly){
+          // 先摆出来的那份是这把（现在已经失效的）码拉的——收掉，不能留在闸门底下
+          clearToken(); safeRemove(FEED_CACHE_KEY); feedData = null;
+          document.getElementById('app').classList.add('app-hidden');
+        }
         openGate();
         const msg = document.getElementById('gate-msg');
         if(msg) msg.textContent = pick('链接里的访问码不对，请手动输入或找 YANG 要新的',
@@ -4447,6 +4458,12 @@ async function init(){
       // 连不上：**不开闸门、也不抹网址里的码**——他过一会儿再点一次、或下拉刷新，
       // 就是用同一条好链接重试。码还没验证过，所以也**不存**（验证通过才落地）。
       TOKEN = prev;
+      if(shownEarly){
+        // 上次的内容已经摆着了：标一句「离线，显示的是几点的资料」就好，不换成错误卡
+        TOKEN = linkCode;
+        markOffline(cachedEarly.fetchedAt);
+        return;
+      }
       const cachedLink = loadCachedFeed();
       document.getElementById('app').classList.remove('app-hidden');
       if(cachedLink && cachedLink.data && prev){
@@ -4466,6 +4483,13 @@ async function init(){
     // 本来就可能没配，不算异常。成功也不落地进 bossApp_token，保持单一来源。
     const borrowed = safeGet(EXPENSE_TOKEN_KEY);
     if(borrowed){
+      // ⚡ 上次在这台看的就是管理员那份 → 先摆出来，背后再拉最新的
+      const cachedB = loadCachedFeed();
+      const shownB = !!(cachedB && cachedB.data && cachedB.data.role === 'admin');
+      if(shownB){
+        handleFeed(cachedB.data, { fromNetwork:false, fetchedAt: cachedB.fetchedAt });
+        showBorrowedTokenBanner();
+      }
       TOKEN = borrowed;
       try{
         const feed = await fetchFeed();
@@ -4474,8 +4498,17 @@ async function init(){
           showBorrowedTokenBanner();
           return;
         }
-      }catch(e){ /* 安静回退 */ }
+      }catch(e){
+        // 连不上：已经摆着上次的内容就留着，标离线；没摆就照旧退回闸门
+        if(shownB && !(e && e.kind === 'http' && e.status === 401)){ markOffline(cachedB.fetchedAt); return; }
+      }
       TOKEN = '';
+      if(shownB){
+        // 那把钥匙已经不是管理员了——先摆出来的管理员内容必须收掉
+        safeRemove(FEED_CACHE_KEY); feedData = null;
+        document.getElementById('app').classList.add('app-hidden');
+        const bn = document.getElementById('borrowedTokenBanner'); if(bn) bn.classList.add('off');
+      }
     }
     openGate();
     return;
