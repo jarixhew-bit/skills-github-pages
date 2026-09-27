@@ -32,6 +32,16 @@ body:not(.lang-en) .en{display:none !important}
 #gate{position:fixed;inset:0;z-index:400;background:var(--bg);
   display:flex;flex-direction:column;justify-content:center;padding:28px}
 #gate.off{display:none}
+/* 打开中：闸门没开、App 也还没出来的那一段，显示「正在打开…」而不是一片空白。
+   用 :has() 纯 CSS 判断，不必在每条路径上记得去关它；不支持 :has 的老浏览器
+   就是一片空白（跟以前一样），不会出错。 */
+#boot{display:none}
+body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset:0;z-index:350;
+  flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  background:var(--bg);color:var(--sub);font-size:15px}
+.boot-dot{width:28px;height:28px;border-radius:50%;border:3px solid var(--border);
+  border-top-color:var(--p);animation:bootspin .8s linear infinite}
+@keyframes bootspin{to{transform:rotate(360deg)}}
 #gate h2{margin:0 0 10px;font-size:21px;color:var(--text)}
 #gate p{color:var(--sub);font-size:14.5px;margin:0 0 20px;line-height:1.7}
 #gate-input{width:100%;padding:14px 16px;border:1.5px solid var(--border);border-radius:12px;
@@ -490,8 +500,15 @@ body:not(.lang-en) .en{display:none !important}
 </head>
 <body>
 
-<!-- 访问码闸门：默认盖着，验证成功才拿掉 -->
-<div id="gate">
+<!-- 访问码闸门：**默认不显示**，只有真的需要输码时 openGate() 才打开。
+     2026-09-27 之前是「默认盖着，验证成功才拿掉」——于是每次打开，连点带码的链接、
+     连已经存过码的人，都会先闪一下这个输码界面，等服务器回话才消失。用户：「我不要
+     出现这个访问码界面的」。等待中显示的是底下那个 #boot（正在打开…）。 -->
+<div id="boot" aria-live="polite">
+  <div class="boot-dot"></div>
+  <div><span class="cn">正在打开…</span><span class="en">Opening…</span></div>
+</div>
+<div id="gate" class="off">
   <h2>🔑 <span class="cn">访问码</span><span class="en">Access Code</span></h2>
   <p>
     <span class="cn">向 YANG 索取访问码，填一次这台手机会记住。</span>
@@ -3856,7 +3873,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v59</div>
+    <div class="admin-ver" id="adminVer">boss-app-v60</div>
 
     ${adminTripsSectionHtml()}
 
@@ -4372,12 +4389,31 @@ async function init(){
       if(linkTab) switchTab(linkTab);
       return;
     }catch(err){
+      // ⚠️ 只有服务端明说 401 才叫「码不对」。2026-09-27 之前这里把**任何**失败
+      // （手机信号一抖、服务器一时出错）都当成码不对：把他丢回输入访问码的界面，
+      // 还写着「链接里的访问码不对」——链接明明是好的，他却会以为链接坏了、
+      // 又要找 YANG 要新的。而这条路存在的全部意义，就是让他不用碰那个界面。
+      if(err && err.kind === 'http' && err.status === 401){
+        TOKEN = prev;
+        stripCodeFromUrl();
+        openGate();
+        const msg = document.getElementById('gate-msg');
+        if(msg) msg.textContent = pick('链接里的访问码不对，请手动输入或找 YANG 要新的',
+                                       'The code in the link is not valid — please enter it manually or ask YANG for a new link');
+        return;
+      }
+      // 连不上：**不开闸门、也不抹网址里的码**——他过一会儿再点一次、或下拉刷新，
+      // 就是用同一条好链接重试。码还没验证过，所以也**不存**（验证通过才落地）。
       TOKEN = prev;
-      stripCodeFromUrl();
-      openGate();
-      const msg = document.getElementById('gate-msg');
-      if(msg) msg.textContent = pick('链接里的访问码不对，请手动输入或找 YANG 要新的',
-                                     'The code in the link is not valid — please enter it manually or ask YANG for a new link');
+      const cachedLink = loadCachedFeed();
+      document.getElementById('app').classList.remove('app-hidden');
+      if(cachedLink && cachedLink.data && prev){
+        handleFeed(cachedLink.data, { fromNetwork:false, fetchedAt: cachedLink.fetchedAt });
+        markOffline(cachedLink.fetchedAt);
+      }else{
+        document.getElementById('tab-today').innerHTML =
+          `<div class="empty-card"><div class="empty-icon">📡</div><div>${bl('连不上服务器，请稍后再点一次这条链接','Cannot reach the server — please tap the link again in a moment')}</div></div>`;
+      }
       return;
     }
   }
