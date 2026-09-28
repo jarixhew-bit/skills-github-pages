@@ -3932,6 +3932,38 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
      await page.evaluate(() => { const t = data.transactions.find(x => x.bossRec && x.bossRec.id === 'r_sgd');
                                  return t && t.accountId; }) === 'acc_sg');
 
+  // ---- 行程结束、把新币户口删了：收过的那几笔不许又跑回来（2026-09-28）----
+  // 用户：「sg trip 那个行程结束了，我也删掉账户里，但是一直出现还有 6 笔账说我没有 sgd 户口，
+  // 昨天已经录入了，为什么还要这些东西跑出来」。删户口时每笔都落了墓碑，但收件只看
+  // 「本机有没有这笔」、不看「是不是我删的」，于是每次都当新账、又找不到新币户口。
+  await page.evaluate(() => { window.confirm = () => true; deleteAccount('acc_sg'); });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(800);
+  const afterDel = await page.evaluate(() => ({
+    back: data.transactions.filter(t => t.bossRec && ['r_sgd', 'r_usd'].includes(t.bossRec.id)).length,
+    noAcc: inboxState.noAcc,
+  }));
+  ok('★★删了新币户口之后，收过的新币账不会再跑回来', afterDel.back === 0, afterDel);
+  ok('★★也不会一直挂着「没有 SGD 户口」', !(afterDel.noAcc && afterDel.noAcc.SGD), afterDel.noAcc);
+  // 对照组一：删户口之后才进来、从没收过的新币账 → 没有新币户口时照样讲清楚（只算这一笔）
+  api.records.push({ id:'r_sgd_new', month, reporter:'Kuang', type:'expense', amount:15, currency:'SGD',
+    date:day, description:'新加坡晚到的一笔', createdAt:new Date().toISOString() });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(800);
+  const na2 = await page.evaluate(() => inboxState.noAcc);
+  ok('★对照组：从没收过的新币账，没有新币户口时照样提醒，而且只算这一笔', na2 && na2.SGD === 1, na2);
+  // 对照组二：再开一个新币户口 → 新的那笔收进去；删过的那两笔仍然不回来
+  await page.evaluate(() => { data.accounts.push({ id:'acc_sg2', name:'Singapore again', currency:'SGD',
+    createdAt: Date.now() }); saveData(); });
+  await page.evaluate(() => fetchInbox());
+  await page.waitForTimeout(800);
+  const sg2 = await page.evaluate(() => ({
+    fresh: (data.transactions.find(t => t.bossRec && t.bossRec.id === 'r_sgd_new') || {}).accountId,
+    back: data.transactions.filter(t => t.bossRec && ['r_sgd', 'r_usd'].includes(t.bossRec.id)).length,
+  }));
+  ok('★对照组：开了新币户口，晚到的那笔照样收进去', sg2.fresh === 'acc_sg2', sg2);
+  ok('★★开了新户口，删过的那两笔也不会借机跑回来', sg2.back === 0, sg2);
+
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
 }

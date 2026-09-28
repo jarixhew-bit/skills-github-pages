@@ -7359,6 +7359,12 @@ async function syncBossLedgerMonth(month, records, accId){
     // 新的那笔按币种挑账户（见 bossAccountForCurrency）。已经收过的不动：
     // 收进哪个账户只在第一次收的时候决定（理由见下面 was.accountId 那段）
     if(i < 0){
+      // ⚠️ 本机删过的不再收回来（2026-09-28）。用户新加坡行程结束后把新币户口删了，
+      // 里面那几笔同事账跟着删、也都落了墓碑；可是这里只看「本机有没有这笔」，
+      // 于是每次收件都把它们当成新账，找不到新币户口就一直挂着「还有 6 笔没有 SGD 户口」。
+      // 用户：「昨天已经录入了，为什么还要这些东西跑出来」。删了就是处理过了。
+      // 只挡**收过又被删掉**的：从没收过的（没户口先不收的那种）没有墓碑，开了户口照样收。
+      if((data.deletedTxIds || []).some(x => x && x.id === id)) continue;
       const target = bossAccountForCurrency(rec.currency, accId);
       if(!target){
         const c = String(rec.currency || 'USD').toUpperCase();
