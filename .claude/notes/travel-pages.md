@@ -224,6 +224,18 @@ lightbox 从 `.gal>img` 的 src/alt 取图，`#lbImg` 的 alt 会跟着换（所
 - 航班区块只有登机牌＋转机条＋行李表，用户重上传时把之前的三条 note（6人名单确认、
   末段座位分开、订位代号 EC966J）都拿掉了，别自己补回去。
 
+### penang-trip/v2.html（2026-09-29 建，新设计版，旧版 index.html 原样保留）
+用户要看新设计、不满意可退回旧版，所以**两份并存**：v2 由 index.html 复制后只改外观——植物园配色
+（蕨绿 #4a7c59／万寿菊黄 #f9a620／陶土红 #b7472a／奶油底，全定义在 `:root`，旧变量名映射过去）、
+杂志封面、航班改竖线时间轴（`.tl > .tl-item`，转机条夹在两站之间）、底部固定四标签导航
+（`nav#navstrip.tabbar`：行程→#flights／美食→#dining／景点→#places／实用→#weather；宽屏 >820px 变顶部横条）。
+内容与 id/class/data-* 钩子和旧版逐项相同。**index.html 里不加任何回链**，
+v2 顶部有「回旧版 / Classic」链到 index.html。
+- **原页没有「逐日行程」**，所以时间轴只落在航班区块；别为了凑「每天一条时间轴」去编行程。
+- 改内容时**两份都要改**（各自独立，改一份不会同步到另一份）；`tools/check-weather.mjs`
+  已对 index.html 与 v2.html 各跑一遍，`tools/lib/trips.py` 也登记了 v2。
+- 提示条里「顶部的章节条」在 v2 已改成「导航栏」（手机上导航在底部，原句不再成立）。
+
 ## xiamen-trip/index.html（约 830 行）
 厦门自由行手册，2026-08-24~27 三晚四天，2 人（HEW/CHERN YANG ＋ TAN/CHIN HOOI），双语。
 2026-08-22 新建，**CSS 与 JS 整套复制自 singapore-trip/index.html**（同一套 `.day`／`.stop`／

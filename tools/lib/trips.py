@@ -31,6 +31,7 @@ TRIPS = {
     "xiamen-trip/index.html": "2026-08-27",      # 24–27 Aug 2026
     "singapore-trip/index.html": "2026-09-27",   # 23–27 Sep 2026
     "penang-trip/index.html": "2026-10-17",      # 9–17 Oct 2026
+    "penang-trip/v2.html": "2026-10-17",         # 同一趟的新设计版（植物园配色）
     # 选图页跟着它服务的手册；手册没结束就还要能看
     "penang-trip/photo-picker.html": "2026-10-17",
     "singapore-trip/photo-picker.html": "2026-09-27",

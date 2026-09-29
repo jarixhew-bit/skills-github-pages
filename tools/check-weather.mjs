@@ -1,5 +1,5 @@
 /**
- * singapore-trip/index.html 与 penang-trip/index.html 每日天气的自检
+ * singapore-trip/index.html 与 penang-trip/index.html（含新设计版 v2.html）每日天气的自检
  * —— 真浏览器跑，Playwright（两页共用同一套 open-meteo 前端现抓机制，合在一个脚本里）。
  *
  * 跑法：
@@ -37,6 +37,7 @@ import { chromium } from 'playwright';
 const PORT = process.env.CHECK_PORT || 8899;
 const SG_URL = `http://localhost:${PORT}/singapore-trip/`;
 const PGT_URL = `http://localhost:${PORT}/penang-trip/`;
+const PGT_V2_URL = `http://localhost:${PORT}/penang-trip/v2.html`;   // 新设计版，天气与空气质量条要同样验一遍
 const API = 'https://api.open-meteo.com/**';
 const PSI_API = 'https://api.data.gov.sg/**';
 const AIR_API = 'https://air-quality-api.open-meteo.com/**';
@@ -288,6 +289,11 @@ check(errors.length === 0, `[singapore] 不应有 JS 错误（实得：${errors.
  * penang-trip：没有逐日行程列，天气条独立成 #weather 区块里的
  * #wxNote（倒数/状态提示）+ #wxdaily（9 张 .wxd[data-wx] 卡片，进窗口才显示）。
  * ============================================================ */
+/* 槟城有两个版本（旧版 index.html／新设计版 v2.html），JS 是同一份逻辑但各自一份档案，
+ * 所以整段逐页各跑一遍；失败讯息里的 [penang] 会换成 [penang-v2] 以便认出是哪一页。 */
+const baseCheck = check;
+for (const PGT_PAGE of [{ tag: 'penang', url: PGT_URL }, { tag: 'penang-v2', url: PGT_V2_URL }]) {
+const check = (cond, label) => baseCheck(cond, label.replace('[penang]', `[${PGT_PAGE.tag}]`));
 const PGT_DATES = ['2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13',
   '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17'];
 const PGT_FULL = {
@@ -321,7 +327,7 @@ async function loadPGT(handler, now, airHandler) {
      不拦的话 CI 上会去打真的 open-meteo，结果就随当天空气变动了。 */
   await pgtPage.route(AIR_API, r => (airHandler || (x => x.fulfill({ json: AIR_GOOD })))(r));
   await pgtPage.clock.setFixedTime(new Date(now));
-  await pgtPage.goto(PGT_URL, { waitUntil: 'domcontentloaded' });
+  await pgtPage.goto(PGT_PAGE.url, { waitUntil: 'domcontentloaded' });
   await pgtPage.waitForFunction(
     () => {
       const n = document.getElementById('wxNote');
@@ -498,6 +504,7 @@ check(dayDown.plan?.actHidden === false,
   '[penang] 抓不到数字时要把替代方案摊开备用');
 
 check(pgtErrors.length === 0, `[penang] 不应有 JS 错误（实得：${pgtErrors.slice(0, 3).join(' | ')}）`);
+}
 
 await browser.close();
 
