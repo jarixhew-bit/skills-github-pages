@@ -265,7 +265,7 @@ v2 顶部有「回旧版 / Classic」链到 index.html。
   `.airplan/.airact/.airnow` 是 check-weather 用 `querySelector` 取第一个的，别在它们前面再加同名元素。
 - 自检：`node tools/check-weather.mjs` 已含 v3；行为测试 `node tools/check-penang-v3.mjs`（156 项：标签/hash/票券/今日两种模式与时区边界/
   滑卡按钮＋拖动＋结束清单＋无存储/司机层开关与复制降级/中英/400px 不横滚与 ≥44px；`SHOT_DIR=…` 顺便截图）。
-  **它还没挂进 check-all / checks.yml**（挂 CI 要动 workflow，待用户决定）。改 v3 后至少手动跑这两支。
+  已挂进 check-all（`penangv3`）与 checks.yml 的 `penangv3` job，`ci-decide.py` 按 v3.html／该脚本改动触发。
 - 三份并存（index／v2／v3），改内容要三份都改；`tools/lib/trips.py`、`tools/ci-decide.py` 的 weather 清单也都登记了 v3。
 
 ## xiamen-trip/index.html（约 830 行）

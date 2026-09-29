@@ -10,7 +10,7 @@
  *   node tools/check-penang-v3.mjs            # 沙盒里加 CHROMIUM_PATH=/opt/pw-browsers/chromium
  *   SHOT_DIR=/某目录 node tools/check-penang-v3.mjs   # 顺便截 400px/1200px 中英文图
  *
- * 注意：这支**尚未挂进 check-all / checks.yml**（挂 CI 要动 workflow，等用户点头）。
+ * 已挂进 check-all（penangv3）与 checks.yml 的 penangv3 job。
  */
 import { chromium } from 'playwright';
 

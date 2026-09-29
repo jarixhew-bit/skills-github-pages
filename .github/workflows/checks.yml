@@ -47,6 +47,7 @@ jobs:
       staff: ${{ steps.d.outputs.staff }}
       gamebot: ${{ steps.d.outputs.gamebot }}
       weather: ${{ steps.d.outputs.weather }}
+      penangv3: ${{ steps.d.outputs.penangv3 }}
       flights: ${{ steps.d.outputs.flights }}
       refreshphotos: ${{ steps.d.outputs.refreshphotos }}
       photofilter: ${{ steps.d.outputs.photofilter }}
@@ -256,6 +257,18 @@ jobs:
           health-url: http://localhost:8899/singapore-trip/
       - run: node tools/check-weather.mjs
 
+  penangv3:
+    name: 槟城 v3 版面（真浏览器）
+    needs: decide
+    if: needs.decide.outputs.penangv3 == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/browser-check-setup
+        with:
+          health-url: http://localhost:8899/penang-trip/v3.html
+      - run: node tools/check-penang-v3.mjs
+
   shortlist:
     name: 候选清单页
     needs: decide
@@ -362,7 +375,7 @@ jobs:
     # 这一串必须列满同一个文件里的每个 job：漏掉的那项红了总闸照样绿、分支保护会放行
     # （2026-08-17 发现 fund 与 news 从来没被列进来）。已由 check-workflows.py 的
     # check_gate 断言守着，加 job 忘了回头改这里会在 CI 上被挡下。
-    needs: [decide, html, secrets, pwa, swver, ainote, declog, notify, morningpos, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, news, prices, weather, flights, refreshphotos, photofilter, shortlist]
+    needs: [decide, html, secrets, pwa, swver, ainote, declog, notify, morningpos, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, news, prices, weather, penangv3, flights, refreshphotos, photofilter, shortlist]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——

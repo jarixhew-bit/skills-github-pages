@@ -127,7 +127,7 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有二十三个，全部挂 CI（2026-08-29 校对过与 `tools/` 一致；2026-09-18 加了 `check-flight-times`）：
+   交付时告诉用户自检怎么跑。现有二十四个，全部挂 CI（2026-08-29 校对过与 `tools/` 一致；2026-09-18 加了 `check-flight-times`；2026-09-29 加了 `check-penang-v3`）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
@@ -146,7 +146,8 @@
    三种情境，确认每天读的是自己那一格、不会错位，也不会开天窗；2026-09-18 起一并守
    两本手册的**实时空气质量条**——新加坡拦 data.gov.sg（良好／中等／不健康／API 挂掉四种
    读数，PSI 超过 100 一定标红，那是「户外改室内」的触发线）；槟城拦 open-meteo 的空气质量
-   接口（同样四种，美国 AQI 口径：超过 100 标提醒色＝老人小孩少户外，超过 150 标红＝整团改室内）/ `check-boss.mjs`
+   接口（同样四种，美国 AQI 口径：超过 100 标提醒色＝老人小孩少户外，超过 150 标红＝整团改室内）/ `check-penang-v3.mjs`
+   （槟城 v3 版面：票券／今日模式／一页一天／滑卡／给司机看，用固定假日期实跑）/ `check-boss.mjs`
    ＋`check-boss-2.mjs`（同一份自检拆成前半／后半两个档并行跑，共用
    `tools/lib/boss-check-kit.mjs`；守老板 App 的安全不变量：viewer 身份下写操作控件
    必须一个都不进 DOM，**并带 admin 对照组**——没有对照组的话，整个管理功能坏掉也会
