@@ -1,5 +1,9 @@
 /**
- * penang-trip/v3.html 行为自检（真浏览器，Playwright）。
+ * penang-trip/v3.html 与 v4.html 行为自检（真浏览器，Playwright）。
+ *
+ * v4 是 v3 的换皮版（当地招牌风：同一份 JS、同样的 id/data-* 钩子，只换外观与天数印章），
+ * 所以整套断言逐页各跑一遍，失败讯息前面的 [v3]/[v4] 标出是哪一页；v4 另有几条只属于它的断言
+ * （天数印章的中文数字、竖排对联条不挤压、底色显式设置），放在每页循环的末尾。
  *
  * v3 在 v2 上加了 8 种版面：杂志封面、逐日时间轴、底部四标签、票券、今日模式、
  * 一页一天(hash)、滑卡选餐厅、给司机看。这些全是 JS 现算，静态检查（check-html）看不出坏没坏，
@@ -15,10 +19,14 @@
 import { chromium } from 'playwright';
 
 const PORT = process.env.CHECK_PORT || 8899;
-const URL_V3 = `http://localhost:${PORT}/penang-trip/v3.html`;
+const PAGES = [
+  { tag: 'v3', file: 'v3.html', links: '旧版 / Classic>index.html,上一版 / v2>v2.html' },
+  { tag: 'v4', file: 'v4.html', links: '旧版 / Classic>index.html,上一版 / v3>v3.html' },
+];
+let PAGE = PAGES[0];   // 当前在测哪一页（下面的大循环会逐页切换）
 const SHOT_DIR = process.env.SHOT_DIR || '';
 const fails = [], oks = [];
-const check = (cond, label) => { (cond ? oks : fails).push(label); if (!cond) console.log('  ✗ ' + label); };
+const check = (cond, label) => { label = `[${PAGE.tag}] ${label}`; (cond ? oks : fails).push(label); if (!cond) console.log('  ✗ ' + label); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const PLACEHOLDER = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#b7cde2"/><text x="400" y="310" font-size="48" text-anchor="middle" fill="#1b3f66">photo</text></svg>`;
@@ -53,7 +61,7 @@ async function open(opts = {}) {
     if (clipboard === 'none') Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
   }, { noStorage: !!opts.noStorage, clipboard: opts.clipboard || '', wish: opts.wish || null, lang: opts.lang || '' });
   await page.clock.setFixedTime(new Date(opts.now || '2026-09-29T10:00:00+08:00'));
-  await page.goto(URL_V3 + (opts.hash || ''), { waitUntil: 'domcontentloaded' });
+  await page.goto(`http://localhost:${PORT}/penang-trip/${PAGE.file}` + (opts.hash || ''), { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#daytabs .dtab');
   await page.waitForFunction(() => { const n = document.getElementById('wxNote'); return n && !/载入中|Loading/.test(n.textContent); });
   return { ctx, page, errors };
@@ -84,8 +92,10 @@ const settleSwipe = p => p.waitForFunction(() => !document.querySelector('#swSta
 const waitMsg = p => p.waitForFunction(() => document.getElementById('drvMsg').innerText.trim() !== '', null, { timeout: 5000 }).catch(() => {});
 const jumpTop = p => p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
 const noHScroll = p => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
-async function shot(page, name) { if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/${name}.png`, fullPage: false }); }
+async function shot(page, name) { if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/${PAGE.tag}-${name}.png`, fullPage: false }); }
 
+for (const P of PAGES) {
+PAGE = P;
 /* ============ 1. 行程外（距出发 N 天）＋ 票券 / 标签 / hash ============ */
 {
   const { ctx, page, errors } = await open({ now: '2026-09-29T10:00:00+08:00' });
@@ -367,7 +377,7 @@ for (const mode of ['reject', 'none']) {
       check(/自由日/.test(r.tickets) && /周五/.test(r.tickets) && /滑卡/.test(r.view) && /第 3 天/.test(r.today), '[语言-zh] 票券/滑卡/今天块应是中文');
       check(!/[A-Za-z]{4,}/.test(r.view + r.tickets.replace(/D\d/g, '')), `[语言-zh] 票券/切换钮不应混入英文单词（实得 ${r.view} ${r.tickets.slice(0, 40)}）`);
     }
-    check(r.links.join() === '旧版 / Classic>index.html,上一版 / v2>v2.html', `[顶部链接] 旧版/上一版（实得 ${r.links}）`);
+    check(r.links.join() === PAGE.links, `[顶部链接] 旧版/上一版（实得 ${r.links}）`);
     /* 司机层与滑卡结束页的语言 */
     await page.click('#swWant'); await settleSwipe(page);
     await page.evaluate(() => { document.querySelector('.btn-driver').click(); });
@@ -440,7 +450,45 @@ if (SHOT_DIR) {
   for (const lang of ['zh', 'en']) { const { ctx, page } = await open({ lang, w: 400, h: 860 }); await page.waitForTimeout(300); await shot(page, `10-top-pre-${lang}-400`); await ctx.close(); }
 }
 
+/* ============ 8. 只属于 v4 的断言：印章 / 对联条 / 底色 ============ */
+if (PAGE.tag === 'v4') {
+  const CN = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  for (const lang of ['zh', 'en']) {
+    const { ctx, page, errors } = await open({ lang, w: 400, weather: null });
+    const r = await page.evaluate(() => {
+      const vis = el => [...el.querySelectorAll('.cn,.en')].filter(x => getComputedStyle(x).display !== 'none').map(x => x.textContent).join('');
+      /* 对联条：条宽≥30、竖排单列；逐字量位置——字与字的间距不得小于字号（挤压/重叠＝没通过），整列不得超出条 */
+      const strips = [...document.querySelectorAll('.cover .strip')].map(e => {
+        const r = e.getBoundingClientRect(), sp = [...e.children].find(x => getComputedStyle(x).display !== 'none'), fs = parseFloat(getComputedStyle(sp).fontSize);
+        const glyphs = [...sp.querySelectorAll('i')].map(g => g.getBoundingClientRect());
+        let text; { const rg = document.createRange(); rg.selectNodeContents(sp); text = rg.getBoundingClientRect(); }
+        const gapOk = glyphs.every((g, i) => i === 0 || g.top - glyphs[i - 1].top >= fs);
+        return { w: Math.round(r.width), mode: getComputedStyle(sp).writingMode, cols: new Set(glyphs.map(g => Math.round(g.left))).size || 1,
+          gapOk, fits: text.top >= r.top && text.bottom <= r.bottom && text.left >= r.left && text.right <= r.right, text: sp.textContent };
+      });
+      return { seals: [...document.querySelectorAll('#daytabs .dtab .seal')].map(vis), tk: [...document.querySelectorAll('#tickets .tkt .tk-seal')].map(vis),
+        dp: vis(document.querySelector('#day-1 .dp-n')), strips, bg: getComputedStyle(document.body).backgroundColor,
+        selBorder: getComputedStyle(document.querySelector('#daytabs .dtab[aria-selected="true"]')).borderTopColor };
+    });
+    const want = lang === 'zh' ? CN : CN.map((_, i) => String(i + 1));
+    check(r.seals.join() === want.join() && r.tk.join() === want.join() && r.dp === want[0], `[印章-${lang}] 天数印章应写${lang === 'zh' ? '中文数字一~九' : '阿拉伯数字 1~9'}（实得 ${r.seals}）`);
+    check(r.strips.length === 2 && r.strips.every(x => x.w >= 30 && x.mode === 'vertical-rl' && x.cols === 1 && x.gapOk && x.fits), `[对联条-${lang}] 条宽≥30px、单列竖排、字距不挤压、不出条（实得 ${JSON.stringify(r.strips)}）`);
+    check(r.bg === 'rgb(23, 17, 12)', `[底色] body 背景应显式为漆木色 #17110c（实得 ${r.bg}）`);
+    check(r.selBorder === 'rgb(217, 178, 74)', `[印章] 选中的日标签应是金色描边（实得 ${r.selBorder}）`);
+    check(errors.length === 0, `[v4-${lang}] 不应有 JS 错误（${errors.slice(0, 3).join(' | ')}）`);
+    await ctx.close();
+  }
+  /* 字体请求全部失败（沙盒/被墙）时：页面照样可读、不横滚 */
+  const { ctx, page } = await open({ w: 400 });
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#daytabs .dtab');
+  check(await noHScroll(page) && await page.evaluate(() => getComputedStyle(document.querySelector('.cover h1')).fontFamily.includes('Songti SC')), '[字体回退] 字体请求失败时仍有系统回退栈且不横滚');
+  await ctx.close();
+}
+}
+
 await browser.close();
 console.log(`通过 ${oks.length} 项，失败 ${fails.length} 项`);
 if (fails.length) { fails.forEach(f => console.log('  ✗ ' + f)); process.exit(1); }
-console.log('penang-trip/v3.html 行为自检全部通过');
+console.log('penang-trip/v3.html 与 v4.html 行为自检全部通过');
