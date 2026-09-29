@@ -146,8 +146,16 @@ PAGE = P;
     times: [...p.querySelectorAll('.ds-time')].map(x => x.textContent), empty: !!p.querySelector('.dempty'),
     jumps: [...p.querySelectorAll('.dempty [data-go]')].map(a => a.dataset.go).join(),
     wx: !!p.querySelector('.daywx .dwx') })));
-  check(days[0].times.join() === '09:35,12:40,14:55', `[时间轴] D1 应有 09:35/12:40/14:55（实得 ${days[0].times}）`);
-  check(days[8].times.join() === '11:50,13:30,16:30', `[时间轴] D9 应有 11:50/13:30/16:30（实得 ${days[8].times}）`);
+  check(days[0].times.join() === '07:00,09:35,12:40,14:55', `[时间轴] D1 应有 07:00/09:35/12:40/14:55（实得 ${days[0].times}）`);
+  check(days[8].times.join() === '09:00,11:50,13:30,16:30', `[时间轴] D9 应有 09:00/11:50/13:30/16:30（实得 ${days[8].times}）`);
+  /* 出发去机场：D1 第一站 07:00（金边家里）、D9 第一站 09:00（槟城住处），中英文都在，排在航班之前 */
+  const firstStop = await page.evaluate(() => [1, 9].map(n => { const f = document.querySelector(`#day-${n} .dstop`); return f && {
+    time: f.querySelector('.ds-time')?.textContent, cn: f.querySelector('.ds-t .cn')?.textContent, en: f.querySelector('.ds-t .en')?.textContent,
+    dcn: f.querySelector('.ds-d .cn')?.textContent, den: f.querySelector('.ds-d .en')?.textContent }; }));
+  check(firstStop[0] && firstStop[0].time === '07:00' && firstStop[0].cn === '从金边家里出发去机场' && firstStop[0].en === 'Leave home in Phnom Penh for the airport'
+    && firstStop[0].dcn === '航班 09:35 起飞' && firstStop[0].den === 'Flight departs 09:35', `[时间轴] D1 第一站应是 07:00 从金边家里出发去机场（中英都在）（实得 ${JSON.stringify(firstStop[0])}）`);
+  check(firstStop[1] && firstStop[1].time === '09:00' && firstStop[1].cn === '从槟城住处出发去机场' && firstStop[1].en === 'Leave your stay in Penang for the airport'
+    && firstStop[1].dcn === '航班 11:50 起飞' && firstStop[1].den === 'Flight departs 11:50', `[时间轴] D9 第一站应是 09:00 从槟城住处出发去机场（中英都在）（实得 ${JSON.stringify(firstStop[1])}）`);
   for (let i = 1; i <= 7; i++) check(days[i].empty && days[i].jumps === 'dining,places' && days[i].times.length === 0, `[时间轴] D${i + 1} 应为空态并带去美食/景点按钮`);
   check(days.every(d => d.wx), '[天气] 每天面板都应有天气条');
   const cardTimes = await page.evaluate(() => [...document.querySelectorAll('#flights .bpass .time')].map(x => x.textContent));
@@ -221,8 +229,17 @@ const WX = { daily: {
   const { ctx, page, errors } = await open({ now: '2026-10-09T07:00:00+08:00' });
   const t = await page.evaluate(() => document.getElementById('today').innerText);
   check(/D1/.test(t) && /09:35/.test(t) && /14:55/.test(t), '[今日-D1] 应带去程航班站');
+  const tAll = await page.evaluate(() => document.getElementById('today').textContent);   // textContent：连隐藏的另一语言一起读
+  check(/07:00/.test(t) && /从金边家里出发去机场/.test(t) && /Leave home in Phnom Penh for the airport/.test(tAll) && t.indexOf('07:00') < t.indexOf('09:35'), '[今日-D1] 今天块应含 07:00 出发去机场站（中英都在），且排在 09:35 航班之前');
   check(await page.$('#today .dempty') === null, '[今日-D1] 有站的日子不应显示空态');
   check(errors.length === 0, '[今日-D1] 不应有 JS 错误'); await ctx.close();
+}
+{ /* 回程当天：今天块要带 09:00 出发去机场站 */
+  const { ctx, page, errors } = await open({ now: '2026-10-17T08:00:00+08:00' });
+  const t = await page.evaluate(() => document.getElementById('today').innerText);
+  const tAll = await page.evaluate(() => document.getElementById('today').textContent);
+  check(/D9/.test(t) && /09:00/.test(t) && /从槟城住处出发去机场/.test(t) && /Leave your stay in Penang for the airport/.test(tAll) && t.indexOf('09:00') < t.indexOf('11:50'), '[今日-D9] 今天块应含 09:00 出发去机场站（中英都在），且排在 11:50 航班之前');
+  check(errors.length === 0, '[今日-D9] 不应有 JS 错误'); await ctx.close();
 }
 { /* 边界：最后一天深夜、行程结束、出发前一天（换成远端时区，用本地日期字符串比较） */
   let r = await open({ now: '2026-10-17T15:30:00Z', tz: 'Asia/Kuala_Lumpur' });   // 马来西亚 10/17 23:30

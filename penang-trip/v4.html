@@ -1819,6 +1819,9 @@ var DAYS = [
   { date: '2026-10-09', tag: 'out',
     open: { cn: '抵达后的晚上还没排——从美食／景点里挑：', en: 'The evening after arrival is not planned yet — pick from Food / Sights:' },
     stops: [
+      { time: '07:00', kind: 'stop',
+        cn: { t: '从金边家里出发去机场', d: '航班 09:35 起飞' },
+        en: { t: 'Leave home in Phnom Penh for the airport', d: 'Flight departs 09:35' } },
       { time: '09:35', kind: 'flight',
         cn: { t: 'SQ 153 · 金边 → 新加坡', d: '金边 Techo KTI 09:35 → 新加坡 Changi SIN 12:40 · 飞行 2h 05m（当地时间）' },
         en: { t: 'SQ 153 · Phnom Penh → Singapore', d: 'Phnom Penh KTI 09:35 → Singapore SIN 12:40 · 2h 05m flight (local time)' },
@@ -1840,6 +1843,9 @@ var DAYS = [
   { date: '2026-10-16', stops: [] },
   { date: '2026-10-17', tag: 'ret',
     stops: [
+      { time: '09:00', kind: 'stop',
+        cn: { t: '从槟城住处出发去机场', d: '航班 11:50 起飞' },
+        en: { t: 'Leave your stay in Penang for the airport', d: 'Flight departs 11:50' } },
       { time: '11:50', kind: 'flight',
         cn: { t: 'SQ 133 · 槟城 → 新加坡', d: '槟城 PEN 11:50 → 新加坡 T2 SIN 13:30 · 飞行 1h 40m' },
         en: { t: 'SQ 133 · Penang → Singapore', d: 'Penang PEN 11:50 → Singapore T2 SIN 13:30 · 1h 40m flight' },
