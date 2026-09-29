@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<meta name="theme-color" content="#4a7c59"/>
+<title>槟城行 · 9–17 Oct 2026 | Penang Trip</title>
+<style>
+  /* ============================================================
+     Penang Handbook v2 — "Botanical Garden" visual system
+     配色：蕨绿 + 万寿菊黄 + 陶土红 + 奶油底。所有颜色只在 :root 定义一次。
+     ============================================================ */
+  :root {
+    /* --- 植物园调色盘（新） --- */
+    --fern: #4a7c59;        /* 主色：蕨绿（白字对比 4.9） */
+    --fern-d: #2f5a3d;      /* 深蕨绿：标题、深色底 */
+    --fern-dd: #1f3d2a;     /* 最深：封面、登机牌头 */
+    --fern-soft: #e6efe7;
+    --fern-line: #bcd3c1;
+    --marigold: #f9a620;    /* 点缀：万寿菊黄（只配深色字） */
+    --marigold-soft: #fdf0d3;
+    --marigold-line: #f1d08a;
+    --marigold-ink: #7a4e00; /* 黄色系里的文字色（白/奶油底上对比 6+） */
+    --terracotta: #b7472a;  /* 强调/警示：陶土红（白字对比 5.3） */
+    --terracotta-soft: #fbece6;
+    --terracotta-line: #eec3b4;
+    --cream: #f5f3ed;       /* 奶油底 */
+    --ink: #26322a;         /* 深墨绿文字 */
+    --on-marigold: #26322a; /* 黄底上的字 */
+
+    /* --- 旧版变量名映射到新调色盘（下面所有规则沿用旧名） --- */
+    --paper: var(--cream);
+    --paper-2: #ebe8dc;
+    --card: #ffffff;
+    --ink-2: #45544a;
+    --muted: #5b695f;
+    --faint: #5b695f;
+    --line: #e2dfd1;
+    --line-2: #cfcab6;
+
+    --teal: var(--fern);
+    --teal-soft: var(--fern-soft);
+    --teal-line: var(--fern-line);
+    --coral: var(--terracotta);
+    --coral-soft: var(--terracotta-soft);
+    --coral-line: var(--terracotta-line);
+    --gold: var(--marigold);
+    --gold-soft: var(--marigold-soft);
+    --gold-line: var(--marigold-line);
+    --green: var(--fern);
+    --green-soft: var(--fern-soft);
+    --green-line: var(--fern-line);
+    --blue: #2b5f86;
+    --blue-soft: #e9f0f6;
+    --blue-line: #c2d5e5;
+
+    --serif: "Noto Serif SC", "Songti SC", serif;
+    --sans: "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+    --r: 14px;
+    --shadow: 0 1px 3px rgba(38,50,42,.07), 0 10px 24px -14px rgba(38,50,42,.28);
+    --topH: 56px;
+    --tabH: 60px;           /* 底部导航高度（不含安全区） */
+    --navTop: 0px;          /* 宽屏时导航变顶部横条，这里改成它的高度 */
+    --safeB: env(safe-area-inset-bottom, 0px);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    font-family: var(--sans); color: var(--ink);
+    font-size: 16px; line-height: 1.7;
+    background: var(--cream);
+    overflow-x: hidden;
+  }
+  img { display: block; }
+  :focus-visible { outline: 3px solid var(--terracotta); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  a { -webkit-touch-callout: none; }
+
+  body.lang-en .cn { display: none !important; }
+  body:not(.lang-en) .en { display: none !important; }
+
+  /* 旧版的瓷砖纹装饰元素还留在 HTML 里（无害），这里不再画 */
+  .tiles { background: none; }
+
+  /* ===== TOP BAR ===== */
+  .topbar {
+    position: sticky; top: 0; z-index: 300;
+    height: var(--topH);
+    background: rgba(31,61,42,.97);
+    backdrop-filter: blur(10px);
+    display: flex; align-items: center; color: #fff;
+    border-bottom: 3px solid var(--marigold);
+  }
+  .topbar .brand { flex: 1; display: flex; align-items: center; gap: 9px; padding: 0 6px 0 14px; min-width: 0; }
+  .topbar .brand .dot { width: 20px; height: 20px; flex: none; background: var(--marigold); border-radius: 60% 0 60% 0; }
+  .topbar .brand .t { font-size: 13.5px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .brand .t b { font-family: var(--serif); font-weight: 700; letter-spacing: .08em; }
+  .topbar .classic {
+    flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px;
+    font-size: 11.5px; font-weight: 600; color: rgba(255,255,255,.86); text-decoration: underline;
+    text-underline-offset: 3px; white-space: nowrap;
+  }
+  .topbar button.lang {
+    flex: none; display: flex; align-items: center; justify-content: center; gap: 5px;
+    min-width: 52px; min-height: 44px; margin: 0 10px 0 2px; padding: 0 14px;
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3); border-radius: 999px;
+    color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; font-family: var(--sans);
+  }
+  .topbar button.lang:active { background: rgba(255,255,255,.26); }
+
+  /* ===== 导航：手机＝底部固定标签栏；宽屏＝顶部横条 ===== */
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 300;
+    display: flex; background: rgba(255,255,255,.97); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--line-2);
+    padding-bottom: var(--safeB);
+    box-shadow: 0 -8px 24px -16px rgba(38,50,42,.35);
+  }
+  .tabbar a {
+    flex: 1; min-height: var(--tabH); min-width: 0; position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    text-decoration: none; color: var(--muted); font-size: 12px; font-weight: 700;
+  }
+  .tabbar a .ic { font-size: 21px; line-height: 1.15; }
+  .tabbar a .n {
+    position: absolute; top: 5px; left: calc(50% + 12px);
+    font-size: 10px; font-weight: 800; line-height: 16px; min-width: 16px; padding: 0 4px; text-align: center;
+    color: #fff; background: var(--terracotta); border-radius: 999px;
+  }
+  .tabbar a .n:empty { display: none; }
+  .tabbar a.on { color: var(--fern-d); }
+  .tabbar a.on::before {
+    content: ""; position: absolute; top: 0; left: 26%; right: 26%; height: 4px;
+    background: var(--marigold); border-radius: 0 0 4px 4px;
+  }
+
+  .wrap { max-width: 780px; margin: 0 auto; padding-bottom: calc(var(--tabH) + var(--safeB) + 28px); }
+
+  /* ===== COVER（杂志封面） ===== */
+  .cover {
+    position: relative; color: #fff; overflow: hidden; min-height: 460px;
+    background: linear-gradient(155deg, var(--fern-dd) 0%, var(--fern-d) 48%, var(--fern) 100%);
+    border-radius: 0 0 28px 28px;
+  }
+  .cover img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .62; }
+  .cover .inner {
+    position: relative; min-height: 460px; display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 26px 20px 30px;
+    background: linear-gradient(180deg, rgba(31,61,42,.10) 12%, rgba(31,61,42,.62) 58%, rgba(22,44,30,.96) 100%);
+  }
+  .cover .kicker {
+    display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+    font-size: 12px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--marigold); margin-bottom: 10px;
+  }
+  .cover .kicker::before { content: ""; width: 28px; height: 2px; background: var(--marigold); }
+  .cover h1 { font-family: var(--serif); font-size: 46px; line-height: 1.12; font-weight: 700; letter-spacing: .02em; }
+  .cover h1 .sub { display: block; font-family: var(--sans); font-size: 12.5px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; color: rgba(255,255,255,.78); margin-top: 10px; }
+  .cover .dates { font-size: 15px; color: #fff; font-weight: 600; margin-top: 14px; line-height: 1.55; }
+  .cover .meta-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+  .cover .meta-chip {
+    font-size: 12.5px; font-weight: 700; padding: 5px 12px;
+    border: 1px solid rgba(255,255,255,.4); border-radius: 999px; color: #fff;
+    background: rgba(255,255,255,.12);
+  }
+  .cover .cd {
+    align-self: flex-start; margin-top: 16px; display: inline-flex; align-items: baseline; gap: 7px;
+    background: var(--marigold); color: var(--on-marigold); border-radius: 999px; padding: 7px 16px;
+    font-size: 13.5px; font-weight: 700; box-shadow: 0 6px 18px -8px rgba(0,0,0,.7);
+  }
+  .cover .cd b { font-family: var(--serif); font-size: 20px; font-weight: 700; }
+  .cover .band { display: none; }
+
+  /* ===== TIP ===== */
+  .tip {
+    display: flex; gap: 11px; margin: 18px 16px 0; padding: 13px 15px;
+    background: var(--marigold-soft); border: 1px solid var(--marigold-line);
+    border-left: 4px solid var(--marigold); border-radius: var(--r);
+    font-size: 13.5px; line-height: 1.65; color: var(--marigold-ink);
+  }
+  .tip .ico { flex: none; font-size: 16px; }
+
+  /* ===== SECTION HEAD ===== */
+  section { padding: 34px 16px 6px; scroll-margin-top: calc(var(--topH) + var(--navTop) + 6px); }
+  .sec-head { display: flex; align-items: center; gap: 11px; margin-bottom: 15px; }
+  .sec-head .no {
+    flex: none; width: 36px; height: 36px; border-radius: 60% 0 60% 0;
+    background: var(--fern); color: #fff; font-family: var(--serif); font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; letter-spacing: .04em;
+  }
+  .sec-head h2 { font-family: var(--serif); font-size: 26px; font-weight: 700; letter-spacing: .01em; line-height: 1.2; color: var(--fern-d); }
+  .sec-head .rule { flex: 1; height: 2px; align-self: center; background: linear-gradient(90deg, var(--fern-line), transparent); }
+
+  .bp-group-label {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 13.5px; font-weight: 800; letter-spacing: .04em; color: var(--fern-d);
+    margin: 24px 2px 12px;
+  }
+  .bp-group-label::after { content: ""; flex: 1; height: 1px; background: var(--line-2); }
+
+  /* ===== 时间轴（航班行程） ===== */
+  .tl { position: relative; margin: 2px 0 8px; }
+  .tl-item { position: relative; padding: 0 0 8px 34px; }
+  .tl-item::before {          /* 竖线 */
+    content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: var(--fern-line);
+  }
+  .tl-item:first-child::before { top: 13px; }
+  .tl-item:last-child { padding-bottom: 0; }
+  .tl-item:last-child::before { bottom: auto; height: 13px; }
+  .tl-item:first-child:last-child::before { display: none; }
+  .tl-dot {                   /* 圆点 */
+    position: absolute; left: 3px; top: 5px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--marigold); border: 3px solid var(--cream); box-shadow: 0 0 0 2px var(--fern);
+  }
+  .tl-when {
+    font-family: var(--serif); font-size: 18px; font-weight: 700; line-height: 26px; color: var(--fern-d);
+    margin-bottom: 8px; font-variant-numeric: tabular-nums;
+  }
+  .tl-gap { padding-bottom: 6px; }
+
+  /* ===== BOARDING PASS ===== */
+  .bpass { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; margin-bottom: 10px; box-shadow: var(--shadow); }
+  .bpass .head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; padding: 11px 16px; background: var(--fern-dd); color: #fff; }
+  .bpass .head .airline { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-weight: 800; font-size: 14px; letter-spacing: .04em; }
+  .bpass .head .airline .code { background: var(--marigold); color: var(--on-marigold); border-radius: 6px; padding: 2px 8px; font-size: 12px; }
+  .bpass .head .craft { font-size: 11.5px; color: rgba(255,255,255,.8); font-weight: 600; text-align: right; }
+  .bpass .route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 17px 12px 13px; gap: 6px; }
+  .bpass .apt { text-align: center; min-width: 0; }
+  .bpass .apt .iata { font-family: var(--serif); font-size: 32px; font-weight: 700; line-height: 1.05; color: var(--fern-d); }
+  .bpass .apt .city { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 3px; }
+  .bpass .apt .time { font-size: 18px; font-weight: 800; color: var(--terracotta); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .bpass .mid { text-align: center; color: var(--muted); }
+  .bpass .mid .dur { font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+  .bpass .mid .line { position: relative; height: 1px; background: var(--line-2); margin: 7px 0; min-width: 50px; }
+  .bpass .mid .line::after { content: "✈"; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 13px; color: var(--terracotta); background: var(--card); padding: 0 5px; }
+  .bpass .perf { border-top: 1px dashed var(--line-2); position: relative; }
+  .bpass .perf::before, .bpass .perf::after { content: ""; position: absolute; top: -9px; width: 18px; height: 18px; border-radius: 50%; background: var(--cream); border: 1px solid var(--line); }
+  .bpass .perf::before { left: -10px; }
+  .bpass .perf::after { right: -10px; }
+  .bpass .pax { padding: 13px 16px 8px; }
+  .bpass .pax .cls { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .1em; padding: 3px 9px; border-radius: 6px; margin-bottom: 8px; background: var(--fern-soft); color: var(--fern-d); border: 1px solid var(--fern-line); }
+  .bpass .pax .seats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .bpass .pax .seat { font-size: 12px; font-weight: 600; background: var(--cream); border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .bpass .pax .seat.warn { background: var(--marigold-soft); border-color: var(--marigold-line); color: var(--marigold-ink); font-weight: 800; }
+  .transit { display: block; margin: 0; padding: 2px 0 4px; }
+  .transit .tt { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+  .transit .ts { font-size: 12px; color: var(--muted); margin-top: 1px; line-height: 1.6; }
+  .track {
+    display: inline-flex; align-items: center; gap: 6px; margin: 0 16px 14px; min-height: 44px;
+    font-size: 13px; font-weight: 700; color: var(--blue); background: var(--blue-soft);
+    border: 1px solid var(--blue-line); border-radius: 999px; padding: 0 16px; text-decoration: none;
+  }
+
+  /* ===== WEATHER ===== */
+  .wx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-top: 12px; }
+  .wx { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 15px 16px; box-shadow: var(--shadow); }
+  .wx .city { font-size: 12.5px; font-weight: 800; color: var(--muted); letter-spacing: .04em; }
+  .wx .temp { font-family: var(--serif); font-size: 29px; font-weight: 700; color: var(--terracotta); margin: 3px 0 1px; }
+  .wx .s { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  /* 逐日预报：出发前约两周内、open-meteo 抓得到时才会填内容并显示 */
+  .wxdaily { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-bottom: 12px; }
+  .wxdaily::-webkit-scrollbar { display: none; }
+  .wxdaily[hidden] { display: none; }
+  /* 实时空气质量（烧芭季烟霾） */
+  .airbox { border: 1px solid var(--line); border-left: 4px solid var(--fern); border-radius: var(--r); background: var(--card); padding: 11px 14px; margin-bottom: 12px; }
+  .air { font-size: 13.5px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .air.warn { color: var(--marigold-ink); }
+  .air.bad { color: var(--terracotta); }
+  .airnote { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.6; }
+  .airnote a { color: inherit; padding: 15px 3px; } /* 行内链接：纵向 padding 不占版面，但把点击区撑到 ≥44px */
+  .airplan { font-size: 12.5px; color: var(--marigold-ink); margin-top: 6px; line-height: 1.6; }
+  .airplan[hidden] { display: none; }
+  .airnow { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .airplan.bad .airnow { color: var(--terracotta); }
+  .airact { margin-top: 3px; }
+  .airact[hidden] { display: none; }
+  .wxd {
+    scroll-snap-align: start; flex: none; width: 84px; text-align: center;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
+    padding: 10px 6px 11px; box-shadow: var(--shadow);
+  }
+  .wxd-d { font-size: 12px; font-weight: 800; color: var(--ink-2); line-height: 1.4; }
+  .wxd-i { font-size: 22px; margin: 5px 0 2px; }
+  .wxd-t { font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--ink); }
+  .wxd-p { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .wxd.wet .wxd-p { color: var(--terracotta); font-weight: 800; }
+
+  /* ===== TABLE / NOTES ===== */
+  .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; font-size: 13.5px; margin-top: 8px; }
+  .tbl th { background: var(--fern-dd); color: #fff; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; padding: 9px 12px; text-align: left; font-weight: 700; }
+  .tbl td { padding: 11px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+  .note { font-size: 13.5px; line-height: 1.7; border-radius: var(--r); padding: 12px 15px; margin-top: 12px; }
+  .note.amber { background: var(--marigold-soft); border: 1px solid var(--marigold-line); border-left: 4px solid var(--marigold); color: var(--marigold-ink); }
+  .note.red { background: var(--terracotta-soft); border: 1px solid var(--terracotta-line); border-left: 4px solid var(--terracotta); color: #86301a; }
+  .note.green { background: var(--fern-soft); border: 1px solid var(--fern-line); border-left: 4px solid var(--fern); color: var(--fern-d); }
+
+  /* ===== GALLERY (full-bleed, top of card) ===== */
+  .galwrap { position: relative; background: var(--paper-2); }
+  .gal { display: flex; gap: 3px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .gal::-webkit-scrollbar { display: none; }
+  .gal img { scroll-snap-align: start; width: 86%; max-width: 420px; aspect-ratio: 16/10; object-fit: cover; flex: none; background: var(--line-2); cursor: zoom-in; }
+  .gal-hint {
+    position: absolute; right: 9px; bottom: 9px; pointer-events: none;
+    background: rgba(31,61,42,.72); color: #fff; backdrop-filter: blur(3px);
+    font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
+    border-radius: 999px; padding: 4px 11px;
+  }
+  .idx {
+    position: absolute; left: 0; top: 12px; z-index: 2;
+    font-family: var(--serif); font-size: 13px; font-weight: 700; letter-spacing: .06em;
+    background: var(--marigold); color: var(--on-marigold); padding: 4px 11px 4px 12px;
+    border-radius: 0 999px 999px 0; box-shadow: 0 4px 12px -6px rgba(0,0,0,.6);
+  }
+
+  /* ===== LIGHTBOX ===== */
+  .lb { position: fixed; inset: 0; background: rgba(15,26,19,.95); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
+  .lb.open { display: flex; }
+  .lb img { max-width: 94%; max-height: 78vh; object-fit: contain; border-radius: 10px; }
+  .lb-counter { color: rgba(255,255,255,.75); font-size: 13px; margin-top: 12px; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+  .lb-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,.16); color: #fff; border: none; width: 44px; height: 44px; border-radius: 50%; font-size: 20px; cursor: pointer; }
+  .lb-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.16); color: #fff; border: none; width: 46px; height: 46px; border-radius: 50%; font-size: 24px; cursor: pointer; }
+  .lb-arrow.prev { left: 10px; }
+  .lb-arrow.next { right: 10px; }
+
+  /* ===== BUTTONS ===== */
+  .btn-map, .btn-web {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 44px;
+    font-size: 13.5px; font-weight: 700; border-radius: 999px; padding: 8px 18px;
+    text-decoration: none; margin: 12px 7px 0 0;
+  }
+  .btn-map { color: #fff; background: var(--fern); border: 1px solid var(--fern); }
+  .btn-web { color: var(--blue); background: var(--blue-soft); border: 1px solid var(--blue-line); }
+
+  /* ===== PLACE / RESTAURANT CARD ===== */
+  .rcard {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--r);
+    margin-bottom: 16px; overflow: hidden; box-shadow: var(--shadow);
+  }
+  .rcard .rb { padding: 14px 16px 18px; }
+  .rcard h3 {
+    font-family: var(--serif); font-size: 20px; font-weight: 700; line-height: 1.35; color: var(--fern-d);
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px;
+  }
+  .rcard h3 .star {
+    font-family: var(--sans); font-size: 12px; font-weight: 800; color: var(--marigold-ink);
+    background: var(--marigold-soft); border: 1px solid var(--marigold-line); border-radius: 999px;
+    padding: 2px 9px; white-space: nowrap;
+  }
+  .rcard .addr { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.55; }
+  .rcard .addr::before { content: "📍 "; }
+  .rcard .desc { font-size: 14px; color: var(--ink-2); margin-top: 10px; line-height: 1.72; }
+  .rcard .desc strong { color: var(--ink); font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+  .chip { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid; line-height: 1.5; }
+  .chip.hours { color: var(--ink-2); border-color: var(--line-2); background: var(--cream); }
+  .chip.ok { color: var(--fern-d); border-color: var(--fern-line); background: var(--fern-soft); }
+  .chip.verify { color: #8a3a12; border-color: var(--marigold-line); background: var(--marigold-soft); }
+  .chip.warn { color: #86301a; border-color: var(--terracotta-line); background: var(--terracotta-soft); }
+  .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+  .rcard .rb > .desc:first-child { margin-top: 0; }
+
+  /* ===== PLACE GROUP ===== */
+  .pgroup { scroll-margin-top: calc(var(--topH) + var(--navTop) + 64px); }
+  .bp-group-label .gn {
+    font-size: 11.5px; font-weight: 800; color: #fff; background: var(--fern);
+    border-radius: 999px; padding: 1px 8px; letter-spacing: .02em;
+  }
+
+  /* ===== PLACES FILTER ===== */
+  .pfilter {
+    position: sticky; top: calc(var(--topH) + var(--navTop)); z-index: 240;
+    margin: 0 -16px 4px; padding: 8px 16px 7px;
+    background: rgba(245,243,237,.97); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  .pfilter .row { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; }
+  .pfilter .row::-webkit-scrollbar { display: none; }
+  .pchip {
+    flex: none; display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line-2); background: var(--card); color: var(--ink-2);
+    border-radius: 999px; padding: 0 14px; min-height: 44px;
+    font-size: 13.5px; font-weight: 700; cursor: pointer; font-family: var(--sans); white-space: nowrap;
+  }
+  .pchip[hidden] { display: none; }
+  .pchip .n { font-size: 11px; font-weight: 800; color: var(--muted); background: var(--paper-2); border-radius: 999px; padding: 0 6px; line-height: 16px; }
+  .pchip[aria-pressed="true"] { background: var(--fern); border-color: var(--fern); color: #fff; }
+  .pchip[aria-pressed="true"] .n { background: rgba(255,255,255,.25); color: #fff; }
+  .pcount { font-size: 12px; font-weight: 700; color: var(--muted); margin: 7px 2px 0; }
+  .pgroup.hide { display: none; }
+  .rcard.hide { display: none; }
+  .pempty { display: none; text-align: center; color: var(--muted); font-size: 13.5px; padding: 24px 10px; }
+  .pempty.show { display: block; }
+
+  .note + .rcard { margin-top: 16px; }
+  .sec-meta { font-size: 12.5px; font-weight: 700; color: var(--muted); margin: -6px 2px 12px; }
+
+  /* ===== FOOTER ===== */
+  footer { text-align: center; padding: 34px 20px 26px; }
+  footer .band { display: none; }
+  footer .mark { font-family: var(--serif); font-size: 14px; font-weight: 700; color: var(--fern-d); letter-spacing: .22em; margin-bottom: 8px; }
+  footer p { font-size: 12px; color: var(--muted); line-height: 1.75; }
+
+  /* ===== 宽屏（>820px）：导航变顶部横条、卡片双栏 ===== */
+  @media (min-width: 821px) {
+    :root { --navTop: 52px; }
+    .tabbar {
+      position: sticky; top: var(--topH); bottom: auto; z-index: 290;
+      justify-content: center; gap: 8px; padding: 0 16px; height: var(--navTop);
+      border-top: none; border-bottom: 1px solid var(--line-2); box-shadow: none; align-items: center;
+    }
+    .tabbar a {
+      flex: none; min-height: 44px; flex-direction: row; gap: 7px; padding: 0 20px;
+      font-size: 14px; border-radius: 999px;
+    }
+    .tabbar a .ic { font-size: 17px; }
+    .tabbar a .n { position: static; }
+    .tabbar a.on { background: var(--fern-soft); }
+    .tabbar a.on::before { display: none; }
+    .wrap { max-width: 980px; padding-bottom: 40px; }
+    .cover { min-height: 520px; }
+    .cover .inner { min-height: 520px; padding: 34px 44px 44px; }
+    .cover h1 { font-size: 60px; }
+    section { padding-left: 28px; padding-right: 28px; }
+    .tip { margin-left: 28px; margin-right: 28px; }
+    .pfilter { margin: 0 -28px 4px; padding: 8px 28px 7px; }
+    #flights .tl { max-width: 620px; }
+    #dining, .pgroup { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; align-items: start; }
+    #dining > :not(.rcard), .pgroup > :not(.rcard) { grid-column: 1 / -1; }
+    .pgroup.hide { display: none; }
+    .note + .rcard { margin-top: 0; }
+    #dining > .note { margin-bottom: 16px; }
+    .gal img { width: 88%; }
+  }
+  @media (max-width: 360px) {
+    .cover h1 { font-size: 40px; }
+    .bpass .apt .iata { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+<a class="sr-only" href="#flights">跳到正文 / Skip to content</a>
+<header class="topbar">
+<div class="brand"><span class="dot tiles" aria-hidden="true"></span><span class="t"><b>PENANG</b> <span class="cn">· 9天8夜 · 2026年10月</span><span class="en">· 9D8N · Oct 2026</span></span></div>
+<a class="classic" href="index.html" aria-label="回到旧版 / Back to the classic version">回旧版 / Classic</a>
+<button class="lang" id="langBtn" onclick="toggleLang()" aria-label="切换语言 / Switch language">EN</button>
+</header>
+<nav class="tabbar" id="navstrip" aria-label="章节导航 / Section navigation">
+<a href="#flights"><span class="ic" aria-hidden="true">🗓</span><span class="lbl"><span class="cn">行程</span><span class="en">Trip</span></span></a>
+<a href="#dining"><span class="ic" aria-hidden="true">🍽</span><span class="lbl"><span class="cn">美食</span><span class="en">Food</span></span><span class="n" data-count="dining"></span></a>
+<a href="#places"><span class="ic" aria-hidden="true">📍</span><span class="lbl"><span class="cn">景点</span><span class="en">Sights</span></span><span class="n" data-count="places"></span></a>
+<a href="#weather"><span class="ic" aria-hidden="true">🌡</span><span class="lbl"><span class="cn">实用</span><span class="en">Info</span></span></a>
+</nav>
+<div class="wrap">
+<div class="cover">
+<img alt="槟城乔治市街景 Penang, George Town" class="bg" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlYzEj5DY_LF545M5BcxxAChTLtoRWAHp8Vs84oO-TJDQi71NBWmzW6sH0YA7mzJ6eLJvzYw6dFVrq12xzEnDdxR-SuYE0JgK9GMw0Li2y6Bv3U1xA31LCCGsvCA9J5HhDUpGV_=s4800-w800-h600"/>
+<div class="inner">
+<div class="kicker"><span class="cn">家庭行程手册</span><span class="en">Family Travel Handbook</span></div>
+<h1><span class="cn">槟城之行</span><span class="en">Penang</span><span class="sub">Pulau Pinang · Malaysia</span></h1>
+<div class="dates"><span class="cn">9天8夜 · 2026年10月9日（五）– 10月17日（六）</span><span class="en">9 Days 8 Nights · Fri 9 Oct – Sat 17 Oct 2026</span></div>
+<div class="meta-row">
+<span class="meta-chip">✈ <span class="cn">新航 · 经新加坡转机</span><span class="en">SQ · via Singapore</span></span>
+<span class="meta-chip">🏠 <span class="cn">老板自宅</span><span class="en">Family home</span></span>
+<span class="meta-chip">👨‍👩‍👧 <span class="cn">6人同行</span><span class="en">6 pax</span></span>
+<span class="meta-chip">🍽 <span class="cn">全程不吃牛肉</span><span class="en">Beef-free</span></span>
+</div>
+<div class="cd" id="countdown"><span class="cn"></span><span class="en"></span></div>
+</div>
+<div class="band tiles" aria-hidden="true"></div>
+</div>
+<div class="tip">
+<span class="ico" aria-hidden="true">👆</span>
+<div>
+<span class="cn"><strong>怎么用这本手册：</strong>绿色按钮开地图、蓝色按钮开官网；照片可左右滑、点一下放大；「推荐去处」上方的彩色标签可筛选类型；导航栏可随时跳到别的区块。标注「⚠ 需确认」的项目以实际预订为准。</span>
+<span class="en"><strong>How to use this handbook:</strong> green buttons open maps, blue buttons open websites; photo strips swipe sideways and tap to enlarge; the coloured chips above "Places to Visit" filter by type; the navigation bar jumps between sections. Items marked "⚠ verify" should be confirmed.</span>
+</div>
+</div>
+
+<!-- ===== FLIGHTS ===== -->
+<section id="flights">
+<div class="sec-head"><span class="no">01</span><h2><span class="cn">航班</span><span class="en">Flights</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
+
+<div class="note amber">
+<span class="cn">🕐 金边比新加坡、槟城<strong>慢 1 小时</strong>（金边 UTC+7，新加坡与槟城 UTC+8）。登机牌上的时间都是<strong>当地时间</strong>，下面标的飞行时长已经把时差算进去。</span>
+<span class="en">🕐 Phnom Penh is <strong>1 hour behind</strong> Singapore and Penang (Phnom Penh UTC+7; Singapore and Penang UTC+8). All times shown are <strong>local time</strong>, and the flight durations below already account for the time difference.</span>
+</div>
+
+<div class="bp-group-label"><span class="cn">🛫 去程 · 10月9日（五）· 金边 → 槟城</span><span class="en">🛫 Outbound · Oct 9 (Fri) · Phnom Penh → Penang</span></div>
+
+<div class="tl">
+<div class="tl-item"><span class="tl-dot" aria-hidden="true"></span><div class="tl-when">09:35</div>
+<div class="bpass">
+<div class="head"><span class="airline"><span class="code">SQ</span>SQ 153</span><span class="craft">Boeing 737-8 MAX</span></div>
+<div class="route">
+<div class="apt"><div class="iata">KTI</div><div class="city"><span class="cn">金边 Techo</span><span class="en">Phnom Penh</span></div><div class="time">09:35</div></div>
+<div class="mid"><div class="dur">2h 05m</div><div class="line"></div></div>
+<div class="apt"><div class="iata">SIN</div><div class="city"><span class="cn">新加坡 Changi</span><span class="en">Singapore</span></div><div class="time">12:40</div></div>
+</div>
+<div class="perf"></div>
+<div class="pax">
+<span class="cls">ECONOMY</span>
+<div class="seats"><span class="seat">TAN/CHIN HOOI 44H</span><span class="seat">TAN/KUAN ZE 44A</span><span class="seat">THUN/SAVRY 44C</span><span class="seat">CHET/POV 44J</span><span class="seat">TAN/YONG LIANG 44B</span><span class="seat">HEW/CHERN YANG 44K</span></div>
+</div>
+<a class="track" href="https://www.flightaware.com/live/flight/SIA153" target="_blank">📡 <span class="cn">追踪 SQ153</span><span class="en">Track SQ153</span></a>
+</div>
+</div>
+<div class="tl-item tl-gap">
+<div class="transit">
+<div>
+<div class="tt">⏱ <span class="cn">新加坡转机 · 候机约 2h 15m</span><span class="en">Transit in Singapore · approx. 2h 15m</span></div>
+<div class="ts"><span class="cn">SIN T1 抵达 → T1 出发 · 行李直挂至槟城</span><span class="en">Arrive SIN T1 → depart T1 · baggage checked through to Penang</span></div>
+</div>
+</div>
+</div>
+<div class="tl-item"><span class="tl-dot" aria-hidden="true"></span><div class="tl-when">14:55</div>
+<div class="bpass">
+<div class="head"><span class="airline"><span class="code">SQ</span>SQ 8500 <span class="cn">/ Scoot TR424 共享</span><span class="en">/ Scoot TR424 codeshare</span></span></div>
+<div class="route">
+<div class="apt"><div class="iata">SIN</div><div class="city"><span class="cn">新加坡 T1</span><span class="en">Singapore T1</span></div><div class="time">14:55</div></div>
+<div class="mid"><div class="dur">1h 25m</div><div class="line"></div></div>
+<div class="apt"><div class="iata">PEN</div><div class="city"><span class="cn">槟城</span><span class="en">Penang</span></div><div class="time">16:20</div></div>
+</div>
+<div class="perf"></div>
+<div class="pax">
+<span class="cls">ECONOMY</span>
+<div class="seats"><span class="seat">TAN/CHIN HOOI 02D</span><span class="seat">TAN/KUAN ZE 02E</span><span class="seat">THUN/SAVRY 03D</span><span class="seat">CHET/POV 03F</span><span class="seat">TAN/YONG LIANG 03E</span><span class="seat">HEW/CHERN YANG 02F</span></div>
+</div>
+<a class="track" href="https://www.flightaware.com/live/flight/SIA8500" target="_blank">📡 <span class="cn">追踪 SQ8500 / TR424</span><span class="en">Track SQ8500 / TR424</span></a>
+</div>
+</div>
+</div>
+
+<div class="bp-group-label"><span class="cn">🛬 回程 · 10月17日（六）· 槟城 → 金边</span><span class="en">🛬 Return · Oct 17 (Sat) · Penang → Phnom Penh</span></div>
+
+<div class="tl">
+<div class="tl-item"><span class="tl-dot" aria-hidden="true"></span><div class="tl-when">11:50</div>
+<div class="bpass">
+<div class="head"><span class="airline"><span class="code">SQ</span>SQ 133</span></div>
+<div class="route">
+<div class="apt"><div class="iata">PEN</div><div class="city"><span class="cn">槟城</span><span class="en">Penang</span></div><div class="time">11:50</div></div>
+<div class="mid"><div class="dur">1h 40m</div><div class="line"></div></div>
+<div class="apt"><div class="iata">SIN</div><div class="city"><span class="cn">新加坡 T2</span><span class="en">Singapore T2</span></div><div class="time">13:30</div></div>
+</div>
+<div class="perf"></div>
+<div class="pax">
+<span class="cls">ECONOMY</span>
+<div class="seats"><span class="seat">TAN/CHIN HOOI 43H</span><span class="seat">TAN/KUAN ZE 43A</span><span class="seat">THUN/SAVRY 43C</span><span class="seat">CHET/POV 43J</span><span class="seat">TAN/YONG LIANG 43B</span><span class="seat">HEW/CHERN YANG 43K</span></div>
+</div>
+<a class="track" href="https://www.flightaware.com/live/flight/SIA133" target="_blank">📡 <span class="cn">追踪 SQ133</span><span class="en">Track SQ133</span></a>
+</div>
+</div>
+<div class="tl-item tl-gap">
+<div class="transit">
+<div>
+<div class="tt">⏱ <span class="cn">新加坡转机 · 候机约 3h</span><span class="en">Transit in Singapore · approx. 3h</span></div>
+<div class="ts"><span class="cn">SIN T2 抵达 → T2 出发 · 同航站楼转机 · 行李直挂</span><span class="en">Arrive SIN T2 → depart T2 · same-terminal transfer · baggage checked through</span></div>
+</div>
+</div>
+</div>
+<div class="tl-item"><span class="tl-dot" aria-hidden="true"></span><div class="tl-when">16:30</div>
+<div class="bpass">
+<div class="head"><span class="airline"><span class="code">SQ</span>SQ 158</span></div>
+<div class="route">
+<div class="apt"><div class="iata">SIN</div><div class="city"><span class="cn">新加坡 T2</span><span class="en">Singapore T2</span></div><div class="time">16:30</div></div>
+<div class="mid"><div class="dur">2h 10m</div><div class="line"></div></div>
+<div class="apt"><div class="iata">KTI</div><div class="city"><span class="cn">金边 Techo</span><span class="en">Phnom Penh</span></div><div class="time">17:40</div></div>
+</div>
+<div class="perf"></div>
+<div class="pax">
+<span class="cls">ECONOMY</span>
+<div class="seats"><span class="seat warn">TAN/CHIN HOOI 44H</span><span class="seat warn">TAN/KUAN ZE 45J</span><span class="seat warn">THUN/SAVRY 45H</span><span class="seat warn">CHET/POV 50B</span><span class="seat warn">TAN/YONG LIANG 45K</span><span class="seat warn">HEW/CHERN YANG 50C</span></div>
+</div>
+<a class="track" href="https://www.flightaware.com/live/flight/SIA158" target="_blank">📡 <span class="cn">追踪 SQ158</span><span class="en">Track SQ158</span></a>
+</div>
+</div>
+</div>
+
+<div class="bp-group-label"><span class="cn">🧳 行李额</span><span class="en">🧳 Baggage Allowance</span></div>
+<table class="tbl">
+<tr><th><span class="cn">乘客</span><span class="en">Passenger</span></th><th><span class="cn">托运</span><span class="en">Checked</span></th><th><span class="cn">手提</span><span class="en">Carry-on</span></th></tr>
+<tr><td><span class="cn">全员（经济舱）</span><span class="en">All pax (Economy)</span></td><td>30 kg</td><td>7 kg</td></tr>
+</table>
+</section>
+
+<!-- ===== DINING ===== -->
+<section id="dining">
+<div class="sec-head"><span class="no">02</span><h2><span class="cn">餐厅</span><span class="en">Restaurants</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
+<div class="note amber">
+<span class="cn">以下餐厅暂未分配到具体日期／时段，行程确定后可再排入每日安排。全程<strong>不吃牛肉</strong>，用餐以单点为主。</span>
+<span class="en">These restaurants are not yet assigned to specific days. All meals are <strong>beef-free</strong> and à la carte.</span>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="RUTIN 照片 1 / RUTIN photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmcKJmUW7BR8qzvjJokQbiX98Pz1naztg9KT5o_LT7hCdNqo0Xh_RCPvTIKpNhMl-V6w9bZ0gkBP9efAYZiGhfi4Xgla1__9yzbg1S3y7T5PRani6UI6iQlxXqjRsvu4xU2EB1Y0wiapKtP=s4800-w800-h600"/>
+<img alt="RUTIN 照片 2 / RUTIN photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk-iK829MhVoNA0n6H6DRT1e_i6utg9kqHIIZOaj1GBXXvA981WEnAZxdBNuvE74guoFvyzUOZEonXqxVjLqKZ-3bPQi41Oah0aEQ6FCagOVVOzFtdyqcQLplV1MYBalc4oNcjgb60Ia2an=s4800-w800-h600"/>
+<img alt="RUTIN 照片 3 / RUTIN photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlQCHB4IITD55gW7ZTvsOjbW-on5Z9BdI6mJZiZxTgEfYberVhklMzXguKbHoEiYoIcOzdA3dZmVtFKwgo5rPU6iIc9Mrqq7s-WYnlscePWXxp6TPXX7KSOHSu9esUcjcFCu5YV=s4800-w800-h600"/>
+<img alt="RUTIN 照片 4 / RUTIN photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl22mPspJ99Uk9RvjBK4ie4lKPmmcFQXg0Sk767UlR_qr_3IaNlqpGtg59hEMKSruLp9SQggMqMQOWa3Ibe6qmOxga768w2V5piC5g4uod2Xy2dA_au6oR9yzySqQzPZ4RefaMBEFB3BtE=s4800-w800-h600"/>
+<img alt="RUTIN 照片 5 / RUTIN photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlrJQ2O3lgcHBqKYLMoMMesna3PpuTs_3BzOh9JIsTBFcPf138cjuhHuDwX-6z4oU_QwdALdTYeXg8x4WpXWkZloYn8B_6kdlAfv3bA2F0qPqkZ27BEXMQhA-jJkzKC4_FyPJOW-jXlboBW=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">樂田 RUTIN</span><span class="en">RUTIN</span> <span class="star">⭐4.3</span></h3>
+<div class="addr">11A &amp; 15, Jalan Sentral Jaya, Bukit Mertajam, Penang</div>
+<div class="desc"><span class="cn">中西合璧家常菜，招牌<strong>鱼汤米粉</strong>（酸辣汤/大骨浓汤两种汤底可选），另有披萨、意大利面、椰浆饭套餐。座位宽敞，适合家庭聚餐。</span><span class="en">Chinese-Western fusion comfort food; signature <strong>fish soup noodles</strong> (choice of sour-spicy or milky broth), plus pizza, pasta, and nasi lemak sets. Spacious seating, good for family dining.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 8:30–22:00</span><span class="en">Daily 8:30 AM–10:00 PM</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=6645298319328116800" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="Miraku Japanese Cuisine 照片 1 / Miraku Japanese Cuisine photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlzKdaxNLVjmhAKQXHf6mK57z8eGF5qF86yM7A9jKzSyodtWB3a9qykJce4eOylQ4YQh2W4O5c1ZDtIWKe6prJXlezqDji3zH3YshJ2D1YZshzhkOFGfv5D8ohvL8dZwI8KVZxP=s4800-w800-h600"/>
+<img alt="Miraku Japanese Cuisine 照片 2 / Miraku Japanese Cuisine photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkj-by91uM9j9nOjYKaDGXXObNn0TLnw5D0oOON-7vfrZbqr-tq15vXX-VhP3wBYyiosmM3nfEbL2ywTqiF2RQOUVJ2JFx0igfp-p2foodq2_VxexULnQEIXP4OCO4xvA6f0pel=s4800-w800-h600"/>
+<img alt="Miraku Japanese Cuisine 照片 3 / Miraku Japanese Cuisine photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlyFg21cTDK4l5cEvA03TxFknciZp0LaIdpFREMCLqXhtw96Rc-lftUwb-FEZPF4H4dhCjOPQPkiWS_c3ORs3ynkgaF5TjXyBzV2jjgpfpq_OhmQTNeuy3ZVwckrBmuOGKBH0mz=s4800-w800-h600"/>
+<img alt="Miraku Japanese Cuisine 照片 4 / Miraku Japanese Cuisine photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkWJT9ob0hbnT-GhK_Zw3lcbZ0GxMAY-0EkjonvUMQ1OXbsv_V2_40oDJkFJmQm9pBiNyvVgxjpFP6JaMhKXqOTe9IUxf8MX7R3rKzk-OmkLw_gtWcr2VknECqx55qIIk1BcUsrVQoxa-U=s4800-w800-h600"/>
+<img alt="Miraku Japanese Cuisine 照片 5 / Miraku Japanese Cuisine photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmQLOpcZHD9tonxt1g8FnmtjxPdm91s1g2dGuqmgNH_-oShtEQdxMYBV1EooormQxFKMlkUAFKbtQ06AW9CC5QNrRiYBdxQvbFqsdN8JAzN9U7OdCeXpMJYtBwg_3OD4e7T4qPTJjpFsY4=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Miraku 味樂</span><span class="en">Miraku Japanese Cuisine</span> <span class="star">⭐4.1</span></h3>
+<div class="addr">1F, G Hotel Central Gurney, 168A Persiaran Gurney, George Town</div>
+<div class="desc"><span class="cn">G Hotel内日本料理，寿司、刺身、天妇罗，出品稳定。<strong>菜单上有牛肉料理，周末另设自助餐时段</strong> — 用餐时请单点并避开牛肉品项。</span><span class="en">Japanese fine dining inside G Hotel — sushi, sashimi, tempura, consistently good. <strong>Menu includes beef dishes, and weekends offer a buffet slot</strong> — order à la carte and skip beef items.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 12:00–14:30 / 18:00–22:00</span><span class="en">Daily 12:00–2:30 PM / 6:00–10:00 PM</span></span>
+<span class="chip warn"><span class="cn">⚠ 含牛肉品项 · 周末有自助餐</span><span class="en">⚠ Has beef dishes · weekend buffet</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=7948710932161211900" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://mirakupng.wixsite.com/mysite" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="7 Village Noodle House 照片 1 / 7 Village Noodle House photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlv7MlWXD5zQB1qJIcSitXkupgBlqn1viBKJ4o1ZGmzxqdloMjJGMaH5F0h1A98mpd76HriMMMcUk3LiK_E5RGBQoPUe4NwLdd5pPrT70maAS_uvOPOtVdUra8wwEFUHELM7VsuVl0floJe=s4800-w800-h600"/>
+<img alt="7 Village Noodle House 照片 2 / 7 Village Noodle House photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlRrxThSsRWTfmBH_AgXjbYctP1upRp1eOXs0dl8SCa4l1T6WEpfr3v6Bf1Dd1mpnofkV7F8K1GzbD_1Vqo0g5xV8n43BfRFtN4tSm1FKhLZQVfWPuULLA_kH8scEIMawrQkIhXoLLQ8ply=s4800-w800-h600"/>
+<img alt="7 Village Noodle House 照片 3 / 7 Village Noodle House photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnZd2TDF3wR_2e4p1uWdvudQ9n8amYB7FWqF_135x1ATcSRbvwU0oY66zEXroHm2YMEt_6NufCUILk3cqNmKZy7eNClEeNs4owT84-R0XZWKMNcSH9CHMHcHISW1JxojeIkGkG0esa1QvGm=s4800-w800-h600"/>
+<img alt="7 Village Noodle House 照片 4 / 7 Village Noodle House photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlEl1r2up5sKl7hDamL4cuBlrkSJIZHfnDZJa-qfrkg07k_lKyb-UK8Rp64Qq_pX9-iNKT31bFfdJ783oIJlQfDexv0l4roGtGVd1aJv4Hbq3ZdtZVBs8Yrw-7cYXcfqxiWAV1fK82MmXBp=s4800-w800-h600"/>
+<img alt="7 Village Noodle House 照片 5 / 7 Village Noodle House photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkuHfdCuLigqCFS8tFKmVjtYMzh10BJBvk2ErlMb958LEUjeaR53P4mqbGEM6Luuab7IOJ0JQj_csgJuFViTbw12Auy0Y_-FXg-0izNYWOmzSCrTVGIgDTQNG4qpozSvo4qx7wUTdURbRu1=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">七廊粿條湯</span><span class="en">7 Village Noodle House</span> <span class="star">⭐4.1</span></h3>
+<div class="addr">6, 8 &amp; 10, Lorong Ceri 6, Taman Aman Jaya, Butterworth<span class="cn">（总店）</span><span class="en"> (flagship branch)</span></div>
+<div class="desc"><span class="cn">槟城著名<strong>粿條汤</strong>连锁总店，猪肉汤底，另有卤肉卷、鸡脚、炸鱼等小食。清晨营业，适合早餐或简单一餐。</span><span class="en">Flagship branch of Penang's famous <strong>koay teow soup</strong> chain; pork-based broth, plus braised pork rolls, chicken feet and fried fish sides. Opens early — good for breakfast or a simple meal.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 周一至六 7:30–17:00 / 周日 7:30–13:00</span><span class="en">Mon–Sat 7:30 AM–5:00 PM / Sun 7:30 AM–1:00 PM</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=16316090451728697683" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="http://www.7villagenoodlehouse.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="Tsukiji Sushi Bar 照片 1 / Tsukiji Sushi Bar photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk9jcK3sFrmRhT39eeTqVVH8_3Mkkg6fDxEs_rLJA0YmKNRIZ5ygqCqhKwRClwbXp_eoKjIIsMwZRR0-d8UoNaxTVAWngKP4FJwLFgumb--1_lfa1chM6GMU_O6Nbd6NVFETgBH=s4800-w800-h600"/>
+<img alt="Tsukiji Sushi Bar 照片 2 / Tsukiji Sushi Bar photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnmSRW2y84EBxD5UMuhztLyS5UrgsfM0n6GPE5QzltS3X33Op9XiXJ23D7OkUrb8g43yjbA-ReVubmys5EW7WYNLUMSH9qUuZZLuoQmXtksifrt38SZN2_537kw09rs8pw16PIx1EnWbt3D=s4800-w800-h600"/>
+<img alt="Tsukiji Sushi Bar 照片 3 / Tsukiji Sushi Bar photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkhoekngVXEBQOs_1osNDLMlWDvs77fXE4rRd9DwcbIN5lZT9WLdeK5mYTTUmMY2A0fnqUR-dOt2QmUCo43BhmEU0avrG7hHYGiXyhxKpwfImdG9s-W0IshrfYKV8dRKG9xBKt44HuoIj5j=s4800-w800-h600"/>
+<img alt="Tsukiji Sushi Bar 照片 4 / Tsukiji Sushi Bar photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl83u45cwkuPmFgSTQTahMJLNwqY0VTZgyH-ysc2PilXeo_QorrTUSU65zi2wynyzrkTeyF4HHqT-Bv-Q_kFQnddWnxW1d1kYTUFaJUOKNmVTQgZ0b6X-I_nv9P5WgLLPWd_4mV=s4800-w800-h600"/>
+<img alt="Tsukiji Sushi Bar 照片 5 / Tsukiji Sushi Bar photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmit9Qa01oqPoRs_-FQQowa-2MgpSKYDN8D_RGY1-A8c7qNVJeBtVArTOCJA8__-L5DmkYY_12yQfS5jXJOXiD9MpCWRLILkqY2U9Vpq65D-tl34WtO-go-r5EaDhScpQPip9vSPtIW_mGJ=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">筑地寿司</span><span class="en">Tsukiji Sushi Bar</span> <span class="star">⭐4.9</span></h3>
+<div class="addr">City Junction, Persiaran Lengkuas, Tanjung Tokong</div>
+<div class="desc"><span class="cn">开放式寿司吧，握寿司现点现做（RM2起），也有生鱼片、和牛套餐等单点菜单。评分极高，槟城人气日本料理之一。</span><span class="en">Open sushi bar with made-to-order nigiri (from RM2), plus sashimi and à la carte set menus. Very highly rated — one of Penang's most popular Japanese spots.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 周一至四 11:00–15:00, 18:00–22:00 / 周五至日 11:00–22:00</span><span class="en">Mon–Thu 11 AM–3 PM, 6–10 PM / Fri–Sun 11 AM–10 PM</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=17287566682074786653" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://www.tsukijisushi.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="Tairyo Japanese Restaurant 照片 1 / Tairyo Japanese Restaurant photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkRC6852N9ZH3ka3wOdM_sf-yFu7zJx1DZmjt_UL54v6rXacGE8tMf7cE2yqqOJRkiWevH-JVCX1H8FaSxR0JOIuOyverSZHYrGf7zK69aJ7IJyxUpP4E2SYx-71Hbkw6lA3N9FSwZSMveX=s4800-w800-h600"/>
+<img alt="Tairyo Japanese Restaurant 照片 2 / Tairyo Japanese Restaurant photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWntfzE1jmNg390ijakc-YcYlcLjHmXgYT0QF-Y_T_jOgLIv4tWQDwrKpGNUBFLTOI7Zq-X0xCRfLStHCGpKyjwzT8M0no6xillm1K5704w1l-QGGSts_deDll7DGORuFGBKPm8EQnNMfKw=s4800-w800-h600"/>
+<img alt="Tairyo Japanese Restaurant 照片 3 / Tairyo Japanese Restaurant photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmu0kTMPblN39__8DcnpDlTSfIBV1C4eOe3IRMCWNCsnA-BarHBsJ426rsIHgHSNp5_AQHNzz4BKlnvt8gW7GuMRwXVMpdZQiYLrq0rIGr1rlOBg81JUeW81ZHOEjx5tM303t9DKpCoBmw=s4800-w800-h600"/>
+<img alt="Tairyo Japanese Restaurant 照片 4 / Tairyo Japanese Restaurant photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkk6bu19h3Rb1mZsRXm4mRGuIWhWe28MEPiWZHZ7GdJPw_6UmyjYDnKhsQsOaxy6aWZ43rnBvdnVCYc3uEw3kQD1gsHbx4EdL7ubOqwJPQjbFz_KK6N1OGZZhBzou23tR21U2Pevd0JkDo8=s4800-w800-h600"/>
+<img alt="Tairyo Japanese Restaurant 照片 5 / Tairyo Japanese Restaurant photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmpEsMPvrkG5RxRAB-q8x13RXzNGTBL7ukFj48c-XfWM0KQdBbySav6Oc5oXqRuKqHatTdm0oUYofzvEZhah_JbKtqYN1ugwi0We-AXw-YgoPhibSy6MuLqsbloiRcX4L7j4AMRU5qzzZhi=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">大漁日本料理</span><span class="en">Tairyo Japanese Restaurant</span> <span class="star">⭐4.6</span></h3>
+<div class="addr">71, Jalan Icon City, Bukit Tengah, Bukit Mertajam</div>
+<div class="desc"><span class="cn">菜单大而全的日式居酒屋，<strong>刺身、日式炸鸡、寿司、盖饭</strong>一应俱全，符合家庭聚餐的单点风格。菜单上也有和牛铁板品项，单点时可避开。</span><span class="en">Large izakaya-style menu with <strong>sashimi, fried chicken, sushi, and rice bowls</strong> — matches the family's à la carte dining style. Wagyu teppanyaki items on the menu can be skipped when ordering.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 11:30–14:30, 17:30–22:00（周五、六延至 22:30）</span><span class="en">Daily 11:30 AM–2:30 PM, 5:30–10:00 PM (Fri–Sat until 10:30 PM)</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=17783906310819733530" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="The Chicken Rice Shop 照片 1 / The Chicken Rice Shop photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl6h8AH1E8II7cxtzKf1dCpj8rkqHgbdkDu-LrB93ejrt41JGG-oNjeWSKKXJ_f3jzZNuhvzBUtkhI1RU0EySdAhZLOKdwXQNtpBa2yaGG2lDBkcSmweynF9yW792GB2gywTlSeH8C4EyAp=s4800-w800-h600"/>
+<img alt="The Chicken Rice Shop 照片 2 / The Chicken Rice Shop photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn6sEUtzdpOfxcxCqiW1UpVNA54WwuXIETKhNOvnBESaStIRItuEbQt1PzB4NTnfJfYa4hqWU__q0RCrPqTa6vOiVhLCFQVrixB4p3bhBc8brqLxg5JZZ9cvMFqoS26Y4GzGAg=s4800-w800-h600"/>
+<img alt="The Chicken Rice Shop 照片 3 / The Chicken Rice Shop photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlAG7hA4pOJ6XTrTjn9XXfhSZ2rDQbutrWoxtiF7K778wa4Umh5C3-ToeF7izLiiZ_qE91fQAIUEllCj368DWbNXb3ZuwHnWKMkVGS2qG6AGwuwJT3P4h6Fkxh0zRq0AXLN0aeb_oX2DY9C=s4800-w800-h600"/>
+<img alt="The Chicken Rice Shop 照片 4 / The Chicken Rice Shop photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmUHDR5gjEEBb8ZDoOU_EfqI6L5-y2tcp_qbbU4ncu6JBEE_2HepYdR9lIG0XV758JrlgK3igaXPHeN7LVJCvwT41PN4IBIHUvPHB9fB9-sQ14ypNWAwjWid1n9xJqAMuIgsbmZ7YKeOw4L=s4800-w800-h600"/>
+<img alt="The Chicken Rice Shop 照片 5 / The Chicken Rice Shop photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkEDSpe14M3BcuRaYRSBAw9RyRs1UVwINLc2OIW-WQoottZgSUFHYbcHHp4wtvtBOpe9qW5AXO45gSo5qBWfHemKl_wbIgw-9fsrt_NevQeWvwtZ8E00_Uq-QfxpKyi6BPX5aewsLc52SeZ=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">鸡饭店</span><span class="en">The Chicken Rice Shop</span> <span class="star">⭐3.5</span></h3>
+<div class="addr">LG-70, Sunway Carnival Mall, Seberang Jaya</div>
+<div class="desc"><span class="cn">连锁鸡饭快餐，位于Sunway Carnival Mall内，适合商场逛街途中简单一餐。近期评价出餐较慢，建议避开用餐高峰。</span><span class="en">Chain chicken rice restaurant inside Sunway Carnival Mall — convenient for a quick meal while shopping. Recent reviews note slow service, best to avoid peak hours.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">Daily 10:00 AM–10:00 PM</span></span>
+<span class="chip verify"><span class="cn">⚠ 近期评价出餐偏慢</span><span class="en">⚠ Recent reviews note slow service</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=10648324139628194840" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="http://www.thechickenriceshop.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="San Xi Lou 照片 1 / San Xi Lou photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk5ILyiH5idW5yIInM1yPnr1jwluGZBd2Er60iJ6ao14z0hLOyKNuSuhuMK6ZlyXQGTw7Ekozyy4b6Z4lFFOWBH_npNb7qrQ26U-l2GkICXgVl0tXvGq2_O7RaIIjNTBfiWeRLx=s4800-w800-h600"/>
+<img alt="San Xi Lou 照片 2 / San Xi Lou photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkZJJ3_0_fLsKJgsReXC3dG753D7r8tLXqNdKM3ixQfN18-9_SQw15AIDPdiI4Fj3eaBUyZxRY64KxTnP0O3iuFBVaUNXrd9nemwk3Vumd5zv36fWc4jXk0gm-H7CpU2rVjRwY02ABOr80=s4800-w800-h600"/>
+<img alt="San Xi Lou 照片 3 / San Xi Lou photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkDC6Pf4IjPSEuHPBRpL6XmpT6TDB-Uh9q3d7La-VRkrH_ZWGerUw5cOjQcGGXMq4VDDgHdg_xHEHGwgPG9FkSC19iwuXkW8-afdftkPyOjh0ZMHCYwk0sGG4ZKagd1Pje0EOoGT13PnFeu=s4800-w800-h600"/>
+<img alt="San Xi Lou 照片 4 / San Xi Lou photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkfug01A74Szajg17AiWJAWM9ltew6kY1wDYBNfZ1aHojm03kCHOzGRx1zRJWmc5JqfqsOyFISu0ldf3EUbc7NkjyAQCh_UKSpoMzTQ6zYCPC587sTwk9hydqI-SOC_oSuEBFJB6eB1yD7s=s4800-w800-h600"/>
+<img alt="San Xi Lou 照片 5 / San Xi Lou photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnCzxMlarAMqwa4D3Q-GUhS3jInWI68817j7tPakZRbsHX2uP6GVwR2N_AKiT0OOauhlgz0xcisxDoxlgE0OrxUsSWZgTQYJ8of__F0z-HJCGNzyfMMo6zExS2JaG6C6ebbUlZqI41FYdaQ=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">三希樓</span><span class="en">San Xi Lou</span> <span class="star">⭐4.6</span></h3>
+<div class="addr">Level 6, Gurney Paragon Mall, George Town</div>
+<div class="desc"><span class="cn">香港品牌，粤菜／川菜／点心三合一，招牌菜有烧鹅、脆皮鸡、点心。<strong>菜单上也有川式辣炒牛肉等牛肉品项</strong>，单点时避开即可。</span><span class="en">Hong Kong brand blending Cantonese, Sichuan, and dim sum — roasted goose and crispy chicken are signatures. <strong>Menu also includes Sichuan-style stir-fried beef</strong> — skip when ordering à la carte.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 11:00–15:30, 17:30–22:00</span><span class="en">Daily 11:00 AM–3:30 PM, 5:30–10:00 PM</span></span>
+<span class="chip warn"><span class="cn">⚠ 含牛肉品项</span><span class="en">⚠ Has beef dishes</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=15939087510710375959" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="Din Tai Fung 照片 1 / Din Tai Fung photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkvQ6hZ_D8jdOd3m4a5EhjSwWdwTkxAiHSxXFmkRsSsvu8QkXkVzUbckGuppk4nCZSxqCdHwqfjkZjpp8yFNwIzJhryRYm6AEFN9W1C35xpJYDvay2yKBQ1Mkc2U7o9-xnZDevXDw1ebPM=s4800-w800-h600"/>
+<img alt="Din Tai Fung 照片 2 / Din Tai Fung photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmTctjjBgvvW8TnkmEkLZrFXw3eiOGx3Wl2K29yB9MWzWHfjr5Ocbe5YgGFdtAiAh7dgqRWndZRuHZ2drwtr6utbKcq-FMcSDzhrr6p7xqwZQ9xnMkZ7our6lwUHHaXDcatjYfvKO916XI=s4800-w800-h600"/>
+<img alt="Din Tai Fung 照片 3 / Din Tai Fung photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWndaDTYKZNVZH99HzK6Gmwih5AHO1TKS9O54fhHo5iDsj5ouWvi1_SMenfy1mxf8auwAUsk1b9XawREwdHpH_DuQUmS3lG5KQrEqTxxOYtSU2UW0JDGbygRXGb9gvNdiI9BeGNro0ka-e3_=s4800-w800-h600"/>
+<img alt="Din Tai Fung 照片 4 / Din Tai Fung photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmgMNKuEVbXQGjgpefSdaD7N2i_RWyQBxnVRxxVWrM0jX4Zwc5vwATfepEAHWvryLlke6efZMvKtClPePKF56CHGHFqcZ-HrVtEYs9JGVF2OfIUoW_ga2bE9Ny-4WUzOXVxeGYFObMHbIle=s4800-w800-h600"/>
+<img alt="Din Tai Fung 照片 5 / Din Tai Fung photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkmJ_qGYlTFF7cnNap0Q0ol1NXjHQcHJZLxADOyxXCTmWu7uIxpoNrik3Y8ougXJAKPt98JRp-V_D28lWxg17MKBvPNfPgpa137wNeUx-SqXe3DphtmeAMIxePmaphZoZoCCgmK64VMqbWA=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">鼎泰豐</span><span class="en">Din Tai Fung</span> <span class="star">⭐4.7</span></h3>
+<div class="addr">LG-28/29, Sunway Carnival Mall, Seberang Jaya</div>
+<div class="desc"><span class="cn">台湾知名连锁，小笼包、葱油拌面为招牌，槟城北部新分店，评价出品稳定。<strong>菜单上牛肉面等品项含牛肉</strong>，单点避开即可，其余多为猪肉/虾馅点心。</span><span class="en">Famous Taiwanese chain — xiaolongbao and scallion noodles are the signatures; this is a newer branch, consistently well reviewed. <strong>Beef noodle soup on the menu contains beef</strong> — skip it; most other items are pork/shrimp-based.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 11:00–21:30（周末10:00起）</span><span class="en">Daily 11:00 AM–9:30 PM (weekends from 10 AM)</span></span>
+<span class="chip warn"><span class="cn">⚠ 牛肉面含牛肉</span><span class="en">⚠ Beef noodle soup has beef</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=8039283718126773766" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://www.dintaifung.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="Dragon-i Peking Duck Restaurant 照片 1 / Dragon-i Peking Duck Restaurant photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnGjxe9qbV6xbRDRSJs0K9zkWjyYyJ4ozCsNsnQeJ1NWt4UoqZ-Ia2lBl7w_SS1vOdf9qPP6V36444xgLhTM7ie28p4Uwtg3S_N6K4R-IyticwafllXcMKTeKCBN-3hSS0FkJn9=s4800-w800-h600"/>
+<img alt="Dragon-i Peking Duck Restaurant 照片 2 / Dragon-i Peking Duck Restaurant photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlCDxpHDdrebQ2jAD7W9fnzc6BXwpsSWGbLL6h5_tiIUjNRx70xyIjH3eRcjmzLD8LnwOwnLHK3XGOvQXJGWJ1Dp6c2vMv8NKZ6TsALQoH6_nhjWG0_6ro5-RmYTBZib7Ozz_iimEKyNOqo=s4800-w800-h600"/>
+<img alt="Dragon-i Peking Duck Restaurant 照片 3 / Dragon-i Peking Duck Restaurant photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlpixrweDw8pMWy0aPUSvHPd8fGJqHYjxy10AS8lK8vU2Ruh46A2TWeJSgOZvkgndJkz6gcdnb-0FoH7Srq8faaMjQdkEAbIQgYtyjgh1Uzo3nEFquRCDqxsFeP2hK0mi5bt9H83fwu4GH8=s4800-w800-h600"/>
+<img alt="Dragon-i Peking Duck Restaurant 照片 4 / Dragon-i Peking Duck Restaurant photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm3UevBGsjLiil2SeVJlodP0e_Rxcvg4en4hv9mElh6XyZalfVtqS6Pxv-t6DPCXaK0GKGxdwpgaqwenZbPmmdghs48eRo2kRVObDtZu1mRthWK-n3iloAmcJo_9lCGZiJNklWjEYkLX8g=s4800-w800-h600"/>
+<img alt="Dragon-i Peking Duck Restaurant 照片 5 / Dragon-i Peking Duck Restaurant photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnyRdiOeCoEC7Bp4QH0bhr3tkrYkKSX59BWXxyTrswNdoTeZkX2h-f6l-kO7Hv9lD869p7dc3SpSI0Snon0napWv6rG0Uvi1rm-0kaa52vWKMqJr1W2uD_fO5UIGXn7UL6RCs7N-hw8QCk=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">笼的传人</span><span class="en">Dragon-i Peking Duck Restaurant</span> <span class="star">⭐4.5</span></h3>
+<div class="addr">2F, Queensbay Mall, Bayan Lepas</div>
+<div class="desc"><span class="cn">以<strong>北京烤鸭</strong>为招牌的中餐厅，也有小笼包、糖醋鱼等大众化中式菜，环境宽敞适合家庭聚餐。评价提到<strong>晚餐时段排队较长</strong>，建议早点前往或提前订位。</span><span class="en">Chinese restaurant known for <strong>Peking duck</strong>, also serves xiaolongbao, sweet-and-sour fish, and other crowd-pleasing dishes; spacious, good for family gatherings. Reviews note <strong>longer waits at dinner</strong> — go early or book ahead.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 11:00–21:30</span><span class="en">Daily 11:00 AM–9:30 PM</span></span>
+<span class="chip verify"><span class="cn">⚠ 晚餐时段建议提前订位</span><span class="en">⚠ Book ahead for dinner</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=14810997833472458554" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="http://www.dragon-i.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="Tono Izakaya Penang 照片 1 / Tono Izakaya Penang photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnfoscIKhv-fxF3ZT6xTwJvIWz2xesYqVfQpf8fqQEXUL9xMPbNRlNPvAISKL-DECKUF6U3gN_c-aluBjPUmMOHozl9zbv_N-R_NIIVqJNccNPzr-XyTWM4D60lG_Ei55awzqV5AJqmQ5A=s4800-w800-h600"/>
+<img alt="Tono Izakaya Penang 照片 2 / Tono Izakaya Penang photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlp8nys73ZtZbm920kxrnkgBIJIQ_vnT_OsxCCUL9TR_G4jVm5odtvHWOb8KMW6jS22v45WzLIx7-Mbvp4y6IbOdeeHh83IrPg5Z1Skm4BNy8QzG4vdw0N6TDkXybtWZO3tTOlt9avRI6lw=s4800-w800-h600"/>
+<img alt="Tono Izakaya Penang 照片 3 / Tono Izakaya Penang photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkCeMyQHFA8PQ32V7-rjbEhQn6DtiNi4FgUfMDofUacaIUK8WEFkwjpvjhMvv1-J4F1WkfNfdNajoDrfHgeW6kfjKN2WSmJOnZ78A2rGvPK3BHQ6vdxzFiF35nGMW4ud4UjtrHK=s4800-w800-h600"/>
+<img alt="Tono Izakaya Penang 照片 4 / Tono Izakaya Penang photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmOxvtAKNZvYoMpzDwsxpi7qV_dfklxECVE50tbxa1-spyRfB8ePkiUrDwfCxK_KVqZPwbSe8jIoeyVyGgyq2e0Kt50IzD88qzhPAE2kEXVyY7ZdxhjE4pj2ZS9zd8YiNrQ8EfXFF5M-lEz=s4800-w800-h600"/>
+<img alt="Tono Izakaya Penang 照片 5 / Tono Izakaya Penang photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlQtrLPtB1Pmr0bbVJU33uViRAYJZBrTBMcDD_TsVdwQmdw0FC5npMLo1qPEKVNDdUyaST2hMT2WWFJP7EdHZ2k5VTi8kuAayksxch3QNrNh1IddtP-jODPtQpUYW7VQfl7ivC2ftPCgNe4=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Tono Izakaya</span><span class="en">Tono Izakaya Penang</span> <span class="star">⭐4.7</span></h3>
+<div class="addr">80, Lebuh Tye Sin, George Town</div>
+<div class="desc"><span class="cn">乔治市人气居酒屋，蓝鳍吞拿鱼、刺身、烧物评价都很好，评分槟城数一数二高。<strong>有自助餐时段（RM98++/人）</strong>，但也可以纯单点，用餐时指定要单点菜单即可。</span><span class="en">Popular George Town izakaya — bluefin tuna, sashimi and grilled items are well reviewed, one of the highest-rated in Penang. <strong>Has a buffet option (RM98++/pax)</strong>, but à la carte is available too — just ask for the à la carte menu.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 11:30–15:00, 17:00–24:00</span><span class="en">Daily 11:30 AM–3:00 PM, 5:00 PM–12:00 AM</span></span>
+<span class="chip warn"><span class="cn">⚠ 有自助餐时段，需指定单点</span><span class="en">⚠ Has a buffet option — ask for à la carte</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=11019786699336800443" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
+</div>
+
+<div class="rcard">
+<div class="galwrap">
+<div class="gal">
+<img alt="Kaze Japanese Restaurant 照片 1 / Kaze Japanese Restaurant photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnU-6LqwLxQICkXAyWgxgBq2o422ZXg8U8i6N83RD3LEgTXvBXkPd-gf2GOb769gZeMwPCRdANXdheh1WQLBLQ4aT6PWDN1KAt78YclldNqWKWD4Y6Crr1NoFTPMnIqINUrh-3s=s4800-w800-h600"/>
+<img alt="Kaze Japanese Restaurant 照片 2 / Kaze Japanese Restaurant photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlbTI9kNTL6OCwzpXr2P1CJoijnvZILpII6d3r3m01hXBJ1LCJHU8T1H8PxVGlJf35RyOe0Hf8P6RKQbtrtY1P2cOsmWl8KnemELhuOLqAn8bBMbkTxvLhD-7I0vE_27UT6avfux5cOwrZd=s4800-w800-h600"/>
+<img alt="Kaze Japanese Restaurant 照片 3 / Kaze Japanese Restaurant photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlvrx5HiGmxe04fsFv3RZ__4tI-CMBXV7PFWeL-PJh6JQV7ndHDkIvFOuEOprmUZkxq11g2S4lkPcMpCBD6ko2NW0MjL4kJGusXRo7-sqaBOJI_3BTKNUZdPo5xOHgpG4BZgHW4gg=s4800-w800-h600"/>
+<img alt="Kaze Japanese Restaurant 照片 4 / Kaze Japanese Restaurant photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlIJLqLbOiBCXxxinuDgSVKzkO2vjKRVfcvFab6CNqYRMFPr3Ja9SsebZEJM3YtAYF4WP12Hv7M_7Abh4HntdTjNsqGRY2gv5s4hewoBld7n10zEGU3V8K25rSm2xiHZqOReZ3GXwgJ0oOy=s4800-w800-h600"/>
+<img alt="Kaze Japanese Restaurant 照片 5 / Kaze Japanese Restaurant photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmBcV6_haZYq7TLoKMvURHg9vvuTAb3leWyRLejzPhCjS3MX-5ManFImNgMCVPVdNOh3vAi_gUInesgg7lmq5iXzHZAwXepFJ0zw6inbkRzbD9GGVn7S1j1EgYCb7ZbX-BY90OKIBuK_X8=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Kaze 日本料理</span><span class="en">Kaze Japanese Restaurant</span> <span class="star">⭐4.2</span></h3>
+<div class="addr">22, Jalan Icon City, Bukit Mertajam</div>
+<div class="desc"><span class="cn">评价很高的日本料理，刺身寿司新鲜，价格合理。<strong>菜单上有网烤烧肉套餐（含牛肉／猪肉）</strong>，单点时可避开牛肉品项。周六人潮较多，容易客满。</span><span class="en">Highly rated Japanese restaurant with fresh sashimi and sushi at reasonable prices. <strong>Grilled meat sets on the menu include beef/pork options</strong> — skip the beef when ordering. Gets busy on Saturday evenings.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 11:30–14:15, 18:00–21:30（周末至22:00）</span><span class="en">Daily 11:30 AM–2:15 PM, 6:00–9:30 PM (weekends until 10 PM)</span></span>
+<span class="chip warn"><span class="cn">⚠ 含牛肉选项</span><span class="en">⚠ Has beef options</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=17102666725830265280" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
+</div>
+</section>
+
+<!-- ===== PLACES ===== -->
+<section id="places">
+<div class="sec-head"><span class="no">03</span><h2><span class="cn">推荐去处</span><span class="en">Places to Visit</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
+<div class="note amber">
+<span class="cn">不排日期／顺序，家人自己看当天心情、天气挑着去。前2家是你发来的，其余是我补充的槟城常见推荐点，仅供参考。</span>
+<span class="en">Not sequenced by day — pick based on mood and weather. The first 2 are from your links; the rest are my general Penang suggestions for reference.</span>
+</div>
+
+<div class="pfilter">
+<div class="row" role="group" aria-label="按类型筛选去处 / Filter places by type">
+<button class="pchip" type="button" data-cat="all" aria-pressed="true">🧭 <span class="cn">全部</span><span class="en">All</span><span class="n" data-catcount="all"></span></button>
+<button class="pchip" type="button" data-cat="arcade" aria-pressed="false">🎮 <span class="cn">电玩亲子</span><span class="en">Arcade</span><span class="n" data-catcount="arcade"></span></button>
+<button class="pchip" type="button" data-cat="culture" aria-pressed="false">🏛 <span class="cn">文化古迹</span><span class="en">Culture</span><span class="n" data-catcount="culture"></span></button>
+<button class="pchip" type="button" data-cat="outdoor" aria-pressed="false">🏖 <span class="cn">户外观景</span><span class="en">Outdoor</span><span class="n" data-catcount="outdoor"></span></button>
+<button class="pchip" type="button" data-cat="mall" aria-pressed="false">🛍 <span class="cn">商场</span><span class="en">Malls</span><span class="n" data-catcount="mall"></span></button>
+</div>
+</div>
+<div class="pcount" id="pcount" aria-live="polite"></div>
+
+<div class="pgroup" data-cat="arcade">
+<div class="bp-group-label" id="pg-arcade">🎮 <span class="cn">电玩 · 亲子游乐</span><span class="en">Arcades &amp; Family Fun</span><span class="gn" data-groupcount="arcade"></span></div>
+
+<div class="rcard" data-cat="arcade">
+<div class="galwrap">
+<div class="gal">
+<img alt="Neo Akedo 照片 1 / Neo Akedo photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWns024IxrDYwe5Ac9yqVhms0KbLYXtDWZ8NPwO7-DUhsEYHH87leb6MVBzlSuClQgdmJZQKr9Fi_mAhyqfxEfOyL2oILjrIuwkCMttWsNy-8-EpJwvLlW6pHE9tEjKqmLv-HOcnlYFUkvA=s4800-w800-h600"/>
+<img alt="Neo Akedo 照片 2 / Neo Akedo photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlWp0UBUCpxDRsq8mzLBASvlCF9NI1c9XAUGxpXC_UBf_57gShziCaGYe2TBKLa5oTuU_OeYZTwiNpmrG2UsjWSdnt6SIvnj0hxixHeieKETj4pjyIGl_A5ZCTHdqLLgb0zsYh7LOIzEKeq=s4800-w800-h600"/>
+<img alt="Neo Akedo 照片 3 / Neo Akedo photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm2gucTgwAR_xbgNl8r07myw4YD3nr5K3_aanqdgLIiOa02Tb1lQnBgyerv8TEjCYPLeokOFe4h2B2vbAiLaa78aE0DWSd-eZtKh8ypsDuiOdbG-Kd3to8qroQuRV-E_fYJjlw9yabmih-x=s4800-w800-h600"/>
+<img alt="Neo Akedo 照片 4 / Neo Akedo photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkCF6HAXKGUPmpGHWrIxMewC5fPBxfYWL17ydXGNJi3E-rbUIpj4t6OPO8xRTMW_lbgqD0bBCjhI3qvLKrzrc_Tl3MQ3O8jtbAT7uZdsMZ6u9KRJMYdV-Z7b5YpRGAiIXAKlYTuQg5sKUw=s4800-w800-h600"/>
+<img alt="Neo Akedo 照片 5 / Neo Akedo photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlsBcZHTGSv9iRrEDgwEU8ozRHAdqSf1PU1pUfHBZHu_GRUDU35cV82g9jxikMBNHVRJodT2_c70v2lTVnqpGPqx4j1Kb-pk-2YZQ154g-CWw8KwXY6lkAyFRBqSBpQa_j0Bnh6KpltisUj=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Neo Akedo</span><span class="en">Neo Akedo</span> <span class="star">⭐4.5</span></h3>
+<div class="addr">Sunway Carnival Shopping Complex, Seberang Jaya</div>
+<div class="desc"><span class="cn">主题电玩城，霓虹灯装潢，机台种类多，评价指出<strong>储值卡偶有重复扣款</strong>需当场核对。与鸡饭店同在Sunway Carnival Mall，可安排在一起。</span><span class="en">Themed arcade with neon decor and a wide game selection. Reviews note the <strong>prepaid card can occasionally double-charge</strong> — worth checking balance on the spot. Same mall as The Chicken Rice Shop.</span></div>
+<div class="chips"><span class="chip verify"><span class="cn">⚠ 储值卡建议现场核对余额</span><span class="en">⚠ Check card balance on site</span></span></div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=16491656774087039190" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
+</div>
+
+<div class="rcard" data-cat="arcade">
+<div class="galwrap">
+<div class="gal">
+<img alt="Pado Fantasyland 照片 1 / Pado Fantasyland photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkgUlPolqfJ3gMGpvBIIAkTI3vBcp-whzqyVyLSaLt3qKLQlkGG1rLy2lN6H5sWBJdE5O4u_PB8FAncQ6bTVAdv4PchG4sPCe9wSbqAt-5WaNM5RcLvSzC3r15IRE6euUrZGZx_7FpKqYI=s4800-w800-h600"/>
+<img alt="Pado Fantasyland 照片 2 / Pado Fantasyland photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmIu8wwmsdjU2c9RhkBym-hoGNViml0aSsFR_qVb3mygv0bIZlK1w1gj5dLkIaYFu_96aAu1yhD-w_K3FYDBp1QlAGMgGTiwM3QSlITAS7fR1bE8Ab5BCT4GV7Qnk_iEWJVHr0TCDHS0TFh=s4800-w800-h600"/>
+<img alt="Pado Fantasyland 照片 3 / Pado Fantasyland photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm9CNOXFn74GK66vaoiXnp4xjQEPtjDm97B9QWOajKUKorzq4AcjBLTMegDM6h4-6De4-ivhpH4V9SJcoFXNhiKSYSFgBS329X5WzqcbqThbw5JHZYYfCSEnGnh4wVWXO5LFoe7HZ4zAM-A=s4800-w800-h600"/>
+<img alt="Pado Fantasyland 照片 4 / Pado Fantasyland photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmz2zJqAcMt2DYQRRRp7UoOK_vHw0Ly7kVj2tVu0pIbmewhkO0yD5QJyHgF9grtWejOy8uyCAxAiAuL8s3gdInc1eA2pAxuHgDiFegOjCeM4TifTPPAF5I06jpo4OsvqjPeAwM=s4800-w800-h600"/>
+<img alt="Pado Fantasyland 照片 5 / Pado Fantasyland photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkZZRjOtMftwiPK8ndj6komYcJVt9sQUi-ERQKpwYa7Jet4tKjuXz7OaA4Cpr9NRkngoL3HxglEqxftsHX5arDrLP2m1UCf5sXFell-CcvZYuV0RWvNw2_yBeWdXUeWi4kVSVg=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Pado Fantasyland</span><span class="en">Pado Fantasyland</span> <span class="star">⭐4.8</span></h3>
+<div class="addr">Level 4, 1st Avenue Mall, George Town</div>
+<div class="desc"><span class="cn">室内游乐场，VR、射箭、碰碰车等设施齐全，评价很高。<strong>需穿袜子入场</strong>（可现场购买RM5），另有寄物柜（RM5/天，押金RM10）。</span><span class="en">Indoor amusement center with VR, archery, bumper cars, and more — very highly rated. <strong>Socks required</strong> (buyable for RM5 on site); lockers available (RM5/day, RM10 deposit).</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">Daily 10:00 AM–10:00 PM</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=11966902015449968690" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a></div>
+</div>
+</div>
+
+<div class="rcard" data-cat="arcade">
+<div class="galwrap">
+<div class="gal">
+<img alt="Tech Dome Penang 照片 1 / Tech Dome Penang photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm__qfI3_jCPpqTl0ArjDOzrqHW0KGwOAdpL6nCjEGNO4a2CumR2cvYP-jKs5WEeihxcTMVwIS-7_y7LegvimRvbB2RNpAZYaeIH5ewyDF5p6yKkkeRfPpUeigsFA-_FPUFOZyu=s4800-w800-h600"/>
+<img alt="Tech Dome Penang 照片 2 / Tech Dome Penang photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl4tNNC-6Yy0Oomqftjqgyi8zlQZRUpka3OBHJMe5sPovRr03woy4118TcC0AMkYf3UPZ97wKZMkFC7mz0DI56qFaHsuCVIIFqSlVKQrIEAOA8Bqvjs7KZ01bKnGRxovTj4iX3ZiidgHQET=s4800-w800-h600"/>
+<img alt="Tech Dome Penang 照片 3 / Tech Dome Penang photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmcGJu7wEL0S0sW3CRnm-4hS5fw3uOIxQSQ41uWbMQEkKwRPhPkDJMS6mZ3VZcr2fMRu7jyhJ8cO6OxXHD5AmryDlh1o_Pk7jAjuBFwabW9gklK39WZwYajzIoDrP04YzqfcXeXdw=s4800-w800-h600"/>
+<img alt="Tech Dome Penang 照片 4 / Tech Dome Penang photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl0qC-jjVKRBFAVZ7zm54SH15-6Ag1yzNWGwzTPN6qaE86u9N8vGL2ir-nKxV-5_myf5GiLg6vKbR7Cs5stFYv9QQhN4X81GCNW2eohBAml0hFirCQ6Z7sOWVXeR1hMxC1f7Q1Y=s4800-w800-h600"/>
+<img alt="Tech Dome Penang 照片 5 / Tech Dome Penang photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkUBbkzs5q2TawvSJjRAY3ysOM_esy5CchD-Q05QQm76Dyz6wA3c8xDwsvWQIQA2keOAX-XaTXDILqCfe9Lryy6UbOTZjH5pBObNHpaO7j02D9IdqfbBplKz5hQppqQ_ZYiJpISUA=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">槟城科技探索馆</span><span class="en">Tech Dome Penang</span> <span class="star">⭐4.4</span></h3>
+<div class="addr">Level 4 &amp; 5, KOMTAR, George Town</div>
+<div class="desc"><span class="cn">位于Komtar大厦4-5楼的互动科学馆，攀岩墙、VR、G-Drop高空体验等设施齐全，寓教于乐，适合亲子。评价提到工作人员服务贴心。</span><span class="en">Interactive science museum on Levels 4-5 of Komtar — wall climbing, VR, the G-Drop free-fall experience and more; educational and fun, good for families. Reviews note attentive staff.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 10:00–19:00（周四至18:00）</span><span class="en">Daily 10:00 AM–7:00 PM (Thu until 6:00 PM)</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=18330303951363231144" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="http://www.techdomepenang.org/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+</div>
+
+<div class="pgroup" data-cat="culture">
+<div class="bp-group-label" id="pg-culture">🏛 <span class="cn">文化古迹</span><span class="en">Culture &amp; Heritage</span><span class="gn" data-groupcount="culture"></span></div>
+
+<div class="rcard" data-cat="culture">
+<div class="galwrap">
+<div class="gal">
+<img alt="Kek Lok Si Temple 照片 1 / Kek Lok Si Temple photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkjvQn6QXbLLDMdBnhVn2KuoiZr1whgGAQFjm0GIvIdYdxmQGsdd2c7LEKF2gqqW0nSyNpaCw0UiP9bxNWAIUmpQCANv5pNjo9uHkfi1wpRM5-icBzva8YOinzPW0byqeK_A2Y=s4800-w800-h600"/>
+<img alt="Kek Lok Si Temple 照片 2 / Kek Lok Si Temple photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmilmOhJZZga-7Oiye3TlrElsMCzW7k4vxLt5nTchK5TJXPcg255MOYXZ2SlnaJaWWb22-hXtuIpbaGU73nKhs7dii8olLLvIilPvTM7PiSEfPwzpYQ2iCO8WsDF539E_jUCiJu2lk8D5Bm=s4800-w800-h600"/>
+<img alt="Kek Lok Si Temple 照片 3 / Kek Lok Si Temple photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWml-0fiAntWSc6AoFv7dZ6tczqd_0eI5LtfewbHk9xcsf-RWt_a_993nGDMGcAos4A7BylDonjtKgvseJl0BXvBYYVhsba4rx3o-ObjyqfVEdbh-6vACfbkeNP5cz122L1e05Ds=s4800-w800-h600"/>
+<img alt="Kek Lok Si Temple 照片 4 / Kek Lok Si Temple photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmz1IAu8Dv4wrt6LhT7TnP9CEm90xD2HTmn9vmeVUeOw1iK3cSskGV089Us0b8faqR-tik1Kt--PSb8vvrX3o-FvuQuJe9v58dtkXa2iUKB8GJMjWSRQihAAeoexgzALjn0OlpZdQ=s4800-w800-h600"/>
+<img alt="Kek Lok Si Temple 照片 5 / Kek Lok Si Temple photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmaQhUgL5FFqfQqqUungmtyexUZTXBWPXRP5dZyBszBsjKd1vh_ZonHGwDSaYEhCTFZVHOQxyUtf5ThthtwQYDKEDLhCY-BGHaMba9QaKi9MNfCvWXnQPS3ZbZy0et87IwTtPZ-=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">极乐寺</span><span class="en">Kek Lok Si Temple</span> <span class="star">⭐4.4</span></h3>
+<div class="addr">Air Itam, Penang</div>
+<div class="desc"><span class="cn">东南亚数一数二的大型佛寺，占地广，<strong>约30米高观音像</strong>与万佛塔为主要地标，逛完全程约1.5–2小时。</span><span class="en">One of Southeast Asia's largest Buddhist temple complexes; the <strong>~30m Guan Yin statue</strong> and Pagoda of Ten Thousand Buddhas are the highlights. Allow 1.5–2 hours.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 8:30–17:30</span><span class="en">Daily 8:30 AM–5:30 PM</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=3211212677007490756" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://kekloksitemple.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+
+<div class="rcard" data-cat="culture">
+<div class="galwrap">
+<div class="gal">
+<img alt="Penang Hill Funicular 照片 1 / Penang Hill Funicular photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlySTFSJNpSNWcoGjlhRksmPQcw5wKMTO9BRQe_bl700o9Ja7SmbaXhExKlvrJfX6TvWfiUD6wps9o1b0u3U9SLpklvQaGMfFYdOtP0Wsj6j_D1T5-8zZgxQE4FyXjduc_iewMm=s4800-w800-h600"/>
+<img alt="Penang Hill Funicular 照片 2 / Penang Hill Funicular photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnFs0mMTN6kTCos1BQWbhusDZHZH8rNjv4mc599PRjHvPA15q1bp4m8sJbv0bWo-x4Cnyk5i7g_DswA0AnjcYjfJhsweu-ZPpazY2AMTo2JGXTHsTDBgxLzSfMJJUC6LwjFzpbkC0UhmFhE=s4800-w800-h600"/>
+<img alt="Penang Hill Funicular 照片 3 / Penang Hill Funicular photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmSScJ7bxvfYhQwqpO3Vx8nQ95tMQdixI1TL6Ss-A0sE7bho8dK5Sxz4lp7DBtzEd5Q8c-8cc652qlETOGSIOVM6baQnXwGDb7dpd2UrEVpywVAwTIDZnYI6VhFPBysSrnmEJd8=s4800-w800-h600"/>
+<img alt="Penang Hill Funicular 照片 4 / Penang Hill Funicular photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnm_ZdRweAblP1H4e_kqxcGETIyi5Nfnfex4Eo6pQLkOJI017e4ZaMDBvs5KsPtCZ8HQ--Lv6k2nQXQbRefVwzdvV29hABxOXB0oBCEbJCKyrbfNLT1c6GIsokyVZoHGQWtnA8=s4800-w800-h600"/>
+<img alt="Penang Hill Funicular 照片 5 / Penang Hill Funicular photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl3UIUYvNcIYRpK7HShb8DZgJ_jVExe5kmTu8AoQk1xV-jiTvKFPqe5-IYxLEOQ3vig5vi300QCcgIKLMk8rHhSXZWUV3YFciAFWKeYSdCrjaAqrRrwTVW5VFdX27Bjck4yfgBLkLHV2jtQ=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">升旗山缆车</span><span class="en">Penang Hill Funicular</span> <span class="star">⭐4.2</span></h3>
+<div class="addr">Jalan Bukit Bendera, Air Itam</div>
+<div class="desc"><span class="cn">缆车登顶约5分钟，山顶气温比市区低约10°C，可俯瞰乔治市全景。评价提醒<strong>周末排队久</strong>，建议早上或购买快速通道票。</span><span class="en">~5-min funicular ride to the summit, about 10°C cooler than town, with panoramic views over George Town. Reviews note <strong>long weekend queues</strong> — go early or buy a fast-track ticket.</span></div>
+<div class="chips">
+<span class="chip verify"><span class="cn">⚠ 周末排队较久，建议早上前往</span><span class="en">⚠ Long weekend queues — go early</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=9139778477464223867" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://penanghill.gov.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+</div>
+
+<div class="pgroup" data-cat="outdoor">
+<div class="bp-group-label" id="pg-outdoor">🏖 <span class="cn">户外观景</span><span class="en">Outdoors &amp; Views</span><span class="gn" data-groupcount="outdoor"></span></div>
+
+<div class="rcard" data-cat="outdoor">
+<div class="galwrap">
+<div class="gal">
+<img alt="The TOP Penang 照片 1 / The TOP Penang photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkBwVomG16Ay3kE3Iui_s98ZFF5lhVbpwUWLuT8VDvMGZR-SFdiXzUGUUlxZNzBbJ99K47C6GXj2H61-_6KjkX5lx74hJnZJcamDrFh1E9UpHv2Aqg6cpFVLLVZuYF231HxhmqGGw=s4800-w800-h600"/>
+<img alt="The TOP Penang 照片 2 / The TOP Penang photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnz0Jjy_tDDt4yrx3L2gcBqBA5BYOWNPmGyKAZ_OI1Cy8zlMobzuApuzYe4lBthg6eK4ogdXGahMqOceV2RMbaCmPDCiHCihzaZJ60FEhLUv0SfxrAIq5CNtKoGZ_bTs4z-FX0C6HdK4Sa0=s4800-w800-h600"/>
+<img alt="The TOP Penang 照片 3 / The TOP Penang photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnxO5C0Z6SZFVkZ577qpK9n0e0JhlMj8uNz9i8HOHexc5D1QE79SWoBJJaPV6EhnAMU1mKVHPMUtdMDYbt7jTDRAhCb5uNLFcYIDh1cw9NHOAheoRNLTkAh3DlMgul7MD2WesfR=s4800-w800-h600"/>
+<img alt="The TOP Penang 照片 4 / The TOP Penang photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWktN8Q5y7kebAAohC8HZC3ewD08C2fyh_8lBzaTy3PKN93vDfOJiJHBaRmEMx3SM6Ztlx3W2zVPD4AOhfJxWLSUGK7N8EITTM38ax89XmEFPlltPw5WcPFHcyfbf52NsRi038C0=s4800-w800-h600"/>
+<img alt="The TOP Penang 照片 5 / The TOP Penang photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn9NJRmq-0WanqhdepuKIZdKq-NyL3SIwnWJFmcFHEo-hg5MvOpQWPBKGoccMrx6ugD-7DcUBpUqSDBQ_8iCklZg_rjdWoqX7Yod_Dts_ff7LZNL_pa2dL_HqV01gh10aB6HuHN=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">The TOP Penang</span><span class="en">The TOP Penang</span> <span class="star">⭐4.3</span></h3>
+<div class="addr">Komtar Tower, Jalan Penang, George Town</div>
+<div class="desc"><span class="cn">Komtar塔顶多层娱乐综合体：彩虹天空步道、观景台、水族馆、侏罗纪主题展、4D动感剧院等，一栋楼可以玩一整天，各项目需<strong>分别购票</strong>。<strong>与槟城科技探索馆同一栋大楼</strong>，可安排在一起逛。评价提醒建议一早前往，玩到的项目更多。</span><span class="en">Multi-level entertainment complex atop Komtar tower — Rainbow Skywalk, observation deck, aquarium, Jurassic-themed exhibit, 4D motion theatre and more; easily a full day, with <strong>separate tickets per attraction</strong>. <strong>Same tower as Tech Dome Penang</strong> — easy to combine. Reviews suggest arriving early to fit in more attractions.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 10:00–22:00（周二至19:00）</span><span class="en">Daily 10:00 AM–10:00 PM (Tue until 7:00 PM)</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=8676810005730272390" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://thetop.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+</div>
+
+<div class="pgroup" data-cat="mall">
+<div class="bp-group-label" id="pg-mall">🛍 <span class="cn">购物商场</span><span class="en">Shopping Malls</span><span class="gn" data-groupcount="mall"></span></div>
+
+<div class="rcard" data-cat="mall">
+<div class="galwrap">
+<div class="gal">
+<img alt="Gurney Plaza 照片 1 / Gurney Plaza photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlz4wFB94GNeysGAuAuPuyJu9XV_1NQNMfKXU0-WpYE3HggsIIzIrdZ5syzGWrF4SZFgiR_e-B3K4i3hySyXs5Gv7yxW5mvPePRL4QJdaVxz_c-WEoIi3mZ9vfFsna14VyvVmjwSsm1aB0=s4800-w800-h600"/>
+<img alt="Gurney Plaza 照片 2 / Gurney Plaza photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk-zohcY8t2P0PvLbCxvqx8GxrOYi1l6fKbYFH6NgpmReobJkwAe_c9QJykT3g2bzr4C17fVjR5jQTdnAzAX0LU12i6SbjvsJEkmMoImtskH-pLsx9gQuzgLkM4G8ycjlz9L_1FMo9Fz1cw=s4800-w800-h600"/>
+<img alt="Gurney Plaza 照片 3 / Gurney Plaza photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm3ZRaIT1APah5kAFHj8srTEMy8zreV_vmnQ2Jw2VrFH5DEejO5LuSqQBdMZDAjjB5S8-obn50IZmLmP_xylEAtGfMT4HoSaSyz7OOS4uotlpPyIDEIGlp4K_wMAeclwXD96Xch=s4800-w800-h600"/>
+<img alt="Gurney Plaza 照片 4 / Gurney Plaza photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnBv0UuTvdV8oajFZDBTzjw3ddSML_wkEu3wT4aGBPgXgkTPUmrRDD5PA7MQhDeRkXyDaqCEenlR3N206mbxxjOShhpS962TU91UuD9e8t_7L2Lzr1Ig1ytdxH3HtXJoEjnFWo_=s4800-w800-h600"/>
+<img alt="Gurney Plaza 照片 5 / Gurney Plaza photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWk1V-zdMRpbRGTVw91022quY6nS0vgeDXkXGFoQsa12CSD3heL54II2TgEnRxsPUJ2Rj8YozzB3WTmU993Q0UymomY-k7fxNY0YPIixeApn_gZzSmL_TU-DUXms3jvAFLjnCv8d=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Gurney Plaza</span><span class="en">Gurney Plaza</span> <span class="star">⭐4.4</span></h3>
+<div class="addr">170, Persiaran Gurney, Pulau Tikus</div>
+<div class="desc"><span class="cn">乔治市老牌大型商场，9层楼、380+商店，紧邻Gurney Drive海边，内有电影院与美食广场。<strong>与 Miraku 同栋（G Hotel）</strong>，逛街用餐可安排在一起。</span><span class="en">Established 9-floor mall with 380+ stores right by Gurney Drive, with a cinema and food court. <strong>Same complex as Miraku</strong> (G Hotel) — easy to pair shopping and dining.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">Daily 10:00 AM–10:00 PM</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=3730796889489573290" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://gurneyplaza.com.my/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+
+<div class="rcard" data-cat="mall">
+<div class="galwrap">
+<div class="gal">
+<img alt="Queensbay Mall 照片 1 / Queensbay Mall photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkYtEPL0v4Pv5uTdvML7Xh_RpPfm0qJmYVJaz-52K3u-sGcp3EYQQxtQzc3fcpOVdrV0NisG5FVNzC4VBXV0Jax3D_oFyYBF0gvOtlAfnI_woAWcShQHLaE6__iivc4ep2jnUTL0c_6gg=s4800-w800-h600"/>
+<img alt="Queensbay Mall 照片 2 / Queensbay Mall photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmm5oJHwTPxGvjPPvMYokmfmQPtfVi714UWhOJDrukxxQAvQF8YYksU3ejLcbd1tjKFLnDp0-0ChdfcquJORF7lcqgC1ufAjtjISZwdMlySryJltCkiHEtuOgHJIaN4-xI1zeRobTRpVH09=s4800-w800-h600"/>
+<img alt="Queensbay Mall 照片 3 / Queensbay Mall photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnaLs3KnM-Dz9gZaFaZlSz9Jhss52ybFqROcHYQfzsZmtAoPErEwd3xHEVhcnptQ1E-2N1nDaGlsPQyxpJLVnc5K_ZAVQB88-j5l3NhzphlgAF1bcAfWJk7w-SezMnZheMaPGMmGA=s4800-w800-h600"/>
+<img alt="Queensbay Mall 照片 4 / Queensbay Mall photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkuPWaLiXbaXVDdc7-xpGxRSGN5sJc7kyvC9T4QV7mXKrz7fUBsKw-02MwyUH0ZglnPFn15zem1ywHF5hnyoI4re4lUT7AXTNgnEhp4EXv4fixa2jRbL8zcBBeFjKFxwQbZcM0=s4800-w800-h600"/>
+<img alt="Queensbay Mall 照片 5 / Queensbay Mall photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkVGLgB01MZYN1fFuS5cUtUFLQrc87OL1zqhmqQuVq9sQ-DvaB9LjSXf1zB1oN82I1wrXBT1jg_qT8QO_lEWZXRjNQbAWZI6nocM_o0nsoL-PTdLIABzMRDvP9icWh3Y6u3HFaVWQ=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Queensbay Mall</span><span class="en">Queensbay Mall</span> <span class="star">⭐4.4</span></h3>
+<div class="addr">100, Persiaran Bayan Indah, Bayan Lepas</div>
+<div class="desc"><span class="cn">槟城最大商场之一，滨海地带，AEON超市、大型美食广场。<strong>与笼的传人同商场</strong>，可安排在一起。</span><span class="en">One of Penang's largest malls, waterfront location, AEON supermarket and a large food hall. <strong>Same mall as Dragon-i Peking Duck</strong> — easy to combine.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 10:30–22:30</span><span class="en">Daily 10:30 AM–10:30 PM</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=18074308093244101445" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://queensbaymallmalaysia.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+
+<div class="rcard" data-cat="mall">
+<div class="galwrap">
+<div class="gal">
+<img alt="Sunway Carnival Mall 照片 1 / Sunway Carnival Mall photo 1" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWnrQMYOYcr8iIAGCFf_NHwlFczIDai0TFMtv680SWoVykesKFaa4RbglRzMRKtrslU96Qp45h29vJE7j-DFwJhKFFZjdK6Bwr96whdH8Eo55YkOmk6szkVb7HVC8OQyIezeZRNxo__X6tml=s4800-w800-h600"/>
+<img alt="Sunway Carnival Mall 照片 2 / Sunway Carnival Mall photo 2" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlO1xeNqYzcmTQZzwAzLEsSYL38vFwNH2ICIrViUVRyRS8sl__RoA_Ip-9GWkajktupnvskkcJV1QbruPO_vHwRLDDXKulnC8ohY0X_C4coJJJRM0I5xn00yvfrJv_zjQhvAMv4VHgS8ALv=s4800-w800-h600"/>
+<img alt="Sunway Carnival Mall 照片 3 / Sunway Carnival Mall photo 3" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkMx-U1XfmXMtEyWqaLwhYnuMIbUWaooWjP5fvxkVHbXmGTSKev6ZKvnw8IzZcd-GXeuyEaOnj5ErV42oIF8QiRmalII4IcmZj321nW2JkxQ_1zZYww8CSJxFOVxsBscUiMyLwgtw=s4800-w800-h600"/>
+<img alt="Sunway Carnival Mall 照片 4 / Sunway Carnival Mall photo 4" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmVp-DNYx10n88-2ewOVjQShq2QhBPMV6anObl42iiaBb9kw6-vtp5JYCUnWcSxR768ww9HZkX1wkOK8Qikfus9qqUSCrDnF6q8hLEYV-3mRSwgc82NB7Ra4P3W-YcYyVEdbaA-=s4800-w800-h600"/>
+<img alt="Sunway Carnival Mall 照片 5 / Sunway Carnival Mall photo 5" src="https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlSt3MEgDlnHIbgQkFsoGkhWCGvnIrJgc2wumJm3wgsg80tW8uYs-YmnQJtiA75fOTbCzaY49zwVD7SwaM7OjNkizygKU3fuseVV87wdAwKX5QOg02dLFlX7NGPvmIyaqyi9XlyGA=s4800-w800-h600"/>
+</div>
+<span class="gal-hint"><span class="cn">← 滑动 · 点图放大</span><span class="en">← swipe · tap to zoom</span></span>
+</div>
+<div class="rb">
+<h3><span class="cn">Sunway Carnival Mall</span><span class="en">Sunway Carnival Mall</span> <span class="star">⭐4.3</span></h3>
+<div class="addr">Jalan Todak, Seberang Jaya</div>
+<div class="desc"><span class="cn">槟城北部（Seberang Jaya）大型商场，<strong>与鸡饭店、Neo Akedo、鼎泰豐同商场</strong>，可安排一起逛。评价提到周末停车位较紧张。</span><span class="en">Large mall in the northern (Seberang Jaya) side of Penang — <strong>same mall as The Chicken Rice Shop, Neo Akedo, and Din Tai Fung</strong>. Reviews note weekend parking can be tight.</span></div>
+<div class="chips">
+<span class="chip hours"><span class="cn">📅 每日 10:00–22:00</span><span class="en">Daily 10:00 AM–10:00 PM</span></span>
+<span class="chip verify"><span class="cn">⚠ 周末停车位较紧张</span><span class="en">⚠ Weekend parking can be tight</span></span>
+</div>
+<div class="acts"><a class="btn-map" href="https://maps.google.com/?cid=4621355258783297564" target="_blank">📍 <span class="cn">地图</span><span class="en">Map</span></a><a class="btn-web" href="https://www.sunwaycarnival.com/" target="_blank">🌐 <span class="cn">官网</span><span class="en">Website</span></a></div>
+</div>
+</div>
+</div>
+
+<div class="pempty" id="pempty"><span class="cn">这个分类下暂时没有地点。</span><span class="en">No places in this category yet.</span></div>
+</section>
+
+<!-- ===== WEATHER ===== -->
+<section id="weather">
+<div class="sec-head"><span class="no">04</span><h2><span class="cn">天气</span><span class="en">Weather</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
+<div class="airbox">
+<div class="air" id="air"><span class="cn">🌫 空气质量载入中…</span><span class="en">🌫 Loading air quality…</span></div>
+<div class="airplan" hidden><div class="airnow"></div>
+<div class="airact" hidden><span class="cn">今天改这样走：户外的<strong>升旗山缆车、极乐寺、The TOP 观景台</strong>往后挪，改去室内的 <strong>Gurney Plaza／Queensbay Mall／Sunway Carnival／Tech Dome／Neo Akedo／Pado Fantasyland</strong>（都在本手册里）。老人小孩戴 N95，一般外科口罩挡不住 PM2.5。</span><span class="en">What to change today: push back the outdoor items — <strong>Penang Hill funicular, Kek Lok Si, The TOP observation deck</strong> — and head indoors instead: <strong>Gurney Plaza / Queensbay Mall / Sunway Carnival / Tech Dome / Neo Akedo / Pado Fantasyland</strong> (all in this handbook). N95 masks for kids and older family members; surgical masks do not stop PM2.5.</span></div></div>
+<div class="airnote"><span class="cn">6–10 月是印尼与本地烧芭的季节，槟城可能有烟霾。上面是<strong>实时读数</strong>（open-meteo，每小时更新，美国 AQI 口径）：100 以内照常；<strong>超过 100 时老人小孩少排户外</strong>；<strong>超过 150 就整团改室内</strong>（行程当天会在这下面直接告诉你改去哪）。烟霾天建议戴 N95（一般外科口罩挡不住 PM2.5）。马来西亚官方用的是 API 指数，正式读数以环境局 <a href="https://apims.doe.gov.my/public_v2/api_table.html" target="_blank">APIMS</a> 为准。</span><span class="en">Jun–Oct is the burning season in Indonesia and locally, so Penang can get haze. Above is a <strong>live reading</strong> (open-meteo, hourly, US AQI scale): under 100, carry on; <strong>above 100, keep the kids and older family members off long outdoor stretches</strong>; <strong>above 150, move the whole group indoors</strong> (during the trip, the line below tells you exactly where). Wear N95 masks on hazy days (surgical masks do not stop PM2.5). Malaysia&#39;s official measure is the API index — see the DOE&#39;s <a href="https://apims.doe.gov.my/public_v2/api_table.html" target="_blank">APIMS</a> for the official figure.</span></div>
+</div>
+<div class="note amber" id="wxNote">
+<span class="cn">⚠ 天气载入中…</span>
+<span class="en">⚠ Loading weather info…</span>
+</div>
+<div class="wxdaily" id="wxdaily" hidden></div>
+<div class="wx-grid">
+<div class="wx">
+<div class="city"><span class="cn">日间高温</span><span class="en">Avg. High</span></div>
+<div class="temp">30–32°C</div>
+<div class="s"><span class="cn">湿热，紫外线强</span><span class="en">Hot &amp; humid, high UV</span></div>
+</div>
+<div class="wx">
+<div class="city"><span class="cn">夜间低温</span><span class="en">Avg. Low</span></div>
+<div class="temp">24–25°C</div>
+<div class="s"><span class="cn">闷热，湿度约80%</span><span class="en">Muggy, ~80% humidity</span></div>
+</div>
+</div>
+<div class="note red">
+<span class="cn">🌧 10月是槟城<strong>全年雨量最大的月份</strong>（约300–340mm，20+个雨天），通常是午后短时雷阵雨（约10–30分钟），不太会整天下雨。建议随身带一把伞，行程可安排室内/室外交替。</span>
+<span class="en">🌧 October is Penang's <strong>wettest month</strong> (~300–340mm, 20+ rainy days), usually short afternoon thunderstorms (10–30 min) rather than all-day rain. Carry an umbrella and mix indoor/outdoor activities.</span>
+</div>
+</section>
+
+<footer>
+<div class="band tiles" aria-hidden="true"></div>
+<div class="mark">PENANG · OCT 2026</div>
+<p><span class="cn">草稿版本 · 待补充每日行程后更新</span><span class="en">Draft version · to be updated once daily itinerary is confirmed</span></p>
+</footer>
+</div>
+
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="图片放大 / Photo viewer">
+<button class="lb-close" onclick="closeLb()" aria-label="关闭 / Close">✕</button>
+<button class="lb-arrow prev" onclick="lbNav(-1)" aria-label="上一张 / Previous">‹</button>
+<img id="lbImg" alt="放大显示的地点照片 / Enlarged photo of the selected place"/>
+<button class="lb-arrow next" onclick="lbNav(1)" aria-label="下一张 / Next">›</button>
+<div class="lb-counter" id="lbCounter"></div>
+</div>
+
+<script>
+/* ---------- 语言：优先手选(siteLangUser) > 系统语言 ---------- */
+function applyLang(lang){
+  var en = lang === 'en';
+  document.body.classList.toggle('lang-en', en);
+  document.documentElement.lang = en ? 'en' : 'zh';
+  var b = document.getElementById('langBtn');
+  if (b) b.textContent = en ? '中' : 'EN';
+}
+function toggleLang(){
+  var next = document.body.classList.contains('lang-en') ? 'zh' : 'en';
+  applyLang(next);
+  try { localStorage.setItem('siteLangUser', next); } catch (e) {}
+}
+window.addEventListener('storage', function(e){
+  if (e.key === 'siteLangUser' && e.newValue) applyLang(e.newValue);
+});
+(function initLang(){
+  var lang = null;
+  try { lang = localStorage.getItem('siteLangUser'); } catch (e) {}
+  if (!lang) lang = (navigator.language || '').startsWith('zh') ? 'zh' : 'en';
+  applyLang(lang);
+})();
+
+/* ---------- 计数：全部由 JS 算，页面上不写死数字 ---------- */
+var diningCards = document.querySelectorAll('#dining .rcard');
+var placeCards  = Array.prototype.slice.call(document.querySelectorAll('#places .rcard'));
+placeCards.forEach(function(c){
+  if (!c.dataset.cat){
+    var g = c.closest('.pgroup');
+    if (g && g.dataset.cat) c.dataset.cat = g.dataset.cat;
+  }
+});
+function fillCount(attr, n){
+  document.querySelectorAll('[' + attr + ']').forEach(function(el){ el.textContent = n; });
+}
+document.querySelectorAll('[data-count]').forEach(function(el){
+  var k = el.getAttribute('data-count');
+  el.textContent = (k === 'dining' ? diningCards.length : placeCards.length);
+});
+document.querySelectorAll('[data-catcount]').forEach(function(el){
+  var cat = el.getAttribute('data-catcount');
+  el.textContent = cat === 'all' ? placeCards.length
+    : placeCards.filter(function(c){ return c.dataset.cat === cat; }).length;
+});
+document.querySelectorAll('.pchip').forEach(function(ch){
+  var cat = ch.getAttribute('data-cat');
+  if (cat === 'all') return;
+  var n = placeCards.filter(function(c){ return c.dataset.cat === cat; }).length;
+  ch.hidden = (n === 0);
+});
+document.querySelectorAll('[data-groupcount]').forEach(function(el){
+  var cat = el.getAttribute('data-groupcount');
+  el.textContent = placeCards.filter(function(c){ return c.dataset.cat === cat; }).length;
+});
+
+/* ---------- 卡片序号（按区块自动编号，不手打） ---------- */
+function numberCards(list){
+  list.forEach(function(card, i){
+    var wrap = card.querySelector('.galwrap');
+    if (!wrap || wrap.querySelector('.idx')) return;
+    var b = document.createElement('span');
+    b.className = 'idx';
+    b.setAttribute('aria-hidden', 'true');
+    b.textContent = (i + 1 < 10 ? '0' : '') + (i + 1);
+    wrap.appendChild(b);
+  });
+}
+numberCards(Array.prototype.slice.call(diningCards));
+document.querySelectorAll('#places .pgroup').forEach(function(g){
+  numberCards(Array.prototype.slice.call(g.querySelectorAll('.rcard')));
+});
+
+/* ---------- 去处筛选 ---------- */
+var pchips = document.querySelectorAll('.pchip');
+var pcount = document.getElementById('pcount');
+var pempty = document.getElementById('pempty');
+function filterPlaces(cat){
+  var shown = 0;
+  document.querySelectorAll('#places .pgroup').forEach(function(g){
+    var vis = 0;
+    g.querySelectorAll('.rcard').forEach(function(c){
+      var show = (cat === 'all') || (c.dataset.cat === cat);
+      c.classList.toggle('hide', !show);
+      if (show) vis++;
+    });
+    g.classList.toggle('hide', vis === 0);
+    shown += vis;
+  });
+  pchips.forEach(function(ch){
+    ch.setAttribute('aria-pressed', ch.dataset.cat === cat ? 'true' : 'false');
+  });
+  if (pempty) pempty.classList.toggle('show', shown === 0);
+  if (pcount){
+    pcount.innerHTML = '<span class="cn">显示 ' + shown + ' 个去处</span>'
+                     + '<span class="en">Showing ' + shown + ' place' + (shown === 1 ? '' : 's') + '</span>';
+  }
+}
+pchips.forEach(function(ch){
+  ch.addEventListener('click', function(){
+    filterPlaces(ch.dataset.cat);
+    var sec = document.getElementById('places');
+    var top = sec.getBoundingClientRect().top + window.pageYOffset - 130;
+    if (window.pageYOffset > top) window.scrollTo({ top: top, behavior: 'smooth' });
+  });
+});
+filterPlaces('all');
+
+/* ---------- 倒数 ---------- */
+(function countdown(){
+  var el = document.getElementById('countdown');
+  if (!el) return;
+  var start = new Date(2026, 9, 9), end = new Date(2026, 9, 17);
+  var now = new Date(); now = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var days = Math.round((start - now) / 86400000);
+  var cn, en;
+  if (days > 0){ cn = '距出发还有 <b>' + days + '</b> 天'; en = '<b>' + days + '</b> day' + (days === 1 ? '' : 's') + ' to departure'; }
+  else if (now <= end){ var d = Math.round((now - start) / 86400000) + 1; cn = '行程进行中 · 第 <b>' + d + '</b> 天'; en = 'Day <b>' + d + '</b> of the trip'; }
+  else { cn = '行程已结束 · 谢谢一路同行'; en = 'Trip completed'; }
+  el.querySelector('.cn').innerHTML = cn;
+  el.querySelector('.en').innerHTML = en;
+})();
+
+/* ---------- 章节高亮（底部导航／宽屏顶部横条共用） ---------- */
+var navLinks = Array.prototype.slice.call(document.querySelectorAll('#navstrip a'));
+var secs = navLinks.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+function spy(){
+  var y = window.pageYOffset + 140, cur = 0;
+  secs.forEach(function(sec, i){ if (sec && sec.offsetTop <= y) cur = i; });
+  if (window.innerHeight + window.pageYOffset >= document.documentElement.scrollHeight - 4) cur = secs.length - 1;
+  navLinks.forEach(function(a, i){
+    a.classList.toggle('on', i === cur);
+    if (i === cur) a.setAttribute('aria-current', 'location'); else a.removeAttribute('aria-current');
+  });
+}
+window.addEventListener('scroll', spy, { passive: true });
+window.addEventListener('resize', spy);
+spy();
+
+/* ---------- 灯箱 ---------- */
+var lbImages = [], lbIndex = 0;
+document.querySelectorAll('.gal').forEach(function(gal){
+  var imgs = Array.prototype.slice.call(gal.querySelectorAll('img'));
+  imgs.forEach(function(img, i){
+    img.addEventListener('click', function(){
+      lbImages = imgs.map(function(im){ return { src: im.src, alt: im.alt }; });
+      lbIndex = i;
+      openLb();
+    });
+  });
+});
+function openLb(){
+  var it = lbImages[lbIndex];
+  var im = document.getElementById('lbImg');
+  im.src = it.src;
+  im.alt = it.alt || '放大显示的地点照片 / Enlarged photo';
+  document.getElementById('lbCounter').textContent = (lbIndex + 1) + ' / ' + lbImages.length;
+  document.getElementById('lb').classList.add('open');
+}
+function closeLb(){ document.getElementById('lb').classList.remove('open'); }
+function lbNav(d){
+  lbIndex = (lbIndex + d + lbImages.length) % lbImages.length;
+  openLb();
+}
+document.getElementById('lb').addEventListener('click', function(e){
+  if (e.target === this) closeLb();
+});
+document.addEventListener('keydown', function(e){
+  if (document.getElementById('lb').classList.contains('open')){
+    if (e.key === 'Escape') closeLb();
+    if (e.key === 'ArrowLeft') lbNav(-1);
+    if (e.key === 'ArrowRight') lbNav(1);
+  }
+});
+
+/* 天气：#weather 区块。行程 10/9–10/17 共9天。open-meteo 只给未来约16天，
+   整趟还在窗口外时（现在就是）连请求都不发，只显示倒数提示 + 历史气候平均（一直显示，
+   在 .wx-grid 里，不受本段影响）。进窗口后抓到就渲染逐日卡片；抓失败/不完整则静默
+   退回倒数提示样式，绝不留空卡片。三种情境见 tools/check-weather.mjs。 */
+(function weather() {
+  var note = document.getElementById('wxNote');
+  var daily = document.getElementById('wxdaily');
+  if (!note || !daily) return;
+  var DATES = ['2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13',
+               '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17'];
+  var WD_CN = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  var WD_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var CLIMO_LO = 24, CLIMO_HI = 32; /* 与下方 .wx-grid 历史平均一致，逐日卡片抓不到时用它垫底 */
+  function fill(el, cn, en) { el.innerHTML = '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
+  function wmo(c) {
+    if (c === 0) return { i: '☀️', cn: '晴', en: 'Clear' };
+    if (c <= 2) return { i: '🌤', cn: '多云时晴', en: 'Mostly sunny' };
+    if (c === 3) return { i: '☁️', cn: '阴', en: 'Overcast' };
+    if (c <= 48) return { i: '🌫', cn: '有雾', en: 'Fog' };
+    if (c <= 57) return { i: '🌦', cn: '毛毛雨', en: 'Drizzle' };
+    if (c <= 67) return { i: '🌧', cn: '有雨', en: 'Rain' };
+    if (c <= 82) return { i: '🌧', cn: '阵雨', en: 'Showers' };
+    if (c <= 99) return { i: '⛈', cn: '雷阵雨', en: 'Thunderstorms' };
+    return { i: '🌤', cn: '天气一般', en: 'Mixed' };
+  }
+  var DAY = 86400000, HORIZON_DAYS = 16;
+  var iso = function (d) { return d.toISOString().slice(0, 10); };
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var horizon = new Date(today.getTime() + HORIZON_DAYS * DAY);
+  var start = DATES[0], end = DATES[DATES.length - 1];
+  function daysUntil(dateStr) {
+    return Math.round((new Date(dateStr + 'T00:00:00').getTime() - today.getTime()) / DAY);
+  }
+  function dayLabel(dateStr) {
+    var mm = parseInt(dateStr.slice(5, 7), 10), dd = parseInt(dateStr.slice(8, 10), 10);
+    var dow = new Date(dateStr + 'T00:00:00').getDay();
+    return '<div class="wxd-d">' + mm + '/' + dd + '<br><span class="cn">' + WD_CN[dow]
+      + '</span><span class="en">' + WD_EN[dow] + '</span></div>';
+  }
+  function showCountdown(reason) {
+    var n = daysUntil(start);
+    var extraCn = reason ? '（' + reason.cn + '）' : '';
+    var extraEn = reason ? ' (' + reason.en + ')' : '';
+    var cn, en;
+    if (n > 0) {
+      cn = '⚠ 距出发还有 ' + n + ' 天，暂无逐日天气预报' + extraCn + '，以下为槟城10月<strong>历史平均气候</strong>数据，非实时预报，出发前约2周会自动改成逐日预报。';
+      en = '⚠ ' + n + ' days to departure — no day-by-day forecast yet' + extraEn + '. Figures below are <strong>historical climate averages</strong> for Penang in October, not a live forecast; a daily forecast appears automatically about 2 weeks out.';
+    } else {
+      cn = '⚠ 暂无逐日天气预报' + extraCn + '，以下为槟城10月<strong>历史平均气候</strong>数据，非实时预报。';
+      en = '⚠ No day-by-day forecast available' + extraEn + '. Figures below are <strong>historical climate averages</strong> for Penang in October, not a live forecast.';
+    }
+    fill(note, cn, en);
+    daily.hidden = true;
+    daily.innerHTML = '';
+  }
+  /* 整趟都在16天窗口外：不发请求（发了会拿到400，看起来像没网，误导人去查WiFi） */
+  if (start > iso(horizon)) { showCountdown(); return; }
+  var reqStart = start < iso(today) ? iso(today) : start;
+  var reqEnd = end > iso(horizon) ? iso(horizon) : end;
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude=5.4141&longitude=100.3288'
+    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+    + '&timezone=Asia%2FKuala_Lumpur&start_date=' + reqStart + '&end_date=' + reqEnd;
+  fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (j) {
+    var d = j && j.daily;
+    if (!d || !d.time || !d.time.length) throw new Error('empty');
+    var idx = {};
+    d.time.forEach(function (t, i) { idx[t] = i; });
+    var html = '', haveAny = false;
+    DATES.forEach(function (dateStr) {
+      var i = idx[dateStr];
+      var label = dayLabel(dateStr);
+      if (i === undefined || d.temperature_2m_max[i] === null || d.temperature_2m_max[i] === undefined) {
+        /* 这一天还没进 open-meteo 窗口（只有出发前约16天内的日子有），用历史平均垫底，不留空格 */
+        html += '<div class="wxd" data-wx="' + dateStr + '">' + label
+          + '<div class="wxd-i">🌤</div><div class="wxd-t">' + CLIMO_LO + '–' + CLIMO_HI + '°</div>'
+          + '<div class="wxd-p"><span class="cn">常态</span><span class="en">avg</span></div></div>';
+        return;
+      }
+      haveAny = true;
+      var w = wmo(d.weather_code[i]);
+      var hi = Math.round(d.temperature_2m_max[i]), lo = Math.round(d.temperature_2m_min[i]);
+      var pop = d.precipitation_probability_max[i];
+      html += '<div class="wxd' + (pop >= 60 ? ' wet' : '') + '" data-wx="' + dateStr + '">' + label
+        + '<div class="wxd-i">' + w.i + '</div><div class="wxd-t">' + lo + '–' + hi + '°</div>'
+        + '<div class="wxd-p">' + pop + '%</div></div>';
+    });
+    if (!haveAny) throw new Error('none-in-range');
+    daily.innerHTML = html;
+    daily.hidden = false;
+    fill(note, '☀ 以下是槟城10月9–17日<strong>逐日天气预报</strong>（open-meteo，出发前约16天内可查），灰色「常态」格是还没进预报窗口的日子，用历史气候平均垫底；再往下 .wx-grid 是整月的历史平均参考。',
+      '☀ Day-by-day <strong>forecast</strong> for Oct 9–17 in Penang below (open-meteo, available within ~16 days of each date); gray "avg" cards are days not in the forecast window yet, filled with historical climate averages; the figures further down are the full-month historical averages for reference.');
+  }).catch(function () {
+    showCountdown({ cn: '暂时取不到实时预报', en: 'live forecast unavailable right now' });
+  });
+})();
+
+/* 实时空气质量：烧芭季的烟霾只有实时值、没有预报，所以跟天气分开抓，也不受
+   「16天预报窗口」那套逻辑影响——任何时候打开都抓一次当下的读数。
+   用 open-meteo 的空气质量接口（跟天气同一家，免钥匙、允许浏览器直接抓）。
+   马来西亚官方指数是 API，口径跟这里的美国 AQI 不完全一样，所以文案写明了并给 APIMS 链接。 */
+(function airQuality() {
+  var box = document.getElementById('air');
+  if (!box) return;
+  function fill(cn, en) { box.innerHTML = '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
+  function band(v) {
+    if (v <= 50) return { cn: '良好', en: 'Good', cls: '' };
+    if (v <= 100) return { cn: '中等', en: 'Moderate', cls: '' };
+    if (v <= 150) return { cn: '敏感人群不健康', en: 'Unhealthy for sensitive groups', cls: 'warn' };
+    if (v <= 200) return { cn: '不健康', en: 'Unhealthy', cls: 'bad' };
+    if (v <= 300) return { cn: '非常不健康', en: 'Very unhealthy', cls: 'bad' };
+    return { cn: '危害', en: 'Hazardous', cls: 'bad' };
+  }
+  fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=5.4141&longitude=100.3288'
+        + '&current=us_aqi,pm2_5&timezone=Asia%2FKuala_Lumpur')
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (j) {
+      var c = j && j.current;
+      if (!c || typeof c.us_aqi !== 'number') throw new Error('empty');
+      var aqi = Math.round(c.us_aqi);
+      var b = band(aqi);
+      if (b.cls) box.classList.add(b.cls);
+      var pm = (typeof c.pm2_5 === 'number') ? Math.round(c.pm2_5) : null;
+      var t = (c.time || '').slice(11, 16);
+      fill('🌫 空气质量 ' + b.cn + ' · 乔治市 AQI <strong>' + aqi + '</strong>'
+             + (pm !== null ? ' · PM2.5 ' + pm + ' µg/m³' : '') + (t ? ' · ' + t + ' 更新' : ''),
+           '🌫 Air quality: ' + b.en + ' · George Town AQI <strong>' + aqi + '</strong>'
+             + (pm !== null ? ' · PM2.5 ' + pm + ' µg/m³' : '') + (t ? ' · updated ' + t : ''));
+      today(b, aqi, pm, t);
+    })
+    .catch(function () {
+      fill('🌫 空气质量暂时抓不到（可能没网）——请看官方 APIMS 网站',
+           '🌫 Air quality unavailable (offline?) — check the official APIMS site');
+      today(null);
+    });
+
+  /* 只在**行程当天**写一行「今天怎么走」。烟霾没有预报，写在别的日子等于瞎猜；
+     预设隐藏，所以行程之外这块完全不占版面（2026-09-19 用户：「别写死的，
+     只在当天抓完数据写上当天的空气质量」，新加坡那本先做，这里照搬）。
+     槟城这本没有逐日行程卡，所以落点是天气区块的实时读数底下。
+     AQI ≤100 只报数字说照常；超过 100 才把「改去哪」摊开。 */
+  function today(b, aqi, pm, t) {
+    var TRIP = ['2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13',
+                '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17'];
+    var n = new Date();
+    var iso = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0')
+            + '-' + String(n.getDate()).padStart(2, '0');
+    if (TRIP.indexOf(iso) < 0) return;          // 不在行程期间，什么都不做
+    var plan = document.querySelector('.airplan');
+    if (!plan) return;
+    var now = plan.querySelector('.airnow');
+    var act = plan.querySelector('.airact');
+    if (!b) {
+      now.innerHTML = '<span class="cn">🌫 今天的空气质量抓不到（可能没网）——'
+        + '出门前看一眼官方 APIMS</span>'
+        + '<span class="en">🌫 Could not fetch today\'s air quality (offline?) — '
+        + 'check APIMS before heading out</span>';
+      act.hidden = false;                        // 没数字时把替代方案摊开备用
+      plan.hidden = false;
+      return;
+    }
+    var bad = aqi > 100;
+    now.innerHTML =
+      '<span class="cn">🌫 今天空气' + b.cn + ' · 乔治市 AQI ' + aqi
+        + (pm !== null ? '（PM2.5 ' + pm + '）' : '') + (t ? ' · ' + t + ' 更新' : '')
+        + (bad ? ' · 建议改室内 ↓' : ' · 行程照常') + '</span>' +
+      '<span class="en">🌫 Air today: ' + b.en + ' · George Town AQI ' + aqi
+        + (pm !== null ? ' (PM2.5 ' + pm + ')' : '') + (t ? ' · updated ' + t : '')
+        + (bad ? ' · move indoors ↓' : ' · plans unchanged') + '</span>';
+    act.hidden = !bad;
+    if (aqi > 150) plan.classList.add('bad');    // 150 以上才标红，跟上面那条实时读数同一条线
+    plan.hidden = false;
+  }
+})();
+</script>
+</body>
+</html>
