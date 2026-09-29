@@ -268,6 +268,37 @@ v2 顶部有「回旧版 / Classic」链到 index.html。
   已挂进 check-all（`penangv3`）与 checks.yml 的 `penangv3` job，`ci-decide.py` 按 v3.html／该脚本改动触发。
 - 三份并存（index／v2／v3），改内容要三份都改；`tools/lib/trips.py`、`tools/ci-decide.py` 的 weather 清单也都登记了 v3。
 
+### penang-trip/v4.html（2026-09-29 建，第四个设计版「当地招牌风」；index／v2／v3 原样保留，**不加任何回链**）
+以 v3.html 为底本复制，**功能与 DOM 锚点／id／data-* 钩子一字不动**（票券、今日模式、`#d1–#d9`、滑卡、给司机看、四标签导航、
+天气与空气质量条、`DAYS` 数组、siteLangUser、`penangV3Wish` 都同 v3；和 v3 逐项对过：餐厅卡 11、景点卡 9、航班卡 4、图片 101、
+地图链接 20、id 49、data-* 48，全部相等），**只换外观**。内容与事实不动、不编行程（D2–D8 仍是自由日空态）；公开仓库无住宅地址、
+「老板自宅」不加「给司机看」。三份文字改动仅限：封面标题「槟城之行」→「槟城」、提示条里颜色说法（v3 的「绿色/蓝色按钮」在 v4 已不成立）
+与「v3 新增」→「本版功能」、删掉章节 01/02 编号。顶部两个链接：「旧版」→index.html、「上一版 / v3」→v3.html（v2 没链，窄屏放不下）。
+- **设计语言**：黑褐漆木 #17110c 底、金 #c9a13a／#d9b24a、朱红 #a4161a／#9e1b1b、乳白搪瓷 #f5efdd、正文乳白 #efe3c2、深字 #20160d。
+  **有意的深色单一风格，不做浅色版**（`html`/`body` 背景与全部颜色显式设置，`color-scheme: dark`）。封面＝木牌匾（金色双线外框、超大金色「槟城」、
+  两侧红底竖排对联条「九天八夜」「十月出行」）；天数＝红色方形印章（中文数字一～九，英文界面阿拉伯数字，选中态金色描边）；内容卡＝搪瓷招牌
+  （乳白底、3px 朱红粗边＋2px 内缩 1px 细线（`::after`）、圆角 7px）；自由日卡（`.dempty`、非飞行日的票券）＝深褐 #2a2016 底灰金 #b9a97f 字；
+  章节标题居中、字距拉开（`letter-spacing: .5em`）、两侧金线（`.sec-head::before/::after`），**不用 01/02 编号、不用 emoji 当标记**
+  （分组小标题开头的 emoji 包在 `.em` 里 CSS 隐藏；`.tabbar a .ic` 与 `.de-ico`、`.tip .ico` 同样隐藏）；小标签＝红框细字（`.chip`／`.star`／`.sw-type`），
+  按钮＝朱红实心（地图）／红框（官网）／金底（给司机看）；底部四标签＝黑漆底金字牌匾条（选中＝朱红底浅金字），宽屏（>820px）变顶部横条。
+- **CSS 变量**（全在 `:root`）：`--wood/--wood-2/--wood-3/--wood-4`（漆木、牌匾内底、自由日卡、更黑的顶栏）、`--gold/--gold-b/--gold-l`（金线、金字、朱红底上的浅金字）、
+  `--red/--red-2/--red-ink/--red-on-wood`（朱红、对联条、搪瓷上的红字、漆木上的红框）、`--enamel/--enamel-2`、`--text/--ink/--ink-2/--muted/--muted-d/--faint`。
+  v3 的旧变量名（`--indigo*`/`--marigold*`/`--terracotta*`/`--cream`/`--paper`/`--card`）都映射到新盘，别删。
+  **朱红底上的字一律用 `--gold-l`**（`--gold-b` 放朱红底只有 4.0:1，过不了 4.5）。对比度实算：正文/漆木 14.7、金字/漆木 9.3、深字/搪瓷 15.5、
+  次级字/搪瓷 7.4、浅金/朱红 5.9、灰金/深褐 6.9；另用浏览器逐文字节点扫过（列表态/滑卡态/司机层/D1，中英各一遍）全部 ≥4.5，且注入坏色验证过扫描会报。
+- **字体**：Google Fonts 的 Noto Serif SC（400/700/900）、Noto Sans SC（400/500/700）、IBM Plex Mono（400/500，**只给数字/航班号/时刻/印章英文数字**），
+  `display=swap`，用 `media="print" onload="this.media='all'"` **非阻塞**加载（被墙也不卡首屏）＋`<noscript>` 兜底；`--serif/--sans/--mono` 带完整系统回退栈
+  （Songti SC／STSong／Noto Serif CJK SC…；PingFang SC／Hiragino Sans GB／Microsoft YaHei…；ui-monospace／Menlo／Consolas）。
+- **竖排对联条（`.strip`）的两个坑，都踩过**：① 竖排文字当 flex 子项时，交叉轴尺寸被算成一个字高，字叠成一团——条内用块级＋`height:100%`＋`text-align:center`，
+  **别用 flex 折行**；② 有些字体（沙盒里的文泉驿）没有竖排字高，竖向 advance＝0，`letter-spacing` 也救不了——所以中文每个字包一个 `<i>`（`inline-block`、`height:1.35em`），
+  字距与字体无关（英文界面是旋转的拉丁字，没这问题）。条宽 32px（≥30），`.board` 两侧 margin 40px 给条留位；改条上文字前先想清楚长度别超过牌匾高度（约 230px）。
+- **印章渲染**（唯一动过的 JS）：`sealNum(n)` 给票券 `.tk-seal`、日标签 `.dtab .seal`、日面板头 `.dp-n.seal` 生成 `<span class="cn">一</span><span class="en">1</span>`。
+  票券里 `.tk-l b` 仍是「D1」（自检读它）；日标签的可读名靠 `.sr-only` 的「D1」。
+- **自检**：`tools/check-penang-v3.mjs` 现在 v3、v4 各跑一遍（讯息带 `[v3]`/`[v4]`，v3 的 156 项断言一项没减，共 323 项）；v4 另有 11 项（印章数字中英、
+  对联条宽≥30／竖排单列／逐字间距不挤压／不出条、body 底色显式、选中标签金边、字体请求全失败时仍有回退栈且不横滚）。`tools/check-weather.mjs` 也含 v4。
+  已登记 `tools/lib/trips.py`（2026-10-17）与 `tools/ci-decide.py`（weather、penangv3 两条规则）。降速复现：`CPU_THROTTLE=6`／`20` 都全绿。
+- 四份并存（index／v2／v3／v4），改内容要四份都改。
+
 ## xiamen-trip/index.html（约 830 行）
 厦门自由行手册，2026-08-24~27 三晚四天，2 人（HEW/CHERN YANG ＋ TAN/CHIN HOOI），双语。
 2026-08-22 新建，**CSS 与 JS 整套复制自 singapore-trip/index.html**（同一套 `.day`／`.stop`／
