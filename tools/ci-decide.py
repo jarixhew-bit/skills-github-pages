@@ -53,7 +53,7 @@ RULES = {
     # 两本手册的天气条与实时空气质量条：前端现抓 open-meteo / data.gov.sg，
     # 只有真浏览器验得了（check-weather.mjs 一支同时验 singapore ＋ penang）
     "weather": ["singapore-trip/index.html", "penang-trip/index.html", "penang-trip/v2.html",
-                "tools/check-weather.mjs"],
+                "penang-trip/v3.html", "tools/check-weather.mjs"],
     # 手册航班时长：跨时区那几段最容易直接拿两地时刻相减，差一小时看不出来
     "flights": ["*.html", "*/index.html", "tools/check-flight-times.py"],
     # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验
