@@ -33,6 +33,10 @@ async function open(opts = {}) {
     permissions: opts.clipboard === 'ok' ? ['clipboard-read', 'clipboard-write'] : [],
   });
   const page = await ctx.newPage();
+  if (process.env.CPU_THROTTLE) {   // 复现慢机器（CI）：CPU_THROTTLE=6 node tools/check-penang-v3.mjs
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: +process.env.CPU_THROTTLE });
+  }
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|net::/.test(m.text())) errors.push('console: ' + m.text()); });
@@ -60,6 +64,25 @@ const sel = p => p.evaluate(() => {
   const cur = [...document.querySelectorAll('#tickets .tkt')].map((b, i) => (b.getAttribute('aria-current') === 'true' ? i + 1 : null)).filter(Boolean);
   return { tab: t + 1, shown, cur, hash: location.hash };
 });
+/* 等平滑滚动真的停下来：目标区块顶部进入视口（0..tol），且 scrollY 连续两帧不变。
+   页面用 scrollIntoView({behavior:'smooth'})，「景点」离「今日」块一万多像素，Chromium 要约 0.75 秒才滚完；
+   以前写死 waitForTimeout(700) 是在跟滚动赛跑（CI 慢机器上会输）。超时返回 false，交给断言判红。 */
+async function scrolledTo(page, id, tol = 140) {
+  await page.evaluate(() => { window.__lastY = null; });
+  try {
+    await page.waitForFunction(({ id, tol }) => {
+      const y = window.scrollY, top = document.getElementById(id).getBoundingClientRect().top;
+      const stable = window.__lastY === y; window.__lastY = y;
+      return stable && top >= -2 && top <= tol;
+    }, { id, tol }, { polling: 'raf', timeout: 15000 });
+    return true;
+  } catch { return false; }
+}
+/* 等滑卡的飞出动画结束（.fly 消失＝已换下一张或已到结束页） */
+const settleSwipe = p => p.waitForFunction(() => !document.querySelector('#swStage .sw-card.fly'), null, { timeout: 5000 });
+/* 复制是异步的：等提示条有字再断言 */
+const waitMsg = p => p.waitForFunction(() => document.getElementById('drvMsg').innerText.trim() !== '', null, { timeout: 5000 }).catch(() => {});
+const jumpTop = p => p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
 const noHScroll = p => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 async function shot(page, name) { if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/${name}.png`, fullPage: false }); }
 
@@ -90,10 +113,10 @@ async function shot(page, name) { if (SHOT_DIR) await page.screenshot({ path: `$
   s = await sel(page);
   check(s.tab === 3 && s.shown.join() === '3' && s.cur.join() === '3' && s.hash === '#d3', `[标签] 点 D3 应切到第 3 天并写 #d3（实得 ${JSON.stringify(s)}）`);
   await page.click('#tickets .tkt[data-day="5"]');
-  await page.waitForTimeout(600);
+  const tkScrolled = await scrolledTo(page, 'daypanels', 200);
   s = await sel(page);
   check(s.tab === 5 && s.shown.join() === '5' && s.hash === '#d5', `[票券] 点第 5 张票应切到 D5（实得 ${JSON.stringify(s)}）`);
-  check(await page.evaluate(() => window.scrollY > 200), '[票券] 点票后应滚到当天面板');
+  check(tkScrolled && await page.evaluate(() => window.scrollY > 200), '[票券] 点票后应滚到当天面板');
   await page.focus('#tab-d5');
   await page.keyboard.press('ArrowRight');
   s = await sel(page);
@@ -103,10 +126,10 @@ async function shot(page, name) { if (SHOT_DIR) await page.screenshot({ path: `$
   await page.keyboard.press('Home');
   s = await sel(page); check(s.tab === 1, '[标签] Home 应到 D1');
   await page.evaluate(() => { location.hash = '#d2'; });
-  await page.waitForTimeout(400);
+  await page.waitForFunction(() => document.getElementById('tab-d2')?.getAttribute('aria-selected') === 'true', null, { timeout: 5000 }).catch(() => {});
   s = await sel(page);
   check(s.tab === 2 && s.shown.join() === '2', `[hash] 手动改成 #d2 应联动（实得 ${JSON.stringify(s)}）`);
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await jumpTop(page);
 
   /* 内容：D1/D9 有站，D2–D8 空态；时刻都能在原航班卡里找到 */
   const days = await page.evaluate(() => [...document.querySelectorAll('#daypanels .daypanel')].map(p => ({
@@ -125,10 +148,10 @@ async function shot(page, name) { if (SHOT_DIR) await page.screenshot({ path: `$
   /* 导航不改 hash（分享连结时保留 #dN） */
   await page.click('#tab-d4');
   await page.click('.tabbar a[data-go="dining"]');
-  await page.waitForTimeout(1800);
+  const navScrolled = await scrolledTo(page, 'dining');
   s = await sel(page);
   check(s.hash === '#d4', `[hash] 点底部「美食」不应冲掉 #d4（实得 ${s.hash}）`);
-  check(await page.evaluate(() => Math.abs(document.getElementById('dining').getBoundingClientRect().top) < 140), '[导航] 点「美食」应滚到美食区');
+  check(navScrolled, '[导航] 点「美食」应滚到美食区');
   check(errors.length === 0, `[行程外] 不应有 JS 错误（${errors.slice(0, 3).join(' | ')}）`);
   await ctx.close();
 }
@@ -175,11 +198,10 @@ const WX = { daily: {
   check(hs.tabs.length === 1 && hs.tabs[0] >= 44 && hs.tkts.length === 1, `[版面] 今天那张票/那个标签高度应与其它一致（回归：class today 撞名）（实得 ${JSON.stringify(hs)}）`);
   check(await page.$('#today .dempty [data-go="dining"]') !== null && await page.$('#today .dempty [data-go="places"]') !== null, '[今日-行程内] 空日应给去美食/景点按钮');
   await page.click('#today [data-go="places"]');
-  await page.waitForTimeout(700);
-  check(await page.evaluate(() => Math.abs(document.getElementById('places').getBoundingClientRect().top) < 140), '[今日-行程内] 点「看景点」应滚到景点区');
-  await page.evaluate(() => window.scrollTo(0, 0));
+  check(await scrolledTo(page, 'places'), '[今日-行程内] 点「看景点」应滚到景点区');
+  await jumpTop(page);
   await page.click('#today [data-goday="3"]');
-  await page.waitForTimeout(500);
+  await scrolledTo(page, 'daypanels', 200);
   check((await sel(page)).hash === '#d3', '[今日-行程内] 「看第 3 天」应选中并写 #d3');
   check(errors.length === 0, `[今日-行程内] 不应有 JS 错误（${errors.slice(0, 3).join(' | ')}）`);
   await shot(page, 'x'); // no-op unless SHOT_DIR
@@ -224,19 +246,19 @@ const WX = { daily: {
     const b = await page.evaluate(() => { const r = document.querySelector('#swStage .sw-card:not(.back) .sw-img').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
     await page.mouse.move(b.x, b.y); await page.mouse.down(); await page.mouse.move(b.x + dx / 2, b.y, { steps: 4 }); await page.mouse.move(b.x + dx, b.y, { steps: 4 }); await page.mouse.up();
   };
-  await pick(0); await page.click('#swWant'); await page.waitForTimeout(330);            // 1 ♥
-  await pick(1); await page.click('#swSkip'); await page.waitForTimeout(330);            // 2 ✕
-  await pick(2); await drag(160); await page.waitForTimeout(330);                         // 3 拖右 ♥
-  await pick(3); await drag(-160); await page.waitForTimeout(330);                        // 4 拖左 ✕
-  await pick(4); await drag(30); await page.waitForTimeout(330);                          // 5 短拖：弹回，不前进
+  await pick(0); await page.click('#swWant'); await settleSwipe(page);            // 1 ♥
+  await pick(1); await page.click('#swSkip'); await settleSwipe(page);            // 2 ✕
+  await pick(2); await drag(160); await settleSwipe(page);                         // 3 拖右 ♥
+  await pick(3); await drag(-160); await settleSwipe(page);                        // 4 拖左 ✕
+  await pick(4); await drag(30); await settleSwipe(page);                          // 5 短拖：弹回，不前进
   check(/5\s*\/\s*11/.test(await prog()) && await topName() === names[4], '[滑卡] 拖动不到阈值应弹回、不前进');
-  await page.focus('#swStage'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(330);   // 5 键盘 ♥
-  await pick(5); await page.click('#swWant'); await page.waitForTimeout(330);            // 6 ♥ 然后撤销
-  await page.click('#swUndo'); await page.waitForTimeout(100);
+  await page.focus('#swStage'); await page.keyboard.press('ArrowRight'); await settleSwipe(page);   // 5 键盘 ♥
+  await pick(5); await page.click('#swWant'); await settleSwipe(page);            // 6 ♥ 然后撤销
+  await page.click('#swUndo');
   check(/6\s*\/\s*11/.test(await prog()), '[滑卡] 撤销应回到第 6 张');
   let stored = await page.evaluate(() => JSON.parse(localStorage.getItem('penangV3Wish')));
   check(stored.length === 3, `[滑卡] 撤销后想吃的应回到 3 家（实得 ${stored.length}）`);
-  for (let i = 5; i < 11; i++) { await pick(i); await page.click('#swSkip'); await page.waitForTimeout(330); }   // 6..11 ✕
+  for (let i = 5; i < 11; i++) { await pick(i); await page.click('#swSkip'); await settleSwipe(page); }   // 6..11 ✕
   const end = await page.evaluate(() => ({ endShown: !document.getElementById('swEnd').hidden, ctl: document.getElementById('swBtns').hidden,
     items: [...document.querySelectorAll('#swList li .nm .en')].map(x => x.textContent.trim()), n: document.getElementById('swEndN').textContent,
     maps: document.querySelectorAll('#swList li a[href]').length, drv: document.querySelectorAll('#swList li [data-driver-key]').length }));
@@ -264,7 +286,7 @@ const WX = { daily: {
 }
 { /* 无存储：页面正常，滑卡照常 */
   const { ctx, page, errors } = await open({ noStorage: true });
-  await page.click('.vbtn[data-view="swipe"]'); await page.click('#swWant'); await page.waitForTimeout(330);
+  await page.click('.vbtn[data-view="swipe"]'); await page.click('#swWant'); await settleSwipe(page);
   check(/2\s*\/\s*11/.test(await page.evaluate(() => document.getElementById('swProg').innerText)), '[无存储] 滑卡仍能前进');
   check(errors.length === 0, `[无存储] localStorage 不可用时不应有 JS 错误（${errors.slice(0, 3).join(' | ')}）`);
   await ctx.close();
@@ -297,7 +319,7 @@ const WX = { daily: {
   await page.keyboard.press('Shift+Tab');
   check(await page.evaluate(() => document.querySelector('.drv-box').contains(document.activeElement)), '[司机] Shift+Tab 留在弹层内');
   await page.click('#drvCopy');
-  await page.waitForTimeout(200);
+  await waitMsg(page);
   const clip = await page.evaluate(() => navigator.clipboard.readText());
   check(clip.includes(first.addr) && clip.includes(first.en), `[司机] 复制应把名称+地址写进剪贴板（实得 ${clip.slice(0, 60)}）`);
   check(/已复制/.test(await page.evaluate(() => document.getElementById('drvMsg').innerText)), '[司机] 复制成功应提示「已复制」');
@@ -318,7 +340,7 @@ const WX = { daily: {
 for (const mode of ['reject', 'none']) {
   const { ctx, page, errors } = await open({ clipboard: mode });
   await page.locator('#places .rcard').first().locator('.btn-driver').click();
-  await page.click('#drvCopy'); await page.waitForTimeout(200);
+  await page.click('#drvCopy'); await waitMsg(page);
   check(/长按/.test(await page.evaluate(() => document.getElementById('drvMsg').innerText)), `[司机] 剪贴板${mode === 'none' ? '不存在' : '被拒'}时应提示长按复制`);
   check(errors.length === 0, `[司机] 剪贴板${mode}时不应有 JS 错误（${errors.slice(0, 2).join(' | ')}）`);
   await ctx.close();
@@ -347,7 +369,7 @@ for (const mode of ['reject', 'none']) {
     }
     check(r.links.join() === '旧版 / Classic>index.html,上一版 / v2>v2.html', `[顶部链接] 旧版/上一版（实得 ${r.links}）`);
     /* 司机层与滑卡结束页的语言 */
-    await page.click('#swWant'); await page.waitForTimeout(300);
+    await page.click('#swWant'); await settleSwipe(page);
     await page.evaluate(() => { document.querySelector('.btn-driver').click(); });
     const dv = await page.evaluate(() => document.querySelector('.drv-box').innerText);
     check(en ? /Please take me here/.test(dv) && /Copy/.test(dv) && /Close/.test(dv) : /请载我到这里/.test(dv) && /复制/.test(dv) && /关闭/.test(dv), `[语言-${lang}] 司机层按钮文案应为对应语言`);
