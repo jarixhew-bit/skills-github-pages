@@ -236,6 +236,38 @@ v2 顶部有「回旧版 / Classic」链到 index.html。
   已对 index.html 与 v2.html 各跑一遍，`tools/lib/trips.py` 也登记了 v2。
 - 提示条里「顶部的章节条」在 v2 已改成「导航栏」（手机上导航在底部，原句不再成立）。
 
+### penang-trip/v3.html（2026-09-29 建，第三个设计版；index.html 与 v2.html 原样保留，**不加任何回链**）
+以 v2.html 为底本复制，配色换成「蓝屋靛蓝」（乔治市 Cheong Fatt Tze 外墙：主色 #2b5d8f／浅底 #e4edf6／纸底
+#f6f3ea／墨色 #1c2733／深色 #1b3f66；万寿菊黄 #f9a620 只做小点缀且配深字；警示仍陶土红 #b7472a。全在 `:root`，
+`--fern*` 改名 `--indigo*`，旧变量名照旧映射）。顶部有「旧版 / Classic」→index.html、「上一版 / v2」→v2.html。
+内容（11 家餐厅、9 个景点、4 张航班卡、图片与地图链接、原有 id/data-*）与 index.html 逐项相同，只**新增**下面这些。
+- **原页没有逐日行程 ⇒ 不编行程**。用真实日期 10/9–10/17 搭 9 天骨架。**数据全在文末 `<script id="days-data">` 的
+  `DAYS` 数组**（唯一要手改的地方）：现况 D1（去程：SQ153／SIN 转机／SQ8500，取自航班卡）与 D9（回程：SQ133／转机／SQ158）
+  有站；D2–D8 `stops: []`＝自由日，显示天气＋「还没排，去看美食／景点」按钮。**用户给了逐日安排就往对应那天的 `stops`
+  填**，格式在数组上方注释里：`{ time:'12:00', card:'Tsukiji Sushi Bar', cn:{d:'…'}, en:{d:'…'} }`——`card` 填页面上某张餐厅/景点卡
+  的**英文名**，名称／地址／地图钮／「给司机看」自动从那张卡取，不用重抄；没有 `card` 的站用 `cn:{t,d}`／`en:{t,d}` 纯文本。
+  日子可加 `tag:'out'|'ret'`（去程日／回程日标签）与 `open:{cn,en}`（有站但留空档时底下的「挑美食/景点」提示）。日期只写 `date`，
+  月/日/星期由程序算。填完不用改别处；有空日就不要为了好看补假行程。
+- **8 种版面 ↔ DOM 锚点**：①杂志封面＝`.cover`（沿用 v2）；②时间轴＝面板里 `.dtl > .dstop`（空日 `.dempty`）；③底部四标签＝
+  `nav#navstrip.tabbar`（行程→`#trip`，其余同 v2，链接带 `data-go`，JS 滚动**不改 hash**）；④票券＝`#tickets > .tkt[data-day]`
+  （右侧大字月/日/星期，程序算）；⑤今日模式＝`#today`（在封面正下方，负边距压在封面上；行程内 `.today-card.in`，行程外 `.pre`
+  ＝距出发 N 天＋去程航班摘要，行程后＝已结束；用本机**本地日期字符串**跟行程日期比，不比时间戳）；⑥一页一天＝`#daytabs .dtab`
+  ＋`#daypanels .daypanel#day-N`，选中写 URL hash `#d1`–`#d9`（`history.replaceState`，不触发跳动；`hashchange` 也听），
+  默认 hash＞今天＞D1；⑦滑卡＝`#dining` 里的 `.viewbar`（列表/滑卡，默认列表）＋`#swipe`（`#swStage` 由 JS 读现有 `.rcard`
+  生成，✕`#swSkip`／♥`#swWant`／撤销`#swUndo`／拖动阈值 80px／←→ 键，结束页 `#swEnd` 列想吃的）；⑨给司机看＝JS 给每张有
+  `.addr` 的卡在 `.acts` 里注入 `.btn-driver[data-driver-key]`，全屏层 `#drv`（inert 背景、Tab 循环、ESC／点背景关、关闭后焦点还原；
+  复制走 `navigator.clipboard`，失败提示长按并选中地址）。**「老板自宅」不加此钮、页面不写任何住宅地址。**
+- **每日天气不重写**：面板里 `.daywx[data-dwx=日期]` 由 `syncDayWx()` 从 `#wxdaily .wxd[data-wx]` 复制那一格（不另抓、
+  `#wxdaily` 仍是 9 张）；`weather()` 里两处加了 `window.syncDayWx()` 钩子。
+- **localStorage key**：`siteLangUser`（语言）、`penangV3Wish`（滑卡「想吃的」，JSON 数组，元素＝餐厅英文名小写）。存取都包 try/catch，
+  无存储时退回内存。
+- 坑：JS 生成的元素别用 class `today`（它是 `#today` 块的样式，撞名会让标签/票券错位——已踩过，标记类叫 `istoday`）；
+  `.airplan/.airact/.airnow` 是 check-weather 用 `querySelector` 取第一个的，别在它们前面再加同名元素。
+- 自检：`node tools/check-weather.mjs` 已含 v3；行为测试 `node tools/check-penang-v3.mjs`（156 项：标签/hash/票券/今日两种模式与时区边界/
+  滑卡按钮＋拖动＋结束清单＋无存储/司机层开关与复制降级/中英/400px 不横滚与 ≥44px；`SHOT_DIR=…` 顺便截图）。
+  已挂进 check-all（`penangv3`）与 checks.yml 的 `penangv3` job，`ci-decide.py` 按 v3.html／该脚本改动触发。
+- 三份并存（index／v2／v3），改内容要三份都改；`tools/lib/trips.py`、`tools/ci-decide.py` 的 weather 清单也都登记了 v3。
+
 ## xiamen-trip/index.html（约 830 行）
 厦门自由行手册，2026-08-24~27 三晚四天，2 人（HEW/CHERN YANG ＋ TAN/CHIN HOOI），双语。
 2026-08-22 新建，**CSS 与 JS 整套复制自 singapore-trip/index.html**（同一套 `.day`／`.stop`／

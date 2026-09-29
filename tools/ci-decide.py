@@ -53,7 +53,9 @@ RULES = {
     # 两本手册的天气条与实时空气质量条：前端现抓 open-meteo / data.gov.sg，
     # 只有真浏览器验得了（check-weather.mjs 一支同时验 singapore ＋ penang）
     "weather": ["singapore-trip/index.html", "penang-trip/index.html", "penang-trip/v2.html",
-                "tools/check-weather.mjs"],
+                "penang-trip/v3.html", "tools/check-weather.mjs"],
+    # 槟城 v3 新版面（票券/今日模式/滑卡/给司机看）：全是 JS 现算，只有真浏览器验得了
+    "penangv3": ["penang-trip/v3.html", "tools/check-penang-v3.mjs"],
     # 手册航班时长：跨时区那几段最容易直接拿两地时刻相减，差一小时看不出来
     "flights": ["*.html", "*/index.html", "tools/check-flight-times.py"],
     # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验
@@ -67,7 +69,7 @@ RULES = {
                   "tools/check-gamebot-logic.mjs"],
 }
 # 浏览器类检查（慢）额外也盯着共用步骤：它坏了这几项全瞎
-BROWSER = ["company", "inventory", "staff", "fund", "weather", "boss"]
+BROWSER = ["company", "inventory", "staff", "fund", "weather", "penangv3", "boss"]
 SHARED = ".github/actions/browser-check-setup/action.yml"
 
 
