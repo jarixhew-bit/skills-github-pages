@@ -127,11 +127,12 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有二十四个，全部挂 CI（2026-08-29 校对过与 `tools/` 一致；2026-09-18 加了 `check-flight-times`；2026-09-29 加了 `check-penang-v3`）：
+   交付时告诉用户自检怎么跑。现有三十个，全部挂 CI（2026-09-30 按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
    `check-generated`（查「生成又提交进仓库」的产物有没有跟源文件脱节）/
+   `check-map-coords`（查槟城手册总地图：每张带地图链接的卡片都有坐标、都在槟城州、`coords.json` 没孤儿、地图区块与 OSM 署名还在——卡片加了坐标没补，那一家会安静地不上图）/
    `check-flight-times`（查旅游手册航班卡的飞行时长有没有把时差算进去——2026-09-18
    新加坡手册两段都是拿两地当地时刻直接相减，各错一小时，是用户自己看出来的）/
    `check-news`（把 requests/feedparser 打桩，验新闻的两处易错：译文分批时**位置不会

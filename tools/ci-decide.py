@@ -58,6 +58,8 @@ RULES = {
     "penangv3": ["penang-trip/v3.html", "penang-trip/v4.html", "tools/check-penang-v3.mjs"],
     # 手册航班时长：跨时区那几段最容易直接拿两地时刻相减，差一小时看不出来
     "flights": ["*.html", "*/index.html", "tools/check-flight-times.py"],
+    # 槟城总地图坐标：卡片加了坐标没补，那一家会安安静静不上图
+    "mapcoords": ["penang-trip/index.html", "penang-trip/coords.json", "tools/check-map-coords.py"],
     # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验
     "refreshphotos": ["tools/refresh-photos.py", "tools/check-refresh-photos.py",
                       "tools/fetch-photos.mjs", "tools/check-images.py"],

@@ -149,7 +149,7 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
   以上查证于 2026-08-19，来源全被沙盒挡、只有搜索摘要，页面上已标「以 MBS 礼宾
   确认为准」；日后若拿到官网原文或 MBS 回覆，以那个为准。
 
-## penang-trip/index.html（1166 行）
+## penang-trip/index.html（约 1730 行；2026-09-30 并入总地图 `#map`，见下方「总地图」一节）
 槟城家庭手册，2026-10-09~17 九天八夜，6 人（老板一家），双语。
 2026-08-21 用户重新整理内容后重上传，本页**内容整批换成那一版**、设计沿用娘惹瓷砖那套；
 同时按用户要求**拿掉右下角浮动圆钮**（`.fab` ＋ `.sheet` 快速跳转面板，CSS/HTML/JS 全删），
@@ -172,7 +172,7 @@ URL: .../penang-trip/
 高频操作：
 1. **加去处卡片**：塞进对应 `.pgroup`（`data-cat="arcade|culture|outdoor|mall"`）里，
    卡片上写 `data-cat` 与所属组相同即可；漏写也不会坏（JS :1023 会从父 `.pgroup` 补）。
-   现况：arcade 3（Neo Akedo／Pado Fantasyland／Tech Dome）、culture 2（极乐寺／升旗山缆车）、
+   现况：arcade 6（Neo Akedo／Pado Fantasyland／Tech Dome／2026-09-30 用户指定的 K.B. Fun @ 1st Avenue⭐1.5、East Sound Arcade⭐2.9、Big Monster Ball @ 1st Avenue⭐4.9——前两家低于游艺门槛 3.8，用户亲自指定照加，卡上有「评分偏低/评价很少」chip）、culture 2（极乐寺／升旗山缆车）、
    outdoor 1（The TOP Penang）、mall 3（Gurney／Queensbay／Sunway Carnival）。
 2. **一切数字都是 JS 现算，页面里没有写死的计数**：navstrip 徽章 `[data-count]`、
    筛选 chip `[data-catcount]`、组标题 `[data-groupcount]`、卡片序号 `.idx`
@@ -304,9 +304,14 @@ v2 顶部有「回旧版 / Classic」链到 index.html。
   已登记 `tools/lib/trips.py`（2026-10-17）与 `tools/ci-decide.py`（weather、penangv3 两条规则）。降速复现：`CPU_THROTTLE=6`／`20` 都全绿。
 - 四份并存（index／v2／v3／v4），改内容要四份都改。
 
-### penang-trip/with-map.html（2026-09-30 建，「带总地图」试装版；index.html 一字未改、**不加回链**）
-由 index.html 复制，**只新增**：顶栏「回旧版 / Classic」→index.html、navstrip 多一项「🗺 地图」、`#map` 区块（在 `#dining` 之前）、
-`</head>` 前一段 Leaflet CSS＋`<style>`、`</body>` 前一段 `<script>`。其余与 index.html 逐字相同（`diff` 只有新增行）。
+### 总地图（2026-09-30 由试装页 with-map.html 并入 index.html；`with-map.html` 现在只是跳转到 `index.html#map` 的跳转页，勿删）
+并入时去掉了试装页的顶栏「回旧版」链接与其 CSS，其余照搬：navstrip「🗺 地图」、`#map` 区块（在 `#dining` 之前）、
+`</head>` 前 Leaflet CSS＋`<style>`、`</body>` 前一段 `<script>`。图钉 23 个（餐厅 11／亲子电玩 6／景点 3／商场 3；岛上 15、大陆 8，都由程序算）。
+**同坐标图钉错开**：同一栋商场的店 Google 常给完全相同的坐标（Big Monster Ball 与 Pado Fantasyland 都是 5.413203,100.3313709），
+JS 把重复的画图位置挪约 17 米（`p.dlat/p.dlng`，数据坐标不改），否则上面那个会盖住下面那个点不到。
+**长期自检** `tools/check-map-coords.py`（静态）：每张带地图链接的卡片在 coords.json 与 `MAP_COORDS` 都有坐标且一致、都在槟城州、
+coords.json 无孤儿、有 `#map` 与 OSM 署名；挂在 check-all（`mapcoords`）、checks.yml `mapcoords` job、ci-decide。
+`tools/fetch-coords.mjs` 2026-09-30 起多读 `name/rating/reviews/address/category`，输入短链时从最终网址 `!1s0x…:0x…` 换算 cid。
 - **坐标来源**：`penang-trip/coords.json`（`[{cid, lat, lng, source, title, reason}]`），由 CI 的
   `.github/workflows/fetch-coords.yml`（workflow_dispatch，输入 `queries`＝cid 或地图链接用 `|` 分隔、`out`＝结果档，
   预设 `penang-trip/coords.json`）跑 `tools/fetch-coords.mjs` 抓：打开 `maps.google.com/?cid=` 地点页，从最终网址读
@@ -322,7 +327,7 @@ v2 顶部有「回旧版 / Classic」链到 index.html。
   （id 由 JS 给卡片补，去处被筛掉时先 `filterPlaces('all')`）。Leaflet 载入失败 → 收起地图框/芯片/署名，显示
   `#mapFallback` 清单（每个地点的 cid 链接）；只有底图瓦片失败 → 地图保留，清单也露出。`.mapbox` 用 `isolation:isolate`
   把 Leaflet 的 z-index 关住，不压吸顶栏。不放「老板自宅」、不申请定位。
-- **没有长期自检**（试装页；用户满意、并进 index.html 时再补浏览器自检）。已登记 `tools/lib/trips.py`。
+- `with-map.html` 仍登记在 `tools/lib/trips.py`（跳转页，保留旧网址）。
 
 ## xiamen-trip/index.html（约 830 行）
 厦门自由行手册，2026-08-24~27 三晚四天，2 人（HEW/CHERN YANG ＋ TAN/CHIN HOOI），双语。
