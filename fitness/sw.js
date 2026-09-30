@@ -1,8 +1,8 @@
 // 减脂训练 App 的离线缓存。改了 index.html／manifest 一定要升下面的版本号
 // （tools/check-sw-version.py 会拦忘记升的情况）。
-const CACHE = 'fitness-v2';
+const CACHE = 'fitness-v3';
 const BASE = '/skills-github-pages/fitness/';
-const ASSETS = [BASE, BASE + 'index.html', BASE + 'manifest.webmanifest', BASE + 'icon.svg', BASE + 'icon-192.png', BASE + 'icon-180.png'];
+const ASSETS = [BASE, BASE + 'index.html', BASE + 'manifest.webmanifest', BASE + 'icon.svg', BASE + 'icon-192.png', BASE + 'icon-180.png', BASE + 'anim3d.js', '/skills-github-pages/vendor/three/three.module.min.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
