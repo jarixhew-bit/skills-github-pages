@@ -1,0 +1,16 @@
+{
+  "name": "减脂力量训练",
+  "short_name": "减脂训练",
+  "description": "30 分钟全身减脂力量训练：动画跟练、自动加重建议、进步曲线。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f2f5f4",
+  "theme_color": "#0c7666",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
