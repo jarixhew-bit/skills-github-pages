@@ -190,6 +190,17 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
 .fold > .stack{margin-top:12px}
 .backup-warn{display:none}
 .backup-warn.on{display:block}
+/* 真人示范：起始／结束两张照片来回淡入淡出 */
+.ph{position:relative;overflow:hidden;border-radius:10px;background:#1c2422;aspect-ratio:3/2;width:100%}
+.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.ph img+img{animation:phf 3.4s ease-in-out infinite}
+@keyframes phf{0%,30%{opacity:0}50%,80%{opacity:1}100%{opacity:0}}
+.ph-tag{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:500;border-radius:999px;padding:2px 8px}
+.ph-note{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.72));color:#fff;font-size:12px;line-height:1.35;padding:18px 10px 7px}
+.ex-top.one{grid-template-columns:1fr}
+.ex-top.wide{grid-template-columns:150px 1fr}
+#plPhoto .ph{height:clamp(170px,34vh,300px);aspect-ratio:auto}
+@media (prefers-reduced-motion: reduce){.ph img+img{animation:none;opacity:0}}
 canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;display:block}
 .swim-top .bar{height:8px}
 .goal{background:var(--soft);border-radius:10px;padding:8px 10px;font-size:14px}
@@ -305,7 +316,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="set-row"><span>器械每次加重</span><div class="seg" role="group" aria-label="器械每次加重" id="cfgGym"></div></div>
       <div class="set-row"><span>每周目标次数</span><div class="seg" role="group" aria-label="每周目标次数" id="cfgGoal"></div></div>
       <div class="set-row"><span>自动减量周<br><span class="small muted">每练 3 周，第 4 周自动减量</span></span><button class="toggle" id="cfgDeload" aria-label="自动减量周" aria-pressed="true"></button></div>
-      <div class="set-row"><span>3D 动作动画<br><span class="small muted">旧手机觉得卡可以关掉，改回简笔画</span></span><button class="toggle" id="cfg3d" aria-label="3D 动作动画" aria-pressed="true"></button></div>
+      <div class="set-row"><span>动作示范<br><span class="small muted">没有真人照片的动作（游泳等）会用 3D；旧手机卡可选简笔画</span></span><div class="seg" role="group" aria-label="动作示范" id="cfgMedia"></div></div>
       <div class="set-row"><span>跟练语音提示</span><button class="toggle" id="cfgVoice" aria-label="跟练语音提示" aria-pressed="true"></button></div>
     </div>
 
@@ -390,7 +401,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       </div>
     </details>
 
-    <div class="note">动画是示意动作轨迹，方便你跟着节奏练。动作细节以每个动作的「真人示范」影片为准（会在新分页打开 YouTube 搜索）。</div>
+    <div class="note">真人示范照片来自 Free Exercise DB（公共领域，可自由使用），每个动作两张：起始与结束。照片里器材跟你的版本不同时，照片下方会注明。库里没有的动作（游泳、开合跳、波比等）用 3D 动画示意。更完整的连续动作，点「看真人示范影片」（新分页打开 YouTube 搜索）。</div>
     <div class="note">有伤病、高血压、心脏问题，或动作做起来关节疼痛，先停下并请教医生或教练。</div>
   </section>
 </div>
@@ -426,6 +437,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
   </div>
   <div class="pl-body" id="plBody">
     <canvas id="plCanvas" aria-hidden="true"></canvas>
+    <div id="plPhoto" hidden></div>
     <div class="eyebrow" id="plPhase"></div>
     <div class="pl-name" id="plName"></div>
     <div id="plMain"></div>
@@ -725,9 +737,11 @@ const SKEY="fit.sessions", BKEY="fit.body", DKEY="fit.draft", CKEY="fit.cfg";
 const ls={ get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
            set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
            del(k){try{localStorage.removeItem(k)}catch(e){}} };
-const CFG_DEF={equip:"db",voice:true,anim3d:true,rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,lastBackup:0};
+const CFG_DEF={equip:"db",voice:true,media:"photo",rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,lastBackup:0};
 let cfg=Object.assign({},CFG_DEF,ls.get(CKEY,{}));
 if(!EQ_LABEL[cfg.equip]) cfg.equip="db";
+if(cfg.anim3d===false&&!ls.get(CKEY,{}).media) cfg.media="2d"; // 旧设置「关掉 3D」＝简笔画
+if(!["photo","3d","2d"].includes(cfg.media)) cfg.media="photo";
 let sessions=ls.get(SKEY,null);
 if(!sessions){ sessions=ls.get("wk30.sessions",[]); ls.set(SKEY,sessions); } // 旧版同网域资料顺手接过来
 let body=ls.get(BKEY,[]);
@@ -742,6 +756,28 @@ const $=id=>document.getElementById(id);
 function sorted(){ return sessions.slice().sort((a,b)=>b.ts-a.ts); }
 function nextWk(){ const s=sorted()[0]; if(!s) return "A"; return {A:"B",B:"C",C:"A"}[s.wk]||"A"; }
 function exInfo(id,eq){ const e=EX[id], v=e[eq]||e.db; return {name:v[0],target:v[1],en:v[2],anim:v[3],hold:v[4],cue:(eq==="gym"&&e.gcue)?e.gcue:e.cue}; }
+// ---------- 真人示范照片（Free Exercise DB，公共领域；存在 photos/，离线可看） ----------
+// [照片编号, 跟本动作不完全一样时的说明]
+const PH_EN={
+  "Goblet Squat":["Goblet_Squat","照片用壶铃；哑铃竖着握、贴在胸前一样做"],"Bodyweight Squat":["Bodyweight_Squat","照片双手抱头；手放胸前也可以"],"Leg Press":["Leg_Press"],
+  "Dumbbell Bench Press":["Dumbbell_Bench_Press"],"Push-Up":["Pushups"],"Machine Chest Press":["Leverage_Chest_Press"],
+  "Dumbbell Romanian Deadlift":["Stiff-Legged_Dumbbell_Deadlift","膝盖保持微弯"],"Single-Leg Glute Bridge":["Single_Leg_Glute_Bridge"],"Lying Leg Curl":["Lying_Leg_Curls"],
+  "One-Arm Dumbbell Row":["One-Arm_Dumbbell_Row"],"Inverted Row":["Inverted_Row","照片用架上横杆；在家用够稳的桌子"],"Seated Cable Row":["Seated_Cable_Rows"],
+  "Dumbbell Reverse Lunge":["Dumbbell_Rear_Lunge"],"Reverse Lunge":["Dumbbell_Rear_Lunge","照片拿着哑铃；徒手版空手做"],
+  "Dumbbell Shoulder Press":["Dumbbell_Shoulder_Press","照片是坐着推；站着做动作一样"],"Machine Shoulder Press":["Machine_Shoulder_Military_Press"],
+  "Dumbbell Hip Thrust":["Barbell_Hip_Thrust","照片用杠铃；哑铃压在髋部一样做"],"Hip Thrust":["Barbell_Hip_Thrust","照片用杠铃；徒手版不负重"],"Hip Thrust Machine":["Barbell_Hip_Thrust","照片是杠铃版，动作一样"],
+  "Bent-Over Dumbbell Row":["Bent_Over_Two-Dumbbell_Row"],"Lat Pulldown":["Wide-Grip_Lat_Pulldown"],
+  "Bulgarian Split Squat":["One_Leg_Barbell_Squat","照片用杠铃；哑铃版两手各拿一只，徒手版空手"],"Dumbbell Floor Press":["Dumbbell_Floor_Press"],
+  "Close-Grip Push-Up":["Close-Grip_Push-Up_off_of_a_Dumbbell","照片双手撑在哑铃上；直接撑地也可以"],"Incline Dumbbell Press":["Incline_Dumbbell_Press"],
+  "Dumbbell Step-Up":["Dumbbell_Step_Ups"],"Step-Up":["Dumbbell_Step_Ups","照片拿着哑铃；徒手版空手做"],
+  "Bent-Over Reverse Fly":["Seated_Bent-Over_Rear_Delt_Raise","照片坐着俯身；站着俯身一样做"],"Face Pull":["Face_Pull"]};
+// 热身／放松／燃脂收尾按动画找（第三项 true＝只有拿哑铃的版本才用这张）
+const PH_ANIM={armcircle:["Arm_Circles"],catcow:["Cat_Stretch"],bridge2:["Butt_Lift_Bridge"],squat:["Bodyweight_Squat"],
+  lungeT:["Bodyweight_Walking_Lunge","照片往前跨步；热身时双手往前伸"],wgs:["Worlds_Greatest_Stretch"],child:["Childs_Pose"],
+  climber:["Mountain_Climbers"],swing:["One-Arm_Kettlebell_Swings","照片用壶铃；单只哑铃握住一头一样做"],deadbug:["Dead_Bug"],
+  thruster:["Kettlebell_Thruster","照片用壶铃；两手各拿一只哑铃一样做",true]};
+function photoOf(en,anim,hold){ if(cfg.media!=="photo") return null; const p=(en&&PH_EN[en])||PH_ANIM[anim]; if(!p||(p[2]&&!hold)) return null; return p; }
+function photoHTML(p){ return '<div class="ph" role="img" aria-label="真人示范照片：起始与结束动作"><img src="photos/'+p[0]+'-0.jpg" alt="起始动作" loading="lazy" decoding="async"><img src="photos/'+p[0]+'-1.jpg" alt="结束动作" loading="lazy" decoding="async"><span class="ph-tag">真人示范</span>'+(p[1]?'<span class="ph-note">'+esc(p[1])+'</span>':'')+'</div>'; }
 function usesKg(id,eq){ return eq!=="bw"; }
 function weekStart(d){ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x.getTime(); }
 function weeksBetween(a,b){ return Math.round((weekStart(b)-weekStart(a))/(7*DAY)); }
@@ -827,7 +863,7 @@ function loop(){
   canv.forEach(c=>{
     if(!c.isConnected){ canv.delete(c); return; }
     const r=c.getBoundingClientRect(); if(r.bottom<0||r.top>vh||r.width===0) return;
-    const big=c.id==="plCanvas", use3d=cfg.anim3d!==false&&window.ANIM3D&&!c._fail3d;
+    const big=c.id==="plCanvas", use3d=cfg.media!=="2d"&&window.ANIM3D&&!c._fail3d;
     if(use3d&&!big&&now-(c._last||0)<45) return; // 3D 缩图约 20 格/秒就够顺，省电
     c._last=now;
     const W=Math.round(r.width*dpr), H=Math.round(r.height*dpr);
@@ -914,7 +950,8 @@ function renderWorkout(){
     h+='<div class="card"><div class="block-head"><h2>超级组 '+(bi+1)+'</h2><span class="small muted">两个动作连做 → 休息 '+cfg.rest+' 秒 · 共 '+R+' 轮</span></div>';
     pair.forEach((id,ei)=>{
       const x=exInfo(id,eq), kg=usesKg(id,eq), sg=suggest(id,eq);
-      h+='<div class="ex'+(ei===0?' first':'')+'"><div class="ex-top"><canvas class="thumb" data-anim="'+x.anim+'" data-hold="'+(x.hold||"")+'"></canvas><div>'+
+      const ph=photoOf(x.en,x.anim,x.hold);
+      h+='<div class="ex'+(ei===0?' first':'')+'">'+(ph?photoHTML(ph):'')+'<div class="ex-top'+(ph?' one':'')+'">'+(ph?'':'<canvas class="thumb" data-anim="'+x.anim+'" data-hold="'+(x.hold||"")+'"></canvas>')+'<div>'+
          '<span class="eyebrow">'+(ei?'B':'A')+(bi+1)+'</span><h3>'+esc(x.name)+'</h3><span class="target">'+esc(tgtLabel(x.target))+'</span></div></div>';
       h+=sugHTML(sg)+'<div class="last">'+esc(lastText(id,eq))+'</div>';
       h+='<div class="sets'+(kg?'':' bw')+'"><span class="lbl">组</span>'+(kg?'<span class="lbl">重量 kg</span>':'')+'<span class="lbl">次数</span><span class="lbl">余力</span><span></span>';
@@ -932,7 +969,7 @@ function renderWorkout(){
   });
   const fi=finItems(selWk,eq);
   h+='<div class="card"><div class="block-head"><h2>燃脂收尾</h2><span class="small muted">'+F.title+'</span></div>'+timerHTML("fin",F.mode==="interval"?"按开始后自动切换":"时间内循环做，数你完成几轮")+
-     fi.map((it,i)=>'<div class="ex'+(i===0?' first':'')+'"><div class="ex-top"><canvas class="thumb" data-anim="'+it[1]+'" data-hold="'+(it[2]||"")+'"></canvas><div><h3>'+esc(it[0])+'</h3></div></div></div>').join("")+
+     fi.map((it,i)=>{ const ph=photoOf(null,it[1],it[2]); return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?photoHTML(ph):'<canvas class="thumb" data-anim="'+it[1]+'" data-hold="'+(it[2]||"")+'"></canvas>')+'<div><h3>'+esc(it[0])+'</h3></div></div></div>'; }).join("")+
      '<div class="row"><label for="finScore" class="small muted">完成几轮 / 备注</label><input id="finScore" class="inp" style="flex:1;font-size:15px;font-family:var(--f-body);text-align:left" value="'+esc(current.fin)+'" placeholder="例如：5 轮"></div></div>';
   h+='<div class="card" id="coolCard"><div class="block-head"><h2>放松</h2><span class="num">3 分钟</span></div>'+timerHTML("cool","慢慢呼吸")+moveList(COOL)+'</div>';
   h+='<div class="card"><h2>今天整体感觉</h2>'+feelHTML(current.feel)+'<input id="noteIn" class="inp" style="font-size:15px;font-family:var(--f-body);text-align:left" value="'+esc(current.note)+'" placeholder="备注（例如：左膝有点紧）"><button class="btn primary wide" id="finishBtn">完成训练并储存</button><p class="small muted" id="storeNote"></p></div>';
@@ -947,7 +984,8 @@ function renderWorkout(){
 // 热身/放松清单：每个动作一张小动画＋秒数＋要点＋真人示范
 function moveList(arr){
   return arr.map((w,i)=>{ const nm=w[0].split("（")[0], note=(w[0].match(/（(.*)）/)||[])[1];
-    return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top"><canvas class="thumb" data-anim="'+w[2]+'" data-hold=""></canvas><div>'+
+    const ph=photoOf(null,w[2],null);
+    return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?photoHTML(ph):'<canvas class="thumb" data-anim="'+w[2]+'" data-hold=""></canvas>')+'<div>'+
       '<span class="eyebrow">'+(i+1)+' / '+arr.length+'</span><h3>'+esc(nm)+'</h3><span class="target">'+w[1]+' 秒</span>'+(note?'<span class="small muted">'+esc(note)+'</span>':'')+'</div></div>'+
       '<details><summary>动作要点</summary><p>'+esc(w[3])+'</p></details><a class="vid" href="'+vidUrl(w[4])+'" target="_blank" rel="noopener">看真人示范影片 ↗</a></div>'; }).join("");
 }
@@ -1150,12 +1188,12 @@ $("histList").addEventListener("click",e=>{
 const SEGS={cfgRest:["rest",[60,75,90],v=>v+" 秒"],cfgDb:["dbStep",[1,2,2.5],v=>v+" kg"],cfgGym:["gymStep",[2.5,5],v=>v+" kg"],cfgGoal:["goal",[2,3,4],v=>v+" 次"]};
 function renderCfg(){
   for(const id in SEGS){ const [k,opts,f]=SEGS[id]; $(id).innerHTML=opts.map(v=>'<button data-v="'+v+'" aria-pressed="'+(cfg[k]===v)+'">'+f(v)+'</button>').join(""); }
-  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfg3d").setAttribute("aria-pressed",cfg.anim3d!==false);
+  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfgMedia").innerHTML=[["photo","真人"],["3d","3D"],["2d","简笔"]].map(m=>'<button data-media="'+m[0]+'" aria-pressed="'+(cfg.media===m[0])+'">'+m[1]+'</button>').join("");
 }
 Object.keys(SEGS).forEach(id=>$(id).addEventListener("click",e=>{ const b=e.target.closest("[data-v]"); if(!b) return; cfg[SEGS[id][0]]=+b.dataset.v; saveCfg(); renderAll(); }));
 $("cfgDeload").onclick=()=>{ cfg.deload=!cfg.deload; saveCfg(); renderAll(); };
 $("cfgVoice").onclick=()=>{ cfg.voice=!cfg.voice; saveCfg(); renderCfg(); };
-$("cfg3d").onclick=()=>{ cfg.anim3d=cfg.anim3d===false; saveCfg(); renderCfg(); };
+$("cfgMedia").addEventListener("click",e=>{ const b=e.target.closest("[data-media]"); if(!b) return; cfg.media=b.dataset.media; saveCfg(); renderAll(); });
 
 // ---------- 备份 ----------
 function download(name,text,type){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
@@ -1254,6 +1292,9 @@ function showStep(autostart){
   if(s.kind==="rest"){ const nx=steps.slice(si+1).find(x=>x.anim); cv._key=nx?nx.anim:"child"; cv._hold=nx?nx.hold:null; }
   else { cv._key=s.anim||"child"; cv._hold=s.hold||null; }
   cv._t0=performance.now();
+  const src=s.kind==="rest"?(steps.slice(si+1).find(x=>x.anim)||{}):s;
+  const ph=Array.isArray(src.anim)?null:photoOf(src.en,src.anim,src.hold);
+  $("plPhoto").innerHTML=ph?photoHTML(ph):""; $("plPhoto").hidden=!ph; cv.hidden=!!ph;
   let m="";
   if(s.kind==="set"){
     const v=val(s.key), eq=cfg.equip, kg=usesKg(s.id,eq), sg=suggest(s.id,eq), kgv=v.kg!=null?v.kg:(sg.kg!=null?kgStr(sg.kg):"");
@@ -1428,7 +1469,7 @@ function renderAll(){ renderHeader(); renderWeek(); renderPicker(); renderWorkou
 setEquip(cfg.equip);
 renderAll();
 if("serviceWorker" in navigator && location.protocol!=="file:"){ addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
-window.__fit={suggest,cycleInfo,e1rm}; // 给自检脚本用
+window.__fit={suggest,cycleInfo,e1rm,photos:{PH_EN,PH_ANIM}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>
