@@ -1,0 +1,83 @@
+name: Fetch place coordinates
+
+# 抓地点经纬度给手册地图用（沙盒连不上 Google，只能在 CI 抓）。
+# 逻辑在 tools/fetch-coords.mjs：逐个打开地点页，从最终网址读 !3d!4d / @纬度,经度，
+# 读不到就写 null 并注明原因，不猜坐标。结果写成 <out> 提交回触发分支。
+
+on:
+  workflow_dispatch:
+    inputs:
+      queries:
+        description: "cid 或地图链接，用 | 分隔"
+        required: true
+      out:
+        description: "结果写到哪个文件（相对仓库根）"
+        required: false
+        default: "penang-trip/coords.json"
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 缓存 Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package.json') }}
+
+      - name: 装 playwright
+        run: |
+          npm install
+          # 无条件装：package.json 的 playwright 是浮动版本，缓存命中也可能对不上（见 fetch-photos.yml）
+          npx playwright install --with-deps chromium
+
+      # pipefail 不可省：否则退出码取自 tee，脚本崩了也显示成功
+      - name: Run scraper
+        env:
+          QUERIES: ${{ github.event.inputs.queries }}
+          COORDS_OUT: ${{ github.event.inputs.out }}
+        run: |
+          set -o pipefail
+          node tools/fetch-coords.mjs | tee coords-output.txt
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coords
+          path: |
+            coords-output.txt
+            ${{ github.event.inputs.out }}
+          if-no-files-found: ignore
+
+      # 提交回触发分支，Claude 在沙盒里 git pull 就能拿到。
+      - name: 把结果提交回分支
+        if: always() && github.ref_name != 'main'
+        env:
+          OUT: ${{ github.event.inputs.out }}
+        run: |
+          # 一个坐标都没读到时脚本不写文件；空的就不提交，免得误以为「抓到了但是空的」
+          if [ ! -s "$OUT" ]; then
+            echo "坐标结果是空的，不提交（去看 Run scraper 那步的日志）"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$OUT"
+          git commit -m "抓坐标结果（fetch-coords 自动产生）" || exit 0
+          for i in 1 2 3; do
+            if git push origin HEAD:${{ github.ref_name }}; then exit 0; fi
+            git pull --rebase origin ${{ github.ref_name }} || true
+            sleep $((i * 5))
+          done
+          exit 1
