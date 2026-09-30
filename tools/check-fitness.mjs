@@ -84,10 +84,10 @@ async function openWith(hist, viewport = { width: 390, height: 844 }) {
   check(await page.locator('#deloadBanner').isHidden(), '一般周不出现减量横幅');
   // 热身/放松：每个动作都要有动画、秒数、要点（2026-09-30 用户要求「热身和放松也放动作」）
   for (const [id, n, label] of [['#warmCard', 8, '热身'], ['#coolCard', 4, '放松']]) {
-    const cv = await page.locator(`${id} canvas.thumb`).count();
+    const cv = await page.locator(`${id} canvas.thumb, ${id} .ph`).count(); // 动画或真人照片都算
     const cues = await page.locator(`${id} details p`).allTextContents();
     const vids = await page.locator(`${id} a.vid`).count();
-    check(cv === n && cues.length === n && cues.every(c => c.length > 8) && vids === n, `${label}清单 ${n} 个动作都有动画、要点与示范（动画 ${cv}／要点 ${cues.length}／示范 ${vids}）`);
+    check(cv === n && cues.length === n && cues.every(c => c.length > 8) && vids === n, `${label}清单 ${n} 个动作都有动作示范（真人照片或动画）、要点与影片（示范 ${cv}／要点 ${cues.length}／影片 ${vids}）`);
   }
 
   // 改成器械每次 +5：切到健身房后深蹲变腿举机，没历史 → 显示第一次试重
@@ -211,10 +211,40 @@ async function openWith(hist, viewport = { width: 390, height: 844 }) {
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
   const bk = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
   check(bk.swim && bk.swim.standup > 0, '导出备份包含游泳进度');
-  // 关掉 3D → 设置记住
-  await page.click('#cfg3d');
-  check((await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).anim3d)) === false, '设置里关掉 3D 会被记住（改回简笔画）');
+  // 动作示范切到简笔画 → 设置记住
+  await page.click('#cfgMedia [data-media="2d"]');
+  check((await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).media)) === '2d', '动作示范改成简笔画会被记住');
   check(errors.length === 0, `3D／游泳没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+
+// ---- 真人示范照片（2026-09-30 用户要求「动图改成真人」） ----
+{
+  const { ctx, page, errors } = await openWith([]);
+  // 每个对应到的照片编号，起始／结束两张都要真的在仓库里（漏放一张，卡片就开天窗）
+  const ph = await page.evaluate(() => window.__fit.photos);
+  const ids = [...new Set([...Object.values(ph.PH_EN), ...Object.values(ph.PH_ANIM)].map(p => p[0]))];
+  const missing = ids.flatMap(id => [0, 1].map(k => `fitness/photos/${id}-${k}.jpg`)).filter(f => !fs.existsSync(f));
+  check(missing.length === 0, `${ids.length} 组真人照片的起始／结束两张都在仓库里${missing.length ? '（缺：' + missing.join(', ') + '）' : ''}`);
+  await page.click('#picker [data-wk="A"]');
+  const card = page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first();
+  await card.locator('.ph img').nth(1).scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => [...document.querySelectorAll('#workout .ph img')].slice(0, 2).every(i => i.complete && i.naturalWidth > 0), null, { timeout: 10000 }).catch(() => {});
+  const imgs = await card.locator('.ph img').evaluateAll(a => a.map(i => i.naturalWidth));
+  check(imgs.length === 2 && imgs.every(w => w > 0), `默认用真人照片：高脚杯深蹲卡片两张照片都载入（宽 ${imgs.join('/')}）`);
+  check((await card.locator('canvas').count()) === 0, '有真人照片的动作不再同时放动画');
+  const noteHip = await page.locator('#workout .ex').filter({ hasText: '哑铃罗马尼亚硬拉' }).first().locator('.ph-note').textContent();
+  check(/微弯/.test(noteHip), '照片跟动作有差异时，照片上有说明');
+  check((await page.locator('#warmCard .ex').filter({ hasText: '原地高抬腿踏步' }).locator('canvas').count()) === 1, '库里没有照片的动作（高抬腿踏步）继续用动画');
+  await page.click('#startPlayer');
+  for (let i = 0; i < 8; i++) await page.click('#plNextBtn');
+  check(await page.locator('#plPhoto .ph').isVisible() && await page.locator('#plCanvas').isHidden(), '全屏跟练的深蹲显示真人照片');
+  await page.click('#plClose');
+  await page.click('nav.tabs [data-tab="more"]');
+  await page.click('#cfgMedia [data-media="3d"]');
+  await page.click('nav.tabs [data-tab="train"]');
+  check((await page.locator('#workout .ph').count()) === 0 && (await page.locator('#workout canvas.thumb').count()) > 10, '设置改成 3D → 全部换回动画');
+  check(errors.length === 0, `真人照片没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
 }
 

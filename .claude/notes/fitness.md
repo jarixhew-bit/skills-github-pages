@@ -9,6 +9,10 @@
 - `anim3d.js` — 3D 渲染（ES module，载入 `../vendor/three/three.module.min.js`）。它不定义动作，
   只拿 `ANIM.sample(key,time)` 给的关节世界座标套上人体/哑铃/器材/泳池来画；载入失败或没有 WebGL
   时 index.html 自动退回 2D 火柴人。设置里可关 3D（`cfg.anim3d`）。
+- `photos/` — 真人示范照片（Free Exercise DB，公共领域，缩到 480px，共 35 组×2 张）。对应表在
+  index.html 的 `PH_EN`（按动作英文名）与 `PH_ANIM`（热身/放松/收尾按动画 key），照片与动作不完全
+  一样（器材、坐站）时第二项写说明，会印在照片上。选照片前**先看过图**：库里同名动作常是别的变体。
+  设置「动作示范」：真人（默认，没照片的用 3D）／3D／简笔（`cfg.media`）。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
