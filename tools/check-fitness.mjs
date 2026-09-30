@@ -10,6 +10,7 @@
  * 为什么要真浏览器：这个 App 的价值在「帮你算下次该用多重」，算错了用户会
  * 照着错的重量练——读代码看不出每种历史记录下它到底建议什么。所以用固定的
  * 假历史灌进 localStorage，再看画面上的建议是不是手算得出的那个数：
+ *   0. 热身／放松每个动作都有动画、要点与示范（跟练里也显示要点）；
  *   1. 上次 3 组都做到上限（12 下）且有余力 → 建议 +2 kg（哑铃默认一次加 2 kg）；
  *   2. 连续两次同重量都有组不到下限 → 建议减到约 9 成（按加重单位取整）；
  *   3. 第 4 周是减量周 → 横幅出现、每个动作只剩 2 组、重量再打 9 折；
@@ -79,6 +80,13 @@ async function openWith(hist, viewport = { width: 390, height: 844 }) {
   const rows = await page.locator('#workout [data-done^="gsquat_"]').count();
   check(rows === 3, `一般周每个动作 3 组（实得：${rows}）`);
   check(await page.locator('#deloadBanner').isHidden(), '一般周不出现减量横幅');
+  // 热身/放松：每个动作都要有动画、秒数、要点（2026-09-30 用户要求「热身和放松也放动作」）
+  for (const [id, n, label] of [['#warmCard', 8, '热身'], ['#coolCard', 4, '放松']]) {
+    const cv = await page.locator(`${id} canvas.thumb`).count();
+    const cues = await page.locator(`${id} details p`).allTextContents();
+    const vids = await page.locator(`${id} a.vid`).count();
+    check(cv === n && cues.length === n && cues.every(c => c.length > 8) && vids === n, `${label}清单 ${n} 个动作都有动画、要点与示范（动画 ${cv}／要点 ${cues.length}／示范 ${vids}）`);
+  }
 
   // 改成器械每次 +5：切到健身房后深蹲变腿举机，没历史 → 显示第一次试重
   await page.click('#eqSeg [data-eq="gym"]');
@@ -133,6 +141,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }) {
   await page.click('#picker [data-wk="A"]');
   await page.click('#startPlayer');
   check(await page.locator('#player').isVisible(), '跟练画面能打开');
+  check(/手臂跟着前后摆/.test(await page.textContent('#plCue')) && (await page.locator('#plCue a.vid').count()) === 1, '跟练热身第 1 步显示动作要点与示范链接');
   // 跳过热身 8 步到第一个动作
   for (let i = 0; i < 8; i++) await page.click('#plNextBtn');
   const plKg = await page.inputValue('#plKg');

@@ -632,8 +632,21 @@ const PLAN = {
   B:{focus:"弓步 + 肩",blocks:[["lunge","ohp"],["thrust","row2"]]},
   C:{focus:"单腿 + 背",blocks:[["split","fpress"],["step","rfly"]]},
 };
-const WARM = [["原地高抬腿踏步",30,"march"],["手臂大绕环",30,"armcircle"],["猫牛式",30,"catcow"],["臀桥",30,"bridge2"],["徒手深蹲",30,"squat"],["弓步 + 双手前伸",30,"lungeT"],["肩胛俯卧撑",30,"scap"],["世界最伟大伸展（弓步手上举）",30,"wgs"]];
-const COOL = [["大腿前侧拉伸（每侧30秒，时间过半换边）",60,"quad"],["4字臀部拉伸（每侧30秒，时间过半换边）",60,"fig4"],["门框胸部拉伸",30,"chest"],["婴儿式",30,"child"]];
+// 每项：[名称, 秒数, 动画, 动作要点, 示范影片搜索用英文名]
+const WARM = [
+  ["原地高抬腿踏步",30,"march","膝盖抬到约腰的高度，手臂跟着前后摆，保持正常呼吸，不用跳。","high knee march"],
+  ["手臂大绕环",30,"armcircle","手臂伸直画大圆，前 15 秒往前绕、后 15 秒往后绕，肩膀放松不耸肩。","arm circles"],
+  ["猫牛式",30,"catcow","四足跪姿，手在肩下、膝在髋下。吸气塌腰抬头，吐气拱背低头，慢慢做。","cat cow stretch"],
+  ["臀桥",30,"bridge2","仰躺屈膝，脚跟发力把髋顶起到和身体一直线，顶点夹臀停 1 秒再放下。","glute bridge"],
+  ["徒手深蹲",30,"squat","脚与肩同宽，屁股往后坐，膝盖对准脚尖，蹲到舒服的深度就好，热身不求深。","bodyweight squat"],
+  ["弓步 + 双手前伸",30,"lungeT","往前跨一步下蹲，同时双手向前伸直，站回来换另一脚，左右交替。","lunge with reach"],
+  ["肩胛俯卧撑",30,"scap","撑在俯卧撑姿势、手臂伸直，只让肩胛骨往中间夹、再推开，手肘全程不弯。膝盖着地也可以。","scapular push up"],
+  ["世界最伟大伸展（弓步手上举）",30,"wgs","大弓步，同侧手撑地，另一只手往天花板打开，眼睛看手，停 2 秒换边。","worlds greatest stretch"]];
+const COOL = [
+  ["大腿前侧拉伸（每侧30秒，时间过半换边）",60,"quad","单脚站，手抓住脚背把脚跟拉向屁股，两膝并拢、膝盖朝下。站不稳就扶墙。","standing quad stretch"],
+  ["4字臀部拉伸（每侧30秒，时间过半换边）",60,"fig4","仰躺，一脚脚踝放到另一脚膝盖上成「4」字，双手抱住下面那条大腿往胸口拉。","figure four stretch"],
+  ["门框胸部拉伸",30,"chest","前臂和手肘贴住门框，手肘约与肩同高，身体慢慢往前倾，感觉胸口拉开。","doorway chest stretch"],
+  ["婴儿式",30,"child","跪坐，屁股坐向脚跟，双手往前伸、额头贴地，慢慢深呼吸，感觉背部放松。","child's pose"]];
 const EQ_LABEL = {db:"哑铃",bw:"徒手",gym:"健身房"};
 
 // ---------- Storage（只用本机浏览器；另有导出/导入备份） ----------
@@ -820,7 +833,7 @@ function renderWorkout(){
   ensureDraft(selWk);
   const P=PLAN[selWk], F=FIN[selWk], R=rounds(), eq=cfg.equip;
   let h='';
-  h+='<div class="card"><div class="block-head"><h2>热身</h2><span class="num">4 分钟</span></div>'+timerHTML("warm","每个动作 30 秒")+'<ul class="list small">'+WARM.map(w=>'<li>'+esc(w[0])+'</li>').join("")+'</ul></div>';
+  h+='<div class="card" id="warmCard"><div class="block-head"><h2>热身</h2><span class="num">4 分钟</span></div>'+timerHTML("warm","每个动作 30 秒")+moveList(WARM)+'</div>';
   P.blocks.forEach((pair,bi)=>{
     h+='<div class="card"><div class="block-head"><h2>超级组 '+(bi+1)+'</h2><span class="small muted">两个动作连做 → 休息 '+cfg.rest+' 秒 · 共 '+R+' 轮</span></div>';
     pair.forEach((id,ei)=>{
@@ -845,7 +858,7 @@ function renderWorkout(){
   h+='<div class="card"><div class="block-head"><h2>燃脂收尾</h2><span class="small muted">'+F.title+'</span></div>'+timerHTML("fin",F.mode==="interval"?"按开始后自动切换":"时间内循环做，数你完成几轮")+
      fi.map((it,i)=>'<div class="ex'+(i===0?' first':'')+'"><div class="ex-top"><canvas class="thumb" data-anim="'+it[1]+'" data-hold="'+(it[2]||"")+'"></canvas><div><h3>'+esc(it[0])+'</h3></div></div></div>').join("")+
      '<div class="row"><label for="finScore" class="small muted">完成几轮 / 备注</label><input id="finScore" class="inp" style="flex:1;font-size:15px;font-family:var(--f-body);text-align:left" value="'+esc(current.fin)+'" placeholder="例如：5 轮"></div></div>';
-  h+='<div class="card"><div class="block-head"><h2>放松</h2><span class="num">3 分钟</span></div>'+timerHTML("cool","慢慢呼吸")+'<ul class="list small">'+COOL.map(w=>'<li>'+esc(w[0])+'</li>').join("")+'</ul></div>';
+  h+='<div class="card" id="coolCard"><div class="block-head"><h2>放松</h2><span class="num">3 分钟</span></div>'+timerHTML("cool","慢慢呼吸")+moveList(COOL)+'</div>';
   h+='<div class="card"><h2>今天整体感觉</h2>'+feelHTML(current.feel)+'<input id="noteIn" class="inp" style="font-size:15px;font-family:var(--f-body);text-align:left" value="'+esc(current.note)+'" placeholder="备注（例如：左膝有点紧）"><button class="btn primary wide" id="finishBtn">完成训练并储存</button><p class="small muted" id="storeNote"></p></div>';
   const box=$("workout"); box.innerHTML=h;
   box.querySelectorAll("canvas[data-anim]").forEach(c=>attach(c,c.dataset.anim,c.dataset.hold||null));
@@ -854,6 +867,13 @@ function renderWorkout(){
   setupTimer("cool",{mode:"count",sec:180});
   ["warm","fin","cool"].forEach(paintTimer);
   paintStoreNote();
+}
+// 热身/放松清单：每个动作一张小动画＋秒数＋要点＋真人示范
+function moveList(arr){
+  return arr.map((w,i)=>{ const nm=w[0].split("（")[0], note=(w[0].match(/（(.*)）/)||[])[1];
+    return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top"><canvas class="thumb" data-anim="'+w[2]+'" data-hold=""></canvas><div>'+
+      '<span class="eyebrow">'+(i+1)+' / '+arr.length+'</span><h3>'+esc(nm)+'</h3><span class="target">'+w[1]+' 秒</span>'+(note?'<span class="small muted">'+esc(note)+'</span>':'')+'</div></div>'+
+      '<details><summary>动作要点</summary><p>'+esc(w[3])+'</p></details><a class="vid" href="'+vidUrl(w[4])+'" target="_blank" rel="noopener">看真人示范影片 ↗</a></div>'; }).join("");
 }
 const FEEL=[[5,"轻松"],[7,"刚好"],[9,"很吃力"]];
 function feelHTML(v){ return '<div class="feel" role="group" aria-label="整体感觉">'+FEEL.map(f=>'<button class="chip" data-feel="'+f[0]+'" aria-pressed="'+(v===f[0])+'">'+f[1]+'</button>').join("")+'</div>'; }
@@ -1108,7 +1128,7 @@ $("gCopy").onclick=()=>{ const txt=garminText(gWk), msg=$("gCopyMsg");
 let steps=[], si=0, pl={run:false,end:0,remain:0,lastBeep:-1,amrap:0};
 function buildSteps(){
   const P=PLAN[selWk], F=FIN[selWk], S=[], R=rounds(), eq=cfg.equip;
-  WARM.forEach((w,i)=>S.push({kind:"timed",phase:"热身 "+(i+1)+"/"+WARM.length,name:w[0],sec:w[1],anim:w[2],hold:null,speak:w[0]+"，"+w[1]+"秒"}));
+  WARM.forEach((w,i)=>S.push({kind:"timed",phase:"热身 "+(i+1)+"/"+WARM.length,name:w[0],sec:w[1],anim:w[2],hold:null,cue:w[3],en:w[4],speak:w[0]+"，"+w[1]+"秒"}));
   P.blocks.forEach((pair,bi)=>{
     for(let r=0;r<R;r++){
       pair.forEach((id,ei)=>{ const x=exInfo(id,eq); S.push({kind:"set",phase:"超级组 "+(bi+1)+" · 第 "+(r+1)+"/"+R+" 轮 · "+(ei?"B":"A")+(bi+1),name:x.name,target:x.target,anim:x.anim,hold:x.hold,cue:x.cue,en:x.en,id,key:id+"_"+r,speak:x.name+"，"+tgtLabel(x.target).replace("–","到")}); });
@@ -1127,7 +1147,7 @@ function buildSteps(){
       if(r<F.rounds-1) S.push({kind:"rest",phase:"休息",name:"休息，下一个："+fi[(r+1)%fi.length][0],sec:F.rest,speak:"休息"});
     }
   }
-  COOL.forEach((w,i)=>S.push({kind:"timed",phase:"放松 "+(i+1)+"/"+COOL.length,name:w[0],sec:w[1],anim:w[2],hold:null,half:w[1]>=60,speak:w[0].split("（")[0]+"，"+w[1]+"秒"}));
+  COOL.forEach((w,i)=>S.push({kind:"timed",phase:"放松 "+(i+1)+"/"+COOL.length,name:w[0],sec:w[1],anim:w[2],hold:null,cue:w[3],en:w[4],half:w[1]>=60,speak:w[0].split("（")[0]+"，"+w[1]+"秒"}));
   S.push({kind:"done",phase:"完成",name:"训练完成",anim:"child"});
   return S;
 }
@@ -1175,7 +1195,7 @@ function showStep(autostart){
     m+='<div class="pl-big" id="plTime">'+mmss(s.sec)+'</div>';
     if(s.kind==="amrap") m+='<div class="row"><button class="btn primary" id="plRound">+1 轮</button><span class="num" style="font-size:24px" id="plRounds">'+(pl.amrap||0)+' 轮</span><button class="btn ghost small" id="plRoundMinus">−1</button></div>';
     if(s.kind==="rest") m+='<div class="row"><button class="btn ghost" id="plPlus">+15 秒</button></div>';
-    $("plCue").textContent=s.cue||(s.half?"时间过半会提示你换边。":"");
+    $("plCue").innerHTML=esc(s.cue||"")+(s.half?(s.cue?" ":"")+"时间过半会提示你换边。":"")+(s.en?' <a class="vid" href="'+vidUrl(s.en)+'" target="_blank" rel="noopener">真人示范 ↗</a>':'');
     pl.remain=s.sec; pl.lastBeep=-1; pl.halfDone=false;
     pl.run=!!autostart&&s.kind!=="amrap"; if(pl.run) pl.end=Date.now()+pl.remain*1000;
   }
