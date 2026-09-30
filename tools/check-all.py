@@ -54,6 +54,7 @@ CHECKS = [
     ("news", ["python3", "tools/check-news.py"], False),
     ("prices", ["python3", "tools/check-prices.py"], False),
     ("flights", ["python3", "tools/check-flight-times.py"], False),
+    ("mapcoords", ["python3", "tools/check-map-coords.py"], False),
     ("refreshphotos", ["python3", "tools/check-refresh-photos.py"], False),
     ("shortlist", ["python3", "tools/check-shortlist.py"], False),
     ("rules", ["python3", "tools/check-rules.py", "--quiet"], False),

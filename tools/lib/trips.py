@@ -35,7 +35,7 @@ TRIPS = {
     "penang-trip/v2.html": "2026-10-17",         # 同一趟的新设计版（植物园配色）
     "penang-trip/v3.html": "2026-10-17",         # 同一趟的第三个设计版（蓝屋靛蓝配色）
     "penang-trip/v4.html": "2026-10-17",         # 同一趟的第四个设计版（当地招牌风：漆木＋金＋朱红）
-    "penang-trip/with-map.html": "2026-10-17",   # 同一趟的「带总地图」试装版（旧版＋地图区块）
+    "penang-trip/with-map.html": "2026-10-17",   # 同一趟的「带总地图」试装版，2026-09-30 地图并入 index.html 后改成跳转页
     # 选图页跟着它服务的手册；手册没结束就还要能看
     "penang-trip/photo-picker.html": "2026-10-17",
     "singapore-trip/photo-picker.html": "2026-09-27",
