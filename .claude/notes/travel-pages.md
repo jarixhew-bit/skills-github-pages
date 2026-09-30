@@ -161,7 +161,7 @@ URL: .../penang-trip/
 结构（四个区块，编号 01–04，navstrip 四项与之一一对应）：
 `header.topbar`(:339) → `nav.navstrip`(:343，4 个 a) → `.cover`(:350，含 `#countdown`
 倒数，JS 算) → `.tip`(:366) → `#flights`(01,:375，4 张 `.bpass` ＋ 2 个 `.transit` ＋行李表)
-→ `#dining`(02,:462，**11 张** `.rcard`) → `#places`(03,:720，`.pfilter` 筛选:727
+→ `#dining`(02,:462，**12 张** `.rcard`) → `#places`(03,:720，`.pfilter` 筛选:727
 ＋ 4 个 `.pgroup` ＋ **9 张** `.rcard`) → `#weather`(04,:955) → footer(:979)
 → lightbox(:986) → `<script>`(:994)。
 **已删除且不要加回**（2026-08-21 用户明确删的）：`#stay` 住宿区块、`#checklist` 必办事项
@@ -306,7 +306,8 @@ v2 顶部有「回旧版 / Classic」链到 index.html。
 
 ### 总地图（2026-09-30 由试装页 with-map.html 并入 index.html；`with-map.html` 现在只是跳转到 `index.html#map` 的跳转页，勿删）
 并入时去掉了试装页的顶栏「回旧版」链接与其 CSS，其余照搬：navstrip「🗺 地图」、`#map` 区块（在 `#dining` 之前）、
-`</head>` 前 Leaflet CSS＋`<style>`、`</body>` 前一段 `<script>`。图钉 23 个（餐厅 11／亲子电玩 6／景点 3／商场 3；岛上 15、大陆 8，都由程序算）。
+`</head>` 前 Leaflet CSS＋`<style>`、`</body>` 前一段 `<script>`。图钉 24 个（餐厅 12／亲子电玩 6／景点 3／商场 3；岛上 15、大陆 9，都由程序算）。
+2026-09-30 用户指定新增餐厅「膳户」＝Google 上的 Sushi Zento Seberang Jaya（⭐4.1/697 则、日本料理、Jalan Todak 6，离 Sunway Carnival 约 300 米，cid 18172314537448883100），放 `#dining` 最后；低于 4.2 照加，卡上标「评分偏低」＋「牛肉品项需到店确认」chip（查不到菜单有无牛肉）。
 **同坐标图钉错开**：同一栋商场的店 Google 常给完全相同的坐标（Big Monster Ball 与 Pado Fantasyland 都是 5.413203,100.3313709），
 JS 把重复的画图位置挪约 17 米（`p.dlat/p.dlng`，数据坐标不改），否则上面那个会盖住下面那个点不到。
 **长期自检** `tools/check-map-coords.py`（静态）：每张带地图链接的卡片在 coords.json 与 `MAP_COORDS` 都有坐标且一致、都在槟城州、
