@@ -6,39 +6,58 @@
 <title>槟城行 · 9–17 Oct 2026 | Penang Trip</title>
 <style>
   /* ============================================================
-     Penang Handbook — "Peranakan Shophouse" visual system
-     配色取自娘惹瓷砖：靛青/翡翠绿/砖红/姜黄 + 米白纸底
+     Penang Handbook — "Peranakan Shophouse" 版面
+     配色（2026-09-30 起）：改用 v3「蓝屋靛蓝」的色值（取自 penang-trip/v3.html），
+     旧变量名不变、只换值：teal/green/blue 都映射成靛蓝系，gold＝万寿菊黄，coral＝陶土红。
+     对比度（实算）：白字/靛蓝 #2b5d8f 6.9；墨色 #1c2733/纸底 #f6f3ea 14+；
+     黄底只配深字 #1c2733；黄色系文字用 #7a4e00；陶土红 #b7472a 与白底 5.3。
      ============================================================ */
   :root {
-    --paper: #fbf6ec;
-    --paper-2: #f4ecdd;
-    --card: #ffffff;
-    --ink: #1d1b16;
-    --ink-2: #4a443a;
-    --muted: #736a5d;
-    --faint: #a49a8b;
-    --line: #e6dcc8;
-    --line-2: #d8cbb0;
+    /* --- 取自 v3 的蓝屋调色盘 --- */
+    --indigo: #2b5d8f;      /* 主色：靛蓝 */
+    --indigo-d: #24507d;    /* 标题/文字用靛蓝 */
+    --indigo-dd: #1b3f66;   /* 深色：顶栏、登机牌头、表头 */
+    --indigo-soft: #e4edf6;
+    --indigo-line: #b7cde2;
+    --marigold: #f9a620;    /* 万寿菊黄（只配深色字，只做点缀） */
+    --marigold-soft: #fdf0d3;
+    --marigold-line: #f1d08a;
+    --marigold-ink: #7a4e00; /* 黄色系里的文字色 */
+    --terracotta: #b7472a;  /* 警示：陶土红 */
+    --terracotta-soft: #fbece6;
+    --terracotta-line: #eec3b4;
+    --on-marigold: #1c2733; /* 黄底上的字 */
 
-    --teal: #0e6b63;
-    --teal-soft: #e6f2ef;
-    --teal-line: #b9dcd5;
-    --coral: #c4432c;
-    --coral-soft: #fdeee9;
-    --coral-line: #f2c7ba;
-    --gold: #a97a18;
-    --gold-soft: #fbf1da;
-    --gold-line: #ecd9a8;
-    --green: #2c6e49;
-    --green-soft: #e9f4ec;
-    --green-line: #bfdfc9;
-    --blue: #1f4e79;
-    --blue-soft: #eaf1f8;
-    --blue-line: #c3d7ea;
+    /* --- 旧变量名映射到新调色盘（下面所有规则沿用旧名） --- */
+    --paper: #f6f3ea;       /* v3 纸底 */
+    --paper-2: #ebe7da;     /* v3 的 --paper-2 */
+    --card: #ffffff;
+    --ink: #1c2733;
+    --ink-2: #43505e;
+    --muted: #566472;
+    --faint: #566472;
+    --line: #e0dccb;
+    --line-2: #cbc6b0;
+
+    --teal: var(--indigo);
+    --teal-soft: var(--indigo-soft);
+    --teal-line: var(--indigo-line);
+    --coral: var(--terracotta);
+    --coral-soft: var(--terracotta-soft);
+    --coral-line: var(--terracotta-line);
+    --gold: var(--marigold);
+    --gold-soft: var(--marigold-soft);
+    --gold-line: var(--marigold-line);
+    --green: var(--indigo);
+    --green-soft: var(--indigo-soft);
+    --green-line: var(--indigo-line);
+    --blue: var(--indigo-d);
+    --blue-soft: var(--indigo-soft);
+    --blue-line: var(--indigo-line);
 
     --serif: "Palatino Linotype", "Songti SC", "Noto Serif SC", "Times New Roman", Georgia, serif;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-    --shadow: 0 2px 6px rgba(29,27,22,.06), 0 10px 24px -14px rgba(29,27,22,.24);
+    --shadow: 0 2px 6px rgba(28,39,51,.06), 0 10px 24px -14px rgba(28,39,51,.26);
     --topH: 50px;
     --navH: 46px;
   }
@@ -49,8 +68,8 @@
     font-size: 16px; line-height: 1.7;
     background-color: var(--paper);
     background-image:
-      radial-gradient(circle at 18% 12%, rgba(14,107,99,.05), transparent 42%),
-      radial-gradient(circle at 88% 60%, rgba(196,67,44,.05), transparent 40%);
+      radial-gradient(circle at 18% 12%, rgba(43,93,143,.05), transparent 42%),
+      radial-gradient(circle at 88% 60%, rgba(183,71,42,.05), transparent 40%);
     overflow-x: hidden;
   }
   img { display: block; }
@@ -75,7 +94,7 @@
   .topbar {
     position: sticky; top: 0; z-index: 300;
     height: var(--topH);
-    background: rgba(20,38,36,.97);
+    background: rgba(27,63,102,.97);
     backdrop-filter: blur(10px);
     display: flex; align-items: stretch; color: #fff;
     border-bottom: 2px solid var(--gold);
@@ -94,7 +113,7 @@
   /* ===== NAV STRIP ===== */
   .navstrip {
     position: sticky; top: var(--topH); z-index: 290;
-    background: rgba(251,246,236,.97); backdrop-filter: blur(10px);
+    background: rgba(246,243,234,.97); backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--line);
     display: flex; overflow-x: auto; gap: 7px; padding: 7px 12px;
     scrollbar-width: none; height: var(--navH);
@@ -116,12 +135,12 @@
   .wrap { max-width: 780px; margin: 0 auto; padding-bottom: 88px; }
 
   /* ===== COVER ===== */
-  .cover { position: relative; background: #12211f; color: #fff; overflow: hidden; }
+  .cover { position: relative; background: #0e2036; color: #fff; overflow: hidden; }
   .cover img.bg { width: 100%; height: 340px; object-fit: cover; opacity: .52; }
   .cover .inner {
     position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end;
     padding: 22px 20px 26px;
-    background: linear-gradient(180deg, rgba(18,33,31,.15) 24%, rgba(18,33,31,.62) 62%, rgba(18,33,31,.93) 100%);
+    background: linear-gradient(180deg, rgba(27,63,102,.10) 24%, rgba(27,63,102,.62) 62%, rgba(14,32,54,.94) 100%);
   }
   .cover .kicker {
     display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
@@ -130,7 +149,7 @@
   }
   .cover .kicker::before { content: ""; width: 26px; height: 1px; background: var(--gold); }
   .cover h1 { font-family: var(--serif); font-size: 36px; line-height: 1.14; font-weight: 700; letter-spacing: .01em; }
-  .cover h1 .sub { display: block; font-family: var(--sans); font-size: 12.5px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-top: 8px; }
+  .cover h1 .sub { display: block; font-family: var(--sans); font-size: 12.5px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; color: rgba(255,255,255,.78); margin-top: 8px; }
   .cover .dates { font-size: 14px; color: rgba(255,255,255,.9); font-weight: 600; margin-top: 12px; }
   .cover .meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
   .cover .meta-chip {
@@ -140,7 +159,7 @@
   }
   .cover .cd {
     align-self: flex-start; margin-top: 14px; display: inline-flex; align-items: baseline; gap: 7px;
-    background: var(--coral); color: #fff; border-radius: 999px; padding: 6px 15px;
+    background: var(--gold); color: var(--on-marigold); border-radius: 999px; padding: 6px 15px;
     font-size: 13px; font-weight: 700; box-shadow: 0 6px 18px -8px rgba(0,0,0,.8);
   }
   .cover .cd b { font-family: var(--serif); font-size: 19px; font-weight: 700; }
@@ -151,7 +170,7 @@
     display: flex; gap: 11px; margin: 16px 16px 0; padding: 13px 15px;
     background: var(--gold-soft); border: 1px solid var(--gold-line);
     border-left: 4px solid var(--gold); border-radius: 12px;
-    font-size: 13.5px; line-height: 1.65; color: #6b5216;
+    font-size: 13.5px; line-height: 1.65; color: var(--marigold-ink);
   }
   .tip .ico { flex: none; font-size: 16px; }
 
@@ -162,27 +181,27 @@
     flex: none; width: 34px; height: 34px; border-radius: 9px;
     background: var(--teal); color: #fff; font-family: var(--serif); font-size: 14px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; letter-spacing: .04em;
-    box-shadow: 0 4px 12px -6px rgba(14,107,99,.9);
+    box-shadow: 0 4px 12px -6px rgba(27,63,102,.9);
   }
   .sec-head h2 { font-family: var(--serif); font-size: 24px; font-weight: 700; letter-spacing: .01em; line-height: 1.2; }
   .sec-head .rule { flex: 1; height: 7px; color: var(--line-2); align-self: center; opacity: .85; }
 
   .bp-group-label {
     display: flex; align-items: center; gap: 9px;
-    font-size: 13px; font-weight: 800; letter-spacing: .06em; color: var(--teal);
+    font-size: 13px; font-weight: 800; letter-spacing: .06em; color: var(--indigo-d);
     margin: 22px 2px 10px;
   }
   .bp-group-label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
   /* ===== BOARDING PASS ===== */
   .bpass { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-bottom: 14px; box-shadow: var(--shadow); }
-  .bpass .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 16px; background: #142624; color: #fff; }
+  .bpass .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 16px; background: var(--indigo-dd); color: #fff; }
   .bpass .head .airline { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; letter-spacing: .04em; }
-  .bpass .head .airline .code { background: var(--coral); border-radius: 6px; padding: 2px 8px; font-size: 12px; }
-  .bpass .head .craft { font-size: 11px; color: rgba(255,255,255,.68); font-weight: 600; text-align: right; }
+  .bpass .head .airline .code { background: var(--gold); color: var(--on-marigold); border-radius: 6px; padding: 2px 8px; font-size: 12px; }
+  .bpass .head .craft { font-size: 11px; color: rgba(255,255,255,.8); font-weight: 600; text-align: right; }
   .bpass .route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 17px 14px 13px; gap: 6px; }
   .bpass .apt { text-align: center; min-width: 0; }
-  .bpass .apt .iata { font-family: var(--serif); font-size: 32px; font-weight: 700; line-height: 1.05; }
+  .bpass .apt .iata { font-family: var(--serif); font-size: 32px; font-weight: 700; line-height: 1.05; color: var(--indigo-d); }
   .bpass .apt .city { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 3px; }
   .bpass .apt .time { font-size: 18px; font-weight: 800; color: var(--coral); margin-top: 4px; font-variant-numeric: tabular-nums; }
   .bpass .mid { text-align: center; color: var(--faint); }
@@ -197,9 +216,9 @@
   .bpass .pax .cls { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; padding: 3px 9px; border-radius: 6px; margin-bottom: 8px; background: var(--blue-soft); color: var(--blue); border: 1px solid var(--blue-line); }
   .bpass .pax .seats { display: flex; flex-wrap: wrap; gap: 6px; }
   .bpass .pax .seat { font-size: 11.5px; font-weight: 600; background: var(--paper); border: 1px solid var(--line); border-radius: 7px; padding: 4px 9px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-  .bpass .pax .seat.warn { background: var(--gold-soft); border-color: var(--gold-line); color: #6b5216; font-weight: 800; }
+  .bpass .pax .seat.warn { background: var(--gold-soft); border-color: var(--gold-line); color: var(--marigold-ink); font-weight: 800; }
   .transit { display: flex; gap: 10px; align-items: flex-start; border-left: 3px dotted var(--gold); margin: 0 4px 14px 22px; padding: 4px 0 6px 14px; }
-  .transit .tt { font-size: 13.5px; font-weight: 700; color: #7c6220; }
+  .transit .tt { font-size: 13.5px; font-weight: 700; color: var(--marigold-ink); }
   .transit .ts { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.6; }
   .track {
     display: inline-flex; align-items: center; gap: 6px; margin: 0 16px 15px;
@@ -217,14 +236,14 @@
   .wxdaily { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-bottom: 12px; }
   .wxdaily::-webkit-scrollbar { display: none; }
   .wxdaily[hidden] { display: none; }
-  /* 实时空气质量（烧芭季烟霾）：跟天气同一个区块，配色沿用娘惹瓷砖那套 */
+  /* 实时空气质量（烧芭季烟霾）：跟天气同一个区块，配色沿用 v3 蓝屋靛蓝（黄＝警示、红＝更差） */
   .airbox { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 10px 13px; margin-bottom: 12px; }
   .air { font-size: 13px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
-  .air.warn { color: var(--gold); }
+  .air.warn { color: var(--marigold-ink); }
   .air.bad { color: var(--coral); }
   .airnote { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.6; }
   .airnote a { color: inherit; }
-  .airplan { font-size: 12.5px; color: #6b5216; margin-top: 6px; line-height: 1.6; }
+  .airplan { font-size: 12.5px; color: var(--marigold-ink); margin-top: 6px; line-height: 1.6; }
   .airplan[hidden] { display: none; }
   .airnow { font-weight: 800; font-variant-numeric: tabular-nums; }
   .airplan.bad .airnow { color: var(--coral); }
@@ -243,12 +262,12 @@
 
   /* ===== TABLE / NOTES ===== */
   .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 13px; margin-top: 8px; }
-  .tbl th { background: #142624; color: #fff; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 9px 12px; text-align: left; font-weight: 700; }
+  .tbl th { background: var(--indigo-dd); color: #fff; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 9px 12px; text-align: left; font-weight: 700; }
   .tbl td { padding: 11px 12px; border-top: 1px solid var(--line); vertical-align: top; }
   .note { font-size: 13.5px; line-height: 1.7; border-radius: 12px; padding: 12px 15px; margin-top: 12px; }
-  .note.amber { background: var(--gold-soft); border: 1px solid var(--gold-line); border-left: 4px solid var(--gold); color: #6b5216; }
-  .note.red { background: var(--coral-soft); border: 1px solid var(--coral-line); border-left: 4px solid var(--coral); color: #8a2a17; }
-  .note.green { background: var(--green-soft); border: 1px solid var(--green-line); border-left: 4px solid var(--green); color: #1d5637; }
+  .note.amber { background: var(--gold-soft); border: 1px solid var(--gold-line); border-left: 4px solid var(--gold); color: var(--marigold-ink); }
+  .note.red { background: var(--coral-soft); border: 1px solid var(--coral-line); border-left: 4px solid var(--coral); color: #86301a; }
+  .note.green { background: var(--green-soft); border: 1px solid var(--green-line); border-left: 4px solid var(--green); color: var(--indigo-d); }
 
   /* ===== GALLERY (full-bleed, top of card) ===== */
   .galwrap { position: relative; background: var(--paper-2); }
@@ -257,19 +276,19 @@
   .gal img { scroll-snap-align: start; width: 86%; max-width: 420px; aspect-ratio: 16/10; object-fit: cover; flex: none; background: var(--line-2); cursor: zoom-in; }
   .gal-hint {
     position: absolute; right: 9px; bottom: 9px; pointer-events: none;
-    background: rgba(18,33,31,.62); color: rgba(255,255,255,.95); backdrop-filter: blur(3px);
+    background: rgba(14,32,54,.66); color: rgba(255,255,255,.95); backdrop-filter: blur(3px);
     font-size: 11px; font-weight: 700; letter-spacing: .02em;
     border-radius: 999px; padding: 4px 11px;
   }
   .idx {
     position: absolute; left: 0; top: 12px; z-index: 2;
     font-family: var(--serif); font-size: 13px; font-weight: 700; letter-spacing: .06em;
-    background: rgba(18,33,31,.82); color: #fff; padding: 4px 11px 4px 12px;
+    background: rgba(14,32,54,.84); color: #fff; padding: 4px 11px 4px 12px;
     border-radius: 0 999px 999px 0; box-shadow: 0 4px 12px -6px rgba(0,0,0,.7);
   }
 
   /* ===== LIGHTBOX ===== */
-  .lb { position: fixed; inset: 0; background: rgba(10,14,13,.95); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
+  .lb { position: fixed; inset: 0; background: rgba(8,16,28,.95); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
   .lb.open { display: flex; }
   .lb img { max-width: 94%; max-height: 78vh; object-fit: contain; border-radius: 10px; }
   .lb-counter { color: rgba(255,255,255,.6); font-size: 13px; margin-top: 12px; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
@@ -298,7 +317,7 @@
     display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px;
   }
   .rcard h3 .star {
-    font-family: var(--sans); font-size: 11.5px; font-weight: 800; color: var(--gold);
+    font-family: var(--sans); font-size: 11.5px; font-weight: 800; color: var(--marigold-ink);
     background: var(--gold-soft); border: 1px solid var(--gold-line); border-radius: 999px;
     padding: 2px 9px; white-space: nowrap;
   }
@@ -309,9 +328,9 @@
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
   .chip { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid; line-height: 1.5; }
   .chip.hours { color: var(--ink-2); border-color: var(--line-2); background: var(--paper); }
-  .chip.ok { color: var(--green); border-color: var(--green-line); background: var(--green-soft); }
-  .chip.verify { color: #a33b00; border-color: #f2cdb3; background: #fdf2ea; }
-  .chip.warn { color: #8a2a17; border-color: var(--coral-line); background: var(--coral-soft); }
+  .chip.ok { color: var(--indigo-d); border-color: var(--green-line); background: var(--green-soft); }
+  .chip.verify { color: #8a3a12; border-color: var(--gold-line); background: var(--gold-soft); }
+  .chip.warn { color: #86301a; border-color: var(--coral-line); background: var(--coral-soft); }
   .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
   .rcard .rb > .desc:first-child { margin-top: 0; }
 
@@ -326,7 +345,7 @@
   .pfilter {
     position: sticky; top: calc(var(--topH) + var(--navH)); z-index: 240;
     margin: 0 -16px 4px; padding: 9px 16px 8px;
-    background: rgba(251,246,236,.97); backdrop-filter: blur(10px);
+    background: rgba(246,243,234,.97); backdrop-filter: blur(10px);
     border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
   }
   .pfilter .row { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; }
@@ -339,7 +358,7 @@
   }
   .pchip[hidden] { display: none; }
   .pchip .n { font-size: 10.5px; font-weight: 800; color: var(--muted); background: var(--paper-2); border-radius: 999px; padding: 0 6px; line-height: 16px; }
-  .pchip[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #fff; }
+  .pchip[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; }
   .pchip[aria-pressed="true"] .n { background: rgba(255,255,255,.25); color: #fff; }
   .pcount { font-size: 11.5px; font-weight: 700; color: var(--muted); margin: 7px 2px 0; }
   .pgroup.hide { display: none; }
@@ -393,8 +412,8 @@
 <div class="tip">
 <span class="ico" aria-hidden="true">👆</span>
 <div>
-<span class="cn"><strong>怎么用这本手册：</strong>绿色按钮开地图、蓝色按钮开官网；照片可左右滑、点一下放大；「推荐去处」上方的彩色标签可筛选类型；顶部的章节条可随时跳到别的区块。标注「⚠ 需确认」的项目以实际预订为准。</span>
-<span class="en"><strong>How to use this handbook:</strong> green buttons open maps, blue buttons open websites; photo strips swipe sideways and tap to enlarge; the coloured chips above "Places to Visit" filter by type; the sticky bar at the top jumps between sections. Items marked "⚠ verify" should be confirmed.</span>
+<span class="cn"><strong>怎么用这本手册：</strong>深蓝实心按钮开地图、浅蓝底按钮开官网；照片可左右滑、点一下放大；「推荐去处」上方的彩色标签可筛选类型；顶部的章节条可随时跳到别的区块。标注「⚠ 需确认」的项目以实际预订为准。</span>
+<span class="en"><strong>How to use this handbook:</strong> solid dark-blue buttons open maps, light-blue buttons open websites; photo strips swipe sideways and tap to enlarge; the coloured chips above "Places to Visit" filter by type; the sticky bar at the top jumps between sections. Items marked "⚠ verify" should be confirmed.</span>
 </div>
 </div>
 
