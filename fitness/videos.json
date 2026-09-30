@@ -3,31 +3,22 @@
  "videos": {
   "goblet_squat": [
    {
+    "id": "MakFmqDAGpo",
+    "start": 0,
+    "title": "Goblet Squat #shorts",
+    "len": "Short, <1:00 assumed",
+    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. Snippet says 4 sets of 12 reps."
+   },
+   {
     "id": "MeIiIdhvXT4",
     "start": 0,
     "title": "How To: Goblet Squat",
     "channel": "ScottHermanFitness (inferred from 'How To:' title style; unverified)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. Full-length; reps may start after intro."
-   },
-   {
-    "id": "MakFmqDAGpo",
-    "start": 0,
-    "title": "Goblet Squat #shorts",
-    "channel": "unknown (not shown in search results)",
-    "len": "Short, <1:00 assumed",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. Snippet says 4 sets of 12 reps."
    }
   ],
   "bw_squat": [
-   {
-    "id": "Qgpxx1Bxmgs",
-    "start": 0,
-    "title": "BODYWEIGHT SQUAT TUTORIAL",
-    "channel": "Planet Fitness (inferred from '#planetfitness'-style title; unverified)",
-    "len": "Short, <1:00 assumed",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
-   },
    {
     "id": "P-yaD24bUE8",
     "start": 0,
@@ -35,9 +26,24 @@
     "channel": "Runna (inferred from 'Tutorial - Proper Form and Technique' title style)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
+   },
+   {
+    "id": "Qgpxx1Bxmgs",
+    "start": 0,
+    "title": "BODYWEIGHT SQUAT TUTORIAL",
+    "channel": "Planet Fitness (inferred from '#planetfitness'-style title; unverified)",
+    "len": "Short, <1:00 assumed",
+    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
   ],
   "leg_press": [
+   {
+    "id": "tg-jOYwhI5w",
+    "start": 0,
+    "title": "How to do a Leg Press Correctly",
+    "len": "unknown",
+    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. 2014 upload."
+   },
    {
     "id": "nDh_BlnLCGc",
     "start": 0,
@@ -45,14 +51,6 @@
     "channel": "Jeff Nippard (per search-result title)",
     "len": "Short, <1:00 assumed",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
-   },
-   {
-    "id": "tg-jOYwhI5w",
-    "start": 0,
-    "title": "How to do a Leg Press Correctly",
-    "channel": "unknown (not shown in search results)",
-    "len": "unknown",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. 2014 upload."
    }
   ],
   "db_bench": [
@@ -68,7 +66,6 @@
     "id": "8RGZJKLcATU",
     "start": 0,
     "title": "Dumbbell Bench Press Tutorial: Proper form and Technique!",
-    "channel": "unknown (not shown in search results)",
     "len": "Short, <1:00 assumed",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -86,25 +83,23 @@
     "id": "xEaUcMeZHt4",
     "start": 0,
     "title": "A Proper Push-Up",
-    "channel": "unknown (not shown in search results)",
     "len": "Short, <1:00 assumed",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
   ],
   "machine_chest": [
    {
-    "id": "xUm0BiZCWlQ",
+    "id": "ksTNcvc6sKs",
     "start": 0,
-    "title": "How To: Chest Press (Cybex)",
-    "channel": "ScottHermanFitness (inferred from 'How To:' title style; unverified)",
+    "title": "Seated Chest Press | Machine | Strength and Conditioning Exercises",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    },
    {
-    "id": "ksTNcvc6sKs",
+    "id": "xUm0BiZCWlQ",
     "start": 0,
-    "title": "Seated Chest Press | Machine | Strength and Conditioning Exercises",
-    "channel": "unknown (not shown in search results)",
+    "title": "How To: Chest Press (Cybex)",
+    "channel": "ScottHermanFitness (inferred from 'How To:' title style; unverified)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -129,23 +124,30 @@
   ],
   "sl_bridge": [
    {
-    "id": "_K_di6h2-Wg",
-    "start": 0,
-    "title": "How to do a Single-Leg Glute Bridge | The Right Way | Well+Good",
-    "channel": "Well+Good (per title)",
-    "len": "unknown",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
-   },
-   {
     "id": "VUl8R0kn6v4",
     "start": 0,
     "title": "Single Leg Glute Bridge Tutorial - Proper Form and Technique",
     "channel": "Runna (inferred from 'Tutorial - Proper Form and Technique' title style)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
+   },
+   {
+    "id": "_K_di6h2-Wg",
+    "start": 0,
+    "title": "How to do a Single-Leg Glute Bridge | The Right Way | Well+Good",
+    "channel": "Well+Good (per title)",
+    "len": "unknown",
+    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
   ],
   "leg_curl": [
+   {
+    "id": "SbSNUXPRkc8",
+    "start": 0,
+    "title": "How To Do A Lying Leg Curl (Prone Leg Curl)",
+    "len": "unknown",
+    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
+   },
    {
     "id": "d6sg829PgNs",
     "start": 0,
@@ -153,30 +155,21 @@
     "channel": "Planet Fitness (inferred from '#planetfitness'-style title; unverified)",
     "len": "Short, <1:00 assumed",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
-   },
-   {
-    "id": "SbSNUXPRkc8",
-    "start": 0,
-    "title": "How To Do A Lying Leg Curl (Prone Leg Curl)",
-    "channel": "unknown (not shown in search results)",
-    "len": "unknown",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
   ],
   "db_row1": [
+   {
+    "id": "fURsHPHgssI",
+    "start": 0,
+    "title": "Single-Arm Dumbbell Row on a Bench: Perfect Form Tutorial",
+    "len": "unknown",
+    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
+   },
    {
     "id": "KRN38chlkds",
     "start": 0,
     "title": "How To: Dumbbell Single-Arm Row (On Bench)",
     "channel": "ScottHermanFitness (inferred from 'How To:' title style; unverified)",
-    "len": "unknown",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
-   },
-   {
-    "id": "fURsHPHgssI",
-    "start": 0,
-    "title": "Single-Arm Dumbbell Row on a Bench: Perfect Form Tutorial",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -186,7 +179,6 @@
     "id": "-N_dnZMMmQY",
     "start": 0,
     "title": "Inverted row at home — no gym, no equipment, just a table.",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. Table setup per title."
    },
@@ -194,7 +186,6 @@
     "id": "6NTruShwwKk",
     "start": 0,
     "title": "Stronger Back at Home! How to Do Inverted Rows with a Table",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. Table setup per title."
    }
@@ -212,12 +203,19 @@
     "id": "EU7bOadUsNI",
     "start": 0,
     "title": "Seated Cable Row - Proper Form & Technique [4K]",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
+    "note": "是动画不是真人（看过截图）；Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only.",
+    "bad": true
    }
   ],
   "reverse_lunge": [
+   {
+    "id": "ePMmlCVN8cs",
+    "start": 0,
+    "title": "How to Do a Dumbbell Reverse Lunge",
+    "len": "unknown",
+    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
+   },
    {
     "id": "sjlsISvHyZs",
     "start": 0,
@@ -225,14 +223,6 @@
     "channel": "ScottHermanFitness (inferred from 'How To:' title style; unverified)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. URL form was youtube.com/watch/ID."
-   },
-   {
-    "id": "ePMmlCVN8cs",
-    "start": 0,
-    "title": "How to Do a Dumbbell Reverse Lunge",
-    "channel": "unknown (not shown in search results)",
-    "len": "unknown",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
   ],
   "db_ohp": [
@@ -255,37 +245,35 @@
   ],
   "pike_pushup": [
    {
-    "id": "shEnAXgc9y4",
-    "start": 0,
-    "title": "How To Do Pike Push-Ups | Correct Form",
-    "channel": "unknown (not shown in search results)",
-    "len": "Short, <1:00 assumed",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
-   },
-   {
     "id": "XckEEwa1BPI",
     "start": 0,
     "title": "How to do a Pike Push-Up",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
+    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
+   },
+   {
+    "id": "shEnAXgc9y4",
+    "start": 0,
+    "title": "How To Do Pike Push-Ups | Correct Form",
+    "len": "Short, <1:00 assumed",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
   ],
   "machine_ohp": [
-   {
-    "id": "PM1hB_2xNBU",
-    "start": 0,
-    "title": "SHOULDER PRESS MACHINE TUTORIAL",
-    "channel": "Planet Fitness (inferred from '#planetfitness'-style title; unverified)",
-    "len": "Short, <1:00 assumed",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
-   },
    {
     "id": "Anu8s_nkNpM",
     "start": 0,
     "title": "How To: Seated Machine Shoulder Press",
     "channel": "ScottHermanFitness (inferred from 'How To:' title style; unverified)",
     "len": "unknown",
+    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
+   },
+   {
+    "id": "PM1hB_2xNBU",
+    "start": 0,
+    "title": "SHOULDER PRESS MACHINE TUTORIAL",
+    "channel": "Planet Fitness (inferred from '#planetfitness'-style title; unverified)",
+    "len": "Short, <1:00 assumed",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
   ],
@@ -294,7 +282,6 @@
     "id": "j59jWsUbl8A",
     "start": 0,
     "title": "Exercise Tutorial: Bodyweight Hip Thrust On Bench",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. Bench setup per title."
    },
@@ -309,18 +296,17 @@
   ],
   "db_row2": [
    {
-    "id": "6TSP1TRMUzs",
+    "id": "KIdzT7ZJT0o",
     "start": 0,
-    "title": "How To: Dumbbell Bent-Over Row",
-    "channel": "ScottHermanFitness (inferred from 'How To:' title style; unverified)",
+    "title": "How To Do Bent Over Two Dumbbell Row Palms In | Exercise Demo",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    },
    {
-    "id": "KIdzT7ZJT0o",
+    "id": "6TSP1TRMUzs",
     "start": 0,
-    "title": "How To Do Bent Over Two Dumbbell Row Palms In | Exercise Demo",
-    "channel": "unknown (not shown in search results)",
+    "title": "How To: Dumbbell Bent-Over Row",
+    "channel": "ScottHermanFitness (inferred from 'How To:' title style; unverified)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -348,7 +334,6 @@
     "id": "JXhNbz4QCMU",
     "start": 0,
     "title": "DUMBBELL BULGARIAN SPLIT SQUAT",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    },
@@ -363,18 +348,18 @@
   ],
   "floor_press": [
    {
-    "id": "uUGDRwge4F8",
-    "start": 0,
-    "title": "How To: Dumbbell Floor Press",
-    "channel": "ScottHermanFitness (inferred from 'How To:' title style; unverified)",
-    "len": "unknown",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
-   },
-   {
     "id": "vagdk94bFn4",
     "start": 0,
     "title": "Floor Dumbbell Bench Press Tutorial - Proper Form and Technique",
     "channel": "Runna (inferred from 'Tutorial - Proper Form and Technique' title style)",
+    "len": "unknown",
+    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
+   },
+   {
+    "id": "uUGDRwge4F8",
+    "start": 0,
+    "title": "How To: Dumbbell Floor Press",
+    "channel": "ScottHermanFitness (inferred from 'How To:' title style; unverified)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -384,7 +369,6 @@
     "id": "0LZF3OY87uU",
     "start": 0,
     "title": "Close Grip Push-Up | Proper Form Tutorial for Triceps Strength",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    },
@@ -392,7 +376,6 @@
     "id": "xTq_gg8F9Gs",
     "start": 0,
     "title": "Close Grip Push Up - EXERCISE DEMO",
-    "channel": "unknown (not shown in search results)",
     "len": "Short, <1:00 assumed",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -428,7 +411,6 @@
     "id": "9ZknEYboBOQ",
     "start": 0,
     "title": "Dumbbell Step-up - How To",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -438,7 +420,6 @@
     "id": "JeSlI2s4XfM",
     "start": 0,
     "title": "Bent Over Dumbbell Reverse Fly (Rear Delt Workout!)",
-    "channel": "unknown (not shown in search results)",
     "len": "Short, <1:00 assumed (also seen as /shorts/ URL)",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    },
@@ -446,27 +427,25 @@
     "id": "rQhdsa5QdVU",
     "start": 0,
     "title": "How to Perform the Standing Rear Delt Raise / Reverse Dumbbell Fly",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. Standing variant; confirm bent-over."
    }
   ],
   "prone_yt": [
    {
-    "id": "R6hm0NI_e58",
-    "start": 0,
-    "title": "YTW Raise",
-    "channel": "unknown (not shown in search results)",
-    "len": "unknown",
-    "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. Covers Y, T (and W)."
-   },
-   {
     "id": "DQFTp5n0uh0",
     "start": 0,
     "title": "How to Do a Prone Y Raise",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. Y only."
+   },
+   {
+    "id": "R6hm0NI_e58",
+    "start": 0,
+    "title": "YTW Raise",
+    "len": "unknown",
+    "note": "站姿 YTW，不是趴着做；Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only. Covers Y, T (and W).",
+    "bad": true
    }
   ],
   "face_pull": [
@@ -474,7 +453,6 @@
     "id": "7kXfVIwmfwE",
     "start": 0,
     "title": "How to Do a Proper Cable Face-Pull",
-    "channel": "unknown (not shown in search results)",
     "len": "Short, <1:00 assumed",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    },
@@ -482,7 +460,6 @@
     "id": "6chrLjsE47c",
     "start": 0,
     "title": "How To Face Pull",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -492,7 +469,6 @@
     "id": "0RJXwEZmcCg",
     "start": 0,
     "title": "Dumbbell Thruster (Squat and Press) | Exercise Tutorial",
-    "channel": "unknown (not shown in search results); surfaced in a Bowflex-targeted search but not confirmed",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    },
@@ -500,25 +476,23 @@
     "id": "UipBcISeiGU",
     "start": 0,
     "title": "How To Properly Do A Dumbbell Thruster - Movement Standards",
-    "channel": "unknown (not shown in search results)",
     "len": "Short, <1:00 assumed",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
   ],
   "mountain_climber": [
    {
-    "id": "cnyTQDSE884",
+    "id": "hq_0YlyfqGM",
     "start": 0,
-    "title": "How To Do Mountain Climbers | The Right Way | Well+Good",
-    "channel": "Well+Good (per title)",
+    "title": "Mountain Climber - Exercise Demo",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    },
    {
-    "id": "hq_0YlyfqGM",
+    "id": "cnyTQDSE884",
     "start": 0,
-    "title": "Mountain Climber - Exercise Demo",
-    "channel": "unknown (not shown in search results)",
+    "title": "How To Do Mountain Climbers | The Right Way | Well+Good",
+    "channel": "Well+Good (per title)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -536,7 +510,6 @@
     "id": "PcWKiJ_f_Po",
     "start": 0,
     "title": "How To: Dumbbell / Kettlebell Swing Exercise Tutorial",
-    "channel": "unknown (not shown in search results)",
     "len": "Short, <1:00 assumed",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -554,7 +527,6 @@
     "id": "3eqodmkpkfA",
     "start": 0,
     "title": "Proper Dead Bug Form | Core Exercise Demo",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -572,7 +544,6 @@
     "id": "Q4QnlZs9PqI",
     "start": 0,
     "title": "How To Do A Jumping Jack",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -582,7 +553,6 @@
     "id": "I4dqZX8gJ6M",
     "start": 0,
     "title": "How To Do A NO JUMP BEGINNER BURPEE | Exercise Demonstration Video and Guide",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    },
@@ -590,7 +560,6 @@
     "id": "we5OJ7-zb48",
     "start": 0,
     "title": "No Jump Burpee",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -608,7 +577,6 @@
     "id": "Ub3x9gt0UlQ",
     "start": 0,
     "title": "Plank Shoulder Taps",
-    "channel": "unknown (not shown in search results)",
     "len": "unknown",
     "note": "Not viewable from sandbox: real-person/angle/length/start second unverified, judged from title only."
    }
@@ -618,7 +586,6 @@
     "id": "Ih-JqDrOXBQ",
     "start": 0,
     "title": "How To Do High Knee March | Exercise Demo",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); title match; ambiguous channel, may be Howcast-style demo"
    },
@@ -626,7 +593,6 @@
     "id": "K3Pm4fmJC9U",
     "start": 0,
     "title": "High knee march",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short"
    }
@@ -636,7 +602,6 @@
     "id": "P3dzI9opLGE",
     "start": 0,
     "title": "Arm Circles Dynamic Warmup",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    },
@@ -644,12 +609,18 @@
     "id": "tYo5ghpLksg",
     "start": 0,
     "title": "Dynamic Warm-Up Exercise: Big Arm Circles (30 Secs)",
-    "channel": "unknown (not shown in search)",
     "len": "~0:30",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); title says 30 secs"
    }
   ],
   "cat_cow": [
+   {
+    "id": "MSBOBAIeLqI",
+    "start": 0,
+    "title": "Cat cow exercise",
+    "len": "unknown",
+    "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short"
+   },
    {
     "id": "y_cKHKi9UaM",
     "start": 0,
@@ -657,14 +628,6 @@
     "channel": "Well+Good (per title)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
-   },
-   {
-    "id": "MSBOBAIeLqI",
-    "start": 0,
-    "title": "Cat cow exercise",
-    "channel": "unknown (not shown in search)",
-    "len": "unknown",
-    "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short"
    }
   ],
   "glute_bridge": [
@@ -680,27 +643,24 @@
     "id": "R1OXPHRqehw",
     "start": 0,
     "title": "How to do a glute bridge.",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short"
    }
   ],
   "lunge_reach": [
    {
-    "id": "fdmH9b1P9cs",
-    "start": 0,
-    "title": "Alternating Forward Lunge with Reach",
-    "channel": "unknown (not shown in search)",
-    "len": "unknown",
-    "note": "Channel/length not verifiable from sandbox (YouTube blocked); exact match by title"
-   },
-   {
     "id": "Tn0gtIHrF84",
     "start": 0,
     "title": "Forward Lunge With Reach Tutorial",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); reach is with opposite arm/trunk rotation, slight variant"
+   },
+   {
+    "id": "fdmH9b1P9cs",
+    "start": 0,
+    "title": "Alternating Forward Lunge with Reach",
+    "len": "unknown",
+    "note": "Channel/length not verifiable from sandbox (YouTube blocked); exact match by title"
    }
   ],
   "scap_pushup": [
@@ -708,7 +668,6 @@
     "id": "LeMk15TN0No",
     "start": 0,
     "title": "Exercise With an Athletic Trainer: Scapular Pushups",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); athletic trainer demo"
    },
@@ -716,7 +675,6 @@
     "id": "uTOKRtzvRtE",
     "start": 0,
     "title": "Calisthenics For Beginners - Scapular Push Up",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short"
    }
@@ -734,7 +692,6 @@
     "id": "ftLV1SkpWAA",
     "start": 0,
     "title": "The World's GREATEST Stretch!",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short"
    }
@@ -744,7 +701,6 @@
     "id": "Jb6JEEUGbDY",
     "start": 0,
     "title": "How To Do A STANDING QUAD STRETCH | Exercise Demonstration Video and Guide",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    },
@@ -752,24 +708,23 @@
     "id": "ZKMYmIqnzrU",
     "start": 0,
     "title": "Stretch of the Day - Standing Quad Stretch",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short"
    }
   ],
   "figure4": [
    {
-    "id": "2VE_NLcNMvQ",
+    "id": "-g0nuyTHMrI",
     "start": 0,
-    "title": "Glute Figure 4 Stretch - Ask Doctor Jo",
+    "title": "Piriformis Figure 4 Stretch - Ask Doctor Jo",
     "channel": "Ask Doctor Jo (per title)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    },
    {
-    "id": "-g0nuyTHMrI",
+    "id": "2VE_NLcNMvQ",
     "start": 0,
-    "title": "Piriformis Figure 4 Stretch - Ask Doctor Jo",
+    "title": "Glute Figure 4 Stretch - Ask Doctor Jo",
     "channel": "Ask Doctor Jo (per title)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
@@ -788,7 +743,6 @@
     "id": "YAtrTy1C2Fs",
     "start": 0,
     "title": "Doorway Chest Stretch",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    }
@@ -798,7 +752,6 @@
     "id": "_ZX_zTOBgp8",
     "start": 0,
     "title": "How to do a Child's Pose Stretch | Proper Form & Technique",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    },
@@ -806,7 +759,6 @@
     "id": "6USdGiJ1BaA",
     "start": 0,
     "title": "Correct Technique for Childs Pose Stretch | Plus Easier and Harder Variations",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    }
@@ -816,7 +768,6 @@
     "id": "KyzlBfRKtPM",
     "start": 0,
     "title": "The correct way to walk in shallow pool water #swimming #shorts #howtoswim",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short, best title match"
    },
@@ -824,7 +775,6 @@
     "id": "gh4Mko4R7NM",
     "start": 0,
     "title": "Water Walking Exercise",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); aqua-fitness water walking, weaker swim-lesson fit"
    }
@@ -834,7 +784,6 @@
     "id": "MC6m-wyCqxM",
     "start": 0,
     "title": "Learning to Swim as an Adult: How to Blow Bubbles Underwater",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); adult learn-to-swim"
    },
@@ -842,9 +791,9 @@
     "id": "VDAywZ93bOo",
     "start": 0,
     "title": "Learn to Breathe While Swimming | Bobbing in the Water",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
-    "note": "Channel/length not verifiable from sandbox (YouTube blocked); bobbing"
+    "note": "影片已删除（2026-09-30 CI）；Channel/length not verifiable from sandbox (YouTube blocked); bobbing",
+    "bad": true
    }
   ],
   "sw_eyes": [
@@ -852,7 +801,6 @@
     "id": "Mynt-rRPVNY",
     "start": 0,
     "title": "How to Open your Eyes Underwater",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); weak match OK; title says goggles"
    },
@@ -860,27 +808,24 @@
     "id": "g80W4CqVGF8",
     "start": 0,
     "title": "Swimming Lesson: How to Keep Your Eyes Open Underwater",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    }
   ],
   "sw_wall_float": [
    {
-    "id": "CsOg3pJ4_Q8",
-    "start": 0,
-    "title": "The First Step to Swimming? Learn to Float.",
-    "channel": "unknown (not shown in search)",
-    "len": "unknown",
-    "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short; per search snippet starts with hands on wall for balance"
-   },
-   {
     "id": "Pf8mGGRPiyM",
     "start": 0,
     "title": "LEARN TO SWIM | Ep.2 Front Floating and Gliding | How to float for beginners",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); not necessarily holding wall"
+   },
+   {
+    "id": "CsOg3pJ4_Q8",
+    "start": 0,
+    "title": "The First Step to Swimming? Learn to Float.",
+    "len": "unknown",
+    "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short; per search snippet starts with hands on wall for balance"
    }
   ],
   "sw_jellyfish": [
@@ -896,27 +841,24 @@
     "id": "432i9s_hlmY",
     "start": 0,
     "title": "Jellyfish tuck float",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    }
   ],
   "sw_standup": [
    {
-    "id": "ESt5630JQZg",
-    "start": 0,
-    "title": "Standing Up From A Front Float | What No One Tells You",
-    "channel": "unknown (not shown in search)",
-    "len": "unknown",
-    "note": "Channel/length not verifiable from sandbox (YouTube blocked); adult beginners"
-   },
-   {
     "id": "l3_jzfFv4G4",
     "start": 0,
     "title": "How to Do A Front Float Into Standing (Front Float Into Vertical Recovery)",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
+   },
+   {
+    "id": "ESt5630JQZg",
+    "start": 0,
+    "title": "Standing Up From A Front Float | What No One Tells You",
+    "len": "unknown",
+    "note": "Channel/length not verifiable from sandbox (YouTube blocked); adult beginners"
    }
   ],
   "sw_star_float": [
@@ -924,7 +866,6 @@
     "id": "zNUGyfHfwas",
     "start": 0,
     "title": "Star floating in prone position",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    },
@@ -932,7 +873,6 @@
     "id": "npW4foU9SEU",
     "start": 0,
     "title": "Star Float",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short"
    }
@@ -942,7 +882,6 @@
     "id": "hHx2sdhmbOU",
     "start": 0,
     "title": "How to Float in Water for Beginners | Swim on Your Back in 4 Steps",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    },
@@ -950,7 +889,6 @@
     "id": "jpDbg9hxsO8",
     "start": 0,
     "title": "This Is How You Should Start a Back Float #swimming #floating #shorts",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); YouTube Short"
    }
@@ -960,7 +898,6 @@
     "id": "_p-2v7ZG2_I",
     "start": 0,
     "title": "Push and Glide - Learn to Swim Exercise",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    },
@@ -968,7 +905,6 @@
     "id": "DqIlXWyMF94",
     "start": 0,
     "title": "Pushing and gliding for beginners - A great way to learn the basics of floating and body position",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    }
@@ -978,7 +914,6 @@
     "id": "S6MYM8vkmS8",
     "start": 0,
     "title": "How to Kick in Swimming for Beginners | Kickboard Swimming Drills",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); features 3 beginner swimmers per snippet"
    },
@@ -986,27 +921,25 @@
     "id": "B9AmrMktofI",
     "start": 0,
     "title": "How to Swim using a Kickboard for Beginners | 2 Easy Drills",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    }
   ],
   "sw_kick_breath": [
    {
-    "id": "ow2RoL2eEsI",
-    "start": 0,
-    "title": "Freestyle Breathing Timing Using a Kick Board",
-    "channel": "unknown (not shown in search)",
-    "len": "unknown",
-    "note": "Channel/length not verifiable from sandbox (YouTube blocked); breathing on kickboard"
-   },
-   {
     "id": "Ou3e12HG04Y",
     "start": 0,
     "title": "How to Swim: Kick and Breathe",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); not confirmed to use kickboard"
+   },
+   {
+    "id": "ow2RoL2eEsI",
+    "start": 0,
+    "title": "Freestyle Breathing Timing Using a Kick Board",
+    "len": "unknown",
+    "note": "作者关了嵌入（2026-09-30 CI）；Channel/length not verifiable from sandbox (YouTube blocked); breathing on kickboard",
+    "bad": true
    }
   ],
   "sw_glide_kick": [
@@ -1014,7 +947,6 @@
     "id": "wwgCntLvpJk",
     "start": 0,
     "title": "Streamline drilling front and back flutter kick",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked);"
    },
@@ -1022,10 +954,10 @@
     "id": "bo-1Zc7ZItQ",
     "start": 0,
     "title": "How to Flutter Kick | A Step by Step Tutorial For New Swimmers",
-    "channel": "unknown (not shown in search)",
     "len": "unknown",
     "note": "Channel/length not verifiable from sandbox (YouTube blocked); weaker: not confirmed streamline glide"
    }
   ]
- }
+ },
+ "_checked": "2026-09-30：112/114 支能嵌入播放；每个动作第一支都经 Claude 看过 YouTube 三格截图确认是真人在做该动作"
 }

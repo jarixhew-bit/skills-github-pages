@@ -13,6 +13,12 @@
   index.html 的 `PH_EN`（按动作英文名）与 `PH_ANIM`（热身/放松/收尾按动画 key），照片与动作不完全
   一样（器材、坐站）时第二项写说明，会印在照片上。选照片前**先看过图**：库里同名动作常是别的变体。
   设置「动作示范」：真人（默认，没照片的用 3D）／3D／简笔（`cfg.media`）。
+- `videos.json` — 真人示范影片（别人的 YouTube 片）。每个键一串候选，**第一支没标 `bad` 的就是在用的**；
+  键名对应 index.html 的 `VK_EN` / `VK_ANIM` / `VK_SWIM`。卡片先放封面、点了才载入；全屏跟练自动静音循环播；
+  没网（navigator.onLine=false）或没影片时退回照片→3D。每周一 `fitness-videos.yml` 验在用的那支，
+  失效开 issue；修法＝把坏的标 `bad:true`（自动换备选）或补新候选。**换片前要看图**：在功能分支改
+  videos.json 推上去，workflow 自动跑 report 把每支三格截图拼成对照图提交回分支（`.photos/videos/`），
+  看完挑好、合并前删掉 `.photos/videos/`。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
