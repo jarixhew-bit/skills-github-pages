@@ -304,6 +304,26 @@ v2 顶部有「回旧版 / Classic」链到 index.html。
   已登记 `tools/lib/trips.py`（2026-10-17）与 `tools/ci-decide.py`（weather、penangv3 两条规则）。降速复现：`CPU_THROTTLE=6`／`20` 都全绿。
 - 四份并存（index／v2／v3／v4），改内容要四份都改。
 
+### penang-trip/with-map.html（2026-09-30 建，「带总地图」试装版；index.html 一字未改、**不加回链**）
+由 index.html 复制，**只新增**：顶栏「回旧版 / Classic」→index.html、navstrip 多一项「🗺 地图」、`#map` 区块（在 `#dining` 之前）、
+`</head>` 前一段 Leaflet CSS＋`<style>`、`</body>` 前一段 `<script>`。其余与 index.html 逐字相同（`diff` 只有新增行）。
+- **坐标来源**：`penang-trip/coords.json`（`[{cid, lat, lng, source, title, reason}]`），由 CI 的
+  `.github/workflows/fetch-coords.yml`（workflow_dispatch，输入 `queries`＝cid 或地图链接用 `|` 分隔、`out`＝结果档，
+  预设 `penang-trip/coords.json`）跑 `tools/fetch-coords.mjs` 抓：打开 `maps.google.com/?cid=` 地点页，从最终网址读
+  `!3d纬度!4d经度`（优先）／`@纬度,经度`／meta，读不到写 null＋原因，**不猜**；结果 commit 回触发分支，空结果不 commit。
+  用 MCP `actions_run_trigger` 对工作分支触发，完成后 `git pull` 拿档。2026-09-30 首跑 20/20 都是 `url-3d4d`。
+- 页面里的坐标是 **`MAP_COORDS`（`<script>` 开头的 `{cid:{lat,lng}}`）**，由 coords.json 核对后写入：必须在槟城州
+  （纬 5.1–5.6、经 100.15–100.6）且岛上/大陆与地址对得上，不合格的不写（页面会列成「坐标待核对，暂不上图」）。
+  **加/换卡片时**：跑一次 fetch-coords 拿新 cid 的坐标、核对后补进 `MAP_COORDS`；店名／评分／地址／链接都从卡片 DOM 读，不用重抄。
+- 类型：`#dining` 卡＝餐厅；去处 `data-cat` arcade→亲子电玩、culture/outdoor→景点、mall→商场。颜色取现有变量
+  （陶土红／万寿菊黄／靛蓝／`--ink-2`）。芯片数量、「岛上 N · 大陆 M」都由坐标现算（岛/陆分界 `ISLAND_MAX_LNG=100.355`）。
+- 行为：`scrollWheelZoom:false`，拖动/双指缩放默认关，点「点一下启用地图」遮罩 `#mapGate` 才开（手指滑过不卡页面）；
+  弹窗「导航」＝`/maps/dir/?api=1&destination=英文名, 英文地址`（不带 origin、去掉括注），「看卡片」跳 `#card-<cid>`
+  （id 由 JS 给卡片补，去处被筛掉时先 `filterPlaces('all')`）。Leaflet 载入失败 → 收起地图框/芯片/署名，显示
+  `#mapFallback` 清单（每个地点的 cid 链接）；只有底图瓦片失败 → 地图保留，清单也露出。`.mapbox` 用 `isolation:isolate`
+  把 Leaflet 的 z-index 关住，不压吸顶栏。不放「老板自宅」、不申请定位。
+- **没有长期自检**（试装页；用户满意、并进 index.html 时再补浏览器自检）。已登记 `tools/lib/trips.py`。
+
 ## xiamen-trip/index.html（约 830 行）
 厦门自由行手册，2026-08-24~27 三晚四天，2 人（HEW/CHERN YANG ＋ TAN/CHIN HOOI），双语。
 2026-08-22 新建，**CSS 与 JS 整套复制自 singapore-trip/index.html**（同一套 `.day`／`.stop`／
