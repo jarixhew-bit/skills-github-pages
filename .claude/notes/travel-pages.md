@@ -155,7 +155,8 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
 同时按用户要求**拿掉右下角浮动圆钮**（`.fab` ＋ `.sheet` 快速跳转面板，CSS/HTML/JS 全删），
 章节跳转只剩顶部吸顶 navstrip。
 URL: .../penang-trip/
-风格：娘惹瓷砖（teal #0e6b63 / coral #c4432c / gold），`.tiles` 是纯 CSS 菱格纹
+风格：娘惹瓷砖版面（**配色自 2026-09-30 起改用 v3 的蓝屋靛蓝，变量名不变**——下面的 teal/coral 色值是旧的，现值看 `:root`；
+提示条那句改成「深蓝实心按钮开地图、浅蓝底按钮开官网」），`.tiles` 是纯 CSS 菱格纹
 （给 `.band` / `.sec-head .rule` / brand 小方块用，无外部资源）。手机优先：正文 16px。
 结构（四个区块，编号 01–04，navstrip 四项与之一一对应）：
 `header.topbar`(:339) → `nav.navstrip`(:343，4 个 a) → `.cover`(:350，含 `#countdown`
