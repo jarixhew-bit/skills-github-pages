@@ -19,6 +19,8 @@
   失效开 issue；修法＝把坏的标 `bad:true`（自动换备选）或补新候选。**换片前要看图**：在功能分支改
   videos.json 推上去，workflow 自动跑 report 把每支三格截图拼成对照图提交回分支（`.photos/videos/`），
   看完挑好、合并前删掉 `.photos/videos/`。
+  选完片那次提交若又改了 videos.json，推上去会再跑一次 report、把对照图又提交回来——所以删对照图
+  那次要一起检查 `.photos/videos/` 没被带回来；别用 `[skip ci]` 躲，它会连 PR 的检查也一起跳过。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
