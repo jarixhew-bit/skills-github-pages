@@ -67,6 +67,9 @@
   进去是 admin，多一个管理面板可传账单/改行程。开通与收回权限只动 butler-bot 的
   GitHub Secret 再跑一次 deploy workflow。结构笔记见 `.claude/notes/boss-app.md`
 - `fortune.html` — 运势页面
+- `fitness/` — 减脂力量训练 App（PWA，2026-09-30 由用户上传的 artifact 改做专业版）：动画跟练、
+  双重进步法自动加重建议、每 4 周减量周、进步曲线、体重腰围、JSON/CSV 备份。数据只存本机
+  localStorage。结构笔记见 `.claude/notes/fitness.md`
 - `trading/` — IBKR 交易脚本与页面（`fund.html` 是作业系统简报页，2026-08-16 建，
   七区块仪表板：绩效／扫描／配置／风险／部位／再平衡／管线，风险指标由前端现算，
   新闻由 `.github/scripts/fetch_news.py` 每小时产出 `news.json`）
@@ -127,7 +130,7 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有三十个，全部挂 CI（2026-09-30 按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
+   交付时告诉用户自检怎么跑。现有三十一个，全部挂 CI（2026-09-30 同日再加 `check-fitness`；按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
@@ -139,7 +142,7 @@
    错位**——错位会把 A 公司的消息安到 B 公司头上；以及同一条新闻**跨区块去重**）/
    `check-gamebot`（＋`check-gamebot-logic.mjs`：把安卓 API 打桩，用假屏幕实跑手机脚本，
    查语法查不出的行为问题）/ `check-boss-sw`（同一路子：把 self/registration 打桩，派发假的 push 事件，验老板 App
-   的 Service Worker 收到推送怎么弹——真浏览器发不出 push 事件，这段只能这么验）；浏览器类 `check-expense-company.mjs` /
+   的 Service Worker 收到推送怎么弹——真浏览器发不出 push 事件，这段只能这么验）；浏览器类 `check-fitness.mjs`（减脂训练 App：用固定假历史验加重／减重／减量周建议是不是手算得出的数、备份导入不重复）/ `check-expense-company.mjs` /
    `check-staff-page.mjs` / `check-inventory.mjs` / `check-fund.mjs`（验 `trading/fund.html`
    那些前端现算的钱的数字：夏普、回撤、VaR、再平衡差额，用手算得出答案的 fixture 去对；
    两个数据档全用固定 fixture 拦掉，所以不随每天行情变动而误报）/ `check-weather.mjs`

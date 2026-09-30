@@ -66,6 +66,7 @@ CHECKS = [
     ("fund", ["node", "tools/check-fund.mjs"], True),
     ("weather", ["node", "tools/check-weather.mjs"], True),
     ("penangv3", ["node", "tools/check-penang-v3.mjs"], True),
+    ("fitness", ["node", "tools/check-fitness.mjs"], True),
     ("company", ["node", "tools/check-expense-company.mjs"], True),
     ("inventory", ["node", "tools/check-inventory.mjs"], True),
     # 老板 App 真的拆成两份不同的场景（前半/后半），并行跑；

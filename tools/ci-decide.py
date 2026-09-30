@@ -67,11 +67,13 @@ RULES = {
     "photofilter": ["tools/photo-filter.py", "tools/check-photo-filter.py"],
     # 候选清单页：用户就是靠它按编号挑地点，编号或评分印错等于挑错
     "shortlist": ["tools/build-shortlist.py", "tools/check-shortlist.py"],
+    # 减脂训练 App：加重建议、减量周、备份导入全是前端现算，只有真浏览器验得了
+    "fitness":   ["fitness/**", "tools/check-fitness.mjs"],
     "gamebot":   ["game-bot/**", "tools/check-gamebot.py",
                   "tools/check-gamebot-logic.mjs"],
 }
 # 浏览器类检查（慢）额外也盯着共用步骤：它坏了这几项全瞎
-BROWSER = ["company", "inventory", "staff", "fund", "weather", "penangv3", "boss"]
+BROWSER = ["company", "inventory", "staff", "fund", "weather", "penangv3", "boss", "fitness"]
 SHARED = ".github/actions/browser-check-setup/action.yml"
 
 
