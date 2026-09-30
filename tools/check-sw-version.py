@@ -20,7 +20,7 @@ import sys
 # 每个 PWA：SW 文件 → 归它管的页面/资源（这几个文件变了就得升 SW 版本）
 PWAS = {
     "boss/boss-sw.js": ["boss/index.html", "boss/manifest.webmanifest"],
-    "fitness/sw.js": ["fitness/index.html", "fitness/manifest.webmanifest", "fitness/anim3d.js"],
+    "fitness/sw.js": ["fitness/index.html", "fitness/manifest.webmanifest", "fitness/anim3d.js"],  # videos.json 走网络优先，改它不必升版
     "expense-tracker-sw.js": ["expense-tracker.html", "expense-tracker.webmanifest"],
     "staff/staff-sw.js": ["staff/index.html", "staff/manifest.webmanifest"],
     "xisui/sw.js": ["xisui/index.html", "xisui/manifest.json"],

@@ -68,7 +68,7 @@
   GitHub Secret 再跑一次 deploy workflow。结构笔记见 `.claude/notes/boss-app.md`
 - `fortune.html` — 运势页面
 - `fitness/` — 减脂力量训练＋游泳入门 App（PWA，2026-09-30 由用户上传的 artifact 改做专业版）：
-  真人示范照片（公共领域，`fitness/photos/`）＋3D 动作动画（three.js 放 `vendor/three/`）、双重进步法加重建议、减量周、进步曲线、体重腰围、
+  真人示范影片（嵌入别人的 YouTube 片，清单 `fitness/videos.json`）＋真人照片（公共领域，`fitness/photos/`）＋3D 动作动画（three.js 放 `vendor/three/`）、双重进步法加重建议、减量周、进步曲线、体重腰围、
   游泳 12 课（从怕水到游 10 米）、JSON/CSV 备份。数据只存本机。结构笔记见 `.claude/notes/fitness.md`
 - `trading/` — IBKR 交易脚本与页面（`fund.html` 是作业系统简报页，2026-08-16 建，
   七区块仪表板：绩效／扫描／配置／风险／部位／再平衡／管线，风险指标由前端现算，
@@ -130,7 +130,7 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有三十一个，全部挂 CI（2026-09-30 同日再加 `check-fitness`；按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
+   交付时告诉用户自检怎么跑。现有三十二个，全部挂 CI（2026-09-30 同日再加 `check-fitness` 与 `check-fitness-videos`；按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
@@ -157,7 +157,7 @@
    必须一个都不进 DOM，**并带 admin 对照组**——没有对照组的话，整个管理功能坏掉也会
    显示「通过」）（跑前要先起
    `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）；
-   线上类 `check-live`（每天验线上页面是不是 main 那一版，**只能在 CI 跑**，
+   线上类 `check-fitness-videos`（健身 App 嵌的 YouTube 示范片每周一验还能不能播，失效开 issue；**只能在 CI 跑**）／`check-live`（每天验线上页面是不是 main 那一版，**只能在 CI 跑**，
    沙盒连不上 github.io）＋ `fetch-photos`（抓图通道，结果会写回触发分支）
    ＋ `refresh-photos`（2026-09-18 建，**检测之外还会动手**：每周一体检后自动把
    死掉的图换成同一家店新抓的照片并开 PR，用户只要瞄一眼点合并。它带对照组守门——
