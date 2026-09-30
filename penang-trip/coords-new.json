@@ -1,0 +1,47 @@
+[
+  {
+    "cid": "2996911273390255740",
+    "query": "https://maps.app.goo.gl/sUCWq6CGC1SaDRBt8?g_st=atm",
+    "lat": 5.4132931,
+    "lng": 100.3312277,
+    "source": "url-3d4d",
+    "title": "K.B. Fun @ 1st Avenue - Google Maps",
+    "reason": "",
+    "finalUrl": "https://www.google.com/maps/place/K.B.+Fun+@+1st+Avenue/@5.4132931,100.3312277,17z/data=!3m1!4b1!4m6!3m5!1s0x304ac3e6e124bae9:0x29972aecc1ca2e7c!8m2!3d5.4132931!4d100.3312277!16s%2Fg%2F11gl12yb14!18m1!1e1?entry=ttu&g_ep=EgoyMDI2MDkyNy4xIKXMDSoASAFQAw%3D%3D",
+    "name": "K.B. Fun @ 1st Avenue",
+    "rating": 1.5,
+    "reviews": 88,
+    "address": "182, Jalan Magazine, 10300 George Town, Pulau Pinang, Malaysia",
+    "category": "Video arcade"
+  },
+  {
+    "cid": "16779912982672871373",
+    "query": "https://maps.app.goo.gl/4aatEjCjLgMFRXkN9?g_st=atm",
+    "lat": 5.4146699,
+    "lng": 100.3311298,
+    "source": "url-3d4d",
+    "title": "East Sound Arcade - Google Maps",
+    "reason": "",
+    "finalUrl": "https://www.google.com/maps/place/East+Sound+Arcade/@5.4146699,100.3311298,17z/data=!3m1!4b1!4m6!3m5!1s0x304ac36b774b52a1:0xe8de39f4362e8fcd!8m2!3d5.4146699!4d100.3311298!16s%2Fg%2F11st7dhxhj!18m1!1e1?entry=ttu&g_ep=EgoyMDI2MDkyNy4xIKXMDSoASAFQAw%3D%3D",
+    "name": "East Sound Arcade",
+    "rating": 2.9,
+    "reviews": 8,
+    "address": "Jalan Dr Lim Chwee Leong, George Town, 10450 George Town, Pulau Pinang, Malaysia",
+    "category": "Video arcade"
+  },
+  {
+    "cid": "6052983859694123251",
+    "query": "https://maps.app.goo.gl/M1fZnVuvPsV8dULeA?g_st=atm",
+    "lat": 5.413203,
+    "lng": 100.3313709,
+    "source": "url-3d4d",
+    "title": "Big Monster Ball @ 1st Avenue - Google Maps",
+    "reason": "",
+    "finalUrl": "https://www.google.com/maps/place/Big+Monster+Ball+@+1st+Avenue/@5.413203,100.3313709,17z/data=!3m1!4b1!4m6!3m5!1s0x304ac396d4a86f01:0x540084c0143db8f3!8m2!3d5.413203!4d100.3313709!16s%2Fg%2F11z7kw7tjr!18m1!1e1?entry=ttu&g_ep=EgoyMDI2MDkyNy4xIKXMDSoASAFQAw%3D%3D",
+    "name": "Big Monster Ball @ 1st Avenue",
+    "rating": 4.9,
+    "reviews": 124,
+    "address": "8-K1, Level 8, 1st Avenue Mall, 182, Jalan Magazine, 10300 George Town, Pulau Pinang, Malaysia",
+    "category": "Game store"
+  }
+]
