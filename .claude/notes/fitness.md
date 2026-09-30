@@ -6,6 +6,9 @@
 ## 文件
 - `index.html` — 单文件 App。三个 `<script>`：① 火柴人动画引擎 `ANIM`（沿用原版，别动角度约定）；
   ② 训练内容 `EX`/`FIN`/`PLAN`/`WARM`/`COOL`（改动作/次数只改这里）；③ App 逻辑。
+- `anim3d.js` — 3D 渲染（ES module，载入 `../vendor/three/three.module.min.js`）。它不定义动作，
+  只拿 `ANIM.sample(key,time)` 给的关节世界座标套上人体/哑铃/器材/泳池来画；载入失败或没有 WebGL
+  时 index.html 自动退回 2D 火柴人。设置里可关 3D（`cfg.anim3d`）。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
@@ -13,9 +16,13 @@
 - 加重建议：`suggest(id,eq)`（双重进步法；减量周的训练不算进历史 `histFor`）。
 - 减量周：`cycleInfo()`，以第一笔训练那周为第 1 周，每第 4 周减量（2 轮、9 成重量）。
 - localStorage key：`fit.sessions` / `fit.body` / `fit.draft` / `fit.cfg`。
-- 自检挂钩：`window.__fit`。
+- 自检挂钩：`window.__fit`；3D 画了几格：`window.ANIM3D.frames`。
+- 新增动作：在 ANIM 里 `def()` 一个 key 就同时有 2D 与 3D；游泳动作带 `pool:POOL`，
+  漂浮高度用帧里的 `lf`、往前滑用 `dx`。器材名（bench/seat/wallR/board…）两边都要各画一次。
+- 游泳课：`SWIM_STAGES` / `SWIM`（12 课），进度 localStorage `fit.swim`，也进备份。
 
 ## 坑
 - 数据只在本机浏览器，没有云端。换手机靠「更多 → 导出/导入备份」。
 - 原 artifact 的数据存在 claude.ai 那边，不同网域，**无法自动搬过来**。
-- 自检：`tools/check-fitness.mjs`（真浏览器，固定日期 2026-09-30）。
+- 自检：`tools/check-fitness.mjs`（真浏览器＋SwiftShader 软件 WebGL，固定日期 2026-09-30）。
+- SW 对 anim3d.js 与 three 是「缓存优先」：改 anim3d.js 一定要升 `CACHE`（check-sw-version 已盯着）。

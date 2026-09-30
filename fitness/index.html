@@ -102,7 +102,7 @@ details p{margin-top:4px}
 #rest button{border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:8px;padding:6px 10px}
 #rest .grow{flex:1;min-width:0;font-size:13px;line-height:1.3}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav.tabs .inner{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+nav.tabs .inner{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 nav.tabs button{border:0;background:transparent;height:60px;font-size:13px;color:var(--muted);font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 nav.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
 nav.tabs button[aria-selected="true"]{color:var(--accent)}
@@ -183,13 +183,22 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
 .feel{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .feel .chip{padding:10px 6px;border-radius:10px}
 .fold > summary{font-size:17px;font-weight:700;color:var(--ink);list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
-.fold > summary::before{content:none}
+.fold > summary::before,.fold[open] > summary::before{content:none}
 .fold > summary::after{content:"＋";color:var(--muted);font-weight:500}
 .fold[open] > summary::after{content:"－"}
 .fold{font-size:15px;color:var(--ink)}
 .fold > .stack{margin-top:12px}
 .backup-warn{display:none}
 .backup-warn.on{display:block}
+canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;display:block}
+.swim-top .bar{height:8px}
+.goal{background:var(--soft);border-radius:10px;padding:8px 10px;font-size:14px}
+.goal b{color:var(--accent)}
+.swim-drill.done{border-color:var(--ok)}
+.swim-drill .btn[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:#fff}
+.stage-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px}
+.key{border:2px solid var(--plate)}
+@media (max-width:380px){nav.tabs button{font-size:12px}}
 @media (max-width:380px){.sets{grid-template-columns:auto 1fr 1fr 54px auto;gap:6px 5px}.chk{width:38px}.form-row{grid-template-columns:1fr 1fr}.form-row label:first-child{grid-column:1 / -1}}
 </style>
 </head>
@@ -232,6 +241,25 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
       <span><b>开始跟练</b><span id="goSub">全屏动画带练 · 自动计时、语音提示</span></span>
     </button>
     <div id="workout" class="stack" style="gap:12px"></div>
+  </section>
+
+  <!-- ===== 游泳 ===== -->
+  <section id="tab-swim" class="stack" hidden>
+    <div class="card swim-top" id="swimTop"></div>
+    <details class="card fold" id="swimSafety">
+      <summary>下水前必看：安全五件事</summary>
+      <div class="stack">
+        <ol class="steps">
+          <li><span>只在<b>有救生员</b>的泳池练，待在水深<b>到胸口以下</b>的浅水区。</span></li>
+          <li><span>第一次最好有会游泳的家人朋友陪在旁边，一伸手就碰得到。</span></li>
+          <li><span>戴泳镜和泳帽；刚吃饱、身体不舒服、喝过酒都不要下水。</span></li>
+          <li><span>一慌就记住这句：<b>水只到胸口，脚往下踩就站得起来。</b>（第 6 课专门练这个）</span></li>
+          <li><span>每次练 30–45 分钟就好，觉得冷、累、抽筋就上岸。</span></li>
+        </ol>
+        <p class="small muted">这份课程是自学辅助。报名成人游泳班、有教练在旁边纠正，会学得更快更安全；这里的动画可以拿来预习和复习。</p>
+      </div>
+    </details>
+    <div id="swimList" class="stack"></div>
   </section>
 
   <!-- ===== 进度 ===== -->
@@ -277,6 +305,7 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
       <div class="set-row"><span>器械每次加重</span><div class="seg" role="group" aria-label="器械每次加重" id="cfgGym"></div></div>
       <div class="set-row"><span>每周目标次数</span><div class="seg" role="group" aria-label="每周目标次数" id="cfgGoal"></div></div>
       <div class="set-row"><span>自动减量周<br><span class="small muted">每练 3 周，第 4 周自动减量</span></span><button class="toggle" id="cfgDeload" aria-label="自动减量周" aria-pressed="true"></button></div>
+      <div class="set-row"><span>3D 动作动画<br><span class="small muted">旧手机觉得卡可以关掉，改回简笔画</span></span><button class="toggle" id="cfg3d" aria-label="3D 动作动画" aria-pressed="true"></button></div>
       <div class="set-row"><span>跟练语音提示</span><button class="toggle" id="cfgVoice" aria-label="跟练语音提示" aria-pressed="true"></button></div>
     </div>
 
@@ -378,6 +407,7 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
 <nav class="tabs" aria-label="页面">
   <div class="inner" role="tablist">
     <button role="tab" aria-selected="true" data-tab="train"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4M6 7v10M18 7v10M21 10v4M6 12h12"/></svg>训练</button>
+    <button role="tab" aria-selected="false" data-tab="swim"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 16c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M2 20c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="15" cy="6" r="2"/><path d="M5 12l5-4 3 3"/></svg>游泳</button>
     <button role="tab" aria-selected="false" data-tab="prog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6 15l4-4 3 3 5-6"/></svg>进度</button>
     <button role="tab" aria-selected="false" data-tab="hist"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>记录</button>
     <button role="tab" aria-selected="false" data-tab="more"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>更多</button>
@@ -423,6 +453,7 @@ var ANIM = (function(){
     o.ft = P.ft!=null?P.ft:(P.lt||0); o.fs = P.fs!=null?P.fs:(P.ls||0);
     o.na = P.na!=null?P.na:(P.a||0);  o.nf = P.nf!=null?P.nf:(P.f||0);
     o.fa = P.fa!=null?P.fa:(P.a||0);  o.ff = P.ff!=null?P.ff:(P.f||0);
+    o.lf = P.lf||0; o.dx = P.dx||0; // 整体抬高 / 往前移（游泳：漂浮高度、滑行距离）
     return o;
   }
   function joints(o){
@@ -453,7 +484,7 @@ var ANIM = (function(){
     if(P.fF){ var tf=[ref[0]+P.fF[0], ref[1]+P.fF[1]]; var r2=ik([0,0],tf,LEN.thigh,LEN.shin,P.fbend||1); o.ft=r2[0]; o.fs=r2[1]; }
     return o;
   }
-  var KEYS=["t","nt","ns","ft","fs","na","nf","fa","ff"];
+  var KEYS=["t","nt","ns","ft","fs","na","nf","fa","ff","lf","dx"];
   function lerp(a,b,u){ var o={}; KEYS.forEach(function(k){ o[k]=a[k]+(b[k]-a[k])*u; }); return o; }
   function ease(u){ return u<0.5 ? 2*u*u : 1-Math.pow(-2*u+2,2)/2; }
 
@@ -506,6 +537,21 @@ var ANIM = (function(){
   def("fig4",    {frames:[{t:-90,nt:170,ns:95,ft:150,fs:30,a:120,f:150},{t:-90,nt:175,ns:95,ft:155,fs:35,a:125,f:155}], ground:"low", anchorX:"hip", dur:2});
   def("chest",   {frames:[{na:-80,nf:-170,fa:-80,ff:-170},{t:6,na:-88,nf:-172,fa:-88,ff:-172}], dur:2});
   def("child",   {frames:[{t:103,lt:60,ls:-90,a:85,f:90},{t:107,lt:60,ls:-90,a:88,f:92}], ground:"low", anchorX:"hip", dur:2});
+  // ---- swimming（水深到胸口：水面高 66；漂浮时身体抬到 lf≈59） ----
+  var POOL={surface:66};
+  var FLOAT={t:90,lt:-90,ls:-90,a:90,f:90,lf:59};
+  function F(x){ var o={}; for(var k in FLOAT) o[k]=FLOAT[k]; for(var k2 in x) o[k2]=x[k2]; return o; }
+  def("wwalk",   {frames:[{t:4,nt:40,ns:-5,na:-35,nf:-20,fa:30,ff:40},{t:4,ft:40,fs:-5,fa:-35,ff:-20,na:30,nf:40}], ground:"low", anchorX:"hip", dur:1.0, pool:POOL});
+  def("bob",     {frames:[{a:25,f:35},{t:25,lt:100,ls:-45,a:70,f:80}], dur:1.5, pool:POOL});
+  def("wallfloat",{frames:[F({}),F({lt:-84,ls:-84,lf:58})], ground:"low", anchorX:"hip", dur:1.6, pool:POOL, props:["wallR"]});
+  def("jelly",   {frames:[{t:105,lt:35,ls:-120,H:[12,6],lf:40},{t:100,lt:38,ls:-118,H:[12,7],lf:41}], ground:"low", anchorX:"hip", dur:1.8, pool:POOL});
+  def("starfloat",{frames:[F({a:100,f:100}),F({a:96,f:96,lt:-86,ls:-86,lf:58})], ground:"low", anchorX:"hip", dur:1.8, pool:POOL});
+  def("standup", {frames:[F({}),F({t:45,lt:70,ls:-40,a:25,f:-20,lf:30}),{t:2,a:10,f:10},F({})], ground:"low", anchorX:"hip", dur:1.1, pool:POOL});
+  def("backfloat",{frames:[{t:-90,lt:90,ls:90,a:-100,f:-100,lf:59},{t:-92,lt:94,ls:94,a:-96,f:-96,lf:58}], ground:"low", anchorX:"hip", dur:1.8, pool:POOL});
+  def("glide",   {frames:[F({lt:-35,ls:-125,dx:0}),F({dx:45}),F({dx:72})], ground:"low", anchorX:"hip", dur:1.0, pool:POOL, props:["wallL"]});
+  def("kick",    {frames:[F({nt:-80,ns:-70,ft:-100,fs:-105,t:88}),F({ft:-80,fs:-70,nt:-100,ns:-105,t:88})], ground:"low", anchorX:"hip", dur:0.35, noEase:false, pool:POOL, props:["board"]});
+  def("kickbreath",{frames:[F({nt:-80,ns:-70,ft:-100,fs:-105}),F({ft:-80,fs:-70,nt:-100,ns:-105}),F({t:72,nt:-80,ns:-70,ft:-100,fs:-105,lf:57}),F({ft:-80,fs:-70,nt:-100,ns:-105}),F({nt:-80,ns:-70,ft:-100,fs:-105})], ground:"low", anchorX:"hip", dur:0.4, pool:POOL, props:["board"]});
+  def("kickfree",{frames:[F({nt:-80,ns:-70,ft:-100,fs:-105}),F({ft:-80,fs:-70,nt:-100,ns:-105})], ground:"low", anchorX:"hip", dur:0.35, pool:POOL});
 
   function framePose(d, time){
     var n=d.res.length; var dur=d.dur||1.1; var hold=0.25;
@@ -527,9 +573,10 @@ var ANIM = (function(){
     if(d._lay) return d._lay;
     var ax=d.anchorX||"nf";
     var xs=[], cache=[];
-    for(var k=0;k<d.res.length;k++){ var j=joints(d.res[k]); cache.push(j); for(var p in j) xs.push(j[p][0]-j[ax][0]); }
+    for(var k=0;k<d.res.length;k++){ var j=joints(d.res[k]); cache.push(j); for(var p in j) xs.push(j[p][0]-j[ax][0]+(d.res[k].dx||0)); }
     var mn=Math.min.apply(null,xs), mx=Math.max.apply(null,xs);
     d._lay={ax:ax, off:-(mn+mx)/2, span:(mx-mn)};
+    d._lay.wallX=Math.min(cache[0].ff[0],cache[0].nf[0])-cache[0][ax][0]+(d.res[0].dx||0)+d._lay.off-4; // 蹬边滑行：池壁固定在起点脚后
     return d._lay;
   }
 
@@ -543,14 +590,15 @@ var ANIM = (function(){
     var ax=lay.ax, maxY=-1e9;
     if((d.ground||"foot")==="low"){ for(var p in j) if(j[p][1]>maxY) maxY=j[p][1]; }
     else maxY=j.nf[1];
-    var lift=(d.lift||0);
-    function X(pt){ return CX + (pt[0]-j[ax][0]+lay.off)*s; }
+    var lift=(d.lift||0)+(o.lf||0), dxo=o.dx||0;
+    function X(pt){ return CX + (pt[0]-j[ax][0]+lay.off+dxo)*s; }
     function Y(pt){ return G + (pt[1]-maxY-lift)*s; }
     var C=opts.colors||{ink:"#222",far:"#999",acc:"#0a7",prop:"#ccc",wt:"#c43"};
     ctx.clearRect(0,0,W,H);
     // ground
     ctx.strokeStyle=C.prop; ctx.lineWidth=2*s; ctx.lineCap="round";
     ctx.beginPath(); ctx.moveTo(W*0.06,G+2*s); ctx.lineTo(W*0.94,G+2*s); ctx.stroke();
+    if(d.pool){ var sy=G-d.pool.surface*s; ctx.fillStyle="rgba(63,167,214,.22)"; ctx.fillRect(0,sy,W,G-sy); ctx.strokeStyle="rgba(63,167,214,.8)"; ctx.lineWidth=1.5*s; ctx.beginPath(); ctx.moveTo(0,sy); ctx.lineTo(W,sy); ctx.stroke(); }
     // props
     ctx.fillStyle=C.prop;
     (d.props||[]).forEach(function(pr){
@@ -562,6 +610,9 @@ var ANIM = (function(){
       if(pr==="bar"){ var hx=X(j.nh), hy=Y(j.nh); ctx.fillRect(hx-26*s,hy-4*s,60*s,4*s); ctx.fillRect(hx+30*s,hy-4*s,3*s,G-hy+4*s); }
       if(pr==="boxF"){ var fx=X(j.ff), fy=Y(j.ff)+2*s; rr(ctx,fx-14*s,fy,20*s,G-fy); }
       if(pr==="boxN"){ var nx=X(j.nf), ny=Y(j.nf)+2*s; rr(ctx,nx-18*s,ny,34*s,G-ny); }
+      if(pr==="wallR"){ var wx=X(j.nh)+3*s; ctx.fillRect(wx,G-(d.pool.surface+8)*s,6*s,(d.pool.surface+8)*s); }
+      if(pr==="wallL"){ var lx=CX+lay.wallX*s; ctx.fillRect(lx-6*s,G-(d.pool.surface+8)*s,6*s,(d.pool.surface+8)*s); }
+      if(pr==="board"){ ctx.fillStyle=C.wt; rr(ctx,X(j.nh)-6*s,Y(j.nh)-3*s,28*s,3*s); ctx.fillStyle=C.prop; }
     });
     function line(a,b,col,w){ ctx.strokeStyle=col; ctx.lineWidth=w*s; ctx.beginPath(); ctx.moveTo(X(a),Y(a)); ctx.lineTo(X(b),Y(b)); ctx.stroke(); }
     function limb(a,b,c,col){ ctx.strokeStyle=col; ctx.lineWidth=5*s; ctx.lineJoin="round"; ctx.beginPath(); ctx.moveTo(X(a),Y(a)); ctx.lineTo(X(b),Y(b)); ctx.lineTo(X(c),Y(c)); ctx.stroke(); }
@@ -578,7 +629,27 @@ var ANIM = (function(){
     if(hold==="hands"||hold==="one") dumb(j.nh,C.wt);
   }
   function rr(ctx,x,y,w,h){ var r=Math.min(3,Math.abs(h)/2,Math.abs(w)/2); ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(x,y,w,h,r); else ctx.rect(x,y,w,h); ctx.fill(); }
-  return {draw:draw, has:function(k){return !!S[k];}, holdOf:function(k){return S[k]&&S[k].hold||null;}, keys:function(){return Object.keys(S);}};
+  // ---- 给 3D 渲染用：同一姿势换成「世界座标」（x 往前、y 往上、地面 y=0） ----
+  function cycleLen(d){ var n=d.res.length, seg_=(d.dur||1.1)+0.25; return seg_*(n===2?2:(n-1)); }
+  function place(d,o){
+    var lay=layout(d), j=joints(o), ax=lay.ax, maxY=-1e9;
+    if((d.ground||"foot")==="low"){ for(var p in j) if(j[p][1]>maxY) maxY=j[p][1]; } else maxY=j.nf[1];
+    var lift=(d.lift||0)+(o.lf||0), dx=o.dx||0, P={};
+    for(var q in j) P[q]=[j[q][0]-j[ax][0]+lay.off+dx, maxY+lift-j[q][1]];
+    return P;
+  }
+  function bounds(d){
+    if(d._b) return d._b;
+    var T=cycleLen(d), b={x0:1e9,x1:-1e9,y0:1e9,y1:-1e9};
+    for(var i=0;i<=40;i++){ var P=place(d,framePose(d,T*i/40)); for(var p in P){ b.x0=Math.min(b.x0,P[p][0]); b.x1=Math.max(b.x1,P[p][0]); b.y0=Math.min(b.y0,P[p][1]); b.y1=Math.max(b.y1,P[p][1]); } }
+    d._b=b; return b;
+  }
+  function sample(key,time){
+    var d=S[key]; if(!d) return null;
+    var o=framePose(d,time);
+    return {P:place(d,o), t:o.t, props:d.props||[], pool:d.pool||null, b:bounds(d), wallX:layout(d).wallX};
+  }
+  return {draw:draw, sample:sample, has:function(k){return !!S[k];}, holdOf:function(k){return S[k]&&S[k].hold||null;}, keys:function(){return Object.keys(S);}};
 })();
 
 </script>
@@ -654,7 +725,7 @@ const SKEY="fit.sessions", BKEY="fit.body", DKEY="fit.draft", CKEY="fit.cfg";
 const ls={ get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
            set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
            del(k){try{localStorage.removeItem(k)}catch(e){}} };
-const CFG_DEF={equip:"db",voice:true,rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,lastBackup:0};
+const CFG_DEF={equip:"db",voice:true,anim3d:true,rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,lastBackup:0};
 let cfg=Object.assign({},CFG_DEF,ls.get(CKEY,{}));
 if(!EQ_LABEL[cfg.equip]) cfg.equip="db";
 let sessions=ls.get(SKEY,null);
@@ -745,7 +816,7 @@ function sugHTML(sg){
 
 // ---------- Animation loop ----------
 const canv=new Set();
-function colors(){ const cs=getComputedStyle(document.documentElement); const g=n=>cs.getPropertyValue(n).trim(); return {ink:g("--ink"),far:g("--far"),acc:g("--accent"),prop:g("--line"),wt:g("--plate")}; }
+function colors(){ const cs=getComputedStyle(document.documentElement); const g=n=>cs.getPropertyValue(n).trim(); return {ink:g("--ink"),far:g("--far"),acc:g("--accent"),prop:g("--line"),wt:g("--plate"),soft:g("--soft")}; }
 function attach(c,key,hold){ c._key=key; c._hold=hold; c._t0=performance.now(); canv.add(c); }
 let reduce=false; try{ reduce=matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
 function loop(){
@@ -756,12 +827,17 @@ function loop(){
   canv.forEach(c=>{
     if(!c.isConnected){ canv.delete(c); return; }
     const r=c.getBoundingClientRect(); if(r.bottom<0||r.top>vh||r.width===0) return;
+    const big=c.id==="plCanvas", use3d=cfg.anim3d!==false&&window.ANIM3D&&!c._fail3d;
+    if(use3d&&!big&&now-(c._last||0)<45) return; // 3D 缩图约 20 格/秒就够顺，省电
+    c._last=now;
     const W=Math.round(r.width*dpr), H=Math.round(r.height*dpr);
     if(c.width!==W||c.height!==H){ c.width=W; c.height=H; }
     let key=c._key; if(Array.isArray(key)) key=key[Math.floor((now-c._t0)/5000)%key.length];
     const hold=Array.isArray(c._hold)?c._hold[Math.floor((now-c._t0)/5000)%c._hold.length]:c._hold;
     const t=reduce?0.9:(now-c._t0)/1000;
-    try{ ANIM.draw(c.getContext("2d"),W,H,key,Math.max(0,t),{colors:C,hold:hold}); }catch(err){}
+    const ctx=c.getContext("2d"), o={colors:C,hold:hold,orbit:big&&!reduce};
+    if(use3d){ try{ if(ANIM3D.draw(ctx,W,H,key,Math.max(0,t),o)) return; }catch(err){ c._fail3d=true; } }
+    try{ ANIM.draw(ctx,W,H,key,Math.max(0,t),o); }catch(err){}
   });
 }
 requestAnimationFrame(loop);
@@ -1074,16 +1150,17 @@ $("histList").addEventListener("click",e=>{
 const SEGS={cfgRest:["rest",[60,75,90],v=>v+" 秒"],cfgDb:["dbStep",[1,2,2.5],v=>v+" kg"],cfgGym:["gymStep",[2.5,5],v=>v+" kg"],cfgGoal:["goal",[2,3,4],v=>v+" 次"]};
 function renderCfg(){
   for(const id in SEGS){ const [k,opts,f]=SEGS[id]; $(id).innerHTML=opts.map(v=>'<button data-v="'+v+'" aria-pressed="'+(cfg[k]===v)+'">'+f(v)+'</button>').join(""); }
-  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice);
+  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfg3d").setAttribute("aria-pressed",cfg.anim3d!==false);
 }
 Object.keys(SEGS).forEach(id=>$(id).addEventListener("click",e=>{ const b=e.target.closest("[data-v]"); if(!b) return; cfg[SEGS[id][0]]=+b.dataset.v; saveCfg(); renderAll(); }));
 $("cfgDeload").onclick=()=>{ cfg.deload=!cfg.deload; saveCfg(); renderAll(); };
 $("cfgVoice").onclick=()=>{ cfg.voice=!cfg.voice; saveCfg(); renderCfg(); };
+$("cfg3d").onclick=()=>{ cfg.anim3d=cfg.anim3d===false; saveCfg(); renderCfg(); };
 
 // ---------- 备份 ----------
 function download(name,text,type){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
 $("bkJson").onclick=()=>{
-  download("训练备份-"+isoDay(Date.now())+".json",JSON.stringify({app:"fitness",v:1,exported:Date.now(),sessions,body,cfg},null,1),"application/json");
+  download("训练备份-"+isoDay(Date.now())+".json",JSON.stringify({app:"fitness",v:1,exported:Date.now(),sessions,body,cfg,swim},null,1),"application/json");
   cfg.lastBackup=Date.now(); saveCfg(); renderHist();
   $("bkMsg").textContent="已导出 "+sessions.length+" 次训练、"+body.length+" 笔体重。存到云端硬盘或传给自己，换手机时导入。";
 };
@@ -1101,6 +1178,7 @@ $("bkFile").onchange=async e=>{
     let ns=0, nb=0;
     d.sessions.forEach(s=>{ if(s&&s.id&&Array.isArray(s.sets)&&!sessions.some(x=>x.id===s.id)){ sessions.push(s); ns++; } });
     (d.body||[]).forEach(b=>{ if(b&&b.id&&isFinite(b.kg)&&!body.some(x=>x.id===b.id)){ body.push(b); nb++; } });
+    if(d.swim&&typeof d.swim==="object"){ for(const k in d.swim) if(!swim[k]&&SWIM.some(x=>x.id===k)) swim[k]=d.swim[k]; ls.set(WKEY,swim); }
     saveSessions(); saveBody(); renderAll();
     $("bkMsg").textContent="导入完成：新增 "+ns+" 次训练、"+nb+" 笔体重（重复的自动略过）。";
   }catch(err){ $("bkMsg").textContent="导入失败：这不是本 app 导出的备份文件。"; }
@@ -1258,24 +1336,101 @@ $("plMain").addEventListener("input",e=>{
 });
 $("startPlayer").onclick=()=>{ beep(1,1); openPlayer(); };
 
+// ---------- 游泳：从怕水到游 10 米 ----------
+const SWIM_STAGES=[
+  ["第 1 关：跟水交朋友","站在浅水区，先习惯水、学会在水里吐气。"],
+  ["第 2 关：浮起来，自己站起来","这一关最重要：学会浮，也学会任何时候都能自己站起来，就不会再怕水。"],
+  ["第 3 关：滑行与打腿","让身体像箭一样滑出去，再用腿推着自己前进。"],
+  ["第 4 关：第一次游 10 米","把前面学的串起来。游完 10 米，你就会游泳了。"]];
+const SWIM=[
+  {id:"walk",st:0,name:"水中行走",anim:"wwalk",goal:"在胸口深的水里，不扶池边走完一个池宽。",
+   steps:["先扶着池边走，另一只手在水里左右划，帮助平衡。","习惯后放开手，身体稍微前倾、步子放小。","觉得不稳就停下、两脚踩稳——水到胸口，一定站得住。"],
+   err:"憋着气、全身僵硬。边走边正常呼吸，肩膀放松。",en:"water walking pool beginner"},
+  {id:"bubble",st:0,name:"吐泡泡",anim:"bob",goal:"连续 10 次：蹲下让脸入水、用鼻子慢慢吐泡泡，站起来用嘴吸气，节奏不乱。",
+   steps:["扶着池边，先只把嘴放进水里吹泡泡。","再把鼻子也放进去，用鼻子「嗯——」地慢慢吐气（一直在吐气，水就进不了鼻子）。","整个头蹲进水里把气吐完，站起来张嘴吸一口，再蹲下。"],
+   err:"在水里憋气、出水才又吐又吸，很容易呛到。要在水里就把气吐完，出水只管吸。",en:"bubble breathing swimming beginner"},
+  {id:"eyes",st:0,name:"水里睁眼",anim:"bob",goal:"戴泳镜蹲进水里，看清池底或自己的手指 5 秒。",
+   steps:["泳镜调到不漏水：按在眼睛上、放手也吸得住。","蹲下后慢慢睁眼，一边吐泡泡一边数自己伸出几根手指。","也试试不戴泳镜睁眼几次，万一泳镜掉了也不会慌。"],
+   err:"一进水就紧闭眼睛。看得见就不会怕，这一步比想象中重要。",en:"open eyes underwater goggles beginner"},
+  {id:"wall",st:1,name:"扶着池边漂浮",anim:"wallfloat",goal:"双手扶池边，脸入水吐泡泡，腿浮起来、身体平躺在水面 5 秒，再自己站好。",
+   steps:["双手扶住池边或水槽，吸一口气，脸放进水里。","慢慢吐气，让腿自己往后浮起来，不用刻意踢。","想站：膝盖往胸口收，抬头，脚往下踩。"],
+   err:"抬着头看前面，腿就会往下沉。脸朝池底，身体才浮得平。",en:"prone float holding pool wall beginner"},
+  {id:"jelly",st:1,name:"水母漂",anim:"jelly",goal:"吸气后抱膝缩成一团浮在水面 5 秒，放开手自己站起来。",
+   steps:["吸满一口气，蹲下、低头，双手抱住小腿。","身体会自己慢慢浮上来，背露出水面，像一只水母。","数到 5，放开手、脚往下踩，站起来。"],
+   err:"气没吸够，或一紧张就马上放手。吸满气、放松，身体一定会浮起来。",en:"jellyfish float swimming beginner"},
+  {id:"standup",st:1,key:true,name:"漂浮后自己站起来",anim:"standup",goal:"从趴着漂浮的姿势，不扶东西自己站起来，连续 5 次都不慌。",
+   steps:["趴着漂浮时，先把膝盖往胸口收。","同时双手往下、往后压水，头抬起来。","身体变直后，脚往池底踩稳，再吸气。"],
+   err:"先抬头、脚还没收，身体会卡在半空、开始慌。顺序是：收膝 → 压手 → 抬头 → 踩地。",en:"how to stand up from float swimming"},
+  {id:"star",st:1,name:"不扶东西漂浮",anim:"starfloat",goal:"不扶任何东西，吸气后脸入水，手脚伸直浮在水面 10 秒，再自己站起来。",
+   steps:["吸一口气，脸入水，双手往前伸直。","慢慢吐气，全身放松，让水托住你。","想站就用第 6 课的方法：收膝、压手、抬头、踩地。"],
+   err:"身体绷得太紧或手脚乱动。越放松越会浮，轻轻伸直就好。",en:"prone star float swimming beginner"},
+  {id:"back",st:1,name:"仰漂",anim:"backfloat",goal:"仰躺在水面，耳朵在水里、脸露出水面，浮 10 秒。",
+   steps:["第一次请同伴托住你的背，或背靠池边慢慢往后躺。","耳朵放进水里，下巴微抬，肚子往上挺。","手臂往两侧张开，正常呼吸。想站：收膝、低头、手往前划，脚踩地。"],
+   err:"像坐着一样（屁股往下掉）就会沉。把肚子往上挺，像躺在床上。",en:"back float swimming beginner"},
+  {id:"glide",st:2,name:"蹬边滑行",anim:"glide",goal:"背靠池壁用脚一蹬，手臂伸直夹住耳朵，滑出 3 米，再自己站起来。",
+   steps:["背对池壁站好，一只脚踩到身后的池壁上。","吸气、脸入水，手臂往前伸直夹住耳朵，另一只脚也踩上池壁。","双脚用力一蹬，身体拉直，像一支箭往前滑。"],
+   err:"蹬出去时抬头看前面，马上就慢下来往下沉。眼睛看池底，手臂夹紧耳朵。",en:"push and glide swimming beginner"},
+  {id:"kick",st:2,name:"扶板打腿",anim:"kick",goal:"双手扶浮板，打腿前进 10 米（这一课可以抬着头换气）。",
+   steps:["双手扶住浮板前端，手臂伸直，身体平躺在水面。","从大腿发力，两条腿交替上下打水，膝盖只微微弯。","脚背绷直、脚尖朝后，像要把拖鞋踢掉那样。"],
+   err:"只用小腿像骑单车一样踩，膝盖弯太多，人会原地不动。幅度小一点、从大腿发力。",en:"flutter kick with kickboard beginner"},
+  {id:"kickbreath",st:3,name:"扶板打腿＋换气",anim:"kickbreath",goal:"脸入水打腿、慢慢吐气，要换气时抬头吸一口，连续 10 米不停。",
+   steps:["脸入水打腿，用鼻子慢慢吐气（跟第 2 课一样）。","气快吐完时，下巴往前抬出水面，用嘴快速吸一口。","马上把脸放回水里，腿一直打、不要停。"],
+   err:"抬头换气时腿就停了，身体跟着往下沉。换气时腿一定要继续打。",en:"kickboard flutter kick breathing beginner"},
+  {id:"swim10",st:3,name:"滑行打腿 10 米",anim:"kickfree",goal:"不用浮板：蹬边滑行接着打腿，游 10 米再自己站起来。做到了，你就会游泳了！",
+   steps:["蹬边滑行，手臂伸直夹住耳朵。","滑慢了就开始打腿，脸朝池底慢慢吐气。","要吸气就站起来（水只到胸口），休息一下再出发，慢慢拉长距离。"],
+   err:"太急着往前、手乱划。先靠打腿就好，下一步再学划手和转头换气（自由泳）。",en:"streamline flutter kick no kickboard beginner"}];
+const WKEY="fit.swim";
+let swim=ls.get(WKEY,{});
+function renderSwim(){
+  const n=SWIM.filter(d=>swim[d.id]).length, next=SWIM.find(d=>!swim[d.id]);
+  $("swimTop").innerHTML='<div class="row between"><div><div class="eyebrow">游泳课 · 从怕水到游 10 米</div><p><span class="num" style="font-size:26px">'+n+'</span> <span class="muted">/ '+SWIM.length+' 课过关</span></p></div>'+
+    (next?'<button class="btn primary" data-swgo="'+next.id+'">下一课：'+esc(next.name)+'</button>':'<span class="pill next">全部过关 🎉</span>')+'</div>'+
+    '<div class="bar"><i style="width:'+Math.round(n/SWIM.length*100)+'%"></i></div>'+
+    '<p class="small muted">每课先看动画和要点，下水照着做；做到「过关标准」就按「我做到了」。一次练 2–3 课就好，不用一天学完。</p>';
+  if(!n) $("swimSafety").open=true;
+  let h="";
+  SWIM_STAGES.forEach((stg,si)=>{
+    const ds=SWIM.filter(d=>d.st===si), dn=ds.filter(d=>swim[d.id]).length;
+    h+='<div class="stage-head"><h2>'+esc(stg[0])+'</h2><span class="small muted">'+dn+' / '+ds.length+'</span></div><p class="small muted" style="margin-top:-8px">'+esc(stg[1])+'</p>';
+    ds.forEach(d=>{
+      const no=SWIM.indexOf(d)+1, done=swim[d.id];
+      h+='<div class="card swim-drill'+(done?' done':'')+(d.key?' key':'')+'" id="sw-'+d.id+'"><canvas class="wide" data-anim="'+d.anim+'" aria-hidden="true"></canvas>'+
+        '<div class="row between"><span class="eyebrow">第 '+no+' 课'+(d.key?' · 最重要的安全技能':'')+'</span>'+(done?'<span class="small" style="color:var(--ok)">✓ '+fmtShort(done)+' 过关</span>':'')+'</div>'+
+        '<h3 style="font-size:18px">'+esc(d.name)+'</h3><div class="goal"><b>过关标准</b>　'+esc(d.goal)+'</div>'+
+        '<ol class="steps small">'+d.steps.map(s=>'<li><span>'+esc(s)+'</span></li>').join("")+'</ol>'+
+        '<div class="warn small"><b>常见错误</b>　'+esc(d.err)+'</div>'+
+        '<div class="row between"><a class="vid" href="'+vidUrl(d.en)+'" target="_blank" rel="noopener">看真人示范影片 ↗</a><button class="btn" data-swim="'+d.id+'" aria-pressed="'+(!!done)+'">'+(done?'已过关 ✓':'我做到了')+'</button></div></div>';
+    });
+  });
+  $("swimList").innerHTML=h;
+  $("swimList").querySelectorAll("canvas[data-anim]").forEach(c=>attach(c,c.dataset.anim,null));
+}
+$("tab-swim").addEventListener("click",e=>{
+  const b=e.target.closest("[data-swim]");
+  if(b){ const id=b.dataset.swim; if(swim[id]) delete swim[id]; else { swim[id]=Date.now(); beep(1,990); } ls.set(WKEY,swim); renderSwim(); return; }
+  const g=e.target.closest("[data-swgo]");
+  if(g){ const el=$("sw-"+g.dataset.swgo); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); }
+});
+
 // ---------- Tabs ----------
 let tab="train";
 document.querySelector("nav.tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   tab=b.dataset.tab;
   document.querySelectorAll("nav.tabs [data-tab]").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["train","prog","hist","more"].forEach(t=>{ $("tab-"+t).hidden=(t!==tab); });
+  ["train","swim","prog","hist","more"].forEach(t=>{ $("tab-"+t).hidden=(t!==tab); });
   if(tab==="prog") renderProg(); // 图表要在看得见时才量得到宽度
   window.scrollTo({top:0});
 });
 let rz=null; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(tab==="prog") renderProg(); },200); });
 
-function renderAll(){ renderHeader(); renderWeek(); renderPicker(); renderWorkout(); renderHist(); renderGarmin(); renderCfg(); if(tab==="prog") renderProg(); }
+function renderAll(){ renderHeader(); renderWeek(); renderPicker(); renderWorkout(); renderHist(); renderGarmin(); renderCfg(); renderSwim(); if(tab==="prog") renderProg(); }
 setEquip(cfg.equip);
 renderAll();
 if("serviceWorker" in navigator && location.protocol!=="file:"){ addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
 window.__fit={suggest,cycleInfo,e1rm}; // 给自检脚本用
 })();
 </script>
+<script type="module" src="anim3d.js"></script>
 </body>
 </html>

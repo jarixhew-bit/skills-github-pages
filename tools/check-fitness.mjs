@@ -18,7 +18,8 @@
  *   5. 全屏跟练能打开、显示建议重量、按「完成这组」会往下走；
  *   6. 进度页曲线画得出来（点数＝有这动作的训练次数），体重乱填会被挡；
  *   7. 导出备份是合法 JSON，同一份再导入不会重复加；
- *   8. 手机宽度（360px）没有横向卷动、全程没有 JS 错误。
+ *   8. 手机宽度（360px）没有横向卷动、全程没有 JS 错误；
+ *   9. 3D 引擎真的载入、每个动作（含游泳）画出来都不是空白；游泳课 12 课、过关打勾、备份含游泳进度。
  * 「今天」用 page.clock 固定住，结果不随跑的日子改变。
  */
 import { chromium } from 'playwright';
@@ -49,7 +50,8 @@ const HIST_B = [
   sess('s_11', 2, 'C', sets('split', 10, 8, 1)),
 ];
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+// 3D 动画要 WebGL：无头浏览器用 SwiftShader（软件算图）提供，CI 与沙盒都一样
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 
 async function openWith(hist, viewport = { width: 390, height: 844 }) {
   const ctx = await browser.newContext({ viewport, acceptDownloads: true, serviceWorkers: 'block' });
@@ -178,10 +180,48 @@ async function openWith(hist, viewport = { width: 390, height: 844 }) {
   await ctx.close();
 }
 
+// ---- 3D 动画 ＋ 游泳课 ----
+{
+  const { ctx, page, errors } = await openWith([]);
+  await page.waitForFunction(() => window.ANIM3D && window.ANIM3D.frames > 0, null, { timeout: 20000 }).catch(() => {});
+  const f3 = await page.evaluate(() => ({ on: document.documentElement.dataset.anim, frames: window.ANIM3D ? window.ANIM3D.frames : 0 }));
+  check(f3.on === '3d' && f3.frames > 0, `3D 引擎载入并在画（data-anim=${f3.on}，已画 ${f3.frames} 格）`);
+  // 每个动作（含游泳）都能用 3D 画出东西，不是空白
+  const blank = await page.evaluate(() => {
+    const c = document.createElement('canvas'); c.width = 160; c.height = 120; const g = c.getContext('2d'), bad = [];
+    for (const k of ANIM.keys()) { g.clearRect(0, 0, 160, 120); ANIM3D.draw(g, 160, 120, k, 0.6, {}); const d = g.getImageData(0, 0, 160, 120).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++; if (n < 800) bad.push(k); }
+    return { bad, total: ANIM.keys().length };
+  });
+  check(blank.bad.length === 0, `全部 ${blank.total} 个动作的 3D 画面都有内容${blank.bad.length ? '（空白：' + blank.bad.join(',') + '）' : ''}`);
+
+  await page.click('nav.tabs [data-tab="swim"]');
+  const drills = await page.locator('#swimList .swim-drill').count();
+  const cvs = await page.locator('#swimList canvas.wide').count();
+  check(drills === 12 && cvs === 12, `游泳课 12 课、每课都有动画（课 ${drills}／动画 ${cvs}）`);
+  check(await page.locator('#swimSafety').evaluate(d => d.open), '还没过任何一课时，安全须知默认展开');
+  check(/水中行走/.test(await page.textContent('#swimTop [data-swgo]')), '第一次打开，「下一课」指向第 1 课水中行走');
+  await page.click('#sw-walk [data-swim]');
+  const sw = await page.evaluate(() => JSON.parse(localStorage.getItem('fit.swim') || '{}'));
+  check(sw.walk > 0, '按「我做到了」→ 记下过关日期');
+  check(/1<\/span>/.test(await page.innerHTML('#swimTop')) && /吐泡泡/.test(await page.textContent('#swimTop [data-swgo]')), '过关后进度 1/12、下一课换成吐泡泡');
+  await page.click('#sw-walk [data-swim]');
+  check(!(await page.evaluate(() => JSON.parse(localStorage.getItem('fit.swim')).walk)), '再按一次可取消过关');
+  await page.click('#sw-standup [data-swim]');
+  await page.click('nav.tabs [data-tab="more"]');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+  const bk = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
+  check(bk.swim && bk.swim.standup > 0, '导出备份包含游泳进度');
+  // 关掉 3D → 设置记住
+  await page.click('#cfg3d');
+  check((await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).anim3d)) === false, '设置里关掉 3D 会被记住（改回简笔画）');
+  check(errors.length === 0, `3D／游泳没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+
 // ---- 手机宽度：没有横向卷动 ----
 {
   const { ctx, page, errors } = await openWith(HIST_A, { width: 360, height: 740 });
-  for (const t of ['train', 'prog', 'hist', 'more']) {
+  for (const t of ['train', 'swim', 'prog', 'hist', 'more']) {
     await page.click(`nav.tabs [data-tab="${t}"]`);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     check(over <= 0, `360px 宽「${t}」页没有横向卷动（多出 ${over}px）`);
