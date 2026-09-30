@@ -17,6 +17,9 @@
  *
  * 输出：每个点一行 `RESULT {json}`；全部结果以 JSON 数组写进 COORDS_OUT
  * （`[{cid, query, lat, lng, source, title, reason}]`）。
+ * 2026-09-30 扩充（向后兼容，只加字段）：`name`（地点页 h1 正式店名）、`rating`、`reviews`、
+ * `address`、`category`，读不到就是空字符串／null，不猜；输入是短链时 cid 从最终网址的
+ * `!1s0x…:0x十六进制` 换算回十进制补上。
  */
 import { chromium } from 'playwright';
 import { writeFileSync } from 'node:fs';
@@ -49,6 +52,30 @@ export function parseUrl(u) {
   const at = d.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
   if (at) return { lat: num(at[1]), lng: num(at[2]), source: 'url-at' };
   return null;
+}
+
+/** 最终网址里的 `!1s0x…:0x…`，冒号后那段十六进制就是 cid。 */
+export function cidFromUrl(u) {
+  const m = decodeURIComponent(u || '').match(/!1s0x[0-9a-f]+:0x([0-9a-f]+)/i);
+  return m ? BigInt('0x' + m[1]).toString() : null;
+}
+
+/** 顺手读地点页的店名／评分／地址／类别（尽力而为，读不到留空）。 */
+async function readDetails(page) {
+  await page.waitForSelector('h1', { timeout: 15000 }).catch(() => {});
+  return page.evaluate(() => {
+    const t = el => (el ? (el.textContent || '').trim() : '');
+    const name = t(document.querySelector('h1.DUwDvf')) || t(document.querySelector('h1'));
+    let rating = null, reviews = null;
+    const rs = document.querySelector('div.F7nice span[aria-hidden="true"]');
+    if (rs) { const v = parseFloat(t(rs)); if (Number.isFinite(v)) rating = v; }
+    const rv = document.querySelector('div.F7nice span[aria-label*="review"]');
+    if (rv) { const m = (rv.getAttribute('aria-label') || '').replace(/,/g, '').match(/(\d+)/); if (m) reviews = +m[1]; }
+    const ab = document.querySelector('button[data-item-id="address"]');
+    const address = ab ? (ab.getAttribute('aria-label') || '').replace(/^Address:\s*/i, '').trim() : '';
+    const category = t(document.querySelector('button.DkEaL'));
+    return { name, rating, reviews, address, category };
+  }).catch(() => ({ name: '', rating: null, reviews: null, address: '', category: '' }));
 }
 
 async function handleConsent(page) {
@@ -84,6 +111,8 @@ async function fetchOne(ctx, query) {
     ).catch(() => {});
     out.title = (await page.title()).slice(0, 120);
     out.finalUrl = page.url().slice(0, 300);
+    if (!out.cid) out.cid = cidFromUrl(page.url());
+    Object.assign(out, await readDetails(page));
     let got = parseUrl(page.url());
     if (!got) {
       const meta = await page.evaluate(() =>
