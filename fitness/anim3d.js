@@ -187,7 +187,7 @@ function pose(s, hold, swim, time) {
     if (pr === 'back') { const x = X('hip') - 8.5; box(x - 2.5, x + 2.5, Y('hip') - 3, Y('sh') + 6, 24, M.prop); }
     if (pr === 'recline') {
       const a = [X('hip'), Y('hip')], b = [X('sh'), Y('sh')], ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      const len = Math.hypot(b[0] - a[0], b[1] - a[1]) + 8, nx = Math.sin(ang), ny = -Math.cos(ang); // 背后方向
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]) + 8, nx = -Math.sin(ang), ny = Math.cos(ang); // 背后方向（脸的反方向）
       const cx = (a[0] + b[0]) / 2 + nx * 7.5, cy = (a[1] + b[1]) / 2 + ny * 7.5;
       box(0, len, 0, 5, 26, M.prop, ang, cx, cy);
       box(X('hip') - 12, X('hip') + 14, Y('hip') - 10.5, Y('hip') - 5.5, 28, M.prop);

@@ -157,7 +157,7 @@ function props(s, P) {
     if (pr === 'back') { const x = X('hip') - 10; box(x - 2.5, x + 2.5, Y('hip') - 3, Y('sh') + 8, 26, M.prop); }
     if (pr === 'recline') {
       const a = [X('hip'), Y('hip')], b = [X('sh'), Y('sh')], ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      const len = Math.hypot(b[0] - a[0], b[1] - a[1]) + 10, nx = Math.sin(ang), ny = -Math.cos(ang);
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]) + 10, nx = -Math.sin(ang), ny = Math.cos(ang); // 背后＝脸的反方向
       box(0, len, 0, 5, 28, M.prop, ang, (a[0] + b[0]) / 2 + nx * 9, (a[1] + b[1]) / 2 + ny * 9);
       box(X('hip') - 12, X('hip') + 14, Y('hip') - 12, Y('hip') - 7, 30, M.prop); box(X('hip') - 2, X('hip') + 2, 0, Y('hip') - 12, 10, M.iron);
     }
