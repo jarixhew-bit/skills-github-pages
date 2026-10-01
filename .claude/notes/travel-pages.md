@@ -226,6 +226,10 @@ lightbox 从 `.gal>img` 的 src/alt 取图，`#lbImg` 的 alt 会跟着换（所
   末段座位分开、订位代号 EC966J）都拿掉了，别自己补回去。
 - 2026-09-29 起去程／回程 `.bp-group-label` 下各有一条 `.note.amber` 出发时间提示（10/9 07:00 金边家里、10/17 09:00 槟城住处，
   用户原话的解读），复用现有 class，别删。
+  **2026-10-01 更新**：这两条 `.note.amber` 已删，改成每段 `.bp-group-label` 下一条静态竖线时间轴 `.ftl`／`.fstop`（照 v3 样式，
+  CSS 在 `.track` 之后；4 站：出发去机场→航班→转机→航班，转机站用 `.fstop.fxfer`——**不能叫 `.transit`**，会吃到登机牌转机条的样式；
+  航班站链到登机牌卡 `#bp-sq153/#bp-sq8500/#bp-sq133/#bp-sq158`）。时刻是登机牌卡的复写，改航班要两处一起改，
+  `tools/check-flight-times.py` 会逐站核对（对不上点名报错）。
 
 ### penang-trip/v2.html（2026-09-29 建，新设计版，旧版 index.html 原样保留）
 用户要看新设计、不满意可退回旧版，所以**两份并存**：v2 由 index.html 复制后只改外观——植物园配色

@@ -19,9 +19,15 @@ PEN→SIN 那段整组是错的。不同班机各自排座，六个人六个号�
 而是同一笔来路不明的资料被填进了两段——这一点机器看得出来，所以让机器看。
 （现有四本手册 12 个航段里没有任何一组重复，所以这条不会误报。）
 
+第三件事（2026-10-01）：槟城旧版 `penang-trip/index.html` 的「航班」区有竖线时间轴
+（`.fstop.flight`），每个航班站的时刻是从下面登机牌卡**复写**的一份——以后改航班
+容易只改一处。所以逐站核对：时间轴上 SQ153/SQ8500/SQ133/SQ158 的时刻必须等于
+同页登机牌卡上该航班的起飞时刻，对不上就点名；时间轴有而卡片找不到的航班也报错。
+（只检查页面里有 `fstop` 时间轴的手册，其它手册不受影响。）
+
 跑法：
     python3 tools/check-flight-times.py
-退出码 0 = 全对，1 = 有对不上的（或有机场不在表里、或两段座位撞号）。
+退出码 0 = 全对，1 = 有对不上的（或有机场不在表里、或两段座位撞号、或时间轴时刻与登机牌不符）。
 """
 import glob
 import os
@@ -116,21 +122,53 @@ def seats(path: str, problems: list) -> int:
     return len(blocks)
 
 
+# 时间轴的航班站：<div class="fstop flight">…<div class="fs-time">09:35</div>…<div class="fs-t"><span class="cn">SQ 153 · …
+STOP = re.compile(
+    r'<div class="fstop flight">.*?<div class="fs-time">(\d{1,2}:\d{2})</div>'
+    r'.*?<div class="fs-t"><span class="cn">([A-Z]{2}\s?\d{2,4})\b', re.S)
+# 登机牌卡：<div class="bpass" …> 的航班号 + 第一个 .time（起飞时刻）
+PASS = re.compile(
+    r'<div class="bpass"[^>]*>\s*<div class="head">.*?<span class="code">[A-Z]{2}</span>\s*([A-Z]{2}\s?\d{2,4})'
+    r'.*?<div class="time">(\d{1,2}:\d{2})</div>', re.S)
+
+
+def timeline(path: str, problems: list) -> int:
+    """时间轴的航班站时刻必须等于同页登机牌卡上该航班的起飞时刻。"""
+    text = open(path, encoding="utf-8").read()
+    stops = list(STOP.finditer(text))
+    if not stops:
+        return 0
+    cards: dict = {}
+    for m in PASS.finditer(text):
+        cards[m.group(1).replace(" ", "")] = m.group(2).zfill(5)
+    for m in stops:
+        t, code = m.group(1).zfill(5), m.group(2).replace(" ", "")
+        line = text[:m.start()].count("\n") + 1
+        if code not in cards:
+            problems.append(f"{path}:{line} 时间轴有航班 {code}，但同页找不到它的登机牌卡")
+        elif cards[code] != t:
+            problems.append(f"{path}:{line} 时间轴 {code} 写 {t} 起飞，但登机牌卡上是 "
+                            f"{cards[code]}——航班时刻复写了两处，请改成一致")
+    return len(stops)
+
+
 def main() -> int:
     problems: list = []
     total = 0
     segs = 0
+    stops = 0
     for p in pages():
         total += check(p, problems)
         segs += seats(p, problems)
+        stops += timeline(p, problems)
     if problems:
-        print(f"❌ 航班卡有 {len(problems)} 处问题（查了 {total} 段时长、{segs} 组座位）：")
+        print(f"❌ 航班卡有 {len(problems)} 处问题（查了 {total} 段时长、{segs} 组座位、{stops} 个时间轴航班站）：")
         for p in problems:
             print("  " + p)
         if any("算进时差" in p for p in problems):
             print("\n算法：到达当地时刻 − 该机场时区，减去 出发当地时刻 − 该机场时区。")
         return 1
-    print(f"✅ 航班时长全部对得上时差（{total} 段），{segs} 组座位没有撞号")
+    print(f"✅ 航班时长全部对得上时差（{total} 段），{segs} 组座位没有撞号，{stops} 个时间轴航班站与登机牌一致")
     return 0
 
 

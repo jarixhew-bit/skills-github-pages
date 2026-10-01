@@ -226,6 +226,22 @@
     border: 1px solid var(--blue-line); border-radius: 999px; padding: 8px 16px; text-decoration: none;
   }
 
+  /* ===== 航班时间轴（2026-10-01 照 v3 的 .dtl/.dstop 样式移植，静态 HTML；时刻由 tools/check-flight-times.py 对登机牌卡） ===== */
+  .ftl { position: relative; margin: 4px 0 16px; }
+  .fstop { position: relative; padding: 0 0 14px 34px; }
+  .fstop::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: var(--indigo-line); }
+  .fstop:first-child::before { top: 13px; }
+  .fstop:last-child { padding-bottom: 0; }
+  .fstop:last-child::before { bottom: auto; height: 13px; }
+  .fs-dot { position: absolute; left: 3px; top: 5px; width: 16px; height: 16px; border-radius: 50%; background: var(--marigold); border: 3px solid var(--card); box-shadow: 0 0 0 2px var(--indigo); }
+  .fstop.fxfer .fs-dot { background: var(--card); box-shadow: 0 0 0 2px var(--line-2); }
+  .fs-time { font-family: var(--serif); font-size: 18px; font-weight: 700; line-height: 26px; color: var(--indigo-d); font-variant-numeric: tabular-nums; }
+  .fs-t { font-size: 15px; font-weight: 800; color: var(--ink); line-height: 1.5; }
+  .fstop.fxfer .fs-t { font-size: 13.5px; color: var(--muted); }
+  .fs-d { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 1px; }
+  .fs-link { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; font-weight: 700; color: var(--indigo-d); text-decoration: underline; text-underline-offset: 3px; }
+  .bpass[id] { scroll-margin-top: calc(var(--topH) + var(--navH) + 10px); }
+
   /* ===== WEATHER ===== */
   .wx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
   .wx { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 15px 16px; box-shadow: var(--shadow); }
@@ -494,9 +510,32 @@
 
 
 <div class="bp-group-label"><span class="cn">🛫 去程 · 10月9日（五）· 金边 → 槟城</span><span class="en">🛫 Outbound · Oct 9 (Fri) · Phnom Penh → Penang</span></div>
-<div class="note amber"><span class="cn">⏰ 07:00 从金边家里出发去机场（航班 09:35 起飞）</span><span class="en">⏰ 07:00 Leave home in Phnom Penh for the airport (flight departs 09:35)</span></div>
+<div class="ftl">
+<div class="fstop"><span class="fs-dot" aria-hidden="true"></span>
+<div class="fs-time">07:00</div>
+<div class="fs-t"><span class="cn">从金边家里出发去机场</span><span class="en">Leave home in Phnom Penh for the airport</span></div>
+<div class="fs-d"><span class="cn">航班 09:35 起飞</span><span class="en">Flight departs 09:35</span></div>
+</div>
+<div class="fstop flight"><span class="fs-dot" aria-hidden="true"></span>
+<div class="fs-time">09:35</div>
+<div class="fs-t"><span class="cn">SQ 153 · 金边 → 新加坡</span><span class="en">SQ 153 · Phnom Penh → Singapore</span></div>
+<div class="fs-d"><span class="cn">金边 Techo KTI 09:35 → 新加坡 Changi SIN 12:40 · 飞行 2h 05m（当地时间）</span><span class="en">Phnom Penh KTI 09:35 → Singapore SIN 12:40 · 2h 05m flight (local time)</span></div>
+<a class="fs-link" href="#bp-sq153"><span class="cn">登机牌与座位 ↓</span><span class="en">Boarding passes &amp; seats ↓</span></a>
+</div>
+<div class="fstop fxfer"><span class="fs-dot" aria-hidden="true"></span>
+<div class="fs-time">12:40</div>
+<div class="fs-t"><span class="cn">新加坡转机 · 候机约 2h 15m</span><span class="en">Transit in Singapore · approx. 2h 15m</span></div>
+<div class="fs-d"><span class="cn">SIN T1 抵达 → T1 出发 · 行李直挂至槟城</span><span class="en">Arrive SIN T1 → depart T1 · baggage checked through to Penang</span></div>
+</div>
+<div class="fstop flight"><span class="fs-dot" aria-hidden="true"></span>
+<div class="fs-time">14:55</div>
+<div class="fs-t"><span class="cn">SQ 8500 / Scoot TR424 共享 · 新加坡 → 槟城</span><span class="en">SQ 8500 / Scoot TR424 codeshare · Singapore → Penang</span></div>
+<div class="fs-d"><span class="cn">新加坡 T1 SIN 14:55 → 槟城 PEN 16:20 · 飞行 1h 25m</span><span class="en">Singapore T1 SIN 14:55 → Penang PEN 16:20 · 1h 25m flight</span></div>
+<a class="fs-link" href="#bp-sq8500"><span class="cn">登机牌与座位 ↓</span><span class="en">Boarding passes &amp; seats ↓</span></a>
+</div>
+</div>
 
-<div class="bpass">
+<div class="bpass" id="bp-sq153">
 <div class="head"><span class="airline"><span class="code">SQ</span>SQ 153</span><span class="craft">Boeing 737-8 MAX</span></div>
 <div class="route">
 <div class="apt"><div class="iata">KTI</div><div class="city"><span class="cn">金边 Techo</span><span class="en">Phnom Penh</span></div><div class="time">09:35</div></div>
@@ -517,7 +556,7 @@
 </div>
 </div>
 
-<div class="bpass">
+<div class="bpass" id="bp-sq8500">
 <div class="head"><span class="airline"><span class="code">SQ</span>SQ 8500 <span class="cn">/ Scoot TR424 共享</span><span class="en">/ Scoot TR424 codeshare</span></span></div>
 <div class="route">
 <div class="apt"><div class="iata">SIN</div><div class="city"><span class="cn">新加坡 T1</span><span class="en">Singapore T1</span></div><div class="time">14:55</div></div>
@@ -533,9 +572,32 @@
 </div>
 
 <div class="bp-group-label"><span class="cn">🛬 回程 · 10月17日（六）· 槟城 → 金边</span><span class="en">🛬 Return · Oct 17 (Sat) · Penang → Phnom Penh</span></div>
-<div class="note amber"><span class="cn">⏰ 09:00 从槟城住处出发去机场（航班 11:50 起飞）</span><span class="en">⏰ 09:00 Leave your stay in Penang for the airport (flight departs 11:50)</span></div>
+<div class="ftl">
+<div class="fstop"><span class="fs-dot" aria-hidden="true"></span>
+<div class="fs-time">09:00</div>
+<div class="fs-t"><span class="cn">从槟城住处出发去机场</span><span class="en">Leave your stay in Penang for the airport</span></div>
+<div class="fs-d"><span class="cn">航班 11:50 起飞</span><span class="en">Flight departs 11:50</span></div>
+</div>
+<div class="fstop flight"><span class="fs-dot" aria-hidden="true"></span>
+<div class="fs-time">11:50</div>
+<div class="fs-t"><span class="cn">SQ 133 · 槟城 → 新加坡</span><span class="en">SQ 133 · Penang → Singapore</span></div>
+<div class="fs-d"><span class="cn">槟城 PEN 11:50 → 新加坡 T2 SIN 13:30 · 飞行 1h 40m</span><span class="en">Penang PEN 11:50 → Singapore T2 SIN 13:30 · 1h 40m flight</span></div>
+<a class="fs-link" href="#bp-sq133"><span class="cn">登机牌与座位 ↓</span><span class="en">Boarding passes &amp; seats ↓</span></a>
+</div>
+<div class="fstop fxfer"><span class="fs-dot" aria-hidden="true"></span>
+<div class="fs-time">13:30</div>
+<div class="fs-t"><span class="cn">新加坡转机 · 候机约 3h</span><span class="en">Transit in Singapore · approx. 3h</span></div>
+<div class="fs-d"><span class="cn">SIN T2 抵达 → T2 出发 · 同航站楼转机 · 行李直挂</span><span class="en">Arrive SIN T2 → depart T2 · same-terminal transfer · baggage checked through</span></div>
+</div>
+<div class="fstop flight"><span class="fs-dot" aria-hidden="true"></span>
+<div class="fs-time">16:30</div>
+<div class="fs-t"><span class="cn">SQ 158 · 新加坡 → 金边</span><span class="en">SQ 158 · Singapore → Phnom Penh</span></div>
+<div class="fs-d"><span class="cn">新加坡 T2 SIN 16:30 → 金边 Techo KTI 17:40 · 飞行 2h 10m（当地时间）</span><span class="en">Singapore T2 SIN 16:30 → Phnom Penh KTI 17:40 · 2h 10m flight (local time)</span></div>
+<a class="fs-link" href="#bp-sq158"><span class="cn">登机牌与座位 ↓</span><span class="en">Boarding passes &amp; seats ↓</span></a>
+</div>
+</div>
 
-<div class="bpass">
+<div class="bpass" id="bp-sq133">
 <div class="head"><span class="airline"><span class="code">SQ</span>SQ 133</span></div>
 <div class="route">
 <div class="apt"><div class="iata">PEN</div><div class="city"><span class="cn">槟城</span><span class="en">Penang</span></div><div class="time">11:50</div></div>
@@ -556,7 +618,7 @@
 </div>
 </div>
 
-<div class="bpass">
+<div class="bpass" id="bp-sq158">
 <div class="head"><span class="airline"><span class="code">SQ</span>SQ 158</span></div>
 <div class="route">
 <div class="apt"><div class="iata">SIN</div><div class="city"><span class="cn">新加坡 T2</span><span class="en">Singapore T2</span></div><div class="time">16:30</div></div>
