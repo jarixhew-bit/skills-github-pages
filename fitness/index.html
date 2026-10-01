@@ -201,12 +201,6 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
 .ex-top.wide{grid-template-columns:150px 1fr}
 #plPhoto .ph{height:clamp(170px,34vh,300px);aspect-ratio:auto}
 @media (prefers-reduced-motion: reduce){.ph img+img{animation:none;opacity:0}}
-/* 真人示范影片：先放封面，点了才载入（省流量），全屏跟练里自动播 */
-.vbox{position:relative;overflow:hidden;border-radius:10px;background:#111;aspect-ratio:16/9;width:100%}
-.vbox img,.vbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover;display:block}
-.vplay{position:absolute;inset:0;margin:auto;width:64px;height:64px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:26px;display:grid;place-items:center;padding-left:4px}
-.vbox .ph-tag{z-index:1}
-#plVideo .vbox{height:clamp(190px,36vh,320px);aspect-ratio:auto}
 canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;display:block}
 .swim-top .bar{height:8px}
 .goal{background:var(--soft);border-radius:10px;padding:8px 10px;font-size:14px}
@@ -322,7 +316,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="set-row"><span>器械每次加重</span><div class="seg" role="group" aria-label="器械每次加重" id="cfgGym"></div></div>
       <div class="set-row"><span>每周目标次数</span><div class="seg" role="group" aria-label="每周目标次数" id="cfgGoal"></div></div>
       <div class="set-row"><span>自动减量周<br><span class="small muted">每练 3 周，第 4 周自动减量</span></span><button class="toggle" id="cfgDeload" aria-label="自动减量周" aria-pressed="true"></button></div>
-      <div class="set-row"><span>动作示范<br><span class="small muted">影片＝连续真人示范（要上网）；没网时自动改用照片或 3D</span></span><div class="seg" role="group" aria-label="动作示范" id="cfgMedia"></div></div>
+      <div class="set-row"><span>动作示范<br><span class="small muted">没有真人照片的动作（游泳等）会用 3D；旧手机卡可选简笔画</span></span><div class="seg" role="group" aria-label="动作示范" id="cfgMedia"></div></div>
       <div class="set-row"><span>跟练语音提示</span><button class="toggle" id="cfgVoice" aria-label="跟练语音提示" aria-pressed="true"></button></div>
     </div>
 
@@ -444,7 +438,6 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
   <div class="pl-body" id="plBody">
     <canvas id="plCanvas" aria-hidden="true"></canvas>
     <div id="plPhoto" hidden></div>
-    <div id="plVideo" hidden></div>
     <div class="eyebrow" id="plPhase"></div>
     <div class="pl-name" id="plName"></div>
     <div id="plMain"></div>
@@ -744,12 +737,11 @@ const SKEY="fit.sessions", BKEY="fit.body", DKEY="fit.draft", CKEY="fit.cfg";
 const ls={ get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
            set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
            del(k){try{localStorage.removeItem(k)}catch(e){}} };
-const CFG_DEF={equip:"db",voice:true,media:"video",rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,lastBackup:0};
+const CFG_DEF={equip:"db",voice:true,media:"photo",rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,lastBackup:0};
 let cfg=Object.assign({},CFG_DEF,ls.get(CKEY,{}));
 if(!EQ_LABEL[cfg.equip]) cfg.equip="db";
 if(cfg.anim3d===false&&!ls.get(CKEY,{}).media) cfg.media="2d"; // 旧设置「关掉 3D」＝简笔画
-if(!cfg.mediaV2){ if(cfg.media==="photo") cfg.media="video"; cfg.mediaV2=1; } // 影片上线前的默认是照片，一律升级成影片
-if(!["video","photo","3d","2d"].includes(cfg.media)) cfg.media="video";
+if(!["photo","3d","2d"].includes(cfg.media)) cfg.media="photo";
 let sessions=ls.get(SKEY,null);
 if(!sessions){ sessions=ls.get("wk30.sessions",[]); ls.set(SKEY,sessions); } // 旧版同网域资料顺手接过来
 let body=ls.get(BKEY,[]);
@@ -784,35 +776,8 @@ const PH_ANIM={armcircle:["Arm_Circles"],catcow:["Cat_Stretch"],bridge2:["Butt_L
   lungeT:["Bodyweight_Walking_Lunge","照片往前跨步；热身时双手往前伸"],wgs:["Worlds_Greatest_Stretch"],child:["Childs_Pose"],
   climber:["Mountain_Climbers"],swing:["One-Arm_Kettlebell_Swings","照片用壶铃；单只哑铃握住一头一样做"],deadbug:["Dead_Bug"],
   thruster:["Kettlebell_Thruster","照片用壶铃；两手各拿一只哑铃一样做",true]};
-function photoOf(en,anim,hold){ if(cfg.media!=="photo"&&cfg.media!=="video") return null; const p=(en&&PH_EN[en])||PH_ANIM[anim]; if(!p||(p[2]&&!hold)) return null; return p; }
+function photoOf(en,anim,hold){ if(cfg.media!=="photo") return null; const p=(en&&PH_EN[en])||PH_ANIM[anim]; if(!p||(p[2]&&!hold)) return null; return p; }
 function photoHTML(p){ return '<div class="ph" role="img" aria-label="真人示范照片：起始与结束动作"><img src="photos/'+p[0]+'-0.jpg" alt="起始动作" loading="lazy" decoding="async"><img src="photos/'+p[0]+'-1.jpg" alt="结束动作" loading="lazy" decoding="async"><span class="ph-tag">真人示范</span>'+(p[1]?'<span class="ph-note">'+esc(p[1])+'</span>':'')+'</div>'; }
-// ---------- 真人示范影片（别人的 YouTube 教学片，嵌入播放；清单在 videos.json，每周 CI 验一次还能不能播） ----------
-const VK_EN={"Goblet Squat":"goblet_squat","Bodyweight Squat":"bw_squat","Leg Press":"leg_press","Dumbbell Bench Press":"db_bench","Push-Up":"pushup",
-  "Machine Chest Press":"machine_chest","Dumbbell Romanian Deadlift":"db_rdl","Single-Leg Glute Bridge":"sl_bridge","Lying Leg Curl":"leg_curl",
-  "One-Arm Dumbbell Row":"db_row1","Inverted Row":"inv_row","Seated Cable Row":"cable_row","Dumbbell Reverse Lunge":"reverse_lunge","Reverse Lunge":"reverse_lunge",
-  "Dumbbell Shoulder Press":"db_ohp","Pike Push-Up":"pike_pushup","Machine Shoulder Press":"machine_ohp","Dumbbell Hip Thrust":"hip_thrust","Hip Thrust":"hip_thrust",
-  "Hip Thrust Machine":"hip_thrust","Bent-Over Dumbbell Row":"db_row2","Lat Pulldown":"lat_pulldown","Bulgarian Split Squat":"bulgarian","Dumbbell Floor Press":"floor_press",
-  "Close-Grip Push-Up":"close_pushup","Incline Dumbbell Press":"incline_db","Dumbbell Step-Up":"step_up","Step-Up":"step_up","Bent-Over Reverse Fly":"rear_fly",
-  "Prone Y-T Raise":"prone_yt","Face Pull":"face_pull"};
-const VK_ANIM={thruster:"db_thruster",climber:"mountain_climber",swing:"db_swing",deadbug:"dead_bug",jack:"jumping_jack",burpee:"no_jump_burpee",tap:"plank_tap",
-  march:"high_knee_march",armcircle:"arm_circles",catcow:"cat_cow",bridge2:"glute_bridge",squat:"bw_squat",lungeT:"lunge_reach",scap:"scap_pushup",wgs:"worlds_greatest",
-  quad:"quad_stretch",fig4:"figure4",chest:"doorway_chest",child:"childs_pose"};
-const VK_SWIM={walk:"sw_walk",bubble:"sw_bubbles",eyes:"sw_eyes",wall:"sw_wall_float",jelly:"sw_jellyfish",standup:"sw_standup",star:"sw_star_float",
-  back:"sw_back_float",glide:"sw_push_glide",kick:"sw_kickboard",kickbreath:"sw_kick_breath",swim10:"sw_glide_kick"};
-let VIDS={};
-function videoOf(en,anim,swimId){
-  if(cfg.media!=="video"||navigator.onLine===false) return null;
-  const k=swimId?VK_SWIM[swimId]:((en&&VK_EN[en])||VK_ANIM[anim]);
-  const c=k&&(VIDS[k]||[]).find(v=>v&&v.id&&!v.bad);
-  return c?{id:c.id,start:c.start||0}:null;
-}
-function vidSrc(v){ return "https://www.youtube-nocookie.com/embed/"+v.id+"?autoplay=1&mute=1&loop=1&playlist="+v.id+(v.start?"&start="+v.start:"")+"&playsinline=1&rel=0&modestbranding=1"; }
-function vidFrame(v){ return '<iframe src="'+vidSrc(v)+'" title="真人示范影片" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>'; }
-function vidHTML(v){ return '<div class="vbox" data-vid="'+v.id+'" data-start="'+v.start+'"><img src="https://i.ytimg.com/vi/'+v.id+'/hqdefault.jpg" alt="示范影片封面" loading="lazy"><button class="vplay" aria-label="播放真人示范影片">▶</button><span class="ph-tag">真人影片</span></div>'; }
-// 卡片上的示范：影片 → 照片 → 动画（canvas）
-function mediaHTML(en,anim,hold,cls){ const v=videoOf(en,anim,null); if(v) return vidHTML(v); const p=photoOf(en,anim,hold); if(p) return photoHTML(p); return null; }
-document.addEventListener("click",e=>{ const b=e.target.closest(".vbox"); if(!b||b.querySelector("iframe")) return; b.innerHTML=vidFrame({id:b.dataset.vid,start:+b.dataset.start||0}); });
-fetch("videos.json",{cache:"no-cache"}).then(r=>r.ok?r.json():null).then(d=>{ if(d&&d.videos){ VIDS=d.videos; renderAll(); } }).catch(()=>{});
 function usesKg(id,eq){ return eq!=="bw"; }
 function weekStart(d){ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x.getTime(); }
 function weeksBetween(a,b){ return Math.round((weekStart(b)-weekStart(a))/(7*DAY)); }
@@ -985,8 +950,8 @@ function renderWorkout(){
     h+='<div class="card"><div class="block-head"><h2>超级组 '+(bi+1)+'</h2><span class="small muted">两个动作连做 → 休息 '+cfg.rest+' 秒 · 共 '+R+' 轮</span></div>';
     pair.forEach((id,ei)=>{
       const x=exInfo(id,eq), kg=usesKg(id,eq), sg=suggest(id,eq);
-      const ph=mediaHTML(x.en,x.anim,x.hold);
-      h+='<div class="ex'+(ei===0?' first':'')+'">'+(ph||'')+'<div class="ex-top'+(ph?' one':'')+'">'+(ph?'':'<canvas class="thumb" data-anim="'+x.anim+'" data-hold="'+(x.hold||"")+'"></canvas>')+'<div>'+
+      const ph=photoOf(x.en,x.anim,x.hold);
+      h+='<div class="ex'+(ei===0?' first':'')+'">'+(ph?photoHTML(ph):'')+'<div class="ex-top'+(ph?' one':'')+'">'+(ph?'':'<canvas class="thumb" data-anim="'+x.anim+'" data-hold="'+(x.hold||"")+'"></canvas>')+'<div>'+
          '<span class="eyebrow">'+(ei?'B':'A')+(bi+1)+'</span><h3>'+esc(x.name)+'</h3><span class="target">'+esc(tgtLabel(x.target))+'</span></div></div>';
       h+=sugHTML(sg)+'<div class="last">'+esc(lastText(id,eq))+'</div>';
       h+='<div class="sets'+(kg?'':' bw')+'"><span class="lbl">组</span>'+(kg?'<span class="lbl">重量 kg</span>':'')+'<span class="lbl">次数</span><span class="lbl">余力</span><span></span>';
@@ -1004,7 +969,7 @@ function renderWorkout(){
   });
   const fi=finItems(selWk,eq);
   h+='<div class="card"><div class="block-head"><h2>燃脂收尾</h2><span class="small muted">'+F.title+'</span></div>'+timerHTML("fin",F.mode==="interval"?"按开始后自动切换":"时间内循环做，数你完成几轮")+
-     fi.map((it,i)=>{ const ph=mediaHTML(null,it[1],it[2]); return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?ph:'<canvas class="thumb" data-anim="'+it[1]+'" data-hold="'+(it[2]||"")+'"></canvas>')+'<div><h3>'+esc(it[0])+'</h3></div></div></div>'; }).join("")+
+     fi.map((it,i)=>{ const ph=photoOf(null,it[1],it[2]); return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?photoHTML(ph):'<canvas class="thumb" data-anim="'+it[1]+'" data-hold="'+(it[2]||"")+'"></canvas>')+'<div><h3>'+esc(it[0])+'</h3></div></div></div>'; }).join("")+
      '<div class="row"><label for="finScore" class="small muted">完成几轮 / 备注</label><input id="finScore" class="inp" style="flex:1;font-size:15px;font-family:var(--f-body);text-align:left" value="'+esc(current.fin)+'" placeholder="例如：5 轮"></div></div>';
   h+='<div class="card" id="coolCard"><div class="block-head"><h2>放松</h2><span class="num">3 分钟</span></div>'+timerHTML("cool","慢慢呼吸")+moveList(COOL)+'</div>';
   h+='<div class="card"><h2>今天整体感觉</h2>'+feelHTML(current.feel)+'<input id="noteIn" class="inp" style="font-size:15px;font-family:var(--f-body);text-align:left" value="'+esc(current.note)+'" placeholder="备注（例如：左膝有点紧）"><button class="btn primary wide" id="finishBtn">完成训练并储存</button><p class="small muted" id="storeNote"></p></div>';
@@ -1019,8 +984,8 @@ function renderWorkout(){
 // 热身/放松清单：每个动作一张小动画＋秒数＋要点＋真人示范
 function moveList(arr){
   return arr.map((w,i)=>{ const nm=w[0].split("（")[0], note=(w[0].match(/（(.*)）/)||[])[1];
-    const ph=mediaHTML(null,w[2],null);
-    return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?ph:'<canvas class="thumb" data-anim="'+w[2]+'" data-hold=""></canvas>')+'<div>'+
+    const ph=photoOf(null,w[2],null);
+    return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?photoHTML(ph):'<canvas class="thumb" data-anim="'+w[2]+'" data-hold=""></canvas>')+'<div>'+
       '<span class="eyebrow">'+(i+1)+' / '+arr.length+'</span><h3>'+esc(nm)+'</h3><span class="target">'+w[1]+' 秒</span>'+(note?'<span class="small muted">'+esc(note)+'</span>':'')+'</div></div>'+
       '<details><summary>动作要点</summary><p>'+esc(w[3])+'</p></details><a class="vid" href="'+vidUrl(w[4])+'" target="_blank" rel="noopener">看真人示范影片 ↗</a></div>'; }).join("");
 }
@@ -1223,7 +1188,7 @@ $("histList").addEventListener("click",e=>{
 const SEGS={cfgRest:["rest",[60,75,90],v=>v+" 秒"],cfgDb:["dbStep",[1,2,2.5],v=>v+" kg"],cfgGym:["gymStep",[2.5,5],v=>v+" kg"],cfgGoal:["goal",[2,3,4],v=>v+" 次"]};
 function renderCfg(){
   for(const id in SEGS){ const [k,opts,f]=SEGS[id]; $(id).innerHTML=opts.map(v=>'<button data-v="'+v+'" aria-pressed="'+(cfg[k]===v)+'">'+f(v)+'</button>').join(""); }
-  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfgMedia").innerHTML=[["video","影片"],["photo","照片"],["3d","3D"],["2d","简笔"]].map(m=>'<button data-media="'+m[0]+'" aria-pressed="'+(cfg.media===m[0])+'">'+m[1]+'</button>').join("");
+  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfgMedia").innerHTML=[["photo","真人"],["3d","3D"],["2d","简笔"]].map(m=>'<button data-media="'+m[0]+'" aria-pressed="'+(cfg.media===m[0])+'">'+m[1]+'</button>').join("");
 }
 Object.keys(SEGS).forEach(id=>$(id).addEventListener("click",e=>{ const b=e.target.closest("[data-v]"); if(!b) return; cfg[SEGS[id][0]]=+b.dataset.v; saveCfg(); renderAll(); }));
 $("cfgDeload").onclick=()=>{ cfg.deload=!cfg.deload; saveCfg(); renderAll(); };
@@ -1317,7 +1282,7 @@ function openPlayer(){
   keepAwake(); ensureStarted();
   showStep(true);
 }
-function closePlayer(){ pl.run=false; $("player").hidden=true; $("plVideo").innerHTML=""; $("plVideo").dataset.vid=""; document.body.style.overflow=""; try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){} renderWorkout(); }
+function closePlayer(){ pl.run=false; $("player").hidden=true; document.body.style.overflow=""; try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){} renderWorkout(); }
 function showStep(autostart){
   const s=steps[si]; $("player").classList.toggle("rest",s.kind==="rest");
   $("plCount").textContent=(si+1)+" / "+steps.length;
@@ -1328,13 +1293,8 @@ function showStep(autostart){
   else { cv._key=s.anim||"child"; cv._hold=s.hold||null; }
   cv._t0=performance.now();
   const src=s.kind==="rest"?(steps.slice(si+1).find(x=>x.anim)||{}):s;
-  const vd=Array.isArray(src.anim)?null:videoOf(src.en,src.anim,null);
-  const ph=vd||Array.isArray(src.anim)?null:photoOf(src.en,src.anim,src.hold);
-  const pv=$("plVideo");
-  if(vd){ if(pv.dataset.vid!==vd.id){ pv.dataset.vid=vd.id; pv.innerHTML='<div class="vbox">'+vidFrame(vd)+'<span class="ph-tag">真人影片</span></div>'; } } // 休息时就先载入下一个动作的影片，开始做时不用等
-  else { pv.dataset.vid=""; pv.innerHTML=""; }
-  pv.hidden=!vd;
-  $("plPhoto").innerHTML=ph?photoHTML(ph):""; $("plPhoto").hidden=!ph; cv.hidden=!!(ph||vd);
+  const ph=Array.isArray(src.anim)?null:photoOf(src.en,src.anim,src.hold);
+  $("plPhoto").innerHTML=ph?photoHTML(ph):""; $("plPhoto").hidden=!ph; cv.hidden=!!ph;
   let m="";
   if(s.kind==="set"){
     const v=val(s.key), eq=cfg.equip, kg=usesKg(s.id,eq), sg=suggest(s.id,eq), kgv=v.kg!=null?v.kg:(sg.kg!=null?kgStr(sg.kg):"");
@@ -1475,7 +1435,7 @@ function renderSwim(){
     h+='<div class="stage-head"><h2>'+esc(stg[0])+'</h2><span class="small muted">'+dn+' / '+ds.length+'</span></div><p class="small muted" style="margin-top:-8px">'+esc(stg[1])+'</p>';
     ds.forEach(d=>{
       const no=SWIM.indexOf(d)+1, done=swim[d.id];
-      h+='<div class="card swim-drill'+(done?' done':'')+(d.key?' key':'')+'" id="sw-'+d.id+'">'+((v=>v?vidHTML(v):'<canvas class="wide" data-anim="'+d.anim+'" aria-hidden="true"></canvas>')(videoOf(null,null,d.id)))+
+      h+='<div class="card swim-drill'+(done?' done':'')+(d.key?' key':'')+'" id="sw-'+d.id+'"><canvas class="wide" data-anim="'+d.anim+'" aria-hidden="true"></canvas>'+
         '<div class="row between"><span class="eyebrow">第 '+no+' 课'+(d.key?' · 最重要的安全技能':'')+'</span>'+(done?'<span class="small" style="color:var(--ok)">✓ '+fmtShort(done)+' 过关</span>':'')+'</div>'+
         '<h3 style="font-size:18px">'+esc(d.name)+'</h3><div class="goal"><b>过关标准</b>　'+esc(d.goal)+'</div>'+
         '<ol class="steps small">'+d.steps.map(s=>'<li><span>'+esc(s)+'</span></li>').join("")+'</ol>'+

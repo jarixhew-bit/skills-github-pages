@@ -1,6 +1,6 @@
 // 减脂训练 App 的离线缓存。改了 index.html／manifest 一定要升下面的版本号
 // （tools/check-sw-version.py 会拦忘记升的情况）。
-const CACHE = 'fitness-v5';
+const CACHE = 'fitness-v6';
 const BASE = '/skills-github-pages/fitness/';
 const ASSETS = [BASE, BASE + 'index.html', BASE + 'manifest.webmanifest', BASE + 'icon.svg', BASE + 'icon-192.png', BASE + 'icon-180.png', BASE + 'anim3d.js', '/skills-github-pages/vendor/three/three.module.min.js'];
 
@@ -24,11 +24,6 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(req).then(r => {
       const copy = r.clone(); caches.open(CACHE).then(c => c.put(BASE + 'index.html', copy)); return r;
     }).catch(() => caches.match(BASE + 'index.html')));
-    return;
-  }
-  // 影片清单：先上网拿最新（影片失效时会换备选），没网才用缓存
-  if (req.url.endsWith('/videos.json')) {
-    e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return r; }).catch(() => caches.match(req)));
     return;
   }
   e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(r => {
