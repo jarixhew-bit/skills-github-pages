@@ -414,12 +414,6 @@
   .map-gate[hidden] { display: none; }
   .map-attr { font-size: 11.5px; color: var(--muted); margin: 6px 2px 0; }
   .map-attr a { color: var(--indigo-d); }
-  .map-stat {
-    margin-top: 10px; font-size: 13.5px; line-height: 1.7; color: var(--indigo-d);
-    background: var(--indigo-soft); border: 1px solid var(--indigo-line); border-left: 4px solid var(--indigo);
-    border-radius: 12px; padding: 10px 14px;
-  }
-  .map-stat b { font-size: 15px; }
   .map-fallback { margin-top: 10px; }
   .map-fallback[hidden] { display: none; }
   .map-fallback ul { list-style: none; margin-top: 8px; display: grid; gap: 6px; }
@@ -498,10 +492,6 @@
 <section id="flights">
 <div class="sec-head"><span class="no">01</span><h2><span class="cn">航班</span><span class="en">Flights</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 
-<div class="note amber">
-<span class="cn">🕐 金边比新加坡、槟城<strong>慢 1 小时</strong>（金边 UTC+7，新加坡与槟城 UTC+8）。登机牌上的时间都是<strong>当地时间</strong>，下面标的飞行时长已经把时差算进去。</span>
-<span class="en">🕐 Phnom Penh is <strong>1 hour behind</strong> Singapore and Penang (Phnom Penh UTC+7; Singapore and Penang UTC+8). All times shown are <strong>local time</strong>, and the flight durations below already account for the time difference.</span>
-</div>
 
 <div class="bp-group-label"><span class="cn">🛫 去程 · 10月9日（五）· 金边 → 槟城</span><span class="en">🛫 Outbound · Oct 9 (Fri) · Phnom Penh → Penang</span></div>
 <div class="note amber"><span class="cn">⏰ 07:00 从金边家里出发去机场（航班 09:35 起飞）</span><span class="en">⏰ 07:00 Leave home in Phnom Penh for the airport (flight departs 09:35)</span></div>
@@ -605,7 +595,6 @@
 <button class="map-gate" id="mapGate" type="button" hidden><span class="pill"><span class="cn">👆 点一下启用地图（拖动、缩放）</span><span class="en">👆 Tap to use the map (drag &amp; zoom)</span></span></button>
 </div>
 <div class="map-attr">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</div>
-<div class="map-stat" id="mapStat" hidden></div>
 <div class="map-missing" id="mapMissing" hidden></div>
 <div class="map-fallback" id="mapFallback" hidden>
 <div class="note amber" id="mapFallbackMsg"><span class="cn">地图暂时载入不了（可能没网络）。下面每个地点都能直接点开 Google 地图：</span><span class="en">The map can't load right now (maybe no connection). Each place below opens directly in Google Maps:</span></div>
@@ -1588,7 +1577,6 @@ document.addEventListener('keydown', function(e){
    ================================================================ */
 var MAP_COORDS = {"6645298319328116800":{"lat":5.3420033,"lng":100.4358275},"7948710932161211900":{"lat":5.4375575,"lng":100.3106325},"16316090451728697683":{"lat":5.4215382,"lng":100.3805228},"17287566682074786653":{"lat":5.4497754,"lng":100.3049765},"17783906310819733530":{"lat":5.3418107,"lng":100.4328934},"10648324139628194840":{"lat":5.3990852,"lng":100.3983708},"15939087510710375959":{"lat":5.4350133,"lng":100.3111127},"8039283718126773766":{"lat":5.3995574,"lng":100.3983516},"14810997833472458554":{"lat":5.3331557,"lng":100.3068917},"11019786699336800443":{"lat":5.4195604,"lng":100.3403179},"17102666725830265280":{"lat":5.3440245,"lng":100.4342001},"16491656774087039190":{"lat":5.3989158,"lng":100.3981253},"11966902015449968690":{"lat":5.413203,"lng":100.3313709},"18330303951363231144":{"lat":5.4141443,"lng":100.3304141},"3211212677007490756":{"lat":5.3996413,"lng":100.2736126},"9139778477464223867":{"lat":5.40854,"lng":100.2772},"8676810005730272390":{"lat":5.4144544,"lng":100.3295496},"3730796889489573290":{"lat":5.4380431,"lng":100.3100232},"18074308093244101445":{"lat":5.333134,"lng":100.3069786},"4621355258783297564":{"lat":5.3986313,"lng":100.3980421},"2996911273390255740":{"lat":5.4132931,"lng":100.3312277},"16779912982672871373":{"lat":5.4146699,"lng":100.3311298},"6052983859694123251":{"lat":5.413203,"lng":100.3313709},"18172314537448883100":{"lat":5.3972264,"lng":100.3999224}};
 (function(){
-  var ISLAND_MAX_LNG = 100.355; // 槟城海峡：岛东岸（乔治市码头）约 100.345，对岸北海码头约 100.365
   var LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
   var CAT_OF = { arcade: 'arcade', culture: 'sights', outdoor: 'sights', mall: 'mall' };
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
@@ -1633,12 +1621,6 @@ var MAP_COORDS = {"6645298319328116800":{"lat":5.3420033,"lng":100.4358275},"794
     var k = el.getAttribute('data-mcount');
     el.textContent = onMap.filter(function(p){ return k === 'all' || p.cat === k; }).length;
   });
-  var island = onMap.filter(function(p){ return p.lng < ISLAND_MAX_LNG; }).length;
-  var main = onMap.length - island;
-  var stat = document.getElementById('mapStat');
-  stat.innerHTML = bi('🌉 岛上 <b>' + island + '</b> 个 · 对岸大陆 <b>' + main + '</b> 个，两边要过跨海大桥，同一边的排同一天',
-                      '🌉 <b>' + island + '</b> on the island · <b>' + main + '</b> on the mainland. Getting between them means crossing a bridge, so put same-side places on the same day.');
-  stat.hidden = false;
   if (missing.length){
     var mm = document.getElementById('mapMissing');
     mm.innerHTML = bi('另有 ' + missing.length + ' 个地点坐标待核对，暂不上图：', missing.length + ' more place(s) not pinned until their location is verified: ')
