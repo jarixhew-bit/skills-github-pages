@@ -53,13 +53,14 @@ const HIST_B = [
 // 3D 动画要 WebGL：无头浏览器用 SwiftShader（软件算图）提供，CI 与沙盒都一样
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 
-async function openWith(hist, viewport = { width: 390, height: 844 }) {
+async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) {
   const ctx = await browser.newContext({ viewport, acceptDownloads: true, serviceWorkers: 'block' });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
   await page.clock.setFixedTime(NOW);
-  await page.addInitScript(h => { if (!sessionStorage.getItem('seeded')) { localStorage.clear(); localStorage.setItem('fit.sessions', JSON.stringify(h)); sessionStorage.setItem('seeded', '1'); } }, hist);
+  // opt.cfg：预设设定（例如指定示范方式）；mediaV3 标记表示「已经升级过」，免得被自动改回动图
+  await page.addInitScript(([h, c]) => { if (!sessionStorage.getItem('seeded')) { localStorage.clear(); localStorage.setItem('fit.sessions', JSON.stringify(h)); if (c) localStorage.setItem('fit.cfg', JSON.stringify(c)); sessionStorage.setItem('seeded', '1'); } }, [hist, opt.cfg || null]);
   await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
   await page.goto(URL);
   await page.waitForSelector('#workout .ex');
@@ -182,7 +183,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }) {
 
 // ---- 3D 动画 ＋ 游泳课 ----
 {
-  const { ctx, page, errors } = await openWith([]);
+  const { ctx, page, errors } = await openWith([], undefined, { cfg: { media: '3d', mediaV3: 1 } });
   await page.waitForFunction(() => window.ANIM3D && window.ANIM3D.frames > 0, null, { timeout: 20000 }).catch(() => {});
   const f3 = await page.evaluate(() => ({ on: document.documentElement.dataset.anim, frames: window.ANIM3D ? window.ANIM3D.frames : 0 }));
   check(f3.on === '3d' && f3.frames > 0, `3D 引擎载入并在画（data-anim=${f3.on}，已画 ${f3.frames} 格）`);
@@ -220,7 +221,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }) {
 
 // ---- 真人示范照片（2026-09-30 用户要求「动图改成真人」） ----
 {
-  const { ctx, page, errors } = await openWith([]);
+  const { ctx, page, errors } = await openWith([], undefined, { cfg: { media: 'photo', mediaV3: 1 } });
   // 每个对应到的照片编号，起始／结束两张都要真的在仓库里（漏放一张，卡片就开天窗）
   const ph = await page.evaluate(() => window.__fit.photos);
   const ids = [...new Set([...Object.values(ph.PH_EN), ...Object.values(ph.PH_ANIM)].map(p => p[0]))];
@@ -245,6 +246,41 @@ async function openWith(hist, viewport = { width: 390, height: 844 }) {
   await page.click('nav.tabs [data-tab="train"]');
   check((await page.locator('#workout .ph').count()) === 0 && (await page.locator('#workout canvas.thumb').count()) > 10, '设置改成 3D → 全部换回动画');
   check(errors.length === 0, `真人照片没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+
+// ---- 人体模型示范动图（2026-10-01 用户要「动作的 gif」，选了人体模型风） ----
+{
+  const { ctx, page, errors } = await openWith([]);
+  // App 用到的每个「动作＋拿不拿哑铃」都要有一张动图（新增动作忘了重渲染，卡片就退回旧样子）
+  const combos = await page.evaluate(() => window.__fit.animCombos());
+  const missing = combos.filter(c => !fs.existsSync(`fitness/anim/${c.file}.webp`)).map(c => c.file);
+  check(missing.length === 0, `${combos.length} 个动作组合都有示范动图${missing.length ? '（缺：' + missing.join(', ') + '）' : ''}`);
+  const big = combos.filter(c => fs.existsSync(`fitness/anim/${c.file}.webp`) && fs.statSync(`fitness/anim/${c.file}.webp`).size > 400 * 1024).map(c => c.file);
+  check(big.length === 0, `每张动图都在 400KB 以内（手机流量）${big.length ? '（超过：' + big.join(', ') + '）' : ''}`);
+  await page.click('#picker [data-wk="A"]');
+  const card = page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first();
+  await card.locator('.ph.anim img').scrollIntoViewIfNeeded();
+  await card.locator('.ph.anim img').evaluate(i => i.complete && i.naturalWidth ? 1 : new Promise(r => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); }));
+  const src = await card.locator('.ph.anim img').getAttribute('src');
+  const w = await card.locator('.ph.anim img').evaluate(i => i.naturalWidth);
+  check(src === 'anim/squatG-one.webp' && w > 0, `默认用示范动图：高脚杯深蹲用的是拿一只哑铃那张，且载入成功（${src}，宽 ${w}）`);
+  await page.click('#picker [data-wk="B"]'); // 弓步在 B 训练
+  const lunge = await page.locator('#workout .ex').filter({ hasText: '反向弓步' }).first().locator('.ph.anim img').getAttribute('src');
+  check(lunge === 'anim/lunge-hands.webp', `哑铃版弓步用拿两只哑铃那张（${lunge}）`);
+  await page.click('#eqSeg [data-eq="bw"]');
+  const lungeBw = await page.locator('#workout .ex').filter({ hasText: '反向弓步' }).first().locator('.ph.anim img').getAttribute('src').catch(() => null);
+  check(lungeBw === 'anim/lunge.webp', `徒手版弓步用不拿哑铃的那张（${lungeBw}）`);
+  await page.click('#eqSeg [data-eq="db"]');
+  await page.click('#picker [data-wk="A"]');
+  check((await page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first().locator('.ph img').count()) === 1, '动图模式下卡片只放一张动图（不同时叠照片）');
+  await page.click('#startPlayer');
+  for (let i = 0; i < 8; i++) await page.click('#plNextBtn');
+  check(/anim\/squatG-one\.webp/.test(await page.innerHTML('#plPhoto')) && await page.locator('#plCanvas').isHidden(), '全屏跟练显示示范动图');
+  await page.click('#plClose');
+  await page.click('nav.tabs [data-tab="swim"]');
+  check((await page.locator('#sw-walk .ph.anim img').getAttribute('src')) === 'anim/wwalk.webp', '游泳课也用示范动图');
+  check(errors.length === 0, `动图没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
 }
 

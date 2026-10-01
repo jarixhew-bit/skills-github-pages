@@ -198,6 +198,9 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
 .ph-tag{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:500;border-radius:999px;padding:2px 8px}
 .ph-note{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.72));color:#fff;font-size:12px;line-height:1.35;padding:18px 10px 7px}
 .ex-top.one{grid-template-columns:1fr}
+.ph.anim{background:var(--bg);aspect-ratio:4/3}
+.ph.anim img{object-fit:contain}
+.ex-top.wide .ph.anim{aspect-ratio:4/3}
 .ex-top.wide{grid-template-columns:150px 1fr}
 #plPhoto .ph{height:clamp(170px,34vh,300px);aspect-ratio:auto}
 @media (prefers-reduced-motion: reduce){.ph img+img{animation:none;opacity:0}}
@@ -316,7 +319,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="set-row"><span>器械每次加重</span><div class="seg" role="group" aria-label="器械每次加重" id="cfgGym"></div></div>
       <div class="set-row"><span>每周目标次数</span><div class="seg" role="group" aria-label="每周目标次数" id="cfgGoal"></div></div>
       <div class="set-row"><span>自动减量周<br><span class="small muted">每练 3 周，第 4 周自动减量</span></span><button class="toggle" id="cfgDeload" aria-label="自动减量周" aria-pressed="true"></button></div>
-      <div class="set-row"><span>动作示范<br><span class="small muted">没有真人照片的动作（游泳等）会用 3D；旧手机卡可选简笔画</span></span><div class="seg" role="group" aria-label="动作示范" id="cfgMedia"></div></div>
+      <div class="set-row"><span>动作示范<br><span class="small muted">动图＝人体模型连续示范（离线也能看）；照片＝真人起始／结束两张</span></span><div class="seg" role="group" aria-label="动作示范" id="cfgMedia"></div></div>
       <div class="set-row"><span>跟练语音提示</span><button class="toggle" id="cfgVoice" aria-label="跟练语音提示" aria-pressed="true"></button></div>
     </div>
 
@@ -659,9 +662,9 @@ var ANIM = (function(){
   function sample(key,time){
     var d=S[key]; if(!d) return null;
     var o=framePose(d,time);
-    return {P:place(d,o), t:o.t, props:d.props||[], pool:d.pool||null, b:bounds(d), wallX:layout(d).wallX};
+    return {P:place(d,o), t:o.t, props:d.props||[], pool:d.pool||null, b:bounds(d), wallX:layout(d).wallX, ground:d.ground||"foot", lift:(d.lift||0)+(o.lf||0)};
   }
-  return {draw:draw, sample:sample, has:function(k){return !!S[k];}, holdOf:function(k){return S[k]&&S[k].hold||null;}, keys:function(){return Object.keys(S);}};
+  return {draw:draw, sample:sample, cycleLen:function(k){return S[k]?cycleLen(S[k]):0;}, has:function(k){return !!S[k];}, holdOf:function(k){return S[k]&&S[k].hold||null;}, keys:function(){return Object.keys(S);}};
 })();
 
 </script>
@@ -737,11 +740,12 @@ const SKEY="fit.sessions", BKEY="fit.body", DKEY="fit.draft", CKEY="fit.cfg";
 const ls={ get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
            set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
            del(k){try{localStorage.removeItem(k)}catch(e){}} };
-const CFG_DEF={equip:"db",voice:true,media:"photo",rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,lastBackup:0};
+const CFG_DEF={equip:"db",voice:true,media:"anim",rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,lastBackup:0};
 let cfg=Object.assign({},CFG_DEF,ls.get(CKEY,{}));
 if(!EQ_LABEL[cfg.equip]) cfg.equip="db";
 if(cfg.anim3d===false&&!ls.get(CKEY,{}).media) cfg.media="2d"; // 旧设置「关掉 3D」＝简笔画
-if(!["photo","3d","2d"].includes(cfg.media)) cfg.media="photo";
+if(!cfg.mediaV3){ if(cfg.media==="photo"||cfg.media==="video") cfg.media="anim"; cfg.mediaV3=1; } // 动图上线：原本的默认（照片）升级成动图
+if(!["anim","photo","3d","2d"].includes(cfg.media)) cfg.media="anim";
 let sessions=ls.get(SKEY,null);
 if(!sessions){ sessions=ls.get("wk30.sessions",[]); ls.set(SKEY,sessions); } // 旧版同网域资料顺手接过来
 let body=ls.get(BKEY,[]);
@@ -776,8 +780,13 @@ const PH_ANIM={armcircle:["Arm_Circles"],catcow:["Cat_Stretch"],bridge2:["Butt_L
   lungeT:["Bodyweight_Walking_Lunge","照片往前跨步；热身时双手往前伸"],wgs:["Worlds_Greatest_Stretch"],child:["Childs_Pose"],
   climber:["Mountain_Climbers"],swing:["One-Arm_Kettlebell_Swings","照片用壶铃；单只哑铃握住一头一样做"],deadbug:["Dead_Bug"],
   thruster:["Kettlebell_Thruster","照片用壶铃；两手各拿一只哑铃一样做",true]};
-function photoOf(en,anim,hold){ if(cfg.media!=="photo") return null; const p=(en&&PH_EN[en])||PH_ANIM[anim]; if(!p||(p[2]&&!hold)) return null; return p; }
-function photoHTML(p){ return '<div class="ph" role="img" aria-label="真人示范照片：起始与结束动作"><img src="photos/'+p[0]+'-0.jpg" alt="起始动作" loading="lazy" decoding="async"><img src="photos/'+p[0]+'-1.jpg" alt="结束动作" loading="lazy" decoding="async"><span class="ph-tag">真人示范</span>'+(p[1]?'<span class="ph-note">'+esc(p[1])+'</span>':'')+'</div>'; }
+// 人体模型示范动图（tools/render-fitness-anim.mjs 预先渲染，存在 anim/，离线可看）
+let ANIM_FILES=null;
+function animFile(anim,hold){ if(!ANIM_FILES) ANIM_FILES=new Set(animCombos().map(c=>c.file)); const f=anim+(hold?"-"+hold:""); return ANIM_FILES.has(f)?f:null; }
+function photoOf(en,anim,hold){
+  if(cfg.media==="anim"){ const f=anim&&!Array.isArray(anim)&&animFile(anim,hold); if(f) return {anim:f}; }
+  if(cfg.media!=="photo"&&cfg.media!=="anim") return null; const p=(en&&PH_EN[en])||PH_ANIM[anim]; if(!p||(p[2]&&!hold)) return null; return p; }
+function photoHTML(p){ if(p.anim) return '<div class="ph anim" role="img" aria-label="动作示范动图"><img src="anim/'+p.anim+'.webp" alt="动作示范动图" loading="lazy" decoding="async"><span class="ph-tag">动作示范</span></div>'; return '<div class="ph" role="img" aria-label="真人示范照片：起始与结束动作"><img src="photos/'+p[0]+'-0.jpg" alt="起始动作" loading="lazy" decoding="async"><img src="photos/'+p[0]+'-1.jpg" alt="结束动作" loading="lazy" decoding="async"><span class="ph-tag">真人示范</span>'+(p[1]?'<span class="ph-note">'+esc(p[1])+'</span>':'')+'</div>'; }
 function usesKg(id,eq){ return eq!=="bw"; }
 function weekStart(d){ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x.getTime(); }
 function weeksBetween(a,b){ return Math.round((weekStart(b)-weekStart(a))/(7*DAY)); }
@@ -1188,7 +1197,7 @@ $("histList").addEventListener("click",e=>{
 const SEGS={cfgRest:["rest",[60,75,90],v=>v+" 秒"],cfgDb:["dbStep",[1,2,2.5],v=>v+" kg"],cfgGym:["gymStep",[2.5,5],v=>v+" kg"],cfgGoal:["goal",[2,3,4],v=>v+" 次"]};
 function renderCfg(){
   for(const id in SEGS){ const [k,opts,f]=SEGS[id]; $(id).innerHTML=opts.map(v=>'<button data-v="'+v+'" aria-pressed="'+(cfg[k]===v)+'">'+f(v)+'</button>').join(""); }
-  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfgMedia").innerHTML=[["photo","真人"],["3d","3D"],["2d","简笔"]].map(m=>'<button data-media="'+m[0]+'" aria-pressed="'+(cfg.media===m[0])+'">'+m[1]+'</button>').join("");
+  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfgMedia").innerHTML=[["anim","动图"],["photo","照片"],["3d","3D"],["2d","简笔"]].map(m=>'<button data-media="'+m[0]+'" aria-pressed="'+(cfg.media===m[0])+'">'+m[1]+'</button>').join("");
 }
 Object.keys(SEGS).forEach(id=>$(id).addEventListener("click",e=>{ const b=e.target.closest("[data-v]"); if(!b) return; cfg[SEGS[id][0]]=+b.dataset.v; saveCfg(); renderAll(); }));
 $("cfgDeload").onclick=()=>{ cfg.deload=!cfg.deload; saveCfg(); renderAll(); };
@@ -1435,7 +1444,7 @@ function renderSwim(){
     h+='<div class="stage-head"><h2>'+esc(stg[0])+'</h2><span class="small muted">'+dn+' / '+ds.length+'</span></div><p class="small muted" style="margin-top:-8px">'+esc(stg[1])+'</p>';
     ds.forEach(d=>{
       const no=SWIM.indexOf(d)+1, done=swim[d.id];
-      h+='<div class="card swim-drill'+(done?' done':'')+(d.key?' key':'')+'" id="sw-'+d.id+'"><canvas class="wide" data-anim="'+d.anim+'" aria-hidden="true"></canvas>'+
+      h+='<div class="card swim-drill'+(done?' done':'')+(d.key?' key':'')+'" id="sw-'+d.id+'">'+((p=>p?photoHTML(p):'<canvas class="wide" data-anim="'+d.anim+'" aria-hidden="true"></canvas>')(photoOf(null,d.anim,null)))+
         '<div class="row between"><span class="eyebrow">第 '+no+' 课'+(d.key?' · 最重要的安全技能':'')+'</span>'+(done?'<span class="small" style="color:var(--ok)">✓ '+fmtShort(done)+' 过关</span>':'')+'</div>'+
         '<h3 style="font-size:18px">'+esc(d.name)+'</h3><div class="goal"><b>过关标准</b>　'+esc(d.goal)+'</div>'+
         '<ol class="steps small">'+d.steps.map(s=>'<li><span>'+esc(s)+'</span></li>').join("")+'</ol>'+
@@ -1469,7 +1478,16 @@ function renderAll(){ renderHeader(); renderWeek(); renderPicker(); renderWorkou
 setEquip(cfg.equip);
 renderAll();
 if("serviceWorker" in navigator && location.protocol!=="file:"){ addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
-window.__fit={suggest,cycleInfo,e1rm,photos:{PH_EN,PH_ANIM}}; // 给自检脚本用
+// App 实际用到的「动作＋拿不拿哑铃」组合（渲染写实动图的脚本与自检都从这里拿，清单只有一份）
+function animCombos(){
+  const set=new Map(), add=(anim,hold)=>{ if(!anim) return; const file=anim+(hold?"-"+hold:""); if(!set.has(file)) set.set(file,{anim,hold:hold||null,file}); };
+  for(const id in EX) for(const eq of ["db","bw","gym"]) { const v=EX[id][eq]; if(v) add(v[3],v[4]); }
+  for(const k in FIN) for(const eq in FIN[k].items) FIN[k].items[eq].forEach(it=>add(it[1],it[2]));
+  WARM.concat(COOL).forEach(w=>add(w[2],null));
+  SWIM.forEach(d=>add(d.anim,null));
+  return [...set.values()];
+}
+window.__fit={suggest,cycleInfo,e1rm,photos:{PH_EN,PH_ANIM},animCombos}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>

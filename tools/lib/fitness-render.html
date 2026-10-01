@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>健身动图渲染台</title>
+<!-- 只给 tools/render-fitness-anim.mjs 用：把 fitness App 的动作（ANIM 引擎算的关节）套到写实人物模型上，
+     逐格渲染成循环动图。不上线、不进 App。人物模型不进仓库（授权不允许转发原档），由渲染脚本临时下载。 -->
+<script type="importmap">{"imports":{"three":"../../vendor/three/three.module.min.js"}}</script>
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from '../../vendor/three/addons/loaders/GLTFLoader.js';
+
+// ---- 1. 从 App 本体抽出动作引擎（同一份 ANIM，不复制一份到这里，免得两边对不上） ----
+const html = await (await fetch('../../fitness/index.html')).text();
+const src = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.includes('var ANIM ='));
+(0, eval)(src);
+const ANIM = window.ANIM;
+
+// ---- 2. 场景 ----
+const W = +new URLSearchParams(location.search).get('w') || 360, H = +new URLSearchParams(location.search).get('h') || 270;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(26, W / H, 5, 3000);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a9894, 1.35));
+const sun = new THREE.DirectionalLight(0xffffff, 2.1); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 130, bottom: -130, near: 10, far: 600 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.5;
+scene.add(sun, sun.target);
+const rim = new THREE.DirectionalLight(0xffffff, 0.7); scene.add(rim, rim.target);
+
+const std = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.65 }, o));
+const M = {
+  prop: std(0x9aa5a2, { roughness: 0.7 }), iron: std(0x30353b, { roughness: 0.35, metalness: 0.6 }), wood: std(0xc39e72, { roughness: 0.75 }),
+  plate: std(0xcf4526, { roughness: 0.5 }), board: std(0xf2b33d, { roughness: 0.55 }), tile: std(0xbfe3ef, { roughness: 0.9 }),
+  water: new THREE.MeshStandardMaterial({ color: 0x3fa7d6, transparent: true, opacity: 0.3, roughness: 0.15, depthWrite: false }),
+  surf: new THREE.MeshStandardMaterial({ color: 0xa6e0f4, transparent: true, opacity: 0.45, roughness: 0.08, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false }),
+};
+const add = (geo, mat, cast = true) => { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = true; scene.add(m); return m; };
+const catcher = add(new THREE.PlaneGeometry(800, 800), new THREE.ShadowMaterial({ opacity: 0.25 }), false); catcher.rotation.x = -Math.PI / 2;
+const tile = add(new THREE.PlaneGeometry(900, 500), M.tile, false); tile.rotation.x = -Math.PI / 2; tile.position.y = -0.05;
+const water = add(new THREE.BoxGeometry(900, 1, 320), M.water, false); water.renderOrder = 2;
+const surfGeo = new THREE.PlaneGeometry(900, 320, 90, 32); surfGeo.rotateX(-Math.PI / 2);
+const surf = add(surfGeo, M.surf, false); surf.renderOrder = 3;
+const boxes = []; for (let i = 0; i < 6; i++) boxes.push(add(new THREE.BoxGeometry(1, 1, 1), M.prop));
+let nb = 0;
+function box(x0, x1, y0, y1, depth, mat, rotZ = 0, cx = null, cy = null) {
+  const b = boxes[nb++]; if (!b) return; b.visible = true; b.material = mat;
+  b.scale.set(Math.max(0.5, Math.abs(x1 - x0)), Math.max(0.5, Math.abs(y1 - y0)), depth);
+  b.position.set(cx ?? (x0 + x1) / 2, cy ?? (y0 + y1) / 2, 0); b.rotation.set(0, 0, rotZ);
+}
+function dumbbell() {
+  const g = new THREE.Group();
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 12, 12), M.iron); bar.rotation.x = Math.PI / 2; bar.castShadow = true; g.add(bar);
+  for (const z of [-5, 5]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 3.4, 6), M.plate); p.rotation.x = Math.PI / 2; p.position.z = z; p.castShadow = true; g.add(p); }
+  scene.add(g); return g;
+}
+const DB = [dumbbell(), dumbbell()];
+
+// ---- 3. 人物：缩放到跟引擎一样高（头顶到脚底约 98 单位），面向 +x ----
+const gltf = await new GLTFLoader().loadAsync(new URLSearchParams(location.search).get('model'));
+const root = gltf.scene; scene.add(root);
+root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; if (o.material) { o.material.roughness = 0.7; } } });
+if (/xbot/i.test(new URLSearchParams(location.search).get('model'))) root.traverse(o => {
+  if (!o.isMesh) return;
+  o.material = new THREE.MeshStandardMaterial(/joint/i.test(o.material.name) ? { color: 0x0c7666, roughness: 0.45, metalness: 0.1 } : { color: 0xd8dedc, roughness: 0.55, metalness: 0.05 });
+});
+const B = n => root.getObjectByName('mixamorig' + n);
+if (new URLSearchParams(location.search).get('recolor')) root.traverse(o => {
+  if (!o.isMesh || !o.material || !o.material.map || !o.material.map.image) return;
+  const img = o.material.map.image, c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0); const d = g.getImageData(0, 0, c.width, c.height), a2 = d.data;
+  for (let i = 0; i < a2.length; i += 4) { const r = a2[i], gg = a2[i + 1], b = a2[i + 2]; if (r > 120 && gg > 100 && b < 90 && r - b > 70) { const l = (r + gg + b) / 3 * 0.32; a2[i] = l; a2[i + 1] = l * 1.05; a2[i + 2] = l * 1.1; } }
+  g.putImageData(d, 0, 0); const tx = new THREE.CanvasTexture(c); tx.flipY = o.material.map.flipY; tx.colorSpace = THREE.SRGBColorSpace; o.material.map = tx; o.material.needsUpdate = true;
+});
+// 先摆成 T 字（模型自带的 TPose 片段），以它当「静止姿势」
+const tpose = gltf.animations.find(a => /tpose/i.test(a.name));
+if (tpose) { const mx = new THREE.AnimationMixer(root); mx.clipAction(tpose).play(); mx.update(0); }
+root.updateMatrixWorld(true);
+const box0 = new THREE.Box3().setFromObject(root); const h0 = box0.max.y - box0.min.y;
+const SCALE = 98 / h0; root.scale.setScalar(SCALE); root.updateMatrixWorld(true);
+
+const NAMES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftShoulder', 'RightShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightArm', 'RightForeArm', 'RightHand',
+  'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase', 'HeadTop_End', 'LeftToe_End', 'RightToe_End'];
+const bone = {}; NAMES.forEach(n => (bone[n] = B(n)));
+const REST = {}; // 静止时的世界旋转（人物面向 +z）
+for (const n of NAMES) REST[n] = bone[n].getWorldQuaternion(new THREE.Quaternion());
+const restDir = (a, b) => bone[b].getWorldPosition(new THREE.Vector3()).sub(bone[a].getWorldPosition(new THREE.Vector3())).normalize();
+// 每段骨头静止时指向哪里（父→子），之后要把它转到引擎算出的方向
+const SEG = { RightUpLeg: 'RightLeg', RightLeg: 'RightFoot', RightFoot: 'RightToeBase', LeftUpLeg: 'LeftLeg', LeftLeg: 'LeftFoot', LeftFoot: 'LeftToeBase',
+  RightArm: 'RightForeArm', RightForeArm: 'RightHand', LeftArm: 'LeftForeArm', LeftForeArm: 'LeftHand', RightHand: null, LeftHand: null };
+const RD = {}; for (const k in SEG) if (SEG[k]) RD[k] = restDir(k, SEG[k]);
+RD.RightHand = RD.RightForeArm.clone(); RD.LeftHand = RD.LeftForeArm.clone();
+const BODY_UP = new THREE.Vector3(0, 1, 0), BODY_FWD = new THREE.Vector3(0, 0, 1);
+
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const v2 = (P, a, b) => V(P[b][0] - P[a][0], P[b][1] - P[a][1], 0).normalize();
+function setWorldQuat(name, q) {
+  const b = bone[name]; const pq = b.parent.getWorldQuaternion(new THREE.Quaternion());
+  b.quaternion.copy(pq.invert().multiply(q)); b.updateMatrixWorld(true);
+}
+function pose(s, swim) {
+  const P = s.P;
+  // 身体朝向：躯干方向 T、脸朝 F（与 anim3d.js 同一套定义）
+  const T = v2(P, 'hip', 'sh'), F = V(T.y, -T.x, 0);
+  // 静止时人物「上=+y、前=+z」，要转成「上=T、前=F」
+  const m0 = new THREE.Matrix4().makeBasis(BODY_FWD.clone().cross(BODY_UP), BODY_UP, BODY_FWD);
+  const m1 = new THREE.Matrix4().makeBasis(F.clone().cross(T), T, F);
+  const R = new THREE.Quaternion().setFromRotationMatrix(m1.multiply(m0.invert()));
+  root.position.set(0, 0, 0); root.updateMatrixWorld(true);
+  for (const n of ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftShoulder', 'RightShoulder'])
+    setWorldQuat(n, R.clone().multiply(REST[n]));
+  // 四肢：先跟着身体转，再把骨头指向引擎给的方向（最小旋转，所以不会乱扭）
+  const target = {
+    RightUpLeg: v2(P, 'hip', 'nk'), RightLeg: v2(P, 'nk', 'nf'), LeftUpLeg: v2(P, 'hip', 'fk'), LeftLeg: v2(P, 'fk', 'ff'),
+    RightArm: v2(P, 'sh', 'ne'), RightForeArm: v2(P, 'ne', 'nh'), LeftArm: v2(P, 'sh', 'fe'), LeftForeArm: v2(P, 'fe', 'fh'),
+  };
+  target.RightHand = target.RightForeArm; target.LeftHand = target.LeftForeArm;
+  for (const [foot, shin] of [['RightFoot', 'RightLeg'], ['LeftFoot', 'LeftLeg']]) {
+    const sd = target[shin]; const toe = swim ? sd.clone() : V(-sd.y, sd.x, 0);
+    if (!swim && toe.x < -0.2) toe.negate();
+    target[foot] = toe.normalize();
+  }
+  for (const n of ['RightUpLeg', 'RightLeg', 'RightFoot', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand']) {
+    const q = R.clone().multiply(REST[n]);
+    const cur = RD[n].clone().applyQuaternion(R);
+    const d = new THREE.Quaternion().setFromUnitVectors(cur, target[n]);
+    setWorldQuat(n, d.multiply(q));
+  }
+  root.updateMatrixWorld(true);
+  // 站在地上：用模型真实的骨头位置找最低点（躺／趴的动作看全身，站着的看脚）
+  const pts = NAMES.map(n => bone[n].getWorldPosition(V()));
+  const low = s.ground === 'low' ? Math.min(...pts.map(p => p.y)) - 2.5 : Math.min(...['RightToe_End', 'RightFoot', 'LeftFoot', 'LeftToe_End'].map(n => bone[n].getWorldPosition(V()).y)) - 2.5;
+  const hipW = bone.Hips.getWorldPosition(V());
+  root.position.set(P.hip[0] - hipW.x, -low + s.lift, 0);
+  root.updateMatrixWorld(true);
+}
+// 模型摆好后的关节位置，换成引擎的名字，给器材定位用（器材要贴着「这个人」而不是贴着火柴人）
+function modelP() {
+  const g = n => { const p = bone[n].getWorldPosition(V()); return [p.x, p.y]; };
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  return { hip: g('Hips'), sh: mid(g('RightArm'), g('LeftArm')), nk: g('RightLeg'), nf: g('RightFoot'), fk: g('LeftLeg'), ff: g('LeftFoot'),
+    ne: g('RightForeArm'), nh: g('RightHand'), fe: g('LeftForeArm'), fh: g('LeftHand'), hd: g('Head') };
+}
+function props(s, P) {
+  nb = 0; boxes.forEach(b => (b.visible = false));
+  const X = n => P[n][0], Y = n => P[n][1];
+  for (const pr of s.props) {
+    if (pr === 'bench') { const x1 = Math.min(X('sh'), X('hip')) - 9, x2 = Math.max(X('sh'), X('hip')) + 10, top = Math.min(Y('sh'), Y('hip')) - 6; box(x1, x2, top - 5, top, 26, M.prop); box(x1 + 6, x1 + 10, 0, top - 5, 18, M.iron); box(x2 - 10, x2 - 6, 0, top - 5, 18, M.iron); }
+    if (pr === 'pad') { const x1 = Math.min(X('sh'), X('nk')) - 3, x2 = Math.max(X('sh'), X('nk')) + 3, top = Math.min(Y('sh'), Y('hip')) - 6; box(x1, x2, top - 5, top, 26, M.prop); box((x1 + x2) / 2 - 2, (x1 + x2) / 2 + 2, 0, top - 5, 14, M.iron); }
+    if (pr === 'seat') { const sx = X('hip'), top = Y('hip') - 7; box(sx - 13, sx + 14, top - 5, top, 30, M.prop); box(sx - 2, sx + 2, 0, top - 5, 10, M.iron); }
+    if (pr === 'back') { const x = X('hip') - 10; box(x - 2.5, x + 2.5, Y('hip') - 3, Y('sh') + 8, 26, M.prop); }
+    if (pr === 'recline') {
+      const a = [X('hip'), Y('hip')], b = [X('sh'), Y('sh')], ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]) + 10, nx = -Math.sin(ang), ny = Math.cos(ang); // 背后＝脸的反方向
+      box(0, len, 0, 5, 28, M.prop, ang, (a[0] + b[0]) / 2 + nx * 9, (a[1] + b[1]) / 2 + ny * 9);
+      box(X('hip') - 12, X('hip') + 14, Y('hip') - 12, Y('hip') - 7, 30, M.prop); box(X('hip') - 2, X('hip') + 2, 0, Y('hip') - 12, 10, M.iron);
+    }
+    if (pr === 'bar') { const hx = X('nh'), top = Y('nh') + 3; box(hx - 34, hx + 36, top, top + 4, 80, M.wood); box(hx + 30, hx + 34, 0, top, 4, M.wood); }
+    if (pr === 'boxF') { const fx = X('ff'); box(fx - 15, fx + 8, 0, Y('ff') - 3, 32, M.wood); }
+    if (pr === 'boxN') { const nx = X('nf'); box(nx - 18, nx + 18, 0, Y('nf') - 3, 36, M.wood); }
+    if (pr === 'wallR') { const wx = X('nh') + 5; box(wx, wx + 10, 0, s.pool.surface + 9, 320, M.tile); }
+    if (pr === 'wallL') { box(s.wallX - 10, s.wallX, 0, s.pool.surface + 9, 320, M.tile); }
+    if (pr === 'board') { const hx = X('nh'); box(hx - 5, hx + 26, Y('nh') + 1, Y('nh') + 4, 32, M.board); }
+  }
+}
+const FING = ['Index', 'Middle', 'Ring', 'Pinky'];
+const fingerRest = {};
+for (const side of ['Left', 'Right']) for (const f of FING.concat(['Thumb'])) for (const k of [1, 2, 3]) { const b = B(side + 'Hand' + f + k); if (b) fingerRest[b.name] = b.quaternion.clone(); }
+function fist(side, on) {
+  for (const f of FING) for (const k of [1, 2, 3]) {
+    const b = B(side + 'Hand' + f + k); if (!b) continue;
+    b.quaternion.copy(fingerRest[b.name]);
+    if (on) b.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(V(0, 0, -1), THREE.MathUtils.degToRad(k === 1 ? 70 : 85)));
+  }
+  for (const k of [2, 3]) { const b = B(side + 'HandThumb' + k); if (!b) continue; b.quaternion.copy(fingerRest[b.name]); if (on) b.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), THREE.MathUtils.degToRad(40))); }
+}
+function dumbbells(hold) {
+  fist('Right', !!hold); fist('Left', hold === 'hands' || hold === 'one'); root.updateMatrixWorld(true);
+  DB[0].visible = DB[1].visible = false;
+  const rh = bone.RightHand.getWorldPosition(V()), lh = bone.LeftHand.getWorldPosition(V());
+  const grip = (h, f) => h.clone().add(f.clone().sub(h).multiplyScalar(0)); // 握在手掌
+  if (hold === 'hands') { DB[0].visible = DB[1].visible = true; DB[0].position.copy(grip(rh, rh)).add(V(0, 0, 1)); DB[1].position.copy(grip(lh, lh)).add(V(0, 0, -1)); DB[0].rotation.set(0, 0, 0); DB[1].rotation.set(0, 0, 0); }
+  else if (hold === 'one') {
+    DB[0].visible = true; const together = rh.distanceTo(lh) < 12;
+    DB[0].position.copy(together ? rh.clone().add(lh).multiplyScalar(0.5) : rh); DB[0].rotation.set(together ? Math.PI / 2 : 0, 0, 0);
+  }
+}
+
+// ---- 4. 取景：先把整个循环走一遍量出范围，镜头固定不动 ----
+function cycle(key) { const d = ANIM.sample(key, 0); return d; }
+window.render = async function (key, hold, fps, maxFrames) {
+  const s0 = ANIM.sample(key, 0); if (!s0) return null;
+  const T = ANIM.cycleLen(key), n = Math.min(maxFrames || 60, Math.max(8, Math.round(T * fps)));
+  const swim = !!s0.pool;
+  floorVisible(!swim);
+  // 量范围
+  const bb = new THREE.Box3();
+  // 用骨头位置量范围（蒙皮网格的包围盒停在绑定姿势，不准），再加上身体厚度
+  for (let i = 0; i < n; i++) { const s = ANIM.sample(key, T * i / n); pose(s, swim); for (const nm of NAMES) bb.expandByPoint(bone[nm].getWorldPosition(V())); }
+  bb.expandByScalar(7);
+  const c = bb.getCenter(V()), sz = bb.getSize(V());
+  const yaw = THREE.MathUtils.degToRad(32), pitch = THREE.MathUtils.degToRad(swim ? 16 : 10);
+  const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+  const w = Math.max(sz.x * Math.cos(yaw) + sz.z * Math.sin(yaw), 40) + 6, h = Math.max(sz.y, 40) + 6;
+  const D = Math.max((h / 2) / t, (w / 2) / (t * cam.aspect)) * 1.06;
+  cam.position.set(c.x + D * Math.sin(yaw) * Math.cos(pitch), c.y + D * Math.sin(pitch), c.z + D * Math.cos(yaw) * Math.cos(pitch));
+  cam.lookAt(c.x, c.y, c.z); cam.updateProjectionMatrix();
+  sun.target.position.set(c.x, 0, 0); sun.position.set(c.x + 80, 220, 140);
+  rim.target.position.set(c.x, c.y, 0); rim.position.set(c.x - 140, c.y + 80, -110);
+  const frames = [];
+  for (let i = 0; i < n; i++) {
+    const tm = T * i / n, s = ANIM.sample(key, tm);
+    pose(s, swim); const P = modelP(); props(s, P); dumbbells(hold);
+    if (swim) {
+      const hh = s.pool.surface; water.scale.y = hh; water.position.y = hh / 2;
+      const a = surfGeo.attributes.position.array;
+      for (let k = 0; k < a.length; k += 3) a[k + 1] = hh + 0.9 * Math.sin(a[k] * 0.06 + tm * 2.3) * Math.cos(a[k + 2] * 0.05 + tm * 1.5);
+      surfGeo.attributes.position.needsUpdate = true; surfGeo.computeVertexNormals();
+    }
+    renderer.render(scene, cam);
+    frames.push(renderer.domElement.toDataURL('image/png'));
+  }
+  return { frames, ms: Math.round(T * 1000 / n) };
+};
+function floorVisible(on) { catcher.visible = on; tile.visible = water.visible = surf.visible = !on; }
+window.ready = true;
+</script>
+</body>
+</html>
