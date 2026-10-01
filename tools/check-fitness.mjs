@@ -53,25 +53,14 @@ const HIST_B = [
 // 3D 动画要 WebGL：无头浏览器用 SwiftShader（软件算图）提供，CI 与沙盒都一样
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 
-// 影片清单一律用固定 fixture（真的 videos.json 会随选片改变，不能让这份自检跟着飘）；
-// 默认给空清单＝没有影片，各段照旧验照片／3D；影片那段再换成有内容的 fixture。
-const NO_VIDEOS = { videos: {} };
-const TINY_JPG = Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=', 'base64');
-async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) {
+async function openWith(hist, viewport = { width: 390, height: 844 }) {
   const ctx = await browser.newContext({ viewport, acceptDownloads: true, serviceWorkers: 'block' });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
   await page.clock.setFixedTime(NOW);
-  await page.addInitScript(([h, c, off]) => {
-    if (!sessionStorage.getItem('seeded')) { localStorage.clear(); localStorage.setItem('fit.sessions', JSON.stringify(h)); if (c) localStorage.setItem('fit.cfg', JSON.stringify(c)); sessionStorage.setItem('seeded', '1'); }
-    if (off) Object.defineProperty(navigator, 'onLine', { get: () => false });
-  }, [hist, opt.cfg || null, !!opt.offline]);
+  await page.addInitScript(h => { if (!sessionStorage.getItem('seeded')) { localStorage.clear(); localStorage.setItem('fit.sessions', JSON.stringify(h)); sessionStorage.setItem('seeded', '1'); } }, hist);
   await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
-  await page.route('**/fitness/videos.json', r => r.fulfill({ body: JSON.stringify(opt.videos || NO_VIDEOS), contentType: 'application/json' }));
-  // 沙盒与 CI 都不该真的去连 YouTube：封面给一张极小的图、播放器给空页
-  await page.route('https://i.ytimg.com/**', r => r.fulfill({ body: TINY_JPG, contentType: 'image/jpeg' }));
-  await page.route('https://www.youtube-nocookie.com/**', r => r.fulfill({ body: '<html><body>stub player</body></html>', contentType: 'text/html' }));
   await page.goto(URL);
   await page.waitForSelector('#workout .ex');
   return { ctx, page, errors };
@@ -95,7 +84,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   check(await page.locator('#deloadBanner').isHidden(), '一般周不出现减量横幅');
   // 热身/放松：每个动作都要有动画、秒数、要点（2026-09-30 用户要求「热身和放松也放动作」）
   for (const [id, n, label] of [['#warmCard', 8, '热身'], ['#coolCard', 4, '放松']]) {
-    const cv = await page.locator(`${id} canvas.thumb, ${id} .ph, ${id} .vbox`).count(); // 动画、真人照片或影片都算
+    const cv = await page.locator(`${id} canvas.thumb, ${id} .ph`).count(); // 动画或真人照片都算
     const cues = await page.locator(`${id} details p`).allTextContents();
     const vids = await page.locator(`${id} a.vid`).count();
     check(cv === n && cues.length === n && cues.every(c => c.length > 8) && vids === n, `${label}清单 ${n} 个动作都有动作示范（真人照片或动画）、要点与影片（示范 ${cv}／要点 ${cues.length}／影片 ${vids}）`);
@@ -193,7 +182,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
 
 // ---- 3D 动画 ＋ 游泳课 ----
 {
-  const { ctx, page, errors } = await openWith([], undefined, { cfg: { media: '3d', mediaV2: 1 } });
+  const { ctx, page, errors } = await openWith([]);
   await page.waitForFunction(() => window.ANIM3D && window.ANIM3D.frames > 0, null, { timeout: 20000 }).catch(() => {});
   const f3 = await page.evaluate(() => ({ on: document.documentElement.dataset.anim, frames: window.ANIM3D ? window.ANIM3D.frames : 0 }));
   check(f3.on === '3d' && f3.frames > 0, `3D 引擎载入并在画（data-anim=${f3.on}，已画 ${f3.frames} 格）`);
@@ -231,7 +220,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
 
 // ---- 真人示范照片（2026-09-30 用户要求「动图改成真人」） ----
 {
-  const { ctx, page, errors } = await openWith([], undefined, { cfg: { media: 'photo', mediaV2: 1 } });
+  const { ctx, page, errors } = await openWith([]);
   // 每个对应到的照片编号，起始／结束两张都要真的在仓库里（漏放一张，卡片就开天窗）
   const ph = await page.evaluate(() => window.__fit.photos);
   const ids = [...new Set([...Object.values(ph.PH_EN), ...Object.values(ph.PH_ANIM)].map(p => p[0]))];
@@ -257,53 +246,6 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   check((await page.locator('#workout .ph').count()) === 0 && (await page.locator('#workout canvas.thumb').count()) > 10, '设置改成 3D → 全部换回动画');
   check(errors.length === 0, `真人照片没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
-}
-
-// ---- 真人示范影片（2026-09-30 用户要求「完全动的」，嵌入 YouTube） ----
-const VIDEO_FIX = { videos: {
-  goblet_squat: [{ id: 'AAAAAAAAAAA', start: 0 }],
-  high_knee_march: [{ id: 'XXXXXXXXXXX', bad: true }, { id: 'CCCCCCCCCCC', start: 5 }],
-  sw_walk: [{ id: 'BBBBBBBBBBB', start: 0 }],
-} };
-{
-  const { ctx, page, errors } = await openWith([], undefined, { videos: VIDEO_FIX });
-  await page.waitForSelector('#workout .vbox');
-  check((await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg') || '{}').media || 'video')) === 'video', '默认示范方式是真人影片');
-  await page.click('#picker [data-wk="A"]');
-  const gob = page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first();
-  check((await gob.locator('.vbox').getAttribute('data-vid')) === 'AAAAAAAAAAA' && (await gob.locator('iframe').count()) === 0, '卡片先放影片封面，不自动载入播放器（省流量）');
-  await gob.locator('.vplay').click();
-  const src = await gob.locator('iframe').getAttribute('src');
-  check(/embed\/AAAAAAAAAAA\?/.test(src) && /autoplay=1/.test(src) && /mute=1/.test(src) && /loop=1/.test(src) && /playsinline=1/.test(src), `点封面 → 静音、循环、自动播放（${src}）`);
-  const march = await page.locator('#warmCard .ex').filter({ hasText: '原地高抬腿踏步' }).locator('.vbox').getAttribute('data-vid');
-  check(march === 'CCCCCCCCCCC', `标了失效（bad）的影片会跳过、改用备选（实得 ${march}）`);
-  check((await page.locator('#workout .ex').filter({ hasText: '哑铃卧推' }).first().locator('.ph').count()) === 1, '没有影片的动作退回真人照片');
-  await page.click('#startPlayer');
-  for (let i = 0; i < 8; i++) await page.click('#plNextBtn');
-  const psrc = await page.locator('#plVideo iframe').getAttribute('src');
-  check(/embed\/AAAAAAAAAAA/.test(psrc) && await page.locator('#plCanvas').isHidden() && await page.locator('#plPhoto').isHidden(), '全屏跟练的深蹲直接播影片');
-  await page.click('#plClose');
-  await page.click('nav.tabs [data-tab="swim"]');
-  check((await page.locator('#sw-walk .vbox').getAttribute('data-vid')) === 'BBBBBBBBBBB', '游泳课也用影片');
-  check(errors.length === 0, `影片没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
-  await ctx.close();
-}
-{
-  const { ctx, page, errors } = await openWith([], undefined, { videos: VIDEO_FIX, offline: true });
-  await page.click('#picker [data-wk="A"]');
-  const gob = page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first();
-  check((await gob.locator('.vbox').count()) === 0 && (await gob.locator('.ph').count()) === 1, '没网时不放影片，自动改用真人照片');
-  check(errors.length === 0, `离线没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
-  await ctx.close();
-}
-// 真的 videos.json：格式要对（每支都是 11 字元的 YouTube 编号），影片键名要对得上 App 用的键
-if (fs.existsSync('fitness/videos.json')) {
-  const vj = JSON.parse(fs.readFileSync('fitness/videos.json', 'utf8'));
-  const badIds = Object.entries(vj.videos || {}).flatMap(([k, a]) => (a || []).filter(v => v && v.id && !/^[A-Za-z0-9_-]{11}$/.test(v.id)).map(v => k + ':' + v.id));
-  check(badIds.length === 0, `videos.json 里的影片编号格式都正确${badIds.length ? '（错：' + badIds.join(', ') + '）' : ''}`);
-  const html = fs.readFileSync('fitness/index.html', 'utf8');
-  const unknown = Object.keys(vj.videos || {}).filter(k => !html.includes('"' + k + '"'));
-  check(unknown.length === 0, `videos.json 的每个键 App 都用得到${unknown.length ? '（多出：' + unknown.join(', ') + '）' : ''}`);
 }
 
 // ---- 手机宽度：没有横向卷动 ----
