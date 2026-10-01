@@ -248,6 +248,38 @@ async function openWith(hist, viewport = { width: 390, height: 844 }) {
   await ctx.close();
 }
 
+// ---- 人体模型示范动图（2026-10-01 用户要「动作的 gif」，选了人体模型风） ----
+{
+  const { ctx, page, errors } = await openWith([]);
+  // App 用到的每个「动作＋拿不拿哑铃」都要有一张动图（新增动作忘了重渲染，卡片就退回旧样子）
+  const combos = await page.evaluate(() => window.__fit.animCombos());
+  const missing = combos.filter(c => !fs.existsSync(`fitness/anim/${c.file}.webp`)).map(c => c.file);
+  check(missing.length === 0, `${combos.length} 个动作组合都有示范动图${missing.length ? '（缺：' + missing.join(', ') + '）' : ''}`);
+  const big = combos.filter(c => fs.existsSync(`fitness/anim/${c.file}.webp`) && fs.statSync(`fitness/anim/${c.file}.webp`).size > 400 * 1024).map(c => c.file);
+  check(big.length === 0, `每张动图都在 400KB 以内（手机流量）${big.length ? '（超过：' + big.join(', ') + '）' : ''}`);
+  await page.click('#picker [data-wk="A"]');
+  const card = page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first();
+  await card.locator('.ph.anim img').scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => { const i = document.querySelector('#workout .ph.anim img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 }).catch(() => {});
+  const src = await card.locator('.ph.anim img').getAttribute('src');
+  const w = await card.locator('.ph.anim img').evaluate(i => i.naturalWidth);
+  check(src === 'anim/squatG-one.webp' && w > 0, `默认用示范动图：高脚杯深蹲用的是拿一只哑铃那张，且载入成功（${src}，宽 ${w}）`);
+  const lunge = await page.locator('#workout .ex').filter({ hasText: '反向弓步' }).first().locator('.ph.anim img').getAttribute('src').catch(() => null);
+  await page.click('#eqSeg [data-eq="bw"]');
+  const lungeBw = await page.locator('#workout .ex').filter({ hasText: '反向弓步' }).first().locator('.ph.anim img').getAttribute('src').catch(() => null);
+  check(lungeBw === 'anim/lunge.webp', `徒手版弓步用不拿哑铃的那张（${lungeBw}）`);
+  await page.click('#eqSeg [data-eq="db"]');
+  check((await page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first().locator('.ph img').count()) === 1, '动图模式下卡片只放一张动图（不同时叠照片）');
+  await page.click('#startPlayer');
+  for (let i = 0; i < 8; i++) await page.click('#plNextBtn');
+  check(/anim\/squatG-one\.webp/.test(await page.innerHTML('#plPhoto')) && await page.locator('#plCanvas').isHidden(), '全屏跟练显示示范动图');
+  await page.click('#plClose');
+  await page.click('nav.tabs [data-tab="swim"]');
+  check((await page.locator('#sw-walk .ph.anim img').getAttribute('src')) === 'anim/wwalk.webp', '游泳课也用示范动图');
+  check(errors.length === 0, `动图没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+
 // ---- 手机宽度：没有横向卷动 ----
 {
   const { ctx, page, errors } = await openWith(HIST_A, { width: 360, height: 740 });
