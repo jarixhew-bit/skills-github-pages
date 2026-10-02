@@ -284,10 +284,61 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   await ctx.close();
 }
 
+// ---- 有氧（提升 VO2max，2026-10-02 用户要求） ----
+{
+  const { ctx, page, errors } = await openWith([]);
+  await page.click('nav.tabs [data-tab="cardio"]');
+  await page.click('#cdStart');
+  const w1 = await page.locator('#cdWeek .cd-sess').allTextContents();
+  check(w1.length === 3 && w1.every(s => /轻松有氧 · 30 分钟/.test(s)), `第 1 周＝3 次轻松有氧各 30 分钟（实得 ${w1.length} 项）`);
+  await page.fill('#cdAge', '38'); await page.click('#cdHrSave');
+  // 208 − 0.7×38 = 181.4 → 181；轻松 60–70% = 108.6–126.7 → 109–127；快 90–95% = 162.9–172.0 → 163–172
+  const z = await page.textContent('#cdZones');
+  check(/最大心率 181/.test(z) && /109–127/.test(z) && /163–172/.test(z), `年龄 38 → 最大心率 181、轻松 109–127、快 163–172（实得：${z.replace(/\s+/g, ' ').slice(0, 120)}）`);
+  check(/目标心率 109–127/.test(w1[0] + await page.textContent('#cdWeek')), '本周清单的轻松有氧带出目标心率');
+  // 跟练一次轻松有氧 → 记一笔、清单打勾
+  await page.click('[data-cdgo="0"]');
+  check(/心率 91–109/.test(await page.textContent('#plMain')), '跟练热身显示心率区间（50–60%）');
+  for (let i = 0; i < 3; i++) await page.click('#plNextBtn');
+  await page.click('#plMain [data-feel="7"]');
+  await page.click('#plAct');
+  const rec = await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cardio')));
+  check(rec.length === 1 && rec[0].kind === 'easy' && rec[0].min === 30 && rec[0].feel === 7, '完成一次轻松有氧 → 记下种类、分钟数、感觉');
+  check((await page.locator('#cdWeek .cd-sess.done').count()) === 1 && /1 \/ 3 次/.test(await page.textContent('#cdWeek')), '本周清单变成 1 / 3、那一项打勾');
+  // VO2max 记录
+  await page.fill('#vVal', '100'); await page.click('#vSave');
+  check(/15–90/.test(await page.textContent('#vMsg')), 'VO2max 填 100 → 被挡下');
+  await page.fill('#vVal', '40'); await page.click('#vSave');
+  check((await page.evaluate(() => JSON.parse(localStorage.getItem('fit.vo2'))))[0].v === 40 && (await page.locator('#vo2Chart circle').count()) === 1, 'VO2max 40 记下并画出一个点');
+  // 第 4 周：加 4×4（3 轮）；第 9 周：再加 30/30（10 回合）
+  for (const [weeks, expect, label] of [[3, /4×4 间歇 · 3 轮/, '第 4 周出现 4×4（先做 3 轮）'], [8, /30\/30 短间歇 · 10 回合/, '第 9 周加上 30/30（10 回合）']]) {
+    await page.evaluate(n => { const c = JSON.parse(localStorage.getItem('fit.cfg')); c.cardioStart = Date.now() - n * 7 * 864e5; localStorage.setItem('fit.cfg', JSON.stringify(c)); }, weeks);
+    await page.reload(); await page.click('nav.tabs [data-tab="cardio"]');
+    check(expect.test(await page.textContent('#cdWeek')), label);
+  }
+  // 4×4 跟练的步骤：热身＋4 快＋3 恢复＋收操＋完成 = 10 步（第 9 周是 4 轮）
+  await page.locator('#cdWeek .cd-sess').filter({ hasText: '4×4 间歇' }).locator('[data-cdgo]').click();
+  check(/1 \/ 10/.test(await page.textContent('#plCount')), `4×4（4 轮）的跟练共 10 步（${await page.textContent('#plCount')}）`);
+  await page.click('#plNextBtn');
+  check(/163–172/.test(await page.textContent('#plMain')) && /4:00/.test(await page.textContent('#plMain')), '4×4 的「快」显示 4:00 与心率 163–172');
+  await page.click('#plClose');
+  await page.click('#cdGarmin > summary'); // 默认收起，先展开
+  await page.click('#cdgPick [data-cdg="i44"]');
+  const gt = await page.textContent('#cdgText');
+  check(/重复 4 次/.test(gt) && /4:00/.test(gt) && /3:00/.test(gt) && /163–172/.test(gt), 'Garmin 版 4×4 步骤正确（重复 4 次、4:00 快、3:00 恢复、心率 163–172）');
+  check((await page.locator('#cdWhyBody a, #cdIqosBody a').count()) >= 10, '「为什么这样练」与「IQOS」两段都附来源链接');
+  await page.click('nav.tabs [data-tab="more"]');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+  const bk = JSON.parse(fs.readFileSync(await dl.path(), 'utf8'));
+  check(bk.cardio && bk.cardio.length === 1 && bk.vo2 && bk.vo2.length === 1, '备份包含有氧记录与 VO2max');
+  check(errors.length === 0, `有氧没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+
 // ---- 手机宽度：没有横向卷动 ----
 {
   const { ctx, page, errors } = await openWith(HIST_A, { width: 360, height: 740 });
-  for (const t of ['train', 'swim', 'prog', 'hist', 'more']) {
+  for (const t of ['train', 'cardio', 'swim', 'prog', 'hist', 'more']) {
     await page.click(`nav.tabs [data-tab="${t}"]`);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     check(over <= 0, `360px 宽「${t}」页没有横向卷动（多出 ${over}px）`);
