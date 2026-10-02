@@ -102,7 +102,7 @@ details p{margin-top:4px}
 #rest button{border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:8px;padding:6px 10px}
 #rest .grow{flex:1;min-width:0;font-size:13px;line-height:1.3}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav.tabs .inner{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+nav.tabs .inner{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
 nav.tabs button{border:0;background:transparent;height:60px;font-size:13px;color:var(--muted);font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 nav.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
 nav.tabs button[aria-selected="true"]{color:var(--accent)}
@@ -210,6 +210,18 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
 .goal b{color:var(--accent)}
 .swim-drill.done{border-color:var(--ok)}
 .swim-drill .btn[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:#fff}
+.zone{border-radius:12px;padding:10px 12px;font-weight:700;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.zone small{font-weight:500;opacity:.9}
+.zone.z2{background:#d8efe6;color:#0b5a4c}.zone.z3{background:#fde9c8;color:#7a4b00}.zone.z4{background:#fbd5cc;color:#9b2a12}
+:root[data-theme="dark"] .zone.z2{background:#163b33;color:#9fe3cf}:root[data-theme="dark"] .zone.z3{background:#3b2c12;color:#f6cf8a}:root[data-theme="dark"] .zone.z4{background:#3e1d16;color:#ffad98}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .zone.z2{background:#163b33;color:#9fe3cf}:root:not([data-theme="light"]) .zone.z3{background:#3b2c12;color:#f6cf8a}:root:not([data-theme="light"]) .zone.z4{background:#3e1d16;color:#ffad98}}
+.cd-sess{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:10px}
+.cd-sess:first-of-type{border-top:0;padding-top:0}
+.cd-sess .btn{white-space:nowrap;flex:none}
+.cd-sess.done .btn{background:var(--ok);border-color:var(--ok);color:#fff}
+.phase-bar{display:grid;grid-template-columns:3fr 5fr 4fr;gap:4px}
+.phase-bar span{height:8px;border-radius:4px;background:var(--line)}
+.phase-bar span.on{background:var(--accent)}
 .stage-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px}
 .key{border:2px solid var(--plate)}
 @media (max-width:380px){nav.tabs button{font-size:12px}}
@@ -274,6 +286,50 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       </div>
     </details>
     <div id="swimList" class="stack"></div>
+  </section>
+
+  <!-- ===== 有氧（提升 VO2max） ===== -->
+  <section id="tab-cardio" class="stack" hidden>
+    <div class="card" id="cdTop"></div>
+    <div class="card" id="cdWeek"></div>
+    <div class="card">
+      <div class="block-head"><h2>VO2max 记录</h2><span class="small muted" id="vo2Head"></span></div>
+      <div class="form-row">
+        <label>日期<input class="inp" type="date" id="vDate"></label>
+        <label>Garmin VO2max<input class="inp" id="vVal" inputmode="decimal" placeholder="例如 41"></label>
+        <label>&nbsp;<button class="btn primary" id="vSave" style="height:42px">记一笔</button></label>
+      </div>
+      <p class="small muted" id="vMsg"></p>
+      <div class="chart" id="vo2Chart"></div>
+      <div id="vo2List"></div>
+    </div>
+    <div class="card">
+      <h2>心率区间</h2>
+      <div class="form-row">
+        <label>年龄<input class="inp" id="cdAge" inputmode="numeric" placeholder="例如 38"></label>
+        <label>最大心率（可不填）<input class="inp" id="cdHrMax" inputmode="numeric" placeholder="Garmin 上的"></label>
+        <label>&nbsp;<button class="btn" id="cdHrSave" style="height:42px">存</button></label>
+      </div>
+      <div id="cdZones"></div>
+    </div>
+    <details class="card fold" id="cdGarmin">
+      <summary>搬进 Garmin 手表</summary>
+      <div class="stack">
+        <div class="row between"><span class="small muted">选一种练法</span><div class="seg" role="group" aria-label="选择练法" id="cdgPick"></div></div>
+        <pre class="copy" id="cdgText"></pre>
+        <div class="row"><button class="btn primary" id="cdgCopy">复制步骤</button><span class="small muted" id="cdgMsg"></span></div>
+        <p class="small muted">Garmin Connect → 训练与计划 → 训练 → 建立训练 → 选<b>跑步</b>（或骑行），照上面加步骤，「重复」包住快＋慢两段；目标选「心率区间」或「自定义心率」。菜单名称依版本可能略有不同（未逐字查证）。</p>
+      </div>
+    </details>
+    <details class="card fold" id="cdWhy">
+      <summary>为什么这样练（附来源）</summary>
+      <div class="stack" id="cdWhyBody"></div>
+    </details>
+    <details class="card fold" id="cdIqos">
+      <summary>IQOS 与心肺（附来源）</summary>
+      <div class="stack" id="cdIqosBody"></div>
+    </details>
+    <div class="warn" id="cdSafety"></div>
   </section>
 
   <!-- ===== 进度 ===== -->
@@ -421,6 +477,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
 <nav class="tabs" aria-label="页面">
   <div class="inner" role="tablist">
     <button role="tab" aria-selected="true" data-tab="train"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4M6 7v10M18 7v10M21 10v4M6 12h12"/></svg>训练</button>
+    <button role="tab" aria-selected="false" data-tab="cardio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 1-.2 1.9-.6 2.8"/><path d="M3 13h4l2-3 3 6 2-3h7"/></svg>有氧</button>
     <button role="tab" aria-selected="false" data-tab="swim"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 16c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M2 20c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="15" cy="6" r="2"/><path d="M5 12l5-4 3 3"/></svg>游泳</button>
     <button role="tab" aria-selected="false" data-tab="prog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M6 15l4-4 3 3 5-6"/></svg>进度</button>
     <button role="tab" aria-selected="false" data-tab="hist"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>记录</button>
@@ -1207,7 +1264,7 @@ $("cfgMedia").addEventListener("click",e=>{ const b=e.target.closest("[data-medi
 // ---------- 备份 ----------
 function download(name,text,type){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
 $("bkJson").onclick=()=>{
-  download("训练备份-"+isoDay(Date.now())+".json",JSON.stringify({app:"fitness",v:1,exported:Date.now(),sessions,body,cfg,swim},null,1),"application/json");
+  download("训练备份-"+isoDay(Date.now())+".json",JSON.stringify({app:"fitness",v:1,exported:Date.now(),sessions,body,cfg,swim,cardio,vo2},null,1),"application/json");
   cfg.lastBackup=Date.now(); saveCfg(); renderHist();
   $("bkMsg").textContent="已导出 "+sessions.length+" 次训练、"+body.length+" 笔体重。存到云端硬盘或传给自己，换手机时导入。";
 };
@@ -1225,6 +1282,8 @@ $("bkFile").onchange=async e=>{
     let ns=0, nb=0;
     d.sessions.forEach(s=>{ if(s&&s.id&&Array.isArray(s.sets)&&!sessions.some(x=>x.id===s.id)){ sessions.push(s); ns++; } });
     (d.body||[]).forEach(b=>{ if(b&&b.id&&isFinite(b.kg)&&!body.some(x=>x.id===b.id)){ body.push(b); nb++; } });
+    (d.cardio||[]).forEach(c=>{ if(c&&c.id&&!cardio.some(x=>x.id===c.id)) cardio.push(c); }); saveCardio();
+    (d.vo2||[]).forEach(v=>{ if(v&&v.id&&isFinite(v.v)&&!vo2.some(x=>x.id===v.id)) vo2.push(v); }); saveVo2();
     if(d.swim&&typeof d.swim==="object"){ for(const k in d.swim) if(!swim[k]&&SWIM.some(x=>x.id===k)) swim[k]=d.swim[k]; ls.set(WKEY,swim); }
     saveSessions(); saveBody(); renderAll();
     $("bkMsg").textContent="导入完成：新增 "+ns+" 次训练、"+nb+" 笔体重（重复的自动略过）。";
@@ -1277,6 +1336,7 @@ function buildSteps(){
   return S;
 }
 function openPlayer(){
+  plMode="strength";
   ensureDraft(selWk); steps=buildSteps();
   si=0;
   if(current.start){ // 练到一半回来：跳到第一个还没完成的组
@@ -1291,7 +1351,7 @@ function openPlayer(){
   keepAwake(); ensureStarted();
   showStep(true);
 }
-function closePlayer(){ pl.run=false; $("player").hidden=true; document.body.style.overflow=""; try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){} renderWorkout(); }
+function closePlayer(){ pl.run=false; $("player").hidden=true; document.body.style.overflow=""; try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){} if(plMode==="cardio"){ plMode="strength"; renderCardio(); } else renderWorkout(); }
 function showStep(autostart){
   const s=steps[si]; $("player").classList.toggle("rest",s.kind==="rest");
   $("plCount").textContent=(si+1)+" / "+steps.length;
@@ -1304,7 +1364,9 @@ function showStep(autostart){
   const src=s.kind==="rest"?(steps.slice(si+1).find(x=>x.anim)||{}):s;
   const ph=Array.isArray(src.anim)?null:photoOf(src.en,src.anim,src.hold);
   $("plPhoto").innerHTML=ph?photoHTML(ph):""; $("plPhoto").hidden=!ph; cv.hidden=!!ph;
+  if(s.noAnim){ cv.hidden=true; $("plPhoto").hidden=true; }
   let m="";
+  if(s.zone) m+='<div class="zone '+s.zone.cls+'"><span>'+esc(s.zone.label)+'</span><small>'+esc(s.zone.hr||"")+'</small></div>';
   if(s.kind==="set"){
     const v=val(s.key), eq=cfg.equip, kg=usesKg(s.id,eq), sg=suggest(s.id,eq), kgv=v.kg!=null?v.kg:(sg.kg!=null?kgStr(sg.kg):"");
     if(v.kg==null&&kgv!=="") v.kg=kgv;
@@ -1316,6 +1378,9 @@ function showStep(autostart){
     m+='<div class="rir"><span class="rir-lbl">做完还能再做几下？</span>'+[0,1,2,3].map(n=>'<button class="chip" data-rir="'+n+'" aria-pressed="'+(String(v.rir)===String(n))+'">'+(n===3?"3+":n)+'</button>').join("")+'</div>';
     $("plCue").innerHTML=esc(s.cue)+' <a class="vid" href="'+vidUrl(s.en)+'" target="_blank" rel="noopener">真人示范 ↗</a>';
     pl.run=false;
+  } else if(s.kind==="cdone"){
+    m+='<p>做得好！'+esc(CD_KINDS[s.cd.kind].name)+' 完成。选一下整体感觉，然后记录。</p>'+feelHTML(pl.cdFeel||null)+'<input id="plCdNote" class="inp" style="font-size:16px;font-family:var(--f-body);text-align:left" placeholder="备注（例如：跑步机、平均心率 150）">';
+    $("plCue").textContent=""; pl.run=false;
   } else if(s.kind==="done"){
     m+='<p>做得好！选一下今天的整体感觉，写下收尾完成几轮，然后储存。</p>'+feelHTML(current.feel)+'<input id="plFin" class="inp" style="font-size:16px;font-family:var(--f-body);text-align:left" value="'+esc(current.fin)+'" placeholder="收尾完成几轮 / 备注"><p class="small muted" id="plSaveMsg"></p>';
     $("plCue").textContent=""; pl.run=false;
@@ -1338,6 +1403,7 @@ function paintAct(){
   const s=steps[si], b=$("plAct");
   if(s.kind==="set") b.textContent="完成这组 ✓";
   else if(s.kind==="done") b.textContent="储存这次训练";
+  else if(s.kind==="cdone") b.textContent="完成并记录";
   else if(s.kind==="rest") b.textContent="跳过休息";
   else b.textContent=pl.run?"暂停":(pl.remain<s.sec?"继续":"开始");
 }
@@ -1358,6 +1424,10 @@ $("plAct").onclick=async()=>{
     markDone(s.key,true); beep(1); go(1); return;
   }
   if(s.kind==="rest"){ go(1); return; }
+  if(s.kind==="cdone"){
+    const c=s.cd, n=$("plCdNote"), now=Date.now();
+    cardio.push({id:"c_"+now,ts:now,kind:c.kind,min:cdMinutes(c),rounds:c.rounds||null,feel:pl.cdFeel||null,note:n?n.value:"",week:cdWeek(now)}); saveCardio();
+    pl.cdFeel=null; beep(2,990); closePlayer(); return; }
   if(s.kind==="done"){ const f=$("plFin"); if(f) current.fin=f.value; if(pl.amrap&&!current.fin) current.fin=pl.amrap+" 轮";
     const saved=await finishWorkout(null);
     if(saved){ const msg=$("storeNote")?$("storeNote").textContent:""; pl.amrap=0; closePlayer(); paintStoreNote(msg); }
@@ -1376,6 +1446,7 @@ $("plMain").addEventListener("click",e=>{
   const rb=e.target.closest("[data-rir]");
   if(rb){ const v=val(steps[si].key); v.rir=String(v.rir)===rb.dataset.rir?"":rb.dataset.rir; saveDraft(); document.querySelectorAll("#plMain [data-rir]").forEach(b=>b.setAttribute("aria-pressed",String(v.rir)===b.dataset.rir)); return; }
   const fb=e.target.closest("[data-feel]");
+  if(fb&&plMode==="cardio"){ pl.cdFeel=+fb.dataset.feel; document.querySelectorAll("#plMain [data-feel]").forEach(b=>b.setAttribute("aria-pressed",b===fb)); return; }
   if(fb){ current.feel=+fb.dataset.feel; saveDraft(); document.querySelectorAll("#plMain [data-feel]").forEach(b=>b.setAttribute("aria-pressed",b===fb)); return; }
   if(e.target.id==="plRound"){ pl.amrap=(pl.amrap||0)+1; $("plRounds").textContent=pl.amrap+" 轮"; current.fin=pl.amrap+" 轮"; saveDraft(); beep(1,990); }
   if(e.target.id==="plRoundMinus"){ pl.amrap=Math.max(0,(pl.amrap||0)-1); $("plRounds").textContent=pl.amrap+" 轮"; current.fin=pl.amrap+" 轮"; saveDraft(); }
@@ -1462,19 +1533,128 @@ $("tab-swim").addEventListener("click",e=>{
   if(g){ const el=$("sw-"+g.dataset.swgo); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); }
 });
 
+// 说明文字（研究查证后填入；每个数字都附来源）
+const CD_WHY='<ul class="list small"><li><b>4×4 间歇是主力。</b>Helgerud 等人 2007 年的研究：40 名有一定训练的男性，每周 3 次、共 8 周，快 4 分钟（90–95% 最大心率）＋慢 3 分钟（约 70%），做 4 轮，VO2max 提升 7.2%；同期的中等强度长跑组几乎没变。<a href="https://www.semanticscholar.org/paper/Aerobic-high-intensity-intervals-improve-VO2max-Helgerud-H%C3%B8ydal/263bb580cc0f447793be7a49db7cdca326794e19" target="_blank" rel="noopener">来源</a>（摘要层级，未读全文）。研究是每周 3 次，这份计划每周只排 1 次（另外还有轻松有氧和力量训练），所以进步可能比研究慢——这是我的判断。</li><li><b>综合多项研究也是间歇较好。</b>Milanović 2015 汇总分析：与不运动相比，持续耐力训练 VO2max +4.9、高强度间歇 +5.5 ml/kg/min。<a href="https://link.springer.com/article/10.1007/s40279-015-0365-0" target="_blank" rel="noopener">来源</a>（摘要层级）。</li><li><b>先打底再上强度。</b>停练后 VO2max 会掉：Coyle 1984 年的研究，停训约 3 周掉 7%，8 周后稳定在比巅峰低约 16%。<a href="https://journals.physiology.org/doi/abs/10.1152/jappl.1984.57.6.1857" target="_blank" rel="noopener">来源</a>。也有二手文献写成「12 天掉 7%」，两种说法并列。练回来通常比掉下去快（<a href="https://www.firstbeat.com/en/blog/how-long-does-it-take-to-lose-your-fitness/" target="_blank" rel="noopener">Firstbeat</a> 的说法，原始研究未查证）。</li><li><b>大部分轻松、少部分很累。</b>Seiler 2010 观察精英耐力运动员，约 8 成训练是低强度、2 成高强度。<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5442222/" target="_blank" rel="noopener">来源</a>。这是对精英的观察，套到一般人是推论。</li><li><b>Garmin 什么时候会更新 VO2max：</b>户外跑步、开 GPS、戴心率，跑到 70% 最大心率以上至少 10 分钟；气温高于 22°C、海拔高于 800 公尺时手表会自动修正。<a href="https://www8.garmin.com/manuals/webhelp/GUID-F41EAFB3-6CC9-42DE-9C6C-9E358DBB0671/EN-US/GUID-3E971364-A756-4057-B22D-C41250B2A82B.html" target="_blank" rel="noopener">Garmin 说明</a>。独立研究测得它的平均误差约 5%。<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12748164/" target="_blank" rel="noopener">来源</a>。所以 1–2 点的上下不必在意，看几周的走势。</li><li>没填最大心率时，用「208 − 0.7 × 年龄」估算（Tanaka 2001 的公式，本次未重新查证）。Garmin 上有实测值就填实测值。</li></ul>', CD_IQOS='<ul class="list small"><li><b>一氧化碳比纸烟少，但没有归零。</b>一项 12 人交叉试验：用 IQOS 后呼出的一氧化碳没有明显上升，纸烟则明显上升。<a href="https://link.springer.com/article/10.1186/s12931-018-0867-z" target="_blank" rel="noopener">来源</a>（作者之一与烟草公司资金有关）。菲利普莫里斯自家研究：改用 IQOS 5 天，血中一氧化碳指标降 51%，完全戒烟降 53%。<a href="https://www.tobaccoinduceddiseases.org/A-scoping-review-of-the-toxicity-and-health-impact-of-IQOS,188867,0,2.html" target="_blank" rel="noopener">来源</a>。独立系统综述的结论：比纸烟低，但仍高于完全不抽。<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8296358/" target="_blank" rel="noopener">来源</a>。</li><li><b>尼古丁本身会让心跳和血压上升。</b>吸烟后心率约 +7 下／分钟、平均血压约 +5 mmHg。<a href="https://www.ahajournals.org/doi/full/10.1161/01.hyp.0000219284.47970.34" target="_blank" rel="noopener">来源</a>。一项独立研究发现 IQOS 与纸烟造成的心率、血压短暂上升没有明显差别。<a href="https://www.sciencedirect.com/science/article/pii/S0021915023052565" target="_blank" rel="noopener">来源</a>。Garmin 是拿心率对比配速来估 VO2max，刚抽完心跳偏高，估出来可能偏低（这是我的推论）。</li><li><b>对体能的研究：</b>一项 12 周随机试验的次要分析，改用加热烟草者的 VO2max 从 39.2 升到 41.6，完全戒烟者 +2.7，继续抽纸烟者没有变化。<a href="https://www.nature.com/articles/s41598-025-03904-w" target="_blank" rel="noopener">来源</a>（该团队曾获菲利普莫里斯出资的基金会经费，这篇是否标注资助未查证）。大规模横断面数据：现在吸烟者平均 38.8，从不吸烟 41.6，已戒烟 41.4。<a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11794401/" target="_blank" rel="noopener">来源</a>。</li><li><b>实际建议（我的建议，不是研究结论）：</b>练前 2 小时、练后 1 小时不抽；能减量就减量。</li></ul>', CD_SAFE='<b>安全</b>\u3000按美国运动医学会（ACSM）2015 的体检建议（二手转述）：目前没在规律运动、也没有心血管／代谢／肾脏疾病或相关症状 → 可以从轻中强度开始，不必先看医生；有上述疾病，或运动时胸痛胸闷、头晕、心跳乱跳、异常喘 → 先看医生再练。<a href="https://www.ideafit.com/getting-to-the-heart-of-pre-exercise-screening/" target="_blank" rel="noopener">来源</a>。第 4 周开始有 4×4 高强度间歇，不确定的话先做一次健康检查。';
+// ---------- 有氧：12 周把 VO2max 练回来 ----------
+// 三阶段：打底（只练轻松有氧）→ 加 4×4 间歇 → 再加 30/30 短间歇。每周数量与时长在 CD_WEEKS。
+// 心率百分比都是「占最大心率的百分比」。来源与理由写在 CD_WHY（画面上「为什么这样练」）。
+const CD_KINDS={
+  easy:{name:"轻松有氧",short:"轻松",zone:[60,70],desc:"跑步、快走上坡、骑车、划船机都可以。强度低到能讲完整句子。"},
+  i44:{name:"4×4 间歇",short:"4×4",zone:[90,95],desc:"快 4 分钟、慢跑 3 分钟，做 4 轮。快的时候喘到只能讲几个字。"},
+  i3030:{name:"30/30 短间歇",short:"30/30",zone:[90,100],desc:"快 30 秒、慢 30 秒，连续做。快的那段接近全力但能控制。"}};
+// 每周：[轻松次数, 轻松分钟, 4×4 轮数(0=没有), 30/30 回合数(0=没有)]
+const CD_WEEKS=[null,[3,30,0,0],[3,35,0,0],[3,40,0,0],[2,40,3,0],[2,40,4,0],[2,45,4,0],[2,45,4,0],[2,45,4,0],[2,45,4,10],[2,45,4,12],[2,45,4,15],[2,45,4,15]];
+const CD_PHASE=w=>w<=3?["第 1 阶段 · 打底","只练轻松有氧，让心肺先「扩容」，也让关节和脚适应。"]:w<=8?["第 2 阶段 · 加 4×4 间歇","每周一次 4×4，这是提升 VO2max 最主要的一招。"]:["第 3 阶段 · 加短间歇","再加一次 30/30 短间歇，把上限往上推。"];
+const CDKEY="fit.cardio", VKEY2="fit.vo2";
+let cardio=ls.get(CDKEY,[]), vo2=ls.get(VKEY2,[]);
+function saveCardio(){ ls.set(CDKEY,cardio); } function saveVo2(){ ls.set(VKEY2,vo2); }
+function hrMax(){ const m=num(cfg.hrMax); if(m&&m>120&&m<230) return {v:Math.round(m),src:"你填的"}; const a=num(cfg.age); if(a&&a>10&&a<90) return {v:Math.round(208-0.7*a),src:"按年龄估算（208 − 0.7 × 年龄）"}; return null; }
+function hrRange(z){ const h=hrMax(); return h?Math.round(h.v*z[0]/100)+"–"+Math.round(h.v*z[1]/100):null; }
+function cdWeek(now){ if(!cfg.cardioStart) return 0; return Math.max(1,weeksBetween(cfg.cardioStart,now||Date.now())+1); }
+function cdPlan(w){ const p=CD_WEEKS[Math.min(w,12)]; const out=[]; for(let i=0;i<p[0];i++) out.push({kind:"easy",min:p[1]}); if(p[2]) out.push({kind:"i44",rounds:p[2]}); if(p[3]) out.push({kind:"i3030",rounds:p[3]}); return out; }
+function cdMinutes(s){ return s.kind==="easy"?s.min:s.kind==="i44"?10+s.rounds*7-3+5:10+s.rounds+5; }
+// 跟练步骤（与力量训练共用同一个全屏播放器）
+function cdSteps(s){
+  const S=[], hr=z=>{ const r=hrRange(z); return r?"心率 "+r:"强度看说话：" }, Z=CD_KINDS;
+  const st=(phase,name,sec,zone,cls,cue,kind)=>S.push({kind:kind||"timed",phase,name,sec,noAnim:true,zone:{cls,label:name,hr:hr(zone),zone},cue,speak:name+"，"+(sec>=60?Math.round(sec/60)+"分钟":sec+"秒")});
+  if(s.kind==="easy"){
+    st("热身","慢慢开始",300,[50,60],"z2","先走或慢跑，让心率慢慢上来。");
+    st("主课 · 轻松有氧","轻松有氧",(s.min-10)*60,Z.easy.zone,"z2","能讲完整句子的强度。觉得太喘就放慢或改快走。");
+    st("收操","放松走",300,[50,60],"z2","慢慢走，让心率降下来。");
+  } else if(s.kind==="i44"){
+    st("热身","热身",600,[60,70],"z2","轻松跑 10 分钟，最后 1 分钟稍微加快。");
+    for(let r=1;r<=s.rounds;r++){
+      st("4×4 · 第 "+r+"/"+s.rounds+" 轮","快",240,Z.i44.zone,"z4","喘到只能讲几个字。前 1–2 分钟心率还在爬升是正常的。");
+      if(r<s.rounds) st("4×4 · 第 "+r+"/"+s.rounds+" 轮","慢跑恢复",180,[65,75],"z2","不要停下来，慢跑或快走（研究里是约 70% 最大心率的主动恢复）。","rest");
+    }
+    st("收操","放松",300,[50,60],"z2","慢慢跑或走，让心率降下来。");
+  } else {
+    st("热身","热身",600,[60,70],"z2","轻松跑 10 分钟，最后做 2–3 次 10 秒的加速。");
+    for(let r=1;r<=s.rounds;r++){ st("30/30 · 第 "+r+"/"+s.rounds+" 回","快",30,Z.i3030.zone,"z4","接近全力但能控制，不要冲到动作变形。"); st("30/30 · 第 "+r+"/"+s.rounds+" 回","慢",30,[60,70],"z2","慢跑或快走。","rest"); }
+    st("收操","放松",300,[50,60],"z2","慢慢跑或走。");
+  }
+  S.push({kind:"cdone",phase:"完成",name:"有氧完成",noAnim:true,cd:s});
+  return S;
+}
+let plMode="strength", cdCur=null;
+function openCardio(s){
+  plMode="cardio"; cdCur=s; steps=cdSteps(s); si=0;
+  $("player").hidden=false; document.body.style.overflow="hidden";
+  $("plVoice").setAttribute("aria-pressed",cfg.voice);
+  keepAwake(); showStep(false);
+}
+function cdDoneThisWeek(){ const ws=weekStart(Date.now()); return cardio.filter(c=>weekStart(c.ts)===ws); }
+function renderCardio(){
+  const w=cdWeek(), h=hrMax();
+  if(!w){
+    $("cdTop").innerHTML='<div class="eyebrow">有氧 · 把 VO2max 练回来</div><h2>12 周有氧计划</h2><p class="small">每周 3–4 次、每次 30–50 分钟。前 3 周只练轻松有氧，之后每周加一次 4×4 间歇，最后 4 周再加短间歇。力量训练照样每周 2 次，跟间歇日错开一天。</p><button class="btn primary wide" id="cdStart">从这周开始</button>';
+    $("cdWeek").innerHTML='<p class="small muted">按「从这周开始」后，这里会列出本周要做的每一次有氧。</p>';
+  } else {
+    const ph=CD_PHASE(Math.min(w,12)), plan=w<=12?cdPlan(w):[{kind:"easy",min:45},{kind:"easy",min:45},{kind:"i44",rounds:4}];
+    $("cdTop").innerHTML='<div class="row between"><div><div class="eyebrow">有氧计划</div><h2>'+(w<=12?"第 "+w+" / 12 周":"12 周完成 · 维持期")+'</h2></div><button class="btn ghost small" id="cdReset">重新开始</button></div>'+
+      '<div class="phase-bar">'+[[1,3],[4,8],[9,12]].map(r=>'<span class="'+(w>=r[0]?'on':'')+'"></span>').join("")+'</div>'+
+      '<p class="small"><b>'+esc(w<=12?ph[0]:"维持期")+'</b>　'+esc(w<=12?ph[1]:"每周 2 次轻松＋1 次 4×4 就能守住成果。")+'</p>';
+    const done=cdDoneThisWeek(), used=new Set(); let html='<div class="block-head"><h2>本周要做的</h2><span class="small muted">'+done.length+' / '+plan.length+' 次</span></div>';
+    plan.forEach((s,i)=>{
+      const k=CD_KINDS[s.kind], d=done.find(c=>c.kind===s.kind&&!used.has(c.id)); if(d) used.add(d.id);
+      const r=hrRange(k.zone);
+      html+='<div class="cd-sess'+(d?' done':'')+'"><span><b>'+esc(k.name)+'</b> · '+(s.kind==="easy"?s.min+' 分钟':s.kind==="i44"?s.rounds+' 轮（约 '+cdMinutes(s)+' 分钟）':s.rounds+' 回合（约 '+cdMinutes(s)+' 分钟）')+'<br><span class="small muted">'+esc(k.desc)+(r?' 目标心率 '+r:'')+'</span></span>'+
+        (d?'<button class="btn" data-cdundo="'+d.id+'">已完成 ✓</button>':'<button class="btn primary" data-cdgo="'+i+'">开始</button>')+'</div>';
+    });
+    html+='<p class="small muted">顺序随意，两次间歇之间至少隔 1 天。用跑步机、骑车或划船机也可以，照心率或说话测试的强度做。</p>';
+    $("cdWeek").innerHTML=html; $("cdWeek")._plan=plan;
+  }
+  // VO2max
+  if(!$("vDate").value) $("vDate").value=isoDay(Date.now());
+  const vs=vo2.slice().sort((a,b)=>a.ts-b.ts), last=vs[vs.length-1];
+  $("vo2Head").textContent=last?("最近 "+last.v+(vs.length>1?"（第一笔 "+vs[0].v+"）":"")+" · 目标回到 54"):"以前最高 54";
+  drawChart($("vo2Chart"),vs.map(x=>({x:fmtShort(x.ts),y:x.v,tip:fmtDate(x.ts)+"<br>VO2max "+x.v})),{kind:"line",label:"VO2max 走势",empty:"每 1–2 周从 Garmin 抄一次 VO2max，这里会画出走势"});
+  $("vo2List").innerHTML=vs.length?'<table class="t"><tbody>'+vs.slice().reverse().slice(0,6).map(x=>'<tr><td>'+fmtDate(x.ts)+'</td><td class="r">'+x.v+'</td><td class="r"><button class="btn ghost small" data-vdel="'+x.id+'">删除</button></td></tr>').join("")+'</tbody></table>':"";
+  // 心率区间
+  if(document.activeElement!==$("cdAge")) $("cdAge").value=cfg.age||""; if(document.activeElement!==$("cdHrMax")) $("cdHrMax").value=cfg.hrMax||"";
+  $("cdZones").innerHTML=h?('<p class="small muted">最大心率 '+h.v+'（'+h.src+'）</p>'+[["z2","轻松有氧",[60,70]],["z2","间歇里的慢跑恢复",[65,75]],["z4","间歇的「快」",[90,95]]].map(z=>'<div class="zone '+z[0]+'" style="margin-top:6px"><span>'+z[1]+'</span><small>'+z[2][0]+'–'+z[2][1]+'% · '+Math.round(h.v*z[2][0]/100)+'–'+Math.round(h.v*z[2][1]/100)+'</small></div>').join("")):'<p class="small muted">填年龄就能估算；Garmin 上有你实测的最大心率更准（Garmin Connect → 用户设置 → 心率区间）。不填也能练：轻松＝能讲完整句子，快＝只能讲几个字。</p>';
+  renderCdGarmin();
+  $("cdWhyBody").innerHTML=CD_WHY; $("cdIqosBody").innerHTML=CD_IQOS; $("cdSafety").innerHTML=CD_SAFE;
+}
+let cdgKind="i44";
+function cdGarminText(kind){
+  const z=CD_KINDS[kind].zone, r=hrRange(z), rr=hrRange([60,70]), tgt=r?"心率 "+r:"强度：只能讲几个字", easy=rr?"心率 "+rr:"强度：能讲完整句子";
+  if(kind==="easy") return ["轻松有氧（跑步）","1. 热身：按时间 5:00（慢慢开始）","2. 跑步：按时间 30:00–35:00 · "+easy,"3. 放松：按时间 5:00"].join("\n");
+  if(kind==="i44") return ["4×4 间歇（跑步）","1. 热身：按时间 10:00 · "+easy,"2. 重复 4 次：","   · 跑步：按时间 4:00 · "+tgt,"   · 恢复：按时间 3:00 · 慢跑","3. 放松：按时间 5:00"].join("\n");
+  return ["30/30 短间歇（跑步）","1. 热身：按时间 10:00 · "+easy,"2. 重复 10–15 次：","   · 跑步：按时间 0:30 · "+tgt,"   · 恢复：按时间 0:30 · 慢跑","3. 放松：按时间 5:00"].join("\n");
+}
+function renderCdGarmin(){ $("cdgPick").innerHTML=Object.keys(CD_KINDS).map(k=>'<button data-cdg="'+k+'" aria-pressed="'+(k===cdgKind)+'">'+CD_KINDS[k].short+'</button>').join(""); $("cdgText").textContent=cdGarminText(cdgKind); }
+$("tab-cardio").addEventListener("click",e=>{
+  const t=e.target;
+  if(t.id==="cdStart"){ cfg.cardioStart=weekStart(Date.now()); saveCfg(); renderCardio(); return; }
+  if(t.id==="cdReset"){ if(t.dataset.sure){ delete cfg.cardioStart; saveCfg(); renderCardio(); } else { t.dataset.sure=1; t.textContent="再按一次确认"; } return; }
+  const g=t.closest("[data-cdgo]"); if(g){ openCardio($("cdWeek")._plan[+g.dataset.cdgo]); return; }
+  const u=t.closest("[data-cdundo]"); if(u){ cardio=cardio.filter(c=>c.id!==u.dataset.cdundo); saveCardio(); renderCardio(); return; }
+  const v=t.closest("[data-vdel]"); if(v){ vo2=vo2.filter(x=>x.id!==v.dataset.vdel); saveVo2(); renderCardio(); return; }
+  const k=t.closest("[data-cdg]"); if(k){ cdgKind=k.dataset.cdg; renderCdGarmin(); return; }
+  if(t.id==="cdgCopy"){ const txt=$("cdgText").textContent; try{ navigator.clipboard.writeText(txt).then(()=>{$("cdgMsg").textContent="已复制";},()=>{$("cdgMsg").textContent="请长按选取复制";}); }catch(err){ $("cdgMsg").textContent="请长按选取复制"; } return; }
+  if(t.id==="cdHrSave"){ const a=num($("cdAge").value), m=num($("cdHrMax").value); cfg.age=a&&a>10&&a<90?Math.round(a):""; cfg.hrMax=m&&m>120&&m<230?Math.round(m):""; saveCfg(); renderCardio(); return; }
+  if(t.id==="vSave"){
+    const v2=num($("vVal").value), d=$("vDate").value;
+    if(v2==null||v2<15||v2>90){ $("vMsg").textContent="VO2max 请填 15–90 之间的数字（Garmin 上显示的那个）。"; return; }
+    const p=(d||isoDay(Date.now())).split("-"), ts=new Date(+p[0],+p[1]-1,+p[2],8).getTime();
+    vo2=vo2.filter(x=>isoDay(x.ts)!==isoDay(ts)); vo2.push({id:"v_"+ts,ts,v:r1(v2)}); saveVo2(); $("vVal").value=""; $("vMsg").textContent="已记下 "+fmtDate(ts)+" "+r1(v2)+"。"; renderCardio(); return;
+  }
+});
 // ---------- Tabs ----------
 let tab="train";
 document.querySelector("nav.tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   tab=b.dataset.tab;
   document.querySelectorAll("nav.tabs [data-tab]").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["train","swim","prog","hist","more"].forEach(t=>{ $("tab-"+t).hidden=(t!==tab); });
+  ["train","cardio","swim","prog","hist","more"].forEach(t=>{ $("tab-"+t).hidden=(t!==tab); });
+  if(tab==="cardio") renderCardio(); // 图表要看得见时才量得到宽度
   if(tab==="prog") renderProg(); // 图表要在看得见时才量得到宽度
   window.scrollTo({top:0});
 });
 let rz=null; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(tab==="prog") renderProg(); },200); });
 
-function renderAll(){ renderHeader(); renderWeek(); renderPicker(); renderWorkout(); renderHist(); renderGarmin(); renderCfg(); renderSwim(); if(tab==="prog") renderProg(); }
+function renderAll(){ renderHeader(); renderWeek(); renderPicker(); renderWorkout(); renderHist(); renderGarmin(); renderCfg(); renderSwim(); if(tab==="cardio") renderCardio(); if(tab==="prog") renderProg(); }
 setEquip(cfg.equip);
 renderAll();
 if("serviceWorker" in navigator && location.protocol!=="file:"){ addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }

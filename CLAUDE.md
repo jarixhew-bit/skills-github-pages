@@ -69,7 +69,7 @@
 - `fortune.html` — 运势页面
 - `fitness/` — 减脂力量训练＋游泳入门 App（PWA，2026-09-30 由用户上传的 artifact 改做专业版）：
   人体模型示范动图（`fitness/anim/`，`tools/render-fitness-anim.mjs` 预渲染）＋真人示范照片（公共领域，`fitness/photos/`）＋3D 动作动画（three.js 放 `vendor/three/`）、双重进步法加重建议、减量周、进步曲线、体重腰围、
-  游泳 12 课（从怕水到游 10 米）、JSON/CSV 备份。数据只存本机。结构笔记见 `.claude/notes/fitness.md`
+  游泳 12 课（从怕水到游 10 米）、有氧 12 周 VO2max 计划（4×4 间歇＋心率区间＋VO2max 曲线）、JSON/CSV 备份。数据只存本机。结构笔记见 `.claude/notes/fitness.md`
 - `trading/` — IBKR 交易脚本与页面（`fund.html` 是作业系统简报页，2026-08-16 建，
   七区块仪表板：绩效／扫描／配置／风险／部位／再平衡／管线，风险指标由前端现算，
   新闻由 `.github/scripts/fetch_news.py` 每小时产出 `news.json`）

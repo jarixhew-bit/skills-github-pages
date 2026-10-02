@@ -20,6 +20,9 @@
   `.photos/fitness-model/`（gitignore）。要渲染哪些组合由 App 的 `window.__fit.animCombos()` 列出，
   自检会点名缺图。**改了 ANIM 里任何动作就要重渲染那几张**（`node tools/render-fitness-anim.mjs <key>`），
   并升 sw.js 的 CACHE——图片走缓存优先，档名没变的话手机会一直看旧图。
+- 有氧分页（2026-10-02）：`CD_KINDS`（三种练法与心率%）、`CD_WEEKS`（12 周每周排什么）、`cdSteps()`（跟练步骤，
+  与力量训练共用全屏播放器，`plMode` 区分）；记录 `fit.cardio`、`fit.vo2`，都进备份。说明文字 `CD_WHY`/`CD_IQOS`/`CD_SAFE`
+  每条都附来源链接——研究多为摘要层级（沙盒打不开全文），改数字前要重新查证，标「未查证」的别擅自写成定论。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
