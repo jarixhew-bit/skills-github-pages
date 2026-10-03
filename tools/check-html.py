@@ -19,6 +19,10 @@
    是店名还是行话，仍靠改页面的人按规则翻译。
 4. 无障碍最低项（WCAG 1.1.1，精简自 ECC accessibility skill，2026-07-17 引入）：
    <img> 必须带 alt 属性，否则屏幕阅读器读不出图片内容。
+5. 旅游手册施工中字样（2026-10-03 用户要求「以后不要再出现」）：手册是发给家人的成品，
+   路径含 trip 的页面里，cn/en span 不得出现「草稿版本／待补充／暂未分配／行程确定后／
+   你发来的／我补充的／Draft version」这类施工中或写给 YANG 的内部话——自由行本来就不排日程，
+   不需要解释。
 
 用法：
     python3 tools/check-html.py 文件1.html [文件2.html ...]
@@ -139,6 +143,23 @@ def check_foreign_jargon(path: str, html: str, whitelist: list) -> list:
                 errors.append(
                     f"{path}: {cls} 侧残留{name}「{m}」（…{snippet}…）——"
                     f"行话请翻译；店名请登记 tools/jargon-whitelist.txt")
+    return errors
+
+
+# 旅游手册里不该出现的「施工中／内部话」字样（规则说明见文件开头第 5 项）
+DRAFT_PHRASES = ["草稿版本", "待补充", "暂未分配", "行程确定后", "你发来的",
+                 "我补充的", "Draft version", "draft version"]
+
+
+def check_draft_wording(path: str, html: str) -> list:
+    if "trip" not in path:
+        return []
+    errors = []
+    for cls, body in re.findall(r'<span class="(cn|en)">(.*?)</span>', html, re.S):
+        text = re.sub(r"<[^>]+>", "", body)
+        for ph in DRAFT_PHRASES:
+            if ph in text:
+                errors.append(f"{path}: {cls} 侧出现施工中字样「{ph}」（…{text.strip()[:40]}…）——手册是成品，删掉这句")
     return errors
 
 
@@ -294,6 +315,7 @@ def main():
         all_errors += check_lang_key(f, html)
         all_errors += check_foreign_jargon(f, html, whitelist)
         all_errors += check_img_alt(f, html)
+        all_errors += check_draft_wording(f, html)
         all_errors += check_dup_segments(f, html)
         all_errors += check_dup_images(f, html)
         all_errors += check_control_bytes(f)
