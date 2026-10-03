@@ -1148,6 +1148,41 @@ function viewLogFlush(){
 }
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') viewLogFlush(); });
 window.addEventListener('pagehide', viewLogFlush);
+/* ---------- 加到主屏时把访问码一起带进去（2026-10-03） ----------
+ * 用户：「做，加主屏连码一起带进去」。iPhone 的主屏图标跟 Safari **不共用存储**，
+ * 图标本身也只记一个网址——原本那个网址不带码（manifest 写死 start_url "./"、
+ * 网址栏里的码登入后又被抹掉），于是他从主屏第一次打开就是输码界面，而发给他的消息
+ * 里只有链接。iPhone 加主屏时用的是 manifest 的 start_url、还是当下网址栏的网址，
+ * 各版本说法不一，所以**两边都放上码**，哪一种都带得进去：
+ *   ① 网址栏留着 #k=码（只留码，不留 &t=bills，不然图标每次都开在账单页）
+ *   ② manifest 换成现生的一份，start_url 带 #k=码（生成失败就等于没有 manifest，
+ *      iPhone 会退回用网址栏——①兜得住）
+ * 只对**老板那把码 ＋ iPhone/iPad ＋ 还在浏览器里**做：管理员的码绝不能进网址；
+ * Android 的主屏 App 跟浏览器本来就共用存储，用不着；已经在主屏里的也不用再动。 */
+function homeScreenCarriesCode(){
+  if(role !== 'viewer' || !TOKEN || isStandalonePwa()) return;
+  const plat = devicePlatform();
+  if(plat !== 'iPhone' && plat !== 'iPad') return;
+  const base = location.origin + location.pathname.replace(/index\.html$/, '');
+  const hash = '#k=' + encodeURIComponent(TOKEN);
+  try{ history.replaceState(null, '', location.pathname + location.search + hash); }catch(e){}
+  try{
+    const link = document.querySelector('link[rel="manifest"]');
+    if(!link) return;
+    const m = {
+      name: '老板 Boss', short_name: '老板',
+      start_url: base + hash, scope: base,
+      display: 'standalone', background_color: '#F1F3F6', theme_color: '#1E3A5F',
+      icons: [
+        { src: base + 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+        { src: base + 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      ],
+    };
+    const old = link.getAttribute('href') || '';
+    if(old.startsWith('blob:')) try{ URL.revokeObjectURL(old); }catch(e){}
+    link.setAttribute('href', URL.createObjectURL(new Blob([JSON.stringify(m)], { type: 'application/manifest+json' })));
+  }catch(e){ /* 退回网址栏那一招 */ }
+}
 /** 拉 feed 时带上本机当前的推送订阅 endpoint（如果有），让服务端的 push.subscribed
  *  跟本机浏览器状态对齐——合约里明确「没带就回 false」，所以能带就带。 */
 async function fetchFeed(){
@@ -1329,7 +1364,10 @@ function handleFeed(feed, opts){
   ensurePushUI();
   refreshPushSubscriptionState(); // 异步核对本机真实订阅状态，核对完再刷新一次推送条
   applyHashTab();
-  if(opts && opts.fromNetwork) viewLogStart();   // 服务器认过身份才开始记
+  if(opts && opts.fromNetwork){
+    viewLogStart();           // 服务器认过身份才开始记
+    homeScreenCarriesCode();  // 服务器认过这把码才往网址和 manifest 里放
+  }
 }
 function renderAll(){
   renderToday();
@@ -3972,7 +4010,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v63</div>
+    <div class="admin-ver" id="adminVer">boss-app-v64</div>
 
     ${adminTripsSectionHtml()}
 

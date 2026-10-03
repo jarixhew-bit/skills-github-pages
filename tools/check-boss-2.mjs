@@ -12,7 +12,7 @@
 import {
   URL, GOOD_TOKEN, ok, until, browser, forceZh, freezeClock, mountRoutes, clickHere, gotoTab,
   fakeTrips, fakeBills, fakeBillsMixed, fakeRestaurants, fakeMemosAdmin, fakeMemosBoss,
-  fakeInventory, finish, API, fakeUpdated,
+  fakeInventory, finish, API, fakeUpdated, PORT,
 } from './lib/boss-check-kit.mjs';
 
 // ---------- 场景十九：交接给老板时，红点要全部重新亮起来 ----------
@@ -1762,6 +1762,79 @@ console.log('\n【三十三h】老板那台 iPhone 看了什么');
   await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')), { what: '老板打开' });
   ok('★★对照组：老板的页面里没有「他看了什么」', !/他看了什么/.test(await page.evaluate(() => document.body.innerText)));
   await ctx.close();
+}
+
+// ---------- 场景三十三i：★iPhone 加到主屏时，访问码跟着图标走 ----------
+// 2026-10-03 用户：「做，加主屏连码一起带进去」。iPhone 主屏图标跟 Safari 不共用存储，
+// 图标只记一个网址；不带码的话他从主屏第一次打开就是输码界面。
+async function homeCase({ role, ua, url, standalone }){
+  const ctx = await browser.newContext({ userAgent: ua });
+  await forceZh(ctx);
+  mountRoutes(ctx, { role });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  if (standalone) await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { get: () => true }));
+  if (role === 'admin') await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(url);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')), { what: '打开' });
+  await page.waitForTimeout(300);
+  const st = await page.evaluate(async () => {
+    const href = document.querySelector('link[rel="manifest"]').getAttribute('href');
+    let m = null;
+    if (href.startsWith('blob:')) { try { m = await (await fetch(href)).json(); } catch (e) { m = 'ERR'; } }
+    return { hash: location.hash, href, m };
+  });
+  await ctx.close();
+  return { st, errs };
+}
+console.log('\n【三十三i】iPhone 加到主屏：访问码跟着图标走');
+let homeStart = null;
+{
+  const r = await homeCase({ role: 'viewer', ua: UA_IPHONE, url: URL + '#k=' + GOOD_TOKEN + '&t=bills' });
+  ok('★★网址栏留着访问码（iPhone 若用当下网址当图标网址，码就跟着走）', r.st.hash === '#k=' + GOOD_TOKEN, r.st.hash);
+  ok('★网址栏不留 &t=bills（不然图标每次都开在账单页）', !r.st.hash.includes('t='), r.st.hash);
+  ok('★★manifest 换成现生的一份', r.st.href.startsWith('blob:'), r.st.href);
+  ok('★★manifest 的 start_url 带着访问码', !!r.st.m && String(r.st.m.start_url).endsWith('/boss/#k=' + GOOD_TOKEN), r.st.m);
+  ok('★manifest 的范围还是老板 App 本身', !!r.st.m && String(r.st.m.scope).endsWith('/boss/'), r.st.m);
+  ok('★图标网址是完整网址（现生的 manifest 不能用相对路径）',
+     !!r.st.m && r.st.m.icons.every(i => /^https?:\/\//.test(i.src)), r.st.m && r.st.m.icons);
+  ok('无 JS 报错', r.errs.length === 0, r.errs.slice(0, 3));
+  homeStart = r.st.m && r.st.m.start_url;
+}
+// 模拟「从主屏图标打开」：一个全新的存储（主屏 App 跟 Safari 不共用）、直接开 start_url
+if (homeStart) {
+  const ctx = await browser.newContext({ userAgent: UA_IPHONE });
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer' });
+  const page = await ctx.newPage();
+  await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { get: () => true }));
+  await page.goto(homeStart.replace(/^https?:\/\/[^/]+/, 'http://localhost:' + PORT));
+  await page.waitForTimeout(1200);
+  const st = await page.evaluate(() => ({
+    gate: !document.getElementById('gate').classList.contains('off'),
+    app: !document.getElementById('app').classList.contains('app-hidden'),
+    saved: localStorage.getItem('bossApp_token'),
+  }));
+  ok('★★模拟从主屏图标打开（全新存储）：不出现输码界面，直接进去', st.gate === false && st.app === true, st);
+  ok('★主屏 App 自己也把码存下来了', st.saved === GOOD_TOKEN, st);
+  await ctx.close();
+}
+// 对照组一：管理员（YANG）用 iPhone —— 管理员的码绝不能进网址或 manifest
+{
+  const r = await homeCase({ role: 'admin', ua: UA_IPHONE, url: URL });
+  ok('★★对照组：管理员的码没有放进网址', !r.st.hash.includes('k='), r.st.hash);
+  ok('★★对照组：管理员那边 manifest 不动', r.st.href === 'manifest.webmanifest', r.st.href);
+}
+// 对照组二：Android（主屏 App 跟浏览器本来就共用存储）—— 照旧把码从网址抹掉
+{
+  const r = await homeCase({ role: 'viewer', ua: UA_ANDROID, url: URL + '#k=' + GOOD_TOKEN });
+  ok('★对照组：Android 照旧把码从网址抹掉', !r.st.hash.includes('k='), r.st.hash);
+  ok('★对照组：Android 的 manifest 不动', r.st.href === 'manifest.webmanifest', r.st.href);
+}
+// 对照组三：已经在主屏里打开的 —— 不再动
+{
+  const r = await homeCase({ role: 'viewer', ua: UA_IPHONE, url: URL + '#k=' + GOOD_TOKEN, standalone: true });
+  ok('★对照组：已经在主屏里的，manifest 不动', r.st.href === 'manifest.webmanifest', r.st.href);
 }
 
 // ---------- 场景三十三c：管理页给出的那条链接必须是能用的 ----------
