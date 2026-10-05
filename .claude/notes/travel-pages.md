@@ -149,7 +149,7 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
   以上查证于 2026-08-19，来源全被沙盒挡、只有搜索摘要，页面上已标「以 MBS 礼宾
   确认为准」；日后若拿到官网原文或 MBS 回覆，以那个为准。
 
-## penang-trip/index.html（约 1730 行；2026-09-30 并入总地图 `#map`，见下方「总地图」一节）
+## penang-trip/index.html（约 1500 行；2026-10-05 起**没有总地图**，见下方「总地图」一节）
 槟城家庭手册，2026-10-09~17 九天八夜，6 人（老板一家），双语。
 2026-08-21 用户重新整理内容后重上传，本页**内容整批换成那一版**、设计沿用娘惹瓷砖那套；
 同时按用户要求**拿掉右下角浮动圆钮**（`.fab` ＋ `.sheet` 快速跳转面板，CSS/HTML/JS 全删），
@@ -308,7 +308,12 @@ v2 顶部有「回旧版 / Classic」链到 index.html。
   已登记 `tools/lib/trips.py`（2026-10-17）与 `tools/ci-decide.py`（weather、penangv3 两条规则）。降速复现：`CPU_THROTTLE=6`／`20` 都全绿。
 - 四份并存（index／v2／v3／v4），改内容要四份都改。
 
-### 总地图（2026-09-30 由试装页 with-map.html 并入 index.html；`with-map.html` 现在只是跳转到 `index.html#map` 的跳转页，勿删）
+### 总地图（**2026-10-05 已从 index.html 整块移除**，用户原话「那个地图移除掉，等有行程时再放」；以下是移除前的做法，留档供日后放回）
+**现况**：index.html 已删 `#map` 区块、navstrip「🗺 地图」、Leaflet `<link>`／`<script>`、地图 CSS、`MAP_COORDS` 与整段地图 JS（约 255 行，没留死代码）。
+`penang-trip/coords.json` **保留**（以后有行程再放地图要用）；`tools/check-map-coords.py` 在 index.html 没有 `<section id="map">` 时印
+「槟城手册目前未放地图，跳过」并通过，放回地图区块后四项检查自动恢复；`with-map.html` 改成跳转到 `index.html`（仍勿删，旧网址）。
+同日「发出前检查」顺手清掉：提示条里指向已不存在的「⚠ 需确认」标注的那句、Tono 描述里的日语行话「烧物」→「烧烤类」。
+放回地图的做法：从 git 历史取回（`git log -S'id="map"' -- penang-trip/index.html`，删除前一个 commit 就是完整版）。
 并入时去掉了试装页的顶栏「回旧版」链接与其 CSS，其余照搬：navstrip「🗺 地图」、`#map` 区块（在 `#dining` 之前）、
 `</head>` 前 Leaflet CSS＋`<style>`、`</body>` 前一段 `<script>`。图钉 24 个（餐厅 12／亲子电玩 6／景点 3／商场 3；岛上 15、大陆 9，都由程序算）。
 2026-09-30 用户指定新增餐厅「膳户」＝Google 上的 Sushi Zento Seberang Jaya（⭐4.1/697 则、日本料理、Jalan Todak 6，离 Sunway Carnival 约 300 米，cid 18172314537448883100），放 `#dining` 最后；低于 4.2 照加，卡上标「评分偏低」＋「牛肉品项需到店确认」chip（查不到菜单有无牛肉）。
