@@ -11,7 +11,12 @@
      且两边数字一致
   ② 坐标都在槟城州范围（纬 5.1–5.6、经 100.15–100.6）——放错位置的图钉比没有更糟
   ③ coords.json 没有对不上任何卡片的孤儿（删卡片忘了删坐标）
-  ④ index.html 里有地图区块（section#map）与 OpenStreetMap 署名（OSM 使用条款要求）
+  ④ 有地图区块（section#map）时必须带 OpenStreetMap 署名（OSM 使用条款要求）
+
+无地图时（2026-10-05 起）：用户要求「那个地图移除掉，等有行程时再放」，index.html 目前
+没有 `<section id="map">`，本脚本印一行「槟城手册目前未放地图，跳过」并通过（退出码 0）。
+`penang-trip/coords.json` 仍保留，以后有行程再放地图时，地图区块一回来，上面四项检查
+就自动恢复，照原样全部检查。
 
 用法：python3 tools/check-map-coords.py
 """
@@ -46,6 +51,9 @@ def card_places(src: str):
 def main() -> int:
     errs = []
     src = PAGE.read_text(encoding="utf-8")
+    if not re.search(r'<section id="map"', src):
+        print("槟城手册目前未放地图，跳过（coords.json 保留，以后放回地图区块时检查自动恢复）")
+        return 0
     try:
         coords = json.loads(COORDS.read_text(encoding="utf-8"))
     except Exception as e:  # noqa: BLE001
@@ -92,8 +100,6 @@ def main() -> int:
         if k not in keys:
             errs.append(f"③ 页面 MAP_COORDS 孤儿：{k} 对不上任何卡片")
 
-    if not re.search(r'<section id="map"', src):
-        errs.append('④ index.html 里没有地图区块 <section id="map">')
     if "openstreetmap.org/copyright" not in src:
         errs.append("④ index.html 里没有 OpenStreetMap 署名（openstreetmap.org/copyright）")
 

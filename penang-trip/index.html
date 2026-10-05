@@ -395,76 +395,6 @@
     .cover h1 { font-size: 44px; }
   }
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
-<style>
-  /* ===== 总地图（2026-09-30 由试装页 with-map.html 并入） ===== */
-  /* 图钉颜色＝页面现有变量：餐厅陶土红／亲子电玩万寿菊黄／景点靛蓝／商场石板灰 */
-  #map { --pin-dining: var(--terracotta); --pin-arcade: var(--marigold); --pin-sights: var(--indigo); --pin-mall: var(--ink-2); }
-  .mfilter .row { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 4px; }
-  .mfilter .row::-webkit-scrollbar { display: none; }
-  .mchip {
-    flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px;
-    border: 1px solid var(--line-2); background: var(--card); color: var(--ink-2);
-    border-radius: 999px; padding: 0 13px; font-size: 13px; font-weight: 700;
-    cursor: pointer; font-family: var(--sans); white-space: nowrap;
-  }
-  .mchip .dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(28,39,51,.35); }
-  .mchip .n { font-size: 10.5px; font-weight: 800; color: var(--muted); background: var(--paper-2); border-radius: 999px; padding: 0 6px; line-height: 16px; }
-  .mchip[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; }
-  .mchip[aria-pressed="true"] .n { background: rgba(255,255,255,.25); color: #fff; }
-  .mapbox {
-    position: relative; z-index: 0; isolation: isolate; /* 把 Leaflet 的高 z-index 关在这里，不压到吸顶栏 */
-    margin-top: 8px; border-radius: 16px; overflow: hidden; border: 1px solid var(--line);
-    box-shadow: var(--shadow); background: var(--indigo-soft);
-  }
-  #pmap { height: 60vh; max-height: 480px; min-height: 280px; width: 100%; }
-  .map-gate {
-    position: absolute; inset: 0; z-index: 1100; display: flex; align-items: flex-end; justify-content: center;
-    padding: 0 0 18px; border: 0; background: linear-gradient(to top, rgba(27,63,102,.35), rgba(27,63,102,0) 45%);
-    cursor: pointer; font-family: var(--sans);
-  }
-  .map-gate span.pill {
-    display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 999px;
-    background: var(--indigo-dd); color: #fff; font-size: 14px; font-weight: 700; box-shadow: var(--shadow);
-  }
-  .map-gate[hidden] { display: none; }
-  .map-attr { font-size: 11.5px; color: var(--muted); margin: 6px 2px 0; }
-  .map-attr a { color: var(--indigo-d); }
-  .map-fallback { margin-top: 10px; }
-  .map-fallback[hidden] { display: none; }
-  .map-fallback ul { list-style: none; margin-top: 8px; display: grid; gap: 6px; }
-  .map-fallback li a {
-    display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 12px;
-    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 600;
-  }
-  .map-fallback li a .dot, .mpin i { flex: none; border-radius: 50%; }
-  .map-fallback li a .dot { width: 12px; height: 12px; }
-  .map-fallback li a .go { margin-left: auto; font-size: 12px; color: var(--indigo-d); white-space: nowrap; }
-  .map-missing { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
-  .map-missing[hidden] { display: none; }
-  /* 图钉：外框 44×44 透明（手指好点），里面 22px 彩色圆点 */
-  .mpin { display: flex; align-items: center; justify-content: center; }
-  .mpin i { width: 22px; height: 22px; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.45); }
-  .c-dining { background: var(--pin-dining); } .c-arcade { background: var(--pin-arcade); }
-  .c-sights { background: var(--pin-sights); } .c-mall { background: var(--pin-mall); }
-  .mpop { font-family: var(--sans); color: var(--ink); min-width: 200px; }
-  .mpop h4 { font-size: 15px; font-weight: 800; line-height: 1.35; margin: 0 0 2px; }
-  .mpop .star { font-size: 12.5px; font-weight: 800; color: var(--marigold-ink); }
-  .mpop .addr { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin-top: 4px; }
-  .mpop .mbtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .mpop .mbtns a {
-    display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 12px;
-    border-radius: 999px; font-size: 13px; font-weight: 700; text-decoration: none;
-  }
-  .leaflet-container .mpop a.go-nav { background: var(--indigo); color: #fff; border: 1px solid var(--indigo); }
-  .leaflet-container .mpop a.go-g { background: var(--indigo-soft); color: var(--indigo-d); border: 1px solid var(--indigo-line); }
-  .leaflet-container .mpop a.go-card { color: var(--indigo-d); text-decoration: underline; text-underline-offset: 3px; }
-  .leaflet-container a.leaflet-popup-close-button { width: 44px; height: 44px; font: 24px/44px var(--sans); }
-  .leaflet-popup-content { margin: 14px 16px 12px; }
-  .leaflet-touch .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; }
-  .rcard[id^="card-"] { scroll-margin-top: calc(var(--topH) + var(--navH) + 64px); }
-</style>
 </head>
 <body>
 <a class="sr-only" href="#flights">跳到正文 / Skip to content</a>
@@ -474,7 +404,6 @@
 </header>
 <nav class="navstrip" id="navstrip" aria-label="章节导航 / Section navigation">
 <a href="#flights">✈️ <span class="cn">航班</span><span class="en">Flights</span></a>
-<a href="#map">🗺 <span class="cn">地图</span><span class="en">Map</span></a>
 <a href="#dining">🍽 <span class="cn">餐厅</span><span class="en">Dining</span><span class="n" data-count="dining"></span></a>
 <a href="#places">📍 <span class="cn">去处</span><span class="en">Places</span><span class="n" data-count="places"></span></a>
 <a href="#weather">🌡 <span class="cn">天气</span><span class="en">Weather</span></a>
@@ -498,8 +427,8 @@
 <div class="tip">
 <span class="ico" aria-hidden="true">👆</span>
 <div>
-<span class="cn"><strong>怎么用这本手册：</strong>深蓝实心按钮开地图、浅蓝底按钮开官网；照片可左右滑、点一下放大；「推荐去处」上方的彩色标签可筛选类型；顶部的章节条可随时跳到别的区块。标注「⚠ 需确认」的项目以实际预订为准。</span>
-<span class="en"><strong>How to use this handbook:</strong> solid dark-blue buttons open maps, light-blue buttons open websites; photo strips swipe sideways and tap to enlarge; the coloured chips above "Places to Visit" filter by type; the sticky bar at the top jumps between sections. Items marked "⚠ verify" should be confirmed.</span>
+<span class="cn"><strong>怎么用这本手册：</strong>深蓝实心按钮开地图、浅蓝底按钮开官网；照片可左右滑、点一下放大；「推荐去处」上方的彩色标签可筛选类型；顶部的章节条可随时跳到别的区块。</span>
+<span class="en"><strong>How to use this handbook:</strong> solid dark-blue buttons open maps, light-blue buttons open websites; photo strips swipe sideways and tap to enlarge; the coloured chips above "Places to Visit" filter by type; the sticky bar at the top jumps between sections.</span>
 </div>
 </div>
 
@@ -637,30 +566,6 @@
 <tr><th><span class="cn">乘客</span><span class="en">Passenger</span></th><th><span class="cn">托运</span><span class="en">Checked</span></th><th><span class="cn">手提</span><span class="en">Carry-on</span></th></tr>
 <tr><td><span class="cn">全员（经济舱）</span><span class="en">All pax (Economy)</span></td><td>30 kg</td><td>7 kg</td></tr>
 </table>
-</section>
-
-<!-- ===== MAP ===== -->
-<section id="map">
-<div class="sec-head"><span class="no" aria-hidden="true">🗺</span><h2><span class="cn">总地图</span><span class="en">Map</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
-<div class="mfilter">
-<div class="row" role="group" aria-label="按类型筛选图钉 / Filter pins by type">
-<button class="mchip" type="button" data-mcat="all" aria-pressed="true">🧭 <span class="cn">全部</span><span class="en">All</span><span class="n" data-mcount="all"></span></button>
-<button class="mchip" type="button" data-mcat="dining" aria-pressed="false"><span class="dot c-dining" aria-hidden="true"></span><span class="cn">餐厅</span><span class="en">Dining</span><span class="n" data-mcount="dining"></span></button>
-<button class="mchip" type="button" data-mcat="arcade" aria-pressed="false"><span class="dot c-arcade" aria-hidden="true"></span><span class="cn">亲子电玩</span><span class="en">Arcade</span><span class="n" data-mcount="arcade"></span></button>
-<button class="mchip" type="button" data-mcat="sights" aria-pressed="false"><span class="dot c-sights" aria-hidden="true"></span><span class="cn">景点</span><span class="en">Sights</span><span class="n" data-mcount="sights"></span></button>
-<button class="mchip" type="button" data-mcat="mall" aria-pressed="false"><span class="dot c-mall" aria-hidden="true"></span><span class="cn">商场</span><span class="en">Malls</span><span class="n" data-mcount="mall"></span></button>
-</div>
-</div>
-<div class="mapbox">
-<div id="pmap" role="region" aria-label="槟城地点地图 / Map of Penang places"></div>
-<button class="map-gate" id="mapGate" type="button" hidden><span class="pill"><span class="cn">👆 点一下启用地图（拖动、缩放）</span><span class="en">👆 Tap to use the map (drag &amp; zoom)</span></span></button>
-</div>
-<div class="map-attr">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</div>
-<div class="map-missing" id="mapMissing" hidden></div>
-<div class="map-fallback" id="mapFallback" hidden>
-<div class="note amber" id="mapFallbackMsg"><span class="cn">地图暂时载入不了（可能没网络）。下面每个地点都能直接点开 Google 地图：</span><span class="en">The map can't load right now (maybe no connection). Each place below opens directly in Google Maps:</span></div>
-<ul id="mapFallbackList"></ul>
-</div>
 </section>
 
 <!-- ===== DINING ===== -->
@@ -882,7 +787,7 @@
 <div class="rb">
 <h3><span class="cn">Tono Izakaya</span><span class="en">Tono Izakaya Penang</span> <span class="star">⭐4.7</span></h3>
 <div class="addr">80, Lebuh Tye Sin, George Town</div>
-<div class="desc"><span class="cn">乔治市人气居酒屋，蓝鳍吞拿鱼、刺身、烧物评价都很好，评分槟城数一数二高。<strong>有自助餐时段（RM98++/人）</strong>，但也可以纯单点，用餐时指定要单点菜单即可。</span><span class="en">Popular George Town izakaya — bluefin tuna, sashimi and grilled items are well reviewed, one of the highest-rated in Penang. <strong>Has a buffet option (RM98++/pax)</strong>, but à la carte is available too — just ask for the à la carte menu.</span></div>
+<div class="desc"><span class="cn">乔治市人气居酒屋，蓝鳍吞拿鱼、刺身、烧烤类评价都很好，评分槟城数一数二高。<strong>有自助餐时段（RM98++/人）</strong>，但也可以纯单点，用餐时指定要单点菜单即可。</span><span class="en">Popular George Town izakaya — bluefin tuna, sashimi and grilled items are well reviewed, one of the highest-rated in Penang. <strong>Has a buffet option (RM98++/pax)</strong>, but à la carte is available too — just ask for the à la carte menu.</span></div>
 <div class="chips">
 <span class="chip hours"><span class="cn">📅 每日 11:30–15:00, 17:00–24:00</span><span class="en">Daily 11:30 AM–3:00 PM, 5:00 PM–12:00 AM</span></span>
 <span class="chip warn"><span class="cn">⚠ 有自助餐时段，需指定单点</span><span class="en">⚠ Has a buffet option — ask for à la carte</span></span>
@@ -1609,166 +1514,6 @@ document.addEventListener('keydown', function(e){
     if (aqi > 150) plan.classList.add('bad');    // 150 以上才标红，跟上面那条实时读数同一条线
     plan.hidden = false;
   }
-})();
-</script>
-<script>
-/* ================================================================
-   总地图（2026-09-30 由试装页 with-map.html 并入）
-   坐标来源：penang-trip/coords.json（CI 跑 tools/fetch-coords.mjs 从各卡片 cid 地点页读出，
-   并人工核对过都在槟城州、岛上/大陆与地址对得上）。核对不过的写 null，不上图。
-   店名、评分、地址、链接一律从页面现有卡片读，这里只放坐标，不重抄内容。
-   ================================================================ */
-var MAP_COORDS = {"6645298319328116800":{"lat":5.3420033,"lng":100.4358275},"7948710932161211900":{"lat":5.4375575,"lng":100.3106325},"16316090451728697683":{"lat":5.4215382,"lng":100.3805228},"17287566682074786653":{"lat":5.4497754,"lng":100.3049765},"17783906310819733530":{"lat":5.3418107,"lng":100.4328934},"10648324139628194840":{"lat":5.3990852,"lng":100.3983708},"15939087510710375959":{"lat":5.4350133,"lng":100.3111127},"8039283718126773766":{"lat":5.3995574,"lng":100.3983516},"14810997833472458554":{"lat":5.3331557,"lng":100.3068917},"11019786699336800443":{"lat":5.4195604,"lng":100.3403179},"17102666725830265280":{"lat":5.3440245,"lng":100.4342001},"16491656774087039190":{"lat":5.3989158,"lng":100.3981253},"11966902015449968690":{"lat":5.413203,"lng":100.3313709},"18330303951363231144":{"lat":5.4141443,"lng":100.3304141},"3211212677007490756":{"lat":5.3996413,"lng":100.2736126},"9139778477464223867":{"lat":5.40854,"lng":100.2772},"8676810005730272390":{"lat":5.4144544,"lng":100.3295496},"3730796889489573290":{"lat":5.4380431,"lng":100.3100232},"18074308093244101445":{"lat":5.333134,"lng":100.3069786},"4621355258783297564":{"lat":5.3986313,"lng":100.3980421},"2996911273390255740":{"lat":5.4132931,"lng":100.3312277},"16779912982672871373":{"lat":5.4146699,"lng":100.3311298},"6052983859694123251":{"lat":5.413203,"lng":100.3313709},"18172314537448883100":{"lat":5.3972264,"lng":100.3999224}};
-(function(){
-  var LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-  var CAT_OF = { arcade: 'arcade', culture: 'sights', outdoor: 'sights', mall: 'mall' };
-  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
-  function txt(el){ return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
-
-  /* 1. 从卡片收集地点 */
-  var points = [];
-  document.querySelectorAll('.rcard').forEach(function(card){
-    var a = card.querySelector('a.btn-map[href*="cid="]');
-    if (!a) return;
-    var cid = (a.getAttribute('href').match(/cid=(\d+)/) || [])[1];
-    if (!cid) return;
-    if (!card.id) card.id = 'card-' + cid;
-    var inDining = !!card.closest('#dining');
-    var cat = inDining ? 'dining' : (CAT_OF[card.dataset.cat] || null);
-    if (!cat) return;
-    var h3 = card.querySelector('h3');
-    var addrEl = card.querySelector('.addr');
-    var addrEn = addrEl ? addrEl.cloneNode(true) : null;
-    if (addrEn) addrEn.querySelectorAll('.cn').forEach(function(x){ x.remove(); });
-    var c = MAP_COORDS[cid];
-    points.push({
-      cid: cid, cat: cat, card: card, gmap: a.getAttribute('href'),
-      cn: txt(h3 && h3.querySelector('.cn')), en: txt(h3 && h3.querySelector('.en')),
-      star: txt(h3 && h3.querySelector('.star')),
-      addrHtml: addrEl ? addrEl.innerHTML : '', addrEn: txt(addrEn).replace(/\s*\([^)]*\)/g, ''), // 导航用：去掉「(flagship branch)」这类括注
-      lat: c && typeof c.lat === 'number' ? c.lat : null,
-      lng: c && typeof c.lng === 'number' ? c.lng : null
-    });
-  });
-  var onMap = points.filter(function(p){ return p.lat !== null && p.lng !== null; });
-  var missing = points.filter(function(p){ return p.lat === null || p.lng === null; });
-
-  function navUrl(p){
-    // 不带 origin：Google 地图默认从手机当下位置出发
-    return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(p.en + ', ' + p.addrEn);
-  }
-  function bi(cn, en){ return '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
-
-  /* 2. 数量、统计（按坐标现算，不写死） */
-  document.querySelectorAll('[data-mcount]').forEach(function(el){
-    var k = el.getAttribute('data-mcount');
-    el.textContent = onMap.filter(function(p){ return k === 'all' || p.cat === k; }).length;
-  });
-  if (missing.length){
-    var mm = document.getElementById('mapMissing');
-    mm.innerHTML = bi('另有 ' + missing.length + ' 个地点坐标待核对，暂不上图：', missing.length + ' more place(s) not pinned until their location is verified: ')
-      + missing.map(function(p){ return '<a href="' + esc(p.gmap) + '" target="_blank" rel="noopener">' + bi(esc(p.cn), esc(p.en)) + '</a>'; }).join('、');
-    mm.hidden = false;
-  }
-
-  /* 3. 后备清单：地图载入失败时出现 */
-  function showFallback(tilesOnly){
-    var box = document.getElementById('mapFallback');
-    if (!box.hidden) return;
-    if (tilesOnly){
-      document.getElementById('mapFallbackMsg').innerHTML = bi('底图载入不了（可能网络不稳），图钉仍可点。也可以直接从下面点开 Google 地图：',
-        "The base map can't load (weak connection?). Pins still work, or open each place in Google Maps below:");
-    }
-    document.getElementById('mapFallbackList').innerHTML = points.map(function(p){
-      return '<li><a href="' + esc(p.gmap) + '" target="_blank" rel="noopener"><span class="dot c-' + p.cat + '" aria-hidden="true"></span>'
-        + bi(esc(p.cn), esc(p.en)) + '<span class="go">' + bi('在 Google 地图打开 ↗', 'Open in Google Maps ↗') + '</span></a></li>';
-    }).join('');
-    box.hidden = false;
-    if (!tilesOnly){ // 地图框、筛选芯片、底图署名都没用了，收起来，不留空白框
-      ['#map .mapbox', '#map .mfilter', '#map .map-attr'].forEach(function(q){ document.querySelector(q).hidden = true; });
-    }
-  }
-
-  /* 4. 画地图 */
-  var map, layers = {}, markers = [];
-  function popupHtml(p){
-    return '<div class="mpop"><h4>' + bi(esc(p.cn), esc(p.en)) + '</h4>'
-      + (p.star ? '<div class="star">' + esc(p.star) + '</div>' : '')
-      + '<div class="addr">📍 ' + p.addrHtml + '</div>'
-      + '<div class="mbtns">'
-      + '<a class="go-nav" href="' + esc(navUrl(p)) + '" target="_blank" rel="noopener">🧭 ' + bi('导航', 'Directions') + '</a>'
-      + '<a class="go-g" href="' + esc(p.gmap) + '" target="_blank" rel="noopener">' + bi('在 Google 地图打开', 'Open in Google Maps') + '</a>'
-      + '<a class="go-card" href="#' + p.card.id + '" data-card="' + p.card.id + '">' + bi('看卡片 ↓', 'See card ↓') + '</a>'
-      + '</div></div>';
-  }
-  function setFilter(cat){
-    document.querySelectorAll('.mchip').forEach(function(ch){ ch.setAttribute('aria-pressed', ch.dataset.mcat === cat ? 'true' : 'false'); });
-    if (!map) return;
-    map.closePopup();
-    var shown = [];
-    markers.forEach(function(m){
-      var on = cat === 'all' || m.p.cat === cat;
-      if (on){ m.addTo(map); shown.push([m.p.dlat, m.p.dlng]); } else m.remove();
-    });
-    if (shown.length) map.fitBounds(shown, { padding: [36, 36], maxZoom: 15 });
-  }
-  document.querySelectorAll('.mchip').forEach(function(ch){
-    ch.addEventListener('click', function(){ setFilter(ch.dataset.mcat); });
-  });
-  // 「看卡片」：去处被筛掉时先放回全部，再跳过去
-  document.addEventListener('click', function(e){
-    var a = e.target.closest && e.target.closest('a.go-card');
-    if (!a) return;
-    var card = document.getElementById(a.getAttribute('data-card'));
-    if (card && card.classList.contains('hide') && typeof filterPlaces === 'function') filterPlaces('all');
-  });
-
-  function build(){
-    var L = window.L;
-    if (!L || !onMap.length){ showFallback(false); return; }
-    map = L.map('pmap', {
-      scrollWheelZoom: false, dragging: false, touchZoom: false, doubleClickZoom: false,
-      boxZoom: false, keyboard: true, tap: false, attributionControl: false
-    });
-    var tileOk = 0, tileErr = 0;
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
-      .on('tileload', function(){ tileOk++; })
-      .on('tileerror', function(){ tileErr++; if (tileErr >= 4 && tileOk === 0) showFallback(true); })
-      .addTo(map);
-    // 同一栋商场里的店，Google 常给一模一样的坐标（Big Monster Ball 与 Pado Fantasyland 都在 1st Avenue），
-    // 图钉叠在一起就只点得到上面那个。重复的往旁边挪约 17 米（只影响画图位置，数据坐标不改），放大就分得开。
-    var seen = {};
-    onMap.forEach(function(p){
-      var k = p.lat.toFixed(5) + ',' + p.lng.toFixed(5), n = seen[k] = (seen[k] || 0) + 1;
-      p.dlat = p.lat; p.dlng = p.lng;
-      if (n > 1){ var ang = (n - 2) * 2.1; p.dlat += 0.00015 * Math.cos(ang); p.dlng += 0.00015 * Math.sin(ang); }
-    });
-    onMap.forEach(function(p){
-      var icon = L.divIcon({ className: 'mpin', html: '<i class="c-' + p.cat + '"></i>', iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -14] });
-      var m = L.marker([p.dlat, p.dlng], { icon: icon, title: p.en, alt: p.en, keyboard: true }).bindPopup(popupHtml(p), { maxWidth: 280 });
-      m.p = p;
-      markers.push(m);
-    });
-    setFilter('all');
-    // 手指滑过地图不卡住页面：先不接管拖动，点一下遮罩才启用
-    var gate = document.getElementById('mapGate');
-    gate.hidden = false;
-    gate.addEventListener('click', function(){
-      gate.hidden = true;
-      map.dragging.enable(); map.touchZoom.enable(); map.doubleClickZoom.enable();
-    });
-    window.__pmap = map; // 给测试读
-  }
-
-  var s = document.createElement('script');
-  var done = false;
-  s.src = LEAFLET_JS;
-  s.crossOrigin = 'anonymous';
-  s.referrerPolicy = 'no-referrer';
-  s.onload = function(){ if (!done){ done = true; build(); } };
-  s.onerror = function(){ if (!done){ done = true; showFallback(false); } };
-  setTimeout(function(){ if (!done){ done = true; if (window.L) build(); else showFallback(false); } }, 12000);
-  document.head.appendChild(s);
 })();
 </script>
 </body>
