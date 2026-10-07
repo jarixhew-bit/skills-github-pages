@@ -1,6 +1,9 @@
 name: Probe quote sources (one-off)
 on:
   workflow_dispatch:
+  push:
+    branches: [claude/exciting-pasteur-coj2ca]
+    paths: ['.github/workflows/probe-quotes.yml','tools/probe-quotes.py','.probe-trigger']
 permissions:
   contents: write
 jobs:
