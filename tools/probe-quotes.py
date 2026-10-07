@@ -52,7 +52,8 @@ for host in ("query1", "query2"):
     if s == 200:
         try:
             m = json.loads(b)["result"][0]["meta"] if "result" in json.loads(b) else json.loads(b)["chart"]["result"][0]["meta"]
-            ex = {"regularMarketTime": m.get("regularMarketTime"), "fresh_min": fresh_min(m["regularMarketTime"]), "marketState_hint": m.get("currentTradingPeriod", {}).get("regular", {}).get("end"), "price": m.get("regularMarketPrice"), "vs_pub_pct": cmp_pub({"AAPL": m.get("regularMarketPrice")})}
+            ts = json.loads(b)["chart"]["result"][0].get("timestamp") or [0]
+            ex = {"last_1m_bar_fresh_min": fresh_min(ts[-1]), "regularMarketTime": m.get("regularMarketTime"), "fresh_min": fresh_min(m["regularMarketTime"]), "marketState_hint": m.get("currentTradingPeriod", {}).get("regular", {}).get("end"), "price": m.get("regularMarketPrice"), "vs_pub_pct": cmp_pub({"AAPL": m.get("regularMarketPrice")})}
         except Exception as e: ex = {"parse_err": str(e)}
     rec(f"yahoo v8 chart 1m/1d AAPL ({host}), no cookie", u, s, h, b, ex)
 
@@ -130,7 +131,10 @@ rec("stooq batch 58 csv", "https://stooq.com/q/l/?s=…(58)", s, h, b, ex)
 s, h, b, _ = get("https://api.twelvedata.com/price?symbol=AAPL&apikey=demo"); rec("twelvedata price demo key", "api.twelvedata.com/price?symbol=AAPL&apikey=demo", s, h, b)
 s, h, b, _ = get("https://finnhub.io/api/v1/quote?symbol=AAPL"); rec("finnhub quote no key", "finnhub.io/api/v1/quote?symbol=AAPL", s, h, b)
 s, h, b, _ = get("https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=IBM&apikey=demo"); rec("alphavantage demo key (IBM only)", "alphavantage.co GLOBAL_QUOTE demo", s, h, b)
-s, h, b, _ = get("https://api.nasdaq.com/api/quote/AAPL/info?assetclass=stocks"); rec("nasdaq.com public api AAPL", "api.nasdaq.com/api/quote/AAPL/info", s, h, b)
+s, h, b, _ = get("https://api.nasdaq.com/api/quote/AAPL/info?assetclass=stocks"); rec("nasdaq.com public api AAPL", "api.nasdaq.com/api/quote/AAPL/info", s, h, b, {"body_mid": b[200:900].decode("utf8", "replace")})
+for sym in ("MSFT", "NVDA", "XOM"):
+    s, h, b, _ = get(f"https://api.twelvedata.com/price?symbol={sym}&apikey=demo"); rec(f"twelvedata demo {sym}", "", s, h, b)
+s, h, b, _ = get("https://api.twelvedata.com/price?symbol=AAPL,MSFT&apikey=demo"); rec("twelvedata demo batch AAPL,MSFT", "", s, h, b)
 cs = "|".join(SYMS)
 s, h, b, _ = get(f"https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols={urllib.parse.quote(cs)}&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json&events=1")
 ex = {}
@@ -143,6 +147,11 @@ if s == 200:
             try: pr[x["symbol"]] = float(x["last"].replace(",", ""))
             except Exception: pass
         ex["vs_pub"] = cmp_pub(pr)
+        ex["missing_price"] = [x["symbol"] for x in q if x["symbol"] not in pr]
+        ex["status_counts"] = {k: sum(1 for x in q if x.get("curmktstatus") == k) for k in {x.get("curmktstatus") for x in q}}
+        a = [x for x in q if x["symbol"] == "AAPL"][0]
+        ex["AAPL_record"] = {k: v for k, v in a.items() if any(w in k.lower() for w in ("last", "ext", "time", "change", "prev", "mkt", "close", "volume"))}
+        ex["missing_records"] = [{k: v for k, v in x.items() if k in ("symbol", "last", "last_time", "curmktstatus", "ExtendedMktQuote")} for x in q if x["symbol"] not in pr][:5]
     except Exception as e: ex = {"parse_err": str(e)}
 rec("cnbc restQuote batch 58", "quote.cnbc.com/…/restQuote/symbolType/symbol?symbols=…", s, h, b, ex)
 s, h, b, _ = get("https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1m&range=1d", {"Origin": "https://example.com"}); rec("yahoo v8 chart, Origin=example.com (is ACAO reflected?)", "", s, h, b)
