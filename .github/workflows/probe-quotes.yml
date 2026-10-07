@@ -1,0 +1,26 @@
+name: Probe quote sources (one-off)
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        run: |
+          set -o pipefail
+          python3 tools/probe-quotes.py | tee probe-quotes.txt
+      - name: Commit result back to branch
+        if: always() && github.ref_name != 'main'
+        run: |
+          mkdir -p .probe
+          cp probe-quotes.txt .probe/latest.txt || true
+          cp probe-quotes.json .probe/latest.json || true
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f .probe
+          git commit -m "probe result (temp)" || exit 0
+          git push origin HEAD:${{ github.ref_name }}
