@@ -42,6 +42,7 @@ jobs:
       boss: ${{ steps.d.outputs.boss }}
       bosssw: ${{ steps.d.outputs.bosssw }}
       fund: ${{ steps.d.outputs.fund }}
+      board: ${{ steps.d.outputs.board }}
       news: ${{ steps.d.outputs.news }}
       prices: ${{ steps.d.outputs.prices }}
       staff: ${{ steps.d.outputs.staff }}
@@ -247,6 +248,18 @@ jobs:
           health-url: http://localhost:8899/trading/fund.html
       - run: node tools/check-fund.mjs
 
+  board:
+    name: 自选股看板（真浏览器）
+    needs: decide
+    if: needs.decide.outputs.board == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/browser-check-setup
+        with:
+          health-url: http://localhost:8899/trading/board.html
+      - run: node tools/check-board.mjs
+
   weather:
     name: 手册天气条（真浏览器）
     needs: decide
@@ -398,7 +411,7 @@ jobs:
     # 这一串必须列满同一个文件里的每个 job：漏掉的那项红了总闸照样绿、分支保护会放行
     # （2026-08-17 发现 fund 与 news 从来没被列进来）。已由 check-workflows.py 的
     # check_gate 断言守着，加 job 忘了回头改这里会在 CI 上被挡下。
-    needs: [decide, html, secrets, pwa, swver, ainote, declog, notify, morningpos, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, news, prices, weather, penangv3, fitness, flights, mapcoords, refreshphotos, photofilter, shortlist]
+    needs: [decide, html, secrets, pwa, swver, ainote, declog, notify, morningpos, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, board, news, prices, weather, penangv3, fitness, flights, mapcoords, refreshphotos, photofilter, shortlist]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——

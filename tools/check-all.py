@@ -64,6 +64,7 @@ CHECKS = [
     ("gamebot-logic", ["node", "tools/check-gamebot-logic.mjs"], False),
     ("boss-sw", ["node", "tools/check-boss-sw.mjs"], False),
     ("fund", ["node", "tools/check-fund.mjs"], True),
+    ("board", ["node", "tools/check-board.mjs"], True),
     ("weather", ["node", "tools/check-weather.mjs"], True),
     ("penangv3", ["node", "tools/check-penang-v3.mjs"], True),
     ("fitness", ["node", "tools/check-fitness.mjs"], True),
