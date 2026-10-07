@@ -243,6 +243,25 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
       这页的原则是**没有的数据就不做那一块**，不填好看的数字。要加区块前先问「这个数
       我们真的有吗」。
 
+- **`board.html` 券商风格自选股看板（2026-10-07）**：用户看到一个终端里的台股/美股券商表格
+  插件（darrell-tw/darrelltw-mods 的 tw-stock-mod），要同样的版面但接本管线的美股数据。
+  三个分页：自选股（代号/名称/现价/涨跌/涨跌%，指数列 SPY/QQQ/DIA/IWM，搜索＋筛选＋
+  点表头排序，宽屏超过一屏分左右两栏）、损益（持仓表＋合计＋摘要）、趋势图（读
+  `history/SYM.json` 画 SVG K 线＋量＋20/50 日均线，不引外部库）。改它要知道的四件事：
+  (1) **不是即时行情**——数据只有每小时一次（见上文数据流），页脚写死「非即时」并标
+      `generated_at`；别为了像券商而改成「即时」字样。要真即时得另接行情源，用户这次选了不新增联网。
+  (2) **名单读 `data-public.json` 的 `tickers`**（它就是 `universe.json` 58 档的扫描结果），
+      `check-board.mjs` 断言两者代号一致；英文名在页内 `EN_NAMES`，universe 加股票时一并补，
+      自检会点名漏的。
+  (3) **损益只用持仓的 `qty/avg_price/price/daily_pnl` 四个字段现算**，不信 `upnl/value`
+      那些已四舍五入的小计；解密沿用 `decryptEnvelope` 与 `tradingAnalyzerPw`。
+      **没存密码时根本不请求 `data-private.enc`**，「持仓」筛选也等解锁后才出现——
+      别在未解锁时露出哪几档是持仓（与 fund.html 同一条底线）。
+  (4) 绿涨红跌（美股）；方向按「显示出来的四舍五入值」判，免得 +0.00% 却标绿。
+  自检 `node tools/check-board.mjs`（93 项，固定 fixture 手算，推导写在文件头），
+  `python3 tools/check-all.py` 已含，CI job 叫 `board`。
+  未做：秒级即时、台股、盘前盘后、自定义自选清单（现在就是 universe 那 58 档）、
+  分时图（只有日线）。
 - **自动下单：个人帐户目前做不到（2026-08-16 查证）**。用户问过「扫到目标价就 Telegram
   问我，我点确定就下单」。前半段已经做了（在 butler-bot，见下），**后半段卡在券商那端**：
   IBKR 的 OAuth 1.0a 明确只开放给机构客户，OAuth 2.0 对个人「still being considered,

@@ -46,6 +46,9 @@ RULES = {
     # 作业系统简报页：页面本身、产出它数据的管线、以及自检脚本
     "fund": ["trading/fund.html", "trading/analyzer.py", "tools/check-fund.mjs",
              ".github/scripts/fetch_news.py"],
+    # 券商风格自选股看板：涨跌/损益/合计/排序全是前端现算；数据档也盯（契约变了它会先红）
+    "board": ["trading/board.html", "trading/analyzer.py", "trading/universe.json",
+              "tools/check-board.mjs"],
     "news": [".github/scripts/fetch_news.py", "tools/check-news.py"],
     "prices": ["trading/fetch_prices.py", "tools/check-prices.py"],
     "staff":     ["staff/**", "expense-tracker.html", "tools/build-staff-page.py",
@@ -73,7 +76,7 @@ RULES = {
                   "tools/check-gamebot-logic.mjs"],
 }
 # 浏览器类检查（慢）额外也盯着共用步骤：它坏了这几项全瞎
-BROWSER = ["company", "inventory", "staff", "fund", "weather", "penangv3", "boss", "fitness"]
+BROWSER = ["company", "inventory", "staff", "fund", "board", "weather", "penangv3", "boss", "fitness"]
 SHARED = ".github/actions/browser-check-setup/action.yml"
 
 

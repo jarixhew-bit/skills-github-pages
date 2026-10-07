@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>自选股看板 · Watchlist Board</title>
+<style>
+:root {
+  --bg: #0f1117; --card: #1a1d27; --card2: #12141d; --border: #2a2d3e;
+  --text: #e2e8f0; --muted: #7c8698; --dim: #4b5468;
+  /* 美股惯例：绿涨红跌 */
+  --up: #22c55e; --down: #f87171;
+  --blue: #60a5fa; --sel: #1b2440;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px;
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; overflow-x: hidden; }
+a { color: var(--blue); }
+button { font-family: inherit; }
+
+header { position: sticky; top: 0; z-index: 20; background: rgba(15,17,23,.94); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+header h1 { font-size: 17px; font-weight: 700; }
+.hbtn { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 20px;
+  padding: 5px 13px; font-size: 13px; text-decoration: none; cursor: pointer; }
+.hbtn.first { margin-left: auto; }
+
+.wrap { max-width: 1200px; margin: 0 auto; padding: 12px 16px 8px; }
+
+/* 指数列 */
+.indices { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.indices::-webkit-scrollbar { display: none; }
+.idx { flex: 0 0 auto; min-width: 128px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 7px 11px; }
+.idx .n { font-size: 12px; color: var(--muted); }
+.idx .n b { color: var(--blue); font-family: var(--mono); font-weight: 600; margin-right: 4px; }
+.idx .p { font-family: var(--mono); font-size: 16px; font-weight: 600; margin-top: 1px; }
+.idx .c { font-family: var(--mono); font-size: 12.5px; }
+.mktline { font-size: 12px; color: var(--muted); margin: 6px 0 2px; line-height: 1.6; }
+
+/* 分页签与工具列 */
+.tabs { display: flex; gap: 6px; margin: 10px 0 8px; flex-wrap: wrap; }
+.tab { background: var(--card); color: var(--muted); border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 16px; font-size: 14px; cursor: pointer; }
+.tab[aria-pressed="true"] { background: var(--sel); color: var(--text); border-color: var(--blue); }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.tools input[type=search], .tools select { background: var(--card2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; font-size: 14px; min-width: 0; }
+.tools input[type=search] { width: 160px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { background: var(--card2); color: var(--muted); border: 1px solid var(--border); border-radius: 16px;
+  padding: 3px 11px; font-size: 12.5px; cursor: pointer; }
+.chip[aria-pressed="true"] { color: var(--text); border-color: var(--blue); background: var(--sel); }
+.count { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+/* 表格：券商风格 */
+.scroll { overflow: auto; max-height: calc(100vh - 290px); min-height: 280px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px; -webkit-overflow-scrolling: touch; }
+.scroll.fit { min-height: 0; }
+.cols { display: grid; grid-template-columns: 1fr; }
+.cols.two { grid-template-columns: 1fr 1fr; }
+.cols.two > table:first-child { border-right: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th { position: sticky; top: 0; z-index: 2; background: var(--card); color: var(--muted); font-weight: 500;
+  font-size: 12px; text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+thead th:first-child { text-align: left; }
+thead th.on { color: var(--text); }
+tbody td, tfoot td { padding: 8px 10px; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid rgba(42,45,62,.6); white-space: nowrap; }
+tbody td:first-child, tfoot td:first-child { text-align: left; font-family: inherit; }
+tbody tr.row { cursor: pointer; }
+tbody tr.row:hover, tbody tr.row:focus { background: var(--sel); outline: none; }
+.sym { color: var(--blue); font-family: var(--mono); font-weight: 600; margin-right: 8px; }
+.nm { color: var(--muted); font-size: 13px; }
+.price { font-weight: 600; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
+tfoot td { position: sticky; bottom: 0; background: #20243a; font-weight: 700; border-top: 1px solid var(--border); border-bottom: 0; }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 13.5px; }
+.pnl-table td:first-child, .pnl-table th:first-child { position: sticky; left: 0; background: var(--card); z-index: 1; }
+.pnl-table thead th:first-child { z-index: 3; }
+.pnl-table tfoot td:first-child { background: #20243a; }
+
+/* 损益摘要 */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.tile { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; min-width: 0; }
+.tile .l { font-size: 12px; color: var(--muted); }
+.tile .v { font-family: var(--mono); font-size: 17px; font-weight: 700; margin-top: 1px; overflow-wrap: anywhere; }
+.tile .s { font-family: var(--mono); font-size: 12px; }
+
+/* 解锁框 */
+.lockbox { background: var(--card); border: 1px solid var(--border); border-radius: 12px; text-align: center; padding: 28px 16px; }
+.lockbox p { color: var(--muted); font-size: 13.5px; line-height: 1.7; margin: 6px auto 14px; max-width: 460px; }
+.pw-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.pw-row input { background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 9px 12px; font-size: 15px; width: 210px; max-width: 100%; }
+.pw-row button { background: var(--sel); color: var(--text); border: 1px solid var(--blue); border-radius: 10px; padding: 9px 18px; font-size: 14px; cursor: pointer; }
+.pw-err { color: var(--down); font-size: 13px; margin-top: 10px; display: none; }
+
+/* 趋势图 */
+.chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px 8px; }
+.ch-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.ch-head .big { font-family: var(--mono); font-size: 22px; font-weight: 700; }
+.ch-info { font-family: var(--mono); font-size: 12px; color: var(--muted); margin: 4px 0 6px; line-height: 1.6; min-height: 20px; }
+.ranges { display: flex; gap: 6px; margin-left: auto; }
+#chartBox { width: 100%; touch-action: pan-y; }
+#chartBox svg { display: block; width: 100%; }
+.k.up { stroke: var(--up); fill: var(--up); } .k.down { stroke: var(--down); fill: var(--down); }
+.axis { fill: var(--muted); font-size: 10.5px; font-family: var(--mono); }
+.grid { stroke: var(--border); stroke-width: 1; }
+.ma20 { stroke: #fbbf24; fill: none; stroke-width: 1.2; } .ma50 { stroke: #a78bfa; fill: none; stroke-width: 1.2; }
+.legend { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+.legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin: 0 4px 0 10px; }
+
+footer { color: var(--muted); font-size: 12px; line-height: 1.8; text-align: center; padding: 18px 16px 36px; max-width: 900px; margin: 0 auto; }
+footer b { color: var(--text); font-weight: 600; }
+#err { color: var(--down); text-align: center; padding: 40px 16px; display: none; }
+
+@media (max-width: 560px) {
+  .wrap { padding: 10px 10px 6px; }
+  header { padding: 9px 10px; }
+  .tab { padding: 7px 13px; }
+  .tools input[type=search] { width: 100%; flex: 1 1 100%; }
+  .count { margin-left: 0; }
+  table { font-size: 13.5px; }
+  thead th, tbody td, tfoot td { padding: 8px 7px; }
+  .nm { display: block; font-size: 11.5px; margin-top: 1px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  .sym { margin-right: 0; }
+  .tile .v { font-size: 14px; }
+  .ranges { margin-left: 0; }
+  .scroll { max-height: calc(100vh - 330px); }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 data-i="title">自选股看板</h1>
+  <a class="hbtn first" href="./" data-i="toAnalyzer">📊 分析器</a>
+  <button class="hbtn" id="langBtn" onclick="toggleLang()" aria-label="Switch language">EN</button>
+</header>
+
+<div class="wrap">
+  <div id="err"></div>
+  <div id="main" style="display:none">
+    <div class="indices" id="indices"></div>
+    <div class="mktline" id="mktline"></div>
+
+    <div class="tabs" role="group">
+      <button class="tab" data-tab="watch" aria-pressed="true" data-i="tabWatch">自选股</button>
+      <button class="tab" data-tab="pnl" aria-pressed="false" data-i="tabPnl">损益</button>
+      <button class="tab" data-tab="chart" aria-pressed="false" data-i="tabChart">趋势图</button>
+    </div>
+
+    <section id="vWatch">
+      <div class="tools">
+        <input type="search" id="q" data-ph="search" placeholder="搜索代号或名称" aria-label="search" autocomplete="off">
+        <div class="chips" id="chips"></div>
+        <span class="count" id="count"></span>
+      </div>
+      <div class="scroll" id="watchScroll"><div class="cols" id="watchCols"></div></div>
+    </section>
+
+    <section id="vPnl" style="display:none"></section>
+
+    <section id="vChart" style="display:none">
+      <div class="tools">
+        <select id="chartSel" aria-label="symbol"></select>
+        <div class="ranges" id="ranges"></div>
+      </div>
+      <div class="chart-card">
+        <div class="ch-head" id="chHead"></div>
+        <div class="ch-info" id="chInfo"></div>
+        <div id="chartBox"></div>
+        <div class="legend" id="chLegend"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<footer id="foot"></footer>
+
+<script>
+"use strict";
+const PW_KEY = "tradingAnalyzerPw";       // 与 index.html / fund.html / plan.html 同一把密码
+const LANG_KEY = "siteLangUser";
+
+/* ---------- 英文名（data-public 里的名称是中文；只做显示用，代号才是主键） ---------- */
+const EN_NAMES = {
+  SPY: "S&P 500 ETF", QQQ: "Nasdaq-100 ETF", DIA: "Dow Jones ETF", IWM: "Russell 2000 ETF", VTI: "Total US Market ETF",
+  VOO: "S&P 500 ETF (Vanguard)", SMH: "Semiconductor ETF", XLK: "Tech Sector ETF", XLE: "Energy Sector ETF",
+  XLF: "Financial Sector ETF", XLV: "Health Care Sector ETF", TLT: "20+ Yr Treasury ETF", GLD: "Gold ETF",
+  SCHD: "US Dividend ETF", VXUS: "International Stock ETF", IBIT: "Bitcoin ETF", SGOV: "Short-Term Treasury ETF",
+  AAPL: "Apple", MSFT: "Microsoft", NVDA: "NVIDIA", GOOGL: "Alphabet (Google)", AMZN: "Amazon", META: "Meta",
+  TSLA: "Tesla", AVGO: "Broadcom", AMD: "AMD", INTC: "Intel", QCOM: "Qualcomm", MU: "Micron", CRM: "Salesforce",
+  ORCL: "Oracle", ADBE: "Adobe", NFLX: "Netflix", PLTR: "Palantir", UBER: "Uber", COIN: "Coinbase", COST: "Costco",
+  WMT: "Walmart", HD: "Home Depot", MCD: "McDonald's", DIS: "Disney", KO: "Coca-Cola", PEP: "PepsiCo",
+  PG: "Procter & Gamble", JNJ: "Johnson & Johnson", LLY: "Eli Lilly", UNH: "UnitedHealth", MRK: "Merck",
+  ABBV: "AbbVie", JPM: "JPMorgan Chase", GS: "Goldman Sachs", V: "Visa", MA: "Mastercard", XOM: "Exxon Mobil",
+  CVX: "Chevron", CAT: "Caterpillar", BA: "Boeing", GE: "GE Aerospace"
+};
+const TREND_EN = { "多头趋势": "uptrend", "空头趋势": "downtrend", "震荡": "sideways" };
+
+const I = {
+  cn: {
+    title: "自选股看板", toAnalyzer: "📊 分析器", tabWatch: "自选股", tabPnl: "损益", tabChart: "趋势图",
+    search: "搜索代号或名称", fAll: "全部", fStock: "个股", fEtf: "ETF", fBuy: "买入信号", fWeak: "转弱", fHeld: "持仓",
+    count: "共 {n} 档", empty: "没有符合条件的股票",
+    thId: "代号 · 名称", thPrice: "现价", thChg: "涨跌", thPct: "涨跌%",
+    thQty: "股数", thAvg: "成本", thTPct: "今日%", thTPnl: "今日损益", thPnl: "总损益", thPnlPct: "损益%",
+    total: "合计", tValue: "持仓市值", tToday: "今日损益", tAll: "总损益",
+    lockMsg: "持仓数据加密存放，在浏览器里用密码解密，明文不会离开你的设备。未输入密码时，自选股与趋势图照常使用。",
+    pw: "密码", unlock: "解锁", pwBad: "密码不对，再试一次", noPriv: "尚无持仓数据文件", lock: "🔒 锁定",
+    noPos: "目前没有持仓记录", pnlNote: "金额单位：美元。今日损益 = 持仓股数 ×（现价 − 前收）；总损益 = 持仓股数 ×（现价 − 成本）。",
+    trendOf: "趋势", breadth: "扫描名单中 {n}% 个股站上 50 日线", mktSpy: "标普500", mktQqq: "纳指100",
+    ranges: { 60: "60 日", 120: "120 日", 320: "全部" }, daily: "日线 K 线", bars: "共 {n} 根",
+    ma20: "20 日均线", ma50: "50 日均线", chartFail: "这只股票的日线载入失败", loading: "载入中…",
+    o: "开", h: "高", l: "低", c: "收", vol: "量", vsPrev: "较前一日",
+    loadFail: "数据载入失败：", ago: "约 {n} 小时前", agoD: "约 {n} 天前", justNow: "不足 1 小时前",
+    foot1: "<b>数据不是即时的。</b>行情来自本站数据管线（Stooq / Yahoo 日线），美股交易时段内每小时更新一次，不是逐笔报价；价格可能落后真实盘面。",
+    foot2: "数据时间：<b>{t}</b>（{ago}）。持仓来自 IBKR 账户，经加密后在浏览器端解密，仅你本人可见。",
+    foot3: "绿涨红跌（美股惯例）。仅供个人参考，不构成投资建议。", gen: "数据时间"
+  },
+  en: {
+    title: "Watchlist Board", toAnalyzer: "📊 Analyzer", tabWatch: "Watchlist", tabPnl: "P&L", tabChart: "Chart",
+    search: "Search symbol or name", fAll: "All", fStock: "Stocks", fEtf: "ETFs", fBuy: "Buy signals", fWeak: "Weakening", fHeld: "Held",
+    count: "{n} symbols", empty: "No symbols match",
+    thId: "Symbol · Name", thPrice: "Last", thChg: "Chg", thPct: "Chg%",
+    thQty: "Shares", thAvg: "Cost", thTPct: "Today%", thTPnl: "Today P&L", thPnl: "Total P&L", thPnlPct: "P&L%",
+    total: "Total", tValue: "Market value", tToday: "Today P&L", tAll: "Total P&L",
+    lockMsg: "Holdings are stored encrypted and decrypted in your browser with your password; plain text never leaves your device. Without the password the watchlist and charts work as usual.",
+    pw: "Password", unlock: "Unlock", pwBad: "Wrong password, try again", noPriv: "No holdings file yet", lock: "🔒 Lock",
+    noPos: "No holdings on record", pnlNote: "Amounts in USD. Today P&L = shares x (last - previous close); total P&L = shares x (last - cost).",
+    trendOf: "trend", breadth: "{n}% of scanned stocks are above their 50-day average", mktSpy: "S&P 500", mktQqq: "Nasdaq-100",
+    ranges: { 60: "60D", 120: "120D", 320: "All" }, daily: "Daily candles", bars: "{n} bars",
+    ma20: "20-day average", ma50: "50-day average", chartFail: "Could not load daily data for this symbol", loading: "Loading…",
+    o: "O", h: "H", l: "L", c: "C", vol: "Vol", vsPrev: "vs prev day",
+    loadFail: "Failed to load data: ", ago: "about {n}h ago", agoD: "about {n}d ago", justNow: "under 1h ago",
+    foot1: "<b>Not real-time.</b> Prices come from this site's data pipeline (Stooq / Yahoo daily data), refreshed once an hour during US market hours. They are not live ticks and may lag the actual market.",
+    foot2: "Data time: <b>{t}</b> ({ago}). Holdings come from the IBKR account, encrypted, and are decrypted in your browser only.",
+    foot3: "Green = up, red = down (US convention). For personal reference only, not investment advice.", gen: "Data time"
+  }
+};
+
+let LANG = "cn";
+const t = (k, v) => {
+  let s = (I[LANG][k] != null ? I[LANG][k] : k);
+  if (v) for (const x in v) s = s.replace("{" + x + "}", v[x]);
+  return s;
+};
+
+/* ---------- 状态 ---------- */
+let PUB = null, PRIV = null;
+let TAB = "watch";
+let SORT_W = { key: "pct", dir: -1 };      // 默认：涨跌% 由高到低
+let SORT_P = { key: "value", dir: -1 };    // 默认：市值由大到小
+let FILTER = "all", QUERY = "";
+let CHART_SYM = null, CHART_RANGE = 120;
+const HIST = {};                            // sym -> bars | "fail"
+let HOVER = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- 数字格式 ---------- */
+const nf = (v, d) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (v, d = 2) => v == null || !isFinite(v) ? "—" : nf(v, d);
+const fmtS = (v, d = 2) => {       // 带正负号
+  if (v == null || !isFinite(v)) return "—";
+  const r = Math.round(v * Math.pow(10, d));
+  return (r > 0 ? "+" : r < 0 ? "-" : "") + nf(Math.abs(v), d);
+};
+const fmtP = (v, d = 2) => v == null || !isFinite(v) ? "—" : fmtS(v, d) + "%";
+const dirOf = (v, d = 2) => {      // 以「显示出来的四舍五入值」判方向，避免 +0.00% 却标绿
+  if (v == null || !isFinite(v)) return 0;
+  const r = Math.round(v * Math.pow(10, d));
+  return r > 0 ? 1 : r < 0 ? -1 : 0;
+};
+const cls = (v, d = 2) => ["down", "flat", "up"][dirOf(v, d) + 1];
+const arrow = (v, d = 2) => ["▼", "–", "▲"][dirOf(v, d) + 1];
+
+const nameOf = tk => LANG === "en" ? (EN_NAMES[tk.symbol] || tk.name) : tk.name;
+
+/* ---------- 语言 ---------- */
+function applyLang(lang) {
+  LANG = lang === "en" ? "en" : "cn";
+  document.documentElement.lang = LANG === "en" ? "en" : "zh";
+  $("langBtn").textContent = LANG === "en" ? "中" : "EN";
+  document.title = LANG === "en" ? "Watchlist Board · 自选股看板" : "自选股看板 · Watchlist Board";
+  document.querySelectorAll("[data-i]").forEach(el => { el.textContent = t(el.dataset.i); });
+  document.querySelectorAll("[data-ph]").forEach(el => { el.placeholder = t(el.dataset.ph); });
+  if (PUB) renderAll();
+}
+function toggleLang() {
+  const next = LANG === "en" ? "cn" : "en";
+  applyLang(next);
+  try { localStorage.setItem(LANG_KEY, next); } catch (e) {}
+}
+(function initLang() {
+  let lang = null;
+  try { lang = localStorage.getItem(LANG_KEY); } catch (e) {}
+  if (!lang) lang = (navigator.language || "").toLowerCase().startsWith("zh") ? "cn" : "en";
+  applyLang(lang);
+  window.addEventListener("storage", e => { if (e.key === LANG_KEY && e.newValue) applyLang(e.newValue); });
+})();
+
+/* ---------- 解密（与 index.html 的 decryptEnvelope 同一格式） ---------- */
+async function decryptEnvelope(envText, password) {
+  const env = JSON.parse(envText);
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const keyMat = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: b64(env.salt), iterations: env.iter, hash: "SHA-256" },
+    keyMat, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(env.nonce) }, key, b64(env.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+let PW_ERR = "";
+async function unlockWith(password, silent) {
+  let envText;
+  try {
+    const r = await fetch("data-private.enc", { cache: "no-store" });
+    if (!r.ok) throw new Error("noPriv");
+    envText = await r.text();
+  } catch (e) {
+    if (!silent) PW_ERR = t("noPriv");
+    return false;
+  }
+  try {
+    PRIV = await decryptEnvelope(envText, password);
+  } catch (e) {
+    PRIV = null;
+    if (!silent) PW_ERR = t("pwBad");
+    return false;
+  }
+  try { localStorage.setItem(PW_KEY, password); } catch (e) {}
+  PW_ERR = "";
+  return true;
+}
+async function tryUnlock() {
+  const pw = ($("pwInput").value || "").trim();
+  if (!pw) return;
+  await unlockWith(pw, false);
+  renderAll();
+}
+function doLock() {
+  try { localStorage.removeItem(PW_KEY); } catch (e) {}
+  PRIV = null; PW_ERR = "";
+  if (FILTER === "held") FILTER = "all";
+  renderAll();
+}
+
+/* ---------- 数据 ---------- */
+function tickers() { return (PUB && PUB.tickers) || []; }
+function row(tk) {
+  const price = tk.price, prev = tk.prev_close;
+  const ok = typeof price === "number" && typeof prev === "number" && prev > 0;
+  const chg = ok ? price - prev : null;
+  const pct = ok ? (price / prev - 1) * 100 : (typeof tk.chg1d === "number" ? tk.chg1d : null);
+  return { tk, sym: tk.symbol, price: typeof price === "number" ? price : null, chg, pct };
+}
+const heldSet = () => new Set(PRIV ? (PRIV.positions || []).map(p => p.symbol) : []);
+
+function filteredRows() {
+  const held = heldSet(), q = QUERY.trim().toLowerCase();
+  const buy = new Set(PUB.opportunities || []), weak = new Set(PUB.weak || []);
+  let rows = tickers().map(row);
+  rows = rows.filter(r => {
+    if (FILTER === "stock" && r.tk.etf) return false;
+    if (FILTER === "etf" && !r.tk.etf) return false;
+    if (FILTER === "buy" && !buy.has(r.sym)) return false;
+    if (FILTER === "weak" && !weak.has(r.sym)) return false;
+    if (FILTER === "held" && !held.has(r.sym)) return false;
+    if (q) {
+      const hay = (r.sym + " " + r.tk.name + " " + (EN_NAMES[r.sym] || "")).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const { key, dir } = SORT_W;
+  rows.sort((a, b) => {
+    if (key === "sym") return dir * a.sym.localeCompare(b.sym);
+    const av = a[key], bv = b[key];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;      // 缺值永远排最后
+    if (bv == null) return -1;
+    return dir * (av - bv) || a.sym.localeCompare(b.sym);
+  });
+  return rows;
+}
+
+/* 持仓：只用 qty / avg_price / price / daily_pnl 四个原始字段现算，不信任别处四舍五入过的小计 */
+function positionRows() {
+  const byTk = {};
+  tickers().forEach(tk => { byTk[tk.symbol] = tk; });
+  const rows = (PRIV.positions || []).map(p => {
+    const tk = byTk[p.symbol];
+    const value = p.qty * p.price;
+    const cost = p.qty * p.avg_price;
+    const todayPnl = p.daily_pnl || 0;
+    const prevValue = value - todayPnl;
+    return {
+      sym: p.symbol, name: tk ? nameOf(tk) : "", qty: p.qty, avg: p.avg_price, price: p.price,
+      value, cost, todayPnl, todayPct: prevValue > 0 ? todayPnl / prevValue * 100 : null,
+      pnl: value - cost, pnlPct: cost > 0 ? (value - cost) / cost * 100 : null
+    };
+  });
+  const { key, dir } = SORT_P;
+  rows.sort((a, b) => {
+    if (key === "sym") return dir * a.sym.localeCompare(b.sym);
+    const av = a[key], bv = b[key];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return dir * (av - bv) || a.sym.localeCompare(b.sym);
+  });
+  return rows;
+}
+function totals(rows) {
+  const s = k => rows.reduce((x, r) => x + r[k], 0);
+  const value = s("value"), cost = s("cost"), today = s("todayPnl"), prevValue = value - today;
+  return {
+    value, cost, today, pnl: value - cost,
+    todayPct: prevValue > 0 ? today / prevValue * 100 : null,
+    pnlPct: cost > 0 ? (value - cost) / cost * 100 : null
+  };
+}
+
+/* ---------- 渲染：总入口 ---------- */
+function renderAll() {
+  renderIndices(); renderTabs(); renderChips(); renderWatch(); renderPnl(); renderChartShell(); renderFoot();
+  if (TAB === "chart") drawChart();
+}
+
+function renderIndices() {
+  const by = {}; tickers().forEach(tk => { by[tk.symbol] = tk; });
+  $("indices").innerHTML = ["SPY", "QQQ", "DIA", "IWM"].filter(s => by[s]).map(s => {
+    const r = row(by[s]);
+    return `<div class="idx" data-idx="${s}"><div class="n"><b>${s}</b>${esc(nameOf(by[s]))}</div>
+      <div class="p">${fmt(r.price)}</div>
+      <div class="c ${cls(r.pct)}">${arrow(r.pct)} ${fmtS(r.chg)} &nbsp;${fmtP(r.pct)}</div></div>`;
+  }).join("");
+  const m = PUB.market || {};
+  const parts = [];
+  const tr = x => LANG === "en" ? (TREND_EN[x] || x) : x;
+  if (m.spy && m.spy.trend) parts.push(`${t("mktSpy")} ${tr(m.spy.trend)}`);
+  if (m.qqq && m.qqq.trend) parts.push(`${t("mktQqq")} ${tr(m.qqq.trend)}`);
+  if (typeof m.breadth === "number") parts.push(t("breadth", { n: m.breadth }));
+  $("mktline").textContent = parts.join(" · ");
+}
+
+function renderTabs() {
+  document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tab === TAB)));
+  $("vWatch").style.display = TAB === "watch" ? "" : "none";
+  $("vPnl").style.display = TAB === "pnl" ? "" : "none";
+  $("vChart").style.display = TAB === "chart" ? "" : "none";
+}
+
+function renderChips() {
+  const opts = [["all", "fAll"], ["stock", "fStock"], ["etf", "fEtf"], ["buy", "fBuy"], ["weak", "fWeak"]];
+  if (PRIV) opts.push(["held", "fHeld"]);   // 解锁前不暴露「哪几档是持仓」
+  $("chips").innerHTML = opts.map(([k, lab]) =>
+    `<button class="chip" data-f="${k}" aria-pressed="${FILTER === k}">${esc(t(lab))}</button>`).join("");
+}
+
+function th(label, key, sort, cls2) {
+  const on = sort.key === key;
+  return `<th data-sort="${key}" class="${on ? "on" : ""} ${cls2 || ""}" aria-sort="${on ? (sort.dir < 0 ? "descending" : "ascending") : "none"}">${esc(label)}${on ? (sort.dir < 0 ? " ↓" : " ↑") : ""}</th>`;
+}
+
+function watchTable(rows) {
+  const head = `<thead><tr>${th(t("thId"), "sym", SORT_W)}${th(t("thPrice"), "price", SORT_W)}${th(t("thChg"), "chg", SORT_W)}${th(t("thPct"), "pct", SORT_W)}</tr></thead>`;
+  const body = rows.map(r => `<tr class="row" tabindex="0" data-sym="${esc(r.sym)}">
+    <td data-k="id"><span class="sym">${esc(r.sym)}</span><span class="nm">${esc(nameOf(r.tk))}</span></td>
+    <td data-k="price" data-v="${r.price}" class="price ${cls(r.pct)}">${fmt(r.price)}</td>
+    <td data-k="chg" data-v="${r.chg}" class="${cls(r.chg)}">${fmtS(r.chg)}</td>
+    <td data-k="pct" data-v="${r.pct}" class="${cls(r.pct)}">${arrow(r.pct)} ${fmtP(r.pct)}</td></tr>`).join("");
+  return `<table>${head}<tbody>${body}</tbody></table>`;
+}
+
+const wide = () => window.matchMedia("(min-width: 980px)").matches;
+function renderWatch() {
+  const rows = filteredRows();
+  $("count").textContent = t("count", { n: rows.length });
+  if (!rows.length) { $("watchCols").className = "cols"; $("watchCols").innerHTML = `<div class="empty">${esc(t("empty"))}</div>`; return; }
+  if (wide() && rows.length > 14) {          // 宽屏且超过一屏：分左右两栏，像券商的双栏表
+    const half = Math.ceil(rows.length / 2);
+    $("watchCols").className = "cols two";
+    $("watchCols").innerHTML = watchTable(rows.slice(0, half)) + watchTable(rows.slice(half));
+  } else {
+    $("watchCols").className = "cols";
+    $("watchCols").innerHTML = watchTable(rows);
+  }
+}
+
+function renderPnl() {
+  const box = $("vPnl");
+  if (!PRIV) {
+    box.innerHTML = `<div class="lockbox" id="lockbox"><div style="font-size:26px">🔒</div><p>${esc(t("lockMsg"))}</p>
+      <div class="pw-row"><input type="password" id="pwInput" placeholder="${esc(t("pw"))}" aria-label="${esc(t("pw"))}" autocomplete="current-password">
+      <button id="pwBtn">${esc(t("unlock"))}</button></div>
+      <div class="pw-err" id="pwErr" style="display:${PW_ERR ? "block" : "none"}">${esc(PW_ERR)}</div></div>`;
+    return;
+  }
+  const rows = positionRows();
+  if (!rows.length) { box.innerHTML = `<div class="lockbox"><p>${esc(t("noPos"))}</p></div>`; return; }
+  const T = totals(rows);
+  const tiles = `<div class="tiles" id="pnlTiles">
+    <div class="tile"><div class="l">${esc(t("tValue"))}</div><div class="v" data-k="value">${fmt(T.value)}</div></div>
+    <div class="tile"><div class="l">${esc(t("tToday"))}</div><div class="v ${cls(T.today)}" data-k="today">${fmtS(T.today)}</div><div class="s ${cls(T.todayPct)}">${fmtP(T.todayPct)}</div></div>
+    <div class="tile"><div class="l">${esc(t("tAll"))}</div><div class="v ${cls(T.pnl)}" data-k="pnl">${fmtS(T.pnl)}</div><div class="s ${cls(T.pnlPct)}">${fmtP(T.pnlPct)}</div></div></div>`;
+  const head = `<thead><tr>${th(t("thId"), "sym", SORT_P)}${th(t("thQty"), "qty", SORT_P)}${th(t("thAvg"), "avg", SORT_P)}${th(t("thPrice"), "price", SORT_P)}${th(t("thTPct"), "todayPct", SORT_P)}${th(t("thTPnl"), "todayPnl", SORT_P)}${th(t("thPnl"), "pnl", SORT_P)}${th(t("thPnlPct"), "pnlPct", SORT_P)}</tr></thead>`;
+  const body = rows.map(r => `<tr class="row" tabindex="0" data-sym="${esc(r.sym)}">
+    <td data-k="id"><span class="sym">${esc(r.sym)}</span><span class="nm">${esc(r.name)}</span></td>
+    <td data-k="qty">${fmt(r.qty, Number.isInteger(r.qty) ? 0 : 4)}</td>
+    <td data-k="avg">${fmt(r.avg)}</td>
+    <td data-k="price" class="price">${fmt(r.price)}</td>
+    <td data-k="todayPct" class="${cls(r.todayPct)}">${fmtP(r.todayPct)}</td>
+    <td data-k="todayPnl" class="${cls(r.todayPnl)}">${fmtS(r.todayPnl)}</td>
+    <td data-k="pnl" class="${cls(r.pnl)}">${fmtS(r.pnl)}</td>
+    <td data-k="pnlPct" class="${cls(r.pnlPct)}">${fmtP(r.pnlPct)}</td></tr>`).join("");
+  const foot = `<tfoot><tr id="pnlTotal"><td data-k="id">${esc(t("total"))}</td><td></td><td></td><td></td>
+    <td data-k="todayPct" class="${cls(T.todayPct)}">${fmtP(T.todayPct)}</td>
+    <td data-k="todayPnl" class="${cls(T.today)}">${fmtS(T.today)}</td>
+    <td data-k="pnl" class="${cls(T.pnl)}">${fmtS(T.pnl)}</td>
+    <td data-k="pnlPct" class="${cls(T.pnlPct)}">${fmtP(T.pnlPct)}</td></tr></tfoot>`;
+  box.innerHTML = `${tiles}<div class="scroll fit"><table class="pnl-table" id="pnlTable">${head}<tbody>${body}</tbody>${foot}</table></div>
+    <div class="mktline">${esc(t("pnlNote"))} <button class="hbtn" id="lockBtn" style="margin-left:6px">${esc(t("lock"))}</button></div>`;
+}
+
+/* ---------- 趋势图 ---------- */
+function renderChartShell() {
+  const sel = $("chartSel");
+  const cur = CHART_SYM || (tickers()[0] && tickers()[0].symbol);
+  CHART_SYM = cur;
+  sel.innerHTML = tickers().map(tk => `<option value="${esc(tk.symbol)}">${esc(tk.symbol)} · ${esc(nameOf(tk))}</option>`).join("");
+  sel.value = cur;
+  $("ranges").innerHTML = [60, 120, 320].map(n =>
+    `<button class="chip" data-r="${n}" aria-pressed="${CHART_RANGE === n}">${esc(I[LANG].ranges[n])}</button>`).join("");
+  $("chLegend").innerHTML = `${esc(t("daily"))}<i style="background:#fbbf24"></i>${esc(t("ma20"))}<i style="background:#a78bfa"></i>${esc(t("ma50"))}`;
+}
+
+async function loadHist(sym) {
+  if (HIST[sym]) return HIST[sym];
+  try {
+    const r = await fetch("history/" + encodeURIComponent(sym) + ".json", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    HIST[sym] = (j.bars || []).filter(b => b.length >= 6 && b.slice(1, 5).every(x => typeof x === "number"));
+  } catch (e) { HIST[sym] = "fail"; }
+  return HIST[sym];
+}
+function sma(closes, n) {
+  const out = []; let s = 0;
+  for (let i = 0; i < closes.length; i++) {
+    s += closes[i]; if (i >= n) s -= closes[i - n];
+    out.push(i >= n - 1 ? s / n : null);
+  }
+  return out;
+}
+
+async function drawChart() {
+  const sym = CHART_SYM, box = $("chartBox");
+  if (!sym) return;
+  box.innerHTML = `<div class="empty">${esc(t("loading"))}</div>`;
+  const bars = await loadHist(sym);
+  if (sym !== CHART_SYM || TAB !== "chart") return;     // 等待期间用户已切走
+  if (bars === "fail" || !bars.length) { box.innerHTML = `<div class="empty">${esc(t("chartFail"))}</div>`; $("chHead").textContent = ""; $("chInfo").textContent = ""; return; }
+  const closes = bars.map(b => b[4]), m20 = sma(closes, 20), m50 = sma(closes, 50);
+  const n = Math.min(CHART_RANGE, bars.length), off = bars.length - n;
+  const win = bars.slice(off);
+  const W = Math.max(280, box.clientWidth || 360), narrow = W < 520;
+  const H1 = narrow ? 230 : 330, H2 = narrow ? 50 : 64, GAP = 8, L = 4, R = 52, T = 8, B = 20;
+  const pw = W - L - R, slot = pw / n, bw = Math.max(1, Math.min(slot * 0.7, 14));
+  let lo = Infinity, hi = -Infinity, vmax = 0;
+  win.forEach(b => { lo = Math.min(lo, b[3]); hi = Math.max(hi, b[2]); vmax = Math.max(vmax, b[5] || 0); });
+  const pad = (hi - lo) * 0.06 || 1; lo -= pad; hi += pad;
+  const y = v => T + (hi - v) / (hi - lo) * H1;
+  const x = i => L + slot * (i + 0.5);
+  const volTop = T + H1 + GAP, totalH = T + H1 + GAP + H2 + B;
+  let g = "";
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + (hi - lo) * k / 4, yy = y(v);
+    g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}"/><text class="axis" x="${W - R + 5}" y="${(yy + 3.5).toFixed(1)}">${fmt(v)}</text>`;
+  }
+  let candles = "", vols = "";
+  win.forEach((b, i) => {
+    const up = b[4] >= b[1], c = up ? "up" : "down", xx = x(i);
+    const top = y(Math.max(b[1], b[4])), bot = y(Math.min(b[1], b[4]));
+    candles += `<g class="k ${c}" data-i="${i}"><line x1="${xx.toFixed(1)}" x2="${xx.toFixed(1)}" y1="${y(b[2]).toFixed(1)}" y2="${y(b[3]).toFixed(1)}" stroke-width="1"/>` +
+      `<rect x="${(xx - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, bot - top).toFixed(1)}"/></g>`;
+    if (vmax > 0) {
+      const vh = (b[5] || 0) / vmax * H2;
+      vols += `<rect class="k ${c}" opacity=".55" x="${(xx - bw / 2).toFixed(1)}" y="${(volTop + H2 - vh).toFixed(1)}" width="${bw.toFixed(1)}" height="${vh.toFixed(1)}"/>`;
+    }
+  });
+  const line = (arr, c) => {
+    let d = "", pen = false;
+    for (let i = 0; i < n; i++) { const v = arr[off + i]; if (v == null) { pen = false; continue; } d += (pen ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); pen = true; }
+    return d ? `<path class="${c}" d="${d}"/>` : "";
+  };
+  let xl = "";
+  [0, 1, 2, 3].forEach(k => {
+    const i = Math.round((n - 1) * k / 3);
+    xl += `<text class="axis" text-anchor="${k === 0 ? "start" : k === 3 ? "end" : "middle"}" x="${(k === 0 ? L : k === 3 ? W - R : x(i)).toFixed(1)}" y="${totalH - 5}">${narrow ? win[i][0].slice(2) : win[i][0]}</text>`;
+  });
+  box.innerHTML = `<svg id="chartSvg" viewBox="0 0 ${W} ${totalH}" width="${W}" height="${totalH}" role="img" aria-label="${esc(sym)} candles">
+    <defs><clipPath id="clip"><rect x="${L}" y="${T}" width="${pw}" height="${H1}"/></clipPath></defs>
+    ${g}<g clip-path="url(#clip)">${candles}${line(m20, "ma20")}${line(m50, "ma50")}</g>${vols}${xl}
+    <line id="cross" class="grid" y1="${T}" y2="${T + H1}" x1="0" x2="0" style="display:none"/></svg>`;
+  CHART_CTX = { win, bars, off, slot, L, W, R };
+  const svg = $("chartSvg");
+  const move = ev => {
+    const rect = svg.getBoundingClientRect(), px = (ev.clientX - rect.left) * (W / rect.width);
+    const i = Math.max(0, Math.min(n - 1, Math.floor((px - L) / slot)));
+    showInfo(i, true);
+  };
+  svg.addEventListener("pointermove", move);
+  svg.addEventListener("pointerdown", move);
+  svg.addEventListener("pointerleave", () => showInfo(n - 1, false));
+  showInfo(n - 1, false);
+}
+let CHART_CTX = null;
+function showInfo(i, cross) {
+  if (!CHART_CTX) return;
+  const { win, bars, off, slot, L } = CHART_CTX, b = win[i], prev = bars[off + i - 1];
+  const tk = tickers().find(x => x.symbol === CHART_SYM);
+  const chg = prev ? b[4] - prev[4] : null, pct = prev ? (b[4] / prev[4] - 1) * 100 : null;
+  $("chHead").innerHTML = `<span class="sym" style="font-size:18px">${esc(CHART_SYM)}</span><span class="nm">${esc(tk ? nameOf(tk) : "")}</span>` +
+    `<span class="big ${cls(chg)}" id="chClose">${fmt(b[4])}</span><span class="${cls(chg)}" id="chChg">${arrow(chg)} ${fmtS(chg)} (${fmtP(pct)})</span>`;
+  $("chInfo").textContent = `${b[0]}  ${t("o")} ${fmt(b[1])}  ${t("h")} ${fmt(b[2])}  ${t("l")} ${fmt(b[3])}  ${t("c")} ${fmt(b[4])}  ${t("vol")} ${nf(b[5] || 0, 0)}  · ${t("bars", { n: win.length })}`;
+  const c = $("cross");
+  if (c) { if (cross) { const xx = L + slot * (i + 0.5); c.setAttribute("x1", xx); c.setAttribute("x2", xx); c.style.display = ""; } else c.style.display = "none"; }
+}
+
+/* ---------- 页脚：如实标注数据来源与时间 ---------- */
+function renderFoot() {
+  const gen = (PUB && PUB.generated_at) || "—";
+  let ago = "";
+  const ts = Date.parse(String(gen).replace(" UTC", "Z").replace(" ", "T"));
+  if (isFinite(ts)) {
+    const h = Math.max(0, Math.floor((Date.now() - ts) / 3600000));
+    ago = h < 1 ? t("justNow") : h < 48 ? t("ago", { n: h }) : t("agoD", { n: Math.floor(h / 24) });
+  }
+  $("foot").innerHTML = `<p>${t("foot1")}</p><p>${t("foot2", { t: esc(gen), ago })}</p><p>${t("foot3")}</p>`;
+}
+
+/* ---------- 事件 ---------- */
+document.addEventListener("click", ev => {
+  const el = ev.target.closest("button, th[data-sort], tr.row");
+  if (!el) return;
+  if (el.classList.contains("tab")) { TAB = el.dataset.tab; renderTabs(); if (TAB === "chart") drawChart(); return; }
+  if (el.dataset.f) { FILTER = el.dataset.f; renderChips(); renderWatch(); return; }
+  if (el.dataset.r) { CHART_RANGE = +el.dataset.r; renderChartShell(); drawChart(); return; }
+  if (el.id === "pwBtn") { tryUnlock(); return; }
+  if (el.id === "lockBtn") { doLock(); return; }
+  if (el.matches("th[data-sort]")) {
+    const inPnl = !!el.closest("#pnlTable"), S = inPnl ? SORT_P : SORT_W, k = el.dataset.sort;
+    if (S.key === k) S.dir = -S.dir; else { S.key = k; S.dir = k === "sym" ? 1 : -1; }
+    inPnl ? renderPnl() : renderWatch();
+    return;
+  }
+  if (el.matches("tr.row")) { CHART_SYM = el.dataset.sym; TAB = "chart"; renderTabs(); renderChartShell(); drawChart(); window.scrollTo({ top: 0 }); }
+});
+document.addEventListener("keydown", ev => {
+  if (ev.key === "Enter" && ev.target.id === "pwInput") tryUnlock();
+  else if (ev.key === "Enter" && ev.target.matches && ev.target.matches("tr.row")) ev.target.click();
+});
+$("q").addEventListener("input", e => { QUERY = e.target.value; renderWatch(); });
+$("chartSel").addEventListener("change", e => { CHART_SYM = e.target.value; drawChart(); });
+window.matchMedia("(min-width: 980px)").addEventListener("change", () => { if (PUB) renderWatch(); });
+let rzT = null;
+window.addEventListener("resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { if (PUB && TAB === "chart") drawChart(); }, 150); });
+
+/* ---------- 启动 ---------- */
+(async function boot() {
+  try {
+    const r = await fetch("data-public.json", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    PUB = await r.json();
+    if (!PUB.tickers || !PUB.tickers.length) throw new Error("tickers");
+  } catch (e) {
+    $("err").style.display = "block"; $("err").textContent = t("loadFail") + e.message;
+    return;
+  }
+  $("main").style.display = "";
+  let saved = null;
+  try { saved = localStorage.getItem(PW_KEY); } catch (e) {}
+  if (saved) {                                  // 只有存过密码才去抓加密档：没密码时不发这个请求
+    const ok = await unlockWith(saved, true);
+    if (!ok) { try { localStorage.removeItem(PW_KEY); } catch (e) {} }
+  }
+  renderAll();
+})();
+</script>
+</body>
+</html>
