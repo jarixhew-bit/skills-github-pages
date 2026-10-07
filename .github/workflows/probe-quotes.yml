@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [claude/exciting-pasteur-coj2ca]
-    paths: ['.github/workflows/probe-quotes.yml','tools/probe-quotes.py','.probe-trigger']
+    paths: ['tools/probe-live.py','.github/workflows/probe-quotes.yml','tools/probe-live.py','.probe-trigger']
 permissions:
   contents: write
 jobs:
@@ -15,7 +15,7 @@ jobs:
       - name: Probe
         run: |
           set -o pipefail
-          python3 tools/probe-quotes.py | tee probe-quotes.txt
+          python3 tools/probe-live.py 4 120 | tee probe-quotes.txt
       - name: Commit result back to branch
         if: always() && github.ref_name != 'main'
         run: |
