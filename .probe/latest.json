@@ -1,6 +1,6 @@
 {
- "now_utc": "2026-10-07T05:44:56.469346",
- "now_ny": "2026-10-07T01:44:56.468299-04:00",
+ "now_utc": "2026-10-07T05:46:30.831368",
+ "now_ny": "2026-10-07T01:46:30.830200-04:00",
  "us_regular_session_open": false,
  "probes": [
   {
@@ -13,8 +13,9 @@
    },
    "bytes": 35740,
    "body_head": "{\"chart\":{\"result\":[{\"meta\":{\"currency\":\"USD\",\"symbol\":\"AAPL\",\"exchangeName\":\"NMS\",\"fullExchangeName\":\"NasdaqGS\",\"instrumentType\":\"EQUITY\",\"firstTradeDate\":3454",
+   "last_1m_bar_fresh_min": 586.5,
    "regularMarketTime": 1791316801,
-   "fresh_min": 584.9,
+   "fresh_min": 586.5,
    "marketState_hint": 1791403200,
    "price": 333.63,
    "vs_pub_pct": {
@@ -34,8 +35,9 @@
    },
    "bytes": 35740,
    "body_head": "{\"chart\":{\"result\":[{\"meta\":{\"currency\":\"USD\",\"symbol\":\"AAPL\",\"exchangeName\":\"NMS\",\"fullExchangeName\":\"NasdaqGS\",\"instrumentType\":\"EQUITY\",\"firstTradeDate\":3454",
+   "last_1m_bar_fresh_min": 586.5,
    "regularMarketTime": 1791316801,
-   "fresh_min": 584.9,
+   "fresh_min": 586.5,
    "marketState_hint": 1791403200,
    "price": 333.63,
    "vs_pub_pct": {
@@ -58,9 +60,9 @@
    "bytes": 0,
    "body_head": "",
    "got": 58,
-   "secs": 9.4,
-   "fresh_min_min": 580.5,
-   "fresh_min_max": 584.9,
+   "secs": 10.2,
+   "fresh_min_min": 582.1,
+   "fresh_min_max": 586.5,
    "vs_pub": {
     "n": 58,
     "median_abs_pct": 0.0,
@@ -120,7 +122,7 @@
     "acao": null,
     "acac": null
    },
-   "bytes": 4578,
+   "bytes": 4580,
    "body_head": "<!DOCTYPE html> <html lang=\"en-us\">   <head>     <meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">     <meta charset=\"utf-8\">     <title>Yahoo",
    "set_cookie_names": []
   },
@@ -233,7 +235,52 @@
     "acac": null
    },
    "bytes": 1112,
-   "body_head": "{\"data\":{\"symbol\":\"AAPL\",\"companyName\":\"Apple Inc. Common Stock\",\"stockType\":\"Common Stock\",\"exchange\":\"NASDAQ-GS\",\"isNasdaqListed\":true,\"isNasdaq100\":true,\"isH"
+   "body_head": "{\"data\":{\"symbol\":\"AAPL\",\"companyName\":\"Apple Inc. Common Stock\",\"stockType\":\"Common Stock\",\"exchange\":\"NASDAQ-GS\",\"isNasdaqListed\":true,\"isNasdaq100\":true,\"isH",
+   "body_mid": "\":\"$333.63\",\"netChange\":\"+0.74\",\"percentageChange\":\"+0.22%\",\"deltaIndicator\":\"up\",\"lastTradeTimestamp\":\"Oct 6, 2026\",\"isRealTime\":false,\"bidPrice\":\"N/A\",\"askPrice\":\"N/A\",\"bidSize\":\"N/A\",\"askSize\":\"N/A\",\"volume\":\"30,449,231\",\"currency\":null},\"secondaryData\":null,\"marketStatus\":\"Closed\",\"assetClass\":\"STOCKS\",\"keyStats\":{\"fiftyTwoWeekHighLow\":{\"label\":\"52 Week Range:\",\"value\":\"243.42 - 345.34\"},\"dayrange\":{\"label\":\"High/Low:\",\"value\":\"NA\"}},\"notifications\":[{\"headline\":\"HIGH TECHNICAL ATTRIBUTE\",\"eventTypes\":[{\"message\":\"AAPL has a High Technical Rating by Nasdaq Dorsey Wright. Discover why technical analysis matters\",\"eventName\":\"High Technical Attribute\",\"url\":{\"label\":\"Discover why technical"
+  },
+  {
+   "name": "twelvedata demo MSFT",
+   "url": "",
+   "status": 401,
+   "cors": {
+    "acao": "*",
+    "acac": "true"
+   },
+   "bytes": 298,
+   "body_head": "{\"code\":401,\"message\":\"The 'demo' API key is only used for initial familiarity. To become a full user, you can request your own API key at https://twelvedata.co"
+  },
+  {
+   "name": "twelvedata demo NVDA",
+   "url": "",
+   "status": 401,
+   "cors": {
+    "acao": "*",
+    "acac": "true"
+   },
+   "bytes": 298,
+   "body_head": "{\"code\":401,\"message\":\"The 'demo' API key is only used for initial familiarity. To become a full user, you can request your own API key at https://twelvedata.co"
+  },
+  {
+   "name": "twelvedata demo XOM",
+   "url": "",
+   "status": 401,
+   "cors": {
+    "acao": "*",
+    "acac": "true"
+   },
+   "bytes": 298,
+   "body_head": "{\"code\":401,\"message\":\"The 'demo' API key is only used for initial familiarity. To become a full user, you can request your own API key at https://twelvedata.co"
+  },
+  {
+   "name": "twelvedata demo batch AAPL,MSFT",
+   "url": "",
+   "status": 401,
+   "cors": {
+    "acao": "*",
+    "acac": "true"
+   },
+   "bytes": 298,
+   "body_head": "{\"code\":401,\"message\":\"The 'demo' API key is only used for initial familiarity. To become a full user, you can request your own API key at https://twelvedata.co"
   },
   {
    "name": "cnbc restQuote batch 58",
@@ -243,7 +290,7 @@
     "acao": "*",
     "acac": null
    },
-   "bytes": 88525,
+   "bytes": 93776,
    "body_head": "{\"FormattedQuoteResult\":{\"FormattedQuote\":[{\"symbol\":\"SPY\",\"symbolType\":\"symbol\",\"code\":0,\"name\":\"SPDR S&P 500 ETF Trust\",\"shortName\":\"SPY\",\"onAirName\":\"SPDR S&",
    "got": 58,
    "sample": {
@@ -254,11 +301,56 @@
     "curmktstatus": "POST_MKT"
    },
    "vs_pub": {
-    "n": 53,
+    "n": 56,
     "median_abs_pct": 0.0,
     "max_abs_pct": 0.0,
-    "n_equal_within_0.01pct": 53
-   }
+    "n_equal_within_0.01pct": 56
+   },
+   "missing_price": [
+    "IWM",
+    "VXUS"
+   ],
+   "status_counts": {
+    "null": 2,
+    "POST_MKT": 56
+   },
+   "AAPL_record": {
+    "last": "333.63",
+    "last_timedate": "10/06/26 EDT",
+    "last_time": "2026-10-06",
+    "changetype": "UP",
+    "exchange": "NASDAQ",
+    "change": "+0.74",
+    "change_pct": "+0.22%",
+    "volume": "24,529,909",
+    "volume_alt": "24.5M",
+    "previous_day_closing": "333.63",
+    "realTime": "true",
+    "curmktstatus": "POST_MKT",
+    "mktcapView": "4.869T",
+    "timeZone": "EDT",
+    "ExtendedMktQuote": {
+     "type": "POST_MKT",
+     "source": "Last NYSE Arca, VOL From CTA",
+     "last": "333.99",
+     "last_timedate": "10/06/26 EDT",
+     "last_time": "2026-10-06",
+     "change": "+0.36",
+     "change_pct": "+0.11%",
+     "volume": "5,182,454",
+     "volume_alt": "5.2M",
+     "changetype": "UP",
+     "mktcapView": "4.874T"
+    }
+   },
+   "missing_records": [
+    {
+     "symbol": "IWM"
+    },
+    {
+     "symbol": "VXUS"
+    }
+   ]
   },
   {
    "name": "yahoo v8 chart, Origin=example.com (is ACAO reflected?)",
