@@ -22,6 +22,16 @@
  *   持仓 BBB  5 股 成本 50：市值  250，总损益 0，今日 0
  *   合计：市值 3150；成本 3050；总损益 +100 → +3.28%（100/3050）；
  *         今日 -500，昨日市值 3650 → -13.70%
+ *
+ * 近即时报价（CNBC，F 区）：浏览器直连 CNBC，这里用 ctx.route 拦截并回假响应（拦不到真网络）。
+ * 情境：same（与每小时价相同）／live（价格不同，DDD、CCC 缺档）／closed（POST_MKT）／down（HTTP 500）／flap（先好后坏）。
+ * live 情境手算（缺档 DDD、CCC 沿用每小时价）：
+ *   AAA 现价 120 涨跌 +15 → 前收 105 → +14.29%（15/105）；BBB 50.5 / +0.5 → 前收 50 → +1.00%
+ *   SPY 700.7 / +7.7 → 前收 693 → +1.11%；QQQ 601.2 / -1.2 → 前收 602.4 → -0.20%
+ *   持仓：AAA 10 股 成本 80 → 市值 1200、今日 +150（150/1050 = +14.29%）、总损益 +400（+50.00%）
+ *         BBB  5 股 成本 50 → 市值 252.5、今日 +2.5（2.5/250 = +1.00%）、总损益 +2.5（+1.00%）
+ *         CCC 缺档 → 沿用每小时：价 90、市值 1800、今日 -600、总损益 -200
+ *   合计：市值 3252.5；今日 -447.5，昨日市值 3700 → -12.09%；总损益 +202.5 / 成本 3050 = +6.64%
  */
 import { chromium } from 'playwright';
 import crypto from 'node:crypto';
@@ -90,15 +100,38 @@ const UP_IN_LAST_60 = BARS.slice(-60).filter(b => b[4] >= b[1]).length;   // 独
 /* ---------- 浏览器 ---------- */
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 
-async function open({ password, viewport } = {}) {
+/* ---------- CNBC 假响应 ---------- */
+const etStamp = (ageMs = 0) => new Date(Date.now() - ageMs).toISOString().replace('Z', '+0000').replace(/\.(\d{3})\+/, '.$1+'); // 无冒号时区，同 CNBC 格式
+const cq = (symbol, last, change, o = {}) => ({ symbol, code: 0, last, change, previous_day_closing: '999', curmktstatus: 'REG_MKT',
+  last_time: etStamp(o.age ?? 120000), ...o.extra });
+const CNBC_SCEN = {
+  same: () => [cq('AAA', '110.00', '+10.00'), cq('BBB', '50.00', 'UNCH'), cq('CCC', '90.00', '-30.00'), cq('DDD', '20.50', '+0.50'), cq('SPY', '700.00', '+7.00'), cq('QQQ', '600.00', 'UNCH')],
+  live: () => [cq('AAA', '120.00', '+15.00'), cq('BBB', '50.50', '+0.50'), { symbol: 'CCC', code: 1 }, { symbol: 'DDD', code: 1 }, cq('SPY', '700.70', '+7.70'), cq('QQQ', '601.20', '-1.20')],
+  closed: () => [cq('AAA', '110.00', '+10.00', { extra: { curmktstatus: 'POST_MKT' } }), cq('SPY', '700.00', '+7.00', { extra: { curmktstatus: 'POST_MKT' } })],
+};
+const bodyOf = rows => JSON.stringify({ FormattedQuoteResult: { FormattedQuote: rows } });
+
+async function open({ password, viewport, cnbc = 'same', cfg } = {}) {
   const ctx = await browser.newContext({ viewport: viewport || { width: 1280, height: 900 }, locale: 'zh-CN' });
-  const errors = [], reqs = [];
+  const errors = [], reqs = [], cnbcReqs = [];
+  let flapCount = 0;
   const page = await ctx.newPage();
+  page.on('dialog', d => { errors.push('dialog: ' + d.message()); d.dismiss(); });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push('console.error: ' + m.text()); });
   await ctx.route('**/*', route => {
     const u = route.request().url();
     reqs.push(u);
+    if (u.startsWith('https://quote.cnbc.com/')) {
+      cnbcReqs.push(route.request());
+      const h = { 'access-control-allow-origin': '*' };
+      if (cnbc === 'down') return route.fulfill({ status: 500, headers: h, body: 'oops' });
+      if (cnbc === 'garbage') return route.fulfill({ status: 200, headers: h, contentType: 'application/json', body: '{"x":1}' });
+      if (cnbc === 'hang') return new Promise(r => setTimeout(r, 4000)).then(() => route.abort()).catch(() => {});
+      if (cnbc === 'flap' && ++flapCount > 1) return route.fulfill({ status: 500, headers: h, body: 'oops' });
+      const rows = (CNBC_SCEN[cnbc === 'flap' ? 'live' : cnbc] || CNBC_SCEN.same)();
+      return route.fulfill({ status: 200, headers: h, contentType: 'application/json', body: bodyOf(rows) });
+    }
     if (u.includes('data-public.json')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(PUBLIC_FIX) });
     if (u.includes('data-private.enc')) return route.fulfill({ status: 200, contentType: 'text/plain', body: encryptJson(PRIVATE_FIX, PW) });
     if (u.includes('/history/AAA.json')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ symbol: 'AAA', bars: BARS }) });
@@ -109,9 +142,11 @@ async function open({ password, viewport } = {}) {
   if (password) {
     await ctx.addInitScript(pw => { try { localStorage.setItem('tradingAnalyzerPw', pw); } catch (e) {} }, password);
   }
-  await page.goto(URL, { waitUntil: 'networkidle' });
+  if (cfg) await ctx.addInitScript(c => { window.BOARD_CFG = c; }, cfg);
+  await page.goto(URL, { waitUntil: cfg ? 'load' : 'networkidle' });   // 高频轮询时永远不会 networkidle
   await page.waitForSelector('tr.row');
-  return { ctx, page, errors, reqs };
+  if (cnbc !== 'none') await page.waitForFunction(() => document.getElementById('qstatus') && /live|fail/.test(document.getElementById('qstatus').className), null, { timeout: 8000 }).catch(() => {});
+  return { ctx, page, errors, reqs, cnbcReqs };
 }
 const cell = (page, sym, k, root = 'tbody') => page.locator(`${root} tr[data-sym="${sym}"] td[data-k="${k}"]`).first().innerText();
 const colorOf = (loc) => loc.evaluate(el => getComputedStyle(el).color);
@@ -348,6 +383,120 @@ const syms = page => page.$$eval('#watchCols tr.row', rs => rs.map(r => r.datase
   eq(await page.locator('#watchCols tr.row').count(), 26, 'E7 窄屏退回单栏，行数不变');
   const sc = await page.$eval('#watchScroll', e => getComputedStyle(e).overflowY);
   check(sc === 'auto' || sc === 'scroll', `E8 清单可滚动（overflow-y: ${sc}）`);
+  await ctx.close();
+}
+
+/* ===== F. 近即时报价（CNBC）：拦截假响应 ===== */
+const qs = page => page.locator('#qstatus').innerText();
+const realErr = errors => errors.filter(e => !e.startsWith('console.error: Failed to load resource'));
+{
+  // F1 与每小时价相同：数字不变，状态标示 live、延迟约 2 分钟，页脚如实声明
+  const { ctx, page, errors, cnbcReqs } = await open({ cnbc: 'same' });
+  check(await page.locator('#qstatus.live').count() === 1, 'F1 取到报价后状态条为 live');
+  check((await qs(page)).includes('延迟约 2 分钟'), `F2 延迟 = 现在 - last_time（假数据设为 2 分钟前，中位数），实得「${await qs(page)}」`);
+  eq(await cell(page, 'AAA', 'pct'), '▲ +10.00%', 'F3 价相同时涨跌% 不变');
+  const foot = await page.locator('#foot').innerText();
+  check(foot.includes('CNBC') && foot.includes('不是 IBKR 价格') && foot.includes('延迟约 2 分钟') && foot.includes('每小时 IBKR 数据'), `F4 页脚写明来源 CNBC／非 IBKR／延迟／持仓为每小时数据（实得 ${foot.slice(0, 120)}）`);
+  check(!foot.includes('数据不是即时的'), 'F5 live 时不再写「数据不是即时的」');
+  // 请求只带代号
+  const r0 = cnbcReqs[0], u0 = new globalThis.URL(r0.url());
+  eq(r0.method(), 'GET', 'F6 CNBC 请求是 GET');
+  check(r0.postData() === null, 'F7 请求没有 body');
+  eq(u0.searchParams.get('symbols'), 'AAA|BBB|CCC|DDD|SPY|QQQ', 'F8 请求里的代号 = 名单全部代号（公开名单，不是持仓）');
+  check(!('cookie' in r0.headers()), 'F9 请求不带 cookie');
+  check(realErr(errors).length === 0, `F10 无 JS 错误（实得 ${errors.slice(0, 3).join(' | ')}）`);
+  await ctx.close();
+}
+{
+  // F11+ 价格不同：缺档 DDD/CCC 沿用每小时价并标「延迟」；指数、损益、合计用即时价重算
+  const { ctx, page, errors, cnbcReqs } = await open({ cnbc: 'live', password: PW });
+  eq(await cell(page, 'AAA', 'price'), '120.00', 'F11 AAA 现价用 CNBC 价');
+  eq(await cell(page, 'AAA', 'chg'), '+15.00', 'F12 AAA 涨跌 = 120 - (120-15)');
+  eq(await cell(page, 'AAA', 'pct'), '▲ +14.29%', 'F13 AAA 涨跌% = 15/105');
+  eq(await cell(page, 'BBB', 'pct'), '▲ +1.00%', 'F14 BBB 涨跌% = 0.5/50');
+  eq(await cell(page, 'QQQ', 'pct'), '▼ -0.20%', 'F15 QQQ 涨跌% = -1.2/602.4');
+  eq(await cell(page, 'DDD', 'price'), '20.50', 'F16 缺档 DDD 沿用每小时价');
+  eq(await cell(page, 'DDD', 'pct'), '▲ +2.50%', 'F17 缺档 DDD 涨跌% 沿用每小时算法');
+  eq(await page.locator('.late').count(), 2, 'F18 缺档的 DDD、CCC 各标一个「延迟」');
+  eq(await page.locator('tr[data-sym="DDD"] .late').count(), 1, 'F19 标记在缺档那行');
+  eq(await page.locator('tr[data-sym="AAA"] .late').count(), 0, 'F20 有报价的行不标');
+  check((await page.locator('.idx[data-idx="SPY"]').innerText()).includes('700.70') && (await page.locator('.idx[data-idx="SPY"]').innerText()).includes('+1.11%'), 'F21 指数列 SPY 用即时价 +7.7/693 = +1.11%');
+  await page.click('.tab[data-tab="pnl"]');
+  await page.locator('#pnlTable').waitFor({ timeout: 8000 });
+  const P = (s, k) => cell(page, s, k, '#pnlTable tbody');
+  eq(await P('AAA', 'price'), '120.00', 'F22 持仓 AAA 现价即时');
+  eq(await P('AAA', 'todayPnl'), '+150.00', 'F23 AAA 今日损益 = 10×15');
+  eq(await P('AAA', 'todayPct'), '+14.29%', 'F24 AAA 今日% = 150/1050');
+  eq(await P('AAA', 'pnl'), '+400.00', 'F25 AAA 总损益 = 10×(120-80)');
+  eq(await P('AAA', 'pnlPct'), '+50.00%', 'F26 AAA 损益% = 400/800');
+  eq(await P('BBB', 'todayPnl'), '+2.50', 'F27 BBB 今日损益 = 5×0.5');
+  eq(await P('CCC', 'price'), '90.00', 'F28 持仓缺档 CCC 沿用每小时价');
+  eq(await P('CCC', 'todayPnl'), '-600.00', 'F29 CCC 今日损益沿用 IBKR 的每小时值');
+  const T = k => page.locator(`#pnlTotal td[data-k="${k}"]`).innerText();
+  eq(await T('todayPnl'), '-447.50', 'F30 合计今日损益 = 150-600+2.5');
+  eq(await T('todayPct'), '-12.09%', 'F31 合计今日% = -447.5/3700');
+  eq(await T('pnl'), '+202.50', 'F32 合计总损益 = 400-200+2.5');
+  eq(await T('pnlPct'), '+6.64%', 'F33 合计损益% = 202.5/3050');
+  eq(await page.locator('#pnlTiles [data-k="value"]').innerText(), '3,252.50', 'F34 持仓市值 = 1200+1800+252.5');
+  // 隐私：解锁后请求仍然只有代号，没有持仓数字
+  const urls = cnbcReqs.map(r => decodeURIComponent(r.url()));
+  check(urls.length > 0 && urls.every(u => !/(1200|1800|3252|3050|\b80\b)/.test(u.split('symbols=')[1].split('&')[0])), 'F35 解锁后请求里仍只有代号');
+  check(cnbcReqs.every(r => r.postData() === null), 'F36 解锁后请求仍无 body');
+  check(realErr(errors).length === 0, `F37 无 JS 错误（实得 ${errors.slice(0, 3).join(' | ')}）`);
+  await ctx.close();
+}
+{
+  // 非常规时段：显示收盘价、状态条写明
+  const { ctx, page } = await open({ cnbc: 'closed' });
+  check((await qs(page)).includes('非常规交易时段'), `F38 POST_MKT 时状态条说明显示常规收盘价（实得「${await qs(page)}」）`);
+  check((await page.locator('#foot').innerText()).includes('非常规交易时段'), 'F39 页脚也说明');
+  eq(await page.locator('.late').count(), 4, 'F40 只回了 2 档，其余 4 档标「延迟」');
+  await ctx.close();
+}
+for (const mode of ['down', 'garbage', 'hang']) {
+  // 接口挂掉（500 / 非预期格式 / 超时）：退回每小时价，明显标示，不弹窗不抛错
+  const { ctx, page, errors } = await open({ cnbc: mode, cfg: mode === 'hang' ? { timeoutMs: 400 } : undefined });
+  if (mode === 'hang') await page.waitForFunction(() => document.getElementById('qstatus').className.includes('fail'), null, { timeout: 8000 });
+  check(await page.locator('#qstatus.fail').count() === 1, `F41 ${mode}：状态条标示退回每小时价`);
+  eq(await cell(page, 'AAA', 'price'), '110.00', `F42 ${mode}：价格是 data-public 的每小时价`);
+  eq(await page.locator('.late').count(), 0, `F43 ${mode}：整体退回时不逐行标记`);
+  const f = await page.locator('#foot').innerText();
+  check(f.includes('暂时取不到') && f.includes('数据不是即时的'), `F44 ${mode}：页脚如实说明`);
+  check(realErr(errors).length === 0, `F45 ${mode}：无 JS 错误、无弹窗（实得 ${errors.slice(0, 3).join(' | ')}）`);
+  await ctx.close();
+}
+{
+  // 先好后坏：超过 staleMs 后退回每小时价；恢复前不闪烁（grace 内保留上次好价）
+  const { ctx, page } = await open({ cnbc: 'flap', cfg: { pollMs: 250, offPollMs: 250, retryMs: 250, staleMs: 900 } });
+  eq(await cell(page, 'AAA', 'price'), '120.00', 'F46 第一次成功：即时价');
+  await page.waitForTimeout(450);
+  eq(await cell(page, 'AAA', 'price'), '120.00', 'F47 一次失败后在宽限期内仍保留上次好价（不闪烁）');
+  await page.waitForFunction(() => document.getElementById('qstatus').className.includes('fail'), null, { timeout: 8000 });
+  eq(await cell(page, 'AAA', 'price'), '110.00', 'F48 超过宽限期退回每小时价');
+  await ctx.close();
+}
+{
+  // 页面不可见时暂停轮询，回来立即补抓
+  const { ctx, page, cnbcReqs } = await open({ cnbc: 'same', cfg: { pollMs: 300, offPollMs: 300, retryMs: 300 } });
+  await page.waitForFunction(() => true);
+  await page.waitForTimeout(1000);
+  const n1 = cnbcReqs.length;
+  check(n1 >= 3, `F49 可见时持续轮询（1 秒内 ${n1} 次，间隔 300ms）`);
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+  await page.waitForTimeout(150);
+  const n2 = cnbcReqs.length;
+  await page.waitForTimeout(1200);
+  eq(cnbcReqs.length, n2, 'F50 页面不可见时不再发请求');
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { value: false, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+  await page.waitForTimeout(200);
+  check(cnbcReqs.length > n2, 'F51 回到前台立即补抓');
+  await ctx.close();
+}
+{
+  // 手机宽度：状态条与「延迟」标记不得造成横向溢出
+  const { ctx, page } = await open({ cnbc: 'live', viewport: { width: 390, height: 844 } });
+  const ov = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  check(ov <= 2, `F52 手机宽度（含状态条与延迟标记）不横向溢出（实得 ${ov}px）`);
   await ctx.close();
 }
 

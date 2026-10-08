@@ -112,6 +112,12 @@ tfoot td { position: sticky; bottom: 0; background: #20243a; font-weight: 700; b
 .legend { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
 .legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin: 0 4px 0 10px; }
 
+.qstatus { font-size: 12px; margin: 6px 0 0; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.qstatus .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); display: inline-block; }
+.qstatus.live .dot { background: var(--up); } .qstatus.fail .dot { background: #fbbf24; }
+.qstatus.fail { color: #fbbf24; }
+.late { font-size: 10.5px; color: #fbbf24; border: 1px solid #5b4a1a; border-radius: 8px; padding: 0 5px; margin-left: 6px; font-family: inherit; }
+
 footer { color: var(--muted); font-size: 12px; line-height: 1.8; text-align: center; padding: 18px 16px 36px; max-width: 900px; margin: 0 auto; }
 footer b { color: var(--text); font-weight: 600; }
 #err { color: var(--down); text-align: center; padding: 40px 16px; display: none; }
@@ -143,6 +149,7 @@ footer b { color: var(--text); font-weight: 600; }
   <div id="err"></div>
   <div id="main" style="display:none">
     <div class="indices" id="indices"></div>
+    <div class="qstatus" id="qstatus" role="status"></div>
     <div class="mktline" id="mktline"></div>
 
     <div class="tabs" role="group">
@@ -218,7 +225,14 @@ const I = {
     loadFail: "数据载入失败：", ago: "约 {n} 小时前", agoD: "约 {n} 天前", justNow: "不足 1 小时前",
     foot1: "<b>数据不是即时的。</b>行情来自本站数据管线（Stooq / Yahoo 日线），美股交易时段内每小时更新一次，不是逐笔报价；价格可能落后真实盘面。",
     foot2: "数据时间：<b>{t}</b>（{ago}）。持仓来自 IBKR 账户，经加密后在浏览器端解密，仅你本人可见。",
-    foot3: "绿涨红跌（美股惯例）。仅供个人参考，不构成投资建议。", gen: "数据时间"
+    foot3: "绿涨红跌（美股惯例）。仅供个人参考，不构成投资建议。", gen: "数据时间",
+    qLive: "近即时报价 · CNBC", qFail: "行情源暂时取不到，已退回每小时价", qWait: "正在取近即时报价…",
+    qDelay: "延迟约 {n} 分钟", qDelay0: "延迟不足 1 分钟", qDelayUnk: "延迟未知", qClosed: "非常规交易时段，显示最近常规收盘价",
+    late: "延迟", lateTip: "这一档暂无近即时报价，显示每小时价",
+    fl1: "<b>近即时报价，不是 IBKR 价格。</b>价格来自 CNBC 公开行情接口（非官方，可能随时失效或有误），页面开着时约每 {s} 秒刷新；只用常规交易时段价格，盘前盘后价不计入。",
+    fl2: "报价抓取时间：<b>{t}</b>，{d}。个别没有报价的代号标「延迟」，沿用每小时价。",
+    fl3: "持仓与成本为每小时 IBKR 数据（{gen}，{ago}），经加密后在浏览器端解密，仅你本人可见；今日损益与市值按近即时价重算。",
+    ffail: "<b>近即时行情源暂时取不到，当前显示的是每小时价。</b>恢复后会自动切回。"
   },
   en: {
     title: "Watchlist Board", toAnalyzer: "📊 Analyzer", tabWatch: "Watchlist", tabPnl: "P&L", tabChart: "Chart",
@@ -237,7 +251,14 @@ const I = {
     loadFail: "Failed to load data: ", ago: "about {n}h ago", agoD: "about {n}d ago", justNow: "under 1h ago",
     foot1: "<b>Not real-time.</b> Prices come from this site's data pipeline (Stooq / Yahoo daily data), refreshed once an hour during US market hours. They are not live ticks and may lag the actual market.",
     foot2: "Data time: <b>{t}</b> ({ago}). Holdings come from the IBKR account, encrypted, and are decrypted in your browser only.",
-    foot3: "Green = up, red = down (US convention). For personal reference only, not investment advice.", gen: "Data time"
+    foot3: "Green = up, red = down (US convention). For personal reference only, not investment advice.", gen: "Data time",
+    qLive: "Near-live quotes · CNBC", qFail: "Quote feed unavailable, showing hourly prices", qWait: "Fetching near-live quotes…",
+    qDelay: "delay about {n} min", qDelay0: "delay under 1 min", qDelayUnk: "delay unknown", qClosed: "Outside regular hours, showing last regular close",
+    late: "delayed", lateTip: "No near-live quote for this symbol, showing the hourly price",
+    fl1: "<b>Near-live quotes, not IBKR prices.</b> Prices come from CNBC's public quote endpoint (unofficial, may break or be wrong), refreshed about every {s}s while this page is open. Regular-session prices only; pre-market and after-hours prices are not used.",
+    fl2: "Quotes fetched at <b>{t}</b>, {d}. Symbols without a quote are tagged \"delayed\" and keep the hourly price.",
+    fl3: "Holdings and cost are hourly IBKR data ({gen}, {ago}), decrypted in your browser only; market value and today's P&L are recomputed from the near-live prices.",
+    ffail: "<b>The near-live quote feed is unavailable, so hourly prices are shown.</b> It switches back automatically when the feed recovers."
   }
 };
 
@@ -255,7 +276,9 @@ let SORT_W = { key: "pct", dir: -1 };      // 默认：涨跌% 由高到低
 let SORT_P = { key: "value", dir: -1 };    // 默认：市值由大到小
 let FILTER = "all", QUERY = "";
 let CHART_SYM = null, CHART_RANGE = 120;
-const HIST = {};                            // sym -> bars | "fail"
+const HIST = {};
+/* 近即时报价（CNBC）：LIVE[sym] = {price, prev}；QSTATE: wait | live | fail */
+let LIVE = {}, QSTATE = "wait", QMETA = null, QFETCHED = null;                            // sym -> bars | "fail"
 let HOVER = null;
 
 const $ = id => document.getElementById(id);
@@ -353,11 +376,12 @@ function doLock() {
 /* ---------- 数据 ---------- */
 function tickers() { return (PUB && PUB.tickers) || []; }
 function row(tk) {
-  const price = tk.price, prev = tk.prev_close;
+  const L = LIVE[tk.symbol];
+  const price = L ? L.price : tk.price, prev = L ? L.prev : tk.prev_close;
   const ok = typeof price === "number" && typeof prev === "number" && prev > 0;
   const chg = ok ? price - prev : null;
   const pct = ok ? (price / prev - 1) * 100 : (typeof tk.chg1d === "number" ? tk.chg1d : null);
-  return { tk, sym: tk.symbol, price: typeof price === "number" ? price : null, chg, pct };
+  return { tk, sym: tk.symbol, price: typeof price === "number" ? price : null, chg, pct, late: QSTATE === "live" && !L };
 }
 const heldSet = () => new Set(PRIV ? (PRIV.positions || []).map(p => p.symbol) : []);
 
@@ -395,12 +419,14 @@ function positionRows() {
   tickers().forEach(tk => { byTk[tk.symbol] = tk; });
   const rows = (PRIV.positions || []).map(p => {
     const tk = byTk[p.symbol];
-    const value = p.qty * p.price;
+    const L = LIVE[p.symbol];                 // 有近即时价就用它重算；没有的沿用每小时 IBKR 价与今日损益
+    const price = L ? L.price : p.price;
+    const value = p.qty * price;
     const cost = p.qty * p.avg_price;
-    const todayPnl = p.daily_pnl || 0;
+    const todayPnl = L ? p.qty * (L.price - L.prev) : (p.daily_pnl || 0);
     const prevValue = value - todayPnl;
     return {
-      sym: p.symbol, name: tk ? nameOf(tk) : "", qty: p.qty, avg: p.avg_price, price: p.price,
+      sym: p.symbol, name: tk ? nameOf(tk) : "", qty: p.qty, avg: p.avg_price, price,
       value, cost, todayPnl, todayPct: prevValue > 0 ? todayPnl / prevValue * 100 : null,
       pnl: value - cost, pnlPct: cost > 0 ? (value - cost) / cost * 100 : null
     };
@@ -428,7 +454,7 @@ function totals(rows) {
 
 /* ---------- 渲染：总入口 ---------- */
 function renderAll() {
-  renderIndices(); renderTabs(); renderChips(); renderWatch(); renderPnl(); renderChartShell(); renderFoot();
+  renderIndices(); renderStatus(); renderTabs(); renderChips(); renderWatch(); renderPnl(); renderChartShell(); renderFoot();
   if (TAB === "chart") drawChart();
 }
 
@@ -471,7 +497,7 @@ function th(label, key, sort, cls2) {
 function watchTable(rows) {
   const head = `<thead><tr>${th(t("thId"), "sym", SORT_W)}${th(t("thPrice"), "price", SORT_W)}${th(t("thChg"), "chg", SORT_W)}${th(t("thPct"), "pct", SORT_W)}</tr></thead>`;
   const body = rows.map(r => `<tr class="row" tabindex="0" data-sym="${esc(r.sym)}">
-    <td data-k="id"><span class="sym">${esc(r.sym)}</span><span class="nm">${esc(nameOf(r.tk))}</span></td>
+    <td data-k="id"><span class="sym">${esc(r.sym)}</span><span class="nm">${esc(nameOf(r.tk))}</span>${r.late ? `<span class="late" data-k="late" title="${esc(t("lateTip"))}">${esc(t("late"))}</span>` : ""}</td>
     <td data-k="price" data-v="${r.price}" class="price ${cls(r.pct)}">${fmt(r.price)}</td>
     <td data-k="chg" data-v="${r.chg}" class="${cls(r.chg)}">${fmtS(r.chg)}</td>
     <td data-k="pct" data-v="${r.pct}" class="${cls(r.pct)}">${arrow(r.pct)} ${fmtP(r.pct)}</td></tr>`).join("");
@@ -642,8 +668,95 @@ function renderFoot() {
     const h = Math.max(0, Math.floor((Date.now() - ts) / 3600000));
     ago = h < 1 ? t("justNow") : h < 48 ? t("ago", { n: h }) : t("agoD", { n: Math.floor(h / 24) });
   }
-  $("foot").innerHTML = `<p>${t("foot1")}</p><p>${t("foot2", { t: esc(gen), ago })}</p><p>${t("foot3")}</p>`;
+  if (QSTATE === "live" && QFETCHED) {
+    const when = QFETCHED.toLocaleString(LANG === "en" ? "en-US" : "zh-CN", { hour12: false });
+    $("foot").innerHTML = `<p>${t("fl1", { s: Math.round(CFG.pollMs / 1000) })}</p><p>${t("fl2", { t: esc(when), d: delayText() })}</p>` +
+      `<p>${t("fl3", { gen: esc(gen), ago })}</p><p>${t("foot3")}</p>`;
+    return;
+  }
+  const failP = QSTATE === "fail" ? `<p>${t("ffail")}</p>` : "";
+  $("foot").innerHTML = `${failP}<p>${t("foot1")}</p><p>${t("foot2", { t: esc(gen), ago })}</p><p>${t("foot3")}</p>`;
 }
+
+/* ---------- 近即时报价：浏览器直连 CNBC，请求里只带代号，不带任何持仓信息 ---------- */
+const CFG = Object.assign({
+  url: "https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol",
+  pollMs: 45000,       // 常规交易时段轮询间隔
+  offPollMs: 300000,   // 非常规时段（休市/盘前盘后）
+  retryMs: 120000,     // 失败后重试间隔
+  staleMs: 150000,     // 失败后最多沿用上一次好报价这么久，再退回每小时价（避免偶发一次失败就闪烁）
+  timeoutMs: 10000
+}, window.BOARD_CFG || {});
+const numOf = v => { const x = parseFloat(String(v == null ? "" : v).replace(/,/g, "")); return isFinite(x) ? x : null; };
+const timeOf = s => Date.parse(String(s || "").replace(/([+-]\d\d)(\d\d)$/, "$1:$2"));   // 2026-10-07T09:52:11.126-0400
+function parseQuotes(json) {
+  const list = json && json.FormattedQuoteResult && json.FormattedQuoteResult.FormattedQuote;
+  if (!Array.isArray(list)) throw new Error("format");
+  const out = {}, ages = [], now = Date.now(); let status = null;
+  list.forEach(q => {
+    if (!q || q.code !== 0) return;
+    const price = numOf(q.last), chg = /^UNCH/i.test(String(q.change || "")) ? 0 : numOf(q.change);
+    // 前收 = 现价 - 涨跌（CNBC 收盘后 previous_day_closing 会变成当天收盘价，不能直接用）
+    const prev = chg != null ? price - chg : numOf(q.previous_day_closing);
+    if (!(price > 0) || !(prev > 0)) return;
+    out[q.symbol] = { price, prev };
+    if (q.symbol === "SPY" || !status) status = q.curmktstatus || status;
+    if (q.curmktstatus === "REG_MKT") { const ts = timeOf(q.last_time); if (isFinite(ts)) ages.push(Math.max(0, now - ts)); }
+  });
+  ages.sort((a, b) => a - b);
+  const delayMin = ages.length ? ages[Math.floor(ages.length / 2)] / 60000 : null;   // 中位数，个别冷门档久不成交不拖累
+  return { quotes: out, status, delayMin };
+}
+function delayText() {
+  if (QMETA && QMETA.status && QMETA.status !== "REG_MKT") return t("qClosed");
+  const d = QMETA ? QMETA.delayMin : null;
+  return d == null ? t("qDelayUnk") : d < 1 ? t("qDelay0") : t("qDelay", { n: Math.round(d) });
+}
+function renderStatus() {
+  const el = $("qstatus");
+  if (QSTATE === "live") { el.className = "qstatus live"; el.innerHTML = `<span class="dot"></span><span>${esc(t("qLive"))} · ${esc(delayText())}</span>`; }
+  else if (QSTATE === "fail") { el.className = "qstatus fail"; el.innerHTML = `<span class="dot"></span><span>${esc(t("qFail"))}</span>`; }
+  else { el.className = "qstatus"; el.innerHTML = `<span class="dot"></span><span>${esc(t("qWait"))}</span>`; }
+}
+let pollTimer = null, inflight = false;
+function schedule(ms) {
+  clearTimeout(pollTimer); pollTimer = null;
+  if (document.hidden) return;                                   // 页面不可见：暂停，回来时 visibilitychange 立即补抓
+  pollTimer = setTimeout(pollQuotes, ms);
+}
+function repaintLive(changed) {
+  renderStatus(); renderFoot();
+  if (!changed) return;
+  renderIndices(); renderWatch();
+  if (PRIV) renderPnl();                                          // 未解锁时不重绘，免得清掉正在输入的密码
+}
+async function pollQuotes() {
+  if (document.hidden || inflight || !PUB) return;
+  inflight = true;
+  let next = CFG.retryMs;
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), CFG.timeoutMs);
+  try {
+    const symbols = tickers().map(tk => tk.symbol).join("|");    // 只带代号（整个 58 档名单，不是持仓）
+    const url = CFG.url + "?symbols=" + encodeURIComponent(symbols) + "&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json&events=1";
+    const r = await fetch(url, { cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer", signal: ctl.signal });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const P = parseQuotes(await r.json());
+    if (!Object.keys(P.quotes).length) throw new Error("empty");
+    const changed = JSON.stringify(P.quotes) !== JSON.stringify(LIVE) || QSTATE !== "live";
+    LIVE = P.quotes; QMETA = P; QFETCHED = new Date(); QSTATE = "live";
+    repaintLive(changed);
+    next = P.status === "REG_MKT" ? CFG.pollMs : CFG.offPollMs;
+  } catch (e) {
+    const stale = !QFETCHED || Date.now() - QFETCHED.getTime() > CFG.staleMs;
+    if (stale && QSTATE !== "fail") { LIVE = {}; QMETA = null; QSTATE = "fail"; repaintLive(true); }
+    else if (QSTATE === "wait") { QSTATE = "fail"; repaintLive(false); }
+  } finally {
+    clearTimeout(to); inflight = false; schedule(next);
+  }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { clearTimeout(pollTimer); pollTimer = null; } else if (PUB) pollQuotes();
+});
 
 /* ---------- 事件 ---------- */
 document.addEventListener("click", ev => {
@@ -691,6 +804,7 @@ window.addEventListener("resize", () => { clearTimeout(rzT); rzT = setTimeout(()
     if (!ok) { try { localStorage.removeItem(PW_KEY); } catch (e) {} }
   }
   renderAll();
+  pollQuotes();
 })();
 </script>
 </body>
