@@ -112,7 +112,7 @@ const browser = await chromium.launch(launchOpts);
       if (route.request().method() === 'GET')
         return route.fulfill({ status:200, contentType:'application/json', headers:h,
           body: JSON.stringify({
-            categories:['Beverage','Car Wash','Dinner','Driver Meal','Lunch','Petrol','Postage','Store'],
+            categories:['Beverage','Car Wash','Dinner','Driver Meal','Lunch','Meal Subscription','Petrol','Postage','Store'],
             plateCategories:['Car Wash','Driver Meal','Petrol'],
             // 括号里填什么由服务端说了算：车牌那几类不给（App 按默认的车牌处理），
             // 司机餐给「司机名字」——这条就是这次要验的差别
@@ -644,6 +644,27 @@ const browser = await chromium.launch(launchOpts);
   const txStore = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
   ok('reporter 仍原样送出 Seryi', posted[0]?.reporter==='Seryi', posted[0]?.reporter);
   ok('但 person 是服务端算的 Boss（→ Excel 左边）', txStore?.company?.person==='Boss', txStore?.company);
+
+  console.log('\n【4e】Meal Subscription（2026-10-08 用户加的公司类别）');
+  posted = [];
+  await page.evaluate(()=>showAddTx());
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
+  ok('★下拉里有 Meal Subscription',
+     (await page.$$eval('#tx-company-category option', els => els.map(e => e.value))).includes('Meal Subscription'));
+  await page.fill('#tx-amount', '45');
+  await page.selectOption('#tx-company-category', 'Meal Subscription');
+  const _sentMs = posted.length;
+  await page.evaluate(()=>saveTx());
+  await until(() => posted.length > _sentMs, { what: 'Meal Subscription 那笔送到服务端' });
+  const txMs = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
+  ok('★送出去的类别是 Meal Subscription', posted[0]?.items?.[0]?.categoryEn === 'Meal Subscription'
+     || posted[0]?.items?.[0]?.categoryRaw === 'Meal Subscription', posted[0]?.items?.[0]);
+  ok('★本机个人记账算「餐饮」，不是掉进「其他支出」', txMs?.categoryId === 'cat_food', txMs?.categoryId);
+  ok('★没连过 butler 时的兜底清单也有它',
+     await page.evaluate(() => COMPANY_CATS_FALLBACK.includes('Meal Subscription')));
 
   console.log('\n【5】送不出去时不能丢账：进队列，恢复后补送');
   butlerMode = 'offline'; posted = [];
