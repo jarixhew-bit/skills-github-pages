@@ -2871,9 +2871,9 @@ function adminTripFormHtml(trip, idx){
       <div class="admin-form-section">
         <div class="admin-section-title" style="margin-bottom:12px">
           <span class="sec-title" style="font-size:13.5px">${pick('这趟行程','This trip')}</span>
-          <span class="admin-section-note">${pick('先填大概：叫什么、哪几天、去哪','The basics: name, dates, destination')}</span>
+          <span class="admin-section-note">${pick('名称和日期可以不填，保存时会按条目的日期自动补','Name and dates are optional — filled in from the items when you save')}</span>
         </div>
-        <div class="admin-field"><label>${pick('行程名称','Trip name')}</label>
+        <div class="admin-field"><label>${pick('行程名称（可不填）','Trip name (optional)')}</label>
           <input type="text" data-trip="${idx}" data-field="title.zh" value="${escapeHtml(trip.title && trip.title.zh || '')}" oninput="adminTripFieldInput(this)"></div>
         <div class="admin-field" style="display:flex;gap:10px">
           <div style="flex:1"><label>${pick('出发日','Departure')}</label>
@@ -3350,16 +3350,25 @@ async function adminSayParse(){
   // 正在展开某一趟 → 加进那一趟；否则新建一趟
   let tripIdx = adminExpandedTrip;
   let intoExisting = tripIdx !== null && tripIdx >= 0 && adminTripsDraft[tripIdx];
+  // 正展开的那一趟有日期范围、而这段话的日期全落在范围外 → 另开一趟，别塞进去
+  // （2026-10-16：记一件当天的事，不该被加进正在看的另一趟行程里）。
+  if(intoExisting){
+    const cur = adminTripsDraft[tripIdx];
+    const ds = items.map(i => i.date).filter(Boolean);
+    if(cur.start && cur.end && ds.length && ds.every(d => d < cur.start || d > cur.end)) intoExisting = false;
+  }
   let base = 0;
   if(intoExisting){
     base = (adminTripsDraft[tripIdx].items || []).length;
     adminTripsDraft[tripIdx].items = (adminTripsDraft[tripIdx].items || []).concat(items);
   }else{
     const dates = items.map(i => i.date).filter(Boolean).sort();
-    const title = (res && res.title) || pick('新行程','New trip');
-    adminTripsDraft.push({ id: 'trip-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      title: { zh: title, en: '' }, start: dates[0] || '', end: dates[dates.length - 1] || '',
-      location: { zh: '', en: '' }, guideUrl: '', items });
+    const trip = { id: 'trip-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      title: { zh: (res && res.title) || '', en: '' }, start: dates[0] || '', end: dates[dates.length - 1] || '',
+      location: { zh: '', en: '' }, guideUrl: '', items };
+    // AI 没起名就按日期起（以前写死「新行程」，看起来像还得自己改名）
+    autoTripFill(trip);
+    adminTripsDraft.push(trip);
     tripIdx = adminTripsDraft.length - 1;
     adminExpandedTrip = tripIdx;
   }
@@ -3607,6 +3616,39 @@ function isEmptyTripItem(it){
   // 用户完全不知道自己填过东西（2026-08-28：这正是这次事故「失败无声」的另一种翻版）。
   return !hasTitle && !hasNote && !(it.time||'').trim() && !(it.mapUrl||'').trim() && !it.flight;
 }
+/** 行程名称与日期可以不填，保存时自动补（2026-10-16 用户：「如果只是当天一天的行程
+ *  也要填行程名字吗？」）。以前三样都必填，只记一天的事也得先想个名字、再把同一个日期
+ *  填两次。现在：
+ *    · 开始／结束日没填 → 用条目里最早／最晚的日期
+ *    · 名称没填 → 单日「10月16日 · 第一条的标题」，多日「10月16日–10月18日」
+ *  条目一个日期都没有时什么都补不了，照旧在下面拦下来要日期。 */
+function fmtMdZh(iso){ const p = String(iso||'').split('-').map(Number); return p[1] ? `${p[1]}月${p[2]}日` : ''; }
+function fmtMdEn(iso){ const p = String(iso||'').split('-').map(Number); return p[1] ? `${MONTHS_EN[p[1]-1]} ${p[2]}` : ''; }
+function autoTripTitle(t){
+  const items = (t.items || []).filter(it => !isEmptyTripItem(it));
+  const dates = items.map(it => it.date).filter(Boolean).sort();
+  const s = t.start || dates[0], e = t.end || dates[dates.length - 1] || s;
+  if(!s) return null;
+  if(s !== e) return { zh: `${fmtMdZh(s)}–${fmtMdZh(e)}`, en: `${fmtMdEn(s)}–${fmtMdEn(e)}` };
+  const first = items.find(it => it.title && ((it.title.zh || '').trim() || (it.title.en || '').trim()));
+  const wz = first ? String(first.title.zh || first.title.en).trim().slice(0, 16) : '';
+  const we = first ? String(first.title.en || '').trim().slice(0, 24) : '';
+  return { zh: fmtMdZh(s) + (wz ? ' · ' + wz : ''), en: fmtMdEn(s) + (we ? ' · ' + we : '') };
+}
+/** 回传有没有补了东西（有的话要重画，让他看到补成了什么）。 */
+function autoTripFill(t){
+  if(!t) return false;
+  let changed = false;
+  const dates = (t.items || []).filter(it => !isEmptyTripItem(it)).map(it => it.date).filter(Boolean).sort();
+  if(!t.start && dates.length){ t.start = dates[0]; changed = true; }
+  if(!t.end && (dates.length || t.start)){ t.end = dates[dates.length - 1] || t.start; changed = true; }
+  const hasTitle = !!((t.title && (t.title.zh||'').trim()) || (t.title && (t.title.en||'').trim()));
+  if(!hasTitle){
+    const auto = autoTripTitle(t);
+    if(auto){ t.title = auto; changed = true; }
+  }
+  return changed;
+}
 /** 每条错误都带「在哪儿」，保存被拦下时才能做成可点击的跳转
  *  （2026-08-29 用户：「有什么填了显示警告的地方，直接跳转去那个错误的地方能吗」）。 */
 function adminValidateTripsDraft(){
@@ -3615,7 +3657,9 @@ function adminValidateTripsDraft(){
     const label = (t.title && (t.title.zh || t.title.en)) || pick('第 ' + (idx+1) + ' 个行程', 'Trip #' + (idx+1));
     const push = (msg, where) => errors.push(Object.assign({ msg: msg, tripIdx: idx }, where || {}));
     const hasTitle = !!((t.title && (t.title.zh||'').trim()) || (t.title && (t.title.en||'').trim()));
-    if(!hasTitle) push(pick(label + '：标题不能为空', label + ': title cannot be empty'), { tripField: 'title.zh' });
+    // 名称可以不填（保存前 autoTripFill 会按日期起名）。补不出来只会是因为连日期都没有——
+    // 那时下面「请填开始日期」会把人带过去，这里不再多报一条。
+    if(!hasTitle && t.start) push(pick(label + '：标题不能为空', label + ': title cannot be empty'), { tripField: 'title.zh' });
     if(!t.start) push(pick(label + '：请填开始日期', label + ': please fill in the start date'), { tripField: 'start' });
     if(!t.end) push(pick(label + '：请填结束日期', label + ': please fill in the end date'), { tripField: 'end' });
     if(t.start && t.end && t.end < t.start){
@@ -3668,6 +3712,9 @@ function adminJumpToError(i){
 }
 async function adminSaveTripsForm(){
   ensureAdminTripsDraft();
+  let filled = false;
+  adminTripsDraft.forEach(t => { if(autoTripFill(t)) filled = true; });
+  if(filled) rerenderAdminTripsSection();   // 补了什么要看得见，不能悄悄改
   const statusEl = document.getElementById('admin-trips-form-status');
   const errors = adminValidateTripsDraft();
   if(errors.length){
@@ -4010,7 +4057,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v64</div>
+    <div class="admin-ver" id="adminVer">boss-app-v65</div>
 
     ${adminTripsSectionHtml()}
 

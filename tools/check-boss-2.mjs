@@ -667,7 +667,11 @@ import {
 {
   const ctx = await browser.newContext();
   await forceZh(ctx);
-  const past = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  // 过期日要**避开「上次就诊＋3 个月」那个建议日**：卡片会写「该约了（约 10月13日）」，
+  // 过期日刚好也是那天的话，下面「不再印出过期日」会被建议日误判成红。2026-10-16
+  // 就撞上了（今天往前 3 天＝10/13＝7/13＋3 个月），App 本身没错，是测试挑日子挑坏了。
+  let past = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  if (past.slice(5) === '10-13') past = new Date(Date.now() - 4 * 86400000).toISOString().slice(0, 10);
   const future = new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10);
   mountRoutes(ctx, { role: 'viewer',
     dental: { lastVisit: '2026-07-13', nextVisit: past, intervalMonths: 3, note: '' } });
@@ -1835,6 +1839,136 @@ if (homeStart) {
 {
   const r = await homeCase({ role: 'viewer', ua: UA_IPHONE, url: URL + '#k=' + GOOD_TOKEN, standalone: true });
   ok('★对照组：已经在主屏里的，manifest 不动', r.st.href === 'manifest.webmanifest', r.st.href);
+}
+
+// ---------- 场景三十二c：★行程名称与日期可以不填，保存时自动补 ----------
+// 2026-10-16 用户：「如果只是当天一天的行程也要填行程名字吗？我就不能用自动排成行程那边
+// 直接帮我填完？」以前名称、开始日、结束日三样必填，记一天的事也要先想名字、同一天填两次。
+async function adminPage(opts){
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, Object.assign({ role: 'admin' }, opts || {}));
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-say-text')), { what: '管理页渲染完' });
+  await gotoTab(page, 'admin');
+  return { ctx, page, rec, errs };
+}
+async function saveAndGet(page, rec){
+  rec.calls.length = 0;
+  await page.evaluate(() => adminSaveTripsForm());
+  await page.waitForTimeout(500);
+  const call = rec.calls.find(c => c.action === 'tripsSave');
+  return call ? call.trips : null;
+}
+console.log('\n【三十二c】行程名称与日期可以不填，保存时自动补');
+{
+  const { ctx, page, rec, errs } = await adminPage({ trips: [] });
+  // 照真人操作：按「新增行程」，只填一条条目的日期和标题，名称和起讫日都不碰
+  await page.click('button[onclick="adminAddTrip()"]');
+  const i = await page.evaluate(() => adminExpandedTrip);
+  await page.evaluate(id => { const d = document.getElementById(id); if (d) d.open = true; }, `admin-item-${i}-0-more`);
+  await page.fill(`#admin-item-${i}-0-date`, '2026-10-20');
+  await page.locator('.admin-item-row').first().locator('input[type="text"]').first().fill('去机场');
+  const trips = await saveAndGet(page, rec);
+  const t = trips && trips[0];
+  ok('★★只填了条目也存得进去（不再拦「标题不能为空」）', !!t, rec.calls.map(c => c.action));
+  ok('★单日行程自动起名「10月20日 · 第一条的标题」', t && t.title.zh === '10月20日 · 去机场', t && t.title);
+  ok('★开始日、结束日都用条目的那一天', t && t.start === '2026-10-20' && t.end === '2026-10-20', t && [t.start, t.end]);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+{
+  // 「补了要看得见」：存成功之后表单会重新载入，看不到；所以用一个会被拦下的情况来看——
+  // 另一条条目没日期，存不了，表单留着，名称那一格应该已经补上了
+  const { ctx, page, rec } = await adminPage({ trips: [] });
+  await page.evaluate(() => {
+    adminTripsDraft = [{ id: 'tv', title: { zh: '', en: '' }, start: '', end: '', location: { zh: '', en: '' }, guideUrl: '',
+      items: [ { date: '2026-10-20', time: '', title: { zh: '去机场', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+               { date: '', time: '', title: { zh: '吃饭', en: '' }, note: { zh: '', en: '' }, mapUrl: '' } ] }];
+    adminExpandedTrip = 0; rerenderAdminTripsSection();
+  });
+  const trips = await saveAndGet(page, rec);
+  ok('（这一笔因为另一条没日期被拦下）', trips === null, trips);
+  ok('★补上的名字画回表单（看得见，不是悄悄改）',
+     await page.inputValue('input[data-trip="0"][data-field="title.zh"]') === '10月20日 · 去机场',
+     await page.inputValue('input[data-trip="0"][data-field="title.zh"]'));
+  await ctx.close();
+}
+{
+  const { ctx, page, rec } = await adminPage({ trips: [] });
+  await page.evaluate(() => {
+    adminTripsDraft = [{ id: 'tx', title: { zh: '', en: '' }, start: '', end: '', location: { zh: '', en: '' }, guideUrl: '',
+      items: [ { date: '2026-10-22', time: '', title: { zh: '回程', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+               { date: '2026-10-20', time: '', title: { zh: '出发', en: '' }, note: { zh: '', en: '' }, mapUrl: '' } ] }];
+    rerenderAdminTripsSection();
+  });
+  const t = ((await saveAndGet(page, rec)) || [])[0];
+  ok('★多日行程起名「10月20日–10月22日」', t && t.title.zh === '10月20日–10月22日', t && t.title);
+  ok('★起讫日取条目里最早和最晚', t && t.start === '2026-10-20' && t.end === '2026-10-22', t && [t.start, t.end]);
+  await ctx.close();
+}
+// 对照组一：自己填了名字、日期 → 一个字都不动
+{
+  const { ctx, page, rec } = await adminPage({ trips: [] });
+  await page.evaluate(() => {
+    adminTripsDraft = [{ id: 'ty', title: { zh: '大阪三日游', en: '' }, start: '2026-10-19', end: '2026-10-23',
+      location: { zh: '', en: '' }, guideUrl: '',
+      items: [ { date: '2026-10-20', time: '', title: { zh: '出发', en: '' }, note: { zh: '', en: '' }, mapUrl: '' } ] }];
+    rerenderAdminTripsSection();
+  });
+  const t = ((await saveAndGet(page, rec)) || [])[0];
+  ok('★对照组：自己填的名字原样保留', t && t.title.zh === '大阪三日游', t && t.title);
+  ok('★对照组：自己填的日期不被条目日期改掉', t && t.start === '2026-10-19' && t.end === '2026-10-23', t && [t.start, t.end]);
+  await ctx.close();
+}
+// 对照组二：一个日期都没有 → 补不了，照旧拦下来要日期
+{
+  const { ctx, page, rec } = await adminPage({ trips: [] });
+  await page.evaluate(() => {
+    adminTripsDraft = [{ id: 'tz', title: { zh: '', en: '' }, start: '', end: '', location: { zh: '', en: '' }, guideUrl: '',
+      items: [ { date: '', time: '', title: { zh: '吃饭', en: '' }, note: { zh: '', en: '' }, mapUrl: '' } ] }];
+    rerenderAdminTripsSection();
+  });
+  const trips = await saveAndGet(page, rec);
+  const msg = await page.evaluate(() => document.getElementById('admin-trips-form-status').innerText);
+  ok('★★对照组：连日期都没有时照旧不让存', trips === null, trips);
+  ok('★对照组：而且说清楚是缺日期', /开始日期|还没填日期/.test(msg), msg);
+  await ctx.close();
+}
+// 一段话变行程：AI 没起名就按日期起；当天的事不塞进日期对不上的那一趟
+{
+  const { ctx, page, rec, errs } = await adminPage({ trips: fakeTrips(),
+    itineraryResult: { status: 'ok', title: '', items: [
+      { date: '2026-10-20', time: '08:30', title: '去机场', note: '', place: '', flightNo: '' } ] } });
+  await page.evaluate(() => { ensureAdminTripsDraft(); adminExpandedTrip = 0; rerenderAdminTripsSection(); });
+  const n0 = await page.evaluate(() => adminTripsDraft.length);
+  await page.fill('#admin-say-text', '20号早上八点半去机场');
+  await page.click('#admin-say-btn');
+  await until(() => page.evaluate(n => adminTripsDraft.length > n || (adminTripsDraft[0].items || []).length > 1, n0),
+    { what: '一段话填进表单' });
+  const st = await page.evaluate(() => ({ n: adminTripsDraft.length, old: adminTripsDraft[0].items.length,
+    last: adminTripsDraft[adminTripsDraft.length - 1] }));
+  ok('★★当天的事另开一趟，没塞进正在看的大阪行（日期对不上）', st.n === n0 + 1 && st.old === 1, st);
+  ok('★AI 没起名时按日期起，不再写死「新行程」', st.last.title.zh === '10月20日 · 去机场', st.last.title);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+// 对照组三：日期落在正展开那一趟里面 → 照旧加进那一趟
+{
+  const { ctx, page } = await adminPage({ trips: fakeTrips(),
+    itineraryResult: { status: 'ok', title: '', items: [
+      { date: '2026-01-02', time: '19:00', title: '晚餐', note: '', place: '', flightNo: '' } ] } });
+  await page.evaluate(() => { ensureAdminTripsDraft(); adminExpandedTrip = 0; rerenderAdminTripsSection(); });
+  const n0 = await page.evaluate(() => adminTripsDraft.length);
+  await page.fill('#admin-say-text', '2号晚上七点晚餐');
+  await page.click('#admin-say-btn');
+  await until(() => page.evaluate(() => (adminTripsDraft[0].items || []).length > 1), { what: '加进那一趟' });
+  const st = await page.evaluate(() => ({ n: adminTripsDraft.length, items: adminTripsDraft[0].items.length }));
+  ok('★对照组：日期在那一趟里面，照旧加进那一趟', st.n === n0 && st.items === 2, st);
+  await ctx.close();
 }
 
 // ---------- 场景三十三c：管理页给出的那条链接必须是能用的 ----------
