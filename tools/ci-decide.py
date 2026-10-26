@@ -27,6 +27,7 @@ RULES = {
                   "staff/index.html", "xisui/index.html", "tools/check-sw-version.py"],
     "ainote":    ["trading/ai_note.py", "tools/check-ai-note.py"],
     "declog":    ["trading/analyzer.py", "tools/check-decision-log.py"],
+    "flexstale": ["trading/index.html", "tools/check-flex-stale.mjs"],
     "notify":    ["tools/ci-notify.py", "tools/check-ci-notify.py"],
     "morningpos": [".github/scripts/portfolio_news.py", "trading/analyzer.py",
                    "tools/check-morning-positions.py"],
