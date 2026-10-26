@@ -2228,6 +2228,17 @@ if (want()) {
   ok('本机那两颗按钮收起来了（按了也不会改变这个数）',
      !card.includes('收到现金') && !card.includes('重填'), card);
 
+  // ---- 还钱算一轮结束：跟老板 App 讲同一组数字（2026-10-26 用户要的）----
+  h.bossApi.body = { status:'ok', scope:'staff',
+    people:[{ person:'Seryi', status:'ok', balance:380, opened:-994.71, spent:8688.9,
+              since:'2026-10-26', base:0, given:500, adjusted:0, spentSince:120 }] };
+  await page.evaluate(() => fetchBossPettyMine({ force:true }).then(() => renderBossCash()));
+  await page.waitForTimeout(600);
+  card = await page.locator('#staff-boss-cash').innerText();
+  ok('★同事版也从还清那天讲起', card.includes('10/26 还清后'), card);
+  ok('★只算还清之后的：收到 500、花了 120', card.includes('500') && card.includes('120'), card);
+  ok('★不再讲累计的（8688.90 不能出现）', !card.includes('8688.90') && !card.includes('994.71'), card);
+
   // ---- 垫付：算出来是负数，要说成「你先垫的钱」，不是「手上现金 -189」----
   h.bossApi.body = { status:'ok', scope:'staff',
     people:[{ person:'Seryi', status:'ok', balance:-189, opened:0, spent:189 }] };
