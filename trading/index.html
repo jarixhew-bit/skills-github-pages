@@ -133,6 +133,14 @@
 
   .ai-note { margin-top: 12px; font-size: 14px; line-height: 1.8; background: var(--card2); border-left: 3px solid var(--purple); border-radius: 10px; padding: 12px 14px; white-space: pre-wrap; }
   .ai-note.stale { color: var(--dim); border-left-color: var(--yellow); }
+  /* 持仓底数过期的警告。做成醒目的一块而不是一行小字，是因为它一出现就意味着
+     「股数、现金、再平衡建议」三样同时不可信——2026-10-26 用户自己发现加仓后
+     股数没更新时，页面其实已经写着对账日期了，但那行字挂在现金底下的 sub 里，
+     没人会把它跟股数联系起来。 */
+  .stale-box { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.35);
+    border-left: 3px solid var(--yellow); border-radius: 8px; padding: 10px 12px;
+    margin: 10px 0; font-size: 13px; line-height: 1.6; color: var(--text); }
+  .stale-box b { color: var(--yellow); }
 
   footer { color: var(--dim); font-size: 12px; text-align: center; padding: 20px 16px 40px; line-height: 1.8; }
   .warn-note { color: var(--yellow); font-size: 12px; margin-top: 10px; }
@@ -162,6 +170,7 @@
 
   <section id="secPortfolio" style="display:none">
     <div class="sec-title">💼 我的持仓 <span class="sub" id="pfSub"></span></div>
+    <div id="flexStale" class="stale-box" style="display:none"></div>
     <div id="pfLocked" class="card locked-box">
       <div class="icon">🔒</div>
       <p>持仓与复盘数据已加密存放。输入密码解锁，本机会记住，下次自动打开。</p>
@@ -368,6 +377,31 @@ function jumpTo(sym) {
 
 // ---------- 私密渲染 ----------
 // 决策日志：最新的排最前。有成交的那几天标绿，一眼能找到自己真正动手的时点
+/* 持仓底数落后几个「交易日」。
+   为什么数 nav_series 而不是算日历天数：Flex Query 的周期是 LastBusinessDay，
+   给的永远是上一个交易日收盘的持仓，所以落后 1 个交易日是正常、不该报警的。
+   而日历天数在周一永远是 3 天（周五对账→周一行情），假日更乱——照日历算会每周一
+   误报一次。nav_series 本身就是一条逐交易日的序列，数它里面比对账日更晚的条目，
+   周末与美股假日自动不算在内。 */
+function flexLagTradingDays(P) {
+  const synced = P.account && P.account.synced;
+  if (!synced) return null;                       // 没对账日期就无从判断
+  const series = P.nav_series || [];
+  if (!series.length) return null;
+  return series.filter(r => r && r[0] > synced).length;
+}
+
+function renderFlexStale(P) {
+  const el = $("flexStale");
+  const lag = flexLagTradingDays(P);
+  // 落后 0~1 个交易日是 Flex 的正常滞后，不提示；>=2 才说明管线停了或抓取连续失败
+  if (lag === null || lag < 2) { el.style.display = "none"; return; }
+  el.innerHTML = `⚠️ <b>持仓底数已落后 ${lag} 个交易日</b>（最后一次与 IBKR 对账：${esc(P.account.synced)}）。`
+    + `价格仍在每小时刷新，但<b>股数和现金是旧的</b>——这期间若有买卖或入金，`
+    + `下面的持仓、权重、以及「建议」和「决策日志」里按现金算出来的结论都不可信。`;
+  el.style.display = "";
+}
+
 function renderDecisionLog(log) {
   if (!log.length) return;
   $("secDecision").style.display = "";
@@ -405,7 +439,9 @@ function renderPrivate() {
     <div class="tile"><div class="label">本月</div><div class="value ${cls(pf.mtd)}">${fmtPct(pf.mtd)}</div></div>
     <div class="tile"><div class="label">今年以来</div><div class="value ${cls(pf.ytd)}">${fmtPct(pf.ytd)}</div>
       <div class="sub">${pf.approx ? "净值近似，含出入金影响" : "时间加权收益 (TWR)"}</div></div>`;
-  $("pfSub").textContent = `${P.positions.length} 项持仓`;
+  $("pfSub").textContent = `${P.positions.length} 项持仓`
+    + (P.account.synced ? ` · 股数与现金截至 ${P.account.synced}` : "");
+  renderFlexStale(P);
 
   drawNavChart(P.nav_series || []);
 

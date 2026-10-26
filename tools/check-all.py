@@ -48,6 +48,9 @@ CHECKS = [
     ("pwa", ["python3", "tools/check-pwa-scopes.py"], False),
     ("swver", ["python3", "tools/check-sw-version.py"], False),
     ("ainote", ["python3", "tools/check-ai-note.py"], False),
+    ("declog", ["python3", "tools/check-decision-log.py"], False),
+    # 不吃 http server：它直接读 index.html 把函数抠出来跑，不开浏览器
+    ("flexstale", ["node", "tools/check-flex-stale.mjs"], False),
     ("notify", ["python3", "tools/check-ci-notify.py"], False),
     ("morningpos", ["python3", "tools/check-morning-positions.py"], False),
     ("generated", ["python3", "tools/check-generated.py"], False),

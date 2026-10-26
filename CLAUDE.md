@@ -131,7 +131,7 @@
    `tools/check-*.py`；会随时间腐坏的（外链、定时任务、外部 API、制度档膨胀）
    再挂 CI 定期跑、失效就开 issue。**检测放 CI（零 Claude 用量），只有需要判断力的
    修复才叫 Claude 上场**——拆不开检测与判断时才考虑用 Claude 定时任务。
-   交付时告诉用户自检怎么跑。现有三十二个，全部挂 CI（2026-10-07 加 `check-board`；2026-09-30 同日再加 `check-fitness`；按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
+   交付时告诉用户自检怎么跑。现有三十三个，全部挂 CI（2026-10-26 加 `check-flex-stale`，并把一直漏在 `check-all.py` 外面的 `check-decision-log` 收进去；2026-10-07 加 `check-board`；2026-09-30 同日再加 `check-fitness`；按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
@@ -141,6 +141,9 @@
    新加坡手册两段都是拿两地当地时刻直接相减，各错一小时，是用户自己看出来的）/
    `check-news`（把 requests/feedparser 打桩，验新闻的两处易错：译文分批时**位置不会
    错位**——错位会把 A 公司的消息安到 B 公司头上；以及同一条新闻**跨区块去重**）/
+   `check-flex-stale`（验 `trading/index.html` 的「持仓底数过期」警告：Flex 天生落后
+   一个交易日属正常，判据必须数 `nav_series` 的交易日而不是日历天数——算日历的话每个
+   周一都误报一次，警告就没人看了）/
    `check-gamebot`（＋`check-gamebot-logic.mjs`：把安卓 API 打桩，用假屏幕实跑手机脚本，
    查语法查不出的行为问题）/ `check-boss-sw`（同一路子：把 self/registration 打桩，派发假的 push 事件，验老板 App
    的 Service Worker 收到推送怎么弹——真浏览器发不出 push 事件，这段只能这么验）；浏览器类 `check-fitness.mjs`（减脂训练 App：用固定假历史验加重／减重／减量周建议是不是手算得出的数、备份导入不重复）/ `check-expense-company.mjs` /
