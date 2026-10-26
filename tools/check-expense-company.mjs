@@ -3195,6 +3195,31 @@ console.log('\n【33】老板账备用金：转现金套用公司账那一套');
   ok('余额照抄服务端（App 不自己算）', html.includes('311'), html);
   ok('把起点和花掉多少摊开', html.includes('189'), html);
 
+  // ---- 还钱算一轮结束（2026-10-26 用户要的：还清后底下那排字归 0，不再一直叠上去）----
+  // 旧的 opened/spent 故意填很大：画面上要是还出现它们，就是没换成「这一轮」那组
+  api.people = [{ person:'Kuang', status:'ok', balance: 0, opened: -994.71, spent: 8568.9,
+                  since:'2026-10-26', base: 0, given: 0, adjusted: 0, spentSince: 0 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await page.waitForTimeout(600);
+  html = await page.innerText('#boss-petty');
+  ok('★还清后讲「10/26 还清后」', html.includes('10/26 还清后'), html);
+  ok('★还清后转了／花了都是 0', /转了 US\$0\.00 · 花了 US\$0\.00/.test(html), html);
+  ok('★不再讲累计的起点和花掉多少（8568.90 不能出现）',
+     !html.includes('8568.90') && !html.includes('994.71'), html);
+  api.people = [{ person:'Kuang', status:'ok', balance: 380, opened: -994.71, spent: 8688.9,
+                  since:'2026-10-26', base: 0, given: 500, adjusted: 0, spentSince: 120 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await page.waitForTimeout(600);
+  html = await page.innerText('#boss-petty');
+  ok('★下一轮只讲还清之后的：转了 500、花了 120',
+     html.includes('转了 US$500.00') && html.includes('花了 US$120.00'), html);
+  // 对照组：服务端还没升级（没有 given）→ 照旧讲起点，不能讲成「还清后 $0」
+  api.people = [{ person:'Kuang', status:'ok', balance: 311, opened: 0, spent: 189 }];
+  await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));
+  await page.waitForTimeout(600);
+  html = await page.innerText('#boss-petty');
+  ok('对照组：旧服务端照旧讲「起点 · 之后花了」', html.includes('之后花了') && !html.includes('还清后'), html);
+
   // ---- 负数 = 他垫的钱 ----
   api.people = [{ person:'Kuang', status:'ok', balance: -189, opened: 0, spent: 189 }];
   await page.evaluate(() => fetchBossPetty({force:true}).then(()=>renderBossPetty()));

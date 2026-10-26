@@ -1345,6 +1345,26 @@ async function fetchBossPettyMine(opts){
   return bossPettyServer.row;
 }
 
+/**
+ * 卡片底下那排小字，跟老板 App 讲同一句话：从**最后一次还钱**讲起
+ * （2026-10-26 用户要的：还清之后归 0 重新算，不再一直叠上去）。
+ * 数字是 butler 算好的（见 butler 的 pettyCycle）；服务端还没升级就照旧讲起点。
+ */
+function staffPettyCycleText(srv, cur){
+  if(srv.given === undefined) return tt(
+    `起点 ${fmt(srv.opened, cur)} · 之后花了 ${fmt(srv.spent, cur)}`,
+    `start ${fmt(srv.opened, cur)} · spent since ${fmt(srv.spent, cur)}`);
+  const md = srv.since ? String(srv.since).slice(5).replace('-', '/') : '';
+  const zero = Math.abs(Number(srv.base) || 0) < 0.005;
+  const head = !srv.since ? tt(`起点 ${fmt(srv.base, cur)}`, `start ${fmt(srv.base, cur)}`)
+    : zero ? tt(`${md} 还清后`, `since you settled on ${md}`)
+    : tt(`${md} 还钱后剩 ${fmt(srv.base, cur)}`, `${fmt(srv.base, cur)} left after returning on ${md}`);
+  return head + tt(
+    ` · 收到 ${fmt(srv.given, cur)} · 花了 ${fmt(srv.spentSince, cur)}`,
+    ` · received ${fmt(srv.given, cur)} · spent ${fmt(srv.spentSince, cur)}`)
+    + (srv.adjusted ? tt(` · 调整 ${fmt(srv.adjusted, cur)}`, ` · adjusted ${fmt(srv.adjusted, cur)}`) : '');
+}
+
 function renderBossCash(){
   const el = document.getElementById('staff-boss-cash');
   if(!el) return;
@@ -1360,13 +1380,14 @@ function renderBossCash(){
     const over = left < 0;
     const notSent = (data.transactions || []).filter(t =>
       t.accountId === STAFF_BOSS_ACC_ID && t.inbox && t.inbox.status !== 'sent').length;
-    el.classList.toggle('low', over || (srv.opened > 0 && left < srv.opened * 0.15));
+    // 「这一轮」拿到多少（还钱后剩的＋之后转的）当分母，不再拿最早的起点比
+    const pool = srv.given === undefined ? srv.opened
+      : (Number(srv.base) || 0) + (Number(srv.given) || 0) + (Number(srv.adjusted) || 0);
+    el.classList.toggle('low', over || (pool > 0 && left < pool * 0.15));
     el.innerHTML = `
       <div class="bcash-label">${over ? tt('你先垫的钱','You are out of pocket') : tt('手上现金','Cash on hand')}</div>
       <div class="bcash-total">${fmt(over ? -left : left, cur)}</div>
-      <div class="bcash-sub">${tt(
-        `老板那边算的 · 起点 ${fmt(srv.opened, cur)} · 之后花了 ${fmt(srv.spent, cur)}`,
-        `From the Boss's ledger · start ${fmt(srv.opened, cur)} · spent since ${fmt(srv.spent, cur)}`)}</div>
+      <div class="bcash-sub">${tt('老板那边算的 · ', "From the Boss's ledger · ")}${staffPettyCycleText(srv, cur)}</div>
       ${over ? `<div class="bcash-warn">${tt(
         `⚠️ 你自己先垫了 ${fmt(-left, cur)}，老板那边看得到，他转钱给你就会自动抵掉`,
         `⚠️ You are ${fmt(-left, cur)} out of pocket — the Boss can see it; his next cash transfer clears it`)}</div>` : ''}

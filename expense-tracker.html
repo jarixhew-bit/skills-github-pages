@@ -5839,7 +5839,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-09-23';
+const APP_BUILD = '2026-10-26';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -8118,7 +8118,7 @@ function renderBossPetty(){
     ${rows.length ? rows.map(r => `<div class="petty-row">
       <div><div class="petty-name">${ledEsc(r.person)}</div>
         <div class="petty-meta">${r.status === 'ok'
-          ? `起点 ${fmt(r.opened, (r.currency || bossCur()))} · 之后花了 ${fmt(r.spent, (r.currency || bossCur()))}`
+          ? bossPettyCycleText(r, r.currency || bossCur())
           : '还没设起点'}</div></div>
       ${r.status === 'ok'
         ? `<div class="petty-bal ${r.balance < 0 ? 'low' : ''}">${fmt(r.balance, (r.currency || bossCur()))}</div>`
@@ -8404,7 +8404,7 @@ function renderBossPettyBody(){
       ? `<div class="petty-bal ${r.balance < 0 ? 'low' : ''}">${fmt(r.balance, (r.currency || bossCur()))}</div>`
       : `<div class="petty-bal unset">还没设起点 ›</div>`;
     const meta = r.status === 'ok'
-      ? `<div class="petty-meta">起点 ${fmt(r.opened, (r.currency || bossCur()))} · 之后花了 ${fmt(r.spent, (r.currency || bossCur()))}${
+      ? `<div class="petty-meta">${bossPettyCycleText(r, r.currency || bossCur())}${
           r.balance < 0 ? ` · 他垫了 ${fmt(-r.balance, (r.currency || bossCur()))}` : ''}</div>`
       : `<div class="petty-meta">填一次他现在手上还剩多少，之后自动扣</div>`;
     // 手上还有钱的人多给一颗「已还清」：这是「一键归还」最常走的那一步，
@@ -8422,6 +8422,24 @@ function renderBossPettyBody(){
           fmt(last.amountUsd, last.currency || bossCur())}（${last.date}）<br>
          <span style="color:var(--exp);cursor:pointer" onclick="bossPettyUndo()">记错了？撤销这一笔</span>`
       : '还没有任何记录'}</div>`;
+}
+
+/**
+ * 卡片底下那排小字：从**最后一次还钱**讲起（2026-10-26 用户要的：「同事归还现金后
+ * 下面那一小排字归 0，不然每次叠加上去会很乱」）。数字是 butler 按时间顺序算好的
+ * （since/base/given/adjusted/spentSince，见 butler 的 pettyCycle），这里只负责讲。
+ * 同事版那张卡用同一组数字，两边讲的是同一句话。
+ * 服务端还没升级（没有 given）就照旧讲「起点 · 之后花了」。
+ */
+function bossPettyCycleText(r, cur){
+  if(r.given === undefined)
+    return `起点 ${fmt(r.opened, cur)} · 之后花了 ${fmt(r.spent, cur)}`;
+  const md = r.since ? String(r.since).slice(5).replace('-', '/') : '';
+  const head = !r.since ? `起点 ${fmt(r.base, cur)}`
+    : Math.abs(r.base) < 0.005 ? `${md} 还清后`
+    : `${md} 还钱后剩 ${fmt(r.base, cur)}`;
+  return `${head} · 转了 ${fmt(r.given, cur)} · 花了 ${fmt(r.spentSince, cur)}${
+    r.adjusted ? ` · 调整 ${fmt(r.adjusted, cur)}` : ''}`;
 }
 
 /** 弹窗列表当前画的是哪几行。按行号取人名，名字不进 onclick（见 renderBossPettyBody）。 */
