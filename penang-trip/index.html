@@ -73,6 +73,9 @@
     overflow-x: hidden;
   }
   img { display: block; }
+  /* 图片加载失败：藏起 alt 文字与破图图标，露出容器底色（alt 属性仍在，灯箱要用） */
+  img.img-fail { visibility: hidden; }
+  .cover:has(> img.bg.img-fail) { background: var(--indigo-dd); }
   :focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   a { -webkit-touch-callout: none; }
@@ -157,22 +160,22 @@
     border: 1px solid rgba(255,255,255,.34); border-radius: 999px; color: rgba(255,255,255,.94);
     background: rgba(255,255,255,.08);
   }
+  /* 倒数/出发中/已结束：普通小标签（细边框＋小字），不要做成实心按钮的样子 */
   .cover .cd {
-    align-self: flex-start; margin-top: 14px; display: inline-flex; align-items: baseline; gap: 7px;
-    background: var(--gold); color: var(--on-marigold); border-radius: 999px; padding: 6px 15px;
-    font-size: 13px; font-weight: 700; box-shadow: 0 6px 18px -8px rgba(0,0,0,.8);
+    align-self: flex-start; margin-top: 14px; display: inline-flex; align-items: baseline; gap: 5px;
+    background: none; color: rgba(255,255,255,.88); border: 1px solid var(--gold); border-radius: 4px; padding: 2px 9px;
+    font-size: 12px; font-weight: 600; letter-spacing: .02em;
   }
-  .cover .cd b { font-family: var(--serif); font-size: 19px; font-weight: 700; }
+  .cover .cd b { font-family: var(--serif); font-size: 14px; font-weight: 700; color: #fff; }
   .cover .band { height: 9px; color: var(--gold); opacity: .9; position: absolute; left: 0; right: 0; bottom: 0; }
 
   /* ===== TIP ===== */
   .tip {
-    display: flex; gap: 11px; margin: 16px 16px 0; padding: 13px 15px;
+    margin: 12px 16px 0; padding: 8px 13px;
     background: var(--gold-soft); border: 1px solid var(--gold-line);
     border-left: 4px solid var(--gold); border-radius: 12px;
-    font-size: 13.5px; line-height: 1.65; color: var(--marigold-ink);
+    font-size: 13px; line-height: 1.55; color: var(--marigold-ink);
   }
-  .tip .ico { flex: none; font-size: 16px; }
 
   /* ===== SECTION HEAD ===== */
   section { padding: 30px 16px 6px; scroll-margin-top: calc(var(--topH) + var(--navH) + 6px); }
@@ -287,7 +290,7 @@
 
   /* ===== GALLERY (full-bleed, top of card) ===== */
   .galwrap { position: relative; background: var(--paper-2); }
-  .gal { display: flex; gap: 3px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .gal { background: var(--paper-2); display: flex; gap: 3px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
   .gal::-webkit-scrollbar { display: none; }
   .gal img { scroll-snap-align: start; width: 86%; max-width: 420px; aspect-ratio: 16/10; object-fit: cover; flex: none; background: var(--line-2); cursor: zoom-in; }
   .gal-hint {
@@ -395,6 +398,13 @@
     .cover h1 { font-size: 44px; }
   }
 </style>
+<script>
+/* 图片加载失败 → 加 .img-fail（藏 alt 与破图图标）；灯箱大图 #lbImg 除外 */
+document.addEventListener('error', function(e){
+  var t = e.target;
+  if (t && t.tagName === 'IMG' && t.id !== 'lbImg') t.classList.add('img-fail');
+}, true);
+</script>
 </head>
 <body>
 <a class="sr-only" href="#flights">跳到正文 / Skip to content</a>
@@ -403,10 +413,10 @@
 <button class="lang" id="langBtn" onclick="toggleLang()" aria-label="切换语言 / Switch language">EN</button>
 </header>
 <nav class="navstrip" id="navstrip" aria-label="章节导航 / Section navigation">
-<a href="#flights">✈️ <span class="cn">航班</span><span class="en">Flights</span></a>
-<a href="#dining">🍽 <span class="cn">餐厅</span><span class="en">Dining</span><span class="n" data-count="dining"></span></a>
-<a href="#places">📍 <span class="cn">去处</span><span class="en">Places</span><span class="n" data-count="places"></span></a>
-<a href="#weather">🌡 <span class="cn">天气</span><span class="en">Weather</span></a>
+<a href="#flights"><span class="cn">航班</span><span class="en">Flights</span></a>
+<a href="#dining"><span class="cn">餐厅</span><span class="en">Dining</span><span class="n" data-count="dining"></span></a>
+<a href="#places"><span class="cn">去处</span><span class="en">Places</span><span class="n" data-count="places"></span></a>
+<a href="#weather"><span class="cn">天气</span><span class="en">Weather</span></a>
 </nav>
 <div class="wrap">
 <div class="cover">
@@ -416,21 +426,18 @@
 <h1><span class="cn">槟城之行</span><span class="en">Penang</span><span class="sub">Pulau Pinang · Malaysia</span></h1>
 <div class="dates"><span class="cn">9天8夜 · 2026年10月9日（五）– 10月17日（六）</span><span class="en">9 Days 8 Nights · Fri 9 Oct – Sat 17 Oct 2026</span></div>
 <div class="meta-row">
-<span class="meta-chip">✈ <span class="cn">新航 · 经新加坡转机</span><span class="en">SQ · via Singapore</span></span>
-<span class="meta-chip">🏠 <span class="cn">老板自宅</span><span class="en">Family home</span></span>
-<span class="meta-chip">👨‍👩‍👧 <span class="cn">6人同行</span><span class="en">6 pax</span></span>
-<span class="meta-chip">🚗 <span class="cn">本次安排华人司机：盛</span><span class="en">Chinese-speaking driver: Sheng</span></span>
+<span class="meta-chip"><span class="cn">新航 · 经新加坡转机</span><span class="en">SQ · via Singapore</span></span>
+<span class="meta-chip"><span class="cn">老板自宅</span><span class="en">Family home</span></span>
+<span class="meta-chip"><span class="cn">6人同行</span><span class="en">6 pax</span></span>
+<span class="meta-chip"><span class="cn">本次安排华人司机：盛</span><span class="en">Chinese-speaking driver: Sheng</span></span>
 </div>
 <div class="cd" id="countdown"><span class="cn"></span><span class="en"></span></div>
 </div>
 <div class="band tiles" aria-hidden="true"></div>
 </div>
 <div class="tip">
-<span class="ico" aria-hidden="true">👆</span>
-<div>
-<span class="cn"><strong>怎么用这本手册：</strong>深蓝实心按钮开地图、浅蓝底按钮开官网；照片可左右滑、点一下放大；「推荐去处」上方的彩色标签可筛选类型；顶部的章节条可随时跳到别的区块。</span>
-<span class="en"><strong>How to use this handbook:</strong> solid dark-blue buttons open maps, light-blue buttons open websites; photo strips swipe sideways and tap to enlarge; the coloured chips above "Places to Visit" filter by type; the sticky bar at the top jumps between sections.</span>
-</div>
+<span class="cn"><strong>用法：</strong>深蓝按钮开地图，浅蓝按钮开官网；照片可横滑，点开放大。</span>
+<span class="en"><strong>How to use:</strong> dark-blue button = map, light-blue = website; swipe photos sideways, tap to enlarge.</span>
 </div>
 
 <!-- ===== FLIGHTS ===== -->
@@ -438,7 +445,7 @@
 <div class="sec-head"><span class="no">01</span><h2><span class="cn">航班</span><span class="en">Flights</span></h2><span class="rule tiles" aria-hidden="true"></span></div>
 
 
-<div class="bp-group-label"><span class="cn">🛫 去程 · 10月9日（五）· 金边 → 槟城</span><span class="en">🛫 Outbound · Oct 9 (Fri) · Phnom Penh → Penang</span></div>
+<div class="bp-group-label"><span class="cn">去程 · 10月9日（五）· 金边 → 槟城</span><span class="en">Outbound · Oct 9 (Fri) · Phnom Penh → Penang</span></div>
 <div class="ftl">
 <div class="fstop"><span class="fs-dot" aria-hidden="true"></span>
 <div class="fs-time">07:00</div>
@@ -476,11 +483,11 @@
 <span class="cls">ECONOMY</span>
 <div class="seats"><span class="seat">TAN/CHIN HOOI 44H</span><span class="seat">TAN/KUAN ZE 44A</span><span class="seat">THUN/SAVRY 44C</span><span class="seat">CHET/POV 44J</span><span class="seat">TAN/YONG LIANG 44B</span><span class="seat">HEW/CHERN YANG 44K</span></div>
 </div>
-<a class="track" href="https://www.flightaware.com/live/flight/SIA153" target="_blank">📡 <span class="cn">追踪 SQ153</span><span class="en">Track SQ153</span></a>
+<a class="track" href="https://www.flightaware.com/live/flight/SIA153" target="_blank"><span class="cn">追踪 SQ153</span><span class="en">Track SQ153</span></a>
 </div>
 <div class="transit">
 <div>
-<div class="tt">⏱ <span class="cn">新加坡转机 · 候机约 2h 15m</span><span class="en">Transit in Singapore · approx. 2h 15m</span></div>
+<div class="tt"><span class="cn">新加坡转机 · 候机约 2h 15m</span><span class="en">Transit in Singapore · approx. 2h 15m</span></div>
 <div class="ts"><span class="cn">SIN T1 抵达 → T1 出发 · 行李直挂至槟城</span><span class="en">Arrive SIN T1 → depart T1 · baggage checked through to Penang</span></div>
 </div>
 </div>
@@ -497,10 +504,10 @@
 <span class="cls">ECONOMY</span>
 <div class="seats"><span class="seat">TAN/CHIN HOOI 02D</span><span class="seat">TAN/KUAN ZE 02E</span><span class="seat">THUN/SAVRY 03D</span><span class="seat">CHET/POV 03F</span><span class="seat">TAN/YONG LIANG 03E</span><span class="seat">HEW/CHERN YANG 02F</span></div>
 </div>
-<a class="track" href="https://www.flightaware.com/live/flight/SIA8500" target="_blank">📡 <span class="cn">追踪 SQ8500 / TR424</span><span class="en">Track SQ8500 / TR424</span></a>
+<a class="track" href="https://www.flightaware.com/live/flight/SIA8500" target="_blank"><span class="cn">追踪 SQ8500 / TR424</span><span class="en">Track SQ8500 / TR424</span></a>
 </div>
 
-<div class="bp-group-label"><span class="cn">🛬 回程 · 10月17日（六）· 槟城 → 金边</span><span class="en">🛬 Return · Oct 17 (Sat) · Penang → Phnom Penh</span></div>
+<div class="bp-group-label"><span class="cn">回程 · 10月17日（六）· 槟城 → 金边</span><span class="en">Return · Oct 17 (Sat) · Penang → Phnom Penh</span></div>
 <div class="ftl">
 <div class="fstop"><span class="fs-dot" aria-hidden="true"></span>
 <div class="fs-time">09:00</div>
@@ -538,11 +545,11 @@
 <span class="cls">ECONOMY</span>
 <div class="seats"><span class="seat">TAN/CHIN HOOI 43H</span><span class="seat">TAN/KUAN ZE 43A</span><span class="seat">THUN/SAVRY 43C</span><span class="seat">CHET/POV 43J</span><span class="seat">TAN/YONG LIANG 43B</span><span class="seat">HEW/CHERN YANG 43K</span></div>
 </div>
-<a class="track" href="https://www.flightaware.com/live/flight/SIA133" target="_blank">📡 <span class="cn">追踪 SQ133</span><span class="en">Track SQ133</span></a>
+<a class="track" href="https://www.flightaware.com/live/flight/SIA133" target="_blank"><span class="cn">追踪 SQ133</span><span class="en">Track SQ133</span></a>
 </div>
 <div class="transit">
 <div>
-<div class="tt">⏱ <span class="cn">新加坡转机 · 候机约 3h</span><span class="en">Transit in Singapore · approx. 3h</span></div>
+<div class="tt"><span class="cn">新加坡转机 · 候机约 3h</span><span class="en">Transit in Singapore · approx. 3h</span></div>
 <div class="ts"><span class="cn">SIN T2 抵达 → T2 出发 · 同航站楼转机 · 行李直挂</span><span class="en">Arrive SIN T2 → depart T2 · same-terminal transfer · baggage checked through</span></div>
 </div>
 </div>
@@ -559,10 +566,10 @@
 <span class="cls">ECONOMY</span>
 <div class="seats"><span class="seat warn">TAN/CHIN HOOI 44H</span><span class="seat warn">TAN/KUAN ZE 45J</span><span class="seat warn">THUN/SAVRY 45H</span><span class="seat warn">CHET/POV 50B</span><span class="seat warn">TAN/YONG LIANG 45K</span><span class="seat warn">HEW/CHERN YANG 50C</span></div>
 </div>
-<a class="track" href="https://www.flightaware.com/live/flight/SIA158" target="_blank">📡 <span class="cn">追踪 SQ158</span><span class="en">Track SQ158</span></a>
+<a class="track" href="https://www.flightaware.com/live/flight/SIA158" target="_blank"><span class="cn">追踪 SQ158</span><span class="en">Track SQ158</span></a>
 </div>
 
-<div class="bp-group-label"><span class="cn">🧳 行李额</span><span class="en">🧳 Baggage Allowance</span></div>
+<div class="bp-group-label"><span class="cn">行李额</span><span class="en">Baggage Allowance</span></div>
 <table class="tbl">
 <tr><th><span class="cn">乘客</span><span class="en">Passenger</span></th><th><span class="cn">托运</span><span class="en">Checked</span></th><th><span class="cn">手提</span><span class="en">Carry-on</span></th></tr>
 <tr><td><span class="cn">全员（经济舱）</span><span class="en">All pax (Economy)</span></td><td>30 kg</td><td>7 kg</td></tr>
@@ -845,17 +852,17 @@
 
 <div class="pfilter">
 <div class="row" role="group" aria-label="按类型筛选去处 / Filter places by type">
-<button class="pchip" type="button" data-cat="all" aria-pressed="true">🧭 <span class="cn">全部</span><span class="en">All</span><span class="n" data-catcount="all"></span></button>
-<button class="pchip" type="button" data-cat="arcade" aria-pressed="false">🎮 <span class="cn">电玩亲子</span><span class="en">Arcade</span><span class="n" data-catcount="arcade"></span></button>
-<button class="pchip" type="button" data-cat="culture" aria-pressed="false">🏛 <span class="cn">文化古迹</span><span class="en">Culture</span><span class="n" data-catcount="culture"></span></button>
-<button class="pchip" type="button" data-cat="outdoor" aria-pressed="false">🏖 <span class="cn">户外观景</span><span class="en">Outdoor</span><span class="n" data-catcount="outdoor"></span></button>
-<button class="pchip" type="button" data-cat="mall" aria-pressed="false">🛍 <span class="cn">商场</span><span class="en">Malls</span><span class="n" data-catcount="mall"></span></button>
+<button class="pchip" type="button" data-cat="all" aria-pressed="true"><span class="cn">全部</span><span class="en">All</span><span class="n" data-catcount="all"></span></button>
+<button class="pchip" type="button" data-cat="arcade" aria-pressed="false"><span class="cn">电玩亲子</span><span class="en">Arcade</span><span class="n" data-catcount="arcade"></span></button>
+<button class="pchip" type="button" data-cat="culture" aria-pressed="false"><span class="cn">文化古迹</span><span class="en">Culture</span><span class="n" data-catcount="culture"></span></button>
+<button class="pchip" type="button" data-cat="outdoor" aria-pressed="false"><span class="cn">户外观景</span><span class="en">Outdoor</span><span class="n" data-catcount="outdoor"></span></button>
+<button class="pchip" type="button" data-cat="mall" aria-pressed="false"><span class="cn">商场</span><span class="en">Malls</span><span class="n" data-catcount="mall"></span></button>
 </div>
 </div>
 <div class="pcount" id="pcount" aria-live="polite"></div>
 
 <div class="pgroup" data-cat="arcade">
-<div class="bp-group-label" id="pg-arcade">🎮 <span class="cn">电玩 · 亲子游乐</span><span class="en">Arcades &amp; Family Fun</span><span class="gn" data-groupcount="arcade"></span></div>
+<div class="bp-group-label" id="pg-arcade"><span class="cn">电玩 · 亲子游乐</span><span class="en">Arcades &amp; Family Fun</span><span class="gn" data-groupcount="arcade"></span></div>
 
 <div class="rcard" data-cat="arcade">
 <div class="galwrap">
@@ -980,7 +987,7 @@
 </div>
 
 <div class="pgroup" data-cat="culture">
-<div class="bp-group-label" id="pg-culture">🏛 <span class="cn">文化古迹</span><span class="en">Culture &amp; Heritage</span><span class="gn" data-groupcount="culture"></span></div>
+<div class="bp-group-label" id="pg-culture"><span class="cn">文化古迹</span><span class="en">Culture &amp; Heritage</span><span class="gn" data-groupcount="culture"></span></div>
 
 <div class="rcard" data-cat="culture">
 <div class="galwrap">
@@ -1028,7 +1035,7 @@
 </div>
 
 <div class="pgroup" data-cat="outdoor">
-<div class="bp-group-label" id="pg-outdoor">🏖 <span class="cn">户外观景</span><span class="en">Outdoors &amp; Views</span><span class="gn" data-groupcount="outdoor"></span></div>
+<div class="bp-group-label" id="pg-outdoor"><span class="cn">户外观景</span><span class="en">Outdoors &amp; Views</span><span class="gn" data-groupcount="outdoor"></span></div>
 
 <div class="rcard" data-cat="outdoor">
 <div class="galwrap">
@@ -1054,7 +1061,7 @@
 </div>
 
 <div class="pgroup" data-cat="mall">
-<div class="bp-group-label" id="pg-mall">🛍 <span class="cn">购物商场</span><span class="en">Shopping Malls</span><span class="gn" data-groupcount="mall"></span></div>
+<div class="bp-group-label" id="pg-mall"><span class="cn">购物商场</span><span class="en">Shopping Malls</span><span class="gn" data-groupcount="mall"></span></div>
 
 <div class="rcard" data-cat="mall">
 <div class="galwrap">

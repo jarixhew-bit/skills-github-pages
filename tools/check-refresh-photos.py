@@ -143,8 +143,11 @@ mod = load()
 scan = mod.pages([])
 check(all("japan-trip" not in p and "xiamen" not in p for p in scan),
       "已经走完的行程（日本、厦门）不该再被扫")
-check(any("penang-trip/index.html" in p for p in scan),
-      "还没出发的行程（槟城）要照常扫")
+# 不写死「槟城还没出发」：2026-10-17 槟城走完后，写死的断言一夜之间变红（时间炸弹）。
+# 改成校对「扫不扫」是否跟登记表一致——没走完的就该被扫，走完的就该被跳过。
+check(any("penang-trip/index.html" in p for p in scan)
+      == (not trips.is_over("penang-trip/index.html")),
+      "槟城手册扫不扫，要跟登记表的行程结束日一致（没走完照常扫，走完了就跳过）")
 # 边界：最后一天当天仍算进行中——那天大家正在用手册，破图最要命。
 # 日期写死在这里，不从登记表读：从表里读的话，表少了一行会变成 KeyError 崩掉，
 # 而不是干净地报「这本没登记」（2026-09-19 写这条自检时踩过）。
