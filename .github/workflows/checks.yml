@@ -33,6 +33,7 @@ jobs:
       ainote: ${{ steps.d.outputs.ainote }}
       declog: ${{ steps.d.outputs.declog }}
       flexstale: ${{ steps.d.outputs.flexstale }}
+      allocation: ${{ steps.d.outputs.allocation }}
       notify: ${{ steps.d.outputs.notify }}
       morningpos: ${{ steps.d.outputs.morningpos }}
       generated: ${{ steps.d.outputs.generated }}
@@ -132,6 +133,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: node tools/check-flex-stale.mjs
+
+  allocation:
+    name: 配置偏离检查
+    needs: decide
+    if: needs.decide.outputs.allocation == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet cryptography
+      - run: python3 tools/check-allocation.py --selftest
 
   notify:
     name: 出事通知器
@@ -421,7 +432,7 @@ jobs:
     # 这一串必须列满同一个文件里的每个 job：漏掉的那项红了总闸照样绿、分支保护会放行
     # （2026-08-17 发现 fund 与 news 从来没被列进来）。已由 check-workflows.py 的
     # check_gate 断言守着，加 job 忘了回头改这里会在 CI 上被挡下。
-    needs: [decide, html, secrets, pwa, swver, ainote, declog, flexstale, notify, morningpos, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, board, news, prices, weather, penangv3, fitness, flights, mapcoords, refreshphotos, photofilter, shortlist]
+    needs: [decide, html, secrets, pwa, swver, ainote, declog, flexstale, allocation, notify, morningpos, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, board, news, prices, weather, penangv3, fitness, flights, mapcoords, refreshphotos, photofilter, shortlist]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——

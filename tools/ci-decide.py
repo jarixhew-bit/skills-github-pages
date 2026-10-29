@@ -28,6 +28,9 @@ RULES = {
     "ainote":    ["trading/ai_note.py", "tools/check-ai-note.py"],
     "declog":    ["trading/analyzer.py", "tools/check-decision-log.py"],
     "flexstale": ["trading/index.html", "tools/check-flex-stale.mjs"],
+    # 配置偏离检查：政策、算法、跑它的 workflow，动到任何一个都要重验
+    "allocation": ["trading/allocation-policy.json", "tools/check-allocation.py",
+                   ".github/workflows/allocation-check.yml", "trading/analyzer.py"],
     "notify":    ["tools/ci-notify.py", "tools/check-ci-notify.py"],
     "morningpos": [".github/scripts/portfolio_news.py", "trading/analyzer.py",
                    "tools/check-morning-positions.py"],
