@@ -2352,3 +2352,15 @@ butler【6j】（同事改不动）。假故障验过：切投递箱不写、送
 - `monthTxs()` 改比 `t.date.slice(0,7)` 字串（美洲时区下 1 号会掉到上个月）；库存分享日期改用 `today()`。
 - 自检：`check-expense-company.mjs`【39】20 项，旧代码跑 16 红（假红验证过）。
 - 顺带修两个读早了的旧自检（check-all 并行时假红）：staff「开页面清单空→自动补回」、inventory「钥匙闸门已经放行」改成等条件。
+
+## 一键备份与恢复（2026-10-29，用户：「做一键备份恢复」）
+- 设置页「备份与恢复」摆在「云端同步」正下方，**不收进更多设置**（要用的时候多半是出事的时候）。
+  `downloadBackup()`：文件 `expense-backup-YYYY-MM-DD.json`＝`{app:'expense-tracker', format:1, exportedAt, build, counts, data}`。
+  手机（maxTouchPoints>0 且 canShare files）走 `navigator.share`（iPhone 主屏 App 里 a[download] 常只开预览）；
+  分享按取消不算备份过；其余直接下载。**文件名只用 ASCII**：中文名在 Chromium 下载里被换成「download」（实测）。
+- `restoreFromFile()`：一律走 `mergeData`（合并）——现有的不删、丢的加回、墓碑照样生效；先 confirm 说出会加回几笔。
+  `parseBackupText()` 也认没外壳的整本账（云端 payload、`expenseTracker_v2_corrupt_*` 原文）。刻意**不做整本覆盖**。
+- 首页 `#ov-backup-nudge`：记录 ≥10 笔且从没备份/超过 30 天才出现；「稍后」＝7 天（`expenseTracker_backupSnooze`）；
+  上次备份时间 `expenseTracker_lastBackup`。开机 `requestPersistentStorage()`（navigator.storage.persist）。
+- 同事版的概览/设置 tab 都被 build 脚本切掉，元素不存在，函数开头都判空，所以同事版没有这块。
+- 自检 `check-expense-company.mjs`【40】20 项（旧代码在第二项就红）。

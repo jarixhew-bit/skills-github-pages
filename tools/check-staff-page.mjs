@@ -1608,6 +1608,10 @@ if (want()) {
   ok('删除也带钥匙（服务端要验这笔是不是他记的）', del.token === SERYI_KEY, del.token);
   ok('本机那条也删掉了',
      (await page.evaluate(() => data.transactions.some(t => t.id === 't_sent'))) === false);
+  // 请求被拦下≠回应已处理完：机器忙时清队列那步还没跑到（2026-10-29 check-all 并行时假红），等条件
+  await until(() => page.evaluate(() =>
+    JSON.parse(localStorage.getItem('staffExpense_bossDelQueue') || '[]').length === 0),
+    { what: '删除队列清空' }).catch(() => {});
   ok('送出去之后队列清空',
      (await page.evaluate(() =>
        JSON.parse(localStorage.getItem('staffExpense_bossDelQueue') || '[]'))).length === 0);
