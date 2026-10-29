@@ -368,11 +368,11 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
 
 ## 配置偏离检查（2026-10-29 建）
 
-政策：VOO 80% / IBIT 20%（只算两者占比，SGOV 当现金缓冲不计入），偏离目标超过 ±5 个百分点
+政策：标普一边 80% / IBIT 20%（只算两边占比，SGOV 当现金缓冲/大跌子弹不计入）。**标普一边 = VOO+CSPX+VUAA 市值合计**（`allocation-policy.json` 的 `members` 列代码；CSPX、VUAA 是爱尔兰上市、伦敦交易、美元计价的同指数 ETF，用户换仓用）。缺失只在「三者都没有」或 IBIT 没有时才判，偏离目标超过 ±5 个百分点
 才需再平衡，新钱优先买低配。**政策只放 `trading/allocation-policy.json`（目标，无任何数量或金额）**。
 
 - 算法＋自检：`tools/check-allocation.py`。纯函数 `evaluate()` 回 ok / breach / missing；
-  `python3 tools/check-allocation.py --selftest`（手算用例：18.2% 在范围、26%/14% 超限、
+  `python3 tools/check-allocation.py --selftest`（含 VOO+CSPX 混持、只有 CSPX/VUAA、三者全无判缺失；手算用例：18.2% 在范围、26%/14% 超限、
   恰好 5 个百分点算在范围内、缺 VOO 或 IBIT 判缺失；另含 SGOV 不计入、错密码判缺失、
   用真加密函数造假 `data-private.enc` 的端到端、通知文案不含任何数字）。已登记 `check-all.py`
   （名字 `allocation`）与 `checks.yml`／`ci-decide.py`。
@@ -387,3 +387,29 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
   缺失而不是通过；但 IBIT 值为 0（清仓）是真实状态，判超限。(3) 浮点：恰好 5 个百分点
   （如 25% 对 20%）算出来可能是 0.05000000000000002，比较时带了 1e-9 容差。
   (4) 改了政策的 band/目标，自检里第 8 项会因为数值对不上而红，要同步改自检。
+- **CSPX 的 symbol（2026-10-29 判断，未实测）**：持仓 symbol 取自 Flex `OpenPosition` 的 `symbol` 属性
+  （`trading/flex_account.py`），IBKR 对伦敦 ETF 的该属性就是裸代码 `CSPX`／`VUAA`（交易所在另一个
+  `listingExchange` 字段，不进 symbol），所以政策直接写这两个代码。**两个疑虑**：(1) 若实际带后缀或
+  大小写不同，会被判「标普一边缺失」开缺数据 issue——到时把真实 symbol 补进 `members`；(2) CSPX／VUAA
+  不在 `trading/universe.json`，`analyzer.py` 对「持仓但无历史」的标的按**成本价**估市值（并发 warning），
+  所以换仓后标普一边的市值是成本而非市价，占比会略失真；要准就把它们加进 universe 并回填历史（Yahoo
+  `CSPX.L` 之类，是 LSE 价格，币种须确认为 USD）。
+
+## 大跌开枪提醒（2026-10-29 建）
+
+用户把 SGOV 当大跌子弹。规则：VOO 收盘价较**过去 252 个交易日最高收盘价**跌 ≥20% → 一级提醒
+（卖一半 SGOV 买入）；≥30% → 二级（卖剩下一半）；回到 <15% 才解除（15%~20% 保持原状，防抖）。
+
+- 算法＋自检：`tools/check-drawdown.py`（纯函数 `evaluate(closes, prev)`＋`--selftest`），登记
+  `check-all.py`（名字 `drawdown`）与 `checks.yml`／`ci-decide.py`。行情读 `trading/history/VOO.json`
+  的收盘价（第 5 列），不足 252 根用现有全部并在正文注明；少于 20 根、含非法价、或最后一根离今天
+  超过 10 天判「行情缺失」另开 issue。
+- 定期跑：`.github/workflows/drawdown-check.yml`，周一至五 UTC 22:30（trading-daily 末班 21:00 之后），
+  可手动触发。**不提交状态文件**：上一状态 = 有没有开着的同名 issue（二级 issue 开着=2，一级开着=1）。
+  读 issue 失败时整轮罢工（退出码 1），不能当「没有」，否则回落区间里会误关提醒。
+- 级别 → issue：level≥1 时一级 issue（标题「大跌一级提醒…」）开着，level=2 时二级 issue（标题不同，
+  所以能在一级之后再开一次）也开着；回到 <15% 两个自动关。一步跌穿 30% 两个一起开。二级之后回到
+  20%~30% 之间保持二级，直到 <15% 才全解除。
+- 公开仓库铁则：提醒只写 VOO 跌幅百分比与日期（公开行情）；脚本不读持仓，**文案不得出现持仓数量、
+  金额、SGOV 余额**，自检逐字拦（去掉跌幅／日期后文案里不许再有任何数字）。
+- 坑：恰好 20%／30% 要触发，比较带 1e-9 容差；改阈值要同步改自检。

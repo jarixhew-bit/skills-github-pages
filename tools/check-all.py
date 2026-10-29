@@ -52,6 +52,7 @@ CHECKS = [
     # 不吃 http server：它直接读 index.html 把函数抠出来跑，不开浏览器
     ("flexstale", ["node", "tools/check-flex-stale.mjs"], False),
     ("allocation", ["python3", "tools/check-allocation.py", "--selftest"], False),
+    ("drawdown", ["python3", "tools/check-drawdown.py", "--selftest"], False),
     ("notify", ["python3", "tools/check-ci-notify.py"], False),
     ("morningpos", ["python3", "tools/check-morning-positions.py"], False),
     ("generated", ["python3", "tools/check-generated.py"], False),

@@ -31,6 +31,9 @@ RULES = {
     # 配置偏离检查：政策、算法、跑它的 workflow，动到任何一个都要重验
     "allocation": ["trading/allocation-policy.json", "tools/check-allocation.py",
                    ".github/workflows/allocation-check.yml", "trading/analyzer.py"],
+    # 大跌开枪提醒：规则、行情档、跑它的 workflow、通知器
+    "drawdown":  ["tools/check-drawdown.py", ".github/workflows/drawdown-check.yml",
+                  "trading/history/VOO.json", "tools/ci-notify.py"],
     "notify":    ["tools/ci-notify.py", "tools/check-ci-notify.py"],
     "morningpos": [".github/scripts/portfolio_news.py", "trading/analyzer.py",
                    "tools/check-morning-positions.py"],
