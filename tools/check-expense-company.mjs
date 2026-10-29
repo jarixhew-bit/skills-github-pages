@@ -4431,6 +4431,101 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   await ctx.close();
 }
 
+// ---------- 【42】搜索所有月份＋近 6 个月趋势（2026-10-29） ----------
+{
+  console.log('\n【42】搜索（跨月、多词、金额、清除）＋近 6 个月支出趋势（手算对得上、点柱子换月、点分类看走势）');
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  page.on('dialog', d => d.accept());
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.evaluate(() => {
+    data.accounts.push({ id:'acc_s', name:'搜索测试', currency:'USD', color:'#3b82f6', createdAt: Date.now() });
+    data.accounts.push({ id:'acc_o', name:'别的账户', currency:'USD', color:'#999', createdAt: Date.now() });
+    data.currentAccountId = 'acc_s';
+    const T = (id, date, amount, categoryId, description, type='expense', accountId='acc_s') =>
+      ({ id, accountId, type, amount, categoryId, description, date, updatedAt: 1 });
+    data.transactions = [
+      T('a1','2026-05-03', 120, 'cat_food', '老板午餐 BBQ'),
+      T('a2','2026-06-10', 80, 'cat_food', '晚餐'),
+      T('a3','2026-07-15', 45.5, 'cat_transport', 'Grab 去机场'),
+      T('a4','2026-08-01', 200, 'cat_food', '老板晚餐'),
+      T('a5','2026-08-20', 30, 'cat_transport', 'Grab'),
+      T('a6','2026-10-02', 60, 'cat_food', '午餐'),
+      T('a7','2026-10-05', 1000, 'cat_salary', '工资', 'income'),
+      T('a8','2026-03-01', 999, 'cat_food', '6 个月以前的老板饭'),
+      T('o1','2026-10-03', 77, 'cat_food', '老板 别的账户', 'expense', 'acc_o'),
+    ];
+    saveData(); switchTab('transactions');
+  });
+  const search = async (q) => { await page.fill('#tx-search', q); await page.waitForTimeout(80); };
+  const names = () => page.$$eval('#tx-list .tx-name', els => els.map(e => e.textContent.trim()));
+  const sumTxt = () => page.textContent('#tx-search-sum');
+
+  await search('老板');
+  let n = await names();
+  ok('★搜「老板」跨月找到 3 笔（5 月、8 月、3 月），新的在前', n.length === 3 && n[0].includes('老板晚餐') && n[2].includes('6 个月以前'), n);
+  ok('对照组：别的账户里的「老板」不算', !n.some(x => x.includes('别的账户')), n);
+  ok('★合计写对（120+200+999=1319）', (await sumTxt()).includes('3 笔') && (await sumTxt()).includes('1319.00'), await sumTxt());
+  ok('搜索时月份选择器藏起来', !(await page.locator('#tx-month-picker').isVisible()));
+  await search('grab 机场');
+  n = await names();
+  ok('★多个词要同时对上（不分大小写）', n.length === 1 && n[0].includes('机场'), n);
+  await search('45.50');
+  n = await names();
+  ok('★按金额搜（45.50 找到 45.5 那笔）', n.length === 1 && n[0].includes('机场'), n);
+  await search('交通');
+  const tCat = await page.evaluate(() => (getCat('cat_transport')||{}).name);
+  await search(tCat);
+  ok('★按类别名搜', (await names()).length === 2, { tCat, n: await names() });
+  await page.evaluate(() => setTxFilter('income', document.querySelectorAll('.filter-btn')[2]));
+  await search('工资');
+  ok('「收入」筛选在搜索时照样生效', (await names()).length === 1);
+  await search('午餐');
+  ok('对照组：收入筛选下搜「午餐」找不到支出', (await names()).length === 0 && (await page.textContent('#tx-list')).includes('没有对得上'));
+  await page.evaluate(() => setTxFilter('all', document.querySelectorAll('.filter-btn')[0]));
+  await page.click('#tx-search-clear');
+  await page.waitForTimeout(80);
+  ok('★按 ✕ 清除：回到按月清单、月份选择器回来', await page.inputValue('#tx-search') === ''
+     && await page.locator('#tx-month-picker').isVisible() && !(await page.locator('#tx-search-sum').isVisible()));
+
+  // 趋势
+  await page.evaluate(() => { state.anYear = 2026; state.anMonth = 9; state.anTrendCat = null; switchTab('analytics'); renderAnalytics(); });
+  const bars = () => page.$$eval('#an-trend .trend-col', els => els.map(e => ({ lbl: e.querySelector('.trend-lbl').textContent,
+    val: e.querySelector('.trend-val').textContent, h: parseInt(e.querySelector('.trend-bar').style.height), cur: e.classList.contains('cur') })));
+  let b = await bars();
+  ok('★6 根柱子：5 月到 10 月，10 月是当前', b.length === 6 && b[0].lbl === '5月' && b[5].lbl === '10月' && b[5].cur && !b[0].cur, b.map(x=>x.lbl));
+  // 手算：5月120 6月80 7月45.5 8月230 9月0 10月60（收入不算；3 月那笔在窗口外）
+  ok('★每月金额手算对得上', b.map(x=>x.val).join() === 'US$120,US$80,US$46,US$230,—,US$60', b.map(x=>x.val));
+  ok('最高那个月柱子最高（8 月）', b[3].h === Math.max(...b.map(x=>x.h)) && b[4].h <= 2, b.map(x=>x.h));
+  ok('上个月没支出时写明', (await page.textContent('#an-trend-sub')).includes('上个月没有支出'), await page.textContent('#an-trend-sub'));
+  await page.click('#an-trend .trend-col >> nth=3');
+  ok('★点 8 月那根柱子，统计切到 8 月', await page.evaluate(() => state.anMonth) === 7
+     && (await page.textContent('#an-month-text')).includes('8'));
+  b = await bars();
+  ok('切到 8 月后窗口是 3 月到 8 月，3 月那笔进来了', b[0].lbl === '3月' && b[0].val === 'US$999' && b[5].cur, b.map(x=>x.lbl+x.val));
+  const sub8 = await page.textContent('#an-trend-sub');
+  ok('★比上个月：8 月 230 vs 7 月 45.5 → 多 405%', sub8.includes('多 405%'), sub8);
+  // 点分类只看那一类
+  const foodRow = page.locator('#cat-bars .cat-bar-row').filter({ hasText: await page.evaluate(() => getCat('cat_food').name) });
+  await foodRow.first().click();
+  b = await bars();
+  ok('★点「餐饮」：趋势只算这一类（3~8 月：999,0,120,80,0,200）', b.map(x=>x.val).join() === 'US$999,—,US$120,US$80,—,US$200', b.map(x=>x.val));
+  ok('标题写出看的是哪一类，有「看全部」', (await page.textContent('#an-trend-title')).includes(await page.evaluate(() => getCat('cat_food').name))
+     && await page.locator('#an-trend-reset').isVisible());
+  await page.click('#an-trend-reset');
+  b = await bars();
+  ok('对照组：按「看全部」回到全部支出', b[5].val === 'US$230' && !(await page.locator('#an-trend-reset').isVisible()), b.map(x=>x.val));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

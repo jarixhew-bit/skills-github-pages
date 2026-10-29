@@ -2375,3 +2375,13 @@ butler【6j】（同事改不动）。假故障验过：切投递箱不写、送
 - **首页固定开销提醒**：`#ov-recurring-nudge`，`dueRecurring()`＝本月还没录的、**非公司账户**的项目
   （`pushRecurringTx` 不会送进公司账本）；可单项「录入」或「全部录入」，判重沿用 recurId＋当月。
 - 自检 `check-expense-company.mjs`【41】16 项（旧代码第 2 项起红）。
+
+## 搜索＋近 6 个月趋势（2026-10-29，用户：「做搜索加趋势图」）
+- **搜索**：明细页 `#tx-search`（placeholder 带 `data-en-ph`，同事版自动换英文）。有字时 `renderTxList()` 改走
+  `renderTxSearch()`：当前账户**所有月份**，空格分词 AND，比对描述/类别名/日期/金额（`toFixed(2)` 与原值都算）/公司类别英文；
+  「全部/支出/收入」照样生效；藏月份选择器；`#tx-search-sum` 写笔数与合计；最多列最新 200 笔。文案走 `L(zh,en)`（同事版有 tt）。
+- **趋势**：统计页 `#an-trend-card`，`trendMonths()`＝以当前统计月为终点的 6 个月支出（按 `monthTxs` 字串月份），
+  纯 HTML 柱子（单系列只用主色，当前月实心）。点柱子 `goTrendMonth()` 换月；点分类条 `setTrendCat()` 只看那一类、
+  「看全部 ✕」还原。副标题：比上月 ±%、有花钱月份的平均。
+- `renderAnalytics()` 里 `new Chart` 前加了 `typeof Chart` 判断：CDN 没载到时原本直接抛错，分类条也不画。
+- 自检 `check-expense-company.mjs`【42】21 项（手算 fixture）。

@@ -251,6 +251,21 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
 .filter-row{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;
   scrollbar-width:none;padding-bottom:4px}
 .filter-row::-webkit-scrollbar{display:none}
+.tx-search{position:relative;margin-bottom:12px}
+.tx-search input{width:100%;padding-right:36px}
+.tx-search-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:none;
+  font-size:16px;color:var(--sub);cursor:pointer;padding:6px 8px}
+.tx-search-sum{font-size:12px;color:var(--sub);margin:-4px 2px 10px}
+.trend{display:flex;align-items:flex-end;gap:6px;height:150px;margin-top:4px}
+.trend-col{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-end;cursor:pointer;border:none;background:none;padding:0;color:inherit;font:inherit}
+.trend-bar{width:70%;max-width:36px;border-radius:4px 4px 0 0;background:var(--p);opacity:.35;min-height:2px}
+.trend-col.cur .trend-bar{opacity:1}
+.trend-val{font-size:10px;color:var(--sub);margin-bottom:3px;white-space:nowrap}
+.trend-col.cur .trend-val{color:var(--text,inherit);font-weight:600}
+.trend-lbl{font-size:11px;color:var(--sub);margin-top:4px}
+.trend-col.cur .trend-lbl{color:var(--p);font-weight:600}
+.cat-bar-row{cursor:pointer}
 .filter-btn{flex-shrink:0;padding:6px 14px;border-radius:20px;font-size:13px;
   border:1.5px solid var(--border);background:#fff;cursor:pointer;
   color:var(--sub);font-weight:500;transition:.15s}
@@ -588,6 +603,16 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
     <button class="filter-btn" onclick="setTxFilter('expense',this)">支出</button>
     <button class="filter-btn" onclick="setTxFilter('income',this)">收入</button>
   </div>
+  <!-- 搜索（2026-10-29 用户要的）：原本只能一个月一个月翻。有字时搜这个账户**所有月份**，
+       描述、类别、金额、日期都算；上面的「全部/支出/收入」照样生效；月份选择器先藏起来。 -->
+  <div class="tx-search">
+    <input class="form-input" id="tx-search" type="search" autocomplete="off"
+      placeholder="🔍 搜索描述、类别、金额（所有月份）" data-en-ph="🔍 Search note, category, amount (all months)"
+      oninput="onTxSearch(this.value)">
+    <button class="tx-search-clear" id="tx-search-clear" style="display:none" aria-label="清除搜索"
+      onclick="clearTxSearch()">✕</button>
+  </div>
+  <div id="tx-search-sum" class="tx-search-sum" style="display:none"></div>
   <div id="tx-list" class="tx-list"></div>
 </div>
 
@@ -612,9 +637,20 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       <div class="sum-box-val" id="an-net" style="color:var(--p)">—</div>
     </div>
   </div>
+  <!-- 近 6 个月支出趋势（2026-10-29）：单一系列，只用主色；当前月份实心、其余淡色。
+       点柱子切到那个月；点下面的分类只看那一类的走势。 -->
+  <div class="card" id="an-trend-card">
+    <div class="sec-hdr" style="margin-bottom:4px">
+      <div class="sec-title" id="an-trend-title">近 6 个月支出</div>
+      <div class="sec-link" id="an-trend-reset" style="display:none" onclick="setTrendCat(null)">看全部 ✕</div>
+    </div>
+    <div id="an-trend-sub" style="font-size:12px;color:var(--sub)"></div>
+    <div id="an-trend" class="trend" role="list"></div>
+  </div>
   <div class="card">
     <div class="sec-hdr" style="margin-bottom:12px">
       <div class="sec-title">支出分类</div>
+      <div class="sec-link" style="color:var(--sub);cursor:default">点分类看走势</div>
     </div>
     <div class="chart-wrap"><canvas id="pie-chart"></canvas></div>
     <div id="cat-bars" class="cat-bars"></div>
@@ -2702,8 +2738,128 @@ function emptyListCloudHint(){
     + '若你平常用的是另一个 Google 帐号，请在设置里退出、换那个帐号登录。');
 }
 
+// ===================== 搜索（2026-10-29） =====================
+function L(zh, en){ return typeof tt === 'function' ? tt(zh, en) : zh; }   // 同事版有中英切换
+function onTxSearch(v){
+  state.txSearch = String(v || '');
+  renderTxList();
+}
+function clearTxSearch(){
+  const el = document.getElementById('tx-search');
+  if(el) el.value = '';
+  onTxSearch('');
+}
+/** 空格分开的每个词都要对上（AND）；比对描述、类别名、日期、金额（5、5.5、5.50 都对得上） */
+function txMatches(t, words){
+  const cat = getCat(t.categoryId);
+  const amt = Number(t.amount);
+  const hay = [t.description||'', cat ? cat.name : '', t.date||'',
+    isFinite(amt) ? amt.toFixed(2) : '', isFinite(amt) ? String(amt) : '',
+    t.company && t.company.categoryEn || ''].join(' ').toLowerCase();
+  return words.every(w => hay.includes(w));
+}
+function searchTxs(accId, q, type){
+  const words = String(q||'').toLowerCase().split(/\s+/).filter(Boolean);
+  if(!words.length) return [];
+  return data.transactions.filter(t => t.accountId===accId && (type==='all' || t.type===type) && txMatches(t, words));
+}
+const SEARCH_SHOW_MAX = 200;
+function renderTxSearch(acc){
+  const el = document.getElementById('tx-list');
+  const sum = document.getElementById('tx-search-sum');
+  const hits = sortNewestFirst(searchTxs(acc.id, state.txSearch, state.txFilter||'all'));
+  const exp = Math.round(hits.filter(t=>t.type==='expense').reduce((s,t)=>s+(Number(t.amount)||0),0)*100)/100;
+  const inc = Math.round(hits.filter(t=>t.type==='income').reduce((s,t)=>s+(Number(t.amount)||0),0)*100)/100;
+  if(sum){
+    sum.style.display = '';
+    const parts = [L(`找到 ${hits.length} 笔`, `${hits.length} found`)];
+    if(exp) parts.push(L(`支出合计 ${fmt(exp, acc.currency)}`, `spent ${fmt(exp, acc.currency)}`));
+    if(inc) parts.push(L(`收入合计 ${fmt(inc, acc.currency)}`, `received ${fmt(inc, acc.currency)}`));
+    if(hits.length > SEARCH_SHOW_MAX) parts.push(L(`只列最新 ${SEARCH_SHOW_MAX} 笔`, `showing newest ${SEARCH_SHOW_MAX}`));
+    sum.textContent = parts.join(' · ');
+  }
+  if(!hits.length){
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div>
+      <div class="empty-text">${escHtml(L('所有月份都没有对得上的记录', 'Nothing matches in any month'))}</div></div>`;
+    return;
+  }
+  const groups = {};
+  hits.slice(0, SEARCH_SHOW_MAX).forEach(t=>{ (groups[t.date]||(groups[t.date]=[])).push(t); });
+  el.innerHTML = Object.entries(groups).sort((a,b)=>String(b[0]).localeCompare(String(a[0])))
+    .map(([date,list])=>`<div class="tx-group-date">${escHtml(date)}</div>${list.map(t=>txHtml(t,acc.currency)).join('')}`).join('');
+}
+
+// ===================== 近 6 个月趋势（2026-10-29） =====================
+function trendMonths(accId, year, month, catId){
+  const out = [];
+  for(let k=5;k>=0;k--){
+    let y = year, m = month - k;
+    while(m < 0){ m += 12; y--; }
+    const txs = monthTxs(accId, y, m).filter(t=>t.type==='expense' && (!catId || t.categoryId===catId));
+    out.push({ y, m, total: Math.round(txs.reduce((s,t)=>s+(Number(t.amount)||0),0)*100)/100 });
+  }
+  return out;
+}
+function setTrendCat(id){
+  state.anTrendCat = (id && state.anTrendCat !== id) ? id : null;
+  renderAnalytics();
+  if(state.anTrendCat){
+    const card = document.getElementById('an-trend-card');
+    if(card && card.scrollIntoView) card.scrollIntoView({ block:'start', behavior:'smooth' });
+  }
+}
+function goTrendMonth(y, m){
+  state.anYear = y; state.anMonth = m;
+  renderAnalytics();
+}
+function renderTrend(acc){
+  const box = document.getElementById('an-trend');
+  if(!box) return;
+  const cat = state.anTrendCat ? getCat(state.anTrendCat) : null;
+  if(state.anTrendCat && !cat) state.anTrendCat = null;
+  const months = trendMonths(acc.id, state.anYear, state.anMonth, state.anTrendCat);
+  const max = Math.max(...months.map(x=>x.total), 0);
+  const short = (v)=> v >= 10000 ? (v/1000).toFixed(0)+'k' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(0);
+  box.innerHTML = months.map((x,i)=>{
+    const h = max > 0 ? Math.max(2, Math.round(x.total / max * 110)) : 2;
+    const cur = i === months.length - 1;
+    const full = `${x.y} 年 ${x.m+1} 月：${fmt(x.total, acc.currency)}`;
+    return `<button type="button" class="trend-col${cur?' cur':''}" role="listitem" title="${escHtml(full)}"
+        aria-label="${escHtml(full)}" onclick="goTrendMonth(${x.y},${x.m})">
+      <span class="trend-val">${x.total ? escHtml(symOf(acc.currency)+short(x.total)) : '—'}</span>
+      <span class="trend-bar" style="height:${h}px"></span>
+      <span class="trend-lbl">${x.m+1}月</span>
+    </button>`;
+  }).join('');
+  const title = document.getElementById('an-trend-title');
+  if(title) title.textContent = cat ? `近 6 个月：${cat.icon} ${cat.name}` : '近 6 个月支出';
+  const reset = document.getElementById('an-trend-reset');
+  if(reset) reset.style.display = cat ? '' : 'none';
+  const sub = document.getElementById('an-trend-sub');
+  if(sub){
+    const now = months[5].total, prev = months[4].total;
+    const used = months.filter(x=>x.total>0);
+    const avg = used.length ? used.reduce((s,x)=>s+x.total,0) / used.length : 0;
+    let line;
+    if(prev > 0){
+      const pct = Math.round((now - prev) / prev * 100);
+      line = pct === 0 ? '跟上个月一样' : `比上个月${pct>0?'多':'少'} ${Math.abs(pct)}%`;
+    } else line = now > 0 ? '上个月没有支出' : '这个月还没有支出';
+    if(used.length >= 2) line += ` · 有花钱的月份平均 ${fmt(avg, acc.currency)}`;
+    sub.textContent = line;
+  }
+}
+
 function renderTxList(){
   const acc = curAcc(); if(!acc) return;
+  const searching = !!String(state.txSearch||'').trim();
+  const mp = document.getElementById('tx-month-picker');
+  if(mp) mp.style.display = searching ? 'none' : '';
+  const clr = document.getElementById('tx-search-clear');
+  if(clr) clr.style.display = searching ? '' : 'none';
+  if(searching){ renderTxSearch(acc); return; }
+  const sumEl = document.getElementById('tx-search-sum');
+  if(sumEl) sumEl.style.display = 'none';
   document.getElementById('tx-month-text').textContent = monthName(state.txYear, state.txMonth);
   let txs = monthTxs(acc.id, state.txYear, state.txMonth);
   if(state.txFilter!=='all') txs = txs.filter(t=>t.type===state.txFilter);
@@ -2766,6 +2922,7 @@ function renderAnalytics(){
   const netEl = document.getElementById('an-net');
   netEl.textContent = fmt(Math.abs(net), acc.currency);
   netEl.style.color = net>=0?'var(--inc)':'var(--exp)';
+  renderTrend(acc);
 
   // Category breakdown (expense)
   const expTxs = txs.filter(t=>t.type==='expense');
@@ -2785,7 +2942,8 @@ function renderAnalytics(){
     document.getElementById('cat-bars').innerHTML = `<div class="empty" style="padding:20px 0"><div class="empty-icon">📊</div><div class="empty-text">本月暂无支出记录</div></div>`;
     return;
   }
-  state.pieChart = new Chart(ctx, {
+  // 图表库是从 CDN 载的：没网/被挡时 Chart 不存在，原本这里直接抛错，下面的分类条也跟着不画了
+  if(typeof Chart !== 'undefined') state.pieChart = new Chart(ctx, {
     type:'doughnut',
     data:{
       labels: sorted.map(s=>s.cat?s.cat.name:'未分类'),
@@ -2809,7 +2967,8 @@ function renderAnalytics(){
     const color = s.cat?s.cat.color:'#ccc';
     const name = s.cat?s.cat.name:'未分类';
     const icon = s.cat?s.cat.icon:'❓';
-    return `<div class="cat-bar-row">
+    const sel = state.anTrendCat === (s.cat ? s.cat.id : null) && state.anTrendCat ? ' style="outline:2px solid var(--p);outline-offset:3px;border-radius:6px"' : '';
+    return `<div class="cat-bar-row"${sel} onclick="setTrendCat('${escJsArg(s.cat ? s.cat.id : '')}')">
       <div class="cat-bar-info">
         <span>${icon} ${name}</span>
         <span>${fmt(s.total, acc.currency)} <span class="cat-bar-pct">${pct}%</span></span>
