@@ -503,3 +503,15 @@ role 那道闸，管理员的码当场进了网址）；Android 主屏 App 跟�
 - 一段话变行程：AI 没起名改用 `autoTripFill`（不再写死「新行程」）；**正展开那一趟有日期范围、
   这段话的日期全落在外面 → 另开一趟**，不塞进去。日期在范围内照旧加进那一趟。
 - 自检 `check-boss-2` 场景三十二c（含三组对照）。
+
+## 新账单摆在「今天」最上面＋账单未读 Telegram 提醒＋牙医一键 WhatsApp（2026-10-29）
+起因：老板 10/17 之后 12 天没开 App，马来西亚账单没人看；通知他没开（iOS 要本人按）。
+- **新账单卡**：`unreadBills()`（feed.bills 里没有 readAt 的，新的在前，最多 3 份）→ `newBillsCardHtml()` 摆在
+  `renderToday()` 最上面，`#new-bills-card`，一点 `openBill()`。有这张卡时空态底下的 `latestBillCardHtml` 不再重复。
+  viewer 打开时本机先把 `readAt` 记上并重画（后端那次 bill 请求也会写）；**admin 打开不算老板看过**，卡上多一句「老板还没看」。
+- **Telegram 提醒 YANG**：butler-bot `src/cron/bill_nudge.js`，每天金边 10:00 那一轮；没看过的账单放满 3 天提一次、
+  之后每 3 天一次（按当地日期算天数）；不写任何文件。自检 `tests/boss-bill-nudge.test.mjs`。
+- **牙医 WhatsApp**：`dentalWaBtnHtml()` 在牙医卡底部，`wa.me/<bookWa>?text=…`（消息写好：请帮我约＋上次几号＋按间隔大约几号；
+  已约好则变「改时间」）。号码 `dental.bookWa` 由管理页 `#admin-dental-wa` 填，只留数字 8~15 位，空＝wa.me 不带号码让他自己挑。
+  ⚠️ `dentalSave` 是整份覆写，`adminSaveDental()` 必须带 bookWa（「去了」那一键也走这里）。
+- 自检 `check-boss-2.mjs` 场景三十七/三十七b/三十八/三十八b；场景三十六改成账单全标看过（只量最近一份那张卡）。

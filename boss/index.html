@@ -101,6 +101,10 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .dental-overdue{color:var(--danger)}
 .dental-note{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);
   color:var(--sub);font-size:13px}
+/* 「WhatsApp 请我们帮你约」：整条宽的按钮，手指好按（2026-10-29） */
+.dental-wa-btn{display:block;margin-top:12px;padding:11px 14px;border-radius:10px;text-align:center;
+  background:#25D366;color:#fff;font-weight:600;font-size:14.5px;text-decoration:none}
+.dental-wa-btn:active{opacity:.85}
 .empty-icon{font-size:38px;margin-bottom:10px}
 .empty-next{margin-top:10px;font-size:13.5px;color:var(--p);font-weight:600}
 
@@ -202,6 +206,10 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .bill-icon,.tbill-icon{font-size:22px;flex:none}
 .bill-info,.tbill-info{flex:1;min-width:0}
 .bill-title,.tbill-title{font-size:14.5px;font-weight:600}
+/* 「今天」最上面那张新账单卡（2026-10-29） */
+.tbill-new-pill{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:9px;background:var(--gold);
+  color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
+.tbill-admin-note{font-size:12px;color:var(--sub)}
 .bill-sub,.tbill-sub{font-size:12.5px;color:var(--sub);margin-top:2px}
 /* 金额是老板打开这一屏最想看到的东西，字要够大、够显眼 */
 .bill-amt{font-size:19px;font-weight:800;color:var(--text);margin-top:3px;letter-spacing:.2px}
@@ -1456,7 +1464,10 @@ function renderToday(){
   const todayItems = all.filter(it => it.date === todayIso);
   const tomorrowItems = all.filter(it => it.date === tomorrowIso);
 
-  let html = `<div class="sec-hdr"><span class="sec-title">${bl('今天','Today')}</span>${shareDayBtnHtml(todayIso)}</div>`;
+  // 还没看的账单摆在最上面（2026-10-29）：他打开 App 几乎只看「今天」，账单要切到另一页才看得到
+  const newBills = unreadBills();
+  let html = newBillsCardHtml(newBills);
+  html += `<div class="sec-hdr"${newBills.length ? ' style="margin-top:20px"' : ''}><span class="sec-title">${bl('今天','Today')}</span>${shareDayBtnHtml(todayIso)}</div>`;
   const todayBody = todaySectionBodyHtml(todayIso, todayItems);
   if(todayBody !== null){
     html += todayBody;
@@ -1472,7 +1483,8 @@ function renderToday(){
     // 空态不该真的是空的：这一屏是老板的默认首屏，今天没安排时他看到的原本是
     // 一句「今天没有安排的行程」——全 App 最没用的一屏，而它正是第一眼。
     // 底下补一条最近的账单，一点就打开。他打开这个 App 十次有八次是为了那个数字。
-    html += latestBillCardHtml();
+    // 最上面已经列了没看的账单时，这里不再重复同一份
+    if(!newBills.length) html += latestBillCardHtml();
   }
   // 今天谁请假紧跟在今天的行程后面（讲的是今天的事，不该跟牙医那些卡片混在一起）
   html += leaveTodayCardHtml();
@@ -1597,6 +1609,33 @@ function memoCardHtml(){
     <div class="memo-card">${rows}</div>`;
 }
 
+/** 还没被老板打开过的账单（readAt 是后端在老板打开那一刻写的），新的在前，最多 3 份。 */
+function unreadBills(){
+  return ((feedData && feedData.bills) || []).filter(b => b && !b.readAt)
+    .sort((a, b) => String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || ''))).slice(0, 3);
+}
+/**
+ * 「今天」最上面的新账单卡（2026-10-29 用户要的）。马来西亚那份 10/17 传的，到 10/29 还没被打开：
+ * 他几乎只看「今天」，账单在另一个分页，没开通知就不会知道有新的。
+ * 点一下直接打开那份。admin 预览时同一张卡多一句「老板还没看」，免得 YANG 以为是自己没看。
+ */
+function newBillsCardHtml(list){
+  if(!list || !list.length) return '';
+  const rows = list.map(b => `<div class="tbill-row tbill-new" onclick="openBill('${escapeHtml(b.id)}')">
+        <div class="tbill-icon">📄</div>
+        <div class="tbill-info">
+          <div class="tbill-title"><span class="tbill-new-pill">${bl('新','New')}</span>${blObj(b.title)}</div>
+          ${billAmountHtml(b)}
+          <div class="tbill-sub">${billSubHtml(b)}</div>
+        </div>
+        <div class="tbill-arrow" aria-hidden="true">›</div>
+      </div>`).join('');
+  const head = list.length > 1 ? bl(`有 ${list.length} 份新账单`, `${list.length} new bills`) : bl('有一份新账单','New bill');
+  return `<div class="sec-hdr"><span class="sec-title">🧾 ${head}</span>${
+      role === 'admin' ? `<span class="tbill-admin-note">${pick('老板还没看','Boss hasn\'t opened')}</span>` : ''}</div>
+    <div class="tbill-list" id="new-bills-card">${rows}</div>`;
+}
+
 /** 今天没安排时补在空态底下的「最近一份账单」。一份都没有就整段不出现——
  *  空态已经够空了，再挂一句「还没有账单」只是多一行废话。
  *  刻意做成**一点就打开那份账单**（不是跳到账单分页再让他点一次）：
@@ -1662,7 +1701,37 @@ function dentalCardHtml(){
   }
   const note = d.note && String(d.note).trim();
   return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🦷 ${bl('牙医','Dentist')}</span></div>
-    <div class="dental-card">${rows}${ note ? `<div class="dental-note">${escapeHtml(note)}</div>` : '' }</div>`;
+    <div class="dental-card">${rows}${ note ? `<div class="dental-note">${escapeHtml(note)}</div>` : '' }${dentalWaBtnHtml(d, upcoming)}</div>`;
+}
+/**
+ * 「WhatsApp 请我们帮你约」（2026-10-29 用户：「他都是通过我们帮他预约的」）。
+ * 一点就打开 WhatsApp、消息已经写好（上次几号、按间隔大约该几号），他只要按发送。
+ * 号码由 YANG 在管理页填（dental.bookWa）；没填时 wa.me 不带号码＝让他自己挑联系人，照样能发。
+ * 已经约好了的话，按钮变成「想改时间」，消息里带上那个日子。
+ */
+function dentalWaText(d, upcoming){
+  if(upcoming){
+    const nw = fmtDateWeekdayBoth(upcoming);
+    return pick(`你好，我的牙医预约是 ${nw.zh}，想改一下时间。`, `Hi, my dentist appointment is on ${nw.en}. I'd like to change the time.`);
+  }
+  const months = dentalIntervalMonths(d);
+  const due = d.lastVisit ? addMonthsIso(d.lastVisit, months) : null;
+  const zh = ['你好，请帮我约牙医。'];
+  const en = ['Hi, please book a dentist appointment for me.'];
+  if(d.lastVisit){
+    zh.push(`上次是 ${fmtDateBoth(d.lastVisit).zh}${ due ? `，按每 ${months} 个月一次，大约是 ${fmtDateBoth(due).zh}` : '' }。`);
+    en.push(`Last visit was ${fmtDateBoth(d.lastVisit).en}${ due ? `; every ${months} months puts the next one around ${fmtDateBoth(due).en}` : '' }.`);
+  }
+  return pick(zh.join(''), en.join(' '));
+}
+function dentalWaUrl(d, upcoming){
+  const num = String((d && d.bookWa) || '').replace(/\D/g, '');
+  return 'https://wa.me/' + (num ? num : '') + '?text=' + encodeURIComponent(dentalWaText(d, upcoming));
+}
+function dentalWaBtnHtml(d, upcoming){
+  const label = upcoming ? bl('WhatsApp 改时间','Change time on WhatsApp') : bl('WhatsApp 请我们帮你约','Ask us to book on WhatsApp');
+  return `<a class="dental-wa-btn" id="dental-wa" href="${escapeHtml(dentalWaUrl(d, upcoming))}" target="_blank" rel="noopener"
+      onclick="viewLogStep && viewLogStep({ tab: 'dentalWa' })">💬 ${label}</a>`;
 }
 /** 加 n 个月，月底自动收敛到该月最后一天（8月31日 + 6 个月 = 2月28/29日，不会溢出到 3 月）。 */
 function addMonthsIso(iso, n){
@@ -2051,6 +2120,12 @@ async function renderBillPdf(bytes){
 
 async function openBill(id){
   viewLogStep({ bill: id }); viewBillOpenedAt = Date.now();
+  // 老板自己打开的：本机先记成看过，关掉账单回到「今天」那张新账单卡就不再挂着它
+  // （后端在这次 bill 请求里也会写 readAt，下次拉 feed 两边一致）。admin 打开不算老板看过。
+  if(role !== 'admin'){
+    const hit = ((feedData && feedData.bills) || []).find(b => b && b.id === id);
+    if(hit && !hit.readAt){ hit.readAt = new Date().toISOString(); if(typeof renderToday === 'function') renderToday(); }
+  }
   const overlay = document.getElementById('billOverlay');
   const frame = document.getElementById('billFrame');
   const openNewBtn = document.getElementById('billOpenNew');
@@ -3161,6 +3236,9 @@ function adminDentalSectionHtml(){
       <div class="admin-field"><label>${pick('备注（选填）','Note (optional)')}</label>
         <input type="text" id="admin-dental-note" maxlength="200" value="${escapeHtml(d.note || '')}"
           placeholder="${escapeHtml(pick('例：补牙第二次','e.g. filling, 2nd session'))}"></div>
+      <div class="admin-field"><label>${pick('老板按「WhatsApp 请我们帮你约」时发给谁（含国家码，例 85512345678）','Who the boss\'s "Ask us to book" WhatsApp goes to (with country code)')}</label>
+        <input type="tel" id="admin-dental-wa" inputmode="tel" maxlength="20" value="${escapeHtml(d.bookWa || '')}"
+          placeholder="${escapeHtml(pick('不填＝老板自己挑联系人','Empty = boss picks the contact'))}"></div>
       ${dentalDonePromptHtml(d)}
       <button type="button" class="admin-btn" onclick="adminSaveDental()">💾 ${pick('保存牙医记录','Save dentist record')}</button>
       <div class="admin-status" id="admin-dental-status"></div>
@@ -3198,6 +3276,16 @@ async function adminSaveDental(){
   const last = (document.getElementById('admin-dental-last').value || '').trim();
   const next = (document.getElementById('admin-dental-next').value || '').trim();
   const note = (document.getElementById('admin-dental-note').value || '').trim();
+  const waEl = document.getElementById('admin-dental-wa');
+  const waRaw = ((waEl && waEl.value) || '').trim();
+  const bookWa = waRaw.replace(/\D/g, '');
+  // 填了但不像电话号码：说出来，不要静静存成空（服务端会把它当没填）
+  if(waRaw && (bookWa.length < 8 || bookWa.length > 15)){
+    statusEl.className = 'admin-status err';
+    statusEl.textContent = pick('WhatsApp 号码看起来不对：要含国家码，8～15 位数字（例 85512345678）',
+      'That WhatsApp number looks wrong: include the country code, 8–15 digits');
+    return;
+  }
   const intervalRaw = (document.getElementById('admin-dental-interval').value || '').trim();
   const interval = Math.round(Number(intervalRaw));
   if(!isFinite(interval) || interval < 1 || interval > 24){
@@ -3215,7 +3303,8 @@ async function adminSaveDental(){
   statusEl.className = 'admin-status';
   statusEl.textContent = pick('保存中…','Saving…');
   try{
-    await bossCall('dentalSave', { lastVisit: last, nextVisit: next, intervalMonths: interval, note: note });
+    // bookWa 一定要带上：dentalSave 是整份覆写，漏带等于把号码清掉（「去了」那一键也走这里）
+    await bossCall('dentalSave', { lastVisit: last, nextVisit: next, intervalMonths: interval, note: note, bookWa: bookWa });
   }catch(err){
     adminDentalBusy = false;
     statusEl.className = 'admin-status err';
@@ -4057,7 +4146,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v65</div>
+    <div class="admin-ver" id="adminVer">boss-app-v66</div>
 
     ${adminTripsSectionHtml()}
 
