@@ -365,3 +365,25 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
   **重新評估的唯一觸發條件：用戶真的在長橋開了倉。** 那時是必須做，因為第二個帳戶一出現，
   頁面的淨值與配置就真的殘缺，`plan.html` 算出的年數會偏。
   副產物：`.github/workflows/fetch-url.yml`（沙盒連不上 `open.longbridge.com`，靠 CI 抓回來的）。
+
+## 配置偏离检查（2026-10-29 建）
+
+政策：VOO 80% / IBIT 20%（只算两者占比，SGOV 当现金缓冲不计入），偏离目标超过 ±5 个百分点
+才需再平衡，新钱优先买低配。**政策只放 `trading/allocation-policy.json`（目标，无任何数量或金额）**。
+
+- 算法＋自检：`tools/check-allocation.py`。纯函数 `evaluate()` 回 ok / breach / missing；
+  `python3 tools/check-allocation.py --selftest`（手算用例：18.2% 在范围、26%/14% 超限、
+  恰好 5 个百分点算在范围内、缺 VOO 或 IBIT 判缺失；另含 SGOV 不计入、错密码判缺失、
+  用真加密函数造假 `data-private.enc` 的端到端、通知文案不含任何数字）。已登记 `check-all.py`
+  （名字 `allocation`）与 `checks.yml`／`ci-decide.py`。
+- 定期跑：`.github/workflows/allocation-check.yml`，每月 1、15 号 UTC 14:00，可手动触发
+  （Actions 页 allocation-check → Run workflow）。通知沿用 `tools/ci-notify.py`：超限开 issue
+  ＋ Telegram，已有就静默，回到范围内自动关；拿不到数据另开一个「缺数据」issue。
+- 数据来源：解密 `data-private.enc` 的 `positions[].value`（需 Secret `ANALYZER_PW`），
+  **没有另打 IBKR Flex**——Flex 按 token 限流，上面 1001/1018 那条的教训。代价：数据新旧
+  跟随 trading-daily 的持仓底数（Flex 失败时沿用旧底数，占比也就是旧的）。
+- 坑：(1) 仓库公开，Actions 日志与 issue 都是公开的：`--run` 只印状态不印数字，通知文案
+  不得含任何数字（自检逐字拦，加文案时别写金额/百分比/股数）。(2) 缺 VOO 或 IBIT 必须判
+  缺失而不是通过；但 IBIT 值为 0（清仓）是真实状态，判超限。(3) 浮点：恰好 5 个百分点
+  （如 25% 对 20%）算出来可能是 0.05000000000000002，比较时带了 1e-9 容差。
+  (4) 改了政策的 band/目标，自检里第 8 项会因为数值对不上而红，要同步改自检。
