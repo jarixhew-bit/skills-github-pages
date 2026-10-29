@@ -3,5 +3,10 @@
   "targets": { "SP500": 0.8, "IBIT": 0.2 },
   "members": { "SP500": ["VOO", "CSPX", "VUAA"], "IBIT": ["IBIT"] },
   "band": 0.05,
-  "excluded": ["SGOV"]
+  "excluded": ["SGOV"],
+  "us_situs": {
+    "_说明": "美国资产遗产税提醒（用户是马来西亚居民，美国资产超过 60000 美元身故时要交美国遗产税，提醒线放 50000 留缓冲）。判定从保守：(1) 持仓里不在 non_us_symbols 的代码一律算美国资产（VOO、IBIT、SGOV 及任何未知代码都算）；(2) 账户里的美元现金也算美国资产——IB LLC 是美国券商，现金是否算美国资产未查证，保守起见算入。non_us_symbols 是爱尔兰上市的同指数 ETF（CSPX、VUAA、SXR8）与瑞士发行的 iShares Bitcoin ETP（IB1T、BTCN），均非美国资产。只放规则，禁止放持仓数量或金额。",
+    "alert_usd": 50000,
+    "non_us_symbols": ["CSPX", "VUAA", "SXR8", "IB1T", "BTCN"]
+  }
 }
