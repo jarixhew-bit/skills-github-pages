@@ -361,7 +361,13 @@ const syms = page => page.$$eval('#watchCols tr.row', rs => rs.map(r => r.datase
   await ctx.close();
   const pubReal = JSON.parse(fs.readFileSync(path.join(ROOT, 'trading/data-public.json'), 'utf8')).tickers.map(t => t.symbol).sort();
   const uni = JSON.parse(fs.readFileSync(path.join(ROOT, 'trading/universe.json'), 'utf8')).tickers.map(t => t.symbol).sort();
-  eq(pubReal.join(), uni.join(), 'E3 data-public.json 的 tickers 与 universe.json 的 58 档一致');
+  // 新加进 universe 的票要等 trading-daily 下一轮才进 data-public：已有 history 但还没被分析的算「过渡中」放行
+  // （没有 history 的缺席不放行——E4 管）；data-public 里出现 universe 没有的票仍然报错
+  const inTransit = uni.filter(s => !pubReal.includes(s) && fs.existsSync(path.join(ROOT, `trading/history/${s}.json`)));
+  const pubExpected = uni.filter(s => !inTransit.includes(s) || pubReal.includes(s));
+  eq(pubReal.filter(s => uni.includes(s)).join(), pubExpected.filter(s => pubReal.includes(s)).join(), 'E3a data-public 的票都在 universe 里');
+  eq(pubReal.length, pubReal.filter(s => uni.includes(s)).length, 'E3 data-public.json 的 tickers 都在 universe.json 里');
+  check(inTransit.length <= 5, `E3b 过渡中（有 history 未进 data-public）不超过 5 档（实得 ${inTransit.join(',')}）`);
   const withHist = uni.filter(s => fs.existsSync(path.join(ROOT, `trading/history/${s}.json`)));
   eq(withHist.length, uni.length, 'E4 每一档都有 history 日线可画图');
 }

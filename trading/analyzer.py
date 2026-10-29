@@ -53,7 +53,7 @@ NEWS_FACTOR_DEFAULT = True
 NEWS_MIN_ITEMS = 2
 NEWS_PATH = os.path.join(BASE, "news.json")
 # 宽基指数：跌了大概率涨回来，适用「打折加大定投」规则；单一资产（如 IBIT）不适用
-BROAD_INDEX = {"VOO", "SPY", "VTI", "QQQ", "DIA", "IWM"}
+BROAD_INDEX = {"VOO", "CSPX", "VUAA", "SPY", "VTI", "QQQ", "DIA", "IWM"}
 
 
 # ---------------- 加密 ----------------
