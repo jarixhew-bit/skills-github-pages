@@ -4335,6 +4335,102 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   await ctx.close();
 }
 
+// ---------- 【41】记账更快：常用类别排前面、常记一点就填好、首页提醒没录的固定开销 ----------
+{
+  console.log('\n【41】记账更快');
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = [], dialogs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  const setup = (txs) => page.evaluate((txs) => {
+    if (!data.accounts.some(a => a.id === 'acc_p'))
+      data.accounts.push({ id:'acc_p', name:'私人', currency:'USD', color:'#3b82f6', createdAt: Date.now() });
+    data.currentAccountId = 'acc_p';
+    data.transactions = txs.map((t, i) => ({ id:'q'+i, accountId:'acc_p', type:'expense', date: today(), updatedAt: i, ...t }));
+    data.recurring = [];
+    saveData(); closeModal('modal-add-tx');
+  }, txs);
+  const cats = await page.evaluate(() => data.categories.filter(c => c.type === 'expense').map(c => c.id));
+  const last = cats[cats.length - 1], first = cats[0];
+  const firstBtn = () => page.evaluate(() => {
+    const b = document.querySelector('#cat-grid .cat-btn'); return b && b.getAttribute('onclick'); });
+
+  // 类别排序
+  await setup(Array.from({ length: 4 }, () => ({ amount: 1, categoryId: last })));
+  await page.evaluate(() => showAddTx());
+  ok('对照组：记录不到 5 笔时类别保持原顺序', (await firstBtn()).includes(`'${first}'`), await firstBtn());
+  await setup(Array.from({ length: 6 }, () => ({ amount: 1, categoryId: last })));
+  await page.evaluate(() => showAddTx());
+  ok('★最常用的类别排到第一格', (await firstBtn()).includes(`'${last}'`), { want: last, got: await firstBtn() });
+  ok('排序不会少掉类别', await page.evaluate(() => document.querySelectorAll('#cat-grid .cat-btn').length) === cats.length);
+
+  // 常记
+  await setup([
+    { amount: 3.5, categoryId: last, description: '咖啡' },
+    { amount: 3.5, categoryId: last, description: '咖啡' },
+    { amount: 3.5, categoryId: last, description: '咖啡' },
+    { amount: 12, categoryId: first, description: '只记过一次的' },
+    { amount: 8, categoryId: first, description: '很久以前', date: '2020-01-01' },
+    { amount: 8, categoryId: first, description: '很久以前', date: '2020-01-02' },
+  ]);
+  await page.evaluate(() => showAddTx());
+  const chips = await page.$$eval('#tx-quick .quick-chip', bs => bs.map(b => b.textContent.trim()));
+  ok('★记过 3 次的「咖啡 3.50」出现在常记', chips.length === 1 && chips[0].includes('咖啡') && chips[0].includes('3.50'), chips);
+  ok('对照组：只记过一次的、60 天以前的不出现', !chips.some(c => c.includes('一次') || c.includes('很久')), chips);
+  await page.click('#tx-quick .quick-chip');
+  const filled = await page.evaluate(() => ({ amt: document.getElementById('tx-amount').value,
+    desc: document.getElementById('tx-desc').value, cat: state.selectedCatId }));
+  ok('★点一下：金额、描述、类别都填好', filled.amt === '3.5' && filled.desc === '咖啡' && filled.cat === last, filled);
+  const before = await page.evaluate(() => data.transactions.length);
+  await page.evaluate(() => saveTx());
+  await page.waitForTimeout(300);
+  const saved = await page.evaluate(() => data.transactions[data.transactions.length - 1]);
+  ok('★再按保存只多一笔，内容正确', await page.evaluate(() => data.transactions.length) === before + 1
+     && saved.amount === 3.5 && saved.description === '咖啡' && saved.categoryId === last, saved);
+  await page.evaluate(() => editTx('q0'));
+  ok('对照组：编辑旧记录时不出现常记', !(await page.locator('#tx-quick-wrap').isVisible()));
+  await page.evaluate(() => { closeModal('modal-add-tx'); curAcc().isCompany = true; showAddTx(); });
+  ok('对照组：公司账户不出现常记', !(await page.locator('#tx-quick-wrap').isVisible()));
+  await page.evaluate(() => { curAcc().isCompany = false; closeModal('modal-add-tx'); });
+
+  // 固定开销提醒
+  await setup([]);
+  await page.evaluate(() => {
+    data.accounts.push({ id:'acc_co', name:'公司', currency:'USD', isCompany:true, createdAt: Date.now() });
+    data.recurring = [
+      { id:'r1', name:'房租', amount:500, accountId:'acc_p', categoryId:'cat_other_exp' },
+      { id:'r2', name:'Netflix', amount:9.99, accountId:'acc_p', categoryId:'cat_other_exp' },
+      { id:'r3', name:'公司那项', amount:20, accountId:'acc_co', categoryId:'cat_other_exp' },
+    ];
+    saveData(); switchTab('overview'); renderOverview();
+  });
+  const nudge = () => page.evaluate(() => { const el = document.getElementById('ov-recurring-nudge');
+    return el && el.style.display !== 'none' ? el.textContent.replace(/\s+/g,' ') : ''; });
+  const n1 = await nudge();
+  ok('★首页提醒「本月还有 2 项固定开销没录」', n1.includes('2 项') && n1.includes('房租') && n1.includes('Netflix'), n1);
+  ok('对照组：公司账户那项不在提醒里（录了也送不进公司账本）', !n1.includes('公司那项'), n1);
+  await page.click('#ov-recurring-nudge button:has-text("全部录入")');
+  const rec = await page.evaluate(() => data.transactions.filter(t => t.recurId).map(t => t.recurId).sort());
+  ok('★按「全部录入」两项都录了', rec.join() === 'r1,r2', rec);
+  ok('录完提醒消失', (await nudge()) === '');
+  await page.evaluate(() => recordRecurringFromOverview());
+  ok('再按一次不会重复录', (await page.evaluate(() => data.transactions.filter(t => t.recurId).length)) === 2);
+  // 单项录入
+  await page.evaluate(() => { data.transactions = []; saveData(); renderOverview(); });
+  await page.click('#ov-recurring-nudge button:has-text("录入") >> nth=1');
+  const one = await page.evaluate(() => data.transactions.map(t => t.recurId));
+  ok('单独点一项只录那一项', one.length === 1, one);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
