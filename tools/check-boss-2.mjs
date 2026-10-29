@@ -1,5 +1,5 @@
 /**
- * 老板 App 自检 —— **后半**（场景十九 ~ 场景三十六）：交接红点重置、机票/酒店识别、
+ * 老板 App 自检 —— **后半**（场景十九 ~ 场景三十八）：交接红点重置、机票/酒店识别、
  * 行程排序、账单已读、推送、请假、备忘、餐厅、分享、链接带访问码、账单金额。
  *
  * 共用的打桩接口与假数据在 tools/lib/boss-check-kit.mjs；前半在 check-boss.mjs。
@@ -2168,7 +2168,9 @@ console.log('\n【三十二c】行程名称与日期可以不填，保存时自�
 {
   const ctx = await browser.newContext();
   await forceZh(ctx);
-  mountRoutes(ctx, { role: 'viewer', trips: [], bills: fakeBillsMixed() });
+  mountRoutes(ctx, { role: 'viewer', trips: [], bills: fakeBillsMixed().map(b => ({ ...b, readAt: '2026-09-02T00:00:00Z' })) });
+  // ↑ 全标成看过：没看过的账单会改由「今天」最上面那张新账单卡列出（场景三十七），
+  //   这一节只量「最近一份账单」这张卡本身
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
@@ -2208,6 +2210,133 @@ console.log('\n【三十二c】行程名称与日期可以不填，保存时自�
   ok('★一份账单都没有时整段不出现（不挂一句「还没有账单」的废话）',
      await page.locator('#tab-today .tbill-row').count() === 0);
   ok('★空态本身还在', /今天没有安排的行程/.test(await page.locator('#tab-today').innerText()));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十七：没看过的账单摆在「今天」最上面 ----------
+// 2026-10-29：马来西亚那份 10/17 传的，到 10/29 还没被打开。老板通知没开、几乎只看「今天」，
+// 账单在另一个分页——不摆到他眼前，他就不知道有新的。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const bills = fakeBillsMixed();
+  bills[1].readAt = '2026-09-02T00:00:00Z';     // b2 看过了；b1、b3 没看
+  mountRoutes(ctx, { role: 'viewer', bills });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('#tab-today .sec-hdr')), { what: '今天渲染完' });
+
+  console.log('\n【三十七】没看过的账单摆在「今天」最上面，一点就打开，看过就消失');
+  const first = await page.evaluate(() => {
+    const pane = document.getElementById('tab-today');
+    const card = document.getElementById('new-bills-card');
+    return { firstIsCard: !!card && pane.firstElementChild && pane.firstElementChild.nextElementSibling === card,
+      rows: card ? [...card.querySelectorAll('.tbill-row')].map(r => r.innerText.replace(/\s+/g, ' ')) : [] };
+  });
+  ok('★新账单卡在「今天」最上面（在今天的行程之前）', first.firstIsCard, first);
+  ok('★只列没看过的两份，新的在前', first.rows.length === 2 && /Boss 账单/.test(first.rows[0]) && /旧的那份/.test(first.rows[1]), first.rows);
+  ok('对照组：看过的那份（Xiamen）不在卡里', !first.rows.some(r => /Xiamen/.test(r)), first.rows);
+  ok('老板那边不出现「老板还没看」那句（那是给 YANG 看的）', await page.locator('.tbill-admin-note').count() === 0);
+  await page.click('#new-bills-card .tbill-row >> nth=0');
+  await until(() => page.evaluate(() => document.getElementById('billOverlay').classList.contains('open')), { what: '账单打开' });
+  ok('★一点就直接打开那份', await page.evaluate(() => document.getElementById('billOverlay').classList.contains('open')));
+  await page.click('.overlay-close');
+  const after = await page.$$eval('#new-bills-card .tbill-row', rs => rs.map(r => r.innerText.replace(/\s+/g, ' ')));
+  ok('★看过的那份马上从卡里拿掉', after.length === 1 && /旧的那份/.test(after[0]), after);
+  await page.evaluate(() => { feedData.bills.forEach(b => b.readAt = b.readAt || 'x'); renderToday(); });
+  ok('★都看过了整张卡不出现', await page.locator('#new-bills-card').count() === 0);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+// ---------- 场景三十七b：YANG 打开不算老板看过 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'admin', bills: fakeBillsMixed() });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('new-bills-card')), { what: '新账单卡' });
+  console.log('\n【三十七b】admin 预览：写明「老板还没看」，自己打开不算老板看过');
+  ok('★admin 那边写明「老板还没看」', await page.locator('.tbill-admin-note').count() === 1);
+  await page.click('#new-bills-card .tbill-row >> nth=0');
+  await until(() => page.evaluate(() => document.getElementById('billOverlay').classList.contains('open')), { what: '账单打开' });
+  await page.click('.overlay-close');
+  ok('★YANG 打开之后卡里还是 3 份（不能替老板标成看过）',
+     await page.locator('#new-bills-card .tbill-row').count() === 3);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十八：牙医「WhatsApp 请我们帮你约」 ----------
+// 2026-10-29 用户：「可以让他一键发预约信息去 WhatsApp，他都是通过我们帮他预约的」。
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  mountRoutes(ctx, { role: 'viewer',
+    dental: { lastVisit: '2026-09-02', nextVisit: null, intervalMonths: 3, note: '', bookWa: '85512345678' } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('.dental-card')), { what: '牙医卡' });
+  console.log('\n【三十八】牙医：一键 WhatsApp 请我们帮他约，消息写好、发到 YANG 填的号码');
+  const href = await page.getAttribute('#dental-wa', 'href');
+  const u = new globalThis.URL(href);
+  const text = u.searchParams.get('text') || '';
+  ok('★按钮在牙医卡里（老板那边看得到）', await page.locator('.dental-card #dental-wa').count() === 1);
+  ok('★发到 YANG 填的号码', u.origin + u.pathname === 'https://wa.me/85512345678', href);
+  ok('★消息写好了：请帮我约＋上次几号＋大约该几号', /请帮我约牙医/.test(text) && /9月2日/.test(text) && /12月2日/.test(text), text);
+  ok('在新窗口开（不把老板 App 本身换掉）', await page.getAttribute('#dental-wa', 'target') === '_blank');
+  // 已经约好了：变成改时间
+  const fut = new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10);
+  await page.evaluate(f => { feedData.dental.nextVisit = f; renderToday(); }, fut);
+  const t2 = new globalThis.URL(await page.getAttribute('#dental-wa', 'href')).searchParams.get('text') || '';
+  const futZh = `${Number(fut.slice(5,7))}月${Number(fut.slice(8,10))}日`;
+  ok('★已经约了：按钮变「改时间」，消息带上那个日子', /改时间/.test(await page.locator('#dental-wa').innerText()) && t2.includes(futZh) && /想改一下时间/.test(t2), t2);
+  // 没填号码：退回自己挑联系人
+  await page.evaluate(() => { feedData.dental.bookWa = null; feedData.dental.nextVisit = null; renderToday(); });
+  const h3 = await page.getAttribute('#dental-wa', 'href');
+  ok('对照组：没填号码时 wa.me 不带号码（他自己挑联系人，照样能发）', h3.startsWith('https://wa.me/?text='), h3);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+// ---------- 场景三十八b：管理页填号码，存的时候一定带上（不会被「去了」那一键清掉） ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const past = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  const rec = mountRoutes(ctx, { role: 'admin',
+    dental: { lastVisit: '2026-07-13', nextVisit: past, intervalMonths: 3, note: '', bookWa: '85511111111' } });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-dental-section')), { what: '管理页' });
+  await gotoTab(page, 'admin');
+  console.log('\n【三十八b】管理页：WhatsApp 号码回填、照存、格式不对会说');
+  ok('号码回填进输入框', await page.inputValue('#admin-dental-wa') === '85511111111');
+  await page.click('#admin-dental-done .admin-btn');
+  await until(() => rec.calls.some(c => c.action === 'dentalSave'), { what: '存出去' });
+  let sent = rec.calls.filter(c => c.action === 'dentalSave').pop();
+  ok('★按「去了」那一键也把号码带上（dentalSave 是整份覆写，漏带＝清掉）', sent.bookWa === '85511111111', sent);
+  await gotoTab(page, 'admin');
+  await page.fill('#admin-dental-wa', '+855 99-888 777');
+  await page.click('#admin-dental-section .admin-btn:has-text("保存牙医记录")');
+  await until(() => rec.calls.filter(c => c.action === 'dentalSave').length >= 2, { what: '再存一次' });
+  sent = rec.calls.filter(c => c.action === 'dentalSave').pop();
+  ok('★填 +855 99-888 777 存成纯数字', sent.bookWa === '85599888777', sent);
+  const n = rec.calls.filter(c => c.action === 'dentalSave').length;
+  await gotoTab(page, 'admin');
+  await page.fill('#admin-dental-wa', '123');
+  await page.click('#admin-dental-section .admin-btn:has-text("保存牙医记录")');
+  await page.waitForTimeout(300);   // 断言「没送出去」只能真的等
+  ok('★号码太短：不送出去，当场说', rec.calls.filter(c => c.action === 'dentalSave').length === n
+     && /号码看起来不对/.test(await page.locator('#admin-dental-status').innerText()));
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
