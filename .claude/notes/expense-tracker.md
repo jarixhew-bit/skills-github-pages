@@ -2336,3 +2336,19 @@ butler【6j】（同事改不动）。假故障验过：切投递箱不写、送
   服务端没有 `given` 字段时两边都退回旧的「起点 · 之后花了」。
 - 自检：check-expense-company【33】区段、check-staff-page【29】区段各加了「还清后归 0／下一轮只算之后」，
   旧的 opened/spent 故意填大数，画面上出现它就红。
+
+## 体检修的五个 bug（2026-10-29，用户：「bug 全部修完直接上线」）
+- **云端 1 MiB 上限**：整本账是 Firestore 一份文件。`packCloudPayload()`：≤700KB 照旧存明文
+  `payload`（旧版 App、`expense-tracker-recover.html` 都看得懂）；超过改存 gzip+base64 的
+  `payloadGz`（CompressionStream），压完仍 >1000KB 才报 `too-big`。读一律走
+  `unpackCloudPayload()`（两种都认，救援页也改了）。上传失败不再只变小云朵：toast 一次＋`setPendingSync(true)`。
+- **loadData 读坏**：原文先另存 `expenseTracker_v2_corrupt_<时间戳>` 再换空账，开机 `reportLoadDataRescue()` 弹窗；
+  只是缺栏位（accounts/categories/transactions/recurring）就补默认，不整本丢。
+- **saveData 存储满**：setItem 包 try，失败 `warnStorageFull()`（弹一次）、回 false，照样推云端；
+  saveTx / editSentCompanyTx 只在 saveData 回 true 时才做读回检查，避免叠两个说法不同的提示。
+- **外来文字转义**：`escHtml()`（备注、类别名、refTag、fromStaff.by、固定开销名、claim 备注）；
+  放进 `onclick='…'` 的 id 用 `escJsArg()`——只做 HTML 转义不够，浏览器会先把 &#39; 还原成 ' 再给 JS。
+- **新的在前**：`sortNewestFirst()`＝日期倒序，同一天按在 data.transactions 里的位置倒序（首页最近 5 笔、明细页）。
+- `monthTxs()` 改比 `t.date.slice(0,7)` 字串（美洲时区下 1 号会掉到上个月）；库存分享日期改用 `today()`。
+- 自检：`check-expense-company.mjs`【39】20 项，旧代码跑 16 红（假红验证过）。
+- 顺带修两个读早了的旧自检（check-all 并行时假红）：staff「开页面清单空→自动补回」、inventory「钥匙闸门已经放行」改成等条件。

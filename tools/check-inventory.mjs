@@ -668,6 +668,9 @@ function mountRoutes(ctx, opts = {}) {
   await until(() => page.evaluate(
     () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
     { what: 'App 启动完成' });
+  // 闸门是验完钥匙才异步收起的；启动完成就立刻读，机器忙时会读早（2026-10-29 check-all 并行时假红）
+  await until(async () => !(await page.locator('#staff-gate').isVisible()),
+    { what: '钥匙闸门收起' }).catch(() => {});
   ok('钥匙闸门已经放行', !(await page.locator('#staff-gate').isVisible()));
   ok('启动后没有任何库存请求（懒加载）', rec.allInvCalls.length === 0, rec.allInvCalls);
   ok('底部导航有「库存」按钮', await page.locator('#nav-inventory').isVisible());

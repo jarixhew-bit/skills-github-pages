@@ -430,8 +430,8 @@ LABEL_REWRITES = [
 
 # 脚本画出来的文字：包一层 tt() 才会跟着语言切换
 DYNAMIC_TEXT = [
-    ("""if(t.company.refTag) parts.push(`📄${t.company.refTag}号`);""",
-     """if(t.company.refTag) parts.push(tt(`📄${t.company.refTag}号`, `📄 No.${t.company.refTag}`));""",
+    ("""if(t.company.refTag) parts.push(`📄${escHtml(t.company.refTag)}号`);""",
+     """if(t.company.refTag) parts.push(tt(`📄${escHtml(t.company.refTag)}号`, `📄 No.${escHtml(t.company.refTag)}`));""",
      "单号标注"),
     ("""  if(t.company.forBoss) parts.push('👔老板的');""",
      """  if(t.company.forBoss) parts.push(tt('👔老板的','👔 for the Boss'));""",
