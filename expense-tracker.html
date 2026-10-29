@@ -1617,6 +1617,44 @@ async function pushToCloudManually(){
   toast('已上传');
 }
 
+/**
+ * 云端整本账放在 Firestore 的**一份文件**里，Firestore 一份文件最多 1 MiB。
+ * 每笔账约 300~500 字节，记个一两年就会撞线——撞线之后每次上传都失败，原本还不出声。
+ * 所以：小的时候照旧存明文 payload（旧版本的 App、救援页都看得懂）；
+ * 快到线（约 700KB）就改存 gzip 压缩过的 payloadGz（账本这种 JSON 压完通常只剩 1/6~1/10），
+ * 压完仍放不下才报 too-big。.set 是整份覆盖，没写进去的那个栏位自然就没了，不会两份并存。
+ */
+const CLOUD_PLAIN_MAX = 700 * 1024;
+const CLOUD_DOC_MAX = 1000 * 1024;
+let cloudSaveFailWarned = false;
+async function packCloudPayload(obj){
+  const json = JSON.stringify(obj);
+  const bytes = new TextEncoder().encode(json);
+  if(bytes.length <= CLOUD_PLAIN_MAX) return { payload: json };
+  if(typeof CompressionStream === 'undefined'){
+    const err = new Error('payload too big and this browser cannot compress'); err.code = 'too-big'; throw err;
+  }
+  const gz = new Uint8Array(await new Response(
+    new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+  let bin = '';
+  for(let i=0;i<gz.length;i+=0x8000) bin += String.fromCharCode.apply(null, gz.subarray(i, i+0x8000));
+  const b64 = btoa(bin);
+  if(b64.length > CLOUD_DOC_MAX){ const err = new Error('payload too big even compressed'); err.code = 'too-big'; throw err; }
+  return { payloadGz: b64 };
+}
+/** 读云端那份：认得明文 payload 和压缩过的 payloadGz 两种（见 packCloudPayload） */
+async function unpackCloudPayload(d){
+  if(d && d.payloadGz){
+    const bin = atob(d.payloadGz);
+    const u8 = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) u8[i] = bin.charCodeAt(i);
+    const text = await new Response(
+      new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    return JSON.parse(text);
+  }
+  return JSON.parse(d.payload);
+}
+
 async function saveToCloud(force){
   if(!currentUser) return;
   if(!cloudPulledOk && !force){ setPendingSync(true); return; }
@@ -1625,15 +1663,24 @@ async function saveToCloud(force){
   try{
     do {
       cloudSaveDirty = false;
-      await db.collection('users').doc(currentUser.uid).set({
-        payload: JSON.stringify(data),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      const doc = await packCloudPayload(data);
+      doc.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('users').doc(currentUser.uid).set(doc);
     } while(cloudSaveDirty);
     setPendingSync(false);
+    cloudSaveFailWarned = false;
   }catch(e){
     console.error('Cloud save:', e);
     setCloudIcon('error');
+    // 原本只把小云朵变色——他不会去看那个图标，以为云端一直是最新的。
+    // 攒着等下一次再推，并且讲出来（同一次打开只讲一次，不是每记一笔都弹）。
+    setPendingSync(true);
+    if(!cloudSaveFailWarned){
+      cloudSaveFailWarned = true;
+      toast(e && e.code === 'too-big'
+        ? '⚠️ 账本太大，传不上云端了——请截图发给管理员'
+        : '⚠️ 这次没传上云端（' + ((e && (e.code || e.message)) || 'unknown') + '），先存在手机里，下次会再传');
+    }
   }
   cloudSaving = false;
 }
@@ -1754,7 +1801,7 @@ async function syncFromCloud(){
   try{
     const snap = await db.collection('users').doc(currentUser.uid).get();
     if(snap.exists){
-      const cloud = JSON.parse(snap.data().payload);
+      const cloud = await unpackCloudPayload(snap.data());
 
       if(cloud){
         const before = data.transactions.length;
@@ -1762,7 +1809,7 @@ async function syncFromCloud(){
         if(!data.currentAccountId && data.accounts.length>0)
           data.currentAccountId = data.accounts[0].id;
         migrateCategories();
-        localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
+        try{ localStorage.setItem('expenseTracker_v2', JSON.stringify(data)); }catch(e){ warnStorageFull(); }
         updateHeader();
         if(state.currentTab==='overview') renderOverview();
         if(state.currentTab==='transactions') renderTxList();
@@ -2236,21 +2283,76 @@ function migrateCategories(){
     if(!data.categories.find(c=>c.id===def.id)) data.categories.push(Object.assign({}, def));
   });
 }
+/**
+ * 读本机那份账。读不出来时**先把原文另存一份再换成空账**——原本是直接换成空账，
+ * 下一次 saveData() 就拿空账盖掉了那份读不出来的原文，想救都没得救。
+ * 少几个栏位（老版本、半截写入）不算坏：缺的补上默认值，不整本丢掉。
+ */
+let loadDataRescueKey = null;
 function loadData(){
+  let raw = null;
+  try{ raw = localStorage.getItem('expenseTracker_v2'); }catch(e){}
   try{
-    const raw = localStorage.getItem('expenseTracker_v2');
-    if(raw) data = JSON.parse(raw);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object');
+      data = parsed;
+    }
+    const def = DEFAULT_DATA;
+    if(!Array.isArray(data.accounts) || !data.accounts.length) data.accounts = JSON.parse(JSON.stringify(def.accounts));
+    if(!Array.isArray(data.categories) || !data.categories.length) data.categories = JSON.parse(JSON.stringify(def.categories));
+    if(!Array.isArray(data.transactions)) data.transactions = [];
+    if(!Array.isArray(data.recurring)) data.recurring = [];
     if(!data.currentAccountId && data.accounts.length>0)
       data.currentAccountId = data.accounts[0].id;
     if(!Array.isArray(data.deletedTxIds)) data.deletedTxIds = [];   // 老版本存的没有这个字段
     if(!Array.isArray(data.deletedAccountIds)) data.deletedAccountIds = [];
     if(!Array.isArray(data.deletedCategoryIds)) data.deletedCategoryIds = [];
     migrateCategories();
-  }catch(e){ data = JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+  }catch(e){
+    console.error('loadData:', e);
+    if(raw){
+      const key = 'expenseTracker_v2_corrupt_' + Date.now();
+      try{ localStorage.setItem(key, raw); loadDataRescueKey = key; }catch(e2){ loadDataRescueKey = ''; }
+    }
+    data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  }
 }
+/** 开机后把「本机那份读不出来」说清楚（loadData 跑得太早，那时还没有 toast） */
+function reportLoadDataRescue(){
+  if(loadDataRescueKey === null) return;
+  const saved = loadDataRescueKey
+    ? `原来那份已另存起来（${loadDataRescueKey}），没有被盖掉。`
+    : '手机存储满了，原来那份没能另存——先别在这台手机上记账。';
+  setTimeout(()=>{ try{ alert('⚠️ 这台手机上的账本读不出来\n\n' + saved +
+    '\n登录了云端的话，账会自动从云端合并回来。\n请截图这段发给管理员。\n\n版本 ' + APP_BUILD); }catch(e){} }, 300);
+}
+/** 写进本机。写不进（多半是手机存储满了）回 false，并当场说明白，不再整段抛错。 */
 function saveData(){
-  localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
+  let ok = true;
+  try{
+    localStorage.setItem('expenseTracker_v2', JSON.stringify(data));
+  }catch(e){
+    ok = false;
+    console.error('saveData:', e);
+    warnStorageFull();
+  }
+  // 本机写不进时照样往云端推：云端那份就是这次改动唯一的落脚处
   if(currentUser) saveToCloud(); else setPendingSync(true);
+  return ok;
+}
+let storageFullWarned = false;
+/**
+ * 手机存储满了。原本 setItem 直接抛错：记录留在内存里、刷新就没，他以为没存上再按
+ * 一次保存，还会多记一笔（新的 id）。所以要当场挡在眼前讲清楚，同一次打开只弹一次。
+ */
+function warnStorageFull(){
+  toast('⚠️ 手机存储满了，刚才的改动没存进手机——别重记');
+  if(storageFullWarned) return;
+  storageFullWarned = true;
+  const cloud = currentUser ? '已登录云端：这次改动会传到云端，不会丢。' : '没登录云端：刷新或关掉 App，这次改动就没了。';
+  setTimeout(()=>{ try{ alert('⚠️ 手机存储空间满了\n\n刚才的改动没写进手机。' + cloud +
+    '\n请不要重记一遍（会记成两笔）。\n\n怎么修：清理手机空间（删照片/视频/不用的 App），再重新打开记账 App。\n\n版本 ' + APP_BUILD); }catch(e){} }, 300);
 }
 
 // ===================== UTILS =====================
@@ -2272,10 +2374,21 @@ function getCat(id){ return data.categories.find(c=>c.id===id); }
 function curAcc(){ return getAcc(data.currentAccountId); }
 
 function monthTxs(accId, year, month){
-  return data.transactions.filter(t=>{
-    const d=new Date(t.date);
-    return t.accountId===accId && d.getFullYear()===year && d.getMonth()===month;
-  });
+  // 直接比字串前七位：new Date('2026-10-01') 是按 UTC 午夜解析的，手机时区在 UTC 以西
+  // （例如去美洲）时 getMonth() 会回上个月，每月 1 号的账就跑到上个月去了
+  const ym = `${year}-${String(month+1).padStart(2,'0')}`;
+  return data.transactions.filter(t=>
+    t.accountId===accId && typeof t.date==='string' && t.date.slice(0,7)===ym);
+}
+/**
+ * 新的在前：先比日期，同一天再按记进来的先后倒排。
+ * 原本只比日期，同一天的几笔保持记录先后（旧的在前），首页「最近」取前 5 笔——
+ * 一天记超过 5 笔时，刚存的那笔反而不在「最近」里，看起来像没存上。
+ */
+function sortNewestFirst(list){
+  const pos = new Map(data.transactions.map((t,i)=>[t.id,i]));
+  return list.sort((a,b)=>
+    String(b.date).localeCompare(String(a.date)) || (pos.get(b.id)??-1) - (pos.get(a.id)??-1));
 }
 function monthName(year, month){
   return `${year} 年 ${month+1} 月`;
@@ -2371,9 +2484,8 @@ function renderOverview(){
 
   // Recent 5
   const recent = [...data.transactions]
-    .filter(t=>t.accountId===acc.id)
-    .sort((a,b)=>new Date(b.date)-new Date(a.date))
-    .slice(0,5);
+    .filter(t=>t.accountId===acc.id);
+  sortNewestFirst(recent).splice(5);
   const el = document.getElementById('ov-recent');
   if(recent.length===0){
     el.innerHTML = `<div class="empty"><div class="empty-icon">📝</div><div class="empty-text">还没有记录，点击 ＋ 开始记账</div></div>`;
@@ -2465,7 +2577,7 @@ function switchAccount(id){
 function companyTxNote(t){
   if(!t.company) return '';
   const parts = [];
-  if(t.company.refTag) parts.push(`📄${t.company.refTag}号`);
+  if(t.company.refTag) parts.push(`📄${escHtml(t.company.refTag)}号`);
   // 标出「这一餐是老板的」——记错人是要翻账才查得出来的，所以在列表上就看得见
   if(t.company.forBoss) parts.push('👔老板的');
   const st = t.company.status;
@@ -2481,7 +2593,7 @@ function companyTxNote(t){
  */
 function staffTxNote(t){
   const parts = [];
-  if(t.fromStaff && t.fromStaff.by) parts.push(`🙋${t.fromStaff.by}记的`);
+  if(t.fromStaff && t.fromStaff.by) parts.push(`🙋${escHtml(t.fromStaff.by)}记的`);
   // t.inbox 只有同事版会写（送进老板投递箱的状态）。老板 App 里的记录没有这个字段，
   // 所以这几句在老板那边永远不会执行——放在共用函数里是因为列表本身是共用的。
   if(t.inbox){
@@ -2490,6 +2602,26 @@ function staffTxNote(t){
     else if(t.inbox.status === 'sent') parts.push('👔已送老板');
   }
   return parts.length ? ` · ${parts.join(' · ')}` : '';
+}
+
+/**
+ * 拼进 innerHTML 的外来文字一律先过这个。备注（description）不只是自己打的：同事投递箱、
+ * butler 老板账本、Telegram 记的都会原样落进来——不转义的话，备注里一个「<」就把整张
+ * 清单排乱，最坏是别人塞进来的字在这个 App 里当代码跑（这台手机存着公司账钥匙）。
+ * 比 ledEsc 多转义单引号：t.id 要放进 onclick='...' 里。
+ */
+function escHtml(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/**
+ * 放进 onclick="f('…')" 引号里的值：只做 HTML 转义不够——浏览器会先把 &#39; 还原成 '
+ * 再交给 JS，照样能把字串截断。所以先按 JS 字串转义（\ 与 '），再按 HTML 转义。
+ */
+function escJsArg(s){
+  return escHtml(String(s == null ? '' : s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
 }
 
 function txHtml(t, currency){
@@ -2502,14 +2634,14 @@ function txHtml(t, currency){
   // bossCur：同事版老板账每一笔记账当下钉住的币种（主 App 的记录没有这个字段，不受影响）。
   // 出国那个月美金新币都在同一本里，照这本账现在的币种显示会把金边那几笔美金标成新币
   const cur = t.bossCur || currency || (curAcc()?curAcc().currency:'HKD');
-  const clip = t.attachmentId ? `<span class="tx-attach-flag" onclick="event.stopPropagation();openAttachmentViewer('${t.id}')">📎</span>` : '';
+  const clip = t.attachmentId ? `<span class="tx-attach-flag" onclick="event.stopPropagation();openAttachmentViewer('${escJsArg(t.id)}')">📎</span>` : '';
   return `<div class="tx-swipe-wrap">
-    <div class="tx-del-btn" onclick="deleteTxById('${t.id}')">🗑<br>删除</div>
-    <div class="tx-item" onclick="editTx('${t.id}')">
+    <div class="tx-del-btn" onclick="deleteTxById('${escJsArg(t.id)}')">🗑<br>删除</div>
+    <div class="tx-item" onclick="editTx('${escJsArg(t.id)}')">
       <div class="tx-icon" style="background:${color}22">${icon}</div>
       <div class="tx-info">
-        <div class="tx-name">${t.description||catName}${clip}</div>
-        <div class="tx-cat">${catName} · ${t.date}${companyTxNote(t)}${staffTxNote(t)}</div>
+        <div class="tx-name">${escHtml(t.description||catName)}${clip}</div>
+        <div class="tx-cat">${escHtml(catName)} · ${escHtml(t.date)}${companyTxNote(t)}${staffTxNote(t)}</div>
       </div>
       <div class="tx-amt ${cls}">${sign}${fmt(t.amount, cur)}</div>
     </div>
@@ -2541,7 +2673,7 @@ function renderTxList(){
   document.getElementById('tx-month-text').textContent = monthName(state.txYear, state.txMonth);
   let txs = monthTxs(acc.id, state.txYear, state.txMonth);
   if(state.txFilter!=='all') txs = txs.filter(t=>t.type===state.txFilter);
-  txs.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  sortNewestFirst(txs);
   const el = document.getElementById('tx-list');
   if(txs.length===0){
     // 空清单要说清楚是「真的没记」还是「这台设备没接上云端」——2026-08-23 用户在备用机上
@@ -2680,7 +2812,7 @@ function renderSettingsRecurring(){
       <div class="setting-item-left" style="flex:1;min-width:0">
         <div class="setting-icon" style="background:${cat.color||'#eee'}33">${cat.icon||'📦'}</div>
         <div>
-          <div class="setting-name">${r.name}</div>
+          <div class="setting-name">${escHtml(r.name)}</div>
           <div class="setting-sub">${acc.name||''} · ${acc.currency||''} ${fmt(r.amount, acc.currency)}</div>
         </div>
       </div>
@@ -3315,10 +3447,11 @@ async function saveTxInner(){
     data.transactions.push(tx);
     toast('记录已保存');
   }
-  saveData();
+  const savedLocal = saveData();
   // 读回确认真的写进去了。写不进去照样往下走（公司账那笔还是要报出去，不能因为
   // 手机存不住就让这笔钱消失），但必须当场把话说明白，免得他以为没记成又记一遍。
-  if(!verifyTxPersisted(tx.id)) warnStorageBroken();
+  // 存储满了 saveData 自己已经讲过一遍，不再叠一个说法不同的提示。
+  if(savedLocal && !verifyTxPersisted(tx.id)) warnStorageBroken();
   // if attachment was removed/replaced, clean up the orphaned blob
   if(prevAttachmentId && prevAttachmentId !== tx.attachmentId){
     deleteAttachmentBlob(prevAttachmentId);
@@ -5784,6 +5917,7 @@ function closeScan(){
 
 function init(){
   loadData();
+  reportLoadDataRescue();
   if(!data.currentAccountId && data.accounts.length>0)
     data.currentAccountId = data.accounts[0].id;
   setupPWA();
@@ -5839,7 +5973,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-10-26';
+const APP_BUILD = '2026-10-29';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
@@ -6536,8 +6670,7 @@ async function editSentCompanyTx(prev){
     if(r.record && r.record.person) local.company.person = r.record.person;
     local.categoryId = COMPANY_CAT_TO_APP[categoryEn] || 'cat_other_exp';
   }
-  saveData();
-  if(!verifyTxPersisted(prev.id)) warnStorageBroken();
+  if(saveData() && !verifyTxPersisted(prev.id)) warnStorageBroken();
   closeModal('modal-add-tx');
   const side = (r.record && r.record.person) ? `，算 ${r.record.person} 头上` : '';
   toast(`✅ 公司账本已改${side}`);
@@ -7298,7 +7431,7 @@ function renderReconcile(){
     </div>
     ${history.length ? history.map(h=>`<div class="petty-row">
         <div><div class="petty-name">${h.amountUsd>=0?'+':''}${fmt(h.amountUsd,'USD')}</div>
-        <div class="petty-meta">${h.date}${h.note ? '　'+h.note : ''}</div></div></div>`).join('')
+        <div class="petty-meta">${escHtml(h.date)}${h.note ? '　'+escHtml(h.note) : ''}</div></div></div>`).join('')
       : `<div class="led-sub">还没记过</div>`}
     ${last ? `<div class="petty-undo">上一笔：${last.amountUsd>=0?'+':''}${fmt(last.amountUsd,'USD')}（${last.date}）<br>
         <span style="color:var(--exp);cursor:pointer" onclick="reconcileUndo()">记错了？撤销这一笔</span></div>` : ''}`;
@@ -8876,7 +9009,7 @@ function invPatchItem(category, item){
 function invBuildShareText(catKey, filterLoc){
   const cat = invGetCat(catKey);
   const icon = cat.icon;
-  const dateStr = new Date().toISOString().slice(0,10);
+  const dateStr = today();   // 不用 toISOString：金边凌晨 0~7 点它会回昨天
   const { groups, usedUp } = invGroupByLocation(cat.items);
   const target = filterLoc != null ? groups.filter(g => g.rawLocation === filterLoc) : groups;
   const lines = [`${icon} ${cat.label}库存（${dateStr}）`];

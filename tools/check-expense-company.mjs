@@ -4073,6 +4073,170 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   await ctx.close();
 }
 
+// ---------- 【39】不丢账、不乱显示（2026-10-29 体检修的五个 bug） ----------
+{
+  console.log('\n【39】账本读坏/存储满/云端超大/外来备注/同一天排序/月份/库存日期');
+  const mk = async (opts = {}) => {
+    const ctx = await browser.newContext(opts);
+    const page = await ctx.newPage();
+    const errs = [], dialogs = [];
+    page.on('pageerror', e => errs.push(String(e)));
+    page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
+    await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+      ? r.continue() : r.abort('failed'));
+    return { ctx, page, errs, dialogs };
+  };
+  const booted = (page) => until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  // ① 本机那份读不出来：原文先另存，不被下一次 saveData 盖掉
+  {
+    const { ctx, page, dialogs } = await mk();
+    await page.addInitScript(() => {
+      if (!sessionStorage.getItem('seeded')) {
+        sessionStorage.setItem('seeded', '1');
+        localStorage.setItem('expenseTracker_v2', '{"accounts":[{"id":"a1"');   // 半截写入
+      }
+    });
+    await page.goto(URL, { waitUntil:'domcontentloaded' });
+    await booted(page);
+    await page.waitForTimeout(600);   // alert 是 setTimeout 300 之后弹的
+    const rescued = await page.evaluate(() => {
+      const k = Object.keys(localStorage).find(k => k.startsWith('expenseTracker_v2_corrupt_'));
+      return k ? localStorage.getItem(k) : null;
+    });
+    ok('★读不出来的原文另存了一份（一字不差）', rescued === '{"accounts":[{"id":"a1"', rescued);
+    ok('★当场弹窗说明', dialogs.some(m => m.includes('读不出来')), dialogs);
+    await page.evaluate(() => saveData());
+    ok('saveData 之后另存的那份还在', await page.evaluate(() =>
+      Object.keys(localStorage).some(k => k.startsWith('expenseTracker_v2_corrupt_'))));
+    await ctx.close();
+  }
+  // ①对照组：正常的账本照常读，不另存、不弹窗——不然「每次都另存」上面也会绿
+  {
+    const { ctx, page, dialogs } = await mk();
+    await page.addInitScript(() => {
+      if (!sessionStorage.getItem('seeded')) {
+        sessionStorage.setItem('seeded', '1');
+        localStorage.setItem('expenseTracker_v2', JSON.stringify({ accounts:[{ id:'a1', name:'我的', currency:'USD' }],
+          transactions:[{ id:'t1', accountId:'a1', type:'expense', amount:5, date:'2026-10-01', categoryId:'x' }] }));
+      }
+    });
+    await page.goto(URL, { waitUntil:'domcontentloaded' });
+    await booted(page);
+    await page.waitForTimeout(600);
+    const st = await page.evaluate(() => ({ n: data.transactions.length, cats: (data.categories||[]).length,
+      corrupt: Object.keys(localStorage).some(k => k.startsWith('expenseTracker_v2_corrupt_')) }));
+    ok('★对照组：好的账本照常读进来，缺的类别补上默认', st.n === 1 && st.cats > 0 && !st.corrupt, st);
+    ok('对照组：不弹「读不出来」', !dialogs.some(m => m.includes('读不出来')), dialogs);
+    await ctx.close();
+  }
+
+  const { ctx, page, errs, dialogs } = await mk();
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await booted(page);
+
+  // ② 存储满了：不抛错、回 false、讲出来；对照组正常写回 true
+  const quota = await page.evaluate(() => {
+    const orig = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(k, v){
+      if (k === 'expenseTracker_v2') { const e = new Error('quota'); e.name = 'QuotaExceededError'; throw e; }
+      return orig.call(this, k, v);
+    };
+    let threw = false, r;
+    try { r = saveData(); } catch (e) { threw = true; }
+    Storage.prototype.setItem = orig;
+    return { threw, r, again: saveData() };
+  });
+  await page.waitForTimeout(500);
+  ok('★存储满了 saveData 不抛错、回 false', !quota.threw && quota.r === false, quota);
+  ok('★存储满了当场弹窗说「别重记」', dialogs.some(m => m.includes('存储空间满了') && m.includes('不要重记')), dialogs);
+  ok('对照组：存储正常 saveData 回 true', quota.again === true, quota);
+
+  // ③ 云端：小账本存明文（旧版 App 看得懂），大账本存压缩，读回来一字不差
+  const cloud = await page.evaluate(async () => {
+    if (typeof packCloudPayload !== 'function') return { missing: 'packCloudPayload' };
+    const small = { transactions:[{ id:'s1', description:'小' }] };
+    const big = { transactions: Array.from({ length: 7000 }, (_, i) => ({ id:'t'+i, accountId:'a1',
+      type:'expense', amount: i % 97 + 0.5, date:'2026-10-'+String(i%28+1).padStart(2,'0'),
+      description:'午餐 lunch with client 第'+i+'笔', categoryId:'cat_food', updatedAt: 1760000000000 + i })) };
+    const ps = await packCloudPayload(small), pb = await packCloudPayload(big);
+    const rawBig = new TextEncoder().encode(JSON.stringify(big)).length;
+    const back = await unpackCloudPayload(pb), backS = await unpackCloudPayload(ps);
+    return { smallPlain: typeof ps.payload === 'string' && !ps.payloadGz,
+      bigGz: typeof pb.payloadGz === 'string' && !pb.payload, rawBig, gzLen: (pb.payloadGz||'').length,
+      same: JSON.stringify(back) === JSON.stringify(big), sameS: JSON.stringify(backS) === JSON.stringify(small) };
+  });
+  ok('对照组：小账本照旧存明文 payload', cloud.smallPlain && cloud.sameS, cloud);
+  ok('★超过 1MB 的账本改存压缩，压完放得进一份文件', cloud.bigGz && cloud.rawBig > 1024*1024 && cloud.gzLen < 1000*1024, cloud);
+  ok('★压缩的那份读回来一字不差', cloud.same, cloud);
+
+  // ④ 外来备注不当代码跑；id 带引号也截不断 onclick
+  await page.evaluate(() => {
+    window.__pwned = 0;
+    const acc = curAcc();
+    data.transactions = [
+      { id:"x'+(window.__pwned=2)+'", accountId:acc.id, type:'expense', amount:1, date:today(),
+        description:'<img src=x onerror="window.__pwned=1">同事记的', categoryId:'cat_food',
+        fromStaff:{ by:'<b>K</b>' } },
+      { id:'ok1', accountId:acc.id, type:'expense', amount:2, date:today(), description:'普通午餐', categoryId:'cat_food' }];
+    saveData(); renderOverview(); switchTab && switchTab('transactions');
+  });
+  await page.waitForTimeout(300);
+  await page.locator('#tx-list .tx-item', { hasText: '同事记的' }).first().click({ timeout: 1500 }).catch(() => {});
+  await page.waitForTimeout(200);
+  const x = await page.evaluate(() => ({ pwned: window.__pwned,
+    txt: document.getElementById('ov-recent').textContent,
+    imgs: document.querySelectorAll('#ov-recent img, #tx-list img').length,
+    editing: state.editingTxId }));
+  ok('★备注里的 <img onerror> 没有执行、原样显示成字', x.pwned === 0 && x.imgs === 0 && x.txt.includes('<img src=x'), x);
+  ok('★id 带引号也截不断 onclick（点开编辑拿到的是原 id）', x.pwned === 0 && x.editing === "x'+(window.__pwned=2)+'", x);
+  ok('对照组：普通备注照常显示', x.txt.includes('普通午餐'), x.txt);
+  await page.evaluate(() => { try{ closeModal('modal-add-tx'); }catch(e){} });
+
+  // ⑤ 同一天记 6 笔：首页「最近」第一条是最后记的那笔
+  const recent = await page.evaluate(() => {
+    const acc = curAcc();
+    data.transactions = Array.from({ length: 6 }, (_, i) => ({ id:'d'+i, accountId:acc.id, type:'expense',
+      amount:i+1, date:today(), description:'第'+(i+1)+'笔', categoryId:'cat_food' }));
+    data.transactions.unshift({ id:'old', accountId:acc.id, type:'expense', amount:9, date:'2020-01-01',
+      description:'很久以前', categoryId:'cat_food' });
+    saveData(); renderOverview();
+    return [...document.querySelectorAll('#ov-recent .tx-name')].map(e => e.textContent.trim());
+  });
+  ok('★同一天第 6 笔排在「最近」第一条', recent[0] && recent[0].startsWith('第6笔'), recent);
+  ok('对照组：旧日期那笔不挤进最近 5 笔', recent.length === 5 && !recent.some(t => t.includes('很久以前')), recent);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+
+  // ⑥ 月份按字串比：手机设在美洲时区，10/1 那笔仍算十月
+  {
+    const { ctx, page } = await mk({ timezoneId: 'America/Los_Angeles' });
+    await page.goto(URL, { waitUntil:'domcontentloaded' });
+    await booted(page);
+    const m = await page.evaluate(() => {
+      const acc = curAcc();
+      data.transactions = [{ id:'m1', accountId:acc.id, type:'expense', amount:1, date:'2026-10-01', categoryId:'cat_food' },
+                           { id:'m2', accountId:acc.id, type:'expense', amount:1, date:'2026-09-30', categoryId:'cat_food' }];
+      return { oct: monthTxs(acc.id, 2026, 9).map(t => t.id), sep: monthTxs(acc.id, 2026, 8).map(t => t.id) };
+    });
+    ok('★美洲时区：10/1 算十月', m.oct.join() === 'm1', m);
+    ok('对照组：9/30 算九月', m.sep.join() === 'm2', m);
+    await ctx.close();
+  }
+  // ⑦ 库存分享的日期：金边凌晨 2:30 写今天，不写昨天
+  {
+    const { ctx, page } = await mk({ timezoneId: 'Asia/Phnom_Penh' });
+    await page.clock.install({ time: new Date('2026-10-29T19:30:00Z') });   // 金边 10/30 02:30
+    await page.goto(URL, { waitUntil:'domcontentloaded' });
+    await booted(page);
+    const txt = await page.evaluate(() => invBuildShareText('wine'));
+    ok('★金边凌晨 2:30 的库存分享写 10-30', txt.includes('2026-10-30') && !txt.includes('2026-10-29'), txt.split('\n')[0]);
+    await ctx.close();
+  }
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

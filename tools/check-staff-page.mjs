@@ -749,6 +749,10 @@ if (want()) {
   await until(() => page.evaluate(
     () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
     { what: 'App 启动完成' });
+  // 补回来是开机后异步拉公司账本，原本启动完成就立刻读清单——check-all 并行跑、机器忙时
+  // 拉取还没回来，读到空清单就假红（2026-10-29 踩到）。等条件成立，等不到再照常判红。
+  await until(async () => (await page.textContent('#tx-list')).includes('4.49'),
+    { what: '清单补回 4.49 那笔' }).catch(() => {});
   ok('开页面时清单是空的 → 自动从公司账本补回来（不用他自己去按）',
      (await page.textContent('#tx-list')).includes('4.49'), await page.textContent('#tx-list'));
 
