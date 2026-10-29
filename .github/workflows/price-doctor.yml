@@ -1,0 +1,50 @@
+# 行情线体检：首次接入非美股上市线（如伦敦美元线 CSPX/VUAA）时，在 CI 实抓并验证币种量级，
+# 抓到的 history 写回触发分支（沙盒连不上行情源，只能在 CI 做）。手动触发，不排程。
+# 币种/量级护栏在 trading/fetch_prices.py（Yahoo meta.currency 必须 USD ＋ 对 SPY 比值 ±10%），
+# 护栏不过就拒绝写入、本流程失败。自检见 tools/check-prices.py。
+name: Price Doctor
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "只抓这几档（逗号分隔）"
+        required: false
+        default: "CSPX,VUAA"
+
+permissions:
+  contents: write
+
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 抓取并验证
+        env:
+          ONLY: ${{ inputs.only }}
+        run: python3 trading/fetch_prices.py
+      - name: 印出最新收盘（公开行情）
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          for s in os.environ["ONLY"].split(","):
+              h = json.load(open(f"trading/history/{s.strip()}.json"))
+              b = h["bars"][-1]
+              print(f"{s.strip()} source={h['source']} bars={len(h['bars'])} last={b[0]} close={b[4]}")
+          PY
+      - name: 写回触发分支
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trading/history
+          if git diff --cached --quiet; then echo "无变化"; exit 0; fi
+          git commit -m "chore(trading): price-doctor 抓取伦敦美元线历史"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}"

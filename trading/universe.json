@@ -7,6 +7,8 @@
     {"symbol": "IWM", "name": "罗素2000 ETF", "etf": true, "contract_id": null},
     {"symbol": "VTI", "name": "全美股市 ETF", "etf": true, "contract_id": null},
     {"symbol": "VOO", "name": "标普500 ETF(Vanguard)", "etf": true, "contract_id": 136155102},
+    {"symbol": "CSPX", "name": "标普500 ETF(iShares 爱尔兰·伦敦美元线)", "etf": true, "contract_id": 76023663, "stooq": "cspx.uk", "yahoo": "CSPX.L", "usd_guard": {"ref": "SPY", "ratio": 1.0815, "tol": 0.10}},
+    {"symbol": "VUAA", "name": "标普500 ETF(Vanguard 爱尔兰·伦敦美元线)", "etf": true, "contract_id": 366244335, "stooq": "vuaa.uk", "yahoo": "VUAA.L", "usd_guard": {"ref": "SPY", "ratio": 0.1940, "tol": 0.10}},
     {"symbol": "SMH", "name": "半导体 ETF", "etf": true, "contract_id": null},
     {"symbol": "XLK", "name": "科技板块 ETF", "etf": true, "contract_id": null},
     {"symbol": "XLE", "name": "能源板块 ETF", "etf": true, "contract_id": null},

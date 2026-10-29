@@ -194,7 +194,7 @@ const LANG_KEY = "siteLangUser";
 /* ---------- 英文名（data-public 里的名称是中文；只做显示用，代号才是主键） ---------- */
 const EN_NAMES = {
   SPY: "S&P 500 ETF", QQQ: "Nasdaq-100 ETF", DIA: "Dow Jones ETF", IWM: "Russell 2000 ETF", VTI: "Total US Market ETF",
-  VOO: "S&P 500 ETF (Vanguard)", SMH: "Semiconductor ETF", XLK: "Tech Sector ETF", XLE: "Energy Sector ETF",
+  VOO: "S&P 500 ETF (Vanguard)", CSPX: "S&P 500 ETF (iShares, London USD)", VUAA: "S&P 500 ETF (Vanguard, London USD)", SMH: "Semiconductor ETF", XLK: "Tech Sector ETF", XLE: "Energy Sector ETF",
   XLF: "Financial Sector ETF", XLV: "Health Care Sector ETF", TLT: "20+ Yr Treasury ETF", GLD: "Gold ETF",
   SCHD: "US Dividend ETF", VXUS: "International Stock ETF", IBIT: "Bitcoin ETF", SGOV: "Short-Term Treasury ETF",
   AAPL: "Apple", MSFT: "Microsoft", NVDA: "NVIDIA", GOOGL: "Alphabet (Google)", AMZN: "Amazon", META: "Meta",
@@ -730,13 +730,16 @@ function repaintLive(changed) {
   renderIndices(); renderWatch();
   if (PRIV) renderPnl();                                          // 未解锁时不重绘，免得清掉正在输入的密码
 }
+const NO_LIVE = new Set(["CSPX", "VUAA"]);
 async function pollQuotes() {
   if (document.hidden || inflight || !PUB) return;
   inflight = true;
   let next = CFG.retryMs;
   const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), CFG.timeoutMs);
   try {
-    const symbols = tickers().map(tk => tk.symbol).join("|");    // 只带代号（整个 58 档名单，不是持仓）
+    // 只带代号（整个名单，不是持仓）。伦敦上市线（CSPX/VUAA）不问 CNBC：它按裸代号会认成别的标的，
+    // 价格会张冠李戴；这两档一律用每小时 data-public 的收盘价（美元，fetch_prices 有币种护栏）
+    const symbols = tickers().map(tk => tk.symbol).filter(s => !NO_LIVE.has(s)).join("|");
     const url = CFG.url + "?symbols=" + encodeURIComponent(symbols) + "&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json&events=1";
     const r = await fetch(url, { cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer", signal: ctl.signal });
     if (!r.ok) throw new Error("HTTP " + r.status);

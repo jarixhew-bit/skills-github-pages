@@ -26,7 +26,9 @@ def http_get(url, timeout=30):
 
 
 def from_stooq(sym):
-    body = http_get(f"https://stooq.com/q/d/l/?s={sym.lower()}.us&i=d")
+    # 美股默认 .us；伦敦美元线用 universe 的 stooq 字段整串覆盖（如 cspx.uk）
+    code = sym.lower() if "." in sym else f"{sym.lower()}.us"
+    body = http_get(f"https://stooq.com/q/d/l/?s={code}&i=d")
     lines = body.strip().splitlines()
     if len(lines) < 2 or not lines[0].startswith("Date"):
         raise ValueError("stooq 无数据")
@@ -43,6 +45,11 @@ def from_stooq(sym):
 def from_yahoo(sym):
     body = http_get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=2y&interval=1d")
     r = json.loads(body)["chart"]["result"][0]
+    # 币种硬校验：伦敦上市线可能以 GBp（便士，差约 100 倍）或 GBP（差约 1.27 倍）报价，
+    # Yahoo 会在 meta.currency 明说；不是 USD 一律拒绝，绝不静默写入
+    cur = (r.get("meta") or {}).get("currency")
+    if cur is not None and cur != "USD":
+        raise ValueError(f"币种 {cur} 非 USD")
     q = r["indicators"]["quote"][0]
     bars = []
     for i, ts in enumerate(r["timestamp"]):
@@ -82,19 +89,52 @@ def validate(sym, bars):
     return None
 
 
+def usd_guard(sym, bars, ref_bars, ratio, tol=0.10):
+    """量级护栏：同指数 ETF 对基准（如 SPY）的价格比值应稳定在 ratio 附近。
+    GBp 线比值约差 100 倍、GBP 线约差 1.27 倍，都会落在 ±tol 之外。
+    返回错误字串或 None。基准读不到时拒绝（宁缺勿错）。"""
+    if not ref_bars or not bars or not ratio:
+        return f"{sym}: 缺基准行情，无法校验币种量级"
+    ref_by_date = {b[0]: b[4] for b in ref_bars}
+    ref_close = ref_by_date.get(bars[-1][0], ref_bars[-1][4])
+    if not ref_close:
+        return f"{sym}: 基准收盘价无效"
+    got = bars[-1][4] / ref_close
+    if abs(got / ratio - 1) > tol:
+        return (f"{sym}: 价格量级与美元线不符（对基准比值 {got:.4f}，应约 {ratio}±{int(tol*100)}%），"
+                f"疑为 GBp/GBP 或错线，拒绝写入")
+    return None
+
+
 def main():
     with open(os.path.join(BASE, "universe.json"), encoding="utf-8") as f:
         universe = json.load(f)["tickers"]
+    # ONLY=CSPX,VUAA：只抓指定几档（price-doctor.yml 首次验证伦敦美元线用）
+    only = {x.strip() for x in os.environ.get("ONLY", "").split(",") if x.strip()}
+    if only:
+        universe = [u for u in universe if u["symbol"] in only]
     os.makedirs(HIST_DIR, exist_ok=True)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     ok, failed = [], []
     for u in universe:
         sym = u["symbol"]
         bars, src, err = None, None, None
-        for name, fn in (("stooq", from_stooq), ("yahoo", from_yahoo)):
+        guard = u.get("usd_guard")  # 非美股上市的美元线才有：{"ref": "SPY", "ratio": x, "tol": y}
+        ref_bars = None
+        if guard:
             try:
-                cand = fn(sym)[-KEEP_BARS:]
+                with open(os.path.join(HIST_DIR, f"{guard['ref']}.json"), encoding="utf-8") as f:
+                    ref_bars = json.load(f)["bars"]
+            except (OSError, ValueError, KeyError):
+                ref_bars = None
+        # 行情代码覆盖：stooq / yahoo 字段缺省就用 symbol 本身
+        for name, fn, code in (("stooq", from_stooq, u.get("stooq", sym)),
+                               ("yahoo", from_yahoo, u.get("yahoo", sym))):
+            try:
+                cand = fn(code)[-KEEP_BARS:]
                 err = validate(sym, cand)
+                if err is None and guard:
+                    err = usd_guard(sym, cand, ref_bars, guard["ratio"], guard.get("tol", 0.10))
                 if err is None:
                     bars, src = cand, name
                     break

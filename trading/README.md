@@ -8,7 +8,7 @@
 ```
 交易日 UTC 13:00-21:00 每小时一次 · GitHub Actions（免费，不用 Claude）
 （用户 2026-07-18 要求每小时刷新页面；同一小时内多次运行天然冗余，已无需补漏跑）
-  fetch_prices.py  Stooq/Yahoo 下载58只日线 → history/*.json（bars 无新增时不重写）
+  fetch_prices.py  Stooq/Yahoo 下载60只日线（含伦敦美元线 CSPX/VUAA，币种/量级有护栏，见 .claude/notes/trading.md） → history/*.json（bars 无新增时不重写）
   flex_account.py  IBKR Flex Query 拉真实持仓/现金/NAV/成交（密钥在仓库 Secrets，失败不阻断）
   analyzer.py      信号+持仓重算+加仓建议 → data-public.json / data-private.enc / state.enc
   ai_note.py       Agnes 生成账户点评（每天首次运行才生成，失败不阻断）

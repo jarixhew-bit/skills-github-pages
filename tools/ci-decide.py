@@ -57,7 +57,7 @@ RULES = {
     "board": ["trading/board.html", "trading/analyzer.py", "trading/universe.json",
               "tools/check-board.mjs"],
     "news": [".github/scripts/fetch_news.py", "tools/check-news.py"],
-    "prices": ["trading/fetch_prices.py", "tools/check-prices.py"],
+    "prices": ["trading/fetch_prices.py", "trading/analyzer.py", "trading/universe.json", "tools/check-prices.py"],
     "staff":     ["staff/**", "expense-tracker.html", "tools/build-staff-page.py",
                   "tools/check-staff-page.mjs"],
     # 两本手册的天气条与实时空气质量条：前端现抓 open-meteo / data.gov.sg，

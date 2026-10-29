@@ -391,9 +391,29 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
   （`trading/flex_account.py`），IBKR 对伦敦 ETF 的该属性就是裸代码 `CSPX`／`VUAA`（交易所在另一个
   `listingExchange` 字段，不进 symbol），所以政策直接写这两个代码。**两个疑虑**：(1) 若实际带后缀或
   大小写不同，会被判「标普一边缺失」开缺数据 issue——到时把真实 symbol 补进 `members`；(2) CSPX／VUAA
-  不在 `trading/universe.json`，`analyzer.py` 对「持仓但无历史」的标的按**成本价**估市值（并发 warning），
-  所以换仓后标普一边的市值是成本而非市价，占比会略失真；要准就把它们加进 universe 并回填历史（Yahoo
-  `CSPX.L` 之类，是 LSE 价格，币种须确认为 USD）。
+  已于 2026-10-29 加进 `trading/universe.json`（见下节），换仓后按市价计市值。
+
+## 伦敦美元线 CSPX／VUAA 行情（2026-10-29 建）
+
+- `board.html` 的 CNBC 近即时报价**排除 CSPX／VUAA**（`NO_LIVE`）：CNBC 按裸代号会认成别的标的，价格会张冠李戴；这两档用 data-public 的收盘价。
+
+- `universe.json` 条目可带 **`stooq`／`yahoo` 行情代码覆盖**（缺省用 symbol）：CSPX＝`cspx.uk`／`CSPX.L`
+  （contract_id 76023663），VUAA＝`vuaa.uk`／`VUAA.L`（366244335），都是 LSEETF、美元计价。
+  `analyzer.py` 持仓市值＝数量×history 最新收盘价（`sig["price"]`），所以进了 universe 就不再按成本估。
+  两档也加进 `BROAD_INDEX`（与 VOO 同指数，适用打折加大定投规则），会跑技术打分、出现在榜单里。
+- **币种／量级护栏（`fetch_prices.py`）**：伦敦线可能以 GBp（差约 100 倍）或 GBP（差约 1.27 倍）报价，
+  估值会静默错。两道闸：(1) Yahoo `meta.currency` 不是 USD 直接拒绝；(2) universe 的 `usd_guard`
+  `{ref:"SPY", ratio, tol}`：该档最新收盘 ÷ SPY 同日收盘，必须落在 ratio±tol（现为 ±10%，CSPX 约 1.08、
+  VUAA 约 0.194，2026-10-29 用 835.29／149.80 对 SPY 772.31 定），否则判该源失败、不写入、走备援，
+  都失败就计入失败档（超过 1/4 才让 CI 红，但该档 history 不更新、analyzer 会报缺历史）。
+  基准读不到也拒绝。**ratio 会随累积型 ETF 分红再投缓慢漂移（每年约 1 个点）**，若某天护栏误拒，
+  先确认币种没错，再按当时的比值更新 ratio。
+- 自检：`tools/check-prices.py` 第 4、5 段（美元量级接受、GBp/GBP 拒绝、Yahoo 币种闸、universe 登记、
+  假持仓含 CSPX 在临时目录跑真 analyzer，市值＝数量×最新收盘且无「按成本估算」警告）。
+  该检查现需 `cryptography`（`checks.yml` 的 prices 任务已装）。
+- 首次验证：`.github/workflows/price-doctor.yml`（手动触发，可选 `only`，把抓到的 history 写回触发分支，
+  日志印最新收盘）。`ONLY=CSPX,VUAA` 环境变量也可用于 `fetch_prices.py` 只抓指定几档。
+- `check-board.mjs` E3 对「已有 history 但还没被 trading-daily 分析进 data-public」的新票放行（过渡中，最多 5 档）。
 
 ## 大跌开枪提醒（2026-10-29 建）
 
