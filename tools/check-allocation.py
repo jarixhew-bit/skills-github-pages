@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""配置偏离检查：VOO / IBIT 市值占比有没有偏离长期政策超过门槛。
+"""配置偏离检查：标普500一边（VOO+CSPX+VUAA 合计）/ IBIT 市值占比有没有偏离长期政策超过门槛。
 
 为什么有它（2026-10-29）：政策是 VOO 80% / IBIT 20%（SGOV 当现金缓冲不计入），
 偏离目标超过 5 个百分点才需要再平衡。人不会每天去算，所以交给 GitHub Actions 定期查，
@@ -39,7 +39,7 @@ PAGE = "https://jarixhew-bit.github.io/skills-github-pages/trading/"
 TEXT = {
     "breach-title": "配置偏离超过门槛，请查看",
     "breach-body": (
-        "VOO 与 IBIT 的市值占比，偏离长期配置政策已超过门槛，该考虑再平衡了。\n\n"
+        "标普一边（VOO／CSPX／VUAA 合计）与 IBIT 的市值占比，偏离长期配置政策已超过门槛，该考虑再平衡了。\n\n"
         "请打开页面查看当前占比，并对照政策书决定怎么调：\n"
         f"{PAGE}\n\n"
         "做法提示：新入金优先买低配的那一边，尽量不卖。\n\n"
@@ -50,7 +50,7 @@ TEXT = {
     "missing-title": "配置检查缺数据，请查看",
     "missing-body": (
         "配置偏离检查这次拿不到可用的持仓数据，所以没法判断有没有偏离。\n\n"
-        "常见原因：IBKR 持仓同步（Flex）连续失败、密码 Secret 缺失或不对、持仓里缺了 VOO 或 IBIT。\n"
+        "常见原因：IBKR 持仓同步（Flex）连续失败、密码 Secret 缺失或不对、持仓里标普一边（VOO／CSPX／VUAA）一只都没有，或缺了 IBIT。\n"
         "先看是否已有「持仓同步失败」的 issue，再看交易页面是否正常显示：\n"
         f"{PAGE}\n\n"
         "（本 issue 刻意不写任何数字。数据恢复后会自动关闭。）\n"
@@ -74,22 +74,30 @@ def _num(v):
 def evaluate(values, policy):
     """values: {symbol: 市值}；policy: 读自 allocation-policy.json 的 dict。
 
-    回传 dict：status in {"ok","breach","missing"}，另有 shares（占比，缺失时为 None）、
-    deviations（各标的偏离，单位小数）。SGOV 等 excluded 标的完全不参与。
+    每一「边」（targets 的键）的市值 = members 里列出的代码市值合计（标普500一边可以
+    是 VOO、CSPX、VUAA 任意组合）。没写 members 的边，就用边名本身当代码。
+    回传 dict：status in {"ok","breach","missing"}，另有 shares（各边占比，缺失时为 None）、
+    deviations（各边偏离，单位小数）。SGOV 等 excluded 标的完全不参与。
+    缺失判定：某一边的所有代码都拿不到合法市值才算 missing（换仓期间 VOO 没了但 CSPX 在，不算缺）。
     """
     targets = policy["targets"]
+    members = policy.get("members") or {}
     band = float(policy["band"])
     vals = {}
-    for sym in targets:
-        v = _num((values or {}).get(sym))
-        if v is None or v < 0:
+    for side in targets:
+        got = []
+        for sym in members.get(side) or [side]:
+            v = _num((values or {}).get(sym))
+            if v is not None and v >= 0:
+                got.append(v)
+        if not got:
             return {"status": "missing", "shares": None, "deviations": None,
-                    "reason": f"{sym} 缺失或不合法"}
-        vals[sym] = v
+                    "reason": f"{side} 一边的代码全部缺失或不合法"}
+        vals[side] = sum(got)
     total = sum(vals.values())
     if total <= 0:
         return {"status": "missing", "shares": None, "deviations": None,
-                "reason": "两者合计不为正"}
+                "reason": "两边合计不为正"}
     shares = {s: vals[s] / total for s in targets}
     devs = {s: shares[s] - float(targets[s]) for s in targets}
     breach = any(abs(d) > band + EPS for d in devs.values())
@@ -152,7 +160,9 @@ def run(outdir):
 
 # ---------------- 自检 ----------------
 
-POL = {"targets": {"VOO": 0.8, "IBIT": 0.2}, "band": 0.05, "excluded": ["SGOV"]}
+POL = {"targets": {"SP500": 0.8, "IBIT": 0.2},
+       "members": {"SP500": ["VOO", "CSPX", "VUAA"], "IBIT": ["IBIT"]},
+       "band": 0.05, "excluded": ["SGOV"]}
 
 
 def selftest():
@@ -191,6 +201,17 @@ def selftest():
     expect("SGOV 不计入", st({"VOO": 80000, "IBIT": 20000, "SGOV": 9_999_999}) == "ok")
     r2 = evaluate({"VOO": 82578, "IBIT": 18414, "SGOV": 5e6}, POL)
     expect("SGOV 不动占比", abs(r2["shares"]["IBIT"] - r["shares"]["IBIT"]) < 1e-12)
+    # 5b. 标普500一边是多代码合计：VOO+CSPX 混持、只有 CSPX、VOO+CSPX+VUAA 三者都有
+    r3 = evaluate({"VOO": 40000, "CSPX": 40000, "IBIT": 20000}, POL)
+    expect("VOO+CSPX 混持合计", r3["status"] == "ok" and abs(r3["shares"]["SP500"] - 0.8) < 1e-12, str(r3))
+    expect("只有 CSPX", st({"CSPX": 80000, "IBIT": 20000}) == "ok")
+    expect("只有 VUAA", st({"VUAA": 80000, "IBIT": 20000}) == "ok")
+    expect("三者合计", st({"VOO": 30000, "CSPX": 30000, "VUAA": 20000, "IBIT": 20000}) == "ok")
+    expect("合计后仍会超限", st({"VOO": 30000, "CSPX": 30000, "IBIT": 40000}) == "breach")
+    expect("S&P 三者全无判缺失", st({"IBIT": 20000, "SGOV": 50000}) == "missing")
+    expect("S&P 三者全无但有别的代码", st({"SPY": 80000, "IBIT": 20000}) == "missing")
+    expect("S&P 一边有但 IBIT 无", st({"CSPX": 80000}) == "missing")
+    expect("S&P 某成员非法被忽略", st({"VOO": "x", "CSPX": 80000, "IBIT": 20000}) == "ok")
     # 6. 清仓 IBIT（值为 0）是真实状态，应判超限而不是缺失
     expect("IBIT 清仓判超限", st({"VOO": 80000, "IBIT": 0}) == "breach")
 
@@ -204,10 +225,14 @@ def selftest():
     try:
         pol = load_policy()
         expect("政策目标合计为 1", abs(sum(pol["targets"].values()) - 1) < 1e-12)
-        expect("政策带 VOO+IBIT", set(pol["targets"]) == {"VOO", "IBIT"})
+        expect("政策两边是 SP500+IBIT", set(pol["targets"]) == {"SP500", "IBIT"})
+        expect("S&P 一边含 VOO/CSPX/VUAA", set(pol["members"]["SP500"]) == {"VOO", "CSPX", "VUAA"})
+        expect("IBIT 一边只有 IBIT", pol["members"]["IBIT"] == ["IBIT"])
+        expect("SGOV 不在任何一边", not ({"SGOV"} & {s for m in pol["members"].values() for s in m}))
+        expect("evaluate 吃真政策文件", evaluate({"CSPX": 80000, "IBIT": 20000}, pol)["status"] == "ok")
         expect("政策 band 为 0.05", abs(pol["band"] - 0.05) < 1e-12)
         expect("SGOV 不计入", "SGOV" in pol.get("excluded", []))
-        extra = set(pol) - {"_说明", "targets", "band", "excluded"}
+        extra = set(pol) - {"_说明", "targets", "members", "band", "excluded"}
         expect("政策无多余字段（防混入持仓）", not extra, str(extra))
     except Exception as e:
         fails.append(f"政策文件读取失败：{e}")

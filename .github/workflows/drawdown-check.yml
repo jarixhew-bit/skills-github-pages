@@ -1,0 +1,81 @@
+# 大跌开枪提醒（2026-10-29 建）：VOO 收盘较近 252 个交易日最高收盘回落 >=20% 开一级、>=30% 开二级，
+# 回到 <15% 才解除（滞后区间）。规则与自检在 tools/check-drawdown.py。零 Claude 用量。
+#
+# 行情：trading/history/VOO.json（公开行情，trading-daily 每个交易日收盘后更新）。
+# 上一状态：不提交状态文件，用「有没有开着的同名 issue」当状态位（同 tools/ci-notify.py 的机制）。
+# 本仓库是公开的：issue 与日志只写 VOO 的跌幅与日期，绝不写持仓、金额、SGOV 余额
+# （脚本根本不读持仓；tools/check-drawdown.py --selftest 会拦文案）。
+name: drawdown-check
+
+on:
+  schedule:
+    # 周一至五 UTC 22:30：美股 21:00 UTC 收盘、trading-daily 最后一轮（21:00）已把当天收盘写进 main
+    - cron: '30 22 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: drawdown-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 先跑自检（规则本身坏了就不要拿它的结论吓人）
+        run: python3 tools/check-drawdown.py --selftest
+      - name: 算跌幅并判定（读开着的 issue 当上一状态；读不到就罢工）
+        id: dd
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/check-drawdown.py --run --outdir "$RUNNER_TEMP/drawdown"
+
+      # 先处理二级再处理一级无所谓；两个 issue 标题不同，各自独立开关。
+      - name: 一级提醒（开 issue；回到解除线以内自动关）
+        if: always() && steps.dd.outputs.l1 != '' && steps.dd.outputs.l1 != 'skip'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STATE: ${{ steps.dd.outputs.l1 }}
+        run: |
+          python3 tools/ci-notify.py \
+            --title "$(python3 tools/check-drawdown.py --text l1-title)" \
+            --state "$STATE" --body-file "$RUNNER_TEMP/drawdown/body.md" \
+            --tg-bad "$(cat "$RUNNER_TEMP/drawdown/tg.txt" 2>/dev/null)" \
+            --tg-ok "$(python3 tools/check-drawdown.py --text l1-tg-ok)" || true
+
+      - name: 二级提醒（开 issue；回到解除线以内自动关）
+        if: always() && steps.dd.outputs.l2 != '' && steps.dd.outputs.l2 != 'skip'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STATE: ${{ steps.dd.outputs.l2 }}
+        run: |
+          python3 tools/ci-notify.py \
+            --title "$(python3 tools/check-drawdown.py --text l2-title)" \
+            --state "$STATE" --body-file "$RUNNER_TEMP/drawdown/body.md" \
+            --tg-bad "$(cat "$RUNNER_TEMP/drawdown/tg.txt" 2>/dev/null)" \
+            --tg-ok "$(python3 tools/check-drawdown.py --text l2-tg-ok)" || true
+
+      - name: 行情缺失通知（不含数字）
+        if: always() && steps.dd.outputs.missing != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STATE: ${{ steps.dd.outputs.missing }}
+        run: |
+          python3 tools/ci-notify.py \
+            --title "$(python3 tools/check-drawdown.py --text missing-title)" \
+            --state "$STATE" --body-file "$RUNNER_TEMP/drawdown/missing-body.md" \
+            --tg-bad "$(python3 tools/check-drawdown.py --text missing-tg-bad)" \
+            --tg-ok "$(python3 tools/check-drawdown.py --text missing-tg-ok)" || true
