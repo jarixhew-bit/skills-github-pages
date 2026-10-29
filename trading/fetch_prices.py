@@ -62,7 +62,7 @@ def from_yahoo(sym):
     return bars
 
 
-def validate(sym, bars):
+def validate(sym, bars, check_open=True):
     if len(bars) < 200:
         return f"{sym}: 仅 {len(bars)} 根，不足 200"
     last = datetime.strptime(bars[-1][0], "%Y-%m-%d").replace(tzinfo=timezone.utc)
@@ -80,7 +80,9 @@ def validate(sym, bars):
         in_progress = i == len(bars) - 1 and d == today
         if not (h >= l and h >= c - tol and l <= c + tol):
             return f"{sym} {d}: OHLC 异常 o={o} h={h} l={l} c={c}"
-        if not in_progress and not (h >= o - tol and l <= o + tol):
+        # 伦敦线（check_open=False）的开盘价常是集合竞价价，会落在连续竞价的高低区间外
+        # （2026-10-29 CI 实测 CSPX/VUAA 2026-03-02 即如此）；下游不读 open，只对它放宽
+        if check_open and not in_progress and not (h >= o - tol and l <= o + tol):
             return f"{sym} {d}: 开盘价不在当日区间内 o={o} h={h} l={l} c={c}"
         if i and b[0] <= bars[i - 1][0]:
             return f"{sym} {d}: 日期未升序"
@@ -132,7 +134,7 @@ def main():
                                ("yahoo", from_yahoo, u.get("yahoo", sym))):
             try:
                 cand = fn(code)[-KEEP_BARS:]
-                err = validate(sym, cand)
+                err = validate(sym, cand, check_open=not guard)
                 if err is None and guard:
                     err = usd_guard(sym, cand, ref_bars, guard["ratio"], guard.get("tol", 0.10))
                 if err is None:

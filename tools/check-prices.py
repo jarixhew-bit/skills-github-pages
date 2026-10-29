@@ -123,6 +123,14 @@ def main():
     ok("基准行情缺失时拒绝（宁缺勿错）",
        fp.usd_guard("CSPX", line(835.0), None, 1.0815) is not None)
 
+    b = good_bars(base=700.0)
+    b[-3] = [day(2), 726.74, 739.16, 728.07, 735.31, 1]             # 2026-03-02 CSPX 实测：open 在区间外
+    ok("伦敦线（check_open=False）放行集合竞价式 open", fp.validate("CSPX", b, check_open=False) is None,
+       fp.validate("CSPX", b, check_open=False))
+    ok("美股默认仍严查 open", fp.validate("CSPX", b) is not None)
+    b[-3] = [day(2), 735.0, 728.0, 739.0, 735.31, 1]                # 高低倒挂仍要拒绝
+    ok("放宽 open 后高低倒挂仍拒绝", fp.validate("CSPX", b, check_open=False) is not None)
+
     # Yahoo meta.currency：GBp／GBP 直接抛错，USD 放行
     def yahoo_with(cur):
         ts = [1_700_000_000 + 86400 * i for i in range(3)]
