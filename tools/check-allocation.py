@@ -66,14 +66,14 @@ TEXT = {
     # 美国资产遗产税提醒（文案同样不得含任何数字）
     "us-title": "美国资产已超过提醒线，请查看",
     "us-body": (
-        "美国资产已超过提醒线：比特币部分可考虑改买非美国的 iShares Bitcoin ETP（BTCN），先看政策书再决定。\n\n"
+        "美国资产已超过提醒线：标普指数基金那一边若还持有美国上市的 VOO，先换成爱尔兰注册的 CSPX（不算美国资产）；比特币部分可考虑改买瑞士发行的 iShares Bitcoin ETP（BTCN）；先看政策书再决定。\n\n"
         "背景：马来西亚居民持有的美国资产超过免税额，身故时要交美国遗产税。\n"
         "本检查把持仓里所有非白名单代码和账户美元现金都保守地算作美国资产。\n"
-        "对照政策书，决定要不要把美国上市的比特币基金换成瑞士发行的 BTCN：\n"
+        "对照政策书，决定要不要：一，把标普指数基金里美国上市的 VOO 换成爱尔兰注册的 CSPX；二，把美国上市的比特币基金换成瑞士发行的 BTCN：\n"
         f"{PAGE}\n\n"
         "（本 issue 刻意不写任何数字，因为仓库是公开的。回到提醒线以下后会自动关闭。）\n"
     ),
-    "us-tg-bad": "美国资产已超过提醒线：比特币部分可考虑改买非美国的 iShares Bitcoin ETP（BTCN），先看政策书再决定。",
+    "us-tg-bad": "美国资产已超过提醒线：标普指数基金那一边若还持有美国上市的 VOO，先换成爱尔兰注册的 CSPX（不算美国资产）；比特币部分可考虑改买瑞士发行的 iShares Bitcoin ETP（BTCN）；先看政策书再决定。",
     "us-tg-ok": "美国资产已回到提醒线以下。",
     "us-missing-title": "美国资产检查缺数据，请查看",
     "us-missing-body": (
@@ -296,6 +296,9 @@ def selftest():
     titles = [TEXT[k] for k in TEXT if k.endswith("-title")]
     expect("标题不重名", len(titles) == len(set(titles)))
     expect("US 文案含 BTCN 与 iShares Bitcoin ETP", "BTCN" in TEXT["us-tg-bad"] and "iShares Bitcoin ETP" in TEXT["us-tg-bad"])
+    for k in ("us-body", "us-tg-bad"):
+        t = TEXT[k]
+        expect(f"US 文案先提 VOO→CSPX 再提 BTCN:{k}", 0 <= t.find("VOO") < t.find("CSPX") < t.find("BTCN"))
 
     # 8. 政策文件：目标合计 1、不含持仓数量/金额类字段
     try:
