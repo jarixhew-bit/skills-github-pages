@@ -365,6 +365,7 @@ RELATIVE_ASSETS = [
 STAFF_LABELS = [
     ('<label class="form-label">单据照片（选填）</label>', "Receipt photo (optional)"),
     ('<label class="form-label">日期</label>', "Date"),
+    ('<label class="form-label">常记（点一下填好，再按保存）</label>', "Frequent — tap to fill in, then Save"),
     ('<label class="form-label">公司类别</label>', "Category"),
     ('<label class="form-label">这一餐算谁的</label>', "Who was this meal for?"),
     ('<span style="flex:1">👀 这个数是从照片认出来的，请跟收据核对一遍</span>',

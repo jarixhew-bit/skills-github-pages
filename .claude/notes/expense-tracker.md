@@ -2364,3 +2364,14 @@ butler【6j】（同事改不动）。假故障验过：切投递箱不写、送
   上次备份时间 `expenseTracker_lastBackup`。开机 `requestPersistentStorage()`（navigator.storage.persist）。
 - 同事版的概览/设置 tab 都被 build 脚本切掉，元素不存在，函数开头都判空，所以同事版没有这块。
 - 自检 `check-expense-company.mjs`【40】20 项（旧代码在第二项就红）。
+
+## 记账更快（2026-10-29，用户：「做记账更快」）
+- **类别按使用次数排**：`catUsageOrder()`＝当前账户、同收支类型、最近 120 天的次数倒序，同次数保持原序；
+  不到 5 笔整排不动。`renderCatGrid()` 用它（同事版跟着生效）。
+- **常记**：新增弹窗顶部 `#tx-quick-wrap`。`quickTemplates()`＝当前账户最近 60 天，类别＋描述＋金额完全相同且 ≥2 次，
+  排次数再排最近一次，取前 4；跳过固定开销（recurId）和空描述。`applyQuickTemplate()` 只填表（金额/描述/类别、
+  瑞尔模式先关掉），保存仍要自己按。编辑模式与**公司账户不显示**（报账人/公司类别/车牌照搬易错）。
+  同事版标签英文在 `build-staff-page.py` 的 STAFF_LABELS。
+- **首页固定开销提醒**：`#ov-recurring-nudge`，`dueRecurring()`＝本月还没录的、**非公司账户**的项目
+  （`pushRecurringTx` 不会送进公司账本）；可单项「录入」或「全部录入」，判重沿用 recurId＋当月。
+- 自检 `check-expense-company.mjs`【41】16 项（旧代码第 2 项起红）。

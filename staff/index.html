@@ -211,6 +211,11 @@ select.form-input{appearance:none;-webkit-appearance:none;background-image:url("
   padding:10px 4px;display:flex;flex-direction:column;align-items:center;
   gap:4px;cursor:pointer;transition:.15s;font-size:12px;color:var(--sub)}
 .cat-btn:active{transform:scale(.94)}
+.quick-chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.quick-chip{flex:none;border:1.5px solid var(--border);background:#fff;border-radius:18px;padding:6px 12px;
+  font-size:13px;white-space:nowrap;cursor:pointer;color:inherit}
+.quick-chip:active{transform:scale(.95)}
+.quick-chip b{color:var(--p);font-weight:600;margin-left:4px}
 .cat-btn.selected{border-color:var(--p);background:var(--p2);color:var(--p);font-weight:600}
 .cat-btn-icon{font-size:22px}
 
@@ -776,6 +781,13 @@ body.staff-boss #staff-boss-cash{display:block}
     <div class="type-tabs" id="tx-type-tabs" style="margin-bottom:16px">
       <div class="type-tab active" id="type-exp" onclick="setTxType('expense')">支出</div>
       <div class="type-tab" id="type-inc" onclick="setTxType('income')">收入</div>
+    </div>
+    <!-- 常记（2026-10-29 用户要「记账更快」）：这个账户最近 60 天记过两次以上的同一笔
+         （同类别＋同描述＋同金额），点一下把三样都填好，再按保存。只在新增、个人账户时出现：
+         公司账户另有报账人/公司类别/车牌，照搬旧的那几栏容易报错人。 -->
+    <div class="form-group" id="tx-quick-wrap" style="display:none">
+      <label class="form-label" data-en="Frequent — tap to fill in, then Save">常记（点一下填好，再按保存）</label>
+      <div id="tx-quick" class="quick-chips"></div>
     </div>
     <!-- 已经报进公司账本的那笔：只锁改不动的那几栏（见 applyCompanyLock()）。
          2026-08-08 起整张表单是锁死的（那时公司账本没有「改」这个操作，本机改得动、
@@ -1993,6 +2005,7 @@ function updateHeader(){
 // ===================== OVERVIEW =====================
 function renderOverview(){
   renderBackupNudge();
+  renderRecurringNudge();
   renderAccCards();
   renderOvCompany();
   renderOvPetty();
@@ -2614,6 +2627,7 @@ function showAddTx(){
   document.getElementById('type-inc').classList.remove('active');
   hideAutoHint();
   renderCatGrid();
+  renderQuickChips();
   resetAttachState();
   const rielBtn = document.getElementById('tx-riel-toggle');
   rielBtn.style.background = ''; rielBtn.style.borderColor = ''; rielBtn.style.color = '';
@@ -2651,6 +2665,7 @@ function editTx(id){
   document.getElementById('type-exp').classList.toggle('active', t.type==='expense');
   document.getElementById('type-inc').classList.toggle('active', t.type==='income');
   renderCatGrid();
+  renderQuickChips();
   loadAttachStateForTx(t);
   renderFromStaffPicker(t);
   syncCompanyTxFields(t);
@@ -2668,13 +2683,34 @@ function setTxType(type){
   document.getElementById('type-exp').classList.toggle('active', type==='expense');
   document.getElementById('type-inc').classList.toggle('active', type==='income');
   renderCatGrid();
+  renderQuickChips();
   // re-detect with current description after switching type
   const desc = document.getElementById('tx-desc').value;
   if(desc.trim()) autoDetectCat(desc); else hideAutoHint();
 }
 
+/**
+ * 类别按「这个账户最近 120 天用了几次」排，常用的在最前面（2026-10-29 用户要「记账更快」）。
+ * 用得一样多（包括都没用过）的保持原来的顺序，记录太少（<5 笔）时整排不动——
+ * 刚开始用就一直跳位置，反而找不到。用 120 天而不是全部：口味会变，但不会天天变。
+ */
+function catUsageOrder(cats, type, accId){
+  const since = (()=>{ const d = new Date(); d.setDate(d.getDate()-120);
+    const p = (n)=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; })();
+  const count = new Map();
+  let total = 0;
+  (data.transactions||[]).forEach(t=>{
+    if(t.type!==type || (accId && t.accountId!==accId) || !(t.date>=since)) return;
+    count.set(t.categoryId, (count.get(t.categoryId)||0)+1); total++;
+  });
+  if(total < 5) return cats;
+  return cats.map((c,i)=>({c,i,n:count.get(c.id)||0}))
+    .sort((a,b)=> b.n-a.n || a.i-b.i).map(x=>x.c);
+}
+
 function renderCatGrid(){
-  const cats = data.categories.filter(c=>c.type===state.txType);
+  const acc = curAcc();
+  const cats = catUsageOrder(data.categories.filter(c=>c.type===state.txType), state.txType, acc && acc.id);
   document.getElementById('cat-grid').innerHTML = cats.map(cat=>`
     <button class="cat-btn ${cat.id===state.selectedCatId?'selected':''}"
       onclick="selectCat('${cat.id}')">
@@ -2682,6 +2718,95 @@ function renderCatGrid(){
       <span>${cat.name}</span>
     </button>
   `).join('');
+}
+
+/**
+ * 「常记」：同一个账户最近 60 天里，类别＋描述＋金额完全一样、记过 ≥2 次的那几笔，
+ * 按次数（同次数比最近一次）排，取前 4。点了只是把表单填好，保存还是他自己按——
+ * 金额今天不一样的话改一下就行，不会不小心多记一笔。
+ */
+function quickTemplates(acc, type){
+  if(!acc) return [];
+  const d = new Date(); d.setDate(d.getDate()-60);
+  const p = (n)=>String(n).padStart(2,'0');
+  const since = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+  const map = new Map();
+  (data.transactions||[]).forEach(t=>{
+    if(t.accountId!==acc.id || t.type!==type || !(t.date>=since) || t.recurId) return;
+    const desc = (t.description||'').trim();
+    if(!desc || !(t.amount>0)) return;
+    const key = [t.categoryId, desc, t.amount].join('\u0001');
+    const e = map.get(key) || { categoryId:t.categoryId, description:desc, amount:t.amount, n:0, last:'' };
+    e.n++; if(t.date > e.last) e.last = t.date;
+    map.set(key, e);
+  });
+  return [...map.values()].filter(e=>e.n>=2)
+    .sort((a,b)=> b.n-a.n || b.last.localeCompare(a.last)).slice(0,4);
+}
+function renderQuickChips(){
+  const wrap = document.getElementById('tx-quick-wrap');
+  const el = document.getElementById('tx-quick');
+  if(!wrap || !el) return;
+  const acc = curAcc();
+  const list = (!state.editingTxId && acc && !acc.isCompany) ? quickTemplates(acc, state.txType) : [];
+  state.quickList = list;
+  if(!list.length){ wrap.style.display = 'none'; el.innerHTML = ''; return; }
+  wrap.style.display = '';
+  el.innerHTML = list.map((q,i)=>{
+    const cat = getCat(q.categoryId);
+    return `<button type="button" class="quick-chip" onclick="applyQuickTemplate(${i})">${cat?cat.icon+' ':''}${escHtml(q.description)}<b>${escHtml(fmt(q.amount, acc.currency))}</b></button>`;
+  }).join('');
+}
+function applyQuickTemplate(i){
+  const q = (state.quickList||[])[i];
+  if(!q) return;
+  if(state.rielMode) toggleRielInput();   // 存的是换算后的金额，瑞尔模式下填进去会再除一次
+  document.getElementById('tx-amount').value = q.amount;
+  document.getElementById('tx-desc').value = q.description;
+  state.selectedCatId = q.categoryId;
+  state.catManuallySelected = true;
+  hideAutoHint();
+  renderCatGrid();
+  onAmountInput();
+  const btn = document.getElementById('tx-save-btn');
+  if(btn) btn.scrollIntoView({ block:'center', behavior:'smooth' });
+}
+
+/** 本月还没录的固定开销（公司账户的不算：pushRecurringTx 不会把它送进公司账本） */
+function dueRecurring(){
+  const month = today().slice(0,7);
+  return (data.recurring||[]).filter(r=>{
+    const acc = data.accounts.find(a=>a.id===r.accountId);
+    if(!acc || acc.isCompany) return false;
+    return !data.transactions.some(t=>t.recurId===r.id && typeof t.date==='string' && t.date.startsWith(month));
+  });
+}
+function renderRecurringNudge(){
+  const el = document.getElementById('ov-recurring-nudge');
+  if(!el) return;
+  const due = dueRecurring();
+  if(!due.length){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  const rows = due.map(r=>{
+    const acc = data.accounts.find(a=>a.id===r.accountId) || {};
+    return `<div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+      <div style="flex:1;min-width:0">${escHtml(r.name)} <span style="color:var(--sub)">${escHtml(fmt(r.amount, acc.currency))}</span></div>
+      <button class="btn btn-outline btn-sm" onclick="recordRecurringFromOverview('${escJsArg(r.id)}')">录入</button>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+      <div style="flex:1;font-weight:600">🔁 本月还有 ${due.length} 项固定开销没录</div>
+      ${due.length > 1 ? `<button class="btn btn-primary btn-sm" onclick="recordRecurringFromOverview()">全部录入</button>` : ''}
+    </div>${rows}`;
+}
+function recordRecurringFromOverview(id){
+  const list = id ? dueRecurring().filter(r=>r.id===id) : dueRecurring();
+  let n = 0;
+  list.forEach(r=>{ if(pushRecurringTx(r)) n++; });
+  if(!n) return;
+  saveData();
+  renderOverview();
+  toast(n === 1 ? `「${list[0].name}」已录入` : `已录入 ${n} 项固定开销`);
 }
 
 function selectCat(id){
