@@ -559,6 +559,8 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
          只在「收件账户」被选中时出现——这张卡讲的是老板账那本的钱，摆在公司账
          或他私人账户的首屏上全都是不相干的数字。 -->
     <div id="boss-petty" class="led-card" style="display:none" onclick="openBossPetty()"></div>
+    <!-- 太久没备份的提醒（2026-10-29）：只在记录够多、超过 30 天没下载备份时出现 -->
+    <div id="ov-backup-nudge" class="card" style="display:none;padding:12px 14px;margin-bottom:12px;font-size:13px"></div>
     <div class="sec-hdr">
       <div class="sec-title">最近记录</div>
       <div class="sec-link" onclick="switchTab('transactions')">全部 →</div>
@@ -660,6 +662,22 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
   <div class="setting-section">
     <div class="setting-title">云端同步</div>
     <div class="card" id="sync-status" style="padding:16px;font-size:13px;color:var(--sub)">Loading…</div>
+  </div>
+  <!-- 备份与恢复（2026-10-29 用户要的「一键备份恢复」）：云端那份是唯一一份、没有历史版本，
+       CSV 只能看导不回来。这一块把整本账存成一个文件，恢复走 mergeData（合并，不删现有的）。
+       刻意不收进「更多设置」：要用它的时候多半是出事的时候，不该还要去翻折叠。 -->
+  <div class="setting-section">
+    <div class="setting-title">备份与恢复</div>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
+      把整本账（账户、类别、所有记录、固定开销）存成一个文件，存到「文件」或发给自己的 Telegram。
+      手机丢了、换机、云端出问题时，用它找回来。收据照片不在文件里（照片跟着 Google 帐号走）。
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" id="backup-btn" onclick="downloadBackup()">📦 一键备份</button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('restore-file').click()">📂 从备份恢复</button>
+      <input type="file" id="restore-file" accept=".json,application/json" hidden onchange="restoreFromFile(this)">
+    </div>
+    <div id="backup-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
   </div>
   <div class="setting-section">
     <div class="setting-title">同事投递箱</div>
@@ -2461,6 +2479,7 @@ function updateHeader(){
 
 // ===================== OVERVIEW =====================
 function renderOverview(){
+  renderBackupNudge();
   renderAccCards();
   renderOvCompany();
   renderOvPetty();
@@ -2797,6 +2816,7 @@ function renderSettings(){
   renderCompanySettings();
   renderImportReporterOptions();
   renderInboxSettings();
+  renderBackupStatus();
   renderBuildInfo();
 }
 
@@ -4433,6 +4453,160 @@ function exportCSV(){
 }
 
 
+// ===================== 备份与恢复（2026-10-29） =====================
+// 文件就是 data 本身加一层外壳。恢复一律走 mergeData（跟云端同步同一套合并）：
+// 手机上现有的不删，备份里有、手机上没有的加回来；墓碑照样生效，删掉的不会复活。
+// 不做「整本覆盖」——那等于让一个旧文件把之后记的账全抹掉，而且云端同步还会把它推出去。
+const BACKUP_LAST_KEY = 'expenseTracker_lastBackup';
+const BACKUP_SNOOZE_KEY = 'expenseTracker_backupSnooze';
+const BACKUP_NUDGE_DAYS = 30;
+const BACKUP_NUDGE_MIN_TX = 10;
+
+function backupLastAt(){
+  try{ return Number(localStorage.getItem(BACKUP_LAST_KEY)) || 0; }catch(e){ return 0; }
+}
+function backupDaysAgo(ts){ return Math.floor((Date.now() - ts) / 86400000); }
+function fmtLocalDate(ts){
+  const d = new Date(ts), p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+/** 浏览器空间紧时会清掉「没被标成持久」的网站数据——请它别清（不支持的浏览器静静略过） */
+function requestPersistentStorage(){
+  try{
+    if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+  }catch(e){}
+}
+
+function buildBackupFile(){
+  const body = {
+    app: 'expense-tracker',
+    format: 1,
+    exportedAt: new Date().toISOString(),
+    build: APP_BUILD,
+    counts: { transactions: (data.transactions||[]).length, accounts: (data.accounts||[]).length },
+    data
+  };
+  // 文件名只用 ASCII：中文文件名在部分浏览器的下载里会被整个换成「download」（2026-10-29 实测 Chromium）
+  const name = `expense-backup-${today()}.json`;
+  return { name, text: JSON.stringify(body) };
+}
+
+/**
+ * 手机上优先走「分享」：iPhone 主屏 App 里 <a download> 常常只是打开预览、存不下来，
+ * 分享面板才能「存储到文件」或直接发给自己的 Telegram。电脑或不支持分享文件的就直接下载。
+ * 他在分享面板按了取消，不算备份过。
+ */
+async function downloadBackup(){
+  const { name, text } = buildBackupFile();
+  const blob = new Blob([text], { type: 'application/json' });
+  let done = false;
+  try{
+    const file = new File([blob], name, { type: 'application/json' });
+    const touch = (navigator.maxTouchPoints || 0) > 0;
+    if(touch && navigator.canShare && navigator.canShare({ files: [file] })){
+      try{
+        await navigator.share({ files: [file], title: name });
+        done = true;
+      }catch(e){
+        if(e && e.name === 'AbortError'){ toast('没有存下备份'); return; }
+        // 分享失败（权限、浏览器怪癖）就退回直接下载
+      }
+    }
+  }catch(e){}
+  if(!done){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    done = true;
+  }
+  try{ localStorage.setItem(BACKUP_LAST_KEY, String(Date.now())); }catch(e){}
+  toast(`📦 已备份 ${(data.transactions||[]).length} 笔记录`);
+  renderBackupStatus();
+  renderBackupNudge();
+}
+
+/** 读备份文件：认这个 App 导出的外壳，也认没有外壳的整本账（云端 payload、读坏时另存的原文） */
+function parseBackupText(text){
+  let obj;
+  try{ obj = JSON.parse(text); }catch(e){ return { error: '这个文件读不懂（不是记账备份文件）' }; }
+  const d = (obj && obj.app === 'expense-tracker' && obj.data) ? obj.data : obj;
+  if(!d || typeof d !== 'object' || !Array.isArray(d.transactions) || !Array.isArray(d.accounts)){
+    return { error: '这个文件里没有记账数据（选错文件了？）' };
+  }
+  return { data: d, exportedAt: obj && obj.exportedAt ? obj.exportedAt : null };
+}
+
+async function restoreFromFile(input){
+  const file = input && input.files && input.files[0];
+  if(input) input.value = '';   // 同一个文件可以再选一次
+  if(!file) return;
+  let text;
+  try{ text = await file.text(); }catch(e){ toast('文件读不出来'); return; }
+  const r = parseBackupText(text);
+  if(r.error){ alert('⚠️ ' + r.error); return; }
+  const b = r.data;
+  const have = new Set((data.transactions||[]).map(t=>t.id));
+  const dead = new Set((data.deletedTxIds||[]).map(x=>x && x.id));
+  const adds = b.transactions.filter(t => t && !have.has(t.id) && !dead.has(t.id)).length;
+  const when = r.exportedAt ? fmtLocalDate(Date.parse(r.exportedAt)) : '（没写日期）';
+  const ok = confirm(
+    `备份文件：${when}，里面有 ${b.transactions.length} 笔记录。\n\n` +
+    `恢复是「合并」：手机上现有的记录一笔都不会删，\n` +
+    `备份里有、手机上没有的会加回来（${adds} 笔）。\n` +
+    `你之后删掉的记录不会因为恢复又冒出来。\n\n确定恢复？`);
+  if(!ok) return;
+  const curId = data.currentAccountId;
+  data = mergeData(data, b);
+  if(curId && data.accounts.some(a=>a.id===curId)) data.currentAccountId = curId;
+  if(!data.currentAccountId && data.accounts.length) data.currentAccountId = data.accounts[0].id;
+  migrateCategories();
+  saveData();
+  updateHeader();
+  renderOverview();
+  if(state.currentTab==='transactions') renderTxList();
+  if(state.currentTab==='settings') renderSettings();
+  toast(adds > 0 ? `✅ 已恢复，加回 ${adds} 笔记录` : '✅ 备份里的记录手机上都有了，没有要加的');
+}
+
+function renderBackupStatus(){
+  const el = document.getElementById('backup-status');
+  if(!el) return;
+  const last = backupLastAt();
+  if(!last){ el.textContent = '这台手机还没备份过。'; return; }
+  const n = backupDaysAgo(last);
+  el.textContent = `上次备份：${fmtLocalDate(last)}（${n === 0 ? '今天' : n + ' 天前'}）`;
+}
+
+function backupNudgeDue(){
+  if((data.transactions||[]).length < BACKUP_NUDGE_MIN_TX) return false;
+  let snooze = 0;
+  try{ snooze = Number(localStorage.getItem(BACKUP_SNOOZE_KEY)) || 0; }catch(e){}
+  if(snooze > Date.now()) return false;
+  const last = backupLastAt();
+  return !last || backupDaysAgo(last) >= BACKUP_NUDGE_DAYS;
+}
+function renderBackupNudge(){
+  const el = document.getElementById('ov-backup-nudge');
+  if(!el) return;
+  if(!backupNudgeDue()){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const last = backupLastAt();
+  const why = last ? `已经 ${backupDaysAgo(last)} 天没备份了` : '这台手机还没备份过';
+  el.style.display = '';
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
+      <div style="flex:1;line-height:1.5">📦 ${why}<br><span style="color:var(--sub);font-size:12px">点一下存一份，手机丢了也找得回来</span></div>
+      <button class="btn btn-primary btn-sm" onclick="downloadBackup()">备份</button>
+      <button class="btn btn-outline btn-sm" aria-label="7 天后再提醒" onclick="snoozeBackupNudge()">稍后</button>
+    </div>`;
+}
+function snoozeBackupNudge(){
+  try{ localStorage.setItem(BACKUP_SNOOZE_KEY, String(Date.now() + 7*86400000)); }catch(e){}
+  renderBackupNudge();
+}
+
+
 
 // ===================== SWIPE TO DELETE =====================
 let _txSwipeOpen = null;
@@ -5918,6 +6092,7 @@ function closeScan(){
 function init(){
   loadData();
   reportLoadDataRescue();
+  requestPersistentStorage();
   if(!data.currentAccountId && data.accounts.length>0)
     data.currentAccountId = data.accounts[0].id;
   setupPWA();

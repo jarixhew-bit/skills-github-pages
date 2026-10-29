@@ -4237,6 +4237,104 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   }
 }
 
+// ---------- 【40】一键备份与恢复（2026-10-29） ----------
+{
+  console.log('\n【40】一键备份：存出整本账；恢复是合并——找回丢的、不删现有的、删过的不复活');
+  const fsMod = await import('node:fs');
+  const ctx = await browser.newContext({ acceptDownloads: true });
+  const page = await ctx.newPage();
+  const errs = [], dialogs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  page.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`)
+    ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(
+    () => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+
+  const seed = (n) => page.evaluate((n) => {
+    const acc = curAcc();
+    data.transactions = Array.from({ length: n }, (_, i) => ({ id:'bk'+i, accountId:acc.id, type:'expense',
+      amount: i+1, date: today(), description:'备份测试'+i, categoryId:'cat_food', updatedAt: 1 }));
+    data.deletedTxIds = [];
+    try{ localStorage.removeItem('expenseTracker_lastBackup'); localStorage.removeItem('expenseTracker_backupSnooze'); }catch(e){}
+    saveData(); switchTab('overview'); renderOverview();
+  }, n);
+  const nudgeShown = () => page.evaluate(() => {
+    const el = document.getElementById('ov-backup-nudge'); return !!el && el.style.display !== 'none' && el.offsetHeight > 0; });
+
+  // 提醒条：记录够多又没备份过才出现
+  await seed(3);
+  ok('对照组：只有 3 笔记录时不提醒备份', !(await nudgeShown()));
+  await seed(12);
+  ok('★12 笔记录、从没备份过：首页出现备份提醒', await nudgeShown());
+  await page.evaluate(() => { localStorage.setItem('expenseTracker_lastBackup', String(Date.now() - 40*86400000)); renderOverview(); });
+  ok('★40 天前备份过：照样提醒', await nudgeShown());
+  ok('提醒写出了天数', (await page.textContent('#ov-backup-nudge')).includes('40 天'), await page.textContent('#ov-backup-nudge'));
+  await page.evaluate(() => { localStorage.setItem('expenseTracker_lastBackup', String(Date.now() - 5*86400000)); renderOverview(); });
+  ok('对照组：5 天前备份过：不提醒', !(await nudgeShown()));
+  await page.evaluate(() => { localStorage.removeItem('expenseTracker_lastBackup'); renderOverview(); snoozeBackupNudge(); });
+  ok('按「稍后」之后提醒收起', !(await nudgeShown()));
+  await page.evaluate(() => localStorage.removeItem('expenseTracker_backupSnooze'));
+
+  // 设置页：不用展开「更多设置」就看得到
+  await page.evaluate(() => switchTab('settings'));
+  ok('★备份按钮在设置页一打开就看得见（不在折叠里）', await page.locator('#backup-btn').isVisible());
+  ok('还没备份过时写明', (await page.textContent('#backup-status')).includes('还没备份过'));
+
+  // 一键备份 → 拿到文件
+  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }), page.click('#backup-btn')]);
+  const path = await dl.path();
+  const file = JSON.parse(fsMod.readFileSync(path, 'utf8'));
+  ok('★备份文件名带日期', /^expense-backup-\d{4}-\d{2}-\d{2}\.json$/.test(dl.suggestedFilename()), dl.suggestedFilename());
+  ok('★文件里是整本账（12 笔、账户、类别都在）', file.app === 'expense-tracker' && file.data.transactions.length === 12
+     && file.data.accounts.length > 0 && file.data.categories.length > 0, { app:file.app, n: file.data && file.data.transactions.length });
+  ok('备份完写上「上次备份：今天」', (await page.textContent('#backup-status')).includes('今天'), await page.textContent('#backup-status'));
+  ok('备份完首页提醒消失', !(await page.evaluate(() => backupNudgeDue())));
+
+  // 之后：正常删一笔（有墓碑）、另外 3 笔「丢了」（没有墓碑，模拟手机这边丢数据）、又新记一笔
+  await page.evaluate(() => {
+    data.transactions = data.transactions.filter(t => t.id !== 'bk0'); tombstoneTx('bk0');
+    data.transactions = data.transactions.filter(t => !['bk1','bk2','bk3'].includes(t.id));
+    data.transactions.push({ id:'after1', accountId: curAcc().id, type:'expense', amount: 99, date: today(),
+      description:'备份之后记的', categoryId:'cat_food', updatedAt: 2 });
+    saveData();
+  });
+  dialogs.length = 0;
+  await page.setInputFiles('#restore-file', path);
+  await until(() => page.evaluate(() => data.transactions.some(t => t.id === 'bk1')), { what: '恢复完成' }).catch(() => {});
+  const after = await page.evaluate(() => ({ ids: data.transactions.map(t => t.id) }));
+  const cnt = (id) => after.ids.filter(x => x === id).length;
+  ok('★恢复前先问，并说清楚会加回几笔', dialogs.some(m => m.includes('合并') && m.includes('3 笔')), dialogs);
+  ok('★丢掉的 3 笔找回来了', cnt('bk1') === 1 && cnt('bk2') === 1 && cnt('bk3') === 1, after.ids);
+  ok('★备份之后记的那笔还在（恢复不是整本覆盖）', cnt('after1') === 1, after.ids);
+  ok('★删掉的那笔没有因为恢复复活', cnt('bk0') === 0, after.ids);
+  ok('没有重复记录', new Set(after.ids).size === after.ids.length && after.ids.length === 12, after.ids.length);
+
+  // 新手机：本机全空 → 恢复整本
+  await page.evaluate(() => { localStorage.removeItem('expenseTracker_v2'); });
+  await page.reload({ waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(() => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: '重开完成' });
+  const emptyN = await page.evaluate(() => data.transactions.length);
+  await page.evaluate(() => switchTab('settings'));
+  await page.setInputFiles('#restore-file', path);
+  await until(() => page.evaluate(() => data.transactions.length >= 12), { what: '新手机恢复完成' }).catch(() => {});
+  const fresh = await page.evaluate(() => ({ n: data.transactions.length,
+    stored: (JSON.parse(localStorage.getItem('expenseTracker_v2')||'{}').transactions||[]).length }));
+  ok('★新手机（本机是空的）一键恢复整本 12 笔，也写进了手机', emptyN === 0 && fresh.n === 12 && fresh.stored === 12, { emptyN, ...fresh });
+
+  // 选错文件：讲清楚，账本不动
+  dialogs.length = 0;
+  await page.setInputFiles('#restore-file', { name:'照片.json', mimeType:'application/json', buffer: Buffer.from('{"hello":1}') });
+  await page.waitForTimeout(400);   // 断言「没发生」只能真的等
+  ok('★选错文件：弹窗说明，账本一笔不少', dialogs.some(m => m.includes('没有记账数据'))
+     && await page.evaluate(() => data.transactions.length) === 12, dialogs);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }

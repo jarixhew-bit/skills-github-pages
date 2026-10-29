@@ -1,4 +1,4 @@
-const CACHE = 'expense-tracker-v73';
+const CACHE = 'expense-tracker-v74';
 const ASSETS = [
   'expense-tracker.html',
   'expense-tracker-icon.svg',
