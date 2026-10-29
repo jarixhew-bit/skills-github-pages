@@ -1,4 +1,4 @@
-# 配置偏离检查（2026-10-29 建）：VOO / IBIT 市值占比偏离长期政策超过门槛就叫人。
+# 配置偏离检查＋美国资产遗产税提醒（2026-10-29 建）：VOO / IBIT 市值占比偏离长期政策超过门槛就叫人。
 # 政策在 trading/allocation-policy.json（只放目标，不放任何数量或金额）；
 # 算法与自检在 tools/check-allocation.py。零 Claude 用量。
 #
@@ -69,3 +69,32 @@ jobs:
             --state "$STATE" --body-file "$RUNNER_TEMP/allocation/missing-body.md" \
             --tg-bad "$(python3 tools/check-allocation.py --text missing-tg-bad)" \
             --tg-ok "$(python3 tools/check-allocation.py --text missing-tg-ok)" || true
+
+      # 美国资产遗产税提醒（2026-10-29 加）：同一份数据，独立 issue；文案同样不含数字
+      - name: 美国资产超线通知（超线开 issue，回到线下自动关）
+        if: always() && steps.alloc.outputs.us != '' && steps.alloc.outputs.us != 'skip'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STATE: ${{ steps.alloc.outputs.us }}
+        run: |
+          python3 tools/ci-notify.py \
+            --title "$(python3 tools/check-allocation.py --text us-title)" \
+            --state "$STATE" --body-file "$RUNNER_TEMP/allocation/us-body.md" \
+            --tg-bad "$(python3 tools/check-allocation.py --text us-tg-bad)" \
+            --tg-ok "$(python3 tools/check-allocation.py --text us-tg-ok)" || true
+
+      - name: 美国资产检查缺数据通知
+        if: always() && steps.alloc.outputs.usmissing != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STATE: ${{ steps.alloc.outputs.usmissing }}
+        run: |
+          python3 tools/ci-notify.py \
+            --title "$(python3 tools/check-allocation.py --text us-missing-title)" \
+            --state "$STATE" --body-file "$RUNNER_TEMP/allocation/us-missing-body.md" \
+            --tg-bad "$(python3 tools/check-allocation.py --text us-missing-tg-bad)" \
+            --tg-ok "$(python3 tools/check-allocation.py --text us-missing-tg-ok)" || true

@@ -393,6 +393,20 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
   大小写不同，会被判「标普一边缺失」开缺数据 issue——到时把真实 symbol 补进 `members`；(2) CSPX／VUAA
   已于 2026-10-29 加进 `trading/universe.json`（见下节），换仓后按市价计市值。
 
+### 美国资产遗产税提醒（2026-10-29 加，同一脚本同一排程）
+
+用户是马来西亚居民，**美国资产超过 $60,000 身故时要交美国遗产税**；他把 VOO 换成爱尔兰的 CSPX 后，
+美国资产只剩 IBIT、SGOV、现金。**美国资产合计 ≥ $50,000（`allocation-policy.json` 的 `us_situs.alert_usd`，留 $1 万缓冲）就提醒**，
+到时再决定把比特币部分换成 iShares Bitcoin ETP（BTCN／IB1T，瑞士发行，非美国资产）。
+
+- 判定从保守：持仓里**不在 `us_situs.non_us_symbols`（CSPX／VUAA／SXR8／IB1T／BTCN）的代码一律算美国资产**
+  （VOO、IBIT、SGOV、任何未知代码）；**账户美元现金也算入**（取自 `data-private.enc` 的 `account.cash`；
+  IB LLC 是美国券商，现金是否算美国资产未查证；负现金不抵扣）。
+- 纯函数 `evaluate_us_situs()` 回 ok / over（≥ 提醒线）/ missing；已超线时缺现金仍报 over。自检在 `check-allocation.py --selftest`
+  （IBIT+SGOV 低于线 ok、加现金刚好到线 over、CSPX/BTCN 不计、未知代码计入、缺数据 missing、文案无数字）。
+- 通知：独立标题的两个 issue（超线／缺数据）＋ Telegram，文案与日志**不含任何数字**；回到线下自动关。
+  workflow 输出 `us`／`usmissing`。没有新增检查文件，所以 `check-*` 计数不变。
+
 ## 伦敦美元线 CSPX／VUAA 行情（2026-10-29 建）
 
 - `board.html` 的 CNBC 近即时报价**排除 CSPX／VUAA**（`NO_LIVE`）：CNBC 按裸代号会认成别的标的，价格会张冠李戴；这两档用 data-public 的收盘价。
