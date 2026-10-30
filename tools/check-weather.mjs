@@ -307,7 +307,7 @@ const SGN_PARTIAL = { daily: {
 } };
 const SGN_IN_WINDOW = '2026-11-10T09:00:00+08:00';   // 出发前一天：四天全在预报窗口内
 const SGN_TOO_EARLY = '2026-10-20T09:00:00+08:00';   // 出发前三周：整趟都还报不了
-const SGN_D2 = '2026-11-12T09:00:00+08:00';          // 「今天」固定在文化日
+const SGN_D2 = '2026-11-12T09:00:00+08:00';          // 「今天」固定在 D2（观音庙＋午餐＋下午自由）
 const sgnLoad = (handler, now, psiHandler) => load(handler, now, psiHandler, SGN_URL);
 const sgErrBefore = errors.length;
 
@@ -378,8 +378,15 @@ const { dayHaze: sgnBadDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }),
 check(/131/.test(sgnBadDay[0]?.now || '') && sgnBadDay[0]?.actHidden === false && /bad/.test(sgnBadDay[0]?.cls || ''),
   `[sg-nov] 11/12 PSI 131：要写出 131、标红、摊开替代方案（实得 ${JSON.stringify(sgnBadDay)}）`);
 const sgnActText = await page.evaluate(() => document.querySelector('.day[data-date="2026-11-12"] .hazeact')?.textContent || '');
-check(/国家美术馆|National Gallery/.test(sgnActText) && /Capitol/.test(sgnActText),
-  `[sg-nov] 11/12 摊开的替代方案要是这一天的（国家美术馆／Capitol），实得：${sgnActText.slice(0, 60)}`);
+// 2026-10-30 用户删掉美术馆／按摩／甘榜格南：D2 只剩观音庙＋午餐二选一＋下午自由
+check(/观音庙|Kwan Im/.test(sgnActText) && /Violet Oon|National Kitchen/.test(sgnActText) && !/美术馆|Capitol|按摩|Massage|苏丹|Sultan/.test(sgnActText),
+  `[sg-nov] 11/12 摊开的替代方案要是这一天的（观音庙＋Violet Oon，不再提美术馆／按摩），实得：${sgnActText.slice(0, 60)}`);
+// 用户 2026-10-30 的内容决定：这些地点已删，整页不该再出现（防止日后从 9 月旧页复制回来）
+const sgnBanned = await page.evaluate(() => {
+  const t = document.body.textContent;
+  return ['Garden Rhapsody', '花穹', '云雾林', '佛牙', '苏丹回教堂', '按摩', 'CÉ LA VI', 'LeVeL33', 'Jigger', '赌场', 'casino'].filter(w => t.toLowerCase().includes(w.toLowerCase()));
+});
+check(sgnBanned.length === 0, `[sg-nov] 已删除的地点不该再出现在页面上（实得 ${JSON.stringify(sgnBanned)}）`);
 const { dayHaze: sgnDownDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_D2, r => r.fulfill({ status: 500, body: 'boom' }));
 check(sgnDownDay.length === 1 && /抓不到|Could not fetch/.test(sgnDownDay[0]?.now || '') && sgnDownDay[0]?.actHidden === false,
   `[sg-nov] PSI 挂掉但人在行程中：要说明抓不到并摊开替代方案（实得 ${JSON.stringify(sgnDownDay)}）`);

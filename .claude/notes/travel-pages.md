@@ -149,32 +149,41 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
   以上查证于 2026-08-19，来源全被沙盒挡、只有搜索摘要，页面上已标「以 MBS 礼宾
   确认为准」；日后若拿到官网原文或 MBS 回覆，以那个为准。
 
-## sg-jkt-trip/singapore.html（约 1070 行；2026-10-30 建）
+## sg-jkt-trip/singapore.html（约 1022 行；2026-10-30 建，同日按用户要求大改）
 11 月新加坡手册，2026-11-11（三）～11-14（六）三晚四天，Nak／Yang／Jacky 3 位成年人，**没有小孩**，双语。
 URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html`（四套航班方案）顶部有 `.jump` 小链接指过来，
 本页 `#flights` 那张 `.note` 又指回 `./index.html`。已登记 `tools/lib/trips.py`（行程最后一天 2026-11-14）。
 **CSS 与 JS 整套复制自 singapore-trip/index.html**（`.day`／`.stop`／`.evt`／`.tl`／lightbox／天气条／PSI 条／
 hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案常数（「十一月常态 25–31°C，午后雷阵雨常见」，
 逻辑一行没动），CSS 末尾多一条 `.note a, .desc a …` 让文内链接不显示默认蓝。
-结构：topbar → nav（FLT／STAY／EVT／D1–D4／DINE）→ cover → tip → `#flights`(01，**只有一张 `.note`**，
+结构：topbar → nav（FLT／STAY／EVT／D1–D4／ORCH／DINE，**顺序与区块顺序一致**）→ cover → tip → `#flights`(01，**只有一张 `.note`**，
 没有 `.bpass`：航班没定，`check-flight-times.py` 会去解析登机牌，别硬加) → `#hotel`(02，一张 `.note`，酒店未定) →
-`#events`(03，Garden Rhapsody／Spectra 两张 `.evt`＋圣诞灯饰「未查证」提示) → `#itinerary`(04，`.day#day01`~`#day04`，
-`data-date="2026-11-11"`…；D4 是 `.tl > .ev` ＋一张 Jewel `.stop`) → `#dinner`(05，4 张 `.evt`：Sushi Katori／松发／PUTIEN／JUMBO Signatures)。
+`#events`(03，只剩 Spectra 一张 `.evt`＋乌节路圣诞灯饰「未查证」提示) → `#itinerary`(04，`.day#day01`~`#day04`，
+`data-date="2026-11-11"`…) → `#orchard`(05「乌节路中餐 · 本地菜」，11 张 `.evt`，按菜系排) → `#dinner`(06，4 张 `.evt`：Sushi Katori／松发总店／PUTIEN MBS／JUMBO Signatures)。
+逐日：D1 抵达→入住→MBS 晚餐（PUTIEN／JUMBO Signatures 二选一，`.dayfoot`）→Spectra；
+D2 08:30 四马路观音庙（必去，用户指定保留）→12:00 午餐二选一（National Kitchen by Violet Oon `.stop`／麦士威熟食中心 `.stop`）→
+`.note`「14:00 以后下午留给自己安排」→ `.dayfoot` 晚餐看 06／05；D3 乌节路日：一张 `.note` 一句话链到 `#orchard` 挑午餐 →
+Takashimaya `.stop` → 下午自由 → `.dayfoot` 晚餐看 06／05；D4 是 `.tl > .ev` ＋一张 Jewel `.stop`（未改）。
+`#orchard` 11 家：江南春（四季）、夏宫（康莱德）、华厅（乌节大酒店）、Fook Kin、Paradise Teochew、PUTIEN 吉真那路、JUMBO ION、
+Candlenut、松发 Centrepoint、Chatterbox、Aburi-EN。新 7 家的 Google 评分取自 2026-10-30 CI 抓图（fetch-photos 的 rating 字段）；
+海南美味佳肴鸡饭（远东广场）CI 评分 3.8，未达 4.2 门槛不放。**同品牌两家分店**（JUMBO ION／MBS、松发 Centrepoint／新桥路、
+PUTIEN 吉真那路／MBS）卡上互相注明另一家在哪个区块，改其中一张要顾到另一张。
 内容决定（勿擅自回退）：
+- **2026-10-30 用户明确删除**：宗教景点（四马路观音庙除外，「那个是必去的」）、按摩、国家美术馆（景点）、植物园／胡姬园、
+  滨海湾花园（花穹／云雾林／Garden Rhapsody 灯光秀）、酒吧（CÉ LA VI／Atlas／LeVeL33／Jigger & Pony）。
+  **赌场一个字都不写**（「让他们自己来」）——他们主要是去赌场，所以下午留白，不排活动。
+  National Kitchen 是餐厅照留（地址里有 National Gallery 字样是允许的），但描述不要叫人去逛美术馆。
 - 9 月那本的**儿童活动、环球影城、体检、贵宾通道、包车分房、老板晚餐**一律不进本页（用户 2026-10-30 指示「去掉小孩子玩乐的地方」）。
   Banana Leaf Apolo（Google 4.1）、Crystal Jade、Syun、Sushi Tei、亚音、Miyuki、925、33 鲜味园评分不到 4.2 或位置偏远，不用。
-- 限时活动**只放查得到官方来源的**：Garden Rhapsody（每晚 19:45／20:45）与 Spectra（周一至周四 20:00／21:00，周五至周日加 22:00）。
-  乌节路圣诞灯饰 2026 开灯日**未查证**（只写 2025=11/8 作参考）；滨海湾圣诞火车秀 11/20 才开，赶不上。
-  小印度屠妖节、作家节日期未证或来源互相矛盾，**不要写**。
-- 日程里的餐厅指引（D1 晚餐二选一、D3 晚餐二选一）用 `.dayfoot` 链到 `#dinner`，**不是 `.stop`**，所以没有相册也不违规；
-  真正的地点卡（`.stop`／`.evt`）每张都带 4–6 张图，**例外：国家美术馆只有 2 张合格图**，画廊提示文字已改成「只有 2 张合格照片」。
-- 每张卡都写 11 月那天的营业时间；来源矛盾就两说并陈或写保守的那个（观音庙 6:00/7:00 开、18:00/18:30 收 → 写「7:00–18:00 一定开」）；
-  查不到写「未查证」，**花穹／云雾林的 Google 评分、Spectra 无评分意义**。
+- 限时活动**只放查得到官方来源的**：现在只剩 Spectra（周一至周四 20:00／21:00，周五至周日加 22:00）。
+  乌节路圣诞灯饰 2026 开灯日**未查证**（只写 2025=11/8 作参考）。小印度屠妖节、作家节日期未证或来源互相矛盾，**不要写**。
+- 日程里的晚餐指引用 `.dayfoot` 链到 `#dinner`／`#orchard`，**不是 `.stop`**，所以没有相册也不违规；
+  真正的地点卡（`.stop`／`.evt`）每张都带 4–5 张图（Candlenut 只有 4 张合格：其余是 360 全景或疑似同园区别家店）。
+- 每张卡都写 11 月那天的营业时间；来源矛盾就两说并陈或写保守的那个（观音庙 → 写「7:00–18:00 一定开」）；查不到写「未查证」（华厅营业时间、多数包厢）。
 - D4 回程：航班没定，12:30 与 15:15 两种都写（12:30 时间很紧，Jewel 只能看一眼或跳过；Jewel 连 T1，到 T2 步行时间未查证）。
-- 图片风险：花穹／云雾林／Supertree／MBS 的照片搬自 9 月旧页（那页云雾林当时是恐龙展卡），沙盒看不到 Google 图，
-  **没有逐张目视确认云雾林 5 张里有没有恐龙展照片**，CI 抓图通道有空时请人眼过一遍。
 天气自检：`tools/check-weather.mjs` **已把本页加进去**（`[sg-nov]` 前缀：4 天结构、预报／部分预报／挂掉／窗口外、三档 PSI、
-当天烟霾行，替代方案要含国家美术馆与 Capitol）；`tools/ci-decide.py` 的 `weather` 组也已登记本页。
+当天烟霾行，D2 替代方案要含观音庙与 Violet Oon、且不能再提美术馆／Capitol／按摩；另有一条整页禁词检查，
+已删地点（Garden Rhapsody、花穹、云雾林、佛牙、苏丹回教堂、按摩、各酒吧、赌场）出现就红）；`tools/ci-decide.py` 的 `weather` 组也已登记本页。
 加一天仍要配一组 `.wxbox`（`.wx`＋`.rainplan`＋`.hazeplan`），否则那支脚本会红。
 
 ## penang-trip/index.html（约 1500 行；2026-10-05 起**没有总地图**，见下方「总地图」一节）
