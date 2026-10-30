@@ -384,7 +384,11 @@ check(/观音庙|Kwan Im/.test(sgnActText) && /Violet Oon|National Kitchen/.test
 // 用户 2026-10-30 的内容决定：这些地点已删，整页不该再出现（防止日后从 9 月旧页复制回来）
 const sgnBanned = await page.evaluate(() => {
   const t = document.body.textContent;
-  return ['Garden Rhapsody', '花穹', '云雾林', '佛牙', '苏丹回教堂', '按摩', 'CÉ LA VI', 'LeVeL33', 'Jigger', '赌场', 'casino'].filter(w => t.toLowerCase().includes(w.toLowerCase()));
+  // 2026-10-30 用户要求「限时活动你加下去，去不去由他」：Garden Rhapsody 只准出现在限时活动区，不准回到逐日行程
+  const ev = document.querySelector('#events');
+  const outside = ev ? t.replace(ev.textContent, '') : t;
+  const hits = /Garden Rhapsody/i.test(outside) ? ['Garden Rhapsody（限时活动区以外）'] : [];
+  return hits.concat(['花穹', '云雾林', '佛牙', '苏丹回教堂', '按摩', 'CÉ LA VI', 'LeVeL33', 'Jigger', '赌场', 'casino'].filter(w => t.toLowerCase().includes(w.toLowerCase())));
 });
 check(sgnBanned.length === 0, `[sg-nov] 已删除的地点不该再出现在页面上（实得 ${JSON.stringify(sgnBanned)}）`);
 const { dayHaze: sgnDownDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_D2, r => r.fulfill({ status: 500, body: 'boom' }));
