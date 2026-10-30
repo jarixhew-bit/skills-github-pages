@@ -1,0 +1,135 @@
+# 查航班：开 Google Flights 查某日某航线，把每个选项的航班号、起降时间、全程、转机地与
+# 等候时间、价格列成表。脚本与解析逻辑在 tools/flight-probe.mjs，解析器自检在
+# tools/check-flight-probe.mjs（挂在 checks.yml 与 check-all.py）。
+#
+# 存在原因（2026-10-30）：Claude 的云端沙盒打不开航班网站，聚合站只有旧班表；runner 出得去，
+# 所以查询搬到这里（同 play-lookup.yml 的思路）。
+#
+# 用法（Claude）：GitHub MCP actions_run_trigger，method run_workflow，workflow_id flight-probe.yml，
+#   ref main，inputs {from:"CGK", to:"KTI", date:"2026-11-16"}（adults / airline 可省）。
+#   跑完读这次 run 的 job summary（markdown 表），或 get_job_logs 看「查询」那一步印的纯文字表；
+#   完整 JSON 在 artifact flight-probe-result。
+#
+# 每周三还会自己实跑一次 SIN→KUL（日期取当天＋30 天，--smoke：至少 3 个选项且拿得到航班号），
+# 防 Google 改版后工具静默坏掉；坏了用 tools/ci-notify.py 开 issue＋Telegram，恢复了自动关。
+name: 查航班
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "出发机场三码（例 CGK）"
+        required: true
+        type: string
+      to:
+        description: "目的机场三码（例 KTI）"
+        required: true
+        type: string
+      date:
+        description: "日期 YYYY-MM-DD（当地日期）"
+        required: true
+        type: string
+      adults:
+        description: "成人数（影响价格；可省，默认 1）"
+        required: false
+        default: "1"
+        type: string
+      airline:
+        description: "只看某航司（名称或两码代码，例 MH / Singapore；可省）"
+        required: false
+        default: ""
+        type: string
+  schedule:
+    # 每周三 UTC 03:17（柬埔寨上午 10 点前后）
+    - cron: '17 3 * * 3'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 缓存 Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package.json') }}
+      - name: 装 playwright
+        run: |
+          npm install --no-audit --no-fund
+          # 缓存命中也要跑：缓存可能缺 headless shell（browser-check-setup 2026-09-05 踩过）
+          npx playwright install --with-deps chromium
+
+      - name: 先跑解析器自检（解析器坏了，查出来的表也不能信）
+        run: node tools/check-flight-probe.mjs
+
+      - name: 查询
+        id: q
+        # 输入一律走 env，不直接插进 run: 文字（含引号会把 shell 拆坏）
+        env:
+          EVENT: ${{ github.event_name }}
+          IN_FROM: ${{ inputs.from }}
+          IN_TO: ${{ inputs.to }}
+          IN_DATE: ${{ inputs.date }}
+          IN_ADULTS: ${{ inputs.adults }}
+          IN_AIRLINE: ${{ inputs.airline }}
+        run: |
+          set -o pipefail
+          OUT="$RUNNER_TEMP/flight"
+          if [ "$EVENT" = "schedule" ]; then
+            set -- --from SIN --to KUL --date "$(date -u -d '+30 days' +%F)" --smoke
+          else
+            set -- --from "$IN_FROM" --to "$IN_TO" --date "$IN_DATE" --adults "${IN_ADULTS:-1}"
+            if [ -n "$IN_AIRLINE" ]; then set -- "$@" --airline "$IN_AIRLINE"; fi
+          fi
+          if node tools/flight-probe.mjs "$@" --out "$OUT" 2>&1 | tee "$RUNNER_TEMP/probe.log"; then
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 存 JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flight-probe-result
+          path: ${{ runner.temp }}/flight/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: 每周实跑的结果通知（坏了开 issue，好了关掉）
+        if: always() && github.event_name == 'schedule' && steps.q.outputs.failed != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FAILED: ${{ steps.q.outputs.failed }}
+        run: |
+          STATE=ok; [ "$FAILED" = "true" ] && STATE=bad
+          {
+            echo "每周实跑「查航班」工具（SIN→KUL，当天＋30 天）没抓到正常结果，多半是 Google Flights 改版了。"
+            echo "以后让 Claude 查航班会拿不到东西，先修这个。"
+            echo
+            echo '```'
+            tail -c 6000 "$RUNNER_TEMP/probe.log" 2>/dev/null
+            echo '```'
+            echo
+            echo "怎么修：跟 Claude 说「修一下查航班工具」。它会对照这段页面文字改 tools/flight-probe.mjs 的解析器，"
+            echo "并把新页面文字补进 tools/check-flight-probe.mjs 的 fixture。"
+            echo "自己重跑：https://github.com/jarixhew-bit/skills-github-pages/actions/workflows/flight-probe.yml"
+          } > "$RUNNER_TEMP/body.md"
+          python3 tools/ci-notify.py --title "查航班工具失效（每周实跑）" --state "$STATE" \
+            --body-file "$RUNNER_TEMP/body.md" \
+            --tg-bad "查航班工具这周实跑没抓到结果（多半 Google Flights 改版），详情见 GitHub issue。" \
+            --tg-ok "查航班工具恢复正常了。" || true
+
+      - name: 没抓到就让这次 run 显示红灯
+        if: steps.q.outputs.failed == 'true'
+        run: exit 1
