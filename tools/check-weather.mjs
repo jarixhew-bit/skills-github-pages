@@ -1,5 +1,5 @@
 /**
- * singapore-trip/index.html 与 penang-trip/index.html（含新设计版 v2.html／v3.html／v4.html）每日天气的自检
+ * singapore-trip/index.html、sg-jkt-trip/singapore.html（11 月版）与 penang-trip/index.html（含新设计版 v2.html／v3.html／v4.html）每日天气的自检
  * —— 真浏览器跑，Playwright（两页共用同一套 open-meteo 前端现抓机制，合在一个脚本里）。
  *
  * 跑法：
@@ -36,6 +36,7 @@ import { chromium } from 'playwright';
 
 const PORT = process.env.CHECK_PORT || 8899;
 const SG_URL = `http://localhost:${PORT}/singapore-trip/`;
+const SGN_URL = `http://localhost:${PORT}/sg-jkt-trip/singapore.html`;   // 2026-11 新加坡 4 天版（Nak/Yang/Jacky），天气与 PSI 逻辑复制自上面那页
 const PGT_URL = `http://localhost:${PORT}/penang-trip/`;
 const PGT_V2_URL = `http://localhost:${PORT}/penang-trip/v2.html`;   // 新设计版，天气与空气质量条要同样验一遍
 const PGT_V3_URL = `http://localhost:${PORT}/penang-trip/v3.html`;   // 第三版，同样要验（另加逐日面板里的天气副本，见 check-penang-v3.mjs）
@@ -93,13 +94,13 @@ const page = await browser.newPage();
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 
-async function load(handler, now, psiHandler) {
+async function load(handler, now, psiHandler, url = SG_URL) {
   let called = false;
   await page.route(API, r => { called = true; return handler(r); });
   /* PSI 预设给一份正常读数：天气那几个情境不该因为空气质量的网络行为而改变结果 */
   await page.route(PSI_API, r => (psiHandler || (x => x.fulfill({ json: PSI_MODERATE })))(r));
   await page.clock.setFixedTime(new Date(now));
-  await page.goto(SG_URL, { waitUntil: 'domcontentloaded' });
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(
     () => [...document.querySelectorAll('.wx[data-wx]')].every(b => b.textContent && !/载入中|Loading/.test(b.textContent)),
     null, { timeout: 10000 },
@@ -286,6 +287,103 @@ check(downDay[0]?.actHidden === false,
   '[singapore] 抓不到数字时要把替代方案摊开备用（宁可多给资讯，也不要开天窗）');
 
 check(errors.length === 0, `[singapore] 不应有 JS 错误（实得：${errors.slice(0, 3).join(' | ')}）`);
+
+/* ============================================================
+ * sg-jkt-trip/singapore.html：11 月版（11/11–11/14，4 天）。
+ * 天气条／PSI 条的 JS 与上面那页同一份逻辑，所以同样的情境各验一遍：
+ * 正常／部分有预报／API 挂掉／整趟在窗口外／三档 PSI／当天烟霾行。
+ * 页面内有「十一月常态」文案，不是「九月常态」。
+ * ============================================================ */
+const SGN_DATES = ['2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14'];
+const SGN_FULL = { daily: {
+  time: SGN_DATES, weather_code: [0, 3, 61, 80],
+  temperature_2m_max: [32.1, 31.4, 30.6, 30.2], temperature_2m_min: [25.3, 25.1, 24.8, 25.0],
+  precipitation_probability_max: [10, 30, 55, 80],
+} };
+const SGN_PARTIAL = { daily: {
+  time: SGN_DATES.slice(0, 2), weather_code: [0, 3],
+  temperature_2m_max: [32.1, 31.4], temperature_2m_min: [25.3, 25.1],
+  precipitation_probability_max: [10, 30],
+} };
+const SGN_IN_WINDOW = '2026-11-10T09:00:00+08:00';   // 出发前一天：四天全在预报窗口内
+const SGN_TOO_EARLY = '2026-10-20T09:00:00+08:00';   // 出发前三周：整趟都还报不了
+const SGN_D2 = '2026-11-12T09:00:00+08:00';          // 「今天」固定在文化日
+const sgnLoad = (handler, now, psiHandler) => load(handler, now, psiHandler, SGN_URL);
+const sgErrBefore = errors.length;
+
+await page.goto(SGN_URL, { waitUntil: 'domcontentloaded' });
+const sgnStructure = await page.evaluate(() =>
+  [...document.querySelectorAll('.day[data-date]')].map(d => ({
+    date: d.dataset.date,
+    wx: d.querySelector('.wx[data-wx]')?.dataset.wx || null,
+    rain: !!d.querySelector('.rainplan .cn')?.textContent.trim(),
+    rainEn: !!d.querySelector('.rainplan .en')?.textContent.trim(),
+    haze: !!d.querySelector('.hazeact .cn')?.textContent.trim(),
+    hazeEn: !!d.querySelector('.hazeact .en')?.textContent.trim(),
+    hazeHidden: d.querySelector('.hazeplan')?.hasAttribute('hidden') ?? null,
+  })));
+check(sgnStructure.length === 4, `[sg-nov] 行程应有 4 天（实得 ${sgnStructure.length}）`);
+const sgnSkeleton = await page.evaluate(() => {
+  const note = document.querySelector('.psinote');
+  return { exists: !!document.getElementById('psi'), cn: !!note?.querySelector('.cn')?.textContent.trim(),
+    en: !!note?.querySelector('.en')?.textContent.trim(), haze: !!document.querySelector('.psinote a[href*="haze.gov.sg"]') };
+});
+check(sgnSkeleton.exists && sgnSkeleton.cn && sgnSkeleton.en && sgnSkeleton.haze, '[sg-nov] 空气质量条骨架（#psi、中英说明、官方烟霾网站链接）要齐');
+sgnStructure.forEach(d => {
+  check(d.wx === d.date, `[sg-nov] ${d.date} 的天气条日期要跟当天一致（实得 ${d.wx}）`);
+  check(d.rain && d.rainEn, `[sg-nov] ${d.date} 的雨天备案中英文都要有`);
+  check(d.haze && d.hazeEn, `[sg-nov] ${d.date} 的烟霾备案中英文都要有`);
+  check(d.hazeHidden === true, `[sg-nov] ${d.date} 的烟霾备案预设要隐藏`);
+});
+
+const { texts: sgnFull, called: sgnFullCalled } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_IN_WINDOW);
+check(sgnFullCalled, '[sg-nov] 进入预报窗口时应该真的去打 API');
+check(/25–32°C/.test(sgnFull['2026-11-11']) && /10%/.test(sgnFull['2026-11-11']), `[sg-nov] 11/11 应显示 25–32°C、10%（实得：${sgnFull['2026-11-11']}）`);
+check(/25–31°C/.test(sgnFull['2026-11-13']) && /55%/.test(sgnFull['2026-11-13']), `[sg-nov] 11/13 应显示 25–31°C、55%（实得：${sgnFull['2026-11-13']}）`);
+check(/80%/.test(sgnFull['2026-11-14']), '[sg-nov] 11/14 应显示降雨机率 80%');
+check(!/32/.test(sgnFull['2026-11-13']), `[sg-nov] 11/13 不该出现 11/11 的高温（实得：${sgnFull['2026-11-13']}）`);
+const sgnWet = await page.evaluate(() => [...document.querySelectorAll('.wx.wet')].map(b => b.dataset.wx));
+check(sgnWet.length === 1 && sgnWet[0] === '2026-11-14', `[sg-nov] 只有降雨≥60% 的 11/14 该标红（实得 ${JSON.stringify(sgnWet)}）`);
+
+const { texts: sgnPartial } = await sgnLoad(r => r.fulfill({ json: SGN_PARTIAL }), SGN_IN_WINDOW);
+check(/25–32°C/.test(sgnPartial['2026-11-11']), '[sg-nov] 有预报的那天照常显示温度');
+['2026-11-13', '2026-11-14'].forEach(d => {
+  check(/十一月常态|typical November/i.test(sgnPartial[d]) && !/°C · 降雨/.test(sgnPartial[d]),
+    `[sg-nov] ${d} 无预报时要退回十一月常态文案（实得：${sgnPartial[d]}）`);
+});
+const { texts: sgnDown } = await sgnLoad(r => r.fulfill({ status: 500, body: 'boom' }), SGN_IN_WINDOW);
+SGN_DATES.forEach(d => check(/十一月常态|typical November/i.test(sgnDown[d]), `[sg-nov] ${d} 在 API 挂掉时仍要有文案（实得：${sgnDown[d]}）`));
+const { texts: sgnEarly, called: sgnEarlyCalled } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_TOO_EARLY);
+check(!sgnEarlyCalled, '[sg-nov] 整趟都在 16 天窗口外时不该去打 API');
+SGN_DATES.forEach(d => {
+  check(/还没到能报的时候|Too early/i.test(sgnEarly[d]) && !/抓不到|unavailable/i.test(sgnEarly[d]),
+    `[sg-nov] ${d} 窗口外要写「还没到能报的时候」而不是抓不到（实得：${sgnEarly[d]}）`);
+});
+
+const { psi: sgnMod } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_IN_WINDOW, r => r.fulfill({ json: PSI_MODERATE }));
+check(/中等/.test(sgnMod.text) && /90/.test(sgnMod.text) && /warn/.test(sgnMod.cls) && !/bad/.test(sgnMod.cls), `[sg-nov] PSI 90 应判中等、标提醒色（实得：${sgnMod.text} / ${sgnMod.cls}）`);
+const { psi: sgnGood } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_IN_WINDOW, r => r.fulfill({ json: PSI_GOOD }));
+check(/良好/.test(sgnGood.text) && !/warn|bad/.test(sgnGood.cls), `[sg-nov] PSI 40 应判良好、不标色（实得：${sgnGood.text} / ${sgnGood.cls}）`);
+const { psi: sgnBad } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_IN_WINDOW, r => r.fulfill({ json: PSI_UNHEALTHY }));
+check(/不健康/.test(sgnBad.text) && /bad/.test(sgnBad.cls) && /131/.test(sgnBad.text), `[sg-nov] PSI 131 应判不健康、标红、显示最高值（实得：${sgnBad.text} / ${sgnBad.cls}）`);
+const { psi: sgnDownPsi } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_IN_WINDOW, r => r.fulfill({ status: 500, body: 'boom' }));
+check(/抓不到|unavailable/i.test(sgnDownPsi.text) && !/载入中|Loading/.test(sgnDownPsi.text), `[sg-nov] PSI API 挂掉要说明白且不卡在载入中（实得：${sgnDownPsi.text}）`);
+
+const { dayHaze: sgnBefore } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_IN_WINDOW, r => r.fulfill({ json: PSI_MODERATE }));
+check(sgnBefore.length === 0, `[sg-nov] 不是行程中的日子，烟霾行一条都不该显示（实得 ${JSON.stringify(sgnBefore)}）`);
+const { dayHaze: sgnOk } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_D2, r => r.fulfill({ json: PSI_MODERATE }));
+check(sgnOk.length === 1 && sgnOk[0].date === '2026-11-12' && /90/.test(sgnOk[0].now) && /照常|unchanged/.test(sgnOk[0].now) && sgnOk[0].actHidden === true && !/bad/.test(sgnOk[0].cls),
+  `[sg-nov] 11/12 空气中等：只露今天、报数字 90、说照常、不摊开替代方案（实得 ${JSON.stringify(sgnOk)}）`);
+const { dayHaze: sgnBadDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_D2, r => r.fulfill({ json: PSI_UNHEALTHY }));
+check(/131/.test(sgnBadDay[0]?.now || '') && sgnBadDay[0]?.actHidden === false && /bad/.test(sgnBadDay[0]?.cls || ''),
+  `[sg-nov] 11/12 PSI 131：要写出 131、标红、摊开替代方案（实得 ${JSON.stringify(sgnBadDay)}）`);
+const sgnActText = await page.evaluate(() => document.querySelector('.day[data-date="2026-11-12"] .hazeact')?.textContent || '');
+check(/国家美术馆|National Gallery/.test(sgnActText) && /Capitol/.test(sgnActText),
+  `[sg-nov] 11/12 摊开的替代方案要是这一天的（国家美术馆／Capitol），实得：${sgnActText.slice(0, 60)}`);
+const { dayHaze: sgnDownDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_D2, r => r.fulfill({ status: 500, body: 'boom' }));
+check(sgnDownDay.length === 1 && /抓不到|Could not fetch/.test(sgnDownDay[0]?.now || '') && sgnDownDay[0]?.actHidden === false,
+  `[sg-nov] PSI 挂掉但人在行程中：要说明抓不到并摊开替代方案（实得 ${JSON.stringify(sgnDownDay)}）`);
+check(errors.length === sgErrBefore, `[sg-nov] 不应有 JS 错误（实得：${errors.slice(sgErrBefore, sgErrBefore + 3).join(' | ')}）`);
 
 /* ============================================================
  * penang-trip：没有逐日行程列，天气条独立成 #weather 区块里的
