@@ -19,36 +19,34 @@
   .lang { border: 1px solid var(--ink); background: transparent; color: var(--ink); border-radius: 999px;
     padding: 4px 14px; font-size: 13px; cursor: pointer; }
   h1 { font-size: 24px; line-height: 1.25; margin: 18px 0 4px; }
-  .sub { color: var(--muted); margin: 0 0 16px; }
-  .route { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .sub { color: var(--muted); margin: 0 0 14px; }
+  .route { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
   .pill { border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
   .pill.nah { background: var(--nah-bg); color: var(--nah); }
   .pill.jac { background: var(--jac-bg); color: var(--jac); }
-  .day { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
-  .day-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
-  .date { font-size: 20px; font-weight: 700; }
+  .jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 6px; }
+  .jump a { text-decoration: none; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; }
+  .day-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 28px 0 10px; }
+  .date { font-size: 21px; font-weight: 700; }
   .dow { color: var(--muted); font-size: 14px; }
   .leg-title { font-weight: 600; }
-  .flight { border-radius: 10px; padding: 12px; margin-top: 10px; border-left: 4px solid; }
+  .opt { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .opt h3 { margin: 0 0 4px; font-size: 16px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px; vertical-align: middle; color: #fff; }
+  .tag.rec { background: var(--both); }
+  .tag.cheap { background: var(--accent); }
+  .flight { border-radius: 10px; padding: 10px 12px; margin-top: 8px; border-left: 4px solid; }
   .flight.nah { background: var(--nah-bg); border-color: var(--nah); }
   .flight.jac { background: var(--jac-bg); border-color: var(--jac); }
   .flight.both { background: var(--both-bg); border-color: var(--both); }
   .who { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
   .flight.nah .who { color: var(--nah); } .flight.jac .who { color: var(--jac); } .flight.both .who { color: var(--both); }
-  .times { display: flex; align-items: center; gap: 10px; margin: 4px 0; flex-wrap: wrap; }
-  .t { font-size: 22px; font-weight: 700; }
-  .ap { font-size: 13px; color: var(--muted); display: block; font-weight: 500; }
-  .arrow { color: var(--muted); font-size: 13px; text-align: center; }
+  .times { display: flex; align-items: center; gap: 10px; margin: 2px 0; flex-wrap: wrap; }
+  .t { font-size: 20px; font-weight: 700; }
+  .ap { font-size: 13px; color: var(--muted); }
+  .arrow { color: var(--muted); font-size: 13px; }
   .meta { font-size: 13px; color: var(--muted); }
-  .meet { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #fff8e6; border: 1px dashed var(--accent); font-size: 14px; }
-  h2 { font-size: 18px; margin: 28px 0 10px; }
-  .opt { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
-  .opt h3 { margin: 0 0 6px; font-size: 16px; }
-  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
-  .tag.rec { background: var(--both); color: #fff; }
-  .tag.cheap { background: var(--accent); color: #fff; }
-  .opt ul { margin: 6px 0 0; padding-left: 18px; }
-  .opt li { margin: 3px 0; }
+  .sum { margin-top: 10px; font-size: 14px; padding-top: 8px; border-top: 1px dashed var(--line); }
   .note { font-size: 13px; color: var(--muted); margin-top: 24px; }
   a { color: inherit; }
 </style>
@@ -57,137 +55,138 @@
 <div class="wrap">
 
 <div class="top">
-  <div class="meta"><span class="cn">新加坡 · 雅加达 航班安排</span><span class="en">Singapore · Jakarta flight plan</span></div>
+  <div class="meta"><span class="cn">新加坡 · 雅加达 航班选择</span><span class="en">Singapore · Jakarta flight options</span></div>
   <button class="lang" id="langBtn" onclick="toggleLang()">中文</button>
 </div>
 
-<h1><span class="cn">11 月 11–16 日 航班安排</span><span class="en">Flights · 11–16 November 2026</span></h1>
-<p class="sub"><span class="cn">两人在新加坡会合，一起飞雅加达，再一起出发回家。时间都是当地时间。</span><span class="en">Meet in Singapore, fly to Jakarta together, then head home together. All times are local.</span></p>
+<h1><span class="cn">11 月 11–16 日 航班选择</span><span class="en">Flight options · 11–16 November 2026</span></h1>
+<p class="sub"><span class="cn">两人在新加坡会合，一起飞雅加达，再差不多时间出发回家。每天有几个方案可挑，时间都是当地时间，票价为单人单程。</span><span class="en">Meet in Singapore, fly to Jakarta together, then leave for home at about the same time. Pick one option per day. All times are local; fares are one-way per person.</span></p>
 
 <div class="route">
   <span class="pill nah">Nah · <span class="cn">金边 → 新加坡 → 雅加达 → 金边</span><span class="en">Phnom Penh → Singapore → Jakarta → Phnom Penh</span></span>
   <span class="pill jac">Jackie · <span class="cn">槟城 → 新加坡 → 雅加达 → 槟城</span><span class="en">Penang → Singapore → Jakarta → Penang</span></span>
 </div>
+<div class="jump">
+  <a href="#d11"><span class="cn">11 日 飞新加坡</span><span class="en">11 Nov · to Singapore</span></a>
+  <a href="#d14"><span class="cn">14 日 飞雅加达</span><span class="en">14 Nov · to Jakarta</span></a>
+  <a href="#d16"><span class="cn">16 日 回家</span><span class="en">16 Nov · home</span></a>
+</div>
 
 <!-- ===== 11 Nov ===== -->
-<div class="day">
-  <div class="day-h"><span class="date"><span class="cn">11 月 11 日</span><span class="en">11 Nov</span></span><span class="dow"><span class="cn">星期三</span><span class="en">Wednesday</span></span><span class="leg-title"><span class="cn">飞新加坡</span><span class="en">Fly to Singapore</span></span></div>
+<div class="day-h" id="d11"><span class="date"><span class="cn">11 月 11 日</span><span class="en">11 Nov</span></span><span class="dow"><span class="cn">星期三</span><span class="en">Wednesday</span></span><span class="leg-title"><span class="cn">飞新加坡会合</span><span class="en">Meet in Singapore</span></span></div>
 
-  <div class="flight nah">
-    <div class="who">Nah</div>
-    <div class="times">
-      <div><span class="t">09:35</span><span class="ap"><span class="cn">金边 德崇国际机场 KTI</span><span class="en">Phnom Penh Techo Intl (KTI)</span></span></div>
-      <div class="arrow">2h15 →</div>
-      <div><span class="t">12:50</span><span class="ap"><span class="cn">新加坡樟宜 SIN</span><span class="en">Singapore Changi (SIN)</span></span></div>
-    </div>
-    <div class="meta"><span class="cn">新加坡航空 · 直飞 · 波音 737 MAX 8 · 托运 25kg · 约 US$210</span><span class="en">Singapore Airlines · nonstop · Boeing 737 MAX 8 · 25kg bag · approx. US$210</span></div>
-  </div>
+<div class="opt">
+  <h3><span class="cn">方案 1 · 上午出发，中午会合</span><span class="en">Option 1 · Morning departure, meet at lunchtime</span><span class="tag rec"><span class="cn">推荐</span><span class="en">Suggested</span></span></h3>
+  <div class="flight nah"><div class="who">Nah</div>
+    <div class="times"><span class="t">09:35</span><span class="ap"><span class="cn">金边 KTI</span><span class="en">Phnom Penh KTI</span></span><span class="arrow">2h15 →</span><span class="t">12:50</span><span class="ap"><span class="cn">新加坡</span><span class="en">Singapore</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空 · 直飞 · 托运 25kg · 约 US$210</span><span class="en">Singapore Airlines · nonstop · 25kg bag · approx. US$210</span></div></div>
+  <div class="flight jac"><div class="who">Jackie</div>
+    <div class="times"><span class="t">12:00</span><span class="ap"><span class="cn">槟城</span><span class="en">Penang</span></span><span class="arrow">1h35 →</span><span class="t">13:35</span><span class="ap"><span class="cn">新加坡</span><span class="en">Singapore</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空 · 直飞 · 托运 30kg · 约 US$157</span><span class="en">Singapore Airlines · nonstop · 30kg bag · approx. US$157</span></div></div>
+  <div class="sum">🤝 <span class="cn">Nah 先到，Jackie 晚 45 分钟。两人合计约 US$367</span><span class="en">Nah lands first, Jackie 45 min later. About US$367 for both</span></div>
+</div>
 
-  <div class="flight jac">
-    <div class="who">Jackie</div>
-    <div class="times">
-      <div><span class="t">12:00</span><span class="ap"><span class="cn">槟城 PEN</span><span class="en">Penang (PEN)</span></span></div>
-      <div class="arrow">1h35 →</div>
-      <div><span class="t">13:35</span><span class="ap"><span class="cn">新加坡樟宜 SIN</span><span class="en">Singapore Changi (SIN)</span></span></div>
-    </div>
-    <div class="meta"><span class="cn">新加坡航空 · 直飞 · 波音 737 MAX 8 · 托运 30kg · 约 US$157</span><span class="en">Singapore Airlines · nonstop · Boeing 737 MAX 8 · 30kg bag · approx. US$157</span></div>
-  </div>
+<div class="opt">
+  <h3><span class="cn">方案 2 · 同样上午，Jackie 搭更早更便宜的一班</span><span class="en">Option 2 · Same morning, Jackie on an earlier, cheaper flight</span><span class="tag cheap"><span class="cn">较省</span><span class="en">Cheaper</span></span></h3>
+  <div class="flight nah"><div class="who">Nah</div>
+    <div class="times"><span class="t">09:35</span><span class="ap"><span class="cn">金边 KTI</span><span class="en">Phnom Penh KTI</span></span><span class="arrow">2h15 →</span><span class="t">12:50</span><span class="ap"><span class="cn">新加坡</span><span class="en">Singapore</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空 · 直飞 · 托运 25kg · 约 US$210</span><span class="en">Singapore Airlines · nonstop · 25kg bag · approx. US$210</span></div></div>
+  <div class="flight jac"><div class="who">Jackie</div>
+    <div class="times"><span class="t">10:35</span><span class="ap"><span class="cn">槟城</span><span class="en">Penang</span></span><span class="arrow">1h30 →</span><span class="t">12:05</span><span class="ap"><span class="cn">新加坡 1 号航站楼</span><span class="en">Singapore T1</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空代码共享 · 直飞 · A321neo · 托运 40kg · 约 US$81</span><span class="en">Singapore Airlines codeshare · nonstop · A321neo · 40kg bag · approx. US$81</span></div></div>
+  <div class="sum">🤝 <span class="cn">Jackie 先到，Nah 晚 45 分钟。两人合计约 US$291</span><span class="en">Jackie lands first, Nah 45 min later. About US$291 for both</span></div>
+</div>
 
-  <div class="meet">🤝 <span class="cn">Nah 先到，<b>约 45 分钟后</b> Jackie 落地，在樟宜机场会合。（落地航站楼以登机牌为准）</span><span class="en">Nah lands first; Jackie lands <b>about 45 minutes later</b>. Meet at Changi Airport (check the arrival terminal on your boarding pass).</span>
-    · <a href="https://www.google.com/maps/search/?api=1&query=Singapore%20Changi%20Airport" target="_blank" rel="noopener"><span class="cn">地图</span><span class="en">Map</span></a></div>
+<div class="opt">
+  <h3><span class="cn">方案 3 · 下午出发，傍晚会合</span><span class="en">Option 3 · Afternoon departure, meet in the early evening</span></h3>
+  <div class="flight nah"><div class="who">Nah</div>
+    <div class="times"><span class="t">14:40</span><span class="ap"><span class="cn">金边 KTI</span><span class="en">Phnom Penh KTI</span></span><span class="arrow">2h25 →</span><span class="t">18:05</span><span class="ap"><span class="cn">新加坡</span><span class="en">Singapore</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空 · 直飞 · 托运 25kg · 约 US$210</span><span class="en">Singapore Airlines · nonstop · 25kg bag · approx. US$210</span></div></div>
+  <div class="flight jac"><div class="who">Jackie</div>
+    <div class="times"><span class="t">15:35</span><span class="ap"><span class="cn">槟城</span><span class="en">Penang</span></span><span class="arrow">1h55 →</span><span class="t">17:30</span><span class="ap"><span class="cn">新加坡</span><span class="en">Singapore</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空 · 直飞 · 托运 30kg · 约 US$275</span><span class="en">Singapore Airlines · nonstop · 30kg bag · approx. US$275</span></div></div>
+  <div class="sum">🤝 <span class="cn">Jackie 先到，Nah 晚 35 分钟。两人合计约 US$485</span><span class="en">Jackie lands first, Nah 35 min later. About US$485 for both</span></div>
 </div>
 
 <!-- ===== 14 Nov ===== -->
-<div class="day">
-  <div class="day-h"><span class="date"><span class="cn">11 月 14 日</span><span class="en">14 Nov</span></span><span class="dow"><span class="cn">星期六</span><span class="en">Saturday</span></span><span class="leg-title"><span class="cn">一起飞雅加达</span><span class="en">Fly to Jakarta together</span></span></div>
+<div class="day-h" id="d14"><span class="date"><span class="cn">11 月 14 日</span><span class="en">14 Nov</span></span><span class="dow"><span class="cn">星期六</span><span class="en">Saturday</span></span><span class="leg-title"><span class="cn">一起飞雅加达（同一班）</span><span class="en">Fly to Jakarta together (same flight)</span></span></div>
 
-  <div class="flight both">
-    <div class="who">Nah + Jackie · <span class="cn">同一班</span><span class="en">same flight</span></div>
-    <div class="times">
-      <div><span class="t">12:30</span><span class="ap"><span class="cn">新加坡樟宜 2 号航站楼</span><span class="en">Singapore Changi T2</span></span></div>
-      <div class="arrow">1h50 →</div>
-      <div><span class="t">13:20</span><span class="ap"><span class="cn">雅加达 苏加诺-哈达 3 号航站楼</span><span class="en">Jakarta Soekarno-Hatta T3</span></span></div>
-    </div>
-    <div class="meta"><span class="cn">新加坡航空 · 直飞 · 空客 A350-900 · 托运 25kg · 约 US$287／人</span><span class="en">Singapore Airlines · nonstop · Airbus A350-900 · 25kg bag · approx. US$287 per person</span></div>
-  </div>
-  <div class="meet">🕐 <span class="cn">建议 10:30 前到樟宜 2 号航站楼办理登机。</span><span class="en">Be at Changi T2 by 10:30 to check in.</span>
+<div class="opt">
+  <h3><span class="cn">方案 1 · 中午走</span><span class="en">Option 1 · Midday</span><span class="tag rec"><span class="cn">推荐</span><span class="en">Suggested</span></span></h3>
+  <div class="flight both"><div class="who">Nah + Jackie</div>
+    <div class="times"><span class="t">12:30</span><span class="ap"><span class="cn">新加坡 2 号航站楼</span><span class="en">Singapore T2</span></span><span class="arrow">1h50 →</span><span class="t">13:20</span><span class="ap"><span class="cn">雅加达 3 号航站楼</span><span class="en">Jakarta T3</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空 · 直飞 · A350-900 · 托运 25kg · 约 US$287／人</span><span class="en">Singapore Airlines · nonstop · A350-900 · 25kg bag · approx. US$287 per person</span></div></div>
+  <div class="sum">🕐 <span class="cn">10:30 前到樟宜 2 号航站楼。两人合计约 US$574</span><span class="en">Be at Changi T2 by 10:30. About US$574 for both</span>
     · <a href="https://www.google.com/maps/search/?api=1&query=Changi%20Airport%20Terminal%202" target="_blank" rel="noopener"><span class="cn">地图</span><span class="en">Map</span></a></div>
 </div>
 
+<div class="opt">
+  <h3><span class="cn">方案 2 · 下午走</span><span class="en">Option 2 · Afternoon</span></h3>
+  <div class="flight both"><div class="who">Nah + Jackie</div>
+    <div class="times"><span class="t">15:15</span><span class="ap"><span class="cn">新加坡 2 号航站楼</span><span class="en">Singapore T2</span></span><span class="arrow">1h50 →</span><span class="t">16:05</span><span class="ap"><span class="cn">雅加达 3 号航站楼</span><span class="en">Jakarta T3</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空 · 直飞 · A350-900 · 托运 25kg · 约 US$264／人</span><span class="en">Singapore Airlines · nonstop · A350-900 · 25kg bag · approx. US$264 per person</span></div></div>
+  <div class="sum"><span class="cn">两人合计约 US$528</span><span class="en">About US$528 for both</span></div>
+</div>
+
+<div class="opt">
+  <h3><span class="cn">方案 3 · 改搭 Batik Air（中午或下午）</span><span class="en">Option 3 · Batik Air instead (midday or afternoon)</span><span class="tag cheap"><span class="cn">最省</span><span class="en">Cheapest</span></span></h3>
+  <div class="flight both"><div class="who">Nah + Jackie</div>
+    <div class="times"><span class="t">12:45</span><span class="ap"><span class="cn">新加坡 4 号航站楼</span><span class="en">Singapore T4</span></span><span class="arrow">1h50 →</span><span class="t">13:35</span><span class="ap"><span class="cn">雅加达 2 号航站楼 F 区</span><span class="en">Jakarta T2F</span></span></div>
+    <div class="meta"><span class="cn">或 14:45 → 15:35 · Batik Air · 直飞 · 托运 20kg · 约 US$102／人</span><span class="en">or 14:45 → 15:35 · Batik Air · nonstop · 20kg bag · approx. US$102 per person</span></div></div>
+  <div class="sum"><span class="cn">两人合计约 US$204</span><span class="en">About US$204 for both</span></div>
+</div>
+
 <!-- ===== 16 Nov ===== -->
-<div class="day">
-  <div class="day-h"><span class="date"><span class="cn">11 月 16 日</span><span class="en">16 Nov</span></span><span class="dow"><span class="cn">星期一</span><span class="en">Monday</span></span><span class="leg-title"><span class="cn">一起出发回家</span><span class="en">Head home together</span></span></div>
-
-  <div class="flight both">
-    <div class="who">Nah + Jackie · <span class="cn">同一班离开雅加达，经新加坡转机</span><span class="en">same flight out of Jakarta, connect in Singapore</span></div>
-    <div class="times">
-      <div><span class="t">11:10</span><span class="ap"><span class="cn">雅加达 3 号航站楼</span><span class="en">Jakarta T3</span></span></div>
-      <div class="arrow">→ <span class="cn">新加坡转机</span><span class="en">via Singapore</span> →</div>
-    </div>
-    <div class="meta"><span class="cn">新加坡航空 · 全程一张票，行李直挂到家</span><span class="en">Singapore Airlines · one ticket, bags checked through to home</span></div>
-  </div>
-
-  <div class="flight nah">
-    <div class="who">Nah</div>
-    <div class="times">
-      <div><span class="t">11:10</span><span class="ap"><span class="cn">雅加达 CGK</span><span class="en">Jakarta (CGK)</span></span></div>
-      <div class="arrow">7h20 →</div>
-      <div><span class="t">18:30</span><span class="ap"><span class="cn">金边 KTI</span><span class="en">Phnom Penh (KTI)</span></span></div>
-    </div>
-    <div class="meta"><span class="cn">新加坡航空 · 转机 1 次 · 托运 25kg · 约 US$260</span><span class="en">Singapore Airlines · 1 stop · 25kg bag · approx. US$260</span></div>
-  </div>
-
-  <div class="flight jac">
-    <div class="who">Jackie</div>
-    <div class="times">
-      <div><span class="t">11:10</span><span class="ap"><span class="cn">雅加达 CGK</span><span class="en">Jakarta (CGK)</span></span></div>
-      <div class="arrow">4h45 →</div>
-      <div><span class="t">16:55</span><span class="ap"><span class="cn">槟城 PEN</span><span class="en">Penang (PEN)</span></span></div>
-    </div>
-    <div class="meta"><span class="cn">新加坡航空 · 转机 1 次 · 托运 25kg · 约 US$178</span><span class="en">Singapore Airlines · 1 stop · 25kg bag · approx. US$178</span></div>
-  </div>
-  <div class="meet">🕐 <span class="cn">两人一起出发，建议 08:30 前到雅加达 3 号航站楼。</span><span class="en">Go to the airport together; be at Jakarta T3 by 08:30.</span>
-    · <a href="https://www.google.com/maps/search/?api=1&query=Soekarno-Hatta%20International%20Airport%20Terminal%203" target="_blank" rel="noopener"><span class="cn">地图</span><span class="en">Map</span></a></div>
-</div>
-
-<!-- ===== Other options ===== -->
-<h2><span class="cn">16 日回程的其他选择</span><span class="en">Other options for 16 Nov</span></h2>
+<div class="day-h" id="d16"><span class="date"><span class="cn">11 月 16 日</span><span class="en">16 Nov</span></span><span class="dow"><span class="cn">星期一</span><span class="en">Monday</span></span><span class="leg-title"><span class="cn">差不多时间出发回家</span><span class="en">Leave for home at about the same time</span></span></div>
 
 <div class="opt">
-  <h3><span class="cn">A. 新加坡航空，同一班离开</span><span class="en">A. Singapore Airlines, same flight out</span><span class="tag rec"><span class="cn">上面这套</span><span class="en">Plan above</span></span></h3>
-  <ul>
-    <li><span class="cn">两人 11:10 同机离开 → Nah 18:30 到金边，Jackie 16:55 到槟城</span><span class="en">Both 11:10 on the same flight → Nah home 18:30, Jackie home 16:55</span></li>
-    <li><span class="cn">合计约 US$438</span><span class="en">About US$438 in total</span></li>
-  </ul>
+  <h3><span class="cn">方案 A · 新加坡航空，两人同一班离开</span><span class="en">Option A · Singapore Airlines, same flight out</span><span class="tag rec"><span class="cn">最省心</span><span class="en">Easiest</span></span></h3>
+  <div class="flight nah"><div class="who">Nah</div>
+    <div class="times"><span class="t">11:10</span><span class="ap"><span class="cn">雅加达 3 号航站楼</span><span class="en">Jakarta T3</span></span><span class="arrow"><span class="cn">新加坡转机</span><span class="en">via Singapore</span> · 7h20 →</span><span class="t">18:30</span><span class="ap"><span class="cn">金边</span><span class="en">Phnom Penh</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空 · 托运 25kg · 约 US$260</span><span class="en">Singapore Airlines · 25kg bag · approx. US$260</span></div></div>
+  <div class="flight jac"><div class="who">Jackie</div>
+    <div class="times"><span class="t">11:10</span><span class="ap"><span class="cn">雅加达 3 号航站楼</span><span class="en">Jakarta T3</span></span><span class="arrow"><span class="cn">新加坡转机</span><span class="en">via Singapore</span> · 4h45 →</span><span class="t">16:55</span><span class="ap"><span class="cn">槟城</span><span class="en">Penang</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空 · 托运 25kg · 约 US$178</span><span class="en">Singapore Airlines · 25kg bag · approx. US$178</span></div></div>
+  <div class="sum">✈️ <span class="cn">同一时间同一航站楼出发，一张票行李直挂到家。两人合计约 US$438</span><span class="en">Same time, same terminal; one ticket each with bags checked through. About US$438 for both</span></div>
 </div>
 
 <div class="opt">
-  <h3><span class="cn">B. 马来西亚航空，经吉隆坡</span><span class="en">B. Malaysia Airlines, via Kuala Lumpur</span></h3>
-  <ul>
-    <li><span class="cn">Jackie 11:10 雅加达 3 号航站楼 → 17:05 槟城（4h55，托运 25kg，约 US$155）</span><span class="en">Jackie 11:10 Jakarta T3 → 17:05 Penang (4h55, 25kg bag, approx. US$155)</span></li>
-    <li><span class="cn">Nah 12:20 雅加达 3 号航站楼 → 17:30 金边（5h10，托运 25kg，约 US$214）</span><span class="en">Nah 12:20 Jakarta T3 → 17:30 Phnom Penh (5h10, 25kg bag, approx. US$214)</span></li>
-    <li><span class="cn">同一航站楼，起飞相差 1 小时 10 分；Nah 比方案 A 早 1 小时到家。合计约 US$369</span><span class="en">Same terminal, departures 1h10 apart; Nah gets home an hour earlier than Plan A. About US$369 in total</span></li>
-  </ul>
+  <h3><span class="cn">方案 B · 马来西亚航空，经吉隆坡</span><span class="en">Option B · Malaysia Airlines, via Kuala Lumpur</span></h3>
+  <div class="flight jac"><div class="who">Jackie</div>
+    <div class="times"><span class="t">11:10</span><span class="ap"><span class="cn">雅加达 3 号航站楼</span><span class="en">Jakarta T3</span></span><span class="arrow"><span class="cn">转机 1 次</span><span class="en">1 stop</span> · 4h55 →</span><span class="t">17:05</span><span class="ap"><span class="cn">槟城</span><span class="en">Penang</span></span></div>
+    <div class="meta"><span class="cn">马来西亚航空 · 托运 25kg · 约 US$155</span><span class="en">Malaysia Airlines · 25kg bag · approx. US$155</span></div></div>
+  <div class="flight nah"><div class="who">Nah</div>
+    <div class="times"><span class="t">12:20</span><span class="ap"><span class="cn">雅加达 3 号航站楼</span><span class="en">Jakarta T3</span></span><span class="arrow"><span class="cn">转机 1 次</span><span class="en">1 stop</span> · 5h10 →</span><span class="t">17:30</span><span class="ap"><span class="cn">金边</span><span class="en">Phnom Penh</span></span></div>
+    <div class="meta"><span class="cn">马来西亚航空 · 托运 25kg · 约 US$214</span><span class="en">Malaysia Airlines · 25kg bag · approx. US$214</span></div></div>
+  <div class="sum">✈️ <span class="cn">同一航站楼，起飞相差 1 小时 10 分；两人都在下午 5 点多到家。两人合计约 US$369</span><span class="en">Same terminal, departures 1h10 apart; both home a little after 5 pm. About US$369 for both</span></div>
 </div>
 
 <div class="opt">
-  <h3><span class="cn">C. 廉价航空，下午走</span><span class="en">C. Budget airlines, afternoon</span><span class="tag cheap"><span class="cn">最省</span><span class="en">Cheapest</span></span></h3>
-  <ul>
-    <li><span class="cn">Jackie 16:10 雅加达 2 号航站楼 F 区 → 19:35 槟城，Batik Air 直飞（2h25，托运 20kg，约 US$85）</span><span class="en">Jackie 16:10 Jakarta T2F → 19:35 Penang, Batik Air nonstop (2h25, 20kg bag, approx. US$85)</span></li>
-    <li><span class="cn">Nah 15:55 雅加达 2 号航站楼 F 区 → 21:55 金边，Citilink＋亚航柬埔寨，转机 1 次（6h，<b>不含托运行李</b>，约 US$170）</span><span class="en">Nah 15:55 Jakarta T2F → 21:55 Phnom Penh, Citilink + AirAsia Cambodia, 1 stop (6h, <b>no checked bag included</b>, approx. US$170)</span></li>
-    <li><span class="cn">同一航站楼，起飞只差 15 分钟；Nah 很晚才到家，行李要另外买。合计约 US$255 起</span><span class="en">Same terminal, departures only 15 min apart; Nah gets home late and must add a bag. From about US$255 in total</span></li>
-  </ul>
+  <h3><span class="cn">方案 C · Jackie 早上直飞，Nah 搭差不多时间的新航</span><span class="en">Option C · Jackie flies direct in the morning, Nah on a Singapore Airlines flight at about the same time</span></h3>
+  <div class="flight jac"><div class="who">Jackie · <span class="cn">二选一</span><span class="en">pick one</span></div>
+    <div class="times"><span class="t">10:00</span><span class="ap"><span class="cn">雅加达 2 号航站楼 F 区</span><span class="en">Jakarta T2F</span></span><span class="arrow"><span class="cn">直飞</span><span class="en">nonstop</span> · 2h25 →</span><span class="t">13:25</span><span class="ap"><span class="cn">槟城</span><span class="en">Penang</span></span></div>
+    <div class="meta"><span class="cn">亚航 AirAsia · <b>不含托运行李</b> · 约 US$74</span><span class="en">AirAsia · <b>no checked bag included</b> · approx. US$74</span></div>
+    <div class="times"><span class="t">09:15</span><span class="ap"><span class="cn">雅加达 2 号航站楼 F 区</span><span class="en">Jakarta T2F</span></span><span class="arrow"><span class="cn">直飞</span><span class="en">nonstop</span> · 2h25 →</span><span class="t">12:40</span><span class="ap"><span class="cn">槟城</span><span class="en">Penang</span></span></div>
+    <div class="meta"><span class="cn">Batik Air · 托运 20kg · 约 US$85</span><span class="en">Batik Air · 20kg bag · approx. US$85</span></div></div>
+  <div class="flight nah"><div class="who">Nah</div>
+    <div class="times"><span class="t">08:40</span><span class="ap"><span class="cn">雅加达 3 号航站楼</span><span class="en">Jakarta T3</span></span><span class="arrow"><span class="cn">新加坡转机</span><span class="en">via Singapore</span> · 5h05 →</span><span class="t">13:45</span><span class="ap"><span class="cn">金边</span><span class="en">Phnom Penh</span></span></div>
+    <div class="meta"><span class="cn">新加坡航空 · 托运 25kg · 约 US$247</span><span class="en">Singapore Airlines · 25kg bag · approx. US$247</span></div></div>
+  <div class="sum">✈️ <span class="cn">同一个机场、不同航站楼，可以一起坐车去，先送 Nah 到 3 号航站楼。起飞相差 35 分钟（配 Batik）或 1 小时 20 分（配亚航）；两人下午 2 点前都到家。两人合计约 US$321～332</span><span class="en">Same airport, different terminals — share a ride and drop Nah at T3 first. Departures 35 min apart (with Batik) or 1h20 apart (with AirAsia); both home before 2 pm. About US$321–332 for both</span></div>
 </div>
 
-<h2><span class="cn">11 日去程的其他选择</span><span class="en">Other options for 11 Nov</span></h2>
 <div class="opt">
-  <ul>
-    <li><span class="cn">Jackie 改搭 10:35 槟城 → 12:05 新加坡 1 号航站楼（新航代码共享，A321neo，托运 40kg，约 US$81）——比 Nah 早 45 分钟到，更便宜</span><span class="en">Jackie on the 10:35 Penang → 12:05 Singapore T1 (Singapore Airlines codeshare, A321neo, 40kg bag, approx. US$81) — lands 45 min before Nah, and cheaper</span></li>
-    <li><span class="cn">下午版：Nah 14:40 金边 → 18:05 新加坡（约 US$210）；Jackie 15:35 槟城 → 17:30 新加坡（约 US$275）——相差 35 分钟</span><span class="en">Afternoon version: Nah 14:40 Phnom Penh → 18:05 Singapore (approx. US$210); Jackie 15:35 Penang → 17:30 Singapore (approx. US$275) — 35 min apart</span></li>
-  </ul>
+  <h3><span class="cn">方案 D · 下午廉价航空</span><span class="en">Option D · Afternoon budget airlines</span><span class="tag cheap"><span class="cn">最省</span><span class="en">Cheapest</span></span></h3>
+  <div class="flight nah"><div class="who">Nah</div>
+    <div class="times"><span class="t">15:55</span><span class="ap"><span class="cn">雅加达 2 号航站楼 F 区</span><span class="en">Jakarta T2F</span></span><span class="arrow"><span class="cn">转机 1 次</span><span class="en">1 stop</span> · 6h →</span><span class="t">21:55</span><span class="ap"><span class="cn">金边</span><span class="en">Phnom Penh</span></span></div>
+    <div class="meta"><span class="cn">Citilink＋亚航柬埔寨 · <b>不含托运行李</b> · 约 US$170</span><span class="en">Citilink + AirAsia Cambodia · <b>no checked bag included</b> · approx. US$170</span></div></div>
+  <div class="flight jac"><div class="who">Jackie</div>
+    <div class="times"><span class="t">16:10</span><span class="ap"><span class="cn">雅加达 2 号航站楼 F 区</span><span class="en">Jakarta T2F</span></span><span class="arrow"><span class="cn">直飞</span><span class="en">nonstop</span> · 2h25 →</span><span class="t">19:35</span><span class="ap"><span class="cn">槟城</span><span class="en">Penang</span></span></div>
+    <div class="meta"><span class="cn">Batik Air · 托运 20kg · 约 US$85</span><span class="en">Batik Air · 20kg bag · approx. US$85</span></div></div>
+  <div class="sum">✈️ <span class="cn">同一航站楼，起飞只差 15 分钟；Nah 晚上 10 点才到家，行李要另外买。两人合计约 US$255 起</span><span class="en">Same terminal, departures only 15 min apart; Nah gets home around 10 pm and must add a bag. From about US$255 for both</span></div>
 </div>
 
-<p class="note"><span class="cn">票价为单人单程经济舱、含税，取自 Trip.com（2026 年 10 月底），会随时变动，以订票时为准。金边的航班都用新的德崇国际机场（KTI），不是旧机场。</span><span class="en">Fares are one-way economy per person incl. taxes, from Trip.com (late Oct 2026); they change often — check when booking. All Phnom Penh flights use the new Techo International Airport (KTI), not the old airport.</span></p>
+<p class="note"><span class="cn">票价为单人单程经济舱、含税，取自 Trip.com（2026 年 10 月底），会随时变动，以订票时为准。转机航班的转机地与航班号以订票页为准。金边的航班都用新的德崇国际机场（KTI），不是旧机场。</span><span class="en">Fares are one-way economy per person incl. taxes, from Trip.com (late Oct 2026); they change often — check when booking. Connection points and flight numbers: see the booking page. All Phnom Penh flights use the new Techo International Airport (KTI), not the old airport.</span>
+  · <a href="https://www.google.com/maps/search/?api=1&query=Soekarno-Hatta%20International%20Airport" target="_blank" rel="noopener"><span class="cn">雅加达机场地图</span><span class="en">Jakarta airport map</span></a></p>
 
 </div>
 <script>
