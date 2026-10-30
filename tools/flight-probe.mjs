@@ -336,7 +336,7 @@ export function smokeProblems(itins, meta) {
 // ───────────────────────── 以下是真的开浏览器的部分（只在 CI 跑） ─────────────────────────
 
 function parseArgs(argv) {
-  const a = { adults: 1, max: 250 };
+  const a = { adults: 1, max: 250, budget: 120 };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     const v = () => argv[++i];
@@ -347,6 +347,7 @@ function parseArgs(argv) {
     else if (k === '--airline') a.airline = (v() || '').trim();
     else if (k === '--out') a.out = v();
     else if (k === '--max') a.max = parseInt(v(), 10) || 250;
+    else if (k === '--budget') a.budget = parseInt(v(), 10) || 120;
     else if (k === '--smoke') a.smoke = true;
   }
   return a;
@@ -403,10 +404,14 @@ async function main() {
       const exp = page.locator('button[aria-label^="Flight details"]');
       const n = await exp.count();
       console.log(`attempt ${attempt}: ${before.length} li, ${n} 个「Flight details」按钮，展开前 ${Math.min(n, args.max)} 个`);
-      for (let i = 0; i < Math.min(n, args.max); i++) {
-        await exp.nth(i).click({ timeout: 3000 }).catch(() => {});
-        await page.waitForTimeout(120);
+      // 展开有时间预算：点不到的按钮每个都会卡到 timeout，2026-10-30 实测 222 个按钮跑了 8 分钟
+      const t0 = Date.now();
+      let clicked = 0;
+      for (let i = 0; i < Math.min(n, args.max) && Date.now() - t0 < args.budget * 1000; i++) {
+        if (await exp.nth(i).click({ timeout: 1000 }).then(() => true, () => false)) clicked++;
+        await page.waitForTimeout(80);
       }
+      console.log(`展开了 ${clicked} 个，用时 ${Math.round((Date.now() - t0) / 1000)} 秒`);
       await page.waitForTimeout(2000);
       texts = before.concat(await grab());
       body = await page.innerText('body');

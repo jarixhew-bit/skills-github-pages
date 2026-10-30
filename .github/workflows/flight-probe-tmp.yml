@@ -20,10 +20,10 @@ jobs:
           npx playwright install --with-deps chromium
       - run: node tools/check-flight-probe.mjs
       - name: CGK-KTI
-        run: node tools/flight-probe.mjs --from CGK --to KTI --date 2026-11-16 --out "$RUNNER_TEMP/a"
+        run: node tools/flight-probe.mjs --from CGK --to KTI --date 2026-11-16 --out "$RUNNER_TEMP/a" | grep -E "URL|attempt|展开了|FLIGHTS|WARN|11:10|08:40|SMOKE"
       - name: smoke SIN-KUL
         if: always()
-        run: node tools/flight-probe.mjs --from SIN --to KUL --date "$(date -u -d '+30 days' +%F)" --smoke
+        run: node tools/flight-probe.mjs --from SIN --to KUL --date "$(date -u -d '+30 days' +%F)" --smoke | grep -E 'URL|attempt|展开了|FLIGHTS|SMOKE'
       - name: adults 2 + airline MH
         if: always()
-        run: node tools/flight-probe.mjs --from CGK --to PEN --date 2026-11-16 --adults 2 --airline MH
+        run: node tools/flight-probe.mjs --from CGK --to PEN --date 2026-11-16 --adults 2 --airline MH | grep -E 'URL|attempt|展开了|FLIGHTS|WARN|11:10'
