@@ -388,7 +388,7 @@ const sgnBanned = await page.evaluate(() => {
   const ev = document.querySelector('#events');
   const outside = ev ? t.replace(ev.textContent, '') : t;
   const hits = /Garden Rhapsody/i.test(outside) ? ['Garden Rhapsody（限时活动区以外）'] : [];
-  return hits.concat(['花穹', '云雾林', '佛牙', '苏丹回教堂', '按摩', 'CÉ LA VI', 'LeVeL33', 'Jigger', '赌场', 'casino'].filter(w => t.toLowerCase().includes(w.toLowerCase())));
+  return hits.concat(['花穹', '云雾林', '佛牙', '苏丹回教堂', '按摩', 'CÉ LA VI', 'LeVeL33', 'Jigger', '赌场', 'casino', 'SINGAPORAMA', '敦煌', 'Dunhuang'].filter(w => t.toLowerCase().includes(w.toLowerCase())));
 });
 check(sgnBanned.length === 0, `[sg-nov] 已删除的地点不该再出现在页面上（实得 ${JSON.stringify(sgnBanned)}）`);
 const { dayHaze: sgnDownDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_D2, r => r.fulfill({ status: 500, body: 'boom' }));
