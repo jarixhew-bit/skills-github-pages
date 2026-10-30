@@ -34,6 +34,7 @@ TRIPS = {
     "penang-trip/index.html": "2026-10-17",      # 9–17 Oct 2026
     "penang-trip/v2.html": "2026-10-17",         # 同一趟的新设计版（植物园配色）
     "sg-jkt-trip/index.html": "2026-11-16",      # 11–16 Nov 2026，Nak＋Yang＋Jacky 新加坡/雅加达航班安排
+    "sg-jkt-trip/singapore.html": "2026-11-14",  # 11–14 Nov 2026，Nak＋Yang＋Jacky 新加坡段手册（成人向，无小孩）
     "penang-trip/v3.html": "2026-10-17",         # 同一趟的第三个设计版（蓝屋靛蓝配色）
     "penang-trip/v4.html": "2026-10-17",         # 同一趟的第四个设计版（当地招牌风：漆木＋金＋朱红）
     "penang-trip/with-map.html": "2026-10-17",   # 同一趟的「带总地图」试装版，2026-09-30 地图并入 index.html 后改成跳转页

@@ -149,6 +149,34 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
   以上查证于 2026-08-19，来源全被沙盒挡、只有搜索摘要，页面上已标「以 MBS 礼宾
   确认为准」；日后若拿到官网原文或 MBS 回覆，以那个为准。
 
+## sg-jkt-trip/singapore.html（约 1070 行；2026-10-30 建）
+11 月新加坡手册，2026-11-11（三）～11-14（六）三晚四天，Nak／Yang／Jacky 3 位成年人，**没有小孩**，双语。
+URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html`（四套航班方案）顶部有 `.jump` 小链接指过来，
+本页 `#flights` 那张 `.note` 又指回 `./index.html`。已登记 `tools/lib/trips.py`（行程最后一天 2026-11-14）。
+**CSS 与 JS 整套复制自 singapore-trip/index.html**（`.day`／`.stop`／`.evt`／`.tl`／lightbox／天气条／PSI 条／
+hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案常数（「十一月常态 25–31°C，午后雷阵雨常见」，
+逻辑一行没动），CSS 末尾多一条 `.note a, .desc a …` 让文内链接不显示默认蓝。
+结构：topbar → nav（FLT／STAY／EVT／D1–D4／DINE）→ cover → tip → `#flights`(01，**只有一张 `.note`**，
+没有 `.bpass`：航班没定，`check-flight-times.py` 会去解析登机牌，别硬加) → `#hotel`(02，一张 `.note`，酒店未定) →
+`#events`(03，Garden Rhapsody／Spectra 两张 `.evt`＋圣诞灯饰「未查证」提示) → `#itinerary`(04，`.day#day01`~`#day04`，
+`data-date="2026-11-11"`…；D4 是 `.tl > .ev` ＋一张 Jewel `.stop`) → `#dinner`(05，4 张 `.evt`：Sushi Katori／松发／PUTIEN／JUMBO Signatures)。
+内容决定（勿擅自回退）：
+- 9 月那本的**儿童活动、环球影城、体检、贵宾通道、包车分房、老板晚餐**一律不进本页（用户 2026-10-30 指示「去掉小孩子玩乐的地方」）。
+  Banana Leaf Apolo（Google 4.1）、Crystal Jade、Syun、Sushi Tei、亚音、Miyuki、925、33 鲜味园评分不到 4.2 或位置偏远，不用。
+- 限时活动**只放查得到官方来源的**：Garden Rhapsody（每晚 19:45／20:45）与 Spectra（周一至周四 20:00／21:00，周五至周日加 22:00）。
+  乌节路圣诞灯饰 2026 开灯日**未查证**（只写 2025=11/8 作参考）；滨海湾圣诞火车秀 11/20 才开，赶不上。
+  小印度屠妖节、作家节日期未证或来源互相矛盾，**不要写**。
+- 日程里的餐厅指引（D1 晚餐二选一、D3 晚餐二选一）用 `.dayfoot` 链到 `#dinner`，**不是 `.stop`**，所以没有相册也不违规；
+  真正的地点卡（`.stop`／`.evt`）每张都带 4–6 张图，**例外：国家美术馆只有 2 张合格图**，画廊提示文字已改成「只有 2 张合格照片」。
+- 每张卡都写 11 月那天的营业时间；来源矛盾就两说并陈或写保守的那个（观音庙 6:00/7:00 开、18:00/18:30 收 → 写「7:00–18:00 一定开」）；
+  查不到写「未查证」，**花穹／云雾林的 Google 评分、Spectra 无评分意义**。
+- D4 回程：航班没定，12:30 与 15:15 两种都写（12:30 时间很紧，Jewel 只能看一眼或跳过；Jewel 连 T1，到 T2 步行时间未查证）。
+- 图片风险：花穹／云雾林／Supertree／MBS 的照片搬自 9 月旧页（那页云雾林当时是恐龙展卡），沙盒看不到 Google 图，
+  **没有逐张目视确认云雾林 5 张里有没有恐龙展照片**，CI 抓图通道有空时请人眼过一遍。
+天气自检：`tools/check-weather.mjs` **已把本页加进去**（`[sg-nov]` 前缀：4 天结构、预报／部分预报／挂掉／窗口外、三档 PSI、
+当天烟霾行，替代方案要含国家美术馆与 Capitol）；`tools/ci-decide.py` 的 `weather` 组也已登记本页。
+加一天仍要配一组 `.wxbox`（`.wx`＋`.rainplan`＋`.hazeplan`），否则那支脚本会红。
+
 ## penang-trip/index.html（约 1500 行；2026-10-05 起**没有总地图**，见下方「总地图」一节）
 槟城家庭手册，2026-10-09~17 九天八夜，6 人（老板一家），双语。
 2026-08-21 用户重新整理内容后重上传，本页**内容整批换成那一版**、设计沿用娘惹瓷砖那套；
