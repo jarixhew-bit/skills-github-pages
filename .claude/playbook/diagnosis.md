@@ -28,7 +28,7 @@
 | 需要登入、點擊、填表、用使用者自己的 Chrome | claude-in-chrome〔本機限定〕 | 雲端：告知使用者此事需本機做 |
 | 除錯自己寫的網頁、看 console/network | chrome-devtools-mcp | playwright |
 | 批量爬整個網站 | skill `firecrawl:firecrawl-crawl`（派 subagent 執行） | 逐頁 WebFetch（派 subagent） |
-| 查指定日期的航班時刻／轉機（雲端沙盒打不開航班網站） | 派 subagent 走 CI：臨時分支 push 觸發 workflow，Playwright 開 Google Flights 該日查詢，讀 job log；用完刪分支（2026-10-30 實測可拿到航班號、轉機地、等候時間） | WebSearch 只有聚合站舊班表，僅當線索；仍不行才請使用者截圖 |
+| 查指定日期的航班時刻／轉機（雲端沙盒打不開航班網站） | MCP `actions_run_trigger` 觸發 `flight-probe.yml`（ref main，inputs from/to/date，可選 adults/airline），讀該 run 的 job summary 或 `get_job_logs`：Google Flights 當日每個選項的航班號、起降、全程、轉機地與等候、價格（用法見該檔頭） | WebSearch 只有聚合站舊班表，僅當線索；仍不行才請使用者截圖 |
 
 - 每個環境的可用工具不同（本機 plugin 多、雲端可能較少）：路由表裡的工具若不在
   當場工具清單，先 ToolSearch 查（deferred 工具要載入才能用，WebFetch/WebSearch

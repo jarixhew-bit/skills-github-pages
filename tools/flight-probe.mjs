@@ -336,7 +336,7 @@ export function smokeProblems(itins, meta) {
 // ───────────────────────── 以下是真的开浏览器的部分（只在 CI 跑） ─────────────────────────
 
 function parseArgs(argv) {
-  const a = { adults: 1, max: 60 };
+  const a = { adults: 1, max: 250 };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     const v = () => argv[++i];
@@ -346,7 +346,7 @@ function parseArgs(argv) {
     else if (k === '--adults') a.adults = parseInt(v() || '1', 10) || 1;
     else if (k === '--airline') a.airline = (v() || '').trim();
     else if (k === '--out') a.out = v();
-    else if (k === '--max') a.max = parseInt(v(), 10) || 60;
+    else if (k === '--max') a.max = parseInt(v(), 10) || 250;
     else if (k === '--smoke') a.smoke = true;
   }
   return a;
@@ -383,17 +383,29 @@ async function main() {
       // 等「结果列出现了」，不是等「加载中消失了」（否定式条件在还没开始加载时就成立）
       await page.waitForFunction(() => [...document.querySelectorAll('li')].some((li) =>
         /\d{1,2}:\d{2}\s*[AP]M/.test(li.innerText) && /(\$\d|Price unavailable)/.test(li.innerText)), null, { timeout: 45000 });
-      await page.waitForTimeout(2500);
+      // 结果是分批冒出来的：2026-10-30 首版只等 2.5 秒，CGK→KTI 只抓到 11 个、正好漏掉要查的
+      // MH710/SQ957 那几班。所以等到「结果数连续 5 秒没再变」为止（最多 40 秒）。
+      const settle = async () => {
+        let last = -1, same = 0;
+        for (let t = 0; t < 40 && same < 5; t++) {
+          const n = await page.locator('button[aria-label^="Flight details"]').count();
+          same = n === last ? same + 1 : 0;
+          last = n;
+          await page.waitForTimeout(1000);
+        }
+        return last;
+      };
+      await settle();
       const more = page.getByRole('button', { name: /more flights/i });
-      if (await more.count()) { await more.first().click().catch(() => {}); await page.waitForTimeout(3000); }
+      if (await more.count()) { await more.first().click().catch(() => {}); await page.waitForTimeout(1500); await settle(); }
       const grab = () => page.locator('li').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s*\n\s*/g, ' | ')));
       const before = await grab();
       const exp = page.locator('button[aria-label^="Flight details"]');
       const n = await exp.count();
       console.log(`attempt ${attempt}: ${before.length} li, ${n} 个「Flight details」按钮，展开前 ${Math.min(n, args.max)} 个`);
       for (let i = 0; i < Math.min(n, args.max); i++) {
-        await exp.nth(i).click({ timeout: 5000 }).catch(() => {});
-        await page.waitForTimeout(250);
+        await exp.nth(i).click({ timeout: 3000 }).catch(() => {});
+        await page.waitForTimeout(120);
       }
       await page.waitForTimeout(2000);
       texts = before.concat(await grab());
