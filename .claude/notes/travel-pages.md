@@ -156,18 +156,21 @@ URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html`（四套航班方
 **CSS 与 JS 整套复制自 singapore-trip/index.html**（`.day`／`.stop`／`.evt`／`.tl`／lightbox／天气条／PSI 条／
 hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案常数（「十一月常态 25–31°C，午后雷阵雨常见」，
 逻辑一行没动），CSS 末尾多一条 `.note a, .desc a …` 让文内链接不显示默认蓝。
-结构：topbar → nav（FLT／STAY／EVT／D1–D4／ORCH／DINE，**顺序与区块顺序一致**）→ cover → tip → `#flights`(01，**只有一张 `.note`**，
+结构：topbar → nav（FLT／STAY／EVT／D1–D4／FOOD，**顺序与区块顺序一致**）→ cover → tip → `#flights`(01，**只有一张 `.note`**，
 没有 `.bpass`：航班没定，`check-flight-times.py` 会去解析登机牌，别硬加) → `#hotel`(02，一张 `.note`，酒店未定) →
-`#events`(03，只剩 Spectra 一张 `.evt`＋乌节路圣诞灯饰「未查证」提示) → `#itinerary`(04，`.day#day01`~`#day04`，
-`data-date="2026-11-11"`…) → `#orchard`(05「乌节路中餐 · 本地菜」，11 张 `.evt`，按菜系排) → `#dinner`(06，4 张 `.evt`：Sushi Katori／松发总店／PUTIEN MBS／JUMBO Signatures)。
-逐日：D1 抵达→入住→MBS 晚餐（PUTIEN／JUMBO Signatures 二选一，`.dayfoot`）→Spectra；
-D2 08:30 四马路观音庙（必去，用户指定保留）→12:00 午餐二选一（National Kitchen by Violet Oon `.stop`／麦士威熟食中心 `.stop`）→
-`.note`「14:00 以后下午留给自己安排」→ `.dayfoot` 晚餐看 06／05；D3 乌节路日：一张 `.note` 一句话链到 `#orchard` 挑午餐 →
-Takashimaya `.stop` → 下午自由 → `.dayfoot` 晚餐看 06／05；D4 是 `.tl > .ev` ＋一张 Jewel `.stop`（未改）。
-`#orchard` 11 家：江南春（四季）、夏宫（康莱德）、华厅（乌节大酒店）、Fook Kin、Paradise Teochew、PUTIEN 吉真那路、JUMBO ION、
-Candlenut、松发 Centrepoint、Chatterbox、Aburi-EN。新 7 家的 Google 评分取自 2026-10-30 CI 抓图（fetch-photos 的 rating 字段）；
-海南美味佳肴鸡饭（远东广场）CI 评分 3.8，未达 4.2 门槛不放。**同品牌两家分店**（JUMBO ION／MBS、松发 Centrepoint／新桥路、
-PUTIEN 吉真那路／MBS）卡上互相注明另一家在哪个区块，改其中一张要顾到另一张。
+`#events`(03，开头一句「供参考、去不去由你们、没排进行程」＋9 张 `.evt`＋圣诞灯饰提示，清单见下) → `#itinerary`(04，`.day#day01`~`#day04`，
+`data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，14 张 `.evt`，三个 `.grp` 小标题：乌节路 8 → 滨海湾金沙 2 → 其他区域 4，组内按菜系排；
+每张卡 `.et` 开头有「📍区域 · 」标签，chips 写午市＋晚市)。**2026-10-30 用户要求「餐厅直接搞成列表，别分晚餐」**：
+原 `#orchard`＋`#dinner` 两区块合并、D2 的两张午餐 `.stop` 也搬进来，**逐日行程不再放餐厅卡**，只用一句话＋`#food` 链接。
+逐日：D1 抵达→入住→`.dayfoot`「晚上吃」指 `#food` 的 MBS 组（PUTIEN／JUMBO Signatures）→Spectra；
+D2 08:30 四马路观音庙（必去，用户指定保留）→12:00 午餐 `.note` 一句话链 `#food`（点名 Violet Oon／麦士威，卡在「其他区域」组）→
+`.note`「14:00 以后下午留给自己安排」→ `.dayfoot` 链 `#food`；D3 乌节路日：一张 `.note` 一句话链到 `#food` 挑午餐 →
+Takashimaya `.stop` → 下午自由 → `.dayfoot` 链 `#food`；D4 是 `.tl > .ev` ＋一张 Jewel `.stop`（未改）。
+`#food` 乌节路组：江南春（四季）、夏宫（康莱德）、华厅（乌节大酒店）、Fook Kin、Paradise Teochew、松发 Centrepoint、Chatterbox、Aburi-EN；
+MBS 组：PUTIEN、JUMBO Signatures；其他组：National Kitchen by Violet Oon（市政区）、Candlenut（登布西）、麦士威熟食中心（牛车水）、Sushi Katori（丹戎巴葛）。新 7 家的 Google 评分取自 2026-10-30 CI 抓图（fetch-photos 的 rating 字段）；
+海南美味佳肴鸡饭（远东广场）CI 评分 3.8，未达 4.2 门槛不放。
+**餐厅不重复（2026-10-30 用户要求「那些有的餐厅就不要重复了」）**：每个品牌全页只留一张卡——JUMBO 留 MBS 的 JUMBO Signatures（删 ION 店）、
+PUTIEN 留 MBS（删吉真那路店）、松发留乌节路 Centrepoint（删新桥路总店）。加新餐厅前先 grep 品牌名，已有就不加分店。
 内容决定（勿擅自回退）：
 - **2026-10-30 用户明确删除**：宗教景点（四马路观音庙除外，「那个是必去的」）、按摩、国家美术馆（景点）、植物园／胡姬园、
   滨海湾花园（花穹／云雾林／Garden Rhapsody 灯光秀）、酒吧（CÉ LA VI／Atlas／LeVeL33／Jigger & Pony）。
@@ -175,11 +178,19 @@ PUTIEN 吉真那路／MBS）卡上互相注明另一家在哪个区块，改其�
   National Kitchen 是餐厅照留（地址里有 National Gallery 字样是允许的），但描述不要叫人去逛美术馆。
 - 9 月那本的**儿童活动、环球影城、体检、贵宾通道、包车分房、老板晚餐**一律不进本页（用户 2026-10-30 指示「去掉小孩子玩乐的地方」）。
   Banana Leaf Apolo（Google 4.1）、Crystal Jade、Syun、Sushi Tei、亚音、Miyuki、925、33 鲜味园评分不到 4.2 或位置偏远，不用。
-- 限时活动**只放查得到官方来源的**：现在只剩 Spectra（周一至周四 20:00／21:00，周五至周日加 22:00）。
-  乌节路圣诞灯饰 2026 开灯日**未查证**（只写 2025=11/8 作参考）。小印度屠妖节、作家节日期未证或来源互相矛盾，**不要写**。
-- 日程里的晚餐指引用 `.dayfoot` 链到 `#dinner`／`#orchard`，**不是 `.stop`**，所以没有相册也不违规；
+- **限时活动（2026-10-30 用户：「限时活动你加下去，去不去由他」）**：只列不排进行程，区块开头中英各一句说明。顺序＝单场按日期 → 限期展演按结束日 → 每晚常态：
+  My Chemical Romance（11/11，室内体育馆，可能售罄）→ 新加坡作家节（11/13–22，通行证约 S$15–30）→ Morgan Jay 单口喜剧（11/13 两场、11/14 一场，16+）→
+  《CATS》（Sands Theatre，演到 11/15）→ SINGAPORAMA（国家美术馆中庭，免费，展到 11 月下旬）→ In the Ether（ArtScience，免费，到 12/6）→
+  「圣窟：敦煌」（亚洲文明博物馆，到 2027/3/7）→ Spectra → 星耀樟宜雨漩涡灯光秀（每晚）→ 圣诞灯饰提示。
+  活动卡照片（2026-10-30 CI 抓 8 张逐张挑，360 全景／餐厅／人像不要）：作家节 5、雨漩涡 5、CATS 4、Morgan Jay（Esplanade）3、MCR（室内体育馆）3、
+  In the Ether（ArtScience，teamLab 展厅图不用）3、敦煌（ACM）2、SINGAPORAMA（国家美术馆，候选几乎全是馆内餐厅）1——合格照不足，日后可补。
+  **不放**：teamLab、小印度屠妖节灯饰、樟宜节庆村、Fear No Power；Garden Rhapsody 是用户先前明确删掉的，且 `check-weather.mjs` 整页禁词会拦，也没放。
+  乌节路圣诞灯饰：2026 开灯日官方未公布，卡上写「请留意乌节路官方公告」＋往年开灯日（2025=11/8、2024=11/9、2023=11/16）作参考。
+- **读者可见文字不写制作备注**（2026-10-30 清理过一轮）：不写「来源／未查证／搜索摘要／两说并陈／推算／旧手册」这类字眼；
+  没把握的写成读者能照做的提醒（「票价与场次请以售票页为准」「营业时间出发前请电话或上官网确认」）。
+- 日程里的吃饭指引用 `.dayfoot`／`.note` 链到 `#food`，**不是 `.stop`**，所以没有相册也不违规；
   真正的地点卡（`.stop`／`.evt`）每张都带 4–5 张图（Candlenut 只有 4 张合格：其余是 360 全景或疑似同园区别家店）。
-- 每张卡都写 11 月那天的营业时间；来源矛盾就两说并陈或写保守的那个（观音庙 → 写「7:00–18:00 一定开」）；查不到写「未查证」（华厅营业时间、多数包厢）。
+- 每张卡都写 11 月那天的营业时间；资料矛盾就写保守的那个（观音庙 → 写「7:00–18:00 一定开」）；查不到写成提醒（「出发前请电话确认」「有没有包厢请订位时询问」），不写「未查证」。
 - D4 回程：航班没定，12:30 与 15:15 两种都写（12:30 时间很紧，Jewel 只能看一眼或跳过；Jewel 连 T1，到 T2 步行时间未查证）。
 天气自检：`tools/check-weather.mjs` **已把本页加进去**（`[sg-nov]` 前缀：4 天结构、预报／部分预报／挂掉／窗口外、三档 PSI、
 当天烟霾行，D2 替代方案要含观音庙与 Violet Oon、且不能再提美术馆／Capitol／按摩；另有一条整页禁词检查，
