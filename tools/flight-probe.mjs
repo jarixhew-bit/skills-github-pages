@@ -400,12 +400,16 @@ async function main() {
       // 「View more flights」可能要等一会才出现，而且同一页只给前十来个结果——2026-10-30 同一查询
       // 两次实跑，一次 34 个按钮（MH710/SQ957 都在）、一次只有 10 个（全漏）。所以多试几轮，
       // 每轮点完都再等一次稳定。
+      // 按钮的无障碍名称（aria-label）与可见文字不一定相同，两种都找。
       for (let round = 0; round < 3; round++) {
-        const more = page.locator('button, [role="button"]').filter({ hasText: /more flights/i });
-        if (!(await more.count())) {
-          if (round === 0) { await page.waitForTimeout(3000); continue; }
-          break;
+        const more = page.getByRole('button', { name: /more flights/i })
+          .or(page.locator('button, [role="button"]').filter({ hasText: /more flights/i }));
+        let found = false;
+        for (let t = 0; t < 12 && !found; t++) {
+          found = (await more.count()) > 0;
+          if (!found) await page.waitForTimeout(1000);
         }
+        if (!found) { console.log(`没找到「more flights」按钮（第 ${round + 1} 轮）`); break; }
         await more.first().click({ timeout: 3000 }).catch(() => {});
         console.log(`点了「more flights」（第 ${round + 1} 次）`);
         await page.waitForTimeout(1500);
