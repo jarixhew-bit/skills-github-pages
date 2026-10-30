@@ -1,7 +1,6 @@
 # Harness 診斷報告（2026-07-03，由 Fable 5 撰寫；可攜版）
 
-本檔記錄此環境最漏 token、最容易失焦、最容易出錯的三大問題與修法。
-其他制度檔（dispatch.md、judgment.md 等）皆以此為依據。讀者：未來在此環境運作的模型。
+本檔記錄此環境最漏 token、最容易失焦、最容易出錯的三大問題與修法。其他制度檔（dispatch.md、judgment.md 等）皆以此為依據。讀者：未來在此環境運作的模型。
 標注〔本機限定〕的段落只適用 Windows 本機，雲端（claude.ai/code）忽略。
 
 ## 問題 #1：主對話直接吞大輸出（最漏 token）——所有環境適用
@@ -29,6 +28,7 @@
 | 需要登入、點擊、填表、用使用者自己的 Chrome | claude-in-chrome〔本機限定〕 | 雲端：告知使用者此事需本機做 |
 | 除錯自己寫的網頁、看 console/network | chrome-devtools-mcp | playwright |
 | 批量爬整個網站 | skill `firecrawl:firecrawl-crawl`（派 subagent 執行） | 逐頁 WebFetch（派 subagent） |
+| 查指定日期的航班時刻／轉機（雲端沙盒打不開航班網站） | 派 subagent 走 CI：臨時分支 push 觸發 workflow，Playwright 開 Google Flights 該日查詢，讀 job log；用完刪分支（2026-10-30 實測可拿到航班號、轉機地、等候時間） | WebSearch 只有聚合站舊班表，僅當線索；仍不行才請使用者截圖 |
 
 - 每個環境的可用工具不同（本機 plugin 多、雲端可能較少）：路由表裡的工具若不在
   當場工具清單，先 ToolSearch 查（deferred 工具要載入才能用，WebFetch/WebSearch
