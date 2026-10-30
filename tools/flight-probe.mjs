@@ -388,7 +388,7 @@ async function main() {
       // MH710/SQ957 那几班。所以等到「结果数连续 5 秒没再变」为止（最多 40 秒）。
       const settle = async () => {
         let last = -1, same = 0;
-        for (let t = 0; t < 40 && same < 5; t++) {
+        for (let t = 0; t < 40 && same < 6; t++) {
           const n = await page.locator('button[aria-label^="Flight details"]').count();
           same = n === last ? same + 1 : 0;
           last = n;
@@ -397,8 +397,20 @@ async function main() {
         return last;
       };
       await settle();
-      const more = page.getByRole('button', { name: /more flights/i });
-      if (await more.count()) { await more.first().click().catch(() => {}); await page.waitForTimeout(1500); await settle(); }
+      // 「View more flights」可能要等一会才出现，而且同一页只给前十来个结果——2026-10-30 同一查询
+      // 两次实跑，一次 34 个按钮（MH710/SQ957 都在）、一次只有 10 个（全漏）。所以多试几轮，
+      // 每轮点完都再等一次稳定。
+      for (let round = 0; round < 3; round++) {
+        const more = page.locator('button, [role="button"]').filter({ hasText: /more flights/i });
+        if (!(await more.count())) {
+          if (round === 0) { await page.waitForTimeout(3000); continue; }
+          break;
+        }
+        await more.first().click({ timeout: 3000 }).catch(() => {});
+        console.log(`点了「more flights」（第 ${round + 1} 次）`);
+        await page.waitForTimeout(1500);
+        await settle();
+      }
       const grab = () => page.locator('li').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s*\n\s*/g, ' | ')));
       const before = await grab();
       const exp = page.locator('button[aria-label^="Flight details"]');
