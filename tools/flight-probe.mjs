@@ -408,7 +408,10 @@ async function main() {
       const t0 = Date.now();
       let clicked = 0;
       for (let i = 0; i < Math.min(n, args.max) && Date.now() - t0 < args.budget * 1000; i++) {
-        if (await exp.nth(i).click({ timeout: 1000 }).then(() => true, () => false)) clicked++;
+        const b = exp.nth(i);
+        // 每个结果有一个看不见的同名按钮，点它只会白等 timeout；先跳过看不见的
+        if (!(await b.isVisible().catch(() => false))) continue;
+        if (await b.click({ timeout: 1000 }).then(() => true, () => false)) clicked++;
         await page.waitForTimeout(80);
       }
       console.log(`展开了 ${clicked} 个，用时 ${Math.round((Date.now() - t0) / 1000)} 秒`);
