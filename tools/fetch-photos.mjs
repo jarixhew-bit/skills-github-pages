@@ -51,16 +51,23 @@ export function placeStatus(text) {
  * 只取主面板（role="main"）开头那一段：停业字样就挂在店名、评分底下；
  * 整页文字会混进「附近类似店家」，别家关门会被算到这家头上。
  * 停在搜索结果列表时回传空文字，状态记 unknown 而不是 open——列表页也有 h1
- * （就叫「Results」），2026-10-31 实跑两家就这样被误记成 open，所以改看网址：
- * 还停在 /maps/search/ 就是没进地点页。（不反过来要求 /maps/place/：
- * ?cid= 链接不一定会转成那种网址，会把整批 cid 链接都误判成 unknown。）
+ * （就叫「Results」），2026-10-31 实跑两家就这样被误记成 open。所以两道关：
+ * 网址还停在 /maps/search/ 就是没进地点页；标题是「Results」的面板不算地点页。
+ * （不反过来要求网址是 /maps/place/：?cid= 链接不一定会转成那种网址。）
  */
 async function readPlaceInfo(page) {
   if (/\/maps\/search\//.test(page.url())) return { title: '', text: '', address: '' };
   return page.evaluate(() => {
-    const main = document.querySelector('div[role="main"]');
-    const h1 = (main || document).querySelector('h1');
-    const title = h1 ? h1.innerText.trim() : '';
+    // 点进第一个结果后，列表面板常常还留在 DOM 里、排在地点面板前面，
+    // 只取第一个 role="main" 会读到列表（标题「Results」）。所以挑标题不是列表的那个。
+    const LIST = /^(Results|Hasil|结果|結果|搜索结果)$/i;
+    let main = null;
+    let title = '';
+    for (const m of document.querySelectorAll('div[role="main"]')) {
+      const h = m.querySelector('h1');
+      const t = h ? h.innerText.trim() : '';
+      if (t && !LIST.test(t)) { main = m; title = t; }
+    }
     const head = main && title ? main.innerText.slice(0, 1500) : '';
     // 状态有时只写在 aria-label 上（例如图示按钮），一并收进来
     const labels = main && title
@@ -69,7 +76,7 @@ async function readPlaceInfo(page) {
       : '';
     // 地址按钮的 aria-label 是「Address: …」（印尼文 Alamat、中文 地址）
     let address = '';
-    for (const b of (main || document).querySelectorAll('[aria-label]')) {
+    for (const b of (main ? main.querySelectorAll('[aria-label]') : [])) {
       const m = (b.getAttribute('aria-label') || '').match(/^\s*(?:Address|Alamat|地址)\s*[:：]\s*(.+)$/i);
       if (m) { address = m[1].trim(); break; }
     }
