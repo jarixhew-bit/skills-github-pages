@@ -44,6 +44,7 @@ TZ = {
     "BKK": 7,
     "HKT": 7,
     "SGN": 7,
+    "CGK": 7,   # 雅加达 苏加诺-哈达
     "SIN": 8,   # 新加坡 樟宜
     "PEN": 8,   # 槟城
     "KUL": 8,
@@ -70,7 +71,7 @@ DUR = re.compile(r'(\d+)\s*h(?:\s*(\d+)\s*m)?')
 
 def pages() -> list:
     os.chdir(REPO)
-    return sorted(glob.glob("*.html") + glob.glob("*/index.html"))
+    return sorted(set(glob.glob("*.html") + glob.glob("*/*.html")))
 
 
 def check(path: str, problems: list) -> int:

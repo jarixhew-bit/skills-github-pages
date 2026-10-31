@@ -151,26 +151,27 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
 
 ## sg-jkt-trip/singapore.html（约 1022 行；2026-10-30 建，同日按用户要求大改）
 11 月新加坡手册，2026-11-11（三）～11-14（六）三晚四天，Nak／Yang／Jacky 3 位成年人，**没有小孩**，双语。
-URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html`（四套航班方案）顶部有 `.jump` 小链接指过来，
-本页 `#flights` 那张 `.note` 又指回 `./index.html`。已登记 `tools/lib/trips.py`（行程最后一天 2026-11-14）。
+URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html`（四套航班方案，旧页）顶部有 `.jump` 小链接指过来；
+本页**不再链回** `./index.html`（2026-10-31 航班已订）。已登记 `tools/lib/trips.py`（行程最后一天 2026-11-14）。
 **CSS 与 JS 整套复制自 singapore-trip/index.html**（`.day`／`.stop`／`.evt`／`.tl`／lightbox／天气条／PSI 条／
 hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案常数（「十一月常态 25–31°C，午后雷阵雨常见」，
 逻辑一行没动），CSS 末尾多一条 `.note a, .desc a …` 让文内链接不显示默认蓝。
-结构：topbar → nav（FLT／STAY／EVT／D1–D4／FOOD，**顺序与区块顺序一致**）→ cover → tip → `#flights`(01，**只有一张 `.note`**，
-没有 `.bpass`：航班没定，`check-flight-times.py` 会去解析登机牌，别硬加) → `#hotel`(02，一张 `.note`，酒店未定) →
+结构：topbar → nav（FLT／STAY／EVT／D1–D4／FOOD，**顺序与区块顺序一致**）→ cover → tip → `#flights`(01，三张 `.bpass`：去程 SQ153 KTI→SIN 09:35–12:50〔Tan Chin Hooi 商务／Hew Chern Yang 经济〕、
+SQ133 PEN→SIN 12:00–13:35〔Yap Lian Khoon 商务〕；11/14 SQ958 SIN T2→CGK T3 12:30–13:20〔三人〕；下面 `.tbl` 行李额表＋随身小物一句) →
+`#hotel`(02，`.hotel` 卡：MBS 11/11 入住 11/14 退房，分房 套房 Tan Chin Hooi／标准大床 Yap、Hew；「机场接送由 MBS 安排」) →
 `#events`(03，开头一句「供参考、去不去由你们、没排进行程」＋9 张 `.evt`＋圣诞灯饰提示，清单见下) → `#itinerary`(04，`.day#day01`~`#day04`，
 `data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，14 张 `.evt`，三个 `.grp` 小标题：乌节路 8 → 滨海湾金沙 2 → 其他区域 4，组内按菜系排；
 每张卡 `.et` 开头有「📍区域 · 」标签，chips 写午市＋晚市)。**2026-10-30 用户要求「餐厅直接搞成列表，别分晚餐」**：
 原 `#orchard`＋`#dinner` 两区块合并、D2 的两张午餐 `.stop` 也搬进来，**逐日行程不再放餐厅卡**，只用一句话＋`#food` 链接。
-逐日：D1 抵达→入住→`.dayfoot`「晚上吃」指 `#food` 的 MBS 组（PUTIEN／JUMBO Signatures）→Spectra；
-D2 08:30 四马路观音庙（必去，用户指定保留）→12:00 午餐 `.note` 一句话链 `#food`（点名 Violet Oon／麦士威，卡在「其他区域」组）→
+逐日（2026-10-31 改，见文末）：D1 `.tl` 航班时间轴→MBS 接机→入住→午餐与下午自由→晚餐指 `#food` 的 MBS 组（PUTIEN／JUMBO Signatures），没有 `.dayfoot`；
+D2 上午四马路观音庙（必去，用户指定保留）→午餐 `.note` 一句话链 `#food`（点名 Violet Oon／麦士威，卡在「其他区域」组）→
 `.note`「14:00 以后下午留给自己安排」→ `.dayfoot` 链 `#food`；D3 乌节路日：一张 `.note` 一句话链到 `#food` 挑午餐 →
 Takashimaya `.stop` → 下午自由 → `.dayfoot` 链 `#food`；D4 是 `.tl > .ev` ＋一张 Jewel `.stop`（未改）。
-`#food` 乌节路组：江南春（四季）、夏宫（康莱德）、华厅（乌节大酒店）、Fook Kin、Paradise Teochew、松发 Centrepoint、Chatterbox、Aburi-EN；
+`#food` 乌节路组：江南春（四季）、夏宫（康莱德）、华厅（乌节大酒店）、Fook Kin、Paradise Teochew（Takashimaya）、Song Fa Signatures（Paragon）、Chatterbox、Aburi-EN；
 MBS 组：PUTIEN、JUMBO Signatures；其他组：National Kitchen by Violet Oon（市政区）、Candlenut（登布西）、麦士威熟食中心（牛车水）、Sushi Katori（丹戎巴葛）。新 7 家的 Google 评分取自 2026-10-30 CI 抓图（fetch-photos 的 rating 字段）；
 海南美味佳肴鸡饭（远东广场）CI 评分 3.8，未达 4.2 门槛不放。
 **餐厅不重复（2026-10-30 用户要求「那些有的餐厅就不要重复了」）**：每个品牌全页只留一张卡——JUMBO 留 MBS 的 JUMBO Signatures（删 ION 店）、
-PUTIEN 留 MBS（删吉真那路店）、松发留乌节路 Centrepoint（删新桥路总店）。加新餐厅前先 grep 品牌名，已有就不加分店。
+PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 用户指定「本来那家」，删 Centrepoint）。加新餐厅前先 grep 品牌名，已有就不加分店。
 内容决定（勿擅自回退）：
 - **2026-10-30 用户明确删除**：宗教景点（四马路观音庙除外，「那个是必去的」）、按摩、国家美术馆（景点）、植物园／胡姬园、
   滨海湾花园（花穹／云雾林／Garden Rhapsody 灯光秀）、酒吧（CÉ LA VI／Atlas／LeVeL33／Jigger & Pony）。
@@ -191,11 +192,26 @@ PUTIEN 留 MBS（删吉真那路店）、松发留乌节路 Centrepoint（删新
 - 日程里的吃饭指引用 `.dayfoot`／`.note` 链到 `#food`，**不是 `.stop`**，所以没有相册也不违规；
   真正的地点卡（`.stop`／`.evt`）每张都带 4–5 张图（Candlenut 只有 4 张合格：其余是 360 全景或疑似同园区别家店）。
 - 每张卡都写 11 月那天的营业时间；资料矛盾就写保守的那个（观音庙 → 写「7:00–18:00 一定开」）；查不到写成提醒（「出发前请电话确认」「有没有包厢请订位时询问」），不写「未查证」。
-- D4 回程：航班没定，12:30 与 15:15 两种都写（12:30 时间很紧，Jewel 只能看一眼或跳过；Jewel 连 T1，到 T2 步行时间未查证）。
+- D4：SQ958 12:30 起飞，不去 Jewel（见文末 2026-10-31）。
 天气自检：`tools/check-weather.mjs` **已把本页加进去**（`[sg-nov]` 前缀：4 天结构、预报／部分预报／挂掉／窗口外、三档 PSI、
 当天烟霾行，D2 替代方案要含观音庙与 Violet Oon、且不能再提美术馆／Capitol／按摩；另有一条整页禁词检查，
 已删地点（Garden Rhapsody、花穹、云雾林、佛牙、苏丹回教堂、按摩、各酒吧、赌场）出现就红）；`tools/ci-decide.py` 的 `weather` 组也已登记本页。
 加一天仍要配一组 `.wxbox`（`.wx`＋`.rainplan`＋`.hazeplan`），否则那支脚本会红。
+
+**2026-10-31 用户给了确定资料**（Trip.com 行程单＋MBS WhatsApp）：
+- 航班、酒店已订，见上。`check-flight-times.py` 的扫描范围已扩到 `*/*.html`（原本只扫 `*/index.html`，本页漏扫），TZ 表补了 CGK（UTC+7）。
+- **VIP 接机与座位：用户说确定了再告诉**——页面只写「机场接送由 MBS 安排」，不写 VIP、不写座位、不写「待定」；登机牌 `.seat` 只放姓名。
+  拿到后：座位填进 `.seat`（格式 `TAN/CHIN HOOI 12A`），VIP 写进 `#hotel` 的接送 note。
+- **订位代号、电子机票号、Trip.com 订单号一律不进页面与 commit**（公开仓库）。
+- **每天不写固定钟点（用户：「我不知道他们几点起来，不必固定时间」）**：D2/D3 只写「上午 → 午餐 → 其余时间自由」的顺序；
+  D1/D4 是 `.tl` 时间轴，只有航班钟点（D1 07:00 金边家里出发、09:35、12:00、12:50、13:35；D4 12:30、13:20），
+  其余节点 `.t` 写「落地后／下午／晚上／早上」；D4 唯一的非航班钟点是「建议 10:00 前离开酒店」（起飞前约 2 小时到＋MBS→T2 约 20–25 分钟），明写「建议」。
+  店家营业时间（观音庙、Takashimaya）属于店家信息，照留。
+- D4 的星耀樟宜卡与所有 15:15 班机内容已删（12:30 班机去不了 Jewel）；Jewel 照片并进限时活动区的雨漩涡卡，那张只建议 D2/D3 晚上去。
+- **用户亲自指定的三家店（不受 4.2 门槛限制，地图链接用用户给的短链接）**：
+  Paradise Teochew 改 **Takashimaya 分店**（391A Orchard Rd #03-10，Google 4.7／1,126 条）；
+  松发肉骨茶改「本来那家」**新桥路总店**（11 New Bridge Rd，4.4／8,226 条，放「其他区域」组，Centrepoint 分店卡已删）；
+  新增 **Song Fa Signatures**（Paragon B1-06，4.8／1,202 条，乌节路组）。松发与 Song Fa Signatures 是用户指定的两家不同店，不算重复。
 
 ## penang-trip/index.html（约 1500 行；2026-10-05 起**没有总地图**，见下方「总地图」一节）
 槟城家庭手册，2026-10-09~17 九天八夜，6 人（老板一家），双语。
