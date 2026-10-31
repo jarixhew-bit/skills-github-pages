@@ -228,6 +228,28 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
   松发肉骨茶改「本来那家」**新桥路总店**（11 New Bridge Rd，4.4／8,226 条，放「其他区域」组，Centrepoint 分店卡已删）；
   新增 **Song Fa Signatures**（Paragon B1-06，4.8／1,202 条，乌节路组）。松发与 Song Fa Signatures 是用户指定的两家不同店，不算重复。
 
+## sg-jkt-trip/jakarta.html（约 900 行；2026-10-31 建）
+雅加达段手册，2026-11-14（六）～11-16（一）两晚三天，Tan Chin Hooi／Yap Lian Khoon／Hew Chern Yang 三人，双语。跟 `singapore.html` 配套：
+两本 topbar 各有一颗 `a.jump`（新加坡「雅加达 →」、雅加达「← 新加坡」，CSS 一行 `.topbar a.jump` 两边都有）。已登记 `tools/lib/trips.py`（2026-11-16）。
+**CSS／JS 整套复制自 singapore.html**，删掉了 PSI 条与 `.hazeplan`（JS 的 airQuality 整段拿掉，CSS 里 psi/haze 行也删了）；天气坐标改 PIK（-6.109, 106.744）、
+时区 `Asia/Jakarta`、常态文案「十一月雨季常态 25–33°C，午后常下大雨」。**本页没有空气质量条**（新加坡 PSI 接口只管新加坡；要加就照槟城的 open-meteo 空气质量做法）。
+天气自检：`check-weather.mjs` 已加 `[jkt]` 一段（3 天结构、坐标与时区、正常／部分／挂掉／窗口外、只有 ≥60% 那天标红、页面不得出现 #psi／.hazeplan、无 JS 错误）；`ci-decide.py` 的 weather 组已登记本页。
+结构：topbar → nav（FLT／STAY／D1–D3／FOOD，顺序与区块一致）→ cover（酒店夜景）→ tip（雅加达比新加坡慢 1 小时）→
+`#flights`(01：SQ958 去程＋All Indonesia 电子入境卡 note → SQ957 回程＋分开转机 note → SQ138〔Yap，红色 note：转机 1h25m 偏紧〕→ SQ158〔Tan、Hew，绿色 note：3h35m〕→ 行李额表) →
+`#hotel`(02：Swissôtel PIK Avenue，⭐4.7，11/14 入住、11/16 退房；**分房、接送用户没给，不写也不写「待定」**) →
+`#itinerary`(03：`#day01` `.tl` 航班时间轴〔早上 MBS 退房→12:30→13:20→落地后车程 15–20 分→入住→晚上「朋友生日宴」，不写人名〕；
+`#day02` 开头 note「今天以见朋友为主…」→ `.grp` 酒店附近 3 张 `.stop`（`#d2-pantjoran`／`#d2-angke`／`#d2-landsend`）→ `.grp` 市区 + 无车日 note（周日 05:30–10:00 Sudirman–Thamrin）→
+5 张 `.stop`（`#d2-monas`／`#d2-kotatua`／`#d2-gi`／`#d2-pi`／`#d2-scbd`）→ `.dayfoot` 链 `#food`；`#day03` `.tl`〔建议 08:30 前离开酒店→11:10→13:55→15:20 SQ138→17:30 SQ158→到家〕) →
+`#food`(04：PIK 酒店附近 4 家 → 市区 5 家，`.evt` 卡 id `food-maystar／putien／sanur／wingheng／tangcourt／lifeng／songxl／taste／dtf`)。
+内容决定（用户 2026-10-31 指定，勿擅改）：
+- **每天不写固定钟点**，只有 D1、D3 航班时间轴有钟点；D3 唯一的非航班钟点是「建议 08:30 前离开酒店」（周一早高峰＋起飞前约 2 小时到）。
+- 8 个景点与 9 家餐厅都是用户挑的；餐厅不受 4.2 门槛限制。景点评分、地址、营业状态来自 2026-10-31 CI 抓图（全部 open、≥4.2、标题对得上）。
+- 营业时间查到的：May Star／PUTIEN 10:00–22:00；唐阁 午 11:30–15:00、晚 17:30–22:00；松香楼 10:00–15:00、18:00–22:00；Taste Paradise 午 11:00–15:00。
+  没查到的写成读者能照做的提醒：Sanur（订位时电话确认）、Wing Heng（出发前看 Google 地图）、丽凤（每天午晚市，时段订位时确认）、Taste Paradise 晚市、鼎泰丰（随商场 10:00–22:00）。
+- Monas 售票只收 JakCard 储值卡（现场可买），周一闭馆；红树林建议上午去（雨后泥泞）；Land's End 傍晚看日落。
+- **订位代号、票号、订单号一律不进页面与 commit**（公开仓库）。
+- 照片：每张卡 4–5 张，2026-10-31 CI 抓 8 张／家后逐张看缩图挑；360 全景、人像、广告文字图、重复图都剔掉。Grand Indonesia、Plaza Indonesia、Kota Tua、Land's End 合格照只有 4 张。
+
 ## penang-trip/index.html（约 1500 行；2026-10-05 起**没有总地图**，见下方「总地图」一节）
 槟城家庭手册，2026-10-09~17 九天八夜，6 人（老板一家），双语。
 2026-08-21 用户重新整理内容后重上传，本页**内容整批换成那一版**、设计沿用娘惹瓷砖那套；

@@ -62,7 +62,7 @@ RULES = {
                   "tools/check-staff-page.mjs"],
     # 两本手册的天气条与实时空气质量条：前端现抓 open-meteo / data.gov.sg，
     # 只有真浏览器验得了（check-weather.mjs 一支同时验 singapore ＋ penang）
-    "weather": ["singapore-trip/index.html", "sg-jkt-trip/singapore.html", "penang-trip/index.html", "penang-trip/v2.html",
+    "weather": ["singapore-trip/index.html", "sg-jkt-trip/singapore.html", "sg-jkt-trip/jakarta.html", "penang-trip/index.html", "penang-trip/v2.html",
                 "penang-trip/v3.html", "penang-trip/v4.html", "tools/check-weather.mjs"],
     # 槟城 v3／v4 新版面（票券/今日模式/滑卡/给司机看；v4 是 v3 换皮）：全是 JS 现算，只有真浏览器验得了
     "penangv3": ["penang-trip/v3.html", "penang-trip/v4.html", "tools/check-penang-v3.mjs"],
