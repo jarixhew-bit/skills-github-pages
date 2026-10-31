@@ -160,7 +160,7 @@ hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案�
 SQ133 PEN→SIN 12:00–13:35〔Yap Lian Khoon 商务〕；11/14 SQ958 SIN T2→CGK T3 12:30–13:20〔三人〕；下面 `.tbl` 行李额表＋随身小物一句) →
 `#hotel`(02，`.hotel` 卡：MBS 11/11 入住 11/14 退房，分房 套房 Tan Chin Hooi／标准大床 Yap、Hew；「机场接送由 MBS 安排」) →
 `#events`(03，开头一句「供参考、去不去由你们、没排进行程」＋9 张 `.evt`＋圣诞灯饰提示，清单见下) → `#itinerary`(04，`.day#day01`~`#day04`，
-`data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，18 张 `.evt`，三个 `.grp` 小标题：乌节路 9 → 滨海湾金沙 3 → 其他区域 6（组标题里的家数是手写的，加卡要同步改），组内按菜系排；
+`data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，18 张 `.evt`，三个 `.grp` 小标题：乌节路 9 → 滨海湾金沙 4 → 其他区域 5（组标题里的家数是手写的，加卡要同步改），组内按菜系排；
 每张卡 `.et` 开头有「📍区域 · 」标签，chips 写午市＋晚市)。**2026-10-30 用户要求「餐厅直接搞成列表，别分晚餐」**：
 原 `#orchard`＋`#dinner` 两区块合并、D2 的两张午餐 `.stop` 也搬进来，**逐日行程不再放餐厅卡**，只用一句话＋`#food` 链接。
 逐日（2026-10-31 改，见文末）：D1 `.tl` 航班时间轴→MBS 接机→入住→午餐与下午自由（一句链到 `#mall-shoppes`）→晚餐指 `#food` 的 MBS 组（PUTIEN／JUMBO Signatures），没有 `.dayfoot`；
@@ -172,8 +172,8 @@ Raffles City（市政区，离观音庙最近）→ Takashimaya（义安城）�
 D3 **自由日**（「D3 我们后面再找地方」）：只有天气条＋通用室内雨天／烟霾备案＋一张 `.note`（这一天自由安排＋午餐链 `#food`）＋`.dayfoot`，不写「待定」；
 日后用户给了 D3 去处再加卡。D4 是 `.tl > .ev`（未改）。
 `#food` 乌节路组：江南春（四季）、夏宫（康莱德）、华厅（乌节大酒店）、Fook Kin、Paradise Teochew（Takashimaya）、翡翠金阁 Crystal Jade Golden Palace（Paragon #05-22）、Song Fa Signatures（Paragon）、Chatterbox、Aburi-EN；
-MBS 组：PUTIEN、JUMBO Signatures、鼎泰丰（#B1-01）；其他组：National Kitchen by Violet Oon（市政区）、Candlenut（登布西）、麦士威熟食中心（牛车水）、松发总店、Sushi Katori（丹戎巴葛）、新食尚 Gourmet Paradise（Marina Square #02-180，口福集团美食广场；ION B4 的是 Food Opera，不是它）。
-**2026-10-31 用户指定加的三家不受 4.2 门槛**：鼎泰丰 MBS 4.2（1,304）、翡翠金阁 4.3（886）、Gourmet Paradise 3.8（143），评分照实写。新 7 家的 Google 评分取自 2026-10-30 CI 抓图（fetch-photos 的 rating 字段）；
+MBS 组：PUTIEN、JUMBO Signatures、鼎泰丰（#B1-01）、Rasapura Masters（B2 美食广场，2025-11 翻新重开）；其他组：National Kitchen by Violet Oon（市政区）、Candlenut（登布西）、麦士威熟食中心（牛车水）、松发总店、Sushi Katori（丹戎巴葛）。2026-10-31 用户：「Gourmet Paradise 我搞错了，是 Rasapura Masters 才对」——Gourmet Paradise（Marina Square）已删，勿再加回。
+**2026-10-31 用户指定加的三家不受 4.2 门槛**：鼎泰丰 MBS 4.2（1,304）、翡翠金阁 4.3（886）、Rasapura Masters 4.0（2,602），评分照实写。新 7 家的 Google 评分取自 2026-10-30 CI 抓图（fetch-photos 的 rating 字段）；
 海南美味佳肴鸡饭（远东广场）CI 评分 3.8，未达 4.2 门槛不放。
 **餐厅不重复（2026-10-30 用户要求「那些有的餐厅就不要重复了」）**：每个品牌全页只留一张卡——JUMBO 留 MBS 的 JUMBO Signatures（删 ION 店）、
 PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 用户指定「本来那家」，删 Centrepoint）。加新餐厅前先 grep 品牌名，已有就不加分店。
