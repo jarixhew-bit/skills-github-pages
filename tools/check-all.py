@@ -60,6 +60,7 @@ CHECKS = [
     ("prices", ["python3", "tools/check-prices.py"], False),
     ("flights", ["python3", "tools/check-flight-times.py"], False),
     ("flightprobe", ["node", "tools/check-flight-probe.mjs"], False),
+    ("placestatus", ["node", "tools/check-place-status.mjs"], False),
     ("mapcoords", ["python3", "tools/check-map-coords.py"], False),
     ("refreshphotos", ["python3", "tools/check-refresh-photos.py"], False),
     ("shortlist", ["python3", "tools/check-shortlist.py"], False),
