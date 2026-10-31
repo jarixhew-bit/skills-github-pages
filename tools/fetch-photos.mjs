@@ -50,9 +50,12 @@ export function placeStatus(text) {
  * 读地点页的标题、地址与「判断营业状态用的文字」。
  * 只取主面板（role="main"）开头那一段：停业字样就挂在店名、评分底下；
  * 整页文字会混进「附近类似店家」，别家关门会被算到这家头上。
- * 停在搜索结果列表（没有 h1）时回传空文字，状态记 unknown 而不是 open。
+ * 停在搜索结果列表时回传空文字，状态记 unknown 而不是 open——列表页也有 h1
+ * （就叫「Results」），2026-10-31 实跑两家就这样被误记成 open，所以改看网址：
+ * 进了地点页网址才会是 /maps/place/。
  */
 async function readPlaceInfo(page) {
+  if (!/\/maps\/place\//.test(page.url())) return { title: '', text: '', address: '' };
   return page.evaluate(() => {
     const main = document.querySelector('div[role="main"]');
     const h1 = (main || document).querySelector('h1');
