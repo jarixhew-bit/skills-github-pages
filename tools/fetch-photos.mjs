@@ -52,10 +52,11 @@ export function placeStatus(text) {
  * 整页文字会混进「附近类似店家」，别家关门会被算到这家头上。
  * 停在搜索结果列表时回传空文字，状态记 unknown 而不是 open——列表页也有 h1
  * （就叫「Results」），2026-10-31 实跑两家就这样被误记成 open，所以改看网址：
- * 进了地点页网址才会是 /maps/place/。
+ * 还停在 /maps/search/ 就是没进地点页。（不反过来要求 /maps/place/：
+ * ?cid= 链接不一定会转成那种网址，会把整批 cid 链接都误判成 unknown。）
  */
 async function readPlaceInfo(page) {
-  if (!/\/maps\/place\//.test(page.url())) return { title: '', text: '', address: '' };
+  if (/\/maps\/search\//.test(page.url())) return { title: '', text: '', address: '' };
   return page.evaluate(() => {
     const main = document.querySelector('div[role="main"]');
     const h1 = (main || document).querySelector('h1');
