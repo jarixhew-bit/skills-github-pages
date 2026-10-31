@@ -1,5 +1,5 @@
 /**
- * singapore-trip/index.html、sg-jkt-trip/singapore.html（11 月版）与 penang-trip/index.html（含新设计版 v2.html／v3.html／v4.html）每日天气的自检
+ * singapore-trip/index.html、sg-jkt-trip/singapore.html（11 月版）、sg-jkt-trip/jakarta.html（雅加达段，只有天气没有空气质量条）与 penang-trip/index.html（含新设计版 v2.html／v3.html／v4.html）每日天气的自检
  * —— 真浏览器跑，Playwright（两页共用同一套 open-meteo 前端现抓机制，合在一个脚本里）。
  *
  * 跑法：
@@ -37,6 +37,7 @@ import { chromium } from 'playwright';
 const PORT = process.env.CHECK_PORT || 8899;
 const SG_URL = `http://localhost:${PORT}/singapore-trip/`;
 const SGN_URL = `http://localhost:${PORT}/sg-jkt-trip/singapore.html`;   // 2026-11 新加坡 4 天版（Nak/Yang/Jacky），天气与 PSI 逻辑复制自上面那页
+const JKT_URL = `http://localhost:${PORT}/sg-jkt-trip/jakarta.html`;   // 2026-11 雅加达 3 天（11/14–16），天气逻辑复制自上面那页，坐标换 PIK、时区 Asia/Jakarta；没有 PSI 条
 const PGT_URL = `http://localhost:${PORT}/penang-trip/`;
 const PGT_V2_URL = `http://localhost:${PORT}/penang-trip/v2.html`;   // 新设计版，天气与空气质量条要同样验一遍
 const PGT_V3_URL = `http://localhost:${PORT}/penang-trip/v3.html`;   // 第三版，同样要验（另加逐日面板里的天气副本，见 check-penang-v3.mjs）
@@ -420,6 +421,66 @@ const { dayHaze: sgnDownDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL })
 check(sgnDownDay.length === 1 && /抓不到|Could not fetch/.test(sgnDownDay[0]?.now || '') && sgnDownDay[0]?.actHidden === false,
   `[sg-nov] PSI 挂掉但人在行程中：要说明抓不到并摊开替代方案（实得 ${JSON.stringify(sgnDownDay)}）`);
 check(errors.length === sgErrBefore, `[sg-nov] 不应有 JS 错误（实得：${errors.slice(sgErrBefore, sgErrBefore + 3).join(' | ')}）`);
+
+/* ============================================================
+ * sg-jkt-trip/jakarta.html：雅加达段（11/14–11/16，3 天）。
+ * 天气条 JS 跟上面同一份，只换了坐标（PIK）、时区（Asia/Jakarta）与「十一月雨季」常态文案。
+ * 这页**刻意没有空气质量条**（新加坡 PSI 接口只管新加坡），所以也验它不该冒出 #psi／烟霾行。
+ * ============================================================ */
+const JKT_DATES = ['2026-11-14', '2026-11-15', '2026-11-16'];
+const JKT_FULL = { daily: {
+  time: JKT_DATES, weather_code: [3, 95, 61],
+  temperature_2m_max: [32.6, 31.2, 30.4], temperature_2m_min: [25.4, 24.9, 25.1],
+  precipitation_probability_max: [20, 85, 50],
+} };
+const JKT_PARTIAL = { daily: {
+  time: JKT_DATES.slice(0, 1), weather_code: [3],
+  temperature_2m_max: [32.6], temperature_2m_min: [25.4],
+  precipitation_probability_max: [20],
+} };
+const JKT_IN_WINDOW = '2026-11-13T09:00:00+07:00';
+const JKT_TOO_EARLY = '2026-10-20T09:00:00+07:00';
+const jktLoad = (handler, now) => load(handler, now, null, JKT_URL);
+const jkErrBefore = errors.length;
+let jktUrlSeen = '';
+await page.goto(JKT_URL, { waitUntil: 'domcontentloaded' });
+const jktStructure = await page.evaluate(() =>
+  [...document.querySelectorAll('.day[data-date]')].map(d => ({
+    date: d.dataset.date,
+    wx: d.querySelector('.wx[data-wx]')?.dataset.wx || null,
+    rain: !!d.querySelector('.rainplan .cn')?.textContent.trim(),
+    rainEn: !!d.querySelector('.rainplan .en')?.textContent.trim(),
+  })));
+check(jktStructure.length === 3, `[jkt] 行程应有 3 天（实得 ${jktStructure.length}）`);
+jktStructure.forEach(d => {
+  check(d.wx === d.date, `[jkt] ${d.date} 的天气条日期要跟当天一致（实得 ${d.wx}）`);
+  check(d.rain && d.rainEn, `[jkt] ${d.date} 的雨天备案中英文都要有`);
+});
+const jktNoAir = await page.evaluate(() => !document.getElementById('psi') && !document.querySelector('.hazeplan'));
+check(jktNoAir, '[jkt] 本页不放空气质量条（没有 #psi、没有 .hazeplan）');
+const { texts: jktFull, called: jktFullCalled } = await jktLoad(r => { jktUrlSeen = r.request().url(); return r.fulfill({ json: JKT_FULL }); }, JKT_IN_WINDOW);
+check(jktFullCalled, '[jkt] 进入预报窗口时应该真的去打 API');
+check(/latitude=-6\.1/.test(jktUrlSeen) && /Asia%2FJakarta/.test(jktUrlSeen), `[jkt] 要抓雅加达（PIK）坐标、Asia/Jakarta 时区（实得：${jktUrlSeen.slice(0, 120)}）`);
+check(/25–33°C/.test(jktFull['2026-11-14']) && /20%/.test(jktFull['2026-11-14']), `[jkt] 11/14 应显示 25–33°C、20%（实得：${jktFull['2026-11-14']}）`);
+check(/雷阵雨/.test(jktFull['2026-11-15']) && /85%/.test(jktFull['2026-11-15']), `[jkt] 11/15 应显示雷阵雨、85%（实得：${jktFull['2026-11-15']}）`);
+check(!/33/.test(jktFull['2026-11-16']), `[jkt] 11/16 不该混进 11/14 的高温（实得：${jktFull['2026-11-16']}）`);
+const jktWet = await page.evaluate(() => [...document.querySelectorAll('.wx.wet')].map(b => b.dataset.wx));
+check(jktWet.length === 1 && jktWet[0] === '2026-11-15', `[jkt] 只有降雨≥60% 的 11/15 该标红（实得 ${JSON.stringify(jktWet)}）`);
+const { texts: jktPartial } = await jktLoad(r => r.fulfill({ json: JKT_PARTIAL }), JKT_IN_WINDOW);
+check(/25–33°C/.test(jktPartial['2026-11-14']), '[jkt] 有预报的那天照常显示温度');
+['2026-11-15', '2026-11-16'].forEach(d => {
+  check(/十一月雨季常态|typical November/i.test(jktPartial[d]) && !/°C · 降雨/.test(jktPartial[d]),
+    `[jkt] ${d} 无预报时要退回十一月雨季常态文案（实得：${jktPartial[d]}）`);
+});
+const { texts: jktDown } = await jktLoad(r => r.fulfill({ status: 500, body: 'boom' }), JKT_IN_WINDOW);
+JKT_DATES.forEach(d => check(/抓不到|unavailable/i.test(jktDown[d]) && /十一月雨季常态|typical November/i.test(jktDown[d]), `[jkt] ${d} 在 API 挂掉时要说明并带常态文案（实得：${jktDown[d]}）`));
+const { texts: jktEarly, called: jktEarlyCalled } = await jktLoad(r => r.fulfill({ json: JKT_FULL }), JKT_TOO_EARLY);
+check(!jktEarlyCalled, '[jkt] 整趟都在 16 天窗口外时不该去打 API');
+JKT_DATES.forEach(d => {
+  check(/还没到能报的时候|Too early/i.test(jktEarly[d]) && !/抓不到|unavailable/i.test(jktEarly[d]),
+    `[jkt] ${d} 窗口外要写「还没到能报的时候」而不是抓不到（实得：${jktEarly[d]}）`);
+});
+check(errors.length === jkErrBefore, `[jkt] 不应有 JS 错误（实得：${errors.slice(jkErrBefore, jkErrBefore + 3).join(' | ')}）`);
 
 /* ============================================================
  * penang-trip：没有逐日行程列，天气条独立成 #weather 区块里的
