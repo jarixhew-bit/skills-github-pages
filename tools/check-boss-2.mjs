@@ -1,5 +1,5 @@
 /**
- * 老板 App 自检 —— **后半**（场景十九 ~ 场景三十八）：交接红点重置、机票/酒店识别、
+ * 老板 App 自检 —— **后半**（场景十九 ~ 场景四十四）：交接红点重置、机票/酒店识别、
  * 行程排序、账单已读、推送、请假、备忘、餐厅、分享、链接带访问码、账单金额。
  *
  * 共用的打桩接口与假数据在 tools/lib/boss-check-kit.mjs；前半在 check-boss.mjs。
@@ -2337,6 +2337,334 @@ console.log('\n【三十二c】行程名称与日期可以不填，保存时自�
   await page.waitForTimeout(300);   // 断言「没送出去」只能真的等
   ok('★号码太短：不送出去，当场说', rec.calls.filter(c => c.action === 'dentalSave').length === n
      && /号码看起来不对/.test(await page.locator('#admin-dental-status').innerText()));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// =====================================================================
+// 场景三十九～四十四：写行程四项改进（2026-10-31）
+//   从手册导入、航班乘客座位、酒店条目＋今晚住、时段排序、两趟重叠
+// =====================================================================
+
+/** fixture 手册：照 sg-jkt-trip/*.html 的结构缩出来的最小版（不随真手册改版而腐坏）。 */
+const GUIDE_FIXTURE = `<!DOCTYPE html><html><head><title>t</title></head><body>
+<h1><span class="cn">测试城 · 11月11–12日</span><span class="en">Testville · 11–12 Nov 2026</span></h1>
+<div class="bp-group-label"><span class="cn">🛫 去程 · 11月11日（三）</span><span class="en">🛫 Outbound · Wed 11 Nov</span></div>
+<div class="bpass">
+<div class="head"><span class="airline"><span class="code">SQ</span>SQ 153</span><span class="craft">Singapore Airlines</span></div>
+<div class="route">
+<div class="apt"><div class="iata">KTI</div><div class="city"><span class="cn">金边 Techo</span><span class="en">Phnom Penh Techo</span></div><div class="time">09:35</div></div>
+<div class="mid"><div class="dur">2h 15m</div></div>
+<div class="apt"><div class="iata">SIN</div><div class="city"><span class="cn">新加坡 樟宜</span><span class="en">Singapore Changi</span></div><div class="time">12:50</div></div>
+</div>
+<div class="pax"><span class="cls biz">BUSINESS</span><div class="seats"><span class="seat">TAN/CHIN HOOI 11A</span></div>
+<span class="cls eco">ECONOMY</span><div class="seats"><span class="seat">HEW/CHERN YANG 49C</span></div></div>
+</div>
+<div class="day" data-date="2026-11-11" id="day01"><div class="db"><div class="tl">
+<div class="ev"><div class="t">07:00</div><h4><span class="cn">🏠 家里出发去机场</span><span class="en">🏠 Leave home for the airport</span></h4></div>
+<div class="ev hot"><div class="t">09:35</div><h4><span class="cn">✈️ SQ153 金边起飞</span><span class="en">✈️ SQ153 departs Phnom Penh</span></h4></div>
+<div class="ev"><div class="t">12:50</div><h4><span class="cn">🛬 SQ153 抵达樟宜</span><span class="en">🛬 SQ153 lands at Changi</span></h4></div>
+<div class="ev"><div class="t"><span class="cn">落地后</span><span class="en">After landing</span></div><h4><span class="cn">🚘 接机 → 到酒店</span><span class="en">🚘 Pick-up → hotel</span></h4></div>
+<div class="ev fin"><div class="t"><span class="cn">晚上</span><span class="en">Evening</span></div><h4><span class="cn">🍽 晚餐</span><span class="en">🍽 Dinner</span></h4></div>
+</div></div></div>
+<div class="day" data-date="2026-11-12" id="day02"><div class="db">
+<div class="stop"><div class="pin must">★</div><h4><span class="cn">上午　观音庙</span><span class="en">Morning · Kwan Im Temple</span></h4>
+<a class="btn-map" href="https://maps.google.com/?cid=11324397493616015584" target="_blank">📍 Google Maps</a></div>
+<div class="note amber"><span class="cn">🛍 <strong>下午：逛商场（任选）</strong></span><span class="en">🛍 <strong>Afternoon: malls</strong></span></div>
+<div class="stop"><div class="pin side">🛍</div><h4><span class="cn">莱佛士城</span><span class="en">Raffles City</span></h4>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&query=Raffles%20City" target="_blank">📍 Google Maps</a></div>
+</div></div>
+</body></html>`;
+const FIX_URL = 'https://jarixhew-bit.github.io/skills-github-pages/sg-jkt-trip/singapore.html';
+const SQ153_LIVE = { no: 'SQ153', date: '2026-11-11', trackId: 'trk153', from: 'KTI', to: 'SIN',
+  sched_dep: '2026-11-11 09:35+07:00', sched_arr: '2026-11-11 12:50+08:00', flightStatus: 'scheduled' };
+async function adminImportPage(trips){
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  const rec = mountRoutes(ctx, { role: 'admin', trips, flightLookupFlight: SQ153_LIVE });
+  // 手册换成 fixture（后注册的 route 先生效）
+  await ctx.route('**/sg-jkt-trip/singapore.html', r => r.fulfill({ status: 200, contentType: 'text/html', body: GUIDE_FIXTURE }));
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-import-btn')), { what: '管理页渲染完' });
+  await gotoTab(page, 'admin');
+  return { ctx, rec, page, errs };
+}
+
+// ---------- 场景三十九：从手册导入 —— 解析正确，而且只填进表单、不落盘 ----------
+{
+  const { ctx, rec, page, errs } = await adminImportPage([]);
+  console.log('\n【三十九】从手册导入：日期、条目、时段、地图、航班与座位');
+  // 纯函数直接喂 fixture
+  const r = await page.evaluate(h => parseGuideHtml(h, 'https://x/guide.html'), GUIDE_FIXTURE);
+  const t = r.items.map(i => i.title.zh);
+  ok('★起讫日期取自 .day[data-date]', r.trip.start === '2026-11-11' && r.trip.end === '2026-11-12', r.trip);
+  ok('★行程名称与地点取自手册标题', r.trip.title.zh === '测试城 · 11月11–12日' && r.trip.location.zh === '测试城', r.trip);
+  ok('★.tl .ev 的标题进来了（emoji 去掉）', t.includes('家里出发去机场') && t.includes('晚餐'), t);
+  ok('★.stop 的标题进来了，「上午」前缀变成时段', t.includes('观音庙') && r.items.find(i => i.title.zh === '观音庙').period === 'morning', r.items);
+  ok('★英文标题也去掉了「Morning ·」', r.items.find(i => i.title.zh === '观音庙').title.en === 'Kwan Im Temple', r.items);
+  ok('★「晚上」那条变成 evening、没有编钟点', (() => { const d = r.items.find(i => i.title.zh === '晚餐'); return d.period === 'evening' && d.time === ''; })(), r.items);
+  ok('★「落地后」不编钟点，跟着前面的航班进下午，原话留进备注', (() => { const d = r.items.find(i => i.title.zh === '接机 → 到酒店'); return d.time === '' && d.period === 'afternoon' && d.note.zh === '落地后'; })(), r.items);
+  ok('★提示块「下午：逛商场」把后面的卡带进下午，可选的卡标「可选」', (() => { const d = r.items.find(i => i.title.zh === '莱佛士城'); return d.period === 'afternoon' && d.note.zh === '可选'; })(), r.items);
+  ok('★地图链接取自卡里的 Google Maps 按钮', r.items.find(i => i.title.zh === '观音庙').mapUrl === 'https://maps.google.com/?cid=11324397493616015584', r.items);
+  const fl = r.items.filter(i => i.flight);
+  ok('★登机牌变成一条航班条目', fl.length === 1 && fl[0].flight.no === 'SQ153' && fl[0].time === '09:35', fl);
+  ok('★航班日期取自分组标题「11月11日」', fl[0] && fl[0].flight.date === '2026-11-11' && fl[0].date === '2026-11-11', fl);
+  ok('★乘客名字「TAN/CHIN HOOI」变成「Tan Chin Hooi」、座位 11A', fl[0] && JSON.stringify(fl[0].flight.pax) ===
+     JSON.stringify([{ name: 'Tan Chin Hooi', seat: '11A' }, { name: 'Hew Chern Yang', seat: '49C' }]), fl[0] && fl[0].flight);
+  ok('★日程里的「SQ153 起飞」「抵达」不重复成另外两条', !t.some(x => /起飞|抵达/.test(x)), t);
+  ok('★排序：07:00 → 09:35 航班 → 下午接机 → 晚上晚餐', JSON.stringify(r.items.filter(i => i.date === '2026-11-11').map(i => i.title.zh)) ===
+     JSON.stringify(['家里出发去机场', 'SQ153 金边 Techo → 新加坡 樟宜', '接机 → 到酒店', '晚餐']), r.items.map(i => i.title.zh));
+
+  // 走一遍按钮
+  await page.selectOption('#admin-import-guide', 'sg-jkt-trip/singapore.html');
+  await page.click('#admin-import-btn');
+  await until(() => page.evaluate(() => /保存全部行程/.test(document.getElementById('admin-import-status').textContent)), { what: '导入完成' });
+  const draft = await page.evaluate(() => adminTripsDraft);
+  ok('★新建了一趟，guideUrl 就是那本手册', draft.length === 1 && draft[0].guideUrl === FIX_URL, draft.map(d => d.guideUrl));
+  ok('★表单里出现了这些条目', await page.locator('.admin-item-row').count() === r.items.length, await page.locator('.admin-item-row').count());
+  ok('★航班去查了真时刻', rec.calls.some(c => c.action === 'flightLookup' && c.no === 'SQ153'), rec.calls.map(c => c.action));
+  const f0 = draft[0].items.find(i => i.flight);
+  ok('★查完航班，座位没被冲掉', f0 && f0.flight.trackId === 'trk153' && f0.flight.pax && f0.flight.pax.length === 2, f0 && f0.flight);
+  ok('★★没有偷偷保存（要他自己按「保存全部行程」）', !rec.calls.some(c => c.action === 'tripsSave'), rec.calls.map(c => c.action));
+  ok('★座位输入框里看得到 11A', await page.locator('input[id$="-pax-0-seat"]').first().inputValue() === '11A');
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景三十九b：同一本手册已经有一趟 → 问「覆盖还是合并」，不静默重复 ----------
+{
+  const existing = [{ id: 'trip-sg', title: { zh: '新加坡', en: '' }, start: '2026-11-11', end: '2026-11-12',
+    location: { zh: '', en: '' }, guideUrl: FIX_URL, items: [
+      { date: '2026-11-11', time: '09:35', title: { zh: 'SQ153 金边 → 新加坡', en: '' }, note: { zh: '', en: '' }, mapUrl: '',
+        flight: { no: 'SQ153', date: '2026-11-11', trackId: 'trk153' } },
+      { date: '2026-11-12', time: '', title: { zh: '观音庙', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+      { date: '2026-11-12', time: '15:00', title: { zh: '自己加的下午茶', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+    ] }];
+  const { ctx, rec, page, errs } = await adminImportPage(existing);
+  console.log('\n【三十九b】已经有同一本手册那一趟：要问覆盖还是合并');
+  await page.selectOption('#admin-import-guide', 'sg-jkt-trip/singapore.html');
+  await page.click('#admin-import-btn');
+  await until(() => page.locator('#admin-import-merge').count().then(n => n === 1), { what: '出现覆盖／合并的选择' });
+  ok('★三颗按钮都在（合并／覆盖／取消）', await page.locator('#admin-import-merge').count() === 1
+     && await page.locator('#admin-import-overwrite').count() === 1 && await page.locator('#admin-import-cancel').count() === 1);
+  ok('★还没选之前草稿一个字没动', (await page.evaluate(() => adminTripsDraft[0].items.length)) === 3);
+  await page.click('#admin-import-cancel');
+  ok('★按取消：什么都不加', (await page.evaluate(() => adminTripsDraft.length + ':' + adminTripsDraft[0].items.length)) === '1:3');
+
+  await page.click('#admin-import-btn');
+  await until(() => page.locator('#admin-import-merge').count().then(n => n === 1), { what: '再问一次' });
+  await page.click('#admin-import-merge');
+  await until(() => page.evaluate(() => /保存全部行程/.test(document.getElementById('admin-import-status').textContent)), { what: '合并完成' });
+  let d = await page.evaluate(() => adminTripsDraft);
+  ok('★合并：没有新开一趟', d.length === 1, d.length);
+  const titles = d[0].items.map(i => i.title.zh);
+  ok('★合并：已有的航班、观音庙不重复', d[0].items.filter(i => i.flight && i.flight.no === 'SQ153').length === 1
+     && titles.filter(x => x === '观音庙').length === 1, titles);
+  ok('★合并：自己加的下午茶留着', titles.includes('自己加的下午茶'), titles);
+  ok('★合并：手册里有、原来没有的加进来了', titles.includes('家里出发去机场') && titles.includes('晚餐'), titles);
+  const f = d[0].items.find(i => i.flight);
+  ok('★合并：原来那班缺座位，补上了', f.flight.pax && f.flight.pax[0].seat === '11A', f.flight);
+  ok('★合并：观音庙补上时段与地图', (() => { const k = d[0].items.find(i => i.title.zh === '观音庙'); return k.period === 'morning' && /cid=/.test(k.mapUrl); })(), d[0].items);
+  ok('★状态栏说了几条原来就有', /原来就有/.test(await page.locator('#admin-import-status').innerText()));
+
+  await page.click('#admin-import-btn');
+  await until(() => page.locator('#admin-import-overwrite').count().then(n => n === 1), { what: '第三次问' });
+  await page.click('#admin-import-overwrite');
+  await until(() => page.evaluate(() => /覆盖/.test(document.getElementById('admin-import-status').textContent)), { what: '覆盖完成' });
+  d = await page.evaluate(() => adminTripsDraft);
+  ok('★覆盖：还是同一趟（id 不变）', d.length === 1 && d[0].id === 'trip-sg', d.map(x => x.id));
+  ok('★覆盖：换成手册里的那几条（下午茶没了）', !d[0].items.some(i => i.title.zh === '自己加的下午茶') && d[0].items.length === 6, d[0].items.map(i => i.title.zh));
+  ok('★★三轮下来一次都没落盘', !rec.calls.some(c => c.action === 'tripsSave'), rec.calls.map(c => c.action));
+
+  await page.click('#admin-trips-section .admin-btn:has-text("保存全部行程")');
+  await until(() => rec.calls.some(c => c.action === 'tripsSave'), { what: '按了保存才送' });
+  const sent = rec.calls.find(c => c.action === 'tripsSave');
+  const items = sent && sent.trips[0].items;
+  ok('★送出去的带 pax（座位）', items && items.some(i => i.flight && i.flight.pax && i.flight.pax[1].seat === '49C'), items);
+  ok('★送出去的带 period', items && items.some(i => i.period === 'evening'), items);
+  ok('★航班的 live 不往回送', items && items.every(i => !i.flight || !('live' in i.flight)), items);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+/** 11/11–11/16 新加坡＋雅加达两趟的缩版（时段、座位、酒店都有）。 */
+function tripsSgJkt(){
+  return [
+    { id: 'trip-sg', title: { zh: '新加坡 · 11月11–14日', en: 'Singapore · 11–14 Nov' }, start: '2026-11-11', end: '2026-11-14',
+      location: { zh: '新加坡', en: 'Singapore' }, guideUrl: 'https://example.com/sg', items: [
+        { date: '2026-11-11', time: '09:35', title: { zh: 'SQ153 金边 → 新加坡', en: 'SQ153 Phnom Penh → Singapore' }, note: { zh: '', en: '' }, mapUrl: '',
+          flight: { no: 'SQ153', date: '2026-11-11', pax: [{ name: 'Tan Chin Hooi', seat: '11A' }, { name: 'Hew Chern Yang', seat: '49C' }], live: null } },
+        { kind: 'hotel', date: '2026-11-11', time: '', period: 'afternoon', title: { zh: '入住 Marina Bay Sands', en: 'Check in · Marina Bay Sands' },
+          note: { zh: '', en: '' }, mapUrl: 'https://www.google.com/maps/search/?api=1&query=Marina%20Bay%20Sands',
+          hotel: { name: 'Marina Bay Sands', address: '10 Bayfront Ave, Singapore 018956', phone: '+65 6688 8888',
+            checkIn: '2026-11-11', checkOut: '2026-11-14', mapUrl: '' } },
+        { date: '2026-11-14', time: '', period: 'morning', title: { zh: '退房，MBS 送机', en: 'Check out; MBS transfer' }, note: { zh: '', en: '' }, mapUrl: '' },
+      ] },
+    { id: 'trip-jkt', title: { zh: '雅加达 · 11月14–16日', en: 'Jakarta · 14–16 Nov' }, start: '2026-11-14', end: '2026-11-16',
+      location: { zh: '雅加达', en: 'Jakarta' }, guideUrl: 'https://example.com/jkt', items: [
+        { date: '2026-11-14', time: '', period: 'evening', title: { zh: '晚上朋友生日宴', en: "Friend's birthday dinner" }, note: { zh: '', en: '' }, mapUrl: '' },
+        { date: '2026-11-14', time: '', title: { zh: '没填时间的一条', en: '' }, note: { zh: '', en: '' }, mapUrl: '' },
+        { date: '2026-11-14', time: '12:30', title: { zh: 'SQ958 樟宜 → 雅加达', en: 'SQ958 Changi → Jakarta' }, note: { zh: '', en: '' }, mapUrl: '',
+          flight: { no: 'SQ958', date: '2026-11-14', pax: [{ name: 'Tan Chin Hooi', seat: '14A' }], live: {
+            from: 'SIN', to: 'CGK', status: 'scheduled', sched_dep: '2026-11-14 12:30+08:00', sched_arr: '2026-11-14 13:20+07:00' } } },
+        { kind: 'hotel', date: '2026-11-14', time: '', period: 'afternoon', title: { zh: '入住 Swissôtel Jakarta PIK Avenue', en: 'Check in · Swissôtel Jakarta PIK Avenue' },
+          note: { zh: '', en: '' }, mapUrl: '',
+          hotel: { name: 'Swissôtel Jakarta PIK Avenue', address: 'Jl. Pantai Indah Kapuk, Kamal Muara, Penjaringan, Jakarta Utara 14470',
+            phone: '+62 21 2257 1188', checkIn: '2026-11-14', checkOut: '2026-11-16', mapUrl: '' } },
+      ] },
+  ];
+}
+async function viewerOn(day, opts = {}){
+  const ctx = await browser.newContext(opts.viewport ? { viewport: opts.viewport } : {});
+  await forceZh(ctx);
+  await freezeClock(ctx, day);
+  const rec = mountRoutes(ctx, { role: opts.role || 'viewer', trips: tripsSgJkt() });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')), { what: 'App 加载完成' });
+  return { ctx, rec, page, errs };
+}
+
+// ---------- 场景四十：航班信息块显示乘客与座位 ----------
+{
+  const { ctx, page, errs } = await viewerOn('2026-11-11', { viewport: { width: 360, height: 740 } });
+  console.log('\n【四十】航班乘客与座位（老板那边，360px）');
+  const pax = await page.locator('#tab-today .flight-pax').first().innerText().catch(() => '');
+  ok('★「Tan Chin Hooi 11A · Hew Chern Yang 49C」', /Tan Chin Hooi 11A · Hew Chern Yang 49C/.test(pax), pax);
+  const over = await page.evaluate(() => [...document.querySelectorAll('#tab-today .flight-pax, #tab-today .item-row')]
+    .filter(el => el.scrollWidth > el.clientWidth + 1).length);
+  ok('★360px 不溢出', over === 0, over);
+  await gotoTab(page, 'trips');
+  await page.locator('.trip-card-hd').nth(1).click();
+  const live = await page.locator('#tab-trips .flight-info:has(.flight-route) .flight-pax').first().innerText().catch(() => '');
+  ok('★有实时状态的航班卡也印座位', /Tan Chin Hooi 14A/.test(live), live);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景四十一：酒店条目＋「今晚住」 ----------
+{
+  const { ctx, page, errs } = await viewerOn('2026-11-12', { viewport: { width: 360, height: 740 } });
+  console.log('\n【四十一】酒店条目与「今晚住」');
+  const card = page.locator('#tab-today .tonight-hotel');
+  ok('★11/12（入住期间）顶部有「今晚住：Marina Bay Sands」', await card.count() === 1 && /今晚住：\s*Marina Bay Sands/.test(await card.innerText()), await card.count());
+  ok('★电话是 tel: 一键拨打（只留 + 和数字）', await card.locator('a[href="tel:+6566888888"]').count() === 1);
+  ok('★地址带地图链接', /google\.com\/maps/.test(await card.locator('.tonight-hotel-addr a').getAttribute('href').catch(() => '')));
+  const over = await page.evaluate(() => [...document.querySelectorAll('.tonight-hotel, .tonight-hotel *')].filter(el => el.scrollWidth > el.clientWidth + 1).length);
+  ok('★360px 不溢出', over === 0, over);
+  await gotoTab(page, 'trips');
+  await page.locator('.trip-card-hd').first().click();
+  const hinfo = page.locator('#tab-trips .hotel-info').first();
+  ok('★行程页的酒店条目：地址可点、电话可拨、几号入住几号退房', await hinfo.locator('a.hotel-addr').count() === 1
+     && await hinfo.locator('a.hotel-tel[href^="tel:"]').count() === 1 && /11月11日 入住 · 11月14日 退房 · 3 晚/.test(await hinfo.innerText()), await hinfo.innerText().catch(() => ''));
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+{
+  const a = await viewerOn('2026-11-14');
+  const t = await a.page.locator('#tab-today .tonight-hotel').allInnerTexts();
+  console.log('\n【四十一b】对照组：退房那天晚上不再住旧酒店；行程前一天没有这张卡');
+  ok('★11/14 退房 MBS 当晚：只显示 Swissôtel', t.length === 1 && /Swissôtel/.test(t[0]) && !/Marina/.test(t[0]), t);
+  await a.ctx.close();
+  const b = await viewerOn('2026-11-10');
+  ok('★11/10（还没入住）：没有「今晚住」', await b.page.locator('.tonight-hotel').count() === 0);
+  await b.ctx.close();
+  const c = await viewerOn('2026-11-16');
+  ok('★11/16（退房日）：没有「今晚住」', await c.page.locator('.tonight-hotel').count() === 0);
+  await c.ctx.close();
+}
+
+// ---------- 场景四十二：时段排序（11/14「晚上生日宴」不许跑到 12:30 航班前面） ----------
+{
+  const { ctx, page, errs } = await viewerOn('2026-11-14');
+  console.log('\n【四十二】时段排序');
+  const rows = await page.locator('#tab-today .item-list').first().locator('.item-row').evaluateAll(els =>
+    els.map(e => [e.querySelector('.item-time').innerText.trim(), e.querySelector('.item-title').innerText.trim()]));
+  const titles = rows.map(r => r[1]);
+  ok('★顺序：没填的 → 上午退房 → 12:30 航班 → 下午入住 → 晚上生日宴',
+     JSON.stringify(titles.map(x => x.replace(/^🏨\s*/, ''))) === JSON.stringify(['没填时间的一条', '退房，MBS 送机', 'SQ958 樟宜 → 雅加达', '入住 Swissôtel Jakarta PIK Avenue', '晚上朋友生日宴']), titles);
+  ok('★时间那格印「上午」「下午」「晚上」', rows[1] && rows[1][0] === '上午' && rows[3] && rows[3][0] === '下午' && rows[4] && rows[4][0] === '晚上', rows);
+  ok('★没填的那格是空的（不编时间）', rows[0] && rows[0][0] === '', rows);
+  await page.evaluate(() => { applyLang('en'); });
+  ok('★英文界面印 Evening', (await page.locator('#tab-today .item-list').first().locator('.item-row').nth(4).locator('.item-time').innerText()).trim() === 'Evening');
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+// ---------- 场景四十三：两趟重叠的那天，两趟都显示 ----------
+{
+  const { ctx, page, errs } = await viewerOn('2026-11-14');
+  console.log('\n【四十三】11/14 新加坡最后一天＝雅加达第一天：两趟横幅都在');
+  const banners = await page.locator('#tab-today .today-trip-banner').allInnerTexts();
+  ok('★今天那段有两张横幅', banners.filter(b => /新加坡 · 11月11–14日|雅加达 · 11月14–16日/.test(b)).length >= 2, banners);
+  ok('★新加坡写「第 4 天 / 共 4 天」', banners.some(b => /新加坡/.test(b) && /第 4 天 \/ 共 4 天/.test(b)), banners);
+  ok('★雅加达写「第 1 天 / 共 3 天」', banners.some(b => /雅加达/.test(b) && /第 1 天 \/ 共 3 天/.test(b)), banners);
+  ok('★新加坡在前（按出发日）', banners.findIndex(b => /新加坡/.test(b)) < banners.findIndex(b => /雅加达/.test(b)), banners);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+  // 对照组：只有一趟的日子仍然只有一张
+  const one = await viewerOn('2026-11-12');
+  const b2 = await one.page.locator('#tab-today .today-trip-banner').allInnerTexts();
+  // 「明天」那段也有一张（11/13 第 3 天），只数今天的「第 2 天」
+  ok('★对照组：11/12 今天只有新加坡一张', b2.filter(b => /第 2 天/.test(b)).length === 1 && /新加坡/.test(b2[0]) && !b2.some(b => /雅加达/.test(b)), b2);
+  await one.ctx.close();
+  // 分享文字（YANG 那边）也写两趟、写今晚住
+  const adm = await viewerOn('2026-11-14', { role: 'admin' });
+  const txt = await adm.page.evaluate(() => shareDayText('2026-11-14'));
+  ok('★分享文字写两趟', /新加坡 · 11月11–14日（第 4 天 \/ 共 4 天）/.test(txt) && /雅加达 · 11月14–16日（第 1 天 \/ 共 3 天）/.test(txt), txt);
+  ok('★分享文字写今晚住、座位、时段', /今晚住：Swissôtel/.test(txt) && /Tan Chin Hooi 14A/.test(txt) && /晚上  晚上朋友生日宴/.test(txt), txt);
+  ok('★分享文字的顺序跟屏幕一致（生日宴在航班后面）', txt.indexOf('SQ958') < txt.indexOf('生日宴'), txt);
+  await adm.ctx.close();
+}
+
+// ---------- 场景四十四：管理表单 —— 时段、酒店、乘客座位能填能存，填错会拦 ----------
+{
+  const ctx = await browser.newContext();
+  await forceZh(ctx);
+  await freezeClock(ctx, '2026-11-01');
+  const rec = mountRoutes(ctx, { role: 'admin', trips: tripsSgJkt() });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.getElementById('admin-trips-section')), { what: '管理页' });
+  await gotoTab(page, 'admin');
+  console.log('\n【四十四】管理表单：时段、酒店、乘客座位');
+  await page.evaluate(() => adminExpandTrip(1));   // 雅加达那趟
+  ok('★生日宴的时段选单显示「晚上」', await page.inputValue('#admin-item-1-0-period') === 'evening');
+  await page.selectOption('#admin-item-1-1-period', 'afternoon');
+  ok('★酒店条目带出名称、电话、入住退房', await page.inputValue('#admin-item-1-3-hotel-name') === 'Swissôtel Jakarta PIK Avenue'
+     && await page.inputValue('#admin-item-1-3-hotel-phone') === '+62 21 2257 1188'
+     && await page.inputValue('#admin-item-1-3-hotel-checkOut') === '2026-11-16');
+  ok('★航班条目有座位输入框', await page.inputValue('#admin-item-1-2-pax-0-seat') === '14A');
+  await page.click('#admin-item-1-2-pax-add');
+  await page.fill('#admin-item-1-2-pax-1-name', 'Yap Lian Khoon');
+  await page.fill('#admin-item-1-2-pax-1-seat', '15a');
+  // 新增酒店：退房早于入住 → 拦下
+  await page.click('#admin-trip-1-add-hotel');
+  await page.fill('#admin-item-1-4-hotel-name', '测试酒店');
+  await page.fill('#admin-item-1-4-hotel-checkIn', '2026-11-15');
+  await page.fill('#admin-item-1-4-hotel-checkOut', '2026-11-15');
+  await page.click('#admin-trips-section .admin-btn:has-text("保存全部行程")');
+  await page.waitForTimeout(300);   // 断言「没送出去」只能真的等
+  ok('★退房不晚于入住：拦下来不送', !rec.calls.some(c => c.action === 'tripsSave'));
+  ok('★而且说清楚', /退房要晚于入住/.test(await page.locator('#admin-trips-form-status').innerText()), await page.locator('#admin-trips-form-status').innerText());
+  await page.fill('#admin-item-1-4-hotel-checkOut', '2026-11-16');
+  await page.click('#admin-trips-section .admin-btn:has-text("保存全部行程")');
+  await until(() => rec.calls.some(c => c.action === 'tripsSave'), { what: '存出去' });
+  const sent = rec.calls.find(c => c.action === 'tripsSave');
+  const jkt = sent && sent.trips.find(t => t.id === 'trip-jkt');
+  const its = jkt ? jkt.items : [];
+  ok('★时段存出去了', its[0] && its[0].period === 'evening' && its[1] && its[1].period === 'afternoon', its.slice(0, 2));
+  ok('★新加的乘客存出去了（座位转大写）', its[2] && its[2].flight.pax.length === 2 && its[2].flight.pax[1].seat === '15A', its[2]);
+  const nh = its.find(i => i.hotel && i.hotel.name === '测试酒店');
+  ok('★新酒店存出去了：kind=hotel、日期跟入住日、标题跟名称、自动地图链接', nh && nh.kind === 'hotel' && nh.date === '2026-11-15'
+     && nh.title.zh === '入住 测试酒店' && /google\.com\/maps/.test(nh.mapUrl), nh);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
