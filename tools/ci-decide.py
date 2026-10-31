@@ -71,6 +71,8 @@ RULES = {
     # 查航班工具的解析器：航班号与机型黏在一起、全程跨时区，切错就是订错票
     "flightprobe": ["tools/flight-probe.mjs", "tools/check-flight-probe.mjs",
                     ".github/workflows/flight-probe.yml"],
+    # 抓图器的营业状态判断：认错就把关门的店当成营业，放进手册
+    "placestatus": ["tools/fetch-photos.mjs", "tools/check-place-status.mjs"],
     # 槟城总地图坐标：卡片加了坐标没补，那一家会安安静静不上图
     "mapcoords": ["penang-trip/index.html", "penang-trip/coords.json", "tools/check-map-coords.py"],
     # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验

@@ -11,13 +11,67 @@
  * 用法（只能在 GitHub Actions 上跑，沙盒连不上 Google）：
  *   QUERIES="链接或店名|链接或店名" WANT=5 node tools/fetch-photos.mjs
  *
- * 输出：每家店一行 `RESULT {json}`，字段 query/ok/count/method/urls/title/rating。
- * 末尾一行 `SUMMARY {json}` 汇总，方便一眼看出哪几家没抓满。
+ * 输出：每家店一行 `RESULT {json}`，字段 query/ok/count/method/urls/title/rating，
+ * 以及 status/address/place_title（营业状态、地址、地点页标题，见 placeStatus）。
+ * 末尾一行 `SUMMARY {json}` 汇总，方便一眼看出哪几家没抓满、哪几家已经关门。
  */
-import { chromium } from 'playwright';
+import { pathToFileURL } from 'node:url';
 
 const WANT = parseInt(process.env.WANT || '5', 10);
 const PHOTO_HOST = 'googleusercontent.com';
+
+/**
+ * 营业状态：从地点页的可见文字判断这家店还开不开。
+ *
+ * 为什么要它（2026-10-31 用户：「有些是已经关门的了，查好了再给我」）：
+ * 抓图器原本只抓店名、评分、照片，关门的店照样抓得到图、评分也还挂着，
+ * 「核实过」的名单里就混进了停业的店（新加坡手册的 Hanare 就是这样）。
+ *
+ * Google 有时用英文、有时用当地语言（印尼文、中文）显示，三种都要认。
+ * 只看文字，不看 class 名——class 名是 Google 编译出来的乱码，改版就换。
+ * 注意不能只认「Closed」：营业时间那行天天写着「Closed ⋅ Opens 11 AM」。
+ * 纯函数、不碰浏览器，所以 check-place-status.mjs 能直接拿来测。
+ *
+ * 回传 permanently_closed / temporarily_closed / open / unknown（没拿到页面文字）。
+ */
+const STATUS_PERMANENT = [/permanently\s+closed/i, /tutup\s+permanen/i, /永久停业|永久停業|永久关闭|永久關閉/];
+const STATUS_TEMPORARY = [/temporarily\s+closed/i, /tutup\s+sementara/i, /暂时停业|暫時停業|暂停营业|暫停營業|暂时关闭|暫時關閉/];
+
+export function placeStatus(text) {
+  const t = String(text || '');
+  if (!t.trim()) return 'unknown';
+  // 永久停业优先：两种字样同时出现时，以较严重的为准
+  if (STATUS_PERMANENT.some(r => r.test(t))) return 'permanently_closed';
+  if (STATUS_TEMPORARY.some(r => r.test(t))) return 'temporarily_closed';
+  return 'open';
+}
+
+/**
+ * 读地点页的标题、地址与「判断营业状态用的文字」。
+ * 只取主面板（role="main"）开头那一段：停业字样就挂在店名、评分底下；
+ * 整页文字会混进「附近类似店家」，别家关门会被算到这家头上。
+ * 停在搜索结果列表（没有 h1）时回传空文字，状态记 unknown 而不是 open。
+ */
+async function readPlaceInfo(page) {
+  return page.evaluate(() => {
+    const main = document.querySelector('div[role="main"]');
+    const h1 = (main || document).querySelector('h1');
+    const title = h1 ? h1.innerText.trim() : '';
+    const head = main && title ? main.innerText.slice(0, 1500) : '';
+    // 状态有时只写在 aria-label 上（例如图示按钮），一并收进来
+    const labels = main && title
+      ? Array.from(main.querySelectorAll('[aria-label]')).slice(0, 60)
+          .map(e => e.getAttribute('aria-label')).join('\n')
+      : '';
+    // 地址按钮的 aria-label 是「Address: …」（印尼文 Alamat、中文 地址）
+    let address = '';
+    for (const b of (main || document).querySelectorAll('[aria-label]')) {
+      const m = (b.getAttribute('aria-label') || '').match(/^\s*(?:Address|Alamat|地址)\s*[:：]\s*(.+)$/i);
+      if (m) { address = m[1].trim(); break; }
+    }
+    return { title, text: head + '\n' + labels, address };
+  }).catch(() => ({ title: '', text: '', address: '' }));
+}
 
 /** 判断一个 img src 是不是 Google 地图的地点照片（排除头像、图标、地图瓦片）。 */
 function isPlacePhoto(src) {
@@ -197,7 +251,7 @@ async function handleConsent(page) {
 
 async function fetchOne(ctx, query) {
   const page = await ctx.newPage();
-  const out = { query, ok: false, count: 0, method: 'none', urls: [], title: '', rating: '' };
+  const out = { query, ok: false, count: 0, method: 'none', urls: [], title: '', rating: '', status: 'unknown', address: '' };
   try {
     const url = /^https?:\/\//.test(query)
       ? query
@@ -222,6 +276,11 @@ async function fetchOne(ctx, query) {
       const m = document.body.innerText.match(/([0-9]\.[0-9])\s*\n?\s*\(([0-9,]+)\)/);
       return m ? m[1] + ' (' + m[2] + ')' : 'NOT_FOUND';
     });
+    // 营业状态要在进图库之前读：进了图库，主面板就换成照片了
+    const info = await readPlaceInfo(page);
+    out.status = placeStatus(info.text);
+    out.address = info.address;
+    out.place_title = info.title;
 
     const collected = new Map();
     merge(collected, await collectFromDom(page));
@@ -313,7 +372,8 @@ async function fetchOne(ctx, query) {
   return out;
 }
 
-(async () => {
+async function main() {
+  const { chromium } = await import('playwright');
   const queries = (process.env.QUERIES || '').split('|').map(s => s.trim()).filter(Boolean);
   if (!queries.length) {
     console.log('没有查询目标，QUERIES 是空的');
@@ -342,7 +402,15 @@ async function fetchOne(ctx, query) {
         total: results.length,
         ok: results.length - short.length,
         short: short.map(r => ({ query: r.query, count: r.count, error: r.error })),
+        // 关门的店不能进手册，单独列出来，免得埋在一长串 RESULT 里没人看到
+        closed: results.filter(r => /closed/.test(r.status))
+          .map(r => ({ query: r.query, status: r.status, place_title: r.place_title })),
       })
   );
   // 抓不满不算失败——如实回报即可，由人决定怎么处理
-})();
+}
+
+// 被自检 import 时不跑主程序（也就不需要 playwright）；直接 node 执行时才跑
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
