@@ -1544,7 +1544,7 @@ function tonightHotelCardHtml(dateIso){
     const name = String(h.name || '').trim() || pickObj(it.title);
     const map = hotelMapUrl(h);
     const tel = telHref(h.phone);
-    return `<div class="tonight-hotel" id="tonight-hotel">
+    return `<div class="tonight-hotel">
         <div class="tonight-hotel-hd">🏨 ${bl('今晚住：', 'Tonight: ')}<b>${escapeHtml(name)}</b></div>
         ${ (h.address || '').trim() ? `<div class="tonight-hotel-addr">${ map
             ? `<a href="${escapeHtml(map)}" target="_blank" rel="noopener">📍 ${escapeHtml(h.address.trim())}</a>`
