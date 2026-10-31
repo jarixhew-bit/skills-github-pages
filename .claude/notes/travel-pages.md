@@ -149,7 +149,7 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
   以上查证于 2026-08-19，来源全被沙盒挡、只有搜索摘要，页面上已标「以 MBS 礼宾
   确认为准」；日后若拿到官网原文或 MBS 回覆，以那个为准。
 
-## sg-jkt-trip/singapore.html（约 1022 行；2026-10-30 建，同日按用户要求大改）
+## sg-jkt-trip/singapore.html（约 1300 行；2026-10-30 建，同日按用户要求大改）
 11 月新加坡手册，2026-11-11（三）～11-14（六）三晚四天，Nak／Yang／Jacky 3 位成年人，**没有小孩**，双语。
 URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html` 原是四套航班方案比较页，2026-10-31 航班订好后用户说「他们选了就不需要存在了」，改成跳转页（跳到 singapore.html，保住已发出去的 /sg-jkt-trip/ 网址），勿再恢复方案内容；
 本页**不再链回** `./index.html`（2026-10-31 航班已订）。已登记 `tools/lib/trips.py`（行程最后一天 2026-11-14）。
@@ -160,15 +160,20 @@ hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案�
 SQ133 PEN→SIN 12:00–13:35〔Yap Lian Khoon 商务〕；11/14 SQ958 SIN T2→CGK T3 12:30–13:20〔三人〕；下面 `.tbl` 行李额表＋随身小物一句) →
 `#hotel`(02，`.hotel` 卡：MBS 11/11 入住 11/14 退房，分房 套房 Tan Chin Hooi／标准大床 Yap、Hew；「机场接送由 MBS 安排」) →
 `#events`(03，开头一句「供参考、去不去由你们、没排进行程」＋9 张 `.evt`＋圣诞灯饰提示，清单见下) → `#itinerary`(04，`.day#day01`~`#day04`，
-`data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，14 张 `.evt`，三个 `.grp` 小标题：乌节路 8 → 滨海湾金沙 2 → 其他区域 4，组内按菜系排；
+`data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，18 张 `.evt`，三个 `.grp` 小标题：乌节路 9 → 滨海湾金沙 3 → 其他区域 6（组标题里的家数是手写的，加卡要同步改），组内按菜系排；
 每张卡 `.et` 开头有「📍区域 · 」标签，chips 写午市＋晚市)。**2026-10-30 用户要求「餐厅直接搞成列表，别分晚餐」**：
 原 `#orchard`＋`#dinner` 两区块合并、D2 的两张午餐 `.stop` 也搬进来，**逐日行程不再放餐厅卡**，只用一句话＋`#food` 链接。
-逐日（2026-10-31 改，见文末）：D1 `.tl` 航班时间轴→MBS 接机→入住→午餐与下午自由→晚餐指 `#food` 的 MBS 组（PUTIEN／JUMBO Signatures），没有 `.dayfoot`；
+逐日（2026-10-31 改，见文末）：D1 `.tl` 航班时间轴→MBS 接机→入住→午餐与下午自由（一句链到 `#mall-shoppes`）→晚餐指 `#food` 的 MBS 组（PUTIEN／JUMBO Signatures），没有 `.dayfoot`；
 D2 上午四马路观音庙（必去，用户指定保留）→午餐 `.note` 一句话链 `#food`（点名 Violet Oon／麦士威，卡在「其他区域」组）→
-`.note`「14:00 以后下午留给自己安排」→ `.dayfoot` 链 `#food`；D3 乌节路日：一张 `.note` 一句话链到 `#food` 挑午餐 →
-Takashimaya `.stop` → 下午自由 → `.dayfoot` 链 `#food`；D4 是 `.tl > .ev` ＋一张 Jewel `.stop`（未改）。
-`#food` 乌节路组：江南春（四季）、夏宫（康莱德）、华厅（乌节大酒店）、Fook Kin、Paradise Teochew（Takashimaya）、Song Fa Signatures（Paragon）、Chatterbox、Aburi-EN；
-MBS 组：PUTIEN、JUMBO Signatures；其他组：National Kitchen by Violet Oon（市政区）、Candlenut（登布西）、麦士威熟食中心（牛车水）、Sushi Katori（丹戎巴葛）。新 7 家的 Google 评分取自 2026-10-30 CI 抓图（fetch-photos 的 rating 字段）；
+`.note`「下午：逛商场（任选）」→ **6 张商场 `.stop`（`id="mall-*"`，2026-10-31 用户：「丢去 D2 那边就好」「高岛屋也去 D2」）**：
+Raffles City（市政区，离观音庙最近）→ Takashimaya（义安城）→ Paragon → ION → Mandarin Gallery（乌节路四家）→ The Shoppes at MBS；
+每张写 📍区域、⭐评分（N 条）、地址、11/11–11/13 营业时间、主打什么、距离；楼里有 `#food` 餐厅的只写一句「见餐厅列表」，不另做卡。
+**没有独立的「购物商场」区块、没有 nav chip**（用户先要过，随即改口放 D2）。D2 雨天／烟霾备案写明六家全室内。→ `.dayfoot` 链 `#food`；
+D3 **自由日**（「D3 我们后面再找地方」）：只有天气条＋通用室内雨天／烟霾备案＋一张 `.note`（这一天自由安排＋午餐链 `#food`）＋`.dayfoot`，不写「待定」；
+日后用户给了 D3 去处再加卡。D4 是 `.tl > .ev`（未改）。
+`#food` 乌节路组：江南春（四季）、夏宫（康莱德）、华厅（乌节大酒店）、Fook Kin、Paradise Teochew（Takashimaya）、翡翠金阁 Crystal Jade Golden Palace（Paragon #05-22）、Song Fa Signatures（Paragon）、Chatterbox、Aburi-EN；
+MBS 组：PUTIEN、JUMBO Signatures、鼎泰丰（#B1-01）；其他组：National Kitchen by Violet Oon（市政区）、Candlenut（登布西）、麦士威熟食中心（牛车水）、松发总店、Sushi Katori（丹戎巴葛）、新食尚 Gourmet Paradise（Marina Square #02-180，口福集团美食广场；ION B4 的是 Food Opera，不是它）。
+**2026-10-31 用户指定加的三家不受 4.2 门槛**：鼎泰丰 MBS 4.2（1,304）、翡翠金阁 4.3（886）、Gourmet Paradise 3.8（143），评分照实写。新 7 家的 Google 评分取自 2026-10-30 CI 抓图（fetch-photos 的 rating 字段）；
 海南美味佳肴鸡饭（远东广场）CI 评分 3.8，未达 4.2 门槛不放。
 **餐厅不重复（2026-10-30 用户要求「那些有的餐厅就不要重复了」）**：每个品牌全页只留一张卡——JUMBO 留 MBS 的 JUMBO Signatures（删 ION 店）、
 PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 用户指定「本来那家」，删 Centrepoint）。加新餐厅前先 grep 品牌名，已有就不加分店。
@@ -178,7 +183,7 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
   **赌场一个字都不写**（「让他们自己来」）——他们主要是去赌场，所以下午留白，不排活动。
   National Kitchen 是餐厅照留（地址里有 National Gallery 字样是允许的），但描述不要叫人去逛美术馆。
 - 9 月那本的**儿童活动、环球影城、体检、贵宾通道、包车分房、老板晚餐**一律不进本页（用户 2026-10-30 指示「去掉小孩子玩乐的地方」）。
-  Banana Leaf Apolo（Google 4.1）、Crystal Jade、Syun、Sushi Tei、亚音、Miyuki、925、33 鲜味园评分不到 4.2 或位置偏远，不用。
+  Banana Leaf Apolo（Google 4.1）、Crystal Jade（其他分店；Golden Palace 是用户 10-31 指定加的）、Syun、Sushi Tei、亚音、Miyuki、925、33 鲜味园评分不到 4.2 或位置偏远，不用。
 - **限时活动（2026-10-30 用户：「限时活动你加下去，去不去由他」）**：只列不排进行程，区块开头中英各一句说明。顺序＝单场按日期 → 限期展演按结束日 → 每晚常态：
   My Chemical Romance（11/11，室内体育馆，可能售罄）→ 新加坡作家节（11/13–22，通行证约 S$15–30）→ Morgan Jay 单口喜剧（11/13 两场、11/14 一场，16+）→
   《CATS》（Sands Theatre，演到 11/15）→ SINGAPORAMA（国家美术馆中庭，免费，展到 11 月下旬）→ In the Ether（ArtScience，免费，到 12/6）→
@@ -194,7 +199,7 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
 - 每张卡都写 11 月那天的营业时间；资料矛盾就写保守的那个（观音庙 → 写「7:00–18:00 一定开」）；查不到写成提醒（「出发前请电话确认」「有没有包厢请订位时询问」），不写「未查证」。
 - D4：SQ958 12:30 起飞，不去 Jewel（见文末 2026-10-31）。
 天气自检：`tools/check-weather.mjs` **已把本页加进去**（`[sg-nov]` 前缀：4 天结构、预报／部分预报／挂掉／窗口外、三档 PSI、
-当天烟霾行，D2 替代方案要含观音庙与 Violet Oon、且不能再提美术馆／Capitol／按摩；另有一条整页禁词检查，
+当天烟霾行，D2 替代方案要含观音庙、Violet Oon 与商场，D2 要有 6 张商场卡（每张 ≥4 图、其他天不得再放商场卡）、且不能再提美术馆／Capitol／按摩；另有一条整页禁词检查，
 已删地点（Garden Rhapsody、花穹、云雾林、佛牙、苏丹回教堂、按摩、各酒吧、赌场）出现就红）；`tools/ci-decide.py` 的 `weather` 组也已登记本页。
 加一天仍要配一组 `.wxbox`（`.wx`＋`.rainplan`＋`.hazeplan`），否则那支脚本会红。
 

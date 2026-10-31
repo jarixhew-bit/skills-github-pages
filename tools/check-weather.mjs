@@ -379,8 +379,16 @@ check(/131/.test(sgnBadDay[0]?.now || '') && sgnBadDay[0]?.actHidden === false &
   `[sg-nov] 11/12 PSI 131：要写出 131、标红、摊开替代方案（实得 ${JSON.stringify(sgnBadDay)}）`);
 const sgnActText = await page.evaluate(() => document.querySelector('.day[data-date="2026-11-12"] .hazeact')?.textContent || '');
 // 2026-10-30 用户删掉美术馆／按摩／甘榜格南：D2 只剩观音庙＋午餐二选一＋下午自由
-check(/观音庙|Kwan Im/.test(sgnActText) && /Violet Oon|National Kitchen/.test(sgnActText) && !/美术馆|Capitol|按摩|Massage|苏丹|Sultan/.test(sgnActText),
-  `[sg-nov] 11/12 摊开的替代方案要是这一天的（观音庙＋Violet Oon，不再提美术馆／按摩），实得：${sgnActText.slice(0, 60)}`);
+// 2026-10-31 用户要求 D2 下午改成逛商场（六家室内商场）：替代方案也要说到商场照逛
+check(/观音庙|Kwan Im/.test(sgnActText) && /Violet Oon|National Kitchen/.test(sgnActText) && /商场|mall/i.test(sgnActText) && !/美术馆|Capitol|按摩|Massage|苏丹|Sultan/.test(sgnActText),
+  `[sg-nov] 11/12 摊开的替代方案要是这一天的（观音庙＋Violet Oon＋商场照逛，不再提美术馆／按摩），实得：${sgnActText.slice(0, 60)}`);
+// D2 下午的商场卡：六家、每家至少 4 张图，同一个商场全页只出现一次（Takashimaya 2026-10-31 从 D3 搬来）
+const sgnMalls = await page.evaluate(() => ({
+  imgs: [...document.querySelectorAll('#day02 .stop[id^="mall-"]')].map(e => e.querySelectorAll('.gal img').length),
+  otherDays: [...document.querySelectorAll('.day:not(#day02) .stop h4')].map(e => e.textContent).filter(t => /Takashimaya|ION|Paragon|Raffles City|Mandarin Gallery|The Shoppes/.test(t)),
+}));
+check(sgnMalls.imgs.length === 6 && sgnMalls.imgs.every(n => n >= 4) && sgnMalls.otherDays.length === 0,
+  `[sg-nov] D2 应有 6 张商场卡、每张 ≥4 张图，其他天不再放商场卡（实得 ${JSON.stringify(sgnMalls)}）`);
 // 用户 2026-10-30 的内容决定：这些地点已删，整页不该再出现（防止日后从 9 月旧页复制回来）
 const sgnBanned = await page.evaluate(() => {
   const t = document.body.textContent;
