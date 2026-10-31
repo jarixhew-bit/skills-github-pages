@@ -169,8 +169,14 @@ D2 上午四马路观音庙（必去，用户指定保留）→午餐 `.note` �
 Raffles City（市政区，离观音庙最近）→ Takashimaya（义安城）→ Paragon → ION → Mandarin Gallery（乌节路四家）→ The Shoppes at MBS；
 每张写 📍区域、⭐评分（N 条）、地址、11/11–11/13 营业时间、主打什么、距离；楼里有 `#food` 餐厅的只写一句「见餐厅列表」，不另做卡。
 **没有独立的「购物商场」区块、没有 nav chip**（用户先要过，随即改口放 D2）。D2 雨天／烟霾备案写明六家全室内。→ `.dayfoot` 链 `#food`；
-D3 **自由日**（「D3 我们后面再找地方」）：只有天气条＋通用室内雨天／烟霾备案＋一张 `.note`（这一天自由安排＋午餐链 `#food`）＋`.dayfoot`，不写「待定」；
-日后用户给了 D3 去处再加卡。D4 是 `.tl > .ev`（未改）。
+D3「植物园 · 牛车水 · 甘榜格南」（2026-10-31 用户亲选，见内容决定）：路线 `.note` → 绿色 `.note` 车程（酒店→植物园 Tyersall Gate 15–20 分）→
+`.stop#d3-botanic`（国家胡姬园 4.8／2,012）→ 车程（15–20 分）→ `.stop#d3-temple`（佛牙寺 4.6／12,406，遮肩遮膝、门口可借披肩）→
+午餐 `.note` 链 `#food-maxwell`／`#food-songfa` → 车程（10–15 分）→ `.stop#d3-kampong`（苏丹回教堂 4.7／14,203＋哈芝巷 4.6／1,653，两颗地图钮）→
+车程回酒店（10–15 分）→ `.dayfoot`。**苏丹回教堂周五不开放游客入殿**（官网参观时段只有周六至周四 10–12、14–16；周五中午约 12:00–14:30 聚礼），
+卡上写成「下午来在门前看金顶拍照」，别改成「下午能进去」。雨天先去佛牙寺、植物园可换 D2 商场；烟霾不去植物园、午餐改松发。
+D4 是 `.tl > .ev`（未改）。
+餐厅卡有 `id="food-*"`（putien／jumbo／dtf／rasapura／violet／maxwell／songfa），逐日行程用来直链；D1 晚餐一句话带全 MBS 组四家（含 B2 的 Rasapura Masters）。
+天天海南鸡饭：10:00–19:30、周一休息（Michelin 指南），卖完提早收。
 `#food` 乌节路组：江南春（四季）、夏宫（康莱德）、华厅（乌节大酒店）、Fook Kin、Paradise Teochew（Takashimaya）、翡翠金阁 Crystal Jade Golden Palace（Paragon #05-22）、Song Fa Signatures（Paragon）、Chatterbox、Aburi-EN；
 MBS 组：PUTIEN、JUMBO Signatures、鼎泰丰（#B1-01）、Rasapura Masters（B2 美食广场，2025-11 翻新重开）；其他组：National Kitchen by Violet Oon（市政区）、Candlenut（登布西）、麦士威熟食中心（牛车水）、松发总店、Sushi Katori（丹戎巴葛）。2026-10-31 用户：「Gourmet Paradise 我搞错了，是 Rasapura Masters 才对」——Gourmet Paradise（Marina Square）已删，勿再加回。
 **2026-10-31 用户指定加的三家不受 4.2 门槛**：鼎泰丰 MBS 4.2（1,304）、翡翠金阁 4.3（886）、Rasapura Masters 4.0（2,602），评分照实写。新 7 家的 Google 评分取自 2026-10-30 CI 抓图（fetch-photos 的 rating 字段）；
@@ -178,7 +184,9 @@ MBS 组：PUTIEN、JUMBO Signatures、鼎泰丰（#B1-01）、Rasapura Masters�
 **餐厅不重复（2026-10-30 用户要求「那些有的餐厅就不要重复了」）**：每个品牌全页只留一张卡——JUMBO 留 MBS 的 JUMBO Signatures（删 ION 店）、
 PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 用户指定「本来那家」，删 Centrepoint）。加新餐厅前先 grep 品牌名，已有就不加分店。
 内容决定（勿擅自回退）：
-- **2026-10-30 用户明确删除**：宗教景点（四马路观音庙除外，「那个是必去的」）、按摩、国家美术馆（景点）、植物园／胡姬园、
+- **2026-10-31 用户亲选 D3：植物园、牛车水佛牙寺、甘榜格南**（「11，15，18」，推翻 10-30 删掉的这三类）；只放在 D3，别处不放。
+  四马路观音庙仍在 D2。
+- **2026-10-30 用户明确删除**：按摩、国家美术馆（景点）、
   滨海湾花园（花穹／云雾林／Garden Rhapsody 灯光秀）、酒吧（CÉ LA VI／Atlas／LeVeL33／Jigger & Pony）。
   **赌场一个字都不写**（「让他们自己来」）——他们主要是去赌场，所以下午留白，不排活动。
   National Kitchen 是餐厅照留（地址里有 National Gallery 字样是允许的），但描述不要叫人去逛美术馆。
@@ -200,7 +208,8 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
 - D4：SQ958 12:30 起飞，不去 Jewel（见文末 2026-10-31）。
 天气自检：`tools/check-weather.mjs` **已把本页加进去**（`[sg-nov]` 前缀：4 天结构、预报／部分预报／挂掉／窗口外、三档 PSI、
 当天烟霾行，D2 替代方案要含观音庙、Violet Oon 与商场，D2 要有 6 张商场卡（每张 ≥4 图、其他天不得再放商场卡）、且不能再提美术馆／Capitol／按摩；另有一条整页禁词检查，
-已删地点（Garden Rhapsody、花穹、云雾林、佛牙、苏丹回教堂、按摩、各酒吧、赌场）出现就红）；`tools/ci-decide.py` 的 `weather` 组也已登记本页。
+已删地点（Garden Rhapsody、花穹、云雾林、按摩、各酒吧、赌场）出现就红；佛牙寺／苏丹回教堂／哈芝巷／甘榜格南／植物园／胡姬园只准出现在 `#day03`，
+另有正向断言 D3 要有这三张卡、每张 ≥4 图）；`tools/ci-decide.py` 的 `weather` 组也已登记本页。
 加一天仍要配一组 `.wxbox`（`.wx`＋`.rainplan`＋`.hazeplan`），否则那支脚本会红。
 
 **2026-10-31 用户给了确定资料**（Trip.com 行程单＋MBS WhatsApp）：
