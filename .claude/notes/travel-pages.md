@@ -151,7 +151,7 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
 
 ## sg-jkt-trip/singapore.html（约 1022 行；2026-10-30 建，同日按用户要求大改）
 11 月新加坡手册，2026-11-11（三）～11-14（六）三晚四天，Nak／Yang／Jacky 3 位成年人，**没有小孩**，双语。
-URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html`（四套航班方案，旧页）顶部有 `.jump` 小链接指过来；
+URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html` 原是四套航班方案比较页，2026-10-31 航班订好后用户说「他们选了就不需要存在了」，改成跳转页（跳到 singapore.html，保住已发出去的 /sg-jkt-trip/ 网址），勿再恢复方案内容；
 本页**不再链回** `./index.html`（2026-10-31 航班已订）。已登记 `tools/lib/trips.py`（行程最后一天 2026-11-14）。
 **CSS 与 JS 整套复制自 singapore-trip/index.html**（`.day`／`.stop`／`.evt`／`.tl`／lightbox／天气条／PSI 条／
 hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案常数（「十一月常态 25–31°C，午后雷阵雨常见」，
