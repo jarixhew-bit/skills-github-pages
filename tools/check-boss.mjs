@@ -44,6 +44,17 @@ import {
   ok('viewer 下底部导航没有「管理」入口', await page.locator('#nav-admin-btn').count() === 0);
   ok('viewer 下 #tab-admin 容器是空的（不是 CSS 隐藏，是压根没渲染）',
      (await page.evaluate(() => document.getElementById('tab-admin').innerHTML.trim())) === '');
+  // 2026-10-31 写行程四项改进：从手册导入、时段、酒店、乘客座位——这些控件老板那边一个都不许有
+  const newCtl = await page.evaluate(() => ({
+    importBtn: document.querySelectorAll('#admin-import-btn, #admin-import-guide, #admin-import-block').length,
+    period: document.querySelectorAll('select[id$="-period"]').length,
+    hotel: document.querySelectorAll('[id*="-hotel-"], .admin-btn-hotel').length,
+    pax: document.querySelectorAll('[id*="-pax"]').length,
+  }));
+  ok('★viewer 下「从手册导入」的选单与按钮为 0', newCtl.importBtn === 0, newCtl);
+  ok('★viewer 下时段选单为 0', newCtl.period === 0, newCtl);
+  ok('★viewer 下酒店表单控件为 0', newCtl.hotel === 0, newCtl);
+  ok('★viewer 下乘客座位输入框为 0', newCtl.pax === 0, newCtl);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
 
   await ctx.close();
@@ -73,6 +84,15 @@ import {
   ok('admin 下 #admin-bill-title-zh（上传账单的标题框）存在', billTitleCnt === 1, billTitleCnt);
   ok('admin 下含「上传/删除/保存」文案的按钮存在（上传按钮＋删除账单＋保存行程，至少 3 个）',
      writeBtnCnt >= 3, writeBtnCnt);
+  // 对照组：上面 viewer 那四条是 0，不是因为功能坏了
+  ok('★admin 下「从手册导入」选单与按钮都在', await page.locator('#admin-import-guide').count() === 1
+     && await page.locator('#admin-import-btn').count() === 1);
+  ok('★admin 下手册选单里有新加坡、雅加达两本', await page.locator('#admin-import-guide option[value="sg-jkt-trip/singapore.html"]').count() === 1
+     && await page.locator('#admin-import-guide option[value="sg-jkt-trip/jakarta.html"]').count() === 1);
+  await page.locator('.admin-trip-summary').first().click();
+  await until(() => page.locator('select[id$="-period"]').count().then(n => n >= 1), { what: '展开行程后出现时段选单' });
+  ok('★admin 展开行程后有时段选单', await page.locator('select[id$="-period"]').count() >= 1);
+  ok('★admin 展开行程后有「+ 酒店」按钮', await page.locator('.admin-btn-hotel').count() === 1);
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
 
   await ctx.close();

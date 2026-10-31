@@ -374,7 +374,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .admin-block h3{font-size:14.5px;margin-bottom:12px;color:var(--p)}
 .admin-field{margin-bottom:12px}
 .admin-field label{display:block;font-size:12.5px;color:var(--sub);margin-bottom:5px;font-weight:600}
-.admin-field input[type=text],.admin-field input[type=date],.admin-field input[type=time],
+.admin-field input[type=tel],.admin-field input[type=text],.admin-field input[type=date],.admin-field input[type=time],
 .admin-field textarea{width:100%;padding:10px 12px;
   border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;color:var(--text)}
 .admin-field textarea{min-height:160px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
@@ -513,6 +513,29 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .nav-dot{display:none;position:absolute;top:-2px;right:-6px;width:8px;height:8px;
   border-radius:50%;background:var(--danger)}
 .nav-btn.has-dot .nav-dot{display:block}
+/* ===== 时段、乘客座位、酒店、今晚住（2026-10-31） ===== */
+.item-period{font-size:12px;font-weight:700;color:var(--p)}
+.flight-pax{margin-top:6px;color:var(--text);line-height:1.6}
+.flight-pax-one{white-space:nowrap}
+.hotel-info{margin-top:8px;padding:10px 12px;background:#F8FAFC;border:1px solid var(--border);
+  border-radius:10px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+.hotel-info a{color:var(--p);font-weight:600}
+.tonight-hotel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;
+  margin-bottom:14px;border-left:4px solid var(--p)}
+.tonight-hotel-hd{font-size:15.5px;line-height:1.4}
+.tonight-hotel-addr{margin-top:6px;font-size:13px;overflow-wrap:anywhere}
+.tonight-hotel-addr a{color:var(--sub);text-decoration:none}
+.tonight-hotel-btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.tonight-hotel-btn{font-size:13px;font-weight:700;color:var(--p);background:var(--p2);border-radius:999px;
+  padding:7px 14px;text-decoration:none}
+.admin-field-period{flex:0 1 96px;min-width:84px}
+.admin-pax-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.admin-pax-row input{flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;
+  font-size:14px;font-family:inherit}
+.admin-pax-row input.admin-pax-seat{flex:0 0 64px;text-transform:uppercase}
+.admin-btn-hotel{background:var(--p2);color:var(--p)}
+.admin-import-ask{margin-top:10px;padding:10px 12px;border:1.5px solid #F59E0B;border-radius:10px;background:#FFFBEB;font-size:13.5px}
+.admin-import-ask-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 </style>
 </head>
 <body>
@@ -708,6 +731,8 @@ const GUIDE_OPTIONS = [
   { path:'penang-trip/', zh:'槟城旅游手册', en:'Penang Trip Guide' },
   { path:'xiamen-trip/', zh:'厦门旅游手册', en:'Xiamen Trip Guide' },
   { path:'singapore-trip/', zh:'新加坡旅游手册', en:'Singapore Trip Guide' },
+  { path:'sg-jkt-trip/singapore.html', zh:'新加坡手册（11月）', en:'Singapore Guide (Nov)' },
+  { path:'sg-jkt-trip/jakarta.html', zh:'雅加达手册（11月）', en:'Jakarta Guide (Nov)' },
   { path:'usj-disney-restaurants.html', zh:'USJ/迪士尼餐厅指南', en:'USJ/Disney Restaurant Guide' },
   { path:'restaurant-guide.html', zh:'餐厅指南', en:'Restaurant Guide' },
 ];
@@ -1010,7 +1035,7 @@ function flightInfoHtml(it){
   const live = f.live || null;
   const noLabel = escapeHtml(f.no || '');
   if(!live){
-    return `<div class="flight-info"><span class="flight-badge">✈️ ${noLabel}</span></div>`;
+    return `<div class="flight-info"><span class="flight-badge">✈️ ${noLabel}</span>${flightPaxHtml(f)}</div>`;
   }
   const from = live.from || '', to = live.to || '';
   const routeLabel = (from || to) ? `<span class="flight-route">${escapeHtml(from)} → ${escapeHtml(to)}</span>` : '';
@@ -1030,6 +1055,7 @@ function flightInfoHtml(it){
         <div>${bl('到达','Arr')} ${flightTimePartHtml(live.sched_arr, live.act_arr, live.est_arr)}</div>
       </div>
       ${ gateBits.length ? `<div class="flight-info-gate">${gateBits.join(' · ')}</div>` : '' }
+      ${flightPaxHtml(f)}
     </div>`;
 }
 /** 同一趟行程里，相邻两个航班条目：前一班到达机场 == 后一班出发机场时，
@@ -1398,22 +1424,161 @@ function findNextItineraryDate(afterIso){
   });
   return min;
 }
+/* ---------- 时段：没有钟点的条目选「上午／下午／晚上」（2026-10-31） ----------
+ * 排序规则（四处共用 sortItemsByTime：今天页、行程页、分享文字、管理表单）：
+ *   有钟点 → 照钟点；只有时段 → 排在那个时段的**末尾**：上午在 12:00 前、下午在 18:00 前、晚上排最后；
+ *   两样都没填 → 跟以前一样排在当天最前面，彼此保持原来的先后。
+ *   为什么放末尾不放开头：「下午入住酒店」要排在 12:30 起飞、13:20 落地的航班后面，
+ *   放开头（12:00）就会跑到航班前面——正是 11/14 雅加达那天的真实数据。
+ * 以前只按 time 字符串比，空字符串永远排最前：11/14「晚上朋友生日宴」跑到 12:30 航班前面。 */
+const PERIODS = ['morning','afternoon','evening'];
+const PERIOD_LABEL = { morning:['上午','Morning'], afternoon:['下午','Afternoon'], evening:['晚上','Evening'] };
+function itemPeriod(it){ return it && PERIODS.includes(it.period) ? it.period : ''; }
+function itemSortMinutes(it){
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String((it && it.time) || '').trim());
+  if(m) return Number(m[1]) * 60 + Number(m[2]);
+  const p = itemPeriod(it);
+  if(p === 'morning') return 12 * 60 - 0.5;     // 11:59 之后、12:00 之前
+  if(p === 'afternoon') return 18 * 60 - 0.5;   // 17:59 之后、18:00 之前
+  if(p === 'evening') return 24 * 60 - 0.5;     // 当天最后
+  return -1;
+}
+function compareItems(a, b){
+  const da = (a && a.date) || '', db = (b && b.date) || '';
+  if(da !== db) return da.localeCompare(db);
+  return itemSortMinutes(a) - itemSortMinutes(b);
+}
+/** 稳定排序（同一时刻的条目保持数据里的先后）。 */
+function sortItemsByTime(items){
+  return (items || []).map((it, i) => [it, i])
+    .sort((x, y) => compareItems(x[0], y[0]) || (x[1] - y[1])).map(x => x[0]);
+}
+/** 条目左边那一格：有钟点印钟点，只有时段就印「上午」这类字。 */
+function itemTimeHtml(it){
+  const t = String((it && it.time) || '').trim();
+  if(t) return escapeHtml(t);
+  const p = itemPeriod(it);
+  return p ? `<span class="item-period">${bl(PERIOD_LABEL[p][0], PERIOD_LABEL[p][1])}</span>` : '';
+}
+function itemTimeText(it){
+  const t = String((it && it.time) || '').trim();
+  if(t) return t;
+  const p = itemPeriod(it);
+  return p ? pick(PERIOD_LABEL[p][0], PERIOD_LABEL[p][1]) : '';
+}
+
+/* ---------- 航班乘客与座位（item.flight.pax = [{name, seat}]） ---------- */
+function flightPaxList(f){
+  return (f && Array.isArray(f.pax) ? f.pax : [])
+    .map(p => ({ name: String((p && p.name) || '').trim(), seat: String((p && p.seat) || '').trim().toUpperCase() }))
+    .filter(p => p.name);
+}
+/** 「Tan Chin Hooi 11A · Hew Chern Yang 49C」——名字照全名印：三个字的名字在 360px 上
+ *  也放得下，每位乘客整段不拆行，放不下就整位换到下一行。 */
+function flightPaxHtml(f){
+  const list = flightPaxList(f);
+  if(!list.length) return '';
+  return `<div class="flight-pax">👤 ${list.map(p =>
+    `<span class="flight-pax-one">${escapeHtml(p.name)}${p.seat ? ` <b>${escapeHtml(p.seat)}</b>` : ''}</span>`).join(' · ')}</div>`;
+}
+function flightPaxText(f){
+  const list = flightPaxList(f);
+  return list.length ? '👤 ' + list.map(p => p.seat ? `${p.name} ${p.seat}` : p.name).join(' · ') : '';
+}
+
+/* ---------- 酒店条目（item.kind = "hotel"） ---------- */
+function isHotelItem(it){ return !!(it && it.kind === 'hotel' && it.hotel && typeof it.hotel === 'object'); }
+function hotelMapUrl(h){
+  if(!h) return '';
+  if((h.mapUrl || '').trim()) return h.mapUrl.trim();
+  const q = [h.name, h.address].map(x => String(x || '').trim()).filter(Boolean).join(' ');
+  return q ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q) : '';
+}
+/** tel: 链接只留 + 和数字（空格、括号、横线拨号时没用，有的手机还会认错）。 */
+function telHref(phone){
+  const d = String(phone || '').replace(/[^\d+]/g, '');
+  return d.replace(/\D/g, '').length >= 6 ? 'tel:' + d : '';
+}
+function hotelNights(h){
+  if(!h || !h.checkIn || !h.checkOut) return 0;
+  const n = diffDaysIso(h.checkIn, h.checkOut);
+  return n > 0 ? n : 0;
+}
+function hotelInfoHtml(it){
+  if(!isHotelItem(it)) return '';
+  const h = it.hotel;
+  const rows = [];
+  const map = hotelMapUrl(h);
+  if((h.address || '').trim()){
+    rows.push(map
+      ? `<div>📍 <a class="hotel-addr" href="${escapeHtml(map)}" target="_blank" rel="noopener">${escapeHtml(h.address.trim())}</a></div>`
+      : `<div>📍 ${escapeHtml(h.address.trim())}</div>`);
+  }
+  const tel = telHref(h.phone);
+  if(tel) rows.push(`<div>📞 <a class="hotel-tel" href="${escapeHtml(tel)}">${escapeHtml(String(h.phone).trim())}</a></div>`);
+  if(h.checkIn || h.checkOut){
+    const a = h.checkIn ? { zh: fmtMdZh(h.checkIn), en: fmtMdEn(h.checkIn) } : null;
+    const b = h.checkOut ? { zh: fmtMdZh(h.checkOut), en: fmtMdEn(h.checkOut) } : null;
+    const n = hotelNights(h);
+    const zh = [a ? a.zh + ' 入住' : '', b ? b.zh + ' 退房' : '', n ? `${n} 晚` : ''].filter(Boolean).join(' · ');
+    const en = [a ? 'In ' + a.en : '', b ? 'out ' + b.en : '', n ? `${n} night${n > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
+    rows.push(`<div>🗓 ${bl(zh, en)}</div>`);
+  }
+  return rows.length ? `<div class="hotel-info">${rows.join('')}</div>` : '';
+}
+/** 今晚住哪：checkIn 当晚起，到 checkOut 前一晚为止（退房那天晚上已经不住这里）。 */
+function hotelsTonight(dateIso){
+  const out = [];
+  (feedData && feedData.trips || []).forEach(t => (t.items || []).forEach(it => {
+    if(!isHotelItem(it)) return;
+    const h = it.hotel;
+    if(h.checkIn && h.checkOut && dateIso >= h.checkIn && dateIso < h.checkOut) out.push(it);
+  }));
+  return out;
+}
+function tonightHotelCardHtml(dateIso){
+  const list = hotelsTonight(dateIso);
+  if(!list.length) return '';
+  return list.map(it => {
+    const h = it.hotel;
+    const name = String(h.name || '').trim() || pickObj(it.title);
+    const map = hotelMapUrl(h);
+    const tel = telHref(h.phone);
+    return `<div class="tonight-hotel" id="tonight-hotel">
+        <div class="tonight-hotel-hd">🏨 ${bl('今晚住：', 'Tonight: ')}<b>${escapeHtml(name)}</b></div>
+        ${ (h.address || '').trim() ? `<div class="tonight-hotel-addr">${ map
+            ? `<a href="${escapeHtml(map)}" target="_blank" rel="noopener">📍 ${escapeHtml(h.address.trim())}</a>`
+            : '📍 ' + escapeHtml(h.address.trim()) }</div>` : '' }
+        <div class="tonight-hotel-btns">
+          ${ tel ? `<a class="tonight-hotel-btn" href="${escapeHtml(tel)}">📞 ${bl('打电话','Call')}</a>` : '' }
+          ${ map ? `<a class="tonight-hotel-btn" href="${escapeHtml(map)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+        </div>
+      </div>`;
+  }).join('');
+}
+
 function itemRowHtml(it){
   const hasNote = it.note && ((it.note.zh || '').trim() || (it.note.en || '').trim());
-  return `<div class="item-row">
-      <div class="item-time">${escapeHtml(it.time || '')}</div>
+  return `<div class="item-row${isHotelItem(it) ? ' item-row-hotel' : ''}">
+      <div class="item-time">${itemTimeHtml(it)}</div>
       <div class="item-body">
-        <div class="item-title">${blObj(it.title)}</div>
+        <div class="item-title">${isHotelItem(it) ? '🏨 ' : ''}${blObj(it.title)}</div>
         ${ hasNote ? `<div class="item-note">${blObj(it.note)}</div>` : '' }
         ${ it.flight ? flightInfoHtml(it) : '' }
+        ${ hotelInfoHtml(it) }
       </div>
-      ${ it.mapUrl ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+      ${ it.mapUrl && !(isHotelItem(it) && (it.hotel.address || '').trim()) ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
     </div>`;
 }
-/** 覆盖某一天的行程（start~end 含首尾）——没有就 null。多趟重叠时取第一条，
- * 现实里很少发生，也没有产品需求要处理这种重叠。 */
+/** 覆盖某一天的所有行程（start~end 含首尾），按出发日排。
+ *  2026-10-31 改：以前只取第一趟。11/14 是新加坡那趟的最后一天、也是雅加达那趟的第一天，
+ *  「今天」页顶部只印新加坡，老板以为那天还待在新加坡。现在两趟的横幅都印。 */
+function activeTripsForDate(dateIso){
+  return (feedData.trips || []).filter(t => t.start && dateIso >= t.start && dateIso <= (t.end || t.start))
+    .slice().sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+}
 function activeTripForDate(dateIso){
-  return (feedData.trips || []).find(t => t.start && dateIso >= t.start && dateIso <= (t.end || t.start)) || null;
+  return activeTripsForDate(dateIso)[0] || null;
 }
 /** 「今天/明天」页顶部的行程横幅：哪怕这趟行程一条具体条目都还没排，人也知道
  * 「自己正在第几天」，不会误以为 App 把数据弄丢了（2026-08-27 用户反馈的根因）。 */
@@ -1433,9 +1598,9 @@ function todayTripBannerHtml(dateIso, trip){
  * 只有「没有行程覆盖这天、也没有条目」才用原本那张"没有安排"的空状态卡——
  * 人正在旅途中但还没排细节时，那句话是错的，会让人以为数据丢了。 */
 function todaySectionBodyHtml(dateIso, items, isTomorrow){
-  const trip = activeTripForDate(dateIso);
-  if(trip){
-    let html = todayTripBannerHtml(dateIso, trip);
+  const trips = activeTripsForDate(dateIso);
+  if(trips.length){
+    let html = trips.map(t => todayTripBannerHtml(dateIso, t)).join('');
     const emptyNote = isTomorrow
       ? bl('明天还没排具体安排','No specific plan yet for tomorrow')
       : bl('今天还没排具体安排','No specific plan yet for today');
@@ -1460,14 +1625,16 @@ function renderToday(){
       if(it.date === todayIso || it.date === tomorrowIso) all.push(it);
     });
   });
-  all.sort((a,b) => a.date === b.date ? (a.time||'').localeCompare(b.time||'') : a.date.localeCompare(b.date));
-  const todayItems = all.filter(it => it.date === todayIso);
-  const tomorrowItems = all.filter(it => it.date === tomorrowIso);
+  const sorted = sortItemsByTime(all);
+  const todayItems = sorted.filter(it => it.date === todayIso);
+  const tomorrowItems = sorted.filter(it => it.date === tomorrowIso);
 
   // 还没看的账单摆在最上面（2026-10-29）：他打开 App 几乎只看「今天」，账单要切到另一页才看得到
   const newBills = unreadBills();
   let html = newBillsCardHtml(newBills);
   html += `<div class="sec-hdr"${newBills.length ? ' style="margin-top:20px"' : ''}><span class="sec-title">${bl('今天','Today')}</span>${shareDayBtnHtml(todayIso)}</div>`;
+  // 今晚住哪摆在「今天」标题正下方：老板出门在外最常问的一句
+  html += tonightHotelCardHtml(todayIso);
   const todayBody = todaySectionBodyHtml(todayIso, todayItems);
   if(todayBody !== null){
     html += todayBody;
@@ -1746,10 +1913,7 @@ function addMonthsIso(iso, n){
 /* ============================= 行程 ============================= */
 /** 行程条目按日期＋时间排好序（收起态预览、展开态全列表共用同一份排序）。 */
 function sortedTripItems(trip){
-  return (trip.items || []).slice().sort((a,b) => {
-    if(a.date !== b.date) return (a.date||'').localeCompare(b.date||'');
-    return (a.time||'').localeCompare(b.time||'');
-  });
+  return sortItemsByTime(trip.items || []);
 }
 /** 收起态预览：前 3 条「时间 + 标题」，多的显示「还有 N 项」；没有条目给一句提示，不留空白。 */
 function tripPreviewHtml(trip){
@@ -1761,7 +1925,7 @@ function tripPreviewHtml(trip){
   const shown = items.slice(0, LIMIT);
   let html = shown.map(it => `
       <div class="trip-preview-row">
-        <span class="trip-preview-time">${escapeHtml(it.time || '')}</span>
+        <span class="trip-preview-time">${itemTimeHtml(it)}</span>
         <span class="trip-preview-title">${blObj(it.title)}</span>
       </div>`).join('');
   const more = items.length - shown.length;
@@ -2383,8 +2547,7 @@ function itemsForDate(dateIso){
   (feedData && feedData.trips || []).forEach(t => (t.items || []).forEach(it => {
     if(it && it.date === dateIso) out.push(it);
   }));
-  out.sort((a,b) => (a.time||'').localeCompare(b.time||''));
-  return out;
+  return sortItemsByTime(out);
 }
 /** 航班那几行。**跟屏幕上显示的完全一致**：延误/预计的判定共用 flightTimeParts()，
  *  不另写一套——否则会出现「App 上写预计晚 22 分、发给老板的文字说准点」。 */
@@ -2392,7 +2555,7 @@ function flightShareLines(it){
   const f = it && it.flight;
   if(!f) return [];
   const live = f.live || null;
-  if(!live) return ['✈️ ' + (f.no || '')];
+  if(!live) return ['✈️ ' + (f.no || ''), flightPaxText(f)].filter(Boolean);
   const zh = curLang !== 'en';
   const from = zh ? airportLabelZh(live.from, live.from_name) : airportLabelEn(live.from, live.from_name);
   const to = zh ? airportLabelZh(live.to, live.to_name) : airportLabelEn(live.to, live.to_name);
@@ -2406,41 +2569,54 @@ function flightShareLines(it){
   if(live.terminal) gate.push(terminalLabel(live.terminal, zh ? 'zh' : 'en'));
   if(live.gate) gate.push(pick('登机口 ' + live.gate, 'Gate ' + live.gate));
   if(gate.length) lines.push(gate.join(' · '));
+  const pax = flightPaxText(f);
+  if(pax) lines.push(pax);
   return lines;
 }
 function shareDayText(dateIso){
   const dw = fmtDateWeekdayBoth(dateIso);
-  const trip = activeTripForDate(dateIso);
+  const trips = activeTripsForDate(dateIso);
   const items = itemsForDate(dateIso);
   const lines = [];
   let head = '📅 ' + (pick(dw.zh, dw.en) || dateIso);
-  if(trip){
+  // 两趟重叠的那天（例如一趟的最后一天＝下一趟的第一天）两趟都写出来
+  const tripBits = trips.map(trip => {
     const total = diffDaysIso(trip.start, trip.end || trip.start) + 1;
     const day = diffDaysIso(trip.start, dateIso) + 1;
     const name = pickObj(trip.title) || pick('行程','Trip');
-    head += ` · ${name}（${pick(`第 ${day} 天 / 共 ${total} 天`, `Day ${day} of ${total}`)}）`;
-  }
+    return `${name}（${pick(`第 ${day} 天 / 共 ${total} 天`, `Day ${day} of ${total}`)}）`;
+  });
+  if(tripBits.length) head += ' · ' + tripBits.join(pick('＋', ' + '));
   lines.push(head);
+  hotelsTonight(dateIso).forEach(it => {
+    const h = it.hotel;
+    lines.push(pick('🏨 今晚住：', '🏨 Tonight: ') + (String(h.name || '').trim() || pickObj(it.title)));
+  });
   if(!items.length){
     lines.push('');
     lines.push(pick('这一天还没有排具体安排。','Nothing scheduled for this day yet.'));
   }
   items.forEach(it => {
     lines.push('');
-    const time = (it.time || '').trim();
+    const time = itemTimeText(it);
     const title = pickObj(it.title) || pick('（未命名）','(untitled)');
     lines.push(time ? `${time}  ${title}` : title);
     const note = pickObj(it.note);
     if(note) lines.push(note);
     flightShareLines(it).forEach(l => lines.push(l));
+    if(isHotelItem(it)){
+      const h = it.hotel;
+      if((h.address || '').trim()) lines.push('📍 ' + h.address.trim());
+      if((h.phone || '').trim()) lines.push('📞 ' + h.phone.trim());
+    }
     // 地图网址原样写出来（不缩短、不包装）——WhatsApp 会自己变成能点的链接，
     // 这是 CLAUDE.md「提到地点就要附地图链接」在分享文字里的落地。
     if((it.mapUrl || '').trim()) lines.push('🗺 ' + it.mapUrl.trim());
   });
-  if(trip && (trip.guideUrl || '').trim()){
+  trips.filter(t => (t.guideUrl || '').trim()).forEach(t => {
     lines.push('');
-    lines.push(pick('📖 完整手册：','📖 Full guide: ') + trip.guideUrl.trim());
-  }
+    lines.push(pick('📖 完整手册：','📖 Full guide: ') + (trips.length > 1 ? pickObj(t.title) + ' ' : '') + t.guideUrl.trim());
+  });
   return lines.join('\n');
 }
 function shareDay(dateIso){
@@ -2650,8 +2826,87 @@ function adminItemMoreHasContent(trip, it){
  * - 条目日期不再要求每条都选：新建时已经在 adminAddItem() 里带出默认值
  *   （沿用上一条日期，没有就用行程出发日），这里只是把输入框挪进「更多」，
  *   值本身照旧带着，展开才需要改。 */
+function adminPeriodSelectHtml(tripIdx, itemIdx, it){
+  const cur = itemPeriod(it);
+  const opt = (v, zh, en) => `<option value="${v}"${cur === v ? ' selected' : ''}>${escapeHtml(pick(zh, en))}</option>`;
+  return `<div class="admin-field admin-field-compact admin-field-period"><label>${pick('时段','Part of day')}</label>
+      <select class="admin-select" id="admin-item-${tripIdx}-${itemIdx}-period" onchange="adminItemPeriodChange(${tripIdx},${itemIdx},this.value)">
+        ${opt('', '—', '—')}${opt('morning','上午','Morning')}${opt('afternoon','下午','Afternoon')}${opt('evening','晚上','Evening')}
+      </select></div>`;
+}
+function adminItemPeriodChange(tripIdx, itemIdx, val){
+  const it = adminTripsDraft && adminTripsDraft[tripIdx] && adminTripsDraft[tripIdx].items[itemIdx];
+  if(!it) return;
+  if(PERIODS.includes(val)) it.period = val; else delete it.period;
+  markTripsDirty();
+}
+/** 酒店条目的表单：名称一行露在外面，地址／电话／入住退房收在「更多」里但默认展开。
+ *  条目自己的日期跟着入住日走，标题跟着酒店名走（见 adminHotelSync），不用填两遍。 */
+function adminHotelRowHtml(trip, tripIdx, itemIdx){
+  const it = trip.items[itemIdx];
+  const h = it.hotel || {};
+  const id = f => `admin-item-${tripIdx}-${itemIdx}-hotel-${f}`;
+  const fld = (f, zh, en, type, ph) => `<div class="admin-field"><label>${pick(zh, en)}</label>
+      <input type="${type}" id="${id(f)}" value="${escapeHtml(h[f] || '')}"${ph ? ` placeholder="${escapeHtml(ph)}"` : ''}
+        ${type === 'date' ? 'onchange' : 'oninput'}="adminHotelField(${tripIdx},${itemIdx},'${f}',this.value)"></div>`;
+  return `<div class="admin-item-wrap admin-hotel-wrap">
+    <div class="admin-item-row admin-item-row-compact">
+      <div class="admin-field admin-field-compact admin-field-grow"><label>🏨 ${pick('酒店名称','Hotel name')}</label>
+        <input type="text" id="${id('name')}" value="${escapeHtml(h.name || '')}" placeholder="Marina Bay Sands"
+          oninput="adminHotelField(${tripIdx},${itemIdx},'name',this.value)"></div>
+      ${adminPeriodSelectHtml(tripIdx, itemIdx, it)}
+      <button type="button" class="admin-btn-sm admin-btn-sm-danger" onclick="adminDeleteItem(${tripIdx},${itemIdx})">${pick('删除','Delete')}</button>
+    </div>
+    <details class="admin-item-more" id="admin-item-${tripIdx}-${itemIdx}-more" open>
+      <summary>⋯ ${pick('地址、电话、入住退房','Address, phone, dates')}</summary>
+      <div class="admin-field" style="display:flex;gap:10px">
+        <div style="flex:1;min-width:0"><label>${pick('入住','Check-in')}</label>
+          <input type="date" id="${id('checkIn')}" value="${escapeHtml(h.checkIn || '')}" onchange="adminHotelField(${tripIdx},${itemIdx},'checkIn',this.value)"></div>
+        <div style="flex:1;min-width:0"><label>${pick('退房','Check-out')}</label>
+          <input type="date" id="${id('checkOut')}" value="${escapeHtml(h.checkOut || '')}" onchange="adminHotelField(${tripIdx},${itemIdx},'checkOut',this.value)"></div>
+      </div>
+      ${fld('address', '地址', 'Address', 'text', '')}
+      ${fld('phone', '电话（选填）', 'Phone (optional)', 'tel', '+65 6688 8888')}
+      ${fld('mapUrl', '地图链接（选填，不填就按名称＋地址自动生成）', 'Map link (optional — built from name and address if empty)', 'text', '')}
+      <div class="admin-field"><label>${pick('备注（选填）','Note (optional)')}</label>
+        <input type="text" id="admin-item-${tripIdx}-${itemIdx}-note-zh" value="${escapeHtml(it.note && it.note.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'note.zh',this.value)"></div>
+    </details>
+  </div>`;
+}
+/** 酒店字段改了：同步条目的日期（＝入住日）、标题（入住 XX）、地图链接。 */
+function adminHotelSync(it){
+  if(!isHotelItem(it)) return;
+  const h = it.hotel;
+  const name = String(h.name || '').trim();
+  it.title = { zh: name ? '入住 ' + name : '', en: name ? 'Check in · ' + name : '' };
+  if(h.checkIn) it.date = h.checkIn;
+  it.mapUrl = hotelMapUrl(h);
+}
+function adminHotelField(tripIdx, itemIdx, field, val){
+  const it = adminTripsDraft && adminTripsDraft[tripIdx] && adminTripsDraft[tripIdx].items[itemIdx];
+  if(!it) return;
+  if(!it.hotel || typeof it.hotel !== 'object') it.hotel = {};
+  it.kind = 'hotel';
+  it.hotel[field] = val;
+  adminHotelSync(it);
+  markTripsDirty();
+}
+function adminAddHotel(tripIdx){
+  const trip = adminTripsDraft[tripIdx];
+  if(!trip) return;
+  if(!trip.items) trip.items = [];
+  const d = trip.start || '';
+  trip.items.push({ kind: 'hotel', date: d, time: '', title: { zh: '', en: '' }, note: { zh: '', en: '' }, mapUrl: '',
+    hotel: { name: '', address: '', phone: '', checkIn: d, checkOut: trip.end && trip.end !== d ? trip.end : '', mapUrl: '' } });
+  const newIdx = trip.items.length - 1;
+  markTripsDirty();
+  rerenderAdminTripsSection();
+  const el = document.getElementById(`admin-item-${tripIdx}-${newIdx}-hotel-name`);
+  if(el){ el.scrollIntoView({ block: 'center' }); el.focus(); }
+}
 function adminItemRowHtml(trip, tripIdx, itemIdx){
   const it = trip.items[itemIdx];
+  if(isHotelItem(it)) return adminHotelRowHtml(trip, tripIdx, itemIdx);
   const dateWarn = adminItemDateWarn(trip, it);
   const hasExtra = adminItemMoreHasContent(trip, it);
   const extraBadge = dateWarn
@@ -2663,6 +2918,7 @@ function adminItemRowHtml(trip, tripIdx, itemIdx){
         <input type="time" id="admin-item-${tripIdx}-${itemIdx}-time" value="${escapeHtml(it.time||'')}" onchange="adminItemFieldChange(${tripIdx},${itemIdx},'time',this.value)"></div>
       <div class="admin-field admin-field-compact admin-field-grow"><label>${pick('做什么','What')}</label>
         <input type="text" id="admin-item-${tripIdx}-${itemIdx}-title-zh" placeholder="${escapeHtml(pick('例：晚上七点晚餐','e.g. Dinner at 7pm'))}" value="${escapeHtml(it.title && it.title.zh || '')}" oninput="adminItemFieldInput(${tripIdx},${itemIdx},'title.zh',this.value)"></div>
+      ${adminPeriodSelectHtml(tripIdx, itemIdx, it)}
       <div class="admin-field admin-field-compact"><label>${pick('航班号（选填）','Flight no. (optional)')}</label>
         <input type="text" class="${(it.flight && it.flight.unresolved) ? 'flight-input-err' : ''}" id="admin-item-${tripIdx}-${itemIdx}-flightno" value="${escapeHtml((it.flight && it.flight.no) || '')}" placeholder="CZ3096"
           onblur="adminFlightAutoTrigger(${tripIdx},${itemIdx})"
@@ -2727,7 +2983,54 @@ function flightLookupBlockHtml(trip, tripIdx, itemIdx){
         </div>` : '' }
       <button type="button" class="admin-btn-sm" id="admin-item-${tripIdx}-${itemIdx}-flightbtn" onclick="adminFlightLookup(${tripIdx},${itemIdx})">🔍 ${pick('查询','Look up')}</button>
       <div id="admin-item-${tripIdx}-${itemIdx}-flightstatus" class="flight-lookup-status${failed ? ' err' : ''}">${persistentHint}</div>
+      ${ f ? adminPaxEditorHtml(f, tripIdx, itemIdx) : '' }
     </div>`;
+}
+/** 乘客与座位（选填）：每行一位，名字＋座位。只在条目已经关联航班后出现。 */
+function adminPaxEditorHtml(f, tripIdx, itemIdx){
+  const pax = Array.isArray(f.pax) ? f.pax : [];
+  const base = `admin-item-${tripIdx}-${itemIdx}-pax`;
+  return `<div class="admin-pax" id="${base}">
+      <div class="flight-lookup-hd" style="margin:10px 0 6px">👤 ${pick('乘客与座位（选填）','Passengers and seats (optional)')}</div>
+      ${pax.map((p, k) => `<div class="admin-pax-row">
+          <input type="text" id="${base}-${k}-name" placeholder="${escapeHtml(pick('姓名','Name'))}" value="${escapeHtml((p && p.name) || '')}"
+            oninput="adminPaxField(${tripIdx},${itemIdx},${k},'name',this.value)">
+          <input type="text" id="${base}-${k}-seat" class="admin-pax-seat" placeholder="11A" value="${escapeHtml((p && p.seat) || '')}" maxlength="4"
+            oninput="adminPaxField(${tripIdx},${itemIdx},${k},'seat',this.value)">
+          <button type="button" class="admin-btn-sm admin-btn-sm-danger" onclick="adminPaxDelete(${tripIdx},${itemIdx},${k})">${pick('删除','Delete')}</button>
+        </div>`).join('')}
+      <button type="button" class="admin-btn-sm" id="${base}-add" onclick="adminPaxAdd(${tripIdx},${itemIdx})">+ ${pick('加乘客','Add passenger')}</button>
+    </div>`;
+}
+function adminPaxRerender(tripIdx, itemIdx){
+  const trip = adminTripsDraft && adminTripsDraft[tripIdx];
+  const it = trip && trip.items[itemIdx];
+  const el = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-pax`);
+  if(el && it && it.flight) el.outerHTML = adminPaxEditorHtml(it.flight, tripIdx, itemIdx);
+}
+function adminPaxField(tripIdx, itemIdx, k, field, val){
+  const it = adminTripsDraft && adminTripsDraft[tripIdx] && adminTripsDraft[tripIdx].items[itemIdx];
+  if(!it || !it.flight || !Array.isArray(it.flight.pax) || !it.flight.pax[k]) return;
+  it.flight.pax[k][field] = field === 'seat' ? String(val || '').toUpperCase().replace(/\s+/g, '') : val;
+  markTripsDirty();
+}
+function adminPaxAdd(tripIdx, itemIdx){
+  const it = adminTripsDraft && adminTripsDraft[tripIdx] && adminTripsDraft[tripIdx].items[itemIdx];
+  if(!it || !it.flight) return;
+  if(!Array.isArray(it.flight.pax)) it.flight.pax = [];
+  it.flight.pax.push({ name: '', seat: '' });
+  markTripsDirty();
+  adminPaxRerender(tripIdx, itemIdx);
+  const el = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-pax-${it.flight.pax.length - 1}-name`);
+  if(el) el.focus();
+}
+function adminPaxDelete(tripIdx, itemIdx, k){
+  const it = adminTripsDraft && adminTripsDraft[tripIdx] && adminTripsDraft[tripIdx].items[itemIdx];
+  if(!it || !it.flight || !Array.isArray(it.flight.pax)) return;
+  it.flight.pax.splice(k, 1);
+  if(!it.flight.pax.length) delete it.flight.pax;
+  markTripsDirty();
+  adminPaxRerender(tripIdx, itemIdx);
 }
 /** 航班号／日期两个输入框失焦或改动时自动触发——**用户要的是填完就自动查，
  * 不是填完还要再点一次「查询」按钮**（2026-08-28 教训：上一版只绑了按钮的
@@ -2817,7 +3120,10 @@ async function adminFlightLookup(tripIdx, itemIdx){
   it.title = title;
   it.note = note;
   it.time = time;
+  // 乘客与座位是人填的（或从手册导入的），查航班不能把它冲掉
+  const keepPax = it.flight && Array.isArray(it.flight.pax) ? it.flight.pax : null;
   it.flight = { no: f.no || no, date: date, trackId: f.trackId || '' };
+  if(keepPax) it.flight.pax = keepPax;
   markTripsDirty();
 
   setInputVal(`admin-item-${tripIdx}-${itemIdx}-time`, time);
@@ -2844,7 +3150,9 @@ async function adminFlightLookup(tripIdx, itemIdx){
  * 那些要用户自己填），整块重画让红边和警示行显眼地留下来，再补一次状态字——
  * 跟成功分支同一坑：重画会冲掉状态栏，必须在重画**之后**再写一次。 */
 function adminFlightLookupFailed(tripIdx, itemIdx, it, trip, no, date, message){
+  const keepPax = it.flight && Array.isArray(it.flight.pax) ? it.flight.pax : null;
   it.flight = { no, date, unresolved: true };
+  if(keepPax) it.flight.pax = keepPax;
   markTripsDirty();
   const block = document.getElementById(`admin-item-${tripIdx}-${itemIdx}-flightblock`);
   if(block) block.outerHTML = flightLookupBlockHtml(trip, tripIdx, itemIdx);
@@ -2914,11 +3222,8 @@ function adminItemsListHtml(trip, tripIdx){
       </div>`;
   }
   // 按日期+时间排好序显示，但保留原数组下标（data 都用下标寻址，排序不影响读写）
-  const order = items.map((_, i) => i).sort((a, b) => {
-    const ia = items[a], ib = items[b];
-    if((ia.date||'') !== (ib.date||'')) return (ia.date||'').localeCompare(ib.date||'');
-    return (ia.time||'').localeCompare(ib.time||'');
-  });
+  // 跟老板端同一套排序（compareItems：钟点＞时段＞都没填），同一时刻保持原来的先后
+  const order = items.map((_, i) => i).sort((a, b) => compareItems(items[a], items[b]) || (a - b));
   // 插日期分隔条：一趟行程填到四五条以上，条目长得一模一样，很容易串行
   // （2026-08-29 用户：「我每次填 4-5 个以上都会搞混」）。跟老板端的行程页同一个做法。
   let lastDate = null;
@@ -2969,7 +3274,10 @@ function adminTripFormHtml(trip, idx){
       <div class="admin-form-section admin-item-editor">
         <div class="sec-hdr" style="margin:0 0 4px">
           <span class="sec-title" style="font-size:13.5px">${pick('行程条目','Itinerary items')}</span>
-          <button type="button" class="admin-btn-md" onclick="adminAddItem(${idx})">+ ${pick('新增条目','Add item')}</button>
+          <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+            <button type="button" class="admin-btn-md" onclick="adminAddItem(${idx})">+ ${pick('新增条目','Add item')}</button>
+            <button type="button" class="admin-btn-md admin-btn-hotel" id="admin-trip-${idx}-add-hotel" onclick="adminAddHotel(${idx})">+ 🏨 ${pick('酒店','Hotel')}</button>
+          </span>
         </div>
         <div class="admin-section-note" style="margin-bottom:10px">${pick('这几天每天几点做什么，可以加很多条','What happens each day — add as many as you need')}</div>
         <div id="admin-trip-${idx}-items">${adminItemsListHtml(trip, idx)}</div>
@@ -3352,6 +3660,15 @@ function adminTripsSectionHtml(){
   return `<div class="admin-block" id="admin-trips-section">
       <h3>🧳 ${pick('行程管理','Manage Trips')}</h3>
       <div id="admin-trips-list">${inner}</div>
+      <div class="admin-say-block admin-import-block" id="admin-import-block">
+        <label class="admin-say-label" for="admin-import-guide">📖 ${pick('从手册导入：每天的安排、航班、座位一次填好','Import from a guide: daily plan, flights and seats in one go')}</label>
+        <select class="admin-select" id="admin-import-guide">
+          ${GUIDE_OPTIONS.map(g => `<option value="${escapeHtml(g.path)}">${escapeHtml(pick(g.zh, g.en))}</option>`).join('')}
+        </select>
+        <button type="button" class="admin-btn" id="admin-import-btn" style="margin-top:8px" onclick="adminImportGuide()">${pick('导入','Import')}</button>
+        <div class="admin-status" id="admin-import-status"></div>
+        <div id="admin-import-choice"></div>
+      </div>
       <div class="admin-say-block">
         <label class="admin-say-label">✍️ ${pick('用讲的：写一段话，自动排成行程','Just write it: a paragraph becomes itinerary rows')}</label>
         <textarea id="admin-say-text" rows="3" spellcheck="false"
@@ -3368,6 +3685,310 @@ function adminTripsSectionHtml(){
       <button type="button" class="admin-btn" style="margin-top:10px" onclick="adminSaveTripsForm()">💾 ${pick('保存全部行程','Save all trips')}</button>
       <div class="admin-status" id="admin-trips-form-status"></div>
     </div>`;
+}
+
+/* ===================== 从手册导入（2026-10-31） =====================
+ * 选一本本仓库的手册，把每天的安排、航班、乘客座位解析出来**填进表单**。
+ * 跟「用讲的」「丢机票」同一个原则：**只填进表单、不落盘**，他看过按「保存全部行程」才算数。
+ *
+ * parseGuideHtml() 是纯函数（HTML 字符串进、{trip, items} 出），不碰页面状态，
+ * 自检直接拿 fixture 手册喂它。手册结构（sg-jkt-trip/*.html 那一套）：
+ *   .day[data-date]       每一天
+ *   .tl .ev / .stop       当天的条目：标题在 h4 的 .cn/.en，钟点在 .ev .t
+ *   卡里的 Google 地图链接 → mapUrl
+ *   .bpass               登机牌：航班号、起降机场与时刻、.seat「TAN/CHIN HOOI 11A」
+ *                         日期取前面最近的 .bp-group-label（「11月11日」），认不出再找当天提到这个航班号的那一天
+ * 航班的「起飞」「抵达」两行在日程里也各有一条，登机牌那条已经涵盖，导入时不再重复。 */
+const GUIDE_MAP_SEL = 'a[href*="maps.google."], a[href*="google.com/maps"], a[href*="goo.gl/maps"], a[href*="maps.app.goo.gl"]';
+function guideClean(s){ return String(s || '').replace(/\s+/g, ' ').trim(); }
+function guideStripEmoji(s){ return guideClean(String(s || '').replace(/^[\s\p{Extended_Pictographic}\p{Variation_Selector}\p{Join_Control}]+/u, '')); }
+function guideBi(el){
+  if(!el) return { zh: '', en: '' };
+  const cn = el.querySelector(':scope > .cn'), en = el.querySelector(':scope > .en');
+  if(!cn && !en){ const t = guideClean(el.textContent); return { zh: t, en: t }; }
+  const zh = guideClean(cn ? cn.textContent : ''), e = guideClean(en ? en.textContent : '');
+  return { zh: zh || e, en: e || zh };
+}
+function guidePeriodOf(s){
+  const t = guideClean(s).toLowerCase();
+  if(/^(around\s+)?(上午|早上|早晨|清晨|morning)/.test(t)) return 'morning';
+  if(/^(around\s+)?(中午|下午|午后|afternoon|midday|noon)/.test(t)) return 'afternoon';
+  if(/^(晚上|傍晚|晚间|夜晚|evening|night|tonight)/.test(t)) return 'evening';
+  return '';
+}
+/** 「上午　四马路观音庙」「Morning · Kwan Im…」→ 时段＋去掉前缀的标题 */
+function guideSplitPeriodTitle(bi){
+  const p = guidePeriodOf(bi.zh) || guidePeriodOf(bi.en);
+  if(!p) return { period: '', title: bi };
+  const zh = bi.zh.replace(/^(上午|早上|早晨|清晨|中午|下午|午后|晚上|傍晚|晚间|夜晚)(前后|左右)?[\s·:：]+/, '');   // \s 已含全角空格
+  const en = bi.en.replace(/^(around\s+)?(morning|afternoon|midday|noon|evening|night)\s*[·:\-–—]\s*/i, '');
+  return { period: p, title: { zh: zh || bi.zh, en: en || bi.en } };
+}
+function guideTitleCaseName(s){
+  return guideClean(String(s || '').replace(/\//g, ' ')).toLowerCase().replace(/(^|[\s\-'])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+}
+function guideFlightNo(s){
+  const m = /\b([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{1,4})\b/.exec(String(s || '').toUpperCase());
+  return m ? m[1] + m[2] : '';
+}
+function guideHm(s){
+  const m = /(\d{1,2}):(\d{2})/.exec(String(s || ''));
+  return m ? pad2(Number(m[1])) + ':' + m[2] : '';
+}
+function parseGuideHtml(html, guideUrl){
+  const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+  const days = [...doc.querySelectorAll('.day[data-date]')]
+    .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d.getAttribute('data-date') || ''));
+  const dates = days.map(d => d.getAttribute('data-date')).sort();
+  const year = dates.length ? Number(dates[0].slice(0, 4)) : null;
+
+  // —— 登机牌 ——
+  const flights = [];
+  [...doc.querySelectorAll('.bpass')].forEach(bp => {
+    const airline = bp.querySelector('.airline');
+    let no = '';
+    if(airline){
+      const code = airline.querySelector('.code');
+      const raw = guideClean(airline.textContent).replace(code ? guideClean(code.textContent) : '', '');
+      no = guideFlightNo(raw) || guideFlightNo(airline.textContent);
+    }
+    if(!no) return;
+    const apts = [...bp.querySelectorAll('.route .apt')];
+    const apt = el => el ? { iata: guideClean((el.querySelector('.iata') || {}).textContent),
+      city: guideBi(el.querySelector('.city')), time: guideHm((el.querySelector('.time') || {}).textContent) } : null;
+    const from = apt(apts[0]), to = apt(apts[apts.length - 1]);
+    const pax = [...bp.querySelectorAll('.seat')].map(el => {
+      const t = guideClean(el.textContent);
+      const m = /^(.*?)\s+(\d{1,3}[A-K])$/i.exec(t);
+      return m ? { name: guideTitleCaseName(m[1]), seat: m[2].toUpperCase() } : { name: guideTitleCaseName(t) };
+    }).filter(p => p.name);
+    // 日期：前面最近的分组标题里的「11月11日」/「11 Nov」
+    let date = '';
+    for(let el = bp.previousElementSibling; el && !date; el = el.previousElementSibling){
+      if(!el.classList.contains('bp-group-label')) continue;
+      const t = el.textContent;
+      const m = /(\d{1,2})月(\d{1,2})日/.exec(t);
+      if(m && year){
+        const md = `${pad2(Number(m[1]))}-${pad2(Number(m[2]))}`;
+        date = `${year}-${md}`;
+        if(dates.length && date < dates[0] && dates[0].slice(5) > md) date = `${year + 1}-${md}`; // 跨年
+      }
+      break;
+    }
+    if(!date){
+      const hit = days.find(d => [...d.querySelectorAll('.tl .ev h4, .stop h4')].some(h => guideFlightNo(h.textContent) === no));
+      if(hit) date = hit.getAttribute('data-date');
+    }
+    flights.push({ no, date, from, to, pax });
+  });
+  const flightNos = new Set(flights.map(f => f.no));
+
+  const items = [];
+  const hmPeriod = hm => { const h = Number(hm.slice(0, 2)); return h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening'; };
+  days.forEach(day => {
+    const date = day.getAttribute('data-date');
+    // 「落地后」「到酒店后」这类没有钟点的，跟着前面最近的钟点／时段走；
+    // 「🛍 下午：逛商场（任选）」这种提示块也会把后面几张卡带进下午
+    let curPeriod = '';
+    const dayItems = [];
+    day.querySelectorAll('.tl .ev, .stop, .note').forEach(el => {
+      if(el.classList.contains('note')){
+        const nb = guideBi(el);
+        const np = guidePeriodOf(guideStripEmoji(nb.zh)) || guidePeriodOf(guideStripEmoji(nb.en));
+        if(np) curPeriod = np;
+        return;
+      }
+      const h4 = el.querySelector('h4');
+      if(!h4) return;
+      const raw = guideBi(h4);
+      const bi = { zh: guideStripEmoji(raw.zh), en: guideStripEmoji(raw.en) };
+      if(!bi.zh && !bi.en) return;
+      const fno = guideFlightNo(raw.en) || guideFlightNo(raw.zh);
+      let time = '', period = '', note = { zh: '', en: '' }, title = bi, label = null;
+      if(el.classList.contains('ev')){
+        const tBi = guideBi(el.querySelector('.t'));
+        time = guideHm(tBi.zh) || guideHm(tBi.en);
+        if(!time){
+          period = guidePeriodOf(tBi.zh) || guidePeriodOf(tBi.en);
+          if(period) label = tBi;
+          else if(tBi.zh || tBi.en){ note = { zh: tBi.zh, en: tBi.en }; period = curPeriod; }   // 「落地后」留进备注
+        }else if(guideClean(tBi.zh).replace(/^0/, '') !== time.replace(/^0/, '')){
+          note = { zh: tBi.zh, en: tBi.en };                                     // 「建议 08:30 前」
+        }
+        if(time) curPeriod = hmPeriod(time);
+        else if(period) curPeriod = period;
+        // 登机牌已经是一条完整的航班条目，日程里的「起飞」「抵达」不再重复
+        if(fno && flightNos.has(fno)) return;
+        if(/^(🛬|✈)/u.test(raw.zh) && flights.some(f => f.date === date && f.to && f.to.time === time)) return;
+      }else{
+        const sp = guideSplitPeriodTitle(bi);
+        title = sp.title;
+        period = sp.period || curPeriod;
+        if(sp.period) curPeriod = sp.period;
+        const pin = el.querySelector('.pin');
+        if(pin && /\b(side|maybe)\b/.test(pin.className)) note = { zh: '可选', en: 'Optional' };
+      }
+      const a = el.querySelector(GUIDE_MAP_SEL);
+      const it = { date, time, title: { zh: title.zh, en: title.en }, note, mapUrl: a ? a.getAttribute('href') : '' };
+      if(period) it.period = period;
+      dayItems.push({ it, label });
+    });
+    // 时段条目排在那个时段的末尾（见 itemSortMinutes）。手册里「早上 早餐」后面紧跟「08:30 出门」时，
+    // 照时段排会把早餐排到出门后面——这种就不给时段，留在当天最前面，「早上」写进备注
+    dayItems.forEach((d, i) => {
+      if(!d.it.period || d.it.time) return;
+      const k = itemSortMinutes(d.it);
+      const later = dayItems.slice(i + 1).some(x => (x.it.time || x.it.period) && itemSortMinutes(x.it) < k);
+      if(!later) return;
+      delete d.it.period;
+      if(d.label && !d.it.note.zh && !d.it.note.en) d.it.note = { zh: d.label.zh, en: d.label.en };
+    });
+    dayItems.forEach(d => items.push(d.it));
+  });
+  flights.forEach(f => {
+    const fz = f.from ? (f.from.city.zh || f.from.iata) : '', tz = f.to ? (f.to.city.zh || f.to.iata) : '';
+    const fe = f.from ? (f.from.city.en || f.from.iata) : '', te = f.to ? (f.to.city.en || f.to.iata) : '';
+    const arr = f.to && f.to.time;
+    const it = { date: f.date, time: (f.from && f.from.time) || '',
+      title: { zh: `${f.no} ${fz} → ${tz}`.trim(), en: `${f.no} ${fe} → ${te}`.trim() },
+      note: { zh: arr ? `${arr} 到${tz}` : '', en: arr ? `Arrives ${te} ${arr}` : '' },
+      mapUrl: '', flight: { no: f.no, date: f.date } };
+    if(f.pax.length) it.flight.pax = f.pax;
+    items.push(it);
+  });
+
+  const h1 = doc.querySelector('h1');
+  const titleBi = h1 ? guideBi(h1) : { zh: '', en: '' };
+  const loc = { zh: (titleBi.zh.split(/\s*·\s*/)[0] || '').trim(), en: (titleBi.en.split(/\s*·\s*/)[0] || '').trim() };
+  return {
+    trip: { title: titleBi, start: dates[0] || '', end: dates[dates.length - 1] || '', location: loc, guideUrl: guideUrl || '' },
+    items: sortItemsByTime(items),
+    flightCount: flights.length,
+  };
+}
+/** 本仓库的手册网址 → 同源的相对路径（github.io 上同源可以直接抓）。 */
+function guideFetchUrl(url){
+  if(String(url).startsWith(GUIDE_BASE)) return new URL('../' + url.slice(GUIDE_BASE.length), location.href).href;
+  return url;
+}
+function guideItemKey(it){
+  if(it.flight && it.flight.no) return 'F|' + String(it.flight.no).toUpperCase() + '|' + (it.date || '');
+  return 'T|' + (it.date || '') + '|' + guideClean((it.title && (it.title.zh || it.title.en)) || '').toLowerCase();
+}
+let adminImportBusy = false;
+let adminImportPending = null;   // {url, parsed, idx}：撞到已有那一趟时，等他选覆盖还是合并
+function adminImportStatus(msg, cls){
+  const el = document.getElementById('admin-import-status');
+  if(!el) return;
+  el.className = 'admin-status' + (cls ? ' ' + cls : '');
+  el.textContent = msg || '';
+}
+function adminImportChoiceHtml(trip){
+  const name = (trip.title && (trip.title.zh || trip.title.en)) || pick('那一趟','that trip');
+  return `<div class="admin-import-ask">
+      <div>${escapeHtml(pick(`「${name}」已经关联了这本手册。要怎么处理？`, `"${name}" is already linked to this guide. What should happen?`))}</div>
+      <div class="admin-import-ask-btns">
+        <button type="button" class="admin-btn-sm" id="admin-import-merge" onclick="adminImportApply('merge')">${pick('合并：只加还没有的','Merge: add only what is missing')}</button>
+        <button type="button" class="admin-btn-sm admin-btn-sm-danger" id="admin-import-overwrite" onclick="adminImportApply('overwrite')">${pick('覆盖：换成手册里的','Overwrite with the guide')}</button>
+        <button type="button" class="admin-btn-sm" id="admin-import-cancel" onclick="adminImportApply('cancel')">${pick('取消','Cancel')}</button>
+      </div>
+    </div>`;
+}
+async function adminImportGuide(){
+  if(adminImportBusy) return;
+  const sel = document.getElementById('admin-import-guide');
+  const path = sel && sel.value;
+  if(!path) return;
+  const url = GUIDE_BASE + path;
+  adminImportBusy = true;
+  adminImportStatus(pick('正在读手册…','Reading the guide…'));
+  let parsed;
+  try{
+    const res = await fetch(guideFetchUrl(url), { cache: 'no-cache' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    parsed = parseGuideHtml(await res.text(), url);
+  }catch(err){
+    adminImportBusy = false;
+    adminImportStatus(pick('手册打不开，等一下再试','Could not open the guide — try again in a moment'), 'err');
+    return;
+  }
+  adminImportBusy = false;
+  if(!parsed.items.length){
+    adminImportStatus(pick('这本手册里没有按天排的日程，导入不了','This guide has no day-by-day plan to import'), 'err');
+    return;
+  }
+  ensureAdminTripsDraft();
+  const idx = adminTripsDraft.findIndex(t => (t.guideUrl || '').trim() === url);
+  if(idx >= 0){
+    adminImportPending = { url, parsed, idx };
+    const box = document.getElementById('admin-import-choice');
+    if(box) box.innerHTML = adminImportChoiceHtml(adminTripsDraft[idx]);
+    adminImportStatus('');
+    return;
+  }
+  const trip = Object.assign({ id: 'trip-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) },
+    JSON.parse(JSON.stringify(parsed.trip)), { items: JSON.parse(JSON.stringify(parsed.items)) });
+  adminTripsDraft.push(trip);
+  await adminImportFinish(adminTripsDraft.length - 1, trip.items.map((_, i) => i), parsed.items.length, 0, pick('（新建了一趟）','(created a new trip)'));
+}
+async function adminImportApply(mode){
+  const box = document.getElementById('admin-import-choice');
+  if(box) box.innerHTML = '';
+  const pend = adminImportPending;
+  adminImportPending = null;
+  if(!pend || mode === 'cancel'){ adminImportStatus(pick('没有导入','Nothing imported')); return; }
+  const trip = adminTripsDraft[pend.idx];
+  if(!trip) return;
+  const incoming = JSON.parse(JSON.stringify(pend.parsed.items));
+  if(mode === 'overwrite'){
+    const pt = pend.parsed.trip;
+    trip.start = pt.start || trip.start; trip.end = pt.end || trip.end;
+    if(pt.title.zh || pt.title.en) trip.title = pt.title;
+    if(pt.location.zh || pt.location.en) trip.location = pt.location;
+    trip.items = incoming;
+    flightLookupState = {};
+    await adminImportFinish(pend.idx, incoming.map((_, i) => i), incoming.length, 0, pick('（覆盖了原来那一趟）','(replaced that trip)'));
+    return;
+  }
+  // 合并：同一天同一个标题（航班看航班号＋日期）当作已有；已有的航班缺座位就补上
+  const items = trip.items || (trip.items = []);
+  const have = new Map(items.map(it => [guideItemKey(it), it]));
+  const added = [];
+  let same = 0;
+  incoming.forEach(it => {
+    const old = have.get(guideItemKey(it));
+    if(old){
+      same++;
+      if(it.flight && it.flight.pax && old.flight && !(old.flight.pax && old.flight.pax.length)) old.flight.pax = it.flight.pax;
+      if(!old.mapUrl && it.mapUrl) old.mapUrl = it.mapUrl;
+      if(!(old.time || '').trim() && !itemPeriod(old) && it.period) old.period = it.period;
+      return;
+    }
+    items.push(it);
+    added.push(items.length - 1);
+  });
+  await adminImportFinish(pend.idx, added, added.length, same, pick('（合并进原来那一趟）','(merged into that trip)'));
+}
+/** 展开那一趟、重画表单、新加进来的航班去查真时刻（跟机票那条路同一个函数，一段一段来）。 */
+async function adminImportFinish(tripIdx, newIdxs, nNew, nSame, where){
+  adminExpandedTrip = tripIdx;
+  markTripsDirty();
+  rerenderAdminTripsSection();
+  const trip = adminTripsDraft[tripIdx];
+  const flightRows = newIdxs.filter(i => trip.items[i] && trip.items[i].flight);
+  if(flightRows.length){
+    adminImportStatus(pick(`已填好 ${nNew} 条，正在查 ${flightRows.length} 段航班的真实时间…`,
+                           `Filled ${nNew} row(s) — looking up ${flightRows.length} flight(s)…`));
+    for(const i of flightRows){
+      delete flightLookupState[`${tripIdx}:${i}`];
+      await adminFlightLookup(tripIdx, i);
+    }
+  }
+  const tail = nSame ? pick(`；${nSame} 条原来就有，没有重复加`, `; ${nSame} row(s) were already there and were not duplicated`) : '';
+  adminImportStatus(pick(`已从手册填好 ${nNew} 条${where}，确认后按「保存全部行程」${tail}`,
+                         `Filled ${nNew} row(s) from the guide ${where} — press "Save all trips" when it looks right${tail}`), 'ok');
+  const card = document.getElementById('admin-trip-' + tripIdx + '-items');
+  if(card) card.scrollIntoView({ block: 'center' });
 }
 
 /* ===================== 用讲的：一段话 → 行程条目（2026-09-04 建） =====================
@@ -3703,7 +4324,8 @@ function isEmptyTripItem(it){
   // 有 it.flight（哪怕是查询失败留下的 unresolved 标记）也不算空——不然填了航班号但
   // 没查到、又没顺手填别的字段时，保存会把这条连同「查询失败」的痕迹一起悄悄丢掉，
   // 用户完全不知道自己填过东西（2026-08-28：这正是这次事故「失败无声」的另一种翻版）。
-  return !hasTitle && !hasNote && !(it.time||'').trim() && !(it.mapUrl||'').trim() && !it.flight;
+  if(it.kind === 'hotel' && it.hotel && ['name','address','phone'].some(k => String(it.hotel[k] || '').trim())) return false;
+  return !hasTitle && !hasNote && !(it.time||'').trim() && !(it.mapUrl||'').trim() && !it.flight && !itemPeriod(it);
 }
 /** 行程名称与日期可以不填，保存时自动补（2026-10-16 用户：「如果只是当天一天的行程
  *  也要填行程名字吗？」）。以前三样都必填，只记一天的事也得先想个名字、再把同一个日期
@@ -3764,8 +4386,43 @@ function adminValidateTripsDraft(){
       push(pick(`${label}：「${name}」还没填日期`, `${label}: "${name}" has no date yet`),
            { itemIdx: (t.items || []).indexOf(it), itemField: 'date' });
     });
+    (t.items || []).forEach((it, itemIdx) => {
+      if(isEmptyTripItem(it)) return;
+      if(isHotelItem(it)){
+        const h = it.hotel;
+        const nm = String(h.name || '').trim() || pick('酒店','hotel');
+        if(!String(h.name || '').trim()) push(pick(`${label}：酒店还没填名称`, `${label}: hotel name is missing`), { itemIdx, itemField: 'hotel-name' });
+        if(!h.checkIn) push(pick(`${label}：「${nm}」还没填入住日期`, `${label}: "${nm}" has no check-in date`), { itemIdx, itemField: 'hotel-checkIn' });
+        if(!h.checkOut) push(pick(`${label}：「${nm}」还没填退房日期`, `${label}: "${nm}" has no check-out date`), { itemIdx, itemField: 'hotel-checkOut' });
+        if(h.checkIn && h.checkOut && h.checkOut <= h.checkIn)
+          push(pick(`${label}：「${nm}」退房要晚于入住`, `${label}: "${nm}" check-out must be after check-in`), { itemIdx, itemField: 'hotel-checkOut' });
+      }
+      const pax = it.flight && Array.isArray(it.flight.pax) ? it.flight.pax : [];
+      pax.forEach((p, k) => {
+        const nm = String((p && p.name) || '').trim(), seat = String((p && p.seat) || '').trim();
+        if(!nm && !seat) return;   // 空行保存时丢掉
+        if(!nm) push(pick(`${label}：座位 ${seat} 还没填乘客名字`, `${label}: seat ${seat} has no passenger name`), { itemIdx, itemField: `pax-${k}-name` });
+        if(seat && !/^\d{1,3}[A-K]$/i.test(seat))
+          push(pick(`${label}：座位「${seat}」看起来不对（例：11A）`, `${label}: seat "${seat}" does not look right (e.g. 11A)`), { itemIdx, itemField: `pax-${k}-seat` });
+      });
+    });
   });
   return errors;
+}
+/** 送出去之前的整理：乘客空行丢掉、航班的 live（服务端现算的）不往回送、酒店条目同步日期标题。 */
+function adminItemForSave(it){
+  const o = JSON.parse(JSON.stringify(it));
+  if(o.flight){
+    delete o.flight.live;
+    if(Array.isArray(o.flight.pax)){
+      o.flight.pax = o.flight.pax.map(p => ({ name: String((p && p.name) || '').trim(), seat: String((p && p.seat) || '').trim().toUpperCase() }))
+        .filter(p => p.name).map(p => p.seat ? p : { name: p.name });
+      if(!o.flight.pax.length) delete o.flight.pax;
+    }
+  }
+  if(!itemPeriod(o)) delete o.period;
+  if(isHotelItem(o)) adminHotelSync(o);
+  return o;
 }
 /** 保存被拦下时记住每条错误在哪儿，供 adminJumpToError() 用。 */
 let adminSaveErrors = [];
@@ -3801,6 +4458,7 @@ function adminJumpToError(i){
 }
 async function adminSaveTripsForm(){
   ensureAdminTripsDraft();
+  adminTripsDraft.forEach(t => (t.items || []).forEach(it => { if(isHotelItem(it)) adminHotelSync(it); }));
   let filled = false;
   adminTripsDraft.forEach(t => { if(autoTripFill(t)) filled = true; });
   if(filled) rerenderAdminTripsSection();   // 补了什么要看得见，不能悄悄改
@@ -3826,7 +4484,7 @@ async function adminSaveTripsForm(){
   // 不进 adminValidateTripsDraft() 的报错——只影响发给服务器的内容，不改屏幕上
   // 的工作副本，避免中途报错时把还在编辑的东西也一起改没了。
   const tripsForSave = adminTripsDraft.map(t => Object.assign({}, t,
-    { items: (t.items || []).filter(it => !isEmptyTripItem(it)) }));
+    { items: (t.items || []).filter(it => !isEmptyTripItem(it)).map(adminItemForSave) }));
 
   // 「存」和「拉最新」分成两段 try，不许合在一起：合起来的话，存成功但刷新时断网
   // 会被 catch 成「保存失败」——用户以为没存上，回头再存一次。谎报失败比不报还糟。
@@ -4146,7 +4804,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v66</div>
+    <div class="admin-ver" id="adminVer">boss-app-v67</div>
 
     ${adminTripsSectionHtml()}
 
