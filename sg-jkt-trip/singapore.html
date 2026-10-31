@@ -150,6 +150,7 @@
   .dayfoot .ftlb { flex: none; font-weight: 800; font-size: 11px; color: var(--muted); min-width: 58px; }
   .dayfoot .tx { color: var(--ink); }
   /* ===== EVENT CARD (limited-time) ===== */
+  .grp { font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--red); margin: 20px 0 10px; }
   .evt { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
   .evt .eh { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--red-soft); border-bottom: 1px solid #f3c6cd; }
   .evt .eh .et { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--red); }
@@ -203,8 +204,7 @@
 <a data-date="2026-11-12" href="#day02"><span class="d">D2</span><span class="m">12</span></a>
 <a data-date="2026-11-13" href="#day03"><span class="d">D3</span><span class="m">13</span></a>
 <a data-date="2026-11-14" href="#day04"><span class="d">D4</span><span class="m">14</span></a>
-<a href="#orchard"><span class="d">🥢</span><span class="m"><span class="cn">乌节路</span><span class="en">ORCH</span></span></a>
-<a href="#dinner"><span class="d">🍽</span><span class="m"><span class="cn">晚餐</span><span class="en">DINE</span></span></a>
+<a href="#food"><span class="d">🍽</span><span class="m"><span class="cn">餐厅</span><span class="en">FOOD</span></span></a>
 </nav>
 <div class="wrap">
 <!-- COVER -->
@@ -215,8 +215,7 @@
 <h1><span class="cn">新加坡 · 11月11–14日</span><span class="en">Singapore · 11–14 Nov 2026</span></h1>
 <div class="dates"><span class="cn">3晚4天 · 2026年11月11日（三）– 11月14日（六） · Nak、Yang、Jacky 3人</span><span class="en">3 Nights 4 Days · Wed 11 – Sat 14 Nov 2026 · Nak, Yang &amp; Jacky (3 adults)</span></div>
 <div class="meta-row">
-<span class="meta-chip">✈ <span class="cn">航班待定</span><span class="en">Flights TBC</span></span>
-<span class="meta-chip">🏨 <span class="cn">酒店未定</span><span class="en">Hotel TBC</span></span>
+<span class="meta-chip">✈ <span class="cn">航班见航班页</span><span class="en">Flights: see flights page</span></span>
 <span class="meta-chip">👥 <span class="cn">3人</span><span class="en">3 pax</span></span>
 </div>
 </div>
@@ -225,7 +224,7 @@
 <div class="tip">
 <span class="ico">👆</span>
 <div>
-<span class="cn"><strong>绿色按钮</strong>（地图）可点击打开；标注「未查证」的时间、评分和价格，出发前请再用官方渠道确认。</span><span class="en"><strong>Green buttons</strong> (maps) are tappable; anything marked “unverified” (hours, ratings, prices) should be reconfirmed through official sources before you go.</span>
+<span class="cn"><strong>绿色按钮</strong>（地图）可点击打开；营业时间和价格出发前请再用官方渠道确认。</span><span class="en"><strong>Green buttons</strong> (maps) are tappable; please reconfirm opening hours and prices through official channels before you go.</span>
 </div>
 </div>
 
@@ -233,7 +232,7 @@
 <section id="flights">
 <div class="sec-head"><span class="no">01</span><h2><span class="cn">航班</span><span class="en">Flights</span></h2><span class="rule"></span></div>
 <div class="note amber">
-<span class="cn">✈️ <strong>航班还没定，四套方案见<a href="./index.html">航班安排页</a>。</strong>11/11（三）抵达新加坡，可能是中午 12:50 / 13:35，也可能是傍晚 17:30 / 18:05；11/14（六）从樟宜机场 T2 起飞，可能是 12:30，也可能是 15:15。确定后在这里补上航班号和时间，下面每天的行程再跟着调整。</span><span class="en">✈️ <strong>Flights are not fixed yet — the four plans are on the <a href="./index.html">flights page</a>.</strong> On Wed 11 Nov you land in Singapore either at midday (12:50 / 13:35) or in the evening (17:30 / 18:05); on Sat 14 Nov you fly out of Changi Terminal 2 at either 12:30 or 15:15. Once it is decided, the flight numbers and times go here and the daily plans below get adjusted.</span>
+<span class="cn">✈️ <strong>航班时间见<a href="./index.html">航班安排页</a>。</strong>11/11（三）抵达新加坡，11/14（六）从樟宜机场 T2 起飞。</span><span class="en">✈️ <strong>Flight times: see the <a href="./index.html">flights page</a>.</strong> You land in Singapore on Wed 11 Nov and fly out of Changi Terminal 2 on Sat 14 Nov.</span>
 </div>
 </section>
 
@@ -241,38 +240,133 @@
 <section id="hotel">
 <div class="sec-head"><span class="no">02</span><h2><span class="cn">住宿</span><span class="en">Hotel</span></h2><span class="rule"></span></div>
 <div class="note amber">
-<span class="cn">🏨 <strong>酒店还没订。</strong>行程先按市中心（滨海湾、乌节路一带）来排，订好以后再改——住得离滨海湾近，D1 的灯光秀和夜景最顺；住乌节路则 D3 的乌节路日最顺。</span><span class="en">🏨 <strong>The hotel is not booked yet.</strong> The plans below assume a central base (Marina Bay / Orchard Road) and will be revised once it is booked — staying near Marina Bay suits D1’s light show and night views best; Orchard Road suits D3’s Orchard Road day best.</span>
+<span class="cn">🏨 <strong>入住和退房时间以酒店确认单为准。</strong>住在市中心最方便——离滨海湾近，D1 的晚餐最顺；住乌节路一带，D3 的乌节路日最顺。</span><span class="en">🏨 <strong>Check-in/out times as per your hotel confirmation.</strong> A central base works best — near Marina Bay suits D1’s dinner; around Orchard Road suits D3’s Orchard Road day.</span>
 </div>
 </section>
 
 <!-- ===== LIMITED-TIME EVENTS ===== -->
 <section id="events">
-<div class="sec-head"><span class="no">03</span><h2><span class="cn">限时活动 · 档期内</span><span class="en">Limited-Time Events</span></h2><span class="rule"></span></div>
+<div class="sec-head"><span class="no">03</span><h2><span class="cn">限时活动</span><span class="en">Limited-Time Events</span></h2><span class="rule"></span></div>
 <div class="note amber">
-<span class="cn">以下是查得到官方来源、且档期与本次行程（11/11–11/14）重叠的活动。⚠ 场次和时间可能临时调整，出发前扫一眼官网最稳。</span><span class="en">These are the events with an official source whose dates overlap this trip (11–14 Nov). ⚠ Showtimes can change at short notice, so a quick look at the official sites before you go is the safest.</span>
+<span class="cn">以下活动供参考，去不去由你们决定，没有排进行程。都是 11/11–11/13 期间碰得上（11/14 白天已飞走）的演出、文学节和灯光秀，按日期排，每晚都有的放在最后。</span><span class="en">These events are for reference only — whether to go is up to you; none of them are in the itinerary. They are shows, a literary festival and light shows you can catch between 11 and 13 Nov (on 14 Nov you fly out in the daytime), sorted by date, with the nightly ones at the end.</span>
 </div>
 
+
+<div class="evt">
+<div class="eh"><span class="et"><span class="cn">🎸 演唱会 · 室内体育馆</span><span class="en">🎸 Concert · Indoor Stadium</span></span><span class="ed"><span class="cn">11/11（三）20:00</span><span class="en">Wed 11 Nov 20:00</span></span></div>
+<div class="eb">
+<h3><span class="cn">My Chemical Romance 新加坡演唱会 @ 新加坡室内体育馆</span><span class="en">My Chemical Romance Live in Singapore @ Singapore Indoor Stadium</span></h3>
+<div class="desc"><span class="cn">美国另类摇滚乐队时隔近二十年回到新加坡，11/10 已有一场，因需求加开了 11/11 这一场；喜欢摇滚的话是难得的机会。<strong>日期时间：</strong>11/11（三）20:00，只有中午 12:50 / 13:35 抵达的方案赶得上，傍晚落地的赶不上。<strong>地址：</strong>Singapore Indoor Stadium, 2 Stadium Walk, Singapore 397691（加冷一带，离市中心车程约 15 分钟）。<strong>票价：</strong>可能已售罄，买票请看官方售票页，别找来路不明的转售。</span><span class="en">The US alt-rock band returns to Singapore after nearly two decades; there is already a show on 10 Nov, and a second night on 11 Nov was added due to demand — a rare chance if you like rock. <strong>When:</strong> Wed 11 Nov, 20:00 — only the midday arrival options (12:50 / 13:35) make it; an evening landing does not. <strong>Where:</strong> Singapore Indoor Stadium, 2 Stadium Walk, Singapore 397691 (Kallang, about 15 minutes by car from the city centre). <strong>Tickets:</strong> it may already be sold out — check the official ticketing page, and avoid unofficial resellers.</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">11/11 20:00</span><span class="en">11 Nov 20:00</span></span><span class="chip verify"><span class="cn">可能已售罄</span><span class="en">May be sold out</span></span></div>
+<div class="gal">
+<img loading="lazy" decoding="async" alt="新加坡室内体育馆外观 · Singapore Indoor Stadium, exterior" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeu6kjBVoVrlZ7ltBe_Mp23Oc4D3lTF1zZIETDOdRwjqRCzPUtYM8A9sz81XhwwVq-ds1-dR7ZrZPjuVyCDjQ3H2Z227x6guVH-v5dqRWeXuKibi2qp_d_K7ckNA_em00Dzj6OZHw=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="室内体育馆演唱会场内 · The stadium during a concert" src="https://lh3.googleusercontent.com/grass-cs/AABkmLenYTbRtu_RYMKGzNLyojQ_NTfWWs0JtTrXXDj0zn4-o-GpIzwqLqMmNHbvrHixwlW_wlpLnLds9fHx9kwnxAMXHrIHBHg1vdFIogoXYwcuMyr4YhR8jFSr0_otKo3XIa97fetHzWPmL2Sr=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="室内体育馆看台 · Stadium seating" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdyFem2M_ki17VlduIikfCkGsAPUqtDiOGwL8YAKL7wUpz7ErE8mKNtIPGYPn0uiS0U37pMXepaZ-wbEJj3-wP2TVAFgrgVma2fjkYAVUd__4tsDnWl1Ema_JenuZGTTSjgBIHgH1h-JQvX=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Singapore%20Indoor%20Stadium%202%20Stadium%20Walk%20Singapore%20397691" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://www.thekallang.com.sg/events/my-chemical-romance-live-singapore-2026" target="_blank">🔗 <span class="cn">售票页</span><span class="en">Tickets</span></a>
+</div>
+</div>
+
+<div class="evt">
+<div class="eh"><span class="et"><span class="cn">📚 文学节 · 市政区</span><span class="en">📚 Literary festival · Civic District</span></span><span class="ed"><span class="cn">11/13–22（行程内碰得上 11/13）</span><span class="en">13–22 Nov (in your trip: 13 Nov)</span></span></div>
+<div class="eb">
+<h3><span class="cn">新加坡作家节 Singapore Writers Festival 2026</span><span class="en">Singapore Writers Festival 2026</span></h3>
+<div class="desc"><span class="cn">新加坡最大的文学节，300 多位作家、200 多场讲座与活动，以英语为主；主场地在旧国会大厦与维多利亚剧院一带，老建筑本身就好看，有免费场次，散步顺路进去听一场也行。<strong>日期：</strong>11/13（五）至 11/22，行程内碰得上 11/13。<strong>地址：</strong>The Arts House, 1 Old Parliament Lane, Singapore 179429；Victoria Theatre, 11 Empress Place, Singapore 179558。<strong>票价：</strong>有免费场；单场 S$5 起；通行证约 S$15–30，票价与场次请以官网为准。</span><span class="en">Singapore's biggest literary festival: 300+ writers and 200+ talks and events, mainly in English, centred on the Old Parliament House and Victoria Theatre — handsome old buildings in their own right. There are free events, so you can drop into one on a stroll. <strong>When:</strong> Fri 13 to Sun 22 Nov; during your trip you can catch 13 Nov. <strong>Where:</strong> The Arts House, 1 Old Parliament Lane, Singapore 179429; Victoria Theatre, 11 Empress Place, Singapore 179558. <strong>Price:</strong> some events are free; single sessions from S$5; festival passes about S$15–30 — check the official site for prices and sessions.</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">有免费场</span><span class="en">Free events</span></span><span class="chip hours"><span class="cn">11/13</span><span class="en">13 Nov</span></span><span class="chip verify"><span class="cn">以英语为主</span><span class="en">Mainly English</span></span></div>
+<div class="gal">
+<img loading="lazy" decoding="async" alt="旧国会大厦艺术之家外观 · The Arts House at the Old Parliament" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdKyTuurIV2zatl6OrlHH039gWz76WoVK22tCibu46L_oNfNNgLPTUibQYt47TWzhHUMRO_PMfyfDOnoHbt1JV7b15UQE57gDNvV6_Y9eMSVhuJ0gGvu3NNhlKoY77q2GI1ruk=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="艺术之家正面与铜象 · The Arts House facade with the bronze elephant" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdamCerKIbDNvOpaqmEEt7_WU8TU3i6nPkzRaE5M8ahQZKX9J__bzTNmeiJorWExfVvzbrEF6SQ248Mvc0_CVWU-J6VTd1YpopAtzOQ3ZaufcPmmIxEgMjarUgT8UxBpbTeVjOl7QMeoxQp=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="艺术之家旧议事厅 · The old Parliament chamber at The Arts House" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcrBrBh1r4P8whxSRnlbWvzl5ASF_64z_7TE8BYCNHV6Iw5cquZ2llCnsnoUQXB-ELWeCfeppJWjxWJmGvgEkvFo5b_NefIlDy-8m-AlvRI3zFrHHZjOHExS_VRg1VMfzHFhiakUFOD9Ss=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="维多利亚剧院与音乐厅 · Victoria Theatre and Concert Hall" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfMV47LAsRNxzS_HHcoYKGIn-wj2ZuyR441NclV4aWd5AQOFIIpVGACKnFPZskah-sVvskd4XP_vunVmwxqtUkRskTvs04KsN1Dpl8SqQHApSHwBdygKLqJPWSoLc2Zzt5lXhMOZw=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="艺术之家回廊 · The Arts House veranda" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfeSkEkgE_oR-DD0CQBxAdoGWYlXv0puNZafvEEETZ8XHyeoocftUS1ED_A-r_dDB0pwg8UMiWi4hWHEWcYSQftS5Yzva7jWI4DWIyuhARAHNsi3HuhNOX69tGn78P4mS4ZWtFfrcblkBQ=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=The%20Arts%20House%201%20Old%20Parliament%20Lane%20Singapore%20179429" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://www.singaporewritersfestival.com" target="_blank">🔗 <span class="cn">官网</span><span class="en">Official site</span></a>
+</div>
+</div>
+
+<div class="evt">
+<div class="eh"><span class="et"><span class="cn">🎤 单口喜剧 · 滨海艺术中心</span><span class="en">🎤 Stand-up comedy · Esplanade</span></span><span class="ed"><span class="cn">11/13 两场</span><span class="en">2 shows on 13 Nov</span></span></div>
+<div class="eb">
+<h3><span class="cn">Morgan Jay「The Goofy Guy」单口喜剧 @ 滨海艺术中心剧院</span><span class="en">Morgan Jay – The Goofy Guy Tour @ Esplanade Theatre</span></h3>
+<div class="desc"><span class="cn">网络上很红的英语单口喜剧演员，边弹吉他边即兴跟观众互动，全程英语、仅限 16 岁以上，约 1.5 小时不中场；英语笑点听得懂的话很好笑。<strong>场次：</strong>11/13（五）19:00、22:00。<strong>地址：</strong>Esplanade Theatres on the Bay, 1 Esplanade Drive, Singapore 038981（滨海湾「榴莲」建筑，离滨海湾金沙（MBS）步行约 15 分钟）。<strong>票价：</strong>S$68／88／108 三档，订票手续费另计，票价与场次请以售票页为准。</span><span class="en">A stand-up comedian known online for guitar-led crowd work and improvised songs; in English, strictly 16+, about 1.5 hours with no interval — very funny if English humour lands for you. <strong>Shows:</strong> Fri 13 Nov 19:00 and 22:00. <strong>Where:</strong> Esplanade Theatres on the Bay, 1 Esplanade Drive, Singapore 038981 (the “durian” building on Marina Bay, about a 15-minute walk from Marina Bay Sands (MBS)). <strong>Price:</strong> S$68 / 88 / 108 plus booking fees — check the ticketing page for prices and showtimes.</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">11/13 19:00 · 22:00</span><span class="en">13 Nov 19:00 · 22:00</span></span><span class="chip verify"><span class="cn">英语 · 16 岁以上</span><span class="en">English · 16+</span></span></div>
+<div class="gal">
+<img loading="lazy" decoding="async" alt="滨海艺术中心外观 · Esplanade, exterior" src="https://lh3.googleusercontent.com/grass-cs/AABkmLegEQdRGZiDXedDlW0UV55e2JJy40kZ8YQFUyDYYwHoVIOZkNfWZcCbdKMOWKdXh-sWgpC8-E4bEmUg_ZEy0_Iixhc5AOxPaN5dVwQAMHhKaeB5qkZAB0q1Sny9CH9Z7jSUypIUqj1rZmmb=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="滨海艺术中心夜景 · Esplanade at night across the bay" src="https://lh3.googleusercontent.com/grass-cs/AABkmLc6TxJORdHu6KJVfOusCj5Pvz06X8K7glSItjfmZueCB1hmxfKcyakwk63CFT6RFdS6rl3HfkfqEMheUlaA8B2WntK9wwzbgBHE7Uc7wC75Mzk2OChblYWk48JcG51E7uZBTo4aSA=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="滨海艺术中心演出厅内部 · Inside an Esplanade performance hall" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfPBRhwU_mKE1o3FqyvDBwrMnZDHvnJltGYZMhhuY9uGtXJ7dJAB4r5n4bRY6OaSef0CU9EPdmX10kLzFN5Al9IbO8nfY_k14dTcQiVO9Re-dcemMwOFsI2uHlbqnqy8XNF9tw=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Esplanade%20Theatres%20on%20the%20Bay%201%20Esplanade%20Drive%20Singapore%20038981" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://www.esplanade.com/whats-on/2026/morgan-jay-goofy-guy-tour" target="_blank">🔗 <span class="cn">售票页</span><span class="en">Tickets</span></a>
+</div>
+</div>
+
+<div class="evt">
+<div class="eh"><span class="et"><span class="cn">🎭 音乐剧 · 滨海湾金沙</span><span class="en">🎭 Musical · Marina Bay Sands</span></span><span class="ed"><span class="cn">演到 11/15</span><span class="en">Runs until 15 Nov</span></span></div>
+<div class="eb">
+<h3><span class="cn">音乐剧《猫》CATS @ Sands Theatre</span><span class="en">CATS the Musical @ Sands Theatre</span></h3>
+<div class="desc"><span class="cn">安德鲁·劳埃德·韦伯的经典音乐剧，《Memory》就出自这部，英语演出，限期巡演；全长约 2 小时 25 分钟，含 20 分钟中场。<strong>场次：</strong>演期到 11/15（11/14 晚你们已飞走），具体哪几晚有场次、几点开演，以售票页为准。<strong>地址：</strong>Sands Theatre, Marina Bay Sands, 10 Bayfront Avenue, Singapore 018956（MBS 购物中心旁的剧院，中午抵达的话，D1 晚餐后顺路）。<strong>票价：</strong>S$68–238，订票手续费另计。</span><span class="en">Andrew Lloyd Webber's classic — the musical that gave us “Memory” — in English, in a limited season; about 2 hours 25 minutes including a 20-minute interval. <strong>Shows:</strong> the season runs until 15 Nov (you will already have flown out on the evening of 14 Nov); which nights have shows and their start times are on the ticketing page. <strong>Where:</strong> Sands Theatre, Marina Bay Sands, 10 Bayfront Avenue, Singapore 018956 (next to the MBS mall — if you arrive at midday, handy after the D1 dinner). <strong>Price:</strong> S$68–238 plus booking fees.</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">演到 11/15</span><span class="en">Until 15 Nov</span></span><span class="chip book"><span class="cn">需买票</span><span class="en">Tickets needed</span></span></div>
+<div class="gal">
+<img loading="lazy" decoding="async" alt="金沙剧院观众席 · Sands Theatre auditorium" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdcnNX5TEdBdxdZJRSEa7HxBFOeVdvf6_LSx_ag_gOlGO3f3nfEGgAN5HtrorTYP9Chi_rfEfL0IsRmSKCCR1mAVA3TRSQedMwcLuuDh9XL3KkthU2HpFMY2UoUF6o8hZ7mxSl4=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="金沙剧院舞台与座位 · Sands Theatre stage and seating" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdspOLWDYAwKRnpu43s94o9wR7AUJBhfZB210Bze7BFV5C4IypdZFoP92ixtMnR8oYeTJcgSzpkqdB4seynoE7SZb9Rt9MpiPBvE-KqlFixNae8rT8nqKcIcwlbnN2g60kQtK5MWAstBrOO=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="金沙剧院红色大幕 · Sands Theatre red curtain" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QKzpPraWA0ZKuFJAxnvjSOSwStdPfWnKXYZM56eieKVPJJ3wYii6UyvXgUIWo0Qyh0vAjbh0PixRdfo3cG010N7k_3WHQPJrfAe46fKBPDyn749YCyFnqISjKa-xaapCumAdmy4jXa76Zi=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="金沙剧院大堂 · Sands Theatre foyer" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QH0WJPJ1D1ptEhErP8PEwnMosGXPXLuvpxr5Dk7OMgXQdt4gXEQ64RXluTWe2PxITQKVbfxygEwM5ARbiwKbWpYAB7vMWt1-OARnmYJeowYW7lf1Z_KGlkf2dKREZFYqvRI_jQ=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Sands%20Theatre%20Marina%20Bay%20Sands%2010%20Bayfront%20Avenue%20Singapore%20018956" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://www.marinabaysands.com/entertainment/shows/cats-the-musical.html" target="_blank">🔗 <span class="cn">售票页</span><span class="en">Tickets</span></a>
+</div>
+</div>
 
 <div class="evt">
 <div class="eh"><span class="et"><span class="cn">✨ 灯光水秀 · 滨海湾金沙</span><span class="en">✨ Light & water show · Marina Bay Sands</span></span><span class="ed"><span class="cn">周一至周四 2 场 · 周五至周日 3 场</span><span class="en">Mon–Thu 2 shows · Fri–Sun 3 shows</span></span></div>
 <div class="eb">
 <h3><span class="cn">Spectra 灯光水秀 @ MBS Event Plaza</span><span class="en">Spectra – A Light &amp; Water Show @ MBS Event Plaza</span></h3>
-<div class="desc"><span class="cn">地址：MBS 购物中心前的 Event Plaza（Bayfront Ave）。免费户外表演，没有 Google 评分可参考。免费夜景灯光水秀，在 MBS 前面的 Event Plaza 看，一场约 15 分钟。<strong>场次：周一至周四 20:00、21:00；周五至周日加开 22:00。</strong>11/11（三）是 20:00 和 21:00 两场，11/14（六）白天飞走看不到。最适合 D1 抵达当晚：傍晚落地的话就看 21:00 那场。户外表演，天气不好会取消。⚠ 这个场次表引用 MBS 官方活动页与民间指南（2026 年 2 月），临出发前再看一眼 MBS 官网。</span><span class="en">Address: Event Plaza in front of The Shoppes at MBS (Bayfront Ave). A free outdoor show, so there is no Google rating to go by. A free night-time light-and-water show at the Event Plaza in front of MBS, about 15 minutes a show. <strong>Showtimes: Mon–Thu 20:00 and 21:00; Fri–Sun add a 22:00 show.</strong> Wed 11 Nov has the 20:00 and 21:00 shows; on Sat 14 Nov you will have flown out in the daytime. Best on the D1 arrival night: if you land in the evening, take the 21:00 show. It is outdoors and is cancelled in bad weather. ⚠ The schedule follows the MBS event page and a February 2026 guide — glance at the MBS website again before you go.</span></div>
-<div class="chips"><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span><span class="chip hours"><span class="cn">周一至四 20:00 · 21:00</span><span class="en">Mon–Thu 20:00 · 21:00</span></span><span class="chip hours"><span class="cn">周五至日加 22:00</span><span class="en">Fri–Sun add 22:00</span></span><span class="chip verify"><span class="cn">户外·天气会取消</span><span class="en">Outdoors · cancelled in bad weather</span></span></div>
+<div class="desc"><span class="cn">免费夜景灯光水秀，在 MBS 前面的 Event Plaza 看，一场约 15 分钟。户外表演，大雨时可能取消。地址：MBS 购物中心前的 Event Plaza（Bayfront Ave）。<strong>场次：周一至周四 20:00、21:00；周五至周日加开 22:00。</strong>11/11（三）是 20:00 和 21:00 两场。最适合 D1 抵达当晚：傍晚落地的话，晚餐后若还赶得上 21:00 就去看，赶不上就改看 11/12 或 11/13。</span><span class="en">A free night-time light-and-water show at the Event Plaza in front of MBS, about 15 minutes. Outdoors, so heavy rain may cancel it. Address: Event Plaza in front of The Shoppes at MBS (Bayfront Ave). <strong>Showtimes: Mon–Thu 20:00 and 21:00; Fri–Sun add a 22:00 show.</strong> Wed 11 Nov has the 20:00 and 21:00 shows. Best on the D1 arrival night: if you land in the evening, go if you can still make the 21:00 show after dinner; if not, see it on 12 or 13 Nov instead.</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span><span class="chip hours"><span class="cn">周一至四 20:00 · 21:00</span><span class="en">Mon–Thu 20:00 · 21:00</span></span><span class="chip hours"><span class="cn">周五至日加 22:00</span><span class="en">Fri–Sun add 22:00</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="Spectra 水幕投影灯光秀 · Spectra light projections on a water screen" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfyNMHXuMqGMiMwg_SgGN4DA3QGk_evgZ48v2SUEcAxIzTujNjj2ev21nFVz6u3qNx_Hxk6yNGeE6Jl2WsrieEAXtC_E4ZdxkhRhtLiRRSiJZDl5TIHtJrzVSohJOH2weBV0PoX=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="Spectra 紫色水柱与观众 · Spectra purple water jets with the crowd" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9T5vMrQfryxG1OksYNSrg9U6f98irVMZKpfesIFYmHfrBTYNI70-1LL1lYQNdKpv3A6jnoQChpMN3c10af42d35ch4y_h_Q4rt1hPC0-VaRj7x_4p0iXKaaDojhxxsJkeQop9NAuQ=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="滨海湾金沙空中花园夜景 · Marina Bay Sands SkyPark at night" src="https://lh3.googleusercontent.com/grass-cs/AABkmLf2IduBo42C-R7N2jSGtngJwTcdbR4W0XDvXi7vahppwyAzroUghg5L3gOZ_5F7dI0jn7iPtmU9iCy-LUt5D00syKI4uXefrONhRJgDw4VgCN9xsMdmQQSw9WOm8kSZTXWZgGxG=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="滨海湾夜景与金沙购物中心屋顶 · Marina Bay night view with the Shoppes rooftop" src="https://lh3.googleusercontent.com/grass-cs/AABkmLesP3gC_qSaaNkaxDRD_3SkBtKsY1EfgwAipAFXobENyexlFwC9jtjUgnpAnxAcP1Am_zhOzIFG-SaMece9iNlQgcSkCkodI0D7DBDPSIHAZ_HHcQu562VarkJa0UBnSq0Ao704=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="艺术科学博物馆（莲花造型）· ArtScience Museum, lotus-shaped" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcJcY4LBbYmbb8pZQnMVVWPQWWoWn-HagP5WCJklBP5oZZG0WMBT8iTKxbgXYOVVt4i8O7uO7ZD14V6UjbVqag9VLXQfLfxMH-LtPGIIODQU8btXL_2trf560ta7bf8lSvlW8g=s4800-w800-h600"/>
 </div>
-<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大（前 2 张 Spectra 水秀，后 3 张 MBS 建筑）→</span><span class="en">← swipe · tap to zoom (first 2: the Spectra show; last 3: the MBS building) →</span></div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
 <a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Event%20Plaza%20Marina%20Bay%20Sands%20Bayfront%20Avenue%20Singapore" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://marinabaysands.com/attractions/spectra.html" target="_blank">🔗 <span class="cn">官网</span><span class="en">Official page</span></a>
 </div>
 </div>
 
+<div class="evt">
+<div class="eh"><span class="et"><span class="cn">🌳 灯光秀 · 滨海湾花园</span><span class="en">🌳 Light show · Gardens by the Bay</span></span><span class="ed"><span class="cn">每晚 19:45 / 20:45</span><span class="en">Nightly 19:45 / 20:45</span></span></div>
+<div class="eb">
+<h3><span class="cn">Garden Rhapsody 超级树灯光秀</span><span class="en">Garden Rhapsody · Supertree light show</span></h3>
+<div class="desc"><span class="cn">滨海湾花园的超级树每晚亮灯，配合音乐演出，在 Supertree Grove 的树下仰头看最好，一场约 15 分钟。免费、不用预约，离 MBS 步行约 10 分钟，中午抵达的话，在 MBS 吃完晚饭走过去刚好。户外表演，下大雨或烟霾严重时可能取消，出门前看一眼官网公告。<strong>场次：</strong>每晚 19:45、20:45。</span><span class="en">The Supertrees at Gardens by the Bay light up every night to music — best watched from beneath the trees at Supertree Grove; each show lasts about 15 minutes. Free with no booking, about a 10-minute walk from MBS, so if you arrive at midday it fits nicely after dinner there. It is outdoors, so heavy rain or bad haze can cancel it — check the official notice before heading out. <strong>Shows:</strong> 19:45 and 20:45 nightly.</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span><span class="chip hours"><span class="cn">每晚 19:45 · 20:45</span><span class="en">Nightly 19:45 · 20:45</span></span></div>
+<div class="gal">
+<img loading="lazy" decoding="async" alt="白天的超级树丛与滨海湾金沙 · Supertree Grove by day with Marina Bay Sands" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcB8udhCShuiiu6KgUDD7X1bABp1aY7_PRifD4gSpz5viJjpHVKmvldTgJfz4NtBldr4LxHIXwvoJZscnvLOrELQQqtAbAnqrsegOFKwioFYG2BNNQ2FdrS6AE74e1eqn7chTQ=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="仰望超级树与空中步道 · Looking up at the Supertrees and the skyway" src="https://lh3.googleusercontent.com/grass-cs/AABkmLePXY-zOGzjCnTfa3lrg0NPgmJ8SzRAEO3yuOsKhBwyCw4TxM2c_JA8YB2wH3ThXXhSND7ftvrSN9ekkW1IWlODb_WY-J5U-ffMlDg2pZ6T4-6d3iC8GdNocnueVJDdaKrEKgSj=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="被热带植物环绕的超级树 · A Supertree among tropical plants" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdiCSoV_tdOWoqEvZj3S0KsWq1k5EhbEt6swf7iZaY5vOee5cB3TNW00Kjv9_gEXQr2BXte8HqfLPedPiISasYejb38SuZRIGEflB-L2nB6OEQoffu9qFDGLlEJxuI7WFO-JY9S1w=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="夜间亮灯的超级树与空中步道 · Supertrees and skyway lit up at night" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeq0TqUCHZ0bAw1LSVCDNNnR6DTGrHwRY252z6N97yKjJH-JJ9koUfIOYTNXo-WqxMYajbPjoGQsxeYynanLxvqohhH9WxnUicGrxO2NM6m7iMuAV2AEB_eiV7vJckT3fKcv8WBaA=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=14516408273722441878" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://www.gardensbythebay.com.sg/en/things-to-do/calendar-of-events/garden-rhapsody.html" target="_blank">🔗 <span class="cn">官网</span><span class="en">Official page</span></a>
+</div>
+</div>
+<div class="evt">
+<div class="eh"><span class="et"><span class="cn">🌧 灯光音乐秀 · 星耀樟宜</span><span class="en">🌧 Light & music show · Jewel Changi</span></span><span class="ed"><span class="cn">每晚 · 免费</span><span class="en">Nightly · free</span></span></div>
+<div class="eb">
+<h3><span class="cn">星耀樟宜雨漩涡灯光音乐秀 @ Jewel Changi Airport</span><span class="en">Rain Vortex Light &amp; Music Show @ Jewel Changi Airport</span></h3>
+<div class="desc"><span class="cn">40 米高的室内瀑布入夜后配上灯光与音乐，是樟宜机场最出名的一景；想看灯光版要晚上来，D2 或 D3 晚上专程过去最方便（从市区车程约 25–30 分钟）。<strong>场次：</strong>周一至周四 20:00、21:00，周五至周日加开 22:00。11/12（四）2 场，11/13（五）3 场。<strong>地址：</strong>Jewel Changi Airport, 78 Airport Boulevard, Singapore 819666。<strong>票价：</strong>免费。</span><span class="en">The 40 m indoor waterfall lit up with light and music after dark — Changi's most famous sight. For the light version come in the evening — a trip out on the D2 or D3 evening works best (about 25–30 minutes by car from the city). <strong>Shows:</strong> Mon–Thu 20:00 and 21:00; Fri–Sun add a 22:00 show. That is 2 shows on Thu 12 Nov and 3 on Fri 13 Nov. <strong>Where:</strong> Jewel Changi Airport, 78 Airport Boulevard, Singapore 819666. <strong>Price:</strong> free.</span></div>
+<div class="chips"><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span><span class="chip hours"><span class="cn">周一至四 20:00 · 21:00</span><span class="en">Mon–Thu 20:00 · 21:00</span></span><span class="chip hours"><span class="cn">周五至日加 22:00</span><span class="en">Fri–Sun add 22:00</span></span></div>
+<div class="gal">
+<img loading="lazy" decoding="async" alt="雨漩涡全景 · The Rain Vortex" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9SUG9FkGww0BP12UXDYgcJG-zcgEtznwLDBKpNCznVGqlEtLzlcCPJsJXoKBU2tGW-2KgV4FYejVH-sffyngLGj36rqqbqMcr1SckM75vOan-8ESip9i4UoEIw94RD8OxuJC1Uc=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">点图放大 · 更多照片见 D4 的星耀樟宜</span><span class="en">tap to zoom · more photos on the D4 Jewel card</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Jewel%20Changi%20Airport%20Rain%20Vortex%2078%20Airport%20Boulevard%20Singapore%20819666" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://www.jewelchangiairport.com/en/attractions/rain-vortex.html" target="_blank">🔗 <span class="cn">官网</span><span class="en">Official page</span></a>
+</div>
+</div>
+
 <div class="note amber">
-<span class="cn">🎄 <strong>圣诞灯饰小提示：</strong>乌节路圣诞灯饰（Christmas on A Great Street）2026 年的开灯日<strong>未查证</strong>——截至 10 月底搜不到官方公告。仅供参考：2025 年是 11/8 开灯，2024 年 11/9，2023 年 11/16，所以 11/11–11/14 那几晚<strong>有可能已经亮灯，也可能还没</strong>，不要当作确定。</span><span class="en">🎄 <strong>Christmas lights, a heads-up:</strong> the 2026 switch-on date for the Orchard Road Christmas lights (Christmas on A Great Street) is <strong>unverified</strong> — no official notice could be found by end of October. For reference only: 2025 switched on 8 Nov, 2024 on 9 Nov and 2023 on 16 Nov, so the lights <strong>may or may not be on</strong> during 11–14 Nov — do not count on them.</span>
+<span class="cn">🎄 <strong>圣诞灯饰小提示：</strong>乌节路圣诞灯饰（Christmas on A Great Street）通常 11 月上旬至中旬开灯，2026 年的开灯日以<a href="https://www.orchardroad.org/" target="_blank">乌节路官方公告</a>为准；11/11–11/13 那几晚<strong>有可能已经亮灯，也可能还没</strong>，不要当作确定。</span><span class="en">🎄 <strong>Christmas lights, a heads-up:</strong> Orchard Road’s Christmas lights (Christmas on A Great Street) usually switch on in early to mid November; the 2026 date is on the <a href="https://www.orchardroad.org/" target="_blank">official Orchard Road announcement</a>. They <strong>may or may not be on</strong> during 11–13 Nov — do not count on them.</span>
 </div>
 </section>
 
@@ -282,50 +376,38 @@
 
 <div class="psibox">
 <div class="psi" id="psi"><span class="cn">🌫 空气质量载入中…</span><span class="en">🌫 Loading air quality…</span></div>
-<div class="psinote"><span class="cn">2026 年 10 月新加坡烟霾偏重（多家媒体报道，10 月底已回落到「中等」），11 月走势<strong>未查证</strong>。上面是新加坡环境局的<strong>实时读数</strong>（每小时更新）：PSI 100 以内日常活动照常；<strong>超过 100（不健康）就把户外行程改成室内</strong>——MBS 购物中心、Takashimaya 和乌节路一路相连的商场都在手册里。敏感体质建议带 N95（一般外科口罩挡不住 PM2.5）。<strong>每天具体怎么改，看当天卡片上的「🌫 烟霾备案」。</strong><a href="https://www.haze.gov.sg/" target="_blank">官方烟霾网站</a></span><span class="en">Singapore had heavy haze in October 2026 (reported by several media outlets; it had eased to “Moderate” by the end of the month); the outlook for November is <strong>unverified</strong>. Above is the <strong>live reading</strong> from Singapore’s NEA (hourly): under PSI 100, carry on as normal; <strong>above 100 (Unhealthy), switch outdoor plans to indoor ones</strong> — the MBS mall, Takashimaya and the linked malls along Orchard Road are all in this handbook. Bring N95 masks if you are sensitive (surgical masks do not stop PM2.5). <strong>What to change on each day is on that day’s card under “🌫 Haze plan”.</strong> <a href="https://www.haze.gov.sg/" target="_blank">Official haze site</a></span></div>
+<div class="psinote"><span class="cn">新加坡 10 月曾有烟霾，11 月请看上面的<strong>实时读数</strong>（新加坡环境局，每小时更新）：PSI 100 以内日常活动照常；<strong>超过 100（不健康）就把户外行程改成室内</strong>——MBS 购物中心、Takashimaya 和乌节路一路相连的商场都在手册里。敏感体质建议带 N95（一般外科口罩挡不住 PM2.5）。<strong>行程当天打开手册，当天卡片会显示「🌫 烟霾备案」。</strong><a href="https://www.haze.gov.sg/" target="_blank">官方烟霾网站</a></span><span class="en">Singapore had haze in October; for November, check the <strong>live reading</strong> above (Singapore’s NEA, updated hourly): under PSI 100, carry on as normal; <strong>above 100 (Unhealthy), switch outdoor plans to indoor ones</strong> — the MBS mall, Takashimaya and the linked malls along Orchard Road are all in this handbook. Bring N95 masks if you are sensitive (surgical masks do not stop PM2.5). <strong>On each trip day, that day's card shows a '🌫 Haze plan' once you open the handbook.</strong> <a href="https://www.haze.gov.sg/" target="_blank">Official haze site</a></span></div>
 </div>
 
 <!-- D01 -->
 <div class="day" data-date="2026-11-11" id="day01">
 <div class="dh">
 <div class="dn">01<small>DAY</small></div>
-<div class="dt"><h3><span class="cn">抵达 · 滨海湾夜景</span><span class="en">Arrival · Marina Bay by night</span><span class="today-tag"><span class="cn">今天</span><span class="en">TODAY</span></span></h3><div class="dd">11 Nov <span class="cn">(三)</span><span class="en">(Wed)</span></div></div>
+<div class="dt"><h3><span class="cn">抵达 · 入住 · 滨海湾晚餐</span><span class="en">Arrival · check-in · dinner at Marina Bay</span><span class="today-tag"><span class="cn">今天</span><span class="en">TODAY</span></span></h3><div class="dd">11 Nov <span class="cn">(三)</span><span class="en">(Wed)</span></div></div>
 <div class="badge">✈️ <span class="cn">抵达日</span><span class="en">Arrival day</span></div>
 </div>
 <div class="db">
 <div class="wxbox">
 <div class="wx" data-wx="2026-11-11"></div>
-<div class="rainplan"><span class="cn">☔ 雨天备案：今天室内为主：抵达→入住→MBS 商场晚餐。Spectra 在户外，下雨可能取消，那就把晚上留给商场里的 PUTIEN／JUMBO Signatures，早点休息。</span><span class="en">☔ Rain plan: Mostly indoors today: arrival → check-in → dinner in the MBS mall. Spectra is outdoors and may be cancelled in the rain — if so, keep the evening for PUTIEN / JUMBO Signatures inside the mall and turn in early.</span></div>
-<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：今天户外只有 Spectra 水秀。<strong>PSI 超过 100</strong> 就跳过它：晚餐照样在 MBS 商场里吃（全室内），然后回房休息；敏感体质戴 N95（一般外科口罩挡不住 PM2.5）。</span><span class="en">🌫 Haze plan: The only outdoor item today is the Spectra show. <strong>Above PSI 100</strong>, skip it: dinner stays inside the MBS mall (fully indoors), then rest; bring an N95 if you are sensitive (surgical masks do not stop PM2.5).</span></div></div>
+<div class="rainplan"><span class="cn">☔ 雨天备案：今天室内为主：抵达→入住→MBS 商场晚餐（PUTIEN／JUMBO Signatures 都在商场里），下雨不受影响；想看的户外灯光秀遇大雨可能取消，那就早点休息。</span><span class="en">☔ Rain plan: Mostly indoors today: arrival → check-in → dinner in the MBS mall (PUTIEN and JUMBO Signatures are both inside), so rain changes nothing; outdoor light shows may be cancelled in heavy rain, in which case turn in early.</span></div>
+<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：今天行程基本在室内。<strong>PSI 超过 100</strong> 就不看户外灯光秀：晚餐照样在 MBS 商场里吃（全室内），然后回房休息。</span><span class="en">🌫 Haze plan: Today is mostly indoors. <strong>Above PSI 100</strong>, skip any outdoor light show: dinner stays inside the MBS mall (fully indoors), then rest.</span></div></div>
 </div>
 
 <div class="stop">
 <div class="pin must">★</div>
-<h4><span class="cn">抵达樟宜机场（时间待定）</span><span class="en">Arrive at Changi Airport (time to be set)</span></h4>
-<div class="desc"><span class="cn">11/11（三）可能是<strong>中午 12:50 / 13:35</strong> 抵达，也可能是<strong>傍晚 17:30 / 18:05</strong> 抵达，要看最后选哪套航班（四套方案见<a href="./index.html">航班安排页</a>）。中午抵达就先入住、休息，晚上再出门；傍晚抵达则直接把晚餐和灯光秀排在后面，入住后马上出发。</span><span class="en">You land on Wed 11 Nov at either <strong>12:50 / 13:35 (midday)</strong> or <strong>17:30 / 18:05 (evening)</strong>, depending on the flight plan you pick (the four plans are on the <a href="./index.html">flights page</a>). A midday arrival means check in, rest, and head out at night; an evening arrival means dinner and the light show follow straight after you drop your bags.</span></div>
+<h4><span class="cn">抵达樟宜机场</span><span class="en">Arrive at Changi Airport</span></h4>
+<div class="desc"><span class="cn">航班时间见<a href="./index.html">航班安排页</a>（11/11 有中午 12:50 / 13:35 与傍晚 17:30 / 18:05 抵达两种方案）。中午抵达就先入住、休息，晚上再出门；傍晚抵达则放下行李直接去吃晚餐。</span><span class="en">Flight times: see the <a href="./index.html">flights page</a> (the 11 Nov options land at midday, 12:50 / 13:35, or in the evening, 17:30 / 18:05). A midday arrival means check in, rest, and head out at night; an evening arrival means dinner straight after you drop your bags.</span></div>
 </div>
 <div class="stop">
 <div class="pin side">🛎</div>
-<h4><span class="cn">入住酒店（酒店未定）</span><span class="en">Check in (hotel not yet booked)</span></h4>
-<div class="desc"><span class="cn">酒店还没订，订好后在这里补上入住时间。行程先按市中心排——今晚的晚餐和 Spectra 都在滨海湾金沙（MBS）一带，从机场进城约 25–30 分钟车程（推算，非来源）。</span><span class="en">The hotel is not booked yet — add the check-in details here once it is. Plans assume a central base: tonight’s dinner and Spectra are both at Marina Bay Sands (MBS). The ride in from the airport is about 25–30 minutes (an estimate, not from a source).</span></div>
+<h4><span class="cn">入住酒店</span><span class="en">Check in at the hotel</span></h4>
+<div class="desc"><span class="cn">放好行李、办完入住。今晚的晚餐在滨海湾金沙（MBS）一带；从机场到市区车程约 25–30 分钟。</span><span class="en">Drop your bags and check in. Tonight’s dinner is around Marina Bay Sands (MBS); the ride from the airport into town takes about 25–30 minutes.</span></div>
 </div>
-<div class="stop">
-<div class="pin must">★</div>
-<h4><span class="cn">20:00 或 21:00　Spectra 灯光水秀 @ MBS Event Plaza</span><span class="en">20:00 or 21:00 · Spectra light & water show @ MBS Event Plaza</span></h4>
-<div class="desc"><span class="cn">地址：MBS 购物中心前的 Event Plaza（Bayfront Ave）。免费户外表演，没有 Google 评分可参考。免费、一场约 15 分钟，周三有 <strong>20:00 和 21:00</strong> 两场。中午抵达的话先吃晚餐再看 20:00 场；傍晚 17:30/18:05 抵达的看 21:00 场更从容。详细场次、天气取消的说明见上面「03 限时活动」。户外表演。</span><span class="en">Address: Event Plaza in front of The Shoppes at MBS (Bayfront Ave). A free outdoor show, so there is no Google rating to go by. Free, about 15 minutes, and on Wednesdays there are two shows: <strong>20:00 and 21:00</strong>. If you land at midday, eat first and catch 20:00; if you land at 17:30/18:05, the 21:00 show is far more comfortable. Showtimes and the weather-cancellation note are in “03 Limited-Time Events” above. Outdoors.</span></div>
-<div class="chips"><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span><span class="chip hours"><span class="cn">周三 20:00 · 21:00</span><span class="en">Wed 20:00 · 21:00</span></span></div>
-<div class="gal">
-<img loading="lazy" decoding="async" alt="Spectra 水幕投影灯光秀 · Spectra light projections on a water screen" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfyNMHXuMqGMiMwg_SgGN4DA3QGk_evgZ48v2SUEcAxIzTujNjj2ev21nFVz6u3qNx_Hxk6yNGeE6Jl2WsrieEAXtC_E4ZdxkhRhtLiRRSiJZDl5TIHtJrzVSohJOH2weBV0PoX=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="Spectra 紫色水柱与观众 · Spectra purple water jets with the crowd" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9T5vMrQfryxG1OksYNSrg9U6f98irVMZKpfesIFYmHfrBTYNI70-1LL1lYQNdKpv3A6jnoQChpMN3c10af42d35ch4y_h_Q4rt1hPC0-VaRj7x_4p0iXKaaDojhxxsJkeQop9NAuQ=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="滨海湾金沙空中花园夜景 · Marina Bay Sands SkyPark at night" src="https://lh3.googleusercontent.com/grass-cs/AABkmLf2IduBo42C-R7N2jSGtngJwTcdbR4W0XDvXi7vahppwyAzroUghg5L3gOZ_5F7dI0jn7iPtmU9iCy-LUt5D00syKI4uXefrONhRJgDw4VgCN9xsMdmQQSw9WOm8kSZTXWZgGxG=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="滨海湾夜景与金沙购物中心屋顶 · Marina Bay night view with the Shoppes rooftop" src="https://lh3.googleusercontent.com/grass-cs/AABkmLesP3gC_qSaaNkaxDRD_3SkBtKsY1EfgwAipAFXobENyexlFwC9jtjUgnpAnxAcP1Am_zhOzIFG-SaMece9iNlQgcSkCkodI0D7DBDPSIHAZ_HHcQu562VarkJa0UBnSq0Ao704=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="艺术科学博物馆（莲花造型）· ArtScience Museum, lotus-shaped" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcJcY4LBbYmbb8pZQnMVVWPQWWoWn-HagP5WCJklBP5oZZG0WMBT8iTKxbgXYOVVt4i8O7uO7ZD14V6UjbVqag9VLXQfLfxMH-LtPGIIODQU8btXL_2trf560ta7bf8lSvlW8g=s4800-w800-h600"/>
-</div>
-<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大（前 2 张 Spectra 水秀，后 3 张 MBS 建筑）→</span><span class="en">← swipe · tap to zoom (first 2: the Spectra show; last 3: the MBS building) →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Event%20Plaza%20Marina%20Bay%20Sands%20Bayfront%20Avenue%20Singapore" target="_blank">📍 Google Maps</a>
+<div class="note amber" style="margin:10px 0 4px">
+<span class="cn">✨ 晚上想看灯光秀，见<a href="#events">限时活动</a>。</span><span class="en">✨ Fancy a light show tonight? See the <a href="#events">events section</a>.</span>
 </div>
 </div>
-<div class="dayfoot"><span class="ftlb">🍽 <span class="cn">晚餐</span><span class="en">Dinner</span></span><span class="tx"><span class="cn">二选一，都在 MBS 商场内：<a href="#dinner">PUTIEN 莆田菜（⭐4.8）或 JUMBO Signatures 辣椒螃蟹（⭐4.7）</a>，详见「06 晚餐候选」。</span><span class="en">Pick one, both inside the MBS mall: <a href="#dinner">PUTIEN (Putian cuisine, ⭐4.8) or JUMBO Signatures (chilli crab, ⭐4.7)</a> — see “06 Dinner Options”.</span></span></div>
+<div class="dayfoot"><span class="ftlb">🍽 <span class="cn">晚上吃</span><span class="en">Evening meal</span></span><span class="tx"><span class="cn">在 MBS 商场里吃最顺：<a href="#food">餐厅列表</a>「滨海湾金沙」那组的 PUTIEN 莆田菜（⭐4.8）或 JUMBO Signatures 辣椒螃蟹（⭐4.7）。</span><span class="en">Easiest inside the MBS mall: PUTIEN (Putian cuisine, ⭐4.8) or JUMBO Signatures (chilli crab, ⭐4.7) in the “MBS” group of the <a href="#food">restaurant list</a>.</span></span></div>
 </div>
 
 <!-- D02 -->
@@ -333,20 +415,20 @@
 <div class="dh">
 <div class="dn">02<small>DAY</small></div>
 <div class="dt"><h3><span class="cn">观音庙 · 午餐 · 下午自由</span><span class="en">Kwan Im Temple · lunch · free afternoon</span><span class="today-tag"><span class="cn">今天</span><span class="en">TODAY</span></span></h3><div class="dd">12 Nov <span class="cn">(四)</span><span class="en">(Thu)</span></div></div>
-<div class="badge">🙏 <span class="cn">拜观音</span><span class="en">Temple morning</span></div>
+<div class="badge">🙏 <span class="cn">观音庙上午</span><span class="en">Temple morning</span></div>
 </div>
 <div class="db">
 <div class="wxbox">
 <div class="wx" data-wx="2026-11-12"></div>
 <div class="rainplan"><span class="cn">☔ 雨天备案：今天户外只有上午的观音庙（半室外，殿内可避雨），带把伞照去。午餐选 National Kitchen（室内、有冷气）比麦士威熟食中心（有顶棚但四面通风）舒服；下午的自由时间待在商场或酒店即可。</span><span class="en">☔ Rain plan: The only outdoor stop today is the morning temple (semi-outdoor; you can shelter inside the hall), so take an umbrella and go anyway. For lunch, National Kitchen (indoors, air-conditioned) is more comfortable than Maxwell Food Centre (roofed but open-sided); spend the free afternoon in a mall or at the hotel.</span></div>
-<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：今天户外只有观音庙。<strong>PSI 超过 100</strong> 就拜完不多停、坐车来回；午餐选室内有冷气的 National Kitchen by Violet Oon，不去四面通风的麦士威熟食中心；下午待在室内。敏感体质戴 N95（一般外科口罩挡不住 PM2.5）。</span><span class="en">🌫 Haze plan: The temple is the only outdoor stop today. <strong>Above PSI 100</strong>, keep the visit short and go by car both ways; have lunch at the indoor, air-conditioned National Kitchen by Violet Oon rather than the open-sided Maxwell Food Centre, and stay indoors in the afternoon. Bring an N95 if you are sensitive (surgical masks do not stop PM2.5).</span></div></div>
+<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：今天户外只有观音庙。<strong>PSI 超过 100</strong> 就拜完不多停、坐车来回；午餐选室内有冷气的 National Kitchen by Violet Oon，不去四面通风的麦士威熟食中心；下午待在室内。</span><span class="en">🌫 Haze plan: The temple is the only outdoor stop today. <strong>Above PSI 100</strong>, keep the visit short and go by car both ways; have lunch at the indoor, air-conditioned National Kitchen by Violet Oon rather than the open-sided Maxwell Food Centre, and stay indoors in the afternoon.</span></div></div>
 </div>
 
 <div class="stop">
 <div class="pin must">★</div>
 <h4><span class="cn">08:30　四马路观音庙</span><span class="en">08:30 · Kwan Im Thong Hood Cho Temple</span></h4>
-<div class="desc"><span class="cn">⭐4.7（Google，旧手册数据；本次未能重查）。地址：178 Waterloo St, Singapore。免费参拜，求平安、开运，一大早去人少、也凉快。半室外。<strong>11/12（四）营业时间来源不一：</strong>6:00 或 7:00 开，18:00 或 18:30 收——按保守的算，7:00–18:00 一定开着。没发现停业公告。农历初一、十五会更早开门、人更多，这次几天不是那两天（推算，非来源）。离 MBS 约 5–8 分钟车程（推算）。</span><span class="en">⭐4.7 (Google, from the earlier edition; not re-checked this time). 178 Waterloo St, Singapore. Free to visit — pray for safety and good fortune; going early means fewer people and cooler air. Semi-outdoor. <strong>Hours for Thu 12 Nov differ by source:</strong> opens 6:00 or 7:00, closes 18:00 or 18:30 — play safe and count on 7:00–18:00. No closure notice found. On the 1st and 15th of the lunar month it opens earlier and gets crowded; these dates fall on neither (an inference, not from a source). About 5–8 minutes by car from MBS (estimate).</span></div>
-<div class="chips"><span class="chip hours"><span class="cn">7:00–18:00 一定开（来源写 6:00/7:00–18:00/18:30）</span><span class="en">7:00–18:00 safe (sources: 6:00/7:00–18:00/18:30)</span></span><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span></div>
+<div class="desc"><span class="cn">⭐4.7（Google）。地址：178 Waterloo St, Singapore。免费参拜，求平安、开运，一大早去人少、也凉快。半室外。<strong>11/12（四）营业时间：</strong>7:00–18:00。农历初一、十五人特别多。离 MBS 约 5–8 分钟车程。</span><span class="en">⭐4.7 (Google). 178 Waterloo St, Singapore. Free to visit — pray for safety and good fortune; going early means fewer people and cooler air. Semi-outdoor. <strong>Hours for Thu 12 Nov:</strong> 7:00–18:00. It gets especially crowded on the 1st and 15th of the lunar month. About 5–8 minutes by car from MBS.</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">7:00–18:00</span><span class="en">7:00–18:00</span></span><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="四马路观音庙正门 · Front gate of Kwan Im Thong Hood Cho Temple" src="https://lh3.googleusercontent.com/grass-cs/AABkmLea2bQ_Rr008S_gKhXvvsZBDj-4cAZSF2jZkia_-k-pOovRMKwlU0krbnk9FuHSeQPpQre5DRZ83wEAG4vaMyjasI-RZ0C6Z0ay2C-C3qpScJfwgbabLLeStvKOn2Op_yOcxQEVe2zeE3u7=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="庙前广场与摊位 · Forecourt and stalls in front of the temple" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9RG3o6m8e9K0_sN965X3L7JNAna7WQ_rbDTXZ9AJ0GsRobqh7qDQsQQ0w_ExXiVBAOYhoq3UcpO5vZidf71bFK1kgFn306Bz42kOyV3xk0dpmypYN3EkRQgL_ZiYdeLtWr_QSRDfTyVG7zk=s4800-w800-h600"/>
@@ -357,41 +439,14 @@
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
 <a class="btn-map" href="https://maps.google.com/?cid=11324397493616015584" target="_blank">📍 Google Maps</a>
 </div>
-<div class="stop">
-<div class="pin dine">🍽</div>
-<h4><span class="cn">12:00　午餐选项 A · National Kitchen by Violet Oon（娘惹菜）</span><span class="en">12:00 · Lunch option A · National Kitchen by Violet Oon (Peranakan)</span></h4>
-<div class="desc"><span class="cn">⭐4.4（Google 1,788 评价）。地址：#02-01 National Gallery Singapore, 1 St Andrew’s Rd, Singapore 178957。招牌是干叻沙（不带汤的咖喱面）和娘惹菜（海峡华人的传统菜），评论反复点名；有冷气、坐得舒服，比小贩中心体面，适合三个人点几样分着吃。从观音庙过去车程约 5 分钟（推算）。<strong>11/12（四）营业时间：</strong>午市 12:00–15:00（最后点餐 14:30）、晚市 18:00–22:30（最后点餐 21:30）；另一份旧导览写 11:30–15:00 / 17:30–23:00，两说并陈。需要订位。</span><span class="en">⭐4.4 (1,788 Google reviews). #02-01 National Gallery Singapore, 1 St Andrew’s Rd, Singapore 178957. Known for dry laksa (curry noodles served without soup) and Peranakan food (the traditional cooking of Straits-born Chinese), both named again and again in reviews; air-conditioned and comfortable, a more civilised sit-down than a hawker centre — order a few dishes to share among the three of you. About 5 minutes by car from the temple (estimate). <strong>Hours for Thu 12 Nov:</strong> lunch 12:00–15:00 (last order 14:30), dinner 18:00–22:30 (last order 21:30); an older guide says 11:30–15:00 / 17:30–23:00 — both noted. Reservation needed.</span></div>
-<div class="chips"><span class="chip hours"><span class="cn">午 12:00–15:00 · 晚 18:00–22:30</span><span class="en">Lunch 12:00–15:00 · Dinner 18:00–22:30</span></span><span class="chip book"><span class="cn">需订位</span><span class="en">Reservation needed</span></span></div>
-<div class="gal">
-<img loading="lazy" decoding="async" alt="National Kitchen by Violet Oon" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdzdicOazXyTWELuENdhJqFQAq4nJPOICZHVdr-3bhTdpe2q-Yb5l13wm23w2827RjPXUfwh_MP6L_AH296VnQvmeNsZuGbHCvcxx75AJ2PTiO28pguXSIPXEhYa2eOmPKzfgp9=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="National Kitchen by Violet Oon" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfNVN-ab98idvqWEXjDFd5gqeDzLwo1LqvKXs-LNO1ivXtssXQf11M0IUj3W5THU4KhG5k8Vjtr1JkI3OMNldDm9yLAKiVlwzF-Rx-eSjSj85Q1aa8tMQjojtsgi_k4Sg95x2kYyl5FSXVv=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="National Kitchen by Violet Oon" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9SwRbDFMKo9cEBdtPD2vEQJKmo3zFgQBl99Ys_5IZcf43o-hrX5DGzzbEQyEDW1tI9gAGzoD_iypw1oaEUbGXNC-gJjM7I65Cs0_C2e-6w1XJG5jbXLi6WN6W9FpofHTALclfsIWg=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="National Kitchen by Violet Oon" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9SQomLFFKDNXHbcbyXRy3XlgUGjOVJVcYWx9wjvdTJYi6mCsN5y_KvhJhE4z0RUO-91MHakkiN4MtdzWSyRP-1YdZIB3bXUArIF6sV5I8YtLpFIfSFhlcgXaRRG94NVHNk1OTU=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="National Kitchen by Violet Oon" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9S_o8QswKVBB6FcMM4VIL6QAvcn32JbGMbD7Nq1-ir-lNVfQYYNY-OrAbd5ihBG451GdxkDrV3yU7ZS8GCxrH7AXwmup2FR2QYykxWQ-b8TyD2TVt5m1VeE25RfZILloZeICqwYkRosO_a3=s4800-w800-h600"/>
-</div>
-<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=National%20Kitchen%20by%20Violet%20Oon%20%2302-01%20National%20Gallery%20Singapore%201%20St%20Andrew%27s%20Rd%20Singapore%20178957" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://violetoon.com/national-kitchen-by-violet-oon-national-gallery-singapore" target="_blank">🔗 <span class="cn">官网</span><span class="en">Official page</span></a>
-</div>
-<div class="stop">
-<div class="pin dine">🍜</div>
-<h4><span class="cn">12:00　午餐选项 B · 麦士威熟食中心（本地小吃）</span><span class="en">12:00 · Lunch option B · Maxwell Food Centre (local hawker food)</span></h4>
-<div class="desc"><span class="cn">⭐4.4（Google 24,266 评价）。地址：1 Kadayanallur St, Singapore 069184。牛车水最有名的熟食中心之一，海南鸡饭名摊「天天」（Tian Tian）在这里，另有各式本地小吃，平价、热闹，想吃地道一点就选这里。有顶棚但四面通风、没有冷气。从观音庙过去车程约 10 分钟（推算）。<strong>11/12（四）营业时间：</strong>各摊自定；天天约 10:00 或 11:00 到 19:30，休息日两说（周一或周二），周四不踩休日。未发现关闭公告，但 11 月的「大扫除休业」名单要到 11 月初才会公布，<strong>未查证</strong>。</span><span class="en">⭐4.4 (24,266 Google reviews). 1 Kadayanallur St, Singapore 069184. One of Chinatown’s best-known hawker centres, home to the famous chicken rice stall Tian Tian plus many other local dishes — cheap, lively and the more authentic choice. Roofed but open-sided, with no air-con. About 10 minutes by car from the temple (estimate). <strong>Hours for Thu 12 Nov:</strong> each stall sets its own; Tian Tian is roughly 10:00 or 11:00 to 19:30, with its weekly rest day given as Monday or Tuesday by different sources, so Thursday is safe. No closure notice found, but the November deep-cleaning closure list is only published in early November — <strong>unverified</strong>.</span></div>
-<div class="chips"><span class="chip hours"><span class="cn">各摊自定 · 天天约 10:00/11:00–19:30</span><span class="en">Stalls vary · Tian Tian ~10:00/11:00–19:30</span></span><span class="chip verify"><span class="cn">11 月休业名单未查证</span><span class="en">November closure list unverified</span></span></div>
-<div class="gal">
-<img loading="lazy" decoding="async" alt="Maxwell Food Centre Chinatown" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfnOxvAjynjUhtEGQOR7m0yxdbrK7GFk-4Iuev2Y18oQMSpu4fkfaSOig6rJ0v6qmyL9Vej30HmhaR6GH5qsl1JozE1qDoPkMUH57ZeoZ0kYN1fWUdBpxWrB8bocFQETXGAGzqG=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="Maxwell Food Centre Chinatown" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfouxgzzQwi6ZPfP6MaQDJCtaZpqQTPa5K7ln6Pl8h1fGKPZpmxu-diRpVyuAG9gcq6TYEQTxe9KMSxy8dcUEFsyjbIAP1zWf5q9JUgfdfs-rfdq2D1fEHec1nRrqxY9hfFUbT9Ysbr6YDM=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="Maxwell Food Centre Chinatown" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfuTGhr4B91gb8O7I8M7AoP26QLCJtPBMe3c1FBoVG2TXtm86NOtChiG1wXPTGgHrCTVt9NAdmKPY7YSyY2eLB_pmWxnCmmnqeAOANpWkw6p62ztyiiD9IamIYA6DmCxOQGOITGu0MvF0HP=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="Maxwell Food Centre Chinatown" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdfzo92QtLIBiIWAAM2LJ1lotWbx4ONm2JwWKZ2bOSDG9k92dd7NV2Ru82zNIbuGAAjp2xof0O-s1g9VmstJEm5cACLCgsUf0Y7L3WsKYl6DRrLHI-aaVcRHTZ_1ZkCXBErakJSRw=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="Maxwell Food Centre Chinatown" src="https://lh3.googleusercontent.com/grass-cs/AABkmLe0WugbN4g_6xIO1qnXgdkQIcUtfocuwc8IVVDNlJD0HUm9VO3hu1CyV75UblwIgmNKiDY9fB33uyh3bhnSqK4PqDoHbXIT3ZA1WZeMacpiwPDxD9ZS7RsKmTr_naAf3daj6YwYZJPwK8M=s4800-w800-h600"/>
-</div>
-<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Maxwell%20Food%20Centre%201%20Kadayanallur%20St%20Singapore%20069184" target="_blank">📍 Google Maps</a>
+<div class="note amber" style="margin:10px 0 4px">
+<span class="cn">🕘 <strong>09:30–12:00</strong>　上午自由，可以先回酒店，或在附近逛逛。</span><span class="en">🕘 <strong>09:30–12:00</strong> · The morning is free — head back to the hotel or wander nearby.</span><br><span class="cn">🍽 <strong>12:00　午餐</strong>：从<a href="#food">餐厅列表</a>挑，离观音庙最近的是「其他区域」那组的 National Kitchen by Violet Oon（娘惹菜、有冷气）和麦士威熟食中心（本地小吃、平价）。</span><span class="en">🍽 <strong>12:00 · Lunch</strong>: pick from the <a href="#food">restaurant list</a>; closest to the temple are National Kitchen by Violet Oon (Peranakan, air-conditioned) and Maxwell Food Centre (local hawker food, cheap) in the “Elsewhere” group.</span>
 </div>
 <div class="note amber" style="margin:10px 0 4px">
 <span class="cn">🕑 <strong>14:00 以后　下午留给自己安排。</strong></span><span class="en">🕑 <strong>From 14:00 · the afternoon is yours to plan.</strong></span>
 </div>
 </div>
-<div class="dayfoot"><span class="ftlb">🍽 <span class="cn">晚餐</span><span class="en">Dinner</span></span><span class="tx"><span class="cn">今天晚餐不指定，看<a href="#dinner">「06 晚餐候选」</a>挑一家，或从<a href="#orchard">「05 乌节路中餐 · 本地菜」</a>里选。</span><span class="en">No fixed dinner today — pick one from <a href="#dinner">“06 Dinner Options”</a>, or from <a href="#orchard">“05 Orchard: Chinese &amp; local”</a>.</span></span></div>
+<div class="dayfoot"><span class="ftlb">🍽 <span class="cn">晚上吃</span><span class="en">Evening meal</span></span><span class="tx"><span class="cn">不指定，从<a href="#food">餐厅列表</a>挑一家，选离你们当时所在区域最近的。</span><span class="en">Nothing fixed — pick one from the <a href="#food">restaurant list</a>, whichever is nearest to where you are.</span></span></div>
 </div>
 
 <!-- D03 -->
@@ -405,29 +460,26 @@
 <div class="wxbox">
 <div class="wx" data-wx="2026-11-13"></div>
 <div class="rainplan"><span class="cn">☔ 雨天备案：今天几乎全在室内——乌节路的商场一家连着一家，Takashimaya、Paragon、ION 之间走地下通道或有顶棚的人行道就能到，下雨照常。只有去 Fook Kin（Killiney Road）这类街边店要坐车或撑伞。</span><span class="en">☔ Rain plan: Today is almost entirely indoors — the Orchard Road malls run one into the next, and Takashimaya, Paragon and ION link up by underpasses or covered walkways, so rain changes nothing. Only street-side places such as Fook Kin (Killiney Road) need a car or an umbrella.</span></div>
-<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：今天几乎全在室内，商场连着商场。<strong>PSI 超过 100</strong> 就少走户外人行道，商场之间改走地下通道或坐车，午餐挑商场或酒店里的店（例如 Paragon 的 Aburi-EN、Hilton 的 Chatterbox）；敏感体质戴 N95（一般外科口罩挡不住 PM2.5）。</span><span class="en">🌫 Haze plan: Today is almost all indoors, mall after mall. <strong>Above PSI 100</strong>, avoid the open pavements — use the underpasses or a car between malls — and pick a lunch spot inside a mall or hotel (for example Aburi-EN at Paragon or Chatterbox at the Hilton). Bring an N95 if you are sensitive (surgical masks do not stop PM2.5).</span></div></div>
+<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：今天几乎全在室内，商场连着商场。<strong>PSI 超过 100</strong> 就少走户外人行道，商场之间改走地下通道或坐车，午餐挑商场或酒店里的店（例如 Paragon 的 Aburi-EN、Scotts Square 的 Paradise Teochew）。</span><span class="en">🌫 Haze plan: Today is almost all indoors, mall after mall. <strong>Above PSI 100</strong>, avoid the open pavements — use the underpasses or a car between malls — and pick a lunch spot inside a mall or hotel (for example Aburi-EN at Paragon or Paradise Teochew at Scotts Square).</span></div></div>
 </div>
 
 <div class="note amber" style="margin:10px 0 4px">
-<span class="cn">🍽 <strong>11:45　乌节路午餐</strong>：从<a href="#orchard">「05 乌节路中餐 · 本地菜」</a>挑一家，吃完逛 Takashimaya，下午自由。</span><span class="en">🍽 <strong>11:45 · Orchard Road lunch</strong>: pick one from <a href="#orchard">“05 Orchard: Chinese &amp; local”</a>, then browse Takashimaya; the afternoon is free.</span>
+<span class="cn">🕘 上午自由安排（Takashimaya 10:00 开门）。</span><span class="en">🕘 The morning is free (Takashimaya opens at 10:00).</span><br><span class="cn">🍽 <strong>12:00　午餐</strong>：从<a href="#food">餐厅列表</a>挑，「乌节路」那组的都近，吃完逛 Takashimaya，下午自由。</span><span class="en">🍽 <strong>12:00 · Lunch</strong>: pick from the <a href="#food">restaurant list</a> — everything in the “Orchard Road” group is close; then browse Takashimaya; the afternoon is free.</span>
 </div>
 <div class="stop">
 <div class="pin side">🛍</div>
 <h4><span class="cn">Takashimaya 高岛屋购物中心 @ 乌节路</span><span class="en">Takashimaya Shopping Centre @ Orchard Road</span></h4>
-<div class="desc"><span class="cn">⭐4.5（Google，旧手册数据）。地址：391 Orchard Rd, Singapore 238872。老牌百货，B2 美食楼层评价很高（日式甜点、伴手礼一应俱全），午餐后逛一下，下雨或烟霾时也是现成的室内去处。离开 Takashimaya 后下午自由。<strong>11/13（五）营业时间：</strong>10:00–21:30。没发现停业或装修公告（官网未查证）。</span><span class="en">⭐4.5 (Google, from the earlier edition). 391 Orchard Rd, Singapore 238872. The classic department store; the B2 food hall is well reviewed (Japanese sweets and gifts), and today it is the after-lunch browse that doubles as a ready-made indoor spot in rain or haze. The afternoon after Takashimaya is free. <strong>Hours for Fri 13 Nov:</strong> 10:00–21:30. No closure or renovation notice found (the official site was not checked).</span></div>
+<div class="desc"><span class="cn">⭐4.5（Google）。地址：391 Orchard Rd, Singapore 238872。老牌百货，B2 美食楼层日式甜点、伴手礼一应俱全，午餐后逛一下，下雨或烟霾时也是现成的室内去处。<strong>11/13（五）营业时间：</strong>10:00–21:30。</span><span class="en">⭐4.5 (Google). 391 Orchard Rd, Singapore 238872. The classic department store; the B2 food hall is full of Japanese sweets and gifts — a good after-lunch browse, and a ready-made indoor refuge in rain or haze. <strong>Hours for Fri 13 Nov:</strong> 10:00–21:30.</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">10:00–21:30</span><span class="en">10:00–21:30</span></span><span class="chip ok"><span class="cn">雨天/烟霾备案</span><span class="en">Rain / haze fallback</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="高岛屋购物中心正门 · Takashimaya entrance on Orchard Road" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdGJo7EooCvw2uD8i8bemeTudiUgTZyrxwXiyXHxiVlU2VV8KJYbotdN-3yzBgDBYVqlkIidFzAVlNNGCM41DWF-YvfN_8zPdCAGQBzD5Gk41_9eqgm3FV_jBuaP2YL4gVip158D2pcYPsl=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="高岛屋中庭特卖场 · Atrium fair inside Takashimaya" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeXGLV-jhE9BymtmqrFg86pA_hkvv_v9P2m5F-IIIOZ_i-Tavov3_9YFUg2uHT0SsSA1j06mq8ZzuroQRahRByCLH97WGj6m9cvtGWE6iXiqzxdjML6NHUbdPqm92iMuQxLPRi6L7MrIVHs=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="书店楼层 · Bookstore floor" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcyg8gIResS4fuVigzo5_L3abinJS_JAQ-5exKw7hnTELxVMlSviE3MZ0MmICFH4nMWLJ8NsTi6hK6vgjztNh53fvdKfY7pIzbZJJnTCxCbKRgOR9fW7jP0ZpBB2SnTah4p1LK0zg=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="OWNDAYS 眼镜店 · OWNDAYS storefront" src="https://lh3.googleusercontent.com/grass-cs/AABkmLedhwSvWW0xgSS5nlan-9Or-RhnCnKWt_3Pat2-nrEYKeHXKtcf2k45Kbs-x76Mva9XSJq0q0Os93UkOeaZwIdiXOOe3raRrDvAiyTfiGnlsuXPrN18Db13N4ScMg3RGD61CrjF=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="吃茶三千（台湾茶饮）· Chicha San Chen tea shop" src="https://lh3.googleusercontent.com/grass-cs/AABkmLd6s1AgAnzzhWo0eEy5x2yXGw1iTns5wm68vr5fHrY-Nq_rmtyrvBgk6S8hltCf5Zo2BmnMSnVyN3GMFyxjZZTjR55wnVc0Ao1QU7nCupxUj3K19QrLfahw2oBiUwj1dLmWuTr301vHYn-2=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
 <a class="btn-map" href="https://maps.google.com/?cid=1962751356906139381" target="_blank">📍 Google Maps</a>
 </div>
 </div>
-<div class="dayfoot"><span class="ftlb">🍽 <span class="cn">晚餐</span><span class="en">Dinner</span></span><span class="tx"><span class="cn">今天晚餐不指定，看<a href="#dinner">「06 晚餐候选」</a>挑一家（Sushi Katori 要提前订位），或从<a href="#orchard">「05 乌节路中餐 · 本地菜」</a>里选晚市。</span><span class="en">No fixed dinner today — pick one from <a href="#dinner">“06 Dinner Options”</a> (Sushi Katori needs a booking), or a dinner service from <a href="#orchard">“05 Orchard: Chinese &amp; local”</a>.</span></span></div>
+<div class="dayfoot"><span class="ftlb">🍽 <span class="cn">晚上吃</span><span class="en">Evening meal</span></span><span class="tx"><span class="cn">不指定，从<a href="#food">餐厅列表</a>挑一家；白天在乌节路，「乌节路」那组的晚市最近，晚餐想吃 Paradise Teochew 或夏宫的话，两家都要订位。</span><span class="en">Nothing fixed — pick one from the <a href="#food">restaurant list</a>; after a day on Orchard Road the “Orchard Road” group is nearest; Paradise Teochew and Summer Palace both need a booking.</span></span></div>
 </div>
 
 <!-- D04 -->
@@ -441,20 +493,20 @@
 <div class="wxbox">
 <div class="wx" data-wx="2026-11-14"></div>
 <div class="rainplan"><span class="cn">☔ 雨天备案：只有退房→机场，雨天车程多留 5–10 分钟即可；Jewel 在室内，不受影响。</span><span class="en">☔ Rain plan: Just check-out → airport; in rain allow an extra 5–10 minutes for the drive. Jewel is indoors and unaffected.</span></div>
-<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：今天只有退房→车→Jewel→航站楼，全程室内，PSI 再高也不影响。</span><span class="en">🌫 Haze plan: Today is check-out → car → Jewel → terminal, all indoors. Haze changes nothing.</span></div></div>
+<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">🌫 烟霾备案：今天只有退房→车→（15:15 班机才有 Jewel）→航站楼，全程室内，PSI 再高也不影响。</span><span class="en">🌫 Haze plan: Today is check-out → car → (Jewel on the 15:15 flight only) → terminal, all indoors. Haze changes nothing.</span></div></div>
 </div>
 
 <div class="tl">
-<div class="ev"><div class="t">08:00</div><h4><span class="cn">🍳 早餐</span><span class="en">🍳 Breakfast</span></h4><div class="s"><span class="cn">吃完回房收行李。酒店还没订，早餐就在酒店或附近解决。</span><span class="en">Breakfast, then back to pack. The hotel is not booked yet, so eat at the hotel or nearby.</span></div></div>
-<div class="ev"><div class="t">08:30 / 09:00</div><h4><span class="cn">🧳 退房 · 出发去樟宜</span><span class="en">🧳 Check out · head to Changi</span></h4><div class="s"><span class="cn"><strong>12:30 的班机：08:30 退房、08:45 前出发</strong>，车程约 25–30 分钟（推算），约 09:15–09:30 到 T2 值机（一般建议起飞前约 3 小时到，具体以航空公司通知为准）。<strong>15:15 的班机：09:00 退房、约 09:30 出发</strong>，时间从容。航班还没定，订好后改这一格。</span><span class="en"><strong>12:30 flight: check out at 08:30 and leave by 08:45</strong>; the ride takes about 25–30 minutes (an estimate), reaching T2 for check-in at about 09:15–09:30 (airlines generally suggest arriving about 3 hours before departure — follow your airline’s notice). <strong>15:15 flight: check out at 09:00 and leave around 09:30</strong>, with time to spare. The flight is not fixed yet; update this slot once it is.</span></div></div>
-<div class="ev hot"><div class="t">10:00</div><h4><span class="cn">🌧 星耀樟宜 Jewel · 雨漩涡</span><span class="en">🌧 Jewel Changi Airport · Rain Vortex</span></h4><div class="s"><span class="cn">Jewel 直接连着 T1，到 T2 要多走一段路（具体步行时间<strong>未查证</strong>），请预留时间。<strong>15:15 的班机：</strong>09:30 出发、约 10:00 到 Jewel，逛到 11:45 左右再走去 T2 值机，比较从容。<strong>12:30 的班机：时间很紧</strong>——T2 值机、托运完大约 10:00，之后还要过出境和安检，Jewel 只能抽空匆匆看一眼，甚至直接跳过也不可惜。</span><span class="en">Jewel is linked directly to Terminal 1; reaching T2 means a further walk (the walking time is <strong>unverified</strong>), so allow time. <strong>15:15 flight:</strong> leave at 09:30, reach Jewel around 10:00, browse until about 11:45, then walk to T2 for check-in — comfortable. <strong>12:30 flight: very tight</strong> — you would only finish check-in and bag drop around 10:00, with immigration and security still to come, so Jewel is a quick look at best, and skipping it altogether is no great loss.</span></div></div>
-<div class="ev fin"><div class="t">12:30 / 15:15</div><h4><span class="cn">✈️ 樟宜 T2 起飞 → 雅加达（航班待定）</span><span class="en">✈️ Depart Changi T2 → Jakarta (flight to be confirmed)</span></h4><div class="s"><span class="cn">航班号和时间还没定，两个可能是 12:30 或 15:15，见<a href="./index.html">航班安排页</a>。订好后在这里补上。</span><span class="en">Flight number and time are not fixed — it is either 12:30 or 15:15; see the <a href="./index.html">flights page</a>. Fill in the details here once booked.</span></div></div>
+<div class="ev"><div class="t">08:00</div><h4><span class="cn">🍳 早餐</span><span class="en">🍳 Breakfast</span></h4><div class="s"><span class="cn">早餐在酒店或附近解决，吃完回房收行李。</span><span class="en">Breakfast at the hotel or nearby, then back to pack.</span></div></div>
+<div class="ev"><div class="t">08:30 / 09:00</div><h4><span class="cn">🧳 退房 · 出发去樟宜</span><span class="en">🧳 Check out · head to Changi</span></h4><div class="s"><span class="cn"><strong>12:30 的班机：08:30 退房、08:45 前出发</strong>，车程约 25–30 分钟，约 09:15–09:30 到 T2 值机（一般建议起飞前约 3 小时到，具体以航空公司通知为准）。<strong>15:15 的班机：09:00 退房、约 09:30 出发</strong>，时间从容。</span><span class="en"><strong>12:30 flight: check out at 08:30 and leave by 08:45</strong>; the ride takes about 25–30 minutes, reaching T2 for check-in at about 09:15–09:30 (airlines generally suggest arriving about 3 hours before departure — follow your airline’s notice). <strong>15:15 flight: check out at 09:00 and leave around 09:30</strong>, with time to spare.</span></div></div>
+<div class="ev hot"><div class="t">10:00</div><h4><span class="cn">（仅 15:15 班机）星耀樟宜</span><span class="en">(15:15 flight only) Jewel Changi</span></h4><div class="s"><span class="cn">Jewel 与 T1 相连，经连桥步行去 T2，带着行李请多留 20 分钟。<strong>12:30 班机建议不去 Jewel，值机后直接过关；15:15 班机可以先逛 Jewel 再过关</strong>：09:30 出发、约 10:00 到 Jewel，最晚 11:45 离开 Jewel 去 T2 值机。</span><span class="en">Jewel is linked to Terminal 1; T2 is a walk away over the link bridge, so allow an extra 20 minutes with luggage. <strong>On the 12:30 flight, skip Jewel and go straight through immigration after check-in; on the 15:15 flight, you can browse Jewel first and then go through</strong>: leave at 09:30, reach Jewel around 10:00, leave Jewel by 11:45 at the latest and walk to T2 for check-in.</span></div></div>
+<div class="ev fin"><div class="t">12:30 / 15:15</div><h4><span class="cn">✈️ 樟宜 T2 起飞 → 雅加达</span><span class="en">✈️ Depart Changi T2 → Jakarta</span></h4><div class="s"><span class="cn">航班时间见<a href="./index.html">航班安排页</a>（有 12:30 与 15:15 起飞两种方案）。</span><span class="en">Flight times: see the <a href="./index.html">flights page</a> (the options depart at 12:30 or 15:15).</span></div></div>
 </div>
 <div class="stop">
 <div class="pin side">🌧</div>
 <h4><span class="cn">星耀樟宜 Jewel Changi Airport · 雨漩涡</span><span class="en">Jewel Changi Airport · Rain Vortex</span></h4>
-<div class="desc"><span class="cn">⭐4.8（Google 2,139 评价，Rain Vortex）。地址：78 Airport Blvd, Singapore 819666。40 米高的室内瀑布从玻璃穹顶倾泻而下，是世界最高的室内瀑布之一，回程前顺路看一下，天气再差也不影响。<strong>11/14（六）营业时间：</strong>10:00–22:00（官网 Rain Vortex 页）。注意：雨漩涡的<strong>灯光秀在晚上</strong>——周一至周四 20:00、21:00，周五至周日加 22:00——你们 11/14 白天飞走，看不到；灯光秀只有 11/11–11/13 的晚上能看，不必专程回来。商场部分商铺 10:00–22:00。</span><span class="en">⭐4.8 (2,139 Google reviews, Rain Vortex). 78 Airport Blvd, Singapore 819666. A 40-metre indoor waterfall pouring from a glass dome, among the tallest indoor waterfalls in the world — a handy last look before the flight, unaffected by weather. <strong>Hours for Sat 14 Nov:</strong> 10:00–22:00 (official Rain Vortex page). Note that the <strong>light show is in the evening</strong> — Mon–Thu 20:00 and 21:00, with a 22:00 show added Fri–Sun — and you fly out in the daytime on 14 Nov, so you will not see it; it is only possible on the evenings of 11–13 Nov, and not worth a special trip back. Mall shops 10:00–22:00.</span></div>
-<div class="chips"><span class="chip hours"><span class="cn">10:00–22:00</span><span class="en">10:00–22:00</span></span><span class="chip verify"><span class="cn">与 T2 的步行连接未查证</span><span class="en">Walk to T2 unverified</span></span><span class="chip ok"><span class="cn">室内·不怕雨</span><span class="en">Indoors · rain-proof</span></span></div>
+<div class="desc"><span class="cn">⭐4.8（Google 2,139 条评价）。地址：78 Airport Blvd, Singapore 819666。40 米高的室内瀑布从玻璃穹顶倾泻而下，是世界最高的室内瀑布之一，15:15 的班机回程前可以顺路看一下，天气再差也不影响。<strong>11/14（六）营业时间：</strong>10:00–22:00。灯光秀在晚上，11/14 白天飞走看不到，详见<a href="#events">限时活动</a>。</span><span class="en">⭐4.8 (2,139 Google reviews). 78 Airport Blvd, Singapore 819666. A 40-metre indoor waterfall pouring from a glass dome, among the tallest indoor waterfalls in the world — worth a last look before a 15:15 flight, unaffected by weather. <strong>Hours for Sat 14 Nov:</strong> 10:00–22:00. The light show is in the evening — you fly out in the daytime on 14 Nov; see <a href="#events">Events</a>.</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">10:00–22:00</span><span class="en">10:00–22:00</span></span><span class="chip ok"><span class="cn">室内·不怕雨</span><span class="en">Indoors · rain-proof</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="Jewel Changi Airport Rain Vortex" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeWK8ynnOM5gm2yUP1yMsISa45sRL01B-RNKCvlnmKfXtmxyyBy69DIhaZd1ukLojnusAGufJYvP41s3qOEACz7uHgOSMkJ-4zxd_76unnImuQ7wNVvowaJwOVjx5NFpKIcrVJh=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="Jewel Changi Airport Rain Vortex" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9SBB4mNmxRr0CcUCYozTRTEr9rkBYazqohTRwProWaG6GwfvvhbR8lFe-Wicmfbna1nWBA7umf6ggqORqn8FOBj3h3KEVbzx_PYi6ubEhK4mmREOfw5MGqXBU9t-n85Pg_XWxM=s4800-w800-h600"/>
@@ -470,18 +522,19 @@
 
 </section>
 
-<!-- ===== ORCHARD: CHINESE & LOCAL ===== -->
-<section id="orchard">
-<div class="sec-head"><span class="no">05</span><h2><span class="cn">乌节路中餐 · 本地菜</span><span class="en">Orchard: Chinese &amp; local</span></h2><span class="rule"></span></div>
+<!-- ===== RESTAURANTS ===== -->
+<section id="food">
+<div class="sec-head"><span class="no">05</span><h2><span class="cn">餐厅</span><span class="en">Restaurants</span></h2><span class="rule"></span></div>
 <div class="note amber">
-<span class="cn">D3（11/13 周五）乌节路日的午餐从这里挑一家，D2、D3 的晚餐也可以用。按菜系排：粤菜 → 烧腊 → 潮州菜 → 福建兴化菜 → 海鲜 → 娘惹菜 → 本地小吃 → 日式。评分都是 Google 的数字；每张卡写了 11/13 周五的午市、晚市时间和离 Takashimaya 多远，查不到的写「未查证」。大部分在乌节路步行或 5 分钟车程内，莆田吉真那路店和 Candlenut 要坐 10–15 分钟车。</span><span class="en">Pick one of these for lunch on D3 (Fri 13 Nov, the Orchard Road day); they also work for dinner on D2 or D3. Sorted by cuisine: Cantonese → roast meats → Teochew → Fujian (Putian) → seafood → Peranakan → local favourites → Japanese. Ratings are Google’s figures; each card lists the Friday 13 Nov lunch and dinner hours and the distance from Takashimaya, with anything that could not be checked marked “unverified”. Most are a walk or a 5-minute ride along Orchard Road; PUTIEN Kitchener Road and Candlenut are 10–15 minutes by car.</span>
+<span class="cn">餐厅不分午餐、晚餐，按区域排：乌节路 → 滨海湾金沙（MBS）→ 其他（市政区、登布西、牛车水、丹戎巴葛），同一区里再按菜系排。每张卡标了区域，人在哪一区就从那一组挑。评分都是 Google 的数字；部分餐厅另写了离 Takashimaya（乌节路的地标商场）多远。</span><span class="en">Restaurants are not split into lunch and dinner; they are grouped by area — Orchard Road → Marina Bay Sands (MBS) → elsewhere (Civic District, Dempsey, Chinatown, Tanjong Pagar) — and by cuisine within each area. Every card shows its area; pick from whichever group you are near. Ratings are Google’s figures; some cards also give the distance from Takashimaya (Orchard Road’s landmark mall).</span>
 </div>
 
+<div class="grp"><span class="cn">乌节路（8 家）</span><span class="en">Orchard Road (8)</span></div>
 <div class="evt">
-<div class="eh"><span class="et"><span class="cn">🥢 粤菜 · 酒店包厢</span><span class="en">🥢 Cantonese · hotel private rooms</span></span><span class="ed"><span class="cn">⭐4.4</span><span class="en">⭐4.4</span></span></div>
+<div class="eh"><span class="et"><span class="cn">📍乌节路 · 🥢 粤菜 · 酒店包厢</span><span class="en">📍Orchard Road · 🥢 Cantonese · hotel private rooms</span></span><span class="ed"><span class="cn">⭐4.4</span><span class="en">⭐4.4</span></span></div>
 <div class="eb">
 <h3><span class="cn">江南春 Jiang-Nan Chun @ 新加坡四季酒店</span><span class="en">Jiang-Nan Chun @ Four Seasons Hotel Singapore</span></h3>
-<div class="desc"><span class="cn">⭐4.4（Google 440 评价）。地址：Four Seasons Hotel Singapore, Level 2, 190 Orchard Boulevard, Singapore 248646。四季酒店里的粤菜馆，招牌是樱桃谷烤鸭、蜜汁伊比利亚黑猪叉烧和龙虾焖伊面；主厨陈恩德（Alan Chan）2025 年 6 月回归。有独立包厢，三个人想安静坐下来请客、谈事，这家最稳。价位偏高：午市六道菜套餐约 S$178 起、晚市七道菜约 S$198 起（Time Out，日期不详）。<br><strong>11/13（五）：</strong>午市 11:30–14:30、晚市 18:00–22:30（官方与米其林页一致；旧博客写晚市到 22:00，建议订位时确认）<br><strong>距 Takashimaya：</strong>约 1.3 公里，车程约 5 分钟、步行约 18 分钟（推算）<br><strong>订位／包厢：</strong>建议订位（OpenTable 可订）；有包厢，官网一页写 4 间、另一页写 7 间，两说并陈</span><span class="en">⭐4.4 (440 Google reviews). Four Seasons Hotel Singapore, Level 2, 190 Orchard Boulevard, Singapore 248646. The hotel’s Cantonese restaurant: signature Cherry Valley roast duck, honey-glazed Iberico pork and lobster with braised noodles; chef Alan Chan returned in June 2025. It has private rooms, which makes it the safest choice for a quiet hosted meal for three. Pricey: six-course lunch set from about S$178, seven-course dinner from about S$198 (Time Out, undated).<br><strong>Fri 13 Nov:</strong> lunch 11:30–14:30, dinner 18:00–22:30 (official and Michelin pages agree; an older blog says dinner ends 22:00 — confirm when booking)<br><strong>From Takashimaya:</strong> about 1.3 km — about 5 minutes by car or 18 minutes on foot (estimate)<br><strong>Booking / private rooms:</strong> booking advised (on OpenTable); private rooms available — the official site says 4 on one page and 7 on another, both noted</span></div>
+<div class="desc"><span class="cn">⭐4.4（Google 440 条评价）。地址：Four Seasons Hotel Singapore, Level 2, 190 Orchard Boulevard, Singapore 248646。四季酒店里的粤菜馆，招牌是樱桃谷烤鸭、蜜汁伊比利亚黑猪叉烧和龙虾焖伊面；主厨陈恩德（Alan Chan）2025 年 6 月回归。有独立包厢，三个人想安静坐下来好好吃一顿，这家最稳。价位偏高：午市六道菜套餐约 S$178 起、晚市七道菜约 S$198 起。<br><strong>11/13（五）：</strong>午市 11:30–14:30、晚市 18:00–22:30<br><strong>距 Takashimaya：</strong>约 1.3 公里，车程约 5 分钟、步行约 18 分钟<br><strong>订位／包厢：</strong>建议订位（OpenTable 可订）；有包厢</span><span class="en">⭐4.4 (440 Google reviews). Four Seasons Hotel Singapore, Level 2, 190 Orchard Boulevard, Singapore 248646. The hotel’s Cantonese restaurant: signature Cherry Valley roast duck, honey-glazed Iberico pork and lobster with braised noodles; chef Alan Chan returned in June 2025. It has private rooms, which makes it the safest choice for a quiet sit-down meal for three. Pricey: six-course lunch set from about S$178, seven-course dinner from about S$198.<br><strong>Fri 13 Nov:</strong> lunch 11:30–14:30, dinner 18:00–22:30<br><strong>From Takashimaya:</strong> about 1.3 km — about 5 minutes by car or 18 minutes on foot<br><strong>Booking / private rooms:</strong> booking advised (on OpenTable); private rooms available</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">午 11:30–14:30 · 晚 18:00–22:30</span><span class="en">Lunch 11:30–14:30 · Dinner 18:00–22:30</span></span><span class="chip book"><span class="cn">建议订位 · 有包厢</span><span class="en">Book ahead · private rooms</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="江南春餐厅大堂 · Jiang-Nan Chun dining room" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeWsGNJh-mbWtKN7ptwMSMmKREUeYbQFugn6RMACep4wGBxpKXlimjXjhV8XOkFpx7WtQy1AQNTkmLktr_79_hwjHt8OcMst86YF6NQaKhhw7cKvmOdrV91T9O_rEl3PXY9aCgH_rAuPYhF=s4800-w800-h600"/>
@@ -496,10 +549,10 @@
 </div>
 
 <div class="evt">
-<div class="eh"><span class="et"><span class="cn">🥢 粤菜 · 米其林一星</span><span class="en">🥢 Cantonese · one Michelin star</span></span><span class="ed"><span class="cn">⭐4.6</span><span class="en">⭐4.6</span></span></div>
+<div class="eh"><span class="et"><span class="cn">📍乌节路 · 🥢 粤菜 · 米其林一星</span><span class="en">📍Orchard Road · 🥢 Cantonese · one Michelin star</span></span><span class="ed"><span class="cn">⭐4.6</span><span class="en">⭐4.6</span></span></div>
 <div class="eb">
 <h3><span class="cn">夏宫 Summer Palace @ 康莱德乌节路酒店</span><span class="en">Summer Palace @ Conrad Singapore Orchard</span></h3>
-<div class="desc"><span class="cn">⭐4.6（Google 674 评价）。地址：Conrad Singapore Orchard, Level 3, 1 Cuscaden Road, Singapore 249715（前身是丽晶酒店）。2017 年起的米其林一星粤菜，招牌是镬气小炒（褐酱炒鳄鱼肉、鹿肉炒芥蓝）和精致点心，照片里还有蟹肉炒饭、炖汤。正式请客的气派，人均约 S$100 起（搜索摘要，未查到官方价）。<br><strong>11/13（五）：</strong>午市 12:00–14:30（Hilton 官网；Time Out 写 11:30 开）、晚市 18:00–22:30（Hilton；Time Out 写 18:30 开），两说并陈<br><strong>距 Takashimaya：</strong>约 1.2 公里，车程约 5 分钟（推算）<br><strong>订位／包厢：</strong>建议订位（+65 6725 3288）；有 2 间包厢，容量各来源说法不一</span><span class="en">⭐4.6 (674 Google reviews). Conrad Singapore Orchard, Level 3, 1 Cuscaden Road, Singapore 249715 (formerly the Regent). One Michelin star since 2017: known for wok-fried dishes (crocodile fillet in brown sauce, venison with Chinese kale) and refined dim sum; the photos also show crab-meat fried rice and double-boiled soup. A proper setting for a hosted meal, from about S$100 per person (search snippet; no official price found).<br><strong>Fri 13 Nov:</strong> lunch 12:00–14:30 (Hilton site; Time Out says from 11:30), dinner 18:00–22:30 (Hilton; Time Out says from 18:30) — both noted<br><strong>From Takashimaya:</strong> about 1.2 km, about 5 minutes by car (estimate)<br><strong>Booking / private rooms:</strong> booking advised (+65 6725 3288); 2 private rooms, sizes differ by source</span></div>
+<div class="desc"><span class="cn">⭐4.6（Google 674 条评价）。地址：Conrad Singapore Orchard, Level 3, 1 Cuscaden Road, Singapore 249715（前身是丽晶酒店）。2017 年起的米其林一星粤菜，招牌是镬气小炒（褐酱炒鳄鱼肉、鹿肉炒芥蓝）和精致点心，另有蟹肉炒饭和炖汤。很正式的环境，人均约 S$100 起。<br><strong>11/13（五）：</strong>午市 12:00–14:30、晚市 18:00–22:30<br><strong>距 Takashimaya：</strong>约 1.2 公里，车程约 5 分钟<br><strong>订位／包厢：</strong>建议订位（+65 6725 3288）；有 2 间包厢</span><span class="en">⭐4.6 (674 Google reviews). Conrad Singapore Orchard, Level 3, 1 Cuscaden Road, Singapore 249715 (formerly the Regent). One Michelin star since 2017: known for wok-fried dishes (crocodile fillet in brown sauce, venison with Chinese kale) and refined dim sum; crab-meat fried rice and double-boiled soup are also on the menu. A proper setting for a sit-down meal, from about S$100 per person.<br><strong>Fri 13 Nov:</strong> lunch 12:00–14:30, dinner 18:00–22:30<br><strong>From Takashimaya:</strong> about 1.2 km, about 5 minutes by car<br><strong>Booking / private rooms:</strong> booking advised (+65 6725 3288); 2 private rooms</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">午 12:00–14:30 · 晚 18:00–22:30</span><span class="en">Lunch 12:00–14:30 · Dinner 18:00–22:30</span></span><span class="chip book"><span class="cn">建议订位 · 有包厢</span><span class="en">Book ahead · private rooms</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="夏宫餐厅大堂 · Summer Palace dining room" src="https://lh3.googleusercontent.com/grass-cs/AABkmLc5v7_MIihnOvC4Xq5qe-dBlef2d4emthRVQs8t4tnE9IyhSbFE4HIJTHVw1uXLAj_6S07lZKEmvps8Y3oWg-6v9JrYePFv8jwwuBuNknnjjdHTmFlhQRg0GqecS8KfmY2dfDef=s4800-w800-h600"/>
@@ -514,11 +567,10 @@
 </div>
 
 <div class="evt">
-<div class="eh"><span class="et"><span class="cn">🥢 粤菜 · 酒店中餐厅</span><span class="en">🥢 Cantonese · hotel restaurant</span></span><span class="ed"><span class="cn">⭐4.3</span><span class="en">⭐4.3</span></span></div>
+<div class="eh"><span class="et"><span class="cn">📍乌节路 · 🥢 粤菜 · 酒店中餐厅</span><span class="en">📍Orchard Road · 🥢 Cantonese · hotel restaurant</span></span><span class="ed"><span class="cn">⭐4.3</span><span class="en">⭐4.3</span></span></div>
 <div class="eb">
 <h3><span class="cn">华厅 Hua Ting @ 乌节大酒店</span><span class="en">Hua Ting Restaurant @ Orchard Hotel</span></h3>
-<div class="desc"><span class="cn">⭐4.3（Google 1,019 评价）。地址：Orchard Hotel, 442 Orchard Road, Singapore（楼层与邮编未查证）。乌节大酒店里的老牌粤菜馆，抓回来的照片有点心（烧卖）、砂锅豆腐、鱼汤泡饭和烧味。招牌菜与价位这次<strong>未查证</strong>，适合想在乌节路这头吃正式粤菜、又不想坐车的时候。<br><strong>11/13（五）：</strong>午市、晚市时间<strong>未查证</strong>，请订位时问清楚<br><strong>距 Takashimaya：</strong>约 1 公里，步行约 12–15 分钟或车程约 4 分钟（推算）<br><strong>订位／包厢：</strong>订位规定<strong>未查证</strong>；照片可见大圆桌包厢（数量、容量未查证）</span><span class="en">⭐4.3 (1,019 Google reviews). Orchard Hotel, 442 Orchard Road, Singapore (level and postcode unverified). A long-standing Cantonese restaurant in the Orchard Hotel; the photos show dim sum (pork-and-prawn dumplings), claypot tofu, fish soup poured over rice and roast meats. Signature dishes and prices are <strong>unverified</strong> this round — a good fit when you want a proper Cantonese meal at this end of Orchard Road without a taxi.<br><strong>Fri 13 Nov:</strong> lunch and dinner hours <strong>unverified</strong> — ask when booking<br><strong>From Takashimaya:</strong> about 1 km — 12–15 minutes on foot or about 4 minutes by car (estimate)<br><strong>Booking / private rooms:</strong> booking policy <strong>unverified</strong>; the photos show a private room with a large round table (number and size unverified)</span></div>
-<div class="chips"><span class="chip verify"><span class="cn">营业时间未查证</span><span class="en">Hours unverified</span></span><span class="chip verify"><span class="cn">订位未查证</span><span class="en">Booking unverified</span></span></div>
+<div class="desc"><span class="cn">⭐4.3（Google 1,019 条评价）。地址：Orchard Hotel, 442 Orchard Road, Singapore。乌节大酒店里的老牌粤菜馆，招牌有点心（烧卖）、砂锅豆腐、鱼汤泡饭和烧味。适合想在乌节路这头吃正式粤菜、又不想坐车的时候。<br><strong>营业时间：</strong>订位时确认午市、晚市时间<br><strong>距 Takashimaya：</strong>约 1 公里，步行约 12–15 分钟或车程约 4 分钟</span><span class="en">⭐4.3 (1,019 Google reviews). Orchard Hotel, 442 Orchard Road, Singapore. A long-standing Cantonese restaurant in the Orchard Hotel. Specialities include dim sum (pork-and-prawn dumplings), claypot tofu, fish soup with rice and roast meats. A good fit when you want a proper Cantonese meal at this end of Orchard Road without a taxi.<br><strong>Hours:</strong> Confirm lunch and dinner hours when booking<br><strong>From Takashimaya:</strong> about 1 km — 12–15 minutes on foot or about 4 minutes by car</span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="华厅大圆桌包厢 · Hua Ting private room with a round table" src="https://lh3.googleusercontent.com/grass-cs/AABkmLf-_62TG-QwUsKzjxQFe0jTX1eIpzZqZIxtu-l3SBeGMOCi7BM1XtZoRdDU2u2qQcdluMhWlXtU4BabccEuqrjtcks5RQBVLH3wT5SXd3tfcPxeTgRSdf9slZB5jnzapJy6L-BY=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="虾肉烧卖 · Pork-and-prawn dumplings" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QyT0gYpsWlUi6uft1_MrEtGVzD9k4xgnvlMzKmVAi9UbJn2SEeME5C3FVXG4Hh-apsHlzU2RPtCWXulqpLiIRp6wl_tMP4_NWZLwErDnrE2AlUXedeYiqTwD9HTGpPyhtikJoxI_Xy9FUg=s4800-w800-h600"/>
@@ -532,16 +584,16 @@
 </div>
 
 <div class="evt">
-<div class="eh"><span class="et"><span class="cn">🍖 烧腊 · 本地老字号</span><span class="en">🍖 Roast meats · local favourite</span></span><span class="ed"><span class="cn">⭐4.4</span><span class="en">⭐4.4</span></span></div>
+<div class="eh"><span class="et"><span class="cn">📍乌节路 · 🍖 烧腊 · 本地老字号</span><span class="en">📍Orchard Road · 🍖 Roast meats · local favourite</span></span><span class="ed"><span class="cn">⭐4.4</span><span class="en">⭐4.4</span></span></div>
 <div class="eb">
-<h3><span class="cn">Fook Kin 福劲 @ Killiney Road</span><span class="en">Fook Kin 福劲 @ Killiney Road</span></h3>
-<div class="desc"><span class="cn">⭐4.4（Google 1,837 评价）。地址：111 Killiney Road, Singapore。老字号烧腊店（背后是米其林必比登推荐的 Keng Eng Kee 团队），焦糖化叉烧、脆皮烧肉、烧鸭是招牌，炒饭锅气足。旧手册还提到云吞面，本次的来源没有印证，<strong>未查证</strong>。随性的大排档风格，想吃本地味道的一餐。离乌节路约 5 分钟车程（推算）。<strong>11/13（五）营业时间：</strong>11:00–21:15（Trip.com，较新）或 11:30–21:30（2018/2019 年博客），两说并陈。<br><strong>午市／晚市：</strong>全天连续营业，没有午休（以上两说的时间）<br><strong>距 Takashimaya：</strong>约 1 公里，车程约 5 分钟（推算）<br><strong>订位／包厢：</strong>均<strong>未查证</strong></span><span class="en">⭐4.4 (1,837 Google reviews). 111 Killiney Road, Singapore. An old-school roast-meat shop (run by the team behind the Michelin Bib Gourmand Keng Eng Kee): caramelised barbecued pork, crispy roast pork and roast duck are the stars, and the fried rice has plenty of smoky wok flavour. The earlier edition also mentioned wonton noodles, which this round’s sources did not confirm — <strong>unverified</strong>. Casual eatery style for a proper local meal. About 5 minutes by car from Orchard Road (estimate). <strong>Hours for Fri 13 Nov:</strong> 11:00–21:15 (Trip.com, newer) or 11:30–21:30 (2018/2019 blogs) — both noted.<br><strong>Lunch / dinner:</strong> open straight through, no afternoon break (per the hours above)<br><strong>From Takashimaya:</strong> about 1 km, about 5 minutes by car (estimate)<br><strong>Booking / private rooms:</strong> both <strong>unverified</strong></span></div>
-<div class="chips"><span class="chip hours"><span class="cn">11:00 或 11:30 开 · 21:15/21:30 收</span><span class="en">Opens 11:00 or 11:30 · closes 21:15/21:30</span></span></div>
+<h3><span class="cn">Fook Kin 福劲 @ Killiney Road</span><span class="en">Fook Kin @ Killiney Road</span></h3>
+<div class="desc"><span class="cn">⭐4.4（Google 1,837 条评价）。地址：111 Killiney Road, Singapore。老字号烧腊店（背后是米其林必比登推荐的 Keng Eng Kee 团队），焦糖化叉烧、脆皮烧肉、烧鸭是招牌，炒饭锅气足。随性的大排档风格，适合想吃一顿本地味道的时候。<strong>11/13（五）营业时间：</strong>11:30–21:15。<br><strong>午市／晚市：</strong>全天连续营业，没有午休<br><strong>距 Takashimaya：</strong>约 1 公里，车程约 5 分钟</span><span class="en">⭐4.4 (1,837 Google reviews). 111 Killiney Road, Singapore. An old-school roast-meat shop (run by the team behind the Michelin Bib Gourmand Keng Eng Kee): caramelised barbecued pork, crispy roast pork and roast duck are the stars, and the fried rice has plenty of smoky wok flavour. Casual eatery style for a proper local meal. <strong>Hours for Fri 13 Nov:</strong> 11:30–21:15.<br><strong>Lunch / dinner:</strong> open straight through, no afternoon break<br><strong>From Takashimaya:</strong> about 1 km, about 5 minutes by car</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">11:30–21:15 全天</span><span class="en">11:30–21:15 all day</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="福劲店面夜景 · Fook Kin shopfront at night" src="https://lh3.googleusercontent.com/grass-cs/AABkmLe5X4_Zww8WCAlcKGGHpmy0i0gTQ8_IhAyM9l4eSHYOpavd3nIaGQ6j6wcfccaaYCMmbmhq8_qoYAFC9THoe8YMWn6WNzs0INYkkRPp637GrzQhSUCV1H25RKcPa_c3MABk569_ZA=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="福劲招牌 · Fook Kin sign" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcV3wCeSgiwwHgHr7mJYH6-Qy-9wbZF243fXFBcqQhpiFJr7E__eC-IBnyFAZrutrrxmoHd1fQ7OLv-24QW0EoFTRtuN-yL8xlrbZXmM3hqAeanrVXvmSVUJhb30HKEGORpVy8ntT8p8fdT=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="叉烧蛋炒饭 · Char siew egg fried rice" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9ScKqzSEfWb7jgnQND5sLFlJ3EVBQM02IBU-VUixZXpcds56hAFs0ksCsvXyxnNlUdZl33HlP5fn3WrEr5nTnGqjmK_khXmOFEPmyrro-G2UMyPahzgR96DspZjtGxV0FJ1plaw=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="烧腩与叉烧 · Crispy roast pork and char siew" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QzWaScciZNGv28oNTv5UJnhTNUVaLPLh9ISiLrZQgKeeXpeT8fuKt75R8PUaCV6yy8K8cYiahBpFKXypAvTCnRnNHuAZy-AmfxSAXwrS9miu4zr8PU8ZJI_iNP2KHlBBB6S0maDcYO53g=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="叉烧蛋炒饭 · Barbecued pork and egg fried rice" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9ScKqzSEfWb7jgnQND5sLFlJ3EVBQM02IBU-VUixZXpcds56hAFs0ksCsvXyxnNlUdZl33HlP5fn3WrEr5nTnGqjmK_khXmOFEPmyrro-G2UMyPahzgR96DspZjtGxV0FJ1plaw=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="烧腩与叉烧 · Crispy roast pork and barbecued pork" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QzWaScciZNGv28oNTv5UJnhTNUVaLPLh9ISiLrZQgKeeXpeT8fuKt75R8PUaCV6yy8K8cYiahBpFKXypAvTCnRnNHuAZy-AmfxSAXwrS9miu4zr8PU8ZJI_iNP2KHlBBB6S0maDcYO53g=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="多人餐桌菜色 · A shared table spread" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QP8VsqARNR7bDK7-vMMbixwmDo1NhK6wD0CMnrEBJm5FwknmYdE5JmH3x_h9PLvDRrZqCSEcxvCG_uk28PXhsAK7IQvIuUF4mGuJ8EN2zZlN5RQIAyisEPm-CX0YKVcWvythGVj2qDN-xx=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
@@ -550,13 +602,13 @@
 </div>
 
 <div class="evt">
-<div class="eh"><span class="et"><span class="cn">🥢 潮州菜 · 有包厢</span><span class="en">🥢 Teochew · private rooms</span></span><span class="ed"><span class="cn">⭐4.7</span><span class="en">⭐4.7</span></span></div>
+<div class="eh"><span class="et"><span class="cn">📍乌节路 · 🥢 潮州菜 · 有包厢</span><span class="en">📍Orchard Road · 🥢 Teochew · private rooms</span></span><span class="ed"><span class="cn">⭐4.7</span><span class="en">⭐4.7</span></span></div>
 <div class="eb">
-<h3><span class="cn">Paradise Teochew 乐天潮州 @ Scotts Square</span><span class="en">Paradise Teochew @ Scotts Square</span></h3>
-<div class="desc"><span class="cn">⭐4.7（Google 1,628 评价）。地址：#03-04 Scotts Square, 6 Scotts Rd, Singapore 228209（电话 6538 0644）。乐天集团旗下的潮州菜馆，招牌是卤鸭（卤汁用十多种香料熬成）和冻膏蟹，还有手工五香卷、虾枣、潮州海鲜炒面线；午市有点心，有包厢，建议先订位。就在乌节路与史各士路路口，离 Takashimaya 步行约 7 分钟（推算）。<strong>11/13（五）营业时间：</strong>午市 11:30–15:00、晚市 18:00–22:30（2025 年评测与商场名录一致；更早的资料时间略有不同）。<br><strong>距 Takashimaya：</strong>步行约 7 分钟（推算）<br><strong>订位／包厢：</strong>建议订位；有包厢</span><span class="en">⭐4.7 (1,628 Google reviews). #03-04 Scotts Square, 6 Scotts Rd, Singapore 228209 (tel 6538 0644). A Teochew restaurant from the Paradise Group: the stars are the braised duck (the braising stock uses more than ten spices) and chilled roe crab, plus handmade five-spice meat rolls, prawn balls and Teochew-style fried seafood thin noodles; dim sum is served at lunch and there are private rooms, so book ahead. It sits at the Orchard Road / Scotts Road corner, about a 7-minute walk from Takashimaya (estimate). <strong>Hours for Fri 13 Nov:</strong> lunch 11:30–15:00, dinner 18:00–22:30 (a 2025 review and a mall directory agree; older listings differ slightly).<br><strong>From Takashimaya:</strong> about a 7-minute walk (estimate)<br><strong>Booking / private rooms:</strong> booking advised; private rooms available</span></div>
+<h3><span class="cn">Paradise Teochew 潮乐轩 @ Scotts Square</span><span class="en">Paradise Teochew @ Scotts Square</span></h3>
+<div class="desc"><span class="cn">⭐4.7（Google 1,628 条评价）。地址：#03-04 Scotts Square, 6 Scotts Rd, Singapore 228209（电话 6538 0644）。乐天集团旗下的潮州菜馆，招牌是卤鸭（卤汁用十多种香料熬成）和冻膏蟹，还有手工五香卷、虾枣、潮州海鲜炒面线；午市有点心。就在乌节路与史各士路路口。<strong>11/13（五）营业时间：</strong>午市 11:30–15:00、晚市 18:00–22:30。<br><strong>距 Takashimaya：</strong>步行约 7 分钟<br><strong>订位／包厢：</strong>建议订位；有包厢</span><span class="en">⭐4.7 (1,628 Google reviews). #03-04 Scotts Square, 6 Scotts Rd, Singapore 228209 (tel 6538 0644). A Teochew restaurant from the Paradise Group: the stars are the braised duck (the braising stock uses more than ten spices) and chilled roe crab, plus handmade five-spice meat rolls, prawn balls and Teochew-style fried seafood thin noodles; dim sum is served at lunch. It sits at the Orchard Road / Scotts Road corner. <strong>Hours for Fri 13 Nov:</strong> lunch 11:30–15:00, dinner 18:00–22:30.<br><strong>From Takashimaya:</strong> about a 7-minute walk<br><strong>Booking / private rooms:</strong> booking advised; private rooms available</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">午 11:30–15:00 · 晚 18:00–22:30</span><span class="en">Lunch 11:30–15:00 · Dinner 18:00–22:30</span></span><span class="chip book"><span class="cn">建议订位 · 有包厢</span><span class="en">Book ahead · private rooms</span></span></div>
 <div class="gal">
-<img loading="lazy" decoding="async" alt="潮乐轩店面 · Paradise Teochew entrance at Scotts Square" src="https://lh3.googleusercontent.com/grass-cs/AABkmLf9pdGoqjo1zS75vfp-jBQ9cRrdyvNZ-3qDOkgw2N2-JJx6KIA9BJvrpMNkPTsZL8AwMPUo0toz9x0iUEvDz5QgSyMI9NICW7HuA6_3x6wEZrz-NIQa6ipTmt8QMwIjSGFeBqEd=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="潮乐轩店面招牌 · Paradise Teochew shopfront with its sign" src="https://lh3.googleusercontent.com/grass-cs/AABkmLf9pdGoqjo1zS75vfp-jBQ9cRrdyvNZ-3qDOkgw2N2-JJx6KIA9BJvrpMNkPTsZL8AwMPUo0toz9x0iUEvDz5QgSyMI9NICW7HuA6_3x6wEZrz-NIQa6ipTmt8QMwIjSGFeBqEd=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="潮州卤味拼盘 · Teochew braised meat and bean curd" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Qb3Zb_FhtzfIXJUIuji9V3UvxUBfgARzn7qFDumX4jJ_Vs-7x1BRz_TE2CBJfopG8D6doyB0fmqFZ-X2f2qNJawTJUI4cxmiaStbaf5_NjWUqj86eAHxJOsteyIvuTmtMPIIM_Lyf1HHSX=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="砂锅焖鸭 · Braised duck in a clay pot" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9T5H0UW7Kje8xshWS6wWjbYbZPYmqhQhgxy0Fsin9Z7da2ozSrfqs7uGa6bCrz3YXY5luXqEtYGJdltNlQYa9UYJ-fV4RR7gH8Mbddyoa6Ie1FGsio5Jvqu4IcgAQQUnpqFJsqB6EPtC2qn=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="蟹籽烧卖 · Pork and prawn dumplings topped with roe" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QTKvJAfTokJTK2peQ14si4IZCvS6gs3jVKMWgUwQPTj47e3XesYUNzOvo1sGCCUzqpwhwrBvt46l3HQFOkKbf72iKWe_eH7kgd49AP-CXJEmlYADgrjEhlO6KNblTJh9tdIrol3Gtf63Su=s4800-w800-h600"/>
@@ -568,63 +620,10 @@
 </div>
 
 <div class="evt">
-<div class="eh"><span class="et"><span class="cn">🥢 福建兴化菜 · 米其林名店</span><span class="en">🥢 Fujian (Putian) · Michelin-listed</span></span><span class="ed"><span class="cn">⭐4.7</span><span class="en">⭐4.7</span></span></div>
-<div class="eb">
-<h3><span class="cn">莆田 PUTIEN @ 吉真那路（总店一带，不在乌节路上）</span><span class="en">PUTIEN @ Kitchener Road (not on Orchard Road)</span></h3>
-<div class="desc"><span class="cn">⭐4.7（Google 2,758 评价）。地址：127 Kitchener Road, Singapore 208514（花拉公园／小印度一带）。福建兴化菜：兴化炒米粉、海鲜卤面必点，还有黄鱼砂锅汤、荔枝咕咾肉；口味清淡鲜甜，跟潮州菜、粤菜不重复，过去多年拿过米其林一星。⚠ <strong>同品牌另一家在滨海湾金沙（MBS），是 D1 晚餐的候选</strong>，见「06 晚餐候选」；这张是吉真那路分店，离乌节路较远。<br><strong>11/13（五）：</strong>午市 11:30–15:00（最后点餐 14:30）、晚市 17:30–22:00（最后点餐 21:30）；旧资料写 12:00–15:00、18:00–23:00，疑已过时<br><strong>距 Takashimaya：</strong>约 3.5 公里，车程约 12–15 分钟（推算）<br><strong>订位／包厢：</strong>均<strong>未查证</strong></span><span class="en">⭐4.7 (2,758 Google reviews). 127 Kitchener Road, Singapore 208514 (Farrer Park / Little India area). Fujian cooking from Putian: the must-orders are fried Putian rice vermicelli and seafood braised noodles, plus yellow croaker claypot soup and lychee sweet-and-sour pork — light and fresh, different from the Teochew and Cantonese picks; it held a Michelin star for several years. ⚠ <strong>The other PUTIEN, at Marina Bay Sands (MBS), is a D1 dinner option</strong> in “06 Dinner Options”; this card is the Kitchener Road branch, further from Orchard Road.<br><strong>Fri 13 Nov:</strong> lunch 11:30–15:00 (last order 14:30), dinner 17:30–22:00 (last order 21:30); older listings say 12:00–15:00 and 18:00–23:00, probably out of date<br><strong>From Takashimaya:</strong> about 3.5 km, 12–15 minutes by car (estimate)<br><strong>Booking / private rooms:</strong> both <strong>unverified</strong></span></div>
-<div class="chips"><span class="chip hours"><span class="cn">午 11:30–15:00 · 晚 17:30–22:00</span><span class="en">Lunch 11:30–15:00 · Dinner 17:30–22:00</span></span><span class="chip verify"><span class="cn">离乌节路约 15 分钟车程</span><span class="en">About 15 min by car from Orchard</span></span></div>
-<div class="gal">
-<img loading="lazy" decoding="async" alt="莆田吉真那路店明档厨房 · PUTIEN Kitchener Road open kitchen" src="https://lh3.googleusercontent.com/grass-cs/AABkmLd7bA_kvxrRcXkRzyWiVdZ0bWrhjts_jEqMn0Rb7iIABMiW6vMm9JQJxBmVIR3JXCBhg9iipUKJJ3rLYBca8DRgL3KdulJ4v_HUKPCrwXZZHD2-MCuYMZn2ScfIzLcqJMjlqH7c=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="海鲜卤面 · Seafood braised noodles" src="https://lh3.googleusercontent.com/gps-proxy/ALd4DhFL7-ZqMJ3ah06r2BkxHGnYjkxslTJK1QjtkKr1CNiNPIyBTVe4NMbU3G4pwOat658dtASdxl8_KIteuCDZhcNFdzfoDMeApMxu2uQZpAJI1cEnROgdJovzeJOfTnNC4INUbSbnom995FsRbcZmXXViLdlcQjcZiQZ744WzjdVRgVUkHvmjJCaf=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="兴化炒米粉 · Fried Putian rice vermicelli" src="https://lh3.googleusercontent.com/gps-proxy/ALd4DhHc70vywARNwfL0E5tMDBgGCgnEfY02dcPJjn16RswU-q9UrGf6cEH8RmVHw8DruVQHeomxzqlNBtXV-V62Vvvok3tg1dYO7dUAuhstV1hXZlD9TvNP83FmyT7pr55HM4ueGVyObN3rufbBr9yNd0ymFu8q8oQR_dAac6XH0PDTAWw1d4FIhdE83A=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="黄鱼砂锅汤 · Yellow croaker claypot soup" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Syz8NPBFhm8z-m0sdONjT9T3g0BkjhAlkQ2ggD9owKU0k68gMp4DeP9wsIJ23h2y-x9KCaDZJKY0-2hNTOCxUVildYmd16uzM5wVaA1K1LcAgQ4YyLxZCrEgDUVmgsI45T5z2gPZIsdNOw=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="荔枝咕咾肉 · Lychee sweet-and-sour pork" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfgBu1Q6gA95TXJbt1StA4GoVKwpKulodeNduDhm0WOhVzR4u3iNCqPPkaqN0sv1iznn0QQQ_UN-ln-gcFK0KnBCIKGltHallgMwzVnC1ysdWFpNbWEoJhgNjOYpfr6gmBlnywXd0cTRqc=s4800-w800-h600"/>
-</div>
-<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=PUTIEN%20Kitchener%20Road%20127%20Kitchener%20Road%20Singapore%20208514" target="_blank">📍 Google Maps</a>
-</div>
-</div>
-
-<div class="evt">
-<div class="eh"><span class="et"><span class="cn">🦀 海鲜 · 辣椒螃蟹</span><span class="en">🦀 Seafood · chilli crab</span></span><span class="ed"><span class="cn">⭐4.8</span><span class="en">⭐4.8</span></span></div>
-<div class="eb">
-<h3><span class="cn">珍宝海鲜 JUMBO Seafood @ ION Orchard 分店</span><span class="en">JUMBO Seafood @ ION Orchard branch</span></h3>
-<div class="desc"><span class="cn">⭐4.8（Google 11,804 评价）。地址：2 Orchard Turn, #04-09/10, ION Orchard, Singapore 238801。新加坡辣椒螃蟹最稳的连锁：辣椒蟹配炸馒头蘸酱汁是招牌，也有辣椒蟹口味的点心；照片里还有虾子烧卖、马拉盏炒空心菜。三个人点一只中等螃蟹加两三样配菜就够。螃蟹按重量计价，人均<strong>未查证</strong>。⚠ <strong>同品牌另一家「JUMBO Signatures」在滨海湾金沙（MBS），是 D1 晚餐的候选</strong>，见「06 晚餐候选」；这张是乌节路 ION 分店。<br><strong>11/13（五）：</strong>午市 11:30–15:30、晚市 17:30–22:30（博客与 Burpple；Google 卡片显示 22:30 打烊；另有资料写 11:30–22:30 全天不休）<br><strong>距 Takashimaya：</strong>约 400 米，步行约 5 分钟（推算）<br><strong>订位／包厢：</strong>建议订位（+65 6737 3435，Google 卡片）；照片可见包厢，是否可订<strong>未查证</strong></span><span class="en">⭐4.8 (11,804 Google reviews). 2 Orchard Turn, #04-09/10, ION Orchard, Singapore 238801. The safest chilli crab chain in town: chilli crab with fried buns for mopping up the sauce, plus a chilli-crab dim sum; the photos also show pork dumplings topped with roe and water spinach stir-fried with shrimp paste. One medium crab plus two or three sides is enough for three. Crab is priced by weight; cost per person <strong>unverified</strong>. ⚠ <strong>The other branch, “JUMBO Signatures” at Marina Bay Sands (MBS), is a D1 dinner option</strong> in “06 Dinner Options”; this card is the ION Orchard branch.<br><strong>Fri 13 Nov:</strong> lunch 11:30–15:30, dinner 17:30–22:30 (blogs and Burpple; the Google card shows closing at 22:30; another source says 11:30–22:30 straight through)<br><strong>From Takashimaya:</strong> about 400 m, about a 5-minute walk (estimate)<br><strong>Booking / private rooms:</strong> booking advised (+65 6737 3435, Google card); the photos show a private room — whether it can be booked is <strong>unverified</strong></span></div>
-<div class="chips"><span class="chip hours"><span class="cn">午 11:30–15:30 · 晚 17:30–22:30</span><span class="en">Lunch 11:30–15:30 · Dinner 17:30–22:30</span></span><span class="chip ok"><span class="cn">步行 5 分钟</span><span class="en">5-min walk</span></span><span class="chip book"><span class="cn">建议订位</span><span class="en">Booking advised</span></span></div>
-<div class="gal">
-<img loading="lazy" decoding="async" alt="JUMBO ION 分店门面 · JUMBO ION Orchard entrance" src="https://lh3.googleusercontent.com/grass-cs/AABkmLes_xrSdAYBTHYKunDPHjgcya9S0KpHWgXoAdXFm5LDLjoP5TcR-AGFYfIuXp5LCjOXUuFCu67KgufWvyGuMYpcnIogZVvh-9tnQKxE2Wo8Rp_-vaCo9ai4A9R8OIsBbe3PCcOUtCrIs0dy=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="辣椒螃蟹配炸馒头 · Chilli crab with fried buns" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QxnuStGN9kdU7yTMA6r4sp8wAwhdP0RQdz0eqw-MeBi1fRSOSwRfo-wzsKQf3nVIA895TQA536YGVUwWbXXm49ASkXQVtGGytCiofiYH_rWP86OU_tIcFDVPcUaGxyB3ehZtVGBHsWaUe2=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="螃蟹特写 · Crab close-up" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QUCrwf1NtYnxnEXkaCmiQqHKyf1RVE-1bW9QoYlQS8hCq98ITAg2L7wuVVaNvGxjjlxxRFmFDtIGTSE0zlVG1xGyr6TaKu7R1rrZEvBLbGXc9ifvRB769Gb_s73QQiiG2JzDQpeUKlagBH=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="虾子烧卖 · Pork dumplings topped with roe" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdquUMtFVKiC1MYLSzHOMeSynmE6asI-xLIL3wzPRiP6FVQwq7EywW2Jf2Nf6IpWPbOffxVV7T5ps-TJ_F_mCsel49WzhDAB1SbfbmW9YCponoz4HhheDuSE9TCSG-pArWOz73TmJEDP42c=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="马拉盏炒空心菜 · Water spinach with shrimp paste" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Q1fSOxanXwNmG8LQ7CtDBkaXwsW01KEGR005dlndUAlhVWu5CseevmCQExdxvhaHDJA5qou7gaQF7oCane9FfH0lmFIzmkqBfFoq60WPPrJJEWZdOIsXCly8DxQfUewjH6P8spOE1BpCOs=s4800-w800-h600"/>
-</div>
-<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=JUMBO%20Seafood%20ION%20Orchard%202%20Orchard%20Turn%20%2304-09/10%20Singapore%20238801" target="_blank">📍 Google Maps</a>
-</div>
-</div>
-
-<div class="evt">
-<div class="eh"><span class="et"><span class="cn">🍛 娘惹菜 · 米其林</span><span class="en">🍛 Peranakan · Michelin</span></span><span class="ed"><span class="cn">⭐4.4</span><span class="en">⭐4.4</span></span></div>
-<div class="eb">
-<h3><span class="cn">烛果 Candlenut @ COMO Dempsey</span><span class="en">Candlenut @ COMO Dempsey</span></h3>
-<div class="desc"><span class="cn">⭐4.4（Google 2,089 评价）。地址：17A Dempsey Road, COMO Dempsey, Singapore（邮编未查证）。全球第一家拿到米其林一星的娘惹餐厅（2016–2025 年；2026 年是否保星<strong>未查证</strong>），主厨 Malcolm Lee 做精致版娘惹菜：黑果炖鸡（鸡肉炖印尼黑果，酸辣浓郁）、娘惹咖喱鸡、酱烧大虾。想正式吃一顿娘惹菜选这家；价位<strong>未查证</strong>（预期中高档）。<br><strong>11/13（五）：</strong>午市 12:00–15:00、晚市 18:00–22:00（Time Out／米其林；旧博客写周五晚市到 22:30）<br><strong>距 Takashimaya：</strong>约 3.5 公里，车程约 10 分钟（推算）<br><strong>订位／包厢：</strong>需要订位（COMO Dempsey 官网）；包厢<strong>未查证</strong></span><span class="en">⭐4.4 (2,089 Google reviews). 17A Dempsey Road, COMO Dempsey, Singapore (postcode unverified). The world’s first Michelin-starred Peranakan restaurant (2016–2025; whether it kept the star in 2026 is <strong>unverified</strong>). Chef Malcolm Lee cooks refined Straits-Chinese food: chicken stewed with black nuts from Indonesia (tangy and rich), Peranakan curry chicken and glazed king prawns. The pick for one proper Peranakan meal; prices <strong>unverified</strong> (expect upper-mid range).<br><strong>Fri 13 Nov:</strong> lunch 12:00–15:00, dinner 18:00–22:00 (Time Out / Michelin; an older blog says Friday dinner runs to 22:30)<br><strong>From Takashimaya:</strong> about 3.5 km, about 10 minutes by car (estimate)<br><strong>Booking / private rooms:</strong> booking needed (COMO Dempsey website); private rooms <strong>unverified</strong></span></div>
-<div class="chips"><span class="chip hours"><span class="cn">午 12:00–15:00 · 晚 18:00–22:00</span><span class="en">Lunch 12:00–15:00 · Dinner 18:00–22:00</span></span><span class="chip book"><span class="cn">需订位</span><span class="en">Booking needed</span></span></div>
-<div class="gal">
-<img loading="lazy" decoding="async" alt="Candlenut 餐厅内部 · Candlenut dining room" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcYJFAyYhFmDHu_K_gZH7EpLHmo07yoCNDeOIp7qWDcx_FH0Z4IqzTvZquKIsX1418qhBL4qbFWoFrXvMKVOKSGmqiKp74KBRUBgYQf_6Br0CKVRalQ1ray-eKfNRLUFGmSiGH7=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="娘惹咖喱鸡 · Peranakan curry chicken" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9R_IOSkOY8aO1GtWiihg9iGL5HMaqk_O92YV-FY8n0ZCW76Nar22jAhKwqRtjSEYVRSI6hCb_a5XA3TxsH80paOT4TJZuM5FHSendCbbesPutHmtvou6AW2jClTj3UbYZIWn3aykw3xJttq=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="酱烧大虾 · Glazed king prawns" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9TWNKOGyaBmqJibI8diXjH_TU7qaUE7GwYygEnRjA7D406Rt_UJifqkcWypgau0M6LnH05G46pcl_X5H41EdiviMG7NGY05HR8zBsuA_wBmnAlIR23ZxzWL8xpClSDt89g0aMV3=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="一桌娘惹菜 · A table of Peranakan dishes" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9THbe7GRUr_htQKxkx9QeBgS0VwLObnMWdeVFJg10Yr2LBEDEL51ASJXPN2-PdqHYGKNeVZYi3prM-EDaGw7luKtyD_r_CH8prV4bdSoVkhzEyoDH9HGMt5-FM6G7q39PKWAddHGrssdTY=s4800-w800-h600"/>
-</div>
-<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Candlenut%20COMO%20Dempsey%2017A%20Dempsey%20Road%20Singapore" target="_blank">📍 Google Maps</a>
-</div>
-</div>
-
-<div class="evt">
-<div class="eh"><span class="et"><span class="cn">🍲 本地菜 · 胡椒排骨汤</span><span class="en">🍲 Local · peppery pork-rib soup</span></span><span class="ed"><span class="cn">⭐4.6</span><span class="en">⭐4.6</span></span></div>
+<div class="eh"><span class="et"><span class="cn">📍乌节路 · 🍲 本地菜 · 胡椒排骨汤</span><span class="en">📍Orchard Road · 🍲 Local · peppery pork-rib soup</span></span><span class="ed"><span class="cn">⭐4.6</span><span class="en">⭐4.6</span></span></div>
 <div class="eb">
 <h3><span class="cn">松发肉骨茶 Song Fa @ The Centrepoint 分店</span><span class="en">Song Fa Bak Kut Teh @ The Centrepoint branch</span></h3>
-<div class="desc"><span class="cn">⭐4.6（Google 2,309 评价）。地址：The Centrepoint, 176 Orchard Road, #02-29/30, Singapore 238843。潮州式胡椒肉骨茶：嫩排骨泡在辛辣胡椒汤里，汤可以续；加一碟油条、卤蛋或卤猪脚就是一顿，平价、上菜快，逛街中途吃最省事。商场店有冷气。⚠ <strong>同品牌的新桥路总店是晚餐候选</strong>，见「06 晚餐候选」；这张是乌节路 The Centrepoint 分店。<br><strong>11/13（五）：</strong>11:00–21:00 全天不休（SingMalls；旧版 Burpple 写 10:00–22:00），午晚都能吃<br><strong>距 Takashimaya：</strong>约 1 公里，步行约 12–15 分钟或车程约 4 分钟（推算）<br><strong>订位／包厢：</strong>订位<strong>未查证</strong>（商场店一般不必订）；没有包厢（未查证）</span><span class="en">⭐4.6 (2,309 Google reviews). The Centrepoint, 176 Orchard Road, #02-29/30, Singapore 238843. Teochew-style peppery pork-rib soup: tender ribs in a hot pepper broth with free refills; add fried dough sticks, braised eggs or braised pork trotters for a full meal — cheap, fast and the easiest lunch mid-shopping. Air-conditioned mall outlet. ⚠ <strong>The New Bridge Road flagship is a dinner option</strong> in “06 Dinner Options”; this card is the Orchard Road branch at The Centrepoint.<br><strong>Fri 13 Nov:</strong> 11:00–21:00 straight through (SingMalls; an older Burpple page says 10:00–22:00), so lunch or dinner both work<br><strong>From Takashimaya:</strong> about 1 km — 12–15 minutes on foot or about 4 minutes by car (estimate)<br><strong>Booking / private rooms:</strong> booking <strong>unverified</strong> (mall outlets usually take walk-ins); no private room (unverified)</span></div>
+<div class="desc"><span class="cn">⭐4.6（Google 2,309 条评价）。地址：The Centrepoint, 176 Orchard Road, #02-29/30, Singapore 238843。潮州式胡椒肉骨茶：嫩排骨泡在辛辣胡椒汤里，汤可以续；加一碟油条、卤蛋或卤猪脚就是一顿，平价、上菜快，逛街中途吃最省事。商场店有冷气。1969 年创立的老字号，米其林推荐。<br><strong>11/13（五）：</strong>11:00–21:00 全天不休，午晚都能吃<br><strong>距 Takashimaya：</strong>约 1 公里，步行约 12–15 分钟或车程约 4 分钟<br><strong>订位：</strong>商场店一般不必订位</span><span class="en">⭐4.6 (2,309 Google reviews). The Centrepoint, 176 Orchard Road, #02-29/30, Singapore 238843. Teochew-style peppery pork-rib soup: tender ribs in a hot pepper broth with free refills; add fried dough sticks, braised eggs or braised pork trotters for a full meal — cheap, fast and the easiest lunch mid-shopping. Air-conditioned mall outlet. A Michelin-listed name founded in 1969.<br><strong>Fri 13 Nov:</strong> 11:00–21:00 straight through, so lunch or dinner both work<br><strong>From Takashimaya:</strong> about 1 km — 12–15 minutes on foot or about 4 minutes by car<br><strong>Booking:</strong> mall outlets usually take walk-ins</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">11:00–21:00 全天</span><span class="en">11:00–21:00 all day</span></span><span class="chip ok"><span class="cn">平价 · 有冷气</span><span class="en">Budget · air-conditioned</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="松发 Centrepoint 分店门面 · Song Fa at The Centrepoint, shopfront" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcfQ6gNLtC5_-KkVy9pARDRZ85xzEyYdIbmTVnBCUKtggAuwRZW77de9QUBDGFsqJOURuLPO79sjTeN0fH46IKAsfmL38Npk1yhcvKtlrqNBNWnoh8Kc8IjscqclW9OCsQ52PcgiiL2u-E=s4800-w800-h600"/>
@@ -639,11 +638,11 @@
 </div>
 
 <div class="evt">
-<div class="eh"><span class="et"><span class="cn">🍗 本地菜 · 海南鸡饭</span><span class="en">🍗 Local · Hainanese chicken rice</span></span><span class="ed"><span class="cn">⭐4.2</span><span class="en">⭐4.2</span></span></div>
+<div class="eh"><span class="et"><span class="cn">📍乌节路 · 🍗 本地菜 · 海南鸡饭</span><span class="en">📍Orchard Road · 🍗 Local · Hainanese chicken rice</span></span><span class="ed"><span class="cn">⭐4.2</span><span class="en">⭐4.2</span></span></div>
 <div class="eb">
 <h3><span class="cn">Chatterbox @ Hilton Orchard</span><span class="en">Chatterbox @ Hilton Orchard</span></h3>
-<div class="desc"><span class="cn">⭐4.2（Google 1,890 评价）。地址：#05-03 Hilton Singapore Orchard, 333 Orchard Rd, Singapore 238867。1971 年起的传奇海南鸡饭，被称为全新加坡最有名的酒店级鸡饭，环境讲究，适合舒服坐下来吃，还有叻沙、沙爹和龙虾叻沙等本地菜。价位偏高（鸡饭约 S$25 起）。已从 Mandarin Orchard 搬到 Hilton Orchard，仍在营业。建议订位（+65 6831 6265）。<strong>11/13（五）营业时间：</strong><strong>未查证</strong>（旧手册没写，官网读不到），请订位时问清楚。<br><strong>午市／晚市：</strong>营业时间<strong>未查证</strong><br><strong>距 Takashimaya：</strong>约 400 米，步行约 5 分钟（推算）<br><strong>订位／包厢：</strong>建议订位；包厢<strong>未查证</strong></span><span class="en">⭐4.2 (1,890 Google reviews). #05-03 Hilton Singapore Orchard, 333 Orchard Rd, Singapore 238867. The legendary Hainanese chicken rice since 1971, often called Singapore’s most famous hotel-grade chicken rice; a refined room for a comfortable sit-down, with laksa, satay and lobster laksa as well. Pricey (chicken rice from about S$25). It has moved from Mandarin Orchard to Hilton Orchard and is still trading. Booking recommended (+65 6831 6265). <strong>Hours for Fri 13 Nov:</strong> <strong>unverified</strong> (not in the earlier edition, official site unreadable) — ask when you book.<br><strong>Lunch / dinner:</strong> hours <strong>unverified</strong><br><strong>From Takashimaya:</strong> about 400 m, about a 5-minute walk (estimate)<br><strong>Booking / private rooms:</strong> booking advised; private rooms <strong>unverified</strong></span></div>
-<div class="chips"><span class="chip verify"><span class="cn">营业时间未查证</span><span class="en">Hours unverified</span></span><span class="chip book"><span class="cn">建议订位</span><span class="en">Booking advised</span></span></div>
+<div class="desc"><span class="cn">⭐4.2（Google 1,890 条评价）。地址：#05-03 Hilton Singapore Orchard, 333 Orchard Rd, Singapore 238867。1971 年起的传奇海南鸡饭，常被称为新加坡最有名的酒店级鸡饭，环境讲究，适合舒服坐下来吃，还有叻沙、沙爹和龙虾叻沙等本地菜。价位偏高（鸡饭约 S$25 起）。<br><strong>营业时间：</strong>订位时确认午市、晚市时间<br><strong>距 Takashimaya：</strong>约 400 米，步行约 5 分钟<br><strong>订位：</strong>建议订位（+65 6831 6265）</span><span class="en">⭐4.2 (1,890 Google reviews). #05-03 Hilton Singapore Orchard, 333 Orchard Rd, Singapore 238867. The legendary Hainanese chicken rice since 1971, often called Singapore’s most famous hotel-grade chicken rice; a refined room for a comfortable sit-down, with laksa, satay and lobster laksa as well. Pricey (chicken rice from about S$25).<br><strong>Hours:</strong> Confirm lunch and dinner hours when booking<br><strong>From Takashimaya:</strong> about 400 m, about a 5-minute walk<br><strong>Booking:</strong> booking advised (+65 6831 6265)</span></div>
+<div class="chips"><span class="chip book"><span class="cn">建议订位</span><span class="en">Booking advised</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="餐厅圆桌区 · Round-table dining area" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfcAmU3__8wKZhtdwBVCDztlgYbolBgsTohHw9gv9MjZNCMzRHBv8QY0zwRTqyuli1-c9xlNSAA4bgP5qTY1VhdzkwOT9wrFQ8PIhHTz6h2ow4n9IdXhlgXA9NlGG-HUjs3o7-1oQ=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="餐厅卡座 · Table seating" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfIr8qzdx0SHA9R_VdVP2eAFolfqh0tlv4ornOdh453A_td-s-bWSGGgDsrxfdCwfqfuD-bHF_SUBmzn45sc95OF-mxILVl9jArBEJ5x_Pw0KOdk1QbwYDZEnQUNIZy1YteVV14HcWMlpXz=s4800-w800-h600"/>
@@ -657,10 +656,10 @@
 </div>
 
 <div class="evt">
-<div class="eh"><span class="et"><span class="cn">🍱 日式炙烧盖饭</span><span class="en">🍱 Japanese flame-seared rice bowls</span></span><span class="ed"><span class="cn">⭐4.6</span><span class="en">⭐4.6</span></span></div>
+<div class="eh"><span class="et"><span class="cn">📍乌节路 · 🍱 日式炙烧盖饭</span><span class="en">📍Orchard Road · 🍱 Japanese flame-seared rice bowls</span></span><span class="ed"><span class="cn">⭐4.6</span><span class="en">⭐4.6</span></span></div>
 <div class="eb">
 <h3><span class="cn">Aburi-EN Grand @ Paragon B1</span><span class="en">Aburi-EN Grand @ Paragon B1</span></h3>
-<div class="desc"><span class="cn">⭐4.6（Google 1,278 评价）。地址：#B1-45/46 Paragon, 290 Orchard Rd。炙烧盖饭专门店，就在 Takashimaya 对面的 Paragon 商场地下一层，步行约 2 分钟。招牌是炙烧猪颊肉盖饭、日式糖醋炸鸡（大块炸鸡）和生鱼片拼盘，猪肉、鸡肉、海鲜的盖饭选择很多。<strong>11/13（五）营业时间：</strong>11:00–22:00（第三方页面；Paragon 官网只有地址电话 +65 6334 8033，没写时间）。<br><strong>午市／晚市：</strong>11:00–22:00 全天连续<br><strong>距 Takashimaya：</strong>就在对面 Paragon，步行约 2 分钟<br><strong>订位／包厢：</strong>均<strong>未查证</strong></span><span class="en">⭐4.6 (1,278 Google reviews). #B1-45/46 Paragon, 290 Orchard Rd. A flame-seared rice-bowl specialist at Paragon B1, directly across from Takashimaya — about a 2-minute walk. Signatures are the seared pork-cheek bowl, sweet-and-sour fried chicken (big pieces) and sashimi platters, with plenty of pork, chicken and seafood bowls. <strong>Hours for Fri 13 Nov:</strong> 11:00–22:00 (third-party page; the Paragon site lists only the address and phone, +65 6334 8033, with no hours).<br><strong>Lunch / dinner:</strong> 11:00–22:00 straight through<br><strong>From Takashimaya:</strong> directly across at Paragon, about a 2-minute walk<br><strong>Booking / private rooms:</strong> both <strong>unverified</strong></span></div>
+<div class="desc"><span class="cn">⭐4.6（Google 1,278 条评价）。地址：#B1-45/46 Paragon, 290 Orchard Rd。炙烧盖饭专门店，在 Paragon 商场地下一层。招牌是炙烧猪颊肉盖饭、日式糖醋炸鸡（大块炸鸡）和生鱼片拼盘，猪肉、鸡肉、海鲜的盖饭选择很多。<strong>11/13（五）营业时间：</strong>11:00–22:00 全天连续（Paragon 电话 +65 6334 8033）<br><strong>距 Takashimaya：</strong>就在对面 Paragon，步行约 2 分钟</span><span class="en">⭐4.6 (1,278 Google reviews). #B1-45/46 Paragon, 290 Orchard Rd. A flame-seared rice-bowl specialist at Paragon B1. Signatures are the seared pork-cheek bowl, sweet-and-sour fried chicken (big pieces) and sashimi platters, with plenty of pork, chicken and seafood bowls. <strong>Hours for Fri 13 Nov:</strong> 11:00–22:00 straight through (Paragon tel +65 6334 8033)<br><strong>From Takashimaya:</strong> directly across at Paragon, about a 2-minute walk</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">11:00–22:00 全天</span><span class="en">11:00–22:00 all day</span></span><span class="chip ok"><span class="cn">步行 2 分钟</span><span class="en">2-min walk</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="Aburi-EN 店面 · Aburi-EN entrance" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdaQz4oobxQlJHLzclMEpFKUTbuN3CTkAKeud32CBcThz9xfV0cxDmmMdUH9HvZOmEn6iUskHNRgjAIZXZ3xgDR-lNyb-o4-Dc1eWM5Kzp_dxbYeISqiWDHC7UWQbJFcY2ZZQBZ=s4800-w800-h600"/>
@@ -673,57 +672,14 @@
 <a class="btn-map" href="https://maps.google.com/?cid=15165693130857361693" target="_blank">📍 Google Maps</a> <a class="btn-map" href="http://www.aburi-en.com/" target="_blank">🔗 <span class="cn">官网</span><span class="en">Website</span></a>
 </div>
 </div>
-</section>
 
-<!-- ===== DINNER OPTIONS ===== -->
-<section id="dinner">
-<div class="sec-head"><span class="no">06</span><h2><span class="cn">晚餐候选</span><span class="en">Dinner Options</span></h2><span class="rule"></span></div>
-<div class="note amber">
-<span class="cn">这几家是<strong>晚餐候选</strong>：D1 在 PUTIEN 与 JUMBO Signatures 里二选一；D2、D3 晚上从这几家挑，或看<a href="#orchard">「05 乌节路中餐 · 本地菜」</a>的晚市。营业时间都标了 11 月那几天的情况，查不到的写「未查证」。</span><span class="en">These are the <strong>dinner candidates</strong>: on D1 choose between PUTIEN and JUMBO Signatures; on D2 and D3 pick from these, or from the dinner services in <a href="#orchard">“05 Orchard: Chinese &amp; local”</a>. Each card lists the hours for the November dates; anything that could not be checked is marked “unverified”.</span>
-</div>
-
+<div class="grp"><span class="cn">滨海湾金沙 MBS（2 家）</span><span class="en">Marina Bay Sands (MBS) (2)</span></div>
 <div class="evt">
-<div class="eh"><span class="et"><span class="cn">🍣 日料 · 无菜单寿司</span><span class="en">🍣 Japanese · Chef’s-choice sushi</span></span><span class="ed"><span class="cn">⭐4.9</span><span class="en">⭐4.9</span></span></div>
-<div class="eb">
-<h3><span class="cn">Sushi Katori @ Tanjong Pagar</span><span class="en">Sushi Katori @ Tanjong Pagar</span></h3>
-<div class="desc"><span class="cn">⭐4.9（Google 114 评价，旧手册数据）。地址：21 Tanjong Pagar Rd #01-03。丹戎巴葛的无菜单寿司专门店（由厨师决定上什么），鱼货直送自东京丰洲市场，双醋饭（白醋＋3 年熟成赤醋）是特色，评论盛赞海胆配鲑鱼卵、金枪鱼中腹和甜虾。氛围安静适合谈话，连续两年入选米其林指南。<strong>11 月营业时间：</strong>11/11（三）至 11/14（六）都营业，午市 12:00–14:30、晚市 18:30–22:30（米其林页面）；每周一固定休。9 月那次的休店是当次公告，11 月有没有休店公告<strong>未查证</strong>，务必提前订位并电话确认（+65 8804 5348）。无菜单寿司一般有固定入座场次（具体场次<strong>未查证</strong>），订位时问清楚。</span><span class="en">⭐4.9 (114 Google reviews, from the earlier edition). 21 Tanjong Pagar Rd #01-03. A chef’s-choice sushi counter in Tanjong Pagar (the chef decides what you eat), with fish flown in from Tokyo’s Toyosu Market and two kinds of sushi rice (white vinegar plus 3-year aged red vinegar). Reviewers rave about the sea urchin with salmon roe, the medium-fatty tuna belly and the sweet prawns. Quiet enough to talk, and in the Michelin Guide two years running. <strong>Hours for 11–14 Nov:</strong> open Wed 11 to Sat 14 — lunch 12:00–14:30, dinner 18:30–22:30 (Michelin pages); closed every Monday. The September closure was for that visit only; whether it closes in November is <strong>unverified</strong>, so book ahead and phone to confirm (+65 8804 5348). Chef’s-choice counters usually run fixed seatings (exact times <strong>unverified</strong>) — ask when you book.</span></div>
-<div class="chips"><span class="chip hours"><span class="cn">晚市 18:30–22:30（周三至周六）</span><span class="en">Dinner 18:30–22:30 (Wed–Sat)</span></span><span class="chip book"><span class="cn">必须订位</span><span class="en">Booking essential</span></span><span class="chip verify"><span class="cn">11 月休店未查证</span><span class="en">Nov closures unverified</span></span></div>
-<div class="gal">
-<img loading="lazy" decoding="async" alt="Sushi Katori 吧台座位 · Sushi Katori counter seats" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeTEVNhFzMXtKBH1pnI2uKx8yNhVtlCAGvuUVZB01-Aaj3BhvfMT2nyXjovonRrkrp97M1fCqeHn8BSjNHOC4BTxi1bivmuXL58e9TocPGupXGZxmTJjxibllgK7eUZEDAo9Fc=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="鱼籽腌鱼寿司 · Cured fish topped with salmon roe" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcC6aKalYOxxdDV90M281aTJe3fkbNUmjXqr0zEMUuOAPES0Z1RVWB2rU-TKkL3PVh9P1USa7VW8MiMU3ukk007EltosYMfdjf-PJjv9JhndXFlSzwuLwfa8pKIWYivMIPDtCxwikWYHRii=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="炭烤鳗鱼 · Grilled eel" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Rv-la26L589gdnKX3NCeERCIgZIhyslXkQRg4utebWCjwv5mVmW_YAXs6crANpsLrO0Fz_renXC6W3TIoPKzEe7yyW9oEwkZaiC4uvgFDQsVgMGQms7e4yIfzQfsr6rtYAr1AaZdcC3Vfs=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="金枪鱼手握寿司 · Tuna nigiri" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Tr7suGTwSnsZwvAQZhCNWTOe382oAxqi7f4dMrm-9ydzS_2VOQnY84SGalTBzsixrV4ZL-hGh4UMmb8GAxoeQF7lnOteIBFfJjxLyr_04WZw6LEvk5mmIiKc1Eyg9EZb026d2dX9kdrhk=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="时令料理拼盘 · Seasonal appetizer platter" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9TzLctmgFaHXEpM2bhRM9i2be6tn36oPU-Rt85CHmJQkMKfyt6GCegyJ26tVniM27hil_1tIP5KBo53ICUvXwhslkOqFZBtaC2qvwDpQTREr3PlzhEolN-e0DOrmJiq6NKxfHW7DEYMuS77=s4800-w800-h600"/>
-</div>
-<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://maps.google.com/?cid=13654916387536850868" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://sushikatori.com/" target="_blank">🔗 <span class="cn">官网</span><span class="en">Website</span></a>
-</div>
-</div>
-
-<div class="evt">
-<div class="eh"><span class="et"><span class="cn">🍲 肉骨茶 · 米其林推荐</span><span class="en">🍲 Pork-rib soup · Michelin listed</span></span><span class="ed"><span class="cn">⭐4.4</span><span class="en">⭐4.4</span></span></div>
-<div class="eb">
-<h3><span class="cn">松发肉骨茶 Song Fa @ New Bridge Road（总店）</span><span class="en">Song Fa Bak Kut Teh @ New Bridge Road (flagship)</span></h3>
-<div class="desc"><span class="cn">⭐4.4（Google 8,063 评价，旧手册数据）。地址：#01-01, 11 New Bridge Rd, Singapore 059386。1969 年创立的老字号总店，米其林推荐；胡椒味浓的排骨汤免费无限续汤，配油条和卤味。总店是老店屋、没有冷气；想凉快可选 Suntec City 分店（⭐4.5），或乌节路 The Centrepoint 分店（见<a href="#orchard">「05 乌节路中餐 · 本地菜」</a>）。离 MBS 车程约 6 分钟（推算）。<strong>11 月营业时间：</strong>11/11–11/14 每天营业，但各来源写法不一：约 9:30 或 10:00 开（一说 7:00），21:00 或 21:30 收。想晚点吃要抓紧，建议 20:30 前入座，收档时间以现场为准。</span><span class="en">⭐4.4 (8,063 Google reviews, from the earlier edition). #01-01, 11 New Bridge Rd, Singapore 059386. The 1969 flagship, Michelin-listed: peppery pork-rib soup with free unlimited refills, plus fried dough sticks and braised sides. The flagship is an old shophouse without air-con; the Suntec City branch (⭐4.5) or the Orchard Road branch at The Centrepoint (see <a href="#orchard">“05 Orchard: Chinese &amp; local”</a>) are the cool alternatives. About 6 minutes by car from MBS (estimate). <strong>Hours for 11–14 Nov:</strong> open daily on all four days, but sources disagree: opens around 9:30 or 10:00 (one says 7:00), closes 21:00 or 21:30. For a late dinner, be seated by 20:30; closing time is whatever the shop says on the day.</span></div>
-<div class="chips"><span class="chip hours"><span class="cn">约 9:30/10:00–21:00/21:30</span><span class="en">~9:30/10:00–21:00/21:30</span></span><span class="chip verify"><span class="cn">三说并陈，现场为准</span><span class="en">Sources differ — check on the day</span></span></div>
-<div class="gal">
-<img loading="lazy" decoding="async" alt="松发肉骨茶店面 · Song Fa storefront" src="https://lh3.googleusercontent.com/grass-cs/AABkmLddxVt4767Xf27ZKYtMhkrGpL4SVNgvk1wHd0ni-pVT9yy_dzkML0Z6OIcTiW5nMIyXzhohx4D3blfp3NHrAv8l3ieLAOf9p-5B2KYmVTTEdgALHngEtUS4KY2kZFN_LrwIYds=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="松发招牌特写 · Song Fa shop sign close-up" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Rj0ZJS23Vng1ZzZQoReqdvv16gPIS2plMsD5HkNjkslnOk2-D59g7eTIUjUeBOb_U-j8gYAbTdgwJQRv6S5NLZwNyufqC8mvyE_0vAl4ovKGZib7PSD_lAG5OnqE-8hS531f_doVtCvu8=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="招牌卤肉 · Signature braised pork" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeFSFdfNJNmprnBdwV9Zgj8EaL-aRYy50v0Tay6SPJ9iWbXtgFxnih4lXCA9Uv21s2yYctI5m2FkKEkVgMgkIpjAWM9uvVfQt_1KKqDzoKhRHPGIBsAlOT7s3oHyeuF53hygCfz=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="卤肉特写 · Braised pork close-up" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QB68IeBb3m7Mz4J8bQKQGsOZMXrFBkj2XA_h6q1o2aAVJQO2q7fQkGoFK2W8AFN2NfIxEpu9NPx9y55NGQ27hQHRjIlNw0qloBbp19L1smpxAK_tKiVwqp8J48frVN7WD-t_05_eYh8NnW=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="肉骨茶与配菜 · A table of pork rib soup and sides" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Tgb9twRItflOdXTpoOQFVWZyRcR8ZvHCwYpuHAjP2wYuD0z65tbqUBO31FumgLA2gLG1X3dFKrVmJb6tFMa8T4nCCoZkDc8ANTosJYoeEH4MqY8lr0DpH8Z_7EcFxkNvIMh9DDimR_aBzu=s4800-w800-h600"/>
-</div>
-<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://maps.google.com/?cid=14392686212514869493" target="_blank">📍 Google Maps</a> <a class="btn-map" href="http://www.songfa.com.sg/" target="_blank">🔗 <span class="cn">官网</span><span class="en">Website</span></a>
-</div>
-</div>
-
-<div class="evt">
-<div class="eh"><span class="et"><span class="cn">🥢 莆田菜 · 酒店商场内</span><span class="en">🥢 Putian cuisine · inside the mall</span></span><span class="ed"><span class="cn">⭐4.8</span><span class="en">⭐4.8</span></span></div>
+<div class="eh"><span class="et"><span class="cn">📍滨海湾金沙 · 🥢 莆田菜 · 酒店商场内</span><span class="en">📍MBS · 🥢 Putian cuisine · inside the mall</span></span><span class="ed"><span class="cn">⭐4.8</span><span class="en">⭐4.8</span></span></div>
 <div class="eb">
 <h3><span class="cn">PUTIEN @ The Shoppes, MBS</span><span class="en">PUTIEN @ The Shoppes, MBS</span></h3>
-<div class="desc"><span class="cn">⭐4.8（Google 1,310 评价，旧手册数据）。地址：#01-05 The Shoppes at Marina Bay Sands, 2 Bayfront Ave。米其林一星起家的莆田菜连锁，招牌是兴化米粉、卤面、百秒黄花鱼、盐焗九节虾和脆皮鸡。就在 MBS 商场一楼，评论提到能看到室内运河灯光造景。建议订位（+65 6688 7053）。<strong>11 月营业时间：</strong>周三/周四 11:30–16:00、17:00–22:00（Burpple）；周五、周六的时间<strong>未查证</strong>。⚠ 同品牌在吉真那路还有一家，见<a href="#orchard">「05 乌节路中餐 · 本地菜」</a>；这张是 MBS 分店。</span><span class="en">⭐4.8 (1,310 Google reviews, from the earlier edition). #01-05 The Shoppes at Marina Bay Sands, 2 Bayfront Ave. A Putian-cuisine chain with Michelin-star roots; signatures are Xinghua rice noodles, braised noodles, the 100-second yellow croaker, salt-baked prawns and crispy chicken. On level 1 of the MBS mall, and reviewers mention a view of the indoor canal and its light display. Booking recommended (+65 6688 7053). <strong>Hours for 11–14 Nov:</strong> Wed/Thu 11:30–16:00 and 17:00–22:00 (Burpple); Fri and Sat times <strong>unverified</strong>. ⚠ There is another PUTIEN on Kitchener Road — see <a href="#orchard">“05 Orchard: Chinese &amp; local”</a>; this card is the MBS branch.</span></div>
-<div class="chips"><span class="chip hours"><span class="cn">周三/四 11:30–16:00、17:00–22:00</span><span class="en">Wed/Thu 11:30–16:00, 17:00–22:00</span></span><span class="chip book"><span class="cn">建议订位</span><span class="en">Booking advised</span></span><span class="chip verify"><span class="cn">周五六未查证</span><span class="en">Fri/Sat unverified</span></span></div>
+<div class="desc"><span class="cn">⭐4.8（Google 1,310 条评价）。地址：#01-05 The Shoppes at Marina Bay Sands, 2 Bayfront Ave。米其林一星起家的莆田菜连锁，招牌是兴化米粉、卤面、百秒黄花鱼、盐焗九节虾和脆皮鸡。就在 MBS 商场一楼，店外就是商场室内运河的灯光造景。建议订位（+65 6688 7053）。<strong>11/11–11/13 营业时间：</strong>周三/周四 11:30–16:00、17:00–22:00；周五（11/13）的营业时间请订位时确认。</span><span class="en">⭐4.8 (1,310 Google reviews). #01-05 The Shoppes at Marina Bay Sands, 2 Bayfront Ave. A Putian-cuisine chain with Michelin-star roots; signatures are Putian-style rice noodles, braised noodles, the 100-second yellow croaker, salt-baked prawns and crispy chicken. On level 1 of the MBS mall, right by the mall’s indoor canal and its light display. Booking recommended (+65 6688 7053). <strong>Hours for 11–13 Nov:</strong> Wed/Thu 11:30–16:00 and 17:00–22:00; for Fri (13 Nov), please confirm opening hours when booking.</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">周三/四 11:30–16:00、17:00–22:00</span><span class="en">Wed/Thu 11:30–16:00, 17:00–22:00</span></span><span class="chip book"><span class="cn">建议订位</span><span class="en">Booking advised</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="莆田餐厅入口 · PUTIEN entrance" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9SqwKgxXpGEV3GgLr__mcyxzSnWzwRUTXRtBoexjAVhARpiJA2ueo-_KW1_saCfvTKV3XeRCz_2CU8UHp5dCT1-OBFUUvBE9wUGi_qZFxv3vnai33uNZmFlOKSokXqoMQz05nMOup16RUJg=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="餐厅卡座 · Booth seating" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdmfsMZyis1tY6Gl8ompp3cGcBT45Fobho6u6EnBY-j1_c6p9thgypuoR_USwQwCfJYtxmVJ6wbuqD3f4AVUBQowWRZHtMf6V7xBz7oY6XJgDeskGspBNabtB5-1QyQW27g2fLFhhLWmlDx=s4800-w800-h600"/>
@@ -737,11 +693,11 @@
 </div>
 
 <div class="evt">
-<div class="eh"><span class="et"><span class="cn">🦀 辣椒螃蟹 · 酒店商场内</span><span class="en">🦀 Chilli crab · inside the mall</span></span><span class="ed"><span class="cn">⭐4.7</span><span class="en">⭐4.7</span></span></div>
+<div class="eh"><span class="et"><span class="cn">📍滨海湾金沙 · 🦀 辣椒螃蟹 · 酒店商场内</span><span class="en">📍MBS · 🦀 Chilli crab · inside the mall</span></span><span class="ed"><span class="cn">⭐4.7</span><span class="en">⭐4.7</span></span></div>
 <div class="eb">
 <h3><span class="cn">JUMBO Signatures @ The Shoppes, MBS</span><span class="en">JUMBO Signatures @ The Shoppes, MBS</span></h3>
-<div class="desc"><span class="cn">⭐4.7（Google 1,329 评价，旧手册数据）。地址：The Shoppes at Marina Bay Sands, 2 Bayfront Ave。JUMBO 旗下的精品分店，招牌辣椒螃蟹、黑胡椒螃蟹、麦片虾、鲜虾滑蛋是评论盛赞的重点，价格透明（可点半只蟹）。⚠ 部分评论提到有人均约 S$250 的无菜单套餐，订位时说清楚要单点而不是套餐。建议订位（+65 6688 7023）。<strong>11 月营业时间：</strong>周一至周五 11:30–15:00、17:30–22:30；周末 12:00–15:30、17:30–22:30（均沿用旧手册，2026 年<strong>未查证</strong>）。⚠ 同品牌在乌节路 ION 还有一家「JUMBO Seafood」，见<a href="#orchard">「05 乌节路中餐 · 本地菜」</a>；这张是 MBS 的 JUMBO Signatures。</span><span class="en">⭐4.7 (1,329 Google reviews, from the earlier edition). The Shoppes at Marina Bay Sands, 2 Bayfront Ave. JUMBO’s premium branch; the chilli crab, black-pepper crab, cereal prawns and prawn-and-egg dishes are what reviewers praise, with transparent pricing (half crabs available). ⚠ Some reviews mention a set menu at about S$250 per person — say you want à la carte when booking. Booking recommended (+65 6688 7023). <strong>Hours for 11–14 Nov:</strong> Mon–Fri 11:30–15:00 and 17:30–22:30; weekends 12:00–15:30 and 17:30–22:30 (both carried over from the earlier edition, <strong>unverified for 2026</strong>). ⚠ The same group also runs “JUMBO Seafood” at ION Orchard — see <a href="#orchard">“05 Orchard: Chinese &amp; local”</a>; this card is JUMBO Signatures at MBS.</span></div>
-<div class="chips"><span class="chip hours"><span class="cn">周一至五 11:30–15:00、17:30–22:30</span><span class="en">Mon–Fri 11:30–15:00, 17:30–22:30</span></span><span class="chip book"><span class="cn">建议订位，要说单点</span><span class="en">Book; say à la carte</span></span><span class="chip verify"><span class="cn">2026 年未查证</span><span class="en">2026 unverified</span></span></div>
+<div class="desc"><span class="cn">⭐4.7（Google 1,329 条评价）。地址：The Shoppes at Marina Bay Sands, 2 Bayfront Ave。JUMBO 旗下的精品分店，招牌是辣椒螃蟹、黑胡椒螃蟹、麦片虾和鲜虾滑蛋，价格透明（可点半只蟹）。⚠ 店里有人均约 S$250 的套餐，订位时说清楚要单点。建议订位（+65 6688 7023）。<strong>11/11–11/13 营业时间：</strong>11:30–15:00、17:30–22:30。</span><span class="en">⭐4.7 (1,329 Google reviews). The Shoppes at Marina Bay Sands, 2 Bayfront Ave. JUMBO’s premium branch; signatures are chilli crab, black-pepper crab, cereal prawns and prawns with scrambled egg, with transparent pricing (half crabs available). ⚠ There is also a set menu at about S$250 per person — say you want à la carte when booking. Booking recommended (+65 6688 7023). <strong>Hours for 11–13 Nov:</strong> 11:30–15:00 and 17:30–22:30.</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">11/11–11/13 11:30–15:00、17:30–22:30</span><span class="en">11–13 Nov 11:30–15:00, 17:30–22:30</span></span><span class="chip book"><span class="cn">建议订位，要说单点</span><span class="en">Book; say à la carte</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="珍宝 Signatures 店面 · JUMBO Signatures entrance" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdm-S-TOc7iSGsE3mLSo7Ri4Gq7XX7J06EdHEbFPnkWrwaIVXv5M8Y7WzcmAFgNVG1yoMOgnt-W3a7D4Ex7QZUI1tcKvanLh9eBNlryjFeFJ1A48VS7UTnNk4N4sxYPfszg0Z0YvqvjxIUa=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="清汤时蔬 · Greens in clear broth" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeb3eubV4giKi_Iil-xC0_TZ0u9m6Zc4ESfPy82lRn8A4wbqUvndYuDAKQqH2cDbWKpNCceRQ4UscDls1SzCxlebb1ky3Wv4O5wZRPX3FuEFXHDxaHy--kUs8WvlUgocB3dn7BxAw=s4800-w800-h600"/>
@@ -754,11 +710,81 @@
 </div>
 </div>
 
+<div class="grp"><span class="cn">其他区域（4 家）</span><span class="en">Elsewhere (4)</span></div>
+<div class="evt">
+<div class="eh"><span class="et"><span class="cn">📍市政区 · 🍛 娘惹菜</span><span class="en">📍Civic District · 🍛 Peranakan</span></span><span class="ed"><span class="cn">⭐4.4</span><span class="en">⭐4.4</span></span></div>
+<div class="eb">
+<h3><span class="cn">National Kitchen by Violet Oon @ 市政区</span><span class="en">National Kitchen by Violet Oon</span></h3>
+<div class="desc"><span class="cn">⭐4.4（Google 1,788 条评价）。地址：#02-01 National Gallery Singapore, 1 St Andrew’s Rd, Singapore 178957。招牌是干叻沙（不带汤的咖喱面）和娘惹菜（海峡华人的传统菜）；有冷气、坐得舒服，比熟食中心体面，适合三个人点几样分着吃。D2 从观音庙过去车程约 5 分钟。<strong>营业时间：</strong>午市 12:00–15:00（最后点餐 14:30）、晚市 18:00–22:30（最后点餐 21:30）。需要订位。</span><span class="en">⭐4.4 (1,788 Google reviews). #02-01 National Gallery Singapore, 1 St Andrew’s Rd, Singapore 178957. Known for dry laksa (curry noodles served without soup) and Peranakan food (the traditional cooking of Straits-born Chinese); air-conditioned and comfortable, a more civilised sit-down than a hawker centre — order a few dishes to share among the three of you. About 5 minutes by car from the temple on D2. <strong>Hours:</strong> lunch 12:00–15:00 (last order 14:30), dinner 18:00–22:30 (last order 21:30). Reservation needed.</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">午 12:00–15:00 · 晚 18:00–22:30</span><span class="en">Lunch 12:00–15:00 · Dinner 18:00–22:30</span></span><span class="chip book"><span class="cn">需订位</span><span class="en">Reservation needed</span></span></div>
+<div class="gal">
+<img loading="lazy" decoding="async" alt="National Kitchen by Violet Oon" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdzdicOazXyTWELuENdhJqFQAq4nJPOICZHVdr-3bhTdpe2q-Yb5l13wm23w2827RjPXUfwh_MP6L_AH296VnQvmeNsZuGbHCvcxx75AJ2PTiO28pguXSIPXEhYa2eOmPKzfgp9=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="National Kitchen by Violet Oon" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfNVN-ab98idvqWEXjDFd5gqeDzLwo1LqvKXs-LNO1ivXtssXQf11M0IUj3W5THU4KhG5k8Vjtr1JkI3OMNldDm9yLAKiVlwzF-Rx-eSjSj85Q1aa8tMQjojtsgi_k4Sg95x2kYyl5FSXVv=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="National Kitchen by Violet Oon" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9SwRbDFMKo9cEBdtPD2vEQJKmo3zFgQBl99Ys_5IZcf43o-hrX5DGzzbEQyEDW1tI9gAGzoD_iypw1oaEUbGXNC-gJjM7I65Cs0_C2e-6w1XJG5jbXLi6WN6W9FpofHTALclfsIWg=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="National Kitchen by Violet Oon" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9SQomLFFKDNXHbcbyXRy3XlgUGjOVJVcYWx9wjvdTJYi6mCsN5y_KvhJhE4z0RUO-91MHakkiN4MtdzWSyRP-1YdZIB3bXUArIF6sV5I8YtLpFIfSFhlcgXaRRG94NVHNk1OTU=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="National Kitchen by Violet Oon" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9S_o8QswKVBB6FcMM4VIL6QAvcn32JbGMbD7Nq1-ir-lNVfQYYNY-OrAbd5ihBG451GdxkDrV3yU7ZS8GCxrH7AXwmup2FR2QYykxWQ-b8TyD2TVt5m1VeE25RfZILloZeICqwYkRosO_a3=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=National%20Kitchen%20by%20Violet%20Oon%20%2302-01%20National%20Gallery%20Singapore%201%20St%20Andrew%27s%20Rd%20Singapore%20178957" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://violetoon.com/national-kitchen-by-violet-oon-national-gallery-singapore" target="_blank">🔗 <span class="cn">官网</span><span class="en">Official page</span></a>
+</div>
+</div>
+
+<div class="evt">
+<div class="eh"><span class="et"><span class="cn">📍登布西 · 🍛 娘惹菜 · 曾获米其林一星</span><span class="en">📍Dempsey · 🍛 Peranakan · formerly Michelin-starred</span></span><span class="ed"><span class="cn">⭐4.4</span><span class="en">⭐4.4</span></span></div>
+<div class="eb">
+<h3><span class="cn">烛果 Candlenut @ COMO Dempsey</span><span class="en">Candlenut @ COMO Dempsey</span></h3>
+<div class="desc"><span class="cn">⭐4.4（Google 2,089 条评价）。地址：17A Dempsey Road, COMO Dempsey, Singapore。曾获米其林一星，是全球第一家摘星的娘惹餐厅；主厨 Malcolm Lee 做精致版娘惹菜：黑果炖鸡（鸡肉炖印尼黑果，酸辣浓郁）、娘惹咖喱鸡、酱烧大虾。想正式吃一顿娘惹菜选这家。<br><strong>11/13（五）：</strong>午市 12:00–15:00、晚市 18:00–22:00<br><strong>距 Takashimaya：</strong>约 3.5 公里，车程约 10 分钟<br><strong>订位：</strong>需要订位</span><span class="en">⭐4.4 (2,089 Google reviews). 17A Dempsey Road, COMO Dempsey, Singapore. Formerly Michelin-starred — the world’s first Peranakan restaurant to earn a star. Chef Malcolm Lee cooks refined Straits-Chinese food: chicken stewed with black nuts from Indonesia (tangy and rich), Peranakan curry chicken and glazed king prawns. The pick for one proper Peranakan meal.<br><strong>Fri 13 Nov:</strong> lunch 12:00–15:00, dinner 18:00–22:00<br><strong>From Takashimaya:</strong> about 3.5 km, about 10 minutes by car<br><strong>Booking:</strong> booking needed</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">午 12:00–15:00 · 晚 18:00–22:00</span><span class="en">Lunch 12:00–15:00 · Dinner 18:00–22:00</span></span><span class="chip book"><span class="cn">需订位</span><span class="en">Booking needed</span></span></div>
+<div class="gal">
+<img loading="lazy" decoding="async" alt="Candlenut 餐厅内部 · Candlenut dining room" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcYJFAyYhFmDHu_K_gZH7EpLHmo07yoCNDeOIp7qWDcx_FH0Z4IqzTvZquKIsX1418qhBL4qbFWoFrXvMKVOKSGmqiKp74KBRUBgYQf_6Br0CKVRalQ1ray-eKfNRLUFGmSiGH7=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="娘惹咖喱鸡 · Peranakan curry chicken" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9R_IOSkOY8aO1GtWiihg9iGL5HMaqk_O92YV-FY8n0ZCW76Nar22jAhKwqRtjSEYVRSI6hCb_a5XA3TxsH80paOT4TJZuM5FHSendCbbesPutHmtvou6AW2jClTj3UbYZIWn3aykw3xJttq=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="酱烧大虾 · Glazed king prawns" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9TWNKOGyaBmqJibI8diXjH_TU7qaUE7GwYygEnRjA7D406Rt_UJifqkcWypgau0M6LnH05G46pcl_X5H41EdiviMG7NGY05HR8zBsuA_wBmnAlIR23ZxzWL8xpClSDt89g0aMV3=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="一桌娘惹菜 · A table of Peranakan dishes" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9THbe7GRUr_htQKxkx9QeBgS0VwLObnMWdeVFJg10Yr2LBEDEL51ASJXPN2-PdqHYGKNeVZYi3prM-EDaGw7luKtyD_r_CH8prV4bdSoVkhzEyoDH9HGMt5-FM6G7q39PKWAddHGrssdTY=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Candlenut%20COMO%20Dempsey%2017A%20Dempsey%20Road%20Singapore" target="_blank">📍 Google Maps</a>
+</div>
+</div>
+
+<div class="evt">
+<div class="eh"><span class="et"><span class="cn">📍牛车水 · 🍜 熟食中心 · 本地小吃</span><span class="en">📍Chinatown · 🍜 Hawker centre · local food</span></span><span class="ed"><span class="cn">⭐4.4</span><span class="en">⭐4.4</span></span></div>
+<div class="eb">
+<h3><span class="cn">麦士威熟食中心 Maxwell Food Centre</span><span class="en">Maxwell Food Centre</span></h3>
+<div class="desc"><span class="cn">⭐4.4（Google 24,266 条评价）。地址：1 Kadayanallur St, Singapore 069184。牛车水最有名的熟食中心之一，海南鸡饭名摊「天天」（Tian Tian）在这里，另有各式本地小吃，平价、热闹，想吃地道一点就选这里。有顶棚但四面通风、没有冷气。D2 从观音庙过去车程约 10 分钟。<strong>营业时间：</strong>午晚都能吃，各摊自定；天天约 11:00–19:30，周一或周二可能休息；熟食中心每年另有几天大扫除休业（11 月日期月初才公布），去之前确认。</span><span class="en">⭐4.4 (24,266 Google reviews). 1 Kadayanallur St, Singapore 069184. One of Chinatown’s best-known hawker centres, home to the famous chicken rice stall Tian Tian plus many other local dishes — cheap, lively and the more authentic choice. Roofed but open-sided, with no air-con. About 10 minutes by car from the temple on D2. <strong>Hours:</strong> fine for lunch or dinner; each stall sets its own; Tian Tian is about 11:00–19:30 and may close on Monday or Tuesday; hawker centres also shut for a few cleaning days a year (the November dates are only announced early in the month) — check before you go.</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">午晚都可 · 天天约 11:00–19:30</span><span class="en">Lunch or dinner · Tian Tian ~11:00–19:30</span></span></div>
+<div class="gal">
+<img loading="lazy" decoding="async" alt="Maxwell Food Centre Chinatown" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfnOxvAjynjUhtEGQOR7m0yxdbrK7GFk-4Iuev2Y18oQMSpu4fkfaSOig6rJ0v6qmyL9Vej30HmhaR6GH5qsl1JozE1qDoPkMUH57ZeoZ0kYN1fWUdBpxWrB8bocFQETXGAGzqG=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="Maxwell Food Centre Chinatown" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfouxgzzQwi6ZPfP6MaQDJCtaZpqQTPa5K7ln6Pl8h1fGKPZpmxu-diRpVyuAG9gcq6TYEQTxe9KMSxy8dcUEFsyjbIAP1zWf5q9JUgfdfs-rfdq2D1fEHec1nRrqxY9hfFUbT9Ysbr6YDM=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="Maxwell Food Centre Chinatown" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfuTGhr4B91gb8O7I8M7AoP26QLCJtPBMe3c1FBoVG2TXtm86NOtChiG1wXPTGgHrCTVt9NAdmKPY7YSyY2eLB_pmWxnCmmnqeAOANpWkw6p62ztyiiD9IamIYA6DmCxOQGOITGu0MvF0HP=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="Maxwell Food Centre Chinatown" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdfzo92QtLIBiIWAAM2LJ1lotWbx4ONm2JwWKZ2bOSDG9k92dd7NV2Ru82zNIbuGAAjp2xof0O-s1g9VmstJEm5cACLCgsUf0Y7L3WsKYl6DRrLHI-aaVcRHTZ_1ZkCXBErakJSRw=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="Maxwell Food Centre Chinatown" src="https://lh3.googleusercontent.com/grass-cs/AABkmLe0WugbN4g_6xIO1qnXgdkQIcUtfocuwc8IVVDNlJD0HUm9VO3hu1CyV75UblwIgmNKiDY9fB33uyh3bhnSqK4PqDoHbXIT3ZA1WZeMacpiwPDxD9ZS7RsKmTr_naAf3daj6YwYZJPwK8M=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Maxwell%20Food%20Centre%201%20Kadayanallur%20St%20Singapore%20069184" target="_blank">📍 Google Maps</a>
+</div>
+</div>
+
+<div class="evt">
+<div class="eh"><span class="et"><span class="cn">📍丹戎巴葛 · 🍣 日料 · 无菜单寿司</span><span class="en">📍Tanjong Pagar · 🍣 Japanese · Chef’s-choice sushi</span></span><span class="ed"><span class="cn">⭐4.9</span><span class="en">⭐4.9</span></span></div>
+<div class="eb">
+<h3><span class="cn">Sushi Katori @ Tanjong Pagar</span><span class="en">Sushi Katori @ Tanjong Pagar</span></h3>
+<div class="desc"><span class="cn">⭐4.9（Google 114 条评价）。地址：21 Tanjong Pagar Rd #01-03。丹戎巴葛的无菜单寿司专门店（由厨师决定上什么），鱼货直送自东京丰洲市场，双醋饭（白醋＋3 年熟成红醋）是特色，招牌是海胆配鲑鱼卵、金枪鱼腩和甜虾。氛围安静适合谈话，连续两年入选米其林指南。<strong>营业时间：</strong>11/11（三）至 11/13（五）都营业，午市 12:00–14:30、晚市 18:30–22:30。务必提前订位（+65 8804 5348）；无菜单寿司一般有固定入座场次，订位时一并问清楚。</span><span class="en">⭐4.9 (114 Google reviews). 21 Tanjong Pagar Rd #01-03. A chef’s-choice sushi counter in Tanjong Pagar (the chef decides what you eat), with fish flown in from Tokyo’s Toyosu Market and two kinds of sushi rice (white vinegar plus 3-year aged red vinegar). Signatures include the sea urchin with salmon roe, the medium-fatty tuna belly and the sweet prawns. Quiet enough to talk, and in the Michelin Guide two years running. <strong>Hours:</strong> Open Wed 11 to Fri 13 Nov — lunch 12:00–14:30, dinner 18:30–22:30. Booking essential (+65 8804 5348); chef’s-choice counters usually run fixed seatings, so ask about seating times when you book.</span></div>
+<div class="chips"><span class="chip hours"><span class="cn">午 12:00–14:30 · 晚 18:30–22:30（11/11–11/13）</span><span class="en">Lunch 12:00–14:30 · Dinner 18:30–22:30 (11–13 Nov)</span></span><span class="chip book"><span class="cn">必须订位</span><span class="en">Booking essential</span></span></div>
+<div class="gal">
+<img loading="lazy" decoding="async" alt="Sushi Katori 吧台座位 · Sushi Katori counter seats" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeTEVNhFzMXtKBH1pnI2uKx8yNhVtlCAGvuUVZB01-Aaj3BhvfMT2nyXjovonRrkrp97M1fCqeHn8BSjNHOC4BTxi1bivmuXL58e9TocPGupXGZxmTJjxibllgK7eUZEDAo9Fc=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="鱼籽腌鱼寿司 · Cured fish topped with salmon roe" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcC6aKalYOxxdDV90M281aTJe3fkbNUmjXqr0zEMUuOAPES0Z1RVWB2rU-TKkL3PVh9P1USa7VW8MiMU3ukk007EltosYMfdjf-PJjv9JhndXFlSzwuLwfa8pKIWYivMIPDtCxwikWYHRii=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="炭烤鳗鱼 · Grilled eel" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Rv-la26L589gdnKX3NCeERCIgZIhyslXkQRg4utebWCjwv5mVmW_YAXs6crANpsLrO0Fz_renXC6W3TIoPKzEe7yyW9oEwkZaiC4uvgFDQsVgMGQms7e4yIfzQfsr6rtYAr1AaZdcC3Vfs=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="金枪鱼手握寿司 · Tuna nigiri" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Tr7suGTwSnsZwvAQZhCNWTOe382oAxqi7f4dMrm-9ydzS_2VOQnY84SGalTBzsixrV4ZL-hGh4UMmb8GAxoeQF7lnOteIBFfJjxLyr_04WZw6LEvk5mmIiKc1Eyg9EZb026d2dX9kdrhk=s4800-w800-h600"/>
+<img loading="lazy" decoding="async" alt="时令料理拼盘 · Seasonal appetizer platter" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9TzLctmgFaHXEpM2bhRM9i2be6tn36oPU-Rt85CHmJQkMKfyt6GCegyJ26tVniM27hil_1tIP5KBo53ICUvXwhslkOqFZBtaC2qvwDpQTREr3PlzhEolN-e0DOrmJiq6NKxfHW7DEYMuS77=s4800-w800-h600"/>
+</div>
+<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
+<a class="btn-map" href="https://maps.google.com/?cid=13654916387536850868" target="_blank">📍 Google Maps</a> <a class="btn-map" href="https://sushikatori.com/" target="_blank">🔗 <span class="cn">官网</span><span class="en">Website</span></a>
+</div>
+</div>
 </section>
 
 <footer>
 <div class="mark">SINGAPORE · NOV 2026</div>
-<p><span class="cn">本手册标注「未查证」的时间、评分和价格，出发前请以官方渠道最终核实。</span><span class="en">Items marked “unverified” (hours, ratings, prices) should be reconfirmed through official channels before departure.</span></p>
 </footer>
 </div>
 
@@ -939,7 +965,7 @@ function lbNav(dir) {
 /* 实时空气质量（PSI）。今年 10 月新加坡烟霾偏重，烟霾是这趟最可能打乱户外行程的变量，
    而它没有多日预报、只能看当下——所以这里抓的是新加坡环境局的实时读数
    （data.gov.sg 开放数据，免费免 key，每小时更新）。
-   取「中部」是因为酒店与大半行程都在滨海湾一带；同时给全岛最高值，
+   取「中部」是因为中部覆盖滨海湾与乌节路一带；同时给全岛最高值，
    因为户外行程不一定在滨海湾，最高值才是该看的数。 */
 (function airQuality() {
   var box = document.getElementById('psi');
@@ -964,7 +990,7 @@ function lbNav(dir) {
         .filter(function (v) { return typeof v === 'number'; });
       var max = Math.round(Math.max.apply(null, vals));
       var b = band(max);
-      /* 标色看全岛最高值：植物园这种离滨海湾较远的行程也要顾到 */
+      /* 标色看全岛最高值：离滨海湾较远的行程也要顾到 */
       if (b.cls) box.classList.add(b.cls);
       else if (max > 80) box.classList.add('warn');
       var t = (it.timestamp || '').slice(11, 16);
@@ -981,8 +1007,7 @@ function lbNav(dir) {
     });
 
   /* 只写「今天」那张卡：烟霾没有预报，写在别天等于瞎猜；预设隐藏，
-     抓到数据才露出来，所以平常不会有一行废话挂在每天的卡片上
-     （2026-09-19 用户：「别写死的，只在当天抓完数据写上当天的空气质量」）。
+     抓到数据才露出来，所以平常不会有一行废话挂在每天的卡片上。
      PSI ≤100 就只报数字、说照常；超过 100 才把当天的替代方案摊开。 */
   function today(b, max, t) {
     var day = document.querySelector('.day.today');
