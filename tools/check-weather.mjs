@@ -397,26 +397,48 @@ const sgnBanned = await page.evaluate(() => {
   const ev = document.querySelector('#events');
   const outside = ev ? t.replace(ev.textContent, '') : t;
   const hits = /Garden Rhapsody/i.test(outside) ? ['Garden Rhapsody（限时活动区以外）'] : [];
-  // 2026-10-31 用户亲选 D3（11/13）：植物园、牛车水佛牙寺、甘榜格南（苏丹回教堂＋哈芝巷）——只准出现在 D3，别处照禁
+  // 2026-10-31 用户亲选 D3（11/13）：植物园、牛车水佛牙寺——只准出现在 D3，别处照禁
+  // 2026-11-01 用户拿掉甘榜格南（「我们也不是回教徒」），D3 下午改自由活动：甘榜格南／苏丹回教堂／哈芝巷回到整页禁词
+  //（YuCun 的店名与地址是 Sultan Gate，所以英文禁的是 Sultan Mosque，不是 Sultan）
   const d3 = document.querySelector('#day03');
   const outsideD3 = d3 ? t.replace(d3.textContent, '') : t;
-  const d3Only = ['佛牙', 'Buddha Tooth', '苏丹回教堂', 'Sultan Mosque', '哈芝巷', 'Haji Lane', '甘榜格南', 'Kampong Glam', '植物园', 'Botanic', '胡姬', 'Orchid Garden']
+  const d3Only = ['佛牙', 'Buddha Tooth', '植物园', 'Botanic', '胡姬', 'Orchid Garden']
     .filter(w => outsideD3.toLowerCase().includes(w.toLowerCase())).map(w => w + '（D3 以外）');
-  return hits.concat(d3Only, ['花穹', '云雾林', '按摩', 'CÉ LA VI', 'LeVeL33', 'Jigger', '赌场', 'casino', 'SINGAPORAMA', '敦煌', 'Dunhuang'].filter(w => t.toLowerCase().includes(w.toLowerCase())));
+  return hits.concat(d3Only, ['甘榜格南', 'Kampong Glam', '苏丹回教堂', 'Sultan Mosque', '哈芝', 'Haji', '花穹', '云雾林', '按摩', 'CÉ LA VI', 'LeVeL33', 'Jigger', '赌场', 'casino', 'SINGAPORAMA', '敦煌', 'Dunhuang'].filter(w => t.toLowerCase().includes(w.toLowerCase())));
 });
 check(sgnBanned.length === 0, `[sg-nov] 已删除的地点不该再出现在页面上（实得 ${JSON.stringify(sgnBanned)}）`);
-// 正向：D3 要有三张景点卡（植物园／佛牙寺／苏丹回教堂＋哈芝巷），中英都在、每张 ≥4 张图
+// 2026-11-01 用户：「不必放必去，让他们自己选」——全页不准出现「必去」：正文文字，以及 CSS ::before/::after 生成的标签（中英两种语言都查）
+const sgnMust = await page.evaluate(() => {
+  const hits = [];
+  if (/必\s*去/.test(document.body.textContent)) hits.push('正文含「必去」');
+  const had = document.body.classList.contains('lang-en');
+  for (const en of [false, true]) {
+    document.body.classList.toggle('lang-en', en);
+    for (const el of document.body.querySelectorAll('*')) {
+      for (const ps of ['::before', '::after']) {
+        const c = getComputedStyle(el, ps).content;
+        if (c && c !== 'none' && c !== 'normal' && /必\s*去|RECOMMENDED|MUST/i.test(c)) hits.push(`${en ? 'en' : 'cn'} ${el.tagName.toLowerCase()}.${el.className}${ps} ${c}`);
+      }
+    }
+  }
+  document.body.classList.toggle('lang-en', had);
+  return [...new Set(hits)].slice(0, 5);
+});
+check(sgnMust.length === 0, `[sg-nov] 全页不该出现「必去」（含 CSS 生成的标签），实得 ${JSON.stringify(sgnMust)}`);
+// 正向：D3 要有两张景点卡（植物园／佛牙寺），中英都在、每张 ≥4 张图；下午要写明自由活动（2026-11-01）
 const sgnD3 = await page.evaluate(() => {
   const stops = [...document.querySelectorAll('#day03 .stop')];
   const txt = stops.map(s => s.textContent).join(' ');
   return {
     n: stops.length,
     imgs: stops.map(s => s.querySelectorAll('.gal img').length),
-    has: ['植物园', 'Botanic Gardens', '佛牙寺', 'Buddha Tooth', '苏丹回教堂', 'Sultan Mosque', '哈芝巷', 'Haji Lane'].filter(w => !txt.includes(w)),
+    has: ['植物园', 'Botanic Gardens', '佛牙寺', 'Buddha Tooth'].filter(w => !txt.includes(w)),
+    nums: [...document.querySelectorAll('#day03 .stop .pin.num')].map(e => e.textContent.trim()),
+    free: /自由活动/.test(document.querySelector('#day03')?.textContent || '') && /free afternoon/i.test(document.querySelector('#day03')?.textContent || ''),
   };
 });
-check(sgnD3.n === 3 && sgnD3.imgs.every(n => n >= 4) && sgnD3.has.length === 0,
-  `[sg-nov] D3 应有植物园、佛牙寺、苏丹回教堂＋哈芝巷三张卡、每张 ≥4 张图（实得 ${JSON.stringify(sgnD3)}）`);
+check(sgnD3.n === 2 && sgnD3.imgs.every(n => n >= 4) && sgnD3.has.length === 0 && sgnD3.nums.join(',') === '1,2' && sgnD3.free,
+  `[sg-nov] D3 应有植物园、佛牙寺两张卡（第 1、2 站）、每张 ≥4 张图，下午写明自由活动（实得 ${JSON.stringify(sgnD3)}）`);
 const { dayHaze: sgnDownDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_D2, r => r.fulfill({ status: 500, body: 'boom' }));
 check(sgnDownDay.length === 1 && /抓不到|Could not fetch/.test(sgnDownDay[0]?.now || '') && sgnDownDay[0]?.actHidden === false,
   `[sg-nov] PSI 挂掉但人在行程中：要说明抓不到并摊开替代方案（实得 ${JSON.stringify(sgnDownDay)}）`);
