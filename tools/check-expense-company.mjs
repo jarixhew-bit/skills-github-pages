@@ -112,7 +112,7 @@ const browser = await chromium.launch(launchOpts);
       if (route.request().method() === 'GET')
         return route.fulfill({ status:200, contentType:'application/json', headers:h,
           body: JSON.stringify({
-            categories:['Beverage','Car Wash','Dinner','Driver Meal','Lunch','Meal Subscription','Petrol','Postage','Store'],
+            categories:['Bank','Beverage','Car Wash','Dinner','Driver Meal','Lunch','Meal Subscription','Petrol','Postage','Store'],
             plateCategories:['Car Wash','Driver Meal','Petrol'],
             // 括号里填什么由服务端说了算：车牌那几类不给（App 按默认的车牌处理），
             // 司机餐给「司机名字」——这条就是这次要验的差别
@@ -665,6 +665,27 @@ const browser = await chromium.launch(launchOpts);
   ok('★本机个人记账算「餐饮」，不是掉进「其他支出」', txMs?.categoryId === 'cat_food', txMs?.categoryId);
   ok('★没连过 butler 时的兜底清单也有它',
      await page.evaluate(() => COMPANY_CATS_FALLBACK.includes('Meal Subscription')));
+
+  console.log('\n【4f】Bank（2026-11-01 用户加的公司类别）');
+  posted = [];
+  await page.evaluate(()=>showAddTx());
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
+  ok('★下拉里有 Bank',
+     (await page.$$eval('#tx-company-category option', els => els.map(e => e.value))).includes('Bank'));
+  await page.fill('#tx-amount', '3');
+  await page.selectOption('#tx-company-category', 'Bank');
+  const _sentBk = posted.length;
+  await page.evaluate(()=>saveTx());
+  await until(() => posted.length > _sentBk, { what: 'Bank 那笔送到服务端' });
+  const txBk = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
+  ok('★送出去的类别是 Bank', posted[0]?.items?.[0]?.categoryEn === 'Bank'
+     || posted[0]?.items?.[0]?.categoryRaw === 'Bank', posted[0]?.items?.[0]);
+  ok('本机个人记账归「其他支出」', txBk?.categoryId === 'cat_other_exp', txBk?.categoryId);
+  ok('★没连过 butler 时的兜底清单也有它',
+     await page.evaluate(() => COMPANY_CATS_FALLBACK.includes('Bank')));
 
   console.log('\n【5】送不出去时不能丢账：进队列，恢复后补送');
   butlerMode = 'offline'; posted = [];
