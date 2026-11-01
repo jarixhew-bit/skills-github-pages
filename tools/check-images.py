@@ -97,6 +97,11 @@ def extract(path: str) -> list:
         host = urllib.parse.urlparse(clean).netloc.lower()
         if any(h in host for h in SKIP_HOSTS):
             continue
+        # <head> 里的 <link rel="preconnect"/stylesheet>（网页字体）不是给读者点的链接：
+        # preconnect 的网址本来就只是域名、打开就是 404，算成「官网失效」是误报。
+        tag_start = html.rfind("<", 0, m.start())
+        if html[tag_start:tag_start + 5].lower() == "<link":
+            continue
         found.append(("官网", clean, lineno(m.start())))
     seen, out = set(), []
     for kind, url, line in found:
