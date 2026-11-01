@@ -23,7 +23,7 @@ URL: https://jarixhew-bit.github.io/skills-github-pages/boss/
 2. 服务端两道闸：`handleBoss` 判身份，`bossHandle` 的 `WRITE_ACTIONS` 再判一次。
    第二道是刻意的冗余——路由改坏了也拦得住，**不要以「重复」为由删掉它**。
 3. 前端 viewer 身份下写操作控件**压根不进 DOM**（不是 CSS 隐藏）。
-自检 `tools/check-boss.mjs` 守第 3 条，**并带 admin 对照组**——只断言「viewer 下为 0」
+自检 `tools/check-boss.mjs` 守第 3 条（每周固定行程那几颗在 `check-boss-2` 场景四十五f），**并带 admin 对照组**——只断言「viewer 下为 0」
 的话，整个管理功能坏掉也会显示通过。改自检时别把对照组删了。
 
 ## 结构地图（boss/index.html）
@@ -567,3 +567,41 @@ butler 那边：拿掉 period 白名单 → 7 红；座位不验格式 → 1 红
 备注改成纯事实；入住 Swissôtel 改成酒店条目＋下午；生日宴改成晚上、去掉「具体时间待定」；观音庙／植物园／退房送机上午，
 逛商场／佛牙寺（中午前后）／甘榜格南下午；「见朋友」(11/15) 没有任何时间线索，**没填时段**。
 MBS 电话 +65 6688 8888 取自官网（客房预订线）。
+
+## 每周固定行程（2026-11-01）
+用户：老板每个星期日人在金边就去 Wat Monisovann 见师父，「设一次之后每周自动出现」。
+
+**数据**：butler `data/boss-app/trips.json` 顶层 `recurring:[{id, weekday:0~6(0=周日), time:"HH:MM", period?, title:{zh,en},
+note:{zh,en}, mapUrl, skipDates:["YYYY-MM-DD"], startDate, endDate?}]`。放同一份档的理由：同一个 `updatedAt` 管红点、
+同一个 feed 端出去，不用多读一份。写入走**单独的** admin 动作 `recurringSave`（整份覆写 recurring、trips 原样），
+`tripsSave` 与每天清过期行程的 cron（`trips_cleanup.js`）都**原样带过 recurring**——以前那两处只写 `{updatedAt, trips}`，
+不改的话存一次行程表单或过一个午夜，规则就被抹掉（各有一条测试钉着）。
+后端洗数据 `cleanRecurring()`：weekday 不是 0~6 整数、time 不是 HH:MM、没标题的**整条剔除**；feed 读出来也洗一遍。
+
+**展开在前端**（`recurringOccurrences(from, to)`）：规则 → 这段日子里每个对得上星期几的日子一笔，`skip` 三种：
+`''` 照常／`'cancelled'`（在 skipDates 里）／`'away'`（出远门）。只展开今天起 `RECUR_WINDOW_DAYS`=56 天。
+展开出来的条目带 `recurring:true, ruleId`，`itemRowHtml` 印「🔁 每周」。接进去的地方：`renderToday`（今天／明天）、
+`itemsForDate`（分享文字，标题后加「（每周固定）」）、`findNextItineraryDate`（空态的「下一个」）、
+行程页最上面每条规则一张 `.recur-card`（接下来 4 次，跳过的写原因）。
+
+**出远门怎么判**（`awayTripOn()` / `isAwayTrip()`，唯一正本）：那天落在某一趟 `start ≤ 日 ≤ end`（含头尾）里，
+**而且**那趟的 `location.zh/en` 有填、不含「金边／Phnom Penh」。location 空着＝当成在金边——本地一天的安排
+（「用讲的」建出来的）本来就不填地点，迁移前那笔「11月1日 见师父」也是空的。出发／回程当天也算在外地（整天跳过）。
+所以**建外地行程一定要填地点**，否则那几个星期日照样会出现。
+
+**防重复**（`recurringDupOf()`）：同一天、**同一个钟点**已经有单次条目，而且地图链接或中文标题跟规则一样，就不展开（只比地点会误伤：同一间寺当天早上另有法会，下午见师父就被吃掉——verifier 逮到的，场景四十五e 有阳性用例）——迁移那一刻
+（单次那趟还没删）不会冒出两条。
+
+**这次取消**：只有 admin 画得出来（`recurSkipBtnHtml()` 先判 role），今天页那条、行程页卡上、管理页各一处；
+按了＝那天进 skipDates，旁边变「恢复」。管理页 `#admin-recur-section`：新增／✏️编辑／🗑删除（confirm），
+时间默认 14:00，地点填名字自动变地图链接。存＋拉最新分两段 try（同行程表单）。
+
+**迁移**：trip-mvvt70n6eels（11/1 单次）删掉，换成规则 `rec-shifu`（周日 14:00，startDate 2026-11-01）。
+
+自检：`check-boss-2` 场景四十五～四十五f（普通周日出现＋360px、11/15 雅加达跳过＋地点是金边／空着两组对照、
+skipDates 与下周照常、只展开对的星期几与起讫日、迁移后／过渡期／迁移前都只有一条、老板端新控件 0 ＋ admin 对照组
+＋取消／新增／编辑／删除的送出内容）；butler `tests/boss-recurring.test.mjs`（52 项）＋ `trips-cleanup`【6】。
+回退验证：拿掉出远门判定、拿掉 role 闸、拿掉防重复 → 7 红；butler 拿掉 weekday 校验＋拿出 ADMIN_ACTIONS → 13 红，
+cron 不带 recurring → 1 红。
+
+后续（这次没做）：butler 的 Telegram 早报（`src/cron/morning_brief.js`）还不读 recurring，YANG 的早报里不会出现每周固定行程。

@@ -2669,4 +2669,235 @@ async function viewerOn(day, opts = {}){
   await ctx.close();
 }
 
+// =====================================================================
+// 场景四十五：每周固定行程（2026-11-01）
+//   规则展开到星期几、出远门（非金边行程）自动跳过、单次取消、迁移后不重复、老板只读
+// =====================================================================
+const SHIFU_MAP = 'https://www.google.com/maps/search/?api=1&query=Wat%20Monisovann';
+function ruleShifu(extra = {}){
+  return Object.assign({ id: 'rec-shifu', weekday: 0, time: '14:00',
+    title: { zh: '见师父 · Wat Monisovann', en: 'Visit the master · Wat Monisovann' }, note: { zh: '', en: '' },
+    mapUrl: SHIFU_MAP, skipDates: [], startDate: '2026-11-01' }, extra);
+}
+/** 迁移前那一笔单次行程（真实数据 trip-mvvt70n6eels 的形状：location 空着） */
+function oldShifuTrip(){
+  return { id: 'trip-mvvt70n6eels', title: { zh: '11月1日 ·  Wat Monisovan', en: 'Nov 1' }, start: '2026-11-01', end: '2026-11-01',
+    location: { zh: '', en: '' }, guideUrl: '', items: [{ date: '2026-11-01', time: '14:00',
+      title: { zh: '见师父 Wat Monisovann', en: '' }, note: { zh: '', en: '' }, mapUrl: SHIFU_MAP }] };
+}
+async function recurOn(day, { role = 'viewer', trips = tripsSgJkt(), recurring = [ruleShifu()], viewport = null } = {}){
+  const ctx = await browser.newContext(viewport ? { viewport } : {});
+  await forceZh(ctx);
+  await freezeClock(ctx, day);
+  const rec = mountRoutes(ctx, { role, trips, recurring });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !document.getElementById('app').classList.contains('app-hidden')), { what: 'App 加载完成' });
+  return { ctx, rec, page, errs };
+}
+/** 「今天」那一段（到「明天」标题为止）里每一条的标题 */
+async function todayTitles(page){
+  return page.evaluate(() => {
+    const out = [];
+    const pane = document.getElementById('tab-today');
+    let inToday = false;
+    for(const el of pane.querySelectorAll('.sec-hdr, .item-row')){
+      if(el.classList.contains('sec-hdr')){ inToday = /今天/.test(el.innerText); continue; }
+      if(inToday) out.push(el.querySelector('.item-title').innerText.trim());
+    }
+    return out;
+  });
+}
+const SHIFU_RE = /见师父/;
+
+{
+  console.log('\n【四十五】每周固定行程：普通星期日出现，带「🔁 每周」');
+  const { ctx, page, errs } = await recurOn('2026-11-08', { viewport: { width: 360, height: 740 } });
+  const titles = await todayTitles(page);
+  ok('★11/08（周日、没出远门）今天有「见师父」一条', titles.filter(t => SHIFU_RE.test(t)).length === 1, titles);
+  const row = page.locator('#tab-today .item-row', { hasText: '见师父' }).first();
+  ok('★标了「🔁 每周」', /🔁 每周/.test(await row.innerText().catch(() => '')));
+  ok('★时间是 14:00', (await row.locator('.item-time').innerText().catch(() => '')).trim() === '14:00');
+  ok('★地图链接能点、指向 Wat Monisovann', await row.locator('a.item-map').getAttribute('href').catch(() => '') === SHIFU_MAP);
+  await gotoTab(page, 'trips');
+  const card = await page.locator('#tab-trips .recur-card').innerText().catch(() => '');
+  ok('★行程页有「每周固定」卡：每周日 14:00', /每周日 14:00/.test(card) && SHIFU_RE.test(card), card);
+  ok('★卡里列出 11/15 在外地、这周不去（雅加达）', /11月15日[\s\S]*出远门（雅加达）/.test(card), card);
+  ok('★卡里列出 11/22 照常（没有跳过字样）', /11月22日/.test(card) && !/11月22日[^\n]*(取消|出远门)/.test(card), card);
+  const over = await page.evaluate(() => [...document.querySelectorAll('.recur-card, .recur-row, .recur-card-title')]
+    .filter(el => el.scrollWidth > el.clientWidth + 1).length);
+  ok('★360px 不溢出', over === 0, over);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+{
+  console.log('\n【四十五b】11/15 落在雅加达行程（11/14–16）里：不显示');
+  const { ctx, page, errs } = await recurOn('2026-11-15');
+  const titles = await todayTitles(page);
+  ok('★11/15 今天没有「见师父」', !titles.some(t => SHIFU_RE.test(t)), titles);
+  ok('★分享文字也没有', !SHIFU_RE.test(await page.evaluate(() => shareDayText('2026-11-15'))));
+  const r = await page.evaluate(() => recurringOccurrences('2026-11-15', '2026-11-15')[0]);
+  ok('★判成 away，跳过原因是雅加达那趟', r && r.skip === 'away' && r.away.id === 'trip-jkt', r && { skip: r.skip, away: r.away && r.away.id });
+  // 对照组：同一天、同一条规则，雅加达那趟的地点改成金边 → 照常出现（判定真的看 location，不是「有行程就跳」）
+  const pp = await page.evaluate(() => {
+    const j = feedData.trips.find(t => t.id === 'trip-jkt');
+    const keep = j.location; j.location = { zh: '金边', en: 'Phnom Penh' };
+    const a = recurringItemsForDate('2026-11-15').length;
+    j.location = { zh: '', en: '' };
+    const b = recurringItemsForDate('2026-11-15').length;
+    j.location = keep;
+    return { a, b };
+  });
+  ok('★对照组：那趟地点是金边 → 照常出现', pp.a === 1, pp);
+  ok('★对照组：那趟没填地点 → 当成在金边，照常出现', pp.b === 1, pp);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+{
+  console.log('\n【四十五c】skipDates：11/22 这次取消，11/29 照常');
+  const recurring = [ruleShifu({ skipDates: ['2026-11-22'] })];
+  const a = await recurOn('2026-11-22', { recurring });
+  ok('★11/22 今天没有「见师父」', !(await todayTitles(a.page)).some(t => SHIFU_RE.test(t)));
+  await gotoTab(a.page, 'trips');
+  const card = await a.page.locator('#tab-trips .recur-card').innerText().catch(() => '');
+  ok('★行程页写「这次取消」', /11月22日[\s\S]*这次取消/.test(card), card);
+  ok('无 JS 报错', a.errs.length === 0, a.errs.slice(0, 3));
+  await a.ctx.close();
+  const b = await recurOn('2026-11-29', { recurring });
+  ok('★下周 11/29 照常出现', (await todayTitles(b.page)).filter(t => SHIFU_RE.test(t)).length === 1);
+  await b.ctx.close();
+}
+{
+  console.log('\n【四十五d】只展开规则里的星期几');
+  const { ctx, page, errs } = await recurOn('2026-11-01', { recurring: [ruleShifu(), ruleShifu({ id: 'rec-wed', weekday: 3, time: '09:00',
+    title: { zh: '周三例会', en: 'Wed meeting' }, mapUrl: '' })] });
+  const occ = await page.evaluate(() => recurringOccurrences('2026-11-01', '2026-11-30')
+    .map(o => ({ id: o.rule.id, date: o.date, dow: parseIsoLocal(o.date).getDay(), skip: o.skip })));
+  const sun = occ.filter(o => o.id === 'rec-shifu');
+  ok('★周日那条：11 月正好 5 个星期日', JSON.stringify(sun.map(o => o.date)) === JSON.stringify(['2026-11-01','2026-11-08','2026-11-15','2026-11-22','2026-11-29']), sun);
+  ok('★周日那条每一笔都是星期日', sun.every(o => o.dow === 0), sun);
+  ok('★周三那条每一笔都是星期三（11/4、11/11…）', occ.filter(o => o.id === 'rec-wed').every(o => o.dow === 3)
+     && occ.filter(o => o.id === 'rec-wed')[0].date === '2026-11-04', occ.filter(o => o.id === 'rec-wed'));
+  ok('★周三 11/11 在新加坡行程里 → away', (occ.find(o => o.id === 'rec-wed' && o.date === '2026-11-11') || {}).skip === 'away');
+  const mon = await page.evaluate(() => [recurringItemsForDate('2026-11-02').length, recurringItemsForDate('2026-11-07').length]);
+  ok('★周一、周六一条都没有', mon[0] === 0 && mon[1] === 0, mon);
+  const ends = await page.evaluate(() => {
+    feedData.recurring[0].endDate = '2026-11-10';
+    feedData.recurring[0].startDate = '2026-11-05';
+    return recurringOccurrences('2026-11-01', '2026-11-30').filter(o => o.rule.id === 'rec-shifu').map(o => o.date);
+  });
+  ok('★开始日／结束日之外不展开', JSON.stringify(ends) === '["2026-11-08"]', ends);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+{
+  console.log('\n【四十五e】迁移：11/01 只有一条（规则替换单次行程）');
+  const after = await recurOn('2026-11-01');
+  const t1 = await todayTitles(after.page);
+  ok('★迁移后（只有规则）：11/01 今天「见师父」正好一条', t1.filter(t => SHIFU_RE.test(t)).length === 1, t1);
+  ok('★而且是每周那一条', /🔁 每周/.test(t1.find(t => SHIFU_RE.test(t)) || ''), t1);
+  await after.ctx.close();
+  // 迁移那一刻：单次那趟还在、规则也加了——不许出现两条
+  const mid = await recurOn('2026-11-01', { trips: [...tripsSgJkt(), oldShifuTrip()] });
+  const t2 = await todayTitles(mid.page);
+  ok('★过渡期（单次＋规则都在）：仍然只有一条', t2.filter(t => SHIFU_RE.test(t)).length === 1, t2);
+  ok('★过渡期不判成出远门（单次那趟 location 空着）', await mid.page.evaluate(() => !awayTripOn('2026-11-01')));
+  await mid.ctx.close();
+  // 阳性用例：同一个地点、同一天、**不同钟点**的另一件事（早上法会）——每周那条照常出现，不被去重吃掉
+  const other = oldShifuTrip(); other.id = 'trip-fahui'; other.start = other.end = '2026-11-08';
+  other.items = [{ date: '2026-11-08', time: '08:00', title: { zh: '早上法会', en: '' }, note: { zh: '', en: '' }, mapUrl: SHIFU_MAP }];
+  const fh = await recurOn('2026-11-08', { trips: [...tripsSgJkt(), other] });
+  const t4 = await todayTitles(fh.page);
+  ok('★同地点不同钟点的另一件事：法会和每周见师父都在', t4.some(t => /早上法会/.test(t)) && t4.filter(t => SHIFU_RE.test(t)).length === 1, t4);
+  await fh.ctx.close();
+  // 对照组：迁移前（只有单次那趟）也是一条——上面两条的「一条」不是因为什么都不显示
+  const before = await recurOn('2026-11-01', { trips: [...tripsSgJkt(), oldShifuTrip()], recurring: [] });
+  const t3 = await todayTitles(before.page);
+  ok('★对照组：迁移前也是一条', t3.filter(t => SHIFU_RE.test(t)).length === 1, t3);
+  await before.ctx.close();
+  // 下一个安排：今天没别的事时「下一个」也算每周固定那条
+  const nx = await recurOn('2026-11-02', { trips: [] });
+  ok('★空态的「下一个」算上每周固定行程（11/8）', /2026年11月8日/.test(await nx.page.locator('#tab-today .empty-next').innerText().catch(() => '')));
+  await nx.ctx.close();
+}
+const RECUR_CTRL_SEL = '#admin-recur-note-en, .recur-cancel-btn, .recur-restore-btn, #admin-recur-section, #admin-recur-save, .admin-recur-edit, .admin-recur-del, #admin-recur-wd, #admin-recur-time';
+{
+  console.log('\n【四十五f】老板只读：新控件一个都不进 DOM（＋admin 对照组）');
+  const recurring = [ruleShifu({ skipDates: ['2026-11-22'] })];
+  const v = await recurOn('2026-11-08', { recurring });
+  let n = await v.page.locator(RECUR_CTRL_SEL).count();
+  await gotoTab(v.page, 'trips');
+  n += await v.page.locator(RECUR_CTRL_SEL).count();
+  ok('★老板：今天＋行程页「这次取消／恢复／管理表单」数量为 0', n === 0, n);
+  ok('★老板仍看得到每周固定那条（只读不等于看不到）', await v.page.locator('#tab-trips .recur-card').count() === 1);
+  ok('★老板 adminRecurSkip 直接调也不发请求', await v.page.evaluate(async () => { await adminRecurSkip('rec-shifu', '2026-11-29', true); return true; })
+     && !v.rec.calls.some(c => c.action === 'recurringSave'), v.rec.calls.map(c => c.action));
+  await v.ctx.close();
+
+  const a = await recurOn('2026-11-08', { role: 'admin', recurring });
+  ok('★admin 对照组：今天那条有「这次取消」', await a.page.locator('#tab-today .recur-cancel-btn').count() === 1);
+  await gotoTab(a.page, 'trips');
+  ok('★admin 对照组：行程页 11/22 有「恢复」', await a.page.locator('#tab-trips .recur-restore-btn').count() === 1);
+  await gotoTab(a.page, 'admin');
+  ok('★admin 对照组：管理页有每周固定行程那一块＋✏️🗑', await a.page.locator('#admin-recur-section').count() === 1
+     && await a.page.locator('.admin-recur-edit').count() === 1 && await a.page.locator('.admin-recur-del').count() === 1);
+  // 这次取消：只加这一天，其余不动
+  await gotoTab(a.page, 'today');
+  await clickHere(a.page, '#tab-today .recur-cancel-btn', '这次取消');
+  await until(() => a.rec.calls.some(c => c.action === 'recurringSave'), { what: '送出 recurringSave' });
+  const sent = a.rec.calls.filter(c => c.action === 'recurringSave').pop() || { recurring: [] };
+  const r0 = sent.recurring[0] || {};
+  ok('★这次取消：skipDates 加上 11/08、原有的 11/22 还在', JSON.stringify(r0.skipDates) === '["2026-11-08","2026-11-22"]', r0.skipDates);
+  ok('★这次取消：星期几、时间、标题、地图都没被动到', r0.weekday === 0 && r0.time === '14:00' && r0.mapUrl === SHIFU_MAP && r0.title.zh === '见师父 · Wat Monisovann', r0);
+  // 管理表单：新增一条、填错会拦
+  await gotoTab(a.page, 'admin');
+  const nSave = () => a.rec.calls.filter(c => c.action === 'recurringSave').length;
+  const before = nSave();
+  await a.page.fill('#admin-recur-title-zh', '');
+  await a.page.click('#admin-recur-save');
+  await a.page.waitForTimeout(200);   // 断言「没送出去」只能真的等
+  ok('★没写做什么：拦下来不送', nSave() === before && /要先写做什么/.test(await a.page.locator('#admin-recur-status').innerText()));
+  ok('★时间默认 14:00', await a.page.inputValue('#admin-recur-time') === '14:00');
+  await a.page.selectOption('#admin-recur-wd', '3');
+  await a.page.fill('#admin-recur-time', '09:30');
+  await a.page.fill('#admin-recur-title-zh', '周三例会');
+  await a.page.fill('#admin-recur-place', 'Rosewood Phnom Penh');
+  await a.page.click('#admin-recur-save');
+  await until(() => nSave() > before, { what: '新增送出' });
+  const add = a.rec.calls.filter(c => c.action === 'recurringSave').pop() || { recurring: [] };
+  const nr = add.recurring.find(r => r.title && r.title.zh === '周三例会') || {};
+  ok('★新增：周三 09:30、地点变成地图链接、原来那条还在', nr.weekday === 3 && nr.time === '09:30'
+     && /google\.com\/maps\/search\/\?api=1&query=Rosewood/.test(nr.mapUrl || '') && add.recurring.some(r => r.id === 'rec-shifu'), add.recurring);
+  // 编辑：改时间
+  await a.page.click('.admin-recur-edit');
+  ok('★编辑回填：时间 14:00、地点是原链接', await a.page.inputValue('#admin-recur-time') === '14:00' && await a.page.inputValue('#admin-recur-place') === SHIFU_MAP);
+  await a.page.fill('#admin-recur-time', '15:00');
+  await a.page.fill('#admin-recur-note-en', 'Bring fruit');
+  const b2 = nSave();
+  await a.page.click('#admin-recur-save');
+  await until(() => nSave() > b2, { what: '编辑送出' });
+  const ed = a.rec.calls.filter(c => c.action === 'recurringSave').pop() || { recurring: [] };
+  ok('★编辑：同一个 id 改成 15:00、只有一条、skipDates 保留', ed.recurring.length === 1 && ed.recurring[0].id === 'rec-shifu'
+     && ed.recurring[0].time === '15:00' && ed.recurring[0].skipDates.includes('2026-11-22')
+     && ed.recurring[0].note.en === 'Bring fruit', ed.recurring);
+  // 删除：confirm 按取消就不发
+  a.page.once('dialog', d => d.dismiss());
+  const b3 = nSave();
+  await a.page.click('.admin-recur-del');
+  await a.page.waitForTimeout(200);
+  ok('★删除 confirm 按取消：不发请求', nSave() === b3);
+  a.page.once('dialog', d => d.accept());
+  await a.page.click('.admin-recur-del');
+  await until(() => nSave() > b3, { what: '删除送出' });
+  const del = a.rec.calls.filter(c => c.action === 'recurringSave').pop() || { recurring: [1] };
+  ok('★删除：送出去的是空数组', Array.isArray(del.recurring) && del.recurring.length === 0, del.recurring);
+  // 分享文字带上固定行程（标明每周固定、地图网址原样）
+  const txt = await a.page.evaluate(() => shareDayText('2026-11-08'));
+  ok('★分享文字有「14:00  见师父 · Wat Monisovann（每周固定）」和地图网址', /14:00  见师父 · Wat Monisovann（每周固定）/.test(txt) && txt.includes(SHIFU_MAP), txt);
+  ok('无 JS 报错', a.errs.length === 0, a.errs.slice(0, 3));
+  await a.ctx.close();
+}
+
 await finish('后半');
