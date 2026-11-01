@@ -784,7 +784,9 @@ import {
   const now = Date.now();
   const mkTrip = (sched, act, est) => ([{
     id: 't-eta', title: { zh: '时间测试', en: 'ETA' },
-    start: sched.slice(0, 10), end: sched.slice(0, 10),
+    // 起讫要盖住今天：「1 小时前起飞」在 UTC 0~1 点会落到昨天，整趟掉进收起的「以往行程」，
+    // 点不到卡片、整份自检超时（2026-11-01 00:52 UTC 的 CI 就是这样红的）。
+    start: [sched.slice(0, 10), isoOff(now).slice(0, 10)].sort()[0], end: [sched.slice(0, 10), isoOff(now).slice(0, 10)].sort()[1],
     location: { zh: '', en: '' }, guideUrl: '',
     items: [{ date: sched.slice(0, 10), time: '09:00', title: { zh: '航班', en: 'F' },
       note: { zh: '', en: '' }, mapUrl: '',
