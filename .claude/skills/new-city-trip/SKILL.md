@@ -68,7 +68,13 @@ python3 tools/build-shortlist.py 候选.json --photos .photos/latest.txt \
 
 ## 5. 用户挑完 → 出手册
 
-沿用现成版型（`singapore-trip/index.html` 或 `penang-trip/index.html` 最新那套），
+**版型一律用 `sg-jkt-trip/singapore.html` 那套**（2026-11-01 用户定：「以后做手册都用这种设计，
+跟着国家出主题」）：礼宾风整体（深色封面＋细金线＋象牙白内容区、衬线标题、罗马数字编号）、
+每日站点竖线时间轴（每天一种当地交通线路色，压低饱和，避开警示红）、方角细框地图按钮
+（线描地标针＋「地图 MAP」，≥44px）、顶部每天跳转＋自动跳到当天。**主题跟着国家换**：
+主色、纹样（用 CSS 画，不用图片）、时间轴线色取当地元素——雅加达那本（`jakarta.html`）
+是范例：蜡染深棕＋kawung/parang 纹＋Transjakarta 线路色。去 AI 味：不用 emoji 当图标、
+不用胶囊标签与大圆角阴影卡、不用 ✅⚠。新主题先截图给用户看过再套。
 结构与坑见 `.claude/notes/travel-pages.md`。三件不能忘：
 
 1. **登记行程日期**：新手册要在 `tools/lib/trips.py` 加一行，否则体检与自动补图
