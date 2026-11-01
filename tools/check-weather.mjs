@@ -36,7 +36,7 @@ import { chromium } from 'playwright';
 
 const PORT = process.env.CHECK_PORT || 8899;
 const SG_URL = `http://localhost:${PORT}/singapore-trip/`;
-const SGN_URL = `http://localhost:${PORT}/sg-jkt-trip/singapore.html`;   // 2026-11 新加坡 4 天版（Nak/Yang/Jacky），天气与 PSI 逻辑复制自上面那页
+const SGN_URL = `http://localhost:${PORT}/sg-jkt-trip/singapore.html`;   // 2026-11 新加坡 4 天版（Tan Chin Hooi／Yap Lian Khoon／Hew Chern Yang），天气与 PSI 逻辑复制自上面那页
 const JKT_URL = `http://localhost:${PORT}/sg-jkt-trip/jakarta.html`;   // 2026-11 雅加达 3 天（11/14–16），天气逻辑复制自上面那页，坐标换 PIK、时区 Asia/Jakarta；没有 PSI 条
 const PGT_URL = `http://localhost:${PORT}/penang-trip/`;
 const PGT_V2_URL = `http://localhost:${PORT}/penang-trip/v2.html`;   // 新设计版，天气与空气质量条要同样验一遍

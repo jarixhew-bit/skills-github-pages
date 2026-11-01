@@ -1,182 +1,305 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>雅加达 · 11月14–16日 / Jakarta · 14–16 Nov 2026</title>
 <style>
-  :root {
-    --paper: #faf7f1;
-    --card: #ffffff;
-    --ink: #1c1917;
-    --muted: #78716c;
-    --faint: #807872;
-    --line: #e7e0d5;
-    --red: #c8102e;
-    --red-soft: #fdf0f2;
-    --gold: #b08d3e;
-    --gold-soft: #faf3e3;
-    --green: #2e7d4f;
-    --green-soft: #edf7f0;
-    --blue: #1d5c8f;
-    --blue-soft: #edf4fa;
-    --purple: #7c5295;
-    --purple-soft: #f2ecf5;
-    --serif: "Palatino Linotype", "Songti SC", "Noto Serif SC", Georgia, serif;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html { scroll-behavior: smooth; }
-  body { font-family: var(--sans); background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.65; }
-  img { display: block; }
-  body.lang-en .cn { display: none !important; }
-  body:not(.lang-en) .en { display: none !important; }
-  .topbar { position: sticky; top: 0; z-index: 300; background: rgba(28,25,23,.97); backdrop-filter: blur(8px); display: flex; align-items: stretch; height: 44px; color: #fff; }
-  .topbar .brand { flex: 1; display: flex; align-items: center; gap: 8px; padding: 0 14px; min-width: 0; }
-  .topbar .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex: none; }
-  .topbar button.lang { display: flex; align-items: center; padding: 0 14px; background: none; border: none; border-left: 1px solid rgba(255,255,255,.14); color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; font-family: var(--sans); }
-  .topbar a.jump { display: flex; align-items: center; padding: 0 12px; border-left: 1px solid rgba(255,255,255,.14); color: var(--gold); font-size: 12px; font-weight: 800; text-decoration: none; white-space: nowrap; font-family: var(--sans); }
-  .daystrip { position: sticky; top: 44px; z-index: 290; background: var(--paper); border-bottom: 1px solid var(--line); display: flex; overflow-x: auto; gap: 6px; padding: 8px 12px; scrollbar-width: none; }
-  .daystrip::-webkit-scrollbar { display: none; }
-  .daystrip a { flex: none; text-decoration: none; text-align: center; border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px; background: var(--card); color: var(--ink); line-height: 1.3; min-width: 46px; }
-  .daystrip a .d { display: block; font-size: 12px; font-weight: 800; }
-  .daystrip a .m { display: block; font-size: 10.5px; color: var(--faint); font-weight: 600; letter-spacing: .03em; }
-  .daystrip a.active { background: var(--ink); border-color: var(--ink); color: #fff; }
-  .daystrip a.active .m { color: rgba(255,255,255,.65); }
-  .daystrip a.today-chip { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
-  .daystrip a.today-chip .m { color: var(--red); }
-  .cover { position: relative; background: var(--ink); color: #fff; overflow: hidden; }
-  .cover img.bg { width: 100%; height: 300px; object-fit: cover; opacity: .55; }
-  .cover .inner { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 22px 20px 24px; background: linear-gradient(180deg, rgba(28,25,23,.1) 30%, rgba(28,25,23,.88) 100%); }
-  .cover .kicker { font-size: 11px; font-weight: 800; letter-spacing: .28em; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; }
-  .cover h1 { font-family: var(--serif); font-size: 30px; line-height: 1.2; font-weight: 700; margin-bottom: 8px; }
-  .cover .dates { font-size: 13px; color: rgba(255,255,255,.85); font-weight: 600; }
-  .cover .meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-  .cover .meta-chip { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; color: rgba(255,255,255,.92); }
-  .tip { display: flex; gap: 10px; margin: 14px 16px 0; padding: 12px 14px; background: var(--gold-soft); border: 1px solid #ecd9ae; border-radius: 12px; font-size: 12.5px; color: #6b5216; }
-  .tip .ico { flex: none; }
-  .wrap { max-width: 760px; margin: 0 auto; padding-bottom: 60px; }
-  section { padding: 26px 16px 4px; }
-  .sec-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
-  .sec-head .no { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--red); letter-spacing: .1em; }
-  .sec-head h2 { font-family: var(--serif); font-size: 21px; font-weight: 700; letter-spacing: .01em; }
-  .sec-head .rule { flex: 1; height: 1px; background: var(--line); align-self: center; }
-  .bp-group-label { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 16px 2px 8px; }
-  .bpass { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
-  .bpass .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--ink); color: #fff; }
-  .bpass .head .airline { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; letter-spacing: .05em; }
-  .bpass .head .airline .code { background: var(--red); border-radius: 6px; padding: 1px 7px; font-size: 11px; }
-  .bpass .head .craft { font-size: 11.5px; color: rgba(255,255,255,.7); font-weight: 600; }
-  .bpass .route { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 16px 16px 12px; gap: 8px; }
-  .bpass .apt { text-align: center; }
-  .bpass .apt .iata { font-family: var(--serif); font-size: 30px; font-weight: 700; letter-spacing: .02em; line-height: 1.1; }
-  .bpass .apt .city { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 2px; }
-  .bpass .apt .time { font-size: 15px; font-weight: 800; color: var(--red); margin-top: 3px; font-variant-numeric: tabular-nums; }
-  .bpass .mid { text-align: center; color: var(--faint); }
-  .bpass .mid .dur { font-size: 11px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
-  .bpass .mid .line { position: relative; height: 1px; background: var(--line); margin: 6px 0; min-width: 74px; }
-  .bpass .mid .line::after { content: "✈"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--red); background: var(--card); padding: 0 4px; }
-  .bpass .perf { border-top: 1px dashed var(--line); position: relative; }
-  .bpass .perf::before, .bpass .perf::after { content: ""; position: absolute; top: -8px; width: 16px; height: 16px; border-radius: 50%; background: var(--paper); border: 1px solid var(--line); }
-  .bpass .perf::before { left: -9px; }
-  .bpass .perf::after { right: -9px; }
-  .bpass .pax { padding: 12px 16px; }
-  .bpass .pax .cls { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .06em; padding: 2px 8px; border-radius: 5px; margin-bottom: 6px; }
-  .bpass .pax .cls.biz { background: var(--gold-soft); color: #7c6220; border: 1px solid #e5d3a4; }
-  .bpass .pax .cls.eco { background: var(--blue-soft); color: var(--blue); border: 1px solid #c9dced; }
-  .bpass .pax .seats { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
-  .bpass .pax .seat { font-size: 11.5px; font-weight: 600; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; color: var(--ink); font-variant-numeric: tabular-nums; }
-  .track { display: inline-flex; align-items: center; gap: 6px; margin: 0 16px 14px; font-size: 11.5px; font-weight: 700; color: var(--blue); background: var(--blue-soft); border: 1px solid #c9dced; border-radius: 999px; padding: 6px 14px; text-decoration: none; }
-  .tbl { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 12px; }
-  .tbl th { background: var(--ink); color: #fff; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; padding: 8px 10px; text-align: left; font-weight: 700; }
-  .tbl td { padding: 9px 10px; border-top: 1px solid var(--line); vertical-align: top; }
-  .note { font-size: 12px; border-radius: 10px; padding: 10px 13px; margin-top: 10px; }
-  .note.amber { background: var(--gold-soft); border: 1px solid #ecd9ae; color: #6b5216; }
-  .note.red { background: var(--red-soft); border: 1px solid #f3c6cd; color: #7c1024; }
-  .note.green { background: var(--green-soft); border: 1px solid #c4e3cf; color: #1d5637; }
-  .gal { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: 10px; scrollbar-width: none; margin: 10px 0 4px; }
-  .gal::-webkit-scrollbar { display: none; }
-  .gal img { scroll-snap-align: start; width: 78%; max-width: 340px; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; flex: none; background: var(--line); cursor: zoom-in; }
-  .gal-hint { font-size: 11.5px; color: var(--faint); margin-bottom: 6px; }
-  .lb { position: fixed; inset: 0; background: rgba(0,0,0,.93); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
-  .lb.open { display: flex; }
-  .lb img { max-width: 94%; max-height: 80vh; object-fit: contain; border-radius: 8px; }
-  .lb-counter { color: rgba(255,255,255,.55); font-size: 12px; margin-top: 10px; letter-spacing: .05em; }
-  .lb-close { position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 19px; cursor: pointer; line-height: 36px; text-align: center; }
-  .lb-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.15); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 22px; cursor: pointer; line-height: 40px; text-align: center; }
-  .lb-arrow.prev { left: 10px; }
-  .lb-arrow.next { right: 10px; }
-  .hotel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
-  .hotel .stay { display: flex; justify-content: space-between; align-items: center; padding: 9px 16px; background: var(--gold-soft); border-bottom: 1px solid #ecd9ae; font-size: 11.5px; font-weight: 800; color: #7c6220; letter-spacing: .03em; }
-  .hotel .bd { padding: 14px 16px 16px; }
-  .hotel h3 { font-family: var(--serif); font-size: 18px; font-weight: 700; }
-  .hotel .addr { font-size: 11.5px; color: var(--muted); margin: 4px 0 2px; }
-  .hotel .tel { font-size: 11.5px; color: var(--muted); }
-  .btn-map { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--green); background: var(--green-soft); border: 1px solid #c4e3cf; border-radius: 999px; padding: 6px 14px; text-decoration: none; margin-top: 10px; }
-  .day { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-bottom: 18px; overflow: hidden; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
-  .day.today { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 4px 14px rgba(200,16,46,.12); }
-  .day .dh { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
-  .day .dh .dn { font-family: var(--serif); font-size: 34px; font-weight: 700; color: var(--red); line-height: 1; min-width: 44px; }
-  .day .dh .dn small { display: block; font-family: var(--sans); font-size: 10.5px; font-weight: 800; letter-spacing: .22em; color: var(--faint); margin-top: 2px; }
-  .day .dh .dt { flex: 1; min-width: 0; }
-  .day .dh .dt h3 { font-size: 15.5px; font-weight: 800; line-height: 1.3; }
-  .day .dh .dt .dd { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 1px; }
-  .day .dh .badge { flex: none; font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
-  .day .today-tag { display: none; }
-  .day.today .today-tag { display: inline-block; font-size: 10.5px; font-weight: 800; background: var(--red); color: #fff; border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
-  .day .db { padding: 6px 16px 14px; }
-  .stop { position: relative; padding: 12px 0 12px 26px; border-bottom: 1px solid var(--line); }
-  .stop:last-of-type { border-bottom: none; }
-  .stop::before { content: ""; position: absolute; left: 7px; top: 22px; bottom: -4px; width: 2px; background: var(--line); }
-  .stop:last-of-type::before { display: none; }
-  .stop .pin { position: absolute; left: 0; top: 16px; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #fff; }
-  .stop .pin.must { background: var(--red); }
-  .stop .pin.side { background: var(--faint); }
-  .stop .pin.dine { background: var(--gold); }
-  .stop .pin.maybe { background: var(--blue); }
-  .stop h4 { font-size: 14.5px; font-weight: 800; line-height: 1.35; }
-  .stop h4 .star { color: var(--gold); font-weight: 700; font-size: 12.5px; }
-  .stop .desc { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
-  .stop .desc strong { color: var(--ink); }
-  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-  .chip { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid; }
-  .chip.hours { color: var(--muted); border-color: var(--line); background: var(--paper); }
-  .chip.ticket { color: #7c6220; border-color: #e5d3a4; background: var(--gold-soft); }
-  .chip.book { color: var(--green); border-color: #c4e3cf; background: var(--green-soft); }
-  .chip.verify { color: #a33b00; border-color: #f2cdb3; background: #fdf2ea; }
-  .chip.ok { color: var(--green); border-color: #c4e3cf; background: var(--green-soft); }
-  .dayfoot { border-top: 1px solid var(--line); background: var(--paper); padding: 10px 16px; display: flex; gap: 10px; font-size: 12px; }
-  .dayfoot + .dayfoot { border-top: 1px dashed var(--line); }
-  .dayfoot .ftlb { flex: none; font-weight: 800; font-size: 11px; color: var(--muted); min-width: 58px; }
-  .dayfoot .tx { color: var(--ink); }
-  /* ===== EVENT CARD (limited-time) ===== */
-  .grp { font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--red); margin: 20px 0 10px; }
-  .evt { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(28,25,23,.05); }
-  .evt .eh { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--red-soft); border-bottom: 1px solid #f3c6cd; }
-  .evt .eh .et { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--red); }
-  .evt .eh .ed { font-size: 11px; font-weight: 800; color: var(--red); white-space: nowrap; }
-  .evt .eb { padding: 14px 16px 16px; }
-  .evt h3 { font-size: 16px; font-weight: 800; }
-  .evt .desc { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
-  .evt .meta { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
-  footer { text-align: center; padding: 30px 20px 20px; }
-  footer .mark { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .2em; margin-bottom: 8px; }
-  footer p { font-size: 11.5px; color: var(--faint); line-height: 1.7; }
-  .tl { border-left: 2px solid var(--line); margin: 4px 0 4px 8px; }
-  .tl .ev { position: relative; padding: 0 0 18px 22px; }
-  .tl .ev:last-child { padding-bottom: 4px; }
-  .tl .ev::before { content: ""; position: absolute; left: -7px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--card); border: 3px solid var(--faint); }
-  .tl .ev.hot::before { border-color: var(--red); }
-  .tl .ev.fin::before { border-color: var(--green); }
-  .tl .ev .t { font-size: 12px; font-weight: 800; color: var(--red); font-variant-numeric: tabular-nums; }
-  .tl .ev h4 { font-size: 13.5px; font-weight: 800; margin-top: 1px; }
-  .tl .ev .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .tl .ev.fin .t, .tl .ev.fin h4 { color: var(--green); }
-  .wxbox { margin: 10px 0 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
-  .wx { font-size: 12.5px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
-  .wx.wet { color: var(--red); }
-  .rainplan { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
-  .note a, .desc a, .tl .s a, .dayfoot a { color: inherit; font-weight: 700; text-decoration: underline; }
+/* G · F（高端酒店礼宾风）整体 ＋ E 的站点竖线时间轴。城市主题靠 :root 变量切换 */
+:root {
+  --navy: #14213d; --navy2: #1d2c4f; --gold: #b89a5e; --gold2: #d8c49a; --ivory: #faf7f0; --paper: #f3eee3;
+  --ink: #1b1f2a; --ink2: #3d4150; --muted: #7a7466; --faint: #a69f90; --hair: #e3dccb;
+  --cover-ink: #efe6d2; --cover-h: #f6efdf;
+  /* 只靠颜色传意的提示：压低饱和后仍然够醒目的一枚朱红 */
+  --alert: #a3271f; --warn: #8a6512;
+  /* 每日线路色（新加坡 MRT，降饱和）：D1 滨海市区线蓝、D2 东西线绿、D3 东北线紫、D4 环线橙。
+     刻意不用南北线红：会跟「多雨／留意」的警示朱红撞色 */
+  --l1: #36689c; --l2: #3f7d5c; --l3: #7a4f86; --l4: #b5793a;
+  --line: var(--gold);
+  --latin: "Cormorant Garamond", "Noto Serif SC", serif;
+  --serif: "Noto Serif SC", serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { font-variant-numeric: lining-nums; font-family: var(--serif); background: var(--ivory); color: var(--ink); font-size: 13.5px; line-height: 1.85; font-weight: 400; }
+img { display: block; }
+body.lang-en .cn { display: none !important; }
+body:not(.lang-en) .en { display: none !important; }
+strong { font-weight: 500; color: var(--ink); }
+a { color: inherit; }
+
+.topbar { position: sticky; top: 0; z-index: 300; background: var(--navy); color: var(--gold2); display: flex; align-items: center; height: 46px; border-bottom: 1px solid var(--gold); }
+.topbar .brand { flex: 1; padding: 0 18px; min-width: 0; text-align: left; }
+.topbar .brand .dot { display: none; }
+.topbar .brand .t { font-family: var(--latin); font-size: 13px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.topbar .brand .t .cn { font-family: var(--serif); font-size: 12px; letter-spacing: .16em; }
+.topbar button.lang, .topbar a.jump { display: flex; align-items: center; height: 100%; padding: 0 14px; background: none; border: none; border-left: 1px solid rgba(184,154,94,.35); color: var(--gold2); font-family: var(--latin); font-size: 13px; letter-spacing: .14em; text-decoration: none; cursor: pointer; }
+.topbar a.jump .cn { font-family: var(--serif); font-size: 11.5px; letter-spacing: .1em; }
+
+/* nav：礼宾目录式。小号大写、字距拉开，当前位置用香槟金细下划线 */
+.daystrip { position: sticky; top: 46px; z-index: 290; background: var(--navy2); display: flex; overflow-x: auto; scrollbar-width: none; padding: 0 6px; border-bottom: 1px solid rgba(184,154,94,.28); }
+.daystrip::-webkit-scrollbar { display: none; }
+.daystrip a { flex: none; position: relative; text-align: center; text-decoration: none; padding: 9px 11px 8px; line-height: 1.3; }
+.daystrip a .d { display: block; font-family: var(--latin); font-size: 12px; font-weight: 500; letter-spacing: .22em; margin-right: -.22em; text-transform: uppercase; color: rgba(239,230,210,.62); }
+.daystrip a .d .cn { font-family: var(--serif); font-size: 11.5px; letter-spacing: .2em; }
+.daystrip a .m { display: block; font-family: var(--latin); font-size: 10.5px; letter-spacing: .16em; color: rgba(216,196,154,.55); }
+.daystrip a::after { content: ""; position: absolute; left: 11px; right: 11px; bottom: 0; height: 1px; background: var(--gold); transform: scaleX(0); transition: transform .2s; }
+.daystrip a.active .d { color: #f6efdf; }
+.daystrip a.active .m { color: var(--gold2); }
+.daystrip a.active::after { transform: scaleX(1); }
+.daystrip a.today-chip .m { color: var(--gold); font-style: italic; }
+.daystrip a.today-chip .m::after { content: " · 今天"; font-family: var(--serif); font-style: normal; }
+body.lang-en .daystrip a.today-chip .m::after { content: " · TODAY"; font-family: var(--latin); }
+
+.wrap { max-width: 760px; margin: 0 auto; padding-bottom: 60px; }
+
+.cover { display: flex; flex-direction: column; background: var(--navy); color: var(--cover-ink); text-align: center; }
+.cover img.bg { width: calc(100% - 44px); height: 200px; object-fit: cover; order: 2; margin: 0 22px 30px; border: 1px solid var(--gold); padding: 4px; background: var(--navy); }
+.cover .inner { order: 1; padding: 40px 26px 28px; }
+.cover .kicker { font-family: var(--latin); font-size: 12px; letter-spacing: .4em; text-transform: uppercase; color: var(--gold); display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 18px; }
+.cover .kicker::before, .cover .kicker::after { content: ""; width: 36px; height: 1px; background: var(--gold); }
+.cover .kicker .cn { font-family: var(--serif); letter-spacing: .5em; font-size: 11.5px; margin-right: -.5em; }
+.cover h1 { font-family: var(--serif); font-size: 26px; font-weight: 500; letter-spacing: .12em; line-height: 1.5; color: var(--cover-h); }
+.cover h1 .en { font-family: var(--latin); font-size: 34px; font-weight: 500; letter-spacing: .04em; }
+.cover .dates { font-size: 12px; color: rgba(239,230,210,.75); margin-top: 12px; letter-spacing: .04em; line-height: 1.8; }
+.cover .meta-row { display: flex; justify-content: center; flex-wrap: wrap; margin-top: 22px; padding-top: 14px; border-top: 1px solid rgba(184,154,94,.45); }
+.cover .meta-chip { font-family: var(--latin); font-size: 12px; letter-spacing: .14em; color: var(--gold2); padding: 0 10px; text-transform: uppercase; }
+.cover .meta-chip .cn { font-family: var(--serif); letter-spacing: .08em; font-size: 11.5px; }
+.cover .meta-chip + .meta-chip { border-left: 1px solid rgba(184,154,94,.45); }
+
+.tip { display: block; text-align: center; margin: 26px 34px 0; padding: 0 0 18px; border-bottom: 1px solid var(--hair); font-size: 11.5px; color: var(--muted); line-height: 1.9; }
+.tip .ico { display: none; }
+.tip strong { color: var(--ink2); }
+
+section { padding: 50px 22px 6px; }
+.sec-head { text-align: center; margin-bottom: 28px; }
+.sec-head .no { display: block; font-family: var(--latin); font-size: 13px; letter-spacing: .4em; color: var(--gold); margin-bottom: 6px; }
+.sec-head .no::before { content: "— "; } .sec-head .no::after { content: " —"; }
+.sec-head h2 { font-family: var(--serif); font-size: 21px; font-weight: 500; letter-spacing: .3em; margin-right: -.3em; }
+.sec-head h2 .en { font-family: var(--latin); font-size: 26px; font-weight: 500; letter-spacing: .08em; }
+.sec-head .rule { display: block; width: 40px; height: 1px; background: var(--gold); margin: 12px auto 0; }
+
+.bp-group-label { text-align: center; font-family: var(--latin); font-size: 11.5px; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.bp-group-label .cn { font-family: var(--serif); letter-spacing: .14em; font-size: 12px; }
+
+/* 登机牌：两站一线 */
+.bpass { background: #fff; border: 1px solid var(--hair); outline: 1px solid var(--hair); outline-offset: 3px; padding: 18px 18px 16px; margin: 4px 4px 22px; text-align: center; }
+.bpass .head { display: flex; flex-direction: column; align-items: center; }
+.bpass .head .airline { font-family: var(--latin); font-size: 20px; font-weight: 500; letter-spacing: .14em; }
+.bpass .head .airline .code { display: none; }
+.bpass .head .craft { font-family: var(--latin); font-style: italic; font-size: 14px; color: var(--muted); }
+.bpass .route { display: grid; grid-template-columns: 1fr 1fr; padding: 16px 0 14px; position: relative; }
+.bpass .apt { position: relative; padding-top: 22px; }
+.bpass .apt::before { content: ""; position: absolute; top: 3px; left: 50%; margin-left: -6px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid var(--navy); z-index: 1; }
+.bpass .apt:last-child::before { background: var(--navy); }
+.bpass .mid { position: absolute; left: 25%; right: 25%; top: 24px; }
+.bpass .mid .line { height: 0; border-top: 1px solid var(--gold); }
+.bpass .mid .dur { position: absolute; left: 0; right: 0; top: -22px; font-family: var(--latin); font-style: italic; font-size: 14px; color: var(--muted); white-space: nowrap; }
+.bpass .apt .iata { font-family: var(--latin); font-size: 32px; font-weight: 500; letter-spacing: .08em; line-height: 1; color: var(--navy); }
+.bpass .apt .city { font-size: 10.5px; color: var(--muted); letter-spacing: .06em; }
+.bpass .apt .time { font-family: var(--latin); font-size: 22px; font-weight: 600; color: var(--gold); margin-top: 2px; }
+.bpass .perf { border-top: 1px solid var(--hair); margin: 0 20px; }
+.bpass .pax { display: grid; grid-template-columns: 1fr; padding-top: 10px; font-size: 12px; }
+.bpass .pax .cls { font-family: var(--latin); font-size: 11px; letter-spacing: .34em; color: var(--gold); margin-top: 4px; }
+.bpass .pax .seats { display: flex; flex-direction: column; }
+.bpass .pax .seat { font-family: var(--latin); font-size: 15px; font-weight: 500; letter-spacing: .06em; }
+
+.note { font-size: 12.5px; color: var(--ink2); padding: 12px 0; margin-top: 0 !important; border-top: 1px solid var(--hair); }
+.note.amber, .note.red, .note.green { background: none; }
+
+.gal { display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 14px 0 6px; }
+.gal::-webkit-scrollbar { display: none; }
+.gal img { scroll-snap-align: start; width: 76%; max-width: 340px; aspect-ratio: 4/3; object-fit: cover; flex: none; background: var(--hair); cursor: zoom-in; }
+.gal-hint { text-align: center; font-family: var(--latin); font-size: 11px; letter-spacing: .2em; color: var(--faint); margin-bottom: 6px; }
+.gal-hint .cn { font-family: var(--serif); letter-spacing: .12em; font-size: 10.5px; }
+
+.lb { position: fixed; inset: 0; background: rgba(14,22,40,.96); display: none; align-items: center; justify-content: center; z-index: 900; flex-direction: column; }
+.lb.open { display: flex; } .lb img { max-width: 94%; max-height: 80vh; object-fit: contain; }
+.lb-counter { color: var(--gold2); font-family: var(--latin); margin-top: 10px; }
+.lb-close, .lb-arrow { position: absolute; background: none; color: var(--gold2); border: 1px solid rgba(184,154,94,.5); width: 38px; height: 38px; font-size: 18px; cursor: pointer; }
+.lb-close { top: 14px; right: 14px; } .lb-arrow { top: 50%; transform: translateY(-50%); } .lb-arrow.prev { left: 10px; } .lb-arrow.next { right: 10px; }
+
+.hotel { background: #fff; border: 1px solid var(--hair); padding: 0 18px 18px; margin-bottom: 14px; }
+.hotel .stay { display: flex; justify-content: space-between; font-family: var(--latin); font-size: 11.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); padding: 12px 0 10px; border-bottom: 1px solid var(--hair); }
+.hotel .stay .cn { font-family: var(--serif); letter-spacing: .12em; }
+.hotel .bd { padding-top: 18px; text-align: center; }
+.hotel h3 { font-family: var(--serif); font-size: 20px; font-weight: 500; letter-spacing: .06em; line-height: 1.45; color: var(--navy); }
+.hotel h3 span[style] { display: block; font-family: var(--latin) !important; font-size: 13px !important; letter-spacing: .2em; color: var(--gold) !important; }
+.hotel .addr, .hotel .tel { font-family: var(--latin); font-size: 15px; color: var(--ink2); line-height: 1.5; letter-spacing: .03em; }
+.hotel .addr { margin-top: 8px; }
+.hotel .note { text-align: left; }
+
+
+/* ===== 逐日：标题仍是 F 的居中节目单，正文换成 E 的站点竖线 ===== */
+#day01 { --line: var(--l1); } #day02 { --line: var(--l2); } #day03 { --line: var(--l3); } #day04 { --line: var(--l4); }
+.day { margin-bottom: 44px; }
+.day .dh { text-align: center; padding: 22px 0 20px; border-top: 1px solid var(--gold); border-bottom: 1px solid var(--hair); position: relative; }
+.day .dh::after { content: ""; position: absolute; left: 50%; bottom: -1px; width: 44px; margin-left: -22px; height: 2px; background: var(--line); }
+.day .dh .dn { font-family: var(--latin); font-size: 13px; letter-spacing: .4em; color: var(--gold); text-transform: uppercase; display: flex; justify-content: center; flex-direction: row-reverse; gap: .6em; }
+.day .dh .dn small { font-size: 13px; }
+.day .dh .dt h3 { font-family: var(--serif); font-size: 18px; font-weight: 500; letter-spacing: .1em; line-height: 1.55; color: var(--navy); margin-top: 4px; }
+.day .dh .dt .dd { font-family: var(--latin); font-style: italic; font-size: 15px; color: var(--muted); }
+.day .dh .dt .dd .cn { font-family: var(--serif); font-style: normal; font-size: 12px; letter-spacing: .1em; }
+.day .dh .badge { font-size: 11px; letter-spacing: .2em; color: var(--line); margin-top: 6px; }
+.day .today-tag { display: none; }
+.day.today .today-tag { display: inline; font-family: var(--latin); font-size: 12px; letter-spacing: .3em; color: var(--gold); margin-left: 10px; vertical-align: 2px; }
+.day.today .today-tag .cn { font-family: var(--serif); font-size: 11px; }
+
+/* 竖线：细、降饱和；站点：空心圆，必去=实心，航班=双圈 */
+.day .db { position: relative; padding: 4px 0 0 30px; }
+.day .db::before { content: ""; position: absolute; left: 9px; top: 0; bottom: 8px; width: 2px; background: var(--line); opacity: .8; }
+.wxbox, .stop, .tl .ev, .day .db > .note, .day .db > .dayfoot, .day .db > .grp { position: relative; }
+.wxbox::before, .stop::before, .tl .ev::before { content: ""; position: absolute; left: -26px; width: 12px; height: 12px; border-radius: 50%; background: var(--ivory); border: 2px solid var(--line); z-index: 1; }
+.wxbox::before { top: 20px; width: 8px; height: 8px; left: -24px; border-width: 1.5px; }
+.stop::before { top: 27px; }
+.stop:has(.pin.must)::before { background: var(--line); }
+.day .db > .note::before { content: ""; position: absolute; left: -23px; top: 19px; width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+
+.wxbox { text-align: left; padding: 14px 0; border-bottom: 1px solid var(--hair); }
+.wx { font-family: var(--latin); font-size: 15px; letter-spacing: .03em; color: var(--ink); }
+.wx .cn { font-family: var(--serif); font-size: 12.5px; letter-spacing: .04em; }
+.rainplan, .hazeplan { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.85; }
+.hazeplan[hidden], .hazeact[hidden] { display: none; }
+.hazeplan { color: var(--ink2); }
+.hazenow { color: var(--ink); }
+
+/* 只靠颜色的提示：改用朱红＋方框小字标签，不只换色 */
+.wx.wet, .psi.bad, .hazeplan.bad .hazenow { color: var(--alert); }
+.psi.warn { color: var(--warn); }
+.wx.wet::before, .psi.bad::before, .hazeplan.bad .hazenow::before { display: inline-block; font-family: var(--serif); font-size: 10.5px; letter-spacing: .3em; line-height: 1.5; padding: 0 3px 0 6px; margin-right: 8px; border: 1px solid var(--alert); color: var(--alert); vertical-align: 1px; }
+.wx.wet::before { content: "多雨"; }
+.psi.bad::before, .hazeplan.bad .hazenow::before { content: "留意"; }
+body.lang-en .wx.wet::before { content: "WET"; font-family: var(--latin); font-size: 11px; letter-spacing: .24em; }
+body.lang-en .psi.bad::before, body.lang-en .hazeplan.bad .hazenow::before { content: "ALERT"; font-family: var(--latin); font-size: 11px; letter-spacing: .24em; }
+.psibox:has(.psi.bad) { border-bottom-color: var(--alert); }
+
+.stop { padding: 20px 0; border-bottom: 1px solid var(--hair); }
+.stop .pin { display: none; }
+.stop h4 { font-family: var(--serif); font-size: 16px; font-weight: 500; letter-spacing: .05em; line-height: 1.5; color: var(--navy); }
+.stop h4 .en { font-family: var(--latin); font-size: 19px; }
+.stop:has(.pin.must) h4::before { content: "必 去"; display: block; font-size: 10.5px; letter-spacing: .5em; color: var(--line); margin-bottom: 2px; }
+.stop:has(.pin.side) h4::before { content: "可 选"; display: block; font-size: 10.5px; letter-spacing: .5em; color: var(--faint); margin-bottom: 2px; }
+body.lang-en .stop:has(.pin.must) h4::before { content: "RECOMMENDED"; font-family: var(--latin); } body.lang-en .stop:has(.pin.side) h4::before { content: "OPTIONAL"; font-family: var(--latin); }
+.stop .desc { font-size: 12.5px; color: var(--ink2); margin-top: 8px; }
+
+/* D1 / D4 的 .tl 时刻表直接接进同一条竖线 */
+.tl { border: 0; margin: 6px 0 0; padding: 0; }
+.tl .ev { padding: 0 0 18px; }
+.tl .ev::before { top: 6px; }
+.tl .ev.fin::before { background: var(--line); }
+/* 航班：起飞站双圈，到下一站之间的竖线画成虚线＝在空中 */
+.tl .ev.hot::before { box-shadow: 0 0 0 2px var(--ivory), 0 0 0 3px var(--line); }
+.tl .ev.hot::after { content: ""; position: absolute; left: -21px; top: 18px; bottom: -6px; width: 2px; background: repeating-linear-gradient(to bottom, var(--ivory) 0 3px, transparent 3px 7px); z-index: 0; }
+.tl .ev .t { font-family: var(--latin); font-size: 15px; font-weight: 600; color: var(--line); letter-spacing: .04em; line-height: 1.4; }
+.tl .ev .t .cn { font-family: var(--serif); font-size: 12px; font-weight: 500; letter-spacing: .12em; }
+.tl .ev h4 { font-family: var(--serif); font-size: 14.5px; font-weight: 500; letter-spacing: .04em; color: var(--navy); margin-top: 1px; line-height: 1.55; }
+.tl .ev h4 .en { font-family: var(--latin); font-size: 17px; }
+.tl .ev .s { font-size: 12px; color: var(--ink2); margin-top: 2px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 0; margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+.chip { padding: 0 10px; } .chip:first-child { padding-left: 0; } .chip + .chip { border-left: 1px solid var(--hair); }
+.chip.hours { font-family: var(--latin); font-size: 15px; font-weight: 600; color: var(--navy); letter-spacing: .04em; }
+.chip.book, .chip.verify { color: var(--gold); }
+
+.dayfoot { padding: 16px 0 6px; font-size: 12.5px; color: var(--ink2); }
+.dayfoot .ftlb { display: block; font-size: 11px; letter-spacing: .4em; color: var(--line); margin-bottom: 2px; }
+.dayfoot::before { content: ""; position: absolute; left: -27px; top: 18px; width: 14px; height: 14px; background: var(--line); }
+
+.psibox { text-align: center; padding: 0 0 16px; margin-bottom: 20px; border-bottom: 1px solid var(--hair); }
+.psi { font-size: 12.5px; color: var(--navy); }
+.psinote { font-size: 11.5px; color: var(--muted); margin-top: 6px; text-align: left; }
+
+#food { counter-reset: evt; }
+#food > .note { text-align: center; border: none; padding: 0 8px 6px; font-size: 12px; color: var(--muted); }
+.grp { text-align: center; font-family: var(--serif); font-size: 14px; font-weight: 500; letter-spacing: .3em; color: var(--gold); margin: 30px 0 10px; display: flex; align-items: center; gap: 14px; }
+.grp::before, .grp::after { content: ""; flex: 1; height: 1px; background: var(--gold); }
+.grp .en { font-family: var(--latin); letter-spacing: .2em; text-transform: uppercase; }
+.evt { background: #fff; border: 1px solid var(--hair); padding: 20px 18px 18px; margin-bottom: 14px; counter-increment: evt; }
+.evt .eh { text-align: center; }
+.evt .eh .et { display: block; font-size: 10.5px; letter-spacing: .24em; color: var(--muted); }
+#food .evt .eh .et::before { content: counter(evt, upper-roman) "　"; font-family: var(--latin); font-size: 13px; color: var(--gold); letter-spacing: .1em; }
+.evt .eh .ed { display: block; font-family: var(--latin); font-size: 13px; letter-spacing: .2em; color: var(--gold); margin-top: 2px; }
+.evt .eb { padding-top: 6px; }
+.evt h3 { text-align: center; font-family: var(--serif); font-size: 18px; font-weight: 500; letter-spacing: .05em; line-height: 1.5; color: var(--navy); }
+.evt h3 .en { font-family: var(--latin); font-size: 21px; }
+.evt .desc { font-size: 12.5px; color: var(--ink2); margin-top: 10px; }
+.evt .meta { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+
+.note a, .desc a, .tl .s a, .dayfoot a, .psinote a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--gold); }
+footer { text-align: center; padding: 30px 20px; }
+footer .mark { font-family: var(--latin); font-size: 12px; letter-spacing: .4em; color: var(--gold); }
+footer p { font-size: 11.5px; color: var(--faint); }
+
+/* G · 雅加达：soga 深棕（蜡染传统棕色）＋金，蜡染纹样只当细装饰线 */
+:root {
+  --navy: #3a2618; --navy2: #4a3222; --gold: #b8904f; --gold2: #dcc39a; --ivory: #faf5ec; --paper: #f2e9da;
+  --ink: #241a12; --ink2: #47392c; --muted: #7d6f5f; --faint: #a89a87; --hair: #e5dac8;
+  --cover-ink: #f1e6d3; --cover-h: #f8eedd;
+  --alert: #a3271f; --warn: #8a5a12;
+  /* 每日线路色：Transjakarta 2 号走廊深蓝、14 号走廊橙、再配一枚橄榄绿（降饱和）。
+     刻意不用 1 号走廊的红：会跟「多雨／空气差」的朱红提示撞色 */
+  --l1: #3d5689; --l2: #b8743a; --l3: #5b7a4e;
+  /* kawung 四瓣圆纹：四个椭圆花瓣围一个点，金色极淡 */
+  --kawung:
+    radial-gradient(circle 1.2px at 50% 50%, var(--gold) 90%, transparent 100%),
+    radial-gradient(ellipse 2.4px 4px at 50% 26%, var(--gold) 85%, transparent 100%),
+    radial-gradient(ellipse 2.4px 4px at 50% 74%, var(--gold) 85%, transparent 100%),
+    radial-gradient(ellipse 4px 2.4px at 26% 50%, var(--gold) 85%, transparent 100%),
+    radial-gradient(ellipse 4px 2.4px at 74% 50%, var(--gold) 85%, transparent 100%);
+  /* parang 斜向波纹：两组斜线叠出连续的 S 形斜带 */
+  --parang:
+    repeating-linear-gradient(-45deg, transparent 0 5px, var(--gold) 5px 6px, transparent 6px 9px, var(--gold) 9px 10px, transparent 10px 14px);
+}
+.lb { background: rgba(36,24,16,.96); }
+
+/* 封面：上下各一条 kawung 纹带 */
+.cover { position: relative; }
+.cover::before, .cover::after { content: ""; display: block; height: 20px; background: var(--kawung); background-size: 20px 20px; opacity: .22; }
+.cover::before { order: 0; margin-top: 14px; }
+.cover::after { order: 3; margin-bottom: 14px; }
+.cover .inner { padding-top: 26px; }
+
+/* 区块标题下的短金线换成一小段 kawung */
+.sec-head .rule { width: 80px; height: 16px; background: var(--kawung); background-size: 16px 16px; opacity: .45; margin-top: 10px; }
+
+/* 每天标题上沿：一条细的 parang 斜纹 */
+.day .dh { border-top: 0; }
+.day .dh::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 6px; background: var(--parang); opacity: .45; }
+
+/* 餐厅分组线两侧也用 parang 细带 */
+.grp::before, .grp::after { height: 5px; background: var(--parang); opacity: .5; }
+
+footer .mark::before { content: ""; display: block; width: 64px; height: 16px; margin: 0 auto 10px; background: var(--kawung); background-size: 16px 16px; opacity: .45; }
+
+/* ===== 可点链接按钮（地图／官网／售票／航班追踪）=====
+   标记固定为：<div class="links"><a class="btn-map [web|tix]"><svg class="ico">…</svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">…</span></span></a> …</div>
+   连着的几颗包在 .links 里（两颗并排各占一半）。航班追踪是 <a class="track">，同一套标记。按钮外观只写在这一组规则里：
+   以后要换成「下划线文字前加图标」或「卡片底部整条横栏」，只改这一段 CSS，不动 HTML。 */
+/* 有路线编号的站（D3 的 1／2／3）：编号跟「必去」写在同一行 */
+.stop .pin.num { display: block; font-size: 10.5px; letter-spacing: .3em; color: var(--line); line-height: 1.6; }
+.stop .pin.num::before { content: "第 "; } .stop .pin.num::after { content: " 站 · 必 去"; }
+body.lang-en .stop .pin.num { font-family: var(--latin); font-size: 12px; letter-spacing: .24em; }
+body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pin.num::after { content: " · RECOMMENDED"; }
+.stop:has(.pin.num) h4::before { display: none !important; }
+
+.links { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 12px; }
+.btn-map, .track {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  min-width: 0; min-height: 46px; padding: 10px 8px; white-space: nowrap;
+  border: 1px solid var(--gold); border-radius: 0; background: transparent;
+  color: var(--navy); text-decoration: none; line-height: 1.35; cursor: pointer;
+  font-family: var(--serif); font-size: 13px; font-weight: 500; letter-spacing: .14em;
+  transition: background-color .15s, color .15s;
+}
+.btn-map .ico, .track .ico { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--gold); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.btn-map .lbl .en, .track .lbl .en { font-family: var(--latin); font-size: 14.5px; letter-spacing: .12em; }
+.btn-map .tag { font-family: var(--latin); font-size: 12px; font-weight: 500; letter-spacing: .2em; color: var(--gold); margin-left: .6em; }
+.btn-map:active, .track:active { background: var(--navy); color: var(--cover-h); }
+.btn-map:active .ico, .track:active .ico { stroke: var(--gold2); }
+@media (hover: hover) { .btn-map:hover, .track:hover { background: var(--paper); } }
+.btn-map:focus-visible, .track:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
 </style>
 </head>
 <body>
@@ -186,12 +309,12 @@
 <button class="lang" id="langBtn" onclick="toggleLang()">EN</button>
 </div>
 <nav class="daystrip" id="daystrip">
-<a href="#flights"><span class="d">✈️</span><span class="m"><span class="cn">航班</span><span class="en">FLT</span></span></a>
-<a href="#hotel"><span class="d">🏨</span><span class="m"><span class="cn">住宿</span><span class="en">STAY</span></span></a>
-<a data-date="2026-11-14" href="#day01"><span class="d">D1</span><span class="m">14</span></a>
-<a data-date="2026-11-15" href="#day02"><span class="d">D2</span><span class="m">15</span></a>
-<a data-date="2026-11-16" href="#day03"><span class="d">D3</span><span class="m">16</span></a>
-<a href="#food"><span class="d">🍽</span><span class="m"><span class="cn">餐厅</span><span class="en">FOOD</span></span></a>
+<a href="#flights"><span class="d"><span class="cn">航班</span><span class="en">Flights</span></span><span class="m">I</span></a>
+<a href="#hotel"><span class="d"><span class="cn">住宿</span><span class="en">Hotel</span></span><span class="m">II</span></a>
+<a data-date="2026-11-14" href="#day01"><span class="d">D1</span><span class="m">14 Nov</span></a>
+<a data-date="2026-11-15" href="#day02"><span class="d">D2</span><span class="m">15 Nov</span></a>
+<a data-date="2026-11-16" href="#day03"><span class="d">D3</span><span class="m">16 Nov</span></a>
+<a href="#food"><span class="d"><span class="cn">餐厅</span><span class="en">Dining</span></span><span class="m">IV</span></a>
 </nav>
 <div class="wrap">
 <!-- COVER -->
@@ -202,17 +325,17 @@
 <h1><span class="cn">雅加达 · 11月14–16日</span><span class="en">Jakarta · 14–16 Nov 2026</span></h1>
 <div class="dates"><span class="cn">2晚3天 · 2026年11月14日（六）– 11月16日（一） · Tan Chin Hooi、Yap Lian Khoon、Hew Chern Yang 3人</span><span class="en">2 Nights 3 Days · Sat 14 – Mon 16 Nov 2026 · Tan Chin Hooi, Yap Lian Khoon &amp; Hew Chern Yang</span></div>
 <div class="meta-row">
-<span class="meta-chip">✈ SQ958 · SQ957 · SQ138 · SQ158</span>
-<span class="meta-chip">🏨 <span class="cn">住 PIK Avenue</span><span class="en">Staying at PIK Avenue</span></span>
-<span class="meta-chip">👥 <span class="cn">3人</span><span class="en">3 pax</span></span>
+<span class="meta-chip">SQ958 · SQ957 · SQ138 · SQ158</span>
+<span class="meta-chip"><span class="cn">住 PIK Avenue</span><span class="en">Staying at PIK Avenue</span></span>
+<span class="meta-chip"><span class="cn">3人</span><span class="en">3 pax</span></span>
 </div>
 </div>
 </div>
 <!-- TIP -->
 <div class="tip">
-<span class="ico">👆</span>
+<span class="ico"></span>
 <div>
-<span class="cn"><strong>绿色按钮</strong>（地图）可点击打开；营业时间和票价出发前请再用官方渠道确认。雅加达比新加坡<strong>慢 1 小时</strong>，手册里的时刻都是当地时间。</span><span class="en"><strong>Green buttons</strong> (maps) are tappable; please reconfirm opening hours and prices through official channels before you go. Jakarta is <strong>1 hour behind Singapore</strong>; all times in this handbook are local.</span>
+<span class="cn">带地标图标的<strong>「地图」按钮</strong>可点开 Google 地图，飞机图标是航班实时追踪；顶部目录点一下就跳到那一节；营业时间和票价出发前请再用官方渠道确认。雅加达比新加坡<strong>慢 1 小时</strong>，手册里的时刻都是当地时间。</span><span class="en">Buttons with a <strong>map-pin icon</strong> open Google Maps; the plane icon opens live flight tracking. Tap an item in the top bar to jump to that section; please reconfirm opening hours and prices through official channels before you go. Jakarta is <strong>1 hour behind Singapore</strong>; all times in this handbook are local.</span>
 </div>
 </div>
 
@@ -220,7 +343,7 @@
 <section id="flights">
 <div class="sec-head"><span class="no">01</span><h2><span class="cn">航班</span><span class="en">Flights</span></h2><span class="rule"></span></div>
 
-<div class="bp-group-label"><span class="cn">🛫 去程 · 11月14日（六） · 新加坡 → 雅加达</span><span class="en">🛫 Outbound · Sat 14 Nov · Singapore → Jakarta</span></div>
+<div class="bp-group-label"><span class="cn">去程 · 11月14日（六） · 新加坡 → 雅加达</span><span class="en">Outbound · Sat 14 Nov · Singapore → Jakarta</span></div>
 <div class="bpass">
 <div class="head"><span class="airline"><span class="code">SQ</span>SQ 958</span><span class="craft">Singapore Airlines</span></div>
 <div class="route">
@@ -235,13 +358,12 @@
 <span class="cls eco">ECONOMY</span>
 <div class="seats"><span class="seat">HEW/CHERN YANG 32G</span></div>
 </div>
-<a class="track" href="https://www.flightaware.com/live/flight/SIA958" target="_blank">📡 <span class="cn">追踪 SQ958</span><span class="en">Track SQ958</span></a>
+<div class="links"><a class="track" href="https://www.flightaware.com/live/flight/SIA958" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.2 13.6 4 16.2v-1.9l6.2-4.2V5.6a1.8 1.8 0 0 1 3.6 0v4.5l6.2 4.2v1.9l-6.2-2.6v4.3l2.1 1.6v1.5L12 20.2 8.1 21v-1.5l2.1-1.6z"/></svg><span class="lbl"><span class="cn">追踪 SQ958</span><span class="en">Track SQ958</span></span></a></div>
 </div>
-<div class="note amber" style="margin-top:-4px">
-<span class="cn">📝 <strong>入境印尼要先填电子入境卡：</strong>抵达前 3 天内（11/11 起）上 <a href="https://allindonesia.imigrasi.go.id/" target="_blank">All Indonesia</a> 网站或 App 填写，免费，填完会拿到一个 QR 码，过关时出示。三人各填各的。</span><span class="en">📝 <strong>Fill in Indonesia's e-arrival card first:</strong> within 3 days before arrival (from 11 Nov), complete it on the <a href="https://allindonesia.imigrasi.go.id/" target="_blank">All Indonesia</a> website or app. It is free and gives you a QR code to show at immigration. Each person fills in their own.</span>
+<div class="note amber" style="margin-top:-4px"><span class="cn"><strong>入境印尼要先填电子入境卡：</strong>抵达前 3 天内（11/11 起）上 <a href="https://allindonesia.imigrasi.go.id/" target="_blank">All Indonesia</a> 网站或 App 填写，免费，填完会拿到一个 QR 码，过关时出示。三人各填各的。</span><span class="en"><strong>Fill in Indonesia's e-arrival card first:</strong> within 3 days before arrival (from 11 Nov), complete it on the <a href="https://allindonesia.imigrasi.go.id/" target="_blank">All Indonesia</a> website or app. It is free and gives you a QR code to show at immigration. Each person fills in their own.</span>
 </div>
 
-<div class="bp-group-label"><span class="cn">🛬 回程 · 11月16日（一） · 雅加达 → 新加坡转机</span><span class="en">🛬 Return · Mon 16 Nov · Jakarta → connect in Singapore</span></div>
+<div class="bp-group-label"><span class="cn">回程 · 11月16日（一） · 雅加达 → 新加坡转机</span><span class="en">Return · Mon 16 Nov · Jakarta → connect in Singapore</span></div>
 <div class="bpass">
 <div class="head"><span class="airline"><span class="code">SQ</span>SQ 957</span><span class="craft">Singapore Airlines</span></div>
 <div class="route">
@@ -256,10 +378,9 @@
 <span class="cls eco">ECONOMY</span>
 <div class="seats"><span class="seat">HEW/CHERN YANG 32C</span></div>
 </div>
-<a class="track" href="https://www.flightaware.com/live/flight/SIA957" target="_blank">📡 <span class="cn">追踪 SQ957</span><span class="en">Track SQ957</span></a>
+<div class="links"><a class="track" href="https://www.flightaware.com/live/flight/SIA957" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.2 13.6 4 16.2v-1.9l6.2-4.2V5.6a1.8 1.8 0 0 1 3.6 0v4.5l6.2 4.2v1.9l-6.2-2.6v4.3l2.1 1.6v1.5L12 20.2 8.1 21v-1.5l2.1-1.6z"/></svg><span class="lbl"><span class="cn">追踪 SQ957</span><span class="en">Track SQ957</span></span></a></div>
 </div>
-<div class="note green" style="margin-top:-4px">
-<span class="cn">🔀 到了樟宜三人分开转机：Yap Lian Khoon 回槟城，Tan Chin Hooi 和 Hew Chern Yang 回金边。<strong>行李直挂到终点</strong>，在樟宜不用取行李、不用出境，下机后跟着「Transfer／转机」指示走就好。</span><span class="en">🔀 At Changi the group splits: Yap Lian Khoon flies on to Penang; Tan Chin Hooi and Hew Chern Yang fly on to Phnom Penh. <strong>Bags are checked through to the final destination</strong> — no need to collect them or clear immigration at Changi; just follow the "Transfer" signs after landing.</span>
+<div class="note green" style="margin-top:-4px"><span class="cn">到了樟宜三人分开转机：Yap Lian Khoon 回槟城，Tan Chin Hooi 和 Hew Chern Yang 回金边。<strong>行李直挂到终点</strong>，在樟宜不用取行李、不用出境，下机后跟着「Transfer／转机」指示走就好。</span><span class="en">At Changi the group splits: Yap Lian Khoon flies on to Penang; Tan Chin Hooi and Hew Chern Yang fly on to Phnom Penh. <strong>Bags are checked through to the final destination</strong> — no need to collect them or clear immigration at Changi; just follow the "Transfer" signs after landing.</span>
 </div>
 
 <div class="bpass">
@@ -274,10 +395,9 @@
 <span class="cls biz">BUSINESS</span>
 <div class="seats"><span class="seat">YAP/LIAN KHOON 14C</span></div>
 </div>
-<a class="track" href="https://www.flightaware.com/live/flight/SIA138" target="_blank">📡 <span class="cn">追踪 SQ138</span><span class="en">Track SQ138</span></a>
+<div class="links"><a class="track" href="https://www.flightaware.com/live/flight/SIA138" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.2 13.6 4 16.2v-1.9l6.2-4.2V5.6a1.8 1.8 0 0 1 3.6 0v4.5l6.2 4.2v1.9l-6.2-2.6v4.3l2.1 1.6v1.5L12 20.2 8.1 21v-1.5l2.1-1.6z"/></svg><span class="lbl"><span class="cn">追踪 SQ138</span><span class="en">Track SQ138</span></span></a></div>
 </div>
-<div class="note red" style="margin-top:-4px">
-<span class="cn">⏱ <strong>Yap Lian Khoon 转机只有 1 小时 25 分钟，比较紧：</strong>下机后直接去 SQ138 的登机口，路上别停下来逛；登机口号码看机场屏幕或新加坡航空 App。SQ957 如果延误，下机就找转机柜台或新航地勤。</span><span class="en">⏱ <strong>Yap Lian Khoon has only 1 h 25 min to connect — that is tight:</strong> go straight to the SQ138 gate after landing without stopping to browse; check the gate on the airport screens or the Singapore Airlines app. If SQ957 runs late, go to the transfer desk or SIA ground staff as soon as you land.</span>
+<div class="note red" style="margin-top:-4px"><span class="cn"><strong>Yap Lian Khoon 转机只有 1 小时 25 分钟，比较紧：</strong>下机后直接去 SQ138 的登机口，路上别停下来逛；登机口号码看机场屏幕或新加坡航空 App。SQ957 如果延误，下机就找转机柜台或新航地勤。</span><span class="en"><strong>Yap Lian Khoon has only 1 h 25 min to connect — that is tight:</strong> go straight to the SQ138 gate after landing without stopping to browse; check the gate on the airport screens or the Singapore Airlines app. If SQ957 runs late, go to the transfer desk or SIA ground staff as soon as you land.</span>
 </div>
 
 <div class="bpass">
@@ -294,13 +414,12 @@
 <span class="cls eco">ECONOMY</span>
 <div class="seats"><span class="seat">HEW/CHERN YANG 43H</span></div>
 </div>
-<a class="track" href="https://www.flightaware.com/live/flight/SIA158" target="_blank">📡 <span class="cn">追踪 SQ158</span><span class="en">Track SQ158</span></a>
+<div class="links"><a class="track" href="https://www.flightaware.com/live/flight/SIA158" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.2 13.6 4 16.2v-1.9l6.2-4.2V5.6a1.8 1.8 0 0 1 3.6 0v4.5l6.2 4.2v1.9l-6.2-2.6v4.3l2.1 1.6v1.5L12 20.2 8.1 21v-1.5l2.1-1.6z"/></svg><span class="lbl"><span class="cn">追踪 SQ158</span><span class="en">Track SQ158</span></span></a></div>
 </div>
-<div class="note green" style="margin-top:-4px">
-<span class="cn">🕐 Tan Chin Hooi 和 Hew Chern Yang 在樟宜转机有 3 小时 35 分钟，时间宽裕，可以在机场吃饭、逛逛再去登机口。</span><span class="en">🕐 Tan Chin Hooi and Hew Chern Yang have 3 h 35 min at Changi — plenty of time to eat and browse before heading to the gate.</span>
+<div class="note green" style="margin-top:-4px"><span class="cn">Tan Chin Hooi 和 Hew Chern Yang 在樟宜转机有 3 小时 35 分钟，时间宽裕，可以在机场吃饭、逛逛再去登机口。</span><span class="en">Tan Chin Hooi and Hew Chern Yang have 3 h 35 min at Changi — plenty of time to eat and browse before heading to the gate.</span>
 </div>
 
-<div class="bp-group-label"><span class="cn">🧳 行李额</span><span class="en">🧳 Baggage Allowance</span></div>
+<div class="bp-group-label"><span class="cn">行李额</span><span class="en">Baggage Allowance</span></div>
 <table class="tbl">
 <tr><th><span class="cn">乘客</span><span class="en">Passenger</span></th><th><span class="cn">舱位</span><span class="en">Cabin</span></th><th><span class="cn">托运</span><span class="en">Checked</span></th><th><span class="cn">手提</span><span class="en">Carry-on</span></th></tr>
 <tr>
@@ -328,11 +447,11 @@
 <section id="hotel">
 <div class="sec-head"><span class="no">02</span><h2><span class="cn">住宿</span><span class="en">Hotel</span></h2><span class="rule"></span></div>
 <div class="hotel">
-<div class="stay"><span><span class="cn">雅加达 · 11月14–16日</span><span class="en">Jakarta · 14–16 Nov</span></span><span><span class="cn">2晚 · ✓已订</span><span class="en">2 nights · ✓Booked</span></span></div>
+<div class="stay"><span><span class="cn">雅加达 · 11月14–16日</span><span class="en">Jakarta · 14–16 Nov</span></span><span><span class="cn">2晚 · 已订</span><span class="en">2 nights · Booked</span></span></div>
 <div class="bd">
-<h3><span class="cn">Swissôtel Jakarta PIK Avenue 瑞士酒店</span><span class="en">Swissôtel Jakarta PIK Avenue</span> <span style="font-size:12px;color:var(--gold)">⭐ 4.7</span></h3>
-<div class="addr">📍 Jl. Pantai Indah Kapuk, Kamal Muara, Penjaringan, Jakarta Utara 14470</div>
-<div class="tel">📞 +62 21 2257 1188</div>
+<h3><span class="cn">Swissôtel Jakarta PIK Avenue 瑞士酒店</span><span class="en">Swissôtel Jakarta PIK Avenue</span> <span style="font-size:12px;color:var(--gold)"> 4.7</span></h3>
+<div class="addr">Jl. Pantai Indah Kapuk, Kamal Muara, Penjaringan, Jakarta Utara 14470</div>
+<div class="tel">+62 21 2257 1188</div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="酒店客房 · A guest room" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcqOso3UAItnH6_MsB1xaUyG_oM8Pa5RUJKJoO0SDX77KqlszFKIMiQV1Sdzm4ig_z1mVPBxc6Ug_x8BTK-_wN-JFTnMlAJA9_ffDKRU4Zu997xI7TtQujCvBPNahs-rt7qGRvyyZ44xNHU=s4800-w800-h600"/>
 <img loading="lazy" decoding="async" alt="酒店大堂 · Hotel lobby" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdBzvy8Aq40Z-LRbIdFFlJSq7Ovvol2ygGyzzSiH3Q_rO4ZEYzpg8uEB_tVcDnhO0KWvJrNlrXoe8CEXBgLetRImurbe4O5sOXaTsZKygENLvtrkcHEv0bBh80TwKp2QeVb5V4i=s4800-w800-h600"/>
@@ -341,16 +460,13 @@
 <img loading="lazy" decoding="async" alt="酒店酒吧 · Hotel bar" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdoR1R-kMZMfdhZtHwnYVF8L6Kp9WYMfmtmEm2J_9EV1fTy9DNGeeOG4O6_RcZ912LLMGwuhqU016vfgXfjpDGaRQq5qmBulVI7HZGQy4NEkkLaObiazEg_iwS6TglA9lE18s03kidQH-tL=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<div class="note green" style="margin-top:6px">
-<span class="cn">🗓 <strong>11/14（六）入住，11/16（一）退房。</strong>14:00 起可以入住，退房在 12:00 前。酒店就在 PIK Avenue 商场楼内，楼下的 May Star 和 PUTIEN 都在<a href="#food">餐厅列表</a>里。到酒店时房间若还没好，可以先把行李交给礼宾部寄存。</span><span class="en">🗓 <strong>Check in Sat 14 Nov, check out Mon 16 Nov.</strong> Check-in is from 14:00 and check-out is by 12:00. The hotel sits inside the PIK Avenue mall; May Star and PUTIEN downstairs are both in the <a href="#food">restaurant list</a>. If your room is not ready when you arrive, leave your bags with the concierge.</span>
+<div class="note green" style="margin-top:6px"><span class="cn"><strong>11/14（六）入住，11/16（一）退房。</strong>14:00 起可以入住，退房在 12:00 前。酒店就在 PIK Avenue 商场楼内，楼下的 May Star 和 PUTIEN 都在<a href="#food">餐厅列表</a>里。到酒店时房间若还没好，可以先把行李交给礼宾部寄存。</span><span class="en"><strong>Check in Sat 14 Nov, check out Mon 16 Nov.</strong> Check-in is from 14:00 and check-out is by 12:00. The hotel sits inside the PIK Avenue mall; May Star and PUTIEN downstairs are both in the <a href="#food">restaurant list</a>. If your room is not ready when you arrive, leave your bags with the concierge.</span>
 </div>
-<div class="note green" style="margin-top:6px">
-<span class="cn">🛏 <strong>分房（共 3 间）</strong><br>Tan Chin Hooi：Swiss Prestige Suite 套房 1 间，含 11/15、11/16 两天早餐<br>Yap Lian Khoon：Premier King Room 大床房 1 间，不含早餐<br>Hew Chern Yang：Premier King Room 大床房 1 间，不含早餐</span><span class="en">🛏 <strong>Rooms (3 in total)</strong><br>Tan Chin Hooi: 1 Swiss Prestige Suite, breakfast included on 15 and 16 Nov<br>Yap Lian Khoon: 1 Premier King Room, breakfast not included<br>Hew Chern Yang: 1 Premier King Room, breakfast not included</span>
+<div class="note green" style="margin-top:6px"><span class="cn"><strong>分房（共 3 间）</strong><br>Tan Chin Hooi：Swiss Prestige Suite 套房 1 间，含 11/15、11/16 两天早餐<br>Yap Lian Khoon：Premier King Room 大床房 1 间，不含早餐<br>Hew Chern Yang：Premier King Room 大床房 1 间，不含早餐</span><span class="en"><strong>Rooms (3 in total)</strong><br>Tan Chin Hooi: 1 Swiss Prestige Suite, breakfast included on 15 and 16 Nov<br>Yap Lian Khoon: 1 Premier King Room, breakfast not included<br>Hew Chern Yang: 1 Premier King Room, breakfast not included</span>
 </div>
-<div class="note amber" style="margin-top:6px">
-<span class="cn">🍳 <strong>早餐：</strong>只有套房含早餐。Yap Lian Khoon、Hew Chern Yang 想吃早餐，可以跟 Tan Chin Hooi 一起去酒店早餐厅，在餐厅付费加购；11/15（日）也可以晚一点下楼，到 PIK Avenue 商场里吃（商场 10:00 开门）。11/16（一）要在 08:30 前出发去机场，那时商场还没开，那天想吃就在酒店付费吃。</span><span class="en">🍳 <strong>Breakfast:</strong> only the suite includes breakfast. If Yap Lian Khoon and Hew Chern Yang want breakfast, they can join Tan Chin Hooi at the hotel’s breakfast restaurant and pay there; on Sun 15 Nov they can also go down a little later and eat in the PIK Avenue mall (it opens at 10:00). On Mon 16 Nov you leave for the airport by 08:30, before the mall opens, so that morning breakfast means paying at the hotel.</span>
+<div class="note amber" style="margin-top:6px"><span class="cn"><strong>早餐：</strong>只有套房含早餐。Yap Lian Khoon、Hew Chern Yang 想吃早餐，可以跟 Tan Chin Hooi 一起去酒店早餐厅，在餐厅付费加购；11/15（日）也可以晚一点下楼，到 PIK Avenue 商场里吃（商场 10:00 开门）。11/16（一）要在 08:30 前出发去机场，那时商场还没开，那天想吃就在酒店付费吃。</span><span class="en"><strong>Breakfast:</strong> only the suite includes breakfast. If Yap Lian Khoon and Hew Chern Yang want breakfast, they can join Tan Chin Hooi at the hotel’s breakfast restaurant and pay there; on Sun 15 Nov they can also go down a little later and eat in the PIK Avenue mall (it opens at 10:00). On Mon 16 Nov you leave for the airport by 08:30, before the mall opens, so that morning breakfast means paying at the hotel.</span>
 </div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Swiss%C3%B4tel%20Jakarta%20PIK%20Avenue%20Jl.%20Pantai%20Indah%20Kapuk%20Jakarta%20Utara%2014470" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Swiss%C3%B4tel%20Jakarta%20PIK%20Avenue%20Jl.%20Pantai%20Indah%20Kapuk%20Jakarta%20Utara%2014470" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
 </section>
@@ -364,21 +480,21 @@
 <div class="dh">
 <div class="dn">01<small>DAY</small></div>
 <div class="dt"><h3><span class="cn">新加坡飞雅加达 · 入住 · 生日宴</span><span class="en">Fly Singapore → Jakarta · check-in · birthday dinner</span><span class="today-tag"><span class="cn">今天</span><span class="en">TODAY</span></span></h3><div class="dd">14 Nov <span class="cn">(六)</span><span class="en">(Sat)</span></div></div>
-<div class="badge">✈️ <span class="cn">抵达日</span><span class="en">Arrival day</span></div>
+<div class="badge"><span class="cn">抵达日</span><span class="en">Arrival day</span></div>
 </div>
 <div class="db">
 <div class="wxbox">
 <div class="wx" data-wx="2026-11-14"></div>
-<div class="rainplan"><span class="cn">☔ 雨天备案：今天是机场 → 坐车 → 酒店，全程不用淋雨；午后大雨时路上会慢一点，车程多留些时间。</span><span class="en">☔ Rain plan: Today is airport → car → hotel, so you stay dry; heavy afternoon rain slows the roads, so allow extra time for the drive.</span></div>
+<div class="rainplan"><span class="cn">雨天备案：今天是机场 → 坐车 → 酒店，全程不用淋雨；午后大雨时路上会慢一点，车程多留些时间。</span><span class="en">Rain plan: Today is airport → car → hotel, so you stay dry; heavy afternoon rain slows the roads, so allow extra time for the drive.</span></div>
 </div>
 
 <div class="tl">
-<div class="ev"><div class="t"><span class="cn">早上</span><span class="en">Morning</span></div><h4><span class="cn">🧳 新加坡 MBS 退房 → 樟宜 T2</span><span class="en">🧳 Check out of MBS Singapore → Changi T2</span></h4><div class="s"><span class="cn">建议 10:00 前离开 MBS（新加坡时间），细节见<a href="singapore.html#day04">新加坡手册 D4</a>。</span><span class="en">Leave MBS by 10:00 Singapore time; details in <a href="singapore.html#day04">the Singapore handbook, Day 4</a>.</span></div></div>
-<div class="ev hot"><div class="t">12:30</div><h4><span class="cn">✈️ SQ958 樟宜 T2 起飞</span><span class="en">✈️ SQ958 departs Changi T2</span></h4><div class="s"><span class="cn">三人同一班。新加坡时间。</span><span class="en">All three on the same flight. Singapore time.</span></div></div>
-<div class="ev"><div class="t">13:20</div><h4><span class="cn">🛬 抵达雅加达 T3</span><span class="en">🛬 Arrive Jakarta T3</span></h4><div class="s"><span class="cn">雅加达当地时间（比新加坡慢 1 小时）。出示 All Indonesia 入境 QR 码过关、取行李。</span><span class="en">Jakarta local time (1 hour behind Singapore). Show your All Indonesia QR code at immigration, then collect bags.</span></div></div>
-<div class="ev"><div class="t"><span class="cn">落地后</span><span class="en">After landing</span></div><h4><span class="cn">🚘 坐车往酒店</span><span class="en">🚘 Drive to the hotel</span></h4><div class="s"><span class="cn">机场到 PIK 车程约 15–20 分钟。</span><span class="en">The airport to PIK is about a 15–20 minute drive.</span></div></div>
-<div class="ev"><div class="t"><span class="cn">约 14:00</span><span class="en">About 14:00</span></div><h4><span class="cn">🏨 入住 Swissôtel PIK Avenue · 休息</span><span class="en">🏨 Check in at Swissôtel PIK Avenue · rest</span></h4><div class="s"><span class="cn">过关、取行李再坐车，大约 14:00 到酒店，正好是可以入住的时间。分房见<a href="#hotel">住宿</a>。</span><span class="en">After immigration, bags and the drive you reach the hotel around 14:00, just as check-in opens. Room list under <a href="#hotel">Hotel</a>.</span></div></div>
-<div class="ev fin"><div class="t"><span class="cn">晚上</span><span class="en">Evening</span></div><h4><span class="cn">🎂 朋友生日宴</span><span class="en">🎂 A friend's birthday dinner</span></h4><div class="s"><span class="cn">今晚不排其他行程。</span><span class="en">Nothing else planned tonight.</span></div></div>
+<div class="ev"><div class="t"><span class="cn">早上</span><span class="en">Morning</span></div><h4><span class="cn">新加坡 MBS 退房 → 樟宜 T2</span><span class="en">Check out of MBS Singapore → Changi T2</span></h4><div class="s"><span class="cn">建议 10:00 前离开 MBS（新加坡时间），细节见<a href="singapore.html#day04">新加坡手册 D4</a>。</span><span class="en">Leave MBS by 10:00 Singapore time; details in <a href="singapore.html#day04">the Singapore handbook, Day 4</a>.</span></div></div>
+<div class="ev hot"><div class="t">12:30</div><h4><span class="cn">SQ958 樟宜 T2 起飞</span><span class="en">SQ958 departs Changi T2</span></h4><div class="s"><span class="cn">三人同一班。新加坡时间。</span><span class="en">All three on the same flight. Singapore time.</span></div></div>
+<div class="ev"><div class="t">13:20</div><h4><span class="cn">抵达雅加达 T3</span><span class="en">Arrive Jakarta T3</span></h4><div class="s"><span class="cn">雅加达当地时间（比新加坡慢 1 小时）。出示 All Indonesia 入境 QR 码过关、取行李。</span><span class="en">Jakarta local time (1 hour behind Singapore). Show your All Indonesia QR code at immigration, then collect bags.</span></div></div>
+<div class="ev"><div class="t"><span class="cn">落地后</span><span class="en">After landing</span></div><h4><span class="cn">坐车往酒店</span><span class="en">Drive to the hotel</span></h4><div class="s"><span class="cn">机场到 PIK 车程约 15–20 分钟。</span><span class="en">The airport to PIK is about a 15–20 minute drive.</span></div></div>
+<div class="ev"><div class="t"><span class="cn">约 14:00</span><span class="en">About 14:00</span></div><h4><span class="cn">入住 Swissôtel PIK Avenue · 休息</span><span class="en">Check in at Swissôtel PIK Avenue · rest</span></h4><div class="s"><span class="cn">过关、取行李再坐车，大约 14:00 到酒店，正好是可以入住的时间。分房见<a href="#hotel">住宿</a>。</span><span class="en">After immigration, bags and the drive you reach the hotel around 14:00, just as check-in opens. Room list under <a href="#hotel">Hotel</a>.</span></div></div>
+<div class="ev fin"><div class="t"><span class="cn">晚上</span><span class="en">Evening</span></div><h4><span class="cn">朋友生日宴</span><span class="en">A friend's birthday dinner</span></h4><div class="s"><span class="cn">今晚不排其他行程。</span><span class="en">Nothing else planned tonight.</span></div></div>
 </div>
 </div>
 </div>
@@ -388,23 +504,22 @@
 <div class="dh">
 <div class="dn">02<small>DAY</small></div>
 <div class="dt"><h3><span class="cn">见朋友 · 空档可挑的去处</span><span class="en">Seeing friends · options for free time</span><span class="today-tag"><span class="cn">今天</span><span class="en">TODAY</span></span></h3><div class="dd">15 Nov <span class="cn">(日)</span><span class="en">(Sun)</span></div></div>
-<div class="badge">🤝 <span class="cn">自由安排</span><span class="en">Flexible day</span></div>
+<div class="badge"><span class="cn">自由安排</span><span class="en">Flexible day</span></div>
 </div>
 <div class="db">
 <div class="wxbox">
 <div class="wx" data-wx="2026-11-15"></div>
-<div class="rainplan"><span class="cn">☔ 雨天备案：11 月是雨季，午后常下大雨。下雨就别去红树林、海边步道、Monas 和老城区，改去商场：酒店楼下的 PIK Avenue 最近；市区的 Grand Indonesia、Plaza Indonesia、Pacific Place 全是室内。</span><span class="en">☔ Rain plan: November is the rainy season and heavy afternoon rain is common. If it rains, skip the mangrove park, the seaside walk, Monas and the Old Town and head to a mall instead: PIK Avenue below the hotel is closest; in the city, Grand Indonesia, Plaza Indonesia and Pacific Place are all indoors.</span></div>
+<div class="rainplan"><span class="cn">雨天备案：11 月是雨季，午后常下大雨。下雨就别去红树林、海边步道、Monas 和老城区，改去商场：酒店楼下的 PIK Avenue 最近；市区的 Grand Indonesia、Plaza Indonesia、Pacific Place 全是室内。</span><span class="en">Rain plan: November is the rainy season and heavy afternoon rain is common. If it rains, skip the mangrove park, the seaside walk, Monas and the Old Town and head to a mall instead: PIK Avenue below the hotel is closest; in the city, Grand Indonesia, Plaza Indonesia and Pacific Place are all indoors.</span></div>
 </div>
 
-<div class="note amber" style="margin:10px 0 4px">
-<span class="cn">🤝 <strong>今天以见朋友为主，有空档可以从下面挑。</strong>酒店附近三处车程 10–40 分钟；市区五处单程要 40–100 分钟，塞车风险高，一趟最好只挑一区。</span><span class="en">🤝 <strong>Today is mainly for seeing friends; if you have free time, pick from below.</strong> The three spots near the hotel are 10–40 minutes away by car; the five in the city are 40–100 minutes each way with a high risk of traffic, so stick to one area per trip.</span>
+<div class="note amber" style="margin:10px 0 4px"><span class="cn"><strong>今天以见朋友为主，有空档可以从下面挑。</strong>酒店附近三处车程 10–40 分钟；市区五处单程要 40–100 分钟，塞车风险高，一趟最好只挑一区。</span><span class="en"><strong>Today is mainly for seeing friends; if you have free time, pick from below.</strong> The three spots near the hotel are 10–40 minutes away by car; the five in the city are 40–100 minutes each way with a high risk of traffic, so stick to one area per trip.</span>
 </div>
 
 <div class="grp"><span class="cn">酒店附近</span><span class="en">Near the hotel</span></div>
 <div class="stop" id="d2-pantjoran">
-<div class="pin maybe">🏮</div>
+<div class="pin maybe"></div>
 <h4><span class="cn">中华城 Pantjoran PIK</span><span class="en">Pantjoran PIK (Chinatown)</span></h4>
-<div class="desc"><span class="cn">⭐4.7（Google 12,825 条评价）。地址：Pantjoran PIK, Jakarta Utara 14460（PIK 2）。仿老唐人街盖的美食街区：红色牌楼、宝塔、灯笼，几十家华人小吃和餐馆集中在一起，边走边吃、拍照都方便，傍晚亮灯后最有气氛。<br><strong>11/15（日）开放时间：</strong>08:00–23:00，各店营业时间不同<br><strong>门票：</strong>免费<br><strong>离酒店：</strong>车程约 15–20 分钟</span><span class="en">⭐4.7 (12,825 Google reviews). Pantjoran PIK, Jakarta Utara 14460 (PIK 2). A food quarter built like an old Chinatown — red gate, pagoda and lanterns — with dozens of Chinese snack stalls and restaurants in one place, easy to graze and take photos; it looks best once the lights come on in the evening.<br><strong>Sun 15 Nov hours:</strong> 08:00–23:00; individual shops vary<br><strong>Admission:</strong> free<br><strong>From the hotel:</strong> about 15–20 minutes by car</span></div>
+<div class="desc"><span class="cn">4.7（Google 12,825 条评价）。地址：Pantjoran PIK, Jakarta Utara 14460（PIK 2）。仿老唐人街盖的美食街区：红色牌楼、宝塔、灯笼，几十家华人小吃和餐馆集中在一起，边走边吃、拍照都方便，傍晚亮灯后最有气氛。<br><strong>11/15（日）开放时间：</strong>08:00–23:00，各店营业时间不同<br><strong>门票：</strong>免费<br><strong>离酒店：</strong>车程约 15–20 分钟</span><span class="en">4.7 (12,825 Google reviews). Pantjoran PIK, Jakarta Utara 14460 (PIK 2). A food quarter built like an old Chinatown — red gate, pagoda and lanterns — with dozens of Chinese snack stalls and restaurants in one place, easy to graze and take photos; it looks best once the lights come on in the evening.<br><strong>Sun 15 Nov hours:</strong> 08:00–23:00; individual shops vary<br><strong>Admission:</strong> free<br><strong>From the hotel:</strong> about 15–20 minutes by car</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">08:00–23:00</span><span class="en">08:00–23:00</span></span><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="中华城牌楼 · The Chinatown gate at Pantjoran PIK" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfac0_N3gyHyWKkaV5roCiehAm5fPWzxAn_NjYUYNzdItV520BGJPB8rzygBEjW-59Wd7A2gay7lKzGlUTuln0LzqljE7SIesU2clh8PBOKYgIQ_a5Y8QlMI4lgBRASVBgOa16d=s4800-w800-h600"/>
@@ -414,12 +529,12 @@
 <img loading="lazy" decoding="async" alt="中华城露天座位区 · Open-air seating at Pantjoran PIK" src="https://lh3.googleusercontent.com/grass-cs/AABkmLe_vqQgRtVUs1EItufVXMzR8iPoPk93-WfCuqpj_khWtwPyHwqVQpZTnCWrJ1fLeRMWLkTQiEq7XBpZIuv9miSuEx0YnAjUK_RPmnBwk1BtIVYnZBsa8lhjwBYT5qnVh-2M1FfvbJP1sw6f=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Pantjoran%20PIK%2C%20Jakarta%20Utara%2014460" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Pantjoran%20PIK%2C%20Jakarta%20Utara%2014460" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 <div class="stop" id="d2-angke">
-<div class="pin maybe">🌿</div>
+<div class="pin maybe"></div>
 <h4><span class="cn">红树林公园 Taman Wisata Alam Angke Kapuk</span><span class="en">Angke Kapuk Mangrove Park (Taman Wisata Alam Angke Kapuk)</span></h4>
-<div class="desc"><span class="cn">⭐4.3（Google 16,505 条评价）。地址：Jl. Mualim Teko, Kamal Muara, Penjaringan, Jakarta Utara 14470。市区里少见的一大片红树林，木栈道和竹片步道穿过林子、绕着湖面，安静、绿意多，慢慢走一圈约一小时。<strong>建议上午去</strong>：中午后热，午后常下雨，下过雨步道会泥泞湿滑。<br><strong>11/15（日）开放时间：</strong>07:00–18:00<br><strong>门票：</strong>本地成人周末每人 Rp35,000，外国游客票价较高，以售票处公告为准<br><strong>离酒店：</strong>车程约 10–15 分钟</span><span class="en">⭐4.3 (16,505 Google reviews). Jl. Mualim Teko, Kamal Muara, Penjaringan, Jakarta Utara 14470. A rare stretch of mangrove forest inside the city, with wooden and bamboo boardwalks winding through the trees and around a lake — quiet and green; a slow loop takes about an hour. <strong>Go in the morning</strong>: it gets hot after midday, rain is common in the afternoon, and the paths turn muddy and slippery after rain.<br><strong>Sun 15 Nov hours:</strong> 07:00–18:00<br><strong>Admission:</strong> Rp35,000 per local adult at weekends; foreign visitors pay a higher rate — check the ticket counter<br><strong>From the hotel:</strong> about 10–15 minutes by car</span></div>
+<div class="desc"><span class="cn">4.3（Google 16,505 条评价）。地址：Jl. Mualim Teko, Kamal Muara, Penjaringan, Jakarta Utara 14470。市区里少见的一大片红树林，木栈道和竹片步道穿过林子、绕着湖面，安静、绿意多，慢慢走一圈约一小时。<strong>建议上午去</strong>：中午后热，午后常下雨，下过雨步道会泥泞湿滑。<br><strong>11/15（日）开放时间：</strong>07:00–18:00<br><strong>门票：</strong>本地成人周末每人 Rp35,000，外国游客票价较高，以售票处公告为准<br><strong>离酒店：</strong>车程约 10–15 分钟</span><span class="en">4.3 (16,505 Google reviews). Jl. Mualim Teko, Kamal Muara, Penjaringan, Jakarta Utara 14470. A rare stretch of mangrove forest inside the city, with wooden and bamboo boardwalks winding through the trees and around a lake — quiet and green; a slow loop takes about an hour. <strong>Go in the morning</strong>: it gets hot after midday, rain is common in the afternoon, and the paths turn muddy and slippery after rain.<br><strong>Sun 15 Nov hours:</strong> 07:00–18:00<br><strong>Admission:</strong> Rp35,000 per local adult at weekends; foreign visitors pay a higher rate — check the ticket counter<br><strong>From the hotel:</strong> about 10–15 minutes by car</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">07:00–18:00</span><span class="en">07:00–18:00</span></span><span class="chip ticket"><span class="cn">上午去</span><span class="en">Go in the morning</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="红树林湖面与高脚木屋 · Lake and stilt houses in the mangrove park" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeoQ7AJacSiNRYzDE6pdrF6IAxp8N5QmEX7zMoFZAUDHKma3H-bw-uFp8yIAzBwRzVwr53m-gVVC509uMPhUGSuXb0rl2maC_K5QBTC4teTJWpdPseWG0PiwzUQNHGOz-FfmkoDXYXHAPw=s4800-w800-h600"/>
@@ -429,12 +544,12 @@
 <img loading="lazy" decoding="async" alt="木平台与亭子 · Wooden deck and pavilion" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeB0ktIo6nG0ja_xwI8t5nNksPTs2UNZdzpmLIwcxqNgqeJfbXX3aeFi8FjOPX502Y_hQ30YrkbnityFQT-2nzAHq9YVSKWtHDKPYETyeEJi80GQJspkkfTOBb9g5BM8eU_-2k_=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Taman%20Wisata%20Alam%20Angke%20Kapuk%2C%20Jl.%20Mualim%20Teko%2C%20Kamal%20Muara%2C%20Jakarta%20Utara%2014470" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Taman%20Wisata%20Alam%20Angke%20Kapuk%2C%20Jl.%20Mualim%20Teko%2C%20Kamal%20Muara%2C%20Jakarta%20Utara%2014470" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 <div class="stop" id="d2-landsend">
-<div class="pin maybe">🌅</div>
+<div class="pin maybe"></div>
 <h4><span class="cn">海边步道 Land's End（PIK 2）</span><span class="en">Land's End seaside promenade (PIK 2)</span></h4>
-<div class="desc"><span class="cn">⭐4.7（Google 6,817 条评价）。地址：Jl. Yos Sudarso, Pasir Putih, Kabupaten Tangerang, Banten（PIK 2）。PIK 2 海边的一段步道：白色灯塔、椰林、草坪和海边餐厅咖啡馆，<strong>傍晚来看日落</strong>最好，11 月中雅加达日落约 17:50；吹着海风散步，饿了就在旁边的餐厅坐下。<br><strong>11/15（日）开放时间：</strong>08:00–23:00<br><strong>门票：</strong>免费<br><strong>离酒店：</strong>车程约 30–40 分钟</span><span class="en">⭐4.7 (6,817 Google reviews). Jl. Yos Sudarso, Pasir Putih, Kabupaten Tangerang, Banten (PIK 2). A seaside promenade in PIK 2 with a white lighthouse, palm trees, lawns and waterfront cafés and restaurants. <strong>Come in the late afternoon for the sunset</strong> — in mid-November the sun sets at about 17:50 in Jakarta; stroll in the sea breeze and sit down at one of the restaurants when you get hungry.<br><strong>Sun 15 Nov hours:</strong> 08:00–23:00<br><strong>Admission:</strong> free<br><strong>From the hotel:</strong> about 30–40 minutes by car</span></div>
+<div class="desc"><span class="cn">4.7（Google 6,817 条评价）。地址：Jl. Yos Sudarso, Pasir Putih, Kabupaten Tangerang, Banten（PIK 2）。PIK 2 海边的一段步道：白色灯塔、椰林、草坪和海边餐厅咖啡馆，<strong>傍晚来看日落</strong>最好，11 月中雅加达日落约 17:50；吹着海风散步，饿了就在旁边的餐厅坐下。<br><strong>11/15（日）开放时间：</strong>08:00–23:00<br><strong>门票：</strong>免费<br><strong>离酒店：</strong>车程约 30–40 分钟</span><span class="en">4.7 (6,817 Google reviews). Jl. Yos Sudarso, Pasir Putih, Kabupaten Tangerang, Banten (PIK 2). A seaside promenade in PIK 2 with a white lighthouse, palm trees, lawns and waterfront cafés and restaurants. <strong>Come in the late afternoon for the sunset</strong> — in mid-November the sun sets at about 17:50 in Jakarta; stroll in the sea breeze and sit down at one of the restaurants when you get hungry.<br><strong>Sun 15 Nov hours:</strong> 08:00–23:00<br><strong>Admission:</strong> free<br><strong>From the hotel:</strong> about 30–40 minutes by car</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">08:00–23:00</span><span class="en">08:00–23:00</span></span><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span><span class="chip ticket"><span class="cn">傍晚看日落</span><span class="en">Sunset spot</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="海边灯塔与椰林 · Lighthouse and palms at Land&#x27;s End" src="https://lh3.googleusercontent.com/grass-cs/AABkmLe2CR3Dn3YY5v-Gg3f5ld8C4j7g7EdpKNeJ-EyZXF0VtOjXUYxaY9_V0iy5QfGqOsM0lYF85wQNhVjfP2pzo5ySpOm0jm3WgEhpQdDgLx3qDObClpIxyfhMjmi9QnW6wHt6M_oT=s4800-w800-h600"/>
@@ -443,17 +558,16 @@
 <img loading="lazy" decoding="async" alt="椰林旁的座位 · Seating beside the palm trees" src="https://lh3.googleusercontent.com/grass-cs/AABkmLf2LM23wFEMOXFQDJABaYFsBQ02f8jksm8Nwqi_roYiCk9Wq3JsHJLrjDCcvETr7u6aqt1vMMDOvTKPpyt7eGxv3mU1CotbrCYWupWBF50HsUuREO1zQJyc0Pl3JvB0vo_9FjFRTAVa1SAE=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Land%27s%20End%20PIK%202%2C%20Jl.%20Yos%20Sudarso%2C%20Pasir%20Putih%2C%20Kabupaten%20Tangerang%2C%20Banten" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Land%27s%20End%20PIK%202%2C%20Jl.%20Yos%20Sudarso%2C%20Pasir%20Putih%2C%20Kabupaten%20Tangerang%2C%20Banten" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 
 <div class="grp"><span class="cn">市区（单程 40–100 分钟，塞车风险高）</span><span class="en">Central Jakarta (40–100 min each way, heavy traffic risk)</span></div>
-<div class="note amber" style="margin:0 0 4px">
-<span class="cn">🚫 <strong>周日早上 05:30–10:00，苏迪曼—坦林大道（Sudirman–Thamrin）是无车日</strong>，Grand Indonesia、Plaza Indonesia、SCBD 都在这条路上，车开不进去。去市区最好 10 点后出发。</span><span class="en">🚫 <strong>On Sunday mornings from 05:30 to 10:00, the Sudirman–Thamrin avenue is car-free.</strong> Grand Indonesia, Plaza Indonesia and SCBD are all on this road and cars cannot get in, so head into the city after 10:00.</span>
+<div class="note amber" style="margin:0 0 4px"><span class="cn"><strong>周日早上 05:30–10:00，苏迪曼—坦林大道（Sudirman–Thamrin）是无车日</strong>，Grand Indonesia、Plaza Indonesia、SCBD 都在这条路上，车开不进去。去市区最好 10 点后出发。</span><span class="en"><strong>On Sunday mornings from 05:30 to 10:00, the Sudirman–Thamrin avenue is car-free.</strong> Grand Indonesia, Plaza Indonesia and SCBD are all on this road and cars cannot get in, so head into the city after 10:00.</span>
 </div>
 <div class="stop" id="d2-monas">
-<div class="pin maybe">🗼</div>
+<div class="pin maybe"></div>
 <h4><span class="cn">民族独立纪念碑 Monas</span><span class="en">National Monument (Monas)</span></h4>
-<div class="desc"><span class="cn">⭐4.6（Google 122,639 条评价）。地址：Jl. Lapangan Monas, Gambir, Jakarta Pusat 10110（独立广场 Merdeka Square）。雅加达的地标，132 米高的白色方尖碑，顶端是金色火焰。可以只在广场上看碑、拍照；想上去的话，碑座里有历史场景模型展厅，坐电梯可到顶上的观景台俯瞰市区（登顶每天限量；周日 10 点后进市区，到了先去排登顶）。<strong>周一闭馆，周日开放。</strong><br><strong>11/15（日）开放时间：</strong>纪念碑 08:00–22:00；广场早上 06:00 起<br><strong>门票：</strong>广场免费；碑座展厅 Rp8,000、登顶 Rp24,000（成人）。售票只收 JakCard 储值卡，现场柜台可买卡<br><strong>离酒店：</strong>车程约 45–70 分钟</span><span class="en">⭐4.6 (122,639 Google reviews). Jl. Lapangan Monas, Gambir, Jakarta Pusat 10110 (Merdeka Square). Jakarta's landmark: a 132-metre white obelisk topped with a golden flame. You can simply see it and take photos from the square; if you want to go in, the base holds a hall of historical dioramas and a lift goes up to a viewing deck over the city (the summit has a daily cap; on Sunday head in after 10:00 and queue for the summit first). <strong>Closed on Mondays, open on Sundays.</strong><br><strong>Sun 15 Nov hours:</strong> monument 08:00–22:00; the square from 06:00<br><strong>Admission:</strong> the square is free; base exhibition Rp8,000, summit Rp24,000 (adults). Tickets are sold only on a JakCard stored-value card, which you can buy at the counter<br><strong>From the hotel:</strong> about 45–70 minutes by car</span></div>
+<div class="desc"><span class="cn">4.6（Google 122,639 条评价）。地址：Jl. Lapangan Monas, Gambir, Jakarta Pusat 10110（独立广场 Merdeka Square）。雅加达的地标，132 米高的白色方尖碑，顶端是金色火焰。可以只在广场上看碑、拍照；想上去的话，碑座里有历史场景模型展厅，坐电梯可到顶上的观景台俯瞰市区（登顶每天限量；周日 10 点后进市区，到了先去排登顶）。<strong>周一闭馆，周日开放。</strong><br><strong>11/15（日）开放时间：</strong>纪念碑 08:00–22:00；广场早上 06:00 起<br><strong>门票：</strong>广场免费；碑座展厅 Rp8,000、登顶 Rp24,000（成人）。售票只收 JakCard 储值卡，现场柜台可买卡<br><strong>离酒店：</strong>车程约 45–70 分钟</span><span class="en">4.6 (122,639 Google reviews). Jl. Lapangan Monas, Gambir, Jakarta Pusat 10110 (Merdeka Square). Jakarta's landmark: a 132-metre white obelisk topped with a golden flame. You can simply see it and take photos from the square; if you want to go in, the base holds a hall of historical dioramas and a lift goes up to a viewing deck over the city (the summit has a daily cap; on Sunday head in after 10:00 and queue for the summit first). <strong>Closed on Mondays, open on Sundays.</strong><br><strong>Sun 15 Nov hours:</strong> monument 08:00–22:00; the square from 06:00<br><strong>Admission:</strong> the square is free; base exhibition Rp8,000, summit Rp24,000 (adults). Tickets are sold only on a JakCard stored-value card, which you can buy at the counter<br><strong>From the hotel:</strong> about 45–70 minutes by car</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">08:00–22:00</span><span class="en">08:00–22:00</span></span><span class="chip ticket"><span class="cn">登顶 Rp24,000</span><span class="en">Summit Rp24,000</span></span><span class="chip verify"><span class="cn">周一闭馆</span><span class="en">Closed Mondays</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="民族独立纪念碑 · The National Monument (Monas)" src="https://lh3.googleusercontent.com/grass-cs/AABkmLe7bYw82m5GpBieYKXKkb6pxDtVpYZg4BFarpqnPdoiOkBx9siOGyoD-O45DonU7_ntn2yM6RqF0e7tWhhnT904E7ApKh27WKm3Y-lWH1ADFmGkp4O37p1XvTEal1YtR74yPulRlA=s4800-w800-h600"/>
@@ -463,12 +577,12 @@
 <img loading="lazy" decoding="async" alt="碑座内的历史场景模型 · Historical diorama inside the monument base" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdoH_R9qj_4bYZZwpjxEWjcSLqNLKk8I4FYPk3iDq8Cko96WjoZ2rqZpMNytIPzJzCH1Xh9xF5HERMqs6Miw8QLJDX3kgHCKproPBwU0vny668WR--ZycaB08yp6w4s8iklT-Ze0w=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Monumen%20Nasional%2C%20Jl.%20Lapangan%20Monas%2C%20Gambir%2C%20Jakarta%20Pusat%2010110" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Monumen%20Nasional%2C%20Jl.%20Lapangan%20Monas%2C%20Gambir%2C%20Jakarta%20Pusat%2010110" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 <div class="stop" id="d2-kotatua">
-<div class="pin maybe">🏛</div>
+<div class="pin maybe"></div>
 <h4><span class="cn">老城区 Kota Tua / 法塔希拉广场 Taman Fatahillah</span><span class="en">Old Town (Kota Tua) / Fatahillah Square</span></h4>
-<div class="desc"><span class="cn">⭐4.6（Google 29,983 条评价）。地址：Jl. Lada Dalam No.7, Pinangsia, Taman Sari, Jakarta Barat 11110。荷兰殖民时期留下的老城中心，大广场四周是白墙红瓦的老建筑，<strong>只逛广场和建筑、不进博物馆</strong>，半小时到一小时就够。周日人多、很热闹，广场上没有遮阴，带伞和水。<br><strong>11/15（日）开放时间：</strong>广场全天开放<br><strong>门票：</strong>广场免费<br><strong>离酒店：</strong>车程约 40–60 分钟（市区几处里离 PIK 最近）</span><span class="en">⭐4.6 (29,983 Google reviews). Jl. Lada Dalam No.7, Pinangsia, Taman Sari, Jakarta Barat 11110. The heart of the Dutch colonial old town: a big square ringed by white-walled, red-roofed old buildings. <strong>Just walk the square and look at the buildings — no need to go into the museums</strong>; half an hour to an hour is enough. It is busy and lively on Sundays, and the square has no shade, so bring an umbrella and water.<br><strong>Sun 15 Nov hours:</strong> the square is open all day<br><strong>Admission:</strong> the square is free<br><strong>From the hotel:</strong> about 40–60 minutes by car (the closest of the city spots to PIK)</span></div>
+<div class="desc"><span class="cn">4.6（Google 29,983 条评价）。地址：Jl. Lada Dalam No.7, Pinangsia, Taman Sari, Jakarta Barat 11110。荷兰殖民时期留下的老城中心，大广场四周是白墙红瓦的老建筑，<strong>只逛广场和建筑、不进博物馆</strong>，半小时到一小时就够。周日人多、很热闹，广场上没有遮阴，带伞和水。<br><strong>11/15（日）开放时间：</strong>广场全天开放<br><strong>门票：</strong>广场免费<br><strong>离酒店：</strong>车程约 40–60 分钟（市区几处里离 PIK 最近）</span><span class="en">4.6 (29,983 Google reviews). Jl. Lada Dalam No.7, Pinangsia, Taman Sari, Jakarta Barat 11110. The heart of the Dutch colonial old town: a big square ringed by white-walled, red-roofed old buildings. <strong>Just walk the square and look at the buildings — no need to go into the museums</strong>; half an hour to an hour is enough. It is busy and lively on Sundays, and the square has no shade, so bring an umbrella and water.<br><strong>Sun 15 Nov hours:</strong> the square is open all day<br><strong>Admission:</strong> the square is free<br><strong>From the hotel:</strong> about 40–60 minutes by car (the closest of the city spots to PIK)</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">全天开放</span><span class="en">Open all day</span></span><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="法塔希拉广场旁的殖民时期建筑 · Colonial buildings on Fatahillah Square" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcsGodGIkhNAS2xO3SMNFXIVaSoJ7a58ZhJY2JQlVp2zSUu4uSLTGXQrXiQ5gh5wWU1WkANdzje_YrPD5SoTSpCYh2oNJ2MXEr-RX3j2fE0VbN4D34Eor-T5HnBz-90rSUgEmTZ=s4800-w800-h600"/>
@@ -477,12 +591,12 @@
 <img loading="lazy" decoding="async" alt="广场另一角 · Another view of the square" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QnjzPdkh8B93bl-6AQNSkiTMPhplIIHmkbJOugMelSDz6BmUN5k5jhHwCrhcdav6yC5ahiyXvjmz5sPdkxMHfK83o41zpe6Goi_2TjZUgSQmYDY72KUsHmyYarS1sDJIjzwf9F=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Taman%20Fatahillah%2C%20Jl.%20Lada%20Dalam%20No.7%2C%20Pinangsia%2C%20Taman%20Sari%2C%20Jakarta%20Barat%2011110" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Taman%20Fatahillah%2C%20Jl.%20Lada%20Dalam%20No.7%2C%20Pinangsia%2C%20Taman%20Sari%2C%20Jakarta%20Barat%2011110" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 <div class="stop" id="d2-gi">
-<div class="pin maybe">🛍</div>
+<div class="pin maybe"></div>
 <h4><span class="cn">Grand Indonesia 商场</span><span class="en">Grand Indonesia</span></h4>
-<div class="desc"><span class="cn">⭐4.7（Google 103,908 条评价）。地址：Jl. M.H. Thamrin No.1, Menteng, Jakarta Pusat 10310。雅加达最大的商场之一，分东西两座，国际品牌、百货、超市、电影院、餐厅都有，逛一下午也逛不完。就在印尼酒店（HI）圆环旁边，<strong>跟 Plaza Indonesia 隔街相望，可以一起逛</strong>。全室内，下雨天首选。<br><strong>11/15（日）营业时间：</strong>10:00–22:00<br><strong>门票：</strong>免费<br><strong>离酒店：</strong>车程约 50–80 分钟</span><span class="en">⭐4.7 (103,908 Google reviews). Jl. M.H. Thamrin No.1, Menteng, Jakarta Pusat 10310. One of Jakarta's biggest malls, split into East and West wings, with international brands, a department store, supermarket, cinema and plenty of restaurants. It sits by the Hotel Indonesia roundabout, <strong>directly across the street from Plaza Indonesia, so you can do both together</strong>. Fully indoors — the first choice on a rainy day.<br><strong>Sun 15 Nov hours:</strong> 10:00–22:00<br><strong>Admission:</strong> free<br><strong>From the hotel:</strong> about 50–80 minutes by car</span></div>
+<div class="desc"><span class="cn">4.7（Google 103,908 条评价）。地址：Jl. M.H. Thamrin No.1, Menteng, Jakarta Pusat 10310。雅加达最大的商场之一，分东西两座，国际品牌、百货、超市、电影院、餐厅都有，逛一下午也逛不完。就在印尼酒店（HI）圆环旁边，<strong>跟 Plaza Indonesia 隔街相望，可以一起逛</strong>。全室内，下雨天首选。<br><strong>11/15（日）营业时间：</strong>10:00–22:00<br><strong>门票：</strong>免费<br><strong>离酒店：</strong>车程约 50–80 分钟</span><span class="en">4.7 (103,908 Google reviews). Jl. M.H. Thamrin No.1, Menteng, Jakarta Pusat 10310. One of Jakarta's biggest malls, split into East and West wings, with international brands, a department store, supermarket, cinema and plenty of restaurants. It sits by the Hotel Indonesia roundabout, <strong>directly across the street from Plaza Indonesia, so you can do both together</strong>. Fully indoors — the first choice on a rainy day.<br><strong>Sun 15 Nov hours:</strong> 10:00–22:00<br><strong>Admission:</strong> free<br><strong>From the hotel:</strong> about 50–80 minutes by car</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">10:00–22:00</span><span class="en">10:00–22:00</span></span><span class="chip ok"><span class="cn">室内</span><span class="en">Indoors</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="Grand Indonesia 中庭 · Grand Indonesia atrium" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9T4uzq908wlIavf9NfTTlvHvVhcvnfBow4tSNFQsWnf56Z1OZT628IBhVAp_Ry_Jny_fJyvzE40aFniozkVJel-XZfVkwdRMZM-rHe5hIM5-KXUk1kYCd9Ci2g0wR0EB6sckrrZllVynlM=s4800-w800-h600"/>
@@ -491,12 +605,12 @@
 <img loading="lazy" decoding="async" alt="商场店铺 · A shop inside the mall" src="https://lh3.googleusercontent.com/grass-cs/AABkmLe1_PbhuYFt_4lYJc8SbiWI-33ei8fDCeelkK-4d0BhgxitBhXjauo-WxfA2o4OiRf3fViSMnsJPFizwp8Qnefyb9Jja3sCDKNpqsCa1Umb6_c5__PIzl_bUE9PrleviYq0A_QGGJcx4-hE=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Grand%20Indonesia%2C%20Jl.%20M.H.%20Thamrin%20No.1%2C%20Menteng%2C%20Jakarta%20Pusat%2010310" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Grand%20Indonesia%2C%20Jl.%20M.H.%20Thamrin%20No.1%2C%20Menteng%2C%20Jakarta%20Pusat%2010310" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 <div class="stop" id="d2-pi">
-<div class="pin maybe">🛍</div>
+<div class="pin maybe"></div>
 <h4><span class="cn">Plaza Indonesia 商场</span><span class="en">Plaza Indonesia</span></h4>
-<div class="desc"><span class="cn">⭐4.7（Google 52,143 条评价）。地址：Jl. M.H. Thamrin No.28-30, Menteng, Jakarta Pusat 10350。偏高档的商场，名牌精品店集中，人比 Grand Indonesia 少、逛起来清静。<strong>跟 Grand Indonesia 隔街，可以一起逛。</strong>楼里 4 楼有 Taste Paradise（见<a href="#food-taste">餐厅列表</a>）。全室内。<br><strong>11/15（日）营业时间：</strong>10:00–22:00<br><strong>门票：</strong>免费<br><strong>离酒店：</strong>车程约 50–80 分钟</span><span class="en">⭐4.7 (52,143 Google reviews). Jl. M.H. Thamrin No.28-30, Menteng, Jakarta Pusat 10350. A more upmarket mall full of luxury boutiques, quieter than Grand Indonesia. <strong>It is just across the street from Grand Indonesia, so you can do both together.</strong> Taste Paradise is on level 4 (see the <a href="#food-taste">restaurant list</a>). Fully indoors.<br><strong>Sun 15 Nov hours:</strong> 10:00–22:00<br><strong>Admission:</strong> free<br><strong>From the hotel:</strong> about 50–80 minutes by car</span></div>
+<div class="desc"><span class="cn">4.7（Google 52,143 条评价）。地址：Jl. M.H. Thamrin No.28-30, Menteng, Jakarta Pusat 10350。偏高档的商场，名牌精品店集中，人比 Grand Indonesia 少、逛起来清静。<strong>跟 Grand Indonesia 隔街，可以一起逛。</strong>楼里 4 楼有 Taste Paradise（见<a href="#food-taste">餐厅列表</a>）。全室内。<br><strong>11/15（日）营业时间：</strong>10:00–22:00<br><strong>门票：</strong>免费<br><strong>离酒店：</strong>车程约 50–80 分钟</span><span class="en">4.7 (52,143 Google reviews). Jl. M.H. Thamrin No.28-30, Menteng, Jakarta Pusat 10350. A more upmarket mall full of luxury boutiques, quieter than Grand Indonesia. <strong>It is just across the street from Grand Indonesia, so you can do both together.</strong> Taste Paradise is on level 4 (see the <a href="#food-taste">restaurant list</a>). Fully indoors.<br><strong>Sun 15 Nov hours:</strong> 10:00–22:00<br><strong>Admission:</strong> free<br><strong>From the hotel:</strong> about 50–80 minutes by car</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">10:00–22:00</span><span class="en">10:00–22:00</span></span><span class="chip ok"><span class="cn">室内</span><span class="en">Indoors</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="Plaza Indonesia 名牌店 · Luxury boutique at Plaza Indonesia" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeSSaMMI9Yh0f1rLKA1b3kdH0ySLHXrDDTGym-PGmJDBEH35uxRZezdlAgCGZL8EKZHawRWF5KN33rY9STnRbJZuHtqeUsELGhOpXX3wl5SOYCox2MZZARDeA9meDz90jDThbcmy0Lrbamo=s4800-w800-h600"/>
@@ -505,12 +619,12 @@
 <img loading="lazy" decoding="async" alt="傍晚的商场一带 · The Plaza Indonesia area at dusk" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfWl-heE4LSnliiDxp8TFDIVUBmRXORnlWm4ARE0sUyGsGnDiMRAnayggcwu62YgrixLHsYsIGNmzVZOatr1Z0dtBt98DZX-tmbFtWzmVCYddKvQQAossBITkvtHVJ5IiaCHIFl=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Plaza%20Indonesia%2C%20Jl.%20M.H.%20Thamrin%20No.28-30%2C%20Menteng%2C%20Jakarta%20Pusat%2010350" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Plaza%20Indonesia%2C%20Jl.%20M.H.%20Thamrin%20No.28-30%2C%20Menteng%2C%20Jakarta%20Pusat%2010350" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 <div class="stop" id="d2-scbd">
-<div class="pin maybe">🛍</div>
+<div class="pin maybe"></div>
 <h4><span class="cn">SCBD / Pacific Place 商场</span><span class="en">SCBD / Pacific Place</span></h4>
-<div class="desc"><span class="cn">⭐4.7（Google 51,267 条评价）。地址：Jl. Jend. Sudirman Kav 52-53, SCBD, Jakarta Selatan 12190。SCBD 是雅加达的中央商务区，高楼林立；Pacific Place 是区内的高档商场，挑高中庭很气派，名牌、餐厅、超市都有。楼里有鼎泰丰（见<a href="#food-dtf">餐厅列表</a>），唐阁所在的 The Langham 酒店也在附近。全室内。<br><strong>11/15（日）营业时间：</strong>10:00–22:00<br><strong>门票：</strong>免费<br><strong>离酒店：</strong>车程约 60–100 分钟（市区几处里最远）</span><span class="en">⭐4.7 (51,267 Google reviews). Jl. Jend. Sudirman Kav 52-53, SCBD, Jakarta Selatan 12190. SCBD is Jakarta's central business district, packed with towers; Pacific Place is its upmarket mall, with a grand high-ceilinged atrium, luxury brands, restaurants and a supermarket. Din Tai Fung is inside (see the <a href="#food-dtf">restaurant list</a>), and The Langham, home of T'ang Court, is nearby. Fully indoors.<br><strong>Sun 15 Nov hours:</strong> 10:00–22:00<br><strong>Admission:</strong> free<br><strong>From the hotel:</strong> about 60–100 minutes by car (the farthest of the city spots)</span></div>
+<div class="desc"><span class="cn">4.7（Google 51,267 条评价）。地址：Jl. Jend. Sudirman Kav 52-53, SCBD, Jakarta Selatan 12190。SCBD 是雅加达的中央商务区，高楼林立；Pacific Place 是区内的高档商场，挑高中庭很气派，名牌、餐厅、超市都有。楼里有鼎泰丰（见<a href="#food-dtf">餐厅列表</a>），唐阁所在的 The Langham 酒店也在附近。全室内。<br><strong>11/15（日）营业时间：</strong>10:00–22:00<br><strong>门票：</strong>免费<br><strong>离酒店：</strong>车程约 60–100 分钟（市区几处里最远）</span><span class="en">4.7 (51,267 Google reviews). Jl. Jend. Sudirman Kav 52-53, SCBD, Jakarta Selatan 12190. SCBD is Jakarta's central business district, packed with towers; Pacific Place is its upmarket mall, with a grand high-ceilinged atrium, luxury brands, restaurants and a supermarket. Din Tai Fung is inside (see the <a href="#food-dtf">restaurant list</a>), and The Langham, home of T'ang Court, is nearby. Fully indoors.<br><strong>Sun 15 Nov hours:</strong> 10:00–22:00<br><strong>Admission:</strong> free<br><strong>From the hotel:</strong> about 60–100 minutes by car (the farthest of the city spots)</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">10:00–22:00</span><span class="en">10:00–22:00</span></span><span class="chip ok"><span class="cn">室内</span><span class="en">Indoors</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="Pacific Place 中庭 · Pacific Place atrium" src="https://lh3.googleusercontent.com/grass-cs/AABkmLckUevtz3hVwjZbNdoCp8YorQ8m6y8I2WNVSNIZsLaS2CDtK40pauFKarsQ5OmdCwCmRs7-OwGOB4d8kCehqxKWE76wsdqD5EUOg7fQHxaT55WkhepWS-QYkb6EGN9lbVES2I80-VDX0uAp=s4800-w800-h600"/>
@@ -520,10 +634,10 @@
 <img loading="lazy" decoding="async" alt="商场里的面包咖啡店 · Bakery café in the mall" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfUD6T2OFiKZAJ0aTDGap1R1qAWyiwRQ0dxh0N-xfu3EMdnwJbDQZy7F55BeT-Y4EbCjDTPeokzpxMOf9Rot-xvr77-p0jVDjI6bQBvxS-8FbdviLsKlSsU1Q_sULJtquVsD4D46kKeW66a=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Pacific%20Place%20Mall%2C%20Jl.%20Jend.%20Sudirman%20Kav%2052-53%2C%20SCBD%2C%20Jakarta%20Selatan%2012190" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Pacific%20Place%20Mall%2C%20Jl.%20Jend.%20Sudirman%20Kav%2052-53%2C%20SCBD%2C%20Jakarta%20Selatan%2012190" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
-<div class="dayfoot"><span class="ftlb"><span class="cn">🍽 吃饭</span><span class="en">🍽 Meals</span></span><span class="tx"><span class="cn">从<a href="#food">餐厅列表</a>挑：留在 PIK 就看「PIK 酒店附近」那组；去市区就看「市区」那组，各家都写了在哪个商场或酒店里。</span><span class="en">Pick from the <a href="#food">restaurant list</a>: stay in PIK and use the "Near the hotel in PIK" group; heading into the city, use the "Central Jakarta" group — each card says which mall or hotel it is in.</span></span></div>
+<div class="dayfoot"><span class="ftlb"><span class="cn">吃饭</span><span class="en">Meals</span></span><span class="tx"><span class="cn">从<a href="#food">餐厅列表</a>挑：留在 PIK 就看「PIK 酒店附近」那组；去市区就看「市区」那组，各家都写了在哪个商场或酒店里。</span><span class="en">Pick from the <a href="#food">restaurant list</a>: stay in PIK and use the "Near the hotel in PIK" group; heading into the city, use the "Central Jakarta" group — each card says which mall or hotel it is in.</span></span></div>
 </div>
 
 <!-- D03 -->
@@ -531,22 +645,22 @@
 <div class="dh">
 <div class="dn">03<small>DAY</small></div>
 <div class="dt"><h3><span class="cn">退房 · 经新加坡转机回家</span><span class="en">Check-out · fly home via Singapore</span><span class="today-tag"><span class="cn">今天</span><span class="en">TODAY</span></span></h3><div class="dd">16 Nov <span class="cn">(一)</span><span class="en">(Mon)</span></div></div>
-<div class="badge">✈️ <span class="cn">回程</span><span class="en">Going home</span></div>
+<div class="badge"><span class="cn">回程</span><span class="en">Going home</span></div>
 </div>
 <div class="db">
 <div class="wxbox">
 <div class="wx" data-wx="2026-11-16"></div>
-<div class="rainplan"><span class="cn">☔ 雨天备案：今天只有退房 → 坐车去机场，不用淋雨；下大雨时路上更慢，再提早一点出发。</span><span class="en">☔ Rain plan: Today is just check-out → car to the airport, so you stay dry; heavy rain makes the roads even slower, so leave a little earlier still.</span></div>
+<div class="rainplan"><span class="cn">雨天备案：今天只有退房 → 坐车去机场，不用淋雨；下大雨时路上更慢，再提早一点出发。</span><span class="en">Rain plan: Today is just check-out → car to the airport, so you stay dry; heavy rain makes the roads even slower, so leave a little earlier still.</span></div>
 </div>
 
 <div class="tl">
-<div class="ev"><div class="t"><span class="cn">早上</span><span class="en">Morning</span></div><h4><span class="cn">🍳 早餐 · 收行李 · 退房</span><span class="en">🍳 Breakfast · pack · check out</span></h4><div class="s"><span class="cn">在酒店吃早餐（套房含早餐，另外两位想吃的话在餐厅付费），吃完收行李退房。</span><span class="en">Breakfast at the hotel (included for the suite; the other two pay at the restaurant if they want it), then pack and check out.</span></div></div>
-<div class="ev"><div class="t"><span class="cn">建议 08:30 前</span><span class="en">Suggested: by 08:30</span></div><h4><span class="cn">🚘 离开酒店 → 雅加达 T3</span><span class="en">🚘 Leave the hotel → Jakarta T3</span></h4><div class="s"><span class="cn">国际航班建议起飞前约 2 小时到机场；平时车程约 15–20 分钟，但周一早上是上班高峰，所以<strong>建议 08:30 前离开酒店</strong>。</span><span class="en">For international flights it is best to reach the airport about 2 hours before departure; the drive is normally 15–20 minutes, but Monday morning is rush hour, so <strong>leave the hotel by 08:30</strong>.</span></div></div>
-<div class="ev hot"><div class="t">11:10</div><h4><span class="cn">✈️ SQ957 雅加达 T3 起飞</span><span class="en">✈️ SQ957 departs Jakarta T3</span></h4><div class="s"><span class="cn">三人同一班，飞新加坡转机。</span><span class="en">All three on the same flight to Singapore to connect.</span></div></div>
-<div class="ev"><div class="t">13:55</div><h4><span class="cn">🛬 抵达樟宜 · 转机</span><span class="en">🛬 Land at Changi · connect</span></h4><div class="s"><span class="cn">新加坡时间（比雅加达快 1 小时）。行李直挂，跟着「Transfer／转机」指示走，不用出境。</span><span class="en">Singapore time (1 hour ahead of Jakarta). Bags are checked through; follow the "Transfer" signs — no immigration.</span></div></div>
-<div class="ev hot"><div class="t">15:20</div><h4><span class="cn">✈️ SQ138 往槟城（Yap Lian Khoon）</span><span class="en">✈️ SQ138 to Penang (Yap Lian Khoon)</span></h4><div class="s"><span class="cn">转机 1 小时 25 分钟，下机直接去登机口。16:55 抵达槟城。</span><span class="en">1 h 25 min to connect — go straight to the gate. Lands in Penang at 16:55.</span></div></div>
-<div class="ev hot"><div class="t">17:30</div><h4><span class="cn">✈️ SQ158 往金边（Tan Chin Hooi、Hew Chern Yang）</span><span class="en">✈️ SQ158 to Phnom Penh (Tan Chin Hooi, Hew Chern Yang)</span></h4><div class="s"><span class="cn">18:30 抵达金边 Techo 国际机场（金边时间）。</span><span class="en">Lands at Phnom Penh Techo International Airport at 18:30 (Phnom Penh time).</span></div></div>
-<div class="ev fin"><div class="t"><span class="cn">晚上</span><span class="en">Evening</span></div><h4><span class="cn">🏠 到家</span><span class="en">🏠 Home</span></h4><div class="s"><span class="cn">取行李回家。一路平安！</span><span class="en">Collect your bags and head home. Safe travels!</span></div></div>
+<div class="ev"><div class="t"><span class="cn">早上</span><span class="en">Morning</span></div><h4><span class="cn">早餐 · 收行李 · 退房</span><span class="en">Breakfast · pack · check out</span></h4><div class="s"><span class="cn">在酒店吃早餐（套房含早餐，另外两位想吃的话在餐厅付费），吃完收行李退房。</span><span class="en">Breakfast at the hotel (included for the suite; the other two pay at the restaurant if they want it), then pack and check out.</span></div></div>
+<div class="ev"><div class="t"><span class="cn">建议 08:30 前</span><span class="en">Suggested: by 08:30</span></div><h4><span class="cn">离开酒店 → 雅加达 T3</span><span class="en">Leave the hotel → Jakarta T3</span></h4><div class="s"><span class="cn">国际航班建议起飞前约 2 小时到机场；平时车程约 15–20 分钟，但周一早上是上班高峰，所以<strong>建议 08:30 前离开酒店</strong>。</span><span class="en">For international flights it is best to reach the airport about 2 hours before departure; the drive is normally 15–20 minutes, but Monday morning is rush hour, so <strong>leave the hotel by 08:30</strong>.</span></div></div>
+<div class="ev hot"><div class="t">11:10</div><h4><span class="cn">SQ957 雅加达 T3 起飞</span><span class="en">SQ957 departs Jakarta T3</span></h4><div class="s"><span class="cn">三人同一班，飞新加坡转机。</span><span class="en">All three on the same flight to Singapore to connect.</span></div></div>
+<div class="ev"><div class="t">13:55</div><h4><span class="cn">抵达樟宜 · 转机</span><span class="en">Land at Changi · connect</span></h4><div class="s"><span class="cn">新加坡时间（比雅加达快 1 小时）。行李直挂，跟着「Transfer／转机」指示走，不用出境。</span><span class="en">Singapore time (1 hour ahead of Jakarta). Bags are checked through; follow the "Transfer" signs — no immigration.</span></div></div>
+<div class="ev hot"><div class="t">15:20</div><h4><span class="cn">SQ138 往槟城（Yap Lian Khoon）</span><span class="en">SQ138 to Penang (Yap Lian Khoon)</span></h4><div class="s"><span class="cn">转机 1 小时 25 分钟，下机直接去登机口。16:55 抵达槟城。</span><span class="en">1 h 25 min to connect — go straight to the gate. Lands in Penang at 16:55.</span></div></div>
+<div class="ev hot"><div class="t">17:30</div><h4><span class="cn">SQ158 往金边（Tan Chin Hooi、Hew Chern Yang）</span><span class="en">SQ158 to Phnom Penh (Tan Chin Hooi, Hew Chern Yang)</span></h4><div class="s"><span class="cn">18:30 抵达金边 Techo 国际机场（金边时间）。</span><span class="en">Lands at Phnom Penh Techo International Airport at 18:30 (Phnom Penh time).</span></div></div>
+<div class="ev fin"><div class="t"><span class="cn">晚上</span><span class="en">Evening</span></div><h4><span class="cn">到家</span><span class="en">Home</span></h4><div class="s"><span class="cn">取行李回家。一路平安！</span><span class="en">Collect your bags and head home. Safe travels!</span></div></div>
 </div>
 </div>
 </div>
@@ -556,16 +670,15 @@
 <!-- ===== RESTAURANTS ===== -->
 <section id="food">
 <div class="sec-head"><span class="no">04</span><h2><span class="cn">餐厅</span><span class="en">Restaurants</span></h2><span class="rule"></span></div>
-<div class="note amber">
-<span class="cn">餐厅不分午餐、晚餐，按区域排：PIK 酒店附近 → 市区（坦林路 Thamrin、中央商务区 SCBD、Monas 北边的 Pecenongan 一带）。人在哪一区就从那一组挑。评分都是 Google 的数字。</span><span class="en">Restaurants are not split into lunch and dinner; they are grouped by area — near the hotel in PIK → Central Jakarta (Thamrin, SCBD and Pecenongan). Pick from the group for wherever you are. Ratings are Google's.</span>
+<div class="note amber"><span class="cn">餐厅不分午餐、晚餐，按区域排：PIK 酒店附近 → 市区（坦林路 Thamrin、中央商务区 SCBD、Monas 北边的 Pecenongan 一带）。人在哪一区就从那一组挑。评分都是 Google 的数字。</span><span class="en">Restaurants are not split into lunch and dinner; they are grouped by area — near the hotel in PIK → Central Jakarta (Thamrin, SCBD and Pecenongan). Pick from the group for wherever you are. Ratings are Google's.</span>
 </div>
 
 <div class="grp"><span class="cn">PIK 酒店附近（4 家）</span><span class="en">Near the hotel in PIK (4)</span></div>
 <div class="evt" id="food-maystar">
-<div class="eh"><span class="et"><span class="cn">📍PIK Avenue · 🥢 粤菜 · 海鲜点心</span><span class="en">📍PIK Avenue · 🥢 Cantonese · seafood & dim sum</span></span><span class="ed">⭐4.6</span></div>
+<div class="eh"><span class="et"><span class="cn">PIK Avenue ·  粤菜 · 海鲜点心</span><span class="en">PIK Avenue ·  Cantonese · seafood & dim sum</span></span><span class="ed">4.6</span></div>
 <div class="eb">
 <h3><span class="cn">May Star（PIK Avenue）</span><span class="en">May Star PIK Avenue</span></h3>
-<div class="desc"><span class="cn">⭐4.6（Google 818 条评价）。地址：Mall PIK Avenue 1 楼, Jl. Pantai Indah Kapuk Boulevard, Kamal Muara, Jakarta Utara 14470。就在酒店楼下的粤菜馆，主打点心和海鲜：虾饺、烧卖、煎萝卜糕这类茶楼点心齐全，海鲜可以清蒸或做酱汁。有包厢。<br><strong>11/14–11/16（六至一）：</strong>10:00–22:00<br><strong>订位：</strong>周末饭点建议先订，电话 +62 21 2251 2292<br><strong>距酒店：</strong>同一栋楼</span><span class="en">⭐4.6 (818 Google reviews). Mall PIK Avenue, level 1, Jl. Pantai Indah Kapuk Boulevard, Kamal Muara, Jakarta Utara 14470. A Cantonese restaurant right below the hotel, focused on dim sum and seafood: prawn dumplings, siu mai, pan-fried turnip cake and the other teahouse classics, plus seafood steamed or in sauce. Private rooms available.<br><strong>Sat 14 – Mon 16 Nov:</strong> 10:00–22:00<br><strong>Booking:</strong> book ahead for weekend mealtimes, tel. +62 21 2251 2292<br><strong>From the hotel:</strong> same building</span></div>
+<div class="desc"><span class="cn">4.6（Google 818 条评价）。地址：Mall PIK Avenue 1 楼, Jl. Pantai Indah Kapuk Boulevard, Kamal Muara, Jakarta Utara 14470。就在酒店楼下的粤菜馆，主打点心和海鲜：虾饺、烧卖、煎萝卜糕这类茶楼点心齐全，海鲜可以清蒸或做酱汁。有包厢。<br><strong>11/14–11/16（六至一）：</strong>10:00–22:00<br><strong>订位：</strong>周末饭点建议先订，电话 +62 21 2251 2292<br><strong>距酒店：</strong>同一栋楼</span><span class="en">4.6 (818 Google reviews). Mall PIK Avenue, level 1, Jl. Pantai Indah Kapuk Boulevard, Kamal Muara, Jakarta Utara 14470. A Cantonese restaurant right below the hotel, focused on dim sum and seafood: prawn dumplings, siu mai, pan-fried turnip cake and the other teahouse classics, plus seafood steamed or in sauce. Private rooms available.<br><strong>Sat 14 – Mon 16 Nov:</strong> 10:00–22:00<br><strong>Booking:</strong> book ahead for weekend mealtimes, tel. +62 21 2251 2292<br><strong>From the hotel:</strong> same building</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">10:00–22:00</span><span class="en">10:00–22:00</span></span><span class="chip book"><span class="cn">周末建议订位</span><span class="en">Book for weekends</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="May Star 包厢 · May Star private room" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcNVR3cO0mNcC-anKAEo2fzO3VEgMk8Bnl5guvQjjX-ilwS2wDzNEEFPAevUlBpbYMxv2c_IU8_XWreazr3RDk33841MtGBVoh_23vFoMNM94unolm26fF3xuOdMPebHSH6p4JtR_mDYQdx=s4800-w800-h600"/>
@@ -575,14 +688,14 @@
 <img loading="lazy" decoding="async" alt="烧卖与红油饺子 · Siu mai and dumplings in chilli oil" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9RAJFDsFWIwuxcDSCouAd9LgHeDOE4dcSQReumnuIVoK9tWCOSItHmKRuSqcu7zskPIPiTePIZpWLVeSeIHL0kb-TxuPCQphPSNQdTj0VIXTlSt45f4jGegVFvLiDVQl3Xh7qzURIbCqW3N=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=May%20Star%20PIK%20Avenue%2C%20Mall%20PIK%20Avenue%2C%20Jl.%20Pantai%20Indah%20Kapuk%20Boulevard%2C%20Jakarta%20Utara%2014470" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=May%20Star%20PIK%20Avenue%2C%20Mall%20PIK%20Avenue%2C%20Jl.%20Pantai%20Indah%20Kapuk%20Boulevard%2C%20Jakarta%20Utara%2014470" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
 <div class="evt" id="food-putien">
-<div class="eh"><span class="et"><span class="cn">📍PIK Avenue · 🥢 福建莆田菜</span><span class="en">📍PIK Avenue · 🥢 Fujian (Putian) cuisine</span></span><span class="ed">⭐4.9</span></div>
+<div class="eh"><span class="et"><span class="cn">PIK Avenue ·  福建莆田菜</span><span class="en">PIK Avenue ·  Fujian (Putian) cuisine</span></span><span class="ed">4.9</span></div>
 <div class="eb">
 <h3><span class="cn">PUTIEN 莆田（PIK Avenue）</span><span class="en">PUTIEN PIK Avenue</span></h3>
-<div class="desc"><span class="cn">⭐4.9（Google 6,366 条评价）。地址：Mall PIK Avenue 1 楼 Unit E5, Jl. Pantai Indah Kapuk, Kamal Muara, Jakarta Utara 14470。新加坡起家的福建莆田菜连锁，招牌是莆田卤面、百秒黄花鱼、兴化炒米粉和扁肉汤，口味清淡家常。也在酒店楼下。<br><strong>11/14–11/16（六至一）：</strong>10:00–22:00<br><strong>订位：</strong>人气旺，周末饭点会排队，建议先订位或早点到<br><strong>距酒店：</strong>同一栋楼</span><span class="en">⭐4.9 (6,366 Google reviews). Mall PIK Avenue, level 1, Unit E5, Jl. Pantai Indah Kapuk, Kamal Muara, Jakarta Utara 14470. A Singapore-born chain serving Putian (Fujian) food; known for Putian braised noodles, 100-second yellow croaker, stir-fried Putian rice vermicelli and meat-dumpling soup — light, home-style flavours. Also right below the hotel.<br><strong>Sat 14 – Mon 16 Nov:</strong> 10:00–22:00<br><strong>Booking:</strong> very popular, with queues at weekend mealtimes — book ahead or come early<br><strong>From the hotel:</strong> same building</span></div>
+<div class="desc"><span class="cn">4.9（Google 6,366 条评价）。地址：Mall PIK Avenue 1 楼 Unit E5, Jl. Pantai Indah Kapuk, Kamal Muara, Jakarta Utara 14470。新加坡起家的福建莆田菜连锁，招牌是莆田卤面、百秒黄花鱼、兴化炒米粉和扁肉汤，口味清淡家常。也在酒店楼下。<br><strong>11/14–11/16（六至一）：</strong>10:00–22:00<br><strong>订位：</strong>人气旺，周末饭点会排队，建议先订位或早点到<br><strong>距酒店：</strong>同一栋楼</span><span class="en">4.9 (6,366 Google reviews). Mall PIK Avenue, level 1, Unit E5, Jl. Pantai Indah Kapuk, Kamal Muara, Jakarta Utara 14470. A Singapore-born chain serving Putian (Fujian) food; known for Putian braised noodles, 100-second yellow croaker, stir-fried Putian rice vermicelli and meat-dumpling soup — light, home-style flavours. Also right below the hotel.<br><strong>Sat 14 – Mon 16 Nov:</strong> 10:00–22:00<br><strong>Booking:</strong> very popular, with queues at weekend mealtimes — book ahead or come early<br><strong>From the hotel:</strong> same building</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">10:00–22:00</span><span class="en">10:00–22:00</span></span><span class="chip book"><span class="cn">建议订位</span><span class="en">Book ahead</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="PUTIEN 门面 · PUTIEN entrance" src="https://lh3.googleusercontent.com/grass-cs/AABkmLe1yXIViOcmbTIP2mSNDeLzb68WYIdSlMuU_T3_Tq8vILniK4OvtESqFmRIw5bu73zsVPuPhbuu2azc1y2baMq4jTehA5JIIaT0lfmzj2QxZqB2a51YYwlcuFFu4DFx5yy3MKCZ=s4800-w800-h600"/>
@@ -591,14 +704,14 @@
 <img loading="lazy" decoding="async" alt="一桌莆田菜 · A table of Putian dishes" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9RwmZAa0b5gLYcMcEqn60Syx9pL-5YoaeesiAkhyS-lNp2RTGkom4iXnc-eCt91FToGehrog6sa843p87-Spey_O5VrO3id1M2stohBH0G9p1ri1jFzSyibFX9x50yv2ADp9JUbLfSvtHBX=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=PUTIEN%20PIK%20Avenue%2C%20Mall%20PIK%20Avenue%20Unit%20E5%2C%20Jl.%20Pantai%20Indah%20Kapuk%2C%20Jakarta%20Utara%2014470" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=PUTIEN%20PIK%20Avenue%2C%20Mall%20PIK%20Avenue%20Unit%20E5%2C%20Jl.%20Pantai%20Indah%20Kapuk%2C%20Jakarta%20Utara%2014470" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
 <div class="evt" id="food-sanur">
-<div class="eh"><span class="et"><span class="cn">📍PIK · 🥢 福建福清菜 · 华南家常</span><span class="en">📍PIK · 🥢 Fujian (Fuqing) · southern Chinese home cooking</span></span><span class="ed">⭐4.4</span></div>
+<div class="eh"><span class="et"><span class="cn">PIK ·  福建福清菜 · 华南家常</span><span class="en">PIK ·  Fujian (Fuqing) · southern Chinese home cooking</span></span><span class="ed">4.4</span></div>
 <div class="eb">
 <h3><span class="cn">Sanur Mangga Dua（PIK）</span><span class="en">Sanur Mangga Dua - PIK</span></h3>
-<div class="desc"><span class="cn">⭐4.4（Google 504 条评价）。地址：Rukan Garden House Blok RGA 06-07, Jl. Pantai Indah Timur, Kamal Muara, Jakarta Utara 14450。从雅加达老商圈 Mangga Dua 搬来的福清菜馆，招牌是包肉馅的鱼丸、螃蟹米粉（份量大）、竹筒蒸虾和炸排骨，甜点有花生糯米球。有包厢。<br><strong>11/14–11/16（六至一）：</strong>营业时间请订位时电话确认<br><strong>订位：</strong>+62 812-8530-4082；周末附近停车位少，坐车去最方便<br><strong>距酒店：</strong>车程约 10 分钟</span><span class="en">⭐4.4 (504 Google reviews). Rukan Garden House Blok RGA 06-07, Jl. Pantai Indah Timur, Kamal Muara, Jakarta Utara 14450. A Fuqing (Fujian) restaurant that moved here from Mangga Dua; known for pork-filled fish balls, crab with rice vermicelli (a big portion), bamboo-steamed prawns and fried pork ribs, with glutinous rice balls in peanut powder for dessert. Private rooms available.<br><strong>Sat 14 – Mon 16 Nov:</strong> please confirm hours by phone when you book<br><strong>Booking:</strong> +62 812-8530-4082; parking nearby is tight at weekends, so a car drop-off is easiest<br><strong>From the hotel:</strong> about 10 minutes by car</span></div>
+<div class="desc"><span class="cn">4.4（Google 504 条评价）。地址：Rukan Garden House Blok RGA 06-07, Jl. Pantai Indah Timur, Kamal Muara, Jakarta Utara 14450。从雅加达老商圈 Mangga Dua 搬来的福清菜馆，招牌是包肉馅的鱼丸、螃蟹米粉（份量大）、竹筒蒸虾和炸排骨，甜点有花生糯米球。有包厢。<br><strong>11/14–11/16（六至一）：</strong>营业时间请订位时电话确认<br><strong>订位：</strong>+62 812-8530-4082；周末附近停车位少，坐车去最方便<br><strong>距酒店：</strong>车程约 10 分钟</span><span class="en">4.4 (504 Google reviews). Rukan Garden House Blok RGA 06-07, Jl. Pantai Indah Timur, Kamal Muara, Jakarta Utara 14450. A Fuqing (Fujian) restaurant that moved here from Mangga Dua; known for pork-filled fish balls, crab with rice vermicelli (a big portion), bamboo-steamed prawns and fried pork ribs, with glutinous rice balls in peanut powder for dessert. Private rooms available.<br><strong>Sat 14 – Mon 16 Nov:</strong> please confirm hours by phone when you book<br><strong>Booking:</strong> +62 812-8530-4082; parking nearby is tight at weekends, so a car drop-off is easiest<br><strong>From the hotel:</strong> about 10 minutes by car</span></div>
 <div class="chips"><span class="chip verify"><span class="cn">营业时间订位时确认</span><span class="en">Confirm hours when booking</span></span><span class="chip book"><span class="cn">有包厢</span><span class="en">Private rooms</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="Sanur Mangga Dua 门面 · Sanur Mangga Dua storefront" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9RPc5-2ghSqtNQqm2jMkN9Ntb7oAbDrgji6RpOcBk0zQs0kybcpgz7gAfKtueIqmD8fIa3pyrPJ9AgQxV-Xb-1kLlpFWa73C96aqajcoFrOccEdKkslmjBtbFCPRi3Sp-PMo4OBP06A57w=s4800-w800-h600"/>
@@ -607,14 +720,14 @@
 <img loading="lazy" decoding="async" alt="炒鸡 · Wok-fried chicken" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9RECWRUTLNsStSX7ynGY9zjNIQhMzSbVs51cTm91bMFw6dKUjTHGcnxuDVqDKjZonCo1ZqckYA5pQfBgxBWvX3pETyd81o0DQjTLndIh0ixA22AtJDNj4JF9LKmtUNGwi_P2xhDb4h5TThG=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Sanur%20Mangga%20Dua%20PIK%2C%20Rukan%20Garden%20House%20Blok%20RGA%2006-07%2C%20Jl.%20Pantai%20Indah%20Timur%2C%20Jakarta%20Utara%2014450" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Sanur%20Mangga%20Dua%20PIK%2C%20Rukan%20Garden%20House%20Blok%20RGA%2006-07%2C%20Jl.%20Pantai%20Indah%20Timur%2C%20Jakarta%20Utara%2014450" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
 <div class="evt" id="food-wingheng">
-<div class="eh"><span class="et"><span class="cn">📍PIK · 🥢 港式点心 · 平价</span><span class="en">📍PIK · 🥢 Hong Kong dim sum · budget</span></span><span class="ed">⭐4.4</span></div>
+<div class="eh"><span class="et"><span class="cn">PIK ·  港式点心 · 平价</span><span class="en">PIK ·  Hong Kong dim sum · budget</span></span><span class="ed">4.4</span></div>
 <div class="eb">
 <h3><span class="cn">Wing Heng 永兴港式点心（PIK Food Plaza）</span><span class="en">Wing Heng Hongkong Dimsum Shop (PIK Food Plaza)</span></h3>
-<div class="desc"><span class="cn">⭐4.4（Google 1,040 条评价）。地址：Food Plaza PIK, Jl. Pantai Indah Kapuk Boulevard No.25, Kamal Muara, Jakarta Utara 14470。平价的港式点心小店，虾饺、烧卖之外还有蒸猪肉饭和面食，适合随便吃一顿。店面小、座位不多，不用订位，人多时稍等一下。<br><strong>11/14–11/16（六至一）：</strong>营业时间请出发前在 Google 地图上确认<br><strong>距酒店：</strong>车程约 5–10 分钟</span><span class="en">⭐4.4 (1,040 Google reviews). Food Plaza PIK, Jl. Pantai Indah Kapuk Boulevard No.25, Kamal Muara, Jakarta Utara 14470. A budget Hong Kong dim sum shop: besides prawn dumplings and siu mai there is steamed pork rice and noodles; good for a casual meal. Small with few seats; no booking needed, just wait a little if it is busy.<br><strong>Sat 14 – Mon 16 Nov:</strong> please check the hours on Google Maps before you go<br><strong>From the hotel:</strong> about 5–10 minutes by car</span></div>
+<div class="desc"><span class="cn">4.4（Google 1,040 条评价）。地址：Food Plaza PIK, Jl. Pantai Indah Kapuk Boulevard No.25, Kamal Muara, Jakarta Utara 14470。平价的港式点心小店，虾饺、烧卖之外还有蒸猪肉饭和面食，适合随便吃一顿。店面小、座位不多，不用订位，人多时稍等一下。<br><strong>11/14–11/16（六至一）：</strong>营业时间请出发前在 Google 地图上确认<br><strong>距酒店：</strong>车程约 5–10 分钟</span><span class="en">4.4 (1,040 Google reviews). Food Plaza PIK, Jl. Pantai Indah Kapuk Boulevard No.25, Kamal Muara, Jakarta Utara 14470. A budget Hong Kong dim sum shop: besides prawn dumplings and siu mai there is steamed pork rice and noodles; good for a casual meal. Small with few seats; no booking needed, just wait a little if it is busy.<br><strong>Sat 14 – Mon 16 Nov:</strong> please check the hours on Google Maps before you go<br><strong>From the hotel:</strong> about 5–10 minutes by car</span></div>
 <div class="chips"><span class="chip verify"><span class="cn">营业时间看 Google 地图</span><span class="en">Check hours on Google Maps</span></span><span class="chip ok"><span class="cn">平价</span><span class="en">Budget</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="永兴点心店门面 · Wing Heng dim sum shop front" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9TEF6ZjGY4yv5PLVNlJVsUxvDxQeHsejLGZmRwiO3zZYlqMEIYYD5kvUgNa_xKReagDgQwHOp2h2ioHatNGkK8Gv8BDbZtzeXQTKb3EljSoTBF5ZjBgkFuHuFYTkjbtfnm9hvr3xg=s4800-w800-h600"/>
@@ -623,16 +736,16 @@
 <img loading="lazy" decoding="async" alt="炸金针菇 · Crispy fried enoki mushrooms" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Q2KG6BMwRCZtTrdECh2hCII_JzaOFPW53iGf63XcKsNa3YdWcUb0Tyl6Ssms89EklYVHaSP1OOvZHiHyc8lrU1OaaK1gxzAk0PPa8D_RztxG3aCkkgcQXK3HJZHkPsYCWK7lJX=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Wing%20Heng%20Hongkong%20Dimsum%20Shop%2C%20Food%20Plaza%20PIK%2C%20Jl.%20Pantai%20Indah%20Kapuk%20Boulevard%20No.25%2C%20Jakarta%20Utara%2014470" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Wing%20Heng%20Hongkong%20Dimsum%20Shop%2C%20Food%20Plaza%20PIK%2C%20Jl.%20Pantai%20Indah%20Kapuk%20Boulevard%20No.25%2C%20Jakarta%20Utara%2014470" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
 
 <div class="grp"><span class="cn">市区（5 家）</span><span class="en">Central Jakarta (5)</span></div>
 <div class="evt" id="food-tangcourt">
-<div class="eh"><span class="et"><span class="cn">📍中央商务区 SCBD · 🥢 粤菜 · 酒店包厢</span><span class="en">📍SCBD · 🥢 Cantonese · hotel private rooms</span></span><span class="ed">⭐4.8</span></div>
+<div class="eh"><span class="et"><span class="cn">中央商务区 SCBD ·  粤菜 · 酒店包厢</span><span class="en">SCBD ·  Cantonese · hotel private rooms</span></span><span class="ed">4.8</span></div>
 <div class="eb">
 <h3><span class="cn">唐阁 T'ang Court（The Langham, Jakarta）</span><span class="en">T'ang Court (The Langham, Jakarta)</span></h3>
-<div class="desc"><span class="cn">⭐4.8（Google 414 条评价）。地址：The Langham, Jakarta 61 楼, District 8, SCBD Lot 28, Jakarta Selatan 12190。香港朗廷酒店米其林粤菜「唐阁」的雅加达分店，在高楼上能看市景。招牌是北京烤鸭、蜜汁煎牛肋骨、龙虾汤泡饭和鲜蟹钳蒸蛋。有包厢，适合正式请客。<br><strong>11/14–11/16（六至一）：</strong>午市 11:30–15:00、晚市 17:30–22:00<br><strong>订位：</strong>建议提前订，包厢尤其要早订，电话 +62 21 2708 7888<br><strong>距酒店：</strong>车程约 60–100 分钟；离 Pacific Place 很近</span><span class="en">⭐4.8 (414 Google reviews). The Langham, Jakarta, level 61, District 8, SCBD Lot 28, Jakarta Selatan 12190. The Jakarta branch of the Michelin-starred Cantonese restaurant from The Langham Hong Kong, high up with city views. Known for Peking duck, honey-glazed pan-fried short ribs, crispy rice in lobster bisque and steamed crab claw on egg custard. Private rooms — good for a formal dinner.<br><strong>Sat 14 – Mon 16 Nov:</strong> lunch 11:30–15:00, dinner 17:30–22:00<br><strong>Booking:</strong> book ahead, especially for a private room, tel. +62 21 2708 7888<br><strong>From the hotel:</strong> about 60–100 minutes by car; very close to Pacific Place</span></div>
+<div class="desc"><span class="cn">4.8（Google 414 条评价）。地址：The Langham, Jakarta 61 楼, District 8, SCBD Lot 28, Jakarta Selatan 12190。香港朗廷酒店米其林粤菜「唐阁」的雅加达分店，在高楼上能看市景。招牌是北京烤鸭、蜜汁煎牛肋骨、龙虾汤泡饭和鲜蟹钳蒸蛋。有包厢，适合正式请客。<br><strong>11/14–11/16（六至一）：</strong>午市 11:30–15:00、晚市 17:30–22:00<br><strong>订位：</strong>建议提前订，包厢尤其要早订，电话 +62 21 2708 7888<br><strong>距酒店：</strong>车程约 60–100 分钟；离 Pacific Place 很近</span><span class="en">4.8 (414 Google reviews). The Langham, Jakarta, level 61, District 8, SCBD Lot 28, Jakarta Selatan 12190. The Jakarta branch of the Michelin-starred Cantonese restaurant from The Langham Hong Kong, high up with city views. Known for Peking duck, honey-glazed pan-fried short ribs, crispy rice in lobster bisque and steamed crab claw on egg custard. Private rooms — good for a formal dinner.<br><strong>Sat 14 – Mon 16 Nov:</strong> lunch 11:30–15:00, dinner 17:30–22:00<br><strong>Booking:</strong> book ahead, especially for a private room, tel. +62 21 2708 7888<br><strong>From the hotel:</strong> about 60–100 minutes by car; very close to Pacific Place</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">午 11:30–15:00 · 晚 17:30–22:00</span><span class="en">Lunch 11:30–15:00 · Dinner 17:30–22:00</span></span><span class="chip book"><span class="cn">建议订位 · 有包厢</span><span class="en">Book ahead · private rooms</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="唐阁用餐区 · T&#x27;ang Court dining room" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdiMAAy1T7JGAlEptfuM_UDarP936uFfyR_ca2J0xSNBq6YcqR28Dlvk_o3DmDdMxuf5VuL-ftYLTupebt1_i0GFJhR503jxfXNjiLvNXzuWoiGHkUgyM_ZOZ1f8RjNRRMHso5TyKs1CFs=s4800-w800-h600"/>
@@ -642,14 +755,14 @@
 <img loading="lazy" decoding="async" alt="龙虾汤泡饭 · Lobster bisque with crispy rice" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QibBXQmgsuzLeUCs2Sy1OhuUuOAavsRzM9JnRp8vh21OmyLRhfPanVmzJMqAGNHDJ6di3X57HmUbh4bDyB4jl2u109CefooyM0aPcra3TIRmZKjjX5e9YtbEZZi_yD7yMJC7zLfdRiM-Q-=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=T%27ang%20Court%20The%20Langham%20Jakarta%2C%20District%208%20SCBD%20Lot%2028%2C%20Jakarta%20Selatan%2012190" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=T%27ang%20Court%20The%20Langham%20Jakarta%2C%20District%208%20SCBD%20Lot%2028%2C%20Jakarta%20Selatan%2012190" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
 <div class="evt" id="food-lifeng">
-<div class="eh"><span class="et"><span class="cn">📍坦林路 Thamrin · 🥢 粤菜 · 酒店包厢</span><span class="en">📍Thamrin · 🥢 Cantonese · hotel private rooms</span></span><span class="ed">⭐4.7</span></div>
+<div class="eh"><span class="et"><span class="cn">坦林路 Thamrin ·  粤菜 · 酒店包厢</span><span class="en">Thamrin ·  Cantonese · hotel private rooms</span></span><span class="ed">4.7</span></div>
 <div class="eb">
 <h3><span class="cn">丽凤 Li Feng（Mandarin Oriental Jakarta）</span><span class="en">Li Feng (Mandarin Oriental, Jakarta)</span></h3>
-<div class="desc"><span class="cn">⭐4.7（Google 831 条评价）。地址：Mandarin Oriental Jakarta, Jl. M.H. Thamrin, Menteng, Jakarta Pusat 10310。文华东方酒店里的粤菜馆，招牌是黑椒鸭肉做馅的黑天鹅酥，还有北京烤鸭（一鸭两吃）和精致点心。酒店就在印尼酒店（HI）圆环，走几步就是 Grand Indonesia 和 Plaza Indonesia。有包厢。<br><strong>11/14–11/16（六至一）：</strong>每天午市、晚市都营业，具体时段请订位时确认<br><strong>订位：</strong>建议提前订，包厢要早订<br><strong>距酒店：</strong>车程约 50–80 分钟</span><span class="en">⭐4.7 (831 Google reviews). Mandarin Oriental Jakarta, Jl. M.H. Thamrin, Menteng, Jakarta Pusat 10310. The Mandarin Oriental's Cantonese restaurant, famous for its black swan puffs filled with black-pepper duck, plus Peking duck served two ways and refined dim sum. The hotel is on the Hotel Indonesia roundabout, a short walk from Grand Indonesia and Plaza Indonesia. Private rooms available.<br><strong>Sat 14 – Mon 16 Nov:</strong> open for lunch and dinner daily; please confirm the exact times when you book<br><strong>Booking:</strong> book ahead, and early for a private room<br><strong>From the hotel:</strong> about 50–80 minutes by car</span></div>
+<div class="desc"><span class="cn">4.7（Google 831 条评价）。地址：Mandarin Oriental Jakarta, Jl. M.H. Thamrin, Menteng, Jakarta Pusat 10310。文华东方酒店里的粤菜馆，招牌是黑椒鸭肉做馅的黑天鹅酥，还有北京烤鸭（一鸭两吃）和精致点心。酒店就在印尼酒店（HI）圆环，走几步就是 Grand Indonesia 和 Plaza Indonesia。有包厢。<br><strong>11/14–11/16（六至一）：</strong>每天午市、晚市都营业，具体时段请订位时确认<br><strong>订位：</strong>建议提前订，包厢要早订<br><strong>距酒店：</strong>车程约 50–80 分钟</span><span class="en">4.7 (831 Google reviews). Mandarin Oriental Jakarta, Jl. M.H. Thamrin, Menteng, Jakarta Pusat 10310. The Mandarin Oriental's Cantonese restaurant, famous for its black swan puffs filled with black-pepper duck, plus Peking duck served two ways and refined dim sum. The hotel is on the Hotel Indonesia roundabout, a short walk from Grand Indonesia and Plaza Indonesia. Private rooms available.<br><strong>Sat 14 – Mon 16 Nov:</strong> open for lunch and dinner daily; please confirm the exact times when you book<br><strong>Booking:</strong> book ahead, and early for a private room<br><strong>From the hotel:</strong> about 50–80 minutes by car</span></div>
 <div class="chips"><span class="chip verify"><span class="cn">时段订位时确认</span><span class="en">Confirm times when booking</span></span><span class="chip book"><span class="cn">建议订位 · 有包厢</span><span class="en">Book ahead · private rooms</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="丽凤包厢 · Li Feng private room" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Tvw8oif2mW5JL4wHPlivubNE3BKfd7hFk_4pZKtvZtzSq4LbV9BAbXnJtNxHkjMyGQmek8JV1z0_GS2DWJC_XWY8CcwyLv0LTG4Xc7y57Led9PX2kl9oLEUzn6NPl-VQHXYk8C81qEjtOm=s4800-w800-h600"/>
@@ -659,14 +772,14 @@
 <img loading="lazy" decoding="async" alt="一桌菜色 · A full table of dishes" src="https://lh3.googleusercontent.com/grass-cs/AABkmLdSJVU1KsPKJHEBAr_mLSy3Iv0ahxc7fKxGSBEORSdkD79ktKh8gC9qq_RLmCVVPJ8yTEBhQMtUwrcaET4_WHEvuhZ7emMkFBT177kWGr4TQ9KUIqCTscFJsumNGA2QcSThUDdEAneCajw=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Li%20Feng%20Mandarin%20Oriental%20Jakarta%2C%20Jl.%20M.H.%20Thamrin%2C%20Menteng%2C%20Jakarta%20Pusat%2010310" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Li%20Feng%20Mandarin%20Oriental%20Jakarta%2C%20Jl.%20M.H.%20Thamrin%2C%20Menteng%2C%20Jakarta%20Pusat%2010310" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
 <div class="evt" id="food-songxl">
-<div class="eh"><span class="et"><span class="cn">📍Monas 北边 Pecenongan · 🥢 粤菜 · 点心 · 酒店包厢</span><span class="en">📍Pecenongan · 🥢 Cantonese · dim sum · hotel private rooms</span></span><span class="ed">⭐5.0</span></div>
+<div class="eh"><span class="et"><span class="cn">Monas 北边 Pecenongan ·  粤菜 · 点心 · 酒店包厢</span><span class="en">Pecenongan ·  Cantonese · dim sum · hotel private rooms</span></span><span class="ed">5.0</span></div>
 <div class="eb">
 <h3><span class="cn">松香楼 Sōng Xiāng Lóu（Mövenpick Jakarta City Centre）</span><span class="en">Sōng Xiāng Lóu (Mövenpick Hotel Jakarta City Centre)</span></h3>
-<div class="desc"><span class="cn">⭐5.0（Google 704 条评价）。地址：Mövenpick Hotel Jakarta City Centre, Jl. Pecenongan Kav 7-17, Gambir, Jakarta Pusat 10120。Mövenpick 酒店里的粤菜馆，招牌是现场片的北京烤鸭和手工点心。离 Monas 很近，逛完 Monas 来吃最顺路。有包厢。<br><strong>11/14–11/16（六至一）：</strong>午市 10:00–15:00、晚市 18:00–22:00<br><strong>订位：</strong>建议提前订，电话 +62 21 3952 4888<br><strong>距酒店：</strong>车程约 45–70 分钟；离 Monas 约 5–10 分钟</span><span class="en">⭐5.0 (704 Google reviews). Mövenpick Hotel Jakarta City Centre, Jl. Pecenongan Kav 7-17, Gambir, Jakarta Pusat 10120. The Mövenpick's Cantonese restaurant, known for Peking duck carved at the table and handmade dim sum. It is close to Monas, so it works well after a visit there. Private rooms available.<br><strong>Sat 14 – Mon 16 Nov:</strong> lunch 10:00–15:00, dinner 18:00–22:00<br><strong>Booking:</strong> book ahead, tel. +62 21 3952 4888<br><strong>From the hotel:</strong> about 45–70 minutes by car; about 5–10 minutes from Monas</span></div>
+<div class="desc"><span class="cn">5.0（Google 704 条评价）。地址：Mövenpick Hotel Jakarta City Centre, Jl. Pecenongan Kav 7-17, Gambir, Jakarta Pusat 10120。Mövenpick 酒店里的粤菜馆，招牌是现场片的北京烤鸭和手工点心。离 Monas 很近，逛完 Monas 来吃最顺路。有包厢。<br><strong>11/14–11/16（六至一）：</strong>午市 10:00–15:00、晚市 18:00–22:00<br><strong>订位：</strong>建议提前订，电话 +62 21 3952 4888<br><strong>距酒店：</strong>车程约 45–70 分钟；离 Monas 约 5–10 分钟</span><span class="en">5.0 (704 Google reviews). Mövenpick Hotel Jakarta City Centre, Jl. Pecenongan Kav 7-17, Gambir, Jakarta Pusat 10120. The Mövenpick's Cantonese restaurant, known for Peking duck carved at the table and handmade dim sum. It is close to Monas, so it works well after a visit there. Private rooms available.<br><strong>Sat 14 – Mon 16 Nov:</strong> lunch 10:00–15:00, dinner 18:00–22:00<br><strong>Booking:</strong> book ahead, tel. +62 21 3952 4888<br><strong>From the hotel:</strong> about 45–70 minutes by car; about 5–10 minutes from Monas</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">午 10:00–15:00 · 晚 18:00–22:00</span><span class="en">Lunch 10:00–15:00 · Dinner 18:00–22:00</span></span><span class="chip book"><span class="cn">建议订位 · 有包厢</span><span class="en">Book ahead · private rooms</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="松香楼用餐区 · Song Xiang Lou dining room" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeNxf6PnmcpAPgbpmq_enP3dFq27FO-jwk4DwJAlgMLPWIzJtDhpmCX_YP2jrGMDIAq1NEtYLcOfyKiGGRnBah6MBAYWEXBsN6QzQ7CriZjNBbgVbMA_wOWPi_yGDN191C-g5TT=s4800-w800-h600"/>
@@ -676,14 +789,14 @@
 <img loading="lazy" decoding="async" alt="糖醋鱼 · Sweet and sour fish" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9R5E_7JaIAfqwjpDuo3eDZXuxAut2LVr5wHC05kCkBNNvlQ6I_InsWQg0VO7RsHpJ-3HjQvwwEIwHWCvxxt3ECirYsRZ90nN1dvyabMpiLfHRVxcxWTi4BAcs4ye9O6uGCiKEpeReKyD8EQ=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Song%20Xiang%20Lou%20Movenpick%20Hotel%20Jakarta%20City%20Centre%2C%20Jl.%20Pecenongan%20Kav%207-17%2C%20Jakarta%20Pusat%2010120" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Song%20Xiang%20Lou%20Movenpick%20Hotel%20Jakarta%20City%20Centre%2C%20Jl.%20Pecenongan%20Kav%207-17%2C%20Jakarta%20Pusat%2010120" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
 <div class="evt" id="food-taste">
-<div class="eh"><span class="et"><span class="cn">📍坦林路 Thamrin · 🥢 点心 · 现代中菜</span><span class="en">📍Thamrin · 🥢 Dim sum · modern Chinese</span></span><span class="ed">⭐4.6</span></div>
+<div class="eh"><span class="et"><span class="cn">坦林路 Thamrin ·  点心 · 现代中菜</span><span class="en">Thamrin ·  Dim sum · modern Chinese</span></span><span class="ed">4.6</span></div>
 <div class="eb">
 <h3><span class="cn">Taste Paradise（Plaza Indonesia）</span><span class="en">Taste Paradise (Plaza Indonesia)</span></h3>
-<div class="desc"><span class="cn">⭐4.6（Google 1,041 条评价）。地址：Plaza Indonesia South Lobby 4 楼, Jl. M.H. Thamrin No.28-30, Jakarta Pusat 10350。新加坡 Paradise 集团旗下的中菜馆，点心做得精致，招牌有鹅肝、芥末虾、烤鸭皮三拼，还有鲍鱼和炖汤。有半独立的包间。逛 Plaza Indonesia 或 Grand Indonesia 时最方便。<br><strong>11/14–11/16（六至一）：</strong>午市 11:00–15:00；晚市时段请订位时确认<br><strong>订位：</strong>建议提前订，电话 +62 21 2992 3838<br><strong>距酒店：</strong>车程约 50–80 分钟</span><span class="en">⭐4.6 (1,041 Google reviews). Plaza Indonesia South Lobby, level 4, Jl. M.H. Thamrin No.28-30, Jakarta Pusat 10350. A Chinese restaurant from Singapore's Paradise Group with refined dim sum; signatures include a trio of foie gras, wasabi-mayo prawn and Peking duck skin, plus abalone and double-boiled soups. Semi-private rooms. Handiest when you are at Plaza Indonesia or Grand Indonesia.<br><strong>Sat 14 – Mon 16 Nov:</strong> lunch 11:00–15:00; please confirm dinner times when you book<br><strong>Booking:</strong> book ahead, tel. +62 21 2992 3838<br><strong>From the hotel:</strong> about 50–80 minutes by car</span></div>
+<div class="desc"><span class="cn">4.6（Google 1,041 条评价）。地址：Plaza Indonesia South Lobby 4 楼, Jl. M.H. Thamrin No.28-30, Jakarta Pusat 10350。新加坡 Paradise 集团旗下的中菜馆，点心做得精致，招牌有鹅肝、芥末虾、烤鸭皮三拼，还有鲍鱼和炖汤。有半独立的包间。逛 Plaza Indonesia 或 Grand Indonesia 时最方便。<br><strong>11/14–11/16（六至一）：</strong>午市 11:00–15:00；晚市时段请订位时确认<br><strong>订位：</strong>建议提前订，电话 +62 21 2992 3838<br><strong>距酒店：</strong>车程约 50–80 分钟</span><span class="en">4.6 (1,041 Google reviews). Plaza Indonesia South Lobby, level 4, Jl. M.H. Thamrin No.28-30, Jakarta Pusat 10350. A Chinese restaurant from Singapore's Paradise Group with refined dim sum; signatures include a trio of foie gras, wasabi-mayo prawn and Peking duck skin, plus abalone and double-boiled soups. Semi-private rooms. Handiest when you are at Plaza Indonesia or Grand Indonesia.<br><strong>Sat 14 – Mon 16 Nov:</strong> lunch 11:00–15:00; please confirm dinner times when you book<br><strong>Booking:</strong> book ahead, tel. +62 21 2992 3838<br><strong>From the hotel:</strong> about 50–80 minutes by car</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">午 11:00–15:00</span><span class="en">Lunch 11:00–15:00</span></span><span class="chip book"><span class="cn">建议订位</span><span class="en">Book ahead</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="Taste Paradise 入口 · Taste Paradise entrance" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9TzdmDgfpnIS-uZq56xwus7zBjpHp1aC86qHCNo0woEVUBwvZnx_d896o8NBYQQ1vonVatqI2XhybTmH2tjzaLpUV5fjv8TzVB-hEWatic0ISzcInqsCJFyWX6bjCP5FCMw7dwYAGVoDJSP=s4800-w800-h600"/>
@@ -693,14 +806,14 @@
 <img loading="lazy" decoding="async" alt="石锅炖汤 · Soup served in a stone pot" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9S6iwH1MWH1ytV4QLTOTfPVV1QqzWQ90U25GwT7KwJJSy_1u0zEJ4nDsruqff2G_H6908z2RLyBmMRJfCJqyymvvz4gbzBozxmBvJ53pExJ3JFECEnu0KuMTDTHTt5nURKcTLaVmSdackj1=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Taste%20Paradise%20Plaza%20Indonesia%20South%20Lobby%20Level%204%2C%20Jl.%20M.H.%20Thamrin%20No.28-30%2C%20Jakarta%20Pusat%2010350" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Taste%20Paradise%20Plaza%20Indonesia%20South%20Lobby%20Level%204%2C%20Jl.%20M.H.%20Thamrin%20No.28-30%2C%20Jakarta%20Pusat%2010350" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
 <div class="evt" id="food-dtf">
-<div class="eh"><span class="et"><span class="cn">📍中央商务区 SCBD · 🥢 小笼包 · 台式</span><span class="en">📍SCBD · 🥢 Xiao long bao · Taiwanese</span></span><span class="ed">⭐4.8</span></div>
+<div class="eh"><span class="et"><span class="cn">中央商务区 SCBD ·  小笼包 · 台式</span><span class="en">SCBD ·  Xiao long bao · Taiwanese</span></span><span class="ed">4.8</span></div>
 <div class="eb">
 <h3><span class="cn">鼎泰丰 Din Tai Fung（Pacific Place）</span><span class="en">Din Tai Fung (Pacific Place)</span></h3>
-<div class="desc"><span class="cn">⭐4.8（Google 1,531 条评价）。地址：Pacific Place, Jl. Jend. Sudirman Kav 52-53, SCBD, Jakarta Selatan 12190。招牌小笼包，另有蛋炒饭、虾仁烧卖、红油抄手和馄饨面，口味稳定、上菜快，逛 Pacific Place 时吃最方便。<br><strong>11/14–11/16（六至一）：</strong>随商场营业（商场 10:00–22:00），最后点餐时间请现场确认<br><strong>订位：</strong>周末饭点要排队，到店取号<br><strong>距酒店：</strong>车程约 60–100 分钟</span><span class="en">⭐4.8 (1,531 Google reviews). Pacific Place, Jl. Jend. Sudirman Kav 52-53, SCBD, Jakarta Selatan 12190. Famous for xiao long bao, plus egg fried rice, prawn siu mai, wontons in chilli oil and wonton noodles — consistent and quick, and handiest when you are at Pacific Place.<br><strong>Sat 14 – Mon 16 Nov:</strong> follows the mall's hours (mall 10:00–22:00); please check last orders on site<br><strong>Booking:</strong> queues at weekend mealtimes — take a number at the door<br><strong>From the hotel:</strong> about 60–100 minutes by car</span></div>
+<div class="desc"><span class="cn">4.8（Google 1,531 条评价）。地址：Pacific Place, Jl. Jend. Sudirman Kav 52-53, SCBD, Jakarta Selatan 12190。招牌小笼包，另有蛋炒饭、虾仁烧卖、红油抄手和馄饨面，口味稳定、上菜快，逛 Pacific Place 时吃最方便。<br><strong>11/14–11/16（六至一）：</strong>随商场营业（商场 10:00–22:00），最后点餐时间请现场确认<br><strong>订位：</strong>周末饭点要排队，到店取号<br><strong>距酒店：</strong>车程约 60–100 分钟</span><span class="en">4.8 (1,531 Google reviews). Pacific Place, Jl. Jend. Sudirman Kav 52-53, SCBD, Jakarta Selatan 12190. Famous for xiao long bao, plus egg fried rice, prawn siu mai, wontons in chilli oil and wonton noodles — consistent and quick, and handiest when you are at Pacific Place.<br><strong>Sat 14 – Mon 16 Nov:</strong> follows the mall's hours (mall 10:00–22:00); please check last orders on site<br><strong>Booking:</strong> queues at weekend mealtimes — take a number at the door<br><strong>From the hotel:</strong> about 60–100 minutes by car</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">随商场营业</span><span class="en">Mall hours</span></span><span class="chip book"><span class="cn">到店取号</span><span class="en">Queue on arrival</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="鼎泰丰店内 · Inside Din Tai Fung" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcKubmVgNgCcUFaZeq4-BGLuJmOB4stUmBc1XFoccLSpalAY0rbwJdukzlDZjqB9eBwwyLl0qYYzaM_oNA2w2a9OOpHb4m5ZlSmz5SJetewDQZsO11eNyxiVrhiBcwJtXKgNUM9z0zc3RUF=s4800-w800-h600"/>
@@ -710,7 +823,7 @@
 <img loading="lazy" decoding="async" alt="馄饨汤面 · Wonton noodle soup" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9Q2VZDqImU2LLynDIBBR7yKrj1C-S1cxVqtG6FICmL_E12Y17lpzgdmxmVuhE3cIQ1tWRGleAA-HSOiy7WO5gUVY50263TKK9HTJc0bIqB5V8hhYGP9AQa2aLAChVk32b40z8bGiJaZ074=s4800-w800-h600"/>
 </div>
 <div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Din%20Tai%20Fung%20Pacific%20Place%2C%20Jl.%20Jend.%20Sudirman%20Kav%2052-53%2C%20SCBD%2C%20Jakarta%20Selatan%2012190" target="_blank">📍 Google Maps</a>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Din%20Tai%20Fung%20Pacific%20Place%2C%20Jl.%20Jend.%20Sudirman%20Kav%2052-53%2C%20SCBD%2C%20Jakarta%20Selatan%2012190" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 </div>
 </section>
@@ -836,17 +949,17 @@ function lbNav(dir) {
   var CLIMO_EN = 'typical November (rainy season) 25–33°C, heavy afternoon rain common';
   function fill(b, cn, en) { b.innerHTML = '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
   function wmo(c) {
-    if (c === 0) return { i: '☀️', cn: '晴', en: 'Clear' };
-    if (c <= 2) return { i: '🌤', cn: '多云时晴', en: 'Mostly sunny' };
-    if (c === 3) return { i: '☁️', cn: '阴', en: 'Overcast' };
-    if (c <= 48) return { i: '🌫', cn: '有雾', en: 'Fog' };
-    if (c <= 57) return { i: '🌦', cn: '毛毛雨', en: 'Drizzle' };
-    if (c <= 67) return { i: '🌧', cn: '有雨', en: 'Rain' };
-    if (c <= 82) return { i: '🌧', cn: '阵雨', en: 'Showers' };
-    if (c <= 99) return { i: '⛈', cn: '雷阵雨', en: 'Thunderstorms' };
-    return { i: '🌤', cn: '天气一般', en: 'Mixed' };
+    if (c === 0) return { i: '', cn: '晴', en: 'Clear' };
+    if (c <= 2) return { i: '', cn: '多云时晴', en: 'Mostly sunny' };
+    if (c === 3) return { i: '', cn: '阴', en: 'Overcast' };
+    if (c <= 48) return { i: '', cn: '有雾', en: 'Fog' };
+    if (c <= 57) return { i: '', cn: '毛毛雨', en: 'Drizzle' };
+    if (c <= 67) return { i: '', cn: '有雨', en: 'Rain' };
+    if (c <= 82) return { i: '', cn: '阵雨', en: 'Showers' };
+    if (c <= 99) return { i: '', cn: '雷阵雨', en: 'Thunderstorms' };
+    return { i: '', cn: '天气一般', en: 'Mixed' };
   }
-  boxes.forEach(function (b) { fill(b, '🌤 天气载入中…（' + CLIMO_CN + '）', '🌤 Loading forecast… (' + CLIMO_EN + ')'); });
+  boxes.forEach(function (b) { fill(b, '天气载入中…（' + CLIMO_CN + '）', 'Loading forecast… (' + CLIMO_EN + ')'); });
   /* open-meteo 只给未来约 16 天。整趟都还在窗口外时连打都不要打——
      打了会拿到 400，看起来就像「没网」，把人误导到去查 WiFi。 */
   var DAY = 86400000, HORIZON_DAYS = 16;
@@ -857,8 +970,8 @@ function lbNav(dir) {
   function outOfWindow() {
     boxes.forEach(function (b) {
       if (b.dataset.wx > iso(horizon) || b.dataset.wx < iso(today)) {
-        fill(b, '🌤 还没到能报的时候（出发前约两周才有）·' + CLIMO_CN,
-                '🌤 Too early for a forecast (arrives ~2 weeks out) · ' + CLIMO_EN);
+        fill(b, '还没到能报的时候（出发前约两周才有）·' + CLIMO_CN,
+                'Too early for a forecast (arrives ~2 weeks out) · ' + CLIMO_EN);
       }
     });
   }
@@ -876,21 +989,37 @@ function lbNav(dir) {
     boxes.forEach(function (b) {
       var i = idx[b.dataset.wx];
       if (i === undefined || d.temperature_2m_max[i] === null || d.temperature_2m_max[i] === undefined) {
-        fill(b, '🌤 还没到能报的时候（出发前约两周才有）·' + CLIMO_CN,
-                '🌤 Too early for a forecast (arrives ~2 weeks out) · ' + CLIMO_EN);
+        fill(b, '还没到能报的时候（出发前约两周才有）·' + CLIMO_CN,
+                'Too early for a forecast (arrives ~2 weeks out) · ' + CLIMO_EN);
         return;
       }
       var w = wmo(d.weather_code[i]);
       var hi = Math.round(d.temperature_2m_max[i]), lo = Math.round(d.temperature_2m_min[i]);
       var pop = d.precipitation_probability_max[i];
-      fill(b, w.i + ' ' + w.cn + ' · ' + lo + '–' + hi + '°C · 降雨机率 ' + pop + '%',
-              w.i + ' ' + w.en + ' · ' + lo + '–' + hi + '°C · rain ' + pop + '%');
+      fill(b, w.cn + ' · ' + lo + '–' + hi + '°C · 降雨机率 ' + pop + '%',
+              w.en + ' · ' + lo + '–' + hi + '°C · rain ' + pop + '%');
       if (pop >= 60) b.classList.add('wet');
     });
   }).catch(function () {
     boxes.forEach(function (b) {
-      fill(b, '🌤 天气暂时抓不到（可能没网）·' + CLIMO_CN, '🌤 Forecast unavailable (offline?) · ' + CLIMO_EN);
+      fill(b, '天气暂时抓不到（可能没网）·' + CLIMO_CN, 'Forecast unavailable (offline?) · ' + CLIMO_EN);
     });
+  });
+})();
+
+/* 正文里的页内链接（「见餐厅列表」之类）：跟顶部目录一样扣掉吸顶栏高度再平滑滚动，目标标题不会被挡住。 */
+(function inPageLinks() {
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || a.closest('#daystrip')) return;
+    var id = a.getAttribute('href');
+    if (id.length < 2) return;
+    var target = document.getElementById(id.slice(1));
+    if (!target) return;
+    e.preventDefault();
+    var bars = document.querySelector('.topbar').offsetHeight + document.getElementById('daystrip').offsetHeight + 8;
+    window.scrollTo({ top: target.getBoundingClientRect().top + window.pageYOffset - bars, behavior: 'smooth' });
+    if (history.replaceState) history.replaceState(null, '', id);
   });
 })();
 
@@ -898,7 +1027,15 @@ function lbNav(dir) {
 (function jumpToToday() {
   var el = document.querySelector('.day.today');
   if (!el) return;
-  requestAnimationFrame(function () { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); });
+  // 等网页字体载入完再滚：字体替换会让版面重排，先滚的话会停在半路。
+  // 不用 scrollIntoView／scroll-margin：改成跟顶部目录同一个算法，扣掉吸顶栏高度，标题才不会被挡住。
+  var go = function () {
+    requestAnimationFrame(function () {
+      var bars = document.querySelector('.topbar').offsetHeight + document.getElementById('daystrip').offsetHeight + 8;
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.pageYOffset - bars, behavior: 'smooth' });
+    });
+  };
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go);
 })();
 </script>
 </body>

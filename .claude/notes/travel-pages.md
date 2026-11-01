@@ -150,10 +150,28 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
   确认为准」；日后若拿到官网原文或 MBS 回覆，以那个为准。
 
 ## sg-jkt-trip/singapore.html（约 1300 行；2026-10-30 建，同日按用户要求大改）
-11 月新加坡手册，2026-11-11（三）～11-14（六）三晚四天，Nak／Yang／Jacky 3 位成年人，**没有小孩**，双语。
+11 月新加坡手册，2026-11-11（三）～11-14（六）三晚四天，Tan Chin Hooi／Yap Lian Khoon／Hew Chern Yang 3 位成年人（**封面一律写全名**，2026-11-01 用户要求，不再写 Nak／Yang／Jacky），**没有小孩**，双语。
 URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html` 原是四套航班方案比较页，2026-10-31 航班订好后用户说「他们选了就不需要存在了」，改成跳转页（跳到 singapore.html，保住已发出去的 /sg-jkt-trip/ 网址），勿再恢复方案内容；
 本页**不再链回** `./index.html`（2026-10-31 航班已订）。已登记 `tools/lib/trips.py`（行程最后一天 2026-11-14）。
-**CSS 与 JS 整套复制自 singapore-trip/index.html**（`.day`／`.stop`／`.evt`／`.tl`／lightbox／天气条／PSI 条／
+**版面（2026-11-01 改版，两本共用，用户拍板「F 礼宾风＋E 站点时间轴」）**：
+- CSS 整套换掉（JS 只动两处，见下），字体是 Google Fonts 的 Cormorant Garamond（拉丁）＋Noto Serif SC（`<head>` 里一个 `<link>`）。颜色全走 `:root` 变量：
+  `--navy`（吸顶栏／封面底）、`--gold`／`--gold2`（香槟金细线）、`--ivory`／`--paper`（底色）、`--ink`／`--ink2`／`--muted`／`--faint`／`--hair`、
+  `--alert`（朱红 #a3271f，**只给「多雨／留意」警示用**，配方框小字标签 `.wx.wet::before`「多雨/WET」、`.psi.bad::before`「留意/ALERT」，不只靠颜色）。
+- **每天的线路色** `--l1`～`--l4`，`#day01 { --line: var(--l1) }` 这样挂：新加坡 D1 地铁蓝 `#36689c`（滨海市区线，2026-11-01 用户要求换掉红色）、D2 绿 `#3f7d5c`、D3 紫 `#7a4f86`、D4 橙 `#b5793a`；
+  **线路色禁用红色**，会跟警示朱红撞。雅加达 `--l1` 深蓝 `#3d5689`、`--l2` 橙 `#b8743a`、`--l3` 橄榄绿 `#5b7a4e`（Transjakarta 走廊色）。
+- 雅加达主题：同一套 CSS 末尾再覆盖一段 `:root`（soga 深棕 `--navy:#3a2618`＋金 `--gold:#b8904f`）＋蜡染纹 `--kawung`（四瓣圆纹：封面上下纹带、区块标题下、页尾）与 `--parang`（斜纹：每天标题上沿、餐厅分组线）。
+- 逐日：`.day .dh` 居中节目单式标题；`.day .db::before` 是竖线，`.wxbox`／`.stop`／`.tl .ev` 的 `::before` 是站点圆点（`.pin.must` 实心＝必去，`.tl .ev.hot` 双圈＋虚线＝在空中）。
+  `.pin` 本身隐藏、内容清空，必去／可选靠 `h4::before` 文字；**有路线编号的 pin（新加坡 D3 的 1／2／3）挂 `.num` 显示成「第 1 站 · 必去／STOP 1 · RECOMMENDED」**，编号别删。
+- nav chip：`<span class="d">` 是区块名（中英）或 D1，`<span class="m">` 是罗马数字或「11 Nov」；当前位置是金色细下划线（`.active::after`）。
+- **跳转一律「扣掉吸顶栏高度再 `scrollTo` 平滑滚动」**：nav chip（`navSetup`）、正文页内链接（`inPageLinks`，document 上委派 `a[href^="#"]`）、`jumpToToday`（**先等 `document.fonts.ready` 再滚**，否则字体替换重排会停在半路）。
+  **不要加 `scroll-margin-top`／`scroll-padding`／`html{scroll-behavior}`**——预览阶段证实会打断平滑滚动、标题被吸顶栏挡住。
+- **链接按钮（地图／官网／售票／航班追踪）**：标记固定为 `<div class="links"><a class="btn-map [web|tix]"><svg class="ico">…</svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a> …</div>`，
+  航班追踪是 `<a class="track">` 同一套；地图＝地标针图标、`web`＝地球、`tix`＝票券、track＝飞机（全是 inline SVG 细线描边，不用 emoji）。连着的按钮包在同一个 `.links`（grid，两颗并排各占一半、一颗整行）。
+  样式是方角 1px 金框、高 46px、按下反底色（用户 2026-11-01 选的方案①）；**外观只写在 CSS 末尾「可点链接按钮」那一组**，以后要换成「下划线文字前加图标」或「卡片底部整条横栏」只改那段 CSS。
+  `class="btn-map"` 这个名字别改：`refresh-photos.py`、`check-map-coords.py`、老板 App 的手册导入都靠它或靠 href 找地图链接。开头 `.tip` 那句说明（「带地标图标的『地图』按钮…」）要跟按钮长相一致。
+- 全页不用 emoji 当图标（天气 JS 也拿掉了 `w.i` 图示）。
+
+**CSS 与 JS 整套复制自 singapore-trip/index.html**（**2026-11-01 改版后 CSS 已整套换掉，见上；下面这句只说 JS 来源**）（`.day`／`.stop`／`.evt`／`.tl`／lightbox／天气条／PSI 条／
 hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案常数（「十一月常态 25–31°C，午后雷阵雨常见」，
 逻辑一行没动），CSS 末尾多一条 `.note a, .desc a …` 让文内链接不显示默认蓝。
 结构：topbar → nav（FLT／STAY／EVT／D1–D4／FOOD，**顺序与区块顺序一致**）→ cover → tip → `#flights`(01，三张 `.bpass`：去程 SQ153 KTI→SIN 09:35–12:50〔Tan Chin Hooi 商务／Hew Chern Yang 经济〕、
@@ -216,7 +234,7 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
 - 航班、酒店已订，见上。`check-flight-times.py` 的扫描范围已扩到 `*/*.html`（原本只扫 `*/index.html`，本页漏扫），TZ 表补了 CGK（UTC+7）。
 - **座位（2026-10-31 用户已给）**：SQ153 Tan Chin Hooi 11A、Hew Chern Yang 49C；SQ133 Yap Lian Khoon 14A；
   SQ958 Tan Chin Hooi 14A、Yap Lian Khoon 15A、Hew Chern Yang 32G。各航段各自排座，别互抄。雅加达之后的回程航段不属于本手册，不放。
-- **VIP 接机：用户说确定了再告诉**——页面只写「机场接送由 MBS 安排」，不写 VIP、不写「待定」；拿到后写进 `#hotel` 的接送 note。
+- **接送（2026-11-01 MBS 已确认派车）**：住宿 note、D1「MBS 专车接机」、D4「MBS 专车送机到樟宜 T2」都写成确定说法。VIP 通道（JetQuay）用户还没确认：**不写 VIP／JetQuay，也不写「待确认」**，拿到后再写进 `#hotel` 的接送 note。
 - **订位代号、电子机票号、Trip.com 订单号一律不进页面与 commit**（公开仓库）。
 - **每天不写固定钟点（用户：「我不知道他们几点起来，不必固定时间」）**：D2/D3 只写「上午 → 午餐 → 其余时间自由」的顺序；
   D1/D4 是 `.tl` 时间轴，只有航班钟点（D1 07:00 金边家里出发、09:35、12:00、12:50、13:35；D4 12:30、13:20），
@@ -232,7 +250,7 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
   新增 **Song Fa Signatures**（Paragon B1-06，4.8／1,202 条，乌节路组）。松发与 Song Fa Signatures 是用户指定的两家不同店，不算重复。
 
 ## sg-jkt-trip/jakarta.html（约 900 行；2026-10-31 建）
-雅加达段手册，2026-11-14（六）～11-16（一）两晚三天，Tan Chin Hooi／Yap Lian Khoon／Hew Chern Yang 三人，双语。跟 `singapore.html` 配套：
+雅加达段手册，2026-11-14（六）～11-16（一）两晚三天，Tan Chin Hooi／Yap Lian Khoon／Hew Chern Yang 三人，双语。**版面与按钮做法同 `singapore.html`（见上一节「版面（2026-11-01 改版）」），本页另有蜡染主题覆盖段与 Transjakarta 线路色。**跟 `singapore.html` 配套：
 两本 topbar 各有一颗 `a.jump`（新加坡「雅加达 →」、雅加达「← 新加坡」，CSS 一行 `.topbar a.jump` 两边都有）。已登记 `tools/lib/trips.py`（2026-11-16）。
 **CSS／JS 整套复制自 singapore.html**，删掉了 PSI 条与 `.hazeplan`（JS 的 airQuality 整段拿掉，CSS 里 psi/haze 行也删了）；天气坐标改 PIK（-6.109, 106.744）、
 时区 `Asia/Jakarta`、常态文案「十一月雨季常态 25–33°C，午后常下大雨」。**本页没有空气质量条**（新加坡 PSI 接口只管新加坡；要加就照槟城的 open-meteo 空气质量做法）。
