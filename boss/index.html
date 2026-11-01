@@ -304,6 +304,21 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .admin-check{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:4px 0;font-weight:500}
 .admin-check input{width:18px;height:18px}
 .admin-check input:disabled + *, .admin-check:has(input:disabled){opacity:.45}
+/* 每周固定行程（2026-11-01）：条目上的小标签、「这次取消」、行程页那张卡、管理页那一块 */
+.recur-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--p2);
+  color:var(--p);font-size:11.5px;font-weight:700;vertical-align:1px;white-space:nowrap}
+.recur-cancel-btn,.recur-restore-btn{margin-top:6px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;
+  background:transparent;color:var(--sub);font-size:12.5px;font-family:inherit;cursor:pointer}
+.recur-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;padding:14px 16px}
+.recur-card-title{font-size:16px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}
+.recur-card-sub{font-size:13px;color:var(--sub);margin-top:3px;overflow-wrap:anywhere}
+.recur-card .item-map{display:inline-block;margin-top:8px}
+.recur-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 0;border-top:1px solid var(--border);font-size:13.5px}
+.recur-row:first-of-type{margin-top:10px}
+.recur-date{font-weight:700;min-width:96px}
+.recur-skip{color:var(--sub)}
+.recur-row .recur-cancel-btn,.recur-row .recur-restore-btn{margin-top:0;margin-left:auto}
+.admin-recur-dates{margin:6px 0 0}
 /* 管理页的备忘清单 */
 .admin-memo-row{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)}
 .admin-memo-body{flex:1;min-width:0}
@@ -1422,7 +1437,81 @@ function findNextItineraryDate(afterIso){
       }
     });
   });
+  // 每周固定行程也算「下一个安排」
+  const rec = recurringOccurrences(addDaysIso(afterIso, 1), addDaysIso(afterIso, RECUR_WINDOW_DAYS)).find(o => !o.skip);
+  if(rec && (min === null || rec.date < min)) min = rec.date;
   return min;
+}
+
+/* ---------- 每周固定行程（2026-11-01） ----------
+ * 用户：老板每个星期日人在金边就去 Wat Monisovann 见师父，「设一次之后每周自动出现」。
+ * 规则存在 feed.recurring（butler trips.json 顶层），**展开成具体日期在这里做**：
+ *   recurringOccurrences(from, to) → 每条规则在这段日子里每个对得上的星期几一笔，
+ *   带 skip：'' 照常 / 'cancelled' 管理员按了「这次取消」（skipDates）/ 'away' 出远门。
+ * 「出远门」怎么判（awayTripOn）：那天落在某一趟行程的 start~end（含头尾）里，
+ *   而这趟的 location（zh 或 en）**有填、而且不是金边／Phnom Penh**。
+ *   location 空着的当成在金边——一天的本地安排（「用讲的」建出来的那种）本来就不填地点，
+ *   以前那笔「11月1日 见师父」也是空的；把它们当成出远门，见师父就会被自己的本地安排吃掉。
+ * 已经有一笔一模一样的单次条目（同一天、同一个地图链接或同一个中文标题）就不再展开，
+ *   避免迁移那一刻（单次那趟还没删）同一天出现两条。
+ * 只展开今天起 RECUR_WINDOW_DAYS 天：过去的不补、太远的不列。 */
+const RECUR_WINDOW_DAYS = 56;
+const LOCAL_CITY_RE = /金边|phnom\s*penh/i;
+const WEEKDAYS_EN_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function addDaysIso(iso, n){ const d = parseIsoLocal(iso); d.setDate(d.getDate() + n); return isoDate(d); }
+function recurringRules(){
+  return (feedData && Array.isArray(feedData.recurring) ? feedData.recurring : [])
+    .filter(r => r && Number.isInteger(r.weekday) && r.weekday >= 0 && r.weekday <= 6 && /^\d{2}:\d{2}$/.test(r.time || ''));
+}
+function isAwayTrip(t){
+  const loc = [t && t.location && t.location.zh, t && t.location && t.location.en]
+    .map(x => String(x || '').trim()).filter(Boolean).join(' ');
+  return !!loc && !LOCAL_CITY_RE.test(loc);
+}
+function awayTripOn(dateIso){
+  return (feedData && feedData.trips || []).find(t => t && t.start && dateIso >= t.start
+    && dateIso <= (t.end || t.start) && isAwayTrip(t)) || null;
+}
+function recurringDupOf(rule, dateIso){
+  const zh = String(rule.title && rule.title.zh || '').trim();
+  return (feedData && feedData.trips || []).some(t => (t.items || []).some(it => it && it.date === dateIso
+    && ((rule.mapUrl && it.mapUrl === rule.mapUrl) || (zh && String(it.title && it.title.zh || '').trim() === zh))));
+}
+function recurringItem(rule, dateIso){
+  const it = { date: dateIso, time: rule.time, title: rule.title || {zh:'',en:''}, note: rule.note || {zh:'',en:''},
+    mapUrl: rule.mapUrl || '', recurring: true, ruleId: rule.id };
+  if(PERIODS.includes(rule.period)) it.period = rule.period;
+  return it;
+}
+function recurringOccurrences(fromIso, toIso){
+  const out = [];
+  recurringRules().forEach(rule => {
+    let d = fromIso;
+    if(rule.startDate && rule.startDate > d) d = rule.startDate;
+    const end = rule.endDate && rule.endDate < toIso ? rule.endDate : toIso;
+    const shift = (rule.weekday - parseIsoLocal(d).getDay() + 7) % 7;
+    for(d = addDaysIso(d, shift); d <= end; d = addDaysIso(d, 7)){
+      if(recurringDupOf(rule, d)) continue;
+      const away = awayTripOn(d);
+      const skip = (rule.skipDates || []).includes(d) ? 'cancelled' : (away ? 'away' : '');
+      out.push({ rule, date: d, skip, away, item: recurringItem(rule, d) });
+    }
+  });
+  return out.sort((a, b) => a.date.localeCompare(b.date) || (a.rule.time || '').localeCompare(b.rule.time || ''));
+}
+/** 某一天照常要去的那几条（已套用「这次取消」和「出远门」），形状跟行程条目一样。 */
+function recurringItemsForDate(dateIso){
+  return recurringOccurrences(dateIso, dateIso).filter(o => !o.skip).map(o => o.item);
+}
+function recurTagHtml(){ return `<span class="recur-tag">${bl('🔁 每周','🔁 Weekly')}</span>`; }
+function recurWeekdayBl(w){ return { zh: '每' + WEEKDAYS_ZH[w], en: 'Every ' + WEEKDAYS_EN_FULL[w] }; }
+/** 「这次取消」／「恢复」：**只有 admin 画得出来**（老板只读，这两颗一颗都不进 DOM）。 */
+function recurSkipBtnHtml(ruleId, dateIso, cancelled){
+  if(role !== 'admin') return '';
+  const a = `'${escapeHtml(ruleId)}','${escapeHtml(dateIso)}'`;
+  return cancelled
+    ? `<button type="button" class="recur-restore-btn" onclick="adminRecurSkip(${a}, false)">↩ ${bl('恢复','Restore')}</button>`
+    : `<button type="button" class="recur-cancel-btn" onclick="adminRecurSkip(${a}, true)">✕ ${bl('这次取消','Skip this time')}</button>`;
 }
 /* ---------- 时段：没有钟点的条目选「上午／下午／晚上」（2026-10-31） ----------
  * 排序规则（四处共用 sortItemsByTime：今天页、行程页、分享文字、管理表单）：
@@ -1562,8 +1651,9 @@ function itemRowHtml(it){
   return `<div class="item-row${isHotelItem(it) ? ' item-row-hotel' : ''}">
       <div class="item-time">${itemTimeHtml(it)}</div>
       <div class="item-body">
-        <div class="item-title">${isHotelItem(it) ? '🏨 ' : ''}${blObj(it.title)}</div>
+        <div class="item-title">${isHotelItem(it) ? '🏨 ' : ''}${blObj(it.title)}${ it.recurring ? recurTagHtml() : '' }</div>
         ${ hasNote ? `<div class="item-note">${blObj(it.note)}</div>` : '' }
+        ${ it.recurring ? recurSkipBtnHtml(it.ruleId, it.date, false) : '' }
         ${ it.flight ? flightInfoHtml(it) : '' }
         ${ hotelInfoHtml(it) }
       </div>
@@ -1625,6 +1715,7 @@ function renderToday(){
       if(it.date === todayIso || it.date === tomorrowIso) all.push(it);
     });
   });
+  all.push(...recurringItemsForDate(todayIso), ...recurringItemsForDate(tomorrowIso));
   const sorted = sortItemsByTime(all);
   const todayItems = sorted.filter(it => it.date === todayIso);
   const tomorrowItems = sorted.filter(it => it.date === tomorrowIso);
@@ -1974,6 +2065,32 @@ function tripCardHtml(trip){
       <div class="trip-items">${tripItemsHtml(trip)}</div>
     </div>`;
 }
+/** 行程分页最上面：每条每周固定行程一张卡，列出接下来 4 次（跳过的也列，写明为什么）。 */
+const RECUR_LIST_N = 4;
+function recurringTripsCardsHtml(todayIso){
+  const occ = recurringOccurrences(todayIso, addDaysIso(todayIso, RECUR_WINDOW_DAYS));
+  return recurringRules().map(rule => {
+    const mine = occ.filter(o => o.rule.id === rule.id).slice(0, RECUR_LIST_N);
+    const wd = recurWeekdayBl(rule.weekday);
+    const when = itemTimeText(recurringItem(rule, todayIso));
+    const rows = mine.map(o => {
+      const dw = fmtDateWeekdayBoth(o.date);
+      let status = '';
+      if(o.skip === 'cancelled') status = `<span class="recur-skip">${bl('这次取消','Skipped this time')}</span>`;
+      else if(o.skip === 'away') status = `<span class="recur-skip">${bl('出远门（' + (pickObj(o.away.location) || pickObj(o.away.title)) + '），这周不去',
+        'Away (' + (pickObj(o.away.location) || pickObj(o.away.title)) + ') — not this week')}</span>`;
+      const btn = o.skip === 'away' ? '' : recurSkipBtnHtml(rule.id, o.date, o.skip === 'cancelled');
+      return `<div class="recur-row"><span class="recur-date">${bl(dw.zh, dw.en)}</span>${status}${btn}</div>`;
+    }).join('');
+    const hasNote = rule.note && ((rule.note.zh || '').trim() || (rule.note.en || '').trim());
+    return `<div class="recur-card" data-rule="${escapeHtml(rule.id)}">
+        <div class="recur-card-title">${blObj(rule.title)}${recurTagHtml()}</div>
+        <div class="recur-card-sub">${bl(wd.zh + ' ' + when, wd.en + ' ' + when)}${ hasNote ? ' · ' + blObj(rule.note) : '' }</div>
+        ${ rule.mapUrl ? `<a class="item-map" href="${escapeHtml(rule.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+        ${ rows || `<div class="recur-row recur-skip">${bl('接下来几周没有','None in the coming weeks')}</div>` }
+      </div>`;
+  }).join('');
+}
 function togglePast(){
   const el = document.getElementById('past-list');
   if(el) el.classList.toggle('off');
@@ -1989,9 +2106,10 @@ function renderTrips(){
     .sort((a,b) => (b.start||'').localeCompare(a.start||''));
 
   let html = '';
-  if(!upcoming.length && !past.length){
+  if(!upcoming.length && !past.length && !recurringRules().length){
     html += `<div class="empty-card"><div class="empty-icon">🧳</div><div>${bl('还没有行程安排','No trips yet')}</div></div>`;
   }
+  html += recurringTripsCardsHtml(todayIso);
   html += upcoming.map(tripCardHtml).join('');
   if(past.length){
     html += `<div class="past-toggle" onclick="togglePast()">${bl('以往行程（' + past.length + '）▾', 'Past Trips (' + past.length + ') ▾')}</div>`;
@@ -2547,6 +2665,7 @@ function itemsForDate(dateIso){
   (feedData && feedData.trips || []).forEach(t => (t.items || []).forEach(it => {
     if(it && it.date === dateIso) out.push(it);
   }));
+  out.push(...recurringItemsForDate(dateIso));
   return sortItemsByTime(out);
 }
 /** 航班那几行。**跟屏幕上显示的完全一致**：延误/预计的判定共用 flightTimeParts()，
@@ -2599,7 +2718,7 @@ function shareDayText(dateIso){
   items.forEach(it => {
     lines.push('');
     const time = itemTimeText(it);
-    const title = pickObj(it.title) || pick('（未命名）','(untitled)');
+    const title = (pickObj(it.title) || pick('（未命名）','(untitled)')) + (it.recurring ? pick('（每周固定）',' (weekly)') : '');
     lines.push(time ? `${time}  ${title}` : title);
     const note = pickObj(it.note);
     if(note) lines.push(note);
@@ -4699,6 +4818,152 @@ async function adminMemoDelete(id){
   if(after){ after.className = 'admin-status ok'; after.textContent = pick('已删除','Deleted'); }
 }
 
+
+/* ---------- 每周固定行程（管理页，只有 admin 画得出来） ----------
+ * 存走 butler 的 recurringSave（ADMIN_ACTIONS 里，老板那把钥匙打过来 403）。
+ * 整份 recurring 一起送：改一条＝把那一条换掉再整份存。「这次取消」＝往那条的 skipDates 加一天。 */
+let adminRecurBusy = false;
+let adminRecurEditId = '';
+function recurPlaceToMapUrl(v){
+  v = String(v || '').trim();
+  return !v ? '' : (/^https?:\/\//i.test(v) ? v : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(v));
+}
+function adminRecurringSectionHtml(){
+  adminRecurEditId = '';   // 每次重画表单都是空的，「正在改哪一条」一起清（同备忘那个坑）
+  const rules = recurringRules();
+  const todayIso = isoDate(new Date());
+  const occ = recurringOccurrences(todayIso, addDaysIso(todayIso, RECUR_WINDOW_DAYS));
+  const rows = rules.map(r => {
+    const wd = recurWeekdayBl(r.weekday);
+    const dates = occ.filter(o => o.rule.id === r.id).slice(0, 6).map(o => {
+      const dw = fmtDateWeekdayBoth(o.date);
+      const why = o.skip === 'cancelled' ? pick('这次取消','skipped') : o.skip === 'away' ? pick('出远门','away') : '';
+      return `<div class="recur-row"><span class="recur-date">${escapeHtml(pick(dw.zh, dw.en))}</span>${ why ? `<span class="recur-skip">${escapeHtml(why)}</span>` : '' }${ o.skip === 'away' ? '' : recurSkipBtnHtml(r.id, o.date, o.skip === 'cancelled') }</div>`;
+    }).join('');
+    return `<div class="admin-memo-row" data-rule="${escapeHtml(r.id)}">
+        <div class="admin-memo-body">
+          <div class="admin-memo-text">${escapeHtml(pickObj(r.title))}</div>
+          <div class="admin-memo-meta">${escapeHtml(pick(wd.zh, wd.en))} ${escapeHtml(itemTimeText(recurringItem(r, todayIso)))}${ r.endDate ? ' · ' + escapeHtml(pick('到 ','until ') + r.endDate) : '' }</div>
+          <div class="admin-recur-dates">${dates}</div>
+        </div>
+        <div class="admin-memo-acts">
+          <button type="button" class="admin-recur-edit" onclick="adminRecurEdit('${escapeHtml(r.id)}')" aria-label="${escapeHtml(pick('修改','Edit'))}">✏️</button>
+          <button type="button" class="admin-recur-del" onclick="adminRecurDelete('${escapeHtml(r.id)}')" aria-label="${escapeHtml(pick('删除','Delete'))}">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+  const wdOpts = [0,1,2,3,4,5,6].map(w => `<option value="${w}">${escapeHtml(pick(recurWeekdayBl(w).zh, recurWeekdayBl(w).en))}</option>`).join('');
+  return `<div class="admin-block" id="admin-recur-section">
+      <h3>🔁 ${pick('每周固定行程','Weekly routine')}</h3>
+      <div class="admin-rest-hint">${pick('设一次，每周自动出现在老板的「今天」和行程里。那天如果在外地行程的日期里（地点不是金边的那种），自动不显示。某一次不去，在那一天按「这次取消」。',
+        'Set once; it shows up every week on the boss’s Today and Trips. Days inside an out-of-town trip (location not Phnom Penh) are skipped automatically. Use “Skip this time” for a single week.')}</div>
+      <div class="admin-field"><label>${pick('星期几','Day of week')}</label>
+        <select id="admin-recur-wd" class="admin-select">${wdOpts}</select></div>
+      <div class="admin-field"><label>${pick('时间','Time')}</label>
+        <input type="time" id="admin-recur-time" value="14:00"></div>
+      <div class="admin-field"><label>${pick('做什么（中文）','What (Chinese)')}</label>
+        <input type="text" id="admin-recur-title-zh" maxlength="80" placeholder="${escapeHtml(pick('例：见师父 · Wat Monisovann','e.g. 见师父 · Wat Monisovann'))}"></div>
+      <div class="admin-field"><label>${pick('做什么（英文，可不填）','What (English, optional)')}</label>
+        <input type="text" id="admin-recur-title-en" maxlength="80"></div>
+      <div class="admin-field"><label>${pick('地点（填名字自动生成地图链接，或贴链接）','Place (name or a map link)')}</label>
+        <input type="text" id="admin-recur-place" maxlength="600"></div>
+      <div class="admin-field"><label>${pick('备注（可不填）','Note (optional)')}</label>
+        <input type="text" id="admin-recur-note" maxlength="200"></div>
+      <div class="admin-field"><label>${pick('从哪天开始','Starting')}</label>
+        <input type="date" id="admin-recur-start" value="${escapeHtml(todayIso)}"></div>
+      <div class="admin-field"><label>${pick('到哪天为止（可不填＝一直有）','Until (optional)')}</label>
+        <input type="date" id="admin-recur-end"></div>
+      <button type="button" class="admin-btn" id="admin-recur-save" onclick="adminRecurSave()">💾 ${pick('保存每周固定行程','Save weekly routine')}</button>
+      <div class="admin-status" id="admin-recur-status"></div>
+      ${ rows ? `<div class="admin-memo-list">${rows}</div>` : `<div class="admin-rest-hint">${pick('还没有每周固定行程','No weekly routine yet')}</div>` }
+    </div>`;
+}
+function adminRecurStatus(msg, cls){
+  const el = document.getElementById('admin-recur-status');
+  if(el){ el.className = 'admin-status' + (cls ? ' ' + cls : ''); el.textContent = msg; }
+}
+function adminRecurEdit(id){
+  const r = recurringRules().find(x => x.id === id);
+  if(!r) return;
+  adminRecurEditId = id;
+  document.getElementById('admin-recur-wd').value = String(r.weekday);
+  document.getElementById('admin-recur-time').value = r.time || '';
+  document.getElementById('admin-recur-title-zh').value = (r.title && r.title.zh) || '';
+  document.getElementById('admin-recur-title-en').value = (r.title && r.title.en) || '';
+  document.getElementById('admin-recur-place').value = r.mapUrl || '';
+  document.getElementById('admin-recur-note').value = (r.note && r.note.zh) || '';
+  document.getElementById('admin-recur-start').value = r.startDate || '';
+  document.getElementById('admin-recur-end').value = r.endDate || '';
+  const btn = document.getElementById('admin-recur-save');
+  if(btn) btn.textContent = '💾 ' + pick('保存修改','Save changes');
+  const sec = document.getElementById('admin-recur-section');
+  if(sec) sec.scrollIntoView({ block: 'start' });
+}
+/** 整份送出去；「存」和「拉最新」分两段 try（跟行程表单同一个坑），确认消息在重建之后再写一次。 */
+async function adminRecurPush(rules, okMsg){
+  adminRecurBusy = true;
+  adminRecurStatus(pick('保存中…','Saving…'));
+  try{
+    await bossCall('recurringSave', { recurring: rules });
+  }catch(err){
+    adminRecurBusy = false;
+    adminRecurStatus((err && err.message) || pick('保存失败','Save failed'), 'err');
+    if(!document.getElementById('admin-recur-status')) alert((err && err.message) || pick('保存失败','Save failed'));
+    return false;
+  }
+  adminRecurBusy = false;
+  try{ await refreshFeed(); }catch(e){ /* 已经存好了 */ }
+  adminRecurStatus(okMsg, 'ok');
+  return true;
+}
+async function adminRecurSave(){
+  if(adminRecurBusy) return;
+  const time = (document.getElementById('admin-recur-time').value || '').trim().slice(0, 5);
+  const zh = (document.getElementById('admin-recur-title-zh').value || '').trim();
+  const en = (document.getElementById('admin-recur-title-en').value || '').trim();
+  const start = (document.getElementById('admin-recur-start').value || '').trim();
+  const end = (document.getElementById('admin-recur-end').value || '').trim();
+  if(!zh && !en){ adminRecurStatus(pick('要先写做什么','Please say what it is'), 'err'); return; }
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)){ adminRecurStatus(pick('时间要填，例如 14:00','Please set a time, e.g. 14:00'), 'err'); return; }
+  if(end && start && end < start){ adminRecurStatus(pick('结束日期不能早于开始日期','End date is before the start date'), 'err'); return; }
+  const rules = recurringRules().map(r => Object.assign({}, r));
+  const old = adminRecurEditId ? rules.find(r => r.id === adminRecurEditId) : null;
+  const rule = {
+    id: old ? old.id : 'rec-' + Math.random().toString(36).slice(2, 10),
+    weekday: Number(document.getElementById('admin-recur-wd').value),
+    time,
+    title: { zh, en },
+    note: { zh: (document.getElementById('admin-recur-note').value || '').trim(), en: (old && old.note && old.note.en) || '' },
+    mapUrl: recurPlaceToMapUrl(document.getElementById('admin-recur-place').value),
+    skipDates: old ? (old.skipDates || []) : [],
+    startDate: start || isoDate(new Date()),
+  };
+  if(old && PERIODS.includes(old.period)) rule.period = old.period;
+  if(end) rule.endDate = end;
+  if(old) rules[rules.indexOf(old)] = rule; else rules.push(rule);
+  await adminRecurPush(rules, pick('已保存','Saved'));
+}
+async function adminRecurDelete(id){
+  if(adminRecurBusy) return;
+  const r = recurringRules().find(x => x.id === id);
+  if(!r) return;
+  if(!confirm(pick(`确定要删掉每周固定行程「${pickObj(r.title)}」吗？以后每周都不会再出现。`, `Delete the weekly “${pickObj(r.title)}”?`))) return;
+  await adminRecurPush(recurringRules().filter(x => x.id !== id), pick('已删除','Deleted'));
+}
+/** 「这次取消」（cancel=true）／「恢复」（false）：只动那一条的 skipDates，下周照常。 */
+async function adminRecurSkip(id, dateIso, cancel){
+  if(adminRecurBusy || role !== 'admin') return;
+  const rules = recurringRules().map(r => Object.assign({}, r));
+  const r = rules.find(x => x.id === id);
+  if(!r || !/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) return;
+  const set = new Set(r.skipDates || []);
+  if(cancel) set.add(dateIso); else set.delete(dateIso);
+  r.skipDates = [...set].sort();
+  const dw = fmtDateWeekdayBoth(dateIso);
+  await adminRecurPush(rules, cancel ? pick(`${dw.zh} 这次取消了，下周照常`, `${dw.en} skipped; next week as usual`)
+                                     : pick(`${dw.zh} 恢复照常`, `${dw.en} restored`));
+}
+
 /* ---------- 收藏餐厅（管理页，只有 admin 画得出来） ----------
  * 2026-09-03 用户问「餐厅要在 app 里自己加能吗」。在这之前只能回 Telegram 说一句。
  * 增删都是 **admin-only 的写操作**（butler 的 ADMIN_ACTIONS 里），老板那把钥匙打过来
@@ -4804,9 +5069,11 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v67</div>
+    <div class="admin-ver" id="adminVer">boss-app-v68</div>
 
     ${adminTripsSectionHtml()}
+
+    ${adminRecurringSectionHtml()}
 
     ${adminDentalSectionHtml()}
 

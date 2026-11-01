@@ -171,7 +171,7 @@ export const FOUR_PAGE_PDF_B64 = 'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZX
 // flightLookupFlight：不传就默认「查不到」（{status:'ok'} 没带 flight 字段，
 // 走 adminFlightLookup() 的 !f 分支）——这正是最常见、最该守住的场景：
 // 一打开自检默认就是「查不到」，逼着断言必须去处理失败可见性，不能靠巧合蒙混过关。
-export function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null, leaveUpcoming = null, restaurants = null, memos = null, itineraryResult = null } = {}){
+export function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fakeInventory(), flightLookupFlight = null, trips = null, ticketParseResult = null, dental = null, bills = null, pushTestResult = null, seen = null, leaveToday = null, leaveUpcoming = null, restaurants = null, memos = null, itineraryResult = null, recurring = null } = {}){
   const rec = { calls: [], token: null };
   ctx.route('**/*', async route => {
     const u = route.request().url();
@@ -192,6 +192,7 @@ export function mountRoutes(ctx, { role = 'viewer', who = 'YANG', inventory = fa
             ...(leaveToday ? { leaveToday } : {}),
             ...(leaveUpcoming ? { leaveUpcoming } : {}),
             trips: trips || fakeTrips(), bills: bills || fakeBills(), inventory,
+            recurring: recurring || [],
             restaurants: restaurants || fakeRestaurants(),
             // 服务端已经按身份筛过了：viewer 拿到的**只有**「给老板看」的那些，
             // 而且不带 audience/notify。这里照实模拟，别让自检活在一个更宽松的世界里。
