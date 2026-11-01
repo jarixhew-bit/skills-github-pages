@@ -2805,6 +2805,13 @@ const SHIFU_RE = /见师父/;
   ok('★过渡期（单次＋规则都在）：仍然只有一条', t2.filter(t => SHIFU_RE.test(t)).length === 1, t2);
   ok('★过渡期不判成出远门（单次那趟 location 空着）', await mid.page.evaluate(() => !awayTripOn('2026-11-01')));
   await mid.ctx.close();
+  // 阳性用例：同一个地点、同一天、**不同钟点**的另一件事（早上法会）——每周那条照常出现，不被去重吃掉
+  const other = oldShifuTrip(); other.id = 'trip-fahui'; other.start = other.end = '2026-11-08';
+  other.items = [{ date: '2026-11-08', time: '08:00', title: { zh: '早上法会', en: '' }, note: { zh: '', en: '' }, mapUrl: SHIFU_MAP }];
+  const fh = await recurOn('2026-11-08', { trips: [...tripsSgJkt(), other] });
+  const t4 = await todayTitles(fh.page);
+  ok('★同地点不同钟点的另一件事：法会和每周见师父都在', t4.some(t => /早上法会/.test(t)) && t4.filter(t => SHIFU_RE.test(t)).length === 1, t4);
+  await fh.ctx.close();
   // 对照组：迁移前（只有单次那趟）也是一条——上面两条的「一条」不是因为什么都不显示
   const before = await recurOn('2026-11-01', { trips: [...tripsSgJkt(), oldShifuTrip()], recurring: [] });
   const t3 = await todayTitles(before.page);
@@ -2815,7 +2822,7 @@ const SHIFU_RE = /见师父/;
   ok('★空态的「下一个」算上每周固定行程（11/8）', /2026年11月8日/.test(await nx.page.locator('#tab-today .empty-next').innerText().catch(() => '')));
   await nx.ctx.close();
 }
-const RECUR_CTRL_SEL = '.recur-cancel-btn, .recur-restore-btn, #admin-recur-section, #admin-recur-save, .admin-recur-edit, .admin-recur-del, #admin-recur-wd, #admin-recur-time';
+const RECUR_CTRL_SEL = '#admin-recur-note-en, .recur-cancel-btn, .recur-restore-btn, #admin-recur-section, #admin-recur-save, .admin-recur-edit, .admin-recur-del, #admin-recur-wd, #admin-recur-time';
 {
   console.log('\n【四十五f】老板只读：新控件一个都不进 DOM（＋admin 对照组）');
   const recurring = [ruleShifu({ skipDates: ['2026-11-22'] })];
@@ -2867,12 +2874,14 @@ const RECUR_CTRL_SEL = '.recur-cancel-btn, .recur-restore-btn, #admin-recur-sect
   await a.page.click('.admin-recur-edit');
   ok('★编辑回填：时间 14:00、地点是原链接', await a.page.inputValue('#admin-recur-time') === '14:00' && await a.page.inputValue('#admin-recur-place') === SHIFU_MAP);
   await a.page.fill('#admin-recur-time', '15:00');
+  await a.page.fill('#admin-recur-note-en', 'Bring fruit');
   const b2 = nSave();
   await a.page.click('#admin-recur-save');
   await until(() => nSave() > b2, { what: '编辑送出' });
   const ed = a.rec.calls.filter(c => c.action === 'recurringSave').pop() || { recurring: [] };
   ok('★编辑：同一个 id 改成 15:00、只有一条、skipDates 保留', ed.recurring.length === 1 && ed.recurring[0].id === 'rec-shifu'
-     && ed.recurring[0].time === '15:00' && ed.recurring[0].skipDates.includes('2026-11-22'), ed.recurring);
+     && ed.recurring[0].time === '15:00' && ed.recurring[0].skipDates.includes('2026-11-22')
+     && ed.recurring[0].note.en === 'Bring fruit', ed.recurring);
   // 删除：confirm 按取消就不发
   a.page.once('dialog', d => d.dismiss());
   const b3 = nSave();

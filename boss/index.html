@@ -1452,7 +1452,7 @@ function findNextItineraryDate(afterIso){
  *   而这趟的 location（zh 或 en）**有填、而且不是金边／Phnom Penh**。
  *   location 空着的当成在金边——一天的本地安排（「用讲的」建出来的那种）本来就不填地点，
  *   以前那笔「11月1日 见师父」也是空的；把它们当成出远门，见师父就会被自己的本地安排吃掉。
- * 已经有一笔一模一样的单次条目（同一天、同一个地图链接或同一个中文标题）就不再展开，
+ * 已经有一笔一模一样的单次条目（同一天、同一个钟点，而且地图链接或中文标题相同）就不再展开，
  *   避免迁移那一刻（单次那趟还没删）同一天出现两条。
  * 只展开今天起 RECUR_WINDOW_DAYS 天：过去的不补、太远的不列。 */
 const RECUR_WINDOW_DAYS = 56;
@@ -1474,7 +1474,9 @@ function awayTripOn(dateIso){
 }
 function recurringDupOf(rule, dateIso){
   const zh = String(rule.title && rule.title.zh || '').trim();
+  // 必须同一天＋同一个钟点：同一个地方当天另有一件事（例如早上法会）不能把每周那条吃掉
   return (feedData && feedData.trips || []).some(t => (t.items || []).some(it => it && it.date === dateIso
+    && String(it.time || '').trim() === rule.time
     && ((rule.mapUrl && it.mapUrl === rule.mapUrl) || (zh && String(it.title && it.title.zh || '').trim() === zh))));
 }
 function recurringItem(rule, dateIso){
@@ -4837,7 +4839,7 @@ function adminRecurringSectionHtml(){
     const wd = recurWeekdayBl(r.weekday);
     const dates = occ.filter(o => o.rule.id === r.id).slice(0, 6).map(o => {
       const dw = fmtDateWeekdayBoth(o.date);
-      const why = o.skip === 'cancelled' ? pick('这次取消','skipped') : o.skip === 'away' ? pick('出远门','away') : '';
+      const why = o.skip === 'cancelled' ? pick('这次取消','Skipped this time') : o.skip === 'away' ? pick('出远门，这周不去','Away on a trip — not this week') : '';
       return `<div class="recur-row"><span class="recur-date">${escapeHtml(pick(dw.zh, dw.en))}</span>${ why ? `<span class="recur-skip">${escapeHtml(why)}</span>` : '' }${ o.skip === 'away' ? '' : recurSkipBtnHtml(r.id, o.date, o.skip === 'cancelled') }</div>`;
     }).join('');
     return `<div class="admin-memo-row" data-rule="${escapeHtml(r.id)}">
@@ -4867,8 +4869,10 @@ function adminRecurringSectionHtml(){
         <input type="text" id="admin-recur-title-en" maxlength="80"></div>
       <div class="admin-field"><label>${pick('地点（填名字自动生成地图链接，或贴链接）','Place (name or a map link)')}</label>
         <input type="text" id="admin-recur-place" maxlength="600"></div>
-      <div class="admin-field"><label>${pick('备注（可不填）','Note (optional)')}</label>
+      <div class="admin-field"><label>${pick('备注（中文，可不填）','Note (Chinese, optional)')}</label>
         <input type="text" id="admin-recur-note" maxlength="200"></div>
+      <div class="admin-field"><label>${pick('备注（英文，可不填）','Note (English, optional)')}</label>
+        <input type="text" id="admin-recur-note-en" maxlength="200"></div>
       <div class="admin-field"><label>${pick('从哪天开始','Starting')}</label>
         <input type="date" id="admin-recur-start" value="${escapeHtml(todayIso)}"></div>
       <div class="admin-field"><label>${pick('到哪天为止（可不填＝一直有）','Until (optional)')}</label>
@@ -4892,6 +4896,7 @@ function adminRecurEdit(id){
   document.getElementById('admin-recur-title-en').value = (r.title && r.title.en) || '';
   document.getElementById('admin-recur-place').value = r.mapUrl || '';
   document.getElementById('admin-recur-note').value = (r.note && r.note.zh) || '';
+  document.getElementById('admin-recur-note-en').value = (r.note && r.note.en) || '';
   document.getElementById('admin-recur-start').value = r.startDate || '';
   document.getElementById('admin-recur-end').value = r.endDate || '';
   const btn = document.getElementById('admin-recur-save');
@@ -4933,7 +4938,7 @@ async function adminRecurSave(){
     weekday: Number(document.getElementById('admin-recur-wd').value),
     time,
     title: { zh, en },
-    note: { zh: (document.getElementById('admin-recur-note').value || '').trim(), en: (old && old.note && old.note.en) || '' },
+    note: { zh: (document.getElementById('admin-recur-note').value || '').trim(), en: (document.getElementById('admin-recur-note-en').value || '').trim() },
     mapUrl: recurPlaceToMapUrl(document.getElementById('admin-recur-place').value),
     skipDates: old ? (old.skipDates || []) : [],
     startDate: start || isoDate(new Date()),

@@ -589,7 +589,7 @@ note:{zh,en}, mapUrl, skipDates:["YYYY-MM-DD"], startDate, endDate?}]`。放同�
 （「用讲的」建出来的）本来就不填地点，迁移前那笔「11月1日 见师父」也是空的。出发／回程当天也算在外地（整天跳过）。
 所以**建外地行程一定要填地点**，否则那几个星期日照样会出现。
 
-**防重复**（`recurringDupOf()`）：同一天已经有单次条目的地图链接或中文标题跟规则一样，就不展开——迁移那一刻
+**防重复**（`recurringDupOf()`）：同一天、**同一个钟点**已经有单次条目，而且地图链接或中文标题跟规则一样，就不展开（只比地点会误伤：同一间寺当天早上另有法会，下午见师父就被吃掉——verifier 逮到的，场景四十五e 有阳性用例）——迁移那一刻
 （单次那趟还没删）不会冒出两条。
 
 **这次取消**：只有 admin 画得出来（`recurSkipBtnHtml()` 先判 role），今天页那条、行程页卡上、管理页各一处；
@@ -603,3 +603,5 @@ skipDates 与下周照常、只展开对的星期几与起讫日、迁移后／�
 ＋取消／新增／编辑／删除的送出内容）；butler `tests/boss-recurring.test.mjs`（52 项）＋ `trips-cleanup`【6】。
 回退验证：拿掉出远门判定、拿掉 role 闸、拿掉防重复 → 7 红；butler 拿掉 weekday 校验＋拿出 ADMIN_ACTIONS → 13 红，
 cron 不带 recurring → 1 红。
+
+后续（这次没做）：butler 的 Telegram 早报（`src/cron/morning_brief.js`）还不读 recurring，YANG 的早报里不会出现每周固定行程。
