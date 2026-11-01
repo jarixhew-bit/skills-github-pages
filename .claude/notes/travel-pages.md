@@ -160,7 +160,7 @@ hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案�
 SQ133 PEN→SIN 12:00–13:35〔Yap Lian Khoon 商务〕；11/14 SQ958 SIN T2→CGK T3 12:30–13:20〔三人〕；下面 `.tbl` 行李额表＋随身小物一句) →
 `#hotel`(02，`.hotel` 卡：MBS 11/11 入住 11/14 退房，分房 套房 Tan Chin Hooi／标准大床 Yap、Hew；「机场接送由 MBS 安排」) →
 `#events`(03，开头一句「供参考、去不去由你们、没排进行程」＋9 张 `.evt`＋圣诞灯饰提示，清单见下) → `#itinerary`(04，`.day#day01`~`#day04`，
-`data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，18 张 `.evt`，三个 `.grp` 小标题：乌节路 9 → 滨海湾金沙 4 → 其他区域 5（组标题里的家数是手写的，加卡要同步改），组内按菜系排；
+`data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，21 张 `.evt`，四个 `.grp` 小标题：乌节路 9 → 滨海湾金沙 4 → 其他区域 6 → 东部友诺士一带 2（组标题里的家数是手写的，加卡要同步改），组内按菜系排；
 每张卡 `.et` 开头有「📍区域 · 」标签，chips 写午市＋晚市)。**2026-10-30 用户要求「餐厅直接搞成列表，别分晚餐」**：
 原 `#orchard`＋`#dinner` 两区块合并、D2 的两张午餐 `.stop` 也搬进来，**逐日行程不再放餐厅卡**，只用一句话＋`#food` 链接。
 逐日（2026-10-31 改，见文末）：D1 `.tl` 航班时间轴→MBS 接机→入住→午餐与下午自由（一句链到 `#mall-shoppes`）→晚餐指 `#food` 的 MBS 组（PUTIEN／JUMBO Signatures），没有 `.dayfoot`；
@@ -223,6 +223,9 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
   其余节点 `.t` 写「落地后／下午／晚上／早上」；D4 唯一的非航班钟点是「建议 10:00 前离开酒店」（起飞前约 2 小时到＋MBS→T2 约 20–25 分钟），明写「建议」。
   店家营业时间（观音庙、Takashimaya）属于店家信息，照留。
 - D4 的星耀樟宜卡与所有 15:15 班机内容已删（12:30 班机去不了 Jewel）；Jewel 照片并进限时活动区的雨漩涡卡，那张只建议 D2/D3 晚上去。
+- **2026-11-01 用户再指定三家（不受 4.2 门槛）**：YuCun Claypot Curry Fish Head（29/31 Sultan Gate，4.8／2,577，`#food-yucun`，「其他区域」组，标「武吉士」——**卡上不能写甘榜格南／Kampong Glam**，`check-weather.mjs` 只准这些词出现在 D3，改用链到 `#d3-kampong`）；
+  新开「东部 · 友诺士一带」组：Katong Laksa (George's)（307 Changi Rd，4.5／702，`#food-katonglaksa`；**不是 328 Katong Laksa**；店内告示写 08:15–14:30 或卖完、部分周二休）、
+  乐城海南鸡饭 Le Cheng Kampong（389 Changi Rd，4.7／1,246，`#food-lecheng`，与隔壁古早人台湾粥共用厨房）。三家照片各 4 张（CI 候选里有同图不同网址的重复，挑时剔掉）。
 - **用户亲自指定的三家店（不受 4.2 门槛限制，地图链接用用户给的短链接）**：
   Paradise Teochew 改 **Takashimaya 分店**（391A Orchard Rd #03-10，Google 4.7／1,126 条）；
   松发肉骨茶改「本来那家」**新桥路总店**（11 New Bridge Rd，4.4／8,226 条，放「其他区域」组，Centrepoint 分店卡已删）；
@@ -236,7 +239,7 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
 天气自检：`check-weather.mjs` 已加 `[jkt]` 一段（3 天结构、坐标与时区、正常／部分／挂掉／窗口外、只有 ≥60% 那天标红、页面不得出现 #psi／.hazeplan、无 JS 错误）；`ci-decide.py` 的 weather 组已登记本页。
 结构：topbar → nav（FLT／STAY／D1–D3／FOOD，顺序与区块一致）→ cover（酒店夜景）→ tip（雅加达比新加坡慢 1 小时）→
 `#flights`(01：SQ958 去程＋All Indonesia 电子入境卡 note → SQ957 回程＋分开转机 note → SQ138〔Yap，红色 note：转机 1h25m 偏紧〕→ SQ158〔Tan、Hew，绿色 note：3h35m〕→ 行李额表) →
-`#hotel`(02：Swissôtel PIK Avenue，⭐4.7，11/14 入住、11/16 退房；**分房、接送用户没给，不写也不写「待定」**) →
+`#hotel`(02：Swissôtel PIK Avenue，⭐4.7，11/14 入住、11/16 退房，14:00 后入住、12:00 前退房；2026-11-01 加分房 note〔Tan Chin Hooi 套房含 11/15、11/16 早餐；Yap、Hew 各一间 Premier King 不含早餐〕＋早餐 note〔另两位在酒店付费或 11/15 去商场；11/16 08:30 出发商场未开只能酒店付费〕；D1 入住格写「约 14:00」、D3 早餐格已对齐；接送用户没给，不写也不写「待定」；Trip.com 确认号／PIN／订单号／价钱一律不写) →
 `#itinerary`(03：`#day01` `.tl` 航班时间轴〔早上 MBS 退房→12:30→13:20→落地后车程 15–20 分→入住→晚上「朋友生日宴」，不写人名〕；
 `#day02` 开头 note「今天以见朋友为主…」→ `.grp` 酒店附近 3 张 `.stop`（`#d2-pantjoran`／`#d2-angke`／`#d2-landsend`）→ `.grp` 市区 + 无车日 note（周日 05:30–10:00 Sudirman–Thamrin）→
 5 张 `.stop`（`#d2-monas`／`#d2-kotatua`／`#d2-gi`／`#d2-pi`／`#d2-scbd`）→ `.dayfoot` 链 `#food`；`#day03` `.tl`〔建议 08:30 前离开酒店→11:10→13:55→15:20 SQ138→17:30 SQ158→到家〕) →
