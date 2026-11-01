@@ -245,7 +245,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 .links { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 12px; }
 .btn-map, .track {
   display: flex; align-items: center; justify-content: center; gap: 9px;
-  min-width: 0; min-height: 46px; padding: 10px 8px; white-space: nowrap;
+  min-width: 0; min-height: 46px; padding: 10px 8px; text-align: center;
   border: 1px solid var(--gold); border-radius: 0; background: transparent;
   color: var(--navy); text-decoration: none; line-height: 1.35; cursor: pointer;
   font-family: var(--serif); font-size: 13px; font-weight: 500; letter-spacing: .14em;
@@ -253,7 +253,9 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 }
 .btn-map .ico, .track .ico { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--gold); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
 .btn-map .lbl .en, .track .lbl .en { font-family: var(--latin); font-size: 14.5px; letter-spacing: .12em; }
-.btn-map .tag { font-family: var(--latin); font-size: 12px; font-weight: 500; letter-spacing: .2em; color: var(--gold); margin-left: .6em; }
+/* 两颗都是地图（如苏丹回教堂＋哈芝巷）时带地名、字多，改成上下各占一整行 */
+.links:has(> a.btn-map:not(.web):not(.tix) + a.btn-map:not(.web):not(.tix)) { grid-auto-flow: row; }
+.btn-map .tag { font-family: var(--latin); font-size: 12px; font-weight: 500; letter-spacing: .2em; color: var(--gold); margin-left: .6em; white-space: nowrap; }
 .btn-map:active, .track:active { background: var(--navy); color: var(--cover-h); }
 .btn-map:active .ico, .track:active .ico { stroke: var(--gold2); }
 @media (hover: hover) { .btn-map:hover, .track:hover { background: var(--paper); } }
