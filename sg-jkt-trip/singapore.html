@@ -231,6 +231,12 @@ footer { text-align: center; padding: 30px 20px; }
 footer .mark { font-family: var(--latin); font-size: 12px; letter-spacing: .4em; color: var(--gold); }
 footer p { font-size: 11.5px; color: var(--faint); }
 
+/* 红色 note（如转机偏紧）原本靠红底表意：改成朱红左线＋「留意」方框小字，不只靠颜色 */
+.note.red { border-left: 2px solid var(--alert); padding-left: 12px; }
+.note.red::before { content: "留意"; display: inline-block; font-size: 10.5px; letter-spacing: .3em; line-height: 1.5; padding: 0 3px 0 6px; margin-right: 8px; border: 1px solid var(--alert); color: var(--alert); vertical-align: 1px; }
+body.lang-en .note.red::before { content: "ALERT"; font-family: var(--latin); font-size: 11px; letter-spacing: .24em; }
+.note.red strong { color: var(--alert); }
+
 /* ===== 可点链接按钮（地图／官网／售票／航班追踪）=====
    标记固定为：<div class="links"><a class="btn-map [web|tix]"><svg class="ico">…</svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">…</span></span></a> …</div>
    连着的几颗包在 .links 里（两颗并排各占一半）。航班追踪是 <a class="track">，同一套标记。按钮外观只写在这一组规则里：
