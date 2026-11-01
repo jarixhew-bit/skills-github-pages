@@ -146,14 +146,13 @@ section { padding: 50px 22px 6px; }
 .day.today .today-tag { display: inline; font-family: var(--latin); font-size: 12px; letter-spacing: .3em; color: var(--gold); margin-left: 10px; vertical-align: 2px; }
 .day.today .today-tag .cn { font-family: var(--serif); font-size: 11px; }
 
-/* 竖线：细、降饱和；站点：空心圆，必去=实心，航班=双圈 */
+/* 竖线：细、降饱和；站点：空心圆，航班=双圈 */
 .day .db { position: relative; padding: 4px 0 0 30px; }
 .day .db::before { content: ""; position: absolute; left: 9px; top: 0; bottom: 8px; width: 2px; background: var(--line); opacity: .8; }
 .wxbox, .stop, .tl .ev, .day .db > .note, .day .db > .dayfoot, .day .db > .grp { position: relative; }
 .wxbox::before, .stop::before, .tl .ev::before { content: ""; position: absolute; left: -26px; width: 12px; height: 12px; border-radius: 50%; background: var(--ivory); border: 2px solid var(--line); z-index: 1; }
 .wxbox::before { top: 20px; width: 8px; height: 8px; left: -24px; border-width: 1.5px; }
 .stop::before { top: 27px; }
-.stop:has(.pin.must)::before { background: var(--line); }
 .day .db > .note::before { content: ""; position: absolute; left: -23px; top: 19px; width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
 
 .wxbox { text-align: left; padding: 14px 0; border-bottom: 1px solid var(--hair); }
@@ -178,9 +177,8 @@ body.lang-en .psi.bad::before, body.lang-en .hazeplan.bad .hazenow::before { con
 .stop .pin { display: none; }
 .stop h4 { font-family: var(--serif); font-size: 16px; font-weight: 500; letter-spacing: .05em; line-height: 1.5; color: var(--navy); }
 .stop h4 .en { font-family: var(--latin); font-size: 19px; }
-.stop:has(.pin.must) h4::before { content: "必 去"; display: block; font-size: 10.5px; letter-spacing: .5em; color: var(--line); margin-bottom: 2px; }
 .stop:has(.pin.side) h4::before { content: "可 选"; display: block; font-size: 10.5px; letter-spacing: .5em; color: var(--faint); margin-bottom: 2px; }
-body.lang-en .stop:has(.pin.must) h4::before { content: "RECOMMENDED"; font-family: var(--latin); } body.lang-en .stop:has(.pin.side) h4::before { content: "OPTIONAL"; font-family: var(--latin); }
+body.lang-en .stop:has(.pin.side) h4::before { content: "OPTIONAL"; font-family: var(--latin); }
 .stop .desc { font-size: 12.5px; color: var(--ink2); margin-top: 8px; }
 
 /* D1 / D4 的 .tl 时刻表直接接进同一条竖线 */
@@ -241,11 +239,11 @@ body.lang-en .note.red::before { content: "ALERT"; font-family: var(--latin); fo
    标记固定为：<div class="links"><a class="btn-map [web|tix]"><svg class="ico">…</svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">…</span></span></a> …</div>
    连着的几颗包在 .links 里（两颗并排各占一半）。航班追踪是 <a class="track">，同一套标记。按钮外观只写在这一组规则里：
    以后要换成「下划线文字前加图标」或「卡片底部整条横栏」，只改这一段 CSS，不动 HTML。 */
-/* 有路线编号的站（D3 的 1／2／3）：编号跟「必去」写在同一行 */
+/* 有路线编号的站（D3 的 1／2）：显示成「第 1 站／STOP 1」 */
 .stop .pin.num { display: block; font-size: 10.5px; letter-spacing: .3em; color: var(--line); line-height: 1.6; }
-.stop .pin.num::before { content: "第 "; } .stop .pin.num::after { content: " 站 · 必 去"; }
+.stop .pin.num::before { content: "第 "; } .stop .pin.num::after { content: " 站"; }
 body.lang-en .stop .pin.num { font-family: var(--latin); font-size: 12px; letter-spacing: .24em; }
-body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pin.num::after { content: " · RECOMMENDED"; }
+body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pin.num::after { content: ""; }
 .stop:has(.pin.num) h4::before { display: none !important; }
 
 .links { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 12px; }
@@ -259,7 +257,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 }
 .btn-map .ico, .track .ico { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--gold); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
 .btn-map .lbl .en, .track .lbl .en { font-family: var(--latin); font-size: 14.5px; letter-spacing: .12em; }
-/* 两颗都是地图（如苏丹回教堂＋哈芝巷）时带地名、字多，改成上下各占一整行 */
+/* 两颗都是地图（一张卡两个地点）时带地名、字多，改成上下各占一整行 */
 .links:has(> a.btn-map:not(.web):not(.tix) + a.btn-map:not(.web):not(.tix)) { grid-auto-flow: row; }
 .btn-map .tag { font-family: var(--latin); font-size: 12px; font-weight: 500; letter-spacing: .2em; color: var(--gold); margin-left: .6em; white-space: nowrap; }
 .btn-map:active, .track:active { background: var(--navy); color: var(--cover-h); }
@@ -596,7 +594,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 </div>
 
 <div class="stop">
-<div class="pin must"></div>
+<div class="pin"></div>
 <h4><span class="cn">上午　四马路观音庙</span><span class="en">Morning · Kwan Im Thong Hood Cho Temple</span></h4>
 <div class="desc"><span class="cn">4.7（Google）。地址：178 Waterloo St, Singapore。免费参拜，求平安、开运；建议早一点去，人少也凉快。半室外。<strong>11/12（四）营业时间：</strong>7:00–18:00。农历初一、十五人特别多。离 MBS 约 5–8 分钟车程。</span><span class="en">4.7 (Google). 178 Waterloo St, Singapore. Free to visit — pray for safety and good fortune; go early if you can, when it is quieter and cooler. Semi-outdoor. <strong>Hours for Thu 12 Nov:</strong> 7:00–18:00. It gets especially crowded on the 1st and 15th of the lunar month. About 5–8 minutes by car from MBS.</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">7:00–18:00</span><span class="en">7:00–18:00</span></span><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span></div>
@@ -710,20 +708,20 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="day" data-date="2026-11-13" id="day03">
 <div class="dh">
 <div class="dn">03<small>DAY</small></div>
-<div class="dt"><h3><span class="cn">植物园 · 牛车水 · 甘榜格南</span><span class="en">Botanic Gardens · Chinatown · Kampong Glam</span><span class="today-tag"><span class="cn">今天</span><span class="en">TODAY</span></span></h3><div class="dd">13 Nov <span class="cn">(五)</span><span class="en">(Fri)</span></div></div>
+<div class="dt"><h3><span class="cn">植物园 · 牛车水</span><span class="en">Botanic Gardens · Chinatown</span><span class="today-tag"><span class="cn">今天</span><span class="en">TODAY</span></span></h3><div class="dd">13 Nov <span class="cn">(五)</span><span class="en">(Fri)</span></div></div>
 <div class="badge"><span class="cn">城市漫游</span><span class="en">City sights</span></div>
 </div>
 <div class="db">
 <div class="wxbox">
 <div class="wx" data-wx="2026-11-13"></div>
-<div class="rainplan"><span class="cn">雨天备案：今天植物园和甘榜格南在户外，佛牙寺在室内。早上就下雨，先去佛牙寺（看完三楼博物馆、四楼舍利殿可以多待一会儿），雨停再去植物园，胡姬园里的冷室也能避雨；雨一直不停，就把植物园换成 D2 那几家商场（乌节路离植物园车程约 5 分钟），甘榜格南改成坐车到回教堂门口看一眼就回酒店。</span><span class="en">Rain plan: The Botanic Gardens and Kampong Glam are outdoors; the Buddha Tooth Relic Temple is indoors. If it is raining in the morning, go to the temple first (the third-floor museum and fourth-floor relic hall are worth lingering over), then the Botanic Gardens once it stops — the Cool House in the Orchid Garden is also a dry spot. If the rain will not let up, swap the Botanic Gardens for the Day 2 malls (Orchard Road is about 5 minutes by car from the gardens), and make Kampong Glam a quick look at the mosque from the car before heading back to the hotel.</span></div>
-<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">烟霾备案：<strong>PSI 超过 100</strong> 就不去植物园（整段都在户外走路），改去 D2 那几家室内商场；佛牙寺全室内，照去；午餐不坐四面通风的麦士威熟食中心，改去松发（店内用餐）；甘榜格南只坐车到回教堂门口看一眼，不在街上逛，然后回酒店。</span><span class="en">Haze plan: <strong>Above PSI 100</strong>, skip the Botanic Gardens (it is all outdoor walking) and go to the indoor Day 2 malls instead; the Buddha Tooth Relic Temple is fully indoors, so go as planned; for lunch, choose Song Fa (eat indoors) over the open-sided Maxwell Food Centre; for Kampong Glam, just drive up to the mosque for a look rather than walking the streets, then return to the hotel.</span></div></div>
+<div class="rainplan"><span class="cn">雨天备案：今天植物园在户外，佛牙寺在室内。早上就下雨，先去佛牙寺（看完三楼博物馆、四楼舍利殿可以多待一会儿），雨停再去植物园，胡姬园里的冷室也能避雨；雨一直不停，就把植物园换成 D2 那几家商场（乌节路离植物园车程约 5 分钟）。</span><span class="en">Rain plan: The Botanic Gardens are outdoors; the Buddha Tooth Relic Temple is indoors. If it is raining in the morning, go to the temple first (the third-floor museum and fourth-floor relic hall are worth lingering over), then the Botanic Gardens once it stops — the Cool House in the Orchid Garden is also a dry spot. If the rain will not let up, swap the Botanic Gardens for the Day 2 malls (Orchard Road is about 5 minutes by car from the gardens).</span></div>
+<div class="hazeplan" hidden><div class="hazenow"></div><div class="hazeact"><span class="cn">烟霾备案：<strong>PSI 超过 100</strong> 就不去植物园（整段都在户外走路），改去 D2 那几家室内商场；佛牙寺全室内，照去；午餐不坐四面通风的麦士威熟食中心，改去松发（店内用餐）；下午自由活动就待在室内，回酒店休息或去商场都好。</span><span class="en">Haze plan: <strong>Above PSI 100</strong>, skip the Botanic Gardens (it is all outdoor walking) and go to the indoor Day 2 malls instead; the Buddha Tooth Relic Temple is fully indoors, so go as planned; for lunch, choose Song Fa (eat indoors) over the open-sided Maxwell Food Centre; spend the free afternoon indoors, resting at the hotel or in a mall.</span></div></div>
 </div>
 
-<div class="note amber" style="margin:10px 0 4px"><span class="cn"><strong>今天的顺序</strong>：酒店 → 植物园（上午，凉快）→ 牛车水佛牙寺、就近午餐 → 甘榜格南（下午，周五中午的聚礼已结束）→ 回酒店。四段都坐车，每段车程写在下面。</span><span class="en"><strong>Today’s order</strong>: hotel → Botanic Gardens (morning, while it is cool) → Buddha Tooth Relic Temple in Chinatown, with lunch nearby → Kampong Glam (afternoon, after Friday midday prayers) → back to the hotel. Every leg is by car; drive times are given below.</span></div>
+<div class="note amber" style="margin:10px 0 4px"><span class="cn"><strong>今天的顺序</strong>：以下按顺路排列，挑想去的就好。酒店 → 植物园（上午，凉快）→ 牛车水佛牙寺、就近午餐 → 下午自由活动 → 晚餐从餐厅列表挑。车程写在下面。</span><span class="en"><strong>Today’s order</strong>: the stops below run in route order — pick whichever you like. Hotel → Botanic Gardens (morning, while it is cool) → Buddha Tooth Relic Temple in Chinatown, with lunch nearby → free afternoon → dinner from the restaurant list. Drive times are given below.</span></div>
 <div class="note green" style="margin:8px 0 4px"><span class="cn">酒店 → 植物园：车程约 15–20 分钟，叫车时目的地填 Tyersall Gate（泰瑟尔门），下车离胡姬园最近</span><span class="en">Hotel → Botanic Gardens: about 15–20 minutes by car; set Tyersall Gate as the destination, the drop-off closest to the Orchid Garden</span></div>
 <div class="stop" id="d3-botanic">
-<div class="pin must num">1</div>
+<div class="pin num">1</div>
 <h4><span class="cn">上午　新加坡植物园 · 国家胡姬园</span><span class="en">Morning · Singapore Botanic Gardens · National Orchid Garden</span></h4>
 <div class="desc"><span class="cn">国家胡姬园 4.8（Google 2,012 条评价）。地址：Singapore Botanic Gardens, 1 Cluny Rd, Singapore 259569。植物园是新加坡第一个联合国世界遗产，园里的国家胡姬园种了一千多个原生种、两千多个杂交种的胡姬花（兰花），一年四季都有花开。值得看的是黄色文心兰搭成的长花拱廊、「贵宾胡姬园」里以各国元首和名人命名的品种，以及模拟高山云雾气候的冷室（有冷气，热了可以进去凉快）。园里路都平整好走，上午去最凉快、光线也好拍照。<br><strong>11/13（五）开放时间：</strong>植物园 5:00–24:00；国家胡姬园 8:30–19:00（18:00 停止入场）<br><strong>门票：</strong>植物园免费；国家胡姬园外国游客成人 S$15、60 岁以上 S$3</span><span class="en">National Orchid Garden 4.8 (2,012 Google reviews). Singapore Botanic Gardens, 1 Cluny Rd, Singapore 259569. The Botanic Gardens are Singapore’s first UNESCO World Heritage Site, and the National Orchid Garden inside holds more than 1,000 species and 2,000 hybrids, so something is always in bloom. Highlights are the long archway of yellow orchids, the VIP Orchid Garden with hybrids named after visiting heads of state and celebrities, and the Cool House, which recreates a misty highland climate (air-conditioned — a good place to cool off). The paths are level and easy; go in the morning when it is coolest and the light is best for photos.<br><strong>Hours for Fri 13 Nov:</strong> Botanic Gardens 5:00–24:00; National Orchid Garden 8:30–19:00 (last entry 18:00)<br><strong>Tickets:</strong> Botanic Gardens free; National Orchid Garden S$15 for foreign adults, S$3 for those aged 60 and over</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">胡姬园 8:30–19:00</span><span class="en">Orchid Garden 8:30–19:00</span></span><span class="chip"><span class="cn">胡姬园 S$15（60+ S$3）</span><span class="en">Orchid Garden S$15 (60+ S$3)</span></span><span class="chip"><span class="cn">户外</span><span class="en">Outdoors</span></span></div>
@@ -739,7 +737,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 </div>
 <div class="note green" style="margin:8px 0 4px"><span class="cn">植物园 → 佛牙寺：车程约 15–20 分钟</span><span class="en">Botanic Gardens → Buddha Tooth Relic Temple: about 15–20 minutes by car</span></div>
 <div class="stop" id="d3-temple">
-<div class="pin must num">2</div>
+<div class="pin num">2</div>
 <h4><span class="cn">中午前后　牛车水 · 佛牙寺</span><span class="en">Around midday · Chinatown · Buddha Tooth Relic Temple</span></h4>
 <div class="desc"><span class="cn">4.6（Google 12,406 条评价）。地址：288 South Bridge Rd, Singapore 058840。2007 年落成的唐代风格四层佛寺，就在牛车水中心。一楼百龙宝殿供奉弥勒菩萨，金色天花与上百尊小佛像很壮观；四楼的舍利殿供奉佛牙舍利，安放在约 3.5 吨黄金打造的舍利塔里（隔着玻璃参拜）；三楼是佛教文化博物馆；顶楼的屋顶花园有万佛阁和大转经轮，安静、可以坐下歇脚。殿里全是室内、有冷气，正好避开中午的太阳。<br><strong>11/13（五）开放时间：</strong>9:00–17:00<br><strong>门票：</strong>免费（可随喜捐献）<br><strong>服装：</strong>要遮住肩膀和膝盖，无袖上衣、短裤、短裙不能进殿；穿得不合规定，门口可以免费借披肩或围裙</span><span class="en">4.6 (12,406 Google reviews). 288 South Bridge Rd, Singapore 058840. A four-storey Tang-dynasty-style temple completed in 2007 in the heart of Chinatown. The ground-floor Hundred Dragons Hall enshrines the Maitreya Buddha under a golden ceiling lined with hundreds of small Buddha figures; on the fourth floor the relic itself sits in a stupa made from about 3.5 tonnes of gold (viewed through glass); the third floor is a Buddhist culture museum, and the rooftop garden has a pavilion with a giant prayer wheel — quiet, with places to sit. Everything is indoors and air-conditioned, which keeps you out of the midday sun.<br><strong>Hours for Fri 13 Nov:</strong> 9:00–17:00<br><strong>Admission:</strong> free (donations welcome)<br><strong>Dress code:</strong> shoulders and knees must be covered — no sleeveless tops, shorts or short skirts in the halls; if you are not covered, you can borrow a shawl or wrap free at the entrance</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">9:00–17:00</span><span class="en">9:00–17:00</span></span><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span><span class="chip"><span class="cn">遮肩遮膝</span><span class="en">Cover shoulders &amp; knees</span></span><span class="chip ok"><span class="cn">室内</span><span class="en">Indoors</span></span></div>
@@ -754,24 +752,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Buddha%20Tooth%20Relic%20Temple%2C%20288%20South%20Bridge%20Rd%2C%20Singapore%20058840" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">Google Maps</span></span></a></div>
 </div>
 <div class="note amber" style="margin:10px 0 4px"><span class="cn"><strong>午餐就在附近</strong>：佛牙寺对面走两分钟就是<a href="#food-maxwell">麦士威熟食中心</a>（天天海南鸡饭，平价），想坐下慢慢吃就去<a href="#food-songfa">松发肉骨茶新桥路总店</a>（车程约 5 分钟）；两家都在<a href="#food">餐厅列表</a>「其他区域」那组。</span><span class="en"><strong>Lunch nearby</strong>: <a href="#food-maxwell">Maxwell Food Centre</a> is a two-minute walk across the road from the temple (Tian Tian chicken rice, cheap); for a sit-down meal, try <a href="#food-songfa">Song Fa Bak Kut Teh on New Bridge Road</a> (about 5 minutes by car). Both are in the “Elsewhere” group of the <a href="#food">restaurant list</a>.</span></div>
-<div class="note green" style="margin:8px 0 4px"><span class="cn">牛车水 → 甘榜格南：车程约 10–15 分钟</span><span class="en">Chinatown → Kampong Glam: about 10–15 minutes by car</span></div>
-<div class="stop" id="d3-kampong">
-<div class="pin must num">3</div>
-<h4><span class="cn">下午　甘榜格南 · 苏丹回教堂 · 哈芝巷</span><span class="en">Afternoon · Kampong Glam · Sultan Mosque · Haji Lane</span></h4>
-<div class="desc"><span class="cn">苏丹回教堂 4.7（Google 14,203 条评价），地址：3 Muscat St, Singapore 198833；哈芝巷 4.6（Google 1,653 条评价），地址：Haji Lane, Singapore 189241。甘榜格南是新加坡的老马来—阿拉伯区。苏丹回教堂是新加坡最重要的清真寺，现在这座建于 1932 年，两座金色圆顶的底座镶着一圈玻璃瓶底，是当年贫穷的信众捐出来的；从棕榈树夹道的 Bussorah St（巴索拉街）步行街往回教堂走，是最好的拍照角度。隔两条街就是哈芝巷：一条窄窄的老店屋巷子，整排墙面画满彩色壁画，开着独立服饰店和咖啡馆；隔壁 Arab St（阿拉伯街）多是布料和地毯老店。<br><strong> 周五的回教堂：</strong>周五不开放游客入殿参观（参观时段是周六至周四 10:00–12:00、14:00–16:00）；中午约 12:00–14:30 是每周一次的聚礼，门前人潮最多。所以这天下午来，在门前和 Bussorah St 看金顶、拍照——聚礼人潮已散，街上也比较清静。<br><strong>11/13（五）开放时间：</strong>街区全天开放；哈芝巷、阿拉伯街的小店大多中午前后开门，开到晚上<br><strong>门票：</strong>免费</span><span class="en">Sultan Mosque 4.7 (14,203 Google reviews), 3 Muscat St, Singapore 198833; Haji Lane 4.6 (1,653 Google reviews), Haji Lane, Singapore 189241. Kampong Glam is Singapore’s old Malay and Arab quarter. Sultan Mosque is the country’s most important mosque; the present building dates from 1932, and the bases of its two golden domes are ringed with the bottoms of glass bottles donated by poorer worshippers. Walking up palm-lined Bussorah Street, a pedestrian street, towards the mosque gives the classic photo. Two streets away is Haji Lane, a narrow lane of old shophouses covered in colourful murals, with independent boutiques and cafés; neighbouring Arab Street is lined with old fabric and carpet shops.<br><strong> The mosque on a Friday:</strong> the prayer hall is not open to visitors on Fridays (visiting hours are Saturday to Thursday, 10:00–12:00 and 14:00–16:00), and about 12:00–14:30 is the weekly congregational prayer, when the area is at its busiest. So come in the afternoon and enjoy the golden domes from the forecourt and Bussorah Street — the prayer crowds will have left and the streets are calmer.<br><strong>Hours for Fri 13 Nov:</strong> the streets are open all day; most shops on Haji Lane and Arab Street open around midday and stay open into the evening<br><strong>Admission:</strong> free</span></div>
-<div class="chips"><span class="chip"><span class="cn">周五不开放入殿</span><span class="en">Prayer hall closed to visitors on Fridays</span></span><span class="chip ok"><span class="cn">免费</span><span class="en">Free</span></span><span class="chip"><span class="cn">户外</span><span class="en">Outdoors</span></span></div>
-<div class="gal">
-<img loading="lazy" decoding="async" alt="苏丹回教堂金色圆顶 · Golden dome of Sultan Mosque" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9SP6Oh8-uSCXVL1sZefQE0NG9SCOw2fhhNdidk5F29SiFLmZFPxX0GigwcEsl_wp4GNnpmETZ-fmR8OG_X0KookHM6DC0yd2qZOyRl3C1MUc6seKeli43GKAnQfb2kM1LxTykRIwg=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="苏丹回教堂正面 · Front of Sultan Mosque" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9T1scZEX8qoH9K7Ukl7Y3dVcRDNfB7yzkLaWyzp_tGfKmeI_PG6oNxFGGp7tHR2DVceLBP5bL6rRBrT9IIyZPxEDrN2CC5JYRkkli0qG_gX0KlUQVpS6dctI6gX4opBS-2VAmle=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="从高处看甘榜格南与回教堂 · Kampong Glam and the mosque from above" src="https://lh3.googleusercontent.com/grass-cs/AABkmLcUAWX8xIBLes-a-_ZiZJQldj9ZiM3JHPrVg_qT0HW5vx7sV_07G1-PcfQhk2-CVRJIzPm8fstpTIzowtGJVkMR_HHpO6r203diHtoo0nh3u1pDykEbhWeZCbDhngylPp7LPqp-Tw=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="哈芝巷的彩色壁画 · Murals on Haji Lane" src="https://lh3.googleusercontent.com/grass-cs/AABkmLfTczldCxQxDXXNIVEg7f3B6ac-nDJL4L3Rrb_JuD0OkMQSjYle4ed3XidqZiO2WLhqVBEeikexbpk7aXBxJGj8qDEsrjaw2nw6fXh1BFcMQSfbD3CKHP7iF6ahMBEowddgi6pI=s4800-w800-h600"/>
-<img loading="lazy" decoding="async" alt="哈芝巷街景 · Haji Lane street scene" src="https://lh3.googleusercontent.com/gps-cs-s/ANWiy9QKgccMCZLHhruteTSP-Zmd3Jcm35Ma_FfNDTHo1g26f5Uaa01VSMV7lYdbuPvu9xEKZMI5rHhg7r8agRTii3CpVsfHCOOf4ZPYJKGTsrXjlMnDA_nulZe40oeCOpjT7g95KP-5-w=s4800-w800-h600"/>
-</div>
-<div class="gal-hint"><span class="cn">← 左右滑动 · 点图放大 →</span><span class="en">← swipe · tap to zoom →</span></div>
-<div class="links"><a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Sultan%20Mosque%2C%203%20Muscat%20St%2C%20Singapore%20198833" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图 · 苏丹回教堂<span class="tag">MAP</span></span><span class="en">Map · Sultan Mosque</span></span></a>
-<a class="btn-map" href="https://www.google.com/maps/search/?api=1&amp;query=Haji%20Lane%2C%20Singapore%20189241" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21.5s-6.6-6.3-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 4.9-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10.2" r="2.4"/></svg><span class="lbl"><span class="cn">地图 · 哈芝巷<span class="tag">MAP</span></span><span class="en">Map · Haji Lane</span></span></a></div>
-</div>
-<div class="note green" style="margin:8px 0 4px"><span class="cn">甘榜格南 → 回酒店：车程约 10–15 分钟</span><span class="en">Kampong Glam → back to the hotel: about 10–15 minutes by car</span></div>
+<div class="note amber" style="margin:10px 0 4px"><span class="cn"><strong>下午自由活动</strong>：可回酒店休息或就近逛街。牛车水回酒店车程约 10–15 分钟。</span><span class="en"><strong>Free afternoon</strong>: rest at the hotel or browse the shops nearby. Chinatown back to the hotel is about 10–15 minutes by car.</span></div>
 <div class="dayfoot"><span class="ftlb"><span class="cn">晚上吃</span><span class="en">Evening meal</span></span><span class="tx"><span class="cn">回酒店后在楼下吃最省力，<a href="#food">餐厅列表</a>「滨海湾金沙」那组都在酒店商场里；晚餐大多建议先订位。</span><span class="en">Easiest is to eat downstairs once you are back at the hotel — the “MBS” group of the <a href="#food">restaurant list</a> is all in the hotel’s mall; booking ahead is advised for most dinners.</span></span></div>
 </div>
 </div>
@@ -1134,7 +1115,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="eh"><span class="et"><span class="cn">武吉士 ·  本地煮炒 · 砂锅咖喱鱼头</span><span class="en">Bugis ·  Local Chinese cooking · claypot curry fish head</span></span><span class="ed"><span class="cn">4.8</span><span class="en">4.8</span></span></div>
 <div class="eb">
 <h3><span class="cn">YuCun Claypot Curry Fish Head 鱼村砂锅咖喱鱼头 @ Sultan Gate</span><span class="en">YuCun Claypot Curry Fish Head @ Sultan Gate</span></h3>
-<div class="desc"><span class="cn">4.8（Google 2,577 条评价）。地址：29/31 Sultan Gate, Singapore 198477。招牌是砂锅咖喱鱼头：整个大鱼头和羊角豆、茄子一起在咖喱里煮，面上铺一层炸腐皮吸汤汁，连砂锅端上桌，上桌时还在滚，汤汁偏浓、带椰奶香，舀来拌白饭吃。一锅够三个人分，再配一两样炒菜就是一顿；不吃辣的可以改点奶白鱼汤砂锅，汤可以续。店在老店屋里，有冷气。从 <a href="#d3-kampong">D3 下午那一站</a>走过来约 5 分钟。<br><strong>11/11–11/13（三至五）：</strong>11:30–21:00<br><strong>离 MBS：</strong>车程约 10 分钟<br><strong>订位：</strong>晚餐人多，建议先打电话订位</span><span class="en">4.8 (2,577 Google reviews). 29/31 Sultan Gate, Singapore 198477. The dish to order is the claypot curry fish head: a whole large fish head simmered in curry with okra and aubergine and topped with fried beancurd skin that soaks up the gravy, brought to the table still bubbling in its clay pot; the gravy is thick and fragrant with coconut milk — spoon it over plain rice. One pot feeds three, with a stir-fried dish or two on the side; if you would rather avoid spice, the milky fish soup claypot comes with soup refills. It is in an old shophouse with air-con. About a 5-minute walk from <a href="#d3-kampong">the Day 3 afternoon stop</a>.<br><strong>Wed–Fri 11–13 Nov:</strong> 11:30–21:00<br><strong>From MBS:</strong> about 10 minutes by car<br><strong>Booking:</strong> busy at dinner, so call ahead to book</span></div>
+<div class="desc"><span class="cn">4.8（Google 2,577 条评价）。地址：29/31 Sultan Gate, Singapore 198477。招牌是砂锅咖喱鱼头：整个大鱼头和羊角豆、茄子一起在咖喱里煮，面上铺一层炸腐皮吸汤汁，连砂锅端上桌，上桌时还在滚，汤汁偏浓、带椰奶香，舀来拌白饭吃。一锅够三个人分，再配一两样炒菜就是一顿；不吃辣的可以改点奶白鱼汤砂锅，汤可以续。店在武吉士一带的老店屋里，有冷气。<br><strong>11/11–11/13（三至五）：</strong>11:30–21:00<br><strong>离 MBS：</strong>车程约 10 分钟<br><strong>离牛车水：</strong>车程约 10–15 分钟<br><strong>订位：</strong>晚餐人多，建议先打电话订位</span><span class="en">4.8 (2,577 Google reviews). 29/31 Sultan Gate, Singapore 198477. The dish to order is the claypot curry fish head: a whole large fish head simmered in curry with okra and aubergine and topped with fried beancurd skin that soaks up the gravy, brought to the table still bubbling in its clay pot; the gravy is thick and fragrant with coconut milk — spoon it over plain rice. One pot feeds three, with a stir-fried dish or two on the side; if you would rather avoid spice, the milky fish soup claypot comes with soup refills. It is in an old shophouse in the Bugis area, with air-con.<br><strong>Wed–Fri 11–13 Nov:</strong> 11:30–21:00<br><strong>From MBS:</strong> about 10 minutes by car<br><strong>From Chinatown:</strong> about 10–15 minutes by car<br><strong>Booking:</strong> busy at dinner, so call ahead to book</span></div>
 <div class="chips"><span class="chip hours"><span class="cn">11:30–21:00</span><span class="en">11:30–21:00</span></span><span class="chip book"><span class="cn">晚餐建议订位</span><span class="en">Book for dinner</span></span></div>
 <div class="gal">
 <img loading="lazy" decoding="async" alt="鱼村砂锅店屋门面 · YuCun shophouse front" src="https://lh3.googleusercontent.com/grass-cs/AABkmLeEMh6anL8HwgJg8tcVonkykOu9iqYki_uh3Wy2BuY_7YbxAp3GwXcI1rrqwtxgQPSHTLcIp1CbesSipcuwz6mgFb3SuD3JV7Vo0Ks7FxJIn8ntRpx_ha0JFqjRPucxTyY55TrkBO9Sjdi0=s4800-w800-h600"/>
