@@ -510,8 +510,8 @@
   "note": ""
  },
  {
-  "file": "bridge2-hands",
-  "anim": "bridge2",
+  "file": "thrust-one",
+  "anim": "thrust",
   "type": "strength",
   "title_zh": "哑铃臀推",
   "reps": "12–15",
@@ -535,15 +535,15 @@
    "https://pubmed.ncbi.nlm.nih.gov/26214739/",
    "https://bretcontreras.com/wp-content/uploads/A-Comparison-of-Gluteus-Maximus-Biceps-Femoris-and-Vastus-Lateralis-Electromyography-Amplitude-for-the-Barbell-Band-and-American-Hip-Thrust-Variations-copy.pdf"
   ],
-  "note": ""
+  "note": "2026-11-03 起拆出独立动画 key「thrust」（上背靠凳），一只哑铃横放在髋上（hold=one）；热身臀桥留用 bridge2。"
  },
  {
-  "file": "bridge2",
-  "anim": "bridge2",
+  "file": "thrust",
+  "anim": "thrust",
   "type": "strength",
-  "title_zh": "臀推／臀桥",
-  "reps": "15–20 / 10–12 / 热身 30秒",
-  "cue_zh": "脚跟发力，顶到身体一直线",
+  "title_zh": "臀推",
+  "reps": "15–20 / 10–12",
+  "cue_zh": "上背靠凳，臀部发力顶成一直线",
   "primary": [
    "glutes"
   ],
@@ -562,7 +562,7 @@
    "https://pubmed.ncbi.nlm.nih.gov/26214739/",
    "https://pmc.ncbi.nlm.nih.gov/articles/PMC5534144/"
   ],
-  "note": "三处共用：bw 臀推 15–20、gym 臀推机 10–12、热身臀桥 30 秒。"
+  "note": "徒手臀推（15–20）与健身房臀推机（10–12）共用，次数不同所以图上只写标题。2026-11-03 由 bridge2 拆出。"
  },
  {
   "file": "row-hands",
@@ -1227,6 +1227,32 @@
    "https://gokhalemethod.com/blog/71058"
   ],
   "note": "secondary 留空：属脊椎活动度动作，来源只提肩、髋、核心负责维持四足姿势，未指名特定协同肌。"
+ },
+ {
+  "file": "bridge2",
+  "anim": "bridge2",
+  "type": "strength",
+  "title_zh": "臀桥",
+  "reps": "30秒",
+  "cue_zh": "仰躺屈膝，脚跟发力把髋顶到一直线",
+  "primary": [
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：f1 t=-120、nt=100 → 髋过伸约 20°（肩-髋-膝应一直线：地板版约 {t:-110,nt:110,ns:+20}）。另：这张图被三处共用——徒手臀推（背靠沙发）、健身房臀推机、热身「臀桥」（仰躺地上）。前两者要上背靠凳，后者肩膀贴地，一张图无法同时正确，需委派方决定（见笔记）。",
+  "sources": [
+   "https://pubmed.ncbi.nlm.nih.gov/26214739/",
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC5534144/"
+  ],
+  "note": "热身用的地板臀桥（肩膀贴地）。2026-11-03 起臀推另用 thrust，bridge2 只剩热身这一处。"
  },
  {
   "file": "lungeT",

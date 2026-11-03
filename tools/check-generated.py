@@ -44,6 +44,11 @@ GENERATED = [
                   "不进仓库，所以没有可比对的源→产物关系；它的行为由 "
                   "tools/check-shortlist.py 守着",
     },
+    {
+        "builder": "tools/build-fitness-muscle-model.py",
+        "oneoff": "要 Blender＋MPFB2 素材才跑得动，产物 tools/lib/models/fitness-female.glb 是手动拷进仓库的定稿模型，"
+                  "源素材不进仓库，没有可比对的源→产物关系；模型能不能用由 tools/check-fitness.mjs 与渲染出来的动图守着",
+    },
 ]
 
 

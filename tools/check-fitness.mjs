@@ -256,6 +256,20 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   const combos = await page.evaluate(() => window.__fit.animCombos());
   const missing = combos.filter(c => !fs.existsSync(`fitness/anim/${c.file}.webp`)).map(c => c.file);
   check(missing.length === 0, `${combos.length} 个动作组合都有示范动图${missing.length ? '（缺：' + missing.join(', ') + '）' : ''}`);
+  // 动图规格（tools/lib/fitness-anim-spec.json）：每个组合都要有一条、每条都要有图、肌肉代码渲染台都认得
+  // ——少了规格，渲染脚本会跳过那张（图停在旧版）；规格写了渲染台没定义的肌肉，那块就不会发光
+  const spec = JSON.parse(fs.readFileSync('tools/lib/fitness-anim-spec.json', 'utf8'));
+  const noSpec = combos.filter(c => !spec.some(s => s.file === c.file && s.anim === c.anim)).map(c => c.file);
+  check(noSpec.length === 0, `${combos.length} 个动作组合在 fitness-anim-spec.json 都有规格（file＋anim 对得上）${noSpec.length ? '（缺：' + noSpec.join(', ') + '）' : ''}`);
+  const orphan = spec.filter(s => !combos.some(c => c.file === s.file) || !fs.existsSync(`fitness/anim/${s.file}.webp`)).map(s => s.file);
+  check(orphan.length === 0, `每条规格都对应 App 用到的组合与一张存在的动图${orphan.length ? '（对不上：' + orphan.join(', ') + '）' : ''}`);
+  const rhtml = fs.readFileSync('tools/lib/fitness-render.html', 'utf8');
+  const mblock = (rhtml.match(/const MUSCLES = \{([\s\S]*?)\n\};/) || [])[1] || '';
+  const known = new Set([...mblock.matchAll(/^\s*(\w+):/gm)].map(m => m[1]));
+  const unknown = [...new Set(spec.flatMap(s => [...(s.primary || []), ...(s.secondary || [])]).filter(m => !known.has(m)))];
+  check(known.size >= 21 && unknown.length === 0, `规格用到的肌肉代码渲染台都有定义（渲染台认得 ${known.size} 个）${unknown.length ? '（没定义：' + unknown.join(', ') + '）' : ''}`);
+  const badField = spec.filter(s => !s.title_zh || !s.cue_zh || !['strength', 'cardio', 'stretch', 'mobility', 'swim'].includes(s.type) || !['side', 'front34', 'back34', 'front'].includes(s.view)).map(s => s.file);
+  check(badField.length === 0, `每条规格都有标题、要领、合法的 type 与 view${badField.length ? '（有问题：' + badField.join(', ') + '）' : ''}`);
   const big = combos.filter(c => fs.existsSync(`fitness/anim/${c.file}.webp`) && fs.statSync(`fitness/anim/${c.file}.webp`).size > 400 * 1024).map(c => c.file);
   check(big.length === 0, `每张动图都在 400KB 以内（手机流量）${big.length ? '（超过：' + big.join(', ') + '）' : ''}`);
   await page.click('#picker [data-wk="A"]');

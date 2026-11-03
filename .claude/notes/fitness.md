@@ -13,13 +13,26 @@
   index.html 的 `PH_EN`（按动作英文名）与 `PH_ANIM`（热身/放松/收尾按动画 key），照片与动作不完全
   一样（器材、坐站）时第二项写说明，会印在照片上。选照片前**先看过图**：库里同名动作常是别的变体。
   设置「动作示范」：真人（默认，没照片的用 3D）／3D／简笔（`cfg.media`）。
-- `anim/<动作>[-<hold>].webp` — 人体模型示范动图（默认示范方式，2026-10-01 用户要「动作的 gif」）。
-  由 `tools/render-fitness-anim.mjs`＋`tools/lib/fitness-render.html` 预渲染：抽 index.html 的同一份 ANIM
-  引擎算关节，把方向套到 Mixamo「X Bot」人体模型骨架上（逐段对准，最小旋转），再逐格截图拼成
-  animated WebP。**模型原档不进仓库**（Mixamo 授权允许做成作品、不允许转发原档），渲染时临时下载到
-  `.photos/fitness-model/`（gitignore）。要渲染哪些组合由 App 的 `window.__fit.animCombos()` 列出，
-  自检会点名缺图。**改了 ANIM 里任何动作就要重渲染那几张**（`node tools/render-fitness-anim.mjs <key>`），
-  并升 sw.js 的 CACHE——图片走缓存优先，档名没变的话手机会一直看旧图。
+- `anim/<动作>[-<hold>].webp` — 示范动图（默认示范方式，480×360 animated WebP）。2026-11-03 换成深色风格：
+  深色渐层背景＋顶光、雕像白的**女性健身体型模型**（`tools/lib/models/fitness-female.glb`，CC0，已进仓库，
+  不用下载）、正在用力的肌肉**发红光**（发力／向心阶段最亮）、拉伸与活动度动作是被拉开的部位**发蓝光**
+  （拉到最开最亮）、游泳不发光；顶部 6 格部位小图（胸／肩／背／手臂／核心／臀腿）＋标题／次数／要领字幕。
+  - 管线：`tools/render-fitness-anim.mjs`（逐格 `page.screenshot`，字幕层一起截）＋渲染台
+    `tools/lib/fitness-render.html`。跑法 `python3 -m http.server 8899 &` 后
+    `CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/render-fitness-anim.mjs [file 或 key ...]`，全量 60 张约 10 分钟；
+    `FRAMES_DIR=<目录>` 会留下每格 PNG 与「最用力是第几格」的 json，给联络表抽查用。
+  - 规格正本 `tools/lib/fitness-anim-spec.json`（研究员查证，依据在 `.claude/notes/fitness-anim-research.md`）：
+    每张图的 type（strength/cardio＝红、stretch/mobility＝蓝、swim＝不发光）、标题、次数、要领、主／次肌肉代码、
+    机位 view、strip。**次数写成「A / B」（同一张图被两处不同次数共用）时图上只写标题。**新增动作要同时加规格，
+    自检会核对：每个组合都有规格、每条规格都有图、肌肉代码渲染台都认得（渲染台的 `MUSCLES` 清单）。
+  - 动作的关节角度仍以 App 的 ANIM 为准（简笔画／3D 模式同一份）。2D 表达不了的——往身体两侧开合（卧推手肘 45°、
+    推举的肩胛骨平面、开合跳、下拉、反向飞鸟、面拉、Y-T、门框拉伸、仰漂）、转体（世界最伟大伸展）、脊椎弯曲（猫牛）、
+    肩胛前伸／后缩（肩胛俯卧撑）、两手合握一只哑铃、碰对侧肩——写在渲染台的 `OV`（3D 方向／IK 覆盖），不要硬塞进 2D 引擎。
+  - 坑：模型手臂与躯干比 ANIM 短。手撑地的动作（俯卧撑、平板、登山者、波比、猫牛、世界最伟大伸展、派克）用 `OV.plant`：
+    以脚尖或膝盖为支点把整个人往下转到手够得到地，再把手 IK 到固定点——不这样手会悬空十几公分。
+  - 发光强度：`CONC`（哪一段是发力）／`PEAK`（拉最开是哪一帧）；单侧动作只亮那一侧（`SIDES`）。
+  - `bridge2` 只给热身「臀桥」（地板）；臀推三处（哑铃／徒手／臀推机）用 `thrust`（上背靠凳，哑铃版 hold=one 横放髋上）。
+  - **改了 ANIM 里任何动作就要重渲染那几张**，并升 sw.js 的 CACHE——图片走缓存优先，档名没变的话手机会一直看旧图。
 - 有氧分页（2026-10-02）：`CD_KINDS`（三种练法与心率%）、`CD_WEEKS`（12 周每周排什么）、`cdSteps()`（跟练步骤，
   与力量训练共用全屏播放器，`plMode` 区分）；记录 `fit.cardio`、`fit.vo2`，都进备份。说明文字 `CD_WHY`/`CD_IQOS`/`CD_SAFE`
   每条都附来源链接——研究多为摘要层级（沙盒打不开全文），改数字前要重新查证，标「未查证」的别擅自写成定论。

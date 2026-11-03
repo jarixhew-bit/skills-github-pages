@@ -182,6 +182,7 @@ function pose(s, hold, swim, time) {
   const X = n => P[n][0], Y = n => P[n][1];
   for (const pr of s.props) {
     if (pr === 'bench') { const x1 = Math.min(X('sh'), X('hip')) - 7, x2 = Math.max(X('sh'), X('hip')) + 9, top = Math.min(Y('sh'), Y('hip')) - 6; box(x1, x2, top - 5, top, 26, M.prop); box(x1 + 6, x1 + 10, 0, top - 5, 18, M.iron); box(x2 - 10, x2 - 6, 0, top - 5, 18, M.iron); }
+    if (pr === 'tbench') { const bx = X('sh'); box(bx - 30, bx + 2, 0, Y('sh') - 4, 30, M.prop); } // 臀推：上背靠的长凳
     if (pr === 'pad') { const x1 = Math.min(X('sh'), X('nk')) - 3, x2 = Math.max(X('sh'), X('nk')) + 3, top = Math.min(Y('sh'), Y('hip')) - 6; box(x1, x2, top - 5, top, 26, M.prop); box((x1 + x2) / 2 - 2, (x1 + x2) / 2 + 2, 0, top - 5, 14, M.iron); }
     if (pr === 'seat') { const sx = X('hip'), top = Y('hip') - 5.5; box(sx - 13, sx + 14, top - 5, top, 28, M.prop); box(sx - 2, sx + 2, 0, top - 5, 10, M.iron); }
     if (pr === 'back') { const x = X('hip') - 8.5; box(x - 2.5, x + 2.5, Y('hip') - 3, Y('sh') + 6, 24, M.prop); }

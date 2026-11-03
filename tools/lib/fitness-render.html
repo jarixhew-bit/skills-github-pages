@@ -3,15 +3,33 @@
 <head>
 <meta charset="utf-8">
 <title>健身动图渲染台</title>
-<!-- 只给 tools/render-fitness-anim.mjs 用：把 fitness App 的动作（ANIM 引擎算的关节）套到写实人物模型上，
-     逐格渲染成循环动图。不上线、不进 App。人物模型不进仓库（授权不允许转发原档），由渲染脚本临时下载。 -->
+<!-- 只给 tools/render-fitness-anim.mjs 用：把 fitness App 的动作（ANIM 引擎算的关节）套到女性健身体型模型
+     （tools/lib/models/fitness-female.glb，CC0）上，深色背景＋按肌肉发光，逐格渲染成循环动图。不上线、不进 App。
+     每个动作的标题／次数／要领／肌肉／机位来自 tools/lib/fitness-anim-spec.json（研究员查证过的规格）。 -->
 <script type="importmap">{"imports":{"three":"../../vendor/three/three.module.min.js"}}</script>
-<style>html,body{margin:0;background:transparent}canvas{display:block}</style>
+<style>
+html,body{margin:0;background:#0a1226}
+#stage{position:relative;overflow:hidden;font-family:"WenQuanYi Zen Hei","Noto Sans CJK SC",sans-serif;
+  background:radial-gradient(ellipse 34% 62% at 50% -8%,rgba(170,200,255,.38),rgba(170,200,255,0) 70%),linear-gradient(#1d2d4f,#0d1730 70%,#0a1226)}
+canvas{display:block;position:absolute;left:0;top:0}
+#band,#strip,#title,#cue{z-index:2}
+#band{position:absolute;left:0;right:0;top:0;background:linear-gradient(rgba(10,18,40,.9),rgba(10,18,40,.72) 75%,rgba(10,18,40,0))}
+#strip{position:absolute;left:50%;top:7px;transform:translateX(-50%);display:flex;gap:4px;padding:3px 6px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+#strip div{width:44px;text-align:center;color:#8b97b0;font-size:10px;line-height:1.1;border-radius:7px;border:2px solid transparent;padding:1px 0 2px}
+#strip div.on{border-color:#7be04a;color:#fff;box-shadow:0 0 8px rgba(123,224,74,.6)}
+#strip img{width:40px;height:40px;display:block;margin:0 auto;opacity:.5}
+#strip div.on img{opacity:1}
+#title{position:absolute;left:0;right:0;text-align:center;color:#fff;font-weight:bold;font-size:19px;letter-spacing:1px;text-shadow:0 2px 6px rgba(0,0,0,.6);white-space:nowrap}
+#title b{color:#ff9a3c}
+#cue{position:absolute;left:0;right:0;text-align:center;color:#c9d3e6;font-size:12px;white-space:nowrap}
+</style>
 </head>
 <body>
+<div id="stage"><div id="band"></div><div id="strip"></div><div id="title"></div><div id="cue"></div></div>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from '../../vendor/three/addons/loaders/GLTFLoader.js';
+const Q = new URLSearchParams(location.search);
 
 // ---- 1. 从 App 本体抽出动作引擎（同一份 ANIM，不复制一份到这里，免得两边对不上） ----
 const html = await (await fetch('../../fitness/index.html')).text();
@@ -19,40 +37,53 @@ const src = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).f
 (0, eval)(src);
 const ANIM = window.ANIM;
 
-// ---- 2. 场景 ----
-const W = +new URLSearchParams(location.search).get('w') || 360, H = +new URLSearchParams(location.search).get('h') || 270;
+// ---- 2. 场景：深色渐层背景（CSS）＋顶光，人物是雕像白 ----
+const W = +Q.get('w') || 480, H = +Q.get('h') || 360;
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(1); renderer.setSize(W, H);
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08;
-document.body.appendChild(renderer.domElement);
+renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.3;
+const stage = document.getElementById('stage');
+stage.append(renderer.domElement); Object.assign(stage.style, { width: W + 'px', height: H + 'px' });
 const scene = new THREE.Scene();
-const cam = new THREE.PerspectiveCamera(26, W / H, 5, 3000);
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8a9894, 1.35));
-const sun = new THREE.DirectionalLight(0xffffff, 2.1); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 130, bottom: -130, near: 10, far: 600 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.5;
+const cam = new THREE.PerspectiveCamera(26, W / H, 5, 4000);
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a2338, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 2.6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -130, right: 130, top: 130, bottom: -130, near: 10, far: 700 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.5;
 scene.add(sun, sun.target);
-const rim = new THREE.DirectionalLight(0xffffff, 0.7); scene.add(rim, rim.target);
+const rim = new THREE.DirectionalLight(0x9fc0ff, 1.1); scene.add(rim, rim.target);
 
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const std = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.65 }, o));
 const M = {
-  prop: std(0x9aa5a2, { roughness: 0.7 }), iron: std(0x30353b, { roughness: 0.35, metalness: 0.6 }), wood: std(0xc39e72, { roughness: 0.75 }),
-  plate: std(0xcf4526, { roughness: 0.5 }), board: std(0xf2b33d, { roughness: 0.55 }), tile: std(0xbfe3ef, { roughness: 0.9 }),
-  water: new THREE.MeshStandardMaterial({ color: 0x3fa7d6, transparent: true, opacity: 0.3, roughness: 0.15, depthWrite: false }),
-  surf: new THREE.MeshStandardMaterial({ color: 0xa6e0f4, transparent: true, opacity: 0.45, roughness: 0.08, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false }),
+  prop: std(0x5d6878, { roughness: 0.6 }), pad: std(0x2b3340, { roughness: 0.8 }), iron: std(0x30353b, { roughness: 0.35, metalness: 0.6 }),
+  wood: std(0x9c7a55, { roughness: 0.75 }), plate: std(0x6b7584, { roughness: 0.35, metalness: 0.6 }), board: std(0xf2b33d, { roughness: 0.55 }),
+  chrome: std(0xb9c2cc, { roughness: 0.25, metalness: 0.85 }), cable: std(0x1b1f25, { roughness: 0.5 }),
+  tile: std(0x123a55, { roughness: 0.9 }), wall: std(0x8fc7dc, { roughness: 0.85 }),
+  water: new THREE.MeshStandardMaterial({ color: 0x2a8fd6, emissive: 0x062a44, transparent: true, opacity: 0.26, roughness: 0.15, depthWrite: false }),
+  surf: new THREE.MeshStandardMaterial({ color: 0x7fd4ff, emissive: 0x0d4a6a, transparent: true, opacity: 0.3, roughness: 0.08, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false }),
 };
 const add = (geo, mat, cast = true) => { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = true; scene.add(m); return m; };
-const catcher = add(new THREE.PlaneGeometry(800, 800), new THREE.ShadowMaterial({ opacity: 0.25 }), false); catcher.rotation.x = -Math.PI / 2;
+const catcher = add(new THREE.PlaneGeometry(900, 900), new THREE.ShadowMaterial({ opacity: 0.45 }), false); catcher.rotation.x = -Math.PI / 2; catcher.position.y = 0.05;
+const mat = add(new THREE.BoxGeometry(1, 1.2, 1), std(0x0e1116, { roughness: 0.8 }), false); mat.position.y = -0.6;
 const tile = add(new THREE.PlaneGeometry(900, 500), M.tile, false); tile.rotation.x = -Math.PI / 2; tile.position.y = -0.05;
 const water = add(new THREE.BoxGeometry(900, 1, 320), M.water, false); water.renderOrder = 2;
 const surfGeo = new THREE.PlaneGeometry(900, 320, 90, 32); surfGeo.rotateX(-Math.PI / 2);
 const surf = add(surfGeo, M.surf, false); surf.renderOrder = 3;
-const boxes = []; for (let i = 0; i < 6; i++) boxes.push(add(new THREE.BoxGeometry(1, 1, 1), M.prop));
+const boxes = []; for (let i = 0; i < 8; i++) boxes.push(add(new THREE.BoxGeometry(1, 1, 1), M.prop));
 let nb = 0;
-function box(x0, x1, y0, y1, depth, mat, rotZ = 0, cx = null, cy = null) {
-  const b = boxes[nb++]; if (!b) return; b.visible = true; b.material = mat;
+function box(x0, x1, y0, y1, depth, mat_, rotZ = 0, cx = null, cy = null, cz = 0) {
+  const b = boxes[nb++]; if (!b) return; b.visible = true; b.material = mat_;
   b.scale.set(Math.max(0.5, Math.abs(x1 - x0)), Math.max(0.5, Math.abs(y1 - y0)), depth);
-  b.position.set(cx ?? (x0 + x1) / 2, cy ?? (y0 + y1) / 2, 0); b.rotation.set(0, 0, rotZ);
+  b.position.set(cx ?? (x0 + x1) / 2, cy ?? (y0 + y1) / 2, cz); b.rotation.set(0, 0, rotZ);
+}
+// 圆柱（横杆、钢索）：两点之间
+const rods = []; for (let i = 0; i < 4; i++) { const m = add(new THREE.CylinderGeometry(1, 1, 1, 14), M.chrome); m.visible = false; rods.push(m); }
+let nr = 0;
+function rod(a, b, r, mat_) {
+  const m = rods[nr++]; if (!m) return; m.visible = true; m.material = mat_;
+  const d = b.clone().sub(a), L = d.length(); m.scale.set(r, L, r); m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize());
 }
 function dumbbell() {
   const g = new THREE.Group();
@@ -63,110 +94,330 @@ function dumbbell() {
 const DB = [dumbbell(), dumbbell()];
 
 // ---- 3. 人物：缩放到跟引擎一样高（头顶到脚底约 98 单位），面向 +x ----
-const gltf = await new GLTFLoader().loadAsync(new URLSearchParams(location.search).get('model'));
+const gltf = await new GLTFLoader().loadAsync(Q.get('model') || '/tools/lib/models/fitness-female.glb');
 const root = gltf.scene; scene.add(root);
-root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; if (o.material) { o.material.roughness = 0.7; } } });
-if (/xbot/i.test(new URLSearchParams(location.search).get('model'))) root.traverse(o => {
-  if (!o.isMesh) return;
-  o.material = new THREE.MeshStandardMaterial(/joint/i.test(o.material.name) ? { color: 0x0c7666, roughness: 0.45, metalness: 0.1 } : { color: 0xd8dedc, roughness: 0.55, metalness: 0.05 });
-});
+root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+// 雕像白＋按肌肉发光：着色器里按离肌肉中心的距离混入颜色（红＝发力、蓝＝被拉伸）
+// 每个发光点有自己的强度 w 与半径 r：主力肌肉 1.0，协同肌肉约 0.4
+const MAXG = 32;
+const GLOW = { c: { value: Array.from({ length: MAXG }, () => V()) }, w: { value: new Array(MAXG).fill(0) }, r: { value: new Array(MAXG).fill(7) }, n: { value: 0 }, k: { value: 0 },
+  dc: { value: new THREE.Color(0.95, 0.28, 0.22) }, ec: { value: new THREE.Color(1.0, 0.16, 0.06) } };
+const statue = new THREE.MeshStandardMaterial({ color: 0xe6e9ee, roughness: 0.42, metalness: 0.02 });
+const glowify = m => (m.onBeforeCompile = sh => {
+  Object.assign(sh.uniforms, { gC: GLOW.c, gW: GLOW.w, gR: GLOW.r, gN: GLOW.n, gK: GLOW.k, gD: GLOW.dc, gE: GLOW.ec });
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;')
+    .replace('#include <skinning_vertex>', '#include <skinning_vertex>\nvGW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+      varying vec3 vGW; uniform vec3 gC[${MAXG}]; uniform float gW[${MAXG}]; uniform float gR[${MAXG}]; uniform int gN; uniform float gK; uniform vec3 gD; uniform vec3 gE;`)
+    .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      float gg = 0.0;
+      for (int i = 0; i < ${MAXG}; i++) { if (i >= gN) break; gg = max(gg, gW[i] * (1.0 - smoothstep(gR[i] * 0.25, gR[i], distance(vGW, gC[i])))); }
+      diffuseColor.rgb = mix(diffuseColor.rgb, gD, gg * gK * 0.85);
+      totalEmissiveRadiance += gE * gg * gK * 0.9;`);
+}, m);
+const cloth = new THREE.MeshStandardMaterial({ color: 0x22262e, roughness: 0.8 }); // 运动内衣与短裤保持深色，被盖住的肌肉（臀、胸）照样发光
+glowify(statue); glowify(cloth);
+root.traverse(o => { if (o.isMesh) o.material = /Shorts|Bra/.test(o.name) ? cloth : statue; });
 const B = n => root.getObjectByName('mixamorig' + n);
-if (new URLSearchParams(location.search).get('recolor')) root.traverse(o => {
-  if (!o.isMesh || !o.material || !o.material.map || !o.material.map.image) return;
-  const img = o.material.map.image, c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
-  const g = c.getContext('2d'); g.drawImage(img, 0, 0); const d = g.getImageData(0, 0, c.width, c.height), a2 = d.data;
-  for (let i = 0; i < a2.length; i += 4) { const r = a2[i], gg = a2[i + 1], b = a2[i + 2]; if (r > 120 && gg > 100 && b < 90 && r - b > 70) { const l = (r + gg + b) / 3 * 0.32; a2[i] = l; a2[i + 1] = l * 1.05; a2[i + 2] = l * 1.1; } }
-  g.putImageData(d, 0, 0); const tx = new THREE.CanvasTexture(c); tx.flipY = o.material.map.flipY; tx.colorSpace = THREE.SRGBColorSpace; o.material.map = tx; o.material.needsUpdate = true;
-});
-// 先摆成 T 字（模型自带的 TPose 片段），以它当「静止姿势」
-const tpose = gltf.animations.find(a => /tpose/i.test(a.name));
-if (tpose) { const mx = new THREE.AnimationMixer(root); mx.clipAction(tpose).play(); mx.update(0); }
 root.updateMatrixWorld(true);
 const box0 = new THREE.Box3().setFromObject(root); const h0 = box0.max.y - box0.min.y;
-const SCALE = 98 / h0; root.scale.setScalar(SCALE); root.updateMatrixWorld(true);
+root.scale.setScalar(98 / h0); root.updateMatrixWorld(true);
 
 const NAMES = ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftShoulder', 'RightShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand', 'RightArm', 'RightForeArm', 'RightHand',
   'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase', 'HeadTop_End', 'LeftToe_End', 'RightToe_End'];
 const bone = {}; NAMES.forEach(n => (bone[n] = B(n)));
-const REST = {}; // 静止时的世界旋转（人物面向 +z）
-for (const n of NAMES) REST[n] = bone[n].getWorldQuaternion(new THREE.Quaternion());
-const restDir = (a, b) => bone[b].getWorldPosition(new THREE.Vector3()).sub(bone[a].getWorldPosition(new THREE.Vector3())).normalize();
-// 每段骨头静止时指向哪里（父→子），之后要把它转到引擎算出的方向
+const W3 = n => bone[n].getWorldPosition(V());
+const REST = {}; for (const n of NAMES) REST[n] = bone[n].getWorldQuaternion(new THREE.Quaternion()); // 静止时（面向 +z）的世界旋转
+const restDir = (a, b) => W3(b).sub(W3(a)).normalize();
 const SEG = { RightUpLeg: 'RightLeg', RightLeg: 'RightFoot', RightFoot: 'RightToeBase', LeftUpLeg: 'LeftLeg', LeftLeg: 'LeftFoot', LeftFoot: 'LeftToeBase',
-  RightArm: 'RightForeArm', RightForeArm: 'RightHand', LeftArm: 'LeftForeArm', LeftForeArm: 'LeftHand', RightHand: null, LeftHand: null };
-const RD = {}; for (const k in SEG) if (SEG[k]) RD[k] = restDir(k, SEG[k]);
+  RightArm: 'RightForeArm', RightForeArm: 'RightHand', LeftArm: 'LeftForeArm', LeftForeArm: 'LeftHand' };
+const RD = {}; for (const k in SEG) RD[k] = restDir(k, SEG[k]);
 RD.RightHand = RD.RightForeArm.clone(); RD.LeftHand = RD.LeftForeArm.clone();
-const BODY_UP = new THREE.Vector3(0, 1, 0), BODY_FWD = new THREE.Vector3(0, 0, 1);
+const LEN = {}; for (const k of ['RightArm', 'RightForeArm', 'LeftArm', 'LeftForeArm', 'RightUpLeg', 'RightLeg', 'LeftUpLeg', 'LeftLeg']) LEN[k] = W3(k).distanceTo(W3(SEG[k]));
+const BODY_UP = V(0, 1, 0), BODY_FWD = V(0, 0, 1);
+const REST_RIGHT = W3('RightArm').sub(W3('LeftArm')).normalize(); // 静止时右手在哪一侧
+const UP = V(0, 1, 0), DOWN = V(0, -1, 0);
 
-const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const v2 = (P, a, b) => V(P[b][0] - P[a][0], P[b][1] - P[a][1], 0).normalize();
 function setWorldQuat(name, q) {
   const b = bone[name]; const pq = b.parent.getWorldQuaternion(new THREE.Quaternion());
   b.quaternion.copy(pq.invert().multiply(q)); b.updateMatrixWorld(true);
 }
-function pose(s, swim) {
-  const P = s.P;
-  // 身体朝向：躯干方向 T、脸朝 F（与 anim3d.js 同一套定义）
+function rotWorld(name, axis, deg) { // 在世界座标里再多转一下（脊椎弯曲、转体、肩胛）
+  const q = bone[name].getWorldQuaternion(new THREE.Quaternion());
+  setWorldQuat(name, new THREE.Quaternion().setFromAxisAngle(axis.clone().normalize(), THREE.MathUtils.degToRad(deg)).multiply(q));
+}
+const curFront = n => BODY_FWD.clone().applyQuaternion(bone[n].getWorldQuaternion(new THREE.Quaternion()).multiply(REST[n].clone().invert())).normalize();
+// 身体座标：T＝躯干往头、F＝脸朝的方向、OR＝身体右侧（都用骨头现在的位置算）
+function frameNow() {
+  const T = W3('Neck').sub(W3('Hips')).normalize();
+  const r = W3('RightArm').sub(W3('LeftArm')); const OR = r.sub(T.clone().multiplyScalar(r.dot(T))).normalize();
+  const F = T.clone().cross(OR).multiplyScalar(SIDE).normalize();
+  return { T, F, OR };
+}
+let SIDE = 1; // 摆成面向 +x 后，右手在 +z（1）还是 -z（-1）；第一次摆姿势后量出来
+
+// 两节骨头的 IK（模型自己的骨长）：根部 a → 目标点，pole 决定手肘／膝盖往哪边弯。回传两段的世界方向
+function ik(side, kind, target, pole) {
+  const a = side + (kind === 'arm' ? 'Arm' : 'UpLeg'), b = side + (kind === 'arm' ? 'ForeArm' : 'Leg');
+  const S = W3(a), l1 = LEN[a], l2 = LEN[b];
+  const d = target.clone().sub(S); let dist = d.length(); dist = Math.min(l1 + l2 - 0.05, Math.max(Math.abs(l1 - l2) + 0.05, dist));
+  const dn = d.normalize();
+  const ca = (l1 * l1 + dist * dist - l2 * l2) / (2 * l1 * dist), A = Math.acos(Math.max(-1, Math.min(1, ca)));
+  let pp = pole.clone().sub(dn.clone().multiplyScalar(pole.dot(dn))); if (pp.lengthSq() < 1e-6) pp = V(0, 1, 0); pp.normalize();
+  const E = S.clone().add(dn.clone().multiplyScalar(l1 * Math.cos(A))).add(pp.multiplyScalar(l1 * Math.sin(A)));
+  const Tg = S.clone().add(dn.clone().multiplyScalar(dist));
+  return { [a]: E.clone().sub(S).normalize(), [b]: Tg.sub(E).normalize() };
+}
+const nrm = (...vs) => { const o = V(); for (let i = 0; i < vs.length; i += 2) o.add(vs[i].clone().multiplyScalar(vs[i + 1])); return o.normalize(); };
+const slerpDir = (a, b, t) => { const q = new THREE.Quaternion().setFromUnitVectors(a.clone().normalize(), b.clone().normalize()); return a.clone().normalize().applyQuaternion(new THREE.Quaternion().slerp(q, t)); };
+const ease = x => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, x)));
+
+// ---- 4. 各动作在 2D 引擎表达不了的部分（往两侧开合、转体、脊椎弯曲、肩胛）：3D 覆盖 ----
+// kp：每个关键帧的进度值，按 ANIM 的插值走（默认 [0,1]）。spine(c) 在四肢之前做；legs(c)／arms(c) 回传各段世界方向。
+// c.p 进度、c.T/F/OR 身体座标、c.os(side) 该侧往外、c.def(side,'arm'|'leg') 2D 姿势下手／脚该在的位置（模型骨长）。
+const SLED_N = V(0.95, 0.31, 0).normalize(), SLED_UP = V(-0.31, 0.95, 0).normalize(); // 腿举机踏板：法线（往脚的方向）与板面往上
+const OS = (c, side) => side === 'Right' ? c.OR.clone() : c.OR.clone().negate();
+function armPress(c, side, up, fo, fwd) { // 站／坐姿推举：up＝上臂离水平线几度、fo＝前臂、fwd＝手肘在身体前方几度（肩胛骨平面）
+  const d = (deg) => { const t = THREE.MathUtils.degToRad(deg), f = THREE.MathUtils.degToRad(fwd), hz = Math.cos(t); return nrm(c.F, hz * Math.sin(f), c.T, Math.sin(t), OS(c, side), hz * Math.cos(f)); };
+  return { [side + 'Arm']: d(up), [side + 'ForeArm']: d(fo) };
+}
+function both(fn) { return Object.assign({}, fn('Right'), fn('Left')); }
+function lyingPress(c, { drop, top, abd = 45 }) { // 卧推类：底部上臂与躯干约 45°、前臂垂直；顶部手在肩正上方
+  return both(side => {
+    const o = OS(c, side), a = THREE.MathUtils.degToRad(abd), dr = THREE.MathUtils.degToRad(drop);
+    const ua = nrm(c.T, -Math.cos(a), o, Math.sin(a), c.F, -Math.tan(dr));
+    const sh = W3(side + 'Arm'), L1 = LEN[side + 'Arm'], L2 = LEN[side + 'ForeArm'];
+    const hb = sh.clone().add(ua.clone().multiplyScalar(L1)).add(UP.clone().multiplyScalar(L2 * 0.97));
+    const ht = sh.clone().add(nrm(top, 1, o, -0.06).multiplyScalar((L1 + L2) * 0.97));
+    const hand = hb.lerp(ht, c.p);
+    return ik(side, 'arm', hand, ua);
+  });
+}
+function flatHands(c, sides = ['Right', 'Left']) { const f = c.T.clone(); f.y = 0; if (f.lengthSq() < 1e-4) return {}; f.normalize(); const o = {}; sides.forEach(s => (o[s + 'Hand'] = f.clone())); return o; }
+const OV = {
+  ohp: { arms: c => both(s => armPress(c, s, -12 + 94 * c.p, 92 - 3 * c.p, 35 - 20 * c.p)) },
+  seatohp: { arms: c => both(s => armPress(c, s, -10 + 88 * c.p, 92, 35 - 15 * c.p)) },
+  thruster: { kp: [0, 0, 1, 0, 0], arms: c => both(s => armPress(c, s, -14 + 96 * c.p, 92 - 3 * c.p, 45 - 30 * c.p)) },
+  legpress: { feet: () => ({ RightFoot: SLED_UP.clone(), LeftFoot: SLED_UP.clone() }) }, // 脚掌平贴踏板
+  bench: { arms: c => lyingPress(c, { drop: 10, top: c.F }) },
+  fpress: { arms: c => lyingPress(c, { drop: 22, top: c.F }) },
+  incline: { arms: c => lyingPress(c, { drop: 10, top: nrm(c.F, 0.8, UP, 0.6) }) },
+  // plant：手撑地的动作。模型的手臂比 2D 引擎短，所以先以脚尖（或膝盖）为支点把整个人往下转，让手刚好够到地，
+  // 再把手 IK 到地上固定的点（mode 'ref'：以第 0 格算一次，整个循环手不动；'frame'：每格各算）
+  hpush: { plant: { mode: 'ref', out: 3.5, pole: (c, s) => nrm(c.T, -0.75, OS(c, s), 0.65, c.F, -0.3) } },
+  seatpush: { arms: c => both(s => ik(s, 'arm', c.handAt(s, -60, 90).lerp(c.handAt(s, 72, 82), c.p).add(OS(c, s).multiplyScalar(2.5)), nrm(OS(c, s), 0.8, c.T, -0.6, c.F, -0.2))) }, // 手走直线平推
+  invrow: { arms: c => both(s => ik(s, 'arm', c.def(s, 'arm').add(OS(c, s).multiplyScalar(3.5)), nrm(c.F, -0.7, OS(c, s), 0.5, c.T, -0.4))) },
+  pike: { plant: { mode: 'ref', rotate: false, out: 3, pole: (c, s) => nrm(c.T, -0.7, OS(c, s), 0.55) } },
+  pulldown: { arms: c => both(s => { // 额状面：手肘从上举往两侧下拉到体侧略后
+    const o = OS(c, s), al = THREE.MathUtils.degToRad(168 - 140 * c.p);
+    const ua = nrm(c.T, -Math.cos(al), o, Math.sin(al), c.F, -0.22 * c.p);
+    const fa = slerpDir(nrm(c.T, -Math.cos(THREE.MathUtils.degToRad(172)), o, Math.sin(THREE.MathUtils.degToRad(172))), nrm(c.T, 1, o, 0.12), c.p);
+    return { [s + 'Arm']: ua, [s + 'ForeArm']: fa };
+  }) },
+  rfly: { arms: c => both(s => { const al = THREE.MathUtils.degToRad(85 * c.p); const ua = nrm(DOWN, Math.cos(al), OS(c, s), Math.sin(al), c.F, 0.06);
+    return { [s + 'Arm']: ua, [s + 'ForeArm']: nrm(ua, 1, DOWN, 0.28) }; }) },
+  yraise: { cycles: 2, arms: c => both(s => { // 第一下 Y（斜上 30°）、第二下 T（往两侧）
+    const lift = THREE.MathUtils.degToRad(-4 + 14 * c.p), up = c.F.clone().negate();
+    const d = c.rep === 0 ? nrm(c.T, Math.cos(THREE.MathUtils.degToRad(30)), OS(c, s), Math.sin(THREE.MathUtils.degToRad(30)), up, Math.tan(lift))
+      : nrm(OS(c, s), 1, c.T, 0.05, up, Math.tan(lift));
+    return { [s + 'Arm']: d, [s + 'ForeArm']: d.clone() }; }) },
+  facepull: { arms: c => both(s => { const o = OS(c, s), st = nrm(c.F, 1, c.T, 0.12, o, -0.1);
+    return { [s + 'Arm']: slerpDir(st, nrm(o, 1, c.F, -0.25), c.p), [s + 'ForeArm']: slerpDir(st, nrm(c.T, 1, o, 0.05), c.p) }; }) },
+  jack: { legs: c => both(s => { const b = THREE.MathUtils.degToRad(3 + 15 * c.p), d = nrm(c.T, -Math.cos(b), OS(c, s), Math.sin(b));
+      return { [s + 'UpLeg']: d, [s + 'Leg']: nrm(d, 1, c.F, -0.03) }; }),
+    arms: c => both(s => { const a = THREE.MathUtils.degToRad(10 + 165 * c.p), d = nrm(c.T, -Math.cos(a), OS(c, s), Math.sin(a), c.F, 0.05); return { [s + 'Arm']: d, [s + 'ForeArm']: d.clone() }; }) },
+  tap: { legs: c => both(s => { const d = c.defDir(s, 'leg'); return { [s + 'UpLeg']: nrm(d[0], 1, OS(c, s), 0.1), [s + 'Leg']: nrm(d[1], 1, OS(c, s), 0.1) }; }),
+    plant: { mode: 'ref', sides: ['Left'], out: 1, pole: (c, s) => nrm(c.T, -0.8, OS(c, s), 0.4) },
+    after: c => { // 右手碰左肩：上臂往身体中线收、手肘弯；左手撑地
+      const touch = W3('LeftArm').add(c.F.clone().multiplyScalar(-3)).add(c.T.clone().multiplyScalar(1)).add(c.OR.clone().multiplyScalar(5));
+      const hand = c.anchor.Right.clone().lerp(touch, c.p).add(c.F.clone().multiplyScalar(-4 * Math.sin(Math.PI * c.p)));
+      return Object.assign(ik('Right', 'arm', hand, nrm(c.OR, 0.6, c.F, -0.7, c.T, -0.3)), c.p < 0.15 ? flatHands(c, ['Right']) : {});
+    } },
+  wgs: { spine: c => { const a = 52 * c.p; c.twist(a); rotWorld('Neck', c.T, c.twistSign * 18 * c.p); },
+    plant: { mode: 'ref', sides: ['Left'], out: -5, pole: (c, s) => nrm(c.T, -0.6, c.OR, -0.6) },
+    after: c => { const side = c.OR.clone(); side.y = 0; side.normalize(); // 上面那只手：从地面经身体侧面转到朝天花板
+      const up = nrm(DOWN, Math.cos(Math.PI * c.p), side, Math.sin(Math.PI * c.p));
+      return { RightArm: up, RightForeArm: up.clone() }; } },
+  catcow: { kp: [0, 1], spine: c => c.bend(-20 + 40 * c.p, c.p), plant: { mode: 'ref', pivot: 'knees', out: 1.5, pole: c => nrm(c.T, -1) } },
+  scap: { spine: c => c.clav(12 - 24 * c.p), plant: { mode: 'ref', out: 1.5, straight: true, groundBy: 'hands' } }, // 手肘不弯：肩胛前伸＝胸口被推高、夹紧＝胸口往下沉
+  climber: { plant: { mode: 'ref', out: 2, pole: c => nrm(c.T, -1) } },
+  burpee: { plant: { mode: 'frame', out: 2, pole: c => nrm(c.T, -1), weight: c => { const f = c.ph.from, t = c.ph.to, onFloor = i => i >= 1 && i <= 5;
+    return onFloor(f) && onFloor(t) ? 1 : onFloor(t) ? c.ph.e : onFloor(f) ? 1 - c.ph.e : 0; } } },
+  fig4: { // 左腿由 2D 摆好；右脚踝搭在左大腿近膝处、右膝往外；双手抱左大腿后侧
+    legs2: c => { const tf = curFront('LeftUpLeg'), ak = W3('LeftLeg').lerp(W3('LeftUpLeg'), 0.18).add(tf.multiplyScalar(5)).add(c.OR.clone().multiplyScalar(-1));
+      return ik('Right', 'leg', ak, nrm(c.OR, 1, c.T, -0.35, c.F, 0.3)); },
+    arms: c => { const mid = W3('LeftUpLeg').lerp(W3('LeftLeg'), 0.55), back = curFront('LeftUpLeg').negate();
+      const tl = mid.clone().add(back.clone().multiplyScalar(4.5)).add(c.OR.clone().multiplyScalar(-3)), tr = mid.clone().add(back.multiplyScalar(4.5)).add(c.OR.clone().multiplyScalar(3));
+      return Object.assign(ik('Left', 'arm', tl, nrm(c.OR, -0.8, c.F, -0.5)), ik('Right', 'arm', tr, nrm(c.OR, 0.8, c.F, -0.5))); } },
+  chest: { arms: c => both(s => { const b = THREE.MathUtils.degToRad(15 + 17 * c.p); const ua = nrm(OS(c, s), Math.cos(b), c.F, -Math.sin(b), c.T, -0.08);
+    return { [s + 'Arm']: ua, [s + 'ForeArm']: UP.clone() }; }) },
+  backfloat: { arms: c => both(s => { const a = THREE.MathUtils.degToRad(70), d = nrm(c.T, -Math.cos(a), OS(c, s), Math.sin(a)); return { [s + 'Arm']: d, [s + 'ForeArm']: d.clone() }; }) },
+  swing: { arms: c => midHands(c, 1.6, nrm(c.F, -0.2, c.T, -0.3)) },
+  squatG: { arms: c => midHands(c, 2.6, nrm(c.T, -1, c.F, 0.1)) },
+  row1: { arms: c => { const tf = curFront('LeftUpLeg'), t = W3('LeftUpLeg').lerp(W3('LeftLeg'), 0.72).add(tf.multiplyScalar(4.5));
+      return ik('Left', 'arm', t, nrm(c.OR, -0.8, c.T, -0.3)); } },
+  thrust: { arms: c => { const d = c.dbHip(); return Object.assign(ik('Right', 'arm', d.clone().add(c.OR.clone().multiplyScalar(5.5)).add(c.F.clone().multiplyScalar(1.5)), nrm(c.OR, 1, c.F, 0.5)),
+      ik('Left', 'arm', d.clone().add(c.OR.clone().multiplyScalar(-5.5)).add(c.F.clone().multiplyScalar(1.5)), nrm(c.OR, -1, c.F, 0.5))); } },
+};
+function midHands(c, half, pole) { // 两手一起握一只哑铃：把 2D 的手位置挪到身体中线
+  const h = c.def('Right', 'arm'), mid = W3('Hips'), off = h.clone().sub(mid).dot(c.OR); const m = h.sub(c.OR.clone().multiplyScalar(off));
+  return Object.assign(ik('Right', 'arm', m.clone().add(c.OR.clone().multiplyScalar(half)), nrm(c.OR, 0.7, pole, 1)), ik('Left', 'arm', m.clone().add(c.OR.clone().multiplyScalar(-half)), nrm(c.OR, -0.7, pole, 1)));
+}
+
+// ---- 5. 摆姿势 ----
+let KEY = null, HOLD = null;
+function pose(s, c) {
+  const P = s.P, swim = !!s.pool, ov = OV[KEY] || {};
   const T = v2(P, 'hip', 'sh'), F = V(T.y, -T.x, 0);
-  // 静止时人物「上=+y、前=+z」，要转成「上=T、前=F」
   const m0 = new THREE.Matrix4().makeBasis(BODY_FWD.clone().cross(BODY_UP), BODY_UP, BODY_FWD);
   const m1 = new THREE.Matrix4().makeBasis(F.clone().cross(T), T, F);
-  const R = new THREE.Quaternion().setFromRotationMatrix(m1.multiply(m0.invert()));
-  root.position.set(0, 0, 0); root.updateMatrixWorld(true);
-  for (const n of ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftShoulder', 'RightShoulder'])
-    setWorldQuat(n, R.clone().multiply(REST[n]));
-  // 四肢：先跟着身体转，再把骨头指向引擎给的方向（最小旋转，所以不会乱扭）
-  const target = {
-    RightUpLeg: v2(P, 'hip', 'nk'), RightLeg: v2(P, 'nk', 'nf'), LeftUpLeg: v2(P, 'hip', 'fk'), LeftLeg: v2(P, 'fk', 'ff'),
-    RightArm: v2(P, 'sh', 'ne'), RightForeArm: v2(P, 'ne', 'nh'), LeftArm: v2(P, 'sh', 'fe'), LeftForeArm: v2(P, 'fe', 'fh'),
-  };
-  target.RightHand = target.RightForeArm; target.LeftHand = target.LeftForeArm;
+  const R = new THREE.Quaternion().setFromRotationMatrix(m1.multiply(m0.invert())); c.R = R;
+  root.position.set(0, 0, 0); root.quaternion.identity(); root.updateMatrixWorld(true);
+  for (const n of ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftShoulder', 'RightShoulder']) setWorldQuat(n, R.clone().multiply(REST[n]));
+  const fr = frameNow(); Object.assign(c, fr);
+  // 2D 的四肢方向（近侧＝右）
+  const tgt2 = { RightUpLeg: v2(P, 'hip', 'nk'), RightLeg: v2(P, 'nk', 'nf'), LeftUpLeg: v2(P, 'hip', 'fk'), LeftLeg: v2(P, 'fk', 'ff'),
+    RightArm: v2(P, 'sh', 'ne'), RightForeArm: v2(P, 'ne', 'nh'), LeftArm: v2(P, 'sh', 'fe'), LeftForeArm: v2(P, 'fe', 'fh') };
+  c.defDir = (side, kind) => kind === 'arm' ? [tgt2[side + 'Arm'], tgt2[side + 'ForeArm']] : [tgt2[side + 'UpLeg'], tgt2[side + 'Leg']];
+  c.def = (side, kind) => { const a = side + (kind === 'arm' ? 'Arm' : 'UpLeg'), b = side + (kind === 'arm' ? 'ForeArm' : 'Leg');
+    return W3(a).add(tgt2[a].clone().multiplyScalar(LEN[a])).add(tgt2[b].clone().multiplyScalar(LEN[b])); };
+  c.pre = { RightHand: c.def('Right', 'arm'), LeftHand: c.def('Left', 'arm') };
+  c.handAt = (side, a, f) => { const d = x => V(Math.sin(x * Math.PI / 180), -Math.cos(x * Math.PI / 180), 0); // 2D 角度（a 上臂、f 前臂）下手会在哪
+    return W3(side + 'Arm').add(d(a).multiplyScalar(LEN[side + 'Arm'])).add(d(f).multiplyScalar(LEN[side + 'ForeArm'])); };
+  c.twistSign = c.twistSign || 1;
+  c.twist = deg => { for (const [n, k] of [['Spine', 0.25], ['Spine1', 0.35], ['Spine2', 0.4]]) rotWorld(n, frameNow().T, TW * deg * k); c.twistSign = TW; };
+  c.bend = (deg, p) => { // 正＝拱背（猫）、负＝塌腰（牛）；骨盆跟着前后倾，头跟着低／抬
+    const ax = () => frameNow().OR;
+    // 骨盆先往反方向倾（猫＝后倾、牛＝前倾），腰背两节往同方向弯，上背再补回来：中段拱起／塌下，肩膀高度不变（手臂伸直撑地）
+    for (const [n, k] of [['Hips', -0.6], ['Spine', 0.6], ['Spine1', 0.9], ['Spine2', -0.9]]) rotWorld(n, ax(), BD * deg * k);
+    rotWorld('Neck', ax(), BD * (deg > 0 ? 1.0 : 1.2) * deg); };
+  c.clav = deg => { for (const side of ['Right', 'Left']) { const f = frameNow(); rotWorld(side + 'Shoulder', f.T, CL * (side === 'Right' ? 1 : -1) * deg); } };
+  c.dbHip = () => W3('Hips').add(frameNow().F.multiplyScalar(7)).add(frameNow().T.multiplyScalar(-1));
+  if (ov.spine) ov.spine(c);
+  Object.assign(c, frameNow());
+  // 腿
+  const lt = { RightUpLeg: tgt2.RightUpLeg, RightLeg: tgt2.RightLeg, LeftUpLeg: tgt2.LeftUpLeg, LeftLeg: tgt2.LeftLeg };
+  if (ov.legs) Object.assign(lt, ov.legs(c));
+  applyLimbs(R, lt, ['LeftUpLeg', 'LeftLeg', 'RightUpLeg', 'RightLeg']);
+  if (ov.legs2) { Object.assign(lt, ov.legs2(c)); applyLimbs(R, lt, ['RightUpLeg', 'RightLeg']); }
+  const ft = {};
   for (const [foot, shin] of [['RightFoot', 'RightLeg'], ['LeftFoot', 'LeftLeg']]) {
-    const sd = target[shin]; const toe = swim ? sd.clone() : V(-sd.y, sd.x, 0);
-    if (!swim && toe.x < -0.2) toe.negate();
-    target[foot] = toe.normalize();
+    const sd = lt[shin]; let toe;
+    if (swim || (sd.x < -0.7 && Math.abs(sd.y) < 0.55)) toe = sd.clone(); // 游泳、跪姿（小腿平贴地往后）：脚背伸直
+    else { toe = V(-sd.y, sd.x, 0); if (toe.lengthSq() < 0.05) toe = c.F.clone(); if (toe.x < -0.2) toe.negate(); }
+    ft[foot] = toe.normalize();
   }
-  for (const n of ['RightUpLeg', 'RightLeg', 'RightFoot', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand']) {
-    const q = R.clone().multiply(REST[n]);
-    const cur = RD[n].clone().applyQuaternion(R);
-    const d = new THREE.Quaternion().setFromUnitVectors(cur, target[n]);
-    setWorldQuat(n, d.multiply(q));
-  }
+  if (ov.feet) Object.assign(ft, ov.feet(c));
+  applyLimbs(R, ft, ['RightFoot', 'LeftFoot']);
+  // 手
+  const at = { RightArm: tgt2.RightArm, RightForeArm: tgt2.RightForeArm, LeftArm: tgt2.LeftArm, LeftForeArm: tgt2.LeftForeArm };
+  if (ov.arms) Object.assign(at, ov.arms(c));
+  at.RightHand = at.RightHand || at.RightForeArm; at.LeftHand = at.LeftHand || at.LeftForeArm;
+  applyLimbs(R, at, ['RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand']);
   root.updateMatrixWorld(true);
-  // 站在地上：用模型真实的骨头位置找最低点（躺／趴的动作看全身，站着的看脚）
-  const pts = NAMES.map(n => bone[n].getWorldPosition(V()));
-  const low = s.ground === 'low' ? Math.min(...pts.map(p => p.y)) - 2.5 : Math.min(...['RightToe_End', 'RightFoot', 'LeftFoot', 'LeftToe_End'].map(n => bone[n].getWorldPosition(V()).y)) - 2.5;
-  const hipW = bone.Hips.getWorldPosition(V());
-  root.position.set(P.hip[0] - hipW.x, -low + s.lift, 0);
+  if (ov.plant) plantHands(c, ov.plant);
+  if (ov.after) { const t = ov.after(c); applyLimbs(R, t, ['RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand']); }
   root.updateMatrixWorld(true);
+  // 落地：躺／趴的动作看全身最低点，站着的看脚（肩胛俯卧撑看手：胸口相对两手上下）
+  const pts = NAMES.map(n => W3(n));
+  const low = ov.plant && ov.plant.groundBy === 'hands' ? Math.min(W3('RightHand').y, W3('LeftHand').y) - 2.5
+    : s.ground === 'low' ? Math.min(...pts.map(p => p.y)) - 2.5 : Math.min(...['RightToe_End', 'RightFoot'].map(n => W3(n).y)) - 2.5; // 跟 2D 引擎一样以近侧（右）脚为地面
+  const hipW = W3('Hips');
+  root.position.add(V(P.hip[0] - hipW.x, -low + s.lift, 0));
+  root.updateMatrixWorld(true);
+  Object.assign(c, frameNow());
 }
+let PLANT_REF = null;
+function plantHands(c, pl) {
+  const w = pl.weight ? pl.weight(c) : 1; c.anchor = {};
+  const piv = (pl.pivot === 'knees' ? ['RightLeg', 'LeftLeg', 'RightToe_End', 'LeftToe_End'] : ['RightToe_End', 'LeftToe_End', 'RightToeBase', 'LeftToeBase']).map(W3);
+  const C = piv.reduce((a, b) => (b.y < a.y ? b : a));
+  const reach = (LEN.RightArm + LEN.RightForeArm) * 0.985;
+  const S = W3('RightArm').lerp(W3('LeftArm'), 0.5);
+  let fwd = c.pre.RightHand.clone().lerp(c.pre.LeftHand, 0.5).sub(S).x; // 2D 里手在肩前（＋）还是正下方
+  if (pl.rotate === false) fwd = Math.sign(fwd) * Math.min(Math.abs(fwd), Math.sqrt(Math.max(0, reach * reach - (S.y - C.y) ** 2))); // 不转身体：手伸到够得到的地方
+  let alpha = 0;
+  if (pl.mode === 'ref' && PLANT_REF) alpha = PLANT_REF.alpha;
+  else if (w > 0 && pl.rotate !== false) {
+    const vx = S.x - C.x, vy = S.y - C.y, R0 = Math.hypot(vx, vy), h = Math.sqrt(Math.max(1, reach * reach - fwd * fwd));
+    if (R0 > h) { const phi = Math.atan2(vy, vx), as = Math.asin(h / R0), wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+      const a1 = wrap(as - phi), a2 = wrap(Math.PI - as - phi); alpha = Math.abs(a1) < Math.abs(a2) ? a1 : a2; }
+  }
+  alpha *= w;
+  const q = new THREE.Quaternion().setFromAxisAngle(V(0, 0, 1), alpha);
+  root.quaternion.copy(q); root.position.copy(C).sub(C.clone().applyQuaternion(q)); root.updateMatrixWorld(true);
+  Object.assign(c, frameNow());
+  for (const side of ['Right', 'Left']) {
+    if (pl.mode === 'ref' && PLANT_REF) { c.anchor[side] = C.clone().add(PLANT_REF.rel[side]); continue; }
+    const sh = W3(side + 'Arm');
+    c.anchor[side] = V(sh.x + fwd, C.y, sh.z).add(OS(c, side).multiplyScalar(pl.out || 0)).setY(C.y);
+  }
+  if (pl.mode === 'ref' && !PLANT_REF) PLANT_REF = { alpha, rel: { Right: c.anchor.Right.clone().sub(C), Left: c.anchor.Left.clone().sub(C) } };
+  if (w <= 0) return;
+  const tg = {}, sides = pl.sides || ['Right', 'Left'];
+  for (const side of sides) {
+    const target = w < 1 ? W3(side + 'Hand').lerp(c.anchor[side], w) : c.anchor[side].clone();
+    if (pl.straight) { const d = target.sub(W3(side + 'Arm')).normalize(); tg[side + 'Arm'] = d; tg[side + 'ForeArm'] = d.clone(); }
+    else Object.assign(tg, ik(side, 'arm', target, pl.pole(c, side)));
+  }
+  if (w > 0.5) Object.assign(tg, flatHands(c, sides));
+  applyLimbs(c.R, tg, ['RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand']);
+}
+function applyLimbs(R, tg, names) { // 先跟着身体转，再用最小旋转把骨头指到目标方向（所以不会乱扭）
+  for (const n of names) {
+    if (!tg[n]) continue;
+    const q = R.clone().multiply(REST[n]), cur = RD[n].clone().applyQuaternion(R);
+    setWorldQuat(n, new THREE.Quaternion().setFromUnitVectors(cur.normalize(), tg[n].clone().normalize()).multiply(q));
+  }
+}
+// 转体／弯腰／肩胛的方向：第一次用时量一下，转完右肩要往上（转体）、背中间要往上拱（猫）、肩关节要往脸那边去（前伸）
+let TW = 1, BD = 1, CL = 1;
+
 // 模型摆好后的关节位置，换成引擎的名字，给器材定位用（器材要贴着「这个人」而不是贴着火柴人）
 function modelP() {
-  const g = n => { const p = bone[n].getWorldPosition(V()); return [p.x, p.y]; };
+  const g = n => { const p = W3(n); return [p.x, p.y]; };
   const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   return { hip: g('Hips'), sh: mid(g('RightArm'), g('LeftArm')), nk: g('RightLeg'), nf: g('RightFoot'), fk: g('LeftLeg'), ff: g('LeftFoot'),
     ne: g('RightForeArm'), nh: g('RightHand'), fe: g('LeftForeArm'), fh: g('LeftHand'), hd: g('Head') };
 }
-function props(s, P) {
-  nb = 0; boxes.forEach(b => (b.visible = false));
+function props(s, P, c) {
+  nb = 0; boxes.forEach(b => (b.visible = false)); nr = 0; rods.forEach(r => (r.visible = false));
   const X = n => P[n][0], Y = n => P[n][1];
   for (const pr of s.props) {
-    if (pr === 'bench') { const x1 = Math.min(X('sh'), X('hip')) - 9, x2 = Math.max(X('sh'), X('hip')) + 10, top = Math.min(Y('sh'), Y('hip')) - 6; box(x1, x2, top - 5, top, 26, M.prop); box(x1 + 6, x1 + 10, 0, top - 5, 18, M.iron); box(x2 - 10, x2 - 6, 0, top - 5, 18, M.iron); }
-    if (pr === 'pad') { const x1 = Math.min(X('sh'), X('nk')) - 3, x2 = Math.max(X('sh'), X('nk')) + 3, top = Math.min(Y('sh'), Y('hip')) - 6; box(x1, x2, top - 5, top, 26, M.prop); box((x1 + x2) / 2 - 2, (x1 + x2) / 2 + 2, 0, top - 5, 14, M.iron); }
-    if (pr === 'seat') { const sx = X('hip'), top = Y('hip') - 7; box(sx - 13, sx + 14, top - 5, top, 30, M.prop); box(sx - 2, sx + 2, 0, top - 5, 10, M.iron); }
-    if (pr === 'back') { const x = X('hip') - 10; box(x - 2.5, x + 2.5, Y('hip') - 3, Y('sh') + 8, 26, M.prop); }
+    if (pr === 'bench') { const x1 = Math.min(X('sh'), X('hip')) - 9, x2 = Math.max(X('sh'), X('hip')) + 10, top = Math.min(Y('sh'), Y('hip')) - 6; box(x1, x2, top - 5, top, 26, M.pad); box(x1 + 6, x1 + 10, 0, top - 5, 18, M.iron); box(x2 - 10, x2 - 6, 0, top - 5, 18, M.iron); }
+    if (pr === 'tbench') { const bx = X('sh'), top = Y('sh') - 5; box(bx - 32, bx + 1, top - 5, top, 30, M.pad); box(bx - 28, bx - 24, 0, top - 5, 22, M.iron); box(bx - 6, bx - 2, 0, top - 5, 22, M.iron); }
+    if (pr === 'pad') { const x1 = Math.min(X('sh'), X('nk')) - 3, x2 = Math.max(X('sh'), X('nk')) + 3, top = Math.min(Y('sh'), Y('hip')) - 6; box(x1, x2, top - 5, top, 26, M.pad); box((x1 + x2) / 2 - 2, (x1 + x2) / 2 + 2, 0, top - 5, 14, M.iron); }
+    if (pr === 'seat') { const sx = X('hip'), top = Y('hip') - 7; box(sx - 13, sx + 14, top - 5, top, 30, M.pad); box(sx - 2, sx + 2, 0, top - 5, 10, M.iron); }
+    if (pr === 'back') { const x = X('hip') - 10; box(x - 2.5, x + 2.5, Y('hip') - 3, Y('sh') + 8, 26, M.pad); }
     if (pr === 'recline') {
       const a = [X('hip'), Y('hip')], b = [X('sh'), Y('sh')], ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]) + 10, nx = -Math.sin(ang), ny = Math.cos(ang); // 背后＝脸的反方向
-      box(0, len, 0, 5, 28, M.prop, ang, (a[0] + b[0]) / 2 + nx * 9, (a[1] + b[1]) / 2 + ny * 9);
-      box(X('hip') - 12, X('hip') + 14, Y('hip') - 12, Y('hip') - 7, 30, M.prop); box(X('hip') - 2, X('hip') + 2, 0, Y('hip') - 12, 10, M.iron);
+      box(0, len, 0, 5, 28, M.pad, ang, (a[0] + b[0]) / 2 + nx * 9, (a[1] + b[1]) / 2 + ny * 9);
+      box(X('hip') - 12, X('hip') + 14, Y('hip') - 12, Y('hip') - 7, 30, M.pad); box(X('hip') - 2, X('hip') + 2, 0, Y('hip') - 12, 10, M.iron);
     }
-    if (pr === 'bar') { const hx = X('nh'), top = Y('nh') + 3; box(hx - 34, hx + 36, top, top + 4, 80, M.wood); box(hx + 30, hx + 34, 0, top, 4, M.wood); }
+    if (pr === 'bar') { const h = W3('RightHand').lerp(W3('LeftHand'), 0.5), top = h.y + 3; box(h.x - 34, h.x + 36, top, top + 4, 80, M.wood); box(h.x + 30, h.x + 34, 0, top, 4, M.wood, 0, null, null, 36); box(h.x + 30, h.x + 34, 0, top, 4, M.wood, 0, null, null, -36); }
     if (pr === 'boxF') { const fx = X('ff'); box(fx - 15, fx + 8, 0, Y('ff') - 3, 32, M.wood); }
     if (pr === 'boxN') { const nx = X('nf'); box(nx - 18, nx + 18, 0, Y('nf') - 3, 36, M.wood); }
-    if (pr === 'wallR') { const wx = X('nh') + 5; box(wx, wx + 10, 0, s.pool.surface + 9, 320, M.tile); }
-    if (pr === 'wallL') { box(s.wallX - 10, s.wallX, 0, s.pool.surface + 9, 320, M.tile); }
+    if (pr === 'wallR') { const wx = X('nh') + 5; box(wx, wx + 10, 0, s.pool.surface + 9, 320, M.wall); }
+    if (pr === 'wallL') { box(s.wallX - 10, s.wallX, 0, s.pool.surface + 9, 320, M.wall); }
     if (pr === 'board') { const hx = X('nh'); box(hx - 5, hx + 26, Y('nh') + 1, Y('nh') + 4, 32, M.board); }
+  }
+  if (KEY === 'pulldown') { // 下拉横杆＋往上的钢索
+    const r = W3('RightHand'), l = W3('LeftHand'), o = r.clone().sub(l).normalize();
+    rod(l.clone().sub(o.clone().multiplyScalar(9)), r.clone().add(o.clone().multiplyScalar(9)), 1.1, M.chrome);
+    const m = r.clone().lerp(l, 0.5); rod(m, m.clone().add(V(0, 22, 0)), 0.35, M.cable);
+  }
+  if (KEY === 'legpress') { // 踏板：贴着两只脚掌、垂直于推的方向
+    const sole = ['Right', 'Left'].map(sd => W3(sd + 'Foot').lerp(W3(sd + 'ToeBase'), 0.5)).reduce((a, b) => a.add(b)).multiplyScalar(0.5);
+    const ctr = sole.add(SLED_N.clone().multiplyScalar(3.5)).add(SLED_UP.clone().multiplyScalar(3));
+    box(0, 2, 0, 36, 42, M.pad, Math.atan2(SLED_N.y, SLED_N.x), ctr.x, ctr.y, ctr.z);
+  }
+  if (KEY === 'facepull') { const m = W3('RightHand').lerp(W3('LeftHand'), 0.5); rod(m, V(m.x + 140, W3('Head').y, m.z), 0.35, M.cable); }
+  if (KEY === 'chest') for (const side of ['Right', 'Left']) { // 门框：前臂贴在门框前面
+    const e = W3(side + 'ForeArm'), h = W3(side + 'Hand'), o = side === 'Right' ? c.OR : c.OR.clone().negate();
+    const p = e.clone().lerp(h, 0.5).add(c.F.clone().multiplyScalar(4.5)).add(o.clone().multiplyScalar(2));
+    box(p.x - 3, p.x + 3, 0, 118, 6, M.wood, 0, null, null, p.z);
   }
 }
 const FING = ['Index', 'Middle', 'Ring', 'Pinky'];
@@ -180,55 +431,262 @@ function fist(side, on) {
   }
   for (const k of [2, 3]) { const b = B(side + 'HandThumb' + k); if (!b) continue; b.quaternion.copy(fingerRest[b.name]); if (on) b.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), THREE.MathUtils.degToRad(40))); }
 }
-function dumbbells(hold) {
+function dumbbells(hold, c) {
   fist('Right', !!hold); fist('Left', hold === 'hands' || hold === 'one'); root.updateMatrixWorld(true);
   DB[0].visible = DB[1].visible = false;
-  const rh = bone.RightHand.getWorldPosition(V()), lh = bone.LeftHand.getWorldPosition(V());
-  const grip = (h, f) => h.clone().add(f.clone().sub(h).multiplyScalar(0)); // 握在手掌
-  if (hold === 'hands') { DB[0].visible = DB[1].visible = true; DB[0].position.copy(grip(rh, rh)).add(V(0, 0, 1)); DB[1].position.copy(grip(lh, lh)).add(V(0, 0, -1)); DB[0].rotation.set(0, 0, 0); DB[1].rotation.set(0, 0, 0); }
+  const rh = W3('RightHand'), lh = W3('LeftHand');
+  if (hold === 'hands') { DB[0].visible = DB[1].visible = true; DB[0].position.copy(rh).add(V(0, 0, 1)); DB[1].position.copy(lh).add(V(0, 0, -1)); DB[0].rotation.set(0, 0, 0); DB[1].rotation.set(0, 0, 0); }
   else if (hold === 'one') {
-    DB[0].visible = true; const together = rh.distanceTo(lh) < 12;
+    DB[0].visible = true;
+    if (KEY === 'thrust') { DB[0].position.copy(c.dbHip()); DB[0].rotation.set(0, 0, 0); return; } // 横放在髋上
+    const together = rh.distanceTo(lh) < 12;
     DB[0].position.copy(together ? rh.clone().add(lh).multiplyScalar(0.5) : rh); DB[0].rotation.set(together ? Math.PI / 2 : 0, 0, 0);
   }
 }
+function floorVisible(on) { catcher.visible = mat.visible = on; tile.visible = water.visible = surf.visible = !on; }
 
-// ---- 4. 取景：先把整个循环走一遍量出范围，镜头固定不动 ----
-function cycle(key) { const d = ANIM.sample(key, 0); return d; }
-window.render = async function (key, hold, fps, maxFrames) {
-  const s0 = ANIM.sample(key, 0); if (!s0) return null;
-  const T = ANIM.cycleLen(key), n = Math.min(maxFrames || 60, Math.max(8, Math.round(T * fps)));
-  const swim = !!s0.pool;
-  floorVisible(!swim);
-  // 量范围
-  const bb = new THREE.Box3();
-  // 用骨头位置量范围（蒙皮网格的包围盒停在绑定姿势，不准），再加上身体厚度
-  for (let i = 0; i < n; i++) { const s = ANIM.sample(key, T * i / n); pose(s, swim); for (const nm of NAMES) bb.expandByPoint(bone[nm].getWorldPosition(V())); }
-  bb.expandByScalar(7);
-  const c = bb.getCenter(V()), sz = bb.getSize(V());
-  const yaw = THREE.MathUtils.degToRad(32), pitch = THREE.MathUtils.degToRad(swim ? 16 : 10);
-  const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
-  const w = Math.max(sz.x * Math.cos(yaw) + sz.z * Math.sin(yaw), 40) + 6, h = Math.max(sz.y, 40) + 6;
-  const D = Math.max((h / 2) / t, (w / 2) / (t * cam.aspect)) * 1.06;
-  cam.position.set(c.x + D * Math.sin(yaw) * Math.cos(pitch), c.y + D * Math.sin(pitch), c.z + D * Math.cos(yaw) * Math.cos(pitch));
-  cam.lookAt(c.x, c.y, c.z); cam.updateProjectionMatrix();
-  sun.target.position.set(c.x, 0, 0); sun.position.set(c.x + 80, 220, 140);
-  rim.target.position.set(c.x, c.y, 0); rim.position.set(c.x - 140, c.y + 80, -110);
-  const frames = [];
-  for (let i = 0; i < n; i++) {
-    const tm = T * i / n, s = ANIM.sample(key, tm);
-    pose(s, swim); const P = modelP(); props(s, P); dumbbells(hold);
-    if (swim) {
-      const hh = s.pool.surface; water.scale.y = hh; water.position.y = hh / 2;
-      const a = surfGeo.attributes.position.array;
-      for (let k = 0; k < a.length; k += 3) a[k + 1] = hh + 0.9 * Math.sin(a[k] * 0.06 + tm * 2.3) * Math.cos(a[k + 2] * 0.05 + tm * 1.5);
-      surfGeo.attributes.position.needsUpdate = true; surfGeo.computeVertexNormals();
-    }
-    renderer.render(scene, cam);
-    frames.push(renderer.domElement.toDataURL('image/png'));
-  }
-  return { frames, ms: Math.round(T * 1000 / n) };
+// 第一次摆姿势：量出右手在哪一侧、转体／弯腰／肩胛往哪边转才对
+{
+  KEY = null; const c = {}; pose(ANIM.sample('squat', 0), c);
+  SIDE = Math.sign(W3('RightArm').z - W3('LeftArm').z) || 1;
+  const s0 = ANIM.sample('catcow', 0);
+  const probe = (fn, measure) => { KEY = '__probe'; OV.__probe = { spine: fn }; const cc = {}; pose(s0, cc); const v = measure(cc); delete OV.__probe; KEY = null; return v; };
+  const base = probe(() => {}, cc => ({ r: W3('RightArm').y - W3('LeftArm').y, mid: W3('Spine1').y - (W3('Hips').y + W3('Neck').y) / 2, sh: W3('RightArm').clone().sub(W3('Spine2')).dot(cc.F) }));
+  if (probe(cc => cc.twist(20), () => W3('RightArm').y - W3('LeftArm').y) < base.r) TW = -1;
+  // 屈曲（猫）＝腰椎这一节往脸那边弯：上面那段往 F 方向去
+  const flex0 = probe(() => {}, cc => W3('Spine2').sub(W3('Spine')).dot(cc.F));
+  if (probe(cc => rotWorld('Spine', frameNow().OR, 10), cc => W3('Spine2').sub(W3('Spine')).dot(cc.F)) < flex0) BD = -1;
+  if (probe(cc => cc.clav(10), cc => W3('RightArm').clone().sub(W3('Spine2')).dot(cc.F)) < base.sh) CL = -1;
+}
+
+// ---- 6. 肌肉位置（用骨头推出来，左右对称两点）。回传 [[点, 半径], ...] ----
+// 代码清单与 tools/lib/fitness-anim-spec.json 的 primary/secondary 对得上（tools/check-fitness.mjs 会核对）
+const MUSCLES = {
+  pec: (s, c) => [[W3('Spine2').lerp(W3(s + 'Arm'), 0.5).add(c.F.clone().multiplyScalar(4.5)).add(c.T.clone().multiplyScalar(-2.5)), 7]],
+  ant_delt: (s, c) => [[W3(s + 'Arm').add(c.F.clone().multiplyScalar(2.6)).add(dirB(s + 'Arm', s + 'ForeArm').multiplyScalar(2.5)), 5.5]],
+  lat_delt: (s, c) => [[W3(s + 'Arm').add(OS(c, s).multiplyScalar(2.6)).add(dirB(s + 'Arm', s + 'ForeArm').multiplyScalar(3)), 5.5]],
+  rear_delt: (s, c) => [[W3(s + 'Arm').add(c.F.clone().multiplyScalar(-2.6)).add(dirB(s + 'Arm', s + 'ForeArm').multiplyScalar(2.5)), 5.5]],
+  upper_trap: (s, c) => [[W3('Neck').lerp(W3(s + 'Arm'), 0.45).add(c.T.clone().multiplyScalar(1.5)).add(c.F.clone().multiplyScalar(-1.5)), 5]],
+  mid_back: (s, c) => [[W3('Spine2').lerp(W3(s + 'Arm'), 0.3).add(c.F.clone().multiplyScalar(-4.5)).add(c.T.clone().multiplyScalar(-2)), 7]],
+  lats: (s, c) => [[W3('Spine1').add(OS(c, s).multiplyScalar(6)).add(c.F.clone().multiplyScalar(-2.5)), 8]],
+  biceps: (s, c) => [[W3(s + 'Arm').lerp(W3(s + 'ForeArm'), 0.55).add(curFront(s + 'Arm').multiplyScalar(2.3)), 5]],
+  triceps: (s, c) => [[W3(s + 'Arm').lerp(W3(s + 'ForeArm'), 0.5).add(curFront(s + 'Arm').multiplyScalar(-2.3)), 5]],
+  forearm: (s, c) => [[W3(s + 'ForeArm').lerp(W3(s + 'Hand'), 0.35), 4.5]],
+  abs: (s, c) => s === 'Right' ? [[W3('Spine').add(c.F.clone().multiplyScalar(5)), 7.5], [W3('Spine1').add(c.F.clone().multiplyScalar(5.5)), 7.5]] : [],
+  obliques: (s, c) => [[W3('Spine').lerp(W3('Spine1'), 0.4).add(OS(c, s).multiplyScalar(5.5)).add(c.F.clone().multiplyScalar(2.5)), 6]],
+  lower_back: (s, c) => [[W3('Spine').add(c.F.clone().multiplyScalar(-4.5)).add(OS(c, s).multiplyScalar(2.5)), 6]],
+  glutes: (s, c) => [[W3('Hips').add(c.F.clone().multiplyScalar(-5)).add(OS(c, s).multiplyScalar(4)).add(c.T.clone().multiplyScalar(-3)), 7.5]],
+  glute_med: (s, c) => [[W3('Hips').add(OS(c, s).multiplyScalar(7)).add(c.T.clone().multiplyScalar(1.5)).add(c.F.clone().multiplyScalar(-1.5)), 5.5]],
+  quads: (s, c) => [[W3(s + 'UpLeg').lerp(W3(s + 'Leg'), 0.5).add(curFront(s + 'UpLeg').multiplyScalar(3.5)), 8]],
+  hamstrings: (s, c) => [[W3(s + 'UpLeg').lerp(W3(s + 'Leg'), 0.55).add(curFront(s + 'UpLeg').multiplyScalar(-3.5)), 7.5]],
+  adductors: (s, c) => [[W3(s + 'UpLeg').lerp(W3(s + 'Leg'), 0.3).add(OS(c, s).multiplyScalar(-3)), 6]],
+  calves: (s, c) => [[W3(s + 'Leg').lerp(W3(s + 'Foot'), 0.3).add(curFront(s + 'Leg').multiplyScalar(-2.5)), 5.5]],
+  hip_flexors: (s, c) => [[W3(s + 'UpLeg').add(curFront(s + 'UpLeg').multiplyScalar(3.5)).add(c.T.clone().multiplyScalar(2)), 5.5]],
+  serratus: (s, c) => [[W3('Spine2').lerp(W3('Spine1'), 0.5).add(OS(c, s).multiplyScalar(6.5)).add(c.F.clone().multiplyScalar(2)), 5]],
 };
-function floorVisible(on) { catcher.visible = on; tile.visible = water.visible = surf.visible = !on; }
+function dirB(a, b) { return W3(b).sub(W3(a)).normalize(); }
+// 单侧动作：只亮真正在用力／被拉开的那一侧（近侧＝右）
+const SIDES = {
+  quad: { quads: 'Right', hip_flexors: 'Right' }, fig4: { glutes: 'Right', glute_med: 'Right' },
+  wgs: { hip_flexors: 'Left', adductors: 'Right', hamstrings: 'Right', pec: 'Right' },
+  lungeT: { quads: 'Right', glutes: 'Right', hip_flexors: 'Left' },
+  lunge: { quads: 'Right', glutes: 'Right', hamstrings: 'Right', adductors: 'Right', glute_med: 'Right' },
+  split: { quads: 'Right', glutes: 'Right', hamstrings: 'Right', adductors: 'Right', glute_med: 'Right' },
+  step: { quads: 'Right', glutes: 'Right', hamstrings: 'Right', glute_med: 'Right', calves: 'Right' },
+  bridge: { glutes: 'Right', hamstrings: 'Right', glute_med: 'Right' },
+  row1: { lats: 'Right', mid_back: 'Right', rear_delt: 'Right', biceps: 'Right', forearm: 'Right' },
+  tap: { ant_delt: 'Left', serratus: 'Left' },
+};
+function glowPoints(spec, c) {
+  const out = [];
+  for (const [codes, w] of [[spec.primary || [], 1], [spec.secondary || [], 0.4]])
+    for (const code of codes) { const fn = MUSCLES[code]; if (!fn) throw new Error('渲染台没有这个肌肉代码：' + code);
+      const only = (SIDES[KEY] || {})[code];
+      for (const s of ['Right', 'Left']) { if (only && s !== only) continue; for (const [p, r] of fn(s, c)) out.push([p, w, r]); } }
+  return out.slice(0, MAXG);
+}
+function setGlow(pts, k) { GLOW.n.value = pts.length; pts.forEach(([p, w, r], i) => { GLOW.c.value[i].copy(p); GLOW.w.value[i] = w; GLOW.r.value[i] = r; }); GLOW.k.value = k; }
+const halo = col => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, col[0]); r.addColorStop(1, col[1]); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); };
+const HALO_RED = halo(['rgba(255,90,50,1)', 'rgba(255,40,20,0)']), HALO_BLUE = halo(['rgba(90,170,255,1)', 'rgba(40,120,255,0)']);
+const halos = Array.from({ length: 10 }, () => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: HALO_RED, blending: THREE.AdditiveBlending, depthTest: true, depthWrite: false, transparent: true })); s.renderOrder = 5; scene.add(s); return s; });
+function setHalos(pts, k, size = 13) { const main = pts.filter(q => q[1] >= 1); // 只有主力肌肉加光晕
+  halos.forEach((h, i) => { h.visible = i < main.length && k > 0.05; if (!h.visible) return;
+    const toCam = cam.position.clone().sub(main[i][0]).normalize();
+    h.position.copy(main[i][0]).add(toCam.multiplyScalar(5)); h.scale.setScalar(size); h.material.opacity = 0.42 * k; }); }
+
+// ---- 7. 发光强度：力量／有氧＝发力（向心）阶段最亮；拉伸／活动度＝拉到最开最亮 ----
+// CONC：'up'＝第 0→1 帧是发力、'down'＝第 1→0 帧是发力；数组＝每一段各有多用力（多关键帧的动作）
+const CONC = { squat: 'down', squatG: 'down', thruster: [1, 1, 0, 0], legpress: 'up', hpush: 'down', bench: 'up', fpress: 'up', incline: 'up', seatpush: 'up',
+  hinge: 'down', legcurl: 'up', bridge: 'up', bridge2: 'up', thrust: 'up', row: 'up', row1: 'up', invrow: 'up', seatrow: 'up', pulldown: 'up', ohp: 'up', seatohp: 'up',
+  pike: 'down', lunge: 'down', split: 'down', step: 'up', rfly: 'up', facepull: 'up', yraise: 'up', climber: [0.9, 0.9], swing: 'up', jack: [0.85, 0.85], deadbug: 'up',
+  burpee: [0.6, 1, 1, 1, 1, 1], tap: [0.85, 0.85] };
+// PEAK：拉得最开的是第几个关键帧；'both'＝两端都是（左右交替／猫牛），'const'＝一直拉着
+const PEAK = { quad: 1, fig4: 1, chest: 1, child: 1, march: 'both', armcircle: 'const', catcow: 'both', lungeT: 1, scap: 'both', wgs: 1 };
+function isConc(key, ph) { let c = CONC[key] ?? 'up'; if (typeof c === 'string') c = c === 'up' ? [1, 0] : [0, 1]; return (c[ph.seg] ?? 0) > 0; }
+function effort(type, key, ph) {
+  if (type === 'swim') return 0;
+  const lo = 0.3, sm = x => ease(Math.max(0, Math.min(1, x)));
+  if (type === 'stretch' || type === 'mobility') {
+    const pk = PEAK[key] ?? 1;
+    if (pk === 'const') return 0.8;
+    if (pk === 'both') return ph.hold ? 1 : lo + (1 - lo) * Math.pow(Math.abs(2 * ph.u - 1), 1.5);
+    if (ph.hold) return ph.to === pk ? 1 : lo;
+    return lo + (1 - lo) * (ph.to === pk ? sm(ph.u) : ph.from === pk ? 1 - sm(ph.u) : 0);
+  }
+  let c = CONC[key] ?? 'up';
+  if (typeof c === 'string') c = c === 'up' ? [1, 0] : [0, 1];
+  const v = c[ph.seg] ?? 0;
+  if (v > 0 && v < 1) return lo + (1 - lo) * v;
+  if (v >= 1) return ph.hold ? 1 : lo + (1 - lo) * sm(ph.u / 0.4);
+  const prev = c[(ph.seg - 1 + c.length) % c.length] ?? 0; // 离心：刚从发力那端回来时慢慢暗下去
+  if (ph.hold) return lo;
+  return prev >= 1 ? lo + (1 - lo) * (1 - sm(ph.u / 0.5)) : lo;
+}
+
+// ---- 8. 顶部 6 格部位小图（只渲染一次） ----
+const STRIP = ['胸', '肩', '背', '手臂', '核心', '臀腿'];
+const MINI = { 胸: { codes: ['pec'], yaw: 0, y: 'chest' }, 肩: { codes: ['ant_delt', 'lat_delt', 'rear_delt'], yaw: 35, y: 'chest' }, 背: { codes: ['lats', 'mid_back', 'upper_trap'], yaw: 180, y: 'chest' },
+  手臂: { codes: ['biceps', 'triceps', 'forearm'], yaw: 60, y: 'arm' }, 核心: { codes: ['abs', 'obliques'], yaw: 0, y: 'core' }, 臀腿: { codes: ['glutes', 'quads', 'hamstrings'], yaw: 110, y: 'leg' } };
+let MINI_IMG = null;
+function camAt(c, yawDeg, pitchDeg, D) {
+  const yaw = THREE.MathUtils.degToRad(yawDeg), pitch = THREE.MathUtils.degToRad(pitchDeg);
+  cam.position.set(c.x + D * Math.cos(yaw) * Math.cos(pitch), c.y + D * Math.sin(pitch), c.z + SIDE * D * Math.sin(yaw) * Math.cos(pitch));
+  cam.lookAt(c); cam.updateProjectionMatrix();
+}
+function miniShots() {
+  if (MINI_IMG) return MINI_IMG;
+  const keep = { w: W, h: H, a: cam.aspect };
+  renderer.setSize(80, 80); cam.aspect = 1; cam.clearViewOffset(); cam.fov = 26; cam.updateProjectionMatrix();
+  const keepKey = [KEY, HOLD]; KEY = '__mini'; OV.__mini = { arms: c => both(s => { const d = nrm(DOWN, 1, OS(c, s), 0.3, c.F, 0.05); return { [s + 'Arm']: d, [s + 'ForeArm']: d.clone() }; }) };
+  const s = ANIM.sample('squat', 0), c = {}; pose(s, c); floorVisible(true); props({ props: [] }, modelP(), c); dumbbells(null, c); mat.visible = catcher.visible = false;
+  setHalos([], 0); MINI_IMG = {};
+  GLOW.dc.value.setRGB(0.95, 0.28, 0.22); GLOW.ec.value.setRGB(1.0, 0.16, 0.06);
+  for (const g of STRIP) {
+    const m = MINI[g], y = { chest: W3('Spine2').y + 3, arm: W3('RightArm').y - 8, core: W3('Spine').y + 3, leg: W3('RightLeg').y + 12 }[m.y];
+    const ctr = V(W3('Hips').x, y, W3('Hips').z);
+    camAt(ctr, m.yaw, 4, m.y === 'leg' ? 150 : 115);
+    setGlow(glowPoints({ primary: m.codes }, c), 1);
+    renderer.render(scene, cam); MINI_IMG[g] = renderer.domElement.toDataURL('image/png');
+  }
+  delete OV.__mini; [KEY, HOLD] = keepKey;
+  renderer.setSize(keep.w, keep.h); cam.aspect = keep.a; cam.updateProjectionMatrix();
+  return MINI_IMG;
+}
+
+// ---- 9. 每个动作：字幕、机位、逐格 ----
+const VIEW = { front34: [32, 8], side: [84, 6], back34: [146, 10], front: [4, 6] };
+const CAM = { // 个别动作的机位微调 [yaw, pitch]
+  bench: [58, 24], fpress: [58, 26], incline: [55, 18], thrust: [62, 18], deadbug: [55, 26], fig4: [100, 40], tap: [40, 22], wgs: [40, 18],
+  bridge: [84, 14], bridge2: [84, 14], legcurl: [84, 14], hpush: [36, 16], yraise: [150, 30], backfloat: [40, 32], seatrow: [140, 10], row1: [140, 12],
+  pulldown: [150, 8], rfly: [150, 16], facepull: [145, 8], scap: [140, 20], jelly: [84, 16], starfloat: [84, 18], chest: [30, 6],
+};
+let CUR = null;
+function caption(spec) {
+  const shared = /\s\/\s/.test(spec.reps || ''); // 同一张图被两处不同次数共用：只写标题
+  const reps = shared ? '' : (spec.reps || '');
+  const rp = /^[\d–\-]+(\/侧)?$/.test(reps) ? '×' + reps : reps;
+  const strip = spec.strip || [];
+  const hasStrip = strip.length > 0;
+  const S = document.getElementById('strip');
+  if (hasStrip) { const mini = miniShots(); S.style.display = ''; S.innerHTML = STRIP.map(g => `<div class="${strip.includes(g) ? 'on' : ''}"><img src="${mini[g]}">${g}</div>`).join(''); }
+  else S.style.display = 'none';
+  const top = hasStrip ? 72 : 10;
+  const t = document.getElementById('title'); t.style.top = top + 'px';
+  t.innerHTML = '';
+  t.append(spec.title_zh); if (rp) { t.append(' · '); const b = document.createElement('b'); b.textContent = rp; t.append(b); }
+  const cu = document.getElementById('cue'); cu.style.top = (top + 25) + 'px'; cu.textContent = spec.cue_zh || '';
+  document.getElementById('band').style.height = (top + 58) + 'px'; // 字幕底下垫一层深色，背景再亮（泳池）也看得清
+  return top + 48; // 字幕占掉的高度
+}
+window.setup = function (spec, combo, fps = 12) {
+  KEY = combo.anim; HOLD = combo.hold;
+  const s0 = ANIM.sample(KEY, 0); if (!s0) return null;
+  const ov = OV[KEY] || {}, cycles = ov.cycles || 1;
+  const T1 = ANIM.cycleLen(KEY), T = T1 * cycles;
+  const n = Math.min(84, Math.max(12, Math.round(T * fps)));
+  const swim = !!s0.pool;
+  const reserved = caption(spec);
+  floorVisible(!swim);
+  const glowCol = spec.type === 'stretch' || spec.type === 'mobility' ? 'blue' : 'red';
+  if (glowCol === 'blue') { GLOW.dc.value.setRGB(0.25, 0.55, 1.0); GLOW.ec.value.setRGB(0.08, 0.42, 1.0); } else { GLOW.dc.value.setRGB(0.95, 0.28, 0.22); GLOW.ec.value.setRGB(1.0, 0.16, 0.06); }
+  halos.forEach(h => { h.material.map = glowCol === 'blue' ? HALO_BLUE : HALO_RED; h.material.needsUpdate = true; });
+  PLANT_REF = null; if (ov.plant && ov.plant.mode === 'ref') frameState(0, n, T1, cycles, spec); // 手撑地：以第 0 格定好身体角度与手的位置
+  // 先把整个循环走一遍：量范围、找「最用力／拉最开」那一格
+  const pts = [], ks = [], holds = [], disp = []; let ref = null;
+  for (let i = 0; i < n; i++) {
+    const c = frameState(i, n, T1, cycles, spec);
+    for (const nm of NAMES) pts.push(W3(nm));
+    for (const nm of ['RightHandMiddle3', 'LeftHandMiddle3']) { const b = B(nm); if (b) pts.push(b.getWorldPosition(V())); }
+    for (const d of DB) if (d.visible) { pts.push(d.position.clone().add(V(0, 0, 6))); pts.push(d.position.clone().add(V(0, 0, -6))); }
+    for (const b of boxes) if (b.visible && b.scale.z < 60 && b.material !== M.wall) { const h = b.scale.clone().multiplyScalar(0.5); for (const sx of [-1, 1]) for (const sy of [-1, 1]) pts.push(b.position.clone().add(V(sx * h.x, sy * h.y, 0))); }
+    ks.push(c.k); holds.push(c.ph.hold || !isConc(KEY, c.ph));
+    const cur = NAMES.map(nm => W3(nm)); if (!ref) ref = cur; disp.push(cur.reduce((a, p, j) => a + p.distanceTo(ref[j]), 0));
+  }
+  const bb = new THREE.Box3(); pts.forEach(p => bb.expandByPoint(p));
+  // 地垫：跟着人的范围
+  mat.scale.set(bb.max.x - bb.min.x + 26, 1.2, Math.max(46, bb.max.z - bb.min.z + 26)); mat.position.set((bb.max.x + bb.min.x) / 2, -0.6, (bb.max.z + bb.min.z) / 2);
+  // 机位：按规格的 view，个别动作微调；固定不动
+  let [yaw, pitch] = CAM[KEY] || VIEW[spec.view] || VIEW.side;
+  if (swim && !CAM[KEY]) pitch = 14;
+  cam.fov = 26; cam.clearViewOffset();
+  const usable = (H - reserved) / H;
+  const dir = V(Math.cos(THREE.MathUtils.degToRad(yaw)) * Math.cos(THREE.MathUtils.degToRad(pitch)), Math.sin(THREE.MathUtils.degToRad(pitch)), SIDE * Math.sin(THREE.MathUtils.degToRad(yaw)) * Math.cos(THREE.MathUtils.degToRad(pitch)));
+  let ctr = bb.getCenter(V());
+  const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), asp = W / H;
+  let D = 200;
+  for (let it = 0; it < 4; it++) {
+    cam.position.copy(ctr).add(dir.clone().multiplyScalar(D)); cam.lookAt(ctr); cam.updateMatrixWorld(true);
+    const r = V(1, 0, 0).applyQuaternion(cam.quaternion), u = V(0, 1, 0).applyQuaternion(cam.quaternion);
+    let need = 0, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    const mg = 5; // 骨头在身体中间，皮肉还要再往外几个单位
+    for (const p of pts) { const q = p.clone().sub(ctr), x = q.dot(r), y = q.dot(u), z = q.dot(dir);
+      need = Math.max(need, z + (Math.abs(x) + mg) / (t * asp * 0.95), z + (Math.abs(y) + mg) / (t * usable * 0.95));
+      const dd = D - z; x0 = Math.min(x0, (x - mg) / dd); x1 = Math.max(x1, (x + mg) / dd); y0 = Math.min(y0, (y - mg) / dd); y1 = Math.max(y1, (y + mg) / dd); }
+    // 把投影后的范围置中（左右、上下）
+    ctr.add(r.clone().multiplyScalar((x0 + x1) / 2 * D)).add(u.clone().multiplyScalar((y0 + y1) / 2 * D));
+    D = need * 1.02;
+  }
+  D = Math.max(D, 64 / (2 * t * usable)); // 缩成一团的动作（水母漂、婴儿式）别放太大
+  cam.position.copy(ctr).add(dir.clone().multiplyScalar(D)); cam.lookAt(ctr); cam.updateProjectionMatrix();
+  cam.setViewOffset(W, H, 0, -(H - H * usable) / 2, W, H); // 人物整体往下移，让出字幕区
+  sun.target.position.set(ctr.x, 0, ctr.z); sun.position.set(ctr.x + 40, 260, ctr.z + 30);
+  rim.target.position.copy(ctr); rim.position.set(ctr.x - 160 * Math.cos(THREE.MathUtils.degToRad(yaw)), ctr.y + 60, ctr.z - SIDE * 160 * Math.sin(THREE.MathUtils.degToRad(yaw)));
+  // far＝离第 0 格最远的姿势；peak＝最用力（发力途中）／拉最开的一格，给联络表抽查用
+  const far = disp.indexOf(Math.max(...disp));
+  let peak = far;
+  if (spec.type !== 'swim' && Math.max(...ks) - Math.min(...ks) > 0.02) { const mx = Math.max(...ks); const cand = ks.map((k, i) => [k, i]).filter(([k]) => k >= mx - 1e-3).map(([, i]) => i);
+    const moving = cand.filter(i => !holds[i]);
+    peak = spec.type === 'strength' || spec.type === 'cardio' ? (moving.length ? moving : cand)[0] : cand[Math.floor(cand.length / 2)]; }
+  CUR = { spec, n, T1, cycles };
+  return { n, ms: Math.round(T * 1000 / n), peak, far, yaw, pitch };
+};
+function frameState(i, n, T1, cycles, spec) {
+  const tm = T1 * cycles * i / n, rep = Math.floor(tm / T1), tt = tm - rep * T1;
+  const s = ANIM.sample(KEY, tt), ph = ANIM.phase(KEY, tt), ov = OV[KEY] || {};
+  const kp = ov.kp || (ph.n === 2 ? [0, 1] : null);
+  const c = { rep, ph };
+  c.p = kp ? kp[ph.from] + (kp[ph.to] - kp[ph.from]) * ph.e : ph.e;
+  pose(s, c);
+  props(s, modelP(), c); dumbbells(HOLD, c);
+  if (s.pool) {
+    const hh = s.pool.surface; water.scale.y = hh; water.position.y = hh / 2;
+    const a = surfGeo.attributes.position.array;
+    for (let k = 0; k < a.length; k += 3) a[k + 1] = hh + 0.9 * Math.sin(a[k] * 0.06 + tm * 2.3) * Math.cos(a[k + 2] * 0.05 + tm * 1.5);
+    surfGeo.attributes.position.needsUpdate = true; surfGeo.computeVertexNormals();
+  }
+  c.k = effort(spec.type, KEY, ph);
+  return c;
+}
+window.frame = function (i) {
+  const { spec, n, T1, cycles } = CUR;
+  const c = frameState(i, n, T1, cycles, spec);
+  const pts = spec.type === 'swim' ? [] : glowPoints(spec, c);
+  setGlow(pts, c.k); setHalos(pts, c.k);
+  renderer.render(scene, cam);
+  return c.k;
+};
+window.MUSCLE_CODES = Object.keys(MUSCLES);
 window.ready = true;
 </script>
 </body>
