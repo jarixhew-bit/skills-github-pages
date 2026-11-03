@@ -95,7 +95,8 @@ statue.onBeforeCompile = sh => {
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.95, 0.28, 0.22), gg * gK * 0.85);
       totalEmissiveRadiance += vec3(1.0, 0.16, 0.06) * gg * gK * 0.9;`);
 };
-root.traverse(o => { if (o.isMesh) o.material = statue; });
+const shorts = new THREE.MeshStandardMaterial({ color: 0x22262e, roughness: 0.8 }); // 肌肉模型带的短裤保持深色
+root.traverse(o => { if (o.isMesh) o.material = /Shorts/.test(o.name) ? shorts : statue; });
 const B = n => root.getObjectByName('mixamorig' + n);
 if (new URLSearchParams(location.search).get('recolor')) root.traverse(o => {
   if (!o.isMesh || !o.material || !o.material.map || !o.material.map.image) return;

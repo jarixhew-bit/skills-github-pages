@@ -12,7 +12,7 @@ const [W,H]=[480,360], out=process.argv[2], only=process.argv[3];
 const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const pg=await b.newPage({viewport:{width:W,height:H}});
 pg.on('pageerror',e=>console.error('ERR',e.message)); 
-await pg.goto(`http://localhost:8899/tools/lib/fitness-render-dark.html?w=${W}&h=${H}&model=/.photos/fitness-model/Xbot.glb`);
+await pg.goto(`http://localhost:8899/tools/lib/fitness-render-dark.html?w=${W}&h=${H}&model=/.photos/fitness-model/${process.env.MODEL||'Xbot'}.glb`);
 await pg.waitForFunction(()=>window.ready,null,{timeout:120000});
 const r=await pg.evaluate(()=>window.renderDark({name:'哑铃肩推',reps:'8–12',cue:'手肘朝外，推到头顶',group:'shoulder'}));
 await pg.waitForTimeout(300);
