@@ -262,7 +262,7 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
 `#itinerary`(03：`#day01` `.tl` 航班时间轴〔早上 MBS 退房→12:30→13:20→落地后车程 15–20 分→入住→晚上「朋友生日宴」，不写人名〕；
 `#day02` 开头 note「今天以见朋友为主…」→ `.grp` 酒店附近 3 张 `.stop`（`#d2-pantjoran`／`#d2-angke`／`#d2-landsend`）→ `.grp` 市区 + 无车日 note（周日 05:30–10:00 Sudirman–Thamrin）→
 5 张 `.stop`（`#d2-monas`／`#d2-kotatua`／`#d2-gi`／`#d2-pi`／`#d2-scbd`）→ `.dayfoot` 链 `#food`；`#day03` `.tl`〔建议 08:30 前离开酒店→11:10→13:55→15:20 SQ138→17:30 SQ158→到家〕) →
-`#food`(04：PIK 酒店附近 4 家 → 市区 5 家，`.evt` 卡 id `food-maystar／putien／sanur／wingheng／tangcourt／lifeng／songxl／taste／dtf`)。
+`#food`(04：PIK 酒店附近 6 家 → 市区 5 家，`.evt` 卡 id `food-maystar／putien／sanur／wingheng／pagisore／padangpadang／tangcourt／lifeng／songxl／taste／dtf`；2026-11-03 用户追加两家巴东菜 Pagi Sore、Padang Padang，地图按钮用用户给的 maps.app.goo.gl 短链接，营业时间 10:00–22:00 来自店家资料)。
 内容决定（用户 2026-10-31 指定，勿擅改）：
 - **每天不写固定钟点**，只有 D1、D3 航班时间轴有钟点；D3 唯一的非航班钟点是「建议 08:30 前离开酒店」（周一早高峰＋起飞前约 2 小时到）。
 - 8 个景点与 9 家餐厅都是用户挑的；餐厅不受 4.2 门槛限制。景点评分、地址、营业状态来自 2026-10-31 CI 抓图（全部 open、≥4.2、标题对得上）。
