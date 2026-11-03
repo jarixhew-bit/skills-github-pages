@@ -226,7 +226,6 @@ body.lang-en .stop:has(.pin.must) h4::before { content: "RECOMMENDED"; font-fami
 .evt .desc { font-size: 12.5px; color: var(--ink2); margin-top: 10px; }
 .evt .meta { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
 
-.note a, .desc a, .tl .s a, .dayfoot a, .psinote a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--gold); }
 footer { text-align: center; padding: 30px 20px; }
 footer .mark { font-family: var(--latin); font-size: 12px; letter-spacing: .4em; color: var(--gold); }
 footer p { font-size: 11.5px; color: var(--faint); }
@@ -240,6 +239,8 @@ footer p { font-size: 11.5px; color: var(--faint); }
   /* 每日线路色：Transjakarta 2 号走廊深蓝、14 号走廊橙、再配一枚橄榄绿（降饱和）。
      刻意不用 1 号走廊的红：会跟「多雨／空气差」的朱红提示撞色 */
   --l1: #3d5689; --l2: #b8743a; --l3: #5b7a4e;
+  /* 文内链接：--gold 的 RGB（给半透明底色／光晕用）与加深的金褐字色（淡金底上对比度 ≥4.5） */
+  --gold-rgb: 184,144,79; --gold-ink: #7a5420;
   /* kawung 四瓣圆纹：四个椭圆花瓣围一个点，金色极淡 */
   --kawung:
     radial-gradient(circle 1.2px at 50% 50%, var(--gold) 90%, transparent 100%),
@@ -308,6 +309,59 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 @media (hover: hover) { .btn-map:hover, .track:hover { background: var(--paper); } }
 .btn-map:focus-visible, .track:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
+/* ===== 可点元素：平时一眼看得出、按下发亮（2026-11-03，两本手册同一段，颜色走 :root 的 --gold-rgb／--gold-ink）=====
+   ① 文内链接 = .wrap 里不带 class 的 <a>（正文「见餐厅列表」「住宿」「官方网站」之类）。不用加 class，新写的文内链接自动套用：
+      金褐色字＋淡金底色块＋2px 金下划线，后面自动带符号：#锚点／本站另一本手册 →，外部网址 ↗，tel: 前面一个电话线描图标。
+      上下 padding 只撑大点击区（行内元素的上下 padding 不改行距），底色块用 background-size 收在字的高度里，不会盖到上下行。
+   ② 按下发亮：:active、:focus-visible，以及 JS 在 pointerdown 时挂的 data-tapped 属性（不能用 class：文内链接靠「没有 class」认出来）（留 0.45 秒，手指一点就放也看得到）。
+      覆盖：文内链接、.btn-map／.track 方角按钮、顶部 .daystrip 目录、.gal img 照片、.topbar 的 .lang／.jump、灯箱按钮。 */
+.wrap a:not([class]) {
+  color: var(--gold-ink); font-weight: 500; text-decoration: none; border-bottom: 0;
+  position: relative; z-index: 1; padding: 10px 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  background:
+    linear-gradient(var(--gold), var(--gold)) left calc(100% - 9px) / 100% 2px no-repeat,
+    linear-gradient(rgba(var(--gold-rgb), .17), rgba(var(--gold-rgb), .17)) center / 100% calc(100% - 19px) no-repeat;
+  -webkit-tap-highlight-color: rgba(var(--gold-rgb), .35);
+  transition: background-size .12s, color .12s, filter .12s;
+}
+.wrap a:not([class])[href^="#"]::after, .wrap a:not([class])[href*=".html"]::after { content: "→"; margin-left: .25em; font-family: var(--serif); font-weight: 500; }
+.wrap a:not([class])[href^="http"]::after { content: "↗"; margin-left: .2em; font-family: var(--serif); font-weight: 500; }
+.wrap a:not([class])[href^="tel:"]::before {
+  content: ""; display: inline-block; width: 1em; height: 1em; margin-right: .25em; vertical-align: -.12em; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 3.5h3.2l1.6 4.3-2.2 1.4a12 12 0 0 0 7.2 7.2l1.4-2.2 4.3 1.6V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.1 1.5 1.5 0 0 1 5 3.5z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 3.5h3.2l1.6 4.3-2.2 1.4a12 12 0 0 0 7.2 7.2l1.4-2.2 4.3 1.6V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.1 1.5 1.5 0 0 1 5 3.5z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.wrap a:not([class]):active, .wrap a:not([class]):focus-visible, .wrap a:not([class])[data-tapped] {
+  outline: none; color: var(--navy);
+  background-size: 100% 2px, 100% calc(100% - 15px);
+  background-image: linear-gradient(var(--gold), var(--gold)), linear-gradient(rgba(var(--gold-rgb), .6), rgba(var(--gold-rgb), .6));
+  filter: drop-shadow(0 0 5px rgba(var(--gold-rgb), .95)) drop-shadow(0 0 2px rgba(var(--gold-rgb), .8));
+}
+@media (hover: hover) { .wrap a:not([class]):hover { background-image: linear-gradient(var(--gold), var(--gold)), linear-gradient(rgba(var(--gold-rgb), .3), rgba(var(--gold-rgb), .3)); } }
+
+/* 方角按钮：原本按下反底色，再加一圈金色光晕 */
+.btn-map, .track { -webkit-tap-highlight-color: rgba(var(--gold-rgb), .3); transition: background-color .15s, color .15s, box-shadow .15s; }
+.btn-map:active, .track:active, .btn-map:focus-visible, .track:focus-visible, .btn-map[data-tapped], .track[data-tapped] {
+  background: var(--navy); color: var(--cover-h); outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--gold-rgb), .55), 0 0 18px 4px rgba(var(--gold-rgb), .6);
+}
+.btn-map:focus-visible .ico, .track:focus-visible .ico, .btn-map[data-tapped] .ico, .track[data-tapped] .ico { stroke: var(--gold2); }
+
+/* 顶部目录、语言切换、跳另一本：深色底上按下＝金色底亮起 */
+.daystrip a, .topbar button.lang, .topbar a.jump, .lb-close, .lb-arrow { -webkit-tap-highlight-color: rgba(var(--gold-rgb), .3); transition: background-color .12s, box-shadow .12s; }
+.daystrip a:active, .daystrip a:focus-visible, .daystrip a[data-tapped],
+.topbar button.lang:active, .topbar button.lang:focus-visible, .topbar button.lang[data-tapped],
+.topbar a.jump:active, .topbar a.jump:focus-visible, .topbar a.jump[data-tapped],
+.lb-close:active, .lb-arrow:active, .lb-close:focus-visible, .lb-arrow:focus-visible, .lb-close[data-tapped], .lb-arrow[data-tapped] {
+  outline: none; background: rgba(var(--gold-rgb), .62); box-shadow: inset 0 -3px 0 var(--gold2), 0 0 18px 2px rgba(var(--gold-rgb), .7);
+}
+.daystrip a:active .d, .daystrip a:focus-visible .d, .daystrip a[data-tapped] .d, .daystrip a:active .m, .daystrip a:focus-visible .m, .daystrip a[data-tapped] .m { color: #fff; }
+.topbar button.lang:active, .topbar button.lang[data-tapped], .topbar a.jump:active, .topbar a.jump[data-tapped] { color: #fff; }
+
+/* 照片：按下金框发亮 */
+.gal img { -webkit-tap-highlight-color: rgba(var(--gold-rgb), .3); transition: box-shadow .12s, filter .12s; }
+.gal { padding: 4px; margin-left: -4px; margin-right: -4px; }
+.gal img:active, .gal img:focus-visible, .gal img[data-tapped] { outline: none; box-shadow: 0 0 0 3px var(--gold), 0 0 14px 2px rgba(var(--gold-rgb), .75); filter: brightness(1.1); }
 </style>
 </head>
 <body>
@@ -343,7 +397,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="tip">
 <span class="ico"></span>
 <div>
-<span class="cn">带地标图标的<strong>「地图」按钮</strong>可点开 Google 地图，飞机图标是航班实时追踪；顶部目录点一下就跳到那一节；营业时间和票价出发前请再用官方渠道确认。雅加达比新加坡<strong>慢 1 小时</strong>，手册里的时刻都是当地时间。</span><span class="en">Buttons with a <strong>map-pin icon</strong> open Google Maps; the plane icon opens live flight tracking. Tap an item in the top bar to jump to that section; please reconfirm opening hours and prices through official channels before you go. Jakarta is <strong>1 hour behind Singapore</strong>; all times in this handbook are local.</span>
+<span class="cn">带地标图标的<strong>「地图」按钮</strong>可点开 Google 地图，飞机图标是航班实时追踪；正文里<strong>金色带箭头的文字</strong>也可以点（→ 跳到手册别处，↗ 打开外部网站）；顶部目录点一下就跳到那一节；营业时间和票价出发前请再用官方渠道确认。雅加达比新加坡<strong>慢 1 小时</strong>，手册里的时刻都是当地时间。</span><span class="en">Buttons with a <strong>map-pin icon</strong> open Google Maps; the plane icon opens live flight tracking. <strong>Gold text with an arrow</strong> is tappable too (→ jumps elsewhere in the handbook, ↗ opens an outside website). Tap an item in the top bar to jump to that section; please reconfirm opening hours and prices through official channels before you go. Jakarta is <strong>1 hour behind Singapore</strong>; all times in this handbook are local.</span>
 </div>
 </div>
 
@@ -1077,6 +1131,20 @@ function lbNav(dir) {
     });
   };
   (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go);
+})();
+// 按下发亮：pointerdown 挂 data-tapped、放开后再留 0.45 秒（光靠 :active，手指一点就放几乎看不到；iOS 也要有 touch 监听 :active 才生效）
+(function tapGlow() {
+  const SEL = '.wrap a:not([class]), .btn-map, .track, .daystrip a, .topbar button.lang, .topbar a.jump, .gal img, .lb-close, .lb-arrow';
+  document.addEventListener('touchstart', function () {}, { passive: true });
+  document.addEventListener('pointerdown', function (e) {
+    const el = e.target.closest && e.target.closest(SEL);
+    if (!el) return;
+    clearTimeout(el._tapT);
+    el.setAttribute('data-tapped', '');
+    const off = function () { el._tapT = setTimeout(function () { el.removeAttribute('data-tapped'); }, 450); };
+    document.addEventListener('pointerup', off, { once: true });
+    document.addEventListener('pointercancel', off, { once: true });
+  });
 })();
 </script>
 </body>

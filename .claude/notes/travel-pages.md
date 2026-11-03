@@ -170,6 +170,7 @@ URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html` 原是四套航�
   样式是方角 1px 金框、高 46px、按下反底色（用户 2026-11-01 选的方案①）；**外观只写在 CSS 末尾「可点链接按钮」那一组**，以后要换成「下划线文字前加图标」或「卡片底部整条横栏」只改那段 CSS。
   `class="btn-map"` 这个名字别改：`refresh-photos.py`、`check-map-coords.py`、老板 App 的手册导入都靠它或靠 href 找地图链接。开头 `.tip` 那句说明（「带地标图标的『地图』按钮…」）要跟按钮长相一致。
 - 全页不用 emoji 当图标（天气 JS 也拿掉了 `w.i` 图示）。
+- **可点元素统一要有明显样式＋按下发亮**（2026-11-03 用户：老板那辈只看一条细下划线不会意识到能点）：CSS 末尾「可点元素：平时一眼看得出、按下发亮」一段，两本同一段、颜色走 `:root` 的 `--gold-rgb`／`--gold-ink`。文内链接＝`.wrap a:not([class])`（**不加 class**，新写的文内链接自动套用；所以文内链接千万别加 class）：金褐字＋淡金底色块＋2px 金下划线，`#锚点`／`*.html` 后面自动带 →、`http` 带 ↗、`tel:` 前面带电话线描图标；上下 padding 10px＋`z-index:1` 撑出约 34px 点击区，不改行距。按下发亮＝`:active`／`:focus-visible`／`[data-tapped]`（JS `tapGlow` 在 pointerdown 挂属性、放开后留 0.45 秒；**用属性不用 class**，挂 class 会让文内链接失去 `:not([class])` 样式），覆盖文内链接、`.btn-map`／`.track`、`.daystrip a`、`.gal img`、`.topbar .lang`／`.jump`、灯箱按钮。开头 `.tip` 有一句「金色带箭头的文字也可以点」，改样式要跟着对。
 
 **CSS 与 JS 整套复制自 singapore-trip/index.html**（**2026-11-01 改版后 CSS 已整套换掉，见上；下面这句只说 JS 来源**）（`.day`／`.stop`／`.evt`／`.tl`／lightbox／天气条／PSI 条／
 hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案常数（「十一月常态 25–31°C，午后雷阵雨常见」，
