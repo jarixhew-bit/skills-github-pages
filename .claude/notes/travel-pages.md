@@ -177,7 +177,7 @@ hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案�
 逻辑一行没动），CSS 末尾多一条 `.note a, .desc a …` 让文内链接不显示默认蓝。
 结构：topbar → nav（FLT／STAY／EVT／D1–D4／FOOD，**顺序与区块顺序一致**）→ cover → tip → `#flights`(01，三张 `.bpass`：去程 SQ153 KTI→SIN 09:35–12:50〔Tan Chin Hooi 商务／Hew Chern Yang 经济〕、
 SQ133 PEN→SIN 12:00–13:35〔Yap Lian Khoon 商务〕；11/14 SQ958 SIN T2→CGK T3 12:30–13:20〔三人〕；下面 `.tbl` 行李额表＋随身小物一句) →
-`#hotel`(02，`.hotel` 卡：MBS 11/11 入住 11/14 退房，分房带房型；接送 note 写两次接送：11/11 同车接机、11/14 10:30 送机，见下方「房型与接送」) →
+`#hotel`(02，`.hotel` 卡：MBS 11/11 入住 11/14 退房，分房带房型；接送 note 写两次接送：11/11 同车接机、11/14 10:00 送机，见下方「房型与接送」) →
 `#events`(03，开头一句「供参考、去不去由你们、没排进行程」＋9 张 `.evt`＋圣诞灯饰提示，清单见下) → `#itinerary`(04，`.day#day01`~`#day04`，
 `data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，21 张 `.evt`，四个 `.grp` 小标题：乌节路 9 → 滨海湾金沙 4 → 其他区域 6 → 东部友诺士一带 2（组标题里的家数是手写的，加卡要同步改），组内按菜系排；
 每张卡 `.et` 开头有「📍区域 · 」标签，chips 写午市＋晚市)。**2026-10-30 用户要求「餐厅直接搞成列表，别分晚餐」**：
@@ -240,12 +240,12 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
   接送：11/11 **三人同一辆 MBS 专车（MPV）**——Tan、Hew（SQ153 12:50）走 JetQuay 贵宾通道（Quayside）入境、有电瓶车，在 CIP Terminal 上车**等 Yap 到了再一起出发**；
   Yap（SQ133 13:35）「一下飞机有机场人员迎接，陪同经主航站楼一般通道出关，再带到同一辆 MBS 专车」（英文 met at the aircraft by airport staff, who escort him out through the main terminal (regular immigration) to the same MBS car）（用户逐字定的口径，**不写否定句**如「没有电瓶车／不走贵宾通道」，也不写原因；电瓶车与 JetQuay 只出现在 Tan／Hew 那一路与 11/14 离境）；
   三人一起到 MBS Tower 1 B1 Paiza Lobby；接机牌各写「Mr Tan Chin Hooi」「Mr Yap Lian Khoon」；Paiza 礼宾 Wyman 会发短信。
-  **11/14 10:30 Tower 1 B1 Paiza Lobby 上车**→CIP Terminal，JetQuay 贵宾通道（Quayside）离境，退房与早餐排在 10:30 前；旧的「建议 10:00 前离开酒店」已全部改掉（雅加达手册 D1 那句也对齐）。
+  **11/14 10:00 Tower 1 B1 Paiza Lobby 上车**→CIP Terminal，JetQuay 贵宾通道（Quayside）离境，退房与早餐排在 10:00 前。（2026-11-03 用户改成 10:00，原 MBS 确认单写 10:30）
   用词：中文「JetQuay 贵宾通道（Quayside）」、英文「JetQuay CIP (Quayside)」。**Booking ID、JQ 编号、房间确认号、会员号与会员等级一律不写**（公开仓库；老板 App 也照此）。老板 App `trip-sg-2026-11` 的接机／酒店／送机三条已同步。
 - **订位代号、电子机票号、Trip.com 订单号一律不进页面与 commit**（公开仓库）。
 - **每天不写固定钟点（用户：「我不知道他们几点起来，不必固定时间」）**：D2/D3 只写「上午 → 午餐 → 其余时间自由」的顺序；
   D1/D4 是 `.tl` 时间轴，只有航班钟点（D1 07:00 金边家里出发、09:35、12:00、12:50、13:35；D4 12:30、13:20），
-  其余节点 `.t` 写「落地后／下午／晚上／早上」；D4 唯一的非航班钟点是 MBS 确认的「10:30 Paiza Lobby 上车」（2026-11-03 起，取代旧的「建议 10:00 前」）。
+  其余节点 `.t` 写「落地后／下午／晚上／早上」；D4 唯一的非航班钟点是 MBS 确认的「10:00 Paiza Lobby 上车」（2026-11-03 起，取代旧的「建议 10:00 前」）。
   店家营业时间（观音庙、Takashimaya）属于店家信息，照留。
 - D4 的星耀樟宜卡与所有 15:15 班机内容已删（12:30 班机去不了 Jewel）；Jewel 照片并进限时活动区的雨漩涡卡，那张只建议 D2/D3 晚上去。
 - **2026-11-01 用户再指定三家（不受 4.2 门槛）**：YuCun Claypot Curry Fish Head（29/31 Sultan Gate，4.8／2,577，`#food-yucun`，「其他区域」组，标「武吉士」——**卡上不能写甘榜格南／Kampong Glam**（整页禁词）；2026-11-01 起只写在武吉士一带＋离 MBS／离牛车水的车程，不再链 D3）；
