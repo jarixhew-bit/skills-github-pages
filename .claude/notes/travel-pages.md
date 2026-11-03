@@ -238,7 +238,7 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
   SQ958 Tan Chin Hooi 14A、Yap Lian Khoon 15A、Hew Chern Yang 32G。各航段各自排座，别互抄。雅加达之后的回程航段不属于本手册，不放。
 - **房型与接送（2026-11-03 MBS 确认单，用户给截图）**：分房 Tan Chin Hooi＝Paiza 一卧套房（海景，Paiza Premier Suite 1 Bedroom Sea View）；Yap、Hew＝Sands Premier 大床房（滨海湾花园景）。
   接送：11/11 **三人同一辆 MBS 专车（MPV）**——Tan、Hew（SQ153 12:50）走 JetQuay 贵宾通道（Quayside）入境、有电瓶车，在 CIP Terminal 上车**等 Yap 到了再一起出发**；
-  Yap（SQ133 13:35）「一下飞机有专人迎接，陪同走一般通道出关，再带到同一辆 MBS 专车」（用户逐字定的口径，**不写否定句**如「没有电瓶车／不走贵宾通道」，也不写原因；电瓶车与 JetQuay 只出现在 Tan／Hew 那一路与 11/14 离境）；
+  Yap（SQ133 13:35）「一下飞机有机场人员迎接，陪同经主航站楼一般通道出关，再带到同一辆 MBS 专车」（英文 met at the aircraft by airport staff, who escort him out through the main terminal (regular immigration) to the same MBS car）（用户逐字定的口径，**不写否定句**如「没有电瓶车／不走贵宾通道」，也不写原因；电瓶车与 JetQuay 只出现在 Tan／Hew 那一路与 11/14 离境）；
   三人一起到 MBS Tower 1 B1 Paiza Lobby；接机牌各写「Mr Tan Chin Hooi」「Mr Yap Lian Khoon」；Paiza 礼宾 Wyman 会发短信。
   **11/14 10:30 Tower 1 B1 Paiza Lobby 上车**→CIP Terminal，JetQuay 贵宾通道（Quayside）离境，退房与早餐排在 10:30 前；旧的「建议 10:00 前离开酒店」已全部改掉（雅加达手册 D1 那句也对齐）。
   用词：中文「JetQuay 贵宾通道（Quayside）」、英文「JetQuay CIP (Quayside)」。**Booking ID、JQ 编号、房间确认号、会员号与会员等级一律不写**（公开仓库；老板 App 也照此）。老板 App `trip-sg-2026-11` 的接机／酒店／送机三条已同步。
