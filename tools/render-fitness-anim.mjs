@@ -37,7 +37,9 @@ page.on('console', m => { if (m.type() === 'error') console.error('console', m.t
 // 要渲染哪些：App 实际用到的（动作 key＋拿不拿哑铃）组合，由 App 自己列出来
 await page.goto(`http://localhost:${PORT}/fitness/`);
 const combos = await page.evaluate(() => window.__fit.animCombos());
-await page.goto(`http://localhost:${PORT}/tools/lib/fitness-render.html?w=${W}&h=${H}`);
+// 造型样品：STYLE=statue|skin|sport、MODEL=<glb 网址>、TEX=<贴图目录网址>（都不给＝正式版原样）
+const xq = ['style', 'model', 'tex'].map(k => process.env[k.toUpperCase()] ? `&${k}=${encodeURIComponent(process.env[k.toUpperCase()])}` : '').join('');
+await page.goto(`http://localhost:${PORT}/tools/lib/fitness-render.html?w=${W}&h=${H}${xq}`);
 await page.waitForFunction(() => window.ready, null, { timeout: 180000 });
 const only = process.argv.slice(2);
 const todo = combos.filter(c => !only.length || only.includes(c.file) || only.includes(c.anim));

@@ -15,6 +15,13 @@ import sys, os, bpy, bmesh, importlib, addon_utils
 from mathutils import Vector
 A=sys.argv[:]
 SEX='male'
+# 造型（2026-11-03 样品，用户要「性感点、拟人点」）：女版末尾再多给 style=glam（不给＝跟原来完全一样）。
+#   glam：更明显的沙漏体型（腰细、臀宽臀翘、腿长、胸型 0.68）、肌肉 0.6、脸更柔和，并穿上 MakeHuman 系统素材的
+#   马尾、眉毛、睫毛、眼球（＋ shoes=1 时白球鞋）。素材目录由环境变量 MH_ASSETS 指定，结构 <类别>/<名字>/<名字>.mhclo，
+#   来源 github.com/dmaugis/makehuman-py3-assets 的 base/（贴图走 media.githubusercontent.com）；眼球取自
+#   makehumancommunity/makehuman 的 makehuman/data/eyes/low-poly。网格名 Hair/Brows/Lashes/Eyes/Shoes，渲染台按名字上材质。
+STYLE=None
+if A[-1].startswith('style='): STYLE=A.pop()[6:]
 if A[-1] in ('male','female'): SEX=A.pop()
 SRC=A[-3]; OUT=A[-2]; WEIGHT=float(A[-1])
 F=(SEX=='female')
@@ -29,6 +36,8 @@ LocationService=importlib.import_module(P+'locationservice').LocationService
 for o in list(bpy.data.objects): bpy.data.objects.remove(o)
 macro={"gender":1.0,"age":0.5,"muscle":1.0,"weight":WEIGHT,"proportions":1.0,"height":0.6,"cupsize":0.5,"firmness":0.5,"race":{"asian":0.33,"caucasian":0.34,"african":0.33}}
 if F: macro.update({"gender":0.0,"muscle":0.75,"height":0.5,"cupsize":0.5,"firmness":0.6})
+G=(F and STYLE=='glam')
+if G: macro.update({"muscle":0.6,"height":0.55,"cupsize":0.68,"firmness":0.7,"age":0.45})
 h=HumanService.create_human(macro_detail_dict=macro)
 T=LocationService.get_mpfb_data("targets")
 extra={"torso/torso-muscle-pectoral-incr":0.6,"torso/torso-muscle-dorsi-incr":0.7,"torso/torso-vshape-incr":0.5,
@@ -42,11 +51,31 @@ extra={"torso/torso-muscle-pectoral-incr":0.6,"torso/torso-muscle-dorsi-incr":0.
 if F:
     extra={k:w*0.5 for k,w in extra.items()}
     extra["torso/torso-muscle-pectoral-incr"]=0.15; extra["neck/neck-scale-depth-incr"]=0.0
+if G:
+    extra={k:w*0.7 for k,w in extra.items()}; extra["torso/torso-vshape-incr"]=0.0; extra["torso/torso-muscle-dorsi-incr"]=0.2
+    extra.update({"torso/measure-waist-circ-decr":0.7,"torso/measure-hips-circ-incr":0.35,"hip/hip-scale-horiz-incr":0.2,
+      "buttocks/buttocks-volume-incr":0.7,"breast/nipple-point-decr":1.0,"breast/breast-point-decr":0.7,"breast/nipple-size-decr":0.6,"legs/upperlegs-height-incr":0.3,"legs/lowerlegs-height-incr":0.25,
+      "torso/measure-shoulder-dist-decr":0.15,"stomach/stomach-tone-incr":0.25,"neck/measure-neck-height-incr":0.25,
+      "neck/measure-neck-circ-decr":0.3,"head/head-oval":0.5,"head/head-age-decr":0.3,"chin/chin-width-decr":0.3,
+      "nose/nose-scale-horiz-decr":0.25,"nose/nose-volume-decr":0.2,"mouth/mouth-upperlip-volume-incr":0.3,
+      "mouth/mouth-lowerlip-volume-incr":0.35,"eyes/l-eye-scale-incr":0.2,"eyes/r-eye-scale-incr":0.2,
+      "cheek/l-cheek-bones-incr":0.25,"cheek/r-cheek-bones-incr":0.25})
 for k,w in extra.items():
     f=os.path.join(T,k+".target.gz")
     if w>0 and os.path.exists(f): TargetService.load_target(h,f,weight=w)
     elif w>0: print("MISSING",f)
 rig=HumanService.add_builtin_rig(h,"mixamo")
+proxies=[]
+if G:  # 套上头发／眉毛／睫毛／眼球（／球鞋），趁身体还没删点、形变还没烤掉时贴合
+    MA=os.environ['MH_ASSETS']
+    parts=[('Hair','hair/ponytail01/ponytail01'),('Brows','eyebrows/eyebrow001/eyebrow001'),
+           ('Lashes','eyelashes/eyelashes01/eyelashes01'),('Eyes','eyes/low-poly/low-poly')]
+    if os.environ.get('shoes')=='1': parts.append(('Shoes','clothes/shoes05/shoes05'))
+    for nm,p in parts:
+        o=HumanService.add_mhclo_asset(os.path.join(MA,p+'.mhclo'),h,asset_type=p.split('/')[0],subdiv_levels=0,material_type='NONE')
+        for m in list(o.modifiers):
+            if m.type!='ARMATURE': o.modifiers.remove(m)
+        o.name=nm; o.data.name=nm; proxies.append(o); print("PROXY",nm,len(o.data.vertices))
 # bake shape keys
 me=h.data
 if me.shape_keys:
@@ -58,14 +87,16 @@ if me.shape_keys:
 gi=h.vertex_groups['body'].index
 bm=bmesh.new(); bm.from_mesh(me); dl=bm.verts.layers.deform.verify()
 bm.verts.ensure_lookup_table()
-kill=[v for v in bm.verts if gi not in v[dl]]
+dg={g.index for g in h.vertex_groups if g.name.startswith('Delete.')}  # 球鞋盖住的脚（只有 glam＋shoes 才有）
+kill=[v for v in bm.verts if gi not in v[dl] or any(k in dg and v[dl][k]>0 for k in v[dl].keys())]
 bmesh.ops.delete(bm,geom=kill,context='VERTS'); bm.to_mesh(me); bm.free()
 for m in list(h.modifiers):
     if m.type=='MASK': h.modifiers.remove(m)
 # drop non-bone vertex groups
 bones={b.name for b in rig.data.bones}
-for g in list(h.vertex_groups):
-    if g.name not in bones: h.vertex_groups.remove(g)
+for o in (h,*proxies):
+    for g in list(o.vertex_groups):
+        if g.name not in bones: o.vertex_groups.remove(g)
 # rename bones mixamorig:X -> mixamorigX ; vertex groups follow automatically
 for b in rig.data.bones: b.name=b.name.replace(':','')
 bpy.context.view_layer.objects.active=rig
@@ -95,7 +126,9 @@ hipz=(rig.matrix_world@rig.data.bones['mixamorigHips'].head_local).z
 lu=rig.data.bones['mixamorigLeftUpLeg']; kz=(rig.matrix_world@lu.tail_local).z; uz=(rig.matrix_world@lu.head_local).z
 zlo=uz-(uz-kz)*0.45; zhi=hipz+(hipz-uz)*1.8
 print("Z",hipz,uz,kz,zlo,zhi)
-def armw(v,parts): return sum(g.weight for g in v.groups if any(t in names[g.group] for t in parts))
+def armw(v,parts):
+    w=sum(g.weight for g in v.groups if any(t in names[g.group] for t in parts))
+    return w/max(1e-6,sum(g.weight for g in v.groups)) if G else w  # glam：MPFB 手部权重没归一化，按比例算才不会把手指当成短裤
 def shell(name,keep,off,cuts=()):
     # copy body faces whose verts are all in keep; then trim with planes (co, normal, drop side) so edges are straight
     o=h.copy(); o.data=me.copy(); o.name=name; o.data.name=name
@@ -112,6 +145,13 @@ def shell(name,keep,off,cuts=()):
     for v in bm.verts: v.co+=v.normal*off/max(h.scale)
     bm.to_mesh(o.data); bm.free(); return o
 extra_objs=[]
+def smooth_body(pred,iters):  # glam：衣服底下的身体先抹平（胸点、胯下的起伏），再从这里取面做衣服——身体跟衣服一起平，皮肤不会穿出来
+    bm=bmesh.new(); bm.from_mesh(me); bm.verts.ensure_lookup_table()
+    vs=[v for v in bm.verts if pred(me.vertices[v.index],mw@v.co)]
+    for _ in range(iters):
+        nw={v:v.co.lerp(sum((e.other_vert(v).co for e in v.link_edges),Vector())/len(v.link_edges),0.5) for v in vs}
+        for v,c in nw.items(): v.co=c
+    bm.to_mesh(me); bm.free(); me.update(); print("SMOOTHED",len(vs))
 if not F:  # male: unchanged from the original Muscle.glb build
     ok=set()
     for v in me.vertices:
@@ -121,8 +161,9 @@ if not F:  # male: unchanged from the original Muscle.glb build
     sh=shell('Shorts',ok,0.008)
 else:
     UP=Vector((0,0,1))
+    if G: smooth_body(lambda v,p:abs(p.x)<0.08 and zlo<p.z<hipz and p.y<0.03,20)
     ok={v.index for v in me.vertices if zlo-0.03<(mw@v.co).z<zhi+0.03 and armw(v,('Arm','Hand','Shoulder'))<0.5}
-    sh=shell('Shorts',ok,0.008,[(Vector((0,0,zlo)),UP,'below'),(Vector((0,0,zhi)),UP,'above')])
+    sh=shell('Shorts',ok,0.011 if G else 0.008,[(Vector((0,0,zlo)),UP,'below'),(Vector((0,0,zhi)),UP,'above')])
     # sports bra: a full band around the chest, higher in front (covers the breasts), a strap-width band at the back.
     # nipple height = most forward chest vertex (the human faces -Y in Blender)
     sp=rig.data.bones['mixamorigSpine2']; sz=(rig.matrix_world@sp.head_local).z; spy=(rig.matrix_world@sp.head_local).y
@@ -131,14 +172,15 @@ else:
     nip=min(cand,key=lambda p:p.y)
     BLO=nip.z-0.075; BHI_F=nip.z+0.07; BHI_B=nip.z+0.03; YB=spy+0.10
     print("BRA nip",tuple(round(x,3) for x in nip),"spine2",round(sz,3),round(spy,3))
+    if G: smooth_body(lambda v,p:BLO<p.z<BHI_F-0.02 and p.y<spy-0.04 and abs(p.x)<0.15 and armw(v,('Arm','Hand'))<0.2,20)
     keep={v.index for v in me.vertices if BLO-0.03<(mw@v.co).z<BHI_F+0.03 and armw(v,('Arm','Hand','Neck','Head'))<0.5}
     d=Vector((0,YB-nip.y,BHI_B-BHI_F)); top_no=Vector((1,0,0)).cross(d).normalized()
     if top_no.z<0: top_no=-top_no
-    bra=shell('Bra',keep,0.006,[(Vector((0,0,BLO)),UP,'below'),(Vector((0,nip.y,BHI_F)),top_no,'above')])
+    bra=shell('Bra',keep,0.008 if G else 0.006,[(Vector((0,0,BLO)),UP,'below'),(Vector((0,nip.y,BHI_F)),top_no,'above')])
     extra_objs.append(bra); print("BRA verts",len(bra.data.vertices))
 print("SHORTS verts",len(sh.data.vertices))
 h.name='Body'; h.data.name='Body'
-for o in bpy.data.objects: o.select_set(o in (h,sh,rig,*extra_objs))
+for o in bpy.data.objects: o.select_set(o in (h,sh,rig,*extra_objs,*proxies))
 for o in bpy.data.objects: print("OBJ",o.name,o.type,tuple(o.scale),[m.type for m in o.modifiers] if o.type=='MESH' else '')
 bpy.ops.export_scene.gltf(filepath=OUT,export_format='GLB',use_selection=True,export_skins=True,export_animations=False,export_morph=False,export_apply=False,export_materials='NONE',export_yup=True)
 print("DONE",OUT)
