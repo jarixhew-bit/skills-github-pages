@@ -135,10 +135,10 @@
    **被用户抓到的错，一律变成一条自检**（2026-11-02 用户要求）：用户指出的错（算错、
    认错、漏项、显示不对），修完要补一条能抓住它的检查——加进现有 `check-*`（butler-bot
    的 AI 认错加进 `tests/ai-eval.mjs` 的题目），并确认它在修之前会红、修之后变绿；
-   确实写不成脚本的（纯审美、纯判断）在回复里说明为什么没补。现有三十六个，全部挂 CI（2026-10-30 加 `check-flight-probe`：查航班工具 `flight-probe.yml` 的解析器，fixture 是真实 Google Flights 页面文字，验航班号切分与跨时区全程；该 workflow 每周三实跑一次，抓不到就开 issue；2026-10-29 `check-allocation` 同脚本再管美国资产遗产税提醒（≥$5万，保守：非白名单代码与现金都算，不新增检查文件）；同日加 `check-drawdown`：VOO 大跌开枪提醒（≥20% 一级、≥30% 二级、<15% 才解除，上一状态取自「有没有开着的同名 issue」不提交状态文件），由 `drawdown-check.yml` 周一至五 UTC 22:30 实跑，`--selftest` 手算阈值／滞后／窗口／文案无持仓数字；同日 `check-allocation` 改成标普一边 = VOO+CSPX+VUAA 合计；2026-10-29 加 `check-allocation`：VOO/IBIT 占比偏离政策的纯函数＋`--selftest`，由 `allocation-check.yml` 每月 1、15 号实跑；2026-10-26 加 `check-flex-stale`，并把一直漏在 `check-all.py` 外面的 `check-decision-log` 收进去；2026-10-07 加 `check-board`；2026-09-30 同日再加 `check-fitness`；按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
+   确实写不成脚本的（纯审美、纯判断）在回复里说明为什么没补。现有三十五个，全部挂 CI（2026-11-03 退订删掉每日 Telegram 新闻摘要，连带删掉只服务它的 `check-morning-positions`——每日新闻对 80/20 二十年持有不可操作，用户原话「其实这个我也没啥看」，而且它挂了两次都没人发现；改由 butler-bot 的管线看门狗负责「停更就推你」；2026-10-30 加 `check-flight-probe`：查航班工具 `flight-probe.yml` 的解析器，fixture 是真实 Google Flights 页面文字，验航班号切分与跨时区全程；该 workflow 每周三实跑一次，抓不到就开 issue；2026-10-29 `check-allocation` 同脚本再管美国资产遗产税提醒（≥$5万，保守：非白名单代码与现金都算，不新增检查文件）；同日加 `check-drawdown`：VOO 大跌开枪提醒（≥20% 一级、≥30% 二级、<15% 才解除，上一状态取自「有没有开着的同名 issue」不提交状态文件），由 `drawdown-check.yml` 周一至五 UTC 22:30 实跑，`--selftest` 手算阈值／滞后／窗口／文案无持仓数字；同日 `check-allocation` 改成标普一边 = VOO+CSPX+VUAA 合计；2026-10-29 加 `check-allocation`：VOO/IBIT 占比偏离政策的纯函数＋`--selftest`，由 `allocation-check.yml` 每月 1、15 号实跑；2026-10-26 加 `check-flex-stale`，并把一直漏在 `check-all.py` 外面的 `check-decision-log` 收进去；2026-10-07 加 `check-board`；2026-09-30 同日再加 `check-fitness`；按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
-   `check-pwa-scopes` / `check-workflows` / `check-ci-notify` / `check-morning-positions` /
+   `check-pwa-scopes` / `check-workflows` / `check-ci-notify` /
    `check-generated`（查「生成又提交进仓库」的产物有没有跟源文件脱节）/
    `check-map-coords`（查槟城手册总地图：每张带地图链接的卡片都有坐标、都在槟城州、`coords.json` 没孤儿、地图区块与 OSM 署名还在——卡片加了坐标没补，那一家会安静地不上图）/
    `check-flight-times`（查旅游手册航班卡的飞行时长有没有把时差算进去——2026-09-18

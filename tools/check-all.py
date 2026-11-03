@@ -14,8 +14,11 @@ CLAUDE.md 要求「改完 expense-tracker.html 要跑 tools/ 底下全部 check-
   - check-live.py    验线上页面是不是 main 那一版，沙盒连不上 github.io（出口代理
     挡掉），只能在 CI 跑。加 --with-network 也不会跑它。
 
-沙盒注意：`morningpos` 会报 `No module named '_cffi_backend'`——那是容器里少了套件、
-不是检查坏了，`pip install cffi` 补上即可（CI 上装了，所以只有沙盒会红）。
+沙盒注意：`allocation`、`prices` 这类要解密 state.enc 的检查会报
+`No module named '_cffi_backend'`——那是容器里少了套件、不是检查坏了，
+`pip3 install --user cffi` 补上即可（CI 上装了，所以只有沙盒会红）。
+容器换过之后要重装；浏览器类的红了则是缺 playwright，跑一次 `npm install`。
+
 
 用法：
     python3 tools/check-all.py              # 跑全部（不含上面两个）
@@ -54,7 +57,6 @@ CHECKS = [
     ("allocation", ["python3", "tools/check-allocation.py", "--selftest"], False),
     ("drawdown", ["python3", "tools/check-drawdown.py", "--selftest"], False),
     ("notify", ["python3", "tools/check-ci-notify.py"], False),
-    ("morningpos", ["python3", "tools/check-morning-positions.py"], False),
     ("generated", ["python3", "tools/check-generated.py"], False),
     ("news", ["python3", "tools/check-news.py"], False),
     ("prices", ["python3", "tools/check-prices.py"], False),

@@ -69,9 +69,17 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
 `state.enc` 裡加密的 `targets` 欄位（不在 git 明文中），改比例要解密 state 再重跑
 管線，見 README.md:61-63。
 
-**改監控/新聞摘要邏輯**：`.github/scripts/portfolio_news.py`，`fetch_ibkr_positions()`
-（55 行起）是**另一套獨立的 Flex 拉取實作**，與 `trading/flex_account.py` 邏輯重複但
-不共用程式碼（見「牽一發動全身」）。
+**⚠️ 每日 Telegram 新聞摘要已於 2026-11-03 退訂刪除**（`daily-portfolio-news.yml`、
+`.github/scripts/portfolio_news.py`、`.github/data/ibkr-positions-fallback.json`、
+`tools/check-morning-positions.py` 一併刪掉）。用戶原話：「其實這個我也沒啥看」。
+理由：對 80/20 二十年持有、不做擇時的策略，**每日新聞按定義不可操作**——日漲跌、
+RSI、52 週位置、機翻頭條，沒有一項能改變明天做什麼，而那個「買入建議」直接跟
+策略相反。把它做得更先進只會得到一份更精緻的、依然不看的東西。
+**壓倒性的證據**：它 2026-10-31 與 11-03 兩次 `conclusion: failure`（換成 CSPX 後
+Yahoo 不認光禿禿的 `CSPX`，要 `CSPX.L`；而且第一檔取不到價整個腳本就死），
+用戶兩次都沒收到、也沒發現。一份停了兩次都沒人想起的日報就是該退訂的日報。
+改由「只在有事時說話」接手，三件事：`drawdown-check`（大跌）、
+`allocation-check`（偏離再平衡）、**butler-bot 的管線看門狗**（停更）。
 
 ## 牽一發動全身
 
@@ -85,10 +93,10 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
   `decryptEnvelope()`（214-221 行，Web Crypto API）是**兩套獨立實作、同一格式**，
   改 KDF 迭代次數、演算法或欄位名稱，兩邊必須同步改，否則頁面端解密會直接失敗
   （無版本協商機制，`v` 欄位目前恆為 1，未做多版本相容判斷，未查證）。
-- **IBKR Flex 密鑰**（`IBKR_FLEX_TOKEN`/`IBKR_FLEX_QUERY_ID`）被 `flex_account.py`
-  與 `portfolio_news.py` 兩處各自讀取使用，改 Secret 名稱或輪換密鑰要兩處都改；
-  兩個 workflow **共用同一組憑證**，改其中一邊的 Flex Query 定義或 token 前，
-  務必想到會同時影響另一邊（見下方「已知坑」IBKR 1001 那條）。
+- **IBKR Flex 密鑰**（`IBKR_FLEX_TOKEN`/`IBKR_FLEX_QUERY_ID`）現在只有
+  `trading/flex_account.py` 一處讀取（早報那一處已隨 2026-11-03 退訂刪除）。
+  連帶好消息：下方「已知坑」裡「兩個 workflow 搶同一份 Flex 報表撞 1001」
+  那個約束**消失了**，現在只剩一個消費者。
 
 ## 自動化（GitHub Actions）
 
@@ -98,12 +106,7 @@ MA20/MA50 金死叉在 168-172 行、評分轉建議的門檻在 201-210 行
   見 yml 註解「2026-07-12 曾因此推送被拒」）。需要 Secret：`ANALYZER_PW`
   （缺失時私密區停更但公開信號區照跑，README.md:29-30）、`IBKR_FLEX_TOKEN`、
   `IBKR_FLEX_QUERY_ID`。失敗排查：倉庫 Actions 頁看 `trading-daily` 執行日誌。
-- **`daily-portfolio-news.yml`**：UTC 00:40（週二至六，=柬埔寨 UTC+7 早上約 09:00，
-  用戶 2026-07-17 指定），跑 `.github/scripts/portfolio_news.py` 發 Telegram 摘要
-  （新聞翻譯+打分+持倉建議），需要 `TELEGRAM_TOKEN`/`TELEGRAM_CHAT_ID`/
-  `IBKR_FLEX_TOKEN`/`IBKR_FLEX_QUERY_ID` 四個 Secret，任一失敗此 workflow 直接失敗
-  （腳本用 `os.environ[...]` 硬取值，未做缺失容錯，未查證是否故意如此）。
-  失敗排查同上，看該 workflow 的 Actions 日誌。
+- **`daily-portfolio-news.yml`**：已於 2026-11-03 刪除（見上方退訂說明）。
 - **「大批量數據走 CI 不走 Claude」規則的落點**：58 檔×320 根 K 線的抓取與計算全部
   在這兩個 workflow 裡跑完，Claude session 只在「對帳模式」時經手少量帳戶級 JSON
   （positions/summary/trades/perf，通常幾十行），不逐筆抄寫價格數據——這正是
