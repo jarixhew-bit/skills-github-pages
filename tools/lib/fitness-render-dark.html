@@ -81,22 +81,23 @@ const gltf = await new GLTFLoader().loadAsync(new URLSearchParams(location.searc
 const root = gltf.scene; scene.add(root);
 root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; if (o.material) { o.material.roughness = 0.7; } } });
 // 雕像白＋「正在用力的肌肉」红光：着色器里按离肌肉中心的距离加红色自发光
-const GLOW = { c: { value: [V0(), V0(), V0(), V0()] }, n: { value: 0 }, k: { value: 0 }, r: { value: 7 } };
+// 每个发光点有自己的强度 w 与半径 r：主力肌肉最亮，协同肌肉淡一些
+const GLOW = { c: { value: Array.from({ length: 8 }, V0) }, w: { value: new Array(8).fill(0) }, r: { value: new Array(8).fill(7) }, n: { value: 0 }, k: { value: 0 } };
 function V0() { return new THREE.Vector3(); }
 const statue = new THREE.MeshStandardMaterial({ color: 0xe6e9ee, roughness: 0.42, metalness: 0.02 });
 statue.onBeforeCompile = sh => {
-  Object.assign(sh.uniforms, { gC: GLOW.c, gN: GLOW.n, gK: GLOW.k, gR: GLOW.r });
+  Object.assign(sh.uniforms, { gC: GLOW.c, gW: GLOW.w, gR: GLOW.r, gN: GLOW.n, gK: GLOW.k });
   sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;')
     .replace('#include <skinning_vertex>', '#include <skinning_vertex>\nvGW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW; uniform vec3 gC[4]; uniform int gN; uniform float gK; uniform float gR;')
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW; uniform vec3 gC[8]; uniform float gW[8]; uniform float gR[8]; uniform int gN; uniform float gK;')
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
       float gg = 0.0;
-      for (int i = 0; i < 4; i++) { if (i >= gN) break; gg = max(gg, 1.0 - smoothstep(gR * 0.25, gR, distance(vGW, gC[i]))); }
+      for (int i = 0; i < 8; i++) { if (i >= gN) break; gg = max(gg, gW[i] * (1.0 - smoothstep(gR[i] * 0.25, gR[i], distance(vGW, gC[i])))); }
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.95, 0.28, 0.22), gg * gK * 0.85);
       totalEmissiveRadiance += vec3(1.0, 0.16, 0.06) * gg * gK * 0.9;`);
 };
 const shorts = new THREE.MeshStandardMaterial({ color: 0x22262e, roughness: 0.8 }); // 肌肉模型带的短裤保持深色
-root.traverse(o => { if (o.isMesh) o.material = /Shorts/.test(o.name) ? shorts : statue; });
+root.traverse(o => { if (o.isMesh) o.material = /Shorts|Bra/.test(o.name) ? shorts : statue; });
 const B = n => root.getObjectByName('mixamorig' + n);
 if (new URLSearchParams(location.search).get('recolor')) root.traverse(o => {
   if (!o.isMesh || !o.material || !o.material.map || !o.material.map.image) return;
@@ -234,26 +235,36 @@ const W3 = n => bone[n].getWorldPosition(V());
 // 肌肉中心（世界座标），用骨头位置推出来
 pose(ANIM.sample('ohp', 0), false);
 const SIDE = Math.sign(W3('RightArm').z - W3('LeftArm').z) || 1; // 摆成面向 +x 之后，右手在 +z 还是 -z
+// 肌肉位置（世界座标，用骨头推出来）。回传 [点, 强度, 半径]。
+// 肩推的主次依据：哑铃肩推以三角肌前束为主、中束次之，肱三头肌与上斜方肌协同
+// （Saeterbakken & Fimland 2013, PubMed 23096062；Kinesiologia Slovenica 2023 三角肌训练综述）。
 function centers(group, F) {
   const out = [];
-  if (group === 'shoulder') for (const [a, b] of [['RightArm', 'RightForeArm'], ['LeftArm', 'LeftForeArm']]) {
-    const p = W3(a), d = W3(b).sub(p).normalize(); out.push(p.add(d.multiplyScalar(3)).add(V(0, 1, 0)));
+  if (group === 'shoulder') for (const side of ['Right', 'Left']) {
+    const sh = W3(side + 'Arm'), el = W3(side + 'ForeArm'), d = el.clone().sub(sh).normalize();
+    const outw = V(0, 0, Math.sign(sh.z - W3('Spine2').z));
+    out.push([sh.clone().add(F.clone().multiplyScalar(2.6)).add(d.clone().multiplyScalar(2.6)), 1.0, 6.5]);   // 三角肌前束（主力）
+    out.push([sh.clone().add(outw.clone().multiplyScalar(2.2)).add(d.clone().multiplyScalar(3)), 0.75, 6]);   // 三角肌中束
+    out.push([sh.clone().lerp(el, 0.55).add(F.clone().multiplyScalar(-2)), 0.4, 6]);                          // 肱三头肌（协同）
+    out.push([W3('Neck').lerp(sh, 0.5).add(V(0, 2, 0)).add(F.clone().multiplyScalar(-1.5)), 0.3, 5]);        // 上斜方肌（协同）
   }
   if (group === 'chest' || group === 'back') { const c = W3('Spine2').lerp(W3('Spine1'), group === 'back' ? 0.6 : 0.3), s = group === 'chest' ? 1 : -1;
-    for (const z of [-4.5, 4.5]) out.push(c.clone().add(F.clone().multiplyScalar(4 * s)).add(V(0, 0, z))); }
-  if (group === 'leg') for (const [a, b] of [['RightUpLeg', 'RightLeg'], ['LeftUpLeg', 'LeftLeg']]) out.push(W3(a).lerp(W3(b), 0.5).add(F.clone().multiplyScalar(2.5)));
+    for (const z of [-4.5, 4.5]) out.push([c.clone().add(F.clone().multiplyScalar(4 * s)).add(V(0, 0, z)), 1, 7]); }
+  if (group === 'leg') for (const [a, b] of [['RightUpLeg', 'RightLeg'], ['LeftUpLeg', 'LeftLeg']]) out.push([W3(a).lerp(W3(b), 0.5).add(F.clone().multiplyScalar(2.5)), 1, 9]);
   return out;
 }
-function setGlow(pts, k, r = 7) { GLOW.n.value = pts.length; pts.forEach((p, i) => GLOW.c.value[i].copy(p)); GLOW.k.value = k; GLOW.r.value = r; }
-function setHalos(pts, k, toCam, size = 14) { halos.forEach((h, i) => { h.visible = i < pts.length && k > 0.05; if (!h.visible) return;
-  h.position.copy(pts[i]).add(toCam.clone().multiplyScalar(5)); h.scale.setScalar(size); h.material.opacity = 0.45 * k; }); }
+function setGlow(pts, k) { GLOW.n.value = pts.length; pts.forEach(([p, w, r], i) => { GLOW.c.value[i].copy(p); GLOW.w.value[i] = w; GLOW.r.value[i] = r; }); GLOW.k.value = k; }
+function setHalos(pts, k, toCam, size = 14) { const main = pts.filter(q => q[1] >= 1); // 只有主力肌肉加光晕
+  halos.forEach((h, i) => { h.visible = i < main.length && k > 0.05; if (!h.visible) return;
+  h.position.copy(main[i][0]).add(toCam.clone().multiplyScalar(5)); h.scale.setScalar(size); h.material.opacity = 0.45 * k; }); }
 
 // 手臂在「正面」平面里的方向：θ 是离水平线的角度（往外为 0°、朝天为 90°），side=+1 右手
-const armDir = (deg, side) => { const t = THREE.MathUtils.degToRad(deg); return V(0.12, Math.sin(t), side * SIDE * Math.cos(t)).normalize(); };
+// fwd：手臂往身体前方偏多少度。肩推正确姿势手肘在身体略前方约 30–45°（肩胛骨平面），不是完全向两侧打开
+const armDir = (deg, side, fwd = 7) => { const t = THREE.MathUtils.degToRad(deg), f = THREE.MathUtils.degToRad(fwd), hz = Math.cos(t); return V(hz * Math.sin(f), Math.sin(t), side * SIDE * hz * Math.cos(f)).normalize(); };
 const ease = x => 0.5 - 0.5 * Math.cos(Math.PI * x);
 function pressArms(p) { // p: 0 底部（手肘略低于肩）→ 1 推到顶
-  const up = -14 + 86 * p, fo = 94 - 10 * p;
-  return { RightArm: armDir(up, 1), LeftArm: armDir(up, -1), RightForeArm: armDir(fo, 1), LeftForeArm: armDir(fo, -1) };
+  const up = -12 + 94 * p, fo = 92 - 3 * p, fw = 35 - 20 * p; // 底部手肘朝前 35°，推上去时自然转开到约 15°
+  return { RightArm: armDir(up, 1, fw), LeftArm: armDir(up, -1, fw), RightForeArm: armDir(fo, 1, fw), LeftForeArm: armDir(fo, -1, fw) };
 }
 
 async function miniShots() {
@@ -264,10 +275,10 @@ async function miniShots() {
   pose(s, false); dumbbells(null); props({ props: [] }, modelP());
   DB.forEach(d => (d.visible = false)); mat.visible = catcher.visible = false;
   const F = V(1, 0, 0), out = {};
-  for (const [g, back] of [['chest', 0], ['shoulder', 1], ['back', 1], ['leg', 0]]) {
+  for (const [g, back] of [['chest', 0], ['shoulder', 0], ['back', 1], ['leg', 0]]) {
     const c = g === 'leg' ? W3('RightLeg').lerp(W3('LeftLeg'), 0.5).add(V(0, 4, 0)) : W3('Spine2').add(V(0, 4, 0));
     const dir = back ? -1 : 1; cam.fov = 26; cam.position.set(c.x + dir * 125, c.y + 6, c.z); cam.lookAt(c); cam.updateProjectionMatrix();
-    const pts = centers(g, F); setGlow(pts, 1, g === 'leg' ? 9 : 7); setHalos([], 0, V());
+    const pts = centers(g, F); setGlow(pts, 1); setHalos([], 0, V());
     renderer.render(scene, cam); out[g] = renderer.domElement.toDataURL('image/png');
   }
   renderer.setSize(keep.w, keep.h); cam.aspect = keep.a; cam.updateProjectionMatrix(); mat.visible = catcher.visible = true;
@@ -284,14 +295,14 @@ window.renderDark = async function ({ name, reps, cue, group, fps = 12 }) {
   // 取景：固定在背后偏上，框住全身＋推到顶的哑铃；画面上方留给标题
   const s0 = ANIM.sample('ohp', 0); s0.arms = pressArms(1); pose(s0, false);
   const top = W3('RightHand').y + 8, hip = W3('Hips');
-  const c = V(hip.x, top / 2, 0), yaw = THREE.MathUtils.degToRad(14), pitch = THREE.MathUtils.degToRad(8);
+  const c = V(hip.x, top / 2, 0), yaw = THREE.MathUtils.degToRad(32), pitch = THREE.MathUtils.degToRad(8);
   cam.fov = 26; const t = Math.tan(THREE.MathUtils.degToRad(13)), usable = (H - 122) / H; // 上方 122px 是文字
   const D = (top / 2 + 4) / (t * usable);
-  cam.position.set(c.x - D * Math.cos(yaw) * Math.cos(pitch), c.y + D * Math.sin(pitch), c.z + D * Math.sin(yaw));
+  cam.position.set(c.x + D * Math.cos(yaw) * Math.cos(pitch), c.y + D * Math.sin(pitch), c.z + D * Math.sin(yaw));  // 正面偏侧：肩推主力是前束，要从前面才看得到
   cam.lookAt(c.x, c.y, c.z); cam.updateProjectionMatrix();
   cam.setViewOffset(W, H, 0, -(H * (1 - usable)) / 2, W, H); // 人物整体往下移，让出标题区
-  sun.position.set(c.x - 30, 260, 40); sun.target.position.set(c.x, 0, 0);
-  rim.position.set(c.x + 160, c.y + 60, -60); rim.target.position.set(c.x, c.y, 0);
+  sun.position.set(c.x + 40, 260, 30); sun.target.position.set(c.x, 0, 0);
+  rim.position.set(c.x - 160, c.y + 60, -60); rim.target.position.set(c.x, c.y, 0);
   const toCam = cam.position.clone().sub(c).normalize();
   const frames = [];
   for (let i = 0; i < n; i++) {
@@ -299,7 +310,7 @@ window.renderDark = async function ({ name, reps, cue, group, fps = 12 }) {
     const s = ANIM.sample('ohp', 0); s.arms = pressArms(p); pose(s, false); props({ props: [] }, modelP()); dumbbells('hands');
     // 底部肩膀负荷最大：越低越红
     const k = 0.25 + 0.75 * (1 - p), pts = centers('shoulder', V(1, 0, 0));
-    setGlow(pts, k, 7.5); setHalos(pts, k, toCam);
+    setGlow(pts, k); setHalos(pts, k, toCam);
     renderer.render(scene, cam);
     frames.push(i);
   }
@@ -310,7 +321,7 @@ window.frameAt = function (i, n) { // 给截图用：把第 i 格摆好
   const s = ANIM.sample('ohp', 0); s.arms = pressArms(p); pose(s, false); props({ props: [] }, modelP()); dumbbells('hands');
   const k = 0.25 + 0.75 * (1 - p), pts = centers('shoulder', V(1, 0, 0));
   const toCam = cam.position.clone().normalize();
-  setGlow(pts, k, 7.5); setHalos(pts, k, cam.position.clone().sub(pts[0]).normalize());
+  setGlow(pts, k); setHalos(pts, k, cam.position.clone().sub(pts[0][0]).normalize());
   renderer.render(scene, cam);
 };
 window.ready = true;

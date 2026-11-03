@@ -14,7 +14,7 @@ const pg=await b.newPage({viewport:{width:W,height:H}});
 pg.on('pageerror',e=>console.error('ERR',e.message)); 
 await pg.goto(`http://localhost:8899/tools/lib/fitness-render-dark.html?w=${W}&h=${H}&model=/.photos/fitness-model/${process.env.MODEL||'Xbot'}.glb`);
 await pg.waitForFunction(()=>window.ready,null,{timeout:120000});
-const r=await pg.evaluate(()=>window.renderDark({name:'哑铃肩推',reps:'8–12',cue:'手肘朝外，推到头顶',group:'shoulder'}));
+const r=await pg.evaluate(()=>window.renderDark({name:'哑铃肩推',reps:'8–12',cue:'手肘在身体略前方，推到手臂接近伸直',group:'shoulder'}));
 await pg.waitForTimeout(300);
 const dir=out+'_f'; fs.mkdirSync(dir,{recursive:true});
 const idx = only? only.split(',').map(Number) : [...Array(r.n).keys()];
