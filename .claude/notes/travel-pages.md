@@ -177,7 +177,7 @@ hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案�
 逻辑一行没动），CSS 末尾多一条 `.note a, .desc a …` 让文内链接不显示默认蓝。
 结构：topbar → nav（FLT／STAY／EVT／D1–D4／FOOD，**顺序与区块顺序一致**）→ cover → tip → `#flights`(01，三张 `.bpass`：去程 SQ153 KTI→SIN 09:35–12:50〔Tan Chin Hooi 商务／Hew Chern Yang 经济〕、
 SQ133 PEN→SIN 12:00–13:35〔Yap Lian Khoon 商务〕；11/14 SQ958 SIN T2→CGK T3 12:30–13:20〔三人〕；下面 `.tbl` 行李额表＋随身小物一句) →
-`#hotel`(02，`.hotel` 卡：MBS 11/11 入住 11/14 退房，分房带房型；接送 note 写两趟：11/11 同车接机、11/14 10:30 送机，见下方「房型与接送」) →
+`#hotel`(02，`.hotel` 卡：MBS 11/11 入住 11/14 退房，分房带房型；接送 note 写两次接送：11/11 同车接机、11/14 10:30 送机，见下方「房型与接送」) →
 `#events`(03，开头一句「供参考、去不去由你们、没排进行程」＋9 张 `.evt`＋圣诞灯饰提示，清单见下) → `#itinerary`(04，`.day#day01`~`#day04`，
 `data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，21 张 `.evt`，四个 `.grp` 小标题：乌节路 9 → 滨海湾金沙 4 → 其他区域 6 → 东部友诺士一带 2（组标题里的家数是手写的，加卡要同步改），组内按菜系排；
 每张卡 `.et` 开头有「📍区域 · 」标签，chips 写午市＋晚市)。**2026-10-30 用户要求「餐厅直接搞成列表，别分晚餐」**：
