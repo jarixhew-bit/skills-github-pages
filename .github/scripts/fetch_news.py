@@ -4,11 +4,12 @@
 跑法（只在 GitHub Actions 跑，沙盒连不上这些 RSS 源）：
     python3 .github/scripts/fetch_news.py
 
-跟 portfolio_news.py 的分工：
-  - portfolio_news.py  每天早上把「持仓 + 建议」推 Telegram，是给人看的一封信。
-  - 本脚本            每小时产出结构化的 news.json，是给页面读的数据。
-两者都抓 Yahoo RSS，但用途、频率、产物都不同，所以各写各的，不互相 import
-（portfolio_news.py 顶层就读 TELEGRAM_TOKEN，import 它会直接崩）。
+本脚本每小时产出结构化的 news.json，是给页面读的数据。
+曾经还有一个 portfolio_news.py 每天早上把「持仓 + 建议」推 Telegram，
+2026-11-03 退订删掉了——对 80/20 二十年持有来说，每日新闻按定义就不可操作，
+用户自己的说法是「其实这个我也没啥看」，而且它挂了两次都没人发现。
+真正该打扰人的事改由 drawdown-check（大跌）、allocation-check（偏离再平衡）、
+以及 butler-bot 的管线看门狗（停更）负责——只在有事时说话。
 
 【为什么 news.json 是明文公开的】
 它按 symbol 组织 universe.json 里那 58 檔的新闻——那份名单本来就在公开仓库里，
@@ -60,8 +61,8 @@ AGNES_MODEL = os.environ.get("AGNES_MODEL", "").strip() or "agnes-2.5-flash"
 AGNES_BASE = (os.environ.get("AGNES_BASE_URL", "").strip()
               or "https://apihub.agnes-ai.com/v1").rstrip("/")
 
-# 情绪词表：跟 portfolio_news.py 同源，但这里独立维护（那边是推播文案用的，
-# 两边调整节奏不同，硬绑在一起反而会互相牵制）
+# 情绪词表：原本与 portfolio_news.py 各维护一份，那个脚本 2026-11-03 退订删掉后，
+# 这里是唯一一份了
 BULLISH = [
     "surge", "rally", "soar", "jump", "gain", "rise", "bull", "record high", "boost",
     "beat", "exceed", "strong", "growth", "upgrade", "buy", "positive", "optimistic",
