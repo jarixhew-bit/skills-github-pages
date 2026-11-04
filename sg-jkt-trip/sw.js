@@ -16,7 +16,7 @@
 //
 // 改了 singapore.html／jakarta.html／index.html 要把下面 VERSION 加一
 // （tools/check-sw-version.py 会拦忘记升的情况）。升版会重新预缓存两本、重新补抓新照片。
-const VERSION = 'sgjkt-v1';
+const VERSION = 'sgjkt-v2';
 const PAGES = VERSION + '-pages';
 const IMGS = 'sgjkt-img';            // 照片缓存不跟版本走：升版不必把几百张图重抓一遍
 const BOOKS = ['./singapore.html', './jakarta.html'];
@@ -102,13 +102,18 @@ async function refreshOthers(doneKey) {
 // ---- 照片与字体：缓存优先 ----
 let corsOK = true; // Google 照片若不给跨域读取，就改存「不透明」响应，并记住别再白试
 async function fetchImage(url) {
+  let corsFailed = false;
   if (corsOK) {
     try {
       const r = await fetch(url, { mode: 'cors', credentials: 'omit' });
       if (r.ok) return r;
-    } catch (err) { corsOK = false; }
+    } catch (err) { corsFailed = true; }
   }
-  return fetch(url, { mode: 'no-cors', credentials: 'omit' });
+  const r = await fetch(url, { mode: 'no-cors', credentials: 'omit' });
+  // 只有「跨域那次失败、不透明这次却拿到了」才算对方不给跨域读取；
+  // 断网时两次都会失败（上面这行抛错），不能因此永久改存不透明响应——那种响应很占配额。
+  if (corsFailed) corsOK = false;
+  return r;
 }
 
 async function handleAsset(req, u) {
