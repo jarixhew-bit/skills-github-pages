@@ -1702,5 +1702,147 @@
    "https://blog.goswim.tv/post/freestyle-flutter-from-the-hips"
   ],
   "note": "同 kick 的肌肉说明。"
+ },
+ {
+  "file": "sldl-hands",
+  "anim": "sldl",
+  "type": "strength",
+  "title_zh": "单腿罗马尼亚硬拉",
+  "reps": "8/侧",
+  "cue_zh": "背打直，后腿与躯干一直线",
+  "primary": [
+   "hamstrings",
+   "glutes"
+  ],
+  "secondary": [
+   "glute_med",
+   "lower_back",
+   "adductors"
+  ],
+  "strip": [
+   "臀腿",
+   "背"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "支撑腿膝盖微弯（约 10–15°），屈髋把躯干往前下放到接近水平，同时另一条腿往后抬起、髋与膝保持伸直，跟躯干成一直线；背全程平直，哑铃垂在肩下方；感觉大腿后侧拉紧就站回来。",
+  "form_audit": "新动作（2026-11-04 替代动作），按来源新做关键帧。",
+  "sources": [
+   "https://exrx.net/WeightExercises/GluteusMaximus/BWSingleLegStiffLegDeadlift",
+   "https://www.acefitness.org/resources/everyone/exercise-library/329/single-leg-romanian-deadlift/"
+  ],
+  "note": ""
+ },
+ {
+  "file": "dbbridge-one",
+  "anim": "dbbridge",
+  "type": "strength",
+  "title_zh": "哑铃臀桥",
+  "reps": "12–15",
+  "cue_zh": "脚跟发力顶髋，顶点夹臀",
+  "primary": [
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings",
+   "abs"
+  ],
+  "strip": [
+   "臀腿",
+   "核心"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "仰躺屈膝、脚掌平贴地面与髋同宽，一只哑铃横放在髋骨上、两手扶住；收紧腹部，脚跟踩地、臀部发力把髋顶到肩—髋—膝一直线（不要再往上顶到腰拱起），慢慢放下。",
+  "form_audit": "新动作（2026-11-04 替代动作），沿用地板臀桥 bridge2 的腿部关键帧，加上哑铃与扶哑铃的手。",
+  "sources": [
+   "https://www.acefitness.org/resources/everyone/exercise-library/49/glute-bridge/",
+   "https://exrx.net/WeightExercises/GluteusMaximus/BBHipThrust"
+  ],
+  "note": "ExRx 的负重版是上背靠凳的杠铃臀推（同样把重量放在髋上）；地板臀桥的动作要领取自 ACE。"
+ },
+ {
+  "file": "pullup",
+  "anim": "pullup",
+  "type": "strength",
+  "title_zh": "辅助引体向上",
+  "reps": "6–10",
+  "cue_zh": "下巴过杆，下放到手臂伸直",
+  "primary": [
+   "lats"
+  ],
+  "secondary": [
+   "biceps",
+   "mid_back",
+   "rear_delt"
+  ],
+  "strip": [
+   "背",
+   "手臂"
+  ],
+  "view": "back34",
+  "plane": "frontal",
+  "plane_detail": "正手握杆、握距略比肩宽，从手臂伸直悬垂开始，手肘往下往两侧拉，把身体拉到下巴高过横杆，再慢慢下放到手臂与肩完全伸展；弹力带套在脚下（或跪在辅助机踏板上）减轻体重。",
+  "form_audit": "新动作（2026-11-04 替代动作）。2D 用 lf 把身体抬高、手相对脚的位置同步下移，横杆保持不动。动图没画弹力带／辅助机。",
+  "sources": [
+   "https://exrx.net/WeightExercises/LatissimusDorsi/ASPullupBand",
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC5548150/"
+  ],
+  "note": "辅助方式（弹力带或辅助机）动图里不画，文字说明。"
+ },
+ {
+  "file": "pullapart",
+  "anim": "pullapart",
+  "type": "strength",
+  "title_zh": "弹力带拉开",
+  "reps": "15–20",
+  "cue_zh": "直臂在肩高，往两侧拉开",
+  "primary": [
+   "rear_delt",
+   "mid_back"
+  ],
+  "secondary": [],
+  "strip": [
+   "肩",
+   "背"
+  ],
+  "view": "back34",
+  "plane": "transverse",
+  "plane_detail": "站直，两手与肩同宽握住弹力带、手臂伸直平举在肩高；肩胛往后往下收，手臂往两侧水平拉开到身体两侧（带子贴近胸口），慢慢回到前方；不耸肩、不用腰往后仰。",
+  "form_audit": "新动作（2026-11-04 替代动作）。2D 表达不了横向打开，3D 动图由渲染台 OV.pullapart 摆出，两手之间画一条绿色弹力带。",
+  "sources": [
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC8975561/",
+   "https://exrx.net/WeightExercises/DeltoidPosterior/LVRearLateralRaise"
+  ],
+  "note": "ExRx 没有弹力带拉开的专页；用同一个动作模式（肩高横向外展）的反向飞鸟机页面佐证要领。"
+ },
+ {
+  "file": "ohpseat-hands",
+  "anim": "ohpseat",
+  "type": "strength",
+  "title_zh": "坐姿哑铃肩推",
+  "reps": "8–12",
+  "cue_zh": "背贴椅背，往上推不拱腰",
+  "primary": [
+   "ant_delt",
+   "lat_delt"
+  ],
+  "secondary": [
+   "triceps",
+   "upper_trap"
+  ],
+  "strip": [
+   "肩",
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "坐在有椅背的长凳上，头、肩、臀贴住椅背，哑铃在肩膀两侧、手肘在手腕正下方并略在身体前方；收紧腹部往上推到手臂伸直，下放回肩膀高度；腰不离开椅背。",
+  "form_audit": "新动作（2026-11-04 替代动作），手臂路径沿用站姿哑铃肩推（肩胛骨平面）。",
+  "sources": [
+   "https://www.acefitness.org/resources/everyone/exercise-library/45/seated-overhead-press/",
+   "https://exrx.net/WeightExercises/DeltoidAnterior/DBShoulderPress"
+  ],
+  "note": ""
  }
 ]

@@ -198,6 +198,14 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
 .ph-tag{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:500;border-radius:999px;padding:2px 8px}
 .ph-note{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.72));color:#fff;font-size:12px;line-height:1.35;padding:18px 10px 7px}
 .ex-top.one{grid-template-columns:1fr}
+.swap-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill.swp{background:var(--plate-soft);color:var(--plate);font-weight:700}
+.alts{display:flex;flex-direction:column;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px}
+.alt{display:grid;grid-template-columns:88px 1fr;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:6px;font:inherit;width:100%}
+.alt[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.alt img,.alt .noimg{width:88px;height:60px;border-radius:6px;object-fit:cover;object-position:50% 88%;background:#0d1730;display:block} /* 裁掉动图顶部的字幕，只留人 */
+.alt-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.alt .tag{display:inline-block;border-radius:999px;padding:0 7px;background:var(--soft);color:var(--ink);font-size:11px;font-weight:500;margin-right:4px}
 .ph.anim{background:#0d1730;aspect-ratio:4/3} /* 跟动图的深色背景一致，留边时不会有白框 */
 .ph.anim img{object-fit:contain}
 .ph.anim .ph-tag{top:auto;bottom:8px} /* 动图顶部有部位小图与字幕，标签移到左下 */
@@ -593,6 +601,12 @@ var ANIM = (function(){
   def("rfly",    {frames:[{t:75,lt:22,ls:-2,a:0,f:0},{t:75,lt:22,ls:-2,a:0,f:0}], hold:"hands"}); // 手臂往两侧打开（侧视看不出，3D 动图由渲染台另摆）
   def("facepull",{frames:[{lt:5,ls:-5,a:97,f:97},{lt:5,ls:-5,a:-95,f:175}]});
   def("yraise",  {frames:[{t:90,lt:-90,ls:-90,a:92,f:92},{t:85,lt:-90,ls:-90,a:104,f:104}], ground:"low", anchorX:"hip"});
+  // ---- 替代动作（2026-11-04：健身房缺器材时换着做） ----
+  def("sldl",    {frames:[{nt:2,ns:-2,ft:-6,fs:-22,a:0,f:0},{t:80,nt:14,ns:-4,ft:-80,fs:-80,a:-4,f:-4}], hold:"hands"}); // 单腿罗马尼亚硬拉：近侧腿支撑（膝微弯），远侧腿往后伸直与躯干成一直线
+  def("dbbridge",{frames:[{t:-90,lt:145,ls:35,H:[-27.5,-6],bend:-1},{t:-110,lt:110,ls:20,H:[-30.8,-20.3],bend:-1}], ground:"low", anchorX:"sh", hold:"one"}); // 地板臀桥，一只哑铃横放髋上、两手扶住
+  def("pullup",  {frames:[{lt:8,ls:-30,H:[8.66,-113],bend:-1,lf:15},{lt:8,ls:-30,H:[8.66,-85],bend:-1,lf:43}], props:["bar"]}); // 引体向上：横杆不动、身体往上（lf＝离地高度），下巴过杆
+  def("pullapart",{frames:[{lt:0,ls:0,a:90,f:90},{lt:0,ls:0,a:90,f:90}]}); // 弹力带拉开：手臂在肩高往两侧拉开（侧视看不出，3D 动图由渲染台另摆）
+  def("ohpseat", {frames:[{t:0,lt:90,ls:0,a:10,f:172},{t:0,lt:90,ls:0,a:172,f:180}], props:["seat","back"], hold:"hands"}); // 坐姿哑铃肩推
   // ---- finishers ----
   def("climber", {frames:[{t:65,nt:45,ns:-80,ft:-65,fs:-65,a:0,f:0},{t:65,ft:45,fs:-80,nt:-65,ns:-65,a:0,f:0}], ground:"low", anchorX:"nh", dur:0.4});
   def("swing",   {frames:[{t:70,lt:25,ls:-15,a:-50,f:-55},{lt:0,ls:0,a:90,f:90}], hold:"one", dur:0.7});
@@ -801,6 +815,40 @@ const COOL = [
   ["婴儿式",30,"child","跪坐，屁股坐向脚跟，双手往前伸、额头贴地，慢慢深呼吸，感觉背部放松。","child's pose"]];
 const EQ_LABEL = {db:"哑铃",bw:"徒手",gym:"健身房"};
 
+// ---------- 替代动作（2026-11-04 用户：「健身房没有器材，能不能每次多选 alternative」） ----------
+// 动作的「身份」＝ "器材:槽位"（借用现成动作，例如 "db:gsquat"＝高脚杯深蹲）或 "x:名字"（下面 ALTX 的新动作）。
+// 记录、加重建议、新纪录、进步曲线都按身份分开算：腿举的重量绝不会拿去建议高脚杯深蹲；
+// 同一个动作不管从哪个槽位、哪个器材版换来，身份一样、历史接得上。旧记录没有 k 栏位＝那次的器材＋槽位（跟以前一样）。
+// eq＝这个动作算哪种器材（决定记不记重量、加重一步多少）；kind 为 bw 的只记次数（弹力带、辅助引体的辅助重量不能当负重）。
+const ALTX={
+  sldl:{name:"单腿罗马尼亚硬拉",target:"8/侧",en:"Single-Leg Romanian Deadlift",anim:"sldl",hold:"hands",eq:"db",tag:"哑铃",
+    cue:"一条腿站稳、膝盖微弯，屁股往后推、上身往前倒，另一条腿同时往后抬、跟上身保持一直线；背打直，哑铃垂在肩膀下方，大腿后侧拉紧就站回来。站不稳先扶墙，或只拿一只哑铃。"},
+  dbbridge:{name:"哑铃臀桥（地板）",target:"12–15",en:"Dumbbell Glute Bridge",anim:"dbbridge",hold:"one",eq:"db",tag:"哑铃·免长凳",
+    cue:"仰躺屈膝、脚掌踩地与髋同宽，一只哑铃横放在髋骨上（垫毛巾）两手扶住。收紧腹部，脚跟踩地用臀部把髋顶到肩—髋—膝一直线，顶点夹臀停 1 秒；不要顶到腰拱起。"},
+  pullup:{name:"辅助引体向上（弹力带／辅助机）",target:"6–10",en:"Assisted Pull-Up",anim:"pullup",hold:null,eq:"bw",tag:"弹力带／器械",
+    cue:"正手握杆、比肩略宽，弹力带挂在横杆上、一只脚踩进带子（或跪在辅助机踏板上）。从手臂伸直开始，手肘往下往两侧拉，下巴过杆，再慢慢放到手臂完全伸直。次数能轻松做满就换细一点的带子（辅助机就调轻辅助）。"},
+  pullapart:{name:"弹力带拉开",target:"15–20",en:"Band Pull-Apart",anim:"pullapart",hold:null,eq:"bw",tag:"弹力带",
+    cue:"站直，两手与肩同宽握住弹力带、手臂伸直平举到肩高。肩膀往下沉，手臂往两侧拉开到带子碰到胸口，停 1 秒再慢慢回来。不耸肩、腰不后仰。"},
+  ohpseat:{name:"坐姿哑铃肩推",target:"8–12",en:"Seated Dumbbell Shoulder Press",anim:"ohpseat",hold:"hands",eq:"db",tag:"哑铃＋长凳",
+    cue:"长凳椅背调到接近直立，头、背、臀贴住椅背，哑铃在肩膀两侧、手肘在手腕正下方略在身体前面。收紧腹部往上推到手臂伸直，再慢慢放回肩膀高度；腰不离开椅背。"},
+};
+// 每个槽位的替代清单：同一种动作模式、练同样的主肌群，越前面越接近原动作；涵盖哑铃／徒手／器械／绳索／弹力带／免长凳
+const ALTS={
+  gsquat:["db:gsquat","gym:gsquat","db:split","db:lunge","db:step","bw:gsquat"],
+  bench:["db:bench","gym:bench","gym:fpress","db:fpress","bw:bench","bw:fpress"],
+  rdl:["db:rdl","x:sldl","gym:rdl","bw:rdl","x:dbbridge"],
+  row1:["db:row1","db:row2","gym:row1","bw:row1","gym:row2","x:pullup"],
+  lunge:["db:lunge","bw:lunge","db:split","db:step","db:gsquat","gym:gsquat"],
+  ohp:["db:ohp","x:ohpseat","gym:ohp","bw:ohp"],
+  thrust:["db:thrust","gym:thrust","x:dbbridge","bw:thrust","bw:rdl","db:rdl"],
+  row2:["db:row2","gym:row2","x:pullup","db:row1","gym:row1","bw:row2"],
+  split:["db:split","bw:split","db:lunge","db:step","db:gsquat","gym:gsquat"],
+  fpress:["db:fpress","gym:fpress","db:bench","gym:bench","bw:fpress","bw:bench"],
+  step:["db:step","bw:step","db:split","db:lunge","db:gsquat","gym:gsquat"],
+  rfly:["db:rfly","gym:rfly","x:pullapart","bw:rfly","db:row2","gym:row1"],
+};
+const GYM_TAG={gsquat:"器械",bench:"器械",rdl:"器械",row1:"绳索",lunge:"哑铃",ohp:"器械",thrust:"器械／史密斯",row2:"绳索",split:"哑铃＋长凳",fpress:"哑铃＋长凳",step:"哑铃＋跳箱",rfly:"绳索"};
+
 // ---------- Storage（只用本机浏览器；另有导出/导入备份） ----------
 const SKEY="fit.sessions", BKEY="fit.body", DKEY="fit.draft", CKEY="fit.cfg";
 const ls={ get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
@@ -808,6 +856,7 @@ const ls={ get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d
            del(k){try{localStorage.removeItem(k)}catch(e){}} };
 const CFG_DEF={equip:"db",voice:true,media:"anim",rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,lastBackup:0};
 let cfg=Object.assign({},CFG_DEF,ls.get(CKEY,{}));
+if(!cfg.alts||typeof cfg.alts!=="object") cfg.alts={}; // 换过的动作：{"器材:槽位": 换成的身份}
 if(!EQ_LABEL[cfg.equip]) cfg.equip="db";
 if(cfg.anim3d===false&&!ls.get(CKEY,{}).media) cfg.media="2d"; // 旧设置「关掉 3D」＝简笔画
 if(!cfg.mediaV3){ if(cfg.media==="photo"||cfg.media==="video") cfg.media="anim"; cfg.mediaV3=1; } // 动图上线：原本的默认（照片）升级成动图
@@ -826,6 +875,25 @@ const $=id=>document.getElementById(id);
 function sorted(){ return sessions.slice().sort((a,b)=>b.ts-a.ts); }
 function nextWk(){ const s=sorted()[0]; if(!s) return "A"; return {A:"B",B:"C",C:"A"}[s.wk]||"A"; }
 function exInfo(id,eq){ const e=EX[id], v=e[eq]||e.db; return {name:v[0],target:v[1],en:v[2],anim:v[3],hold:v[4],cue:(eq==="gym"&&e.gcue)?e.gcue:e.cue}; }
+// 动作身份（见上面 ALTX 的说明）
+function idKey(id,eq){ return eq+":"+id; }
+function setKey(s,x){ return x.k||idKey(x.ex,s.equip||"db"); }
+function validKey(k){ if(typeof k!=="string") return false; const i=k.indexOf(":"), a=k.slice(0,i), b=k.slice(i+1); return a==="x"?!!ALTX[b]:!!(EX[b]&&EQ_LABEL[a]); }
+function curKey(id,eq){ const k=cfg.alts[idKey(id,eq)]; return k&&validKey(k)?k:idKey(id,eq); }
+function kInfo(k){
+  const i=k.indexOf(":"), a=k.slice(0,i), b=k.slice(i+1);
+  if(a==="x"){ const x=ALTX[b]; return {name:x.name,target:x.target,en:x.en,anim:x.anim,hold:x.hold,cue:x.cue,eq:x.eq,tag:x.tag}; }
+  const x=exInfo(b,a); x.eq=a; x.tag=a==="gym"?GYM_TAG[b]:EQ_LABEL[a]; return x;
+}
+function kName(k){ return validKey(k)?kInfo(k).name:k; }
+function kgK(k){ return validKey(k)&&kInfo(k).eq!=="bw"; }
+function stepK(k){ return stepOf(kInfo(k).eq); }
+// 某槽位在某器材版可换的动作（去掉原动作本身、以及名字一样的重复项）
+function altList(id,eq){
+  const def=idKey(id,eq), d=kInfo(def), seen=new Set([d.en+"|"+d.name]);
+  return (ALTS[id]||[]).filter(k=>{ if(k===def||!validKey(k)) return false; const x=kInfo(k), sig=x.en+"|"+x.name; if(seen.has(sig)) return false; seen.add(sig); return true; });
+}
+function setAlt(id,eq,k){ if(!k||k===idKey(id,eq)) delete cfg.alts[idKey(id,eq)]; else cfg.alts[idKey(id,eq)]=k; saveCfg(); }
 // ---------- 真人示范照片（Free Exercise DB，公共领域；存在 photos/，离线可看） ----------
 // [照片编号, 跟本动作不完全一样时的说明]
 const PH_EN={
@@ -853,7 +921,6 @@ function photoOf(en,anim,hold){
   if(cfg.media==="anim"){ const f=anim&&!Array.isArray(anim)&&animFile(anim,hold); if(f) return {anim:f}; }
   if(cfg.media!=="photo"&&cfg.media!=="anim") return null; const p=(en&&PH_EN[en])||PH_ANIM[anim]; if(!p||(p[2]&&!hold)) return null; return p; }
 function photoHTML(p){ if(p.anim) return '<div class="ph anim" role="img" aria-label="动作示范动图"><img src="anim/'+p.anim+'.webp" alt="动作示范动图" loading="lazy" decoding="async"><span class="ph-tag">动作示范</span></div>'; return '<div class="ph" role="img" aria-label="真人示范照片：起始与结束动作"><img src="photos/'+p[0]+'-0.jpg" alt="起始动作" loading="lazy" decoding="async"><img src="photos/'+p[0]+'-1.jpg" alt="结束动作" loading="lazy" decoding="async"><span class="ph-tag">真人示范</span>'+(p[1]?'<span class="ph-note">'+esc(p[1])+'</span>':'')+'</div>'; }
-function usesKg(id,eq){ return eq!=="bw"; }
 function weekStart(d){ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x.getTime(); }
 function weeksBetween(a,b){ return Math.round((weekStart(b)-weekStart(a))/(7*DAY)); }
 function fmtDate(ts){ const d=new Date(ts); return (d.getMonth()+1)+"月"+d.getDate()+"日（"+"日一二三四五六"[d.getDay()]+"）"; }
@@ -884,21 +951,21 @@ function rounds(){ return cycleInfo().deload?2:3; }
 
 // ---------- 进步建议（双重进步法） ----------
 // 取某动作（同器材、非减量周）最近几次的已完成组，新的在前
-function histFor(id,eq,n){
+function histFor(k,n){
   const out=[];
   for(const s of sorted()){
-    if(s.equip!==eq||s.deload) continue;
-    const sets=(s.sets||[]).filter(x=>x.ex===id&&x.done);
+    if(s.deload) continue;
+    const sets=(s.sets||[]).filter(x=>x.done&&setKey(s,x)===k);
     if(sets.length){ out.push({ts:s.ts,sets}); if(out.length>=(n||2)) break; }
   }
   return out;
 }
 function topKg(sets){ return sets.reduce((m,x)=>Math.max(m,num(x.kg)||0),0); }
-function suggest(id,eq){
-  const x=exInfo(id,eq), r=parseRange(x.target), h=histFor(id,eq,2), dl=cycleInfo().deload, st=stepOf(eq);
-  if(!h.length) return {kg:null,reps:r?r.hi:null,dir:"new",text:usesKg(id,eq)?"第一次做：先试重，找到做到目标次数时还剩 1–2 下力气的重量。":"第一次做：先照目标次数做，记下实际做了几下。"};
+function suggest(k){ // k＝动作身份
+  const x=kInfo(k), r=parseRange(x.target), h=histFor(k,2), dl=cycleInfo().deload, st=stepK(k);
+  if(!h.length) return {kg:null,reps:r?r.hi:null,dir:"new",text:kgK(k)?"第一次做：先试重，找到做到目标次数时还剩 1–2 下力气的重量。":"第一次做：先照目标次数做，记下实际做了几下。"};
   const last=h[0].sets;
-  if(!usesKg(id,eq)){
+  if(!kgK(k)){
     const best=last.reduce((m,s)=>Math.max(m,+s.reps||0),0);
     const goal=r?Math.max(r.lo,Math.min(best+1,r.hi+5)):best+1;
     if(dl) return {kg:null,reps:Math.max(1,Math.round(best*0.7)),dir:"down",text:"减量周：每组做到上次的 7 成左右（约 "+Math.max(1,Math.round(best*0.7))+" 下），轻松完成。"};
@@ -916,9 +983,9 @@ function suggest(id,eq){
   if(dl){ kg=Math.max(st,roundTo(kg*0.9,st)); dir="down"; text="减量周：用 "+kgStr(kg)+" kg（约 9 成），只做 2 轮，每组留 3 下力气。"; }
   return {kg,reps:r?(dir==="up"&&!dl?r.lo:r.hi):null,dir,text};
 }
-function lastText(id,eq){
-  const h=histFor(id,eq,1); if(!h.length) return "上次：还没有记录";
-  return "上次（"+fmtShort(h[0].ts)+"）："+h[0].sets.slice().sort((a,b)=>a.set-b.set).map(s=>(usesKg(id,eq)?kgStr(num(s.kg)||0)+"kg×":"")+(s.reps||"-")+(s.rir!=null&&s.rir!==""?"（余"+s.rir+"）":"")).join(" · ");
+function lastText(k){
+  const h=histFor(k,1); if(!h.length) return "上次：还没有记录";
+  return "上次（"+fmtShort(h[0].ts)+"）："+h[0].sets.slice().sort((a,b)=>a.set-b.set).map(s=>(kgK(k)?kgStr(num(s.kg)||0)+"kg×":"")+(s.reps||"-")+(s.rir!=null&&s.rir!==""?"（余"+s.rir+"）":"")).join(" · ");
 }
 function sugHTML(sg){
   const ar={up:"↑",down:"↓",same:"＝",new:"●"}[sg.dir];
@@ -996,7 +1063,7 @@ function ensureDraft(wk){ if(!draft||draft.wk!==wk||draft.equip!==cfg.equip){ dr
 function ensureStarted(){ if(current&&!current.start){ current.start=Date.now(); saveDraft(); } }
 function saveDraft(){ ls.set(DKEY,current); }
 function val(key){ return current.vals[key]=current.vals[key]||{}; }
-function defaultKg(id){ const sg=suggest(id,cfg.equip); return sg.kg!=null?kgStr(sg.kg):""; }
+function defaultKg(k){ const sg=suggest(k); return sg.kg!=null?kgStr(sg.kg):""; }
 
 // ---------- Render: train ----------
 function renderHeader(){
@@ -1024,11 +1091,13 @@ function renderWorkout(){
   P.blocks.forEach((pair,bi)=>{
     h+='<div class="card"><div class="block-head"><h2>超级组 '+(bi+1)+'</h2><span class="small muted">两个动作连做 → 休息 '+cfg.rest+' 秒 · 共 '+R+' 轮</span></div>';
     pair.forEach((id,ei)=>{
-      const x=exInfo(id,eq), kg=usesKg(id,eq), sg=suggest(id,eq);
+      const k=curKey(id,eq), sw=k!==idKey(id,eq), x=kInfo(k), kg=kgK(k), sg=suggest(k);
       const ph=photoOf(x.en,x.anim,x.hold);
-      h+='<div class="ex'+(ei===0?' first':'')+'">'+(ph?photoHTML(ph):'')+'<div class="ex-top'+(ph?' one':'')+'">'+(ph?'':'<canvas class="thumb" data-anim="'+x.anim+'" data-hold="'+(x.hold||"")+'"></canvas>')+'<div>'+
+      h+='<div class="ex'+(ei===0?' first':'')+'" data-slot="'+id+'" data-k="'+k+'">'+(ph?photoHTML(ph):'')+'<div class="ex-top'+(ph?' one':'')+'">'+(ph?'':'<canvas class="thumb" data-anim="'+x.anim+'" data-hold="'+(x.hold||"")+'"></canvas>')+'<div>'+
          '<span class="eyebrow">'+(ei?'B':'A')+(bi+1)+'</span><h3>'+esc(x.name)+'</h3><span class="target">'+esc(tgtLabel(x.target))+'</span></div></div>';
-      h+=sugHTML(sg)+'<div class="last">'+esc(lastText(id,eq))+'</div>';
+      h+='<div class="swap-row">'+(sw?'<span class="pill swp" title="已换成替代动作">已换</span><span class="small muted">原动作：'+esc(kInfo(idKey(id,eq)).name)+'</span>':'')+
+         '<button class="btn ghost small" data-swap="'+id+'" aria-expanded="false" aria-controls="alts-'+id+'">换动作</button></div><div class="alts" id="alts-'+id+'" hidden></div>';
+      h+=sugHTML(sg)+'<div class="last">'+esc(lastText(k))+'</div>';
       h+='<div class="sets'+(kg?'':' bw')+'"><span class="lbl">组</span>'+(kg?'<span class="lbl">重量 kg</span>':'')+'<span class="lbl">次数</span><span class="lbl">余力</span><span></span>';
       for(let s=0;s<R;s++){
         const key=id+"_"+s, v=current.vals[key]||{}, kgv=v.kg!=null?v.kg:(sg.kg!=null?kgStr(sg.kg):"");
@@ -1056,6 +1125,21 @@ function renderWorkout(){
   ["warm","fin","cool"].forEach(paintTimer);
   paintStoreNote();
 }
+// 「换动作」清单：原动作在最前（标「原动作」），之后按接近程度排；点一个就换，会记住（每个槽位、每种器材版各记各的）
+function altHTML(id,eq){
+  const cur=curKey(id,eq), def=idKey(id,eq);
+  return '<p class="small muted">器材没有或被占用就换一个，练的是同样的部位。会记住，下次「'+EQ_LABEL[eq]+'版」还是这个；记录与加重建议各算各的。</p>'+
+    [def].concat(altList(id,eq)).map(k=>{ const x=kInfo(k), f=animFile(x.anim,x.hold);
+      return '<button class="alt" data-alt="'+k+'" data-slot="'+id+'" aria-pressed="'+(k===cur)+'">'+(f?'<img src="anim/'+f+'.webp" alt="" loading="lazy" decoding="async">':'<span class="noimg"></span>')+
+        '<span class="alt-t"><b>'+esc(x.name)+'</b><span class="small muted"><span class="tag">'+esc(x.tag)+'</span>'+esc(tgtLabel(x.target))+(k===def?' · 原动作':'')+(k===cur?' · 现在用这个':'')+'</span></span></button>'; }).join("")+
+    (cur!==def?'<button class="btn ghost small" data-alt="'+def+'" data-slot="'+id+'" data-restore="1">恢复原动作</button>':'');
+}
+// 换动作：这次训练里该槽位还没打勾的组清空（重量建议换成新动作的）；已打勾的组保留它们当时的动作身份
+function swapTo(id,k){
+  const eq=cfg.equip; setAlt(id,eq,k);
+  if(current) for(const key in current.vals){ const v=current.vals[key]; if(key.split("_")[0]===id&&!v.done) delete current.vals[key]; }
+  if(current) saveDraft();
+}
 // 热身/放松清单：每个动作一张小动画＋秒数＋要点＋真人示范
 function moveList(arr){
   return arr.map((w,i)=>{ const nm=w[0].split("（")[0], note=(w[0].match(/（(.*)）/)||[])[1];
@@ -1074,12 +1158,17 @@ $("workout").addEventListener("input",e=>{
 });
 $("workout").addEventListener("change",e=>{ const i=e.target; if(i.tagName==="SELECT"&&i.dataset.key){ val(i.dataset.key).rir=i.value; saveDraft(); } });
 function markDone(key,done){
-  const v=val(key), [id]=key.split("_"), kgEl=$("kg-"+key);
-  if(v.kg==null) v.kg=kgEl?kgEl.value:defaultKg(id);
-  if(!v.reps){ const sg=suggest(id,current.equip); v.reps=String(sg.reps||topReps(exInfo(id,current.equip).target)||""); }
+  const v=val(key), [id]=key.split("_"), kgEl=$("kg-"+key), k=curKey(id,current.equip);
+  if(done) v.k=k; // 记下这组是用哪个动作做的（中途换动作也不会算错）
+  if(v.kg==null) v.kg=kgEl?kgEl.value:defaultKg(k);
+  if(!v.reps){ const sg=suggest(k); v.reps=String(sg.reps||topReps(kInfo(k).target)||""); }
   v.done=done; ensureStarted(); saveDraft();
 }
 $("workout").addEventListener("click",e=>{
+  const sb=e.target.closest("[data-swap]");
+  if(sb){ const id=sb.dataset.swap, box=$("alts-"+id), open=box.hidden; if(open) box.innerHTML=altHTML(id,cfg.equip); box.hidden=!open; sb.setAttribute("aria-expanded",open); return; }
+  const ab=e.target.closest("[data-alt]");
+  if(ab){ const id=ab.dataset.slot; swapTo(id,ab.dataset.alt); renderWorkout(); renderGarmin(); const c=document.querySelector('#workout .ex[data-slot="'+id+'"]'); if(c&&c.scrollIntoView) c.scrollIntoView({block:"nearest"}); return; }
   const f=e.target.closest("[data-feel]");
   if(f){ current.feel=+f.dataset.feel; saveDraft(); document.querySelectorAll("#workout [data-feel]").forEach(b=>b.setAttribute("aria-pressed",b===f)); return; }
   const b=e.target.closest("[data-done]");
@@ -1091,7 +1180,7 @@ $("workout").addEventListener("click",e=>{
   if(e.target.id==="finishBtn") finishWorkout(e.target);
 });
 async function finishWorkout(btn){
-  const sets=[]; for(const k in current.vals){ const [ex,s]=k.split("_"); const v=current.vals[k]; if(v.done&&EX[ex]) sets.push({ex,set:+s+1,kg:usesKg(ex,current.equip)?(num(v.kg)||0):null,reps:parseInt(v.reps)||0,rir:(v.rir===""||v.rir==null)?null:+v.rir,done:true}); }
+  const sets=[]; for(const k in current.vals){ const [ex,s]=k.split("_"); const v=current.vals[k]; if(v.done&&EX[ex]){ const k=validKey(v.k)?v.k:curKey(ex,current.equip), o={ex,set:+s+1,kg:kgK(k)?(num(v.kg)||0):null,reps:parseInt(v.reps)||0,rir:(v.rir===""||v.rir==null)?null:+v.rir,done:true}; if(k!==idKey(ex,current.equip)) o.k=k; sets.push(o); } }
   if(!sets.length){ paintStoreNote("还没勾选任何一组。每组做完按 ✓（或在跟练里按「完成这组」），再按储存。"); return false; }
   const now=Date.now(), dur=current.start?Math.round((now-current.start)/60000):null;
   const s={id:"s_"+now,ts:now,wk:current.wk,equip:current.equip,dur,fin:current.fin||"",feel:current.feel||null,note:current.note||"",deload:cycleInfo(now).deload,sets};
@@ -1105,13 +1194,12 @@ async function finishWorkout(btn){
   return s;
 }
 // 这次训练里有哪些动作刷新了估算最大力量（e1RM）
-function findPRs(s){
+function findPRs(s){ // 按动作身份比：换成替代动作的组只跟同一个动作的历史比
   const out=[];
-  if(s.equip==="bw") return out;
-  const by={}; s.sets.forEach(x=>{ if(x.kg>0&&x.reps>0){ const e=e1rm(x.kg,x.reps); by[x.ex]=Math.max(by[x.ex]||0,e); } });
-  for(const id in by){
-    let prev=0; sessions.forEach(o=>{ if(o.equip!==s.equip) return; o.sets.forEach(x=>{ if(x.ex===id&&x.kg>0&&x.reps>0) prev=Math.max(prev,e1rm(x.kg,x.reps)); }); });
-    if(prev>0&&by[id]>prev+0.01) out.push(exInfo(id,s.equip).name);
+  const by={}; s.sets.forEach(x=>{ const k=setKey(s,x); if(kgK(k)&&x.kg>0&&x.reps>0){ const e=e1rm(x.kg,x.reps); by[k]=Math.max(by[k]||0,e); } });
+  for(const k in by){
+    let prev=0; sessions.forEach(o=>{ (o.sets||[]).forEach(x=>{ if(setKey(o,x)===k&&x.kg>0&&x.reps>0) prev=Math.max(prev,e1rm(x.kg,x.reps)); }); });
+    if(prev>0&&by[k]>prev+0.01) out.push(kName(k));
   }
   return out;
 }
@@ -1174,10 +1262,10 @@ function drawChart(el,pts,opt){
 
 // ---------- Render: 进度 ----------
 let exSel=null;
-function exSeries(key){
-  const [id,eq]=key.split("|"), kg=usesKg(id,eq), out=[];
+function exSeries(key){ // key＝动作身份
+  const kg=kgK(key), out=[];
   sessions.slice().sort((a,b)=>a.ts-b.ts).forEach(s=>{
-    if(s.equip!==eq) return; const sets=s.sets.filter(x=>x.ex===id&&x.done&&x.reps>0); if(!sets.length) return;
+    const sets=(s.sets||[]).filter(x=>x.done&&x.reps>0&&setKey(s,x)===key); if(!sets.length) return;
     if(kg){ let b=null; sets.forEach(x=>{ const e=e1rm(x.kg||0,x.reps); if(!b||e>b.e) b={e,x}; }); out.push({ts:s.ts,y:r1(b.e),best:kgStr(b.x.kg)+"kg × "+b.x.reps,deload:s.deload}); }
     else { const m=Math.max(...sets.map(x=>x.reps)); out.push({ts:s.ts,y:m,best:m+" 下",deload:s.deload}); }
   });
@@ -1197,13 +1285,13 @@ function renderProg(){
     ['体重变化（约 4 周）',bDelta==null?'—':(bDelta>0?'+':'')+bDelta,bDelta==null?'':'kg']
   ].map(t=>'<div class="tile"><span class="eyebrow">'+t[0]+'</span><span class="num">'+t[1]+'<small>'+t[2]+'</small></span></div>').join("");
   // exercise picker
-  const keys=[]; sorted().forEach(s=>s.sets.forEach(x=>{ const k=x.ex+"|"+s.equip; if(EX[x.ex]&&!keys.includes(k)) keys.push(k); }));
+  const keys=[]; sorted().forEach(s=>s.sets.forEach(x=>{ const k=setKey(s,x); if(validKey(k)&&!keys.includes(k)) keys.push(k); }));
   if(!exSel||!keys.includes(exSel)) exSel=keys[0]||null;
-  $("exPick").innerHTML=keys.map(k=>{ const [id,eq]=k.split("|"); return '<button class="chip" data-exk="'+k+'" aria-pressed="'+(k===exSel)+'">'+esc(exInfo(id,eq).name.replace(/（.*?）/g,""))+(eq!=="db"?' · '+EQ_LABEL[eq]:'')+'</button>'; }).join("");
+  $("exPick").innerHTML=keys.map(k=>{ const eq=k.split(":")[0]; return '<button class="chip" data-exk="'+k+'" aria-pressed="'+(k===exSel)+'">'+esc(kName(k).replace(/（.*?）/g,""))+(eq==="bw"||eq==="gym"?' · '+EQ_LABEL[eq]:'')+'</button>'; }).join("");
   if(exSel){
-    const [id,eq]=exSel.split("|"), kg=usesKg(id,eq), ser=exSeries(exSel);
+    const kg=kgK(exSel), ser=exSeries(exSel);
     $("exChartUnit").textContent=kg?"估算最大力量（kg）":"单组最多次数";
-    drawChart($("exChart"),ser.map(p=>({x:fmtShort(p.ts),y:p.y,tip:fmtShort(p.ts)+(p.deload?"（减量周）":"")+"<br>最佳一组 "+esc(p.best)+(kg?"<br>估算最大力量 "+p.y+" kg":"")})),{kind:"line",label:exInfo(id,eq).name+" 进步曲线",empty:"练过两次以上就会出现曲线"});
+    drawChart($("exChart"),ser.map(p=>({x:fmtShort(p.ts),y:p.y,tip:fmtShort(p.ts)+(p.deload?"（减量周）":"")+"<br>最佳一组 "+esc(p.best)+(kg?"<br>估算最大力量 "+p.y+" kg":"")})),{kind:"line",label:kName(exSel)+" 进步曲线",empty:"练过两次以上就会出现曲线"});
     let best=0; const rows=ser.map(p=>{ const pr=p.y>best&&best>0; best=Math.max(best,p.y); return {p,pr}; }).reverse().slice(0,6);
     $("exTable").innerHTML='<table class="t"><thead><tr><th>日期</th><th>最佳一组</th><th class="r">'+(kg?'估算最大力量':'次数')+'</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+fmtShort(r.p.ts)+(r.p.deload?' <span class="small muted">减量</span>':'')+'</td><td>'+esc(r.p.best)+(r.pr?'<span class="pr">新纪录</span>':'')+'</td><td class="r">'+r.p.y+(kg?' kg':'')+'</td></tr>').join("")+'</tbody></table>'+(kg?'<p class="small muted" style="margin-top:6px">「估算最大力量」用 Epley 公式从重量和次数推算（重量 × (1 + 次数 ÷ 30)），不用真的去试极限，拿来比较自己前后进步。</p>':'');
   } else { $("exChartUnit").textContent=""; drawChart($("exChart"),[],{empty:"储存第一次训练后，这里会显示每个动作的进步曲线"}); $("exTable").innerHTML=""; }
@@ -1246,8 +1334,8 @@ function renderHist(){
   warn.innerHTML=stale?(cfg.lastBackup?"距离上次备份已经 "+Math.floor((Date.now()-cfg.lastBackup)/DAY)+" 天。":"你还没备份过。")+'清除浏览器资料或换手机会让记录消失——到「更多」按一下「导出备份」。':"";
   if(!list.length){ $("histList").innerHTML='<h2>还没有训练记录</h2><p class="muted">跟练里每组按「完成这组」，或在清单里按 ✓，最后储存，记录就会出现在这里，并在下次给你重量建议。</p>'; return; }
   $("histList").innerHTML='<h2>历史记录</h2>'+list.map(s=>{
-    const by={}; s.sets.forEach(x=>{(by[x.ex]=by[x.ex]||[]).push(x)});
-    const lines=Object.keys(by).map(id=>(EX[id]?exInfo(id,s.equip||"db").name:id)+'：'+by[id].sort((a,b)=>a.set-b.set).map(x=>(x.kg!=null?kgStr(x.kg)+'kg×':'')+x.reps).join(' · '));
+    const by={}; s.sets.forEach(x=>{ const k=setKey(s,x); (by[k]=by[k]||[]).push(x); });
+    const lines=Object.keys(by).map(k=>kName(k)+'：'+by[k].sort((a,b)=>a.set-b.set).map(x=>(x.kg!=null?kgStr(x.kg)+'kg×':'')+x.reps).join(' · '));
     const feel=(FEEL.find(f=>f[0]===s.feel)||[])[1];
     const del=pendingDel===s.id?'<button class="btn plate" data-cdel="'+s.id+'">确认删除</button><button class="btn ghost" data-xdel="1">取消</button>':'<button class="btn ghost small" data-del="'+s.id+'">删除</button>';
     return '<div class="hist-item"><div class="row between"><div class="row"><span class="pill next">'+s.wk+'</span><b>'+fmtDate(s.ts)+'</b><span class="small muted">'+(EQ_LABEL[s.equip]||"")+(s.dur?' · '+s.dur+' 分钟':'')+(s.deload?' · 减量周':'')+(feel?' · '+feel:'')+'</span></div><div class="row">'+del+'</div></div><div class="small muted">'+lines.map(esc).join('<br>')+(s.fin?'<br>收尾：'+esc(s.fin):'')+(s.note?'<br>备注：'+esc(s.note):'')+'</div></div>';
@@ -1279,7 +1367,7 @@ $("bkJson").onclick=()=>{
 };
 $("bkCsv").onclick=()=>{
   const rows=[["日期","训练","器材","动作","组","重量kg","次数","余力","减量周"]];
-  sorted().reverse().forEach(s=>s.sets.slice().sort((a,b)=>a.ex===b.ex?a.set-b.set:0).forEach(x=>rows.push([isoDay(s.ts),s.wk,EQ_LABEL[s.equip]||s.equip,EX[x.ex]?exInfo(x.ex,s.equip).name:x.ex,x.set,x.kg==null?"":x.kg,x.reps,x.rir==null?"":x.rir,s.deload?"是":""])));
+  sorted().reverse().forEach(s=>s.sets.slice().sort((a,b)=>a.ex===b.ex?a.set-b.set:0).forEach(x=>rows.push([isoDay(s.ts),s.wk,EQ_LABEL[s.equip]||s.equip,kName(setKey(s,x)),x.set,x.kg==null?"":x.kg,x.reps,x.rir==null?"":x.rir,s.deload?"是":""])));
   download("训练记录-"+isoDay(Date.now())+".csv","﻿"+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n"),"text/csv");
   $("bkMsg").textContent="已导出表格，可用 Excel 或 Google 表格打开。";
 };
@@ -1293,6 +1381,7 @@ $("bkFile").onchange=async e=>{
     (d.body||[]).forEach(b=>{ if(b&&b.id&&isFinite(b.kg)&&!body.some(x=>x.id===b.id)){ body.push(b); nb++; } });
     (d.cardio||[]).forEach(c=>{ if(c&&c.id&&!cardio.some(x=>x.id===c.id)) cardio.push(c); }); saveCardio();
     (d.vo2||[]).forEach(v=>{ if(v&&v.id&&isFinite(v.v)&&!vo2.some(x=>x.id===v.id)) vo2.push(v); }); saveVo2();
+    if(d.cfg&&d.cfg.alts&&typeof d.cfg.alts==="object"){ for(const k in d.cfg.alts){ const [eq,id]=k.split(":"); if(EX[id]&&EQ_LABEL[eq]&&validKey(d.cfg.alts[k])&&!cfg.alts[k]) cfg.alts[k]=d.cfg.alts[k]; } saveCfg(); } // 换过的动作也一起还原（本机已经换过的不覆盖）
     if(d.swim&&typeof d.swim==="object"){ for(const k in d.swim) if(!swim[k]&&SWIM.some(x=>x.id===k)) swim[k]=d.swim[k]; ls.set(WKEY,swim); }
     saveSessions(); saveBody(); renderAll();
     $("bkMsg").textContent="导入完成：新增 "+ns+" 次训练、"+nb+" 笔体重（重复的自动略过）。";
@@ -1306,7 +1395,7 @@ function garminText(wk){
   const P=PLAN[wk], F=FIN[wk], L=[], R=rounds();
   L.push("训练 "+wk+"（"+P.focus+"）· 力量 · "+EQ_LABEL[cfg.equip]+"版");
   L.push("1. 热身：按时间 4:00");
-  P.blocks.forEach((pair,i)=>{ L.push((i+2)+". 重复 "+R+" 次："); pair.forEach(id=>{ const x=exInfo(id,cfg.equip); L.push("   · "+x.name+"（"+x.en+"）"+x.target+(/^\d/.test(x.target)?" 次":"")); }); L.push("   · 休息 "+mmss(cfg.rest)); });
+  P.blocks.forEach((pair,i)=>{ L.push((i+2)+". 重复 "+R+" 次："); pair.forEach(id=>{ const x=kInfo(curKey(id,cfg.equip)); L.push("   · "+x.name+"（"+x.en+"）"+x.target+(/^\d/.test(x.target)?" 次":"")); }); L.push("   · 休息 "+mmss(cfg.rest)); });
   L.push("4. 燃脂收尾："+F.garmin);
   L.push("5. 放松：按时间 3:00");
   return L.join("\n");
@@ -1324,7 +1413,7 @@ function buildSteps(){
   WARM.forEach((w,i)=>S.push({kind:"timed",phase:"热身 "+(i+1)+"/"+WARM.length,name:w[0],sec:w[1],anim:w[2],hold:null,cue:w[3],en:w[4],speak:w[0]+"，"+w[1]+"秒"}));
   P.blocks.forEach((pair,bi)=>{
     for(let r=0;r<R;r++){
-      pair.forEach((id,ei)=>{ const x=exInfo(id,eq); S.push({kind:"set",phase:"超级组 "+(bi+1)+" · 第 "+(r+1)+"/"+R+" 轮 · "+(ei?"B":"A")+(bi+1),name:x.name,target:x.target,anim:x.anim,hold:x.hold,cue:x.cue,en:x.en,id,key:id+"_"+r,speak:x.name+"，"+tgtLabel(x.target).replace("–","到")}); });
+      pair.forEach((id,ei)=>{ const k=curKey(id,eq), x=kInfo(k); S.push({kind:"set",k,phase:"超级组 "+(bi+1)+" · 第 "+(r+1)+"/"+R+" 轮 · "+(ei?"B":"A")+(bi+1),name:x.name,target:x.target,anim:x.anim,hold:x.hold,cue:x.cue,en:x.en,id,key:id+"_"+r,speak:x.name+"，"+tgtLabel(x.target).replace("–","到")}); });
       const lastOfBlock=r===R-1, lastBlock=bi===P.blocks.length-1;
       const nextLabel=!lastOfBlock?"第 "+(r+2)+" 轮":(!lastBlock?"超级组 "+(bi+2):"燃脂收尾");
       S.push({kind:"rest",phase:"休息",name:"休息，准备"+nextLabel,sec:cfg.rest,speak:"休息"+cfg.rest+"秒"});
@@ -1377,11 +1466,12 @@ function showStep(autostart){
   let m="";
   if(s.zone) m+='<div class="zone '+s.zone.cls+'"><span>'+esc(s.zone.label)+'</span><small>'+esc(s.zone.hr||"")+'</small></div>';
   if(s.kind==="set"){
-    const v=val(s.key), eq=cfg.equip, kg=usesKg(s.id,eq), sg=suggest(s.id,eq), kgv=v.kg!=null?v.kg:(sg.kg!=null?kgStr(sg.kg):"");
+    const v=val(s.key), kg=kgK(s.k), sg=suggest(s.k), kgv=v.kg!=null?v.kg:(sg.kg!=null?kgStr(sg.kg):"");
     if(v.kg==null&&kgv!=="") v.kg=kgv;
-    const st=stepOf(eq);
+    const st=stepK(s.k), swd=s.k!==idKey(s.id,cfg.equip);
     m+='<div class="row between"><span class="pl-target">'+esc(tgtLabel(s.target))+'</span>'+(v.done?'<span class="pill" style="background:var(--ok);color:#fff">已完成 ✓</span>':'')+'</div>';
-    m+=sugHTML(sg)+'<div class="small muted">'+esc(lastText(s.id,eq))+'</div>';
+    m+='<div class="swap-row">'+(swd?'<span class="pill swp">已换</span><span class="small muted">原动作：'+esc(kInfo(idKey(s.id,cfg.equip)).name)+'</span>':'')+'<button class="btn ghost small" data-plswap="'+s.id+'" aria-expanded="false">换动作</button></div><div class="alts" id="plAlts" hidden></div>';
+    m+=sugHTML(sg)+'<div class="small muted">'+esc(lastText(s.k))+'</div>';
     m+='<div class="pl-inputs">'+(kg?'<label>重量 kg<div class="stepper"><button data-stp="kg" data-d="-'+st+'" aria-label="减 '+st+' kg">−</button><input class="inp" id="plKg" inputmode="decimal" value="'+esc(kgv)+'" placeholder="kg"><button data-stp="kg" data-d="'+st+'" aria-label="加 '+st+' kg">＋</button></div></label>':'')+
        '<label'+(kg?'':' style="grid-column:1 / -1"')+'>实际次数<div class="stepper"><button data-stp="reps" data-d="-1" aria-label="减次数">−</button><input class="inp" id="plReps" inputmode="numeric" value="'+esc(v.reps!=null&&v.reps!==""?v.reps:(sg.reps||topReps(s.target)))+'" placeholder="次"><button data-stp="reps" data-d="1" aria-label="加次数">＋</button></div></label></div>';
     m+='<div class="rir"><span class="rir-lbl">做完还能再做几下？</span>'+[0,1,2,3].map(n=>'<button class="chip" data-rir="'+n+'" aria-pressed="'+(String(v.rir)===String(n))+'">'+(n===3?"3+":n)+'</button>').join("")+'</div>';
@@ -1450,6 +1540,10 @@ $("plNextBtn").onclick=()=>go(1);
 $("plClose").onclick=closePlayer;
 $("plVoice").onclick=()=>{ cfg.voice=!cfg.voice; saveCfg(); $("plVoice").setAttribute("aria-pressed",cfg.voice); renderCfg(); if(!cfg.voice) try{speechSynthesis.cancel()}catch(e){} };
 $("plMain").addEventListener("click",e=>{
+  const ps=e.target.closest("[data-plswap]");
+  if(ps){ const box=$("plAlts"), open=box.hidden; if(open) box.innerHTML=altHTML(ps.dataset.plswap,cfg.equip); box.hidden=!open; ps.setAttribute("aria-expanded",open); return; }
+  const pa=e.target.closest("[data-alt]");
+  if(pa){ swapTo(pa.dataset.slot,pa.dataset.alt); steps=buildSteps(); showStep(false); return; } // 步骤结构不变，只是那个槽位的动作换了
   const st=e.target.closest("[data-stp]");
   if(st){ const inp=$(st.dataset.stp==="kg"?"plKg":"plReps"); let v=num(inp.value)||0; v=Math.max(0,r1(v+(+st.dataset.d))); inp.value=v; val(steps[si].key)[st.dataset.stp]=String(v); saveDraft(); return; }
   const rb=e.target.closest("[data-rir]");
@@ -1671,12 +1765,13 @@ if("serviceWorker" in navigator && location.protocol!=="file:"){ addEventListene
 function animCombos(){
   const set=new Map(), add=(anim,hold)=>{ if(!anim) return; const file=anim+(hold?"-"+hold:""); if(!set.has(file)) set.set(file,{anim,hold:hold||null,file}); };
   for(const id in EX) for(const eq of ["db","bw","gym"]) { const v=EX[id][eq]; if(v) add(v[3],v[4]); }
+  for(const n in ALTX) add(ALTX[n].anim,ALTX[n].hold); // 替代动作
   for(const k in FIN) for(const eq in FIN[k].items) FIN[k].items[eq].forEach(it=>add(it[1],it[2]));
   WARM.concat(COOL).forEach(w=>add(w[2],null));
   SWIM.forEach(d=>add(d.anim,null));
   return [...set.values()];
 }
-window.__fit={suggest,cycleInfo,e1rm,photos:{PH_EN,PH_ANIM},animCombos}; // 给自检脚本用
+window.__fit={suggest,cycleInfo,e1rm,photos:{PH_EN,PH_ANIM},animCombos,alts:{ALTS,ALTX,altList,curKey,kInfo,validKey}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>
