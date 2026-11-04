@@ -37,6 +37,7 @@ const M = {
   prop: std(0xb9c4c1, { roughness: 0.8 }),
   wood: std(0xc9a57a, { roughness: 0.75 }),
   board: std(0xf2b33d, { roughness: 0.55 }),
+  band: std(0xe39b2d, { roughness: 0.6 }), cable: std(0x2a2f36, { roughness: 0.5 }), chrome: std(0xb9c2cc, { roughness: 0.3, metalness: 0.8 }),
   floor: std(0xe5eeeb, { roughness: 0.95 }),
   tile: std(0xbfe3ef, { roughness: 0.9 }),
   water: new THREE.MeshStandardMaterial({ color: 0x3fa7d6, transparent: true, opacity: 0.26, roughness: 0.15, depthWrite: false }),
@@ -92,7 +93,7 @@ function dumbbell() {
 const DB = [dumbbell(), dumbbell()];
 
 // 器材：一组可重复使用的方块
-const boxes = []; for (let i = 0; i < 6; i++) { const b = mesh(new THREE.BoxGeometry(1, 1, 1), M.prop); boxes.push(b); }
+const boxes = []; for (let i = 0; i < 10; i++) { const b = mesh(new THREE.BoxGeometry(1, 1, 1), M.prop); boxes.push(b); }
 let nb = 0;
 function box(x0, x1, y0, y1, depth, mat, rotZ = 0, cx = null, cy = null) {
   const b = boxes[nb++]; if (!b) return;
@@ -100,6 +101,16 @@ function box(x0, x1, y0, y1, depth, mat, rotZ = 0, cx = null, cy = null) {
   b.scale.set(Math.max(0.5, Math.abs(x1 - x0)), Math.max(0.5, Math.abs(y1 - y0)), depth);
   b.position.set(cx ?? (x0 + x1) / 2, cy ?? (y0 + y1) / 2, 0); b.rotation.set(0, 0, rotZ);
 }
+
+// 圆柱（弹力带、钢索、把手）：两点之间
+const rods = []; for (let i = 0; i < 8; i++) { const m = mesh(new THREE.CylinderGeometry(1, 1, 1, 10), M.cable); m.visible = false; rods.push(m); }
+let nr = 0; const Y_UP = new THREE.Vector3(0, 1, 0);
+function rod(a, b, r, mat) {
+  const m = rods[nr++]; if (!m) return; m.visible = true; m.material = mat;
+  const d = b.clone().sub(a), L = d.length(); m.scale.set(r, L, r); m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(Y_UP, d.normalize());
+}
+const v3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 // 地面与泳池
 // 地板：一圈淡淡的圆，颜色跟着页面主题；阴影另外投在透明的接影面上
@@ -178,10 +189,11 @@ function pose(s, hold, swim, time) {
   if (hold === 'hands') { DB[0].rotation.set(0, 0, 0); DB[1].rotation.set(0, 0, 0); }
 
   // 器材
-  nb = 0; boxes.forEach(b => (b.visible = false));
+  nb = 0; boxes.forEach(b => (b.visible = false)); nr = 0; rods.forEach(r => (r.visible = false));
   const X = n => P[n][0], Y = n => P[n][1];
   for (const pr of s.props) {
     if (pr === 'bench') { const x1 = Math.min(X('sh'), X('hip')) - 7, x2 = Math.max(X('sh'), X('hip')) + 9, top = Math.min(Y('sh'), Y('hip')) - 6; box(x1, x2, top - 5, top, 26, M.prop); box(x1 + 6, x1 + 10, 0, top - 5, 18, M.iron); box(x2 - 10, x2 - 6, 0, top - 5, 18, M.iron); }
+    if (pr === 'tbench') { const bx = X('sh'); box(bx - 30, bx + 2, 0, Y('sh') - 4, 30, M.prop); } // 臀推：上背靠的长凳
     if (pr === 'pad') { const x1 = Math.min(X('sh'), X('nk')) - 3, x2 = Math.max(X('sh'), X('nk')) + 3, top = Math.min(Y('sh'), Y('hip')) - 6; box(x1, x2, top - 5, top, 26, M.prop); box((x1 + x2) / 2 - 2, (x1 + x2) / 2 + 2, 0, top - 5, 14, M.iron); }
     if (pr === 'seat') { const sx = X('hip'), top = Y('hip') - 5.5; box(sx - 13, sx + 14, top - 5, top, 28, M.prop); box(sx - 2, sx + 2, 0, top - 5, 10, M.iron); }
     if (pr === 'back') { const x = X('hip') - 8.5; box(x - 2.5, x + 2.5, Y('hip') - 3, Y('sh') + 6, 24, M.prop); }
@@ -199,6 +211,21 @@ function pose(s, hold, swim, time) {
     if (pr === 'wallR') { const wx = X('nh') + 4; box(wx, wx + 10, 0, s.pool.surface + 9, 260, M.tile); }
     if (pr === 'wallL') { const wx = s.wallX; box(wx - 10, wx, 0, s.pool.surface + 9, 260, M.tile); }
     if (pr === 'board') { const hx = X('nh'); box(hx - 5, hx + 24, Y('nh') + 1, Y('nh') + 4, 30, M.board); }
+    if (pr === 'band') { // 辅助引体向上：弹力带挂在杆上、从身体前面垂下、绕过两只脚底
+      const cx = Math.max(X('sh'), X('hip')) + 9, cy = Y('sh') - 10;
+      for (const [k, f, sg] of [['nk', 'nf', 1], ['fk', 'ff', -1]]) {
+        const top = v3(X('nh') + 1, Y('nh') + 4, sg * 5), ch = v3(cx, cy, sg * 5), kn = v3(X(k) + 5, Y(k), sg * 6.5), bt = v3(X(f) + 1, Y(f) - 2, sg * 6.5);
+        rod(top, ch, 0.9, M.band); rod(ch, kn, 0.9, M.band); rod(kn, bt, 0.9, M.band);
+      }
+      rod(v3(X('nf') + 1, Y('nf') - 2, 6.5), v3(X('ff') + 1, Y('ff') - 2, -6.5), 0.9, M.band);
+    }
+    if (pr === 'cable') { // 坐姿划船机：底座、脚踏板、低滑轮＋配重塔，钢索从滑轮拉到两手间的把手
+      const fx = Math.max(X('nf'), X('ff')) + 3, fy = Math.min(Y('nf'), Y('ff')), py = Math.max(6, fy);
+      box(fx, fx + 2.5, 0, fy + 10, 28, M.prop); box(X('hip') - 16, fx + 20, 0, 2.5, 12, M.iron);
+      box(fx + 8, fx + 16, 0, py + 3, 14, M.iron); box(fx + 16, fx + 26, 0, 110, 22, M.prop);
+      const hx = (X('nh') + X('fh')) / 2 + 1, hy = (Y('nh') + Y('fh')) / 2;
+      rod(v3(fx + 9, py, 0), v3(hx, hy, 0), 0.4, M.cable); rod(v3(hx, hy, 9), v3(hx, hy, -9), 1, M.chrome);
+    }
   }
 
   // 地面／泳池

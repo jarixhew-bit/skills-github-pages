@@ -81,7 +81,7 @@ RULES = {
     # 候选清单页：用户就是靠它按编号挑地点，编号或评分印错等于挑错
     "shortlist": ["tools/build-shortlist.py", "tools/check-shortlist.py"],
     # 减脂训练 App：加重建议、减量周、备份导入全是前端现算，只有真浏览器验得了
-    "fitness":   ["fitness/**", "vendor/three/**", "tools/check-fitness.mjs", "tools/render-fitness-anim.mjs", "tools/lib/fitness-render.html"],
+    "fitness":   ["fitness/**", "vendor/three/**", "tools/check-fitness.mjs", "tools/render-fitness-anim.mjs", "tools/lib/fitness-render.html", "tools/lib/fitness-anim-spec.json"],
     "gamebot":   ["game-bot/**", "tools/check-gamebot.py",
                   "tools/check-gamebot-logic.mjs"],
 }

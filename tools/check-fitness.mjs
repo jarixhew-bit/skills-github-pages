@@ -20,10 +20,12 @@
  *   7. 导出备份是合法 JSON，同一份再导入不会重复加；
  *   8. 手机宽度（360px）没有横向卷动、全程没有 JS 错误；
  *   9. 3D 引擎真的载入、每个动作（含游泳）画出来都不是空白；游泳课 12 课、过关打勾、备份含游泳进度。
+ *  10. 替代动作：换了会记住（重载、跟练、Garmin、备份），换上的动作有自己的历史／建议／新纪录，不跟原动作混。
  * 「今天」用 page.clock 固定住，结果不随跑的日子改变。
  */
 import { chromium } from 'playwright';
 import fs from 'fs';
+import os from 'os';
 
 const PORT = process.env.CHECK_PORT || 8899;
 const URL = `http://localhost:${PORT}/fitness/`;
@@ -117,7 +119,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   await page.click('nav.tabs [data-tab="prog"]');
   const pts = await page.locator('#exChart circle').count();
   check(pts === 1 || pts === 2, `进度页有曲线（最近的动作点数：${pts}）`);
-  await page.click('#exPick [data-exk="gsquat|db"]');
+  await page.click('#exPick [data-exk="db:gsquat"]');
   check((await page.locator('#exChart circle').count()) === 2, '深蹲练过 2 次 → 曲线 2 个点');
   check((await page.locator('#volChart path').count()) >= 1, '每周训练量柱状图画得出来');
   await page.fill('#bKg', '5');
@@ -256,6 +258,20 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   const combos = await page.evaluate(() => window.__fit.animCombos());
   const missing = combos.filter(c => !fs.existsSync(`fitness/anim/${c.file}.webp`)).map(c => c.file);
   check(missing.length === 0, `${combos.length} 个动作组合都有示范动图${missing.length ? '（缺：' + missing.join(', ') + '）' : ''}`);
+  // 动图规格（tools/lib/fitness-anim-spec.json）：每个组合都要有一条、每条都要有图、肌肉代码渲染台都认得
+  // ——少了规格，渲染脚本会跳过那张（图停在旧版）；规格写了渲染台没定义的肌肉，那块就不会发光
+  const spec = JSON.parse(fs.readFileSync('tools/lib/fitness-anim-spec.json', 'utf8'));
+  const noSpec = combos.filter(c => !spec.some(s => s.file === c.file && s.anim === c.anim)).map(c => c.file);
+  check(noSpec.length === 0, `${combos.length} 个动作组合在 fitness-anim-spec.json 都有规格（file＋anim 对得上）${noSpec.length ? '（缺：' + noSpec.join(', ') + '）' : ''}`);
+  const orphan = spec.filter(s => !combos.some(c => c.file === s.file) || !fs.existsSync(`fitness/anim/${s.file}.webp`)).map(s => s.file);
+  check(orphan.length === 0, `每条规格都对应 App 用到的组合与一张存在的动图${orphan.length ? '（对不上：' + orphan.join(', ') + '）' : ''}`);
+  const rhtml = fs.readFileSync('tools/lib/fitness-render.html', 'utf8');
+  const mblock = (rhtml.match(/const MUSCLES = \{([\s\S]*?)\n\};/) || [])[1] || '';
+  const known = new Set([...mblock.matchAll(/^\s*(\w+):/gm)].map(m => m[1]));
+  const unknown = [...new Set(spec.flatMap(s => [...(s.primary || []), ...(s.secondary || [])]).filter(m => !known.has(m)))];
+  check(known.size >= 21 && unknown.length === 0, `规格用到的肌肉代码渲染台都有定义（渲染台认得 ${known.size} 个）${unknown.length ? '（没定义：' + unknown.join(', ') + '）' : ''}`);
+  const badField = spec.filter(s => !s.title_zh || !s.cue_zh || !['strength', 'cardio', 'stretch', 'mobility', 'swim'].includes(s.type) || !['side', 'front34', 'back34', 'front'].includes(s.view)).map(s => s.file);
+  check(badField.length === 0, `每条规格都有标题、要领、合法的 type 与 view${badField.length ? '（有问题：' + badField.join(', ') + '）' : ''}`);
   const big = combos.filter(c => fs.existsSync(`fitness/anim/${c.file}.webp`) && fs.statSync(`fitness/anim/${c.file}.webp`).size > 400 * 1024).map(c => c.file);
   check(big.length === 0, `每张动图都在 400KB 以内（手机流量）${big.length ? '（超过：' + big.join(', ') + '）' : ''}`);
   await page.click('#picker [data-wk="A"]');
@@ -333,6 +349,115 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   check(bk.cardio && bk.cardio.length === 1 && bk.vo2 && bk.vo2.length === 1, '备份包含有氧记录与 VO2max');
   check(errors.length === 0, `有氧没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
+}
+
+// ---- 替代动作（2026-11-04 用户：「健身房没有器材，能不能每次多选 alternative」） ----
+// 守三件事：① 换了会记住（重载、跟练、Garmin、备份都用换过的）；② 换上的动作是「它自己」——
+// 腿举的重量绝不会拿去建议高脚杯深蹲，新纪录也只跟同一个动作比；③ 每个替代动作都有动图与规格。
+{
+  const HIST_ALT = [
+    sess('s_a1', 9, 'A', sets('gsquat', 12, 12, 2)), // 哑铃版：高脚杯深蹲 12kg×12×3 → 下次 14
+    sess('s_a2', 5, 'A', sets('gsquat', 80, 12, 2), { equip: 'gym' }), // 健身房版：腿举 80kg×12×3 → 下次 82.5
+  ];
+  const { ctx, page, errors } = await openWith(HIST_ALT);
+  // 静态：每个槽位在三种器材版都至少 3 个替代，每个替代都有动图与规格
+  const st = await page.evaluate(() => { const A = window.__fit.alts, out = { few: [], bad: [], combos: [] };
+    for (const id in A.ALTS) for (const eq of ['db', 'bw', 'gym']) { const l = A.altList(id, eq); if (l.length < 3) out.few.push(id + '/' + eq + '=' + l.length); }
+    for (const id in A.ALTS) for (const k of A.ALTS[id]) { if (!A.validKey(k)) { out.bad.push(k); continue; } const x = A.kInfo(k); out.combos.push({ k, file: x.anim + (x.hold ? '-' + x.hold : ''), anim: x.anim, tag: x.tag, name: x.name }); }
+    return out; });
+  check(st.few.length === 0, `每个槽位在哑铃／徒手／健身房版都有 ≥3 个替代动作${st.few.length ? '（不够：' + st.few.join(', ') + '）' : ''}`);
+  check(st.bad.length === 0, `替代清单里的动作身份都有效${st.bad.length ? '（无效：' + st.bad.join(', ') + '）' : ''}`);
+  const spec = JSON.parse(fs.readFileSync('tools/lib/fitness-anim-spec.json', 'utf8'));
+  const noAnim = st.combos.filter(c => !fs.existsSync(`fitness/anim/${c.file}.webp`) || !spec.some(s => s.file === c.file && s.anim === c.anim)).map(c => c.k);
+  check(noAnim.length === 0, `每个替代动作都有示范动图与 fitness-anim-spec.json 规格（${st.combos.length} 项）${noAnim.length ? '（缺：' + [...new Set(noAnim)].join(', ') + '）' : ''}`);
+  check(st.combos.every(c => c.tag && c.name), '每个替代动作都有名称与器材标签');
+
+  await page.click('#eqSeg [data-eq="gym"]');
+  await page.click('#picker [data-wk="A"]');
+  const card = () => page.locator('#workout .ex[data-slot="gsquat"]');
+  check(/腿举机/.test(await card().locator('h3').textContent()) && /82\.5 kg/.test(await card().locator('.sug').textContent()), '健身房版原动作是腿举机，建议 82.5 kg（80＋2.5）');
+  await card().locator('[data-swap]').click();
+  const opts = card().locator('.alts [data-alt]');
+  const n = await opts.count(), imgs = await card().locator('.alts .alt img').count();
+  const optTxt = (await opts.allTextContents()).join(' | ');
+  check(n >= 4 && imgs === n && /高脚杯深蹲/.test(optTxt) && /哑铃/.test(optTxt) && /原动作/.test(optTxt), `「换动作」列出原动作＋≥3 个替代，每个都有小动图、名称、器材标签（${n} 项）`);
+  await card().locator('.alts [data-alt="db:gsquat"]').click();
+  const swTxt = await card().textContent();
+  check(/高脚杯深蹲/.test(await card().locator('h3').textContent()) && /已换/.test(swTxt) && /原动作：腿举机/.test(swTxt), '选了高脚杯深蹲 → 卡片换成它，并标「已换」与原动作名');
+  const sugSw = await card().locator('.sug').textContent();
+  check(/14 kg/.test(sugSw) && !/82|80/.test(sugSw), `换成高脚杯深蹲后的建议用它自己的历史（14 kg），不拿腿举的 80 kg（实得：${sugSw}）`);
+  check((await page.locator('#workout .ex[data-slot="gsquat"] .ph.anim img').getAttribute('src')) === 'anim/squatG-one.webp', '换了之后卡片动图也换成高脚杯深蹲');
+  // 记住：重载后还在；只影响健身房版
+  await page.reload(); await page.waitForSelector('#workout .ex');
+  await page.click('#picker [data-wk="A"]');
+  check(/高脚杯深蹲/.test(await card().locator('h3').textContent()), '重载 App 后仍是换过的动作（每个槽位、每种器材版记住）');
+  check((await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).alts))['gym:gsquat'] === 'db:gsquat', '选择存在设定 cfg.alts（"gym:gsquat" → "db:gsquat"）');
+  await page.click('#eqSeg [data-eq="db"]');
+  check(!/已换/.test(await card().textContent()), '哑铃版不受健身房版的选择影响');
+  await page.click('#eqSeg [data-eq="gym"]');
+  // Garmin 文字
+  check(/高脚杯深蹲（Goblet Squat）/.test(await page.textContent('#gText')) && !/腿举机/.test(await page.textContent('#gText')), 'Garmin 步骤文字用换过的动作');
+  // 全屏跟练：名称、动图、建议都用换过的；跟练里也能换
+  await page.click('#startPlayer');
+  for (let i = 0; i < 8; i++) await page.click('#plNextBtn');
+  check(/高脚杯深蹲/.test(await page.textContent('#plName')) && /squatG-one\.webp/.test(await page.innerHTML('#plPhoto')) && await page.inputValue('#plKg') === '14', '跟练第一组：名称、示范动图、预填重量（14）都用换过的动作');
+  await page.click('#plMain [data-plswap]');
+  await page.click('#plAlts [data-alt="db:split"]');
+  check(/保加利亚分腿蹲/.test(await page.textContent('#plName')) && /已换/.test(await page.textContent('#plMain')), '跟练里按「换动作」→ 当场换成保加利亚分腿蹲');
+  await page.click('#plMain [data-plswap]');
+  await page.click('#plAlts [data-alt="db:gsquat"]');
+  await page.fill('#plKg', '14'); await page.fill('#plReps', '12');
+  await page.click('#plAct'); // 完成这组
+  await page.click('#plClose');
+  await page.click('#finishBtn');
+  const last = (await page.evaluate(() => JSON.parse(localStorage.getItem('fit.sessions')))).pop();
+  const x0 = last.sets.find(x => x.ex === 'gsquat');
+  check(last.equip === 'gym' && x0 && x0.k === 'db:gsquat' && x0.kg === 14 && x0.reps === 12, `换动作后记录的组存成替代动作的身份（ex=gsquat、k=db:gsquat、14kg×12）（实得：${JSON.stringify(x0)}）`);
+  check(/新纪录：高脚杯深蹲/.test(await page.textContent('#storeNote')), '新纪录只跟同一个动作比：高脚杯 14kg×12 胜过上次 12kg×12（不拿腿举 80kg 比）');
+  // 恢复原动作：腿举的建议仍是 82.5（没被 14 kg 污染）
+  await page.click('#picker [data-wk="A"]');
+  await card().locator('[data-swap]').click();
+  await card().locator('[data-restore]').click();
+  check(/腿举机/.test(await card().locator('h3').textContent()) && !/已换/.test(await card().textContent()) && /82\.5 kg/.test(await card().locator('.sug').textContent()), '「恢复原动作」→ 回到腿举机，建议仍是 82.5 kg（换动作的记录没混进来）');
+  check(!('gym:gsquat' in (await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).alts))), '恢复后设定里那一笔删掉');
+  // 哑铃版的高脚杯：最新一笔是健身房版里换来的 14kg（同一个动作，历史接得上）
+  await page.click('#eqSeg [data-eq="db"]');
+  check(/14 kg/.test(await card().locator('.sug').textContent()), '同一个动作在不同器材版的历史接得上：哑铃版高脚杯也看到上次 14 kg');
+  // 记录页、进度页：各算各的
+  await page.click('nav.tabs [data-tab="hist"]');
+  check(/高脚杯深蹲：14kg×12/.test(await page.locator('#histList .hist-item').first().textContent()), '记录页显示换过的动作名');
+  await page.click('nav.tabs [data-tab="prog"]');
+  check(await page.locator('#exPick [data-exk="gym:gsquat"]').count() === 1 && await page.locator('#exPick [data-exk="db:gsquat"]').count() === 1, '进度页腿举机与高脚杯深蹲是两条不同的曲线');
+  await page.click('#exPick [data-exk="db:gsquat"]');
+  check((await page.locator('#exChart circle').count()) === 2, '高脚杯深蹲曲线 2 个点（哑铃版那次＋健身房换来的那次），腿举不算进来');
+  await page.click('#exPick [data-exk="gym:gsquat"]');
+  check((await page.locator('#exChart circle').count()) === 1, '腿举机曲线只有 1 个点');
+  // 备份：换动作的选择跟着走
+  await page.click('nav.tabs [data-tab="train"]');
+  await page.click('#eqSeg [data-eq="gym"]');
+  await page.click('#picker [data-wk="B"]');
+  const r2 = page.locator('#workout .ex[data-slot="row2"]');
+  await r2.locator('[data-swap]').click();
+  await r2.locator('.alts [data-alt="x:pullup"]').click();
+  check(/辅助引体向上/.test(await r2.locator('h3').textContent()) && /anim\/pullup\.webp/.test(await r2.innerHTML()), '高位下拉没器材 → 换成新动作「辅助引体向上」，有自己的动图');
+  await page.click('nav.tabs [data-tab="more"]');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+  const bfile = `${os.tmpdir()}/fit-alt-backup-${process.pid}.json`; fs.copyFileSync(await dl.path(), bfile); // 关掉这个浏览器后下载档会被删，先拷一份
+  const bk = JSON.parse(fs.readFileSync(bfile, 'utf8'));
+  check(bk.cfg && bk.cfg.alts && bk.cfg.alts['gym:row2'] === 'x:pullup', '导出备份包含换动作的选择');
+  check(errors.length === 0, `替代动作没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+  // 新手机：导入备份 → 选择还原
+  const b2 = await openWith([]);
+  await b2.page.click('nav.tabs [data-tab="more"]');
+  await b2.page.setInputFiles('#bkFile', bfile);
+  await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+  await b2.page.click('nav.tabs [data-tab="train"]');
+  await b2.page.click('#eqSeg [data-eq="gym"]');
+  await b2.page.click('#picker [data-wk="B"]');
+  check(/辅助引体向上/.test(await b2.page.locator('#workout .ex[data-slot="row2"] h3').textContent()), '在另一台设备导入备份 → 换动作的选择也还原');
+  check(b2.errors.length === 0, `导入备份没有 JS 错误${b2.errors.length ? '：' + b2.errors.join(' | ') : ''}`);
+  await b2.ctx.close(); fs.rmSync(bfile, { force: true });
 }
 
 // ---- 手机宽度：没有横向卷动 ----

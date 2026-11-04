@@ -1,0 +1,1848 @@
+[
+ {
+  "file": "squatG-one",
+  "anim": "squatG",
+  "type": "strength",
+  "title_zh": "高脚杯深蹲",
+  "reps": "8–12",
+  "cue_zh": "哑铃贴胸，膝对脚尖往下坐",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "adductors",
+   "hamstrings",
+   "lower_back",
+   "abs"
+  ],
+  "strip": [
+   "臀腿",
+   "核心"
+  ],
+  "view": "front34",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f1：躯干前倾 35°、大腿近水平（nt=85）、膝内角 65°、手在胸前肩高处；高脚杯可再直立一点，t≈25–30 亦可，非错误）",
+  "sources": [
+   "https://acefitness.org/resources/everyone/exercise-library/362/goblet-squat",
+   "https://www.sussex.ac.uk/sport/documents/goblet-squat.pdf",
+   "https://www.nasm.org/resource-center/exercise-library/goblet-squat"
+  ],
+  "note": ""
+ },
+ {
+  "file": "squat",
+  "anim": "squat",
+  "type": "strength",
+  "title_zh": "徒手深蹲",
+  "reps": "15–20 / 热身 30秒",
+  "cue_zh": "屁股往后坐，膝盖对准脚尖",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "adductors",
+   "hamstrings",
+   "lower_back"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "front34",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f1：t=35、nt=85、ns=-30，大腿约平行地面、躯干与小腿大致平行、脚跟在地；双手前平举作平衡合理）",
+  "sources": [
+   "https://www.acefitness.org/resources/everyone/exercise-library/135/bodyweight-squat/",
+   "https://squatuniversity.com/2016/01/29/can-the-knees-go-over-the-toes-debunking-squat-myths"
+  ],
+  "note": "同一张图被徒手版（15–20 次）与热身（30 秒、不求深）共用。"
+ },
+ {
+  "file": "legpress",
+  "anim": "legpress",
+  "type": "strength",
+  "title_zh": "腿举机",
+  "reps": "10–12",
+  "cue_zh": "膝盖弯到约90°，推起别锁死",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "adductors",
+   "hamstrings"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：f1 把腿推到 ns=nt=112、膝内角 180°（完全锁死），与 App 要领「推起时膝盖不要完全锁死」相反。应改为终点膝内角约 165–170°（例如 nt≈115、ns≈100）。f0 膝内角 90° 正确。",
+  "sources": [
+   "https://www.fitnessavenue.ca/blogs/post/leg-press-muscles-worked",
+   "https://powerliftingtechnique.com/leg-press-foot-placement/",
+   "https://www.setforset.com/blogs/news/leg-press-foot-placement"
+  ],
+  "note": ""
+ },
+ {
+  "file": "bench-hands",
+  "anim": "bench",
+  "type": "strength",
+  "title_zh": "哑铃卧推",
+  "reps": "8–12",
+  "cue_zh": "手肘离身体约45°，慢放2秒",
+  "primary": [
+   "pec"
+  ],
+  "secondary": [
+   "ant_delt",
+   "triceps"
+  ],
+  "strip": [
+   "胸",
+   "肩",
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "俯视上臂与躯干夹角约 45°（来源给 45–60° 区间）；底部上臂比躯干线低 0–15°、前臂垂直地面、哑铃在胸口下缘两侧；顶部双臂垂直、哑铃在肩关节正上方。",
+  "form_audit": "有错：f0（底部）a=30、f=175，上臂朝下 60°（比水平低 60°），手肘会穿过长凳、肩关节过度伸展。应为上臂约水平到低 15°（侧视 a≈75–90）、前臂垂直（f≈180），哑铃落在胸口高度。f1（a=180 直臂、哑铃在肩上方）正确。",
+  "sources": [
+   "https://www.muscleandstrength.com/exercises/dumbbell-bench-press.html",
+   "https://motra.com/exercises/dumbbellBenchPress",
+   "https://blog.nasm.org/uncategorized/elbow-position-bench-press",
+   "https://www.strengthlog.com/dumbbell-chest-press"
+  ],
+  "note": ""
+ },
+ {
+  "file": "hpush",
+  "anim": "hpush",
+  "type": "strength",
+  "title_zh": "俯卧撑",
+  "reps": "力竭前2下",
+  "cue_zh": "身体一直线，手肘斜向后45°",
+  "primary": [
+   "pec",
+   "triceps"
+  ],
+  "secondary": [
+   "ant_delt",
+   "serratus",
+   "abs"
+  ],
+  "strip": [
+   "胸",
+   "手臂",
+   "核心"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "手在肩正下方略宽；下放时俯视上臂与躯干约 45°、前臂接近垂直地面；头-髋-脚跟全程一直线；窄距版手肘更贴身体（约 20–30°）。",
+  "form_audit": "ok（f0：t=65、腿 -65 成一直线，手在肩正下方；f1：身体降到离水平 12°、肘内角 63°、上臂指向脚的方向，胸离地约一拳）。2D 侧视看不出手肘外展角，3D 模型请按 plane_detail 摆。",
+  "sources": [
+   "https://www.acefitness.org/resources/everyone/exercise-library/25/push-up/",
+   "https://pubmed.ncbi.nlm.nih.gov/26488636/"
+  ],
+  "note": "同一张图也被「窄距俯卧撑」共用（App 写手肘贴近身体）。"
+ },
+ {
+  "file": "seatpush",
+  "anim": "seatpush",
+  "type": "strength",
+  "title_zh": "坐姿推胸机",
+  "reps": "10–12",
+  "cue_zh": "背贴靠垫，平推出去不锁肘",
+  "primary": [
+   "pec"
+  ],
+  "secondary": [
+   "ant_delt",
+   "triceps"
+  ],
+  "strip": [
+   "胸",
+   "肩",
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "把手在胸口中段高度；上臂与躯干约 45°；推出时手保持同一高度水平前推，终点肘留 5–10° 不锁死。",
+  "form_audit": "小错：f0 手在肩下约 9 单位（胸口中段，正确），但 f1 a=88、f=90 手抬到肩膀高度（高了约 8 单位≈12 cm）且肘内角 178° 锁死。应：终点手维持胸口中段高度（约 a≈75、f≈80），肘内角约 170°。",
+  "sources": [
+   "https://www.acefitness.org/resources/everyone/exercise-library/188/seated-chest-press/",
+   "https://www.nasm.org/resource-center/exercise-library/chest-press-machine"
+  ],
+  "note": ""
+ },
+ {
+  "file": "hinge-hands",
+  "anim": "hinge",
+  "type": "strength",
+  "title_zh": "哑铃罗马尼亚硬拉",
+  "reps": "10–12",
+  "cue_zh": "屁股往后推，哑铃贴腿滑下",
+  "primary": [
+   "hamstrings",
+   "glutes"
+  ],
+  "secondary": [
+   "lower_back",
+   "adductors",
+   "forearm"
+  ],
+  "strip": [
+   "臀腿",
+   "背"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：f1（t=75、nt=12、ns=-8）髋关节仍在脚踝正上方（髋 x=0、脚 x=2），没有「屁股往后推」；手臂垂直下垂使哑铃悬在小腿前方约 28 单位（≈45 cm），是弯腰驼背式而非髋铰链，重心也会往前倒。应：髋往后移到脚踝后方约 8–10 单位（大腿 nt≈20–25、小腿接近垂直 ns≈-2），膝弯约 20–25°，躯干约 t≈60–70，手臂略往后（a≈-20）让哑铃贴着大腿/小腿，最低到膝下至小腿中段。示例 f1≈{t:65,nt:22,ns:-2,a:-20,f:-20}（推论值，渲染时请目视确认哑铃贴腿）。",
+  "sources": [
+   "https://www.nasm.org/resource-center/exercise-library/dumbbell-romanian-deadlift",
+   "https://www.bodybuilding.com/exercises/romanian-deadlift-with-dumbbells",
+   "https://www.strengthlog.com/dumbbell-romanian-deadlift/"
+  ],
+  "note": ""
+ },
+ {
+  "file": "bridge",
+  "anim": "bridge",
+  "type": "strength",
+  "title_zh": "单腿臀桥",
+  "reps": "12/侧",
+  "cue_zh": "脚跟发力，髋顶到身体一直线",
+  "primary": [
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings",
+   "glute_med"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：f1 t=-120、nt=100 → 肩-髋-膝不在一直线，而是髋「超过」直线约 20°（髋过伸＝腰椎代偿拱起），且 ns=-15 使膝屈约 115°（脚太靠近屁股）。应：f1 约 {t:-110, nt:110, ns:+20}（肩-髋-膝一直线、膝屈约 90°），抬起的那条腿伸直并与支撑腿大腿平行（ft≈fs≈110）。f0 抬起腿是弯的（膝内角 135°），建议起点就伸直。",
+  "sources": [
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC5534144/",
+   "https://brookbushinstitute.com/articles/electromyographic-analysis-of-gluteus-maximus-and-hamstring-activity-during-the-supine-resisted-hip-extension-exercise-versus-supine-unilateral-bridge-to-neutral",
+   "https://www.sussex.ac.uk/sport/documents/single-leg-hip-bridge.pdf"
+  ],
+  "note": ""
+ },
+ {
+  "file": "legcurl",
+  "anim": "legcurl",
+  "type": "strength",
+  "title_zh": "俯卧腿弯举",
+  "reps": "10–12",
+  "cue_zh": "髋贴紧垫子，只动小腿往上勾",
+  "primary": [
+   "hamstrings"
+  ],
+  "secondary": [
+   "calves"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f0 腿伸直；f1 ns=-170、膝屈约 80°，髋角 180° 全程贴垫）",
+  "sources": [
+   "https://www.nasm.org/resource-center/exercise-library/lying-leg-curl",
+   "https://fitnessvolt.com/24561/lying-leg-curl/"
+  ],
+  "note": ""
+ },
+ {
+  "file": "row1-one",
+  "anim": "row1",
+  "type": "strength",
+  "title_zh": "单臂哑铃划船",
+  "reps": "10/侧",
+  "cue_zh": "手肘往后口袋拉，身体不扭",
+  "primary": [
+   "lats",
+   "mid_back"
+  ],
+  "secondary": [
+   "rear_delt",
+   "biceps",
+   "forearm"
+  ],
+  "strip": [
+   "背",
+   "手臂"
+  ],
+  "view": "back34",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：①支撑手（fa=ff=35）伸直悬在半空、离膝盖约 44 单位，既没撑在长凳也没撑在大腿上，等于没有支撑；应撑在长凳（加 bench 道具，同侧膝也跪凳）或撑在前腿大腿上。②下半身同 row：髋在脚踝正上方（nt=18、ns=-12），应髋往后、小腿近垂直（nt≈22、ns≈-2）。拉的那只手 f0→f1（na 0→-75、nf 0→-10，肘拉到腰侧、前臂垂直）正确。",
+  "sources": [
+   "https://www.exercise.com/exercises/one-arm-dumbbell-row/",
+   "https://puregym.com/exercises/back/rows/single-arm-dumbbell-row",
+   "https://gravitus.com/guides/exercises/one-arm-dumbbell-row"
+  ],
+  "note": ""
+ },
+ {
+  "file": "invrow",
+  "anim": "invrow",
+  "type": "strength",
+  "title_zh": "桌下反向划船",
+  "reps": "8–12",
+  "cue_zh": "身体绷直，胸口拉向桌边",
+  "primary": [
+   "lats",
+   "mid_back"
+  ],
+  "secondary": [
+   "rear_delt",
+   "biceps",
+   "glutes",
+   "abs"
+  ],
+  "strip": [
+   "背",
+   "手臂",
+   "核心"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：f1 用 IK bend=1 解出 na=-96（上臂朝头顶方向）、肩-躯干夹角 161°、肘内角 54°，画面像「手臂过头的仰卧臂屈伸」，不是划船。应：顶点上臂沿躯干指向髋部、手肘在身体下方（肩-躯干夹角约 20–40°）、肘约 90°、前臂接近垂直、胸口离横杆约 5 单位以内（改 bend=-1 或把横杆位置移到下胸上方）。f0 身体一直线、手臂垂直正确，但建议手臂略偏向脚（a≈165）让横杆对准下胸。",
+  "sources": [
+   "https://fitnessvolt.com/inverted-row/",
+   "https://liftvault.com/exercises/inverted-row-benefits-muscles-worked/"
+  ],
+  "note": "同一张图被 A 日「单臂划船」与 B 日「俯身划船」的徒手版共用（都是 8–12）。"
+ },
+ {
+  "file": "seatrow",
+  "anim": "seatrow",
+  "type": "strength",
+  "title_zh": "坐姿划船",
+  "reps": "10–12",
+  "cue_zh": "挺胸坐直，手肘拉到腰侧",
+  "primary": [
+   "lats",
+   "mid_back"
+  ],
+  "secondary": [
+   "rear_delt",
+   "biceps"
+  ],
+  "strip": [
+   "背",
+   "手臂"
+  ],
+  "view": "back34",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：躯干方向反了——f0（手臂前伸）t=-5 后仰、f1（拉到腰侧）t=+8 前倾，与 App 要领「挺胸坐直，身体不要前后晃」相反。应两帧都 t≈0（最多起点 +5 前倾、终点回 0）。f1 手拉到上腹、肘在身后（a=-60、f=88）正确。小建议：腿 ns=nt=88 膝完全伸直，可改膝微弯（内角约 160°）。 2026-11-04 已修：两帧 t=5→0、膝微弯（lt95/ls75），并补画划船机——坐在矮凳上（lift 20）、脚踩踏板、钢索从前方低滑轮拉到把手（props seat+cable）。",
+  "sources": [
+   "https://www.nasm.org/resource-center/exercise-library/seated-machine-row-close-grip",
+   "https://www.healthline.com/health/seated-row"
+  ],
+  "note": ""
+ },
+ {
+  "file": "lunge-hands",
+  "anim": "lunge",
+  "type": "strength",
+  "title_zh": "哑铃反向弓步",
+  "reps": "8/侧",
+  "cue_zh": "后跨一大步，前脚跟发力站回",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings",
+   "adductors",
+   "glute_med",
+   "calves"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f1：前大腿 nt=78 近水平、前小腿 ns=-3 近垂直（前膝约 90°），后大腿近垂直、后膝离地约 6 单位≈9 cm，躯干 t=3 直立）",
+  "sources": [
+   "https://www.sussex.ac.uk/sport/documents/8-reverse-lunge.pdf",
+   "https://doctoryessis.com/2013/01/01/reverse-lunge/",
+   "https://ojs.ub.uni-konstanz.de/cpa/article/view/6941"
+  ],
+  "note": ""
+ },
+ {
+  "file": "lunge",
+  "anim": "lunge",
+  "type": "strength",
+  "title_zh": "反向弓步",
+  "reps": "12/侧",
+  "cue_zh": "后跨一大步，前脚跟发力站回",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings",
+   "adductors",
+   "glute_med",
+   "calves"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f1：前大腿 nt=78 近水平、前小腿 ns=-3 近垂直（前膝约 90°），后大腿近垂直、后膝离地约 6 单位≈9 cm，躯干 t=3 直立）",
+  "sources": [
+   "https://www.sussex.ac.uk/sport/documents/8-reverse-lunge.pdf",
+   "https://doctoryessis.com/2013/01/01/reverse-lunge/",
+   "https://ojs.ub.uni-konstanz.de/cpa/article/view/6941"
+  ],
+  "note": ""
+ },
+ {
+  "file": "ohp-hands",
+  "anim": "ohp",
+  "type": "strength",
+  "title_zh": "哑铃站姿肩推",
+  "reps": "8–12",
+  "cue_zh": "收腹夹臀，往上推不后仰",
+  "primary": [
+   "ant_delt",
+   "lat_delt"
+  ],
+  "secondary": [
+   "triceps",
+   "upper_trap"
+  ],
+  "strip": [
+   "肩",
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "起点：上臂约在水平线下 10°（手肘略低于肩）、前臂垂直、哑铃在耳朵高度两侧；终点：上臂上举约 170–180°、肘伸直、哑铃在肩上方略向内；全程手肘在身体额状面前方约 30–45°（肩胛骨平面），不是完全向两侧打开，也不是向正前方平举。",
+  "form_audit": "有错（委派方已定案）：现有 f0 a=10/f=172 → f1 a=178/f=180，侧视插值中段上臂水平前伸、前臂竖直，等于「直臂前平举式」弧线，哑铃轨迹向前绕大弧；正确是手肘在肩胛骨平面（身体前方约 30–45°）向上推，哑铃大致垂直上下。",
+  "sources": [
+   "https://pubmed.ncbi.nlm.nih.gov/23096062/",
+   "https://www.bisp-surf.de/Record/PU201311007613"
+  ],
+  "note": ""
+ },
+ {
+  "file": "pike",
+  "anim": "pike",
+  "type": "strength",
+  "title_zh": "派克俯卧撑",
+  "reps": "6–10",
+  "cue_zh": "屁股抬高，头落到两手前方",
+  "primary": [
+   "ant_delt",
+   "triceps"
+  ],
+  "secondary": [
+   "upper_trap",
+   "lat_delt",
+   "serratus"
+  ],
+  "strip": [
+   "肩",
+   "手臂"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：f1 头部落点在两手「后方」约 15 单位（头 x≈28、手 x≈43），上臂朝前（na=100），与 App 要领「头往两手前方下放」相反。应：底部头落在两手连线前方约 5–10 单位（与两手成三角形），肩在手腕正上方或略前，前臂接近垂直、肘约 90° 且手肘指向脚的方向。起点可更陡（躯干 t≈145–155、髋角约 60–80°），来源指出越陡越偏三角肌前束。",
+  "sources": [
+   "https://www.nasm.org/resource-center/exercise-library/pike-push-up",
+   "https://fitnessvolt.com/pike-push-up/",
+   "https://en-gb.hingehealth.com/resources/articles/pike-push-up"
+  ],
+  "note": ""
+ },
+ {
+  "file": "seatohp",
+  "anim": "seatohp",
+  "type": "strength",
+  "title_zh": "坐姿推肩机",
+  "reps": "10–12",
+  "cue_zh": "推到手臂近直，不要耸肩",
+  "primary": [
+   "ant_delt",
+   "lat_delt"
+  ],
+  "secondary": [
+   "triceps",
+   "upper_trap"
+  ],
+  "strip": [
+   "肩",
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "把手起点在肩膀高度；起点上臂约在水平线下 10°、前臂垂直；终点上臂上举约 170°、肘留 5–10° 不锁死；手肘在身体前方约 30–45°（多数推肩机把手在身体前方略外）。",
+  "form_audit": "有错：同 ohp——f0 a=10/f=172 → f1 a=178/f=180，侧视中段变成前平举弧线；另 f1 肘内角 178° 锁死，App 要领为「推到手臂接近伸直」，终点应留约 170°。",
+  "sources": [
+   "https://uwo.ca/campusrec/orientation/equipment_guides/shoulders.html",
+   "https://www.sussex.ac.uk/sport/documents/signature-shoulder-press.pdf",
+   "https://pubmed.ncbi.nlm.nih.gov/23096062/"
+  ],
+  "note": ""
+ },
+ {
+  "file": "thrust-one",
+  "anim": "thrust",
+  "type": "strength",
+  "title_zh": "哑铃臀推",
+  "reps": "12–15",
+  "cue_zh": "上背靠凳，臀部发力顶成一直线",
+  "primary": [
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings",
+   "quads",
+   "adductors"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：①f1 t=-120、nt=100 → 髋过伸约 20°（同 bridge）。②App 写「上背靠在沙发边」，但动画是肩膀贴地的地板臀桥、没有凳子/沙发道具。臀推正确顶点：上背靠凳缘、躯干约水平（t≈-90）、大腿水平（nt≈90）、小腿垂直（ns≈0）→ 肩-髋-膝一直线、膝约 90°；底部髋屈约 80–100°、臀部接近地面。手扶压在髋部的哑铃（现有 f1 手在髋部正确）。",
+  "sources": [
+   "https://pubmed.ncbi.nlm.nih.gov/26214739/",
+   "https://bretcontreras.com/wp-content/uploads/A-Comparison-of-Gluteus-Maximus-Biceps-Femoris-and-Vastus-Lateralis-Electromyography-Amplitude-for-the-Barbell-Band-and-American-Hip-Thrust-Variations-copy.pdf"
+  ],
+  "note": "2026-11-03 起拆出独立动画 key「thrust」（上背靠凳），一只哑铃横放在髋上（hold=one）；热身臀桥留用 bridge2。"
+ },
+ {
+  "file": "thrust",
+  "anim": "thrust",
+  "type": "strength",
+  "title_zh": "臀推",
+  "reps": "15–20 / 10–12",
+  "cue_zh": "上背靠凳，臀部发力顶成一直线",
+  "primary": [
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings",
+   "quads"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：f1 t=-120、nt=100 → 髋过伸约 20°（肩-髋-膝应一直线：地板版约 {t:-110,nt:110,ns:+20}）。另：这张图被三处共用——徒手臀推（背靠沙发）、健身房臀推机、热身「臀桥」（仰躺地上）。前两者要上背靠凳，后者肩膀贴地，一张图无法同时正确，需委派方决定（见笔记）。",
+  "sources": [
+   "https://pubmed.ncbi.nlm.nih.gov/26214739/",
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC5534144/"
+  ],
+  "note": "徒手臀推（15–20）与健身房臀推机（10–12）共用，次数不同所以图上只写标题。2026-11-03 由 bridge2 拆出。"
+ },
+ {
+  "file": "row-hands",
+  "anim": "row",
+  "type": "strength",
+  "title_zh": "哑铃俯身划船",
+  "reps": "10–12",
+  "cue_zh": "背平俯身，两肘拉向腰侧",
+  "primary": [
+   "lats",
+   "mid_back"
+  ],
+  "secondary": [
+   "rear_delt",
+   "biceps",
+   "lower_back"
+  ],
+  "strip": [
+   "背",
+   "手臂"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "小错：①髋在脚踝正上方（nt=18、ns=-12，髋 x=0、脚 x=2），躯干与哑铃都在前方、重心会往前倒；应髋往后、小腿近垂直（nt≈22、ns≈-2）。②躯干 t=60（离水平 30°）比 App 写的「屈髋俯身约 45°」更低约 15°，不算错但与文字不一致，可改 t≈45–50。f1 肘拉到腰侧（a=-75、f=-10）正确。",
+  "sources": [
+   "https://library.theprehabguys.com/vimeo-video/bent-over-row-dumbbell/",
+   "https://livestrong.com/article/516149-muscles-involved-in-bent-over-dumbbell-rows",
+   "https://www.physitrack.com/da/exercise-library/how-to-perform-the-bent-over-dumbbell-row-exercise"
+  ],
+  "note": ""
+ },
+ {
+  "file": "pulldown",
+  "anim": "pulldown",
+  "type": "strength",
+  "title_zh": "高位下拉",
+  "reps": "10–12",
+  "cue_zh": "挺胸，横杆拉到锁骨",
+  "primary": [
+   "lats"
+  ],
+  "secondary": [
+   "biceps",
+   "mid_back",
+   "rear_delt"
+  ],
+  "strip": [
+   "背",
+   "手臂"
+  ],
+  "view": "back34",
+  "plane": "frontal",
+  "plane_detail": "握距约肩宽 1.5 倍、正手；上臂从上举外展约 170°（手臂近伸直、略外开）拉到外展约 20–30°（手肘在体侧略后、低于肩）；前臂全程接近垂直；横杆到锁骨；躯干后仰不超过约 10–15°。",
+  "form_audit": "有错（平面）：f0 a=175 → f1 a=15，侧视插值中段上臂水平前伸、手肘甩到身体正前方，像直臂前下压；宽握下拉是手肘从两侧往下往后收（额状面内收）。f1 终点（横杆在锁骨、躯干后仰 8°）本身合理。",
+  "sources": [
+   "https://pubmed.ncbi.nlm.nih.gov/20543740/",
+   "https://fitnessvolt.com/muscle-activity-pulldowns-pull-ups/"
+  ],
+  "note": ""
+ },
+ {
+  "file": "split-hands",
+  "anim": "split",
+  "type": "strength",
+  "title_zh": "保加利亚分腿蹲",
+  "reps": "8/侧",
+  "cue_zh": "后脚搭椅，垂直往下蹲",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "glute_med",
+   "adductors",
+   "hamstrings"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f1：前大腿 nt=80、前小腿 ns=-5 近垂直、前膝约 95°；后膝离地约 4 单位；后脚在前脚后方 42 单位、高 20 单位≈32 cm；躯干前倾 10°，来源允许微前倾）",
+  "sources": [
+   "https://www.sussex.ac.uk/sport/documents/5-bulgarian-split-squat-dumbbell.pdf",
+   "https://gravitus.com/guides/exercises/bulgarian-split-squat",
+   "https://central.gymshark.com/article/how-to-bulgarian-split-squat"
+  ],
+  "note": ""
+ },
+ {
+  "file": "split",
+  "anim": "split",
+  "type": "strength",
+  "title_zh": "保加利亚分腿蹲",
+  "reps": "10–12/侧",
+  "cue_zh": "后脚搭椅，垂直往下蹲",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "glute_med",
+   "adductors",
+   "hamstrings"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f1：前大腿 nt=80、前小腿 ns=-5 近垂直、前膝约 95°；后膝离地约 4 单位；后脚在前脚后方 42 单位、高 20 单位≈32 cm；躯干前倾 10°，来源允许微前倾）",
+  "sources": [
+   "https://www.sussex.ac.uk/sport/documents/5-bulgarian-split-squat-dumbbell.pdf",
+   "https://gravitus.com/guides/exercises/bulgarian-split-squat",
+   "https://central.gymshark.com/article/how-to-bulgarian-split-squat"
+  ],
+  "note": ""
+ },
+ {
+  "file": "fpress-hands",
+  "anim": "fpress",
+  "type": "strength",
+  "title_zh": "哑铃地板推举",
+  "reps": "10–12",
+  "cue_zh": "上臂碰地就推起",
+  "primary": [
+   "pec",
+   "triceps"
+  ],
+  "secondary": [
+   "ant_delt"
+  ],
+  "strip": [
+   "胸",
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "上臂与躯干约 45°；底部上臂外侧（肘）碰地即推、前臂垂直；顶部双臂垂直、哑铃在肩上方。",
+  "form_audit": "ok（f0：a=85 上臂近水平贴地、f=175 前臂垂直；f1：直臂向上；屈膝脚踩地）",
+  "sources": [
+   "https://fitnessvolt.com/dumbbell-floor-press-guide/",
+   "https://exercisepick.com/what-muscles-do-dumbbell-floor-press-work/"
+  ],
+  "note": ""
+ },
+ {
+  "file": "incline-hands",
+  "anim": "incline",
+  "type": "strength",
+  "title_zh": "上斜哑铃卧推",
+  "reps": "10–12",
+  "cue_zh": "椅背约30°，从上胸推起",
+  "primary": [
+   "pec",
+   "ant_delt"
+  ],
+  "secondary": [
+   "triceps"
+  ],
+  "strip": [
+   "胸",
+   "肩",
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "椅背约 30°（躯干离水平 30°，ANIM 的 t≈-60）；上臂与躯干约 45°；底部哑铃落到上胸两侧、手肘略低于躯干线；顶部哑铃在肩上方。",
+  "form_audit": "有错：①躯干 t=-45 是 45° 上斜，App 写「椅背调约 30°」，应 t≈-60。②f0（a=60、f=165）哑铃停在离躯干线约 19 单位处，比落到上胸两侧（约 12 单位）高约 7 单位≈10 cm，下放不够深；应约 a≈40、f≈170（手肘到躯干线或略低）。f1（a=135 垂直于躯干）可接受，建议介于 135–160 让哑铃在肩上方。",
+  "sources": [
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC4590897/",
+   "https://pubmed.ncbi.nlm.nih.gov/34644424/",
+   "https://doi.org/10.3390/ijerph17197339"
+  ],
+  "note": ""
+ },
+ {
+  "file": "step-hands",
+  "anim": "step",
+  "type": "strength",
+  "title_zh": "哑铃登阶",
+  "reps": "10/侧",
+  "cue_zh": "整只脚踩稳，靠上面的腿站起",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings",
+   "glute_med",
+   "calves"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f0：上脚踩箱、膝约 95°、躯干前倾 12°、下脚在地；f1：上腿伸直站上、后腿收起不着箱）。「不要用下面的脚蹬地」是发力时机，静态关键帧无法检查。",
+  "sources": [
+   "https://repository.li.mahidol.ac.th/items/321458e2-d1a6-4dee-a6bb-b6b17ea5071a/full",
+   "https://uhra.herts.ac.uk/id/eprint/15782/1/08172034%20-%20Williams%20Megan%20-%20final%20MPhil%20submission.pdf"
+  ],
+  "note": ""
+ },
+ {
+  "file": "step",
+  "anim": "step",
+  "type": "strength",
+  "title_zh": "登阶",
+  "reps": "12/侧",
+  "cue_zh": "整只脚踩稳，靠上面的腿站起",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings",
+   "glute_med",
+   "calves"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f0：上脚踩箱、膝约 95°、躯干前倾 12°、下脚在地；f1：上腿伸直站上、后腿收起不着箱）。「不要用下面的脚蹬地」是发力时机，静态关键帧无法检查。",
+  "sources": [
+   "https://repository.li.mahidol.ac.th/items/321458e2-d1a6-4dee-a6bb-b6b17ea5071a/full",
+   "https://uhra.herts.ac.uk/id/eprint/15782/1/08172034%20-%20Williams%20Megan%20-%20final%20MPhil%20submission.pdf"
+  ],
+  "note": ""
+ },
+ {
+  "file": "rfly-hands",
+  "anim": "rfly",
+  "type": "strength",
+  "title_zh": "俯身反向飞鸟",
+  "reps": "12–15",
+  "cue_zh": "手臂微弯往两侧开，夹肩胛",
+  "primary": [
+   "rear_delt"
+  ],
+  "secondary": [
+   "mid_back"
+  ],
+  "strip": [
+   "肩",
+   "背"
+  ],
+  "view": "back34",
+  "plane": "mixed",
+  "plane_detail": "躯干接近水平（离水平 0–30°），背平；手臂从垂直下垂往身体两侧打开到约与地面平行（肩水平外展约 90°），肘全程微弯约 160–170°；手臂在肩的正侧方横向打开，不往后摆向臀部。",
+  "form_audit": "有错（平面）：f1 a=-70、f=-75 把直臂往后甩向臀部（肩伸展），练的是背阔肌/肱三头肌长头，不是三角肌后束；反向飞鸟是往两侧打开。另髋在脚踝正上方（同 row），应髋往后（nt≈22、ns≈-2）；躯干 t=60 可再低到 t≈70–80（来源：越直立越偏中束）。",
+  "sources": [
+   "https://weighttraining.guide/exercises/head-supported-bent-over-dumbbell-lateral-raise",
+   "https://fitnessvolt.com/dumbbell-reverse-fly/",
+   "https://www.rehabhero.ca/exercise/bent-over-reverse-fly"
+  ],
+  "note": ""
+ },
+ {
+  "file": "yraise",
+  "anim": "yraise",
+  "type": "strength",
+  "title_zh": "俯身Y-T字",
+  "reps": "10",
+  "cue_zh": "趴着手臂抬离地，停1秒",
+  "primary": [
+   "mid_back",
+   "rear_delt"
+  ],
+  "secondary": [
+   "lower_back"
+  ],
+  "strip": [
+   "背",
+   "肩"
+  ],
+  "view": "back34",
+  "plane": "mixed",
+  "plane_detail": "Y：俯卧，手臂与身体中线约 30°（肩外展约 120–150°）、拇指朝上，抬离地面约 5–10 cm 停 1 秒；T：手臂向两侧约 90°、拇指朝上抬离地面停 1 秒；胸口只微离地。",
+  "form_audit": "部分有错：动画只有手臂往头前方抬（a 95→118，抬离地约 28°≈25 cm 偏高），缺 App 名称里的「T 字」；Y 字的「斜外开 30°」侧视看不出。应依 plane_detail 做 Y、T 两段，抬臂幅度降到约 10–15°。胸抬 5°（t 90→85）合理。",
+  "sources": [
+   "https://pubmed.ncbi.nlm.nih.gov/12774999/",
+   "https://fitnessvolt.com/chest-supported-y-raise-guide/"
+  ],
+  "note": "代码 mid_back 同时代表中/下斜方肌（清单没有 lower_trap）。"
+ },
+ {
+  "file": "facepull",
+  "anim": "facepull",
+  "type": "strength",
+  "title_zh": "绳索面拉",
+  "reps": "12–15",
+  "cue_zh": "拉到耳朵两侧，手肘抬高",
+  "primary": [
+   "rear_delt",
+   "mid_back"
+  ],
+  "secondary": [
+   "lat_delt",
+   "upper_trap"
+  ],
+  "strip": [
+   "肩",
+   "背"
+  ],
+  "view": "back34",
+  "plane": "mixed",
+  "plane_detail": "起点手臂向前伸、指向与脸同高的滑轮（a≈95–100）；终点上臂外展约 90°（手肘与肩同高、在身体两侧略后约 10–20°），肘约 90°、前臂竖直向上（肩外旋），手在耳朵两侧。",
+  "form_audit": "有错（平面）：f1 a=-95、f=175 把上臂画成「往正后方水平伸出」18 单位（≈28 cm），肩关节不可能在肩高做这么大的后伸；正确是手肘往两侧抬高、前臂竖起。f0 手在胸口高度，滑轮应在脸的高度，手应略高（a≈95–100）。",
+  "sources": [
+   "https://www.strengthlog.com/face-pull/",
+   "https://themanual.com/fitness/how-do-do-face-pulls",
+   "https://powerliftingtechnique.com/face-pulls/"
+  ],
+  "note": ""
+ },
+ {
+  "file": "thruster-hands",
+  "anim": "thruster",
+  "type": "cardio",
+  "title_zh": "哑铃深蹲推举",
+  "reps": "10",
+  "cue_zh": "蹲起顺势把哑铃推过头",
+  "primary": [
+   "quads",
+   "glutes",
+   "ant_delt"
+  ],
+  "secondary": [
+   "lat_delt",
+   "triceps",
+   "hamstrings",
+   "abs"
+  ],
+  "strip": [
+   "臀腿",
+   "肩",
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "下蹲段同深蹲（大腿约平行、躯干前倾约 30–35°），哑铃扛在肩上、手肘在前下方；起身过半时开始推，推举段同 ohp：手肘在身体前方约 30–45°，哑铃沿接近垂直的路线推到头顶（上臂上举约 170–180°），不往前绕弧。",
+  "form_audit": "小错：f0 底部（蹲到大腿平行、哑铃在肩）正确；但从 f0 直接插值到 f1，中段上臂水平前伸、手在肩前约 18 单位，推举轨迹往前绕大弧（同 ohp 的问题）。建议加中间帧：站到膝约 150° 时手仍在肩、上臂 a≈20；终点手在肩正上方；推举平面同 ohp。",
+  "sources": [
+   "https://fitnessvolt.com/thrusters/",
+   "https://www.healthline.com/health/fitness-exercise/thrusters",
+   "https://gymkee.com/exercises/quadriceps/dumbbell-thruster/"
+  ],
+  "note": "燃脂收尾 A，6 分钟 AMRAP 的一项。"
+ },
+ {
+  "file": "climber",
+  "anim": "climber",
+  "type": "cardio",
+  "title_zh": "登山者",
+  "reps": "20",
+  "cue_zh": "撑稳肩膀，膝盖轮流往胸收",
+  "primary": [
+   "abs",
+   "hip_flexors"
+  ],
+  "secondary": [
+   "ant_delt",
+   "pec",
+   "triceps",
+   "serratus"
+  ],
+  "strip": [
+   "核心",
+   "肩"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（平板 t=65、手在肩正下方；收腿侧髋屈约 95°、脚离地；伸直腿髋角 180°，臀不翘不塌）",
+  "sources": [
+   "https://www.healthline.com/health/fitness/what-do-mountain-climbers-work",
+   "https://livestrong.com/article/532142-what-muscles-do-the-exercise-mountain-climbers-work",
+   "https://hingehealth.com/resources/articles/mountain-climbers"
+  ],
+  "note": "App 写「20 次（左右各算1）」。"
+ },
+ {
+  "file": "thruster",
+  "anim": "thruster",
+  "type": "cardio",
+  "title_zh": "深蹲+双手上举",
+  "reps": "15",
+  "cue_zh": "蹲起顺势双手上举",
+  "primary": [
+   "quads",
+   "glutes",
+   "ant_delt"
+  ],
+  "secondary": [
+   "lat_delt",
+   "triceps",
+   "hamstrings",
+   "abs"
+  ],
+  "strip": [
+   "臀腿",
+   "肩",
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "下蹲段同深蹲（大腿约平行、躯干前倾约 30–35°），哑铃扛在肩上、手肘在前下方；起身过半时开始推，推举段同 ohp：手肘在身体前方约 30–45°，哑铃沿接近垂直的路线推到头顶（上臂上举约 170–180°），不往前绕弧。",
+  "form_audit": "小错：f0 底部（蹲到大腿平行、哑铃在肩）正确；但从 f0 直接插值到 f1，中段上臂水平前伸、手在肩前约 18 单位，推举轨迹往前绕大弧（同 ohp 的问题）。建议加中间帧：站到膝约 150° 时手仍在肩、上臂 a≈20；终点手在肩正上方；推举平面同 ohp。",
+  "sources": [
+   "https://fitnessvolt.com/thrusters/",
+   "https://www.healthline.com/health/fitness-exercise/thrusters",
+   "https://gymkee.com/exercises/quadriceps/dumbbell-thruster/"
+  ],
+  "note": "燃脂收尾 A，6 分钟 AMRAP 的一项；无哑铃版只是双手上举。"
+ },
+ {
+  "file": "swing-one",
+  "anim": "swing",
+  "type": "cardio",
+  "title_zh": "单只哑铃摆荡",
+  "reps": "40秒",
+  "cue_zh": "屁股往后折，靠髋发力甩起",
+  "primary": [
+   "glutes",
+   "hamstrings"
+  ],
+  "secondary": [
+   "lower_back",
+   "quads",
+   "abs",
+   "forearm"
+  ],
+  "strip": [
+   "臀腿",
+   "背"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "小错：f0（后摆最低点）a=-25，手在膝盖前方约 6 单位，哑铃没有从两腿之间往后「穿过去」；正确后摆是前臂贴大腿内侧、哑铃在两腿之间、手在膝盖后方靠近胯下（约 a≈-50）。f1 站直、髋完全伸展、手臂摆到胸高（a=90）正确，属俄式摆荡。",
+  "sources": [
+   "https://research.bond.edu.au/en/publications/hamstring-myoelectrical-activity-during-three-different-kettlebel/",
+   "https://acibademinternational.com/blog/kettlebell-swings-form-benefits-and-the-back-pain-mistake/",
+   "https://trainingstation.co.uk/blogs/news/kettlebell-swings"
+  ],
+  "note": "来源都是壶铃摆荡；App 用单只哑铃（双手握一头），动作模式相同属推论。燃脂收尾 B：做 40 秒/休 20 秒。"
+ },
+ {
+  "file": "deadbug",
+  "anim": "deadbug",
+  "type": "strength",
+  "title_zh": "死虫",
+  "reps": "40秒",
+  "cue_zh": "腰贴地，对侧手脚慢慢伸",
+  "primary": [
+   "abs"
+  ],
+  "secondary": [
+   "obliques",
+   "hip_flexors"
+  ],
+  "strip": [
+   "核心"
+  ],
+  "view": "front34",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f0：大腿垂直、膝 90°、双臂朝天；f1：近侧手臂过头放到头后（na=268）、远侧腿伸直到离地约 6 单位，正是对侧手脚）",
+  "sources": [
+   "https://www.garagegymreviews.com/dead-bug-exercise",
+   "https://www.bodyspec.com/blog/post/dead_bug_exercise_form_benefits_and_variations",
+   "https://www.hingehealth.com/gb/en/resources/articles/deadbug/"
+  ],
+  "note": "燃脂收尾 B 的 40 秒项。第三个来源网址为推论的英区版本路径（搜索结果给的是 /fr/fr/ 与 /de/de/ 版本），如需严谨可换回 https://www.hingehealth.com/fr/fr/resources/articles/deadbug/。"
+ },
+ {
+  "file": "jack",
+  "anim": "jack",
+  "type": "cardio",
+  "title_zh": "开合跳",
+  "reps": "40秒",
+  "cue_zh": "手脚同时开合，轻轻落地",
+  "primary": [
+   "calves",
+   "glute_med",
+   "lat_delt"
+  ],
+  "secondary": [
+   "quads",
+   "adductors",
+   "glutes"
+  ],
+  "strip": [
+   "臀腿",
+   "肩"
+  ],
+  "view": "front",
+  "plane": "frontal",
+  "plane_detail": "手臂从体侧（外展 0–10°）经身体两侧举到头顶（外展约 170–180°），肘伸直；双脚从并拢跳开到约 1.5 倍肩宽（每腿外展约 15–20°）；落地膝微弯、前脚掌先着地。",
+  "form_audit": "有错（平面）：f1 a=175 让手臂从「前方」举起（前平举路线），腿 nt=+10/ft=-10 是前后剪刀步；开合跳的手脚都应在身体两侧开合（额状面）。",
+  "sources": [
+   "https://www.nasm.org/resource-center/exercise-library/jumping-jacks",
+   "https://livestrong.com/article/434676-what-muscles-do-jumping-jacks-work",
+   "https://webmd.com/fitness-exercise/how-to-do-jumping-jacks"
+  ],
+  "note": ""
+ },
+ {
+  "file": "burpee",
+  "anim": "burpee",
+  "type": "cardio",
+  "title_zh": "不跳版波比",
+  "reps": "6",
+  "cue_zh": "蹲下撑地，脚一只一只往后踩",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "abs",
+   "ant_delt",
+   "pec",
+   "triceps",
+   "calves"
+  ],
+  "strip": [
+   "臀腿",
+   "核心",
+   "胸"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "小错：f1（蹲下手撑地）→ f2（平板）两只脚同时从蹲姿移到身后，看起来是「双脚跳回」；App 是不跳版，应加中间帧让脚一只一只往后踩（先近侧腿伸到 -65，再远侧腿），回来时也一只一只。站立回到 f4 没有跳，正确。f2 平板身体一直线正确。",
+  "sources": [
+   "https://gethealthyu.com/modified-burpees",
+   "https://www.masterclass.com/articles/modified-burpee",
+   "https://www.mindbodygreen.com/articles/modified-burpee"
+  ],
+  "note": ""
+ },
+ {
+  "file": "tap",
+  "anim": "tap",
+  "type": "strength",
+  "title_zh": "平板支撑碰肩",
+  "reps": "16",
+  "cue_zh": "双脚稍宽，碰肩时屁股不晃",
+  "primary": [
+   "obliques",
+   "abs"
+  ],
+  "secondary": [
+   "ant_delt",
+   "serratus",
+   "glutes"
+  ],
+  "strip": [
+   "核心",
+   "肩"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "高平板、手在肩正下方、双脚比髋略宽；碰肩手的上臂向身体中线内收约 30–45°、肘弯约 100–120°，指尖碰对侧肩；骨盆与肩保持水平不转。",
+  "form_audit": "有错：f1 na=30、nf=-150 → 肘内角 0°（前臂完全折回上臂、手落在同侧肩关节上），人体肘关节最多屈约 145°，做不到；且应碰「对侧」肩（横越身体中线，侧视看不出）。应按 plane_detail 摆。",
+  "sources": [
+   "https://www.strengthlog.com/plank-with-shoulder-taps",
+   "https://rehabhero.ca/exercise/tall-plank-shoulder-tap",
+   "https://www.hsnstore.eu/blog/training-routines/core/anti-rotation/"
+  ],
+  "note": "燃脂收尾 C：「平板支撑碰肩 16 次」。"
+ },
+ {
+  "file": "march",
+  "anim": "march",
+  "type": "mobility",
+  "title_zh": "原地高抬腿踏步",
+  "reps": "30秒",
+  "cue_zh": "膝抬到腰高，手前后摆",
+  "primary": [
+   "hip_flexors"
+  ],
+  "secondary": [
+   "quads",
+   "abs",
+   "calves"
+  ],
+  "strip": [
+   "臀腿",
+   "核心"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "小错：抬腿侧大腿 nt=60（髋屈 60°），膝盖只到大腿中段高度；App 写「膝盖抬到约腰的高度」，应 nt≈80–90（大腿接近水平）。手脚对侧摆动（抬右腿时左手在前）正确。",
+  "sources": [
+   "https://media.specialolympics.org/resources/health/fitness/Fitness-Dynamic-Streches-Guide.pdf",
+   "https://www.rehabhero.ca/exercise/a-marches"
+  ],
+  "note": ""
+ },
+ {
+  "file": "armcircle",
+  "anim": "armcircle",
+  "type": "mobility",
+  "title_zh": "手臂大绕环",
+  "reps": "30秒",
+  "cue_zh": "手臂伸直画大圆，不耸肩",
+  "primary": [
+   "ant_delt",
+   "lat_delt",
+   "rear_delt"
+  ],
+  "secondary": [
+   "upper_trap"
+  ],
+  "strip": [
+   "肩"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（直臂 a 0→180→360 在侧面画大圆，属「大绕环」常见做法）。注意：动画只循环一个方向（前→上→后），App 要求前 15 秒往前、后 15 秒往后，单张循环图只能示范一个方向；若改成「手臂侧平举画小圈」则为额状面版本，两者来源都有。",
+  "sources": [
+   "https://howdyhealth.tamu.edu/a-quick-5-minute-warm-up-routine-for-walkers/",
+   "https://www.caliverse.app/exercises/263",
+   "https://platform.instituteofmotion.com/library/block/jely178x"
+  ],
+  "note": ""
+ },
+ {
+  "file": "catcow",
+  "anim": "catcow",
+  "type": "mobility",
+  "title_zh": "猫牛式",
+  "reps": "30秒",
+  "cue_zh": "吸气塌腰抬头，吐气拱背",
+  "primary": [
+   "lower_back",
+   "abs"
+  ],
+  "secondary": [],
+  "strip": [
+   "背",
+   "核心"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错（表达不到）：两帧只把一根直线躯干从 t=68 转到 76，脊椎没有「拱起/塌下」的弯曲，手的位置还从 y=22 沉到 27（手离开地面原位）。应：手、膝固定在地（手在肩下、膝在髋下），猫式＝胸腰椎屈曲往上拱、低头；牛式＝腰椎伸展往下塌、胸口前送、抬头；骨盆跟着前后倾。3D 模型需要可弯的脊椎骨。",
+  "sources": [
+   "https://library.theprehabguys.com/vimeo-video/cat-cow/",
+   "https://acibademinternational.com/blog/cat-cow-stretch-why-physios-keep-prescribing-this-simple-flow/",
+   "https://gokhalemethod.com/blog/71058"
+  ],
+  "note": "secondary 留空：属脊椎活动度动作，来源只提肩、髋、核心负责维持四足姿势，未指名特定协同肌。"
+ },
+ {
+  "file": "bridge2",
+  "anim": "bridge2",
+  "type": "strength",
+  "title_zh": "臀桥",
+  "reps": "30秒",
+  "cue_zh": "仰躺屈膝，脚跟发力把髋顶到一直线",
+  "primary": [
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：f1 t=-120、nt=100 → 髋过伸约 20°（肩-髋-膝应一直线：地板版约 {t:-110,nt:110,ns:+20}）。另：这张图被三处共用——徒手臀推（背靠沙发）、健身房臀推机、热身「臀桥」（仰躺地上）。前两者要上背靠凳，后者肩膀贴地，一张图无法同时正确，需委派方决定（见笔记）。",
+  "sources": [
+   "https://pubmed.ncbi.nlm.nih.gov/26214739/",
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC5534144/"
+  ],
+  "note": "热身用的地板臀桥（肩膀贴地）。2026-11-03 起臀推另用 thrust，bridge2 只剩热身这一处。"
+ },
+ {
+  "file": "lungeT",
+  "anim": "lungeT",
+  "type": "mobility",
+  "title_zh": "弓步＋双手前伸",
+  "reps": "30秒",
+  "cue_zh": "跨步下蹲，双手向前伸直",
+  "primary": [
+   "quads",
+   "glutes"
+  ],
+  "secondary": [
+   "hip_flexors",
+   "ant_delt"
+  ],
+  "strip": [
+   "臀腿",
+   "肩"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "小错：f1 远侧手臂掉到 fa=40、ff=60（弯着往下），只有一只手前伸；App 写「双手向前伸直」，两只手都应 a≈90、f≈90。弓步下肢同 lunge（前膝约 90°、后膝近地），正确。",
+  "sources": [
+   "https://www.outsideonline.com/health/running/training-advice/running-101/utilizing-lunge-matrix-become-stronger-runner/",
+   "https://www.upmc.com/healthbeat/sports-medicine/at-home-warmups"
+  ],
+  "note": "hip_flexors 列为 secondary＝后腿髋屈肌被拉伸。"
+ },
+ {
+  "file": "scap",
+  "anim": "scap",
+  "type": "mobility",
+  "title_zh": "肩胛俯卧撑",
+  "reps": "30秒",
+  "cue_zh": "手肘不弯，只让肩胛夹紧推开",
+  "primary": [
+   "serratus"
+  ],
+  "secondary": [
+   "mid_back",
+   "abs"
+  ],
+  "strip": [
+   "肩",
+   "背",
+   "核心"
+  ],
+  "view": "back34",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "有错：f1 用 IK 把肘弯到内角 125°（屈 55°），看起来是小幅度俯卧撑；App 要领「手肘全程不弯」。应：肘内角始终 180°，只让胸口在两手之间下沉约 2–3 cm（肩胛内收）再推高（肩胛前伸）。2D 火柴人无法表现肩胛滑动，3D 需用肩胛/锁骨骨骼。",
+  "sources": [
+   "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4327800/",
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC4047223"
+  ],
+  "note": ""
+ },
+ {
+  "file": "wgs",
+  "anim": "wgs",
+  "type": "mobility",
+  "title_zh": "世界最伟大伸展",
+  "reps": "30秒",
+  "cue_zh": "手撑地，另一手转向天花板",
+  "primary": [
+   "hip_flexors",
+   "adductors"
+  ],
+  "secondary": [
+   "hamstrings",
+   "obliques",
+   "pec"
+  ],
+  "strip": [
+   "臀腿",
+   "核心"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "大弓步，前脚异侧（或依 App 文字）一手撑在前脚内侧地面，后腿尽量伸直、后膝离地；转体时上方手臂从地面经侧面转向天花板，胸椎旋转约 45–60°，两手臂成一直线，眼睛看上方的手。",
+  "form_audit": "有错：①f0/f1 支撑手 a=5 垂在肩下，手在 y=9、地面约 y=29，手离地约 20 单位≈30 cm，没有「撑地」。②后膝内角 115°、后膝离地仅 6 单位，比较像跪姿弓步；来源要领是后腿尽量伸直以拉伸髋屈肌。③上举手 na=175 只是往头顶方向举，缺「胸椎旋转、胸口转开」。应：躯干更低（t≈70–80）让支撑手着地，后腿近伸直，按 plane_detail 做旋转。",
+  "sources": [
+   "https://www.equinox.com/articles/2013/04/worlds-greatest-stretch",
+   "https://library.theprehabguys.com/vimeo-video/worlds-greatest-stretch-2/",
+   "https://www.fitandwell.com/exercise/flexibility/the-worlds-greatest-stretch-is-too-demanding-for-beginners-here-are-six-better-alternatives-according-to-a-certified-stretch-therapist/"
+  ],
+  "note": "哪只手撑地：App 写「同侧手撑地」，常见版本是前脚异侧的手撑地、前脚同侧的手往上转——此细节未查证，见笔记。"
+ },
+ {
+  "file": "quad",
+  "anim": "quad",
+  "type": "stretch",
+  "title_zh": "大腿前侧拉伸",
+  "reps": "60秒（每侧30秒）",
+  "cue_zh": "两膝并拢，脚跟拉向屁股",
+  "primary": [
+   "quads"
+  ],
+  "secondary": [
+   "hip_flexors"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（拉伸腿膝内角约 36°、脚跟贴近臀部；大腿 nt=-14 略在身体后方、膝盖朝下；手抓脚背；站立腿直）",
+  "sources": [
+   "https://www.physitrack.com/exercise-library/how-to-perform-the-quad-stretch-exercise",
+   "https://commonspirit.org/conditions-treatments/quad-stretch-standing",
+   "https://ourspace.rjah.nhs.uk/?p=1807"
+  ],
+  "note": ""
+ },
+ {
+  "file": "fig4",
+  "anim": "fig4",
+  "type": "stretch",
+  "title_zh": "4字臀部拉伸",
+  "reps": "60秒（每侧30秒）",
+  "cue_zh": "脚踝放膝上，抱大腿拉向胸",
+  "primary": [
+   "glutes",
+   "glute_med"
+  ],
+  "secondary": [],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "仰卧；支撑腿（下面那条）离地、屈髋约 90–110°、屈膝约 90°；交叉腿外旋、外踝放在支撑腿膝盖上方的大腿处，交叉腿膝盖朝外（与身体中线约 45–60°）；双手从两腿间与外侧抱住支撑腿大腿后侧往胸口拉；头肩贴地。",
+  "form_audit": "有错：①交叉腿脚踝（近侧脚 (28,-26)）离支撑腿膝盖（(12,-21)）约 16 单位≈25 cm，没有「放在膝盖上」。②支撑腿（远侧）脚还踩在地上（屈膝 120°），App 写「双手抱住下面那条大腿往胸口拉」，应离地拉向胸口。③双手在腹部上方 (-10,-24) 悬空，没抱到大腿。",
+  "sources": [
+   "https://www.hingehealth.com/gb/en/resources/articles/figure-four/",
+   "https://akuaku.org/Sarco+/exercise-figure-four-glute-stretch.html"
+  ],
+  "note": "被拉伸的还有梨状肌等深层外旋肌，清单没有对应代码，以 glutes/glute_med 代表；secondary 留空。"
+ },
+ {
+  "file": "chest",
+  "anim": "chest",
+  "type": "stretch",
+  "title_zh": "门框胸部拉伸",
+  "reps": "30秒",
+  "cue_zh": "前臂贴门框，身体往前倾",
+  "primary": [
+   "pec"
+  ],
+  "secondary": [
+   "ant_delt"
+  ],
+  "strip": [
+   "胸",
+   "肩"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "上臂外展约 90°（手肘与肩同高或略低）、肘约 90°、前臂竖直贴门框；一脚前跨、身体往前倾，使上臂落在身体额状面后方约 15–30°。",
+  "form_audit": "有错（平面）：na=-80、nf=-170 把上臂画成「往正后方水平伸出」18 单位，肩关节做不到这么大的后伸；正确是上臂往两侧外展、手肘与肩同高、身体前倾让胸口穿过门框。前倾 6°（t 0→6）方向对，可稍大并加一脚前跨。",
+  "sources": [
+   "https://exrx.net/Stretches/ChestGeneral/Doorway",
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC8568813/",
+   "https://us.physitrack.com/home-exercise-video/pectoralis-stretching"
+  ],
+  "note": ""
+ },
+ {
+  "file": "child",
+  "anim": "child",
+  "type": "stretch",
+  "title_zh": "婴儿式",
+  "reps": "30秒",
+  "cue_zh": "屁股坐向脚跟，手往前伸",
+  "primary": [
+   "lats",
+   "lower_back"
+  ],
+  "secondary": [
+   "glutes"
+  ],
+  "strip": [
+   "背",
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（膝屈约 150°、髋屈到躯干贴大腿（髋角 13–17°）、手臂前伸贴地、额头近地）",
+  "sources": [
+   "https://www.nasm.org/exercise-library/child's-pose",
+   "https://www.hingehealth.com/gb/en/resources/articles/childs-pose/",
+   "https://www.webmd.com/fitness-exercise/how-to-do-childs-pose"
+  ],
+  "note": "也用作「训练完成」画面。"
+ },
+ {
+  "file": "wwalk",
+  "anim": "wwalk",
+  "type": "swim",
+  "title_zh": "水中行走",
+  "reps": "一个池宽",
+  "cue_zh": "小步前倾，肩膀放松照常呼吸",
+  "primary": [],
+  "secondary": [],
+  "strip": [],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（躯干前倾 4°、步幅小、手脚对侧摆动）",
+  "sources": [
+   "https://www.arthritis.org/health-wellness/healthy-living/physical-activity/other-activities/hit-the-pool",
+   "https://www.arthritisaction.org.uk/wp-content/uploads/2025/07/Water-based-Activity-for-Arthritis.pdf"
+  ],
+  "note": "游泳入门的水感／安全技能，重点是姿势与呼吸、不是练肌肉，故 primary/secondary 留空、strip 留空。 reps 取自 App 目标文字。"
+ },
+ {
+  "file": "bob",
+  "anim": "bob",
+  "type": "swim",
+  "title_zh": "吐泡泡·水里睁眼",
+  "reps": "10 次 / 5秒",
+  "cue_zh": "水里用鼻子吐气，出水再吸",
+  "primary": [],
+  "secondary": [],
+  "strip": [],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（站立→深蹲让头没入水面：蹲下时头顶约在水面下 13 单位）",
+  "sources": [
+   "https://blog.myswimpro.com/2022/02/02/4-freestyle-breathing-drills-for-beginner-swimmers/",
+   "https://www.divessi.com/blog/swimming-drills-for-beginners-2846",
+   "https://sites.google.com/aacps.org/watersafety/personal-water-safety/breathing-and-bubbles"
+  ],
+  "note": "游泳入门的水感／安全技能，重点是姿势与呼吸、不是练肌肉，故 primary/secondary 留空、strip 留空。 同一张图被「吐泡泡」（连续 10 次）与「水里睁眼」（看清 5 秒）共用。"
+ },
+ {
+  "file": "wallfloat",
+  "anim": "wallfloat",
+  "type": "swim",
+  "title_zh": "扶池边漂浮",
+  "reps": "5秒",
+  "cue_zh": "脸朝池底吐气，腿自己浮起",
+  "primary": [],
+  "secondary": [],
+  "strip": [],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（双手直臂扶墙、身体水平、脸朝下，腿在水平与下沉 6° 之间轻微浮动）",
+  "sources": [
+   "https://thepehub.co.uk/free-content/units/beginners-swimming-21/lessons/beginners-swimming-lesson-2-14",
+   "https://www.rockstaracademy.com/blog/prone-float",
+   "https://video.swimming.org/videos/stage-2-full-length"
+  ],
+  "note": "游泳入门的水感／安全技能，重点是姿势与呼吸、不是练肌肉，故 primary/secondary 留空、strip 留空。"
+ },
+ {
+  "file": "jelly",
+  "anim": "jelly",
+  "type": "swim",
+  "title_zh": "水母漂",
+  "reps": "5秒",
+  "cue_zh": "吸满气抱膝，背会浮上来",
+  "primary": [],
+  "secondary": [],
+  "strip": [],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（抱膝团身、低头，双手抱在小腿中段，背部最高点约在水面附近）",
+  "sources": [
+   "https://www.livestrong.com/article/160048-list-of-things-to-teach-during-swim-lessons/",
+   "https://www.alamedaca.gov/ONLINE-SERVICES/Red-Cross-Swim-Level-2"
+  ],
+  "note": "游泳入门的水感／安全技能，重点是姿势与呼吸、不是练肌肉，故 primary/secondary 留空、strip 留空。"
+ },
+ {
+  "file": "standup",
+  "anim": "standup",
+  "type": "swim",
+  "title_zh": "漂浮后站起来",
+  "reps": "连续 5 次",
+  "cue_zh": "收膝→压手→抬头→踩地",
+  "primary": [],
+  "secondary": [],
+  "strip": [],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（漂浮→收膝同时手往下往后压水、头抬起→站直）。小建议：App 强调顺序「收膝→压手→抬头→踩地」，现有插值四件事同时发生，可把 f1 拆成「先收膝」「再压手抬头」两帧。",
+  "sources": [
+   "https://www.woodhouse.calderdale.sch.uk/media/4466/swimming-progression.pdf",
+   "https://video.swimming.org/water-safety-expected-standards-1"
+  ],
+  "note": "游泳入门的水感／安全技能，重点是姿势与呼吸、不是练肌肉，故 primary/secondary 留空、strip 留空。 来源只确认「从漂浮回到站立」是 Swim England 早期阶段的达标项目，App 的四步顺序未查证到原文。"
+ },
+ {
+  "file": "starfloat",
+  "anim": "starfloat",
+  "type": "swim",
+  "title_zh": "不扶东西漂浮",
+  "reps": "10秒",
+  "cue_zh": "吸气脸入水，全身放松伸直",
+  "primary": [],
+  "secondary": [],
+  "strip": [],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（依 App 文字「双手往前伸直、手脚伸直」：身体水平、手臂过头前伸）。注意 key 名为 star float（海星漂，手脚张开成 X），若改画海星漂则属额状面（手外展约 120–150°、腿各外展约 20–30°），需委派方择一。",
+  "sources": [
+   "https://www.sunsationalswimschool.com/blog/getting-beginners-to-learn-be-comfortable-with-front-and-back-floating",
+   "https://www.alamedaca.gov/ONLINE-SERVICES/Red-Cross-Swim-Level-2"
+  ],
+  "note": "游泳入门的水感／安全技能，重点是姿势与呼吸、不是练肌肉，故 primary/secondary 留空、strip 留空。"
+ },
+ {
+  "file": "backfloat",
+  "anim": "backfloat",
+  "type": "swim",
+  "title_zh": "仰漂",
+  "reps": "10秒",
+  "cue_zh": "耳朵入水，肚子往上挺",
+  "primary": [],
+  "secondary": [],
+  "strip": [],
+  "view": "front34",
+  "plane": "frontal",
+  "plane_detail": "仰躺水面、耳朵在水里、脸露出；手臂往两侧张开（肩外展约 60–90°）贴着水面；髋伸直与身体一直线（肚子往上挺）；腿并拢或略开。",
+  "form_audit": "有错：手臂 a=-100 画成「伸直过头放在头顶后方」，App 写「手臂往两侧张开」，应为两侧外展（额状面）。身体与腿水平、髋 180° 正确。",
+  "sources": [
+   "https://blog.myswimpro.com/2020/08/28/learn-to-float-in-10-minutes-or-less/",
+   "https://swimlikeafish.org/how-to-float-on-your-back-5-drills"
+  ],
+  "note": "游泳入门的水感／安全技能，重点是姿势与呼吸、不是练肌肉，故 primary/secondary 留空、strip 留空。"
+ },
+ {
+  "file": "glide",
+  "anim": "glide",
+  "type": "swim",
+  "title_zh": "蹬边滑行",
+  "reps": "3 米",
+  "cue_zh": "手臂夹耳，眼看池底蹬出",
+  "primary": [],
+  "secondary": [],
+  "strip": [],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（f0 双脚踩壁屈膝 90°、手臂前伸；f1/f2 身体拉直成一直线向前滑，脸朝下）",
+  "sources": [
+   "https://www.usaswimming.org/news/2021/10/05/five-freestyle-tips-to-start-your-season",
+   "https://www.divessi.com/en/blog/swimming-drills-for-beginners-2846",
+   "https://swim-teach.com/how-to-glide-further-without-sinking.html"
+  ],
+  "note": "游泳入门的水感／安全技能，重点是姿势与呼吸、不是练肌肉，故 primary/secondary 留空、strip 留空。"
+ },
+ {
+  "file": "kick",
+  "anim": "kick",
+  "type": "swim",
+  "title_zh": "扶板打腿",
+  "reps": "10 米",
+  "cue_zh": "从大腿发力，膝盖微弯",
+  "primary": [
+   "hip_flexors",
+   "quads"
+  ],
+  "secondary": [
+   "glutes",
+   "hamstrings",
+   "calves"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（大腿在水平线上下各约 10° 交替、膝只微弯（内角 170–175°）、两脚上下相差约 22 单位≈35 cm，属小幅打腿）",
+  "sources": [
+   "https://blog.goswim.tv/post/freestyle-flutter-from-the-hips",
+   "https://www.swimmingworldmagazine.com/articles/swimmagazine/articles/199507-02swim_art.asp",
+   "https://dan-daly.squarespace.com/train-daly/blog/flutter-kick-technique-muscles-benefits"
+  ],
+  "note": "打腿类填了肌肉：来源（教练文章，非研究）指下打腿靠髋屈肌与股四头肌、上抬靠臀与腘绳肌。"
+ },
+ {
+  "file": "kickbreath",
+  "anim": "kickbreath",
+  "type": "swim",
+  "title_zh": "扶板打腿换气",
+  "reps": "10 米",
+  "cue_zh": "抬头换气时腿继续打",
+  "primary": [
+   "hip_flexors",
+   "quads"
+  ],
+  "secondary": [
+   "glutes",
+   "hamstrings",
+   "calves"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（换气帧 t=72：上身抬起 18°、下巴前抬出水，腿在换气帧仍在交替打，符合「换气时腿继续打」）",
+  "sources": [
+   "https://www.usms.org/fitness-and-training/articles-and-videos/articles/kick-drills-for-all",
+   "https://us.humankinetics.com/blogs/excerpt/improve-head-and-body-position-to-breathe-more-effectively"
+  ],
+  "note": "同 kick 的肌肉说明。"
+ },
+ {
+  "file": "kickfree",
+  "anim": "kickfree",
+  "type": "swim",
+  "title_zh": "滑行打腿",
+  "reps": "10 米",
+  "cue_zh": "手夹耳朵，脸朝下打腿",
+  "primary": [
+   "hip_flexors",
+   "quads"
+  ],
+  "secondary": [
+   "glutes",
+   "hamstrings",
+   "calves"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "",
+  "form_audit": "ok（无浮板、手臂过头前伸成流线、脸朝下，腿同 kick）",
+  "sources": [
+   "https://www.usaswimming.org/news/2021/10/05/five-freestyle-tips-to-start-your-season",
+   "https://blog.goswim.tv/post/freestyle-flutter-from-the-hips"
+  ],
+  "note": "同 kick 的肌肉说明。"
+ },
+ {
+  "file": "sldl-hands",
+  "anim": "sldl",
+  "type": "strength",
+  "title_zh": "单腿罗马尼亚硬拉",
+  "reps": "8/侧",
+  "cue_zh": "背打直，后腿与躯干一直线",
+  "primary": [
+   "hamstrings",
+   "glutes"
+  ],
+  "secondary": [
+   "glute_med",
+   "lower_back",
+   "adductors"
+  ],
+  "strip": [
+   "臀腿",
+   "背"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "支撑腿膝盖微弯（约 10–15°），屈髋把躯干往前下放到接近水平，同时另一条腿往后抬起、髋与膝保持伸直，跟躯干成一直线；背全程平直，哑铃垂在肩下方；感觉大腿后侧拉紧就站回来。",
+  "form_audit": "新动作（2026-11-04 替代动作），按来源新做关键帧。",
+  "sources": [
+   "https://exrx.net/WeightExercises/GluteusMaximus/BWSingleLegStiffLegDeadlift",
+   "https://www.acefitness.org/resources/everyone/exercise-library/329/single-leg-romanian-deadlift/"
+  ],
+  "note": ""
+ },
+ {
+  "file": "dbbridge-one",
+  "anim": "dbbridge",
+  "type": "strength",
+  "title_zh": "哑铃臀桥",
+  "reps": "12–15",
+  "cue_zh": "脚跟发力顶髋，顶点夹臀",
+  "primary": [
+   "glutes"
+  ],
+  "secondary": [
+   "hamstrings",
+   "abs"
+  ],
+  "strip": [
+   "臀腿",
+   "核心"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "仰躺屈膝、脚掌平贴地面与髋同宽，一只哑铃横放在髋骨上、两手扶住；收紧腹部，脚跟踩地、臀部发力把髋顶到肩—髋—膝一直线（不要再往上顶到腰拱起），慢慢放下。",
+  "form_audit": "新动作（2026-11-04 替代动作），沿用地板臀桥 bridge2 的腿部关键帧，加上哑铃与扶哑铃的手。",
+  "sources": [
+   "https://www.acefitness.org/resources/everyone/exercise-library/49/glute-bridge/",
+   "https://exrx.net/WeightExercises/GluteusMaximus/BBHipThrust"
+  ],
+  "note": "ExRx 的负重版是上背靠凳的杠铃臀推（同样把重量放在髋上）；地板臀桥的动作要领取自 ACE。"
+ },
+ {
+  "file": "pullup",
+  "anim": "pullup",
+  "type": "strength",
+  "title_zh": "辅助引体向上",
+  "reps": "6–10",
+  "cue_zh": "下巴过杆，下放到手臂伸直",
+  "primary": [
+   "lats"
+  ],
+  "secondary": [
+   "biceps",
+   "mid_back",
+   "rear_delt"
+  ],
+  "strip": [
+   "背",
+   "手臂"
+  ],
+  "view": "back34",
+  "plane": "frontal",
+  "plane_detail": "正手握杆、握距略比肩宽，从手臂伸直悬垂开始，手肘往下往两侧拉，把身体拉到下巴高过横杆，再慢慢下放到手臂与肩完全伸展；弹力带套在脚下（或跪在辅助机踏板上）减轻体重。",
+  "form_audit": "新动作（2026-11-04 替代动作）。2D 用 lf 把身体抬高、手相对脚的位置同步下移，横杆保持不动。2026-11-04 补画弹力带：挂在横杆上、从身体前面垂下、绕过两只脚底（props band）。",
+  "sources": [
+   "https://exrx.net/WeightExercises/LatissimusDorsi/ASPullupBand",
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC5548150/"
+  ],
+  "note": "动图画弹力带辅助；用辅助机的话跪在踏板上，文字说明。"
+ },
+ {
+  "file": "pullapart",
+  "anim": "pullapart",
+  "type": "strength",
+  "title_zh": "弹力带拉开",
+  "reps": "15–20",
+  "cue_zh": "直臂在肩高，往两侧拉开",
+  "primary": [
+   "rear_delt",
+   "mid_back"
+  ],
+  "secondary": [],
+  "strip": [
+   "肩",
+   "背"
+  ],
+  "view": "back34",
+  "plane": "transverse",
+  "plane_detail": "站直，两手与肩同宽握住弹力带、手臂伸直平举在肩高；肩胛往后往下收，手臂往两侧水平拉开到身体两侧（带子贴近胸口），慢慢回到前方；不耸肩、不用腰往后仰。",
+  "form_audit": "新动作（2026-11-04 替代动作）。2D 表达不了横向打开，3D 动图由渲染台 OV.pullapart 摆出，两手之间画一条绿色弹力带。",
+  "sources": [
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC8975561/",
+   "https://exrx.net/WeightExercises/DeltoidPosterior/LVRearLateralRaise"
+  ],
+  "note": "ExRx 没有弹力带拉开的专页；用同一个动作模式（肩高横向外展）的反向飞鸟机页面佐证要领。"
+ },
+ {
+  "file": "ohpseat-hands",
+  "anim": "ohpseat",
+  "type": "strength",
+  "title_zh": "坐姿哑铃肩推",
+  "reps": "8–12",
+  "cue_zh": "背贴椅背，往上推不拱腰",
+  "primary": [
+   "ant_delt",
+   "lat_delt"
+  ],
+  "secondary": [
+   "triceps",
+   "upper_trap"
+  ],
+  "strip": [
+   "肩",
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "坐在有椅背的长凳上，头、肩、臀贴住椅背，哑铃在肩膀两侧、手肘在手腕正下方并略在身体前方；收紧腹部往上推到手臂伸直，下放回肩膀高度；腰不离开椅背。",
+  "form_audit": "新动作（2026-11-04 替代动作），手臂路径沿用站姿哑铃肩推（肩胛骨平面）。",
+  "sources": [
+   "https://www.acefitness.org/resources/everyone/exercise-library/45/seated-overhead-press/",
+   "https://exrx.net/WeightExercises/DeltoidAnterior/DBShoulderPress"
+  ],
+  "note": ""
+ }
+]
