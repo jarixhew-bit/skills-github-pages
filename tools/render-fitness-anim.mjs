@@ -17,6 +17,7 @@
  *   python3 -m http.server 8899 &
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node tools/render-fitness-anim.mjs [file 或动作key ...]
  * 不给参数就全部重渲染。需要 python3 + Pillow（拼动图用）。
+ * 侧面版（<file>-side.webp）：清单在 App 的 SIDE_VIEW，跑全部时一起渲染；只渲染侧面就给档名，如 squat-side。
  * FRAMES_DIR=<目录> 会把每格 PNG 留在那里（<目录>/<file>/000.png…），并写 <目录>/<file>.json（第几格最用力），给联络表用。
  */
 import { chromium } from 'playwright';
@@ -38,7 +39,8 @@ page.on('console', m => { if (m.type() === 'error') console.error('console', m.t
 
 // 要渲染哪些：App 实际用到的（动作 key＋拿不拿哑铃）组合，由 App 自己列出来
 await page.goto(`http://localhost:${PORT}/fitness/`);
-const combos = await page.evaluate(() => window.__fit.animCombos());
+// 外加侧面版（App 的 SIDE_VIEW 清单：膝盖／背角度要从侧面看的动作，档名 <file>-side，纯侧面机位）
+const combos = await page.evaluate(() => window.__fit.animCombos().concat(window.__fit.sideCombos()));
 // 造型：STYLE=sport（默认＝正式版）|classic（旧版雕像白）|statue|skin、MODEL=<glb 网址>、TEX=<贴图目录网址>
 const xq = ['style', 'model', 'tex'].map(k => process.env[k.toUpperCase()] ? `&${k}=${encodeURIComponent(process.env[k.toUpperCase()])}` : '').join('');
 await page.goto(`http://localhost:${PORT}/tools/lib/fitness-render.html?w=${W}&h=${H}${xq}`);
@@ -48,7 +50,7 @@ const todo = combos.filter(c => !only.length || only.includes(c.file) || only.in
 const keep = process.env.FRAMES_DIR;
 let bad = 0;
 for (const c of todo) {
-  const spec = SPEC.find(s => s.file === c.file);
+  const spec = SPEC.find(s => s.file === (c.base || c.file)); // 侧面版沿用正面那张的规格
   if (!spec) { console.log('✗ 规格里没有这一张', c.file); bad++; continue; }
   const r = await page.evaluate(([s, cc, fps]) => window.setup(s, cc, fps), [spec, c, FPS]);
   if (!r) { console.log('✗ 没有这个动作', c.anim); bad++; continue; }

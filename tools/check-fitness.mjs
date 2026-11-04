@@ -21,6 +21,7 @@
  *   8. 手机宽度（360px）没有横向卷动、全程没有 JS 错误；
  *   9. 3D 引擎真的载入、每个动作（含游泳）画出来都不是空白；游泳课 12 课、过关打勾、备份含游泳进度。
  *  10. 替代动作：换了会记住（重载、跟练、Garmin、备份），换上的动作有自己的历史／建议／新纪录，不跟原动作混。
+ *  11. 侧面机位：清单里每张侧面图都在、切换钮只出现在有侧面图的动作、按了换图、重载记得、进备份。
  * 「今天」用 page.clock 固定住，结果不随跑的日子改变。
  */
 import { chromium } from 'playwright';
@@ -298,6 +299,66 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   check((await page.locator('#sw-walk .ph.anim img').getAttribute('src')) === 'anim/wwalk.webp', '游泳课也用示范动图');
   check(errors.length === 0, `动图没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
+}
+
+// ---- 侧面机位（2026-11-04 用户：膝盖、背的角度要从侧面看）：「正面／侧面」切换 ----
+// 清单正本是 App 的 SIDE_VIEW；每张都要有 anim/<file>-side.webp。切换钮只在有侧面图的动作出现，按了换图、重载后记得、进备份。
+{
+  const { ctx, page, errors } = await openWith([]);
+  const list = await page.evaluate(() => window.__fit.SIDE_VIEW);
+  const sideC = await page.evaluate(() => window.__fit.sideCombos());
+  const hasSide = f => fs.existsSync(`fitness/anim/${f}-side.webp`);
+  check(list.length >= 14 && sideC.length === list.length, `侧面清单 ${list.length} 个都是 App 实际用到的动图（对得上 ${sideC.length} 个）`);
+  const noSide = list.filter(f => !hasSide(f));
+  check(noSide.length === 0, `侧面清单每个动作都有 anim/<file>-side.webp${noSide.length ? '（缺：' + noSide.join(', ') + '）' : ''}`);
+  const bigSide = list.filter(f => hasSide(f) && fs.statSync(`fitness/anim/${f}-side.webp`).size > 400 * 1024);
+  check(bigSide.length === 0, `侧面动图都在 400KB 以内${bigSide.length ? '（超过：' + bigSide.join(', ') + '）' : ''}`);
+  await page.click('#picker [data-wk="A"]');
+  const phs = await page.$$eval('.ph.anim[data-f]', els => els.map(e => ({ f: e.dataset.f, vw: !!e.querySelector('.vw [data-view]') })));
+  const wrong = phs.filter(x => x.vw !== hasSide(x.f)).map(x => x.f + (x.vw ? '（有钮没图）' : '（有图没钮）'));
+  check(phs.some(x => x.vw) && phs.some(x => !x.vw) && wrong.length === 0, `「正面／侧面」切换只出现在有侧面图的动作上（${phs.filter(x => x.vw).length} 张有、${phs.filter(x => !x.vw).length} 张没有）${wrong.length ? '：' + wrong.join(', ') : ''}`);
+  const card = page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first();
+  await card.locator('.vw [data-view="side"]').click();
+  const img = card.locator('.ph.anim img');
+  await img.evaluate(i => i.complete && i.naturalWidth ? 1 : new Promise(r => { i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); }));
+  check(await img.getAttribute('src') === 'anim/squatG-one-side.webp' && await img.evaluate(i => i.naturalWidth) > 0, `按「侧面」→ 卡片换成侧面动图并载入成功（${await img.getAttribute('src')}）`);
+  check(await card.locator('.vw [data-view="side"]').getAttribute('aria-pressed') === 'true', '「侧面」钮标成已选');
+  check(await page.locator('#workout .ex').filter({ hasText: '哑铃卧推' }).first().locator('.ph.anim img').getAttribute('src') === 'anim/bench-hands-side.webp', '选择全 App 共用：卧推卡片也跟着换成侧面');
+  await page.reload(); await page.waitForSelector('#workout .ex'); await page.click('#picker [data-wk="A"]');
+  check(await page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first().locator('.ph.anim img').getAttribute('src') === 'anim/squatG-one-side.webp'
+    && (await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).view)) === 'side', '重载 App 后仍是侧面（存在 cfg.view）');
+  // 全屏跟练：有切换钮，按「正面」换回来
+  await page.click('#startPlayer');
+  for (let i = 0; i < 8; i++) await page.click('#plNextBtn');
+  check(/squatG-one-side\.webp/.test(await page.innerHTML('#plPhoto')) && await page.locator('#plPhoto .vw [data-view]').count() === 2, '全屏跟练显示侧面动图与切换钮');
+  await page.click('#plPhoto .vw [data-view="front"]');
+  check(/anim\/squatG-one\.webp/.test(await page.innerHTML('#plPhoto')) && await page.locator('#player').isVisible(), '跟练里按「正面」→ 换回正面，播放器不受影响');
+  await page.click('#plClose');
+  // 换动作：健身房版腿举换成史密斯深蹲，替代动作也有切换钮
+  await page.click('#eqSeg [data-eq="gym"]'); await page.click('#picker [data-wk="A"]');
+  const g = page.locator('#workout .ex[data-slot="gsquat"]');
+  await g.locator('[data-swap]').click();
+  const first = await g.locator('.alts [data-alt]').nth(1).getAttribute('data-alt');
+  check(first === 'x:smithsquat', `健身房没有腿举机：替代清单第一个就是史密斯深蹲（实得 ${first}）`);
+  await g.locator('.alts [data-alt="x:smithsquat"]').click();
+  check(/史密斯深蹲/.test(await g.locator('h3').textContent()) && await g.locator('.vw [data-view]').count() === 2, '换成史密斯深蹲 → 卡片有自己的动图与「正面／侧面」切换');
+  await g.locator('.vw [data-view="side"]').click();
+  check(await g.locator('.ph.anim img').getAttribute('src') === 'anim/smithsquat-side.webp', '替代动作按「侧面」→ smithsquat-side.webp');
+  for (const sl of ['lunge', 'split', 'step']) { const l = await page.evaluate(sl => window.__fit.alts.ALTS[sl], sl);
+    check(l.indexOf('x:smithsquat') >= 0 && l.indexOf('x:smithsquat') < l.indexOf('gym:gsquat'), `${sl} 的替代清单里史密斯深蹲排在腿举机前面`); }
+  // 备份：带着示范角度
+  await page.click('nav.tabs [data-tab="more"]');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+  const bf = `${os.tmpdir()}/fit-view-backup-${process.pid}.json`; fs.copyFileSync(await dl.path(), bf);
+  check(JSON.parse(fs.readFileSync(bf, 'utf8')).cfg.view === 'side', '导出备份包含示范角度（cfg.view）');
+  check(errors.length === 0, `侧面切换没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+  const b2 = await openWith([]);
+  await b2.page.click('nav.tabs [data-tab="more"]');
+  await b2.page.setInputFiles('#bkFile', bf);
+  await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+  check((await b2.page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).view)) === 'side', '另一台设备导入备份 → 示范角度也还原成侧面');
+  await b2.ctx.close(); fs.rmSync(bf, { force: true });
 }
 
 // ---- 有氧（提升 VO2max，2026-10-02 用户要求） ----
