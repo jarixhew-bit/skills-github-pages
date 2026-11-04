@@ -24,6 +24,9 @@ PWAS = {
     "expense-tracker-sw.js": ["expense-tracker.html", "expense-tracker.webmanifest"],
     "staff/staff-sw.js": ["staff/index.html", "staff/manifest.webmanifest"],
     "xisui/sw.js": ["xisui/index.html", "xisui/manifest.json"],
+    # 新加坡／雅加达手册（只做离线缓存、没有 manifest）：页面本身网络优先，升版是为了让
+    # 已装的 SW 重新预缓存两本、补抓新照片（2026-11-04 建）
+    "sg-jkt-trip/sw.js": ["sg-jkt-trip/singapore.html", "sg-jkt-trip/jakarta.html", "sg-jkt-trip/index.html"],
 }
 
 # SW 里那行版本号，形如 const CACHE = 'boss-app-v9';

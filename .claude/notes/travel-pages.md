@@ -155,6 +155,7 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
 11 月新加坡手册，2026-11-11（三）～11-14（六）三晚四天，Tan Chin Hooi／Yap Lian Khoon／Hew Chern Yang 3 位成年人（**封面一律写全名**，2026-11-01 用户要求，不再写 Nak／Yang／Jacky），**没有小孩**，双语。
 URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html` 原是四套航班方案比较页，2026-10-31 航班订好后用户说「他们选了就不需要存在了」，改成跳转页（跳到 singapore.html，保住已发出去的 /sg-jkt-trip/ 网址），勿再恢复方案内容；
 本页**不再链回** `./index.html`（2026-10-31 航班已订）。已登记 `tools/lib/trips.py`（行程最后一天 2026-11-14）。
+**离线（2026-11-04 加）**：两本页尾 `<script>` 最后一段 `offlineReady()` 注册 `sg-jkt-trip/sw.js`（scope 只到本文件夹、没有 manifest）。页面网络优先（6 秒没回应才用缓存），第一次打开就预缓存两本＋背景预抓两本的 Google 照片；天气／PSI 接口不缓存。**改了 singapore.html／jakarta.html／index.html 要把 `sw.js` 的 `VERSION` 加一**（`check-sw-version.py` 会拦）；自检 `tools/check-trip-offline.mjs`。
 **版面（2026-11-01 改版，两本共用，用户拍板「F 礼宾风＋E 站点时间轴」）**：
 - CSS 整套换掉（JS 只动两处，见下），字体是 Google Fonts 的 Cormorant Garamond（拉丁）＋Noto Serif SC（`<head>` 里一个 `<link>`）。颜色全走 `:root` 变量：
   `--navy`（吸顶栏／封面底）、`--gold`／`--gold2`（香槟金细线）、`--ivory`／`--paper`（底色）、`--ink`／`--ink2`／`--muted`／`--faint`／`--hair`、
