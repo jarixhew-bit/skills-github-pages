@@ -402,7 +402,7 @@ const sgnBanned = await page.evaluate(() => {
   //（YuCun 的店名与地址是 Sultan Gate，所以英文禁的是 Sultan Mosque，不是 Sultan）
   const d3 = document.querySelector('#day03');
   const outsideD3 = d3 ? t.replace(d3.textContent, '') : t;
-  const d3Only = ['佛牙', 'Buddha Tooth', '植物园', 'Botanic', '胡姬', 'Orchid Garden']
+  const d3Only = ['佛牙', 'Buddha Tooth', '植物园', 'Botanic', '胡姬', 'Orchid Garden', '福康宁', 'Fort Canning']
     .filter(w => outsideD3.toLowerCase().includes(w.toLowerCase())).map(w => w + '（D3 以外）');
   return hits.concat(d3Only, ['甘榜格南', 'Kampong Glam', '苏丹回教堂', 'Sultan Mosque', '哈芝', 'Haji', '花穹', '云雾林', '按摩', 'CÉ LA VI', 'LeVeL33', 'Jigger', '赌场', 'casino', 'SINGAPORAMA', '敦煌', 'Dunhuang'].filter(w => t.toLowerCase().includes(w.toLowerCase())));
 });
@@ -425,20 +425,20 @@ const sgnMust = await page.evaluate(() => {
   return [...new Set(hits)].slice(0, 5);
 });
 check(sgnMust.length === 0, `[sg-nov] 全页不该出现「必去」（含 CSS 生成的标签），实得 ${JSON.stringify(sgnMust)}`);
-// 正向：D3 要有两张景点卡（植物园／佛牙寺），中英都在、每张 ≥4 张图；下午要写明自由活动（2026-11-01）
+// 正向：D3 要有三张景点卡（植物园／福康宁／佛牙寺，2026-11-04 用户加福康宁），中英都在、每张 ≥4 张图；下午要写明自由活动（2026-11-01）
 const sgnD3 = await page.evaluate(() => {
   const stops = [...document.querySelectorAll('#day03 .stop')];
   const txt = stops.map(s => s.textContent).join(' ');
   return {
     n: stops.length,
     imgs: stops.map(s => s.querySelectorAll('.gal img').length),
-    has: ['植物园', 'Botanic Gardens', '佛牙寺', 'Buddha Tooth'].filter(w => !txt.includes(w)),
+    has: ['植物园', 'Botanic Gardens', '福康宁', 'Fort Canning', '佛牙寺', 'Buddha Tooth'].filter(w => !txt.includes(w)),
     nums: [...document.querySelectorAll('#day03 .stop .pin.num')].map(e => e.textContent.trim()),
     free: /自由活动/.test(document.querySelector('#day03')?.textContent || '') && /free afternoon/i.test(document.querySelector('#day03')?.textContent || ''),
   };
 });
-check(sgnD3.n === 2 && sgnD3.imgs.every(n => n >= 4) && sgnD3.has.length === 0 && sgnD3.nums.join(',') === '1,2' && sgnD3.free,
-  `[sg-nov] D3 应有植物园、佛牙寺两张卡（第 1、2 站）、每张 ≥4 张图，下午写明自由活动（实得 ${JSON.stringify(sgnD3)}）`);
+check(sgnD3.n === 3 && sgnD3.imgs.every(n => n >= 4) && sgnD3.has.length === 0 && sgnD3.nums.join(',') === '1,2,3' && sgnD3.free,
+  `[sg-nov] D3 应有植物园、福康宁、佛牙寺三张卡（第 1、2、3 站）、每张 ≥4 张图，下午写明自由活动（实得 ${JSON.stringify(sgnD3)}）`);
 const { dayHaze: sgnDownDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_D2, r => r.fulfill({ status: 500, body: 'boom' }));
 check(sgnDownDay.length === 1 && /抓不到|Could not fetch/.test(sgnDownDay[0]?.now || '') && sgnDownDay[0]?.actHidden === false,
   `[sg-nov] PSI 挂掉但人在行程中：要说明抓不到并摊开替代方案（实得 ${JSON.stringify(sgnDownDay)}）`);
