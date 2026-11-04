@@ -59,7 +59,7 @@ const M = {
   prop: std(0x5d6878, { roughness: 0.6 }), pad: std(0x2b3340, { roughness: 0.8 }), iron: std(0x30353b, { roughness: 0.35, metalness: 0.6 }),
   wood: std(0x9c7a55, { roughness: 0.75 }), plate: std(0x6b7584, { roughness: 0.35, metalness: 0.6 }), board: std(0xf2b33d, { roughness: 0.55 }),
   chrome: std(0xb9c2cc, { roughness: 0.25, metalness: 0.85 }), cable: std(0x1b1f25, { roughness: 0.5 }),
-  band: std(0x3fbf7f, { roughness: 0.7 }),
+  band: std(0x4fe08f, { roughness: 0.6, emissive: 0x1d8a4c }),
   tile: std(0x123a55, { roughness: 0.9 }), wall: std(0x8fc7dc, { roughness: 0.85 }),
   water: new THREE.MeshStandardMaterial({ color: 0x2a8fd6, emissive: 0x062a44, transparent: true, opacity: 0.26, roughness: 0.15, depthWrite: false }),
   surf: new THREE.MeshStandardMaterial({ color: 0x7fd4ff, emissive: 0x0d4a6a, transparent: true, opacity: 0.3, roughness: 0.08, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false }),
@@ -71,7 +71,7 @@ const tile = add(new THREE.PlaneGeometry(900, 500), M.tile, false); tile.rotatio
 const water = add(new THREE.BoxGeometry(900, 1, 320), M.water, false); water.renderOrder = 2;
 const surfGeo = new THREE.PlaneGeometry(900, 320, 90, 32); surfGeo.rotateX(-Math.PI / 2);
 const surf = add(surfGeo, M.surf, false); surf.renderOrder = 3;
-const boxes = []; for (let i = 0; i < 8; i++) boxes.push(add(new THREE.BoxGeometry(1, 1, 1), M.prop));
+const boxes = []; for (let i = 0; i < 10; i++) boxes.push(add(new THREE.BoxGeometry(1, 1, 1), M.prop));
 let nb = 0;
 function box(x0, x1, y0, y1, depth, mat_, rotZ = 0, cx = null, cy = null, cz = 0) {
   const b = boxes[nb++]; if (!b) return; b.visible = true; b.material = mat_;
@@ -79,7 +79,7 @@ function box(x0, x1, y0, y1, depth, mat_, rotZ = 0, cx = null, cy = null, cz = 0
   b.position.set(cx ?? (x0 + x1) / 2, cy ?? (y0 + y1) / 2, cz); b.rotation.set(0, 0, rotZ);
 }
 // 圆柱（横杆、钢索）：两点之间
-const rods = []; for (let i = 0; i < 4; i++) { const m = add(new THREE.CylinderGeometry(1, 1, 1, 14), M.chrome); m.visible = false; rods.push(m); }
+const rods = []; for (let i = 0; i < 10; i++) { const m = add(new THREE.CylinderGeometry(1, 1, 1, 14), M.chrome); m.visible = false; rods.push(m); }
 let nr = 0;
 function rod(a, b, r, mat_) {
   const m = rods[nr++]; if (!m) return; m.visible = true; m.material = mat_;
@@ -466,6 +466,31 @@ function props(s, P, c) {
     const ctr = sole.add(SLED_N.clone().multiplyScalar(3.5)).add(SLED_UP.clone().multiplyScalar(3));
     box(0, 2, 0, 36, 42, M.pad, Math.atan2(SLED_N.y, SLED_N.x), ctr.x, ctr.y, ctr.z);
   }
+  if (s.props.includes('band')) { // 辅助引体向上：弹力带一头挂在横杆上，从身体前面垂下来、绕过两只脚底（跟着身体伸长缩短）
+    const r = W3('RightHand'), l = W3('LeftHand'), o = r.clone().sub(l).setY(0).normalize(), F = c.F.clone().setY(0).normalize();
+    const y = Math.max(r.y, l.y) + 1.6, m = r.clone().lerp(l, 0.5);
+    const sole = sd => W3(sd + 'Foot').lerp(W3(sd + 'ToeBase'), 0.45).add(V(0, -2.2, 0));
+    for (const [sd, sg] of [['Right', 1], ['Left', -1]]) {
+      const top = V(m.x, y, m.z).add(o.clone().multiplyScalar(5 * sg)).add(F.clone().multiplyScalar(1.5));
+      const chest = W3('Spine2').add(F.clone().multiplyScalar(13)).add(o.clone().multiplyScalar(5 * sg));
+      const knee = W3(sd + 'Leg').add(F.clone().multiplyScalar(5.5)).add(o.clone().multiplyScalar(1.5 * sg));
+      const bot = sole(sd).add(o.clone().multiplyScalar(1.5 * sg)).add(F.clone().multiplyScalar(1));
+      rod(top, chest, 1.1, M.band); rod(chest, knee, 1.1, M.band); rod(knee, bot, 1.1, M.band);
+    }
+    rod(sole('Right').add(o.clone().multiplyScalar(1.5)).add(F.clone().multiplyScalar(1)), sole('Left').add(o.clone().multiplyScalar(-1.5)).add(F.clone().multiplyScalar(1)), 0.9, M.band);
+  }
+  if (s.props.includes('cable')) { // 坐姿划船机：底座、脚踏板、低滑轮＋配重塔，钢索从滑轮拉到两手间的把手（一直绷直）
+    const r = W3('RightHand'), l = W3('LeftHand'), o = r.clone().sub(l).normalize(), m = r.clone().lerp(l, 0.5);
+    const sole = ['Right', 'Left'].map(sd => W3(sd + 'ToeBase').lerp(W3(sd + 'Toe_End'), 0.5)).reduce((a, b) => a.add(b)).multiplyScalar(0.5);
+    const fx = sole.x + 2.5, py = Math.max(6, sole.y - 1);
+    box(fx, fx + 2.5, 0, sole.y + 10, 30, M.pad); // 脚踏板
+    box(X('hip') - 16, fx + 20, 0, 2.5, 12, M.pad); // 底座
+    box(fx + 8, fx + 16, 0, py + 3, 14, M.iron); // 滑轮座
+    box(fx + 16, fx + 26, 0, 118, 24, M.prop); // 配重塔
+    const pul = V(fx + 9, py, m.z), hd = m.clone().add(c.F.clone().multiplyScalar(1.2));
+    rod(pul, hd, 0.4, M.cable);
+    rod(hd.clone().add(o.clone().multiplyScalar(5)), hd.clone().add(o.clone().multiplyScalar(-5)), 1.0, M.chrome); // 把手
+  }
   if (KEY === 'pullapart') rod(W3('RightHand'), W3('LeftHand'), 0.7, M.band); // 弹力带：两手之间
   if (KEY === 'facepull') { const m = W3('RightHand').lerp(W3('LeftHand'), 0.5); rod(m, V(m.x + 140, W3('Head').y, m.z), 0.35, M.cable); }
   if (KEY === 'chest') for (const side of ['Right', 'Left']) { // 门框：前臂贴在门框前面
@@ -633,8 +658,8 @@ function miniShots() {
 const VIEW = { front34: [32, 8], side: [84, 6], back34: [146, 10], front: [4, 6] };
 const CAM = { // 个别动作的机位微调 [yaw, pitch]
   bench: [58, 24], fpress: [58, 26], incline: [55, 18], thrust: [62, 18], deadbug: [55, 26], fig4: [100, 40], tap: [40, 22], wgs: [40, 18],
-  bridge: [84, 14], bridge2: [84, 14], legcurl: [84, 14], hpush: [36, 16], yraise: [150, 30], backfloat: [40, 32], seatrow: [140, 10], row1: [140, 12],
-  pulldown: [150, 8], rfly: [150, 16], facepull: [145, 8], scap: [140, 20], jelly: [84, 16], starfloat: [84, 18], chest: [30, 6],
+  bridge: [84, 14], bridge2: [84, 14], legcurl: [84, 14], hpush: [36, 16], yraise: [150, 30], backfloat: [40, 32], seatrow: [124, 12], row1: [140, 12],
+  pullup: [124, 8], pulldown: [150, 8], rfly: [150, 16], facepull: [145, 8], scap: [140, 20], jelly: [84, 16], starfloat: [84, 18], chest: [30, 6],
 };
 let CUR = null;
 function caption(spec) {

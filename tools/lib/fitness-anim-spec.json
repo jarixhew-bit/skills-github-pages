@@ -350,7 +350,7 @@
   "view": "back34",
   "plane": "sagittal",
   "plane_detail": "",
-  "form_audit": "有错：躯干方向反了——f0（手臂前伸）t=-5 后仰、f1（拉到腰侧）t=+8 前倾，与 App 要领「挺胸坐直，身体不要前后晃」相反。应两帧都 t≈0（最多起点 +5 前倾、终点回 0）。f1 手拉到上腹、肘在身后（a=-60、f=88）正确。小建议：腿 ns=nt=88 膝完全伸直，可改膝微弯（内角约 160°）。",
+  "form_audit": "有错：躯干方向反了——f0（手臂前伸）t=-5 后仰、f1（拉到腰侧）t=+8 前倾，与 App 要领「挺胸坐直，身体不要前后晃」相反。应两帧都 t≈0（最多起点 +5 前倾、终点回 0）。f1 手拉到上腹、肘在身后（a=-60、f=88）正确。小建议：腿 ns=nt=88 膝完全伸直，可改膝微弯（内角约 160°）。 2026-11-04 已修：两帧 t=5→0、膝微弯（lt95/ls75），并补画划船机——坐在矮凳上（lift 20）、脚踩踏板、钢索从前方低滑轮拉到把手（props seat+cable）。",
   "sources": [
    "https://www.nasm.org/resource-center/exercise-library/seated-machine-row-close-grip",
    "https://www.healthline.com/health/seated-row"
@@ -1783,12 +1783,12 @@
   "view": "back34",
   "plane": "frontal",
   "plane_detail": "正手握杆、握距略比肩宽，从手臂伸直悬垂开始，手肘往下往两侧拉，把身体拉到下巴高过横杆，再慢慢下放到手臂与肩完全伸展；弹力带套在脚下（或跪在辅助机踏板上）减轻体重。",
-  "form_audit": "新动作（2026-11-04 替代动作）。2D 用 lf 把身体抬高、手相对脚的位置同步下移，横杆保持不动。动图没画弹力带／辅助机。",
+  "form_audit": "新动作（2026-11-04 替代动作）。2D 用 lf 把身体抬高、手相对脚的位置同步下移，横杆保持不动。2026-11-04 补画弹力带：挂在横杆上、从身体前面垂下、绕过两只脚底（props band）。",
   "sources": [
    "https://exrx.net/WeightExercises/LatissimusDorsi/ASPullupBand",
    "https://pmc.ncbi.nlm.nih.gov/articles/PMC5548150/"
   ],
-  "note": "辅助方式（弹力带或辅助机）动图里不画，文字说明。"
+  "note": "动图画弹力带辅助；用辅助机的话跪在踏板上，文字说明。"
  },
  {
   "file": "pullapart",

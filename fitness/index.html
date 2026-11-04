@@ -590,7 +590,7 @@ var ANIM = (function(){
   def("row",     {frames:[{t:50,lt:22,ls:-2,a:0,f:0},{t:50,lt:22,ls:-2,a:-75,f:-10}], hold:"hands"}); // 髋在脚踝后方、俯身约45°
   def("row1",    {frames:[{t:60,nt:-21,ns:-21,ft:30,fs:5,na:0,nf:0,fa:-31,ff:-31},{t:60,nt:-21,ns:-21,ft:30,fs:5,na:-75,nf:-10,fa:-31,ff:-31}], hold:"one"}); // 前后脚站，另一手撑在前腿大腿上
   def("invrow",  {frames:[{t:-77,lt:77,ls:77,H:[-58.8,-46],bend:-1},{t:-62,lt:62,ls:62,H:[-58.8,-46],bend:-1}], props:["bar"], fixH:true, bend:-1}); // 横杆在下胸上方，拉起时手肘往脚的方向
-  def("seatrow", {frames:[{t:5,lt:100,ls:80,a:88,f:88},{t:0,lt:100,ls:80,a:-60,f:88}], ground:"low", anchorX:"hip"}); // 坐直不后仰，膝微弯
+  def("seatrow", {frames:[{t:5,lt:95,ls:75,a:84,f:86},{t:0,lt:95,ls:75,a:-60,f:88}], ground:"low", lift:20, anchorX:"hip", props:["seat","cable"]}); // 坐在划船机矮凳上、脚踩踏板（膝微弯）、坐直不后仰，钢索从前方低滑轮拉到手
   def("pulldown",{frames:[{t:0,lt:90,ls:0,a:175,f:178},{t:-8,lt:90,ls:0,a:15,f:170}], props:["seat"]});
   def("ohp",     {frames:[{a:10,f:172},{a:178,f:180}], hold:"hands"});
   def("seatohp", {frames:[{t:0,lt:90,ls:0,a:10,f:172},{t:0,lt:90,ls:0,a:172,f:180}], props:["seat","back"]});
@@ -604,7 +604,7 @@ var ANIM = (function(){
   // ---- 替代动作（2026-11-04：健身房缺器材时换着做） ----
   def("sldl",    {frames:[{nt:2,ns:-2,ft:-6,fs:-22,a:0,f:0},{t:80,nt:14,ns:-4,ft:-80,fs:-80,a:-4,f:-4}], hold:"hands"}); // 单腿罗马尼亚硬拉：近侧腿支撑（膝微弯），远侧腿往后伸直与躯干成一直线
   def("dbbridge",{frames:[{t:-90,lt:145,ls:35,H:[-27.5,-6],bend:-1},{t:-110,lt:110,ls:20,H:[-30.8,-20.3],bend:-1}], ground:"low", anchorX:"sh", hold:"one"}); // 地板臀桥，一只哑铃横放髋上、两手扶住
-  def("pullup",  {frames:[{lt:8,ls:-30,H:[8.66,-113],bend:-1,lf:15},{lt:8,ls:-30,H:[8.66,-85],bend:-1,lf:43}], props:["bar"]}); // 引体向上：横杆不动、身体往上（lf＝离地高度），下巴过杆
+  def("pullup",  {frames:[{lt:8,ls:-30,H:[8.66,-113],bend:-1,lf:15},{lt:8,ls:-30,H:[8.66,-85],bend:-1,lf:43}], props:["bar","band"]}); // 引体向上：横杆不动、身体往上（lf＝离地高度），下巴过杆
   def("pullapart",{frames:[{lt:0,ls:0,a:90,f:90},{lt:0,ls:0,a:90,f:90}]}); // 弹力带拉开：手臂在肩高往两侧拉开（侧视看不出，3D 动图由渲染台另摆）
   def("ohpseat", {frames:[{t:0,lt:90,ls:0,a:10,f:172},{t:0,lt:90,ls:0,a:172,f:180}], props:["seat","back"], hold:"hands"}); // 坐姿哑铃肩推
   // ---- finishers ----
@@ -672,7 +672,7 @@ var ANIM = (function(){
     var d=S[key]; if(!d) return;
     opts=opts||{};
     var lay=layout(d);
-    var s=Math.min(W/Math.max(130,lay.span+40), H/118);
+    var s=Math.min(W/Math.max(130,lay.span+40), H/Math.max(118,bounds(d).y1+18)); // 引体向上这类比人还高的动作：整个缩小放得下
     var G=H-12*s, CX=W/2;
     var o=framePose(d,time), j=joints(o);
     var ax=lay.ax, maxY=-1e9;
@@ -701,6 +701,8 @@ var ANIM = (function(){
       if(pr==="boxN"){ var nx=X(j.nf), ny=Y(j.nf)+2*s; rr(ctx,nx-18*s,ny,34*s,G-ny); }
       if(pr==="wallR"){ var wx=X(j.nh)+3*s; ctx.fillRect(wx,G-(d.pool.surface+8)*s,6*s,(d.pool.surface+8)*s); }
       if(pr==="wallL"){ var lx=CX+lay.wallX*s; ctx.fillRect(lx-6*s,G-(d.pool.surface+8)*s,6*s,(d.pool.surface+8)*s); }
+      if(pr==="band"){ ctx.save(); ctx.strokeStyle="#e39b2d"; ctx.lineWidth=2.2*s; ctx.beginPath(); ctx.moveTo(X(j.nh)+2*s,Y(j.nh)-4*s); ctx.lineTo(X(j.nk)+4*s,Y(j.nk)); ctx.lineTo(X(j.nf)+1*s,Y(j.nf)+2*s); ctx.lineTo(X(j.nf)-5*s,Y(j.nf)+2*s); ctx.stroke(); ctx.restore(); } // 弹力带：挂在杆上、绕过脚底
+      if(pr==="cable"){ var px=Math.max(X(j.nf),X(j.ff))+3*s, py=Math.max(Y(j.nf),Y(j.ff)); rr(ctx,px,py-10*s,3*s,G-py+10*s); ctx.fillRect(Math.min(X(j.hip),px)-12*s,G-2*s,Math.abs(px-X(j.hip))+26*s,2*s); rr(ctx,px+8*s,G-90*s,7*s,90*s); ctx.save(); ctx.strokeStyle=C.ink; ctx.lineWidth=1*s; ctx.beginPath(); ctx.moveTo(px+8*s,py-2*s); ctx.lineTo(X(j.nh),Y(j.nh)); ctx.stroke(); ctx.restore(); } // 坐姿划船机：踏板、底座、配重塔、低滑轮钢索
       if(pr==="board"){ ctx.fillStyle=C.wt; rr(ctx,X(j.nh)-6*s,Y(j.nh)-3*s,28*s,3*s); ctx.fillStyle=C.prop; }
     });
     function line(a,b,col,w){ ctx.strokeStyle=col; ctx.lineWidth=w*s; ctx.beginPath(); ctx.moveTo(X(a),Y(a)); ctx.lineTo(X(b),Y(b)); ctx.stroke(); }
