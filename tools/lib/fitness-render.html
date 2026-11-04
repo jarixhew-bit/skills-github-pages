@@ -142,16 +142,67 @@ else {
   statue.color.set(S.skinCol); statue.roughness = S.rough;
   if (S.skin) { statue.map = tx(S.skin); statue.metalness = 0; }
   cloth.color.set(S.cloth); cloth.roughness = STYLE === 'sport' ? 0.85 : 0.75; // 运动风：衣服更哑光，胸前的高光与阴影淡一点
+  // 运动内衣单独一块全哑光材质，带一点点自身底色（等于给衣服补一盏正面柔光），胸前的明暗起伏再淡一层；发光照旧
+  var braM = cloth.clone(); glowify(braM);
+  if (STYLE === 'sport' && Q.get('bra') !== 'orig') { braM.roughness = 1; braM.emissive.set(S.cloth).multiplyScalar(0.07); }
   const card = (map, col, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ map, color: col, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.6 }, o));
   const hairM = card(tx('hair.webp'), STYLE === 'statue' ? 0xd4d8e0 : S.hair, { roughness: 0.45 });
   const browM = card(tx('brow.webp'), S.brow, { alphaTest: 0.3, roughness: 0.9 }), lashM = card(tx('lash.webp'), S.brow, { alphaTest: 0.3, roughness: 0.9 });
   const eyeM = new THREE.MeshStandardMaterial({ map: tx('eye.webp'), roughness: 0.15, color: STYLE === 'statue' ? 0xd8dbe2 : 0xffffff });
   const shoeM = new THREE.MeshStandardMaterial({ map: tx('shoes.webp'), roughness: 0.6 });
   root.traverse(o => { if (!o.isMesh) return; const n = o.name;
-    o.material = /Shorts|Bra/.test(n) ? cloth : /^Hair/.test(n) ? hairM : /^Brows/.test(n) ? browM : /^Lashes/.test(n) ? lashM : /^Eyes/.test(n) ? eyeM : /^Shoes/.test(n) ? shoeM : statue;
+    o.material = /Bra/.test(n) ? braM : /Shorts/.test(n) ? cloth : /^Hair/.test(n) ? hairM : /^Brows/.test(n) ? browM : /^Lashes/.test(n) ? lashM : /^Eyes/.test(n) ? eyeM : /^Shoes/.test(n) ? shoeM : statue;
     if (/^(Brows|Lashes|Eyes)/.test(n)) o.castShadow = false;
     if (/^Shoes/.test(n)) { if (S.shoes) SHOES = o; else o.visible = false; } });
 }
+// 运动内衣「压平」（2026-11-04 用户：胸前别有轮廓，要像有支撑的运动内衣——平顺、包覆）：
+//   内衣正面整片拟合一张平顺曲面（左右对称、上下平滑），正面顶点拉到曲面上（胸点往里、乳沟往外补平）；底下的身体同步往里收，皮肤不会穿出来；法线重算并在 UV 接缝处合并，阴影一片平顺。
+//   只改模型的静止网格（骨架蒙皮照常），不动发光逻辑。classic 不做。
+function flattenBra() {
+  const bra = root.getObjectByName('Bra'), body = root.getObjectByName('Body');
+  if (!bra || !bra.isMesh || !body || !body.isMesh) return;
+  const P = bra.geometry.attributes.position, N0 = bra.geometry.attributes.normal, n = P.count;
+  const orig = Float32Array.from(P.array);
+  const front = i => P.getZ(i) > 0.03 && Math.abs(P.getX(i)) < 0.13;
+  let y0 = 1e9, y1 = -1e9; for (let i = 0; i < n; i++) { y0 = Math.min(y0, P.getY(i)); y1 = Math.max(y1, P.getY(i)); }
+  // 整片正面拟合一张平顺的曲面 z = Σ a·u^i·x^(2j)（u＝高度，左右对称），最小平方
+  const ym = (y0 + y1) / 2, ys = (y1 - y0) / 2, TERMS = [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1], [0, 2]];
+  const feat = (x, y) => { const u = (y - ym) / ys, q = (x / 0.1) ** 2; return TERMS.map(([a, b]) => u ** a * q ** b); };
+  const K = TERMS.length, A = Array.from({ length: K }, () => new Array(K + 1).fill(0));
+  for (let i = 0; i < n; i++) { if (!front(i)) continue; const f = feat(P.getX(i), P.getY(i)), z = P.getZ(i);
+    for (let r = 0; r < K; r++) { for (let c = 0; c < K; c++) A[r][c] += f[r] * f[c]; A[r][K] += f[r] * z; } }
+  for (let r = 0; r < K; r++) A[r][r] += 1e-6;
+  for (let c = 0; c < K; c++) { let pv = c; for (let r = c + 1; r < K; r++) if (Math.abs(A[r][c]) > Math.abs(A[pv][c])) pv = r; [A[c], A[pv]] = [A[pv], A[c]];
+    for (let r = 0; r < K; r++) if (r !== c) { const m = A[r][c] / A[c][c]; for (let k = c; k <= K; k++) A[r][k] -= m * A[c][k]; } }
+  const coef = A.map((row, r) => row[K] / row[r]);
+  const fz = (x, y) => feat(x, y).reduce((a, f, k) => a + f * coef[k], 0);
+  const ss = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+  for (let i = 0; i < n; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i), f = fz(x, y); if (z < 0.02) continue;
+    const w = ss(0.02, 0.06, z) * (1 - ss(0.11, 0.15, Math.abs(x))); // 只动正面，侧边／腋下保持原样
+    P.setZ(i, z + (f - z) * w); }
+  P.needsUpdate = true;
+  // 身体：被内衣盖住的正面，退到新内衣面后 7 毫米
+  const BP = body.geometry.attributes.position;
+  for (let j = 0; j < BP.count; j++) { const x = BP.getX(j), y = BP.getY(j), z = BP.getZ(j);
+    if (y < y0 || y > y1 || z < 0.02 || Math.abs(x) > 0.16) continue;
+    let best = -1, bd = 1e9; for (let i = 0; i < n; i++) { if (orig[i * 3 + 2] < 0.02) continue; const d = (orig[i * 3] - x) ** 2 + (orig[i * 3 + 1] - y) ** 2; if (d < bd) { bd = d; best = i; } }
+    if (best < 0 || bd > 0.012 ** 2 || z > orig[best * 3 + 2]) continue;
+    BP.setZ(j, Math.min(z, P.getZ(best) - 0.007)); }
+  BP.needsUpdate = true;
+  // 法线：重算后把同一位置（UV 接缝拆开的点）合并，再跟邻点平均两轮，压掉细碎的起伏
+  const g = bra.geometry; g.computeVertexNormals();
+  const NN = g.attributes.normal, key = i => [P.getX(i), P.getY(i), P.getZ(i)].map(v => Math.round(v * 2e4)).join(','), grp = new Map();
+  for (let i = 0; i < n; i++) { const k = key(i); if (!grp.has(k)) grp.set(k, []); grp.get(k).push(i); }
+  const nbr = Array.from({ length: n }, () => new Set()), I = g.index.array;
+  for (let t = 0; t < I.length; t += 3) for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) if (a !== b) nbr[I[t + a]].add(I[t + b]);
+  for (let it = 0; it < 3; it++) {
+    const nx = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { const v = V(NN.getX(i), NN.getY(i), NN.getZ(i)); for (const j of nbr[i]) v.add(V(NN.getX(j), NN.getY(j), NN.getZ(j))); nx.set([v.x, v.y, v.z], i * 3); }
+    for (const ids of grp.values()) { const v = V(); for (const i of ids) v.add(V(nx[i * 3], nx[i * 3 + 1], nx[i * 3 + 2])); v.normalize(); for (const i of ids) NN.setXYZ(i, v.x, v.y, v.z); }
+  }
+  NN.needsUpdate = true;
+}
+if (!CLASSIC && Q.get('bra') !== 'orig') flattenBra();
 const B = n => root.getObjectByName('mixamorig' + n);
 root.updateMatrixWorld(true);
 const bodyOnly = !CLASSIC ? root.getObjectByName('Body') : root; // 有头发时只量身体（马尾不算身高）
@@ -299,6 +350,9 @@ const OV = {
   thrust: { arms: c => { const d = c.dbHip(); return Object.assign(ik('Right', 'arm', d.clone().add(c.OR.clone().multiplyScalar(5.5)).add(c.F.clone().multiplyScalar(1.5)), nrm(c.OR, 1, c.F, 0.5)),
       ik('Left', 'arm', d.clone().add(c.OR.clone().multiplyScalar(-5.5)).add(c.F.clone().multiplyScalar(1.5)), nrm(c.OR, -1, c.F, 0.5))); } },
   // ---- 替代动作（2026-11-04） ----
+  smithsquat: { after: c => { // 史密斯深蹲：两手握在上背的杠上（比肩略宽），手肘朝下往后
+    const bar = W3('Neck').lerp(W3('Spine2'), 0.3).add(c.F.clone().multiplyScalar(-6.5)).add(c.T.clone().multiplyScalar(1));
+    return both(s => ik(s, 'arm', bar.clone().add(OS(c, s).multiplyScalar(21)).add(c.T.clone().multiplyScalar(-3.5)), /* 手腕在杠下一点，掌心刚好包住杠 */ nrm(c.T, -1, c.F, -0.6, OS(c, s), 0.3))); } },
   ohpseat: { arms: c => both(s => armPress(c, s, -10 + 88 * c.p, 92, 35 - 15 * c.p)) },
   pullapart: { arms: c => both(s => { // 直臂在肩高，从正前方往两侧拉开到身体额状面略前（横向外展）
     const al = THREE.MathUtils.degToRad(4 + 80 * c.p), d = nrm(c.F, Math.cos(al), OS(c, s), Math.sin(al), c.T, 0.02);
@@ -450,6 +504,13 @@ function props(s, P, c) {
       const e1 = V(m.x, y, m.z).add(o.clone().multiplyScalar(30)), e2 = V(m.x, y, m.z).add(o.clone().multiplyScalar(-30));
       rod(e1, e2, 1.3, M.chrome); rod(e1, V(e1.x, 0, e1.z), 1.8, M.iron); rod(e2, V(e2.x, 0, e2.z), 1.8, M.iron); continue; }
     if (pr === 'bar') { const h = W3('RightHand').lerp(W3('LeftHand'), 0.5), top = h.y + 3; box(h.x - 34, h.x + 36, top, top + 4, 80, M.wood); box(h.x + 30, h.x + 34, 0, top, 4, M.wood, 0, null, null, 36); box(h.x + 30, h.x + 34, 0, top, 4, M.wood, 0, null, null, -36); }
+    if (pr === 'smith') { // 史密斯机：横杆（压在上背、两手握着）两端各一根直立轨道到地，轨道底座
+      const pm = sd => { const b = B(sd + 'HandMiddle1'); return b ? b.getWorldPosition(V()) : W3(sd + 'Hand'); }; // 杠穿过掌心（中指根）
+      const r = pm('Right'), l = pm('Left'), m = r.clone().lerp(l, 0.5), o = r.clone().sub(l).setY(0).normalize();
+      const e1 = m.clone().add(o.clone().multiplyScalar(40)), e2 = m.clone().add(o.clone().multiplyScalar(-40));
+      rod(e1, e2, 1.3, M.chrome);
+      for (const e of [e1.clone().add(o.clone().multiplyScalar(-3)), e2.clone().add(o.clone().multiplyScalar(3))]) { if (PROFILE && SIDE * (e.z - m.z) > 0) continue; /* 侧面版：近镜头那根轨道不画，免得挡住背的线条 */ rod(V(e.x, 0, e.z), V(e.x, 128, e.z), 1.6, M.iron); box(e.x - 12, e.x + 12, 0, 2.5, 7, M.iron, 0, null, null, e.z); }
+      continue; }
     if (pr === 'boxF') { const fx = X('ff'); box(fx - 15, fx + 8, 0, Y('ff') - 3, 32, M.wood); }
     if (pr === 'boxN') { const nx = X('nf'); box(nx - 18, nx + 18, 0, Y('nf') - 3, 36, M.wood); }
     if (pr === 'wallR') { const wx = X('nh') + 5; box(wx, wx + 10, 0, s.pool.surface + 9, 320, M.wall); }
@@ -511,7 +572,8 @@ function fist(side, on) {
   for (const k of [2, 3]) { const b = B(side + 'HandThumb' + k); if (!b) continue; b.quaternion.copy(fingerRest[b.name]); if (on) b.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), THREE.MathUtils.degToRad(40))); }
 }
 function dumbbells(hold, c) {
-  fist('Right', !!hold); fist('Left', hold === 'hands' || hold === 'one'); root.updateMatrixWorld(true);
+  const grip = KEY === 'smithsquat'; // 握杠的动作也握拳
+  fist('Right', !!hold || grip); fist('Left', hold === 'hands' || hold === 'one' || grip); root.updateMatrixWorld(true);
   DB[0].visible = DB[1].visible = false;
   const rh = W3('RightHand'), lh = W3('LeftHand');
   if (hold === 'hands') { DB[0].visible = DB[1].visible = true; DB[0].position.copy(rh).add(V(0, 0, 1)); DB[1].position.copy(lh).add(V(0, 0, -1)); DB[0].rotation.set(0, 0, 0); DB[1].rotation.set(0, 0, 0); }
@@ -600,7 +662,7 @@ function setHalos(pts, k, size = 13) { const main = pts.filter(q => q[1] >= 1); 
 const CONC = { squat: 'down', squatG: 'down', thruster: [1, 1, 0, 0], legpress: 'up', hpush: 'down', bench: 'up', fpress: 'up', incline: 'up', seatpush: 'up',
   hinge: 'down', legcurl: 'up', bridge: 'up', bridge2: 'up', thrust: 'up', row: 'up', row1: 'up', invrow: 'up', seatrow: 'up', pulldown: 'up', ohp: 'up', seatohp: 'up',
   pike: 'down', lunge: 'down', split: 'down', step: 'up', rfly: 'up', facepull: 'up', yraise: 'up', climber: [0.9, 0.9], swing: 'up', jack: [0.85, 0.85], deadbug: 'up',
-  burpee: [0.6, 1, 1, 1, 1, 1], tap: [0.85, 0.85], sldl: 'down', dbbridge: 'up', pullup: 'up', pullapart: 'up', ohpseat: 'up' };
+  burpee: [0.6, 1, 1, 1, 1, 1], tap: [0.85, 0.85], sldl: 'down', smithsquat: 'down', dbbridge: 'up', pullup: 'up', pullapart: 'up', ohpseat: 'up' };
 // PEAK：拉得最开的是第几个关键帧；'both'＝两端都是（左右交替／猫牛），'const'＝一直拉着
 const PEAK = { quad: 1, fig4: 1, chest: 1, child: 1, march: 'both', armcircle: 'const', catcow: 'both', lungeT: 1, scap: 'both', wgs: 1 };
 function isConc(key, ph) { let c = CONC[key] ?? 'up'; if (typeof c === 'string') c = c === 'up' ? [1, 0] : [0, 1]; return (c[ph.seg] ?? 0) > 0; }
@@ -655,13 +717,13 @@ function miniShots() {
 }
 
 // ---- 9. 每个动作：字幕、机位、逐格 ----
-const VIEW = { front34: [32, 8], side: [84, 6], back34: [146, 10], front: [4, 6] };
+const VIEW = { front34: [32, 8], side: [84, 6], back34: [146, 10], front: [4, 6], profile: [90, 5] };
 const CAM = { // 个别动作的机位微调 [yaw, pitch]
   bench: [58, 24], fpress: [58, 26], incline: [55, 18], thrust: [62, 18], deadbug: [55, 26], fig4: [100, 40], tap: [40, 22], wgs: [40, 18],
   bridge: [84, 14], bridge2: [84, 14], legcurl: [84, 14], hpush: [36, 16], yraise: [150, 30], backfloat: [40, 32], seatrow: [124, 12], row1: [140, 12],
   pullup: [124, 8], pulldown: [150, 8], rfly: [150, 16], facepull: [145, 8], scap: [140, 20], jelly: [84, 16], starfloat: [84, 18], chest: [30, 6],
 };
-let CUR = null;
+let CUR = null, PROFILE = false; // PROFILE＝正在渲染侧面版
 function caption(spec) {
   const shared = /\s\/\s/.test(spec.reps || ''); // 同一张图被两处不同次数共用：只写标题
   const reps = shared ? '' : (spec.reps || '');
@@ -680,7 +742,7 @@ function caption(spec) {
   return top + 48; // 字幕占掉的高度
 }
 window.setup = function (spec, combo, fps = 12) {
-  KEY = combo.anim; HOLD = combo.hold;
+  KEY = combo.anim; HOLD = combo.hold; PROFILE = !!combo.side;
   const s0 = ANIM.sample(KEY, 0); if (!s0) return null;
   const ov = OV[KEY] || {}, cycles = ov.cycles || 1;
   const T1 = ANIM.cycleLen(KEY), T = T1 * cycles;
@@ -709,6 +771,7 @@ window.setup = function (spec, combo, fps = 12) {
   mat.scale.set(bb.max.x - bb.min.x + 26, 1.2, Math.max(46, bb.max.z - bb.min.z + 26)); mat.position.set((bb.max.x + bb.min.x) / 2, -0.6, (bb.max.z + bb.min.z) / 2);
   // 机位：按规格的 view，个别动作微调；固定不动
   let [yaw, pitch] = CAM[KEY] || VIEW[spec.view] || VIEW.side;
+  if (combo.side) [yaw, pitch] = VIEW.profile; // 侧面版：纯侧面（矢状面），看膝盖与背的角度
   if (swim && !CAM[KEY]) pitch = 14;
   cam.fov = 26; cam.clearViewOffset();
   const usable = (H - reserved) / H;
@@ -768,6 +831,7 @@ window.frame = function (i) {
   return c.k;
 };
 window.MUSCLE_CODES = Object.keys(MUSCLES);
+window.__chest = () => { const p = W3('Spine2').lerp(W3('Neck'), 0.3).project(cam); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * H]; }; // 联络表抽查胸前用
 window.ready = true;
 </script>
 </body>

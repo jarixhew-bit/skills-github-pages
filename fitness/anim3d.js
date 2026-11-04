@@ -95,11 +95,11 @@ const DB = [dumbbell(), dumbbell()];
 // 器材：一组可重复使用的方块
 const boxes = []; for (let i = 0; i < 10; i++) { const b = mesh(new THREE.BoxGeometry(1, 1, 1), M.prop); boxes.push(b); }
 let nb = 0;
-function box(x0, x1, y0, y1, depth, mat, rotZ = 0, cx = null, cy = null) {
+function box(x0, x1, y0, y1, depth, mat, rotZ = 0, cx = null, cy = null, cz = 0) {
   const b = boxes[nb++]; if (!b) return;
   b.visible = true; b.material = mat;
   b.scale.set(Math.max(0.5, Math.abs(x1 - x0)), Math.max(0.5, Math.abs(y1 - y0)), depth);
-  b.position.set(cx ?? (x0 + x1) / 2, cy ?? (y0 + y1) / 2, 0); b.rotation.set(0, 0, rotZ);
+  b.position.set(cx ?? (x0 + x1) / 2, cy ?? (y0 + y1) / 2, cz); b.rotation.set(0, 0, rotZ);
 }
 
 // 圆柱（弹力带、钢索、把手）：两点之间
@@ -210,6 +210,11 @@ function pose(s, hold, swim, time) {
     if (pr === 'boxN') { const nx = X('nf'); box(nx - 18, nx + 17, 0, Y('nf') - 2.5, 34, M.wood); }
     if (pr === 'wallR') { const wx = X('nh') + 4; box(wx, wx + 10, 0, s.pool.surface + 9, 260, M.tile); }
     if (pr === 'wallL') { const wx = s.wallX; box(wx - 10, wx, 0, s.pool.surface + 9, 260, M.tile); }
+    if (pr === 'smith') { // 史密斯机：两根直立轨道＋横杆（杠压在上背、两手握着），底座
+      const bx = X('nh') - 1, by = Y('nh') + 1;
+      for (const z of [-36, 36]) { box(bx - 2, bx + 2, 0, 125, 4, M.iron, 0, null, null, z); box(bx - 10, bx + 10, 0, 2.5, 6, M.iron, 0, null, null, z); }
+      rod(v3(bx, by, -40), v3(bx, by, 40), 1.2, M.chrome);
+    }
     if (pr === 'board') { const hx = X('nh'); box(hx - 5, hx + 24, Y('nh') + 1, Y('nh') + 4, 30, M.board); }
     if (pr === 'band') { // 辅助引体向上：弹力带挂在杆上、从身体前面垂下、绕过两只脚底
       const cx = Math.max(X('sh'), X('hip')) + 9, cy = Y('sh') - 10;
