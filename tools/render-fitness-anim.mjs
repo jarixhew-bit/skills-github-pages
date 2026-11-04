@@ -1,7 +1,8 @@
 /**
  * 把健身 App 每个动作渲染成示范动图（animated WebP，480×360），存进 fitness/anim/<file>.webp。
  *
- * 风格（2026-11-03 用户定稿）：深色渐层背景＋顶光、雕像白的女性健身体型模型、正在用力的肌肉发红光
+ * 风格（2026-11-03 定稿深色发光，2026-11-04 换成用户选的样品 C「时尚运动风」）：深色渐层背景＋顶光、
+ * glam 女性体型（小麦肤色、珊瑚色运动内衣＋短裤、白球鞋、马尾；游泳光脚）、正在用力的肌肉发红光
  * （拉伸／活动度＝被拉开的部位发蓝光，游泳不发光），顶部 6 格部位小图，标题／次数／要领字幕。
  *
  * 资料从哪来：
@@ -9,7 +10,8 @@
  *     往身体两侧开合、转体、脊椎弯曲这些 2D 表达不了的，在渲染台 tools/lib/fitness-render.html 的 OV 里补。
  *   - 每张图的标题、次数、要领、主／次肌肉、机位：tools/lib/fitness-anim-spec.json（研究员查证过的规格）。
  *   - 要渲染哪些：App 的 window.__fit.animCombos()（动作 key＋拿不拿哑铃）。
- *   - 人物模型：tools/lib/models/fitness-female.glb（CC0，已进仓库，不用下载）。
+ *   - 人物模型：tools/lib/models/fitness-female-sport.glb＋贴图 tools/lib/models/sport/（全部 CC0，已进仓库，不用下载）。
+ *     STYLE=classic 回到旧版雕像白（fitness-female.glb）；STYLE=statue|skin 是当初的样品配色。
  *
  * 跑法（沙盒）：
  *   python3 -m http.server 8899 &
@@ -37,7 +39,7 @@ page.on('console', m => { if (m.type() === 'error') console.error('console', m.t
 // 要渲染哪些：App 实际用到的（动作 key＋拿不拿哑铃）组合，由 App 自己列出来
 await page.goto(`http://localhost:${PORT}/fitness/`);
 const combos = await page.evaluate(() => window.__fit.animCombos());
-// 造型样品：STYLE=statue|skin|sport、MODEL=<glb 网址>、TEX=<贴图目录网址>（都不给＝正式版原样）
+// 造型：STYLE=sport（默认＝正式版）|classic（旧版雕像白）|statue|skin、MODEL=<glb 网址>、TEX=<贴图目录网址>
 const xq = ['style', 'model', 'tex'].map(k => process.env[k.toUpperCase()] ? `&${k}=${encodeURIComponent(process.env[k.toUpperCase()])}` : '').join('');
 await page.goto(`http://localhost:${PORT}/tools/lib/fitness-render.html?w=${W}&h=${H}${xq}`);
 await page.waitForFunction(() => window.ready, null, { timeout: 180000 });

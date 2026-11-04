@@ -20,6 +20,8 @@ SEX='male'
 #   马尾、眉毛、睫毛、眼球（＋ shoes=1 时白球鞋）。素材目录由环境变量 MH_ASSETS 指定，结构 <类别>/<名字>/<名字>.mhclo，
 #   来源 github.com/dmaugis/makehuman-py3-assets 的 base/（贴图走 media.githubusercontent.com）；眼球取自
 #   makehumancommunity/makehuman 的 makehuman/data/eyes/low-poly。网格名 Hair/Brows/Lashes/Eyes/Shoes，渲染台按名字上材质。
+#   这些全是官方 makehuman_system_assets 素材包里的 CC0 素材（逐项授权证据见 tools/lib/models/README.md）。
+#   2026-11-04 起 glam＋shoes=1 的产物就是正式版 tools/lib/models/fitness-female-sport.glb（贴图在 tools/lib/models/sport/）。
 STYLE=None
 if A[-1].startswith('style='): STYLE=A.pop()[6:]
 if A[-1] in ('male','female'): SEX=A.pop()

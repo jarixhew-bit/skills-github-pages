@@ -59,6 +59,7 @@ const M = {
   prop: std(0x5d6878, { roughness: 0.6 }), pad: std(0x2b3340, { roughness: 0.8 }), iron: std(0x30353b, { roughness: 0.35, metalness: 0.6 }),
   wood: std(0x9c7a55, { roughness: 0.75 }), plate: std(0x6b7584, { roughness: 0.35, metalness: 0.6 }), board: std(0xf2b33d, { roughness: 0.55 }),
   chrome: std(0xb9c2cc, { roughness: 0.25, metalness: 0.85 }), cable: std(0x1b1f25, { roughness: 0.5 }),
+  band: std(0x3fbf7f, { roughness: 0.7 }),
   tile: std(0x123a55, { roughness: 0.9 }), wall: std(0x8fc7dc, { roughness: 0.85 }),
   water: new THREE.MeshStandardMaterial({ color: 0x2a8fd6, emissive: 0x062a44, transparent: true, opacity: 0.26, roughness: 0.15, depthWrite: false }),
   surf: new THREE.MeshStandardMaterial({ color: 0x7fd4ff, emissive: 0x0d4a6a, transparent: true, opacity: 0.3, roughness: 0.08, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false }),
@@ -94,7 +95,10 @@ function dumbbell() {
 const DB = [dumbbell(), dumbbell()];
 
 // ---- 3. 人物：缩放到跟引擎一样高（头顶到脚底约 98 单位），面向 +x ----
-const gltf = await new GLTFLoader().loadAsync(Q.get('model') || '/tools/lib/models/fitness-female.glb');
+// 正式版（2026-11-04 起）＝ style=sport：glam 体型＋小麦肤色＋珊瑚色运动服＋白球鞋＋马尾（模型与贴图都在 tools/lib/models/，CC0）。
+// ?style=classic＝旧版雕像白（fitness-female.glb、无贴图），留着做对照／回退。
+const STYLE = Q.get('style') || 'sport', CLASSIC = STYLE === 'classic';
+const gltf = await new GLTFLoader().loadAsync(Q.get('model') || (CLASSIC ? '/tools/lib/models/fitness-female.glb' : '/tools/lib/models/fitness-female-sport.glb'));
 const root = gltf.scene; scene.add(root);
 root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
 // 雕像白＋按肌肉发光：着色器里按离肌肉中心的距离混入颜色（红＝发力、蓝＝被拉伸）
@@ -102,6 +106,8 @@ root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true
 const MAXG = 32;
 const GLOW = { c: { value: Array.from({ length: MAXG }, () => V()) }, w: { value: new Array(MAXG).fill(0) }, r: { value: new Array(MAXG).fill(7) }, n: { value: 0 }, k: { value: 0 },
   dc: { value: new THREE.Color(0.95, 0.28, 0.22) }, ec: { value: new THREE.Color(1.0, 0.16, 0.06) } };
+// 发光强度：小麦肤色＋珊瑚色衣服比雕像白「吃光」，运动风把光调强一点，红／蓝光才压得过底色
+const GLOW_MIX = CLASSIC ? 0.85 : 0.95, GLOW_EM = CLASSIC ? 0.9 : 1.25;
 const statue = new THREE.MeshStandardMaterial({ color: 0xe6e9ee, roughness: 0.42, metalness: 0.02 });
 const glowify = m => (m.onBeforeCompile = sh => {
   Object.assign(sh.uniforms, { gC: GLOW.c, gW: GLOW.w, gR: GLOW.r, gN: GLOW.n, gK: GLOW.k, gD: GLOW.dc, gE: GLOW.ec });
@@ -112,44 +118,43 @@ const glowify = m => (m.onBeforeCompile = sh => {
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
       float gg = 0.0;
       for (int i = 0; i < ${MAXG}; i++) { if (i >= gN) break; gg = max(gg, gW[i] * (1.0 - smoothstep(gR[i] * 0.25, gR[i], distance(vGW, gC[i])))); }
-      diffuseColor.rgb = mix(diffuseColor.rgb, gD, gg * gK * 0.85);
-      totalEmissiveRadiance += gE * gg * gK * 0.9;`);
+      diffuseColor.rgb = mix(diffuseColor.rgb, gD, min(1.0, gg * gK * ${GLOW_MIX.toFixed(2)}));
+      totalEmissiveRadiance += gE * gg * gK * ${GLOW_EM.toFixed(2)};`);
 }, m);
 const cloth = new THREE.MeshStandardMaterial({ color: 0x22262e, roughness: 0.8 }); // 运动内衣与短裤保持深色，被盖住的肌肉（臀、胸）照样发光
 glowify(statue); glowify(cloth);
-// 造型样品（2026-11-03，?style=statue|skin|sport，配 build 脚本 style=glam 产出的模型）：不给 style＝原样（上面那两种材质）。
-//   statue＝雕像白＋浅灰头发；skin＝真人肤色（MakeHuman 皮肤贴图）＋深色马尾＋黑色运动服；sport＝小麦肤色＋珊瑚色运动服＋白球鞋。
-//   头发／眉毛／睫毛／眼球／球鞋不发光（肌肉光只上皮肤与衣服）。贴图目录 ?tex=（皮肤、马尾、眉、睫毛、眼球、球鞋各一张）。
-const STYLE = Q.get('style');
-let SOLE = 0; // 穿鞋时鞋底厚度（落地要多抬这么多）
-if (!STYLE) root.traverse(o => { if (o.isMesh) o.material = /Shorts|Bra/.test(o.name) ? cloth : statue; });
+// 造型（?style=）：sport＝正式版（默认）小麦肤色＋珊瑚色运动服＋白球鞋；classic＝旧版雕像白；statue／skin＝2026-11-03 的样品配色。
+//   头发／眉毛／睫毛／眼球／球鞋不发光（肌肉光只上皮肤与衣服）。贴图目录 ?tex=（默认 tools/lib/models/sport/）。游泳动作把球鞋藏起来（光脚）。
+let SOLE = 0, SOLE_ON = 0; // 穿鞋时鞋底厚度（落地要多抬这么多）
+let SHOES = null;
+if (CLASSIC) root.traverse(o => { if (o.isMesh) o.material = /Shorts|Bra/.test(o.name) ? cloth : statue; });
 else {
-  const TEX = (Q.get('tex') || '/.photos/fitness-style/tex') + '/', tl = new THREE.TextureLoader();
-  const files = ['skin.png', 'hair.png', 'hair_grey.png', 'brow.png', 'lash.png', 'eye.png', 'shoes.png'], TX = {};
+  const TEX = (Q.get('tex') || '/tools/lib/models/sport') + '/', tl = new THREE.TextureLoader();
+  const files = ['skin.jpg', 'hair.webp', 'brow.webp', 'lash.webp', 'eye.webp', 'shoes.webp'], TX = {};
   await Promise.all(files.map(async f => { const t = await tl.loadAsync(TEX + f); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; TX[f] = t; }));
   const tx = f => TX[f];
   const S = {
     statue: { skin: null, skinCol: 0xe6e9ee, rough: 0.42, cloth: 0x22262e, hair: 0xd4d8e0, brow: 0x5f6570, exp: 1.3 },
-    skin: { skin: 'skin.png', skinCol: 0xfff0e6, rough: 0.55, cloth: 0x141518, hair: 0x8a6a58, brow: 0x3a2a22, exp: 1.1 },
-    sport: { skin: 'skin.png', skinCol: 0xf6d2b8, rough: 0.5, cloth: 0xf0606e, hair: 0x2e1d14, brow: 0x2e1d14, exp: 1.05, shoes: 0xffffff },
+    skin: { skin: 'skin.jpg', skinCol: 0xfff0e6, rough: 0.55, cloth: 0x141518, hair: 0x8a6a58, brow: 0x3a2a22, exp: 1.1 },
+    sport: { skin: 'skin.jpg', skinCol: 0xf6d2b8, rough: 0.5, cloth: 0xf0606e, hair: 0x2e1d14, brow: 0x2e1d14, exp: 1.05, shoes: 0xffffff },
   }[STYLE];
   renderer.toneMappingExposure = S.exp;
   statue.color.set(S.skinCol); statue.roughness = S.rough;
   if (S.skin) { statue.map = tx(S.skin); statue.metalness = 0; }
-  cloth.color.set(S.cloth); cloth.roughness = STYLE === 'sport' ? 0.6 : 0.75;
+  cloth.color.set(S.cloth); cloth.roughness = STYLE === 'sport' ? 0.85 : 0.75; // 运动风：衣服更哑光，胸前的高光与阴影淡一点
   const card = (map, col, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ map, color: col, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.6 }, o));
-  const hairM = card(tx(STYLE === 'statue' ? 'hair_grey.png' : 'hair.png'), S.hair, { roughness: 0.45 });
-  const browM = card(tx('brow.png'), S.brow, { alphaTest: 0.3, roughness: 0.9 }), lashM = card(tx('lash.png'), S.brow, { alphaTest: 0.3, roughness: 0.9 });
-  const eyeM = new THREE.MeshStandardMaterial({ map: tx('eye.png'), roughness: 0.15, color: STYLE === 'statue' ? 0xd8dbe2 : 0xffffff });
-  const shoeM = new THREE.MeshStandardMaterial({ map: tx('shoes.png'), roughness: 0.6 });
+  const hairM = card(tx('hair.webp'), STYLE === 'statue' ? 0xd4d8e0 : S.hair, { roughness: 0.45 });
+  const browM = card(tx('brow.webp'), S.brow, { alphaTest: 0.3, roughness: 0.9 }), lashM = card(tx('lash.webp'), S.brow, { alphaTest: 0.3, roughness: 0.9 });
+  const eyeM = new THREE.MeshStandardMaterial({ map: tx('eye.webp'), roughness: 0.15, color: STYLE === 'statue' ? 0xd8dbe2 : 0xffffff });
+  const shoeM = new THREE.MeshStandardMaterial({ map: tx('shoes.webp'), roughness: 0.6 });
   root.traverse(o => { if (!o.isMesh) return; const n = o.name;
     o.material = /Shorts|Bra/.test(n) ? cloth : /^Hair/.test(n) ? hairM : /^Brows/.test(n) ? browM : /^Lashes/.test(n) ? lashM : /^Eyes/.test(n) ? eyeM : /^Shoes/.test(n) ? shoeM : statue;
     if (/^(Brows|Lashes|Eyes)/.test(n)) o.castShadow = false;
-    if (/^Shoes/.test(n) && !S.shoes) o.visible = false; });
+    if (/^Shoes/.test(n)) { if (S.shoes) SHOES = o; else o.visible = false; } });
 }
 const B = n => root.getObjectByName('mixamorig' + n);
 root.updateMatrixWorld(true);
-const bodyOnly = STYLE ? root.getObjectByName('Body') : root; // 有头发时只量身体（马尾不算身高）
+const bodyOnly = !CLASSIC ? root.getObjectByName('Body') : root; // 有头发时只量身体（马尾不算身高）
 const box0 = new THREE.Box3().setFromObject(bodyOnly); const h0 = box0.max.y - box0.min.y;
 root.scale.setScalar(98 / h0); root.updateMatrixWorld(true);
 
@@ -168,7 +173,7 @@ const BODY_UP = V(0, 1, 0), BODY_FWD = V(0, 0, 1);
 const REST_RIGHT = W3('RightArm').sub(W3('LeftArm')).normalize(); // 静止时右手在哪一侧
 const UP = V(0, 1, 0), DOWN = V(0, -1, 0);
 // 穿鞋：落地原本是「脚的关节往下 2.5」，改成鞋底（静止站姿量：脚关节最低点到鞋底的距离，扣掉原本的 2.5）
-if (STYLE) { const sh = root.getObjectByName('Shoes'); if (sh && sh.visible) SOLE = Math.max(0, Math.min(...['RightToe_End', 'RightFoot'].map(n => W3(n).y)) - new THREE.Box3().setFromObject(sh).min.y - 2.5); }
+if (!CLASSIC) { const sh = root.getObjectByName('Shoes'); if (sh && sh.visible) SOLE = Math.max(0, Math.min(...['RightToe_End', 'RightFoot'].map(n => W3(n).y)) - new THREE.Box3().setFromObject(sh).min.y - 2.5); }
 
 const v2 = (P, a, b) => V(P[b][0] - P[a][0], P[b][1] - P[a][1], 0).normalize();
 function setWorldQuat(name, q) {
@@ -240,7 +245,9 @@ const OV = {
   hpush: { plant: { mode: 'ref', out: 3.5, pole: (c, s) => nrm(c.T, -0.75, OS(c, s), 0.65, c.F, -0.3) } },
   seatpush: { arms: c => both(s => ik(s, 'arm', c.handAt(s, -60, 90).lerp(c.handAt(s, 72, 82), c.p).add(OS(c, s).multiplyScalar(2.5)), nrm(OS(c, s), 0.8, c.T, -0.6, c.F, -0.2))) }, // 手走直线平推
   invrow: { arms: c => both(s => ik(s, 'arm', c.def(s, 'arm').add(OS(c, s).multiplyScalar(3.5)), nrm(c.F, -0.7, OS(c, s), 0.5, c.T, -0.4))) },
-  pike: { plant: { mode: 'ref', rotate: false, out: 3, pole: (c, s) => nrm(c.T, -0.7, OS(c, s), 0.55) } },
+  pike: { plant: { mode: 'ref', rotate: false, out: 3, pole: (c, s) => nrm(c.T, -0.7, OS(c, s), 0.55) },
+    // 运动风模型腿较长：脚再往后放一点（髋跟着降低），手才撑得到地，不然手会悬空
+    legs: CLASSIC ? undefined : c => both(s => { const [a, b] = c.defDir(s, 'leg'); return { [s + 'UpLeg']: nrm(a, 1, V(-1, 0, 0), 0.55), [s + 'Leg']: nrm(b, 1, V(-1, 0, 0), 0.55) }; }) },
   pulldown: { arms: c => both(s => { // 额状面：手肘从上举往两侧下拉到体侧略后
     const o = OS(c, s), al = THREE.MathUtils.degToRad(168 - 140 * c.p);
     const ua = nrm(c.T, -Math.cos(al), o, Math.sin(al), c.F, -0.22 * c.p);
@@ -291,7 +298,17 @@ const OV = {
       return ik('Left', 'arm', t, nrm(c.OR, -0.8, c.T, -0.3)); } },
   thrust: { arms: c => { const d = c.dbHip(); return Object.assign(ik('Right', 'arm', d.clone().add(c.OR.clone().multiplyScalar(5.5)).add(c.F.clone().multiplyScalar(1.5)), nrm(c.OR, 1, c.F, 0.5)),
       ik('Left', 'arm', d.clone().add(c.OR.clone().multiplyScalar(-5.5)).add(c.F.clone().multiplyScalar(1.5)), nrm(c.OR, -1, c.F, 0.5))); } },
+  // ---- 替代动作（2026-11-04） ----
+  ohpseat: { arms: c => both(s => armPress(c, s, -10 + 88 * c.p, 92, 35 - 15 * c.p)) },
+  pullapart: { arms: c => both(s => { // 直臂在肩高，从正前方往两侧拉开到身体额状面略前（横向外展）
+    const al = THREE.MathUtils.degToRad(4 + 80 * c.p), d = nrm(c.F, Math.cos(al), OS(c, s), Math.sin(al), c.T, 0.02);
+    return { [s + 'Arm']: d, [s + 'ForeArm']: nrm(d, 1, c.F, 0.08) }; }) },
+  pullup: { arms: c => both(s => { // 横杆固定：身体每往上 28 单位，手相对肩膀就往下 28；握距比肩宽、手肘往两侧下
+    const sh = W3(s + 'Arm'), L = LEN[s + 'Arm'] + LEN[s + 'ForeArm'];
+    const t = sh.clone().add(UP.clone().multiplyScalar(L * 0.96 - 28 * c.p)).add(OS(c, s).multiplyScalar(6)).add(c.F.clone().multiplyScalar(2));
+    return ik(s, 'arm', t, nrm(OS(c, s), 1, c.F, 0.35, DOWN, 0.4)); }) },
 };
+OV.dbbridge = { arms: OV.thrust.arms }; // 哑铃臀桥：两手扶住横放在髋上的哑铃（跟臀推同一套）
 function midHands(c, half, pole) { // 两手一起握一只哑铃：把 2D 的手位置挪到身体中线
   const h = c.def('Right', 'arm'), mid = W3('Hips'), off = h.clone().sub(mid).dot(c.OR); const m = h.sub(c.OR.clone().multiplyScalar(off));
   return Object.assign(ik('Right', 'arm', m.clone().add(c.OR.clone().multiplyScalar(half)), nrm(c.OR, 0.7, pole, 1)), ik('Left', 'arm', m.clone().add(c.OR.clone().multiplyScalar(-half)), nrm(c.OR, -0.7, pole, 1)));
@@ -354,7 +371,7 @@ function pose(s, c) {
   // 落地：躺／趴的动作看全身最低点，站着的看脚（肩胛俯卧撑看手：胸口相对两手上下）
   const pts = NAMES.map(n => W3(n));
   const low = ov.plant && ov.plant.groundBy === 'hands' ? Math.min(W3('RightHand').y, W3('LeftHand').y) - 2.5
-    : s.ground === 'low' ? Math.min(...pts.map(p => p.y)) - 2.5 : Math.min(...['RightToe_End', 'RightFoot'].map(n => W3(n).y)) - 2.5 - SOLE; // 跟 2D 引擎一样以近侧（右）脚为地面
+    : s.ground === 'low' ? Math.min(...pts.map(p => p.y)) - 2.5 : Math.min(...['RightToe_End', 'RightFoot'].map(n => W3(n).y)) - 2.5 - SOLE_ON; // 跟 2D 引擎一样以近侧（右）脚为地面
   const hipW = W3('Hips');
   root.position.add(V(P.hip[0] - hipW.x, -low + s.lift, 0));
   root.updateMatrixWorld(true);
@@ -428,6 +445,10 @@ function props(s, P, c) {
       box(0, len, 0, 5, 28, M.pad, ang, (a[0] + b[0]) / 2 + nx * 9, (a[1] + b[1]) / 2 + ny * 9);
       box(X('hip') - 12, X('hip') + 14, Y('hip') - 12, Y('hip') - 7, 30, M.pad); box(X('hip') - 2, X('hip') + 2, 0, Y('hip') - 12, 10, M.iron);
     }
+    if (pr === 'bar' && KEY === 'pullup') { // 引体向上：细的金属横杆（比手再高一点、横跨两手），两边立柱到地
+      const r = W3('RightHand'), l = W3('LeftHand'), m = r.clone().lerp(l, 0.5), o = r.clone().sub(l).setY(0).normalize(), y = Math.max(r.y, l.y) + 1.6;
+      const e1 = V(m.x, y, m.z).add(o.clone().multiplyScalar(30)), e2 = V(m.x, y, m.z).add(o.clone().multiplyScalar(-30));
+      rod(e1, e2, 1.3, M.chrome); rod(e1, V(e1.x, 0, e1.z), 1.8, M.iron); rod(e2, V(e2.x, 0, e2.z), 1.8, M.iron); continue; }
     if (pr === 'bar') { const h = W3('RightHand').lerp(W3('LeftHand'), 0.5), top = h.y + 3; box(h.x - 34, h.x + 36, top, top + 4, 80, M.wood); box(h.x + 30, h.x + 34, 0, top, 4, M.wood, 0, null, null, 36); box(h.x + 30, h.x + 34, 0, top, 4, M.wood, 0, null, null, -36); }
     if (pr === 'boxF') { const fx = X('ff'); box(fx - 15, fx + 8, 0, Y('ff') - 3, 32, M.wood); }
     if (pr === 'boxN') { const nx = X('nf'); box(nx - 18, nx + 18, 0, Y('nf') - 3, 36, M.wood); }
@@ -445,6 +466,7 @@ function props(s, P, c) {
     const ctr = sole.add(SLED_N.clone().multiplyScalar(3.5)).add(SLED_UP.clone().multiplyScalar(3));
     box(0, 2, 0, 36, 42, M.pad, Math.atan2(SLED_N.y, SLED_N.x), ctr.x, ctr.y, ctr.z);
   }
+  if (KEY === 'pullapart') rod(W3('RightHand'), W3('LeftHand'), 0.7, M.band); // 弹力带：两手之间
   if (KEY === 'facepull') { const m = W3('RightHand').lerp(W3('LeftHand'), 0.5); rod(m, V(m.x + 140, W3('Head').y, m.z), 0.35, M.cable); }
   if (KEY === 'chest') for (const side of ['Right', 'Left']) { // 门框：前臂贴在门框前面
     const e = W3(side + 'ForeArm'), h = W3(side + 'Hand'), o = side === 'Right' ? c.OR : c.OR.clone().negate();
@@ -470,7 +492,7 @@ function dumbbells(hold, c) {
   if (hold === 'hands') { DB[0].visible = DB[1].visible = true; DB[0].position.copy(rh).add(V(0, 0, 1)); DB[1].position.copy(lh).add(V(0, 0, -1)); DB[0].rotation.set(0, 0, 0); DB[1].rotation.set(0, 0, 0); }
   else if (hold === 'one') {
     DB[0].visible = true;
-    if (KEY === 'thrust') { DB[0].position.copy(c.dbHip()); DB[0].rotation.set(0, 0, 0); return; } // 横放在髋上
+    if (KEY === 'thrust' || KEY === 'dbbridge') { DB[0].position.copy(c.dbHip()); DB[0].rotation.set(0, 0, 0); return; } // 横放在髋上
     const together = rh.distanceTo(lh) < 12;
     DB[0].position.copy(together ? rh.clone().add(lh).multiplyScalar(0.5) : rh); DB[0].rotation.set(together ? Math.PI / 2 : 0, 0, 0);
   }
@@ -528,6 +550,7 @@ const SIDES = {
   bridge: { glutes: 'Right', hamstrings: 'Right', glute_med: 'Right' },
   row1: { lats: 'Right', mid_back: 'Right', rear_delt: 'Right', biceps: 'Right', forearm: 'Right' },
   tap: { ant_delt: 'Left', serratus: 'Left' },
+  sldl: { hamstrings: 'Right', glutes: 'Right', glute_med: 'Right', adductors: 'Right' }, // 支撑腿
 };
 function glowPoints(spec, c) {
   const out = [];
@@ -552,7 +575,7 @@ function setHalos(pts, k, size = 13) { const main = pts.filter(q => q[1] >= 1); 
 const CONC = { squat: 'down', squatG: 'down', thruster: [1, 1, 0, 0], legpress: 'up', hpush: 'down', bench: 'up', fpress: 'up', incline: 'up', seatpush: 'up',
   hinge: 'down', legcurl: 'up', bridge: 'up', bridge2: 'up', thrust: 'up', row: 'up', row1: 'up', invrow: 'up', seatrow: 'up', pulldown: 'up', ohp: 'up', seatohp: 'up',
   pike: 'down', lunge: 'down', split: 'down', step: 'up', rfly: 'up', facepull: 'up', yraise: 'up', climber: [0.9, 0.9], swing: 'up', jack: [0.85, 0.85], deadbug: 'up',
-  burpee: [0.6, 1, 1, 1, 1, 1], tap: [0.85, 0.85] };
+  burpee: [0.6, 1, 1, 1, 1, 1], tap: [0.85, 0.85], sldl: 'down', dbbridge: 'up', pullup: 'up', pullapart: 'up', ohpseat: 'up' };
 // PEAK：拉得最开的是第几个关键帧；'both'＝两端都是（左右交替／猫牛），'const'＝一直拉着
 const PEAK = { quad: 1, fig4: 1, chest: 1, child: 1, march: 'both', armcircle: 'const', catcow: 'both', lungeT: 1, scap: 'both', wgs: 1 };
 function isConc(key, ph) { let c = CONC[key] ?? 'up'; if (typeof c === 'string') c = c === 'up' ? [1, 0] : [0, 1]; return (c[ph.seg] ?? 0) > 0; }
@@ -638,6 +661,7 @@ window.setup = function (spec, combo, fps = 12) {
   const T1 = ANIM.cycleLen(KEY), T = T1 * cycles;
   const n = Math.min(84, Math.max(12, Math.round(T * fps)));
   const swim = !!s0.pool;
+  if (SHOES) SHOES.visible = !swim; SOLE_ON = SHOES && !swim ? SOLE : 0; // 泳池里光脚
   const reserved = caption(spec);
   floorVisible(!swim);
   const glowCol = spec.type === 'stretch' || spec.type === 'mobility' ? 'blue' : 'red';
