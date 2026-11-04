@@ -1148,6 +1148,19 @@ function lbNav(dir) {
     document.addEventListener('pointercancel', off, { once: true });
   });
 })();
+// 没网也打得开：注册本文件夹的 service worker（sw.js），两本手册与照片都会存一份在手机上。
+// 有网时照样先拿最新版；载入完再叫它在背景把两本的照片预抓下来（开了省流量就不抓）。
+(function offlineReady() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').then(function () {
+      return navigator.serviceWorker.ready;
+    }).then(function (reg) {
+      var saveData = !!(navigator.connection && navigator.connection.saveData);
+      if (reg.active) reg.active.postMessage({ type: 'warm', saveData: saveData });
+    }).catch(function () {});
+  });
+})();
 </script>
 </body>
 </html>
