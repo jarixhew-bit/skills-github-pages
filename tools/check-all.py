@@ -66,6 +66,8 @@ CHECKS = [
     ("mapcoords", ["python3", "tools/check-map-coords.py"], False),
     ("maplinks", ["python3", "tools/check-map-links.py"], False),
     ("refreshphotos", ["python3", "tools/check-refresh-photos.py"], False),
+    # 真查要下载图片（只在 CI）；本机只跑离线那一半
+    ("photodupes", ["python3", "tools/check-photo-dupes.py", "--selftest"], False),
     ("shortlist", ["python3", "tools/check-shortlist.py"], False),
     ("rules", ["python3", "tools/check-rules.py", "--quiet"], False),
     ("rule-homes", ["python3", "tools/check-rule-homes.py"], False),

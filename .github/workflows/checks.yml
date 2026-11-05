@@ -60,6 +60,7 @@ jobs:
       maplinks: ${{ steps.d.outputs.maplinks }}
       refreshphotos: ${{ steps.d.outputs.refreshphotos }}
       photofilter: ${{ steps.d.outputs.photofilter }}
+      photodupes: ${{ steps.d.outputs.photodupes }}
       shortlist: ${{ steps.d.outputs.shortlist }}
     steps:
       - uses: actions/checkout@v4
@@ -358,6 +359,19 @@ jobs:
           pip install --quiet pillow
       - run: python3 tools/check-photo-filter.py
 
+  photodupes:
+    name: 同卡重复照片
+    needs: decide
+    if: needs.decide.outputs.photodupes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 要下载 Google 照片算感知哈希，沙盒连不上，所以只在 CI 真查；
+      # --selftest 是离线那一半（本机 check-all 也跑）。被 Google 挡时脚本自己罢工、不报红。
+      - run: pip install --quiet pillow
+      - run: python3 tools/check-photo-dupes.py --selftest
+      - run: python3 tools/check-photo-dupes.py
+
   refreshphotos:
     name: 自动补破图
     needs: decide
@@ -476,7 +490,7 @@ jobs:
     # 这一串必须列满同一个文件里的每个 job：漏掉的那项红了总闸照样绿、分支保护会放行
     # （2026-08-17 发现 fund 与 news 从来没被列进来）。已由 check-workflows.py 的
     # check_gate 断言守着，加 job 忘了回头改这里会在 CI 上被挡下。
-    needs: [decide, html, secrets, pwa, swver, ainote, declog, flexstale, allocation, drawdown, notify, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, board, news, prices, weather, tripoffline, penangv3, fitness, flights, flightprobe, placestatus, mapcoords, maplinks, refreshphotos, photofilter, shortlist]
+    needs: [decide, html, secrets, pwa, swver, ainote, declog, flexstale, allocation, drawdown, notify, generated, rules, workflows, company, inventory, boss, boss-sw, staff, gamebot, fund, board, news, prices, weather, tripoffline, penangv3, fitness, flights, flightprobe, placestatus, mapcoords, maplinks, refreshphotos, photofilter, photodupes, shortlist]
     runs-on: ubuntu-latest
     steps:
       # 把判定用的原始值印出来。理由见 diagnosis.md：「绿灯本身要先被验证」——
