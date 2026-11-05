@@ -143,6 +143,26 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .flight-early-tag{margin-left:6px;color:var(--ok);font-weight:700}
 .flight-time-unknown{color:var(--sub)}
 .flight-info-gate{margin-top:6px;color:var(--sub)}
+/* ===== 航班实时状态框（2026-11-05；JS 在页尾 FLIGHT-LIVE 段，跟两本新加坡／雅加达手册同一段）=====
+   前端另外调 butler-bot 的 /flight-status 填。只读、没有任何写入，viewer 和 admin 都显示。
+   颜色只表状态：准点绿、延误琥珀、取消红、已起飞／已落地蓝。 */
+.flive{--fl:var(--border);margin-top:8px;padding:9px 12px;background:#fff;border:1px solid var(--border);
+  border-left:3px solid var(--fl);border-radius:10px;font-size:12.5px;line-height:1.55}
+.flive .fl-k{font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--sub)}
+.flive .fl-st{margin-top:2px;font-size:14px;font-weight:700;color:var(--fl)}
+.flive .fl-st::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--fl);margin-right:7px;vertical-align:1px}
+.flive .fl-t{color:var(--text);font-weight:600}
+.flive .fl-was{margin-left:10px;color:var(--sub);font-weight:500}
+.flive .fl-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 10px;margin-top:2px;color:var(--sub)}
+.flive .fl-gate i{display:inline-block;width:10px}
+.flive .fl-up.off{color:#8a5a12;font-weight:600}
+.flive.fl-ok{--fl:#3f7d5c}.flive.fl-late{--fl:#8a5a12}.flive.fl-cxl{--fl:#a3271f}.flive.fl-air{--fl:#36689c}
+.flive.fl-wait .fl-note{color:var(--sub);opacity:.8}
+/* 新框已有实时数据（不是隐藏、也不是「起飞前 2 天」提示）时，收起上面 flightInfoHtml 里
+   来自 feed 的状态胶囊（例如「未起飞」），免得同一班一边写未起飞、一边写延误（2026-11-05 定）。
+   航班号／路线／起降时间／乘客座位照留；新框没数据时旧胶囊照常显示。
+   用 CSS 而不是改 FLIGHT-LIVE 那段 JS：那段要跟两本手册一字不差。 */
+.item-body:has(> .flive:not([hidden]):not(.fl-wait)) .flight-info .flight-status{display:none}
 
 /* ===== 转机等待（同一趟行程里，相邻两个航班条目之间自动算出来插入的一行） ===== */
 .transfer-row{margin:8px 16px;padding:9px 12px;background:#EFF6FF;border:1px dashed #BFDBFE;
@@ -1073,6 +1093,15 @@ function flightInfoHtml(it){
       ${flightPaxHtml(f)}
     </div>`;
 }
+/** 航班实时状态框的占位（真正的内容由页尾 FLIGHT-LIVE 段去 /flight-status 抓来填）。
+ *  只放航班号和日期，没有任何写入控件——viewer 和 admin 一样显示。 */
+function flightLiveBoxHtml(it){
+  const f = it.flight || {};
+  const no = String(f.no || '').replace(/\s+/g, '');
+  const date = String(f.date || it.date || '');
+  if(!no || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return '';
+  return `<div class="flive" data-flight="${escapeHtml(no)}" data-date="${escapeHtml(date)}" hidden></div>`;
+}
 /** 同一趟行程里，相邻两个航班条目：前一班到达机场 == 后一班出发机场时，
  * 自动算出转机等待时长插入一行。等待为负（日期/航班可能填错）或 <90 分钟（偏紧）都要显眼提示。
  * 用 `live` 里各机场当地时间＋偏移量算，不涉及 flight-contract 里点名警告的本地时区陷阱。 */
@@ -1657,6 +1686,7 @@ function itemRowHtml(it){
         ${ hasNote ? `<div class="item-note">${blObj(it.note)}</div>` : '' }
         ${ it.recurring ? recurSkipBtnHtml(it.ruleId, it.date, false) : '' }
         ${ it.flight ? flightInfoHtml(it) : '' }
+        ${ it.flight ? flightLiveBoxHtml(it) : '' }
         ${ hotelInfoHtml(it) }
       </div>
       ${ it.mapUrl && !(isHotelItem(it) && (it.hotel.address || '').trim()) ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
@@ -5074,7 +5104,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v68</div>
+    <div class="admin-ver" id="adminVer">boss-app-v70</div>
 
     ${adminTripsSectionHtml()}
 
@@ -5770,6 +5800,166 @@ if('serviceWorker' in navigator){
     location.reload();
   });
 }
+/* ===== FLIGHT-LIVE BEGIN =====
+   航班实时状态框（2026-11-05 建）。这一段在三处**一字不差**：sg-jkt-trip/singapore.html、
+   sg-jkt-trip/jakarta.html、boss/index.html——tools/check-flight-live.mjs 会比对，改一处就要三处一起改。
+   页面上只要放 <div class="flive" data-flight="SQ958" data-date="2026-11-14" hidden></div>，
+   这里就会去 butler-bot 的 /flight-status 抓（一次请求取整页所有航班，每次最多 10 个），
+   每 5 分钟、以及页面回到前台时再抓一次。老板 App 会反复重画行程，新画出来的框由
+   MutationObserver 接手，直接用手上已有的状态填，不会闪一下空白。
+   时间一律按 ISO 字符串自带的时区偏移显示，**绝不用浏览器时区**：老板人在金边看新加坡起飞的
+   航班，看到的必须是新加坡当地时刻（跟机票卡上印的一致）。
+   抓不到（没网／接口挂了／没在追踪）就拿 localStorage 里上次的状态，标「离线」；连缓存都没有就整框隐藏。
+   已落地超过 6 小时的不再抓，直接显示缓存。 */
+(function flightLive() {
+  var API = 'https://butler-bot.jarixhew.workers.dev/flight-status';
+  var CACHE_KEY = 'flightLiveCache';
+  var EVERY = 5 * 60000, LANDED_STOP = 6 * 3600000, MAX_PER_CALL = 10, KEEP = 14 * 86400000;
+  var state = {}, asked = {}, inflight = false, again = false;
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function bi(cn, en) { return '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+  function norm(no) { return String(no || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase(); }
+  function keyOf(el) {
+    var no = norm(el.getAttribute('data-flight')), d = String(el.getAttribute('data-date') || '');
+    return (no && /^\d{4}-\d{2}-\d{2}$/.test(d)) ? no + '@' + d : '';
+  }
+  function loadCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function saveCache(c) {
+    var now = Date.now();
+    Object.keys(c).forEach(function (k) { if (!c[k] || now - (c[k].at || 0) > KEEP) delete c[k]; });
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch (e) {}
+  }
+  // "2026-11-14T12:55:00+08:00" → { ms: 真实时刻, off: 这串自带的偏移（分钟）}
+  function parse(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?\s*(Z|[+-]\d{2}:?\d{2})$/.exec(String(iso || '').trim());
+    if (!m) return null;
+    var off = 0;
+    if (m[7] !== 'Z') {
+      var s = m[7].replace(':', '');
+      off = (s.charAt(0) === '-' ? -1 : 1) * (parseInt(s.slice(1, 3), 10) * 60 + parseInt(s.slice(3, 5), 10));
+    }
+    return { ms: Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)) - off * 60000, off: off };
+  }
+  // 显示成 HH:MM：默认按这串自己的偏移；给了 offMin 就换算到那个时区（更新时间用出发机场的）
+  function hm(iso, offMin) {
+    var p = parse(iso);
+    if (!p) return '';
+    var d = new Date(p.ms + (offMin == null ? p.off : offMin) * 60000);
+    return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+  }
+  function waiting(f) { var w = parse(f.window_start); return !!w && Date.now() < w.ms; }
+  function known(f) { return /^(scheduled|delayed|departed|landed|cancelled)$/.test(f.state || ''); }
+  function landedLongAgo(f) {
+    if (!f || f.state !== 'landed') return false;
+    var a = parse(f.act_arr || f.est_arr || f.sched_arr);
+    return !!a && Date.now() - a.ms > LANDED_STOP;
+  }
+  function html(s) {
+    var f = s.f, head = '<div class="fl-k">LIVE · ' + bi('实时状态', 'Flight status') + '</div>';
+    if (waiting(f)) return { cls: 'fl-wait', h: head + '<div class="fl-note">' + bi('起飞前 2 天开始显示实时状态', 'Live status starts 2 days before departure') + '</div>' };
+    if (!known(f)) return null;
+    var dep = parse(f.sched_dep), depOff = dep ? dep.off : null;
+    var sd = hm(f.sched_dep), ed = hm(f.est_dep) || sd, cls, label, line, gate = true;
+    if (f.state === 'cancelled') {
+      cls = 'fl-cxl'; label = bi('已取消', 'Cancelled'); gate = false;
+      line = sd ? bi('原定 ' + sd + ' 起飞', 'Was due to depart ' + sd) : '';
+    } else if (f.state === 'landed') {
+      var la = hm(f.act_arr) || hm(f.est_arr) || hm(f.sched_arr);
+      cls = 'fl-air'; label = bi('已落地', 'Landed'); gate = false;
+      line = bi('已落地 ' + la, 'Landed ' + la);
+    } else if (f.state === 'departed') {
+      var ad = hm(f.act_dep) || ed, ea = hm(f.est_arr) || hm(f.sched_arr);
+      cls = 'fl-air'; label = bi('已起飞', 'Departed'); gate = false;
+      line = bi('实际起飞 ' + ad, 'Departed ' + ad) + (ea ? ' · ' + bi('预计到达 ' + ea, 'Est. arrival ' + ea) : '');
+    } else if (f.state === 'delayed') {
+      var dm = f.delay_min;
+      if (dm == null) { var a1 = parse(f.est_dep); dm = (a1 && dep) ? Math.round((a1.ms - dep.ms) / 60000) : null; }
+      cls = 'fl-late';
+      label = dm > 0 ? bi('延误 ' + dm + ' 分钟', 'Delayed ' + dm + ' min') : bi('延误', 'Delayed');
+      line = bi('预计起飞 ' + ed, 'Est. departure ' + ed) +
+        (sd && sd !== ed ? '<span class="fl-was">' + bi('原定 <s>' + sd + '</s>', 'Sched. <s>' + sd + '</s>') + '</span>' : '');
+    } else {
+      cls = 'fl-ok'; label = bi('准点', 'On time');
+      line = bi('预计起飞 ' + ed, 'Est. departure ' + ed);
+    }
+    var foot = [];
+    if (gate) {
+      var t = String(f.terminal == null ? '' : f.terminal).trim();
+      if (t) foot.push(bi('航站楼 ' + esc(/^t/i.test(t) ? t.toUpperCase() : 'T' + t), 'Terminal ' + esc(t.replace(/^t/i, ''))));
+      foot.push(f.gate ? bi('登机口 ' + esc(f.gate), 'Gate ' + esc(f.gate)) : bi('登机口 未公布', 'Gate not yet announced'));
+    }
+    var up = hm(f.last_polled || (s.at ? new Date(s.at).toISOString() : ''), depOff);
+    var upHtml = up ? (s.offline ? bi('上次更新 ' + up + '（离线）', 'Last updated ' + up + ' (offline)') : bi(up + ' 更新', 'Updated ' + up)) : '';
+    return { cls: cls, h: head + '<div class="fl-st">' + label + '</div>' + (line ? '<div class="fl-t">' + line + '</div>' : '') +
+      '<div class="fl-foot"><span class="fl-gate">' + foot.join('<i></i>') + '</span><span class="fl-up' + (s.offline ? ' off' : '') + '">' + upHtml + '</span></div>' };
+  }
+  function paint(el) {
+    var s = state[keyOf(el)], r = s ? html(s) : null;
+    el.setAttribute('data-fl-painted', '1');
+    if (!r) { el.hidden = true; el.innerHTML = ''; el.className = 'flive'; return; }
+    el.className = 'flive ' + r.cls;
+    el.innerHTML = r.h;
+    el.hidden = false;
+  }
+  function boxes() { return Array.prototype.slice.call(document.querySelectorAll('.flive[data-flight][data-date]')); }
+  function fromCache(k, cache) { var c = cache[k]; state[k] = c ? { f: c.f, at: c.at, offline: true } : null; }
+  function refresh() {
+    if (inflight) { again = true; return; }
+    var cache = loadCache(), want = [], seen = {};
+    boxes().forEach(function (el) {
+      var k = keyOf(el);
+      if (!k || seen[k]) return;
+      seen[k] = 1; asked[k] = 1;
+      var c = cache[k];
+      if (c && landedLongAgo(c.f)) { state[k] = { f: c.f, at: c.at, offline: false }; return; }
+      want.push(k);
+    });
+    boxes().forEach(paint);
+    if (!want.length) return;
+    inflight = true;
+    var calls = [];
+    for (var i = 0; i < want.length; i += MAX_PER_CALL) calls.push(want.slice(i, i + MAX_PER_CALL));
+    Promise.all(calls.map(function (ks) {
+      return fetch(API + '?f=' + ks.join(','), { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (j) {
+          var got = {};
+          ((j && j.flights) || []).forEach(function (f) { if (f) got[norm(f.no) + '@' + f.date] = f; });
+          ks.forEach(function (k) {
+            var f = got[k];
+            if (f && f.tracked && (waiting(f) || known(f))) {
+              state[k] = { f: f, offline: false };
+              if (known(f) && !waiting(f)) cache[k] = { f: f, at: Date.now() };
+            } else fromCache(k, cache);
+          });
+        })
+        .catch(function () { ks.forEach(function (k) { fromCache(k, cache); }); });
+    })).then(function () {
+      saveCache(cache);
+      inflight = false;
+      boxes().forEach(paint);
+      if (again) { again = false; refresh(); }
+    });
+  }
+  // 重画出来的新框：先用手上的状态填；有没问过的航班就补抓一次
+  if (window.MutationObserver) {
+    new MutationObserver(function () {
+      var fresh = false;
+      boxes().forEach(function (el) {
+        if (el.getAttribute('data-fl-painted')) return;
+        paint(el);
+        var k = keyOf(el);
+        if (k && !asked[k]) fresh = true;
+      });
+      if (fresh) refresh();
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+  refresh();
+  setInterval(refresh, EVERY);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') refresh(); });
+})();
+/* ===== FLIGHT-LIVE END ===== */
 </script>
 </body>
 </html>

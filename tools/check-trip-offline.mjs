@@ -56,6 +56,8 @@ await context.route('https://api.data.gov.sg/**', r => r.fulfill({ json: { items
 // 字体外链：沙盒打不到，别让它拖慢载入
 await context.route('https://fonts.googleapis.com/**', r => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
 await context.route('https://fonts.gstatic.com/**', r => r.abort());
+// 航班实时状态（butler-bot /flight-status）：不打真接口，它有自己的自检 check-flight-live.mjs
+await context.route('https://butler-bot.jarixhew.workers.dev/**', r => r.abort());
 
 const page = await context.newPage();
 const errors = [];

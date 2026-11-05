@@ -104,6 +104,25 @@ section { padding: 50px 22px 6px; }
 .bpass .pax .cls { font-family: var(--latin); font-size: 11px; letter-spacing: .34em; color: var(--gold); margin-top: 4px; }
 .bpass .pax .seats { display: flex; flex-direction: column; }
 .bpass .pax .seat { font-family: var(--latin); font-size: 15px; font-weight: 500; letter-spacing: .06em; }
+/* ===== 机票卡上的实时状态框（2026-11-05；JS 在页尾 FLIGHT-LIVE 段）=====
+   插在 .route 与 .perf 之间。颜色只表状态：准点绿、延误琥珀、取消红、已起飞／已落地蓝。
+   还没到起飞前 48 小时只印一行淡色提示；抓不到又没缓存就整框 hidden。 */
+.bpass .flive { --fl: var(--gold); margin: 0 2px 14px; padding: 10px 14px 9px; background: var(--ivory); border: 1px solid var(--hair); border-left: 2px solid var(--fl); text-align: left; line-height: 1.6; }
+.flive .fl-k { font-family: var(--latin); font-size: 10.5px; font-weight: 500; letter-spacing: .3em; color: var(--gold); text-transform: uppercase; }
+.flive .fl-k .cn { font-family: var(--serif); font-size: 10.5px; letter-spacing: .2em; }
+.flive .fl-st { margin-top: 3px; font-size: 15px; font-weight: 500; color: var(--fl); letter-spacing: .04em; }
+.flive .fl-st::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--fl); margin-right: 8px; vertical-align: 2px; }
+.flive .fl-t { font-family: var(--latin); font-size: 15px; color: var(--ink); }
+.flive .fl-t .cn { font-family: var(--serif); font-size: 13px; }
+.flive .fl-was { margin-left: 12px; color: var(--muted); }
+.flive .fl-was s { color: var(--faint); }
+.flive .fl-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+.flive .fl-gate i { display: inline-block; width: 12px; }
+.flive .fl-up { font-style: italic; }
+.flive .fl-up.off { color: var(--warn); }
+.flive.fl-ok { --fl: #3f7d5c; } .flive.fl-late { --fl: #8a5a12; } .flive.fl-cxl { --fl: #a3271f; } .flive.fl-air { --fl: #36689c; }
+.flive.fl-wait { --fl: var(--hair); }
+.flive.fl-wait .fl-note { font-size: 12px; color: var(--faint); }
 
 .note { font-size: 12.5px; color: var(--ink2); padding: 12px 0; margin-top: 0 !important; border-top: 1px solid var(--hair); }
 .note.amber, .note.red, .note.green { background: none; }
@@ -279,9 +298,9 @@ footer .mark::before { content: ""; display: block; width: 64px; height: 16px; m
 body.lang-en .note.red::before { content: "ALERT"; font-family: var(--latin); font-size: 11px; letter-spacing: .24em; }
 .note.red strong { color: var(--alert); }
 
-/* ===== 可点链接按钮（地图／官网／售票／航班追踪）=====
+/* ===== 可点链接按钮（地图／官网／售票）=====
    标记固定为：<div class="links"><a class="btn-map [web|tix]"><svg class="ico">…</svg><span class="lbl"><span class="cn">地图<span class="tag">MAP</span></span><span class="en">…</span></span></a> …</div>
-   连着的几颗包在 .links 里（两颗并排各占一半）。航班追踪是 <a class="track">，同一套标记。按钮外观只写在这一组规则里：
+   连着的几颗包在 .links 里（两颗并排各占一半）。按钮外观只写在这一组规则里：
    以后要换成「下划线文字前加图标」或「卡片底部整条横栏」，只改这一段 CSS，不动 HTML。 */
 /* 有路线编号的站（D3 的 1／2／3）：编号跟「必去」写在同一行 */
 .stop .pin.num { display: block; font-size: 10.5px; letter-spacing: .3em; color: var(--line); line-height: 1.6; }
@@ -291,7 +310,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 .stop:has(.pin.num) h4::before { display: none !important; }
 
 .links { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 12px; }
-.btn-map, .track {
+.btn-map {
   display: flex; align-items: center; justify-content: center; gap: 9px;
   min-width: 0; min-height: 46px; padding: 10px 8px; text-align: center;
   border: 1px solid var(--gold); border-radius: 0; background: transparent;
@@ -299,22 +318,22 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
   font-family: var(--serif); font-size: 13px; font-weight: 500; letter-spacing: .14em;
   transition: background-color .15s, color .15s;
 }
-.btn-map .ico, .track .ico { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--gold); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
-.btn-map .lbl .en, .track .lbl .en { font-family: var(--latin); font-size: 14.5px; letter-spacing: .12em; }
+.btn-map .ico { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--gold); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.btn-map .lbl .en { font-family: var(--latin); font-size: 14.5px; letter-spacing: .12em; }
 /* 两颗都是地图（如苏丹回教堂＋哈芝巷）时带地名、字多，改成上下各占一整行 */
 .links:has(> a.btn-map:not(.web):not(.tix) + a.btn-map:not(.web):not(.tix)) { grid-auto-flow: row; }
 .btn-map .tag { font-family: var(--latin); font-size: 12px; font-weight: 500; letter-spacing: .2em; color: var(--gold); margin-left: .6em; white-space: nowrap; }
-.btn-map:active, .track:active { background: var(--navy); color: var(--cover-h); }
-.btn-map:active .ico, .track:active .ico { stroke: var(--gold2); }
-@media (hover: hover) { .btn-map:hover, .track:hover { background: var(--paper); } }
-.btn-map:focus-visible, .track:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.btn-map:active { background: var(--navy); color: var(--cover-h); }
+.btn-map:active .ico { stroke: var(--gold2); }
+@media (hover: hover) { .btn-map:hover { background: var(--paper); } }
+.btn-map:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* ===== 可点元素：平时一眼看得出、按下发亮（2026-11-03，两本手册同一段，颜色走 :root 的 --gold-rgb／--gold-ink）=====
    ① 文内链接 = .wrap 里不带 class 的 <a>（正文「见餐厅列表」「住宿」「官方网站」之类）。不用加 class，新写的文内链接自动套用：
       金褐色字＋淡金底色块＋2px 金下划线，后面自动带符号：#锚点／本站另一本手册 →，外部网址 ↗，tel: 前面一个电话线描图标。
       上下 padding 只撑大点击区（行内元素的上下 padding 不改行距），底色块用 background-size 收在字的高度里，不会盖到上下行。
    ② 按下发亮：:active、:focus-visible，以及 JS 在 pointerdown 时挂的 data-tapped 属性（不能用 class：文内链接靠「没有 class」认出来）（留 0.45 秒，手指一点就放也看得到）。
-      覆盖：文内链接、.btn-map／.track 方角按钮、顶部 .daystrip 目录、.gal img 照片、.topbar 的 .lang／.jump、灯箱按钮。 */
+      覆盖：文内链接、.btn-map 方角按钮、顶部 .daystrip 目录、.gal img 照片、.topbar 的 .lang／.jump、灯箱按钮。 */
 .wrap a:not([class]) {
   color: var(--gold-ink); font-weight: 500; text-decoration: none; border-bottom: 0;
   position: relative; z-index: 1; padding: 10px 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone;
@@ -340,12 +359,12 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 @media (hover: hover) { .wrap a:not([class]):hover { background-image: linear-gradient(var(--gold), var(--gold)), linear-gradient(rgba(var(--gold-rgb), .3), rgba(var(--gold-rgb), .3)); } }
 
 /* 方角按钮：原本按下反底色，再加一圈金色光晕 */
-.btn-map, .track { -webkit-tap-highlight-color: rgba(var(--gold-rgb), .3); transition: background-color .15s, color .15s, box-shadow .15s; }
-.btn-map:active, .track:active, .btn-map:focus-visible, .track:focus-visible, .btn-map[data-tapped], .track[data-tapped] {
+.btn-map { -webkit-tap-highlight-color: rgba(var(--gold-rgb), .3); transition: background-color .15s, color .15s, box-shadow .15s; }
+.btn-map:active, .btn-map:focus-visible, .btn-map[data-tapped] {
   background: var(--navy); color: var(--cover-h); outline: none;
   box-shadow: 0 0 0 3px rgba(var(--gold-rgb), .55), 0 0 18px 4px rgba(var(--gold-rgb), .6);
 }
-.btn-map:focus-visible .ico, .track:focus-visible .ico, .btn-map[data-tapped] .ico, .track[data-tapped] .ico { stroke: var(--gold2); }
+.btn-map:focus-visible .ico, .btn-map[data-tapped] .ico { stroke: var(--gold2); }
 
 /* 顶部目录、语言切换、跳另一本：深色底上按下＝金色底亮起 */
 .daystrip a, .topbar button.lang, .topbar a.jump, .lb-close, .lb-arrow { -webkit-tap-highlight-color: rgba(var(--gold-rgb), .3); transition: background-color .12s, box-shadow .12s; }
@@ -397,7 +416,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="tip">
 <span class="ico"></span>
 <div>
-<span class="cn">带地标图标的<strong>「地图」按钮</strong>可点开 Google 地图，飞机图标是航班实时追踪；正文里<strong>金色带箭头的文字</strong>也可以点（→ 跳到手册别处，↗ 打开外部网站）；顶部目录点一下就跳到那一节；营业时间和票价出发前请再用官方渠道确认。雅加达比新加坡<strong>慢 1 小时</strong>，手册里的时刻都是当地时间。</span><span class="en">Buttons with a <strong>map-pin icon</strong> open Google Maps; the plane icon opens live flight tracking. <strong>Gold text with an arrow</strong> is tappable too (→ jumps elsewhere in the handbook, ↗ opens an outside website). Tap an item in the top bar to jump to that section; please reconfirm opening hours and prices through official channels before you go. Jakarta is <strong>1 hour behind Singapore</strong>; all times in this handbook are local.</span>
+<span class="cn">带地标图标的<strong>「地图」按钮</strong>可点开 Google 地图；正文里<strong>金色带箭头的文字</strong>也可以点（→ 跳到手册别处，↗ 打开外部网站）；顶部目录点一下就跳到那一节；营业时间和票价出发前请再用官方渠道确认。雅加达比新加坡<strong>慢 1 小时</strong>，手册里的时刻都是当地时间。</span><span class="en">Buttons with a <strong>map-pin icon</strong> open Google Maps. <strong>Gold text with an arrow</strong> is tappable too (→ jumps elsewhere in the handbook, ↗ opens an outside website). Tap an item in the top bar to jump to that section; please reconfirm opening hours and prices through official channels before you go. Jakarta is <strong>1 hour behind Singapore</strong>; all times in this handbook are local.</span>
 </div>
 </div>
 
@@ -413,6 +432,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="mid"><div class="dur">1h 50m</div><div class="line"></div></div>
 <div class="apt"><div class="iata">CGK</div><div class="city"><span class="cn">雅加达 苏加诺-哈达 T3</span><span class="en">Jakarta Soekarno-Hatta T3</span></div><div class="time">13:20</div></div>
 </div>
+<div class="flive" data-flight="SQ958" data-date="2026-11-14" hidden></div>
 <div class="perf"></div>
 <div class="pax">
 <span class="cls biz">BUSINESS</span>
@@ -420,7 +440,6 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <span class="cls eco">ECONOMY</span>
 <div class="seats"><span class="seat">HEW/CHERN YANG 32G</span></div>
 </div>
-<div class="links"><a class="track" href="https://www.flightaware.com/live/flight/SIA958" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.2 13.6 4 16.2v-1.9l6.2-4.2V5.6a1.8 1.8 0 0 1 3.6 0v4.5l6.2 4.2v1.9l-6.2-2.6v4.3l2.1 1.6v1.5L12 20.2 8.1 21v-1.5l2.1-1.6z"/></svg><span class="lbl"><span class="cn">追踪 SQ958</span><span class="en">Track SQ958</span></span></a></div>
 </div>
 <div class="note amber" style="margin-top:-4px"><span class="cn"><strong>入境印尼要先填电子入境卡：</strong>抵达前 3 天内（11/11 起）上 <a href="https://allindonesia.imigrasi.go.id/" target="_blank">All Indonesia</a> 网站或 App 填写，免费，填完会拿到一个 QR 码，过关时出示。三人各填各的。</span><span class="en"><strong>Fill in Indonesia's e-arrival card first:</strong> within 3 days before arrival (from 11 Nov), complete it on the <a href="https://allindonesia.imigrasi.go.id/" target="_blank">All Indonesia</a> website or app. It is free and gives you a QR code to show at immigration. Each person fills in their own.</span>
 </div>
@@ -433,6 +452,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="mid"><div class="dur">1h 45m</div><div class="line"></div></div>
 <div class="apt"><div class="iata">SIN</div><div class="city"><span class="cn">新加坡 樟宜</span><span class="en">Singapore Changi</span></div><div class="time">13:55</div></div>
 </div>
+<div class="flive" data-flight="SQ957" data-date="2026-11-16" hidden></div>
 <div class="perf"></div>
 <div class="pax">
 <span class="cls biz">BUSINESS</span>
@@ -440,7 +460,6 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <span class="cls eco">ECONOMY</span>
 <div class="seats"><span class="seat">HEW/CHERN YANG 32C</span></div>
 </div>
-<div class="links"><a class="track" href="https://www.flightaware.com/live/flight/SIA957" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.2 13.6 4 16.2v-1.9l6.2-4.2V5.6a1.8 1.8 0 0 1 3.6 0v4.5l6.2 4.2v1.9l-6.2-2.6v4.3l2.1 1.6v1.5L12 20.2 8.1 21v-1.5l2.1-1.6z"/></svg><span class="lbl"><span class="cn">追踪 SQ957</span><span class="en">Track SQ957</span></span></a></div>
 </div>
 <div class="note green" style="margin-top:-4px"><span class="cn">到了樟宜三人分开转机：Yap Lian Khoon 回槟城，Tan Chin Hooi 和 Hew Chern Yang 回金边。<strong>行李直挂到终点</strong>，在樟宜不用取行李、不用出境，下机后跟着「Transfer／转机」指示走就好。</span><span class="en">At Changi the group splits: Yap Lian Khoon flies on to Penang; Tan Chin Hooi and Hew Chern Yang fly on to Phnom Penh. <strong>Bags are checked through to the final destination</strong> — no need to collect them or clear immigration at Changi; just follow the "Transfer" signs after landing.</span>
 </div>
@@ -452,12 +471,12 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="mid"><div class="dur">1h 35m</div><div class="line"></div></div>
 <div class="apt"><div class="iata">PEN</div><div class="city"><span class="cn">槟城</span><span class="en">Penang</span></div><div class="time">16:55</div></div>
 </div>
+<div class="flive" data-flight="SQ138" data-date="2026-11-16" hidden></div>
 <div class="perf"></div>
 <div class="pax">
 <span class="cls biz">BUSINESS</span>
 <div class="seats"><span class="seat">YAP/LIAN KHOON 14C</span></div>
 </div>
-<div class="links"><a class="track" href="https://www.flightaware.com/live/flight/SIA138" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.2 13.6 4 16.2v-1.9l6.2-4.2V5.6a1.8 1.8 0 0 1 3.6 0v4.5l6.2 4.2v1.9l-6.2-2.6v4.3l2.1 1.6v1.5L12 20.2 8.1 21v-1.5l2.1-1.6z"/></svg><span class="lbl"><span class="cn">追踪 SQ138</span><span class="en">Track SQ138</span></span></a></div>
 </div>
 <div class="note red" style="margin-top:-4px"><span class="cn"><strong>Yap Lian Khoon 转机只有 1 小时 25 分钟，比较紧：</strong>下机后直接去 SQ138 的登机口，路上别停下来逛；登机口号码看机场屏幕或新加坡航空 App。SQ957 如果延误，下机就找转机柜台或新航地勤。</span><span class="en"><strong>Yap Lian Khoon has only 1 h 25 min to connect — that is tight:</strong> go straight to the SQ138 gate after landing without stopping to browse; check the gate on the airport screens or the Singapore Airlines app. If SQ957 runs late, go to the transfer desk or SIA ground staff as soon as you land.</span>
 </div>
@@ -469,6 +488,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="mid"><div class="dur">2h 00m</div><div class="line"></div></div>
 <div class="apt"><div class="iata">KTI</div><div class="city"><span class="cn">金边 Techo</span><span class="en">Phnom Penh Techo</span></div><div class="time">18:30</div></div>
 </div>
+<div class="flive" data-flight="SQ158" data-date="2026-11-16" hidden></div>
 <div class="perf"></div>
 <div class="pax">
 <span class="cls biz">BUSINESS</span>
@@ -476,7 +496,6 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <span class="cls eco">ECONOMY</span>
 <div class="seats"><span class="seat">HEW/CHERN YANG 43H</span></div>
 </div>
-<div class="links"><a class="track" href="https://www.flightaware.com/live/flight/SIA158" target="_blank"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.2 13.6 4 16.2v-1.9l6.2-4.2V5.6a1.8 1.8 0 0 1 3.6 0v4.5l6.2 4.2v1.9l-6.2-2.6v4.3l2.1 1.6v1.5L12 20.2 8.1 21v-1.5l2.1-1.6z"/></svg><span class="lbl"><span class="cn">追踪 SQ158</span><span class="en">Track SQ158</span></span></a></div>
 </div>
 <div class="note green" style="margin-top:-4px"><span class="cn">Tan Chin Hooi 和 Hew Chern Yang 在樟宜转机有 3 小时 35 分钟，时间宽裕，可以在机场吃饭、逛逛再去登机口。</span><span class="en">Tan Chin Hooi and Hew Chern Yang have 3 h 35 min at Changi — plenty of time to eat and browse before heading to the gate.</span>
 </div>
@@ -1135,7 +1154,7 @@ function lbNav(dir) {
 })();
 // 按下发亮：pointerdown 挂 data-tapped、放开后再留 0.45 秒（光靠 :active，手指一点就放几乎看不到；iOS 也要有 touch 监听 :active 才生效）
 (function tapGlow() {
-  const SEL = '.wrap a:not([class]), .btn-map, .track, .daystrip a, .topbar button.lang, .topbar a.jump, .gal img, .lb-close, .lb-arrow';
+  const SEL = '.wrap a:not([class]), .btn-map, .daystrip a, .topbar button.lang, .topbar a.jump, .gal img, .lb-close, .lb-arrow';
   document.addEventListener('touchstart', function () {}, { passive: true });
   document.addEventListener('pointerdown', function (e) {
     const el = e.target.closest && e.target.closest(SEL);
@@ -1147,6 +1166,166 @@ function lbNav(dir) {
     document.addEventListener('pointercancel', off, { once: true });
   });
 })();
+/* ===== FLIGHT-LIVE BEGIN =====
+   航班实时状态框（2026-11-05 建）。这一段在三处**一字不差**：sg-jkt-trip/singapore.html、
+   sg-jkt-trip/jakarta.html、boss/index.html——tools/check-flight-live.mjs 会比对，改一处就要三处一起改。
+   页面上只要放 <div class="flive" data-flight="SQ958" data-date="2026-11-14" hidden></div>，
+   这里就会去 butler-bot 的 /flight-status 抓（一次请求取整页所有航班，每次最多 10 个），
+   每 5 分钟、以及页面回到前台时再抓一次。老板 App 会反复重画行程，新画出来的框由
+   MutationObserver 接手，直接用手上已有的状态填，不会闪一下空白。
+   时间一律按 ISO 字符串自带的时区偏移显示，**绝不用浏览器时区**：老板人在金边看新加坡起飞的
+   航班，看到的必须是新加坡当地时刻（跟机票卡上印的一致）。
+   抓不到（没网／接口挂了／没在追踪）就拿 localStorage 里上次的状态，标「离线」；连缓存都没有就整框隐藏。
+   已落地超过 6 小时的不再抓，直接显示缓存。 */
+(function flightLive() {
+  var API = 'https://butler-bot.jarixhew.workers.dev/flight-status';
+  var CACHE_KEY = 'flightLiveCache';
+  var EVERY = 5 * 60000, LANDED_STOP = 6 * 3600000, MAX_PER_CALL = 10, KEEP = 14 * 86400000;
+  var state = {}, asked = {}, inflight = false, again = false;
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function bi(cn, en) { return '<span class="cn">' + cn + '</span><span class="en">' + en + '</span>'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+  function norm(no) { return String(no || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase(); }
+  function keyOf(el) {
+    var no = norm(el.getAttribute('data-flight')), d = String(el.getAttribute('data-date') || '');
+    return (no && /^\d{4}-\d{2}-\d{2}$/.test(d)) ? no + '@' + d : '';
+  }
+  function loadCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function saveCache(c) {
+    var now = Date.now();
+    Object.keys(c).forEach(function (k) { if (!c[k] || now - (c[k].at || 0) > KEEP) delete c[k]; });
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(c)); } catch (e) {}
+  }
+  // "2026-11-14T12:55:00+08:00" → { ms: 真实时刻, off: 这串自带的偏移（分钟）}
+  function parse(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?\s*(Z|[+-]\d{2}:?\d{2})$/.exec(String(iso || '').trim());
+    if (!m) return null;
+    var off = 0;
+    if (m[7] !== 'Z') {
+      var s = m[7].replace(':', '');
+      off = (s.charAt(0) === '-' ? -1 : 1) * (parseInt(s.slice(1, 3), 10) * 60 + parseInt(s.slice(3, 5), 10));
+    }
+    return { ms: Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)) - off * 60000, off: off };
+  }
+  // 显示成 HH:MM：默认按这串自己的偏移；给了 offMin 就换算到那个时区（更新时间用出发机场的）
+  function hm(iso, offMin) {
+    var p = parse(iso);
+    if (!p) return '';
+    var d = new Date(p.ms + (offMin == null ? p.off : offMin) * 60000);
+    return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+  }
+  function waiting(f) { var w = parse(f.window_start); return !!w && Date.now() < w.ms; }
+  function known(f) { return /^(scheduled|delayed|departed|landed|cancelled)$/.test(f.state || ''); }
+  function landedLongAgo(f) {
+    if (!f || f.state !== 'landed') return false;
+    var a = parse(f.act_arr || f.est_arr || f.sched_arr);
+    return !!a && Date.now() - a.ms > LANDED_STOP;
+  }
+  function html(s) {
+    var f = s.f, head = '<div class="fl-k">LIVE · ' + bi('实时状态', 'Flight status') + '</div>';
+    if (waiting(f)) return { cls: 'fl-wait', h: head + '<div class="fl-note">' + bi('起飞前 2 天开始显示实时状态', 'Live status starts 2 days before departure') + '</div>' };
+    if (!known(f)) return null;
+    var dep = parse(f.sched_dep), depOff = dep ? dep.off : null;
+    var sd = hm(f.sched_dep), ed = hm(f.est_dep) || sd, cls, label, line, gate = true;
+    if (f.state === 'cancelled') {
+      cls = 'fl-cxl'; label = bi('已取消', 'Cancelled'); gate = false;
+      line = sd ? bi('原定 ' + sd + ' 起飞', 'Was due to depart ' + sd) : '';
+    } else if (f.state === 'landed') {
+      var la = hm(f.act_arr) || hm(f.est_arr) || hm(f.sched_arr);
+      cls = 'fl-air'; label = bi('已落地', 'Landed'); gate = false;
+      line = bi('已落地 ' + la, 'Landed ' + la);
+    } else if (f.state === 'departed') {
+      var ad = hm(f.act_dep) || ed, ea = hm(f.est_arr) || hm(f.sched_arr);
+      cls = 'fl-air'; label = bi('已起飞', 'Departed'); gate = false;
+      line = bi('实际起飞 ' + ad, 'Departed ' + ad) + (ea ? ' · ' + bi('预计到达 ' + ea, 'Est. arrival ' + ea) : '');
+    } else if (f.state === 'delayed') {
+      var dm = f.delay_min;
+      if (dm == null) { var a1 = parse(f.est_dep); dm = (a1 && dep) ? Math.round((a1.ms - dep.ms) / 60000) : null; }
+      cls = 'fl-late';
+      label = dm > 0 ? bi('延误 ' + dm + ' 分钟', 'Delayed ' + dm + ' min') : bi('延误', 'Delayed');
+      line = bi('预计起飞 ' + ed, 'Est. departure ' + ed) +
+        (sd && sd !== ed ? '<span class="fl-was">' + bi('原定 <s>' + sd + '</s>', 'Sched. <s>' + sd + '</s>') + '</span>' : '');
+    } else {
+      cls = 'fl-ok'; label = bi('准点', 'On time');
+      line = bi('预计起飞 ' + ed, 'Est. departure ' + ed);
+    }
+    var foot = [];
+    if (gate) {
+      var t = String(f.terminal == null ? '' : f.terminal).trim();
+      if (t) foot.push(bi('航站楼 ' + esc(/^t/i.test(t) ? t.toUpperCase() : 'T' + t), 'Terminal ' + esc(t.replace(/^t/i, ''))));
+      foot.push(f.gate ? bi('登机口 ' + esc(f.gate), 'Gate ' + esc(f.gate)) : bi('登机口 未公布', 'Gate not yet announced'));
+    }
+    var up = hm(f.last_polled || (s.at ? new Date(s.at).toISOString() : ''), depOff);
+    var upHtml = up ? (s.offline ? bi('上次更新 ' + up + '（离线）', 'Last updated ' + up + ' (offline)') : bi(up + ' 更新', 'Updated ' + up)) : '';
+    return { cls: cls, h: head + '<div class="fl-st">' + label + '</div>' + (line ? '<div class="fl-t">' + line + '</div>' : '') +
+      '<div class="fl-foot"><span class="fl-gate">' + foot.join('<i></i>') + '</span><span class="fl-up' + (s.offline ? ' off' : '') + '">' + upHtml + '</span></div>' };
+  }
+  function paint(el) {
+    var s = state[keyOf(el)], r = s ? html(s) : null;
+    el.setAttribute('data-fl-painted', '1');
+    if (!r) { el.hidden = true; el.innerHTML = ''; el.className = 'flive'; return; }
+    el.className = 'flive ' + r.cls;
+    el.innerHTML = r.h;
+    el.hidden = false;
+  }
+  function boxes() { return Array.prototype.slice.call(document.querySelectorAll('.flive[data-flight][data-date]')); }
+  function fromCache(k, cache) { var c = cache[k]; state[k] = c ? { f: c.f, at: c.at, offline: true } : null; }
+  function refresh() {
+    if (inflight) { again = true; return; }
+    var cache = loadCache(), want = [], seen = {};
+    boxes().forEach(function (el) {
+      var k = keyOf(el);
+      if (!k || seen[k]) return;
+      seen[k] = 1; asked[k] = 1;
+      var c = cache[k];
+      if (c && landedLongAgo(c.f)) { state[k] = { f: c.f, at: c.at, offline: false }; return; }
+      want.push(k);
+    });
+    boxes().forEach(paint);
+    if (!want.length) return;
+    inflight = true;
+    var calls = [];
+    for (var i = 0; i < want.length; i += MAX_PER_CALL) calls.push(want.slice(i, i + MAX_PER_CALL));
+    Promise.all(calls.map(function (ks) {
+      return fetch(API + '?f=' + ks.join(','), { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (j) {
+          var got = {};
+          ((j && j.flights) || []).forEach(function (f) { if (f) got[norm(f.no) + '@' + f.date] = f; });
+          ks.forEach(function (k) {
+            var f = got[k];
+            if (f && f.tracked && (waiting(f) || known(f))) {
+              state[k] = { f: f, offline: false };
+              if (known(f) && !waiting(f)) cache[k] = { f: f, at: Date.now() };
+            } else fromCache(k, cache);
+          });
+        })
+        .catch(function () { ks.forEach(function (k) { fromCache(k, cache); }); });
+    })).then(function () {
+      saveCache(cache);
+      inflight = false;
+      boxes().forEach(paint);
+      if (again) { again = false; refresh(); }
+    });
+  }
+  // 重画出来的新框：先用手上的状态填；有没问过的航班就补抓一次
+  if (window.MutationObserver) {
+    new MutationObserver(function () {
+      var fresh = false;
+      boxes().forEach(function (el) {
+        if (el.getAttribute('data-fl-painted')) return;
+        paint(el);
+        var k = keyOf(el);
+        if (k && !asked[k]) fresh = true;
+      });
+      if (fresh) refresh();
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+  refresh();
+  setInterval(refresh, EVERY);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') refresh(); });
+})();
+/* ===== FLIGHT-LIVE END ===== */
 // 没网也打得开：注册本文件夹的 service worker（sw.js），两本手册与照片都会存一份在手机上。
 // 有网时照样先拿最新版；载入完再叫它在背景把两本的照片预抓下来（开了省流量就不抓）。
 (function offlineReady() {

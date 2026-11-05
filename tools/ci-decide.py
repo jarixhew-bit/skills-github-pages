@@ -65,6 +65,9 @@ RULES = {
                 "penang-trip/v3.html", "penang-trip/v4.html", "tools/check-weather.mjs"],
     # 新加坡／雅加达手册没网也打得开（sg-jkt-trip/sw.js）：只有真浏览器断网才验得了
     "tripoffline": ["sg-jkt-trip/**", "tools/check-trip-offline.mjs"],
+    # 机票卡／老板 App 航班项的实时状态框：前端现抓 /flight-status 再画，时区最容易错，只有真浏览器验得了
+    "flightlive": ["sg-jkt-trip/singapore.html", "sg-jkt-trip/jakarta.html", "boss/index.html",
+                   "tools/check-flight-live.mjs", "tools/lib/boss-check-kit.mjs"],
     # 槟城 v3／v4 新版面（票券/今日模式/滑卡/给司机看；v4 是 v3 换皮）：全是 JS 现算，只有真浏览器验得了
     "penangv3": ["penang-trip/v3.html", "penang-trip/v4.html", "tools/check-penang-v3.mjs"],
     # 手册航班时长：跨时区那几段最容易直接拿两地时刻相减，差一小时看不出来
@@ -93,7 +96,7 @@ RULES = {
                   "tools/check-gamebot-logic.mjs"],
 }
 # 浏览器类检查（慢）额外也盯着共用步骤：它坏了这几项全瞎
-BROWSER = ["company", "inventory", "staff", "fund", "board", "weather", "tripoffline", "penangv3", "boss", "fitness"]
+BROWSER = ["company", "inventory", "staff", "fund", "board", "weather", "tripoffline", "flightlive", "penangv3", "boss", "fitness"]
 SHARED = ".github/actions/browser-check-setup/action.yml"
 
 
