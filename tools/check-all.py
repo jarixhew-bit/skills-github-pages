@@ -11,8 +11,10 @@ CLAUDE.md 要求「改完 expense-tracker.html 要跑 tools/ 底下全部 check-
   - check-images.py  外链体检，要打几百个外部网址，单独就要 105 秒。它在 CI 是
     每周一的独立定时任务（check-images.yml），从来不在 PR 上跑——本地跟着跑
     等于每次白等一分半。要跑加 --with-network。
-  - check-live.py    验线上页面是不是 main 那一版，沙盒连不上 github.io（出口代理
-    挡掉），只能在 CI 跑。加 --with-network 也不会跑它。
+  - check-live.py    验线上页面是不是 main 那一版——PR 还没合并时线上本来就是旧
+    main，跑了也验不到这次改动，所以不放进来；合并后单独跑
+    `python3 tools/check-live.py`（2026-11-05 起网页版容器连得上 github.io）。
+    加 --with-network 也不会跑它。
 
 沙盒注意：`allocation`、`prices` 这类要解密 state.enc 的检查会报
 `No module named '_cffi_backend'`——那是容器里少了套件、不是检查坏了，

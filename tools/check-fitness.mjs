@@ -310,6 +310,58 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     check(o.errors.length === 0, `回归 (e3) 没有 JS 错误`); await o.ctx.close();
   }
 
+  // (f) 已经做过的减量周是锚点（2026-11-05 用户抓到：上周减量、#756 之后这周又显示减量周）
+  //   病根：早期一个整周没练的空周被扣掉，整个 4 周周期往后挪一周，上周（已按减量练过、存了 deload）的减量位落到这周。
+  //   今天 9/30（周三），这周还没练。都是周三练（相隔 6 天＝不算停练），只有 7/15→7/27 停了 11 天、7/20 那周整周空。
+  {
+    const W = (id, d, extra) => sess(id, d, 'ABC'[d % 3], sets('gsquat', 12, 10, 2), extra);
+    const DL = { deload: true };
+    // 旧算法（日历周）从 7/6 起第 4、8、12 周减量＝7/27、8/24、9/21 那几周，当时就照减量练、存了 deload:true
+    const F1 = [
+      W('s_h0', 84), W('s_h1', 77),                         // 7/8、7/15
+      W('s_h2', 65, DL), W('s_h3', 63, DL),                 // 7/27、7/29（回归那周，正好是旧算法的减量周）
+      W('s_h4', 56), W('s_h5', 49), W('s_h6', 42),          // 8/5、8/12、8/19
+      W('s_h7', 35, DL),                                    // 8/26 减量
+      W('s_h8', 28), W('s_h9', 21), W('s_h10', 14),         // 9/2、9/9、9/16
+      W('s_h11', 7, DL),                                    // 9/23 上周减量
+    ];
+    // 手算：7/6 起 13 个日历周，扣掉 7/20 空周＝第 12 周；最近一次减量是上周（9/21 那周）→ 这周是新周期第 1/4 周，不减量
+    //   （修之前：扣周后 7/6、7/13、7/27、8/3… 数下去，8/3、8/31、9/28 是第 4 周 → 这周显示减量周）
+    let o = await openWith(F1);
+    let ci = await o.page.evaluate(() => window.__fit.cycleInfo());
+    let line = await o.page.textContent('#cycleLine');
+    check(!ci.deload && ci.pos === 1 && ci.week === 12 && !/减量/.test(line) && await o.page.locator('#deloadBanner').isHidden(), `早期空周＋上周已减量 → 这周第 12 周、第 1/4 周、不减量（实得：${line} ${JSON.stringify(ci)}）`);
+    const lastWk = await o.page.evaluate(() => window.__fit.cycleInfo(Date.now() - 7 * 864e5));
+    check(lastWk.deload && lastWk.pos === 4, `上周（存过减量训练）仍算减量周（实得：${JSON.stringify(lastWk)}）`);
+    check(o.errors.length === 0, `减量锚点 (f1) 没有 JS 错误`); await o.ctx.close();
+
+    // (f2) 同上，但中间几周练的日子前后挪几天（每段都 <7 天、不算停练）→ 结论一样
+    const F2 = [
+      W('s_k0', 84), W('s_k1', 77), W('s_k2', 65, DL), W('s_k3', 63, DL), W('s_k4', 56),
+      W('s_k5', 51), W('s_k6', 47), W('s_k7', 42),          // 8/10 周一、8/14 周五（空 4 天、3 天、4 天）
+      W('s_k8', 35, DL), W('s_k9', 28),
+      W('s_k10', 22), W('s_k11', 16), W('s_k12', 12),       // 9/8 周二、9/14 周一、9/18 周五
+      W('s_k13', 7, DL),
+    ];
+    o = await openWith(F2);
+    ci = await o.page.evaluate(() => window.__fit.cycleInfo());
+    line = await o.page.textContent('#cycleLine');
+    check(!ci.deload && ci.pos === 1 && !/减量/.test(line), `短暂几天没练（<7 天）＋上周已减量 → 这周不减量（实得：${line}）`);
+    check(o.errors.length === 0, `减量锚点 (f2) 没有 JS 错误`); await o.ctx.close();
+
+    // (f3) 减量位那周整周没练（没做过减量，就不算做过）：9/2、9/9、9/16 练＝第 1–3 周，9/21 那周空 → 减量位挪到这周；
+    //   但这周刚停练回来（停 13 天）→ 回归模式开着就不减量，关掉回归模式才轮到减量
+    const F3 = [W('s_m0', 28), W('s_m1', 21), W('s_m2', 14)];
+    o = await openWith(F3);
+    ci = await o.page.evaluate(() => window.__fit.cycleInfo());
+    check(ci.pos === 4 && !ci.deload && await o.page.locator('#retBanner').isVisible(), `减量位那周没练、这周回归 → 第 4/4 周但不减量（实得：${JSON.stringify(ci)}）`);
+    await o.ctx.close();
+    o = await openWith(F3, undefined, { cfg: { returnMode: false, mediaV3: 1 } });
+    ci = await o.page.evaluate(() => window.__fit.cycleInfo());
+    check(ci.pos === 4 && ci.deload && await o.page.locator('#deloadBanner').isVisible(), `减量位那周没练、没开回归模式 → 减量挪到这周（实得：${JSON.stringify(ci)}）`);
+    check(o.errors.length === 0, `减量锚点 (f3) 没有 JS 错误`); await o.ctx.close();
+  }
+
   // (g)(h) 关掉「停练后自动降重」→ 不打折；备份带着开关与原因，导入到新手机还原
   {
     const { ctx, page, errors } = await openWith(pre(18, 11));

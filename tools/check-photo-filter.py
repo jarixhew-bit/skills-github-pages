@@ -54,7 +54,7 @@ check(pf.PRICE.findall("Open 2024 Tel 04-2109433") == [],
 
 # ---- 2. 整条链路：真的画图、真的 OCR ----
 if not shutil.which("tesseract"):
-    print("✗ 这台机器没有 tesseract——这支自检只能在 CI 跑（跟 check-live 同理）")
+    print("✗ 这台机器没有 tesseract——这支自检只能在 CI 跑")
     sys.exit(1)
 try:
     from PIL import Image, ImageDraw, ImageFont
