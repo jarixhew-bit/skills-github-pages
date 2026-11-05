@@ -22,6 +22,9 @@
  *   9. 3D 引擎真的载入、每个动作（含游泳）画出来都不是空白；游泳课 12 课、过关打勾、备份含游泳进度。
  *  10. 替代动作：换了会记住（重载、跟练、Garmin、备份），换上的动作有自己的历史／建议／新纪录，不跟原动作混。
  *  11. 侧面机位：清单里每张侧面图都在、切换钮只出现在有侧面图的动作、按了换图、重载记得、进备份。
+ *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
+ *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
+ *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
  * 「今天」用 page.clock 固定住，结果不随跑的日子改变。
  */
 import { chromium } from 'playwright';
@@ -48,8 +51,11 @@ const HIST_A = [
   sess('s_2', 2, 'A', [...sets('gsquat', 12, 12, 2), ...sets('bench', 20, [8, 7, 7], 0), ...sets('rdl', 16, [11, 10, 10], 2)]),
 ];
 // 情境 B：第一笔训练在 3 周前 → 这周是第 4 周＝减量周
+// （中间两周也有练：没有停练，才是单纯的减量周情境；停练的情境见「回归模式」）
 const HIST_B = [
   sess('s_10', 23, 'A', sets('gsquat', 12, 12, 2)),
+  sess('s_10b', 16, 'B', sets('lunge', 8, 10, 2)),
+  sess('s_10c', 9, 'C', sets('split', 10, 8, 1)),
   sess('s_11', 2, 'C', sets('split', 10, 8, 1)),
 ];
 
@@ -182,6 +188,157 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   check((await page.locator('#workout [data-done^="gsquat_"]').count()) === 3, '关掉自动减量 → 恢复 3 组');
   check(errors.length === 0, `情境 B 没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
+}
+
+// ---- 回归模式（2026-11-05 用户选方案 A：停练 ≥7 天，回来头 2 次自动降重） ----
+// 「停了 X 天」＝两次训练中间整整没练的天数（不算练的那两天）。今天＝2026-09-30（周三）。
+{
+  const SHOT = process.env.FIT_SHOT_DIR; // 有设就顺手截图（给人看横幅长相，自检本身不需要）
+  const pre = (a, b) => [ // 停练前两次：深蹲该加重（14）、卧推连续不到下限（18）、硬拉维持（16）
+    sess('s_r1', a, 'A', [...sets('gsquat', 12, [10, 10, 9], 2), ...sets('bench', 20, [8, 7, 6], 0), ...sets('rdl', 16, [10, 10, 10], 2)]),
+    sess('s_r2', b, 'A', [...sets('gsquat', 12, 12, 2), ...sets('bench', 20, [8, 7, 7], 0), ...sets('rdl', 16, [11, 10, 10], 2)]),
+  ];
+  const sugsOf = async page => { await page.click('#picker [data-wk="A"]'); return page.locator('#workout .sug').allTextContents(); };
+
+  // (a) 没有停练：cycleInfo 跟旧公式（第一笔训练那周起算，每第 4 周减量）逐日一致、不出现回归模式
+  {
+    const weekly = Array.from({ length: 12 }, (_, i) => sess('s_w' + i, 7 * i + 1, 'ABC'[i % 3], sets('gsquat', 12, 10, 2))); // 每 7 天练一次＝中间只空 6 天
+    const { ctx, page, errors } = await openWith(weekly);
+    const diff = await page.evaluate(() => {
+      const ss = JSON.parse(localStorage.getItem('fit.sessions')), first = Math.min(...ss.map(s => s.ts)), out = [];
+      const ws = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.getTime(); };
+      for (let t = first; t <= Date.now(); t += 864e5 / 2) {
+        const w = Math.round((ws(t) - ws(first)) / (7 * 864e5)), old = { week: w + 1, pos: (w % 4) + 1, deload: (w % 4) === 3 }, now = window.__fit.cycleInfo(t);
+        if (old.week !== now.week || old.pos !== now.pos || old.deload !== now.deload) out.push(new Date(t).toISOString().slice(0, 10));
+      }
+      return { out, ret: window.__fit.retInfo() };
+    });
+    check(diff.out.length === 0 && diff.ret === null, `没有停练（每周练一次）→ 减量周期逐日都跟旧公式一样、不进回归模式${diff.out.length ? '（不一致：' + diff.out.slice(0, 5).join(',') + '）' : ''}`);
+    check(await page.locator('#retBanner').isHidden(), '没有停练 → 不出现回归横幅');
+    check(errors.length === 0, `回归 (a) 没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+  }
+
+  // (b) 停 10 天：最后一次在 11 天前（9/19），9/20–9/29 整整 10 天没练 → 九成
+  {
+    const { ctx, page, errors } = await openWith(pre(18, 11));
+    check(await page.locator('#retBanner').isVisible(), '停 10 天 → 出现回归横幅');
+    const t = await page.textContent('#retTitle');
+    check(/停了 10 天/.test(t) && /九成/.test(t) && /第 1\/2 次/.test(t), `横幅写「停了 10 天…九成…第 1/2 次」（实得：${t}）`);
+    check(/为什么/.test(await page.textContent('#retBanner summary')), '横幅有「为什么」可展开');
+    const s = await sugsOf(page);
+    // 一般建议：深蹲 14（加重）、卧推 18、硬拉 16。回归不加重 → 底数取 min(一般建议, 停练前重量)：12、18、16
+    // × 0.9 再按 2kg 取整：10.8→10、16.2→16、14.4→14
+    check(/^\D*10 kg/.test(s[0]) && /回归第 1\/2 次/.test(s[0]), `深蹲：本该加到 14，回归不加重 → 12×0.9=10.8 取整 10 kg（实得：${s[0]}）`);
+    check(/^\D*16 kg/.test(s[1]), `卧推：一般建议 18 × 0.9 = 16.2 → 16 kg（实得：${s[1]}）`);
+    check(/^\D*14 kg/.test(s[2]), `硬拉：一般建议 16 × 0.9 = 14.4 → 14 kg（实得：${s[2]}）`);
+    check((await page.inputValue('#kg-gsquat_0')) === '10', '深蹲第 1 组预填回归重量 10');
+    check(!s.some(x => x.startsWith('↑')), '回归模式没有任何「加重」建议');
+    if (SHOT) { await page.locator('#retBanner details').evaluate(d => { d.open = true; }); await page.screenshot({ path: SHOT + '/return-banner.png' }); await page.locator('#retBanner details').evaluate(d => { d.open = false; }); }
+    // (f) 原因：选「生病」→ 存起来、重载还在、记录页显示
+    await page.click('#retWhy [data-why="sick"]');
+    check((await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).gapWhy.s_r2)) === 'sick', '选「生病」→ 存进设定（以停练前最后一次训练为键）');
+    await page.reload(); await page.waitForSelector('#workout .ex');
+    check((await page.getAttribute('#retWhy [data-why="sick"]', 'aria-pressed')) === 'true', '重载后「生病」仍是选中');
+    // 练一次：存档带 ret 标记，横幅变第 2/2 次
+    await page.click('#picker [data-wk="A"]');
+    await page.click('#workout [data-done="gsquat_0"]');
+    await page.click('#restSkip').catch(() => {});
+    await page.click('#finishBtn');
+    const st = await page.evaluate(() => JSON.parse(localStorage.getItem('fit.sessions')).pop());
+    check(st.ret === 0.9 && st.retN === 1, `回归第 1 次存档标 ret=0.9（实得：ret=${st.ret} retN=${st.retN}）`);
+    check(/第 2\/2 次/.test(await page.textContent('#retTitle')), '练完第 1 次 → 横幅变「第 2/2 次」');
+    await page.click('nav.tabs [data-tab="hist"]');
+    const rowsTxt = await page.locator('#histList .gap-row').allTextContents();
+    check(rowsTxt.length === 1 && /停练 10 天（生病）/.test(rowsTxt[0]), `记录页有分隔行「停练 10 天（生病）」（实得：${rowsTxt.join('|')}）`);
+    const order = await page.evaluate(() => [...document.querySelectorAll('#histList .hist-item, #histList .gap-row')].map(e => e.className));
+    check(order.join(',') === 'hist-item,gap-row,hist-item,hist-item', `分隔行排在停练后那次与停练前那次中间（实得：${order.join(',')}）`);
+    check(/回归（九成）/.test(await page.locator('#histList .hist-item').first().textContent()), '回归那次在记录里标「回归（九成）」');
+    if (SHOT) await page.locator('#histList').screenshot({ path: SHOT + '/return-history.png' });
+    check(errors.length === 0, `回归 (b) 没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+  }
+
+  // (c) 停 25 天：最后一次在 26 天前（9/4）→ 八成
+  {
+    const { ctx, page, errors } = await openWith(pre(33, 26));
+    const t = await page.textContent('#retTitle');
+    check(/停了 25 天/.test(t) && /八成/.test(t), `停 25 天 → 横幅写八成（实得：${t}）`);
+    const s = await sugsOf(page);
+    // 12×0.8=9.6→10、18×0.8=14.4→14、16×0.8=12.8→12（2kg 取整）
+    check(/^\D*10 kg/.test(s[0]) && /^\D*14 kg/.test(s[1]) && /^\D*12 kg/.test(s[2]), `八成：深蹲 10、卧推 14、硬拉 12 kg（实得：${s.slice(0, 3).join(' / ')}）`);
+    check(errors.length === 0, `回归 (c) 没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+  }
+
+  // (d) 回归 2 次练完 → 横幅消失；下次建议照停练前的 12kg×12 算（加到 14），不是照回归时的 10kg（那会变 12）
+  {
+    const h = [
+      sess('s_d1', 30, 'A', sets('gsquat', 12, 12, 2)),
+      sess('s_d2', 9, 'A', sets('gsquat', 10, 12, 2), { ret: 0.9, retN: 1 }),
+      sess('s_d3', 5, 'A', sets('gsquat', 10, 12, 2), { ret: 0.9, retN: 2 }),
+    ];
+    const { ctx, page, errors } = await openWith(h);
+    check(await page.locator('#retBanner').isHidden(), '回归 2 次练完 → 横幅消失');
+    const s = await sugsOf(page);
+    check(/14 kg/.test(s[0]) && /加到 14/.test(s[0]), `回归结束后按停练前的 12kg 加到 14（不是按回归的 10kg 加到 12）（实得：${s[0]}）`);
+    check(errors.length === 0, `回归 (d) 没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+  }
+
+  // (e) 减量周往后挪
+  {
+    // E1：8/10、8/17 练，停到 9/7（8/24、8/31 两整周没练），之后每周都练。
+    //   日历上 8/10→9/28 是第 8 周（旧算法＝第 4/4 周减量），扣掉 2 个空周 → 第 6 周 → (6-1)%4+1 = 第 2/4 周，不减量
+    const e1 = [51, 44, 23, 21, 16, 9, 2].map((d, i) => sess('s_e' + i, d, 'ABC'[i % 3], sets('gsquat', 12, 10, 2), i === 2 || i === 3 ? { ret: 0.9, retN: i - 1 } : {}));
+    let o = await openWith(e1);
+    let line = await o.page.textContent('#cycleLine');
+    check(/第 6 周 · 本周期第 2\/4 周/.test(line) && await o.page.locator('#deloadBanner').isHidden(), `停练 2 整周 → 周期往后挪 2 周：第 6 周、第 2/4 周、不减量（实得：${line}）`);
+    check(o.errors.length === 0, `回归 (e1) 没有 JS 错误`); await o.ctx.close();
+    // E2：8/17、8/24、8/31 练（周期第 1–3 周），停到 9/21；9/21 本该是第 4 周减量，但那周是回归训练 → 减量挪到这周（9/28）
+    const e2 = [44, 37, 30, 9, 7].map((d, i) => sess('s_f' + i, d, 'ABC'[i % 3], sets('gsquat', 12, 10, 2), i >= 3 ? { ret: 0.9, retN: i - 2 } : {}));
+    o = await openWith(e2);
+    line = await o.page.textContent('#cycleLine');
+    check(/第 5 周/.test(line) && await o.page.locator('#deloadBanner').isVisible(), `回归那周不减量 → 减量周挪到下一周（第 5 周减量）（实得：${line}）`);
+    const before = await o.page.evaluate(() => window.__fit.cycleInfo(Date.now() - 7 * 864e5));
+    check(before.week === 4 && before.pos === 4 && !before.deload, `回归那周（9/21）是第 4 周但不减量（实得：${JSON.stringify(before)}）`);
+    check(o.errors.length === 0, `回归 (e2) 没有 JS 错误`); await o.ctx.close();
+    // E3：8/17、8/24、8/31 练完就停到今天（整整 29 天）→ 这周按周期是第 4 周，但正在回归 → 回归优先，不减量
+    o = await openWith([44, 37, 30].map((d, i) => sess('s_g' + i, d, 'ABC'[i], sets('gsquat', 12, 10, 2))));
+    check(await o.page.locator('#retBanner').isVisible() && await o.page.locator('#deloadBanner').isHidden(), '轮到减量周但正在回归 → 只出回归横幅（八成），减量周往后挪');
+    check(/停了 29 天/.test(await o.page.textContent('#retTitle')), '8/31 之后没练 → 停了 29 天');
+    check(o.errors.length === 0, `回归 (e3) 没有 JS 错误`); await o.ctx.close();
+  }
+
+  // (g)(h) 关掉「停练后自动降重」→ 不打折；备份带着开关与原因，导入到新手机还原
+  {
+    const { ctx, page, errors } = await openWith(pre(18, 11));
+    await page.click('#retWhy [data-why="trip"]');
+    await page.click('nav.tabs [data-tab="more"]');
+    check((await page.getAttribute('#cfgReturn', 'aria-pressed')) === 'true', '「停练后自动降重」默认是开');
+    await page.click('#cfgReturn');
+    await page.click('nav.tabs [data-tab="train"]');
+    const s = await sugsOf(page);
+    check(await page.locator('#retBanner').isHidden() && /加到 14/.test(s[0]) && /^\D*18 kg/.test(s[1]), `关掉自动降重 → 没有横幅、照一般建议（深蹲 14、卧推 18）（实得：${s.slice(0, 2).join(' / ')}）`);
+    await page.click('nav.tabs [data-tab="more"]');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+    const bf = `${os.tmpdir()}/fit-ret-backup-${process.pid}.json`; fs.copyFileSync(await dl.path(), bf);
+    const bk = JSON.parse(fs.readFileSync(bf, 'utf8'));
+    check(bk.cfg.returnMode === false && bk.cfg.gapWhy && bk.cfg.gapWhy.s_r2 === 'trip', '备份含开关（关）与停练原因（出差）');
+    check(errors.length === 0, `回归 (g) 没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+    const b2 = await openWith(pre(18, 11));
+    check(await b2.page.locator('#retBanner').isVisible(), '新手机（开关默认开）先出现回归横幅');
+    await b2.page.click('nav.tabs [data-tab="more"]');
+    await b2.page.setInputFiles('#bkFile', bf);
+    await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    const c2 = await b2.page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')));
+    check(c2.returnMode === false && c2.gapWhy.s_r2 === 'trip' && (await b2.page.getAttribute('#cfgReturn', 'aria-pressed')) === 'false', '导入备份 → 开关（关）与原因（出差）都还原');
+    await b2.page.click('nav.tabs [data-tab="hist"]');
+    check(/停练 10 天（出差）/.test(await b2.page.textContent('#histList')), '导入后记录页显示「停练 10 天（出差）」');
+    check(b2.errors.length === 0, `回归 (h) 没有 JS 错误${b2.errors.length ? '：' + b2.errors.join(' | ') : ''}`);
+    await b2.ctx.close(); fs.rmSync(bf, { force: true });
+  }
 }
 
 // ---- 3D 动画 ＋ 游泳课 ----
