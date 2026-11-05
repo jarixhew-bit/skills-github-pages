@@ -16,7 +16,7 @@
 //
 // 改了 singapore.html／jakarta.html／index.html 要把下面 VERSION 加一
 // （tools/check-sw-version.py 会拦忘记升的情况）。升版会重新预缓存两本、重新补抓新照片。
-const VERSION = 'sgjkt-v2';
+const VERSION = 'sgjkt-v3';
 const PAGES = VERSION + '-pages';
 const IMGS = 'sgjkt-img';            // 照片缓存不跟版本走：升版不必把几百张图重抓一遍
 const BOOKS = ['./singapore.html', './jakarta.html'];

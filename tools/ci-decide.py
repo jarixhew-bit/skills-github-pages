@@ -76,6 +76,8 @@ RULES = {
     "placestatus": ["tools/fetch-photos.mjs", "tools/check-place-status.mjs"],
     # 槟城总地图坐标：卡片加了坐标没补，那一家会安安静静不上图
     "mapcoords": ["penang-trip/index.html", "penang-trip/coords.json", "tools/check-map-coords.py"],
+    # 手册地图链接：还没走完的手册不准用搜索链接／短链（会落到停车场、私人飞机点）
+    "maplinks": ["*.html", "*/*.html", "tools/lib/trips.py", "tools/check-map-links.py"],
     # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验
     "refreshphotos": ["tools/refresh-photos.py", "tools/check-refresh-photos.py",
                       "tools/fetch-photos.mjs", "tools/check-images.py"],
