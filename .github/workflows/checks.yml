@@ -384,10 +384,6 @@ jobs:
       # opencv：第二级「近似」用 ORB 特征点比对（2026-11-05 乐城那对）
       - run: pip install --quiet pillow opencv-python-headless
       - run: python3 tools/check-photo-dupes.py --selftest
-      - name: TEMP false-red（main 版页面）
-        run: |
-          git fetch --depth=1 origin main
-          python3 tools/check-photo-dupes.py --ref FETCH_HEAD sg-jkt-trip/singapore.html && echo "FALSE-RED exit=0" || echo "FALSE-RED exit=$?"
       - run: python3 tools/check-photo-dupes.py
 
   refreshphotos:
