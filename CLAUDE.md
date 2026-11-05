@@ -169,7 +169,7 @@
    必须一个都不进 DOM，**并带 admin 对照组**——没有对照组的话，整个管理功能坏掉也会
    显示「通过」）（跑前要先起
    `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）；
-   线上类 `check-live`（每天验线上页面是不是 main 那一版，**只能在 CI 跑**，
+   线上类 `check-live`（每天验线上页面＋各 PWA 的 SW 档是不是 main 那一版，**只能在 CI 跑**，
    沙盒连不上 github.io）＋ `fetch-photos`（抓图通道，结果会写回触发分支）
    ＋ `refresh-photos`（2026-09-18 建，**检测之外还会动手**：每周一体检后自动把
    死掉的图换成同一家店新抓的照片并开 PR，用户只要瞄一眼点合并。它带对照组守门——
