@@ -64,6 +64,7 @@ CHECKS = [
     ("flightprobe", ["node", "tools/check-flight-probe.mjs"], False),
     ("placestatus", ["node", "tools/check-place-status.mjs"], False),
     ("mapcoords", ["python3", "tools/check-map-coords.py"], False),
+    ("maplinks", ["python3", "tools/check-map-links.py"], False),
     ("refreshphotos", ["python3", "tools/check-refresh-photos.py"], False),
     ("shortlist", ["python3", "tools/check-shortlist.py"], False),
     ("rules", ["python3", "tools/check-rules.py", "--quiet"], False),
