@@ -83,6 +83,8 @@ RULES = {
                       "tools/fetch-photos.mjs", "tools/check-images.py"],
     # 菜单照过滤：决定卡片上会不会出现菜单，只能在装了 OCR 的机器（CI）上验
     "photofilter": ["tools/photo-filter.py", "tools/check-photo-filter.py"],
+    # 同一张卡里不准有重复照片（不同网址可能是同一张图）：要下载图片算感知哈希，只能在 CI 跑
+    "photodupes": ["*.html", "*/*.html", "tools/lib/trips.py", "tools/check-photo-dupes.py"],
     # 候选清单页：用户就是靠它按编号挑地点，编号或评分印错等于挑错
     "shortlist": ["tools/build-shortlist.py", "tools/check-shortlist.py"],
     # 减脂训练 App：加重建议、减量周、备份导入全是前端现算，只有真浏览器验得了

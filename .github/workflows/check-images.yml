@@ -43,6 +43,44 @@ jobs:
           fi
           cat result.txt
 
+      # 同一张卡里的重复照片（2026-11-05 用户抓到 Jewel 卡 1、2 号是同一张图）。
+      # PR 上已由 checks.yml 把关；这里每周再扫一次，补上不经 PR 检查进来的改动
+      # （例如机器人开的补图 PR 不会触发 pull_request 检查）。被 Google 挡时脚本自己罢工、不报红。
+      - name: 同卡重复照片
+        id: dupes
+        if: github.event.inputs.file == ''
+        run: |
+          pip install --quiet pillow
+          if python3 tools/check-photo-dupes.py > dupes.txt 2>&1; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat dupes.txt
+
+      - name: 有重复照片则开 issue
+        if: steps.dupes.outputs.found == 'true' && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="手册同一张卡里有重复照片（每周体检）"
+          {
+            echo "每周体检发现某张卡片里有两张照片是同一张图（网址不同、画面相同）。"
+            echo
+            echo '```'
+            head -c 60000 dupes.txt
+            echo '```'
+            echo
+            echo "跟 Claude 说一句「换掉重复的照片」即可。"
+          } > body.md
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" \
+                       --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file body.md
+          else
+            gh issue create --title "$TITLE" --body-file body.md
+          fi
+
       # 失效才开 issue。已有开着的同名 issue 就改为补一条评论，避免每周堆积。
       - name: 失效则开 issue 通知
         if: steps.scan.outputs.broken == 'true' && github.event_name == 'schedule'
