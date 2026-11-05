@@ -153,6 +153,12 @@ select.inp{appearance:none;-webkit-appearance:none;padding:8px 4px;font-size:16p
 .sug.down .arrow{color:var(--plate)}
 .banner{border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:4px;background:var(--plate-soft);border:1px solid var(--plate)}
 .banner b{color:var(--plate)}
+.banner.ret{background:var(--surface);border-color:var(--accent)}
+.banner.ret b{color:var(--ink)}
+.banner.ret summary{cursor:pointer;color:var(--accent)}
+.ret-why{flex-wrap:wrap;gap:6px 10px}
+.gap-row{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:4px 0}
+.gap-row::before,.gap-row::after{content:"";flex:1;border-top:1px dashed var(--line)}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .tile .num{font-size:30px;line-height:1.05}
@@ -252,6 +258,11 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
     <div id="deloadBanner" class="banner" hidden>
       <span><b>本周是减量周</b>　每个超级组只做 2 轮，重量自动降到约 9 成。</span>
       <span class="small muted">连续练 3 周后安排 1 周轻松的，让关节和神经恢复，下周回来通常更有力。不想减量可在「更多 → 设置」关掉。</span>
+    </div>
+    <div id="retBanner" class="banner ret" hidden>
+      <b id="retTitle"></b>
+      <details class="small"><summary>为什么</summary><span class="muted">停练一到三周力量基本保得住，但先降一点重量让关节和心肺重新适应，第二周再回原来的重量。不想自动降重可在「更多 → 设置」关掉。</span></details>
+      <div class="row ret-why"><span class="small muted">停练原因（可不选）</span><div class="seg" role="group" aria-label="停练原因" id="retWhy"></div></div>
     </div>
     <div class="card">
       <div class="row between">
@@ -387,6 +398,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="set-row"><span>器械每次加重</span><div class="seg" role="group" aria-label="器械每次加重" id="cfgGym"></div></div>
       <div class="set-row"><span>每周目标次数</span><div class="seg" role="group" aria-label="每周目标次数" id="cfgGoal"></div></div>
       <div class="set-row"><span>自动减量周<br><span class="small muted">每练 3 周，第 4 周自动减量</span></span><button class="toggle" id="cfgDeload" aria-label="自动减量周" aria-pressed="true"></button></div>
+      <div class="set-row"><span>停练后自动降重<br><span class="small muted">停练 7 天以上，回来头 2 次重量先打 9 折（停 3 周以上打 8 折）</span></span><button class="toggle" id="cfgReturn" aria-label="停练后自动降重" aria-pressed="true"></button></div>
       <div class="set-row"><span>动作示范<br><span class="small muted">动图＝人体模型连续示范，发力的肌肉亮红光、拉伸的部位亮蓝光（离线也能看）；照片＝真人起始／结束两张</span></span><div class="seg" role="group" aria-label="动作示范" id="cfgMedia"></div></div>
       <div class="set-row"><span>跟练语音提示</span><button class="toggle" id="cfgVoice" aria-label="跟练语音提示" aria-pressed="true"></button></div>
     </div>
@@ -863,8 +875,9 @@ const SKEY="fit.sessions", BKEY="fit.body", DKEY="fit.draft", CKEY="fit.cfg";
 const ls={ get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
            set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
            del(k){try{localStorage.removeItem(k)}catch(e){}} };
-const CFG_DEF={equip:"db",voice:true,media:"anim",rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,lastBackup:0};
+const CFG_DEF={equip:"db",voice:true,media:"anim",rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,returnMode:true,lastBackup:0};
 let cfg=Object.assign({},CFG_DEF,ls.get(CKEY,{}));
+if(!cfg.gapWhy||typeof cfg.gapWhy!=="object") cfg.gapWhy={}; // 停练原因：{停练前最后一次训练的 id: "sick"|"trip"|"other"}
 if(!cfg.alts||typeof cfg.alts!=="object") cfg.alts={}; // 换过的动作：{"器材:槽位": 换成的身份}
 if(cfg.view!=="side"&&cfg.view!=="front") delete cfg.view; // 示范动图看正面还是侧面（只对 SIDE_VIEW 里的动作有效；没选过＝正面）
 if(!EQ_LABEL[cfg.equip]) cfg.equip="db";
@@ -957,27 +970,76 @@ function e1rm(kg,reps){ return kg*(1+reps/30); } // Epley 公式：估算「只�
 
 // ---------- 周期：每 4 周第 4 周是减量周 ----------
 function firstTs(){ return sessions.reduce((m,s)=>Math.min(m,s.ts),Infinity); }
+// ---------- 停练与回归模式 ----------
+// 停练＝两次训练之间（或最后一次到今天）整整空了 ≥7 天（不算练的那两天）。
+// 停练后的头 2 次训练是「回归训练」：重量先打 9 折（停 ≥21 天打 8 折），存档时标 ret，不拿来当加重的基准。
+const GAP_MIN=7, RET_N=2, WHY={sick:"生病",trip:"出差",other:"其他"};
+function dayIdx(ts){ const d=new Date(ts); return Math.round(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/DAY); }
+function gapsOf(now){ // [{id:停练前最后一次的 id, from, to(没回来练＝null), days, after:[回来后头 2 次的 id]}]
+  now=now||Date.now();
+  const a=sessions.filter(s=>s.ts<=now).sort((x,y)=>x.ts-y.ts), out=[];
+  for(let i=0;i<a.length;i++){
+    const nx=a[i+1], days=dayIdx(nx?nx.ts:now)-dayIdx(a[i].ts)-1;
+    if(days>=GAP_MIN) out.push({id:a[i].id,from:a[i].ts,to:nx?nx.ts:null,days,after:a.slice(i+1,i+1+RET_N).map(s=>s.id)});
+  }
+  return out;
+}
+function retInfo(now){ // 现在是不是回归模式：{days, f:折扣, n:这是回归第几次, id:停练的 key}
+  now=now||Date.now();
+  if(!cfg.returnMode||!sessions.length) return null;
+  const g=gapsOf(now).pop(); if(!g) return null;
+  const done=g.to==null?0:sessions.filter(s=>s.ts>=g.to&&s.ts<=now).length;
+  if(done>=RET_N) return null;
+  return {days:g.days,f:g.days>=21?0.8:0.9,n:done+1,id:g.id};
+}
+function gapWeeks(gaps,now){ // 停练期间整周一次都没练的周（周一的时间戳）
+  const out=new Set();
+  gaps.forEach(g=>{ for(let w=weekStart(weekStart(g.from)+10*DAY), end=weekStart(g.to==null?now:g.to); w<end; w=weekStart(w+10*DAY)) out.add(w); });
+  return out;
+}
 function cycleInfo(now){
   now=now||Date.now();
   if(!sessions.length) return {week:1,pos:1,deload:false};
-  const w=weeksBetween(firstTs(),now); // 0 起算
-  return {week:w+1,pos:(w%4)+1,deload:!!cfg.deload&&(w%4)===3};
+  // 停练期间整周没练的周不算进 4 周周期（减量周往后挪）；回归训练那几周也不排减量周（再往后挪）
+  const gaps=gapsOf(now), skip=gapWeeks(gaps,now), retW=new Set(), nowW=weekStart(now), ret=retInfo(now);
+  gaps.forEach(g=>{ if(cfg.returnMode) g.after.forEach(id=>{ const s=sessions.find(x=>x.id===id); if(s) retW.add(weekStart(s.ts)); }); });
+  if(ret) retW.add(nowW);
+  let c=0, n=0, info={week:1,pos:1,deload:false};
+  for(let w=weekStart(firstTs()); w<=nowW; w=weekStart(w+10*DAY)){
+    if(skip.has(w)) continue;
+    n++;
+    const hold=!!cfg.deload&&c%4===3&&retW.has(w);
+    info={week:n,pos:(c%4)+1,deload:!!cfg.deload&&c%4===3&&!hold};
+    if(!hold) c++;
+  }
+  return info;
 }
 function rounds(){ return cycleInfo().deload?2:3; }
 
 // ---------- 进步建议（双重进步法） ----------
 // 取某动作（同器材、非减量周）最近几次的已完成组，新的在前
-function histFor(k,n){
+function histFor(k,n,withRet){ // 回归训练（ret）跟减量周一样不当基准；只有回归训练练过的动作才退而用它
   const out=[];
   for(const s of sorted()){
-    if(s.deload) continue;
+    if(s.deload||(s.ret&&!withRet)) continue;
     const sets=(s.sets||[]).filter(x=>x.done&&setKey(s,x)===k);
-    if(sets.length){ out.push({ts:s.ts,sets}); if(out.length>=(n||2)) break; }
+    if(sets.length){ out.push({ts:s.ts,sets,ret:s.ret}); if(out.length>=(n||2)) break; }
   }
+  if(!out.length&&!withRet) return histFor(k,n,true);
   return out;
 }
 function topKg(sets){ return sets.reduce((m,x)=>Math.max(m,num(x.kg)||0),0); }
-function suggest(k){ // k＝动作身份
+function suggest(k){ // k＝动作身份；回归模式在一般建议上再打折
+  const sg=suggestBase(k), rt=retInfo();
+  if(!rt||sg.dir==="new") return sg;
+  const pre="回归第 "+rt.n+"/"+RET_N+" 次：", h=histFor(k,1);
+  if(!kgK(k)){ const best=h[0].sets.reduce((m,s)=>Math.max(m,+s.reps||0),0); return {kg:null,reps:Math.min(sg.reps||best,best)||sg.reps,dir:"same",text:pre+"先照上次的次数做（约 "+best+" 下），别硬拼，动作做稳就好。"}; }
+  const r=parseRange(kInfo(k).target), st=stepK(k), w=topKg(h[0].sets);
+  if(h[0].ret) return {kg:w,reps:r?r.hi:null,dir:"same",text:pre+"用上次的 "+kgStr(w)+" kg，每组留 2–3 下力气。"};
+  const base=Math.min(sg.kg,w), kg=Math.min(w,Math.max(st,roundTo(base*rt.f,st))); // 绝不加重
+  return {kg,reps:r?r.hi:null,dir:kg<w?"down":"same",text:pre+"用 "+kgStr(kg)+" kg（停练前 "+kgStr(w)+" kg 的"+(rt.f===0.8?"八":"九")+"成），每组留 2–3 下力气。"};
+}
+function suggestBase(k){
   const x=kInfo(k), r=parseRange(x.target), h=histFor(k,2), dl=cycleInfo().deload, st=stepK(k);
   if(!h.length) return {kg:null,reps:r?r.hi:null,dir:"new",text:kgK(k)?"第一次做：先试重，找到做到目标次数时还剩 1–2 下力气的重量。":"第一次做：先照目标次数做，记下实际做了几下。"};
   const last=h[0].sets;
@@ -1086,7 +1148,17 @@ function renderHeader(){
   const c=cycleInfo();
   $("cycleLine").textContent=sessions.length?("第 "+c.week+" 周 · 本周期第 "+c.pos+"/4 周"+(c.deload?" · 减量周":"")):"每周 2–3 次 · 每次约 30 分钟";
   $("deloadBanner").hidden=!c.deload;
+  const rt=retInfo();
+  if(rt) $("cycleLine").textContent+=" · 回归期";
+  $("retBanner").hidden=!rt;
+  if(rt){
+    $("retTitle").textContent="你停了 "+rt.days+" 天，这周先用"+(rt.f===0.8?"八":"九")+"成重量（第 "+rt.n+"/"+RET_N+" 次）";
+    $("retWhy").innerHTML=Object.keys(WHY).map(k=>'<button data-why="'+k+'" aria-pressed="'+(cfg.gapWhy[rt.id]===k)+'">'+WHY[k]+'</button>').join("");
+    $("retWhy").dataset.gap=rt.id;
+  }
 }
+$("retWhy").addEventListener("click",e=>{ const b=e.target.closest("[data-why]"), id=$("retWhy").dataset.gap; if(!b||!id) return;
+  if(cfg.gapWhy[id]===b.dataset.why) delete cfg.gapWhy[id]; else cfg.gapWhy[id]=b.dataset.why; saveCfg(); renderHeader(); renderHist(); });
 function renderPicker(){
   const nx=nextWk(); if(!selWk) selWk=(draft&&draft.start)?draft.wk:nx;
   $("picker").innerHTML=["A","B","C"].map(k=>'<button data-wk="'+k+'" aria-pressed="'+(k===selWk)+'"><b>'+k+'</b><small>'+PLAN[k].focus+'</small>'+(k===nx?'<small style="color:var(--accent);font-weight:700">下一次</small>':'<small>&nbsp;</small>')+'</button>').join("");
@@ -1200,6 +1272,7 @@ async function finishWorkout(btn){
   if(!sets.length){ paintStoreNote("还没勾选任何一组。每组做完按 ✓（或在跟练里按「完成这组」），再按储存。"); return false; }
   const now=Date.now(), dur=current.start?Math.round((now-current.start)/60000):null;
   const s={id:"s_"+now,ts:now,wk:current.wk,equip:current.equip,dur,fin:current.fin||"",feel:current.feel||null,note:current.note||"",deload:cycleInfo(now).deload,sets};
+  const rt=retInfo(now); if(rt){ s.ret=rt.f; s.retN=rt.n; }
   if(btn){ btn.disabled=true; btn.textContent="储存中…"; }
   const prs=findPRs(s);
   sessions.push(s); saveSessions();
@@ -1254,6 +1327,7 @@ function drawChart(el,pts,opt){
   pts.forEach((p,i)=>{ if(i%every===0||i===n-1) s+='<text x="'+X(i)+'" y="'+(H-5)+'" text-anchor="'+(opt.kind!=="bar"&&n>1&&i===n-1?"end":opt.kind!=="bar"&&n>1&&i===0?"start":"middle")+'" font-size="11" fill="var(--muted)">'+esc(p.x)+'</text>'; });
   if(opt.kind==="bar"){
     const bw=Math.min(28,iw/n-6);
+    pts.forEach((p,i)=>{ if(p.gap) s+='<rect class="gap-shade" x="'+(X(i)-iw/n/2)+'" y="'+T+'" width="'+(iw/n)+'" height="'+ih+'" fill="var(--far)" opacity="0.18"/>'; }); // 停练的周淡淡涂一层
     pts.forEach((p,i)=>{ if(p.y<=0) return; const x=X(i)-bw/2, y=Y(p.y), h=Y(0)-y, r=Math.min(4,h/2,bw/2);
       s+='<path d="M'+x+' '+(y+h)+'V'+(y+r)+'Q'+x+' '+y+' '+(x+r)+' '+y+'H'+(x+bw-r)+'Q'+(x+bw)+' '+y+' '+(x+bw)+' '+(y+r)+'V'+(y+h)+'Z" fill="var(--accent)"/>'; });
   } else {
@@ -1312,9 +1386,9 @@ function renderProg(){
     $("exTable").innerHTML='<table class="t"><thead><tr><th>日期</th><th>最佳一组</th><th class="r">'+(kg?'估算最大力量':'次数')+'</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+fmtShort(r.p.ts)+(r.p.deload?' <span class="small muted">减量</span>':'')+'</td><td>'+esc(r.p.best)+(r.pr?'<span class="pr">新纪录</span>':'')+'</td><td class="r">'+r.p.y+(kg?' kg':'')+'</td></tr>').join("")+'</tbody></table>'+(kg?'<p class="small muted" style="margin-top:6px">「估算最大力量」用 Epley 公式从重量和次数推算（重量 × (1 + 次数 ÷ 30)），不用真的去试极限，拿来比较自己前后进步。</p>':'');
   } else { $("exChartUnit").textContent=""; drawChart($("exChart"),[],{empty:"储存第一次训练后，这里会显示每个动作的进步曲线"}); $("exTable").innerHTML=""; }
   // weekly volume
-  const w0=weekStart(now), weeks=[];
-  for(let i=7;i>=0;i--){ const ws=weekStart(w0-i*7*DAY+3*DAY), ss=sessions.filter(s=>weekStart(s.ts)===ws); weeks.push({ws,vol:ss.reduce((a,s)=>a+s.sets.reduce((b,x)=>b+(x.kg||0)*(x.reps||0),0),0),n:ss.length,dl:ss.some(s=>s.deload)}); }
-  drawChart($("volChart"),sessions.length?weeks.map(w=>({x:fmtShort(w.ws),y:Math.round(w.vol),tip:fmtShort(w.ws)+" 那周"+(w.dl?"（减量周）":"")+"<br>"+w.n+" 次训练 · "+Math.round(w.vol).toLocaleString()+" kg"})):[],{kind:"bar",label:"近 8 周每周训练量",empty:"还没有训练记录"});
+  const w0=weekStart(now), weeks=[], gw=gapWeeks(gapsOf(now),now);
+  for(let i=7;i>=0;i--){ const ws=weekStart(w0-i*7*DAY+3*DAY), ss=sessions.filter(s=>weekStart(s.ts)===ws); weeks.push({ws,vol:ss.reduce((a,s)=>a+s.sets.reduce((b,x)=>b+(x.kg||0)*(x.reps||0),0),0),n:ss.length,dl:ss.some(s=>s.deload),gap:gw.has(ws)}); }
+  drawChart($("volChart"),sessions.length?weeks.map(w=>({x:fmtShort(w.ws),y:Math.round(w.vol),gap:w.gap,tip:fmtShort(w.ws)+" 那周"+(w.dl?"（减量周）":"")+(w.gap?"（停练）":"")+"<br>"+w.n+" 次训练 · "+Math.round(w.vol).toLocaleString()+" kg"})):[],{kind:"bar",label:"近 8 周每周训练量",empty:"还没有训练记录"});
   // body
   renderBody();
 }
@@ -1349,12 +1423,15 @@ function renderHist(){
   warn.classList.toggle("on",stale);
   warn.innerHTML=stale?(cfg.lastBackup?"距离上次备份已经 "+Math.floor((Date.now()-cfg.lastBackup)/DAY)+" 天。":"你还没备份过。")+'清除浏览器资料或换手机会让记录消失——到「更多」按一下「导出备份」。':"";
   if(!list.length){ $("histList").innerHTML='<h2>还没有训练记录</h2><p class="muted">跟练里每组按「完成这组」，或在清单里按 ✓，最后储存，记录就会出现在这里，并在下次给你重量建议。</p>'; return; }
+  const gp={}; gapsOf().forEach(g=>{ gp[g.id]=g; });
+  const gapRow=g=>'<div class="gap-row" data-gap="'+esc(g.id)+'"><span>'+(g.to==null?'已经停练 '+g.days+' 天':'停练 '+g.days+' 天')+(WHY[cfg.gapWhy[g.id]]?'（'+WHY[cfg.gapWhy[g.id]]+'）':'')+'</span></div>';
   $("histList").innerHTML='<h2>历史记录</h2>'+list.map(s=>{
+    const sep=gp[s.id]?gapRow(gp[s.id]):'';
     const by={}; s.sets.forEach(x=>{ const k=setKey(s,x); (by[k]=by[k]||[]).push(x); });
     const lines=Object.keys(by).map(k=>kName(k)+'：'+by[k].sort((a,b)=>a.set-b.set).map(x=>(x.kg!=null?kgStr(x.kg)+'kg×':'')+x.reps).join(' · '));
     const feel=(FEEL.find(f=>f[0]===s.feel)||[])[1];
     const del=pendingDel===s.id?'<button class="btn plate" data-cdel="'+s.id+'">确认删除</button><button class="btn ghost" data-xdel="1">取消</button>':'<button class="btn ghost small" data-del="'+s.id+'">删除</button>';
-    return '<div class="hist-item"><div class="row between"><div class="row"><span class="pill next">'+s.wk+'</span><b>'+fmtDate(s.ts)+'</b><span class="small muted">'+(EQ_LABEL[s.equip]||"")+(s.dur?' · '+s.dur+' 分钟':'')+(s.deload?' · 减量周':'')+(feel?' · '+feel:'')+'</span></div><div class="row">'+del+'</div></div><div class="small muted">'+lines.map(esc).join('<br>')+(s.fin?'<br>收尾：'+esc(s.fin):'')+(s.note?'<br>备注：'+esc(s.note):'')+'</div></div>';
+    return sep+'<div class="hist-item"><div class="row between"><div class="row"><span class="pill next">'+s.wk+'</span><b>'+fmtDate(s.ts)+'</b><span class="small muted">'+(EQ_LABEL[s.equip]||"")+(s.dur?' · '+s.dur+' 分钟':'')+(s.deload?' · 减量周':'')+(s.ret?' · 回归（'+(s.ret===0.8?'八':'九')+'成）':'')+(feel?' · '+feel:'')+'</span></div><div class="row">'+del+'</div></div><div class="small muted">'+lines.map(esc).join('<br>')+(s.fin?'<br>收尾：'+esc(s.fin):'')+(s.note?'<br>备注：'+esc(s.note):'')+'</div></div>';
   }).join("");
 }
 $("histList").addEventListener("click",e=>{
@@ -1367,10 +1444,11 @@ $("histList").addEventListener("click",e=>{
 const SEGS={cfgRest:["rest",[60,75,90],v=>v+" 秒"],cfgDb:["dbStep",[1,2,2.5],v=>v+" kg"],cfgGym:["gymStep",[2.5,5],v=>v+" kg"],cfgGoal:["goal",[2,3,4],v=>v+" 次"]};
 function renderCfg(){
   for(const id in SEGS){ const [k,opts,f]=SEGS[id]; $(id).innerHTML=opts.map(v=>'<button data-v="'+v+'" aria-pressed="'+(cfg[k]===v)+'">'+f(v)+'</button>').join(""); }
-  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfgMedia").innerHTML=[["anim","动图"],["photo","照片"],["3d","3D"],["2d","简笔"]].map(m=>'<button data-media="'+m[0]+'" aria-pressed="'+(cfg.media===m[0])+'">'+m[1]+'</button>').join("");
+  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgReturn").setAttribute("aria-pressed",!!cfg.returnMode); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfgMedia").innerHTML=[["anim","动图"],["photo","照片"],["3d","3D"],["2d","简笔"]].map(m=>'<button data-media="'+m[0]+'" aria-pressed="'+(cfg.media===m[0])+'">'+m[1]+'</button>').join("");
 }
 Object.keys(SEGS).forEach(id=>$(id).addEventListener("click",e=>{ const b=e.target.closest("[data-v]"); if(!b) return; cfg[SEGS[id][0]]=+b.dataset.v; saveCfg(); renderAll(); }));
 $("cfgDeload").onclick=()=>{ cfg.deload=!cfg.deload; saveCfg(); renderAll(); };
+$("cfgReturn").onclick=()=>{ cfg.returnMode=!cfg.returnMode; cfg.returnSet=1; saveCfg(); renderAll(); };
 $("cfgVoice").onclick=()=>{ cfg.voice=!cfg.voice; saveCfg(); renderCfg(); };
 $("cfgMedia").addEventListener("click",e=>{ const b=e.target.closest("[data-media]"); if(!b) return; cfg.media=b.dataset.media; saveCfg(); renderAll(); });
 
@@ -1397,6 +1475,8 @@ $("bkFile").onchange=async e=>{
     (d.body||[]).forEach(b=>{ if(b&&b.id&&isFinite(b.kg)&&!body.some(x=>x.id===b.id)){ body.push(b); nb++; } });
     (d.cardio||[]).forEach(c=>{ if(c&&c.id&&!cardio.some(x=>x.id===c.id)) cardio.push(c); }); saveCardio();
     (d.vo2||[]).forEach(v=>{ if(v&&v.id&&isFinite(v.v)&&!vo2.some(x=>x.id===v.id)) vo2.push(v); }); saveVo2();
+    if(d.cfg&&typeof d.cfg.returnMode==="boolean"&&!cfg.returnSet){ cfg.returnMode=d.cfg.returnMode; if(d.cfg.returnSet) cfg.returnSet=1; saveCfg(); } // 停练后自动降重：本机没动过才用备份的
+    if(d.cfg&&d.cfg.gapWhy&&typeof d.cfg.gapWhy==="object"){ for(const k in d.cfg.gapWhy) if(WHY[d.cfg.gapWhy[k]]&&!cfg.gapWhy[k]) cfg.gapWhy[k]=d.cfg.gapWhy[k]; saveCfg(); } // 停练原因
     if(d.cfg&&(d.cfg.view==="side"||d.cfg.view==="front")&&!cfg.view){ cfg.view=d.cfg.view; saveCfg(); } // 示范角度：本机没选过才用备份里的
     if(d.cfg&&d.cfg.alts&&typeof d.cfg.alts==="object"){ for(const k in d.cfg.alts){ const [eq,id]=k.split(":"); if(EX[id]&&EQ_LABEL[eq]&&validKey(d.cfg.alts[k])&&!cfg.alts[k]) cfg.alts[k]=d.cfg.alts[k]; } saveCfg(); } // 换过的动作也一起还原（本机已经换过的不覆盖）
     if(d.swim&&typeof d.swim==="object"){ for(const k in d.swim) if(!swim[k]&&SWIM.some(x=>x.id===k)) swim[k]=d.swim[k]; ls.set(WKEY,swim); }
@@ -1790,7 +1870,7 @@ function animCombos(){
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={suggest,cycleInfo,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey}}; // 给自检脚本用
+window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>
