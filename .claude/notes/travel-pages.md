@@ -156,6 +156,7 @@ URL: .../singapore-trip/ （旧的 8/1–5 那版行程已被这份覆盖，网�
 URL: .../sg-jkt-trip/singapore.html。`sg-jkt-trip/index.html` 原是四套航班方案比较页，2026-10-31 航班订好后用户说「他们选了就不需要存在了」，改成跳转页（跳到 singapore.html，保住已发出去的 /sg-jkt-trip/ 网址），勿再恢复方案内容；
 本页**不再链回** `./index.html`（2026-10-31 航班已订）。已登记 `tools/lib/trips.py`（行程最后一天 2026-11-14）。
 **离线（2026-11-04 加）**：两本页尾 `<script>` 最后一段 `offlineReady()` 注册 `sg-jkt-trip/sw.js`（scope 只到本文件夹、没有 manifest）。页面网络优先（6 秒没回应才用缓存），第一次打开就预缓存两本＋背景预抓两本的 Google 照片；天气／PSI 接口不缓存。**改了 singapore.html／jakarta.html／index.html 要把 `sw.js` 的 `VERSION` 加一**（`check-sw-version.py` 会拦）；自检 `tools/check-trip-offline.mjs`。
+**航班实时状态（2026-11-05 加）**：每张 `.bpass` 在 `.route` 与 `.perf` 之间有 `<div class="flive" data-flight="SQ958" data-date="2026-11-14" hidden>`（航班号与出发日只写在这两个 data 属性里），页尾 `FLIGHT-LIVE BEGIN～END` 那段 JS 去 butler-bot `/flight-status` 抓来填；原本的「追踪 SQxxx」FlightAware 按钮已全部拿掉（用户 2026-11-05 拍板）。这段 JS 与 `boss/index.html` 三处一字不差，改一处三处一起改；自检 `tools/check-flight-live.mjs`。加新航班卡照抄那一行 `.flive` 即可。
 **版面（2026-11-01 改版，两本共用，用户拍板「F 礼宾风＋E 站点时间轴」）**：
 - CSS 整套换掉（JS 只动两处，见下），字体是 Google Fonts 的 Cormorant Garamond（拉丁）＋Noto Serif SC（`<head>` 里一个 `<link>`）。颜色全走 `:root` 变量：
   `--navy`（吸顶栏／封面底）、`--gold`／`--gold2`（香槟金细线）、`--ivory`／`--paper`（底色）、`--ink`／`--ink2`／`--muted`／`--faint`／`--hair`、

@@ -40,6 +40,14 @@ URL: https://jarixhew-bit.github.io/skills-github-pages/boss/
   （**新分页按钮是必须的**：iOS Safari 的 iframe PDF 常只显示第一页）
 - 离线：`init()` 先渲染 localStorage 缓存并 `markOffline(fetchedAt)`，联网成功再 `hideOffline()`
 
+## 航班实时状态框（2026-11-05 加）
+`itemRowHtml()` 里航班条目在 `flightInfoHtml()` 之后多一个 `flightLiveBoxHtml(it)` 占位
+（`.flive[data-flight][data-date]`），页尾 `FLIGHT-LIVE` 段直接调 butler-bot 的 `GET /flight-status`
+（不用钥匙、不经 `/boss`）填；行程重画时由 MutationObserver 用手上的状态补填，不重打接口。
+只读、没有任何控件，viewer 与 admin 都显示。这段 JS 跟两本新加坡／雅加达手册一字不差，
+自检 `tools/check-flight-live.mjs`（含 viewer／admin 两种身份）。
+⚠️ 跟上面 `flightInfoHtml()` 里来自 feed `flight.live` 的状态胶囊是**两个来源**，同时显示。
+
 ## 高频操作
 1. **加行程**：admin 进 App 的管理面板，那里是**真表单**（行程/条目增删改、日期用
    日历选、手册下拉选、地点填名字自动生成地图链接）。相关函数：`renderAdmin()`、

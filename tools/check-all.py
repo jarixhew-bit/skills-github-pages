@@ -79,6 +79,7 @@ CHECKS = [
     ("board", ["node", "tools/check-board.mjs"], True),
     ("weather", ["node", "tools/check-weather.mjs"], True),
     ("tripoffline", ["node", "tools/check-trip-offline.mjs"], True),
+    ("flightlive", ["node", "tools/check-flight-live.mjs"], True),
     ("penangv3", ["node", "tools/check-penang-v3.mjs"], True),
     ("fitness", ["node", "tools/check-fitness.mjs"], True),
     ("company", ["node", "tools/check-expense-company.mjs"], True),

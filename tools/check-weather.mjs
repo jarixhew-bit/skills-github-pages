@@ -92,6 +92,8 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
 });
 const page = await browser.newPage();
+// 新加坡／雅加达机票卡的航班实时状态（butler-bot /flight-status）：不打真接口，它有自己的自检 check-flight-live.mjs
+await page.route('https://butler-bot.jarixhew.workers.dev/**', r => r.abort());
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 
