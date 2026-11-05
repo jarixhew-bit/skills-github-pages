@@ -3,7 +3,8 @@
 # 为什么需要它：CI 全绿只代表「代码进了 main」，不代表「线上换成了新版」。
 # 2026-07 发生过 GitHub 故障期间 Pages 部署事件被整个丢掉——代码在 main、
 # 检查全绿、线上还是旧版，最后是用户自己发现的（.claude/playbook/diagnosis.md）。
-# Claude 的沙盒连不上 github.io（代理策略性 403），这件事只能由 CI 来验。
+# 这里是每天的常驻守卫；合并后的即时验证 Claude 可在本地跑 check-live.py
+# （2026-11-05 起网页版容器白名单含 github.io，见 publish-pages 第 6 步）。
 #
 # 放 CI 而不是 Claude 定时任务：检测不需要判断力，零 Claude 用量；
 # 真的出事才开 issue 叫人上场（同 rules-check.yml 的取舍）。
@@ -69,7 +70,7 @@ jobs:
             echo "  要到 Actions 页面手动重跑 pages-build-deployment："
             echo "  https://github.com/jarixhew-bit/skills-github-pages/actions"
             echo
-            echo "自己看当前状况：\`python3 tools/check-live.py\`（本地跑，沙盒连不上）"
+            echo "自己看当前状况：\`python3 tools/check-live.py\`（本地或网页版容器都能跑）"
           } > body.md
           gh issue create --title "$TITLE" --body-file body.md
 

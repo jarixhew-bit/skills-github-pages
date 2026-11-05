@@ -35,10 +35,11 @@ description: 把本仓库的改动发布上线（commit、push、开 PR、合并
    它有 main 保护和"内容已在 main"验证，删不掉的会在日志里警告而不是误删。
 6. **验证真的进了 main**：`git show origin/main:路径` 从 remote 读回抽验——工作区正确
    不代表 commit 进去了。
-   ⚠️ **网页版 session 抓不到 `github.io`**（出口代理 403，见 diagnosis.md），所以
-   「WebFetch 线上网址确认」这一步在云端做不到，别浪费回合去试。线上那一层由
-   `tools/check-live.py` ＋ `live-check.yml` 每天自动验；真实端到端只能请用户开一次。
-   本机 CLI 不受此限，可以直接 WebFetch 验。
+   **再验线上**：合并后等 Pages 部署（约 1~2 分钟），跑 `python3 tools/check-live.py`
+   （它自己会对不上时等 90 秒重试）。2026-11-05 起网页版容器的网络白名单含
+   `jarixhew-bit.github.io`，本机 CLI 也连得上。若 `curl -sI https://jarixhew-bit.github.io/skills-github-pages/`
+   不通（换了新环境、没白名单），改用 actions_run_trigger 触发 `live-check.yml` 走 CI，
+   别丢给用户。`live-check.yml` 每天仍会自动跑一次当常驻守卫。
 7. **收工时把本地 HEAD 切回 main**：`git fetch origin main && git checkout -B main origin/main`。
    理由：第 5 步删掉远端分支后，本地还留着一个指向旧分支头的过期远端追踪 ref，平台的
    Stop hook 拿 `origin/<当前分支>..HEAD` 数提交，会把 squash 后的 main 提交算成

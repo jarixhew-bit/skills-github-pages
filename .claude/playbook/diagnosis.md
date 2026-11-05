@@ -70,14 +70,14 @@
   `git fetch origin --prune` ＋ `git push -u` 重建；**別用 `--force-with-lease`**（必回 `stale info`）。已踩三次。
   (4) **CI 綠了要當場合併，別「等下再回來」**：開完 PR 就地等幾分鐘、綠了立刻合併＋刪分支，再開始
   下一件。2026-08-13 開了 #400 就轉頭做下一件，等使用者反問「怎麼 Boss 還在」才發現 PR 躺著沒合。
-- [2026-07-13／2026-08-03／2026-08-12][雲端] 情境：想確認改動「真的上線了／真的提交進去了」，
-  或需要沙盒連不到的外部資料。教訓：沙盒出口代理**擋掉一票外部站**——`github.io`、`*.workers.dev`
-  （403）、`play.google.com` 與 apkcombo 等 APK 鏡像（EGRESS_BLOCKED）。另外 `raw.githubusercontent`
-  抓非本 session 倉庫的檔案回 404（試了三個確實存在的路徑都 404，是不是策略性未查證）。
-  一律別重試，也**別據此判斷對方掛了、或那個檔案不存在**。兩條出路：
+- [2026-07-13／08-03／08-12／11-05][雲端] 情境：想確認改動「真的上線了／真的提交進去了」，或需要沙盒連不到
+  的外部資料。教訓：沙盒出口代理**擋掉一票外部站**——`*.workers.dev`（403）、`play.google.com` 與 APK 鏡像
+  （EGRESS_BLOCKED）；`raw.githubusercontent` 抓非本 session 倉庫回 404。`github.io` 2026-11-05 起已由使用者
+  加進網頁版環境白名單（連得上，換新環境要重加）。`acefitness.org`、`exrx.net` 加了白名單仍回 403——是**站方
+  擋機器人**，不准偽裝 UA 繞過，換來源。一律別重試，也**別據此判斷對方掛了、或那個檔案不存在**。兩條出路：
   (1) **驗證改動**：`git show origin/main:路徑` 從 remote 讀回——工作區正確不代表 commit 進去了
   （混用 `git rm` 與 Write/Edit 最容易漏，commit 前跑 `git diff --cached --stat` 或直接 `git add -A`）。
-  線上那層已由 `check-live.py`＋`live-check.yml` 每天自動驗；**CI 綠了不等於線上驗過**。
+  線上那層合併後跑 `check-live.py`（見 publish-pages 第 6 步）；**CI 綠了不等於線上驗過**。
   (2) **拿外部資料**：搬到 GitHub Actions，runner 出得去（例：`play-lookup.yml` 查 App 包名）。
   結果怎麼讀回——**短輸出直接印在 job 日誌**，用 MCP `get_job_logs` 讀回（`actions/runs/<id>/logs`
   那個 zip 端點會被代理 403，只能走 MCP）；**長輸出才 commit 回觸發分支**（artifact 要登入，下載不了）。

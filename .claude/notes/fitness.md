@@ -58,7 +58,7 @@
   - 只记次数的替代（`eq:"bw"`）：弹力带拉开、辅助引体向上（辅助机的「重量」是减轻，不能当负重加）。
   - 史密斯深蹲 `smithsquat`（2026-11-04，用户健身房没有腿举机）：`ALTX`（eq gym＝按健身房加重单位、标签「器械」），排在高脚杯深蹲槽位替代清单第一个、
     弓步／分腿蹲／登阶清单里排在腿举机前；**健身房版原动作仍是腿举机**（旧记录没有 k 靠它）。器材 `smith`（两根轨道＋背上的杠）2D／anim3d／渲染台各画一次，
-    渲染台握杠用 `OV.smithsquat.after` 把手腕 IK 到杠下、握拳。要领来源见规格 sources／note（ExRx 全文沙盒打不开，标未查证）。
+    渲染台握杠用 `OV.smithsquat.after` 把手腕 IK 到杠下、握拳。要领来源见规格 sources／note（2026-11-05 读 PMC 全文＋摘要原文查证，已去掉未查证）。
   - 新动作（5 个，动作要领查证来源写在 `tools/lib/fitness-anim-spec.json` 的 sources）：单腿罗马尼亚硬拉 `sldl`、
     哑铃臀桥 `dbbridge`、辅助引体向上 `pullup`、弹力带拉开 `pullapart`、坐姿哑铃肩推 `ohpseat`。新增替代动作要：
     ALTX＋ANIM `def()`＋规格＋渲染动图（`animCombos()` 已把 ALTX 算进去，自检会抓缺图／缺规格）。

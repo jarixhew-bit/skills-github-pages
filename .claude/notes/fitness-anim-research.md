@@ -7,6 +7,7 @@
 - **只用到 WebSearch**：本 session 的网络白名单不含 exrx.net、acefitness.org、pubmed.ncbi.nlm.nih.gov 等，WebFetch/curl 一律被拒（`ENOTFOUND` / proxy 403）。所以每条 `sources` 网址都是搜索结果里真实出现的网址，但**内容是搜索引擎摘要，不是我逐页读过的原文**。重要结论（肌肉分工、角度建议）以 2 个以上来源一致者为准；只有单一来源或只出现在转引里的数字，都在下文标「转引/未查证」。
 
 - 若要更严谨：在 session 网络设定里放行 acefitness.org、exrx.net、pubmed.ncbi.nlm.nih.gov、nasm.org，再逐页核对。
+  （2026-11-05 实测：acefitness.org、exrx.net 放行后仍回 403——站方挡机器人，别绕过、换来源；沙盒连不上的 PMC 全文与论文摘要改走 CI 抓取通道 `fetch-url.yml`：PMC 文章页直接读，摘要用 OpenAlex API（`api.openalex.org/works?filter=doi:…&select=abstract_inverted_index`）——PubMed 网页对 CI 回 cookie 墙，NCBI esearch／Europe PMC 当天回 500／503。）
 
 - 例外：`deadbug` 的第三个 Hinge Health 网址是把搜索结果的 /fr/fr/、/gb/en/ 路径换成英区版本的推论路径，已在该条 note 注明。`incline` 的 doi 网址由搜索结果里的 doi 路径（10.3390/ijerph17197339）组成。
 
@@ -705,3 +706,14 @@
   - f1：`t=90 nt=-100 ns=-105 ft=-80 fs=-70 na=90 nf=90 fa=90 ff=90`；膝内角 N175 F170、髋角 N170 F170、肘内角 N180 F180、肩-上臂夹角 N180 F180；座标 hand N(69,0) sh(34,0) nfoot(-47,-10) ffoot(-46,12) nk(-24,-4)
 - 来源：https://www.usaswimming.org/news/2021/10/05/five-freestyle-tips-to-start-your-season；https://blog.goswim.tv/post/freestyle-flutter-from-the-hips
 
+### smithsquat（史密斯深蹲，2026-11-05 补查证）
+
+- 结论：核心要领有 2 个以上**读过原文**的来源一致，去掉未查证。App 要领文字无需改，动图不重渲染。
+- Lee 等 2017，Sensors 17(2):299（https://pmc.ncbi.nlm.nih.gov/articles/PMC5336117/ ，全文）：
+  「a barbell is horizontally constrained to move up and down while sliding along vertical steel tracks. The machine allows variation in the anterior–posterior foot placement」；
+  实验：「At the most posterior position, the ankle was placed directly under the bar」；「The participants performed back squats with their thighs parallel to the floor in the bottom position (i.e., parallel squatting). Their feet were planted straight at the shoulder width」。→ 杠直上直下、脚在杠下到杠前、肩宽站距、蹲到大腿平行。
+- Biscarini 等 2011，J Sports Sci 29:457（https://pubmed.ncbi.nlm.nih.gov/21225486/ ，摘要原文经 OpenAlex）：
+  「bending the trunk forward, moving the feet forward in front of the knees, and displacing the weight distribution towards the forefoot emphasizes hip and lumbosacral torques, while also reducing knee torque and compressive tibiofemoral and patellofemoral forces」。→ 脚放杠前的理由。
+- Cotterman 等 2005，JSCR 19:169（https://pubmed.ncbi.nlm.nih.gov/15705030/ ，摘要原文经 OpenAlex）：「The Smith machine (SM) (vertical motion of bar on fixed path; fixed-form exercise)」，测的是「parallel back squat」。
+- Straub & Powers 2024，IJSPT 综述（https://pmc.ncbi.nlm.nih.gov/articles/PMC10987311/ ，全文，泛指深蹲）：「care should be taken to avoid valgus and transverse plane moments at the knee by promoting some degree of toe out」。→ 膝对脚尖、不内扣。
+- 仍属通行写法：杠在上斜方肌（来源只写 load on the shoulder）；脚往前「约 8–15 cm」是取 Lee 实验 0／25 cm 两档之间的保守值。

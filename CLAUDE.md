@@ -169,8 +169,8 @@
    必须一个都不进 DOM，**并带 admin 对照组**——没有对照组的话，整个管理功能坏掉也会
    显示「通过」）（跑前要先起
    `python3 -m http.server 8899`，沙盒里加 `CHROMIUM_PATH=/opt/pw-browsers/chromium`）；
-   线上类 `check-live`（每天验线上页面＋各 PWA 的 SW 档是不是 main 那一版，**只能在 CI 跑**，
-   沙盒连不上 github.io）＋ `fetch-photos`（抓图通道，结果会写回触发分支）
+   线上类 `check-live`（每天验线上页面＋各 PWA 的 SW 档是不是 main 那一版，CI 每天定时跑；
+   网页版合并后也可直接本地跑来验上线，见 publish-pages 第 6 步）＋ `fetch-photos`（抓图通道，结果会写回触发分支）
    ＋ `refresh-photos`（2026-09-18 建，**检测之外还会动手**：每周一体检后自动把
    死掉的图换成同一家店新抓的照片并开 PR，用户只要瞄一眼点合并。它带对照组守门——
    一次死掉过半时先抓一张新图来探，新图也打不开就判定是这台机器被 Google 挡了、
@@ -190,7 +190,7 @@
    **`python3 tools/check-all.py`**（2026-08-13 建立）：并行跑、自动起 http server、
    自动带 `CHROMIUM_PATH`，实测**79 秒**跑完；一个一个串行跑同样这些要 5~6 分钟。
    它默认不跑 `check-images`（外链体检，独立 105 秒，CI 每周一自己跑）与 `check-live`
-   （沙盒连不上 github.io），要外链体检加 `--with-network`。
+   （验的是线上，合并后才有意义，单独跑），要外链体检加 `--with-network`。
    跑完全部就够了：生成物脱节由 `check-generated` 守着（2026-08-12 之前那个检查
    叫 `build-staff-page.py --check`，不合命名规则、照着这句话做正好会漏掉，已改名收编）。
 

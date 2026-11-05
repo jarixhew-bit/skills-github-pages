@@ -1841,12 +1841,13 @@
   "plane_detail": "杠放在上斜方肌、两手略宽于肩握杠；脚与肩同宽、放在杠的正下方再往前一点（约 8–15 cm），杠沿轨道直上直下，所以躯干比自由深蹲直；屁股往后往下坐、膝盖对准脚尖，蹲到大腿至少与地面平行，脚跟踩稳站起。",
   "form_audit": "新动作（2026-11-04，用户健身房没有腿举机）。f0 站姿脚在髋前（lt=ls=10），f1 大腿过水平（lt=95）、躯干前倾 16°、小腿略往后（ls=-8）＝脚在膝前，杠（肩）的水平位置两帧几乎不动（固定轨道）。",
   "sources": [
-   "https://exrx.net/WeightExercises/Quadriceps/SMSquat",
-   "https://pubmed.ncbi.nlm.nih.gov/19855308/",
-   "https://www.coachweb.com/exercises/leg-exercises/194/smith-squat",
-   "https://fitnessvolt.com/smith-machine-squat/"
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC5336117/",
+   "https://pubmed.ncbi.nlm.nih.gov/21225486/",
+   "https://pubmed.ncbi.nlm.nih.gov/15705030/",
+   "https://pmc.ncbi.nlm.nih.gov/articles/PMC10987311/",
+   "https://pubmed.ncbi.nlm.nih.gov/19855308/"
   ],
-  "note": "未查证（摘要层级）：沙盒打不开 ExRx／ACE 全文（网域没放行），脚放杠前、杠在上斜方肌、蹲到大腿平行、膝对脚尖的要领依 CoachWeb／FitnessVolt（ACE 认证教练撰写）的步骤描述与 ExRx 该页的通行写法；Schwanbeck 2009（JSCR 23(9):2588）摘要：史密斯深蹲的大腿／小腿肌电比自由深蹲低，适合当没有器材时的替代而非取代。"
+  "note": "2026-11-05 读原文查证（经 CI 抓取通道 fetch-url.yml）：Lee 等 2017（Sensors，PMC5336117 全文）「a barbell is horizontally constrained to move up and down while sliding along vertical steel tracks. The machine allows variation in the anterior–posterior foot placement」，实验做法「At the most posterior position, the ankle was placed directly under the bar」「thighs parallel to the floor in the bottom position… feet planted straight at the shoulder width」；Biscarini 2011（J Sports Sci，摘要原文）「moving the feet forward in front of the knees… reducing knee torque and compressive tibiofemoral and patellofemoral forces」；Cotterman 2005（JSCR，摘要原文）「vertical motion of bar on fixed path」「parallel back squat」；膝不内扣对应 IJSPT 2024 综述（PMC10987311 全文）「care should be taken to avoid valgus… at the knee」。杠在上斜方肌一项来源只写到「load on the shoulder」，属通行写法。Schwanbeck 2009 摘要：史密斯深蹲肌电比自由深蹲低，当替代而非取代。脚往前「约 8–15 cm」是取 Lee 实验 0／25 cm 两档之间的保守值，非来源原数。"
  },
  {
   "file": "ohpseat-hands",

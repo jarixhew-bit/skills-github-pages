@@ -14,10 +14,9 @@
 
 本檔只補該表沒說的兩件事：
 
-- **部署上線那一行的雲端限制**：雲端 session **抓不到 `github.io`**（出口代理 403），
-  「WebFetch 線上網址確認」在雲端做不到。雲端能驗的是「真的進了 main」
-  （`git show origin/main:<路徑>`）；線上那層由 `tools/check-live.py` ＋ `live-check.yml`
-  每天自動驗。本機 CLI 不受此限。完整流程見 `.claude/skills/publish-pages/SKILL.md` 第 6 步。
+- **部署上線那一行**：先 `git show origin/main:<路徑>` 驗真的進了 main，再驗線上
+  （`tools/check-live.py`；2026-11-05 起網頁版也連得上 github.io）。完整流程與連不上時
+  的退路見 `.claude/skills/publish-pages/SKILL.md` 第 6 步，此處不複述。
 - **數字類產出**的展開細則見 `skills/numbers-and-money.md`（抽 3 筆＋重算合計的具體做法）。
 
 之後再核對兩件事：
