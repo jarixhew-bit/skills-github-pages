@@ -1004,10 +1004,14 @@ function cycleInfo(now){
   const gaps=gapsOf(now), skip=gapWeeks(gaps,now), retW=new Set(), nowW=weekStart(now), ret=retInfo(now);
   gaps.forEach(g=>{ if(cfg.returnMode) g.after.forEach(id=>{ const s=sessions.find(x=>x.id===id); if(s) retW.add(weekStart(s.ts)); }); });
   if(ret) retW.add(nowW);
+  // 以实际练过的减量周为准（2026-11-05 用户：上周减量、这周又说减量）：哪一周存过减量训练，那周就是减量周，
+  // 之后从第 1 周重数——停练扣周只影响这个锚点之后，不会把以前的周期往后推，让已经做过的减量周又落到下一周
+  const dlW=new Set(sessions.filter(s=>s.deload&&s.ts<=now).map(s=>weekStart(s.ts)));
   let c=0, n=0, info={week:1,pos:1,deload:false};
   for(let w=weekStart(firstTs()); w<=nowW; w=weekStart(w+10*DAY)){
     if(skip.has(w)) continue;
     n++;
+    if(dlW.has(w)){ info={week:n,pos:4,deload:!!cfg.deload}; c=0; continue; }
     const hold=!!cfg.deload&&c%4===3&&retW.has(w);
     info={week:n,pos:(c%4)+1,deload:!!cfg.deload&&c%4===3&&!hold};
     if(!hold) c++;
