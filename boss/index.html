@@ -158,6 +158,11 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .flive .fl-up.off{color:#8a5a12;font-weight:600}
 .flive.fl-ok{--fl:#3f7d5c}.flive.fl-late{--fl:#8a5a12}.flive.fl-cxl{--fl:#a3271f}.flive.fl-air{--fl:#36689c}
 .flive.fl-wait .fl-note{color:var(--sub);opacity:.8}
+/* 新框已有实时数据（不是隐藏、也不是「起飞前 2 天」提示）时，收起上面 flightInfoHtml 里
+   来自 feed 的状态胶囊（例如「未起飞」），免得同一班一边写未起飞、一边写延误（2026-11-05 定）。
+   航班号／路线／起降时间／乘客座位照留；新框没数据时旧胶囊照常显示。
+   用 CSS 而不是改 FLIGHT-LIVE 那段 JS：那段要跟两本手册一字不差。 */
+.item-body:has(> .flive:not([hidden]):not(.fl-wait)) .flight-info .flight-status{display:none}
 
 /* ===== 转机等待（同一趟行程里，相邻两个航班条目之间自动算出来插入的一行） ===== */
 .transfer-row{margin:8px 16px;padding:9px 12px;background:#EFF6FF;border:1px dashed #BFDBFE;
@@ -5099,7 +5104,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v69</div>
+    <div class="admin-ver" id="adminVer">boss-app-v70</div>
 
     ${adminTripsSectionHtml()}
 

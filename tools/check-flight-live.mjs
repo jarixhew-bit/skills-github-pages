@@ -324,9 +324,15 @@ function bossTrips() {
     id: 'trip-jkt', title: { zh: '雅加达 · 11月14–16日', en: 'Jakarta · 14–16 Nov' }, start: '2026-11-14', end: '2026-11-16',
     location: { zh: '雅加达', en: 'Jakarta' }, guideUrl: 'https://example.com/jkt', items: [
       { date: '2026-11-14', time: '12:30', title: { zh: 'SQ958 樟宜 → 雅加达', en: 'SQ958 Changi → Jakarta' }, note: { zh: '', en: '' }, mapUrl: '',
-        flight: { no: 'SQ958', date: '2026-11-14', pax: [{ name: 'Tan Chin Hooi', seat: '14A' }], live: null } },
+        flight: { no: 'SQ958', date: '2026-11-14', pax: [{ name: 'Tan Chin Hooi', seat: '14A' }], live: {
+          from: 'SIN', to: 'CGK', status: 'scheduled', sched_dep: '2026-11-14 12:30+08:00', sched_arr: '2026-11-14 13:20+07:00' } } },
       { date: '2026-11-16', time: '11:10', title: { zh: 'SQ957 雅加达 → 樟宜', en: 'SQ957 Jakarta → Changi' }, note: { zh: '', en: '' }, mapUrl: '',
         flight: { no: 'SQ957', date: '2026-11-16', live: null } },
+      // 旧胶囊对照组：SQ138 接口回 tracked:false（新框隐藏）、SQ139 还没到 window_start（新框只是提示）——两班的「未起飞」胶囊都必须还在
+      { date: '2026-11-16', time: '15:20', title: { zh: 'SQ138 樟宜 → 槟城', en: 'SQ138' }, note: { zh: '', en: '' }, mapUrl: '',
+        flight: { no: 'SQ138', date: '2026-11-16', live: { from: 'SIN', to: 'PEN', status: 'scheduled', sched_dep: '2026-11-16 15:20+08:00', sched_arr: '2026-11-16 16:55+08:00' } } },
+      { date: '2026-11-16', time: '17:30', title: { zh: 'SQ139 樟宜 → 槟城', en: 'SQ139' }, note: { zh: '', en: '' }, mapUrl: '',
+        flight: { no: 'SQ139', date: '2026-11-16', live: { from: 'SIN', to: 'PEN', status: 'scheduled', sched_dep: '2026-11-16 17:30+08:00', sched_arr: '2026-11-16 19:05+08:00' } } },
     ],
   }];
 }
@@ -335,7 +341,8 @@ for (const role of ['viewer', 'admin']) {
   await forceZh(ctx);
   await freezeClock(ctx, '2026-11-14');   // 11/14 12:00 UTC
   mountRoutes(ctx, { role, trips: bossTrips() });
-  const calls = await routeApi(ctx, { flights: { 'SQ958@2026-11-14': SQ958_LATE, 'SQ957@2026-11-16': SQ957_ONTIME } }, true);
+  const calls = await routeApi(ctx, { flights: { 'SQ958@2026-11-14': SQ958_LATE, 'SQ957@2026-11-16': SQ957_ONTIME,
+    'SQ139@2026-11-16': { ...SQ957_ONTIME, no: 'SQ139', window_start: '2026-11-15T09:30:00.000Z' } } }, true);
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
@@ -355,6 +362,15 @@ for (const role of ['viewer', 'admin']) {
   ok(`★${role}：延误 25 分钟、琥珀色`, t && /延误 25 分钟/.test(t.text) && t.color === AMBER, t);
   ok(`★${role}：预计起飞 12:55（新加坡当地）、原定 12:30`, t && /预计起飞 12:55/.test(t.text) && /原定 12:30/.test(t.text), t && t.text);
   ok(`★${role}：身份确实是 ${role}`, t && t.role === role, t && t.role);
+  // 新框有实时数据 → 旧的 feed 状态胶囊（「未起飞」）要收起；航班号／路线／时间／座位照留
+  const pill = await page.evaluate(() => {
+    const row = document.querySelector('#tab-today .flive[data-flight="SQ958"]').closest('.item-body');
+    const p = row.querySelector('.flight-info .flight-status');
+    return { exists: !!p, visible: !!p && getComputedStyle(p).display !== 'none' && p.offsetParent !== null,
+      info: row.querySelector('.flight-info').innerText.replace(/\s+/g, ' ') };
+  });
+  ok(`★${role}：有实时数据时旧「未起飞」胶囊不可见`, pill.exists && !pill.visible, pill);
+  ok(`★${role}：航班号／路线／起降时间／座位照留`, /SQ958/.test(pill.info) && /SIN → CGK/.test(pill.info) && /12:30/.test(pill.info) && /14A/.test(pill.info), pill.info);
   // 行程分页重画之后，框直接用手上的状态填，不再多打一次
   const n0 = calls.length;
   await gotoTab(page, 'trips');
@@ -369,6 +385,15 @@ for (const role of ['viewer', 'admin']) {
   });
   ok(`★${role}：行程页 SQ957 准点、绿色、11:10（雅加达当地）`, t2 && /准点/.test(t2.text) && /11:10/.test(t2.text) && t2.color === GREEN, t2);
   ok(`★${role}：重画不会多打接口`, calls.length === n0, [n0, calls.length]);
+  // 对照组：新框没数据（tracked:false 隐藏／还没到 window_start 只有提示）时，旧胶囊照常显示
+  const ctl = await page.evaluate(() => ['SQ138', 'SQ139'].map(no => {
+    const b = document.querySelector(`#tab-trips .flive[data-flight="${no}"]`);
+    const p = b && b.closest('.item-body').querySelector('.flight-info .flight-status');
+    return { no, boxHidden: !b || b.hidden, wait: !!b && b.classList.contains('fl-wait'),
+      pillVisible: !!p && getComputedStyle(p).display !== 'none' && p.offsetParent !== null };
+  }));
+  ok(`★${role}：对照组 SQ138（tracked:false，新框隐藏）旧胶囊还在`, ctl[0].boxHidden && ctl[0].pillVisible, ctl[0]);
+  ok(`★${role}：对照组 SQ139（还没到 window_start，只有提示）旧胶囊还在`, ctl[1].wait && ctl[1].pillVisible, ctl[1]);
   ok(`★${role}：状态框里没有任何按钮／输入框（只读）`,
     await page.locator('.flive button, .flive input, .flive select, .flive textarea, .flive a').count() === 0);
   ok(`${role}：无 JS 报错`, errs.length === 0, errs.slice(0, 3));
