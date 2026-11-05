@@ -11,7 +11,7 @@
  * 用法（只能在 GitHub Actions 上跑，沙盒连不上 Google）：
  *   QUERIES="链接或店名|链接或店名" WANT=5 node tools/fetch-photos.mjs
  *
- * 输出：每家店一行 `RESULT {json}`，字段 query/ok/count/method/urls/title/rating，
+ * 输出：每家店一行 `RESULT {json}`，字段 query/ok/count/method/urls/title/rating/place_url，
  * 以及 status/address/place_title（营业状态、地址、地点页标题，见 placeStatus）。
  * 末尾一行 `SUMMARY {json}` 汇总，方便一眼看出哪几家没抓满、哪几家已经关门。
  */
@@ -292,6 +292,8 @@ async function fetchOne(ctx, query) {
     out.status = placeStatus(info.text);
     out.address = info.address;
     out.place_title = info.title;
+    // 地点页的正式网址（/maps/place/…），拿来当手册／老板 App 的精准地图链接——搜索链接有时会落到别处（2026-11-05 胡姬园、雅加达 T3）
+    out.place_url = /\/maps\/place\//.test(page.url()) ? page.url().split('?')[0] : '';
 
     const collected = new Map();
     merge(collected, await collectFromDom(page));
