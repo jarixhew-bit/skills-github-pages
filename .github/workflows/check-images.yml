@@ -50,7 +50,7 @@ jobs:
         id: dupes
         if: github.event.inputs.file == ''
         run: |
-          pip install --quiet pillow
+          pip install --quiet pillow opencv-python-headless
           if python3 tools/check-photo-dupes.py > dupes.txt 2>&1; then
             echo "found=false" >> "$GITHUB_OUTPUT"
           else

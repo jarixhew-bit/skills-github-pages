@@ -24,6 +24,31 @@
     肉眼看也就是同一张了。CI 每次都会印出「没判重复但最接近的几对」，以后若有
     不同照片掉进 7~11 这一段，就是该重新校准的信号。
 
+第二级「近似」（2026-11-05 加，用户第二次抓到同类问题）：
+  用户回报「乐城海南鸡饭 1、2 号图其实也是很接近、差不多一样的」。那两张**不是同一张
+  照片**：同一个店面、几乎同一个站位、隔一会儿各拍一张（桌面盖布不同、一张横一张竖、
+  竖的那张拉近了）。dHash 实测距离 23（沙盒缩图；CI 原图见 PR 记录）——比 Jewel 白天
+  vs 晚上（12）还远，调 dHash 阈值永远抓不到它，调到能抓就会把整本手册的不同照片全报红。
+  dHash 比的是「整张图的明暗布局」，构图一裁切、一横一竖就全变了；人眼看的却是
+  「画面里是不是同一批东西」。所以第二级换一种比法：
+  - ORB 特征点（OpenCV）＋ RANSAC 单应矩阵，数「两张图里有多少个点能用同一个透视变换
+    对上」（inliers）。同一个招牌、同一面玻璃从差不多的位置拍，几十个点对得上；
+    不同东西、或同一处但换了大角度／换了光线，只有零星几个（随机误配）。
+  - 沙盒用乐城 16 张缩图实测：旧 1、2 张 56 个；其余不同照片两两最高 8 个（多数 0~6）；
+    同一家店另一个角度的门面（远景、带客人）跟旧 1 号 0 个。
+  - 阈值 NEAR_INLIERS = 25：落在 8 与 56 的中间偏低（宁可多抓一点近似）。三本还没走完的
+    手册全部卡片在 CI 上的实测分布写在下一段。
+  - CI 实测（2026-11-05，PR #761，3 本手册 59 张多图卡、265 张图、0 张下载失败，原图）：
+    修之前那版：乐城旧 1、2 张 **46** 个、dHash 23 → 第二级报红，第一级照旧没抓到。
+    其余全部卡片两两最高：Jewel 第 1 与第 4 张 18（同一个雨漩涡、换了角度和光线——这正是
+    「同一处不同角度」该放过的那种），潮乐轩第 1、2 张 12，观音庙 10，其余 ≤8。
+    25 落在 18 与 46 之间，两边都有余量；以后不同照片爬到 20 以上就该重看阈值。
+  - **报红，不是只报 warning**：PR 上的 warning 没人会点进去看，周检也只在退出码 1 时
+    开 issue；用户已经两次自己看出这种问题，再让它只当 warning 等于没修。真要在同一张
+    卡放两张近似的图（例如刻意前后对比），把那一对加进 NEAR_ALLOW 并写原因。
+  - 要 opencv-python-headless；没装时第二级整个跳过并印 warning（本机 check-all 只跑
+    --selftest，CI 会装），**不假装通过**也不报红。
+
 不误报的保护（下载失败**不算**重复，只记 warning）：
   - 下载要回 image/* 且不小于 1 KB；不是就当下载失败，不拿它算哈希。
   - 近乎纯色的图（标准差很小）不算哈希：纯色图的 dHash 全一样，会互相「撞」。
@@ -61,6 +86,10 @@ except ImportError:  # 不假装通过
     sys.exit(2)
 
 THRESHOLD = 6          # 依据见文件开头
+NEAR_INLIERS = 25      # 第二级「近似」：ORB＋RANSAC 对得上的点数 ≥ 这个就报红（依据见文件开头）
+ORB_SIDE = 480         # 算特征点前把长边缩到这么大，跟校准时一致（点数随尺寸变）
+# 刻意放在同一张卡、允许近似的图对：{(网址「=」前面, 网址「=」前面): "原因"}
+NEAR_ALLOW = {}
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 REFERER = "https://jarixhew-bit.github.io/"
@@ -100,6 +129,38 @@ def is_flat(im) -> bool:
 
 def base(url: str) -> str:
     return url.split("=")[0]
+
+
+try:  # 第二级要 OpenCV；没有就跳过第二级（main 里印 warning），第一级照查
+    import cv2
+    import numpy as np
+except ImportError:
+    cv2 = None
+
+
+def orb_feats(im):
+    """回传 (点坐标 ndarray, 描述子) 或 None（点太少）。"""
+    g = im.convert("L")
+    k = ORB_SIDE / max(g.size)
+    g = g.resize((max(1, round(g.width * k)), max(1, round(g.height * k))), Image.LANCZOS)
+    kps, des = cv2.ORB_create(nfeatures=1000).detectAndCompute(np.asarray(g), None)
+    if des is None or len(kps) < 8:
+        return None
+    return np.float32([p.pt for p in kps]), des
+
+
+def inliers(fa, fb) -> int:
+    """两张图之间能用同一个透视变换对上的特征点数（Lowe 比值筛＋RANSAC）。"""
+    if fa is None or fb is None:
+        return 0
+    ms = cv2.BFMatcher(cv2.NORM_HAMMING).knnMatch(fa[1], fb[1], k=2)
+    good = [m[0] for m in ms if len(m) == 2 and m[0].distance < 0.75 * m[1].distance]
+    if len(good) < 8:
+        return 0
+    pa = np.float32([fa[0][g.queryIdx] for g in good])
+    pb = np.float32([fb[0][g.trainIdx] for g in good])
+    _, mask = cv2.findHomography(pa, pb, cv2.RANSAC, 5.0)
+    return int(mask.sum()) if mask is not None else 0
 
 
 # ---------- 解析页面 ----------
@@ -154,9 +215,11 @@ def download(url: str):
 
 # ---------- 判定（纯函数，selftest 也走这里） ----------
 
-def judge(cards, info):
+def judge(cards, info, near_score=None):
     """cards: [(档名, 标题, [url...])]；info: url → {"hash": int|None, "sha": str|None}。
-    回传 (重复列表, 没判重复的每一对距离)。重复列表元素：(档名, 标题, i, j, 距离或'同网址')。"""
+    near_score(url_a, url_b) → 第二级的对得上点数（None＝没有第二级）。
+    回传 (重复列表, 没判重复的每一对距离, 占位图, 每一对的第二级分数)。
+    重复列表元素：(档名, 标题, i, j, 说明)。"""
     # 占位图：同一份字节出现在很多张不同卡片里
     sha_cards = {}
     for f, t, urls in cards:
@@ -166,7 +229,7 @@ def judge(cards, info):
                 sha_cards.setdefault(s, set()).add((f, t))
     placeholder = {s for s, cs in sha_cards.items() if len(cs) >= PLACEHOLDER_CARDS}
 
-    dupes, near = [], []
+    dupes, near, scores = [], [], []
     for f, t, urls in cards:
         for (i, a), (j, b) in combinations(enumerate(urls, 1), 2):
             if base(a) == base(b):
@@ -181,9 +244,16 @@ def judge(cards, info):
             d = dist(ha, hb)
             if d <= THRESHOLD:
                 dupes.append((f, t, i, j, d))
-            else:
-                near.append((d, f, t, i, j))
-    return dupes, sorted(near), placeholder
+                continue
+            near.append((d, f, t, i, j))
+            if near_score is None:
+                continue
+            n = near_score(a, b)
+            scores.append((n, f, t, i, j))
+            if n >= NEAR_INLIERS and (base(a), base(b)) not in NEAR_ALLOW \
+                    and (base(b), base(a)) not in NEAR_ALLOW:
+                dupes.append((f, t, i, j, f"近似：{n} 个特征点对得上，dHash {d}"))
+    return dupes, sorted(near), placeholder, sorted(scores, reverse=True)
 
 
 # ---------- 主流程 ----------
@@ -225,7 +295,9 @@ def main(argv) -> int:
                 info[u] = {}
                 continue
             sha = hashlib.sha256(raw).hexdigest()
-            info[u] = {"sha": sha, "hash": None if is_flat(im) else dhash(im)}
+            flat = is_flat(im)
+            info[u] = {"sha": sha, "hash": None if flat else dhash(im),
+                       "orb": orb_feats(im) if cv2 is not None and not flat else None}
 
     for u, why in fails:
         print(f"::warning::下载失败（不算重复）：{why}  {u[:90]}")
@@ -234,23 +306,41 @@ def main(argv) -> int:
               "挡了，这一轮不下结论（不报红，也不当作已查过）。")
         return 0
 
-    dupes, near, placeholder = judge(cards, info)
+    if cv2 is None:
+        print("::warning::没装 opencv-python-headless，第二级「近似」这一轮没查（只查了同一张图）")
+        near_score = None
+    else:
+        def near_score(a, b):
+            return inliers(info[a].get("orb"), info[b].get("orb"))
+    dupes, near, placeholder, scores = judge(cards, info, near_score)
     if placeholder:
         print(f"::warning::有 {len(placeholder)} 份图片字节同时出现在 {PLACEHOLDER_CARDS} 张以上"
               "卡片里，当作 Google 占位图跳过")
     print("没判重复、但最接近的几对（校准用；不同照片落进 7~11 就该重看阈值）：")
     for d, f, t, i, j in near[:8]:
         print(f"  {d:>2}  {f} 「{t}」 第 {i} 与第 {j} 张")
+    if scores:
+        print(f"第二级：特征点对得上最多的几对（≥ {NEAR_INLIERS} 报红；不同照片爬到 20 以上就该重看阈值）：")
+        for n, f, t, i, j in scores[:12]:
+            print(f"  {n:>4}  {f} 「{t}」 第 {i} 与第 {j} 张")
     if not dupes:
         print("通过：没有卡片里有重复照片")
         return 0
-    print(f"\n✗ 发现 {len(dupes)} 对重复照片（网址不同也可能是同一张图，要换掉其中一张）：")
+    print(f"\n✗ 发现 {len(dupes)} 对重复或近似照片（网址不同也可能是同一张图；"
+          "「近似」是同一处、几乎同一个角度各拍一张——读者看来一样，要换掉其中一张）：")
     for f, t, i, j, d in dupes:
-        print(f"  {f} 「{t}」 第 {i} 张与第 {j} 张重复（距离 {d}）")
+        print(f"  {f} 「{t}」 第 {i} 张与第 {j} 张（{d if isinstance(d, str) else '距离 %d' % d}）")
     return 1
 
 
 # ---------- 离线自检 ----------
+
+# 乐城海南鸡饭旧第 1、2 张（门面横幅 vs 同一站位的直幅，2026-11-05 用户回报）。
+# dhash：photo-preview 缩图实算（CI 下载原图算出的距离同样是 23）；
+# inliers：CI 原图实测 46；other_max：CI 上三本手册其余所有图对的最高分（Jewel 1 vs 4）。
+# 都是抄下来的数字，不下载。
+LECHENG = {"dhash": (0x41033eec9e366afb, 0x18007fe6bf6fe683), "inliers": 46, "other_max": 18}
+
 
 def selftest() -> int:
     """用 pillow 自己画图验：同一张图换尺寸/压缩率 → 判重复；不同的图 → 不判；
@@ -302,7 +392,7 @@ def selftest() -> int:
     }
     for k in ("p1", "p2", "p3", "p4", "p5"):
         info[f"https://g/{k}"] = {"sha": "PH", "hash": h_a}
-    dupes, _, ph = judge(cards, info)
+    dupes, _, ph, _ = judge(cards, info)
     got = {(t, i, j) for _, t, i, j, _ in dupes}
     want = {("卡A", 1, 2), ("卡B", 1, 2)}
     if got != want:
@@ -310,12 +400,60 @@ def selftest() -> int:
     if ph != {"PH"}:
         bad.append("占位图没被认出来")
 
+    # 阳性样本：乐城旧 1、2 张（用户 2026-11-05 回报「差不多一样」）。哈希值是实测抄下来的，
+    # 不每次下载。它证明两件事：第一级 dHash 抓不到它（所以才要第二级），第二级抓得到。
+    lc1, lc2 = LECHENG["dhash"]
+    if dist(lc1, lc2) <= THRESHOLD:
+        bad.append("乐城那对的 dHash 落进第一级了——fixture 抄错，或阈值被调松到会误报")
+    urls = ["https://g/lc1=s", "https://g/lc2=s", "https://g/lc3=s"]
+    info2 = {urls[0]: {"sha": "a", "hash": lc1}, urls[1]: {"sha": "b", "hash": lc2},
+             urls[2]: {"sha": "c", "hash": h_b}}
+    score = {frozenset(urls[:2]): LECHENG["inliers"],               # 近似
+             frozenset((urls[0], urls[2])): LECHENG["other_max"],   # 实测不同照片的最高分
+             frozenset((urls[1], urls[2])): 0}
+    d2, _, _, _ = judge([("x.html", "乐城", urls)], info2, lambda a, b: score[frozenset((a, b))])
+    if {(i, j) for _, _, i, j, _ in d2} != {(1, 2)}:
+        bad.append(f"第二级判定 {[(i, j) for _, _, i, j, _ in d2]}，应只有乐城 1、2")
+    NEAR_ALLOW[(base(urls[0]), base(urls[1]))] = "selftest"
+    d3, _, _, _ = judge([("x.html", "乐城", urls)], info2, lambda a, b: score[frozenset((a, b))])
+    NEAR_ALLOW.clear()
+    if d3:
+        bad.append("NEAR_ALLOW 里登记过的图对仍被报红")
+
+    # 第二级的特征点比对本身（要 OpenCV；CI 会装，本机没有就跳过这一段并说清楚）
+    orb_msg = "本机没装 OpenCV，特征点比对那段没跑（CI 会跑）"
+    if cv2 is not None:
+        def shop(seed):  # 有招牌、窗格、字块的「店面」，ORB 才有角点可抓
+            import random
+            rnd = random.Random(seed)
+            im = Image.new("RGB", (800, 600), (rnd.randrange(256), 200, 180))
+            dr = ImageDraw.Draw(im)
+            for _ in range(60):
+                x, y = rnd.randrange(760), rnd.randrange(560)
+                dr.rectangle([x, y, x + rnd.randrange(10, 120), y + rnd.randrange(10, 90)],
+                             fill=(rnd.randrange(256), rnd.randrange(256), rnd.randrange(256)),
+                             outline=(0, 0, 0))
+            return im
+        s1, s2 = shop(11), shop(12)
+        # 同一个店面换个站位：透视变形＋裁掉一块＋改成直幅（乐城旧 2 号的样子）
+        w = s1.transform((800, 600), Image.PERSPECTIVE,
+                         (1.05, 0.04, -30, 0.02, 1.02, -10, 0.00004, 0.00002), Image.BICUBIC)
+        w = w.crop((250, 0, 700, 600))
+        f1, fw, f2 = orb_feats(s1), orb_feats(w), orb_feats(s2)
+        n_same, n_diff = inliers(f1, fw), inliers(f1, f2)
+        if n_same < NEAR_INLIERS:
+            bad.append(f"同一店面换站位只对上 {n_same} 点，没到 {NEAR_INLIERS}")
+        if n_diff >= NEAR_INLIERS:
+            bad.append(f"两个不同店面对上 {n_diff} 点，会误报")
+        orb_msg = f"特征点：同店换站位 {n_same}、不同店 {n_diff}、阈值 {NEAR_INLIERS}"
+
     if bad:
         print("✗ selftest 失败：")
         for b_ in bad:
             print("  -", b_)
         return 1
-    print(f"selftest 通过（同图距离 {dist(h_a, h_a2)}、异图距离 {dist(h_a, h_b)}、阈值 {THRESHOLD}）")
+    print(f"selftest 通过（同图距离 {dist(h_a, h_a2)}、异图距离 {dist(h_a, h_b)}、阈值 {THRESHOLD}；"
+          f"乐城那对 dHash {dist(lc1, lc2)}；{orb_msg}）")
     return 0
 
 

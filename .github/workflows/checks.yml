@@ -381,7 +381,8 @@ jobs:
       - uses: actions/checkout@v4
       # 要下载 Google 照片算感知哈希，沙盒连不上，所以只在 CI 真查；
       # --selftest 是离线那一半（本机 check-all 也跑）。被 Google 挡时脚本自己罢工、不报红。
-      - run: pip install --quiet pillow
+      # opencv：第二级「近似」用 ORB 特征点比对（2026-11-05 乐城那对）
+      - run: pip install --quiet pillow opencv-python-headless
       - run: python3 tools/check-photo-dupes.py --selftest
       - run: python3 tools/check-photo-dupes.py
 
