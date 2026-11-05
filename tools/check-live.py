@@ -12,12 +12,16 @@
 2. <title> 对得上  —— 送出来的是这个页面，不是 404 页或别人的页面
 3. 内容与 main 一致 —— 部署没有卡住、线上不是旧版（唯一能抓到「部署被吞」的一层）
 
+PWA 的 Service Worker 档（`git ls-files` 里的 sw.js／*-sw.js）也一起比对：
+SW 档没换新，手机上就一直开着旧缓存里的旧版——页面对了、SW 旧了，用户照样看旧版。
+SW 没有 <title>，只走第 1、3 层；不一致时把两边的 CACHE 版本行都印出来。
+
 第 3 层遇到不一致会等 90 秒重试一次：刚推完代码时部署本来就还没跑完，
 不等就会天天误报，而误报会让人开始忽略警报，等于白做这个检查。
 
 用法：
-    python3 tools/check-live.py              # 检查全部已部署页面
-    python3 tools/check-live.py 某页面.html   # 只检查指定页面
+    python3 tools/check-live.py              # 检查全部已部署页面＋全部 SW 档
+    python3 tools/check-live.py 某页面.html   # 只检查指定页面（也可传 sw.js 路径）
 
 退出码：0 = 全部正常；1 = 有页面没上线或线上是旧版。
 """
@@ -40,12 +44,30 @@ RETRY_WAIT = 90        # 部署还没跑完时的宽限时间
 TRANSIENT_CODES = {408, 425, 429, 500, 502, 503, 504}
 TRANSIENT_WAITS = (5, 20)   # 抖动重试的等待秒数，共重试 2 次
 TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
+# SW 档的版本行：各 App 写法是 const CACHE = '...' 或 const VERSION = '...'
+CACHE_RE = re.compile(r"^\s*(?:const|let|var)\s+(?:CACHE|VERSION)\w*\s*=.*$", re.M)
 
 
 def local_pages():
     out = subprocess.run(["git", "ls-files", "*.html"],
                          capture_output=True, text=True)
     return out.stdout.split()
+
+
+def local_service_workers():
+    """仓库里所有 PWA 的 Service Worker 档（sw.js、xxx-sw.js、service-worker.js）。"""
+    out = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
+    return [p for p in out.stdout.split()
+            if re.search(r"(^|[/-])sw\.js$|service-worker\.js$", p)]
+
+
+def is_sw(path: str) -> bool:
+    return path.endswith(".js")
+
+
+def cache_line(text: str) -> str:
+    m = CACHE_RE.search(text)
+    return m.group(0).strip() if m else "（找不到 CACHE 行）"
 
 
 def title_of(text: str) -> str:
@@ -98,18 +120,24 @@ def check(path: str, allow_retry: bool = True):
             time.sleep(RETRY_WAIT)
             return check(path, allow_retry=False)
         delta = len(normalize(body)) - len(local)
+        if is_sw(path):
+            return path, "stale", (f"SW 档与 main 不一致（{delta:+d} 字元）："
+                                   f"线上 `{cache_line(body)}`，main `{cache_line(local)}`")
         return path, "stale", f"内容与 main 不一致（线上少/多 {delta:+d} 字元），部署可能没跑完或被吞掉"
 
+    if is_sw(path):
+        return path, "ok", f"200，SW 内容与 main 一致（{cache_line(local)}）"
     return path, "ok", "200，内容与 main 一致"
 
 
 def main():
-    pages = sys.argv[1:] or local_pages()
+    pages = sys.argv[1:] or (local_pages() + local_service_workers())
     if not pages:
         print("没有找到任何页面")
         sys.exit(0)
 
-    print(f"检查 {len(pages)} 个线上页面…\n")
+    n_sw = sum(1 for p in pages if is_sw(p))
+    print(f"检查 {len(pages) - n_sw} 个线上页面＋{n_sw} 个 Service Worker 档…\n")
     # 并发数压低：同时打太多请求容易被当成异常流量，反而制造误报
     with ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(check, pages))
@@ -124,7 +152,7 @@ def main():
 
     print("\n" + "=" * 60)
     if not bad and not stale:
-        print(f"通过：{len(ok)} 个页面全部正常上线，内容与 main 一致")
+        print(f"通过：{len(ok)} 个页面／SW 档全部正常上线，内容与 main 一致")
         sys.exit(0)
 
     print(f"不通过：{len(bad)} 个打不开、{len(stale)} 个是旧版（共 {len(pages)} 个）")
