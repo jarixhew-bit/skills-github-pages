@@ -10,7 +10,7 @@
 // 页面改版后线上抓不抓得到那段文字，归 fetch-photos.yml 实跑时的 status 字段管，不归这里。
 //
 // 跑法：node tools/check-place-status.mjs      退出码 0 = 全过；1 = 有不符
-import { placeStatus } from './fetch-photos.mjs';
+import { placeStatus, parseHoursLabel } from './fetch-photos.mjs';
 
 const CASES = [
   ['英文永久停业', 'Hanare by Takayama\n4.4(312)\nJapanese restaurant\nPermanently closed', 'permanently_closed'],
@@ -39,9 +39,22 @@ for (const [desc, text, want] of CASES) {
   else fails.push(`${desc}：期望 ${want}，实际 ${got}`);
 }
 
+// 营业时间下拉框的 aria-label 拆成每天一行（2026-11-08 加：hours 字段读不到表格时靠它）
+const HOURS = [
+  ['一般', 'Saturday, 10 AM to 10 PM; Sunday, 10 AM to 10 PM; Monday, 11 AM to 3 PM, 6 to 10 PM; Tuesday, Closed. Hide open hours for the week',
+    ['Saturday: 10 AM to 10 PM', 'Sunday: 10 AM to 10 PM', 'Monday: 11 AM to 3 PM, 6 to 10 PM', 'Tuesday: Closed']],
+  ['不是营业时间的 label', 'Address: 21 Tg Pagar Rd', []],
+  ['空', '', []],
+];
+for (const [desc, label, want] of HOURS) {
+  const got = parseHoursLabel(label);
+  if (JSON.stringify(got) === JSON.stringify(want)) pass++;
+  else fails.push(`营业时间·${desc}：期望 ${JSON.stringify(want)}，实际 ${JSON.stringify(got)}`);
+}
+
 if (fails.length) {
   console.log(`不通过：${fails.length} 项不符（${pass} 项通过）`);
   for (const f of fails) console.log('  - ' + f);
   process.exit(1);
 }
-console.log(`通过：营业状态判断 ${pass} 项全对`);
+console.log(`通过：营业状态与营业时间解析 ${pass} 项全对`);
