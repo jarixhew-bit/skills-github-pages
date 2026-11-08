@@ -81,6 +81,8 @@ RULES = {
     "mapcoords": ["penang-trip/index.html", "penang-trip/coords.json", "tools/check-map-coords.py"],
     # 手册地图链接：还没走完的手册不准用搜索链接／短链（会落到停车场、私人飞机点）
     "maplinks": ["*.html", "*/*.html", "tools/lib/trips.py", "tools/check-map-links.py"],
+    # 手册营业时间：还没走完的手册不准写「营业时间请订位时确认」这类推给读者的话（2026-11-08 雅加达）
+    "triphours": ["*.html", "*/*.html", "tools/lib/trips.py", "tools/check-trip-hours.py"],
     # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验
     "refreshphotos": ["tools/refresh-photos.py", "tools/check-refresh-photos.py",
                       "tools/fetch-photos.mjs", "tools/check-images.py"],

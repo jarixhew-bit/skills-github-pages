@@ -183,7 +183,7 @@ hazeplan／jumpToToday／initLang，key `siteLangUser`）；JS 只改了文案�
 SQ133 PEN→SIN 12:00–13:35〔Yap Lian Khoon 商务〕；11/14 SQ958 SIN T2→CGK T3 12:30–13:20〔三人〕；下面 `.tbl` 行李额表＋随身小物一句) →
 `#hotel`(02，`.hotel` 卡：MBS 11/11 入住 11/14 退房，分房带房型；接送 note 写两次接送：11/11 同车接机、11/14 10:00 送机，见下方「房型与接送」) →
 `#events`(03，开头一句「供参考、去不去由你们、没排进行程」＋9 张 `.evt`＋圣诞灯饰提示，清单见下) → `#itinerary`(04，`.day#day01`~`#day04`，
-`data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，21 张 `.evt`，四个 `.grp` 小标题：乌节路 9 → 滨海湾金沙 4 → 其他区域 6 → 东部友诺士一带 2（组标题里的家数是手写的，加卡要同步改），组内按菜系排；
+`data-date="2026-11-11"`…) → `#food`(05「餐厅 / Restaurants」，22 张 `.evt`，四个 `.grp` 小标题：乌节路 10 → 滨海湾金沙 4 → 其他区域 6 → 东部友诺士一带 2（组标题里的家数是手写的，加卡要同步改），组内按菜系排；
 每张卡 `.et` 开头有「📍区域 · 」标签，chips 写午市＋晚市)。**2026-10-30 用户要求「餐厅直接搞成列表，别分晚餐」**：
 原 `#orchard`＋`#dinner` 两区块合并、D2 的两张午餐 `.stop` 也搬进来，**逐日行程不再放餐厅卡**，只用一句话＋`#food` 链接。
 逐日（2026-10-31 改，见文末）：D1 `.tl` 航班时间轴→MBS 接机→入住→午餐与下午自由（一句链到 `#mall-shoppes`）→晚餐指 `#food` 的 MBS 组（PUTIEN／JUMBO Signatures），没有 `.dayfoot`；
@@ -259,6 +259,9 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
   Paradise Teochew 改 **Takashimaya 分店**（391A Orchard Rd #03-10，Google 4.7／1,126 条）；
   松发肉骨茶改「本来那家」**新桥路总店**（11 New Bridge Rd，4.4／8,226 条，放「其他区域」组，Centrepoint 分店卡已删）；
   新增 **Song Fa Signatures**（Paragon B1-06，4.8／1,202 条，乌节路组）。松发与 Song Fa Signatures 是用户指定的两家不同店，不算重复。
+
+- **两餐已订晚饭（2026-11-08 用户给，老板朋友订的）**：D1（11/11）`.tl` 最后一格 `.ev.fin` 改成「18:30 Beauty in The Pot（已订）」链 `#food-bitp`（乌节路组第 10 张，The Centrepoint 5 楼，4.7／3,491，照片 4 张），D1 标题改「乌节路晚餐」、雨天／烟霾备案与 Spectra 卡跟着改；D2（11/12）`.dayfoot` 改「已订：18:30 Sushi Katori」链 `#food-katori`（卡上已订字样）。**不写订位人名字、订位号、订位人电话**（公开仓库）。
+- **营业时间一律查实写死**（2026-11-08 用户：「你不会查好了再放下去吗」）：不准写「请订位时确认」之类，`tools/check-trip-hours.py` 会拦；查法是 `fetch-photos.yml` 的 RESULT `hours`，来源不一就两种都写。
 
 ## sg-jkt-trip/jakarta.html（约 900 行；2026-10-31 建）
 雅加达段手册，2026-11-14（六）～11-16（一）两晚三天，Tan Chin Hooi／Yap Lian Khoon／Hew Chern Yang 三人，双语。**版面与按钮做法同 `singapore.html`（见上一节「版面（2026-11-01 改版）」），本页另有蜡染主题覆盖段与 Transjakarta 线路色。**跟 `singapore.html` 配套：
