@@ -62,8 +62,8 @@ def food_cards(src: str):
         end = heads[k + 1].start() if k + 1 < len(heads) else len(sec)
         blk = sec[h.start():end]
         d = re.search(r'<div class="desc"><span class="cn">(.*?)</span><span class="en">', blk, re.S)
-        chips = re.findall(r'class="chip hours"><span class="cn">(.*?)</span>', blk)
-        text = TAG.sub("", (d.group(1) if d else "") + " " + " ".join(chips))
+        # 2026-11-08 用户：同一张卡营业时间写两遍多余，只留说明里那行——所以只认说明文字
+        text = TAG.sub("", d.group(1) if d else "")
         out.append((src.count("\n", 0, i + h.start()) + 1, TAG.sub("", h.group(1)), text))
     return out
 
@@ -74,6 +74,13 @@ def check(page: str, src: str) -> list:
         for m in r.finditer(src):
             line = src.count("\n", 0, m.start()) + 1
             bad.append(f"{page}:{line}  把查营业时间推给读者：「{m.group(0)[:60]}」")
+    ev = src.find('<section id="events">')
+    eve = src.find("</section>", ev) if ev >= 0 else -1
+    for m in re.finditer(r'class="chip hours"', src):
+        if ev >= 0 and ev < m.start() < eve:
+            continue  # 限时活动卡的场次标签不算营业时间
+        line = src.count("\n", 0, m.start()) + 1
+        bad.append(f"{page}:{line}  营业时间又写在小标签里（说明里已经写了，用户 2026-11-08：同一张卡写两遍多余）")
     for line, name, text in food_cards(src):
         if not (DATE.search(text) and TIME.search(text)):
             bad.append(f"{page}:{line}  餐厅卡「{name}」没写出那几天的确切营业时间（要有日期＋时刻）")
