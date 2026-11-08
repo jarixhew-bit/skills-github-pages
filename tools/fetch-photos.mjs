@@ -12,7 +12,8 @@
  *   QUERIES="链接或店名|链接或店名" WANT=5 node tools/fetch-photos.mjs
  *
  * 输出：每家店一行 `RESULT {json}`，字段 query/ok/count/method/urls/title/rating/place_url，
- * 以及 status/address/place_title（营业状态、地址、地点页标题，见 placeStatus）。
+ * 以及 status/address/place_title（营业状态、地址、地点页标题，见 placeStatus），
+ * 和 hours（地点页的每周营业时间表，每天一行如「Saturday: 10 AM–10 PM」，读不到回空数组，见 readHours）。
  * 末尾一行 `SUMMARY {json}` 汇总，方便一眼看出哪几家没抓满、哪几家已经关门。
  */
 import { pathToFileURL } from 'node:url';
@@ -82,6 +83,65 @@ async function readPlaceInfo(page) {
     }
     return { title, text: head + '\n' + labels, address };
   }).catch(() => ({ title: '', text: '', address: '' }));
+}
+
+/**
+ * 营业时间：地点页的每周营业时间表。
+ *
+ * 为什么要它（2026-11-08 用户：「雅加达的几家餐饮怎么没有营业时间，你不会查好了再放下去吗」）：
+ * 沙盒连不上 Google，手册里查不到的店就被写成「营业时间请订位时确认」，等于没查。
+ * 抓图器本来就会进地点页，顺手把营业时间表读回来，查营业时间就不必另开一条路。
+ *
+ * 两个来源，都只看文字不看 class 名（class 名是编译出来的乱码，改版就换）：
+ *  1. 主面板里的 <table>：每行第一格是星期几、第二格是时段（时段有时只写在 aria-label 上）；
+ *  2. 营业时间下拉框的 aria-label：「Monday, 10 AM to 10 PM; Tuesday, …. Hide open hours for the week」。
+ * 表格是收起来的也照样在 DOM 里，所以用 textContent 而不是 innerText。
+ * 读不到（没写营业时间、或不在地点页）就回空数组，绝不猜。
+ */
+const WEEKDAY = /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Senin|Selasa|Rabu|Kamis|Jumat|Sabtu|Minggu|星期[一二三四五六日天]|周[一二三四五六日天])/i;
+
+export function parseHoursLabel(label) {
+  const out = [];
+  for (const part of String(label || '').replace(/\.?\s*Hide open hours.*$/i, '').split(/;\s*/)) {
+    const m = part.trim().match(/^([^,]+),\s*(.+)$/);
+    if (m && WEEKDAY.test(m[1].trim())) out.push(m[1].trim() + ': ' + m[2].trim());
+  }
+  return out;
+}
+
+async function readHours(page) {
+  if (/\/maps\/search\//.test(page.url())) return [];
+  const raw = await page.evaluate((wd) => {
+    const WD = new RegExp(wd, 'i');
+    const LIST = /^(Results|Hasil|结果|結果|搜索结果)$/i;
+    let main = null;
+    for (const m of document.querySelectorAll('div[role="main"]')) {
+      const h = m.querySelector('h1');
+      const t = h ? h.innerText.trim() : '';
+      if (t && !LIST.test(t)) main = m;
+    }
+    if (!main) return { rows: [], labels: [] };
+    const clean = s => String(s || '').replace(/[\u202f\u00a0]/g, ' ').replace(/\s+/g, ' ').trim();
+    const rows = [];
+    for (const tr of main.querySelectorAll('table tr')) {
+      const cells = Array.from(tr.querySelectorAll('td,th'));
+      if (cells.length < 2) continue;
+      const day = clean(cells[0].textContent);
+      if (!WD.test(day)) continue;
+      const time = clean(cells[1].getAttribute('aria-label') || cells[1].textContent);
+      if (time) rows.push(day + ': ' + time);
+    }
+    const labels = Array.from(main.querySelectorAll('[aria-label]'))
+      .map(e => clean(e.getAttribute('aria-label')))
+      .filter(l => (l.match(/;/g) || []).length >= 3 && WD.test(l));
+    return { rows, labels };
+  }, WEEKDAY.source).catch(() => ({ rows: [], labels: [] }));
+  if (raw.rows.length) return raw.rows;
+  for (const l of raw.labels) {
+    const r = parseHoursLabel(l);
+    if (r.length) return r;
+  }
+  return [];
 }
 
 /** 判断一个 img src 是不是 Google 地图的地点照片（排除头像、图标、地图瓦片）。 */
@@ -262,7 +322,7 @@ async function handleConsent(page) {
 
 async function fetchOne(ctx, query) {
   const page = await ctx.newPage();
-  const out = { query, ok: false, count: 0, method: 'none', urls: [], title: '', rating: '', status: 'unknown', address: '' };
+  const out = { query, ok: false, count: 0, method: 'none', urls: [], title: '', rating: '', status: 'unknown', address: '', hours: [] };
   try {
     const url = /^https?:\/\//.test(query)
       ? query
@@ -292,6 +352,7 @@ async function fetchOne(ctx, query) {
     out.status = placeStatus(info.text);
     out.address = info.address;
     out.place_title = info.title;
+    out.hours = await readHours(page);
     // 地点页的正式网址（/maps/place/…），拿来当手册／老板 App 的精准地图链接——搜索链接有时会落到别处（2026-11-05 胡姬园、雅加达 T3）
     out.place_url = /\/maps\/place\//.test(page.url()) ? page.url().split('?')[0] : '';
 
