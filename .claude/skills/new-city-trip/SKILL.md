@@ -79,7 +79,7 @@ python3 tools/build-shortlist.py 候选.json --photos .photos/latest.txt \
 主色、纹样（用 CSS 画，不用图片）、时间轴线色取当地元素——雅加达那本（`jakarta.html`）
 是范例：蜡染深棕＋kawung/parang 纹＋Transjakarta 线路色。去 AI 味：不用 emoji 当图标、
 不用胶囊标签与大圆角阴影卡、不用 ✅⚠。新主题先截图给用户看过再套。
-结构与坑见 `.claude/notes/travel-pages.md`。五件不能忘：
+结构与坑见 `.claude/notes/travel-pages.md`。六件不能忘：
 
 1. **登记行程日期**：新手册要在 `tools/lib/trips.py` 加一行，否则体检与自动补图
    不知道它什么时候该停（自检会点名漏登记的）
@@ -88,6 +88,7 @@ python3 tools/build-shortlist.py 候选.json --photos .photos/latest.txt \
 4. **每天的站点顺路排、不走回头路**（2026-11-04 用户：「将来的行程都要按照这种排法」）：
    酒店出发往一个方向走到底再回城，不东西来回穿；判别法与「最短≠最顺」见 travel-pages.md 第 1 条
 5. **天数写「X天Y夜」**（2026-11-08 用户：「为什么不是3天2夜、4天3夜这种说法」）：中文「4天3夜」、英文「4 Days 3 Nights」，不写「3晚4天」
+6. **全本写成读者看的角度**（2026-11-09 用户：「要写成读者看的角度，不要写我们的角度」）：不写「逐家查好的」「已核对」「we checked」这类交代工作的话，直接写结果（`check-trip-hours` 会拦）
 
 上线走 `publish-pages`。
 

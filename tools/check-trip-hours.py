@@ -44,6 +44,12 @@ PUNT = [
     re.compile(r"check\s+(the\s+)?hours\s+on\s+Google", re.I),
 ]
 
+# 2026-11-09 用户：「要写成读者看的角度，不要写我们的角度」——制作者交代工作的口吻一律拦
+MAKER = [
+    re.compile(r"逐家查|查好的|我们查|我查|已查证|查证过|核对过|帮你们查"),
+    re.compile(r"\b(were|was)\s+(looked\s+up|checked|verified)\b|\bwe\s+(checked|looked\s+up|verified|found)\b", re.I),
+]
+
 DATE = re.compile(r"\d{1,2}/\d{1,2}")
 TIME = re.compile(r"\d{1,2}:\d{2}\s*[–\-~至到]\s*(?:次日\s*)?\d{1,2}:\d{2}|24\s*小时")
 TAG = re.compile(r"<[^>]+>")
@@ -81,6 +87,11 @@ def check(page: str, src: str) -> list:
             continue  # 限时活动卡的场次标签不算营业时间
         line = src.count("\n", 0, m.start()) + 1
         bad.append(f"{page}:{line}  营业时间又写在小标签里（说明里已经写了，用户 2026-11-08：同一张卡写两遍多余）")
+    body = re.sub(r"<script.*?</script>|<style.*?</style>|<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), src, flags=re.S)
+    for r in MAKER:
+        for m in r.finditer(body):
+            line = body.count("\n", 0, m.start()) + 1
+            bad.append(f"{page}:{line}  写成了制作者的角度（要写给读者看）：「{m.group(0)}」")
     for line, name, text in food_cards(src):
         if not (DATE.search(text) and TIME.search(text)):
             bad.append(f"{page}:{line}  餐厅卡「{name}」没写出那几天的确切营业时间（要有日期＋时刻）")
