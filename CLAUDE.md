@@ -143,7 +143,7 @@
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` /
    `check-generated`（查「生成又提交进仓库」的产物有没有跟源文件脱节）/
    `check-map-links`（查还没走完的手册有没有 `google.com/maps/search`／`maps.app.goo.gl`，只认地点页；真找不到地点页的进脚本里的白名单、附原因）/
-   `check-trip-hours`（还没走完的手册不准把查营业时间推给读者——「营业时间请…确认」「请出发前在 Google 地图上确认」这类中英写法都拦；每张餐厅卡要写出那几天的日期＋确切时刻；查营业时间走 `fetch-photos.yml`，RESULT 带 `hours`）/
+   `check-trip-hours`（还没走完的手册不准把查营业时间推给读者——「营业时间请…确认」「请出发前在 Google 地图上确认」这类中英写法都拦；每张餐厅卡要写出那几天的日期＋确切时刻；查营业时间走 `fetch-photos.yml`，RESULT 带 `hours`；2026-11-09 起也拦制作者交代工作的口吻，如「逐家查好的」「were looked up」——用户：「要写成读者看的角度」）/
    `check-photo-dupes`（还没走完的手册，同一张卡任两张图的 dHash 距离 ≤6 就算重复；另有第二级「近似」——同一处、几乎同一个站位各拍一张，dHash 抓不到（乐城 1、2 号距离 23，用户第二次自己看出），改用 ORB 特征点对得上 ≥25 个就报红；被 Google 挡时整轮罢工不报红；PR 改到手册时跑，check-images.yml 每周一再扫一次）/
    `check-map-coords`（查槟城手册总地图：每张带地图链接的卡片都有坐标、都在槟城州、`coords.json` 没孤儿、地图区块与 OSM 署名还在——卡片加了坐标没补，那一家会安静地不上图）/
    `check-flight-times`（查旅游手册航班卡的飞行时长有没有把时差算进去——2026-09-18
