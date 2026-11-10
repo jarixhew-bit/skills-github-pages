@@ -91,6 +91,16 @@
 - 有氧分页（2026-10-02）：`CD_KINDS`（三种练法与心率%）、`CD_WEEKS`（12 周每周排什么）、`cdSteps()`（跟练步骤，
   与力量训练共用全屏播放器，`plMode` 区分）；记录 `fit.cardio`、`fit.vo2`，都进备份。说明文字 `CD_WHY`/`CD_IQOS`/`CD_SAFE`
   每条都附来源链接——研究多为摘要层级（沙盒打不开全文），改数字前要重新查证，标「未查证」的别擅自写成定论。
+- **真人写实版动图（2026-11-10，用户选的参考人物 A：高马尾、珊瑚色套装）**：17 张（热身 8、放松 4、高脚杯深蹲、史密斯深蹲、坐姿推胸机、
+  哑铃罗马尼亚硬拉、哑铃俯身划船），清单正本 `tools/lib/fitness-anim-real.json`；`render-fitness-anim.mjs` 全量重跑会跳过它们。
+  - 做法：渲染台渲染「去字幕、不发光、体型调瘦」的 3D 来源影片（720×960）→ Higgsfield `seedance_2_0_mini`（480p、5 秒、每支 2.5 点，
+    参考图＋来源影片当 video_references，prompt 写明动作与「保持参考图的脸／身材／衣服」）→ 合成：旧动图顶部字幕带原样保留，下面换成真人画面
+    （按人物范围裁切、背景用画面自身模糊铺满）→ 12 格／秒 animated WebP 480×360，档名不变所以 App 不用改。
+  - 坑：来源影片里人物的体型、画风、背景会被一起带过去——直接用运动风 glb 出来是宽臀；用简笔画出来变插画。调瘦要改网格顶点
+    （缩骨头会让弯曲时子骨头被拉歪）。`hf_mult_motion_control`（Genjutsu）也能做但 480p 要 15 点、地垫会变成厚台子。
+  - 沙盒连不上 Higgsfield 的上传与下载域名：来源影片在 Higgsfield 自己的云端工作区（`sandbox_exec`）里重渲染后上传；成品打成 zip
+    传到 Higgsfield，再由 `.github/workflows/fetch-file.yml`（推 `.fetch/request.json` 触发）抓回分支。
+  - **侧面版（`-side.webp`）还是 3D 人物**；其余 66 张也还是 3D 人物。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 

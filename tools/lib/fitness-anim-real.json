@@ -1,0 +1,22 @@
+{
+ "note": "这些动图是真人写实版（2026-11-10，Higgsfield Seedance 2.0 Mini 把 3D 动作转到参考人物身上，再合成字幕带）。render-fitness-anim.mjs 全量重跑时会跳过它们，免得被 3D 版盖掉；要重做某一张就在命令行点名。",
+ "files": [
+  "armcircle",
+  "bridge2",
+  "catcow",
+  "chest",
+  "child",
+  "fig4",
+  "hinge-hands",
+  "lungeT",
+  "march",
+  "quad",
+  "row-hands",
+  "scap",
+  "seatpush",
+  "smithsquat",
+  "squat",
+  "squatG-one",
+  "wgs"
+ ]
+}

@@ -46,7 +46,10 @@ const xq = ['style', 'model', 'tex'].map(k => process.env[k.toUpperCase()] ? `&$
 await page.goto(`http://localhost:${PORT}/tools/lib/fitness-render.html?w=${W}&h=${H}${xq}`);
 await page.waitForFunction(() => window.ready, null, { timeout: 180000 });
 const only = process.argv.slice(2);
-const todo = combos.filter(c => !only.length || only.includes(c.file) || only.includes(c.anim));
+// 真人写实版动图（清单在 tools/lib/fitness-anim-real.json）不是这支脚本渲染的：全量重跑时跳过，免得被 3D 版盖掉；点名才重做
+const REAL = new Set(JSON.parse(fs.readFileSync('tools/lib/fitness-anim-real.json', 'utf8')).files);
+const todo = combos.filter(c => only.length ? (only.includes(c.file) || only.includes(c.anim)) : !REAL.has(c.file));
+if (!only.length) console.log('跳过真人版', REAL.size, '张');
 const keep = process.env.FRAMES_DIR;
 let bad = 0;
 for (const c of todo) {
