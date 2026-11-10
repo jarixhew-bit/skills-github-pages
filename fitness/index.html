@@ -222,6 +222,41 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
 .ex-top.wide{grid-template-columns:150px 1fr}
 #plPhoto .ph{height:clamp(170px,34vh,300px);aspect-ratio:auto}
 @media (prefers-reduced-motion: reduce){.ph img+img{animation:none;opacity:0}}
+/* 点示范图放大（2026-11-10 用户：「跟练时动作能不能点击放大」） */
+.ph,.thumb,#plCanvas{cursor:zoom-in}
+.zm{position:absolute;right:6px;top:6px;z-index:1;width:34px;height:34px;border:0;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font-size:16px;line-height:34px;padding:0;cursor:zoom-in}
+.ph.anim .zm{top:auto;bottom:6px}
+.ph.anim:has(.vw) .zm{bottom:44px}
+#zoom{position:fixed;inset:0;z-index:40;background:#03060e;color:#eef2f8;display:flex;flex-direction:column;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 60px) 0 env(safe-area-inset-bottom,0px)}
+#zoom[hidden]{display:none}
+#zmBox{position:relative;flex:none;width:min(100vw,calc(58dvh*4/3));aspect-ratio:4/3}
+#zmBox .ph{width:100%;height:100%;aspect-ratio:auto;border-radius:0;cursor:default}
+#zmBox .vw{right:10px;bottom:10px}
+#zmBox .vw button{min-height:40px;font-size:15px;padding:0 16px}
+#zmBox canvas{width:100%;height:100%;display:block;background:var(--surface)}
+#zmText{flex:1;min-height:0;overflow-y:auto;width:100%;max-width:560px;padding:12px 16px 16px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px}
+#zmText .zm-ph{font-size:13px;color:#9fb0c8}
+#zmText .zm-nm{font-size:20px;font-weight:700;line-height:1.3}
+#zmText .zm-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+#zmText .zm-tg{font-size:17px;font-weight:600;color:#ffcf8a}
+#zmTime{font-family:var(--f-num,inherit);font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;color:#fff}
+#zmText .zm-log{display:flex;flex-direction:column;gap:8px;background:rgba(255,255,255,.06);border-radius:12px;padding:10px}
+#zmText .zm-log .pl-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#zmText .zm-log label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#c9d3e6}
+#zmText .zm-log .inp{color:var(--ink);background:var(--surface);font-size:22px;padding:8px 4px;min-width:0;text-align:center}
+#zmText .zm-log .stepper{grid-template-columns:38px minmax(0,1fr) 38px;gap:4px}
+#zmText .zm-log .rir-lbl{color:#c9d3e6}
+#zmText .zm-log .stepper button,#zmText .zm-log .chip{background:#1f2a40;color:#fff;border:1px solid #3a4a66}
+#zmText .zm-log .chip[aria-pressed="true"]{background:#fff;color:#14201d;border-color:#fff}
+#zmText .zm-cue{font-size:16px;line-height:1.6;color:#dbe3ef;margin:0}
+#zmClose{position:absolute;right:max(10px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 6px);z-index:2;width:48px;height:48px;border-radius:999px;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:22px;cursor:pointer}
+#zmHint{position:absolute;left:16px;top:calc(env(safe-area-inset-top,0px) + 20px);color:#9fb0c8;font-size:12px;pointer-events:none}
+@media (orientation:landscape){
+  #zoom{flex-direction:row;align-items:center;padding:env(safe-area-inset-top,0px) 64px env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+  #zmBox{width:min(54vw,calc((100dvh - 12px)*4/3))}
+  #zmText{align-self:stretch;max-width:none;padding:16px 8px 16px 16px;justify-content:flex-start}
+  #zmHint{display:none}
+}
 canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;display:block}
 .swim-top .bar{height:8px}
 .goal{background:var(--soft);border-radius:10px;padding:8px 10px;font-size:14px}
@@ -509,6 +544,13 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
   </div>
 </nav>
 
+<!-- ===== 放大看示范（点示范图打开；跟练的计时与语音照常） ===== -->
+<div id="zoom" hidden role="dialog" aria-modal="true" aria-label="放大看动作示范">
+  <button id="zmClose" type="button" aria-label="关闭放大">✕</button>
+  <div id="zmHint">手机横过来看更大 · 点 ✕ 关闭</div>
+  <div id="zmBox"></div>
+  <div id="zmText" aria-live="polite"></div>
+</div>
 <!-- ===== 全屏跟练 ===== -->
 <div id="player" hidden role="dialog" aria-label="跟练">
   <div class="pl-top">
@@ -640,6 +682,10 @@ var ANIM = (function(){
   def("quad",    {frames:[{nt:-14,ns:-158,ft:0,fs:0,Hn:[1,-1],bend:1,fa:0,ff:0},{t:3,nt:-18,ns:-160,ft:0,fs:0,Hn:[1,-1],bend:1,fa:0,ff:0}], ground:"low", anchorX:"ff", dur:2});
   def("fig4",    {frames:[{t:-90,nt:104,ns:-127.4,ft:178,fs:88,H:[-7.8,7.2]},{t:-90,nt:116.7,ns:-112.5,ft:192,fs:102,H:[-6,7]}], ground:"low", anchorX:"hip", dur:2});
   def("chest",   {frames:[{nt:12,ns:6,ft:-6,fs:-6,na:-80,nf:-170,fa:-80,ff:-170},{t:10,nt:12,ns:6,ft:-6,fs:-6,na:-88,nf:-172,fa:-88,ff:-172}], dur:2}); // 一脚前跨、身体前倾；手臂往两侧开（3D 动图由渲染台另摆）
+  // 门框拉伸的替代（2026-11-10）：墙／柱子、不用器材、地板。往两侧开、转体、翻身这些 2D 看不出，3D 动图由渲染台另摆
+  def("wallpec", {frames:[{ft:12,fs:6,fa:-80,ff:-170,na:4,nf:4},{t:2,ft:12,fs:6,fa:-90,ff:-176,na:4,nf:4}], dur:2, props:["post"]}); // 靠墙单臂：远侧（靠墙）那只手前臂竖着贴墙、那脚前跨半步，身体往离墙的方向转
+  def("clasp",   {frames:[{a:-18,f:-18},{a:-38,f:-38}], dur:2}); // 背后十指交扣：两手在屁股后面扣住、手臂伸直往上抬
+  def("pronepec",{frames:[{t:90,lt:-90,ls:-90,fa:88,ff:88,na:-20,nf:20},{t:90,ft:-90,fs:-90,nt:-35,ns:-140,fa:88,ff:88,na:-5,nf:5}], ground:"low", anchorX:"hip", dur:2}); // 俯卧单侧：一手往旁伸直贴地，另一手推地、翻向伸直那手那一侧，上面那腿弯起踩到后面
   def("child",   {frames:[{t:103,lt:60,ls:-90,a:85,f:90},{t:107,lt:60,ls:-90,a:88,f:92}], ground:"low", anchorX:"hip", dur:2});
   // ---- swimming（水深到胸口：水面高 66；漂浮时身体抬到 lf≈59） ----
   var POOL={surface:66};
@@ -720,6 +766,7 @@ var ANIM = (function(){
       if(pr==="band"){ ctx.save(); ctx.strokeStyle="#e39b2d"; ctx.lineWidth=2.2*s; ctx.beginPath(); ctx.moveTo(X(j.nh)+2*s,Y(j.nh)-4*s); ctx.lineTo(X(j.nk)+4*s,Y(j.nk)); ctx.lineTo(X(j.nf)+1*s,Y(j.nf)+2*s); ctx.lineTo(X(j.nf)-5*s,Y(j.nf)+2*s); ctx.stroke(); ctx.restore(); } // 弹力带：挂在杆上、绕过脚底
       if(pr==="cable"){ var px=Math.max(X(j.nf),X(j.ff))+3*s, py=Math.max(Y(j.nf),Y(j.ff)); rr(ctx,px,py-10*s,3*s,G-py+10*s); ctx.fillRect(Math.min(X(j.hip),px)-12*s,G-2*s,Math.abs(px-X(j.hip))+26*s,2*s); rr(ctx,px+8*s,G-90*s,7*s,90*s); ctx.save(); ctx.strokeStyle=C.ink; ctx.lineWidth=1*s; ctx.beginPath(); ctx.moveTo(px+8*s,py-2*s); ctx.lineTo(X(j.nh),Y(j.nh)); ctx.stroke(); ctx.restore(); } // 坐姿划船机：踏板、底座、配重塔、低滑轮钢索
       if(pr==="smith"){ var bx=X(j.nh)-1*s; ctx.fillRect(bx-1.5*s,G-125*s,3*s,125*s); ctx.fillRect(bx-9*s,G-2*s,18*s,2*s); ctx.beginPath(); ctx.arc(bx,Y(j.nh)-1*s,3.2*s,0,Math.PI*2); ctx.fill(); } // 史密斯机：侧看两根轨道叠成一根，杠是一个圆点（在手上）
+      if(pr==="post"){ var px=X(j.fe)-3*s; ctx.fillRect(px,Y(j.fh)-14*s,6*s,G-Y(j.fh)+14*s); } // 墙边／柱子：靠墙那只手的前臂贴在它前面
       if(pr==="board"){ ctx.fillStyle=C.wt; rr(ctx,X(j.nh)-6*s,Y(j.nh)-3*s,28*s,3*s); ctx.fillStyle=C.prop; }
     });
     function line(a,b,col,w){ ctx.strokeStyle=col; ctx.lineWidth=w*s; ctx.beginPath(); ctx.moveTo(X(a),Y(a)); ctx.lineTo(X(b),Y(b)); ctx.stroke(); }
@@ -833,6 +880,17 @@ const COOL = [
   ["门框胸部拉伸",30,"chest","前臂和手肘贴住门框，手肘约与肩同高，身体慢慢往前倾，感觉胸口拉开。","doorway chest stretch"],
   ["婴儿式",30,"child","跪坐，屁股坐向脚跟，双手往前伸、额头贴地，慢慢深呼吸，感觉背部放松。","child's pose"]];
 const EQ_LABEL = {db:"哑铃",bw:"徒手",gym:"健身房"};
+// 热身／放松的替代动作（2026-11-10 用户：「拉伸门框的能不能有 alternative，有时遇到没有门框」）
+// MOVEX＝新动作：w 跟 WARM/COOL 同格式 [名称, 秒数, 动画, 动作要点, 英文名]，tag＝器材标签，half＝时间过半提示换边。
+// MOVE_ALTS[原动作的动画 key]＝替代清单（越前越接近原动作）；MOVE_TAG＝原动作的器材标签。秒数跟原动作一样，计时器总长不变。
+// 用户的选择存 cfg.malts（{原动画 key: 替代名}），随 cfg 进备份。查证来源在 tools/lib/fitness-anim-spec.json 的 sources。
+const MOVEX={
+  wallpec:{tag:"墙／柱子",half:true,w:["靠墙单臂胸部拉伸（每侧15秒，时间过半换边）",30,"wallpec","侧身站在墙边（或柱子旁），靠墙那只手的手肘弯 90°、前臂和手肘贴墙，手肘约与肩同高、不要高过肩。靠墙那脚往前半步，身体慢慢往离开墙的方向转，肩膀往后往下、不耸肩，胸口和肩前感觉轻到中等的拉开就停住；刺痛或手臂发麻就松开。","wall pec stretch"]},
+  clasp:{tag:"不用器材",w:["背后十指交扣扩胸",30,"clasp","站直、背打直，双手在背后十指交扣，两边肩胛骨轻轻夹紧、肩膀往后往下转，抬头挺胸；手臂保持伸直，慢慢往上抬离屁股，胸口和肩前感觉拉开就停住。腰不要往后拱。","standing chest stretch hands clasped behind back"]},
+  pronepec:{tag:"地板",half:true,w:["俯卧单侧胸部拉伸（每侧15秒，时间过半换边）",30,"pronepec","趴在地上，一只手往旁边伸直与身体成 90°（T 字形）、手掌贴地。另一只手撑在胸口旁的地上推，身体往伸直那只手那一侧慢慢翻过去，上面那条腿弯起来、脚踩到后面地上撑稳；伸直那只手一直贴地，胸口感觉拉开就停住，只拉到微微不适、不要痛。","prone pec stretch"]},
+};
+const MOVE_ALTS={chest:["wallpec","clasp","pronepec"]};
+const MOVE_TAG={chest:"门框"};
 
 // ---------- 替代动作（2026-11-04 用户：「健身房没有器材，能不能每次多选 alternative」） ----------
 // 动作的「身份」＝ "器材:槽位"（借用现成动作，例如 "db:gsquat"＝高脚杯深蹲）或 "x:名字"（下面 ALTX 的新动作）。
@@ -879,6 +937,7 @@ const CFG_DEF={equip:"db",voice:true,media:"anim",rest:60,dbStep:2,gymStep:2.5,g
 let cfg=Object.assign({},CFG_DEF,ls.get(CKEY,{}));
 if(!cfg.gapWhy||typeof cfg.gapWhy!=="object") cfg.gapWhy={}; // 停练原因：{停练前最后一次训练的 id: "sick"|"trip"|"other"}
 if(!cfg.alts||typeof cfg.alts!=="object") cfg.alts={}; // 换过的动作：{"器材:槽位": 换成的身份}
+if(!cfg.malts||typeof cfg.malts!=="object") cfg.malts={}; // 热身／放松换过的动作：{原动画 key: MOVEX 名}
 if(cfg.view!=="side"&&cfg.view!=="front") delete cfg.view; // 示范动图看正面还是侧面（只对 SIDE_VIEW 里的动作有效；没选过＝正面）
 if(!EQ_LABEL[cfg.equip]) cfg.equip="db";
 if(cfg.anim3d===false&&!ls.get(CKEY,{}).media) cfg.media="2d"; // 旧设置「关掉 3D」＝简笔画
@@ -916,6 +975,11 @@ function altList(id,eq){
   const def=idKey(id,eq), d=kInfo(def), seen=new Set([d.en+"|"+d.name]);
   return (ALTS[id]||[]).filter(k=>{ if(k===def||!validKey(k)) return false; const x=kInfo(k), sig=x.en+"|"+x.name; if(seen.has(sig)) return false; seen.add(sig); return true; });
 }
+// 热身／放松：w＝WARM/COOL 的一项 → 实际要做的那个（换过就是替代动作）
+function mvAlt(slot){ const n=cfg.malts[slot]; return n&&MOVEX[n]&&(MOVE_ALTS[slot]||[]).includes(n)?n:null; }
+function curMove(w){ const slot=w[2], n=mvAlt(slot), x=n?MOVEX[n].w:w;
+  return {name:x[0],sec:x[1],anim:x[2],cue:x[3],en:x[4],half:n?!!MOVEX[n].half:w[1]>=60,slot,alt:n,orig:w}; }
+function setMalt(slot,n){ if(!n||!MOVEX[n]) delete cfg.malts[slot]; else cfg.malts[slot]=n; saveCfg(); }
 function setAlt(id,eq,k){ if(!k||k===idKey(id,eq)) delete cfg.alts[idKey(id,eq)]; else cfg.alts[idKey(id,eq)]=k; saveCfg(); }
 // ---------- 真人示范照片（Free Exercise DB，公共领域；存在 photos/，离线可看） ----------
 // [照片编号, 跟本动作不完全一样时的说明]
@@ -949,7 +1013,92 @@ const animSrc=f=>"anim/"+f+(cfg.view==="side"&&SIDE_VIEW.has(f)?"-side":"")+".we
 function vwHTML(f){ return SIDE_VIEW.has(f)?'<div class="vw" role="group" aria-label="示范角度">'+[["front","正面"],["side","侧面"]].map(v=>'<button type="button" data-view="'+v[0]+'" aria-pressed="'+((cfg.view||"front")===v[0])+'">'+v[1]+'</button>').join("")+'</div>':""; }
 function applyView(){ document.querySelectorAll(".ph.anim[data-f]").forEach(el=>{ const f=el.dataset.f; el.querySelector("img").src=animSrc(f); el.querySelectorAll("[data-view]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===(cfg.view||"front")))); }); }
 document.addEventListener("click",e=>{ const b=e.target.closest(".vw [data-view]"); if(!b) return; e.stopPropagation(); cfg.view=b.dataset.view; saveCfg(); applyView(); },true);
-function photoHTML(p){ if(p.anim) return '<div class="ph anim" data-f="'+p.anim+'"><img src="'+animSrc(p.anim)+'" alt="动作示范动图" loading="lazy" decoding="async"><span class="ph-tag">动作示范</span>'+vwHTML(p.anim)+'</div>'; return '<div class="ph" role="img" aria-label="真人示范照片：起始与结束动作"><img src="photos/'+p[0]+'-0.jpg" alt="起始动作" loading="lazy" decoding="async"><img src="photos/'+p[0]+'-1.jpg" alt="结束动作" loading="lazy" decoding="async"><span class="ph-tag">真人示范</span>'+(p[1]?'<span class="ph-note">'+esc(p[1])+'</span>':'')+'</div>'; }
+const ZMB='<button type="button" class="zm" data-zoom aria-label="放大看示范">🔍</button>';
+function photoHTML(p,nozoom){ const z=nozoom?'':ZMB; if(p.anim) return '<div class="ph anim" data-f="'+p.anim+'"><img src="'+animSrc(p.anim)+'" alt="动作示范动图" loading="lazy" decoding="async"><span class="ph-tag">动作示范</span>'+vwHTML(p.anim)+z+'</div>'; return '<div class="ph" data-ph="'+p[0]+'"><img src="photos/'+p[0]+'-0.jpg" alt="真人示范：起始动作" loading="lazy" decoding="async"><img src="photos/'+p[0]+'-1.jpg" alt="真人示范：结束动作" loading="lazy" decoding="async"><span class="ph-tag">真人示范</span>'+(p[1]?'<span class="ph-note">'+esc(p[1])+'</span>':'')+z+'</div>'; }
+// ---------- 放大看示范 ----------
+// 来源：.ph（动图／照片）或 canvas（3D／简笔）。跟练里打开的会跟着当前步骤换图（zm.pl）。
+const zm={open:false,pl:false,from:null};
+function zmSrcEl(el){ return el.closest(".ph")||(el.tagName==="CANVAS"?el:null); }
+function zmFill(src){
+  const box=$("zmBox");
+  if(!src){ box.innerHTML=""; return; }
+  if(src.tagName==="CANVAS"){ box.innerHTML='<canvas id="zmCanvas" aria-label="动作示范"></canvas>'; attach($("zmCanvas"),src._key,src._hold); return; }
+  if(src.dataset.f){ box.innerHTML=photoHTML({anim:src.dataset.f},true); box.querySelector("img").loading="eager"; return; }
+  if(src.dataset.ph){ box.innerHTML=src.outerHTML.replace(/<button type="button" class="zm"[^>]*>[^<]*<\/button>/,""); return; }
+  box.innerHTML="";
+}
+// 放大画面下方（横屏时右边）的文字：动作名、次数／时间、要点；跟练中另有即时计时
+function zmInfo(src){
+  if(zm.pl&&steps[si]){ const s=steps[si], nx=s.kind==="rest"?steps.slice(si+1).find(x=>x.anim):null;
+    const tg=s.kind==="set"?tgtLabel(s.target):(s.sec?mmss(s.sec)+"（"+s.sec+" 秒）":"");
+    return {ph:s.phase,nm:s.name,tg:s.kind==="set"?tg:"",cue:s.kind==="rest"?(nx?"接下来："+nx.name+(nx.cue?"。"+nx.cue:""):""):(s.cue||"")+(s.half?" 时间过半会提示你换边。":""),timer:!!$("plTime")}; }
+  const ex=src.closest&&src.closest(".ex"); if(!ex) return {ph:"",nm:"",tg:"",cue:"",timer:false};
+  const q=x=>{ const e=ex.querySelector(x); return e?e.textContent:""; };
+  return {ph:q(".eyebrow"),nm:q("h3"),tg:q(".target"),cue:q("details p"),timer:false};
+}
+// 记录控件：放大画面里也能填这一组的重量／次数／余力、按「完成这组」。不另存一份状态——
+// 每个控件都只是转手给原本那个控件（data-proxy＝原控件的选择器）：输入就写进原输入框并触发它原本的 input 事件，按钮就点原按钮。
+function zmLogTargets(src){
+  if(zm.pl){ const s=steps[si]; if(!s||s.kind!=="set") return null;
+    return {lbl:"第 "+(+s.key.split("_")[1]+1)+" 组",kg:$("plKg")?"#plKg":null,reps:"#plReps",rir:"pl",done:"#plAct",doneTxt:"完成这组 ✓",stp:true}; }
+  const ex=src.closest&&src.closest(".ex[data-slot]"); if(!ex) return null;
+  const b=[...ex.querySelectorAll("[data-done]")].find(x=>x.getAttribute("aria-pressed")!=="true"); if(!b) return {lbl:"这个动作的组都做完了 ✓",none:true};
+  const key=b.dataset.done;
+  return {lbl:"第 "+(+key.split("_")[1]+1)+" 组",kg:$("kg-"+key)?"#kg-"+key:null,reps:"#rp-"+key,rir:'select[data-key="'+key+'"][data-f="rir"]',done:'[data-done="'+key+'"]',doneTxt:"完成这组 ✓"};
+}
+function zmLogHTML(src){
+  const t=zmLogTargets(src); if(!t) return "";
+  if(t.none) return '<div class="zm-log"><div class="zm-ph">'+esc(t.lbl)+'</div></div>';
+  const q=x=>document.querySelector(x), iv=x=>{ const e=q(x); return e?e.value:""; }, ip=x=>{ const e=q(x); return e?e.placeholder:""; };
+  const rirV=t.rir==="pl"?(((q('#plMain [data-rir][aria-pressed="true"]')||{}).dataset||{}).rir||""):iv(t.rir);
+  const inp=(id,sel,lbl,mode,stpSel)=>'<label>'+lbl+'<div class="stepper">'+(t.stp?'<button type="button" data-zclick=\''+stpSel[0]+'\' aria-label="减">−</button>':'')+
+    '<input class="inp" id="'+id+'" data-proxy=\''+sel+'\' inputmode="'+mode+'" value="'+esc(iv(sel))+'" placeholder="'+esc(ip(sel))+'">'+(t.stp?'<button type="button" data-zclick=\''+stpSel[1]+'\' aria-label="加">＋</button>':'')+'</div></label>';
+  return '<div class="zm-log"><div class="zm-ph">'+esc(t.lbl)+'</div><div class="pl-inputs">'+
+    (t.kg?inp("zmKg",t.kg,"重量 kg","decimal",['#plMain [data-stp="kg"][data-d^="-"]','#plMain [data-stp="kg"]:not([data-d^="-"])']):'')+
+    inp("zmReps",t.reps,"实际次数","numeric",['#plMain [data-stp="reps"][data-d="-1"]','#plMain [data-stp="reps"][data-d="1"]'])+'</div>'+
+    '<div class="rir"><span class="rir-lbl">还能再做几下？</span>'+[0,1,2,3].map(n=>'<button type="button" class="chip" data-zrir="'+n+'" aria-pressed="'+(String(rirV)===String(n))+'">'+(n===3?"3+":n)+'</button>').join("")+'</div>'+
+    '<button type="button" class="btn primary wide" id="zmDone">'+t.doneTxt+'</button></div>';
+}
+function zmSyncLog(){ document.querySelectorAll("#zmText [data-proxy]").forEach(i=>{ const e=document.querySelector(i.dataset.proxy); if(e) i.value=e.value; }); }
+$("zmText").addEventListener("input",e=>{ const i=e.target.closest("[data-proxy]"); if(!i) return; const t=document.querySelector(i.dataset.proxy); if(!t) return; t.value=i.value; t.dispatchEvent(new Event("input",{bubbles:true})); });
+$("zmText").addEventListener("click",e=>{
+  const c=e.target.closest("[data-zclick]"); if(c){ const t=document.querySelector(c.dataset.zclick); if(t) t.click(); zmSyncLog(); return; }
+  const r=e.target.closest("[data-zrir]");
+  if(r){ const tg=zmLogTargets(zm.src); if(!tg) return;
+    if(tg.rir==="pl"){ const b=document.querySelector('#plMain [data-rir="'+r.dataset.zrir+'"]'); if(b) b.click(); }
+    else { const sel=document.querySelector(tg.rir); if(sel){ sel.value=sel.value===r.dataset.zrir?"":r.dataset.zrir; sel.dispatchEvent(new Event("change",{bubbles:true})); } }
+    zmText(zm.src); return; }
+  if(e.target.id==="zmDone"){ const tg=zmLogTargets(zm.src); if(!tg||tg.none) return; zmSyncLog();
+    const b=document.querySelector(tg.done); if(b) b.click(); // 跟练：存这组并跳下一步（zoomFollow 会换成下一步）；清单：勾这组
+    if(!zm.pl&&zm.open) zmText(zm.src); }
+});
+function zmText(src){
+  zm.src=src; const t=zmInfo(src);
+  $("zmText").innerHTML=(t.ph?'<div class="zm-ph">'+esc(t.ph)+'</div>':'')+'<div class="zm-nm" id="zmName">'+esc(t.nm)+'</div>'+
+    '<div class="zm-row">'+(t.tg?'<span class="zm-tg">'+esc(t.tg)+'</span>':'')+(t.timer?'<span id="zmTime">'+esc($("plTime").textContent)+'</span>':'')+'</div>'+
+    zmLogHTML(src)+(t.cue?'<p class="zm-cue" id="zmCue">'+esc(t.cue)+'</p>':'');
+}
+function zmPlayerSrc(){ return !$("plPhoto").hidden?$("plPhoto").querySelector(".ph"):(!$("plCanvas").hidden?$("plCanvas"):null); }
+function openZoom(src,opener){
+  zm.pl=!!src.closest("#player"); zm.from=opener||src; zmFill(src); zmText(src);
+  $("zoom").hidden=false; zm.open=true;
+  try{ history.pushState({fitZoom:1},""); }catch(e){}
+  $("zmClose").focus();
+}
+function closeZoom(fromPop){
+  if(!zm.open) return; zm.open=false; $("zoom").hidden=true; $("zmBox").innerHTML="";
+  if(!fromPop){ try{ if(history.state&&history.state.fitZoom) history.back(); }catch(e){} }
+  const f=zm.from; zm.from=null; if(f&&f.isConnected&&f.focus) f.focus(); else { const b=zm.pl&&zmPlayerSrc(); const zb=b&&b.querySelector&&b.querySelector(".zm"); if(zb) zb.focus(); }
+}
+function zoomFollow(){ if(zm.open&&zm.pl){ const s=zmPlayerSrc(); if(s){ zmFill(s); zmText(s); zm.from=s.querySelector?s.querySelector(".zm")||s:s; } else closeZoom(); } }
+document.addEventListener("click",e=>{
+  if(e.target.closest("#zoom")){ if(e.target.id==="zmClose"||!e.target.closest(".ph,canvas,.vw,#zmText")) closeZoom(); return; }
+  if(e.target.closest(".vw,a,input,select,.alt")) return;
+  const b=e.target.closest("[data-zoom]"), el=b?zmSrcEl(b):(e.target.closest(".ph")||e.target.closest("canvas.thumb,#plCanvas"));
+  if(!el) return; e.preventDefault(); openZoom(el,b||el.querySelector&&el.querySelector(".zm")||el);
+});
+document.addEventListener("keydown",e=>{ if(zm.open&&e.key==="Escape"){ e.preventDefault(); closeZoom(); } });
+addEventListener("popstate",()=>{ if(zm.open) closeZoom(true); });
 function weekStart(d){ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x.getTime(); }
 function weeksBetween(a,b){ return Math.round((weekStart(b)-weekStart(a))/(7*DAY)); }
 function fmtDate(ts){ const d=new Date(ts); return (d.getMonth()+1)+"月"+d.getDate()+"日（"+"日一二三四五六"[d.getDay()]+"）"; }
@@ -1087,7 +1236,7 @@ function loop(){
   canv.forEach(c=>{
     if(!c.isConnected){ canv.delete(c); return; }
     const r=c.getBoundingClientRect(); if(r.bottom<0||r.top>vh||r.width===0) return;
-    const big=c.id==="plCanvas", use3d=cfg.media!=="2d"&&window.ANIM3D&&!c._fail3d;
+    const big=c.id==="plCanvas"||c.id==="zmCanvas", use3d=cfg.media!=="2d"&&window.ANIM3D&&!c._fail3d;
     if(use3d&&!big&&now-(c._last||0)<45) return; // 3D 缩图约 20 格/秒就够顺，省电
     c._last=now;
     const W=Math.round(r.width*dpr), H=Math.round(r.height*dpr);
@@ -1234,11 +1383,23 @@ function swapTo(id,k){
 }
 // 热身/放松清单：每个动作一张小动画＋秒数＋要点＋真人示范
 function moveList(arr){
-  return arr.map((w,i)=>{ const nm=w[0].split("（")[0], note=(w[0].match(/（(.*)）/)||[])[1];
-    const ph=photoOf(null,w[2],null);
-    return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?photoHTML(ph):'<canvas class="thumb" data-anim="'+w[2]+'" data-hold=""></canvas>')+'<div>'+
+  return arr.map((w0,i)=>{ const m=curMove(w0), w=[m.name,m.sec,m.anim,m.cue,m.en], nm=w[0].split("（")[0], note=(w[0].match(/（(.*)）/)||[])[1];
+    const ph=photoOf(null,w[2],null), can=!!MOVE_ALTS[m.slot];
+    return '<div class="ex'+(i===0?' first':'')+'" data-mslot="'+m.slot+'"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?photoHTML(ph):'<canvas class="thumb" data-anim="'+w[2]+'" data-hold=""></canvas>')+'<div>'+
       '<span class="eyebrow">'+(i+1)+' / '+arr.length+'</span><h3>'+esc(nm)+'</h3><span class="target">'+w[1]+' 秒</span>'+(note?'<span class="small muted">'+esc(note)+'</span>':'')+'</div></div>'+
+      (can?'<div class="swap-row">'+(m.alt?'<span class="pill swp" title="已换成替代动作">已换</span><span class="small muted">原动作：'+esc(w0[0].split("（")[0])+'</span>':'')+
+        '<button class="btn ghost small" data-mswap="'+m.slot+'" aria-expanded="false" aria-controls="malts-'+m.slot+'">换动作</button></div><div class="alts" id="malts-'+m.slot+'" hidden></div>':'')+
       '<details><summary>动作要点</summary><p>'+esc(w[3])+'</p></details><a class="vid" href="'+vidUrl(w[4])+'" target="_blank" rel="noopener">看真人示范影片 ↗</a></div>'; }).join("");
+}
+// 热身／放松的「换动作」清单：原动作在最前，之后按接近程度排；点一个就换，会记住
+function mvAltHTML(slot){
+  const w0=(WARM.concat(COOL)).find(w=>w[2]===slot), cur=mvAlt(slot);
+  const row=(n,w,tag)=>{ const f=animFile(w[2],null);
+    return '<button class="alt" data-malt="'+(n||"")+'" data-mslot="'+slot+'" aria-pressed="'+((n||null)===cur)+'">'+(f?'<img src="anim/'+f+'.webp" alt="" loading="lazy" decoding="async">':'<span class="noimg"></span>')+
+      '<span class="alt-t"><b>'+esc(w[0].split("（")[0])+'</b><span class="small muted"><span class="tag">'+esc(tag)+'</span>'+w[1]+' 秒'+(/每侧/.test(w[0])?'（每侧一半）':'')+(!n?' · 原动作':'')+((n||null)===cur?' · 现在用这个':'')+'</span></span></button>'; };
+  return '<p class="small muted">没有'+esc(MOVE_TAG[slot]||"器材")+'就换一个，拉的是同样的部位、时间一样。会记住，下次还是这个。</p>'+
+    row(null,w0,MOVE_TAG[slot]||"")+MOVE_ALTS[slot].map(n=>row(n,MOVEX[n].w,MOVEX[n].tag)).join("")+
+    (cur?'<button class="btn ghost small" data-malt="" data-mslot="'+slot+'" data-restore="1">恢复原动作</button>':'');
 }
 const FEEL=[[5,"轻松"],[7,"刚好"],[9,"很吃力"]];
 function feelHTML(v){ return '<div class="feel" role="group" aria-label="整体感觉">'+FEEL.map(f=>'<button class="chip" data-feel="'+f[0]+'" aria-pressed="'+(v===f[0])+'">'+f[1]+'</button>').join("")+'</div>'; }
@@ -1257,6 +1418,10 @@ function markDone(key,done){
   v.done=done; ensureStarted(); saveDraft();
 }
 $("workout").addEventListener("click",e=>{
+  const ms=e.target.closest("[data-mswap]");
+  if(ms){ const slot=ms.dataset.mswap, box=$("malts-"+slot), open=box.hidden; if(open) box.innerHTML=mvAltHTML(slot); box.hidden=!open; ms.setAttribute("aria-expanded",open); return; }
+  const ma=e.target.closest("[data-malt]");
+  if(ma){ const slot=ma.dataset.mslot; setMalt(slot,ma.dataset.malt); renderWorkout(); renderGarmin(); const c=document.querySelector('#workout .ex[data-mslot="'+slot+'"]'); if(c&&c.scrollIntoView) c.scrollIntoView({block:"nearest"}); return; }
   const sb=e.target.closest("[data-swap]");
   if(sb){ const id=sb.dataset.swap, box=$("alts-"+id), open=box.hidden; if(open) box.innerHTML=altHTML(id,cfg.equip); box.hidden=!open; sb.setAttribute("aria-expanded",open); return; }
   const ab=e.target.closest("[data-alt]");
@@ -1482,6 +1647,7 @@ $("bkFile").onchange=async e=>{
     if(d.cfg&&typeof d.cfg.returnMode==="boolean"&&!cfg.returnSet){ cfg.returnMode=d.cfg.returnMode; if(d.cfg.returnSet) cfg.returnSet=1; saveCfg(); } // 停练后自动降重：本机没动过才用备份的
     if(d.cfg&&d.cfg.gapWhy&&typeof d.cfg.gapWhy==="object"){ for(const k in d.cfg.gapWhy) if(WHY[d.cfg.gapWhy[k]]&&!cfg.gapWhy[k]) cfg.gapWhy[k]=d.cfg.gapWhy[k]; saveCfg(); } // 停练原因
     if(d.cfg&&(d.cfg.view==="side"||d.cfg.view==="front")&&!cfg.view){ cfg.view=d.cfg.view; saveCfg(); } // 示范角度：本机没选过才用备份里的
+    if(d.cfg&&d.cfg.malts&&typeof d.cfg.malts==="object"){ for(const k in d.cfg.malts){ const n=d.cfg.malts[k]; if(MOVE_ALTS[k]&&MOVE_ALTS[k].includes(n)&&!cfg.malts[k]) cfg.malts[k]=n; } saveCfg(); } // 热身／放松换过的动作
     if(d.cfg&&d.cfg.alts&&typeof d.cfg.alts==="object"){ for(const k in d.cfg.alts){ const [eq,id]=k.split(":"); if(EX[id]&&EQ_LABEL[eq]&&validKey(d.cfg.alts[k])&&!cfg.alts[k]) cfg.alts[k]=d.cfg.alts[k]; } saveCfg(); } // 换过的动作也一起还原（本机已经换过的不覆盖）
     if(d.swim&&typeof d.swim==="object"){ for(const k in d.swim) if(!swim[k]&&SWIM.some(x=>x.id===k)) swim[k]=d.swim[k]; ls.set(WKEY,swim); }
     saveSessions(); saveBody(); renderAll();
@@ -1495,10 +1661,11 @@ let gWk="A";
 function garminText(wk){
   const P=PLAN[wk], F=FIN[wk], L=[], R=rounds();
   L.push("训练 "+wk+"（"+P.focus+"）· 力量 · "+EQ_LABEL[cfg.equip]+"版");
-  L.push("1. 热身：按时间 4:00");
+  const nm=arr=>arr.map(w=>curMove(w).name.split("（")[0]).join("、");
+  L.push("1. 热身：按时间 4:00（"+nm(WARM)+"）");
   P.blocks.forEach((pair,i)=>{ L.push((i+2)+". 重复 "+R+" 次："); pair.forEach(id=>{ const x=kInfo(curKey(id,cfg.equip)); L.push("   · "+x.name+"（"+x.en+"）"+x.target+(/^\d/.test(x.target)?" 次":"")); }); L.push("   · 休息 "+mmss(cfg.rest)); });
   L.push("4. 燃脂收尾："+F.garmin);
-  L.push("5. 放松：按时间 3:00");
+  L.push("5. 放松：按时间 3:00（"+nm(COOL)+"）");
   return L.join("\n");
 }
 function renderGarmin(){ $("gPick").innerHTML=["A","B","C"].map(k=>'<button data-g="'+k+'" aria-pressed="'+(k===gWk)+'">'+k+'</button>').join(""); $("gText").textContent=garminText(gWk); }
@@ -1511,7 +1678,7 @@ $("gCopy").onclick=()=>{ const txt=garminText(gWk), msg=$("gCopyMsg");
 let steps=[], si=0, pl={run:false,end:0,remain:0,lastBeep:-1,amrap:0};
 function buildSteps(){
   const P=PLAN[selWk], F=FIN[selWk], S=[], R=rounds(), eq=cfg.equip;
-  WARM.forEach((w,i)=>S.push({kind:"timed",phase:"热身 "+(i+1)+"/"+WARM.length,name:w[0],sec:w[1],anim:w[2],hold:null,cue:w[3],en:w[4],speak:w[0]+"，"+w[1]+"秒"}));
+  WARM.forEach((w0,i)=>{ const m=curMove(w0); S.push({kind:"timed",phase:"热身 "+(i+1)+"/"+WARM.length,name:m.name,sec:m.sec,anim:m.anim,hold:null,cue:m.cue,en:m.en,half:m.half,mslot:MOVE_ALTS[m.slot]?m.slot:null,speak:m.name.split("（")[0]+"，"+m.sec+"秒"}); });
   P.blocks.forEach((pair,bi)=>{
     for(let r=0;r<R;r++){
       pair.forEach((id,ei)=>{ const k=curKey(id,eq), x=kInfo(k); S.push({kind:"set",k,phase:"超级组 "+(bi+1)+" · 第 "+(r+1)+"/"+R+" 轮 · "+(ei?"B":"A")+(bi+1),name:x.name,target:x.target,anim:x.anim,hold:x.hold,cue:x.cue,en:x.en,id,key:id+"_"+r,speak:x.name+"，"+tgtLabel(x.target).replace("–","到")}); });
@@ -1530,7 +1697,7 @@ function buildSteps(){
       if(r<F.rounds-1) S.push({kind:"rest",phase:"休息",name:"休息，下一个："+fi[(r+1)%fi.length][0],sec:F.rest,speak:"休息"});
     }
   }
-  COOL.forEach((w,i)=>S.push({kind:"timed",phase:"放松 "+(i+1)+"/"+COOL.length,name:w[0],sec:w[1],anim:w[2],hold:null,cue:w[3],en:w[4],half:w[1]>=60,speak:w[0].split("（")[0]+"，"+w[1]+"秒"}));
+  COOL.forEach((w0,i)=>{ const m=curMove(w0); S.push({kind:"timed",phase:"放松 "+(i+1)+"/"+COOL.length,name:m.name,sec:m.sec,anim:m.anim,hold:null,cue:m.cue,en:m.en,half:m.half,mslot:MOVE_ALTS[m.slot]?m.slot:null,speak:m.name.split("（")[0]+"，"+m.sec+"秒"}); });
   S.push({kind:"done",phase:"完成",name:"训练完成",anim:"child"});
   return S;
 }
@@ -1550,7 +1717,7 @@ function openPlayer(){
   keepAwake(); ensureStarted();
   showStep(true);
 }
-function closePlayer(){ pl.run=false; $("player").hidden=true; document.body.style.overflow=""; try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){} if(plMode==="cardio"){ plMode="strength"; renderCardio(); } else renderWorkout(); }
+function closePlayer(){ closeZoom(); pl.run=false; $("player").hidden=true; document.body.style.overflow=""; try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){} if(plMode==="cardio"){ plMode="strength"; renderCardio(); } else renderWorkout(); }
 function showStep(autostart){
   const s=steps[si]; $("player").classList.toggle("rest",s.kind==="rest");
   $("plCount").textContent=(si+1)+" / "+steps.length;
@@ -1586,6 +1753,7 @@ function showStep(autostart){
     $("plCue").textContent=""; pl.run=false;
   } else {
     m+='<div class="pl-big" id="plTime">'+mmss(s.sec)+'</div>';
+    if(s.mslot){ const al=mvAlt(s.mslot); m+='<div class="swap-row">'+(al?'<span class="pill swp">已换</span><span class="small muted">原动作：'+esc((WARM.concat(COOL)).find(w=>w[2]===s.mslot)[0].split("（")[0])+'</span>':'')+'<button class="btn ghost small" data-plmswap="'+s.mslot+'" aria-expanded="false">换动作</button></div><div class="alts" id="plAlts" hidden></div>'; }
     if(s.kind==="amrap") m+='<div class="row"><button class="btn primary" id="plRound">+1 轮</button><span class="num" style="font-size:24px" id="plRounds">'+(pl.amrap||0)+' 轮</span><button class="btn ghost small" id="plRoundMinus">−1</button></div>';
     if(s.kind==="rest") m+='<div class="row"><button class="btn ghost" id="plPlus">+15 秒</button></div>';
     $("plCue").innerHTML=esc(s.cue||"")+(s.half?(s.cue?" ":"")+"时间过半会提示你换边。":"")+(s.en?' <a class="vid" href="'+vidUrl(s.en)+'" target="_blank" rel="noopener">真人示范 ↗</a>':'');
@@ -1593,6 +1761,7 @@ function showStep(autostart){
     pl.run=!!autostart&&s.kind!=="amrap"; if(pl.run) pl.end=Date.now()+pl.remain*1000;
   }
   $("plMain").innerHTML=m;
+  zoomFollow(); // 放大中：跟着换成这一步的示范与文字
   const nx=steps[si+1]; $("plNext").textContent=nx?("接下来："+nx.name+(nx.kind==="set"?"（"+nx.target+"）":"")):"";
   $("plPrev").disabled=si===0; $("plNextBtn").disabled=si>=steps.length-1;
   paintAct();
@@ -1612,6 +1781,7 @@ setInterval(()=>{
   if($("player").hidden||!pl.run) return;
   const s=steps[si]; pl.remain=Math.max(0,(pl.end-Date.now())/1000);
   const el=$("plTime"); if(el) el.textContent=mmss(pl.remain);
+  const ze=zm.open&&zm.pl&&$("zmTime"); if(ze) ze.textContent=mmss(pl.remain); // 放大中照样看得到倒数
   const sec=Math.ceil(pl.remain);
   if(sec<=3&&sec>0&&sec!==pl.lastBeep){ pl.lastBeep=sec; beep(1,660); }
   if(s.half&&!pl.halfDone&&pl.remain<=s.sec/2){ pl.halfDone=true; beep(2); say("换边"); }
@@ -1643,6 +1813,10 @@ $("plVoice").onclick=()=>{ cfg.voice=!cfg.voice; saveCfg(); $("plVoice").setAttr
 $("plMain").addEventListener("click",e=>{
   const ps=e.target.closest("[data-plswap]");
   if(ps){ const box=$("plAlts"), open=box.hidden; if(open) box.innerHTML=altHTML(ps.dataset.plswap,cfg.equip); box.hidden=!open; ps.setAttribute("aria-expanded",open); return; }
+  const pms=e.target.closest("[data-plmswap]");
+  if(pms){ const box=$("plAlts"), open=box.hidden; if(open) box.innerHTML=mvAltHTML(pms.dataset.plmswap); box.hidden=!open; pms.setAttribute("aria-expanded",open); return; }
+  const pma=e.target.closest("[data-malt]");
+  if(pma){ setMalt(pma.dataset.mslot,pma.dataset.malt); steps=buildSteps(); showStep(false); return; } // 计时从头开始（换了动作就重新数 30 秒）
   const pa=e.target.closest("[data-alt]");
   if(pa){ swapTo(pa.dataset.slot,pa.dataset.alt); steps=buildSteps(); showStep(false); return; } // 步骤结构不变，只是那个槽位的动作换了
   const st=e.target.closest("[data-stp]");
@@ -1869,12 +2043,13 @@ function animCombos(){
   for(const n in ALTX) add(ALTX[n].anim,ALTX[n].hold); // 替代动作
   for(const k in FIN) for(const eq in FIN[k].items) FIN[k].items[eq].forEach(it=>add(it[1],it[2]));
   WARM.concat(COOL).forEach(w=>add(w[2],null));
+  for(const n in MOVEX) add(MOVEX[n].w[2],null); // 热身／放松的替代动作
   SWIM.forEach(d=>add(d.anim,null));
   return [...set.values()];
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey}}; // 给自检脚本用
+window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>

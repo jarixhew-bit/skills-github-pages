@@ -1424,6 +1424,89 @@
   "note": ""
  },
  {
+  "file": "wallpec",
+  "anim": "wallpec",
+  "type": "stretch",
+  "title_zh": "靠墙单臂胸部拉伸",
+  "reps": "每侧15秒",
+  "cue_zh": "前臂贴墙肘在肩高，身体转离墙",
+  "primary": [
+   "pec"
+  ],
+  "secondary": [
+   "ant_delt"
+  ],
+  "strip": [
+   "胸",
+   "肩"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "侧身站墙边，靠墙那只手上臂外展约 90°（手肘与肩同高或略低）、肘约 90°、前臂竖直贴墙；靠墙那脚前跨小半步，躯干往离墙方向转约 30°，让上臂落到身体额状面后方（水平外展）。",
+  "form_audit": "新动作（2026-11-10，门框拉伸的替代：没有门框时用任何一面墙或柱子）。动图：远镜头那只（左）手肘固定在墙上一点、前臂竖直，脊椎往右转 0→30°；墙画在身体左边。2D 引擎看不出外展与转体，只画前臂竖着贴在一根柱子前。",
+  "sources": [
+   "https://physioadvisor.com.au/exercises/flexibility-muscles-2/pectorals",
+   "https://motra.com/exercises/wallPectoralStretch",
+   "https://au.physitrack.com/home-exercise-video/pec-stretch---mid-fibres"
+  ],
+  "note": "2026-11-10 经 CI 读网页通道（web-lookup.yml）读原文：PhysioAdvisor「Begin standing tall with your forearm against a wall and your elbow bent to 90 degrees… Gently turn your body away from the wall until you feel a mild to moderate stretch across your chest. Hold for 15 seconds」；Motra「Place your inside forearm against the wall at shoulder height with elbow bent at 90 degrees and palm flat」「Slowly rotate your body away from the wall」「Shoulder blade down and back」「Stop if sharp pain occurs」「Ease out if tingling in arm」；Physitrack「take a small step forward on the leg closest to the wall」「rotate your body away from the wall」。手肘「不要高过肩」是保守安全写法（Motra 写 at shoulder height；Columbia 门框版写 a little higher，故取不高于肩）。每侧 15 秒取自 PhysioAdvisor 的 15 秒。"
+ },
+ {
+  "file": "clasp",
+  "anim": "clasp",
+  "type": "stretch",
+  "title_zh": "背后十指交扣扩胸",
+  "reps": "30秒",
+  "cue_zh": "背后扣手、夹肩胛，直臂往上抬",
+  "primary": [
+   "pec"
+  ],
+  "secondary": [
+   "ant_delt"
+  ],
+  "strip": [
+   "胸",
+   "肩"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "站直，两手在背后（屁股后）十指交扣、手臂伸直；肩胛后缩下沉、挺胸，手臂往后上抬（肩后伸约 20→45°）到胸前与肩前有拉感。",
+  "form_audit": "新动作（2026-11-10，门框拉伸的替代：不用任何器材）。2D：两手臂 a=-18→-38（往后上抬），侧面看得出；3D 动图把两手拉到身体中线扣住、握拳近似十指交扣，肩胛后缩 0→10°。",
+  "sources": [
+   "https://www.cuh.nhs.uk/patient-information/stretches-back-pain-management-programme/",
+   "https://www.arthritis.org/health-wellness/healthy-living/physical-activity/success-strategies/upper-body-stretches",
+   "https://us.physitrack.com/home-exercise-video/chest-and-upper-back-stretch"
+  ],
+  "note": "2026-11-10 经 CI 读网页通道读原文：剑桥大学医院 NHS（CUH）「Interlink hands behind you. Keeping arms straight, pull them up behind you, feeling a stretch across your chest. Keep your chin up.」；Arthritis Foundation「Keep your back straight as you clasp your hands together behind your back and squeeze your shoulder blades together. Roll your shoulders down and back.」；Physitrack「interlock your fingers and move your arms slowly upwards… you will feel a stretch in your chest and shoulders」。「腰不要往后拱」对应 Arthritis Foundation 的 keep your back straight。"
+ },
+ {
+  "file": "pronepec",
+  "anim": "pronepec",
+  "type": "stretch",
+  "title_zh": "俯卧单侧胸部拉伸",
+  "reps": "每侧15秒",
+  "cue_zh": "一手侧伸贴地，推地翻向那一侧",
+  "primary": [
+   "pec"
+  ],
+  "secondary": [
+   "ant_delt"
+  ],
+  "strip": [
+   "胸",
+   "肩"
+  ],
+  "view": "front34",
+  "plane": "transverse",
+  "plane_detail": "趴地，要拉的那只手往旁伸直与身体约 90°（T 字）、掌心贴地；另一手在胸旁推地，身体往伸直那手那一侧翻约 60°（另一侧抬起），上面那腿屈膝、脚踩到下面那腿后方地上撑稳；伸直那手全程贴地＝肩水平外展。",
+  "form_audit": "新动作（2026-11-10，门框拉伸的替代：只要有地板）。动图：左手往左伸直贴地，整个身体绕长轴翻 0→62°（右边抬起），右手推在胸前地上，右腿屈膝脚踩到左腿后方。2D 引擎看不出侧伸与翻身，只画趴姿＋一腿屈起。",
+  "sources": [
+   "https://www.yourhousefitness.com/blog/exercise-tutorial-lying-pec-stretch",
+   "https://library.theprehabguys.com/vimeo-video/prone-pec-stretch/"
+  ],
+  "note": "2026-11-10 经 CI 读网页通道读原文：Your House Fitness「Extend your arms out to the sides in the shape of a ‘T’ with your palms facing down. Next, start rolling onto your right side by pushing yourself with your left hand. Lift and bend your left leg. Place your left foot behind your extended right leg for stability.」「only stretch to the point of slight discomfort」；The Prehab Guys（物理治疗师团队）「Use the other hand to push into the ground and assist with rotating that leg up and over the other leg」「Keep the arm down on the side you want stretched.」。Prehab Guys 版本手肘弯 90° 放在肩高，YHF 是直臂；App 用直臂（T 字，较好理解），两种都对。两个来源都是业界／诊所网站，非期刊；分边 15 秒是为了跟原动作同为 30 秒（YHF 写每侧 30 秒）。"
+ },
+ {
   "file": "child",
   "anim": "child",
   "type": "stretch",
