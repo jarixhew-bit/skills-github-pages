@@ -1231,6 +1231,7 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
         <option value="KHR">KHR — 柬币 ៛</option>
         <option value="KRW">KRW — 韩元 ₩</option>
         <option value="VND">VND — 越南盾 ₫</option>
+        <option value="IDR">IDR — 印尼盾 Rp</option>
       </select>
     </div>
     <div class="form-group">
@@ -2424,7 +2425,7 @@ function warnStorageFull(){
 }
 
 // ===================== UTILS =====================
-const CUR_SYMBOLS = {HKD:'HK$',MYR:'RM ',USD:'US$',SGD:'S$ ',CNY:'¥',JPY:'¥',EUR:'€',GBP:'£',TWD:'NT$',THB:'฿',AUD:'A$',KHR:'៛',KRW:'₩',VND:'₫'};
+const CUR_SYMBOLS = {HKD:'HK$',MYR:'RM ',USD:'US$',SGD:'S$ ',CNY:'¥',JPY:'¥',EUR:'€',GBP:'£',TWD:'NT$',THB:'฿',AUD:'A$',KHR:'៛',KRW:'₩',VND:'₫',IDR:'Rp '};
 const RIEL_RATE = 4000; // 柬埔寨瑞尔固定汇率：1 USD = 4000 KHR
 function symOf(cur){ return CUR_SYMBOLS[cur] || cur+' '; }
 function fmt(amt, cur){ return symOf(cur) + Number(amt).toFixed(2); }
@@ -6434,7 +6435,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-10-29';
+const APP_BUILD = '2026-11-10';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';

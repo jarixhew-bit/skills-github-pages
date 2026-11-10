@@ -4547,6 +4547,25 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   await ctx.close();
 }
 
+// ---------- 【43】币种清单有印尼盾（2026-11-10 用户：「币种没有印尼盾」） ----------
+{
+  console.log('\n【43】新建账户能选印尼盾，金额写成 Rp');
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  await ctx.route('**/*', r => r.request().url().startsWith(`http://localhost:${PORT}`) ? r.continue() : r.abort('failed'));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(800);
+  const opts = await page.$$eval('#new-acc-currency option', os => os.map(o => o.value));
+  ok('★新建账户的币种清单有 IDR', opts.includes('IDR'), opts);
+  ok('★印尼盾金额写成 Rp（不是「IDR 」那种认不得的样子）',
+     await page.evaluate(() => fmt(150000, 'IDR')) === 'Rp 150000.00', await page.evaluate(() => fmt(150000, 'IDR')));
+  ok('对照组：没收录的币还是退回「代码 金额」', await page.evaluate(() => fmt(1, 'XYZ')) === 'XYZ 1.00');
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(`\n${fails.length ? '不通过' : '通过'}：${pass} 项通过 / ${fails.length} 项失败`);
 if (fails.length) { fails.forEach(f=>console.log('  - '+f)); process.exit(1); }
