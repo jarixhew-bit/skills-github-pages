@@ -24,6 +24,8 @@
  *  11. 侧面机位：清单里每张侧面图都在、切换钮只出现在有侧面图的动作、按了换图、重载记得、进备份。
  *  13. 热身／放松换动作（门框拉伸没门框时）：动图／名称／要点／跟练／Garmin／重载／恢复／备份。
  *  14. 点示范放大：同一张图、要点与计时在放大里、跟练下一步跟着换、侧面切换、✕／Esc、放大里记组＝同一份状态。
+ *  15. 动图模式下一律用新动图：A/B/C × 三种器材的卡片、跟练每一步（含燃脂收尾两个动作同框）、放大、游泳课，
+ *      有 webp 的动作不准退回 3D／简笔画布（2026-11-10 用户抓到燃脂收尾还是旧模型）。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
  *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
@@ -869,6 +871,82 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   check(g.length === 2 && g.filter(x => x.set === 1).length === 1 && g[0].kg === 13 && g[0].reps === 10 && String(g[0].rir) === '2' && g[1].kg === 14 && g[1].reps === 12,
     `存档：放大里记的组各只存一次、数值一样（实得：${JSON.stringify(g)}）`);
   check(errors.length === 0, `放大画面没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+// ---- 动图模式下一律用新动图（2026-11-10 用户抓到：「day 3 不跳版波比和平板支撑碰肩模型还是旧版」、
+//      第 1 天燃脂的深蹲推举＋登山者也是）——燃脂收尾 AMRAP 一步里有两个动作（anim 是阵列），
+//      旧码遇到阵列就不找动图、退回 3D 画布（旧模型）。守：A/B/C × 三种器材，卡片清单、全屏跟练每一步
+//      （热身、超级组、休息预告、燃脂收尾、放松、完成）、放大画面：只要那个（那些）动作有 webp，
+//      就每个动作各一张 <img src="anim/….webp">，而且画布不出现。
+{
+  const { ctx, page, errors } = await openWith([]);
+  const bad = [];
+  let multiSeen = 0;
+  for (const eq of ['db', 'bw', 'gym']) {
+    await page.click(`#eqSeg [data-eq="${eq}"]`);
+    for (const wk of ['A', 'B', 'C']) {
+      await page.click(`#picker [data-wk="${wk}"]`);
+      const nCv = await page.locator('#workout canvas').count();
+      if (nCv) bad.push(`${eq}/${wk} 卡片清单有 ${nCv} 个画布`);
+      await page.click('#startPlayer');
+      for (let guard = 0; guard < 200; guard++) {
+        const r = await page.evaluate(() => {
+          const F = window.__fit, { steps, si } = F.player(), s = steps[si];
+          const src = s.kind === 'rest' ? (steps.slice(si + 1).find(x => x.anim) || {}) : s;
+          if (!src.anim || s.noAnim) return null;
+          const keys = Array.isArray(src.anim) ? src.anim : [src.anim];
+          const holds = keys.map((_, i) => Array.isArray(src.hold) ? src.hold[i] : src.hold);
+          const files = keys.map((k, i) => F.animFile(k, holds[i]));
+          if (files.some(f => !f)) return null; // 没有动图的才允许画布
+          const box = document.getElementById('plPhoto');
+          const imgs = box.hidden ? [] : [...box.querySelectorAll('.ph.anim img')].map(i => i.getAttribute('src'));
+          return { name: s.phase + '｜' + s.name, files, imgs, cv: !document.getElementById('plCanvas').hidden, multi: keys.length > 1 };
+        });
+        if (r) {
+          const want = r.files.map(f => `anim/${f}.webp`);
+          if (r.cv || want.some(w => !r.imgs.includes(w)) || r.imgs.length !== want.length) bad.push(`${eq}/${wk} 跟练「${r.name}」要 ${want.join('+')}，实得 ${r.imgs.join('+') || '无动图'}${r.cv ? '＋画布' : ''}`);
+          if (r.multi && !r.name.startsWith('休息')) {
+            multiSeen++;
+            // 放大画面：两个动作都在、没有画布、要点还在
+            await page.click((await page.locator('#plPhoto:not([hidden]) [data-zoom]').count()) ? '#plPhoto [data-zoom]' : '#plCanvas');
+            const z = await page.evaluate(() => ({ imgs: [...document.querySelectorAll('#zmBox .ph.anim img')].map(i => i.getAttribute('src')), cv: document.querySelectorAll('#zmBox canvas').length, cue: (document.getElementById('zmCue') || {}).textContent || '', time: !!document.getElementById('zmTime') }));
+            if (z.cv || want.some(w => !z.imgs.includes(w)) || !z.cue || !z.time) bad.push(`${eq}/${wk} 放大「${r.name}」要 ${want.join('+')}＋要点＋计时，实得 ${z.imgs.join('+') || '无动图'}${z.cv ? '＋画布' : ''}${z.cue ? '' : '（没要点）'}${z.time ? '' : '（没计时）'}`);
+            const lbl = await page.locator('#zmBox .ph-tag').allTextContents();
+            if (lbl.length !== want.length || lbl.some(t => !/\d+ 次/.test(t))) bad.push(`${eq}/${wk} 放大「${r.name}」每张动图要标动作名＋次数，实得 ${JSON.stringify(lbl)}`);
+            await page.click('#zmClose');
+          }
+        }
+        if (!(await page.isEnabled('#plNextBtn'))) break;
+        await page.evaluate(() => document.getElementById('plNextBtn').click());
+      }
+      await page.click('#plClose');
+    }
+  }
+  await page.click('#eqSeg [data-eq="db"]');
+  await page.click('nav.tabs [data-tab="swim"]');
+  const swCv = await page.locator('#swimList canvas').count();
+  if (swCv) bad.push(`游泳课有 ${swCv} 个画布`);
+  check(bad.length === 0 && multiSeen >= 6, `动图模式：A/B/C × 三种器材的卡片、跟练每一步、燃脂收尾两个动作的放大画面、游泳课都用新动图、没有画布（两动作同框 ${multiSeen} 处）${bad.length ? '：' + bad.slice(0, 12).join('；') + (bad.length > 12 ? `…共 ${bad.length} 处` : '') : ''}`);
+  // 手机 390px：燃脂收尾两张动图并排不撑破、放大画面两张都在画面里
+  await page.click('nav.tabs [data-tab="train"]');
+  await page.click('#picker [data-wk="C"]');
+  await page.click('#startPlayer');
+  for (let i = 0; i < 80 && !(await page.evaluate(() => { const { steps, si } = window.__fit.player(); return steps[si].kind === 'amrap'; })); i++) await page.evaluate(() => document.getElementById('plNextBtn').click());
+  await page.evaluate(() => Promise.all([...document.querySelectorAll('#plPhoto img')].map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))));
+  const lay = await page.evaluate(() => [...document.querySelectorAll('#plPhoto .ph.anim')].map(e => { const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.right), Math.round(b.width)]; }));
+  check(lay.length === 2 && lay.every(b => b[0] >= 0 && b[1] <= 390 && b[2] >= 150), `390px 跟练：燃脂收尾两张动图都在画面内、各至少 150px 宽（${JSON.stringify(lay)}）`);
+  await page.screenshot({ path: process.env.SHOT_DIR ? process.env.SHOT_DIR + '/finC-player.png' : os.tmpdir() + '/finC-player.png' });
+  await page.click((await page.locator('#plPhoto:not([hidden]) [data-zoom]').count()) ? '#plPhoto [data-zoom]' : '#plCanvas');
+  await page.evaluate(() => Promise.all([...document.querySelectorAll('#zmBox img')].map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; }))));
+  const zl = await page.evaluate(() => [...document.querySelectorAll('#zmBox .ph.anim')].map(e => { const b = e.getBoundingClientRect(); return [Math.round(b.top), Math.round(b.bottom), Math.round(b.width)]; }));
+  check(zl.length === 2 && zl.every(b => b[0] >= 0 && b[1] <= 844 && b[2] >= 240), `390px 放大：燃脂收尾两张动图都在画面内、各至少 240px 宽（${JSON.stringify(zl)}）`);
+  await page.screenshot({ path: process.env.SHOT_DIR ? process.env.SHOT_DIR + '/finC-zoom.png' : os.tmpdir() + '/finC-zoom.png' });
+  // 放大里也能数轮：按 +1 轮两次、−1 一次＝原本跟练的轮数（同一份状态）
+  for (const b of ['+1 轮', '+1 轮', '−1']) await page.locator('#zmText button', { hasText: b }).click();
+  const rz = [await page.textContent('#zmRounds'), await page.textContent('#plRounds')];
+  check(rz[0] === '1 轮' && rz[1] === '1 轮', `放大里数轮＝跟练的轮数（放大 ${rz[0]}／跟练 ${rz[1]}）`);
+  await page.click('#zmClose');
+  check(errors.length === 0, `新动图全路径没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
 }
 // 简笔模式：放大的是画布，不会坏
