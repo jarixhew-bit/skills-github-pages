@@ -80,6 +80,7 @@ CHECKS = [
     ("boss-sw", ["node", "tools/check-boss-sw.mjs"], False),
     ("fund", ["node", "tools/check-fund.mjs"], True),
     ("board", ["node", "tools/check-board.mjs"], True),
+    ("home", ["node", "tools/check-home.mjs"], True),
     ("weather", ["node", "tools/check-weather.mjs"], True),
     ("tripoffline", ["node", "tools/check-trip-offline.mjs"], True),
     ("flightlive", ["node", "tools/check-flight-live.mjs"], True),

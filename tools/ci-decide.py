@@ -55,6 +55,8 @@ RULES = {
     # 券商风格自选股看板：涨跌/损益/合计/排序全是前端现算；数据档也盯（契约变了它会先红）
     "board": ["trading/board.html", "trading/analyzer.py", "trading/universe.json",
               "tools/check-board.mjs"],
+    # 个人总入口首页：倒数天数按「今天」现算；trips.py 的日期变了、被收录的页面搬走了也要重验
+    "home": ["home/**", "index.html", "tools/lib/trips.py", "tools/check-home.mjs"],
     "news": [".github/scripts/fetch_news.py", "tools/check-news.py"],
     "prices": ["trading/fetch_prices.py", "trading/analyzer.py", "trading/universe.json", "tools/check-prices.py"],
     "staff":     ["staff/**", "expense-tracker.html", "tools/build-staff-page.py",
@@ -98,7 +100,7 @@ RULES = {
                   "tools/check-gamebot-logic.mjs"],
 }
 # 浏览器类检查（慢）额外也盯着共用步骤：它坏了这几项全瞎
-BROWSER = ["company", "inventory", "staff", "fund", "board", "weather", "tripoffline", "flightlive", "penangv3", "boss", "fitness"]
+BROWSER = ["company", "inventory", "staff", "fund", "board", "weather", "tripoffline", "flightlive", "penangv3", "boss", "fitness", "home"]
 SHARED = ".github/actions/browser-check-setup/action.yml"
 
 
