@@ -227,6 +227,15 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
 .zm{position:absolute;right:6px;top:6px;z-index:1;width:34px;height:34px;border:0;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font-size:16px;line-height:34px;padding:0;cursor:zoom-in}
 .ph.anim .zm{top:auto;bottom:6px}
 .ph.anim:has(.vw) .zm{bottom:44px}
+/* 一步里有两个动作（燃脂收尾 AMRAP）：每个动作各一张动图并排，左下角标动作名＋次数；放大时上下叠 */
+.phm{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:6px;cursor:zoom-in}
+.phm .ph-tag{font-size:12px;font-weight:600;max-width:calc(100% - 16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phm > .zm{top:auto;bottom:6px}
+#plPhoto .phm .ph{height:auto;aspect-ratio:4/3}
+#zmBox.multi{aspect-ratio:auto;width:min(100vw,calc(29dvh*4/3))}
+#zmBox.multi .phm{grid-template-columns:1fr;gap:4px;cursor:default}
+#zmBox.multi .ph{height:auto;aspect-ratio:4/3}
+#zmBox.multi .ph-tag{font-size:14px;padding:3px 10px}
 #zoom{position:fixed;inset:0;z-index:40;background:#03060e;color:#eef2f8;display:flex;flex-direction:column;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 60px) 0 env(safe-area-inset-bottom,0px)}
 #zoom[hidden]{display:none}
 #zmBox{position:relative;flex:none;width:min(100vw,calc(58dvh*4/3));aspect-ratio:4/3}
@@ -254,6 +263,7 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
 @media (orientation:landscape){
   #zoom{flex-direction:row;align-items:center;padding:env(safe-area-inset-top,0px) 64px env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
   #zmBox{width:min(54vw,calc((100dvh - 12px)*4/3))}
+  #zmBox.multi{width:min(54vw,calc((100dvh - 16px)/2*4/3))}
   #zmText{align-self:stretch;max-width:none;padding:16px 8px 16px 16px;justify-content:flex-start}
   #zmHint{display:none}
 }
@@ -1005,8 +1015,11 @@ const PH_ANIM={armcircle:["Arm_Circles"],catcow:["Cat_Stretch"],bridge2:["Butt_L
 let ANIM_FILES=null;
 function animFile(anim,hold){ if(!ANIM_FILES) ANIM_FILES=new Set(animCombos().map(c=>c.file)); const f=anim+(hold?"-"+hold:""); return ANIM_FILES.has(f)?f:null; }
 function photoOf(en,anim,hold){
-  if(cfg.media==="anim"){ const f=anim&&!Array.isArray(anim)&&animFile(anim,hold); if(f) return {anim:f}; }
-  if(cfg.media!=="photo"&&cfg.media!=="anim") return null; const p=(en&&PH_EN[en])||PH_ANIM[anim]; if(!p||(p[2]&&!hold)) return null; return p; }
+  if(cfg.media==="anim"){
+    if(Array.isArray(anim)){ // 一步里有几个动作（燃脂收尾 AMRAP）：每个都有动图就全部并排显示，不要退回画布
+      const fs=anim.map((a,i)=>animFile(a,Array.isArray(hold)?hold[i]:hold)); if(fs.length&&fs.every(Boolean)) return {multi:fs}; }
+    else { const f=anim&&animFile(anim,hold); if(f) return {anim:f}; } }
+  if(Array.isArray(anim)||(cfg.media!=="photo"&&cfg.media!=="anim")) return null; const p=(en&&PH_EN[en])||PH_ANIM[anim]; if(!p||(p[2]&&!hold)) return null; return p; }
 // 侧面（矢状面）机位的动图：膝盖、背的角度要从侧面才看得清的动作，渲染时多出一张 anim/<file>-side.webp
 const SIDE_VIEW=new Set(["smithsquat","squatG-one","squat","hinge-hands","bench-hands","hpush","row1-one","row-hands","lunge-hands","lunge","split-hands","split","legpress","sldl-hands"]);
 const animSrc=f=>"anim/"+f+(cfg.view==="side"&&SIDE_VIEW.has(f)?"-side":"")+".webp";
@@ -1014,13 +1027,16 @@ function vwHTML(f){ return SIDE_VIEW.has(f)?'<div class="vw" role="group" aria-l
 function applyView(){ document.querySelectorAll(".ph.anim[data-f]").forEach(el=>{ const f=el.dataset.f; el.querySelector("img").src=animSrc(f); el.querySelectorAll("[data-view]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===(cfg.view||"front")))); }); }
 document.addEventListener("click",e=>{ const b=e.target.closest(".vw [data-view]"); if(!b) return; e.stopPropagation(); cfg.view=b.dataset.view; saveCfg(); applyView(); },true);
 const ZMB='<button type="button" class="zm" data-zoom aria-label="放大看示范">🔍</button>';
-function photoHTML(p,nozoom){ const z=nozoom?'':ZMB; if(p.anim) return '<div class="ph anim" data-f="'+p.anim+'"><img src="'+animSrc(p.anim)+'" alt="动作示范动图" loading="lazy" decoding="async"><span class="ph-tag">动作示范</span>'+vwHTML(p.anim)+z+'</div>'; return '<div class="ph" data-ph="'+p[0]+'"><img src="photos/'+p[0]+'-0.jpg" alt="真人示范：起始动作" loading="lazy" decoding="async"><img src="photos/'+p[0]+'-1.jpg" alt="真人示范：结束动作" loading="lazy" decoding="async"><span class="ph-tag">真人示范</span>'+(p[1]?'<span class="ph-note">'+esc(p[1])+'</span>':'')+z+'</div>'; }
+function photoHTML(p,nozoom){ const z=nozoom?'':ZMB;
+  if(p.multi) return '<div class="phm" data-n="'+p.multi.length+'">'+p.multi.map((f,i)=>photoHTML({anim:f,tag:(p.labels||[])[i]},true)).join("")+z+'</div>';
+  if(p.anim) return '<div class="ph anim" data-f="'+p.anim+'"><img src="'+animSrc(p.anim)+'" alt="'+(p.tag?esc(p.tag)+' 示范动图':'动作示范动图')+'" loading="lazy" decoding="async"><span class="ph-tag">'+esc(p.tag||"动作示范")+'</span>'+vwHTML(p.anim)+z+'</div>'; return '<div class="ph" data-ph="'+p[0]+'"><img src="photos/'+p[0]+'-0.jpg" alt="真人示范：起始动作" loading="lazy" decoding="async"><img src="photos/'+p[0]+'-1.jpg" alt="真人示范：结束动作" loading="lazy" decoding="async"><span class="ph-tag">真人示范</span>'+(p[1]?'<span class="ph-note">'+esc(p[1])+'</span>':'')+z+'</div>'; }
 // ---------- 放大看示范 ----------
 // 来源：.ph（动图／照片）或 canvas（3D／简笔）。跟练里打开的会跟着当前步骤换图（zm.pl）。
 const zm={open:false,pl:false,from:null};
-function zmSrcEl(el){ return el.closest(".ph")||(el.tagName==="CANVAS"?el:null); }
+function zmSrcEl(el){ return el.closest(".phm")||el.closest(".ph")||(el.tagName==="CANVAS"?el:null); }
 function zmFill(src){
-  const box=$("zmBox");
+  const box=$("zmBox"); box.classList.toggle("multi",!!(src&&src.classList&&src.classList.contains("phm")));
+  if(box.classList.contains("multi")){ box.innerHTML=src.outerHTML.replace(/<button type="button" class="zm"[^>]*>[^<]*<\/button>/g,""); box.querySelectorAll("img").forEach(i=>i.loading="eager"); return; }
   if(!src){ box.innerHTML=""; return; }
   if(src.tagName==="CANVAS"){ box.innerHTML='<canvas id="zmCanvas" aria-label="动作示范"></canvas>'; attach($("zmCanvas"),src._key,src._hold); return; }
   if(src.dataset.f){ box.innerHTML=photoHTML({anim:src.dataset.f},true); box.querySelector("img").loading="eager"; return; }
@@ -1039,7 +1055,7 @@ function zmInfo(src){
 // 记录控件：放大画面里也能填这一组的重量／次数／余力、按「完成这组」。不另存一份状态——
 // 每个控件都只是转手给原本那个控件（data-proxy＝原控件的选择器）：输入就写进原输入框并触发它原本的 input 事件，按钮就点原按钮。
 function zmLogTargets(src){
-  if(zm.pl){ const s=steps[si]; if(!s||s.kind!=="set") return null;
+  if(zm.pl){ const s=steps[si]; if(s&&s.kind==="amrap") return {amrap:true}; if(!s||s.kind!=="set") return null;
     return {lbl:"第 "+(+s.key.split("_")[1]+1)+" 组",kg:$("plKg")?"#plKg":null,reps:"#plReps",rir:"pl",done:"#plAct",doneTxt:"完成这组 ✓",stp:true}; }
   const ex=src.closest&&src.closest(".ex[data-slot]"); if(!ex) return null;
   const b=[...ex.querySelectorAll("[data-done]")].find(x=>x.getAttribute("aria-pressed")!=="true"); if(!b) return {lbl:"这个动作的组都做完了 ✓",none:true};
@@ -1049,6 +1065,7 @@ function zmLogTargets(src){
 function zmLogHTML(src){
   const t=zmLogTargets(src); if(!t) return "";
   if(t.none) return '<div class="zm-log"><div class="zm-ph">'+esc(t.lbl)+'</div></div>';
+  if(t.amrap) return '<div class="zm-log"><div class="row"><button type="button" class="btn primary" data-zclick="#plRound">+1 轮</button><span class="num" style="font-size:24px" id="zmRounds">'+esc(($("plRounds")||{}).textContent||"0 轮")+'</span><button type="button" class="btn ghost small" data-zclick="#plRoundMinus">−1</button></div></div>'; // 燃脂收尾：放大里也能数轮（转手按原按钮）
   const q=x=>document.querySelector(x), iv=x=>{ const e=q(x); return e?e.value:""; }, ip=x=>{ const e=q(x); return e?e.placeholder:""; };
   const rirV=t.rir==="pl"?(((q('#plMain [data-rir][aria-pressed="true"]')||{}).dataset||{}).rir||""):iv(t.rir);
   const inp=(id,sel,lbl,mode,stpSel)=>'<label>'+lbl+'<div class="stepper">'+(t.stp?'<button type="button" data-zclick=\''+stpSel[0]+'\' aria-label="减">−</button>':'')+
@@ -1059,7 +1076,7 @@ function zmLogHTML(src){
     '<div class="rir"><span class="rir-lbl">还能再做几下？</span>'+[0,1,2,3].map(n=>'<button type="button" class="chip" data-zrir="'+n+'" aria-pressed="'+(String(rirV)===String(n))+'">'+(n===3?"3+":n)+'</button>').join("")+'</div>'+
     '<button type="button" class="btn primary wide" id="zmDone">'+t.doneTxt+'</button></div>';
 }
-function zmSyncLog(){ document.querySelectorAll("#zmText [data-proxy]").forEach(i=>{ const e=document.querySelector(i.dataset.proxy); if(e) i.value=e.value; }); }
+function zmSyncLog(){ document.querySelectorAll("#zmText [data-proxy]").forEach(i=>{ const e=document.querySelector(i.dataset.proxy); if(e) i.value=e.value; }); const r=$("zmRounds"), o=$("plRounds"); if(r&&o) r.textContent=o.textContent; }
 $("zmText").addEventListener("input",e=>{ const i=e.target.closest("[data-proxy]"); if(!i) return; const t=document.querySelector(i.dataset.proxy); if(!t) return; t.value=i.value; t.dispatchEvent(new Event("input",{bubbles:true})); });
 $("zmText").addEventListener("click",e=>{
   const c=e.target.closest("[data-zclick]"); if(c){ const t=document.querySelector(c.dataset.zclick); if(t) t.click(); zmSyncLog(); return; }
@@ -1078,7 +1095,7 @@ function zmText(src){
     '<div class="zm-row">'+(t.tg?'<span class="zm-tg">'+esc(t.tg)+'</span>':'')+(t.timer?'<span id="zmTime">'+esc($("plTime").textContent)+'</span>':'')+'</div>'+
     zmLogHTML(src)+(t.cue?'<p class="zm-cue" id="zmCue">'+esc(t.cue)+'</p>':'');
 }
-function zmPlayerSrc(){ return !$("plPhoto").hidden?$("plPhoto").querySelector(".ph"):(!$("plCanvas").hidden?$("plCanvas"):null); }
+function zmPlayerSrc(){ return !$("plPhoto").hidden?$("plPhoto").querySelector(".phm,.ph"):(!$("plCanvas").hidden?$("plCanvas"):null); }
 function openZoom(src,opener){
   zm.pl=!!src.closest("#player"); zm.from=opener||src; zmFill(src); zmText(src);
   $("zoom").hidden=false; zm.open=true;
@@ -1092,9 +1109,9 @@ function closeZoom(fromPop){
 }
 function zoomFollow(){ if(zm.open&&zm.pl){ const s=zmPlayerSrc(); if(s){ zmFill(s); zmText(s); zm.from=s.querySelector?s.querySelector(".zm")||s:s; } else closeZoom(); } }
 document.addEventListener("click",e=>{
-  if(e.target.closest("#zoom")){ if(e.target.id==="zmClose"||!e.target.closest(".ph,canvas,.vw,#zmText")) closeZoom(); return; }
+  if(e.target.closest("#zoom")){ if(e.target.id==="zmClose"||!e.target.closest(".phm,.ph,canvas,.vw,#zmText")) closeZoom(); return; }
   if(e.target.closest(".vw,a,input,select,.alt")) return;
-  const b=e.target.closest("[data-zoom]"), el=b?zmSrcEl(b):(e.target.closest(".ph")||e.target.closest("canvas.thumb,#plCanvas"));
+  const b=e.target.closest("[data-zoom]"), el=b?zmSrcEl(b):(e.target.closest(".phm")||e.target.closest(".ph")||e.target.closest("canvas.thumb,#plCanvas"));
   if(!el) return; e.preventDefault(); openZoom(el,b||el.querySelector&&el.querySelector(".zm")||el);
 });
 document.addEventListener("keydown",e=>{ if(zm.open&&e.key==="Escape"){ e.preventDefault(); closeZoom(); } });
@@ -1689,7 +1706,7 @@ function buildSteps(){
   });
   const fi=finItems(selWk,eq);
   if(F.mode==="amrap"){
-    S.push({kind:"amrap",phase:"燃脂收尾 · "+F.title,name:fi.map(i=>i[0]).join("  +  "),sec:F.min*60,anim:fi.map(i=>i[1]),hold:fi.map(i=>i[2]),cue:"两个动作轮流循环，每完成一轮按「+1 轮」。动画每 5 秒切换一次。",speak:"燃脂收尾，"+F.min+"分钟，尽量多轮"});
+    S.push({kind:"amrap",phase:"燃脂收尾 · "+F.title,name:fi.map(i=>i[0]).join("  +  "),sec:F.min*60,anim:fi.map(i=>i[1]),hold:fi.map(i=>i[2]),labels:fi.map(i=>i[0].replace(/（[^）]*）/g,"").trim()),cue:"两个动作轮流循环，每完成一轮按「+1 轮」。"+(photoOf(null,fi.map(i=>i[1]),fi.map(i=>i[2]))?"":"示范动画每 5 秒切换一个动作。"),speak:"燃脂收尾，"+F.min+"分钟，尽量多轮"});
   } else {
     for(let r=0;r<F.rounds;r++){
       const it=fi[r%fi.length];
@@ -1728,7 +1745,7 @@ function showStep(autostart){
   else { cv._key=s.anim||"child"; cv._hold=s.hold||null; }
   cv._t0=performance.now();
   const src=s.kind==="rest"?(steps.slice(si+1).find(x=>x.anim)||{}):s;
-  const ph=Array.isArray(src.anim)?null:photoOf(src.en,src.anim,src.hold);
+  const ph=photoOf(src.en,src.anim,src.hold); if(ph&&ph.multi) ph.labels=src.labels; // 燃脂收尾两个动作：各一张动图（2026-11-10 用户抓到这里退回了旧模型画布）
   $("plPhoto").innerHTML=ph?photoHTML(ph):""; $("plPhoto").hidden=!ph; cv.hidden=!!ph;
   if(s.noAnim){ cv.hidden=true; $("plPhoto").hidden=true; }
   let m="";
@@ -2049,7 +2066,7 @@ function animCombos(){
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove}}; // 给自检脚本用
+window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>
