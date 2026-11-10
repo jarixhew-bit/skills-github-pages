@@ -51,6 +51,8 @@
   此处只放授权与路由，不复述步骤。
 
 ## 现有项目
+- `home/` — 个人总入口首页（2026-11-10 建）：下一趟行程倒数＋全部工具与手册的入口，根目录 `index.html` 跳到这里。
+  **新页面／新手册建好要在 `home/index.html` 顶部的 `HOME_DATA` 加一条**（还没走完的手册漏加，`check-home` 会红）
 - `xisui/` — 洗髓功法练习 App（PWA）
 - `japan-trip-2026.html` — 日本旅游手册（2026-07 已将 v2 设计转正，v2 文件已删除）
 - `restaurant-guide.html` — 餐厅指南
@@ -137,7 +139,7 @@
    **被用户抓到的错，一律变成一条自检**（2026-11-02 用户要求）：用户指出的错（算错、
    认错、漏项、显示不对），修完要补一条能抓住它的检查——加进现有 `check-*`（butler-bot
    的 AI 认错加进 `tests/ai-eval.mjs` 的题目），并确认它在修之前会红、修之后变绿；
-   确实写不成脚本的（纯审美、纯判断）在回复里说明为什么没补。现有四十个，全部挂 CI（2026-11-08 加 `check-trip-hours`：雅加达手册五家店写「营业时间请订位时确认」等于没查，被用户抓到；2026-11-05 加 `check-flight-live`：新加坡／雅加达机票卡与老板 App 航班项的实时状态框，浏览器故意设成洛杉矶时区，验时刻按出发机场当地显示、没网退缓存、没缓存整框隐藏；同日加 `check-photo-dupes`：同一张卡里不准有重复照片——Jewel 卡 1、2 号网址不同却是同一张图，被用户看出来，所以要下载比感知哈希、只能在 CI 跑；同日加 `check-map-links`：还没走完的手册不准用 Google 地图搜索链接／短链，一律用地点页——搜索链接会落到停车场、私人飞机点；2026-11-04 加 `check-trip-offline`：新加坡／雅加达手册的离线缓存，断网后两本都要打得开；2026-11-03 退订删掉每日 Telegram 新闻摘要，连带删掉只服务它的 `check-morning-positions`——每日新闻对 80/20 二十年持有不可操作，用户原话「其实这个我也没啥看」，而且它挂了两次都没人发现；改由 butler-bot 的管线看门狗负责「停更就推你」；2026-10-30 加 `check-flight-probe`：查航班工具 `flight-probe.yml` 的解析器，fixture 是真实 Google Flights 页面文字，验航班号切分与跨时区全程；该 workflow 每周三实跑一次，抓不到就开 issue；2026-10-29 `check-allocation` 同脚本再管美国资产遗产税提醒（≥$5万，保守：非白名单代码与现金都算，不新增检查文件）；同日加 `check-drawdown`：VOO 大跌开枪提醒（≥20% 一级、≥30% 二级、<15% 才解除，上一状态取自「有没有开着的同名 issue」不提交状态文件），由 `drawdown-check.yml` 周一至五 UTC 22:30 实跑，`--selftest` 手算阈值／滞后／窗口／文案无持仓数字；同日 `check-allocation` 改成标普一边 = VOO+CSPX+VUAA 合计；2026-10-29 加 `check-allocation`：VOO/IBIT 占比偏离政策的纯函数＋`--selftest`，由 `allocation-check.yml` 每月 1、15 号实跑；2026-10-26 加 `check-flex-stale`，并把一直漏在 `check-all.py` 外面的 `check-decision-log` 收进去；2026-10-07 加 `check-board`；2026-09-30 同日再加 `check-fitness`；按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
+   确实写不成脚本的（纯审美、纯判断）在回复里说明为什么没补。现有四十一个，全部挂 CI（2026-11-10 加 `check-home.mjs`：总入口首页的倒数天数用固定假日期对手算答案、每个链接的文件都在、行程最后一天与 `trips.py` 一致、还没走完的手册都上了首页；2026-11-08 加 `check-trip-hours`：雅加达手册五家店写「营业时间请订位时确认」等于没查，被用户抓到；2026-11-05 加 `check-flight-live`：新加坡／雅加达机票卡与老板 App 航班项的实时状态框，浏览器故意设成洛杉矶时区，验时刻按出发机场当地显示、没网退缓存、没缓存整框隐藏；同日加 `check-photo-dupes`：同一张卡里不准有重复照片——Jewel 卡 1、2 号网址不同却是同一张图，被用户看出来，所以要下载比感知哈希、只能在 CI 跑；同日加 `check-map-links`：还没走完的手册不准用 Google 地图搜索链接／短链，一律用地点页——搜索链接会落到停车场、私人飞机点；2026-11-04 加 `check-trip-offline`：新加坡／雅加达手册的离线缓存，断网后两本都要打得开；2026-11-03 退订删掉每日 Telegram 新闻摘要，连带删掉只服务它的 `check-morning-positions`——每日新闻对 80/20 二十年持有不可操作，用户原话「其实这个我也没啥看」，而且它挂了两次都没人发现；改由 butler-bot 的管线看门狗负责「停更就推你」；2026-10-30 加 `check-flight-probe`：查航班工具 `flight-probe.yml` 的解析器，fixture 是真实 Google Flights 页面文字，验航班号切分与跨时区全程；该 workflow 每周三实跑一次，抓不到就开 issue；2026-10-29 `check-allocation` 同脚本再管美国资产遗产税提醒（≥$5万，保守：非白名单代码与现金都算，不新增检查文件）；同日加 `check-drawdown`：VOO 大跌开枪提醒（≥20% 一级、≥30% 二级、<15% 才解除，上一状态取自「有没有开着的同名 issue」不提交状态文件），由 `drawdown-check.yml` 周一至五 UTC 22:30 实跑，`--selftest` 手算阈值／滞后／窗口／文案无持仓数字；同日 `check-allocation` 改成标普一边 = VOO+CSPX+VUAA 合计；2026-10-29 加 `check-allocation`：VOO/IBIT 占比偏离政策的纯函数＋`--selftest`，由 `allocation-check.yml` 每月 1、15 号实跑；2026-10-26 加 `check-flex-stale`，并把一直漏在 `check-all.py` 外面的 `check-decision-log` 收进去；2026-10-07 加 `check-board`；2026-09-30 同日再加 `check-fitness`；按 `tools/check-*` 实数重数：原写二十四个已与实际脱节，成对的 boss/boss-2、gamebot/gamebot-logic 各算一个、`check-all` 是总跑器不算；同日加了 `check-map-coords`）：
    静态类 `check-html` / `check-secrets` / `check-rules` / `check-rule-homes`（查同一条规则
    有没有被复述进第二个档案）/ `check-images` / `check-ai-note` /
    `check-pwa-scopes` / `check-workflows` / `check-ci-notify` /

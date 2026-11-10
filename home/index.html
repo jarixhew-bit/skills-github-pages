@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#14213d">
+<title>我的入口 · My Hub</title>
+<style>
+:root {
+  --bg: #f7f3ea; --surface: #fffdf8; --ink: #1b1f2a; --ink2: #4a4f5e; --muted: #6f6a5d;
+  --hair: #e2dac8; --navy: #14213d; --navy2: #22335c; --gold: #b89a5e; --gold-ink: #7c5f24;
+  --hero-ink: #f3ead6; --hero-muted: #c9bd9f; --ok: #2f7d5b; --shadow: 0 1px 2px rgba(20,33,61,.06), 0 8px 24px rgba(20,33,61,.06);
+  --serif: "Noto Serif SC", "Songti SC", "Source Han Serif SC", Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d121d; --surface: #161d2e; --ink: #ece6d6; --ink2: #c2bcae; --muted: #9a9486;
+    --hair: #2a3349; --navy: #1a2748; --navy2: #263763; --gold: #cdb07a; --gold-ink: #d8c08f;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+a { color: inherit; text-decoration: none; }
+.wrap { max-width: 880px; margin: 0 auto; padding: 0 16px calc(48px + env(safe-area-inset-bottom)); }
+
+/* 顶栏 */
+.top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 6px; }
+.brand { font-family: var(--serif); font-size: 13px; letter-spacing: .28em; text-transform: uppercase; color: var(--gold-ink); }
+.lang { font: inherit; font-size: 13px; letter-spacing: .08em; color: var(--ink2); background: var(--surface); border: 1px solid var(--hair); border-radius: 999px; padding: 6px 14px; min-height: 36px; cursor: pointer; }
+.lang:hover { border-color: var(--gold); }
+.hello { padding: 10px 0 18px; }
+.hello h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(26px, 6vw, 36px); line-height: 1.25; margin: 0; letter-spacing: .02em; }
+.hello p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+
+/* 登机牌式主卡 */
+.hero { display: grid; grid-template-columns: 1fr auto; background: linear-gradient(135deg, var(--navy), var(--navy2)); color: var(--hero-ink); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; position: relative; }
+.hero .main { padding: 22px 20px 20px; min-width: 0; }
+.kicker { font-size: 11.5px; letter-spacing: .26em; text-transform: uppercase; color: var(--gold); display: flex; align-items: center; gap: 8px; }
+.kicker .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.hero[data-state="ongoing"] .kicker .dot { background: #6fd3a3; animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .hero[data-state="ongoing"] .kicker .dot { animation: none; } }
+.hero h2 { font-family: var(--serif); font-weight: 600; font-size: clamp(30px, 8vw, 44px); line-height: 1.15; margin: 10px 0 2px; letter-spacing: .03em; }
+.hero .dates { color: var(--hero-muted); font-size: 14.5px; letter-spacing: .04em; }
+.nw { white-space: nowrap; }
+.hero .note { color: var(--hero-muted); font-size: 13.5px; margin-top: 6px; }
+.bar { height: 5px; background: rgba(255,255,255,.14); border-radius: 99px; margin-top: 14px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--gold); border-radius: 99px; }
+.go { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; background: var(--gold); color: #14213d; font-weight: 600; font-size: 14.5px; padding: 10px 18px; min-height: 44px; border-radius: 999px; }
+.go:hover { filter: brightness(1.06); }
+.stub { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 16px 20px; min-width: 112px; border-left: 2px dashed rgba(184,154,94,.5); position: relative; }
+.stub::before, .stub::after { content: ""; position: absolute; left: -10px; width: 18px; height: 18px; border-radius: 50%; background: var(--bg); }
+.stub::before { top: -9px; } .stub::after { bottom: -9px; }
+.stub .n { font-family: var(--serif); font-weight: 600; font-size: clamp(44px, 13vw, 64px); line-height: 1; color: #fff; font-variant-numeric: lining-nums; }
+.stub .l { font-size: 12.5px; color: var(--hero-muted); margin-top: 6px; letter-spacing: .06em; max-width: 9em; }
+.hero[data-state="none"] { grid-template-columns: 1fr; }
+.hero[data-state="none"] .stub { display: none; }
+
+.also { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.also a { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--hair); border-radius: 999px; padding: 8px 14px; min-height: 40px; font-size: 13.5px; }
+.also a b { font-weight: 600; }
+.also a span { color: var(--muted); }
+.also a:hover { border-color: var(--gold); }
+
+/* 搜索 */
+.search { margin: 26px 0 4px; position: relative; }
+.search input { width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 12px 14px 12px 42px; min-height: 48px; outline: none; }
+.search input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,154,94,.22); }
+.search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.empty { text-align: center; color: var(--muted); padding: 28px 0; }
+
+/* 区块 */
+section { margin-top: 26px; }
+.sh { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; }
+.sh h3 { font-family: var(--serif); font-weight: 600; font-size: 18px; margin: 0; letter-spacing: .04em; }
+.sh small { color: var(--muted); font-size: 12.5px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 860px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.card { display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--hair); border-radius: 14px; padding: 14px; min-height: 118px; transition: transform .15s, border-color .15s, box-shadow .15s; }
+.card:hover, .card:focus-visible { border-color: var(--gold); box-shadow: var(--shadow); transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } .card:hover { transform: none; } }
+.ico { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; font-size: 21px; background: color-mix(in srgb, var(--c, var(--gold)) 16%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c, var(--gold)) 34%, var(--surface)); }
+.card b { font-weight: 600; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+.card span { color: var(--muted); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* 走过的路 */
+.past { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--hair); margin-left: 6px; }
+.past li { position: relative; padding: 2px 0 16px 20px; }
+.past li::before { content: ""; position: absolute; left: -7px; top: 9px; width: 10px; height: 10px; border-radius: 50%; background: var(--bg); border: 2px solid var(--gold); }
+.past .when { color: var(--muted); font-size: 12.5px; letter-spacing: .04em; }
+.past a.t { font-family: var(--serif); font-weight: 600; font-size: 17px; display: inline-block; padding: 2px 0; }
+.past a.t:hover, .past .sub a:hover { color: var(--gold-ink); }
+.past .sub { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--ink2); }
+.past .sub a { padding: 4px 0; text-decoration: underline; text-decoration-color: var(--hair); text-underline-offset: 3px; }
+footer { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--hair); color: var(--muted); font-size: 12.5px; text-align: center; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand" data-zh="我的入口" data-en="My Hub">我的入口</div>
+    <button class="lang" id="langBtn" type="button" onclick="toggleLang()" title="切换语言 / Switch language">EN</button>
+  </div>
+
+  <header class="hello">
+    <h1 id="greet">你好</h1>
+    <p id="today"></p>
+  </header>
+
+  <div class="hero" id="hero" data-state="none">
+    <div class="main">
+      <div class="kicker"><i class="dot"></i><span id="heroKicker"></span></div>
+      <h2 id="heroTitle"></h2>
+      <div class="dates" id="heroDates"></div>
+      <div class="note" id="heroNote"></div>
+      <div class="bar" id="heroBar" hidden><i id="heroBarFill"></i></div>
+      <a class="go" id="heroGo" href="#"><span id="heroGoText"></span><span aria-hidden="true">→</span></a>
+    </div>
+    <div class="stub"><div class="n" id="heroN"></div><div class="l" id="heroL"></div></div>
+  </div>
+  <div class="also" id="also"></div>
+
+  <div class="search">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="q" type="search" autocomplete="off" aria-label="搜索 / Search" placeholder="">
+  </div>
+  <div class="empty" id="empty" hidden data-zh="没有找到符合的页面" data-en="No matching pages">没有找到符合的页面</div>
+
+  <section id="secFreq" hidden>
+    <div class="sh"><h3 data-zh="常用" data-en="Most used">常用</h3><small data-zh="按你点开的次数自动排" data-en="Sorted by how often you open them">按你点开的次数自动排</small></div>
+    <div class="grid" id="gridFreq"></div>
+  </section>
+  <div id="groups"></div>
+
+  <section id="secPast">
+    <div class="sh"><h3 data-zh="走过的路" data-en="Past trips">走过的路</h3><small id="pastCount"></small></div>
+    <ul class="past" id="past"></ul>
+  </section>
+
+  <footer><span id="foot"></span></footer>
+</div>
+
+<script>
+/* ============ 数据：加新页面只改这里 ============
+   行程的 end（最后一天）必须与 tools/lib/trips.py 一致，tools/check-home.mjs 会对。 */
+const HOME_DATA = {
+  trips: [
+    { id: 'japan', start: '2026-07-22', end: '2026-07-30', href: '../japan-trip-2026.html',
+      zh: '日本', en: 'Japan', zhNote: '大阪 · 东京', enNote: 'Osaka · Tokyo',
+      sub: [
+        { href: '../usj-disney-restaurants.html', zh: '大阪 · 东京建议餐厅', en: 'Suggested restaurants: Osaka & Tokyo' },
+        { href: '../restaurant-guide.html', zh: '餐厅精选指南', en: 'Restaurant guide' },
+        { href: '../boss-dinner.html', zh: '老板晚餐', en: 'Boss dinner' } ] },
+    { id: 'xiamen', start: '2026-08-24', end: '2026-08-27', href: '../xiamen-trip/index.html',
+      zh: '厦门', en: 'Xiamen', zhNote: '自由行', enNote: 'Independent travel' },
+    { id: 'clinic', start: '2026-08-28', end: '2026-08-28', href: '../penang-clinic/index.html',
+      zh: '槟城就诊', en: 'Penang appointments', zhNote: '就诊安排', enNote: 'Clinic schedule' },
+    { id: 'sg-sep', start: '2026-09-23', end: '2026-09-27', href: '../singapore-trip/index.html',
+      zh: '新加坡', en: 'Singapore', zhNote: '九月', enNote: 'September' },
+    { id: 'penang', start: '2026-10-09', end: '2026-10-17', href: '../penang-trip/index.html',
+      zh: '槟城', en: 'Penang', zhNote: '家庭旅游', enNote: 'Family trip' },
+    { id: 'sg-nov', start: '2026-11-11', end: '2026-11-14', href: '../sg-jkt-trip/singapore.html',
+      zh: '新加坡', en: 'Singapore', zhNote: '同一趟的第一段，之后飞雅加达', enNote: 'First leg, then on to Jakarta' },
+    { id: 'jakarta', start: '2026-11-14', end: '2026-11-16', href: '../sg-jkt-trip/jakarta.html',
+      zh: '雅加达', en: 'Jakarta', zhNote: '同一趟的第二段', enNote: 'Second leg of the same trip' }
+  ],
+  groups: [
+    { id: 'daily', zh: '日常', en: 'Everyday', items: [
+      { id: 'expense', href: '../expense-tracker.html', icon: '🧾', c: '#1E7A42', zh: '记账本', en: 'Expense book', zhD: '记收支、拍单据、导出明细', enD: 'Log spending, snap receipts, export', k: 'money 记帐 账 帐' },
+      { id: 'fitness', href: '../fitness/index.html', icon: '🏋️', c: '#0c7666', zh: '减脂训练', en: 'Fitness', zhD: '力量训练、游泳课、有氧计划', enD: 'Strength, swim lessons, cardio plan', k: 'gym 健身 游泳 swim' },
+      { id: 'xisui', href: '../xisui/index.html', icon: '🧘', c: '#5b6fb5', zh: '洗髓功法', en: 'Xisui practice', zhD: '每日练习引导', enD: 'Guided daily practice', k: 'qigong 气功 练功' },
+      { id: 'fortune', href: '../fortune.html', icon: '🔮', c: '#7a4f86', zh: '玄机阁', en: 'Fortune', zhD: '算命占卜', enD: 'Fortune telling', k: '运势 玄機閣 算命' }
+    ] },
+    { id: 'invest', zh: '投资', en: 'Investing', items: [
+      { id: 'board', href: '../trading/board.html', icon: '📈', c: '#2f7d5b', zh: '自选股看板', en: 'Watchlist board', zhD: '涨跌、持仓损益一眼看完', enD: 'Prices and position P&L at a glance', k: 'stock 股票 ibkr' },
+      { id: 'fund', href: '../trading/fund.html', icon: '🧭', c: '#36689c', zh: '作业系统简报', en: 'Operations brief', zhD: '绩效、风险、再平衡', enD: 'Performance, risk, rebalancing', k: 'fund 基金 交易 trading' },
+      { id: 'plan', href: '../trading/plan.html', icon: '🏁', c: '#b5793a', zh: '财务自由进度', en: 'Freedom plan', zhD: '长期目标推演', enD: 'Long-term projection', k: 'fire 退休 retire' },
+      { id: 'analyzer', href: '../trading/index.html', icon: '🔍', c: '#8a6512', zh: '股票分析器', en: 'Stock analyzer', zhD: '持仓与信号分析', enD: 'Positions and signals', k: 'stock 交易 trading' }
+    ] },
+    { id: 'work', zh: '工作', en: 'Work', items: [
+      { id: 'boss', href: '../boss/index.html', icon: '💼', c: '#1E3A5F', zh: '老板 App', en: 'Boss app', zhD: '行程、账单、库存', enD: 'Schedule, bills, inventory', k: 'boss 老板' },
+      { id: 'staff', href: '../staff/index.html', icon: '🧮', c: '#0f766e', zh: '报账（同事版）', en: 'Expense report (staff)', zhD: '同事用的报账页', enD: 'Expense claims for colleagues', k: 'staff 同事 claim' },
+      { id: 'gamebot', href: '../game-bot/index.html', icon: '🤖', c: '#a3271f', zh: '游戏自动签到', en: 'Game auto check-in', zhD: '手机脚本使用说明', enD: 'Phone script guide', k: 'game 游戏 bot 签到' }
+    ] }
+  ]
+};
+window.HOME_DATA = HOME_DATA;
+
+/* ============ 语言 ============ */
+let LANG = 'zh';
+const T = (zh, en) => (LANG === 'zh' ? zh : en);
+function applyLang(lang) {
+  LANG = lang === 'en' ? 'en' : 'zh';
+  document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+  document.body.classList.toggle('lang-en', LANG === 'en');
+  document.querySelectorAll('[data-zh]').forEach(el => { el.textContent = el.dataset[LANG]; });
+  document.getElementById('langBtn').textContent = LANG === 'zh' ? 'EN' : '中文';
+  document.getElementById('q').placeholder = T('搜索页面，例如「记账」「新加坡」', 'Search pages, e.g. "expense", "Singapore"');
+  render();
+}
+function toggleLang() {
+  const next = LANG === 'zh' ? 'en' : 'zh';
+  try { localStorage.setItem('siteLangUser', next); } catch (e) {}
+  applyLang(next);
+}
+window.addEventListener('storage', (e) => {
+  if (e.key === 'siteLangUser' && e.newValue) applyLang(e.newValue);
+});
+
+/* ============ 日期（只算日历天，不碰时分秒，避免时区把天数算错一天） ============ */
+const dayNum = (y, m, d) => Math.round(Date.UTC(y, m - 1, d) / 86400000);
+const isoNum = (iso) => { const [y, m, d] = iso.split('-').map(Number); return dayNum(y, m, d); };
+const todayNum = () => { const n = new Date(); return dayNum(n.getFullYear(), n.getMonth() + 1, n.getDate()); };
+const EN_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtRange(s, e) {
+  const [sy, sm, sd] = s.split('-').map(Number), [, em, ed] = e.split('-').map(Number);
+  if (LANG === 'zh') {
+    if (s === e) return `${sy}年${sm}月${sd}日`;
+    return sm === em ? `${sy}年${sm}月${sd}–${ed}日` : `${sy}年${sm}月${sd}日–${em}月${ed}日`;
+  }
+  if (s === e) return `${sd} ${EN_MON[sm - 1]} ${sy}`;
+  return sm === em ? `${sd}–${ed} ${EN_MON[sm - 1]} ${sy}` : `${sd} ${EN_MON[sm - 1]} – ${ed} ${EN_MON[em - 1]} ${sy}`;
+}
+function tripStatus(t, today) {
+  const s = isoNum(t.start), e = isoNum(t.end), total = e - s + 1;
+  if (today < s) return { state: 'upcoming', days: s - today, total };
+  if (today <= e) return { state: 'ongoing', day: today - s + 1, total };
+  return { state: 'past', total };
+}
+function statusText(st) {
+  if (st.state === 'upcoming') return st.days === 1 ? T('明天出发', 'Leaves tomorrow') : T(`还有 ${st.days} 天`, `In ${st.days} days`);
+  if (st.state === 'ongoing') return T(`进行中 · 第 ${st.day} 天`, `Under way · day ${st.day}`);
+  return '';
+}
+
+/* ============ 使用次数（只存本机） ============ */
+function readUse() { try { return JSON.parse(localStorage.getItem('homeUse') || '{}') || {}; } catch (e) { return {}; } }
+function bump(id) {
+  const u = readUse(); const cur = u[id] || { n: 0, t: 0 };
+  u[id] = { n: cur.n + 1, t: Date.now() };
+  try { localStorage.setItem('homeUse', JSON.stringify(u)); } catch (e) {}
+}
+document.addEventListener('click', (ev) => {
+  const a = ev.target.closest('a[data-id]');
+  if (a) bump(a.dataset.id);
+});
+
+/* ============ 画面 ============ */
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function cardHTML(it) {
+  return `<a class="card" data-id="${it.id}" href="${it.href}" style="--c:${it.c}">` +
+    `<div class="ico" aria-hidden="true">${it.icon}</div><b>${esc(T(it.zh, it.en))}</b><span>${esc(T(it.zhD, it.enD))}</span></a>`;
+}
+function matches(q, ...fields) {
+  if (!q) return true;
+  const hay = fields.filter(Boolean).join(' ').toLowerCase();
+  return q.split(/\s+/).every(w => hay.includes(w));
+}
+
+function renderHello() {
+  const now = new Date(), h = now.getHours();
+  const g = h < 5 ? T('夜深了', 'Up late') : h < 11 ? T('早上好', 'Good morning') : h < 13 ? T('中午好', 'Good afternoon')
+    : h < 18 ? T('下午好', 'Good afternoon') : T('晚上好', 'Good evening');
+  document.getElementById('greet').textContent = g;
+  const wd = LANG === 'zh' ? ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()]
+    : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
+  document.getElementById('today').textContent = LANG === 'zh'
+    ? `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 ${wd}`
+    : `${wd}, ${now.getDate()} ${EN_MON[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+function renderHero() {
+  const today = todayNum();
+  const all = HOME_DATA.trips.map(t => ({ t, st: tripStatus(t, today) }));
+  const ongoing = all.filter(x => x.st.state === 'ongoing').sort((a, b) => isoNum(b.t.start) - isoNum(a.t.start));
+  const upcoming = all.filter(x => x.st.state === 'upcoming').sort((a, b) => isoNum(a.t.start) - isoNum(b.t.start));
+  const past = all.filter(x => x.st.state === 'past').sort((a, b) => isoNum(b.t.end) - isoNum(a.t.end));
+  const main = ongoing[0] || upcoming[0] || null;
+  const hero = document.getElementById('hero');
+  const $ = (id) => document.getElementById(id);
+  const go = $('heroGo');
+
+  if (!main) {
+    hero.dataset.state = 'none'; hero.dataset.trip = ''; hero.dataset.days = '';
+    $('heroKicker').textContent = T('行程', 'Trips');
+    $('heroTitle').textContent = T('暂时没有排定的行程', 'No trips planned yet');
+    const last = past[0];
+    $('heroDates').textContent = last ? T(`最近一趟：${last.t.zh}（${fmtRange(last.t.start, last.t.end)}）`, `Latest: ${last.t.en} (${fmtRange(last.t.start, last.t.end)})`) : '';
+    $('heroNote').textContent = '';
+    $('heroBar').hidden = true;
+    go.hidden = !last;
+    if (last) { go.href = last.t.href; go.dataset.id = last.t.id; $('heroGoText').textContent = T('重温这本手册', 'Revisit this guide'); }
+  } else {
+    const { t, st } = main;
+    hero.dataset.state = st.state; hero.dataset.trip = t.id;
+    hero.dataset.days = st.state === 'upcoming' ? st.days : st.day;
+    $('heroKicker').textContent = st.state === 'ongoing' ? T('行程进行中', 'Trip under way') : T('下一趟行程', 'Next trip');
+    $('heroTitle').textContent = T(t.zh, t.en);
+    $('heroDates').innerHTML = `<span class="nw">${esc(fmtRange(t.start, t.end))}</span><span class="nw">${esc(T(` · 共 ${st.total} 天`, ` · ${st.total} ${st.total === 1 ? 'day' : 'days'}`))}</span>`;
+    $('heroNote').textContent = T(t.zhNote, t.enNote);
+    if (st.state === 'ongoing') {
+      $('heroN').textContent = st.day;
+      $('heroL').textContent = T(`第 ${st.day} 天，共 ${st.total} 天`, `Day ${st.day} of ${st.total}`);
+      $('heroBar').hidden = false;
+      $('heroBarFill').style.width = Math.round(st.day / st.total * 100) + '%';
+    } else {
+      $('heroN').textContent = st.days;
+      $('heroL').textContent = st.days === 1 ? T('天后 · 明天出发', 'day to go · tomorrow') : T('天后出发', 'days to go');
+      $('heroBar').hidden = true;
+    }
+    go.hidden = false; go.href = t.href; go.dataset.id = t.id;
+    $('heroGoText').textContent = T('打开手册', 'Open the guide');
+  }
+
+  const others = ongoing.concat(upcoming).filter(x => x !== main);
+  document.getElementById('also').innerHTML = others.map(({ t, st }) =>
+    `<a data-id="${t.id}" data-also="${t.id}" href="${t.href}"><b>${esc(T(t.zh, t.en))}</b><span>${esc(statusText(st))}</span></a>`).join('');
+  return past;
+}
+
+function render() {
+  renderHello();
+  const past = renderHero();
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  let shown = 0;
+
+  // 常用：点过的页面，按次数（同次数按最近）取前四
+  const use = readUse();
+  const flat = HOME_DATA.groups.flatMap(g => g.items);
+  const freq = flat.filter(it => use[it.id] && use[it.id].n > 0)
+    .sort((a, b) => use[b.id].n - use[a.id].n || use[b.id].t - use[a.id].t).slice(0, 4);
+  const secFreq = document.getElementById('secFreq');
+  secFreq.hidden = !!q || freq.length === 0;
+  document.getElementById('gridFreq').innerHTML = freq.map(cardHTML).join('');
+
+  document.getElementById('groups').innerHTML = HOME_DATA.groups.map(g => {
+    const items = g.items.filter(it => matches(q, it.zh, it.en, it.zhD, it.enD, it.k, g.zh, g.en));
+    shown += items.length;
+    if (!items.length) return '';
+    return `<section data-group="${g.id}"><div class="sh"><h3>${esc(T(g.zh, g.en))}</h3></div><div class="grid">${items.map(cardHTML).join('')}</div></section>`;
+  }).join('');
+
+  const pastShown = past.filter(({ t }) => matches(q, t.zh, t.en, t.zhNote, t.enNote, t.start.slice(0, 4),
+    ...(t.sub || []).flatMap(s => [s.zh, s.en])));
+  shown += pastShown.length;
+  document.getElementById('secPast').hidden = pastShown.length === 0;
+  document.getElementById('pastCount').textContent = T(`${pastShown.length} 趟`, `${pastShown.length} ${pastShown.length === 1 ? 'trip' : 'trips'}`);
+  document.getElementById('past').innerHTML = pastShown.map(({ t }) =>
+    `<li data-past="${t.id}"><div class="when">${esc(fmtRange(t.start, t.end))}</div>` +
+    `<a class="t" data-id="${t.id}" href="${t.href}">${esc(T(t.zh, t.en))}<span aria-hidden="true"> →</span></a>` +
+    (t.sub ? `<div class="sub">${t.sub.map(s => `<a href="${s.href}">${esc(T(s.zh, s.en))}</a>`).join('')}</div>` : '') +
+    `</li>`).join('');
+
+  document.getElementById('empty').hidden = shown > 0;
+  const n = flat.length + HOME_DATA.trips.reduce((a, t) => a + 1 + (t.sub ? t.sub.length : 0), 0);
+  document.getElementById('foot').textContent = T(`共收录 ${n} 个页面 · 倒数天数每次打开自动更新`, `${n} pages · countdown updates every time you open this`);
+}
+
+document.getElementById('q').addEventListener('input', render);
+// 从别的页面返回、或开着过夜后回到这页：重算一次日期
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+window.addEventListener('pageshow', (e) => { if (e.persisted) render(); });
+
+(function initLang() {
+  let lang = null;
+  try { lang = localStorage.getItem('siteLangUser'); } catch (e) {}
+  if (!lang) lang = (navigator.language || '').startsWith('zh') ? 'zh' : 'en';
+  applyLang(lang);
+})();
+</script>
+</body>
+</html>
