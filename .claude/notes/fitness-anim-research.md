@@ -568,6 +568,25 @@
   - f1：`t=6 nt=0 ns=0 ft=0 fs=0 na=-88 nf=-172 fa=-88 ff=-172`；膝内角 N180 F180、髋角 N174 F174、肘内角 N96 F96、肩-上臂夹角 N82 F82；座标 hand N(-17,-50) sh(4,-34) nfoot(0,48) ffoot(0,48) nk(0,24)
 - 来源：https://exrx.net/Stretches/ChestGeneral/Doorway；https://pmc.ncbi.nlm.nih.gov/articles/PMC8568813/；https://us.physitrack.com/home-exercise-video/pectoralis-stretching
 
+### wallpec／clasp／pronepec（门框胸部拉伸的替代，2026-11-10）
+
+- 起因：用户「拉伸门框的能不能有 alternative，有时遇到没有门框」。按接近程度排：靠墙单臂（同一个 90/90 手臂姿势，只换成墙）→
+  背后十指交扣（不用器材，直臂、肩后伸＋肩胛后缩）→ 俯卧单侧（只要地板，肩水平外展靠体重）。
+- 查证方式：沙盒挡外站，全部经 CI `web-lookup.yml` 读原文（run 42766465790），引句逐字记在规格 `note`。
+- **wallpec**（3 个来源）：PhysioAdvisor「forearm against a wall and your elbow bent to 90 degrees… Gently turn your body away from the wall…
+  Hold for 15 seconds」；Motra「inside forearm against the wall at shoulder height with elbow bent at 90 degrees」「Stop if sharp pain occurs」
+  「Ease out if tingling in arm」；Physitrack「small step forward on the leg closest to the wall」。手肘「不高过肩」是保守写法
+  （Columbia 门框版写略高于肩，Motra 写肩高）。
+- **clasp**（3 个来源）：CUH NHS「Interlink hands behind you. Keeping arms straight, pull them up behind you… Keep your chin up.」；
+  Arthritis Foundation「clasp your hands together behind your back and squeeze your shoulder blades together. Roll your shoulders down and back.」；
+  Physitrack「interlock your fingers and move your arms slowly upwards」。
+- **pronepec**（2 个来源，都是业界／诊所网站，非期刊）：Your House Fitness「arms out to the sides in the shape of a ‘T’… rolling onto your right side
+  by pushing yourself with your left hand. Lift and bend your left leg. Place your left foot behind your extended right leg」；The Prehab Guys
+  「push into the ground and assist with rotating that leg up and over the other leg」「Keep the arm down on the side you want stretched.」
+  翻的方向＝往伸直那手那一侧翻（另一侧抬起）。Prehab Guys 用屈肘 90°，App 用直臂 T 字，两种都对。
+- 没查到可用的：ACE、ExRx 挡机器人（没去绕）；UCSF 协议是仰卧泡棉轴版本，不是这个动作。
+- 动图机位：wallpec [58,8]（看得到墙与转体）、clasp [120,8]（侧后方，看得到背后扣手与胸口）、pronepec [70,50]（俯视，看得到贴地那只手与翻身）。
+
 ### child（婴儿式）
 
 - 肌肉：主 lats, lower_back；次 glutes。机位 side，平面 sagittal。

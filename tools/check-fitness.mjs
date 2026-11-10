@@ -22,6 +22,8 @@
  *   9. 3D 引擎真的载入、每个动作（含游泳）画出来都不是空白；游泳课 12 课、过关打勾、备份含游泳进度。
  *  10. 替代动作：换了会记住（重载、跟练、Garmin、备份），换上的动作有自己的历史／建议／新纪录，不跟原动作混。
  *  11. 侧面机位：清单里每张侧面图都在、切换钮只出现在有侧面图的动作、按了换图、重载记得、进备份。
+ *  13. 热身／放松换动作（门框拉伸没门框时）：动图／名称／要点／跟练／Garmin／重载／恢复／备份。
+ *  14. 点示范放大：同一张图、要点与计时在放大里、跟练下一步跟着换、侧面切换、✕／Esc、放大里记组＝同一份状态。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
  *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
@@ -728,6 +730,156 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   check(/辅助引体向上/.test(await b2.page.locator('#workout .ex[data-slot="row2"] h3').textContent()), '在另一台设备导入备份 → 换动作的选择也还原');
   check(b2.errors.length === 0, `导入备份没有 JS 错误${b2.errors.length ? '：' + b2.errors.join(' | ') : ''}`);
   await b2.ctx.close(); fs.rmSync(bfile, { force: true });
+}
+
+// ---- 热身／放松的替代动作（2026-11-10 用户：「拉伸门框的能不能有 alternative，有时遇到没有门框」） ----
+// 守：放松的门框拉伸有「换动作」、换了动图／名称／要点／跟练／Garmin 都跟着换、重载记得、恢复原动作、备份来回；
+// 每个热身／放松的替代都有动图与规格。
+{
+  const { ctx, page, errors } = await openWith([]);
+  const st = await page.evaluate(() => { const M = window.__fit.moves, out = { combos: [], few: [] };
+    for (const slot in M.MOVE_ALTS) { if (M.MOVE_ALTS[slot].length < 3) out.few.push(slot); for (const n of M.MOVE_ALTS[slot]) { const w = M.MOVEX[n].w; out.combos.push({ n, anim: w[2], sec: w[1], tag: M.MOVEX[n].tag }); } }
+    out.origSec = Object.fromEntries(Object.keys(M.MOVE_ALTS).map(slot => [slot, M.WARM.concat(M.COOL).find(w => w[2] === slot)[1]]));
+    out.slotOf = Object.fromEntries(Object.entries(M.MOVE_ALTS).flatMap(([slot, l]) => l.map(n => [n, slot])));
+    return out; });
+  const spec = JSON.parse(fs.readFileSync('tools/lib/fitness-anim-spec.json', 'utf8'));
+  check(st.few.length === 0 && st.combos.length >= 3, `门框拉伸至少 3 个替代（${st.combos.length} 个）`);
+  const miss = st.combos.filter(c => !fs.existsSync(`fitness/anim/${c.anim}.webp`) || !spec.some(s => s.file === c.anim && s.anim === c.anim && s.type === 'stretch' && (s.sources || []).length >= 2)).map(c => c.n);
+  check(miss.length === 0, `每个热身／放松替代都有动图＋拉伸规格（≥2 个来源）${miss.length ? '（缺：' + miss.join(', ') + '）' : ''}`);
+  check(st.combos.every(c => c.tag && c.sec === st.origSec[st.slotOf[c.n]]), '每个热身／放松替代都有器材标签、秒数跟原动作一样（计时器总长不变）');
+  const cool = () => page.locator('#coolCard .ex[data-mslot="chest"]');
+  check(await page.locator('#coolCard [data-mswap]').count() === 1 && await cool().locator('[data-mswap]').count() === 1, '放松只有门框胸部拉伸有「换动作」（其他动作没有需要就不加）');
+  await cool().locator('[data-mswap]').click();
+  const it = cool().locator('.alts [data-malt]');
+  const optTxt = (await it.allTextContents()).join(' | ');
+  check(await it.count() === 4 && await cool().locator('.alts .alt img').count() === 4 && /原动作/.test(optTxt) && /墙／柱子/.test(optTxt) && /不用器材/.test(optTxt) && /地板/.test(optTxt) && /30 秒/.test(optTxt),
+    `换动作清单：原动作＋3 个替代，各有小动图、名称、器材标签、秒数（${await it.count()} 项）`);
+  if (process.env.SHOT_SWAP) await page.screenshot({ path: process.env.SHOT_SWAP, clip: await cool().boundingBox().then(b => ({ x: 0, y: Math.max(0, b.y - 10), width: 390, height: Math.min(844, b.height + 20) })) });
+  await cool().locator('.alts [data-malt="wallpec"]').click();
+  check(/靠墙单臂胸部拉伸/.test(await cool().locator('h3').textContent()) && /已换/.test(await cool().textContent()) && /原动作：门框胸部拉伸/.test(await cool().textContent()), '选了靠墙版 → 卡片名称换掉，标「已换」与原动作名');
+  check((await cool().locator('.ph.anim img').getAttribute('src')) === 'anim/wallpec.webp' && /离开墙/.test(await cool().locator('details p').textContent()), '卡片动图与动作要点都换成靠墙版');
+  await page.reload(); await page.waitForSelector('#workout .ex');
+  check(/靠墙单臂胸部拉伸/.test(await cool().locator('h3').textContent()) && (await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).malts)).chest === 'wallpec', '重载后还是靠墙版（存在 cfg.malts）');
+  check(/靠墙单臂胸部拉伸/.test(await page.textContent('#gText')) && !/门框/.test(await page.textContent('#gText')), 'Garmin 文字的放松清单用换过的动作');
+  // 跟练：走到放松那一步
+  await page.click('#startPlayer');
+  for (let i = 0; i < 80 && !/靠墙单臂/.test(await page.textContent('#plName')) && await page.isEnabled('#plNextBtn'); i++) await page.click('#plNextBtn');
+  check(/靠墙单臂/.test(await page.textContent('#plName')) && /wallpec\.webp/.test(await page.innerHTML('#plPhoto')) && /离开墙/.test(await page.textContent('#plCue')) && /0:30/.test(await page.textContent('#plMain')),
+    '跟练放松那一步：名称、动图、要点、30 秒计时都是靠墙版');
+  check(/换边/.test(await page.textContent('#plCue')), '单侧替代动作在跟练里会提示「时间过半换边」');
+  if (/靠墙单臂/.test(await page.textContent('#plName'))) { // 没走到就别往下点（上面已经报红）
+  // 放大看：文字也是替代动作的要点
+  await page.click('#plPhoto .zm');
+  check(/离开墙/.test(await page.textContent('#zmCue')) && /靠墙单臂/.test(await page.textContent('#zmName')), '放大画面的名称与要点也用换上的替代动作');
+  await page.click('#zmClose');
+  await page.click('#plMain [data-plmswap]');
+  await page.click('#plAlts [data-malt="clasp"]');
+  check(/背后十指交扣/.test(await page.textContent('#plName')) && /clasp\.webp/.test(await page.innerHTML('#plPhoto')) && /十指交扣/.test(await page.textContent('#plCue')), '跟练里也能换：当场换成背后十指交扣（名称、动图、要点）');
+  }
+  await page.click('#plClose');
+  check(/背后十指交扣/.test(await cool().locator('h3').textContent()), '跟练里换的，回到清单也是那个');
+  await cool().locator('[data-mswap]').click();
+  await cool().locator('[data-restore]').click();
+  check(/门框胸部拉伸/.test(await cool().locator('h3').textContent()) && !/已换/.test(await cool().textContent()) && !('chest' in (await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).malts))), '「恢复原动作」→ 回到门框胸部拉伸，设定里那笔删掉');
+  // 备份来回
+  await cool().locator('[data-mswap]').click();
+  await cool().locator('.alts [data-malt="pronepec"]').click();
+  await page.click('nav.tabs [data-tab="more"]');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+  const bfile = `${os.tmpdir()}/fit-malt-backup-${process.pid}.json`; fs.copyFileSync(await dl.path(), bfile);
+  check(JSON.parse(fs.readFileSync(bfile, 'utf8')).cfg.malts.chest === 'pronepec', '导出备份包含放松换动作的选择');
+  check(errors.length === 0, `热身／放松换动作没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+  const b2 = await openWith([]);
+  await b2.page.click('nav.tabs [data-tab="more"]');
+  await b2.page.setInputFiles('#bkFile', bfile);
+  await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+  await b2.page.click('nav.tabs [data-tab="train"]');
+  check(/俯卧单侧胸部拉伸/.test(await b2.page.locator('#coolCard .ex[data-mslot="chest"] h3').textContent()), '另一台设备导入备份 → 放松换的动作也还原');
+  await b2.ctx.close(); fs.rmSync(bfile, { force: true });
+}
+
+// ---- 点示范放大（2026-11-10 用户：「跟练时动作能不能点击放大」「放大时那些怎么练的提示词也要在放大画面里」
+//      「放大时也要能记重量次数」） ----
+// 守：点了打开、图跟原来同一张；放大里有名称／时间／要点、计时照走；跟练往下一步时放大的图与文字跟着换；
+// 侧面切换在放大里能用；✕／Esc 关、焦点回去；放大里填的重量次数＝原本那组的（同一份状态），存档只存一次。
+{
+  const { ctx, page, errors } = await openWith(HIST_A);
+  await page.click('#picker [data-wk="A"]');
+  await page.click('#startPlayer');
+  const src0 = await page.getAttribute('#plPhoto img', 'src');
+  check(await page.locator('#plPhoto .zm').count() === 1, '跟练的示范图上有 🔍 放大提示钮');
+  await page.click('#plPhoto img');
+  check(await page.isVisible('#zoom') && (await page.getAttribute('#zmBox img', 'src')) === src0, '点跟练的示范图 → 放大画面打开，是同一张动图');
+  const cue0 = await page.textContent('#plCue');
+  check((await page.textContent('#zmName')) === (await page.textContent('#plName')) && cue0.startsWith(await page.textContent('#zmCue')), '放大画面有这一步的名称与完整要点');
+  const t0 = await page.textContent('#zmTime');
+  await page.clock.setFixedTime(new Date(NOW.getTime() + 3000)); await page.waitForTimeout(500);
+  const t1 = await page.textContent('#zmTime');
+  check(t0 === '0:30' && t1 === '0:27' && (await page.textContent('#plTime')) === '0:27', `放大中计时照走，放大画面也看得到倒数（${t0} → ${t1}）`);
+  await page.evaluate(() => document.getElementById('plNextBtn').click()); // 计时到了自动往下一步也是走这里
+  const src1 = await page.getAttribute('#plPhoto img', 'src');
+  check(src1 !== src0 && (await page.getAttribute('#zmBox img', 'src')) === src1 && (await page.textContent('#zmName')) === (await page.textContent('#plName')), '跟练往下一步 → 放大的图与名称跟着换成新的一步');
+  await page.keyboard.press('Escape');
+  check(!(await page.isVisible('#zoom')) && await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('zm')), '按 Esc 关闭，焦点回到 🔍 钮');
+  // 侧面切换：热身第 5 个「徒手深蹲」有侧面图
+  for (let i = 0; i < 3; i++) await page.click('#plNextBtn');
+  await page.click('#plPhoto .zm');
+  check(await page.locator('#zmBox .vw').count() === 1, '有侧面图的动作，放大画面里也有「正面／侧面」');
+  await page.click('#zmBox .vw [data-view="side"]');
+  check(/squat-side\.webp$/.test(await page.getAttribute('#zmBox img', 'src')) && /squat-side\.webp$/.test(await page.getAttribute('#plPhoto img', 'src')), '在放大画面按「侧面」→ 换成侧面图（底下的也一起换）');
+  await page.click('#zmBox .vw [data-view="front"]');
+  await page.click('#zmClose');
+  check(!(await page.isVisible('#zoom')), '按 ✕ 关闭');
+  // 第一组：放大里记重量次数
+  for (let i = 0; i < 4; i++) await page.click('#plNextBtn');
+  check(/高脚杯深蹲/.test(await page.textContent('#plName')), '走到第一组（高脚杯深蹲）');
+  const sugKg = await page.inputValue('#plKg');
+  await page.click('#plPhoto .zm');
+  check((await page.inputValue('#zmKg')) === sugKg && sugKg === '14' && /第 1 组/.test(await page.textContent('#zmText')), `放大画面有这组的重量（预填建议 ${sugKg}）、次数、余力、完成钮`);
+  if (process.env.SHOT_ZOOM) await page.screenshot({ path: process.env.SHOT_ZOOM }); // 交付用截图（可选）
+  await page.fill('#zmKg', '13'); await page.fill('#zmReps', '11'); await page.click('#zmText [data-zrir="2"]');
+  await page.click('#zmClose');
+  check((await page.inputValue('#plKg')) === '13' && (await page.inputValue('#plReps')) === '11' && (await page.getAttribute('#plMain [data-rir="2"]', 'aria-pressed')) === 'true', '放大里填的 13kg×11、余力 2，关掉后原本的输入框就是这些（同一份）');
+  await page.fill('#plReps', '10');
+  await page.click('#plPhoto .zm');
+  check((await page.inputValue('#zmReps')) === '10', '反过来：原本输入框改的，放大里也看到');
+  await page.click('#zmDone');
+  const nm2 = await page.textContent('#plName');
+  check(await page.isVisible('#zoom') && (await page.textContent('#zmName')) === nm2 && nm2 !== '高脚杯深蹲', `放大里按「完成这组」→ 存下这组、跟练往下走，放大画面换成下一步（${nm2}）`);
+  await page.setViewportSize({ width: 844, height: 390 });
+  if (process.env.SHOT_ZOOM_L) await page.screenshot({ path: process.env.SHOT_ZOOM_L });
+  const lay = await page.evaluate(() => { const a = document.getElementById('zmBox').getBoundingClientRect(), b = document.getElementById('zmText').getBoundingClientRect(); return { side: b.left >= a.right - 1, fit: a.bottom <= innerHeight + 1 && a.right <= innerWidth }; });
+  check(lay.side && lay.fit, '横屏：动图在左、文字在右，图整个放得下');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.click('#zmClose');
+  await page.click('#plClose');
+  // 清单卡片：点卡片示范也能放大，里面记的是下一个没做的组
+  const card = page.locator('#workout .ex[data-slot="gsquat"]');
+  await card.locator('.ph .zm').click();
+  check(/第 2 组/.test(await page.textContent('#zmText')) && /高脚杯深蹲/.test(await page.textContent('#zmName')) && /膝/.test(await page.textContent('#zmCue')), '清单卡片的示范也能放大，里面有动作要点与下一个没做的组（第 2 组）');
+  await page.fill('#zmKg', '14'); await page.fill('#zmReps', '12');
+  await page.click('#zmDone');
+  check(/第 3 组/.test(await page.textContent('#zmText')), '卡片放大里按完成 → 换成第 3 组');
+  await page.click('#zmClose');
+  check((await page.inputValue('#kg-gsquat_1')) === '14' && (await page.inputValue('#rp-gsquat_1')) === '12' && (await page.getAttribute('[data-done="gsquat_1"]', 'aria-pressed')) === 'true', '关掉后卡片的第 2 组就是放大里填的 14kg×12、已打勾');
+  await page.click('#finishBtn');
+  const last = (await page.evaluate(() => JSON.parse(localStorage.getItem('fit.sessions')))).pop();
+  const g = last.sets.filter(x => x.ex === 'gsquat');
+  check(g.length === 2 && g.filter(x => x.set === 1).length === 1 && g[0].kg === 13 && g[0].reps === 10 && String(g[0].rir) === '2' && g[1].kg === 14 && g[1].reps === 12,
+    `存档：放大里记的组各只存一次、数值一样（实得：${JSON.stringify(g)}）`);
+  check(errors.length === 0, `放大画面没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+// 简笔模式：放大的是画布，不会坏
+{
+  const { ctx, page, errors } = await openWith([], { width: 390, height: 844 }, { cfg: { media: '2d', mediaV3: 1 } });
+  await page.click('#startPlayer');
+  await page.click('#plCanvas');
+  check(await page.isVisible('#zoom') && await page.locator('#zmCanvas').count() === 1, '简笔／3D 画布模式：点画布也能放大（放大的是画布）');
+  await page.click('#zmClose');
+  check(errors.length === 0, `画布放大没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
 }
 
 // ---- 手机宽度：没有横向卷动 ----

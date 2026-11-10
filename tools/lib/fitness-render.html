@@ -60,7 +60,7 @@ const M = {
   wood: std(0x9c7a55, { roughness: 0.75 }), plate: std(0x6b7584, { roughness: 0.35, metalness: 0.6 }), board: std(0xf2b33d, { roughness: 0.55 }),
   chrome: std(0xb9c2cc, { roughness: 0.25, metalness: 0.85 }), cable: std(0x1b1f25, { roughness: 0.5 }),
   band: std(0x4fe08f, { roughness: 0.6, emissive: 0x1d8a4c }),
-  tile: std(0x123a55, { roughness: 0.9 }), wall: std(0x8fc7dc, { roughness: 0.85 }),
+  tile: std(0x123a55, { roughness: 0.9 }), wall: std(0x8fc7dc, { roughness: 0.85 }), room: std(0x8a97b4, { roughness: 0.9 }),
   water: new THREE.MeshStandardMaterial({ color: 0x2a8fd6, emissive: 0x062a44, transparent: true, opacity: 0.26, roughness: 0.15, depthWrite: false }),
   surf: new THREE.MeshStandardMaterial({ color: 0x7fd4ff, emissive: 0x0d4a6a, transparent: true, opacity: 0.3, roughness: 0.08, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false }),
 };
@@ -362,6 +362,46 @@ const OV = {
     const t = sh.clone().add(UP.clone().multiplyScalar(L * 0.96 - 28 * c.p)).add(OS(c, s).multiplyScalar(6)).add(c.F.clone().multiplyScalar(2));
     return ik(s, 'arm', t, nrm(OS(c, s), 1, c.F, 0.35, DOWN, 0.4)); }) },
 };
+// ---- 门框胸部拉伸的替代（2026-11-10）：墙／柱子、不用器材、地板 ----
+// 绕某轴转几块骨头，转完量一下方向对不对（不对就反过来转），回传实际用的正负号
+function turnChecked(names, axis, deg, ok) {
+  const keep = names.map(([n]) => bone[n].quaternion.clone());
+  for (const [n, k] of names) rotWorld(n, axis, deg * k);
+  if (ok()) return 1;
+  names.forEach(([n], i) => { bone[n].quaternion.copy(keep[i]); bone[n].updateMatrixWorld(true); });
+  for (const [n, k] of names) rotWorld(n, axis, -deg * k);
+  return -1;
+}
+OV.wallpec = { // 左手（远镜头那只）前臂竖着贴墙、手肘在肩高略低；墙在身体左侧。身体（脊椎）往右转开＝离开墙
+  spine: c => { const or0 = c.OR.clone().setY(0).normalize();
+    c.wallN = or0.clone().negate(); // 墙面朝人的反方向（墙在左边）
+    c.E = W3('LeftArm').add(c.wallN.clone().multiplyScalar(LEN.LeftArm * 0.97)).add(V(0, -2, 0)); // 手肘贴墙的点（固定）
+    const a = 30 * c.p; if (a > 0.1) turnChecked([['Spine', 0.3], ['Spine1', 0.35], ['Spine2', 0.35]], UP, a, () => frameNow().F.dot(or0) > 0); },
+  arms: c => { const H = c.E.clone().add(UP.clone().multiplyScalar(LEN.LeftForeArm * 0.97));
+    const sh = W3('LeftArm'), pole = c.E.clone().sub(sh).normalize();
+    const r = ik('Left', 'arm', H, pole); r.LeftHand = UP.clone(); return r; } };
+OV.clasp = { // 两手在屁股后面中线扣住，手臂伸直，往后上抬；肩胛夹紧（后缩）
+  spine: c => c.clav(-10 * c.p),
+  arms: c => { const S0 = W3('RightArm').lerp(W3('LeftArm'), 0.5), hw = W3('RightArm').distanceTo(W3('LeftArm')) / 2;
+    const b = THREE.MathUtils.degToRad(22 + 22 * c.p), d = nrm(c.T, -Math.cos(b), c.F, -Math.sin(b));
+    return both(s => { const L = (LEN[s + 'Arm'] + LEN[s + 'ForeArm']) * 0.985, w = hw - 1.8, reach = Math.sqrt(Math.max(1, L * L - w * w));
+      const P = S0.clone().add(d.clone().multiplyScalar(reach)).add(OS(c, s).multiplyScalar(1.8));
+      return ik(s, 'arm', P, nrm(OS(c, s), 1, c.F, -0.4)); }); } };
+OV.pronepec = { // 趴着、左手往旁伸直贴地（T 字），右手推地把身体翻向左侧（右边抬起），右腿弯起、脚踩到左腿后面的地上
+  spine: c => { c.or0 = c.OR.clone().setY(0).normalize();
+    const a = 75 * c.p; if (a > 0.1) turnChecked([['Hips', 1]], c.T, a, () => W3('RightArm').y > W3('LeftArm').y); },
+  legs: c => { if (c.p < 0.02) return {}; // 右腿：从伸直慢慢弯起，脚往左腿后面（背那一侧）的地上踩
+    const st = W3('RightUpLeg'), lk = W3('LeftLeg'), fl = Math.min(W3('LeftUpLeg').y, lk.y) - 4;
+    const back = c.F.clone().negate(); back.y = 0; back.normalize();
+    const foot0 = st.clone().add(c.T.clone().multiplyScalar(-(LEN.RightUpLeg + LEN.RightLeg) * 0.98));
+    const foot1 = V(lk.x + 6, fl, lk.z).add(back.multiplyScalar(14));
+    return ik('Right', 'leg', foot0.lerp(foot1, ease(c.p)), nrm(UP, 0.5, c.T, 0.6, c.or0, 0.2)); },
+  arms: c => { const out = c.or0.clone().negate(); // 左手往身体左边伸直、略往下贴地
+    const la = nrm(out, 1, DOWN, 0.12, c.T, 0.05);
+    const S = W3('RightArm'), fl = W3('LeftArm').y - 4.5; // 地面约在左肩下（翻向左侧，压着左肩）
+    const H = W3('Spine2').add(c.F.clone().multiplyScalar(10)).add(c.T.clone().multiplyScalar(2)); H.y = Math.min(H.y, fl + 1.5);
+    const t = ik('Right', 'arm', S.clone().lerp(H, 1), nrm(UP, 0.6, c.T, 0.3, c.F, -0.3));
+    return Object.assign({ LeftArm: la, LeftForeArm: la.clone(), LeftHand: la.clone() }, t, { RightHand: nrm(c.F, 1, DOWN, 0.2) }); } };
 OV.dbbridge = { arms: OV.thrust.arms }; // 哑铃臀桥：两手扶住横放在髋上的哑铃（跟臀推同一套）
 function midHands(c, half, pole) { // 两手一起握一只哑铃：把 2D 的手位置挪到身体中线
   const h = c.def('Right', 'arm'), mid = W3('Hips'), off = h.clone().sub(mid).dot(c.OR); const m = h.sub(c.OR.clone().multiplyScalar(off));
@@ -554,6 +594,8 @@ function props(s, P, c) {
   }
   if (KEY === 'pullapart') rod(W3('RightHand'), W3('LeftHand'), 0.7, M.band); // 弹力带：两手之间
   if (KEY === 'facepull') { const m = W3('RightHand').lerp(W3('LeftHand'), 0.5); rod(m, V(m.x + 140, W3('Head').y, m.z), 0.35, M.cable); }
+  if (KEY === 'wallpec' && c.E) { // 墙：在身体左边，墙面贴着左前臂外侧（皮肉约 2.6 单位厚）
+    const cz = c.E.z + c.wallN.z * (2.6 + 1.5); box(c.E.x - 55, c.E.x + 40, 0, 128, 3, M.room, 0, null, null, cz); }
   if (KEY === 'chest') for (const side of ['Right', 'Left']) { // 门框：前臂贴在门框前面
     const e = W3(side + 'ForeArm'), h = W3(side + 'Hand'), o = side === 'Right' ? c.OR : c.OR.clone().negate();
     const p = e.clone().lerp(h, 0.5).add(c.F.clone().multiplyScalar(4.5)).add(o.clone().multiplyScalar(2));
@@ -572,7 +614,7 @@ function fist(side, on) {
   for (const k of [2, 3]) { const b = B(side + 'HandThumb' + k); if (!b) continue; b.quaternion.copy(fingerRest[b.name]); if (on) b.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), THREE.MathUtils.degToRad(40))); }
 }
 function dumbbells(hold, c) {
-  const grip = KEY === 'smithsquat'; // 握杠的动作也握拳
+  const grip = KEY === 'smithsquat' || KEY === 'clasp'; // clasp：十指交扣用握拳近似 // 握杠的动作也握拳
   fist('Right', !!hold || grip); fist('Left', hold === 'hands' || hold === 'one' || grip); root.updateMatrixWorld(true);
   DB[0].visible = DB[1].visible = false;
   const rh = W3('RightHand'), lh = W3('LeftHand');
@@ -638,6 +680,7 @@ const SIDES = {
   row1: { lats: 'Right', mid_back: 'Right', rear_delt: 'Right', biceps: 'Right', forearm: 'Right' },
   tap: { ant_delt: 'Left', serratus: 'Left' },
   sldl: { hamstrings: 'Right', glutes: 'Right', glute_med: 'Right', adductors: 'Right' }, // 支撑腿
+  wallpec: { pec: 'Left', ant_delt: 'Left' }, pronepec: { pec: 'Left', ant_delt: 'Left' }, // 只拉开贴墙／贴地那只手那一侧
 };
 function glowPoints(spec, c) {
   const out = [];
@@ -722,6 +765,7 @@ const CAM = { // 个别动作的机位微调 [yaw, pitch]
   bench: [58, 24], fpress: [58, 26], incline: [55, 18], thrust: [62, 18], deadbug: [55, 26], fig4: [100, 40], tap: [40, 22], wgs: [40, 18],
   bridge: [84, 14], bridge2: [84, 14], legcurl: [84, 14], hpush: [36, 16], yraise: [150, 30], backfloat: [40, 32], seatrow: [124, 12], row1: [140, 12],
   pullup: [124, 8], pulldown: [150, 8], rfly: [150, 16], facepull: [145, 8], scap: [140, 20], jelly: [84, 16], starfloat: [84, 18], chest: [30, 6],
+  wallpec: [58, 8], clasp: [120, 8], pronepec: [70, 50],
 };
 let CUR = null, PROFILE = false; // PROFILE＝正在渲染侧面版
 function caption(spec) {
@@ -762,7 +806,7 @@ window.setup = function (spec, combo, fps = 12) {
     for (const nm of NAMES) pts.push(W3(nm));
     for (const nm of ['RightHandMiddle3', 'LeftHandMiddle3']) { const b = B(nm); if (b) pts.push(b.getWorldPosition(V())); }
     for (const d of DB) if (d.visible) { pts.push(d.position.clone().add(V(0, 0, 6))); pts.push(d.position.clone().add(V(0, 0, -6))); }
-    for (const b of boxes) if (b.visible && b.scale.z < 60 && b.material !== M.wall) { const h = b.scale.clone().multiplyScalar(0.5); for (const sx of [-1, 1]) for (const sy of [-1, 1]) pts.push(b.position.clone().add(V(sx * h.x, sy * h.y, 0))); }
+    for (const b of boxes) if (b.visible && b.scale.z < 60 && b.material !== M.wall && b.material !== M.room) { const h = b.scale.clone().multiplyScalar(0.5); for (const sx of [-1, 1]) for (const sy of [-1, 1]) pts.push(b.position.clone().add(V(sx * h.x, sy * h.y, 0))); }
     ks.push(c.k); holds.push(c.ph.hold || !isConc(KEY, c.ph));
     const cur = NAMES.map(nm => W3(nm)); if (!ref) ref = cur; disp.push(cur.reduce((a, p, j) => a + p.distanceTo(ref[j]), 0));
   }
@@ -771,7 +815,8 @@ window.setup = function (spec, combo, fps = 12) {
   mat.scale.set(bb.max.x - bb.min.x + 26, 1.2, Math.max(46, bb.max.z - bb.min.z + 26)); mat.position.set((bb.max.x + bb.min.x) / 2, -0.6, (bb.max.z + bb.min.z) / 2);
   // 机位：按规格的 view，个别动作微调；固定不动
   let [yaw, pitch] = CAM[KEY] || VIEW[spec.view] || VIEW.side;
-  if (combo.side) [yaw, pitch] = VIEW.profile; // 侧面版：纯侧面（矢状面），看膝盖与背的角度
+  if (combo.side) [yaw, pitch] = VIEW.profile;
+  if (combo.cam) [yaw, pitch] = combo.cam; // 试机位用（联络表比较），正式渲染不带 // 侧面版：纯侧面（矢状面），看膝盖与背的角度
   if (swim && !CAM[KEY]) pitch = 14;
   cam.fov = 26; cam.clearViewOffset();
   const usable = (H - reserved) / H;
