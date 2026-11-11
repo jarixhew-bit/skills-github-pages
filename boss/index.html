@@ -1932,12 +1932,13 @@ function tonightHotelCardHtml(dateIso){
   }).join('');
 }
 
-function itemRowHtml(it){
+function itemRowHtml(it, opts){
   const hasNote = it.note && ((it.note.zh || '').trim() || (it.note.en || '').trim());
-  return `<div class="item-row${isHotelItem(it) ? ' item-row-hotel' : ''}">
+  const past = !!(opts && opts.past);
+  return `<div class="item-row${isHotelItem(it) ? ' item-row-hotel' : ''}${past ? ' past' : ''}">
       <div class="item-time">${itemTimeHtml(it)}</div>
       <div class="item-body">
-        <div class="item-title">${isHotelItem(it) ? '🏨 ' : ''}${blObj(it.title)}${ it.recurring ? recurTagHtml() : '' }</div>
+        <div class="item-title">${blObj(it.title)}${ it.recurring ? recurTagHtml() : '' }</div>
         ${ hasNote ? `<div class="item-note">${blObj(it.note)}</div>` : '' }
         ${ it.recurring ? recurSkipBtnHtml(it.ruleId, it.date, false) : '' }
         ${ it.flight ? flightInfoHtml(it) : '' }
@@ -1957,13 +1958,16 @@ function activeTripsForDate(dateIso){
 function activeTripForDate(dateIso){
   return activeTripsForDate(dateIso)[0] || null;
 }
-/** 「今天/明天」页顶部的行程横幅：哪怕这趟行程一条具体条目都还没排，人也知道
- * 「自己正在第几天」，不会误以为 App 把数据弄丢了（2026-08-27 用户反馈的根因）。 */
+function tripDayOf(trip, dateIso){
+  return { day: diffDaysIso(trip.start, dateIso) + 1, total: diffDaysIso(trip.start, trip.end || trip.start) + 1 };
+}
+/** 「今天/明天」那一段的第一行：这趟行程叫什么、第几天，后面跟「打开手册」。
+ * 哪怕这趟行程一条具体条目都还没排，人也知道「自己正在第几天」，不会误以为 App 把数据弄丢了
+ * （2026-08-27 用户反馈的根因）。版式 A 起是一行字，不再是一张卡。 */
 function todayTripBannerHtml(dateIso, trip){
   const titleHtml = blObj(trip.title) || bl('未命名行程','Untitled trip');
   const hasLoc = trip.location && ((trip.location.zh||'').trim() || (trip.location.en||'').trim());
-  const totalDays = diffDaysIso(trip.start, trip.end || trip.start) + 1;
-  const dayNum = diffDaysIso(trip.start, dateIso) + 1;
+  const { day: dayNum, total: totalDays } = tripDayOf(trip, dateIso);
   return `<div class="today-trip-banner">
       <div class="today-trip-banner-title">${titleHtml}</div>
       ${ hasLoc ? `<div class="trip-loc">${blObj(trip.location)}</div>` : '' }
@@ -1971,28 +1975,102 @@ function todayTripBannerHtml(dateIso, trip){
       ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener">${bl('打开手册','Open guide')}</a>` : '' }
     </div>`;
 }
-/** 一段（今天或明天）的正文：行程横幅（如果有覆盖当天的行程）＋ 条目列表／空态。
- * 只有「没有行程覆盖这天、也没有条目」才用原本那张"没有安排"的空状态卡——
- * 人正在旅途中但还没排细节时，那句话是错的，会让人以为数据丢了。 */
-function todaySectionBodyHtml(dateIso, items, isTomorrow){
+/** 一段（今天或明天）的正文：行程那一行（如果有覆盖当天的行程）＋ 条目列表／空态。
+ * 只有「没有行程覆盖这天、也没有条目」才回 null，交给调用方印「今天没有安排」——
+ * 人正在旅途中但还没排细节时，那句话是错的，会让人以为数据丢了。
+ * nowMin：今天那一段传现在几点（分钟），已过时间的条目变灰；明天不传。 */
+function todaySectionBodyHtml(dateIso, items, isTomorrow, nowMin){
+  const rows = () => `<div class="item-list">${items.map(it =>
+    itemRowHtml(it, { past: nowMin != null && itemIsPast(it, nowMin) })).join('')}</div>`;
   const trips = activeTripsForDate(dateIso);
   if(trips.length){
     let html = trips.map(t => todayTripBannerHtml(dateIso, t)).join('');
     const emptyNote = isTomorrow
       ? bl('明天还没排具体安排','No specific plan yet for tomorrow')
       : bl('今天还没排具体安排','No specific plan yet for today');
-    html += items.length
-      ? `<div class="item-list">${items.map(itemRowHtml).join('')}</div>`
-      : `<div class="today-trip-empty-note">${emptyNote}</div>`;
+    html += items.length ? rows() : `<div class="today-trip-empty-note">${emptyNote}</div>`;
     return html;
   }
-  if(items.length){
-    return `<div class="item-list">${items.map(itemRowHtml).join('')}</div>`;
-  }
-  return null; // 交给调用方决定要不要显示"没有安排"的空状态卡
+  if(items.length) return rows();
+  return null;
 }
+
+/* ---------- 版式 A：顶部大号日期＋右侧小字（行程名 · 第几天／共几天） ---------- */
+function renderHeader(){
+  const d = document.getElementById('hdrDate'), t = document.getElementById('hdrTrip');
+  if(!d || !t) return;
+  const todayIso = isoDate(new Date());
+  const dw = fmtDateWeekdayBoth(todayIso);
+  d.innerHTML = bl(dw.zh, dw.en);
+  const trips = feedData ? activeTripsForDate(todayIso) : [];
+  t.innerHTML = trips.map(tr => {
+    const { day, total } = tripDayOf(tr, todayIso);
+    return `<div>${blObj(tr.title) || bl('行程','Trip')} · ${bl(`第 ${day} 天／共 ${total} 天`, `Day ${day} of ${total}`)}</div>`;
+  }).join('');
+}
+
+/* ---------- 「下一件事」（2026-11-11，今日页最上面） ----------
+ * 从今天的条目（含每周固定行程）里取「还没过时间的下一条」；今天的都过完了就取明天第一条、标「明天」；
+ * 今明都没有就整块不出现。
+ * 只用手上已有的数据：备注、feed 里的航班状态（flight.live）。**不显示车程估算**——没有数据来源，
+ * 编一个「现在出发约 35 分钟」比不写更糟。不做「给司机看」（用户没选）。
+ * 「过没过」只看钟点：有钟点的，钟点早于现在就算过了；只有时段（上午／下午／晚上）的，时段结束才算过；
+ * 两样都没有的（一整天的事）不算过、也不拿来当「下一件事」——说不出它是几点。 */
+function itemClockMinutes(it){
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String((it && it.time) || '').trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+function nowMinutes(){ const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+function itemIsPast(it, nowMin){
+  const m = itemClockMinutes(it);
+  if(m !== null) return m < nowMin;
+  if(itemPeriod(it)) return itemSortMinutes(it) < nowMin;
+  return false;
+}
+function itemHasWhen(it){ return itemClockMinutes(it) !== null || !!itemPeriod(it); }
+/** 回 { item, tomorrow } 或 null。todayItems / tomorrowItems 必须已经按 sortItemsByTime 排好。 */
+function nextUpPick(todayItems, tomorrowItems, nowMin){
+  const t = (todayItems || []).find(it => itemHasWhen(it) && !itemIsPast(it, nowMin));
+  if(t) return { item: t, tomorrow: false };
+  const m = (tomorrowItems || [])[0];
+  return m ? { item: m, tomorrow: true } : null;
+}
+/** 下一件事的副行：备注＋航班（航班号、起降、feed 里已有的状态）。延误／取消用红字。 */
+function nextUpSubHtml(it){
+  const bits = [];
+  const f = it.flight;
+  if(f){
+    const live = f.live || null;
+    const fb = [escapeHtml(f.no || '')];
+    if(live && (live.from || live.to)) fb.push(`${escapeHtml(live.from || '')} → ${escapeHtml(live.to || '')}`);
+    if(live){
+      const meta = flightStatusMeta(live.status);
+      const warn = meta.cls === 'delay' || meta.cls === 'cancel';
+      fb.push(`<span class="next-flight-st${warn ? ' tline-warn' : ''}">${bl(meta.zh, meta.en)}</span>`);
+      if(live.gate) fb.push(bl(`登机口 ${escapeHtml(live.gate)}`, `Gate ${escapeHtml(live.gate)}`));
+    }
+    bits.push(fb.filter(Boolean).join(' · '));
+  }
+  const hasNote = it.note && ((it.note.zh || '').trim() || (it.note.en || '').trim());
+  if(hasNote) bits.push(blObj(it.note));
+  return bits.length ? `<div class="next-sub">${bits.join(' · ')}</div>` : '';
+}
+function nextUpHtml(pickRes){
+  if(!pickRes) return '';
+  const it = pickRes.item;
+  const when = itemTimeHtml(it);
+  const map = (it.mapUrl || '').trim() || (isHotelItem(it) ? hotelMapUrl(it.hotel) : '');
+  return `<div class="next-up" id="next-up">
+      <div class="lab">${bl('下一件事','Next')}${ pickRes.tomorrow ? `<span class="next-when">${bl('明天','Tomorrow')}</span>` : '' }</div>
+      <div class="next-big">${ when ? `<span class="next-t">${when}</span>` : '' }<span class="next-w">${blObj(it.title)}</span></div>
+      ${nextUpSubHtml(it)}
+      ${ map ? `<div class="next-act"><a href="${escapeHtml(map)}" target="_blank" rel="noopener">${bl('地图','Map')}</a></div>` : '' }
+    </div>`;
+}
+
 function renderToday(){
   const pane = document.getElementById('tab-today');
+  renderHeader();
   if(!feedData){ pane.innerHTML = ''; return; }
   const todayIso = isoDate(new Date());
   const tomorrowIso = isoDate(new Date(Date.now() + 86400000));
@@ -2006,40 +2084,42 @@ function renderToday(){
   const sorted = sortItemsByTime(all);
   const todayItems = sorted.filter(it => it.date === todayIso);
   const tomorrowItems = sorted.filter(it => it.date === tomorrowIso);
+  const nowMin = nowMinutes();
 
-  // 还没看的账单摆在最上面（2026-10-29）：他打开 App 几乎只看「今天」，账单要切到另一页才看得到
+  // 今日页的组成（版式 A，用户选了「今日页只放行程」）：
+  //   下一件事 →（有才出现的）未读账单／库存不足提示行 → 今天（含今晚住） → 明天 → 请假、备忘、牙医、通知入口。
+  let html = nextUpHtml(nextUpPick(todayItems, tomorrowItems, nowMin));
+  // 还没看的账单（2026-10-29 起摆在最上面）：他打开 App 几乎只看「今天」，账单要切到另一页才看得到。
+  // 版式 A 起是一行文字，不再是卡片。
   const newBills = unreadBills();
-  let html = newBillsCardHtml(newBills);
-  html += `<div class="sec-hdr"${newBills.length ? ' style="margin-top:20px"' : ''}><span class="sec-title">${bl('今天','Today')}</span>${shareDayBtnHtml(todayIso)}</div>`;
+  html += newBillsCardHtml(newBills);
+  html += lowStockLineHtml();
+  html += `<div class="sec-hdr"><span class="sec-title">${bl('今天','Today')}</span>${shareDayBtnHtml(todayIso)}</div>`;
   // 今晚住哪摆在「今天」标题正下方：老板出门在外最常问的一句
   html += tonightHotelCardHtml(todayIso);
-  const todayBody = todaySectionBodyHtml(todayIso, todayItems);
+  const todayBody = todaySectionBodyHtml(todayIso, todayItems, false, nowMin);
   if(todayBody !== null){
     html += todayBody;
   }else{
     const next = findNextItineraryDate(todayIso);
     html += `<div class="empty-card">
-        <div class="empty-icon">🗓️</div>
-        <div>${bl('今天没有安排的行程','Nothing scheduled for today')}</div>
+        <div>${bl('今天没有安排','Nothing today')}</div>
         <div class="empty-next">${ next
-          ? bl('下一个行程是 ' + fmtDateBoth(next).zh, 'Next trip item: ' + fmtDateBoth(next).en)
-          : bl('近期没有排定的行程','No upcoming items scheduled') }</div>
+          ? bl('下一个安排：' + fmtDateBoth(next).zh, 'Next: ' + fmtDateBoth(next).en)
+          : bl('近期没有安排','Nothing coming up') }</div>
       </div>`;
-    // 空态不该真的是空的：这一屏是老板的默认首屏，今天没安排时他看到的原本是
-    // 一句「今天没有安排的行程」——全 App 最没用的一屏，而它正是第一眼。
-    // 底下补一条最近的账单，一点就打开。他打开这个 App 十次有八次是为了那个数字。
-    // 最上面已经列了没看的账单时，这里不再重复同一份
+    // 空态底下补一行最近的账单（2026-09-05），一点就打开。最上面已经列了没看的账单时不再重复。
     if(!newBills.length) html += latestBillCardHtml();
   }
-  // 今天谁请假紧跟在今天的行程后面（讲的是今天的事，不该跟牙医那些卡片混在一起）
-  html += leaveTodayCardHtml();
-  html += memoCardHtml();
-  // 明天：有条目、或者明天也在某趟行程区间内，才显示这一段——都没有就整段不出现（跟原行为一致）。
+  // 明天：有条目、或者明天也在某趟行程区间内，才显示这一段——都没有就整段不出现。
   const tomorrowBody = todaySectionBodyHtml(tomorrowIso, tomorrowItems, true);
   if(tomorrowBody !== null){
-    html += `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('明天','Tomorrow')}</span>${shareDayBtnHtml(tomorrowIso)}</div>`;
+    const dw = fmtDateWeekdayBoth(tomorrowIso);
+    html += `<div class="sec-hdr"><span class="sec-title">${bl('明天 · ' + dw.zh, 'Tomorrow · ' + dw.en)}</span>${shareDayBtnHtml(tomorrowIso)}</div>`;
     html += tomorrowBody;
   }
+  html += leaveTodayCardHtml();
+  html += memoCardHtml();
   html += dentalCardHtml();
   html += viewerPushFooterHtml();
   pane.innerHTML = html;
@@ -2159,49 +2239,71 @@ function unreadBills(){
   return ((feedData && feedData.bills) || []).filter(b => b && !b.readAt)
     .sort((a, b) => String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || ''))).slice(0, 3);
 }
+/** 今日页顶部的账单提示行：「2026年10月 Boss 账单 · 花费 USD 3,240.50 · 结余 USD 12,345.00」。
+ *  一行一份，点了直接打开（沿用 openBill 与已读逻辑）。数字走 billMoneyParts()——
+ *  没有 summary 只印标题、没有 closing 只印花费，**绝不印成 0.00**（见 billAmountHtml 的注释）。 */
+function billLineHtml(b, isNew){
+  const m = billMoneyParts(b);
+  const bits = [`<span class="tbill-title">${blObj(b.title)}</span>`];
+  if(m.spent) bits.push(`<span class="tline-k">${pick('花费','Spent')}</span>${escapeHtml(m.spent)}`);
+  if(m.bal) bits.push(`<span class="tline-k">${pick('结余','Balance')}</span><span class="${m.neg ? 'tline-warn' : ''}">${escapeHtml(m.bal)}</span>`);
+  return `<div class="tline tbill-row${isNew ? ' tbill-new' : ''}" role="button" tabindex="0" onclick="openBill('${escapeHtml(b.id)}')">
+      ${ isNew ? `<span class="tline-new tbill-new-pill">${bl('新','New')}</span>` : '' }
+      <span class="tline-body">${bits.join('<span class="tline-sep">·</span>')}</span>
+    </div>`;
+}
 /**
- * 「今天」最上面的新账单卡（2026-10-29 用户要的）。马来西亚那份 10/17 传的，到 10/29 还没被打开：
- * 他几乎只看「今天」，账单在另一个分页，没开通知就不会知道有新的。
- * 点一下直接打开那份。admin 预览时同一张卡多一句「老板还没看」，免得 YANG 以为是自己没看。
+ * 今日页顶部的新账单（2026-10-29 用户要的；2026-11-11 版式 A 起改成一行一份的文字）。
+ * 马来西亚那份 10/17 传的，到 10/29 还没被打开：他几乎只看「今天」，账单在另一个分页。
+ * admin 预览时多一句「老板还没看」，免得 YANG 以为是自己没看。
  */
 function newBillsCardHtml(list){
   if(!list || !list.length) return '';
-  const rows = list.map(b => `<div class="tbill-row tbill-new" onclick="openBill('${escapeHtml(b.id)}')">
-        <div class="tbill-icon">📄</div>
-        <div class="tbill-info">
-          <div class="tbill-title"><span class="tbill-new-pill">${bl('新','New')}</span>${blObj(b.title)}</div>
-          ${billAmountHtml(b)}
-          <div class="tbill-sub">${billSubHtml(b)}</div>
-        </div>
-        <div class="tbill-arrow" aria-hidden="true">›</div>
-      </div>`).join('');
-  const head = list.length > 1 ? bl(`有 ${list.length} 份新账单`, `${list.length} new bills`) : bl('有一份新账单','New bill');
-  return `<div class="sec-hdr"><span class="sec-title">🧾 ${head}</span>${
-      role === 'admin' ? `<span class="tbill-admin-note">${pick('老板还没看','Boss hasn\'t opened')}</span>` : ''}</div>
-    <div class="tbill-list" id="new-bills-card">${rows}</div>`;
+  return `<div class="tbill-list" id="new-bills-card">${list.map(b => billLineHtml(b, true)).join('')}${
+      role === 'admin' ? `<div class="tline-admin tbill-admin-note">${pick('老板还没看','Boss hasn\'t opened')}</div>` : ''}</div>`;
 }
 
-/** 今天没安排时补在空态底下的「最近一份账单」。一份都没有就整段不出现——
- *  空态已经够空了，再挂一句「还没有账单」只是多一行废话。
- *  刻意做成**一点就打开那份账单**（不是跳到账单分页再让他点一次）：
- *  他打开这个 App 多半就是为了那个数字，能少一次点就少一次。 */
+/** 今天没安排时补在空态底下的「最近一份账单」（2026-09-05），一行字，一点就打开。
+ *  一份都没有就不出现——空态已经够空了，再挂一句「还没有账单」只是多一行废话。 */
 function latestBillCardHtml(){
   const bills = ((feedData && feedData.bills) || []).slice().sort((a, b) =>
     String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || '')));
   const b = bills[0];
   if(!b) return '';
-  const amt = billAmountHtml(b);
-  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🧾 ${bl('最近一份账单','Latest bill')}</span></div>
-    <div class="tbill-list">
-      <div class="tbill-row" onclick="openBill('${escapeHtml(b.id)}')">
-        <div class="tbill-icon">📄</div>
-        <div class="tbill-info">
-          <div class="tbill-title">${blObj(b.title)}</div>
-          ${amt}
-          <div class="tbill-sub">${billSubHtml(b)}</div>
-        </div>
-        <div class="tbill-arrow" aria-hidden="true">›</div>
-      </div>
+  return `<div class="tbill-list">${billLineHtml(b, false)}</div>`;
+}
+
+/* ---------- 库存不足（2026-11-11） ----------
+ * 某一款数量 ≤ LOW_STOCK_MAX 且 > 0 就提醒：库存分页那一行红字「只剩 N 瓶」，今日页顶部合并成一行。
+ * 2 是**默认值**（用户没指定每一款各自的门槛），以后要按类别分开设再改这里。
+ * 数量 0 沿用原本的显示（就是「0 瓶」），不算提醒——那多半是喝完了留着记录，不是快没了。 */
+const LOW_STOCK_MAX = 2;
+const LOW_STOCK_LINE_MAX = 3;
+function invCountOf(it){
+  const c = (it.count != null) ? it.count : (it.qty != null ? it.qty : (it.quantity != null ? it.quantity : null));
+  const n = Number(c);
+  return (c === null || c === '' || !isFinite(n)) ? null : n;
+}
+function isLowStock(it){ const n = invCountOf(it); return n !== null && n > 0 && n <= LOW_STOCK_MAX; }
+function allInvItems(){
+  const inv = feedData && feedData.inventory;
+  if(!inv) return [];
+  if(Array.isArray(inv.categories) && inv.categories.length) return inv.categories.flatMap(c => c.items || []);
+  return INV_GROUPS.flatMap(g => inv[g.key] || []);
+}
+function lowStockText(it){
+  const n = invCountOf(it), u = String(it.unit || '').trim();
+  return { zh: `只剩 ${n}${u ? ' ' + u : ''}`, en: `only ${n}${u ? ' ' + u : ''} left` };
+}
+function lowStockLineHtml(){
+  const low = allInvItems().filter(isLowStock).sort(invByName);
+  if(!low.length) return '';
+  const shown = low.slice(0, LOW_STOCK_LINE_MAX);
+  const rest = low.length - shown.length;
+  const zh = shown.map(it => `${it.name || ''} ${lowStockText(it).zh}`).join('、') + (rest > 0 ? ` 等 ${rest} 款` : '');
+  const en = shown.map(it => `${it.name || ''} ${lowStockText(it).en}`).join(', ') + (rest > 0 ? ` and ${rest} more` : '');
+  return `<div class="tline" id="low-stock-line" role="button" tabindex="0" onclick="switchTab('inventory')">
+      <span class="tline-body"><span class="tline-k">${pick('库存','Stock')}</span><span class="tline-warn">${escapeHtml(pick(zh, en))}</span></span>
     </div>`;
 }
 
@@ -2421,7 +2523,7 @@ function renderBills(){
   pane.innerHTML = `<div class="bill-list">${bills.map(b => `
       <div class="bill-row" onclick="openBill('${escapeHtml(b.id)}')">
         <div class="bill-info">
-          <div class="bill-title">${blObj(b.title)}</div>
+          <div class="bill-title">${blObj(b.title)}${ !b.readAt && role !== 'admin' ? `<span class="bill-unread">${bl('未读','Unread')}</span>` : '' }</div>
           ${billAmountHtml(b)}
           <div class="bill-sub">${billSubHtml(b)}</div>
         </div>
@@ -2448,18 +2550,33 @@ function billSubHtml(b){
   if(b.kind === 'trip') bits.push(pick('行程账单','Trip Bill'));
   return bits.join(' · ');
 }
-function billAmountHtml(b){
+/** 一份账单的金额字串：spent＝这段期间花掉多少，bal＝期末结余（closing），都已带币别。
+ *  ⚠️ 老账单没有 summary（2026-09-05 才有）、更老的没有 closing（2026-11-11 才开始显示）：
+ *  缺什么就**不印什么**，绝不能退成「0.00」——那是在告诉老板那个月一分钱没花／账上一分钱不剩。
+ *  0 是合法金额（真的一分没花／刚好花光），不能被当成「没有」。结余为负照实印负号。 */
+function billMoneyParts(b){
   const sm = b && b.summary;
-  if(!sm || typeof sm.expense !== 'number' || !sm.currency) return '';
-  const money = fmtBillMoney(sm.expense, sm.currency);
-  if(!money) return '';
-  const n = (typeof sm.count === 'number' && sm.count >= 0)
-    ? `<span class="bill-count">${bl(sm.count + ' 笔', sm.count + ' items')}</span>` : '';
-  // ⚠️ 「花费」这两个字不能省（2026-09-05 用户：「我一打开看我以为是结余」）。
-  // 这里印的是这段期间**花掉多少**，不是账上还剩多少——两个数字差得远，
-  // 他照着看错的那个下判断就麻烦了。
-  const k = `<span class="bill-amt-k">${pick('花费','Spent')}</span>`;
-  return `<div class="bill-amt">${k}${escapeHtml(money)}${n}</div>`;
+  const out = { spent: '', bal: '', neg: false, count: null };
+  if(!sm || !sm.currency) return out;
+  if(typeof sm.expense === 'number') out.spent = fmtBillMoney(sm.expense, sm.currency);
+  if(typeof sm.closing === 'number' && isFinite(sm.closing)){
+    out.bal = fmtBillMoney(sm.closing, sm.currency);
+    out.neg = sm.closing < 0;
+  }
+  if(typeof sm.count === 'number' && sm.count >= 0) out.count = sm.count;
+  return out;
+}
+function billAmountHtml(b){
+  const m = billMoneyParts(b);
+  if(!m.spent && !m.bal) return '';
+  const n = (m.count !== null && m.spent)
+    ? `<span class="bill-count">${bl(m.count + ' 笔', m.count + ' items')}</span>` : '';
+  // ⚠️ 「花费」「结余」两个标签都不能省（2026-09-05 用户：「我一打开看我以为是结余」）。
+  // 花费是这段期间**花掉多少**，结余是账上**还剩多少**——两个数字差得远，
+  // 少了标签他会照着看错的那个下判断。
+  const k = t => `<span class="bill-amt-k">${t}</span>`;
+  return (m.spent ? `<div class="bill-amt">${k(pick('花费','Spent'))}${escapeHtml(m.spent)}${n}</div>` : '')
+       + (m.bal ? `<div class="bill-bal${m.neg ? ' neg' : ''}">${k(pick('结余','Balance'))}${escapeHtml(m.bal)}</div>` : '');
 }
 function base64ToUint8Array(b64){
   const bin = atob(b64 || '');
@@ -2759,10 +2876,11 @@ function invRowHtml(it){
     ? `<img class="inv-thumb" src="${escapeHtml(it.image)}" alt="" loading="lazy"
          onerror="this.remove()" onclick="openInvLightbox('${escapeHtml(it.image)}')">`
     : '';
-  return `<div class="inv-row">
+  const low = isLowStock(it);
+  return `<div class="inv-row${low ? ' inv-row-low' : ''}">
       ${thumb}
-      <div class="inv-name">${escapeHtml(it.name || '')}</div>
-      <div class="inv-qty">${escapeHtml(String(qty))} ${escapeHtml(it.unit || '')}</div>
+      <div class="inv-name">${escapeHtml(it.name || '')}${ low ? `<span class="inv-low">${escapeHtml(pick(lowStockText(it).zh, lowStockText(it).en))}</span>` : '' }</div>
+      <div class="inv-qty${low ? ' inv-low-qty' : ''}">${escapeHtml(String(qty))} ${escapeHtml(it.unit || '')}</div>
     </div>`;
 }
 /** 一组品项的合计件数（对 count 求和，非数字当 0，不让 NaN 漏出去）。 */
