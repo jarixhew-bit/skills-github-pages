@@ -2184,7 +2184,7 @@ console.log('\n【三十二c】行程名称与日期可以不填，保存时自�
      await page.locator('#tab-today .tbill-row').count());
   ok('★带金额（他要的就是这个数字）', /3,240\.50/.test(txt) && /USD/.test(txt), txt);
   ok('★挑的是最新上传的那一份（不是列表里第一条）', /Boss 账单/.test(txt), txt);
-  ok('★原本那句「今天没有安排」还在（不是把空态换掉）', /今天没有安排的行程/.test(txt), txt);
+  ok('★原本那句「今天没有安排」还在（不是把空态换掉）', /今天没有安排/.test(txt), txt);
   // 一点就打开那份账单：他打开 App 多半就为这个，能少一次点就少一次
   await page.click('#tab-today .tbill-row');
   await until(() => page.evaluate(() =>
@@ -2209,7 +2209,7 @@ console.log('\n【三十二c】行程名称与日期可以不填，保存时自�
   await page.evaluate(() => { feedData.trips = []; feedData.bills = []; renderToday(); });
   ok('★一份账单都没有时整段不出现（不挂一句「还没有账单」的废话）',
      await page.locator('#tab-today .tbill-row').count() === 0);
-  ok('★空态本身还在', /今天没有安排的行程/.test(await page.locator('#tab-today').innerText()));
+  ok('★空态本身还在', /今天没有安排/.test(await page.locator('#tab-today').innerText()));
   ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
   await ctx.close();
 }
@@ -2233,7 +2233,12 @@ console.log('\n【三十二c】行程名称与日期可以不填，保存时自�
   const first = await page.evaluate(() => {
     const pane = document.getElementById('tab-today');
     const card = document.getElementById('new-bills-card');
-    return { firstIsCard: !!card && pane.firstElementChild && pane.firstElementChild.nextElementSibling === card,
+    // 版式 A（2026-11-11）：今日页最上面是「下一件事」（有才出现），新账单紧跟其后、在「今天」那一段之前。
+    // 判据：卡片之前只允许有「下一件事」那一块，而且卡片在第一个「今天」小标题前面。
+    const before = []; for(let el = pane.firstElementChild; el && el !== card; el = el.nextElementSibling) before.push(el.id || el.className);
+    const sec = pane.querySelector('.sec-hdr');
+    return { firstIsCard: !!card && before.every(x => x === 'next-up') && !!sec
+        && !!(card.compareDocumentPosition(sec) & Node.DOCUMENT_POSITION_FOLLOWING), before,
       rows: card ? [...card.querySelectorAll('.tbill-row')].map(r => r.innerText.replace(/\s+/g, ' ')) : [] };
   });
   ok('★新账单卡在「今天」最上面（在今天的行程之前）', first.firstIsCard, first);
@@ -2552,7 +2557,7 @@ async function viewerOn(day, opts = {}){
   const { ctx, page, errs } = await viewerOn('2026-11-12', { viewport: { width: 360, height: 740 } });
   console.log('\n【四十一】酒店条目与「今晚住」');
   const card = page.locator('#tab-today .tonight-hotel');
-  ok('★11/12（入住期间）顶部有「今晚住：Marina Bay Sands」', await card.count() === 1 && /今晚住：\s*Marina Bay Sands/.test(await card.innerText()), await card.count());
+  ok('★11/12（入住期间）顶部有「今晚住：Marina Bay Sands」', await card.count() === 1 && /今晚住[：\s]*Marina Bay Sands/.test(await card.innerText()), await card.count());
   ok('★电话是 tel: 一键拨打（只留 + 和数字）', await card.locator('a[href="tel:+6566888888"]').count() === 1);
   ok('★地址带地图链接', /google\.com\/maps/.test(await card.locator('.tonight-hotel-addr a').getAttribute('href').catch(() => '')));
   const over = await page.evaluate(() => [...document.querySelectorAll('.tonight-hotel, .tonight-hotel *')].filter(el => el.scrollWidth > el.clientWidth + 1).length);
@@ -2713,12 +2718,12 @@ async function todayTitles(page){
 const SHIFU_RE = /见师父/;
 
 {
-  console.log('\n【四十五】每周固定行程：普通星期日出现，带「🔁 每周」');
+  console.log('\n【四十五】每周固定行程：普通星期日出现，带「每周」');
   const { ctx, page, errs } = await recurOn('2026-11-08', { viewport: { width: 360, height: 740 } });
   const titles = await todayTitles(page);
   ok('★11/08（周日、没出远门）今天有「见师父」一条', titles.filter(t => SHIFU_RE.test(t)).length === 1, titles);
   const row = page.locator('#tab-today .item-row', { hasText: '见师父' }).first();
-  ok('★标了「🔁 每周」', /🔁 每周/.test(await row.innerText().catch(() => '')));
+  ok('★标了「每周」（.recur-tag 那个小标）', ((await row.locator('.recur-tag').innerText().catch(() => '')) || '').trim() === '每周');
   ok('★时间是 14:00', (await row.locator('.item-time').innerText().catch(() => '')).trim() === '14:00');
   ok('★地图链接能点、指向 Wat Monisovann', await row.locator('a.item-map').getAttribute('href').catch(() => '') === SHIFU_MAP);
   await gotoTab(page, 'trips');
@@ -2797,7 +2802,7 @@ const SHIFU_RE = /见师父/;
   const after = await recurOn('2026-11-01');
   const t1 = await todayTitles(after.page);
   ok('★迁移后（只有规则）：11/01 今天「见师父」正好一条', t1.filter(t => SHIFU_RE.test(t)).length === 1, t1);
-  ok('★而且是每周那一条', /🔁 每周/.test(t1.find(t => SHIFU_RE.test(t)) || ''), t1);
+  ok('★而且是每周那一条', /每周/.test(t1.find(t => SHIFU_RE.test(t)) || ''), t1);
   await after.ctx.close();
   // 迁移那一刻：单次那趟还在、规则也加了——不许出现两条
   const mid = await recurOn('2026-11-01', { trips: [...tripsSgJkt(), oldShifuTrip()] });
@@ -2898,6 +2903,225 @@ const RECUR_CTRL_SEL = '#admin-recur-note-en, .recur-cancel-btn, .recur-restore-
   ok('★分享文字有「14:00  见师父 · Wat Monisovann（每周固定）」和地图网址', /14:00  见师父 · Wat Monisovann（每周固定）/.test(txt) && txt.includes(SHIFU_MAP), txt);
   ok('无 JS 报错', a.errs.length === 0, a.errs.slice(0, 3));
   await a.ctx.close();
+}
+
+// =====================================================================
+// 场景四十六～四十九：版式 A（2026-11-11）的三个新功能＋全 App 外观守门
+//   四十六  「下一件事」：固定时刻选对条目、过完今天转明天、今明都没有不出现、已过的变灰
+//   四十七  账单花费＋结余：两个标签都在、没 closing 只印花费、没 summary 不印 0.00、今日提示行只在未读时出现
+//   四十八  库存不足：2 标红、3 不标、0 不算；今日页合并成一行、超过 3 款写「等 N 款」
+//   四十九  页面可见文字里没有表情符号；320/390px 五个分页不横向溢出
+// =====================================================================
+const A_TZ = 'Asia/Kuala_Lumpur';
+function aTrips(){
+  const T = (zh, en) => ({ zh, en });
+  return [{
+    id: 'sg', title: T('新加坡', 'Singapore'), start: '2026-11-11', end: '2026-11-14', location: T('新加坡', 'Singapore'),
+    guideUrl: 'https://example.com/sg', items: [
+      { date: '2026-11-11', time: '09:40', title: T('出发去机场', 'Leave'), note: T('', ''), mapUrl: '' },
+      { date: '2026-11-11', time: '12:15', title: T('槟城 → 新加坡', 'Penang → Singapore'), note: T('13:45 抵达樟宜', 'Arrive 13:45'),
+        mapUrl: 'https://maps.example.com/pen',
+        flight: { no: 'SQ5139', date: '2026-11-11', live: { from: 'PEN', to: 'SIN', status: 'delayed', gate: 'B4',
+          sched_dep: '2026-11-11 12:15+08:00', sched_arr: '2026-11-11 13:45+08:00' } } },
+      { date: '2026-11-11', time: '15:00', title: T('入住酒店', 'Check in'), note: T('', ''), mapUrl: '' },
+      { date: '2026-11-11', time: '19:00', title: T('晚餐', 'Dinner'), note: T('已订位 · 4 位', 'Booked'), mapUrl: '' },
+      { date: '2026-11-12', time: '10:00', title: T('会面', 'Meeting'), note: T('', ''), mapUrl: 'https://maps.example.com/meet' },
+      { date: '2026-11-12', time: '18:30', title: T('明天晚餐', 'Dinner'), note: T('', ''), mapUrl: '' },
+    ] }];
+}
+async function aOpen({ day = '2026-11-11', at = 'T10:30:00+08:00', role = 'viewer', width = 390, ...rest } = {}){
+  const ctx = await browser.newContext({ timezoneId: A_TZ, viewport: { width, height: 800 } });
+  await forceZh(ctx);
+  await freezeClock(ctx, day, at);
+  mountRoutes(ctx, { role, trips: aTrips(), ...rest });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.addInitScript(t => localStorage.setItem('bossApp_token', t), GOOD_TOKEN);
+  await page.goto(URL);
+  await until(() => page.evaluate(() => !!document.querySelector('#tab-today .sec-hdr')), { what: '今天渲染完' });
+  return { ctx, page, errs };
+}
+const nextUp = page => page.evaluate(() => {
+  const el = document.getElementById('next-up');
+  if(!el) return null;
+  return { t: (el.querySelector('.next-t') || {}).innerText || '', w: (el.querySelector('.next-w') || {}).innerText || '',
+    txt: el.innerText.replace(/\s+/g, ' '), map: (el.querySelector('.next-act a') || {}).href || '',
+    warnSt: !!el.querySelector('.tline-warn') };
+});
+
+{
+  console.log('\n【四十六】「下一件事」：11/11 10:30（吉隆坡）');
+  const { ctx, page, errs } = await aOpen();
+  const n = await nextUp(page);
+  ok('★10:30 时下一件事是 12:15「槟城 → 新加坡」（09:40 那条已过）', n && n.t.trim() === '12:15' && /槟城 → 新加坡/.test(n.w), n);
+  ok('★副行带航班号与 feed 里的状态（延误用红字）', n && /SQ5139/.test(n.txt) && /延误/.test(n.txt) && n.warnSt, n);
+  ok('★带「地图」链接', n && /maps\.example\.com\/pen/.test(n.map), n);
+  ok('★不编车程估算', n && !/车程|分钟/.test(n.txt), n && n.txt);
+  ok('★不是标「明天」', n && !/明天/.test(n.txt), n && n.txt);
+  ok('★在今日页最上面', await page.evaluate(() => document.getElementById('tab-today').firstElementChild.id === 'next-up'));
+  const past = await page.evaluate(() => [...document.querySelectorAll('#tab-today .item-row')].slice(0, 4)
+    .map(r => [r.querySelector('.item-time').innerText.trim(), r.classList.contains('past'), getComputedStyle(r.querySelector('.item-time')).color]));
+  ok('★09:40 那条变灰（.past），12:15 起不灰', past[0] && past[0][1] === true && past.slice(1).every(r => r[1] === false), past);
+  ok('★变灰是真的颜色不一样', past[0] && past[1] && past[0][2] !== past[1][2], past);
+  // 每周固定行程也算：周三 11:00 那条要排到 12:15 前面
+  // 这一趟的地点改成金边：在外地（新加坡）时每周固定行程按规矩会跳过，这里要测的是「算不算进下一件事」
+  await page.evaluate(() => {
+    feedData.trips[0].location = { zh: '金边', en: 'Phnom Penh' };
+    feedData.recurring = [{ id: 'r', weekday: 3, time: '11:00', title: { zh: '见师父', en: 'Master' }, note: { zh: '', en: '' },
+      mapUrl: '', skipDates: [], startDate: '2026-11-01' }];
+    renderToday();
+  });
+  const n2 = await nextUp(page);
+  ok('★每周固定行程也算进来（11:00 见师父排在 12:15 前面）', n2 && n2.t.trim() === '11:00' && /见师父/.test(n2.w), n2);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+{
+  console.log('\n【四十六b】今天都过完了 → 明天第一条，标「明天」；今明都没有 → 整块不出现');
+  const { ctx, page, errs } = await aOpen({ at: 'T20:00:00+08:00' });
+  const n = await nextUp(page);
+  ok('★20:00 今天四条都过了 → 明天 10:00「会面」', n && n.t.trim() === '10:00' && /会面/.test(n.w), n);
+  ok('★标了「明天」', n && /明天/.test(n.txt), n && n.txt);
+  ok('★今天四条全部变灰', await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#tab-today .item-list')][0].querySelectorAll('.item-row');
+    return rows.length === 4 && [...rows].every(r => r.classList.contains('past'));
+  }));
+  ok('★明天那一段不变灰', await page.evaluate(() => {
+    const lists = [...document.querySelectorAll('#tab-today .item-list')];
+    return lists.length === 2 && [...lists[1].querySelectorAll('.item-row')].every(r => !r.classList.contains('past'));
+  }));
+  await page.evaluate(() => { feedData.trips[0].items = feedData.trips[0].items.filter(it => it.date !== '2026-11-12'); renderToday(); });
+  ok('★★今天都过完、明天没有 → 整块不出现', await page.locator('#next-up').count() === 0);
+  await page.evaluate(() => { feedData.trips = []; renderToday(); });
+  ok('★★今明都没有 → 整块不出现', await page.locator('#next-up').count() === 0);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+{
+  console.log('\n【四十七】账单：花费＋结余两个标签；没 closing 只印花费；没 summary 不印 0.00；负数照实印');
+  const bills = [
+    { id: 'c1', title: { zh: '2026年10月 Boss 账单', en: '' }, period: '2026-10', kind: 'month', account: 'Boss', filename: 'a.pdf',
+      uploadedAt: '2026-11-02T03:00:00Z', summary: { expense: 3240.5, closing: 12345, currency: 'USD', count: 47 } },
+    { id: 'c2', title: { zh: '2026年09月 Boss 账单', en: '' }, period: '2026-09', kind: 'month', account: 'Boss', filename: 'b.pdf',
+      uploadedAt: '2026-10-02T03:00:00Z', readAt: '2026-10-03T00:00:00Z', summary: { expense: 2980, currency: 'USD', count: 41 } },
+    { id: 'c3', title: { zh: '2026年08月 老账单', en: '' }, period: '2026-08', kind: 'month', account: 'Boss', filename: 'c.pdf',
+      uploadedAt: '2026-09-02T03:00:00Z', readAt: '2026-09-03T00:00:00Z' },
+    { id: 'c4', title: { zh: '2026年07月 透支那份', en: '' }, period: '2026-07', kind: 'month', account: 'Yang', filename: 'd.pdf',
+      uploadedAt: '2026-08-02T03:00:00Z', readAt: '2026-08-03T00:00:00Z', summary: { expense: 500, closing: -120.25, currency: 'HKD', count: 3 } },
+  ];
+  const { ctx, page, errs } = await aOpen({ bills });
+  await gotoTab(page, 'bills');
+  const rows = await page.$$eval('#tab-bills .bill-row', rs => rs.map(r => ({ txt: r.innerText.replace(/\s+/g, ' '),
+    neg: !!r.querySelector('.bill-bal.neg') })));
+  const row = re => rows.find(r => re.test(r.txt)) || { txt: '' };
+  ok('★有 closing：同时有「花费 USD 3,240.50」与「结余 USD 12,345.00」', /花费 USD 3,240\.50/.test(row(/10月/).txt) && /结余 USD 12,345\.00/.test(row(/10月/).txt), row(/10月/).txt);
+  ok('★没 closing：只印花费、不出现「结余」', /花费 USD 2,980\.00/.test(row(/09月/).txt) && !/结余/.test(row(/09月/).txt), row(/09月/).txt);
+  ok('★★没 summary：不印 0.00、也不印花费／结余', !/0\.00|花费|结余/.test(row(/老账单/).txt) && /老账单/.test(row(/老账单/).txt), row(/老账单/).txt);
+  ok('★结余为负照实印负号、标红', /结余 HKD -120\.25/.test(row(/透支/).txt) && row(/透支/).neg, row(/透支/));
+  ok('★老板看到 10 月那份标「未读」、看过的不标', /未读/.test(row(/10月/).txt) && !/未读/.test(row(/09月/).txt), rows.map(r => r.txt));
+  await gotoTab(page, 'today');
+  const line = await page.$$eval('#new-bills-card .tbill-row', rs => rs.map(r => r.innerText.replace(/\s+/g, ' ')));
+  ok('★今日页顶部一行：标题＋花费＋结余，标「新」', line.length === 1 && /10月/.test(line[0]) && /花费 USD 3,240\.50/.test(line[0])
+     && /结余 USD 12,345\.00/.test(line[0]) && /新/.test(line[0]), line);
+  ok('★今日页不再放账单卡片（看过的 9/8/7 月不出现）', !(await page.locator('#tab-today').innerText()).match(/09月|老账单|透支/));
+  ok('★提示行在「下一件事」之下、「今天」之上', await page.evaluate(() => {
+    const c = document.getElementById('new-bills-card'), n = document.getElementById('next-up'), s = document.querySelector('#tab-today .sec-hdr');
+    return !!c && !!n && !!s && !!(n.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING)
+      && !!(c.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }));
+  await page.click('#new-bills-card .tbill-row');
+  await until(() => page.evaluate(() => document.getElementById('billOverlay').classList.contains('open')), { what: '账单打开' });
+  ok('★点了打开那份账单', await page.evaluate(() => document.getElementById('billOverlay').classList.contains('open')));
+  await page.click('.overlay-close');
+  ok('★★看过之后提示行消失（只在未读时出现）', await page.locator('#new-bills-card').count() === 0
+     && await page.locator('#tab-today .tbill-row').count() === 0);
+  // 今日提示行也守「没 summary 不印 0.00」「没 closing 只印花费」
+  await page.evaluate(() => { feedData.bills.forEach(b => { b.readAt = 'x'; }); feedData.bills[1].readAt = null; feedData.bills[2].readAt = null; renderToday(); });
+  const l2 = await page.$$eval('#new-bills-card .tbill-row', rs => rs.map(r => r.innerText.replace(/\s+/g, ' ')));
+  ok('★今日提示行：没 closing 只印花费', l2.some(t => /09月/.test(t) && /花费 USD 2,980\.00/.test(t) && !/结余/.test(t)), l2);
+  ok('★★今日提示行：没 summary 只印标题，不出现 0.00', l2.some(t => /老账单/.test(t) && !/0\.00|花费|结余/.test(t)), l2);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+{
+  console.log('\n【四十八】库存不足：≤2 标红、3 不标、0 不算；今日页合并成一行');
+  const inv = { categories: [
+    { key: 'tea', label: '普洱', items: [
+      { id: 'a', name: '大益 7542', count: 2, unit: '饼', location: '金边' },
+      { id: 'b', name: '三饼那款', count: 3, unit: '饼', location: '金边' },
+      { id: 'c', name: '喝完那款', count: 0, unit: '饼', location: '金边' } ] },
+    { key: 'herb', label: '虫草', items: [ { id: 'd', name: '那曲虫草', count: 1, unit: '盒', location: '金边' } ] },
+  ] };
+  const { ctx, page, errs } = await aOpen({ inventory: inv });
+  await gotoTab(page, 'inventory');
+  const rs = await page.$$eval('#tab-inventory .inv-row', rows => rows.map(r => {
+    const low = r.querySelector('.inv-low');
+    return { txt: r.innerText.replace(/\s+/g, ' '), low: low ? low.innerText.trim() : '', color: low ? getComputedStyle(low).color : '' };
+  }));
+  const r = re => rs.find(x => re.test(x.txt)) || {};
+  ok('★数量 2：红字「只剩 2 饼」', r(/大益/).low === '只剩 2 饼' && r(/大益/).color === 'rgb(163, 39, 31)', r(/大益/));
+  ok('★数量 1 也标（单位用数据里的「盒」）', r(/那曲/).low === '只剩 1 盒', r(/那曲/));
+  ok('★★数量 3 不标', r(/三饼/).low === '', r(/三饼/));
+  ok('★★数量 0 不算提醒', r(/喝完/).low === '', r(/喝完/));
+  await gotoTab(page, 'today');
+  const t = await page.locator('#low-stock-line').innerText().catch(() => '');
+  ok('★今日页一行：库存＋两款都列', /库存/.test(t) && /大益 7542 只剩 2 饼/.test(t) && /那曲虫草 只剩 1 盒/.test(t), t);
+  ok('★★今日那行不列 3 和 0 的', !/三饼|喝完/.test(t), t);
+  await page.evaluate(() => {
+    feedData.inventory.categories[1].items.push(...['甲', '乙', '丙'].map((n, i) => ({ id: 'x' + i, name: n + '虫草', count: 2, unit: '盒' })));
+    renderToday();
+  });
+  const t2 = await page.locator('#low-stock-line').innerText().catch(() => '');
+  ok('★超过 3 款只列 3 款、其余写「等 2 款」', /等 2 款/.test(t2) && (t2.match(/只剩/g) || []).length === 3, t2);
+  await page.evaluate(() => { feedData.inventory.categories.forEach(c => c.items.forEach(it => { it.count = 5; })); renderToday(); });
+  ok('★★都充足时这一行不出现', await page.locator('#low-stock-line').count() === 0);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
+{
+  console.log('\n【四十九】可见文字没有表情符号；320/390px 五个分页不横向溢出');
+  const EMOJI = /\p{Extended_Pictographic}/u;
+  for (const role of ['viewer', 'admin']) {
+    const { ctx, page, errs } = await aOpen({ role, bills: fakeBillsMixed(), dental: { lastVisit: '2026-09-02', nextVisit: null, intervalMonths: 3, note: '' },
+      leaveUpcoming: [{ person: 'Seryi', start: '2026-11-16', end: '2026-11-18', reason: '回国' }] });
+    const tabs = ['today', 'trips', 'bills', 'inventory', 'restaurants', ...(role === 'admin' ? ['admin'] : [])];
+    const found = [];
+    for (const tab of tabs) {
+      await gotoTab(page, tab);
+      if (tab === 'trips') await page.locator('.trip-card-hd').first().click().catch(() => {});
+      const txt = await page.evaluate(() => document.body.innerText);
+      const m = txt.match(/\p{Extended_Pictographic}/gu);
+      if (m) found.push(tab + ':' + m.join(''));
+    }
+    ok(`★${role}：每个分页的可见文字都没有表情符号`, found.length === 0, found);
+    if (role === 'viewer') {
+      for (const width of [320, 390]) {
+        await page.setViewportSize({ width, height: 800 });
+        const bad = [];
+        for (const tab of tabs) {
+          await gotoTab(page, tab);
+          if (tab === 'trips') await page.locator('.trip-card-hd').first().click().catch(() => {});
+          const m = await page.evaluate(t => {
+            const W = document.documentElement.clientWidth;
+            let worst = 0, who = '';
+            document.querySelectorAll('#tab-' + t + ' *, .hdr *, #bottomNav *').forEach(el => {
+              const r = el.getBoundingClientRect();
+              if (r.width && r.right - W > worst) { worst = r.right - W; who = el.className || el.tagName; }
+            });
+            return { page: document.documentElement.scrollWidth - W, worst, who };
+          }, tab);
+          if (m.page > 1 || m.worst > 1) bad.push({ tab, ...m });
+        }
+        ok(`★${width}px：五个分页都不横向溢出`, bad.length === 0, bad);
+      }
+    }
+    ok(`${role}：无 JS 报错`, errs.length === 0, errs.slice(0, 3));
+    await ctx.close();
+  }
+  ok('★自检的表情符号判据本身认得出表情（对照）', EMOJI.test('🧾') && !EMOJI.test('→ › ·'));
 }
 
 await finish('后半');

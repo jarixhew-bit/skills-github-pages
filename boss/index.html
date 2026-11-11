@@ -659,6 +659,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 /* 今晚住：并进「今天」段，一行 */
 .tonight-hotel{padding:10px 0;margin:0;border:none;border-bottom:1px solid var(--border)}
 .tonight-hotel-hd{font-size:15px}
+.tonight-hotel-hd b{margin-left:.6em}
 .tonight-hotel-addr{margin-top:2px;font-size:13.5px}
 .tonight-hotel-addr a{color:var(--sub);text-decoration:underline;text-decoration-color:var(--border)}
 .tonight-hotel-btns{gap:22px;margin-top:2px}
@@ -1920,7 +1921,7 @@ function tonightHotelCardHtml(dateIso){
     const map = hotelMapUrl(h);
     const tel = telHref(h.phone);
     return `<div class="tonight-hotel">
-        <div class="tonight-hotel-hd">${bl('今晚住　', 'Tonight: ')}<b>${escapeHtml(name)}</b></div>
+        <div class="tonight-hotel-hd">${bl('今晚住', 'Tonight')}<b>${escapeHtml(name)}</b></div>
         ${ (h.address || '').trim() ? `<div class="tonight-hotel-addr">${ map
             ? `<a href="${escapeHtml(map)}" target="_blank" rel="noopener">${escapeHtml(h.address.trim())}</a>`
             : escapeHtml(h.address.trim()) }</div>` : '' }
@@ -2245,11 +2246,11 @@ function unreadBills(){
 function billLineHtml(b, isNew){
   const m = billMoneyParts(b);
   const bits = [`<span class="tbill-title">${blObj(b.title)}</span>`];
-  if(m.spent) bits.push(`<span class="tline-k">${pick('花费','Spent')}</span>${escapeHtml(m.spent)}`);
-  if(m.bal) bits.push(`<span class="tline-k">${pick('结余','Balance')}</span><span class="${m.neg ? 'tline-warn' : ''}">${escapeHtml(m.bal)}</span>`);
+  if(m.spent) bits.push(`<span class="tline-k">${pick('花费','Spent')}</span> ${escapeHtml(m.spent)}`);
+  if(m.bal) bits.push(`<span class="tline-k">${pick('结余','Balance')}</span> <span class="${m.neg ? 'tline-warn' : ''}">${escapeHtml(m.bal)}</span>`);
   return `<div class="tline tbill-row${isNew ? ' tbill-new' : ''}" role="button" tabindex="0" onclick="openBill('${escapeHtml(b.id)}')">
       ${ isNew ? `<span class="tline-new tbill-new-pill">${bl('新','New')}</span>` : '' }
-      <span class="tline-body">${bits.join('<span class="tline-sep">·</span>')}</span>
+      <span class="tline-body">${bits.join(' <span class="tline-sep">·</span> ')}</span>
     </div>`;
 }
 /**
@@ -2303,7 +2304,7 @@ function lowStockLineHtml(){
   const zh = shown.map(it => `${it.name || ''} ${lowStockText(it).zh}`).join('、') + (rest > 0 ? ` 等 ${rest} 款` : '');
   const en = shown.map(it => `${it.name || ''} ${lowStockText(it).en}`).join(', ') + (rest > 0 ? ` and ${rest} more` : '');
   return `<div class="tline" id="low-stock-line" role="button" tabindex="0" onclick="switchTab('inventory')">
-      <span class="tline-body"><span class="tline-k">${pick('库存','Stock')}</span><span class="tline-warn">${escapeHtml(pick(zh, en))}</span></span>
+      <span class="tline-body"><span class="tline-k">${pick('库存','Stock')}</span> <span class="tline-warn">${escapeHtml(pick(zh, en))}</span></span>
     </div>`;
 }
 
@@ -2575,8 +2576,8 @@ function billAmountHtml(b){
   // 花费是这段期间**花掉多少**，结余是账上**还剩多少**——两个数字差得远，
   // 少了标签他会照着看错的那个下判断。
   const k = t => `<span class="bill-amt-k">${t}</span>`;
-  return (m.spent ? `<div class="bill-amt">${k(pick('花费','Spent'))}${escapeHtml(m.spent)}${n}</div>` : '')
-       + (m.bal ? `<div class="bill-bal${m.neg ? ' neg' : ''}">${k(pick('结余','Balance'))}${escapeHtml(m.bal)}</div>` : '');
+  return (m.spent ? `<div class="bill-amt">${k(pick('花费','Spent'))} ${escapeHtml(m.spent)} ${n}</div>` : '')
+       + (m.bal ? `<div class="bill-bal${m.neg ? ' neg' : ''}">${k(pick('结余','Balance'))} ${escapeHtml(m.bal)}</div>` : '');
 }
 function base64ToUint8Array(b64){
   const bin = atob(b64 || '');
