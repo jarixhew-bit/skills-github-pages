@@ -230,6 +230,9 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .bill-row:active,.tbill-row:active{background:#f8f8f8}
 .bill-icon,.tbill-icon{font-size:22px;flex:none}
 .bill-info,.tbill-info{flex:1;min-width:0}
+.tbill-row .tbill-title{display:block}
+.tbill-row .tline-sep{display:none}
+.tbill-row .tline-bit{display:inline-block;white-space:nowrap;margin-right:18px}
 .bill-title,.tbill-title{font-size:14.5px;font-weight:600}
 /* 「今天」最上面那张新账单卡（2026-10-29） */
 .tbill-new-pill{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:2px;background:var(--gold);
@@ -2246,8 +2249,9 @@ function unreadBills(){
 function billLineHtml(b, isNew){
   const m = billMoneyParts(b);
   const bits = [`<span class="tbill-title">${blObj(b.title)}</span>`];
-  if(m.spent) bits.push(`<span class="tline-k">${pick('花费','Spent')}</span> ${escapeHtml(m.spent)}`);
-  if(m.bal) bits.push(`<span class="tline-k">${pick('结余','Balance')}</span> <span class="${m.neg ? 'tline-warn' : ''}">${escapeHtml(m.bal)}</span>`);
+  // 每段金额自成一块、不在中间断行：窄屏上曾经断成「· 结余」开头的一行
+  if(m.spent) bits.push(`<span class="tline-bit"><span class="tline-k">${pick('花费','Spent')}</span> ${escapeHtml(m.spent)}</span>`);
+  if(m.bal) bits.push(`<span class="tline-bit"><span class="tline-k">${pick('结余','Balance')}</span> <span class="${m.neg ? 'tline-warn' : ''}">${escapeHtml(m.bal)}</span></span>`);
   return `<div class="tline tbill-row${isNew ? ' tbill-new' : ''}" role="button" tabindex="0" onclick="openBill('${escapeHtml(b.id)}')">
       ${ isNew ? `<span class="tline-new tbill-new-pill">${bl('新','New')}</span>` : '' }
       <span class="tline-body">${bits.join(' <span class="tline-sep">·</span> ')}</span>
