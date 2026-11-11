@@ -3124,4 +3124,51 @@ const nextUp = page => page.evaluate(() => {
   ok('★自检的表情符号判据本身认得出表情（对照）', EMOJI.test('🧾') && !EMOJI.test('→ › ·'));
 }
 
+/* ============ 五十：入住当天酒店信息只写一处；通知条在页面最底下（2026-11-11） ============ */
+{
+  // 入住当天：上面「今晚住」已有地址电话，行程里那条入住不再重复这两行，只留入住／退房日期
+  const { ctx, page, errs } = await aOpen({ day: '2026-11-11', trips: tripsSgJkt() });
+  const h = await page.evaluate(() => {
+    const card = document.querySelector('#tab-today .tonight-hotel');
+    const row = document.querySelector('#tab-today .item-row-hotel');
+    return { card: card ? card.innerText : null, addr: row ? row.querySelectorAll('.hotel-addr').length : -1,
+             tel: row ? row.querySelectorAll('.hotel-tel').length : -1, row: row ? row.innerText : null };
+  });
+  ok('★入住当天：「今晚住」写了酒店地址', !!h.card && h.card.includes('10 Bayfront Ave'), h);
+  ok('★入住当天：行程里那条入住不再重复地址', h.addr === 0, h);
+  ok('★入住当天：行程里那条入住不再重复电话', h.tel === 0, h);
+  ok('入住当天：入住／退房日期还在', !!h.row && h.row.includes('退房'), h);
+  // 通知条：挂在 #app 最后（所有分页之后），不再排在「下一件事」上面
+  const bar = await page.evaluate(() => {
+    const b = document.getElementById('pushBar'), app = document.getElementById('app'), nu = document.getElementById('next-up');
+    const foot = document.getElementById('todayPush');
+    return { exists: !!b, last: !!b && app.lastElementChild === b,
+             afterNext: !!b && !!nu && !!(nu.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING),
+             footShown: !!foot && getComputedStyle(foot).display !== 'none' };
+  });
+  ok('通知条在场（不在的话下面三条等于没测）', bar.exists, bar);
+  ok('★通知条挂在页面最底下，不在最上面', bar.last, bar);
+  ok('★通知条排在「下一件事」之后', bar.afterNext, bar);
+  ok('通知条在场时，今日页底下那行同义小字不重复出现', bar.footShown === false, bar);
+  if (bar.exists) {
+    await page.click('#pushBar .push-dismiss');
+    const foot2 = await page.evaluate(() => { const f = document.getElementById('todayPush'); return !!f && getComputedStyle(f).display !== 'none'; });
+    ok('★按 × 关掉通知条后，今日页底下那行入口出现（不能两个入口都没了）', foot2 === true);
+  }
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+{
+  // 对照：明天才入住的酒店，上面没有它的「今晚住」，所以明天那条要写全地址电话
+  const { ctx, page } = await aOpen({ day: '2026-11-13', trips: tripsSgJkt() });
+  const t = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#tab-today .item-row-hotel')];
+    const r = rows.find(x => x.innerText.includes('Swissôtel'));
+    return { found: !!r, addr: r ? r.querySelectorAll('.hotel-addr').length : -1, tel: r ? r.querySelectorAll('.hotel-tel').length : -1 };
+  });
+  ok('★对照：明天入住的那条照旧写地址', t.found && t.addr === 1, t);
+  ok('★对照：明天入住的那条照旧写电话', t.found && t.tel === 1, t);
+  await ctx.close();
+}
+
 await finish('后半');

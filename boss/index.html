@@ -731,7 +731,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .inv-list{margin:0}
 .inv-row{padding:11px 0;border-bottom:1px solid var(--border);align-items:baseline}
 .inv-row:last-child{border-bottom:1px solid var(--border)}
-.inv-thumb{border-radius:2px;align-self:center}
+.inv-thumb{border-radius:2px;align-self:center;width:56px;height:56px}
 .inv-name{font-size:16px;font-weight:600;overflow-wrap:anywhere}
 .inv-qty{font-size:16px;font-weight:400;color:var(--text);white-space:nowrap}
 .inv-low{display:block;font-size:13px;font-weight:400;color:var(--danger);margin-top:2px}
@@ -766,7 +766,9 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .memo-when{color:var(--sub);font-weight:400}
 
 /* 推送提示 */
-.push-bar{margin:12px 16px 0;padding:10px 0;border-bottom:1px solid var(--line2)}
+.push-bar{margin:20px 16px 0;padding:12px 0 4px;border-top:1px solid var(--line2)}
+/* 通知条在场时，今日页底下那行同样意思的小字先不出现，免得两句叠在一起 */
+#app:has(> #pushBar) .today-push{display:none}
 .push-label{font-weight:400;letter-spacing:.1em}
 .push-toggle-btn{min-height:40px;padding:0 16px;border:1px solid var(--text);border-radius:2px;background:none;color:var(--text);font-weight:400}
 .push-toggle-btn.on{background:var(--text);color:var(--bg)}
@@ -1883,18 +1885,18 @@ function hotelNights(h){
   const n = diffDaysIso(h.checkIn, h.checkOut);
   return n > 0 ? n : 0;
 }
-function hotelInfoHtml(it){
+function hotelInfoHtml(it, brief){
   if(!isHotelItem(it)) return '';
   const h = it.hotel;
   const rows = [];
   const map = hotelMapUrl(h);
-  if((h.address || '').trim()){
+  if(!brief && (h.address || '').trim()){
     rows.push(map
       ? `<div><a class="hotel-addr" href="${escapeHtml(map)}" target="_blank" rel="noopener">${escapeHtml(h.address.trim())}</a></div>`
       : `<div>${escapeHtml(h.address.trim())}</div>`);
   }
   const tel = telHref(h.phone);
-  if(tel) rows.push(`<div>${bl('电话','Tel')} <a class="hotel-tel" href="${escapeHtml(tel)}">${escapeHtml(String(h.phone).trim())}</a></div>`);
+  if(tel && !brief) rows.push(`<div>${bl('电话','Tel')} <a class="hotel-tel" href="${escapeHtml(tel)}">${escapeHtml(String(h.phone).trim())}</a></div>`);
   if(h.checkIn || h.checkOut){
     const a = h.checkIn ? { zh: fmtMdZh(h.checkIn), en: fmtMdEn(h.checkIn) } : null;
     const b = h.checkOut ? { zh: fmtMdZh(h.checkOut), en: fmtMdEn(h.checkOut) } : null;
@@ -1947,7 +1949,7 @@ function itemRowHtml(it, opts){
         ${ it.recurring ? recurSkipBtnHtml(it.ruleId, it.date, false) : '' }
         ${ it.flight ? flightInfoHtml(it) : '' }
         ${ it.flight ? flightLiveBoxHtml(it) : '' }
-        ${ hotelInfoHtml(it) }
+        ${ hotelInfoHtml(it, !!(opts && opts.briefHotel)) }
       </div>
       ${ it.mapUrl && !(isHotelItem(it) && (it.hotel.address || '').trim()) ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">${bl('地图','Map')}</a>` : '' }
     </div>`;
@@ -1984,8 +1986,11 @@ function todayTripBannerHtml(dateIso, trip){
  * 人正在旅途中但还没排细节时，那句话是错的，会让人以为数据丢了。
  * nowMin：今天那一段传现在几点（分钟），已过时间的条目变灰；明天不传。 */
 function todaySectionBodyHtml(dateIso, items, isTomorrow, nowMin){
+  // 入住当天，「今晚住」那一段已经写了酒店地址和电话，行程里那条入住就不再重复这两行
+  // （只留入住／退房日期）。明天那一段上面没有「今晚住」，照旧写全。
+  const tonight = isTomorrow ? [] : hotelsTonight(dateIso);
   const rows = () => `<div class="item-list">${items.map(it =>
-    itemRowHtml(it, { past: nowMin != null && itemIsPast(it, nowMin) })).join('')}</div>`;
+    itemRowHtml(it, { past: nowMin != null && itemIsPast(it, nowMin), briefHotel: tonight.includes(it) })).join('')}</div>`;
   const trips = activeTripsForDate(dateIso);
   if(trips.length){
     let html = trips.map(t => todayTripBannerHtml(dateIso, t)).join('');
@@ -5481,7 +5486,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v71</div>
+    <div class="admin-ver" id="adminVer">boss-app-v72</div>
 
     ${adminTripsSectionHtml()}
 
@@ -5767,7 +5772,8 @@ function ensurePushUI(){
     bar = document.createElement('div');
     bar.id = 'pushBar';
     bar.className = 'push-bar';
-    host.insertBefore(bar, host.firstChild);
+    // 2026-11-11 起挂在页面最底下（用户：它排在「下一件事」上面太抢位置）
+    host.appendChild(bar);
   }
   bar.innerHTML = pushBarInnerHtml();
   bar.classList.toggle('push-bar-mini', !!pushSubscription);
