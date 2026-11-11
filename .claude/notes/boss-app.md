@@ -146,7 +146,7 @@ butler-bot `tests/boss-bill-read.test.mjs`（18 项）。
 自检：`tools/check-boss.mjs` 场景二十五（含 viewer 对照组）、butler `tests/boss-seen.test.mjs`（21 项）。
 
 ## 「今天谁请假」（2026-09-02 加）
-老板 App「今天」那一屏多一段请假安排（`leaveTodayCardHtml()`）；2026-11-11 改版后排在「明天」那一段之后。
+老板 App「今天」那一屏，今天的行程底下多一张卡（`leaveTodayCardHtml()`）。
 两段：**今天**谁没来，＋**接下来**两周谁要请假（`feed.leaveToday` / `leaveUpcoming`）。
 **两段都空就整段不出现**——老板天天开这一屏，挂一句「没有人请假」是噪音。
 
@@ -590,7 +590,7 @@ note:{zh,en}, mapUrl, skipDates:["YYYY-MM-DD"], startDate, endDate?}]`。放同�
 
 **展开在前端**（`recurringOccurrences(from, to)`）：规则 → 这段日子里每个对得上星期几的日子一笔，`skip` 三种：
 `''` 照常／`'cancelled'`（在 skipDates 里）／`'away'`（出远门）。只展开今天起 `RECUR_WINDOW_DAYS`=56 天。
-展开出来的条目带 `recurring:true, ruleId`，`itemRowHtml` 印「每周」（2026-11-11 起不带表情符号）。接进去的地方：`renderToday`（今天／明天）、
+展开出来的条目带 `recurring:true, ruleId`，`itemRowHtml` 印「🔁 每周」。接进去的地方：`renderToday`（今天／明天）、
 `itemsForDate`（分享文字，标题后加「（每周固定）」）、`findNextItineraryDate`（空态的「下一个」）、
 行程页最上面每条规则一张 `.recur-card`（接下来 4 次，跳过的写原因）。
 
@@ -616,33 +616,16 @@ cron 不带 recurring → 1 红。
 
 后续（这次没做）：butler 的 Telegram 早报（`src/cron/morning_brief.js`）还不读 recurring，YANG 的早报里不会出现每周固定行程。
 
-## 版式 A「私人秘书的日程单」＋下一件事／账单结余／库存不足（2026-11-11）
-用户嫌旧版「有 AI 味」（圆角卡片＋阴影＋胶囊＋表情符号），看过三张样张后选了 A：像酒店礼宾递上来的一张印刷日程。
-读者是老板本人（只读、年长、主要看行程）。**全 App 一致**：闸门、五个分页、账单弹层、管理面板、`install.html`。
-
-**版式规格**（CSS 在 `<style>` 最后一段「版式 A」统一覆盖；上面各块的结构类名都没改，自检靠它们）：
-- 颜色只用 `:root` 那几个变量：纸 `#fbfaf6`、墨 `#1c1c1a`、次要 `#6b6a63`、细线 `#e6e3d9`/`#d9d6cb`、强调金褐 `#8a6a2b`（下划线 `#b89a5e`）。
-  `--p` 现在是**墨色**不是深蓝。红 `#a3271f` **只**给：航班延误/取消、未读账单、库存不足、错误。
-- 字体 `--serif`（Songti SC／Noto Serif CJK SC…，系统自带，不引网络字体），数字 `tabular-nums lining-nums`。
-- 不要阴影、圆角 ≤2px、不要渐变、不要胶囊（链接是文字＋金褐细下划线）、不要入场动画、**不要表情符号**（JS 字符串、分享文字、管理页都算）。
-- 顶部 `.hdr`：大号日期（`#hdrDate`）＋右侧小字「行程名 · 第几天／共几天」（`#hdrTrip`），由 `renderHeader()` 填（`renderToday()` 开头调）；
-  下面一条 2px 墨线；`#langBtn` 是不起眼的文字钮。底部导航纯文字（`.nav-label`），红点仍是 `.nav-dot`。
-- 触控目标 ≥40px（链接用 `min-height`）；320～430px 不横向溢出。深色模式不做。
-
-**今日页组成**（`renderToday()`，用户选了「今日页只放行程」）：下一件事 →（有才出现）未读账单行、库存不足行 →
-「今天」（今晚住 `tonightHotelCardHtml` ＋ 行程那一行 `todayTripBannerHtml` ＋ 条目，已过的 `.item-row.past` 变灰）→
-「明天 · 11月12日 周四」→ 请假、备忘、牙医、通知入口（`viewerPushFooterHtml`）。这些都是历次要过的，**一个都不许删**。
-
-**① 下一件事**：`nextUpPick()` / `nextUpHtml()`（`#next-up`）、判过没过 `itemIsPast()`（有钟点看钟点；只有时段看时段结束；两样都没有的不算过、
-也不当「下一件事」）。今天的都过了取明天第一条并标「明天」；今明都没有整块不出现。副行只用手上的数据：备注＋feed 的 `flight.live`
-（航班号、起降、状态、登机口，延误/取消红字）。**不放 `.flive` 框**（check-flight-live 用 `querySelector` 取今天页第一个框再 `closest('.item-body')`，
-多一个会害它崩）。**不显示车程估算**（没有数据来源）、**不做「给司机看」**（用户没选）。
-**④ 账单花费＋结余**：`billMoneyParts()` 是唯一取数处（`summary.expense`→花费、`summary.closing`→结余）；账单分页 `billAmountHtml()`
-两行都带标签；今日页 `billLineHtml()` / `newBillsCardHtml()`（`#new-bills-card`，每份一行 `.tbill-row`，只在未读时出现）。
-没 closing 只印花费、没 summary 只印标题，**绝不印 0.00**；结余为负照实印负号、红字。
-**⑤ 库存不足**：`LOW_STOCK_MAX = 2`（默认值，用户没指定每款门槛）、`isLowStock()`（>0 且 ≤2；0 不算）；库存行 `.inv-low` 红字
-「只剩 N 饼」（单位取数据的 unit）；今日页 `lowStockLineHtml()`（`#low-stock-line`）最多列 3 款、其余「等 N 款」，点了去库存分页。
-
-自检：`check-boss-2.mjs` 场景四十六／四十六b（下一件事，钉 `freezeClock(ctx, day, 'T10:30:00+08:00')`——kit 的 freezeClock 多了第三个参数）、
-四十七（账单）、四十八（库存）、四十九（viewer/admin 每个分页可见文字无表情符号；320/390px 五个分页不溢出）。
-回退验证：下一件事不排除已过的 → 7 红；没 closing 印成 0.00 → 2 红；门槛改成 ≥0 且 ≤3 → 4 红；提示行塞一个表情 → 2 红；提示行 nowrap → 320px 1 红。
+## 版式 A 做完又退回（2026-11-11）——要再套用时看这里
+- 用户看样张选了「秘书日程单」版式（纸底、宋体、细线、无表情符号），连同「下一件事置顶」「库存不足提醒」
+  「打开手册通栏细框」上线了几个小时（PR #781、#782），随后用户：「先退回旧版设计，要套用时我再跟你说，
+  那个账单新功能保留」。所以现在线上是**旧版设计＋账单结余**。
+- **要再套用**：整套成品在 main 的提交 `b3aa795`（#782 合并后的状态）。取回办法：
+  `git checkout b3aa795 -- boss tools/check-boss.mjs tools/check-boss-2.mjs tools/lib/boss-check-kit.mjs`，
+  再把那之后旧版上新加的东西（至少是下面的账单结余自检「场景四十六」——版式 A 那份里叫「四十七」，
+  内容等价，别重复加）对一遍，SW 版本号升到比线上大。那份的笔记在 `b3aa795:.claude/notes/boss-app.md` 末尾一节。
+- **留下来的账单结余**：`billAmountHtml()` 在「花费」那行下面多印一行「结余」（`summary.closing`，
+  记账本发账单时带的**截止日结余，不是实时余额**）。没有 closing 整行不印、绝不退成 0.00；真是 0 印 0.00；
+  负数带负号并标 `.bill-bal-neg`。今日页的新账单卡与账单分页共用这个函数。自检：`check-boss-2.mjs` 场景四十六。
+- 没跟着留下的（都随版式一起退回了）：下一件事置顶、库存不足提醒、通知条挪到底部、入住当天酒店信息去重、
+  酒照片放大、打开手册通栏。用户没说要，别自己加回去。

@@ -152,9 +152,7 @@ export function forceZh(ctx){
 // 红的是自检自己不是 App。
 // 传 UTC 正午：取 UTC 边缘的时刻（比如 +07:00 的凌晨 4 点）会让浏览器按自己的时区
 // 算成前一天，「几个月前」就差一天——差的是测试的假设，不是被测的算法。
-// 第三个参数 at（2026-11-11 加）：要钉到某个钟点时传「T10:30:00+08:00」这种带偏移的后缀，
-// 「下一件事」那一节要靠它判断「过没过时间」；不传照旧是 UTC 正午。
-export function freezeClock(ctx, isoDay, at = 'T12:00:00Z'){
+export function freezeClock(ctx, isoDay){
   return ctx.addInitScript(fixed => {
     const _D = Date;
     // eslint-disable-next-line no-global-assign
@@ -162,7 +160,7 @@ export function freezeClock(ctx, isoDay, at = 'T12:00:00Z'){
       constructor(...a){ if(a.length === 0) super(fixed); else super(...a); }
       static now(){ return fixed; }
     };
-  }, Date.parse(`${isoDay}${at}`));
+  }, Date.parse(`${isoDay}T12:00:00Z`));
 }
 
 // 真的 4 页 PDF（pypdf 生成的空白页）。**不能用假字符串**：假的 PDF 会让 PDF.js
