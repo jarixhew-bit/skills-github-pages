@@ -1925,7 +1925,13 @@ function warnStorageFull(){
 const CUR_SYMBOLS = {HKD:'HK$',MYR:'RM ',USD:'US$',SGD:'S$ ',CNY:'¥',JPY:'¥',EUR:'€',GBP:'£',TWD:'NT$',THB:'฿',AUD:'A$',KHR:'៛',KRW:'₩',VND:'₫',IDR:'Rp '};
 const RIEL_RATE = 4000; // 柬埔寨瑞尔固定汇率：1 USD = 4000 KHR
 function symOf(cur){ return CUR_SYMBOLS[cur] || cur+' '; }
-function fmt(amt, cur){ return symOf(cur) + Number(amt).toFixed(2); }
+// 这几种币平常不用小数、数字又大（Rp 150000.00 读起来很累）：不显示小数、加千分位。
+// 2026-11-11 用户选的。其余币照旧两位小数，不加千分位（大量自检照这个格式比对）。
+const NO_DECIMAL_CUR = { IDR:1, VND:1, KRW:1, KHR:1, JPY:1 };
+function fmt(amt, cur){
+  if(NO_DECIMAL_CUR[cur]) return symOf(cur) + Math.round(Number(amt)).toLocaleString('en-US');
+  return symOf(cur) + Number(amt).toFixed(2);
+}
 // 千分位格式（账户明细范本要求），如 12,345.67
 function fmtThousands(amt){
   const n = Number(amt);
@@ -5938,7 +5944,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-11-10';
+const APP_BUILD = '2026-11-11';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'staffExpense_token';

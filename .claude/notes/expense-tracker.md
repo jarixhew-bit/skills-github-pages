@@ -2385,3 +2385,8 @@ butler【6j】（同事改不动）。假故障验过：切投递箱不写、送
   「看全部 ✕」还原。副标题：比上月 ±%、有花钱月份的平均。
 - `renderAnalytics()` 里 `new Chart` 前加了 `typeof Chart` 判断：CDN 没载到时原本直接抛错，分类条也不画。
 - 自检 `check-expense-company.mjs`【42】21 项（手算 fixture）。
+
+## 大数字的币不显示小数（2026-11-11，用户选的）
+`fmt()` 对 `NO_DECIMAL_CUR`（IDR／VND／KRW／KHR／JPY）四舍五入到整数、加千分位：`Rp 150,000`、`¥1,500`。
+其余币照旧两位小数、不加千分位——大量自检照 `US$1234.50` 这种格式比对，别顺手全改。
+`fmtThousands()`（账户明细 PDF 用）没动，那里所有币一律两位小数。自检：check-expense-company【43】。
