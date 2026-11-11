@@ -310,7 +310,7 @@ const SGN_PARTIAL = { daily: {
 } };
 const SGN_IN_WINDOW = '2026-11-10T09:00:00+08:00';   // 出发前一天：四天全在预报窗口内
 const SGN_TOO_EARLY = '2026-10-20T09:00:00+08:00';   // 出发前三周：整趟都还报不了
-const SGN_D2 = '2026-11-12T09:00:00+08:00';          // 「今天」固定在 D2（观音庙＋午餐＋下午自由）
+const SGN_D2 = '2026-11-12T09:00:00+08:00';          // 「今天」固定在 D2（上午自由＋午餐＋下午逛商场）
 const sgnLoad = (handler, now, psiHandler) => load(handler, now, psiHandler, SGN_URL);
 const sgErrBefore = errors.length;
 
@@ -381,10 +381,10 @@ const { dayHaze: sgnBadDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }),
 check(/131/.test(sgnBadDay[0]?.now || '') && sgnBadDay[0]?.actHidden === false && /bad/.test(sgnBadDay[0]?.cls || ''),
   `[sg-nov] 11/12 PSI 131：要写出 131、标红、摊开替代方案（实得 ${JSON.stringify(sgnBadDay)}）`);
 const sgnActText = await page.evaluate(() => document.querySelector('.day[data-date="2026-11-12"] .hazeact')?.textContent || '');
-// 2026-10-30 用户删掉美术馆／按摩／甘榜格南：D2 只剩观音庙＋午餐二选一＋下午自由
+// 2026-10-30 用户删掉美术馆／按摩／甘榜格南；2026-11-11 再删观音庙：D2 只剩午餐＋下午逛商场，备案里不准再出现观音庙
 // 2026-10-31 用户要求 D2 下午改成逛商场（六家室内商场）：替代方案也要说到商场照逛
-check(/观音庙|Kwan Im/.test(sgnActText) && /Violet Oon|National Kitchen/.test(sgnActText) && /商场|mall/i.test(sgnActText) && !/美术馆|Capitol|按摩|Massage|苏丹|Sultan/.test(sgnActText),
-  `[sg-nov] 11/12 摊开的替代方案要是这一天的（观音庙＋Violet Oon＋商场照逛，不再提美术馆／按摩），实得：${sgnActText.slice(0, 60)}`);
+check(!/观音庙|Kwan Im/.test(sgnActText) && /Violet Oon|National Kitchen/.test(sgnActText) && /商场|mall/i.test(sgnActText) && !/美术馆|Capitol|按摩|Massage|苏丹|Sultan/.test(sgnActText),
+  `[sg-nov] 11/12 摊开的替代方案要是这一天的（Violet Oon＋商场照逛，不再提观音庙／美术馆／按摩），实得：${sgnActText.slice(0, 60)}`);
 // D2 下午的商场卡：六家、每家至少 4 张图，同一个商场全页只出现一次（Takashimaya 2026-10-31 从 D3 搬来）
 const sgnMalls = await page.evaluate(() => ({
   imgs: [...document.querySelectorAll('#day02 .stop[id^="mall-"]')].map(e => e.querySelectorAll('.gal img').length),
