@@ -592,7 +592,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 /* 日期永远一行：右边的行程名再长也只能自己换行，不能把「周三」挤成两行 */
 .hdr-date{font-size:26px;font-weight:600;letter-spacing:.02em;line-height:1.2;flex:none;white-space:nowrap}
 @media (max-width:350px){.hdr-date{font-size:22px}}
-.hdr-side{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:none;max-width:52%}
+.hdr-side{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
 .hdr-trip{font-size:13px;color:var(--sub);line-height:1.5;overflow-wrap:anywhere}
 #langBtn{background:none;border:none;border-radius:0;color:var(--sub);font-size:13px;font-weight:400;
   padding:0 0 0 12px;min-height:40px;min-width:40px;letter-spacing:.1em;cursor:pointer}

@@ -3220,6 +3220,17 @@ for (const width of [390, 320]) {
   ok('★同一趟行程：今日页只出现一条「打开手册」', r.n === 1, r);
   ok('★行程名很长时，顶部日期仍是一行', r.lines === 1, r);
   ok('顶部不因此横向溢出', r.over <= 1, r);
+  // 右侧行程名不能顶出顶栏的右边距（验收时逮到：日期不肯缩之后，右侧那块越过了下面那条墨线）
+  for (const w of [390, 320]) {
+    await page.setViewportSize({ width: w, height: 800 });
+    const g = await page.evaluate(() => {
+      const h = document.querySelector('.hdr').getBoundingClientRect(), s = document.querySelector('.hdr-side').getBoundingClientRect(), d = document.querySelector('.hdr-date').getBoundingClientRect();
+      return { out: s.right - h.right, overlap: d.right - s.left, lines: Math.round(d.height / parseFloat(getComputedStyle(document.querySelector('.hdr-date')).lineHeight)) };
+    });
+    ok(`★${w}px：右侧行程名不超出顶栏右边`, g.out <= 0.5, g);
+    ok(`★${w}px：右侧行程名不压到日期上`, g.overlap <= 0.5, g);
+    ok(`${w}px：日期仍是一行`, g.lines === 1, g);
+  }
   await ctx.close();
 }
 {
