@@ -4560,7 +4560,14 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   const opts = await page.$$eval('#new-acc-currency option', os => os.map(o => o.value));
   ok('★新建账户的币种清单有 IDR', opts.includes('IDR'), opts);
   ok('★印尼盾金额写成 Rp（不是「IDR 」那种认不得的样子）',
-     await page.evaluate(() => fmt(150000, 'IDR')) === 'Rp 150000.00', await page.evaluate(() => fmt(150000, 'IDR')));
+     await page.evaluate(() => fmt(150000, 'IDR')) === 'Rp 150,000', await page.evaluate(() => fmt(150000, 'IDR')));
+  // 2026-11-11 用户选：大数字、平常不用小数的币不显示小数、加千分位
+  const big = await page.evaluate(() => [fmt(1234567.6, 'IDR'), fmt(85000, 'VND'), fmt(-40000, 'KHR'),
+                                         fmt(12000, 'KRW'), fmt(1500, 'JPY')]);
+  ok('★印尼盾／越南盾／柬币／韩元／日元：不显示小数、加千分位、四舍五入',
+     big.join('|') === 'Rp 1,234,568|₫85,000|៛-40,000|₩12,000|¥1,500', big);
+  const usd = await page.evaluate(() => [fmt(1234.5, 'USD'), fmt(992, 'SGD')]);
+  ok('★对照组：美金／新币照旧两位小数、不加千分位', usd.join('|') === 'US$1234.50|S$ 992.00', usd);
   ok('对照组：没收录的币还是退回「代码 金额」', await page.evaluate(() => fmt(1, 'XYZ')) === 'XYZ 1.00');
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();

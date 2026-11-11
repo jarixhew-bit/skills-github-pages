@@ -1710,8 +1710,8 @@ if (want()) {
   await page.evaluate(() => bossCashAdd());
   await page.waitForTimeout(400);
   let card = await page.locator('#staff-boss-cash').innerText();
-  ok('卡上显示手上现金 600（用 JPY 的符号 ¥）',
-     card.includes('¥600.00') && card.includes('手上现金'), card);
+  ok('卡上显示手上现金 600（用 JPY 的符号 ¥，日元不显示小数）',
+     card.includes('¥600') && !card.includes('¥600.00') && card.includes('手上现金'), card);
 
   // —— 花掉 100：余额要自己算出 500 ——
   await page.click('.fab');
@@ -1722,8 +1722,8 @@ if (want()) {
   await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
   await page.waitForTimeout(100);   // 让送出与本机写入收尾
   card = await page.locator('#staff-boss-cash').innerText();
-  ok('花了 100 之后余额变 500（是算出来的，不是写死的）', card.includes('¥500.00'), card);
-  ok('卡上写明收到多少、花掉多少', card.includes('收到 ¥600.00') && card.includes('已花 ¥100.00'), card);
+  ok('花了 100 之后余额变 500（是算出来的，不是写死的）', card.includes('¥500'), card);
+  ok('卡上写明收到多少、花掉多少', card.includes('收到 ¥600') && card.includes('已花 ¥100'), card);
 
   // —— 送不出去的那笔照样扣：现金离开口袋就没了 ——
   h.bossApi.fail = true;
@@ -1735,7 +1735,7 @@ if (want()) {
   await until(async () => !(await txModalOpen(page)), { what: '这一笔存好、弹窗关上' });
   await page.waitForTimeout(100);   // 让送出与本机写入收尾
   card = await page.locator('#staff-boss-cash').innerText();
-  ok('没送出去的那笔也从余额扣掉了（现金已经花了）', card.includes('¥450.00'), card);
+  ok('没送出去的那笔也从余额扣掉了（现金已经花了）', card.includes('¥450'), card);
   ok('但要写明有几笔还没送到，别让人以为账丢了',
      card.includes('还没送到老板那边'), card);
 
@@ -1759,7 +1759,7 @@ if (want()) {
   await page.evaluate(() => bossCashAdd());
   await page.waitForTimeout(400);
   card = await page.locator('#staff-boss-cash').innerText();
-  ok('又收到 1000 之后余额回正（600+1000-650=950）', card.includes('¥950.00'), card);
+  ok('又收到 1000 之后余额回正（600+1000-650=950）', card.includes('¥950'), card);
 
   // —— 重填只清收到的钱，账目一笔都不许动 ——
   const txCount = await page.evaluate(() =>
