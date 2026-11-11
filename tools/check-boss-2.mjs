@@ -3171,4 +3171,74 @@ const nextUp = page => page.evaluate(() => {
   await ctx.close();
 }
 
+/* ============ 五十一：「打开手册」是通栏细框，写明是哪本（2026-11-11 用户嫌原来的下划线文字不显眼） ============ */
+for (const width of [390, 320]) {
+  const { ctx, page, errs } = await aOpen({ day: '2026-11-11', trips: tripsSgJkt(), width });
+  const g = await page.evaluate(() => {
+    const a = document.querySelector('#tab-today .today-trip-banner .trip-guide-btn');
+    if (!a) return null;
+    const r = a.getBoundingClientRect(), pr = a.parentElement.getBoundingClientRect(), cs = getComputedStyle(a);
+    return { text: a.innerText.replace(/\s+/g, ' ').trim(), href: a.getAttribute('href'), w: r.width, pw: pr.width, h: r.height,
+             border: parseFloat(cs.borderTopWidth), deco: cs.textDecorationLine, over: r.right - document.documentElement.clientWidth };
+  });
+  ok(`★${width}px：今日页有「打开手册」`, !!g, g);
+  if (g) {
+    ok(`★${width}px：写明是哪本手册`, g.text.startsWith('打开新加坡手册'), g);
+    ok(`★${width}px：占满整行（不是靠右一小块）`, g.w >= g.pw - 2, g);
+    ok(`★${width}px：有边框、高度够手指点（≥44）`, g.border >= 1 && g.h >= 44, g);
+    ok(`${width}px：不再是下划线文字`, g.deco === 'none', g);
+    ok(`${width}px：不超出屏幕`, g.over <= 1, g);
+    ok(`${width}px：链接仍通到手册`, g.href === 'https://example.com/sg', g);
+  }
+  if (width === 390) {
+    await gotoTab(page, 'trips');
+    const t = await page.evaluate(() => [...document.querySelectorAll('#tab-trips .trip-guide-btn')].map(a => a.innerText.replace(/\s+/g, ' ').trim()));
+    ok('行程页的「打开手册」同一种样式、各写各的地名', t.some(x => x.startsWith('打开新加坡手册')) && t.some(x => x.startsWith('打开雅加达手册')), t);
+  }
+  ok(`${width}px：无 JS 报错`, errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+{
+  // 对照：没填地点的行程只写「打开手册」，不能印成「打开手册」以外的怪字（如「打开undefined手册」）
+  const trips = tripsSgJkt(); trips[0].location = { zh: '', en: '' };
+  const { ctx, page } = await aOpen({ day: '2026-11-11', trips });
+  const txt = await page.evaluate(() => { const a = document.querySelector('#tab-today .trip-guide-btn'); return a ? a.innerText.replace(/\s+/g, ' ').trim() : null; });
+  ok('★对照：没填地点时只写「打开手册」', txt === '打开手册 →', txt);
+  await ctx.close();
+}
+
+/* ============ 五十二：明天那段不重复同一本手册的按钮；顶部日期不被长行程名挤成两行 ============ */
+{
+  const { ctx, page } = await aOpen({ day: '2026-11-11', trips: tripsSgJkt() });
+  const r = await page.evaluate(() => {
+    const d = document.querySelector('.hdr-date');
+    return { n: document.querySelectorAll('#tab-today .trip-guide-btn').length, banners: document.querySelectorAll('#tab-today .today-trip-banner').length,
+             lines: d ? Math.round(d.getBoundingClientRect().height / parseFloat(getComputedStyle(d).lineHeight)) : -1,
+             over: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+  });
+  ok('今天、明天两段都有行程横幅（否则下一条等于没测）', r.banners === 2, r);
+  ok('★同一趟行程：今日页只出现一条「打开手册」', r.n === 1, r);
+  ok('★行程名很长时，顶部日期仍是一行', r.lines === 1, r);
+  ok('顶部不因此横向溢出', r.over <= 1, r);
+  // 右侧行程名不能顶出顶栏的右边距（验收时逮到：日期不肯缩之后，右侧那块越过了下面那条墨线）
+  for (const w of [390, 320]) {
+    await page.setViewportSize({ width: w, height: 800 });
+    const g = await page.evaluate(() => {
+      const h = document.querySelector('.hdr').getBoundingClientRect(), s = document.querySelector('.hdr-side').getBoundingClientRect(), d = document.querySelector('.hdr-date').getBoundingClientRect();
+      return { out: s.right - h.right, overlap: d.right - s.left, lines: Math.round(d.height / parseFloat(getComputedStyle(document.querySelector('.hdr-date')).lineHeight)) };
+    });
+    ok(`★${w}px：右侧行程名不超出顶栏右边`, g.out <= 0.5, g);
+    ok(`★${w}px：右侧行程名不压到日期上`, g.overlap <= 0.5, g);
+    ok(`${w}px：日期仍是一行`, g.lines === 1, g);
+  }
+  await ctx.close();
+}
+{
+  // 对照：11/13 的明天（11/14）是新加坡最后一天＋雅加达第一天——雅加达是新的一趟，要有自己的按钮
+  const { ctx, page } = await aOpen({ day: '2026-11-13', trips: tripsSgJkt() });
+  const t = await page.evaluate(() => [...document.querySelectorAll('#tab-today .trip-guide-btn')].map(a => a.innerText.replace(/\s+/g, ' ').trim()));
+  ok('★对照：明天换了一趟行程，新那趟有自己的「打开手册」', t.length === 2 && t[0].startsWith('打开新加坡手册') && t[1].startsWith('打开雅加达手册'), t);
+  await ctx.close();
+}
+
 await finish('后半');

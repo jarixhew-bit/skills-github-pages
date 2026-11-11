@@ -589,9 +589,10 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 /* 顶部：大号日期＋右侧小字，下面一条 2px 墨线 */
 .hdr{position:static;background:var(--bg);color:var(--text);margin:0 16px;padding:26px 0 14px;
   border-bottom:2px solid var(--text);display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
-.hdr-date{font-size:26px;font-weight:600;letter-spacing:.02em;line-height:1.2;min-width:0}
-@media (max-width:350px){.hdr-date{font-size:22px;white-space:nowrap}}
-.hdr-side{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:none;max-width:52%}
+/* 日期永远一行：右边的行程名再长也只能自己换行，不能把「周三」挤成两行 */
+.hdr-date{font-size:26px;font-weight:600;letter-spacing:.02em;line-height:1.2;flex:none;white-space:nowrap}
+@media (max-width:350px){.hdr-date{font-size:22px}}
+.hdr-side{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
 .hdr-trip{font-size:13px;color:var(--sub);line-height:1.5;overflow-wrap:anywhere}
 #langBtn{background:none;border:none;border-radius:0;color:var(--sub);font-size:13px;font-weight:400;
   padding:0 0 0 12px;min-height:40px;min-width:40px;letter-spacing:.1em;cursor:pointer}
@@ -623,7 +624,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .item-row.past .item-title{font-weight:400}
 .item-row.past .item-note{color:var(--mute)}
 /* 链接：普通文字＋金褐细下划线，不是胶囊 */
-.item-map,.trip-guide-btn,.tonight-hotel-btn,.share-btn,.next-act a,.tline-link{
+.item-map,.tonight-hotel-btn,.share-btn,.next-act a,.tline-link{
   display:inline-flex;align-items:center;min-height:40px;background:none;border:none;border-radius:0;padding:0;
   color:var(--text);font-size:14.5px;font-weight:400;text-decoration:underline;text-decoration-color:var(--gold-line);
   text-decoration-thickness:1.5px;text-underline-offset:5px;white-space:nowrap;cursor:pointer;box-shadow:none}
@@ -657,7 +658,13 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .today-trip-banner-title{font-size:15px;font-weight:600}
 .today-trip-banner .trip-loc{margin:0;font-size:13.5px}
 .today-trip-banner-day{margin:0;padding:0;background:none;border-radius:0;color:var(--sub);font-size:13.5px;font-weight:400}
-.today-trip-banner .trip-guide-btn{margin:0 0 0 auto}
+/* 「打开手册」：通栏细框（2026-11-11 用户：原来的下划线文字不够显眼，从五个样张里选了这个）。
+   整条都能点、写明是哪本手册；用细框不用实心，免得跟「下一件事」的大字抢眼。 */
+.trip-guide-btn{display:flex;justify-content:space-between;align-items:center;gap:12px;box-sizing:border-box;width:100%;min-height:48px;
+  padding:11px 16px;background:none;border:1.5px solid var(--text);border-radius:0;box-shadow:none;
+  color:var(--text);font-size:16px;font-weight:600;text-decoration:none;text-align:left;cursor:pointer}
+.trip-guide-btn .guide-arrow{flex:none;font-weight:400}
+.today-trip-banner .trip-guide-btn{flex:0 0 100%;margin:10px 0 6px}
 .today-trip-empty-note{padding:12px 0;margin:0;border-bottom:1px solid var(--border)}
 
 /* 今晚住：并进「今天」段，一行 */
@@ -699,7 +706,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .trip-preview-row{font-size:14.5px}
 .trip-preview-time{font-weight:400;color:var(--sub);min-width:52px}
 .trip-preview-more{color:var(--sub);font-weight:400;min-height:32px}
-.trip-card .trip-guide-btn{margin:0 0 10px}
+.trip-card .trip-guide-btn{margin:4px 0 12px}
 .trip-items{border-top:none}
 .trip-day-hdr{background:none;padding:18px 0 6px;font-size:12.5px;font-weight:400;letter-spacing:.2em;color:var(--gold);
   border-bottom:1px solid var(--line2)}
@@ -1971,7 +1978,14 @@ function tripDayOf(trip, dateIso){
 /** 「今天/明天」那一段的第一行：这趟行程叫什么、第几天，后面跟「打开手册」。
  * 哪怕这趟行程一条具体条目都还没排，人也知道「自己正在第几天」，不会误以为 App 把数据弄丢了
  * （2026-08-27 用户反馈的根因）。版式 A 起是一行字，不再是一张卡。 */
-function todayTripBannerHtml(dateIso, trip){
+/** 「打开手册」那一条：有地点就写明是哪本（「打开新加坡手册」），没有就只写「打开手册」。 */
+function guideBtnHtml(trip, stop){
+  if(!trip.guideUrl) return '';
+  const zh = String(trip.location && trip.location.zh || '').trim(), en = String(trip.location && trip.location.en || '').trim();
+  const label = bl(zh ? `打开${zh}手册` : '打开手册', en ? `Open the ${en} guide` : 'Open guide');
+  return `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener"${stop ? ' onclick="event.stopPropagation()"' : ''}><span>${label}</span><span class="guide-arrow" aria-hidden="true">→</span></a>`;
+}
+function todayTripBannerHtml(dateIso, trip, noGuide){
   const titleHtml = blObj(trip.title) || bl('未命名行程','Untitled trip');
   const hasLoc = trip.location && ((trip.location.zh||'').trim() || (trip.location.en||'').trim());
   const { day: dayNum, total: totalDays } = tripDayOf(trip, dateIso);
@@ -1979,7 +1993,7 @@ function todayTripBannerHtml(dateIso, trip){
       <div class="today-trip-banner-title">${titleHtml}</div>
       ${ hasLoc ? `<div class="trip-loc">${blObj(trip.location)}</div>` : '' }
       <div class="today-trip-banner-day">${bl(`第 ${dayNum} 天 / 共 ${totalDays} 天`, `Day ${dayNum} of ${totalDays}`)}</div>
-      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener">${bl('打开手册','Open guide')}</a>` : '' }
+      ${ noGuide ? '' : guideBtnHtml(trip, false) }
     </div>`;
 }
 /** 一段（今天或明天）的正文：行程那一行（如果有覆盖当天的行程）＋ 条目列表／空态。
@@ -1994,7 +2008,9 @@ function todaySectionBodyHtml(dateIso, items, isTomorrow, nowMin){
     itemRowHtml(it, { past: nowMin != null && itemIsPast(it, nowMin), briefHotel: tonight.includes(it) })).join('')}</div>`;
   const trips = activeTripsForDate(dateIso);
   if(trips.length){
-    let html = trips.map(t => todayTripBannerHtml(dateIso, t)).join('');
+    // 明天那一段：同一趟行程今天那一段已经有「打开手册」了，不再放第二条一模一样的（通栏之后重复很占地）
+    const todayTrips = isTomorrow ? activeTripsForDate(isoDate(new Date())) : [];
+    let html = trips.map(t => todayTripBannerHtml(dateIso, t, todayTrips.some(x => x.id === t.id))).join('');
     const emptyNote = isTomorrow
       ? bl('明天还没排具体安排','No specific plan yet for tomorrow')
       : bl('今天还没排具体安排','No specific plan yet for today');
@@ -2461,7 +2477,7 @@ function tripCardHtml(trip){
         <div class="trip-arrow" aria-hidden="true">▾</div>
       </div>
       <div class="trip-preview" onclick="this.parentElement.classList.toggle('expanded')">${tripPreviewHtml(trip)}</div>
-      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${bl('打开手册','Open guide')}</a>` : '' }
+      ${ guideBtnHtml(trip, true) }
       <div class="trip-items">${tripItemsHtml(trip)}</div>
     </div>`;
 }
@@ -5487,7 +5503,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v72</div>
+    <div class="admin-ver" id="adminVer">boss-app-v73</div>
 
     ${adminTripsSectionHtml()}
 
