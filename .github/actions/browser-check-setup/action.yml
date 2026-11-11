@@ -44,7 +44,15 @@ runs:
         # 少了 chrome-headless-shell，于是所有浏览器自检当场崩在 launch()，
         # 而且崩得跟自检本身完全无关。install 在文件齐全时就是几秒的 no-op，
         # 缺什么补什么；靠「命中就跳过」等于赌缓存内容永远是完整的。
-        npx playwright install --with-deps chromium
+        # ⚠️ --with-deps 会去 apt 源装字体与系统库。2026-11-11 那个源连续一个多小时解析不了
+        # （Temporary failure resolving 'security.ubuntu.com'），三个浏览器自检连重跑两次都死在这一步、
+        # 一条断言都没跑到。装不上依赖时退一步只装浏览器本体，让自检照常跑：
+        # 系统库真缺的话 launch() 会如实报错，所以这只会少误报、不会放过真问题。
+        # timeout 是因为 apt 自己重试到放弃要十分钟。
+        timeout 240 npx playwright install --with-deps chromium || {
+          echo "::warning::系统依赖没装上（多半是 apt 源连不上），改为只装浏览器本体后继续跑自检"
+          npx playwright install chromium
+        }
     - name: 起本地服务器
       shell: bash
       run: |
