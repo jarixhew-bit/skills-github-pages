@@ -146,7 +146,7 @@ butler-bot `tests/boss-bill-read.test.mjs`（18 项）。
 自检：`tools/check-boss.mjs` 场景二十五（含 viewer 对照组）、butler `tests/boss-seen.test.mjs`（21 项）。
 
 ## 「今天谁请假」（2026-09-02 加）
-老板 App「今天」那一屏，今天的行程底下多一张卡（`leaveTodayCardHtml()`）。
+老板 App「今天」那一屏多一段请假安排（`leaveTodayCardHtml()`）；2026-11-11 改版后排在「明天」那一段之后。
 两段：**今天**谁没来，＋**接下来**两周谁要请假（`feed.leaveToday` / `leaveUpcoming`）。
 **两段都空就整段不出现**——老板天天开这一屏，挂一句「没有人请假」是噪音。
 

@@ -590,6 +590,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .hdr{position:static;background:var(--bg);color:var(--text);margin:0 16px;padding:26px 0 14px;
   border-bottom:2px solid var(--text);display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
 .hdr-date{font-size:26px;font-weight:600;letter-spacing:.02em;line-height:1.2;min-width:0}
+@media (max-width:350px){.hdr-date{font-size:22px;white-space:nowrap}}
 .hdr-side{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:none;max-width:52%}
 .hdr-trip{font-size:13px;color:var(--sub);line-height:1.5;overflow-wrap:anywhere}
 #langBtn{background:none;border:none;border-radius:0;color:var(--sub);font-size:13px;font-weight:400;
@@ -2014,7 +2015,7 @@ function renderHeader(){
   const trips = feedData ? activeTripsForDate(todayIso) : [];
   t.innerHTML = trips.map(tr => {
     const { day, total } = tripDayOf(tr, todayIso);
-    return `<div>${blObj(tr.title) || bl('行程','Trip')} · ${bl(`第 ${day} 天／共 ${total} 天`, `Day ${day} of ${total}`)}</div>`;
+    return `<div>${blObj(tr.title) || bl('行程','Trip')} · ${bl(`第 ${day} 天 / 共 ${total} 天`, `Day ${day} of ${total}`)}</div>`;
   }).join('');
 }
 
@@ -2056,7 +2057,7 @@ function nextUpSubHtml(it){
       const meta = flightStatusMeta(live.status);
       const warn = meta.cls === 'delay' || meta.cls === 'cancel';
       fb.push(`<span class="next-flight-st${warn ? ' tline-warn' : ''}">${bl(meta.zh, meta.en)}</span>`);
-      if(live.gate) fb.push(bl(`登机口 ${escapeHtml(live.gate)}`, `Gate ${escapeHtml(live.gate)}`));
+      if(live.gate) fb.push(bl(`登机口 ${live.gate}`, `Gate ${live.gate}`));
     }
     bits.push(fb.filter(Boolean).join(' · '));
   }
@@ -2580,7 +2581,7 @@ function billAmountHtml(b){
   const m = billMoneyParts(b);
   if(!m.spent && !m.bal) return '';
   const n = (m.count !== null && m.spent)
-    ? `<span class="bill-count">${bl(m.count + ' 笔', m.count + ' items')}</span>` : '';
+    ? `<span class="bill-count">${bl(m.count + ' 笔', m.count + (m.count === 1 ? ' item' : ' items'))}</span>` : '';
   // ⚠️ 「花费」「结余」两个标签都不能省（2026-09-05 用户：「我一打开看我以为是结余」）。
   // 花费是这段期间**花掉多少**，结余是账上**还剩多少**——两个数字差得远，
   // 少了标签他会照着看错的那个下判断。
@@ -5516,7 +5517,7 @@ function renderAdmin(){
       <span id="admin-access-code-status" style="margin-left:8px;font-size:12.5px;color:var(--ok)"></span>
       <div id="admin-access-code" style="display:none">${escapeHtml(adminAccessCode || '')}</div>
       <div class="admin-rest-hint">${pick(
-        '注意：不装到主屏也能看，但**收不到通知**（行程改了、有新账单都不会提醒他）。想装的话另有一页说明：',
+        '注意：不装到主屏也能看，但收不到通知（行程改了、有新账单都不会提醒他）。想装的话另有一页说明：',
         'Note: it works without installing, but push notifications will NOT arrive. Install guide:')}
         <a href="./install.html" target="_blank" rel="noopener">install.html</a></div>
     </div>
