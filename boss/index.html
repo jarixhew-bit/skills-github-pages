@@ -1325,7 +1325,7 @@ function flightInfoHtml(it){
   const live = f.live || null;
   const noLabel = escapeHtml(f.no || '');
   if(!live){
-    return `<div class="flight-info"><span class="flight-badge">✈️ ${noLabel}</span>${flightPaxHtml(f)}</div>`;
+    return `<div class="flight-info"><span class="flight-badge">${noLabel}</span>${flightPaxHtml(f)}</div>`;
   }
   const from = live.from || '', to = live.to || '';
   const routeLabel = (from || to) ? `<span class="flight-route">${escapeHtml(from)} → ${escapeHtml(to)}</span>` : '';
@@ -1336,7 +1336,7 @@ function flightInfoHtml(it){
   if(live.gate) gateBits.push(bl(`登机口 ${live.gate}`, `Gate ${live.gate}`));
   return `<div class="flight-info">
       <div class="flight-info-hd">
-        <span class="flight-badge">✈️ ${noLabel}</span>
+        <span class="flight-badge">${noLabel}</span>
         ${routeLabel}
         <span class="flight-status flight-status-${meta.cls}">${bl(meta.zh, meta.en)}</span>
       </div>
@@ -1385,13 +1385,13 @@ function transferRowHtml(prevItem, nextItem){
   const cityEn = airportLabelEn(arrCode, pf.to_name);
   if(diffMs < 0){
     return `<div class="transfer-row transfer-warn">
-        ⚠️ ${bl('转机时间异常','Unusual layover')}：-${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
+        ${bl('转机时间异常','Unusual layover')}：-${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
         <div class="transfer-hint">${bl('日期或航班可能填错了','The date or flight number may be wrong')}</div>
       </div>`;
   }
   const tight = diffMs < 90 * 60000;
   return `<div class="transfer-row">
-      🔄 ${bl('转机等待','Layover')} ${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
+      ${bl('转机等待','Layover')} ${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
       ${ tight ? `<div class="transfer-hint transfer-hint-warn">${bl('转机时间偏紧','Layover is tight')}</div>` : '' }
     </div>`;
 }
@@ -1648,8 +1648,8 @@ function switchTab(tab){
 function markOffline(fetchedAtIso){
   const banner = document.getElementById('offlineBanner');
   const t = fmtDateTimeBoth(fetchedAtIso);
-  banner.innerHTML = `<span class="cn">📴 离线 · 数据为 ${escapeHtml(t.zh || '—')}</span>` +
-                      `<span class="en">📴 Offline · data as of ${escapeHtml(t.en || '—')}</span>`;
+  banner.innerHTML = `<span class="cn">离线 · 数据为 ${escapeHtml(t.zh || '—')}</span>` +
+                      `<span class="en">Offline · data as of ${escapeHtml(t.en || '—')}</span>`;
   banner.classList.remove('off');
 }
 function hideOffline(){ document.getElementById('offlineBanner').classList.add('off'); }
@@ -1789,15 +1789,15 @@ function recurringOccurrences(fromIso, toIso){
 function recurringItemsForDate(dateIso){
   return recurringOccurrences(dateIso, dateIso).filter(o => !o.skip).map(o => o.item);
 }
-function recurTagHtml(){ return `<span class="recur-tag">${bl('🔁 每周','🔁 Weekly')}</span>`; }
+function recurTagHtml(){ return `<span class="recur-tag">${bl('每周','Weekly')}</span>`; }
 function recurWeekdayBl(w){ return { zh: '每' + WEEKDAYS_ZH[w], en: 'Every ' + WEEKDAYS_EN_FULL[w] }; }
 /** 「这次取消」／「恢复」：**只有 admin 画得出来**（老板只读，这两颗一颗都不进 DOM）。 */
 function recurSkipBtnHtml(ruleId, dateIso, cancelled){
   if(role !== 'admin') return '';
   const a = `'${escapeHtml(ruleId)}','${escapeHtml(dateIso)}'`;
   return cancelled
-    ? `<button type="button" class="recur-restore-btn" onclick="adminRecurSkip(${a}, false)">↩ ${bl('恢复','Restore')}</button>`
-    : `<button type="button" class="recur-cancel-btn" onclick="adminRecurSkip(${a}, true)">✕ ${bl('这次取消','Skip this time')}</button>`;
+    ? `<button type="button" class="recur-restore-btn" onclick="adminRecurSkip(${a}, false)">${bl('恢复','Restore')}</button>`
+    : `<button type="button" class="recur-cancel-btn" onclick="adminRecurSkip(${a}, true)">${bl('这次取消','Skip this time')}</button>`;
 }
 /* ---------- 时段：没有钟点的条目选「上午／下午／晚上」（2026-10-31） ----------
  * 排序规则（四处共用 sortItemsByTime：今天页、行程页、分享文字、管理表单）：
@@ -1853,12 +1853,12 @@ function flightPaxList(f){
 function flightPaxHtml(f){
   const list = flightPaxList(f);
   if(!list.length) return '';
-  return `<div class="flight-pax">👤 ${list.map(p =>
+  return `<div class="flight-pax">${bl('乘客','Pax')} ${list.map(p =>
     `<span class="flight-pax-one">${escapeHtml(p.name)}${p.seat ? ` <b>${escapeHtml(p.seat)}</b>` : ''}</span>`).join(' · ')}</div>`;
 }
 function flightPaxText(f){
   const list = flightPaxList(f);
-  return list.length ? '👤 ' + list.map(p => p.seat ? `${p.name} ${p.seat}` : p.name).join(' · ') : '';
+  return list.length ? pick('乘客：','Pax: ') + list.map(p => p.seat ? `${p.name} ${p.seat}` : p.name).join(' · ') : '';
 }
 
 /* ---------- 酒店条目（item.kind = "hotel"） ---------- */
@@ -1886,18 +1886,18 @@ function hotelInfoHtml(it){
   const map = hotelMapUrl(h);
   if((h.address || '').trim()){
     rows.push(map
-      ? `<div>📍 <a class="hotel-addr" href="${escapeHtml(map)}" target="_blank" rel="noopener">${escapeHtml(h.address.trim())}</a></div>`
-      : `<div>📍 ${escapeHtml(h.address.trim())}</div>`);
+      ? `<div><a class="hotel-addr" href="${escapeHtml(map)}" target="_blank" rel="noopener">${escapeHtml(h.address.trim())}</a></div>`
+      : `<div>${escapeHtml(h.address.trim())}</div>`);
   }
   const tel = telHref(h.phone);
-  if(tel) rows.push(`<div>📞 <a class="hotel-tel" href="${escapeHtml(tel)}">${escapeHtml(String(h.phone).trim())}</a></div>`);
+  if(tel) rows.push(`<div>${bl('电话','Tel')} <a class="hotel-tel" href="${escapeHtml(tel)}">${escapeHtml(String(h.phone).trim())}</a></div>`);
   if(h.checkIn || h.checkOut){
     const a = h.checkIn ? { zh: fmtMdZh(h.checkIn), en: fmtMdEn(h.checkIn) } : null;
     const b = h.checkOut ? { zh: fmtMdZh(h.checkOut), en: fmtMdEn(h.checkOut) } : null;
     const n = hotelNights(h);
     const zh = [a ? a.zh + ' 入住' : '', b ? b.zh + ' 退房' : '', n ? `${n} 晚` : ''].filter(Boolean).join(' · ');
     const en = [a ? 'In ' + a.en : '', b ? 'out ' + b.en : '', n ? `${n} night${n > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
-    rows.push(`<div>🗓 ${bl(zh, en)}</div>`);
+    rows.push(`<div>${bl(zh, en)}</div>`);
   }
   return rows.length ? `<div class="hotel-info">${rows.join('')}</div>` : '';
 }
@@ -1920,13 +1920,13 @@ function tonightHotelCardHtml(dateIso){
     const map = hotelMapUrl(h);
     const tel = telHref(h.phone);
     return `<div class="tonight-hotel">
-        <div class="tonight-hotel-hd">🏨 ${bl('今晚住：', 'Tonight: ')}<b>${escapeHtml(name)}</b></div>
+        <div class="tonight-hotel-hd">${bl('今晚住　', 'Tonight: ')}<b>${escapeHtml(name)}</b></div>
         ${ (h.address || '').trim() ? `<div class="tonight-hotel-addr">${ map
-            ? `<a href="${escapeHtml(map)}" target="_blank" rel="noopener">📍 ${escapeHtml(h.address.trim())}</a>`
-            : '📍 ' + escapeHtml(h.address.trim()) }</div>` : '' }
+            ? `<a href="${escapeHtml(map)}" target="_blank" rel="noopener">${escapeHtml(h.address.trim())}</a>`
+            : escapeHtml(h.address.trim()) }</div>` : '' }
         <div class="tonight-hotel-btns">
-          ${ tel ? `<a class="tonight-hotel-btn" href="${escapeHtml(tel)}">📞 ${bl('打电话','Call')}</a>` : '' }
-          ${ map ? `<a class="tonight-hotel-btn" href="${escapeHtml(map)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+          ${ tel ? `<a class="tonight-hotel-btn" href="${escapeHtml(tel)}">${bl('打电话','Call')}</a>` : '' }
+          ${ map ? `<a class="tonight-hotel-btn" href="${escapeHtml(map)}" target="_blank" rel="noopener">${bl('地图','Map')}</a>` : '' }
         </div>
       </div>`;
   }).join('');
@@ -1944,7 +1944,7 @@ function itemRowHtml(it){
         ${ it.flight ? flightLiveBoxHtml(it) : '' }
         ${ hotelInfoHtml(it) }
       </div>
-      ${ it.mapUrl && !(isHotelItem(it) && (it.hotel.address || '').trim()) ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+      ${ it.mapUrl && !(isHotelItem(it) && (it.hotel.address || '').trim()) ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">${bl('地图','Map')}</a>` : '' }
     </div>`;
 }
 /** 覆盖某一天的所有行程（start~end 含首尾），按出发日排。
@@ -1968,7 +1968,7 @@ function todayTripBannerHtml(dateIso, trip){
       <div class="today-trip-banner-title">${titleHtml}</div>
       ${ hasLoc ? `<div class="trip-loc">${blObj(trip.location)}</div>` : '' }
       <div class="today-trip-banner-day">${bl(`第 ${dayNum} 天 / 共 ${totalDays} 天`, `Day ${dayNum} of ${totalDays}`)}</div>
-      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener">📖 ${bl('打开手册','Open Guide')}</a>` : '' }
+      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener">${bl('打开手册','Open guide')}</a>` : '' }
     </div>`;
 }
 /** 一段（今天或明天）的正文：行程横幅（如果有覆盖当天的行程）＋ 条目列表／空态。
@@ -2123,7 +2123,7 @@ function leaveTodayCardHtml(){
     body += `<div class="leave-sub${todayList ? ' leave-sep' : ''}">${bl('接下来','Coming up')}</div>` + soonList;
   }
   const title = todayList ? bl('今天请假','Off today') : bl('请假安排','Upcoming leave');
-  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🏖 ${title}</span></div>
+  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${title}</span></div>
     <div class="dental-card">${body}</div>`;
 }
 
@@ -2148,9 +2148,9 @@ function memoCardHtml(){
   if(!list.length) return '';
   const rows = list.map(m => `<div class="memo-row">
       <div>${escapeHtml(m.text || '')}</div>
-      ${ m.datetime ? `<div class="memo-when">⏰ ${memoWhenBl(m)}</div>` : '' }
+      ${ m.datetime ? `<div class="memo-when">${memoWhenBl(m)}</div>` : '' }
     </div>`).join('');
-  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">📌 ${bl('备忘','Notes')}</span></div>
+  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('备忘','Notes')}</span></div>
     <div class="memo-card">${rows}</div>`;
 }
 
@@ -2245,7 +2245,7 @@ function dentalCardHtml(){
       </div>`;
   }
   const note = d.note && String(d.note).trim();
-  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🦷 ${bl('牙医','Dentist')}</span></div>
+  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('牙医','Dentist')}</span></div>
     <div class="dental-card">${rows}${ note ? `<div class="dental-note">${escapeHtml(note)}</div>` : '' }${dentalWaBtnHtml(d, upcoming)}</div>`;
 }
 /**
@@ -2276,7 +2276,7 @@ function dentalWaUrl(d, upcoming){
 function dentalWaBtnHtml(d, upcoming){
   const label = upcoming ? bl('WhatsApp 改时间','Change time on WhatsApp') : bl('WhatsApp 请我们帮你约','Ask us to book on WhatsApp');
   return `<a class="dental-wa-btn" id="dental-wa" href="${escapeHtml(dentalWaUrl(d, upcoming))}" target="_blank" rel="noopener"
-      onclick="viewLogStep && viewLogStep({ tab: 'dentalWa' })">💬 ${label}</a>`;
+      onclick="viewLogStep && viewLogStep({ tab: 'dentalWa' })">${label}</a>`;
 }
 /** 加 n 个月，月底自动收敛到该月最后一天（8月31日 + 6 个月 = 2月28/29日，不会溢出到 3 月）。 */
 function addMonthsIso(iso, n){
@@ -2348,7 +2348,7 @@ function tripCardHtml(trip){
         <div class="trip-arrow" aria-hidden="true">▾</div>
       </div>
       <div class="trip-preview" onclick="this.parentElement.classList.toggle('expanded')">${tripPreviewHtml(trip)}</div>
-      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📖 ${bl('打开手册','Open Guide')}</a>` : '' }
+      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${bl('打开手册','Open guide')}</a>` : '' }
       <div class="trip-items">${tripItemsHtml(trip)}</div>
     </div>`;
 }
@@ -2373,7 +2373,7 @@ function recurringTripsCardsHtml(todayIso){
     return `<div class="recur-card" data-rule="${escapeHtml(rule.id)}">
         <div class="recur-card-title">${blObj(rule.title)}${recurTagHtml()}</div>
         <div class="recur-card-sub">${bl(wd.zh + ' ' + when, wd.en + ' ' + when)}${ hasNote ? ' · ' + blObj(rule.note) : '' }</div>
-        ${ rule.mapUrl ? `<a class="item-map" href="${escapeHtml(rule.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+        ${ rule.mapUrl ? `<a class="item-map" href="${escapeHtml(rule.mapUrl)}" target="_blank" rel="noopener">${bl('地图','Map')}</a>` : '' }
         ${ rows || `<div class="recur-row recur-skip">${bl('接下来几周没有','None in the coming weeks')}</div>` }
       </div>`;
   }).join('');
@@ -2394,7 +2394,7 @@ function renderTrips(){
 
   let html = '';
   if(!upcoming.length && !past.length && !recurringRules().length){
-    html += `<div class="empty-card"><div class="empty-icon">🧳</div><div>${bl('还没有行程安排','No trips yet')}</div></div>`;
+    html += `<div class="empty-card"><div>${bl('还没有行程','No trips yet')}</div></div>`;
   }
   html += recurringTripsCardsHtml(todayIso);
   html += upcoming.map(tripCardHtml).join('');
@@ -2415,12 +2415,11 @@ function renderBills(){
     return (b.uploadedAt||'').localeCompare(a.uploadedAt||'');
   });
   if(!bills.length){
-    pane.innerHTML = `<div class="empty-card"><div class="empty-icon">🧾</div><div>${bl('还没有账单','No bills yet')}</div></div>`;
+    pane.innerHTML = `<div class="empty-card"><div>${bl('还没有账单','No bills yet')}</div></div>`;
     return;
   }
   pane.innerHTML = `<div class="bill-list">${bills.map(b => `
       <div class="bill-row" onclick="openBill('${escapeHtml(b.id)}')">
-        <div class="bill-icon">📄</div>
         <div class="bill-info">
           <div class="bill-title">${blObj(b.title)}</div>
           ${billAmountHtml(b)}
@@ -2744,15 +2743,15 @@ function openBillNewTab(){
    时才用（例如本机缓存着旧版数据）。后端已改成 inventory.categories 动态给类别，
    新类别（如「氢水」）不需要前端改代码就能显示，见下面 renderInventory()。 */
 const INV_GROUPS = [
-  { key:'wine', icon:'🍷', zh:'酒', en:'Wine' },
-  { key:'tea', icon:'🍵', zh:'茶', en:'Tea' },
-  { key:'herb', icon:'🌿', zh:'虫草', en:'Herb' }
+  { key:'wine', icon:'', zh:'酒', en:'Wine' },
+  { key:'tea', icon:'', zh:'茶', en:'Tea' },
+  { key:'herb', icon:'', zh:'虫草', en:'Herb' }
 ];
 // 动态类别没有专属图标（后端只给 key/label），已知的老类别沿用原图标，其余给个通用箱子。
 // 类别图标：认识的给专属图标，不认识的落到 📦。类别本身是后端动态给的，
 // 这张表只管好看，漏了一个不会让类别消失——这跟之前写死类别名单是两回事。
-const INV_ICON_MAP = { wine:'🍷', tea:'🍵', herb:'🌿', hydrogen:'💧' };
-function invCategoryIcon(key){ return INV_ICON_MAP[key] || '📦'; }
+// 版式 A（2026-11-11）起不再用表情符号当类别图标，类别名本身就是标题。
+function invCategoryIcon(key){ return ''; }
 function invRowHtml(it){
   const qty = (it.count != null) ? it.count : (it.qty != null ? it.qty : (it.quantity != null ? it.quantity : '-'));
   // 老板端只读，图片加载失败（链接失效/热链被挡）就直接拿掉这个 <img>，不留破图标。
@@ -2801,7 +2800,7 @@ function invLocationGroups(items){
 /** 一个类别的完整渲染：标题＋合计，下面按地点分组，每组也有小标题＋合计。 */
 function invCategoryBlockHtml(labelHtml, icon, items){
   let html = `<div class="sec-hdr" style="margin-top:16px">
-      <span class="sec-title">${icon} ${labelHtml}</span>
+      <span class="sec-title">${icon ? icon + ' ' : ''}${labelHtml}</span>
       <span class="inv-cat-total">${bl(`合计 ${sumInvCount(items)}`, `Total ${sumInvCount(items)}`)}</span>
     </div>`;
   if(!items.length){
@@ -2820,7 +2819,7 @@ function renderInventory(){
   if(!feedData){ pane.innerHTML = ''; return; }
   const inv = feedData.inventory;
   if(!inv){
-    pane.innerHTML = `<div class="empty-card"><div class="empty-icon">📦</div>
+    pane.innerHTML = `<div class="empty-card">
       <div>${bl('库存暂时无法读取','Inventory unavailable right now')}</div></div>`;
     return;
   }
@@ -2863,8 +2862,8 @@ function restRowHtml(r){
         ${ (r.note||'').trim() ? `<div class="rest-meta">${escapeHtml(r.note)}</div>` : '' }
       </div>
       <div class="rest-acts">
-        ${ r.mapUrl ? `<a class="item-map" href="${escapeHtml(r.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
-        ${ canShare() ? `<button type="button" class="share-btn" onclick="shareRestaurant('${escapeHtml(r.id)}')">📤 ${bl('分享','Share')}</button>` : '' }
+        ${ r.mapUrl ? `<a class="item-map" href="${escapeHtml(r.mapUrl)}" target="_blank" rel="noopener">${bl('地图','Map')}</a>` : '' }
+        ${ canShare() ? `<button type="button" class="share-btn" onclick="shareRestaurant('${escapeHtml(r.id)}')">${bl('分享','Share')}</button>` : '' }
       </div>
     </div>`;
 }
@@ -2884,7 +2883,7 @@ function renderRestaurants(){
   if(!feedData){ pane.innerHTML = ''; return; }
   const groups = restGroups();
   if(!groups.length){
-    pane.innerHTML = `<div class="empty-card"><div class="empty-icon">🍜</div>
+    pane.innerHTML = `<div class="empty-card">
       <div>${bl('还没有收藏的餐厅','No saved restaurants yet')}</div></div>`;
     return;
   }
@@ -2892,7 +2891,7 @@ function renderRestaurants(){
       <div class="rest-region-hdr">
         <span>${escapeHtml(g.region)}　${bl(g.items.length + ' 家', g.items.length + ' places')}</span>
         ${ canShare() ? `<button type="button" class="share-btn"
-          onclick="shareRestRegion('${encodeURIComponent(g.region)}')">📤 ${bl('分享这一区','Share these')}</button>` : '' }
+          onclick="shareRestRegion('${encodeURIComponent(g.region)}')">${bl('分享这一区','Share these')}</button>` : '' }
       </div>
       <div class="rest-list">${g.items.map(restRowHtml).join('')}</div>`).join('');
 }
@@ -2910,8 +2909,8 @@ function openShare(titleText, hintText, text){
   document.getElementById('share-hint').textContent = hintText;
   document.getElementById('share-text').value = text;
   document.getElementById('share-msg').textContent = '';
-  document.getElementById('share-wa-btn').textContent = pick('📲 发到 WhatsApp','📲 Send via WhatsApp');
-  document.getElementById('share-copy-btn').textContent = pick('📋 复制文字','📋 Copy text');
+  document.getElementById('share-wa-btn').textContent = pick('发到 WhatsApp','Send via WhatsApp');
+  document.getElementById('share-copy-btn').textContent = pick('复制文字','Copy text');
   document.getElementById('shareBox').classList.add('open');
 }
 function closeShare(){ document.getElementById('shareBox').classList.remove('open'); }
@@ -2961,13 +2960,13 @@ function flightShareLines(it){
   const f = it && it.flight;
   if(!f) return [];
   const live = f.live || null;
-  if(!live) return ['✈️ ' + (f.no || ''), flightPaxText(f)].filter(Boolean);
+  if(!live) return [pick('航班 ','Flight ') + (f.no || ''), flightPaxText(f)].filter(Boolean);
   const zh = curLang !== 'en';
   const from = zh ? airportLabelZh(live.from, live.from_name) : airportLabelEn(live.from, live.from_name);
   const to = zh ? airportLabelZh(live.to, live.to_name) : airportLabelEn(live.to, live.to_name);
   const meta = flightStatusMeta(live.status);
   const lines = [];
-  lines.push(['✈️ ' + (f.no || ''), (from || to) ? `${from} → ${to}` : '', pick(meta.zh, meta.en)]
+  lines.push([pick('航班 ','Flight ') + (f.no || ''), (from || to) ? `${from} → ${to}` : '', pick(meta.zh, meta.en)]
     .filter(Boolean).join(' · '));
   lines.push(pick('起飞','Dep') + ' ' + flightTimePartText(live.sched_dep, live.act_dep, live.est_dep));
   lines.push(pick('到达','Arr') + ' ' + flightTimePartText(live.sched_arr, live.act_arr, live.est_arr));
@@ -2984,7 +2983,7 @@ function shareDayText(dateIso){
   const trips = activeTripsForDate(dateIso);
   const items = itemsForDate(dateIso);
   const lines = [];
-  let head = '📅 ' + (pick(dw.zh, dw.en) || dateIso);
+  let head = (pick(dw.zh, dw.en) || dateIso);
   // 两趟重叠的那天（例如一趟的最后一天＝下一趟的第一天）两趟都写出来
   const tripBits = trips.map(trip => {
     const total = diffDaysIso(trip.start, trip.end || trip.start) + 1;
@@ -2996,7 +2995,7 @@ function shareDayText(dateIso){
   lines.push(head);
   hotelsTonight(dateIso).forEach(it => {
     const h = it.hotel;
-    lines.push(pick('🏨 今晚住：', '🏨 Tonight: ') + (String(h.name || '').trim() || pickObj(it.title)));
+    lines.push(pick('今晚住：', 'Tonight: ') + (String(h.name || '').trim() || pickObj(it.title)));
   });
   if(!items.length){
     lines.push('');
@@ -3012,16 +3011,16 @@ function shareDayText(dateIso){
     flightShareLines(it).forEach(l => lines.push(l));
     if(isHotelItem(it)){
       const h = it.hotel;
-      if((h.address || '').trim()) lines.push('📍 ' + h.address.trim());
-      if((h.phone || '').trim()) lines.push('📞 ' + h.phone.trim());
+      if((h.address || '').trim()) lines.push(pick('地址：','Address: ') + h.address.trim());
+      if((h.phone || '').trim()) lines.push(pick('电话：','Tel: ') + h.phone.trim());
     }
     // 地图网址原样写出来（不缩短、不包装）——WhatsApp 会自己变成能点的链接，
     // 这是 CLAUDE.md「提到地点就要附地图链接」在分享文字里的落地。
-    if((it.mapUrl || '').trim()) lines.push('🗺 ' + it.mapUrl.trim());
+    if((it.mapUrl || '').trim()) lines.push(pick('地图：','Map: ') + it.mapUrl.trim());
   });
   trips.filter(t => (t.guideUrl || '').trim()).forEach(t => {
     lines.push('');
-    lines.push(pick('📖 完整手册：','📖 Full guide: ') + (trips.length > 1 ? pickObj(t.title) + ' ' : '') + t.guideUrl.trim());
+    lines.push(pick('完整手册：','Full guide: ') + (trips.length > 1 ? pickObj(t.title) + ' ' : '') + t.guideUrl.trim());
   });
   return lines.join('\n');
 }
@@ -3038,12 +3037,12 @@ function shareDay(dateIso){
 function canShare(){ return role === 'admin'; }
 function shareDayBtnHtml(dateIso){
   if(!canShare()) return '';
-  return `<button type="button" class="share-btn" onclick="shareDay('${escapeHtml(dateIso)}')">📤 ${bl('分享','Share')}</button>`;
+  return `<button type="button" class="share-btn" onclick="shareDay('${escapeHtml(dateIso)}')">${bl('分享','Share')}</button>`;
 }
 
 /* ---------- 餐厅 → 一段能发出去的文字 ---------- */
 function restShareBlock(r){
-  const lines = ['🍽 ' + (r.name || '')];
+  const lines = [(r.name || '')];
   const meta = [r.region, r.category].filter(x => (x||'').trim()).join(' · ');
   if(meta) lines.push(meta);
   if((r.note || '').trim()) lines.push(r.note.trim());
@@ -3061,7 +3060,7 @@ function shareRestRegion(regionEnc){
   try{ region = decodeURIComponent(regionEnc); }catch(e){}
   const g = restGroups().find(x => x.region === region);
   if(!g || !g.items.length) return;
-  const head = pick(`🍽 ${region} 推荐餐厅（${g.items.length} 家）`, `🍽 ${region} — restaurants (${g.items.length})`);
+  const head = pick(`${region} 推荐餐厅（${g.items.length} 家）`, `${region} — restaurants (${g.items.length})`);
   openShare(pick('分享餐厅','Share restaurants'), pick('可以先改一改再发。','You can edit it before sending.'),
     [head].concat(g.items.map(restShareBlock)).join('\n\n'));
 }
@@ -3179,9 +3178,9 @@ function adminItemDateWarn(trip, it){
   // 全空条目（新增行程/新增条目自带的那条占位）不报警——人还没开始填就先挨骂，
   // 警告到处都是就等于没有警告。填了东西却没日期才是真问题。
   if(!date) return isEmptyTripItem(it) ? null
-    : { zh: '⚠️ 还没填日期，这条不会出现在「今日」', en: '⚠️ No date yet — this item will not show up on Today' };
+    : { zh: '注意：还没填日期，这条不会出现在「今日」', en: 'Note: no date yet — this item will not show up on Today' };
   if(trip && trip.start && trip.end && (date < trip.start || date > trip.end)){
-    return { zh: '⚠️ 日期不在行程范围内（如果是前后站可以不管）', en: '⚠️ Date is outside the trip range (fine if this is before/after the main trip)' };
+    return { zh: '注意：日期不在行程范围内（如果是前后站可以不管）', en: 'Note: date is outside the trip range (fine if this is before/after the main trip)' };
   }
   return null;
 }
@@ -3257,7 +3256,7 @@ function adminHotelRowHtml(trip, tripIdx, itemIdx){
         ${type === 'date' ? 'onchange' : 'oninput'}="adminHotelField(${tripIdx},${itemIdx},'${f}',this.value)"></div>`;
   return `<div class="admin-item-wrap admin-hotel-wrap">
     <div class="admin-item-row admin-item-row-compact">
-      <div class="admin-field admin-field-compact admin-field-grow"><label>🏨 ${pick('酒店名称','Hotel name')}</label>
+      <div class="admin-field admin-field-compact admin-field-grow"><label>${pick('酒店名称','Hotel name')}</label>
         <input type="text" id="${id('name')}" value="${escapeHtml(h.name || '')}" placeholder="Marina Bay Sands"
           oninput="adminHotelField(${tripIdx},${itemIdx},'name',this.value)"></div>
       ${adminPeriodSelectHtml(tripIdx, itemIdx, it)}
@@ -3316,7 +3315,7 @@ function adminItemRowHtml(trip, tripIdx, itemIdx){
   const dateWarn = adminItemDateWarn(trip, it);
   const hasExtra = adminItemMoreHasContent(trip, it);
   const extraBadge = dateWarn
-    ? ` <span class="admin-more-badge">${pick('⚠️ 日期要看一下','⚠️ check the date')}</span>`
+    ? ` <span class="admin-more-badge">${pick('注意：日期要看一下','Note: check the date')}</span>`
     : (hasExtra ? ` <span class="admin-more-badge">${pick('（有备注/地点/航班详情）','(has notes/location/flight details)')}</span>` : '');
   return `<div class="admin-item-wrap">
     <div class="admin-item-row admin-item-row-compact">
@@ -3372,22 +3371,22 @@ function flightLookupBlockHtml(trip, tripIdx, itemIdx){
     ? pick('这条航班还没查到资料，时间要自己填', 'This flight has not been resolved yet — please fill in the time yourself')
     : '';
   return `<div class="flight-lookup-block${failed ? ' flight-lookup-block-err' : ''}" id="admin-item-${tripIdx}-${itemIdx}-flightblock">
-      <div class="flight-lookup-hd">✈️ ${pick('航班','Flight')}</div>
+      <div class="flight-lookup-hd">${pick('航班','Flight')}</div>
       ${ f && !failed ? `<div class="flight-lookup-current">
           <span>${pick('已关联航班','Linked flight')} <b>${escapeHtml(f.no||'')}</b>（${escapeHtml(f.date||'')}）</span>
           <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
         </div>` : '' }
       ${ failed ? `<div class="flight-lookup-current flight-lookup-current-err">
-          <span>⚠️ ${pick('没查到，时间要自己填','Not found — please fill in the time yourself')}</span>
+          <span>${pick('没查到，时间要自己填','Not found — please fill in the time yourself')}</span>
           <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
         </div>` : '' }
       <div class="flight-lookup-date">${
         dateVal ? `${pick('用上面填的日期','Uses the date above')}：<b>${escapeHtml(dateVal)}</b>`
-                : `⚠️ ${pick('上面的「日期」还没填，填了才能查','Fill in the Date field above first')}` }</div>
+                : `${pick('上面的「日期」还没填，填了才能查','Fill in the Date field above first')}` }</div>
       ${ staleDate ? `<div class="flight-lookup-current flight-lookup-current-err">
-          <span>⚠️ ${pick('这条航班是按 ' + escapeHtml(f.date) + ' 查的，跟上面的日期对不上','Looked up for ' + escapeHtml(f.date) + ', which differs from the date above')}</span>
+          <span>${pick('这条航班是按 ' + escapeHtml(f.date) + ' 查的，跟上面的日期对不上','Looked up for ' + escapeHtml(f.date) + ', which differs from the date above')}</span>
         </div>` : '' }
-      <button type="button" class="admin-btn-sm" id="admin-item-${tripIdx}-${itemIdx}-flightbtn" onclick="adminFlightLookup(${tripIdx},${itemIdx})">🔍 ${pick('查询','Look up')}</button>
+      <button type="button" class="admin-btn-sm" id="admin-item-${tripIdx}-${itemIdx}-flightbtn" onclick="adminFlightLookup(${tripIdx},${itemIdx})">${pick('查询','Look up')}</button>
       <div id="admin-item-${tripIdx}-${itemIdx}-flightstatus" class="flight-lookup-status${failed ? ' err' : ''}">${persistentHint}</div>
       ${ f ? adminPaxEditorHtml(f, tripIdx, itemIdx) : '' }
     </div>`;
@@ -3397,7 +3396,7 @@ function adminPaxEditorHtml(f, tripIdx, itemIdx){
   const pax = Array.isArray(f.pax) ? f.pax : [];
   const base = `admin-item-${tripIdx}-${itemIdx}-pax`;
   return `<div class="admin-pax" id="${base}">
-      <div class="flight-lookup-hd" style="margin:10px 0 6px">👤 ${pick('乘客与座位（选填）','Passengers and seats (optional)')}</div>
+      <div class="flight-lookup-hd" style="margin:10px 0 6px">${pick('乘客与座位（选填）','Passengers and seats (optional)')}</div>
       ${pax.map((p, k) => `<div class="admin-pax-row">
           <input type="text" id="${base}-${k}-name" placeholder="${escapeHtml(pick('姓名','Name'))}" value="${escapeHtml((p && p.name) || '')}"
             oninput="adminPaxField(${tripIdx},${itemIdx},${k},'name',this.value)">
@@ -3682,7 +3681,7 @@ function adminTripFormHtml(trip, idx){
           <span class="sec-title" style="font-size:13.5px">${pick('行程条目','Itinerary items')}</span>
           <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
             <button type="button" class="admin-btn-md" onclick="adminAddItem(${idx})">+ ${pick('新增条目','Add item')}</button>
-            <button type="button" class="admin-btn-md admin-btn-hotel" id="admin-trip-${idx}-add-hotel" onclick="adminAddHotel(${idx})">+ 🏨 ${pick('酒店','Hotel')}</button>
+            <button type="button" class="admin-btn-md admin-btn-hotel" id="admin-trip-${idx}-add-hotel" onclick="adminAddHotel(${idx})">+ ${pick('酒店','Hotel')}</button>
           </span>
         </div>
         <div class="admin-section-note" style="margin-bottom:10px">${pick('这几天每天几点做什么，可以加很多条','What happens each day — add as many as you need')}</div>
@@ -3759,8 +3758,8 @@ function seenDevicesHtml(devices){
     </div>`;
 }
 /** 「他看了什么（最近几次）」：老板那台 iPhone 每次打开一段，按时间列出分页与账单。 */
-const VLOG_TAB = { today:['🏠 今天','🏠 Today'], trips:['🧳 行程','🧳 Trips'], bills:['🧾 账单','🧾 Bills'],
-                   inventory:['📦 库存','📦 Inventory'], restaurants:['🍜 餐厅','🍜 Restaurants'] };
+const VLOG_TAB = { today:['今天','Today'], trips:['行程','Trips'], bills:['账单','Bills'],
+                   inventory:['库存','Inventory'], restaurants:['餐厅','Restaurants'] };
 function viewLogHtml(sessions){
   if(!Array.isArray(sessions) || !sessions.length) return '';
   const hm = iso => { const d = new Date(iso); return isNaN(d) ? '' : String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); };
@@ -3771,7 +3770,7 @@ function viewLogHtml(sessions){
       if(st.bill){
         const m = Math.floor((st.secs || 0) / 60), sec = (st.secs || 0) % 60;
         const dur = st.secs ? `<span class="vlog-dur">${pick('看了 ' + (m ? m + '分' : '') + sec + '秒', 'viewed ' + (m ? m + 'm ' : '') + sec + 's')}</span>` : '';
-        what = `<span class="vlog-bill">📄 ${escapeHtml(st.bill)}</span>${dur}`;
+        what = `<span class="vlog-bill">${escapeHtml(st.bill)}</span>${dur}`;
       }else{
         const lab = VLOG_TAB[st.tab];
         what = escapeHtml(lab ? pick(lab[0], lab[1]) : String(st.tab || ''));
@@ -3807,7 +3806,7 @@ function adminSeenSectionHtml(){
       <div>${badge}</div>${warn}${viewLogHtml(seen.views)}${seenDevicesHtml(seen.devices)}`;
   }
   return `<div class="admin-block" id="admin-seen-section">
-      <h3>📱 ${pick('老板那边','The boss\'s device')}</h3>
+      <h3>${pick('老板那边','The boss\'s device')}</h3>
       ${body}
     </div>`;
 }
@@ -3817,7 +3816,7 @@ function adminPushSectionHtml(){
       ? pick('这台设备要先把 App 加到主屏才能收通知','Add the app to your Home Screen first to enable notifications on this device')
       : pick('这个浏览器不支持网页推送','This browser does not support web push');
     return `<div class="admin-block" id="admin-push-section">
-        <h3>🔔 ${pick('通知','Notifications')}</h3>
+        <h3>${pick('通知','Notifications')}</h3>
         <div class="admin-status">${escapeHtml(hint)}</div>
         ${adminRemotePushHtml()}
       </div>`;
@@ -3825,7 +3824,7 @@ function adminPushSectionHtml(){
   const on = !!pushSubscription;
   const denied = (typeof Notification !== 'undefined' && Notification.permission === 'denied');
   return `<div class="admin-block" id="admin-push-section">
-      <h3>🔔 ${pick('通知','Notifications')}</h3>
+      <h3>${pick('通知','Notifications')}</h3>
       <div class="admin-push-row">
         <span class="admin-push-state${on ? ' on' : ''}" id="admin-push-state">${
           on ? pick('已开启','On') : pick('未开启','Off')}</span>
@@ -3887,11 +3886,11 @@ async function adminTestRemotePush(){
       const who = escapeHtml(r.who || pick('（没记名字）','(unnamed)'));
       const plat = escapeHtml(pushHostLabel(r.host));
       const ok = r.ok
-        ? pick('✅ 推送服务收下了（' + r.httpStatus + '）','✅ accepted (' + r.httpStatus + ')')
+        ? pick('已送达推送服务（' + r.httpStatus + '）','Accepted (' + r.httpStatus + ')')
         : (r.dead
-            ? pick('❌ 这个订阅已失效（' + r.httpStatus + '），要请对方重开一次通知',
-                   '❌ subscription expired (' + r.httpStatus + ') — ask them to turn notifications on again')
-            : pick('❌ 发不出去（' + r.httpStatus + '）','❌ failed (' + r.httpStatus + ')'));
+            ? pick('失败：这个订阅已失效（' + r.httpStatus + '），要请对方重开一次通知',
+                   'Failed: subscription expired (' + r.httpStatus + ') — ask them to turn notifications on again')
+            : pick('失败：发不出去（' + r.httpStatus + '）','Failed (' + r.httpStatus + ')'));
       const detail = (!r.ok && (r.detail || r.error)) ? '<br><span class="sub">' + escapeHtml(String(r.detail || r.error)) + '</span>' : '';
       return who + ' · ' + plat + '：' + ok + detail;
     });
@@ -3939,7 +3938,7 @@ async function adminTestLocalNotification(){
 function adminDentalSectionHtml(){
   const d = (feedData && feedData.dental) || {};
   return `<div class="admin-block" id="admin-dental-section">
-      <h3>🦷 ${pick('牙医','Dentist')}</h3>
+      <h3>${pick('牙医','Dentist')}</h3>
       <div class="admin-field"><label>${pick('上次就诊','Last visit')}</label>
         <input type="date" id="admin-dental-last" value="${escapeHtml(d.lastVisit || '')}"></div>
       <div class="admin-field"><label>${pick('下次预约（还没约就空着）','Next appointment (leave empty if not booked)')}</label>
@@ -3954,7 +3953,7 @@ function adminDentalSectionHtml(){
         <input type="tel" id="admin-dental-wa" inputmode="tel" maxlength="20" value="${escapeHtml(d.bookWa || '')}"
           placeholder="${escapeHtml(pick('不填＝老板自己挑联系人','Empty = boss picks the contact'))}"></div>
       ${dentalDonePromptHtml(d)}
-      <button type="button" class="admin-btn" onclick="adminSaveDental()">💾 ${pick('保存牙医记录','Save dentist record')}</button>
+      <button type="button" class="admin-btn" onclick="adminSaveDental()">${pick('保存牙医记录','Save dentist record')}</button>
       <div class="admin-status" id="admin-dental-status"></div>
     </div>`;
 }
@@ -3973,7 +3972,7 @@ function dentalDonePromptHtml(d){
   return `<div class="admin-status err" id="admin-dental-done" style="margin-bottom:8px">
       ${pick(`${w.zh}那次预约已经过了——去了吗？`, `The appointment on ${w.en} has passed — did it happen?`)}
       <button type="button" class="admin-btn" style="margin-top:6px"
-        onclick="adminDentalDone('${escapeHtml(next)}')">✅ ${pick('去了，记成上次就诊','Yes — record as last visit')}</button>
+        onclick="adminDentalDone('${escapeHtml(next)}')">${pick('去了，记成上次就诊','Yes — record as last visit')}</button>
     </div>`;
 }
 /** 一键：把过期的预约转成「上次就诊」，并清掉下次预约（还没约新的）。 */
@@ -4064,10 +4063,10 @@ function adminTripsSectionHtml(){
                                   : adminTripSummaryHtml(adminTripsDraft[idx], idx)).join('');
   }
   return `<div class="admin-block" id="admin-trips-section">
-      <h3>🧳 ${pick('行程管理','Manage Trips')}</h3>
+      <h3>${pick('行程管理','Manage Trips')}</h3>
       <div id="admin-trips-list">${inner}</div>
       <div class="admin-say-block admin-import-block" id="admin-import-block">
-        <label class="admin-say-label" for="admin-import-guide">📖 ${pick('从手册导入：每天的安排、航班、座位一次填好','Import from a guide: daily plan, flights and seats in one go')}</label>
+        <label class="admin-say-label" for="admin-import-guide">${pick('从手册导入：每天的安排、航班、座位一次填好','Import from a guide: daily plan, flights and seats in one go')}</label>
         <select class="admin-select" id="admin-import-guide">
           ${GUIDE_OPTIONS.map(g => `<option value="${escapeHtml(g.path)}">${escapeHtml(pick(g.zh, g.en))}</option>`).join('')}
         </select>
@@ -4076,19 +4075,19 @@ function adminTripsSectionHtml(){
         <div id="admin-import-choice"></div>
       </div>
       <div class="admin-say-block">
-        <label class="admin-say-label">✍️ ${pick('用讲的：写一段话，自动排成行程','Just write it: a paragraph becomes itinerary rows')}</label>
+        <label class="admin-say-label">${pick('用讲的：写一段话，自动排成行程','Just write it: a paragraph becomes itinerary rows')}</label>
         <textarea id="admin-say-text" rows="3" spellcheck="false"
           placeholder="${escapeHtml(pick('例：9月10号早上8点半从家里出发去金边机场，中午到新加坡，下午两点入住滨海湾金沙，晚上七点在天空餐厅吃饭',
                                           'e.g. Sep 10, leave home 8:30am for the airport, arrive Singapore at noon, check in at Marina Bay Sands 2pm, dinner 7pm'))}"></textarea>
         <button type="button" class="admin-btn" id="admin-say-btn" onclick="adminSayParse()">${pick('排成行程','Turn into rows')}</button>
         <div class="admin-status" id="admin-say-status"></div>
       </div>
-      <button type="button" class="admin-btn admin-btn-ticket" onclick="adminPickTicket()">📄 ${pick('丢机票／酒店确认单进来（PDF／照片，可多选）','Drop in tickets or hotel vouchers (PDF/photo, multi-select)')}</button>
+      <button type="button" class="admin-btn admin-btn-ticket" onclick="adminPickTicket()">${pick('丢机票／酒店确认单进来（PDF／照片，可多选）','Drop in tickets or hotel vouchers (PDF/photo, multi-select)')}</button>
       <input type="file" id="admin-ticket-input" accept="application/pdf,image/*" multiple
         style="display:none" onchange="adminTicketPicked(this)">
       <div class="admin-status" id="admin-ticket-status"></div>
       <button type="button" class="admin-btn" onclick="adminAddTrip()">+ ${pick('新增行程','Add trip')}</button>
-      <button type="button" class="admin-btn" style="margin-top:10px" onclick="adminSaveTripsForm()">💾 ${pick('保存全部行程','Save all trips')}</button>
+      <button type="button" class="admin-btn" style="margin-top:10px" onclick="adminSaveTripsForm()">${pick('保存全部行程','Save all trips')}</button>
       <div class="admin-status" id="admin-trips-form-status"></div>
     </div>`;
 }
@@ -4947,7 +4946,7 @@ function adminMemoRowHtml(m){
   const bits = [];
   if(m.datetime){
     const [d, t] = String(m.datetime).split('T');
-    bits.push(`⏰ ${escapeHtml(d)} ${escapeHtml(t || '')}`);
+    bits.push(`${escapeHtml(d)} ${escapeHtml(t || '')}`);
     if(m.repeat === 'daily') bits.push(pick('每天','daily'));
     if(m.repeat === 'weekly') bits.push(pick('每周','weekly'));
     if(m.repeat === 'monthly') bits.push(pick('每月','monthly'));
@@ -4967,9 +4966,9 @@ function adminMemoRowHtml(m){
       </div>
       <div class="admin-memo-acts">
         <button type="button" onclick="adminMemoToggleDone('${escapeHtml(m.id)}', ${m.done ? 'false' : 'true'})"
-          aria-label="${escapeHtml(m.done ? pick('取消完成','Undo') : pick('完成','Done'))}">${m.done ? '↩' : '✓'}</button>
-        <button type="button" onclick="adminMemoEdit('${escapeHtml(m.id)}')" aria-label="${escapeHtml(pick('修改','Edit'))}">✏️</button>
-        <button type="button" onclick="adminMemoDelete('${escapeHtml(m.id)}')" aria-label="${escapeHtml(pick('删除','Delete'))}">🗑</button>
+          aria-label="${escapeHtml(m.done ? pick('取消完成','Undo') : pick('完成','Done'))}">${m.done ? escapeHtml(pick('恢复','Undo')) : escapeHtml(pick('完成','Done'))}</button>
+        <button type="button" onclick="adminMemoEdit('${escapeHtml(m.id)}')" aria-label="${escapeHtml(pick('修改','Edit'))}">${escapeHtml(pick('改','Edit'))}</button>
+        <button type="button" onclick="adminMemoDelete('${escapeHtml(m.id)}')" aria-label="${escapeHtml(pick('删除','Delete'))}">${escapeHtml(pick('删','Del'))}</button>
       </div>
     </div>`;
 }
@@ -4980,7 +4979,7 @@ function adminMemosSectionHtml(){
   // 接着写一条新的按保存，会**悄悄覆盖掉刚才那条**。
   adminMemoEditId = '';
   return `<div class="admin-block" id="admin-memo-section">
-      <h3>📌 ${pick('备忘 / 提醒','Notes & reminders')}</h3>
+      <h3>${pick('备忘 / 提醒','Notes & reminders')}</h3>
       <div class="admin-field"><label>${pick('内容','Text')}</label>
         <input type="text" id="admin-memo-text" maxlength="300"
           placeholder="${escapeHtml(pick('例：护照放在保险箱第二层','e.g. passport is in the safe'))}"></div>
@@ -5002,7 +5001,7 @@ function adminMemosSectionHtml(){
         <label class="admin-check"><input type="checkbox" id="admin-memo-nt" checked> ${pick('我的 Telegram','My Telegram')}</label>
         <label class="admin-check"><input type="checkbox" id="admin-memo-nm"> ${pick('我的手机（这个 App）','My phone (this app)')}</label>
         <label class="admin-check"><input type="checkbox" id="admin-memo-nb"> ${pick('老板手机','The boss’s phone')}</label></div>
-      <button type="button" class="admin-btn" id="admin-memo-save" onclick="adminMemoSave()">💾 ${pick('保存备忘','Save note')}</button>
+      <button type="button" class="admin-btn" id="admin-memo-save" onclick="adminMemoSave()">${pick('保存备忘','Save note')}</button>
       <div class="admin-status" id="admin-memo-status"></div>
       ${ list.length ? `<div class="admin-memo-list">${list.map(adminMemoRowHtml).join('')}</div>`
                      : `<div class="admin-rest-hint">${pick('还没有备忘','No notes yet')}</div>` }
@@ -5029,7 +5028,7 @@ function adminMemoEdit(id){
   document.getElementById('admin-memo-nb').checked = !!(m.notify && m.notify.boss);
   adminMemoSyncNotify();
   const btn = document.getElementById('admin-memo-save');
-  if(btn) btn.textContent = '💾 ' + pick('保存修改','Save changes');
+  if(btn) btn.textContent = pick('保存修改','Save changes');
   const sec = document.getElementById('admin-memo-section');
   if(sec) sec.scrollIntoView({ block: 'start' });
 }
@@ -5134,14 +5133,14 @@ function adminRecurringSectionHtml(){
           <div class="admin-recur-dates">${dates}</div>
         </div>
         <div class="admin-memo-acts">
-          <button type="button" class="admin-recur-edit" onclick="adminRecurEdit('${escapeHtml(r.id)}')" aria-label="${escapeHtml(pick('修改','Edit'))}">✏️</button>
-          <button type="button" class="admin-recur-del" onclick="adminRecurDelete('${escapeHtml(r.id)}')" aria-label="${escapeHtml(pick('删除','Delete'))}">🗑</button>
+          <button type="button" class="admin-recur-edit" onclick="adminRecurEdit('${escapeHtml(r.id)}')" aria-label="${escapeHtml(pick('修改','Edit'))}">${escapeHtml(pick('改','Edit'))}</button>
+          <button type="button" class="admin-recur-del" onclick="adminRecurDelete('${escapeHtml(r.id)}')" aria-label="${escapeHtml(pick('删除','Delete'))}">${escapeHtml(pick('删','Del'))}</button>
         </div>
       </div>`;
   }).join('');
   const wdOpts = [0,1,2,3,4,5,6].map(w => `<option value="${w}">${escapeHtml(pick(recurWeekdayBl(w).zh, recurWeekdayBl(w).en))}</option>`).join('');
   return `<div class="admin-block" id="admin-recur-section">
-      <h3>🔁 ${pick('每周固定行程','Weekly routine')}</h3>
+      <h3>${pick('每周固定行程','Weekly routine')}</h3>
       <div class="admin-rest-hint">${pick('设一次，每周自动出现在老板的「今天」和行程里。那天如果在外地行程的日期里（地点不是金边的那种），自动不显示。某一次不去，在那一天按「这次取消」。',
         'Set once; it shows up every week on the boss’s Today and Trips. Days inside an out-of-town trip (location not Phnom Penh) are skipped automatically. Use “Skip this time” for a single week.')}</div>
       <div class="admin-field"><label>${pick('星期几','Day of week')}</label>
@@ -5162,7 +5161,7 @@ function adminRecurringSectionHtml(){
         <input type="date" id="admin-recur-start" value="${escapeHtml(todayIso)}"></div>
       <div class="admin-field"><label>${pick('到哪天为止（可不填＝一直有）','Until (optional)')}</label>
         <input type="date" id="admin-recur-end"></div>
-      <button type="button" class="admin-btn" id="admin-recur-save" onclick="adminRecurSave()">💾 ${pick('保存每周固定行程','Save weekly routine')}</button>
+      <button type="button" class="admin-btn" id="admin-recur-save" onclick="adminRecurSave()">${pick('保存每周固定行程','Save weekly routine')}</button>
       <div class="admin-status" id="admin-recur-status"></div>
       ${ rows ? `<div class="admin-memo-list">${rows}</div>` : `<div class="admin-rest-hint">${pick('还没有每周固定行程','No weekly routine yet')}</div>` }
     </div>`;
@@ -5185,7 +5184,7 @@ function adminRecurEdit(id){
   document.getElementById('admin-recur-start').value = r.startDate || '';
   document.getElementById('admin-recur-end').value = r.endDate || '';
   const btn = document.getElementById('admin-recur-save');
-  if(btn) btn.textContent = '💾 ' + pick('保存修改','Save changes');
+  if(btn) btn.textContent = pick('保存修改','Save changes');
   const sec = document.getElementById('admin-recur-section');
   if(sec) sec.scrollIntoView({ block: 'start' });
 }
@@ -5268,10 +5267,10 @@ function adminRestaurantsSectionHtml(){
         <div class="admin-rest-meta">${escapeHtml([r.region, r.category].filter(x => (x||'').trim()).join(' · '))}</div>
       </div>
       <button type="button" class="admin-rest-del" onclick="adminDeleteRestaurant('${escapeHtml(r.id)}')"
-        aria-label="${escapeHtml(pick('删除','Delete'))}">🗑</button>
+        aria-label="${escapeHtml(pick('删除','Delete'))}">${escapeHtml(pick('删','Del'))}</button>
     </div>`).join('');
   return `<div class="admin-block" id="admin-rest-section">
-      <h3>🍜 ${pick('收藏餐厅','Saved restaurants')}</h3>
+      <h3>${pick('收藏餐厅','Saved restaurants')}</h3>
       <div class="admin-field"><label>${pick('店名（必填）','Name (required)')}</label>
         <input type="text" id="admin-rest-name" maxlength="60"
           placeholder="${escapeHtml(pick('例：胖姐领头羊','e.g. Fat Sister Hot Pot'))}"></div>
@@ -5376,26 +5375,26 @@ function renderAdmin(){
     ${adminPushSectionHtml()}
 
     <div class="admin-block">
-      <h3>🔑 <span class="cn">发给老板的链接</span><span class="en">Link to send the boss</span></h3>
+      <h3><span class="cn">发给老板的链接</span><span class="en">Link to send the boss</span></h3>
       <div class="admin-field">
         <label>${pick('这条链接里已经带了访问码——他点开就是登入状态，不用打字、不用安装',
                       'This link carries the access code — he just taps it, no typing, no install')}</label>
         <div id="admin-boss-link" class="admin-code-box">${escapeHtml(adminAccessCode ? bossShareUrl() : pick('加载中…','Loading…'))}</div>
       </div>
-      <button type="button" class="admin-btn" onclick="adminCopyBossMessage()">📋 ${pick('复制整条消息（可直接贴去 WhatsApp）','Copy the whole message (paste into WhatsApp)')}</button>
-      <button type="button" class="admin-btn" onclick="adminCopyBillMessage()">🧾 ${pick('复制「账单来了」的消息（点开直接看账单）','Copy a "new bill" message (opens straight to Bills)')}</button>
+      <button type="button" class="admin-btn" onclick="adminCopyBossMessage()">${pick('复制整条消息（可直接贴去 WhatsApp）','Copy the whole message (paste into WhatsApp)')}</button>
+      <button type="button" class="admin-btn" onclick="adminCopyBillMessage()">${pick('复制「账单来了」的消息（点开直接看账单）','Copy a "new bill" message (opens straight to Bills)')}</button>
       <button type="button" class="admin-btn-sm" onclick="adminCopyBossLink()">${pick('只复制链接','Copy link only')}</button>
       <button type="button" class="admin-btn-sm" onclick="adminCopyAccessCode()">${pick('只复制访问码','Copy code only')}</button>
       <span id="admin-access-code-status" style="margin-left:8px;font-size:12.5px;color:var(--ok)"></span>
       <div id="admin-access-code" style="display:none">${escapeHtml(adminAccessCode || '')}</div>
       <div class="admin-rest-hint">${pick(
-        '⚠️ 不装到主屏也能看，但**收不到通知**（行程改了、有新账单都不会提醒他）。想装的话另有一页说明：',
-        '⚠️ It works without installing, but push notifications will NOT arrive. Install guide:')}
+        '注意：不装到主屏也能看，但**收不到通知**（行程改了、有新账单都不会提醒他）。想装的话另有一页说明：',
+        'Note: it works without installing, but push notifications will NOT arrive. Install guide:')}
         <a href="./install.html" target="_blank" rel="noopener">install.html</a></div>
     </div>
 
     <div class="admin-block">
-      <h3>⬆️ ${pick('上传账单 PDF','Upload a Bill PDF')}</h3>
+      <h3>${pick('上传账单 PDF','Upload a Bill PDF')}</h3>
       <div class="admin-field">
         <label>${pick('PDF 文件（上限 ' + BOSS_BILL_MAX_MB + 'MB）','PDF file (max ' + BOSS_BILL_MAX_MB + 'MB)')}</label>
         <input type="file" id="admin-bill-file" accept="application/pdf">
@@ -5429,7 +5428,7 @@ function renderAdmin(){
     </div>
 
     <div class="admin-block">
-      <h3>🗑️ ${pick('管理已上传的账单','Manage Uploaded Bills')}</h3>
+      <h3>${pick('管理已上传的账单','Manage Uploaded Bills')}</h3>
       ${ bills.length ? bills.map(b => `
         <div class="admin-bill-row">
           <div class="admin-bill-info">
@@ -5571,7 +5570,7 @@ function pushBarInnerHtml(){
     // 没有开关按钮：这个环境里点它必定失败（Notification/PushManager 都不存在）。
     // 给的是唯一有用的下一步——先加到主屏。
     return `<div class="push-row">
-        <div class="push-label">🔔 ${bl('推送通知','Notifications')}</div>
+        <div class="push-label">${bl('推送通知','Notifications')}</div>
         ${dismissBtnHtml()}
       </div>
       <div class="push-hint">${bl(
@@ -5597,7 +5596,7 @@ function pushBarInnerHtml(){
   const dismissBtn = dismissBtnHtml();
 
   return `<div class="push-row">
-      <div class="push-label">🔔 ${bl('推送通知','Notifications')}</div>
+      <div class="push-label">${bl('推送通知','Notifications')}</div>
       <button type="button" id="pushToggleBtn" class="push-toggle-btn${subscribed ? ' on' : ''}"
         onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${btnLabel}</button>
       ${dismissBtn}
@@ -5663,10 +5662,10 @@ function viewerPushFooterHtml(){
   // 没装到主屏：togglePush() 在这种环境下会直接 return（iOS 硬约束），
   // 给按钮等于给一颗按了没反应的按钮，所以这里给的是唯一有用的下一步。
   if(pushNeedsInstallFirst() || !isStandalonePwa()){
-    return `<div class="today-push" id="todayPush">🔔 ${bl('想收到提醒的话，要先把这个 App 加到主屏','To get alerts, add this app to your Home Screen first')}<a href="install.html" target="_blank" rel="noopener">${bl('怎么装','how')}</a></div>`;
+    return `<div class="today-push" id="todayPush">${bl('想收到提醒的话，要先把这个 App 加到主屏','To get alerts, add this app to your Home Screen first')}<a href="install.html" target="_blank" rel="noopener">${bl('怎么装','how')}</a></div>`;
   }
   const on = !!pushSubscription;
-  return `<div class="today-push" id="todayPush">🔔 ${on ? bl('通知已开启','Notifications are on') : bl('通知还没开','Notifications are off')}<button type="button" id="todayPushBtn" onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${on ? bl('关闭','turn off') : bl('开启','turn on')}</button></div>`;
+  return `<div class="today-push" id="todayPush">${on ? bl('通知已开启','Notifications are on') : bl('通知还没开','Notifications are off')}<button type="button" id="todayPushBtn" onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${on ? bl('关闭','turn off') : bl('开启','turn on')}</button></div>`;
 }
 /** 只重画这一行，不重建整个「今天」分页。行不在（还没渲染过）就什么都不做，
  *  下一次 renderToday() 自然会带上。 */
@@ -5941,7 +5940,7 @@ async function init(){
         markOffline(cachedLink.fetchedAt);
       }else{
         document.getElementById('tab-today').innerHTML =
-          `<div class="empty-card"><div class="empty-icon">📡</div><div>${bl('连不上服务器，请稍后再点一次这条链接','Cannot reach the server — please tap the link again in a moment')}</div></div>`;
+          `<div class="empty-card"><div>${bl('连不上服务器，请稍后再点一次这条链接','Cannot reach the server — please tap the link again in a moment')}</div></div>`;
       }
       return;
     }
@@ -6019,7 +6018,7 @@ async function init(){
     }else if(!cached){
       document.getElementById('app').classList.remove('app-hidden');
       document.getElementById('tab-today').innerHTML =
-        `<div class="empty-card"><div class="empty-icon">📡</div><div>${bl('连不上服务器，请稍后再试','Cannot reach the server — please try again later')}</div></div>`;
+        `<div class="empty-card"><div>${bl('连不上服务器，请稍后再试','Cannot reach the server — please try again later')}</div></div>`;
     }else{
       markOffline(feedFetchedAt);
     }
