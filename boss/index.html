@@ -4,25 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>老板 · Boss</title>
-<meta name="theme-color" content="#1E3A5F">
+<meta name="theme-color" content="#fbfaf6">
 <meta name="robots" content="noindex">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="老板">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
-  --p:#1E3A5F;--p2:#E9EEF4;--gold:#C9A24B;
-  --bg:#F1F3F6;--card:#fff;--text:#1F2A37;--sub:#66727F;--border:#E4E8ED;
-  --danger:#E63946;--ok:#1E7A42;
-  --radius:16px;--shadow:0 2px 14px rgba(0,0,0,.08);
+  /* 版式 A「私人秘书的日程单」（2026-11-11）：纸感底色、墨色字、细线分隔、一种强调色（金褐）。
+     红只给真要他注意的事（延误/取消、未读账单、库存不足、错误）。--p 现在是墨色，不再是深蓝。 */
+  --p:#1c1c1a;--p2:#f1eee5;--gold:#8a6a2b;--gold-line:#b89a5e;
+  --bg:#fbfaf6;--card:#fbfaf6;--text:#1c1c1a;--sub:#6b6a63;--border:#e6e3d9;--line2:#d9d6cb;
+  --danger:#a3271f;--ok:#3f6b4f;--mute:#a5a399;
+  --radius:2px;--shadow:none;
+  --serif:"Songti SC","Noto Serif CJK SC","Source Han Serif SC","Noto Serif SC",Georgia,serif;
 }
 html{overflow-x:hidden}
-body{overflow-x:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+body{overflow-x:hidden;font-family:var(--serif);
   background:var(--bg);color:var(--text);max-width:520px;margin:0 auto;
-  min-height:100vh;padding-bottom:86px;position:relative;font-size:15px}
+  min-height:100vh;padding-bottom:86px;position:relative;font-size:15.5px;line-height:1.55;
+  font-variant-numeric:tabular-nums lining-nums;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
 
 /* ===== 双语：中/英成对 span，CSS 直接切换，不需要重新渲染静态文案 ===== */
 body.lang-en .cn{display:none !important}
@@ -44,10 +49,10 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 @keyframes bootspin{to{transform:rotate(360deg)}}
 #gate h2{margin:0 0 10px;font-size:21px;color:var(--text)}
 #gate p{color:var(--sub);font-size:14.5px;margin:0 0 20px;line-height:1.7}
-#gate-input{width:100%;padding:14px 16px;border:1.5px solid var(--border);border-radius:12px;
+#gate-input{width:100%;padding:14px 16px;border:1.5px solid var(--border);border-radius:2px;
   font-size:17px;letter-spacing:2px;margin-bottom:14px;font-family:inherit}
 #gate-input:focus{outline:none;border-color:var(--p)}
-#gate-btn{width:100%;padding:14px;border:none;border-radius:12px;background:var(--p);
+#gate-btn{width:100%;padding:14px;border:none;border-radius:2px;background:var(--p);
   color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
 #gate-btn:disabled{opacity:.6}
 #gate-msg{margin-top:14px;font-size:14px;color:var(--danger);min-height:20px;line-height:1.6}
@@ -65,11 +70,11 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 /* ===== 头部 ===== */
 .hdr{background:var(--p);color:#fff;padding:16px 20px 14px;
   display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(30,58,95,.35)}
+  position:sticky;top:0;z-index:100;box-shadow:none}
 .hdr-title{font-size:18px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
 .hdr-title .dot{width:8px;height:8px;border-radius:50%;background:var(--gold)}
 #langBtn{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);
-  border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+  border-radius:2px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
 
 #app.app-hidden{display:none}
 
@@ -81,10 +86,10 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .sec-title{font-size:15px;font-weight:700;color:var(--text)}
 
 /* ===== 空状态 / 错误状态 ===== */
-.empty-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+.empty-card{background:var(--card);border-radius:var(--radius);box-shadow:none;
   padding:32px 20px;text-align:center;color:var(--sub);margin-bottom:14px}
 .empty-card.small{padding:16px 20px;font-size:13.5px}
-.dental-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.dental-card{background:var(--card);border-radius:var(--radius);box-shadow:none;padding:14px 16px}
 .dental-row{display:flex;gap:12px;align-items:baseline;padding:4px 0;font-size:14.5px}
 .dental-k{flex:none;color:var(--sub);font-size:13px;min-width:76px}
 .dental-v{flex:1;font-weight:600}
@@ -102,14 +107,14 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .dental-note{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);
   color:var(--sub);font-size:13px}
 /* 「WhatsApp 请我们帮你约」：整条宽的按钮，手指好按（2026-10-29） */
-.dental-wa-btn{display:block;margin-top:12px;padding:11px 14px;border-radius:10px;text-align:center;
+.dental-wa-btn{display:block;margin-top:12px;padding:11px 14px;border-radius:2px;text-align:center;
   background:#25D366;color:#fff;font-weight:600;font-size:14.5px;text-decoration:none}
 .dental-wa-btn:active{opacity:.85}
 .empty-icon{font-size:38px;margin-bottom:10px}
 .empty-next{margin-top:10px;font-size:13.5px;color:var(--p);font-weight:600}
 
 /* ===== 今日 / 逐条行程 ===== */
-.item-list{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+.item-list{background:var(--card);border-radius:var(--radius);box-shadow:none;
   overflow:hidden;margin-bottom:14px}
 .item-row{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;
   border-bottom:1px solid var(--border)}
@@ -119,15 +124,15 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .item-title{font-size:15px;font-weight:600;line-height:1.4}
 .item-note{font-size:13px;color:var(--sub);margin-top:3px;line-height:1.5}
 .item-map{flex:none;font-size:12.5px;font-weight:600;color:var(--p);background:var(--p2);
-  border-radius:999px;padding:6px 10px;text-decoration:none;white-space:nowrap;align-self:center}
+  border-radius:2px;padding:6px 10px;text-decoration:none;white-space:nowrap;align-self:center}
 
 /* ===== 航班信息（条目带 flight 时，在标题/备注下多出这一块） ===== */
 .flight-info{margin-top:8px;padding:10px 12px;background:#F8FAFC;border:1px solid var(--border);
-  border-radius:10px;font-size:12.5px}
+  border-radius:2px;font-size:12.5px}
 .flight-info-hd{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-weight:700}
 .flight-badge{color:var(--p)}
 .flight-route{color:var(--sub);font-weight:600}
-.flight-status{margin-left:auto;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700}
+.flight-status{margin-left:auto;padding:2px 9px;border-radius:2px;font-size:11.5px;font-weight:700}
 .flight-status-scheduled{background:var(--p2);color:var(--p)}
 .flight-status-flying{background:#E6F4EA;color:var(--ok)}
 .flight-status-landed{background:#E6F4EA;color:var(--ok)}
@@ -147,7 +152,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
    前端另外调 butler-bot 的 /flight-status 填。只读、没有任何写入，viewer 和 admin 都显示。
    颜色只表状态：准点绿、延误琥珀、取消红、已起飞／已落地蓝。 */
 .flive{--fl:var(--border);margin-top:8px;padding:9px 12px;background:#fff;border:1px solid var(--border);
-  border-left:3px solid var(--fl);border-radius:10px;font-size:12.5px;line-height:1.55}
+  border-left:3px solid var(--fl);border-radius:2px;font-size:12.5px;line-height:1.55}
 .flive .fl-k{font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--sub)}
 .flive .fl-st{margin-top:2px;font-size:14px;font-weight:700;color:var(--fl)}
 .flive .fl-st::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--fl);margin-right:7px;vertical-align:1px}
@@ -166,23 +171,23 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 
 /* ===== 转机等待（同一趟行程里，相邻两个航班条目之间自动算出来插入的一行） ===== */
 .transfer-row{margin:8px 16px;padding:9px 12px;background:#EFF6FF;border:1px dashed #BFDBFE;
-  border-radius:10px;font-size:12.5px;color:#1e3a5f;font-weight:600}
+  border-radius:2px;font-size:12.5px;color:#1e3a5f;font-weight:600}
 .transfer-row.transfer-warn{background:#FDECEA;border-color:#F5B5B5;color:var(--danger)}
 .transfer-hint{margin-top:3px;font-size:11.5px;font-weight:700}
 .transfer-hint-warn{color:#B45309}
 
 /* ===== 「今天/明天」页里覆盖当天的行程横幅（哪怕这趟行程还没排具体条目也要看得到） ===== */
-.today-trip-banner{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+.today-trip-banner{background:var(--card);border-radius:var(--radius);box-shadow:none;
   padding:16px;margin-bottom:14px}
 .today-trip-banner-title{font-size:17.5px;font-weight:800;line-height:1.35}
-.today-trip-banner-day{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;
+.today-trip-banner-day{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:2px;
   background:var(--p2);color:var(--p);font-size:12.5px;font-weight:700}
 .today-trip-banner .trip-guide-btn{margin:12px 0 0}
 .today-trip-empty-note{padding:14px 16px;font-size:13.5px;color:var(--sub);background:var(--card);
-  border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px}
+  border-radius:var(--radius);box-shadow:none;margin-bottom:14px}
 
 /* ===== 行程卡片 ===== */
-.trip-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+.trip-card{background:var(--card);border-radius:var(--radius);box-shadow:none;
   margin-bottom:14px;overflow:hidden}
 .trip-card-hd{display:flex;align-items:flex-start;justify-content:space-between;
   padding:16px 16px 10px;cursor:pointer}
@@ -192,7 +197,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .trip-arrow{color:var(--sub);font-size:14px;transition:.2s;flex:none;margin-left:10px;margin-top:2px}
 .trip-card.expanded .trip-arrow{transform:rotate(180deg)}
 .trip-guide-btn{display:block;margin:0 16px 14px;padding:11px;text-align:center;
-  border-radius:10px;background:var(--p);color:#fff;text-decoration:none;
+  border-radius:2px;background:var(--p);color:#fff;text-decoration:none;
   font-size:14px;font-weight:700}
 /* 收起态预览：前几条条目的时间+标题，一眼看出「这趟去哪、做什么」 */
 .trip-preview{padding:0 16px 14px;cursor:pointer}
@@ -218,16 +223,19 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
    一开始图省事直接复用 .bill-row，结果页面上同时存在两个 .bill-row（一个在账单
    分页、一个在今天那屏），自检里 page.click('.bill-row') 点到了隐藏的那一个，
    当场超时崩掉。同一个类名在两个分页里各有一份，迟早咬人。 */
-.bill-list,.tbill-list{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.bill-list,.tbill-list{background:var(--card);border-radius:var(--radius);box-shadow:none;overflow:hidden}
 .bill-row,.tbill-row{display:flex;align-items:center;gap:12px;padding:14px 16px;
   border-bottom:1px solid var(--border);cursor:pointer}
 .bill-row:last-child,.tbill-row:last-child{border-bottom:none}
 .bill-row:active,.tbill-row:active{background:#f8f8f8}
 .bill-icon,.tbill-icon{font-size:22px;flex:none}
 .bill-info,.tbill-info{flex:1;min-width:0}
+.tbill-row .tbill-title{display:block}
+.tbill-row .tline-sep{display:none}
+.tbill-row .tline-bit{display:inline-block;white-space:nowrap;margin-right:18px}
 .bill-title,.tbill-title{font-size:14.5px;font-weight:600}
 /* 「今天」最上面那张新账单卡（2026-10-29） */
-.tbill-new-pill{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:9px;background:var(--gold);
+.tbill-new-pill{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:2px;background:var(--gold);
   color:#fff;font-size:11.5px;font-weight:700;vertical-align:1px}
 .tbill-admin-note{font-size:12px;color:var(--sub)}
 .bill-sub,.tbill-sub{font-size:12.5px;color:var(--sub);margin-top:2px}
@@ -277,27 +285,27 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
   touch-action:pan-x pan-y;
   padding:10px 0;box-sizing:border-box;display:none}
 .bill-page-holder{width:calc(100% - 20px);max-width:700px;margin:0 auto 10px;background:#fff;
-  box-shadow:0 1px 4px rgba(0,0,0,.35);aspect-ratio:1/1.414;display:flex;align-items:center;
+  box-shadow:none;aspect-ratio:1/1.414;display:flex;align-items:center;
   justify-content:center;color:#8a8a8a;font-size:12.5px;overflow:hidden}
 .bill-page-holder canvas{display:block;width:100%;height:auto}
 /* 放大 = 把这层撑宽（applyBillZoom），横向拖动交给 .bill-pages 的 overflow-x */
 .bill-zoom-wrap{width:100%;margin:0 auto}
 .admin-ver{text-align:right;font-size:11.5px;color:var(--sub);opacity:.75;margin:-4px 2px 8px}
 .bill-zoom-ctl{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:2px;
-  background:rgba(30,58,95,.9);border-radius:22px;padding:4px 6px;z-index:5;
-  box-shadow:0 2px 8px rgba(0,0,0,.35)}
+  background:rgba(30,58,95,.9);border-radius:2px;padding:4px 6px;z-index:5;
+  box-shadow:none}
 .bill-zoom-ctl button{width:36px;height:36px;border:none;border-radius:50%;background:transparent;
   color:#fff;font-size:19px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1}
 .bill-zoom-ctl button:disabled{opacity:.35;cursor:default}
 .bill-zoom-ctl span{color:#fff;font-size:12.5px;font-weight:700;min-width:44px;text-align:center}
 .overlay-foot{flex:none;padding:12px 16px;background:#fff}
-.overlay-foot button{width:100%;padding:13px;border:none;border-radius:10px;
+.overlay-foot button{width:100%;padding:13px;border:none;border-radius:2px;
   background:var(--p);color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit}
 
 /* ===== 收藏餐厅 ===== */
 .rest-region-hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:4px 2px 8px;font-size:13px;font-weight:700;color:var(--sub)}
-.rest-list{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+.rest-list{background:var(--card);border-radius:var(--radius);box-shadow:none;
   overflow:hidden;margin-bottom:16px}
 .rest-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)}
 .rest-row:last-child{border-bottom:none}
@@ -311,7 +319,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 /* 备忘卡（老板端）。**自己一个容器类，不要借用 .dental-card**：那个类被自检拿来
    数「牙医卡有几张」（count === 1），借用会让那条断言看见两张、当场红。
    排版规矩跟请假卡一样：允许换行、别用定长栏，长句子在 360px 上才不会顶出框外。 */
-.memo-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.memo-card{background:var(--card);border-radius:var(--radius);box-shadow:none;padding:14px 16px}
 .memo-row{padding:7px 0;font-size:14.5px;line-height:1.5;overflow-wrap:anywhere}
 .memo-row + .memo-row{border-top:1px solid var(--border)}
 .memo-when{margin-top:2px;color:var(--p);font-size:13px;font-weight:600;overflow-wrap:anywhere}
@@ -319,17 +327,17 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .admin-say-block{margin-bottom:12px}
 .admin-say-label{display:block;font-size:12.5px;color:var(--sub);margin-bottom:5px;font-weight:600}
 #admin-say-text{width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;line-height:1.6;
-  padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);
+  padding:10px;border:1px solid var(--border);border-radius:2px;background:var(--bg);color:var(--text);
   resize:vertical;margin-bottom:8px}
 .admin-check{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:4px 0;font-weight:500}
 .admin-check input{width:18px;height:18px}
 .admin-check input:disabled + *, .admin-check:has(input:disabled){opacity:.45}
 /* 每周固定行程（2026-11-01）：条目上的小标签、「这次取消」、行程页那张卡、管理页那一块 */
-.recur-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--p2);
+.recur-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:2px;background:var(--p2);
   color:var(--p);font-size:11.5px;font-weight:700;vertical-align:1px;white-space:nowrap}
-.recur-cancel-btn,.recur-restore-btn{margin-top:6px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;
+.recur-cancel-btn,.recur-restore-btn{margin-top:6px;padding:5px 10px;border:1px solid var(--border);border-radius:2px;
   background:transparent;color:var(--sub);font-size:12.5px;font-family:inherit;cursor:pointer}
-.recur-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;padding:14px 16px}
+.recur-card{background:var(--card);border-radius:var(--radius);box-shadow:none;margin-bottom:14px;padding:14px 16px}
 .recur-card-title{font-size:16px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}
 .recur-card-sub{font-size:13px;color:var(--sub);margin-top:3px;overflow-wrap:anywhere}
 .recur-card .item-map{display:inline-block;margin-top:8px}
@@ -347,7 +355,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .admin-memo-meta{margin-top:3px;font-size:12px;color:var(--sub);overflow-wrap:anywhere}
 .admin-memo-tag{color:var(--p);font-weight:600}
 .admin-memo-acts{flex:none;display:flex;gap:4px}
-.admin-memo-acts button{background:transparent;border:1px solid var(--border);border-radius:8px;
+.admin-memo-acts button{background:transparent;border:1px solid var(--border);border-radius:2px;
   width:32px;height:32px;font-size:14px;cursor:pointer;font-family:inherit}
 .admin-memo-list{margin-top:10px;border-top:1px solid var(--border)}
 
@@ -357,43 +365,43 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .admin-rest-body{flex:1;min-width:0}
 .admin-rest-name{font-size:14px;font-weight:600;overflow-wrap:anywhere}
 .admin-rest-meta{font-size:12px;color:var(--sub);margin-top:2px;overflow-wrap:anywhere}
-.admin-rest-del{flex:none;background:transparent;border:1px solid var(--border);border-radius:8px;
+.admin-rest-del{flex:none;background:transparent;border:1px solid var(--border);border-radius:2px;
   width:34px;height:34px;font-size:15px;cursor:pointer;font-family:inherit}
 .admin-rest-hint{margin-top:8px;font-size:12px;color:var(--sub);line-height:1.5}
 
 /* ===== 分享（一键发去 WhatsApp） ===== */
-.share-btn{flex:none;background:var(--p2);border:none;color:var(--p);border-radius:999px;
+.share-btn{flex:none;background:var(--p2);border:none;color:var(--p);border-radius:2px;
   padding:6px 10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
 .share-btn:active{opacity:.65}
 .share-box{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:320;display:none;
   align-items:flex-end;justify-content:center}
 .share-box.open{display:flex}
-.share-panel{background:var(--card);width:100%;max-width:560px;border-radius:16px 16px 0 0;
+.share-panel{background:var(--card);width:100%;max-width:560px;border-radius:2px 2px 0 0;
   padding:16px;box-sizing:border-box;max-height:88vh;display:flex;flex-direction:column;gap:10px}
 .share-hd{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .share-title{font-size:15px;font-weight:700}
 .share-hint{font-size:12.5px;color:var(--sub);line-height:1.5}
 #share-text{width:100%;box-sizing:border-box;flex:1;min-height:170px;resize:vertical;
-  font-family:inherit;font-size:13.5px;line-height:1.6;padding:10px;border-radius:10px;
+  font-family:inherit;font-size:13.5px;line-height:1.6;padding:10px;border-radius:2px;
   border:1px solid var(--border);background:var(--bg);color:var(--text)}
 .share-acts{display:flex;gap:8px}
-.share-acts button{flex:1;padding:12px;border:none;border-radius:10px;font-size:14px;
+.share-acts button{flex:1;padding:12px;border:none;border-radius:2px;font-size:14px;
   font-weight:700;cursor:pointer;font-family:inherit}
 .share-wa{background:#25D366;color:#fff}
 .share-copy{background:var(--bg);color:var(--text);border:1px solid var(--border)}
 .share-msg{font-size:12.5px;color:var(--ok);min-height:16px}
 
 /* ===== 库存 ===== */
-.inv-list{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+.inv-list{background:var(--card);border-radius:var(--radius);box-shadow:none;
   overflow:hidden;margin-bottom:6px}
 .inv-row{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)}
 .inv-row:last-child{border-bottom:none}
-.inv-thumb{width:36px;height:36px;border-radius:8px;flex-shrink:0;object-fit:cover;background:var(--p2);cursor:zoom-in}
+.inv-thumb{width:36px;height:36px;border-radius:2px;flex-shrink:0;object-fit:cover;background:var(--p2);cursor:zoom-in}
 .inv-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:340;
   display:none;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
 .inv-lightbox.open{display:flex}
-.inv-lightbox img{max-width:100%;max-height:100%;border-radius:12px;
-  box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.inv-lightbox img{max-width:100%;max-height:100%;border-radius:2px;
+  box-shadow:none}
 .inv-name{flex:1;font-size:14.5px;font-weight:600;min-width:0}
 .inv-qty{flex:none;font-size:13.5px;color:var(--p);font-weight:700}
 /* 类别标题右边的合计件数 */
@@ -404,18 +412,18 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .inv-loc-total{color:var(--p);font-weight:700}
 
 /* ===== 管理面板（只在 role=admin 时由 JS 注入） ===== */
-.admin-block{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+.admin-block{background:var(--card);border-radius:var(--radius);box-shadow:none;
   padding:16px;margin-bottom:16px}
 .admin-block h3{font-size:14.5px;margin-bottom:12px;color:var(--p)}
 .admin-field{margin-bottom:12px}
 .admin-field label{display:block;font-size:12.5px;color:var(--sub);margin-bottom:5px;font-weight:600}
 .admin-field input[type=tel],.admin-field input[type=text],.admin-field input[type=date],.admin-field input[type=time],
 .admin-field textarea{width:100%;padding:10px 12px;
-  border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;color:var(--text)}
+  border:1.5px solid var(--border);border-radius:2px;font-size:14px;font-family:inherit;color:var(--text)}
 .admin-field textarea{min-height:160px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
   white-space:pre;resize:vertical}
 .admin-radio-row{display:flex;gap:14px;font-size:13.5px;align-items:center}
-.admin-btn{width:100%;padding:12px;border:none;border-radius:10px;background:var(--p);
+.admin-btn{width:100%;padding:12px;border:none;border-radius:2px;background:var(--p);
   color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px}
 .admin-btn:disabled{opacity:.5}
 .admin-status{margin-top:10px;font-size:13px;color:var(--sub);min-height:18px}
@@ -424,41 +432,41 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .admin-push-row{display:flex;align-items:center;gap:12px;margin-bottom:6px}
 .admin-push-state{font-weight:700;font-size:14px;color:var(--sub)}
 .admin-push-state.on{color:var(--ok)}
-.admin-bill-del{background:#FDECEA;color:var(--danger);border:none;border-radius:8px;
+.admin-bill-del{background:#FDECEA;color:var(--danger);border:none;border-radius:2px;
   padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;flex:none}
 .admin-bill-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
 .admin-bill-row:last-child{border-bottom:none}
 .admin-bill-info{flex:1;min-width:0;font-size:13.5px}
 .admin-bill-info .sub{font-size:12px;color:var(--sub)}
-.admin-bill-read{display:inline-block;margin-top:3px;font-size:11.5px;padding:1px 7px;border-radius:999px}
+.admin-bill-read{display:inline-block;margin-top:3px;font-size:11.5px;padding:1px 7px;border-radius:2px}
 .admin-bill-read.yes{background:#E8F5E9;color:#1B5E20}
 .admin-bill-read.no{background:#F1F3F4;color:var(--sub)}
 
 /* ===== 管理面板：行程表单（取代原来的 JSON textarea） ===== */
 .admin-trip-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer}
+  padding:12px 14px;border:1.5px solid var(--border);border-radius:2px;margin-bottom:10px;cursor:pointer}
 .admin-trip-summary .sub{font-size:12px;color:var(--sub);margin-top:3px}
-.admin-trip-card{background:#F8FAFC;border:1.5px solid var(--border);border-radius:12px;
+.admin-trip-card{background:#F8FAFC;border:1.5px solid var(--border);border-radius:2px;
   padding:14px;margin-bottom:12px}
 /* 表单里两个层次（这趟行程整体 / 每天的行程条目）分开装：白底+边框的小盒子，
    在灰底大卡片里视觉上明显是两块，不是一长串输入框（2026-08-27 用户误读成新旧两版残留） */
-.admin-form-section{background:#fff;border:1.5px solid var(--border);border-radius:10px;
+.admin-form-section{background:#fff;border:1.5px solid var(--border);border-radius:2px;
   padding:14px;margin-bottom:12px}
 .admin-form-section:last-of-type{margin-bottom:0}
 .admin-section-note{display:block;font-size:12px;color:var(--sub);font-weight:500;margin-top:2px}
 .admin-item-editor{margin-top:4px}
-.admin-item-row{border:1.5px solid var(--border);border-radius:10px;padding:12px;
+.admin-item-row{border:1.5px solid var(--border);border-radius:2px;padding:12px;
   margin-bottom:10px;background:#fff}
 .admin-item-warn{display:block;width:100%;text-align:left;background:none;border:0;padding:2px 0;
   color:var(--danger);font-size:12px;margin:2px 0 8px;font-weight:600;cursor:pointer;font-family:inherit}
 .admin-item-warn:hover{text-decoration:underline}
 .admin-day-hdr{display:flex;align-items:center;gap:8px;margin:14px 0 6px;padding:5px 10px;
-  background:var(--p2);border-radius:8px;font-size:12.5px;font-weight:700;color:var(--sub)}
+  background:var(--p2);border-radius:2px;font-size:12.5px;font-weight:700;color:var(--sub)}
 .admin-day-hdr-warn{background:#fdecec;color:var(--danger)}
 .admin-day-nth{margin-left:auto;font-weight:600;opacity:.75}
 .admin-err-hd{font-weight:700;margin-bottom:6px}
 .admin-err-item{display:block;width:100%;text-align:left;margin:4px 0;padding:8px 10px;
-  background:#fdecec;border:1px solid rgba(0,0,0,.06);border-radius:8px;color:var(--danger);
+  background:#fdecec;border:1px solid rgba(0,0,0,.06);border-radius:2px;color:var(--danger);
   font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
 .admin-err-item:hover{filter:brightness(.97)}
 .admin-err-go{float:right;opacity:.8;font-weight:700}
@@ -467,16 +475,16 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
   0%,100%{box-shadow:0 0 0 0 rgba(214,69,65,0)}
   15%,60%{box-shadow:0 0 0 3px rgba(214,69,65,.45)}
 }
-.admin-btn-sm{padding:7px 12px;border:none;border-radius:8px;background:var(--p2);color:var(--p);
+.admin-btn-sm{padding:7px 12px;border:none;border-radius:2px;background:var(--p2);color:var(--p);
   font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;flex:none}
 .admin-btn-sm-danger{background:#FDECEA;color:var(--danger)}
 /* 比 -sm 明显、但不像 .admin-btn 那样占满整行——用在「新增条目」这种挤在标题旁边的入口，
    实心主色让它不再是容易被忽略的小字号按钮 */
-.admin-btn-md{padding:10px 16px;border:none;border-radius:9px;background:var(--p);color:#fff;
+.admin-btn-md{padding:10px 16px;border:none;border-radius:2px;background:var(--p);color:#fff;
   font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;flex:none}
-.admin-empty-items{padding:14px;border:1.5px dashed var(--border);border-radius:12px;margin-bottom:10px}
+.admin-empty-items{padding:14px;border:1.5px dashed var(--border);border-radius:2px;margin-bottom:10px}
 /* ===== 管理面板：条目表单里「航班（选填）」小块 ===== */
-.flight-lookup-block{border:1.5px dashed var(--border);border-radius:10px;padding:10px 12px;margin:10px 0}
+.flight-lookup-block{border:1.5px dashed var(--border);border-radius:2px;padding:10px 12px;margin:10px 0}
 .flight-lookup-hd{font-size:12.5px;font-weight:700;color:var(--p);margin-bottom:8px}
 .flight-lookup-current{font-size:12.5px;color:var(--sub);margin-bottom:8px;display:flex;
   align-items:center;gap:8px;flex-wrap:wrap}
@@ -489,16 +497,16 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
    红边框 + 红字提示行让这条「有航班号但没查到」的条目一眼就能看见 */
 .flight-lookup-block-err{border-color:var(--danger);border-style:solid}
 .flight-lookup-current-err{color:var(--danger);font-weight:700}
-.flight-input-err{border:1.5px solid var(--danger)!important;border-radius:10px;padding:10px 12px;
+.flight-input-err{border:1.5px solid var(--danger)!important;border-radius:2px;padding:10px 12px;
   font-size:14px;font-family:inherit;color:var(--text);width:100%;box-sizing:border-box}
 .admin-empty-items .admin-status{margin-top:0;margin-bottom:10px}
-.admin-select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;
+.admin-select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:2px;
   font-size:14px;font-family:inherit;color:var(--text);background:#fff}
 .admin-json-summary{cursor:pointer;font-weight:700;color:var(--p);font-size:14.5px;list-style:revert}
 /* ===== 简化表单（2026-08-28）：条目/行程默认只露最常填的几样，其余收进原生 <details> ===== */
 /* 条目紧凑行：时间/做什么/航班号横排，做什么那格吃掉多余宽度，手机上也能一行放下 */
 .admin-item-row-compact{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;border:1.5px solid var(--border);
-  border-radius:10px;padding:10px;margin-bottom:8px;background:#fff}
+  border-radius:2px;padding:10px;margin-bottom:8px;background:#fff}
 .admin-field-compact{margin-bottom:0;flex:1 1 90px;min-width:80px}
 .admin-field-grow{flex:2 1 140px}
 .admin-item-more,.admin-trip-more{margin-top:2px}
@@ -507,10 +515,10 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .admin-more-badge{color:var(--sub);font-weight:500}
 
 /* ===== 推送通知条：viewer/admin 都能用，跟 tab 切换无关，放在 #app 顶部 ===== */
-.push-bar{background:var(--card);margin:12px 16px 0;border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 14px}
+.push-bar{background:var(--card);margin:12px 16px 0;border-radius:var(--radius);box-shadow:none;padding:12px 14px}
 .push-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .push-label{font-size:14px;font-weight:700;color:var(--text)}
-.push-toggle-btn{padding:7px 16px;border:none;border-radius:999px;background:var(--p2);color:var(--p);
+.push-toggle-btn{padding:7px 16px;border:none;border-radius:2px;background:var(--p2);color:var(--p);
   font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;flex:none}
 .push-toggle-btn.on{background:var(--p);color:#fff}
 .push-toggle-btn:disabled{opacity:.5}
@@ -533,12 +541,12 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 /* ===== 管理面板：访问码 ===== */
 .admin-code-box{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px;font-weight:700;
   letter-spacing:.5px;padding:10px 12px;background:#F8FAFC;border:1.5px solid var(--border);
-  border-radius:10px;word-break:break-all}
+  border-radius:2px;word-break:break-all}
 
 /* ===== BOTTOM NAV ===== */
 .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);
   width:100%;max-width:520px;background:#fff;border-top:1px solid var(--border);
-  display:flex;z-index:100;box-shadow:0 -2px 10px rgba(0,0,0,.06)}
+  display:flex;z-index:100;box-shadow:none}
 .nav-btn{flex:1;padding:10px 0 8px;display:flex;flex-direction:column;
   align-items:center;gap:3px;cursor:pointer;border:none;background:none;
   color:var(--sub);font-size:11px;font-family:inherit;position:relative}
@@ -553,24 +561,281 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 .flight-pax{margin-top:6px;color:var(--text);line-height:1.6}
 .flight-pax-one{white-space:nowrap}
 .hotel-info{margin-top:8px;padding:10px 12px;background:#F8FAFC;border:1px solid var(--border);
-  border-radius:10px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+  border-radius:2px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
 .hotel-info a{color:var(--p);font-weight:600}
-.tonight-hotel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;
+.tonight-hotel{background:var(--card);border-radius:var(--radius);box-shadow:none;padding:14px 16px;
   margin-bottom:14px;border-left:4px solid var(--p)}
 .tonight-hotel-hd{font-size:15.5px;line-height:1.4}
 .tonight-hotel-addr{margin-top:6px;font-size:13px;overflow-wrap:anywhere}
 .tonight-hotel-addr a{color:var(--sub);text-decoration:none}
 .tonight-hotel-btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-.tonight-hotel-btn{font-size:13px;font-weight:700;color:var(--p);background:var(--p2);border-radius:999px;
+.tonight-hotel-btn{font-size:13px;font-weight:700;color:var(--p);background:var(--p2);border-radius:2px;
   padding:7px 14px;text-decoration:none}
 .admin-field-period{flex:0 1 96px;min-width:84px}
 .admin-pax-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
-.admin-pax-row input{flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;
+.admin-pax-row input{flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--border);border-radius:2px;
   font-size:14px;font-family:inherit}
 .admin-pax-row input.admin-pax-seat{flex:0 0 64px;text-transform:uppercase}
 .admin-btn-hotel{background:var(--p2);color:var(--p)}
-.admin-import-ask{margin-top:10px;padding:10px 12px;border:1.5px solid #F59E0B;border-radius:10px;background:#FFFBEB;font-size:13.5px}
+.admin-import-ask{margin-top:10px;padding:10px 12px;border:1.5px solid #F59E0B;border-radius:2px;background:#FFFBEB;font-size:13.5px}
 .admin-import-ask-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+/* =====================================================================
+   版式 A「私人秘书的日程单」（2026-11-11 用户拍板）
+   像酒店礼宾递上来的一张印刷日程：纸底、墨字、细线分隔的行，一种强调色（金褐）。
+   规矩：不要卡片阴影、圆角至多 2px、不要渐变、不要胶囊标签、不要入场动画、不要表情符号。
+   红（--danger）只给真要他注意的：航班延误/取消、未读账单、库存不足、错误。
+   这一段放在最后，统一覆盖上面各块的「卡片」外观；上面的结构类名保持不动（自检靠它们）。
+   ===================================================================== */
+/* 顶部：大号日期＋右侧小字，下面一条 2px 墨线 */
+.hdr{position:static;background:var(--bg);color:var(--text);margin:0 16px;padding:26px 0 14px;
+  border-bottom:2px solid var(--text);display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.hdr-date{font-size:26px;font-weight:600;letter-spacing:.02em;line-height:1.2;min-width:0}
+@media (max-width:350px){.hdr-date{font-size:22px;white-space:nowrap}}
+.hdr-side{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:none;max-width:52%}
+.hdr-trip{font-size:13px;color:var(--sub);line-height:1.5;overflow-wrap:anywhere}
+#langBtn{background:none;border:none;border-radius:0;color:var(--sub);font-size:13px;font-weight:400;
+  padding:0 0 0 12px;min-height:40px;min-width:40px;letter-spacing:.1em;cursor:pointer}
+
+.tab{padding:2px 16px 8px}
+/* 区块小标题：小号、字距拉开、金褐色 */
+.sec-hdr{margin:24px 0 0;padding:0 0 6px;border-bottom:1px solid var(--line2);min-height:28px;align-items:flex-end}
+.sec-title{font-size:12.5px;font-weight:400;letter-spacing:.3em;color:var(--gold)}
+.lab{font-size:12.5px;letter-spacing:.3em;color:var(--gold)}
+
+/* 把所有「卡片」拍平成纸面上的段落 */
+.empty-card,.dental-card,.item-list,.today-trip-banner,.today-trip-empty-note,.trip-card,.bill-list,.tbill-list,
+.rest-list,.memo-card,.recur-card,.inv-list,.tonight-hotel,.admin-block,.push-bar{
+  background:transparent;border-radius:0;box-shadow:none}
+.empty-card{padding:14px 0;text-align:left;color:var(--sub);border-bottom:1px solid var(--border);margin:0}
+.empty-card.small{padding:10px 0}
+.empty-icon{display:none}
+.empty-next{color:var(--sub);font-weight:400;margin-top:4px}
+
+/* 行：时间靠左成一列（等宽对齐）、标题加粗、备注次要色在下一行 */
+.item-list{margin:0}
+.item-row{padding:11px 0;gap:10px;border-bottom:1px solid var(--border);align-items:baseline}
+.item-row:last-child{border-bottom:1px solid var(--border)}
+.item-time{min-width:52px;font-size:16px;font-weight:400;color:var(--text);padding-top:0;white-space:nowrap}
+.item-title{font-size:16px;font-weight:600;line-height:1.45;overflow-wrap:anywhere}
+.item-note{font-size:13.5px;color:var(--sub);margin-top:2px}
+.item-period{font-size:13.5px;font-weight:400;color:var(--sub)}
+.item-row.past,.item-row.past .item-time{color:var(--mute)}
+.item-row.past .item-title{font-weight:400}
+.item-row.past .item-note{color:var(--mute)}
+/* 链接：普通文字＋金褐细下划线，不是胶囊 */
+.item-map,.trip-guide-btn,.tonight-hotel-btn,.share-btn,.next-act a,.tline-link{
+  display:inline-flex;align-items:center;min-height:40px;background:none;border:none;border-radius:0;padding:0;
+  color:var(--text);font-size:14.5px;font-weight:400;text-decoration:underline;text-decoration-color:var(--gold-line);
+  text-decoration-thickness:1.5px;text-underline-offset:5px;white-space:nowrap;cursor:pointer;box-shadow:none}
+.item-map{align-self:baseline;margin-left:4px;min-height:auto;padding:2px 0}
+.share-btn{font-size:13.5px;color:var(--sub);margin-left:10px}
+.recur-tag{background:none;padding:0;margin-left:8px;border-radius:0;color:var(--gold);font-size:12.5px;font-weight:400;letter-spacing:.1em}
+
+/* 航班 */
+.flight-info{margin-top:6px;padding:0;background:none;border:none;border-radius:0;font-size:13.5px}
+.flight-info-hd{font-weight:600;gap:4px 10px}
+.flight-badge{color:var(--text)}
+.flight-route{color:var(--sub);font-weight:400}
+.flight-status{padding:0;border-radius:0;background:none !important;font-size:13px;font-weight:600}
+.flight-status-scheduled,.flight-status-cancel{color:var(--sub)}
+.flight-status-flying,.flight-status-landed{color:var(--ok)}
+.flight-status-delay{color:var(--danger)}
+.flight-status-cancel{color:var(--danger)}
+.flight-info-times{color:var(--text)}
+.flive{background:none;border:none;border-left:2px solid var(--fl);border-radius:0;padding:3px 0 3px 10px;margin-top:6px}
+.flive .fl-k{font-weight:400;letter-spacing:.2em;color:var(--gold)}
+.flive .fl-st::before{display:none}
+.transfer-row{margin:0;padding:7px 0 7px 62px;background:none;border:none;border-bottom:1px solid var(--border);border-radius:0;
+  font-size:13px;font-weight:400;color:var(--sub)}
+.transfer-row.transfer-warn{background:none;color:var(--danger)}
+.hotel-info{margin-top:4px;padding:0;background:none;border:none;border-radius:0;font-size:13.5px;color:var(--sub)}
+.hotel-info a{color:var(--text);font-weight:400;text-decoration-color:var(--gold-line)}
+.flight-pax{color:var(--sub)}
+
+/* 行程横幅（今天／明天那一段的第一行）：一行字＋「打开手册」 */
+.today-trip-banner{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 12px;padding:8px 0;margin:0;border-bottom:1px solid var(--border)}
+.today-trip-banner-title{font-size:15px;font-weight:600}
+.today-trip-banner .trip-loc{margin:0;font-size:13.5px}
+.today-trip-banner-day{margin:0;padding:0;background:none;border-radius:0;color:var(--sub);font-size:13.5px;font-weight:400}
+.today-trip-banner .trip-guide-btn{margin:0 0 0 auto}
+.today-trip-empty-note{padding:12px 0;margin:0;border-bottom:1px solid var(--border)}
+
+/* 今晚住：并进「今天」段，一行 */
+.tonight-hotel{padding:10px 0;margin:0;border:none;border-bottom:1px solid var(--border)}
+.tonight-hotel-hd{font-size:15px}
+.tonight-hotel-hd b{margin-left:.6em}
+.tonight-hotel-addr{margin-top:2px;font-size:13.5px}
+.tonight-hotel-addr a{color:var(--sub);text-decoration:underline;text-decoration-color:var(--border)}
+.tonight-hotel-btns{gap:22px;margin-top:2px}
+
+/* 「下一件事」（今日页最上面） */
+.next-up{padding:18px 0 14px;border-bottom:1px solid var(--line2)}
+.next-big{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 14px;margin-top:6px}
+.next-t{font-size:40px;font-weight:600;line-height:1.1;white-space:nowrap}
+.next-w{font-size:20px;font-weight:600;line-height:1.35;min-width:0;overflow-wrap:anywhere}
+.next-when{font-size:13px;color:var(--danger);letter-spacing:.2em;margin-left:8px}
+.next-sub{color:#55544e;font-size:14.5px;margin-top:6px;overflow-wrap:anywhere}
+.next-sub .flive{margin-top:4px}
+.next-act{display:flex;flex-wrap:wrap;gap:0 22px;margin-top:4px}
+
+/* 今日页顶部的提示行（未读账单、库存不足）：一行文字，点了打开 */
+.tline{display:flex;align-items:baseline;gap:8px;padding:10px 0;min-height:44px;border-bottom:1px solid var(--border);
+  font-size:14.5px;line-height:1.5;cursor:pointer;overflow-wrap:anywhere}
+.tline-new{flex:none;color:var(--danger);font-size:13px;letter-spacing:.1em}
+.tline-body{flex:1;min-width:0}
+.tline-k{color:var(--sub);font-size:13px;margin-right:4px}
+.tline-sep{color:var(--line2);margin:0 6px}
+.tline-warn{color:var(--danger)}
+.tline-admin{display:block;font-size:12.5px;color:var(--sub)}
+#new-bills-card{margin:0}
+
+/* 行程分页 */
+.trip-card{margin:0;border-bottom:1px solid var(--line2);overflow:visible}
+.trip-card-hd{padding:16px 0 6px}
+.trip-title{font-size:18px;font-weight:600}
+.trip-range{font-size:13.5px;font-weight:400}
+.trip-arrow{font-size:13px;color:var(--sub)}
+.trip-preview{padding:0 0 4px}
+.trip-preview-row{font-size:14.5px}
+.trip-preview-time{font-weight:400;color:var(--sub);min-width:52px}
+.trip-preview-more{color:var(--sub);font-weight:400;min-height:32px}
+.trip-card .trip-guide-btn{margin:0 0 10px}
+.trip-items{border-top:none}
+.trip-day-hdr{background:none;padding:18px 0 6px;font-size:12.5px;font-weight:400;letter-spacing:.2em;color:var(--gold);
+  border-bottom:1px solid var(--line2)}
+.trip-items-empty{padding:12px 0}
+.past-toggle{min-height:44px;padding:12px 0;text-align:left;color:var(--sub);font-weight:400;letter-spacing:.1em}
+.recur-card{padding:14px 0 6px;margin:0;border-bottom:1px solid var(--line2)}
+.recur-card-title{font-size:17px;font-weight:600}
+.recur-row{border-top:1px solid var(--border)}
+.recur-date{font-weight:400}
+.recur-cancel-btn,.recur-restore-btn{border:1px solid var(--line2);border-radius:2px;min-height:40px;padding:0 12px;color:var(--text)}
+
+/* 账单分页 */
+.bill-list,.tbill-list{overflow:visible}
+.bill-row,.tbill-row{padding:14px 0;gap:10px;align-items:flex-start;border-bottom:1px solid var(--border)}
+.bill-row:last-child,.tbill-row:last-child{border-bottom:1px solid var(--border)}
+.bill-row:active,.tbill-row:active{background:var(--p2)}
+.bill-icon,.tbill-icon{display:none}
+.bill-title,.tbill-title{font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.bill-amt{font-size:16px;font-weight:400;margin-top:4px;letter-spacing:0;overflow-wrap:anywhere}
+.bill-bal{font-size:16px;margin-top:2px;overflow-wrap:anywhere}
+.bill-bal.neg{color:var(--danger)}
+.bill-amt-k{font-size:13px;font-weight:400;color:var(--sub);margin-right:8px}
+.bill-count{font-weight:400;font-size:13px}
+.bill-sub,.tbill-sub{font-size:13px;margin-top:3px}
+.bill-arrow,.tbill-arrow{font-size:18px;color:var(--mute)}
+.bill-unread{color:var(--danger);font-size:13px;font-weight:400;letter-spacing:.1em;margin-left:8px}
+.tbill-new-pill{background:none;color:var(--danger);padding:0;border-radius:0;font-weight:400;font-size:13px;margin-right:8px}
+
+/* 库存 */
+.inv-list{margin:0}
+.inv-row{padding:11px 0;border-bottom:1px solid var(--border);align-items:baseline}
+.inv-row:last-child{border-bottom:1px solid var(--border)}
+.inv-thumb{border-radius:2px;align-self:center;width:56px;height:56px}
+.inv-name{font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.inv-qty{font-size:16px;font-weight:400;color:var(--text);white-space:nowrap}
+.inv-low{display:block;font-size:13px;font-weight:400;color:var(--danger);margin-top:2px}
+.inv-qty.inv-low-qty{color:var(--danger)}
+.inv-cat-total{font-weight:400}
+.inv-loc-hdr{padding:12px 0 4px;font-weight:400;letter-spacing:.1em;border-bottom:1px solid var(--line2)}
+.inv-loc-total{color:var(--sub);font-weight:400}
+
+/* 餐厅 */
+.rest-region-hdr{margin:24px 0 0;padding:0 0 6px;border-bottom:1px solid var(--line2);font-weight:400;letter-spacing:.3em;
+  color:var(--gold);font-size:12.5px;min-height:28px}
+.rest-list{margin:0}
+.rest-row{padding:12px 0;align-items:baseline}
+.rest-name{font-size:16px}
+.rest-meta{font-size:13.5px}
+
+/* 请假／备忘／牙医：细线分隔的小段落 */
+.dental-card,.memo-card{padding:2px 0}
+.dental-row{padding:9px 0;border-bottom:1px solid var(--border);font-size:15px}
+.dental-k{font-size:13.5px}
+.dental-v{font-weight:600}
+.dental-next{color:var(--text)}
+.dental-note{border-top:none;padding-top:4px}
+.dental-wa-btn{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:10px;padding:0 14px;
+  background:none;border:1px solid var(--text);border-radius:2px;color:var(--text);font-weight:400}
+.leave-row{padding:9px 0;border-bottom:1px solid var(--border)}
+.leave-name{font-weight:600}
+.leave-sub{padding:8px 0 0;letter-spacing:.2em;color:var(--sub)}
+.leave-sep{border-top:none;margin-top:4px}
+.memo-row{padding:9px 0;border-bottom:1px solid var(--border)}
+.memo-row + .memo-row{border-top:none}
+.memo-when{color:var(--sub);font-weight:400}
+
+/* 推送提示 */
+.push-bar{margin:20px 16px 0;padding:12px 0 4px;border-top:1px solid var(--line2)}
+/* 通知条在场时，今日页底下那行同样意思的小字先不出现，免得两句叠在一起 */
+#app:has(> #pushBar) .today-push{display:none}
+.push-label{font-weight:400;letter-spacing:.1em}
+.push-toggle-btn{min-height:40px;padding:0 16px;border:1px solid var(--text);border-radius:2px;background:none;color:var(--text);font-weight:400}
+.push-toggle-btn.on{background:var(--text);color:var(--bg)}
+.push-dismiss{min-width:40px;min-height:40px}
+.push-hint a{color:var(--text)}
+.today-push{text-align:left;margin:28px 0 4px;font-size:13px}
+.today-push button,.today-push a,.push-mini button{color:var(--text);font-size:13px;min-height:40px;
+  text-decoration-color:var(--gold-line);text-underline-offset:4px}
+
+/* 底部导航：纯文字、字距拉开、当前页墨色加粗 */
+.nav{background:var(--bg);border-top:1px solid var(--text);box-shadow:none}
+.nav-btn{padding:0;height:56px;justify-content:center;color:#8b897f;font-size:14px;letter-spacing:.2em}
+.nav-btn.active{color:var(--text);font-weight:700}
+.nav-label{position:relative;display:inline-block;padding-left:.2em}
+.nav-dot{top:0;right:-9px;width:6px;height:6px}
+@media (max-width:360px){ .nav-btn{letter-spacing:.08em;font-size:13.5px} }
+
+/* 闸门 */
+#gate{background:var(--bg)}
+#gate h2{font-size:24px;font-weight:600;padding-bottom:12px;border-bottom:2px solid var(--text);margin-bottom:16px}
+#gate-input{border:1px solid var(--line2);border-radius:2px;background:#fff}
+#gate-input:focus{border-color:var(--text)}
+#gate-btn{border-radius:2px;background:var(--text);color:var(--bg);font-weight:600;letter-spacing:.3em;min-height:48px}
+#offlineBanner{background:var(--p2);border-bottom:1px solid var(--line2);color:var(--text)}
+#borrowedTokenBanner{background:var(--p2);border-bottom:1px solid var(--line2);color:var(--text)}
+
+/* 账单弹层 */
+.overlay-hdr{background:var(--bg);color:var(--text);border-bottom:2px solid var(--text);padding:10px 16px}
+.overlay-title{font-weight:600;letter-spacing:.2em}
+.overlay-close{background:none;color:var(--text);width:44px;height:44px;border-radius:0;font-size:26px;line-height:1}
+.overlay-body{background:#e9e6dd}
+.bill-page-holder{box-shadow:none;border:1px solid var(--line2)}
+.bill-zoom-ctl{background:rgba(28,28,26,.85);border-radius:2px}
+.bill-zoom-ctl button{border-radius:0;width:40px;height:40px}
+.overlay-foot{background:var(--bg);border-top:1px solid var(--line2)}
+.overlay-foot button{border-radius:2px;background:var(--text);color:var(--bg);font-weight:400;letter-spacing:.1em}
+.share-panel{background:var(--bg);border-top:2px solid var(--text)}
+.share-wa{background:var(--text);color:var(--bg);font-weight:400}
+.share-copy{background:none;border:1px solid var(--text)}
+.share-acts button{min-height:44px}
+#share-text{background:#fff;border-color:var(--line2)}
+.inv-lightbox img{border-radius:2px}
+
+/* 管理面板：同一套纸面，只换皮 */
+.admin-block{padding:18px 0 20px;margin:0;border-bottom:1px solid var(--line2)}
+.admin-block h3{font-size:12.5px;font-weight:400;letter-spacing:.3em;color:var(--gold)}
+.admin-btn{background:var(--text);color:var(--bg);font-weight:400;letter-spacing:.05em;min-height:44px}
+.admin-btn-md{background:var(--text);color:var(--bg);font-weight:400;min-height:40px}
+.admin-btn-sm,.admin-btn-ticket,.admin-btn-hotel{background:none;border:1px solid var(--line2);color:var(--text);font-weight:400;min-height:36px}
+.admin-btn-ticket{border-color:var(--text)}
+.admin-btn-sm-danger,.admin-bill-del{background:none;border:1px solid var(--danger);color:var(--danger);font-weight:400}
+.admin-field input[type=tel],.admin-field input[type=text],.admin-field input[type=date],.admin-field input[type=time],
+.admin-field textarea,.admin-select,.admin-pax-row input,.flight-input-err{border-width:1px;border-color:var(--line2);background:#fff}
+.admin-trip-summary,.admin-trip-card,.admin-form-section,.admin-item-row,.admin-item-row-compact,.admin-empty-items,
+.flight-lookup-block,.admin-code-box{border-width:1px;border-color:var(--line2);background:transparent}
+.admin-day-hdr{background:none;border-bottom:1px solid var(--line2);padding:5px 0;font-weight:400;letter-spacing:.15em}
+.admin-day-hdr-warn{color:var(--danger)}
+.admin-err-item{background:none;border:1px solid var(--danger)}
+.admin-bill-read{padding:0;border-radius:0}
+.admin-bill-read.yes{background:none;color:var(--ok)}
+.admin-bill-read.no{background:none;color:var(--sub)}
+.admin-import-ask{border:1px solid var(--gold-line);background:none}
+.admin-memo-acts button,.admin-rest-del,.admin-recur-edit,.admin-recur-del{min-width:36px;min-height:36px;border-color:var(--line2);font-size:13px}
+.admin-json-summary,.admin-item-more summary,.admin-trip-more summary,.flight-lookup-hd,.admin-memo-tag{color:var(--text)}
+.admin-push-state.on{color:var(--ok)}
+.admin-ver{opacity:1}
 </style>
 </head>
 <body>
@@ -584,7 +849,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
   <div><span class="cn">正在打开…</span><span class="en">Opening…</span></div>
 </div>
 <div id="gate" class="off">
-  <h2>🔑 <span class="cn">访问码</span><span class="en">Access Code</span></h2>
+  <h2><span class="cn">访问码</span><span class="en">Access Code</span></h2>
   <p>
     <span class="cn">向 YANG 索取访问码，填一次这台手机会记住。</span>
     <span class="en">Ask YANG for the access code — enter it once and this phone will remember it.</span>
@@ -604,12 +869,14 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
   <span class="cn">已用记账 App 的钥匙进入（管理员）</span><span class="en">Signed in with the expense-tracker key (admin)</span>
 </div>
 
-<!-- HEADER -->
+<!-- HEADER（版式 A，2026-11-11）：大号日期＋右侧小字（行程名 · 第几天／共几天），下面一条 2px 墨线。
+     文字由 renderHeader() 填；语言钮做成不起眼的文字钮。 -->
 <div class="hdr">
-  <div class="hdr-title"><span class="dot"></span>
-    <span class="cn">老板</span><span class="en">Boss</span>
+  <div class="hdr-date" id="hdrDate"><span class="cn">老板</span><span class="en">Boss</span></div>
+  <div class="hdr-side">
+    <div class="hdr-trip" id="hdrTrip"></div>
+    <button id="langBtn" onclick="toggleLang()">EN</button>
   </div>
-  <button id="langBtn" onclick="toggleLang()">EN</button>
 </div>
 
 <div id="app" class="app-hidden">
@@ -630,24 +897,19 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 <!-- BOTTOM NAV -->
 <div class="nav" id="bottomNav">
   <button class="nav-btn active" data-tab="today" onclick="switchTab('today')">
-    <span class="nav-icon-wrap"><span class="nav-icon">🏠</span><span class="nav-dot" aria-hidden="true"></span></span>
-    <span class="cn">今日</span><span class="en">Today</span>
+    <span class="nav-label"><span class="cn">今日</span><span class="en">Today</span><span class="nav-dot" aria-hidden="true"></span></span>
   </button>
   <button class="nav-btn" data-tab="trips" onclick="switchTab('trips')">
-    <span class="nav-icon-wrap"><span class="nav-icon">🧳</span><span class="nav-dot" aria-hidden="true"></span></span>
-    <span class="cn">行程</span><span class="en">Trips</span>
+    <span class="nav-label"><span class="cn">行程</span><span class="en">Trips</span><span class="nav-dot" aria-hidden="true"></span></span>
   </button>
   <button class="nav-btn" data-tab="bills" onclick="switchTab('bills')">
-    <span class="nav-icon-wrap"><span class="nav-icon">🧾</span><span class="nav-dot" aria-hidden="true"></span></span>
-    <span class="cn">账单</span><span class="en">Bills</span>
+    <span class="nav-label"><span class="cn">账单</span><span class="en">Bills</span><span class="nav-dot" aria-hidden="true"></span></span>
   </button>
   <button class="nav-btn" data-tab="inventory" onclick="switchTab('inventory')">
-    <span class="nav-icon-wrap"><span class="nav-icon">📦</span><span class="nav-dot" aria-hidden="true"></span></span>
-    <span class="cn">库存</span><span class="en">Stock</span>
+    <span class="nav-label"><span class="cn">库存</span><span class="en">Stock</span><span class="nav-dot" aria-hidden="true"></span></span>
   </button>
   <button class="nav-btn" data-tab="restaurants" onclick="switchTab('restaurants')">
-    <span class="nav-icon-wrap"><span class="nav-icon">🍜</span><span class="nav-dot" aria-hidden="true"></span></span>
-    <span class="cn">餐厅</span><span class="en">Food</span>
+    <span class="nav-label"><span class="cn">餐厅</span><span class="en">Food</span><span class="nav-dot" aria-hidden="true"></span></span>
   </button>
   <!-- 管理入口按钮由 JS 在 role===admin 时才追加进来 -->
 </div>
@@ -656,7 +918,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
 <div class="overlay" id="billOverlay">
   <div class="overlay-hdr">
     <div class="overlay-title"><span class="cn">账单</span><span class="en">Bill</span></div>
-    <button class="overlay-close" onclick="closeBillOverlay()" aria-label="关闭 Close">✕</button>
+    <button class="overlay-close" onclick="closeBillOverlay()" aria-label="关闭 Close">×</button>
   </div>
   <div class="overlay-body">
     <!-- iframe 保留但不再靠它显示 PDF 内容（一直隐藏）：Android Chrome 没有内建 PDF
@@ -687,7 +949,7 @@ body:has(#gate.off):has(#app.app-hidden) #boot{display:flex;position:fixed;inset
     <div class="share-hd">
       <div class="share-title" id="share-title"></div>
       <button class="overlay-close" style="background:var(--p2);color:var(--p)"
-        onclick="closeShare()" aria-label="关闭 Close">✕</button>
+        onclick="closeShare()" aria-label="关闭 Close">×</button>
     </div>
     <div class="share-hint" id="share-hint"></div>
     <textarea id="share-text" spellcheck="false"></textarea>
@@ -1070,7 +1332,7 @@ function flightInfoHtml(it){
   const live = f.live || null;
   const noLabel = escapeHtml(f.no || '');
   if(!live){
-    return `<div class="flight-info"><span class="flight-badge">✈️ ${noLabel}</span>${flightPaxHtml(f)}</div>`;
+    return `<div class="flight-info"><span class="flight-badge">${noLabel}</span>${flightPaxHtml(f)}</div>`;
   }
   const from = live.from || '', to = live.to || '';
   const routeLabel = (from || to) ? `<span class="flight-route">${escapeHtml(from)} → ${escapeHtml(to)}</span>` : '';
@@ -1081,7 +1343,7 @@ function flightInfoHtml(it){
   if(live.gate) gateBits.push(bl(`登机口 ${live.gate}`, `Gate ${live.gate}`));
   return `<div class="flight-info">
       <div class="flight-info-hd">
-        <span class="flight-badge">✈️ ${noLabel}</span>
+        <span class="flight-badge">${noLabel}</span>
         ${routeLabel}
         <span class="flight-status flight-status-${meta.cls}">${bl(meta.zh, meta.en)}</span>
       </div>
@@ -1130,13 +1392,13 @@ function transferRowHtml(prevItem, nextItem){
   const cityEn = airportLabelEn(arrCode, pf.to_name);
   if(diffMs < 0){
     return `<div class="transfer-row transfer-warn">
-        ⚠️ ${bl('转机时间异常','Unusual layover')}：-${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
+        ${bl('转机时间异常','Unusual layover')}：-${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
         <div class="transfer-hint">${bl('日期或航班可能填错了','The date or flight number may be wrong')}</div>
       </div>`;
   }
   const tight = diffMs < 90 * 60000;
   return `<div class="transfer-row">
-      🔄 ${bl('转机等待','Layover')} ${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
+      ${bl('转机等待','Layover')} ${bl(dur.zh, dur.en)} @ ${bl(cityZh, cityEn)}
       ${ tight ? `<div class="transfer-hint transfer-hint-warn">${bl('转机时间偏紧','Layover is tight')}</div>` : '' }
     </div>`;
 }
@@ -1250,7 +1512,7 @@ function homeScreenCarriesCode(){
     const m = {
       name: '老板 Boss', short_name: '老板',
       start_url: base + hash, scope: base,
-      display: 'standalone', background_color: '#F1F3F6', theme_color: '#1E3A5F',
+      display: 'standalone', background_color: '#fbfaf6', theme_color: '#fbfaf6',
       icons: [
         { src: base + 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
         { src: base + 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
@@ -1393,8 +1655,8 @@ function switchTab(tab){
 function markOffline(fetchedAtIso){
   const banner = document.getElementById('offlineBanner');
   const t = fmtDateTimeBoth(fetchedAtIso);
-  banner.innerHTML = `<span class="cn">📴 离线 · 数据为 ${escapeHtml(t.zh || '—')}</span>` +
-                      `<span class="en">📴 Offline · data as of ${escapeHtml(t.en || '—')}</span>`;
+  banner.innerHTML = `<span class="cn">离线 · 数据为 ${escapeHtml(t.zh || '—')}</span>` +
+                      `<span class="en">Offline · data as of ${escapeHtml(t.en || '—')}</span>`;
   banner.classList.remove('off');
 }
 function hideOffline(){ document.getElementById('offlineBanner').classList.add('off'); }
@@ -1534,15 +1796,15 @@ function recurringOccurrences(fromIso, toIso){
 function recurringItemsForDate(dateIso){
   return recurringOccurrences(dateIso, dateIso).filter(o => !o.skip).map(o => o.item);
 }
-function recurTagHtml(){ return `<span class="recur-tag">${bl('🔁 每周','🔁 Weekly')}</span>`; }
+function recurTagHtml(){ return `<span class="recur-tag">${bl('每周','Weekly')}</span>`; }
 function recurWeekdayBl(w){ return { zh: '每' + WEEKDAYS_ZH[w], en: 'Every ' + WEEKDAYS_EN_FULL[w] }; }
 /** 「这次取消」／「恢复」：**只有 admin 画得出来**（老板只读，这两颗一颗都不进 DOM）。 */
 function recurSkipBtnHtml(ruleId, dateIso, cancelled){
   if(role !== 'admin') return '';
   const a = `'${escapeHtml(ruleId)}','${escapeHtml(dateIso)}'`;
   return cancelled
-    ? `<button type="button" class="recur-restore-btn" onclick="adminRecurSkip(${a}, false)">↩ ${bl('恢复','Restore')}</button>`
-    : `<button type="button" class="recur-cancel-btn" onclick="adminRecurSkip(${a}, true)">✕ ${bl('这次取消','Skip this time')}</button>`;
+    ? `<button type="button" class="recur-restore-btn" onclick="adminRecurSkip(${a}, false)">${bl('恢复','Restore')}</button>`
+    : `<button type="button" class="recur-cancel-btn" onclick="adminRecurSkip(${a}, true)">${bl('这次取消','Skip this time')}</button>`;
 }
 /* ---------- 时段：没有钟点的条目选「上午／下午／晚上」（2026-10-31） ----------
  * 排序规则（四处共用 sortItemsByTime：今天页、行程页、分享文字、管理表单）：
@@ -1598,12 +1860,12 @@ function flightPaxList(f){
 function flightPaxHtml(f){
   const list = flightPaxList(f);
   if(!list.length) return '';
-  return `<div class="flight-pax">👤 ${list.map(p =>
+  return `<div class="flight-pax">${bl('乘客','Pax')} ${list.map(p =>
     `<span class="flight-pax-one">${escapeHtml(p.name)}${p.seat ? ` <b>${escapeHtml(p.seat)}</b>` : ''}</span>`).join(' · ')}</div>`;
 }
 function flightPaxText(f){
   const list = flightPaxList(f);
-  return list.length ? '👤 ' + list.map(p => p.seat ? `${p.name} ${p.seat}` : p.name).join(' · ') : '';
+  return list.length ? pick('乘客：','Pax: ') + list.map(p => p.seat ? `${p.name} ${p.seat}` : p.name).join(' · ') : '';
 }
 
 /* ---------- 酒店条目（item.kind = "hotel"） ---------- */
@@ -1624,25 +1886,25 @@ function hotelNights(h){
   const n = diffDaysIso(h.checkIn, h.checkOut);
   return n > 0 ? n : 0;
 }
-function hotelInfoHtml(it){
+function hotelInfoHtml(it, brief){
   if(!isHotelItem(it)) return '';
   const h = it.hotel;
   const rows = [];
   const map = hotelMapUrl(h);
-  if((h.address || '').trim()){
+  if(!brief && (h.address || '').trim()){
     rows.push(map
-      ? `<div>📍 <a class="hotel-addr" href="${escapeHtml(map)}" target="_blank" rel="noopener">${escapeHtml(h.address.trim())}</a></div>`
-      : `<div>📍 ${escapeHtml(h.address.trim())}</div>`);
+      ? `<div><a class="hotel-addr" href="${escapeHtml(map)}" target="_blank" rel="noopener">${escapeHtml(h.address.trim())}</a></div>`
+      : `<div>${escapeHtml(h.address.trim())}</div>`);
   }
   const tel = telHref(h.phone);
-  if(tel) rows.push(`<div>📞 <a class="hotel-tel" href="${escapeHtml(tel)}">${escapeHtml(String(h.phone).trim())}</a></div>`);
+  if(tel && !brief) rows.push(`<div>${bl('电话','Tel')} <a class="hotel-tel" href="${escapeHtml(tel)}">${escapeHtml(String(h.phone).trim())}</a></div>`);
   if(h.checkIn || h.checkOut){
     const a = h.checkIn ? { zh: fmtMdZh(h.checkIn), en: fmtMdEn(h.checkIn) } : null;
     const b = h.checkOut ? { zh: fmtMdZh(h.checkOut), en: fmtMdEn(h.checkOut) } : null;
     const n = hotelNights(h);
     const zh = [a ? a.zh + ' 入住' : '', b ? b.zh + ' 退房' : '', n ? `${n} 晚` : ''].filter(Boolean).join(' · ');
     const en = [a ? 'In ' + a.en : '', b ? 'out ' + b.en : '', n ? `${n} night${n > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
-    rows.push(`<div>🗓 ${bl(zh, en)}</div>`);
+    rows.push(`<div>${bl(zh, en)}</div>`);
   }
   return rows.length ? `<div class="hotel-info">${rows.join('')}</div>` : '';
 }
@@ -1665,31 +1927,32 @@ function tonightHotelCardHtml(dateIso){
     const map = hotelMapUrl(h);
     const tel = telHref(h.phone);
     return `<div class="tonight-hotel">
-        <div class="tonight-hotel-hd">🏨 ${bl('今晚住：', 'Tonight: ')}<b>${escapeHtml(name)}</b></div>
+        <div class="tonight-hotel-hd">${bl('今晚住', 'Tonight')}<b>${escapeHtml(name)}</b></div>
         ${ (h.address || '').trim() ? `<div class="tonight-hotel-addr">${ map
-            ? `<a href="${escapeHtml(map)}" target="_blank" rel="noopener">📍 ${escapeHtml(h.address.trim())}</a>`
-            : '📍 ' + escapeHtml(h.address.trim()) }</div>` : '' }
+            ? `<a href="${escapeHtml(map)}" target="_blank" rel="noopener">${escapeHtml(h.address.trim())}</a>`
+            : escapeHtml(h.address.trim()) }</div>` : '' }
         <div class="tonight-hotel-btns">
-          ${ tel ? `<a class="tonight-hotel-btn" href="${escapeHtml(tel)}">📞 ${bl('打电话','Call')}</a>` : '' }
-          ${ map ? `<a class="tonight-hotel-btn" href="${escapeHtml(map)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+          ${ tel ? `<a class="tonight-hotel-btn" href="${escapeHtml(tel)}">${bl('打电话','Call')}</a>` : '' }
+          ${ map ? `<a class="tonight-hotel-btn" href="${escapeHtml(map)}" target="_blank" rel="noopener">${bl('地图','Map')}</a>` : '' }
         </div>
       </div>`;
   }).join('');
 }
 
-function itemRowHtml(it){
+function itemRowHtml(it, opts){
   const hasNote = it.note && ((it.note.zh || '').trim() || (it.note.en || '').trim());
-  return `<div class="item-row${isHotelItem(it) ? ' item-row-hotel' : ''}">
+  const past = !!(opts && opts.past);
+  return `<div class="item-row${isHotelItem(it) ? ' item-row-hotel' : ''}${past ? ' past' : ''}">
       <div class="item-time">${itemTimeHtml(it)}</div>
       <div class="item-body">
-        <div class="item-title">${isHotelItem(it) ? '🏨 ' : ''}${blObj(it.title)}${ it.recurring ? recurTagHtml() : '' }</div>
+        <div class="item-title">${blObj(it.title)}${ it.recurring ? recurTagHtml() : '' }</div>
         ${ hasNote ? `<div class="item-note">${blObj(it.note)}</div>` : '' }
         ${ it.recurring ? recurSkipBtnHtml(it.ruleId, it.date, false) : '' }
         ${ it.flight ? flightInfoHtml(it) : '' }
         ${ it.flight ? flightLiveBoxHtml(it) : '' }
-        ${ hotelInfoHtml(it) }
+        ${ hotelInfoHtml(it, !!(opts && opts.briefHotel)) }
       </div>
-      ${ it.mapUrl && !(isHotelItem(it) && (it.hotel.address || '').trim()) ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+      ${ it.mapUrl && !(isHotelItem(it) && (it.hotel.address || '').trim()) ? `<a class="item-map" href="${escapeHtml(it.mapUrl)}" target="_blank" rel="noopener">${bl('地图','Map')}</a>` : '' }
     </div>`;
 }
 /** 覆盖某一天的所有行程（start~end 含首尾），按出发日排。
@@ -1702,42 +1965,122 @@ function activeTripsForDate(dateIso){
 function activeTripForDate(dateIso){
   return activeTripsForDate(dateIso)[0] || null;
 }
-/** 「今天/明天」页顶部的行程横幅：哪怕这趟行程一条具体条目都还没排，人也知道
- * 「自己正在第几天」，不会误以为 App 把数据弄丢了（2026-08-27 用户反馈的根因）。 */
+function tripDayOf(trip, dateIso){
+  return { day: diffDaysIso(trip.start, dateIso) + 1, total: diffDaysIso(trip.start, trip.end || trip.start) + 1 };
+}
+/** 「今天/明天」那一段的第一行：这趟行程叫什么、第几天，后面跟「打开手册」。
+ * 哪怕这趟行程一条具体条目都还没排，人也知道「自己正在第几天」，不会误以为 App 把数据弄丢了
+ * （2026-08-27 用户反馈的根因）。版式 A 起是一行字，不再是一张卡。 */
 function todayTripBannerHtml(dateIso, trip){
   const titleHtml = blObj(trip.title) || bl('未命名行程','Untitled trip');
   const hasLoc = trip.location && ((trip.location.zh||'').trim() || (trip.location.en||'').trim());
-  const totalDays = diffDaysIso(trip.start, trip.end || trip.start) + 1;
-  const dayNum = diffDaysIso(trip.start, dateIso) + 1;
+  const { day: dayNum, total: totalDays } = tripDayOf(trip, dateIso);
   return `<div class="today-trip-banner">
       <div class="today-trip-banner-title">${titleHtml}</div>
       ${ hasLoc ? `<div class="trip-loc">${blObj(trip.location)}</div>` : '' }
       <div class="today-trip-banner-day">${bl(`第 ${dayNum} 天 / 共 ${totalDays} 天`, `Day ${dayNum} of ${totalDays}`)}</div>
-      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener">📖 ${bl('打开手册','Open Guide')}</a>` : '' }
+      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener">${bl('打开手册','Open guide')}</a>` : '' }
     </div>`;
 }
-/** 一段（今天或明天）的正文：行程横幅（如果有覆盖当天的行程）＋ 条目列表／空态。
- * 只有「没有行程覆盖这天、也没有条目」才用原本那张"没有安排"的空状态卡——
- * 人正在旅途中但还没排细节时，那句话是错的，会让人以为数据丢了。 */
-function todaySectionBodyHtml(dateIso, items, isTomorrow){
+/** 一段（今天或明天）的正文：行程那一行（如果有覆盖当天的行程）＋ 条目列表／空态。
+ * 只有「没有行程覆盖这天、也没有条目」才回 null，交给调用方印「今天没有安排」——
+ * 人正在旅途中但还没排细节时，那句话是错的，会让人以为数据丢了。
+ * nowMin：今天那一段传现在几点（分钟），已过时间的条目变灰；明天不传。 */
+function todaySectionBodyHtml(dateIso, items, isTomorrow, nowMin){
+  // 入住当天，「今晚住」那一段已经写了酒店地址和电话，行程里那条入住就不再重复这两行
+  // （只留入住／退房日期）。明天那一段上面没有「今晚住」，照旧写全。
+  const tonight = isTomorrow ? [] : hotelsTonight(dateIso);
+  const rows = () => `<div class="item-list">${items.map(it =>
+    itemRowHtml(it, { past: nowMin != null && itemIsPast(it, nowMin), briefHotel: tonight.includes(it) })).join('')}</div>`;
   const trips = activeTripsForDate(dateIso);
   if(trips.length){
     let html = trips.map(t => todayTripBannerHtml(dateIso, t)).join('');
     const emptyNote = isTomorrow
       ? bl('明天还没排具体安排','No specific plan yet for tomorrow')
       : bl('今天还没排具体安排','No specific plan yet for today');
-    html += items.length
-      ? `<div class="item-list">${items.map(itemRowHtml).join('')}</div>`
-      : `<div class="today-trip-empty-note">${emptyNote}</div>`;
+    html += items.length ? rows() : `<div class="today-trip-empty-note">${emptyNote}</div>`;
     return html;
   }
-  if(items.length){
-    return `<div class="item-list">${items.map(itemRowHtml).join('')}</div>`;
-  }
-  return null; // 交给调用方决定要不要显示"没有安排"的空状态卡
+  if(items.length) return rows();
+  return null;
 }
+
+/* ---------- 版式 A：顶部大号日期＋右侧小字（行程名 · 第几天／共几天） ---------- */
+function renderHeader(){
+  const d = document.getElementById('hdrDate'), t = document.getElementById('hdrTrip');
+  if(!d || !t) return;
+  const todayIso = isoDate(new Date());
+  const dw = fmtDateWeekdayBoth(todayIso);
+  d.innerHTML = bl(dw.zh, dw.en);
+  const trips = feedData ? activeTripsForDate(todayIso) : [];
+  t.innerHTML = trips.map(tr => {
+    const { day, total } = tripDayOf(tr, todayIso);
+    return `<div>${blObj(tr.title) || bl('行程','Trip')} · ${bl(`第 ${day} 天 / 共 ${total} 天`, `Day ${day} of ${total}`)}</div>`;
+  }).join('');
+}
+
+/* ---------- 「下一件事」（2026-11-11，今日页最上面） ----------
+ * 从今天的条目（含每周固定行程）里取「还没过时间的下一条」；今天的都过完了就取明天第一条、标「明天」；
+ * 今明都没有就整块不出现。
+ * 只用手上已有的数据：备注、feed 里的航班状态（flight.live）。**不显示车程估算**——没有数据来源，
+ * 编一个「现在出发约 35 分钟」比不写更糟。不做「给司机看」（用户没选）。
+ * 「过没过」只看钟点：有钟点的，钟点早于现在就算过了；只有时段（上午／下午／晚上）的，时段结束才算过；
+ * 两样都没有的（一整天的事）不算过、也不拿来当「下一件事」——说不出它是几点。 */
+function itemClockMinutes(it){
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String((it && it.time) || '').trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+function nowMinutes(){ const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+function itemIsPast(it, nowMin){
+  const m = itemClockMinutes(it);
+  if(m !== null) return m < nowMin;
+  if(itemPeriod(it)) return itemSortMinutes(it) < nowMin;
+  return false;
+}
+function itemHasWhen(it){ return itemClockMinutes(it) !== null || !!itemPeriod(it); }
+/** 回 { item, tomorrow } 或 null。todayItems / tomorrowItems 必须已经按 sortItemsByTime 排好。 */
+function nextUpPick(todayItems, tomorrowItems, nowMin){
+  const t = (todayItems || []).find(it => itemHasWhen(it) && !itemIsPast(it, nowMin));
+  if(t) return { item: t, tomorrow: false };
+  const m = (tomorrowItems || [])[0];
+  return m ? { item: m, tomorrow: true } : null;
+}
+/** 下一件事的副行：备注＋航班（航班号、起降、feed 里已有的状态）。延误／取消用红字。 */
+function nextUpSubHtml(it){
+  const bits = [];
+  const f = it.flight;
+  if(f){
+    const live = f.live || null;
+    const fb = [escapeHtml(f.no || '')];
+    if(live && (live.from || live.to)) fb.push(`${escapeHtml(live.from || '')} → ${escapeHtml(live.to || '')}`);
+    if(live){
+      const meta = flightStatusMeta(live.status);
+      const warn = meta.cls === 'delay' || meta.cls === 'cancel';
+      fb.push(`<span class="next-flight-st${warn ? ' tline-warn' : ''}">${bl(meta.zh, meta.en)}</span>`);
+      if(live.gate) fb.push(bl(`登机口 ${live.gate}`, `Gate ${live.gate}`));
+    }
+    bits.push(fb.filter(Boolean).join(' · '));
+  }
+  const hasNote = it.note && ((it.note.zh || '').trim() || (it.note.en || '').trim());
+  if(hasNote) bits.push(blObj(it.note));
+  return bits.length ? `<div class="next-sub">${bits.join(' · ')}</div>` : '';
+}
+function nextUpHtml(pickRes){
+  if(!pickRes) return '';
+  const it = pickRes.item;
+  const when = itemTimeHtml(it);
+  const map = (it.mapUrl || '').trim() || (isHotelItem(it) ? hotelMapUrl(it.hotel) : '');
+  return `<div class="next-up" id="next-up">
+      <div class="lab">${bl('下一件事','Next')}${ pickRes.tomorrow ? `<span class="next-when">${bl('明天','Tomorrow')}</span>` : '' }</div>
+      <div class="next-big">${ when ? `<span class="next-t">${when}</span>` : '' }<span class="next-w">${blObj(it.title)}</span></div>
+      ${nextUpSubHtml(it)}
+      ${ map ? `<div class="next-act"><a href="${escapeHtml(map)}" target="_blank" rel="noopener">${bl('地图','Map')}</a></div>` : '' }
+    </div>`;
+}
+
 function renderToday(){
   const pane = document.getElementById('tab-today');
+  renderHeader();
   if(!feedData){ pane.innerHTML = ''; return; }
   const todayIso = isoDate(new Date());
   const tomorrowIso = isoDate(new Date(Date.now() + 86400000));
@@ -1751,40 +2094,42 @@ function renderToday(){
   const sorted = sortItemsByTime(all);
   const todayItems = sorted.filter(it => it.date === todayIso);
   const tomorrowItems = sorted.filter(it => it.date === tomorrowIso);
+  const nowMin = nowMinutes();
 
-  // 还没看的账单摆在最上面（2026-10-29）：他打开 App 几乎只看「今天」，账单要切到另一页才看得到
+  // 今日页的组成（版式 A，用户选了「今日页只放行程」）：
+  //   下一件事 →（有才出现的）未读账单／库存不足提示行 → 今天（含今晚住） → 明天 → 请假、备忘、牙医、通知入口。
+  let html = nextUpHtml(nextUpPick(todayItems, tomorrowItems, nowMin));
+  // 还没看的账单（2026-10-29 起摆在最上面）：他打开 App 几乎只看「今天」，账单要切到另一页才看得到。
+  // 版式 A 起是一行文字，不再是卡片。
   const newBills = unreadBills();
-  let html = newBillsCardHtml(newBills);
-  html += `<div class="sec-hdr"${newBills.length ? ' style="margin-top:20px"' : ''}><span class="sec-title">${bl('今天','Today')}</span>${shareDayBtnHtml(todayIso)}</div>`;
+  html += newBillsCardHtml(newBills);
+  html += lowStockLineHtml();
+  html += `<div class="sec-hdr"><span class="sec-title">${bl('今天','Today')}</span>${shareDayBtnHtml(todayIso)}</div>`;
   // 今晚住哪摆在「今天」标题正下方：老板出门在外最常问的一句
   html += tonightHotelCardHtml(todayIso);
-  const todayBody = todaySectionBodyHtml(todayIso, todayItems);
+  const todayBody = todaySectionBodyHtml(todayIso, todayItems, false, nowMin);
   if(todayBody !== null){
     html += todayBody;
   }else{
     const next = findNextItineraryDate(todayIso);
     html += `<div class="empty-card">
-        <div class="empty-icon">🗓️</div>
-        <div>${bl('今天没有安排的行程','Nothing scheduled for today')}</div>
+        <div>${bl('今天没有安排','Nothing today')}</div>
         <div class="empty-next">${ next
-          ? bl('下一个行程是 ' + fmtDateBoth(next).zh, 'Next trip item: ' + fmtDateBoth(next).en)
-          : bl('近期没有排定的行程','No upcoming items scheduled') }</div>
+          ? bl('下一个安排：' + fmtDateBoth(next).zh, 'Next: ' + fmtDateBoth(next).en)
+          : bl('近期没有安排','Nothing coming up') }</div>
       </div>`;
-    // 空态不该真的是空的：这一屏是老板的默认首屏，今天没安排时他看到的原本是
-    // 一句「今天没有安排的行程」——全 App 最没用的一屏，而它正是第一眼。
-    // 底下补一条最近的账单，一点就打开。他打开这个 App 十次有八次是为了那个数字。
-    // 最上面已经列了没看的账单时，这里不再重复同一份
+    // 空态底下补一行最近的账单（2026-09-05），一点就打开。最上面已经列了没看的账单时不再重复。
     if(!newBills.length) html += latestBillCardHtml();
   }
-  // 今天谁请假紧跟在今天的行程后面（讲的是今天的事，不该跟牙医那些卡片混在一起）
-  html += leaveTodayCardHtml();
-  html += memoCardHtml();
-  // 明天：有条目、或者明天也在某趟行程区间内，才显示这一段——都没有就整段不出现（跟原行为一致）。
+  // 明天：有条目、或者明天也在某趟行程区间内，才显示这一段——都没有就整段不出现。
   const tomorrowBody = todaySectionBodyHtml(tomorrowIso, tomorrowItems, true);
   if(tomorrowBody !== null){
-    html += `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('明天','Tomorrow')}</span>${shareDayBtnHtml(tomorrowIso)}</div>`;
+    const dw = fmtDateWeekdayBoth(tomorrowIso);
+    html += `<div class="sec-hdr"><span class="sec-title">${bl('明天 · ' + dw.zh, 'Tomorrow · ' + dw.en)}</span>${shareDayBtnHtml(tomorrowIso)}</div>`;
     html += tomorrowBody;
   }
+  html += leaveTodayCardHtml();
+  html += memoCardHtml();
   html += dentalCardHtml();
   html += viewerPushFooterHtml();
   pane.innerHTML = html;
@@ -1868,7 +2213,7 @@ function leaveTodayCardHtml(){
     body += `<div class="leave-sub${todayList ? ' leave-sep' : ''}">${bl('接下来','Coming up')}</div>` + soonList;
   }
   const title = todayList ? bl('今天请假','Off today') : bl('请假安排','Upcoming leave');
-  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🏖 ${title}</span></div>
+  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${title}</span></div>
     <div class="dental-card">${body}</div>`;
 }
 
@@ -1893,9 +2238,9 @@ function memoCardHtml(){
   if(!list.length) return '';
   const rows = list.map(m => `<div class="memo-row">
       <div>${escapeHtml(m.text || '')}</div>
-      ${ m.datetime ? `<div class="memo-when">⏰ ${memoWhenBl(m)}</div>` : '' }
+      ${ m.datetime ? `<div class="memo-when">${memoWhenBl(m)}</div>` : '' }
     </div>`).join('');
-  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">📌 ${bl('备忘','Notes')}</span></div>
+  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('备忘','Notes')}</span></div>
     <div class="memo-card">${rows}</div>`;
 }
 
@@ -1904,49 +2249,72 @@ function unreadBills(){
   return ((feedData && feedData.bills) || []).filter(b => b && !b.readAt)
     .sort((a, b) => String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || ''))).slice(0, 3);
 }
+/** 今日页顶部的账单提示行：「2026年10月 Boss 账单 · 花费 USD 3,240.50 · 结余 USD 12,345.00」。
+ *  一行一份，点了直接打开（沿用 openBill 与已读逻辑）。数字走 billMoneyParts()——
+ *  没有 summary 只印标题、没有 closing 只印花费，**绝不印成 0.00**（见 billAmountHtml 的注释）。 */
+function billLineHtml(b, isNew){
+  const m = billMoneyParts(b);
+  const bits = [`<span class="tbill-title">${blObj(b.title)}</span>`];
+  // 每段金额自成一块、不在中间断行：窄屏上曾经断成「· 结余」开头的一行
+  if(m.spent) bits.push(`<span class="tline-bit"><span class="tline-k">${pick('花费','Spent')}</span> ${escapeHtml(m.spent)}</span>`);
+  if(m.bal) bits.push(`<span class="tline-bit"><span class="tline-k">${pick('结余','Balance')}</span> <span class="${m.neg ? 'tline-warn' : ''}">${escapeHtml(m.bal)}</span></span>`);
+  return `<div class="tline tbill-row${isNew ? ' tbill-new' : ''}" role="button" tabindex="0" onclick="openBill('${escapeHtml(b.id)}')">
+      ${ isNew ? `<span class="tline-new tbill-new-pill">${bl('新','New')}</span>` : '' }
+      <span class="tline-body">${bits.join(' <span class="tline-sep">·</span> ')}</span>
+    </div>`;
+}
 /**
- * 「今天」最上面的新账单卡（2026-10-29 用户要的）。马来西亚那份 10/17 传的，到 10/29 还没被打开：
- * 他几乎只看「今天」，账单在另一个分页，没开通知就不会知道有新的。
- * 点一下直接打开那份。admin 预览时同一张卡多一句「老板还没看」，免得 YANG 以为是自己没看。
+ * 今日页顶部的新账单（2026-10-29 用户要的；2026-11-11 版式 A 起改成一行一份的文字）。
+ * 马来西亚那份 10/17 传的，到 10/29 还没被打开：他几乎只看「今天」，账单在另一个分页。
+ * admin 预览时多一句「老板还没看」，免得 YANG 以为是自己没看。
  */
 function newBillsCardHtml(list){
   if(!list || !list.length) return '';
-  const rows = list.map(b => `<div class="tbill-row tbill-new" onclick="openBill('${escapeHtml(b.id)}')">
-        <div class="tbill-icon">📄</div>
-        <div class="tbill-info">
-          <div class="tbill-title"><span class="tbill-new-pill">${bl('新','New')}</span>${blObj(b.title)}</div>
-          ${billAmountHtml(b)}
-          <div class="tbill-sub">${billSubHtml(b)}</div>
-        </div>
-        <div class="tbill-arrow" aria-hidden="true">›</div>
-      </div>`).join('');
-  const head = list.length > 1 ? bl(`有 ${list.length} 份新账单`, `${list.length} new bills`) : bl('有一份新账单','New bill');
-  return `<div class="sec-hdr"><span class="sec-title">🧾 ${head}</span>${
-      role === 'admin' ? `<span class="tbill-admin-note">${pick('老板还没看','Boss hasn\'t opened')}</span>` : ''}</div>
-    <div class="tbill-list" id="new-bills-card">${rows}</div>`;
+  return `<div class="tbill-list" id="new-bills-card">${list.map(b => billLineHtml(b, true)).join('')}${
+      role === 'admin' ? `<div class="tline-admin tbill-admin-note">${pick('老板还没看','Boss hasn\'t opened')}</div>` : ''}</div>`;
 }
 
-/** 今天没安排时补在空态底下的「最近一份账单」。一份都没有就整段不出现——
- *  空态已经够空了，再挂一句「还没有账单」只是多一行废话。
- *  刻意做成**一点就打开那份账单**（不是跳到账单分页再让他点一次）：
- *  他打开这个 App 多半就是为了那个数字，能少一次点就少一次。 */
+/** 今天没安排时补在空态底下的「最近一份账单」（2026-09-05），一行字，一点就打开。
+ *  一份都没有就不出现——空态已经够空了，再挂一句「还没有账单」只是多一行废话。 */
 function latestBillCardHtml(){
   const bills = ((feedData && feedData.bills) || []).slice().sort((a, b) =>
     String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || '')));
   const b = bills[0];
   if(!b) return '';
-  const amt = billAmountHtml(b);
-  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🧾 ${bl('最近一份账单','Latest bill')}</span></div>
-    <div class="tbill-list">
-      <div class="tbill-row" onclick="openBill('${escapeHtml(b.id)}')">
-        <div class="tbill-icon">📄</div>
-        <div class="tbill-info">
-          <div class="tbill-title">${blObj(b.title)}</div>
-          ${amt}
-          <div class="tbill-sub">${billSubHtml(b)}</div>
-        </div>
-        <div class="tbill-arrow" aria-hidden="true">›</div>
-      </div>
+  return `<div class="tbill-list">${billLineHtml(b, false)}</div>`;
+}
+
+/* ---------- 库存不足（2026-11-11） ----------
+ * 某一款数量 ≤ LOW_STOCK_MAX 且 > 0 就提醒：库存分页那一行红字「只剩 N 瓶」，今日页顶部合并成一行。
+ * 2 是**默认值**（用户没指定每一款各自的门槛），以后要按类别分开设再改这里。
+ * 数量 0 沿用原本的显示（就是「0 瓶」），不算提醒——那多半是喝完了留着记录，不是快没了。 */
+const LOW_STOCK_MAX = 2;
+const LOW_STOCK_LINE_MAX = 3;
+function invCountOf(it){
+  const c = (it.count != null) ? it.count : (it.qty != null ? it.qty : (it.quantity != null ? it.quantity : null));
+  const n = Number(c);
+  return (c === null || c === '' || !isFinite(n)) ? null : n;
+}
+function isLowStock(it){ const n = invCountOf(it); return n !== null && n > 0 && n <= LOW_STOCK_MAX; }
+function allInvItems(){
+  const inv = feedData && feedData.inventory;
+  if(!inv) return [];
+  if(Array.isArray(inv.categories) && inv.categories.length) return inv.categories.flatMap(c => c.items || []);
+  return INV_GROUPS.flatMap(g => inv[g.key] || []);
+}
+function lowStockText(it){
+  const n = invCountOf(it), u = String(it.unit || '').trim();
+  return { zh: `只剩 ${n}${u ? ' ' + u : ''}`, en: `only ${n}${u ? ' ' + u : ''} left` };
+}
+function lowStockLineHtml(){
+  const low = allInvItems().filter(isLowStock).sort(invByName);
+  if(!low.length) return '';
+  const shown = low.slice(0, LOW_STOCK_LINE_MAX);
+  const rest = low.length - shown.length;
+  const zh = shown.map(it => `${it.name || ''} ${lowStockText(it).zh}`).join('、') + (rest > 0 ? ` 等 ${rest} 款` : '');
+  const en = shown.map(it => `${it.name || ''} ${lowStockText(it).en}`).join(', ') + (rest > 0 ? ` and ${rest} more` : '');
+  return `<div class="tline" id="low-stock-line" role="button" tabindex="0" onclick="switchTab('inventory')">
+      <span class="tline-body"><span class="tline-k">${pick('库存','Stock')}</span> <span class="tline-warn">${escapeHtml(pick(zh, en))}</span></span>
     </div>`;
 }
 
@@ -1990,7 +2358,7 @@ function dentalCardHtml(){
       </div>`;
   }
   const note = d.note && String(d.note).trim();
-  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">🦷 ${bl('牙医','Dentist')}</span></div>
+  return `<div class="sec-hdr" style="margin-top:20px"><span class="sec-title">${bl('牙医','Dentist')}</span></div>
     <div class="dental-card">${rows}${ note ? `<div class="dental-note">${escapeHtml(note)}</div>` : '' }${dentalWaBtnHtml(d, upcoming)}</div>`;
 }
 /**
@@ -2021,7 +2389,7 @@ function dentalWaUrl(d, upcoming){
 function dentalWaBtnHtml(d, upcoming){
   const label = upcoming ? bl('WhatsApp 改时间','Change time on WhatsApp') : bl('WhatsApp 请我们帮你约','Ask us to book on WhatsApp');
   return `<a class="dental-wa-btn" id="dental-wa" href="${escapeHtml(dentalWaUrl(d, upcoming))}" target="_blank" rel="noopener"
-      onclick="viewLogStep && viewLogStep({ tab: 'dentalWa' })">💬 ${label}</a>`;
+      onclick="viewLogStep && viewLogStep({ tab: 'dentalWa' })">${label}</a>`;
 }
 /** 加 n 个月，月底自动收敛到该月最后一天（8月31日 + 6 个月 = 2月28/29日，不会溢出到 3 月）。 */
 function addMonthsIso(iso, n){
@@ -2093,7 +2461,7 @@ function tripCardHtml(trip){
         <div class="trip-arrow" aria-hidden="true">▾</div>
       </div>
       <div class="trip-preview" onclick="this.parentElement.classList.toggle('expanded')">${tripPreviewHtml(trip)}</div>
-      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📖 ${bl('打开手册','Open Guide')}</a>` : '' }
+      ${ trip.guideUrl ? `<a class="trip-guide-btn" href="${escapeHtml(trip.guideUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${bl('打开手册','Open guide')}</a>` : '' }
       <div class="trip-items">${tripItemsHtml(trip)}</div>
     </div>`;
 }
@@ -2118,7 +2486,7 @@ function recurringTripsCardsHtml(todayIso){
     return `<div class="recur-card" data-rule="${escapeHtml(rule.id)}">
         <div class="recur-card-title">${blObj(rule.title)}${recurTagHtml()}</div>
         <div class="recur-card-sub">${bl(wd.zh + ' ' + when, wd.en + ' ' + when)}${ hasNote ? ' · ' + blObj(rule.note) : '' }</div>
-        ${ rule.mapUrl ? `<a class="item-map" href="${escapeHtml(rule.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
+        ${ rule.mapUrl ? `<a class="item-map" href="${escapeHtml(rule.mapUrl)}" target="_blank" rel="noopener">${bl('地图','Map')}</a>` : '' }
         ${ rows || `<div class="recur-row recur-skip">${bl('接下来几周没有','None in the coming weeks')}</div>` }
       </div>`;
   }).join('');
@@ -2139,7 +2507,7 @@ function renderTrips(){
 
   let html = '';
   if(!upcoming.length && !past.length && !recurringRules().length){
-    html += `<div class="empty-card"><div class="empty-icon">🧳</div><div>${bl('还没有行程安排','No trips yet')}</div></div>`;
+    html += `<div class="empty-card"><div>${bl('还没有行程','No trips yet')}</div></div>`;
   }
   html += recurringTripsCardsHtml(todayIso);
   html += upcoming.map(tripCardHtml).join('');
@@ -2160,14 +2528,13 @@ function renderBills(){
     return (b.uploadedAt||'').localeCompare(a.uploadedAt||'');
   });
   if(!bills.length){
-    pane.innerHTML = `<div class="empty-card"><div class="empty-icon">🧾</div><div>${bl('还没有账单','No bills yet')}</div></div>`;
+    pane.innerHTML = `<div class="empty-card"><div>${bl('还没有账单','No bills yet')}</div></div>`;
     return;
   }
   pane.innerHTML = `<div class="bill-list">${bills.map(b => `
       <div class="bill-row" onclick="openBill('${escapeHtml(b.id)}')">
-        <div class="bill-icon">📄</div>
         <div class="bill-info">
-          <div class="bill-title">${blObj(b.title)}</div>
+          <div class="bill-title">${blObj(b.title)}${ !b.readAt && role !== 'admin' ? `<span class="bill-unread">${bl('未读','Unread')}</span>` : '' }</div>
           ${billAmountHtml(b)}
           <div class="bill-sub">${billSubHtml(b)}</div>
         </div>
@@ -2194,18 +2561,33 @@ function billSubHtml(b){
   if(b.kind === 'trip') bits.push(pick('行程账单','Trip Bill'));
   return bits.join(' · ');
 }
-function billAmountHtml(b){
+/** 一份账单的金额字串：spent＝这段期间花掉多少，bal＝期末结余（closing），都已带币别。
+ *  ⚠️ 老账单没有 summary（2026-09-05 才有）、更老的没有 closing（2026-11-11 才开始显示）：
+ *  缺什么就**不印什么**，绝不能退成「0.00」——那是在告诉老板那个月一分钱没花／账上一分钱不剩。
+ *  0 是合法金额（真的一分没花／刚好花光），不能被当成「没有」。结余为负照实印负号。 */
+function billMoneyParts(b){
   const sm = b && b.summary;
-  if(!sm || typeof sm.expense !== 'number' || !sm.currency) return '';
-  const money = fmtBillMoney(sm.expense, sm.currency);
-  if(!money) return '';
-  const n = (typeof sm.count === 'number' && sm.count >= 0)
-    ? `<span class="bill-count">${bl(sm.count + ' 笔', sm.count + ' items')}</span>` : '';
-  // ⚠️ 「花费」这两个字不能省（2026-09-05 用户：「我一打开看我以为是结余」）。
-  // 这里印的是这段期间**花掉多少**，不是账上还剩多少——两个数字差得远，
-  // 他照着看错的那个下判断就麻烦了。
-  const k = `<span class="bill-amt-k">${pick('花费','Spent')}</span>`;
-  return `<div class="bill-amt">${k}${escapeHtml(money)}${n}</div>`;
+  const out = { spent: '', bal: '', neg: false, count: null };
+  if(!sm || !sm.currency) return out;
+  if(typeof sm.expense === 'number') out.spent = fmtBillMoney(sm.expense, sm.currency);
+  if(typeof sm.closing === 'number' && isFinite(sm.closing)){
+    out.bal = fmtBillMoney(sm.closing, sm.currency);
+    out.neg = sm.closing < 0;
+  }
+  if(typeof sm.count === 'number' && sm.count >= 0) out.count = sm.count;
+  return out;
+}
+function billAmountHtml(b){
+  const m = billMoneyParts(b);
+  if(!m.spent && !m.bal) return '';
+  const n = (m.count !== null && m.spent)
+    ? `<span class="bill-count">${bl(m.count + ' 笔', m.count + (m.count === 1 ? ' item' : ' items'))}</span>` : '';
+  // ⚠️ 「花费」「结余」两个标签都不能省（2026-09-05 用户：「我一打开看我以为是结余」）。
+  // 花费是这段期间**花掉多少**，结余是账上**还剩多少**——两个数字差得远，
+  // 少了标签他会照着看错的那个下判断。
+  const k = t => `<span class="bill-amt-k">${t}</span>`;
+  return (m.spent ? `<div class="bill-amt">${k(pick('花费','Spent'))} ${escapeHtml(m.spent)} ${n}</div>` : '')
+       + (m.bal ? `<div class="bill-bal${m.neg ? ' neg' : ''}">${k(pick('结余','Balance'))} ${escapeHtml(m.bal)}</div>` : '');
 }
 function base64ToUint8Array(b64){
   const bin = atob(b64 || '');
@@ -2489,15 +2871,15 @@ function openBillNewTab(){
    时才用（例如本机缓存着旧版数据）。后端已改成 inventory.categories 动态给类别，
    新类别（如「氢水」）不需要前端改代码就能显示，见下面 renderInventory()。 */
 const INV_GROUPS = [
-  { key:'wine', icon:'🍷', zh:'酒', en:'Wine' },
-  { key:'tea', icon:'🍵', zh:'茶', en:'Tea' },
-  { key:'herb', icon:'🌿', zh:'虫草', en:'Herb' }
+  { key:'wine', icon:'', zh:'酒', en:'Wine' },
+  { key:'tea', icon:'', zh:'茶', en:'Tea' },
+  { key:'herb', icon:'', zh:'虫草', en:'Herb' }
 ];
 // 动态类别没有专属图标（后端只给 key/label），已知的老类别沿用原图标，其余给个通用箱子。
 // 类别图标：认识的给专属图标，不认识的落到 📦。类别本身是后端动态给的，
 // 这张表只管好看，漏了一个不会让类别消失——这跟之前写死类别名单是两回事。
-const INV_ICON_MAP = { wine:'🍷', tea:'🍵', herb:'🌿', hydrogen:'💧' };
-function invCategoryIcon(key){ return INV_ICON_MAP[key] || '📦'; }
+// 版式 A（2026-11-11）起不再用表情符号当类别图标，类别名本身就是标题。
+function invCategoryIcon(key){ return ''; }
 function invRowHtml(it){
   const qty = (it.count != null) ? it.count : (it.qty != null ? it.qty : (it.quantity != null ? it.quantity : '-'));
   // 老板端只读，图片加载失败（链接失效/热链被挡）就直接拿掉这个 <img>，不留破图标。
@@ -2505,10 +2887,11 @@ function invRowHtml(it){
     ? `<img class="inv-thumb" src="${escapeHtml(it.image)}" alt="" loading="lazy"
          onerror="this.remove()" onclick="openInvLightbox('${escapeHtml(it.image)}')">`
     : '';
-  return `<div class="inv-row">
+  const low = isLowStock(it);
+  return `<div class="inv-row${low ? ' inv-row-low' : ''}">
       ${thumb}
-      <div class="inv-name">${escapeHtml(it.name || '')}</div>
-      <div class="inv-qty">${escapeHtml(String(qty))} ${escapeHtml(it.unit || '')}</div>
+      <div class="inv-name">${escapeHtml(it.name || '')}${ low ? `<span class="inv-low">${escapeHtml(pick(lowStockText(it).zh, lowStockText(it).en))}</span>` : '' }</div>
+      <div class="inv-qty${low ? ' inv-low-qty' : ''}">${escapeHtml(String(qty))} ${escapeHtml(it.unit || '')}</div>
     </div>`;
 }
 /** 一组品项的合计件数（对 count 求和，非数字当 0，不让 NaN 漏出去）。 */
@@ -2546,7 +2929,7 @@ function invLocationGroups(items){
 /** 一个类别的完整渲染：标题＋合计，下面按地点分组，每组也有小标题＋合计。 */
 function invCategoryBlockHtml(labelHtml, icon, items){
   let html = `<div class="sec-hdr" style="margin-top:16px">
-      <span class="sec-title">${icon} ${labelHtml}</span>
+      <span class="sec-title">${icon ? icon + ' ' : ''}${labelHtml}</span>
       <span class="inv-cat-total">${bl(`合计 ${sumInvCount(items)}`, `Total ${sumInvCount(items)}`)}</span>
     </div>`;
   if(!items.length){
@@ -2565,7 +2948,7 @@ function renderInventory(){
   if(!feedData){ pane.innerHTML = ''; return; }
   const inv = feedData.inventory;
   if(!inv){
-    pane.innerHTML = `<div class="empty-card"><div class="empty-icon">📦</div>
+    pane.innerHTML = `<div class="empty-card">
       <div>${bl('库存暂时无法读取','Inventory unavailable right now')}</div></div>`;
     return;
   }
@@ -2608,8 +2991,8 @@ function restRowHtml(r){
         ${ (r.note||'').trim() ? `<div class="rest-meta">${escapeHtml(r.note)}</div>` : '' }
       </div>
       <div class="rest-acts">
-        ${ r.mapUrl ? `<a class="item-map" href="${escapeHtml(r.mapUrl)}" target="_blank" rel="noopener">🗺 ${bl('地图','Map')}</a>` : '' }
-        ${ canShare() ? `<button type="button" class="share-btn" onclick="shareRestaurant('${escapeHtml(r.id)}')">📤 ${bl('分享','Share')}</button>` : '' }
+        ${ r.mapUrl ? `<a class="item-map" href="${escapeHtml(r.mapUrl)}" target="_blank" rel="noopener">${bl('地图','Map')}</a>` : '' }
+        ${ canShare() ? `<button type="button" class="share-btn" onclick="shareRestaurant('${escapeHtml(r.id)}')">${bl('分享','Share')}</button>` : '' }
       </div>
     </div>`;
 }
@@ -2629,7 +3012,7 @@ function renderRestaurants(){
   if(!feedData){ pane.innerHTML = ''; return; }
   const groups = restGroups();
   if(!groups.length){
-    pane.innerHTML = `<div class="empty-card"><div class="empty-icon">🍜</div>
+    pane.innerHTML = `<div class="empty-card">
       <div>${bl('还没有收藏的餐厅','No saved restaurants yet')}</div></div>`;
     return;
   }
@@ -2637,7 +3020,7 @@ function renderRestaurants(){
       <div class="rest-region-hdr">
         <span>${escapeHtml(g.region)}　${bl(g.items.length + ' 家', g.items.length + ' places')}</span>
         ${ canShare() ? `<button type="button" class="share-btn"
-          onclick="shareRestRegion('${encodeURIComponent(g.region)}')">📤 ${bl('分享这一区','Share these')}</button>` : '' }
+          onclick="shareRestRegion('${encodeURIComponent(g.region)}')">${bl('分享这一区','Share these')}</button>` : '' }
       </div>
       <div class="rest-list">${g.items.map(restRowHtml).join('')}</div>`).join('');
 }
@@ -2655,8 +3038,8 @@ function openShare(titleText, hintText, text){
   document.getElementById('share-hint').textContent = hintText;
   document.getElementById('share-text').value = text;
   document.getElementById('share-msg').textContent = '';
-  document.getElementById('share-wa-btn').textContent = pick('📲 发到 WhatsApp','📲 Send via WhatsApp');
-  document.getElementById('share-copy-btn').textContent = pick('📋 复制文字','📋 Copy text');
+  document.getElementById('share-wa-btn').textContent = pick('发到 WhatsApp','Send via WhatsApp');
+  document.getElementById('share-copy-btn').textContent = pick('复制文字','Copy text');
   document.getElementById('shareBox').classList.add('open');
 }
 function closeShare(){ document.getElementById('shareBox').classList.remove('open'); }
@@ -2706,13 +3089,13 @@ function flightShareLines(it){
   const f = it && it.flight;
   if(!f) return [];
   const live = f.live || null;
-  if(!live) return ['✈️ ' + (f.no || ''), flightPaxText(f)].filter(Boolean);
+  if(!live) return [pick('航班 ','Flight ') + (f.no || ''), flightPaxText(f)].filter(Boolean);
   const zh = curLang !== 'en';
   const from = zh ? airportLabelZh(live.from, live.from_name) : airportLabelEn(live.from, live.from_name);
   const to = zh ? airportLabelZh(live.to, live.to_name) : airportLabelEn(live.to, live.to_name);
   const meta = flightStatusMeta(live.status);
   const lines = [];
-  lines.push(['✈️ ' + (f.no || ''), (from || to) ? `${from} → ${to}` : '', pick(meta.zh, meta.en)]
+  lines.push([pick('航班 ','Flight ') + (f.no || ''), (from || to) ? `${from} → ${to}` : '', pick(meta.zh, meta.en)]
     .filter(Boolean).join(' · '));
   lines.push(pick('起飞','Dep') + ' ' + flightTimePartText(live.sched_dep, live.act_dep, live.est_dep));
   lines.push(pick('到达','Arr') + ' ' + flightTimePartText(live.sched_arr, live.act_arr, live.est_arr));
@@ -2729,7 +3112,7 @@ function shareDayText(dateIso){
   const trips = activeTripsForDate(dateIso);
   const items = itemsForDate(dateIso);
   const lines = [];
-  let head = '📅 ' + (pick(dw.zh, dw.en) || dateIso);
+  let head = (pick(dw.zh, dw.en) || dateIso);
   // 两趟重叠的那天（例如一趟的最后一天＝下一趟的第一天）两趟都写出来
   const tripBits = trips.map(trip => {
     const total = diffDaysIso(trip.start, trip.end || trip.start) + 1;
@@ -2741,7 +3124,7 @@ function shareDayText(dateIso){
   lines.push(head);
   hotelsTonight(dateIso).forEach(it => {
     const h = it.hotel;
-    lines.push(pick('🏨 今晚住：', '🏨 Tonight: ') + (String(h.name || '').trim() || pickObj(it.title)));
+    lines.push(pick('今晚住：', 'Tonight: ') + (String(h.name || '').trim() || pickObj(it.title)));
   });
   if(!items.length){
     lines.push('');
@@ -2757,16 +3140,16 @@ function shareDayText(dateIso){
     flightShareLines(it).forEach(l => lines.push(l));
     if(isHotelItem(it)){
       const h = it.hotel;
-      if((h.address || '').trim()) lines.push('📍 ' + h.address.trim());
-      if((h.phone || '').trim()) lines.push('📞 ' + h.phone.trim());
+      if((h.address || '').trim()) lines.push(pick('地址：','Address: ') + h.address.trim());
+      if((h.phone || '').trim()) lines.push(pick('电话：','Tel: ') + h.phone.trim());
     }
     // 地图网址原样写出来（不缩短、不包装）——WhatsApp 会自己变成能点的链接，
     // 这是 CLAUDE.md「提到地点就要附地图链接」在分享文字里的落地。
-    if((it.mapUrl || '').trim()) lines.push('🗺 ' + it.mapUrl.trim());
+    if((it.mapUrl || '').trim()) lines.push(pick('地图：','Map: ') + it.mapUrl.trim());
   });
   trips.filter(t => (t.guideUrl || '').trim()).forEach(t => {
     lines.push('');
-    lines.push(pick('📖 完整手册：','📖 Full guide: ') + (trips.length > 1 ? pickObj(t.title) + ' ' : '') + t.guideUrl.trim());
+    lines.push(pick('完整手册：','Full guide: ') + (trips.length > 1 ? pickObj(t.title) + ' ' : '') + t.guideUrl.trim());
   });
   return lines.join('\n');
 }
@@ -2783,12 +3166,12 @@ function shareDay(dateIso){
 function canShare(){ return role === 'admin'; }
 function shareDayBtnHtml(dateIso){
   if(!canShare()) return '';
-  return `<button type="button" class="share-btn" onclick="shareDay('${escapeHtml(dateIso)}')">📤 ${bl('分享','Share')}</button>`;
+  return `<button type="button" class="share-btn" onclick="shareDay('${escapeHtml(dateIso)}')">${bl('分享','Share')}</button>`;
 }
 
 /* ---------- 餐厅 → 一段能发出去的文字 ---------- */
 function restShareBlock(r){
-  const lines = ['🍽 ' + (r.name || '')];
+  const lines = [(r.name || '')];
   const meta = [r.region, r.category].filter(x => (x||'').trim()).join(' · ');
   if(meta) lines.push(meta);
   if((r.note || '').trim()) lines.push(r.note.trim());
@@ -2806,7 +3189,7 @@ function shareRestRegion(regionEnc){
   try{ region = decodeURIComponent(regionEnc); }catch(e){}
   const g = restGroups().find(x => x.region === region);
   if(!g || !g.items.length) return;
-  const head = pick(`🍽 ${region} 推荐餐厅（${g.items.length} 家）`, `🍽 ${region} — restaurants (${g.items.length})`);
+  const head = pick(`${region} 推荐餐厅（${g.items.length} 家）`, `${region} — restaurants (${g.items.length})`);
   openShare(pick('分享餐厅','Share restaurants'), pick('可以先改一改再发。','You can edit it before sending.'),
     [head].concat(g.items.map(restShareBlock)).join('\n\n'));
 }
@@ -2924,9 +3307,9 @@ function adminItemDateWarn(trip, it){
   // 全空条目（新增行程/新增条目自带的那条占位）不报警——人还没开始填就先挨骂，
   // 警告到处都是就等于没有警告。填了东西却没日期才是真问题。
   if(!date) return isEmptyTripItem(it) ? null
-    : { zh: '⚠️ 还没填日期，这条不会出现在「今日」', en: '⚠️ No date yet — this item will not show up on Today' };
+    : { zh: '注意：还没填日期，这条不会出现在「今日」', en: 'Note: no date yet — this item will not show up on Today' };
   if(trip && trip.start && trip.end && (date < trip.start || date > trip.end)){
-    return { zh: '⚠️ 日期不在行程范围内（如果是前后站可以不管）', en: '⚠️ Date is outside the trip range (fine if this is before/after the main trip)' };
+    return { zh: '注意：日期不在行程范围内（如果是前后站可以不管）', en: 'Note: date is outside the trip range (fine if this is before/after the main trip)' };
   }
   return null;
 }
@@ -3002,7 +3385,7 @@ function adminHotelRowHtml(trip, tripIdx, itemIdx){
         ${type === 'date' ? 'onchange' : 'oninput'}="adminHotelField(${tripIdx},${itemIdx},'${f}',this.value)"></div>`;
   return `<div class="admin-item-wrap admin-hotel-wrap">
     <div class="admin-item-row admin-item-row-compact">
-      <div class="admin-field admin-field-compact admin-field-grow"><label>🏨 ${pick('酒店名称','Hotel name')}</label>
+      <div class="admin-field admin-field-compact admin-field-grow"><label>${pick('酒店名称','Hotel name')}</label>
         <input type="text" id="${id('name')}" value="${escapeHtml(h.name || '')}" placeholder="Marina Bay Sands"
           oninput="adminHotelField(${tripIdx},${itemIdx},'name',this.value)"></div>
       ${adminPeriodSelectHtml(tripIdx, itemIdx, it)}
@@ -3061,7 +3444,7 @@ function adminItemRowHtml(trip, tripIdx, itemIdx){
   const dateWarn = adminItemDateWarn(trip, it);
   const hasExtra = adminItemMoreHasContent(trip, it);
   const extraBadge = dateWarn
-    ? ` <span class="admin-more-badge">${pick('⚠️ 日期要看一下','⚠️ check the date')}</span>`
+    ? ` <span class="admin-more-badge">${pick('注意：日期要看一下','Note: check the date')}</span>`
     : (hasExtra ? ` <span class="admin-more-badge">${pick('（有备注/地点/航班详情）','(has notes/location/flight details)')}</span>` : '');
   return `<div class="admin-item-wrap">
     <div class="admin-item-row admin-item-row-compact">
@@ -3117,22 +3500,22 @@ function flightLookupBlockHtml(trip, tripIdx, itemIdx){
     ? pick('这条航班还没查到资料，时间要自己填', 'This flight has not been resolved yet — please fill in the time yourself')
     : '';
   return `<div class="flight-lookup-block${failed ? ' flight-lookup-block-err' : ''}" id="admin-item-${tripIdx}-${itemIdx}-flightblock">
-      <div class="flight-lookup-hd">✈️ ${pick('航班','Flight')}</div>
+      <div class="flight-lookup-hd">${pick('航班','Flight')}</div>
       ${ f && !failed ? `<div class="flight-lookup-current">
           <span>${pick('已关联航班','Linked flight')} <b>${escapeHtml(f.no||'')}</b>（${escapeHtml(f.date||'')}）</span>
           <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
         </div>` : '' }
       ${ failed ? `<div class="flight-lookup-current flight-lookup-current-err">
-          <span>⚠️ ${pick('没查到，时间要自己填','Not found — please fill in the time yourself')}</span>
+          <span>${pick('没查到，时间要自己填','Not found — please fill in the time yourself')}</span>
           <button type="button" class="admin-btn-sm" onclick="adminClearFlight(${tripIdx},${itemIdx})">${pick('清除航班','Clear flight')}</button>
         </div>` : '' }
       <div class="flight-lookup-date">${
         dateVal ? `${pick('用上面填的日期','Uses the date above')}：<b>${escapeHtml(dateVal)}</b>`
-                : `⚠️ ${pick('上面的「日期」还没填，填了才能查','Fill in the Date field above first')}` }</div>
+                : `${pick('上面的「日期」还没填，填了才能查','Fill in the Date field above first')}` }</div>
       ${ staleDate ? `<div class="flight-lookup-current flight-lookup-current-err">
-          <span>⚠️ ${pick('这条航班是按 ' + escapeHtml(f.date) + ' 查的，跟上面的日期对不上','Looked up for ' + escapeHtml(f.date) + ', which differs from the date above')}</span>
+          <span>${pick('这条航班是按 ' + escapeHtml(f.date) + ' 查的，跟上面的日期对不上','Looked up for ' + escapeHtml(f.date) + ', which differs from the date above')}</span>
         </div>` : '' }
-      <button type="button" class="admin-btn-sm" id="admin-item-${tripIdx}-${itemIdx}-flightbtn" onclick="adminFlightLookup(${tripIdx},${itemIdx})">🔍 ${pick('查询','Look up')}</button>
+      <button type="button" class="admin-btn-sm" id="admin-item-${tripIdx}-${itemIdx}-flightbtn" onclick="adminFlightLookup(${tripIdx},${itemIdx})">${pick('查询','Look up')}</button>
       <div id="admin-item-${tripIdx}-${itemIdx}-flightstatus" class="flight-lookup-status${failed ? ' err' : ''}">${persistentHint}</div>
       ${ f ? adminPaxEditorHtml(f, tripIdx, itemIdx) : '' }
     </div>`;
@@ -3142,7 +3525,7 @@ function adminPaxEditorHtml(f, tripIdx, itemIdx){
   const pax = Array.isArray(f.pax) ? f.pax : [];
   const base = `admin-item-${tripIdx}-${itemIdx}-pax`;
   return `<div class="admin-pax" id="${base}">
-      <div class="flight-lookup-hd" style="margin:10px 0 6px">👤 ${pick('乘客与座位（选填）','Passengers and seats (optional)')}</div>
+      <div class="flight-lookup-hd" style="margin:10px 0 6px">${pick('乘客与座位（选填）','Passengers and seats (optional)')}</div>
       ${pax.map((p, k) => `<div class="admin-pax-row">
           <input type="text" id="${base}-${k}-name" placeholder="${escapeHtml(pick('姓名','Name'))}" value="${escapeHtml((p && p.name) || '')}"
             oninput="adminPaxField(${tripIdx},${itemIdx},${k},'name',this.value)">
@@ -3427,7 +3810,7 @@ function adminTripFormHtml(trip, idx){
           <span class="sec-title" style="font-size:13.5px">${pick('行程条目','Itinerary items')}</span>
           <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
             <button type="button" class="admin-btn-md" onclick="adminAddItem(${idx})">+ ${pick('新增条目','Add item')}</button>
-            <button type="button" class="admin-btn-md admin-btn-hotel" id="admin-trip-${idx}-add-hotel" onclick="adminAddHotel(${idx})">+ 🏨 ${pick('酒店','Hotel')}</button>
+            <button type="button" class="admin-btn-md admin-btn-hotel" id="admin-trip-${idx}-add-hotel" onclick="adminAddHotel(${idx})">+ ${pick('酒店','Hotel')}</button>
           </span>
         </div>
         <div class="admin-section-note" style="margin-bottom:10px">${pick('这几天每天几点做什么，可以加很多条','What happens each day — add as many as you need')}</div>
@@ -3504,8 +3887,8 @@ function seenDevicesHtml(devices){
     </div>`;
 }
 /** 「他看了什么（最近几次）」：老板那台 iPhone 每次打开一段，按时间列出分页与账单。 */
-const VLOG_TAB = { today:['🏠 今天','🏠 Today'], trips:['🧳 行程','🧳 Trips'], bills:['🧾 账单','🧾 Bills'],
-                   inventory:['📦 库存','📦 Inventory'], restaurants:['🍜 餐厅','🍜 Restaurants'] };
+const VLOG_TAB = { today:['今天','Today'], trips:['行程','Trips'], bills:['账单','Bills'],
+                   inventory:['库存','Inventory'], restaurants:['餐厅','Restaurants'] };
 function viewLogHtml(sessions){
   if(!Array.isArray(sessions) || !sessions.length) return '';
   const hm = iso => { const d = new Date(iso); return isNaN(d) ? '' : String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); };
@@ -3516,7 +3899,7 @@ function viewLogHtml(sessions){
       if(st.bill){
         const m = Math.floor((st.secs || 0) / 60), sec = (st.secs || 0) % 60;
         const dur = st.secs ? `<span class="vlog-dur">${pick('看了 ' + (m ? m + '分' : '') + sec + '秒', 'viewed ' + (m ? m + 'm ' : '') + sec + 's')}</span>` : '';
-        what = `<span class="vlog-bill">📄 ${escapeHtml(st.bill)}</span>${dur}`;
+        what = `<span class="vlog-bill">${escapeHtml(st.bill)}</span>${dur}`;
       }else{
         const lab = VLOG_TAB[st.tab];
         what = escapeHtml(lab ? pick(lab[0], lab[1]) : String(st.tab || ''));
@@ -3552,7 +3935,7 @@ function adminSeenSectionHtml(){
       <div>${badge}</div>${warn}${viewLogHtml(seen.views)}${seenDevicesHtml(seen.devices)}`;
   }
   return `<div class="admin-block" id="admin-seen-section">
-      <h3>📱 ${pick('老板那边','The boss\'s device')}</h3>
+      <h3>${pick('老板那边','The boss\'s device')}</h3>
       ${body}
     </div>`;
 }
@@ -3562,7 +3945,7 @@ function adminPushSectionHtml(){
       ? pick('这台设备要先把 App 加到主屏才能收通知','Add the app to your Home Screen first to enable notifications on this device')
       : pick('这个浏览器不支持网页推送','This browser does not support web push');
     return `<div class="admin-block" id="admin-push-section">
-        <h3>🔔 ${pick('通知','Notifications')}</h3>
+        <h3>${pick('通知','Notifications')}</h3>
         <div class="admin-status">${escapeHtml(hint)}</div>
         ${adminRemotePushHtml()}
       </div>`;
@@ -3570,7 +3953,7 @@ function adminPushSectionHtml(){
   const on = !!pushSubscription;
   const denied = (typeof Notification !== 'undefined' && Notification.permission === 'denied');
   return `<div class="admin-block" id="admin-push-section">
-      <h3>🔔 ${pick('通知','Notifications')}</h3>
+      <h3>${pick('通知','Notifications')}</h3>
       <div class="admin-push-row">
         <span class="admin-push-state${on ? ' on' : ''}" id="admin-push-state">${
           on ? pick('已开启','On') : pick('未开启','Off')}</span>
@@ -3632,11 +4015,11 @@ async function adminTestRemotePush(){
       const who = escapeHtml(r.who || pick('（没记名字）','(unnamed)'));
       const plat = escapeHtml(pushHostLabel(r.host));
       const ok = r.ok
-        ? pick('✅ 推送服务收下了（' + r.httpStatus + '）','✅ accepted (' + r.httpStatus + ')')
+        ? pick('已送达推送服务（' + r.httpStatus + '）','Accepted (' + r.httpStatus + ')')
         : (r.dead
-            ? pick('❌ 这个订阅已失效（' + r.httpStatus + '），要请对方重开一次通知',
-                   '❌ subscription expired (' + r.httpStatus + ') — ask them to turn notifications on again')
-            : pick('❌ 发不出去（' + r.httpStatus + '）','❌ failed (' + r.httpStatus + ')'));
+            ? pick('失败：这个订阅已失效（' + r.httpStatus + '），要请对方重开一次通知',
+                   'Failed: subscription expired (' + r.httpStatus + ') — ask them to turn notifications on again')
+            : pick('失败：发不出去（' + r.httpStatus + '）','Failed (' + r.httpStatus + ')'));
       const detail = (!r.ok && (r.detail || r.error)) ? '<br><span class="sub">' + escapeHtml(String(r.detail || r.error)) + '</span>' : '';
       return who + ' · ' + plat + '：' + ok + detail;
     });
@@ -3684,7 +4067,7 @@ async function adminTestLocalNotification(){
 function adminDentalSectionHtml(){
   const d = (feedData && feedData.dental) || {};
   return `<div class="admin-block" id="admin-dental-section">
-      <h3>🦷 ${pick('牙医','Dentist')}</h3>
+      <h3>${pick('牙医','Dentist')}</h3>
       <div class="admin-field"><label>${pick('上次就诊','Last visit')}</label>
         <input type="date" id="admin-dental-last" value="${escapeHtml(d.lastVisit || '')}"></div>
       <div class="admin-field"><label>${pick('下次预约（还没约就空着）','Next appointment (leave empty if not booked)')}</label>
@@ -3699,7 +4082,7 @@ function adminDentalSectionHtml(){
         <input type="tel" id="admin-dental-wa" inputmode="tel" maxlength="20" value="${escapeHtml(d.bookWa || '')}"
           placeholder="${escapeHtml(pick('不填＝老板自己挑联系人','Empty = boss picks the contact'))}"></div>
       ${dentalDonePromptHtml(d)}
-      <button type="button" class="admin-btn" onclick="adminSaveDental()">💾 ${pick('保存牙医记录','Save dentist record')}</button>
+      <button type="button" class="admin-btn" onclick="adminSaveDental()">${pick('保存牙医记录','Save dentist record')}</button>
       <div class="admin-status" id="admin-dental-status"></div>
     </div>`;
 }
@@ -3718,7 +4101,7 @@ function dentalDonePromptHtml(d){
   return `<div class="admin-status err" id="admin-dental-done" style="margin-bottom:8px">
       ${pick(`${w.zh}那次预约已经过了——去了吗？`, `The appointment on ${w.en} has passed — did it happen?`)}
       <button type="button" class="admin-btn" style="margin-top:6px"
-        onclick="adminDentalDone('${escapeHtml(next)}')">✅ ${pick('去了，记成上次就诊','Yes — record as last visit')}</button>
+        onclick="adminDentalDone('${escapeHtml(next)}')">${pick('去了，记成上次就诊','Yes — record as last visit')}</button>
     </div>`;
 }
 /** 一键：把过期的预约转成「上次就诊」，并清掉下次预约（还没约新的）。 */
@@ -3809,10 +4192,10 @@ function adminTripsSectionHtml(){
                                   : adminTripSummaryHtml(adminTripsDraft[idx], idx)).join('');
   }
   return `<div class="admin-block" id="admin-trips-section">
-      <h3>🧳 ${pick('行程管理','Manage Trips')}</h3>
+      <h3>${pick('行程管理','Manage Trips')}</h3>
       <div id="admin-trips-list">${inner}</div>
       <div class="admin-say-block admin-import-block" id="admin-import-block">
-        <label class="admin-say-label" for="admin-import-guide">📖 ${pick('从手册导入：每天的安排、航班、座位一次填好','Import from a guide: daily plan, flights and seats in one go')}</label>
+        <label class="admin-say-label" for="admin-import-guide">${pick('从手册导入：每天的安排、航班、座位一次填好','Import from a guide: daily plan, flights and seats in one go')}</label>
         <select class="admin-select" id="admin-import-guide">
           ${GUIDE_OPTIONS.map(g => `<option value="${escapeHtml(g.path)}">${escapeHtml(pick(g.zh, g.en))}</option>`).join('')}
         </select>
@@ -3821,19 +4204,19 @@ function adminTripsSectionHtml(){
         <div id="admin-import-choice"></div>
       </div>
       <div class="admin-say-block">
-        <label class="admin-say-label">✍️ ${pick('用讲的：写一段话，自动排成行程','Just write it: a paragraph becomes itinerary rows')}</label>
+        <label class="admin-say-label">${pick('用讲的：写一段话，自动排成行程','Just write it: a paragraph becomes itinerary rows')}</label>
         <textarea id="admin-say-text" rows="3" spellcheck="false"
           placeholder="${escapeHtml(pick('例：9月10号早上8点半从家里出发去金边机场，中午到新加坡，下午两点入住滨海湾金沙，晚上七点在天空餐厅吃饭',
                                           'e.g. Sep 10, leave home 8:30am for the airport, arrive Singapore at noon, check in at Marina Bay Sands 2pm, dinner 7pm'))}"></textarea>
         <button type="button" class="admin-btn" id="admin-say-btn" onclick="adminSayParse()">${pick('排成行程','Turn into rows')}</button>
         <div class="admin-status" id="admin-say-status"></div>
       </div>
-      <button type="button" class="admin-btn admin-btn-ticket" onclick="adminPickTicket()">📄 ${pick('丢机票／酒店确认单进来（PDF／照片，可多选）','Drop in tickets or hotel vouchers (PDF/photo, multi-select)')}</button>
+      <button type="button" class="admin-btn admin-btn-ticket" onclick="adminPickTicket()">${pick('丢机票／酒店确认单进来（PDF／照片，可多选）','Drop in tickets or hotel vouchers (PDF/photo, multi-select)')}</button>
       <input type="file" id="admin-ticket-input" accept="application/pdf,image/*" multiple
         style="display:none" onchange="adminTicketPicked(this)">
       <div class="admin-status" id="admin-ticket-status"></div>
       <button type="button" class="admin-btn" onclick="adminAddTrip()">+ ${pick('新增行程','Add trip')}</button>
-      <button type="button" class="admin-btn" style="margin-top:10px" onclick="adminSaveTripsForm()">💾 ${pick('保存全部行程','Save all trips')}</button>
+      <button type="button" class="admin-btn" style="margin-top:10px" onclick="adminSaveTripsForm()">${pick('保存全部行程','Save all trips')}</button>
       <div class="admin-status" id="admin-trips-form-status"></div>
     </div>`;
 }
@@ -4692,7 +5075,7 @@ function adminMemoRowHtml(m){
   const bits = [];
   if(m.datetime){
     const [d, t] = String(m.datetime).split('T');
-    bits.push(`⏰ ${escapeHtml(d)} ${escapeHtml(t || '')}`);
+    bits.push(`${escapeHtml(d)} ${escapeHtml(t || '')}`);
     if(m.repeat === 'daily') bits.push(pick('每天','daily'));
     if(m.repeat === 'weekly') bits.push(pick('每周','weekly'));
     if(m.repeat === 'monthly') bits.push(pick('每月','monthly'));
@@ -4712,9 +5095,9 @@ function adminMemoRowHtml(m){
       </div>
       <div class="admin-memo-acts">
         <button type="button" onclick="adminMemoToggleDone('${escapeHtml(m.id)}', ${m.done ? 'false' : 'true'})"
-          aria-label="${escapeHtml(m.done ? pick('取消完成','Undo') : pick('完成','Done'))}">${m.done ? '↩' : '✓'}</button>
-        <button type="button" onclick="adminMemoEdit('${escapeHtml(m.id)}')" aria-label="${escapeHtml(pick('修改','Edit'))}">✏️</button>
-        <button type="button" onclick="adminMemoDelete('${escapeHtml(m.id)}')" aria-label="${escapeHtml(pick('删除','Delete'))}">🗑</button>
+          aria-label="${escapeHtml(m.done ? pick('取消完成','Undo') : pick('完成','Done'))}">${m.done ? escapeHtml(pick('恢复','Undo')) : escapeHtml(pick('完成','Done'))}</button>
+        <button type="button" onclick="adminMemoEdit('${escapeHtml(m.id)}')" aria-label="${escapeHtml(pick('修改','Edit'))}">${escapeHtml(pick('改','Edit'))}</button>
+        <button type="button" onclick="adminMemoDelete('${escapeHtml(m.id)}')" aria-label="${escapeHtml(pick('删除','Delete'))}">${escapeHtml(pick('删','Del'))}</button>
       </div>
     </div>`;
 }
@@ -4725,7 +5108,7 @@ function adminMemosSectionHtml(){
   // 接着写一条新的按保存，会**悄悄覆盖掉刚才那条**。
   adminMemoEditId = '';
   return `<div class="admin-block" id="admin-memo-section">
-      <h3>📌 ${pick('备忘 / 提醒','Notes & reminders')}</h3>
+      <h3>${pick('备忘 / 提醒','Notes & reminders')}</h3>
       <div class="admin-field"><label>${pick('内容','Text')}</label>
         <input type="text" id="admin-memo-text" maxlength="300"
           placeholder="${escapeHtml(pick('例：护照放在保险箱第二层','e.g. passport is in the safe'))}"></div>
@@ -4747,7 +5130,7 @@ function adminMemosSectionHtml(){
         <label class="admin-check"><input type="checkbox" id="admin-memo-nt" checked> ${pick('我的 Telegram','My Telegram')}</label>
         <label class="admin-check"><input type="checkbox" id="admin-memo-nm"> ${pick('我的手机（这个 App）','My phone (this app)')}</label>
         <label class="admin-check"><input type="checkbox" id="admin-memo-nb"> ${pick('老板手机','The boss’s phone')}</label></div>
-      <button type="button" class="admin-btn" id="admin-memo-save" onclick="adminMemoSave()">💾 ${pick('保存备忘','Save note')}</button>
+      <button type="button" class="admin-btn" id="admin-memo-save" onclick="adminMemoSave()">${pick('保存备忘','Save note')}</button>
       <div class="admin-status" id="admin-memo-status"></div>
       ${ list.length ? `<div class="admin-memo-list">${list.map(adminMemoRowHtml).join('')}</div>`
                      : `<div class="admin-rest-hint">${pick('还没有备忘','No notes yet')}</div>` }
@@ -4774,7 +5157,7 @@ function adminMemoEdit(id){
   document.getElementById('admin-memo-nb').checked = !!(m.notify && m.notify.boss);
   adminMemoSyncNotify();
   const btn = document.getElementById('admin-memo-save');
-  if(btn) btn.textContent = '💾 ' + pick('保存修改','Save changes');
+  if(btn) btn.textContent = pick('保存修改','Save changes');
   const sec = document.getElementById('admin-memo-section');
   if(sec) sec.scrollIntoView({ block: 'start' });
 }
@@ -4879,14 +5262,14 @@ function adminRecurringSectionHtml(){
           <div class="admin-recur-dates">${dates}</div>
         </div>
         <div class="admin-memo-acts">
-          <button type="button" class="admin-recur-edit" onclick="adminRecurEdit('${escapeHtml(r.id)}')" aria-label="${escapeHtml(pick('修改','Edit'))}">✏️</button>
-          <button type="button" class="admin-recur-del" onclick="adminRecurDelete('${escapeHtml(r.id)}')" aria-label="${escapeHtml(pick('删除','Delete'))}">🗑</button>
+          <button type="button" class="admin-recur-edit" onclick="adminRecurEdit('${escapeHtml(r.id)}')" aria-label="${escapeHtml(pick('修改','Edit'))}">${escapeHtml(pick('改','Edit'))}</button>
+          <button type="button" class="admin-recur-del" onclick="adminRecurDelete('${escapeHtml(r.id)}')" aria-label="${escapeHtml(pick('删除','Delete'))}">${escapeHtml(pick('删','Del'))}</button>
         </div>
       </div>`;
   }).join('');
   const wdOpts = [0,1,2,3,4,5,6].map(w => `<option value="${w}">${escapeHtml(pick(recurWeekdayBl(w).zh, recurWeekdayBl(w).en))}</option>`).join('');
   return `<div class="admin-block" id="admin-recur-section">
-      <h3>🔁 ${pick('每周固定行程','Weekly routine')}</h3>
+      <h3>${pick('每周固定行程','Weekly routine')}</h3>
       <div class="admin-rest-hint">${pick('设一次，每周自动出现在老板的「今天」和行程里。那天如果在外地行程的日期里（地点不是金边的那种），自动不显示。某一次不去，在那一天按「这次取消」。',
         'Set once; it shows up every week on the boss’s Today and Trips. Days inside an out-of-town trip (location not Phnom Penh) are skipped automatically. Use “Skip this time” for a single week.')}</div>
       <div class="admin-field"><label>${pick('星期几','Day of week')}</label>
@@ -4907,7 +5290,7 @@ function adminRecurringSectionHtml(){
         <input type="date" id="admin-recur-start" value="${escapeHtml(todayIso)}"></div>
       <div class="admin-field"><label>${pick('到哪天为止（可不填＝一直有）','Until (optional)')}</label>
         <input type="date" id="admin-recur-end"></div>
-      <button type="button" class="admin-btn" id="admin-recur-save" onclick="adminRecurSave()">💾 ${pick('保存每周固定行程','Save weekly routine')}</button>
+      <button type="button" class="admin-btn" id="admin-recur-save" onclick="adminRecurSave()">${pick('保存每周固定行程','Save weekly routine')}</button>
       <div class="admin-status" id="admin-recur-status"></div>
       ${ rows ? `<div class="admin-memo-list">${rows}</div>` : `<div class="admin-rest-hint">${pick('还没有每周固定行程','No weekly routine yet')}</div>` }
     </div>`;
@@ -4930,7 +5313,7 @@ function adminRecurEdit(id){
   document.getElementById('admin-recur-start').value = r.startDate || '';
   document.getElementById('admin-recur-end').value = r.endDate || '';
   const btn = document.getElementById('admin-recur-save');
-  if(btn) btn.textContent = '💾 ' + pick('保存修改','Save changes');
+  if(btn) btn.textContent = pick('保存修改','Save changes');
   const sec = document.getElementById('admin-recur-section');
   if(sec) sec.scrollIntoView({ block: 'start' });
 }
@@ -5013,10 +5396,10 @@ function adminRestaurantsSectionHtml(){
         <div class="admin-rest-meta">${escapeHtml([r.region, r.category].filter(x => (x||'').trim()).join(' · '))}</div>
       </div>
       <button type="button" class="admin-rest-del" onclick="adminDeleteRestaurant('${escapeHtml(r.id)}')"
-        aria-label="${escapeHtml(pick('删除','Delete'))}">🗑</button>
+        aria-label="${escapeHtml(pick('删除','Delete'))}">${escapeHtml(pick('删','Del'))}</button>
     </div>`).join('');
   return `<div class="admin-block" id="admin-rest-section">
-      <h3>🍜 ${pick('收藏餐厅','Saved restaurants')}</h3>
+      <h3>${pick('收藏餐厅','Saved restaurants')}</h3>
       <div class="admin-field"><label>${pick('店名（必填）','Name (required)')}</label>
         <input type="text" id="admin-rest-name" maxlength="60"
           placeholder="${escapeHtml(pick('例：胖姐领头羊','e.g. Fat Sister Hot Pot'))}"></div>
@@ -5104,7 +5487,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v70</div>
+    <div class="admin-ver" id="adminVer">boss-app-v72</div>
 
     ${adminTripsSectionHtml()}
 
@@ -5121,26 +5504,26 @@ function renderAdmin(){
     ${adminPushSectionHtml()}
 
     <div class="admin-block">
-      <h3>🔑 <span class="cn">发给老板的链接</span><span class="en">Link to send the boss</span></h3>
+      <h3><span class="cn">发给老板的链接</span><span class="en">Link to send the boss</span></h3>
       <div class="admin-field">
         <label>${pick('这条链接里已经带了访问码——他点开就是登入状态，不用打字、不用安装',
                       'This link carries the access code — he just taps it, no typing, no install')}</label>
         <div id="admin-boss-link" class="admin-code-box">${escapeHtml(adminAccessCode ? bossShareUrl() : pick('加载中…','Loading…'))}</div>
       </div>
-      <button type="button" class="admin-btn" onclick="adminCopyBossMessage()">📋 ${pick('复制整条消息（可直接贴去 WhatsApp）','Copy the whole message (paste into WhatsApp)')}</button>
-      <button type="button" class="admin-btn" onclick="adminCopyBillMessage()">🧾 ${pick('复制「账单来了」的消息（点开直接看账单）','Copy a "new bill" message (opens straight to Bills)')}</button>
+      <button type="button" class="admin-btn" onclick="adminCopyBossMessage()">${pick('复制整条消息（可直接贴去 WhatsApp）','Copy the whole message (paste into WhatsApp)')}</button>
+      <button type="button" class="admin-btn" onclick="adminCopyBillMessage()">${pick('复制「账单来了」的消息（点开直接看账单）','Copy a "new bill" message (opens straight to Bills)')}</button>
       <button type="button" class="admin-btn-sm" onclick="adminCopyBossLink()">${pick('只复制链接','Copy link only')}</button>
       <button type="button" class="admin-btn-sm" onclick="adminCopyAccessCode()">${pick('只复制访问码','Copy code only')}</button>
       <span id="admin-access-code-status" style="margin-left:8px;font-size:12.5px;color:var(--ok)"></span>
       <div id="admin-access-code" style="display:none">${escapeHtml(adminAccessCode || '')}</div>
       <div class="admin-rest-hint">${pick(
-        '⚠️ 不装到主屏也能看，但**收不到通知**（行程改了、有新账单都不会提醒他）。想装的话另有一页说明：',
-        '⚠️ It works without installing, but push notifications will NOT arrive. Install guide:')}
+        '注意：不装到主屏也能看，但收不到通知（行程改了、有新账单都不会提醒他）。想装的话另有一页说明：',
+        'Note: it works without installing, but push notifications will NOT arrive. Install guide:')}
         <a href="./install.html" target="_blank" rel="noopener">install.html</a></div>
     </div>
 
     <div class="admin-block">
-      <h3>⬆️ ${pick('上传账单 PDF','Upload a Bill PDF')}</h3>
+      <h3>${pick('上传账单 PDF','Upload a Bill PDF')}</h3>
       <div class="admin-field">
         <label>${pick('PDF 文件（上限 ' + BOSS_BILL_MAX_MB + 'MB）','PDF file (max ' + BOSS_BILL_MAX_MB + 'MB)')}</label>
         <input type="file" id="admin-bill-file" accept="application/pdf">
@@ -5174,7 +5557,7 @@ function renderAdmin(){
     </div>
 
     <div class="admin-block">
-      <h3>🗑️ ${pick('管理已上传的账单','Manage Uploaded Bills')}</h3>
+      <h3>${pick('管理已上传的账单','Manage Uploaded Bills')}</h3>
       ${ bills.length ? bills.map(b => `
         <div class="admin-bill-row">
           <div class="admin-bill-info">
@@ -5316,7 +5699,7 @@ function pushBarInnerHtml(){
     // 没有开关按钮：这个环境里点它必定失败（Notification/PushManager 都不存在）。
     // 给的是唯一有用的下一步——先加到主屏。
     return `<div class="push-row">
-        <div class="push-label">🔔 ${bl('推送通知','Notifications')}</div>
+        <div class="push-label">${bl('推送通知','Notifications')}</div>
         ${dismissBtnHtml()}
       </div>
       <div class="push-hint">${bl(
@@ -5342,7 +5725,7 @@ function pushBarInnerHtml(){
   const dismissBtn = dismissBtnHtml();
 
   return `<div class="push-row">
-      <div class="push-label">🔔 ${bl('推送通知','Notifications')}</div>
+      <div class="push-label">${bl('推送通知','Notifications')}</div>
       <button type="button" id="pushToggleBtn" class="push-toggle-btn${subscribed ? ' on' : ''}"
         onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${btnLabel}</button>
       ${dismissBtn}
@@ -5390,7 +5773,8 @@ function ensurePushUI(){
     bar = document.createElement('div');
     bar.id = 'pushBar';
     bar.className = 'push-bar';
-    host.insertBefore(bar, host.firstChild);
+    // 2026-11-11 起挂在页面最底下（用户：它排在「下一件事」上面太抢位置）
+    host.appendChild(bar);
   }
   bar.innerHTML = pushBarInnerHtml();
   bar.classList.toggle('push-bar-mini', !!pushSubscription);
@@ -5408,10 +5792,10 @@ function viewerPushFooterHtml(){
   // 没装到主屏：togglePush() 在这种环境下会直接 return（iOS 硬约束），
   // 给按钮等于给一颗按了没反应的按钮，所以这里给的是唯一有用的下一步。
   if(pushNeedsInstallFirst() || !isStandalonePwa()){
-    return `<div class="today-push" id="todayPush">🔔 ${bl('想收到提醒的话，要先把这个 App 加到主屏','To get alerts, add this app to your Home Screen first')}<a href="install.html" target="_blank" rel="noopener">${bl('怎么装','how')}</a></div>`;
+    return `<div class="today-push" id="todayPush">${bl('想收到提醒的话，要先把这个 App 加到主屏','To get alerts, add this app to your Home Screen first')}<a href="install.html" target="_blank" rel="noopener">${bl('怎么装','how')}</a></div>`;
   }
   const on = !!pushSubscription;
-  return `<div class="today-push" id="todayPush">🔔 ${on ? bl('通知已开启','Notifications are on') : bl('通知还没开','Notifications are off')}<button type="button" id="todayPushBtn" onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${on ? bl('关闭','turn off') : bl('开启','turn on')}</button></div>`;
+  return `<div class="today-push" id="todayPush">${on ? bl('通知已开启','Notifications are on') : bl('通知还没开','Notifications are off')}<button type="button" id="todayPushBtn" onclick="togglePush()"${pushBusy ? ' disabled' : ''}>${on ? bl('关闭','turn off') : bl('开启','turn on')}</button></div>`;
 }
 /** 只重画这一行，不重建整个「今天」分页。行不在（还没渲染过）就什么都不做，
  *  下一次 renderToday() 自然会带上。 */
@@ -5559,7 +5943,7 @@ function ensureAdminUI(){
       btn.id = 'nav-admin-btn';
       btn.setAttribute('data-tab', 'admin');
       btn.onclick = function(){ switchTab('admin'); };
-      btn.innerHTML = '<span class="nav-icon-wrap"><span class="nav-icon">🛠️</span></span>' + bl('管理','Admin');
+      btn.innerHTML = '<span class="nav-label">' + bl('管理','Admin') + '</span>';
       nav.appendChild(btn);
     }
   }else if(btn){
@@ -5686,7 +6070,7 @@ async function init(){
         markOffline(cachedLink.fetchedAt);
       }else{
         document.getElementById('tab-today').innerHTML =
-          `<div class="empty-card"><div class="empty-icon">📡</div><div>${bl('连不上服务器，请稍后再点一次这条链接','Cannot reach the server — please tap the link again in a moment')}</div></div>`;
+          `<div class="empty-card"><div>${bl('连不上服务器，请稍后再点一次这条链接','Cannot reach the server — please tap the link again in a moment')}</div></div>`;
       }
       return;
     }
@@ -5764,7 +6148,7 @@ async function init(){
     }else if(!cached){
       document.getElementById('app').classList.remove('app-hidden');
       document.getElementById('tab-today').innerHTML =
-        `<div class="empty-card"><div class="empty-icon">📡</div><div>${bl('连不上服务器，请稍后再试','Cannot reach the server — please try again later')}</div></div>`;
+        `<div class="empty-card"><div>${bl('连不上服务器，请稍后再试','Cannot reach the server — please try again later')}</div></div>`;
     }else{
       markOffline(feedFetchedAt);
     }

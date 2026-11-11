@@ -1475,7 +1475,8 @@ function localAt(daysFromNow, hm, offset){
   ok('空日期：警告是显示出来的', noDate.warnShown, noDate);
   ok('空日期：警告说清楚后果——不会出现在「今日」', /今日/.test(noDate.warnTxt), noDate.warnTxt);
   ok('空日期：「更多」自动展开，日期框不再藏着', noDate.moreOpen, noDate);
-  ok('空日期：折叠条上有 ⚠️ 提示', noDate.badge.includes('⚠️'), noDate.badge);
+  // 2026-11-11 版式 A 起全 App 去掉表情符号，徽章改成文字「注意：日期要看一下」
+  ok('空日期：折叠条上有「日期要看一下」提示', noDate.badge.includes('日期要看一下'), noDate.badge);
 
   console.log('\n【最后一道闸：没日期的条目不许存出去】');
   await page.click('button[onclick="adminSaveTripsForm()"]');
@@ -1499,7 +1500,7 @@ function localAt(daysFromNow, hm, offset){
   });
   ok('日期正常：不报警', good.warnShown === false, good);
   ok('日期正常：「更多」保持收起（没别的内容就别打扰）', good.moreOpen === false, good);
-  ok('日期正常：没有 ⚠️ 徽章', !good.badge.includes('⚠️'), good.badge);
+  ok('日期正常：没有「日期要看一下」徽章', !good.badge.includes('日期要看一下'), good.badge);
 
   console.log('\n【把日期填上，警告要自己消失】');
   await page.fill('#admin-item-0-0-date', '2026-09-01');
