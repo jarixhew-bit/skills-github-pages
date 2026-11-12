@@ -266,7 +266,7 @@ function matches(q, ...fields) {
 
 function renderHello() {
   const now = new Date(), h = now.getHours();
-  const g = h < 5 ? T('夜深了', 'Up late') : h < 11 ? T('早上好', 'Good morning') : h < 13 ? T('中午好', 'Good afternoon')
+  const g = h < 5 ? T('夜深了', 'Up late') : h < 11 ? T('早上好', 'Good morning') : h < 13 ? T('中午好', h < 12 ? 'Good morning' : 'Good afternoon')
     : h < 18 ? T('下午好', 'Good afternoon') : T('晚上好', 'Good evening');
   document.getElementById('greet').textContent = g;
   const wd = LANG === 'zh' ? ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()]
