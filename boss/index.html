@@ -2180,6 +2180,8 @@ function renderBills(){
  *  照着错的币别下判断。千分位用 Intl，跑不动就退回原样，绝不显示 NaN。 */
 function fmtBillMoney(n, cur){
   if(typeof n !== 'number' || !isFinite(n)) return '';
+  // 先四舍五入到分：-0.004 这种尾数直接格式化会印成「-0.00」，看着像欠钱
+  n = Math.round(n * 100) / 100 || 0;
   let body;
   try{
     body = n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -2214,7 +2216,7 @@ function billAmountHtml(b){
   const hasBal = typeof sm.closing === 'number' && isFinite(sm.closing);
   const balMoney = hasBal ? fmtBillMoney(sm.closing, sm.currency) : '';
   const bal = balMoney
-    ? `<div class="bill-amt bill-bal${sm.closing < 0 ? ' bill-bal-neg' : ''}"><span class="bill-amt-k">${pick('结余','Balance')}</span>${escapeHtml(balMoney)}</div>`
+    ? `<div class="bill-amt bill-bal${Math.round(sm.closing * 100) < 0 ? ' bill-bal-neg' : ''}"><span class="bill-amt-k">${pick('结余','Balance')}</span>${escapeHtml(balMoney)}</div>`
     : '';
   return `<div class="bill-amt">${k}${escapeHtml(money)}${n}</div>${bal}`;
 }
@@ -5115,7 +5117,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v74</div>
+    <div class="admin-ver" id="adminVer">boss-app-v75</div>
 
     ${adminTripsSectionHtml()}
 

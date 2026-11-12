@@ -2915,6 +2915,9 @@ const RECUR_CTRL_SEL = '#admin-recur-note-en, .recur-cancel-btn, .recur-restore-
       uploadedAt: '2026-08-01T03:00:00Z', summary: { expense: 500, closing: 0, currency: 'USD', count: 5 } },
     { id: 'c5', title: { zh: '完全没有摘要的那份', en: '' }, period: '2026-06', kind: 'month', account: 'Boss', filename: 'e.pdf',
       uploadedAt: '2026-07-01T03:00:00Z' },
+    // 2026-11-12：小数尾巴（-0.004）不能印成「-0.00」还标红，看着像欠钱
+    { id: 'c6', title: { zh: '五月那份（尾数）', en: '' }, period: '2026-05', kind: 'month', account: 'Boss', filename: 'f.pdf',
+      uploadedAt: '2026-06-01T03:00:00Z', summary: { expense: 10, closing: -0.004, currency: 'USD', count: 1 } },
   ];
   const ctx = await browser.newContext({ viewport: { width: 360, height: 740 } });
   await forceZh(ctx);
@@ -2935,7 +2938,15 @@ const RECUR_CTRL_SEL = '#admin-recur-note-en, .recur-cancel-btn, .recur-restore-
   const texts = await page.evaluate(() => [...document.querySelectorAll('.bill-row')].map(r => r.innerText.replace(/\s+/g, ' ')));
   const pickRow = re => texts.find(t => re.test(t)) || '';
   const has = pickRow(/十月那份/), none = pickRow(/九月那份/), neg = pickRow(/八月那份/), zero = pickRow(/七月那份/), bare = pickRow(/完全没有摘要/);
-  ok('五份都列出来了', texts.length === 5, texts.length);
+  ok('六份都列出来了', texts.length === 6, texts.length);
+  const tiny = pickRow(/五月那份/);
+  ok('★结余只有负的小数尾巴：印 0.00，不印 -0.00', /结余 ?USD 0\.00/.test(tiny) && !/-0\.00/.test(tiny), tiny);
+  const tinyRed = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('.bill-row')].find(r => /五月那份/.test(r.innerText));
+    const b = el && el.querySelector('.bill-bal');
+    return b ? b.classList.contains('bill-bal-neg') : null;
+  });
+  ok('★四舍五入后是零的结余不标红', tinyRed === false, tinyRed);
   ok('★★有结余：两个标签都在，各跟各的数字', /花费 ?USD 3,240\.50/.test(has) && /结余 ?USD 12,345\.00/.test(has), has);
   ok('★花费排在结余前面（没有印反）', has.indexOf('花费') >= 0 && has.indexOf('花费') < has.indexOf('结余'), has);
   ok('★★没有结余字段：只印花费，不出现「结余」两个字', /花费 ?USD 2,980\.00/.test(none) && !/结余/.test(none), none);
