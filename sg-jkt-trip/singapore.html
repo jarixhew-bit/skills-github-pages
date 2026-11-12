@@ -1265,7 +1265,8 @@ function toggleLang() {
   applyLang(lang);
 })();
 window.addEventListener('storage', e => {
-  if (e.key === 'siteLangUser' && (e.newValue === 'cn' || e.newValue === 'en')) applyLang(e.newValue);
+  // 首页与同事页存的是 'zh'，其它手册存 'cn'——两种都要认，不然开着的分页不会跟着换回中文
+  if (e.key === 'siteLangUser' && e.newValue) applyLang(e.newValue === 'en' ? 'en' : 'cn');
 });
 
 (function markToday() {
