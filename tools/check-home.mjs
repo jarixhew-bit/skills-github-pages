@@ -96,6 +96,31 @@ const hero = (page) => page.evaluate(() => {
   await ctx.close();
 }
 {
+  // 2026-11-12 审计抓到：上午 11 点多，英文问候写成了 Good afternoon
+  for (const [hour, want] of [['11', 'Good morning'], ['12', 'Good afternoon']]) {
+    const { ctx, page } = await open({ date: '2026-11-10', hour, lang: 'en', locale: 'en-US' });
+    eq(await page.textContent('#greet'), want, `A26 英文 ${hour} 点的问候语`);
+    await ctx.close();
+  }
+}
+{
+  // 2026-11-12 审计抓到：首页切语言存的是 'zh'，新加坡／雅加达手册的同步只认 'cn'，
+  // 结果手册开在另一个分页时不会跟着换回中文。
+  for (const book of ['singapore.html', 'jakarta.html']) {
+    const ctx = await browser.newContext({ locale: 'zh-CN', serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
+    await ctx.route(u => !u.href.startsWith('http://localhost'), r => r.abort());
+    const page = await ctx.newPage();
+    await page.addInitScript(() => { try { if (!sessionStorage.getItem('__s')) { localStorage.setItem('siteLangUser', 'en'); sessionStorage.setItem('__s', '1'); } } catch (e) {} });
+    await page.goto(URL.replace(/home\/.*$/, 'sg-jkt-trip/' + book), { waitUntil: 'domcontentloaded' });
+    check(await page.evaluate(() => document.body.classList.contains('lang-en')), `A27 ${book} 先是英文（对照组）`);
+    await page.evaluate(() => window.dispatchEvent(new StorageEvent('storage', { key: 'siteLangUser', newValue: 'zh' })));
+    check(await page.evaluate(() => !document.body.classList.contains('lang-en')), `A27 ${book} 首页切回中文（存 'zh'）后，开着的手册跟着变中文`);
+    await page.evaluate(() => window.dispatchEvent(new StorageEvent('storage', { key: 'siteLangUser', newValue: 'en' })));
+    check(await page.evaluate(() => document.body.classList.contains('lang-en')), `A27 ${book} 切英文也跟着变`);
+    await ctx.close();
+  }
+}
+{
   const { ctx, page } = await open({ date: '2026-11-10', hour: '01' });
   eq((await hero(page)).days, '1', 'A11 11/10 凌晨 1 点仍是「还有 1 天」');
   await ctx.close();
