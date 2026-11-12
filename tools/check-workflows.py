@@ -184,6 +184,40 @@ def check_action(path: Path) -> list:
     return problems
 
 
+def check_decide_rules() -> list:
+    """tools/ci-decide.py 的路径规则要盖住对应检查真正守的文件（2026-11-12 加）。
+
+    规则漏一条路径，那项检查在 PR 上就被跳过、照样合并——不报错，只是悄悄没跑。
+    两处已踩过：swver 漏了 fitness 与全部 manifest（check-sw-version.py 的 PWAS 管着它们）；
+    refreshphotos 不盯 html 与 trips.py，开新手册的 PR 跑不到「漏登记 trips.py」那条。
+    """
+    import importlib.util
+    tools = REPO / "tools"
+
+    def load_mod(name, fname):
+        spec = importlib.util.spec_from_file_location(name, tools / fname)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    try:
+        decide = load_mod("ci_decide", "ci-decide.py")
+        sw = load_mod("check_sw_version", "check-sw-version.py")
+    except Exception as e:  # noqa: BLE001
+        return [f"tools/ci-decide.py 载入失败：{e}"]
+    problems = []
+    for swfile, pages in sw.PWAS.items():
+        for f in [swfile, *pages]:
+            if not decide.matches(f, decide.RULES["swver"]):
+                problems.append(f"tools/ci-decide.py：swver 规则没盖住 {f}（check-sw-version.py 守着它）"
+                                "——改了它忘升 SW 版本号，PR 上不会拦")
+    for f in ["新城市-trip/index.html", "新手册.html", "tools/lib/trips.py"]:
+        if not decide.matches(f, decide.RULES["refreshphotos"]):
+            problems.append(f"tools/ci-decide.py：refreshphotos 规则没盖住 {f}"
+                            "——开新手册的 PR 跑不到「漏登记 trips.py」那条检查")
+    return problems
+
+
 def main() -> int:
     quiet = "--quiet" in sys.argv
     problems = []
@@ -198,6 +232,7 @@ def main() -> int:
     for a in actions:
         problems += check_action(a)
         problems += check_expressions(a)
+    problems += check_decide_rules()
 
     if not quiet:
         print(f"检查了 {len(files)} 个 workflow、{len(actions)} 个共用步骤")
