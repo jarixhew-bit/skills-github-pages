@@ -47,8 +47,8 @@ PORT = int(os.environ.get("CHECK_PORT", 8899))
 # (名字, 命令, 要不要 http server)
 # 顺序照 checks.yml 的 job 顺序排，方便逐项跟 CI 对照。
 CHECKS = [
-    ("html-tracker", ["python3", "tools/check-html.py", "expense-tracker.html"], False),
-    ("html-staff", ["python3", "tools/check-html.py", "staff/index.html"], False),
+    # 跟 CI（checks.yml 的 html job）一样扫全部 html；原本只扫记账两页，改别的手册本地绿、CI 红
+    ("html", ["python3", "tools/check-html.py", "--all"], False),
     ("secrets", ["python3", "tools/check-secrets.py"], False),
     ("pwa", ["python3", "tools/check-pwa-scopes.py"], False),
     ("swver", ["python3", "tools/check-sw-version.py"], False),
