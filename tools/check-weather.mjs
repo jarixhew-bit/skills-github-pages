@@ -428,6 +428,7 @@ const sgnMust = await page.evaluate(() => {
 });
 check(sgnMust.length === 0, `[sg-nov] 全页不该出现「必去」（含 CSS 生成的标签），实得 ${JSON.stringify(sgnMust)}`);
 // 正向：D3 要有三张景点卡（植物园／福康宁／佛牙寺，2026-11-04 用户加福康宁），中英都在、每张 ≥4 张图；下午要写明自由活动（2026-11-01）
+// 2026-11-13 用户：跟老板朋友 12:30 吃阳明海鲜是主行程，原本三站改备用——所以 D3 多一张午餐卡（不编号），三站标「备用」
 const sgnD3 = await page.evaluate(() => {
   const stops = [...document.querySelectorAll('#day03 .stop')];
   const txt = stops.map(s => s.textContent).join(' ');
@@ -436,11 +437,13 @@ const sgnD3 = await page.evaluate(() => {
     imgs: stops.map(s => s.querySelectorAll('.gal img').length),
     has: ['植物园', 'Botanic Gardens', '福康宁', 'Fort Canning', '佛牙寺', 'Buddha Tooth'].filter(w => !txt.includes(w)),
     nums: [...document.querySelectorAll('#day03 .stop .pin.num')].map(e => e.textContent.trim()),
+    lunch: !!document.querySelector('#day03 #d3-yangming .gal img') && /12:30/.test(document.querySelector('#day03 #d3-yangming')?.textContent || ''),
+    optional: [...document.querySelectorAll('#day03 .stop')].filter(s => s.querySelector('.pin.num')).every(s => /备用/.test(s.querySelector('h4').textContent)),
     free: /自由活动/.test(document.querySelector('#day03')?.textContent || '') && /free afternoon/i.test(document.querySelector('#day03')?.textContent || ''),
   };
 });
-check(sgnD3.n === 3 && sgnD3.imgs.every(n => n >= 4) && sgnD3.has.length === 0 && sgnD3.nums.join(',') === '1,2,3' && sgnD3.free,
-  `[sg-nov] D3 应有植物园、福康宁、佛牙寺三张卡（第 1、2、3 站）、每张 ≥4 张图，下午写明自由活动（实得 ${JSON.stringify(sgnD3)}）`);
+check(sgnD3.n === 4 && sgnD3.lunch && sgnD3.optional && sgnD3.imgs.every(n => n >= 4) && sgnD3.has.length === 0 && sgnD3.nums.join(',') === '1,2,3' && sgnD3.free,
+  `[sg-nov] D3 应有 12:30 阳明海鲜午餐卡＋植物园、福康宁、佛牙寺三张备用卡（第 1、2、3 站）、每张 ≥4 张图，下午写明自由活动（实得 ${JSON.stringify(sgnD3)}）`);
 const { dayHaze: sgnDownDay } = await sgnLoad(r => r.fulfill({ json: SGN_FULL }), SGN_D2, r => r.fulfill({ status: 500, body: 'boom' }));
 check(sgnDownDay.length === 1 && /抓不到|Could not fetch/.test(sgnDownDay[0]?.now || '') && sgnDownDay[0]?.actHidden === false,
   `[sg-nov] PSI 挂掉但人在行程中：要说明抓不到并摊开替代方案（实得 ${JSON.stringify(sgnDownDay)}）`);
