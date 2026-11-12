@@ -34,7 +34,7 @@ TRIPS = {
     "penang-trip/index.html": "2026-10-17",      # 9–17 Oct 2026
     "penang-trip/v2.html": "2026-10-17",         # 同一趟的新设计版（植物园配色）
     "sg-jkt-trip/index.html": "2026-11-14",      # 跳转页（原四套航班方案，2026-10-31 航班已订后撤下），跳到 singapore.html
-    "sg-jkt-trip/singapore.html": "2026-11-14",  # 11–14 Nov 2026，Tan Chin Hooi＋Yap Lian Khoon＋Hew Chern Yang 新加坡段手册（成人向，无小孩）
+    "sg-jkt-trip/singapore.html": "2026-11-14",  # 11–14 Nov 2026，三人同行，新加坡段手册（成人向，无小孩）
     "sg-jkt-trip/jakarta.html": "2026-11-16",    # 14–16 Nov 2026，同一行三人的雅加达段手册（住 PIK，11/16 经新加坡转机各自回槟城／金边）
     "penang-trip/v3.html": "2026-10-17",         # 同一趟的第三个设计版（蓝屋靛蓝配色）
     "penang-trip/v4.html": "2026-10-17",         # 同一趟的第四个设计版（当地招牌风：漆木＋金＋朱红）
