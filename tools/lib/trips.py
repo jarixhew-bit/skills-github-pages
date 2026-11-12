@@ -30,6 +30,7 @@ TRIPS = {
     "restaurant-guide.html": "2026-07-30",       # 日本餐厅指南
     "xiamen-trip/index.html": "2026-08-27",      # 24–27 Aug 2026
     "xiamen-trip/v2.html": "2026-08-27",         # 同一趟的新设计版（海洋配色）
+    "penang-clinic/index.html": "2026-08-28",    # 槟城就诊，28 Aug 2026 单日（无照片，登记是为了走完后不再体检）
     "singapore-trip/index.html": "2026-09-27",   # 23–27 Sep 2026
     "penang-trip/index.html": "2026-10-17",      # 9–17 Oct 2026
     "penang-trip/v2.html": "2026-10-17",         # 同一趟的新设计版（植物园配色）
