@@ -17,6 +17,21 @@ import subprocess
 import sys
 import os
 import fnmatch
+import importlib.util
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _sw_watched() -> list:
+    """swver 要盯的文件直接读 check-sw-version.py 的 PWAS（SW 档＋归它管的页面/manifest），
+    不在这里抄第二份——2026-11-12 发现抄的那份漏了 fitness 与全部 manifest，
+    只改 fitness 页面忘了升版，PR 上 swver 根本不跑。"""
+    spec = importlib.util.spec_from_file_location(
+        "check_sw_version", os.path.join(HERE, "check-sw-version.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return sorted({f for sw, pages in mod.PWAS.items() for f in [sw, *pages]})
+
 
 # 每项检查关心哪些路径。加新检查就在这里加一行，不要再开新的 workflow 文件。
 RULES = {
@@ -25,7 +40,7 @@ RULES = {
     "pwa":       ["**/*.webmanifest", "tools/check-pwa-scopes.py"],
     "swver":     ["**/*sw*.js", "xisui/sw.js", "boss/index.html", "expense-tracker.html",
                   "staff/index.html", "xisui/index.html", "sg-jkt-trip/*.html",
-                  "tools/check-sw-version.py"],
+                  "tools/check-sw-version.py"] + _sw_watched(),
     "ainote":    ["trading/ai_note.py", "tools/check-ai-note.py"],
     "declog":    ["trading/analyzer.py", "tools/check-decision-log.py"],
     "flexstale": ["trading/index.html", "tools/check-flex-stale.mjs"],
@@ -42,7 +57,8 @@ RULES = {
     "rules":     [".claude/playbook/**", ".claude/skills/**", ".claude/agents/**",
                   "skills/**", "CLAUDE.md",
                   "tools/check-rules.py", "tools/check-rule-homes.py"],
-    "workflows": [".github/workflows/**", ".github/actions/**", "tools/check-workflows.py"],
+    "workflows": [".github/workflows/**", ".github/actions/**", "tools/check-workflows.py",
+                  "tools/ci-decide.py"],
     "company":   ["expense-tracker.html", "tools/check-expense-company.mjs"],
     "inventory": ["expense-tracker.html", "staff/index.html", "inventory/**",
                   "tools/check-inventory.mjs", "tools/build-staff-page.py"],
@@ -85,9 +101,12 @@ RULES = {
     "maplinks": ["*.html", "*/*.html", "tools/lib/trips.py", "tools/check-map-links.py"],
     # 手册营业时间：还没走完的手册不准写「营业时间请订位时确认」这类推给读者的话（2026-11-08 雅加达）
     "triphours": ["*.html", "*/*.html", "tools/lib/trips.py", "tools/check-trip-hours.py"],
-    # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验
+    # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验。
+    # 也盯所有 html 与 trips.py：这支自检里有全仓库唯一的「带照片的新手册有没有登记进 trips.py」，
+    # 开新手册的 PR 必须跑到它（不到 1 秒、全打桩不联网，多跑不费事）。
     "refreshphotos": ["tools/refresh-photos.py", "tools/check-refresh-photos.py",
-                      "tools/fetch-photos.mjs", "tools/check-images.py"],
+                      "tools/fetch-photos.mjs", "tools/check-images.py",
+                      "*.html", "tools/lib/trips.py"],
     # 菜单照过滤：决定卡片上会不会出现菜单，只能在装了 OCR 的机器（CI）上验
     "photofilter": ["tools/photo-filter.py", "tools/check-photo-filter.py"],
     # 同一张卡里不准有重复照片（不同网址可能是同一张图）：要下载图片算感知哈希，只能在 CI 跑
