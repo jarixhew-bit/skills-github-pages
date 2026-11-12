@@ -36,7 +36,7 @@ OTHER = json.dumps([{"number": 99, "title": "某某任务失败（另一件事�
 MINE = json.dumps([{"number": 99, "title": "某某任务失败（另一件事，标题相近）"},
                    {"number": 7, "title": TITLE}])
 
-# 每条 = (说明, state, 假的 issue 列表, 必须出现的字样, 不准出现的字样)
+# 每条 = (说明, state, 假的 issue 列表, 必须出现的字样, 不准出现的字样[, 额外参数])
 CASES = [
     ("坏了＋没报过 → 开 issue 并通知",
      "bad", "[]", ["issue create"], ["issue close"]),
@@ -50,10 +50,16 @@ CASES = [
     # 直接采信第一条就会把不相干的 issue 当成状态位。
     ("搜索只回相近标题（无完全相同）→ 应视为没报过，照常开新的",
      "bad", OTHER, ["issue create"], ["不重复通知"]),
+    # 2026-11-12 加：每周/每月体检要在已开的 issue 里看得到最新结果，但仍不能重复开、不能重复发 Telegram
+    ("坏了＋已有开着的＋--comment-existing → 补评论，不新开、不发 Telegram",
+     "bad", MINE, ["issue comment 7", "不重复通知"], ["issue create", "issue close", "跳过 Telegram"],
+     ["--comment-existing"]),
+    ("好了＋有开着的＋--comment-existing → 照样关掉",
+     "ok", MINE, ["issue close"], ["issue create", "issue comment"], ["--comment-existing"]),
 ]
 
 
-def run_case(state, fake_list, binpath, bodyfile, logfile):
+def run_case(state, fake_list, binpath, bodyfile, logfile, extra=()):
     """跑一次 ci-notify，回传「它印了什么 ＋ 它真的会对 GitHub 下什么命令」。"""
     open(logfile, "w").close()
     env = dict(os.environ)
@@ -64,7 +70,7 @@ def run_case(state, fake_list, binpath, bodyfile, logfile):
     env.pop("TELEGRAM_CHAT_ID", None)
     p = subprocess.run(
         [sys.executable, NOTIFY, "--title", TITLE, "--state", state,
-         "--body-file", bodyfile, "--tg-bad", "坏了", "--tg-ok", "好了"],
+         "--body-file", bodyfile, "--tg-bad", "坏了", "--tg-ok", "好了", *extra],
         capture_output=True, text=True, env=env)
     return p.stdout + p.stderr + open(logfile, encoding="utf-8").read()
 
@@ -87,8 +93,8 @@ def main():
         logfile = os.path.join(d, "gh-calls.log")
 
         bad = []
-        for desc, state, fake, must, must_not in CASES:
-            out = run_case(state, fake, binpath, bodyfile, logfile)
+        for desc, state, fake, must, must_not, *extra in CASES:
+            out = run_case(state, fake, binpath, bodyfile, logfile, *extra)
             for m in must:
                 if m not in out:
                     bad.append((desc, f"应该出现「{m}」", out.strip()[:200]))
