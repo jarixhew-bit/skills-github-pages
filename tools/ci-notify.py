@@ -17,6 +17,9 @@ trading-daily 从 08-11 21:17 起每小时红一次，连红一个多星期都�
     python3 tools/ci-notify.py --title "标题" --state bad \
         --body-file issue.md --tg-bad "坏了的话" --tg-ok "好了的话"
 
+    --comment-existing  坏了＋已有开着的 issue 时，把 --body-file 补成一条评论
+               （每周/每月体检用：让 issue 里看得到最新一次的结果；Telegram 仍只在状态变化时发）
+
     --dry-run  只印出「会做什么」，不真的开 issue、不真的发消息（自检用）
 
 退出码：0 = 处理完毕（含「什么都不用做」）；1 = 参数或外部命令出错。
@@ -89,6 +92,8 @@ def main():
     ap.add_argument("--body-file", help="state=bad 且要新开 issue 时的正文文件")
     ap.add_argument("--tg-bad", default="", help="坏了时发的 Telegram 文案")
     ap.add_argument("--tg-ok", default="", help="恢复时发的 Telegram 文案")
+    ap.add_argument("--comment-existing", action="store_true",
+                    help="坏了且已有开着的 issue 时，把 --body-file 补成一条评论")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
@@ -106,7 +111,11 @@ def main():
         return 0
 
     if existing:
-        print(f"已经有开着的 issue #{existing}，不重复通知。")
+        if a.comment_existing and a.body_file:
+            run_gh(["issue", "comment", existing, "--body-file", a.body_file], a.dry_run)
+            print(f"已经有开着的 issue #{existing}，补一条评论，不重复通知。")
+        else:
+            print(f"已经有开着的 issue #{existing}，不重复通知。")
         return 0
 
     cmd = ["issue", "create", "--title", a.title]

@@ -40,19 +40,17 @@ jobs:
             if [ "${{ github.event_name }}" = "pull_request" ]; then exit 1; fi
           fi
 
-      # 超标才开 issue。已有开着的同名 issue 就不再重复开，避免每月堆积。
-      - name: 超标则开 issue 通知
-        if: steps.check.outputs.over == 'true' && github.event_name != 'pull_request'
+      # 状态交给 tools/ci-notify.py：超标→没开过就开、开着就补评论；回到门槛内→自动关掉旧 issue 并留言「已恢复」。
+      # （2026-11-12 之前只开不关，而且「已有就 exit 0」——旧 issue 不关，下一次超标就不会再通知。）
+      - name: 超标开 issue／补评论，回到门槛内自动关
+        if: github.event_name != 'pull_request' && steps.check.outputs.over != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          OVER: ${{ steps.check.outputs.over }}
         run: |
-          TITLE="制度档该精简了（月度体检）"
-          EXISTING=$(gh issue list --state open --search "$TITLE in:title" \
-                       --json number --jq '.[0].number // empty')
-          if [ -n "$EXISTING" ]; then
-            echo "已有开着的 issue #$EXISTING，本月不重复开。"
-            exit 0
-          fi
+          if [ "$OVER" = "true" ]; then STATE=bad; else STATE=ok; fi
           {
             echo "月度体检发现制度档超过 \`.claude/playbook/maintenance.md\` 第 4 节的精简门槛："
             echo
@@ -71,4 +69,7 @@ jobs:
             echo
             echo "自己看当前状况：\`python3 tools/check-rules.py\`"
           } > body.md
-          gh issue create --title "$TITLE" --body-file body.md
+          python3 tools/ci-notify.py --title "制度档该精简了（月度体检）" \
+            --state "$STATE" --body-file body.md --comment-existing \
+            --tg-bad "制度档超过精简门槛（月度体检），详情见 GitHub issue。" \
+            --tg-ok "制度档已回到门槛内（月度体检通过）。" || true

@@ -42,19 +42,17 @@ jobs:
             cat result.txt
           fi
 
-      # 出事才开 issue。已有开着的同名 issue 就不重复开，避免每天堆积。
-      - name: 出事则开 issue 通知
-        if: steps.check.outputs.failed == 'true'
+      # 状态交给 tools/ci-notify.py：出事→没开过就开、开着就补评论；恢复→自动关掉旧 issue 并留言「已恢复」。
+      # （2026-11-12 之前只开不关，而且「已有就 exit 0」——旧 issue 不关，下一次真出事就不会再通知。）
+      - name: 出事开 issue／补评论，恢复自动关
+        if: always() && steps.check.outputs.failed != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FAILED: ${{ steps.check.outputs.failed }}
         run: |
-          TITLE="线上页面有问题（每日烟雾测试）"
-          EXISTING=$(gh issue list --state open --search "$TITLE in:title" \
-                       --json number --jq '.[0].number // empty')
-          if [ -n "$EXISTING" ]; then
-            echo "已有开着的 issue #$EXISTING，今天不重复开。"
-            exit 0
-          fi
+          if [ "$FAILED" = "true" ]; then STATE=bad; else STATE=ok; fi
           {
             echo "每日烟雾测试发现线上页面与 main 对不上："
             echo
@@ -72,7 +70,10 @@ jobs:
             echo
             echo "自己看当前状况：\`python3 tools/check-live.py\`（本地或网页版容器都能跑）"
           } > body.md
-          gh issue create --title "$TITLE" --body-file body.md
+          python3 tools/ci-notify.py --title "线上页面有问题（每日烟雾测试）" \
+            --state "$STATE" --body-file body.md --comment-existing \
+            --tg-bad "线上页面跟 main 对不上（每日烟雾测试），详情见 GitHub issue。" \
+            --tg-ok "线上页面已恢复正常（每日烟雾测试通过）。" || true
 
       - name: 失败时让这次 run 显示红灯
         if: steps.check.outputs.failed == 'true'
