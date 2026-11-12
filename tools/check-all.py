@@ -105,10 +105,14 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-class ReusableServer(socketserver.TCPServer):
+class ReusableServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     # 必须是**类属性**：TCPServer 在 __init__ 里就 bind 了，构造完再设等于没设。
     # 少了这一句，上一轮跑完端口还在 TIME_WAIT，下一轮 bind 直接失败。
     allow_reuse_address = True
+    # 2026-11-12 教训：一定要多线程。单线程时，浏览器预先开着却不发请求的空连接
+    # 会把整台服务器堵死，十几个浏览器自检同时来就有六个 page.goto 等满 30 秒超时，
+    # 看起来像页面坏了（单独跑其实都过）。CI 用的 `python3 -m http.server` 本来就是多线程。
+    daemon_threads = True
 
 
 def port_alive():
