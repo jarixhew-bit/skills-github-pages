@@ -112,7 +112,7 @@ const browser = await chromium.launch(launchOpts);
       if (route.request().method() === 'GET')
         return route.fulfill({ status:200, contentType:'application/json', headers:h,
           body: JSON.stringify({
-            categories:['Bank','Beverage','Car Wash','Dinner','Driver Meal','Lunch','Meal Subscription','Petrol','Postage','Store'],
+            categories:['Bank','Beverage','Car Wash','Dinner','Driver Meal','Home Internet','Lunch','Meal Subscription','Petrol','Postage','Store'],
             plateCategories:['Car Wash','Driver Meal','Petrol'],
             // 括号里填什么由服务端说了算：车牌那几类不给（App 按默认的车牌处理），
             // 司机餐给「司机名字」——这条就是这次要验的差别
@@ -686,6 +686,27 @@ const browser = await chromium.launch(launchOpts);
   ok('本机个人记账归「其他支出」', txBk?.categoryId === 'cat_other_exp', txBk?.categoryId);
   ok('★没连过 butler 时的兜底清单也有它',
      await page.evaluate(() => COMPANY_CATS_FALLBACK.includes('Bank')));
+
+  console.log('\n【4g】Home Internet（2026-11-16 用户加的公司类别：家里网费）');
+  posted = [];
+  await page.evaluate(()=>showAddTx());
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
+  ok('★下拉里有 Home Internet',
+     (await page.$$eval('#tx-company-category option', els => els.map(e => e.value))).includes('Home Internet'));
+  await page.fill('#tx-amount', '25');
+  await page.selectOption('#tx-company-category', 'Home Internet');
+  const _sentHi = posted.length;
+  await page.evaluate(()=>saveTx());
+  await until(() => posted.length > _sentHi, { what: 'Home Internet 那笔送到服务端' });
+  const txHi = await page.evaluate(()=>data.transactions[data.transactions.length-1]);
+  ok('★送出去的类别是 Home Internet', posted[0]?.items?.[0]?.categoryEn === 'Home Internet'
+     || posted[0]?.items?.[0]?.categoryRaw === 'Home Internet', posted[0]?.items?.[0]);
+  ok('★本机个人记账归「水电费」（不是其他支出）', txHi?.categoryId === 'cat_utilities', txHi?.categoryId);
+  ok('★没连过 butler 时的兜底清单也有它',
+     await page.evaluate(() => COMPANY_CATS_FALLBACK.includes('Home Internet')));
 
   console.log('\n【5】送不出去时不能丢账：进队列，恢复后补送');
   butlerMode = 'offline'; posted = [];
