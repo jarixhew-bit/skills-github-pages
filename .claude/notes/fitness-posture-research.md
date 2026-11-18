@@ -176,5 +176,16 @@
 | Pabau、Prehab Guys、patient.info | web-lookup 44254390691 | ✔ 1 cm 逐步后移、量大脚趾到墙、above 2 cm、每 3–4 周重测、patient.info 看医生三条；Pabau 门槛自己两说（见第 1 节） |
 | SRS、MedlinePlus | web-lookup 44254804102 | ✔ SRS 肋骨隆起、肩高不对称、MRI 那句都在；MedlinePlus「By puberty…」在 |
 | Cleveland Clinic X 型腿（儿童 PT） | web-lookup 44254804102 | ✗ 原始网址当初没记下；猜的 my.clevelandclinic.org/health/diseases/22097-knock-knees 回 404。**该行降级为「网址待补」**；App 没有引用它，所以不影响任何文案 |
-| 动作要点（Physitrack、Motra、Catalyst、Kent and Medway、Calgary、Harvard、kettlebellsworkouts、Rehab Hero、HSS 髋屈肌、Cleveland 90/90） | 沿用 run 44246498844／44246758896 的原文（引句在 `tools/lib/fitness-anim-spec.json` 各动作 `note`） | 本轮没重抓；verifier 点名的两句没有原文：半跪髋屈肌「大腿前侧上方有拉的感觉就停住」、靠墙滑臂「一要耸肩或拱腰…就是上限」——**都已从 App 删掉** |
+| Côté，PMID 9563110 | fetch-url 44285195902（efetch，html 模式，2026-11-18 第三轮） | ✔ "Adam's forward bend test is more sensitive than the Scoliometer in detecting thoracic curves measuring 20 degrees or more" 一字不差；结论原句是 "it remains the best noninvasive clinical test"——原文没说「标准方法」，App 改写成「医生做脊柱侧弯检查时会用的方法」（比原文弱，不比原文满） |
+| McGill，PMID 10453772 | 同上 fetch-url 44285195902 | ✔ "The tests proved reliable, with reliability coefficients of >.97" 在；「差 10% 以上算弱侧」仍是 App 自己的门槛 |
+| Healthline 膝外翻 | web-lookup 44285202059 | ✔ "For older children and adults with genu valgum, a course of physical therapy and exercises can help realign their knees" 与 "a gap of 3 inches or more between their ankles" 都在 |
+| Cleveland Clinic 90/90 | web-lookup 44285207817 | ✔ 两膝 90°、"Hold this pose for 20 to 60 seconds"、"if you're having pain or a pinching feeling during the stretch or discomfort that lingers afterward, stop doing the stretch and seek out some advice" 都在 |
+| 动作要点（Physitrack、Motra、Catalyst、Kent and Medway、Calgary、Harvard、kettlebellsworkouts、Rehab Hero、HSS 髋屈肌、Cleveland 90/90） | 未重抓，首轮已读（run 44246498844／44246758896）；引句在 `tools/lib/fitness-anim-spec.json` 各动作 `note`（Cleveland 90/90 已于上一行单独重抓） | 本轮没重抓；verifier 点名的两句没有原文：半跪髋屈肌「大腿前侧上方有拉的感觉就停住」、靠墙滑臂「一要耸肩或拱腰…就是上限」——**都已从 App 删掉** |
 
+
+**第三轮 verifier 复查的 6 处小修（2026-11-18）**：「变化慢」删（Warneke 只说拉伸无效／肌力训练对胸椎颈部有改善，没讲快慢）；
+前弯测试「标准方法」→「医生做脊柱侧弯检查时会用的方法」、「自己在家看只能算提醒」标 App 的保守判断；
+膝内倒「可以练」→「有研究显示可能练得改善（研究对象是跑者）」（Lashien 是跑者，Cömert 是 "may reduce"）；
+分腿蹲「膝盖对准第二根脚趾、不往内倒」标 App 的安排（Pabau 那句是推膝碰墙的，分腿蹲没抓到原文；推膝碰墙那句保留不标）；
+靠墙滑臂「轻轻压墙」→「压墙」（Prehab Guys 原文 "Push into the wall"，没说轻轻）；蚌式弹力带「加难度」标 App 的安排
+（Physitrack 只写 "place a band above your knees"）。这些字都进了 check-fitness 第 16 段的 BANNED／need 清单。
