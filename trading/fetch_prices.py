@@ -17,9 +17,15 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 HIST_DIR = os.path.join(BASE, "history")
 KEEP_BARS = 320
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
+# 单次请求超时 10 秒、同一数据源连续 3 次网络/解析异常就熔断（2026-11-18）：
+# 原本 30 秒超时 × 约 60 档 × 两个源串行，数据源一挂「抓取行情」一步跑了 61 分钟，
+# 把后面整点的排程都堵住。熔断后该源本轮不再请求，其余档改走另一个源；
+# 两个源都不可用的档沿用 history/ 里的旧文件（不重写）。
+HTTP_TIMEOUT = 10
+BREAKER_LIMIT = 3
 
 
-def http_get(url, timeout=30):
+def http_get(url, timeout=HTTP_TIMEOUT):
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read().decode("utf-8", errors="replace")
@@ -118,6 +124,8 @@ def main():
     os.makedirs(HIST_DIR, exist_ok=True)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     ok, failed = [], []
+    consec_fail = {"stooq": 0, "yahoo": 0}   # 各源连续异常次数；成功一次清零
+    tripped = set()                          # 本轮已熔断的源
     for u in universe:
         sym = u["symbol"]
         bars, src, err = None, None, None
@@ -132,8 +140,23 @@ def main():
         # 行情代码覆盖：stooq / yahoo 字段缺省就用 symbol 本身
         for name, fn, code in (("stooq", from_stooq, u.get("stooq", sym)),
                                ("yahoo", from_yahoo, u.get("yahoo", sym))):
+            if name in tripped:
+                err = err or f"{sym}: {name} 已熔断，本轮跳过"
+                continue
             try:
-                cand = fn(code)[-KEEP_BARS:]
+                try:
+                    raw = fn(code)
+                    consec_fail[name] = 0
+                except Exception:
+                    # 只有「请求/解析异常」计入熔断；数据校验不过（validate/usd_guard）
+                    # 是单档的问题，不代表整个源挂了
+                    consec_fail[name] += 1
+                    if consec_fail[name] >= BREAKER_LIMIT:
+                        tripped.add(name)
+                        print(f"BREAKER {name} 连续 {BREAKER_LIMIT} 次失败，本轮停用该源",
+                              file=sys.stderr)
+                    raise
+                cand = raw[-KEEP_BARS:]
                 err = validate(sym, cand, check_open=not guard)
                 if err is None and guard:
                     err = usd_guard(sym, cand, ref_bars, guard["ratio"], guard.get("tol", 0.10))
@@ -165,6 +188,8 @@ def main():
         ok.append(f"{sym}({src},{len(bars)})")
         time.sleep(0.4)
     print(f"成功 {len(ok)}/{len(universe)}: {' '.join(ok)}")
+    if tripped:
+        print(f"本轮熔断的数据源：{', '.join(sorted(tripped))}", file=sys.stderr)
     if failed:
         print(f"失败 {len(failed)}: {'; '.join(failed)}", file=sys.stderr)
     # 超过 1/4 失败视为数据源故障，让 CI 失败以免发布残缺数据

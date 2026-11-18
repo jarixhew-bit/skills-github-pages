@@ -34,6 +34,10 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    # 正常一轮 3~5 分钟。没设上限时默认 360 分钟：2026-11-17 数据源挂掉，
+    # 「抓取行情」一步跑了 61 分钟，又因 concurrency 不取消，把后面的排程全堵住。
+    # 20 分钟够正常跑完还有余；超时会让 job 变红，最后的失败通知照样会发。
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,6 +45,8 @@ jobs:
           python-version: '3.12'
       - run: pip install --quiet cryptography requests feedparser
       - name: 抓取行情
+        # 单步再设一道：熔断后最坏也该在几分钟内结束（见 fetch_prices.py 的 BREAKER_LIMIT）
+        timeout-minutes: 12
         run: python trading/fetch_prices.py
       # 不阻断是对的（沿用旧底数比停更好），但**不能静默**：
       # 同一个 Flex 故障 2026-07、2026-08 初、2026-08-11 复发三次，每次都是
