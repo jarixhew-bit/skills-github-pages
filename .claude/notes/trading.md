@@ -466,8 +466,10 @@ Yahoo 不認光禿禿的 `CSPX`，要 `CSPX.L`；而且第一檔取不到價整�
   `check-all.py`（名字 `drawdown`）与 `checks.yml`／`ci-decide.py`。行情读 `trading/history/VOO.json`
   的收盘价（第 5 列），不足 252 根用现有全部并在正文注明；少于 20 根、含非法价、或最后一根离今天
   超过 10 天判「行情缺失」另开 issue。
-- 定期跑：`.github/workflows/drawdown-check.yml`，周一至五 UTC 22:30（trading-daily 末班 21:00 之后），
-  可手动触发。**不提交状态文件**：上一状态 = 有没有开着的同名 issue（二级 issue 开着=2，一级开着=1）。
+- 定期跑：`.github/workflows/drawdown-check.yml`，2026-11-18 起由 trading-daily **成功完成后**的
+  `workflow_run` 触发，gate job 只放行美东 16:15 之后／09:30 之前那几轮（盘中 K 线没走完不判）；
+  另留周一至五 UTC 23:43 cron 兜底（trading-daily 整天挂掉时靠它判「行情过期」），可手动触发。
+  原本固定 22:30 cron 会抢在 trading-daily 推数据之前跑、读到前一天收盘（11-17 实测）。**不提交状态文件**：上一状态 = 有没有开着的同名 issue（二级 issue 开着=2，一级开着=1）。
   读 issue 失败时整轮罢工（退出码 1），不能当「没有」，否则回落区间里会误关提醒。
 - 级别 → issue：level≥1 时一级 issue（标题「大跌一级提醒…」）开着，level=2 时二级 issue（标题不同，
   所以能在一级之后再开一次）也开着；回到 <15% 两个自动关。一步跌穿 30% 两个一起开。二级之后回到

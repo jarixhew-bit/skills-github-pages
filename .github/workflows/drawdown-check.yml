@@ -1,16 +1,25 @@
 # 大跌开枪提醒（2026-10-29 建）：VOO 收盘较近 252 个交易日最高收盘回落 >=20% 开一级、>=30% 开二级，
 # 回到 <15% 才解除（滞后区间）。规则与自检在 tools/check-drawdown.py。零 Claude 用量。
 #
-# 行情：trading/history/VOO.json（公开行情，trading-daily 每个交易日收盘后更新）。
+# 行情：trading/history/VOO.json（公开行情，trading-daily 每个交易日收盘后更新；本流程接在它后面跑）。
 # 上一状态：不提交状态文件，用「有没有开着的同名 issue」当状态位（同 tools/ci-notify.py 的机制）。
 # 本仓库是公开的：issue 与日志只写 VOO 的跌幅与日期，绝不写持仓、金额、SGOV 余额
 # （脚本根本不读持仓；tools/check-drawdown.py --selftest 会拦文案）。
 name: drawdown-check
 
 on:
+  # 主触发：trading-daily 跑成功（当天收盘已推进 main）之后接着跑（2026-11-18 改）。
+  # 原本是固定 22:30 UTC 的 cron，假设「trading-daily 已把当天收盘写进 main」，
+  # 实际 11-17 那天 trading-daily 22:32 才推，drawdown 22:30 读到的是前一天的收盘。
+  # 只认美东收盘后的那几轮（见 gate job）：盘中那根 K 线还没走完，拿它判会在
+  # 20% 线上下来回开关 issue、Telegram 一天响好几次。
+  workflow_run:
+    workflows: [trading-daily]
+    types: [completed]
   schedule:
-    # 周一至五 UTC 22:30：美股 21:00 UTC 收盘、trading-daily 最后一轮（21:00）已把当天收盘写进 main
-    - cron: '30 22 * * 1-5'
+    # 兜底：trading-daily 整天没跑成时，靠这一轮发现行情过期（判「缺行情」）。
+    # 重复跑无害：上一状态取自「有没有开着的同名 issue」，ci-notify 对已开的 issue 静默。
+    - cron: '43 23 * * 1-5'
   workflow_dispatch:
 
 permissions:
@@ -22,8 +31,34 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  check:
+  gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # workflow_run 只在上游成功时才算数；失败的那一轮数据没进 main，判了也是旧数据
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      go: ${{ steps.g.outputs.go }}
+    steps:
+      - name: 只在美东收盘后判（盘中那根 K 线还没走完）
+        id: g
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "workflow_run" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"; echo "非 workflow_run 触发，照跑"; exit 0
+          fi
+          NY=$((10#$(TZ=America/New_York date +%H%M))); DOW=$(TZ=America/New_York date +%u)
+          if [ "$DOW" -le 5 ] && [ "$NY" -ge 930 ] && [ "$NY" -lt 1615 ]; then
+            echo "go=false" >> "$GITHUB_OUTPUT"; echo "美东 $NY 还在盘中，不拿未收盘的价判"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"; echo "美东 $NY 已收盘，判"
+          fi
+
+  check:
+    needs: gate
+    if: needs.gate.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
