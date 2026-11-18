@@ -112,8 +112,8 @@ const browser = await chromium.launch(launchOpts);
       if (route.request().method() === 'GET')
         return route.fulfill({ status:200, contentType:'application/json', headers:h,
           body: JSON.stringify({
-            categories:['Bank','Beverage','Car Wash','Dinner','Driver Meal','Home Internet','Lunch','Meal Subscription','Petrol','Postage','Store'],
-            plateCategories:['Car Wash','Driver Meal','Petrol'],
+            categories:['Bank','Beverage','Car Wash','Dinner','Driver Meal','Home Internet','Lunch','Meal Subscription','Parking','Petrol','Postage','Store'],
+            plateCategories:['Car Wash','Driver Meal','Parking','Petrol'],
             // 括号里填什么由服务端说了算：车牌那几类不给（App 按默认的车牌处理），
             // 司机餐给「司机名字」——这条就是这次要验的差别
             plateFields:{'Driver Meal':{what:'司机名字', whatEn:'Driver name', example:'Phal'}},
@@ -412,7 +412,7 @@ const browser = await chromium.launch(launchOpts);
   // 车牌类也要在清单里——只能回 Telegram 记的话，App 里公司账户的合计会少一块
   ok('含车牌类（Petrol / Car Wash）', cats.includes('Petrol') && cats.includes('Car Wash'), cats);
   ok('车牌类清单也是服务端给的，不是 App 判断的',
-     JSON.stringify(await page.evaluate(()=>getCompanyPlateCats()))===JSON.stringify(['Car Wash','Driver Meal','Petrol']),
+     JSON.stringify(await page.evaluate(()=>getCompanyPlateCats()))===JSON.stringify(['Car Wash','Driver Meal','Parking','Petrol']),
      await page.evaluate(()=>getCompanyPlateCats()));
 
   console.log('\n【4】记一笔公司账 —— 送出去的内容必须原样，不能在本地算');
@@ -624,6 +624,28 @@ const browser = await chromium.launch(launchOpts);
      (await page.textContent('#tx-company-plate-label') || '').includes('车牌号'),
      await page.textContent('#tx-company-plate-label'));
   await page.evaluate(()=>closeModal('modal-add-tx'));
+
+  console.log('\n【4h】停车费也要填车牌（2026-11-18 用户：「parking 直接变 boss 了，不可以这样」）');
+  posted = [];
+  await page.evaluate(()=>showAddTx());
+  await until(() => page.evaluate(() => {
+    const m = document.getElementById('modal-add-tx');
+    return !!m && m.classList.contains('open') && !!document.getElementById('tx-amount');
+  }), { what: '记账弹窗打开' });
+  await page.selectOption('#tx-company-category', 'Parking');
+  ok('★选了 Parking，车牌栏出现', await page.locator('#tx-company-plate-wrap').isVisible());
+  ok('标题是「车牌号」', (await page.textContent('#tx-company-plate-label') || '').includes('车牌号'));
+  await page.fill('#tx-amount', '0.5');
+  await page.evaluate(()=>saveTx());
+  await page.waitForTimeout(800);
+  ok('★没填车牌不准送出（不能再静静变成 PARKING (BOSS)）', posted.length===0, posted);
+  await page.fill('#tx-company-plate', '1lb-0044');
+  const _sentP = posted.length;
+  await page.evaluate(()=>saveTx());
+  await until(() => posted.length > _sentP, { what: 'Parking 那笔送到服务端' });
+  ok('填了车牌就送出，车牌转大写', posted[0]?.items?.[0]?.plate === '1LB-0044', posted[0]?.items?.[0]);
+  ok('★没连过 butler 时的兜底清单也把 Parking 当车牌类',
+     await page.evaluate(() => COMPANY_PLATE_CATS_FALLBACK.includes('Parking')));
 
   console.log('\n【4b】同一个人报的非正餐要算到 Boss 头上（Excel 换到左边）');
   posted = [];
