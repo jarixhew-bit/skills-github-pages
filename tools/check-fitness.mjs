@@ -26,7 +26,7 @@
  *  14. 点示范放大：同一张图、要点与计时在放大里、跟练下一步跟着换、侧面切换、✕／Esc、放大里记组＝同一份状态。
  *  15. 动图模式下一律用新动图：A/B/C × 三种器材的卡片、跟练每一步（含燃脂收尾两个动作同框）、放大、游泳课，
  *      有 webp 的动作不准退回 3D／简笔画布（2026-11-10 用户抓到燃脂收尾还是旧模型）。
- *  16. 体态：问卷存得住／进备份；红旗挡住小课；小课按答案与左右测试加组；照片存 IndexedDB、对比画面、进备份；
+ *  16. 体态：问卷存得住／进备份；红旗挡住小课（红旗一变确认作废；高低肩没做前弯测试也挡）；有红旗不出力量日提醒；推膝碰墙差要超过 2 cm；文案守门；小课按答案与左右测试加组；照片存 IndexedDB、对比画面、进备份；
  *      深蹲提醒只在填了往哪边歪时出现；满 4 周提醒重测；8 个新动作都有动图、规格、来源。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
@@ -1092,6 +1092,53 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   check(nclam2 === 2 && /可以练的控制问题/.test(await page.textContent('#postStatus')), `体态 X 型腿：动作中两膝都往内倒 → 两边各多一组蚌式＋说明可练（${nclam2}）`);
   check(errors.length === 0, `体态红旗没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
+}
+// 2026-11-18 verifier 抓到的漏洞（修之前这几项都是红的）：
+// ① 已确认「医生看过」之后又多一个红旗，确认要作废、小课重新挡住；② 高低肩但前弯测试「还没测」→ 先挡小课、叫你去测；
+// ③ 有红旗时，力量日的深蹲／单侧动作不再出现体态提醒（「X脚先做、多一组」）；④ 推膝碰墙差刚好 2.0 cm 不算（Pabau 原文是 above 2 cm），2.1 才算；
+// ⑤ 文案守门：verifier 判定「比来源说得更满」或「没有来源」的句子不准再出现在 fitness/index.html。
+{
+  const { ctx, page, errors } = await openWith([]);
+  await page.click('#postCard [data-open-post]');
+  await page.click('#postQ [data-pq="shoulder"][data-v="E"]');
+  await page.click('#postRed [data-pq="bend"][data-v="yes"]');
+  await page.click('[data-post-ack]', { timeout: 3000 }).catch(() => {});
+  const okAck = await page.locator('#postRoutine [data-post-go]').count() === 1;
+  await page.click('#postQ [data-pq="pain"][data-v="yes"]');
+  check(okAck && await page.locator('#postRoutine [data-post-go]').count() === 0 && await page.locator('#postCard [data-post-go]').count() === 0 && await page.locator('[data-post-ack]').count() === 1,
+    '体态红旗：确认「医生看过」之后又多一个红旗（痛）→ 确认作废、小课重新挡住、要重新确认');
+  await page.click('#postQ [data-pq="pain"][data-v="no"]'); await page.click('#postRed [data-pq="bend"][data-v="no"]');
+  check(await page.locator('#postRoutine [data-post-go]').count() === 1, '体态红旗：红旗全部解除后小课回来（不需要确认）');
+  for (const bend of ['?', null]) {
+    await page.evaluate(b => { const p = JSON.parse(localStorage.getItem('fit.posture')); p.q = { shoulder: 'L', shift: 'N' }; p.red = b ? { bend: b } : {}; p.ack = 0; localStorage.setItem('fit.posture', JSON.stringify(p)); }, bend);
+    await page.reload(); await page.waitForSelector('#workout .ex'); await page.click('#postCard [data-open-post]');
+    const t = await page.textContent('#postRoutine');
+    check(await page.locator('#postRoutine [data-post-go]').count() === 0 && await page.locator('#postCard [data-post-go]').count() === 0 && /前弯测试/.test(t),
+      `体态：左肩较高、前弯测试${bend ? '选「还没测」' : '没回答'} → 小课先挡住、提示先做前弯测试`);
+  }
+  await page.click('#postRed [data-pq="bend"][data-v="no"]');
+  check(await page.locator('#postRoutine [data-post-go]').count() === 1, '体态：高低肩做完前弯测试（两边一样）→ 小课回来');
+  // ③ 有红旗（即使已确认）→ 力量日没有体态提醒
+  await page.evaluate(() => localStorage.setItem('fit.posture', JSON.stringify({ q: { shift: 'L', valgus: 'L', pain: 'yes' }, red: { bend: 'no' }, tests: [], done: [], qTs: Date.now(), ack: Date.now(), ackFor: ['背、髋或膝盖有痛'] })));
+  await page.reload(); await page.waitForSelector('#workout .ex');
+  await page.click('#picker [data-wk="A"]'); const nA = await page.locator('#workout [data-pcue]').count();
+  await page.click('#picker [data-wk="C"]'); const nC = await page.locator('#workout [data-pcue]').count();
+  check(nA === 0 && nC === 0, `体态红旗：有红旗时力量日不出现体态提醒（A ${nA}、C ${nC} 条）`);
+  // ④ 推膝碰墙：差刚好 2.0 不算，2.1 才算（Pabau：above 2 cm）
+  const side = async (l, r) => { await page.evaluate(([a, b]) => localStorage.setItem('fit.posture', JSON.stringify({ q: { shift: 'N' }, red: { bend: 'no' }, tests: [{ id: 'pt1', ts: Date.now(), ktwL: a, ktwR: b }], done: [], qTs: Date.now() })), [l, r]); await page.reload(); await page.waitForSelector('#workout .ex'); return page.evaluate(() => window.__fit.posture.postSides().ankle); };
+  const s20 = await side('8', '10'), s21 = await side('8', '10.1');
+  check(s20 === null && s21 === 'L', `体态：推膝碰墙左右差 2.0 cm 不算弱侧、2.1 cm 才算（实得 ${s20} / ${s21}）`);
+  check(errors.length === 0, `体态漏洞自检没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+  // ⑤ 文案守门
+  const html = fs.readFileSync('fitness/index.html', 'utf8');
+  const BANNED = ['改不了，要改只能手术', '运动改不了', '杠也更歪', '那里就是你现在的上限', '几周就可能看得到', '静态姿势通常变得很慢', '比较早看得到变化',
+    '这是腿骨本身的角度', '大腿前侧上方有拉的感觉就停住', '照片可能变得很慢', '不需要避免（'];
+  const hit = BANNED.filter(b => html.includes(b));
+  check(hit.length === 0, `体态文案：没有来源或比来源说得更满的句子不再出现${hit.length ? '（还在：' + hit.join('、') + '）' : ''}`);
+  const need = ['除非医生另有建议', '前弯测试看起来正常也不能完全排除', '手机回放是 App 的做法', 'App 的保守判断', 'App 的推论'];
+  const miss = need.filter(b => !html.includes(b));
+  check(miss.length === 0, `体态文案：该标明来源界线的地方都标了${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
 }
 // 满 4 周提醒重测（今天固定 2026-09-30）：上次自查 29 天前 → 提醒；10 天前 → 不提醒
 for (const [days, want] of [[29, true], [10, false]]) {
