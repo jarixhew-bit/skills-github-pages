@@ -283,6 +283,11 @@ function lyingPress(c, { drop, top, abd = 45 }) { // 卧推类：底部上臂与
   });
 }
 function flatHands(c, sides = ['Right', 'Left']) { const f = c.T.clone(); f.y = 0; if (f.lengthSq() < 1e-4) return {}; f.normalize(); const o = {}; sides.forEach(s => (o[s + 'Hand'] = f.clone())); return o; }
+// 绕长轴 axis 转 deg 度，方向挑「转完右侧（right 这个方向）朝下」那一边
+function rollQ(axis, right, deg) {
+  const a = axis.clone().normalize(), q = new THREE.Quaternion().setFromAxisAngle(a, THREE.MathUtils.degToRad(deg));
+  return right.clone().applyQuaternion(q).y < 0 ? q : new THREE.Quaternion().setFromAxisAngle(a, -THREE.MathUtils.degToRad(deg));
+}
 const OV = {
   ohp: { arms: c => both(s => armPress(c, s, -12 + 94 * c.p, 92 - 3 * c.p, 35 - 20 * c.p)) },
   seatohp: { arms: c => both(s => armPress(c, s, -10 + 88 * c.p, 92, 35 - 15 * c.p)) },
@@ -402,7 +407,31 @@ OV.pronepec = { // 趴着、左手往旁伸直贴地（T 字），右手推地�
     const H = W3('Spine2').add(c.F.clone().multiplyScalar(10)).add(c.T.clone().multiplyScalar(2)); H.y = Math.min(H.y, fl + 1.5);
     const t = ik('Right', 'arm', S.clone().lerp(H, 1), nrm(UP, 0.6, c.T, 0.3, c.F, -0.3));
     return Object.assign({ LeftArm: la, LeftForeArm: la.clone(), LeftHand: la.clone() }, t, { RightHand: nrm(c.F, 1, DOWN, 0.2) }); } };
-OV.dbbridge = { arms: OV.thrust.arms }; // 哑铃臀桥：两手扶住横放在髋上的哑铃（跟臀推同一套）
+OV.dbbridge = { arms: OV.thrust.arms };
+// ---- 体态小课（2026-11-18）：侧躺、坐地、手扶髋 ----
+const hz = v => { const o = v.clone(); o.y = 0; return o.normalize(); };
+const hdir = (c, th, dn) => { const a = THREE.MathUtils.degToRad(th), d = THREE.MathUtils.degToRad(dn || 0); // 水平方位角 th（0＝正前、+＝往右）、往下倾 dn 度
+  return nrm(hz(c.F), Math.cos(a) * Math.cos(d), hz(c.OR), Math.sin(a) * Math.cos(d), DOWN, Math.sin(d)); };
+const handsOnHips = c => both(s => ik(s, 'arm', W3(s + 'UpLeg').add(c.T.clone().multiplyScalar(5)).add(OS(c, s).multiplyScalar(4)).add(c.F.clone().multiplyScalar(1.5)), nrm(OS(c, s), 1, c.F, -0.6)));
+OV.hip9090 = { // 坐地：右（前）腿大腿往前偏右、小腿横在身前往左；左（后）腿大腿往左侧、小腿往后；两膝约 90°。上身挺直、从髋往前折
+  legs: c => ({ RightUpLeg: hdir(c, 20, 12), RightLeg: hdir(c, -70, 0), LeftUpLeg: hdir(c, -80, 12), LeftLeg: hdir(c, -170, 0) }),
+  feet: c => ({ RightFoot: hdir(c, -70, 0), LeftFoot: hdir(c, -170, 0) }),
+  arms: c => { const k = W3('RightLeg'), a = W3('RightFoot'); // 两手指尖扶在前腿小腿两边
+    return Object.assign(ik('Right', 'arm', k.clone().lerp(a, 0.15).add(V(0, 3, 0)).add(hdir(c, 20, 0).multiplyScalar(4)), nrm(OS(c, 'Right'), 1, DOWN, 0.4)),
+      ik('Left', 'arm', k.clone().lerp(a, 0.75).add(V(0, 3, 0)).add(hdir(c, 20, 0).multiplyScalar(-3)), nrm(OS(c, 'Left'), 1, DOWN, 0.4))); } };
+OV.hipflex = { arms: handsOnHips, feet: c => ({ LeftFoot: hz(c.F) }) }; // 双手扶髋；前脚（远侧）脚掌平踩
+OV.ankle = { feet: c => ({ RightFoot: hz(c.F) }), // 前脚脚跟一直踩地（脚掌平），只有膝盖往前
+  arms: c => { const wx = W3('RightToe_End').x + WALLK - 1.2; // 两手掌扶在墙上（墙面＝脚尖前 WALLK）
+    return both(s => { const sh = W3(s + 'Arm'); return Object.assign(ik(s, 'arm', V(wx, sh.y - 6, sh.z + OS(c, s).z * 3), nrm(DOWN, 1, OS(c, s), 0.6)), { [s + 'Hand']: UP.clone() }); }); } };
+OV.sideplank = { roll: 90, rollMode: 'torso', // 右侧朝下：右上臂垂直地面、前臂平放往前；左手扶在上面的髋
+  arms: c => Object.assign({ RightArm: DOWN.clone(), RightForeArm: hz(c.F), RightHand: hz(c.F) },
+    ik('Left', 'arm', W3('LeftUpLeg').add(c.T.clone().multiplyScalar(6)).add(OS(c, 'Left').multiplyScalar(5)).add(c.F.clone().multiplyScalar(1)), nrm(OS(c, 'Left'), 1, c.F, -0.5))) };
+OV.clam = { roll: 90, rollMode: 'rigid', // 先照「趴着」摆：屈髋 45°、屈膝 90°，再整个人转成右侧躺
+  legs: c => { const rf = c.def('Right', 'leg'), a = THREE.MathUtils.degToRad(50 * c.p); // 左（上）脚贴着右脚，左膝往外（转过来＝往上）打开
+    const pole = nrm(c.F, Math.cos(a), OS(c, 'Left'), Math.sin(a) * 1.6 - 0.45 * (1 - c.p), c.T, -0.2); // 合着时膝盖往里叠在下面那膝上
+    return ik('Left', 'leg', rf.clone().add(OS(c, 'Left').multiplyScalar(5)), pole); },
+  arms: c => Object.assign({ RightArm: nrm(c.T, 1, c.OR, 0.3), RightForeArm: nrm(c.T, 1, c.OR, 0.3) }, // 下面那只手往头上方伸直、枕着头
+    ik('Left', 'arm', W3('LeftUpLeg').add(c.T.clone().multiplyScalar(6)).add(OS(c, 'Left').multiplyScalar(5)).add(c.F.clone().multiplyScalar(1)), nrm(OS(c, 'Left'), 1, c.F, -0.5))) }; // 哑铃臀桥：两手扶住横放在髋上的哑铃（跟臀推同一套）
 function midHands(c, half, pole) { // 两手一起握一只哑铃：把 2D 的手位置挪到身体中线
   const h = c.def('Right', 'arm'), mid = W3('Hips'), off = h.clone().sub(mid).dot(c.OR); const m = h.sub(c.OR.clone().multiplyScalar(off));
   return Object.assign(ik('Right', 'arm', m.clone().add(c.OR.clone().multiplyScalar(half)), nrm(c.OR, 0.7, pole, 1)), ik('Left', 'arm', m.clone().add(c.OR.clone().multiplyScalar(-half)), nrm(c.OR, -0.7, pole, 1)));
@@ -415,7 +444,10 @@ function pose(s, c) {
   const T = v2(P, 'hip', 'sh'), F = V(T.y, -T.x, 0);
   const m0 = new THREE.Matrix4().makeBasis(BODY_FWD.clone().cross(BODY_UP), BODY_UP, BODY_FWD);
   const m1 = new THREE.Matrix4().makeBasis(F.clone().cross(T), T, F);
-  const R = new THREE.Quaternion().setFromRotationMatrix(m1.multiply(m0.invert())); c.R = R;
+  let R = new THREE.Quaternion().setFromRotationMatrix(m1.multiply(m0.invert()));
+  // 侧躺的动作（2026-11-18 体态小课）：'torso'＝只把身体绕长轴转 90°（四肢仍照 2D 在这个平面里摆＝侧桥从正面看的样子）
+  if (ov.rollMode === 'torso') R = rollQ(V(T.x, T.y, 0), REST_RIGHT.clone().applyQuaternion(R), ov.roll).multiply(R);
+  c.R = R;
   root.position.set(0, 0, 0); root.quaternion.identity(); root.updateMatrixWorld(true);
   for (const n of ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head', 'LeftShoulder', 'RightShoulder']) setWorldQuat(n, R.clone().multiply(REST[n]));
   const fr = frameNow(); Object.assign(c, fr);
@@ -462,6 +494,11 @@ function pose(s, c) {
   if (ov.plant) plantHands(c, ov.plant);
   if (ov.after) { const t = ov.after(c); applyLimbs(R, t, ['RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand']); }
   root.updateMatrixWorld(true);
+  if (ov.rollMode === 'rigid') { // 'rigid'＝整个人（含四肢）绕身体长轴转 90°：趴着摆好的屈髋屈膝，转过来就是侧躺（蚌式）
+    const f = frameNow(), H0 = W3('Hips'), q = rollQ(f.T, f.OR, ov.roll);
+    root.quaternion.premultiply(q); root.position.copy(H0.clone().sub(H0.clone().applyQuaternion(q))); root.updateMatrixWorld(true);
+    Object.assign(c, frameNow()); if (ov.rolled) { const t = ov.rolled(c); applyLimbs(R, t, Object.keys(t)); root.updateMatrixWorld(true); }
+  }
   // 落地：躺／趴的动作看全身最低点，站着的看脚（肩胛俯卧撑看手：胸口相对两手上下）
   const pts = NAMES.map(n => W3(n));
   const low = ov.plant && ov.plant.groundBy === 'hands' ? Math.min(W3('RightHand').y, W3('LeftHand').y) - 2.5
@@ -525,6 +562,7 @@ function modelP() {
     ne: g('RightForeArm'), nh: g('RightHand'), fe: g('LeftForeArm'), fh: g('LeftHand'), hd: g('Head') };
 }
 function props(s, P, c) {
+  const pr0 = n => s.props.includes(n);
   nb = 0; boxes.forEach(b => (b.visible = false)); nr = 0; rods.forEach(r => (r.visible = false));
   const X = n => P[n][0], Y = n => P[n][1];
   for (const pr of s.props) {
@@ -592,6 +630,8 @@ function props(s, P, c) {
     rod(pul, hd, 0.4, M.cable);
     rod(hd.clone().add(o.clone().multiplyScalar(5)), hd.clone().add(o.clone().multiplyScalar(-5)), 1.0, M.chrome); // 把手
   }
+  if (pr0('wallK')) { if (PROPX == null) PROPX = W3('RightToe_End').x + WALLK; box(PROPX, PROPX + 3, 0, 120, 110, M.room); } // 踝关节活动：膝盖去碰的墙（第 0 格定位置，之后不动）
+  if (pr0('wallH')) { if (PROPX == null) PROPX = Math.max(W3('RightForeArm').x, W3('RightHand').x, W3('LeftForeArm').x, W3('LeftHand').x) + 3.2; box(PROPX, PROPX + 3, 0, 135, 120, M.room); } // 靠墙滑臂：前臂贴着的墙
   if (KEY === 'pullapart') rod(W3('RightHand'), W3('LeftHand'), 0.7, M.band); // 弹力带：两手之间
   if (KEY === 'facepull') { const m = W3('RightHand').lerp(W3('LeftHand'), 0.5); rod(m, V(m.x + 140, W3('Head').y, m.z), 0.35, M.cable); }
   if (KEY === 'wallpec' && c.E) { // 墙：在身体左边，墙面贴着左前臂外侧（皮肉约 2.6 单位厚）
@@ -680,6 +720,8 @@ const SIDES = {
   row1: { lats: 'Right', mid_back: 'Right', rear_delt: 'Right', biceps: 'Right', forearm: 'Right' },
   tap: { ant_delt: 'Left', serratus: 'Left' },
   sldl: { hamstrings: 'Right', glutes: 'Right', glute_med: 'Right', adductors: 'Right' }, // 支撑腿
+  hip9090: { glutes: 'Right', hip_flexors: 'Left' }, hipflex: { hip_flexors: 'Right', quads: 'Right' }, ankle: { calves: 'Right' },
+  clam: { glute_med: 'Left', glutes: 'Left' }, suitcase: { obliques: 'Left', forearm: 'Right' },
   wallpec: { pec: 'Left', ant_delt: 'Left' }, pronepec: { pec: 'Left', ant_delt: 'Left' }, // 只拉开贴墙／贴地那只手那一侧
 };
 function glowPoints(spec, c) {
@@ -705,9 +747,10 @@ function setHalos(pts, k, size = 13) { const main = pts.filter(q => q[1] >= 1); 
 const CONC = { squat: 'down', squatG: 'down', thruster: [1, 1, 0, 0], legpress: 'up', hpush: 'down', bench: 'up', fpress: 'up', incline: 'up', seatpush: 'up',
   hinge: 'down', legcurl: 'up', bridge: 'up', bridge2: 'up', thrust: 'up', row: 'up', row1: 'up', invrow: 'up', seatrow: 'up', pulldown: 'up', ohp: 'up', seatohp: 'up',
   pike: 'down', lunge: 'down', split: 'down', step: 'up', rfly: 'up', facepull: 'up', yraise: 'up', climber: [0.9, 0.9], swing: 'up', jack: [0.85, 0.85], deadbug: 'up',
-  burpee: [0.6, 1, 1, 1, 1, 1], tap: [0.85, 0.85], sldl: 'down', smithsquat: 'down', dbbridge: 'up', pullup: 'up', pullapart: 'up', ohpseat: 'up' };
+  burpee: [0.6, 1, 1, 1, 1, 1], tap: [0.85, 0.85], sldl: 'down', smithsquat: 'down', dbbridge: 'up', pullup: 'up', pullapart: 'up', ohpseat: 'up',
+  wallslide: 'up', sideplank: 'up', clam: 'up', suitcase: [0.85, 0.85] };
 // PEAK：拉得最开的是第几个关键帧；'both'＝两端都是（左右交替／猫牛），'const'＝一直拉着
-const PEAK = { quad: 1, fig4: 1, chest: 1, child: 1, march: 'both', armcircle: 'const', catcow: 'both', lungeT: 1, scap: 'both', wgs: 1 };
+const PEAK = { quad: 1, fig4: 1, chest: 1, child: 1, march: 'both', armcircle: 'const', catcow: 'both', lungeT: 1, scap: 'both', wgs: 1, hip9090: 1, hipflex: 1, ankle: 1 };
 function isConc(key, ph) { let c = CONC[key] ?? 'up'; if (typeof c === 'string') c = c === 'up' ? [1, 0] : [0, 1]; return (c[ph.seg] ?? 0) > 0; }
 function effort(type, key, ph) {
   if (type === 'swim') return 0;
@@ -766,7 +809,9 @@ const CAM = { // 个别动作的机位微调 [yaw, pitch]
   bridge: [84, 14], bridge2: [84, 14], legcurl: [84, 14], hpush: [36, 16], yraise: [150, 30], backfloat: [40, 32], seatrow: [124, 12], row1: [140, 12],
   pullup: [124, 8], pulldown: [150, 8], rfly: [150, 16], facepull: [145, 8], scap: [140, 20], jelly: [84, 16], starfloat: [84, 18], chest: [30, 6],
   wallpec: [58, 8], clasp: [120, 8], pronepec: [70, 50],
+  hip9090: [24, 40], clam: [-62, 32], sideplank: [-62, 12], ankle: [96, 8], wallslide: [168, 12],
 };
+let PROPX = null, WALLK = 12; // 体态小课的墙：第 0 格定下 x，整个循环不动
 let CUR = null, PROFILE = false; // PROFILE＝正在渲染侧面版
 function caption(spec) {
   const shared = /\s\/\s/.test(spec.reps || ''); // 同一张图被两处不同次数共用：只写标题
@@ -786,7 +831,7 @@ function caption(spec) {
   return top + 48; // 字幕占掉的高度
 }
 window.setup = function (spec, combo, fps = 12) {
-  KEY = combo.anim; HOLD = combo.hold; PROFILE = !!combo.side;
+  KEY = combo.anim; HOLD = combo.hold; PROFILE = !!combo.side; PROPX = null;
   const s0 = ANIM.sample(KEY, 0); if (!s0) return null;
   const ov = OV[KEY] || {}, cycles = ov.cycles || 1;
   const T1 = ANIM.cycleLen(KEY), T = T1 * cycles;

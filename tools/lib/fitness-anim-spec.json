@@ -1960,5 +1960,195 @@
    "https://exrx.net/WeightExercises/DeltoidAnterior/DBShoulderPress"
   ],
   "note": ""
+ },
+ {
+  "file": "hip9090",
+  "anim": "hip9090",
+  "type": "mobility",
+  "title_zh": "90/90 坐姿髋部拉伸",
+  "reps": "每侧30秒",
+  "cue_zh": "两膝各弯90°，上身挺直、从髋往前折",
+  "primary": [
+   "glutes",
+   "hip_flexors"
+  ],
+  "secondary": [
+   "adductors"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "front34",
+  "plane": "mixed",
+  "plane_detail": "坐地：前腿（右）大腿往前偏右约 20°、膝 90°、小腿横在身前往左；后腿（左）大腿往左侧、膝 90°、小腿朝后；两腿都贴地。上身挺直，动作＝背打直从髋往前折 0→22°。",
+  "form_audit": "新动作（2026-11-18 体态小课）。2D 引擎只画得出坐着前倾；腿的摆法在渲染台 OV.hip9090 用水平方位角摆。前腿那侧亮臀部（外旋被拉开），后腿那侧亮髋前侧。",
+  "sources": [
+   "https://health.clevelandclinic.org/90-90-stretch/",
+   "https://www.hss.edu/health-library/move-better/hip-flexor-stretch"
+  ],
+  "note": "2026-11-18 经 CI 读网页通道（web-lookup.yml，run 44246498844）读原文：Cleveland Clinic「Bend your right knee at a 90-degree angle」「It should extend off to your left side… Bend your left knee at a 90-degree angle. This will leave your lower leg pointing straight back」「hold your torso straight up with your shoulders square. Fight the tendency to lean to one side」「Hold this pose for 20 to 60 seconds then repeat」「Sit on a yoga block or pillow」「Put a support beneath your front knee… don't force it down」「fold at your hip joint while keeping your back straight… Avoid rounding your spine」「if you're having pain or a pinching feeling during the stretch… stop」；HSS 同一个坐姿：「Sit on the floor with your right leg in front of you and your knee bent at a 90-degree angle, so the bottom of your foot is facing the left wall. Extend your left leg out to the side and bend your knee at a 90-degree angle, so the bottom of your foot is facing the back wall. Square your shoulders to the front」「Hold each stretch for 30 seconds on each side」。每侧 30 秒取 HSS 的 30 秒（在 Cleveland 的 20–60 秒内）。Physitrack 的 90 90 hip rotation 页内容前后矛盾（步骤写的是仰躺），不采用。"
+ },
+ {
+  "file": "hipflex",
+  "anim": "hipflex",
+  "type": "stretch",
+  "title_zh": "半跪髋屈肌拉伸",
+  "reps": "每侧30秒",
+  "cue_zh": "夹紧后腿屁股、骨盆下收，髋往前推",
+  "primary": [
+   "hip_flexors"
+  ],
+  "secondary": [
+   "quads"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "front34",
+  "plane": "sagittal",
+  "plane_detail": "近侧（右）腿跪地在后、大腿近垂直、小腿平贴地朝正后；远侧（左）脚在前、大腿平行地面、膝约 90°。动作：髋往前推约 15°、骨盆后倾，上身直；双手扶髋。",
+  "form_audit": "新动作（2026-11-18 体态小课）。拉开的是后腿（近镜头那只）髋前侧，只亮右侧。",
+  "sources": [
+   "https://www.hss.edu/health-library/move-better/hip-flexor-stretch",
+   "https://www.motra.com/exercises/halfKneelingHipFlexorStretch",
+   "https://ca.physitrack.com/home-exercise-video/hip-flexor-kneeling-stretch"
+  ],
+  "note": "2026-11-18 经 CI 读网页通道（web-lookup.yml，run 44246498844）读原文：HSS「Bring your right leg in front of you so that your right thigh is parallel to the floor, with your knee bent at a 90-degree angle and your foot flat on the floor. Leave your left knee on the floor, making sure that your shin is pointing straight back」「Put your hands on your hips, then bring your thumbs downward, contract your glutes, and feel your pelvis tuck under you」「Hold each stretch for 30 seconds on each side」；Motra「Place a pad under the kneeling knee for comfort and keep torso upright」「Tuck your pelvis by squeezing the glute of the kneeling leg」「Shift your hips forward while keeping the back knee on the ground」「avoiding lower back arch」；Physitrack「Start in half kneeling with your back straight, push your hip forward」「Squeeze your glutes for an extra stretch」。"
+ },
+ {
+  "file": "ankle",
+  "anim": "ankle",
+  "type": "mobility",
+  "title_zh": "跪姿推膝碰墙",
+  "reps": "每侧30秒",
+  "cue_zh": "脚跟踩地，膝盖往前碰墙",
+  "primary": [
+   "calves"
+  ],
+  "secondary": [],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "面墙半跪：前脚（近侧右）脚掌平踩、脚尖离墙一小段；后膝着地。动作：小腿从垂直往前倒约 30°（膝盖越过脚尖去碰墙），脚跟不离地；双手扶墙。",
+  "form_audit": "新动作（2026-11-18 体态小课）。墙在前脚前方（渲染台第 0 格定位、之后不动）。前脚用 OV.ankle 保持脚掌平贴地。",
+  "sources": [
+   "https://ca.physitrack.com/home-exercise-video/ankle-dorsiflexion-rom-in-half-kneeling",
+   "https://pabau.com/blog/knee-to-wall-test/",
+   "https://library.theprehabguys.com/vimeo-video/knee-to-wall-ankle-dorsiflexion-assessment"
+  ],
+  "note": "2026-11-18 经 CI 读网页通道（web-lookup.yml，run 44246498844）读原文：Physitrack「Kneel down facing a wall. Place the foot you would like to exercise in front of you and place your palms on the wall」「Move your hips towards the wall, allowing your knee to travel forward and touch the wall. If you are able to do this without your heel lifting, slide your foot back a little」「rock your hips forward and backward」；Pabau「The knee should track in line with the second toe, not collapse inward」「If the heel lifts before the knee reaches the wall, the result at that distance is a fail」；Prehab Guys「Make sure your heel stays on the ground」。"
+ },
+ {
+  "file": "wallslide",
+  "anim": "wallslide",
+  "type": "strength",
+  "title_zh": "靠墙滑臂",
+  "reps": "8–10",
+  "cue_zh": "前臂压墙往上滑，不耸肩、不拱腰",
+  "primary": [
+   "serratus"
+  ],
+  "secondary": [
+   "mid_back",
+   "lat_delt"
+  ],
+  "strip": [
+   "肩",
+   "背"
+  ],
+  "view": "back34",
+  "plane": "sagittal",
+  "plane_detail": "面墙站，两前臂平行、竖直贴墙，手肘约 90°、在肩高；往上滑到上臂约前举 125°，上身随之微微靠向墙；从背后斜看肩胛骨。",
+  "form_audit": "新动作（2026-11-18 体态小课）。墙画在前臂前面（渲染台第 0 格定位）；机位从背后斜看（墙不挡人）。",
+  "sources": [
+   "https://www.catalystathletics.com/exercise/783/Wall-Slide/",
+   "https://library.theprehabguys.com/vimeo-video/wall-slide/"
+  ],
+  "note": "2026-11-18 经 CI 读网页通道（web-lookup.yml，run 44246498844）读原文：Catalyst Athletics「place your forearms parallel to each other against it with a 90-degree angle at the elbow and shoulder」「Keeping your trunk braced to avoid arching the back, slide the forearms straight up the wall, keeping them parallel to each other. Keep the shoulder blades down and level with each other」「Return at the same controlled tempo」；Prehab Guys「Start with your entire forearms against the wall. Push into the wall… Slowly work your way up the wall, then slide back down」「You should feel all the muscles working in your shoulder, especially the muscles under your armpit」「Do not let your back arch」。8–10 次：搜索摘要转述 Prehab 资料库「1-3 sets of 8-10 reps」，该页原文这次没抓到，次数改标为 App 的安排、不当成来源说法。「耸肩或拱腰就是上限」：搜索摘要转述，原文未读——App 文案只写「不要耸肩、不要拱腰」。"
+ },
+ {
+  "file": "sideplank",
+  "anim": "sideplank",
+  "type": "strength",
+  "title_zh": "侧桥",
+  "reps": "每侧20–30秒",
+  "cue_zh": "手肘在肩正下方，头到脚一直线",
+  "primary": [
+   "obliques"
+  ],
+  "secondary": [
+   "glute_med",
+   "abs"
+  ],
+  "strip": [
+   "核心",
+   "臀腿"
+  ],
+  "view": "front",
+  "plane": "frontal",
+  "plane_detail": "右侧朝下：右上臂垂直地面、前臂平放朝前，手肘在肩正下方；两腿伸直叠放。动作：髋从贴地抬到头—髋—脚一直线；左手扶在上面的髋。",
+  "form_audit": "新动作（2026-11-18 体态小课）。2D 画的是「从正面看」的侧桥轮廓；渲染台 OV.sideplank 用 rollMode 'torso' 把身体绕长轴转 90°，四肢照 2D 在同一平面。",
+  "sources": [
+   "https://www.kentmedwaymentalhealth.nhs.uk/pdf-documents/coronavirus-documents/coronavirus-page-documents/physiotherapy-strength-exercise-guide/introduction/elbow-plank-and-side-plank/",
+   "https://live-ucalgary.ucalgary.ca/shred-injuries/all-sports/soccer/side-plank"
+  ],
+  "note": "2026-11-18 经 CI 读网页通道（web-lookup.yml，run 44246498844）读原文：Kent and Medway NHS「Lie on your side propped up on an elbow. Your shoulder should be directly above your elbow. Straighten your legs and raise your hips to create a straight and rigid line from head to toe」「Keep your neck long and your shoulders down and away from your ears. Keep your abs contracted」「Don't let your lower back sink」「For an easier version, perform the side plank with your knees on the floor」；University of Calgary「Work up to 20-30 second holds each side」「Elbow directly under shoulders」「Hand on hip or reaching up toward the sky」「Avoid Hips too low ('sagging')」。"
+ },
+ {
+  "file": "clam",
+  "anim": "clam",
+  "type": "strength",
+  "title_zh": "蚌式开合",
+  "reps": "每侧12–15",
+  "cue_zh": "两脚并拢，上面膝盖打开，身体不往后翻",
+  "primary": [
+   "glute_med"
+  ],
+  "secondary": [
+   "glutes"
+  ],
+  "strip": [
+   "臀腿"
+  ],
+  "view": "front",
+  "plane": "mixed",
+  "plane_detail": "右侧躺，屈髋约 45°、屈膝约 90°，两腿叠放、两脚并拢；动作：左（上）膝往上打开约 50°、脚不分开；右手往头上方伸直枕头、左手扶髋。",
+  "form_audit": "新动作（2026-11-18 体态小课）。先照「趴着」摆屈髋屈膝，再用 rollMode 'rigid' 整个人绕长轴转成右侧躺；只亮上面（左）那侧臀中肌。",
+  "sources": [
+   "https://ca.physitrack.com/home-exercise-video/side-lying-clam",
+   "https://us.physitrack.com/home-exercise-video/resisted-clam-shells",
+   "https://pubmed.ncbi.nlm.nih.gov/25246373/"
+  ],
+  "note": "2026-11-18 经 CI 读网页通道（web-lookup.yml，run 44246758896）读原文：Physitrack（04）「Lie on your unaffected side with your knees bent, and your legs stacked on top of each other」「Keep your back and pelvis still and your feet together at all times」「Lift the top knee slowly up」「Control the movement as you lower the leg back down」「Ensure you do not roll your body backwards」；Physitrack（02）「place a band above your knees」「Keeping your feet together, lift the top knee up」「do not roll your hips and your body back」。肌电研究两说：Sidorkewicz 2014（PMID 25246373 摘要，fetch-url run 44246800070）「Both exercises remained gluteus medius-dominant… the clamshell may be the preferred rehabilitative exercise… when minimal tensor fascae latae muscle activation is desired」；McBeth 2012（PMID 22488226 摘要）「The ABD exercise is preferred if targeted activation of the GMed is a goal」。每侧 12–15 次是 App 的安排（Merck 的 3×10 只见于搜索摘要、原文没抓到）。"
+ },
+ {
+  "file": "suitcase-one",
+  "anim": "suitcase",
+  "type": "strength",
+  "title_zh": "单手提哑铃原地踏步",
+  "reps": "每侧30秒",
+  "cue_zh": "两肩一样高，身体不往重量那边歪",
+  "primary": [
+   "obliques"
+  ],
+  "secondary": [
+   "forearm",
+   "glute_med"
+  ],
+  "strip": [
+   "核心"
+  ],
+  "view": "front34",
+  "plane": "sagittal",
+  "plane_detail": "右手提一只哑铃垂在身侧、左手空着；站直、两肩水平，原地慢慢交替抬膝（约 70°）。从正面看左右对称。",
+  "form_audit": "新动作（2026-11-18 体态小课）。抗侧弯：发光放在对侧（左）腹斜肌。",
+  "sources": [
+   "https://www.health.harvard.edu/staying-healthy/how-to-build-a-better-core",
+   "https://kettlebellsworkouts.com/kettlebell-suitcase-carry/",
+   "https://www.rehabhero.ca/exercise/suitcase-carry"
+  ],
+  "note": "2026-11-18 经 CI 读网页通道（web-lookup.yml，run 44246498844）读原文：Harvard Health（物理治疗师 L'Italien）「you hold a weight in only one hand while your other hand is free」「With all the weight on one side, it forces you to work harder to maintain a neutral position so you don't lean while you walk」；kettlebellsworkouts「Marching suitcase hold (stationary core drill)」「While holding the kettlebell in one hand, march slowly in place」「Chest up, shoulders back, core braced. Don't lean toward the weight」「You should look symmetrical from the front」「Keep shoulders level」「Choose a kettlebell you can carry with perfect posture for 20–30 seconds per side」；Rehab Hero「walk upright without leaning towards or away from the weight」。"
  }
 ]

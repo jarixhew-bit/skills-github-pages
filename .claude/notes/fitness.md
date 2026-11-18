@@ -101,6 +101,22 @@
   - 沙盒连不上 Higgsfield 的上传与下载域名：来源影片在 Higgsfield 自己的云端工作区（`sandbox_exec`）里重渲染后上传；成品打成 zip
     传到 Higgsfield，再由 `.github/workflows/fetch-file.yml`（推 `.fetch/request.json` 触发）抓回分支。
   - **侧面版（`-side.webp`）还是 3D 人物**；其余 66 张也还是 3D 人物。
+- **体态（2026-11-18，用户：「重量深蹲时也会歪一边 而且好像高低肩」「x型腿呢」）**：查证正本 `.claude/notes/fitness-posture-research.md`，
+  **App 文案里的事实都要对得上那份笔记里已读原文的来源**（`SRC` 清单）；App 自己定的门槛／次数写明「App 的安排」。
+  - 入口：训练页 `#postCard`（开始按钮下面）＋「更多」的「打开体态」；体态页 `#tab-post` 不占底部分页（`openPost()`／`closePost()`）。
+  - 资料：localStorage `fit.posture`＝`{q 问卷, red 红旗, tests[推膝碰墙 cm 与侧桥秒数 L/R], done[做过的小课], qTs, ack}`；
+    照片在 IndexedDB `fit-posture`/`photos`（`{id,ts,view:front|back,data:jpeg dataURL}`，上传时缩到 900px）。都进备份（`posture`／`postPhotos`），导入只补本机没有的。
+  - 红旗 `redList()`：前弯测试一边隆起、痛、麻、越来越明显、X 型腿只有一边或成年后才出现 → 只显示「建议先给医生或物理治疗师看」，小课按钮全部拿掉；
+    用户按「医生／物理治疗师看过，说可以运动」（`post.ack`）才给小课，提醒仍留着。
+  - 体态小课 `postSteps()`（8 个动作 `PMOVE`，约 10 分钟，全屏跟练 `plMode="posture"`，最后一步 `pdone` 记一笔）：弱侧 `postSides()`——
+    推膝碰墙差 ≥2 cm、侧桥差 ≥10%、深蹲往 X 歪 → 另一侧的分腿蹲先做＋多一组、动作中膝内倒 → 蚌式那侧多一组。
+  - 力量日提醒 `postCueHTML(anim)`：深蹲类（`SQUAT_ANIMS`）只在填了「往哪边歪」或「膝内倒」才出现；单侧动作（`UNI_ANIMS`）知道弱侧才出现。卡片与跟练都有。
+  - 满 28 天提醒重测（`postDue()`）。
+  - 新动图 7 张：`hip9090`／`hipflex`／`ankle`（蓝光）、`wallslide`／`sideplank`／`clam`／`suitcase-one`（红光）；分腿蹲用原有的 `split`。
+    渲染台新机制：`OV.x.rollMode='torso'`（只把身体绕长轴转 90°、四肢照 2D 在同一平面＝侧桥从正面看）、`'rigid'`（整个人含四肢转 90°：趴着摆好的屈髋屈膝转成侧躺＝蚌式）；
+    墙 `wallK`（脚尖前 `WALLK`）／`wallH`（前臂前）在第 0 格定位 `PROPX` 之后不动，2D／anim3d／渲染台三处都有。侧躺两张机位要 yaw 负值（脸朝 −z）。
+    anim3d.js（3D 模式）不懂侧躺，只有用户选「3D」时会看到未转过来的姿势。
+  - 自检：check-fitness 第 16 段。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 

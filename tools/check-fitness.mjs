@@ -26,6 +26,8 @@
  *  14. 点示范放大：同一张图、要点与计时在放大里、跟练下一步跟着换、侧面切换、✕／Esc、放大里记组＝同一份状态。
  *  15. 动图模式下一律用新动图：A/B/C × 三种器材的卡片、跟练每一步（含燃脂收尾两个动作同框）、放大、游泳课，
  *      有 webp 的动作不准退回 3D／简笔画布（2026-11-10 用户抓到燃脂收尾还是旧模型）。
+ *  16. 体态：问卷存得住／进备份；红旗挡住小课；小课按答案与左右测试加组；照片存 IndexedDB、对比画面、进备份；
+ *      深蹲提醒只在填了往哪边歪时出现；满 4 周提醒重测；8 个新动作都有动图、规格、来源。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
  *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
@@ -446,7 +448,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   await page.click('#picker [data-wk="A"]');
   const card = page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first();
   await card.locator('.ph img').nth(1).scrollIntoViewIfNeeded();
-  await page.waitForFunction(() => [...document.querySelectorAll('#workout .ph img')].slice(0, 2).every(i => i.complete && i.naturalWidth > 0), null, { timeout: 10000 }).catch(() => {});
+  await card.locator('.ph img').evaluateAll(a => Promise.all(a.map(i => i.complete && i.naturalWidth ? 1 : new Promise(r => { i.loading = 'eager'; i.addEventListener('load', r, { once: true }); i.addEventListener('error', r, { once: true }); setTimeout(r, 10000); })))); // 等这张卡自己的两张（卡片上面多了体态卡，懒载入的时机会变）
   const imgs = await card.locator('.ph img').evaluateAll(a => a.map(i => i.naturalWidth));
   check(imgs.length === 2 && imgs.every(w => w > 0), `默认用真人照片：高脚杯深蹲卡片两张照片都载入（宽 ${imgs.join('/')}）`);
   check((await card.locator('canvas').count()) === 0, '有真人照片的动作不再同时放动画');
@@ -960,6 +962,157 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   await ctx.close();
 }
 
+// ---- 16. 体态（2026-11-18 用户：「重量深蹲时也会歪一边 而且好像高低肩」「x型腿呢」） ----
+// 守：问卷存得住、进备份、导入还原；红旗一成立就挡住小课（只给「先看医生」）；小课内容跟着答案与测试数字走
+// （弱侧先做、多一组）；照片存 IndexedDB、对比画面出得来、进备份；深蹲提醒只在填了「往哪边歪」时出现；
+// 满 4 周提醒重测；每个新动作都有动图与规格（拉伸／活动度＝蓝光、力量＝红光）。
+{
+  const SHOT = process.env.POSTURE_SHOTS; // 给交付截图用（可不设）
+  const { ctx, page, errors } = await openWith([]);
+  // (a) 训练页卡片 → 体态页；还没自查时，深蹲卡片不出现体态提醒
+  await page.click('#picker [data-wk="A"]');
+  check(await page.locator('#workout [data-pcue]').count() === 0, '体态：没自查前，训练卡片没有体态提醒');
+  check(await page.locator('#postCard [data-open-post]').count() === 1, '体态：训练页有「体态」卡片（开始自查）');
+  await page.click('#postCard [data-open-post]');
+  check(await page.isVisible('#tab-post') && await page.isHidden('#tab-train'), '体态：点卡片打开体态页（不占底部分页）');
+  const pick = async (sel, v) => page.click(`${sel} [data-pq][data-v="${v}"] >> nth=0`).catch(() => {});
+  const ans = async (k, v, box = '#postQ') => page.click(`${box} [data-pq="${k}"][data-v="${v}"]`);
+  await ans('shoulder', 'R'); await ans('shift', 'L'); await ans('gap', 'N'); await ans('valgus', 'L'); await ans('pain', 'no'); await ans('numb', 'no');
+  await ans('bend', 'no', '#postRed'); await ans('worse', 'no', '#postRed'); await ans('kneeNew', 'no', '#postRed');
+  if (SHOT) await page.screenshot({ path: SHOT + '/questionnaire.png' });
+  check(await page.locator('#postRedMsg').count() === 0 && await page.locator('#postRoutine [data-post-go]').count() === 1, '体态：没有红旗 → 小课可以开始');
+  // (b) 小课内容跟着答案：深蹲往左歪 → 分腿蹲右脚先、右脚多一组；左膝往内倒 → 蚌式左腿先、左腿多一组
+  let st = await page.evaluate(() => window.__fit.posture.postSteps().filter(s => s.kind === 'timed').map(s => ({ pk: s.pk, side: s.side || null, extra: !!s.extra, anim: s.anim })));
+  const sp = st.filter(s => s.pk === 'split'), cl = st.filter(s => s.pk === 'clam');
+  check(sp.length === 3 && sp[0].side === 'R' && sp[2].extra && sp[2].side === 'R', `体态：深蹲往左歪 → 分腿蹲右脚先做、右脚多一组（${sp.map(s => s.side + (s.extra ? '+' : '')).join(',')}）`);
+  check(cl.length === 3 && cl[0].side === 'L' && cl[2].extra && cl[2].side === 'L', `体态：左膝往内倒 → 蚌式左腿先、左腿多一组（${cl.map(s => s.side + (s.extra ? '+' : '')).join(',')}）`);
+  check(st.filter(s => s.pk === 'sideplank').length === 2 && st.filter(s => s.pk === 'ankle').length === 1, '体态：没有测试数字时，侧桥与推膝碰墙左右一样多');
+  check(new Set(st.map(s => s.pk)).size === 8, `体态：小课 8 个动作（${[...new Set(st.map(s => s.pk))].join(',')}）`);
+  // 测试数字：推膝碰墙 左 8 右 11（差 ≥2）→ 左脚多一次；侧桥 左 30 右 45（差 ≥10%）→ 左侧先、多一组
+  await page.fill('#ptKL', '8'); await page.fill('#ptKR', '11'); await page.fill('#ptSL', '30'); await page.fill('#ptSR', '45'); await page.click('#ptSave');
+  st = await page.evaluate(() => window.__fit.posture.postSteps().filter(s => s.kind === 'timed').map(s => ({ pk: s.pk, side: s.side || null, extra: !!s.extra })));
+  const an = st.filter(s => s.pk === 'ankle'), pl = st.filter(s => s.pk === 'sideplank');
+  check(an.length === 2 && an[1].extra && an[1].side === 'L', '体态：推膝碰墙左 8 右 11 cm → 左脚多做一次');
+  check(pl.length === 3 && pl[0].side === 'L' && pl[2].extra && pl[2].side === 'L', '体态：侧桥左 30 右 45 秒 → 左侧先做、多一组');
+  check(await page.locator('#postTests svg.spark').count() === 0 && /记两次以上/.test(await page.textContent('#postTests')), '体态：只有一笔测试时不画走势、提示记两次');
+  await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('fit.posture')); p.tests.unshift({ id: 'pt_old', ts: p.tests[0].ts - 28 * 864e5, ktwL: '6', ktwR: '10.5', spL: '20', spR: '40' }); localStorage.setItem('fit.posture', JSON.stringify(p)); });
+  await page.reload(); await page.waitForSelector('#workout .ex');
+  check(await page.locator('#postCard [data-post-go]').count() === 1, '体态：重载后问卷还在（训练页卡片直接给「开始体态小课」）');
+  // (c) 深蹲提醒只在填了往哪边歪时出现；单侧动作提醒弱侧先做
+  await page.click('#picker [data-wk="A"]');
+  const gs = page.locator('#workout .ex').filter({ hasText: '高脚杯深蹲' }).first();
+  const cue = await gs.locator('[data-pcue]').allTextContents();
+  check(cue.some(t => /往左歪就先减重/.test(t)) && cue.some(t => /第二根脚趾/.test(t)), `体态：深蹲卡片出现「往左歪就先减重」与「膝盖对准第二根脚趾」（${cue.join(' / ')}）`);
+  check(await page.locator('#workout .ex').filter({ hasText: '卧推' }).first().locator('[data-pcue]').count() === 0, '体态：卧推（不是深蹲类）没有体态提醒');
+  await page.click('#picker [data-wk="C"]');
+  check(/右脚先做/.test(await page.locator('#workout .ex').filter({ hasText: '分腿蹲' }).first().textContent()), '体态：C 训练的分腿蹲提醒「右脚先做」');
+  await page.click('#picker [data-wk="A"]');
+  await page.click('#startPlayer');
+  for (let i = 0; i < 8; i++) await page.click('#plNextBtn');
+  check(/往左歪/.test(await page.textContent('#plMain')), '体态：全屏跟练的深蹲类那组也有提醒');
+  await page.click('#plClose');
+  // (d) 跟练：每步都有动图（不准退回画布）、换边提醒、做完记一笔
+  await page.click('#postCard [data-post-go]');
+  check(await page.isVisible('#player'), '体态：小课用全屏跟练打开');
+  const pst = await page.evaluate(() => window.__fit.player().steps);
+  let noImg = [];
+  for (let i = 0; i < pst.length - 1; i++) { const h = await page.innerHTML('#plPhoto'); if (!/anim\/[\w-]+\.webp/.test(h) || !(await page.locator('#plCanvas').isHidden())) noImg.push(i); await page.click('#plNextBtn'); }
+  check(noImg.length === 0, `体态：跟练 ${pst.length - 1} 步都显示动图（没有退回画布）${noImg.length ? '（第 ' + noImg.join(',') + ' 步）' : ''}`);
+  check(pst[0].half && /换边/.test(pst[0].name), '体态：90/90 每侧 30 秒、时间过半提示换边');
+  await page.click('#plAct');
+  const pd = await page.evaluate(() => window.__fit.posture.get().done.length);
+  check(pd === 1 && await page.isHidden('#player'), '体态：最后一步「完成并记录」记下 1 次、关掉跟练');
+  // (e) 照片：存进 IndexedDB、对比画面（格线＋水平线）出得来、重载还在
+  await page.click('#postCard [data-open-post]');
+  const png = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 60; c.height = 80; const g = c.getContext('2d'); g.fillStyle = '#c33'; g.fillRect(0, 0, 60, 80); g.fillStyle = '#fff'; g.fillRect(20, 10, 20, 60); return c.toDataURL('image/png').split(',')[1]; });
+  await page.setInputFiles('#ppFront', { name: 'front.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await page.waitForSelector('#ppCmp-front img');
+  await page.setInputFiles('#ppBack', { name: 'back.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await page.waitForSelector('#ppCmp-back img');
+  const ph = await page.evaluate(async () => (await window.__fit.posture.photoAll()).map(p => ({ view: p.view, jpg: /^data:image\/jpeg/.test(p.data) })));
+  check(ph.length === 2 && ph.every(p => p.jpg) && ph.some(p => p.view === 'front') && ph.some(p => p.view === 'back'), `体态：正面＋背面照片存进 IndexedDB（${JSON.stringify(ph)}）`);
+  check(!(await page.evaluate(() => Object.keys(localStorage).some(k => /data:image/.test(localStorage.getItem(k))))), '体态：照片没有塞进 localStorage');
+  check(await page.locator('#ppCmp-front .grid').count() === 2 && await page.locator('#ppCmp-front .hl').count() === 2, '体态：对比画面有格线与红色水平线（两张各一）');
+  await page.fill('#ppHl', '62'); await page.dispatchEvent('#ppHl', 'input');
+  check((await page.getAttribute('#ppCmp-back .hl >> nth=1', 'style')).includes('62%'), '体态：拉水平线两张一起动');
+  if (SHOT) { await page.locator('#postPhotos').scrollIntoViewIfNeeded(); await page.screenshot({ path: SHOT + '/photo-compare.png' }); await page.locator('#postRoutine').scrollIntoViewIfNeeded(); await page.screenshot({ path: SHOT + '/routine-card.png' }); }
+  await page.reload(); await page.waitForSelector('#workout .ex'); await page.click('#postCard [data-open-post]');
+  await page.waitForSelector('#ppCmp-front img');
+  check(true, '体态：重载后照片还在对比画面');
+  // (f) 备份：问卷、测试、做过的小课、照片都在；导入到新手机全部还原
+  await page.click('#postBack'); await page.click('nav.tabs [data-tab="more"]');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+  const bf = `${os.tmpdir()}/fit-post-backup-${process.pid}.json`; fs.copyFileSync(await dl.path(), bf);
+  const bk = JSON.parse(fs.readFileSync(bf, 'utf8'));
+  check(bk.posture && bk.posture.q.shift === 'L' && bk.posture.tests.length === 2 && bk.posture.done.length === 1 && Array.isArray(bk.postPhotos) && bk.postPhotos.length === 2, '体态：备份含问卷、2 笔测试、1 次小课、2 张照片');
+  check(errors.length === 0, `体态没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+  const b2 = await openWith([]);
+  await b2.page.click('nav.tabs [data-tab="more"]');
+  await b2.page.setInputFiles('#bkFile', bf);
+  await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+  const p2 = await b2.page.evaluate(async () => ({ q: window.__fit.posture.get().q, t: window.__fit.posture.get().tests.length, ph: (await window.__fit.posture.photoAll()).length }));
+  check(p2.q.shift === 'L' && p2.q.valgus === 'L' && p2.t === 2 && p2.ph === 2, `体态：导入备份 → 问卷、测试、照片都还原（${JSON.stringify(p2)}）`);
+  check(/2 张体态照片/.test(await b2.page.textContent('#bkMsg')), '体态：导入讯息说明还原了几张照片');
+  await b2.ctx.close(); fs.rmSync(bf, { force: true });
+}
+// 红旗：前弯测试一边隆起（或痛、麻、越来越明显、X 型腿只有一边）→ 只给「建议先给医生或物理治疗师看」，小课不排
+{
+  const SHOT = process.env.POSTURE_SHOTS;
+  const { ctx, page, errors } = await openWith([]);
+  await page.click('#postCard [data-open-post]');
+  await page.click('#postQ [data-pq="shift"][data-v="R"]');
+  await page.click('#postRed [data-pq="bend"][data-v="yes"]');
+  const msg = await page.textContent('#postStatus');
+  check(/建议先给医生或物理治疗师看/.test(msg) && /不是治疗/.test(msg) && /一边明显比另一边高/.test(msg), '体态红旗：前弯测试一边隆起 → 显示「建议先给医生或物理治疗师看」＋原因＋「不是治疗」');
+  check(await page.locator('#postRoutine [data-post-go]').count() === 0 && await page.locator('#postCard [data-post-go]').count() === 0, '体态红旗：小课的开始按钮全部拿掉（体态页与训练页）');
+  check(/建议先给医生或物理治疗师看/.test(await page.textContent('#postCard')), '体态红旗：训练页卡片也写「建议先给医生或物理治疗师看」');
+  await page.evaluate(() => { try { document.querySelector('[data-post-go]') } catch (e) {} });
+  if (SHOT) { await page.locator('#postStatus').scrollIntoViewIfNeeded(); await page.screenshot({ path: SHOT + '/redflag.png' }); }
+  for (const [box, k, v, why] of [['#postQ', 'pain', 'yes', '痛'], ['#postQ', 'numb', 'yes', '麻'], ['#postRed', 'worse', 'yes', '越来越明显'], ['#postRed', 'kneeNew', 'yes', 'X 型腿只有一边／成年后出现']]) {
+    await page.click('#postRed [data-pq="bend"][data-v="no"]');
+    await page.click(`${box} [data-pq="${k}"][data-v="${v}"]`);
+    const red = await page.locator('#postRedMsg').count() === 1 && await page.locator('#postRoutine [data-post-go]').count() === 0;
+    await page.click(`${box} [data-pq="${k}"][data-v="${k === 'pain' || k === 'numb' || k === 'worse' || k === 'kneeNew' ? 'no' : 'no'}"]`);
+    check(red, `体态红旗：「${why}」也会挡住小课`);
+  }
+  check(await page.locator('#postRedMsg').count() === 0 && await page.locator('#postRoutine [data-post-go]').count() === 1, '体态红旗：全部解除后小课回来');
+  await page.click('#postRed [data-pq="bend"][data-v="yes"]');
+  await page.click('[data-post-ack]', { timeout: 3000 }).catch(() => {});
+  check(await page.locator('#postRedMsg').count() === 1 && await page.locator('#postRoutine [data-post-go]').count() === 1, '体态红旗：确认「医生看过、可以运动」后才给小课，提醒仍留着');
+  // 站着两膝并拢脚踝分开（结构性 X 型腿）：讲实话（骨头角度运动改不了），不当红旗；动作中膝盖往内倒才加蚌式
+  await page.click('[data-post-unack]', { timeout: 3000 }).catch(() => {}); await page.click('#postRed [data-pq="bend"][data-v="no"]');
+  await page.click('#postQ [data-pq="gap"][data-v="Y"]'); await page.click('#postQ [data-pq="valgus"][data-v="N"]');
+  const gtxt = await page.textContent('#postStatus');
+  check(/骨/.test(gtxt) && /截骨手术/.test(gtxt) && await page.locator('#postRedMsg').count() === 0, `体态 X 型腿（站着）：说明是骨头角度、改角度靠手术，不算红旗（${gtxt.slice(0, 160)}）`);
+  const nclam = await page.evaluate(() => window.__fit.posture.postSteps().filter(s => s.pk === 'clam').length);
+  check(nclam === 2, `体态 X 型腿：只有站着分开、动作中不内倒 → 蚌式不加组（${nclam}）`);
+  await page.click('#postQ [data-pq="valgus"][data-v="B"]');
+  const nclam2 = await page.evaluate(() => window.__fit.posture.postSteps().filter(s => s.pk === 'clam' && s.extra).length);
+  check(nclam2 === 2 && /可以练的控制问题/.test(await page.textContent('#postStatus')), `体态 X 型腿：动作中两膝都往内倒 → 两边各多一组蚌式＋说明可练（${nclam2}）`);
+  check(errors.length === 0, `体态红旗没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+// 满 4 周提醒重测（今天固定 2026-09-30）：上次自查 29 天前 → 提醒；10 天前 → 不提醒
+for (const [days, want] of [[29, true], [10, false]]) {
+  const { ctx, page } = await openWith([]);
+  await page.evaluate(d => localStorage.setItem('fit.posture', JSON.stringify({ q: { shift: 'N' }, red: { bend: 'no' }, tests: [], done: [], qTs: Date.now() - d * 864e5 })), days);
+  await page.reload(); await page.waitForSelector('#workout .ex');
+  const has = await page.locator('#postDue').count() === 1 && /29 天/.test(await page.textContent('#postCard'));
+  check(want ? has : await page.locator('#postDue').count() === 0, `体态：上次自查 ${days} 天前 → ${want ? '提醒重测' : '不提醒'}`);
+  await ctx.close();
+}
+// 新动作：每个都有动图与规格；拉伸／活动度＝蓝光（stretch/mobility）、力量＝红光（strength）
+{
+  const { ctx, page } = await openWith([]);
+  const pm = await page.evaluate(() => Object.values(window.__fit.posture.PMOVE).map(m => ({ anim: m.anim, hold: m.hold || null, kind: m.kind })));
+  const spec = JSON.parse(fs.readFileSync('tools/lib/fitness-anim-spec.json', 'utf8'));
+  const bad = pm.filter(m => { const f = m.anim + (m.hold ? '-' + m.hold : ''), s = spec.find(x => x.file === f);
+    return !fs.existsSync(`fitness/anim/${f}.webp`) || !s || (m.kind === 'mob' ? !['stretch', 'mobility'].includes(s.type) : s.type !== 'strength') || !(s.sources || []).length; }).map(m => m.anim);
+  check(pm.length === 8 && bad.length === 0, `体态：8 个动作都有动图、规格与来源，拉伸／活动度标蓝光、力量标红光${bad.length ? '（有问题：' + bad.join(',') + '）' : ''}`);
+  await ctx.close();
+}
+
 // ---- 手机宽度：没有横向卷动 ----
 {
   const { ctx, page, errors } = await openWith(HIST_A, { width: 360, height: 740 });
@@ -968,6 +1121,8 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     check(over <= 0, `360px 宽「${t}」页没有横向卷动（多出 ${over}px）`);
   }
+  await page.click('nav.tabs [data-tab="train"]'); await page.click('#postCard [data-open-post]');
+  { const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth); check(over <= 0, `360px 宽「体态」页没有横向卷动（多出 ${over}px）`); }
   check(errors.length === 0, `窄屏没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
 }
