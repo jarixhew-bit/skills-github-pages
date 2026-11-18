@@ -664,6 +664,10 @@ function toggleLang() {
   if (!lang) lang = (navigator.language || '').toLowerCase().startsWith('zh') ? 'cn' : 'en';
   applyLang(lang);
 })();
+window.addEventListener('storage', e => {
+  // 首页与同事页存的是 'zh'，其它手册存 'cn'——两种都要认
+  if (e.key === 'siteLangUser' && e.newValue) applyLang(e.newValue === 'en' ? 'en' : 'cn');
+});
 
 (function markToday() {
   const now = new Date();
