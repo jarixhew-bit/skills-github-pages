@@ -191,6 +191,29 @@ def main():
            pos is not None and abs(pos["value"] - qty * last_close) < 0.05, pos)
         ok("CSPX 市值不是按成本价估的", pos is not None and abs(pos["value"] - qty * cost) > 1, pos)
         ok("不再有「按成本估算」警告", "按成本估算" not in (r.stdout + r.stderr), r.stdout[-300:])
+
+        # 明文没变就不重写 .enc（2026-11-18）：随机 salt/nonce 让密文每次都变，
+        # 以前 state.enc 每小时进一次 git 历史
+        st_path = os.path.join(tmp, "state.enc")
+        before = open(st_path, "rb").read()
+        r2 = subprocess.run([sys.executable, os.path.join(tmp, "analyzer.py")], cwd=tmp,
+                            env={**os.environ, "ANALYZER_PW": pw}, capture_output=True, text=True)
+        ok("同样数据重跑：state.enc 一个字节都不变", r2.returncode == 0
+           and open(st_path, "rb").read() == before, r2.stdout[-200:] + r2.stderr[-200:])
+        mac_txt = open(st_path + ".mac", encoding="utf-8").read()
+        ok("旁档不含明文裸 sha256（只有 HMAC 与密文 hash）",
+           __import__("hashlib").sha256(json.dumps(analyzer.decrypt_json(before.decode(), pw),
+               ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()).hexdigest()
+           not in mac_txt, mac_txt)
+        probe = os.path.join(tmp, "probe.enc")
+        ok("首次写入会写", analyzer.write_encrypted(probe, {"a": 1}, pw) is True)
+        ok("明文相同不重写", analyzer.write_encrypted(probe, {"a": 1}, pw) is False)
+        ok("明文变了就重写", analyzer.write_encrypted(probe, {"a": 2}, pw) is True
+           and analyzer.decrypt_json(open(probe, encoding="utf-8").read(), pw) == {"a": 2})
+        open(probe, "w", encoding="utf-8").write(analyzer.encrypt_json({"a": 9}, pw))
+        ok(".enc 被别的途径改过就照常重写", analyzer.write_encrypted(probe, {"a": 2}, pw) is True
+           and analyzer.decrypt_json(open(probe, encoding="utf-8").read(), pw) == {"a": 2})
+        ok("换密码就重写", analyzer.write_encrypted(probe, {"a": 2}, pw + "x") is True)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

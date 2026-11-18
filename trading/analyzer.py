@@ -77,6 +77,46 @@ def encrypt_json(obj, password: str) -> str:
     })
 
 
+# 明文没变就不重写 .enc（2026-11-18）：encrypt_json 每次用随机 salt/nonce，数据一模一样
+# 密文也会变，「有变化才提交」形同虚设，state.enc（8 MB+）几乎每小时进一次 git 历史。
+# 旁档 <file>.mac 存「明文 HMAC  密文 sha256」两段：
+#   - 明文指纹用 HMAC 而不是裸 sha256：仓库公开，裸 hash 可被拿去字典比对猜内容；
+#     HMAC 的 key 由 ANALYZER_PW 经同样 30 万次 PBKDF2（固定盐，与加密盐分开）导出，
+#     所以这个旁档不会比 .enc 本身更容易被拿来猜密码。
+#   - 密文 sha256 用来确认 .enc 自上次写入后没被别的途径改过；对不上就照常重写。
+MAC_SALT = b"skills-github-pages/trading/enc-plaintext-mac/v1"
+_MAC_KEYS = {}
+
+
+def _plaintext_mac(obj, password: str) -> str:
+    import hashlib
+    import hmac
+    if password not in _MAC_KEYS:
+        _MAC_KEYS[password] = _derive_key(password, MAC_SALT)
+    canon = json.dumps(obj, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    return hmac.new(_MAC_KEYS[password], canon.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def write_encrypted(path: str, obj, password: str) -> bool:
+    """加密写入 path；明文与上次相同且 .enc 未被改动则不动文件。返回是否真的写了。"""
+    import hashlib
+    mac = _plaintext_mac(obj, password)
+    side = path + ".mac"
+    try:
+        old_mac, old_sha = open(side, encoding="utf-8").read().split()
+        cur_sha = hashlib.sha256(open(path, "rb").read()).hexdigest()
+        if old_mac == mac and old_sha == cur_sha:
+            return False
+    except (OSError, ValueError):
+        pass
+    env = encrypt_json(obj, password)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(env)
+    with open(side, "w", encoding="utf-8") as f:
+        f.write(f"{mac} {hashlib.sha256(env.encode('utf-8')).hexdigest()}\n")
+    return True
+
+
 def decrypt_json(envelope: str, password: str):
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     env = json.loads(envelope)
@@ -813,10 +853,9 @@ def main():
         "ai_note_nav": state.get("ai_note_nav"),
         "decision_log": state["decision_log"][-DECISION_LOG_SHOW:],
     }
-    with open(PRIV_OUT, "w", encoding="utf-8") as f:
-        f.write(encrypt_json(private, password))
-    with open(STATE_OUT, "w", encoding="utf-8") as f:
-        f.write(encrypt_json(state, password))
+    wrote = [os.path.basename(p) for p, o in ((PRIV_OUT, private), (STATE_OUT, state))
+             if write_encrypted(p, o, password)]
+    print(f"[private] 重写：{', '.join(wrote) or '无（明文未变）'}")
     mode = "对账" if sync_mode else "日常"
     print(f"[private/{mode}] 持仓 {len(positions)} 项、净资产 {net_liq and round(net_liq)}、台账 {len(state['trades'])} 笔、净值 {len(navs)} 天")
     if warnings:

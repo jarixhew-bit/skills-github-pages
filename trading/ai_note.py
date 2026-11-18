@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
-from analyzer import decrypt_json, encrypt_json  # noqa: E402  加解密只此一处实现
+from analyzer import decrypt_json, write_encrypted  # noqa: E402  加解密只此一处实现
 
 PRIV = os.path.join(BASE, "data-private.enc")
 STATE = os.path.join(BASE, "state.enc")
@@ -259,10 +259,8 @@ def main():
         return 0
 
     def write_back():
-        with open(PRIV, "w", encoding="utf-8") as f:
-            f.write(encrypt_json(private, password))
-        with open(STATE, "w", encoding="utf-8") as f:
-            f.write(encrypt_json(state, password))
+        write_encrypted(PRIV, private, password)
+        write_encrypted(STATE, state, password)
 
     def set_note(text, date, nav):
         for blob in (state, private):

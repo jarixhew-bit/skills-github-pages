@@ -161,14 +161,16 @@ jobs:
           git config user.name "trading-bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add trading/history trading/data-public.json trading/data-private.enc \
-                  trading/state.enc trading/.flex-fetched trading/news.json trading/news-history.json
+                  trading/state.enc trading/.flex-fetched trading/news.json trading/news-history.json \
+                  trading/data-private.enc.mac trading/state.enc.mac
           # 提交判据：history 或 state.enc 有实质变化就提交。data-public.json/data-private.enc
           # 都含 generated_at 时间戳，每次运行必有差异，不能单独作为判据；但 state.enc
           # 不含时间戳，只要 Flex 刷新了持仓/现金/NAV 就会变——2026-07-14 曾发生 Flex
           # 拉到修正后的持仓但当天行情已抓过、history 无新增，导致修正被判据吞掉不提交
-          # 注：state.enc 采用随机 salt/nonce 加密，即使底层数据完全不变，密文也会每次不同，
-          # 因此改为每小时运行后，本步骤基本每次都会判定为「有变化」并提交——这是预期行为
-          # （用户 2026-07-18 要求的就是 HTML 页面每小时刷新），不是 bug。
+          # 注：state.enc 用随机 salt/nonce 加密，以前数据不变密文也变，几乎每小时都提交。
+          # 2026-11-18 起 analyzer.write_encrypted 先比对明文 HMAC（旁档 *.enc.mac），
+          # 明文没变就不重写 .enc，所以这条判据现在真的只在持仓/台账/净值变了才成立。
+          # .mac 旁档也要提交：它不在仓库里，下一轮就比对不了，又回到每次重写。
           # .flex-fetched 必须列进判据：它是「今天已抓到」的标记，不提交上去
           # 下一个小时就读不到，等于每小时都重抓——正好是要避免的那件事。
           if git diff --cached --quiet -- trading/history trading/state.enc trading/.flex-fetched; then

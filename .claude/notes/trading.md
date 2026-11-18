@@ -188,7 +188,12 @@ Yahoo 不認光禿禿的 `CSPX`，要 `CSPX.L`；而且第一檔取不到價整�
   Class/Symbol/Quantity/Cost Basis Price/Position Value/Open Price/Mark Price 等）；
   `flex_account.py` 的殘缺報表校驗（見檔案內註解）就是靠這三塊互相對帳（持倉市值+
   現金 應約等於 NAV Total，容差 5%）。
-- **`trading-daily.yml` 改成每小時跑後，`state.enc` 幾乎每次都會判定「有變化」並
+- **2026-11-18 起下面這條已解決**：`analyzer.write_encrypted()` 先比對明文 HMAC（旁檔
+  `state.enc.mac`／`data-private.enc.mac`：「明文 HMAC 密文 sha256」，HMAC key 由
+  ANALYZER_PW 經 PBKDF2 固定鹽導出），明文沒變就不重寫 .enc；自檢在 `check-prices.py` 第【5】組。
+  加密寫入一律走 `write_encrypted`，別再直接 `open(...).write(encrypt_json(...))`，否則旁檔脫節
+  （脫節時會因密文 sha 對不上而照常重寫，不會漏寫，只是又變回每次提交）。
+- （舊）**`trading-daily.yml` 改成每小時跑後，`state.enc` 幾乎每次都會判定「有變化」並
   提交**：因為加密用隨機 salt/nonce，即使底層持倉數據完全不變，密文每次也不同。
   這是預期行為（用戶要的就是 HTML 頁面每小時刷新），不是 bug，但意味著 main 的
   提交歷史會變得密集（工作日每小時一次），提交訊息已改成帶時鐘點的
