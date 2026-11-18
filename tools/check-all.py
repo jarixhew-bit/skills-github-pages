@@ -19,7 +19,9 @@ CLAUDE.md 要求「改完 expense-tracker.html 要跑 tools/ 底下全部 check-
 沙盒注意：`allocation`、`prices` 这类要解密 state.enc 的检查会报
 `No module named '_cffi_backend'`——那是容器里少了套件、不是检查坏了，
 `pip3 install --user cffi` 补上即可（CI 上装了，所以只有沙盒会红）。
-容器换过之后要重装；浏览器类的红了则是缺 playwright，跑一次 `npm install`。
+容器换过之后要重装。浏览器类要 node 解析得到 playwright：开跑前会先探一次，
+探不到就印一行提示、把浏览器类标「跳过」（不算失败，但汇总里会写出来、退出码仍是 0
+以外的 2，免得把「没验」当成「验过」）。
 
 
 用法：
@@ -28,7 +30,8 @@ CLAUDE.md 要求「改完 expense-tracker.html 要跑 tools/ 底下全部 check-
     python3 tools/check-all.py --only html,secrets   # 只跑指定几项
     python3 tools/check-all.py --list       # 看有哪些项目，不跑
 
-退出码 0 = 全过，1 = 有项目没过（跟 CI 的 all-green 同一个判定）。
+退出码 0 = 全过，1 = 有项目没过（跟 CI 的 all-green 同一个判定），
+2 = 没有失败但浏览器类因缺 playwright 被跳过。
 """
 
 import argparse
@@ -157,6 +160,23 @@ def start_server():
     return httpd.shutdown, f"已起 http server :{PORT}"
 
 
+def playwright_ok():
+    """在仓库根目录让 node 解析 playwright。解析不到时浏览器类会一起红一片，看不出真问题。"""
+    try:
+        p = subprocess.run(["node", "-e", "import('playwright').then(()=>process.exit(0),()=>process.exit(1))"],
+                           cwd=REPO, capture_output=True, timeout=30)
+        return p.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+PLAYWRIGHT_HINT = (
+    "⚠ node 找不到 playwright，浏览器类自检这轮全部跳过。"
+    "本机在仓库根目录跑 `npm install`；网页版沙盒跑 "
+    "`ln -s /opt/node22/lib/node_modules/playwright node_modules/playwright`（先 mkdir -p node_modules）。"
+)
+
+
 def run_one(name, cmd, env):
     start = time.time()
     try:
@@ -202,6 +222,12 @@ def main():
     if not env.get("CHROMIUM_PATH") and os.path.exists("/opt/pw-browsers/chromium"):
         env["CHROMIUM_PATH"] = "/opt/pw-browsers/chromium"
 
+    skipped = []
+    if any(needs_server for _, _, needs_server in checks) and not playwright_ok():
+        print(PLAYWRIGHT_HINT)
+        skipped = [name for name, _, needs_server in checks if needs_server]
+        checks = [c for c in checks if not c[2]]
+
     stop_server, server_note = (lambda: None), ""
     if any(needs_server for _, _, needs_server in checks):
         stop_server, server_note = start_server()
@@ -228,7 +254,10 @@ def main():
 
     failed = [r for r in results if r[1] != 0]
     print("-" * 60)
-    print(f"墙上时间 {time.time() - wall:.1f}s；{len(results) - len(failed)} 过 / {len(failed)} 败")
+    print(f"墙上时间 {time.time() - wall:.1f}s；{len(results) - len(failed)} 过 / {len(failed)} 败"
+          + (f" / {len(skipped)} 跳过" if skipped else ""))
+    if skipped:
+        print(f"跳过（缺 playwright）：{', '.join(skipped)}")
 
     for name, code, out, _ in failed:
         print(f"\n=== {name} 失败（退出码 {code}）===")
@@ -236,7 +265,10 @@ def main():
         tail = out.strip().splitlines()[-25:]
         print("\n".join(tail) if tail else "（无输出）")
 
-    return 1 if failed else 0
+    if failed:
+        return 1
+    # 有跳过：不是红，但也不是全绿——CI 与「改完要全过」的判定不能把没验的算成验过
+    return 2 if skipped else 0
 
 
 if __name__ == "__main__":
