@@ -4,6 +4,7 @@ const fs = require('fs');
 const { pathToFileURL } = require('url');
 const { execFileSync } = require('child_process');
 const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+if (!fs.existsSync(path.join(dir, 'graft'))) process.exit(0); // 没建索引（网页版容器）就不白跑（2026-11-18）
 const BAKED = "/opt/node22/lib/node_modules/@nanonets/graft/dist/claude";
 
 // The dist/claude dir of @nanonets/graft resolved from a base whose node_modules is searched.

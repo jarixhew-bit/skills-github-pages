@@ -4,6 +4,9 @@ const fs = require('fs');
 const { pathToFileURL } = require('url');
 const { execFileSync } = require('child_process');
 const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+// 没有 graft/ 索引（网页版容器从不建，它被 gitignore）就什么都不做，省掉每次工具调用约 0.5 秒的 `npm root -g`。
+// 本机建过索引的话这行不生效，行为与原来一致。（2026-11-18）
+if (!fs.existsSync(path.join(dir, 'graft'))) process.exit(0);
 const BAKED = "/opt/node22/lib/node_modules/@nanonets/graft/dist/claude";
 
 // The dist/claude dir of @nanonets/graft resolved from a base whose node_modules is searched.
