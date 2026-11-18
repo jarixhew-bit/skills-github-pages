@@ -1,4 +1,4 @@
-const CACHE = 'xisui-v5';
+const CACHE = 'xisui-v6';
 const ASSETS = [
   '/skills-github-pages/xisui/',
   '/skills-github-pages/xisui/index.html',
@@ -17,8 +17,18 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+// 页面本身：先上网拿最新版，没网才用缓存；其他资源：缓存优先。
 self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  if (req.mode === 'navigate') {
+    e.respondWith(fetch(req).then(r => {
+      if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put('/skills-github-pages/xisui/index.html', copy)); }
+      return r;
+    }).catch(() => caches.match('/skills-github-pages/xisui/index.html')));
+    return;
+  }
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+    caches.match(req).then(r => r || fetch(req))
   );
 });
