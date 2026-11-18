@@ -3,6 +3,8 @@
 # 手动触发（Actions 页面 Run workflow，或由 Claude 调 API 触发），传入分支名列表。
 # 安全阀：main 永不删；每个分支删除前验证其内容树已存在于 main 历史中，
 # 验证不过的跳过并在日志说明，不会误删未合并的工作。
+# force=true（2026-11-18 用户要求删 6 条确认作废的旧分支时加）：跳过「内容已在 main」验证，
+# 只用于用户明确说要删的分支；main 仍永不删。分支名经 env 传入，不直接拼进脚本。
 name: Cleanup Merged Branches
 
 on:
@@ -12,6 +14,11 @@ on:
         description: "要删除的分支名，用空格分隔"
         required: true
         type: string
+      force:
+        description: "跳过「内容已在 main」验证，直接删（只用于确认作废的分支）"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -24,10 +31,13 @@ jobs:
         with:
           fetch-depth: 0
       - name: Delete merged branches
+        env:
+          BRANCHES: ${{ github.event.inputs.branches }}
+          FORCE: ${{ github.event.inputs.force }}
         run: |
           git fetch origin --prune
           main_trees=$(git log origin/main --format=%T)
-          for b in ${{ github.event.inputs.branches }}; do
+          for b in $BRANCHES; do
             if [ "$b" = "main" ]; then
               echo "::warning::跳过 main（永不删除）"; continue
             fi
@@ -35,7 +45,7 @@ jobs:
               echo "::warning::跳过 $b：远端不存在"; continue
             fi
             tree=$(git rev-parse "origin/$b^{tree}")
-            if echo "$main_trees" | grep -q "$tree"; then
+            if [ "$FORCE" = "true" ] || echo "$main_trees" | grep -q "$tree"; then
               # 用 if 包住：跑在 `bash -e` 下，裸命令一失败会中断整个循环，
               # 后面还没轮到的分支就白排队了（同 trading-daily 的教训）
               if git push origin --delete "$b"; then
