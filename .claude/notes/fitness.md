@@ -104,19 +104,22 @@
 - **体态（2026-11-18，用户：「重量深蹲时也会歪一边 而且好像高低肩」「x型腿呢」）**：查证正本 `.claude/notes/fitness-posture-research.md`，
   **App 文案里的事实都要对得上那份笔记里已读原文的来源**（`SRC` 清单）；App 自己定的门槛／次数写明「App 的安排」。
   - 入口：训练页 `#postCard`（开始按钮下面）＋「更多」的「打开体态」；体态页 `#tab-post` 不占底部分页（`openPost()`／`closePost()`）。
-  - 资料：localStorage `fit.posture`＝`{q 问卷, red 红旗, tests[推膝碰墙 cm 与侧桥秒数 L/R], done[做过的小课], qTs, ack}`；
+  - 资料：localStorage `fit.posture`＝`{q 问卷, red 红旗, tests[推膝碰墙 cm 与侧桥秒数 L/R], done[做过的小课], qTs, ack, ackFor[确认当下的红旗标题]}`；
     照片在 IndexedDB `fit-posture`/`photos`（`{id,ts,view:front|back,data:jpeg dataURL}`，上传时缩到 900px）。都进备份（`posture`／`postPhotos`），导入只补本机没有的。
   - 红旗 `redList()`：前弯测试一边隆起、痛、麻、越来越明显、X 型腿只有一边或成年后才出现 → 只显示「建议先给医生或物理治疗师看」，小课按钮全部拿掉；
-    用户按「医生／物理治疗师看过，说可以运动」（`post.ack`）才给小课，提醒仍留着。
+    用户按「医生／物理治疗师看过，说可以运动」（`post.ack`＋`ackFor`）才给小课，提醒仍留着；**红旗清单一变确认就作废**（`acked()`）。
+    高低肩（`q.shoulder` L/R）而前弯测试「还没测」或没回答（`needBend()`）也挡小课、提示先做前弯测试。挡不挡统一看 `postBlocked()`。
   - 体态小课 `postSteps()`（8 个动作 `PMOVE`，约 10 分钟，全屏跟练 `plMode="posture"`，最后一步 `pdone` 记一笔）：弱侧 `postSides()`——
-    推膝碰墙差 ≥2 cm、侧桥差 ≥10%、深蹲往 X 歪 → 另一侧的分腿蹲先做＋多一组、动作中膝内倒 → 蚌式那侧多一组。
-  - 力量日提醒 `postCueHTML(anim)`：深蹲类（`SQUAT_ANIMS`）只在填了「往哪边歪」或「膝内倒」才出现；单侧动作（`UNI_ANIMS`）知道弱侧才出现。卡片与跟练都有。
+    推膝碰墙差**超过** 2 cm（`> 2`，刚好 2.0 不算；Pabau above 2 cm）、侧桥差 ≥10%、深蹲往 X 歪 → 另一侧的分腿蹲先做＋多一组、动作中膝内倒 → 蚌式那侧多一组。
+  - 力量日提醒 `postCueHTML(anim)`：深蹲类（`SQUAT_ANIMS`）只在填了「往哪边歪」或「膝内倒」才出现；单侧动作（`UNI_ANIMS`）知道弱侧才出现。卡片与跟练都有。有任何红旗（就算已确认）或 `needBend()` 时一律不出。
   - 满 28 天提醒重测（`postDue()`）。
   - 新动图 7 张：`hip9090`／`hipflex`／`ankle`（蓝光）、`wallslide`／`sideplank`／`clam`／`suitcase-one`（红光）；分腿蹲用原有的 `split`。
     渲染台新机制：`OV.x.rollMode='torso'`（只把身体绕长轴转 90°、四肢照 2D 在同一平面＝侧桥从正面看）、`'rigid'`（整个人含四肢转 90°：趴着摆好的屈髋屈膝转成侧躺＝蚌式）；
     墙 `wallK`（脚尖前 `WALLK`）／`wallH`（前臂前）在第 0 格定位 `PROPX` 之后不动，2D／anim3d／渲染台三处都有。侧躺两张机位要 yaw 负值（脸朝 −z）。
     anim3d.js（3D 模式）不懂侧躺，只有用户选「3D」时会看到未转过来的姿势。
-  - 自检：check-fitness 第 16 段。
+  - 文案规矩（2026-11-18 verifier 退件后）：每句事实要对得上研究笔记里的引句与网址，否则标「App 的安排／做法／推论／保守判断」或删掉；
+    说法不能比原文满。第 16 段末有 BANNED（不准再出现的句子）与 need（必须在的界线标签）两张清单——改文案撞到它们先回研究笔记查证。
+  - 自检：check-fitness 第 16 段（含 verifier 抓到的四个漏洞：确认作废、高低肩先测前弯、红旗时不出提醒、2.0 cm 边界）。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
