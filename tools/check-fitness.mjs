@@ -1089,7 +1089,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   check(nclam === 2, `体态 X 型腿：只有站着分开、动作中不内倒 → 蚌式不加组（${nclam}）`);
   await page.click('#postQ [data-pq="valgus"][data-v="B"]');
   const nclam2 = await page.evaluate(() => window.__fit.posture.postSteps().filter(s => s.pk === 'clam' && s.extra).length);
-  check(nclam2 === 2 && /可以练的控制问题/.test(await page.textContent('#postStatus')), `体态 X 型腿：动作中两膝都往内倒 → 两边各多一组蚌式＋说明可练（${nclam2}）`);
+  check(nclam2 === 2 && /有研究显示可能练得改善（研究对象是跑者）/.test(await page.textContent('#postStatus')), `体态 X 型腿：动作中两膝都往内倒 → 两边各多一组蚌式＋说明可能练得改善（${nclam2}）`);
   check(errors.length === 0, `体态红旗没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
 }
@@ -1133,10 +1133,12 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   // ⑤ 文案守门
   const html = fs.readFileSync('fitness/index.html', 'utf8');
   const BANNED = ['改不了，要改只能手术', '运动改不了', '杠也更歪', '那里就是你现在的上限', '几周就可能看得到', '静态姿势通常变得很慢', '比较早看得到变化',
-    '这是腿骨本身的角度', '大腿前侧上方有拉的感觉就停住', '照片可能变得很慢', '不需要避免（'];
+    '这是腿骨本身的角度', '大腿前侧上方有拉的感觉就停住', '照片可能变得很慢', '不需要避免（',
+    '变化慢', '标准方法', '只能当提醒', '可以练的控制问题', '动作中膝盖往内倒：可以练', '轻轻压墙', '套在膝盖上方加难度'];
   const hit = BANNED.filter(b => html.includes(b));
   check(hit.length === 0, `体态文案：没有来源或比来源说得更满的句子不再出现${hit.length ? '（还在：' + hit.join('、') + '）' : ''}`);
-  const need = ['除非医生另有建议', '前弯测试看起来正常也不能完全排除', '手机回放是 App 的做法', 'App 的保守判断', 'App 的推论'];
+  const need = ['除非医生另有建议', '前弯测试看起来正常也不能完全排除', '手机回放是 App 的做法', 'App 的保守判断', 'App 的推论',
+    '医生做脊柱侧弯检查时会用的方法', '自己在家看只能算提醒（App 的保守判断）', '研究对象是跑者', '不往内倒（App 的安排）', '加难度（App 的安排）'];
   const miss = need.filter(b => !html.includes(b));
   check(miss.length === 0, `体态文案：该标明来源界线的地方都标了${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
 }

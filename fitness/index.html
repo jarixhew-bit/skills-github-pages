@@ -956,11 +956,11 @@ const PMOVE={
   hip9090:{name:"90/90 坐姿髋部拉伸",anim:"hip9090",kind:"mob",en:"90 90 hip stretch",cue:"坐在地上，前腿膝盖弯 90° 放在身前、小腿横在前面；后腿往旁边摆、膝盖也弯 90°、小腿朝后。上身坐直、两肩摆正，别往一边歪。想再深一点就从髋往前折、背保持直，不要拱背。坐不住可以屁股垫个枕头；前膝贴不到地就垫东西，不要硬压。有夹痛就停。"},
   hipflex:{name:"半跪髋屈肌拉伸",anim:"hipflex",kind:"mob",en:"half kneeling hip flexor stretch",cue:"后膝跪地（垫个垫子），前脚踩地、膝盖约 90°，后腿小腿朝正后方。双手扶髋，先夹紧后腿那边的屁股、让骨盆往下收，再把髋慢慢往前推；上身直、腰不要往后拱。"},
   ankle:{name:"跪姿推膝碰墙（脚踝）",anim:"ankle",kind:"mob",en:"knee to wall ankle mobility",cue:"面墙半跪，两手扶墙，前脚放在墙前。脚跟一直踩地，把膝盖往前推去碰墙、再退回来，来回慢慢做；膝盖对准第二根脚趾，不往内倒。碰得到墙而脚跟没抬起，就把脚往后挪一点再做。"},
-  wallslide:{name:"靠墙滑臂",anim:"wallslide",kind:"str",en:"forearm wall slide",cue:"面墙站，两前臂平行贴墙，手肘约 90°。前臂轻轻压墙，慢慢往上滑，再同样慢慢滑回来。腰不要拱、不要耸肩。"},
+  wallslide:{name:"靠墙滑臂",anim:"wallslide",kind:"str",en:"forearm wall slide",cue:"面墙站，两前臂平行贴墙，手肘约 90°。前臂压墙，慢慢往上滑，再同样慢慢滑回来。腰不要拱、不要耸肩。"},
   sideplank:{name:"侧桥",anim:"sideplank",kind:"str",uni:true,en:"side plank",cue:"侧躺，手肘撑在肩膀正下方。腹部收紧，把髋抬起来，让头到脚成一直线；髋不要往下沉、肩膀不要耸到耳边。太难就膝盖着地做。"},
-  clam:{name:"蚌式开合",anim:"clam",kind:"str",uni:true,en:"clamshell exercise",cue:"侧躺，两膝弯起来、两腿叠在一起，两脚并拢。背和骨盆不动，慢慢把上面那个膝盖往上打开，再控制着放回来。身体不要往后翻。有弹力带可以套在膝盖上方加难度。"},
+  clam:{name:"蚌式开合",anim:"clam",kind:"str",uni:true,en:"clamshell exercise",cue:"侧躺，两膝弯起来、两腿叠在一起，两脚并拢。背和骨盆不动，慢慢把上面那个膝盖往上打开，再控制着放回来。身体不要往后翻。有弹力带可以套在膝盖上方，用来加难度（App 的安排）。"},
   suitcase:{name:"单手提哑铃原地踏步",anim:"suitcase",hold:"one",kind:"str",uni:true,en:"suitcase march",cue:"一只手提哑铃垂在身侧，另一只手空着。站直、腹部收紧、两肩一样高，慢慢原地踏步；身体不要往拿重量那边歪，也不要往反方向躲。从正面看要左右对称。歪了就换轻一点的重量。"},
-  split:{name:"徒手分腿蹲（后脚踩椅）",anim:"split",kind:"str",uni:true,en:"bulgarian split squat",cue:"后脚背放在椅子上，前脚离椅子约一大步，垂直往下蹲、再用前脚站起来。膝盖对准第二根脚趾，不往内倒。"},
+  split:{name:"徒手分腿蹲（后脚踩椅）",anim:"split",kind:"str",uni:true,en:"bulgarian split squat",cue:"后脚背放在椅子上，前脚离椅子约一大步，垂直往下蹲、再用前脚站起来。膝盖对准第二根脚趾、不往内倒（App 的安排）。"},
 };
 const MOVE_TAG={chest:"门框"};
 
@@ -2241,7 +2241,7 @@ function renderPostRed(){
   let h='<h2>2. 要先看医生的情况</h2>';
   h+='<div class="pq"><b>前弯测试（请家人帮你看）</b><span class="small">两脚并拢、膝盖打直、两手自然垂下，慢慢往前弯腰。家人站在你<b>正后方</b>，看背的左右两边（肋骨那里）形状、高度是不是一样（'+srcA("aaos")+'）。</span>'+
      '<div class="bendfig"><figure>'+BEND_SVG(false)+'<figcaption>两边一样高</figcaption></figure><figure>'+BEND_SVG(true)+'<figcaption>一边明显隆起 → 要看医生</figcaption></figure></div>'+
-     '<span class="src">这是医生筛检脊柱侧弯的标准方法（'+srcA("aaos")+'、'+srcA("cote")+'）；自己在家看只能当提醒，确诊要照 X 光（'+srcA("nhsScol")+'）。前弯测试看起来正常也不能完全排除：一项学校筛检里，有学生前弯测试看起来正常，用脊柱侧弯尺量却异常（'+srcA("grossman")+'）。</span>'+
+     '<span class="src">这是医生做脊柱侧弯检查时会用的方法（'+srcA("aaos")+'、'+srcA("cote")+'）；自己在家看只能算提醒（App 的保守判断），确诊要照 X 光（'+srcA("nhsScol")+'）。前弯测试看起来正常也不能完全排除：一项学校筛检里，有学生前弯测试看起来正常，用脊柱侧弯尺量却异常（'+srcA("grossman")+'）。</span>'+
      segQ("bend",[["no","两边一样"],["yes","一边隆起"],["?","还没测"]],r.bend,"前弯测试结果")+'</div>';
   h+='<div class="pq"><b>高低肩、歪、X 型腿最近几个月越来越明显？</b>'+segQ("worse",[["no","没有"],["yes","是"]],r.worse,"越来越明显")+'</div>';
   h+='<div class="pq"><b>X 型腿只有一边，或是成年后才出现？</b>'+segQ("kneeNew",[["no","不是／没有 X 型腿"],["yes","是"]],r.kneeNew,"X 型腿只有一边或成年后出现")+'</div>';
@@ -2259,7 +2259,7 @@ function postStatusHTML(){
   if(q.shift==="L"||q.shift==="R") out.push('<li><b>深蹲往'+SIDE_ZH[q.shift]+'歪</b>：研究里，站着左右重量不平均的人，背蹲时左右受力也不平均，杠的倾斜和旋转也比较大（'+srcA("sato")+'）；一般人看着即时画面回馈练习，左右重量差会变小（'+srcA("mcgough")+'）。研究用的是即时画面回馈；手机回放是 App 的做法，效果没有研究。<b>App 的安排</b>：手机放身后拍一组回放看，往'+SIDE_ZH[q.shift]+'偏就先减重；单侧动作'+SIDE_ZH[sd.leg]+'脚先做、多一组。依据是单侧训练在一项研究里减少了左右腿的差距（'+srcA("gonzalo")+'，对象是年轻篮球员）；「先做、多一组」本身没有研究。</li>');
   if(q.shoulder==="L"||q.shoulder==="R") out.push('<li><b>'+SIDE_ZH[q.shoulder]+'肩较高</b>：高低肩可能是脊柱侧弯的征象之一（'+srcA("aaos")+'），所以先做上面的前弯测试。两边一样、不痛的话，<b>App 的安排</b>是先当成一般体态来练；仍可找医生确认。研究显示肌力训练能改善胸椎、颈部的姿势指标，单纯拉伸不能（'+srcA("warneke")+'）。专门针对「高低肩」的运动研究我们没找到，所以小课不承诺把肩膀练平。</li>');
   if(q.gap==="Y") out.push('<li><b>站着两膝并拢、脚踝分开</b>：可能是骨头角度（膝外翻）。'+srcA("hssKnee")+' 写到：成人膝盖内侧的韧带可能被拉长、让变形更明显；非手术的处理是控制体重、保持体能、少做高冲击运动；列出的矫正方式是截骨手术。没找到运动能改骨头角度的研究；也有健康网站写运动能帮膝盖「重新对齐」，但没有附研究（'+srcA("healthline")+'）。有研究支持能练的是下面那项：动作中膝盖往内倒。</li>');
-  if(q.valgus&&q.valgus!=="N"&&q.valgus!=="?") out.push('<li><b>动作中膝盖往内倒</b>：这是可以练的控制问题。一项随机对照试验（40 位有胫骨内侧疼痛的跑者），在一般物理治疗之外加练髋外展肌 8 周后，下蹲时膝内倒角度变小（'+srcA("lashien")+'）；35 篇研究的系统综述：膝内倒明显的人，下肢肌力训练配合膝盖位置控制练习可能减少膝内倒（'+srcA("comert")+'）。<b>App 的安排</b>：小课多加一组蚌式；训练时深蹲类动作会提醒「膝盖对准第二根脚趾」。一项研究用楔形板模拟脚踝变紧，深蹲时膝盖就更往内倒（'+srcA("macrum")+'）；另一项落地研究没发现脚踝活动度跟膝内倒有关联（'+srcA("fong")+'）。App 的推论：所以小课也练推膝碰墙。</li>');
+  if(q.valgus&&q.valgus!=="N"&&q.valgus!=="?") out.push('<li><b>动作中膝盖往内倒</b>：有研究显示可能练得改善（研究对象是跑者）。一项随机对照试验（40 位有胫骨内侧疼痛的跑者），在一般物理治疗之外加练髋外展肌 8 周后，下蹲时膝内倒角度变小（'+srcA("lashien")+'）；35 篇研究的系统综述：膝内倒明显的人，下肢肌力训练配合膝盖位置控制练习可能减少膝内倒（'+srcA("comert")+'）。<b>App 的安排</b>：小课多加一组蚌式；训练时深蹲类动作会提醒「膝盖对准第二根脚趾」。一项研究用楔形板模拟脚踝变紧，深蹲时膝盖就更往内倒（'+srcA("macrum")+'）；另一项落地研究没发现脚踝活动度跟膝内倒有关联（'+srcA("fong")+'）。App 的推论：所以小课也练推膝碰墙。</li>');
   if(!out.length) out.push('<li>问卷没有发现明显的左右差。体态小课照样可以练；每 3–4 周再测一次（'+srcA("pabau")+'）。</li>');
   return '<div class="card"><h2>结果</h2><ul class="list small">'+out.join("")+'</ul></div>';
 }
@@ -2339,9 +2339,9 @@ function renderPostRoutine(){
 }
 const POST_WHY='<ul class="list small">'+
   '<li><b>关节活动度：规律拉伸能增加。</b>77 篇研究的汇总：拉伸训练能增加关节活动度，效果中等；静态拉伸（和 PNF 拉伸）增加得比弹震式／动态拉伸多（'+srcA("konrad")+'）。负重的肌力训练也能增加活动度（'+srcA("alizadeh")+'）。</li>'+
-  '<li><b>静态姿势（照片）：变化慢、不一定变。</b>23 篇研究的系统综述：单纯拉伸对姿势没有影响；肌力训练对胸椎、颈部姿势有改善，对腰椎、骨盆没有明显效果（'+srcA("warneke")+'）。</li>'+
+  '<li><b>静态姿势（照片）：不一定变。</b>23 篇研究的系统综述：单纯拉伸对姿势没有影响；肌力训练对胸椎、颈部姿势有改善，对腰椎、骨盆没有明显效果（'+srcA("warneke")+'）。</li>'+
   '<li><b>左右差：单侧训练有帮助。</b>一项研究里只做单侧动作的组，左右腿的差距变小，做双侧动作的组没有（'+srcA("gonzalo")+'，对象是年轻篮球员）。</li>'+
-  '<li><b>动作中膝盖往内倒：可以练。</b>一项随机对照试验里，跑者加练髋外展肌 8 周，下蹲时膝内倒角度变小（'+srcA("lashien")+'）。<b>站着的 X 型腿（可能是骨头角度）</b>：没找到运动能改骨头角度的研究；'+srcA("hssKnee")+' 列出的矫正方式是截骨手术。</li>'+
+  '<li><b>动作中膝盖往内倒：有研究显示可能练得改善（研究对象是跑者）。</b>一项随机对照试验里，跑者加练髋外展肌 8 周，下蹲时膝内倒角度变小（'+srcA("lashien")+'）。<b>站着的 X 型腿（可能是骨头角度）</b>：没找到运动能改骨头角度的研究；'+srcA("hssKnee")+' 列出的矫正方式是截骨手术。</li>'+
   '<li><b>脊柱侧弯：</b>背部运动能不能改善侧弯「还不清楚」，但一般运动对健康有好处、不应该避免，除非医生另有建议（'+srcA("nhsScol")+'）。</li>'+
   '<li><b>多久重测：</b>每 3–4 周重测一次推膝碰墙（'+srcA("pabau")+'）；数字差 1.6–1.9 公分以内可能只是误差（'+srcA("powden")+'）。</li></ul>';
 function renderPost(){
