@@ -216,6 +216,8 @@ function pose(s, hold, swim, time) {
       rod(v3(bx, by, -40), v3(bx, by, 40), 1.2, M.chrome);
     }
     if (pr === 'post') { const px = X('fe'); box(px - 3, px + 3, 0, Y('fh') + 14, 8, M.wood, 0, null, null, -9); } // 墙边／柱子：靠墙那只手的前臂贴在它前面
+    if (pr === 'wallK') { const kx = X('nf') + 15; box(kx, kx + 3, 0, 110, 90, M.wood); } // 踝关节活动：膝盖去碰的那面墙
+    if (pr === 'wallH') { const hx = Math.max(X('ne'), X('nh')) + 3; box(hx, hx + 3, 0, 125, 90, M.wood); } // 靠墙滑臂：前臂贴着的墙
     if (pr === 'board') { const hx = X('nh'); box(hx - 5, hx + 24, Y('nh') + 1, Y('nh') + 4, 30, M.board); }
     if (pr === 'band') { // 辅助引体向上：弹力带挂在杆上、从身体前面垂下、绕过两只脚底
       const cx = Math.max(X('sh'), X('hip')) + 9, cy = Y('sh') - 10;
