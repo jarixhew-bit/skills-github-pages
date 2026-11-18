@@ -229,6 +229,20 @@ def check_img_alt(path: str, html: str) -> list:
     return errors
 
 
+def check_lazy_id_img(path: str, html: str) -> list:
+    """带 id 的 <img>（放大看图弹层、脚本换图的位置）不准 loading="lazy"。
+    2026-11-18 批量加懒加载时把 8 本手册的弹层图 #lbImg 也加上了：弹层平时隐藏，
+    点开才换 src，懒加载会让它慢半拍甚至不出图。"""
+    errors = []
+    text = strip_noise(html)
+    for m in re.finditer(r"<img\b[^>]*>", text, re.I):
+        t = m.group(0)
+        if re.search(r"\bid\s*=", t, re.I) and re.search(r'loading\s*=\s*["\']?lazy', t, re.I):
+            errors.append(f"{path}:{line_of(text, m.start())} 带 id 的 <img> 不要 loading=\"lazy\"——"
+                          f"弹层/脚本换图的位置懒加载会慢半拍，去掉该属性")
+    return errors
+
+
 def check_dup_images(path: str, html: str) -> list:
     """同一张卡片的图库里不准出现重复照片。
 
@@ -315,6 +329,7 @@ def main():
         all_errors += check_lang_key(f, html)
         all_errors += check_foreign_jargon(f, html, whitelist)
         all_errors += check_img_alt(f, html)
+        all_errors += check_lazy_id_img(f, html)
         all_errors += check_draft_wording(f, html)
         all_errors += check_dup_segments(f, html)
         all_errors += check_dup_images(f, html)
