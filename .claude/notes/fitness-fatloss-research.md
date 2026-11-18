@@ -186,3 +186,86 @@
 - Weinheimer 2010：https://pubmed.ncbi.nlm.nih.gov/20591106/
 - Moniz 2020（EPOC）：https://pubmed.ncbi.nlm.nih.gov/31830334/
 - Hall（3500 kcal 规则）：https://pmc.ncbi.nlm.nih.gov/articles/PMC3859816（搜索结果列出，转述未确认到具体论文）
+
+## 洗髓功能量消耗（2026-11-18 查证）
+
+用途：估算洗髓功（站姿慢动作导引，按「太极/气功」类）每次 40 分钟的能量消耗与心率强度。
+示范对象：40 岁、72 kg、每次 40 分钟、每周 7 次（**示范假设，不是用户实测**）。
+
+### 1. MET 值——用的是 **2024 Adult Compendium**（网站 pacompendium.com 读得到，没退回 2011 版）
+
+CI 读网页 run **44300187524**（web-lookup.yml）原文行：
+
+| 网址 | 原文（Code / MET / Activity Description） |
+|---|---|
+| https://pacompendium.com/sports/ | `15670 3.3 Tai chi, qi gong, general` |
+| 同上 | `15672 1.5 Tai chi, qi gong, sitting, light effort` |
+| 同上 | `15674 6.0 Tai chi chuan, Yang style` |
+| https://pacompendium.com/conditioning-exercise/ | `02101 2.3 Stretching, mild` |
+| 同上（对照） | `02140 2.5 Video, exercise workouts, TV conditioning programs (e.g., yoga, stretching, seated), light effort` |
+| https://pacompendium.com/walking/ | `17190 3.8 Walking, 2.8 to 3.4 mph, level, moderate pace, firm surface` |
+| 同上 | `17200 4.8 Walking, 3.5 to 3.9 mph, level, brisk, firm surface, walking for exercise` |
+| 同上 | `17220 5.5 Walking, 4.0 to 4.4 mph (6.4 to 7.1 km/h), level, firm surface, very brisk pace` |
+
+- 2024 版**没有**「tai chi / qi gong, moderate」或「vigorous effort」这类分级码；太极/气功只有上面三条（15670 一般、15672 坐姿轻度、15674 杨式太极拳）。
+- 页面注脚原文：「Specific Activity Codes in red are estimated MET values. All other values are supported with published literature.」——
+  15670 是否标红（估算值）**未查证**（纯文字提取看不到颜色；fetch-url 抓 HTML 原文回 403，run 44300288734）。
+- 2024 版适用年龄（PubMed 摘要，run 44300192565）：「This 2024 update was tailored for adults 19-59 years of age by removing data from those ≥60 years.」
+- 洗髓功套 15670（3.3）是**归类推论**：Compendium 没有「洗髓功」条目，站姿慢动作导引最接近「Tai chi, qi gong, general」。
+
+### 2. ACSM 心率强度分级（%HRmax）
+
+- Garber 2011（PMID 21694556）正文表格**未能直读**：LWW 全文页只给摘要（run 44300283606），
+  唯一开放全文是 URI Digital Commons 的 PDF（https://digitalcommons.uri.edu/kinesiology_facpubs/137 ，OpenAlex/Semantic Scholar 查到，run 44300568696），
+  现有 CI 通道不会解析 PDF。
+- 二手引用（Sensors 2026, PMC13210717, https://pmc.ncbi.nlm.nih.gov/articles/PMC13210717/ ，run 44300738967）原文：
+  「moderate-intensity cycling (64–76% HRmax) and vigorous-intensity cycling (77–95% HRmax)」
+  → 中等 64–76%、剧烈 77–95% 有二手佐证；**「很轻 <57%」「轻 57–63%」两档未查证**（常被引用为 Garber 2011 表 2，但这次没读到原文）。
+- 摘要里查得到的原句（run 44300192565）：「The ACSM recommends that most adults engage in moderate-intensity cardiorespiratory exercise training for ≥30 min·d on ≥5 d·wk for a total of ≥150 min·wk, vigorous-intensity cardiorespiratory exercise training for ≥20 min·d on ≥3 d·wk (≥75 min·wk) … to achieve a total energy expenditure of ≥500-1000 MET·min·wk.」
+
+### 3. 最大心率公式
+
+Tanaka 2001（PMID 11153730，https://pubmed.ncbi.nlm.nih.gov/11153730/ ，PubMed efetch run 44300192565）原文：
+- 「The age-predicted HRmax equation (i.e., 220 - age) is commonly used as a basis for prescribing exercise programs」
+- 「CONCLUSIONS: 1) A regression equation to predict HRmax is 208 - 0.7 x age in healthy adults.」
+- 「Our findings suggest that the currently used equation underestimates HRmax in older adults.」
+
+### 4. kcal 公式的来源
+
+- pacompendium.com 首页「Definition of Terms」（run 44300283606）：「MET ( Metabolic Equivalent ) : The ratio of the work metabolic rate to the resting metabolic rate. One MET is defined as 1 kcal/kg/hour and is roughly equivalent to the energy cost of sitting quietly.」
+- Herrmann 2024 全文 2.5 节（https://pmc.ncbi.nlm.nih.gov/articles/PMC10818145/ ，run 44300283606）：「METs reflect the ratio of a PA's energy cost in mL/kg/min relative to a standardized RMR of 3.5 mL/kg/min or approximately 1.0 kcal/kg/h.」
+- 同文 4.1 节：「MET-minutes and MET-hours … are computed by multiplying the Specific Activity MET value by the duration of the reported PA in minutes or hours.」
+- 所以 kcal ≈ MET × 体重(kg) × 小时 是由「1 MET ≈ 1 kcal/kg/h」直接推出；文中没有一句话把整条公式写出来（工具每行只印前 300 字，4.3 节「Relative EE and absolute EE」后半段没读到）。
+  同文 4.3 节开头提醒：Compendium 原本用于流行病学研究，拿来算个人能量消耗有误差（标准 RMR 3.5 mL/kg/min 不一定合个人）。
+
+### 5. 计算（40 岁、72 kg、40 分钟 = 0.6667 小时）
+
+能量：毛消耗 = MET × 72 × 0.6667；净消耗（扣掉本来坐着也会烧的 1 MET）= (MET − 1) × 72 × 0.6667
+
+| 代码 | MET | 毛 kcal/次 | 净 kcal/次 | 毛 kcal/周（×7） | 净 kcal/周（×7） |
+|---|---|---|---|---|---|
+| 15670 太极/气功 一般 | 3.3 | 3.3×72×0.6667 = **158.4** | 2.3×72×0.6667 = **110.4** | **1109** | **773** |
+| 15672 太极/气功 坐姿轻度 | 1.5 | 72.0 | 24.0 | 504 | 168 |
+| 02101 轻度伸展 | 2.3 | 110.4 | 62.4 | 773 | 437 |
+| 17190 步行 2.8–3.4 mph（对照） | 3.8 | 182.4 | 134.4 | 1277 | 941 |
+| 17200 快走 3.5–3.9 mph（对照） | 4.8 | 230.4 | 182.4 | 1613 | 1277 |
+
+- 主估算取 15670：**每次约 158 kcal（净约 110 kcal），每周约 1109 kcal（净约 773 kcal）**。
+- MET·min：3.3 × 40 = 132 MET·min/次，×7 = 924 MET·min/周（落在 ACSM「≥500–1000 MET·min·wk」区间内，但这是按 MET 值算，不代表心率达到中等强度）。
+- 【推论】净 773 kcal/周 ÷ 7700 kcal/kg（常用脂肪换算概数，来源未在本节查证）≈ 0.1 kg 脂肪/周，前提是饮食不变、没有代偿。
+
+心率：40 岁
+- 220 − 40 = **180** bpm；Tanaka：208 − 0.7×40 = 208 − 28 = **180** bpm（40 岁两式刚好相同；年纪越大两式差越多）。
+- 100 ÷ 180 = **55.6% HRmax**（两式相同）。
+- 对照 ACSM：低于中等下限 64%（二手佐证），所以**不算中等强度**；若按常被引用的 Garber 表「很轻 <57%」则属「很轻」——此档原文未查证。
+- 注意：按常见的「3–5.9 MET＝中等」绝对强度分法（此分法这次**未查证原文**），3.3 MET 会算中等；按个人心率 55.6% 却在中等以下。两种分级在这里不一致，以个人心率为准时它是低强度练习。
+
+### 6. 未查证
+
+- Garber 2011 表格原文（尤其「很轻 <57%」「轻 57–63%」两档）。
+- 15670 在 2024 网站上是否标红（估算值）。
+- Herrmann 2024 第 4.3 节后半段原文。
+- 7700 kcal/kg 脂肪换算的来源。
+
+run 一览：web-lookup 44300187524（Compendium 三页）、44300283606（PMC 全文＋首页定义＋LWW）、44300568696（OpenAlex/S2 开放全文位置）、
+44300657838（EuropePMC 检索＋URI 页面）、44300738967（PMC13210717 心率分级）；fetch-url 44300192565（PubMed efetch 4 篇摘要）、44300288734（pacompendium HTML，403 失败）。
