@@ -213,17 +213,17 @@ const hero = (page) => page.evaluate(() => {
 {
   const { ctx, page } = await open({ date: '2026-11-10', lang: 'auto', locale: 'en-US' });
   const h = await hero(page);
-  eq(h.title + '|' + h.l, 'Singapore|day to go · tomorrow', 'D1 系统是英文 → 自动英文');
+  eq(h.title + '|' + h.l, 'Singapore (November)|day to go · tomorrow', 'D1 系统是英文 → 自动英文');
   eq(h.dates, '11–14 Nov 2026 · 4 days', 'D2 英文日期');
   eq(await page.textContent('#today'), 'Tuesday, 10 Nov 2026', 'D3 2026-11-10 是星期二');
   const cjk = await page.evaluate(() => [...document.querySelectorAll('.wrap *')].filter(e => !e.children.length && e.offsetParent && /[一-鿿]/.test(e.textContent)).map(e => e.textContent));
   eq(cjk.join(' / '), '中文', 'D4 英文画面上除了切换钮没有中文残留');
   await page.click('#langBtn');
-  eq(await page.textContent('#heroTitle'), '新加坡', 'D5 点切换 → 中文');
+  eq(await page.textContent('#heroTitle'), '新加坡（十一月）', 'D5 点切换 → 中文');
   eq(await page.evaluate(() => localStorage.getItem('siteLangUser')), 'zh', 'D6 手选记在全站共用的 siteLangUser');
   eq(await page.textContent('#today'), '2026年11月10日 星期二', 'D7 中文日期');
   await page.reload();
-  eq(await page.textContent('#heroTitle'), '新加坡', 'D8 刷新后仍是手选的中文（优先于系统英文）');
+  eq(await page.textContent('#heroTitle'), '新加坡（十一月）', 'D8 刷新后仍是手选的中文（优先于系统英文）');
   const latin = await page.evaluate(() => [...document.querySelectorAll('.card b, .sh h3, .past a.t')].map(e => e.textContent).filter(t => !/[一-鿿]/.test(t)));
   eq(latin.join(' / '), '', 'D9 中文画面上标题都有中文');
   await ctx.close();
