@@ -194,6 +194,43 @@ def main():
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
+    print("\n【6】数据源熔断：连续 3 次失败就停用该源，其余档改走备援（2026-11-18 建）")
+    # 病根：30 秒超时 × 约 60 档串行，stooq 挂掉那天「抓取行情」跑了 61 分钟
+    import inspect
+    ok("单次请求超时 ≤10 秒",
+       inspect.signature(fp.http_get).parameters["timeout"].default <= 10,
+       inspect.signature(fp.http_get).parameters["timeout"].default)
+    tmp = tempfile.mkdtemp(prefix="fetch-breaker-")
+    saved = (fp.BASE, fp.HIST_DIR, fp.from_stooq, fp.from_yahoo, fp.time.sleep)
+    calls = {"stooq": 0, "yahoo": 0}
+    try:
+        syms = [f"T{i}" for i in range(8)]
+        with open(os.path.join(tmp, "universe.json"), "w", encoding="utf-8") as f:
+            json.dump({"tickers": [{"symbol": s} for s in syms]}, f)
+
+        def dead_stooq(code):
+            calls["stooq"] += 1
+            raise TimeoutError("timed out")
+
+        def live_yahoo(code):
+            calls["yahoo"] += 1
+            return good_bars()
+        fp.BASE, fp.HIST_DIR = tmp, os.path.join(tmp, "history")
+        fp.from_stooq, fp.from_yahoo = dead_stooq, live_yahoo
+        fp.time.sleep = lambda s: None
+        exit_code = 0
+        try:
+            fp.main()
+        except SystemExit as e:
+            exit_code = e.code or 0
+        ok("stooq 只被请求 3 次就熔断（不是 8 次）", calls["stooq"] == 3, calls)
+        ok("熔断后每档都改走 yahoo", calls["yahoo"] == len(syms), calls)
+        ok("整体不失败、每档都写出", exit_code == 0 and all(
+            os.path.exists(os.path.join(tmp, "history", f"{s}.json")) for s in syms), exit_code)
+    finally:
+        fp.BASE, fp.HIST_DIR, fp.from_stooq, fp.from_yahoo, fp.time.sleep = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
     print(f"\n通过 {len(oks)} 项")
     if fails:
         print(f"未通过 {len(fails)} 项：", file=sys.stderr)

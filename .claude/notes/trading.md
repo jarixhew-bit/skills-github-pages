@@ -37,7 +37,9 @@ p90 41.0 年**（整筆版 11.1／20.2／40.2）。**那個數字本身的不確
 - `fetch_prices.py`（126 行）——抓行情：Stooq 主源、Yahoo 備援，全量覆盖寫入
   `history/SYM.json`，只保留最近 320 根日線；`main()`（76-125 行）失敗超過 1/4
   檔案會 `sys.exit(1)` 讓 CI 失敗（防止發布殘缺資料，見 121 行）。只在 GitHub Actions
-  跑（沙盒網路不通行情源，README.md:3 已註明）。
+  跑（沙盒網路不通行情源，README.md:3 已註明）。2026-11-18 起單次請求超時 10 秒、
+  同一源連續 3 次異常就熔斷（本輪停用，改走另一源；兩源都不行的檔沿用舊檔），
+  `trading-daily` job 上限 20 分鐘；自檢在 `check-prices.py` 第【6】組。
 - `flex_account.py`（122 行）——用 `IBKR_FLEX_TOKEN`/`IBKR_FLEX_QUERY_ID` 兩個
   Secret 拉 IBKR Flex Query，輸出 `raw/flex_account.json`（持倉/現金/NAV/成交）；
   失敗即 `sys.exit(1)`，workflow 層 `|| echo ...` 吞掉失敗、沿用舊底數（不阻斷管線）。
