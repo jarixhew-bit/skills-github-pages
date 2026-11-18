@@ -359,7 +359,9 @@ const WX = { daily: {
   check(await page.evaluate(() => document.getElementById('drv').hidden), '[司机] 点「关闭」应关闭');
   /* 7 廊：地址带「（总店）」后缀，随语言换 */
   await page.locator('#dining .rcard').nth(2).locator('.btn-driver').click();
-  check(/总店/.test(await page.evaluate(() => document.getElementById('drvAddr').innerText)), '[司机] 七廊粿條湯地址应带（总店）');
+  /* 机器忙时弹层重开有延迟，立刻读会读到上一家的地址（2026-11-18 check-all 并发下偶发红）；等它真的换成七廊再判 */
+  const got7 = await page.waitForFunction(() => !document.getElementById('drv').hidden && /Lorong Ceri/.test(document.getElementById('drvAddr').innerText), null, { timeout: 8000 }).then(() => true, () => false);
+  check(got7 && /总店/.test(await page.evaluate(() => document.getElementById('drvAddr').innerText)), '[司机] 七廊粿條湯地址应带（总店）');
   await page.keyboard.press('Escape');
   check(errors.length === 0, `[司机] 不应有 JS 错误（${errors.slice(0, 3).join(' | ')}）`);
   await ctx.close();
