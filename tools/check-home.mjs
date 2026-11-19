@@ -23,7 +23,9 @@
  *   11/11 → 新加坡 进行中 第 1 天，共 4 天，进度 25%
  *   11/14 → 两段同一天交接：主卡换成雅加达 第 1 天／共 3 天；新加坡退到副位 第 4 天
  *   11/16 → 雅加达 第 3 天／共 3 天，进度 100%
- *   11/17 → 没有排定的行程；最近一趟＝雅加达；走过的路 7 趟
+ *   2027-01-09 → 没有排定的行程（首尔 2027-01-02～08 也走完了）；最近一趟＝首尔；走过的路 8 趟
+ *   （2026-11-19 加首尔：它是 2027-01 的未来行程，所以 11 月那几天的副位多出「首尔 还有 N 天」：
+ *    11/05 起 58 天（11 月余 25＋12 月 31＋1/2），11/10 起 53 天，11/14 起 49 天）
  */
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -75,7 +77,7 @@ const hero = (page) => page.evaluate(() => {
   const h = await hero(page);
   eq(h.state + '/' + h.trip + '/' + h.days, 'upcoming/sg-nov/6', 'A1 11/05 主卡＝新加坡，还有 6 天');
   eq(h.l, '天后出发', 'A2 11/05 标签');
-  eq(h.also.join(','), 'jakarta|还有 9 天', 'A3 11/05 副位＝雅加达 还有 9 天');
+  eq(h.also.join(','), 'jakarta|还有 9 天,seoul|还有 58 天', 'A3 11/05 副位＝雅加达 还有 9 天、首尔 还有 58 天');
   eq(h.dates, '2026年11月11–14日 · 共 4 天', 'A4 日期与天数（11–14 共 4 天）');
   eq(h.bar, null, 'A5 还没出发不显示进度条');
   eq(errors.length, 0, 'A6 页面无脚本报错');
@@ -85,7 +87,7 @@ const hero = (page) => page.evaluate(() => {
   const { ctx, page } = await open({ date: '2026-11-10' });
   const h = await hero(page);
   eq(h.n + '/' + h.l, '1/天后 · 明天出发', 'A7 11/10 明天出发');
-  eq(h.also.join(','), 'jakarta|还有 4 天', 'A8 11/10 雅加达 还有 4 天');
+  eq(h.also.join(','), 'jakarta|还有 4 天,seoul|还有 53 天', 'A8 11/10 雅加达 还有 4 天、首尔 还有 53 天');
   eq(h.href, '../sg-jkt-trip/singapore.html', 'A9 主卡按钮通到新加坡手册');
   await ctx.close();
 }
@@ -137,7 +139,7 @@ const hero = (page) => page.evaluate(() => {
   const { ctx, page } = await open({ date: '2026-11-14' });
   const h = await hero(page);
   eq(h.trip + '/' + h.n + '/' + h.l, 'jakarta/1/第 1 天，共 3 天', 'A15 11/14 交接日主卡换成雅加达');
-  eq(h.also.join(','), 'sg-nov|进行中 · 第 4 天', 'A16 11/14 新加坡退到副位 第 4 天');
+  eq(h.also.join(','), 'sg-nov|进行中 · 第 4 天,seoul|还有 49 天', 'A16 11/14 新加坡退到副位 第 4 天、首尔 还有 49 天');
   await ctx.close();
 }
 {
@@ -148,12 +150,12 @@ const hero = (page) => page.evaluate(() => {
   await ctx.close();
 }
 {
-  const { ctx, page } = await open({ date: '2026-11-17' });
+  const { ctx, page } = await open({ date: '2027-01-09' });
   const h = await hero(page);
-  eq(h.state, 'none', 'A19 11/17 没有排定的行程');
-  check(h.dates.startsWith('最近一趟：雅加达'), `A20 11/17 最近一趟＝雅加达（实得 ${h.dates}）`);
-  eq(h.href, '../sg-jkt-trip/jakarta.html', 'A21 空状态按钮通到最近一趟');
-  eq(h.past.join(','), 'jakarta,sg-nov,penang,sg-sep,clinic,xiamen,japan', 'A22 走过的路 7 趟，新的在上');
+  eq(h.state, 'none', 'A19 2027-01-09 没有排定的行程');
+  check(h.dates.startsWith('最近一趟：首尔'), `A20 2027-01-09 最近一趟＝首尔（实得 ${h.dates}）`);
+  eq(h.href, '../seoul-trip/index.html', 'A21 空状态按钮通到最近一趟');
+  eq(h.past.join(','), 'seoul,jakarta,sg-nov,penang,sg-sep,clinic,xiamen,japan', 'A22 走过的路 8 趟，新的在上');
   eq(await page.evaluate(() => getComputedStyle(document.querySelector('.stub')).display), 'none', 'A23 空状态不显示天数票根');
   await ctx.close();
 }

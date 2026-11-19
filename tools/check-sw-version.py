@@ -27,6 +27,8 @@ PWAS = {
     # 新加坡／雅加达手册（只做离线缓存、没有 manifest）：页面本身网络优先，升版是为了让
     # 已装的 SW 重新预缓存两本、补抓新照片（2026-11-04 建）
     "sg-jkt-trip/sw.js": ["sg-jkt-trip/singapore.html", "sg-jkt-trip/jakarta.html", "sg-jkt-trip/index.html"],
+    # 首尔手册（2026-11-19 建，照上面那份做）
+    "seoul-trip/sw.js": ["seoul-trip/index.html"],
 }
 
 # SW 里那行版本号，形如 const CACHE = 'boss-app-v9';

@@ -286,6 +286,19 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
 - **包车**（2026-11-03 用户给）：11/14–11/16 三天全程包车 Toyota Alphard（第四代），含 11/14 接机、11/16 送机，每天最多用 18 小时。手册写在三处：`#hotel` 分房 note 前的绿色「包车」note、D1「坐包车（Alphard）往酒店」格、D3「坐包车离开酒店 → 雅加达 T3」格（08:30 不变）；D2 原本没写打车，未动。老板 App（butler `trips.json` 的 `trip-jkt-2026-11`）写在入住条目 note 与 11/16 08:30 条目 note。**价钱（含超时加价）一律不进手册**（公开网页），老板 App 也暂不写；回程单程接送价未定，用户告知前不写、也不写「待定」。车的照片不加。
 - 照片：每张卡 4–5 张，2026-10-31 CI 抓 8 张／家后逐张看缩图挑；360 全景、人像、广告文字图、重复图都剔掉。Grand Indonesia、Plaza Indonesia、Kota Tua、Land's End 合格照只有 4 张。
 
+## seoul-trip/index.html（约 1800 行；2026-11-19 建）
+首尔家庭手册，2027-01-02（六）～01-08（五）7天6夜（首尔住 5 夜，1/3–1/8），6 人含 10、13 岁两个小孩（全名写在封面），旅行社接送（Alan Travel 私人团），双语。用户原话「请用之前新加坡雅加达的做法」，所以**整套版型复制自 `sg-jkt-trip/jakarta.html`**（礼宾风 CSS、站点竖线时间轴、方角 `btn-map`、nav 跳转、自动跳当天、tapGlow、`siteLangUser`、天气条、`.flive` 航班实时框），去掉 PSI／烟霾。已登记 `tools/lib/trips.py`（2027-01-08）、`home/index.html` 的 `HOME_DATA`、`tools/check-sw-version.py` 的 `PWAS`。
+- **主题（韩国宫廷／丹青）**：文末 `:root` 覆盖段——靛蓝（쪽빛）`--navy:#1b2a55`＋金 `--gold:#b39149`＋石绿 `--jade`。纹样全是 CSS：`--changsal` 窗棂（封面上下纹带、区块标题下、页尾；**用到的地方不要再设 `background-size`**，尺寸写在变量各层里，否则变实心色块）、`--dancheong` 丹青三色细带（每天标题上沿、餐厅分组线）。**丹青本来的红不用**，红只给警示。
+- **每天线路色（首尔地铁线色压低饱和，禁红）**：D1 1号线深蓝 `--l1`、D2 2号线绿、D3 3号线橙、D4 5号线紫、D5 9号线金、D6 4号线天蓝。
+- 结构：topbar → nav（航班／住宿／D1–D6／餐厅／玩乐／资讯）→ cover → **`#precheck` 置顶「出发前要确认」框**（朱红外框＋「留意／ALERT」文字标签，4 条，正文里 `#day03`、`#precheck` 互相链）→ tip → `#flights`(01，4 张 `.bpass`：CX608 KTI→HKG 2h45、CX426 HKG→ICN 3h35、CX417 ICN→HKG 4h15、CX605 HKG→KTI 2h45，香港转机去 4h35／回 2h45，仁川 T1 国泰柜台 09:00 关) → `#hotel`(02，The Westin Josun Seoul，3 间 Deluxe Triple) → `#itinerary`(03，`#day01`~`#day06`，`data-date="2027-01-03"`…`-08`) → `#food`(04，15 张 `.evt`，id `food-*`，四组) → `#fun`(05，12 张 `.evt`，id `fun-*`) → `#info`(06，`.info` 实用资讯) → footer。
+- **特殊点（勿擅改）**：Galaxy Robot Park 周一至周三休馆，旅行社排在 1/5（二）会扑空——置顶第 2 条＋D3 红色 `.note.red` 提示，调法是改到 1/3（日）下午（D1 放了它的 `.stop`），1/5 改去乐天世界（D3 备案，链到 `#fun-lotte／laqua／legend`）。第一晚房间（1/2 晚不在订单内）是置顶第 1 条。
+- **订位代号（FPVOBS 等）、订单号一律不进页面**（公开仓库，沿用新加坡那本的规矩），航班卡只按人名列座位。
+- **韩文原店名放 `<div class="orig">`（在 cn/en span 之外）**：`check-html.py` 只扫 cn/en span 里的韩文，店名原文放外面就不必登记白名单，也不会在英文模式被隐藏；地址里的楼层要写 B1／3F，别留「층」。
+- 逐日里**同时出现在玩乐区的地点**（Zzang、Trickeye、NANTA、溜冰场、乐天世界等）不再重复做 `.stop` 大卡，只在 `.note` 里链到 `#fun-*`；只在逐日出现的（爱宝、星空图书馆、Galaxy、草莓农场、SMOB、The Hyundai Seoul、SEOULDAL）才是 `.stop`。餐厅卡的说明里必须有「日期＋确切时刻」（`check-trip-hours` 会拦），营业时间由 JSON 的英文星期表自动换算。
+- 天气：坐标 37.5644,126.9801、时区 Asia/Seoul，常态文案「一月常态 −6～2°C，干冷多风，偶有降雪」；`wmo()` 多了雪的代码，`.wx.wet` 的标签改成「雨雪／SNOW / RAIN」。`check-weather.mjs` 目前**没有**加首尔这一页。
+- 离线：`seoul-trip/sw.js`（照 `sg-jkt-trip/sw.js`，scope 只到本文件夹，`VERSION='seoul-v1'`，只缓存 index.html）。**改了 `index.html` 要把 `VERSION` 加一**（`check-sw-version.py` 已登记）。
+- 照片：每张卡 4 张，取自 CI 抓图 JSON 的 `urls` 前 4 张；alt 写成「名称 照片 N · Name photo N」。
+
 ## penang-trip/index.html（约 1500 行；2026-10-05 起**没有总地图**，见下方「总地图」一节）
 槟城家庭手册，2026-10-09~17 九天八夜，6 人（老板一家），双语。
 2026-08-21 用户重新整理内容后重上传，本页**内容整批换成那一版**、设计沿用娘惹瓷砖那套；
