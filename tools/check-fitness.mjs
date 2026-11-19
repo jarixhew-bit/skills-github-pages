@@ -1182,14 +1182,38 @@ for (const [days, want] of [[29, true], [10, false]]) {
   await page.fill('#dAge', '40'); await page.fill('#dKg', '72');
   const prot = await page.textContent('#dProt');
   check(/115 g/.test(prot) && /1\.6/.test(prot) && /1\.62/.test(prot), `饮食：72 kg 蛋白目标 1.6×72＝115.2 → 115 g，并引 Morton 1.62（实得：${prot.slice(0, 80)}）`);
-  const kc = await page.textContent('#dKcal'), kcN = await page.textContent('#dKcal .num');
-  check(/1500–1800/.test(kcN) && /Jensen|AHA/.test(kc), `饮食：男、指南区间模式 → 1500–1800 kcal/日，附来源（实得：${kc.slice(0, 80)}）`);
-  await page.click('#dMode [data-v="deficit"]');
-  const kc2 = await page.textContent('#dKcal .num');
-  check(/500–750/.test(kc2) && !/1500–1800/.test(kc2), `饮食：缺口模式 → 每天少吃 500–750 kcal（实得：${kc2.slice(0, 80)}）`);
-  await page.click('#dSex [data-v="F"]'); await page.click('#dMode [data-v="range"]');
-  check(/1200–1500/.test(await page.textContent('#dKcal .num')), '饮食：女、区间模式 → 1200–1500 kcal/日');
-  await page.click('#dSex [data-v="M"]');
+  // BMI 门槛（2026-11-19 verifier：体重正常的人不准看到 1500–1800 这种绝对区间）
+  // 手算：72 ÷ 1.75² ＝ 23.51 → 23.5；72 ÷ 1.65² ＝ 26.45 → 26.4
+  const bmiFn = await page.evaluate(() => window.__fit.diet.bmi ? [window.__fit.diet.bmi(72, 175), window.__fit.diet.bmi(72, 165)] : null);
+  check(bmiFn && bmiFn[0] === 23.5 && bmiFn[1] === 26.4, `BMI：72 kg／175 cm＝23.5、72 kg／165 cm＝26.4（实得 ${JSON.stringify(bmiFn)}）`);
+  const modeDef = await page.evaluate(() => { const b = document.querySelector('#dMode [aria-pressed="true"]'); return b ? b.dataset.v : null; });
+  const kcU = await page.textContent('#dKcal');
+  check(modeDef === 'deficit' && !/1500/.test(kcU) && /身高/.test(kcU), `BMI：没填身高 → 默认「比平常少吃」、不出现 1500（模式 ${modeDef}；实得：${kcU.slice(0, 100)}）`);
+  await page.click('#dMode [data-v="range"]').catch(() => {});
+  check(!/1500/.test(await page.textContent('#dKcal')), 'BMI：没填身高时就算点了「按指南区间」也不出现 1500–1800');
+  const hasCm = await page.locator('#dCm').count();
+  check(hasCm === 1, '饮食：资料里有身高栏');
+  if (hasCm) {
+    await page.fill('#dCm', '175');
+    const bm = await page.textContent('#dBmi').catch(() => '');
+    check(/23\.5/.test(bm) && /25/.test(bm) && /23/.test(bm) && /WHO/.test(bm), `BMI：175 cm → 23.5，并列 WHO（≥25／≥30）与亚洲（23）门槛（实得：${bm.slice(0, 160)}）`);
+    await page.click('#dMode [data-v="range"]').catch(() => {});
+    const kn = await page.textContent('#dTargets');
+    check(!/1500/.test(kn) && /App 的保守判断/.test(kn), `BMI 23.5（体重正常）：点了「按指南区间」也不出现 1500，只给温和的少吃量并标 App 的保守判断（实得：${(await page.textContent('#dKcal')).slice(0, 120)}）`);
+    await page.fill('#dCm', '165');
+    await page.click('#dMode [data-v="range"]');
+    const kc = await page.textContent('#dKcal'), kcN = await page.textContent('#dKcal .num');
+    check(/1500–1800/.test(kcN) && /仅适用超重／肥胖成人，体重正常别直接用/.test(kc) && /Jensen|AHA/.test(kc) && /按个人体重调整/.test(kc), `BMI 26.4（超重）、指南区间 → 1500–1800 kcal/日，旁边写「仅适用超重／肥胖成人」与「按体重调整」（实得：${kc.slice(0, 140)}）`);
+    await page.click('#dMode [data-v="deficit"]');
+    const kc2 = await page.textContent('#dKcal .num');
+    check(/500–750/.test(kc2) && !/1500–1800/.test(kc2), `BMI 26.4、少吃模式 → 每天少吃 500–750 kcal（实得：${kc2.slice(0, 80)}）`);
+    await page.click('#dSex [data-v="F"]'); await page.click('#dMode [data-v="range"]');
+    check(/1200–1500/.test(await page.textContent('#dKcal .num')), 'BMI 26.4、女、区间模式 → 1200–1500 kcal/日');
+    await page.click('#dSex [data-v="M"]');
+    await page.fill('#dCm', '175');
+    check(!/1500/.test(await page.textContent('#dTargets')), 'BMI：区间模式下把身高改回 175（BMI 23.5）→ 1500–1800 马上消失');
+    await page.click('#dMode [data-v="deficit"]');
+  }
   // 16/8 分餐
   await page.click('#dTre');
   const meal = await page.textContent('#dMeals');
@@ -1198,9 +1222,18 @@ for (const [days, want] of [[29, true], [10, false]]) {
   await page.click('#dMealN [data-v="2"]');
   const meal2 = await page.textContent('#dMeals');
   check(/约 58 g/.test(meal2) && /12:00/.test(meal2) && /19:30/.test(meal2), `饮食：改 2 餐 → 115.2÷2＝57.6 → 约 58 g（实得：${meal2.slice(0, 120)}）`);
+  check(/改成 3 餐/.test(meal2), '分餐提示：2 餐、每餐 58 g（>40）→ 提示改成 3 餐');
   await page.click('#dMealN [data-v="3"]');
+  check(!/改成 3 餐/.test(await page.textContent('#dMeals')) && !/小点心/.test(await page.textContent('#dMeals')), '分餐提示：3 餐、每餐 38 g（≤40）→ 不出提示');
+  // 3 餐但每餐 >40：80 kg → 1.6×80＝128 ÷ 3 ＝ 42.7 → 43 g，不能叫人「改成 3 餐」（已经是 3 餐）
+  await page.fill('#dKg', '80');
+  const meal3 = await page.textContent('#dMeals');
+  check(/约 43 g/.test(meal3) && !/改成 3 餐/.test(meal3) && /小点心/.test(meal3) && /App 的安排/.test(meal3), `分餐提示：3 餐、每餐 43 g → 不说「改成 3 餐」，改建议加一份蛋白小点心（App 的安排）（实得：${meal3.slice(0, 220)}）`);
+  await page.fill('#dKg', '72');
   const ev = await page.textContent('#dTreWhy');
   check(/Lowe/.test(ev) && /Liu/.test(ev) && /瘦体重/.test(ev), '饮食：16/8 证据摘要写了 Lowe 2020、Liu 2022 与瘦体重');
+  check(/没有针对 40 岁以上的专门试验（App 的保守判断）/.test(ev), 'Moro／Tinsley：写明没有 40 岁以上的专门试验（App 的保守判断）');
+  check(/1 型／妊娠糖尿病数据不足/.test(ev) && /请医生调药（App 的做法）/.test(ev), '低血糖：写 1 型／妊娠糖尿病数据不足，「请医生调药」标 App 的做法');
   // 记一天
   for (const n of [30, 30, 20]) await page.click(`#dToday [data-padd="${n}"]`);
   await page.fill('#dKcalIn', '1700'); await page.click('#dWin');
@@ -1219,19 +1252,21 @@ for (const [days, want] of [[29, true], [10, false]]) {
   const qt = await page.textContent('#dQg');
   check(/158\.4/.test(qt) && /110\.4/.test(qt) && /1109/.test(qt) && /773/.test(qt) && /15670/.test(qt) && /280 分钟/.test(qt),
     `洗髓功：页面写出公式 158.4／110.4、每周 1109／773 kcal、280 分钟、Compendium 15670（实得：${qt.slice(0, 200)}）`);
+  const qn = await page.textContent('#dQg .num');
+  check(/773/.test(qn) && !/1109/.test(qn) && /低强度（App 的推论）/.test(qt), `洗髓功：大字是净 773 kcal（毛 1109 放小字），并写「按心率约属低强度（App 的推论）」（大字：${qn}）`);
   // 备份来回
   await page.click('#dietBack'); await page.click('nav.tabs [data-tab="more"]');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
   const file = await dl.path(); const bk = JSON.parse(fs.readFileSync(file, 'utf8'));
   const today = '2026-09-30';
-  check(bk.diet && bk.diet.profile && bk.diet.profile.kg === 72 && bk.diet.profile.age === 40 && bk.diet.profile.sex === 'M' && bk.diet.log[today] && bk.diet.log[today].p === 80 && bk.diet.log[today].kcal === 1700 && bk.diet.log[today].win === true && bk.diet.tre.on === true && bk.diet.qg.on === true,
+  check(bk.diet && bk.diet.profile && bk.diet.profile.kg === 72 && bk.diet.profile.age === 40 && bk.diet.profile.sex === 'M' && bk.diet.profile.cm === 175 && bk.diet.log[today] && bk.diet.log[today].p === 80 && bk.diet.log[today].kcal === 1700 && bk.diet.log[today].win === true && bk.diet.tre.on === true && bk.diet.qg.on === true,
     '饮食备份：资料、今天的记录、16/8 与洗髓功设定都在备份里');
   const b2 = await openWith([]);
   await b2.page.click('nav.tabs [data-tab="more"]');
   await b2.page.setInputFiles('#bkFile', file);
   await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
   const d2 = await b2.page.evaluate(() => JSON.parse(localStorage.getItem('fit.diet') || 'null'));
-  check(d2 && d2.profile.kg === 72 && d2.log[today].p === 80 && d2.tre.on === true && d2.qg.on === true && d2.mode === 'range', '饮食备份：导入到空白手机后资料、记录、设定都还原');
+  check(d2 && d2.profile.kg === 72 && d2.log[today].p === 80 && d2.tre.on === true && d2.qg.on === true && d2.mode === 'deficit' && d2.profile.cm === 175, '饮食备份：导入到空白手机后资料、记录、设定都还原');
   await b2.ctx.close();
   check(errors.length === 0, `饮食没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
@@ -1242,6 +1277,7 @@ for (const [label, rows, want] of [
   ['只有 2 周没降（3 个周均值）', [[14, 72, 85], [7, 72.3, 85], [0, 72.2, 85]], false],
   ['3 周里体重有降', [[21, 72.5, 85], [14, 72.3, 85], [7, 72.1, 85], [0, 72.0, 85]], false],
   ['体重没降但腰围在降', [[21, 72, 86], [14, 72, 85.5], [7, 72, 85.2], [0, 72.1, 85]], false],
+  ['腰围只在中间两周量过', [[21, 72, null], [14, 72.3, 85], [7, 72.1, 85.2], [0, 72.2, null]], 'midW'],
 ]) {
   const { ctx, page } = await openWith([]);
   await page.evaluate(r => localStorage.setItem('fit.body', JSON.stringify(r.map(([d, kg, w]) => ({ id: 'b' + d, ts: Date.now() - d * 864e5, kg, waist: w })))), rows);
@@ -1249,7 +1285,10 @@ for (const [label, rows, want] of [
   await page.click('#dietCard [data-open-diet]', { timeout: 3000 }).catch(() => {});
   const n = await page.locator('#dPlateau').count();
   const t = n ? await page.textContent('#dPlateau') : '';
-  check(want ? (n === 1 && /App 的安排/.test(t)) : n === 0, `平台期提示：${label} → ${want ? '出现（标 App 的安排）' : '不出现'}（实得 ${n}）`);
+  if (want === 'midW') {
+    const wk = await page.textContent('#dWeekCard');
+    check(n === 1 && !/没有腰围记录/.test(t) && /腰围/.test(t) && !/NaN|null/.test(wk), `平台期提示：${label} → 出现，但不说「没有腰围记录」（3 周前或最近一周没量），周均值不印 NaN（实得：${t.slice(0, 120)}）`);
+  } else check(want ? (n === 1 && /App 的安排/.test(t)) : n === 0, `平台期提示：${label} → ${want ? '出现（标 App 的安排）' : '不出现'}（实得 ${n}）`);
   await ctx.close();
 }
 // 改名与文案守门
@@ -1260,10 +1299,14 @@ for (const [label, rows, want] of [
   await page.click('#picker [data-wk="A"]');
   check(/心肺收尾/.test(await page.textContent('#workout')), '改名：训练卡片显示「心肺收尾」');
   await ctx.close();
-  const BANNED = ['训练日以外多走路', '比多加一次训练更容易累积'];
+  const BANNED = ['训练日以外多走路', '比多加一次训练更容易累积',
+    // 2026-11-19 verifier 退件：比原文满、或没查证的说法
+    '才与明显的减重', '让关节和神经恢复，下周回来通常更有力', '不是偷懒，是让身体吸收', '一份手掌大的肉或鱼', '保肌另一半靠',
+    '睡眠不足会影响恢复和食欲，尽量睡够。</li>'];
   const hit = BANNED.filter(b => html.includes(b));
   check(hit.length === 0, `饮食／说明文案：没有来源的句子不再出现${hit.length ? '（还在：' + hit.join('、') + '）' : ''}`);
-  const need = ['−1.6 kg', '2.1 cm', '150–250', '250 分钟', '500–750', '32986097', '35443107', '28642676', '28698222', '27737674', '31268131', '40298934', '42361830'];
+  const need = ['−1.6 kg', '2.1 cm', '150–250', '250 分钟', '500–750', '32986097', '35443107', '28642676', '28698222', '27737674', '31268131', '40298934', '42361830',
+    '26817506', '14726171', 'who.int', '仅适用超重／肥胖成人，体重正常别直接用', '（App 的做法，未查证）', '看包装上的蛋白质克数'];
   const miss = need.filter(b => !html.includes(b));
   check(miss.length === 0, `饮食／说明文案：查证过的数字与来源都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
 }

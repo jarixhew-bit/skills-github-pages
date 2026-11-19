@@ -328,7 +328,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
   <section id="tab-train" class="stack">
     <div id="deloadBanner" class="banner" hidden>
       <span><b>本周是减量周</b>　每个超级组只做 2 轮，重量自动降到约 9 成。</span>
-      <span class="small muted">连续练 3 周后安排 1 周轻松的，让关节和神经恢复，下周回来通常更有力。不想减量可在「更多 → 设置」关掉。</span>
+      <span class="small muted">连续练 3 周后安排 1 周轻松的（App 的做法，用意是让身体缓一缓）。不想减量可在「更多 → 设置」关掉。</span>
     </div>
     <div id="retBanner" class="banner ret" hidden>
       <b id="retTitle"></b>
@@ -554,7 +554,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
           <li>有组做不到<b>下限</b>（例如 8 下）→ 维持同重量；<b>连续两次</b>都做不到 → 建议减轻约 1 成重新累积。</li>
           <li>「余力」＝这组做完还能再做几下。填了它，建议会更准；不填也能用。</li>
         </ul>
-        <p><b>减量周</b>：每练 3 周，第 4 周只做 2 轮、重量约 9 成。不是偷懒，是让身体吸收前 3 周的训练。</p>
+        <p><b>减量周</b>：每练 3 周，第 4 周只做 2 轮、重量约 9 成（App 的做法：用意是让身体缓一缓，效果没有另外查证）。</p>
       </div>
     </details>
 
@@ -562,12 +562,12 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <summary>减脂的关键</summary>
       <div class="stack">
         <ul class="list">
-          <li>体重下降主要来自<b>饮食的热量缺口</b>；力量训练的作用是减脂期间<b>保住肌肉</b>，让瘦下来的是脂肪。保肌另一半靠<b>吃够蛋白</b>（「饮食」页会按体重算）。</li>
+          <li>体重下降主要来自<b>饮食的热量缺口</b>；力量训练的作用是减脂期间<b>保住肌肉</b>，让瘦下来的是脂肪。蛋白也要吃够：一个 4 周、热量缺口很大的试验里，高蛋白组瘦体重 +1.2 kg、对照组 +0.1 kg，脂肪也多减（−4.8 vs −3.5 kg）（<a href="https://pubmed.ncbi.nlm.nih.gov/26817506/" target="_blank" rel="noopener">Longland 2016</a>，对象是年轻男性）。「饮食」页会按体重算。</li>
           <li><b>只靠运动能减多少：</b>14 个随机试验的汇总，只做有氧 6 个月平均体重 −1.6 kg、腰围 −2.1 cm（<a href="https://pubmed.ncbi.nlm.nih.gov/21787904/" target="_blank" rel="noopener">Thorogood 2011</a>）。</li>
-          <li><b>运动量：</b>美国运动医学会：每周 150–250 分钟中等强度活动只带来少量减重；超过 250 分钟才与明显的减重有关（<a href="https://pubmed.ncbi.nlm.nih.gov/19127177/" target="_blank" rel="noopener">ACSM 2009</a>）。</li>
-          <li><b>饮食：</b>2013 年美国肥胖指南给的三选一：男性每天 1500–1800 kcal（女性 1200–1500）、每天少吃 500–750 kcal，或有证据的饮食法（<a href="https://pubmed.ncbi.nlm.nih.gov/24222017/" target="_blank" rel="noopener">Jensen 2013</a>；对象是超重／肥胖的成人）。</li>
+          <li><b>运动量：</b>美国运动医学会：每周 150–250 分钟中等强度活动只带来少量减重；超过 250 分钟与明显的减重有关（<a href="https://pubmed.ncbi.nlm.nih.gov/19127177/" target="_blank" rel="noopener">ACSM 2009</a>）。</li>
+          <li><b>饮食：</b>2013 年美国肥胖指南给的三选一：男性每天 1500–1800 kcal（女性 1200–1500）、每天少吃 500–750 kcal，或有证据的饮食法（<a href="https://pubmed.ncbi.nlm.nih.gov/24222017/" target="_blank" rel="noopener">Jensen 2013</a>；对象是超重／肥胖的成人，体重正常别直接套固定区间——「饮食」页会按 BMI 判断）。</li>
           <li>心肺收尾 6 分钟主要练心肺与体能；几分钟的运动本身消耗不大，减脂主要还是靠饮食。（App 的推论）</li>
-          <li>睡眠不足会影响恢复和食欲，尽量睡够。</li>
+          <li>尽量睡够（App 的做法，未查证）。</li>
           <li>体重几周不动但腰围在变小，也是在进步——所以「进度」页也可以记腰围。</li>
         </ul>
       </div>
@@ -2455,15 +2455,19 @@ const DSRC={
   varady:["Varady 2026","https://pubmed.ncbi.nlm.nih.gov/42361830/"],
   santos:["Santos 2024","https://pubmed.ncbi.nlm.nih.gov/37837312/"],
   comp:["2024 成人身体活动纲要（Compendium）","https://pacompendium.com/sports/"],
-  herr:["Herrmann 2024","https://pmc.ncbi.nlm.nih.gov/articles/PMC10818145/"]
+  herr:["Herrmann 2024","https://pmc.ncbi.nlm.nih.gov/articles/PMC10818145/"],
+  who:["WHO 肥胖与超重","https://www.who.int/news-room/fact-sheets/detail/obesity-and-overweight"],
+  who04:["WHO 亚洲 BMI 专家会议 2004","https://pubmed.ncbi.nlm.nih.gov/14726171/"]
 };
 const dA=k=>'<a href="'+DSRC[k][1]+'" target="_blank" rel="noopener">'+esc(DSRC[k][0])+'</a>';
 const QG_MET=3.3;
-let diet=Object.assign({profile:{},mode:"range",tre:{on:false,start:"12:00",end:"20:00",meals:3},qg:{on:false,min:40},log:{},setTs:0},ls.get(DIKEY,{}));
+let diet=Object.assign({profile:{},mode:"deficit",tre:{on:false,start:"12:00",end:"20:00",meals:3},qg:{on:false,min:40},log:{},setTs:0},ls.get(DIKEY,{}));
 ["profile","tre","qg","log"].forEach(k=>{ if(!diet[k]||typeof diet[k]!=="object") diet[k]={}; });
 diet.tre=Object.assign({on:false,start:"12:00",end:"20:00",meals:3},diet.tre); diet.qg=Object.assign({on:false,min:40},diet.qg);
 function saveDiet(){ ls.set(DIKEY,diet); }
 function protTarget(kg){ return kg>0?1.6*kg:null; } // 精确值；显示时四舍五入
+// BMI＝kg÷m²（WHO）。指南的固定热量区间只在 BMI ≥25 时显示（App 的保守判断：WHO 超重门槛；亚洲 23 起风险增加，23–25 之间也只给温和的少吃量）
+function bmi(kg,cm){ return kg>0&&cm>=100&&cm<=250?r1(kg/((cm/100)*(cm/100))):null; }
 function qigong(kg,min){ const h=min/60, g=QG_MET*kg*h, n=(QG_MET-1)*kg*h; return {gross:r1(g),net:r1(n),wkGross:r1(g*7),wkNet:r1(n*7)}; }
 function hm(m){ m=((m%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
 function tmin(t){ const m=/^(\d{1,2}):(\d{2})$/.exec(t||""); return m?(+m[1])*60+(+m[2]):null; }
@@ -2498,7 +2502,8 @@ function renderDietProfile(){
   $("dProfile").innerHTML='<h2>我的资料</h2>'+
     '<div class="set-row"><span>性别</span><div class="seg" role="group" aria-label="性别" id="dSex">'+[["M","男"],["F","女"]].map(x=>'<button data-v="'+x[0]+'" aria-pressed="'+(p.sex===x[0])+'">'+x[1]+'</button>').join("")+'</div></div>'+
     '<div class="form-row"><label>年龄<input class="inp" id="dAge" inputmode="numeric" value="'+(p.age!=null?esc(p.age):"")+'" placeholder="岁"></label>'+
-    '<label>体重 kg<input class="inp" id="dKg" inputmode="decimal" value="'+(p.kg!=null?esc(p.kg):"")+'" placeholder="kg"></label></div>'+
+    '<label>体重 kg<input class="inp" id="dKg" inputmode="decimal" value="'+(p.kg!=null?esc(p.kg):"")+'" placeholder="kg"></label>'+
+    '<label>身高 cm<input class="inp" id="dCm" inputmode="decimal" value="'+(p.cm!=null?esc(p.cm):"")+'" placeholder="cm"></label></div>'+
     '<p class="small muted">体重变了记得回来改，目标会跟着算。</p>';
 }
 function renderDietTargets(){
@@ -2507,11 +2512,25 @@ function renderDietTargets(){
   h+=t?'<p><span class="num" style="font-size:26px">'+Math.round(t)+' g</span> 蛋白／天 <span class="small muted">＝ 1.6 g × '+r1(kg)+' kg</span></p>'+
        '<p class="small">依据：'+dA("morton")+' 汇总 49 个研究，总蛋白超过每天每公斤 1.62 g 后，再多吃没有让力量训练多长去脂体重（研究对象是一般热量下的增肌，不是减脂期）。'+dA("issn")+'：运动的人每天 1.4–2.0 g/kg 对多数人足够；减脂期有训练的人可能要 2.3–3.1 g/kg。取 1.6 是 App 的安排。</p>'
      :'<p class="small muted">先在上面填体重。</p>';
-  h+='</div><div class="set-row"><span>热量怎么定</span><div class="seg" role="group" aria-label="热量怎么定" id="dMode">'+[["range","按指南区间"],["deficit","每天少吃"]].map(x=>'<button data-v="'+x[0]+'" aria-pressed="'+(diet.mode===x[0])+'">'+x[1]+'</button>').join("")+'</div></div><div id="dKcal" class="stack" style="gap:4px">';
-  if(diet.mode==="deficit") h+='<p><span class="num" style="font-size:22px">每天少吃 500–750 kcal</span></p><p class="small">跟你平常吃的比。App 不知道你平常吃多少，所以只给差额。</p>';
-  else if(p.sex==="M"||p.sex==="F") h+='<p><span class="num" style="font-size:22px">'+(p.sex==="M"?"1500–1800":"1200–1500")+' kcal／天</span></p>';
-  else h+='<p class="small muted">选了性别才显示区间（男女不同）。</p>';
-  h+='<p class="small">依据：'+dA("jensen")+'（AHA/ACC/TOS，推荐等级 A）三选一——女性每天 1200–1500 kcal、男性 1500–1800 kcal；或每天少吃 500 或 750 kcal；或有证据的饮食法。指南的对象是超重／肥胖的成人，而且是在完整的生活方式计划里。</p></div>';
+  const B=bmi(kg,p.cm), over=B!=null&&B>=25, mode=over?diet.mode:"deficit";
+  h+='</div><div id="dBmi" class="stack" style="gap:4px">';
+  if(B==null) h+='<p class="small muted">填了身高才算得出 BMI（体重 ÷ 身高²）。热量建议要看 BMI。</p>';
+  else h+='<p><span class="num" style="font-size:22px">BMI '+B+'</span> <span class="small muted">＝ '+r1(kg)+' ÷ '+(p.cm/100).toFixed(2)+'²</span></p>'+
+    '<ul class="list small"><li>'+dA("who")+'（成人）：BMI ≥25 超重、≥30 肥胖。</li>'+
+    '<li>'+dA("who04")+'：亚洲人在 BMI 低于 25 时，2 型糖尿病与心血管病高风险的人就已不少；会议列出 23、27.5、32.5、37.5 作为公共卫生行动点，但没有给所有亚洲人统一的门槛，国际分类仍用 WHO 的 25／30。</li>'+
+    '<li>App 的保守判断：指南给的固定热量区间只在 BMI ≥25（WHO 超重）时才显示；23–25 之间也只给温和的少吃量。</li></ul>';
+  h+='</div><div class="set-row"><span>热量怎么定</span><div class="seg" role="group" aria-label="热量怎么定" id="dMode">'+[["deficit","比平常少吃"],["range","按指南区间"]].map(x=>'<button data-v="'+x[0]+'" aria-pressed="'+(mode===x[0])+'">'+x[1]+'</button>').join("")+'</div></div><div id="dKcal" class="stack" style="gap:4px">';
+  if(!over){
+    h+='<p><span class="num" style="font-size:22px">每天比平常少吃，最多约 500 kcal</span></p>'+
+      '<p class="small">App 的保守判断：'+(B==null?'还没填身高、不知道 BMI，先按温和的量。':'BMI '+B+' 不到 25，体重正常不建议刻意大幅减热量。')+'App 不知道你平常吃多少，所以只给差额。</p>';
+    if(diet.mode==="range") h+='<p class="small muted">「按指南区间」只在 BMI ≥25 时显示：那个区间是给超重／肥胖成人的。</p>';
+    h+='<p class="small">依据：'+dA("jensen")+'（AHA/ACC/TOS）的热量建议对象是超重／肥胖成人，而且原文说热量通常按个人体重调整。</p></div>';
+  } else {
+    if(mode==="deficit") h+='<p><span class="num" style="font-size:22px">每天少吃 500–750 kcal</span></p><p class="small">跟你平常吃的比。App 不知道你平常吃多少，所以只给差额。</p>';
+    else if(p.sex==="M"||p.sex==="F") h+='<p><span class="num" style="font-size:22px">'+(p.sex==="M"?"1500–1800":"1200–1500")+' kcal／天</span> <b class="small">仅适用超重／肥胖成人，体重正常别直接用</b></p>';
+    else h+='<p class="small muted">选了性别才显示区间（男女不同）。</p>';
+    h+='<p class="small">依据：'+dA("jensen")+'（AHA/ACC/TOS，推荐等级 A）三选一——女性每天 1200–1500 kcal、男性 1500–1800 kcal（原文：热量通常按个人体重调整）；或每天少吃 500 或 750 kcal；或有证据的饮食法。指南的对象是超重／肥胖的成人，而且是在完整的生活方式计划里。</p></div>';
+  }
   $("dTargets").innerHTML=h;
 }
 function renderDietTre(){
@@ -2526,7 +2545,8 @@ function renderDietTre(){
       h+='<p class="small">窗口 '+r1(m.len/60)+' 小时。'+dA("issn")+'：每餐约 0.25 g/kg 优质蛋白（你是 '+m.minMeal+' g），或 20–40 g；最好每 3–4 小时平均分配。</p>';
       h+='<ul class="list">'+m.times.map((t,i)=>'<li><b>'+t+'</b>　蛋白约 '+m.each+' g'+(i===m.times.length-1?'（关窗前 30 分钟）':'')+'</li>').join("")+'</ul>';
       h+='<p class="small muted">时间与每餐克数是 App 的安排：把每天 '+Math.round(protTarget(kg))+' g 平均分成 '+m.n+' 份，第一餐在开窗时。每餐下限 '+m.minMeal+' g（0.25 × '+r1(kg)+'）。</p>';
-      if(m.each>40) h+='<p class="small">每餐超过 ISSN 写的 20–40 g，间隔也超过 3–4 小时：改成 3 餐更接近建议（App 的推论）。</p>';
+      if(m.n===2&&m.each>40) h+='<p class="small">每餐超过 ISSN 写的 20–40 g，间隔也超过 3–4 小时：改成 3 餐更接近建议（App 的推论）。</p>';
+      else if(m.n===3&&m.each>40) h+='<p class="small">每餐超过 ISSN 写的 20–40 g：可以在两餐之间加一份含蛋白的小点心（例如一杯牛奶或无糖优格），把量摊开（App 的安排）。</p>';
     }
     h+='</div>';
   }
@@ -2537,7 +2557,7 @@ function renderDietToday(){
   let h='<div class="block-head"><h2>今天</h2><span class="small muted">'+fmtDate(Date.now())+'</span></div>'+
     '<p><span class="num" style="font-size:26px">'+L.p+(t?' / '+Math.round(t):'')+' g</span> 蛋白</p>'+
     '<div class="row">'+[10,20,30].map(n=>'<button class="btn" data-padd="'+n+'">+'+n+'</button>').join("")+'<button class="btn ghost" data-padd="-10">−10</button></div>'+
-    '<p class="small muted">粗估就好：一份手掌大的肉或鱼、一杯蛋白粉，各按包装或常见数值加。</p>'+
+    '<p class="small muted">看包装上的蛋白质克数；没有包装的粗估就好（App 的做法）。</p>'+
     '<div class="form-row"><label>热量 kcal（可不填）<input class="inp" id="dKcalIn" inputmode="numeric" value="'+(L.kcal!=null?L.kcal:"")+'"></label></div>';
   if(diet.tre.on) h+='<div class="set-row"><span>今天在窗口内吃完</span><button class="toggle" id="dWin" aria-label="今天在窗口内吃完" aria-pressed="'+!!L.win+'"></button></div>';
   $("dToday").innerHTML=h;
@@ -2551,9 +2571,9 @@ function renderDietWeek(){
   let h='<div class="block-head"><h2>本周</h2><span class="small muted">'+(t?'蛋白达标 '+hit+' 天':'')+'</span></div>'+
     '<table class="dtab" id="dWeek"><thead><tr><th>日期</th><th>蛋白</th><th>kcal</th>'+(diet.tre.on?'<th>窗口</th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>';
   const pi=plateauInfo(Date.now());
-  if(pi) h+='<p class="small">体重周平均（近 4 周）：'+pi.kg.map(x=>r1(x)).join(' → ')+' kg'+(pi.hasW?'；腰围 '+pi.waist.map(x=>r1(x)).join(' → ')+' cm':'')+'</p>';
+  if(pi) h+='<p class="small">体重周平均（近 4 周）：'+pi.kg.map(x=>x==null?'—':r1(x)).join(' → ')+' kg'+(pi.waist.some(x=>x!=null)?'；腰围 '+pi.waist.map(x=>x==null?'—':r1(x)).join(' → ')+' cm':'')+'</p>';
   else h+='<p class="small muted">在「进度」页连续记几周体重与腰围，这里会显示每周平均的走势。</p>';
-  if(pi&&pi.flat) h+='<div class="warn" id="dPlateau"><b>连续 3 周没往下走</b><br>最近一周的平均体重'+(pi.hasW?'和腰围':'')+'都没有比 3 周前低'+(pi.hasW?'':'（没有腰围记录，只看体重）')+'。可以对一下：每天热量是不是在目标里、零食饮料有没有算进去、蛋白够不够。（App 的安排：拿最近一周的平均跟 3 周前比，两项都没降才提醒）</div>';
+  if(pi&&pi.flat) h+='<div class="warn" id="dPlateau"><b>连续 3 周没往下走</b><br>最近一周的平均体重'+(pi.hasW?'和腰围':'')+'都没有比 3 周前低'+(pi.hasW?'':pi.waist.some(x=>x!=null)?'（3 周前或最近一周没量腰围，这次只看体重）':'（没有腰围记录，只看体重）')+'。可以对一下：每天热量是不是在目标里、零食饮料有没有算进去、蛋白够不够。（App 的安排：拿最近一周的平均跟 3 周前比，两项都没降才提醒）</div>';
   $("dWeekCard").innerHTML=h;
 }
 function renderDietQg(){
@@ -2564,7 +2584,8 @@ function renderDietQg(){
   if(!diet.qg.on){ h+='<p class="small muted">每天练洗髓功的话，在「更多 → 设置」打开「每天练洗髓功」，这里会算它的消耗。</p>'; $("dQg").innerHTML=h; return; }
   if(!(kg>0)){ h+='<p class="small muted">先在上面填体重，才算得出洗髓功的消耗。</p>'; $("dQg").innerHTML=h; return; }
   const q=qigong(kg,min), K=r1(kg);
-  h+='<p><span class="num" style="font-size:22px">每周约 '+Math.round(q.wkGross)+' kcal</span>（净约 '+Math.round(q.wkNet)+' kcal）</p>'+
+  h+='<p><span class="num" style="font-size:22px">每周净约 '+Math.round(q.wkNet)+' kcal</span> <span class="small muted">（毛约 '+Math.round(q.wkGross)+' kcal，含坐着本来就会烧的部分）</span></p>'+
+    '<p class="small">按心率约属低强度（App 的推论），所以大字放净消耗。</p>'+
     '<ul class="list small"><li>强度：3.3 MET（'+dA("comp")+' 代码 15670「太极、气功，一般」。纲要里没有洗髓功这一项，归到这一条是 App 的推论）。</li>'+
     '<li>公式：kcal ≈ MET × 体重 × 小时（纲要定义 1 MET ≈ 每公斤每小时 1 kcal）。</li>'+
     '<li>每次毛消耗：3.3 × '+K+' × '+min+' ÷ 60 = <b>'+q.gross+'</b> kcal；净消耗（扣掉坐着本来就会烧的 1 MET）：2.3 × '+K+' × '+min+' ÷ 60 = <b>'+q.net+'</b> kcal。</li>'+
@@ -2574,12 +2595,12 @@ function renderDietQg(){
 }
 const TRE_WHY='<ul class="list small">'+
   '<li><b>不额外少吃时：</b>116 位超重／肥胖成人 12 周，12 点到 20 点随意吃，体重跟「一天三餐」组没有差别；作者结论：只做限时进食，减重不比整天进食更有效（'+dA("lowe")+'）。</li>'+
-  '<li><b>同样少吃时：</b>139 位肥胖者 12 个月，两组都按男 1500–1800、女 1200–1500 kcal 吃；加了 8 小时窗口的组多减 1.8 kg，但差别不显著，体脂、瘦体重也一样（'+dA("liu")+'）。</li>'+
+  '<li><b>同样少吃时：</b>139 位肥胖者 12 个月，两组都按男 1500–1800、女 1200–1500 kcal 吃；加了 8 小时窗口的组多减 1.8 kg，但差别不显著，腰围、体脂、瘦体重的分析结果也一致（'+dA("liu")+'）。</li>'+
   '<li><b>合并小型试验：</b>30 个试验 1341 人：限时进食比对照多减体重（热量相同时 −1.46 kg），但<b>去脂体重也多掉</b>（热量相同时 −0.41 kg，不同时 −0.86 kg）（'+dA("fa")+'）。</li>'+
   '<li><b>瘦体重：</b>上面那个 12 周试验里，当面测量的人中限时进食组平均掉 1.70 kg，其中 1.10 kg（约 65%）是瘦体重；作者提醒限时进食时要吃够蛋白（'+dA("lowe")+'）。</li>'+
-  '<li><b>配力量训练：</b>34 位有训练的男性 8 周，热量相同、三餐在 13、16、20 点：脂肪下降，去脂体重与最大力量都维持（但睾酮与 IGF-1 下降）（'+dA("moro")+'）。40 位有训练的女性 8 周、蛋白每天 1.6 g/kg：去脂体重增加跟正常吃的组差不多（'+dA("tinsley")+'）。两个研究都只有 8 周、对象是有训练经验的人。</li>'+
+  '<li><b>配力量训练：</b>34 位有训练的男性 8 周，热量相同、三餐在 13、16、20 点：脂肪下降，去脂体重与最大力量都维持（但睾酮与 IGF-1 下降）（'+dA("moro")+'）。40 位有训练的女性 8 周、蛋白每天 1.6 g/kg：去脂体重增加跟正常吃的组差不多（'+dA("tinsley")+'）。两个研究都只有 8 周、对象是有训练经验的人；受试者偏年轻，没有针对 40 岁以上的专门试验（App 的保守判断）。</li>'+
   '<li><b>所以（App 的推论）：</b>16/8 主要是帮你少吃的一种方式，不是额外的燃脂开关。做得住就继续，重点是总热量在目标里、蛋白吃够、配合力量训练。</li>'+
-  '<li><b>安全：</b>有糖尿病、在吃降糖药或打胰岛素的人，断食要请医生调药——调好药时不增加低血糖风险（'+dA("varady")+'），临床上要持续监测血糖以减少低血糖（'+dA("santos")+'）。</li></ul>';
+  '<li><b>安全：</b>有糖尿病、在吃降糖药或打胰岛素的人，断食前请医生调药（App 的做法）——调好药时不增加低血糖风险（'+dA("varady")+'），临床上要持续监测血糖以减少低血糖（'+dA("santos")+'）；1 型／妊娠糖尿病数据不足，目前还不足以推荐（'+dA("varady")+'）。</li></ul>';
 function renderDiet(){
   renderDietCard();
   if($("tab-diet").hidden) return;
@@ -2605,6 +2626,7 @@ $("tab-diet").addEventListener("input",e=>{
   const id=e.target.id;
   if(id==="dAge"){ const v=num(e.target.value); diet.profile.age=v!=null&&v>0&&v<120?Math.round(v):null; }
   else if(id==="dKg"){ const v=num(e.target.value); diet.profile.kg=v!=null&&v>=25&&v<=300?r1(v):null; }
+  else if(id==="dCm"){ const v=num(e.target.value); diet.profile.cm=v!=null&&v>=100&&v<=250?r1(v):null; }
   else if(id==="dKcalIn"){ const d=isoDay(Date.now()), v=num(e.target.value), L=Object.assign({p:0,kcal:null,win:false},diet.log[d]); L.kcal=v!=null&&v>=0&&v<20000?Math.round(v):null; diet.log[d]=L; saveDiet(); renderDietCard(); renderDietWeek(); return; }
   else return;
   diet.setTs=Date.now(); saveDiet(); renderDietRest();
@@ -2657,7 +2679,7 @@ function animCombos(){
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,get:()=>diet},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE}}; // 给自检脚本用
+window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>
