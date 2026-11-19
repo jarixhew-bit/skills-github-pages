@@ -28,6 +28,8 @@
  *      有 webp 的动作不准退回 3D／简笔画布（2026-11-10 用户抓到燃脂收尾还是旧模型）。
  *  16. 体态：问卷存得住／进备份；红旗挡住小课（红旗一变确认作废；高低肩没做前弯测试也挡）；有红旗不出力量日提醒；推膝碰墙差要超过 2 cm；文案守门；小课按答案与左右测试加组；照片存 IndexedDB、对比画面、进备份；
  *      深蹲提醒只在填了往哪边歪时出现；满 4 周提醒重测；8 个新动作都有动图、规格、来源。
+ *  17. 饮食：蛋白 1.6 g/kg、热量按 Jensen 2013（男女区间／缺口）、16/8 分餐、每日记录与每周表、洗髓功 3.3 MET 毛／净 kcal、
+ *      平台期提示（3 周没降才出、2 周不出）、燃脂收尾改名心肺收尾、备份来回、文案守门。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
  *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
@@ -402,6 +404,8 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
 // ---- 3D 动画 ＋ 游泳课 ----
 {
   const { ctx, page, errors } = await openWith([], undefined, { cfg: { media: '3d', mediaV3: 1 } });
+  // 只画看得见的画布：训练页上方卡片变多后第一张画布可能刚好在 844px 折线下，先卷到它（2026-11-19 加饮食那行后撞到）
+  await page.evaluate(() => { const c = document.querySelector('#workout canvas'); if (c) c.scrollIntoView({ block: 'center' }); });
   await page.waitForFunction(() => window.ANIM3D && window.ANIM3D.frames > 0, null, { timeout: 20000 }).catch(() => {});
   const f3 = await page.evaluate(() => ({ on: document.documentElement.dataset.anim, frames: window.ANIM3D ? window.ANIM3D.frames : 0 }));
   check(f3.on === '3d' && f3.frames > 0, `3D 引擎载入并在画（data-anim=${f3.on}，已画 ${f3.frames} 格）`);
@@ -1162,6 +1166,108 @@ for (const [days, want] of [[29, true], [10, false]]) {
   await ctx.close();
 }
 
+// ---- 17. 饮食（2026-11-19 用户：男 40 岁 72 kg、每天洗髓功 40 分钟、在做 16/8） ----
+// 守：蛋白目标＝1.6×体重（72 kg → 115.2 → 显示 115 g）；热量按 Jensen 2013（男 1500–1800、女 1200–1500，或每天少 500–750）；
+// 16/8 分餐（每餐下限 0.25×72＝18 g；3 餐 115.2÷3＝38.4 → 约 38 g；时间 12:00/15:45/19:30＝窗口 8 小时、最后一餐在关窗前 30 分钟、间隔 3.75 小时）；
+// 洗髓功 3.3 MET：毛 3.3×72×40/60＝158.4、净 2.3×72×40/60＝110.4，每周 ×7＝1108.8／772.8 → 显示 1109／773；
+// 平台期提示：连续 3 周（4 个周均值）体重和腰围都没往下走才出现，2 周不出现；燃脂收尾已改名心肺收尾；备份来回；文案守门。
+// 今天固定 2026-09-30（周三），本周从 9/28（周一）算起。
+{
+  const { ctx, page, errors } = await openWith([]);
+  check(await page.locator('#dietCard [data-open-diet]').count() >= 1, '饮食：训练页有饮食卡片、可以打开饮食页');
+  await page.click('#dietCard [data-open-diet]');
+  const blank = await page.evaluate(() => ({ age: document.getElementById('dAge').value, kg: document.getElementById('dKg').value }));
+  check(blank.age === '' && blank.kg === '', `饮食：资料不预填（年龄「${blank.age}」、体重「${blank.kg}」）`);
+  await page.click('#dSex [data-v="M"]');
+  await page.fill('#dAge', '40'); await page.fill('#dKg', '72');
+  const prot = await page.textContent('#dProt');
+  check(/115 g/.test(prot) && /1\.6/.test(prot) && /1\.62/.test(prot), `饮食：72 kg 蛋白目标 1.6×72＝115.2 → 115 g，并引 Morton 1.62（实得：${prot.slice(0, 80)}）`);
+  const kc = await page.textContent('#dKcal'), kcN = await page.textContent('#dKcal .num');
+  check(/1500–1800/.test(kcN) && /Jensen|AHA/.test(kc), `饮食：男、指南区间模式 → 1500–1800 kcal/日，附来源（实得：${kc.slice(0, 80)}）`);
+  await page.click('#dMode [data-v="deficit"]');
+  const kc2 = await page.textContent('#dKcal .num');
+  check(/500–750/.test(kc2) && !/1500–1800/.test(kc2), `饮食：缺口模式 → 每天少吃 500–750 kcal（实得：${kc2.slice(0, 80)}）`);
+  await page.click('#dSex [data-v="F"]'); await page.click('#dMode [data-v="range"]');
+  check(/1200–1500/.test(await page.textContent('#dKcal .num')), '饮食：女、区间模式 → 1200–1500 kcal/日');
+  await page.click('#dSex [data-v="M"]');
+  // 16/8 分餐
+  await page.click('#dTre');
+  const meal = await page.textContent('#dMeals');
+  check(/18 g/.test(meal) && /约 38 g/.test(meal) && /12:00/.test(meal) && /15:45/.test(meal) && /19:30/.test(meal) && /App 的安排/.test(meal),
+    `饮食：16/8（12:00–20:00）3 餐 → 每餐下限 18 g、每餐约 38 g、12:00／15:45／19:30，标「App 的安排」（实得：${meal.slice(0, 160)}）`);
+  await page.click('#dMealN [data-v="2"]');
+  const meal2 = await page.textContent('#dMeals');
+  check(/约 58 g/.test(meal2) && /12:00/.test(meal2) && /19:30/.test(meal2), `饮食：改 2 餐 → 115.2÷2＝57.6 → 约 58 g（实得：${meal2.slice(0, 120)}）`);
+  await page.click('#dMealN [data-v="3"]');
+  const ev = await page.textContent('#dTreWhy');
+  check(/Lowe/.test(ev) && /Liu/.test(ev) && /瘦体重/.test(ev), '饮食：16/8 证据摘要写了 Lowe 2020、Liu 2022 与瘦体重');
+  // 记一天
+  for (const n of [30, 30, 20]) await page.click(`#dToday [data-padd="${n}"]`);
+  await page.fill('#dKcalIn', '1700'); await page.click('#dWin');
+  const tod = await page.textContent('#dToday');
+  check(/80 \/ 115 g/.test(tod), `饮食：今天 +30 +30 +20 → 80 / 115 g（实得：${tod.slice(0, 80)}）`);
+  const wk = await page.locator('#dWeek tbody tr').count();
+  const wkTxt = await page.textContent('#dWeek');
+  check(wk === 7 && /80/.test(wkTxt) && /1700/.test(wkTxt), `饮食：每周表 7 天、今天那行有 80 g 与 1700 kcal（${wk} 行）`);
+  // 洗髓功（更多 → 设置）
+  await page.click('#dietBack'); await page.click('nav.tabs [data-tab="more"]');
+  await page.click('#cfgQg');
+  const q = await page.evaluate(() => window.__fit.diet.qigong(72, 40));
+  check(Math.abs(q.gross - 158.4) < 1e-9 && Math.abs(q.net - 110.4) < 1e-9 && Math.abs(q.wkGross - 1108.8) < 1e-9 && Math.abs(q.wkNet - 772.8) < 1e-9,
+    `洗髓功：3.3×72×40/60＝158.4 毛、110.4 净；×7＝1108.8／772.8（实得 ${JSON.stringify(q)}）`);
+  await page.click('nav.tabs [data-tab="train"]'); await page.click('#dietCard [data-open-diet]');
+  const qt = await page.textContent('#dQg');
+  check(/158\.4/.test(qt) && /110\.4/.test(qt) && /1109/.test(qt) && /773/.test(qt) && /15670/.test(qt) && /280 分钟/.test(qt),
+    `洗髓功：页面写出公式 158.4／110.4、每周 1109／773 kcal、280 分钟、Compendium 15670（实得：${qt.slice(0, 200)}）`);
+  // 备份来回
+  await page.click('#dietBack'); await page.click('nav.tabs [data-tab="more"]');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+  const file = await dl.path(); const bk = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const today = '2026-09-30';
+  check(bk.diet && bk.diet.profile && bk.diet.profile.kg === 72 && bk.diet.profile.age === 40 && bk.diet.profile.sex === 'M' && bk.diet.log[today] && bk.diet.log[today].p === 80 && bk.diet.log[today].kcal === 1700 && bk.diet.log[today].win === true && bk.diet.tre.on === true && bk.diet.qg.on === true,
+    '饮食备份：资料、今天的记录、16/8 与洗髓功设定都在备份里');
+  const b2 = await openWith([]);
+  await b2.page.click('nav.tabs [data-tab="more"]');
+  await b2.page.setInputFiles('#bkFile', file);
+  await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+  const d2 = await b2.page.evaluate(() => JSON.parse(localStorage.getItem('fit.diet') || 'null'));
+  check(d2 && d2.profile.kg === 72 && d2.log[today].p === 80 && d2.tre.on === true && d2.qg.on === true && d2.mode === 'range', '饮食备份：导入到空白手机后资料、记录、设定都还原');
+  await b2.ctx.close();
+  check(errors.length === 0, `饮食没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+// 平台期提示：周均值（周一开始）。4 周＝3 次周与周比较；今天 2026-09-30，记录在 0/7/14/21 天前（各落在不同的周）
+for (const [label, rows, want] of [
+  ['连续 3 周体重腰围都没降', [[21, 72, 85], [14, 72.3, 85], [7, 72.1, 85.2], [0, 72.2, 85]], true],
+  ['只有 2 周没降（3 个周均值）', [[14, 72, 85], [7, 72.3, 85], [0, 72.2, 85]], false],
+  ['3 周里体重有降', [[21, 72.5, 85], [14, 72.3, 85], [7, 72.1, 85], [0, 72.0, 85]], false],
+  ['体重没降但腰围在降', [[21, 72, 86], [14, 72, 85.5], [7, 72, 85.2], [0, 72.1, 85]], false],
+]) {
+  const { ctx, page } = await openWith([]);
+  await page.evaluate(r => localStorage.setItem('fit.body', JSON.stringify(r.map(([d, kg, w]) => ({ id: 'b' + d, ts: Date.now() - d * 864e5, kg, waist: w })))), rows);
+  await page.reload(); await page.waitForSelector('#workout .ex');
+  await page.click('#dietCard [data-open-diet]', { timeout: 3000 }).catch(() => {});
+  const n = await page.locator('#dPlateau').count();
+  const t = n ? await page.textContent('#dPlateau') : '';
+  check(want ? (n === 1 && /App 的安排/.test(t)) : n === 0, `平台期提示：${label} → ${want ? '出现（标 App 的安排）' : '不出现'}（实得 ${n}）`);
+  await ctx.close();
+}
+// 改名与文案守门
+{
+  const html = fs.readFileSync('fitness/index.html', 'utf8');
+  check(!html.includes('燃脂收尾'), '改名：fitness/index.html 里不再有「燃脂收尾」');
+  const { ctx, page } = await openWith([]);
+  await page.click('#picker [data-wk="A"]');
+  check(/心肺收尾/.test(await page.textContent('#workout')), '改名：训练卡片显示「心肺收尾」');
+  await ctx.close();
+  const BANNED = ['训练日以外多走路', '比多加一次训练更容易累积'];
+  const hit = BANNED.filter(b => html.includes(b));
+  check(hit.length === 0, `饮食／说明文案：没有来源的句子不再出现${hit.length ? '（还在：' + hit.join('、') + '）' : ''}`);
+  const need = ['−1.6 kg', '2.1 cm', '150–250', '250 分钟', '500–750', '32986097', '35443107', '28642676', '28698222', '27737674', '31268131', '40298934', '42361830'];
+  const miss = need.filter(b => !html.includes(b));
+  check(miss.length === 0, `饮食／说明文案：查证过的数字与来源都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
+}
+
 // ---- 手机宽度：没有横向卷动 ----
 {
   const { ctx, page, errors } = await openWith(HIST_A, { width: 360, height: 740 });
@@ -1172,6 +1278,8 @@ for (const [days, want] of [[29, true], [10, false]]) {
   }
   await page.click('nav.tabs [data-tab="train"]'); await page.click('#postCard [data-open-post]');
   { const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth); check(over <= 0, `360px 宽「体态」页没有横向卷动（多出 ${over}px）`); }
+  await page.click('#postBack'); await page.click('nav.tabs [data-tab="train"]'); await page.click('#dietCard [data-open-diet]');
+  { const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth); check(over <= 0, `360px 宽「饮食」页没有横向卷动（多出 ${over}px）`); }
   check(errors.length === 0, `窄屏没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
 }

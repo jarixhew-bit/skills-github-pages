@@ -159,6 +159,10 @@ select.inp{appearance:none;-webkit-appearance:none;padding:8px 4px;font-size:16p
 .ret-why{flex-wrap:wrap;gap:6px 10px}
 .gap-row{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:4px 0}
 .gap-row::before,.gap-row::after{content:"";flex:1;border-top:1px dashed var(--line)}
+.inp[type=time]{font-size:15px;padding:8px 2px}
+.dtab{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+.dtab th,.dtab td{text-align:left;padding:5px 4px;border-bottom:1px solid var(--line)}
+.dtab th{font-size:12px;color:var(--muted);font-weight:500}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .tile .num{font-size:30px;line-height:1.05}
@@ -227,7 +231,7 @@ table.t td.r,table.t th.r{text-align:right;padding-right:0}
 .zm{position:absolute;right:6px;top:6px;z-index:1;width:34px;height:34px;border:0;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font-size:16px;line-height:34px;padding:0;cursor:zoom-in}
 .ph.anim .zm{top:auto;bottom:6px}
 .ph.anim:has(.vw) .zm{bottom:44px}
-/* 一步里有两个动作（燃脂收尾 AMRAP）：每个动作各一张动图并排，左下角标动作名＋次数；放大时上下叠 */
+/* 一步里有两个动作（心肺收尾 AMRAP）：每个动作各一张动图并排，左下角标动作名＋次数；放大时上下叠 */
 .phm{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:6px;cursor:zoom-in}
 .phm .ph-tag{font-size:12px;font-weight:600;max-width:calc(100% - 16px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .phm > .zm{top:auto;bottom:6px}
@@ -347,6 +351,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
           <button data-eq="gym" aria-pressed="false">健身房</button>
         </div>
       </div>
+      <div id="dietCard" style="border-top:1px solid var(--line);padding-top:10px"></div>
     </div>
     <div>
       <div class="eyebrow" style="margin-bottom:6px">选择今天的训练（按 A→B→C 轮流）</div>
@@ -469,6 +474,18 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
     <details class="card fold" id="postWhy"><summary>能改变多少、多快（附来源）</summary><div class="stack" id="postWhyBody"></div></details>
   </section>
 
+  <!-- ===== 饮食（2026-11-19；从训练页卡片或「更多」进来，不占底部分页） ===== -->
+  <section id="tab-diet" class="stack" hidden>
+    <div class="row between"><button class="btn ghost" id="dietBack">‹ 返回</button><span class="small muted">资料只存在这台设备</span></div>
+    <div class="card" id="dProfile"></div>
+    <div class="card" id="dTargets"></div>
+    <div class="card" id="dTreCard"></div>
+    <div class="card" id="dToday"></div>
+    <div class="card" id="dWeekCard"></div>
+    <div class="card" id="dQg"></div>
+    <details class="card fold"><summary>16/8 有没有额外效果（附来源）</summary><div class="stack" id="dTreWhy"></div></details>
+  </section>
+
   <!-- ===== 更多 ===== -->
   <section id="tab-more" class="stack" hidden>
     <div class="card">
@@ -480,6 +497,8 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="set-row"><span>自动减量周<br><span class="small muted">每练 3 周，第 4 周自动减量</span></span><button class="toggle" id="cfgDeload" aria-label="自动减量周" aria-pressed="true"></button></div>
       <div class="set-row"><span>停练后自动降重<br><span class="small muted">停练 7 天以上，回来头 2 次重量先打 9 折（停 3 周以上打 8 折）</span></span><button class="toggle" id="cfgReturn" aria-label="停练后自动降重" aria-pressed="true"></button></div>
       <div class="set-row"><span>动作示范<br><span class="small muted">动图＝人体模型连续示范，发力的肌肉亮红光、拉伸的部位亮蓝光（离线也能看）；照片＝真人起始／结束两张</span></span><div class="seg" role="group" aria-label="动作示范" id="cfgMedia"></div></div>
+      <div class="set-row"><span>每天练洗髓功<br><span class="small muted">打开后「饮食」页的每周活动会把它算进去（按每天都练计算）</span></span><button class="toggle" id="cfgQg" aria-label="每天练洗髓功" aria-pressed="false"></button></div>
+      <div class="set-row" id="cfgQgMinRow"><span>洗髓功每次</span><div class="seg" role="group" aria-label="洗髓功每次几分钟" id="cfgQgMin"></div></div>
       <div class="set-row"><span>跟练语音提示</span><button class="toggle" id="cfgVoice" aria-label="跟练语音提示" aria-pressed="true"></button></div>
     </div>
 
@@ -487,6 +506,12 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <h2>体态：自查与小课</h2>
       <p class="small">高低肩、深蹲歪一边、X 型腿：先做自查（含要看医生的情况），再按结果排 10 分钟左右的小课。</p>
       <button class="btn primary" data-open-post>打开体态</button>
+    </div>
+
+    <div class="card">
+      <h2>饮食：蛋白、热量、16/8</h2>
+      <p class="small">按体重算每天的蛋白目标、热量范围；在做 16/8 的话，帮你把蛋白分进进食窗口。可以每天简单记一下。</p>
+      <button class="btn primary" data-open-diet>打开饮食</button>
     </div>
 
     <div class="card">
@@ -506,7 +531,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="stack">
         <ul class="list">
           <li><b>A → B → C 轮流做</b>，一周 2 次就接着轮，不用管星期几。两次训练之间至少隔 1 天。</li>
-          <li>每次：热身 4 分钟 → 超级组 ×2（约 15 分钟）→ 燃脂收尾 6 分钟 → 放松 3 分钟 ≈ 28–30 分钟。</li>
+          <li>每次：热身 4 分钟 → 超级组 ×2（约 15 分钟）→ 心肺收尾 6 分钟 → 放松 3 分钟 ≈ 28–30 分钟。</li>
           <li><b>超级组</b>：两个动作连着做、中间不休息，做完两个再休息，这样算一轮，共 3 轮。</li>
           <li><b>器材三选一</b>：家里有哑铃选「哑铃」，什么都没有选「徒手」，去健身房选「健身房」。</li>
         </ul>
@@ -537,8 +562,11 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <summary>减脂的关键</summary>
       <div class="stack">
         <ul class="list">
-          <li>体重下降主要来自<b>饮食的热量缺口</b>；力量训练的作用是减脂期间<b>保住肌肉</b>，让瘦下来的是脂肪。</li>
-          <li>训练日以外多走路、多活动，效果比多加一次训练更容易累积。</li>
+          <li>体重下降主要来自<b>饮食的热量缺口</b>；力量训练的作用是减脂期间<b>保住肌肉</b>，让瘦下来的是脂肪。保肌另一半靠<b>吃够蛋白</b>（「饮食」页会按体重算）。</li>
+          <li><b>只靠运动能减多少：</b>14 个随机试验的汇总，只做有氧 6 个月平均体重 −1.6 kg、腰围 −2.1 cm（<a href="https://pubmed.ncbi.nlm.nih.gov/21787904/" target="_blank" rel="noopener">Thorogood 2011</a>）。</li>
+          <li><b>运动量：</b>美国运动医学会：每周 150–250 分钟中等强度活动只带来少量减重；超过 250 分钟才与明显的减重有关（<a href="https://pubmed.ncbi.nlm.nih.gov/19127177/" target="_blank" rel="noopener">ACSM 2009</a>）。</li>
+          <li><b>饮食：</b>2013 年美国肥胖指南给的三选一：男性每天 1500–1800 kcal（女性 1200–1500）、每天少吃 500–750 kcal，或有证据的饮食法（<a href="https://pubmed.ncbi.nlm.nih.gov/24222017/" target="_blank" rel="noopener">Jensen 2013</a>；对象是超重／肥胖的成人）。</li>
+          <li>心肺收尾 6 分钟主要练心肺与体能；几分钟的运动本身消耗不大，减脂主要还是靠饮食。（App 的推论）</li>
           <li>睡眠不足会影响恢复和食欲，尽量睡够。</li>
           <li>体重几周不动但腰围在变小，也是在进步——所以「进度」页也可以记腰围。</li>
         </ul>
@@ -1068,7 +1096,7 @@ const PH_EN={
   "Close-Grip Push-Up":["Close-Grip_Push-Up_off_of_a_Dumbbell","照片双手撑在哑铃上；直接撑地也可以"],"Incline Dumbbell Press":["Incline_Dumbbell_Press"],
   "Dumbbell Step-Up":["Dumbbell_Step_Ups"],"Step-Up":["Dumbbell_Step_Ups","照片拿着哑铃；徒手版空手做"],
   "Bent-Over Reverse Fly":["Seated_Bent-Over_Rear_Delt_Raise","照片坐着俯身；站着俯身一样做"],"Face Pull":["Face_Pull"]};
-// 热身／放松／燃脂收尾按动画找（第三项 true＝只有拿哑铃的版本才用这张）
+// 热身／放松／心肺收尾按动画找（第三项 true＝只有拿哑铃的版本才用这张）
 const PH_ANIM={armcircle:["Arm_Circles"],catcow:["Cat_Stretch"],bridge2:["Butt_Lift_Bridge"],squat:["Bodyweight_Squat"],
   lungeT:["Bodyweight_Walking_Lunge","照片往前跨步；热身时双手往前伸"],wgs:["Worlds_Greatest_Stretch"],child:["Childs_Pose"],
   climber:["Mountain_Climbers"],swing:["One-Arm_Kettlebell_Swings","照片用壶铃；单只哑铃握住一头一样做"],deadbug:["Dead_Bug"],
@@ -1078,7 +1106,7 @@ let ANIM_FILES=null;
 function animFile(anim,hold){ if(!ANIM_FILES) ANIM_FILES=new Set(animCombos().map(c=>c.file)); const f=anim+(hold?"-"+hold:""); return ANIM_FILES.has(f)?f:null; }
 function photoOf(en,anim,hold){
   if(cfg.media==="anim"){
-    if(Array.isArray(anim)){ // 一步里有几个动作（燃脂收尾 AMRAP）：每个都有动图就全部并排显示，不要退回画布
+    if(Array.isArray(anim)){ // 一步里有几个动作（心肺收尾 AMRAP）：每个都有动图就全部并排显示，不要退回画布
       const fs=anim.map((a,i)=>animFile(a,Array.isArray(hold)?hold[i]:hold)); if(fs.length&&fs.every(Boolean)) return {multi:fs}; }
     else { const f=anim&&animFile(anim,hold); if(f) return {anim:f}; } }
   if(Array.isArray(anim)||(cfg.media!=="photo"&&cfg.media!=="anim")) return null; const p=(en&&PH_EN[en])||PH_ANIM[anim]; if(!p||(p[2]&&!hold)) return null; return p; }
@@ -1127,7 +1155,7 @@ function zmLogTargets(src){
 function zmLogHTML(src){
   const t=zmLogTargets(src); if(!t) return "";
   if(t.none) return '<div class="zm-log"><div class="zm-ph">'+esc(t.lbl)+'</div></div>';
-  if(t.amrap) return '<div class="zm-log"><div class="row"><button type="button" class="btn primary" data-zclick="#plRound">+1 轮</button><span class="num" style="font-size:24px" id="zmRounds">'+esc(($("plRounds")||{}).textContent||"0 轮")+'</span><button type="button" class="btn ghost small" data-zclick="#plRoundMinus">−1</button></div></div>'; // 燃脂收尾：放大里也能数轮（转手按原按钮）
+  if(t.amrap) return '<div class="zm-log"><div class="row"><button type="button" class="btn primary" data-zclick="#plRound">+1 轮</button><span class="num" style="font-size:24px" id="zmRounds">'+esc(($("plRounds")||{}).textContent||"0 轮")+'</span><button type="button" class="btn ghost small" data-zclick="#plRoundMinus">−1</button></div></div>'; // 心肺收尾：放大里也能数轮（转手按原按钮）
   const q=x=>document.querySelector(x), iv=x=>{ const e=q(x); return e?e.value:""; }, ip=x=>{ const e=q(x); return e?e.placeholder:""; };
   const rirV=t.rir==="pl"?(((q('#plMain [data-rir][aria-pressed="true"]')||{}).dataset||{}).rir||""):iv(t.rir);
   const inp=(id,sel,lbl,mode,stpSel)=>'<label>'+lbl+'<div class="stepper">'+(t.stp?'<button type="button" data-zclick=\''+stpSel[0]+'\' aria-label="减">−</button>':'')+
@@ -1432,7 +1460,7 @@ function renderWorkout(){
     h+='</div>';
   });
   const fi=finItems(selWk,eq);
-  h+='<div class="card"><div class="block-head"><h2>燃脂收尾</h2><span class="small muted">'+F.title+'</span></div>'+timerHTML("fin",F.mode==="interval"?"按开始后自动切换":"时间内循环做，数你完成几轮")+
+  h+='<div class="card"><div class="block-head"><h2>心肺收尾</h2><span class="small muted">'+F.title+'</span></div>'+timerHTML("fin",F.mode==="interval"?"按开始后自动切换":"时间内循环做，数你完成几轮")+
      fi.map((it,i)=>{ const ph=photoOf(null,it[1],it[2]); return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?photoHTML(ph):'<canvas class="thumb" data-anim="'+it[1]+'" data-hold="'+(it[2]||"")+'"></canvas>')+'<div><h3>'+esc(it[0])+'</h3></div></div></div>'; }).join("")+
      '<div class="row"><label for="finScore" class="small muted">完成几轮 / 备注</label><input id="finScore" class="inp" style="flex:1;font-size:15px;font-family:var(--f-body);text-align:left" value="'+esc(current.fin)+'" placeholder="例如：5 轮"></div></div>';
   h+='<div class="card" id="coolCard"><div class="block-head"><h2>放松</h2><span class="num">3 分钟</span></div>'+timerHTML("cool","慢慢呼吸")+moveList(COOL)+'</div>';
@@ -1704,7 +1732,7 @@ $("cfgMedia").addEventListener("click",e=>{ const b=e.target.closest("[data-medi
 function download(name,text,type){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); }
 $("bkJson").onclick=async()=>{
   const pb=await postBackup(); // 体态问卷、测试、做过的小课、照片（IndexedDB）
-  download("训练备份-"+isoDay(Date.now())+".json",JSON.stringify({app:"fitness",v:1,exported:Date.now(),sessions,body,cfg,swim,cardio,vo2,posture:pb.posture,postPhotos:pb.postPhotos},null,1),"application/json");
+  download("训练备份-"+isoDay(Date.now())+".json",JSON.stringify({app:"fitness",v:1,exported:Date.now(),sessions,body,cfg,swim,cardio,vo2,posture:pb.posture,postPhotos:pb.postPhotos,diet},null,1),"application/json");
   cfg.lastBackup=Date.now(); saveCfg(); renderHist();
   $("bkMsg").textContent="已导出 "+sessions.length+" 次训练、"+body.length+" 笔体重。存到云端硬盘或传给自己，换手机时导入。";
 };
@@ -1730,7 +1758,7 @@ $("bkFile").onchange=async e=>{
     if(d.cfg&&d.cfg.malts&&typeof d.cfg.malts==="object"){ for(const k in d.cfg.malts){ const n=d.cfg.malts[k]; if(MOVE_ALTS[k]&&MOVE_ALTS[k].includes(n)&&!cfg.malts[k]) cfg.malts[k]=n; } saveCfg(); } // 热身／放松换过的动作
     if(d.cfg&&d.cfg.alts&&typeof d.cfg.alts==="object"){ for(const k in d.cfg.alts){ const [eq,id]=k.split(":"); if(EX[id]&&EQ_LABEL[eq]&&validKey(d.cfg.alts[k])&&!cfg.alts[k]) cfg.alts[k]=d.cfg.alts[k]; } saveCfg(); } // 换过的动作也一起还原（本机已经换过的不覆盖）
     if(d.swim&&typeof d.swim==="object"){ for(const k in d.swim) if(!swim[k]&&SWIM.some(x=>x.id===k)) swim[k]=d.swim[k]; ls.set(WKEY,swim); }
-    const np=await postImport(d);
+    const np=await postImport(d); dietImport(d.diet);
     saveSessions(); saveBody(); renderAll();
     $("bkMsg").textContent="导入完成：新增 "+ns+" 次训练、"+nb+" 笔体重"+(np?"、"+np+" 张体态照片":"")+"（重复的自动略过）。";
   }catch(err){ $("bkMsg").textContent="导入失败：这不是本 app 导出的备份文件。"; }
@@ -1745,7 +1773,7 @@ function garminText(wk){
   const nm=arr=>arr.map(w=>curMove(w).name.split("（")[0]).join("、");
   L.push("1. 热身：按时间 4:00（"+nm(WARM)+"）");
   P.blocks.forEach((pair,i)=>{ L.push((i+2)+". 重复 "+R+" 次："); pair.forEach(id=>{ const x=kInfo(curKey(id,cfg.equip)); L.push("   · "+x.name+"（"+x.en+"）"+x.target+(/^\d/.test(x.target)?" 次":"")); }); L.push("   · 休息 "+mmss(cfg.rest)); });
-  L.push("4. 燃脂收尾："+F.garmin);
+  L.push("4. 心肺收尾："+F.garmin);
   L.push("5. 放松：按时间 3:00（"+nm(COOL)+"）");
   return L.join("\n");
 }
@@ -1764,17 +1792,17 @@ function buildSteps(){
     for(let r=0;r<R;r++){
       pair.forEach((id,ei)=>{ const k=curKey(id,eq), x=kInfo(k); S.push({kind:"set",k,phase:"超级组 "+(bi+1)+" · 第 "+(r+1)+"/"+R+" 轮 · "+(ei?"B":"A")+(bi+1),name:x.name,target:x.target,anim:x.anim,hold:x.hold,cue:x.cue,en:x.en,id,key:id+"_"+r,speak:x.name+"，"+tgtLabel(x.target).replace("–","到")}); });
       const lastOfBlock=r===R-1, lastBlock=bi===P.blocks.length-1;
-      const nextLabel=!lastOfBlock?"第 "+(r+2)+" 轮":(!lastBlock?"超级组 "+(bi+2):"燃脂收尾");
+      const nextLabel=!lastOfBlock?"第 "+(r+2)+" 轮":(!lastBlock?"超级组 "+(bi+2):"心肺收尾");
       S.push({kind:"rest",phase:"休息",name:"休息，准备"+nextLabel,sec:cfg.rest,speak:"休息"+cfg.rest+"秒"});
     }
   });
   const fi=finItems(selWk,eq);
   if(F.mode==="amrap"){
-    S.push({kind:"amrap",phase:"燃脂收尾 · "+F.title,name:fi.map(i=>i[0]).join("  +  "),sec:F.min*60,anim:fi.map(i=>i[1]),hold:fi.map(i=>i[2]),labels:fi.map(i=>i[0].replace(/（[^）]*）/g,"").trim()),cue:"两个动作轮流循环，每完成一轮按「+1 轮」。"+(photoOf(null,fi.map(i=>i[1]),fi.map(i=>i[2]))?"":"示范动画每 5 秒切换一个动作。"),speak:"燃脂收尾，"+F.min+"分钟，尽量多轮"});
+    S.push({kind:"amrap",phase:"心肺收尾 · "+F.title,name:fi.map(i=>i[0]).join("  +  "),sec:F.min*60,anim:fi.map(i=>i[1]),hold:fi.map(i=>i[2]),labels:fi.map(i=>i[0].replace(/（[^）]*）/g,"").trim()),cue:"两个动作轮流循环，每完成一轮按「+1 轮」。"+(photoOf(null,fi.map(i=>i[1]),fi.map(i=>i[2]))?"":"示范动画每 5 秒切换一个动作。"),speak:"心肺收尾，"+F.min+"分钟，尽量多轮"});
   } else {
     for(let r=0;r<F.rounds;r++){
       const it=fi[r%fi.length];
-      S.push({kind:"timed",phase:"燃脂收尾 · 第 "+(r+1)+"/"+F.rounds+" 轮",name:it[0],sec:F.work,anim:it[1],hold:it[2],speak:it[0]+"，"+F.work+"秒"});
+      S.push({kind:"timed",phase:"心肺收尾 · 第 "+(r+1)+"/"+F.rounds+" 轮",name:it[0],sec:F.work,anim:it[1],hold:it[2],speak:it[0]+"，"+F.work+"秒"});
       if(r<F.rounds-1) S.push({kind:"rest",phase:"休息",name:"休息，下一个："+fi[(r+1)%fi.length][0],sec:F.rest,speak:"休息"});
     }
   }
@@ -1789,7 +1817,7 @@ function openPlayer(){
   if(current.start){ // 练到一半回来：跳到第一个还没完成的组
     const k=steps.findIndex(s=>s.kind==="set"&&!(current.vals[s.key]&&current.vals[s.key].done));
     const anyDone=steps.some(s=>s.kind==="set"&&current.vals[s.key]&&current.vals[s.key].done);
-    if(anyDone) si=k>=0?k:steps.findIndex(s=>s.phase.startsWith("燃脂"));
+    if(anyDone) si=k>=0?k:steps.findIndex(s=>s.phase.startsWith("心肺"));
     if(si<0) si=0;
   }
   $("player").hidden=false; document.body.style.overflow="hidden";
@@ -1809,7 +1837,7 @@ function showStep(autostart){
   else { cv._key=s.anim||"child"; cv._hold=s.hold||null; }
   cv._t0=performance.now();
   const src=s.kind==="rest"?(steps.slice(si+1).find(x=>x.anim)||{}):s;
-  const ph=photoOf(src.en,src.anim,src.hold); if(ph&&ph.multi) ph.labels=src.labels; // 燃脂收尾两个动作：各一张动图（2026-11-10 用户抓到这里退回了旧模型画布）
+  const ph=photoOf(src.en,src.anim,src.hold); if(ph&&ph.multi) ph.labels=src.labels; // 心肺收尾两个动作：各一张动图（2026-11-10 用户抓到这里退回了旧模型画布）
   $("plPhoto").innerHTML=ph?photoHTML(ph):""; $("plPhoto").hidden=!ph; cv.hidden=!!ph;
   if(s.noAnim){ cv.hidden=true; $("plPhoto").hidden=true; }
   let m="";
@@ -2353,7 +2381,7 @@ function renderPost(){
   $("postWhyBody").innerHTML=POST_WHY;
 }
 let postFrom="train";
-function openPost(){ postFrom=tab; ["train","cardio","swim","prog","hist","more"].forEach(t=>{ $("tab-"+t).hidden=true; }); $("tab-post").hidden=false; tab="post"; renderPost(); window.scrollTo({top:0}); }
+function openPost(){ postFrom=tab; ["train","cardio","swim","prog","hist","more","diet"].forEach(t=>{ $("tab-"+t).hidden=true; }); $("tab-post").hidden=false; tab="post"; renderPost(); window.scrollTo({top:0}); }
 function closePost(){ $("tab-post").hidden=true; const b=document.querySelector('nav.tabs [data-tab="'+postFrom+'"]')||document.querySelector('nav.tabs [data-tab="train"]'); b.click(); }
 document.addEventListener("click",e=>{
   if(e.target.closest("[data-open-post]")){ openPost(); return; }
@@ -2412,20 +2440,206 @@ async function postImport(d){
   return n;
 }
 
+// ---------- 饮食（2026-11-19）：蛋白／热量目标、16/8 分餐、每日记录、平台期提示、洗髓功 ----------
+// 事实都要对得上 .claude/notes/fitness-fatloss-research.md 的查证表；App 自己定的写明「App 的安排／推论」。
+const DIKEY="fit.diet";
+const DSRC={
+  morton:["Morton 2018","https://pubmed.ncbi.nlm.nih.gov/28698222/"],
+  issn:["ISSN 蛋白立场 2017","https://pubmed.ncbi.nlm.nih.gov/28642676/"],
+  jensen:["Jensen 2013（美国肥胖指南）","https://pubmed.ncbi.nlm.nih.gov/24222017/"],
+  lowe:["Lowe 2020","https://pubmed.ncbi.nlm.nih.gov/32986097/"],
+  liu:["Liu 2022","https://pubmed.ncbi.nlm.nih.gov/35443107/"],
+  fa:["Fernandes-Alves 2026 汇总分析","https://pubmed.ncbi.nlm.nih.gov/40298934/"],
+  moro:["Moro 2016","https://pubmed.ncbi.nlm.nih.gov/27737674/"],
+  tinsley:["Tinsley 2019","https://pubmed.ncbi.nlm.nih.gov/31268131/"],
+  varady:["Varady 2026","https://pubmed.ncbi.nlm.nih.gov/42361830/"],
+  santos:["Santos 2024","https://pubmed.ncbi.nlm.nih.gov/37837312/"],
+  comp:["2024 成人身体活动纲要（Compendium）","https://pacompendium.com/sports/"],
+  herr:["Herrmann 2024","https://pmc.ncbi.nlm.nih.gov/articles/PMC10818145/"]
+};
+const dA=k=>'<a href="'+DSRC[k][1]+'" target="_blank" rel="noopener">'+esc(DSRC[k][0])+'</a>';
+const QG_MET=3.3;
+let diet=Object.assign({profile:{},mode:"range",tre:{on:false,start:"12:00",end:"20:00",meals:3},qg:{on:false,min:40},log:{},setTs:0},ls.get(DIKEY,{}));
+["profile","tre","qg","log"].forEach(k=>{ if(!diet[k]||typeof diet[k]!=="object") diet[k]={}; });
+diet.tre=Object.assign({on:false,start:"12:00",end:"20:00",meals:3},diet.tre); diet.qg=Object.assign({on:false,min:40},diet.qg);
+function saveDiet(){ ls.set(DIKEY,diet); }
+function protTarget(kg){ return kg>0?1.6*kg:null; } // 精确值；显示时四舍五入
+function qigong(kg,min){ const h=min/60, g=QG_MET*kg*h, n=(QG_MET-1)*kg*h; return {gross:r1(g),net:r1(n),wkGross:r1(g*7),wkNet:r1(n*7)}; }
+function hm(m){ m=((m%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
+function tmin(t){ const m=/^(\d{1,2}):(\d{2})$/.exec(t||""); return m?(+m[1])*60+(+m[2]):null; }
+// 分餐（App 的安排）：第一餐在开窗时，最后一餐在关窗前 30 分钟，中间平均分
+function mealPlan(kg,tre){
+  const S=tmin(tre.start), E0=tmin(tre.end); if(S==null||E0==null||!(kg>0)) return null;
+  let E=E0; if(E<=S) E+=1440; const len=E-S, n=tre.meals===2?2:3, last=E-30, gap=(last-S)/(n-1);
+  const times=[]; for(let i=0;i<n;i++) times.push(hm(Math.round(S+gap*i)));
+  return {len,n,times,gap,minMeal:Math.round(0.25*kg),each:Math.round(protTarget(kg)/n)};
+}
+// 平台期：周平均（周一开始）。最近有资料的一周须是本周或上周，往前连续 4 周都有记录；
+// 最近一周的平均 ≥ 3 周前的平均（体重、腰围都是）＝「连续 3 周没往下走」（App 的安排）
+function plateauInfo(now){
+  const by=new Map(); body.forEach(b=>{ const w=weekStart(b.ts); if(!by.has(w)) by.set(w,[]); by.get(w).push(b); });
+  const w0=weekStart(now), L=by.has(w0)?w0:(by.has(w0-7*DAY)?w0-7*DAY:null);
+  if(L==null) return null;
+  const weeks=[3,2,1,0].map(i=>{ const d=new Date(L); d.setDate(d.getDate()-7*i); return weekStart(d.getTime()); }); // 跨夏令时也落在周一
+  if(!weeks.every(w=>by.has(w))) return null;
+  const avg=(arr,f)=>{ const v=arr.map(f).filter(x=>x!=null&&isFinite(x)); return v.length?v.reduce((a,b)=>a+b,0)/v.length:null; };
+  const kg=weeks.map(w=>avg(by.get(w),b=>b.kg)), waist=weeks.map(w=>avg(by.get(w),b=>b.waist));
+  const hasW=waist[0]!=null&&waist[3]!=null;
+  const flat=kg[3]>=kg[0]-1e-9&&(!hasW||waist[3]>=waist[0]-1e-9);
+  return {weeks,kg,waist,hasW,flat};
+}
+function dayLog(d){ return diet.log[d]||{p:0,kcal:null,win:false}; }
+function renderDietCard(){
+  const kg=diet.profile.kg, t=protTarget(kg), td=dayLog(isoDay(Date.now()));
+  $("dietCard").innerHTML='<div class="row between"><span><b>饮食</b>　<span class="small muted">'+(t?'今天蛋白 '+td.p+' / '+Math.round(t)+' g'+(diet.tre.on?' · 窗口 '+esc(diet.tre.start)+'–'+esc(diet.tre.end):''):'按体重算蛋白与热量目标')+'</span></span><button class="btn'+(t?'':' primary')+' small" data-open-diet>'+(t?'记今天':'填资料')+'</button></div>';
+}
+function renderDietProfile(){
+  const p=diet.profile;
+  $("dProfile").innerHTML='<h2>我的资料</h2>'+
+    '<div class="set-row"><span>性别</span><div class="seg" role="group" aria-label="性别" id="dSex">'+[["M","男"],["F","女"]].map(x=>'<button data-v="'+x[0]+'" aria-pressed="'+(p.sex===x[0])+'">'+x[1]+'</button>').join("")+'</div></div>'+
+    '<div class="form-row"><label>年龄<input class="inp" id="dAge" inputmode="numeric" value="'+(p.age!=null?esc(p.age):"")+'" placeholder="岁"></label>'+
+    '<label>体重 kg<input class="inp" id="dKg" inputmode="decimal" value="'+(p.kg!=null?esc(p.kg):"")+'" placeholder="kg"></label></div>'+
+    '<p class="small muted">体重变了记得回来改，目标会跟着算。</p>';
+}
+function renderDietTargets(){
+  const p=diet.profile, kg=p.kg, t=protTarget(kg);
+  let h='<h2>每天的目标</h2><div id="dProt" class="stack" style="gap:4px">';
+  h+=t?'<p><span class="num" style="font-size:26px">'+Math.round(t)+' g</span> 蛋白／天 <span class="small muted">＝ 1.6 g × '+r1(kg)+' kg</span></p>'+
+       '<p class="small">依据：'+dA("morton")+' 汇总 49 个研究，总蛋白超过每天每公斤 1.62 g 后，再多吃没有让力量训练多长去脂体重（研究对象是一般热量下的增肌，不是减脂期）。'+dA("issn")+'：运动的人每天 1.4–2.0 g/kg 对多数人足够；减脂期有训练的人可能要 2.3–3.1 g/kg。取 1.6 是 App 的安排。</p>'
+     :'<p class="small muted">先在上面填体重。</p>';
+  h+='</div><div class="set-row"><span>热量怎么定</span><div class="seg" role="group" aria-label="热量怎么定" id="dMode">'+[["range","按指南区间"],["deficit","每天少吃"]].map(x=>'<button data-v="'+x[0]+'" aria-pressed="'+(diet.mode===x[0])+'">'+x[1]+'</button>').join("")+'</div></div><div id="dKcal" class="stack" style="gap:4px">';
+  if(diet.mode==="deficit") h+='<p><span class="num" style="font-size:22px">每天少吃 500–750 kcal</span></p><p class="small">跟你平常吃的比。App 不知道你平常吃多少，所以只给差额。</p>';
+  else if(p.sex==="M"||p.sex==="F") h+='<p><span class="num" style="font-size:22px">'+(p.sex==="M"?"1500–1800":"1200–1500")+' kcal／天</span></p>';
+  else h+='<p class="small muted">选了性别才显示区间（男女不同）。</p>';
+  h+='<p class="small">依据：'+dA("jensen")+'（AHA/ACC/TOS，推荐等级 A）三选一——女性每天 1200–1500 kcal、男性 1500–1800 kcal；或每天少吃 500 或 750 kcal；或有证据的饮食法。指南的对象是超重／肥胖的成人，而且是在完整的生活方式计划里。</p></div>';
+  $("dTargets").innerHTML=h;
+}
+function renderDietTre(){
+  const tr=diet.tre, kg=diet.profile.kg;
+  let h='<div class="set-row"><span><b>16/8 进食窗口</b><br><span class="small muted">每天只在 8 小时内吃（可不开）</span></span><button class="toggle" id="dTre" aria-label="16/8 进食窗口" aria-pressed="'+!!tr.on+'"></button></div>';
+  if(tr.on){
+    h+='<div class="form-row"><label>开始<input class="inp" type="time" id="dStart" value="'+esc(tr.start)+'"></label><label>结束<input class="inp" type="time" id="dEnd" value="'+esc(tr.end)+'"></label></div>'+
+       '<div class="set-row"><span>分几餐</span><div class="seg" role="group" aria-label="分几餐" id="dMealN">'+[2,3].map(n=>'<button data-v="'+n+'" aria-pressed="'+((tr.meals===2?2:3)===n)+'">'+n+' 餐</button>').join("")+'</div></div><div id="dMeals" class="stack" style="gap:6px">';
+    const m=mealPlan(kg,tr);
+    if(!m) h+='<p class="small muted">先填体重。</p>';
+    else{
+      h+='<p class="small">窗口 '+r1(m.len/60)+' 小时。'+dA("issn")+'：每餐约 0.25 g/kg 优质蛋白（你是 '+m.minMeal+' g），或 20–40 g；最好每 3–4 小时平均分配。</p>';
+      h+='<ul class="list">'+m.times.map((t,i)=>'<li><b>'+t+'</b>　蛋白约 '+m.each+' g'+(i===m.times.length-1?'（关窗前 30 分钟）':'')+'</li>').join("")+'</ul>';
+      h+='<p class="small muted">时间与每餐克数是 App 的安排：把每天 '+Math.round(protTarget(kg))+' g 平均分成 '+m.n+' 份，第一餐在开窗时。每餐下限 '+m.minMeal+' g（0.25 × '+r1(kg)+'）。</p>';
+      if(m.each>40) h+='<p class="small">每餐超过 ISSN 写的 20–40 g，间隔也超过 3–4 小时：改成 3 餐更接近建议（App 的推论）。</p>';
+    }
+    h+='</div>';
+  }
+  $("dTreCard").innerHTML=h;
+}
+function renderDietToday(){
+  const kg=diet.profile.kg, t=protTarget(kg), d=isoDay(Date.now()), L=dayLog(d);
+  let h='<div class="block-head"><h2>今天</h2><span class="small muted">'+fmtDate(Date.now())+'</span></div>'+
+    '<p><span class="num" style="font-size:26px">'+L.p+(t?' / '+Math.round(t):'')+' g</span> 蛋白</p>'+
+    '<div class="row">'+[10,20,30].map(n=>'<button class="btn" data-padd="'+n+'">+'+n+'</button>').join("")+'<button class="btn ghost" data-padd="-10">−10</button></div>'+
+    '<p class="small muted">粗估就好：一份手掌大的肉或鱼、一杯蛋白粉，各按包装或常见数值加。</p>'+
+    '<div class="form-row"><label>热量 kcal（可不填）<input class="inp" id="dKcalIn" inputmode="numeric" value="'+(L.kcal!=null?L.kcal:"")+'"></label></div>';
+  if(diet.tre.on) h+='<div class="set-row"><span>今天在窗口内吃完</span><button class="toggle" id="dWin" aria-label="今天在窗口内吃完" aria-pressed="'+!!L.win+'"></button></div>';
+  $("dToday").innerHTML=h;
+}
+function renderDietWeek(){
+  const kg=diet.profile.kg, t=protTarget(kg), w0=weekStart(Date.now()), today=isoDay(Date.now());
+  let rows='', hit=0;
+  for(let i=0;i<7;i++){ const dd=new Date(w0); dd.setDate(dd.getDate()+i); const k=isoDay(dd.getTime()), L=diet.log[k], fut=k>today;
+    if(L&&t&&L.p>=Math.round(t)) hit++;
+    rows+='<tr><td>'+fmtShort(dd.getTime())+' '+"日一二三四五六"[dd.getDay()]+'</td><td>'+(fut?'':L?L.p+' g':'—')+'</td><td>'+(fut?'':L&&L.kcal!=null?L.kcal:'—')+'</td>'+(diet.tre.on?'<td>'+(fut?'':L&&L.win?'✓':'—')+'</td>':'')+'</tr>'; }
+  let h='<div class="block-head"><h2>本周</h2><span class="small muted">'+(t?'蛋白达标 '+hit+' 天':'')+'</span></div>'+
+    '<table class="dtab" id="dWeek"><thead><tr><th>日期</th><th>蛋白</th><th>kcal</th>'+(diet.tre.on?'<th>窗口</th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>';
+  const pi=plateauInfo(Date.now());
+  if(pi) h+='<p class="small">体重周平均（近 4 周）：'+pi.kg.map(x=>r1(x)).join(' → ')+' kg'+(pi.hasW?'；腰围 '+pi.waist.map(x=>r1(x)).join(' → ')+' cm':'')+'</p>';
+  else h+='<p class="small muted">在「进度」页连续记几周体重与腰围，这里会显示每周平均的走势。</p>';
+  if(pi&&pi.flat) h+='<div class="warn" id="dPlateau"><b>连续 3 周没往下走</b><br>最近一周的平均体重'+(pi.hasW?'和腰围':'')+'都没有比 3 周前低'+(pi.hasW?'':'（没有腰围记录，只看体重）')+'。可以对一下：每天热量是不是在目标里、零食饮料有没有算进去、蛋白够不够。（App 的安排：拿最近一周的平均跟 3 周前比，两项都没降才提醒）</div>';
+  $("dWeekCard").innerHTML=h;
+}
+function renderDietQg(){
+  const kg=diet.profile.kg, min=diet.qg.min||40;
+  const w0=weekStart(Date.now()), stMin=sessions.filter(s=>weekStart(s.ts)===w0).reduce((a,s)=>a+(+s.dur||0),0), cdMin=cardio.filter(c=>weekStart(c.ts)===w0).reduce((a,c)=>a+(+c.min||0),0);
+  let h='<h2>每周活动</h2>';
+  h+='<p class="small">本周已记：力量 '+stMin+' 分钟、有氧 '+cdMin+' 分钟'+(diet.qg.on?'；洗髓功按每天 '+min+' 分钟算，一周 '+(min*7)+' 分钟':'')+'。</p>';
+  if(!diet.qg.on){ h+='<p class="small muted">每天练洗髓功的话，在「更多 → 设置」打开「每天练洗髓功」，这里会算它的消耗。</p>'; $("dQg").innerHTML=h; return; }
+  if(!(kg>0)){ h+='<p class="small muted">先在上面填体重，才算得出洗髓功的消耗。</p>'; $("dQg").innerHTML=h; return; }
+  const q=qigong(kg,min), K=r1(kg);
+  h+='<p><span class="num" style="font-size:22px">每周约 '+Math.round(q.wkGross)+' kcal</span>（净约 '+Math.round(q.wkNet)+' kcal）</p>'+
+    '<ul class="list small"><li>强度：3.3 MET（'+dA("comp")+' 代码 15670「太极、气功，一般」。纲要里没有洗髓功这一项，归到这一条是 App 的推论）。</li>'+
+    '<li>公式：kcal ≈ MET × 体重 × 小时（纲要定义 1 MET ≈ 每公斤每小时 1 kcal）。</li>'+
+    '<li>每次毛消耗：3.3 × '+K+' × '+min+' ÷ 60 = <b>'+q.gross+'</b> kcal；净消耗（扣掉坐着本来就会烧的 1 MET）：2.3 × '+K+' × '+min+' ÷ 60 = <b>'+q.net+'</b> kcal。</li>'+
+    '<li>每周 × 7：毛 '+q.wkGross+' ≈ '+Math.round(q.wkGross)+' kcal，净 '+q.wkNet+' ≈ '+Math.round(q.wkNet)+' kcal。</li>'+
+    '<li>纲要的数值原本是给研究用的平均值，套在个人身上有误差（'+dA("herr")+'）。</li></ul>';
+  $("dQg").innerHTML=h;
+}
+const TRE_WHY='<ul class="list small">'+
+  '<li><b>不额外少吃时：</b>116 位超重／肥胖成人 12 周，12 点到 20 点随意吃，体重跟「一天三餐」组没有差别；作者结论：只做限时进食，减重不比整天进食更有效（'+dA("lowe")+'）。</li>'+
+  '<li><b>同样少吃时：</b>139 位肥胖者 12 个月，两组都按男 1500–1800、女 1200–1500 kcal 吃；加了 8 小时窗口的组多减 1.8 kg，但差别不显著，体脂、瘦体重也一样（'+dA("liu")+'）。</li>'+
+  '<li><b>合并小型试验：</b>30 个试验 1341 人：限时进食比对照多减体重（热量相同时 −1.46 kg），但<b>去脂体重也多掉</b>（热量相同时 −0.41 kg，不同时 −0.86 kg）（'+dA("fa")+'）。</li>'+
+  '<li><b>瘦体重：</b>上面那个 12 周试验里，当面测量的人中限时进食组平均掉 1.70 kg，其中 1.10 kg（约 65%）是瘦体重；作者提醒限时进食时要吃够蛋白（'+dA("lowe")+'）。</li>'+
+  '<li><b>配力量训练：</b>34 位有训练的男性 8 周，热量相同、三餐在 13、16、20 点：脂肪下降，去脂体重与最大力量都维持（但睾酮与 IGF-1 下降）（'+dA("moro")+'）。40 位有训练的女性 8 周、蛋白每天 1.6 g/kg：去脂体重增加跟正常吃的组差不多（'+dA("tinsley")+'）。两个研究都只有 8 周、对象是有训练经验的人。</li>'+
+  '<li><b>所以（App 的推论）：</b>16/8 主要是帮你少吃的一种方式，不是额外的燃脂开关。做得住就继续，重点是总热量在目标里、蛋白吃够、配合力量训练。</li>'+
+  '<li><b>安全：</b>有糖尿病、在吃降糖药或打胰岛素的人，断食要请医生调药——调好药时不增加低血糖风险（'+dA("varady")+'），临床上要持续监测血糖以减少低血糖（'+dA("santos")+'）。</li></ul>';
+function renderDiet(){
+  renderDietCard();
+  if($("tab-diet").hidden) return;
+  renderDietProfile(); renderDietRest();
+  $("dTreWhy").innerHTML=TRE_WHY;
+}
+function renderDietRest(){ renderDietCard(); renderDietTargets(); renderDietTre(); renderDietToday(); renderDietWeek(); renderDietQg(); }
+let dietFrom="train";
+function openDiet(){ dietFrom=tab; ["train","cardio","swim","prog","hist","more","post"].forEach(t=>{ $("tab-"+t).hidden=true; }); $("tab-diet").hidden=false; tab="diet"; renderDiet(); window.scrollTo({top:0}); }
+function closeDiet(){ $("tab-diet").hidden=true; const b=document.querySelector('nav.tabs [data-tab="'+dietFrom+'"]')||document.querySelector('nav.tabs [data-tab="train"]'); b.click(); }
+document.addEventListener("click",e=>{ if(e.target.closest("[data-open-diet]")) openDiet(); });
+$("dietBack").onclick=closeDiet;
+$("tab-diet").addEventListener("click",e=>{
+  const sx=e.target.closest("#dSex [data-v]"); if(sx){ diet.profile.sex=sx.dataset.v; diet.setTs=Date.now(); saveDiet(); renderDietProfile(); renderDietRest(); return; }
+  const md=e.target.closest("#dMode [data-v]"); if(md){ diet.mode=md.dataset.v; diet.setTs=Date.now(); saveDiet(); renderDietRest(); return; }
+  const mn=e.target.closest("#dMealN [data-v]"); if(mn){ diet.tre.meals=+mn.dataset.v; diet.setTs=Date.now(); saveDiet(); renderDietRest(); return; }
+  if(e.target.closest("#dTre")){ diet.tre.on=!diet.tre.on; diet.setTs=Date.now(); saveDiet(); renderDietRest(); return; }
+  const d=isoDay(Date.now());
+  const pa=e.target.closest("[data-padd]"); if(pa){ const L=Object.assign({p:0,kcal:null,win:false},diet.log[d]); L.p=Math.max(0,L.p+(+pa.dataset.padd)); diet.log[d]=L; saveDiet(); renderDietRest(); return; }
+  if(e.target.closest("#dWin")){ const L=Object.assign({p:0,kcal:null,win:false},diet.log[d]); L.win=!L.win; diet.log[d]=L; saveDiet(); renderDietRest(); return; }
+});
+$("tab-diet").addEventListener("input",e=>{
+  const id=e.target.id;
+  if(id==="dAge"){ const v=num(e.target.value); diet.profile.age=v!=null&&v>0&&v<120?Math.round(v):null; }
+  else if(id==="dKg"){ const v=num(e.target.value); diet.profile.kg=v!=null&&v>=25&&v<=300?r1(v):null; }
+  else if(id==="dKcalIn"){ const d=isoDay(Date.now()), v=num(e.target.value), L=Object.assign({p:0,kcal:null,win:false},diet.log[d]); L.kcal=v!=null&&v>=0&&v<20000?Math.round(v):null; diet.log[d]=L; saveDiet(); renderDietCard(); renderDietWeek(); return; }
+  else return;
+  diet.setTs=Date.now(); saveDiet(); renderDietRest();
+});
+$("tab-diet").addEventListener("change",e=>{
+  if(e.target.id==="dStart"||e.target.id==="dEnd"){ if(tmin(e.target.value)!=null){ diet.tre[e.target.id==="dStart"?"start":"end"]=e.target.value; diet.setTs=Date.now(); saveDiet(); renderDietRest(); } }
+});
+function renderQgCfg(){ $("cfgQg").setAttribute("aria-pressed",!!diet.qg.on); $("cfgQgMinRow").hidden=!diet.qg.on; $("cfgQgMin").innerHTML=[30,40,60].map(m=>'<button data-qm="'+m+'" aria-pressed="'+(diet.qg.min===m)+'">'+m+' 分</button>').join(""); }
+$("cfgQg").onclick=()=>{ diet.qg.on=!diet.qg.on; diet.setTs=Date.now(); saveDiet(); renderQgCfg(); renderDiet(); };
+$("cfgQgMin").addEventListener("click",e=>{ const b=e.target.closest("[data-qm]"); if(!b) return; diet.qg.min=+b.dataset.qm; diet.setTs=Date.now(); saveDiet(); renderQgCfg(); renderDiet(); });
+function dietImport(dd){
+  if(!dd||typeof dd!=="object") return;
+  if(!diet.setTs&&dd.profile&&typeof dd.profile==="object"){ // 本机没设过才用备份的资料与设定
+    diet.profile=Object.assign({},dd.profile); if(dd.mode==="range"||dd.mode==="deficit") diet.mode=dd.mode;
+    if(dd.tre&&typeof dd.tre==="object") diet.tre=Object.assign({},diet.tre,dd.tre); if(dd.qg&&typeof dd.qg==="object") diet.qg=Object.assign({},diet.qg,dd.qg);
+    diet.setTs=dd.setTs||Date.now();
+  }
+  if(dd.log&&typeof dd.log==="object") for(const k in dd.log){ const L=dd.log[k]; if(/^\d{4}-\d\d-\d\d$/.test(k)&&L&&typeof L==="object"&&!diet.log[k]) diet.log[k]={p:+L.p||0,kcal:L.kcal==null?null:+L.kcal,win:!!L.win}; }
+  saveDiet();
+}
+
 // ---------- Tabs ----------
 let tab="train";
 document.querySelector("nav.tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-tab]"); if(!b) return;
   tab=b.dataset.tab;
   document.querySelectorAll("nav.tabs [data-tab]").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["train","cardio","swim","prog","hist","more"].forEach(t=>{ $("tab-"+t).hidden=(t!==tab); }); $("tab-post").hidden=true;
+  ["train","cardio","swim","prog","hist","more"].forEach(t=>{ $("tab-"+t).hidden=(t!==tab); }); $("tab-post").hidden=true; $("tab-diet").hidden=true;
   if(tab==="cardio") renderCardio(); // 图表要看得见时才量得到宽度
   if(tab==="prog") renderProg(); // 图表要在看得见时才量得到宽度
   window.scrollTo({top:0});
 });
 let rz=null; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(tab==="prog") renderProg(); },200); });
 
-function renderAll(){ renderHeader(); renderWeek(); renderPicker(); renderWorkout(); renderHist(); renderGarmin(); renderCfg(); renderSwim(); renderPost(); if(tab==="cardio") renderCardio(); if(tab==="prog") renderProg(); }
+function renderAll(){ renderHeader(); renderWeek(); renderPicker(); renderWorkout(); renderHist(); renderGarmin(); renderCfg(); renderSwim(); renderPost(); renderDiet(); renderQgCfg(); if(tab==="cardio") renderCardio(); if(tab==="prog") renderProg(); }
 setEquip(cfg.equip);
 renderAll();
 if("serviceWorker" in navigator && location.protocol!=="file:"){ addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
@@ -2443,7 +2657,7 @@ function animCombos(){
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE}}; // 给自检脚本用
+window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,get:()=>diet},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>
