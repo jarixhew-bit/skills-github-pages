@@ -144,6 +144,8 @@
     照片多「侧面照」（`view:"side"`），侧面那组画蓝色竖线 `.vl`（`pv.vl`、`#ppVl`）。
   - 脖子红旗 `NECK_RED`（NHS 颈椎病原文）：存 `post.red.nk={key:true}`；`redList()` 第三栏是等级 `urgent`／`er`，`redLevel()`＋`RED_HEAD` 决定标题
     （马上去急诊 > 尽快看医生 > 建议先给医生看）。**不写英国的 111／999**（用户在东南亚）。一样挡小课、改红旗清单会让「医生看过」作废。
+    **急诊级（`lv==='er'`）没有「医生看过」按钮**，`acked()` 遇到 er 一律 false、点击处理也挡（2026-11-19 第二次退件，App 的保守判断）。
+    饮食页 BMI <18.5（WHO GHO）→ 不给任何热量差额、隐藏「热量怎么定」切换。
   - 小课 10 个动作、约 12 分钟：多了泡沫轴胸椎伸展 `thoracic`（活动度，**不能写成改善前倾**）与收下巴 `chintuck`（120 秒＝10 次×停 10 秒，剂量出处 Physitrack，CUH 留给治疗师填）。
   - 训练页 `#postCard` 在能做小课时就是早上卡片：「洗髓功后：体态小课（含脖子）」、`#pmDone`「今天做了」打勾（写进 `post.done`，`manual:true`；取消＝删掉今天的），本周次数 `#postWeekN`；没做的日子不显示失败。
   - 深连结：`fitness/?go=posture` 或 `#posture` → 能做就 `openPosture()`，有红旗／没自查就 `openPost()`，然后 `history.replaceState` 清掉参数。

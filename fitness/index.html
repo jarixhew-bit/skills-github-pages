@@ -997,8 +997,8 @@ const PMOVE={
   sideplank:{name:"侧桥",anim:"sideplank",kind:"str",uni:true,en:"side plank",cue:"侧躺，手肘撑在肩膀正下方。腹部收紧，把髋抬起来，让头到脚成一直线；髋不要往下沉、肩膀不要耸到耳边。太难就膝盖着地做。"},
   clam:{name:"蚌式开合",anim:"clam",kind:"str",uni:true,en:"clamshell exercise",cue:"侧躺，两膝弯起来、两腿叠在一起，两脚并拢。背和骨盆不动，慢慢把上面那个膝盖往上打开，再控制着放回来。身体不要往后翻。有弹力带可以套在膝盖上方，用来加难度（App 的安排）。"},
   suitcase:{name:"单手提哑铃原地踏步",anim:"suitcase",hold:"one",kind:"str",uni:true,en:"suitcase march",cue:"一只手提哑铃垂在身侧，另一只手空着。站直、腹部收紧、两肩一样高，慢慢原地踏步；身体不要往拿重量那边歪，也不要往反方向躲。从正面看要左右对称。歪了就换轻一点的重量。"},
-  chintuck:{name:"收下巴（颈部后缩）",anim:"chintuck",kind:"str",en:"chin tuck",cue:"坐直，下巴轻轻往内收、头往后平移，颈和背保持直，头不要往前低。可以用手指把下巴轻轻往后推帮忙。停在最后的位置、感觉颈后被拉开，再放松。站着或躺着也能做。头晕就停（App 的保守判断）。"},
-  thoracic:{name:"泡沫轴胸椎伸展",anim:"thoracic",kind:"mob",en:"foam roller thoracic extension",cue:"仰躺，泡沫轴横放在上背下面，膝盖弯、脚踩地，双手交叉放胸前。吐气时上背往轴上伸直，吸气时回来；把轴上下挪一点，逐段做。下巴保持内收，下背不要拱，骨盆贴地。这是活动度练习，没有研究证明它能改善脖子前倾。没有泡沫轴就跳过（App 的做法）。"},
+  chintuck:{name:"收下巴（颈部后缩）",anim:"chintuck",kind:"str",en:"chin tuck",cue:"坐直，下巴轻轻往内收、头往后平移（App 的描述），颈和背保持直，头不要往前低。可以用手指把下巴轻轻往后推帮忙。停在最后的位置、感觉颈部被拉开，再放松。站着或躺着也能做。头晕就停（App 的保守判断）。"},
+  thoracic:{name:"泡沫轴胸椎伸展",anim:"thoracic",kind:"mob",en:"foam roller thoracic extension",cue:"仰躺，泡沫轴横放在上背下面，膝盖弯、脚踩地，双手交叉放胸前。吐气时上背往轴上伸直，吸气时回来；把轴上下挪一点，逐段做。下巴保持内收，下背不要拱，骨盆贴地。这是活动度练习，本 App 没查到研究证明它能改善脖子前倾。没有泡沫轴就跳过（App 的做法）。"},
   split:{name:"徒手分腿蹲（后脚踩椅）",anim:"split",kind:"str",uni:true,en:"bulgarian split squat",cue:"后脚背放在椅子上，前脚离椅子约一大步，垂直往下蹲、再用前脚站起来。膝盖对准第二根脚趾、不往内倒（App 的安排）。"},
 };
 const MOVE_TAG={chest:"门框"};
@@ -2196,6 +2196,9 @@ const SRC={
   norasteh:["Norasteh 2025 系统综述","https://pubmed.ncbi.nlm.nih.gov/40966220/"],
   hoe:["Hoe 2018 Cochrane 综述","https://pubmed.ncbi.nlm.nih.gov/30350850/"],
   tatsios:["Tatsios 2025","https://pubmed.ncbi.nlm.nih.gov/40700206/"],
+  nazwar:["Nazwar 2024 系统综述","https://pubmed.ncbi.nlm.nih.gov/39483836/"],
+  ghosh:["Ghosh 2025 系统综述","https://pubmed.ncbi.nlm.nih.gov/40633255/"],
+  chunyiu:["Chun-Yiu 2021","https://pubmed.ncbi.nlm.nih.gov/33895703/"],
 };
 const srcA=k=>'<a href="'+SRC[k][1]+'" target="_blank" rel="noopener">'+esc(SRC[k][0])+'</a>';
 const SIDE_ZH={L:"左",R:"右"};
@@ -2223,7 +2226,8 @@ const RED_HEAD={er:"马上去急诊",urgent:"尽快看医生",doc:"建议先给�
 function hasRed(){ return redList().length>0; }
 function redSig(){ return redList().map(x=>x[0]); }
 // 确认「医生看过」只对确认当下那几个红旗有效：之后多出任何一个，确认作废（2026-11-18 verifier 抓到：多一个红旗还照样给小课）
-function acked(){ if(!post.ack) return false; const ok=Array.isArray(post.ackFor)?post.ackFor:[]; return redSig().every(t=>ok.includes(t)); }
+// 急诊级红旗（走路新问题、大小便失控、手突然不灵活）不能用「医生看过」跳过（App 的保守判断，2026-11-19 verifier）
+function acked(){ if(!post.ack||redLevel()==="er") return false; const ok=Array.isArray(post.ackFor)?post.ackFor:[]; return redSig().every(t=>ok.includes(t)); }
 // 高低肩但前弯测试还没做：AAOS 把高低肩列为脊柱侧弯征象之一 → App 的保守判断：先做前弯测试，再排小课
 function needBend(){ const q=post.q, b=post.red.bend; return (q.shoulder==="L"||q.shoulder==="R")&&b!=="no"&&b!=="yes"; }
 function postBlocked(){ return (hasRed()&&!acked())||needBend(); }
@@ -2337,14 +2341,14 @@ function postStatusHTML(){
   if(L.length){
     return '<div class="red" id="postRedMsg"><b>'+RED_HEAD[redLevel()]+'</b><ul class="list small">'+L.map(x=>'<li><b>'+esc(x[0])+'</b>：'+x[1]+'</li>').join("")+'</ul>'+
       '<span class="small">体态小课是一般的肌力与活动度练习，<b>不是治疗</b>。看过之后，医生或物理治疗师说可以运动，再回来练。</span>'+
-      (acked()?'<span class="small">你已确认看过、可以运动（'+fmtDate(post.ack)+'）。<button class="btn ghost small" data-post-unack>取消确认</button></span>':'<button class="btn" data-post-ack>医生／物理治疗师看过，说可以运动</button>')+'</div>';
+      (redLevel()==="er"?'<span class="small" id="postErNote"><b>这几项要马上去急诊，不能用「医生看过」跳过（App 的保守判断）。</b>改回答案（在上面取消点选）之后，这个提醒才会消失。</span>':acked()?'<span class="small">你已确认看过、可以运动（'+fmtDate(post.ack)+'）。<button class="btn ghost small" data-post-unack>取消确认</button></span>':'<button class="btn" data-post-ack>医生／物理治疗师看过，说可以运动</button>')+'</div>';
   }
   const out=[];
   if(q.shift==="L"||q.shift==="R") out.push('<li><b>深蹲往'+SIDE_ZH[q.shift]+'歪</b>：研究里，站着左右重量不平均的人，背蹲时左右受力也不平均，杠的倾斜和旋转也比较大（'+srcA("sato")+'）；一般人看着即时画面回馈练习，左右重量差会变小（'+srcA("mcgough")+'）。研究用的是即时画面回馈；手机回放是 App 的做法，效果没有研究。<b>App 的安排</b>：手机放身后拍一组回放看，往'+SIDE_ZH[q.shift]+'偏就先减重；单侧动作'+SIDE_ZH[sd.leg]+'脚先做、多一组。依据是单侧训练在一项研究里减少了左右腿的差距（'+srcA("gonzalo")+'，对象是年轻篮球员）；「先做、多一组」本身没有研究。</li>');
   if(q.shoulder==="L"||q.shoulder==="R") out.push('<li><b>'+SIDE_ZH[q.shoulder]+'肩较高</b>：高低肩可能是脊柱侧弯的征象之一（'+srcA("aaos")+'），所以先做上面的前弯测试。两边一样、不痛的话，<b>App 的安排</b>是先当成一般体态来练；仍可找医生确认。研究显示肌力训练能改善胸椎、颈部的姿势指标，单纯拉伸不能（'+srcA("warneke")+'）。专门针对「高低肩」的运动研究我们没找到，所以小课不承诺把肩膀练平。</li>');
   if(q.gap==="Y") out.push('<li><b>站着两膝并拢、脚踝分开</b>：可能是骨头角度（膝外翻）。'+srcA("hssKnee")+' 写到：成人膝盖内侧的韧带可能被拉长、让变形更明显；非手术的处理是控制体重、保持体能、少做高冲击运动；列出的矫正方式是截骨手术。没找到运动能改骨头角度的研究；也有健康网站写运动能帮膝盖「重新对齐」，但没有附研究（'+srcA("healthline")+'）。有研究支持能练的是下面那项：动作中膝盖往内倒。</li>');
   if(q.valgus&&q.valgus!=="N"&&q.valgus!=="?") out.push('<li><b>动作中膝盖往内倒</b>：有研究显示可能练得改善（研究对象是跑者）。一项随机对照试验（40 位有胫骨内侧疼痛的跑者），在一般物理治疗之外加练髋外展肌 8 周后，下蹲时膝内倒角度变小（'+srcA("lashien")+'）；35 篇研究的系统综述：膝内倒明显的人，下肢肌力训练配合膝盖位置控制练习可能减少膝内倒（'+srcA("comert")+'）。<b>App 的安排</b>：小课多加一组蚌式；训练时深蹲类动作会提醒「膝盖对准第二根脚趾」。一项研究用楔形板模拟脚踝变紧，深蹲时膝盖就更往内倒（'+srcA("macrum")+'）；另一项落地研究没发现脚踝活动度跟膝内倒有关联（'+srcA("fong")+'）。App 的推论：所以小课也练推膝碰墙。</li>');
-  if(q.fhp==="Y") out.push('<li id="postFhpRes"><b>脖子前倾</b>：运动能改善颈椎角度，7 篇随机试验的综述说证据强（'+srcA("sheikh")+'）；健康人的研究里，<b>肌力训练</b>对胸椎、颈部姿势有效，<b>单纯拉伸不改变姿势</b>（'+srcA("warneke")+'）。所以小课里的收下巴是肌力练习；泡沫轴胸椎伸展只算活动度，不保证改善前倾（App 的推论）。前倾和颈痛：成人颈痛的人前倾较明显，但那是横断面研究（'+srcA("mahmoud")+'）；追踪研究没发现坐姿或滑手机的低头角度会导致日后颈痛（'+srcA("richards21")+'、'+srcA("correia")+'）——<b>常一起出现，但没证明前倾会造成颈痛</b>。侧面照前后差 5° 以内可能只是量的误差（'+srcA("gallego")+'）。</li>');
+  if(q.fhp==="Y") out.push('<li id="postFhpRes"><b>脖子前倾</b>：7 篇随机试验的综述说运动能改善颈椎角度、证据强（'+srcA("sheikh")+'）；但另一篇综述的合并结果没看到差别：矫正运动跟一般运动比、训练跟不治疗比，改善头前伸的风险差分别是 0.00 与 0.09，可信区间都包含 0（'+srcA("nazwar")+'）。23 篇研究的综述（对象是健康人）：<b>肌力训练</b>对胸椎、颈部姿势有效，<b>单纯拉伸不改变姿势</b>（'+srcA("warneke")+'）。收下巴与研究里的颅颈屈肌训练相近（App 的推论）；泡沫轴胸椎伸展只算活动度，不保证改善前倾（App 的推论）。前倾和颈痛：成人颈痛的人前倾较明显、两者常一起出现，但那是横断面研究，分不出谁因谁果（'+srcA("mahmoud")+'）。追踪研究：一群人从 17 岁追踪到 22 岁，17 岁的坐姿不是日后持续颈痛的风险因子——这个结论只在男性；女性坐得较放松（含头前伸）的，反而较少颈痛（'+srcA("richards21")+'）。另一项追踪 18–65 岁、12 个月，看的是滑手机时的低头角度（不是头前伸），也不是颈痛的风险因子（'+srcA("correia")+'）。所以（App 的推论）：<b>常一起出现，但没证明前倾会造成颈痛</b>。侧面照前后差 5° 以内可能只是量的误差（'+srcA("gallego")+'）。</li>');
   if(!out.length) out.push('<li>问卷没有发现明显的左右差。体态小课照样可以练；每 3–4 周再测一次（'+srcA("pabau")+'）。</li>');
   return '<div class="card"><h2>结果</h2><ul class="list small">'+out.join("")+'</ul></div>';
 }
@@ -2437,7 +2441,7 @@ const HABITS=[
   ["mix","屏幕调高能不能预防颈痛","Cochrane 综述里，这类人体工学调整没找到效果（"+srcA("hoe")+"）：调高是为了舒服，不保证防痛。"],
   ["ok","别长时间维持同一个姿势","NHS：脖子不要长时间停在同一个位置（例如坐在桌前）（"+srcA("nhsNeck")+"）；常换姿势（"+srcA("cuh")+"）。"],
   ["ok","用电脑、开车时别把下巴往前伸、别圆肩",srcA("cuh")+"。"],
-  ["ok","低而硬的枕头、别趴睡","NHS 颈痛页的建议（"+srcA("nhsNeck")+"），属指引，不是研究结论。"],
+  ["ok","低而硬的枕头、别趴睡","NHS 颈痛页的建议（"+srcA("nhsNeck")+"），属指引，不是研究结论。枕头研究结果不一：一篇综述说橡胶类枕头对慢性颈痛小幅有效（"+srcA("chunyiu")+"），另一篇说证据有限、没有哪种枕头明显较好（"+srcA("ghosh")+"）。"],
   ["mix","每天多活动","追踪研究里，活动量不足是颈痛的风险因子（"+srcA("correia")+"）；横断面研究看到活动量高的颈痛者前倾较少（"+srcA("tatsios")+"）。"],
   ["app","每 30 分钟起来动一下","没找到用「30 分钟」的官方原文；官方只说要打断久坐、休息要短而频繁。"],
   ["app","手机举高一点、少长时间低头","没找到「手机举高」能减少颈痛或前倾的研究；追踪研究里，滑手机的低头角度本身不是颈痛的风险因子（"+srcA("correia")+"）。"],
@@ -2453,7 +2457,7 @@ const POST_WHY='<ul class="list small">'+
   '<li><b>静态姿势（照片）：不一定变。</b>23 篇研究的系统综述：单纯拉伸对姿势没有影响；肌力训练对胸椎、颈部姿势有改善，对腰椎、骨盆没有明显效果（'+srcA("warneke")+'）。</li>'+
   '<li><b>左右差：单侧训练有帮助。</b>一项研究里只做单侧动作的组，左右腿的差距变小，做双侧动作的组没有（'+srcA("gonzalo")+'，对象是年轻篮球员）。</li>'+
   '<li><b>动作中膝盖往内倒：有研究显示可能练得改善（研究对象是跑者）。</b>一项随机对照试验里，跑者加练髋外展肌 8 周，下蹲时膝内倒角度变小（'+srcA("lashien")+'）。<b>站着的 X 型腿（可能是骨头角度）</b>：没找到运动能改骨头角度的研究；'+srcA("hssKnee")+' 列出的矫正方式是截骨手术。</li>'+
-  '<li><b>脖子前倾：肌力训练有效，单纯拉伸不改姿势。</b>运动改善颈椎角度证据强（'+srcA("sheikh")+'）；拉伸不改变姿势、肌力训练对颈胸椎有效（'+srcA("warneke")+'）。前倾和颈痛常一起出现，但追踪研究没证明前倾会造成颈痛（'+srcA("mahmoud")+'、'+srcA("richards21")+'、'+srcA("correia")+'）。</li>'+
+  '<li><b>脖子前倾：肌力训练对颈胸椎有效，单纯拉伸不改姿势。</b>一篇综述说运动改善颈椎角度证据强（'+srcA("sheikh")+'），另一篇的合并结果没看到差别（'+srcA("nazwar")+'）；对象是健康人的综述：拉伸不改变姿势、肌力训练对颈胸椎有效（'+srcA("warneke")+'）。前倾和颈痛常一起出现（'+srcA("mahmoud")+'，横断面研究）；追踪研究（17 岁追踪到 22 岁，只在男性看到坐姿不是风险因子；18–65 岁看滑手机时的低头角度）没证明前倾会造成颈痛（'+srcA("richards21")+'、'+srcA("correia")+'）（App 的推论）。</li>'+
   '<li><b>脊柱侧弯：</b>背部运动能不能改善侧弯「还不清楚」，但一般运动对健康有好处、不应该避免，除非医生另有建议（'+srcA("nhsScol")+'）。</li>'+
   '<li><b>多久重测：</b>每 3–4 周重测一次推膝碰墙（'+srcA("pabau")+'）；数字差 1.6–1.9 公分以内可能只是误差（'+srcA("powden")+'）。</li></ul>';
 function renderPost(){
@@ -2480,7 +2484,7 @@ $("tab-post").addEventListener("click",async e=>{
   const nb=e.target.closest("[data-nk]");
   if(nb){ const before=redSig().join("|"); post.red.nk=Object.assign({},post.red.nk); post.red.nk[nb.dataset.nk]=!post.red.nk[nb.dataset.nk]; if(!post.red.nk[nb.dataset.nk]) delete post.red.nk[nb.dataset.nk]; post.qTs=post.qTs||Date.now();
     if(redSig().join("|")!==before){ post.ack=0; post.ackFor=[]; } savePost(); renderPost(); return; }
-  if(e.target.closest("[data-post-ack]")){ post.ack=Date.now(); post.ackFor=redSig(); savePost(); renderPost(); return; }
+  if(e.target.closest("[data-post-ack]")){ if(redLevel()==="er") return; post.ack=Date.now(); post.ackFor=redSig(); savePost(); renderPost(); return; }
   if(e.target.closest("[data-post-unack]")){ post.ack=0; post.ackFor=[]; savePost(); renderPost(); return; }
   const dl=e.target.closest("[data-ptdel]"); if(dl){ post.tests=post.tests.filter(t=>t.id!==dl.dataset.ptdel); savePost(); renderPost(); return; }
   const pd=e.target.closest("[data-ppdel]"); if(pd){ await photoDel(pd.dataset.ppdel); renderPostPhotos(); return; }
@@ -2546,7 +2550,8 @@ const DSRC={
   comp:["2024 成人身体活动纲要（Compendium）","https://pacompendium.com/sports/"],
   herr:["Herrmann 2024","https://pmc.ncbi.nlm.nih.gov/articles/PMC10818145/"],
   who:["WHO 肥胖与超重","https://www.who.int/news-room/fact-sheets/detail/obesity-and-overweight"],
-  who04:["WHO 亚洲 BMI 专家会议 2004","https://pubmed.ncbi.nlm.nih.gov/14726171/"]
+  who04:["WHO 亚洲 BMI 专家会议 2004","https://pubmed.ncbi.nlm.nih.gov/14726171/"],
+  whoGho:["WHO 全球卫生观察站：BMI","https://www.who.int/data/gho/data/themes/topics/topic-details/GHO/body-mass-index"]
 };
 const dA=k=>'<a href="'+DSRC[k][1]+'" target="_blank" rel="noopener">'+esc(DSRC[k][0])+'</a>';
 const QG_MET=3.3;
@@ -2601,15 +2606,18 @@ function renderDietTargets(){
   h+=t?'<p><span class="num" style="font-size:26px">'+Math.round(t)+' g</span> 蛋白／天 <span class="small muted">＝ 1.6 g × '+r1(kg)+' kg</span></p>'+
        '<p class="small">依据：'+dA("morton")+' 汇总 49 个研究，总蛋白超过每天每公斤 1.62 g 后，再多吃没有让力量训练多长去脂体重（研究对象是一般热量下的增肌，不是减脂期）。'+dA("issn")+'：运动的人每天 1.4–2.0 g/kg 对多数人足够；减脂期有训练的人可能要 2.3–3.1 g/kg。取 1.6 是 App 的安排。</p>'
      :'<p class="small muted">先在上面填体重。</p>';
-  const B=bmi(kg,p.cm), over=B!=null&&B>=25, mode=over?diet.mode:"deficit";
+  const B=bmi(kg,p.cm), over=B!=null&&B>=25, under=B!=null&&B<18.5, mode=over?diet.mode:"deficit";
   h+='</div><div id="dBmi" class="stack" style="gap:4px">';
   if(B==null) h+='<p class="small muted">填了身高才算得出 BMI（体重 ÷ 身高²）。热量建议要看 BMI。</p>';
   else h+='<p><span class="num" style="font-size:22px">BMI '+B+'</span> <span class="small muted">＝ '+r1(kg)+' ÷ '+(p.cm/100).toFixed(2)+'²</span></p>'+
-    '<ul class="list small"><li>'+dA("who")+'（成人）：BMI ≥25 超重、≥30 肥胖。</li>'+
+    '<ul class="list small"><li>'+dA("who")+'（成人）：BMI ≥25 超重、≥30 肥胖；'+dA("whoGho")+'：成人 BMI 低于 18.5 算体重过轻。</li>'+
     '<li>'+dA("who04")+'：亚洲人在 BMI 低于 25 时，2 型糖尿病与心血管病高风险的人就已不少；会议列出 23、27.5、32.5、37.5 作为公共卫生行动点，但没有给所有亚洲人统一的门槛，国际分类仍用 WHO 的 25／30。</li>'+
     '<li>App 的保守判断：指南给的固定热量区间只在 BMI ≥25（WHO 超重）时才显示；23–25 之间也只给温和的少吃量。</li></ul>';
-  h+='</div><div class="set-row"><span>热量怎么定</span><div class="seg" role="group" aria-label="热量怎么定" id="dMode">'+[["deficit","比平常少吃"],["range","按指南区间"]].map(x=>'<button data-v="'+x[0]+'" aria-pressed="'+(mode===x[0])+'">'+x[1]+'</button>').join("")+'</div></div><div id="dKcal" class="stack" style="gap:4px">';
-  if(!over){
+  h+=under?'</div><div id="dKcal" class="stack" style="gap:4px">':'</div><div class="set-row"><span>热量怎么定</span><div class="seg" role="group" aria-label="热量怎么定" id="dMode">'+[["deficit","比平常少吃"],["range","按指南区间"]].map(x=>'<button data-v="'+x[0]+'" aria-pressed="'+(mode===x[0])+'">'+x[1]+'</button>').join("")+'</div></div><div id="dKcal" class="stack" style="gap:4px">';
+  if(under){
+    h+='<p><span class="num" style="font-size:22px">BMI 偏低，不建议用这个页面减重（App 的保守判断）</span></p>'+
+      '<p class="small">BMI '+B+' 低于 18.5，WHO 把成人 BMI 低于 18.5 算体重过轻（'+dA("whoGho")+'）。这里不给热量差额；想调整体重或饮食，请先问医生或营养师（App 的做法）。</p></div>';
+  } else if(!over){
     h+='<p><span class="num" style="font-size:22px">每天比平常少吃，最多约 500 kcal</span></p>'+
       '<p class="small">App 的保守判断：'+(B==null?'还没填身高、不知道 BMI，先按温和的量。':'BMI '+B+' 不到 25，体重正常不建议刻意大幅减热量。')+'App 不知道你平常吃多少，所以只给差额。</p>';
     if(diet.mode==="range") h+='<p class="small muted">「按指南区间」只在 BMI ≥25 时显示：那个区间是给超重／肥胖成人的。</p>';
@@ -2687,7 +2695,7 @@ const TRE_WHY='<ul class="list small">'+
   '<li><b>同样少吃时：</b>139 位肥胖者 12 个月，两组都按男 1500–1800、女 1200–1500 kcal 吃；加了 8 小时窗口的组多减 1.8 kg，但差别不显著，腰围、体脂、瘦体重的分析结果也一致（'+dA("liu")+'）。</li>'+
   '<li><b>合并小型试验：</b>30 个试验 1341 人：限时进食比对照多减体重（热量相同时 −1.46 kg），但<b>去脂体重也多掉</b>（热量相同时 −0.41 kg，不同时 −0.86 kg）（'+dA("fa")+'）。</li>'+
   '<li><b>瘦体重：</b>上面那个 12 周试验里，当面测量的人中限时进食组平均掉 1.70 kg，其中 1.10 kg（约 65%）是瘦体重；作者提醒限时进食时要吃够蛋白（'+dA("lowe")+'）。</li>'+
-  '<li><b>配力量训练：</b>34 位有训练的男性 8 周，热量相同、三餐在 13、16、20 点：脂肪下降，去脂体重与最大力量都维持（但睾酮与 IGF-1 下降）（'+dA("moro")+'）。40 位有训练的女性 8 周、蛋白每天 1.6 g/kg：去脂体重增加跟正常吃的组差不多（'+dA("tinsley")+'）。两个研究都只有 8 周、对象是有训练经验的人；受试者偏年轻，没有针对 40 岁以上的专门试验（App 的保守判断）。</li>'+
+  '<li><b>配力量训练：</b>34 位有训练的男性 8 周，热量相同、三餐在 13、16、20 点：脂肪下降，去脂体重与最大力量都维持（但睾酮与 IGF-1 下降）（'+dA("moro")+'）。40 位有训练的女性 8 周、蛋白每天 1.6 g/kg：去脂体重增加跟正常吃的组差不多（'+dA("tinsley")+'）。两个研究都只有 8 周、对象是有训练经验的人。摘要没写年龄；受试者是有训练经验的人，没有针对 40 岁以上的专门试验。</li>'+
   '<li><b>所以（App 的推论）：</b>16/8 主要是帮你少吃的一种方式，不是额外的燃脂开关。做得住就继续，重点是总热量在目标里、蛋白吃够、配合力量训练。</li>'+
   '<li><b>安全：</b>有糖尿病、在吃降糖药或打胰岛素的人，断食前请医生调药（App 的做法）——调好药时不增加低血糖风险（'+dA("varady")+'），临床上要持续监测血糖以减少低血糖（'+dA("santos")+'）；1 型／妊娠糖尿病数据不足，目前还不足以推荐（'+dA("varady")+'）。</li></ul>';
 function renderDiet(){
