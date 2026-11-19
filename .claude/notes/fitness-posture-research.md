@@ -371,3 +371,13 @@ App 现况（fitness/index.html `PMOVE`）：90/90、半跪髋屈肌、推膝碰
 | Rehab Hero 胸椎伸展 | https://www.rehabhero.ca/exercise/foam-roller-thoracic-extension |
 | NPR（Hansraj 报道） | https://www.npr.org/sections/thetwo-way/2014/11/20/365473750/keep-your-head-up-text-neck-can-take-a-toll-on-the-spine |
 | PubMed 摘要 | 31773477、30107937、38834878、42348285、40286070、39483836、40966220、32713947、31054485、30629325、27174256、33444448、40845624、33992248、32911612、37810069、41398198、40700206、25393825、35247352、28892811、30551177、22374636、31742666、30350850、33895703、40633255、22744472 |
+
+### 第二次 verifier 退件后的修正（2026-11-19）
+
+- Warneke 2024 重读摘要：fetch-url **44493899906**（PubMed efetch 38834878）。纳入对象原文："We included controlled clinical trials investigating the effects of stretching or strengthening on spinal and lumbopelvic posture (e.g., pelvic tilt, lumbar lordosis, thoracic kyphosis, head tilt) in healthy individuals." → UI 写「23 篇研究的综述（对象是健康人）」有据。
+- 「运动改善颈椎角度证据强」旁边并列 Nazwar 2024（风险差 0.00／0.09，CI 含 0）——反面不能省。
+- 前倾 vs 颈痛：Richards 2021＝17 岁追踪到 22 岁，「不是风险因子」**只在男性**（女性坐姿较放松的反而较少颈痛）；Correia 2025＝18–65 岁、12 个月、看的是**滑手机时颈屈角度**，不是头前伸；Mahmoud 只用于「常一起出现」（横断面）。「没证明前倾会造成颈痛」标 App 的推论。
+- 收下巴：不说「是肌力练习」，改「与研究里的颅颈屈肌训练相近（App 的推论）」（Javdaneh 2026 的 CCF 训练）。动作提示「感觉颈部被拉开」照 CUH 原文 "feel the stretch in your neck"；「头往后平移」是 App 的描述。
+- 泡沫轴胸椎伸展：「本 App 没查到研究证明它能改善脖子前倾」（不说「没有研究」——我们只是没查到）。
+- 枕头：✅ 保留（NHS 原文是指引），后面加「枕头研究结果不一」并列 Chun-Yiu 2021（橡胶枕小幅有效）与 Ghosh 2025（证据有限、没有哪种明显较好）。选 ✅＋附注而不是 ⚠️：卡片的 ✅ 定义是「官方指引原文」，NHS 这句确实是原文；研究分歧用附注写清楚。
+- 急诊级红旗（走路新问题、大小便失控、手突然不灵活）：**没有**「医生看过，说可以运动」按钮，一直显示「马上去急诊」直到用户改回答案；旧资料里对急诊红旗按过的确认也不算（App 的保守判断）。尽快看医生那四项仍可确认。

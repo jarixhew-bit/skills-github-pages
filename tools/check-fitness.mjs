@@ -28,6 +28,7 @@
  *      有 webp 的动作不准退回 3D／简笔画布（2026-11-10 用户抓到燃脂收尾还是旧模型）。
  *  16. 体态：问卷存得住／进备份；红旗挡住小课（红旗一变确认作废；高低肩没做前弯测试也挡）；有红旗不出力量日提醒；推膝碰墙差要超过 2 cm；文案守门；小课按答案与左右测试加组；照片存 IndexedDB、对比画面、进备份；
  *      深蹲提醒只在填了往哪边歪时出现；满 4 周提醒重测；8 个新动作都有动图、规格、来源。
+ *  19. 第二次退件：比原文满的说法、BMI <18.5 不给少吃量、急诊红旗没有「医生看过」按钮
  *  18. 脖子前倾＋每日小习惯＋洗髓功后接体态小课：前倾问卷与结果文案、脖子红旗分流（尽快看医生／马上去急诊、不写英国电话）、小课含收下巴、
  *      ?go=posture 直接开小课（有红旗改开体态页）、洗髓功完成画面有连结、训练页早上卡片＋今天做了打勾算进本周、习惯卡标签、侧面照竖线、颅椎角 5° 误差、禁用的吓人数字。
  *  17. 饮食：蛋白 1.6 g/kg、热量按 Jensen 2013（男女区间／缺口）、16/8 分餐、每日记录与每周表、洗髓功 3.3 MET 毛／净 kcal、
@@ -1234,7 +1235,7 @@ for (const [days, want] of [[29, true], [10, false]]) {
   await page.fill('#dKg', '72');
   const ev = await page.textContent('#dTreWhy');
   check(/Lowe/.test(ev) && /Liu/.test(ev) && /瘦体重/.test(ev), '饮食：16/8 证据摘要写了 Lowe 2020、Liu 2022 与瘦体重');
-  check(/没有针对 40 岁以上的专门试验（App 的保守判断）/.test(ev), 'Moro／Tinsley：写明没有 40 岁以上的专门试验（App 的保守判断）');
+  check(/摘要没写年龄；受试者是有训练经验的人，没有针对 40 岁以上的专门试验/.test(ev) && !/偏年轻/.test(ev), 'Moro／Tinsley：写明摘要没写年龄、没有 40 岁以上的专门试验（不说「偏年轻」）');
   check(/1 型／妊娠糖尿病数据不足/.test(ev) && /请医生调药（App 的做法）/.test(ev), '低血糖：写 1 型／妊娠糖尿病数据不足，「请医生调药」标 App 的做法');
   // 记一天
   for (const n of [30, 30, 20]) await page.click(`#dToday [data-padd="${n}"]`);
@@ -1351,7 +1352,7 @@ for (const [label, rows, want] of [
     const rt = await tx(page, '#postRoutine');
     check(/Physitrack/.test(rt) && /CUH|剑桥/.test(rt), '体态小课：收下巴剂量写 Physitrack 与 CUH 两个来源');
     const thc = await page.evaluate(() => (window.__fit.posture.PMOVE.thoracic || {}).cue || '');
-    check(/没有研究证明它能改善脖子前倾/.test(thc), '泡沫轴胸椎伸展：写明只是活动度、没有研究证明改善前倾');
+    check(/本 App 没查到研究证明它能改善脖子前倾/.test(thc), '泡沫轴胸椎伸展：写明只是活动度、本 App 没查到研究证明改善前倾');
     // (g) 每日小习惯卡
     const hb = await tx(page, '#habitList');
     check(/✅ 官方建议/.test(hb) && /⚠️ 证据不一/.test(hb) && /App 的建议/.test(hb), '每日小习惯：三种证据标签都在');
@@ -1424,6 +1425,63 @@ for (const [label, rows, want] of [
     const need = ['30107937', '38834878', '31773477', '33444448', '40845624', '32911612', 'cervical-spondylosis', 'work-routine.htm', 'osha.gov', 'neck-exercises-and-advice', 'chin-tuck'];
     const miss = need.filter(b => !html.includes(b));
     check(miss.length === 0, `脖子文案：查证过的来源都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
+  }
+}
+
+// ---- 19. 2026-11-19 verifier 退件：比原文满的说法、BMI 偏低、急诊红旗不能按「医生看过」 ----
+{
+  const html = fs.readFileSync('fitness/index.html', 'utf8');
+  const xs = fs.readFileSync('xisui/index.html', 'utf8');
+  const notes = fs.readFileSync('.claude/notes/fitness-fatloss-research.md', 'utf8');
+  const BANNED = ['受试者偏年轻', '颈后被拉开', '没有研究证明它能改善脖子前倾', '所以小课里的收下巴是肌力练习', '健康人的研究里'];
+  const hit = BANNED.filter(b => html.includes(b)).concat(xs.includes('打開健身 App 直接開始') ? ['打開健身 App 直接開始'] : [])
+    .concat(notes.includes('有训练经验的年轻人') ? ['笔记：有训练经验的年轻人'] : []);
+  check(hit.length === 0, `退件文案：比原文满的句子不再出现${hit.length ? '（还在：' + hit.join('、') + '）' : ''}`);
+  const need = ['摘要没写年龄；受试者是有训练经验的人，没有针对 40 岁以上的专门试验', '感觉颈部被拉开', '头往后平移（App 的描述）',
+    '本 App 没查到研究证明它能改善脖子前倾', '收下巴与研究里的颅颈屈肌训练相近（App 的推论）', '39483836', '17 岁追踪到 22 岁', '18–65 岁', '滑手机时的低头角度',
+    '只在男性', '枕头研究结果不一', 'BMI 偏低，不建议用这个页面减重（App 的保守判断）', '18.5'];
+  const miss = need.filter(b => !html.includes(b));
+  check(miss.length === 0, `退件文案：新的标签与限定都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
+  check(xs.includes('約 12 分鐘；已做過自查會直接開始，否則先進自查'), '洗髓功：完成画面说明「已做過自查會直接開始，否則先進自查」');
+  check(/18\.5/.test(notes) && /underweight/i.test(notes), '笔记：WHO 体重过轻 <18.5 有原文引句');
+  const T2 = { timeout: 3000 };
+  // BMI 17.0（50 kg／171.5 cm）→ 不给少吃量
+  {
+    const { ctx, page, errors } = await openWith([]);
+    await page.click('nav.tabs [data-tab="train"]'); await page.click('#dietCard [data-open-diet]');
+    await page.click('#dSex [data-v="M"]'); await page.fill('#dAge', '40'); await page.fill('#dKg', '50'); await page.fill('#dCm', '171.5').catch(() => {});
+    const bm = await page.textContent('#dBmi', T2).catch(() => '');
+    const kc = await page.textContent('#dKcal', T2).catch(() => '');
+    check(/17(\.0)?\b/.test(bm) && /BMI 偏低，不建议用这个页面减重（App 的保守判断）/.test(kc) && !/少吃/.test(kc.replace(/BMI 偏低[^。]*。/, '')) && !/500/.test(kc),
+      `BMI 17.0：不给少吃量，显示「BMI 偏低，不建议用这个页面减重」（实得：${kc.slice(0, 120)}）`);
+    await page.click('#dMode [data-v="range"]').catch(() => {});
+    const kc2 = await page.textContent('#dKcal', T2).catch(() => '');
+    check(!/1500|1200|500/.test(kc2), `BMI 17.0、点「按指南区间」也不出现任何热量数字（实得：${kc2.slice(0, 120)}）`);
+    check(/18\.5/.test(bm), 'BMI 17.0：BMI 区块写出 WHO 体重过轻门槛 18.5');
+    check(errors.length === 0, `BMI 偏低没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+  }
+  // 急诊红旗：没有「医生看过」按钮；旧资料里就算确认过也作废；一般红旗仍有按钮
+  {
+    const base = { q: { shift: 'N', shoulder: 'E', fhp: 'Y' }, red: { bend: 'no', nk: { walk: true } }, tests: [], done: [], qTs: Date.now() - 864e5 };
+    const { ctx, page, errors } = await openWith([]);
+    await page.evaluate(v => localStorage.setItem('fit.posture', JSON.stringify(v)), base); await page.reload(); await page.waitForSelector('#workout .ex');
+    await page.click('#postCard [data-open-post]', T2).catch(() => {});
+    const m = await page.textContent('#postRedMsg', T2).catch(() => '');
+    check(/^马上去急诊/.test(m.trim()) && await page.locator('#postRedMsg [data-post-ack]').count() === 0 && /改回答案/.test(m),
+      `急诊红旗：只显示「马上去急诊」、没有「医生看过」按钮，写明改了答案才会消失（实得：${m.slice(0, 120)}）`);
+    // 旧资料：之前对急诊红旗按过确认
+    const sig = await page.evaluate(() => (window.__fit.posture.get ? 1 : 0));
+    await page.evaluate(v => localStorage.setItem('fit.posture', JSON.stringify(v)), Object.assign({}, base, { ack: Date.now(), ackFor: ['走路出现新的问题'] }));
+    await page.reload(); await page.waitForSelector('#workout .ex');
+    check(sig === 1 && await page.locator('#postCard [data-post-go]').count() === 0 && /马上去急诊/.test(await page.textContent('#postCard', T2).catch(() => '')),
+      '急诊红旗：旧资料里按过「医生看过」也不算，训练页仍是「马上去急诊」、没有小课');
+    await page.evaluate(v => localStorage.setItem('fit.posture', JSON.stringify(v)), Object.assign({}, base, { red: { bend: 'no', nk: { arm: true } } }));
+    await page.reload(); await page.waitForSelector('#workout .ex');
+    await page.click('#postCard [data-open-post]', T2).catch(() => {});
+    check(await page.locator('#postRedMsg [data-post-ack]').count() === 1, '一般红旗（尽快看医生）：仍有「医生看过，说可以运动」按钮');
+    check(errors.length === 0, `急诊红旗没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
   }
 }
 
