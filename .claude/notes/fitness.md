@@ -120,6 +120,19 @@
   - 文案规矩（2026-11-18 verifier 退件后）：每句事实要对得上研究笔记里的引句与网址，否则标「App 的安排／做法／推论／保守判断」或删掉；
     说法不能比原文满。第 16 段末有 BANNED（不准再出现的句子）与 need（必须在的界线标签）两张清单——改文案撞到它们先回研究笔记查证。
   - 自检：check-fitness 第 16 段（含 verifier 抓到的四个漏洞：确认作废、高低肩先测前弯、红旗时不出提醒、2.0 cm 边界）。
+- **饮食（2026-11-19，用户：男 40 岁 72 kg、每天洗髓功 40 分钟、在做 16/8）**：查证正本 `.claude/notes/fitness-fatloss-research.md`
+  最后一节「16/8 限时进食…」（每句事实对得上那里的引句＋PMID＋run ID，否则标「App 的安排／推论」）。
+  - 入口：训练页「本周进度」卡片最下面一行 `#dietCard`（今天蛋白 x / 目标）＋「更多」的「打开饮食」；饮食页 `#tab-diet` 不占底部分页（`openDiet()`／`closeDiet()`，同体态页做法）。
+    **训练页别再往上方加高卡片**：3D 模式只画看得见的画布，自检那段已先卷到第一张画布，但用户手机上也会被推到折线下。
+  - 资料：localStorage `fit.diet`＝`{profile{sex,age,kg}, mode:"range"|"deficit", tre{on,start,end,meals}, qg{on,min}, log{"YYYY-MM-DD":{p,kcal,win}}, setTs}`；
+    进备份（`diet`），导入：本机没设过（`setTs` 为 0）才用备份的资料与设定，记录按日期补本机没有的。资料不预填。
+  - 算法：蛋白 1.6×kg（`protTarget`，显示四舍五入）；热量男 1500–1800／女 1200–1500 或每天少 500–750（Jensen 2013）；
+    分餐 `mealPlan()`：第一餐开窗、最后一餐关窗前 30 分钟、中间平分，每餐＝目标÷餐数、下限 0.25×kg（ISSN）；
+    平台期 `plateauInfo()`：周一开始的周平均，最近一周（本周或上周）往前连续 4 周都要有记录，最近一周 ≥ 3 周前（体重，且有腰围时腰围也是）才提示；
+    洗髓功 `qigong(kg,min)`：3.3 MET（Compendium 15670），毛＝3.3×kg×h、净＝2.3×kg×h、每周 ×7；开关在「更多 → 设置」（`#cfgQg`，存 `diet.qg`）。
+  - 「燃脂收尾」已全面改名「心肺收尾」（UI 文字、步骤 phase、Garmin 文字；规格 json 的 note 也改了）。旧记录里没有存这个字，不影响相容。
+  - 说明「减脂的关键」删掉无来源的「多走路…更容易累积」，换成 Thorogood 2011／ACSM 2009／Jensen 2013 的查证数字。
+  - 自检：check-fitness 第 17 段（手算 fixture、平台期 3 周出／2 周不出、改名、备份来回、BANNED／need 文案守门）。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 

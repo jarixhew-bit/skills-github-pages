@@ -269,3 +269,40 @@ Tanaka 2001（PMID 11153730，https://pubmed.ncbi.nlm.nih.gov/11153730/ ，PubMe
 
 run 一览：web-lookup 44300187524（Compendium 三页）、44300283606（PMC 全文＋首页定义＋LWW）、44300568696（OpenAlex/S2 开放全文位置）、
 44300657838（EuropePMC 检索＋URI 页面）、44300738967（PMC13210717 心率分级）；fetch-url 44300192565（PubMed efetch 4 篇摘要）、44300288734（pacompendium HTML，403 失败）。
+
+## 16/8 限时进食（TRE）、蛋白分餐、安全（2026-11-19 查证）
+
+用途：fitness App 新增「饮食」页。用户（男、40 岁、72 kg）**现在就在做 16/8**（每天 8 小时内吃完）。
+通道：全部走 CI 读原文，没有绕过任何防护。PubMed efetch 用 `mode=html`（纯文字模式会把「P < .001 … >」之间当成 HTML 标签吃掉，
+run 44452912713 就这样丢了半句；改用 html 模式的 run 44453015577 是完整的）。
+
+run 一览：fetch-url 44453015577（Lowe／Liu／Moro／Tinsley／Jäger 五篇摘要）、44452930206（esearch：TRE meta 2023–2026，11 篇）、
+44452934220（esearch：IF＋低血糖综述，14 篇）、44452998720（25 篇 docsum 标题）、44453060939（Fernandes-Alves／Sun／Črešnovar／Yi／Xie／Varady／Santos 七篇摘要）；
+web-lookup 44453091164（Lowe 2020 PMC 全文 PMC7522780）。
+
+### 查证状态
+
+| # | 说法 | 状态 | 来源 | 原文引句 |
+|---|---|---|---|---|
+| T1 | Lowe 2020 TREAT：16:8（12–20 点随意吃）12 周，体重与「一天三餐」组没有差别 | 已读摘要＋全文 ✔ | JAMA Intern Med 2020;180(11):1491，PMID 32986097，https://pubmed.ncbi.nlm.nih.gov/32986097/ | "There was a significant decrease in weight in the TRE (-0.94 kg; 95% CI, -1.68 to -0.20; P = .01), but no significant change in the CMT group (-0.68 kg; 95% CI, -1.41 to 0.05, P = .07) or between groups (-0.26 kg; 95% CI, -1.30 to 0.78; P = .63)."；"CONCLUSIONS AND RELEVANCE: Time-restricted eating, in the absence of other interventions, is not more effective in weight loss than eating throughout the day." |
+| T1b | Lowe 2020：TRE 组掉的体重约 65% 是瘦体重；作者强调 TRE 时要吃够蛋白 | 已读全文 ✔（PMC7522780，run 44453091164；工具每行只印前约 300 字） | 同上，Discussion | "In the in-person cohort, the average weight loss in the TRE group was 1.70 kg. Of this, 1.10 kg (approximately 65% of weight lost) was lean mass; only 0.51 kg of weight loss was fat mass."；"Together, these data highlight the importance of adequate protein consumption while adhering to a TRE diet."；摘要："There was also a significant difference in appendicular lean mass index between groups (-0.16 kg/m2; 95% CI, -0.27 to -0.05; P = .005)." |
+| T2 | Liu 2022 NEJM：同样限热量（男 1500–1800 kcal），加 8 小时进食窗 12 个月，体重、体脂、瘦体重都没比单纯限热量好 | 已读摘要 ✔ | N Engl J Med 2022;386:1495，PMID 35443107，https://pubmed.ncbi.nlm.nih.gov/35443107/ | "The mean weight loss from baseline at 12 months was -8.0 kg (95% confidence interval [CI], -9.6 to -6.4) in the time-restriction group and -6.3 kg (95% CI, -7.8 to -4.7) in the daily-calorie-restriction group. Changes in weight were not significantly different in the two groups at the 12-month assessment (net difference, -1.8 kg; 95% CI, -4.0 to 0.4; P = 0.11)."；"CONCLUSIONS: Among patients with obesity, a regimen of time-restricted eating was not more beneficial with regard to reduction in body weight, body fat, or metabolic risk factors than daily calorie restriction." |
+| T3 | Fernandes-Alves 2026 meta（30 个 RCT、1341 人）：TRE 比对照多减体重与脂肪，但**去脂体重也多掉** | 已读摘要 ✔ | Nutr Rev 2026;84(3):463，PMID 40298934，https://pubmed.ncbi.nlm.nih.gov/40298934/ | "in studies using non-isocaloric controls, the TRE group showed significant reductions in body weight (BW) (mean difference [MD]: -2.82 kg; 95% CI: -3.49, -2.15), fat mass (FM) (MD: -1.36 kg; 95% CI: -2.09, -0.63), and fat-free mass (FFM) (MD: -0.86 kg; 95% CI: -1.23, -0.49). In studies that used isocaloric control strategies, the TRE group showed significant reductions in BW (MD: -1.46 kg; 95% CI: -2.65, -0.26), FM (MD: -1.50 kg; 95% CI: -2.77, -0.24), and FFM (MD: -0.41 kg; 95% CI: -0.79, -0. 03)." |
+| T3b | Črešnovar 2023 meta（7 个 RCT）：TRE＋限热量 比 单纯限热量 多减约 2 kg | 已读摘要 ✔ | Nutrients 2023;15:4911，PMID 38068769 | "TRE with CR compared to CR alone resulted in significantly greater reductions in body weight (MD: -2.11 kg, 95% CI: -2.68 kg to -1.54 kg…), body fat mass (MD: -0.75 kg…), and waist circumference (MD: -1.27 cm…)" |
+| T3c | Sun 2023 meta（8 个 RCT、579 人）：TRE＋CR 对比 CR 体重 −1.40 kg | 已读摘要 ✔ | Eur J Clin Nutr 2023;77:1014，PMID 37488260 | "TRE with CR reduced the body weight, fat mass, and waist circumference significantly (WMD: -1.40, 95% CI: -1.81 to -1.00…; WMD: -0.73…; WMD: -1.87…)"；"compared with CR alone, TRE plus CR exhibited no significant benefit on the blood pressure, glucose profile, and lipid profile." |
+| T3d | Xie 2024 meta（20 个研究、1288 人）：TRE 可能减少瘦体重 | 已读摘要 ✔ | Nutrients 2024;16:3390，PMID 39408357 | "Although it may potentially reduce lean mass and increase LDL, these effects do not pose significant safety concerns." |
+| T4 | Moro 2016：有训练的男性，16/8（13、16、20 点三餐）＋力量训练 8 周、热量相同，脂肪下降、去脂体重与最大力量维持 | 已读摘要 ✔ | J Transl Med 2016;14:290，PMID 27737674 | "After 8 weeks, the 2 Way ANOVA (Time * Diet interaction) showed a decrease in fat mass in TRF compared to ND (p = 0.0448), while fat-free mass, muscle area of the arm and thigh, and maximal strength were maintained in both groups. Testosterone and insulin-like growth factor 1 decreased significantly in TRF" |
+| T5 | Tinsley 2019：有训练的女性，TRF（12–20 点）＋力量训练＋蛋白 1.6 g/kg/天，8 周，去脂体重增加与对照相当 | 已读摘要 ✔ | Am J Clin Nutr 2019;110:628，PMID 31268131 | "Energy and protein intake (1.6 g/kg/d) did not differ between groups despite different feeding durations (TRF and TRFHMB: ∼7.5 h/d; CD: ∼13 h/d). Comparable fat-free mass (FFM) accretion (+2% to 3% relative to baseline) and skeletal muscle hypertrophy occurred in all groups."；"IF, in the form of TRF, did not attenuate RT adaptations in resistance-trained females." |
+| P1 | ISSN 2017 蛋白立场：每餐约 0.25 g/kg 或 20–40 g，每 3–4 小时平均分配；一般运动者每天 1.4–2.0 g/kg；减脂期有训练者可能要 2.3–3.1 | 已读摘要 ✔ | Jäger 2017，J Int Soc Sports Nutr 14:20，PMID 28642676，https://pubmed.ncbi.nlm.nih.gov/28642676/ | "General recommendations are 0.25 g of a high-quality protein per kg of body weight, or an absolute dose of 20-40 g."；"These protein doses should ideally be evenly distributed, every 3-4 h, across the day."；"an overall daily protein intake in the range of 1.4-2.0 g protein/kg body weight/day (g/kg/d) is sufficient for most exercising individuals"；"Higher protein intakes (2.3-3.1 g/kg/d) may be needed to maximize the retention of lean body mass in resistance-trained subjects during hypocaloric periods." |
+| S1 | 糖尿病用药者：断食要配合调药，否则有低血糖风险 | 已读摘要 ✔ | Varady 2026，Lancet Diabetes Endocrinol 14(9):778，PMID 42361830（Personal View）；Santos 2024，Nutr Rev 82:1437，PMID 37837312 | Varady："intermittent fasting is as effective as calorie restriction for improving glycaemic control and does not increase the risk of hypoglycaemia when medications are adjusted using simple rules"；"there are insufficient data to recommend its use in people with type 1 or gestational diabetes"。Santos："markers of glycemic control must be constantly monitored in clinical practice to reduce the risk of hypoglycemia and its related complications." |
+
+### 结论（给 App 用）
+
+- **16/8 主要是帮你少吃**：不限热量时（Lowe 2020）12 周跟正常三餐没差；同样限热量（Liu 2022，12 个月、139 人）也没比单纯限热量好。
+  小型试验的 meta（Fernandes-Alves 2026、Črešnovar 2023、Sun 2023）算出多减约 1.4–2.8 kg，但同时去脂体重也多掉 0.41–0.86 kg（Fernandes-Alves）。
+  → App 说法：「大型试验看不出额外好处；合并小型试验多减 1–3 kg，但瘦体重也多掉一点」。两边都写，不挑一边。
+- **配力量训练＋够蛋白时肌肉保得住**：Moro 2016（男、热量相同）、Tinsley 2019（女、蛋白 1.6 g/kg）。对象都是**有训练经验的年轻人**、8 周。
+- **分餐**：ISSN 每餐 0.25 g/kg 或 20–40 g、每 3–4 小时。8 小时窗口内 3 餐（例如 12、16、20 点）正好间隔 4 小时——这个时间表是 Moro 2016 的做法（13/16/20 点），App 写成「App 的安排」。
+  72 kg × 0.25 = 18 g（每餐下限）；1.6 × 72 = 115.2 g/天 ÷ 3 ≈ 38 g/餐（落在 ISSN 20–40 g 内）——除法是【推论】。
+- **安全**：健康成人没查到需要特别写的；糖尿病（尤其打胰岛素或吃降糖药）先问医生调药（Varady 2026、Santos 2024）。
+- **未查证**：16/8 对 40 岁以上、体重正常男性的专门试验（这次没找）；Lowe 2020 全文 lean mass 段后半句（工具截断）。
