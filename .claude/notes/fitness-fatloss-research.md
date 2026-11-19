@@ -306,3 +306,24 @@ web-lookup 44453091164（Lowe 2020 PMC 全文 PMC7522780）。
   72 kg × 0.25 = 18 g（每餐下限）；1.6 × 72 = 115.2 g/天 ÷ 3 ≈ 38 g/餐（落在 ISSN 20–40 g 内）——除法是【推论】。
 - **安全**：健康成人没查到需要特别写的；糖尿病（尤其打胰岛素或吃降糖药）先问医生调药（Varady 2026、Santos 2024）。
 - **未查证**：16/8 对 40 岁以上、体重正常男性的专门试验（这次没找）；Lowe 2020 全文 lean mass 段后半句（工具截断）。
+
+### 补查（2026-11-19 verifier 退件后）：受试人数、Liu 女性热量与瘦体重、BMI 门槛
+
+通道：fetch-url **44457121566**（PubMed efetch，mode=html：Lowe 32986097、Liu 35443107、Moro 27737674、Tinsley 31268131、WHO 亚洲 BMI 14726171）；
+web-lookup **44457124797**（WHO 肥胖与超重 fact sheet）。没有绕过任何防护。
+
+| # | 说法（App 用到的） | 状态 | 来源 | 原文引句 |
+|---|---|---|---|---|
+| T1c | Lowe 2020：116 人；对象 18–64 岁、BMI 27–43；平均 46.5 岁 | 已读摘要 ✔ | PMID 32986097 | "Overall, 116 participants (mean [SD] age, 46.5 [10.5] years; 70 [60.3%] men) were included in the study."；"men and women aged 18 to 64 years with a body mass index … of 27 to 43" |
+| T2b | Liu 2022：139 人；男 1500–1800、**女 1200–1500** kcal；腰围、BMI、体脂、**瘦体重**的分析结果与主结果一致（＝没差别） | 已读摘要 ✔ | PMID 35443107 | "We randomly assigned 139 patients with obesity…"；"instructed to follow a calorie-restricted diet that consisted of 1500 to 1800 kcal per day for men and 1200 to 1500 kcal per day for women."；"Results of analyses of waist circumferences, BMI, body fat, body lean mass, blood pressure, and metabolic risk factors were consistent with the results of the primary outcome." 注意：Liu 的进食窗是 8:00–16:00 |
+| T4b | Moro 2016：34 位有训练的男性 | 已读摘要 ✔ | PMID 27737674 | "Thirty-four resistance-trained males were randomly assigned to time-restricted feeding (TRF) or normal diet group (ND)." 摘要没写年龄 |
+| T5b | Tinsley 2019：40 人（ITT；PP 24 人） | 已读摘要 ✔ | PMID 31268131 | "Forty participants were included in ITT, and 24 were included in PP." 摘要没写年龄 |
+| B1 | WHO：成人 BMI ≥25 超重、≥30 肥胖；BMI＝kg/m² | 已读原文 ✔ | https://www.who.int/news-room/fact-sheets/detail/obesity-and-overweight | "overweight is a BMI greater than or equal to 25; and obesity is a BMI greater than or equal to 30."；"body mass index (BMI): weight (kg)/height² (m²)" |
+| B2 | WHO 亚洲专家会议 2004：亚洲人 BMI <25 时高风险者已不少；没有统一门槛；行动点 23／27.5／32.5／37.5；国际分类仍用 WHO 门槛 | 已读摘要 ✔ | Lancet 2004;363:157，PMID 14726171 | "the proportion of Asian people with a high risk of type 2 diabetes and cardiovascular disease is substantial at BMIs lower than the existing WHO cut-off point for overweight (> or =25 kg/m2). However, available data do not necessarily indicate a clear BMI cut-off point for all Asians"；"The consultation also agreed that the WHO BMI cut-off points should be retained as international classifications."；"further potential public health action points (23.0, 27.5, 32.5, and 37.5 kg/m2)" |
+| B3 | Jensen 2013：固定热量区间「通常按个人体重调整」 | 已读原文 ✔（见上方表第 10 项，run 43410438362） | PMC5819889 | "(kilocalorie levels are usually adjusted for the individual's body weight)" |
+
+App 的判断（标在 UI 上）：
+- 固定区间（男 1500–1800／女 1200–1500）**只在 BMI ≥25 时显示**，大字旁写「仅适用超重／肥胖成人，体重正常别直接用」——App 的保守判断（用 WHO 超重门槛；亚洲 23 起风险增加，所以 23–25 也只给温和少吃量）。
+- BMI <25 或没填身高：默认「比平常少吃」，大字「最多约 500 kcal」，标 App 的保守判断。
+- 「受试者偏年轻」：Moro／Tinsley 摘要都没写年龄，这句是 App 的保守判断，不是引文。
+- 睡眠那句没查证，UI 标「App 的做法，未查证」。减量周的用意标「App 的做法」。

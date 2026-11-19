@@ -133,6 +133,11 @@
   - 「燃脂收尾」已全面改名「心肺收尾」（UI 文字、步骤 phase、Garmin 文字；规格 json 的 note 也改了）。旧记录里没有存这个字，不影响相容。
   - 说明「减脂的关键」删掉无来源的「多走路…更容易累积」，换成 Thorogood 2011／ACSM 2009／Jensen 2013 的查证数字。
   - 自检：check-fitness 第 17 段（手算 fixture、平台期 3 周出／2 周不出、改名、备份来回、BANNED／need 文案守门）。
+  - **BMI 门槛（2026-11-19 verifier 退件后）**：资料多身高 `profile.cm`，`bmi(kg,cm)`；`#dBmi` 并列 WHO（≥25／≥30）与 WHO 2004 亚洲（23 行动点）。
+    默认模式改成「比平常少吃」（`mode:"deficit"`）；Jensen 固定区间**只在 BMI ≥25** 才显示（`over`），大字旁有「仅适用超重／肥胖成人，体重正常别直接用」；
+    BMI <25 或没身高：大字「最多约 500 kcal」（App 的保守判断），就算存的 mode 是 range 也不显示区间。
+    分餐提示：2 餐且每餐 >40 g 才叫人改 3 餐；3 餐每餐 >40 g 改建议加蛋白小点心。洗髓功大字＝净 kcal。
+    自检第 17 段手算 72/1.75²＝23.5、72/1.65²＝26.4，正常 BMI 绝不出现 1500。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
