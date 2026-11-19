@@ -189,3 +189,185 @@
 分腿蹲「膝盖对准第二根脚趾、不往内倒」标 App 的安排（Pabau 那句是推膝碰墙的，分腿蹲没抓到原文；推膝碰墙那句保留不标）；
 靠墙滑臂「轻轻压墙」→「压墙」（Prehab Guys 原文 "Push into the wall"，没说轻轻）；蚌式弹力带「加难度」标 App 的安排
 （Physitrack 只写 "place a band above your knees"）。这些字都进了 check-fitness 第 16 段的 BANNED／need 清单。
+
+## 头前伸（脖子前倾）＋日常小习惯（2026-11-19 查证）
+
+委派问题：用户（男 40 岁 72 kg，已知高低肩、深蹲歪一边）又说「脖子前倾」，问 (1) 体态训练能不能帮到头前伸，
+(2) 平时要养成哪些小习惯。本档格式照 `.claude/notes/fitness-posture-research.md`：**每一句事实都附来源＋已读原文引句＋CI run 编号**，
+查不到的写【未查证】，互相矛盾的并列。（2026-11-19 由 scratchpad 研究稿搬进本档；App 文案依这节查证。）
+
+> **PMID 更正**：委派里给的 Sheikhhoseini 2018 PMID 29776552 是错的（efetch 回来是整形外科社论），正确是 **30107937**。App 一律用 30107937。
+
+### 0. 查证方式与标记
+
+- 沙盒挡外站，全部走 CI（ref `main`）：PubMed `efetch.fcgi?…&rettype=abstract&retmode=text`（fetch-url.yml，mode `html`）；
+  `esearch`／网页原文用 `web-lookup.yml`（带关键字）。没有绕过任何防护。WebSearch 只用来**找** PMID／网址，不当来源。
+- run 编号：
+  - esearch：44453676374（头前伸×颈痛综述、头前伸×运动综述、Richards）、44453682441（手机测 CVA、枕头、深颈屈肌）、
+    44453757540（背包、低头族、久坐打断）、44453975120（墙测、肩胛／胸肌 RCT、前瞻研究）
+  - 摘要：**44453703080**（Mahmoud、Sheikhhoseini、Warneke、Hansraj、Paluch、Diaz 2017、Dunstan）、
+    **44453749152**（Javdaneh、Saini、Szczygieł、Liang、Szikszay、Andias、Norasteh、Richards 2016、Gallego-Izquierdo、Aafreen、Ghosh、Chun-Yiu、Khosrokiani）、
+    **44453946939**（Bettany-Saltikov、Parry Cochrane、Hoe Cochrane、Karbalaeimahdi、Tatsios）、
+    **44454134414**（Correia、Richards 2021、Bertozzi、Diaz 2019、Nazwar、Anwar）
+  - 网页：44453692763（NHS 颈痛、OSHA 屏幕）、44453699210（HSE 姿势）、44453811715（CUH 颈部运动、NHS 颈痛、HSE 休息）、
+    44453815447＋44453926108（Physitrack／Rehab Hero 胸椎伸展、Physitrack 收下巴）、44453931182（NHS 颈椎病、Versus Arthritis）、
+    44453967138（Hansraj PubMed 页／NPR）、44454087060（NHS 成人运动指南）
+- 标记：【已读摘要】【已读原文】＝CI 抓回原文核对过；【转述】＝只有搜索引擎摘要；【推论】＝我推的；【未查证】＝没拿到。
+- **委派里给的 PMID 29776552 是错的**：efetch 回来是整形外科社论「EURAPS Editorial: BIA-ALCL, a brief overview」（run 44453703080）。
+  Sheikhhoseini 2018 正确 PMID 是 **30107937**（与旧笔记一致）。
+
+### A. 头前伸是什么、怎么自查、什么时候看医生
+
+| 说法 | 状态 | 来源 | 原文引句 |
+|---|---|---|---|
+| 头前伸是矢状面最常见的颈部姿势偏差，几乎所有人群都有、程度不同 | 【已读摘要】 | Mahmoud 2019，PMID 31773477 | "Forward head posture (FHP) is the most common cervical postural fault in the sagittal plane that is found with different severity levels in almost all populations." |
+| 颅椎角（CVA）的量法：耳屏（tragus）与第七颈椎（C7）贴标记、侧面拍照量角 | 【已读摘要】 | Gallego-Izquierdo 2020，PMID 32911612 | "evaluated in the standing position with markers on the tragus and cutaneous prominence of seventh cervical vertebra (C7)" |
+| 手机 App 量 CVA：信度好；**但最小可侦测变化约 5°**（量两次差 5° 以内可能只是误差） | 【已读摘要】 | Gallego-Izquierdo 2020，PMID 32911612（44 人，量的人是两位受训物理治疗师） | "Intra-rater reliability … intraclass correlation coefficient of 0.88… The minimum detectable change was 4.96° for intra-rater and 5.52° for inter-rater reliability." |
+| 并列：另一款 App（Surgimap）MDC 只有 1.3–1.7°；**站着量比坐着量好**，坐姿 CVA 明显较小 | 【已读摘要】 | Aafreen 2023，PMID 37810069（90 名颈痛者） | "CVA measurement in the sitting position was significantly lower than in the standing position"、"The minimum detectable change (MDC) values ranged from 1.3 to 1.733"、"standing posture was found to be better than sitting posture while measuring the CVA" |
+| 系统综述：手机照相 App 量 CVA，合并 ICC 再测 0.904、不同人量 0.889 | 【已读摘要】 | Karbalaeimahdi 2025，PMID 41398198（29 篇、1910 人） | "The pooled ICCs demonstrated excellent test-retest reliability (ICC = 0.904) and inter-rater reliability (ICC = 0.889) for the craniovertebral angle"；限制："heterogeneity in methods, small sample sizes, and inconsistent reporting" |
+| **「几度以下算头前伸」没有统一门槛** | 【已读摘要】 | Norasteh 2025，PMID 40966220 | "diagnostic inconsistencies, such as variations in craniovertebral angle thresholds used to define FHP" → **App 不给正常值，只跟自己比、且变化 <5° 不当真**【推论，依 Gallego MDC】 |
+| 网上常说的「CVA <50°/53° 算头前伸」 | 【转述】（只在 WebSearch 摘要看到，没读到原文）→ App 不用 | — | — |
+| 靠墙站测试（后脑勺碰不碰得到墙）用来判断头前伸 | 【未查证】——esearch「occiput-to-wall」49 篇多是强直性脊柱炎／驼背量法，没读到用于一般人头前伸的信度或门槛；App 若用，只能写「App 的做法」 | — | — |
+| 研究用的标记都是物理治疗师贴的；**自己在家拍侧面照**的准确度 | 【未查证】【推论】：以上研究都不是本人自拍，App 只能写「研究是由治疗师贴点量的，自己拍只当参考」 | — | — |
+
+**红旗（看医生）**：
+
+| 说法 | 状态 | 来源 | 原文引句 |
+|---|---|---|---|
+| 颈痛几周不好、或伴手臂发麻／发冷 → 看 GP；睡低而硬的枕头、别趴睡、别长时间维持同一姿势 | 【已读原文】 | NHS 颈痛 https://www.nhs.uk/conditions/neck-pain/ | "neck pain or stiffness does not go away after a few weeks"、"you have other symptoms, like pins and needles or a cold arm – this could be something more serious"、"use a low, firm pillow"、"do not keep your neck in the same position for a long time – for example, when sitting at a desk"、"do not sleep on your front" |
+| 急：突然剧痛或快速加重、手脚沉重无力、手臂刺麻伴颈／臂痛、两肩胛之间痛 → 尽快 GP／111；**走路出新问题、大小便失禁、突然手不协调（扣扣子）→ 999** | 【已读原文】 | NHS 颈椎病 https://www.nhs.uk/conditions/cervical-spondylosis/ | "Ask for an urgent GP appointment or get help from NHS 111 if you have: … severe neck pain that starts suddenly, or pain that is getting worse quickly / heaviness or weakness in your arms or legs / pins and needles in an arm, as well as pain in your neck or arm / pain between your shoulder blades"；"Call 999 if you have any of these: new problems walking / loss of bladder or bowel control / sudden lack of co-ordination – for example, with tasks like buttoning a shirt" |
+| 手脚痛、刺麻、麻木或无力 → 找专业人员；突然颈僵＋两手举不过头 | 【已读原文】 | Versus Arthritis 颈痛 https://versusarthritis.org/about-arthritis/conditions/neck-pain/ | "have pain, tingling, numbness or weakness in your arms or legs"、"suddenly develop neck stiffness along with difficulty lifting both arms above your head" |
+| 做颈部伸展时头晕就停 | 【已读原文】 | CUH 颈部运动 https://www.cuh.nhs.uk/patient-information/neck-exercises-and-advice/ | "Stop this exercise if dizziness occurs." |
+
+### B. 运动能不能改善头前伸（证据）
+
+| 说法 | 状态 | 来源 | 原文引句 |
+|---|---|---|---|
+| 运动能有效改善 CVA（强证据）、中度改善疼痛；**但头前伸与疼痛、以及两者一起改善的关系仍未确立** | 【已读摘要】 | Sheikhhoseini 2018，PMID 30107937（7 篇 RCT、627 人） | "Level 1a evidence (strong) indicates exercise training can effectively modify CVA, and level 1b evidence (moderate) indicates exercise may improve pain but not CA"；"The precise nature of the relationship between FHP and musculoskeletal pain, and improvements in both after therapeutic exercise, remains to be established." 注意：效果用的是 odds ratio「6.7 (CI = 2.53-17.9)」，不是度数 |
+| 健康人：**拉伸不改变姿势；肌力训练对胸椎、颈椎有效（d≈1.04）**，腰骨盆无效 | 【已读摘要】 | Warneke 2024，PMID 38834878（23 篇、969 人） | "Neither acute (d = 0.01, p = 0.97) nor chronic stretching (d=-0.19, p = 0.16) had an impact on posture"、"strengthening to be effective in the thoracic and cervical spine (d=-1.04, p = 0.005)"、"Moderate-certainty evidence does not support the use of stretching as a treatment of muscle imbalance" |
+| 慢性颈痛者做颅颈屈肌（收下巴类）训练：疼痛中到大幅改善、CVA 中度改善（SMD 0.51）；异质性大、结论属提示性 | 【已读摘要】 | Javdaneh 2026，PMID 42348285（25 篇 RCT、1166 人） | "CCF exercises produced a moderate-to-large reduction in pain (SMD: -0.97)"、"CVA moderate improvement (SMD: 0.51)"、"due to substantial heterogeneity, variable risk of bias, and diverse protocols, findings are suggestive rather than definitive" |
+| 颈稳定训练（12 篇 RCT）：减痛、改善功能与头前伸；6–8 周最有效 | 【已读摘要】 | Saini 2025，PMID 40286070 | "CSEs significantly reduce pain… and correct postural abnormalities such as forward head posture"、"Intervention duration of 6-8 weeks was most effective." |
+| **并列（反面）**：一篇综述的合并结果，矫正运动 vs 常规运动改善头前伸风险差 0.00、训练 vs 不治疗 0.09（CI 跨 0） | 【已读摘要】（期刊较弱、结论与数字不一致） | Nazwar 2024，PMID 39483836 | "corrective exercise and conventional exercise in improving forward head posture risk difference 0.00 (-0.09, 0.09)"、"training and no treatment showed risk difference 0.09 (-0.01, 0.20)" |
+| 并列：小型 RCT 深颈屈肌训练 4 周，CVA 没变（活动度与耐力有变） | 【转述】（Kang 2015，PMC4668167，只看到搜索摘要） | — | — |
+| 无症状头前伸者的颈部本体感觉：稳定训练「可能」改善 | 【已读摘要】 | Norasteh 2025，PMID 40966220（9 篇 RCT） | "cervical stabilization exercises… may improve cervical proprioception" |
+| 上交叉综合征：运动改善头前伸、圆肩、驼背 | 【已读摘要】（旧笔记已收，未重读） | Sepehri 2024，PMID 38302926 | 见 `.claude/notes/fitness-posture-research.md` 第 2 节 |
+| 具体哪种组合最好（深颈屈肌 vs 肩胛后缩肌力 vs 胸肌拉伸 vs 胸椎伸展）、各自剂量与效果量 | 【未查证】——本轮只读到上面的综述层级；肩胛／胸肌 RCT 的 esearch 有 8 篇（run 44453975120）没逐篇读。依 Warneke：**胸肌拉伸对「姿势」本身不会有效**，只能当舒服／活动度用 | — | — |
+| CVA 变化与疼痛变化是否相关 | 【已读摘要】只能引 Sheikhhoseini 的「remains to be established」；**没找到直接证明两者同步的研究** | — | — |
+
+**剂量（收下巴，两说并列）**：
+
+| 说法 | 状态 | 来源 |
+|---|---|---|
+| 每天至少 2 次、每次 10–15 下、每下停 10–15 秒 | 【已读原文】（商业平台 FAQ，非研究） | Physitrack https://www.physitrack.com/fi/exercise-library/how-to-perform-the-chin-tuck-exercise-exercise："at least twice a day, for 10-15 repetitions each time"、"The recommended amount of time to hold the chin tuck position is 10-15 seconds." |
+| NHS 医院单张：停留秒数、次数**留空由治疗师填** | 【已读原文】 | CUH："Hold at the end position and feel the stretch in your neck. Repeat ___ times." |
+| WWL NHS 单张：停 1–2 秒 ×10 次；Calderdale 单张：停 5–10 秒 | 【转述】（PDF 没抓成） | — |
+| 研究里的介入期 6–8 周 | 【已读摘要】 | Saini 2025（上表） |
+
+### C. 头前伸和颈痛真的有关吗？（两边并列）
+
+**支持有关**：
+
+| 说法 | 状态 | 来源 | 原文引句 |
+|---|---|---|---|
+| 成人／老人：颈痛者头前伸较明显，头前伸与疼痛强度、失能相关（r≈−0.55、−0.42）；**青少年没有关联**；年龄是重要干扰因素 | 【已读摘要】 | Mahmoud 2019，PMID 31773477（15 篇**横断面**研究） | "adults with neck pain show increased FHP when compared to asymptomatic adults and that FHP is significantly correlated with neck pain measures in adults and older adults. No association was found between FHP and most of neck pain measures in adolescents."、"age played an important role as a confounding factor" |
+| 紧张型头痛者头前伸较多（低信心） | 【已读摘要】 | Liang 2019，PMID 31054485 | "participants with TTH had greater forward head posture (FHP) (MD = -6.18°…)"、"levels of confidence in findings were low" |
+| 头位置影响肌肉活动、本体感觉、呼吸、颈痛（综述，作者说法较强） | 【已读摘要】 | Szczygieł 2020，PMID 32713947（16 篇） | "abnormal head position changes affect muscle activity, proprioception, the pattern of breathing and neck pain" |
+
+**不支持／反面**：
+
+| 说法 | 状态 | 来源 | 原文引句 |
+|---|---|---|---|
+| 1108 名 17 岁：四种坐姿群组之间颈痛、头痛机率无差异 | 【已读摘要】 | Richards 2016，PMID 27174256 | "There was no significant difference in the odds of neck pain or headache across the clusters"、"challenges widely held beliefs about the role of posture in adolescent neck pain"；限制："may not be applicable to adults" |
+| 同一群人追到 22 岁：17 岁坐姿**不是**男性持续颈痛的风险因子；女性较放松（含头前伸）的坐姿反而较少颈痛 | 【已读摘要】 | Richards 2021，PMID 33444448（前瞻） | "sitting neck posture at 17 was not a risk factor for PNP at 22 years of age in males, whereas in females, more relaxed postures (slumped thorax/forward head and Intermediate postures) were protective"、"generic public health messages to sit up straight to prevent neck pain needs rethinking" |
+| 18–65 岁、追踪 12 个月：滑手机时低头角度**不是**颈痛风险因子；睡眠差、活动量不足才是 | 【已读摘要】 | Correia 2025，PMID 40845624（457 人、无颈痛起始） | "Cervical flexion posture during smartphone use was not a risk factor for NP or frequency of NP, but low sleep quality and insufficient levels of physical activity were." |
+| 大学生：滑手机姿势与时间和颈痛无关 | 【已读摘要】 | Bertozzi 2021，PMID 33992248（横断面） | "the use of smartphones was not correlated with neck pain and disability" |
+| 青少年：有无颈痛者头前伸无差异 | 【已读摘要】 | Andias 2019，PMID 30629325 | "those with NP showed no differences in cervicothoracic posture or FHP" |
+
+**我的读法**【推论】：成人横断面研究看到「有关」，但横断面分不出谁因谁果；两个前瞻研究（Richards 2021、Correia 2025）都**没**看到姿势预测日后颈痛，
+反而睡眠与活动量有关。对 40 岁男性用户可以说：「头前伸和颈痛在成人身上常一起出现，但没有证据证明前倾会『造成』颈痛；练它主要是为了颈部和上背更有力、更舒服，不保证照片里的角度一定变。」
+
+### D. 日常小习惯（逐条，诚实标证据强度）
+
+| 习惯 | 状态 | 来源 | 原文引句／说明 |
+|---|---|---|---|
+| **久坐要打断**（官方建议） | 【已读原文】 | NHS 成人运动指南 https://www.nhs.uk/live-well/exercise/physical-activity-guidelines-for-adults-aged-19-to-64/ | "reduce time spent sitting or lying down and break up long periods of not moving with some activity" |
+| 屏幕工作：短而频繁的休息，比长而少的好（每小时 5–10 分钟优于每 2 小时 20 分钟）；休息要起身走动或至少伸展换姿势 | 【已读原文】 | HSE https://www.hse.gov.uk/msd/dse/work-routine.htm | "There is no legal guidance about how long and how often breaks should be for DSE work."、"Take short breaks often, rather than longer ones less often. For example 5 to 10 minutes every hour is better than 20 minutes every 2 hours."、"Breaks or changes of activity should allow users to get up from their workstations and move around, or at least stretch and change posture." |
+| 「每 30 分钟起来一次」 | 【未查证】——没找到用 30 分钟当建议的官方原文。研究里：Dunstan 每 20 分钟走 2 分钟降餐后血糖（代谢指标，不是颈）；Diaz 2017 久坐片段越长死亡风险越高 | Dunstan 2012，PMID 22374636："seated with 2-min bouts of light-intensity walking every 20 min… Interrupting sitting time with short bouts of light- or moderate-intensity walking lowers postprandial glucose and insulin levels in overweight/obese adults"；Diaz 2017，PMID 28892811："Both the total volume of sedentary time and its accrual in prolonged, uninterrupted bouts are associated with all-cause mortality" |
+| 并列：只把久坐切短、**不换成活动**，没好处——要真的动 | 【已读摘要】 | Diaz 2019，PMID 30551177 | "short sedentary bouts still carry mortality risk and are not a healthful alternative to prolonged sedentary bouts. Instead, physical activity of any intensity is needed" |
+| **对颈／肩症状**：站坐两用桌等增加站立的措施，没证明减少肌肉骨骼症状；额外休息对上肢不适只有极低品质证据 | 【已读摘要】 | Parry 2019 Cochrane，PMID 31742666；Hoe 2018 Cochrane，PMID 30350850 | Parry："limited evidence does not show that interventions to increase standing or walking in the workplace reduced musculoskeletal symptoms among sedentary workers"；Hoe："For organisational interventions, in the form of supplementary breaks, there is very low-quality evidence of an effect on upper limb discomfort." |
+| **屏幕高度**：屏幕顶端与眼同高或略低；中心约在水平视线下 15–20°；距离 50–100 cm | 【已读原文】 | OSHA https://www.osha.gov/etools/computer-workstations/components/monitors | "Place monitor so top line of screen is at or below eye level."、"The top of the monitor should be at or slightly below eye level. The center of the computer monitor should normally be located 15 to 20 degrees below horizontal eye level"、"between 20 and 40 inches (50 and 100 cm)" |
+| 同上：屏幕顶与眼同高、约一臂距离；笔电长时间用要外接键鼠把屏幕垫高 | 【已读原文】 | HSE https://www.hse.gov.uk/msd/dse/good-posture.htm | "Top of screen level with eyes, about an arm's length away"、"Keyboard and mouse separate from the laptop so screen can be elevated on a laptop riser or similar" |
+| 屏幕调高能不能**预防颈痛**（研究层级） | 【已读摘要】→ 证据弱 | Hoe 2018 Cochrane | "For other physical ergonomic interventions there is no evidence of an effect."（指扶手＋特殊滑鼠以外的人体工学介入）→ 屏幕高度是**官方建议、合理**，但别承诺能防痛 |
+| 避免下巴往前伸、圆肩（电脑／开车时） | 【已读原文】 | CUH | "Try to avoid poking your chin forwards and rounding your shoulders when, for example, working at a computer or driving." |
+| **低头族负重数字（15° 约 27 磅、60° 约 60 磅）** | 【已读原文，新闻】＋【已读摘要只有前言】 | NPR 2014（报道 Hansraj）https://www.npr.org/sections/thetwo-way/2014/11/20/365473750/keep-your-head-up-text-neck-can-take-a-toll-on-the-spine；Hansraj 2014，PMID 25393825 | NPR："tilting the head forward just 15 degrees can increase the force on the cervical spine to 27 pounds"；PubMed 摘要只有前言："The purpose of this study is to assess the forces incrementally seen by the cervical spine as the head is tilted forward"。**这是电脑模型算出来的、不是实测**——「用 Cosmosworks 有限元模型」只在 WebSearch 摘要看到【转述】，CI 抓 PubMed 页没印出方法段。**而且 Correia 2025 前瞻研究发现低头角度不预测颈痛**（见 C 节）→ App 不要拿这组数字吓人；若要提，写「电脑模型估算，不是量出来的；实际追踪研究没发现低头角度会导致颈痛」 |
+| 手机举高一点 | 【未查证】——没找到「把手机举高」能减少颈痛或头前伸的介入研究；只能当「App 的建议／减少长时间低头」 | — | — |
+| **每天多走路／活动量** | 【已读摘要】 | Paluch 2022，PMID 35247352（15 个世代、47471 人）；Correia 2025；Tatsios 2025，PMID 40700206 | Paluch："risk of mortality … among adults younger than 60 years until 8000-10 000 steps per day"（这是死亡率，不是颈）；Correia：活动量不足是颈痛风险因子；Tatsios（横断面、颈痛者）："Significantly lower forward head posture was noted in subjects with a high level of physical activity relative to those with a low level of physical activity" |
+| NHS 指南：每周 150 分钟中强度＋至少 2 天肌力训练 | 【已读原文】 | NHS 成人运动指南 | "do strengthening activities that work all the major muscle groups… on at least 2 days a week"、"do at least 150 minutes of moderate intensity activity a week" |
+| **睡姿／枕头**：低而硬的枕头、别趴睡（NHS）；一颗枕头、头在中间、填满颈部凹处（CUH）；太硬太厚会更痛（Versus Arthritis） | 【已读原文】（指引，非研究） | NHS 颈痛；CUH；Versus Arthritis | NHS："use a low, firm pillow"、"do not sleep on your front"；CUH："One pillow is advisable so that your head does not tilt to the side, forwards or backwards."；Versus Arthritis："If your pillow is too firm or thick, it can make neck pain worse." |
+| 枕头研究：乳胶／弹簧枕对慢性颈痛小幅有效（SMD −0.26） | 【已读摘要】 | Chun-Yiu 2021，PMID 33895703 | "significant differences favouring the use of rubber pillows to reduce neck pain [standardized mean difference (SMD): -0.263"、"the cervical alignment may be significantly impacted by the shape and height of the pillow" |
+| 并列：另一篇说证据有限、没有哪种枕头明显较好 | 【已读摘要】 | Ghosh 2025，PMID 40633255（5 篇、239 人） | "limited evidence supports the use of specific pillows as adjunctive therapy for chronic neck pain, with no particular type (latex, foam or standard) demonstrating clear superiority" |
+| 枕头会不会改善**头前伸** | 【未查证】——两篇都只讲颈痛者的疼痛，没讲白天姿势 | — | — |
+| **包包左右轮流背** | 【未查证】——没找到「轮流」的研究。只有：单肩／手提包（15% 体重、25 名大学生、背 5 分钟）造成多方向姿势偏移，前背包较对称 | Bettany-Saltikov 2012，PMID 22744472 | "Unilateral carriage however produces an asymmetrical deviation away from the load"、"The shoulder and handheld bags produce postural deviations in all planes"。注意：急性、样本小、15% 体重很重；作者说「may…lead to pain and progressive postural scoliosis」是推测，没长期数据 → App 只能写「重的包用双肩背或两手分提（App 的建议）」 |
+| **深蹲录影自查** | 沿用旧笔记 | McGough 2012，PMID 22158262（即时画面回馈） | 见 `.claude/notes/fitness-posture-research.md` 第 1 节：研究是即时回馈，手机回放是 App 的做法 |
+| 维持同一姿势太久、要常换姿势（不是「坐得越直越好」） | 【已读原文】 | NHS 颈痛；CUH | NHS："do not keep your neck in the same position for a long time"；CUH："Change positions regularly. It's healthy to move into all the different positions." ＋ Richards 2021「sit up straight」讯息需要重新思考 |
+
+### E. 可加进 App 体态小课的动作（每个 ≥2 个已读来源）
+
+App 现况（fitness/index.html `PMOVE`）：90/90、半跪髋屈肌、推膝碰墙、**靠墙滑臂**、侧桥、蚌式、提铃踏步、分腿蹲；
+门框胸部拉伸在热身／放松清单（L968，另有无门框替代），**不在**体态小课里。
+
+### E1. 收下巴（chin tuck／颈部后缩）——建议新增（证据最直接：Javdaneh CCF、Sheikhhoseini）
+
+| 要点 | 来源 | 原文引句 |
+|---|---|---|
+| 坐直、下巴往内收，颈和背保持直、**头不要往前低** | CUH（NHS 医院） | "Sitting straight-backed, pull your chin in, keeping your neck and back straight (not tipping your head forwards). Hold at the end position and feel the stretch in your neck." |
+| 坐直、轻轻收下巴；可用手指把下巴轻轻往后推辅助 | Physitrack | "Sit up straight and slightly tuck your chin in."、"You can assist the movement direction by slightly pressing your chin backward with your fingers" |
+| 站、坐、躺都能做 | Physitrack | "The exercise is simple and can be done standing, sitting, or lying down." |
+| 进阶：躺着收下巴再把头微微抬离床面（深颈屈肌） | Physitrack 另一页 https://us.physitrack.com/home-exercise-video/chin--tuck | "Lying on your back with the jaw relaxed, tuck your chin then lift your head so it is slightly off the surface your laying on." |
+| 剂量 | 两说（见 B 节剂量表）；App 若定数字须标「App 的安排」 | — |
+| 「像做出双下巴」这个口诀 | 【转述】（Calderdale NHS 单张、Physitrack 美国页，只在搜索摘要） | — |
+| 头晕就停 | CUH（针对颈部伸展那一项，借用要标「App 的保守判断」） | "Stop this exercise if dizziness occurs." |
+
+### E2. 胸椎伸展（泡沫轴）——可新增（对应 Warneke「胸椎肌力有效」只算间接；这是活动度动作，**没有研究证明它改善头前伸**）
+
+| 要点 | 来源 | 原文引句 |
+|---|---|---|
+| 仰躺，泡沫轴横放在上背下，双手交叉胸前；吐气时上背往轴上伸直、吸气回来；把轴上下移动逐段做 | Physitrack https://ie.physitrack.com/home-exercise-video/thoracic-extension-using-a-foam-roller | "Lie on your back with a foam roller placed horizontally under your upper back and hands crossed on your chest."、"Straighten your thoracic spine (upper back) against the roller when exhaling. Return to the starting position when inhaling."、"Go through the whole thoracic spine vertebrae-by-vertebrae by moving the roll up/down the upper back." |
+| 收下巴、**下背不要拱** | Physitrack 同页 | "Keep your chin tucked in."、"Do not let your lower back arch." |
+| 骨盆贴地、上背往轴上伸、手往头上伸 | Rehab Hero https://www.rehabhero.ca/exercise/foam-roller-thoracic-extension | "Lay on a foam roller placed below your upper back. Keep the pelvis on the floor as your extend your upper back over the foam roller and reach overhead with your arms." |
+| 坐姿版（斜椅＋泡沫轴） | Rehab Hero https://www.rehabhero.ca/exercise/seated-foam-roller-thoracic-extension | "First set up an incline bench at an angle that is comfortable for you. Place a foam roller between your back and the bench's back support"（原文后半被 CI 截断） |
+| 没有泡沫轴改用卷起的毛巾 | 【转述】（搜索摘要，某诊所） | — |
+| 剂量 | 【未查证】（Physitrack／Rehab Hero 页面没印出次数） | — |
+
+### E3. 靠墙滑臂（已存在）、门框胸部拉伸（已存在于热身）
+
+- 不需新增。注意 **Warneke：拉伸不改变姿势** → 若把胸肌拉伸搬进体态小课，文案不能写「拉开胸口就能改善头前伸」，只能写「舒服／活动度」。
+- 肩胛后缩肌力（划船类）：App 力量计划里本来就有；本轮**没**读到针对头前伸的肩胛 RCT 原文 →【未查证】，不写效果量。
+
+### F. 给 App 文案的结论（一句话版）
+
+1. 能不能练好？**运动（尤其肌力类、收下巴）能改善颈椎角度，证据算强（Sheikhhoseini、Warneke）；单纯拉伸不改姿势（Warneke）。**
+2. 会不会痛？**成人里头前伸和颈痛常一起出现（Mahmoud），但前瞻研究没证明前倾会导致颈痛（Richards 2021、Correia 2025）**——不要吓用户。
+3. 自查：侧面照量 CVA 可以，但要站着、每次同条件，**差 5° 以内当误差**（Gallego MDC），**不给正常门槛**（Norasteh）。
+4. 红旗：手臂麻／无力、走路变差、大小便失控、手突然不灵活、突然剧痛 → 看医生／急诊（NHS 颈椎病原文）。
+5. 习惯：常换姿势、短而频繁的休息（HSE）、屏幕顶与眼同高（OSHA／HSE）、每天多动（NHS 指南、Correia、Tatsios）、低而硬枕头不趴睡（NHS，指引级）。
+   「每 30 分钟」「手机举高」「包包轮流背」都**没有来源**，要写就标「App 的建议」。
+
+### G. 来源网址总表
+
+| 来源 | 网址 |
+|---|---|
+| NHS 颈痛 | https://www.nhs.uk/conditions/neck-pain/ |
+| NHS 颈椎病（红旗） | https://www.nhs.uk/conditions/cervical-spondylosis/ |
+| NHS 成人运动指南 | https://www.nhs.uk/live-well/exercise/physical-activity-guidelines-for-adults-aged-19-to-64/ |
+| Versus Arthritis 颈痛 | https://versusarthritis.org/about-arthritis/conditions/neck-pain/ |
+| CUH 颈部运动与建议 | https://www.cuh.nhs.uk/patient-information/neck-exercises-and-advice/ |
+| OSHA 屏幕 | https://www.osha.gov/etools/computer-workstations/components/monitors |
+| HSE 姿势 | https://www.hse.gov.uk/msd/dse/good-posture.htm |
+| HSE 休息 | https://www.hse.gov.uk/msd/dse/work-routine.htm |
+| Physitrack 收下巴 | https://www.physitrack.com/fi/exercise-library/how-to-perform-the-chin-tuck-exercise-exercise |
+| Physitrack 仰躺收下巴抬头 | https://us.physitrack.com/home-exercise-video/chin--tuck |
+| Physitrack 胸椎伸展 | https://ie.physitrack.com/home-exercise-video/thoracic-extension-using-a-foam-roller |
+| Rehab Hero 胸椎伸展 | https://www.rehabhero.ca/exercise/foam-roller-thoracic-extension |
+| NPR（Hansraj 报道） | https://www.npr.org/sections/thetwo-way/2014/11/20/365473750/keep-your-head-up-text-neck-can-take-a-toll-on-the-spine |
+| PubMed 摘要 | 31773477、30107937、38834878、42348285、40286070、39483836、40966220、32713947、31054485、30629325、27174256、33444448、40845624、33992248、32911612、37810069、41398198、40700206、25393825、35247352、28892811、30551177、22374636、31742666、30350850、33895703、40633255、22744472 |

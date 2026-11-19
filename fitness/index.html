@@ -308,6 +308,9 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
 .pph .grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(to right,rgba(255,255,255,.35) 1px,transparent 1px),linear-gradient(to bottom,rgba(255,255,255,.35) 1px,transparent 1px);background-size:25% 10%}
 .pph .mid{position:absolute;top:0;bottom:0;left:50%;width:0;border-left:2px dashed rgba(255,214,0,.85);pointer-events:none}
 .pph .hl{position:absolute;left:0;right:0;height:0;border-top:2px solid rgba(255,80,60,.95);pointer-events:none}
+.pph .vl{position:absolute;top:0;bottom:0;width:0;border-left:2px solid rgba(80,200,255,.95);pointer-events:none}
+.habit{display:flex;gap:8px;align-items:flex-start}.habit .tag{flex:none;font-size:11px;border-radius:6px;padding:1px 6px;margin-top:2px;border:1px solid var(--line)}
+.habit .tag.ok{color:#1a7f4b;border-color:#1a7f4b}.habit .tag.mix{color:#a86b00;border-color:#a86b00}.habit .tag.app{color:var(--muted)}
 .pph .cap{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;border-radius:6px;padding:2px 6px}
 .spark{width:100%;height:90px;display:block}
 .prt{display:flex;flex-direction:column;gap:4px}
@@ -471,6 +474,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
     <div class="card" id="postTests"></div>
     <div class="card" id="postPhotos"></div>
     <div class="card" id="postRoutine"></div>
+    <div class="card" id="postHabits"></div>
     <details class="card fold" id="postWhy"><summary>能改变多少、多快（附来源）</summary><div class="stack" id="postWhyBody"></div></details>
   </section>
 
@@ -504,7 +508,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
 
     <div class="card">
       <h2>体态：自查与小课</h2>
-      <p class="small">高低肩、深蹲歪一边、X 型腿：先做自查（含要看医生的情况），再按结果排 10 分钟左右的小课。</p>
+      <p class="small">高低肩、深蹲歪一边、X 型腿：先做自查（含要看医生的情况），再按结果排 12 分钟左右的小课（含脖子）。</p>
       <button class="btn primary" data-open-post>打开体态</button>
     </div>
 
@@ -671,12 +675,13 @@ var ANIM = (function(){
     o.na = P.na!=null?P.na:(P.a||0);  o.nf = P.nf!=null?P.nf:(P.f||0);
     o.fa = P.fa!=null?P.fa:(P.a||0);  o.ff = P.ff!=null?P.ff:(P.f||0);
     o.lf = P.lf||0; o.dx = P.dx||0; // 整体抬高 / 往前移（游泳：漂浮高度、滑行距离）
+    o.hx=P.hx||0; // 头往前（+）／往后（−）平移：收下巴（2026-11-19）
     return o;
   }
   function joints(o){
     var hip=[0,0];
     var sh=[LEN.torso*Math.sin(o.t*RAD), -LEN.torso*Math.cos(o.t*RAD)];
-    var hd=[sh[0]+(LEN.head+3)*Math.sin(o.t*RAD), sh[1]-(LEN.head+3)*Math.cos(o.t*RAD)];
+    var hd=[sh[0]+(LEN.head+3)*Math.sin(o.t*RAD)+(o.hx||0), sh[1]-(LEN.head+3)*Math.cos(o.t*RAD)];
     var nk=seg(hip,o.nt,LEN.thigh), nf=seg(nk,o.ns,LEN.shin);
     var fk=seg(hip,o.ft,LEN.thigh), ff=seg(fk,o.fs,LEN.shin);
     var ne=seg(sh,o.na,LEN.ua), nh=seg(ne,o.nf,LEN.fa);
@@ -701,7 +706,7 @@ var ANIM = (function(){
     if(P.fF){ var tf=[ref[0]+P.fF[0], ref[1]+P.fF[1]]; var r2=ik([0,0],tf,LEN.thigh,LEN.shin,P.fbend||1); o.ft=r2[0]; o.fs=r2[1]; }
     return o;
   }
-  var KEYS=["t","nt","ns","ft","fs","na","nf","fa","ff","lf","dx"];
+  var KEYS=["t","nt","ns","ft","fs","na","nf","fa","ff","lf","dx","hx"];
   function lerp(a,b,u){ var o={}; KEYS.forEach(function(k){ o[k]=a[k]+(b[k]-a[k])*u; }); return o; }
   function ease(u){ return u<0.5 ? 2*u*u : 1-Math.pow(-2*u+2,2)/2; }
 
@@ -773,6 +778,9 @@ var ANIM = (function(){
   def("sideplank",{frames:[{t:52,lt:-90,ls:-90,na:0,nf:90,fa:0,ff:0},{t:75,lt:-75,ls:-75,na:0,nf:90,fa:0,ff:0}], ground:"low", dur:1.2}); // 侧桥：手肘在肩正下方，髋抬到头到脚一直线（侧躺由渲染台转过来）
   def("clam",    {frames:[{t:90,lt:-45,ls:-135,a:90,f:90},{t:90,lt:-45,ls:-135,a:90,f:90}], ground:"low", anchorX:"hip", dur:1.1}); // 蚌式：侧躺屈髋屈膝、两脚并拢，上面那膝往上打开（3D 另摆）
   def("suitcase",{frames:[{nt:70,ns:-5,na:0,nf:0,fa:6,ff:6},{ft:70,fs:-5,na:0,nf:0,fa:6,ff:6}], ground:"low", anchorX:"hip", dur:0.8, hold:"one"}); // 单手提哑铃原地踏步：身体不往哪边歪
+  // 脖子（2026-11-19，用户：脖子前倾）：收下巴＝头往后平移（hx），泡沫轴胸椎伸展＝仰躺、轴横在上背下（伸展在 3D 另摆）
+  def("chintuck",{frames:[{t:0,lt:90,ls:0,a:12,f:70},{t:0,lt:90,ls:0,a:12,f:70,hx:-3.5}], props:["seat"], dur:1.4}); // 坐直、下巴往内收、头往后平移，不低头
+  def("thoracic",{frames:[{t:-66,nt:140,ns:28,ft:140,fs:28,a:150,f:60},{t:-72,nt:140,ns:28,ft:140,fs:28,a:150,f:60}], ground:"low", anchorX:"hip", props:["roller"], dur:1.8}); // 仰躺、膝弯脚踩地、双手交叉胸前；吐气时上背往轴上伸
   def("child",   {frames:[{t:103,lt:60,ls:-90,a:85,f:90},{t:107,lt:60,ls:-90,a:88,f:92}], ground:"low", anchorX:"hip", dur:2});
   // ---- swimming（水深到胸口：水面高 66；漂浮时身体抬到 lf≈59） ----
   var POOL={surface:66};
@@ -856,6 +864,7 @@ var ANIM = (function(){
       if(pr==="post"){ var px=X(j.fe)-3*s; ctx.fillRect(px,Y(j.fh)-14*s,6*s,G-Y(j.fh)+14*s); } // 墙边／柱子：靠墙那只手的前臂贴在它前面
       if(pr==="wallK"){ var kx=X(j.nf)+15*s; ctx.fillRect(kx,G-110*s,4*s,110*s); } // 踝关节活动：膝盖去碰的那面墙（固定在前脚前方）
       if(pr==="wallH"){ var hx2=Math.max(X(j.ne),X(j.nh))+3*s; ctx.fillRect(hx2,G-125*s,4*s,125*s); } // 靠墙滑臂：前臂贴着的墙
+      if(pr==="roller"){ var rx=X(j.sh)+(X(j.hip)-X(j.sh))*0.22, rr2=5.5*s; ctx.beginPath(); ctx.arc(rx,G-rr2,rr2,0,Math.PI*2); ctx.fill(); } // 泡沫轴：横在上背下
       if(pr==="board"){ ctx.fillStyle=C.wt; rr(ctx,X(j.nh)-6*s,Y(j.nh)-3*s,28*s,3*s); ctx.fillStyle=C.prop; }
     });
     function line(a,b,col,w){ ctx.strokeStyle=col; ctx.lineWidth=w*s; ctx.beginPath(); ctx.moveTo(X(a),Y(a)); ctx.lineTo(X(b),Y(b)); ctx.stroke(); }
@@ -988,6 +997,8 @@ const PMOVE={
   sideplank:{name:"侧桥",anim:"sideplank",kind:"str",uni:true,en:"side plank",cue:"侧躺，手肘撑在肩膀正下方。腹部收紧，把髋抬起来，让头到脚成一直线；髋不要往下沉、肩膀不要耸到耳边。太难就膝盖着地做。"},
   clam:{name:"蚌式开合",anim:"clam",kind:"str",uni:true,en:"clamshell exercise",cue:"侧躺，两膝弯起来、两腿叠在一起，两脚并拢。背和骨盆不动，慢慢把上面那个膝盖往上打开，再控制着放回来。身体不要往后翻。有弹力带可以套在膝盖上方，用来加难度（App 的安排）。"},
   suitcase:{name:"单手提哑铃原地踏步",anim:"suitcase",hold:"one",kind:"str",uni:true,en:"suitcase march",cue:"一只手提哑铃垂在身侧，另一只手空着。站直、腹部收紧、两肩一样高，慢慢原地踏步；身体不要往拿重量那边歪，也不要往反方向躲。从正面看要左右对称。歪了就换轻一点的重量。"},
+  chintuck:{name:"收下巴（颈部后缩）",anim:"chintuck",kind:"str",en:"chin tuck",cue:"坐直，下巴轻轻往内收、头往后平移，颈和背保持直，头不要往前低。可以用手指把下巴轻轻往后推帮忙。停在最后的位置、感觉颈后被拉开，再放松。站着或躺着也能做。头晕就停（App 的保守判断）。"},
+  thoracic:{name:"泡沫轴胸椎伸展",anim:"thoracic",kind:"mob",en:"foam roller thoracic extension",cue:"仰躺，泡沫轴横放在上背下面，膝盖弯、脚踩地，双手交叉放胸前。吐气时上背往轴上伸直，吸气时回来；把轴上下挪一点，逐段做。下巴保持内收，下背不要拱，骨盆贴地。这是活动度练习，没有研究证明它能改善脖子前倾。没有泡沫轴就跳过（App 的做法）。"},
   split:{name:"徒手分腿蹲（后脚踩椅）",anim:"split",kind:"str",uni:true,en:"bulgarian split squat",cue:"后脚背放在椅子上，前脚离椅子约一大步，垂直往下蹲、再用前脚站起来。膝盖对准第二根脚趾、不往内倒（App 的安排）。"},
 };
 const MOVE_TAG={chest:"门框"};
@@ -2165,6 +2176,26 @@ const SRC={
   knutson:["Knutson 2005 综述","https://pubmed.ncbi.nlm.nih.gov/16026625/"],
   fong:["Fong 2011（落地研究）","https://pubmed.ncbi.nlm.nih.gov/21214345/"],
   grossman:["Grossman 1995（学校筛检）","https://pubmed.ncbi.nlm.nih.gov/7560050/"],
+  // 脖子前倾＋日常小习惯（2026-11-19，查证在研究笔记「头前伸」一节）
+  nhsCs:["NHS：颈椎病","https://www.nhs.uk/conditions/cervical-spondylosis/"],
+  nhsNeck:["NHS：颈痛","https://www.nhs.uk/conditions/neck-pain/"],
+  nhsAct:["NHS：成人运动指南","https://www.nhs.uk/live-well/exercise/physical-activity-guidelines-for-adults-aged-19-to-64/"],
+  cuh:["剑桥大学医院 CUH：颈部运动","https://www.cuh.nhs.uk/patient-information/neck-exercises-and-advice/"],
+  physi:["Physitrack：收下巴","https://www.physitrack.com/fi/exercise-library/how-to-perform-the-chin-tuck-exercise-exercise"],
+  physiT:["Physitrack：泡沫轴胸椎伸展","https://ie.physitrack.com/home-exercise-video/thoracic-extension-using-a-foam-roller"],
+  rehabhero:["Rehab Hero：泡沫轴胸椎伸展","https://www.rehabhero.ca/exercise/foam-roller-thoracic-extension"],
+  hseBreak:["英国 HSE：屏幕工作的休息","https://www.hse.gov.uk/msd/dse/work-routine.htm"],
+  hsePost:["英国 HSE：屏幕工作姿势","https://www.hse.gov.uk/msd/dse/good-posture.htm"],
+  osha:["美国 OSHA：屏幕位置","https://www.osha.gov/etools/computer-workstations/components/monitors"],
+  sheikh:["Sheikhhoseini 2018 系统综述","https://pubmed.ncbi.nlm.nih.gov/30107937/"],
+  mahmoud:["Mahmoud 2019 系统综述","https://pubmed.ncbi.nlm.nih.gov/31773477/"],
+  richards21:["Richards 2021 追踪研究","https://pubmed.ncbi.nlm.nih.gov/33444448/"],
+  correia:["Correia 2025 追踪研究","https://pubmed.ncbi.nlm.nih.gov/40845624/"],
+  gallego:["Gallego-Izquierdo 2020","https://pubmed.ncbi.nlm.nih.gov/32911612/"],
+  aafreen:["Aafreen 2023","https://pubmed.ncbi.nlm.nih.gov/37810069/"],
+  norasteh:["Norasteh 2025 系统综述","https://pubmed.ncbi.nlm.nih.gov/40966220/"],
+  hoe:["Hoe 2018 Cochrane 综述","https://pubmed.ncbi.nlm.nih.gov/30350850/"],
+  tatsios:["Tatsios 2025","https://pubmed.ncbi.nlm.nih.gov/40700206/"],
 };
 const srcA=k=>'<a href="'+SRC[k][1]+'" target="_blank" rel="noopener">'+esc(SRC[k][0])+'</a>';
 const SIDE_ZH={L:"左",R:"右"};
@@ -2180,8 +2211,15 @@ function redList(){
   if(q.numb==="yes") L.push(["手脚发麻、刺痛","App 的保守判断：神经方面的症状先给医生看。依据是 "+srcA("srs")+" 写到，医生发现神经方面的异常或明显疼痛时，通常会安排核磁共振。"]);
   if(r.worse==="yes") L.push(["最近几个月越来越明显","脊柱侧弯成年后通常不再变，变了就要看医生（"+srcA("nhsScol")+"）；成人 X 型腿也可能越来越严重（"+srcA("hssKnee")+"）。"]);
   if(r.kneeNew==="yes") L.push(["X 型腿只有一边，或是成年后才出现","这两种情况建议看医生（"+srcA("pinfo")+"）。"]);
+  const nk=r.nk||{};
+  NECK_RED.forEach(([k,t,lv])=>{ if(nk[k]) L.push([t,(lv==="er"?"<b>马上去急诊。</b>":"<b>尽快看医生。</b>")+srcA("nhsCs")+" 把这一项列为"+(lv==="er"?"要马上叫急救／去急诊":"要尽快看医生")+"的情况。",lv]); });
   return L;
 }
+// 脖子／手臂的红旗（NHS 颈椎病原文；英国电话号码不适用东南亚，只写「看医生／去急诊」）
+const NECK_RED=[["arm","手臂刺麻，同时脖子或手臂痛","urgent"],["weak","手臂或腿沉重、无力","urgent"],["sudden","脖子突然剧痛，或痛得越来越快","urgent"],["scap","两边肩胛骨之间痛","urgent"],
+  ["walk","走路出现新的问题","er"],["bladder","大小便控制不住","er"],["clumsy","手突然不灵活（例如扣扣子扣不好）","er"]];
+function redLevel(){ const L=redList(); return L.some(x=>x[2]==="er")?"er":L.some(x=>x[2]==="urgent")?"urgent":L.length?"doc":null; }
+const RED_HEAD={er:"马上去急诊",urgent:"尽快看医生",doc:"建议先给医生或物理治疗师看"};
 function hasRed(){ return redList().length>0; }
 function redSig(){ return redList().map(x=>x[0]); }
 // 确认「医生看过」只对确认当下那几个红旗有效：之后多出任何一个，确认作废（2026-11-18 verifier 抓到：多一个红旗还照样给小课）
@@ -2205,14 +2243,16 @@ const OTHER={L:"R",R:"L"};
 function sideOrder(w){ return w?[w,OTHER[w]]:["L","R"]; }
 // 体态小课的步骤（与力量训练共用全屏播放器）
 function postSteps(){
-  const S=[], sd=postSides(), P=PMOVE, n=8;
+  const S=[], sd=postSides(), P=PMOVE, n=10;
   let i=0;
   const mv=(k,name,sec,extra)=>{ const m=P[k]; S.push(Object.assign({kind:"timed",phase:"体态小课 "+i+"/"+n,name,sec,anim:m.anim,hold:m.hold||null,cue:m.cue,en:m.en,speak:name.split("（")[0]+"，"+sec+"秒",pk:k},extra||{})); };
   i++; mv("hip9090","90/90 坐姿髋部拉伸（每侧30秒，时间过半换边）",60,{half:true});
   i++; mv("hipflex","半跪髋屈肌拉伸（每侧30秒，时间过半换边）",60,{half:true});
   i++; mv("ankle","跪姿推膝碰墙（每侧30秒，时间过半换边）",60,{half:true});
   if(sd.ankle) mv("ankle","跪姿推膝碰墙 · "+SIDE_ZH[sd.ankle]+"脚多做一次（测试时较紧的一边）",30,{extra:true,side:sd.ankle});
+  i++; mv("thoracic","泡沫轴胸椎伸展：吐气时上背往轴上伸、吸气回来（时间是 App 的安排）",60);
   i++; mv("wallslide","靠墙滑臂 8–10 次（次数是 App 的安排）",45);
+  i++; mv("chintuck","收下巴 10 次，每次停 10 秒（参照 Physitrack：10–15 次、每次停 10–15 秒）",120);
   i++; sideOrder(sd.core).forEach(x=>mv("sideplank","侧桥 · "+SIDE_ZH[x]+"侧在下 20–30 秒",30,{side:x}));
   if(sd.core) mv("sideplank","侧桥 · "+SIDE_ZH[sd.core]+"侧多做一组（测试时撑得较短的一边）",30,{extra:true,side:sd.core});
   i++; sideOrder(sd.leg).forEach(x=>mv("split","分腿蹲 · "+SIDE_ZH[x]+"脚在前 8 次（次数是 App 的安排）",45,{side:x}));
@@ -2234,18 +2274,30 @@ function openPosture(){
   keepAwake(); showStep(false);
 }
 // ---- 训练页卡片 ----
+function postWeekN(){ return post.done.filter(x=>weekStart(x.ts)===weekStart(Date.now())).length; }
+function postDidToday(){ const t=isoDay(Date.now()); return post.done.some(x=>isoDay(x.ts)===t); }
 function renderPostCard(){
-  const red=hasRed(), d=postDue(), done=post.done.filter(x=>weekStart(x.ts)===weekStart(Date.now())).length;
-  let h='<div class="block-head"><h2>体态</h2><span class="small muted">'+(post.qTs?'本周小课 '+done+' 次':'')+'</span></div>';
-  if(!post.qTs) h+='<p class="small">深蹲歪一边、高低肩、X 型腿：先花 3 分钟做个自查，App 会按结果排一套 10 分钟左右的小课。</p><button class="btn primary" data-open-post>开始自查</button>';
-  else if(red&&!acked()) h+='<div class="red" id="postCardRed"><b>建议先给医生或物理治疗师看</b><span class="small">自查里有需要专业检查的情况，体态小课先不排。</span></div><button class="btn" data-open-post>看自查结果</button>';
-  else if(needBend()) h+='<div class="red" id="postCardBend"><b>高低肩：先做前弯测试</b><span class="small">高低肩可能是脊柱侧弯的征象之一，做完前弯测试再排体态小课。</span></div><button class="btn" data-open-post>去做前弯测试</button>';
+  const red=hasRed(), d=postDue(), done=postWeekN(), lv=redLevel();
+  let h='';
+  if(!post.qTs) h+='<div class="block-head"><h2>体态</h2></div><p class="small">深蹲歪一边、高低肩、X 型腿、脖子前倾：先花 3 分钟做个自查，App 会按结果排一套 12 分钟左右的小课（含脖子）。</p><button class="btn primary" data-open-post>开始自查</button>';
+  else if(red&&!acked()) h+='<div class="block-head"><h2>体态</h2></div><div class="red" id="postCardRed"><b>'+RED_HEAD[lv]+'</b><span class="small">自查里有需要专业检查的情况，体态小课先不排。</span></div><button class="btn" data-open-post>看自查结果</button>';
+  else if(needBend()) h+='<div class="block-head"><h2>体态</h2></div><div class="red" id="postCardBend"><b>高低肩：先做前弯测试</b><span class="small">高低肩可能是脊柱侧弯的征象之一，做完前弯测试再排体态小课。</span></div><button class="btn" data-open-post>去做前弯测试</button>';
   else {
-    h+='<p class="small">体态小课约 '+postMinutes()+' 分钟。App 的安排：每周 3–5 次，可以接在早上的洗髓功之后。</p><div class="row"><button class="btn primary" data-post-go>开始体态小课</button><button class="btn ghost" data-open-post>自查与对比</button></div>';
+    h+='<div class="block-head" id="postMorning"><h2>洗髓功后：体态小课（含脖子）</h2><span class="small muted" id="postWeekN">本周 '+done+' 次</span></div>'+
+      '<p class="small">约 '+postMinutes()+' 分钟、含收下巴。App 的安排：每周 3–5 次，接在早上的洗髓功之后；没做的日子不用补，接着做就好。</p>'+
+      '<div class="row between"><button class="btn primary" data-post-go>开始体态小课</button><label class="small"><input type="checkbox" id="pmDone"'+(postDidToday()?' checked':'')+'> 今天做了</label></div>'+
+      '<button class="btn ghost small" data-open-post>自查与对比</button>';
   }
   if(d!=null&&d>=28) h+='<p class="small" id="postDue"><b>该重新测了：</b>距离上次自查 '+d+' 天。每 3–4 周重测一次，看左右数字有没有变。</p>';
   $("postCard").innerHTML=h;
 }
+document.addEventListener("change",e=>{
+  if(e.target.id!=="pmDone") return;
+  const t=isoDay(Date.now());
+  if(e.target.checked){ if(!postDidToday()){ const now=Date.now(); post.done.push({id:"pd_"+now,ts:now,manual:true}); } }
+  else post.done=post.done.filter(x=>isoDay(x.ts)!==t);
+  savePost(); renderPostCard(); if(!$("tab-post").hidden) renderPostRoutine();
+});
 // ---- 体态页 ----
 function segQ(key,opts,cur,label){ return '<div class="seg" role="group" aria-label="'+esc(label)+'">'+opts.map(o=>'<button type="button" data-pq="'+key+'" data-v="'+o[0]+'" aria-pressed="'+(cur===o[0])+'">'+o[1]+'</button>').join("")+'</div>'; }
 const BEND_SVG=(hump)=>'<svg viewBox="0 0 120 80" aria-hidden="true"><path d="M10 70 Q60 '+(hump?'4':'14')+' 60 20 Q60 '+(hump?'24':'14')+' 110 70 Z" fill="var(--far)" opacity=".35"/>'+
@@ -2260,6 +2312,7 @@ function renderPostQ(){
   h+='<div class="pq"><b>X 型腿（站着）：两膝轻轻并拢时，两脚的内踝碰得到吗？</b><span class="small muted">站直、两膝轻轻碰在一起，不要用力夹（'+srcA("medline")+'：到青春期，大多数人不勉强就能膝盖、脚踝都碰在一起）。</span>'+segQ("gap",[["N","碰得到"],["Y","分开一段"],["?","不确定"]],q.gap,"站着两膝并拢时脚踝分不分开")+
      (q.gap==="Y"?'<label class="small">两脚内踝之间大约几公分（可不填）<input class="inp" id="pqGap" inputmode="decimal" value="'+esc(q.gapCm||"")+'" placeholder="例如 5" style="max-width:120px"></label>':'')+'</div>';
   h+='<div class="pq"><b>X 型腿（动作中）：深蹲、单腿蹲或下台阶时膝盖会往内倒吗？</b><span class="small muted">App 的做法：手机放正前方拍深蹲、单腿蹲（单脚站着慢慢蹲），或单脚站在台阶上、慢慢让另一脚往下踩（下台阶），回放看膝盖有没有往身体中线倒。研究里，正面拍单腿蹲、下台阶的膝盖角度，重测结果算一致，但比不上实验室的精密量法（'+srcA("munro")+'、'+srcA("lally")+'）。</span>'+segQ("valgus",[["N","不会"],["L","左膝"],["R","右膝"],["B","两边"],["?","不确定"]],q.valgus,"动作中膝盖往内倒")+'</div>';
+  h+='<div class="pq" id="pqFhp"><b>脖子前倾：从侧面看，耳朵是不是明显在肩膀前面？</b><span class="small muted">App 的做法：<b>站着</b>拍（坐着量出来的角度明显较小：'+srcA("aafreen")+'）。请家人从正侧面、手机放肩膀高度拍一张，下面「照片对比」选「侧面照」，用蓝色竖线对齐肩膀，看耳朵在线前面多少。研究的量法是耳屏（耳朵前面那块小软骨）和第七颈椎（低头时颈后最凸的骨头）连线跟水平线的角度（颅椎角，'+srcA("gallego")+'）。<b>App 不给正常值</b>：几度以下算前倾，研究之间没有统一门槛（'+srcA("norasteh")+'），只跟自己以前的照片比。</span>'+segQ("fhp",[["Y","是"],["N","不明显"],["?","不确定"]],q.fhp,"脖子前倾")+'</div>';
   h+='<div class="pq"><b>背、髋或膝盖平常或运动时会痛吗？</b>'+segQ("pain",[["no","不会"],["yes","会"]],q.pain,"会不会痛")+'</div>';
   h+='<div class="pq"><b>手脚有没有发麻、刺痛？</b>'+segQ("numb",[["no","没有"],["yes","有"]],q.numb,"有没有发麻")+'</div>';
   $("postQ").innerHTML=h;
@@ -2273,13 +2326,16 @@ function renderPostRed(){
      segQ("bend",[["no","两边一样"],["yes","一边隆起"],["?","还没测"]],r.bend,"前弯测试结果")+'</div>';
   h+='<div class="pq"><b>高低肩、歪、X 型腿最近几个月越来越明显？</b>'+segQ("worse",[["no","没有"],["yes","是"]],r.worse,"越来越明显")+'</div>';
   h+='<div class="pq"><b>X 型腿只有一边，或是成年后才出现？</b>'+segQ("kneeNew",[["no","不是／没有 X 型腿"],["yes","是"]],r.kneeNew,"X 型腿只有一边或成年后出现")+'</div>';
+  const nk=r.nk||{};
+  h+='<div class="pq" id="pqNeckRed"><b>脖子、手臂：有下面任何一项就点（没有就不用点）</b><span class="small muted">依据 '+srcA("nhsCs")+'。前四项＝尽快看医生；后三项＝马上去急诊。</span><div class="row" style="flex-wrap:wrap;gap:6px">'+
+    NECK_RED.map(([k,t,lv])=>'<button type="button" class="btn small'+(nk[k]?' primary':' ghost')+'" data-nk="'+k+'" aria-pressed="'+!!nk[k]+'">'+(lv==="er"?"🚑 ":"")+esc(t)+'</button>').join("")+'</div></div>';
   $("postRed").innerHTML=h;
 }
 function postStatusHTML(){
   const L=redList(), q=post.q, sd=postSides();
   if(!post.qTs) return '<div class="note">先回答下面的问卷，再看结果。</div>';
   if(L.length){
-    return '<div class="red" id="postRedMsg"><b>建议先给医生或物理治疗师看</b><ul class="list small">'+L.map(x=>'<li><b>'+esc(x[0])+'</b>：'+x[1]+'</li>').join("")+'</ul>'+
+    return '<div class="red" id="postRedMsg"><b>'+RED_HEAD[redLevel()]+'</b><ul class="list small">'+L.map(x=>'<li><b>'+esc(x[0])+'</b>：'+x[1]+'</li>').join("")+'</ul>'+
       '<span class="small">体态小课是一般的肌力与活动度练习，<b>不是治疗</b>。看过之后，医生或物理治疗师说可以运动，再回来练。</span>'+
       (acked()?'<span class="small">你已确认看过、可以运动（'+fmtDate(post.ack)+'）。<button class="btn ghost small" data-post-unack>取消确认</button></span>':'<button class="btn" data-post-ack>医生／物理治疗师看过，说可以运动</button>')+'</div>';
   }
@@ -2288,6 +2344,7 @@ function postStatusHTML(){
   if(q.shoulder==="L"||q.shoulder==="R") out.push('<li><b>'+SIDE_ZH[q.shoulder]+'肩较高</b>：高低肩可能是脊柱侧弯的征象之一（'+srcA("aaos")+'），所以先做上面的前弯测试。两边一样、不痛的话，<b>App 的安排</b>是先当成一般体态来练；仍可找医生确认。研究显示肌力训练能改善胸椎、颈部的姿势指标，单纯拉伸不能（'+srcA("warneke")+'）。专门针对「高低肩」的运动研究我们没找到，所以小课不承诺把肩膀练平。</li>');
   if(q.gap==="Y") out.push('<li><b>站着两膝并拢、脚踝分开</b>：可能是骨头角度（膝外翻）。'+srcA("hssKnee")+' 写到：成人膝盖内侧的韧带可能被拉长、让变形更明显；非手术的处理是控制体重、保持体能、少做高冲击运动；列出的矫正方式是截骨手术。没找到运动能改骨头角度的研究；也有健康网站写运动能帮膝盖「重新对齐」，但没有附研究（'+srcA("healthline")+'）。有研究支持能练的是下面那项：动作中膝盖往内倒。</li>');
   if(q.valgus&&q.valgus!=="N"&&q.valgus!=="?") out.push('<li><b>动作中膝盖往内倒</b>：有研究显示可能练得改善（研究对象是跑者）。一项随机对照试验（40 位有胫骨内侧疼痛的跑者），在一般物理治疗之外加练髋外展肌 8 周后，下蹲时膝内倒角度变小（'+srcA("lashien")+'）；35 篇研究的系统综述：膝内倒明显的人，下肢肌力训练配合膝盖位置控制练习可能减少膝内倒（'+srcA("comert")+'）。<b>App 的安排</b>：小课多加一组蚌式；训练时深蹲类动作会提醒「膝盖对准第二根脚趾」。一项研究用楔形板模拟脚踝变紧，深蹲时膝盖就更往内倒（'+srcA("macrum")+'）；另一项落地研究没发现脚踝活动度跟膝内倒有关联（'+srcA("fong")+'）。App 的推论：所以小课也练推膝碰墙。</li>');
+  if(q.fhp==="Y") out.push('<li id="postFhpRes"><b>脖子前倾</b>：运动能改善颈椎角度，7 篇随机试验的综述说证据强（'+srcA("sheikh")+'）；健康人的研究里，<b>肌力训练</b>对胸椎、颈部姿势有效，<b>单纯拉伸不改变姿势</b>（'+srcA("warneke")+'）。所以小课里的收下巴是肌力练习；泡沫轴胸椎伸展只算活动度，不保证改善前倾（App 的推论）。前倾和颈痛：成人颈痛的人前倾较明显，但那是横断面研究（'+srcA("mahmoud")+'）；追踪研究没发现坐姿或滑手机的低头角度会导致日后颈痛（'+srcA("richards21")+'、'+srcA("correia")+'）——<b>常一起出现，但没证明前倾会造成颈痛</b>。侧面照前后差 5° 以内可能只是量的误差（'+srcA("gallego")+'）。</li>');
   if(!out.length) out.push('<li>问卷没有发现明显的左右差。体态小课照样可以练；每 3–4 周再测一次（'+srcA("pabau")+'）。</li>');
   return '<div class="card"><h2>结果</h2><ul class="list small">'+out.join("")+'</ul></div>';
 }
@@ -2305,7 +2362,12 @@ function renderPostTests(){
   h+='<p class="small"><b>推膝碰墙（脚踝）</b>：面墙弓步，脚跟踩地、膝盖往前碰墙，碰得到就把脚往后挪 1 公分再试，记下「碰得到墙、脚跟又没抬起」时大脚趾离墙最远几公分；两边都量（'+srcA("pabau")+'、'+srcA("prehab")+'）。</p>';
   h+='<p class="small"><b>侧桥撑多久</b>：照小课的侧桥姿势尽量撑住，髋往下掉就停，记秒数；两边都测（这是 '+srcA("mcgill")+' 用的耐力测试，重测结果很一致）。</p>';
   h+='<div class="form-row"><label>推膝碰墙 左 cm<input class="inp" id="ptKL" inputmode="decimal"></label><label>右 cm<input class="inp" id="ptKR" inputmode="decimal"></label><label>&nbsp;</label></div>';
-  h+='<div class="form-row"><label>侧桥 左侧在下 秒<input class="inp" id="ptSL" inputmode="numeric"></label><label>右侧在下 秒<input class="inp" id="ptSR" inputmode="numeric"></label><label>&nbsp;<button class="btn primary" id="ptSave" style="height:42px">记一笔</button></label></div><p class="small muted" id="ptMsg"></p>';
+  h+='<div class="form-row"><label>侧桥 左侧在下 秒<input class="inp" id="ptSL" inputmode="numeric"></label><label>右侧在下 秒<input class="inp" id="ptSR" inputmode="numeric"></label><label>颅椎角 °（可不填）<input class="inp" id="ptCVA" inputmode="decimal"></label></div>'+
+    '<div class="row"><button class="btn primary" id="ptSave">记一笔</button></div><p class="small muted" id="ptMsg"></p>';
+  h+='<p class="small"><b>颅椎角（脖子前倾，可选）</b>：用侧面照量耳屏—第七颈椎连线跟水平线的角度（手机量角 App 或照片上画线都行）。研究里同一个人量两次，最小可侦测变化约 5°（'+srcA("gallego")+'）：<b>前后差 5° 以内当成误差</b>。研究是治疗师贴点量的，自己拍只当参考（App 的推论）。</p>';
+  const cv=rows.filter(r=>num(r.cva)!=null);
+  if(cv.length){ const a=cv[cv.length-1], b=cv.length>1?cv[cv.length-2]:null, df=b?r1(num(a.cva)-num(b.cva)):null;
+    h+='<p class="small" id="ptCvaMsg">颅椎角最近一次 '+esc(a.cva)+'°'+(b?'，比上一次 '+(df>0?'+':'')+df+'°：'+(Math.abs(df)<5?'5° 以内，可能只是量的误差':'超过 5°，可能是真的变了（仍只是自拍参考）'):'')+'。</p>'; }
   if(t){ const sd=postSides();
     h+='<p class="small">最近一次（'+fmtDate(t.ts)+'）：推膝碰墙 左 '+esc(t.ktwL||"–")+' / 右 '+esc(t.ktwR||"–")+' cm；侧桥 左 '+esc(t.spL||"–")+' / 右 '+esc(t.spR||"–")+' 秒。'+
       (sd.ankle?'脚踝'+SIDE_ZH[sd.ankle]+'边较紧（左右差超过 2 公分，会当成一个发现：'+srcA("pabau")+'），App 的安排：小课多做一次。':'')+(sd.core?'侧桥'+SIDE_ZH[sd.core]+'侧较短（App 用差 10% 以上来判断），App 的安排：小课多一组。':'')+'</p>';
@@ -2322,32 +2384,34 @@ async function photoAll(){ const d=await pdb(); return new Promise((res,rej)=>{ 
 async function photoPut(rec){ const d=await pdb(); return new Promise((res,rej)=>{ const t=d.transaction("photos","readwrite"); t.objectStore("photos").put(rec); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); }
 async function photoDel(id){ const d=await pdb(); return new Promise((res,rej)=>{ const t=d.transaction("photos","readwrite"); t.objectStore("photos").delete(id); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); }
 function shrink(file){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>{ const k=Math.min(1,900/Math.max(im.width,im.height)), c=document.createElement("canvas"); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); c.getContext("2d").drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(u); res(c.toDataURL("image/jpeg",0.82)); }; im.onerror=()=>{ URL.revokeObjectURL(u); rej(new Error("读不了这张图")); }; im.src=u; }); }
-const pv={a:null,b:null,grid:true,hl:40};
+const pv={a:null,b:null,grid:true,hl:40,vl:50};
 async function renderPostPhotos(){
   let list=[]; try{ list=await photoAll(); }catch(e){}
   const days=[...new Set(list.map(p=>isoDay(p.ts)))];
   if(!days.includes(pv.a)) pv.a=days[0]||null; if(!days.includes(pv.b)) pv.b=days[days.length-1]||null;
-  let h='<h2>4. 照片对比（可选）</h2><p class="small">App 的做法：穿贴身衣服，站在同一个位置、同样距离，手机放胸口高度、拍正面和背面各一张。照片只存在这台手机的浏览器里，也会进备份。</p>';
-  h+='<div class="row"><label class="btn" for="ppFront" style="cursor:pointer">拍／选正面照</label><input type="file" id="ppFront" accept="image/*" capture="environment" hidden><label class="btn" for="ppBack" style="cursor:pointer">拍／选背面照</label><input type="file" id="ppBack" accept="image/*" capture="environment" hidden></div><p class="small muted" id="ppMsg"></p>';
+  let h='<h2>4. 照片对比（可选）</h2><p class="small">App 的做法：穿贴身衣服，站在同一个位置、同样距离，手机放胸口高度、拍正面和背面各一张；看脖子前倾就加拍<b>侧面</b>（站着、侧对手机）。照片只存在这台手机的浏览器里，也会进备份。</p>';
+  h+='<div class="row"><label class="btn" for="ppFront" style="cursor:pointer">拍／选正面照</label><input type="file" id="ppFront" accept="image/*" capture="environment" hidden><label class="btn" for="ppBack" style="cursor:pointer">拍／选背面照</label><input type="file" id="ppBack" accept="image/*" capture="environment" hidden><label class="btn" for="ppSide" style="cursor:pointer">拍／选侧面照</label><input type="file" id="ppSide" accept="image/*" capture="environment" hidden></div><p class="small muted" id="ppMsg"></p>';
   if(list.length){
     const opt=sel=>days.map(d=>'<option value="'+d+'"'+(d===sel?' selected':'')+'>'+d+'</option>').join("");
     h+='<div class="row between"><label class="small">前<select class="inp" id="ppA" style="font-size:14px">'+opt(pv.a)+'</select></label><label class="small">后<select class="inp" id="ppB" style="font-size:14px">'+opt(pv.b)+'</select></label></div>';
     h+='<div class="row between"><label class="small"><input type="checkbox" id="ppGrid"'+(pv.grid?' checked':'')+'> 格线</label><label class="small" style="flex:1">红色水平线（对齐肩膀／髋）<input type="range" id="ppHl" min="5" max="95" value="'+pv.hl+'" style="width:100%"></label></div>';
-    for(const view of ["front","back"]){
+    if(list.some(p=>p.view==="side")) h+='<label class="small" style="display:block">蓝色竖线（侧面照：对齐肩膀，看耳朵在线前面多少）<input type="range" id="ppVl" min="5" max="95" value="'+pv.vl+'" style="width:100%"></label>';
+    const VZ={front:"正面",back:"背面",side:"侧面"};
+    for(const view of ["front","back","side"]){
       const pick=d=>list.filter(p=>p.view===view&&isoDay(p.ts)===d).pop();
       const A=pick(pv.a), B=pick(pv.b);
       if(!A&&!B) continue;
-      const cell=(p,d)=>'<div class="pph" data-ppid="'+(p?p.id:"")+'">'+(p?'<img src="'+p.data+'" alt="'+(view==="front"?"正面":"背面")+' '+d+'">':'<span class="cap">这天没拍</span>')+(pv.grid?'<div class="grid"></div><div class="mid"></div>':'')+'<div class="hl" style="top:'+pv.hl+'%"></div><span class="cap">'+(view==="front"?"正面":"背面")+' '+esc(d||"")+'</span></div>';
+      const cell=(p,d)=>'<div class="pph" data-ppid="'+(p?p.id:"")+'">'+(p?'<img src="'+p.data+'" alt="'+VZ[view]+' '+d+'">':'<span class="cap">这天没拍</span>')+(pv.grid?'<div class="grid"></div>'+(view==="side"?'':'<div class="mid"></div>'):'')+(view==="side"?'<div class="vl" style="left:'+pv.vl+'%"></div>':'<div class="hl" style="top:'+pv.hl+'%"></div>')+'<span class="cap">'+VZ[view]+' '+esc(d||"")+'</span></div>';
       h+='<div class="pcmp" id="ppCmp-'+view+'">'+cell(A,pv.a)+cell(B,pv.b)+'</div>';
     }
-    h+='<details class="small"><summary>管理照片（'+list.length+' 张）</summary><ul class="prt">'+list.map(p=>'<li><span>'+isoDay(p.ts)+' '+(p.view==="front"?"正面":"背面")+'</span><button class="btn ghost small" data-ppdel="'+p.id+'">删</button></li>').join("")+'</ul></details>';
+    h+='<details class="small"><summary>管理照片（'+list.length+' 张）</summary><ul class="prt">'+list.map(p=>'<li><span>'+isoDay(p.ts)+' '+(VZ[p.view]||"")+'</span><button class="btn ghost small" data-ppdel="'+p.id+'">删</button></li>').join("")+'</ul></details>';
     h+='<p class="src">单纯拉伸对姿势没有效果，肌力训练对胸椎、颈部姿势有改善、对腰与骨盆没有明显效果（'+srcA("warneke")+'）。照片多久看得出变化，我们没找到研究；照片看不出变化，App 的预期是这也正常。</p>';
   }
   $("postPhotos").innerHTML=h;
 }
 async function addPhoto(file,view){
   if(!file) return;
-  try{ const data=await shrink(file), ts=Date.now(); await photoPut({id:"pp_"+ts+"_"+view,ts,view,data}); pv.b=isoDay(ts); $("ppMsg")&&($("ppMsg").textContent="已存（"+(view==="front"?"正面":"背面")+"）。"); }
+  try{ const data=await shrink(file), ts=Date.now(); await photoPut({id:"pp_"+ts+"_"+view,ts,view,data}); pv.b=isoDay(ts); $("ppMsg")&&($("ppMsg").textContent="已存（"+({front:"正面",back:"背面",side:"侧面"}[view])+"）。"); }
   catch(e){ const m=$("ppMsg"); if(m) m.textContent="存不了这张照片："+e.message; }
   renderPostPhotos();
 }
@@ -2355,21 +2419,41 @@ function renderPostRoutine(){
   const red=postBlocked(), st=postSteps().filter(s=>s.kind==="timed"), sd=postSides();
   let h='<h2>5. 体态小课</h2>';
   if(red){ h+=needBend()&&!(hasRed()&&!acked())?'<p class="small" id="postNeedBend">你填了高低肩：高低肩可能是脊柱侧弯的征象之一（'+srcA("aaos")+'）。App 的保守判断：先做上面的<b>前弯测试</b>，再排小课。</p>':'<p class="small">有需要先看医生的情况，先不排小课（见上方）。</p>'; $("postRoutine").innerHTML=h; return; }
-  h+='<p class="small">约 '+postMinutes()+' 分钟、8 个动作，用全屏跟练带你做（计时、语音、点图放大、换边提醒都跟力量训练一样）。App 的安排：每周 3–5 次，可以接在早上的洗髓功之后；研究发现拉伸做多做少，对关节活动度的进步影响不大（'+srcA("konrad")+'）。</p>';
+  h+='<p class="small">约 '+postMinutes()+' 分钟、'+Object.keys(PMOVE).length+' 个动作（含收下巴），用全屏跟练带你做（计时、语音、点图放大、换边提醒都跟力量训练一样）。App 的安排：每周 3–5 次，可以接在早上的洗髓功之后；研究发现拉伸做多做少，对关节活动度的进步影响不大（'+srcA("konrad")+'）。</p>';
   const notes=[]; if(sd.leg) notes.push("分腿蹲 "+SIDE_ZH[sd.leg]+"脚先做、多一组"); if(sd.core) notes.push("侧桥 "+SIDE_ZH[sd.core]+"侧先做、多一组"); if(sd.ankle) notes.push("推膝碰墙 "+SIDE_ZH[sd.ankle]+"脚多一次"); if(sd.knee) notes.push("蚌式 "+(sd.knee==="B"?"两边":SIDE_ZH[sd.knee]+"腿")+"多一组");
   if(notes.length) h+='<p class="small" id="postAdj"><b>按你的自查调整（App 的安排）：</b>'+notes.join("；")+'。</p>';
-  h+='<p class="small muted">下面的次数、组数和「多一组」都是 App 的安排；拉伸每侧 30 秒、侧桥 20–30 秒、提重踏步每侧 20–30 秒有出处（见各动作要点的来源）。</p><ol class="steps" id="postList">'+st.map(s=>'<li><span>'+esc(s.name)+' · '+s.sec+' 秒'+(s.extra?' <span class="pill">多一组</span>':'')+'</span></li>').join("")+'</ol>';
+  h+='<p class="small muted">下面的次数、组数和「多一组」都是 App 的安排；拉伸每侧 30 秒、侧桥 20–30 秒、提重踏步每侧 20–30 秒有出处（见各动作要点的来源）。收下巴的次数与停留秒数参照 '+srcA("physi")+'（每次 10–15 下、每下停 10–15 秒，每天至少 2 次——小课里做 1 次，另一次白天自己做是 App 的安排），NHS 医院的单张则留给治疗师填（'+srcA("cuh")+'）。泡沫轴的做法依据 '+srcA("physiT")+'、'+srcA("rehabhero")+'。</p><ol class="steps" id="postList">'+st.map(s=>'<li><span>'+esc(s.name)+' · '+s.sec+' 秒'+(s.extra?' <span class="pill">多一组</span>':'')+'</span></li>').join("")+'</ol>';
   h+='<div class="stack" style="gap:10px">'+Object.keys(PMOVE).map(k=>{ const m=PMOVE[k], ph=photoOf(m.en,m.anim,m.hold||null); return '<div class="ex"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?photoHTML(ph):'<canvas class="thumb" data-anim="'+m.anim+'" data-hold="'+(m.hold||"")+'"></canvas>')+'<div><h3>'+esc(m.name)+'</h3></div></div><details><summary>动作要点</summary><p>'+esc(m.cue)+'</p></details></div>'; }).join("")+'</div>';
   h+='<button class="btn primary wide" data-post-go>开始体态小课</button>';
   if(post.done.length) h+='<p class="small muted">做过 '+post.done.length+' 次，最近一次 '+fmtDate(post.done[post.done.length-1].ts)+'。</p>';
   $("postRoutine").innerHTML=h;
   $("postRoutine").querySelectorAll("canvas[data-anim]").forEach(c=>attach(c,c.dataset.anim,c.dataset.hold||null));
 }
+// 每日小习惯（2026-11-19）：✅＝官方指引原文；⚠️＝证据不一／有限；App 的建议＝没找到来源
+const HABITS=[
+  ["ok","久坐要打断、多起来动","NHS：减少坐着或躺着的时间，长时间不动要用一些活动打断（"+srcA("nhsAct")+"）。"],
+  ["ok","屏幕工作：短而频繁的休息","比长而少的好，例如每小时休息 5–10 分钟比每 2 小时休息 20 分钟好；休息时起身走动，或至少伸展、换个姿势（"+srcA("hseBreak")+"）。"],
+  ["ok","屏幕顶端与眼睛同高或略低、约一臂远","笔电长时间用：外接键盘滑鼠、把屏幕垫高（"+srcA("osha")+"、"+srcA("hsePost")+"）。"],
+  ["mix","屏幕调高能不能预防颈痛","Cochrane 综述里，这类人体工学调整没找到效果（"+srcA("hoe")+"）：调高是为了舒服，不保证防痛。"],
+  ["ok","别长时间维持同一个姿势","NHS：脖子不要长时间停在同一个位置（例如坐在桌前）（"+srcA("nhsNeck")+"）；常换姿势（"+srcA("cuh")+"）。"],
+  ["ok","用电脑、开车时别把下巴往前伸、别圆肩",srcA("cuh")+"。"],
+  ["ok","低而硬的枕头、别趴睡","NHS 颈痛页的建议（"+srcA("nhsNeck")+"），属指引，不是研究结论。"],
+  ["mix","每天多活动","追踪研究里，活动量不足是颈痛的风险因子（"+srcA("correia")+"）；横断面研究看到活动量高的颈痛者前倾较少（"+srcA("tatsios")+"）。"],
+  ["app","每 30 分钟起来动一下","没找到用「30 分钟」的官方原文；官方只说要打断久坐、休息要短而频繁。"],
+  ["app","手机举高一点、少长时间低头","没找到「手机举高」能减少颈痛或前倾的研究；追踪研究里，滑手机的低头角度本身不是颈痛的风险因子（"+srcA("correia")+"）。"],
+  ["app","重的包用双肩背，或两手分提、左右轮流","没找到「左右轮流」的研究。"],
+];
+const HTAG={ok:"✅ 官方建议",mix:"⚠️ 证据不一",app:"App 的建议"};
+function renderPostHabits(){
+  $("postHabits").innerHTML='<h2>每日小习惯</h2><p class="small muted">标签说明：✅＝官方指引原文；⚠️＝研究结果不一或有限；「App 的建议」＝没找到来源，只是常识性做法。</p><div class="stack" style="gap:8px" id="habitList">'+
+    HABITS.map(([k,t,d])=>'<div class="habit"><span class="tag '+k+'">'+HTAG[k]+'</span><span class="small"><b>'+esc(t)+'</b>：'+d+'</span></div>').join("")+'</div>';
+}
 const POST_WHY='<ul class="list small">'+
   '<li><b>关节活动度：规律拉伸能增加。</b>77 篇研究的汇总：拉伸训练能增加关节活动度，效果中等；静态拉伸（和 PNF 拉伸）增加得比弹震式／动态拉伸多（'+srcA("konrad")+'）。负重的肌力训练也能增加活动度（'+srcA("alizadeh")+'）。</li>'+
   '<li><b>静态姿势（照片）：不一定变。</b>23 篇研究的系统综述：单纯拉伸对姿势没有影响；肌力训练对胸椎、颈部姿势有改善，对腰椎、骨盆没有明显效果（'+srcA("warneke")+'）。</li>'+
   '<li><b>左右差：单侧训练有帮助。</b>一项研究里只做单侧动作的组，左右腿的差距变小，做双侧动作的组没有（'+srcA("gonzalo")+'，对象是年轻篮球员）。</li>'+
   '<li><b>动作中膝盖往内倒：有研究显示可能练得改善（研究对象是跑者）。</b>一项随机对照试验里，跑者加练髋外展肌 8 周，下蹲时膝内倒角度变小（'+srcA("lashien")+'）。<b>站着的 X 型腿（可能是骨头角度）</b>：没找到运动能改骨头角度的研究；'+srcA("hssKnee")+' 列出的矫正方式是截骨手术。</li>'+
+  '<li><b>脖子前倾：肌力训练有效，单纯拉伸不改姿势。</b>运动改善颈椎角度证据强（'+srcA("sheikh")+'）；拉伸不改变姿势、肌力训练对颈胸椎有效（'+srcA("warneke")+'）。前倾和颈痛常一起出现，但追踪研究没证明前倾会造成颈痛（'+srcA("mahmoud")+'、'+srcA("richards21")+'、'+srcA("correia")+'）。</li>'+
   '<li><b>脊柱侧弯：</b>背部运动能不能改善侧弯「还不清楚」，但一般运动对健康有好处、不应该避免，除非医生另有建议（'+srcA("nhsScol")+'）。</li>'+
   '<li><b>多久重测：</b>每 3–4 周重测一次推膝碰墙（'+srcA("pabau")+'）；数字差 1.6–1.9 公分以内可能只是误差（'+srcA("powden")+'）。</li></ul>';
 function renderPost(){
@@ -2377,7 +2461,7 @@ function renderPost(){
   if($("tab-post").hidden) return;
   const d=postDue(); $("postDays").textContent=d==null?"":(d>=28?"距离上次自查 "+d+" 天 · 该重测了":"上次自查："+fmtDate(postLast()));
   $("postStatus").innerHTML=postStatusHTML();
-  renderPostQ(); renderPostRed(); renderPostTests(); renderPostRoutine(); renderPostPhotos();
+  renderPostQ(); renderPostRed(); renderPostTests(); renderPostRoutine(); renderPostPhotos(); renderPostHabits();
   $("postWhyBody").innerHTML=POST_WHY;
 }
 let postFrom="train";
@@ -2393,22 +2477,27 @@ $("tab-post").addEventListener("click",async e=>{
   if(b){ const k=b.dataset.pq, v=b.dataset.v, inRed=!!b.closest("#postRed"), before=redSig().join("|"); (inRed?post.red:post.q)[k]=v; post.qTs=Date.now();
     if(redSig().join("|")!==before){ post.ack=0; post.ackFor=[]; } // 红旗清单一变，之前的「医生看过」就作废
     savePost(); renderPost(); return; }
+  const nb=e.target.closest("[data-nk]");
+  if(nb){ const before=redSig().join("|"); post.red.nk=Object.assign({},post.red.nk); post.red.nk[nb.dataset.nk]=!post.red.nk[nb.dataset.nk]; if(!post.red.nk[nb.dataset.nk]) delete post.red.nk[nb.dataset.nk]; post.qTs=post.qTs||Date.now();
+    if(redSig().join("|")!==before){ post.ack=0; post.ackFor=[]; } savePost(); renderPost(); return; }
   if(e.target.closest("[data-post-ack]")){ post.ack=Date.now(); post.ackFor=redSig(); savePost(); renderPost(); return; }
   if(e.target.closest("[data-post-unack]")){ post.ack=0; post.ackFor=[]; savePost(); renderPost(); return; }
   const dl=e.target.closest("[data-ptdel]"); if(dl){ post.tests=post.tests.filter(t=>t.id!==dl.dataset.ptdel); savePost(); renderPost(); return; }
   const pd=e.target.closest("[data-ppdel]"); if(pd){ await photoDel(pd.dataset.ppdel); renderPostPhotos(); return; }
   if(e.target.id==="ptSave"){
-    const g=id=>{ const v=num($(id).value); return v!=null&&v>=0&&v<1000?String(r1(v)):""; }, t={id:"pt_"+Date.now(),ts:Date.now(),ktwL:g("ptKL"),ktwR:g("ptKR"),spL:g("ptSL"),spR:g("ptSR")};
-    if(!t.ktwL&&!t.ktwR&&!t.spL&&!t.spR){ $("ptMsg").textContent="至少填一个数字。"; return; }
+    const g=id=>{ const v=num($(id).value); return v!=null&&v>=0&&v<1000?String(r1(v)):""; }, t={id:"pt_"+Date.now(),ts:Date.now(),ktwL:g("ptKL"),ktwR:g("ptKR"),spL:g("ptSL"),spR:g("ptSR"),cva:g("ptCVA")};
+    if(!t.ktwL&&!t.ktwR&&!t.spL&&!t.spR&&!t.cva){ $("ptMsg").textContent="至少填一个数字。"; return; }
     post.tests.push(t); savePost(); renderPost(); return; }
 });
 $("tab-post").addEventListener("input",e=>{
   if(e.target.id==="pqGap"){ post.q.gapCm=e.target.value; savePost(); }
   if(e.target.id==="ppHl"){ pv.hl=+e.target.value; document.querySelectorAll("#postPhotos .hl").forEach(x=>x.style.top=pv.hl+"%"); }
+  if(e.target.id==="ppVl"){ pv.vl=+e.target.value; document.querySelectorAll("#postPhotos .vl").forEach(x=>x.style.left=pv.vl+"%"); }
 });
 $("tab-post").addEventListener("change",e=>{
   if(e.target.id==="ppFront") addPhoto(e.target.files[0],"front");
   if(e.target.id==="ppBack") addPhoto(e.target.files[0],"back");
+  if(e.target.id==="ppSide") addPhoto(e.target.files[0],"side");
   if(e.target.id==="ppA"){ pv.a=e.target.value; renderPostPhotos(); }
   if(e.target.id==="ppB"){ pv.b=e.target.value; renderPostPhotos(); }
   if(e.target.id==="ppGrid"){ pv.grid=e.target.checked; renderPostPhotos(); }
@@ -2664,6 +2753,10 @@ let rz=null; addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=
 function renderAll(){ renderHeader(); renderWeek(); renderPicker(); renderWorkout(); renderHist(); renderGarmin(); renderCfg(); renderSwim(); renderPost(); renderDiet(); renderQgCfg(); if(tab==="cardio") renderCardio(); if(tab==="prog") renderProg(); }
 setEquip(cfg.equip);
 renderAll();
+// 从洗髓功 App 完成画面跳过来（?go=posture 或 #posture）：能做就直接开体态小课，被红旗挡住或还没自查就开体态页
+(function(){ let go=false; try{ go=new URLSearchParams(location.search).get("go")==="posture"||location.hash==="#posture"; }catch(e){}
+  if(!go) return; try{ history.replaceState(null,"",location.pathname); }catch(e){}
+  if(post.qTs&&!postBlocked()) openPosture(); else openPost(); })();
 if("serviceWorker" in navigator && location.protocol!=="file:"){ addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
 // App 实际用到的「动作＋拿不拿哑铃」组合（渲染写实动图的脚本与自检都从这里拿，清单只有一份）
 function animCombos(){
@@ -2679,7 +2772,7 @@ function animCombos(){
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE}}; // 给自检脚本用
+window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>

@@ -2150,5 +2150,56 @@
    "https://www.rehabhero.ca/exercise/suitcase-carry"
   ],
   "note": "2026-11-18 经 CI 读网页通道（web-lookup.yml，run 44246498844）读原文：Harvard Health（物理治疗师 L'Italien）「you hold a weight in only one hand while your other hand is free」「With all the weight on one side, it forces you to work harder to maintain a neutral position so you don't lean while you walk」；kettlebellsworkouts「Marching suitcase hold (stationary core drill)」「While holding the kettlebell in one hand, march slowly in place」「Chest up, shoulders back, core braced. Don't lean toward the weight」「You should look symmetrical from the front」「Keep shoulders level」「Choose a kettlebell you can carry with perfect posture for 20–30 seconds per side」；Rehab Hero「walk upright without leaning towards or away from the weight」。"
+ },
+ {
+  "file": "chintuck",
+  "anim": "chintuck",
+  "type": "strength",
+  "title_zh": "收下巴",
+  "reps": "10–15 次×停10–15秒",
+  "cue_zh": "坐直、下巴往内收，头往后平移、不低头",
+  "primary": [
+   "neck_flex"
+  ],
+  "secondary": [
+   "upper_trap"
+  ],
+  "strip": [],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "坐在凳子上、上身直、两手放大腿上；头往后平移（2D 用 hx 平移头，3D 颈往后、头往前点一点让视线保持水平）。纯侧面看。",
+  "form_audit": "新动作（2026-11-19 脖子前倾）。部位小图没有「颈」这一格，所以不显示部位条（strip 空）。",
+  "sources": [
+   "https://www.cuh.nhs.uk/patient-information/neck-exercises-and-advice/",
+   "https://www.physitrack.com/fi/exercise-library/how-to-perform-the-chin-tuck-exercise-exercise"
+  ],
+  "note": "2026-11-19 经 CI 读网页通道（web-lookup.yml，run 44453811715 读 CUH、run 44453926108 读 Physitrack）读原文：CUH「Sitting straight-backed, pull your chin in, keeping your neck and back straight (not tipping your head forwards). Hold at the end position and feel the stretch in your neck. Repeat ___ times.」（次数留给治疗师填）；Physitrack「Sit up straight and slightly tuck your chin in.」「You can assist the movement direction by slightly pressing your chin backward with your fingers」「The exercise is simple and can be done standing, sitting, or lying down.」「at least twice a day, for 10-15 repetitions each time」「The recommended amount of time to hold the chin tuck position is 10-15 seconds.」（Physitrack 是商业平台 FAQ，非研究；App 标明出处）。「头晕就停」借自 CUH 颈部伸展那一项「Stop this exercise if dizziness occurs.」，App 标为保守判断。"
+ },
+ {
+  "file": "thoracic",
+  "anim": "thoracic",
+  "type": "mobility",
+  "title_zh": "泡沫轴胸椎伸展",
+  "reps": "约1分钟",
+  "cue_zh": "吐气时上背往轴上伸，下背不拱、骨盆贴地",
+  "primary": [
+   "mid_back"
+  ],
+  "secondary": [
+   "pec"
+  ],
+  "strip": [
+   "背",
+   "胸"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "仰躺，泡沫轴横在上背下（渲染台第 0 格定位），膝弯脚踩地，双手交叉胸前；动作：上背往后伸、头往地板方向，回来。",
+  "form_audit": "新动作（2026-11-19 脖子前倾）。只是活动度动作：研究笔记写明没有研究证明它改善头前伸（Warneke 2024：拉伸不改姿势）。",
+  "sources": [
+   "https://ie.physitrack.com/home-exercise-video/thoracic-extension-using-a-foam-roller",
+   "https://www.rehabhero.ca/exercise/foam-roller-thoracic-extension"
+  ],
+  "note": "2026-11-19 经 CI 读网页通道（web-lookup.yml，run 44453815447＋44453926108）读原文：Physitrack「Lie on your back with a foam roller placed horizontally under your upper back and hands crossed on your chest.」「Straighten your thoracic spine (upper back) against the roller when exhaling. Return to the starting position when inhaling.」「Go through the whole thoracic spine vertebrae-by-vertebrae by moving the roll up/down the upper back.」「Keep your chin tucked in.」「Do not let your lower back arch.」；Rehab Hero「Lay on a foam roller placed below your upper back. Keep the pelvis on the floor as your extend your upper back over the foam roller and reach overhead with your arms.」（App 用 Physitrack 的双手交叉胸前版）。时间（约 1 分钟）两页都没写，是 App 的安排。"
  }
 ]

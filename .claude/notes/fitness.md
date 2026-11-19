@@ -138,6 +138,21 @@
     BMI <25 或没身高：大字「最多约 500 kcal」（App 的保守判断），就算存的 mode 是 range 也不显示区间。
     分餐提示：2 餐且每餐 >40 g 才叫人改 3 餐；3 餐每餐 >40 g 改建议加蛋白小点心。洗髓功大字＝净 kcal。
     自检第 17 段手算 72/1.75²＝23.5、72/1.65²＝26.4，正常 BMI 绝不出现 1500。
+- **脖子前倾＋每日小习惯＋洗髓功后接小课（2026-11-19，用户：脖子前倾、每天早上 40 分钟洗髓功）**：查证在 `.claude/notes/fitness-posture-research.md`
+  最后一节「头前伸」（Sheikhhoseini 正确 PMID 30107937，不是 29776552）。
+  - 问卷 `q.fhp`（`#pqFhp`）：侧面照、站着拍、**不给正常值**、只跟自己比；左右测试多一栏颅椎角 `tests[].cva`，跟上一次差 <5° 当误差（Gallego MDC）。
+    照片多「侧面照」（`view:"side"`），侧面那组画蓝色竖线 `.vl`（`pv.vl`、`#ppVl`）。
+  - 脖子红旗 `NECK_RED`（NHS 颈椎病原文）：存 `post.red.nk={key:true}`；`redList()` 第三栏是等级 `urgent`／`er`，`redLevel()`＋`RED_HEAD` 决定标题
+    （马上去急诊 > 尽快看医生 > 建议先给医生看）。**不写英国的 111／999**（用户在东南亚）。一样挡小课、改红旗清单会让「医生看过」作废。
+  - 小课 10 个动作、约 12 分钟：多了泡沫轴胸椎伸展 `thoracic`（活动度，**不能写成改善前倾**）与收下巴 `chintuck`（120 秒＝10 次×停 10 秒，剂量出处 Physitrack，CUH 留给治疗师填）。
+  - 训练页 `#postCard` 在能做小课时就是早上卡片：「洗髓功后：体态小课（含脖子）」、`#pmDone`「今天做了」打勾（写进 `post.done`，`manual:true`；取消＝删掉今天的），本周次数 `#postWeekN`；没做的日子不显示失败。
+  - 深连结：`fitness/?go=posture` 或 `#posture` → 能做就 `openPosture()`，有红旗／没自查就 `openPost()`，然后 `history.replaceState` 清掉参数。
+    洗髓功 `xisui/index.html` 完成画面 `#nextPosture`（繁体「接著做體態小課」）连过来。
+  - 「每日小习惯」卡 `#postHabits`（`HABITS`：ok＝✅ 官方原文、mix＝⚠️ 证据不一、app＝App 的建议）；「每 30 分钟」「手机举高」「包包轮流」没来源，只能标 App 的建议。
+    **不准写低头族负重数字（60 磅／27 磅）**。
+  - ANIM 引擎多一个关键帧参数 `hx`（头前后平移，2D／anim3d 都跟着 `hd` 走）；渲染台 `OV.chintuck`（颈往后、头往前点，视线保持水平）、`OV.thoracic`（上背伸展＋双手交叉胸前）、
+    器材 `roller`（2D／anim3d／渲染台三处，渲染台第 0 格定在 Spine2→Neck 40% 处）、肌肉代码 `neck_flex`。
+  - 自检：check-fitness 第 18 段。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 

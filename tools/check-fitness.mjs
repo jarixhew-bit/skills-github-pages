@@ -28,6 +28,8 @@
  *      有 webp 的动作不准退回 3D／简笔画布（2026-11-10 用户抓到燃脂收尾还是旧模型）。
  *  16. 体态：问卷存得住／进备份；红旗挡住小课（红旗一变确认作废；高低肩没做前弯测试也挡）；有红旗不出力量日提醒；推膝碰墙差要超过 2 cm；文案守门；小课按答案与左右测试加组；照片存 IndexedDB、对比画面、进备份；
  *      深蹲提醒只在填了往哪边歪时出现；满 4 周提醒重测；8 个新动作都有动图、规格、来源。
+ *  18. 脖子前倾＋每日小习惯＋洗髓功后接体态小课：前倾问卷与结果文案、脖子红旗分流（尽快看医生／马上去急诊、不写英国电话）、小课含收下巴、
+ *      ?go=posture 直接开小课（有红旗改开体态页）、洗髓功完成画面有连结、训练页早上卡片＋今天做了打勾算进本周、习惯卡标签、侧面照竖线、颅椎角 5° 误差、禁用的吓人数字。
  *  17. 饮食：蛋白 1.6 g/kg、热量按 Jensen 2013（男女区间／缺口）、16/8 分餐、每日记录与每周表、洗髓功 3.3 MET 毛／净 kcal、
  *      平台期提示（3 周没降才出、2 周不出）、燃脂收尾改名心肺收尾、备份来回、文案守门。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
@@ -991,7 +993,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   check(sp.length === 3 && sp[0].side === 'R' && sp[2].extra && sp[2].side === 'R', `体态：深蹲往左歪 → 分腿蹲右脚先做、右脚多一组（${sp.map(s => s.side + (s.extra ? '+' : '')).join(',')}）`);
   check(cl.length === 3 && cl[0].side === 'L' && cl[2].extra && cl[2].side === 'L', `体态：左膝往内倒 → 蚌式左腿先、左腿多一组（${cl.map(s => s.side + (s.extra ? '+' : '')).join(',')}）`);
   check(st.filter(s => s.pk === 'sideplank').length === 2 && st.filter(s => s.pk === 'ankle').length === 1, '体态：没有测试数字时，侧桥与推膝碰墙左右一样多');
-  check(new Set(st.map(s => s.pk)).size === 8, `体态：小课 8 个动作（${[...new Set(st.map(s => s.pk))].join(',')}）`);
+  check(new Set(st.map(s => s.pk)).size === 10, `体态：小课 10 个动作（含收下巴、泡沫轴胸椎伸展）（${[...new Set(st.map(s => s.pk))].join(',')}）`);
   // 测试数字：推膝碰墙 左 8 右 11（差 ≥2）→ 左脚多一次；侧桥 左 30 右 45（差 ≥10%）→ 左侧先、多一组
   await page.fill('#ptKL', '8'); await page.fill('#ptKR', '11'); await page.fill('#ptSL', '30'); await page.fill('#ptSR', '45'); await page.click('#ptSave');
   st = await page.evaluate(() => window.__fit.posture.postSteps().filter(s => s.kind === 'timed').map(s => ({ pk: s.pk, side: s.side || null, extra: !!s.extra })));
@@ -1162,7 +1164,7 @@ for (const [days, want] of [[29, true], [10, false]]) {
   const spec = JSON.parse(fs.readFileSync('tools/lib/fitness-anim-spec.json', 'utf8'));
   const bad = pm.filter(m => { const f = m.anim + (m.hold ? '-' + m.hold : ''), s = spec.find(x => x.file === f);
     return !fs.existsSync(`fitness/anim/${f}.webp`) || !s || (m.kind === 'mob' ? !['stretch', 'mobility'].includes(s.type) : s.type !== 'strength') || !(s.sources || []).length; }).map(m => m.anim);
-  check(pm.length === 8 && bad.length === 0, `体态：8 个动作都有动图、规格与来源，拉伸／活动度标蓝光、力量标红光${bad.length ? '（有问题：' + bad.join(',') + '）' : ''}`);
+  check(pm.length === 10 && bad.length === 0, `体态：10 个动作都有动图、规格与来源，拉伸／活动度标蓝光、力量标红光${bad.length ? '（有问题：' + bad.join(',') + '）' : ''}`);
   await ctx.close();
 }
 
@@ -1309,6 +1311,120 @@ for (const [label, rows, want] of [
     '26817506', '14726171', 'who.int', '仅适用超重／肥胖成人，体重正常别直接用', '（App 的做法，未查证）', '看包装上的蛋白质克数'];
   const miss = need.filter(b => !html.includes(b));
   check(miss.length === 0, `饮食／说明文案：查证过的数字与来源都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
+}
+
+// ---- 18. 脖子前倾＋每日小习惯＋洗髓功后接体态小课（2026-11-19，用户：脖子前倾、每天早上练洗髓功） ----
+{
+  const POST_OK = { q: { shift: 'N', shoulder: 'E', fhp: 'Y' }, red: { bend: 'no' }, tests: [], done: [], qTs: Date.now() - 2 * 864e5 };
+  const T2 = { timeout: 3000 };
+  const tx = (pg, sel) => pg.textContent(sel, T2).catch(() => '');
+  const seed = async (page, v) => { await page.evaluate(v => localStorage.setItem('fit.posture', JSON.stringify(v)), v); };
+  // (a) 问卷有前倾题；选「是」→ 结果写肌力有效、拉伸不改姿势、「常一起出现，但没证明前倾会造成颈痛」、5° 误差
+  {
+    const { ctx, page, errors } = await openWith([]);
+    await page.click('#postCard [data-open-post]', T2).catch(() => {});
+    const qt = await tx(page, '#pqFhp');
+    check(/站着/.test(qt) && /App 不给正常值/.test(qt) && /只跟自己/.test(qt) && /侧面照/.test(qt), `前倾：问卷有「脖子前倾」题，写站着拍、不给正常值、只跟自己比（实得：${qt.slice(0, 80)}）`);
+    await page.click('#postQ [data-pq="fhp"][data-v="Y"]', T2).catch(() => {});
+    const res = await tx(page, '#postFhpRes');
+    check(/常一起出现，但没证明前倾会造成颈痛/.test(res) && /单纯拉伸不改变姿势/.test(res) && /5°/.test(res) && /Sheikhhoseini/.test(res) && /Correia/.test(res),
+      `前倾：结果引 Sheikhhoseini／Warneke／Mahmoud／Richards／Correia，写「常一起出现，但没证明前倾会造成颈痛」与 5° 误差（实得：${res.slice(0, 120)}）`);
+    // (b) 红旗分流
+    await page.click('#postRed [data-nk="arm"]', T2).catch(() => {});
+    check(/^尽快看医生/.test((await tx(page, '#postRedMsg')).trim()), '脖子红旗：手臂刺麻＋颈／臂痛 → 「尽快看医生」');
+    check(await page.locator('#postRoutine [data-post-go]').count() === 0, '脖子红旗：有红旗时体态小课按钮拿掉');
+    await page.click('#postRed [data-nk="walk"]', T2).catch(() => {});
+    check(/^马上去急诊/.test((await tx(page, '#postRedMsg')).trim()), '脖子红旗：走路出现新问题 → 「马上去急诊」（比「尽快看医生」优先）');
+    await page.click('#postBack', T2).catch(() => {});
+    check(/马上去急诊/.test(await tx(page, '#postCard')) && await page.locator('#postCard [data-post-go]').count() === 0, '脖子红旗：训练页卡片也显示「马上去急诊」、没有小课按钮');
+    await page.click('#postCard [data-open-post]', T2).catch(() => {});
+    const all = await tx(page, '#tab-post');
+    check(!/\b111\b|\b999\b/.test(all), '脖子红旗：不写英国的 111／999（用户在东南亚）');
+    for (const k of ['walk', 'arm']) await page.click(`#postRed [data-nk="${k}"]`, T2).catch(() => {});
+    check(await page.locator('#postRedMsg').count() === 0 && await page.locator('#postRoutine [data-post-go]').count() === 1, '脖子红旗：取消后小课回来');
+    // (c) 小课含收下巴＋胸椎伸展，总长约 12 分钟
+    const st = await page.evaluate(() => window.__fit.posture.postSteps().filter(s => s.kind === 'timed'));
+    const sec = st.reduce((a, s) => a + s.sec, 0), keys = st.map(s => s.pk);
+    check(keys.includes('chintuck') && keys.includes('thoracic') && sec >= 11 * 60 && sec <= 13 * 60, `体态小课：有收下巴与泡沫轴胸椎伸展，总长 ${Math.round(sec / 6) / 10} 分钟（要 11–13）`);
+    const ct = st.find(s => s.pk === 'chintuck');
+    check(ct && /10 次/.test(ct.name) && /10 秒/.test(ct.name) && /Physitrack/.test(ct.name), `收下巴剂量标出处（Physitrack）（实得：${ct && ct.name}）`);
+    const rt = await tx(page, '#postRoutine');
+    check(/Physitrack/.test(rt) && /CUH|剑桥/.test(rt), '体态小课：收下巴剂量写 Physitrack 与 CUH 两个来源');
+    const thc = await page.evaluate(() => (window.__fit.posture.PMOVE.thoracic || {}).cue || '');
+    check(/没有研究证明它能改善脖子前倾/.test(thc), '泡沫轴胸椎伸展：写明只是活动度、没有研究证明改善前倾');
+    // (g) 每日小习惯卡
+    const hb = await tx(page, '#habitList');
+    check(/✅ 官方建议/.test(hb) && /⚠️ 证据不一/.test(hb) && /App 的建议/.test(hb), '每日小习惯：三种证据标签都在');
+    const tags = await page.evaluate(() => [...document.querySelectorAll('#habitList .habit')].map(h => [h.querySelector('.tag').textContent, h.textContent]));
+    const appOnly = ['每 30 分钟', '手机举高', '左右轮流'].every(w => tags.some(([t, x]) => x.includes(w) && /App 的建议/.test(t)));
+    const okSrc = tags.filter(([t]) => /官方/.test(t)).every(([, x]) => /NHS|HSE|OSHA|CUH|剑桥/.test(x));
+    check(appOnly && okSrc, '每日小习惯：没来源的（每 30 分钟、手机举高、包包轮流）标 App 的建议；标 ✅ 的都附官方来源');
+    // (i) 侧面照＋竖线；(j) 颅椎角 5° 误差
+    const png = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 60; c.height = 80; const g = c.getContext('2d'); g.fillStyle = '#39c'; g.fillRect(0, 0, 60, 80); return c.toDataURL('image/png').split(',')[1]; });
+    await page.setInputFiles('#ppSide', { name: 'side.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') }, T2).catch(() => {});
+    await page.waitForSelector('#ppCmp-side .vl', { timeout: 5000 }).catch(() => {});
+    check(await page.locator('#ppCmp-side .vl').count() >= 1 && await page.locator('#ppVl').count() === 1, '照片对比：有侧面照选项，侧面照有可移动的竖线');
+    for (const v of ['48', '51']) { await page.fill('#ptCVA', v, T2).catch(() => {}); await page.click('#ptSave', T2).catch(() => {}); }
+    const cm = await tx(page, '#ptCvaMsg');
+    check(/\+3°/.test(cm) && /5° 以内/.test(cm), `颅椎角：48 → 51，差 +3° → 「5° 以内，可能只是量的误差」（实得：${cm}）`);
+    check(errors.length === 0, `前倾／红旗／习惯没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+  }
+  // (d) 深连结：?go=posture 能做就直接开小课；有红旗开体态页
+  {
+    const { ctx, page, errors } = await openWith([]);
+    await seed(page, POST_OK);
+    await page.goto(URL + '?go=posture'); await page.waitForSelector('#workout .ex', { state: 'attached' });
+    const st = await page.evaluate(() => ({ pl: !document.getElementById('player').hidden, s0: window.__fit.player().steps[0] && window.__fit.player().steps[0].pk, url: location.search }));
+    check(st.pl && st.s0 === 'hip9090' && st.url === '', `深连结：fitness/?go=posture 直接打开体态小课全屏跟练，网址的 ?go 清掉（${JSON.stringify(st)}）`);
+    await seed(page, Object.assign({}, POST_OK, { red: { bend: 'no', nk: { arm: true } } }));
+    await page.goto(URL + '?x=1'); await page.goto(URL + '#posture'); await page.waitForSelector('#workout .ex', { state: 'attached' });
+    const st2 = await page.evaluate(() => ({ pl: !document.getElementById('player').hidden, post: !document.getElementById('tab-post').hidden }));
+    check(!st2.pl && st2.post, `深连结：有红旗时不开小课、改开体态页（${JSON.stringify(st2)}）`);
+    check(errors.length === 0, `深连结没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+  }
+  // (e) 洗髓功完成画面有连结
+  {
+    const xs = fs.readFileSync('xisui/index.html', 'utf8');
+    const m = xs.match(/id="completion"[\s\S]*?reset-all-wrap/);
+    check(m && /href="\.\.\/fitness\/\?go=posture"/.test(m[0]) && /體態小課/.test(m[0]), '洗髓功：完成画面有「接著做體態小課」按钮，连到 ../fitness/?go=posture');
+    const { ctx, page } = await openWith([]);
+    await page.goto(`http://localhost:${PORT}/xisui/`);
+    await page.evaluate(() => { document.getElementById('completion').classList.add('show'); });
+    const href = await page.getAttribute('#nextPosture', 'href', T2).catch(() => null);
+    const vis = await page.isVisible('#nextPosture').catch(() => false);
+    check(vis && href === '../fitness/?go=posture', `洗髓功：完成时按钮看得到（${vis}，${href}）`);
+    await ctx.close();
+  }
+  // (f) 训练页早上卡片＋今天做了打勾，算进本周；没做的日子不当失败
+  {
+    const { ctx, page, errors } = await openWith([]);
+    await seed(page, POST_OK); await page.reload(); await page.waitForSelector('#workout .ex');
+    const h = await tx(page, '#postMorning');
+    check(/洗髓功后：体态小课（含脖子）/.test(h) && /本周 0 次/.test(h), `早上卡片：标题「洗髓功后：体态小课（含脖子）」、本周 0 次（实得：${h}）`);
+    const card = await tx(page, '#postCard');
+    check(/3–5 次/.test(card) && /App 的安排/.test(card) && /不用补/.test(card) && !/失败|漏做|没完成/.test(card), '早上卡片：建议每周 3–5 次（App 的安排），没做的日子不当失败');
+    await page.check('#pmDone', T2).catch(() => {});
+    const n1 = await page.evaluate(() => window.__fit.posture.get().done.length);
+    check(n1 === 1 && /本周 1 次/.test(await tx(page, '#postWeekN')), '早上卡片：打勾「今天做了」→ 记一笔、本周 1 次');
+    await page.reload(); await page.waitForSelector('#workout .ex');
+    check(await page.isChecked('#pmDone', T2).catch(() => false), '早上卡片：重载后今天仍是打勾');
+    await page.uncheck('#pmDone', T2).catch(() => {});
+    check(await page.evaluate(() => window.__fit.posture.get().done.length) === 0 && /本周 0 次/.test(await tx(page, '#postWeekN')), '早上卡片：取消打勾 → 本周回到 0 次');
+    check(errors.length === 0, `早上卡片没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+  }
+  // (h) 文案守门：不用「低头族负重」那组吓人数字；Sheikhhoseini 用对的 PMID
+  {
+    const html = fs.readFileSync('fitness/index.html', 'utf8');
+    const BANNED = ['60 磅', '27 磅', '27 公斤', '60 lbs', '27 pounds', 'text neck', '低头族', '29776552', '前倾会导致颈痛', '前倾会造成颈痛。'];
+    const hit = BANNED.filter(b => html.includes(b));
+    check(hit.length === 0, `脖子文案：没有吓人的低头负重数字、错的 PMID、或把相关说成因果${hit.length ? '（还在：' + hit.join('、') + '）' : ''}`);
+    const need = ['30107937', '38834878', '31773477', '33444448', '40845624', '32911612', 'cervical-spondylosis', 'work-routine.htm', 'osha.gov', 'neck-exercises-and-advice', 'chin-tuck'];
+    const miss = need.filter(b => !html.includes(b));
+    check(miss.length === 0, `脖子文案：查证过的来源都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
+  }
 }
 
 // ---- 手机宽度：没有横向卷动 ----
