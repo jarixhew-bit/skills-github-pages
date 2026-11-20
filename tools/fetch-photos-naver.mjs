@@ -31,7 +31,7 @@
 import { pathToFileURL } from 'node:url';
 import {
   isCaptcha, placeIdFromUrl, naverPlaceUrl, parseSearchIds, extractApolloState,
-  parseHome, parsePhotoState, unwrapPstatic, selectPhotos, harvestPhotoUrls, labelByFilter, photoCandsFromState,
+  parseHome, parsePhotoState, unwrapPstatic, selectPhotos, harvestPhotoUrls, labelByFilter, photoCandsFromState, photoSource,
 } from './lib/naver-parse.mjs';
 
 const WANT = parseInt(process.env.WANT || '5', 10);
@@ -169,7 +169,16 @@ async function fetchPhotos(ctx, kind, id, out) {
     perFilter[f] = [...harvestPhotoUrls(r.body), ...(st ? parsePhotoState(st).map(x => x.url) : [])];
     (diag.filter_http ||= {})[f] = [r.status, r.body.length, st ? Object.keys(st.ROOT_QUERY || {}).filter(k => /photo/i.test(k)).map(k => k.slice(0, 120)) : 'no-apollo'];
   }
-  const lab = labelByFilter(base, perFilter);
+  // 访客评论页（服务端渲染）：评论照多半是食物与店内，补首屏不够的时候用
+  await jitter(1000, 2000);
+  const rv = await get(`https://m.place.naver.com/${kind}/${id}/review/visitor`);
+  if (isCaptcha(rv.body)) { out.captcha = true; out.captcha_at = (out.captcha_at || []).concat('review'); }
+  else {
+    const rvUrls = harvestPhotoUrls(rv.body).filter(u => photoSource(u) === 'visitor');
+    diag.review_photos = rvUrls.length;
+    for (const u of rvUrls) typedCands.push({ url: u, category: '', source: 'visitor' });
+  }
+  const lab = labelByFilter([...base, ...typedCands.map(c => c.url)], perFilter);
   diag.per_filter = Object.fromEntries(Object.entries(perFilter).map(([k, v]) => [k, v.length]));
   diag.filter_ignored = lab.ignored;
   diag.base = base.length;

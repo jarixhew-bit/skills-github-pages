@@ -384,7 +384,7 @@ export function harvestPhotoUrls(html) {
  * 每个分类页（?filterType=X）抓到的网址 → 带分类的候选。
  * 防呆：Naver 不认那个参数时会回「全部」那一页——这时整页都被标成 X，
  * 若 X 是 메뉴 就会把好图全排除、是 음식 就会把菜单板当食物。
- * 所以某个分类页跟「全部」那页重叠 ≥80% 时判定参数没生效，那页不贴分类。
+ * 所以某个分类页跟「全部」那页重叠 ≥80%、或跟另一个分类页几乎相同时，判定参数没生效，那页不贴分类。
  * base：全部那页的网址；perFilter：{ 分类名: [网址] }。回 { cands, ignored: [分类名] }。
  */
 export function labelByFilter(base, perFilter) {
@@ -392,11 +392,16 @@ export function labelByFilter(base, perFilter) {
   const baseKeys = new Set((base || []).map(key));
   const cands = (base || []).map(url => ({ url, category: '' }));
   const ignored = [];
+  const sets = Object.fromEntries(Object.entries(perFilter || {}).map(([c, l]) => [c, new Set((l || []).map(key))]));
+  const jaccard = (a, b) => { let n = 0; for (const x of a) if (b.has(x)) n++; return n / (a.size + b.size - n || 1); };
   for (const [cat, urls] of Object.entries(perFilter || {})) {
     const list = urls || [];
     if (!list.length) continue;
     const overlap = list.filter(u => baseKeys.has(key(u))).length;
     if (baseKeys.size >= 4 && overlap / list.length >= 0.8 && list.length >= baseKeys.size * 0.8) { ignored.push(cat); continue; }
+    // 不同分类的照片不可能一模一样：两个分类页几乎相同＝参数没生效，回的都是全部那页
+    // （2026-11-20 第四轮实跑：四个分类页一样，全被当成 메뉴，六家里五家照片归零）
+    if (Object.entries(sets).some(([c2, s2]) => c2 !== cat && s2.size && jaccard(sets[cat], s2) >= 0.9)) { ignored.push(cat); continue; }
     for (const url of list) cands.push({ url, category: cat });
   }
   return { cands, ignored };

@@ -155,6 +155,10 @@ eq('来源·blogfiles 是博客', photoSource('https://blogfiles.pstatic.net/x.j
   const ign = labelByFilter(base, { 메뉴: base.slice() });
   eq('分类页·参数没生效就不贴分类', ign.ignored, ['메뉴']);
   eq('分类页·参数没生效时好图还在', selectPhotos(ign.cands).length, 5);
+  const same = base.concat(['https://ldb-phinf.pstatic.net/x.jpg', 'https://ldb-phinf.pstatic.net/y.jpg']);
+  const ign2 = labelByFilter(base.slice(0, 2), { 메뉴: same, 내부: same, '음식·음료': same });
+  eq('分类页·几个分类页一模一样＝参数没生效', ign2.ignored, ['메뉴', '내부', '음식·음료']);
+  eq('分类页·一模一样时「全部」那页的照片不被当菜单排除', selectPhotos(ign2.cands).length, 2);
   const real = labelByFilter(base, { 메뉴: [base[0]], '음식·음료': [base[1], 'https://ldb-phinf.pstatic.net/f.jpg'] });
   const sel = selectPhotos(real.cands).map(p => p.orig.slice(-5));
   eq('分类页·真分类：메뉴 那张排除、음식 那张排前', sel, ['b.jpg', 'f.jpg', 'c.jpg', 'd.jpg', 'e.jpg']);
