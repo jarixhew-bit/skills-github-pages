@@ -68,6 +68,7 @@ CHECKS = [
     ("flights", ["python3", "tools/check-flight-times.py"], False),
     ("flightprobe", ["node", "tools/check-flight-probe.mjs"], False),
     ("placestatus", ["node", "tools/check-place-status.mjs"], False),
+    ("naverparse", ["node", "tools/check-naver-parse.mjs"], False),
     ("mapcoords", ["python3", "tools/check-map-coords.py"], False),
     ("maplinks", ["python3", "tools/check-map-links.py"], False),
     ("triphours", ["python3", "tools/check-trip-hours.py"], False),

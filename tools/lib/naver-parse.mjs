@@ -10,10 +10,18 @@
  * （5 分制、部分店隐藏，不能套 Google 的 ≥4.2 门槛）。
  */
 
-/** 页面是不是 Naver 的验证码（ncaptcha / wtm_captcha）。被挡时 200 也可能是验证码页。 */
+/**
+ * 页面是不是 Naver 的验证码（ncaptcha / wtm_captcha）。被挡时 200 也可能是验证码页。
+ * 注意：正常页面也会引用 ncpt.naver.com 的脚本（2026-11-20 首轮实跑六家全被误判成验证码），
+ * 所以只认三种：搜索接口回的 pageId=ncaptcha、<head title="captcha">、
+ * 以及「提到 captcha 但根本没有页面资料（__APOLLO_STATE__）」的短页面。
+ */
 export function isCaptcha(text) {
   if (!text) return false;
-  return /ncaptcha|wtm_captcha|ncpt\.naver\.com|<head[^>]*title="captcha"/i.test(String(text).slice(0, 20000));
+  const s = String(text);
+  if (/"pageId"\s*:\s*"ncaptcha/.test(s)) return true;
+  if (/<head[^>]*title="captcha"/i.test(s.slice(0, 5000))) return true;
+  return /wtm_captcha|ncaptcha/i.test(s) && !/__APOLLO_STATE__/.test(s) && s.length < 60000;
 }
 
 /** 从 Naver 链接里拿 place id；不是 Naver 链接或没有 id 就回 ''。 */
@@ -37,8 +45,11 @@ export function parseSearchIds(html) {
   if (!html) return [];
   const clean = String(html).replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
   const seen = new Map();
-  for (const m of clean.matchAll(/"id":"(\d{5,})","name":"([^"]{1,80})"/g)) {
-    if (!seen.has(m[1])) seen.set(m[1], m[2]);
+  for (const m of clean.matchAll(/"id":"(\d{5,})","name":"([^"]{1,120})"/g)) {
+    // 名称里有搜索高亮 <mark>（JSON 里是 \u003Cmark\u003E）；纯数字的是公交路线，不是店
+    const name = m[2].replace(/\\u003C\/?mark\\u003E|<\/?mark>/gi, '').trim();
+    if (/^\d+$/.test(name) || /^[가-힣]?\d+[A-Z]?$/.test(name)) continue;
+    if (!seen.has(m[1])) seen.set(m[1], name);
   }
   for (const m of clean.matchAll(/place\.naver\.com\/(?:restaurant|place|attraction|hairshop|accommodation|cafe)\/(\d{5,})/g)) {
     if (!seen.has(m[1])) seen.set(m[1], '');

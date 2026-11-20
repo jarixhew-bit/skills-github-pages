@@ -95,6 +95,9 @@ RULES = {
                     ".github/workflows/flight-probe.yml"],
     # 抓图器的营业状态判断：认错就把关门的店当成营业，放进手册
     "placestatus": ["tools/fetch-photos.mjs", "tools/check-place-status.mjs"],
+    # Naver 抓取器的解析（韩国手册的营业时间／营业状态／照片分类／菜单全靠它）：认错就把公休日写成营业、把菜单板放进卡片
+    "naverparse": ["tools/fetch-photos-naver.mjs", "tools/lib/naver-parse.mjs",
+                   "tools/check-naver-parse.mjs", "tools/fixtures/naver/**"],
     # 槟城总地图坐标：卡片加了坐标没补，那一家会安安静静不上图
     "mapcoords": ["penang-trip/index.html", "penang-trip/coords.json", "tools/check-map-coords.py"],
     # 手册地图链接：还没走完的手册不准用搜索链接／短链（会落到停车场、私人飞机点）
