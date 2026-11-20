@@ -29,7 +29,7 @@
 import { pathToFileURL } from 'node:url';
 import {
   isCaptcha, placeIdFromUrl, naverPlaceUrl, parseSearchIds, extractApolloState,
-  parseHome, parsePhotoState, selectPhotos,
+  parseHome, parsePhotoState, selectPhotos, harvestPhotoUrls, labelByFilter,
 } from './lib/naver-parse.mjs';
 
 const WANT = parseInt(process.env.WANT || '5', 10);
@@ -129,22 +129,7 @@ async function fetchPhotos(ctx, kind, id, out) {
 
     const labels = await page.$$eval('a, button, span, [role=tab]', els =>
       [...new Set(els.map(e => (e.textContent || '').trim()).filter(t => t && t.length <= 12))]).catch(() => []);
-    const tabs = labels.filter(t => TAB_RE.test(t));
-    diag.tabs = tabs;
-    for (const label of tabs.slice(0, 6)) {
-      const before = new Set(await domImgs(page));
-      const el = page.getByText(label, { exact: true }).first();
-      const okClick = await el.click({ timeout: 4000 }).then(() => true).catch(() => false);
-      if (!okClick) continue;
-      await sleep(2500);
-      const after = await domImgs(page);
-      const kept = after.filter(u => before.has(u)).length;
-      // 网格整个换掉＝这一页就是这个分类；只是往后接＝新出现的那些才算这个分类
-      const mine = kept > before.size * 0.5 ? after.filter(u => !before.has(u)) : after;
-      diag.per_tab[label] = mine.length;
-      const cat = label.replace(/\s*\d+$/, '');
-      for (const u of mine) cands.push({ url: u, category: cat });
-    }
+    diag.tabs = labels.filter(t => TAB_RE.test(t)).map(t => t.replace(/\s*\d+$/, ''));
     const st1 = await page.evaluate(() => window.__APOLLO_STATE__ || null).catch(() => null);
     if (st1) cands.push(...parsePhotoState(st1));
   } catch (e) {
@@ -152,7 +137,28 @@ async function fetchPhotos(ctx, kind, id, out) {
   } finally {
     await page.close().catch(() => {});
   }
-  return { cands, diag };
+  // 分类页走纯 HTTP：?filterType=분류 的照片页服务端直接渲染（第二轮实跑：无头浏览器里
+  // 页签点不动、滚动加载的 graphql 被验证码挡）。메뉴 也抓——是为了知道哪些要排除。
+  const base = [...new Set(cands.map(c => c.url))];
+  const perFilter = {};
+  const filters = [...new Set([...(diag.tabs || []), '음식·음료', '내부', '메뉴'])].filter(f => !/업체|방문자/.test(f));
+  const r0 = await get(`https://m.place.naver.com/${kind}/${id}/photo`);
+  if (isCaptcha(r0.body)) { out.captcha = true; out.captcha_at = (out.captcha_at || []).concat('photo-http'); }
+  else base.push(...harvestPhotoUrls(r0.body));
+  for (const f of filters.slice(0, 5)) {
+    if (out.captcha_at && out.captcha_at.includes('photo-http')) break;
+    await jitter(1000, 2000);
+    const r = await get(`https://m.place.naver.com/${kind}/${id}/photo?filterType=${encodeURIComponent(f)}`);
+    if (isCaptcha(r.body)) { out.captcha = true; out.captcha_at = (out.captcha_at || []).concat('photo-http'); break; }
+    const st = extractApolloState(r.body);
+    perFilter[f] = [...harvestPhotoUrls(r.body), ...(st ? parsePhotoState(st).map(x => x.url) : [])];
+    (diag.filter_http ||= {})[f] = [r.status, r.body.length, st ? Object.keys(st.ROOT_QUERY || {}).filter(k => /photo/i.test(k)).map(k => k.slice(0, 120)) : 'no-apollo'];
+  }
+  const lab = labelByFilter(base, perFilter);
+  diag.per_filter = Object.fromEntries(Object.entries(perFilter).map(([k, v]) => [k, v.length]));
+  diag.filter_ignored = lab.ignored;
+  diag.base = base.length;
+  return { cands: [...cands.filter(c => c.category), ...lab.cands], diag };
 }
 
 async function fetchOne(ctx, q) {

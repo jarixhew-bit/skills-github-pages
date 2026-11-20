@@ -360,3 +360,44 @@ export function parsePhotoState(state) {
   }
   return out;
 }
+
+/**
+ * 从照片页 HTML（SSR）里直接捞 pstatic 照片网址：原图网址与 search.pstatic.net 代理网址都收。
+ * 2026-11-20 第二轮实跑：照片页点页签切分类在无头浏览器里点不动、滚动加载的 graphql 被验证码挡，
+ * 但带 ?filterType=분류 的照片页是服务端直接渲染的，HTML 里就有那个分类的首屏照片。
+ */
+export function harvestPhotoUrls(html) {
+  if (!html) return [];
+  const clean = String(html).replace(/\\u002F/gi, '/').replace(/\\\//g, '/').replace(/&amp;/g, '&');
+  const out = new Set();
+  for (const m of clean.matchAll(/https?:\/\/search\.pstatic\.net\/common\/?\?[^"'\s<>)]+/g)) {
+    const o = unwrapPstatic(m[0]);
+    if (o !== m[0]) out.add(o);
+  }
+  for (const m of clean.matchAll(/https?:\/\/(?:ldb-phinf|pup-review-phinf|review-phinf|myplace-phinf|blogfiles|clip-service-phinf)\.pstatic\.net\/[^"'\s<>)\\]+/g)) {
+    out.add(m[0]);
+  }
+  return [...out];
+}
+
+/**
+ * 每个分类页（?filterType=X）抓到的网址 → 带分类的候选。
+ * 防呆：Naver 不认那个参数时会回「全部」那一页——这时整页都被标成 X，
+ * 若 X 是 메뉴 就会把好图全排除、是 음식 就会把菜单板当食物。
+ * 所以某个分类页跟「全部」那页重叠 ≥80% 时判定参数没生效，那页不贴分类。
+ * base：全部那页的网址；perFilter：{ 分类名: [网址] }。回 { cands, ignored: [分类名] }。
+ */
+export function labelByFilter(base, perFilter) {
+  const key = u => unwrapPstatic(u).split('?')[0];
+  const baseKeys = new Set((base || []).map(key));
+  const cands = (base || []).map(url => ({ url, category: '' }));
+  const ignored = [];
+  for (const [cat, urls] of Object.entries(perFilter || {})) {
+    const list = urls || [];
+    if (!list.length) continue;
+    const overlap = list.filter(u => baseKeys.has(key(u))).length;
+    if (baseKeys.size >= 4 && overlap / list.length >= 0.8 && list.length >= baseKeys.size * 0.8) { ignored.push(cat); continue; }
+    for (const url of list) cands.push({ url, category: cat });
+  }
+  return { cands, ignored };
+}
