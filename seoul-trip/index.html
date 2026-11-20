@@ -255,8 +255,10 @@ footer p { font-size: 11.5px; color: var(--faint); }
   --changsal:
     linear-gradient(var(--gold), var(--gold)) 0 0 / 100% 1.5px no-repeat,
     linear-gradient(var(--gold), var(--gold)) 0 100% / 100% 1.5px no-repeat,
-    linear-gradient(90deg, var(--gold) 0 1.5px, transparent 1.5px) 0 0 / 14px 100% repeat-x,
-    radial-gradient(circle at 50% 50%, var(--gold) 0 1.6px, transparent 2.2px) 0 0 / 14px 100% repeat-x;
+    linear-gradient(var(--gold), var(--gold)) 100% 0 / 1.5px 100% no-repeat,
+    linear-gradient(90deg, var(--gold) 0 1.5px, transparent 1.5px) 0 0 / 14px 100% round,
+    radial-gradient(circle at 50% 50%, var(--gold) 0 1.6px, transparent 2.2px) 0 0 / 14px 100% round;
+  /* round：格子宽度自动微调成整数格，最后一格不会被切半；第一层补上最右边那根竖棂（2026-11-20 用户指出纹带右端不完整） */
   /* 단청 丹青细带：石绿／金／靛蓝／金／石绿 */
   --dancheong:
     linear-gradient(to bottom, var(--jade) 0 2px, var(--gold) 2px 3px, var(--navy) 3px 6px, var(--gold) 6px 7px, var(--jade) 7px 9px);
@@ -400,6 +402,22 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 .gal img { -webkit-tap-highlight-color: rgba(var(--gold-rgb), .3); transition: box-shadow .12s, filter .12s; }
 .gal { padding: 4px; margin-left: -4px; margin-right: -4px; }
 .gal img:active, .gal img:focus-visible, .gal img[data-tapped] { outline: none; box-shadow: 0 0 0 3px var(--gold), 0 0 14px 2px rgba(var(--gold-rgb), .75); filter: brightness(1.1); }
+/* ===== 机票卡座位图（2026-11-20 用户选 B 款：名字直接写在格子里）=====
+   排法依国泰官网座位图：A330-300 商务 A C|D G|H K、经济 A C|D E F G|H K；A321neo 商务 A C|H K、经济 A B C|H J K。
+   只画本团坐的那几排；改座位要同时改上面 .seats 的文字和这里的格子。 */
+.bpass .seatmap { margin: 14px 2px 0; padding: 12px 8px 10px; background: var(--ivory); border: 1px solid var(--hair); text-align: left; }
+.seatmap .sm-k { font-family: var(--latin); font-size: 10.5px; letter-spacing: .3em; color: var(--gold); text-transform: uppercase; text-align: center; margin-bottom: 8px; }
+.seatmap .sm-k .cn { font-family: var(--serif); letter-spacing: .2em; }
+.seatmap .sm-row + .sm-row { margin-top: 10px; }
+.seatmap .sm-lab { font-size: 11px; color: var(--muted); letter-spacing: .08em; margin-bottom: 4px; text-align: center; }
+.seatmap .sm-cab { display: flex; align-items: stretch; justify-content: center; gap: 2px; }
+.seatmap .win { font-size: 9px; color: var(--faint); align-self: center; padding: 0 2px; }
+.seatmap .aisle { width: 8px; flex: none; border-left: 1px dashed var(--hair); border-right: 1px dashed var(--hair); margin: 0 1px; }
+.seatmap .st { flex: 1 1 0; min-width: 0; max-width: 54px; min-height: 46px; border: 1px solid var(--hair); background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 400; }
+.seatmap .st .no { font-family: var(--latin); font-size: 12px; color: var(--faint); letter-spacing: .04em; }
+.seatmap .st.on { background: var(--navy); border-color: var(--navy); }
+.seatmap .st.on .no { color: var(--gold2); font-size: 11px; }
+.seatmap .st.on .who { color: #fff; font-size: 9.5px; line-height: 1.15; text-align: center; padding: 0 1px 2px; }
 </style>
 </head>
 <body>
@@ -472,6 +490,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="seats"><span class="seat">TAN/YONG LIANG 15D</span><span class="seat">THUN/SAVRY 15G</span><span class="seat">TAN/CHIN HOOI 15H</span><span class="seat">TAN/KUAN ZE 15K</span></div>
 <span class="cls eco">ECONOMY</span>
 <div class="seats"><span class="seat">HEW/CHERN YANG 42C</span><span class="seat">CHET/POV 42A</span></div>
+<div class="seatmap"><div class="sm-k"><span class="cn">座位图</span><span class="en">Seat map</span></div><div class="sm-row"><div class="sm-lab"><span class="cn">商务舱 · 第 15 排</span><span class="en">Business · Row 15</span></div><div class="sm-cab"><span class="win"><span class="cn">窗</span><span class="en">W</span></span><b class="st"><span class="no">A</span></b><b class="st"><span class="no">C</span></b><i class="aisle"></i><b class="st on"><span class="no">15D</span><span class="who">Yong Liang</span></b><b class="st on"><span class="no">15G</span><span class="who">Savry</span></b><i class="aisle"></i><b class="st on"><span class="no">15H</span><span class="who">Chin Hooi</span></b><b class="st on"><span class="no">15K</span><span class="who">Kuan Ze</span></b><span class="win"><span class="cn">窗</span><span class="en">W</span></span></div></div><div class="sm-row"><div class="sm-lab"><span class="cn">经济舱 · 第 42 排</span><span class="en">Economy · Row 42</span></div><div class="sm-cab"><span class="win"><span class="cn">窗</span><span class="en">W</span></span><b class="st on"><span class="no">42A</span><span class="who">Pov</span></b><b class="st on"><span class="no">42C</span><span class="who">Chern Yang</span></b><i class="aisle"></i><b class="st"><span class="no">D</span></b><b class="st"><span class="no">E</span></b><b class="st"><span class="no">F</span></b><b class="st"><span class="no">G</span></b><i class="aisle"></i><b class="st"><span class="no">H</span></b><b class="st"><span class="no">K</span></b><span class="win"><span class="cn">窗</span><span class="en">W</span></span></div></div></div>
 </div>
 </div>
 <div class="note green" style="margin-top:-4px"><span class="cn">在香港转机 <strong>4 小时 35 分钟</strong>，两段都在 T1，不用换航站楼。</span><span class="en">The Hong Kong connection is <strong>4 h 35 min</strong>, and both flights use T1, so there is no change of terminal.</span>
@@ -491,6 +510,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="seats"><span class="seat">TAN/YONG LIANG 11H</span><span class="seat">THUN/SAVRY 11K</span><span class="seat">TAN/CHIN HOOI 11A</span><span class="seat">TAN/KUAN ZE 11C</span></div>
 <span class="cls eco">ECONOMY</span>
 <div class="seats"><span class="seat">HEW/CHERN YANG 39H</span><span class="seat">CHET/POV 39C</span></div>
+<div class="seatmap"><div class="sm-k"><span class="cn">座位图</span><span class="en">Seat map</span></div><div class="sm-row"><div class="sm-lab"><span class="cn">商务舱 · 第 11 排</span><span class="en">Business · Row 11</span></div><div class="sm-cab"><span class="win"><span class="cn">窗</span><span class="en">W</span></span><b class="st on"><span class="no">11A</span><span class="who">Chin Hooi</span></b><b class="st on"><span class="no">11C</span><span class="who">Kuan Ze</span></b><i class="aisle"></i><b class="st on"><span class="no">11H</span><span class="who">Yong Liang</span></b><b class="st on"><span class="no">11K</span><span class="who">Savry</span></b><span class="win"><span class="cn">窗</span><span class="en">W</span></span></div></div><div class="sm-row"><div class="sm-lab"><span class="cn">经济舱 · 第 39 排</span><span class="en">Economy · Row 39</span></div><div class="sm-cab"><span class="win"><span class="cn">窗</span><span class="en">W</span></span><b class="st"><span class="no">A</span></b><b class="st"><span class="no">B</span></b><b class="st on"><span class="no">39C</span><span class="who">Pov</span></b><i class="aisle"></i><b class="st on"><span class="no">39H</span><span class="who">Chern Yang</span></b><b class="st"><span class="no">J</span></b><b class="st"><span class="no">K</span></b><span class="win"><span class="cn">窗</span><span class="en">W</span></span></div></div></div>
 </div>
 </div>
 <div class="note green" style="margin-top:-4px"><span class="cn">香港比首尔慢 1 小时（香港 UTC+8，首尔 UTC+9），所以 20:05 起飞、00:40 落地的飞行时间是 3 小时 35 分钟。落地后旅行社接机，车程约 1 小时 15 分钟，<strong>约 02:30 到酒店</strong>——入住安排见页首<a href="#precheck">出发前要确认</a>第 1 条。</span><span class="en">Hong Kong is 1 hour behind Seoul (UTC+8 vs UTC+9), so 20:05 to 00:40 is a 3 h 35 min flight. The agency meets you after landing and the drive takes about 1 h 15 min, so you reach the hotel <strong>at about 02:30</strong>; see item 1 of <a href="#precheck">To confirm before you go</a> at the top for the room arrangement.</span>
@@ -510,6 +530,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="seats"><span class="seat">TAN/YONG LIANG 17A</span><span class="seat">THUN/SAVRY 17C</span></div>
 <span class="cls eco">ECONOMY</span>
 <div class="seats"><span class="seat">TAN/CHIN HOOI 43A</span><span class="seat">TAN/KUAN ZE 43C</span><span class="seat">HEW/CHERN YANG 40C</span><span class="seat">CHET/POV 40A</span></div>
+<div class="seatmap"><div class="sm-k"><span class="cn">座位图</span><span class="en">Seat map</span></div><div class="sm-row"><div class="sm-lab"><span class="cn">商务舱 · 第 17 排</span><span class="en">Business · Row 17</span></div><div class="sm-cab"><span class="win"><span class="cn">窗</span><span class="en">W</span></span><b class="st on"><span class="no">17A</span><span class="who">Yong Liang</span></b><b class="st on"><span class="no">17C</span><span class="who">Savry</span></b><i class="aisle"></i><b class="st"><span class="no">D</span></b><b class="st"><span class="no">G</span></b><i class="aisle"></i><b class="st"><span class="no">H</span></b><b class="st"><span class="no">K</span></b><span class="win"><span class="cn">窗</span><span class="en">W</span></span></div></div><div class="sm-row"><div class="sm-lab"><span class="cn">经济舱 · 第 40 排</span><span class="en">Economy · Row 40</span></div><div class="sm-cab"><span class="win"><span class="cn">窗</span><span class="en">W</span></span><b class="st on"><span class="no">40A</span><span class="who">Pov</span></b><b class="st on"><span class="no">40C</span><span class="who">Chern Yang</span></b><i class="aisle"></i><b class="st"><span class="no">D</span></b><b class="st"><span class="no">E</span></b><b class="st"><span class="no">F</span></b><b class="st"><span class="no">G</span></b><i class="aisle"></i><b class="st"><span class="no">H</span></b><b class="st"><span class="no">K</span></b><span class="win"><span class="cn">窗</span><span class="en">W</span></span></div></div><div class="sm-row"><div class="sm-lab"><span class="cn">经济舱 · 第 43 排</span><span class="en">Economy · Row 43</span></div><div class="sm-cab"><span class="win"><span class="cn">窗</span><span class="en">W</span></span><b class="st on"><span class="no">43A</span><span class="who">Chin Hooi</span></b><b class="st on"><span class="no">43C</span><span class="who">Kuan Ze</span></b><i class="aisle"></i><b class="st"><span class="no">D</span></b><b class="st"><span class="no">E</span></b><b class="st"><span class="no">F</span></b><b class="st"><span class="no">G</span></b><i class="aisle"></i><b class="st"><span class="no">H</span></b><b class="st"><span class="no">K</span></b><span class="win"><span class="cn">窗</span><span class="en">W</span></span></div></div></div>
 </div>
 </div>
 <div class="note amber" style="margin-top:-4px"><span class="cn"><strong>仁川 T1 国泰柜台：</strong>起飞前 3 小时开、前 60 分钟关，CX417 10:00 起飞，<strong>09:00 关柜</strong>。柜台在 J 区（部分资料写 K 区，以机场显示屏为准）。</span><span class="en"><strong>Cathay Pacific check-in at Incheon T1:</strong> the counters open 3 hours and close 60 minutes before departure; CX417 leaves at 10:00, so <strong>the counters close at 09:00</strong>. They are in zone J (some sources say zone K; follow the airport screens).</span>
@@ -529,18 +550,17 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="seats"><span class="seat">TAN/YONG LIANG 11D</span><span class="seat">THUN/SAVRY 11G</span></div>
 <span class="cls eco">ECONOMY</span>
 <div class="seats"><span class="seat">TAN/CHIN HOOI 41A</span><span class="seat">TAN/KUAN ZE 41C</span><span class="seat">HEW/CHERN YANG 40C</span><span class="seat">CHET/POV 40A</span></div>
+<div class="seatmap"><div class="sm-k"><span class="cn">座位图</span><span class="en">Seat map</span></div><div class="sm-row"><div class="sm-lab"><span class="cn">商务舱 · 第 11 排</span><span class="en">Business · Row 11</span></div><div class="sm-cab"><span class="win"><span class="cn">窗</span><span class="en">W</span></span><b class="st"><span class="no">A</span></b><b class="st"><span class="no">C</span></b><i class="aisle"></i><b class="st on"><span class="no">11D</span><span class="who">Yong Liang</span></b><b class="st on"><span class="no">11G</span><span class="who">Savry</span></b><i class="aisle"></i><b class="st"><span class="no">H</span></b><b class="st"><span class="no">K</span></b><span class="win"><span class="cn">窗</span><span class="en">W</span></span></div></div><div class="sm-row"><div class="sm-lab"><span class="cn">经济舱 · 第 40 排</span><span class="en">Economy · Row 40</span></div><div class="sm-cab"><span class="win"><span class="cn">窗</span><span class="en">W</span></span><b class="st on"><span class="no">40A</span><span class="who">Pov</span></b><b class="st on"><span class="no">40C</span><span class="who">Chern Yang</span></b><i class="aisle"></i><b class="st"><span class="no">D</span></b><b class="st"><span class="no">E</span></b><b class="st"><span class="no">F</span></b><b class="st"><span class="no">G</span></b><i class="aisle"></i><b class="st"><span class="no">H</span></b><b class="st"><span class="no">K</span></b><span class="win"><span class="cn">窗</span><span class="en">W</span></span></div></div><div class="sm-row"><div class="sm-lab"><span class="cn">经济舱 · 第 41 排</span><span class="en">Economy · Row 41</span></div><div class="sm-cab"><span class="win"><span class="cn">窗</span><span class="en">W</span></span><b class="st on"><span class="no">41A</span><span class="who">Chin Hooi</span></b><b class="st on"><span class="no">41C</span><span class="who">Kuan Ze</span></b><i class="aisle"></i><b class="st"><span class="no">D</span></b><b class="st"><span class="no">E</span></b><b class="st"><span class="no">F</span></b><b class="st"><span class="no">G</span></b><i class="aisle"></i><b class="st"><span class="no">H</span></b><b class="st"><span class="no">K</span></b><span class="win"><span class="cn">窗</span><span class="en">W</span></span></div></div></div>
 </div>
 </div>
 <div class="note green" style="margin-top:-4px"><span class="cn">回程在香港转机 <strong>2 小时 45 分钟</strong>，同在 T1。</span><span class="en">On the way home the Hong Kong connection is <strong>2 h 45 min</strong>, again within T1.</span>
-</div>
-<div class="note green"><span class="cn">Tan Yong Liang 已订儿童餐。</span><span class="en">A children’s meal is booked for Tan Yong Liang.</span>
 </div>
 <div class="bp-group-label"><span class="cn">座位与行李额</span><span class="en">Cabins &amp; Baggage Allowance</span></div>
 <table class="tbl">
 <tr><th><span class="cn">乘客</span><span class="en">Passengers</span></th><th><span class="cn">舱位</span><span class="en">Cabin</span></th><th><span class="cn">托运行李</span><span class="en">Checked bags</span></th></tr>
 <tr><td><strong>Tan Yong Liang、Thun Savry</strong></td><td><span class="cn">全程商务舱</span><span class="en">Business, all four flights</span></td><td><span class="cn">每人 2 件</span><span class="en">2 pieces each</span></td></tr>
-<tr><td><strong>Tan Chin Hooi、Tan Kuan Ze</strong></td><td><span class="cn">去程商务舱（CX608、CX426），回程经济舱（CX417、CX605）</span><span class="en">Business outbound (CX608, CX426); economy on the way back (CX417, CX605)</span></td><td><span class="cn">商务舱每人 2 件；经济舱以电子机票为准</span><span class="en">Business: 2 pieces each; economy: as shown on the e-ticket</span></td></tr>
-<tr><td><strong>Hew Chern Yang、Chet Pov</strong></td><td><span class="cn">全程经济舱</span><span class="en">Economy, all four flights</span></td><td><span class="cn">以电子机票为准</span><span class="en">As shown on the e-ticket</span></td></tr>
+<tr><td><strong>Tan Chin Hooi、Tan Kuan Ze</strong></td><td><span class="cn">去程商务舱（CX608、CX426），回程经济舱（CX417、CX605）</span><span class="en">Business outbound (CX608, CX426); economy on the way back (CX417, CX605)</span></td><td><span class="cn">每人 2 件（4 段都是）</span><span class="en">2 pieces each (all four flights)</span></td></tr>
+<tr><td><strong>Hew Chern Yang、Chet Pov</strong></td><td><span class="cn">全程经济舱</span><span class="en">Economy, all four flights</span></td><td><span class="cn">每人 2 件（4 段都是）</span><span class="en">2 pieces each (all four flights)</span></td></tr>
 </table>
 </section>
 <!-- ===== HOTEL ===== -->
