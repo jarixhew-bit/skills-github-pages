@@ -107,7 +107,7 @@ const TAB_RE = /^(내부|음식·음료|음식|음료|외부|메뉴|업체|방�
 async function fetchPhotos(ctx, kind, id, out) {
   const page = await ctx.newPage();
   const cands = [];
-  const diag = { tabs: [], per_tab: {}, apollo_keys: [] };
+  const diag = { tabs: [], apollo_keys: [] };
   page.on('response', async r => {
     if (!/graphql/.test(r.url())) return;
     if (r.status() === 405 || r.status() === 403) { out.gql_captcha = true; diag.gql_blocked = (diag.gql_blocked || 0) + 1; return; }

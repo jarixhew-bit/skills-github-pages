@@ -141,6 +141,13 @@ eq('来源·blogfiles 是博客', photoSource('https://blogfiles.pstatic.net/x.j
   const u = 'https://ldb-phinf.pstatic.net/20260617_271/a.jpg';
   const sel = selectPhotos([{ url: u, category: '' }, { url: 'https://search.pstatic.net/common/?autoRotate=true&type=w560_sharpen&src=' + encodeURIComponent(u), category: '음식·음료' }]);
   eq('去重·代理图与原图算同一张，分类取具体的', sel.map(p => [p.orig, p.category]), [[u, 'food']]);
+  const v = 'https://pup-review-phinf.pstatic.net/MjA/abc.JPEG/1000032488.jpg.jpg';
+  eq('缩图参数去掉才是原图', selectPhotos([{ url: v + '?type=w278_sharpen' }]).map(p => p.orig), [v]);
+  eq('短视频封面与 png 截图排最后', selectPhotos([
+    { url: 'https://ldb-phinf.pstatic.net/a/notice.png' },
+    { url: 'https://pup-review-phinf.pstatic.net/b/video_thumbnail.jpg' },
+    { url: 'https://pup-review-phinf.pstatic.net/c/food.jpg' },
+  ]).map(p => p.orig.split('/').pop()), ['food.jpg', 'notice.png', 'video_thumbnail.jpg']);
   eq('过滤·界面头像不进', selectPhotos([{ url: 'https://g-place.pstatic.net/assets/shared/images/icon_default_profile.png' }]), []);
 }
 

@@ -238,7 +238,8 @@ const keyOf = u => unwrapPstatic(u).split('?')[0];
  *  - 一律排除：메뉴 分类、menuImages 里的菜单板照、博客图（blogfiles，常带字幕截图）、
  *    短视频封面（clip）、界面图（g-place 头像、phinf/contact）
  *  - 同一张图在多个分类出现：只要有一处是 메뉴 就排除
- *  - 排序：음식·음료／내부 优先，其次外部，再其次没分类的；同档里店家图（owner）先于访客图
+ *  - 排序：음식·음료／내부 优先，其次外部，再其次没分类的；同档里店家图（owner）先于访客图；
+ *    评论短视频封面与 png 截图排最后
  * 回 [{ url(display), orig, source, category }]。
  */
 export function selectPhotos(cands, { menuUrls = [], want = 8 } = {}) {
@@ -246,7 +247,8 @@ export function selectPhotos(cands, { menuUrls = [], want = 8 } = {}) {
   const merged = new Map();
   for (const c of cands || []) {
     if (!c || !c.url) continue;
-    const orig = unwrapPstatic(c.url);
+    // phinf 原图网址后面的 ?type=w278 是缩图参数，去掉才是原尺寸（2026-11-20 实跑：评论页给的是缩图）
+    const orig = unwrapPstatic(c.url).replace(/^(https?:\/\/[a-z-]+\.pstatic\.net\/[^?]+)\?type=[\w-]+$/, '$1');
     if (!/^https?:\/\//.test(orig)) continue;
     if (/g-place\.pstatic\.net\/assets|phinf\.pstatic\.net\/contact\/|static\.naver\.net|icon|profile/i.test(orig)) continue;
     const k = keyOf(orig);
@@ -265,7 +267,9 @@ export function selectPhotos(cands, { menuUrls = [], want = 8 } = {}) {
     const source = host === 'owner' || host === 'visitor' ? host : (v.source === 'business' ? 'owner' : 'visitor');
     const cat = v.cats.has('food') ? 'food' : v.cats.has('interior') ? 'interior' : v.cats.has('exterior') ? 'exterior' : '';
     const score = (cat === 'food' || cat === 'interior' ? 4 : cat === 'exterior' ? 2 : 1) + (source === 'owner' ? 2 : 0);
-    rows.push({ url: displayUrl(v.orig), orig: v.orig, source, category: cat, score, order });
+    // 往后排（不删）：评论短视频的封面（video_thumbnail）与 png（店家传的 png 多是截图、公告）
+    const demote = /video_thumbnail|\.png$/i.test(v.orig) ? 3 : 0;
+    rows.push({ url: displayUrl(v.orig), orig: v.orig, source, category: cat, score: score - demote, order });
   }
   rows.sort((a, b) => b.score - a.score || a.order - b.order);
   return rows.slice(0, want).map(({ url, orig, source, category }) => ({ url, orig, source, category }));
