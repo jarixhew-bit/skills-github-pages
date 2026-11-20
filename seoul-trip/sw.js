@@ -15,7 +15,7 @@
 //
 // 改了 index.html 要把下面 VERSION 加一
 // （tools/check-sw-version.py 会拦忘记升的情况）。升版会重新预缓存、重新补抓新照片。
-const VERSION = 'seoul-v6';
+const VERSION = 'seoul-v7';
 const PAGES = VERSION + '-pages';
 const IMGS = 'seoul-img';            // 照片缓存不跟版本走：升版不必把几百张图重抓一遍
 const BOOKS = ['./index.html'];

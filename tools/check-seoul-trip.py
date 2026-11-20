@@ -17,6 +17,14 @@
      且该 id 要和状态快照里同一地点的 naver_id 一致、naver_status 是 open（住宿／书店／剧场这类 Naver 页面没有状态字段的，
      快照标 unknown 并写 naver_note）。Naver 按钮不准出现在没有 Google 按钮的地方，也不准用搜索链接。
 
+  5. 只排午餐（2026-11-20 用户原话：「吃饭一般我们都只吃午餐 晚餐不必放 这个你要记得 6人团他们都只吃午餐的」）：
+     ① 逐日时间轴（#itinerary）和餐厅卡里不得出现晚餐建议（晚餐／晚饭／晚市／宵夜／Dinner／Supper；
+        提到机上、航班餐食的行放行）；
+     ② 餐厅区开头要有「只吃午餐」说明；
+     ③ 每张餐厅卡的营业时间（卡上写的就是 Naver 时间）在 1/3–1/7 五天里，至少 3 天有午餐时段
+        （开门 ≤12:30 且午休开始／打烊 ≥13:30）；只开晚上的店（如 17:00 才开的居酒屋）红；
+        部分日子午餐不开的店要在卡上标「午餐不营业／No lunch」（chip），别让人白跑。
+
 跑法：python3 tools/check-seoul-trip.py [页面.html]     退出码 0 = 全过；1 = 有不符
 """
 import json
@@ -119,17 +127,106 @@ def check_naver(page, src):
     return bad
 
 
+LUNCH_DAYS = range(3, 8)           # 1/3–1/7
+DINNER_RE = re.compile(r"晚餐|晚饭|晚市|宵夜|夜宵|[Dd]inner|[Ss]upper")
+FLIGHT_RE = re.compile(r"机上|航班|飞机|[Ii]n-?flight|on board|onboard|on the plane")
+
+
+def plain(s):
+    return re.sub(r"<[^>]+>", "", s)
+
+
+def lunch_ok(open_h, end_h):
+    return open_h <= 12.5 and end_h >= 13.5
+
+
+def lunch_days_from_hours(hours):
+    """把卡上的营业时间字串（；分段）解析成 {日: True/False/None}；None = 解析不了。"""
+    res = {}
+    for seg in hours.split("；"):
+        seg = seg.strip()
+        m = re.match(r"1/(\d+)(?:–1/(\d+))?", seg)
+        if not m:
+            continue
+        d1 = int(m.group(1))
+        d2 = int(m.group(2) or m.group(1))
+        if "公休" in seg:
+            val = False
+        else:
+            t = re.search(r"(\d{1,2}):(\d{2})–(次日 )?(\d{1,2}):(\d{2})", seg)
+            if not t:
+                val = None
+            else:
+                o = int(t.group(1)) + int(t.group(2)) / 60
+                c = int(t.group(4)) + int(t.group(5)) / 60 + (24 if t.group(3) else 0)
+                b = re.search(r"午休 (\d{1,2}):(\d{2})–", seg)
+                end = int(b.group(1)) + int(b.group(2)) / 60 if b else c
+                val = lunch_ok(o, end)
+        for d in range(d1, d2 + 1):
+            res[d] = val
+    return res
+
+
+def check_lunch_only(page, src):
+    bad = []
+    # ① 逐日时间轴里不得有晚餐建议
+    a = src.find('<section id="itinerary">')
+    b = src.find("</section>", a)
+    if a < 0 or b < 0:
+        return [f"{page}: 找不到 #itinerary，检查本身失效"]
+    for i, ln in enumerate(src[a:b].split("\n")):
+        txt = plain(ln)
+        if DINNER_RE.search(txt) and not FLIGHT_RE.search(txt):
+            bad.append(f"{page}:{line_of(src, a) + i}  逐日里出现晚餐建议（本团只吃午餐）：{DINNER_RE.search(txt).group(0)}")
+    # ② 餐厅区
+    fa = src.find('<section id="food">')
+    fb = src.find("</section>", fa)
+    if fa < 0 or fb < 0:
+        return bad + [f"{page}: 找不到 #food，检查本身失效"]
+    food = src[fa:fb]
+    intro = re.search(r'<div class="note amber">(.*?)</div>', food, re.S)
+    if not intro or "只吃午餐" not in intro.group(1) or "lunch" not in intro.group(1).lower():
+        bad.append(f"{page}:{line_of(src, fa)}  餐厅区开头缺「本团只吃午餐」中英说明")
+    # ③ 每张餐厅卡
+    n = 0
+    for m in re.finditer(r'<div class="evt" id="(food-[^"]+)">(.*?)\n</div>\n</div>', food, re.S):
+        n += 1
+        cid, blk = m.group(1), m.group(2)
+        ln = line_of(src, fa + m.start())
+        dm = DINNER_RE.search(plain(blk))
+        if dm:
+            bad.append(f"{page}:{ln}  {cid} 卡片说明里有「{dm.group(0)}」，要改成午餐角度")
+        h = re.search(r"<strong>营业时间：</strong>(.*?)<br>", blk)
+        if not h:
+            bad.append(f"{page}:{ln}  {cid} 没有营业时间，无法确认有午餐")
+            continue
+        days = lunch_days_from_hours(h.group(1))
+        miss = [d for d in LUNCH_DAYS if d not in days or days[d] is None]
+        if miss:
+            bad.append(f"{page}:{ln}  {cid} 营业时间解析不出 1/{miss[0]} 等日子：{h.group(1)[:60]}")
+            continue
+        ok = [d for d in LUNCH_DAYS if days[d]]
+        if len(ok) < 3:
+            bad.append(f"{page}:{ln}  {cid} 1/3–1/7 只有 {len(ok)} 天有午餐时段（要 ≥3 天；只开晚上的店不放）：{h.group(1)[:70]}")
+        elif len(ok) < len(LUNCH_DAYS) and not ("午餐不营业" in blk and "No lunch" in blk):
+            no = "、".join(f"1/{d}" for d in LUNCH_DAYS if not days[d])
+            bad.append(f"{page}:{ln}  {cid} 部分日子（{no}）没有午餐时段，卡上要标「午餐不营业／No lunch」")
+    if n == 0:
+        bad.append(f"{page}: 找不到任何餐厅卡，检查本身失效")
+    return bad
+
+
 def main(argv):
     page = argv[0] if argv else PAGE
     path = page if os.path.isabs(page) else os.path.join(REPO, page)
     src = open(path, encoding="utf-8").read()
-    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src)
+    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_lunch_only(page, src)
     if bad:
         print(f"✗ 首尔手册 {len(bad)} 处不符：")
         for b in bad:
             print("  " + b)
         return 1
-    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 按钮与快照一致")
+    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 按钮与快照一致、只排午餐（无晚餐建议、餐厅都有午餐时段）")
     return 0
 
 
