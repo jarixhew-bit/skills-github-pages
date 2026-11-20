@@ -401,3 +401,31 @@ export function labelByFilter(base, perFilter) {
   }
   return { cands, ignored };
 }
+
+/**
+ * 照片页／首页 apollo state 里**按物件类型**分好类的照片候选——比整页正则捞网址可靠：
+ *  - PlaceMenuItem 的图、menuImages（菜单板）→ category 'menu'（会被 selectPhotos 排除，
+ *    对应 Naver 照片页的 메뉴 分类；2026-11-20 第三轮实跑：整页正则把菜品图当成店家照排在最前）
+ *  - PlaceDetailTopPhotoItem / PhotoViewerImage → 照它自己的 mediaSource（business＝店家）
+ *  - placeDetail.images（店家代表图）→ 店家图，无分类
+ */
+export function photoCandsFromState(state) {
+  const out = [];
+  if (!state) return out;
+  for (const [k, v] of Object.entries(state)) {
+    if (!v || typeof v !== 'object') continue;
+    const t = v.__typename || k.split(':')[0];
+    if (t === 'PlaceMenuItem') {
+      if (v.thumbnailUrl) out.push({ url: v.thumbnailUrl, category: '메뉴', source: 'business' });
+      for (const im of v.images || []) if (im && im.url) out.push({ url: im.url, category: '메뉴', source: 'business' });
+    } else if ((t === 'PlaceDetailTopPhotoItem' || t === 'PhotoViewerImage') && v.originalUrl && v.mediaFormat !== 'video') {
+      out.push({ url: v.originalUrl, category: v.relation || '', source: v.mediaSource || '' });
+    }
+  }
+  const pd = placeDetailOf(state);
+  if (pd) {
+    for (const m of pd.menuImages || []) if (m && m.imageUrl) out.push({ url: m.imageUrl, category: '메뉴', source: 'business' });
+    for (const im of (pd.images && pd.images.images) || []) if (im && im.origin) out.push({ url: im.origin, category: '', source: 'business' });
+  }
+  return [...out, ...parsePhotoState(state)];
+}

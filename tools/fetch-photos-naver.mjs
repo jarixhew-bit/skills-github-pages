@@ -24,12 +24,14 @@
  * business_status（营业中／休业／歇业／unknown）、now_status、hours[]、closed_days、
  * menu[{name,price}]、naver_rating、naver_reviews、urls[]、photo_src[]（每张 owner/visitor）、
  * photo_cat[]、count、method、search_candidates（搜名称时的前几个候选，核对用）。
+ * captcha＝整页被验证码挡（这家资料不全，换下一家）；gql_captcha＝照片页滚动加载的 graphql
+ * 被挡（2026-11-20 实测几乎每家都会，属常态：照片只拿得到服务端渲染的那一批）。
  * **名称要人工核对**：搜「짱게임 종로」会落到「짱오락실 종로점」，place_title 与 query 不像时要看一眼。
  */
 import { pathToFileURL } from 'node:url';
 import {
   isCaptcha, placeIdFromUrl, naverPlaceUrl, parseSearchIds, extractApolloState,
-  parseHome, parsePhotoState, selectPhotos, harvestPhotoUrls, labelByFilter,
+  parseHome, parsePhotoState, unwrapPstatic, selectPhotos, harvestPhotoUrls, labelByFilter, photoCandsFromState,
 } from './lib/naver-parse.mjs';
 
 const WANT = parseInt(process.env.WANT || '5', 10);
@@ -108,8 +110,8 @@ async function fetchPhotos(ctx, kind, id, out) {
   const diag = { tabs: [], per_tab: {}, apollo_keys: [] };
   page.on('response', async r => {
     if (!/graphql/.test(r.url())) return;
-    if (r.status() === 405 || r.status() === 403) { out.captcha = true; diag.gql_blocked = (diag.gql_blocked || 0) + 1; return; }
-    try { if (isCaptcha(await r.text())) { out.captcha = true; diag.gql_blocked = (diag.gql_blocked || 0) + 1; } } catch { /* 读不到就算了 */ }
+    if (r.status() === 405 || r.status() === 403) { out.gql_captcha = true; diag.gql_blocked = (diag.gql_blocked || 0) + 1; return; }
+    try { if (isCaptcha(await r.text())) { out.gql_captcha = true; diag.gql_blocked = (diag.gql_blocked || 0) + 1; } } catch { /* 读不到就算了 */ }
   });
   try {
     await page.goto(`https://m.place.naver.com/${kind}/${id}/photo`, { waitUntil: 'networkidle', timeout: 45000 })
@@ -141,10 +143,23 @@ async function fetchPhotos(ctx, kind, id, out) {
   // 页签点不动、滚动加载的 graphql 被验证码挡）。메뉴 也抓——是为了知道哪些要排除。
   const base = [...new Set(cands.map(c => c.url))];
   const perFilter = {};
+  const typedCands = [];
   const filters = [...new Set([...(diag.tabs || []), '음식·음료', '내부', '메뉴'])].filter(f => !/업체|방문자/.test(f));
   const r0 = await get(`https://m.place.naver.com/${kind}/${id}/photo`);
   if (isCaptcha(r0.body)) { out.captcha = true; out.captcha_at = (out.captcha_at || []).concat('photo-http'); }
-  else base.push(...harvestPhotoUrls(r0.body));
+  else {
+    // 先按物件类型分好类（菜品图＝메뉴、要排除），剩下 apollo 之外零散的网址才当「没分类」
+    const st = extractApolloState(r0.body);
+    const typed = st ? photoCandsFromState(st) : [];
+    typedCands.push(...typed);
+    const typedKeys = new Set(typed.map(c => unwrapPstatic(c.url).split('?')[0]));
+    base.push(...harvestPhotoUrls(r0.body).filter(u => !typedKeys.has(u.split('?')[0])));
+    if (st) {
+      const types = {};
+      for (const [k, v] of Object.entries(st)) { const t = (v && v.__typename) || k.split(':')[0]; types[t] = (types[t] || 0) + 1; }
+      diag.photo_types = types;
+    }
+  }
   for (const f of filters.slice(0, 5)) {
     if (out.captcha_at && out.captcha_at.includes('photo-http')) break;
     await jitter(1000, 2000);
@@ -158,7 +173,7 @@ async function fetchPhotos(ctx, kind, id, out) {
   diag.per_filter = Object.fromEntries(Object.entries(perFilter).map(([k, v]) => [k, v.length]));
   diag.filter_ignored = lab.ignored;
   diag.base = base.length;
-  return { cands: [...cands.filter(c => c.category), ...lab.cands], diag };
+  return { cands: [...typedCands, ...cands.filter(c => c.category), ...lab.cands], diag };
 }
 
 async function fetchOne(ctx, q) {

@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import {
   isCaptcha, placeIdFromUrl, naverPlaceUrl, parseSearchIds, extractApolloState, parseHome,
   parseHours, businessStatus, parseMenu, selectPhotos, photoSource, unwrapPstatic, parsePhotoState,
+  harvestPhotoUrls, labelByFilter, photoCandsFromState,
 } from './lib/naver-parse.mjs';
 
 const FX = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'naver');
@@ -141,6 +142,33 @@ eq('来源·blogfiles 是博客', photoSource('https://blogfiles.pstatic.net/x.j
   const sel = selectPhotos([{ url: u, category: '' }, { url: 'https://search.pstatic.net/common/?autoRotate=true&type=w560_sharpen&src=' + encodeURIComponent(u), category: '음식·음료' }]);
   eq('去重·代理图与原图算同一张，分类取具体的', sel.map(p => [p.orig, p.category]), [[u, 'food']]);
   eq('过滤·界面头像不进', selectPhotos([{ url: 'https://g-place.pstatic.net/assets/shared/images/icon_default_profile.png' }]), []);
+}
+
+// ── 分类页（?filterType=）──────────────────────────────────────
+{
+  const html = '<img src="https://search.pstatic.net/common/?autoRotate=true&amp;type=w560_sharpen&amp;src=https%3A%2F%2Fldb-phinf.pstatic.net%2Fa%2F1.jpg">'
+    + '<script>{"originalUrl":"https:\\u002F\\u002Fpup-review-phinf.pstatic.net\\u002Fb\\u002F2.jpg"}</script>';
+  eq('分类页·代理图（&amp;）与 JSON 转义网址都捞得到', harvestPhotoUrls(html).sort(),
+    ['https://ldb-phinf.pstatic.net/a/1.jpg', 'https://pup-review-phinf.pstatic.net/b/2.jpg']);
+  const base = ['a', 'b', 'c', 'd', 'e'].map(x => `https://ldb-phinf.pstatic.net/${x}.jpg`);
+  // Naver 不认参数时回的就是「全部」那页：不能整页标成 메뉴 把好图全排除
+  const ign = labelByFilter(base, { 메뉴: base.slice() });
+  eq('分类页·参数没生效就不贴分类', ign.ignored, ['메뉴']);
+  eq('分类页·参数没生效时好图还在', selectPhotos(ign.cands).length, 5);
+  const real = labelByFilter(base, { 메뉴: [base[0]], '음식·음료': [base[1], 'https://ldb-phinf.pstatic.net/f.jpg'] });
+  const sel = selectPhotos(real.cands).map(p => p.orig.slice(-5));
+  eq('分类页·真分类：메뉴 那张排除、음식 那张排前', sel, ['b.jpg', 'f.jpg', 'c.jpg', 'd.jpg', 'e.jpg']);
+}
+
+// 2026-11-20 第三轮实跑：整页正则把菜品图（PlaceMenuItem）当成「没分类的店家照」排在最前
+{
+  const st = extractApolloState(read('home-2007385665.html'));
+  const dish = 'https://ldb-phinf.pstatic.net/20260205_156/1770272710539YmJa6_JPEG/IMG_6818.jpeg';
+  const typed = photoCandsFromState(st);
+  ok('物件分类·菜品图标成 메뉴', typed.some(c => c.url === dish && c.category === '메뉴'));
+  const sel = selectPhotos([{ url: dish, category: '' }, ...typed]);
+  ok('物件分类·菜品图即使也以「没分类」出现仍排除', !sel.some(p => p.orig === dish), sel.map(p => p.orig).join(' '));
+  ok('物件分类·店家代表图还在', sel.some(p => /1763691731189BcJv5/.test(p.orig)));
 }
 
 if (fails.length) {
