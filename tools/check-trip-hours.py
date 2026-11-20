@@ -15,7 +15,7 @@
      英文的 "please confirm/check … hours/times/last orders"。
   2. 每张餐厅卡（`<section id="food">` 里每个 `<h3>`）的中文说明，必须同时写出
      日期（如 11/14–11/16）和至少一段确切时刻（如 10:00–22:00）。
-     「随商场营业」「每天午晚都营业」这种没有时刻的不算。
+     「随商场营业」「每天午晚都营业」这种没有时刻的不算；真查不到的写「未公布」（带日期）算数。
 查不到的那一格要写明是「未公布」还是「来源不一」并写具体——那不是推卸，不会被拦。
 
 跑法：
@@ -93,7 +93,9 @@ def check(page: str, src: str) -> list:
             line = body.count("\n", 0, m.start()) + 1
             bad.append(f"{page}:{line}  写成了制作者的角度（要写给读者看）：「{m.group(0)}」")
     for line, name, text in food_cards(src):
-        if not (DATE.search(text) and TIME.search(text)):
+        # 2026-11-20：Google 与其他来源都没公布时间的店（首尔 Mutan／Tawa 等新店），照本档开头的约定
+        # 写明「未公布」＋日期即算查实，不逼着编一个时刻
+        if not (DATE.search(text) and (TIME.search(text) or "未公布" in text)):
             bad.append(f"{page}:{line}  餐厅卡「{name}」没写出那几天的确切营业时间（要有日期＋时刻）")
     return bad
 

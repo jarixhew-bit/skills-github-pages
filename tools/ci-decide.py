@@ -95,12 +95,17 @@ RULES = {
                     ".github/workflows/flight-probe.yml"],
     # 抓图器的营业状态判断：认错就把关门的店当成营业，放进手册
     "placestatus": ["tools/fetch-photos.mjs", "tools/check-place-status.mjs"],
+    # Naver 抓取器的解析（韩国手册的营业时间／营业状态／照片分类／菜单全靠它）：认错就把公休日写成营业、把菜单板放进卡片
+    "naverparse": ["tools/fetch-photos-naver.mjs", "tools/lib/naver-parse.mjs",
+                   "tools/check-naver-parse.mjs", "tools/fixtures/naver/**"],
     # 槟城总地图坐标：卡片加了坐标没补，那一家会安安静静不上图
     "mapcoords": ["penang-trip/index.html", "penang-trip/coords.json", "tools/check-map-coords.py"],
     # 手册地图链接：还没走完的手册不准用搜索链接／短链（会落到停车场、私人飞机点）
     "maplinks": ["*.html", "*/*.html", "tools/lib/trips.py", "tools/check-map-links.py"],
     # 手册营业时间：还没走完的手册不准写「营业时间请订位时确认」这类推给读者的话（2026-11-08 雅加达）
     "triphours": ["*.html", "*/*.html", "tools/lib/trips.py", "tools/check-trip-hours.py"],
+    # 首尔手册专属：每张卡 4 张照片、窗棂纹带完整、每个地点 status 都是 open（2026-11-20 用户抓到）
+    "seoultrip": ["seoul-trip/index.html", "tools/check-seoul-trip.py", "tools/lib/seoul-place-status.json"],
     # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验。
     # 也盯所有 html 与 trips.py：这支自检里有全仓库唯一的「带照片的新手册有没有登记进 trips.py」，
     # 开新手册的 PR 必须跑到它（不到 1 秒、全打桩不联网，多跑不费事）。

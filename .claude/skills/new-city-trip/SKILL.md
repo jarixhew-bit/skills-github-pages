@@ -48,6 +48,8 @@ description: 用户说「以后要去某某城市」「帮我看看某城市有�
 把所有候选的地图链接串成 `|` 分隔，跑 `fetch-photos.yml`（`want: 8`）。
 抓图器会自动从 Google 的「Food & drink」分类取图、OCR 把菜单照排到最后
 （2026-09-19 用户明确要求：**店＋食物，不要菜单**）。
+**韩国**改选 `source=naver`（照片、营业时间、营业状态、菜单走 Naver；规则见 CLAUDE.md 媒体规则的韩国例外），
+评分仍另跑 Google 那条。Naver 搜名称可能落到别家（「짱게임」→「짱오락실」），`place_title` 要核对。
 
 结果会提交回触发分支的 .photos/latest.txt（暂存档，只在那个分支上有，不进 main）。
 
