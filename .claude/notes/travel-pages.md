@@ -290,14 +290,18 @@ PUTIEN 留 MBS（删吉真那路店）、松发留新桥路总店（2026-10-31 �
 首尔家庭手册，2027-01-02（六）～01-08（五）7天6夜（首尔住 5 夜，1/3–1/8），6 人含 10、13 岁两个小孩（全名写在封面），旅行社接送（Alan Travel 私人团），双语。用户原话「请用之前新加坡雅加达的做法」，所以**整套版型复制自 `sg-jkt-trip/jakarta.html`**（礼宾风 CSS、站点竖线时间轴、方角 `btn-map`、nav 跳转、自动跳当天、tapGlow、`siteLangUser`、天气条、`.flive` 航班实时框），去掉 PSI／烟霾。已登记 `tools/lib/trips.py`（2027-01-08）、`home/index.html` 的 `HOME_DATA`、`tools/check-sw-version.py` 的 `PWAS`。
 - **主题（韩国宫廷／丹青）**：文末 `:root` 覆盖段——靛蓝（쪽빛）`--navy:#1b2a55`＋金 `--gold:#b39149`＋石绿 `--jade`。纹样全是 CSS：`--changsal` 窗棂（封面上下纹带、区块标题下、页尾；**用到的地方不要再设 `background-size`**，尺寸写在变量各层里，否则变实心色块）、`--dancheong` 丹青三色细带（每天标题上沿、餐厅分组线）。**丹青本来的红不用**，红只给警示。
 - **每天线路色（首尔地铁线色压低饱和，禁红）**：D1 1号线深蓝 `--l1`、D2 2号线绿、D3 3号线橙、D4 5号线紫、D5 9号线金、D6 4号线天蓝。
-- 结构：topbar → nav（航班／住宿／D1–D6／餐厅／玩乐／资讯）→ cover → **`#precheck` 置顶「出发前要确认」框**（朱红外框＋「留意／ALERT」文字标签，4 条，正文里 `#day03`、`#precheck` 互相链）→ tip → `#flights`(01，4 张 `.bpass`：CX608 KTI→HKG 2h45、CX426 HKG→ICN 3h35、CX417 ICN→HKG 4h15、CX605 HKG→KTI 2h45，香港转机去 4h35／回 2h45，仁川 T1 国泰柜台 09:00 关) → `#hotel`(02，The Westin Josun Seoul，3 间 Deluxe Triple) → `#itinerary`(03，`#day01`~`#day06`，`data-date="2027-01-03"`…`-08`) → `#food`(04，15 张 `.evt`，id `food-*`，四组) → `#fun`(05，12 张 `.evt`，id `fun-*`) → `#info`(06，`.info` 实用资讯) → footer。
+- 结构：topbar → nav（航班／住宿／D1–D6／餐厅／玩乐／资讯）→ cover → **`#precheck` 置顶「出发前要确认」框**（朱红外框＋「留意／ALERT」文字标签，4 条：第 1 条是条件句「酒店待确认；若最后定的是 Westin Josun，第一晚的房间…」，第 3 条是 K-ETA／e-Arrival／柬埔寨签证，正文里 `#day03`、`#precheck` 互相链）→ tip → `#flights`(01，4 张 `.bpass`：CX608 KTI→HKG 2h45、CX426 HKG→ICN 3h35、CX417 ICN→HKG 4h15、CX605 HKG→KTI 2h45，香港转机去 4h35／回 2h45，仁川 T1 国泰柜台 09:00 关) → `#hotel`(02，**标「待确认」**，暂列 The Westin Josun Seoul，3 间 Deluxe Triple) → `#itinerary`(03，`#day01`~`#day06`，`data-date="2027-01-03"`…`-08`) → `#food`(04，14 张 `.evt`，id `food-*`，按菜式五组：烤肉 7／韩定食 2／生鱼片 1／日本料理 2／中餐 2) → `#fun`(05，16 张 `.evt`，id `fun-*`，全室内：电玩城夹娃娃 9 家排最前，其余室内 7 处) → `#info`(06，`.info` 实用资讯) → footer。
 - **特殊点（勿擅改）**：Galaxy Robot Park 周一至周三休馆，旅行社排在 1/5（二）会扑空——置顶第 2 条＋D3 红色 `.note.red` 提示，调法是改到 1/3（日）下午（D1 放了它的 `.stop`），1/5 改去乐天世界（D3 备案，链到 `#fun-lotte／laqua／legend`）。第一晚房间（1/2 晚不在订单内）是置顶第 1 条。
 - **订位代号（FPVOBS 等）、订单号一律不进页面**（公开仓库，沿用新加坡那本的规矩），航班卡只按人名列座位。
 - **韩文原店名放 `<div class="orig">`（在 cn/en span 之外）**：`check-html.py` 只扫 cn/en span 里的韩文，店名原文放外面就不必登记白名单，也不会在英文模式被隐藏；地址里的楼层要写 B1／3F，别留「층」。
 - 逐日里**同时出现在玩乐区的地点**（Zzang、Trickeye、NANTA、溜冰场、乐天世界等）不再重复做 `.stop` 大卡，只在 `.note` 里链到 `#fun-*`；只在逐日出现的（爱宝、星空图书馆、Galaxy、草莓农场、SMOB、The Hyundai Seoul、SEOULDAL）才是 `.stop`。餐厅卡的说明里必须有「日期＋确切时刻」（`check-trip-hours` 会拦），营业时间由 JSON 的英文星期表自动换算。
 - 天气：坐标 37.5644,126.9801、时区 Asia/Seoul，常态文案「一月常态 −6～2°C，干冷多风，偶有降雪」；`wmo()` 多了雪的代码，`.wx.wet` 的标签改成「雨雪／SNOW / RAIN」。`check-weather.mjs` 目前**没有**加首尔这一页。
 - 离线：`seoul-trip/sw.js`（照 `sg-jkt-trip/sw.js`，scope 只到本文件夹，`VERSION='seoul-v1'`，只缓存 index.html）。**改了 `index.html` 要把 `VERSION` 加一**（`check-sw-version.py` 已登记）。
-- 照片：每张卡 4 张，取自 CI 抓图 JSON 的 `urls` 前 4 张；alt 写成「名称 照片 N · Name photo N」。
+- **照片：每张卡（含酒店、逐日 `.stop`、餐厅、玩乐）恰好 4 张**（2026-11-20 起）。不能按网址顺序取前 4 张：每个地点从 CI 抓图 JSON 的 `urls`（通常 8 张）里，用 `photo-preview.yml` 把缩图拉回来**逐张看**再挑。要剔：360 全景（一整条横幅）、同一张换网址（grass-cs／gps-cs-s 常是同一张）、近似重复、人像、菜单／海报／说明卡、别处（街景、别家、商场外观充数）。alt 写成「名称 照片 N · Name photo N」。`photo-preview` 每次覆盖 `.photos/preview/NN.jpg`，一次最多约 160 个网址（输入框上限约 65k 字符），分批跑、每批跑完先把缩图取走再开下一批；用完 `.photos/preview/` 要删。
+- **餐厅规则（2026-11-20 用户）**：定位中上等级；**炸鸡专门店不要**；团里两位不吃牛，每张卡用 chip 标主打肉类（猪／海鲜／混合；含牛的写「也有猪肉」），牛肉专门店不收（Yoonseul 用户去过、有猪肉，保留并标「韩牛为主，也有国产猪」）；不再推荐酒店内餐厅（酒店未定）。要补「菜单里有炸鸡」的正餐店另行通知。
+- **任何 RESULT 的 `status` 不是 `open` 的地点都不能进页面**（The Sic-ddang、TANI、Mongjungheon 安国都是 permanently_closed，首尔广场溜冰场 temporarily_closed）。快照在 `tools/lib/seoul-place-status.json`（place_url → status），新增地点要先抓 RESULT 并入快照。
+- 查不到营业时间的店（Google 没列：Yoonseul、Mutan、Tawa、大物岛）写「1/3–1/8 的时段…未公布」；`check-trip-hours` 对带日期的「未公布」放行（2026-11-20 改）。
+- 自检 `tools/check-seoul-trip.py`（只管这一本，已进 check-all 与 checks.yml 的 `seoultrip`）：①每个 `.gal` 恰 4 张 `<img>` ②`--changsal` 含右端竖棂层且竖棂／格心层 `round` ③每个 `btn-map` 的 place_url 在状态快照里且是 open。
 
 ## penang-trip/index.html（约 1500 行；2026-10-05 起**没有总地图**，见下方「总地图」一节）
 槟城家庭手册，2026-10-09~17 九天八夜，6 人（老板一家），双语。

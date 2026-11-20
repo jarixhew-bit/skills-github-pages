@@ -101,6 +101,8 @@ RULES = {
     "maplinks": ["*.html", "*/*.html", "tools/lib/trips.py", "tools/check-map-links.py"],
     # 手册营业时间：还没走完的手册不准写「营业时间请订位时确认」这类推给读者的话（2026-11-08 雅加达）
     "triphours": ["*.html", "*/*.html", "tools/lib/trips.py", "tools/check-trip-hours.py"],
+    # 首尔手册专属：每张卡 4 张照片、窗棂纹带完整、每个地点 status 都是 open（2026-11-20 用户抓到）
+    "seoultrip": ["seoul-trip/index.html", "tools/check-seoul-trip.py", "tools/lib/seoul-place-status.json"],
     # 自动补破图：它会自己动手改手册，所以改到它或它的自检都要重验。
     # 也盯所有 html 与 trips.py：这支自检里有全仓库唯一的「带照片的新手册有没有登记进 trips.py」，
     # 开新手册的 PR 必须跑到它（不到 1 秒、全打桩不联网，多跑不费事）。
