@@ -12,6 +12,11 @@
      TANI、Mongjungheon、首尔广场溜冰场）、或查不到的（没抓过状态就放进手册）都红。
      加新地点时：先用 fetch-photos.yml 抓，把 RESULT 的 place_url／place_title／status 并进这份快照。
 
+  4. Naver 地图按钮（2026-11-20 起，韩国行程营业时间／状态以 Naver 为准）：每张卡的 Google 按钮 `btn-map` 之外，
+     抓得到 Naver 的卡另有一颗 `btn-map btn-map-naver`，链接必须是 https://map.naver.com/p/entry/place/<数字>，
+     且该 id 要和状态快照里同一地点的 naver_id 一致、naver_status 是 open（住宿／书店／剧场这类 Naver 页面没有状态字段的，
+     快照标 unknown 并写 naver_note）。Naver 按钮不准出现在没有 Google 按钮的地方，也不准用搜索链接。
+
 跑法：python3 tools/check-seoul-trip.py [页面.html]     退出码 0 = 全过；1 = 有不符
 """
 import json
@@ -78,17 +83,53 @@ def check_status(page, src):
     return bad
 
 
+def check_naver(page, src):
+    snap = json.load(open(SNAP, encoding="utf-8")) if os.path.exists(SNAP) else {}
+    bad = []
+    seen = 0
+    # 每个 .links 区块：Google 按钮在前，Naver 按钮（若有）紧随其后
+    for m in re.finditer(r'<div class="links">(.*?)</div>', src, re.S):
+        blk = m.group(1)
+        g = re.search(r'<a class="btn-map" href="([^"]+)"', blk)
+        if not g:
+            continue
+        n = re.findall(r'<a class="btn-map btn-map-naver" href="([^"]*)"', blk)
+        if len(n) > 1:
+            bad.append(f"{page}:{line_of(src, m.start())}  一张卡里有 {len(n)} 颗 Naver 按钮")
+        for u in n:
+            seen += 1
+            mm = re.fullmatch(r"https://map\.naver\.com/p/entry/place/(\d+)", u)
+            if not mm:
+                bad.append(f"{page}:{line_of(src, m.start())}  Naver 按钮不是 entry/place/<id> 形式：{u[:80]}")
+                continue
+            info = snap.get(g.group(1)) or {}
+            if info.get("naver_id") != mm.group(1):
+                bad.append(f"{page}:{line_of(src, m.start())}  Naver id {mm.group(1)} 与快照记录的 {info.get('naver_id')} 不一致（「{info.get('title')}」）")
+            elif info.get("naver_status") == "open":
+                pass
+            elif info.get("naver_status") == "unknown" and info.get("naver_note"):
+                pass
+            else:
+                bad.append(f"{page}:{line_of(src, m.start())}  「{info.get('title')}」Naver 状态 {info.get('naver_status')} 不是 open")
+    for m in re.finditer(r'map\.naver\.com/[^"\s<>]*', src):
+        if "/p/entry/place/" not in m.group(0):
+            bad.append(f"{page}:{line_of(src, m.start())}  Naver 链接不是地点页：{m.group(0)[:80]}")
+    if seen == 0:
+        bad.append(f"{page}: 找不到任何 Naver 按钮，检查本身失效")
+    return bad
+
+
 def main(argv):
     page = argv[0] if argv else PAGE
     path = page if os.path.isabs(page) else os.path.join(REPO, page)
     src = open(path, encoding="utf-8").read()
-    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src)
+    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src)
     if bad:
         print(f"✗ 首尔手册 {len(bad)} 处不符：")
         for b in bad:
             print("  " + b)
         return 1
-    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open")
+    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 按钮与快照一致")
     return 0
 
 

@@ -1,392 +1,431 @@
 {
- "https://www.google.com/maps/place/%EB%8C%80%EB%AC%BC%EC%84%AC+%EC%A2%85%EB%A1%9C%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357ca300508a29bb:0x592e5cc89ff606cb!16s%2Fg%2F11yttcf53h!20s8Q98HX9M%2BJJF": {
+ "https://www.google.com/maps/place/The+Westin+Josun+Seoul/data=!4m7!3m6!1s0x357ca2f146af4e39:0xe28f4800e1b8a3c5!5m2!4m1!1i2!16s%2Fg%2F1tjdtvvz!20s8Q98HX7J%2BQ23": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "대물섬 종로점"
+  "title": "The Westin Josun Seoul",
+  "naver_id": "11583198",
+  "naver_title": "웨스틴 조선 서울",
+  "naver_status": "unknown",
+  "naver_note": "Naver 页面没有营业状态／时间字段（住宿、书店、剧场类），以 Google 状态为准，时间若写了则标明来源 Google"
  },
- "https://www.google.com/maps/place/%EB%94%A4%EB%94%A4%EC%84%AC+%EB%AA%85%EB%8F%99%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357ca3f53c908dff:0x2a82da39bf9fa486!16s%2Fg%2F11jsh2tyqy!20s8Q98HX7M%2B956": {
+ "https://www.google.com/maps/place/Galaxy+Robot+Park/data=!3m1!4b1!4m4!3m3!1s0x357cb10ee1baaf69:0xc6f73e1cbd5ab7b4!16s%2Fg%2F11njcxm1yd!20s8Q99H48X%2B53M": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "딤딤섬 명동점"
+  "title": "Galaxy Robot Park",
+  "naver_id": "1378952275",
+  "naver_title": "갤럭시 로봇파크",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Everland/data=!3m1!4b1!4m4!3m3!1s0x357b5403ce34d773:0x1fa18ab619238098!16s%2Fm%2F012dzv65!20s8Q9976V3%2BH28": {
+  "checked": "2026-11-20",
+  "status": "open",
+  "title": "Everland",
+  "naver_id": "11574457",
+  "naver_title": "에버랜드",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%EB%B3%84%EB%A7%88%EB%8B%B9+%EB%8F%84%EC%84%9C%EA%B4%80+%EC%88%98%EC%9B%90+%EC%8A%A4%ED%83%80%ED%95%84%EB%93%9C/data=!4m8!1m2!2m1!1z7Iqk7YOA7ZWE65OcIOyImOybkCDrs4Trp4jri7kg64-E7ISc6rSA!3m4!1s0x357b4300771bb145:0x55790eee14d21600!15sCifsiqTtg4DtlYTrk5wg7IiY7JuQIOuzhOuniOuLuSDrj4TshJzqtIAiA4gBAVorIinsiqTtg4Ag7ZWE65OcIOyImOybkCDrs4Qg66eI64u5IOuPhOyEnOq0gJIBBmxvdW5nZZoBRENpOURRVWxSUVVOdlpFTm9kSGxqUmpsdlQyNXdiMko2UmpCa2JXUXdUMWhOTWxFeGNIVlZiSEIxWTIxNE5FNXRZeEFC4AEA-gEECAAQJQ!16s%2Fg%2F11yjcjp6k2!20s8Q987XQR%2B2J9": {
+  "checked": "2026-11-20",
+  "status": "open",
+  "title": "별마당 도서관 수원 스타필드",
+  "naver_id": "1363762877",
+  "naver_title": "별마당도서관 스타필드수원점",
+  "naver_status": "unknown",
+  "naver_note": "Naver 页面没有营业状态／时间字段（住宿、书店、剧场类），以 Google 状态为准，时间若写了则标明来源 Google"
  },
  "https://www.google.com/maps/place/%EB%A7%88%EC%9D%8C+%EB%86%8D%EC%9E%A5(%EC%9C%A0%EA%B8%B0%EB%86%8D+%EB%94%B8%EA%B8%B0%EC%B2%B4%ED%97%98)/data=!4m8!1m2!2m1!1z64Ko7JaR7KO8IOuUuOq4sOyytO2XmOuGjeyepQ!3m4!1s0x35634b16eff2325b:0xc08e9abd3feac23a!15sChzrgqjslpHso7wg65S46riw7LK07ZeY64aN7J6lkgEMb3JnYW5pY19mYXJt4AEA!16s%2Fg%2F11f125tzkv!20s8Q99H88C%2BJR8": {
   "checked": "2026-11-20",
   "status": "open",
   "title": "마음 농장(유기농 딸기체험)"
  },
- "https://www.google.com/maps/place/%EB%B3%84%EB%A7%88%EB%8B%B9+%EB%8F%84%EC%84%9C%EA%B4%80+%EC%88%98%EC%9B%90+%EC%8A%A4%ED%83%80%ED%95%84%EB%93%9C/data=!4m8!1m2!2m1!1z7Iqk7YOA7ZWE65OcIOyImOybkCDrs4Trp4jri7kg64-E7ISc6rSA!3m4!1s0x357b4300771bb145:0x55790eee14d21600!15sCifsiqTtg4DtlYTrk5wg7IiY7JuQIOuzhOuniOuLuSDrj4TshJzqtIAiA4gBAVorIinsiqTtg4Ag7ZWE65OcIOyImOybkCDrs4Qg66eI64u5IOuPhOyEnOq0gJIBBmxvdW5nZZoBRENpOURRVWxSUVVOdlpFTm9kSGxqUmpsdlQyNXdiMko2UmpCa2JXUXdUMWhOTWxFeGNIVlZiSEIxWTIxNE5FNXRZeEFC4AEA-gEECAAQJQ!16s%2Fg%2F11yjcjp6k2!20s8Q987XQR%2B2J9": {
+ "https://www.google.com/maps/place/Sports+Monster+Goyang/data=!3m1!4b1!4m4!3m3!1s0x357c9714feb85147:0xa25a9bc5a09d7fa8!16s%2Fg%2F11f11p9dk_!20s8Q98JVWV%2BC55": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "별마당 도서관 수원 스타필드"
+  "title": "Sports Monster Goyang",
+  "naver_id": "1859523278",
+  "naver_title": "스몹 고양",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/%EC%8B%A0%ED%9D%A5%EC%8B%9C%EC%9E%A5+%EC%BD%A4%EC%BD%A4%EC%98%A4%EB%9D%BD%EC%8B%A4/data=!4m8!1m2!2m1!1z7L2k7L2k7Jik65297IukIOyXsOuCqOuPmSDrp4jtj6zqtaw!3m4!1s0x357ca3f8c40444ff:0x8ff16b655b21a97d!15sCiPsvaTsvaTsmKTrnb3si6Qg7Jew64Ko64-ZIOuniO2PrOq1rJIBDHZpZGVvX2FyY2FkZeABAA!16s%2Fg%2F11fv4ksdd0!20s8Q98GXVP%2BX3R": {
-  "checked": "2026-11-20",
-  "status": "permanently_closed",
-  "title": "신흥시장 콤콤오락실"
- },
- "https://www.google.com/maps/place/%EC%99%80%EB%8B%A4%EB%8B%A4%EC%98%A4%EB%9D%BD%EC%8B%A4+(Wadada+Arcade)/data=!3m1!4b1!4m4!3m3!1s0x357c99003c0c4b89:0xea3ed96ce948da58!16s%2Fg%2F11x9513_4k!20s8Q98HW5Q%2B8HV": {
+ "https://www.google.com/maps/place/The+Hyundai+Seoul/data=!4m8!1m2!2m1!1z642U7ZiE64yAIOyEnOyauCDsl6zsnZjrj4Q!3m4!1s0x357c9f007ca383cf:0xeb069748f6201a76!15sChrrjZTtmITrjIAg7ISc7Jq4IOyXrOydmOuPhFodIhvrjZQg7ZiE64yAIOyEnOyauCDsl6zsnZjrj4SSARBkZXBhcnRtZW50X3N0b3JlmgFEQ2k5RFFVbFJRVU52WkVOb2RIbGpSamx2VDIxUk5XUkhkRzVOVjJ3eVVUSlNhRlp0Y0ZkaVYxWkZZME14UkU1V1JSQULgAQD6AQQIABAb!16s%2Fg%2F11w3mh_j8v!20s8Q98GWGH%2BC87": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "와다다오락실 (Wadada Arcade)"
+  "title": "The Hyundai Seoul",
+  "naver_id": "1386302181",
+  "naver_title": "현대백화점 더현대 서울",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/%EC%9D%B4%EC%9A%B0%EC%B2%A0%ED%95%9C%EB%B0%A9%EB%88%84%EB%A3%BD%EC%A7%80%EC%82%BC%EA%B3%84%ED%83%95+%EA%B3%A0%EC%96%91%EC%9B%90%EB%8B%B9%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357c9100295e498d:0xa94e8b587e3c39e7!16s%2Fg%2F11wb_hg7cw!20s8Q98JVX4%2B4PF": {
+ "https://www.google.com/maps/place/SEOULDAL/data=!3m1!4b1!4m4!3m3!1s0x357c9f002a0d0a8b:0x143ba12ca45c22d4!16s%2Fg%2F11lmb_sq05!20s8Q98GWGC%2BCXQ": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "이우철한방누룽지삼계탕 고양원당점"
+  "title": "SEOULDAL",
+  "naver_id": "1021313692",
+  "naver_title": "서울달",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/%EC%9D%B8%ED%98%95%EB%BD%91%EA%B8%B0+KING/data=!3m1!4b1!4m4!3m3!1s0x357cb0168e452793:0xa43fc47eb2dc2f14!16s%2Fg%2F11fjzb8r23!20s8Q99G4WV%2BJJP": {
+ "https://www.google.com/maps/place/Wangbijib+Myeongdong+Central/data=!4m8!1m2!2m1!1z7JmV67mE7KeRIOuqheuPmeykkeyVmeygkA!3m4!1s0x357ca2f1698ffb61:0x1d4a142280ac7cda!15sChnsmZXruYTsp5Eg66qF64-Z7KSR7JWZ7KCQWh4iHOyZleu5hCDsp5Eg66qF64-ZIOykkeyVmSDsoJCSARprb3JlYW5fYmFyYmVjdWVfcmVzdGF1cmFudJoBI0NoWkRTVWhOTUc5blMwVkpRMEZuU1VSNGFVa3lOVkZuRUFF4AEA-gEECBoQEg!16s%2Fg%2F11fy_qvd4p!20s8Q98HX6J%2BCX6": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "인형뽑기 KING"
+  "title": "Wangbijib Myeongdong Central",
+  "naver_id": "21419115",
+  "naver_title": "왕비집 명동중앙점",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/%EC%9D%BC%ED%92%88%EC%A7%84%EC%A7%84%EC%88%98%EB%9D%BC+%EA%B4%91%ED%99%94%EB%AC%B8%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357ca3c4eb30a821:0x74e89ebbd53f24db!16s%2Fg%2F11pz39h6bv!20s8Q98HXCJ%2B66V": {
+ "https://www.google.com/maps/place/MidoGalbi/data=!3m1!4b1!4m4!3m3!1s0x357ca2e8a61d041b:0xdb5a1c598a401f6!16s%2Fg%2F11ggf05ktl!20s8Q98HX9P%2BGCQ": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "일품진진수라 광화문점"
- },
- "https://www.google.com/maps/place/%EC%A0%80%EC%8A%A4%ED%8A%B8%EC%BD%94+%EA%B3%B5%EC%9C%A0%EC%98%A4%ED%94%BC%EC%8A%A4+%ED%8E%98%EB%9F%BC%ED%83%80%EC%9B%8C%EC%A0%90/data=!4m8!1m2!2m1!1z7KCA7Iqk7Yq47Lu0IOydhOyngOuhnOygkCDspJHqtaw!3m4!1s0x357ca337506c451b:0xdfe27e9f7ebe2124!15sCiDsoIDsiqTtirjsu7Qg7J2E7KeA66Gc7KCQIOykkeq1rFokIiLsoIDsiqTtirgg7Lu0IOydhOyngOuhnCDsoJAg7KSR6rWskgEab2ZmaWNlX3NwYWNlX3JlbnRhbF9hZ2VuY3ngAQA!16s%2Fg%2F11h3mvwdhh!20s8Q98HX8M%2BRJG": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "저스트코 공유오피스 페럼타워점"
- },
- "https://www.google.com/maps/place/%EC%A7%B1%EC%98%A4%EB%9D%BD%EC%8B%A4+%EA%B0%95%EB%82%A82%ED%98%B8%EC%A0%90/data=!4m8!1m2!2m1!1z7Kex6rKM7J6EIOqwleuCqOyXrQ!3m4!1s0x357ca1114e22f6df:0xe3f82f5d847d86b8!15sChPsp7HqsozsnoQg6rCV64Ko7JetWhYiFOynsSDqsozsnoQg6rCV64Ko7JetkgEQYW11c2VtZW50X2NlbnRlcpoBJENoZERTVWhOTUc5blMwVkpRMEZuU1VSb05Fd3RUekpuUlJBQuABAPoBBAgAEBA!16s%2Fg%2F11rq4x857b!20s8Q99G22G%2BRFV": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "짱오락실 강남2호점"
- },
- "https://www.google.com/maps/place/%EC%B0%A8%EC%9D%B4%EC%9C%A4+%EC%97%AC%EC%9D%98%EB%8F%84%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357c9f978034a461:0x671237592ff33329!16s%2Fg%2F11k3d20gmn!20s8Q98GWJC%2B9FJ": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "차이윤 여의도점"
- },
- "https://www.google.com/maps/place/%ED%83%80%EC%99%80+TAWA+%7C+%EC%84%9C%EC%9A%B8%EC%8B%9C%EC%B2%AD%EC%97%AD+%ED%9E%88%EC%B8%A0%EB%A7%88%EB%B6%80%EC%8B%9C+%EC%A0%84%EB%AC%B8%EC%A0%90+Hitsumabushi+Restaurant+near+Seoul+City+Hall+%7C+%E9%A6%96%E5%B0%94%E5%B8%82%E5%8E%85%E7%AB%99%E6%97%A5%E5%BC%8F%E9%B3%97%E9%B1%BC%E9%A5%AD%E9%A4%90%E5%8E%85+%7C+%E3%82%BD%E3%82%A6%E3%83%AB%E5%B8%82%E5%BA%81%E9%A7%85+%E3%81%B2%E3%81%A4%E3%81%BE%E3%81%B6%E3%81%97%E5%B0%82%E9%96%80%E5%BA%97/data=!3m1!4b1!4m4!3m3!1s0x357ca342ea9f4d81:0xa1aaeac47771c801!16s%2Fg%2F11x_z0mwyp!20s8Q98HX7F%2B9CR": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "타와 TAWA | 서울시청역 히츠마부시 전문점 Hitsumabushi Restaurant near Seoul"
- },
- "https://www.google.com/maps/place/%ED%8A%B8%EB%A6%AD%EC%95%84%EC%9D%B4%EB%AE%A4%EC%A7%80%EC%97%84/data=!3m1!4b1!4m4!3m3!1s0x357c98db4a7b2f65:0x248680be149ca7ad!16s%2Fg%2F1jkwn8zd7!20s8Q98HW3C%2BGQ7": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "트릭아이뮤지엄"
- },
- "https://www.google.com/maps/place/Aria/data=!4m8!1m2!2m1!1z7JWE66as7JWEIOybqOyKpO2LtOyhsOyEoCDshJzsmrg!3m4!1s0x357ca2f23f48e269:0x7e345c7127e29571!15sCiDslYTrpqzslYQg7Juo7Iqk7Yu07KGw7ISgIOyEnOyauFojIiHslYTrpqzslYQg7Juo7Iqk7Yu0IOyhsOyEoCDshJzsmriSARFidWZmZXRfcmVzdGF1cmFudOABAA!16s%2Fg%2F1vvr457t!20s8Q98HX7J%2BP2H": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Aria"
- },
- "https://www.google.com/maps/place/BBQ%EC%B9%98%ED%82%A8+%EC%A2%85%EB%A1%9C%EC%A2%85%EA%B0%81%EC%A0%90/@37.569093,48.9390338,3z/data=!4m8!1m2!2m1!1zQkJR7LmY7YKoIOyyreqzhOq0keyepeygkCDspJHqtaw!3m4!1s0x357ca30038fbc119:0xc9f2dc7c225b0ca7!15sCiBCQlHsuZjtgqgg7LKt6rOE6rSR7J6l7KCQIOykkeq1rFolIiNiYnEg7LmY7YKoIOyyreqzhCDqtJHsnqUg7KCQIOykkeq1rJIBEmNoaWNrZW5fcmVzdGF1cmFudOABAA!16s%2Fg%2F11y54kd2rb!20s8Q98HX9P%2BJ9M": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "BBQ치킨 종로종각점"
- },
- "https://www.google.com/maps/place/BukChangDong+Soondubu+%EB%B6%81%EC%B0%BD%EB%8F%99%EC%88%9C%EB%91%90%EB%B6%80+%EB%AA%85%EB%8F%99%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357ca3ace50b6c6f:0x3d1d9ea8b1525d4b!16s%2Fg%2F11sv1t6fq1!20s8Q98HX7M%2BVM4": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "BukChangDong Soondubu 북창동순두부 명동점"
- },
- "https://www.google.com/maps/place/CHAEUM+KOREAN+TRADITIONAL+RESTAURANT/data=!3m1!4b1!4m4!3m3!1s0x357ca3f8f92ef375:0x66931f13a69971a2!16s%2Fg%2F11w9923dtx!20s8Q98HX6P%2B673": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "CHAEUM KOREAN TRADITIONAL RESTAURANT"
- },
- "https://www.google.com/maps/place/Chir+Chir/data=!4m8!1m2!2m1!1z7LmY66W07LmY66W0IOuqheuPmeygkCDspJHqtaw!3m4!1s0x357ca2ef98b676b3:0xd9447a50bd37c16b!15sCh3suZjrpbTsuZjrpbQg66qF64-Z7KCQIOykkeq1rFogIh7suZjrpbQg7LmY66W0IOuqheuPmeygkCDspJHqtaySAQpyZXN0YXVyYW50mgEgQ2hSRFNVaE5NRzluUzBWSlEwRm5TVU5TTkdWWlVoQULgAQD6AQQIABAe!16s%2Fg%2F1vq72swz!20s8Q98HX7M%2BRJ6": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Chir Chir"
- },
- "https://www.google.com/maps/place/Daebbang+Arcade+Myeongdong/data=!3m1!4b1!4m4!3m3!1s0x357ca300607f3235:0x5d14f9543f4ad64b!16s%2Fg%2F11xvv4rwkl!20s8Q98HX6M%2BCV8": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Daebbang Arcade Myeongdong"
- },
- "https://www.google.com/maps/place/Daebbang+Arcade+Myeongdong/data=!4m8!1m2!2m1!1z64yA67m17Jik65297IukIOydteyEoOygkCDsooXroZzqtaw!3m4!1s0x357ca300607f3235:0x5d14f9543f4ad64b!15sCiPrjIDrubXsmKTrnb3si6Qg7J217ISg7KCQIOyiheuhnOq1rJIBDHZpZGVvX2FyY2FkZeABAA!16s%2Fg%2F11xvv4rwkl!20s8Q98HX6M%2BCV8": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Daebbang Arcade Myeongdong"
+  "title": "MidoGalbi",
+  "naver_id": "1264295690",
+  "naver_title": "미도갈비",
+  "naver_status": "open"
  },
  "https://www.google.com/maps/place/Daol+Charcoal+Grill/data=!3m1!4b1!4m4!3m3!1s0x357ca354a75ca4bf:0x45520b9741db9925!16s%2Fg%2F11l5bm8290!20s8Q98HX7M%2B7HG": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Daol Charcoal Grill"
+  "title": "Daol Charcoal Grill",
+  "naver_id": "1220312094",
+  "naver_title": "다올 숯불구이 명동점",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/Din+Tai+Fung+Myeongdong/data=!3m1!4b1!4m4!3m3!1s0x357ca2f04eb2fa65:0x415704609238408f!16s%2Fg%2F1trpnqrq!20s8Q98HX7M%2BPHW": {
+ "https://www.google.com/maps/place/Yoonseul+Charcoal+Grill/data=!3m1!4b1!4m4!3m3!1s0x357ca35b59c185eb:0xa16bc543324ed0d5!16s%2Fg%2F11sty408q9!20s8Q98HX7P%2B669": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Din Tai Fung Myeongdong"
+  "title": "Yoonseul Charcoal Grill",
+  "naver_id": "2007838063",
+  "naver_title": "윤슬 숯불구이 명동점",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/Dongdaemun+Design+Plaza+(DDP)/data=!4m8!1m2!2m1!1z65GU65GUIO2UjOugiOydtO2MjO2BrCDrj5nrjIDrrLgg7J2E7KeA66GcIOykkeq1rA!3m4!1s0x357b456faf5814f3:0x5c22a91dab450bdc!15sCjHrkZTrkZQg7ZSM66CI7J207YyM7YGsIOuPmeuMgOusuCDsnYTsp4DroZwg7KSR6rWsWjQiMuuRlOuRlCDtlIzroIjsnbQg7YyM7YGsIOuPmeuMgOusuCDsnYTsp4DroZwg7KSR6rWskgEPY3VsdHVyYWxfY2VudGVy4AEA!16s%2Fm%2F03ylq94!20s8Q99H285%2BJM9": {
+ "https://www.google.com/maps/place/Sukseongdo+Euljiro/data=!3m1!4b1!4m4!3m3!1s0x357ca30027a5a263:0x181c38cc1b432295!16s%2Fg%2F11w2311m43!20s8Q98HX8Q%2B6PX": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Dongdaemun Design Plaza (DDP)"
+  "title": "Sukseongdo Euljiro",
+  "naver_id": "1663003904",
+  "naver_title": "숙성도 을지로점",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/Eulji+Tonkatsu/data=!4m8!1m2!2m1!1z66qF64-ZIOuPiOq5jOyKpA!3m4!1s0x357ca3a5ca87b213:0x23840b480dd7dd99!15sChDrqoXrj5kg64-I6rmM7IqkWhIiEOuqheuPmSDrj4jquYzsiqSSARN0b25rYXRzdV9yZXN0YXVyYW504AEA!16s%2Fg%2F11x9522s4k!20s8Q98HX7M%2BPXH": {
+ "https://www.google.com/maps/place/Geumdwaeji+Sikdang/data=!3m1!4b1!4m4!3m3!1s0x357ca3110d881915:0x66c78cca87fb7bda!16s%2Fg%2F11c0r5qrxn!20s8Q99H246%2BRMM": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Eulji Tonkatsu"
+  "title": "Geumdwaeji Sikdang",
+  "naver_id": "37869877",
+  "naver_title": "금돼지식당",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/Everland/data=!3m1!4b1!4m4!3m3!1s0x357b5403ce34d773:0x1fa18ab619238098!16s%2Fm%2F012dzv65!20s8Q9976V3%2BH28": {
+ "https://www.google.com/maps/place/Jeju+Rooftop+Black+BBQ/data=!3m1!4b1!4m4!3m3!1s0x357ca3005181320b:0x4f6534021b40b4ff!16s%2Fg%2F11wq34fshp!20s8Q99G2GP%2BHHF": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Everland"
+  "title": "Jeju Rooftop Black BBQ",
+  "naver_id": "1890747832",
+  "naver_title": "제주옥탑 블랙BBQ",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/Fun+City/data=!3m1!4b1!4m4!3m3!1s0x357ca46a77505c15:0xf85304e54a91f2a0!16s%2Fg%2F11h6mkcd6w!20s8Q99G365%2BGRG": {
+ "https://www.google.com/maps/place/Sancheong+Charcoal+Garden+Euljiro/data=!3m1!4b1!4m4!3m3!1s0x357ca340096e2737:0x1a062c5472ce7123!16s%2Fg%2F11kt1xzk97!20s8Q98HX8R%2B86H": {
+  "status": "open",
+  "title": "Sancheong Charcoal Garden Euljiro",
+  "checked": "2026-11-20",
+  "naver_id": "1850187827",
+  "naver_title": "산청숯불가든 을지로",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%EB%82%A8%EB%8F%84%EB%8F%BC%EC%A7%80%EC%B4%8C/data=!3m1!4b1!4m4!3m3!1s0x357ca3002dc7501f:0xfad353adc57ff305!16s%2Fg%2F11wx_hdwv0!20s8Q98GXJC%2BHWV": {
+  "status": "open",
+  "title": "남도돼지촌",
+  "checked": "2026-11-20",
+  "naver_id": "1797480699",
+  "naver_title": "남도돼지촌",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Wolhwa+Sikdang/data=!3m1!4b1!4m4!3m3!1s0x357c99d6a6eb6213:0xce20287016547917!16s%2Fg%2F11rwq12hm_!20s8Q98GWRX%2B9M2": {
+  "status": "open",
+  "title": "Wolhwa Sikdang",
+  "checked": "2026-11-20",
+  "naver_id": "1905133643",
+  "naver_title": "월화식당 마포본점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Namyeongdon/data=!3m1!4b1!4m4!3m3!1s0x357ca26a58f9ab3f:0x2069343ca60731ab!16s%2Fg%2F11f4lcqfk9!20s8Q98GXVF%2B4G2": {
+  "status": "open",
+  "title": "Namyeongdon",
+  "checked": "2026-11-20",
+  "naver_id": "19774046",
+  "naver_title": "남영돈",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Yuktongryeong+Myeongdong+Main/data=!3m1!4b1!4m4!3m3!1s0x357ca2f13d626cc5:0x7b842b6071e6ad06!16s%2Fg%2F11c6ts4sr0!20s8Q98HX6M%2BF48": {
+  "status": "open",
+  "title": "Yuktongryeong Myeongdong Main",
+  "checked": "2026-11-20",
+  "naver_id": "37531705",
+  "naver_title": "육통령 명동본점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Dutum/data=!3m1!4b1!4m4!3m3!1s0x357ca26349443319:0xa827eef231eab5ea!16s%2Fg%2F11bytt0s58!20s8Q98HX58%2B8GJ": {
+  "status": "open",
+  "title": "Dutum",
+  "checked": "2026-11-20",
+  "naver_id": "37036424",
+  "naver_title": "두툼",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%EB%A7%9B%EC%B0%AC%EB%93%A4%EC%99%95%EC%86%8C%EA%B8%88%EA%B5%AC%EC%9D%B4+%EC%A2%85%EB%A1%9C%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357ca396dceee539:0xcad648c0e5e66695!16s%2Fg%2F11yk1r0lbw!20s8Q98HX9P%2BJ5W": {
+  "status": "open",
+  "title": "맛찬들왕소금구이 종로점",
+  "checked": "2026-11-20",
+  "naver_id": "460333437",
+  "naver_title": "맛찬들왕소금구이 종로점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Ppasam/data=!3m1!4b1!4m4!3m3!1s0x357ca3e224e8b537:0x9ef32ea98fcfc00e!16s%2Fg%2F11sw4jhjdt!20s8Q98HX7W%2BG53": {
+  "status": "open",
+  "title": "Ppasam",
+  "checked": "2026-11-20",
+  "naver_id": "1519874731",
+  "naver_title": "빠삼",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/DOOKUPSAM(DKS)+Myeongdong/data=!3m1!4b1!4m4!3m3!1s0x357ca38ab489fae3:0x30aff11729487e75!16s%2Fg%2F11tsxkfz8m!20s8Q98HX6P%2BRH5": {
+  "status": "open",
+  "title": "DOOKUPSAM(DKS) Myeongdong",
+  "checked": "2026-11-20",
+  "naver_id": "1235482141",
+  "naver_title": "두껍삼 명동직영점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%ED%83%80%EC%99%80+TAWA+%7C+%EC%84%9C%EC%9A%B8%EC%8B%9C%EC%B2%AD%EC%97%AD+%ED%9E%88%EC%B8%A0%EB%A7%88%EB%B6%80%EC%8B%9C+%EC%A0%84%EB%AC%B8%EC%A0%90+Hitsumabushi+Restaurant+near+Seoul+City+Hall+%7C+%E9%A6%96%E5%B0%94%E5%B8%82%E5%8E%85%E7%AB%99%E6%97%A5%E5%BC%8F%E9%B3%97%E9%B1%BC%E9%A5%AD%E9%A4%90%E5%8E%85+%7C+%E3%82%BD%E3%82%A6%E3%83%AB%E5%B8%82%E5%BA%81%E9%A7%85+%E3%81%B2%E3%81%A4%E3%81%BE%E3%81%B6%E3%81%97%E5%B0%82%E9%96%80%E5%BA%97/data=!3m1!4b1!4m4!3m3!1s0x357ca342ea9f4d81:0xa1aaeac47771c801!16s%2Fg%2F11x_z0mwyp!20s8Q98HX7F%2B9CR": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Fun City"
+  "title": "타와 TAWA | 서울시청역 히츠마부시 전문점 Hitsumabushi Restaurant near Seoul",
+  "naver_id": "2038166109",
+  "naver_title": "타와",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Tokyo+Saikabo/data=!3m1!4b1!4m4!3m3!1s0x357ca463615e90af:0x5525578979b8ed1c!16s%2Fg%2F1tcypskg!20s8Q99G3G2%2B7XQ": {
+  "checked": "2026-11-20",
+  "status": "open",
+  "title": "Tokyo Saikabo",
+  "naver_id": "13272850",
+  "naver_title": "도쿄사이카보 청담",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Namu+Izakaya+City+Hall/data=!3m1!4b1!4m4!3m3!1s0x357ca3a13371b66d:0x4950d696b561993c!16s%2Fg%2F11scx0919d!20s8Q98HX7G%2B3V9": {
+  "status": "open",
+  "title": "Namu Izakaya City Hall",
+  "checked": "2026-11-20",
+  "naver_id": "1090896277",
+  "naver_title": "이자카야나무 시청점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%EB%8B%88%ED%98%BC%EB%B0%94%EC%8B%9C+%ED%83%80%EB%A7%88%EC%9D%B4+%EA%B4%91%ED%99%94%EB%AC%B8/data=!3m1!4b1!4m4!3m3!1s0x357ca33dfc4d0be5:0xe4703b566d1708cd!16s%2Fg%2F11zbrmmzbk!20s8Q98HXCF%2B5J9": {
+  "status": "open",
+  "title": "니혼바시 타마이 광화문",
+  "checked": "2026-11-20",
+  "naver_id": "2145794050",
+  "naver_title": "니혼바시 타마이 광화문",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%ED%95%A8%EB%A3%A8+%EC%A2%85%EA%B0%81%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357ca35bb511d24f:0xe7cff5da7265ea15!16s%2Fg%2F11svpvdlb6!20s8Q98HX9J%2B9W4": {
+  "status": "open",
+  "title": "함루 종각점",
+  "checked": "2026-11-20",
+  "naver_id": "1500095316",
+  "naver_title": "함루 종각점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%EC%82%AC%EC%B9%B4%EB%B0%94+%EB%8B%A8%EB%8B%A8+%EC%97%AC%EC%9D%98%EB%8F%84%EC%A0%90+%2F+Sakaba+Dandan+Yeouido+%2F+%E9%85%92%E5%9C%BA%E5%9B%A2%E5%9B%A2+%E6%B1%9D%E7%9F%A3%E5%B2%9B%E5%BA%97+%2F+%E3%82%B5%E3%82%AB%E3%83%90%E3%83%80%E3%83%B3%E3%83%80%E3%83%B3+%E6%B1%9D%E7%9F%A3%E5%B3%B6%E5%BA%97/data=!3m1!4b1!4m4!3m3!1s0x357c9f933cb7b3cd:0x3040b2612ad07a3a!16s%2Fg%2F11stp947sp!20s8Q98GWCH%2BQXX": {
+  "status": "open",
+  "title": "사카바 단단 여의도점 / Sakaba Dandan Yeouido / 酒场团团 汝矣岛店 / サカバダンダン 汝矣島店",
+  "checked": "2026-11-20",
+  "naver_id": "1291488084",
+  "naver_title": "사카바 단단 여의도점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%EC%9A%B0%EC%98%A4%ED%95%98%EB%82%98/data=!3m1!4b1!4m4!3m3!1s0x357ca38d0781f887:0xdd0975d61817c424!16s%2Fg%2F11h6m882kp!20s8Q99G29C%2BW5V": {
+  "status": "open",
+  "title": "우오하나",
+  "checked": "2026-11-20",
+  "naver_id": "1316501400",
+  "naver_title": "우오하나 신사점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Yakitori+Hibari/data=!3m1!4b1!4m4!3m3!1s0x357ca3a74ed87069:0xab0921bba18b4609!16s%2Fg%2F11h2hmpg0h!20s8Q98HX6F%2BWMG": {
+  "status": "open",
+  "title": "Yakitori Hibari",
+  "checked": "2026-11-20",
+  "naver_id": "1274052462",
+  "naver_title": "히바리",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%EC%9D%84%EC%A7%80%EB%A1%9C+%EB%9D%BC%EC%8A%A4%EB%B2%A0%EA%B0%80%EC%8A%A4/data=!3m1!4b1!4m4!3m3!1s0x357ca2e46b7127fb:0xabac6c18e166ef50!16s%2Fg%2F11k3nbmgh3!20s8Q98HX8R%2B376": {
+  "status": "open",
+  "title": "을지로 라스베가스",
+  "checked": "2026-11-20",
+  "naver_id": "1436645496",
+  "naver_title": "을지로이자카야 을지로 라스베가스",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%EC%98%A4%EC%82%AC+%ED%95%9C%EB%82%A8+%7C+OSA+HANNAM/data=!3m1!4b1!4m4!3m3!1s0x357ca3003226bdb1:0xee7324fa7cab5446!16s%2Fg%2F11w_c_r1js!20s8Q99G2P6%2B249": {
+  "status": "open",
+  "title": "오사 한남 | OSA HANNAM",
+  "checked": "2026-11-20",
+  "naver_id": "1804004435",
+  "naver_title": "오사 한남",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Teien/data=!3m1!4b1!4m4!3m3!1s0x357ca293ecddea1d:0xca99c822efb1bd16!16s%2Fg%2F1thf6hnn!20s8Q98HXFC%2B3HH": {
+  "status": "open",
+  "title": "Teien",
+  "checked": "2026-11-20",
+  "naver_id": "20616686",
+  "naver_title": "테이엔",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Hikarimono+Starfield+Avenue+GranSeoul/data=!3m1!4b1!4m4!3m3!1s0x357ca347df273da9:0x9a241c1ca4076581!16s%2Fg%2F11mknnhcxl!20s8Q98HXCJ%2B7F3": {
+  "status": "open",
+  "title": "Hikarimono Starfield Avenue GranSeoul",
+  "checked": "2026-11-20",
+  "naver_id": "2096233046",
+  "naver_title": "히카리모노 스타필드 애비뉴 그랑서울점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%EB%A1%9C%EB%B0%94%ED%83%80+%EC%B9%B4%EB%AF%B8/data=!3m1!4b1!4m4!3m3!1s0x357ca30fcf8ba383:0x10f5dbc72a66530d!16s%2Fg%2F11jyn6j115!20s8Q98HX8R%2B43H": {
+  "status": "open",
+  "title": "로바타 카미",
+  "checked": "2026-11-20",
+  "naver_id": "1553749070",
+  "naver_title": "로바타카미",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Mutan+Gwanghwamun+Branch/data=!3m1!4b1!4m4!3m3!1s0x357ca353d9be921f:0x74f406a35ebb3bbe!16s%2Fg%2F11kpnzm08y!20s8Q98HX9C%2BVWV": {
+  "checked": "2026-11-20",
+  "status": "open",
+  "title": "Mutan Gwanghwamun Branch",
+  "naver_id": "1180841237",
+  "naver_title": "무탄 광화문점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/%EC%B0%A8%EC%9D%B4%EC%9C%A4+%EC%97%AC%EC%9D%98%EB%8F%84%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357c9f978034a461:0x671237592ff33329!16s%2Fg%2F11k3d20gmn!20s8Q98GWJC%2B9FJ": {
+  "checked": "2026-11-20",
+  "status": "open",
+  "title": "차이윤 여의도점",
+  "naver_id": "1301313289",
+  "naver_title": "차이윤 서여의도점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/ZZANG+GAMES+Jongno/data=!3m1!4b1!4m4!3m3!1s0x357ca2e631786227:0xde98c63c45e6febe!16s%2Fg%2F11ffm037l7!20s8Q98HX9P%2BWRC": {
+  "checked": "2026-11-20",
+  "status": "open",
+  "title": "ZZANG GAMES Jongno",
+  "naver_id": "1745549429",
+  "naver_title": "짱오락실 종로점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Zzang+Games+Mapo/data=!3m1!4b1!4m4!3m3!1s0x357c98dab8398d91:0xda4a92b425616356!16s%2Fg%2F11c30t6ch2!20s8Q98HW2C%2BFCX": {
+  "checked": "2026-11-20",
+  "status": "open",
+  "title": "Zzang Games Mapo",
+  "naver_id": "843656740",
+  "naver_title": "짱오락실 홍대점",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Gametopia/data=!3m1!4b1!4m4!3m3!1s0x357c98d0163e90b1:0x528512b4ea184925!16s%2Fg%2F11f1jwmhfq!20s8Q98GWXC%2BM95": {
+  "checked": "2026-11-20",
+  "status": "open",
+  "title": "Gametopia",
+  "naver_id": "1287969458",
+  "naver_title": "게임토피아",
+  "naver_status": "open"
+ },
+ "https://www.google.com/maps/place/Pumparcade+hongdae/data=!3m1!4b1!4m4!3m3!1s0x357c99239f644181:0x375af41bd98a7a11!16s%2Fg%2F11lng4vpxl!20s8Q98HW2F%2BX5Q": {
+  "checked": "2026-11-20",
+  "status": "open",
+  "title": "Pumparcade hongdae",
+  "naver_id": "1220375892",
+  "naver_title": "펌프아케이드 홍대점",
+  "naver_status": "open"
  },
  "https://www.google.com/maps/place/G-Plex/data=!3m1!4b1!4m4!3m3!1s0x357c9894068bc603:0xc70b1cd6b77f2658!16s%2Fg%2F11c7smj2vb!20s8Q98HW5Q%2B42J": {
   "checked": "2026-11-20",
   "status": "open",
   "title": "G-Plex"
  },
- "https://www.google.com/maps/place/Galaxy+Robot+Park/data=!3m1!4b1!4m4!3m3!1s0x357cb10ee1baaf69:0xc6f73e1cbd5ab7b4!16s%2Fg%2F11njcxm1yd!20s8Q99H48X%2B53M": {
+ "https://www.google.com/maps/place/Strike+Pang/data=!4m8!1m2!2m1!1z7Iqk7Yq465287J207YGs7YyhIOyLoOy0jA!3m4!1s0x357c9894439a4145:0x7951c04ea438754e!15sChnsiqTtirjrnbzsnbTtgaztjKEg7Iug7LSMkgEKZ2FtZV9zdG9yZeABAA!16s%2Fg%2F11gcz3c_03!20s8Q98HW4P%2BRFX": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Galaxy Robot Park"
- },
- "https://www.google.com/maps/place/Gametopia/data=!3m1!4b1!4m4!3m3!1s0x357c98d0163e90b1:0x528512b4ea184925!16s%2Fg%2F11f1jwmhfq!20s8Q98GWXC%2BM95": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Gametopia"
- },
- "https://www.google.com/maps/place/Geumdwaeji+Sikdang/data=!3m1!4b1!4m4!3m3!1s0x357ca3110d881915:0x66c78cca87fb7bda!16s%2Fg%2F11c0r5qrxn!20s8Q99H246%2BRMM": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Geumdwaeji Sikdang"
- },
- "https://www.google.com/maps/place/Gogiri+Makguksu/data=!3m1!4b1!4m4!3m3!1s0x357b594dc7c7cec5:0x939f97ac3e14a35f!16s%2Fg%2F11css_vc5y!20s8Q99925R%2BX2W": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Gogiri Makguksu"
- },
- "https://www.google.com/maps/place/Gyeongsung+Chicken/data=!3m1!4b1!4m4!3m3!1s0x357ca3ed68cc4a3b:0x6f80cc0a926c8bd!16s%2Fg%2F11f6ct3fhl!20s8Q98HXGJ%2B3WJ": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Gyeongsung Chicken"
- },
- "https://www.google.com/maps/place/Hanchu/data=!3m1!4b1!4m4!3m3!1s0x357ca39484fe2747:0xd328efbf5c52f0ac!16s%2Fg%2F1vwlm21r!20s8Q99G2FF%2BJ97": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Hanchu"
- },
- "https://www.google.com/maps/place/Hipple+Joy/data=!4m8!1m2!2m1!1z7Z6Z7ZSM7KGw7J20IOydhOyngOuhnCDspJHqtaw!3m4!1s0x357ca3001368216b:0x5169c3b7e3009cb!15sCh3tnpntlIzsobDsnbQg7J2E7KeA66GcIOykkeq1rJIBDHZpZGVvX2FyY2FkZeABAA!16s%2Fg%2F11y98lj6gn!20s8Q98HX8R%2B8F9": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Hipple Joy"
- },
- "https://www.google.com/maps/place/Hoeseongdaeg/data=!3m1!4b1!4m4!3m3!1s0x357ca3cb1a6226b5:0xe2ed0f66614b664c!16s%2Fg%2F11w23w2xkp!20s8Q98HX7R%2B4F8": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Hoeseongdaeg"
- },
- "https://www.google.com/maps/place/Hong+Yuan/data=!3m1!4b1!4m4!3m3!1s0x357ca2f23f48e269:0x6b099b9f220b8900!16s%2Fg%2F1th21rhc!20s8Q98HX7H%2BQV8": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Hong Yuan"
- },
- "https://www.google.com/maps/place/Hwamok+Sundaeguk/data=!3m1!4b1!4m4!3m3!1s0x357c9f3fe89ec6a9:0xf7c534e93f2f6dc8!16s%2Fg%2F1tlbrnqj!20s8Q98GW9J%2BQM2": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Hwamok Sundaeguk"
- },
- "https://www.google.com/maps/place/Hyundai+City+Outlet+Dongdaemun/data=!3m1!4b1!4m4!3m3!1s0x357ca37b74cc365d:0x73c5f70f46a3a90d!16s%2Fg%2F11fszl6j5b!20s8Q99H295%2BG4W": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Hyundai City Outlet Dongdaemun"
- },
- "https://www.google.com/maps/place/Incheon+International+Airport/data=!4m8!1m2!2m1!1sIncheon+International+Airport+Terminal+1!3m4!1s0x357b9a833a5efa59:0x8d4ba096cb5cbed4!15sCihJbmNoZW9uIEludGVybmF0aW9uYWwgQWlycG9ydCBUZXJtaW5hbCAxWioiKGluY2hlb24gaW50ZXJuYXRpb25hbCBhaXJwb3J0IHRlcm1pbmFsIDGSARVpbnRlcm5hdGlvbmFsX2FpcnBvcnSaASNDaFpEU1VoTk1HOW5TMFZKUTBGblRVUkpkamxtZUdGQkVBReABAPoBBAgAEEk!16zL20vMDE2MWdi!20s8Q98FC5R%2BFQ8": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Incheon International Airport"
- },
- "https://www.google.com/maps/place/Jeju+Rooftop+Black+BBQ/data=!3m1!4b1!4m4!3m3!1s0x357ca3005181320b:0x4f6534021b40b4ff!16s%2Fg%2F11wq34fshp!20s8Q99G2GP%2BHHF": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Jeju Rooftop Black BBQ"
- },
- "https://www.google.com/maps/place/Jinju+House/data=!3m1!4b1!4m4!3m3!1s0x357c9f3dfb8e7983:0x9ef6bdda35f31bc4!16s%2Fg%2F1td40f1k!20s8Q98GWCG%2B7RM": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Jinju House"
- },
- "https://www.google.com/maps/place/Jjang+Arcade+Yongsan+iPark+Mall/data=!3m1!4b1!4m4!3m3!1s0x357ca3006fff3771:0xd97e37c197dd21c!16s%2Fg%2F11xlg_gbc6!20s8Q98GXH7%2BRMF": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Jjang Arcade Yongsan iPark Mall"
- },
- "https://www.google.com/maps/place/Kyochon+Pilbang/data=!3m1!4b1!4m4!3m3!1s0x357ca3586a439fdd:0x11df073d27b2df17!16s%2Fg%2F11svcrkqdh!20s8Q98GXMV%2BJGH": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Kyochon Pilbang"
- },
- "https://www.google.com/maps/place/LEGEND+SPORTS+HEROES/data=!3m1!4b1!4m4!3m3!1s0x357ca50ad6217331:0xd22befe8698ecff0!16s%2Fg%2F11hdq5nnvn!20s8Q99G473%2B69V": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "LEGEND SPORTS HEROES"
- },
- "https://www.google.com/maps/place/LOTTE+WORLD+AQUARIUM/data=!3m1!4b1!4m4!3m3!1s0x357ca50ad92d8a63:0xa58b77605ab63817!16s%2Fm%2F012g42cn!20s8Q99G473%2B9WX": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "LOTTE WORLD AQUARIUM"
- },
- "https://www.google.com/maps/place/Lotte+World/data=!4m8!1m2!2m1!1z66Gv642w7JuU65OcIOyWtOuTnOuypOyymA!3m4!1s0x357ca5a7250efe81:0x433df2c1fec03b98!15sChnroa_rjbDsm5Trk5wg7Ja065Oc67Kk7LKYIgOIAQFaHCIa66Gv642wIOyblOuTnCDslrTrk5zrsqTsspiSAQp0aGVtZV9wYXJr4AEA!16zL20vMDNqbGo5!20s8Q99G36X%2BC7V": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Lotte World"
+  "title": "Strike Pang",
+  "naver_id": "1271451171",
+  "naver_title": "스트라이크팡 신촌점",
+  "naver_status": "open"
  },
  "https://www.google.com/maps/place/Lucky+Pop/data=!3m1!4b1!4m4!3m3!1s0x357ca5002f025131:0x17445e7382d045ea!16s%2Fg%2F11y0fgkwjn!20s8Q99G3R4%2BX28": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Lucky Pop"
+  "title": "Lucky Pop",
+  "naver_id": "2091966888",
+  "naver_title": "럭키팝 성수점",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/Manjok+Ohyang+Jokbal+(City+Hall+Branch)/data=!3m1!4b1!4m4!3m3!1s0x357ca2f352854cff:0x167e690246659d95!16s%2Fg%2F11c2jnmm5n!20s8Q98HX7G%2B7CJ": {
+ "https://www.google.com/maps/place/Fun+City/data=!3m1!4b1!4m4!3m3!1s0x357ca46a77505c15:0xf85304e54a91f2a0!16s%2Fg%2F11h6mkcd6w!20s8Q99G365%2BGRG": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Manjok Ohyang Jokbal (City Hall Branch)"
+  "title": "Fun City",
+  "naver_id": "1733749808",
+  "naver_title": "펀시티 스타필드 코엑스점",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/MidoGalbi/data=!3m1!4b1!4m4!3m3!1s0x357ca2e8a61d041b:0xdb5a1c598a401f6!16s%2Fg%2F11ggf05ktl!20s8Q98HX9P%2BGCQ": {
+ "https://www.google.com/maps/place/LEGEND+SPORTS+HEROES/data=!3m1!4b1!4m4!3m3!1s0x357ca50ad6217331:0xd22befe8698ecff0!16s%2Fg%2F11hdq5nnvn!20s8Q99G473%2B69V": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "MidoGalbi"
+  "title": "LEGEND SPORTS HEROES",
+  "naver_id": "1620414251",
+  "naver_title": "레전드히어로즈 잠실롯데월드몰점",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/Min's+Club/data=!3m1!4b1!4m4!3m3!1s0x357ca2c2d18f186f:0x7bdb51c063fff60e!16s%2Fg%2F1tj5nnyl!20s8Q98HXFP%2BR9Q": {
+ "https://www.google.com/maps/place/Lotte+World/data=!4m8!1m2!2m1!1z66Gv642w7JuU65OcIOyWtOuTnOuypOyymA!3m4!1s0x357ca5a7250efe81:0x433df2c1fec03b98!15sChnroa_rjbDsm5Trk5wg7Ja065Oc67Kk7LKYIgOIAQFaHCIa66Gv642wIOyblOuTnCDslrTrk5zrsqTsspiSAQp0aGVtZV9wYXJr4AEA!16zL20vMDNqbGo5!20s8Q99G36X%2BC7V": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Min's Club"
+  "title": "Lotte World",
+  "naver_id": "11583235",
+  "naver_title": "롯데월드 어드벤처",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/Mongjungheon+Anguk/data=!3m1!4b1!4m4!3m3!1s0x357ca2c4f598d3ed:0xfff5f668b57f8b10!16s%2Fg%2F1tq4p0r9!20s8Q98HXHM%2BRGG": {
-  "checked": "2026-11-20",
-  "status": "permanently_closed",
-  "title": "Mongjungheon Anguk"
- },
- "https://www.google.com/maps/place/Mouse+Potato/data=!3m1!4b1!4m4!3m3!1s0x357ca3b50310c035:0xb5a70cd5b658e8dd!16s%2Fg%2F11sswnn4vs!20s8Q98HX9M%2BXVP": {
-  "checked": "2026-11-20",
-  "status": "permanently_closed",
-  "title": "Mouse Potato"
- },
- "https://www.google.com/maps/place/Mugyo-dong+Bugeo-guk/data=!3m1!4b1!4m4!3m3!1s0x357ca2edc912513d:0x23c36ecb0286e66c!16s%2Fg%2F1vxz7kj0!20s8Q98HX9H%2B3WX": {
+ "https://www.google.com/maps/place/LOTTE+WORLD+AQUARIUM/data=!3m1!4b1!4m4!3m3!1s0x357ca50ad92d8a63:0xa58b77605ab63817!16s%2Fm%2F012g42cn!20s8Q99G473%2B9WX": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Mugyo-dong Bugeo-guk"
- },
- "https://www.google.com/maps/place/Mutan+Gwanghwamun+Branch/data=!3m1!4b1!4m4!3m3!1s0x357ca353d9be921f:0x74f406a35ebb3bbe!16s%2Fg%2F11kpnzm08y!20s8Q98HX9C%2BVWV": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Mutan Gwanghwamun Branch"
- },
- "https://www.google.com/maps/place/Myeongdong+Kyoja/data=!3m1!4b1!4m4!3m3!1s0x357ca2f00d41b15b:0x7d50d5b6b0623a1d!16s%2Fg%2F11csqxcpw1!20s8Q98HX6P%2BCC4": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Myeongdong Kyoja"
- },
- "https://www.google.com/maps/place/Myeongdong+NANTA+Theatre/data=!3m1!4b1!4m4!3m3!1s0x357ca2f03366ba11:0x1abb7d88fa6a9628!16s%2Fg%2F1tffgq5k!20s8Q98HX7M%2BCCH": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Myeongdong NANTA Theatre"
- },
- "https://www.google.com/maps/place/Myeongdong+Restaurant+The+Sic-ddang/data=!3m1!4b1!4m4!3m3!1s0x357ca2f06dce651b:0x452e9db1054eccc1!16s%2Fg%2F11c5h3w7zg!20s8Q98HX6P%2BW68": {
-  "checked": "2026-11-20",
-  "status": "permanently_closed",
-  "title": "Myeongdong Restaurant The Sic-ddang"
- },
- "https://www.google.com/maps/place/Popcon+D+Square/data=!3m1!4b1!4m4!3m3!1s0x357ca3a98e706371:0xbb3ef9434052779d!16s%2Fg%2F11gxfl_tly!20s8Q98GXH7%2BF7Q": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Popcon D Square"
- },
- "https://www.google.com/maps/place/Pumparcade+hongdae/data=!3m1!4b1!4m4!3m3!1s0x357c99239f644181:0x375af41bd98a7a11!16s%2Fg%2F11lng4vpxl!20s8Q98HW2F%2BX5Q": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Pumparcade hongdae"
+  "title": "LOTTE WORLD AQUARIUM",
+  "naver_id": "35750830",
+  "naver_title": "롯데월드 아쿠아리움",
+  "naver_status": "open"
  },
  "https://www.google.com/maps/place/SEA+LIFE+COEX/data=!3m1!4b1!4m4!3m3!1s0x357ca46a4cb562ef:0x7b791e85aa0df16b!16s%2Fm%2F0hn9p6m!20s8Q99G375%2B783": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "SEA LIFE COEX"
- },
- "https://www.google.com/maps/place/SEOULDAL/data=!3m1!4b1!4m4!3m3!1s0x357c9f002a0d0a8b:0x143ba12ca45c22d4!16s%2Fg%2F11lmb_sq05!20s8Q98GWGC%2BCXQ": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "SEOULDAL"
- },
- "https://www.google.com/maps/place/Seoul+Plaza+Skating+Park/data=!3m1!4b1!4m4!3m3!1s0x357ca2f27c43d499:0x8a58252c40a4de0a!16s%2Fg%2F1vr1tlq4!20s8Q98HX8H%2B9CC": {
-  "checked": "2026-11-20",
-  "status": "temporarily_closed",
-  "title": "Seoul Plaza Skating Park"
- },
- "https://www.google.com/maps/place/Sports+Monster+Goyang/data=!3m1!4b1!4m4!3m3!1s0x357c9714feb85147:0xa25a9bc5a09d7fa8!16s%2Fg%2F11f11p9dk_!20s8Q98JVWV%2BC55": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Sports Monster Goyang"
- },
- "https://www.google.com/maps/place/Strike+Pang/data=!4m8!1m2!2m1!1z7Iqk7Yq465287J207YGs7YyhIOyLoOy0jA!3m4!1s0x357c9894439a4145:0x7951c04ea438754e!15sChnsiqTtirjrnbzsnbTtgaztjKEg7Iug7LSMkgEKZ2FtZV9zdG9yZeABAA!16s%2Fg%2F11gcz3c_03!20s8Q98HW4P%2BRFX": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Strike Pang"
- },
- "https://www.google.com/maps/place/Sukseongdo+Euljiro/data=!3m1!4b1!4m4!3m3!1s0x357ca30027a5a263:0x181c38cc1b432295!16s%2Fg%2F11w2311m43!20s8Q98HX8Q%2B6PX": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Sukseongdo Euljiro"
- },
- "https://www.google.com/maps/place/TANI/data=!3m1!4b1!4m4!3m3!1s0x357ca2f1ed89dbf1:0x8704bcb635bde132!16s%2Fg%2F1tdk7_v8!20s8Q98HX7J%2BMMF": {
-  "checked": "2026-11-20",
-  "status": "permanently_closed",
-  "title": "TANI"
+  "title": "SEA LIFE COEX",
+  "naver_id": "11606845",
+  "naver_title": "씨라이프 코엑스 아쿠아리움",
+  "naver_status": "open"
  },
  "https://www.google.com/maps/place/Th%C3%A9%C3%A2tre+des+Lumi%C3%A8res/data=!3m1!4b1!4m4!3m3!1s0x357cbb076bf6c9b9:0xfa6e12f2b3b33507!16s%2Fg%2F11sy8tbz1j!20s8Q99H446%2B45R": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "Théâtre des Lumières"
+  "title": "Théâtre des Lumières",
+  "naver_id": "1368948121",
+  "naver_title": "빛의 시어터",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/The+Hyundai+Seoul/data=!4m8!1m2!2m1!1z642U7ZiE64yAIOyEnOyauCDsl6zsnZjrj4Q!3m4!1s0x357c9f007ca383cf:0xeb069748f6201a76!15sChrrjZTtmITrjIAg7ISc7Jq4IOyXrOydmOuPhFodIhvrjZQg7ZiE64yAIOyEnOyauCDsl6zsnZjrj4SSARBkZXBhcnRtZW50X3N0b3JlmgFEQ2k5RFFVbFJRVU52WkVOb2RIbGpSamx2VDIxUk5XUkhkRzVOVjJ3eVVUSlNhRlp0Y0ZkaVYxWkZZME14UkU1V1JSQULgAQD6AQQIABAb!16s%2Fg%2F11w3mh_j8v!20s8Q98GWGH%2BC87": {
+ "https://www.google.com/maps/place/%ED%8A%B8%EB%A6%AD%EC%95%84%EC%9D%B4%EB%AE%A4%EC%A7%80%EC%97%84/data=!3m1!4b1!4m4!3m3!1s0x357c98db4a7b2f65:0x248680be149ca7ad!16s%2Fg%2F1jkwn8zd7!20s8Q98HW3C%2BGQ7": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "The Hyundai Seoul"
+  "title": "트릭아이뮤지엄",
+  "naver_id": "1925763267",
+  "naver_title": "트릭아이뮤지엄 서울",
+  "naver_status": "open"
  },
- "https://www.google.com/maps/place/The+Westin+Josun+Seoul/data=!4m7!3m6!1s0x357ca2f146af4e39:0xe28f4800e1b8a3c5!5m2!4m1!1i2!16s%2Fg%2F1tjdtvvz!20s8Q98HX7J%2BQ23": {
+ "https://www.google.com/maps/place/Myeongdong+NANTA+Theatre/data=!3m1!4b1!4m4!3m3!1s0x357ca2f03366ba11:0x1abb7d88fa6a9628!16s%2Fg%2F1tffgq5k!20s8Q98HX7M%2BCCH": {
   "checked": "2026-11-20",
   "status": "open",
-  "title": "The Westin Josun Seoul"
- },
- "https://www.google.com/maps/place/Tokyo+Saikabo/data=!3m1!4b1!4m4!3m3!1s0x357ca463615e90af:0x5525578979b8ed1c!16s%2Fg%2F1tcypskg!20s8Q99G3G2%2B7XQ": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Tokyo Saikabo"
- },
- "https://www.google.com/maps/place/Tosokchon+Samgyetang/data=!3m1!4b1!4m4!3m3!1s0x357ca2be188e936f:0xe0687c7b0f486f53!16s%2Fg%2F1tg6n1tz!20s8Q98HXHC%2B4J8": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Tosokchon Samgyetang"
- },
- "https://www.google.com/maps/place/Wangbijib+Myeongdong+Central/data=!4m8!1m2!2m1!1z7JmV67mE7KeRIOuqheuPmeykkeyVmeygkA!3m4!1s0x357ca2f1698ffb61:0x1d4a142280ac7cda!15sChnsmZXruYTsp5Eg66qF64-Z7KSR7JWZ7KCQWh4iHOyZleu5hCDsp5Eg66qF64-ZIOykkeyVmSDsoJCSARprb3JlYW5fYmFyYmVjdWVfcmVzdGF1cmFudJoBI0NoWkRTVWhOTUc5blMwVkpRMEZuU1VSNGFVa3lOVkZuRUFF4AEA-gEECBoQEg!16s%2Fg%2F11fy_qvd4p!20s8Q98HX6J%2BCX6": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Wangbijib Myeongdong Central"
- },
- "https://www.google.com/maps/place/Woo+Lae+Oak/data=!3m1!4b1!4m4!3m3!1s0x357ca31f957798f7:0x733d6d9929611f90!16s%2Fg%2F1td2rvbb!20s8Q98HX9X%2B7FG": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Woo Lae Oak"
- },
- "https://www.google.com/maps/place/Yoonseul+Charcoal+Grill/data=!3m1!4b1!4m4!3m3!1s0x357ca35b59c185eb:0xa16bc543324ed0d5!16s%2Fg%2F11sty408q9!20s8Q98HX7P%2B669": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Yoonseul Charcoal Grill"
- },
- "https://www.google.com/maps/place/ZZANG+GAMES+Jongno/data=!3m1!4b1!4m4!3m3!1s0x357ca2e631786227:0xde98c63c45e6febe!16s%2Fg%2F11ffm037l7!20s8Q98HX9P%2BWRC": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "ZZANG GAMES Jongno"
- },
- "https://www.google.com/maps/place/Zzang+Games+Mapo/data=!3m1!4b1!4m4!3m3!1s0x357c98dab8398d91:0xda4a92b425616356!16s%2Fg%2F11c30t6ch2!20s8Q98HW2C%2BFCX": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Zzang Games Mapo"
- },
- "https://www.google.com/maps/place/Zzang+Games+Mapo/data=!4m8!1m2!2m1!1z7Kex6rKM7J6EIOyLoOy0jA!3m4!1s0x357c98dab8398d91:0xda4a92b425616356!15sChDsp7HqsozsnoQg7Iug7LSMWhMiEeynsSDqsozsnoQg7Iug7LSMkgEQYW11c2VtZW50X2NlbnRlcuABAA!16s%2Fg%2F11c30t6ch2!20s8Q98HW2C%2BFCX": {
-  "checked": "2026-11-20",
-  "status": "open",
-  "title": "Zzang Games Mapo"
+  "title": "Myeongdong NANTA Theatre",
+  "naver_id": "13445073",
+  "naver_title": "명동난타극장",
+  "naver_status": "unknown",
+  "naver_note": "Naver 页面没有营业状态／时间字段（住宿、书店、剧场类），以 Google 状态为准，时间若写了则标明来源 Google"
  }
 }
