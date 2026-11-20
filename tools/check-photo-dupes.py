@@ -128,6 +128,11 @@ def is_flat(im) -> bool:
 
 
 def base(url: str) -> str:
+    # Google 照片网址尾巴的 =s1600 / =w800-h600 是尺寸参数，去掉才认得出同一张。
+    # 带 ? 的网址（Naver 的 search.pstatic.net/common/?autoRotate=true&src=…）里 = 是查询参数，
+    # 照切会把整本韩国手册的图都切成同一个前缀、全判「同网址」（2026-11-20 首尔手册踩到），原样比。
+    if "?" in url:
+        return url
     return url.split("=")[0]
 
 
@@ -383,12 +388,16 @@ def selftest() -> int:
         ("x.html", "卡D", ["https://g/p2", "https://g/b2"]),
         ("x.html", "卡E", ["https://g/p3", "https://g/a3"]),
         ("x.html", "卡F", ["https://g/p4", "https://g/p5"]),                          # 两张都是占位图
+        ("x.html", "卡G", ["https://n/common/?autoRotate=true&src=x1",                # Naver：查询参数里的 =
+                           "https://n/common/?autoRotate=true&src=x2"]),              # 不能当尺寸参数切
     ]
     info = {
         "https://g/a1=s1": {"sha": "1", "hash": h_a}, "https://g/a2=s1": {"sha": "2", "hash": h_a2},
         "https://g/b=s1": {"sha": "3", "hash": h_b}, "https://g/c=s1": {"sha": "4", "hash": h_b},
         "https://g/c=s2": {"sha": "5", "hash": h_a}, "https://g/fail": {},
         "https://g/b2": {"sha": "6", "hash": h_b}, "https://g/a3": {"sha": "7", "hash": h_a},
+        "https://n/common/?autoRotate=true&src=x1": {"sha": "8", "hash": h_a},
+        "https://n/common/?autoRotate=true&src=x2": {"sha": "9", "hash": h_b},
     }
     for k in ("p1", "p2", "p3", "p4", "p5"):
         info[f"https://g/{k}"] = {"sha": "PH", "hash": h_a}
