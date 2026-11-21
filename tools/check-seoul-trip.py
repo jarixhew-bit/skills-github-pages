@@ -34,6 +34,15 @@
      文字里的「XX:XX 出发／leave at XX:XX」也必须是 10:00；D0 维持 09:00（由第 6 项守）、D6 去机场是赶 10:00 航班（不在此列）；
      逐日区只准有一处「私人团，时间可自行调整／Private group: times are flexible」提示（中英各一）。
 
+  8. 逐日「吃饭」栏只准引用页面现有的餐厅（2026-11-21 用户：「以目前的餐厅来做就行 别再找其他家了」，他们有包车，距离别太远就行）：
+     ① D1–D5 每天的吃饭栏里，每个 href="#food-…" 都必须是 #food 区里真实存在的餐厅卡，中英两侧引用的店要一致；
+     ② 那家店在当天（D1=1/3 … D5=1/7，用日期推星期）卡上营业时间必须有午餐时段（开门 ≤12:30 且午休／打烊 ≥13:30）；
+     ③ 距离：引用的店与当天主要地点的**直线**距离（快照 Naver 坐标，haversine）不得超过当天上限——
+        D1 酒店 ≤1 公里、D3 乐天世界商场（乐天塔）≤8 公里、D4 Starfield 高阳 ≤12 公里、D5 The Hyundai Seoul ≤5 公里。
+        上限是照用户认可的距离定的（D3 金猪食堂离乐天塔约 9.5 公里，超限就红）；页面写的「直线约 X 公里」要与算出来的差不超过 0.5；
+     ④ D2 爱宝乐园不引用任何餐厅（园内吃），但文字要写出「园内」和「直线约 N 公里」，N 与手册里离爱宝最近那家的实际距离差不超过 1；
+     ⑤ D0、D6 不放用餐栏。
+
 跑法：python3 tools/check-seoul-trip.py [页面.html]     退出码 0 = 全过；1 = 有不符
 """
 import json
@@ -402,17 +411,111 @@ def check_depart_time(page, src):
     return bad
 
 
+import math
+
+# 逐日吃饭栏：日 → (当天日期 1/N, 距离基准点在快照里的 title, 直线距离上限公里)
+MEAL_REF = {1: (3, "The Westin Josun Seoul", 1.0), 3: (5, "Lotte World Tower", 8.0),
+            4: (6, "Sports Monster Goyang", 12.0), 5: (7, "The Hyundai Seoul", 5.0)}
+
+
+def haversine(a, b):
+    p1, p2 = math.radians(a[0]), math.radians(b[0])
+    dp, dl = p2 - p1, math.radians(b[1] - a[1])
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * 6371 * math.asin(math.sqrt(h))
+
+
+def check_meals(page, src):
+    """逐日吃饭栏只引用现有餐厅卡：锚点存在、当天午餐有开、与当天主要地点直线距离在上限内（见文件头第 8 项）。"""
+    snap = json.load(open(SNAP, encoding="utf-8"))
+    by_title = {v["title"]: v for v in snap.values()}
+
+    def pt(info):
+        return (float(info["naver_lat"]), float(info["naver_lng"]))
+
+    fa, fb = src.find('<section id="food">'), src.find('<section id="fun">')
+    cards = {}
+    for m in re.finditer(r'<div class="evt" id="(food-[a-z]+)">(.*?)\n</div>\n</div>', src[fa:fb], re.S):
+        blk = m.group(2)
+        g = re.search(r'class="btn-map" href="([^"]+)"', blk)
+        h = re.search(r"<strong>营业时间：</strong>(.*?)<br>", blk)
+        cards[m.group(1)] = (snap.get(g.group(1)) if g else None, lunch_days_from_hours(h.group(1)) if h else {})
+    bad = []
+    for d in range(0, 7):
+        m = re.search(rf'<div class="day" data-date="[^"]*" id="day0{d}">(.*?)(?=\n<div class="day" |\n</section>)', src, re.S)
+        if not m:
+            bad.append(f"{page}: 找不到 #day0{d}，吃饭栏检查失效")
+            continue
+        ln = line_of(src, m.start())
+        foots = re.findall(r'<div class="dayfoot">(.*?)</div>', m.group(1), re.S)
+        if d in (0, 6):
+            if foots:
+                bad.append(f"{page}:{ln}  D{d} 不放用餐栏（出发日／回程日不排用餐）")
+            continue
+        if len(foots) != 1:
+            bad.append(f"{page}:{ln}  D{d} 应有且只有一个吃饭栏，实际 {len(foots)} 个")
+            continue
+        foot = foots[0]
+        spans = re.findall(r'<span class="cn">(.*?)</span><span class="en">(.*?)</span>', foot.split('class="tx"', 1)[-1], re.S)
+        if not spans:
+            bad.append(f"{page}:{ln}  D{d} 吃饭栏缺中英文字")
+            continue
+        cn, en = spans[0]
+        a_cn, a_en = set(re.findall(r'href="#(food-[a-z]+)"', cn)), set(re.findall(r'href="#(food-[a-z]+)"', en))
+        if a_cn != a_en:
+            bad.append(f"{page}:{ln}  D{d} 吃饭栏中英两侧引用的餐厅不一致：{sorted(a_cn)} vs {sorted(a_en)}")
+        if d == 2:
+            if a_cn:
+                bad.append(f"{page}:{ln}  D2 爱宝乐园当天在园内吃，不引用首尔市区餐厅：{sorted(a_cn)}")
+            ever = by_title.get("Everland")
+            near = min(haversine(pt(ever), pt(i)) for i, _ in cards.values() if i)
+            x = re.search(r"直线约 ?([\d.]+) ?公里", plain(cn))
+            if "园内" not in plain(cn) or not x:
+                bad.append(f"{page}:{ln}  D2 吃饭栏要写「园内」和「离爱宝最近的餐厅直线约 N 公里」")
+            elif abs(float(x.group(1)) - near) > 1:
+                bad.append(f"{page}:{ln}  D2 写离爱宝最近 {x.group(1)} 公里，实际最近的是 {near:.1f} 公里")
+            continue
+        if not a_cn:
+            bad.append(f"{page}:{ln}  D{d} 吃饭栏没有引用任何餐厅卡（href=\"#food-…\"）")
+        day_n, ref_title, limit = MEAL_REF[d]
+        ref = by_title.get(ref_title)
+        if not ref:
+            bad.append(f"{page}: 快照里找不到基准点 {ref_title}")
+            continue
+        for mm in re.finditer(r'href="#(food-[a-z]+)"', cn):
+            cid = mm.group(1)
+            if cid not in cards:
+                bad.append(f"{page}:{ln}  D{d} 引用的 #{cid} 不是页面现有的餐厅卡（本页不新增餐厅）")
+                continue
+            info, days = cards[cid]
+            name = (info or {}).get("title", cid)
+            if days.get(day_n) is not True:
+                bad.append(f"{page}:{ln}  D{d}（1/{day_n}）引用 {cid}，但卡上营业时间在那天没有午餐时段")
+            if not info or not info.get("naver_lat"):
+                bad.append(f"{page}:{ln}  D{d} 引用 {cid} 快照没有 Naver 坐标，算不了距离")
+                continue
+            km = haversine(pt(ref), pt(info))
+            if km > limit:
+                bad.append(f"{page}:{ln}  D{d} 引用 {cid}（{name}）离当天基准点 {ref_title} 直线 {km:.1f} 公里，超过上限 {limit:g} 公里（别排太远的店）")
+            x = re.search(r"直线约 ?([\d.]+) ?公里", plain(cn[mm.end():]))
+            if not x:
+                bad.append(f"{page}:{ln}  D{d} 引用 {cid} 后面要写「直线约 X 公里」")
+            elif abs(float(x.group(1)) - km) > 0.5:
+                bad.append(f"{page}:{ln}  D{d} {cid} 写直线约 {x.group(1)} 公里，实际 {km:.1f} 公里")
+    return bad
+
+
 def main(argv):
     page = argv[0] if argv else PAGE
     path = page if os.path.isabs(page) else os.path.join(REPO, page)
     src = open(path, encoding="utf-8").read()
-    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src) + check_depart_time(page, src)
+    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src) + check_depart_time(page, src) + check_meals(page, src)
     if bad:
         print(f"✗ 首尔手册 {len(bad)} 处不符：")
         for b in bad:
             print("  " + b)
         return 1
-    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发")
+    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发、逐日吃饭栏只引用现有餐厅（当天午餐有开、直线距离在上限内）")
     return 0
 
 
