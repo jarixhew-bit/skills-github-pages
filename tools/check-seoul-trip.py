@@ -43,6 +43,14 @@
      ④ D2 爱宝乐园不引用任何餐厅（园内吃），但文字要写出「园内」和「直线约 N 公里」，N 与手册里离爱宝最近那家的实际距离差不超过 1；
      ⑤ D0、D6 不放用餐栏。
 
+ 12. 每张地点卡同时写 Google 与 Naver 两种评分（2026-11-21 用户：「你把所有景点Google和naver的评论评分都加下去 这样他们看了就不会懵了」）：
+     酒店、逐日站点、餐厅、玩乐、活动每张卡标题下有一行 `<div class="rate">`，中文「Google 4.5（64,280 则）· Naver 4.37（40,700 则评论）」、
+     英文「Google 4.5 (64,280) · Naver 4.37 (40,700 reviews)」；Naver 隐藏星级的店写「Naver 未显示星级（N 则评论）」／「Naver rating not shown (N reviews)」；
+     快照里没有 naver_id 的（G-Plex、南杨州草莓农场）写「Naver 无收录」／「Not listed on Naver」。
+     数字一律与快照 google_rating／google_reviews／naver_rating／naver_reviews 逐项相同，快照缺这些字段也红。
+     同时：JUMP、VR Zone COEX、国立果川科学馆三张玩乐卡在页面里（fun-jump／fun-vrzone／fun-gwacheon），
+     JUMP 与果川科学馆（周一固定休）卡上有「1/4（一）休」／「Closed Mon 4 Jan」标注。
+
 跑法：python3 tools/check-seoul-trip.py [页面.html]     退出码 0 = 全过；1 = 有不符
 """
 import json
@@ -582,17 +590,76 @@ def check_seat_maps(page, src):
     return bad
 
 
+def check_ratings(page, src):
+    """第 12 项：每张地点卡的 Google＋Naver 评分行与快照一致；新增三家玩乐卡与 1/4 休标注（见文件头第 12 项）。"""
+    snap = json.load(open(SNAP, encoding="utf-8")) if os.path.exists(SNAP) else {}
+    bad, seen = [], 0
+    starts = [m.start() for m in re.finditer(r'<div class="(?:evt|stop)" id="[^"]+">|<div class="hotel">', src)]
+    for i, st in enumerate(starts):
+        blk = src[st:starts[i + 1] if i + 1 < len(starts) else len(src)]
+        g = re.search(r'<a class="btn-map" href="([^"]+)"', blk)
+        if not g:
+            continue
+        seen += 1
+        ln = line_of(src, st)
+        info = snap.get(g.group(1).replace("&amp;", "&")) or {}
+        title = info.get("title", "?")
+        rate = re.findall(r'<div class="rate"><span class="cn">(.*?)</span><span class="en">(.*?)</span></div>', blk)
+        if len(rate) != 1:
+            bad.append(f"{page}:{ln}  「{title}」要恰好一行 Google＋Naver 评分（<div class=\"rate\">），实际 {len(rate)} 行")
+            continue
+        cn, en = rate[0]
+        gr, gn = info.get("google_rating"), info.get("google_reviews")
+        if gr is None or gn is None:
+            bad.append(f"{page}:{ln}  「{title}」快照缺 google_rating／google_reviews")
+            continue
+        want_cn = f"Google {gr}（{gn:,} 则）· "
+        want_en = f"Google {gr} ({gn:,}) · "
+        if info.get("naver_id"):
+            nn = info.get("naver_reviews")
+            if nn is None or "naver_rating" not in info:
+                bad.append(f"{page}:{ln}  「{title}」快照缺 naver_rating／naver_reviews")
+                continue
+            nr = info["naver_rating"]
+            if nr is None:
+                want_cn += f"Naver 未显示星级（{nn:,} 则评论）"
+                want_en += f"Naver rating not shown ({nn:,} reviews)"
+            else:
+                want_cn += f"Naver {nr}（{nn:,} 则评论）"
+                want_en += f"Naver {nr} ({nn:,} reviews)"
+        else:
+            want_cn += "Naver 无收录"
+            want_en += "Not listed on Naver"
+        if cn != want_cn:
+            bad.append(f"{page}:{ln}  「{title}」中文评分行 {cn!r} 与快照应有的 {want_cn!r} 不一致")
+        if en != want_en:
+            bad.append(f"{page}:{ln}  「{title}」英文评分行 {en!r} 与快照应有的 {want_en!r} 不一致")
+    if seen == 0:
+        bad.append(f"{page}: 找不到任何地点卡，评分检查失效")
+    # 新增三家（2026-11-21）
+    for cid, why in (("fun-jump", "JUMP"), ("fun-vrzone", "VR Zone COEX"), ("fun-gwacheon", "国立果川科学馆")):
+        m = re.search(r'<div class="evt" id="%s">' % cid, src)
+        if not m:
+            bad.append(f"{page}: 玩乐区缺「{why}」卡（id={cid}）")
+            continue
+        blk = src[m.start():src.find('<div class="evt" id="', m.end()) if src.find('<div class="evt" id="', m.end()) > 0 else len(src)]
+        if cid in ("fun-jump", "fun-gwacheon"):
+            if "1/4（一）休" not in blk or "Closed Mon 4 Jan" not in blk:
+                bad.append(f"{page}:{line_of(src, m.start())}  「{why}」周一固定休，卡上要标「1/4（一）休」／「Closed Mon 4 Jan」")
+    return bad
+
+
 def main(argv):
     page = argv[0] if argv else PAGE
     path = page if os.path.isabs(page) else os.path.join(REPO, page)
     src = open(path, encoding="utf-8").read()
-    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src) + check_depart_time(page, src) + check_meals(page, src) + check_lunch_slot(page, src) + check_seat_maps(page, src)
+    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src) + check_depart_time(page, src) + check_meals(page, src) + check_lunch_slot(page, src) + check_seat_maps(page, src) + check_ratings(page, src)
     if bad:
         print(f"✗ 首尔手册 {len(bad)} 处不符：")
         for b in bad:
             print("  " + b)
         return 1
-    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发、逐日吃饭栏只引用现有餐厅（当天午餐有开、直线距离在上限内）、D1–D5 每天 12:30 午餐站点且饭前先排景点（D1 上午休息）、每张登机牌座位文字与座位图一一对应")
+    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发、逐日吃饭栏只引用现有餐厅（当天午餐有开、直线距离在上限内）、D1–D5 每天 12:30 午餐站点且饭前先排景点（D1 上午休息）、每张登机牌座位文字与座位图一一对应、每张地点卡 Google＋Naver 两种评分与快照一致（Naver 无收录的写明）、JUMP／VR Zone／国立果川科学馆三卡俱在且 1/4 休已标")
     return 0
 
 
