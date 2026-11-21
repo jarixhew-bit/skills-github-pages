@@ -602,6 +602,11 @@ def check_ratings(page, src):
             continue
         seen += 1
         ln = line_of(src, st)
+        # 评分只准出现在评分行：说明文字里再写一次（「Google 评分 5.0（80 条评价）」之类）会跟评分行打架
+        # （2026-11-21 verifier 抓到 Pumparcade／VR Zone／钟路电玩城三处）
+        for dm in re.finditer(r'<div class="desc">(.*?)</div>', blk, re.S):
+            if re.search(r"Google 评分|Google rates|Google shows only|条评价|则评价、评分", dm.group(1)):
+                bad.append(f"{page}:{ln}  说明文字里又写了一次评分，评分只放在 .rate 那一行")
         info = snap.get(g.group(1).replace("&amp;", "&")) or {}
         title = info.get("title", "?")
         rate = re.findall(r'<div class="rate"><span class="cn">(.*?)</span><span class="en">(.*?)</span></div>', blk)
