@@ -84,46 +84,163 @@ def check_status(page, src):
         info = snap.get(u)
         if info is None:
             bad.append(f"{page}:{line_of(src, m.start())}  地图链接不在营业状态快照里（没核对过 status 就放进手册）：{u[:80]}")
-        elif info["status"] != "open":
+        elif info["status"] != "open" and not (info["status"] == "temporarily_closed" and info.get("seasonal_note")):
             bad.append(f"{page}:{line_of(src, m.start())}  「{info['title']}」状态是 {info['status']}，不能放进手册")
     if seen == 0:
         bad.append(f"{page}: 找不到任何 btn-map，检查本身失效")
     return bad
 
 
+APP_URL = "https://jarixhew-bit.github.io/skills-github-pages/seoul-trip/"
+# Naver 业态类别 → 餐厅分组 id（2026-11-21：用户指出分组混乱，分组一律以 Naver 店家页的类别为准）
+CAT_GROUP = {
+    "육류,고기요리": "bbq", "돼지고기구이": "bbq", "고기요리": "bbq", "소고기구이": "bbq",
+    "일식당": "jp", "장어요리": "jp", "초밥,롤": "jp", "돈가스": "jp", "일본식라면": "jp",
+    # 2026-11-21 用户：日本料理统一成一组——居酒屋、烤鸡串都归「日本料理」
+    "이자카야": "jp",
+    "꼬치": "jp", "닭꼬치": "jp", "야키토리": "jp",
+}
+
+
+def card_blocks(src):
+    """每个 .links 区块（Google 按钮在内）→ (在 src 里的位置, google href, 区块内容)。"""
+    for m in re.finditer(r'<div class="links">(.*?)</div>', src, re.S):
+        g = re.search(r'<a class="btn-map" href="([^"]+)"', m.group(1))
+        if g:
+            yield m, g.group(1), m.group(1)
+
+
 def check_naver(page, src):
+    """Naver 按钮（2026-11-21 改版）：每张有 naver_id 的卡 = 一颗「导航」launchApp/route ＋ 一颗中文菜单／介绍 m.place ?locale=zh_CN。
+    旧写法 map.naver.com/p/entry/place/<id> 会丢掉语言参数（iPhone 跳 m.place 韩文页、Android 落到「请安装 App」页），页面里一处都不准再有。"""
+    import html as H
+    from urllib.parse import urlparse, parse_qs, unquote
     snap = json.load(open(SNAP, encoding="utf-8")) if os.path.exists(SNAP) else {}
     bad = []
     seen = 0
-    # 每个 .links 区块：Google 按钮在前，Naver 按钮（若有）紧随其后
-    for m in re.finditer(r'<div class="links">(.*?)</div>', src, re.S):
-        blk = m.group(1)
-        g = re.search(r'<a class="btn-map" href="([^"]+)"', blk)
-        if not g:
+    for m in re.finditer(r"map\.naver\.com/[^\"\s<>]*", src):
+        bad.append(f"{page}:{line_of(src, m.start())}  不准再用 map.naver.com 链接（会丢语言参数、只显示韩文）：{m.group(0)[:70]}")
+    food_a = src.find('<section id="food">')
+    food_b = src.find('<section id="fun">')
+    for m, g, blk in card_blocks(src):
+        ln = line_of(src, m.start())
+        info = snap.get(g) or {}
+        navs = re.findall(r'<a class="btn-map btn-map-naver" href="(https://nmap\.place\.naver\.com/launchApp/route\?[^"]*)"', blk)
+        menus = re.findall(r'<a class="btn-map btn-map-naver" href="(https://m\.place\.naver\.com/[^"]*)"([^>]*)>', blk)
+        nid = info.get("naver_id")
+        if not nid:
+            if navs or menus or "btn-map-naver" in blk:
+                bad.append(f"{page}:{ln}  快照里这个地点没有 naver_id，却放了 Naver 按钮")
             continue
-        n = re.findall(r'<a class="btn-map btn-map-naver" href="([^"]*)"', blk)
-        if len(n) > 1:
-            bad.append(f"{page}:{line_of(src, m.start())}  一张卡里有 {len(n)} 颗 Naver 按钮")
-        for u in n:
-            seen += 1
-            mm = re.fullmatch(r"https://map\.naver\.com/p/entry/place/(\d+)", u)
-            if not mm:
-                bad.append(f"{page}:{line_of(src, m.start())}  Naver 按钮不是 entry/place/<id> 形式：{u[:80]}")
-                continue
-            info = snap.get(g.group(1)) or {}
-            if info.get("naver_id") != mm.group(1):
-                bad.append(f"{page}:{line_of(src, m.start())}  Naver id {mm.group(1)} 与快照记录的 {info.get('naver_id')} 不一致（「{info.get('title')}」）")
-            elif info.get("naver_status") == "open":
-                pass
-            elif info.get("naver_status") == "unknown" and info.get("naver_note"):
-                pass
-            else:
-                bad.append(f"{page}:{line_of(src, m.start())}  「{info.get('title')}」Naver 状态 {info.get('naver_status')} 不是 open")
-    for m in re.finditer(r'map\.naver\.com/[^"\s<>]*', src):
-        if "/p/entry/place/" not in m.group(0):
-            bad.append(f"{page}:{line_of(src, m.start())}  Naver 链接不是地点页：{m.group(0)[:80]}")
+        seen += 1
+        title = info.get("title")
+        if len(navs) != 1:
+            bad.append(f"{page}:{ln}  「{title}」要恰好一颗 Naver 导航（launchApp/route），实际 {len(navs)} 颗")
+        else:
+            q = parse_qs(urlparse(H.unescape(navs[0])).query)
+            one = lambda k: (q.get(k) or [""])[0]
+            if one("did") != nid:
+                bad.append(f"{page}:{ln}  「{title}」导航 did={one('did')} 与快照 naver_id {nid} 不一致")
+            try:
+                lat, lng = float(one("dlat")), float(one("dlng"))
+                if not (36.5 <= lat <= 38.5 and 126.0 <= lng <= 128.0):
+                    bad.append(f"{page}:{ln}  「{title}」导航坐标 {lat},{lng} 不在首尔一带")
+                if str(lat) != str(float(info.get("naver_lat", "x") or 0)) or str(lng) != str(float(info.get("naver_lng", "x") or 0)):
+                    bad.append(f"{page}:{ln}  「{title}」导航坐标 {lat},{lng} 与快照 {info.get('naver_lat')},{info.get('naver_lng')} 不一致")
+            except ValueError:
+                bad.append(f"{page}:{ln}  「{title}」导航缺 dlat/dlng 或不是数字：{navs[0][:90]}")
+            if one("path") != "route" or one("type") != "place":
+                bad.append(f"{page}:{ln}  「{title}」导航缺 path=route&type=place")
+            if one("appname") != APP_URL:
+                bad.append(f"{page}:{ln}  「{title}」导航 appname 不是本手册网址（官方要求移动网页填网页 URL）")
+            if one("dname") != info.get("naver_title"):
+                bad.append(f"{page}:{ln}  「{title}」导航 dname={one('dname')!r} 与 Naver 店名 {info.get('naver_title')!r} 不一致")
+        if len(menus) != 1:
+            bad.append(f"{page}:{ln}  「{title}」要恰好一颗 m.place 中文菜单／介绍，实际 {len(menus)} 颗")
+        else:
+            href, attrs = menus[0]
+            in_food = food_a < m.start() < food_b
+            want = (f"https://m.place.naver.com/restaurant/{nid}/menu/list?locale=zh_CN" if in_food
+                    else f"https://m.place.naver.com/place/{nid}/home?locale=zh_CN")
+            if href != want:
+                bad.append(f"{page}:{ln}  「{title}」菜单／介绍链接应为 {want}，实际 {href}")
+            if "data-naver-locale" not in attrs:
+                bad.append(f"{page}:{ln}  「{title}」菜单／介绍链接缺 data-naver-locale（切英文时 locale 不会换）")
+        if info.get("naver_status") == "open":
+            pass
+        elif info.get("naver_status") == "unknown" and info.get("naver_note"):
+            pass
+        else:
+            bad.append(f"{page}:{ln}  「{title}」Naver 状态 {info.get('naver_status')} 不是 open")
     if seen == 0:
-        bad.append(f"{page}: 找不到任何 Naver 按钮，检查本身失效")
+        bad.append(f"{page}: 找不到任何带 Naver 的卡，检查本身失效")
+    # 语言切换要把 locale 在 zh_CN 与 en 之间换
+    if not re.search(r"a\[data-naver-locale\][\s\S]{0,200}locale=[\s\S]{0,80}zh_CN[\s\S]{0,40}'en'|a\[data-naver-locale\][\s\S]{0,260}'en'[\s\S]{0,120}zh_CN", src):
+        bad.append(f"{page}: applyLang 里没有切换 a[data-naver-locale] 的 locale（zh_CN ↔ en）")
+    return bad
+
+
+def check_groups(page, src):
+    """餐厅分组以 Naver 店家页的业态类别为准（2026-11-21 用户抓到：日本料理组混了居酒屋、居酒屋组混了烤鸡串）。
+    ① 每张餐厅卡所在分组 = 快照 food_group；② food_group 必须等于 Naver 类别对应的分组（CAT_GROUP），
+    有 group_override_note（写明为什么偏离）才放行；③ 每组标题的数字 = 该组卡片数。"""
+    snap = json.load(open(SNAP, encoding="utf-8")) if os.path.exists(SNAP) else {}
+    a = src.find('<section id="food">')
+    b = src.find('<section id="fun">')
+    if a < 0 or b < 0:
+        return [f"{page}: 找不到 #food／#fun 区块"]
+    fs = src[a:b]
+    bad, count, head = [], {}, {}
+    gid = None
+    for m in re.finditer(r'<div class="grp" id="grp-([a-z]+)"><span class="cn">[^<]*?（(\d+) 家）</span><span class="en">[^<]*?\((\d+)\)</span>|'
+                         r'<div class="evt" id="(food-[a-z]+)">.*?<a class="btn-map" href="([^"]+)"', fs, re.S):
+        if m.group(1):
+            gid = m.group(1)
+            if gid not in set(CAT_GROUP.values()):
+                bad.append(f"{page}:{line_of(src, a + m.start())}  分组 grp-{gid} 不在允许的分组里（{sorted(set(CAT_GROUP.values()))}；日料不再拆居酒屋／烤鸡串）")
+            if gid in head:
+                bad.append(f"{page}:{line_of(src, a + m.start())}  分组 grp-{gid} 重复出现")
+            head[gid] = (int(m.group(2)), int(m.group(3)), a + m.start())
+            count[gid] = 0
+            continue
+        ln = line_of(src, a + m.start())
+        if gid is None:
+            bad.append(f"{page}:{ln}  {m.group(4)} 不在任何分组下")
+            continue
+        count[gid] += 1
+        info = snap.get(m.group(5)) or {}
+        if info.get("food_group") != gid:
+            bad.append(f"{page}:{ln}  「{info.get('title')}」放在分组 {gid}，快照记录应在 {info.get('food_group')}（Naver 类别 {info.get('naver_category')}）")
+        want = CAT_GROUP.get(info.get("naver_category"))
+        if want is None:
+            bad.append(f"{page}:{ln}  「{info.get('title')}」Naver 类别 {info.get('naver_category')!r} 不在 CAT_GROUP 对照表里，先补表")
+        elif want != info.get("food_group") and not info.get("group_override_note"):
+            bad.append(f"{page}:{ln}  「{info.get('title')}」Naver 类别 {info.get('naver_category')} 属于 {want}，却放在 {info.get('food_group')}（要偏离就在快照写 group_override_note）")
+    for g, (n_cn, n_en, pos) in head.items():
+        if not (n_cn == n_en == count[g]):
+            bad.append(f"{page}:{line_of(src, pos)}  分组 {g} 标题写 {n_cn}／{n_en} 家，实际 {count[g]} 张卡")
+    if not head:
+        bad.append(f"{page}: 找不到任何餐厅分组（<div class=\"grp\" id=\"grp-…\">），检查本身失效")
+    return bad
+
+
+def check_events(page, src):
+    """行程期间活动区（#events，2026-11-21）：导航里有入口、至少 10 张卡、每张卡有 Google＋Naver 导航＋中文介绍＋官网按钮。"""
+    bad = []
+    m = re.search(r'<section id="events">(.*?)</section>', src, re.S)
+    if not m:
+        return [f"{page}: 找不到 #events 活动区"]
+    if 'href="#events"' not in src:
+        bad.append(f"{page}: 导航缺「活动」入口（href=\"#events\"）")
+    cards = re.findall(r'<div class="evt" id="(ev-[a-z]+)">(.*?)\n</div>\n</div>', m.group(1), re.S)
+    if len(cards) < 10:
+        bad.append(f"{page}: 活动区只有 {len(cards)} 张卡（应有 10 张）")
+    for cid, body in cards:
+        for need, label in (('class="btn-map" href="https://maps.google.com/?cid=', "Google ?cid= 地图"),
+                            ("launchApp/route", "Naver 导航"), ("data-naver-locale", "Naver 中文介绍"),
+                            ('class="btn-map web"', "官网／报道按钮")):
+            if need not in body:
+                bad.append(f"{page}:{line_of(src, src.find('id=\"'+cid+'\"'))}  活动卡 {cid} 缺 {label}")
     return bad
 
 
@@ -220,13 +337,13 @@ def main(argv):
     page = argv[0] if argv else PAGE
     path = page if os.path.isabs(page) else os.path.join(REPO, page)
     src = open(path, encoding="utf-8").read()
-    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_lunch_only(page, src)
+    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src)
     if bad:
         print(f"✗ 首尔手册 {len(bad)} 处不符：")
         for b in bad:
             print("  " + b)
         return 1
-    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 按钮与快照一致、只排午餐（无晚餐建议、餐厅都有午餐时段）")
+    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）")
     return 0
 
 
