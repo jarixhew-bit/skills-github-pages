@@ -96,8 +96,9 @@ APP_URL = "https://jarixhew-bit.github.io/skills-github-pages/seoul-trip/"
 CAT_GROUP = {
     "육류,고기요리": "bbq", "돼지고기구이": "bbq", "고기요리": "bbq", "소고기구이": "bbq",
     "일식당": "jp", "장어요리": "jp", "초밥,롤": "jp", "돈가스": "jp", "일본식라면": "jp",
-    "이자카야": "izakaya",
-    "꼬치": "yakitori", "닭꼬치": "yakitori", "야키토리": "yakitori",
+    # 2026-11-21 用户：日本料理统一成一组——居酒屋、烤鸡串都归「日本料理」
+    "이자카야": "jp",
+    "꼬치": "jp", "닭꼬치": "jp", "야키토리": "jp",
 }
 
 
@@ -195,6 +196,10 @@ def check_groups(page, src):
                          r'<div class="evt" id="(food-[a-z]+)">.*?<a class="btn-map" href="([^"]+)"', fs, re.S):
         if m.group(1):
             gid = m.group(1)
+            if gid not in set(CAT_GROUP.values()):
+                bad.append(f"{page}:{line_of(src, a + m.start())}  分组 grp-{gid} 不在允许的分组里（{sorted(set(CAT_GROUP.values()))}；日料不再拆居酒屋／烤鸡串）")
+            if gid in head:
+                bad.append(f"{page}:{line_of(src, a + m.start())}  分组 grp-{gid} 重复出现")
             head[gid] = (int(m.group(2)), int(m.group(3)), a + m.start())
             count[gid] = 0
             continue

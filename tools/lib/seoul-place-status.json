@@ -257,7 +257,7 @@
   "naver_category": "이자카야",
   "naver_lat": "37.5627493",
   "naver_lng": "126.9772644",
-  "food_group": "izakaya"
+  "food_group": "jp"
  },
  "https://www.google.com/maps/place/%EB%8B%88%ED%98%BC%EB%B0%94%EC%8B%9C+%ED%83%80%EB%A7%88%EC%9D%B4+%EA%B4%91%ED%99%94%EB%AC%B8/data=!3m1!4b1!4m4!3m3!1s0x357ca33dfc4d0be5:0xe4703b566d1708cd!16s%2Fg%2F11zbrmmzbk!20s8Q98HXCF%2B5J9": {
   "status": "open",
@@ -293,7 +293,7 @@
   "naver_category": "이자카야",
   "naver_lat": "37.5219332",
   "naver_lng": "126.9300171",
-  "food_group": "izakaya"
+  "food_group": "jp"
  },
  "https://www.google.com/maps/place/%EC%9A%B0%EC%98%A4%ED%95%98%EB%82%98/data=!3m1!4b1!4m4!3m3!1s0x357ca38d0781f887:0xdd0975d61817c424!16s%2Fg%2F11h6m882kp!20s8Q99G29C%2BW5V": {
   "status": "open",
@@ -313,8 +313,7 @@
   "naver_category": "이자카야",
   "naver_lat": "37.562334",
   "naver_lng": "126.9742563",
-  "food_group": "yakitori",
-  "group_override_note": "Naver 类别是「이자카야」，但菜单以烤串为主（모듬꼬치 拼盘、츠쿠네、이베리코 串等），用户 2026-11-21 要求单独列「日式烤鸡串」"
+  "food_group": "jp"
  },
  "https://www.google.com/maps/place/%EC%9D%84%EC%A7%80%EB%A1%9C+%EB%9D%BC%EC%8A%A4%EB%B2%A0%EA%B0%80%EC%8A%A4/data=!3m1!4b1!4m4!3m3!1s0x357ca2e46b7127fb:0xabac6c18e166ef50!16s%2Fg%2F11k3nbmgh3!20s8Q98HX8R%2B376": {
   "status": "open",
@@ -354,7 +353,7 @@
   "naver_category": "이자카야",
   "naver_lat": "37.57096",
   "naver_lng": "126.9814392",
-  "food_group": "izakaya"
+  "food_group": "jp"
  },
  "https://www.google.com/maps/place/%EB%A1%9C%EB%B0%94%ED%83%80+%EC%B9%B4%EB%AF%B8/data=!3m1!4b1!4m4!3m3!1s0x357ca30fcf8ba383:0x10f5dbc72a66530d!16s%2Fg%2F11jyn6j115!20s8Q98HX8R%2B43H": {
   "status": "open",
