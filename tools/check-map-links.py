@@ -14,7 +14,7 @@ Terminal 3」第一个结果是停车场，搜「JetQuay CIP Terminal」落到�
   - google.com/maps/search
   - maps.app.goo.gl
   - goo.gl/maps
-  - 地点页网址里夹着一段搜索（`/maps/place/…/data=…!1m2!2m1!1z…`，或带 `/@纬度,经度`）：
+  - 地点页网址里夹着一段搜索（`/maps/place/…/data=…!1m2!2m1!1z…`）：
     这是从搜索结果点进去复制的网址，打开时 Google 先跑那段搜索、左栏是搜索结果列表，
     用户看到的是「搜寻」不是直达那家店（2026-11-21 首尔手册 6 条，用户：「地图链接我要
     直接去那些地点的 不要搜寻的」）。换成 `maps.google.com/?cid=<十进制>`
@@ -35,8 +35,8 @@ sys.path.insert(0, os.path.join(REPO, "tools", "lib"))
 import trips  # noqa: E402
 
 BAD = re.compile(r"""https?://(?:www\.)?(?:google\.com/maps/search|maps\.app\.goo\.gl|goo\.gl/maps)[^"'\s<>]*""")
-# 地点页但夹带搜索：/maps/place/…/data=…!2m1!1z…（搜索词）或 /maps/place/名字/@纬,经,缩放z/
-SEARCHY = re.compile(r"""https?://(?:www\.)?google\.com/maps/place/[^"'\s<>]*?(?:!2m1!1z|/@-?\d)[^"'\s<>]*""")
+# 地点页但夹带搜索：/maps/place/…/data=…!2m1!1z…（搜索词）
+SEARCHY = re.compile(r"""https?://(?:www\.)?google\.com/maps/place/[^"'\s<>]*?!2m1!1z[^"'\s<>]*""")
 
 # 白名单：{页面: {链接里的特征字串: "原因（日期）"}}。
 # 只放「两轮精确查询都找不到对应地点页」的，加之前先在 PR 里说明。
