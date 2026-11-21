@@ -14,6 +14,11 @@ Terminal 3」第一个结果是停车场，搜「JetQuay CIP Terminal」落到�
   - google.com/maps/search
   - maps.app.goo.gl
   - goo.gl/maps
+  - 地点页网址里夹着一段搜索（`/maps/place/…/data=…!1m2!2m1!1z…`，或带 `/@纬度,经度`）：
+    这是从搜索结果点进去复制的网址，打开时 Google 先跑那段搜索、左栏是搜索结果列表，
+    用户看到的是「搜寻」不是直达那家店（2026-11-21 首尔手册 6 条，用户：「地图链接我要
+    直接去那些地点的 不要搜寻的」）。换成 `maps.google.com/?cid=<十进制>`
+    （cid＝网址里 `!1s0x…:0x…` 第二段转十进制）。
 例外写在 ALLOW（页面 → 那条链接里的一段特征字串 → 原因＋日期）：只给真的
 找不到地点页的那几个，而且每条都要说明为什么。
 
@@ -30,6 +35,8 @@ sys.path.insert(0, os.path.join(REPO, "tools", "lib"))
 import trips  # noqa: E402
 
 BAD = re.compile(r"""https?://(?:www\.)?(?:google\.com/maps/search|maps\.app\.goo\.gl|goo\.gl/maps)[^"'\s<>]*""")
+# 地点页但夹带搜索：/maps/place/…/data=…!2m1!1z…（搜索词）或 /maps/place/名字/@纬,经,缩放z/
+SEARCHY = re.compile(r"""https?://(?:www\.)?google\.com/maps/place/[^"'\s<>]*?(?:!2m1!1z|/@-?\d)[^"'\s<>]*""")
 
 # 白名单：{页面: {链接里的特征字串: "原因（日期）"}}。
 # 只放「两轮精确查询都找不到对应地点页」的，加之前先在 PR 里说明。
@@ -48,14 +55,14 @@ def main() -> int:
         checked += 1
         src = open(path, encoding="utf-8").read()
         allow = ALLOW.get(page, {})
-        for m in BAD.finditer(src):
+        for m in list(BAD.finditer(src)) + list(SEARCHY.finditer(src)):
             url = m.group(0)
             if any(key in url for key in allow):
                 continue
             line = src.count("\n", 0, m.start()) + 1
             bad.append(f"{page}:{line}  {url[:110]}")
     if bad:
-        print(f"✗ {len(bad)} 条地图链接是搜索链接／短链，要换成地点页（/maps/place/…）：")
+        print(f"✗ {len(bad)} 条地图链接是搜索链接／短链，要换成直达地点的链接（/maps/place/…/data=!…!1s0x… 或 ?cid=…）：")
         for b in bad:
             print("  " + b)
         print("拿地点页：跑 fetch-photos.yml（want=1），结果里的 place_url 就是；"
