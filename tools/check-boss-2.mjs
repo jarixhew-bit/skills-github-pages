@@ -2434,6 +2434,69 @@ async function adminImportPage(trips){
   await ctx.close();
 }
 
+// ---------- 场景三十九c：首尔手册的结构（2026-11-21）——航班号写在说明里、空的 pin、待确认的酒店 ----------
+// 首尔手册第一次导入时认错四处：「金边 KTI 起飞 → 香港」与登机牌重复（航班号只写在 .s）、
+// 每张卡都标成「可选」（pin 是空的、整个 display:none）、没有酒店条目、说明全丢。fixture 照首尔手册缩写。
+const SEOUL_FIXTURE = `<!DOCTYPE html><html><head><title>t</title></head><body>
+<h1><span class="cn">首尔 · 冬日亲子之旅</span><span class="en">Seoul · A Winter Family Journey</span></h1>
+<div class="bp-group-label"><span class="cn">去程 · 1月2日（六） · 香港 → 首尔</span><span class="en">Outbound · Sat 2 Jan</span></div>
+<div class="bpass">
+<div class="head"><span class="airline"><span class="code">CX</span>CX 426</span></div>
+<div class="route">
+<div class="apt"><div class="iata">HKG</div><div class="city"><span class="cn">香港 T1</span><span class="en">Hong Kong T1</span></div><div class="time">20:05</div></div>
+<div class="apt"><div class="iata">ICN</div><div class="city"><span class="cn">首尔 仁川 T1（1月3日）</span><span class="en">Seoul Incheon T1 (3 Jan)</span></div><div class="time">00:40</div></div>
+</div>
+<div class="pax"><div class="seats"><span class="seat">HEW/CHERN YANG 39H</span><span class="seat">CHET/POV 39C</span></div></div>
+</div>
+<section id="hotel"><div class="hotel">
+<div class="stay"><span><span class="cn">首尔 · 1月3–8日</span><span class="en">Seoul · 3–8 Jan</span></span><span><span class="cn">5晚 · 待确认</span><span class="en">5 nights · To be confirmed</span></span></div>
+<div class="bd"><div class="note amber"><span class="cn"><strong>酒店待确认。</strong>暂列。</span><span class="en">Hotel to be confirmed.</span></div>
+<h3><span class="cn">The Westin Josun Seoul 首尔威斯汀朝鲜酒店</span><span class="en">The Westin Josun Seoul</span> <span> 4.5</span></h3>
+<div class="addr">106 Sogong-ro, Jung-gu, Seoul</div><div class="tel">+82 2-771-0500</div>
+<div class="links"><a class="btn-map" href="https://maps.google.com/?cid=16349380357447041989">Google</a><a class="btn-map btn-map-naver" href="https://m.place.naver.com/place/11583198/home?locale=zh_CN">Naver</a></div>
+</div></div></section>
+<div class="day" data-date="2027-01-02" id="day00"><div class="db"><div class="tl">
+<div class="ev"><div class="t">20:05</div><h4><span class="cn">香港 HKG T1 起飞 → 首尔仁川 ICN T1</span><span class="en">Depart Hong Kong HKG T1 → Seoul Incheon ICN T1</span></h4><div class="s"><span class="cn">CX426，20:05 起飞，1/3 凌晨 00:40 到仁川 T1。登机牌与座位见<a href="#fl-cx426">CX426 机票卡</a>。</span><span class="en">CX426 takes off at 20:05. Boarding pass and seats: <a href="#fl-cx426">CX426 card</a>.</span></div></div>
+</div></div></div>
+<div class="day" data-date="2027-01-03" id="day01"><div class="db"><div class="tl">
+<div class="ev hot"><div class="t">00:40</div><h4><span class="cn">抵达仁川 T1</span><span class="en">Arrive at Incheon T1</span></h4><div class="s"><span class="cn">CX426 落地后旅行社接机。</span><span class="en">After CX426 lands the agency picks you up.</span></div></div>
+<div class="ev"><div class="t"><span class="cn">约 02:30</span><span class="en">About 02:30</span></div><h4><span class="cn">到酒店</span><span class="en">Reach the hotel</span></h4><div class="s"><span class="cn">入住安排见页首<a href="#precheck">出发前要确认</a>第 1 条。</span><span class="en">For check-in see item 1 of <a href="#precheck">Confirm before you go</a> at the top of the page.</span></div></div>
+<div class="ev"><div class="t">12:30</div><h4><span class="cn">午餐 · 酒店附近</span><span class="en">Lunch · near the hotel</span></h4><div class="s"><span class="cn">在<a href="#food-wangbi">王妃家</a>吃，约 12:30 入座（见下方备案）。营业时间见下方「吃饭」。</span><span class="en">Eat at <a href="#food-wangbi">Wangbijib</a> at about 12:30 (see the backup below). Hours are under “Meals” below.</span></div></div>
+</div>
+<div class="stop" id="d1-galaxy"><div class="pin maybe"></div><h4><span class="cn">Galaxy Robot Park 机器人公园</span><span class="en">Galaxy Robot Park</span></h4>
+<div class="rate"><span class="cn">Google 4.6（27 则）· Naver 4.64</span><span class="en">Google 4.6</span></div>
+<div class="links"><a class="btn-map" href="https://www.google.com/maps/place/Galaxy+Robot+Park/data=!3m1!4b1!4m4!3m3!1s0x357cb10ee1baaf69:0xc6f73e1cbd5ab7b4">Google</a><a class="btn-map btn-map-naver" href="https://nmap.place.naver.com/launchApp/route?path=route">Naver</a></div></div>
+</div></div>
+<div class="day" data-date="2027-01-08" id="day06"><div class="db"><div class="tl">
+<div class="ev"><div class="t"><span class="cn">约 07:45</span><span class="en">About 07:45</span></div><h4><span class="cn">抵达仁川 T1</span><span class="en">Arrive at Incheon T1</span></h4><div class="s"><span class="cn">车程约 1 小时 15 分钟。</span><span class="en">The drive takes about 1 h 15 min.</span></div></div>
+</div></div></div>
+</body></html>`;
+{
+  const { ctx, page, errs } = await adminImportPage([]);
+  console.log('\n【三十九c】首尔手册结构：说明里的航班号、空 pin、待确认酒店、说明进备注');
+  const r = await page.evaluate(h => parseGuideHtml(h, 'https://x/seoul-trip/'), SEOUL_FIXTURE);
+  const t = r.items.map(i => i.date + ' ' + i.title.zh);
+  ok('★「香港 HKG T1 起飞 → 首尔」（航班号只写在说明里）不跟登机牌重复', !t.some(x => /起飞 → 首尔/.test(x)), t);
+  ok('★1/3 凌晨「抵达仁川 T1 00:40」（CX426 落地，日期是隔天）不重复', !r.items.some(i => i.date === '2027-01-03' && /抵达仁川/.test(i.title.zh)), t);
+  ok('★1/8「约 07:45 抵达仁川」（坐车到机场，说明里没有航班号）照留', r.items.some(i => i.date === '2027-01-08' && i.time === '07:45' && /抵达仁川/.test(i.title.zh)), t);
+  const cx = r.items.find(i => i.flight && i.flight.no === 'CX426');
+  ok('★CX426 座位：Hew Chern Yang 39H、Chet Pov 39C', cx && JSON.stringify(cx.flight.pax) === JSON.stringify([{ name: 'Hew Chern Yang', seat: '39H' }, { name: 'Chet Pov', seat: '39C' }]), cx);
+  const gal = r.items.find(i => /Galaxy/.test(i.title.zh));
+  ok('★空的 pin maybe（看不见）不算「可选」', gal && !gal.note.zh, gal);
+  ok('★地图取 Google 那颗、不取 Naver', gal && gal.mapUrl.startsWith('https://www.google.com/maps/place/Galaxy'), gal);
+  const ht = r.items.find(i => i.kind === 'hotel');
+  ok('★住宿一节变成酒店条目，名字带「待确认」', ht && ht.hotel.name === 'The Westin Josun Seoul（待确认 TBC）' && /待确认/.test(ht.title.zh) && /TBC/.test(ht.title.en), ht);
+  ok('★酒店入住／退房 1/3–1/8、地址电话地图都带上', ht && ht.hotel.checkIn === '2027-01-03' && ht.hotel.checkOut === '2027-01-08' &&
+     ht.hotel.phone === '+82 2-771-0500' && ht.hotel.address === '106 Sogong-ro, Jung-gu, Seoul' && ht.mapUrl === 'https://maps.google.com/?cid=16349380357447041989', ht);
+  ok('★「到酒店 约 02:30」并进酒店条目（钟点 02:30），不另留一条', ht && ht.date === '2027-01-03' && ht.time === '02:30' && !t.some(x => /到酒店/.test(x)), t);
+  ok('★酒店备注写明待确认', ht && /待确认/.test(ht.note.zh), ht && ht.note);
+  const lu = r.items.find(i => /午餐/.test(i.title.zh));
+  ok('★午餐 12:30，说明进备注', lu && lu.time === '12:30' && /王妃家/.test(lu.note.zh) && /Wangbijib/.test(lu.note.en), lu);
+  ok('★备注拿掉「见下方…」「（见下方备案）」这类指向手册别处的话', lu && !/见下方|下方|below/.test(lu.note.zh + lu.note.en), lu && lu.note);
+  ok('无 JS 报错', errs.length === 0, errs.slice(0, 3));
+  await ctx.close();
+}
+
 // ---------- 场景三十九b：同一本手册已经有一趟 → 问「覆盖还是合并」，不静默重复 ----------
 {
   const existing = [{ id: 'trip-sg', title: { zh: '新加坡', en: '' }, start: '2026-11-11', end: '2026-11-12',

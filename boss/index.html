@@ -770,6 +770,7 @@ const GUIDE_OPTIONS = [
   { path:'singapore-trip/', zh:'新加坡旅游手册', en:'Singapore Trip Guide' },
   { path:'sg-jkt-trip/singapore.html', zh:'新加坡手册（11月）', en:'Singapore Guide (Nov)' },
   { path:'sg-jkt-trip/jakarta.html', zh:'雅加达手册（11月）', en:'Jakarta Guide (Nov)' },
+  { path:'seoul-trip/', zh:'首尔手册（2027 年 1 月）', en:'Seoul Guide (Jan 2027)' },
   { path:'usj-disney-restaurants.html', zh:'USJ/迪士尼餐厅指南', en:'USJ/Disney Restaurant Guide' },
   { path:'restaurant-guide.html', zh:'餐厅指南', en:'Restaurant Guide' },
 ];
@@ -3899,6 +3900,57 @@ function guideHm(s){
   const m = /(\d{1,2}):(\d{2})/.exec(String(s || ''));
   return m ? pad2(Number(m[1])) + ':' + m[2] : '';
 }
+/** 手册说明里「指向手册别处」的句子：老板 App 里没有「下方」「页首」「机票卡」，留着只会让人找不到。 */
+const GUIDE_XREF_ZH = /见(下方|上方|页首|页尾|本页)|见.{0,30}(机票卡|卡片|一节|第\s*\d+\s*条)|从\s*D\d\s*写起/;
+const GUIDE_XREF_EN = /\bsee (below|above)\b|\bunder\b.{0,40}\b(below|above|at the end of the day)\b|\bat the top of the page\b|boarding pass and seats\s*:|\bcontinue on D\d|\bsee .{0,60}\b(section|card|item \d+)\b|\bitem \d+ of\b/i;
+function guideDropXref(s, re, splitRe, joiner){
+  const t = String(s || '').replace(/[（(]\s*(见|see )[^）)]*[）)]/gi, '');   // 「（见下方备案）」「(see the backup below)」整段拿掉
+  return guideClean(t.split(splitRe).filter(x => x.trim() && !re.test(x)).map(x => x.trim()).join(joiner)).replace(/\s+([，。；,.;])/g, '$1');
+}
+function guideNoteFromS(sEl){
+  if(!sEl) return { zh: '', en: '' };
+  const bi = guideBi(sEl);
+  const zhIsZh = /[\u4e00-\u9fff]/.test(bi.zh);
+  return {
+    zh: zhIsZh ? guideDropXref(bi.zh, GUIDE_XREF_ZH, /(?<=[。！？])/, '') : guideDropXref(bi.zh, GUIDE_XREF_EN, /(?<=[.!?])\s+/, ' '),
+    en: guideDropXref(bi.en, GUIDE_XREF_EN, /(?<=[.!?])\s+/, ' '),
+  };
+}
+function guideJoinNote(a, b){ return a && b ? `${a} · ${b}` : (a || b || ''); }
+/** 手册「住宿」一节（.hotel）→ 酒店条目。写着「待确认」的，名字和标题都带上「待确认」，不写成已订。 */
+function guideHotels(doc, year, firstDate){
+  const out = [];
+  doc.querySelectorAll('.hotel').forEach(h => {
+    const h3 = h.querySelector('h3');
+    if(!h3) return;
+    const nb = guideBi(h3);
+    const name0 = guideClean(nb.en || nb.zh);
+    if(!name0) return;
+    const stay = h.querySelector('.stay');
+    const stayBi = guideBi(stay ? stay.querySelector('span') : null);
+    const m = /(\d{1,2})月(\d{1,2})日?\s*[–\-~至]\s*(?:(\d{1,2})月)?(\d{1,2})日/.exec(stay ? stay.textContent : '');
+    const toDate = (mo, d) => {
+      if(!year) return '';
+      const md = `${pad2(Number(mo))}-${pad2(Number(d))}`;
+      return (firstDate && `${year}-${md}` < firstDate && firstDate.slice(5) > md) ? `${year + 1}-${md}` : `${year}-${md}`;
+    };
+    const checkIn = m ? toDate(m[1], m[2]) : '';
+    let checkOut = m ? toDate(m[3] || m[1], m[4]) : '';
+    if(checkOut && checkIn && checkOut <= checkIn) checkOut = '';
+    const pending = /待确认|待定|\bTBC\b|to be confirmed/i.test(guideClean(h.textContent));
+    const name = pending ? `${name0}（待确认 TBC）` : name0;   // 名字一个字段两种语言都看：中文看「待确认」、英文看 TBC
+    const addr = h.querySelector('.addr'), tel = h.querySelector('.tel');
+    const a = h.querySelector(GUIDE_MAP_SEL);
+    const mapUrl = a ? a.getAttribute('href') : '';
+    out.push({ kind: 'hotel', date: checkIn, time: '',
+      title: { zh: '入住 ' + name, en: 'Check in · ' + name },   // 跟 adminHotelSync() 同一个写法，管理页存一次不会变样
+      note: pending ? { zh: `酒店待确认：旅行社还没给出最终的酒店，暂列 ${name0}；若换了酒店，以旅行社确认的为准。`,
+        en: `Hotel to be confirmed: the agency has not given the final hotel yet; ${name0} is listed for now. If it changes, go by what the agency confirms.` } : { zh: '', en: '' },
+      mapUrl,
+      hotel: { name, address: guideClean(addr && addr.textContent), phone: guideClean(tel && tel.textContent), checkIn, checkOut, mapUrl } });
+  });
+  return out;
+}
 function parseGuideHtml(html, guideUrl){
   const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
   const days = [...doc.querySelectorAll('.day[data-date]')]
@@ -3984,13 +4036,26 @@ function parseGuideHtml(html, guideUrl){
         // 登机牌已经是一条完整的航班条目，日程里的「起飞」「抵达」不再重复
         if(fno && flightNos.has(fno)) return;
         if(/^(🛬|✈)/u.test(raw.zh) && flights.some(f => f.date === date && f.to && f.to.time === time)) return;
+        // 首尔手册（2026-11-21）：航班号不写在标题、写在说明里（「金边 KTI 起飞 → 香港」＋「CX608，11:45 起飞…」）。
+        // 说明里提到某个登机牌的航班号、而且钟点＝它的起飞或落地时刻 → 也是那段航班的重复。
+        // 只认钟点对得上的：D6「07:45 抵达仁川」（坐车到机场）说明里没有航班号，照留。
+        const sEl = el.querySelector(':scope > .s');
+        if(time && sEl){
+          const sNos = new Set((guideClean(sEl.textContent).toUpperCase().match(/\b[A-Z][A-Z0-9]\s?\d{1,4}\b/g) || []).map(guideFlightNo));
+          if(flights.some(f => sNos.has(f.no) && ((f.from && f.from.time === time) || (f.to && f.to.time === time)))) return;
+        }
+        // 说明（.s）进备注：把指向手册别处的那几句（「见下方『吃饭』」「登机牌见 CX608 机票卡」）拿掉，老板 App 里没有那些地方
+        const sBi = guideNoteFromS(sEl);
+        if(sBi.zh || sBi.en) note = { zh: guideJoinNote(note.zh, sBi.zh), en: guideJoinNote(note.en, sBi.en) };
       }else{
         const sp = guideSplitPeriodTitle(bi);
         title = sp.title;
         period = sp.period || curPeriod;
         if(sp.period) curPeriod = sp.period;
+        // 「可选」只认**看得见**的标记（新加坡手册 pin 里有 🛍 之类）。首尔手册每张卡都是空的
+        // <div class="pin maybe"></div> 而且 .pin 整个 display:none——那不是「可选」，当成可选会把爱宝乐园标成可去可不去。
         const pin = el.querySelector('.pin');
-        if(pin && /\b(side|maybe)\b/.test(pin.className)) note = { zh: '可选', en: 'Optional' };
+        if(pin && /\b(side|maybe)\b/.test(pin.className) && guideClean(pin.textContent)) note = { zh: '可选', en: 'Optional' };
       }
       const a = el.querySelector(GUIDE_MAP_SEL);
       const it = { date, time, title: { zh: title.zh, en: title.en }, note, mapUrl: a ? a.getAttribute('href') : '' };
@@ -4008,6 +4073,18 @@ function parseGuideHtml(html, guideUrl){
       if(d.label && !d.it.note.zh && !d.it.note.en) d.it.note = { zh: d.label.zh, en: d.label.en };
     });
     dayItems.forEach(d => items.push(d.it));
+  });
+  // 酒店：日程里入住那天的「到酒店」那一条就是它——钟点、备注并进酒店条目，不重复成两条
+  guideHotels(doc, year, dates[0] || '').forEach(h => {
+    const i = items.findIndex(it => it.date === h.date && !it.flight &&
+      (/^(到酒店|抵达酒店|入住|办理入住)/.test(it.title.zh) || /^((reach|arrive at|get to) the hotel|check[- ]?in)\b/i.test(it.title.en)));
+    if(i >= 0){
+      const ev = items.splice(i, 1)[0];
+      h.time = ev.time || '';
+      if(ev.period) h.period = ev.period;
+      h.note = { zh: guideJoinNote(ev.note.zh, h.note.zh), en: guideJoinNote(ev.note.en, h.note.en) };
+    }
+    items.push(h);
   });
   flights.forEach(f => {
     const fz = f.from ? (f.from.city.zh || f.from.iata) : '', tz = f.to ? (f.to.city.zh || f.to.iata) : '';
@@ -5117,7 +5194,7 @@ function renderAdmin(){
     <!-- 版本号（2026-08-28 加）：今天为了「你改了怎么还是老样子」反复困惑了好几轮，
          每次都要靠猜他手上是哪一版。摆出来，一眼就能对。数字跟 boss-sw.js 的 CACHE
          同源，改版时那边升、这里跟着升。 -->
-    <div class="admin-ver" id="adminVer">boss-app-v75</div>
+    <div class="admin-ver" id="adminVer">boss-app-v76</div>
 
     ${adminTripsSectionHtml()}
 
