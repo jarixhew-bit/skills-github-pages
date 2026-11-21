@@ -29,6 +29,11 @@
      （data-date=2027-01-02），时间轴含 09:00 金边家里出发站点、引用页内航班卡（#fl-cx608／#fl-cx426，且这两张卡真实存在），
      顶部导航有 D0 chip（data-date=2027-01-02 href=#day00）；#day00 里不得出现用餐建议（本团只吃午餐、1/2 不写用餐）。
 
+  7. 每天出发时间（2026-11-21 用户：「出发时间一般是10点早上 时间我们自己定 我们私人团的」）：D1–D5 里
+     「从酒店出发」的站点（时间轴 .ev 的标题含「出发」／Leave／Depart）时刻一律 10:00（D2–D5 各至少一个，别让检查空转），
+     文字里的「XX:XX 出发／leave at XX:XX」也必须是 10:00；D0 维持 09:00（由第 6 项守）、D6 去机场是赶 10:00 航班（不在此列）；
+     逐日区只准有一处「私人团，时间可自行调整／Private group: times are flexible」提示（中英各一）。
+
 跑法：python3 tools/check-seoul-trip.py [页面.html]     退出码 0 = 全过；1 = 有不符
 """
 import json
@@ -367,17 +372,47 @@ def check_day00(page, src):
     return bad
 
 
+def check_depart_time(page, src):
+    """D1–D5 从酒店出发的站点一律 10:00（私人团，用户 2026-11-21）；D2–D5 各至少一个出发站点；私人团提示恰一处。"""
+    bad = []
+    seen = set()
+    for m in re.finditer(r'<div class="day" data-date="[^"]*" id="day0([1-5])">(.*?)(?=\n<div class="day" |\n</section>)', src, re.S):
+        d = int(m.group(1))
+        body = m.group(2)
+        for ev in re.finditer(r'<div class="ev[^"]*"><div class="t">(.*?)</div><h4>(.*?)</h4>', body, re.S):
+            title = re.sub(r'<[^>]+>', '', ev.group(2))
+            if "机场" in title or "金边" in title:
+                continue
+            if re.search(r'出发|Depart|Leave for', title):
+                seen.add(d)
+                t = re.sub(r'<[^>]+>', '', ev.group(1)).strip()
+                if t != "10:00":
+                    bad.append(f"{page}:{line_of(src, m.start(2) + ev.start())}  D{d} 从酒店出发站点时刻是 {t!r}，应为 10:00（私人团每天 10:00 出发）")
+        for x in re.finditer(r'(\d\d:\d\d)\s*出发|(?:leave|set off|depart) at (\d\d:\d\d)', re.sub(r'<[^>]+>', '', body), re.I):
+            t = x.group(1) or x.group(2)
+            if t != "10:00":
+                bad.append(f"{page}:{line_of(src, m.start())}  D{d} 文字里还写着 {t} 出发，应为 10:00")
+    for d in (2, 3, 4, 5):
+        if d not in seen:
+            bad.append(f"{page}: D{d} 缺「10:00 出发」时间轴站点")
+    for tag in ("私人团，时间可自行调整", "Private group: times are flexible"):
+        n = src.count(tag)
+        if n != 1:
+            bad.append(f"{page}: 「{tag}」应在逐日区出现恰好 1 次，实际 {n} 次")
+    return bad
+
+
 def main(argv):
     page = argv[0] if argv else PAGE
     path = page if os.path.isabs(page) else os.path.join(REPO, page)
     src = open(path, encoding="utf-8").read()
-    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src)
+    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src) + check_depart_time(page, src)
     if bad:
         print(f"✗ 首尔手册 {len(bad)} 处不符：")
         for b in bad:
             print("  " + b)
         return 1
-    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全")
+    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发")
     return 0
 
 
