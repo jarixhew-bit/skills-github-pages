@@ -150,7 +150,7 @@ section { padding: 50px 22px 6px; }
 
 
 /* ===== 逐日：标题仍是 F 的居中节目单，正文换成 E 的站点竖线 ===== */
-#day01 { --line: var(--l1); } #day02 { --line: var(--l2); } #day03 { --line: var(--l3); } #day04 { --line: var(--l4); } #day05 { --line: var(--l5); } #day06 { --line: var(--l6); }
+#day00 { --line: var(--l1); } #day01 { --line: var(--l1); } #day02 { --line: var(--l2); } #day03 { --line: var(--l3); } #day04 { --line: var(--l4); } #day05 { --line: var(--l5); } #day06 { --line: var(--l6); }
 .day { margin-bottom: 44px; }
 .day .dh { text-align: center; padding: 22px 0 20px; border-top: 1px solid var(--gold); border-bottom: 1px solid var(--hair); position: relative; }
 .day .dh::after { content: ""; position: absolute; left: 50%; bottom: -1px; width: 44px; margin-left: -22px; height: 2px; background: var(--line); }
@@ -436,6 +436,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <nav class="daystrip" id="daystrip">
 <a href="#flights"><span class="d"><span class="cn">航班</span><span class="en">Flights</span></span><span class="m">I</span></a>
 <a href="#hotel"><span class="d"><span class="cn">住宿</span><span class="en">Hotel</span></span><span class="m">II</span></a>
+<a data-date="2027-01-02" href="#day00"><span class="d">D0</span><span class="m">2 Jan</span></a>
 <a data-date="2027-01-03" href="#day01"><span class="d">D1</span><span class="m">3 Jan</span></a>
 <a data-date="2027-01-04" href="#day02"><span class="d">D2</span><span class="m">4 Jan</span></a>
 <a data-date="2027-01-05" href="#day03"><span class="d">D3</span><span class="m">5 Jan</span></a>
@@ -485,7 +486,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <section id="flights">
 <div class="sec-head"><span class="no">01</span><h2><span class="cn">航班</span><span class="en">Flights</span></h2><span class="rule"></span></div>
 <div class="bp-group-label"><span class="cn">去程 · 1月2日（六） · 金边 → 香港</span><span class="en">Outbound · Sat 2 Jan · Phnom Penh → Hong Kong</span></div>
-<div class="bpass">
+<div class="bpass" id="fl-cx608">
 <div class="head"><span class="airline"><span class="code">CX</span>CX 608</span><span class="craft">Cathay Pacific · A330-300</span></div>
 <div class="route">
 <div class="apt"><div class="iata">KTI</div><div class="city"><span class="cn">金边 Techo 国际机场</span><span class="en">Phnom Penh Techo</span></div><div class="time">11:45</div></div>
@@ -505,7 +506,7 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="note green" style="margin-top:-4px"><span class="cn">在香港转机 <strong>4 小时 35 分钟</strong>，两段都在 T1，不用换航站楼。</span><span class="en">The Hong Kong connection is <strong>4 h 35 min</strong>, and both flights use T1, so there is no change of terminal.</span>
 </div>
 <div class="bp-group-label"><span class="cn">去程 · 1月2日（六）至 3日（日） · 香港 → 首尔</span><span class="en">Outbound · Sat 2 – Sun 3 Jan · Hong Kong → Seoul</span></div>
-<div class="bpass">
+<div class="bpass" id="fl-cx426">
 <div class="head"><span class="airline"><span class="code">CX</span>CX 426</span><span class="craft">Cathay Pacific · A321neo</span></div>
 <div class="route">
 <div class="apt"><div class="iata">HKG</div><div class="city"><span class="cn">香港 T1</span><span class="en">Hong Kong T1</span></div><div class="time">20:05</div></div>
@@ -601,6 +602,26 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <!-- ===== ITINERARY ===== -->
 <section id="itinerary">
 <div class="sec-head"><span class="no">03</span><h2><span class="cn">逐日行程</span><span class="en">Day by Day</span></h2><span class="rule"></span></div>
+<div class="day" data-date="2027-01-02" id="day00">
+<div class="dh">
+<div class="dn">00<small>DAY</small></div>
+<div class="dt"><h3><span class="cn">出发 · 金边 → 香港 → 首尔</span><span class="en">Depart · Phnom Penh → Hong Kong → Seoul</span><span class="today-tag"><span class="cn">今天</span><span class="en">TODAY</span></span></h3><div class="dd">2 Jan <span class="cn">(六)</span><span class="en">(Sat)</span></div></div>
+<div class="badge"><span class="cn">出发日</span><span class="en">Departure day</span></div>
+</div>
+<div class="db">
+<div class="tl">
+<div class="ev hot"><div class="t">09:00</div><h4><span class="cn">金边家里出发</span><span class="en">Leave home in Phnom Penh</span></h4><div class="s"><span class="cn">前往金边 Techo 国际机场（KTI），赶 11:45 的航班。</span><span class="en">Head to Phnom Penh Techo International Airport (KTI) for the 11:45 flight.</span></div></div>
+
+<div class="ev"><div class="t">11:45</div><h4><span class="cn">金边 KTI 起飞 → 香港 HKG T1</span><span class="en">Depart Phnom Penh KTI → Hong Kong HKG T1</span></h4><div class="s"><span class="cn">CX608，11:45 起飞，15:30 到香港 T1，飞行 2 小时 45 分。登机牌与座位见<a href="#fl-cx608">CX608 机票卡</a>。</span><span class="en">CX608 takes off at 11:45 and lands at Hong Kong T1 at 15:30, a 2 h 45 min flight. Boarding pass and seats: <a href="#fl-cx608">CX608 card</a>.</span></div></div>
+
+<div class="ev"><div class="t">15:30</div><h4><span class="cn">香港转机 4 小时 35 分</span><span class="en">Hong Kong connection, 4 h 35 min</span></h4><div class="s"><span class="cn">两段都在 T1，不用换航站楼，在 T1 等下一班飞首尔的航班。</span><span class="en">Both flights use T1, so there is no change of terminal; wait at T1 for the flight to Seoul.</span></div></div>
+
+<div class="ev"><div class="t">20:05</div><h4><span class="cn">香港 HKG T1 起飞 → 首尔仁川 ICN T1</span><span class="en">Depart Hong Kong HKG T1 → Seoul Incheon ICN T1</span></h4><div class="s"><span class="cn">CX426，20:05 起飞，1/3 凌晨 00:40 到仁川 T1，飞行 3 小时 35 分（香港比首尔慢 1 小时）。登机牌与座位见<a href="#fl-cx426">CX426 机票卡</a>；落地后的接机与入住从<a href="#day01">D1</a>写起。</span><span class="en">CX426 takes off at 20:05 and lands at Incheon T1 at 00:40 on 3 Jan, a 3 h 35 min flight (Hong Kong is 1 hour behind Seoul). Boarding pass and seats: <a href="#fl-cx426">CX426 card</a>; the pick-up and check-in continue on <a href="#day01">D1</a>.</span></div></div>
+
+</div>
+</div>
+</div>
+
 <div class="day" data-date="2027-01-03" id="day01">
 <div class="dh">
 <div class="dn">01<small>DAY</small></div>
@@ -611,9 +632,6 @@ body.lang-en .stop .pin.num::before { content: "STOP "; } body.lang-en .stop .pi
 <div class="wxbox">
 <div class="wx" data-wx="2027-01-03"></div>
 <div class="rainplan"><span class="cn">寒冷备案：今天以休息和室内为主；外出要穿羽绒、戴手套和毛帽，冷了就回酒店。</span><span class="en">Cold-weather plan: today is mostly rest and indoor spots. Wear a down jacket, gloves and a woolly hat when you go out, and head back to the hotel if you get cold.</span></div>
-</div>
-
-<div class="note amber" style="margin:10px 0 4px"><span class="cn">1/2（六）从金边出发的两段航班见<a href="#flights">航班</a>，本日从 1/3 凌晨抵达仁川写起。</span><span class="en">The two flights from Phnom Penh on Sat 2 Jan are under <a href="#flights">Flights</a>; this day starts with the small-hours arrival at Incheon on 3 Jan.</span>
 </div>
 
 <div class="tl">
