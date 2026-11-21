@@ -14,6 +14,7 @@
 - **图片**：旅游手册一律用 Google Places 图片链接，不上传图片文件到仓库
   **韩国例外**（2026-11-20 用户拍板）：韩国行程的照片、营业时间、营业状态、菜单以 Naver 为准
   （`fetch-photos.yml` 选 `source=naver`），评分门槛仍看 Google ≥4.2。
+  Naver 按钮用 `launchApp/route` 导航＋`m.place ?locale=zh_CN` 菜单，不用 `map.naver.com/p/entry`（会丢语言参数、只显示韩文）；餐厅分组以 Naver 业态类别为准。
 - **手册卡片必须带图和中英说明**（2026-07-11 用户明确要求）：新增/替换餐厅、景点卡片时，
   图片和描述一并补齐，不必询问。沙盒抓不到 Google 图片时走 GitHub Actions 抓取
   （参照 dispatch.md 教训 2026-07-10 的 CI 通道做法），仍拿不到才向用户要图。

@@ -6,7 +6,10 @@
   "naver_id": "11583198",
   "naver_title": "웨스틴 조선 서울",
   "naver_status": "unknown",
-  "naver_note": "Naver 页面没有营业状态／时间字段（住宿、书店、剧场类），以 Google 状态为准，时间若写了则标明来源 Google"
+  "naver_note": "Naver 页面没有营业状态／时间字段（住宿、书店、剧场类），以 Google 状态为准，时间若写了则标明来源 Google",
+  "naver_category": "호텔",
+  "naver_lat": "37.5644687",
+  "naver_lng": "126.9800462"
  },
  "https://www.google.com/maps/place/Galaxy+Robot+Park/data=!3m1!4b1!4m4!3m3!1s0x357cb10ee1baaf69:0xc6f73e1cbd5ab7b4!16s%2Fg%2F11njcxm1yd!20s8Q99H48X%2B53M": {
   "checked": "2026-11-20",
@@ -14,7 +17,10 @@
   "title": "Galaxy Robot Park",
   "naver_id": "1378952275",
   "naver_title": "갤럭시 로봇파크",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "엔터테인먼트",
+  "naver_lat": "37.5654458",
+  "naver_lng": "127.147743"
  },
  "https://www.google.com/maps/place/Everland/data=!3m1!4b1!4m4!3m3!1s0x357b5403ce34d773:0x1fa18ab619238098!16s%2Fm%2F012dzv65!20s8Q9976V3%2BH28": {
   "checked": "2026-11-20",
@@ -22,7 +28,10 @@
   "title": "Everland",
   "naver_id": "11574457",
   "naver_title": "에버랜드",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "테마파크",
+  "naver_lat": "37.2933272",
+  "naver_lng": "127.2013221"
  },
  "https://www.google.com/maps/place/Sports+Monster+Goyang/data=!3m1!4b1!4m4!3m3!1s0x357c9714feb85147:0xa25a9bc5a09d7fa8!16s%2Fg%2F11f11p9dk_!20s8Q98JVWV%2BC55": {
   "checked": "2026-11-20",
@@ -30,7 +39,10 @@
   "title": "Sports Monster Goyang",
   "naver_id": "1859523278",
   "naver_title": "스몹 고양",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "스포츠시설",
+  "naver_lat": "37.6460425",
+  "naver_lng": "126.8927294"
  },
  "https://www.google.com/maps/place/SEOULDAL/data=!3m1!4b1!4m4!3m3!1s0x357c9f002a0d0a8b:0x143ba12ca45c22d4!16s%2Fg%2F11lmb_sq05!20s8Q98GWGC%2BCXQ": {
   "checked": "2026-11-20",
@@ -38,7 +50,10 @@
   "title": "SEOULDAL",
   "naver_id": "1021313692",
   "naver_title": "서울달",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "관람,체험",
+  "naver_lat": "37.5262172",
+  "naver_lng": "126.9225114"
  },
  "https://www.google.com/maps/place/MidoGalbi/data=!3m1!4b1!4m4!3m3!1s0x357ca2e8a61d041b:0xdb5a1c598a401f6!16s%2Fg%2F11ggf05ktl!20s8Q98HX9P%2BGCQ": {
   "checked": "2026-11-20",
@@ -46,7 +61,11 @@
   "title": "MidoGalbi",
   "naver_id": "1264295690",
   "naver_title": "미도갈비",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "육류,고기요리",
+  "naver_lat": "37.5687918",
+  "naver_lng": "126.9861462",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/Daol+Charcoal+Grill/data=!3m1!4b1!4m4!3m3!1s0x357ca354a75ca4bf:0x45520b9741db9925!16s%2Fg%2F11l5bm8290!20s8Q98HX7M%2B7HG": {
   "checked": "2026-11-20",
@@ -54,7 +73,11 @@
   "title": "Daol Charcoal Grill",
   "naver_id": "1220312094",
   "naver_title": "다올 숯불구이 명동점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "육류,고기요리",
+  "naver_lat": "37.5632337",
+  "naver_lng": "126.9839622",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/Yoonseul+Charcoal+Grill/data=!3m1!4b1!4m4!3m3!1s0x357ca35b59c185eb:0xa16bc543324ed0d5!16s%2Fg%2F11sty408q9!20s8Q98HX7P%2B669": {
   "checked": "2026-11-20",
@@ -62,7 +85,11 @@
   "title": "Yoonseul Charcoal Grill",
   "naver_id": "2007838063",
   "naver_title": "윤슬 숯불구이 명동점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "육류,고기요리",
+  "naver_lat": "37.5630223",
+  "naver_lng": "126.985645",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/Sukseongdo+Euljiro/data=!3m1!4b1!4m4!3m3!1s0x357ca30027a5a263:0x181c38cc1b432295!16s%2Fg%2F11w2311m43!20s8Q98HX8Q%2B6PX": {
   "checked": "2026-11-20",
@@ -70,7 +97,11 @@
   "title": "Sukseongdo Euljiro",
   "naver_id": "1663003904",
   "naver_title": "숙성도 을지로점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "돼지고기구이",
+  "naver_lat": "37.56559",
+  "naver_lng": "126.9894338",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/Geumdwaeji+Sikdang/data=!3m1!4b1!4m4!3m3!1s0x357ca3110d881915:0x66c78cca87fb7bda!16s%2Fg%2F11c0r5qrxn!20s8Q99H246%2BRMM": {
   "checked": "2026-11-20",
@@ -78,7 +109,11 @@
   "title": "Geumdwaeji Sikdang",
   "naver_id": "37869877",
   "naver_title": "금돼지식당",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "돼지고기구이",
+  "naver_lat": "37.5570932",
+  "naver_lng": "127.0116976",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/Jeju+Rooftop+Black+BBQ/data=!3m1!4b1!4m4!3m3!1s0x357ca3005181320b:0x4f6534021b40b4ff!16s%2Fg%2F11wq34fshp!20s8Q99G2GP%2BHHF": {
   "checked": "2026-11-20",
@@ -86,7 +121,11 @@
   "title": "Jeju Rooftop Black BBQ",
   "naver_id": "1890747832",
   "naver_title": "제주옥탑 블랙BBQ",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "돼지고기구이",
+  "naver_lat": "37.5264873",
+  "naver_lng": "127.0364514",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/Sancheong+Charcoal+Garden+Euljiro/data=!3m1!4b1!4m4!3m3!1s0x357ca340096e2737:0x1a062c5472ce7123!16s%2Fg%2F11kt1xzk97!20s8Q98HX8R%2B86H": {
   "status": "open",
@@ -94,7 +133,11 @@
   "checked": "2026-11-20",
   "naver_id": "1850187827",
   "naver_title": "산청숯불가든 을지로",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "육류,고기요리",
+  "naver_lat": "37.5658389",
+  "naver_lng": "126.9906186",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/%EB%82%A8%EB%8F%84%EB%8F%BC%EC%A7%80%EC%B4%8C/data=!3m1!4b1!4m4!3m3!1s0x357ca3002dc7501f:0xfad353adc57ff305!16s%2Fg%2F11wx_hdwv0!20s8Q98GXJC%2BHWV": {
   "status": "open",
@@ -118,7 +161,11 @@
   "checked": "2026-11-20",
   "naver_id": "19774046",
   "naver_title": "남영돈",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "돼지고기구이",
+  "naver_lat": "37.5427593",
+  "naver_lng": "126.9738012",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/Yuktongryeong+Myeongdong+Main/data=!3m1!4b1!4m4!3m3!1s0x357ca2f13d626cc5:0x7b842b6071e6ad06!16s%2Fg%2F11c6ts4sr0!20s8Q98HX6M%2BF48": {
   "status": "open",
@@ -126,7 +173,11 @@
   "checked": "2026-11-20",
   "naver_id": "37531705",
   "naver_title": "육통령 명동본점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "육류,고기요리",
+  "naver_lat": "37.5611991",
+  "naver_lng": "126.9828439",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/Dutum/data=!3m1!4b1!4m4!3m3!1s0x357ca26349443319:0xa827eef231eab5ea!16s%2Fg%2F11bytt0s58!20s8Q98HX58%2B8GJ": {
   "status": "open",
@@ -134,7 +185,11 @@
   "checked": "2026-11-20",
   "naver_id": "37036424",
   "naver_title": "두툼",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "돼지고기구이",
+  "naver_lat": "37.5583365",
+  "naver_lng": "126.9662595",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/%EB%A7%9B%EC%B0%AC%EB%93%A4%EC%99%95%EC%86%8C%EA%B8%88%EA%B5%AC%EC%9D%B4+%EC%A2%85%EB%A1%9C%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357ca396dceee539:0xcad648c0e5e66695!16s%2Fg%2F11yk1r0lbw!20s8Q98HX9P%2BJ5W": {
   "status": "open",
@@ -142,7 +197,11 @@
   "checked": "2026-11-20",
   "naver_id": "460333437",
   "naver_title": "맛찬들왕소금구이 종로점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "육류,고기요리",
+  "naver_lat": "37.5691166",
+  "naver_lng": "126.985475",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/Ppasam/data=!3m1!4b1!4m4!3m3!1s0x357ca3e224e8b537:0x9ef32ea98fcfc00e!16s%2Fg%2F11sw4jhjdt!20s8Q98HX7W%2BG53": {
   "status": "open",
@@ -158,7 +217,11 @@
   "checked": "2026-11-20",
   "naver_id": "1235482141",
   "naver_title": "두껍삼 명동직영점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "돼지고기구이",
+  "naver_lat": "37.5619286",
+  "naver_lng": "126.9865663",
+  "food_group": "bbq"
  },
  "https://www.google.com/maps/place/%ED%83%80%EC%99%80+TAWA+%7C+%EC%84%9C%EC%9A%B8%EC%8B%9C%EC%B2%AD%EC%97%AD+%ED%9E%88%EC%B8%A0%EB%A7%88%EB%B6%80%EC%8B%9C+%EC%A0%84%EB%AC%B8%EC%A0%90+Hitsumabushi+Restaurant+near+Seoul+City+Hall+%7C+%E9%A6%96%E5%B0%94%E5%B8%82%E5%8E%85%E7%AB%99%E6%97%A5%E5%BC%8F%E9%B3%97%E9%B1%BC%E9%A5%AD%E9%A4%90%E5%8E%85+%7C+%E3%82%BD%E3%82%A6%E3%83%AB%E5%B8%82%E5%BA%81%E9%A7%85+%E3%81%B2%E3%81%A4%E3%81%BE%E3%81%B6%E3%81%97%E5%B0%82%E9%96%80%E5%BA%97/data=!3m1!4b1!4m4!3m3!1s0x357ca342ea9f4d81:0xa1aaeac47771c801!16s%2Fg%2F11x_z0mwyp!20s8Q98HX7F%2B9CR": {
   "checked": "2026-11-20",
@@ -166,7 +229,11 @@
   "title": "타와 TAWA | 서울시청역 히츠마부시 전문점 Hitsumabushi Restaurant near Seoul",
   "naver_id": "2038166109",
   "naver_title": "타와",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "일식당",
+  "naver_lat": "37.5634157",
+  "naver_lng": "126.973652",
+  "food_group": "jp"
  },
  "https://www.google.com/maps/place/Tokyo+Saikabo/data=!3m1!4b1!4m4!3m3!1s0x357ca463615e90af:0x5525578979b8ed1c!16s%2Fg%2F1tcypskg!20s8Q99G3G2%2B7XQ": {
   "checked": "2026-11-20",
@@ -174,7 +241,11 @@
   "title": "Tokyo Saikabo",
   "naver_id": "13272850",
   "naver_title": "도쿄사이카보 청담",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "일식당",
+  "naver_lat": "37.5257268",
+  "naver_lng": "127.0523565",
+  "food_group": "jp"
  },
  "https://www.google.com/maps/place/Namu+Izakaya+City+Hall/data=!3m1!4b1!4m4!3m3!1s0x357ca3a13371b66d:0x4950d696b561993c!16s%2Fg%2F11scx0919d!20s8Q98HX7G%2B3V9": {
   "status": "open",
@@ -182,7 +253,11 @@
   "checked": "2026-11-20",
   "naver_id": "1090896277",
   "naver_title": "이자카야나무 시청점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "이자카야",
+  "naver_lat": "37.5627493",
+  "naver_lng": "126.9772644",
+  "food_group": "izakaya"
  },
  "https://www.google.com/maps/place/%EB%8B%88%ED%98%BC%EB%B0%94%EC%8B%9C+%ED%83%80%EB%A7%88%EC%9D%B4+%EA%B4%91%ED%99%94%EB%AC%B8/data=!3m1!4b1!4m4!3m3!1s0x357ca33dfc4d0be5:0xe4703b566d1708cd!16s%2Fg%2F11zbrmmzbk!20s8Q98HXCF%2B5J9": {
   "status": "open",
@@ -190,7 +265,11 @@
   "checked": "2026-11-20",
   "naver_id": "2145794050",
   "naver_title": "니혼바시 타마이 광화문",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "일식당",
+  "naver_lat": "37.5703519",
+  "naver_lng": "126.9740756",
+  "food_group": "jp"
  },
  "https://www.google.com/maps/place/%ED%95%A8%EB%A3%A8+%EC%A2%85%EA%B0%81%EC%A0%90/data=!3m1!4b1!4m4!3m3!1s0x357ca35bb511d24f:0xe7cff5da7265ea15!16s%2Fg%2F11svpvdlb6!20s8Q98HX9J%2B9W4": {
   "status": "open",
@@ -198,7 +277,11 @@
   "checked": "2026-11-20",
   "naver_id": "1500095316",
   "naver_title": "함루 종각점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "일식당",
+  "naver_lat": "37.568377",
+  "naver_lng": "126.9823089",
+  "food_group": "jp"
  },
  "https://www.google.com/maps/place/%EC%82%AC%EC%B9%B4%EB%B0%94+%EB%8B%A8%EB%8B%A8+%EC%97%AC%EC%9D%98%EB%8F%84%EC%A0%90+%2F+Sakaba+Dandan+Yeouido+%2F+%E9%85%92%E5%9C%BA%E5%9B%A2%E5%9B%A2+%E6%B1%9D%E7%9F%A3%E5%B2%9B%E5%BA%97+%2F+%E3%82%B5%E3%82%AB%E3%83%90%E3%83%80%E3%83%B3%E3%83%80%E3%83%B3+%E6%B1%9D%E7%9F%A3%E5%B3%B6%E5%BA%97/data=!3m1!4b1!4m4!3m3!1s0x357c9f933cb7b3cd:0x3040b2612ad07a3a!16s%2Fg%2F11stp947sp!20s8Q98GWCH%2BQXX": {
   "status": "open",
@@ -206,7 +289,11 @@
   "checked": "2026-11-20",
   "naver_id": "1291488084",
   "naver_title": "사카바 단단 여의도점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "이자카야",
+  "naver_lat": "37.5219332",
+  "naver_lng": "126.9300171",
+  "food_group": "izakaya"
  },
  "https://www.google.com/maps/place/%EC%9A%B0%EC%98%A4%ED%95%98%EB%82%98/data=!3m1!4b1!4m4!3m3!1s0x357ca38d0781f887:0xdd0975d61817c424!16s%2Fg%2F11h6m882kp!20s8Q99G29C%2BW5V": {
   "status": "open",
@@ -222,7 +309,12 @@
   "checked": "2026-11-20",
   "naver_id": "1274052462",
   "naver_title": "히바리",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "이자카야",
+  "naver_lat": "37.562334",
+  "naver_lng": "126.9742563",
+  "food_group": "yakitori",
+  "group_override_note": "Naver 类别是「이자카야」，但菜单以烤串为主（모듬꼬치 拼盘、츠쿠네、이베리코 串等），用户 2026-11-21 要求单独列「日式烤鸡串」"
  },
  "https://www.google.com/maps/place/%EC%9D%84%EC%A7%80%EB%A1%9C+%EB%9D%BC%EC%8A%A4%EB%B2%A0%EA%B0%80%EC%8A%A4/data=!3m1!4b1!4m4!3m3!1s0x357ca2e46b7127fb:0xabac6c18e166ef50!16s%2Fg%2F11k3nbmgh3!20s8Q98HX8R%2B376": {
   "status": "open",
@@ -246,7 +338,11 @@
   "checked": "2026-11-20",
   "naver_id": "20616686",
   "naver_title": "테이엔",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "일식당",
+  "naver_lat": "37.5727353",
+  "naver_lng": "126.9715147",
+  "food_group": "jp"
  },
  "https://www.google.com/maps/place/Hikarimono+Starfield+Avenue+GranSeoul/data=!3m1!4b1!4m4!3m3!1s0x357ca347df273da9:0x9a241c1ca4076581!16s%2Fg%2F11mknnhcxl!20s8Q98HXCJ%2B7F3": {
   "status": "open",
@@ -254,7 +350,11 @@
   "checked": "2026-11-20",
   "naver_id": "2096233046",
   "naver_title": "히카리모노 스타필드 애비뉴 그랑서울점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "이자카야",
+  "naver_lat": "37.57096",
+  "naver_lng": "126.9814392",
+  "food_group": "izakaya"
  },
  "https://www.google.com/maps/place/%EB%A1%9C%EB%B0%94%ED%83%80+%EC%B9%B4%EB%AF%B8/data=!3m1!4b1!4m4!3m3!1s0x357ca30fcf8ba383:0x10f5dbc72a66530d!16s%2Fg%2F11jyn6j115!20s8Q98HX8R%2B43H": {
   "status": "open",
@@ -286,7 +386,10 @@
   "title": "ZZANG GAMES Jongno",
   "naver_id": "1745549429",
   "naver_title": "짱오락실 종로점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "오락실",
+  "naver_lat": "37.5698297",
+  "naver_lng": "126.9870544"
  },
  "https://www.google.com/maps/place/Zzang+Games+Mapo/data=!3m1!4b1!4m4!3m3!1s0x357c98dab8398d91:0xda4a92b425616356!16s%2Fg%2F11c30t6ch2!20s8Q98HW2C%2BFCX": {
   "checked": "2026-11-20",
@@ -294,7 +397,10 @@
   "title": "Zzang Games Mapo",
   "naver_id": "843656740",
   "naver_title": "짱오락실 홍대점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "오락실",
+  "naver_lat": "37.5512508",
+  "naver_lng": "126.9211385"
  },
  "https://www.google.com/maps/place/Gametopia/data=!3m1!4b1!4m4!3m3!1s0x357c98d0163e90b1:0x528512b4ea184925!16s%2Fg%2F11f1jwmhfq!20s8Q98GWXC%2BM95": {
   "checked": "2026-11-20",
@@ -302,7 +408,10 @@
   "title": "Gametopia",
   "naver_id": "1287969458",
   "naver_title": "게임토피아",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "오락실",
+  "naver_lat": "37.5491874",
+  "naver_lng": "126.9209271"
  },
  "https://www.google.com/maps/place/Pumparcade+hongdae/data=!3m1!4b1!4m4!3m3!1s0x357c99239f644181:0x375af41bd98a7a11!16s%2Fg%2F11lng4vpxl!20s8Q98HW2F%2BX5Q": {
   "checked": "2026-11-20",
@@ -310,7 +419,10 @@
   "title": "Pumparcade hongdae",
   "naver_id": "1220375892",
   "naver_title": "펌프아케이드 홍대점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "오락시설",
+  "naver_lat": "37.5524689",
+  "naver_lng": "126.9229165"
  },
  "https://www.google.com/maps/place/G-Plex/data=!3m1!4b1!4m4!3m3!1s0x357c9894068bc603:0xc70b1cd6b77f2658!16s%2Fg%2F11c7smj2vb!20s8Q98HW5Q%2B42J": {
   "checked": "2026-11-20",
@@ -323,7 +435,10 @@
   "title": "Lucky Pop",
   "naver_id": "2091966888",
   "naver_title": "럭키팝 성수점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "오락실",
+  "naver_lat": "37.5424635",
+  "naver_lng": "127.0550359"
  },
  "https://www.google.com/maps/place/Fun+City/data=!3m1!4b1!4m4!3m3!1s0x357ca46a77505c15:0xf85304e54a91f2a0!16s%2Fg%2F11h6mkcd6w!20s8Q99G365%2BGRG": {
   "checked": "2026-11-20",
@@ -331,7 +446,10 @@
   "title": "Fun City",
   "naver_id": "1733749808",
   "naver_title": "펀시티 스타필드 코엑스점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "오락시설",
+  "naver_lat": "37.5120482",
+  "naver_lng": "127.0608943"
  },
  "https://www.google.com/maps/place/LEGEND+SPORTS+HEROES/data=!3m1!4b1!4m4!3m3!1s0x357ca50ad6217331:0xd22befe8698ecff0!16s%2Fg%2F11hdq5nnvn!20s8Q99G473%2B69V": {
   "checked": "2026-11-20",
@@ -339,7 +457,10 @@
   "title": "LEGEND SPORTS HEROES",
   "naver_id": "1620414251",
   "naver_title": "레전드히어로즈 잠실롯데월드몰점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "스크린야구장",
+  "naver_lat": "37.5135099",
+  "naver_lng": "127.1038095"
  },
  "https://www.google.com/maps/place/LOTTE+WORLD+AQUARIUM/data=!3m1!4b1!4m4!3m3!1s0x357ca50ad92d8a63:0xa58b77605ab63817!16s%2Fm%2F012g42cn!20s8Q99G473%2B9WX": {
   "checked": "2026-11-20",
@@ -347,7 +468,10 @@
   "title": "LOTTE WORLD AQUARIUM",
   "naver_id": "35750830",
   "naver_title": "롯데월드 아쿠아리움",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "아쿠아리움",
+  "naver_lat": "37.5134504",
+  "naver_lng": "127.1047982"
  },
  "https://www.google.com/maps/place/SEA+LIFE+COEX/data=!3m1!4b1!4m4!3m3!1s0x357ca46a4cb562ef:0x7b791e85aa0df16b!16s%2Fm%2F0hn9p6m!20s8Q99G375%2B783": {
   "checked": "2026-11-20",
@@ -355,7 +479,10 @@
   "title": "SEA LIFE COEX",
   "naver_id": "11606845",
   "naver_title": "씨라이프 코엑스 아쿠아리움",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "아쿠아리움",
+  "naver_lat": "37.5133744",
+  "naver_lng": "127.0583148"
  },
  "https://www.google.com/maps/place/Th%C3%A9%C3%A2tre+des+Lumi%C3%A8res/data=!3m1!4b1!4m4!3m3!1s0x357cbb076bf6c9b9:0xfa6e12f2b3b33507!16s%2Fg%2F11sy8tbz1j!20s8Q99H446%2B45R": {
   "checked": "2026-11-20",
@@ -363,7 +490,10 @@
   "title": "Théâtre des Lumières",
   "naver_id": "1368948121",
   "naver_title": "빛의 시어터",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "관람,체험",
+  "naver_lat": "37.5554279",
+  "naver_lng": "127.1107287"
  },
  "https://www.google.com/maps/place/%ED%8A%B8%EB%A6%AD%EC%95%84%EC%9D%B4%EB%AE%A4%EC%A7%80%EC%97%84/data=!3m1!4b1!4m4!3m3!1s0x357c98db4a7b2f65:0x248680be149ca7ad!16s%2Fg%2F1jkwn8zd7!20s8Q98HW3C%2BGQ7": {
   "checked": "2026-11-20",
@@ -371,7 +501,10 @@
   "title": "트릭아이뮤지엄",
   "naver_id": "1925763267",
   "naver_title": "트릭아이뮤지엄 서울",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "테마파크",
+  "naver_lat": "37.5535252",
+  "naver_lng": "126.9217041"
  },
  "https://www.google.com/maps/place/Myeongdong+NANTA+Theatre/data=!3m1!4b1!4m4!3m3!1s0x357ca2f03366ba11:0x1abb7d88fa6a9628!16s%2Fg%2F1tffgq5k!20s8Q98HX7M%2BCCH": {
   "checked": "2026-11-20",
@@ -380,7 +513,10 @@
   "naver_id": "13445073",
   "naver_title": "명동난타극장",
   "naver_status": "unknown",
-  "naver_note": "Naver 页面没有营业状态／时间字段（住宿、书店、剧场类），以 Google 状态为准，时间若写了则标明来源 Google"
+  "naver_note": "Naver 页面没有营业状态／时间字段（住宿、书店、剧场类），以 Google 状态为准，时间若写了则标明来源 Google",
+  "naver_category": "공연장",
+  "naver_lat": "37.563411",
+  "naver_lng": "126.9837813"
  },
  "https://maps.google.com/?cid=8741979795697988942": {
   "checked": "2026-11-20",
@@ -388,7 +524,10 @@
   "title": "Strike Pang",
   "naver_id": "1271451171",
   "naver_title": "스트라이크팡 신촌점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "오락실",
+  "naver_lat": "37.5571647",
+  "naver_lng": "126.9362413"
  },
  "https://maps.google.com/?cid=16935389788396067446": {
   "checked": "2026-11-20",
@@ -396,7 +535,10 @@
   "title": "The Hyundai Seoul",
   "naver_id": "1386302181",
   "naver_title": "현대백화점 더현대 서울",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "백화점",
+  "naver_lat": "37.5259903",
+  "naver_lng": "126.9283823"
  },
  "https://maps.google.com/?cid=2110521513796730074": {
   "checked": "2026-11-20",
@@ -404,7 +546,11 @@
   "title": "Wangbijib Myeongdong Central",
   "naver_id": "21419115",
   "naver_title": "왕비집 명동중앙점",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "육류,고기요리",
+  "naver_lat": "37.5611072",
+  "naver_lng": "126.9823879",
+  "food_group": "bbq"
  },
  "https://maps.google.com/?cid=6158970381120181760": {
   "checked": "2026-11-20",
@@ -413,7 +559,10 @@
   "naver_id": "1363762877",
   "naver_title": "별마당도서관 스타필드수원점",
   "naver_status": "unknown",
-  "naver_note": "Naver 页面没有营业状态／时间字段（住宿、书店、剧场类），以 Google 状态为准，时间若写了则标明来源 Google"
+  "naver_note": "Naver 页面没有营业状态／时间字段（住宿、书店、剧场类），以 Google 状态为准，时间若写了则标明来源 Google",
+  "naver_category": "도서관",
+  "naver_lat": "37.2873823",
+  "naver_lng": "126.991621"
  },
  "https://maps.google.com/?cid=4845295689137142680": {
   "checked": "2026-11-20",
@@ -421,11 +570,121 @@
   "title": "Lotte World",
   "naver_id": "11583235",
   "naver_title": "롯데월드 어드벤처",
-  "naver_status": "open"
+  "naver_status": "open",
+  "naver_category": "테마파크",
+  "naver_lat": "37.511088",
+  "naver_lng": "127.0982822"
  },
  "https://maps.google.com/?cid=13875197639586923066": {
   "checked": "2026-11-20",
   "status": "open",
   "title": "마음 농장(유기농 딸기체험)"
+ },
+ "https://maps.google.com/?cid=12388013674260724962": {
+  "checked": "2026-11-21",
+  "status": "open",
+  "title": "Lotte World Tower",
+  "naver_id": "1039363430",
+  "naver_title": "롯데월드타워 월드파크",
+  "naver_category": "지역명소",
+  "naver_lat": "37.51324",
+  "naver_lng": "127.1041607",
+  "naver_status": "unknown",
+  "naver_note": "Naver 页面没有营业状态字段（广场、展望台、美术馆、活动场地类），日期与时间以官方原文为准（见手册卡片与 seoul-events-verified 查证）"
+ },
+ "https://maps.google.com/?cid=18118236120373634053": {
+  "checked": "2026-11-21",
+  "status": "open",
+  "title": "National Museum of Modern & Contemporary Art | Seoul",
+  "naver_id": "19691123",
+  "naver_title": "국립현대미술관 서울",
+  "naver_category": "미술관",
+  "naver_lat": "37.5787817",
+  "naver_lng": "126.9800492",
+  "naver_status": "unknown",
+  "naver_note": "Naver 页面没有营业状态字段（广场、展望台、美术馆、活动场地类），日期与时间以官方原文为准（见手册卡片与 seoul-events-verified 查证）"
+ },
+ "https://maps.google.com/?cid=810020976584264516": {
+  "checked": "2026-11-21",
+  "status": "open",
+  "title": "하늘전망대",
+  "naver_id": "4400294846",
+  "naver_title": "서울시청 하늘전망대",
+  "naver_category": "전망대",
+  "naver_lat": "37.5665488",
+  "naver_lng": "126.978371",
+  "naver_status": "unknown",
+  "naver_note": "Naver 页面没有营业状态字段（广场、展望台、美术馆、活动场地类），日期与时间以官方原文为准（见手册卡片与 seoul-events-verified 查证）"
+ },
+ "https://maps.google.com/?cid=9968758647177928202": {
+  "checked": "2026-11-21",
+  "status": "temporarily_closed",
+  "title": "Seoul Plaza Skating Park",
+  "naver_id": "1031006834",
+  "naver_title": "서울광장스케이트장",
+  "naver_category": "스케이트장",
+  "naver_lat": "37.5657367",
+  "naver_lng": "126.9781182",
+  "seasonal_note": "首尔广场溜冰场 2026-12-18 才开放，Google 现显示暂停营业属淡季正常（官方 festacode=355）",
+  "naver_status": "open"
+ },
+ "https://maps.google.com/?cid=16813526255109441016": {
+  "checked": "2026-11-21",
+  "status": "open",
+  "title": "Gwanghwamun Square",
+  "naver_id": "13349962",
+  "naver_title": "광화문광장",
+  "naver_category": "광장",
+  "naver_lat": "37.5740533",
+  "naver_lng": "126.9768908",
+  "naver_status": "unknown",
+  "naver_note": "Naver 页面没有营业状态字段（广场、展望台、美术馆、活动场地类），日期与时间以官方原文为准（见手册卡片与 seoul-events-verified 查证）"
+ },
+ "https://maps.google.com/?cid=11078085661269842013": {
+  "checked": "2026-11-21",
+  "status": "open",
+  "title": "Cheonggye Plaza",
+  "naver_id": "13543936",
+  "naver_title": "청계광장",
+  "naver_category": "광장",
+  "naver_lat": "37.569166",
+  "naver_lng": "126.9777119",
+  "naver_status": "unknown",
+  "naver_note": "Naver 页面没有营业状态字段（广场、展望台、美术馆、活动场地类），日期与时间以官方原文为准（见手册卡片与 seoul-events-verified 查证）"
+ },
+ "https://maps.google.com/?cid=12195782186001824878": {
+  "checked": "2026-11-21",
+  "status": "open",
+  "title": "Seokchon Lake",
+  "naver_id": "13491520",
+  "naver_title": "석촌호수",
+  "naver_category": "호수,연못,저수지",
+  "naver_lat": "37.5095249",
+  "naver_lng": "127.102135",
+  "naver_status": "unknown",
+  "naver_note": "Naver 页面没有营业状态字段（广场、展望台、美术馆、活动场地类），日期与时间以官方原文为准（见手册卡片与 seoul-events-verified 查证）"
+ },
+ "https://maps.google.com/?cid=15514116798790100068": {
+  "checked": "2026-11-21",
+  "status": "open",
+  "title": "Shinsegae Department Store Main Store",
+  "naver_id": "12134149",
+  "naver_title": "신세계백화점 본점 더 리저브",
+  "naver_category": "백화점",
+  "naver_lat": "37.5609578",
+  "naver_lng": "126.9811163",
+  "naver_status": "open"
+ },
+ "https://maps.google.com/?cid=6639054745590107100": {
+  "checked": "2026-11-21",
+  "status": "open",
+  "title": "Dongdaemun Design Plaza (DDP)",
+  "naver_id": "18063223",
+  "naver_title": "동대문디자인플라자",
+  "naver_category": "복합문화공간",
+  "naver_lat": "37.5675465",
+  "naver_lng": "127.0099323",
+  "naver_status": "unknown",
+  "naver_note": "Naver 页面没有营业状态字段（广场、展望台、美术馆、活动场地类），日期与时间以官方原文为准（见手册卡片与 seoul-events-verified 查证）"
  }
 }
