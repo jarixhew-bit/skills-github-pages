@@ -629,3 +629,26 @@ cron 不带 recurring → 1 红。
   负数带负号并标 `.bill-bal-neg`。今日页的新账单卡与账单分页共用这个函数。自检：`check-boss-2.mjs` 场景四十六。
 - 没跟着留下的（都随版式一起退回了）：下一件事置顶、库存不足提醒、通知条挪到底部、入住当天酒店信息去重、
   酒照片放大、打开手册通栏。用户没说要，别自己加回去。
+
+## 手册 → 老板 App 自动同步（2026-11-21，首尔第一个用）
+用户：「先把手册跟上次一样上传老板app 行程照手册排 以后有更变再跟着一起动」。
+「上次」（新加坡／雅加达）是 admin 在管理页「从手册导入」→ 人工改 → 保存（`tripsSave`），之后每次改手册都要回来手改 trips.json。
+这次改成**手册是正本、自动跟**：
+- 工具 `tools/sync-boss-trip.mjs`（本仓库）：用 playwright 开 `boss/index.html`（file://、断网），直接调**同一个** `parseGuideHtml()`，
+  跟 butler `data/boss-app/trips.json` 里 `guideSync:true`、还没走完（end ≥ 金边今天）那几趟比对；`--write` 才改写。
+  手册来的条目带 `fromGuide:true`，手动加的（没标记）保留；航班 `trackId` 保留；id／标题／地点不动、起讫跟手册；改写时更新顶层 `updatedAt`（红点）、`recurring` 原样带过。
+  新建一趟：`--add seoul-trip/ --id trip-seoul-2027-01 --title-zh … --title-en …`。
+  **安全阀**：解析出的条目少于原来一半、或航班全没了 → 不写、退出码 2（手册改版解析器认不出，要人看）。
+- 自动跑：butler-bot `.github/workflows/boss-guide-sync.yml`（每天 UTC 01:41／13:41＝金边 08:41／20:41，也可手动），
+  拉公开的本仓库 main、装 chromium、跑 `--write`，有差异就以 butler-bot 身份提交 main。没有 `guideSync` 行程时不装浏览器直接结束。
+  为什么放 butler 那边而不是本仓库 CI：本仓库是公开的，没有能写私有 butler-bot 的 token；butler 读公开仓库不用 token。
+- 直接写 trips.json **不经过 `tripsSave`**：不发「行程有更新」推送（红点照亮）；feed 每次直接读 GitHub、没有缓存，提交后立刻看得到。
+  形状要能原样通过 `cleanTripItem`（`cleanTrips(trips)` 洗完应该一字不变；首尔这趟验过）。
+- 管理页的手动修改：改 `fromGuide` 条目会在下一次同步被手册覆盖——要长期保留的改动请改手册，或在管理页新加一条（不带标记）。
+  手册 `GUIDE_OPTIONS` 加了 `seoul-trip/`。
+- `parseGuideHtml` 为首尔手册补的四处（`check-boss-2.mjs` 场景三十九c，13 项，改前 8 红）：航班号只写在 `.s` 说明里、钟点＝登机牌起飞／落地的日程行不重复（落地可以是隔天）；
+  `.pin` 空的（首尔每张卡都是空的 `pin maybe` 而且 display:none）不算「可选」；`.hotel` 一节 → 酒店条目（「待确认」→ 名字带「（待确认 TBC）」、备注写明），
+  入住日「到酒店」那条的钟点并进来、不另留；`.ev .s` 说明进备注，拿掉「见下方／见页首／机票卡」这类指向手册别处的句子与「（见下方备案）」括号。
+- 首尔这趟（30 条）：D0 09:00 出门、CX608（11:45）、香港转机、CX426（20:05，00:40 到仁川）；D1 02:30 入住 Westin Josun（待确认 TBC）、上午休息、12:30 午餐、下午 Galaxy；
+  D2–D5 都是 10:00 出发→上午景点→12:30 午餐（D2 下午 17:30 离开爱宝去水原、D5 下午 SEOULDAL）；D6 06:30 退房、CX417（10:00）、CX605（16:00）、到家。只有午餐、没有晚餐。
+  午餐条目没有 mapUrl（手册给的是两三家候选，备注里写店名），其余地点都是手册里的精准 Google 链接。航班还没有 trackId（没走 `flightLookup`，不花 AeroDataBox 额度），实时状态要等出发前在管理页查一次航班；同步会保留查到的 trackId。
