@@ -25,6 +25,10 @@
         （开门 ≤12:30 且午休开始／打烊 ≥13:30）；只开晚上的店（如 17:00 才开的居酒屋）红；
         部分日子午餐不开的店要在卡上标「午餐不营业／No lunch」（chip），别让人白跑。
 
+  6. 1/2（六）出发日（2026-11-21 用户：「2号要写早上9点金边家里出发」）：逐日要有 #day00
+     （data-date=2027-01-02），时间轴含 09:00 金边家里出发站点、引用页内航班卡（#fl-cx608／#fl-cx426，且这两张卡真实存在），
+     顶部导航有 D0 chip（data-date=2027-01-02 href=#day00）；#day00 里不得出现用餐建议（本团只吃午餐、1/2 不写用餐）。
+
 跑法：python3 tools/check-seoul-trip.py [页面.html]     退出码 0 = 全过；1 = 有不符
 """
 import json
@@ -333,17 +337,47 @@ def check_lunch_only(page, src):
     return bad
 
 
+def check_day00(page, src):
+    """1/2 出发日：#day00 存在、日期对、09:00 金边家里出发、航班卡引用、导航 D0 chip、不写用餐建议。"""
+    bad = []
+    m = re.search(r'<div class="day" data-date="([^"]*)" id="day00">(.*?)(?=\n<div class="day" )', src, re.S)
+    if not m:
+        return [f'{page}: 找不到 #day00（1/2 出发日；用户要求写早上 9 点金边家里出发）']
+    ln = line_of(src, m.start())
+    if m.group(1) != "2027-01-02":
+        bad.append(f"{page}:{ln}  #day00 的 data-date 应为 2027-01-02，实际 {m.group(1)!r}")
+    body = m.group(2)
+    if not any(l.startswith('<div class="ev') and '<div class="t">09:00</div>' in l and "金边家里出发" in l for l in body.split("\n")):
+        bad.append(f"{page}:{ln}  #day00 缺「09:00 金边家里出发」时间轴站点")
+    for fid in ("fl-cx608", "fl-cx426"):
+        if f'id="{fid}"' not in src:
+            bad.append(f"{page}: #flights 里缺登机牌卡 id={fid}")
+        if f'href="#{fid}"' not in body:
+            bad.append(f"{page}:{ln}  #day00 没有引用航班卡 #{fid}（不要重复整张卡，用页内链接）")
+    if "class=\"bpass\"" in body:
+        bad.append(f"{page}:{ln}  #day00 里不要重复整张登机牌卡，改用页内链接")
+    if not re.search(r'<a data-date="2027-01-02" href="#day00">\s*<span class="d">D0</span>', src):
+        bad.append(f"{page}: 顶部 daystrip 缺 D0 chip（data-date=2027-01-02 href=#day00）")
+    elif src.find('href="#day00"') > src.find('href="#day01"'):
+        bad.append(f"{page}: D0 chip 要排在 D1 之前")
+    if re.search(r'<div class="dayfoot">', body) or DINNER_RE.search(plain(body)):
+        bad.append(f"{page}:{ln}  #day00 不写用餐建议（1/2 不排餐，更不能有晚餐）")
+    if "1/2（六）从金边出发的两段航班见" in src:
+        bad.append(f"{page}: D1 里还留着「1/2（六）从金边出发…」旧说明，应删除（出发日已写在 #day00）")
+    return bad
+
+
 def main(argv):
     page = argv[0] if argv else PAGE
     path = page if os.path.isabs(page) else os.path.join(REPO, page)
     src = open(path, encoding="utf-8").read()
-    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src)
+    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src)
     if bad:
         print(f"✗ 首尔手册 {len(bad)} 处不符：")
         for b in bad:
             print("  " + b)
         return 1
-    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）")
+    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全")
     return 0
 
 
