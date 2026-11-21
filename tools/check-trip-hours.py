@@ -47,6 +47,8 @@ PUNT = [
 # 2026-11-09 用户：「要写成读者看的角度，不要写我们的角度」——制作者交代工作的口吻一律拦
 MAKER = [
     re.compile(r"逐家查|查好的|我们查|我查|已查证|查证过|核对过|帮你们查"),
+    # 2026-11-21 首尔手册：「手册暂列」「官方至 11/21 尚未公布」「新闻稿原文只写」「手册里的餐厅都在…所以这天」——查证记录口吻
+    re.compile(r"手册暂列|官方至\s*\d{1,2}/\d{1,2}|新闻稿[^。]{0,20}原文|原文只写|所以这天在|as of \d{1,2} \w{3}:|press release of|the handbook lists", re.I),
     re.compile(r"\b(were|was)\s+(looked\s+up|checked|verified)\b|\bwe\s+(checked|looked\s+up|verified|found)\b", re.I),
 ]
 
