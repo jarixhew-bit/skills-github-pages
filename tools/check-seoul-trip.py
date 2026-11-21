@@ -505,17 +505,94 @@ def check_meals(page, src):
     return bad
 
 
+def check_lunch_slot(page, src):
+    """午餐 12:30（用户 2026-11-21：「吃饭是12点半到1点之间 10点出发酒店 意思是10-12点这段时间要先去景点」）：
+    D1–D5 各有且只有一个 12:30「午餐」时间轴站点；D2–D5 在它之前至少一个景点站点（.stop，非出发非用餐）；
+    D1 凌晨 02:30 才到，例外但必须有「上午休息」字样；站点引用的餐厅锚点都是现有餐厅卡；D0、D6 不放午餐站点。"""
+    bad = []
+    fa, fb = src.find('<section id="food">'), src.find('<section id="fun">')
+    cards = set(re.findall(r'<div class="evt" id="(food-[a-z]+)"', src[fa:fb]))
+    if not cards:
+        return [f"{page}: 找不到餐厅卡，午餐站点检查失效"]
+    for d in range(0, 7):
+        m = re.search(rf'<div class="day" data-date="[^"]*" id="day0{d}">(.*?)(?=\n<div class="day" |\n</section>)', src, re.S)
+        if not m:
+            bad.append(f"{page}: 找不到 #day0{d}，午餐站点检查失效")
+            continue
+        body = m.group(1)
+        ln = line_of(src, m.start())
+        lunches = [e for e in re.finditer(r'<div class="ev[^"]*"><div class="t">(.*?)</div><h4>(.*?)</h4>(.*?</div></div>)', body, re.S)
+                   if re.search(r'午餐|Lunch', plain(e.group(2)))]
+        if d in (0, 6):
+            if lunches:
+                bad.append(f"{page}:{ln}  D{d} 不放午餐站点（出发日／回程日）")
+            continue
+        if len(lunches) != 1:
+            bad.append(f"{page}:{ln}  D{d} 时间轴要有且只有一个「午餐」站点（12:30），实际 {len(lunches)} 个")
+            continue
+        e = lunches[0]
+        t = plain(e.group(1)).strip()
+        if t != "12:30":
+            bad.append(f"{page}:{line_of(src, m.start(1) + e.start())}  D{d} 午餐站点时刻是 {t!r}，应为 12:30（这团午餐 12:30–13:00）")
+        before = body[:e.start()]
+        if d == 1:
+            if "上午休息" not in before:
+                bad.append(f"{page}:{ln}  D1 午餐前要有「上午休息」站点，写明凌晨才到酒店所以上午没有景点")
+        elif '<div class="stop"' not in before:
+            bad.append(f"{page}:{ln}  D{d} 12:30 午餐之前没有景点站点（10:00 出发后 10–12 点要先去景点）")
+        cn, en = re.search(r'<span class="cn">(.*?)</span><span class="en">(.*?)</span>', e.group(3), re.S).groups()
+        a_cn, a_en = set(re.findall(r'href="#([a-z0-9-]+)"', cn)), set(re.findall(r'href="#([a-z0-9-]+)"', en))
+        if a_cn != a_en:
+            bad.append(f"{page}:{ln}  D{d} 午餐站点中英两侧引用的锚点不一致：{sorted(a_cn)} vs {sorted(a_en)}")
+        for a in sorted(a_cn):
+            if a not in cards:
+                bad.append(f"{page}:{ln}  D{d} 午餐站点引用的 #{a} 不是现有餐厅卡（本页不新增餐厅）")
+    return bad
+
+
+def check_seat_maps(page, src):
+    """每张登机牌卡：.seats 文字里的「姓名 座位号」要与同卡座位图 .st.on 格子（号码＋名字）一一对应、数量相同
+    （用户 2026-11-21 改座位：文字改了、座位图忘了改，要抓得住）。"""
+    bad = []
+    starts = [m.start() for m in re.finditer(r'<div class="bpass"', src)]
+    if len(starts) != 4:
+        bad.append(f"{page}: 登机牌卡应有 4 张，实际 {len(starts)} 张")
+    for st in starts:
+        ends = [i for i in (src.find('<div class="bp-group-label"', st + 10), src.find('<div class="note', st + 10)) if i > 0]
+        blk = src[st:min(ends) if ends else st + 20000]
+        ln = line_of(src, st)
+        fl = re.search(r'<span class="code">CX</span>(CX \d+)', blk)
+        fl = fl.group(1) if fl else "?"
+        txt = {}
+        for t in re.findall(r'<span class="seat">(.*?)</span>', blk):
+            mm = re.match(r'(.+?) (\d+[A-Z])$', t.strip())
+            if not mm:
+                bad.append(f"{page}:{ln}  {fl} .seats 里「{t}」不是「姓名 座位号」格式")
+                continue
+            txt[mm.group(2)] = mm.group(1).split("/")[-1].strip().lower()
+        smap = {}
+        for no, who in re.findall(r'<b class="st on"><span class="no">(\w+)</span><span class="who">(.*?)</span></b>', blk):
+            smap[no] = who.strip().lower()
+        if not txt or not smap:
+            bad.append(f"{page}:{ln}  {fl} 找不到座位文字或座位图高亮格，检查失效")
+        elif len(txt) != len(smap) or txt != smap:
+            only_t = {k: v for k, v in txt.items() if smap.get(k) != v}
+            only_m = {k: v for k, v in smap.items() if txt.get(k) != v}
+            bad.append(f"{page}:{ln}  {fl} 座位文字与座位图对不上：文字独有 {only_t}，座位图独有 {only_m}（改座位要两处一起改）")
+    return bad
+
+
 def main(argv):
     page = argv[0] if argv else PAGE
     path = page if os.path.isabs(page) else os.path.join(REPO, page)
     src = open(path, encoding="utf-8").read()
-    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src) + check_depart_time(page, src) + check_meals(page, src)
+    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src) + check_depart_time(page, src) + check_meals(page, src) + check_lunch_slot(page, src) + check_seat_maps(page, src)
     if bad:
         print(f"✗ 首尔手册 {len(bad)} 处不符：")
         for b in bad:
             print("  " + b)
         return 1
-    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发、逐日吃饭栏只引用现有餐厅（当天午餐有开、直线距离在上限内）")
+    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发、逐日吃饭栏只引用现有餐厅（当天午餐有开、直线距离在上限内）、D1–D5 每天 12:30 午餐站点且饭前先排景点（D1 上午休息）、每张登机牌座位文字与座位图一一对应")
     return 0
 
 
