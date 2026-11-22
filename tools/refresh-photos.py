@@ -11,8 +11,16 @@
 所以这支脚本把补破图整条做完：
   1. 扫手册里的图片，逐张探测（沿用 check-images 的判定：非 image/* 或
      内容不足 1KB 都算死，因为过期的 Google 链接会回 200 加一坨非图片内容）
-  2. 死图往下找最近的地图链接（cid）或卡片标题，定出「这是哪家店的图」
-  3. 对需要补图的店各抓一轮照片（走 tools/fetch-photos.mjs，CI 上才连得到 Google）
+  2. 死图属于哪张卡：从图往后、到下一个相册开始之前，找这张卡的地图按钮
+  3. 对需要补图的店各抓一轮照片，**跟死掉的那张同一个图床**：
+     - Google 的图（lh3.googleusercontent.com）走 tools/fetch-photos.mjs，查询用卡上的
+       Google 地图按钮（?cid= 或 /maps/place/ 都行），没有按钮才用卡片标题；
+     - Naver 的图（*.pstatic.net，韩国手册）走 tools/fetch-photos-naver.mjs，用卡上 Naver
+       导航／菜单按钮里的地点编号——韩国手册照片以 Naver 为准（CLAUDE.md 媒体规则），
+       拿 Google 的图顶替等于换了来源。首尔有几张卡当初是 Naver 没合适的图才用 Google 补的，
+       那几张坏了照旧走 Google，不会把挑过的版面打乱。（2026-11-22 加；之前只会走 Google，
+       而且 Naver 网址在 HTML 里写成 &amp;，旧的整串替换根本对不上，还照样印「已换新图」。）
+     CI 上才连得到 Google 与 Naver。
   4. 用这家店**还没被用过**的候选，按顺序补上死掉的位置
   5. 印出摘要，改动留在工作区，由 workflow 提交并开 PR 给用户过目
 
@@ -32,6 +40,7 @@ import os
 import re
 import subprocess
 import sys
+import urllib.parse
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WANT = 8                      # 每家店抓几张候选：补 1 张也抓 8 张，之后好挑
@@ -48,7 +57,12 @@ sys.path.insert(0, os.path.join(REPO, "tools", "lib"))
 import trips  # noqa: E402  哪几趟还没走完——正本在 tools/lib/trips.py
 
 IMG_LINE = re.compile(r'<img\b[^>]*\bsrc="([^"]+)"[^>]*>')
-CID = re.compile(r'<a[^>]+class="btn-map"[^>]+href="([^"]*cid=(\d+)[^"]*)"')
+GAL = '<div class="gal"'
+# Google 地图按钮：class 恰好是 btn-map（Naver 的是 "btn-map btn-map-naver"，不算）
+GMAP = re.compile(r'<a[^>]+class="btn-map"[^>]+href="([^"]+)"')
+# Naver 地点编号：导航按钮的 did=，或中文菜单／介绍按钮的 m.place.naver.com/<类>/<编号>
+NAVER_ID = re.compile(r'[?&;]did=(\d{5,})|m\.place\.naver\.com/[a-z]+/(\d{5,})')
+NAVER_IMG = re.compile(r"^https://[a-z0-9-]+\.pstatic\.net/")
 TITLE = re.compile(r"<h[34][^>]*>(.*?)</h[34]>", re.S)
 
 
@@ -68,27 +82,72 @@ def pages(argv: list) -> list:
     return live
 
 
-def card_of(html: str, pos: int):
-    """这张图属于哪家店：往后找最近的地图链接（cid），拿不到就用卡片标题。
+def _name(fragment: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", fragment)).strip()[:40]
 
-    往「后」找是因为手册的卡片一律是「图在上、店名与地图按钮在下」。
-    回传 (查询字符串, 人看得懂的名字)；两者都拿不到回传 (None, None)。
+
+def card_of(html: str, pos: int) -> dict:
+    """这张图属于哪张卡：{'google': 地图按钮网址, 'naver': Naver 地点编号, 'name': 卡片标题}，拿不到的是 None。
+
+    手册的卡片一律是「相册在上、地图按钮在下」，所以从图往**后**找按钮——但只找到下一个
+    相册开始之前，再往后就是别张卡了。旧写法往后硬看 6000 字、又只认 ?cid=：首尔手册 58 张卡
+    有 39 张的 Google 链接是 /maps/place/（没有 cid），会一路找到下一张卡的 cid，
+    拿别家的照片来补（2026-11-22 改）。
+    标题先往后找，但只算地图按钮之前的（新加坡、槟城的版型：相册→标题→按钮）；
+    没有就往前找，不越过上一个相册（首尔的版型：标题→相册→按钮——往后找到的是下一张卡的标题）。
     """
-    tail = html[pos:pos + 6000]
-    m = CID.search(tail)
-    name = None
-    t = TITLE.search(tail)
-    if t:
-        name = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", t.group(1))).strip()[:40]
+    end = html.find(GAL, pos)
+    window = html[pos:end if end >= 0 else len(html)]
+    g = GMAP.search(window)
+    n = NAVER_ID.search(window)
+    first_btn = window.find('class="btn-map')
+    t = TITLE.search(window, 0, first_btn if first_btn >= 0 else len(window))
+    name = _name(t.group(1)) if t else None
+    if not name:
+        this_gal = html.rfind(GAL, 0, pos)
+        if this_gal >= 0:
+            prev_gal = html.rfind(GAL, 0, this_gal)
+            before = TITLE.findall(html[max(prev_gal, 0):this_gal])
+            name = _name(before[-1]) if before else None
+    return {
+        "google": g.group(1).replace("&amp;", "&") if g else None,
+        "naver": (n.group(1) or n.group(2)) if n else None,
+        "name": name,
+    }
+
+
+def source_of(url: str, card: dict):
+    """补图走哪条通道、拿什么查：跟死掉的那张同一个图床（理由见文件开头第 3 点）。
+    回传 (通道, 查询)；查不了回传 (None, 原因)。"""
+    if NAVER_IMG.match(url):
+        if card["naver"]:
+            return "naver", card["naver"]
+        return None, "是 Naver 的图，但这张卡找不到 Naver 地点编号（没有 Naver 导航／菜单按钮）"
+    q = card["google"] or card["name"]
+    if q:
+        return "google", q
+    return None, "找不到所属店家（没有地图按钮也没有标题）"
+
+
+def photo_key(u: str) -> str:
+    """同一张照片的比对键。Naver 代理图（search.pstatic.net/common/?…&src=原图）比的是里面的原图，
+    参数顺序、尺寸写法不同也认得出是同一张；其他网址整串比。"""
+    u = u.replace("&amp;", "&")
+    m = re.match(r"^https://search\.pstatic\.net/common/?\?(.*)$", u)
     if m:
-        return m.group(1).replace("&amp;", "&"), name or ("cid=" + m.group(2))
-    if name:
-        return name, name
-    return None, None
+        src = urllib.parse.parse_qs(m.group(1)).get("src", [""])[0]
+        if src:
+            return src.split("?")[0]
+    return u
+
+
+def attr(u: str) -> str:
+    """写回 HTML 属性的写法：& 要写成 &amp;（手册里的 Naver 网址都是这样写的）。"""
+    return u.replace("&amp;", "&").replace("&", "&amp;")
 
 
 def fetch(queries: list) -> dict:
-    """跑抓图器，回传 {查询: [候选网址]}。只能在 CI 跑（沙盒连不上 Google）。"""
+    """跑 Google 抓图器，回传 {查询: [候选网址]}。只能在 CI 跑（沙盒连不上 Google）。"""
     env = dict(os.environ, QUERIES="|".join(queries), WANT=str(WANT))
     proc = subprocess.run(["node", "tools/fetch-photos.mjs"],
                           capture_output=True, text=True, env=env, cwd=REPO)
@@ -105,6 +164,36 @@ def fetch(queries: list) -> dict:
     return out
 
 
+def fetch_naver(ids: list) -> dict:
+    """跑 Naver 抓取器，回传 {Naver 地点编号: [候选网址]}。只能在 CI 跑（沙盒连不上 Naver）。
+
+    它故意放慢（每家间隔 3–6 秒）、会被验证码挡：挡住的那家就是这轮补不了，照常报出来，
+    不重试（重试只会被挡得更久）。候选已经是能直接 <img> 的 search.pstatic.net 代理图，
+    菜单分类、菜单板照、博客图在抓取器那边就排除了。"""
+    queries = ["https://map.naver.com/p/entry/place/" + i for i in ids]
+    env = dict(os.environ, QUERIES="|".join(queries), WANT=str(WANT))
+    proc = subprocess.run(["node", "tools/fetch-photos-naver.mjs"],
+                          capture_output=True, text=True, env=env, cwd=REPO)
+    out = {}
+    for line in proc.stdout.splitlines():
+        if not line.startswith("RESULT "):
+            continue
+        j = json.loads(line[7:])
+        nid = j.get("naver_id") or ""
+        urls = [u for u in j.get("urls", []) if u.startswith("https://search.pstatic.net/")]
+        if not urls and j.get("captcha"):
+            print(f"  ⚠ Naver {nid or j.get('query')}：被验证码挡住，这家这轮补不了")
+        if nid:
+            out[nid] = urls
+    if proc.returncode != 0 and not out:
+        print("  ⚠ Naver 抓取器没有产出：", (proc.stderr or proc.stdout)[-400:])
+    return out
+
+
+def fetch_for(source: str, keys: list) -> dict:
+    return (fetch_naver if source == "naver" else fetch)(keys)
+
+
 def main() -> int:
     dry = "--dry-run" in sys.argv
     targets = pages(sys.argv[1:])
@@ -115,29 +204,47 @@ def main() -> int:
     grand_dead = grand_fixed = 0
     for path in targets:
         html = open(path, encoding="utf-8").read()
-        imgs = [(m.group(1).replace("&amp;", "&"), m.start()) for m in IMG_LINE.finditer(html)]
+        # (HTML 里原样的写法, 浏览器真正请求的网址, 位置)：替换要用原样的写法才对得上
+        imgs = [(m.group(1), m.group(1).replace("&amp;", "&"), m.start()) for m in IMG_LINE.finditer(html)]
         if not imgs:
             continue
-        dead = []
-        for url, pos in imgs:
+        dead, seen = [], set()
+        for raw, url, pos in imgs:
+            if url in seen:          # 同一张图出现两次（封面＋相册）只算一次，替换时会一起换
+                continue
+            seen.add(url)
             alive, why = check_images.probe(url, "图片")
             if not alive:
-                dead.append((url, pos, why))
+                dead.append((raw, url, pos, why))
         if not dead:
             print(f"{path}：{len(imgs)} 张图全部正常")
             continue
         grand_dead += len(dead)
         print(f"{path}：{len(imgs)} 张图里有 {len(dead)} 张失效")
 
-        # 对照组：一次死掉大半，通常不是图真的全过期，而是 Google 把这台机器挡了
+        # 按店归类。同一家店死了好几张，只抓一次。键是 (通道, 查询)。
+        by_query = {}
+        for raw, url, pos, why in dead:
+            card = card_of(html, pos)
+            line = html.count("\n", 0, pos) + 1
+            src, q = source_of(url, card)
+            if not src:
+                print(f"  · 第 {line} 行的图{q}，跳过（要人工处理）")
+                continue
+            by_query.setdefault((src, q), {"name": card["name"] or q, "items": []})["items"].append(
+                (raw, url, line, why))
+        if not by_query:
+            continue
+
+        # 对照组：一次死掉大半，通常不是图真的全过期，而是图床把这台机器挡了
         # （沙盒 100% 会这样，CI 偶尔也会）。没有对照组就直接换的话，等于把一整本
-        # 手册的好图换掉。所以先抓一张**刚出炉**的图来探：新图也打不开 → 是这台
+        # 手册的好图换掉。所以先从同一个图床抓一张**刚出炉**的图来探：新图也打不开 → 是这台
         # 机器的问题，整轮罢工；新图打得开 → 那是真的成批过期，照常补。
         if len(dead) > len(imgs) * 0.5:
-            probe_q, _ = card_of(html, dead[0][1])
-            fresh_probe = fetch([probe_q]).get(probe_q, []) if probe_q else []
+            probe_src, probe_q = next(iter(by_query))
+            fresh_probe = fetch_for(probe_src, [probe_q]).get(probe_q, [])
             if not fresh_probe:
-                print("  ⚠ 失效过半，且抓不到任何新图——判定是这台机器连不上 Google，"
+                print("  ⚠ 失效过半，且抓不到任何新图——判定是这台机器连不上图床，"
                       "本轮不动任何文件")
                 return 0
             alive, why = check_images.probe(fresh_probe[0], "图片")
@@ -147,39 +254,39 @@ def main() -> int:
                 return 0
             print("  · 失效过半，但新抓的图打得开：确认是成批过期，继续补")
 
-        # 按店归类。同一家店死了好几张，只抓一次。
-        by_query = {}
-        for url, pos, why in dead:
-            q, name = card_of(html, pos)
-            line = html.count("\n", 0, pos) + 1
-            if not q:
-                print(f"  · 第 {line} 行的图找不到所属店家（没有地图链接也没有标题），跳过")
-                continue
-            by_query.setdefault(q, {"name": name, "items": []})["items"].append((url, line, why))
-        if not by_query:
-            continue
         if dry:
-            for q, info in by_query.items():
-                print(f"  · {info['name']}：要补 {len(info['items'])} 张")
+            for (src, q), info in by_query.items():
+                print(f"  · {info['name']}：要补 {len(info['items'])} 张（走 {src}）")
             continue
 
-        fresh = fetch(list(by_query))
-        for q, info in by_query.items():
-            cands = [u for u in fresh.get(q, []) if u not in html]   # 别补成同页重复图
+        fresh = {}
+        for src in ("google", "naver"):
+            keys = [q for s, q in by_query if s == src]
+            if keys:
+                got = fetch_for(src, keys)
+                fresh.update({(src, q): got.get(q, []) for q in keys})
+        used = {photo_key(u) for _, u, _ in imgs}
+        for (src, q), info in by_query.items():
+            cands = [u for u in fresh.get((src, q), []) if photo_key(u) not in used]   # 别补成同页重复图
             need = info["items"]
             if len(cands) < len(need):
-                print(f"  ✗ {info['name']}：要补 {len(need)} 张，只抓到 {len(cands)} 张可用，"
+                print(f"  ✗ {info['name']}：要补 {len(need)} 张，只抓到 {len(cands)} 张可用（{src}），"
                       f"这家先留着不动")
                 continue
-            for (url, line, why), new in zip(need, cands):
-                html = html.replace(url, new)
+            for (raw, url, line, why), new in zip(need, cands):
+                if raw not in html:
+                    print(f"  ✗ {info['name']} 第 {line} 行：页面里找不到原来的网址，没换")
+                    continue
+                html = html.replace(raw, attr(new))
+                used.add(photo_key(new))
                 grand_fixed += 1
-                print(f"  ✓ {info['name']} 第 {line} 行（{why}）已换新图")
+                print(f"  ✓ {info['name']} 第 {line} 行（{why}）已换新图（{src}）")
         open(path, "w", encoding="utf-8").write(html)
 
     print(f"\n合计：失效 {grand_dead} 张，补上 {grand_fixed} 张")
     if grand_dead and grand_fixed < grand_dead:
-        print("有补不上的——通常是那家店在 Google 上照片本来就少，需要人工换卡片或换地点。")
+        print("有补不上的——通常是那家店在 Google／Naver 上照片本来就少，或这轮被 Naver 验证码挡住；"
+              "需要人工换卡片或换地点（韩国手册的 Naver 图用 fetch-photos.yml 选 source=naver 重抓）。")
     return 0
 
 

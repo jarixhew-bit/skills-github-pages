@@ -1,8 +1,8 @@
 /**
  * 航班实时状态框的自检（2026-11-05 建）—— 真浏览器跑，Playwright。
- * 守三处：sg-jkt-trip/singapore.html、sg-jkt-trip/jakarta.html 的机票卡（.bpass 里的 .flive），
- * 以及老板 App boss/index.html 的航班条目。三处的 JS 是同一段（FLIGHT-LIVE BEGIN～END），
- * 这里也比对它们一字不差。
+ * 守四处：sg-jkt-trip/singapore.html、sg-jkt-trip/jakarta.html、seoul-trip/index.html（2026-11-22 加）
+ * 的机票卡（.bpass 里的 .flive），以及老板 App boss/index.html 的航班条目。四处的 JS 是同一段
+ * （FLIGHT-LIVE BEGIN～END；段里注释还写着「三处」，首尔是后来照抄的第四处），这里也比对它们一字不差。
  *
  * 跑法：
  *   python3 -m http.server 8899 &
@@ -16,7 +16,8 @@
  *
  * 最要紧的一条是**时区**：浏览器故意设成洛杉矶（America/Los_Angeles）。页面若偷懒用
  * new Date(iso).getHours() 按浏览器时区显示，12:55 会变成 20:55——老板人在金边看、
- * 手机在哪个时区都一样，屏幕上必须是出发机场的当地时刻。新加坡 +08:00、雅加达 +07:00 各验一个。
+ * 手机在哪个时区都一样，屏幕上必须是出发机场的当地时刻。新加坡 +08:00、雅加达 +07:00 各验一个；
+ * 首尔那本四段横跨金边 +07:00／香港 +08:00／首尔 +09:00，再验 +09:00 起飞与落地跨过午夜（00:44）。
  *
  * 情境：
  *   1. 准点（绿，「准点」）  2. 延误 25 分钟（琥珀，原定划线，新加坡与雅加达各一）
@@ -40,6 +41,7 @@ import {
 const BASE = `http://localhost:${PORT}/sg-jkt-trip/`;
 const SG = BASE + 'singapore.html';
 const JKT = BASE + 'jakarta.html';
+const SEOUL = `http://localhost:${PORT}/seoul-trip/index.html`;
 const API = 'https://butler-bot.jarixhew.workers.dev/flight-status';
 const TZ = 'America/Los_Angeles';   // 故意跟新加坡／雅加达都不一样
 const PNG = Buffer.from(
@@ -147,20 +149,23 @@ async function info(page, no) {
 
 /* ============ 0. 三处 JS 一字不差 ============ */
 {
-  console.log('\n【0】三处 FLIGHT-LIVE 段一字不差');
+  console.log('\n【0】四处 FLIGHT-LIVE 段一字不差');
   const grab = p => {
     const s = fs.readFileSync(p, 'utf8');
     const a = s.indexOf('/* ===== FLIGHT-LIVE BEGIN'), b = s.indexOf('/* ===== FLIGHT-LIVE END ===== */');
     return a >= 0 && b > a ? s.slice(a, b) : null;
   };
   const sg = grab('sg-jkt-trip/singapore.html'), jk = grab('sg-jkt-trip/jakarta.html'), bs = grab('boss/index.html');
-  ok('★三处都有这一段', !!(sg && jk && bs), [!!sg, !!jk, !!bs]);
+  const se = grab('seoul-trip/index.html');
+  ok('★四处都有这一段', !!(sg && jk && bs && se), [!!sg, !!jk, !!bs, !!se]);
   ok('★新加坡＝雅加达', sg === jk, 'diff');
   ok('★新加坡＝老板 App', sg === bs, 'diff');
+  ok('★首尔＝老板 App', se === bs, 'diff');
 }
 
 /* ============ 8. 版面：没有 FlightAware、每张机票卡一个状态框 ============ */
-for (const [name, url, nos] of [['新加坡', SG, ['SQ153', 'SQ133', 'SQ958']], ['雅加达', JKT, ['SQ958', 'SQ957', 'SQ138', 'SQ158']]]) {
+for (const [name, url, nos] of [['新加坡', SG, ['SQ153', 'SQ133', 'SQ958']], ['雅加达', JKT, ['SQ958', 'SQ957', 'SQ138', 'SQ158']],
+  ['首尔', SEOUL, ['CX608', 'CX426', 'CX417', 'CX605']]]) {
   const ctx = await bookCtx();
   const { page } = await openBook(ctx, url, '2026-11-01T00:00:00Z', { flights: {} });
   console.log(`\n【8】${name}：版面`);
@@ -273,6 +278,77 @@ for (const [name, url, nos] of [['新加坡', SG, ['SQ153', 'SQ133', 'SQ958']], 
   await ctx.close();
 }
 
+/* ============ 首尔：四段横跨 +07:00／+08:00／+09:00（2026-11-22 加） ============ */
+const CX608_LANDED = base('CX608', '2027-01-02', {
+  state: 'landed', status: 'Arrived',
+  sched_dep: '2027-01-02T11:45:00+07:00', act_dep: '2027-01-02T11:52:00+07:00',
+  sched_arr: '2027-01-02T15:30:00+08:00', act_arr: '2027-01-02T15:22:00+08:00',
+  terminal: '1', last_polled: '2027-01-02T07:30:00Z', window_start: '2026-12-31T04:45:00.000Z',
+});
+const CX426_DEPARTED = base('CX426', '2027-01-02', {
+  state: 'departed', status: 'Departed',
+  sched_dep: '2027-01-02T20:05:00+08:00', act_dep: '2027-01-02T20:11:00+08:00',
+  sched_arr: '2027-01-03T00:40:00+09:00', est_arr: '2027-01-03T00:44:00+09:00',
+  terminal: '1', gate: '23', last_polled: '2027-01-02T12:25:00Z', window_start: '2026-12-31T12:05:00.000Z',
+});
+const CX417_LATE = base('CX417', '2027-01-08', {
+  state: 'delayed', status: 'Delayed', delay_min: 35,
+  sched_dep: '2027-01-08T10:00:00+09:00', est_dep: '2027-01-08T10:35:00+09:00',
+  sched_arr: '2027-01-08T13:15:00+08:00', est_arr: '2027-01-08T13:50:00+08:00',
+  terminal: '1', gate: '47', last_polled: '2027-01-08T00:20:00Z', window_start: '2027-01-06T01:00:00.000Z',
+});
+const CX605_ONTIME = base('CX605', '2027-01-08', {
+  state: 'scheduled', status: 'Expected',
+  sched_dep: '2027-01-08T16:00:00+08:00', est_dep: '2027-01-08T16:00:00+08:00',
+  sched_arr: '2027-01-08T17:45:00+07:00', terminal: '1', gate: null,
+  last_polled: '2027-01-08T00:25:00Z', window_start: '2027-01-06T08:00:00.000Z',
+});
+{
+  const ctx = await bookCtx();
+  // 1/2 20:30 香港时间（＝洛杉矶 1/2 04:30）：CX608 落地 5 小时、CX426 刚起飞，回程两班还没到起飞前 48 小时
+  const { page, errs, calls } = await openBook(ctx, SEOUL, '2027-01-02T12:30:00Z', { flights: {
+    'CX608@2027-01-02': CX608_LANDED, 'CX426@2027-01-02': CX426_DEPARTED,
+    'CX417@2027-01-08': CX417_LATE, 'CX605@2027-01-08': CX605_ONTIME } });
+  console.log('\n【首尔·去程日】+08:00 落地、+09:00 跨午夜到达');
+  ok('★一次请求带上整页四个航班', calls.length === 1 && calls[0].length === 4, calls);
+  const l = await info(page, 'CX608');
+  ok('★CX608 蓝色「已落地 15:22」（香港当地，不是浏览器时区）', l && !l.hidden && l.color === BLUE && /已落地 15:22/.test(l.text), l);
+  const d = await info(page, 'CX426');
+  ok('★CX426「实际起飞 20:11 · 预计到达 00:44」（起飞按香港、到达按首尔，跨过午夜）',
+    d && !d.hidden && d.color === BLUE && /实际起飞 20:11 · 预计到达 00:44/.test(d.text), d);
+  for (const no of ['CX417', 'CX605']) {
+    const w = await info(page, no);
+    ok(`★${no} 还没到起飞前 48 小时：淡色提示、不写准点／延误`,
+      w && !w.hidden && /fl-wait/.test(w.cls) && /起飞前 2 天开始显示实时状态/.test(w.text) && !/准点|延误/.test(w.text), w);
+  }
+  ok('无 JS 报错（首尔去程日）', errs.length === 0, errs);
+  await ctx.close();
+}
+{
+  const ctx = await bookCtx();
+  // 1/8 09:30 首尔时间：CX417 延误 35 分钟（+09:00 起飞）、CX605 准点（+08:00 起飞）
+  const { page, errs } = await openBook(ctx, SEOUL, '2027-01-08T00:30:00Z', { flights: {
+    'CX417@2027-01-08': CX417_LATE, 'CX605@2027-01-08': CX605_ONTIME } });
+  console.log('\n【首尔·回程日】+09:00 延误、+08:00 准点');
+  const d = await info(page, 'CX417');
+  ok('★CX417 琥珀色「延误 35 分钟」', d && !d.hidden && d.color === AMBER && /延误 35 分钟/.test(d.text), d);
+  ok('★预计起飞按首尔当地 10:35、原定 10:00 划线', /预计起飞 10:35/.test(d.text) && d.struck === '10:00', [d.text, d.struck]);
+  ok('★航站楼 T1、登机口 47、更新时间按首尔 09:20', /航站楼 T1/.test(d.text) && /登机口 47/.test(d.text) && /09:20 更新/.test(d.text), d.text);
+  const g = await info(page, 'CX605');
+  ok('★CX605 绿色「准点」、预计起飞按香港当地 16:00', g && !g.hidden && g.color === GREEN && /准点/.test(g.text) && /预计起飞 16:00/.test(g.text), g);
+  ok('★CX605 更新时间按香港 08:25、登机口未公布', /08:25 更新/.test(g.text) && /登机口 未公布/.test(g.text), g.text);
+  for (const no of ['CX608', 'CX426']) {
+    const t = await info(page, no);
+    ok(`★${no}（接口回 tracked:false、又没缓存）整框隐藏`, t && t.hidden, t);
+  }
+  await page.evaluate(() => toggleLang());
+  const de = await info(page, 'CX417');
+  ok('★英文：Delayed 35 min · Est. departure 10:35 · Gate 47 · Updated 09:20',
+    /Delayed 35 min/.test(de.text) && /Est\. departure 10:35/.test(de.text) && /Gate 47/.test(de.text) && /Updated 09:20/.test(de.text) && !/延误/.test(de.text), de.text);
+  ok('无 JS 报错（首尔回程日）', errs.length === 0, errs);
+  await ctx.close();
+}
+
 /* ============ 5. 还没到 window_start ============ */
 {
   const ctx = await bookCtx();
@@ -306,7 +382,7 @@ for (const [name, url, nos] of [['新加坡', SG, ['SQ153', 'SQ133', 'SQ958']], 
 }
 
 /* ============ 6. 接口 500 且没缓存 ============ */
-for (const [name, url] of [['新加坡', SG], ['雅加达', JKT]]) {
+for (const [name, url] of [['新加坡', SG], ['雅加达', JKT], ['首尔', SEOUL]]) {
   const ctx = await bookCtx();
   const { page, errs } = await openBook(ctx, url, '2026-11-14T03:00:00Z', { status: 500, flights: {} });
   console.log(`\n【6】${name}：接口 500、没缓存`);

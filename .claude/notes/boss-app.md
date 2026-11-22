@@ -44,8 +44,8 @@ URL: https://jarixhew-bit.github.io/skills-github-pages/boss/
 `itemRowHtml()` 里航班条目在 `flightInfoHtml()` 之后多一个 `flightLiveBoxHtml(it)` 占位
 （`.flive[data-flight][data-date]`），页尾 `FLIGHT-LIVE` 段直接调 butler-bot 的 `GET /flight-status`
 （不用钥匙、不经 `/boss`）填；行程重画时由 MutationObserver 用手上的状态补填，不重打接口。
-只读、没有任何控件，viewer 与 admin 都显示。这段 JS 跟两本新加坡／雅加达手册一字不差，
-自检 `tools/check-flight-live.mjs`（含 viewer／admin 两种身份）。
+只读、没有任何控件，viewer 与 admin 都显示。这段 JS 跟新加坡／雅加达／首尔三本手册一字不差（四处；
+段内注释还写「三处」，首尔是后来照抄的），自检 `tools/check-flight-live.mjs`（含 viewer／admin 两种身份）。
 ⚠️ 跟上面 `flightInfoHtml()` 里来自 feed `flight.live` 的状态胶囊是**两个来源**：新框有实时数据
 （不是隐藏、也不是「起飞前 2 天」提示）时，CSS `:has()` 收起旧胶囊（`.flight-status`），其余几行照留；
 新框没数据时旧胶囊照常显示（2026-11-05 定，自检含两组对照）。
@@ -651,4 +651,11 @@ cron 不带 recurring → 1 红。
   入住日「到酒店」那条的钟点并进来、不另留；`.ev .s` 说明进备注，拿掉「见下方／见页首／机票卡」这类指向手册别处的句子与「（见下方备案）」括号。
 - 首尔这趟（30 条）：D0 09:00 出门、CX608（11:45）、香港转机、CX426（20:05，00:40 到仁川）；D1 02:30 入住 Westin Josun（待确认 TBC）、上午休息、12:30 午餐、下午 Galaxy；
   D2–D5 都是 10:00 出发→上午景点→12:30 午餐（D2 下午 17:30 离开爱宝去水原、D5 下午 SEOULDAL）；D6 06:30 退房、CX417（10:00）、CX605（16:00）、到家。只有午餐、没有晚餐。
-  午餐条目没有 mapUrl（手册给的是两三家候选，备注里写店名），其余地点都是手册里的精准 Google 链接。航班还没有 trackId（没走 `flightLookup`，不花 AeroDataBox 额度），实时状态要等出发前在管理页查一次航班；同步会保留查到的 trackId。
+  午餐条目没有 mapUrl（手册给的是两三家候选，备注里写店名），其余地点都是手册里的精准 Google 链接。
+  **四段航班已追踪**（2026-11-22，butler-bot 682b9b0）：CX608／CX426（1/2）、CX417／CX605（1/8）已登记进 butler `data/flights.json`，
+  trips.json 这趟的四个航班条目都接上了 `trackId`，线上 `/flight-status` 四段都回 `tracked:true`——现在手册与老板 App 的状态框显示
+  「起飞前 2 天开始显示实时状态」，起飞前 48 小时起 cron 开始轮询、由 AeroDataBox 真数据覆盖；不必再到管理页查一次。
+  手册同步（`sync-boss-trip.mjs`）会保留 `trackId`。butler-bot 的 `flight-tracking-check.yml` 每周三验「还没走完的行程每个航班都 tracked:true」。
+  查航班的日期（butler-bot b4efd89）：AeroDataBox 按日期查会把「出发或到达是这一天」的同号航班都回来——过夜航班 CX426（1/2 20:05 香港起飞、
+  隔天 00:40 到仁川）的第一条是 1/1 起飞那班；现在 `pickFlightForDate` 按**出发当地日期**挑那一班（都是别天起飞＝查不到），
+  老板 App 管理页查航班（`adminFlightLookup`）与 cron 走的是同一个挑法。

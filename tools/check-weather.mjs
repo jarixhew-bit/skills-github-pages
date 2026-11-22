@@ -1,5 +1,5 @@
 /**
- * singapore-trip/index.html、sg-jkt-trip/singapore.html（11 月版）、sg-jkt-trip/jakarta.html（雅加达段，只有天气没有空气质量条）与 penang-trip/index.html（含新设计版 v2.html／v3.html／v4.html）每日天气的自检
+ * singapore-trip/index.html、sg-jkt-trip/singapore.html（11 月版）、sg-jkt-trip/jakarta.html（雅加达段，只有天气没有空气质量条）、seoul-trip/index.html（首尔，一月，有雪；2026-11-22 加）与 penang-trip/index.html（含新设计版 v2.html／v3.html／v4.html）每日天气的自检
  * —— 真浏览器跑，Playwright（两页共用同一套 open-meteo 前端现抓机制，合在一个脚本里）。
  *
  * 跑法：
@@ -111,11 +111,14 @@ async function load(handler, now, psiHandler, url = SG_URL) {
   /* 空气质量是另一条独立的 fetch，跟天气那几条谁先回来没保证。只等天气就去读 #psi，
      在慢一点的机器上会读到还没填完的「载入中」——2026-09-18 在 CI 上就这样红过一次
      （本地全过、CI 三条 PSI 断言全红）。所以这里单独等它落定。
-     等不到就不硬抛：让后面的断言把「实得什么」原样印出来，比栈追踪好读。 */
+     等不到就不硬抛：让后面的断言把「实得什么」原样印出来，比栈追踪好读。
+     页面本来就没有 #psi（雅加达、首尔；有的页面它是写死在 HTML 里的）就不必等——
+     否则每载入一次白等 10 秒（2026-11-22 加首尔时顺手改）。 */
   await page.waitForFunction(
     () => {
       const el = document.getElementById('psi');
-      return !!el && !!el.textContent && !/载入中|Loading/.test(el.textContent);
+      if (!el) return true;
+      return !!el.textContent && !/载入中|Loading/.test(el.textContent);
     },
     null, { timeout: 10000 },
   ).catch(() => {});
@@ -508,6 +511,95 @@ JKT_DATES.forEach(d => {
     `[jkt] ${d} 窗口外要写「还没到能报的时候」而不是抓不到（实得：${jktEarly[d]}）`);
 });
 check(errors.length === jkErrBefore, `[jkt] 不应有 JS 错误（实得：${errors.slice(jkErrBefore, jkErrBefore + 3).join(' | ')}）`);
+
+/* ============================================================
+ * seoul-trip/index.html：首尔（2027-01-02 出发、1/3–1/8 在首尔，2026-11-22 加进来）。
+ * 天气条 JS 复制自雅加达那页，改了三处：坐标首尔市厅一带、时区 Asia/Seoul、
+ * wmo() 多了雪（71–77 有雪、85–86 阵雪），显示写成「-7～1°C · 降水机率 0%」（零下用～，不用 –）。
+ * 「多雨」标签改成「雨雪」（降水机率 ≥60% 时，下的多半是雪）。没有空气质量条。
+ * 1/2 出发日（#day00）在金边→香港→飞机上，刻意**不放**首尔天气条；1/3–1/8 六天每天都要有。
+ * ============================================================ */
+const SEOUL_URL = `http://localhost:${PORT}/seoul-trip/index.html`;
+const SE_DATES = ['2027-01-03', '2027-01-04', '2027-01-05', '2027-01-06', '2027-01-07', '2027-01-08'];
+const SE_FULL = { daily: {
+  time: SE_DATES, weather_code: [0, 3, 73, 61, 85, 2],
+  temperature_2m_max: [1.2, 2.6, -1.4, 3.1, -2.2, 0.6], temperature_2m_min: [-7.4, -5.2, -8.1, -3.6, -10.3, -6.6],
+  precipitation_probability_max: [0, 10, 70, 65, 40, 20],
+} };
+const SE_PARTIAL = { daily: {
+  time: SE_DATES.slice(0, 2), weather_code: [0, 3],
+  temperature_2m_max: [1.2, 2.6], temperature_2m_min: [-7.4, -5.2],
+  precipitation_probability_max: [0, 10],
+} };
+const SE_IN_WINDOW = '2027-01-01T09:00:00+09:00';   // 出发前一天：六天全在 16 天预报窗口内
+const SE_TOO_EARLY = '2026-12-01T09:00:00+09:00';   // 一个月前：整趟都还报不了
+const seLoad = (handler, now) => load(handler, now, null, SEOUL_URL);
+const seErrBefore = errors.length;
+let seUrlSeen = '';
+await page.goto(SEOUL_URL, { waitUntil: 'domcontentloaded' });
+const seStructure = await page.evaluate(() =>
+  [...document.querySelectorAll('.day[data-date]')].map(d => ({
+    date: d.dataset.date,
+    wx: d.querySelector('.wx[data-wx]')?.dataset.wx || null,
+    rain: !!d.querySelector('.rainplan .cn')?.textContent.trim(),
+    rainEn: !!d.querySelector('.rainplan .en')?.textContent.trim(),
+  })));
+const seWxDays = seStructure.filter(d => d.date !== '2027-01-02');
+check(seWxDays.map(d => d.date).join() === SE_DATES.join(),
+  `[seoul] 首尔那几天应是 1/3–1/8 六天（实得 ${JSON.stringify(seStructure.map(d => d.date))}）`);
+seWxDays.forEach(d => {
+  check(d.wx === d.date, `[seoul] ${d.date} 的天气条日期要跟当天一致（实得 ${d.wx}）`);
+  check(d.rain && d.rainEn, `[seoul] ${d.date} 的雨雪／寒冷备案中英文都要有`);
+});
+const seNoAir = await page.evaluate(() => !document.getElementById('psi') && !document.querySelector('.hazeplan'));
+check(seNoAir, '[seoul] 本页不放空气质量条（没有 #psi、没有 .hazeplan）');
+const { texts: seFull, called: seFullCalled } = await seLoad(r => { seUrlSeen = r.request().url(); return r.fulfill({ json: SE_FULL }); }, SE_IN_WINDOW);
+check(seFullCalled, '[seoul] 进入预报窗口时应该真的去打 API');
+check(/latitude=37\.5/.test(seUrlSeen) && /longitude=126\.9/.test(seUrlSeen) && /Asia%2FSeoul/.test(seUrlSeen),
+  `[seoul] 要抓首尔（市厅一带）坐标、Asia/Seoul 时区（实得：${seUrlSeen.slice(0, 140)}）`);
+check(/start_date=2027-01-03/.test(seUrlSeen) && /end_date=2027-01-08/.test(seUrlSeen),
+  `[seoul] 预报要抓 1/3–1/8 这六天，不含 1/2 出发日（实得：${seUrlSeen.slice(-60)}）`);
+check(/晴/.test(seFull['2027-01-03']) && /-7～1°C/.test(seFull['2027-01-03']) && /降水机率 0%/.test(seFull['2027-01-03']),
+  `[seoul] 1/3 应显示 晴 · -7～1°C · 降水机率 0%（实得：${seFull['2027-01-03']}）`);
+check(/有雪/.test(seFull['2027-01-05']) && /-8～-1°C/.test(seFull['2027-01-05']) && /70%/.test(seFull['2027-01-05']),
+  `[seoul] 1/5 应显示 有雪 · -8～-1°C · 70%（实得：${seFull['2027-01-05']}）`);
+check(/阵雪/.test(seFull['2027-01-07']) && /-10～-2°C/.test(seFull['2027-01-07']),
+  `[seoul] 1/7 应显示 阵雪 · -10～-2°C（实得：${seFull['2027-01-07']}）`);
+check(/Snow · -8 to -1°C · precipitation 70%/.test(seFull['2027-01-05']),
+  `[seoul] 1/5 英文应是 Snow · -8 to -1°C · precipitation 70%（实得：${seFull['2027-01-05']}）`);
+// 每天读的是自己那一格，不是整排错位（错位会把别天的数字安到今天头上）
+check(!/-7～/.test(seFull['2027-01-04']) && /-5～3°C/.test(seFull['2027-01-04']),
+  `[seoul] 1/4 不该混进 1/3 的低温（实得：${seFull['2027-01-04']}）`);
+const seWet = await page.evaluate(() => {
+  const had = document.body.classList.contains('lang-en');
+  const tags = en => {
+    document.body.classList.toggle('lang-en', en);
+    return [...document.querySelectorAll('.wx.wet')].map(b => getComputedStyle(b, '::before').content);
+  };
+  const out = { days: [...document.querySelectorAll('.wx.wet')].map(b => b.dataset.wx), cn: tags(false), en: tags(true) };
+  document.body.classList.toggle('lang-en', had);
+  return out;
+});
+check(seWet.days.join() === '2027-01-05,2027-01-06',
+  `[seoul] 只有降水机率 ≥60% 的 1/5、1/6 该标红（实得 ${JSON.stringify(seWet.days)}）`);
+check(seWet.cn.length === 2 && seWet.cn.every(t => /雨雪/.test(t)) && seWet.en.every(t => /SNOW \/ RAIN/.test(t)),
+  `[seoul] 标红那天要带「雨雪／SNOW / RAIN」文字标签，不只靠颜色（实得 中 ${JSON.stringify(seWet.cn)}、英 ${JSON.stringify(seWet.en)}）`);
+const { texts: sePartial } = await seLoad(r => r.fulfill({ json: SE_PARTIAL }), SE_IN_WINDOW);
+check(/-7～1°C/.test(sePartial['2027-01-03']), '[seoul] 有预报的那天照常显示温度');
+SE_DATES.slice(2).forEach(d => {
+  check(/一月常态|typical January/i.test(sePartial[d]) && !/°C · 降水/.test(sePartial[d]),
+    `[seoul] ${d} 无预报时要退回一月常态文案（实得：${sePartial[d]}）`);
+});
+const { texts: seDown } = await seLoad(r => r.fulfill({ status: 500, body: 'boom' }), SE_IN_WINDOW);
+SE_DATES.forEach(d => check(/抓不到|unavailable/i.test(seDown[d]) && /一月常态|typical January/i.test(seDown[d]),
+  `[seoul] ${d} 在 API 挂掉时要说明并带一月常态文案（实得：${seDown[d]}）`));
+const { texts: seEarly, called: seEarlyCalled } = await seLoad(r => r.fulfill({ json: SE_FULL }), SE_TOO_EARLY);
+check(!seEarlyCalled, '[seoul] 整趟都在 16 天窗口外时不该去打 API');
+SE_DATES.forEach(d => {
+  check(/还没到能报的时候|Too early/i.test(seEarly[d]) && !/抓不到|unavailable/i.test(seEarly[d]),
+    `[seoul] ${d} 窗口外要写「还没到能报的时候」而不是抓不到（实得：${seEarly[d]}）`);
+});
+check(errors.length === seErrBefore, `[seoul] 不应有 JS 错误（实得：${errors.slice(seErrBefore, seErrBefore + 3).join(' | ')}）`);
 
 /* ============================================================
  * penang-trip：没有逐日行程列，天气条独立成 #weather 区块里的

@@ -7,6 +7,8 @@
 #
 # 现在：check-images 每周一 01:00 体检（那支只报告、不动手），这支 02:00 接着跑，
 # 直接把死掉的图换成同一家店新抓的照片，有改动就开 PR 等用户点一下合并。
+# 跟死掉的那张同一个图床重抓：Google 的图走 fetch-photos.mjs，韩国手册的 Naver 图
+# （search.pstatic.net）走 fetch-photos-naver.mjs（2026-11-22 起；之前只会走 Google）。
 # 用户要做的只剩「看一眼 PR」——挑图（哪张好看）仍然是人的事，补破图不是。
 #
 # 为什么开 PR 而不是直接推 main：换的是已经发给家人的手册，
@@ -88,7 +90,9 @@ jobs:
             echo "这里只做「把死掉的换成活的」，没有挑好不好看。"
             echo "想换别张就跟 Claude 说「某某卡片第几张换几号」，它会照选图页换。"
             echo
-            echo "补不上的（如果有）通常是那家店在 Google 上照片本来就少，需要人工处理。"
+            echo "补不上的（如果有）通常是那家店在 Google／Naver 上照片本来就少，需要人工处理。"
+            echo "韩国手册（首尔）的 Naver 照片是从 Naver 重抓的（照片以 Naver 为准）；被 Naver 验证码挡住的"
+            echo "那几家这轮补不了，日志里会写，要手动跑 fetch-photos.yml 选 source=naver。"
           } > pr.md
           gh pr create --title "自动补破图（$(date -u +%Y-%m-%d)）" --body-file pr.md --head "$BRANCH"
 

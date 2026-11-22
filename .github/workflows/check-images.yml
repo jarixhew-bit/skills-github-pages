@@ -110,6 +110,9 @@ jobs:
             echo
             echo "跟 Claude 说一句「修一下失效的图片」即可。它会按 CLAUDE.md 的媒体文件规则"
             echo "重新抓 Google Places 图片链接替换（沙盒抓不到时走 fetch-photos.yml 这条 CI 通道）。"
+            echo "韩国手册（首尔）的 Naver 照片（search.pstatic.net）例外：照片以 Naver 为准，"
+            echo "重抓要选 fetch-photos.yml 的 source=naver，不要拿 Google 的图顶替。"
+            echo "每周一 02:00 的「自动补破图」会先自动补一轮（Naver 图走 Naver），补上的开成 PR。"
             echo
             echo "自己重跑：Actions → Check image links → Run workflow"
           } > body.md

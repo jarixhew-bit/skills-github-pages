@@ -5,6 +5,10 @@
 （CLAUDE.md 媒体文件规则）。外链的坏处是**会悄悄失效**——页面还在、
 网址还通，只有打开的人看到一个破图，而发手册的人永远不会知道。
 本脚本就是为了让失效被自动发现，不必等家人来说「图片打不开」。
+韩国手册例外：照片以 Naver 为准，是 search.pstatic.net 的代理图（首尔那本 233 张里 213 张）。
+<img> 一律照收、不分图床，所以它们本来就在体检范围里；2026-11-22 CI 实测：代理图后面的
+原图不在了，search.pstatic.net 回 404（带 UA 与 github.io 来源，跟这里的探测一样），会被判失效。
+失效清单里有 Naver 图时，结尾会多一句「重抓要用 source=naver」（进 issue）。
 
 检查项：
 1. <img src="https://..."> 的图片链接
@@ -50,6 +54,7 @@ RETRIES = 3          # 三次都失败才算坏，避免网络抖动造成误报
 CONCURRENCY = 12     # 2026-08-11 扩到店家官网后链接数从 ~700 涨到 ~810
 
 IMG_RE = re.compile(r'<img\b[^>]*\bsrc="(https://[^"]+)"', re.I)
+NAVER_IMG = re.compile(r"^https://[a-z0-9-]+\.pstatic\.net/")   # Naver 图床（韩国手册）
 MAP_RE = re.compile(r'href="(https://(?:www\.)?(?:maps|google\.[^"/]*/maps)[^"]+)"', re.I)
 HREF_RE = re.compile(r'href="(https://[^"]+)"', re.I)
 
@@ -243,6 +248,15 @@ def main():
         print(f"\n失效图片完整清单（{len(imgs)} 条，格式：文件:行号 [原因] 网址）：")
         for f, kind, url, info, line in sorted(imgs, key=lambda b: (b[0], b[4])):
             print(f"  {f}:{line} [{info}] {url}")
+
+    # 韩国手册的照片以 Naver 为准（CLAUDE.md 媒体规则）：修的人照惯例去抓 Google 的图，
+    # 就把来源换掉了。这句会跟着 result.txt 进每周体检开的 issue。
+    naver = [b for b in imgs if NAVER_IMG.match(b[2])]
+    if naver:
+        print(f"\n其中 {len(naver)} 张是 Naver 照片（search.pstatic.net，韩国手册）："
+              "韩国手册照片以 Naver 为准，重抓要用 fetch-photos.yml 选 source=naver，"
+              "不要拿 Google 的图顶替。每周一的「自动补破图」会照这样自动补"
+              "（被 Naver 验证码挡住的那几家补不了，要手动跑 source=naver）。")
 
     # 403 的成因有两种，处理方式完全不同，必须让人能分辨：
     # (a) Google Places 图片链接带签名、会过期 → 真失效，要重抓；

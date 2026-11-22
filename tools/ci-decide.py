@@ -77,15 +77,16 @@ RULES = {
     "prices": ["trading/fetch_prices.py", "trading/analyzer.py", "trading/universe.json", "tools/check-prices.py"],
     "staff":     ["staff/**", "expense-tracker.html", "tools/build-staff-page.py",
                   "tools/check-staff-page.mjs"],
-    # 两本手册的天气条与实时空气质量条：前端现抓 open-meteo / data.gov.sg，
-    # 只有真浏览器验得了（check-weather.mjs 一支同时验 singapore ＋ penang）
-    "weather": ["singapore-trip/index.html", "sg-jkt-trip/singapore.html", "sg-jkt-trip/jakarta.html", "penang-trip/index.html", "penang-trip/v2.html",
+    # 手册的天气条与实时空气质量条：前端现抓 open-meteo / data.gov.sg，
+    # 只有真浏览器验得了（check-weather.mjs 一支同时验新加坡、雅加达、首尔、槟城）
+    "weather": ["singapore-trip/index.html", "sg-jkt-trip/singapore.html", "sg-jkt-trip/jakarta.html",
+                "seoul-trip/index.html", "penang-trip/index.html", "penang-trip/v2.html",
                 "penang-trip/v3.html", "penang-trip/v4.html", "tools/check-weather.mjs"],
-    # 新加坡／雅加达手册没网也打得开（sg-jkt-trip/sw.js）：只有真浏览器断网才验得了
-    "tripoffline": ["sg-jkt-trip/**", "tools/check-trip-offline.mjs"],
+    # 手册没网也打得开（sg-jkt-trip/sw.js、seoul-trip/sw.js）：只有真浏览器断网才验得了
+    "tripoffline": ["sg-jkt-trip/**", "seoul-trip/**", "tools/check-trip-offline.mjs"],
     # 机票卡／老板 App 航班项的实时状态框：前端现抓 /flight-status 再画，时区最容易错，只有真浏览器验得了
-    "flightlive": ["sg-jkt-trip/singapore.html", "sg-jkt-trip/jakarta.html", "boss/index.html",
-                   "tools/check-flight-live.mjs", "tools/lib/boss-check-kit.mjs"],
+    "flightlive": ["sg-jkt-trip/singapore.html", "sg-jkt-trip/jakarta.html", "seoul-trip/index.html",
+                   "boss/index.html", "tools/check-flight-live.mjs", "tools/lib/boss-check-kit.mjs"],
     # 槟城 v3／v4 新版面（票券/今日模式/滑卡/给司机看；v4 是 v3 换皮）：全是 JS 现算，只有真浏览器验得了
     "penangv3": ["penang-trip/v3.html", "penang-trip/v4.html", "tools/check-penang-v3.mjs"],
     # 手册航班时长：跨时区那几段最容易直接拿两地时刻相减，差一小时看不出来
@@ -110,7 +111,7 @@ RULES = {
     # 也盯所有 html 与 trips.py：这支自检里有全仓库唯一的「带照片的新手册有没有登记进 trips.py」，
     # 开新手册的 PR 必须跑到它（不到 1 秒、全打桩不联网，多跑不费事）。
     "refreshphotos": ["tools/refresh-photos.py", "tools/check-refresh-photos.py",
-                      "tools/fetch-photos.mjs", "tools/check-images.py",
+                      "tools/fetch-photos.mjs", "tools/fetch-photos-naver.mjs", "tools/check-images.py",
                       "*.html", "tools/lib/trips.py"],
     # 菜单照过滤：决定卡片上会不会出现菜单，只能在装了 OCR 的机器（CI）上验
     "photofilter": ["tools/photo-filter.py", "tools/check-photo-filter.py"],

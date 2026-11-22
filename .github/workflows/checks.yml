@@ -317,7 +317,7 @@ jobs:
       - run: node tools/check-weather.mjs
 
   tripoffline:
-    name: 新加坡／雅加达手册离线（真浏览器）
+    name: 手册离线（新加坡／雅加达／首尔，真浏览器）
     needs: decide
     if: needs.decide.outputs.tripoffline == 'true'
     runs-on: ubuntu-latest
