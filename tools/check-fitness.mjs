@@ -816,6 +816,14 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
       '能提升体能，但不能改善身体组成', 'App 的保守判断', '“risk factor profiling is no longer included”'];
     const miss = need.filter(b => !html.includes(b));
     check(miss.length === 0, `有氧文案：查证过的数字、来源与界线标签都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
+    // 方案3（70–80% HRmax）跨 ACSM 中等 64–76%／剧烈 77–95% 两档（二手来源）。界线 bpm 用 App 同一条取整规则
+    // （hrRange/cdHr：Math.round(HRmax × 百分比 / 100)），40 岁 HRmax＝208−0.7×40＝180：
+    // 70%→126、76%→136.8→137、77%→138.6→139、80%→144；138 落在两档之间。
+    const HM = Math.round(208 - 0.7 * 40), bp = x => Math.round(HM * x / 100);
+    const p3 = [`${bp(70)}–${bp(76)} 属中等`, `${bp(77)}–${bp(80)} 已进入剧烈下端`];
+    const p3miss = p3.filter(b => (html.split(b).length - 1) < 2);
+    check(!html.includes('按心率算中等') && p3miss.length === 0 && (html.split('分钟数这里取保守的中等计（App 的保守判断）').length - 1) >= 2,
+      `方案3 强度：不再写「按心率算中等」，两处都写 ${p3.join('、')}（App 取整规则）并标 App 的保守判断${p3miss.length ? '（缺或不足两处：' + p3miss.join('、') + '）' : ''}`);
   }
   });
 }
