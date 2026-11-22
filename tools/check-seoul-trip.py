@@ -720,6 +720,14 @@ def check_reader_voice(page, src):
         # 分享内容要带韩文原名（给导游找店），shareCard 读 .orig；缺了分享出去就少韩文名（2026-11-22 Tokyo Saikabo 漏）
         if not re.search(r'<div class="orig">[^<]*[\uac00-\ud7a3]', m.group(2)):
             bad.append(f"{page}:{line_of(src, fa + m.start())}  餐厅卡 {m.group(1)} 缺韩文原名（.orig），分享给导游时会少韩文店名")
+    # 自己找的玩乐／活动卡也要能分享（2026-11-22 用户：常常临时加旅行社没排的行程，要发给导游）
+    xa, xb = src.find('<section id="fun">'), src.find('<section id="info">')
+    xcards = list(re.finditer(r'<div class="evt" id="((?:fun|ev)-[a-z0-9]+)">(.*?)\n</div>\n</div>', src[xa:xb], re.S)) if xa >= 0 else []
+    if len(xcards) < 20:
+        bad.append(f"{page}: 玩乐／活动卡只找到 {len(xcards)} 张，分享检查失效")
+    for m in xcards:
+        if 'data-share onclick="shareCard(this)"' not in m.group(2):
+            bad.append(f"{page}:{line_of(src, xa + m.start())}  玩乐／活动卡 {m.group(1)} 没有「分享」按钮（自己加的行程要能一键发给导游）")
     if "function shareCard" not in src or "navigator.share" not in src or "navigator.clipboard" not in src or "已复制，可贴给导游" not in src:
         bad.append(f"{page}: shareCard 缺 navigator.share／复制到剪贴板的退路／「已复制，可贴给导游」提示")
     for m in re.finditer(r'href="tel:|class="callnote"', src):
@@ -753,7 +761,7 @@ def main(argv):
         for b in bad:
             print("  " + b)
         return 1
-    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发、逐日吃饭栏只引用现有餐厅（当天午餐有开、直线距离在上限内）、D1–D5 每天 12:30 午餐站点且饭前先排景点（D1 上午休息）、每张登机牌座位文字与座位图一一对应、每张地点卡 Google＋Naver 两种评分与快照一致（Naver 无收录的写明）、全页不叫读者自己查证／去做且不写打车地铁（只写车程或直线公里）、每张餐厅卡有分享按钮、每个逐日站点有地图按钮、活动区外链都在 CI 实测清单里、JUMP／VR Zone／国立果川科学馆三卡俱在且 1/4 休已标")
+    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发、逐日吃饭栏只引用现有餐厅（当天午餐有开、直线距离在上限内）、D1–D5 每天 12:30 午餐站点且饭前先排景点（D1 上午休息）、每张登机牌座位文字与座位图一一对应、每张地点卡 Google＋Naver 两种评分与快照一致（Naver 无收录的写明）、全页不叫读者自己查证／去做且不写打车地铁（只写车程或直线公里）、每张餐厅／玩乐／活动卡有分享按钮、每个逐日站点有地图按钮、活动区外链都在 CI 实测清单里、JUMP／VR Zone／国立果川科学馆三卡俱在且 1/4 休已标")
     return 0
 
 
