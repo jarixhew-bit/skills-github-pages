@@ -741,6 +741,11 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     await page.click('nav.tabs [data-tab="cardio"]');
     check(/2026-11-22/.test(await page.textContent('#cdScrWhen')) && (await page.locator('#cdScreen [data-scrv="no"][aria-pressed="true"]').count()) === 5, '自查：5 题预填「没有」（肾脏病没问过、留空），注明是 2026-11-22 提供的答案');
     check(/不必先看医生/.test(await page.textContent('#cdScrMsg')) && /26473759/.test(await page.innerHTML('#cdScreen')) && /PMC7719906/.test(await page.innerHTML('#cdScreen')), '自查全「没有」：写 Riebe 2015／WHO：不必先看医生、可逐步加到剧烈（附来源）');
+    const m0 = await page.textContent('#cdScrMsg');
+    check(/^已回答的都没有/.test(m0) && /肾脏病还没回答/.test(await page.textContent('#cdScreen')), `自查：肾脏病没回答时写「已回答的都没有」，不跟「肾脏病还没回答」打架（${m0.slice(0, 12)}）`);
+    await page.click('#cdScreen [data-scr="kidney"][data-scrv="no"]');
+    const m1 = await page.textContent('#cdScrMsg');
+    check(/^都没有/.test(m1) && !/已回答/.test(m1) && !/肾脏病还没回答/.test(await page.textContent('#cdScreen')), `自查：肾脏病也答了「没有」→ 改回「都没有」（${m1.slice(0, 12)}）`);
     await page.click('#cdScreen [data-scr="hbp"][data-scrv="yes"]');
     check((await picks(page)) === 'p3p3p3' && /App 的保守判断/.test(await page.textContent('#cdScrMsg')), '自查：高血压答「有」→ 三天都只排方案3，标 App 的保守判断');
     await page.click('nav.tabs [data-tab="train"]'); await page.click('#picker [data-wk="B"]');
@@ -803,11 +808,11 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   {
     const html = fs.readFileSync('fitness/index.html', 'utf8');
     const BANNED = ['12 周有氧计划', '/ 12 周', '12 周完成', '从这周开始', 'cdStart', 'CD_WEEKS', 'CD_PHASE', '4×4 间歇是主力', '提升 VO2max 最主要的一招', '燃脂有氧', '燃烧脂肪', '燃脂区', '有氧减脂', '29086308',
-      'Coyle', 'Seiler', 'firstbeat', '+4.9', '本次未重新查证'];
+      'Coyle', 'Seiler', 'firstbeat', '+4.9', '本次未重新查证', '几乎没有，要说清楚', '多 6.91%', '有氧也一样'];
     const hit = BANNED.filter(b => html.includes(b)).concat(/燃脂(?!开关)/.test(html) ? ['燃脂（非「燃脂开关」）'] : []);
     check(hit.length === 0, `有氧文案：旧 12 周计划与「燃脂」说法不再出现${hit.length ? '（还在：' + hit.join('、') + '）' : ''}`);
     const need = ['28917030', '34757594', '22002517', '37939367', '31401727', '17414804', '20100740', '27115137', '26243014', '25010379', '21774751', '35507232', 'PMC7719906', '26473759', '11153730',
-      '6.91%', 'SMD 1.19', 'SMD −0.22', '7.2%', '82% 最大心率', '150–300', '75–150', '这个精确组合没有直接试验', '「2×4」没有直接试验', '剧烈 1 分钟算 2 分钟中等」是 App 的推论',
+      '6.91 个百分点', '很小或没有', '只有方案1', '方案2 快段共 8 分钟', '户外爬坡', '这里取保守的中等', '心肺与血压（App 的推论）', 'SMD 1.19', 'SMD −0.22', '7.2%', '82% 最大心率', '150–300', '75–150', '这个精确组合没有直接试验', '「2×4」没有直接试验', '剧烈 1 分钟算 2 分钟中等」是 App 的推论',
       '能提升体能，但不能改善身体组成', 'App 的保守判断', '“risk factor profiling is no longer included”'];
     const miss = need.filter(b => !html.includes(b));
     check(miss.length === 0, `有氧文案：查证过的数字、来源与界线标签都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
