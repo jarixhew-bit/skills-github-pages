@@ -51,6 +51,20 @@
      同时：JUMP、VR Zone COEX、国立果川科学馆三张玩乐卡在页面里（fun-jump／fun-vrzone／fun-gwacheon），
      JUMP 与果川科学馆（周一固定休）卡上有「1/4（一）休」／「Closed Mon 4 Jan」标注。
 
+ 13. 读者视角＋包车＋分享（2026-11-22 用户一次抓到的五件事）：
+     ① 「不要里面有什么让他们自己去查证、去做的东西」——全页（中英两侧）不准出现叫读者自己查／问／打电话／订位的句式
+        （「出发前看官网」「去前先打电话」「以…为准」「请向…确认」「建议订位」「海外多半拨不通」「check their websites」
+        「booking is advised」「the ticket office has the final say」等，清单见 ASK_READER）；页首「出发前要确认」标题本身放行，
+        里面的句子要写成事实；
+     ② 「我们都包车了，别再写打车、地铁」——不准出现 打车／地铁／T-money／交通卡／出租车／taxi／subway；
+        「离酒店」只准写「车程约 X 分钟」或「直线约 X 公里」；
+     ③ 「每个餐厅旁都有一键分享地点」——每张餐厅卡有 data-share 的「分享」按钮（onclick="shareCard(this)"），页面里有
+        shareCard 函数、navigator.share 与复制到剪贴板的退路；不准再有 tel: 电话链接、「订位电话」说明；
+     ④ 「明洞街没有地图链接吗」——每个逐日站点（.stop）都要有 Google 地图按钮；写着「逛／stroll」却没链到任何地点卡
+        的备注（D4 傍晚逛明洞街当时就是这样漏掉的）也要自带 Google 地图按钮；
+     ⑤ 「乐天城圣诞市集官网打不开」——活动区每颗「官网」按钮的网址要写进 EVENT_WEB_OK（CI 实测 200 的清单），
+        不在清单里的网址红（新增前先用 web-lookup.yml 测；打不开的改链已核实的报道，按钮写「报道」）。
+
 跑法：python3 tools/check-seoul-trip.py [页面.html]     退出码 0 = 全过；1 = 有不符
 """
 import json
@@ -654,17 +668,87 @@ def check_ratings(page, src):
     return bad
 
 
+# ---- 13. 读者视角／包车／分享／逐日站点地图（2026-11-22）----
+ASK_READER = [
+    r"出发前(看|查|再看|先看|确认一下)", r"去(之前|前)(先)?(打电话|查|确认|看|问)", r"以[^。；<，]{1,12}为准", r"请(向|自行|自己|先)[^。；<]{0,14}(确认|查|核实|咨询|询问)",
+    r"建议(订位|预订|预约)", r"需(要)?订(位|票)", r"海外多半拨不通", r"请点[^。；<]{0,12}(拨打|订位|电话)", r"自行(查|确认|核实|联系)",
+    r"(园内|现场|入园后)[^。；<]{0,6}(先)?看(公告|官网)", r"(看|查)(一下)?官网", r"需要跟[^。；<]{0,8}确认", r"订位电话|拨打或订位",
+    r"(check|confirm|verify|look up)[^.<;]{0,40}(website|official site|before you|with the (agency|embassy))", r"check with the (agency|embassy)",
+    r"booking (is )?advised|should book|book (tickets )?ahead|Book ahead", r"ticket office has the final say|go by what the agency", r"Booking phone|virtual numbers",
+    r"please (check|confirm|verify|call|phone)", r"call [^.<;]{0,30}on the day",
+]
+BANNED_TRANSPORT = r"打车|地铁|T-?money|交通卡|出租车|\btaxi\b|\bsubway\b|\bmetro\b"
+# CI（web-lookup.yml）实测能打开的活动区外链；新增一律先测，打不开的改链报道（2026-11-22 实测：乐天百货官方页对用户打不开、DDP 官网 https 证书错）
+EVENT_WEB_OK = {
+    "https://www.consumernews.co.kr/news/articleView.html?idxno=768649",
+    "https://www.mmca.go.kr/exhibitions/exhibitionsDetail.do?exhFlag=2&exhId=202601200002041",
+    "https://www.khan.co.kr/article/202611191115011/",
+    "https://festival.seoul.go.kr/festival/main/festivalView.do?festacode=355",
+    "https://festival.seoul.go.kr/festival/main/festivalView.do?festacode=372",
+    "https://festival.seoul.go.kr/festival/main/festivalView.do?festacode=984",
+    "https://festival.seoul.go.kr/festival/main/festivalView.do?festacode=983",
+    "https://www.songpa.go.kr/culture/detailInfo.do?key=3796&resrceCd=CT0155-1030773",
+    "https://www.yna.co.kr/view/AKR20261104148400030",
+    "https://mediahub.seoul.go.kr/archives/2019492",
+}
+
+
+def check_reader_voice(page, src):
+    bad = []
+    body = re.sub(r"<script.*?</script>|<style.*?</style>|<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), src, flags=re.S)
+    # ② 包车
+    for m in re.finditer(BANNED_TRANSPORT, body, re.I):
+        bad.append(f"{page}:{line_of(body, m.start())}  全程包车，不准写「{m.group(0)}」（用户 2026-11-22：别再写打车、地铁）")
+    for m in re.finditer(r"<strong>离酒店：</strong>([^<]*)", body):
+        if not re.match(r"(车程约 [\d–]+ 分钟|直线约 [\d.]+ 公里)", m.group(1)):
+            bad.append(f"{page}:{line_of(body, m.start())}  「离酒店」只准写「车程约 X 分钟」或「直线约 X 公里」：{m.group(1)[:30]}")
+    # ① 叫读者自己查／去做
+    plain_body = re.sub(r'<div class="pc-h">.*?</div>|<a href="#precheck">.*?</a>', lambda m: "\n" * m.group(0).count("\n"), body, flags=re.S)  # 页首框标题与指向它的链接放行
+    for pat in ASK_READER:
+        for m in re.finditer(pat, plain_body, re.I):
+            bad.append(f"{page}:{line_of(plain_body, m.start())}  叫读者自己去查证／去做：「{m.group(0)[:40]}」（用户 2026-11-22：要直接给结论或写现况事实）")
+    # ③ 分享按钮
+    fa, fb = src.find('<section id="food">'), src.find('<section id="fun">')
+    cards = list(re.finditer(r'<div class="evt" id="(food-[a-z]+)">(.*?)\n</div>\n</div>', src[fa:fb], re.S)) if fa >= 0 else []
+    if not cards:
+        bad.append(f"{page}: 找不到餐厅卡，分享检查失效")
+    for m in cards:
+        if not re.search(r'<button type="button" class="btn-map btn-act" data-share onclick="shareCard\(this\)">', m.group(2)):
+            bad.append(f"{page}:{line_of(src, fa + m.start())}  餐厅卡 {m.group(1)} 没有「分享」按钮（用户要每家店旁都能一键分享给导游）")
+    if "function shareCard" not in src or "navigator.share" not in src or "navigator.clipboard" not in src or "已复制，可贴给导游" not in src:
+        bad.append(f"{page}: shareCard 缺 navigator.share／复制到剪贴板的退路／「已复制，可贴给导游」提示")
+    for m in re.finditer(r'href="tel:|class="callnote"', src):
+        bad.append(f"{page}:{line_of(src, m.start())}  不准有电话链接／订位电话说明（电话那套用户没批准）")
+    # ④ 逐日站点要有地图按钮
+    a = src.find('<section id="itinerary">'); b = src.find("</section>", a)
+    for m in re.finditer(r'<div class="stop" id="([^"]+)">(.*?)(?=<div class="(?:stop|note|dayfoot|day)[ "]|</section>)', src[a:b], re.S):
+        if '<a class="btn-map" href=' not in m.group(2):
+            bad.append(f"{page}:{line_of(src, a + m.start())}  逐日站点 {m.group(1)} 没有 Google 地图按钮")
+    for m in re.finditer(r'<div class="note[^"]*"[^>]*>(.*?)</div>', src[a:b], re.S):
+        st = re.search(r"<strong>(.*?)</strong>", m.group(1), re.S)
+        lead = re.sub(r"<[^>]+>", "", st.group(1)) if st else ""
+        if re.search(r"逛|游览|参观|散步|[Ss]troll|[Vv]isit", lead) and 'href="#' not in m.group(1) and '<a class="btn-map"' not in m.group(1):
+            bad.append(f"{page}:{line_of(src, a + m.start())}  「{lead[:20]}」是个要去的站点，却没链到地点卡、也没有自己的 Google 地图按钮（用户：明洞街没有地图链接吗）")
+    # ⑤ 活动区外链
+    ea = src.find('<section id="events">'); eb = src.find("</section>", ea)
+    for m in re.finditer(r'<a class="btn-map web" href="([^"]+)"', src[ea:eb]):
+        u = __import__("html").unescape(m.group(1))
+        if u not in EVENT_WEB_OK:
+            bad.append(f"{page}:{line_of(src, ea + m.start())}  活动区外链没在 CI 实测清单里（打不开的页面会让读者白点）：{u[:80]}")
+    return bad
+
+
 def main(argv):
     page = argv[0] if argv else PAGE
     path = page if os.path.isabs(page) else os.path.join(REPO, page)
     src = open(path, encoding="utf-8").read()
-    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src) + check_depart_time(page, src) + check_meals(page, src) + check_lunch_slot(page, src) + check_seat_maps(page, src) + check_ratings(page, src)
+    bad = check_photo_count(page, src) + check_changsal(page, src) + check_status(page, src) + check_naver(page, src) + check_groups(page, src) + check_events(page, src) + check_lunch_only(page, src) + check_day00(page, src) + check_depart_time(page, src) + check_meals(page, src) + check_lunch_slot(page, src) + check_seat_maps(page, src) + check_ratings(page, src) + check_reader_voice(page, src)
     if bad:
         print(f"✗ 首尔手册 {len(bad)} 处不符：")
         for b in bad:
             print("  " + b)
         return 1
-    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发、逐日吃饭栏只引用现有餐厅（当天午餐有开、直线距离在上限内）、D1–D5 每天 12:30 午餐站点且饭前先排景点（D1 上午休息）、每张登机牌座位文字与座位图一一对应、每张地点卡 Google＋Naver 两种评分与快照一致（Naver 无收录的写明）、JUMP／VR Zone／国立果川科学馆三卡俱在且 1/4 休已标")
+    print("✓ 首尔手册：每张地点卡 4 张照片、窗棂纹带完整、所有地点状态都是 open、Naver 导航＋中文菜单／介绍按钮与快照一致且页面零 map.naver.com、餐厅分组与 Naver 类别一致、活动区齐全、只排午餐（无晚餐建议、餐厅都有午餐时段）、1/2 出发日 D0 俱全、D2–D5 每天 10:00 出发、逐日吃饭栏只引用现有餐厅（当天午餐有开、直线距离在上限内）、D1–D5 每天 12:30 午餐站点且饭前先排景点（D1 上午休息）、每张登机牌座位文字与座位图一一对应、每张地点卡 Google＋Naver 两种评分与快照一致（Naver 无收录的写明）、全页不叫读者自己查证／去做且不写打车地铁（只写车程或直线公里）、每张餐厅卡有分享按钮、每个逐日站点有地图按钮、活动区外链都在 CI 实测清单里、JUMP／VR Zone／国立果川科学馆三卡俱在且 1/4 休已标")
     return 0
 
 
