@@ -942,5 +942,21 @@
   "google_reviews": 9193,
   "naver_rating": null,
   "naver_reviews": 7680
+ },
+ "https://maps.google.com/?cid=10082373807167163503": {
+  "checked": "2026-11-22",
+  "status": "open",
+  "title": "Myeondong Shopping Street",
+  "naver_id": "18694135",
+  "naver_title": "명동거리",
+  "naver_status": "unknown",
+  "naver_note": "街道类地点，Naver 页面没有营业状态／营业时间字段（全天可走的街区），状态以 Google 为准（Google 未标停业）",
+  "naver_category": "거리,골목",
+  "naver_lat": "37.562948",
+  "naver_lng": "126.9846769",
+  "google_rating": "4.3",
+  "google_reviews": 1198,
+  "naver_rating": 4.96,
+  "naver_reviews": 82
  }
 }
