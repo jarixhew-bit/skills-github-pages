@@ -88,9 +88,25 @@
   放大（`#zmBox.multi`）上下叠两张，下方仍有要点、倒数，另有 `+1 轮／−1`（代理按原本的 `#plRound`／`#plRoundMinus`）。
   **原则：`cfg.media==="anim"` 时只要有 webp 就不准出画布**——自检第 15 段走遍 A/B/C × 三种器材的卡片、跟练每一步（含休息预告）、放大、游泳课。
   `anim3d.js` 只在用户选「3D」或没有 webp 时才出现，它画的仍是程序生成的胶囊／球体人偶（青绿上衣、深色短裤），不是运动风 glb 模型。
-- 有氧分页（2026-10-02）：`CD_KINDS`（三种练法与心率%）、`CD_WEEKS`（12 周每周排什么）、`cdSteps()`（跟练步骤，
-  与力量训练共用全屏播放器，`plMode` 区分）；记录 `fit.cardio`、`fit.vo2`，都进备份。说明文字 `CD_WHY`/`CD_IQOS`/`CD_SAFE`
-  每条都附来源链接——研究多为摘要层级（沙盒打不开全文），改数字前要重新查证，标「未查证」的别擅自写成定论。
+- **力量课后 15 分钟有氧（2026-11-22，取代 2026-10-02 的 12 周有氧计划）**：查证正本 `.claude/notes/fitness-cardio-research.md`
+  （每句事实对得上那里的引句＋PMID＋run ID，否则标「App 的安排／推论／保守判断／做法」；Eddens 2018 的 PMID 是 28917030，不是 29086308）。
+  - 只在**健身房版**（`cfg.equip==="gym"`）：训练卡片的「心肺收尾」换成 `cdCardHTML(wk)`（`#cdBlock`），跟练 `buildSteps()` 在最后一组后接 `cdSteps(id,wk)`
+    （每段一个 timed 步骤、到点自动接下一段，`cdv:true`，最后一步 `kind:"cdlog"` 记一笔）再接放松。哑铃／徒手版完全不变（仍是 `FIN` 心肺收尾）。
+  - 三个方案 `CD_PLANS`（p1 单车 5×1 分钟／p2 椭圆机 2×4／p3 坡度快走）：`ph`＝[类型 warm/up/down/cool, 名称, 秒, 心率 %, 机器设定, 要点]，
+    每个方案合计 900 秒（自检守）；`rows` 是卡片表格与说明用的摘要。心率＝`hrMax()`（填了实测最大心率优先，否则 208−0.7×年龄；年龄取饮食页 `diet.profile.age`，
+    其次旧的 `cfg.age`；都没有→卡片里问 `#cdAgeAsk`，存进 `diet.profile.age`）。方案3 70–80%＝126–144（研究笔记写的 145 是口径不一）。
+  - 配对 `cdPick(wk,now,noSwap)`：自查有「有」→ 全 p3（`why:"screen"`）；第一笔新有氧记录那天起 14 天内（`cdFirst()`）全 p3（`intro`）；之后 A→p3、B→p1、C→p2，
+    满 14–21 天显示「已满 2 周」提示（`fresh`）。非 p3 的日子可「换成方案3」（只记在这次草稿 `current.cdAlt`）。
+  - 语音：每段开头 `speak` 以「加速」（up）或「放慢」（down/cool）或「热身」开头并念心率；`say()` 会把字记进 `sayLog`（自检读 `__fit.cardio.said()`）。
+    大字画面 `cdVisHTML`（`.ph.cdv`，`data-cd`）可点 🔍 放大，`zmFill` 认得它，`zoomFollow` 跟着换段。
+  - 记录 `fit.cardio`：新的 `{kind:"p1|p2|p3",min:15,vig,mod,hr,machine,day}`；旧计划的 `easy/i44/i3030` 照样列在有氧页 `#cdHist`（名称加「旧计划」）、照样进备份。
+    中等／剧烈分钟 `cdMins()`（App 的推论：p1 用力 5、p2 快段 8 算剧烈；旧 i44 每轮 4 分钟、i3030 每回 0.5 分钟算剧烈）、`cdWeekMins()`；
+    「剧烈 1 分钟＝中等 2 分钟」是 App 的推论（WHO 原文只写等量组合）。饮食页每周活动也分开写中等／剧烈。
+  - 有氧分页保留在底部（理由：本周分钟、记录、自查、心率、VO2max、Garmin 都还在这里），内容：`#cdTop`（A/B/C 配对＋三方案心率）、`#cdWeek`、`#cdHist`、
+    `#cdScreen`（运动前自查 `cfg.screen`，预填用户 2026-11-22 的答案：5 题「没有」、肾脏病没问过留空、`preset:1`；改过就去掉 preset；导入时本机还是 preset 才用备份的）、
+    VO2max、心率区间、Garmin（三个方案）、`CD_WHY`、`CD_IQOS`（旧的，未动）、`CD_SAFE`。12 周计划的 `CD_WEEKS`／`CD_PHASE`／`cdStart` 全删，旧的 `cfg.cardioStart` 留在存储里没人读。
+  - 洗髓功默认改 45 分钟（选项 30/40/45/60）：旧默认 40 而且没自己选过（没有 `diet.qg.minSet`）的自动改 45；自己点过的记 `minSet`。
+  - 自检：check-fitness 第 20 段（每小段各自 `guard`，一段炸了不吞掉后面的）。第 15 段「两动作同框」下限从 6 改 4（健身房版不再有 AMRAP 收尾）。
 - **真人写实版动图（2026-11-10，用户选的参考人物 A：高马尾、珊瑚色套装）**：17 张（热身 8、放松 4、高脚杯深蹲、史密斯深蹲、坐姿推胸机、
   哑铃罗马尼亚硬拉、哑铃俯身划船），清单正本 `tools/lib/fitness-anim-real.json`；`render-fitness-anim.mjs` 全量重跑会跳过它们。
   - 做法：渲染台渲染「去字幕、不发光、体型调瘦」的 3D 来源影片（720×960）→ Higgsfield `seedance_2_0_mini`（480p、5 秒、每支 2.5 点，
@@ -129,7 +145,7 @@
   - 算法：蛋白 1.6×kg（`protTarget`，显示四舍五入）；热量男 1500–1800／女 1200–1500 或每天少 500–750（Jensen 2013）；
     分餐 `mealPlan()`：第一餐开窗、最后一餐关窗前 30 分钟、中间平分，每餐＝目标÷餐数、下限 0.25×kg（ISSN）；
     平台期 `plateauInfo()`：周一开始的周平均，最近一周（本周或上周）往前连续 4 周都要有记录，最近一周 ≥ 3 周前（体重，且有腰围时腰围也是）才提示；
-    洗髓功 `qigong(kg,min)`：3.3 MET（Compendium 15670），毛＝3.3×kg×h、净＝2.3×kg×h、每周 ×7；开关在「更多 → 设置」（`#cfgQg`，存 `diet.qg`）。
+    洗髓功 `qigong(kg,min)`：3.3 MET（Compendium 15670），毛＝3.3×kg×h、净＝2.3×kg×h、每周 ×7；开关在「更多 → 设置」（`#cfgQg`，存 `diet.qg`；2026-11-22 起默认 45 分钟）。
   - 「燃脂收尾」已全面改名「心肺收尾」（UI 文字、步骤 phase、Garmin 文字；规格 json 的 note 也改了）。旧记录里没有存这个字，不影响相容。
   - 说明「减脂的关键」删掉无来源的「多走路…更容易累积」，换成 Thorogood 2011／ACSM 2009／Jensen 2013 的查证数字。
   - 自检：check-fitness 第 17 段（手算 fixture、平台期 3 周出／2 周不出、改名、备份来回、BANNED／need 文案守门）。
