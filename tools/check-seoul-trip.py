@@ -676,6 +676,8 @@ ASK_READER = [
     r"(check|confirm|verify|look up)[^.<;]{0,40}(website|official site|before you|with the (agency|embassy))", r"check with the (agency|embassy)",
     r"booking (is )?advised|should book|book (tickets )?ahead|Book ahead", r"ticket office has the final say|go by what the agency", r"Booking phone|virtual numbers",
     r"please (check|confirm|verify|call|phone)", r"call [^.<;]{0,30}on the day",
+    # 2026-11-22 verifier 补抓：给读者出主意的口吻（「可行的调法」「建议改到…」）改成直接陈述手册怎么排
+    r"可行的调法|建议改到|workable swap|suggested for", r"入境前仍要|You still need to",
 ]
 BANNED_TRANSPORT = r"打车|地铁|T-?money|交通卡|出租车|\btaxi\b|\bsubway\b|\bmetro\b"
 # CI（web-lookup.yml）实测能打开的活动区外链；新增一律先测，打不开的改链报道（2026-11-22 实测：乐天百货官方页对用户打不开、DDP 官网 https 证书错）
@@ -715,6 +717,9 @@ def check_reader_voice(page, src):
     for m in cards:
         if not re.search(r'<button type="button" class="btn-map btn-act" data-share onclick="shareCard\(this\)">', m.group(2)):
             bad.append(f"{page}:{line_of(src, fa + m.start())}  餐厅卡 {m.group(1)} 没有「分享」按钮（用户要每家店旁都能一键分享给导游）")
+        # 分享内容要带韩文原名（给导游找店），shareCard 读 .orig；缺了分享出去就少韩文名（2026-11-22 Tokyo Saikabo 漏）
+        if not re.search(r'<div class="orig">[^<]*[\uac00-\ud7a3]', m.group(2)):
+            bad.append(f"{page}:{line_of(src, fa + m.start())}  餐厅卡 {m.group(1)} 缺韩文原名（.orig），分享给导游时会少韩文店名")
     if "function shareCard" not in src or "navigator.share" not in src or "navigator.clipboard" not in src or "已复制，可贴给导游" not in src:
         bad.append(f"{page}: shareCard 缺 navigator.share／复制到剪贴板的退路／「已复制，可贴给导游」提示")
     for m in re.finditer(r'href="tel:|class="callnote"', src):
