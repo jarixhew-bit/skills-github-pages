@@ -408,6 +408,19 @@ OV.pronepec = { // 趴着、左手往旁伸直贴地（T 字），右手推地�
     const t = ik('Right', 'arm', S.clone().lerp(H, 1), nrm(UP, 0.6, c.T, 0.3, c.F, -0.3));
     return Object.assign({ LeftArm: la, LeftForeArm: la.clone(), LeftHand: la.clone() }, t, { RightHand: nrm(c.F, 1, DOWN, 0.2) }); } };
 OV.dbbridge = { arms: OV.thrust.arms };
+// ---- 加练手臂（2026-11-23）：上臂贴在身体两侧（略往外，免得手／哑铃穿进大腿），只有手肘在动 ----
+const curlArms = (c, wide) => both(s => { const o = OS(c, s), th = THREE.MathUtils.degToRad(8 + 138 * c.p);
+  return { [s + 'Arm']: nrm(c.T, -1, o, wide, c.F, 0.03), [s + 'ForeArm']: nrm(c.T, -Math.cos(th), c.F, Math.sin(th), o, wide * 0.9) }; });
+OV.curl = { arms: c => curlArms(c, 0.16) };
+OV.cablecurl = { arms: c => curlArms(c, 0.1) };
+OV.pushdown = { arms: c => both(s => { const o = OS(c, s), th = THREE.MathUtils.degToRad(122 - 118 * c.p); // 手肘贴体侧略前，手从约上胸高度压到手臂伸直；两手靠近（握绳）
+  return { [s + 'Arm']: nrm(c.T, -1, c.F, 0.18, o, 0.08), [s + 'ForeArm']: nrm(DOWN, Math.cos(th), hz(c.F), Math.sin(th), o, -0.12) }; }) };
+OV.ohext = { arms: c => { // 坐姿过头臂屈伸：两手在头顶中线一起捧一只哑铃，上臂竖直、手肘朝前；放下时手到头后
+  const S0 = W3('RightArm').lerp(W3('LeftArm'), 0.5), L = (LEN.RightArm + LEN.RightForeArm) * 0.97;
+  const top = S0.clone().add(c.T.clone().multiplyScalar(L * 0.97)).add(c.F.clone().multiplyScalar(1.5));
+  const bot = S0.clone().add(c.T.clone().multiplyScalar(LEN.RightArm * 0.62)).add(c.F.clone().multiplyScalar(-9));
+  const m = top.lerp(bot, c.p).add(c.F.clone().multiplyScalar(-4 * Math.sin(Math.PI * c.p))); // 走弧线绕过头顶
+  return both(s => ik(s, 'arm', m.clone().add(OS(c, s).multiplyScalar(2.6)), nrm(c.T, 1, c.F, 0.55, OS(c, s), 0.35))); } };
 // ---- 体态小课（2026-11-18）：侧躺、坐地、手扶髋 ----
 const hz = v => { const o = v.clone(); o.y = 0; return o.normalize(); };
 const hdir = (c, th, dn) => { const a = THREE.MathUtils.degToRad(th), d = THREE.MathUtils.degToRad(dn || 0); // 水平方位角 th（0＝正前、+＝往右）、往下倾 dn 度
@@ -642,6 +655,13 @@ function props(s, P, c) {
   if (pr0('roller')) { if (PROPX == null) PROPX = W3('Spine2').lerp(W3('Neck'), 0.4).x; rod(V(PROPX, ROLLR, -24), V(PROPX, ROLLR, 24), ROLLR, M.pad); } // 泡沫轴：横在上背下（第 0 格定位）
   if (pr0('wallH')) { if (PROPX == null) PROPX = Math.max(W3('RightForeArm').x, W3('RightHand').x, W3('LeftForeArm').x, W3('LeftHand').x) + 3.2; box(PROPX, PROPX + 3, 0, 135, 120, M.room); } // 靠墙滑臂：前臂贴着的墙
   if (KEY === 'pullapart') rod(W3('RightHand'), W3('LeftHand'), 0.7, M.band); // 弹力带：两手之间
+  if (KEY === 'cablecurl') { // 直杆横在两手间，钢索往前下拉到地上的低滑轮
+    const r = W3('RightHand'), l = W3('LeftHand'), o = r.clone().sub(l).normalize(), m = r.clone().lerp(l, 0.5);
+    rod(l.clone().sub(o.clone().multiplyScalar(5)), r.clone().add(o.clone().multiplyScalar(5)), 1.0, M.chrome);
+    const pul = V(W3('Hips').x + 44, 6, m.z); rod(m, pul, 0.35, M.cable); box(pul.x - 3, pul.x + 9, 0, 9, 12, M.iron); box(pul.x + 6, pul.x + 14, 0, 150, 18, M.prop); }
+  if (KEY === 'pushdown') { // 绳索：两手间往上到高滑轮，配重塔在前面
+    const m = W3('RightHand').lerp(W3('LeftHand'), 0.5), pul = V(W3('Hips').x + 30, 150, m.z);
+    rod(m, pul, 0.35, M.cable); rod(W3('RightHand'), W3('LeftHand'), 0.7, M.cable); box(pul.x + 2, pul.x + 10, 0, 156, 18, M.prop); }
   if (KEY === 'facepull') { const m = W3('RightHand').lerp(W3('LeftHand'), 0.5); rod(m, V(m.x + 140, W3('Head').y, m.z), 0.35, M.cable); }
   if (KEY === 'wallpec' && c.E) { // 墙：在身体左边，墙面贴着左前臂外侧（皮肉约 2.6 单位厚）
     const cz = c.E.z + c.wallN.z * (2.6 + 1.5); box(c.E.x - 55, c.E.x + 40, 0, 128, 3, M.room, 0, null, null, cz); }
@@ -663,7 +683,7 @@ function fist(side, on) {
   for (const k of [2, 3]) { const b = B(side + 'HandThumb' + k); if (!b) continue; b.quaternion.copy(fingerRest[b.name]); if (on) b.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(V(1, 0, 0), THREE.MathUtils.degToRad(40))); }
 }
 function dumbbells(hold, c) {
-  const grip = KEY === 'smithsquat' || KEY === 'clasp'; // clasp：十指交扣用握拳近似 // 握杠的动作也握拳
+  const grip = KEY === 'smithsquat' || KEY === 'clasp' || KEY === 'cablecurl' || KEY === 'pushdown'; // clasp：十指交扣用握拳近似 // 握杠的动作也握拳
   fist('Right', !!hold || grip); fist('Left', hold === 'hands' || hold === 'one' || grip); root.updateMatrixWorld(true);
   DB[0].visible = DB[1].visible = false;
   const rh = W3('RightHand'), lh = W3('LeftHand');
@@ -757,7 +777,7 @@ function setHalos(pts, k, size = 13) { const main = pts.filter(q => q[1] >= 1); 
 const CONC = { squat: 'down', squatG: 'down', thruster: [1, 1, 0, 0], legpress: 'up', hpush: 'down', bench: 'up', fpress: 'up', incline: 'up', seatpush: 'up',
   hinge: 'down', legcurl: 'up', bridge: 'up', bridge2: 'up', thrust: 'up', row: 'up', row1: 'up', invrow: 'up', seatrow: 'up', pulldown: 'up', ohp: 'up', seatohp: 'up',
   pike: 'down', lunge: 'down', split: 'down', step: 'up', rfly: 'up', facepull: 'up', yraise: 'up', climber: [0.9, 0.9], swing: 'up', jack: [0.85, 0.85], deadbug: 'up',
-  burpee: [0.6, 1, 1, 1, 1, 1], tap: [0.85, 0.85], sldl: 'down', smithsquat: 'down', dbbridge: 'up', pullup: 'up', pullapart: 'up', ohpseat: 'up',
+  burpee: [0.6, 1, 1, 1, 1, 1], tap: [0.85, 0.85], sldl: 'down', smithsquat: 'down', dbbridge: 'up', pullup: 'up', pullapart: 'up', ohpseat: 'up', curl: 'up', cablecurl: 'up', pushdown: 'up', ohext: 'down',
   wallslide: 'up', sideplank: 'up', clam: 'up', suitcase: [0.85, 0.85], chintuck: 'up' };
 // PEAK：拉得最开的是第几个关键帧；'both'＝两端都是（左右交替／猫牛），'const'＝一直拉着
 const PEAK = { quad: 1, fig4: 1, chest: 1, child: 1, march: 'both', armcircle: 'const', catcow: 'both', lungeT: 1, scap: 'both', wgs: 1, hip9090: 1, hipflex: 1, ankle: 1, thoracic: 1 };

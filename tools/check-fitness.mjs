@@ -36,6 +36,8 @@
  *  20. 力量课后 20 分钟有氧（取代 12 周有氧计划；2026-11-23 由 15 分钟改 20 分钟）：健身房版结尾是有氧、哑铃／徒手照旧心肺收尾；前 2 周全方案3、之后 A3/B1/C2；
  *      40 岁心率手算；各段合计 20:00、kcal 与剧烈／中等分钟对得上手算；语音加速／放慢；放大；记一笔；中等／剧烈分钟（含旧记录）；旧记录照样显示＋备份来回；
  *      自查答「有」只给方案3；C 日换方案3；问年龄；洗髓功 45 分钟数字；文案守门。
+ *  21. 两个加量开关（默认关）：「每个动作做 4 组」正常周 4／减量周 2、「加练手臂」三种器材（徒手不加）、跟练／Garmin／全部约几分钟（手算）、
+ *      手臂加重建议与新纪录、每周训练量、旧 3 组记录相容、备份来回、文案守门。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
  *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
@@ -862,10 +864,11 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   const { ctx, page, errors } = await openWith(HIST_ALT);
   // 静态：每个槽位在三种器材版都至少 3 个替代，每个替代都有动图与规格
   const st = await page.evaluate(() => { const A = window.__fit.alts, out = { few: [], bad: [], combos: [] };
-    for (const id in A.ALTS) for (const eq of ['db', 'bw', 'gym']) { const l = A.altList(id, eq); if (l.length < 3) out.few.push(id + '/' + eq + '=' + l.length); }
+    // 加练手臂的两个槽位（2026-11-23，开关默认关）只有哑铃／健身房版，互为替代：各 1 个就够
+    for (const id in A.ALTS) for (const eq of ['db', 'bw', 'gym']) { const arm = id === 'curl' || id === 'tri'; if (arm && eq === 'bw') continue; const l = A.altList(id, eq); if (l.length < (arm ? 1 : 3)) out.few.push(id + '/' + eq + '=' + l.length); }
     for (const id in A.ALTS) for (const k of A.ALTS[id]) { if (!A.validKey(k)) { out.bad.push(k); continue; } const x = A.kInfo(k); out.combos.push({ k, file: x.anim + (x.hold ? '-' + x.hold : ''), anim: x.anim, tag: x.tag, name: x.name }); }
     return out; });
-  check(st.few.length === 0, `每个槽位在哑铃／徒手／健身房版都有 ≥3 个替代动作${st.few.length ? '（不够：' + st.few.join(', ') + '）' : ''}`);
+  check(st.few.length === 0, `每个槽位在哑铃／徒手／健身房版都有 ≥3 个替代动作（手臂两个槽位 ≥1）${st.few.length ? '（不够：' + st.few.join(', ') + '）' : ''}`);
   check(st.bad.length === 0, `替代清单里的动作身份都有效${st.bad.length ? '（无效：' + st.bad.join(', ') + '）' : ''}`);
   const spec = JSON.parse(fs.readFileSync('tools/lib/fitness-anim-spec.json', 'utf8'));
   const noAnim = st.combos.filter(c => !fs.existsSync(`fitness/anim/${c.file}.webp`) || !spec.some(s => s.file === c.file && s.anim === c.anim)).map(c => c.k);
@@ -1701,6 +1704,212 @@ for (const [label, rows, want] of [
     check(errors.length === 0, `急诊红旗没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
     await ctx.close();
   }
+}
+
+// ---- 21. 两个加量开关（2026-11-23 用户拍板：只要开关、默认关）：「每个动作做 4 组」「加练手臂」 ----
+// 守：(a) 默认关＝跟加开关之前完全一样（3 组、没有手臂段、时间不变）；(b) 4 组：正常周 4、减量周 2，跟练／Garmin／时间跟着变；
+// (c) 加练手臂：三种器材的卡片／跟练／Garmin／动图对、徒手版不加；减量周 1 轮；(d) 双重进步法：手臂 2 组做满就加重、
+// 旧的 3 组记录在 4 组模式照旧算、4 组都做满才加重、miss2 照旧；新纪录与每周训练量含手臂；(e) 备份来回保留开关；(f) 文案守门。
+// 时间估算手算（App 的估算：每组 45 秒＋步骤里写死的秒数，休息 60 秒）：
+//   健身房：热身 240＋放松 180＋有氧 1200＋12 组×45＋6 次休息×60 ＝ 2520 秒 ＝ 42 分钟
+//   ＋4 组：多 4 组×45＋2 次休息×60 ＝ 300 秒 → 2820 ＝ 47；＋手臂（2 轮）：4 组×45＋2×60 ＝ 300 → 47；两个都开 3120 ＝ 52
+//   哑铃 A：热身 240＋放松 180＋心肺收尾 6 分钟 360＋540＋360 ＝ 1680 ＝ 28；＋手臂 33；徒手开手臂仍 28（徒手不加）
+//   健身房减量周（2 轮）：1620＋8×45＋4×60 ＝ 2220；＋手臂 1 轮（2×45＋60＝150）→ 2370 秒 ＝ 39.5 → 显示 40
+{
+  const guard = async (label, fn) => { try { await fn(); } catch (e) { check(false, `${label}：执行出错 ${String(e).split('\n')[0].slice(0, 160)}`); } };
+  const T2 = { timeout: 4000 };
+  const steps = (page, wk) => page.evaluate(w => window.__fit.vol.buildSteps(w).map(s => ({ k: s.kind, id: s.id || '', ph: s.phase || '', cdv: !!s.cdv, fin: !!s.fin })), wk);
+  const est = page => page.evaluate(() => ['A', 'B', 'C'].map(w => window.__fit.vol.estSec(window.__fit.vol.buildSteps(w))));
+  const sets2 = (ex, kg, reps, n = 2, rir = 2) => Array.from({ length: n }, (_, i) => ({ ex, set: i + 1, kg, reps: Array.isArray(reps) ? reps[i] : reps, rir, done: true }));
+  const gsess = (id, d, wk, list, extra = {}) => sess(id, d, wk, list, { equip: 'gym', ...extra });
+
+  await guard('加量开关 (a) 默认关', async () => {
+    for (const [eq, sec, mins] of [['gym', 2520, 42], ['db', 1680, 28], ['bw', 1680, 28]]) {
+      const { ctx, page, errors } = await openWith([], undefined, { cfg: { equip: eq } });
+      await page.click('#picker [data-wk="A"]');
+      const rows = await page.locator('#workout [data-done^="gsquat_"]').count();
+      const st = await steps(page, 'A');
+      const e = await est(page);
+      const g = await page.textContent('#gText');
+      const sub = await page.textContent('#goSub');
+      check(rows === 3 && !(await page.locator('#armCard').count()) && st.filter(s => s.k === 'set').length === 12 && !st.some(s => /curl|tri/.test(s.id)),
+        `默认关（${eq}）：每个动作 3 组、没有手臂超级组、跟练 12 组（组 ${rows}／跟练 ${st.filter(s => s.k === 'set').length}）`);
+      check(e[0] === sec && new RegExp('全部约 ' + mins + ' 分钟').test(sub) && /· 3 轮 ·/.test(sub) && !/手臂/.test(sub), `默认关（${eq}）：全部约 ${mins} 分钟（手算 ${sec} 秒；实得 ${e[0]} 秒、「${sub}」）`);
+      check(/重复 3 次/.test(g) && !/重复 4 次|（手臂）|哑铃弯举|绳索弯举|绳索下压|臂屈伸/.test(g), `默认关（${eq}）：Garmin 照旧「重复 3 次」、没有手臂`);
+      await page.click('nav.tabs [data-tab="more"]');
+      check(await page.getAttribute('#cfgSets4', 'aria-pressed') === 'false' && await page.getAttribute('#cfgArms', 'aria-pressed') === 'false', `默认关（${eq}）：设置里两个开关都是关的`);
+      check(errors.length === 0, `默认关（${eq}）没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+      await ctx.close();
+    }
+  });
+
+  await guard('加量开关 (b) 4 组', async () => {
+    const { ctx, page, errors } = await openWith(HIST_A, undefined, { cfg: { equip: 'gym' } });
+    await page.click('nav.tabs [data-tab="more"]'); await page.click('#cfgSets4'); await page.click('nav.tabs [data-tab="train"]');
+    await page.click('#picker [data-wk="A"]');
+    const rows = await page.locator('#workout [data-done^="gsquat_"]').count();
+    const st = await steps(page, 'A');
+    const e = await est(page);
+    check(rows === 4 && st.filter(s => s.k === 'set').length === 16 && st.some(s => /第 4\/4 轮/.test(s.ph)), `开 4 组：正常周每个动作 4 组、跟练 16 组、有「第 4/4 轮」（组 ${rows}）`);
+    check(e[0] === 2820 && /全部约 47 分钟/.test(await page.textContent('#goSub')), `开 4 组（健身房）：全部约 47 分钟（手算 2820 秒；实得 ${e[0]}）`);
+    check(/重复 4 次/.test(await page.textContent('#gText')), '开 4 组：Garmin 写「重复 4 次」');
+    // 4 组中途：第 3 组做完还要再一轮，第 4 组才换下一个超级组
+    await page.click('#workout [data-done="bench_2"]');
+    check(/接着第 4 轮/.test(await page.textContent('#restNext')), '开 4 组：第 3 轮做完的休息提示「接着第 4 轮」');
+    await page.click('#restSkip');
+    // 旧的 3 组记录：深蹲 12kg×12×3 有余力 → 照旧 +2 到 14
+    await page.click('#eqSeg [data-eq="db"]');
+    const sg = await page.locator('#workout .sug').first().textContent();
+    check(/14 kg/.test(sg) && /上次 3 组都做到 12/.test(sg), `开 4 组：旧的 3 组记录照旧算——深蹲 12kg×12×3 → 14 kg（实得：${sg}）`);
+    check(errors.length === 0, `开 4 组没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+    // 减量周仍 2 轮
+    const o = await openWith(HIST_B, undefined, { cfg: { sets4: true } });
+    await o.page.click('#picker [data-wk="A"]');
+    const r2 = await o.page.locator('#workout [data-done^="gsquat_"]').count();
+    check(r2 === 2 && (await steps(o.page, 'A')).filter(s => s.k === 'set').length === 8, `开 4 组：减量周仍每个动作 2 组（实得 ${r2}）`);
+    await o.ctx.close();
+    // 4 组做满才加重；4 组里有一组没满就维持；两次不到下限 → 9 成
+    const four = (kg, reps) => [1, 2, 3, 4].map((n, i) => ({ ex: 'gsquat', set: n, kg, reps: Array.isArray(reps) ? reps[i] : reps, rir: 2, done: true }));
+    const o2 = await openWith([sess('s_41', 9, 'A', four(12, [9, 9, 7, 7])), sess('s_42', 2, 'A', four(12, 12))], undefined, { cfg: { sets4: true } });
+    const s1 = await o2.page.evaluate(() => window.__fit.suggest('db:gsquat'));
+    check(s1.kg === 14 && /上次 4 组都做到 12/.test(s1.text), `开 4 组：上次 4 组都 12 下 → 14 kg（实得 ${s1.kg}：${s1.text}）`);
+    await o2.ctx.close();
+    const o3 = await openWith([sess('s_43', 9, 'A', four(12, [12, 12, 12, 10])), sess('s_44', 2, 'A', four(12, [12, 12, 12, 11]))], undefined, { cfg: { sets4: true } });
+    const s3 = await o3.page.evaluate(() => window.__fit.suggest('db:gsquat'));
+    check(s3.kg === 12 && s3.dir === 'same', `开 4 组：第 4 组没到 12 下 → 维持 12 kg（实得 ${s3.kg} ${s3.dir}）`);
+    await o3.ctx.close();
+    const o4 = await openWith([sess('s_45', 9, 'A', four(20, [9, 8, 7, 6])), sess('s_46', 2, 'A', four(20, [8, 8, 7, 7]))], undefined, { cfg: { sets4: true } });
+    const s4 = await o4.page.evaluate(() => window.__fit.suggest('db:gsquat'));
+    check(s4.kg === 18 && /连续两次/.test(s4.text), `开 4 组：连续两次有组不到 8 下 → 18 kg（20×0.9；实得 ${s4.kg}）`);
+    await o4.ctx.close();
+  });
+
+  await guard('加量开关 (c) 加练手臂', async () => {
+    for (const [eq, names, files, sec, mins] of [
+      ['gym', ['绳索弯举（直杆）', '绳索下压'], ['anim/cablecurl.webp', 'anim/pushdown.webp'], 2820, 47],
+      ['db', ['哑铃弯举', '坐姿哑铃过头臂屈伸'], ['anim/curl-hands.webp', 'anim/ohext-one.webp'], 1980, 33]]) {
+      const { ctx, page, errors } = await openWith([], undefined, { cfg: { equip: eq, arms: true } });
+      await page.click('#picker [data-wk="A"]');
+      const card = page.locator('#armCard');
+      const nm = await card.locator('h3').allTextContents();
+      const srcs = await card.locator('.ph.anim img').evaluateAll(a => a.map(i => i.getAttribute('src')));
+      const rows = await card.locator('[data-done]').count();
+      check(nm.join('|') === names.join('|') && srcs.join('|') === files.join('|') && rows === 4 && /超级组 3 · 手臂/.test(await card.locator('h2').textContent()),
+        `加练手臂（${eq}）：第 3 个超级组＝${names.join('＋')}，各 2 组，动图 ${srcs.join('、')}`);
+      const st = await steps(page, 'A');
+      const iArm = st.findIndex(s => s.id === 'curl'), iLastMain = st.map(s => /^(gsquat|bench|rdl|row1)$/.test(s.id)).lastIndexOf(true), iEnd = st.findIndex(s => s.cdv || s.fin);
+      check(iArm > iLastMain && iArm < iEnd && st.filter(s => s.id === 'curl' || s.id === 'tri').length === 4 && st.some(s => /超级组 3（手臂） · 第 2\/2 轮/.test(s.ph)),
+        `加练手臂（${eq}）：跟练在两个超级组之后、${eq === 'gym' ? '有氧' : '心肺收尾'}之前，弯举＋臂屈伸各 2 组`);
+      const e = await est(page);
+      check(e[0] === sec && new RegExp('全部约 ' + mins + ' 分钟').test(await page.textContent('#goSub')), `加练手臂（${eq}）：全部约 ${mins} 分钟（手算 ${sec} 秒；实得 ${e[0]}）`);
+      const g = await page.textContent('#gText');
+      check(new RegExp('4\\. 重复 2 次（手臂）：[\\s\\S]*' + names[0].replace(/[()（）]/g, '.') + '[\\s\\S]*' + names[1]).test(g) && /6\. 放松/.test(g), `加练手臂（${eq}）：Garmin 第 4 步是手臂（重复 2 次），放松变第 6 步`);
+      // 换动作：手臂两个槽位都有替代，而且有动图
+      await card.locator('[data-swap="curl"]').click();
+      const alts = await card.locator('#alts-curl .alt').count();
+      check(alts === 2 && (await card.locator('#alts-curl .alt img').count()) === 2, `加练手臂（${eq}）：弯举可以换动作（${alts} 个选项、都有小动图）`);
+      // 跟练里的手臂步骤用动图
+      await page.click('#startPlayer');
+      const idx = await page.evaluate(() => window.__fit.player().steps.findIndex(s => s.id === 'tri'));
+      for (let i = 0; i < idx; i++) await page.click('#plNextBtn');
+      check(new RegExp(files[1].replace('.', '\\.')).test(await page.innerHTML('#plPhoto')) && /全部约 \d+ 分钟/.test(await page.textContent('#plCount')), `加练手臂（${eq}）：跟练手臂步骤用新动图，顶部写全部约几分钟`);
+      await page.click('#plClose');
+      check(errors.length === 0, `加练手臂（${eq}）没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+      await ctx.close();
+    }
+    // 徒手：不加，说明为什么
+    {
+      const { ctx, page } = await openWith([], undefined, { cfg: { equip: 'bw', arms: true } });
+      const st = await steps(page, 'A');
+      check(!(await page.locator('#armCard').count()) && await page.locator('#armsBwNote').isVisible() && !st.some(s => /curl|tri/.test(s.id)) && !/（手臂）|哑铃弯举|绳索弯举|绳索下压|臂屈伸/.test(await page.textContent('#gText')) && (await est(page))[0] === 1680,
+        '加练手臂（徒手）：不加手臂段、跟练／Garmin 都没有、时间仍 28 分钟，并写明为什么');
+      await ctx.close();
+    }
+    // 两个都开（健身房）52 分钟；减量周手臂 1 轮、时间 2370 秒
+    {
+      const { ctx, page } = await openWith([], undefined, { cfg: { equip: 'gym', arms: true, sets4: true } });
+      check((await est(page))[0] === 3120 && /4 轮＋手臂 2 轮 · 全部约 52 分钟/.test(await page.textContent('#goSub')), '两个都开（健身房）：4 轮＋手臂 2 轮，全部约 52 分钟（手算 3120 秒）');
+      await ctx.close();
+      const o = await openWith(HIST_B.map(s => ({ ...s, equip: 'gym' })), undefined, { cfg: { equip: 'gym', arms: true, sets4: true } });
+      await o.page.click('#picker [data-wk="A"]');
+      check((await o.page.locator('#armCard [data-done^="curl_"]').count()) === 1 && (await o.page.locator('#workout [data-done^="gsquat_"]').count()) === 2 && (await est(o.page))[0] === 2370 && /全部约 40 分钟/.test(await o.page.textContent('#goSub')),
+        '减量周（两个都开）：主动作 2 组、手臂 1 组，全部约 40 分钟（手算 2370 秒＝39.5）');
+      await o.ctx.close();
+    }
+  });
+
+  await guard('加量开关 (d) 手臂的加重建议、新纪录、训练量', async () => {
+    const hist = [gsess('s_a1', 9, 'B', sets2('curl', 20, [11, 10])), gsess('s_a2', 2, 'A', [...sets2('curl', 20, 12), ...sets2('tri', 25, [9, 8])])];
+    const { ctx, page, errors } = await openWith(hist, undefined, { cfg: { equip: 'gym', arms: true } });
+    const c = await page.evaluate(() => window.__fit.suggest('gym:curl'));
+    check(c.kg === 22.5 && /上次 2 组都做到 12/.test(c.text), `手臂：上次 2 组都做到 12 下 → 加到 22.5 kg（器械 +2.5；实得 ${c.kg}：${c.text}）`);
+    const t = await page.evaluate(() => window.__fit.suggest('gym:tri'));
+    check(t.kg === 25 && t.dir === 'same', `手臂：下压有组不到 10 下（只一次）→ 维持 25 kg（实得 ${t.kg} ${t.dir}）`);
+    // 新纪录：绳索弯举 25kg×12 > 以前 20kg×12
+    await page.click('#picker [data-wk="C"]');
+    await page.fill('#kg-curl_0', '25'); await page.fill('#rp-curl_0', '12');
+    await page.click('#workout [data-done="curl_0"]');
+    await page.click('#finishBtn');
+    check(/新纪录：绳索弯举/.test(await page.textContent('#storeNote')), `手臂：弯举 25kg×12 → 储存时报新纪录（${(await page.textContent('#storeNote')).slice(0, 60)}）`);
+    // 记录页与每周训练量含手臂
+    await page.click('nav.tabs [data-tab="hist"]');
+    check(/绳索弯举（直杆）：25kg×12/.test(await page.textContent('#histList')), '手臂：记录页列出这次的绳索弯举');
+    await page.click('nav.tabs [data-tab="prog"]');
+    const vol = await page.evaluate(() => [...document.querySelectorAll('#volChart path[fill="var(--accent)"]')].length);
+    const tips = await page.evaluate(() => { const svg = document.querySelector('#volChart svg'); const r = svg.getBoundingClientRect(); svg.dispatchEvent(new PointerEvent('pointermove', { clientX: r.right - 12, clientY: r.top + 20, bubbles: true })); return document.querySelector('#volChart .tip').textContent; });
+    // 本周（9/28 起）：2 天前 20×12×2＋25×9＋25×8 ＝ 480＋225＋200 ＝ 905，今天 25×12 ＝ 300 → 1,205 kg
+    check(vol >= 1 && /1,205 kg/.test(tips), `每周训练量含手臂：本周 905＋300 ＝ 1,205 kg（实得：${tips}）`);
+    check(errors.length === 0, `手臂建议没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+    // 减量周手臂：9 成、只做 1 轮
+    const o = await openWith([...HIST_B, sess('s_b9', 3, 'A', sets2('curl', 10, 12))], undefined, { cfg: { arms: true } });
+    const d = await o.page.evaluate(() => window.__fit.suggest('db:curl'));
+    check(d.dir === 'down' && /只做 1 轮/.test(d.text) && d.kg === 10, `减量周手臂：12×0.9＝10.8 取整到 2 kg＝10、写「只做 1 轮」（实得 ${d.kg}：${d.text}）`);
+    await o.ctx.close();
+  });
+
+  await guard('加量开关 (e) 备份来回', async () => {
+    const { ctx, page } = await openWith(HIST_A, undefined, { cfg: { sets4: true, arms: true, addSet: 1 } });
+    await page.click('nav.tabs [data-tab="more"]');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+    const bf = os.tmpdir() + '/fit-addvol-backup.json'; fs.copyFileSync(await dl.path(), bf); const bk = JSON.parse(fs.readFileSync(bf, 'utf8'));
+    check(bk.cfg.sets4 === true && bk.cfg.arms === true, '备份：cfg 里带着两个开关');
+    await ctx.close();
+    const b2 = await openWith([]);
+    await b2.page.click('nav.tabs [data-tab="more"]');
+    await b2.page.setInputFiles('#bkFile', bf);
+    await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    const c2 = await b2.page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')));
+    check(c2.sets4 === true && c2.arms === true && await b2.page.getAttribute('#cfgArms', 'aria-pressed') === 'true', '导入到新手机：两个开关都还原成开');
+    await b2.ctx.close();
+    const b3 = await openWith([], undefined, { cfg: { sets4: false, arms: false, addSet: 1 } });
+    await b3.page.click('nav.tabs [data-tab="more"]');
+    await b3.page.setInputFiles('#bkFile', bf);
+    await b3.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    const c3 = await b3.page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')));
+    check(c3.sets4 === false && c3.arms === false, '导入：本机自己动过开关的，不被备份覆盖');
+    await b3.ctx.close();
+  });
+
+  await guard('加量开关 (f) 文案守门', async () => {
+    const { ctx, page } = await openWith([]);
+    await page.click('nav.tabs [data-tab="more"]');
+    const w4 = await page.textContent('#sets4Why'), wa = await page.textContent('#armsWhy'), nt = await page.textContent('#addVolNote');
+    const need4 = ['默认关', '减量周仍是 2 轮', '0.023', '0.37%', '15 个研究', 'P=0.074', '只有趋势', 'Schoenfeld 2017', 'Schoenfeld 2019', 'App 的安排'];
+    const needA = ['默认关', '10–12', '减量周 1 轮', 'App 的保守安排', '徒手版不加', '10 名', '8 周', '11.06%', '5.16%', 'Mannarino 2021', '20 名', '5.2%', '4.0%', '没有差别', 'Barbalho 2018', '已被撤稿', '没查证'];
+    const needN = ['App 的保守判断', '先只开一个', '2–3 周', '连续两次推不上去', '超过 3 天', '睡眠变差', '不想去练', '两项以上就关掉'];
+    const miss = [...need4.filter(x => !w4.includes(x)), ...needA.filter(x => !wa.includes(x)), ...needN.filter(x => !nt.includes(x))];
+    check(miss.length === 0, `加量开关文案：来源数字与「App 的安排／保守判断」标签都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
+    const html = await page.content();
+    check(['27433992', '30558493', '31268995', '30662699'].every(id => html.includes('pubmed.ncbi.nlm.nih.gov/' + id)), '加量开关文案：四篇来源都附 PubMed 连结');
+    const BANNED = ['显著增加', '证明', '一定会', '更快增肌', '明显更好'];
+    const hit = BANNED.filter(b => (w4 + wa).includes(b));
+    check(hit.length === 0, `加量开关文案：没有比原文强的说法${hit.length ? '（还在：' + hit.join('、') + '）' : ''}`);
+    const notes = fs.readFileSync('.claude/notes/fitness-fatloss-research.md', 'utf8');
+    check(['27433992', '30558493', '31268995', '30662699', '31072272', 'Each additional set was associated', 'P = 0.074', '11.06%', 'flexed arm', 'volume-equated'].every(x => notes.includes(x)), '研究笔记：四篇来源的原文引句＋撤稿那篇 PMID 都记下了');
+    await ctx.close();
+  });
 }
 
 // ---- 手机宽度：没有横向卷动 ----

@@ -2201,5 +2201,103 @@
    "https://www.rehabhero.ca/exercise/foam-roller-thoracic-extension"
   ],
   "note": "2026-11-19 经 CI 读网页通道（web-lookup.yml，run 44453815447＋44453926108）读原文：Physitrack「Lie on your back with a foam roller placed horizontally under your upper back and hands crossed on your chest.」「Straighten your thoracic spine (upper back) against the roller when exhaling. Return to the starting position when inhaling.」「Go through the whole thoracic spine vertebrae-by-vertebrae by moving the roll up/down the upper back.」「Keep your chin tucked in.」「Do not let your lower back arch.」；Rehab Hero「Lay on a foam roller placed below your upper back. Keep the pelvis on the floor as your extend your upper back over the foam roller and reach overhead with your arms.」（App 用 Physitrack 的双手交叉胸前版）。时间（约 1 分钟）两页都没写，是 App 的安排。"
+ },
+ {
+  "file": "curl-hands",
+  "anim": "curl",
+  "type": "strength",
+  "title_zh": "哑铃弯举",
+  "reps": "10–12",
+  "cue_zh": "上臂贴身不动，只弯手肘",
+  "primary": [
+   "biceps"
+  ],
+  "secondary": [
+   "forearm"
+  ],
+  "strip": [
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "sagittal",
+  "plane_detail": "站姿、两手各一只哑铃垂在身侧、掌心朝前；上臂贴体侧（可略往前，不往后），只屈肘把哑铃举到肩前，再控制着放到手臂伸直；身体不晃。",
+  "form_audit": "新动作（2026-11-23 加练手臂）：f0 上臂近垂直、前臂伸直；f1 前臂屈到约 148°（手在肩前），上臂只往前约 6°。",
+  "sources": [
+   "https://www.strengthlog.com/dumbbell-curl/"
+  ],
+  "note": "StrengthLog 原文（2026-11-23 CI web-lookup 读回）：\"Hold a pair of dumbbells in an underhand (supinated) grip, arms hanging by your sides.\"、\"Don’t let your upper arms travel back during the curl. Keep them at your sides, or move them slightly forward.\"、\"Avoid swinging the weights\"、\"Your body shouldn’t move, just the arms.\""
+ },
+ {
+  "file": "cablecurl",
+  "anim": "cablecurl",
+  "type": "strength",
+  "title_zh": "绳索弯举",
+  "reps": "10–12",
+  "cue_zh": "握直杆，上臂不动只弯手肘",
+  "primary": [
+   "biceps"
+  ],
+  "secondary": [
+   "forearm"
+  ],
+  "strip": [
+   "手臂"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "低滑轮装直杆，掌心朝上、两手约肩宽，往后退一步站；上臂不动（或略往前），只屈肘把杆拉到肩前，再控制着放回。",
+  "form_audit": "新动作（2026-11-23 加练手臂）：动作同哑铃弯举，渲染台另画直杆、往前下的钢索与低滑轮。",
+  "sources": [
+   "https://www.strengthlog.com/cable-curl/"
+  ],
+  "note": "StrengthLog 原文（2026-11-23 CI web-lookup）：\"Fasten a bar in the lower position of a cable cross. Grip the bar with an underhand (supinated) grip, hands about shoulder-width apart, and take a step back.\"、\"Don’t let your upper arm travel back during the curl, keep it still or move it slightly forward.\""
+ },
+ {
+  "file": "pushdown",
+  "anim": "pushdown",
+  "type": "strength",
+  "title_zh": "绳索下压",
+  "reps": "10–12",
+  "cue_zh": "手肘贴体侧，只伸直手肘往下压",
+  "primary": [
+   "triceps"
+  ],
+  "secondary": [
+   "forearm"
+  ],
+  "strip": [
+   "手臂"
+  ],
+  "view": "side",
+  "plane": "sagittal",
+  "plane_detail": "面对高滑轮站，手肘弯、贴在体侧，从上胸高度把绳／杆往下压到手臂伸直；身体微前倾时从髋折、背打直；只有手肘在动。",
+  "form_audit": "新动作（2026-11-23 加练手臂）：f0 前臂约 125°（手在上胸高度）、f1 伸直；躯干前倾 10°。",
+  "sources": [
+   "https://www.strengthlog.com/tricep-pushdown/"
+  ],
+  "note": "StrengthLog 原文（2026-11-23 CI web-lookup）：\"Start with the bar at the upper-chest level and your elbows bent and close to your sides.\"、\"Push the bar straight down until your arms are fully extended.\"、\"If you need to lean slightly forward, make sure to tilt from your hips rather than arching your back.\"、\"The only movement that should happen is in your elbow joint\"。"
+ },
+ {
+  "file": "ohext-one",
+  "anim": "ohext",
+  "type": "strength",
+  "title_zh": "坐姿哑铃过头臂屈伸",
+  "reps": "10–12",
+  "cue_zh": "两手捧哑铃，上臂竖直只弯手肘",
+  "primary": [
+   "triceps"
+  ],
+  "secondary": [],
+  "strip": [
+   "手臂"
+  ],
+  "view": "front34",
+  "plane": "sagittal",
+  "plane_detail": "两手一起捧一只哑铃举过头、手臂伸直；上臂竖直不动，只屈肘把哑铃放到头后，再伸直。坐在有椅背的长凳上是 App 的安排（来源写的是站姿）。",
+  "form_audit": "新动作（2026-11-23 加练手臂）：2D 上臂 170–172°、前臂从 180° 往后转到 320°（手到头后）；3D 由渲染台 OV.ohext 把两手 IK 到头顶中线、走弧线绕过头。",
+  "sources": [
+   "https://www.strengthlog.com/dumbbell-standing-triceps-extension/"
+  ],
+  "note": "StrengthLog 原文（2026-11-23 CI web-lookup）：\"Lift a dumbbell up to a straight arm over your head.\"、\"Lower the dumbbell down behind your head, while keeping your upper arm still and vertical.\"、\"Common variations of this exercise is to use a small barbell or a heavier dumbbell which you hold with both hands.\" 坐姿、背靠椅背、轻重量、肩膀不适换绳索下压是 App 的（保守）安排。"
  }
 ]
