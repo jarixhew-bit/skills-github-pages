@@ -512,6 +512,9 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="set-row"><span>每周目标次数</span><div class="seg" role="group" aria-label="每周目标次数" id="cfgGoal"></div></div>
       <div class="set-row"><span>自动减量周<br><span class="small muted">每练 3 周，第 4 周自动减量</span></span><button class="toggle" id="cfgDeload" aria-label="自动减量周" aria-pressed="true"></button></div>
       <div class="set-row"><span>停练后自动降重<br><span class="small muted">停练 7 天以上，回来头 2 次重量先打 9 折（停 3 周以上打 8 折）</span></span><button class="toggle" id="cfgReturn" aria-label="停练后自动降重" aria-pressed="true"></button></div>
+      <div class="set-row" id="sets4Row"><span>每个动作做 4 组<br><span class="small muted" id="sets4Why">默认关。开了：正常周每个超级组做 4 轮（每个动作 4 组），减量周仍是 2 轮；每次约多 5 分钟。来源：15 个研究的汇总，每周每多做 1 组，增肌的效果量多 0.023、肌肉增长的百分比多 0.37%（<a href="https://pubmed.ncbi.nlm.nih.gov/27433992/" target="_blank" rel="noopener">Schoenfeld 2017</a>）；把每周组数分成 &lt;5、5–9、10 组以上三档比较，只有趋势、没达到统计显著（P=0.074）。另一篇汇总：总量一样时，每周练几次不影响增肌（<a href="https://pubmed.ncbi.nlm.nih.gov/30558493/" target="_blank" rel="noopener">Schoenfeld 2019</a>）。多一组的好处小（App 的判断）；平常做 3 组是 App 的安排。</span></span><button class="toggle" id="cfgSets4" aria-label="每个动作做 4 组" aria-pressed="false"></button></div>
+      <div class="set-row" id="armsRow"><span>加练手臂<br><span class="small muted" id="armsWhy">默认关。开了：两个超级组之后、心肺收尾／有氧之前，多一组手臂超级组（二头弯举＋三头下压／臂屈伸，各 2 轮、每组 10–12 下；减量周 1 轮——App 的保守安排）；每次约多 5 分钟。只加在哑铃版与健身房版，徒手版不加（徒手能练手臂的都是多关节动作，跟课表里的推、拉重复——App 的判断）。来源：10 名没训练过的男性、8 周，一只手臂只做弯举、另一只只做划船，弯举那只的肘屈肌（上臂前侧）厚度 +11.06%，划船那只 +5.16%（他们每次 4–6 组、做到力竭）（<a href="https://pubmed.ncbi.nlm.nih.gov/31268995/" target="_blank" rel="noopener">Mannarino 2021</a>）；另一篇 20 名没训练过的男性，多加单关节动作的那组，力量与皮褶厚度跟没加的没有差别，屈臂围度 +5.2% 对 +4.0%（<a href="https://pubmed.ncbi.nlm.nih.gov/30662699/" target="_blank" rel="noopener">Barbalho 2018</a>；同一第一作者的另一篇同类研究已被撤稿，这一篇有没有问题本 App 没查证）。</span></span><button class="toggle" id="cfgArms" aria-label="加练手臂" aria-pressed="false"></button></div>
+      <p class="small muted" id="addVolNote">提醒（App 的保守判断）：减脂期加量，先只开一个，观察 2–3 周。重量连续两次推不上去、酸痛超过 3 天、睡眠变差、不想去练——出现两项以上就关掉。</p>
       <div class="set-row"><span>动作示范<br><span class="small muted">动图＝人体模型连续示范，发力的肌肉亮红光、拉伸的部位亮蓝光（离线也能看）；照片＝真人起始／结束两张</span></span><div class="seg" role="group" aria-label="动作示范" id="cfgMedia"></div></div>
       <div class="set-row"><span>每天练洗髓功<br><span class="small muted">打开后「饮食」页的每周活动会把它算进去（按每天都练计算）</span></span><button class="toggle" id="cfgQg" aria-label="每天练洗髓功" aria-pressed="false"></button></div>
       <div class="set-row" id="cfgQgMinRow"><span>洗髓功每次</span><div class="seg" role="group" aria-label="洗髓功每次几分钟" id="cfgQgMin"></div></div>
@@ -547,8 +550,8 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="stack">
         <ul class="list">
           <li><b>A → B → C 轮流做</b>，一周 2 次就接着轮，不用管星期几。两次训练之间至少隔 1 天。</li>
-          <li>每次：热身 4 分钟 → 超级组 ×2（约 15 分钟）→ 心肺收尾 6 分钟 → 放松 3 分钟 ≈ 28–30 分钟。<b>健身房版</b>的心肺收尾换成 20 分钟有氧（跑步机／单车／椭圆机），≈ 42–44 分钟，详见「有氧」页。</li>
-          <li><b>超级组</b>：两个动作连着做、中间不休息，做完两个再休息，这样算一轮，共 3 轮。</li>
+          <li>每次：热身 4 分钟 → 超级组 ×2（约 15 分钟）→ 心肺收尾 6 分钟 → 放松 3 分钟 ≈ 28–30 分钟。<b>健身房版</b>的心肺收尾换成 20 分钟有氧（跑步机／单车／椭圆机），≈ 42–44 分钟，详见「有氧」页。设置里开「每个动作做 4 组」或「加练手臂」，各约多 5 分钟；训练页开始按钮下会写这次全部约几分钟（App 的估算：每组按 45 秒算）。</li>
+          <li><b>超级组</b>：两个动作连着做、中间不休息，做完两个再休息，这样算一轮，共 3 轮（设置开「每个动作做 4 组」就是 4 轮；减量周 2 轮）。</li>
           <li><b>器材三选一</b>：家里有哑铃选「哑铃」，什么都没有选「徒手」，去健身房选「健身房」。</li>
         </ul>
       </div>
@@ -566,11 +569,11 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
         <p><b>之后 app 自动帮你算（「双重进步法」）</b></p>
         <ul class="list">
           <li>每个动作有次数范围，例如 8–12 下。重量不变，每次争取多做 1 下。</li>
-          <li>3 组都做到<b>上限</b>（例如 12 下）而且还有余力 → 下次自动建议加重。</li>
+          <li>每组都做到<b>上限</b>（例如 12 下）而且还有余力 → 下次自动建议加重（平常 3 组；开了 4 组就看那次做的组数；手臂 2 组）。</li>
           <li>有组做不到<b>下限</b>（例如 8 下）→ 维持同重量；<b>连续两次</b>都做不到 → 建议减轻约 1 成重新累积。</li>
           <li>「余力」＝这组做完还能再做几下。填了它，建议会更准；不填也能用。</li>
         </ul>
-        <p><b>减量周</b>：每练 3 周，第 4 周只做 2 轮、重量约 9 成（App 的做法：用意是让身体缓一缓，效果没有另外查证）。</p>
+        <p><b>减量周</b>：每练 3 周，第 4 周只做 2 轮（手臂 1 轮）、重量约 9 成（App 的做法：用意是让身体缓一缓，效果没有另外查证）。</p>
       </div>
     </details>
 
@@ -760,6 +763,11 @@ var ANIM = (function(){
   def("pullup",  {frames:[{lt:8,ls:-30,H:[8.66,-113],bend:-1,lf:15},{lt:8,ls:-30,H:[8.66,-85],bend:-1,lf:43}], props:["bar","band"]}); // 引体向上：横杆不动、身体往上（lf＝离地高度），下巴过杆
   def("pullapart",{frames:[{lt:0,ls:0,a:90,f:90},{lt:0,ls:0,a:90,f:90}]}); // 弹力带拉开：手臂在肩高往两侧拉开（侧视看不出，3D 动图由渲染台另摆）
   def("smithsquat",{frames:[{t:-2,lt:7,ls:7,a:-35,f:160},{t:20,lt:95,ls:-12,a:-35,f:160}], props:["smith"]}); // 史密斯深蹲：杠在上斜方肌、脚放在杠前一点，杠沿轨道直上直下、躯干比自由深蹲直
+  // 加练手臂（2026-11-23）：上臂贴身不动、只动手肘
+  def("curl",    {frames:[{a:3,f:6},{a:6,f:148}], hold:"hands"}); // 哑铃弯举：掌心朝前，举到肩前
+  def("cablecurl",{frames:[{t:3,a:3,f:8},{t:3,a:6,f:148}]}); // 绳索弯举：面对低滑轮、两手握直杆（钢索由渲染台画）
+  def("pushdown",{frames:[{t:10,lt:4,ls:-4,a:10,f:125},{t:10,lt:4,ls:-4,a:8,f:4}]}); // 绳索下压：上身微前倾、手肘贴体侧，手从约上胸高度压到手臂伸直
+  def("ohext",   {frames:[{t:0,lt:90,ls:0,a:172,f:180},{t:0,lt:90,ls:0,a:170,f:320}], props:["seat","back"], hold:"one"}); // 坐姿过头臂屈伸：上臂竖直，前臂往头后放下（3D 两手合捧一只哑铃）
   def("ohpseat", {frames:[{t:0,lt:90,ls:0,a:10,f:172},{t:0,lt:90,ls:0,a:172,f:180}], props:["seat","back"], hold:"hands"}); // 坐姿哑铃肩推
   // ---- finishers ----
   def("climber", {frames:[{t:65,nt:45,ns:-80,ft:-65,fs:-65,a:0,f:0},{t:65,ft:45,fs:-80,nt:-65,ns:-65,a:0,f:0}], ground:"low", anchorX:"nh", dur:0.4});
@@ -953,7 +961,14 @@ const EX = {
     cue:"整只脚踩稳上面，靠上面那条腿发力站上去，不要用下面的脚蹬地。"},
   rfly:{db:["哑铃俯身反向飞鸟","12–15","Bent-Over Reverse Fly","rfly","hands"], bw:["俯身 Y-T 字","10","Prone Y-T Raise","yraise",null], gym:["绳索面拉","12–15","Face Pull","facepull",null],
     cue:"俯身背平，手臂微弯往两侧打开，想像把肩胛骨夹紧。用轻重量。Y-T 字：趴着把手臂抬离地面停1秒。", gcue:"滑轮调到脸的高度，用绳索把手拉到耳朵两侧，手肘抬高往外打开。"},
+  // 加练手臂（设置「加练手臂」打开才出现，2026-11-23）：只有哑铃版与健身房版；徒手版不加（见 armsOn）。要领来源在 tools/lib/fitness-anim-spec.json 的 sources
+  curl:{db:["哑铃弯举","10–12","Dumbbell Curl","curl","hands"], gym:["绳索弯举（直杆）","10–12","Cable Curl","cablecurl",null],
+    cue:"站直，两手各拿一只哑铃垂在身侧、掌心朝前。上臂贴住身体不动，只弯手肘把哑铃举到肩前，再慢慢放到手臂伸直。身体不要往后仰、不要甩。", gcue:"面对低滑轮站，两手与肩同宽握直杆、掌心朝上。上臂贴住身体不动，只弯手肘把杆拉到肩前，再慢慢放到手臂伸直。身体不要往后仰、不要甩。"},
+  tri:{db:["坐姿哑铃过头臂屈伸","10–12","Seated Dumbbell Overhead Triceps Extension","ohext","one"], gym:["绳索下压","10–12","Cable Triceps Pushdown","pushdown",null],
+    cue:"两手一起捧住一只哑铃，举到头顶上方、手臂伸直。上臂保持竖直不动，只弯手肘把哑铃慢慢放到头后，再伸直推回去。坐在有椅背的长凳上、背贴椅背做，是 App 的安排（站着做也是同一个动作）；先用轻重量，肩膀不舒服就换成绳索下压（App 的保守安排）。", gcue:"面对高滑轮站，两手握绳索（或短杆），上身微微前倾，手肘贴在身体两侧。上臂不动，只伸直手肘往下压到手臂伸直，再慢慢让手回到约胸口高度。身体不动，要前倾就从髋往前倾、背保持直。"},
 };
+const ARM_SLOTS=new Set(["curl","tri"]); // 手臂超级组的两个槽位
+
 const FIN = {
   A:{mode:"amrap",min:6,title:"6 分钟尽量多轮",
      items:{db:[["哑铃深蹲推举 10 次","thruster","hands"],["登山者 20 次（左右各算1）","climber",null]],
@@ -1048,15 +1063,17 @@ const ALTS={
   fpress:["db:fpress","gym:fpress","db:bench","gym:bench","bw:fpress","bw:bench"],
   step:["db:step","bw:step","db:split","db:lunge","db:gsquat","x:smithsquat","gym:gsquat"],
   rfly:["db:rfly","gym:rfly","x:pullapart","bw:rfly","db:row2","gym:row1"],
+  curl:["db:curl","gym:curl"],
+  tri:["db:tri","gym:tri"],
 };
-const GYM_TAG={gsquat:"器械",bench:"器械",rdl:"器械",row1:"绳索",lunge:"哑铃",ohp:"器械",thrust:"器械／史密斯",row2:"绳索",split:"哑铃＋长凳",fpress:"哑铃＋长凳",step:"哑铃＋跳箱",rfly:"绳索"};
+const GYM_TAG={gsquat:"器械",bench:"器械",rdl:"器械",row1:"绳索",lunge:"哑铃",ohp:"器械",thrust:"器械／史密斯",row2:"绳索",split:"哑铃＋长凳",fpress:"哑铃＋长凳",step:"哑铃＋跳箱",rfly:"绳索",curl:"绳索",tri:"绳索"};
 
 // ---------- Storage（只用本机浏览器；另有导出/导入备份） ----------
 const SKEY="fit.sessions", BKEY="fit.body", DKEY="fit.draft", CKEY="fit.cfg";
 const ls={ get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
            set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
            del(k){try{localStorage.removeItem(k)}catch(e){}} };
-const CFG_DEF={equip:"db",voice:true,media:"anim",rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,returnMode:true,lastBackup:0};
+const CFG_DEF={equip:"db",voice:true,media:"anim",rest:60,dbStep:2,gymStep:2.5,goal:3,deload:true,returnMode:true,sets4:false,arms:false,lastBackup:0}; // sets4／arms：2026-11-23 加的两个开关，默认关
 let cfg=Object.assign({},CFG_DEF,ls.get(CKEY,{}));
 if(!cfg.gapWhy||typeof cfg.gapWhy!=="object") cfg.gapWhy={}; // 停练原因：{停练前最后一次训练的 id: "sick"|"trip"|"other"}
 if(!cfg.alts||typeof cfg.alts!=="object") cfg.alts={}; // 换过的动作：{"器材:槽位": 换成的身份}
@@ -1298,7 +1315,16 @@ function cycleInfo(now){
   }
   return info;
 }
-function rounds(){ return cycleInfo().deload?2:3; }
+// 每个超级组几轮：正常周 3 轮（设置开「每个动作做 4 组」＝4 轮），减量周一律 2 轮
+function rounds(){ return cycleInfo().deload?2:(cfg.sets4?4:3); }
+// 加练手臂（设置开关，默认关）：哑铃／健身房版才有；2 轮，减量周 1 轮（App 的保守安排）
+function armsOn(eq){ return !!cfg.arms&&eq!=="bw"; }
+function armRounds(){ return cycleInfo().deload?1:2; }
+function slotOfK(k){ const i=k.indexOf(":"); return k.slice(i+1); }
+function isArmK(k){ return k.slice(0,2)!=="x:"&&ARM_SLOTS.has(slotOfK(k)); }
+// 这次训练的超级组：[{pair, R（轮数）, arms}]
+function blocksFor(wk,eq){ const R=rounds(), out=PLAN[wk].blocks.map(pair=>({pair,R,arms:false}));
+  if(armsOn(eq)) out.push({pair:["curl","tri"],R:armRounds(),arms:true}); return out; }
 
 // ---------- 进步建议（双重进步法） ----------
 // 取某动作（同器材、非减量周）最近几次的已完成组，新的在前
@@ -1334,15 +1360,15 @@ function suggestBase(k){
     return {kg:null,reps:goal,dir:"up",text:"上次最多 "+best+" 下 → 今天争取 "+goal+" 下"+(r&&best>=r.hi?"；已超过范围上限，可放慢下放（数 3 秒）加难度。":"。")};
   }
   const w=topKg(last);
-  const full=r&&last.length>=3&&last.every(s=>(+s.reps||0)>=r.hi&&(s.rir==null||s.rir===""||+s.rir>=1));
+  const arm=isArmK(k), full=r&&last.length>=(arm?2:3)&&last.every(s=>(+s.reps||0)>=r.hi&&(s.rir==null||s.rir===""||+s.rir>=1));
   const miss=r&&last.some(s=>(+s.reps||0)<r.lo);
   const prev=h[1]&&h[1].sets, miss2=miss&&prev&&topKg(prev)===w&&prev.some(s=>(+s.reps||0)<r.lo);
   let kg=w, dir="same", text;
-  if(full){ kg=roundTo(w+st,st); dir="up"; text="上次 3 组都做到 "+r.hi+" 下 → 加到 "+kgStr(kg)+" kg，次数从 "+r.lo+" 下重新往上累积。"; }
+  if(full){ kg=roundTo(w+st,st); dir="up"; text="上次 "+last.length+" 组都做到 "+r.hi+" 下 → 加到 "+kgStr(kg)+" kg，次数从 "+r.lo+" 下重新往上累积。"; }
   else if(miss2){ kg=Math.max(st,roundTo(w*0.9,st)); dir="down"; text="连续两次有组不到 "+r.lo+" 下 → 减到 "+kgStr(kg)+" kg 重新累积，不丢人。"; }
   else if(miss){ text="上次有组不到 "+r.lo+" 下 → 维持 "+kgStr(w)+" kg，先把次数做满。"; }
   else { const lo=last.reduce((m,s)=>Math.min(m,+s.reps||0),99); text="维持 "+kgStr(w)+" kg，每组争取比上次多 1 下（上次最少 "+lo+" 下，做到 "+(r?r.hi:"上限")+" 下就加重）。"; }
-  if(dl){ kg=Math.max(st,roundTo(kg*0.9,st)); dir="down"; text="减量周：用 "+kgStr(kg)+" kg（约 9 成），只做 2 轮，每组留 3 下力气。"; }
+  if(dl){ kg=Math.max(st,roundTo(kg*0.9,st)); dir="down"; text="减量周：用 "+kgStr(kg)+" kg（约 9 成），只做 "+(arm?1:2)+" 轮，每组留 3 下力气。"; }
   return {kg,reps:r?(dir==="up"&&!dl?r.lo:r.hi):null,dir,text};
 }
 function lastText(k){
@@ -1447,7 +1473,7 @@ $("retWhy").addEventListener("click",e=>{ const b=e.target.closest("[data-why]")
 function renderPicker(){
   const nx=nextWk(); if(!selWk) selWk=(draft&&draft.start)?draft.wk:nx;
   $("picker").innerHTML=["A","B","C"].map(k=>'<button data-wk="'+k+'" aria-pressed="'+(k===selWk)+'"><b>'+k+'</b><small>'+PLAN[k].focus+'</small>'+(k===nx?'<small style="color:var(--accent);font-weight:700">下一次</small>':'<small>&nbsp;</small>')+'</button>').join("");
-  $("goSub").textContent="训练 "+selWk+" · "+EQ_LABEL[cfg.equip]+"版 · "+rounds()+" 轮 · 全屏动画带练、自动计时";
+  $("goSub").textContent="训练 "+selWk+" · "+EQ_LABEL[cfg.equip]+"版 · "+rounds()+" 轮"+(armsOn(cfg.equip)?"＋手臂 "+armRounds()+" 轮":"")+" · 全部约 "+estMin(selWk)+" 分钟 · 全屏动画带练、自动计时";
 }
 $("picker").addEventListener("click",e=>{ const b=e.target.closest("[data-wk]"); if(!b) return; selWk=b.dataset.wk; renderPicker(); renderWorkout(); });
 function setEquip(eq){ cfg.equip=eq; saveCfg(); document.querySelectorAll("#eqSeg [data-eq]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.eq===eq)); renderPicker(); renderWorkout(); renderGarmin(); }
@@ -1458,11 +1484,12 @@ function rirSelect(key,v){
 }
 function renderWorkout(){
   ensureDraft(selWk);
-  const P=PLAN[selWk], F=FIN[selWk], R=rounds(), eq=cfg.equip;
+  const F=FIN[selWk], eq=cfg.equip;
   let h='';
   h+='<div class="card" id="warmCard"><div class="block-head"><h2>热身</h2><span class="num">4 分钟</span></div>'+timerHTML("warm","每个动作 30 秒")+moveList(WARM)+'</div>';
-  P.blocks.forEach((pair,bi)=>{
-    h+='<div class="card"><div class="block-head"><h2>超级组 '+(bi+1)+'</h2><span class="small muted">两个动作连做 → 休息 '+cfg.rest+' 秒 · 共 '+R+' 轮</span></div>';
+  blocksFor(selWk,eq).forEach(({pair,R,arms},bi)=>{
+    h+='<div class="card"'+(arms?' id="armCard"':'')+'><div class="block-head"><h2>超级组 '+(bi+1)+(arms?' · 手臂':'')+'</h2><span class="small muted">两个动作连做 → 休息 '+cfg.rest+' 秒 · 共 '+R+' 轮</span></div>'+
+      (arms?'<p class="small muted">设置里开了「加练手臂」才有这一组（'+R+' 轮'+(R===1?'，减量周':'')+'，App 的保守安排）。</p>':'');
     pair.forEach((id,ei)=>{
       const k=curKey(id,eq), sw=k!==idKey(id,eq), x=kInfo(k), kg=kgK(k), sg=suggest(k);
       const ph=photoOf(x.en,x.anim,x.hold);
@@ -1478,12 +1505,13 @@ function renderWorkout(){
         if(kg) h+='<input class="inp" id="kg-'+key+'" inputmode="decimal" aria-label="第'+(s+1)+'组重量" data-key="'+key+'" data-f="kg" value="'+esc(kgv)+'" placeholder="kg">';
         h+='<input class="inp" id="rp-'+key+'" inputmode="numeric" aria-label="第'+(s+1)+'组次数" data-key="'+key+'" data-f="reps" value="'+esc(v.reps)+'" placeholder="'+(sg.reps||topReps(x.target)||"次数")+'">';
         h+=rirSelect(key,v.rir);
-        h+='<button class="chk" aria-label="完成第'+(s+1)+'组" data-done="'+key+'" data-last="'+(ei===pair.length-1?1:0)+'" data-round="'+(s+1)+'" aria-pressed="'+(!!v.done)+'">✓</button>';
+        h+='<button class="chk" aria-label="完成第'+(s+1)+'组" data-done="'+key+'" data-last="'+(ei===pair.length-1?1:0)+'" data-round="'+(s+1)+'" data-rn="'+R+'" aria-pressed="'+(!!v.done)+'">✓</button>';
       }
       h+='</div><details><summary>动作要点</summary><p>'+esc(x.cue)+'</p></details><a class="vid" href="'+vidUrl(x.en)+'" target="_blank" rel="noopener">看真人示范影片 ↗</a></div>';
     });
     h+='</div>';
   });
+  if(cfg.arms&&eq==="bw") h+='<p class="small muted" id="armsBwNote">「加练手臂」只加在哑铃版与健身房版：徒手能练手臂的动作（窄距俯卧撑、反手桌下划船）都是多关节动作，跟课表里已有的推、拉重复；研究比较的是另外加单关节的弯举／臂屈伸（App 的判断）。</p>';
   const fi=finItems(selWk,eq);
   if(eq==="gym") h+=cdCardHTML(selWk); // 健身房版：心肺收尾换成力量课后 20 分钟有氧（2026-11-22；2026-11-23 由 15 分钟改 20）
   else h+='<div class="card"><div class="block-head"><h2>心肺收尾</h2><span class="small muted">'+F.title+'</span></div>'+timerHTML("fin",F.mode==="interval"?"按开始后自动切换":"时间内循环做，数你完成几轮")+
@@ -1565,7 +1593,7 @@ $("workout").addEventListener("click",e=>{
   if(b){ const key=b.dataset.done, nd=!(current.vals[key]&&current.vals[key].done); markDone(key,nd); b.setAttribute("aria-pressed",nd);
     const rp=$("rp-"+key); if(rp&&!rp.value&&current.vals[key].reps) rp.value=current.vals[key].reps;
     keepAwake();
-    if(nd){ if(b.dataset.last==="1"){ const r=+b.dataset.round, R=rounds(); startRest(cfg.rest,r<R?"接着第 "+(r+1)+" 轮":"这个超级组完成，下一组准备"); } else beep(1); }
+    if(nd){ if(b.dataset.last==="1"){ const r=+b.dataset.round, R=+b.dataset.rn||rounds(); startRest(cfg.rest,r<R?"接着第 "+(r+1)+" 轮":"这个超级组完成，下一组准备"); } else beep(1); }
     return; }
   if(e.target.id==="finishBtn") finishWorkout(e.target);
 });
@@ -1746,11 +1774,13 @@ $("histList").addEventListener("click",e=>{
 const SEGS={cfgRest:["rest",[60,75,90],v=>v+" 秒"],cfgDb:["dbStep",[1,2,2.5],v=>v+" kg"],cfgGym:["gymStep",[2.5,5],v=>v+" kg"],cfgGoal:["goal",[2,3,4],v=>v+" 次"]};
 function renderCfg(){
   for(const id in SEGS){ const [k,opts,f]=SEGS[id]; $(id).innerHTML=opts.map(v=>'<button data-v="'+v+'" aria-pressed="'+(cfg[k]===v)+'">'+f(v)+'</button>').join(""); }
-  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgReturn").setAttribute("aria-pressed",!!cfg.returnMode); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfgMedia").innerHTML=[["anim","动图"],["photo","照片"],["3d","3D"],["2d","简笔"]].map(m=>'<button data-media="'+m[0]+'" aria-pressed="'+(cfg.media===m[0])+'">'+m[1]+'</button>').join("");
+  $("cfgDeload").setAttribute("aria-pressed",!!cfg.deload); $("cfgReturn").setAttribute("aria-pressed",!!cfg.returnMode); $("cfgSets4").setAttribute("aria-pressed",!!cfg.sets4); $("cfgArms").setAttribute("aria-pressed",!!cfg.arms); $("cfgVoice").setAttribute("aria-pressed",!!cfg.voice); $("cfgMedia").innerHTML=[["anim","动图"],["photo","照片"],["3d","3D"],["2d","简笔"]].map(m=>'<button data-media="'+m[0]+'" aria-pressed="'+(cfg.media===m[0])+'">'+m[1]+'</button>').join("");
 }
 Object.keys(SEGS).forEach(id=>$(id).addEventListener("click",e=>{ const b=e.target.closest("[data-v]"); if(!b) return; cfg[SEGS[id][0]]=+b.dataset.v; saveCfg(); renderAll(); }));
 $("cfgDeload").onclick=()=>{ cfg.deload=!cfg.deload; saveCfg(); renderAll(); };
 $("cfgReturn").onclick=()=>{ cfg.returnMode=!cfg.returnMode; cfg.returnSet=1; saveCfg(); renderAll(); };
+$("cfgSets4").onclick=()=>{ cfg.sets4=!cfg.sets4; cfg.addSet=1; saveCfg(); renderAll(); };
+$("cfgArms").onclick=()=>{ cfg.arms=!cfg.arms; cfg.addSet=1; saveCfg(); renderAll(); };
 $("cfgVoice").onclick=()=>{ cfg.voice=!cfg.voice; saveCfg(); renderCfg(); };
 $("cfgMedia").addEventListener("click",e=>{ const b=e.target.closest("[data-media]"); if(!b) return; cfg.media=b.dataset.media; saveCfg(); renderAll(); });
 
@@ -1779,6 +1809,7 @@ $("bkFile").onchange=async e=>{
     (d.cardio||[]).forEach(c=>{ if(c&&c.id&&!cardio.some(x=>x.id===c.id)) cardio.push(c); }); saveCardio();
     (d.vo2||[]).forEach(v=>{ if(v&&v.id&&isFinite(v.v)&&!vo2.some(x=>x.id===v.id)) vo2.push(v); }); saveVo2();
     if(d.cfg&&typeof d.cfg.returnMode==="boolean"&&!cfg.returnSet){ cfg.returnMode=d.cfg.returnMode; if(d.cfg.returnSet) cfg.returnSet=1; saveCfg(); } // 停练后自动降重：本机没动过才用备份的
+    if(d.cfg&&!cfg.addSet&&(typeof d.cfg.sets4==="boolean"||typeof d.cfg.arms==="boolean")){ if(typeof d.cfg.sets4==="boolean") cfg.sets4=d.cfg.sets4; if(typeof d.cfg.arms==="boolean") cfg.arms=d.cfg.arms; if(d.cfg.addSet) cfg.addSet=1; saveCfg(); } // 4 组／加练手臂：本机没动过才用备份的
     if(d.cfg&&d.cfg.gapWhy&&typeof d.cfg.gapWhy==="object"){ for(const k in d.cfg.gapWhy) if(WHY[d.cfg.gapWhy[k]]&&!cfg.gapWhy[k]) cfg.gapWhy[k]=d.cfg.gapWhy[k]; saveCfg(); } // 停练原因
     if(d.cfg&&d.cfg.screen&&typeof d.cfg.screen==="object"&&(!cfg.screen||cfg.screen.preset)&&!d.cfg.screen.preset){ cfg.screen=Object.assign({},d.cfg.screen); saveCfg(); } // 运动前自查：本机还是预填的才用备份里改过的
     if(d.cfg&&(d.cfg.view==="side"||d.cfg.view==="front")&&!cfg.view){ cfg.view=d.cfg.view; saveCfg(); } // 示范角度：本机没选过才用备份里的
@@ -1795,14 +1826,15 @@ $("bkFile").onchange=async e=>{
 // ---------- Garmin ----------
 let gWk="A";
 function garminText(wk){
-  const P=PLAN[wk], F=FIN[wk], L=[], R=rounds();
+  const P=PLAN[wk], F=FIN[wk], L=[];
   L.push("训练 "+wk+"（"+P.focus+"）· 力量 · "+EQ_LABEL[cfg.equip]+"版");
   const nm=arr=>arr.map(w=>curMove(w).name.split("（")[0]).join("、");
   L.push("1. 热身：按时间 4:00（"+nm(WARM)+"）");
-  P.blocks.forEach((pair,i)=>{ L.push((i+2)+". 重复 "+R+" 次："); pair.forEach(id=>{ const x=kInfo(curKey(id,cfg.equip)); L.push("   · "+x.name+"（"+x.en+"）"+x.target+(/^\d/.test(x.target)?" 次":"")); }); L.push("   · 休息 "+mmss(cfg.rest)); });
-  if(cfg.equip==="gym"){ const pk=cdPick(wk); L.push("4. 有氧 20 分钟："); cdGarminText(pk.id).split("\n").forEach(x=>L.push("   "+x)); }
-  else L.push("4. 心肺收尾："+F.garmin);
-  L.push("5. 放松：按时间 3:00（"+nm(COOL)+"）");
+  const B=blocksFor(wk,cfg.equip); let n=B.length+2;
+  B.forEach(({pair,R,arms},i)=>{ L.push((i+2)+". 重复 "+R+" 次"+(arms?"（手臂）":"")+"："); pair.forEach(id=>{ const x=kInfo(curKey(id,cfg.equip)); L.push("   · "+x.name+"（"+x.en+"）"+x.target+(/^\d/.test(x.target)?" 次":"")); }); L.push("   · 休息 "+mmss(cfg.rest)); });
+  if(cfg.equip==="gym"){ const pk=cdPick(wk); L.push((n++)+". 有氧 20 分钟："); cdGarminText(pk.id).split("\n").forEach(x=>L.push("   "+x)); }
+  else L.push((n++)+". 心肺收尾："+F.garmin);
+  L.push(n+". 放松：按时间 3:00（"+nm(COOL)+"）");
   return L.join("\n");
 }
 function renderGarmin(){ $("gPick").innerHTML=["A","B","C"].map(k=>'<button data-g="'+k+'" aria-pressed="'+(k===gWk)+'">'+k+'</button>').join(""); $("gText").textContent=garminText(gWk); }
@@ -1813,19 +1845,19 @@ $("gCopy").onclick=()=>{ const txt=garminText(gWk), msg=$("gCopyMsg");
 
 // ---------- Follow-along player ----------
 let steps=[], si=0, pl={run:false,end:0,remain:0,lastBeep:-1,amrap:0}, plMode="strength";
-function buildSteps(){
-  const P=PLAN[selWk], F=FIN[selWk], S=[], R=rounds(), eq=cfg.equip;
+function buildSteps(wk){
+  wk=wk||selWk; const F=FIN[wk], S=[], eq=cfg.equip, B=blocksFor(wk,eq);
   WARM.forEach((w0,i)=>{ const m=curMove(w0); S.push({kind:"timed",phase:"热身 "+(i+1)+"/"+WARM.length,name:m.name,sec:m.sec,anim:m.anim,hold:null,cue:m.cue,en:m.en,half:m.half,mslot:MOVE_ALTS[m.slot]?m.slot:null,speak:m.name.split("（")[0]+"，"+m.sec+"秒"}); });
-  P.blocks.forEach((pair,bi)=>{
+  B.forEach(({pair,R,arms},bi)=>{
     for(let r=0;r<R;r++){
-      pair.forEach((id,ei)=>{ const k=curKey(id,eq), x=kInfo(k); S.push({kind:"set",k,phase:"超级组 "+(bi+1)+" · 第 "+(r+1)+"/"+R+" 轮 · "+(ei?"B":"A")+(bi+1),name:x.name,target:x.target,anim:x.anim,hold:x.hold,cue:x.cue,en:x.en,id,key:id+"_"+r,speak:x.name+"，"+tgtLabel(x.target).replace("–","到")}); });
-      const lastOfBlock=r===R-1, lastBlock=bi===P.blocks.length-1;
-      const nextLabel=!lastOfBlock?"第 "+(r+2)+" 轮":(!lastBlock?"超级组 "+(bi+2):(eq==="gym"?"有氧 20 分钟":"心肺收尾"));
+      pair.forEach((id,ei)=>{ const k=curKey(id,eq), x=kInfo(k); S.push({kind:"set",k,phase:"超级组 "+(bi+1)+(arms?"（手臂）":"")+" · 第 "+(r+1)+"/"+R+" 轮 · "+(ei?"B":"A")+(bi+1),name:x.name,target:x.target,anim:x.anim,hold:x.hold,cue:x.cue,en:x.en,id,key:id+"_"+r,speak:x.name+"，"+tgtLabel(x.target).replace("–","到")}); });
+      const lastOfBlock=r===R-1, lastBlock=bi===B.length-1;
+      const nextLabel=!lastOfBlock?"第 "+(r+2)+" 轮":(!lastBlock?"超级组 "+(bi+2)+(B[bi+1].arms?"（手臂）":""):(eq==="gym"?"有氧 20 分钟":"心肺收尾"));
       S.push({kind:"rest",phase:"休息",name:"休息，准备"+nextLabel,sec:cfg.rest,speak:"休息"+cfg.rest+"秒"});
     }
   });
-  const fi=finItems(selWk,eq);
-  if(eq==="gym"){ S.push(...cdSteps(cdPick(selWk).id,selWk)); } // 健身房版：心肺收尾换成 20 分钟有氧（2026-11-22；2026-11-23 由 15 分钟改 20）
+  const fi=finItems(wk,eq);
+  if(eq==="gym"){ S.push(...cdSteps(cdPick(wk).id,wk)); } // 健身房版：心肺收尾换成 20 分钟有氧（2026-11-22；2026-11-23 由 15 分钟改 20）
   else if(F.mode==="amrap"){
     S.push({kind:"amrap",fin:true,phase:"心肺收尾 · "+F.title,name:fi.map(i=>i[0]).join("  +  "),sec:F.min*60,anim:fi.map(i=>i[1]),hold:fi.map(i=>i[2]),labels:fi.map(i=>i[0].replace(/（[^）]*）/g,"").trim()),cue:"两个动作轮流循环，每完成一轮按「+1 轮」。"+(photoOf(null,fi.map(i=>i[1]),fi.map(i=>i[2]))?"":"示范动画每 5 秒切换一个动作。"),speak:"心肺收尾，"+F.min+"分钟，尽量多轮"});
   } else {
@@ -1839,6 +1871,11 @@ function buildSteps(){
   S.push({kind:"done",phase:"完成",name:"训练完成",anim:"child"});
   return S;
 }
+// 全部约几分钟（App 的估算）：按跟练步骤加总——热身／放松／有氧／心肺收尾／休息照步骤的秒数，每组动作按 45 秒算。
+// 45 秒是 App 的假设：使用说明原本写「超级组 ×2 约 15 分钟」＝12 组×45 秒＋6 次休息×60 秒。
+const SET_SEC=45;
+function estSec(S){ return S.reduce((a,s)=>a+(s.kind==="set"?SET_SEC:(s.kind==="done"||s.kind==="cdlog"?0:(+s.sec||0))),0); }
+function estMin(wk){ return Math.round(estSec(buildSteps(wk))/60); }
 function openPlayer(){
   plMode="strength";
   ensureDraft(selWk); steps=buildSteps();
@@ -1858,7 +1895,7 @@ function openPlayer(){
 function closePlayer(){ closeZoom(); pl.run=false; $("player").hidden=true; document.body.style.overflow=""; try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){} if(plMode==="posture"){ plMode="strength"; renderPost(); } else renderWorkout(); }
 function showStep(autostart){
   const s=steps[si]; $("player").classList.toggle("rest",s.kind==="rest");
-  $("plCount").textContent=(si+1)+" / "+steps.length;
+  $("plCount").textContent=(si+1)+" / "+steps.length+(plMode==="strength"?" · 全部约 "+Math.round(estSec(steps)/60)+" 分钟":"");
   $("plBar").style.width=Math.round(si/(steps.length-1)*100)+"%";
   $("plPhase").textContent=s.phase; $("plName").textContent=s.name;
   const cv=$("plCanvas");
@@ -2908,7 +2945,7 @@ function animCombos(){
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS},cardio:{CD_PLANS,cdPick,cdSteps,cdWeekMins,cdMins,hrMax,said:()=>sayLog.slice()}}; // 给自检脚本用
+window.__fit={vol:{blocksFor,rounds,armRounds,estMin,estSec,buildSteps:wk=>buildSteps(wk)},suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS},cardio:{CD_PLANS,cdPick,cdSteps,cdWeekMins,cdMins,hrMax,said:()=>sayLog.slice()}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>

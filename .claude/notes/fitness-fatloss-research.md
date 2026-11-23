@@ -338,3 +338,26 @@ App 的判断（标在 UI 上）：
 
 App 的判断：BMI <18.5 → 不显示任何热量差额与「热量怎么定」切换，大字「BMI 偏低，不建议用这个页面减重（App 的保守判断）」；
 「先问医生或营养师」标 App 的做法。自检：check-fitness 第 19 段（50 kg／171.5 cm＝BMI 17.0）。
+
+## 加量开关：每个动作 4 组、加练手臂（2026-11-23 查证）
+
+用户（40 岁男、每周 2 次健身房版、减脂中）拍板：只要两个**默认关**的开关，自己想用再开。App「更多 → 设置」里
+`#sets4Why`／`#armsWhy`／`#addVolNote` 的每句事实都要对得上这里的引句；对不上的标「App 的安排／保守判断」。
+摘要原文由 CI `fetch-url.yml`（PubMed efetch，run 45200538485，2026-11-23）读回。
+
+| 说法（App 文案） | 来源 | 原文引句 |
+|---|---|---|
+| 15 个研究的汇总，每周每多做 1 组，效果量 +0.023、肌肉增长百分比 +0.37% | Schoenfeld 2017，PMID 27433992（J Sports Sci） | "The final analysis comprised 34 treatment groups from 15 studies. Outcomes for weekly sets as a continuous variable showed a significant effect of volume on changes in muscle size (P = 0.002). Each additional set was associated with an increase in effect size (ES) of 0.023 corresponding to an increase in the percentage gain by 0.37%." |
+| 每周组数分 <5、5–9、10+ 三档只有趋势、未达显著 | 同上 | "Outcomes for weekly sets as a three-level categorical variable (<5, 5-9 and 10+ per muscle) showed a trend for an effect of weekly sets (P = 0.074)." |
+| 总量一样时每周练几次不影响增肌 | Schoenfeld 2019，PMID 30558493 | "Results showed no significant difference between higher and lower frequency on a volume-equated basis."、"there is strong evidence that resistance training frequency does not significantly or meaningfully impact muscle hypertrophy when volume is equated." |
+| 10 名未训练男性、8 周，一只手臂弯举、另一只划船；弯举那只肘屈肌厚度 +11.06%、划船 +5.16%；每次 4–6 组做到力竭 | Mannarino 2021，PMID 31268995（J Strength Cond Res） | "Ten untrained men were assigned to an 8-week RT program for elbow flexors, one arm performing DR and the other performing BC in a within-subject design."、"(4-6 sets, 8-12 repetitions to concentric failure, 2 sessions per week)"、"Single-joint BC exercise resulted in higher hypertrophy of elbow flexors (11.06%) than the DR (5.16%) multijoint exercise after 8 weeks of RT (p = 0.009)." |
+| 20 名未训练男性，多加单关节动作：力量与皮褶没有差别，屈臂围度 +5.2% 对 +4.0% | Barbalho 2018，PMID 30662699（Eur J Transl Myol） | "Twenty untrained men were randomized to MJ or MJ+SJ groups for 8 weeks."、"with no significant difference between them"（10RM）、"skinfolds were significant for both groups, with no difference between them. However, the flexed arm circumference increased significantly more for MJ+SJ (5.2%), than for MJ (4.0%)." |
+| 同一第一作者另一篇同类研究已被撤稿；这一篇有没有问题本 App 没查证 | PMID 31072272（撤稿，委派时给的；本轮没再读撤稿公告） | — |
+
+App 自己的安排／判断（没有来源，文案已标）：
+- 平常 3 组、开关后 4 组；减量周一律 2 轮（App 的安排）。
+- 手臂 2 轮、减量周 1 轮、10–12 下（App 的保守安排；Mannarino 是 4–6 组做到力竭，App 远低于它）。
+- 徒手版不加手臂：徒手能练手臂的都是多关节动作（窄距俯卧撑、反手桌下划船），跟课表的推、拉重复；两篇研究比较的是**另外加单关节**动作（App 的判断）。
+- 提醒（App 的保守判断）：减脂期先只开一个、观察 2–3 周；重量连续两次推不上去、酸痛超过 3 天、睡眠变差、不想去练，两项以上就关掉。
+- 「全部约几分钟」：每组按 45 秒（使用说明原本「超级组 ×2 约 15 分钟」＝12×45＋6×60 秒反推），其余照跟练步骤秒数（App 的估算）。
+- 动作要领来源：StrengthLog 的 dumbbell-curl／cable-curl／tricep-pushdown／dumbbell-standing-triceps-extension 页（CI `web-lookup.yml` 读回，引句写在 `tools/lib/fitness-anim-spec.json` 那四条的 note）。坐姿、背靠椅背做过头臂屈伸是 App 的安排（来源写的是站姿）。

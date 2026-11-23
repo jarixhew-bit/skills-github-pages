@@ -172,6 +172,16 @@
   - ANIM 引擎多一个关键帧参数 `hx`（头前后平移，2D／anim3d 都跟着 `hd` 走）；渲染台 `OV.chintuck`（颈往后、头往前点，视线保持水平）、`OV.thoracic`（上背伸展＋双手交叉胸前）、
     器材 `roller`（2D／anim3d／渲染台三处，渲染台第 0 格定在 Spine2→Neck 40% 处）、肌肉代码 `neck_flex`。
   - 自检：check-fitness 第 18 段。
+- **加量开关（2026-11-23，用户拍板：只要开关、默认关、自己想用再开）**：查证正本 `.claude/notes/fitness-fatloss-research.md` 最后一节「加量开关」。
+  - `cfg.sets4`（每个动作做 4 组）：`rounds()`＝减量周 2、否则 `sets4?4:3`。`cfg.arms`（加练手臂）：`armsOn(eq)`（徒手版一律不加）、`armRounds()`＝减量周 1、否则 2。
+    两个都随 cfg 进备份；动过开关记 `cfg.addSet`，导入时本机没动过才用备份的。设置在「更多 → 设置」的 `#cfgSets4`／`#cfgArms`，说明 `#sets4Why`／`#armsWhy`／`#addVolNote`。
+  - **超级组一律经过 `blocksFor(wk,eq)`**（`[{pair,R,arms}]`）：训练卡片、跟练 `buildSteps(wk)`、Garmin 都用它，别再直接 `PLAN[wk].blocks`＋`rounds()`。
+    手臂槽位 `curl`／`tri`（`ARM_SLOTS`）在 `EX` 里只有 db／gym 版：健身房＝绳索弯举（直杆）`cablecurl`＋绳索下压 `pushdown`；哑铃＝哑铃弯举 `curl`（hands）＋坐姿哑铃过头臂屈伸 `ohext`（one，两手捧一只）。
+    `ALTS.curl/tri` 互为替代（换成另一种器材版）。卡片勾组的休息提示看按钮的 `data-rn`（这一组的轮数）。
+  - 双重进步法：`suggestBase` 的「做满」要求上次至少 3 组（手臂 2 组）且每组到上限——4 组模式下就是 4 组都要满；旧的 3 组记录照旧算。减量周文字写「只做 2 轮」（手臂 1 轮）。
+  - 全部约几分钟：`estSec(steps)`＝跟练步骤秒数加总、每组按 `SET_SEC`＝45 秒（App 的估算）；`#goSub` 与跟练 `#plCount` 显示。手算：健身房 42、＋任一开关 47、两个 52；哑铃 28／33／38；减量周健身房＋手臂 2370 秒＝40。
+  - 动图 4 张（`curl-hands`／`cablecurl`／`pushdown`／`ohext-one`）：渲染台 `OV.curl/cablecurl/pushdown/ohext`；绳索两张的钢索、直杆、配重塔只在渲染台画（`KEY===...`，同面拉），机位用 side（正面会被配重塔挡住）；过头臂屈伸用 front34（椅背会挡）。
+  - 自检：check-fitness 第 21 段（默认关＝原样、4 组、手臂三种器材、时间手算、建议／新纪录／训练量、备份来回、文案守门）。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
