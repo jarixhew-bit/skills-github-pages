@@ -88,19 +88,20 @@
   放大（`#zmBox.multi`）上下叠两张，下方仍有要点、倒数，另有 `+1 轮／−1`（代理按原本的 `#plRound`／`#plRoundMinus`）。
   **原则：`cfg.media==="anim"` 时只要有 webp 就不准出画布**——自检第 15 段走遍 A/B/C × 三种器材的卡片、跟练每一步（含休息预告）、放大、游泳课。
   `anim3d.js` 只在用户选「3D」或没有 webp 时才出现，它画的仍是程序生成的胶囊／球体人偶（青绿上衣、深色短裤），不是运动风 glb 模型。
-- **力量课后 15 分钟有氧（2026-11-22，取代 2026-10-02 的 12 周有氧计划）**：查证正本 `.claude/notes/fitness-cardio-research.md`
+- **力量课后 20 分钟有氧（2026-11-22 取代 2026-10-02 的 12 周有氧计划；2026-11-23 用户拍板由 15 分钟改 20 分钟）**：查证正本 `.claude/notes/fitness-cardio-research.md`
   （每句事实对得上那里的引句＋PMID＋run ID，否则标「App 的安排／推论／保守判断／做法」；Eddens 2018 的 PMID 是 28917030，不是 29086308）。
   - 只在**健身房版**（`cfg.equip==="gym"`）：训练卡片的「心肺收尾」换成 `cdCardHTML(wk)`（`#cdBlock`），跟练 `buildSteps()` 在最后一组后接 `cdSteps(id,wk)`
     （每段一个 timed 步骤、到点自动接下一段，`cdv:true`，最后一步 `kind:"cdlog"` 记一笔）再接放松。哑铃／徒手版完全不变（仍是 `FIN` 心肺收尾）。
-  - 三个方案 `CD_PLANS`（p1 单车 5×1 分钟／p2 椭圆机 2×4／p3 坡度快走）：`ph`＝[类型 warm/up/down/cool, 名称, 秒, 心率 %, 机器设定, 要点]，
-    每个方案合计 900 秒（自检守）；`rows` 是卡片表格与说明用的摘要。心率＝`hrMax()`（填了实测最大心率优先，否则 208−0.7×年龄；年龄取饮食页 `diet.profile.age`，
+  - 三个方案 `CD_PLANS`（p1 单车：热身 3 → 7×(用力 1＋轻踩 1) → 放松 3／p2 椭圆机：热身 3 → 快 4 → 慢 3 → 快 4 → 慢 3 → 放松 3／p3 坡度快走连续 20 分钟、8–12%、5.0–5.5 km/h）：
+    `ph`＝[类型 warm/up/down/cool, 名称, 秒, 心率 %, 机器设定, 要点, MET]，每个方案合计 1200 秒（自检守）；
+    `kcal`＝Σ(MET×分钟)×72÷60 写死（p1 149、p2 158、p3 168），`vig`／`mod`＝p1 7／13、p2 8／12、p3 0／20——自检用每段 MET 重算并对手算值，改段落就要一起改；`rows` 是卡片表格与说明用的摘要。心率＝`hrMax()`（填了实测最大心率优先，否则 208−0.7×年龄；年龄取饮食页 `diet.profile.age`，
     其次旧的 `cfg.age`；都没有→卡片里问 `#cdAgeAsk`，存进 `diet.profile.age`）。方案3 70–80%＝126–144（研究笔记写的 145 是口径不一）。
   - 配对 `cdPick(wk,now,noSwap)`：自查有「有」→ 全 p3（`why:"screen"`）；第一笔新有氧记录那天起 14 天内（`cdFirst()`）全 p3（`intro`）；之后 A→p3、B→p1、C→p2，
     满 14–21 天显示「已满 2 周」提示（`fresh`）。非 p3 的日子可「换成方案3」（只记在这次草稿 `current.cdAlt`）。
   - 语音：每段开头 `speak` 以「加速」（up）或「放慢」（down/cool）或「热身」开头并念心率；`say()` 会把字记进 `sayLog`（自检读 `__fit.cardio.said()`）。
     大字画面 `cdVisHTML`（`.ph.cdv`，`data-cd`）可点 🔍 放大，`zmFill` 认得它，`zoomFollow` 跟着换段。
-  - 记录 `fit.cardio`：新的 `{kind:"p1|p2|p3",min:15,vig,mod,hr,machine,day}`；旧计划的 `easy/i44/i3030` 照样列在有氧页 `#cdHist`（名称加「旧计划」）、照样进备份。
-    中等／剧烈分钟 `cdMins()`（App 的推论：p1 用力 5、p2 快段 8 算剧烈；旧 i44 每轮 4 分钟、i3030 每回 0.5 分钟算剧烈）、`cdWeekMins()`；
+  - 记录 `fit.cardio`：新的 `{kind:"p1|p2|p3",min:20,vig,mod,hr,machine,day}`（2026-11-23 前存的是 min:15＋当时的 vig／mod，`cdMins` 照记录里存的算，旧日志不动）；旧计划的 `easy/i44/i3030` 照样列在有氧页 `#cdHist`（名称加「旧计划」）、照样进备份。
+    中等／剧烈分钟 `cdMins()`（App 的推论：p1 用力 7、p2 快段 8 算剧烈；旧 i44 每轮 4 分钟、i3030 每回 0.5 分钟算剧烈）、`cdWeekMins()`；
     「剧烈 1 分钟＝中等 2 分钟」是 App 的推论（WHO 原文只写等量组合）。饮食页每周活动也分开写中等／剧烈。
   - 有氧分页保留在底部（理由：本周分钟、记录、自查、心率、VO2max、Garmin 都还在这里），内容：`#cdTop`（A/B/C 配对＋三方案心率）、`#cdWeek`、`#cdHist`、
     `#cdScreen`（运动前自查 `cfg.screen`，预填用户 2026-11-22 的答案：5 题「没有」、肾脏病没问过留空、`preset:1`；改过就去掉 preset；导入时本机还是 preset 才用备份的）、
