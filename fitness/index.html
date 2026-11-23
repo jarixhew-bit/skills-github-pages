@@ -397,7 +397,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
     <div id="swimList" class="stack"></div>
   </section>
 
-  <!-- ===== 有氧：力量课后 15 分钟（2026-11-22 取代旧版分周计划）、本周分钟、记录、自查 ===== -->
+  <!-- ===== 有氧：力量课后 20 分钟（2026-11-22 取代旧版分周计划，2026-11-23 由 15 分钟改 20 分钟）、本周分钟、记录、自查 ===== -->
   <section id="tab-cardio" class="stack" hidden>
     <div class="card" id="cdTop"></div>
     <div class="card" id="cdWeek"></div>
@@ -547,7 +547,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="stack">
         <ul class="list">
           <li><b>A → B → C 轮流做</b>，一周 2 次就接着轮，不用管星期几。两次训练之间至少隔 1 天。</li>
-          <li>每次：热身 4 分钟 → 超级组 ×2（约 15 分钟）→ 心肺收尾 6 分钟 → 放松 3 分钟 ≈ 28–30 分钟。<b>健身房版</b>的心肺收尾换成 15 分钟有氧（跑步机／单车／椭圆机），≈ 37–39 分钟，详见「有氧」页。</li>
+          <li>每次：热身 4 分钟 → 超级组 ×2（约 15 分钟）→ 心肺收尾 6 分钟 → 放松 3 分钟 ≈ 28–30 分钟。<b>健身房版</b>的心肺收尾换成 20 分钟有氧（跑步机／单车／椭圆机），≈ 42–44 分钟，详见「有氧」页。</li>
           <li><b>超级组</b>：两个动作连着做、中间不休息，做完两个再休息，这样算一轮，共 3 轮。</li>
           <li><b>器材三选一</b>：家里有哑铃选「哑铃」，什么都没有选「徒手」，去健身房选「健身房」。</li>
         </ul>
@@ -582,7 +582,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
           <li><b>只靠运动能减多少：</b>14 个随机试验的汇总，只做有氧 6 个月平均体重 −1.6 kg、腰围 −2.1 cm（<a href="https://pubmed.ncbi.nlm.nih.gov/21787904/" target="_blank" rel="noopener">Thorogood 2011</a>）。</li>
           <li><b>运动量：</b>美国运动医学会：每周 150–250 分钟中等强度活动只带来少量减重；超过 250 分钟与明显的减重有关（<a href="https://pubmed.ncbi.nlm.nih.gov/19127177/" target="_blank" rel="noopener">ACSM 2009</a>）。</li>
           <li><b>饮食：</b>2013 年美国肥胖指南给的三选一：男性每天 1500–1800 kcal（女性 1200–1500）、每天少吃 500–750 kcal，或有证据的饮食法（<a href="https://pubmed.ncbi.nlm.nih.gov/24222017/" target="_blank" rel="noopener">Jensen 2013</a>；对象是超重／肥胖的成人，体重正常别直接套固定区间——「饮食」页会按 BMI 判断）。</li>
-          <li>心肺收尾 6 分钟主要练心肺与体能；几分钟的运动本身消耗不大，减脂主要还是靠饮食。（App 的推论）健身房版的 15 分钟有氧里，只有方案1 符合研究里的低量间歇定义（整节不超过 15 分钟、高强度不超过 5 分钟）：研究看到这种间歇能提升心肺，但减脂效果很小或没有。方案2 快段共 8 分钟，超过这个定义；方案3 坡度快走没有这类试验，心肺刺激也最弱（App 的推论）（「有氧」页附来源）。</li>
+          <li>心肺收尾 6 分钟主要练心肺与体能；几分钟的运动本身消耗不大，减脂主要还是靠饮食。（App 的推论）健身房版的 20 分钟有氧：研究里的低量间歇（整节不超过 15 分钟、高强度不超过 5 分钟）能提升心肺，但减脂效果很小或没有。三个方案都不在这个定义里：方案1、方案2 整节 20 分钟，用力各 7、8 分钟；方案3 坡度快走没有这类试验，心肺刺激也最弱（App 的推论）（「有氧」页附来源）。</li>
           <li>尽量睡够（App 的做法，未查证）。</li>
           <li>体重几周不动但腰围在变小，也是在进步——所以「进度」页也可以记腰围。</li>
         </ul>
@@ -1485,7 +1485,7 @@ function renderWorkout(){
     h+='</div>';
   });
   const fi=finItems(selWk,eq);
-  if(eq==="gym") h+=cdCardHTML(selWk); // 健身房版：心肺收尾换成力量课后 15 分钟有氧（2026-11-22）
+  if(eq==="gym") h+=cdCardHTML(selWk); // 健身房版：心肺收尾换成力量课后 20 分钟有氧（2026-11-22；2026-11-23 由 15 分钟改 20）
   else h+='<div class="card"><div class="block-head"><h2>心肺收尾</h2><span class="small muted">'+F.title+'</span></div>'+timerHTML("fin",F.mode==="interval"?"按开始后自动切换":"时间内循环做，数你完成几轮")+
      fi.map((it,i)=>{ const ph=photoOf(null,it[1],it[2]); return '<div class="ex'+(i===0?' first':'')+'"><div class="ex-top'+(ph?' wide':'')+'">'+(ph?photoHTML(ph):'<canvas class="thumb" data-anim="'+it[1]+'" data-hold="'+(it[2]||"")+'"></canvas>')+'<div><h3>'+esc(it[0])+'</h3></div></div></div>'; }).join("")+
      '<div class="row"><label for="finScore" class="small muted">完成几轮 / 备注</label><input id="finScore" class="inp" style="flex:1;font-size:15px;font-family:var(--f-body);text-align:left" value="'+esc(current.fin)+'" placeholder="例如：5 轮"></div></div>';
@@ -1800,7 +1800,7 @@ function garminText(wk){
   const nm=arr=>arr.map(w=>curMove(w).name.split("（")[0]).join("、");
   L.push("1. 热身：按时间 4:00（"+nm(WARM)+"）");
   P.blocks.forEach((pair,i)=>{ L.push((i+2)+". 重复 "+R+" 次："); pair.forEach(id=>{ const x=kInfo(curKey(id,cfg.equip)); L.push("   · "+x.name+"（"+x.en+"）"+x.target+(/^\d/.test(x.target)?" 次":"")); }); L.push("   · 休息 "+mmss(cfg.rest)); });
-  if(cfg.equip==="gym"){ const pk=cdPick(wk); L.push("4. 有氧 15 分钟："); cdGarminText(pk.id).split("\n").forEach(x=>L.push("   "+x)); }
+  if(cfg.equip==="gym"){ const pk=cdPick(wk); L.push("4. 有氧 20 分钟："); cdGarminText(pk.id).split("\n").forEach(x=>L.push("   "+x)); }
   else L.push("4. 心肺收尾："+F.garmin);
   L.push("5. 放松：按时间 3:00（"+nm(COOL)+"）");
   return L.join("\n");
@@ -1820,12 +1820,12 @@ function buildSteps(){
     for(let r=0;r<R;r++){
       pair.forEach((id,ei)=>{ const k=curKey(id,eq), x=kInfo(k); S.push({kind:"set",k,phase:"超级组 "+(bi+1)+" · 第 "+(r+1)+"/"+R+" 轮 · "+(ei?"B":"A")+(bi+1),name:x.name,target:x.target,anim:x.anim,hold:x.hold,cue:x.cue,en:x.en,id,key:id+"_"+r,speak:x.name+"，"+tgtLabel(x.target).replace("–","到")}); });
       const lastOfBlock=r===R-1, lastBlock=bi===P.blocks.length-1;
-      const nextLabel=!lastOfBlock?"第 "+(r+2)+" 轮":(!lastBlock?"超级组 "+(bi+2):(eq==="gym"?"有氧 15 分钟":"心肺收尾"));
+      const nextLabel=!lastOfBlock?"第 "+(r+2)+" 轮":(!lastBlock?"超级组 "+(bi+2):(eq==="gym"?"有氧 20 分钟":"心肺收尾"));
       S.push({kind:"rest",phase:"休息",name:"休息，准备"+nextLabel,sec:cfg.rest,speak:"休息"+cfg.rest+"秒"});
     }
   });
   const fi=finItems(selWk,eq);
-  if(eq==="gym"){ S.push(...cdSteps(cdPick(selWk).id,selWk)); } // 健身房版：心肺收尾换成 15 分钟有氧（2026-11-22）
+  if(eq==="gym"){ S.push(...cdSteps(cdPick(selWk).id,selWk)); } // 健身房版：心肺收尾换成 20 分钟有氧（2026-11-22；2026-11-23 由 15 分钟改 20）
   else if(F.mode==="amrap"){
     S.push({kind:"amrap",fin:true,phase:"心肺收尾 · "+F.title,name:fi.map(i=>i[0]).join("  +  "),sec:F.min*60,anim:fi.map(i=>i[1]),hold:fi.map(i=>i[2]),labels:fi.map(i=>i[0].replace(/（[^）]*）/g,"").trim()),cue:"两个动作轮流循环，每完成一轮按「+1 轮」。"+(photoOf(null,fi.map(i=>i[1]),fi.map(i=>i[2]))?"":"示范动画每 5 秒切换一个动作。"),speak:"心肺收尾，"+F.min+"分钟，尽量多轮"});
   } else {
@@ -1886,7 +1886,7 @@ function showStep(autostart){
     pl.run=false;
   } else if(s.kind==="cdlog"){
     const td=cdToday();
-    m+=td?'<p>今天的有氧已经记过了 ✓（'+esc(cdName(td))+'）。按下面的按钮接着放松。</p>':'<p>15 分钟有氧做完了！下面两项可不填，按「记下有氧」存一笔，然后接着放松。</p>'+cdLogForm("pl",s.plan);
+    m+=td?'<p>今天的有氧已经记过了 ✓（'+esc(cdName(td))+'）。按下面的按钮接着放松。</p>':'<p>20 分钟有氧做完了！下面两项可不填，按「记下有氧」存一笔，然后接着放松。</p>'+cdLogForm("pl",s.plan);
     $("plCue").textContent=""; pl.run=false;
   } else if(s.kind==="pdone"){
     m+='<p>做得好！体态小课完成。按下面的按钮记一笔，自查页会显示你做了几次。</p>';
@@ -2056,12 +2056,12 @@ $("tab-swim").addEventListener("click",e=>{
 });
 
 // 说明文字（研究查证后填入；每个数字都附来源）
-// ---------- 力量课后 15 分钟有氧（2026-11-22，取代旧版分周有氧计划） ----------
+// ---------- 力量课后 20 分钟有氧（2026-11-22 取代旧版分周有氧计划；2026-11-23 用户拍板由 15 分钟改 20 分钟） ----------
 // 查证正本：.claude/notes/fitness-cardio-research.md。每句事实要对得上那里的引句，否则标「App 的安排／推论／保守判断／做法」。
-// 健身房版：力量课的「心肺收尾」换成 15 分钟有氧（同一节课、力量做完之后、全屏跟练里自动接上）；哑铃／徒手版照旧做心肺收尾。
+// 健身房版：力量课的「心肺收尾」换成 20 分钟有氧（同一节课、力量做完之后、全屏跟练里自动接上）；哑铃／徒手版照旧做心肺收尾。
 // 配对（App 的安排）：A→方案3、B→方案1、C→方案2；第一次记下有氧那天起 2 周内三天都做方案3（cdPick）。
 // 自查（cfg.screen）有任何一项答「有」→ 只排方案3＋看医生提示（App 的保守判断）。
-// 记录 fit.cardio：新记录 {kind:p1|p2|p3, min:15, vig, mod, hr, machine, day}；旧计划的记录（easy／i44／i3030）照样读得出来、进备份。
+// 记录 fit.cardio：新记录 {kind:p1|p2|p3, min:20（2026-11-23 前是 15）, vig, mod, hr, machine, day}；旧计划的记录（easy／i44／i3030）照样读得出来、进备份。
 const CD_SRC={
   eddens:["Eddens 2018","https://pubmed.ncbi.nlm.nih.gov/28917030/"],
   schumann:["Schumann 2022","https://pubmed.ncbi.nlm.nih.gov/34757594/"],
@@ -2084,27 +2084,28 @@ const CD_SRC={
 const cA=k=>'<a href="'+CD_SRC[k][1]+'" target="_blank" rel="noopener">'+esc(CD_SRC[k][0])+'</a>';
 // 每段：[类型 warm／up（加速）／down（放慢）／cool, 名称, 秒数, 心率目标 {r:[低,高]}／{max}／{about}（占最大心率 %）, 机器设定, 要点]
 const CD_PLANS={
-  p1:{name:"方案1 · 单车 1 分钟间歇",short:"单车间歇",machine:"固定单车",kcal:110,vig:5,mod:10,
-    sum:"热身 3 分钟 → 5 ×（用力 1 分钟＋轻踩 1 分钟）→ 放松 2 分钟",
-    ph:[["warm","热身",180,null,"约 50 W 轻踩","慢慢踩，让腿和心率热起来。"]]
-      .concat(...[1,2,3,4,5].map(i=>[["up","用力 "+i+"/5",60,{r:[85,95]},"先试 150–200 W、每分钟 80–90 转（App 的安排，起点是猜的，按心率调）","用力到 8/10、说不出完整句子；这一段的后半心率到目标。"],
-                                     ["down","轻踩 "+i+"/5",60,{max:70},"约 50 W","不要停，慢慢踩，让心率回落。"]]))
-      .concat([["cool","放松",120,null,"约 50 W 轻踩","慢慢踩，心率降下来再下车。"]]),
-    rows:[["3:00","热身",null,"约 50 W 轻踩"],["5 ×","用力 1:00",{r:[85,95]},"150–200 W 起试、80–90 转"],["","＋ 轻踩 1:00",{max:70},"约 50 W"],["2:00","放松",null,"约 50 W 轻踩"]]},
-  p2:{name:"方案2 · 椭圆机 2×4",short:"椭圆机 2×4",machine:"椭圆机",kcal:128,vig:8,mod:7,
-    sum:"热身 3 分钟 → 快 4 分钟 → 慢 3 分钟 → 快 4 分钟 → 放松 1 分钟",
-    ph:[["warm","热身",180,{about:70},"阻力调低","慢慢加快，心率到约 70%。"],
-        ["up","快段 1/2",240,{r:[90,95]},"调高阻力或坡度，用力到 8/10（App 的安排）","喘到说不出完整句子，手臂一起推拉。"],
-        ["down","慢段",180,{about:70},"阻力调低","不要停，放慢，心率回到约 70%。"],
-        ["up","快段 2/2",240,{r:[90,95]},"调高阻力或坡度，用力到 8/10（App 的安排）","最后一段，撑住。"],
-        ["cool","放松",60,null,"阻力调到最低","慢慢踩，心率降下来。"]],
-    rows:[["3:00","热身",{about:70},"阻力调低"],["4:00","快段",{r:[90,95]},"阻力／坡度调高"],["3:00","慢段",{about:70},"阻力调低"],["4:00","快段",{r:[90,95]},"阻力／坡度调高"],["1:00","放松",null,"阻力最低"]]},
-  p3:{name:"方案3 · 坡度快走",short:"坡度快走",machine:"跑步机",kcal:115,vig:0,mod:15,
-    sum:"热身 2 分钟 → 坡度快走 12 分钟 → 放松 1 分钟",
-    ph:[["warm","热身",120,null,"坡度 0–3%、时速 5.0 km","先平路快走。"],
-        ["up","坡度快走",720,{r:[70,80]},"坡度 8–12%、时速 5.0–5.5 km（App 的安排）","能讲完整句子、但唱不了歌（App 用说话测验定的目标）。"],
-        ["cool","放松",60,null,"坡度归零、放慢","慢慢走，心率降下来。"]],
-    rows:[["2:00","热身",null,"坡度 0–3%、5.0 km/h"],["12:00","坡度快走",{r:[70,80]},"坡度 8–12%、5.0–5.5 km/h"],["1:00","放松",null,"坡度归零"]]}
+  // 每段第 7 项＝MET（Compendium 2024：01214 单车 50 W＝4.0、01232 151–199 W＝10.3、02048 椭圆机中等＝5.0、02049 剧烈＝9.0、17035 户外 6–10% 爬坡＝7.0）。
+  // kcal ≈ Σ(MET × 分钟) × 72 kg ÷ 60（App 的推论）：方案1 124.1×1.2＝148.9→149；方案2 132×1.2＝158.4→158；方案3 140×1.2＝168。
+  p1:{name:"方案1 · 单车 1 分钟间歇",short:"单车间歇",machine:"固定单车",kcal:149,vig:7,mod:13,
+    sum:"热身 3 分钟 → 7 ×（用力 1 分钟＋轻踩 1 分钟）→ 放松 3 分钟",
+    ph:[["warm","热身",180,null,"约 50 W 轻踩","慢慢踩，让腿和心率热起来。",4.0]]
+      .concat(...[1,2,3,4,5,6,7].map(i=>[["up","用力 "+i+"/7",60,{r:[85,95]},"先试 150–200 W、每分钟 80–90 转（App 的安排，起点是猜的，按心率调）","用力到 8/10、说不出完整句子；这一段的后半心率到目标。",10.3],
+                                     ["down","轻踩 "+i+"/7",60,{max:70},"约 50 W","不要停，慢慢踩，让心率回落。",4.0]]))
+      .concat([["cool","放松",180,null,"约 50 W 轻踩","慢慢踩，心率降下来再下车。",4.0]]),
+    rows:[["3:00","热身",null,"约 50 W 轻踩"],["7 ×","用力 1:00",{r:[85,95]},"150–200 W 起试、80–90 转"],["","＋ 轻踩 1:00",{max:70},"约 50 W"],["3:00","放松",null,"约 50 W 轻踩"]]},
+  p2:{name:"方案2 · 椭圆机 2×4",short:"椭圆机 2×4",machine:"椭圆机",kcal:158,vig:8,mod:12,
+    sum:"热身 3 分钟 → 快 4 分钟 → 慢 3 分钟 → 快 4 分钟 → 慢 3 分钟 → 放松 3 分钟",
+    ph:[["warm","热身",180,{about:70},"阻力调低","慢慢加快，心率到约 70%。",5.0],
+        ["up","快段 1/2",240,{r:[90,95]},"调高阻力或坡度，用力到 8/10（App 的安排）","喘到说不出完整句子，手臂一起推拉。",9.0],
+        ["down","慢段 1/2",180,{about:70},"阻力调低","不要停，放慢，心率回到约 70%。",5.0],
+        ["up","快段 2/2",240,{r:[90,95]},"调高阻力或坡度，用力到 8/10（App 的安排）","最后一段快的，撑住。",9.0],
+        ["down","慢段 2/2",180,{about:70},"阻力调低","不要停，放慢，心率回到约 70%。",5.0],
+        ["cool","放松",180,null,"阻力调到最低","慢慢踩，心率降下来。",5.0]],
+    rows:[["3:00","热身",{about:70},"阻力调低"],["4:00","快段",{r:[90,95]},"阻力／坡度调高"],["3:00","慢段",{about:70},"阻力调低"],["4:00","快段",{r:[90,95]},"阻力／坡度调高"],["3:00","慢段",{about:70},"阻力调低"],["3:00","放松",null,"阻力最低"]]},
+  p3:{name:"方案3 · 坡度快走",short:"坡度快走",machine:"跑步机",kcal:168,vig:0,mod:20,
+    sum:"坡度快走连续 20 分钟（坡度 8–12%、时速 5.0–5.5 km）",
+    ph:[["up","坡度快走",1200,{r:[70,80]},"坡度 8–12%、时速 5.0–5.5 km（App 的安排）","开头一两分钟把坡度和速度慢慢调上去（App 的安排）；能讲完整句子、但唱不了歌（App 用说话测验定的目标）。",7.0]],
+    rows:[["20:00","坡度快走",{r:[70,80]},"坡度 8–12%、5.0–5.5 km/h"]]}
 };
 const CD_PAIR={A:"p3",B:"p1",C:"p2"};
 const CD_OLD={easy:"轻松有氧（旧计划）",i44:"4×4 间歇（旧计划）",i3030:"30/30 短间歇（旧计划）"};
@@ -2143,14 +2144,14 @@ function cdNoteHTML(pk){
   if(pk.fresh) return '<p class="small cd-ok" id="cdNote"><b>已满 2 周，换成配对：</b>A 日方案3 坡度快走、B 日方案1 单车间歇、C 日方案2 椭圆机 2×4（App 的安排）。</p>';
   return "";
 }
-// 剧烈／中等分钟（App 的推论：方案1 用力 5 分钟、方案2 快段 8 分钟算剧烈，其余算中等；旧记录按当时的练法估）
+// 剧烈／中等分钟（App 的推论：方案1 用力 7 分钟、方案2 快段 8 分钟算剧烈，其余算中等；记录里存了 vig／mod 的照存的算，所以 15 分钟时代的旧记录不变；旧计划按当时的练法估）
 function cdMins(c){ const P=CD_PLANS[c.kind]; if(P) return {vig:c.vig!=null?+c.vig||0:P.vig,mod:c.mod!=null?+c.mod||0:P.mod};
   const m=+c.min||0; let v=c.kind==="i44"?(+c.rounds||4)*4:c.kind==="i3030"?Math.round((+c.rounds||10)*0.5):0; v=Math.min(v,m); return {vig:v,mod:m-v}; }
 function cdWeekMins(now){ const w0=weekStart(now||Date.now()); let mod=0,vig=0,n=0; cardio.forEach(c=>{ if(!c||weekStart(c.ts)!==w0) return; const x=cdMins(c); mod+=x.mod; vig+=x.vig; n++; }); return {mod,vig,eq:mod+2*vig,n}; }
 function cdName(c){ return CD_PLANS[c.kind]?CD_PLANS[c.kind].name:(CD_OLD[c.kind]||String(c.kind||"有氧")); }
 function cdToday(){ const d=isoDay(Date.now()); return cardio.find(c=>c&&CD_PLANS[c.kind]&&isoDay(c.ts)===d)||null; }
 function cdLog(id,wk,hr,mach){ const now=Date.now(), P=CD_PLANS[id], h=num(hr);
-  cardio.push({id:"c_"+now,ts:now,kind:id,min:15,vig:P.vig,mod:P.mod,hr:h&&h>40&&h<230?Math.round(h):null,machine:CD_MACH.includes(mach)?mach:P.machine,day:wk||""}); saveCardio(); }
+  cardio.push({id:"c_"+now,ts:now,kind:id,min:P.vig+P.mod,vig:P.vig,mod:P.mod,hr:h&&h>40&&h<230?Math.round(h):null,machine:CD_MACH.includes(mach)?mach:P.machine,day:wk||""}); saveCardio(); }
 function cdLogForm(pfx,id){ const P=CD_PLANS[id];
   return '<div class="form-row"><label>平均心率（可不填）<input class="inp" id="'+pfx+'CdHr" inputmode="numeric" placeholder="例如 140"></label>'+
     '<label>用的机器<select class="inp" id="'+pfx+'CdMach" style="font-size:15px;font-family:var(--f-body)">'+CD_MACH.map(m=>'<option'+(m===P.machine?' selected':'')+'>'+m+'</option>').join("")+'</select></label></div>'; }
@@ -2175,24 +2176,24 @@ function cdRowsHTML(P){ return '<table class="t cd-rows"><tbody>'+P.rows.map(r=>
 // 训练页（健身房版）的有氧卡片：取代「心肺收尾」
 function cdCardHTML(wk){
   const pk=cdPick(wk), P=CD_PLANS[pk.id], td=cdToday();
-  let h='<div class="card" id="cdBlock"><div class="block-head"><h2>力量课后有氧</h2><span class="num">15 分钟</span></div>';
+  let h='<div class="card" id="cdBlock"><div class="block-head"><h2>力量课后有氧</h2><span class="num">20 分钟</span></div>';
   h+='<p><b id="cdPlanName">'+esc(P.name)+'</b>　<span class="small muted">'+esc(P.machine)+' · 约 '+P.kcal+' kcal（App 的推论：按 Compendium 的 MET 估算）</span></p>';
   h+=cdNoteHTML(pk)+(pk.swapped?'<p class="small" id="cdSwapNote">今天换成方案3（原本是 '+esc(CD_PLANS[pk.base].name)+'）。</p>':'')+cdSwapHTML(pk);
   h+='<p class="small">'+esc(P.sum)+'。机器设定是 App 的安排，<b>以心率为准</b>调。</p>'+cdRowsHTML(P);
   if(!hrMax()) h+='<div class="form-row" id="cdAgeAsk"><label>你的年龄（算目标心率用）<input class="inp" id="cdAgeIn" inputmode="numeric" placeholder="例如 40"></label><label>&nbsp;<button class="btn" id="cdAgeSave" style="height:42px">存</button></label></div>';
   if(td) h+='<p class="small" id="cdDone">今天的有氧已记 ✓（'+esc(cdName(td))+(td.hr?' · 平均心率 '+td.hr:'')+' · '+esc(td.machine||"")+'）<button class="btn ghost small" data-cdundo="'+td.id+'">删除这笔</button></p>';
-  else h+='<details class="fold" id="cdQuick"><summary>没用全屏跟练？做完在这里记一笔</summary>'+cdLogForm("wk",pk.id)+'<button class="btn" id="cdLogBtn">记下这次有氧（15 分钟）</button></details>';
-  h+='<p class="small muted">全屏跟练里力量做完会自动接这 15 分钟：每段倒数、语音喊「加速」「放慢」、显示目标心率。为什么这样排、来源见「有氧」页。</p></div>';
+  else h+='<details class="fold" id="cdQuick"><summary>没用全屏跟练？做完在这里记一笔</summary>'+cdLogForm("wk",pk.id)+'<button class="btn" id="cdLogBtn">记下这次有氧（20 分钟）</button></details>';
+  h+='<p class="small muted">全屏跟练里力量做完会自动接这 20 分钟：每段倒数、语音喊「加速」「放慢」、显示目标心率。为什么这样排、来源见「有氧」页。</p></div>';
   return h;
 }
 const CD_WHY='<ul class="list small">'+
   '<li><b>先力量、后有氧：</b>10 个研究的汇总，先做阻力训练再做耐力训练，下肢动态力量的增幅比反过来的顺序多 6.91 个百分点；下肢肌肉增长、下肢静态力量、最大摄氧量和体脂百分比则不受顺序影响（'+cA("eddens")+'）。</li>'+
   '<li><b>会不会吃掉力量：</b>43 个研究的汇总，有氧和力量一起练不影响肌肉增长与最大力量；爆发力有下降（SMD −0.28），同一节课里练比隔开至少 3 小时更明显（'+cA("schumann")+'）。较早的汇总看到跑步会影响肌肉增长和力量、骑车不会，有氧做得越频繁、越久，影响越大（'+cA("wilson")+'）；较新的那篇则看到骑车和跑步没有显著差别。你的目标是减脂和心脏，爆发力的影响关系不大（App 的推论）。</li>'+
-  '<li><b>15 分钟能练到什么：</b>21 个研究、849 人的汇总，「15 分钟以内、其中高强度不超过 5 分钟」的低量间歇，跟不运动比，心肺适能提升（SMD 1.19）、收缩压下降；跟中等强度持续有氧或高量间歇比，没有显著差别。强度越高心肺进步越多，多做几次、拉长高强度时间或整节课时间则没有更多（'+cA("yin")+'）。三个方案里只有方案1 符合这个定义（整节 15 分钟、用力共 5 分钟）；方案2 快段共 8 分钟，超过 5 分钟；方案3 是持续的坡度快走，没有这类试验，心肺刺激也是三个里最弱的（App 的推论）。</li>'+
-  '<li><b>减脂：很小或没有。</b>上面那篇汇总里，跟不运动比体脂百分比少一点（SMD −0.22，95% 信赖区间 −0.41 到 −0.02：有统计意义，但效果小）、腰围 SMD −0.53（'+cA("yin")+'）；另一篇 47 个研究的汇总，低量间歇跟不运动的全身脂肪量没有差别，作者结论：能提升体能，但不能改善身体组成（'+cA("sultana")+'）。两篇合起来：减脂效果很小或没有。所以这 15 分钟练的是心肺与血压（App 的推论）；减脂靠饮食（见「饮食」页）。</li>'+
-  '<li><b>方案1 的来源：</b>热身用约 50 W，取自 '+cA("gillen")+' 的热身强度；1 分钟用力段的形式取自 '+cA("little")+'（他们做 8–12 次、每次间隔 75 秒恢复）。缩成 5 次、用力段心率下限 85% 是 App 的安排——这个精确组合没有直接试验。</li>'+
-  '<li><b>方案2 的来源：</b>4×4 间歇：快 4 分钟（90–95% 最大心率）＋慢 3 分钟主动恢复（约 70%），40 名中等训练男性、每周 3 次、8 周，4×4 组 VO2max 提升 7.2%（'+cA("helgerud")+'）。只做 2 轮是 App 的安排，「2×4」没有直接试验。另一篇汇总：跟耐力训练比，间歇对 VO2max 有可能小幅较好（多 1.2 ml/kg/min）（'+cA("milan")+'）。</li>'+
-  '<li><b>方案3 与配对：</b>坡度、速度、A 日配方案3／B 日配方案1／C 日配方案2、前 2 周只做方案3，都是 App 的安排（腿最累的 A 日排最温和的；C 日腿太酸可以改方案3）。方案3 的强度——按心率：126–137 属中等，139–144 已进入剧烈下端（138 落在两档之间；ACSM 分级，二手来源）；按 MET 估算也接近剧烈（Compendium 17035 是户外爬坡码，套到跑步机是 App 的推论）。分钟数这里取保守的中等计（App 的保守判断）。</li>'+
+  '<li><b>低量间歇能练到什么：</b>21 个研究、849 人的汇总，「15 分钟以内、其中高强度不超过 5 分钟」的低量间歇，跟不运动比，心肺适能提升（SMD 1.19）、收缩压下降；跟中等强度持续有氧或高量间歇比，没有显著差别。强度越高心肺进步越多，多做几次、拉长高强度时间或整节课时间则没有更多（'+cA("yin")+'）。三个方案都不在这个定义里（App 的推论）：方案1 整节 20 分钟、用力共 7 分钟；方案2 整节 20 分钟、快段共 8 分钟，两者都超过「15 分钟以内、高强度不超过 5 分钟」；方案3 是持续的坡度快走，没有这类试验，心肺刺激也是三个里最弱的。</li>'+
+  '<li><b>减脂：很小或没有。</b>上面那篇汇总里，跟不运动比体脂百分比少一点（SMD −0.22，95% 信赖区间 −0.41 到 −0.02：有统计意义，但效果小）、腰围 SMD −0.53（'+cA("yin")+'）；另一篇 47 个研究的汇总，低量间歇跟不运动的全身脂肪量没有差别，作者结论：能提升体能，但不能改善身体组成（'+cA("sultana")+'）。两篇合起来：减脂效果很小或没有。所以这 20 分钟练的是心肺与血压（App 的推论）；减脂靠饮食（见「饮食」页）。</li>'+
+  '<li><b>方案1 的来源：</b>热身与放松用约 50 W，取自 '+cA("gillen")+' 的热身／放松强度（他们放松 3 分钟）；1 分钟用力段的形式取自 '+cA("little")+'（他们做 8–12 次、每次间隔 75 秒恢复）。做 7 次、每次轻踩 1 分钟、热身 3 分钟、用力段心率下限 85% 是 App 的安排——这个精确组合没有直接试验。</li>'+
+  '<li><b>方案2 的来源：</b>4×4 间歇：快 4 分钟（90–95% 最大心率）＋慢 3 分钟主动恢复（约 70%），40 名中等训练男性、每周 3 次、8 周，4×4 组 VO2max 提升 7.2%（'+cA("helgerud")+'）。只做 2 轮（第二轮快段后也慢 3 分钟、再放松 3 分钟）是 App 的安排，「2×4」没有直接试验。另一篇汇总：跟耐力训练比，间歇对 VO2max 有可能小幅较好（多 1.2 ml/kg/min）（'+cA("milan")+'）。</li>'+
+  '<li><b>方案3 与配对：</b>坡度、速度、连续 20 分钟不另分热身放松、A 日配方案3／B 日配方案1／C 日配方案2、前 2 周只做方案3，都是 App 的安排（腿最累的 A 日排最温和的；C 日腿太酸可以改方案3）。方案3 的强度——按心率：126–137 属中等，139–144 已进入剧烈下端（138 落在两档之间；ACSM 分级，二手来源）；按 MET 估算也接近剧烈（Compendium 17035 是户外爬坡码，套到跑步机是 App 的推论）。分钟数这里取保守的中等计（App 的保守判断）。</li>'+
   '<li><b>心率怎么算：</b>最大心率 ≈ 208 − 0.7 × 年龄（'+cA("tanaka")+'），40 岁＝180。Garmin 上有实测最大心率就填实测的。</li>'+
   '<li><b>不看心率时用说话判断：</b>强度低于通气阈值时还能舒服说话，超过就不太能；走路、慢跑、单车、椭圆机都一致，但不一定适合高强度间歇（'+cA("reed")+'）——所以间歇段看心率。一项 15 人（18–35 岁、跑步机）的研究：还能舒服说话时约在 82% 最大心率、RPE 12（'+cA("quinn")+'）；综述：说话开始吃力的阶段对应通气阈值（'+cA("bok")+'）。方案3 的「能讲完整句子、唱不了歌」是 App 依此定的目标。</li>'+
   '<li><b>每周多少分钟：</b>每周 150–300 分钟中等强度，或 75–150 分钟剧烈强度，或两者的等量组合；任何长度都算。中等强度大约是 0–10 分里的 5–6 分，剧烈是 7–8 分（'+cA("who")+'）。</li></ul>';
@@ -2202,7 +2203,7 @@ function renderCardio(){
   const w=cdWeekMins();
   // 1) 力量课后有氧：A/B/C 各做什么
   const pk=cdPick("A",null,true);
-  let t='<div class="eyebrow">有氧 · 力量课后 15 分钟</div><h2>力量课后有氧</h2><p class="small">在训练页选「健身房」，每次力量课做完接 15 分钟有氧（全屏跟练里自动接上）；哑铃／徒手版照旧是 6 分钟心肺收尾。</p>';
+  let t='<div class="eyebrow">有氧 · 力量课后 20 分钟</div><h2>力量课后有氧</h2><p class="small">在训练页选「健身房」，每次力量课做完接 20 分钟有氧（全屏跟练里自动接上）；哑铃／徒手版照旧是 6 分钟心肺收尾。</p>';
   t+=["A","B","C"].map(d=>{ const p=cdPick(d,null,true), P=CD_PLANS[p.id]; return '<div class="cd-sess" data-cdday="'+d+'"><span><b>'+d+' 日 · '+esc(P.name)+'</b><br><span class="small muted">'+esc(P.sum)+'</span></span></div>'; }).join("");
   t+=cdNoteHTML(pk);
   t+='<details class="fold"><summary>三个方案的心率与机器设定</summary>'+["p1","p2","p3"].map(id=>{ const P=CD_PLANS[id]; return '<p><b>'+esc(P.name)+'</b>　<span class="small muted">'+esc(P.machine)+' · 约 '+P.kcal+' kcal（App 的推论）</span></p>'+cdRowsHTML(P); }).join("")+'</details>';
@@ -2212,7 +2213,7 @@ function renderCardio(){
   $("cdWeek").innerHTML='<div class="block-head"><h2>本周有氧分钟</h2><span class="small muted">'+w.n+' 次</span></div>'+
     '<div class="tiles"><div class="tile"><span class="small muted">中等强度</span><span class="num" id="cdWkMod">'+w.mod+'<small>分钟</small></span></div><div class="tile"><span class="small muted">剧烈强度</span><span class="num" id="cdWkVig">'+w.vig+'<small>分钟</small></span></div></div>'+
     '<p class="small">折合中等 <b id="cdWkEq">'+w.eq+'</b> 分钟 · WHO 下限 150 的 '+pct+'%</p><div class="bar"><i style="width:'+pct+'%"></i></div>'+
-    '<p class="small muted">「剧烈 1 分钟算 2 分钟中等」是 App 的推论：WHO 原文只写「等量组合」，1 比 2 是从 150 对 75 推出来的。哪几段算剧烈也是 App 的推论：方案1 用力 5 分钟、方案2 快段 8 分钟算剧烈，其余算中等。方案3 坡度快走——按心率：126–137 属中等，139–144 已进入剧烈下端（138 落在两档之间；ACSM 分级，二手来源）；按 MET 估算也接近剧烈（Compendium 17035 是户外爬坡码，套到跑步机是 App 的推论）。分钟数这里取保守的中等计（App 的保守判断）。洗髓功不算在这里（按 MET 与按心率两种算法结论不同，App 的做法是分开看，见「饮食」页）。</p>';
+    '<p class="small muted">「剧烈 1 分钟算 2 分钟中等」是 App 的推论：WHO 原文只写「等量组合」，1 比 2 是从 150 对 75 推出来的。哪几段算剧烈也是 App 的推论：方案1 用力 7 分钟、方案2 快段 8 分钟算剧烈，其余算中等。方案3 坡度快走——按心率：126–137 属中等，139–144 已进入剧烈下端（138 落在两档之间；ACSM 分级，二手来源）；按 MET 估算也接近剧烈（Compendium 17035 是户外爬坡码，套到跑步机是 App 的推论）。分钟数这里取保守的中等计（App 的保守判断）。洗髓功不算在这里（按 MET 与按心率两种算法结论不同，App 的做法是分开看，见「饮食」页）。</p>';
   // 3) 运动前自查
   const sc=cfg.screen, yes=scrYes();
   $("cdScreen").innerHTML='<h2>运动前自查</h2><p class="small muted" id="cdScrWhen">'+(sc.preset?'按 2026-11-22 你提供的答案预填':'上次更新 '+fmtDate(sc.ts))+'，有变化随时改。</p>'+
@@ -2241,9 +2242,9 @@ function renderCardio(){
 let cdgKind="p1";
 function cdGarminText(id){
   const P=CD_PLANS[id], H=h=>{ const t=cdHr(h); return t&&t.startsWith("心率")?" · "+t:" · "+cdPct(h)+" 最大心率"; };
-  if(id==="p1") return [P.name+"（"+P.machine+"）","1. 热身：按时间 3:00 · 约 50 W","2. 重复 5 次：","   · 用力：按时间 1:00"+H({r:[85,95]}),"   · 轻踩：按时间 1:00"+H({max:70}),"3. 放松：按时间 2:00"].join("\n");
-  if(id==="p2") return [P.name+"（"+P.machine+"）","1. 热身：按时间 3:00"+H({about:70}),"2. 快：按时间 4:00"+H({r:[90,95]}),"3. 慢：按时间 3:00"+H({about:70}),"4. 快：按时间 4:00"+H({r:[90,95]}),"5. 放松：按时间 1:00"].join("\n");
-  return [P.name+"（"+P.machine+"）","1. 热身：按时间 2:00 · 坡度 0–3%、5.0 km/h","2. 坡度快走：按时间 12:00 · 坡度 8–12%、5.0–5.5 km/h"+H({r:[70,80]}),"3. 放松：按时间 1:00 · 坡度归零"].join("\n");
+  if(id==="p1") return [P.name+"（"+P.machine+"）","1. 热身：按时间 3:00 · 约 50 W","2. 重复 7 次：","   · 用力：按时间 1:00"+H({r:[85,95]}),"   · 轻踩：按时间 1:00"+H({max:70}),"3. 放松：按时间 3:00 · 约 50 W"].join("\n");
+  if(id==="p2") return [P.name+"（"+P.machine+"）","1. 热身：按时间 3:00"+H({about:70}),"2. 快：按时间 4:00"+H({r:[90,95]}),"3. 慢：按时间 3:00"+H({about:70}),"4. 快：按时间 4:00"+H({r:[90,95]}),"5. 慢：按时间 3:00"+H({about:70}),"6. 放松：按时间 3:00"].join("\n");
+  return [P.name+"（"+P.machine+"）","1. 坡度快走：按时间 20:00 · 坡度 8–12%、5.0–5.5 km/h"+H({r:[70,80]})].join("\n");
 }
 function renderCdGarmin(){ $("cdgPick").innerHTML=Object.keys(CD_PLANS).map(k=>'<button data-cdg="'+k+'" aria-pressed="'+(k===cdgKind)+'">'+CD_PLANS[k].short+'</button>').join(""); $("cdgText").textContent=cdGarminText(cdgKind); }
 function cdSaveAge(v){ const a=num(v); if(!(a&&a>10&&a<90)) return false; const A=Math.round(a); cfg.age=A; saveCfg(); diet.profile.age=A; diet.setTs=Date.now(); saveDiet(); return true; }
@@ -2907,7 +2908,7 @@ function animCombos(){
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS},cardio:{CD_PLANS,cdPick,cdSteps,cdWeekMins,hrMax,said:()=>sayLog.slice()}}; // 给自检脚本用
+window.__fit={suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS},cardio:{CD_PLANS,cdPick,cdSteps,cdWeekMins,cdMins,hrMax,said:()=>sayLog.slice()}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>

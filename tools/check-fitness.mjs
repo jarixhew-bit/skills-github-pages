@@ -33,8 +33,8 @@
  *      ?go=posture 直接开小课（有红旗改开体态页）、洗髓功完成画面有连结、训练页早上卡片＋今天做了打勾算进本周、习惯卡标签、侧面照竖线、颅椎角 5° 误差、禁用的吓人数字。
  *  17. 饮食：蛋白 1.6 g/kg、热量按 Jensen 2013（男女区间／缺口）、16/8 分餐、每日记录与每周表、洗髓功 3.3 MET 毛／净 kcal、
  *      平台期提示（3 周没降才出、2 周不出）、燃脂收尾改名心肺收尾、备份来回、文案守门。
- *  20. 力量课后 15 分钟有氧（取代 12 周有氧计划）：健身房版结尾是有氧、哑铃／徒手照旧心肺收尾；前 2 周全方案3、之后 A3/B1/C2；
- *      40 岁心率手算；各段合计 15:00；语音加速／放慢；放大；记一笔；中等／剧烈分钟（含旧记录）；旧记录照样显示＋备份来回；
+ *  20. 力量课后 20 分钟有氧（取代 12 周有氧计划；2026-11-23 由 15 分钟改 20 分钟）：健身房版结尾是有氧、哑铃／徒手照旧心肺收尾；前 2 周全方案3、之后 A3/B1/C2；
+ *      40 岁心率手算；各段合计 20:00、kcal 与剧烈／中等分钟对得上手算；语音加速／放慢；放大；记一笔；中等／剧烈分钟（含旧记录）；旧记录照样显示＋备份来回；
  *      自查答「有」只给方案3；C 日换方案3；问年龄；洗髓功 45 分钟数字；文案守门。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
@@ -586,10 +586,10 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   await b2.ctx.close(); fs.rmSync(bf, { force: true });
 }
 
-// ---- 20. 力量课后 15 分钟有氧（2026-11-22，取代旧的 12 周有氧计划） ----
-// 守：健身房版力量课结尾是 15 分钟有氧（没有心肺收尾）、哑铃／徒手版照旧心肺收尾；第一次有氧后 2 周内三天都方案3、
+// ---- 20. 力量课后 20 分钟有氧（2026-11-22 取代旧的 12 周有氧计划；2026-11-23 由 15 分钟改成 20 分钟） ----
+// 守：健身房版力量课结尾是 20 分钟有氧（没有心肺收尾）、哑铃／徒手版照旧心肺收尾；第一次有氧后 2 周内三天都方案3、
 // 之后 A→方案3、B→方案1、C→方案2（固定假日期）；40 岁心率（手算：180×85%＝153、95%＝171、70%＝126、80%＝144、90%＝162）；
-// 每个方案各段加起来 15:00；语音「加速」「放慢」；放大画面；记一笔（平均心率＋机器）；中等／剧烈分钟分开、旧记录也算；
+// 每个方案各段加起来 20:00（1200 秒）、kcal 与剧烈／中等分钟＝手算；语音「加速」「放慢」；放大画面；记一笔（平均心率＋机器）；中等／剧烈分钟分开、旧记录也算；
 // 12 周计划的画面不见了但旧记录还在、备份来回不丢；自查答「有」→ 只给方案3＋看医生；C 日可换方案3；洗髓功 45 分钟数字；文案守门。
 {
   const T = NOW.getTime();
@@ -615,7 +615,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   const guard = async (label, fn) => { try { await fn(); } catch (e) { check(false, `${label}：执行出错 ${String(e).split('\n')[0].slice(0, 160)}`); } };
   const picks = page => page.evaluate(() => ['A', 'B', 'C'].map(w => window.__fit.cardio.cdPick(w, null, true).id).join(''));
 
-  // (a) 健身房版：卡片＋跟练都是「力量 → 有氧 15 分钟 → 放松」，没有心肺收尾
+  // (a) 健身房版：卡片＋跟练都是「力量 → 有氧 20 分钟 → 放松」，没有心肺收尾
   await guard('有氧 (a) 健身房版结尾是有氧', async () => {
   {
     const { ctx, page, errors } = await setup([]);
@@ -626,8 +626,8 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
       const st = await page.evaluate(() => { document.getElementById('startPlayer').click(); return window.__fit.player().steps.map(s => ({ k: s.kind, ph: s.phase, sec: s.sec || 0, cdv: !!s.cdv })); });
       const iFirst = st.findIndex(s => s.cdv), iLog = st.findIndex(s => s.k === 'cdlog'), iCool = st.findIndex(s => /^放松/.test(s.ph)), iLastSet = st.map(s => s.k).lastIndexOf('set');
       const cdSec = st.filter(s => s.cdv).reduce((a, s) => a + s.sec, 0);
-      check(iFirst > iLastSet && iLog > iFirst && iCool === iLog + 1 && cdSec === 900 && !st.some(s => /心肺收尾/.test(s.ph)),
-        `健身房 ${wk}：跟练在最后一组之后接有氧（合计 ${cdSec} 秒＝15:00）→ 记录 → 放松，没有心肺收尾步骤`);
+      check(iFirst > iLastSet && iLog > iFirst && iCool === iLog + 1 && cdSec === 1200 && !st.some(s => /心肺收尾/.test(s.ph)),
+        `健身房 ${wk}：跟练在最后一组之后接有氧（合计 ${cdSec} 秒＝20:00）→ 记录 → 放松，没有心肺收尾步骤`);
       await page.click('#plClose');
     }
     check(errors.length === 0, `健身房有氧没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
@@ -640,7 +640,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     const { ctx, page } = await setup([], PROF, { equip: eq });
     const heads = await page.locator('#workout h2').allTextContents();
     const st = await page.evaluate(() => { document.getElementById('startPlayer').click(); return window.__fit.player().steps.map(s => s.phase + '|' + s.kind); });
-    check(heads.includes('心肺收尾') && !(await page.locator('#cdBlock').count()) && st.some(x => /^心肺收尾/.test(x)) && !st.some(x => /\|cdlog/.test(x)), `${eq === 'db' ? '哑铃' : '徒手'}版：照旧有心肺收尾（卡片＋跟练），没有 15 分钟有氧`);
+    check(heads.includes('心肺收尾') && !(await page.locator('#cdBlock').count()) && st.some(x => /^心肺收尾/.test(x)) && !st.some(x => /\|cdlog/.test(x)), `${eq === 'db' ? '哑铃' : '徒手'}版：照旧有心肺收尾（卡片＋跟练），没有 20 分钟有氧`);
     await ctx.close();
   }
   });
@@ -657,12 +657,33 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     await ctx.close();
   }
   });
-  // (d)(e)(f)(g)(h) 40 岁心率、各段合计 15:00、语音、放大、记一笔
+  // (d)(e)(f)(g)(h) 40 岁心率、各段合计 20:00、kcal 手算、语音、放大、记一笔
   await guard('有氧 (d–j) 心率／语音／放大／记录／分钟／旧记录／备份', async () => {
   {
     const { ctx, page, errors } = await setup([first(20), ...OLD]);
     const sums = await page.evaluate(() => Object.fromEntries(Object.entries(window.__fit.cardio.CD_PLANS).map(([k, P]) => [k, P.ph.reduce((a, p) => a + p[2], 0)])));
-    check(sums.p1 === 900 && sums.p2 === 900 && sums.p3 === 900, `三个方案各段加起来都是 15:00（${JSON.stringify(sums)}）`);
+    check(sums.p1 === 1200 && sums.p2 === 1200 && sums.p3 === 1200, `三个方案各段加起来都是 20:00＝1200 秒（${JSON.stringify(sums)}）`);
+    // kcal 手算（kcal ≈ MET × 72 kg × 小时；MET 是 Compendium 2024 的码，见 .claude/notes/fitness-cardio-research.md 第 3 节）：
+    //   方案1 单车：热身 3×4.0（01214，50 W）＋用力 7×10.3（01232，151–199 W）＋轻踩 7×4.0＋放松 3×4.0
+    //              ＝12＋72.1＋28＋12＝124.1 MET·分 × 72 ÷ 60 ＝ 148.92 → 149
+    //   方案2 椭圆机：热身 3×5.0（02048 中等）＋快 4×9.0＋4×9.0（02049 剧烈）＋慢 3×5.0＋3×5.0＋放松 3×5.0
+    //              ＝15＋72＋30＋15＝132 × 72 ÷ 60 ＝ 158.4 → 158
+    //   方案3 坡度走：20×7.0（17035，户外 6–10% 爬坡码）＝140 × 72 ÷ 60 ＝ 168
+    // 剧烈／中等分钟（App 的推论）：方案1 用力 7×1＝7、其余 13；方案2 快段 4＋4＝8、其余 12；方案3 保守全算中等 20。
+    const HAND = { p1: { kcal: 149, vig: 7, mod: 13 }, p2: { kcal: 158, vig: 8, mod: 12 }, p3: { kcal: 168, vig: 0, mod: 20 } };
+    const kc = await page.evaluate(() => Object.fromEntries(Object.entries(window.__fit.cardio.CD_PLANS).map(([k, P]) => [k, {
+      kcal: P.kcal, vig: P.vig, mod: P.mod, met: Math.round(P.ph.reduce((a, p) => a + p[2] / 60 * p[6], 0) * 72 / 60),
+      upMin: P.ph.filter(p => p[0] === 'up').reduce((a, p) => a + p[2], 0) / 60 }])));
+    check(['p1', 'p2', 'p3'].every(k => kc[k].kcal === HAND[k].kcal && kc[k].met === HAND[k].kcal && kc[k].vig === HAND[k].vig && kc[k].mod === HAND[k].mod && kc[k].vig + kc[k].mod === 20),
+      `三个方案 kcal＝手算 149／158／168（每段 MET×秒 加总也一样）、剧烈＋中等＝20 分钟（${JSON.stringify(kc)}）`);
+    check(kc.p1.upMin === kc.p1.vig && kc.p2.upMin === kc.p2.vig, `剧烈分钟＝「加速」段合计：方案1 ${kc.p1.upMin}、方案2 ${kc.p2.upMin}`);
+    // 每周练 2 次（A→B→C 轮着做，任两天相邻）：B+C＝方案1＋方案2 → 中等 13＋12＝25、剧烈 7＋8＝15 → 折合 25＋30＝55
+    const wk2 = await page.evaluate(() => { const F = window.__fit.cardio; const a = F.cdMins({ kind: 'p1' }), b = F.cdMins({ kind: 'p2' }), c = F.cdMins({ kind: 'p3' }); return { bc: a.mod + b.mod + 2 * (a.vig + b.vig), ab: c.mod + a.mod + 2 * a.vig, ca: b.mod + c.mod + 2 * b.vig, abc: a.mod + b.mod + c.mod + 2 * (a.vig + b.vig) }; });
+    check(wk2.bc === 55 && wk2.ab === 47 && wk2.ca === 48 && wk2.abc === 75, `每周中等当量：2 次 B+C＝55、A+B＝47、C+A＝48，3 次＝75（${JSON.stringify(wk2)}）`);
+    for (const [wk, re] of [['A', /约 168 kcal/], ['B', /约 149 kcal/], ['C', /约 158 kcal/]]) {
+      await page.click(`#picker [data-wk="${wk}"]`);
+      check(re.test(await page.textContent('#cdBlock')) && /20 分钟/.test(await page.textContent('#cdBlock .block-head')), `${wk} 日卡片：标题 20 分钟、写 ${re.source}`);
+    }
     check((await page.evaluate(() => window.__fit.cardio.hrMax().v)) === 180, '40 岁 → 最大心率 208 − 0.7×40 ＝ 180');
     for (const [wk, re, label] of [['A', /126–144/, '方案3 坡度快走 70–80% ＝ 126–144'], ['B', /153–171[\s\S]*≤126/, '方案1 用力 85–95% ＝ 153–171、轻踩 ≤126'], ['C', /约 126[\s\S]*162–171/, '方案2 热身／慢段约 126、快段 90–95% ＝ 162–171']]) {
       await page.click(`#picker [data-wk="${wk}"]`);
@@ -673,13 +694,13 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     await page.click('#startPlayer');
     await page.evaluate(() => { const F = window.__fit, st = F.player().steps, i = st.findIndex(s => s.cdv); for (let n = F.player().si; n < i; n++) document.getElementById('plNextBtn').click(); });
     const seen = [];
-    for (let n = 0; n < 12; n++) {
+    for (let n = 0; n < 20; n++) {
       const r = await page.evaluate(() => { const F = window.__fit, { steps, si } = F.player(), s = steps[si]; const said = F.cardio.said(); return { cdv: !!s.cdv, name: s.name, zone: (document.querySelector('#plMain .zone') || {}).textContent || '', big: (document.querySelector('#plPhoto .cdv-w') || {}).textContent || '', say: said[said.length - 1] || '' }; });
       if (!r.cdv) break; seen.push(r);
       await page.click('#plNextBtn');
     }
     const ups = seen.filter(r => /^用力/.test(r.name)), downs = seen.filter(r => /^轻踩/.test(r.name));
-    check(seen.length === 12 && ups.length === 5 && downs.length === 5, `方案1 跟练 12 段（热身＋5 用力＋5 轻踩＋放松）（实得 ${seen.length}）`);
+    check(seen.length === 16 && ups.length === 7 && downs.length === 7 && seen[0].name === '热身' && seen[15].name === '放松', `方案1 跟练 16 段（热身＋7 用力＋7 轻踩＋放松）（实得 ${seen.length}）`);
     check(ups.every(r => /153–171/.test(r.zone) && r.big === '加速' && /^加速/.test(r.say) && /153到171/.test(r.say)) && downs.every(r => /≤126/.test(r.zone) && r.big === '放慢' && /^放慢/.test(r.say)),
       `方案1 每段：用力显示 153–171、大字＋语音「加速」；轻踩显示 ≤126、大字＋语音「放慢」（例：${JSON.stringify(ups[0] || {})}）`);
     // 放大：回到第一段用力，点 🔍
@@ -696,13 +717,13 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     await page.click('#plAct');
     const rec = (await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cardio')))).find(c => c.kind === 'p1');
     const after = await page.evaluate(() => { const F = window.__fit, { steps, si } = F.player(); return steps[si].phase; });
-    check(rec && rec.min === 15 && rec.vig === 5 && rec.mod === 10 && rec.hr === 142 && rec.machine === '固定单车' && rec.day === 'B' && /^放松/.test(after),
-      `记一笔：方案1、15 分钟（剧烈 5／中等 10）、平均心率 142、固定单车、B 日，然后接着放松（${JSON.stringify(rec)}；下一步 ${after}）`);
+    check(rec && rec.min === 20 && rec.vig === 7 && rec.mod === 13 && rec.hr === 142 && rec.machine === '固定单车' && rec.day === 'B' && /^放松/.test(after),
+      `记一笔：方案1、20 分钟（剧烈 7／中等 13）、平均心率 142、固定单车、B 日，然后接着放松（${JSON.stringify(rec)}；下一步 ${after}）`);
     await page.click('#plClose');
-    // (i) 本周分钟：旧 easy 30（中 30）＋旧 4×4 4 轮 30（剧 16、中 14）＋方案1（剧 5、中 10）＝中 54、剧 21、折合 96
+    // (i) 本周分钟：旧 easy 30（中 30）＋旧 4×4 4 轮 30（剧 16、中 14）＋方案1（剧 7、中 13）＝中 57、剧 23、折合 57＋46＝103
     await page.click('nav.tabs [data-tab="cardio"]');
     const wk = [await page.textContent('#cdWkMod'), await page.textContent('#cdWkVig'), await page.textContent('#cdWkEq')].map(x => parseInt(x));
-    check(wk[0] === 54 && wk[1] === 21 && wk[2] === 96, `本周有氧分钟：中等 54、剧烈 21、折合中等 96（实得 ${wk.join('／')}）`);
+    check(wk[0] === 57 && wk[1] === 23 && wk[2] === 103, `本周有氧分钟：中等 57、剧烈 23、折合中等 103（实得 ${wk.join('／')}）`);
     check(/App 的推论/.test(await page.textContent('#cdWeek')) && /WHO/.test(await page.textContent('#cdWeek')), '本周分钟：「剧烈 1 分钟算 2 分钟中等」标 App 的推论，附 WHO');
     // (j) 12 周计划的画面不见了，旧记录照样读得出来
     const cdTxt = await page.textContent('#tab-cardio');
@@ -712,7 +733,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
       `有氧记录：旧计划 3 笔＋方案3＋方案1 共 5 笔都列得出来（${(await page.locator('#cdHist .cd-rec').count())} 笔）`);
     // 饮食页的每周活动也分中等／剧烈
     await page.click('nav.tabs [data-tab="train"]'); await page.click('#dietCard [data-open-diet]', T2).catch(() => {});
-    check(/有氧 75 分钟（中等 54、剧烈 21）/.test(await page.textContent('#dQg')), '饮食页每周活动：有氧 75 分钟（中等 54、剧烈 21）');
+    check(/有氧 80 分钟（中等 57、剧烈 23）/.test(await page.textContent('#dQg')), '饮食页每周活动：有氧 80 分钟（中等 57、剧烈 23）');
     // 洗髓功 45 分钟：3.3×72×0.75＝178.2 毛、2.3×72×0.75＝124.2 净；×7＝1247.4／869.4 → 显示 1247／869
     const q = await page.evaluate(() => window.__fit.diet.qigong(72, 45));
     const qt = await page.textContent('#dQg'), qn = await page.textContent('#dQg .num');
@@ -808,11 +829,13 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   {
     const html = fs.readFileSync('fitness/index.html', 'utf8');
     const BANNED = ['12 周有氧计划', '/ 12 周', '12 周完成', '从这周开始', 'cdStart', 'CD_WEEKS', 'CD_PHASE', '4×4 间歇是主力', '提升 VO2max 最主要的一招', '燃脂有氧', '燃烧脂肪', '燃脂区', '有氧减脂', '29086308',
-      'Coyle', 'Seiler', 'firstbeat', '+4.9', '本次未重新查证', '几乎没有，要说清楚', '多 6.91%', '有氧也一样'];
+      'Coyle', 'Seiler', 'firstbeat', '+4.9', '本次未重新查证', '几乎没有，要说清楚', '多 6.91%', '有氧也一样',
+      // 2026-11-23 改 20 分钟：方案1 用力 7 分钟、整节 20 分钟，已不在 Yin 的低量间歇定义里
+      '只有方案1 符合', '整节 15 分钟', '15 分钟有氧', '力量课后 15 分钟', '15 分钟能练到什么', '这 15 分钟', '用力共 5 分钟', '缩成 5 次', '用力 5 分钟'];
     const hit = BANNED.filter(b => html.includes(b)).concat(/燃脂(?!开关)/.test(html) ? ['燃脂（非「燃脂开关」）'] : []);
     check(hit.length === 0, `有氧文案：旧 12 周计划与「燃脂」说法不再出现${hit.length ? '（还在：' + hit.join('、') + '）' : ''}`);
     const need = ['28917030', '34757594', '22002517', '37939367', '31401727', '17414804', '20100740', '27115137', '26243014', '25010379', '21774751', '35507232', 'PMC7719906', '26473759', '11153730',
-      '6.91 个百分点', '很小或没有', '只有方案1', '方案2 快段共 8 分钟', '户外爬坡', '这里取保守的中等', '心肺与血压（App 的推论）', 'SMD 1.19', 'SMD −0.22', '7.2%', '82% 最大心率', '150–300', '75–150', '这个精确组合没有直接试验', '「2×4」没有直接试验', '剧烈 1 分钟算 2 分钟中等」是 App 的推论',
+      '6.91 个百分点', '很小或没有', '三个方案都不在这个定义里', '方案1 整节 20 分钟、用力共 7 分钟', '方案2 整节 20 分钟、快段共 8 分钟', '户外爬坡', '这里取保守的中等', '心肺与血压（App 的推论）', 'SMD 1.19', 'SMD −0.22', '7.2%', '82% 最大心率', '150–300', '75–150', '这个精确组合没有直接试验', '「2×4」没有直接试验', '剧烈 1 分钟算 2 分钟中等」是 App 的推论',
       '能提升体能，但不能改善身体组成', 'App 的保守判断', '“risk factor profiling is no longer included”'];
     const miss = need.filter(b => !html.includes(b));
     check(miss.length === 0, `有氧文案：查证过的数字、来源与界线标签都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
