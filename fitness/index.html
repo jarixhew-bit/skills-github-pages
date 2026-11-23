@@ -512,7 +512,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="set-row"><span>每周目标次数</span><div class="seg" role="group" aria-label="每周目标次数" id="cfgGoal"></div></div>
       <div class="set-row"><span>自动减量周<br><span class="small muted">每练 3 周，第 4 周自动减量</span></span><button class="toggle" id="cfgDeload" aria-label="自动减量周" aria-pressed="true"></button></div>
       <div class="set-row"><span>停练后自动降重<br><span class="small muted">停练 7 天以上，回来头 2 次重量先打 9 折（停 3 周以上打 8 折）</span></span><button class="toggle" id="cfgReturn" aria-label="停练后自动降重" aria-pressed="true"></button></div>
-      <div class="set-row" id="sets4Row"><span>每个动作做 4 组<br><span class="small muted" id="sets4Why">默认关。开了：正常周每个超级组做 4 轮（每个动作 4 组），减量周仍是 2 轮；每次约多 5 分钟。来源：15 个研究的汇总，每周每多做 1 组，增肌的效果量多 0.023、肌肉增长的百分比多 0.37%（<a href="https://pubmed.ncbi.nlm.nih.gov/27433992/" target="_blank" rel="noopener">Schoenfeld 2017</a>）；把每周组数分成 &lt;5、5–9、10 组以上三档比较，只有趋势、没达到统计显著（P=0.074）。另一篇汇总：总量一样时，每周练几次不影响增肌（<a href="https://pubmed.ncbi.nlm.nih.gov/30558493/" target="_blank" rel="noopener">Schoenfeld 2019</a>）。多一组的好处小；平常做 3 组是 App 的安排。</span></span><button class="toggle" id="cfgSets4" aria-label="每个动作做 4 组" aria-pressed="false"></button></div>
+      <div class="set-row" id="sets4Row"><span>每个动作做 4 组<br><span class="small muted" id="sets4Why">默认关。开了：正常周每个超级组做 4 轮（每个动作 4 组），减量周仍是 2 轮；每次约多 5 分钟。来源：15 个研究的汇总，每周每多做 1 组，增肌的效果量多 0.023、肌肉增长的百分比多 0.37%（<a href="https://pubmed.ncbi.nlm.nih.gov/27433992/" target="_blank" rel="noopener">Schoenfeld 2017</a>）；把每周组数分成 &lt;5、5–9、10 组以上三档比较，只有趋势、没达到统计显著（P=0.074）。另一篇汇总：总量一样时，每周练几次不影响增肌（<a href="https://pubmed.ncbi.nlm.nih.gov/30558493/" target="_blank" rel="noopener">Schoenfeld 2019</a>）。多一组的好处小（App 的判断）；平常做 3 组是 App 的安排。</span></span><button class="toggle" id="cfgSets4" aria-label="每个动作做 4 组" aria-pressed="false"></button></div>
       <div class="set-row" id="armsRow"><span>加练手臂<br><span class="small muted" id="armsWhy">默认关。开了：两个超级组之后、心肺收尾／有氧之前，多一组手臂超级组（二头弯举＋三头下压／臂屈伸，各 2 轮、每组 10–12 下；减量周 1 轮——App 的保守安排）；每次约多 5 分钟。只加在哑铃版与健身房版，徒手版不加（徒手能练手臂的都是多关节动作，跟课表里的推、拉重复——App 的判断）。来源：10 名没训练过的男性、8 周，一只手臂只做弯举、另一只只做划船，弯举那只的肘屈肌（上臂前侧）厚度 +11.06%，划船那只 +5.16%（他们每次 4–6 组、做到力竭）（<a href="https://pubmed.ncbi.nlm.nih.gov/31268995/" target="_blank" rel="noopener">Mannarino 2021</a>）；另一篇 20 名没训练过的男性，多加单关节动作的那组，力量与皮褶厚度跟没加的没有差别，屈臂围度 +5.2% 对 +4.0%（<a href="https://pubmed.ncbi.nlm.nih.gov/30662699/" target="_blank" rel="noopener">Barbalho 2018</a>；同一第一作者的另一篇同类研究已被撤稿，这一篇有没有问题本 App 没查证）。</span></span><button class="toggle" id="cfgArms" aria-label="加练手臂" aria-pressed="false"></button></div>
       <p class="small muted" id="addVolNote">提醒（App 的保守判断）：减脂期加量，先只开一个，观察 2–3 周。重量连续两次推不上去、酸痛超过 3 天、睡眠变差、不想去练——出现两项以上就关掉。</p>
       <div class="set-row"><span>动作示范<br><span class="small muted">动图＝人体模型连续示范，发力的肌肉亮红光、拉伸的部位亮蓝光（离线也能看）；照片＝真人起始／结束两张</span></span><div class="seg" role="group" aria-label="动作示范" id="cfgMedia"></div></div>
@@ -551,7 +551,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
         <ul class="list">
           <li><b>A → B → C 轮流做</b>，一周 2 次就接着轮，不用管星期几。两次训练之间至少隔 1 天。</li>
           <li>每次：热身 4 分钟 → 超级组 ×2（约 15 分钟）→ 心肺收尾 6 分钟 → 放松 3 分钟 ≈ 28–30 分钟。<b>健身房版</b>的心肺收尾换成 20 分钟有氧（跑步机／单车／椭圆机），≈ 42–44 分钟，详见「有氧」页。设置里开「每个动作做 4 组」或「加练手臂」，各约多 5 分钟；训练页开始按钮下会写这次全部约几分钟（App 的估算：每组按 45 秒算）。</li>
-          <li><b>超级组</b>：两个动作连着做、中间不休息，做完两个再休息，这样算一轮，共 3 轮。</li>
+          <li><b>超级组</b>：两个动作连着做、中间不休息，做完两个再休息，这样算一轮，共 3 轮（设置开「每个动作做 4 组」就是 4 轮；减量周 2 轮）。</li>
           <li><b>器材三选一</b>：家里有哑铃选「哑铃」，什么都没有选「徒手」，去健身房选「健身房」。</li>
         </ul>
       </div>
@@ -965,7 +965,7 @@ const EX = {
   curl:{db:["哑铃弯举","10–12","Dumbbell Curl","curl","hands"], gym:["绳索弯举（直杆）","10–12","Cable Curl","cablecurl",null],
     cue:"站直，两手各拿一只哑铃垂在身侧、掌心朝前。上臂贴住身体不动，只弯手肘把哑铃举到肩前，再慢慢放到手臂伸直。身体不要往后仰、不要甩。", gcue:"面对低滑轮站，两手与肩同宽握直杆、掌心朝上。上臂贴住身体不动，只弯手肘把杆拉到肩前，再慢慢放到手臂伸直。身体不要往后仰、不要甩。"},
   tri:{db:["坐姿哑铃过头臂屈伸","10–12","Seated Dumbbell Overhead Triceps Extension","ohext","one"], gym:["绳索下压","10–12","Cable Triceps Pushdown","pushdown",null],
-    cue:"两手一起捧住一只哑铃，举到头顶上方、手臂伸直。上臂保持竖直不动，只弯手肘把哑铃慢慢放到头后，再伸直推回去。坐在有椅背的长凳上、背贴椅背做，是 App 的安排（站着做也是同一个动作）；先用轻重量，肩膀不舒服就换成绳索下压（App 的保守安排）。", gcue:"面对高滑轮站，两手握绳索（或短杆），上身微微前倾，手肘贴在身体两侧。上臂不动，只伸直手肘往下压到手臂伸直，再慢慢让手回到约胸口高度。肩膀不要耸、身体不要往下压。"},
+    cue:"两手一起捧住一只哑铃，举到头顶上方、手臂伸直。上臂保持竖直不动，只弯手肘把哑铃慢慢放到头后，再伸直推回去。坐在有椅背的长凳上、背贴椅背做，是 App 的安排（站着做也是同一个动作）；先用轻重量，肩膀不舒服就换成绳索下压（App 的保守安排）。", gcue:"面对高滑轮站，两手握绳索（或短杆），上身微微前倾，手肘贴在身体两侧。上臂不动，只伸直手肘往下压到手臂伸直，再慢慢让手回到约胸口高度。身体不动，要前倾就从髋往前倾、背保持直。"},
 };
 const ARM_SLOTS=new Set(["curl","tri"]); // 手臂超级组的两个槽位
 
