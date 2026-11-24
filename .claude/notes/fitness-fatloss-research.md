@@ -361,3 +361,27 @@ App 自己的安排／判断（没有来源，文案已标）：
 - 提醒（App 的保守判断）：减脂期先只开一个、观察 2–3 周；重量连续两次推不上去、酸痛超过 3 天、睡眠变差、不想去练，两项以上就关掉。
 - 「全部约几分钟」：每组按 45 秒（使用说明原本「超级组 ×2 约 15 分钟」＝12×45＋6×60 秒反推），其余照跟练步骤秒数（App 的估算）。
 - 动作要领来源：StrengthLog 的 dumbbell-curl／cable-curl／tricep-pushdown／dumbbell-standing-triceps-extension 页（CI `web-lookup.yml` 读回，引句写在 `tools/lib/fitness-anim-spec.json` 那四条的 note）。坐姿、背靠椅背做过头臂屈伸是 App 的安排（来源写的是站姿）。
+
+## 每个动作各自的休息时间、体重每周速度（2026-11-24 查证）
+
+用户拍板三项新功能（史密斯机算片、每个动作各自的休息、体重卡目标线＋每周平均），点子来自开源项目 openGym（AGPL），**只借思路，没读也没复制它的代码或素材**。
+查证走 CI：PubMed esearch（`web-lookup.yml`）→ efetch `retmode=text`、`fetch-url.yml` mode=html。
+
+| 来源 | PMID／网址 | run ID | 原文引句 |
+|---|---|---|---|
+| Schoenfeld 2016 J Strength Cond Res | 26605807 | 45346071024 | "The study period lasted 8 weeks with subjects performing 3 total body workouts a week comprised 3 sets of 8-12 repetition maximum (RM) of 7 different exercises per session"；"Twenty-one young resistance-trained men were randomly assigned to either a group that performed a resistance training (RT) program with 1-minute rest intervals (SHORT) or a group that employed 3-minute rest intervals (LONG)"；"Maximal strength was significantly greater for both 1RM squat and bench press for LONG compared to SHORT. Muscle thickness was significantly greater for LONG compared to SHORT in the anterior thigh"；"longer rest periods promote greater increases in muscle strength and hypertrophy in young resistance-trained men" |
+| Grgic 2017 Eur J Sport Sci（系统综述，6 个研究） | 28641044 | 45346071024 | "Current evidence indicates that both short and long inter-set rest intervals may be useful when training for achieving gains in muscle hypertrophy. Novel findings involving trained participants … suggest a possible advantage for the use of long rest intervals"；短＝"≤60 s"、长＝">60 s" |
+| Singer 2024 Front Sports Act Living（Bayesian 统合，9 个研究） | 39205815（PMC11349676） | 45346071024 | "results suggest a small hypertrophic benefit to employing inter-set rest interval durations >60 s, perhaps mediated by reductions in volume load. However, our analysis did not detect appreciable differences in hypertrophy when resting >90 s between sets" |
+| ACSM 2009 立场声明（摘要） | 19204579 | 45346146031 | 增肌："emphasis on the 6-12 RM zone using 1- to 2-min rest periods between sets"；重负荷进阶："using 3- to 5-min rest periods" |
+| NHS「Tips to help you lose weight」 | https://www.nhs.uk/live-well/healthy-weight/managing-your-weight/tips-to-help-you-lose-weight/ | 45346209569 | "aim to lose 1 to 2lbs, or 0.5 to 1kg, a week" |
+| NHS「Obesity – treatment」 | https://www.nhs.uk/conditions/obesity/treatment/ | 45346209569 | "try to lose weight steadily – aim to lose 1 to 2lbs, or 0.5 to 1kg, a week" |
+
+没读到的：NHS `better-health/lose-weight/` 与 `managing-your-weight/` 两页没有速度的句子；`losing-weight/`、`start-the-nhs-weight-loss-plan/` 回 404（run 45346145873／45346209569）。
+
+**App 怎么用（措辞不比原文强）**：
+- 默认（**App 的安排**）：多关节大动作 90 秒；小动作（反向飞鸟槽位＝哑铃反向飞鸟／Y-T／绳索面拉、二头、三头、弹力带拉开、健身房版俯卧腿弯举机）60 秒。
+  90 秒取自 Singer「>90 s 没再看到明显差别」；**三篇摘要都没有分大小动作比较**，分开定是 App 的安排（ACSM 全文有分「核心／辅助动作」，但只读了摘要，没写进 App）。
+- 超级组那一轮休息取两个动作中较长的（**App 的安排**）。推论（没写进 App）：非竞争肌群的超级组里，同一个动作两组之间还隔着另一个动作的一组。
+- Schoenfeld 2016 写明是「有训练经验的年轻男性、21 人、8 周、3 分钟比 1 分钟」——用户 40 岁，App 文案照写受试者，不推广；肌肉厚度只有大腿前侧显著（肱三头只有趋势 p＝0.06），App 只写「大腿前侧肌肉厚度」（verifier 2026-11-24 退件后改）。
+- 体重卡只引 NHS 一句「每周减 0.5–1 kg」附原文链接，写明「App 只显示数字，不替你判断快慢，也不预测体重」；BMI <18.5 时不显示这句。不做体重预测。
+- 史密斯杠重：没查到可靠来源，App 不写任何具体杠重数字，只提示「不同健身房的史密斯杠重不一样，问工作人员或看杠上标示」。

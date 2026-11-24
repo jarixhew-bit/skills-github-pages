@@ -198,6 +198,19 @@
   - 全部约几分钟：`estSec(steps)`＝跟练步骤秒数加总、每组按 `SET_SEC`＝45 秒（App 的估算）；`#goSub` 与跟练 `#plCount` 显示。手算：健身房 42、＋任一开关 47、两个 52；哑铃 28／33／38；减量周健身房＋手臂 2370 秒＝40。
   - 动图 4 张（`curl-hands`／`cablecurl`／`pushdown`／`ohext-one`）：渲染台 `OV.curl/cablecurl/pushdown/ohext`；绳索两张的钢索、直杆、配重塔只在渲染台画（`KEY===...`，同面拉），机位用 side（正面会被配重塔挡住）；过头臂屈伸用 front34（椅背会挡）。
   - 自检：check-fitness 第 21 段（默认关＝原样、4 组、手臂三种器材、时间手算、建议／新纪录／训练量、备份来回、文案守门）。
+- **史密斯机算片／每个动作各自的休息／体重卡目标线与每周平均（2026-11-24，用户拍板；点子来自 openGym，只借思路不碰代码）**：查证正本
+  `.claude/notes/fitness-fatloss-research.md` 最后一节（引句＋PMID＋run ID）。
+  - **休息**：旧的全局 `cfg.rest` 废掉。`restDef(k)`（多关节 90／小动作 60：`REST_SMALL` 槽位 rfly/curl/tri＋`REST_SMALL_K` x:pullapart、gym:rdl 腿弯举机）、
+    `restOf(k)`＝`cfg.restBy[k]` ?? `cfg.restBase` ?? 默认；`blockRest(pair,eq)`＝两动作取较长。**卡片标题 `.brest`、勾组倒数（按钮 `data-rs`）、跟练休息步骤与语音、Garmin「休息 m:ss」、
+    `estSec` 都经过 `blockRest`**，别再写死秒数。设置「更多 → 设置 → 组间休息」`#restBox`（按当前器材列 A/B/C 的 12 个＋手臂 2 个，换过的动作照换过的列，`select[data-restk]`）、`#restReset` 全部恢复默认。
+    迁移：本机存过旧 `rest`（60／75／90，含旧默认 60——分不出是不是自己选的）→ `restBase`＝那个值、所有动作照旧（体验不突变），设置里 `#restLegacy` 提示可按恢复默认改用新默认；全新用户直接用新默认。`restV2` 标记只迁移一次。
+    使用说明的时间 `#helpSsMin`／`#helpDbMin`／`#helpGymMin` 由 `ssSec()`／`helpRange()` 现算（训练 A、不开开关，「N–N+2」）。全新用户：健身房 A 40、哑铃 A 31、健身房＋手臂 45 分钟。
+    备份导入：本机没动过（`restSet`）才用备份的；旧版备份只有 `rest` → 当 restBase。
+  - **算片**：`SMITH_K`＝`x:smithsquat`、`gym:thrust`（后者文案前缀「用史密斯机做时，」）。`plateCalc(total,bar,plates)`（0.05 kg 为单位 DP：片数最少、同数取大片在前；凑不出回 lo/hi），
+    `plateText`、`platesHTML`、`refreshPlates()`（卡片跟最近改的那组 `data-plast`，跟练 `#plPlates` 跟 `#plKg`／步进钮）。设置 `#smithBox`：`cfg.smithBar`（空＝按 0 算，0–60）、`cfg.plates`（默认全选 20/15/10/5/2.5/1.25），`smithSet` 管导入。**不准写具体杠重数字**（没来源）。
+  - **体重卡**：`#bGoal`→`cfg.goalKg`（20–300，`goalSet` 管导入），`drawChart(...,{goal})` 画 `.goal-line` 虚线＋「目标 N」；`weekAvgInfo(now)`（周一开始，跟 `plateauInfo` 同一套：本周有记录用本周否则上周，跟前一周比，
+    两周缺一只给提示），显示用四舍五入后的平均相减；`#bNhs` NHS 每周 0.5–1 kg 原文链接（BMI <18.5 隐藏），不做预测。
+  - 自检：check-fitness 第 23 段（手算写在段首注释）。`openWith` 给了 `cfg` 的情境自动当「存过 rest＝60 的老用户」，既有各段的 60 秒手算不用改。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 

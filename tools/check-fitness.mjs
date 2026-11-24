@@ -40,6 +40,9 @@
  *      手臂加重建议与新纪录、每周训练量、旧 3 组记录相容、备份来回、文案守门。
  *  22. 有氧时长 15／20 分钟（默认 15）：旧 cfg 没设过＝15、设置与有氧页都能切、重载还在；15 分钟版三方案 900 秒、kcal 110／128／94 手算、
  *      剧烈／中等、每周当量、卡片／跟练／语音／记一笔／Garmin；方案3 仍从 5% 起；20 分钟版 1200 秒；Yin 句随设定切换；20 分钟×开关组合的总时间；备份来回；旧日志不动。
+ *  23. 史密斯机算片（50→20＋5、52.5→20＋5＋1.25、凑不出给较轻／较重、杠 15 先减掉）、每个动作各自的休息（默认多关节 90／小动作 60、
+ *      超级组取较长者、逐个改、恢复默认、旧 cfg.rest 迁移、总时间手算、跟练／Garmin／卡片倒数、备份来回）、体重卡（每周平均与变化手算、
+ *      不足两周只给提示、目标线、备份来回、NHS 原文链接）。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
  *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
@@ -87,6 +90,9 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   page.on('pageerror', e => errors.push(String(e)));
   await page.clock.setFixedTime(NOW);
   // opt.cfg：预设设定（例如指定示范方式）；mediaV3 标记表示「已经升级过」，免得被自动改回动图
+  // 2026-11-24 起组间休息按动作分（第 23 段）。既有各段的手算都是按旧版统一的 60 秒写的：给了 opt.cfg 的情境一律当成
+  // 「存过旧 cfg.rest＝60 的老用户」（App 迁移成 restBase＝60，跟改版前逐秒一样）；opt.cfg 自带 rest／restV2 的照原样。
+  if (opt.cfg && !('rest' in opt.cfg) && !opt.cfg.restV2) opt = { ...opt, cfg: { rest: 60, ...opt.cfg } };
   await page.addInitScript(([h, c]) => { if (!sessionStorage.getItem('seeded')) { localStorage.clear(); localStorage.setItem('fit.sessions', JSON.stringify(h)); if (c) localStorage.setItem('fit.cfg', JSON.stringify(c)); sessionStorage.setItem('seeded', '1'); } }, [hist, opt.cfg || null]);
   await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
   await page.goto(URL);
@@ -129,7 +135,8 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
   await page.click('#workout [data-done="lunge_0"]');
   check(await page.locator('#rest').isHidden(), '超级组第一个动作做完不休息（直接接第二个）');
   await page.click('#workout [data-done="ohp_0"]');
-  check(/1:00/.test(await page.textContent('#restT')) && await page.locator('#rest').isVisible(), '第二个动作做完 → 出现 60 秒休息倒数');
+  // 全新用户（没给 cfg）：弓步 90＋肩推 90（多关节，默认 90 秒，2026-11-24 起）→ 这轮休息 90 秒
+  check(/1:30/.test(await page.textContent('#restT')) && await page.locator('#rest').isVisible(), '第二个动作做完 → 出现这轮超级组的休息倒数（全新用户：弓步／肩推默认 90 秒 → 1:30）');
   await page.click('#restSkip');
   await page.click('#workout [data-feel="7"]');
   await page.click('#finishBtn');
@@ -2120,6 +2127,258 @@ for (const [label, rows, want] of [
     await b3.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
     check((await b3.page.evaluate(() => window.__fit.cardio.cdLen())) === 15, '导入：本机自己选过 15 的，不被备份的 20 覆盖');
     await b3.ctx.close();
+  });
+}
+
+// ---- 23. 史密斯机算片／每个动作各自的休息／体重卡目标线与每周平均（2026-11-24 用户拍板这三项） ----
+// 手算：
+//   算片（总重量＝杠＋两边；每边＝(总−杠)÷2；片数最少、一样多取大片在前）：
+//     50、杠 0、片全选 → 每边 25 ＝ 20＋5（15＋10 也是 2 片，取大片在前）；52.5 → 每边 26.25 ＝ 20＋5＋1.25；
+//     51 → 每边 25.5 凑不出（片最小 1.25）→ 较轻每边 25（共 50，20＋5）／较重每边 26.25（共 52.5，20＋5＋1.25）；
+//     杠 15、50 → 每边 17.5 ＝ 15＋2.5；杠 15、只剩 20／15／10／5 → 17.5 凑不出 → 较轻每边 15（共 45）／较重每边 20（共 55）；
+//     只有 20 的片、50 → 每边 25 → 较轻 20（共 40）／较重 20＋20（共 80）；杠 15、总 15 → 空杠；总 10 < 杠 15 → 比杠还轻。
+//   休息（默认：多关节 90、小动作 60；超级组取较长者）：
+//     全新用户健身房 A（有氧 15）：热身 240＋放松 180＋有氧 900＋12 组×45＋6 次休息×90 ＝ 2400 ＝ 40 分钟
+//     全新用户哑铃 A：240＋180＋心肺收尾 360＋540＋540 ＝ 1860 ＝ 31；健身房 A＋手臂（curl 60／tri 60）：＋4×45＋2×60 ＝ 300 → 2700 ＝ 45
+//     哑铃 C 把登阶改 45 秒：[分腿蹲 90, 地板推举 90]→90、[登阶 45, 反向飞鸟 60]→60：240＋180＋360＋540＋3×90＋3×60 ＝ 1770 ＝ 29.5 → 30
+//     老用户 cfg.rest＝75：每轮都 75；再把硬拉改 120 → A 的 [硬拉, 划船] 那组 120、其余 75
+//     使用说明（训练 A、不开开关）：全新 健身房 40–42、哑铃 31–33、超级组 18 分钟
+//   体重（周＝周一开始；固定今天 2026-09-30 周三）：本周 9/28 72.0、9/30 71.6 → 71.8；上周 9/22 72.4、9/24 72.0、9/26 72.2 → 72.2；
+//     71.8−72.2 ＝ −0.4。只有上周 9/22 72.4、9/24 72.0（72.2）与前一周 9/15 72.6、9/17 73.0（72.8）→「上周平均 72.2，比前一周 −0.6」。
+{
+  const guard = async (label, fn) => { try { await fn(); } catch (e) { check(false, `${label}：执行出错 ${String(e).split('\n')[0].slice(0, 160)}`); } };
+  const T = NOW.getTime();
+  const at = (y, m, d) => new Date(y, m - 1, d, 8).getTime();
+  const bodyRow = (y, m, d, kg) => ({ id: 'b_' + at(y, m, d), ts: at(y, m, d), kg, waist: null });
+  async function withBody(rows, cfg) {
+    const o = await openWith([], undefined, cfg ? { cfg } : {});
+    await o.page.evaluate(b => localStorage.setItem('fit.body', JSON.stringify(b)), rows);
+    await o.page.reload(); await o.page.waitForSelector('#workout .ex'); o.page.setDefaultTimeout(5000);
+    return o;
+  }
+
+  await guard('算片 (a) 纯函数手算', async () => {
+    const { ctx, page } = await openWith([]);
+    const r = await page.evaluate(() => { const S = window.__fit.smith, all = [20, 15, 10, 5, 2.5, 1.25];
+      return { a: S.plateCalc(50, 0, all), b: S.plateCalc(52.5, 0, all), c: S.plateCalc(51, 0, all), d: S.plateCalc(50, 15, all), e: S.plateCalc(50, 15, [20, 15, 10, 5]),
+        f: S.plateCalc(50, 0, [20]), g: S.plateCalc(15, 15, all), h: S.plateCalc(10, 15, all), k: Object.keys(S.SMITH_K) }; });
+    const eq = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+    check(r.a.exact && eq(r.a.per, [20, 5]), `算片：50 kg、杠 0、片全选 → 每边 20＋5（实得 ${JSON.stringify(r.a)}）`);
+    check(r.b.exact && eq(r.b.per, [20, 5, 1.25]), `算片：52.5 → 每边 20＋5＋1.25（实得 ${JSON.stringify(r.b)}）`);
+    check(!r.c.exact && r.c.lo.total === 50 && eq(r.c.lo.per, [20, 5]) && r.c.hi.total === 52.5 && eq(r.c.hi.per, [20, 5, 1.25]), `算片：51 凑不出 → 较轻 50（20＋5）／较重 52.5（20＋5＋1.25）（实得 ${JSON.stringify(r.c)}）`);
+    check(r.d.exact && eq(r.d.per, [15, 2.5]), `算片：杠 15、50 → 减掉杠重，每边 15＋2.5（实得 ${JSON.stringify(r.d)}）`);
+    check(!r.e.exact && r.e.lo.total === 45 && eq(r.e.lo.per, [15]) && r.e.hi.total === 55 && eq(r.e.hi.per, [20]), `算片：杠 15、没有 2.5／1.25 → 较轻 45（每边 15）／较重 55（每边 20）（实得 ${JSON.stringify(r.e)}）`);
+    check(!r.f.exact && r.f.lo.total === 40 && r.f.hi.total === 80 && eq(r.f.hi.per, [20, 20]), `算片：只有 20 的片、50 → 较轻 40／较重 80（实得 ${JSON.stringify(r.f)}）`);
+    check(r.g.exact && r.g.per.length === 0 && r.h.under, '算片：总重＝杠重 → 空杠；比杠还轻 → 提示');
+    check(eq(r.k.sort(), ['gym:thrust', 'x:smithsquat']), `算片只给 App 里真的用史密斯机的两个动作：史密斯深蹲、健身房版「臀推机或史密斯臀推」（实得 ${r.k}）`);
+    await ctx.close();
+  });
+
+  await guard('算片 (b) 卡片／设置／跟练／备份', async () => {
+    const { ctx, page, errors } = await openWith([], undefined, { cfg: { equip: 'gym', alts: { 'gym:gsquat': 'x:smithsquat' } } });
+    await page.click('#picker [data-wk="A"]');
+    const pl = () => page.textContent('#workout .ex[data-slot="gsquat"] .plates');
+    check(/填了总重量就显示每边挂几片/.test(await pl()) && (await page.locator('#workout .ex[data-slot="bench"] .plates').count()) === 0, '算片：史密斯深蹲卡片有算片行（还没填重量先提示）；坐姿推胸机没有');
+    await page.fill('#kg-gsquat_0', '50');
+    check(/每边挂：20＋5（共 50 kg）/.test(await pl()) && /杠重没填，按 0 算/.test(await pl()), `算片：填 50 → 「每边挂：20＋5（共 50 kg）」＋杠重没填的提示（实得：${await pl()}）`);
+    await page.fill('#kg-gsquat_1', '52.5');
+    check(/每边挂：20＋5＋1.25（共 52.5 kg）/.test(await pl()), `算片：改第 2 组 52.5 → 跟着刚改的那组（实得：${await pl()}）`);
+    await page.click('nav.tabs [data-tab="more"]');
+    await page.click('#smithBox summary');
+    check(/不同健身房的史密斯杠重不一样，问工作人员或看杠上标示/.test(await page.textContent('#smithBarHint')) && !/\d+\s*kg 的杠|杠重(通常|一般)/.test(await page.textContent('#smithBody')), '算片设置：杠重留空的提示，且不写具体杠重数字');
+    await page.fill('#cfgSmithBar', '15');
+    await page.click('#cfgPlates [data-plate="2.5"]'); await page.click('#cfgPlates [data-plate="1.25"]');
+    const c = await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')));
+    check(c.smithBar === 15 && JSON.stringify(c.plates.slice().sort((a, b) => b - a)) === '[20,15,10,5]' && c.smithSet === 1, `算片设置：杠重 15、取消 2.5／1.25 → 存进 cfg（实得 ${c.smithBar}／${c.plates}）`);
+    await page.click('nav.tabs [data-tab="train"]');
+    await page.fill('#kg-gsquat_0', '50');
+    check(/凑不出 50 kg：较轻 45 kg（每边 15）／较重 55 kg（每边 20）/.test(await pl()) && !/杠重没填/.test(await pl()), `算片：杠 15、没有小片 → 列较轻／较重（实得：${await pl()}）`);
+    await page.evaluate(() => { document.querySelector('#cfgPlates [data-plate="2.5"]').click(); }); // 设置页不在画面上，直接点那颗钮
+    await page.fill('#kg-gsquat_0', '50');
+    check(/每边挂：15＋2.5（共 50 kg）/.test(await pl()), `算片：杠 15、勾回 2.5 → 每边 15＋2.5（实得：${await pl()}）`);
+    // 跟练：史密斯深蹲那一步也有
+    await page.click('#startPlayer');
+    for (let i = 0; i < 8; i++) await page.click('#plNextBtn');
+    await page.fill('#plKg', '60');
+    check(/每边挂：20＋2.5（共 60 kg）/.test(await page.textContent('#plPlates')), `算片：跟练里填 60、杠 15 → 每边 20＋2.5（实得：${await page.textContent('#plPlates')}）`);
+    await page.click('#plMain [data-stp="kg"][data-d="2.5"]');
+    check(/凑不出 62.5 kg/.test(await page.textContent('#plPlates')), `算片：跟练按 +2.5 → 62.5（每边 23.75）凑不出（没有 1.25 的片）（实得：${await page.textContent('#plPlates')}）`);
+    await page.click('#plClose');
+    // 健身房 B 的臀推：注明「用史密斯机做时」
+    await page.click('#picker [data-wk="B"]');
+    check(/^用史密斯机做时，/.test(await page.textContent('#workout .ex[data-slot="thrust"] .plates')), '算片：健身房版臀推（臀推机或史密斯臀推）写明「用史密斯机做时」');
+    // 备份来回
+    await page.click('nav.tabs [data-tab="more"]');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+    const bf = os.tmpdir() + '/fit-smith-backup.json'; fs.copyFileSync(await dl.path(), bf); const bk = JSON.parse(fs.readFileSync(bf, 'utf8'));
+    check(bk.cfg.smithBar === 15 && bk.cfg.plates.length === 5, '算片：备份带着杠重与杠片');
+    check(errors.length === 0, `算片：没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+    const b2 = await openWith([]);
+    await b2.page.click('nav.tabs [data-tab="more"]'); await b2.page.setInputFiles('#bkFile', bf);
+    await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    const c2 = await b2.page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')));
+    check(c2.smithBar === 15 && c2.plates.length === 5 && !c2.plates.includes(1.25), '算片：导入到新手机 → 杠重 15、杠片还原');
+    await b2.ctx.close();
+    const b3 = await openWith([], undefined, { cfg: { smithBar: 20, smithSet: 1 } });
+    await b3.page.click('nav.tabs [data-tab="more"]'); await b3.page.setInputFiles('#bkFile', bf);
+    await b3.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    check((await b3.page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).smithBar)) === 20, '算片：本机自己设过杠重的，不被备份覆盖');
+    await b3.ctx.close();
+  });
+
+  await guard('休息 (a) 默认与超级组取较长者', async () => {
+    const { ctx, page, errors } = await openWith([]);
+    const r = await page.evaluate(() => { const R = window.__fit.rest; return ['gym:gsquat', 'db:bench', 'x:smithsquat', 'db:rdl', 'db:rfly', 'gym:rfly', 'bw:rfly', 'x:pullapart', 'db:curl', 'gym:tri', 'gym:rdl'].map(k => R.restOf(k)); });
+    check(JSON.stringify(r) === '[90,90,90,90,60,60,60,60,60,60,60]', `休息默认：多关节 90、反向飞鸟／面拉／Y-T／弹力带拉开／二头／三头／腿弯举机 60（实得 ${r}）`);
+    const e = await page.evaluate(() => window.__fit.vol.estSec(window.__fit.vol.buildSteps('A')));
+    check(e === 1860 && /全部约 31 分钟/.test(await page.textContent('#goSub')), `休息：全新用户哑铃 A 全部约 31 分钟（手算 1860 秒；实得 ${e}）`);
+    await page.click('#picker [data-wk="C"]');
+    const heads = await page.locator('#workout .block-head .brest').allTextContents();
+    check(JSON.stringify(heads) === '["90","90"]', `休息：哑铃 C 两组都是 90（登阶 90＞反向飞鸟 60，取较长的）（实得 ${heads}）`);
+    await page.click('nav.tabs [data-tab="more"]'); await page.click('#restBox summary');
+    await page.selectOption('#restBody select[data-restk="db:step"]', '45');
+    const c = await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')));
+    check(c.restBy['db:step'] === 45 && c.restSet === 1, '休息：设置里把登阶改 45 → 存进 cfg.restBy');
+    await page.click('nav.tabs [data-tab="train"]');
+    const h2 = await page.locator('#workout .block-head .brest').allTextContents();
+    const stC = await page.evaluate(() => window.__fit.vol.buildSteps('C').filter(s => s.kind === 'rest').map(s => s.sec));
+    const eC = await page.evaluate(() => window.__fit.vol.estSec(window.__fit.vol.buildSteps('C')));
+    check(JSON.stringify(h2) === '["90","60"]' && JSON.stringify(stC) === '[90,90,90,60,60,60]', `休息：登阶 45、反向飞鸟 60 → 那组取较长的 60；跟练休息步骤 ${stC}`);
+    check(eC === 1770 && /全部约 30 分钟/.test(await page.textContent('#goSub')), `休息：哑铃 C 总时间跟着改（手算 1770 秒＝29.5→30；实得 ${eC}）`);
+    await page.evaluate(() => document.querySelector('#gPick [data-g="C"]').click());
+    const g = await page.textContent('#gText');
+    check((g.match(/休息 1:30/g) || []).length === 1 && (g.match(/休息 1:00/g) || []).length === 1, 'Garmin：C 的两组分别「休息 1:30」「休息 1:00」');
+    // 卡片勾完一轮 → 休息倒数＝那组的秒数
+    await page.click('nav.tabs [data-tab="train"]');
+    await page.click('#workout [data-done="step_0"]'); await page.click('#workout [data-done="rfly_0"]');
+    check(/1:00/.test(await page.textContent('#restT')), '卡片：登阶＋反向飞鸟做完一轮 → 休息倒数 1:00');
+    await page.click('#restSkip');
+    // 恢复默认
+    await page.click('nav.tabs [data-tab="more"]'); await page.click('#restReset');
+    const c3 = await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')));
+    check(Object.keys(c3.restBy).length === 0 && (await page.inputValue('#restBody select[data-restk="db:step"]')) === '90', '休息：「全部恢复默认」→ restBy 清空、登阶回到 90');
+    check(/39205815/.test(await page.innerHTML('#restWhy')) && /26605807/.test(await page.innerHTML('#restWhy')) && /App 的安排/.test(await page.textContent('#restWhy')) && /超过 90 秒没再看到明显差别/.test(await page.textContent('#restWhy')),
+      '休息说明：Singer 2024／Schoenfeld 2016 的 PMID、「超过 90 秒没再看到明显差别」、分大小动作标 App 的安排');
+    // verifier 退件（2026-11-24）：Schoenfeld 2016 只有大腿前侧肌肉厚度显著，不准写成笼统的「肌肉厚度」；加量开关不准再写死「约多 5 分钟」（休息改按动作后 4 组多 6 分钟）
+    check(/大腿前侧肌肉厚度/.test(await page.textContent('#restWhy')) && !/力量与肌肉厚度/.test(await page.textContent('#restWhy')), '休息说明：Schoenfeld 2016 只写大腿前侧肌肉厚度（不比原文强）');
+    check(!/约多 5 分钟/.test(await page.evaluate(() => document.body.innerHTML)), '加量开关与使用说明不再写死「约多 5 分钟」');
+    const help = [await page.textContent('#helpGymMin'), await page.textContent('#helpDbMin'), await page.textContent('#helpSsMin')];
+    check(JSON.stringify(help) === '["40–42","31–33","18"]', `使用说明的时间跟着休息走：健身房 40–42、哑铃 31–33、超级组 18（实得 ${help}）`);
+    check(errors.length === 0, `休息：没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+  });
+
+  await guard('休息 (b) 健身房、手臂、跟练', async () => {
+    const { ctx, page } = await openWith([], undefined, { cfg: { equip: 'gym', arms: true, restV2: 1 } });
+    const e = await page.evaluate(() => window.__fit.vol.estSec(window.__fit.vol.buildSteps('A')));
+    check(e === 2700 && /全部约 45 分钟/.test(await page.textContent('#goSub')), `休息：全新用户健身房 A＋手臂（有氧 15）全部约 45 分钟（手算 2700；实得 ${e}）`);
+    const arm = await page.textContent('#armCard .brest');
+    await page.click('nav.tabs [data-tab="more"]'); await page.click('#restBox summary');
+    const rows = await page.locator('#restBody select[data-restk]').count();
+    await page.selectOption('#restBody select[data-restk="gym:tri"]', '90');
+    await page.click('nav.tabs [data-tab="train"]');
+    check(arm === '60' && rows === 14 && (await page.textContent('#armCard .brest')) === '90', `休息：手臂组默认 60；设置列出 12＋2 个动作（${rows}）；三头改 90 → 手臂组 90`);
+    await page.click('#startPlayer');
+    const rs = await page.evaluate(() => window.__fit.player().steps.filter(s => s.kind === 'rest').map(s => s.sec + '|' + s.speak));
+    check(rs.length === 8 && rs.slice(0, 6).every(x => x === '90|休息90秒') && rs.slice(6).every(x => x === '90|休息90秒'), `跟练：休息步骤与语音按每组的秒数（${rs.join(',')}）`);
+    await ctx.close();
+  });
+
+  await guard('休息 (c) 旧 cfg.rest 迁移', async () => {
+    const o = await openWith([], undefined, { cfg: { equip: 'gym', rest: 75 } });
+    const r = await o.page.evaluate(() => { const c = JSON.parse(localStorage.getItem('fit.cfg')); return { c, a: window.__fit.vol.buildSteps('A').filter(s => s.kind === 'rest').map(s => s.sec) }; });
+    check(r.c.restBase === 75 && !('rest' in r.c) && r.c.restV2 === 1 && r.a.every(x => x === 75), `迁移：旧 cfg.rest＝75 → restBase 75，每轮照旧 75 秒（实得 ${r.a}）`);
+    await o.page.click('nav.tabs [data-tab="more"]'); await o.page.click('#restBox summary');
+    check(/全 App 统一 75 秒/.test(await o.page.textContent('#restLegacy')) && /沿用你以前选的 75 秒/.test(await o.page.textContent('#restSum')), '迁移：设置里说明沿用了以前的 75 秒');
+    await o.page.selectOption('#restBody select[data-restk="gym:rdl"]', '120');
+    const a2 = await o.page.evaluate(() => window.__fit.vol.buildSteps('A').filter(s => s.kind === 'rest').map(s => s.sec));
+    check(JSON.stringify(a2) === '[75,75,75,120,120,120]', `迁移后逐个改：腿弯举 120 → 那组 120、其余仍 75（实得 ${a2}）`);
+    await o.page.reload(); await o.page.waitForSelector('#workout .ex');
+    const a3 = await o.page.evaluate(() => window.__fit.vol.buildSteps('A').filter(s => s.kind === 'rest').map(s => s.sec));
+    check(JSON.stringify(a3) === '[75,75,75,120,120,120]', '迁移：重载后不会再迁移一次（仍 75／120）');
+    await o.ctx.close();
+    const n = await openWith([]);
+    const nc = await n.page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg') || '{}'));
+    check(nc.restBase == null && nc.restV2 === 1, '迁移：全新用户没有 restBase，直接用按动作分的默认');
+    await n.ctx.close();
+    const o6 = await openWith([], undefined, { cfg: { equip: 'gym', rest: 60 } });
+    const e6 = await o6.page.evaluate(() => window.__fit.vol.estSec(window.__fit.vol.buildSteps('A')));
+    check(e6 === 2220, `迁移：旧默认 60 秒的老用户也照旧 60（健身房 A 仍 2220 秒＝37 分钟；实得 ${e6}）`);
+    await o6.ctx.close();
+  });
+
+  await guard('休息 (d) 备份来回', async () => {
+    const { ctx, page } = await openWith([], undefined, { cfg: { restV2: 1, restBy: { 'db:gsquat': 120 }, restSet: 1 } });
+    await page.click('nav.tabs [data-tab="more"]');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+    const bf = os.tmpdir() + '/fit-rest-backup.json'; fs.copyFileSync(await dl.path(), bf); const bk = JSON.parse(fs.readFileSync(bf, 'utf8'));
+    check(bk.cfg.restBy['db:gsquat'] === 120, '休息：备份带着逐个动作的休息');
+    await ctx.close();
+    const b2 = await openWith([]);
+    await b2.page.click('nav.tabs [data-tab="more"]'); await b2.page.setInputFiles('#bkFile', bf);
+    await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    check((await b2.page.evaluate(() => window.__fit.rest.restOf('db:gsquat'))) === 120, '休息：导入到新手机 → 高脚杯深蹲 120');
+    await b2.ctx.close();
+    const b3 = await openWith([], undefined, { cfg: { restV2: 1, restBy: { 'db:gsquat': 45 }, restSet: 1 } });
+    await b3.page.click('nav.tabs [data-tab="more"]'); await b3.page.setInputFiles('#bkFile', bf);
+    await b3.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    check((await b3.page.evaluate(() => window.__fit.rest.restOf('db:gsquat'))) === 45, '休息：本机自己改过的，不被备份覆盖');
+    await b3.ctx.close();
+    // 旧版备份（只有统一的 rest）导入到新手机 → 沿用成 restBase
+    const old = { app: 'fitness', v: 1, exported: T, sessions: [], body: [], cfg: { equip: 'db', rest: 75 } }; const of = os.tmpdir() + '/fit-rest-old.json'; fs.writeFileSync(of, JSON.stringify(old));
+    const b4 = await openWith([]);
+    await b4.page.click('nav.tabs [data-tab="more"]'); await b4.page.setInputFiles('#bkFile', of);
+    await b4.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    check((await b4.page.evaluate(() => window.__fit.rest.restOf('db:rfly'))) === 75, '休息：旧版备份（统一 75 秒）导入 → 每个动作沿用 75');
+    await b4.ctx.close();
+  });
+
+  await guard('体重 (a) 每周平均与变化', async () => {
+    const two = [bodyRow(2026, 9, 28, 72.0), bodyRow(2026, 9, 30, 71.6), bodyRow(2026, 9, 22, 72.4), bodyRow(2026, 9, 24, 72.0), bodyRow(2026, 9, 26, 72.2)];
+    let o = await withBody(two);
+    await o.page.click('nav.tabs [data-tab="prog"]');
+    let w = await o.page.textContent('#bWeek');
+    check(/本周平均 71\.8 kg，比上周 −0\.4 kg/.test(w) && /本周 2 笔、上周 3 笔/.test(w), `体重：本周平均 71.8、比上周 −0.4（手算 (72.0+71.6)/2、(72.4+72.0+72.2)/3）（实得：${w}）`);
+    await o.ctx.close();
+    o = await withBody([bodyRow(2026, 9, 22, 72.4), bodyRow(2026, 9, 24, 72.0), bodyRow(2026, 9, 15, 72.6), bodyRow(2026, 9, 17, 73.0)]);
+    await o.page.click('nav.tabs [data-tab="prog"]'); w = await o.page.textContent('#bWeek');
+    check(/上周平均 72\.2 kg，比前一周 −0\.6 kg/.test(w) && /本周还没记/.test(w), `体重：本周还没记 → 用上周比前一周（72.2−72.8＝−0.6）（实得：${w}）`);
+    await o.ctx.close();
+    o = await withBody([bodyRow(2026, 9, 29, 72.0), bodyRow(2026, 9, 15, 72.6)]);
+    await o.page.click('nav.tabs [data-tab="prog"]'); w = await o.page.textContent('#bWeek');
+    check(/本周平均 72\.0 kg/.test(w) && /上周没有体重记录，还算不出每周变化/.test(w) && !/比上周/.test(w), `体重：上周没记 → 只给本周平均＋提示，不跟两周前比（实得：${w}）`);
+    await o.ctx.close();
+    o = await withBody([]);
+    await o.page.click('nav.tabs [data-tab="prog"]'); w = await o.page.textContent('#bWeek');
+    check(/要本周（或上周）与前一周都有体重记录/.test(w) && !/平均 \d/.test(w), '体重：没有记录 → 提示，不乱算');
+    check(/每周减 0\.5–1 kg/.test(await o.page.textContent('#bNhs')) && /tips-to-help-you-lose-weight/.test(await o.page.innerHTML('#bNhs')) && /不预测体重/.test(await o.page.textContent('#bNhs')), '体重：NHS 每周 0.5–1 kg 附原文链接，写明不预测');
+    await o.ctx.close();
+  });
+
+  await guard('体重 (b) 目标线与备份', async () => {
+    const { ctx, page } = await withBody([bodyRow(2026, 9, 28, 72.0), bodyRow(2026, 9, 22, 72.4)]);
+    await page.click('nav.tabs [data-tab="prog"]');
+    check((await page.locator('#bodyChart .goal-line').count()) === 0, '体重：没填目标 → 没有目标线');
+    await page.fill('#bGoal', '70'); await page.dispatchEvent('#bGoal', 'change');
+    const c = await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')));
+    check(c.goalKg === 70 && c.goalSet === 1 && (await page.locator('#bodyChart .goal-line').count()) === 1 && /目标 70/.test(await page.textContent('#bodyChart')), '体重：填目标 70 → 存 cfg.goalKg、走势图画出目标虚线「目标 70」');
+    // 目标线在 70 的位置：比 72 的点低
+    const ys = await page.evaluate(() => { const l = document.querySelector('#bodyChart .goal-line'), cs = [...document.querySelectorAll('#bodyChart circle')].map(x => +x.getAttribute('cy')); return { g: +l.getAttribute('y1'), c: cs }; });
+    check(ys.c.every(y => y < ys.g), '体重：目标线（70）画在 72 的点下面');
+    await page.fill('#bGoal', '500'); await page.dispatchEvent('#bGoal', 'change');
+    check(/20–300/.test(await page.textContent('#bGoalMsg')) && (await page.evaluate(() => JSON.parse(localStorage.getItem('fit.cfg')).goalKg)) === 70, '体重：目标乱填被挡、原值不变');
+    await page.click('nav.tabs [data-tab="more"]');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+    const bf = os.tmpdir() + '/fit-goal-backup.json'; fs.copyFileSync(await dl.path(), bf);
+    check(JSON.parse(fs.readFileSync(bf, 'utf8')).cfg.goalKg === 70, '体重：备份带着目标体重');
+    await ctx.close();
+    const b2 = await openWith([]);
+    await b2.page.click('nav.tabs [data-tab="more"]'); await b2.page.setInputFiles('#bkFile', bf);
+    await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    await b2.page.click('nav.tabs [data-tab="prog"]');
+    check((await b2.page.inputValue('#bGoal')) === '70' && (await b2.page.locator('#bodyChart .goal-line').count()) === 1, '体重：导入到新手机 → 目标 70、目标线都在');
+    await b2.ctx.close();
   });
 }
 
