@@ -211,6 +211,11 @@
   - **体重卡**：`#bGoal`→`cfg.goalKg`（20–300，`goalSet` 管导入），`drawChart(...,{goal})` 画 `.goal-line` 虚线＋「目标 N」；`weekAvgInfo(now)`（周一开始，跟 `plateauInfo` 同一套：本周有记录用本周否则上周，跟前一周比，
     两周缺一只给提示），显示用四舍五入后的平均相减；`#bNhs` NHS 每周 0.5–1 kg 原文链接（BMI <18.5 隐藏），不做预测。
   - 自检：check-fitness 第 23 段（手算写在段首注释）。`openWith` 给了 `cfg` 的情境自动当「存过 rest＝60 的老用户」，既有各段的 60 秒手算不用改。
+- **页首总时长不写死（2026-11-24，用户抓到页首「每次约 30 分钟」、健身房版实际约 40）**：没有训练记录时页首 `#cycleLine` 由 `headMin()` 写
+  「每周 2–3 次 · 每次约 N 分钟」，N＝`estMin(selWk)`（跟开始按钮下 `#goSub` 同一个数，随器材／4 组／手臂／休息／有氧时长／换动作现算；`renderHeader` 与 `renderPicker` 都会调，
+  换替代动作也会重画 picker）。有记录时照旧写第几周、不写时长。meta description 与 manifest 不写分钟数（改成「时长按你的设置显示在开始按钮下」）；
+  使用说明 `#helpSsMin`／`#helpDbMin`／`#helpGymMin` 的 HTML 初值改成「…」（`renderCdLen()` 现算覆盖），别再填数字。全新用户：哑铃 A 31、健身房 A 40（有氧 20＝45、加手臂＝45）。
+  自检：check-fitness 第 24 段（含禁用词：`每次约 30 分钟`／`30 分钟全身`／`28–30`／`37–39`，画面与原始码都查）。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
