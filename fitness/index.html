@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>减脂力量训练</title>
-<meta name="description" content="30 分钟全身减脂力量训练：动画跟练、自动加重建议、减量周、进步曲线、体重记录。">
+<meta name="description" content="全身减脂力量训练（每次时长按你的设置算，显示在开始按钮下）：动画跟练、自动加重建议、减量周、进步曲线、体重记录。">
 <meta name="theme-color" content="#0c7666">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="减脂训练">
@@ -347,7 +347,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow" id="cycleLine">每周 2–3 次 · 每次约 30 分钟</div>
+    <div class="eyebrow" id="cycleLine">每周 2–3 次</div>
     <h1>全身减脂力量训练</h1>
   </header>
 
@@ -569,7 +569,7 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
       <div class="stack">
         <ul class="list">
           <li><b>A → B → C 轮流做</b>，一周 2 次就接着轮，不用管星期几。两次训练之间至少隔 1 天。</li>
-          <li>每次：热身 4 分钟 → 超级组 ×2（约 <span id="helpSsMin">15</span> 分钟，看组间休息的设定）→ 心肺收尾 6 分钟 → 放松 3 分钟 ≈ <span id="helpDbMin">28–30</span> 分钟。<b>健身房版</b>的心肺收尾换成 <span id="helpCdMin">15</span> 分钟有氧（跑步机／单车／椭圆机，设置里可选 15 或 20 分钟），≈ <span id="helpGymMin">37–39</span> 分钟，详见「有氧」页。设置里开「每个动作做 4 组」或「加练手臂」，各多几分钟（看组间休息的设定）；训练页开始按钮下会写这次全部约几分钟（App 的估算：每组按 45 秒算）。</li>
+          <li>每次：热身 4 分钟 → 超级组 ×2（约 <span id="helpSsMin">…</span> 分钟，看组间休息的设定）→ 心肺收尾 6 分钟 → 放松 3 分钟 ≈ <span id="helpDbMin">…</span> 分钟。<b>健身房版</b>的心肺收尾换成 <span id="helpCdMin">15</span> 分钟有氧（跑步机／单车／椭圆机，设置里可选 15 或 20 分钟），≈ <span id="helpGymMin">…</span> 分钟，详见「有氧」页。设置里开「每个动作做 4 组」或「加练手臂」，各多几分钟（看组间休息的设定）；训练页开始按钮下会写这次全部约几分钟（App 的估算：每组按 45 秒算）。</li>
           <li><b>超级组</b>：两个动作连着做、中间不休息，做完两个再休息，这样算一轮，共 3 轮（设置开「每个动作做 4 组」就是 4 轮；减量周 2 轮）。</li>
           <li><b>器材三选一</b>：家里有哑铃选「哑铃」，什么都没有选「徒手」，去健身房选「健身房」。</li>
         </ul>
@@ -1533,7 +1533,8 @@ function defaultKg(k){ const sg=suggest(k); return sg.kg!=null?kgStr(sg.kg):""; 
 // ---------- Render: train ----------
 function renderHeader(){
   const c=cycleInfo();
-  $("cycleLine").textContent=sessions.length?("第 "+c.week+" 周 · 本周期第 "+c.pos+"/4 周"+(c.deload?" · 减量周":"")):"每周 2–3 次 · 每次约 30 分钟";
+  $("cycleLine").textContent=sessions.length?("第 "+c.week+" 周 · 本周期第 "+c.pos+"/4 周"+(c.deload?" · 减量周":"")):"";
+  headMin();
   $("deloadBanner").hidden=!c.deload;
   const rt=retInfo();
   if(rt) $("cycleLine").textContent+=" · 回归期";
@@ -1546,9 +1547,12 @@ function renderHeader(){
 }
 $("retWhy").addEventListener("click",e=>{ const b=e.target.closest("[data-why]"), id=$("retWhy").dataset.gap; if(!b||!id) return;
   if(cfg.gapWhy[id]===b.dataset.why) delete cfg.gapWhy[id]; else cfg.gapWhy[id]=b.dataset.why; saveCfg(); renderHeader(); renderHist(); });
+// 没有训练记录时页首写这次全部约几分钟（跟开始按钮下同一个 estMin，按器材／开关／休息／有氧时长现算）
+function headMin(){ if(sessions.length) return; $("cycleLine").textContent="每周 2–3 次 · 每次约 "+estMin(selWk||((draft&&draft.start)?draft.wk:nextWk()))+" 分钟"; }
 function renderPicker(){
   const nx=nextWk(); if(!selWk) selWk=(draft&&draft.start)?draft.wk:nx;
   $("picker").innerHTML=["A","B","C"].map(k=>'<button data-wk="'+k+'" aria-pressed="'+(k===selWk)+'"><b>'+k+'</b><small>'+PLAN[k].focus+'</small>'+(k===nx?'<small style="color:var(--accent);font-weight:700">下一次</small>':'<small>&nbsp;</small>')+'</button>').join("");
+  headMin();
   $("goSub").textContent="训练 "+selWk+" · "+EQ_LABEL[cfg.equip]+"版 · "+rounds()+" 轮"+(armsOn(cfg.equip)?"＋手臂 "+armRounds()+" 轮":"")+" · 全部约 "+estMin(selWk)+" 分钟 · 全屏动画带练、自动计时";
 }
 $("picker").addEventListener("click",e=>{ const b=e.target.closest("[data-wk]"); if(!b) return; selWk=b.dataset.wk; renderPicker(); renderWorkout(); });
@@ -1663,7 +1667,7 @@ $("workout").addEventListener("click",e=>{
   const sb=e.target.closest("[data-swap]");
   if(sb){ const id=sb.dataset.swap, box=$("alts-"+id), open=box.hidden; if(open) box.innerHTML=altHTML(id,cfg.equip); box.hidden=!open; sb.setAttribute("aria-expanded",open); return; }
   const ab=e.target.closest("[data-alt]");
-  if(ab){ const id=ab.dataset.slot; swapTo(id,ab.dataset.alt); renderWorkout(); renderGarmin(); const c=document.querySelector('#workout .ex[data-slot="'+id+'"]'); if(c&&c.scrollIntoView) c.scrollIntoView({block:"nearest"}); return; }
+  if(ab){ const id=ab.dataset.slot; swapTo(id,ab.dataset.alt); renderPicker(); renderWorkout(); renderGarmin(); const c=document.querySelector('#workout .ex[data-slot="'+id+'"]'); if(c&&c.scrollIntoView) c.scrollIntoView({block:"nearest"}); return; }
   const f=e.target.closest("[data-feel]");
   if(f){ current.feel=+f.dataset.feel; saveDraft(); document.querySelectorAll("#workout [data-feel]").forEach(b=>b.setAttribute("aria-pressed",b===f)); return; }
   const b=e.target.closest("[data-done]");

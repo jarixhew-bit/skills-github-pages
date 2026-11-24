@@ -43,6 +43,7 @@
  *  23. 史密斯机算片（50→20＋5、52.5→20＋5＋1.25、凑不出给较轻／较重、杠 15 先减掉）、每个动作各自的休息（默认多关节 90／小动作 60、
  *      超级组取较长者、逐个改、恢复默认、旧 cfg.rest 迁移、总时间手算、跟练／Garmin／卡片倒数、备份来回）、体重卡（每周平均与变化手算、
  *      不足两周只给提示、目标线、备份来回、NHS 原文链接）。
+ *  24. 页首总时长：没有记录时页首写「每次约 N 分钟」＝estMin（哑铃 31、健身房 40、有氧 20＝45、手臂＝45，手算），原始码与画面不准再有「每次约 30 分钟」等写死的总时长。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
  *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
@@ -2380,6 +2381,33 @@ for (const [label, rows, want] of [
     check((await b2.page.inputValue('#bGoal')) === '70' && (await b2.page.locator('#bodyChart .goal-line').count()) === 1, '体重：导入到新手机 → 目标 70、目标线都在');
     await b2.ctx.close();
   });
+}
+
+// ---- 24. 页首总时长跟着设定走（2026-11-24 用户抓到：页首写死「每次约 30 分钟」，健身房版实际约 40 分钟）----
+// 手算（全新用户＝新版休息默认：多关节 90、小动作 60；每组按 SET_SEC 45 秒）：
+//   哑铃 A：热身 240＋心肺收尾 360＋放松 180＝780；超级组 2×3 轮×2 组×45＝540；休息 2 组×3 轮×90＝540 → 1860 秒＝31 分钟
+//   健身房 A（有氧 15）：240＋900＋180＝1320；540；540 → 2400 秒＝40 分钟
+//   健身房 A（有氧 20）：1320＋300＝1620；540；540 → 2700 秒＝45 分钟
+//   健身房 A（有氧 15）＋加练手臂：2400＋2 轮×2 组×45（180）＋2×60 休息（120）＝2700 秒＝45 分钟
+// 页首是没有训练记录时才写时长（有记录时写第几周）；同一行要等于 estMin（开始按钮下那个数）。
+{
+  const { ctx, page, errors } = await openWith([]);
+  const head = () => page.textContent('#cycleLine');
+  const em = wk => page.evaluate(w => window.__fit.vol.estMin(w), wk);
+  check((await head()) === '每周 2–3 次 · 每次约 31 分钟' && (await em('A')) === 31, `页首总时长：哑铃 A 默认＝每次约 31 分钟＝estMin（实得 ${await head()}）`);
+  await page.click('#eqSeg [data-eq="gym"]');
+  check((await head()) === '每周 2–3 次 · 每次约 40 分钟' && (await em('A')) === 40 && /全部约 40 分钟/.test(await page.textContent('#goSub')), `页首总时长：健身房 A 默认（有氧 15）＝每次约 40 分钟＝estMin＝开始按钮下（实得 ${await head()}）`);
+  await page.evaluate(() => document.querySelector('#cfgCdMin [data-cdmin="20"]').click());
+  check((await head()) === '每周 2–3 次 · 每次约 45 分钟' && (await em('A')) === 45, `页首总时长：健身房有氧改 20 → 每次约 45 分钟（实得 ${await head()}）`);
+  await page.evaluate(() => document.querySelector('#cfgCdMin [data-cdmin="15"]').click());
+  await page.evaluate(() => { const b = document.getElementById('cfgArms'); b.click(); });
+  check((await head()) === '每周 2–3 次 · 每次约 45 分钟' && (await em('A')) === 45, `页首总时长：健身房有氧 15＋加练手臂 → 每次约 45 分钟（实得 ${await head()}）`);
+  const bad = /每次约 30 分钟|30 分钟全身|28–30|37–39/;
+  check(!bad.test(await page.evaluate(() => document.documentElement.innerHTML)), '页面里没有写死的「每次约 30 分钟」「30 分钟全身」「28–30」「37–39」');
+  check(!bad.test(fs.readFileSync(new globalThis.URL('../fitness/index.html', import.meta.url), 'utf8')) && !bad.test(fs.readFileSync(new globalThis.URL('../fitness/manifest.webmanifest', import.meta.url), 'utf8')),
+    '原始码（index.html 与 manifest）没有写死的总时长字样');
+  check(errors.length === 0, `页首总时长：没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
 }
 
 // ---- 手机宽度：没有横向卷动 ----
