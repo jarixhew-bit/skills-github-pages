@@ -670,19 +670,21 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     //              ＝12＋72.1＋28＋12＝124.1 MET·分 × 72 ÷ 60 ＝ 148.92 → 149
     //   方案2 椭圆机：热身 3×5.0（02048 中等）＋快 4×9.0＋4×9.0（02049 剧烈）＋慢 3×5.0＋3×5.0＋放松 3×5.0
     //              ＝15＋72＋30＋15＝132 × 72 ÷ 60 ＝ 158.4 → 158
-    //   方案3 坡度走：20×7.0（17035，户外 6–10% 爬坡码）＝140 × 72 ÷ 60 ＝ 168
+    //   方案3 坡度走（2026-11-24 改成从 5% 起、按心率调）：热身 2×4.8（17358，跑步机 0%、5.6–6.3 km/h——App 走 5.0，略高估）
+    //              ＋坡度走 16×5.3（17034，户外 1–5% 爬坡，按起点 5% 算）＋慢走 2×4.8＝9.6＋84.8＋9.6＝104 × 72 ÷ 60 ＝ 124.8 → 125
+    //              （2026-11-24 前是 20×7.0（17035，6–10%）＝140 → 168；坡度一路加到 6–10% 时主段改 7.0：9.6＋112＋9.6＝131.2×1.2＝157.44 → 157）
     // 剧烈／中等分钟（App 的推论）：方案1 用力 7×1＝7、其余 13；方案2 快段 4＋4＝8、其余 12；方案3 保守全算中等 20。
-    const HAND = { p1: { kcal: 149, vig: 7, mod: 13 }, p2: { kcal: 158, vig: 8, mod: 12 }, p3: { kcal: 168, vig: 0, mod: 20 } };
+    const HAND = { p1: { kcal: 149, vig: 7, mod: 13 }, p2: { kcal: 158, vig: 8, mod: 12 }, p3: { kcal: 125, vig: 0, mod: 20 } };
     const kc = await page.evaluate(() => Object.fromEntries(Object.entries(window.__fit.cardio.CD_PLANS).map(([k, P]) => [k, {
       kcal: P.kcal, vig: P.vig, mod: P.mod, met: Math.round(P.ph.reduce((a, p) => a + p[2] / 60 * p[6], 0) * 72 / 60),
       upMin: P.ph.filter(p => p[0] === 'up').reduce((a, p) => a + p[2], 0) / 60 }])));
     check(['p1', 'p2', 'p3'].every(k => kc[k].kcal === HAND[k].kcal && kc[k].met === HAND[k].kcal && kc[k].vig === HAND[k].vig && kc[k].mod === HAND[k].mod && kc[k].vig + kc[k].mod === 20),
-      `三个方案 kcal＝手算 149／158／168（每段 MET×秒 加总也一样）、剧烈＋中等＝20 分钟（${JSON.stringify(kc)}）`);
+      `三个方案 kcal＝手算 149／158／125（每段 MET×秒 加总也一样）、剧烈＋中等＝20 分钟（${JSON.stringify(kc)}）`);
     check(kc.p1.upMin === kc.p1.vig && kc.p2.upMin === kc.p2.vig, `剧烈分钟＝「加速」段合计：方案1 ${kc.p1.upMin}、方案2 ${kc.p2.upMin}`);
     // 每周练 2 次（A→B→C 轮着做，任两天相邻）：B+C＝方案1＋方案2 → 中等 13＋12＝25、剧烈 7＋8＝15 → 折合 25＋30＝55
     const wk2 = await page.evaluate(() => { const F = window.__fit.cardio; const a = F.cdMins({ kind: 'p1' }), b = F.cdMins({ kind: 'p2' }), c = F.cdMins({ kind: 'p3' }); return { bc: a.mod + b.mod + 2 * (a.vig + b.vig), ab: c.mod + a.mod + 2 * a.vig, ca: b.mod + c.mod + 2 * b.vig, abc: a.mod + b.mod + c.mod + 2 * (a.vig + b.vig) }; });
     check(wk2.bc === 55 && wk2.ab === 47 && wk2.ca === 48 && wk2.abc === 75, `每周中等当量：2 次 B+C＝55、A+B＝47、C+A＝48，3 次＝75（${JSON.stringify(wk2)}）`);
-    for (const [wk, re] of [['A', /约 168 kcal/], ['B', /约 149 kcal/], ['C', /约 158 kcal/]]) {
+    for (const [wk, re] of [['A', /约 125 kcal/], ['B', /约 149 kcal/], ['C', /约 158 kcal/]]) {
       await page.click(`#picker [data-wk="${wk}"]`);
       check(re.test(await page.textContent('#cdBlock')) && /20 分钟/.test(await page.textContent('#cdBlock .block-head')), `${wk} 日卡片：标题 20 分钟、写 ${re.source}`);
     }
@@ -797,7 +799,7 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     const st = await page.evaluate(() => window.__fit.cardio.cdPick('C').id);
     check(st === 'p3' && (await page.textContent('#cdPlanName')).includes('方案3') && /原本是 方案2/.test(await page.textContent('#cdSwapNote')), 'C 日按「换成方案3」→ 卡片变方案3、注明原本是方案2');
     const ph = await page.evaluate(() => { document.getElementById('startPlayer').click(); return window.__fit.player().steps.filter(s => s.cdv).map(s => s.name).join('、'); });
-    check(/坡度快走/.test(ph) && !/快段/.test(ph), `C 日换成方案3 后跟练也是坡度快走（${ph}）`);
+    check(/坡度走/.test(ph) && !/快段/.test(ph), `C 日换成方案3 后跟练也是坡度快走（${ph}）`);
     await page.click('#plClose');
     await page.click('[data-cdalt=""]');
     check((await page.textContent('#cdPlanName')).includes('方案2'), 'C 日按「恢复」→ 回到方案2');
@@ -826,6 +828,65 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     await ctx.close();
   }
   });
+  // (o) 方案3 起点（2026-11-24 用户实测：坡度 8–10% 心率一路超标，但还能聊天）：热身 2 → 坡度走 8×2 分钟（从 5% 起、每 2 分钟按心率调、上限 12%）→ 慢走 2；
+  //     心率与说话对不上时的说明；最大心率自填 190 时所有方案心率、语音、Garmin、强度界线都重算。
+  // 手算（App 取整＝Math.round(HRmax×%÷100)）：
+  //   180（40 岁）：70%→126、76%→136.8→137、77%→138.6→139、80%→144；138 在两档之间
+  //   190（自填）：70%→133、76%→144.4→144、77%→146.3→146、80%→152、85%→161.5→162、90%→171、95%→180.5→181；145 在两档之间
+  await guard('有氧 (o) 方案3 新起点＋最大心率自填重算', async () => {
+  {
+    const { ctx, page, errors } = await setup([first(20)]);
+    const P3 = await page.evaluate(() => window.__fit.cardio.CD_PLANS.p3);
+    const types = P3.ph.map(p => p[0]).join(','), secs = P3.ph.map(p => p[2]), mets = P3.ph.map(p => p[6]);
+    check(P3.ph.length === 10 && types === 'warm,' + Array(8).fill('chk').join(',') + ',cool' && secs.every(x => x === 120) && mets.join(',') === '4.8,' + Array(8).fill('5.3').join(',') + ',4.8',
+      `方案3：热身 2 分钟（MET 4.8）→ 坡度走 8 段×2 分钟（MET 5.3）→ 慢走 2 分钟（4.8）（实得 ${types}／${mets.join(',')}）`);
+    const allTxt = JSON.stringify(P3);
+    check(/从坡度 5%/.test(P3.sum) && /最高 12%/.test(P3.sum) && /坡度调到 5%、时速 5\.0 km/.test(P3.ph[1][4]) && P3.ph.slice(2, 9).every(p => /减 1%/.test(p[4]) && /加 0\.5%/.test(p[4]) && /最高 12%/.test(p[4])) && /0%/.test(P3.ph[9][4]) && !/8–12/.test(allTxt) && /App 的安排/.test(allTxt),
+      `方案3 文案：从坡度 5%、时速 5.0 起，每 2 分钟高于上限减 1%、低于下限加 0.5%、最高 12%，最后慢走坡度 0%，标 App 的安排（${P3.sum}）`);
+    await page.click('#picker [data-wk="A"]');
+    const card = await page.textContent('#cdBlock');
+    check(/坡度太陡心率容易一路升高，宁可从低坡度开始往上加（App 的安排）/.test(card) && /心率超过目标、但还能轻松讲完整句子/.test(card) && /最大心率/.test(card) && /能讲完整句子、但唱不了歌/.test(card) && /82±7%/.test(card) && /App 的推论/.test(card),
+      'A 日方案3 卡片：写起点理由（App 的安排）＋心率与说话对不上时的说明（82±7%、App 的推论、去填最大心率）');
+    await page.click('#picker [data-wk="B"]');
+    check(!/心率超过目标、但还能轻松讲完整句子/.test(await page.textContent('#cdBlock')), 'B 日方案1 卡片不放方案3 的说话测验说明');
+    await page.click('nav.tabs [data-tab="cardio"]');
+    const why = await page.textContent('#cdWhyBody'), wkT = await page.textContent('#cdWeek'), zones = await page.textContent('#cdZones');
+    check(/心率超过目标、但还能轻松讲完整句子/.test(zones) && /Quinn|82±7%/.test(zones), '有氧页「心率区间」：心率与说话对不上时的说明');
+    const b180 = ['126–137 属中等', '139–144 已进入剧烈下端', '138 落在两档之间', '分钟数这里取保守的中等计（App 的保守判断）'];
+    check(b180.every(b => why.includes(b) && wkT.includes(b)) && /17034/.test(why) && /17034/.test(wkT), `最大心率 180：方案3 强度两处都写 ${b180.join('、')}，MET 写 17034（坡度 5%）`);
+    const g180 = await page.evaluate(() => { document.querySelector('[data-cdg="p3"]').click(); return document.getElementById('cdgText').textContent; });
+    check(/2:00/.test(g180) && /16:00/.test(g180) && /从坡度 5%/.test(g180) && /最高 12%/.test(g180) && /126–144/.test(g180) && !/8–12/.test(g180), `Garmin 方案3：热身 2:00、坡度走 16:00（从 5% 起、最高 12%、心率 126–144）、慢走（${g180.replace(/\n/g, ' / ')}）`);
+    // 自填 190
+    await page.fill('#cdHrMax', '190'); await page.click('#cdHrSave');
+    check((await page.evaluate(() => window.__fit.cardio.hrMax().v)) === 190 && /最大心率 190（你填的）/.test(await page.textContent('#cdZones')), '最大心率自填 190 → hrMax＝190（你填的）');
+    const z = await page.textContent('#cdZones');
+    check(/133–152/.test(z) && /162–181/.test(z) && /171–181/.test(z) && /≤133/.test(z), `心率区间（190）：方案3 133–152、方案1 162–181、方案2 171–181、慢段 ≤133（${z.slice(0, 160)}）`);
+    const why2 = await page.textContent('#cdWhyBody'), wk2 = await page.textContent('#cdWeek');
+    const b190 = ['133–144 属中等', '146–152 已进入剧烈下端', '145 落在两档之间'];
+    check(b190.every(b => why2.includes(b) && wk2.includes(b)), `最大心率 190：方案3 强度两处改成 ${b190.join('、')}`);
+    const g190 = await page.evaluate(() => { document.querySelector('[data-cdg="p3"]').click(); return document.getElementById('cdgText').textContent; });
+    check(/133–152/.test(g190) && !/126–144/.test(g190), 'Garmin 方案3（190）：心率 133–152');
+    await page.click('nav.tabs [data-tab="train"]');
+    for (const [wk, re, label] of [['A', /133–152/, '方案3 133–152'], ['B', /162–181[\s\S]*≤133/, '方案1 162–181、轻踩 ≤133'], ['C', /约 133[\s\S]*171–181/, '方案2 约 133、快段 171–181']]) {
+      await page.click(`#picker [data-wk="${wk}"]`);
+      check(re.test(await page.textContent('#cdBlock')), `最大心率 190：${wk} 日卡片 ${label}`);
+    }
+    // 跟练 A（方案3）：每段的心率与语音
+    await page.click('#picker [data-wk="A"]'); await page.click('#startPlayer');
+    await page.evaluate(() => { const F = window.__fit, st = F.player().steps, i = st.findIndex(s => s.cdv); for (let n = F.player().si; n < i; n++) document.getElementById('plNextBtn').click(); });
+    const seen = [];
+    for (let n = 0; n < 14; n++) {
+      const r = await page.evaluate(() => { const F = window.__fit, { steps, si } = F.player(), s = steps[si]; const said = F.cardio.said(); return { cdv: !!s.cdv, name: s.name, hr: s.hrTxt || '', big: (document.querySelector('#plPhoto .cdv-w') || {}).textContent || '', say: said[said.length - 1] || '' }; });
+      if (!r.cdv) break; seen.push(r); await page.click('#plNextBtn');
+    }
+    const mid = seen.slice(1, 9);
+    check(seen.length === 10 && seen[0].big === '热身' && /^热身/.test(seen[0].say) && mid.every(r => /^坡度走/.test(r.name) && r.hr === '心率 133–152' && r.big === '看心率' && /^看心率/.test(r.say) && /133到152/.test(r.say)) && seen[9].big === '放慢' && /^放慢/.test(seen[9].say),
+      `方案3 跟练（190）：热身 → 8 段「看心率」心率 133–152、语音念 133到152 → 慢走「放慢」（${seen.length} 段；例 ${JSON.stringify(mid[0] || {})}）`);
+    await page.click('#plClose');
+    check(errors.length === 0, `方案3 新起点没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+    await ctx.close();
+  }
+  });
   // (n) 文案守门
   await guard('有氧 (n) 文案守门', async () => {
   {
@@ -833,7 +894,9 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
     const BANNED = ['12 周有氧计划', '/ 12 周', '12 周完成', '从这周开始', 'cdStart', 'CD_WEEKS', 'CD_PHASE', '4×4 间歇是主力', '提升 VO2max 最主要的一招', '燃脂有氧', '燃烧脂肪', '燃脂区', '有氧减脂', '29086308',
       'Coyle', 'Seiler', 'firstbeat', '+4.9', '本次未重新查证', '几乎没有，要说清楚', '多 6.91%', '有氧也一样',
       // 2026-11-23 改 20 分钟：方案1 用力 7 分钟、整节 20 分钟，已不在 Yin 的低量间歇定义里
-      '只有方案1 符合', '整节 15 分钟', '15 分钟有氧', '力量课后 15 分钟', '15 分钟能练到什么', '这 15 分钟', '用力共 5 分钟', '缩成 5 次', '用力 5 分钟'];
+      '只有方案1 符合', '整节 15 分钟',
+      // 2026-11-24 方案3 起点改成坡度 5%（用户实测 8–10% 心率超标）
+      '8–12%', '连续 20 分钟不另分热身放松', '按 MET 估算也接近剧烈', '15 分钟有氧', '力量课后 15 分钟', '15 分钟能练到什么', '这 15 分钟', '用力共 5 分钟', '缩成 5 次', '用力 5 分钟'];
     const hit = BANNED.filter(b => html.includes(b)).concat(/燃脂(?!开关)/.test(html) ? ['燃脂（非「燃脂开关」）'] : []);
     check(hit.length === 0, `有氧文案：旧 12 周计划与「燃脂」说法不再出现${hit.length ? '（还在：' + hit.join('、') + '）' : ''}`);
     const need = ['28917030', '34757594', '22002517', '37939367', '31401727', '17414804', '20100740', '27115137', '26243014', '25010379', '21774751', '35507232', 'PMC7719906', '26473759', '11153730',
@@ -841,14 +904,9 @@ async function openWith(hist, viewport = { width: 390, height: 844 }, opt = {}) 
       '能提升体能，但不能改善身体组成', 'App 的保守判断', '“risk factor profiling is no longer included”'];
     const miss = need.filter(b => !html.includes(b));
     check(miss.length === 0, `有氧文案：查证过的数字、来源与界线标签都在${miss.length ? '（缺：' + miss.join('、') + '）' : ''}`);
-    // 方案3（70–80% HRmax）跨 ACSM 中等 64–76%／剧烈 77–95% 两档（二手来源）。界线 bpm 用 App 同一条取整规则
-    // （hrRange/cdHr：Math.round(HRmax × 百分比 / 100)），40 岁 HRmax＝208−0.7×40＝180：
-    // 70%→126、76%→136.8→137、77%→138.6→139、80%→144；138 落在两档之间。
-    const HM = Math.round(208 - 0.7 * 40), bp = x => Math.round(HM * x / 100);
-    const p3 = [`${bp(70)}–${bp(76)} 属中等`, `${bp(77)}–${bp(80)} 已进入剧烈下端`];
-    const p3miss = p3.filter(b => (html.split(b).length - 1) < 2);
-    check(!html.includes('按心率算中等') && p3miss.length === 0 && (html.split('分钟数这里取保守的中等计（App 的保守判断）').length - 1) >= 2,
-      `方案3 强度：不再写「按心率算中等」，两处都写 ${p3.join('、')}（App 取整规则）并标 App 的保守判断${p3miss.length ? '（缺或不足两处：' + p3miss.join('、') + '）' : ''}`);
+    // 方案3 强度的 bpm 界线改成按最大心率现算（2026-11-24），改在 (o) 用画面文字验（180 与 190 两种）
+    check(!html.includes('按心率算中等') && html.includes('分钟数这里取保守的中等计（App 的保守判断）'),
+      '方案3 强度：不再写「按心率算中等」，标「分钟数这里取保守的中等计（App 的保守判断）」（两处画面由 (o) 验）');
   }
   });
 }
