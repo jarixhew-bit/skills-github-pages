@@ -2260,6 +2260,9 @@ for (const [label, rows, want] of [
     check(Object.keys(c3.restBy).length === 0 && (await page.inputValue('#restBody select[data-restk="db:step"]')) === '90', '休息：「全部恢复默认」→ restBy 清空、登阶回到 90');
     check(/39205815/.test(await page.innerHTML('#restWhy')) && /26605807/.test(await page.innerHTML('#restWhy')) && /App 的安排/.test(await page.textContent('#restWhy')) && /超过 90 秒没再看到明显差别/.test(await page.textContent('#restWhy')),
       '休息说明：Singer 2024／Schoenfeld 2016 的 PMID、「超过 90 秒没再看到明显差别」、分大小动作标 App 的安排');
+    // verifier 退件（2026-11-24）：Schoenfeld 2016 只有大腿前侧肌肉厚度显著，不准写成笼统的「肌肉厚度」；加量开关不准再写死「约多 5 分钟」（休息改按动作后 4 组多 6 分钟）
+    check(/大腿前侧肌肉厚度/.test(await page.textContent('#restWhy')) && !/力量与肌肉厚度/.test(await page.textContent('#restWhy')), '休息说明：Schoenfeld 2016 只写大腿前侧肌肉厚度（不比原文强）');
+    check(!/约多 5 分钟/.test(await page.evaluate(() => document.body.innerHTML)), '加量开关与使用说明不再写死「约多 5 分钟」');
     const help = [await page.textContent('#helpGymMin'), await page.textContent('#helpDbMin'), await page.textContent('#helpSsMin')];
     check(JSON.stringify(help) === '["40–42","31–33","18"]', `使用说明的时间跟着休息走：健身房 40–42、哑铃 31–33、超级组 18（实得 ${help}）`);
     check(errors.length === 0, `休息：没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
@@ -2287,7 +2290,7 @@ for (const [label, rows, want] of [
     const r = await o.page.evaluate(() => { const c = JSON.parse(localStorage.getItem('fit.cfg')); return { c, a: window.__fit.vol.buildSteps('A').filter(s => s.kind === 'rest').map(s => s.sec) }; });
     check(r.c.restBase === 75 && !('rest' in r.c) && r.c.restV2 === 1 && r.a.every(x => x === 75), `迁移：旧 cfg.rest＝75 → restBase 75，每轮照旧 75 秒（实得 ${r.a}）`);
     await o.page.click('nav.tabs [data-tab="more"]'); await o.page.click('#restBox summary');
-    check(/统一选成 75 秒/.test(await o.page.textContent('#restLegacy')) && /沿用你以前选的 75 秒/.test(await o.page.textContent('#restSum')), '迁移：设置里说明沿用了以前的 75 秒');
+    check(/全 App 统一 75 秒/.test(await o.page.textContent('#restLegacy')) && /沿用你以前选的 75 秒/.test(await o.page.textContent('#restSum')), '迁移：设置里说明沿用了以前的 75 秒');
     await o.page.selectOption('#restBody select[data-restk="gym:rdl"]', '120');
     const a2 = await o.page.evaluate(() => window.__fit.vol.buildSteps('A').filter(s => s.kind === 'rest').map(s => s.sec));
     check(JSON.stringify(a2) === '[75,75,75,120,120,120]', `迁移后逐个改：腿弯举 120 → 那组 120、其余仍 75（实得 ${a2}）`);
