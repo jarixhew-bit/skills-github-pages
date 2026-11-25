@@ -381,3 +381,98 @@ App 现况（fitness/index.html `PMOVE`）：90/90、半跪髋屈肌、推膝碰
 - 泡沫轴胸椎伸展：「本 App 没查到研究证明它能改善脖子前倾」（不说「没有研究」——我们只是没查到）。
 - 枕头：✅ 保留（NHS 原文是指引），后面加「枕头研究结果不一」并列 Chun-Yiu 2021（橡胶枕小幅有效）与 Ghosh 2025（证据有限、没有哪种明显较好）。选 ✅＋附注而不是 ⚠️：卡片的 ✅ 定义是「官方指引原文」，NHS 这句确实是原文；研究分歧用附注写清楚。
 - 急诊级红旗（走路新问题、大小便失控、手突然不灵活）：**没有**「医生看过，说可以运动」按钮，一直显示「马上去急诊」直到用户改回答案；旧资料里对急诊红旗按过的确认也不算（App 的保守判断）。尽快看医生那四项仍可确认。
+
+
+## 枕头与侧睡（2026-11-25 查证）
+
+背景：用户 40 岁男，BMI 25.5，仰睡为主、半夜固定转**左侧**睡；换用中间凹、两边高的造型记忆枕
+（ErgoLab Deep Sleep 2.0）后醒来较精神，但每次左侧颈肩酸像落枕，换回旧枕就没事；Garmin 睡眠分数无稳定差别。
+通道：fetch-url（CI）。标记：【已读原文】= 读到网页/摘要原文；【已读摘要】= 只读到 PubMed 摘要；【转述】= 搜索引擎摘要、未亲读；【未查证】。
+下列 run ID 为 fetch-url 工作流 run（日志公开）。
+
+### 来源与 run ID
+| 内容 | run ID |
+|---|---|
+| PubMed esearch ×6、esummary ×3（找 PMID） | 45551662656、45551679910、45551696797、45551713464、45551730465、45551747363；45551866852、45551882702、45551899413 |
+| efetch 摘要：33895703、22608285、37662509、12531174、20970004、37722317、31041813、23669094、28127672、39063969、36617387、28012784、9041902 | 45551996679 |
+| efetch 摘要（text 模式，`<` 符号会被吃掉，只用于 34683013、39412632、21966226、23875624、22372306、38328528） | 45552179542 |
+| efetch 摘要（html 模式）：39625641、24707087、22316896、31906363、26209581、20036076、30470225、35753151、26599679、33527254、21075238 | 45552401338 |
+| NHS 颈痛（网址已改为 /symptoms/neck-pain-and-stiff-neck/，页尾 Page last reviewed: 27 April 2023） | 45552196250 |
+| NHS 打鼾 https://www.nhs.uk/symptoms/snoring/ | 45552210955 |
+| NHS 睡眠呼吸暂停 https://www.nhs.uk/conditions/sleep-apnoea/ | 45552228396 |
+| CUH 颈部运动与建议 | 45552245125 |
+| Versus Arthritis 颈痛（网址已改到 arthritis-uk.org/…/neck-pain/） | 45552264989 |
+| Versus Arthritis 肩痛（同上改网址 …/shoulder-pain/） | 45552284440 |
+| ErgoLab 马来西亚官网 https://ergolab.com.my/products/pillow | 45552510992 |
+| tryergolab.com／eBay 商品页 | 45552533141（SSL 错误）、45552549610（HTTP 403）——失败，未读到 |
+
+### 逐条结论
+
+**1. 侧睡枕高要让头颈与脊椎成一直线；太高太低会致颈部不适——部分成立**
+- 官方指引成立【已读原文】：
+  - NHS（预防颈痛）："when sleeping, make sure your head is the same height as the rest of your body"；同页："use a low, firm pillow"（缓解颈痛）。https://www.nhs.uk/symptoms/neck-pain-and-stiff-neck/
+  - CUH："Keep your head in the middle, in line with your spine. One pillow is advisable so that your head does not tilt to the side, forwards or backwards. Mould the contents of your pillow to provide extra support for your neck where it dips in compared to your head." https://www.cuh.nhs.uk/patient-information/neck-exercises-and-advice/
+  - Versus Arthritis："If your pillow is too firm or thick, it can make neck pain worse. ... Your head and neck should be supported so your head is level with your body in a neutral position. The pillow should fill in the natural hollow between the neck and shoulders"；致病因素清单里也有 "a pillow that's uncomfortably hard or soft"。https://www.arthritis-uk.org/information-and-support/understanding-arthritis/conditions/neck-pain/
+  - 三份指引**都没有侧睡专属的说法**（没写侧睡要多高），只讲「头与身体同高／中立」。
+- 研究【已读摘要】：
+  - Sacco 2015（n=21 无症状，侧卧，5／10／14 cm）：5 cm 时下侧中斜方肌 EMG 最高、最不舒服；10 与 14 cm 肌电无差；10 cm 最舒服。PMID 26209581
+  - Jiao 2024（n=15 无症状 18–30 岁，侧卧，枕高=0.5／1.0／1.5×肩宽）："both the sternocleidomastoid and trapezius muscle exhibited the lowest EMG activity in the height 2"，1.0×肩宽最舒服。PMID 39625641（先导研究）
+  - Tian 2025（n=9，侧卧 8–14 cm，有无颈托）：枕高与肩宽有关，"Medium individualized height pillow (Hφ 9.74-11.76 cm) with neck support showed a cervical curve closest to natural standing and the lowest musculoskeletal internal force"。PMID 39412632
+  - Chun-Yiu 2021（35 篇的系统综述＋荟萃）："the cervical alignment may be significantly impacted by the shape and height of the pillow"；同时 "there may be no change in the alignment of the cervical spine in the side-lying position, regardless of the use of rubber or feather pillows"。PMID 33895703
+  - 反面／限制：Lei 2021 综述 "the suggested range for achieving optimal cervical spine alignment ... cannot yet be identified considering the lack of sufficient evidence. Moreover, there remain no firm conclusions about the optimal pillow height for the supine and lateral positions." PMID 34683013
+  - Gordon 2011（RCT 实验室，侧卧）：凹形泡棉枕与普通形泡棉枕的颈胸段斜率"similar"；羽毛枕与其他枕差异大。**造型凹不等于排列更好**。PMID 21966226
+- 小结：「头颈与身体同高／中立」是官方指引；「太高→不适」仅有 Versus Arthritis（针对已有颈痛者）与小样本肌电／生物力学研究支持；没有找到「太高导致落枕」的 RCT。最佳高度**没有公认数字**，且与肩宽有关（Jiao、Tian）。
+
+**2. 侧睡与仰睡所需枕高不同（侧睡较高）——方向成立，数值未定**
+- Her 2014（n=40）【已读摘要】：侧卧时脸到肩平均 9 cm，颈中部离地 11 cm，肩关节从仰卧变侧卧平均上移 4.4 cm；结论 "Pillows with uniform heights are not suitable for a supine or side-lying position." PMID 24707087
+- Chen & Cai 2012（台湾人体测量，n=20）【已读摘要】：设计提案 "The middle area of the pillow is for supine position and the both side areas are for lateral positions"，中间／两侧高度男性 4／14 cm、女性 2／12 cm（这是尺寸设计建议，不是疗效结果）。PMID 22316896
+- 反面：Lei 2021（见第 1 条）"no firm conclusions about the optimal pillow height for the supine and lateral positions"。
+- 小结：「侧睡要比仰睡高、中间低两边高的枕型正是针对此设计」有人体测量依据；但没有研究验证它能减少颈痛，数字（12 cm／14 cm）勿当标准写进 App。
+
+**3. 长期固定同一侧侧睡与该侧肩痛有关——证据弱，只能写「有相关报告、因果未知」，与用户的颈痛不是同一件事**
+- Kempf & Kongsted 2012（83 名单侧肩痛患者，横断面）【已读摘要】："67% of those sleeping on one side lying on the painful shoulder (P = .02)"；"It is unknown whether the observed associations are causal"。PMID 22608285
+- Zenian 2010【已读摘要】：假说文章，"shoulder pain is caused by postural immobility in the decubitus or side position during sleep"，自称 preliminary。PMID 20036076
+- 2024 病例系列（58 例肩袖撕裂，Level IV）【已读摘要】："52 of the patients were side sleepers"；"there appeared to be a relationship"。PMID 38328528（doi 10.1016/j.asmr.2024.100886；标题本次没读到）
+- **反面**：Holdaway 2018（761 名工人，横断面）【已读摘要】："The sleep position anticipated to have the highest risk of glenohumeral pain and RCT was paradoxically associated with a decreased prevalence"，作者提醒可能是病人学会避开该姿势（反向因果）。PMID 30470225
+- Cine 2023（72 例颈椎间盘突出手术患者）【已读摘要】："Sleeping positions do not affect the shoulder/arm pain before and after the operation"。PMID 37662509
+- 没有找到「固定侧睡→该侧颈痛」的研究；没有前瞻研究。
+
+**4. 侧睡抱枕／胸前放枕头能减少肩部受压——只有对「已疼的肩」的指引，机制与预防作用未查证**
+- Versus Arthritis 肩痛页【已读原文】（针对"肩膀躺下时会痛"的人）："lying on your good side with a pillow under your neck"；"using a folded pillow to support your painful arm in front of your body"；"placing another pillow behind your back to stop yourself rolling onto your painful side"。https://www.arthritis-uk.org/information-and-support/understanding-arthritis/conditions/shoulder-pain/
+- 「减少肩部受压」这个机制说法、以及对没痛的人的预防效果：【未查证】（esearch 查 pillow＋hug／between＋shoulder 只回一篇无关的哺乳姿势研究）。可写「肩痛指引建议用枕头托住手臂」，不要写「研究证明减少受压」。
+
+**5. 仰睡比侧睡更易打鼾／睡眠呼吸暂停——成立；枕头能否改善打鼾——证据少且有利益相关**
+- NHS 睡眠呼吸暂停【已读原文】：风险因素清单有 "sleeping on your back"；建议 "sleep on your side – try taping a tennis ball to the back of your sleepwear, or buy a special pillow or bed wedge to help keep you on your side"。https://www.nhs.uk/conditions/sleep-apnoea/
+- NHS 打鼾【已读原文】：同样建议 "sleep on your side ..." https://www.nhs.uk/symptoms/snoring/
+- Joosten 2014 综述【已读摘要】："more than half of all obstructive sleep apnea (OSA) patients can be classified as supine related OSA"。PMID 23669094；Landry 2023【已读摘要】："Increased airway collapsibility is reliability observed supine relative to lateral position"。PMID 37722317
+- 澳洲睡眠学会 2023 立场文件【已读摘要】："Positional therapy should be considered in supine dominant snorers"。PMID 36617387
+- Cochrane 2019【已读摘要】：体位疗法优于无干预（AHI MD −7.38），CPAP 更强；证据 low–moderate，"All the studies were of short duration"。PMID 31041813
+- 枕头与打鼾：Cazan 2017 随机交叉（n=22，BMI≤30，已排除 OSA）【已读摘要】："significant reduction in the snoring index (p = 0.03)"；**注意**：这是「改变头位的专用防鼾枕」，作者单位含防鼾产品经销商（Nitetronic GmbH／Sissel），样本小。PMID 28127672。Moffa 2024 系统综述【已读摘要】："Studies show that PT and HOBE reduce snoring" 但 "further comparative studies between the different devices are needed"。PMID 39063969
+- 没有研究直接测过 ErgoLab 或「中间凹造型枕」是否减少打鼾；商品页「Helps keep airways open to reduce snoring」是**厂商宣传**【已读原文】，其 FAQ 也承认 "If your snoring is caused by allergies or other health issues, results may be limited."
+- 用户是否打鼾、是否有 OSA：未知（无数据）。
+
+**6. 「醒来比较精神」可能来自打鼾减少或从浅睡醒来——sleep inertia 机制成立，但归因到枕头无证据**
+- Tassi & Muzet 2000【已读摘要】："Abrupt awakening during a slow wave sleep (SWS) episode produces more sleep inertia than awakening in stage 1 or 2, REM sleep being intermediate."；"in the absence of major sleep deprivation, the duration of sleep inertia rarely exceeds 30 min." PMID 12531174。Matchock 2010 同向（"deleterious effects most pronounced when awakened from biological night"）PMID 20970004。
+- 张力：McCarter 2022 scoping review【已读摘要】："Slow wave sleep was moderately correlated with better performance ... as well as better subjective sleep quality and feeling well-rested ... However, these findings were inconsistent across studies." 主观精神与客观睡眠分期相关性「弱到中等」。PMID 35753151
+- 枕头对睡眠质量：Chun-Yiu 2021 "Pillow designs did not influence sleep quality (SMD = 0.047; P = 0.703) in patients with chronic neck pain."（对象是慢性颈痛患者，不是健康人）PMID 33895703；加上 Garmin 两种枕头无稳定差别。
+- 小结：「从浅睡醒来」「打鼾减少」都是**假说**；没有证据显示该枕头让他更常在浅睡时醒来。另一个同样讲得通的解释（我的推论，非来源）：换新枕的期望效应／新鲜感。
+
+**7. ErgoLab Deep Sleep 2.0 是否可拆内芯／可调高度、前后高度不同——前后不同高：官网有写；可拆内芯／可调高度：官网未见**
+- 官网 FAQ【已读原文】https://ergolab.com.my/products/pillow ：
+  - "One edge is lower and the other higher, so you can choose the height that suits you."
+  - "Side sleepers get the raised wings to support the neck, with room to rest your arm. Stomach sleepers use the lower edge so the neck doesn't bend upwards. Try both edges to find the height that suits you."
+  - 软硬："Medium to medium-firm"；适应期："Give it about a week so your neck can get used to the new support"（厂商说法）。
+  - 保养："If the foam core gets dirty, wipe it with a damp cloth ... Don't machine wash the core. The pillowcase unzips and is machine washable." —— 只有可拆**枕套**，页面没提可拆内芯／可加减层／可调高度（没写≠没有，但页面读不到）。
+  - 退货：官网 "90-night money-back guarantee ... We even cover return shipping."；页面说 Shopee／Lazada 有官方店，但**Shopee 店的退货条款未查证**。
+- 尺寸：页面文字未读到 cm；搜索引擎摘要称 "12 x 60 x 36 cm"【转述，未亲读原文】。
+- 其它：tryergolab.com 与 eBay 商品页 CI 抓取失败（SSL 错误／403）；Shopee 本身为 JS 页面未抓。
+
+### 对给用户建议的修改建议
+1. 第 1 条保留，但写成「官方指引：头与身体同高、中立（NHS／CUH／VA）」；不要写成「研究证明太高会引起落枕」。App 里不要给「X cm」标准。
+2. 第 2 条：只说「侧睡通常需要比仰睡高（人体测量）」，加「最佳高度没有公认数字」（Lei 2021）；可提示高度与肩宽有关（Jiao 2024、Tian 2025，均为小样本）。
+3. 第 3 条降级：「有少数研究发现侧睡那一侧与肩痛相关，因果未知，也有相反结果」（Kempf 2012 vs Holdaway 2018）；**别拿它解释他的左侧颈痛**。
+4. 第 4 条：只引 Versus Arthritis 的「肩痛时用枕头托手臂」，不写「减少受压」。
+5. 第 5 条：保留「仰睡更易打鼾／呼吸暂停」（NHS＋综述）；删掉「该枕头能减少打鼾」类说法（只有厂商宣传＋一篇有利益相关的专用枕研究）。他若打鼾或白天嗜睡，建议看医生（NHS 同样写）。
+6. 第 6 条改成「可能的解释之一」并标假说；加一句「枕头研究多半没改善睡眠质量（Chun-Yiu 2021）」。
+7. 可新增的实用建议（来自官网原文）：这款枕**前后两边高度不同**，官方说「两边都试」——他可以翻到较低那一边再试几晚（注意：官网写低边主要是给趴睡者，**我无法保证对他有效**）；官网自称 90 天退款，但从 Shopee 买是否适用未查证。
+8. 「左侧颈肩酸」用户为何固定在左边：没有来源可答（高低肩与侧睡颈痛的研究未找到）→ 标【未查证】，只能建议他请人从背后拍侧睡照看头颈是否水平。红旗症状照原有规则走。
