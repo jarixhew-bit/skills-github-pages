@@ -476,3 +476,45 @@ App 现况（fitness/index.html `PMOVE`）：90/90、半跪髋屈肌、推膝碰
 6. 第 6 条改成「可能的解释之一」并标假说；加一句「枕头研究多半没改善睡眠质量（Chun-Yiu 2021）」。
 7. 可新增的实用建议（来自官网原文）：这款枕**前后两边高度不同**，官方说「两边都试」——他可以翻到较低那一边再试几晚（注意：官网写低边主要是给趴睡者，**我无法保证对他有效**）；官网自称 90 天退款，但从 Shopee 买是否适用未查证。
 8. 「左侧颈肩酸」用户为何固定在左边：没有来源可答（高低肩与侧睡颈痛的研究未找到）→ 标【未查证】，只能建议他请人从背后拍侧睡照看头颈是否水平。红旗症状照原有规则走。
+
+
+## 金边物理治疗候选（2026-11-26）
+
+调查方式：CI 通道 fetch-photos.yml（取 Google Maps 评分／营业时间／精准 place_url，已对照 place_title 与地址）＋ web-lookup.yml／fetch-url.yml 读官网（沙盒挡了多数外站）。Google 评论正文**读不到**（抓图器只回评分与评论数），所以「评论里颈肩／姿势的正负面」除 Movement 官网嵌入的 Google 评论外一律【未查证】。语言：所有候选**都没查到中文服务**。
+
+### 候选表（评分 ≥4.2、有物理治疗师资历证据者）
+
+| 名称 | Google 评分（评论数） | 区／地址 | 治疗师资历证据 | 语言 | 价格 | 营业时间 | 预约 | 精准地图链接 |
+|---|---|---|---|---|---|---|---|---|
+| **Studio On. Physiotherapy**（Yannick Sarton） | 5.0（24） | BKK1，WH Residence，#20 Street 302，Level 1，12303 | 官网：「Yannick Sarton / Master in Physiotherapy UCL- Belgium / Master of research (MSc.) in Osteopathy University of Bedfordshire - UK」（https://www.studiohealthon.com/home ）；Confluences 博客：「He holds a first Master's degree in Physiotherapy from Belgium and studied a second Master's (MSc) in Research in Osteopathy in London」「specialist with 20 years of experience」（https://www.confluences.asia/blog/studio-on-opens-in-cambodia-with-confluences-support ） | 英、法（「Consultations are available in English and French」https://www.studiohealthon.com/fr-contact ）；中文未查证 | 官网 $50／次，首诊含完整评估＋治疗，复诊同价（https://www.studiohealthon.com/en-booking ）；官网写 60 分钟（同页另一处写约 50 分钟） | **矛盾**：官网「Monday to Saturday from 9 AM to 6 PM」；Google：周一休、周二至周六 9–18、周日 9–12 | 「Consultations by appointment only」；网上预约／WhatsApp／Telegram +855 71 631 2793 | https://www.google.com/maps/place/Studio+On.+Physiotherapy/@11.5530845,104.9271859,17z/data=!3m1!4b1!4m6!3m5!1s0x310951b3f32608b1:0x29be85d8c9e349e1!8m2!3d11.5530845!4d104.9271859!16s%2Fg%2F11wc6myhjg |
+| **Physiotherapy Phnom Penh**（Google 名：Physiotherapy Phnom Penh II） | 4.7（11） | Boeung Tumpun，LH Aroma Building 4 楼，Street 242 转角 107，12202 | 官网：「All therapists working at our clinic are trained and licensed in accordance with Western standards.」（https://www.physiotherapy-phnompenh.com/welcome ）；团队页例：Daniel Aguilar「graduated from the Universidad Del Valle de Mexico with a Bachelor Degree in physiotherapy」（https://www.physiotherapy-phnompenh.com/our-team ）；另有 Robbert van Hoven 页（内容未读全）。个别治疗师执照号未查证 | 英文（官网英／高棉）；中文未查证 | 未公开（第三方 Well Frog：「Contact for rates」https://thewellfrog.com/kh/phnom-penh/physiotherapy-phnom-penh ）；初诊 45 分钟、复诊约 40 分钟（https://www.physiotherapy-phnompenh.com/physiotherapy ） | Google：周一至五 8–19，周六 8–12，周日休（官网未列） | 电话 +855 17 223 105／info@physiotherapy-phnompenh.com；官网写「contact us… for scheduling an appointment」 | https://www.google.com/maps/place/Physiotherapy+Phnom+Penh+II/@11.5570447,104.8425356,13z/data=!4m10!1m2!2m1!1sPhysiotherapy+Phnom+Penh!3m6!1s0x3109515d2e6df4f1:0x45e3642582e1ef6c!8m2!3d11.5570447!4d104.9187533!15sChhQaHlzaW90aGVyYXB5IFBobm9tIFBlbmhaGiIYcGh5c2lvdGhlcmFweSBwaG5vbSBwZW5okgEUcGh5c2lvdGhlcmFweV9jZW50ZXKaASRDaGREU1VoTk1HOW5TMFZKUTBGblNVTTNNbVY2ZEhsUlJSQULgAQD6AQQIABAw!16s%2Fg%2F11g8wd96z_ |
+| **Physio ONE PP - TTP** | 4.8（30） | Toul Tom Poung 一带，1H Street 480，12310 | **资历未查证**：LinkedIn 仅写「Our experts have over 10 years experience in exercise rehabilitation and fitness development」「Physiotherapy and exercise rehabilitation available in a gym setting」（https://kh.linkedin.com/company/physio-one-phnom-penh ）；官网没找到；治疗师姓名／学历／执照均未查到 | 未查证 | 未公开（Well Frog：「Pricing Not publicly listed」https://thewellfrog.com/kh/phnom-penh/physio-one ）；同站指南称金边整体 $30–50／次（泛泛估计，非该店报价） | Google：周一至五 6:30–19:30，周六日 7–13 | Facebook 页／电话；**电话矛盾**：Facebook 摘要 +855 16 236 086，Well Frog +855 89 259 733 | https://www.google.com/maps/place/Physio+ONE+PP+-+TTP/@11.5346871,104.9177136,17z/data=!3m1!4b1!4m6!3m5!1s0x310951d009ab8aad:0x94ab2d9b1e05bc88!8m2!3d11.5346871!4d104.9177136!16s%2Fg%2F11t9wlg9vh |
+| **Movement: Physiotherapy and Fitness**（⚠ Google 标「永久停业」） | 4.9（208） | 79 Street 350（The Office），120101 | 官网团队页：「Mark Chen — Physiotherapist, Nutritionist, Fitness Trainer … Over 15 years of experience」；「Ritesh Saojal — Musculoskeletal Physiotherapist … Fluent in English and Hindi」；「Nearida Siv … Clinical Master's Degree in Continence and Women's Health from Curtin University… APA-titled」（https://movementphysiofitness.com/team/ ）。学历／执照号未查证 | 英（Ritesh：英、印地）；中文未查证（不要因姓名推断） | 官网 contact 页：「Initial Evaluation: 60 minutes / $70」「Ongoing Sessions: 40 minutes / $50」（https://movementphysiofitness.com/contact/ ） | 官网未列；搜索摘要称周一至五 8–18、周六日 8–14（来自 10web 测试站，未证实）；Google 无时间 | 官网 Book Now／Calendly | https://www.google.com/maps/place/Movement:+Physiotherapy+and+Fitness/@11.5486145,104.9135009,17z/data=!3m1!4b1!4m6!3m5!1s0x31095141baefb28f:0x4ee1939e9683e32c!8m2!3d11.5486145!4d104.9135009!16s%2Fg%2F11fqsc71qy |
+
+**Movement 矛盾（两说并陈）**：Google Maps 状态＝permanently_closed（连续 3 次抓取一致）；但官网 2026-11-26 仍可开、列有价格／团队／地址／Calendly，官网首页称「204+ Google reviews」。无法裁决，去之前必须先确认还在营业。
+电话号码冲突：Movement 官网首页 HTML 的 tel 链接是 +855 17 223 105（日志 h45771384244）；Well Frog 的 Physiotherapy Phnom Penh 条目也列同一号码 +855 17 223 105（https://thewellfrog.com/kh/phnom-penh/physiotherapy-phnom-penh ）。两处来源指向不同诊所却同号，打之前先确认接的是谁（也可能 Well Frog 录错）。
+
+### 评论摘要（评论原文只在 Movement 官网有；其余未查证）
+- Movement 官网嵌入的 Google 评论（诊所自选，非全量）：正面「Approached Ritesh at Movement Physio when I was struggling with limited movement range in my left arm. He … was able to explain clearly his diagnosis, treatment protocol and the support exercises」（肩）；另一则「after a session to assess me he tailored a physio regime for me that I can do at home」（居家动作）。负面：未读到（该组评论本就是挑选过的）。
+- Studio On、Physiotherapy Phnom Penh、Physio ONE：Google 评论正文未读到 → 颈肩／姿势评估的正负面均【未查证】。
+
+### 与「带动作回 App」相关的证据
+- Studio On 官网：「After your session, you get access to a rehab app so you can continue at home with clear instructions and videos.」「Each program is designed during your appointment and delivered straight to your smartphone」；「Sessions combine hands-on therapy, movement analysis, and guided rehabilitation」；列有 Neck pain。（https://www.studiohealthon.com/home ）
+- Physiotherapy Phnom Penh 手法治疗页：「a physical evaluation will take place in which the therapist will assess your posture, movements, and examine the joints」（https://www.physiotherapy-phnompenh.com/manual-therapy ）；物理治疗页：「Exercise may be prescribed for you to complete between treatments」。
+- Movement：「tailored a physio regime … I can do at home」（评论，见上）；官网有「I am trying to correct my posture」入口。
+
+### 排除项
+- Sen Sok Hospital（Google 4.1/85）：低于 4.2。Raffles Medical Clinic（3.4/194）：低于 4.2。International SOS（5.0/2）：不是物理治疗、评论仅 2 则。
+- Royal Phnom Penh Hospital（4.3/675，24 小时，https://www.google.com/maps/place/Royal+Phnom+Penh+Hospital/@11.562302,104.8617139,15z/data=!4m10!1m2!2m1!1sRoyal+Phnom+Penh+Hospital+rehabilitation+physiotherapy!3m6!1s0x310951a354c389d9:0xd07843ea8349e8c1!8m2!3d11.562302!4d104.8807683!15sCjZSb3lhbCBQaG5vbSBQZW5oIEhvc3BpdGFsIHJlaGFiaWxpdGF0aW9uIHBoeXNpb3RoZXJhcHlaOCI2cm95YWwgcGhub20gcGVuaCBob3NwaXRhbCByZWhhYmlsaXRhdGlvbiBwaHlzaW90aGVyYXB5kgEIaG9zcGl0YWyaAURDaTlEUVVsUlFVTnZaRU5vZEhsalJqbHZUMnR3VEdFeU9ERmpSMnhPVmxWa1NFeFZiM2RUUkdSbVlXdGtkbHBYWXhBQuABAPoBBAgeED0!16s%2Fg%2F1pv0lsc9n ）：评分合格，但**没查到它的复健科／物理治疗师信息**（搜索只得到「rehabilitation services」一般性描述），不列入候选。
+- J-Physio（日本人物理治疗师工作室）：Google 抓取两次都落到 Physio ONE，没有独立地点页；评分与精准链接未查证，不列入。Physiotherapy Clinic International（Street 288，法籍）：只在 b2b 目录出现，Google 抓取两次都落到 Physiotherapy Phnom Penh II，未找到独立地点页，不列入；「The Physio」（BKK1 Street 63）同样落到别家，未查证。
+- 纯按摩／盲人按摩（Movement 团队页另列一位按摩师）、脊骨神经（International Chiropractic Clinic）不算。
+
+### 未查证清单
+1. 各治疗师的执照／注册号（柬埔寨卫生部注册）——所有来源都没公开；只能到诊所当面问。
+2. Google 评论正文（颈肩／姿势评估的正负面）——抓取器不回评论。
+3. 中文服务——所有候选均无来源提及。
+4. Physio ONE 的治疗师学历、语言、价格——官网没找到。
+5. Physiotherapy Phnom Penh 的价格。
+6. Movement 是否真的已停业（Google vs 官网矛盾）。
+7. Studio On 周一是否营业（官网 vs Google 矛盾）。
+8. 被挡的域名：phnompenhpost.com（沙盒 DNS 不通；CI 抓取其文章也失败），Instagram（HTTP 429），physioone 官网域名（猜了数个均不存在）。
