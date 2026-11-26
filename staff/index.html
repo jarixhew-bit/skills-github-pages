@@ -8862,8 +8862,11 @@ const INV_API_URL = 'https://butler-bot.jarixhew.workers.dev/inventory';
 
 const INV_CAT_META = {
   wine: { label:'酒', unit:'瓶', icon:'🍷' },
-  tea:  { label:'茶叶', unit:'饼', icon:'🍵' },
-  herb: { label:'虫草', unit:'克', icon:'🌿' },
+  // 单位 2026-11-26 改成「盒」：现有记录一条「饼」都没有，都是「盒」（千山那条原本
+  // 是「箱」，已跟其余记录统一改成「盒」）。
+  tea:  { label:'茶叶', unit:'盒', icon:'🍵' },
+  // 单位 2026-11-26 改成「盒」：唯一一条记录是「盒」，不是「克」。
+  herb: { label:'虫草', unit:'盒', icon:'🌿' },
   // 氢水（2026-08-10 加）。牌子（禾露堂）写在每条记录的名字里，不单独开类别——
   // 以后进别的牌子还是这一格。key 与默认单位必须跟 butler 的 CATEGORIES 一致。
   // 单位 2026-11-26 改成「箱」：金边仓库实际是整箱点的，现有记录也都是 unit:"箱"。
