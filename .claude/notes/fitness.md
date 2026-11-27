@@ -238,6 +238,19 @@
     401 清掉 `fit.aiToken` 再请贴；403＝同事版钥匙。服务端只认老板那把，见 butler-bot `src/handlers/food_photo.js`。
   - 失败／504／422／没网（`navigator.onLine===false` 时根本不送）一律 `#aiErr` 友好提示＋引导「手动一笔」或把照片发给 Claude，不写任何条目。
   - 自检：check-fitness 第 26 段。
+- **每周饮食与体重（2026-11-27，用户要求）**：出处正本 `.claude/notes/fitness-fatloss-research.md` 最后一节「每周饮食与体重」（纤维全表、粥两种份量手算、Mifflin／FAO 表 5.3／Whittaker & Wu／NHS 原文与 run ID；规则门槛都是 App 的安排）。
+  - 入口：饮食页 `#dToday` 下面的 `#dWk`（每日快速记录／每周菜单／周复盘三个钮）；子页面画在 `#dWkView`，打开时把饮食页其他卡片 hidden（`renderWkView()`，`wv.view`＝main/plan/daily/review），`#wvBack` 回饮食页。**没往训练页加任何东西。**
+  - 资料（都在 `fit.diet`，跟着 `diet` 进备份）：`diet.wp`＝菜单 `{v,size:"s"|"l",def:300|400|500,train[7]（星期一起）,tg:{train:{k,p,c,f,fb},rest:{…}}（空＝默认）,days[7].meals[{id,m:b/l/d,at,items:[{f,g}|{r,q}],out:null|{n,k,p}}],setTs}`；
+    `diet.dq`＝每日快速记录 `{"YYYY-MM-DD":{mood 1–5,dig ok/bloat/const/diarr/other,dn,noct 0–4（4＝4 次以上）,sl,ts}}`。**体重、腹围不另存**：快速记录直接写 `body`（fit.body，同一天只留一笔，同「进度」页）。
+    导入 `wkImport`：菜单本机没动过（`wp.setTs` 为 0）才用备份的；dq 按日期本机没有才补。
+  - 食物库多了 `FOOD_FIB`（g／100 g，null＝同一笔资料没有纤维＝未查证）、蓝莓 `blueberry`（171711）、`RECIPES.sishenL`（大碗干料 95 g）。条目多 `fb`（`calcItem` 算）、组合的 `b.fm`（缺纤维的食材数）；旧条目没有 fb 就算「缺资料」。
+    「照计划记入」`logPlanDay(日)`：今天那天的每一餐 → 当天 `log.items`，每笔带 `pl`＝菜单那餐的 id（`cleanItems` 保留），同一餐不再写；外食那餐有 kcal 才记成「照片估算」一笔。
+  - 目标 `wkTargets(kind)`：Mifflin（`bmrMSJ`）× `PAL`（休息 1.5／训练 1.6，App 的估算）− `def`（默认 400）取到 10；蛋白 1.6×kg；脂肪＝30%（下限 `FAT_FLOOR` 20%，App 的安排）；碳水＝剩下的；纤维 30（NHS）。资料不全就不给热量（可自己填）。
+    训练日 `dayKind(日)`：那天有训练记录＝训练日，否则看 `wp.train[星期几]`（默认二、五，App 的安排）。
+  - 时间：`inWin(at)` 用 `diet.tre`（没开就不检查）；`winIssues()` 列窗口外的餐。
+  - 周复盘：`wkAgg(now,8)`（周一开始；kcal／蛋白＝有饮食记录那几天平均、精神／夜尿＝有快速记录那几天平均、消化不适天数、纤维与 `WATCH_FIB` 薏仁／糙米／地瓜每天克数）；
+    `wkAdvice(now)` 四条规则 gain／mood／dig／noct（本周有任何记录就以本周为准，否则上周）。趋势图用原本的 `drawChart`（7 张，`#wcKg` 等）。
+  - 自检：check-fitness 第 27 段（手算写在段首注释）。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 

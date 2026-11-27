@@ -514,12 +514,14 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
     <div class="card" id="dTargets"></div>
     <div class="card" id="dTreCard"></div>
     <div class="card" id="dToday"></div>
+    <div class="card" id="dWk"></div>
     <div class="card" id="dAdd"></div>
     <div class="card" id="dCombo"></div>
     <div class="card" id="dLog"></div>
     <div class="card" id="dWeekCard"></div>
     <div class="card" id="dQg"></div>
     <details class="card fold"><summary>16/8 有没有额外效果（附来源）</summary><div class="stack" id="dTreWhy"></div></details>
+    <div class="stack" id="dWkView" hidden></div>
   </section>
 
   <!-- ===== 更多 ===== -->
@@ -3099,9 +3101,9 @@ function renderDiet(){
   renderDietProfile(); renderDietRest(); renderFood();
   $("dTreWhy").innerHTML=TRE_WHY;
 }
-function renderDietRest(){ renderDietCard(); renderDietTargets(); renderDietTre(); renderDietToday(); renderDietWeek(); renderDietQg(); }
+function renderDietRest(){ renderDietCard(); renderDietTargets(); renderDietTre(); renderDietToday(); renderWkEntry(); renderDietWeek(); renderDietQg(); }
 let dietFrom="train";
-function openDiet(){ dietFrom=tab; ["train","cardio","swim","prog","hist","more","post"].forEach(t=>{ $("tab-"+t).hidden=true; }); $("tab-diet").hidden=false; tab="diet"; renderDiet(); window.scrollTo({top:0}); }
+function openDiet(){ dietFrom=tab; ["train","cardio","swim","prog","hist","more","post"].forEach(t=>{ $("tab-"+t).hidden=true; }); $("tab-diet").hidden=false; tab="diet"; wv.view="main"; renderWkView(); renderDiet(); window.scrollTo({top:0}); }
 function closeDiet(){ $("tab-diet").hidden=true; const b=document.querySelector('nav.tabs [data-tab="'+dietFrom+'"]')||document.querySelector('nav.tabs [data-tab="train"]'); b.click(); }
 document.addEventListener("click",e=>{ if(e.target.closest("[data-open-diet]")) openDiet(); });
 $("dietBack").onclick=closeDiet;
@@ -3138,6 +3140,7 @@ function dietImport(dd){
   }
   if(dd.log&&typeof dd.log==="object") for(const k in dd.log){ const L=dd.log[k]; if(/^\d{4}-\d\d-\d\d$/.test(k)&&L&&typeof L==="object"&&!diet.log[k]){ diet.log[k]={p:+L.p||0,kcal:L.kcal==null?null:+L.kcal,win:!!L.win}; const it=cleanItems(L.items); if(it&&it.length) diet.log[k].items=it; } }
   foodImport(dd); // 我的食物、我的组合：本机没有的（按 id）才补
+  wkImport(dd); // 每周菜单与目标（本机没动过才用备份的）、每日快速记录（日期本机没有才补）
   saveDiet();
 }
 
@@ -3267,6 +3270,7 @@ const FOOD_RAW=[
 ["kiwi","奇异果","猕猴桃","kiwi","水果","usda","168153","Kiwifruit, green, raw",61,1.14,14.66,0.52,[["1 颗", 69]],"",0],
 ["avocado","牛油果","酪梨","avocado","水果","usda","171705","Avocados, raw, all commercial varieties",160,2,8.53,14.66,[],"",0],
 ["pear","梨","","pear","水果","usda","169118","Pears, raw",57,0.36,15.23,0.14,[["1 颗中型", 178]],"",0],
+["blueberry","蓝莓","蓝梅 blueberries","blueberry","水果","usda","171711","Blueberries, raw",57,0.74,14.49,0.33,[],"",0],
 ["strawberry","草莓","","strawberry","水果","usda","167762","Strawberries, raw",32,0.67,7.68,0.3,[],"",0],
 ["walnut","核桃（去壳）","核桃 胡桃 合桃","walnuts","坚果种子","usda","170187","Nuts, walnuts, english",654,15.23,13.71,65.21,[["1 颗（去壳）", 4]],"「1 颗 4 g」来自 USDA 份量「7 颗去壳可食部分＝28 g」（28÷7）；核桃大小不一，最好自己称一次 4 颗",0],
 ["almond","杏仁（生）","扁桃仁 巴旦木","almonds","坚果种子","usda","170567","Nuts, almonds",579,21.15,21.55,49.93,[["1 颗", 1.2]],"",0],
@@ -3307,15 +3311,19 @@ const FOOD_RAW=[
 ["chkveg","鸡肉炒杂菜（餐馆，估算）","炒杂菜","chicken and vegetables","外食（估算）","usda","167678","Restaurant, Chinese, chicken and vegetables",95,8.18,5.38,4.56,[],"美国中餐馆样本；做法差很多",1],
 ["noodlesoup","汤面（泛指，估算）","汤面 粿条汤 面汤","noodle soup","外食（估算）","fndds","2709145","Soup, noodle, NFS",90,5.48,10.08,2.99,[],"美国全国饮食调查的「汤面，泛指」，不是柬式粿条汤；汤底、肉量差很多，只能当很粗的参考",1]
 ];
+// 膳食纤维 g／100 g：跟上面同一个 FDC ID／台湾整合编号（2026-11-27 查证，研究笔记「每周饮食与体重」那节）；null＝那笔资料里没有纤维这一栏（未查证）
+const FOOD_FIB={"chkbreast":0,"chkthigh":0,"chkdrum":0,"chkwing":0,"duck":0,"porktender":0,"porkchop":0,"porkbelly":0,"porkmince":0,"beefshank":0,"beefshankraw":0,"beefflank":0,"beefmince90":0,"beefmince85":0,"lambleg":0,"lambstew":0,"shrimp":null,"shrimpraw":null,"squid":0,"salmon":0,"tilapia":0,"cod":0,"snapper":0,"grouper":0,"mackerel":0,"catfish":0,"milkfish":0,"pompano":0,"tuna":0,"crab":0,"egg":0,"egghard":0,"eggraw":0,"eggwhite":0,"tofufirm":2.3,"tofu":0.3,"tofusoft":0.2,"tofufried":3.9,"dougan":3.3,"soymilk":0.6,"soymilkns":0.5,"edamame":5.2,"lentil":7.9,"chickpea":7.6,"mungbean":7.6,"redbean":7.4,"rice":0.4,"riceshort":null,"ricebrown":1.6,"riceglut":1,"riceraw":1.3,"ricenoodle":1,"ricenoodledry":1.6,"eggnoodle":1.2,"pasta":1.8,"pastaww":3.9,"soba":null,"mantou":1.1,"breadwhite":2.7,"breadww":6,"oats":10.1,"oatmeal":1.7,"corn":2.4,"potato":1.8,"potatobaked":2.2,"taro":5.1,"pumpkin":1.1,"sweetpotato":2.5,"sweetpotatobaked":3.3,"millet":8.5,"huaishan":5.4,"lotusseed":null,"qianshi":3.1,"fuling":80.9,"yiren":1.8,"choysum":2.3,"kangkung":1.9,"kangkungraw":2.1,"broccoli":3.3,"gailan":2.5,"bokchoy":1,"napa":1.7,"cabbage":2.5,"spinach":2.4,"cucumber":0.5,"tomato":1.2,"greenpepper":1.7,"carrot":2.8,"mushroom":1,"shiitake":2.1,"enoki":2.7,"oystermush":2.3,"eggplant":2.5,"longbean":null,"greenbean":3.2,"bittergourd":2,"okra":2.5,"calabash":1.2,"beansprout":1.8,"onion":1.7,"lettuce":2.1,"cauliflower":2.3,"lotusroot":3.1,"celery":1.6,"kelp":1.3,"banana":2.6,"mango":1.6,"papaya":1.7,"watermelon":0.4,"apple":2.4,"orange":2.4,"guava":5.4,"pineapple":1.4,"durian":3.8,"longan":1.1,"lychee":1.3,"jackfruit":1.5,"grapes":0.9,"kiwi":3,"avocado":6.7,"pear":3.1,"strawberry":2,"walnut":6.7,"almond":12.5,"peanut":8.4,"cashew":3.3,"sesame":11.8,"chia":34.4,"flax":27.3,"pumpkinseed":6,"sunflower":8.6,"milk":0,"milklow":0,"milkskim":0,"yogurt":0,"greek0":0,"greek":0,"cheddar":0,"mozzarella":0,"olive":0,"peanutoil":0,"canola":0,"sesameoil":0,"coconutoil":0,"butter":0,"soysauce":0.8,"oystersauce":0.3,"fishsauce":0,"sugar":0,"brownsugar":0,"honey":0.2,"coconutmilk":2.2,"friedrice_chk":0.9,"friedrice_pork":0.9,"friedrice_shrimp":0.9,"friedrice_veg":1.1,"lomein":1.3,"kungpao":1.5,"chkveg":0.9,"noodlesoup":0.8,"blueberry":2.4};
 const FOOD_UNVER=[["火龙果", "dragon fruit pitaya", "USDA 与台湾食药署这次都没查到"], ["粿条汤（柬式）", "kuy teav", "没有可查的成分资料；可拍照给 Claude 估算后用「手动一笔」"]];
 /*FOODS-END*/
-const FOODS=FOOD_RAW.map(a=>({id:a[0],zh:a[1],al:a[2],en:a[3],cat:a[4],src:a[5],ref:a[6],desc:a[7],k:a[8],p:a[9],c:a[10],f:a[11],sv:a[12],note:a[13],est:!!a[14]}));
+const FOODS=FOOD_RAW.map(a=>({id:a[0],zh:a[1],al:a[2],en:a[3],cat:a[4],src:a[5],ref:a[6],desc:a[7],k:a[8],p:a[9],c:a[10],f:a[11],sv:a[12],note:a[13],est:!!a[14],fb:FOOD_FIB[a[0]]==null?null:FOOD_FIB[a[0]]}));
 const FOOD_BY={}; FOODS.forEach(f=>{ FOOD_BY[f.id]=f; });
 const FOOD_CATS=["肉","海鲜","蛋豆","主食","蔬菜","水果","坚果种子","乳品","油与调味","四神料","外食（估算）"];
 // 自己煮的组合料理：每份＝各食材 克数×每100g÷100 的和
 const RECIPES={sishen:{zh:"四神小米粥（干料 62 g，一份）",al:"四神粥 四神汤 小米粥 粥",en:"si shen millet congee",
-  parts:[["millet",20],["riceraw",5],["huaishan",8],["lotusseed",8],["qianshi",8],["fuling",8],["yiren",5]],note:"小米 20、白米 5、淮山 8、莲子 8、芡实 8、茯苓 8、炒薏仁 5 g；加水 500–600 ml，水不算热量"}};
-function recipeVals(rid){ const R=RECIPES[rid], v={k:0,p:0,c:0,f:0}; if(!R) return null; R.parts.forEach(([id,g])=>{ const F=FOOD_BY[id]; ["k","p","c","f"].forEach(x=>{ v[x]+=g*F[x]/100; }); }); return v; }
+  parts:[["millet",20],["riceraw",5],["huaishan",8],["lotusseed",8],["qianshi",8],["fuling",8],["yiren",5]],note:"小米 20、白米 5、淮山 8、莲子 8、芡实 8、茯苓 8、炒薏仁 5 g；加水 500–600 ml，水不算热量"},
+  sishenL:{zh:"四神小米粥（大碗，干料 95 g，一份）",al:"四神粥 大碗 小米粥 粥",en:"si shen millet congee large",
+  parts:[["millet",30],["riceraw",15],["huaishan",10],["lotusseed",10],["qianshi",10],["fuling",10],["yiren",10]],note:"小米 30、白米 15、淮山 10、莲子 10、芡实 10、茯苓 10、炒薏仁 10 g（未煮前）；水不算热量"}};
+function recipeVals(rid){ const R=RECIPES[rid], v={k:0,p:0,c:0,f:0,fb:0,fm:0}; if(!R) return null; R.parts.forEach(([id,g])=>{ const F=FOOD_BY[id]; ["k","p","c","f"].forEach(x=>{ v[x]+=g*F[x]/100; }); if(F.fb==null) v.fm++; else v.fb+=g*F.fb/100; }); return v; } // fm＝缺纤维资料的食材数
 // 你的早餐（用户 2026-11-27 给的）；星期几推荐哪一组是 App 的安排
 const COMBOS_BUILTIN=[
   {id:"b246",name:"二四六早餐：四神小米粥",days:[2,4,6],items:[{r:"sishen",q:1},{f:"egg",g:100,lab:"2 颗大号"},{f:"olive",g:9,lab:"10 ml"},{f:"walnut",g:16,lab:"4 颗"}]},
@@ -3326,10 +3334,10 @@ const FDC_URL=id=>"https://fdc.nal.usda.gov/food-details/"+id+"/nutrients", TW_U
 ["foods","combos"].forEach(k=>{ if(!Array.isArray(diet[k])) diet[k]=[]; });
 const n1=x=>Math.round((+x||0)*10)/10;
 // 一个条目：u＝"g"（q 是克数，b 是每 100 g）或 "份"（q 是份数，b 是每份）
-function calcItem(it){ const d=it.u==="g"?100:1; it.kcal=n1(it.q*it.b.k/d); it.p=n1(it.q*it.b.p/d); it.c=it.b.c!=null?n1(it.q*it.b.c/d):null; it.f=it.b.f!=null?n1(it.q*it.b.f/d):null; return it; }
-function bOf(F){ return {k:F.k,p:F.p,c:F.c,f:F.f}; }
+function calcItem(it){ const d=it.u==="g"?100:1; it.kcal=n1(it.q*it.b.k/d); it.p=n1(it.q*it.b.p/d); it.c=it.b.c!=null?n1(it.q*it.b.c/d):null; it.f=it.b.f!=null?n1(it.q*it.b.f/d):null; it.fb=it.b.fb!=null?n1(it.q*it.b.fb/d):null; return it; }
+function bOf(F){ return {k:F.k,p:F.p,c:F.c,f:F.f,fb:F.fb}; }
 function tplFood(F,g){ return {n:F.zh,src:F.src,ref:F.ref,fid:F.id,u:"g",q:g,b:bOf(F),est:!!F.est}; }
-function tplRecipe(rid,q){ const v=recipeVals(rid); return {n:RECIPES[rid].zh,src:"recipe",fid:rid,u:"份",q:q,b:{k:v.k,p:v.p,c:v.c,f:v.f},est:false}; }
+function tplRecipe(rid,q){ const v=recipeVals(rid); return {n:RECIPES[rid].zh,src:"recipe",fid:rid,u:"份",q:q,b:{k:v.k,p:v.p,c:v.c,f:v.f,fb:v.fb,fm:v.fm},est:false}; }
 function tplCustom(C,q){ return {n:C.zh,src:"custom",fid:C.id,u:C.u==="份"?"份":"g",q:q,b:Object.assign({},C.b),est:!!C.est}; }
 function comboTpl(ci){ if(ci.r) return tplRecipe(ci.r,ci.q); if(ci.f&&FOOD_BY[ci.f]) return tplFood(FOOD_BY[ci.f],ci.g); if(ci.t) return JSON.parse(JSON.stringify(ci.t)); return null; }
 let iSeq=0; const newId=p=>p+Date.now().toString(36)+(iSeq++).toString(36);
@@ -3509,7 +3517,7 @@ function renderFoodLog(){
   $("dLog").innerHTML=h;
 }
 function renderFood(){ renderFoodAdd(); renderCombo(); renderFoodLog(); }
-function refreshTotals(){ renderDietCard(); renderDietToday(); renderDietWeek(); }
+function refreshTotals(){ renderDietCard(); renderDietToday(); renderWkEntry(); renderDietWeek(); }
 function setPick(t){ fd.pick=t; fd.msg=""; renderFoodAdd(); const g=$("fG"); if(g) g.focus(); }
 $("tab-diet").addEventListener("click",e=>{
   const t=e.target, d=isoDay(Date.now());
@@ -3520,7 +3528,7 @@ $("tab-diet").addEventListener("click",e=>{
     else if(kind==="rec") setPick(tplRecipe(id,1));
     else if(kind==="cus"){ const C=diet.foods.find(x=>x.id===id); if(C) setPick(Object.assign(tplCustom(C,C.u==="份"?1:100),{sg:C.sg})); }
     return; }
-  const ag=t.closest("[data-again]"); if(ag){ const x=recentItems()[+ag.dataset.again]; if(x){ const c=JSON.parse(JSON.stringify(x)); ["id","m","ts","kcal","p","c","f"].forEach(k=>delete c[k]); addItems(d,[mkItem(c,fd.meal)]); fd.msg="已记到"+MEAL_NAME[fd.meal]+"："+x.n+" "+qtyTxt(x); renderFood(); refreshTotals(); } return; }
+  const ag=t.closest("[data-again]"); if(ag){ const x=recentItems()[+ag.dataset.again]; if(x){ const c=JSON.parse(JSON.stringify(x)); ["id","m","ts","kcal","p","c","f","fb","pl"].forEach(k=>delete c[k]); addItems(d,[mkItem(c,fd.meal)]); fd.msg="已记到"+MEAL_NAME[fd.meal]+"："+x.n+" "+qtyTxt(x); renderFood(); refreshTotals(); } return; }
   const sv=t.closest("[data-sv]"); if(sv&&fd.pick){ fd.pick.q=+sv.dataset.sv; renderFoodAdd(); return; }
   if(t.closest("#fCancel")){ fd.pick=null; renderFoodAdd(); return; }
   if(t.closest("#fAddBtn")&&fd.pick){ const q=num($("fG").value); if(!(q>0&&q<5000)){ fd.msg="克数／份数要填大于 0 的数字"; renderFoodAdd(); return; }
@@ -3551,7 +3559,7 @@ $("tab-diet").addEventListener("click",e=>{
   const dl=t.closest("[data-del]"); if(dl){ const L=diet.log[d]; if(L&&Array.isArray(L.items)){ L.items=L.items.filter(x=>x.id!==dl.dataset.del); saveDiet(); } renderFood(); refreshTotals(); return; }
   const sc=t.closest("[data-savecb]"); if(sc){ const m=sc.dataset.savecb, rows=dayItems(d).filter(x=>x.m===m); if(!rows.length) return;
     const inp=document.querySelector('[data-cbname="'+m+'"]'), name=(inp&&inp.value.trim())||("我的"+MEAL_NAME[m]+" "+fmtShort(Date.now()));
-    diet.combos.push({id:newId("u"),name,items:rows.map(x=>{ const c=JSON.parse(JSON.stringify(x)); ["id","m","ts","kcal","p","c","f"].forEach(k=>delete c[k]); return {t:c}; })}); saveDiet();
+    diet.combos.push({id:newId("u"),name,items:rows.map(x=>{ const c=JSON.parse(JSON.stringify(x)); ["id","m","ts","kcal","p","c","f","fb","pl"].forEach(k=>delete c[k]); return {t:c}; })}); saveDiet();
     fd.cb=diet.combos[diet.combos.length-1].id; fd.cbDraft=null; renderCombo(); return; }
 });
 $("tab-diet").addEventListener("input",e=>{
@@ -3611,10 +3619,340 @@ async function startScan(){
   }catch(e){ stopScan(); fd.barMsg="开不了相机，直接打条码数字就好。"; renderFoodAdd(); }
 }
 // 备份导入用：只收结构对的条目，数字照每100g／每份重算
-function cleanItems(a){ if(!Array.isArray(a)) return undefined; return a.filter(x=>x&&typeof x==="object"&&x.b&&isFinite(x.q)&&+x.q>0&&isFinite(x.b.k)&&isFinite(x.b.p)).map(x=>calcItem({id:String(x.id||newId("i")),m:MEAL_NAME[x.m]?x.m:"s",ts:+x.ts||0,n:String(x.n||"").slice(0,80),src:SRC_TAG[x.src]?x.src:"custom",ref:String(x.ref==null?"":x.ref),fid:x.fid||null,u:x.u==="份"?"份":"g",q:+x.q,b:{k:+x.b.k,p:+x.b.p,c:x.b.c==null?null:+x.b.c,f:x.b.f==null?null:+x.b.f},est:!!x.est})); }
+function cleanItems(a){ if(!Array.isArray(a)) return undefined; return a.filter(x=>x&&typeof x==="object"&&x.b&&isFinite(x.q)&&+x.q>0&&isFinite(x.b.k)&&isFinite(x.b.p)).map(x=>calcItem(Object.assign({id:String(x.id||newId("i")),m:MEAL_NAME[x.m]?x.m:"s",ts:+x.ts||0,n:String(x.n||"").slice(0,80),src:SRC_TAG[x.src]?x.src:"custom",ref:String(x.ref==null?"":x.ref),fid:x.fid||null,u:x.u==="份"?"份":"g",q:+x.q,b:Object.assign({k:+x.b.k,p:+x.b.p,c:x.b.c==null?null:+x.b.c,f:x.b.f==null?null:+x.b.f},isFinite(x.b.fb)&&x.b.fb!=null?{fb:+x.b.fb}:{},isFinite(x.b.fm)&&x.b.fm>0?{fm:+x.b.fm}:{}),est:!!x.est},typeof x.pl==="string"&&x.pl?{pl:x.pl.slice(0,40)}:{}))); }
 function foodImport(dd){
   if(Array.isArray(dd.foods)) dd.foods.forEach(C=>{ if(C&&C.id&&C.zh&&C.b&&isFinite(C.b.k)&&isFinite(C.b.p)&&!diet.foods.some(x=>x.id===C.id)) diet.foods.push({id:String(C.id),zh:String(C.zh).slice(0,80),en:String(C.en||""),u:C.u==="份"?"份":"g",b:{k:+C.b.k,p:+C.b.p,c:C.b.c==null?null:+C.b.c,f:C.b.f==null?null:+C.b.f},sg:C.sg||null,src:C.src==="off"?"off":"custom",ref:C.ref||""}); });
   if(Array.isArray(dd.combos)) dd.combos.forEach(c=>{ if(c&&c.id&&Array.isArray(c.items)&&!diet.combos.some(x=>x.id===c.id)) diet.combos.push({id:String(c.id).startsWith("u")?String(c.id):"u"+c.id,name:String(c.name||"我的组合").slice(0,60),items:c.items.filter(ci=>ci&&(ci.t||ci.f||ci.r))}); });
+}
+
+// ---------- 每周饮食与体重（2026-11-27）：每周菜单、训练日／休息日目标、每日快速记录、周复盘与调整提示 ----------
+// 出处正本：.claude/notes/fitness-fatloss-research.md「每周饮食与体重」那节。没有出处的数字与门槛一律写「App 的安排」。
+// 资料都在 fit.diet 里（跟原本的饮食资料一起进备份）：diet.wp＝菜单与目标设定；diet.dq＝每日快速记录 {"YYYY-MM-DD":{mood,dig,dn,noct,sl}}。
+// 体重、腹围不另存：读写原本的体重腰围资料 body（fit.body）。「照计划记入」写进原本的当天食物记录 diet.log[日].items（条目带 pl＝菜单那餐的 id，防重复）。
+Object.assign(DSRC,{
+  msj:["Mifflin 1990（静息能量公式）","https://pubmed.ncbi.nlm.nih.gov/2305711/"],
+  fao:["FAO/WHO/UNU 2004 人体能量需要（表 5.3）","https://www.fao.org/4/y5686e/y5686e07.htm"],
+  ww:["Whittaker & Wu 2021","https://pubmed.ncbi.nlm.nih.gov/33741447/"],
+  nhsFib:["NHS：膳食纤维","https://www.nhs.uk/live-well/eat-well/digestive-health/how-to-get-more-fibre-into-your-diet/"],
+  nhsBloat:["NHS：胀气","https://www.nhs.uk/symptoms/bloating/"],
+  nhsConst:["NHS：便秘","https://www.nhs.uk/conditions/constipation/"],
+  nhsDiarr:["NHS：腹泻","https://www.nhs.uk/conditions/diarrhoea-and-vomiting/"],
+  nhsBowel:["NHS：肠癌症状","https://www.nhs.uk/conditions/bowel-cancer/symptoms/"],
+  nhsProst:["NHS：前列腺增大","https://www.nhs.uk/conditions/prostate-enlargement/"],
+  nhsIncont:["NHS：尿失禁","https://www.nhs.uk/conditions/urinary-incontinence/"]
+});
+const WD=["一","二","三","四","五","六","日"], jsToW=d=>(d+6)%7; // 菜单的第 0 天＝星期一
+const PM=[["b","早餐"],["l","午餐"],["d","晚餐"]], PM_NAME={b:"早餐",l:"午餐",d:"晚餐"}, PM_AT={b:"10:00",l:"13:30",d:"17:30"};
+const PAL={rest:1.5,train:1.6}, DEF_DEFICIT=400, DEFICITS=[300,400,500], FAT_PCT=30, FAT_FLOOR=20, FIB_GOAL=30; // 系数、少吃量、脂肪比例都是 App 的安排；纤维 30 g＝NHS
+const DIG={ok:"正常",bloat:"胀气",const:"便秘",diarr:"腹泻",other:"其他"};
+const WATCH_FIB=[["yiren","薏仁"],["ricebrown","糙米"],["sweetpotato","地瓜"]]; // 消化不适时先看的高纤维／分量常变的食物（App 的安排）
+// 默认菜单（App 的安排）：早餐沿用二四六四神粥、一三五日蒸地瓜；午晚餐蛋白质来源轮替三文鱼／鸡／牛／蛋，配糙米或地瓜与蔬菜；训练日主食多 50 g
+const P_LUNCH=["chk","beef","sal","chk","beef","sal","chk"], P_DIN=["sal","chk","egg","beef","chk","egg","beef"], P_VEG=["choysum","bokchoy","spinach","choysum","bokchoy","spinach","choysum"];
+const P_PROT={chk:[{f:"chkbreast",g:150}],beef:[{f:"beefflank",g:150}],sal:[{f:"salmon",g:150}],egg:[{f:"egg",g:100,lab:"2 颗大号"},{f:"chkbreast",g:100}]};
+const TRAIN_DEF=[false,true,false,false,true,false,false]; // 一周 2 次力量：默认星期二、五（App 的安排，可改）
+function planDayDefault(w,size,train){
+  const jd=(w+1)%7, porr=[2,4,6].includes(jd), cp=x=>JSON.parse(JSON.stringify(x));
+  const b=porr?[{r:size==="l"?"sishenL":"sishen",q:1},{f:"egg",g:100,lab:"2 颗大号"},{f:"olive",g:9,lab:"10 ml"},{f:"walnut",g:16,lab:"4 颗"}]:[{f:"sweetpotato",g:150},{f:"egg",g:100,lab:"2 颗大号"},{f:"walnut",g:16,lab:"4 颗"}];
+  const l=cp(P_PROT[P_LUNCH[w]]).concat([{f:"ricebrown",g:train?350:300},{f:"broccoli",g:150},{f:"avocado",g:50},{f:"olive",g:5}]);
+  const d=cp(P_PROT[P_DIN[w]]).concat([porr?{f:"sweetpotato",g:train?350:300}:{f:"ricebrown",g:train?300:250},{f:P_VEG[w],g:150},{f:"olive",g:5},{f:"blueberry",g:100}]);
+  return {meals:[["b",b],["l",l],["d",d]].map(([m,it])=>({id:newId("pm"),m,at:PM_AT[m],items:it,out:null}))};
+}
+function planDefault(size){ size=size==="l"?"l":"s"; return {v:1,size,def:DEF_DEFICIT,train:TRAIN_DEF.slice(),tg:{train:{},rest:{}},days:WD.map((_,w)=>planDayDefault(w,size,TRAIN_DEF[w])),setTs:0}; }
+function wpValid(x){ return x&&typeof x==="object"&&Array.isArray(x.days)&&x.days.length===7&&x.days.every(d=>d&&Array.isArray(d.meals)); }
+if(!wpValid(diet.wp)) diet.wp=planDefault("s");
+diet.wp=Object.assign({size:"s",def:DEF_DEFICIT,train:TRAIN_DEF.slice(),tg:{train:{},rest:{}},setTs:0},diet.wp);
+if(!diet.dq||typeof diet.dq!=="object") diet.dq={};
+const wp=()=>diet.wp;
+function touchWp(){ diet.wp.setTs=Date.now(); saveDiet(); }
+// ---- 计算 ----
+function ciTpl(ci){ return comboTpl(ci); }
+function sumTpls(tpls){ const v={k:0,p:0,c:0,f:0,fb:0,fm:0}; tpls.forEach(t=>{ if(!t) return; const x=calcItem(JSON.parse(JSON.stringify(t))); v.k+=x.kcal; v.p+=x.p; v.c+=x.c||0; v.f+=x.f||0; if(x.fb==null) v.fm++; else v.fb+=x.fb; if(t.b&&t.b.fm) v.fm+=t.b.fm; }); return v; }
+function mealVals(M){ if(M.out){ const o=M.out; return {k:+o.k||0,p:+o.p||0,c:0,f:0,fb:0,fm:0,out:true,outEmpty:!(o.k>0)}; } return sumTpls(M.items.map(ciTpl)); }
+function sumVals(arr){ const v={k:0,p:0,c:0,f:0,fb:0,fm:0,outN:0,outEmpty:0}; arr.forEach(x=>{ ["k","p","c","f","fb","fm"].forEach(k=>v[k]+=x[k]||0); if(x.out){ v.outN++; if(x.outEmpty) v.outEmpty++; } }); return v; }
+function planDayVals(w){ return sumVals(wp().days[w].meals.map(mealVals)); }
+function sortedMeals(w){ return wp().days[w].meals.slice().sort((a,b)=>(tmin(a.at)??0)-(tmin(b.at)??0)); }
+// 静息能量：Mifflin-St Jeor（男 10×kg＋6.25×cm−5×岁＋5，女 −161）
+function bmrMSJ(p){ if(!p||!(p.kg>0&&p.cm>=100&&p.age>0)||(p.sex!=="M"&&p.sex!=="F")) return null; return 10*p.kg+6.25*p.cm-5*p.age+(p.sex==="M"?5:-161); }
+function wkTargets(kind){
+  kind=kind==="train"?"train":"rest";
+  const P=diet.profile, b=bmrMSJ(P), def=DEFICITS.includes(wp().def)?wp().def:DEF_DEFICIT, tdee=b!=null?b*PAL[kind]:null, o=(wp().tg&&wp().tg[kind])||{};
+  const auto={k:tdee!=null?Math.round((tdee-def)/10)*10:null,p:protTarget(P.kg)!=null?Math.round(protTarget(P.kg)):null,fb:FIB_GOAL};
+  const T={}, got=x=>isFinite(o[x])&&o[x]>0?+o[x]:null;
+  T.k=got("k")??auto.k; T.p=got("p")??auto.p;
+  auto.f=T.k!=null?Math.round(T.k*FAT_PCT/100/9):null; T.f=got("f")??auto.f;
+  auto.c=T.k!=null&&T.p!=null&&T.f!=null?Math.max(0,Math.round((T.k-4*T.p-9*T.f)/4)):null; T.c=got("c")??auto.c;
+  T.fb=got("fb")??auto.fb;
+  const floorF=T.k!=null?Math.ceil(T.k*FAT_FLOOR/100/9):null;
+  return {kind,T,auto,o,tdee:tdee!=null?Math.round(tdee):null,bmr:b!=null?Math.round(b):null,pal:PAL[kind],def,floorF,
+    fatLow:T.f!=null&&floorF!=null&&T.f<floorF, tooLow:tdee!=null&&T.k!=null&&tdee-T.k>500};
+}
+// 训练日：那天真的记过力量训练＝训练日；否则看菜单里这个星期几有没有标训练
+function dayKind(ds){ const did=sessions.some(s=>isoDay(s.ts)===ds); if(did) return {train:true,why:"今天记过训练"}; const p=ds.split("-"), w=jsToW(new Date(+p[0],+p[1]-1,+p[2]).getDay()); return wp().train[w]?{train:true,why:"菜单标的训练日"}:{train:false,why:"菜单标的休息日"}; }
+function inWin(at){ const tr=diet.tre; if(!tr||!tr.on) return null; const S=tmin(tr.start), E0=tmin(tr.end), m0=tmin(at); if(S==null||E0==null||m0==null) return null; let E=E0, m=m0; if(E<=S) E+=1440; if(m<S) m+=1440; return m>=S&&m<=E; }
+function winIssues(){ const out=[]; if(!diet.tre||!diet.tre.on) return out; wp().days.forEach((d,w)=>d.meals.forEach(M=>{ if(inWin(M.at)===false) out.push({w,M}); })); return out; }
+// 照计划记入：把今天菜单的每一餐写进今天的食物记录；已经记过的那餐（条目带同一个 pl）不再写
+function logPlanDay(ds){
+  const p=ds.split("-"), w=jsToW(new Date(+p[0],+p[1]-1,+p[2]).getDay()), have=new Set(dayItems(ds).map(x=>x.pl).filter(Boolean)), add=[], r={added:0,skip:0,outSkip:0};
+  sortedMeals(w).forEach(M=>{ if(have.has(M.id)){ r.skip++; return; }
+    if(M.out){ if(!(M.out.k>0)){ r.outSkip++; return; } add.push(Object.assign(mkItem({n:M.out.n||("外食（"+PM_NAME[M.m]+"）"),src:"photo",ref:"",fid:null,u:"份",q:1,b:{k:+M.out.k,p:+M.out.p||0,c:null,f:null},est:true},M.m),{pl:M.id})); r.added++; return; }
+    const its=M.items.map(ciTpl).filter(Boolean).map(t=>Object.assign(mkItem(t,M.m),{pl:M.id})); if(its.length){ add.push(...its); r.added++; } });
+  if(add.length) addItems(ds,add);
+  return r;
+}
+// ---- 每周汇总与调整提示 ----
+function dayFib(ds){ let fb=0, fm=0; dayItems(ds).forEach(x=>{ if(x.fb==null) fm++; else fb+=x.fb; if(x.b&&x.b.fm) fm+=x.b.fm; }); return {fb,fm}; }
+function wkAgg(now,n){
+  n=n||8; const w0=weekStart(now), out=[];
+  for(let i=n-1;i>=0;i--){ const d0=new Date(w0); d0.setDate(d0.getDate()-7*i); const ws=weekStart(d0.getTime()), days=[];
+    for(let j=0;j<7;j++){ const d=new Date(ws); d.setDate(d.getDate()+j); days.push(isoDay(d.getTime())); }
+    const B=body.filter(b=>b&&weekStart(b.ts)===ws), kgs=B.map(b=>+b.kg).filter(x=>isFinite(x)&&x>0), ws_=B.map(b=>b.waist).filter(x=>x!=null&&isFinite(x)&&x>0);
+    const av=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+    const eat=days.filter(d=>{ const t=dayTot(d); return t.n>0||t.kcal!=null; }), eatI=days.filter(d=>dayItems(d).length>0);
+    const Q=days.map(d=>diet.dq[d]).filter(Boolean), mood=Q.map(q=>q.mood).filter(x=>x>=1&&x<=5), noct=Q.map(q=>q.noct).filter(x=>x!=null&&x>=0);
+    const trainC=eatI.filter(d=>dayKind(d).train).map(d=>dayItems(d).reduce((a,x)=>a+(+x.c||0),0));
+    const watch={}; WATCH_FIB.forEach(([id])=>watch[id]=0); eatI.forEach(d=>dayItems(d).forEach(x=>{ if(watch[x.fid]!=null&&x.u==="g") watch[x.fid]+=x.q; if(x.src==="recipe"&&RECIPES[x.fid]) RECIPES[x.fid].parts.forEach(([id,g])=>{ if(watch[id]!=null) watch[id]+=g*x.q; }); }));
+    out.push({ws,days,kg:av(kgs),kgN:kgs.length,waist:av(ws_),kcal:eat.length?av(eat.map(d=>dayTot(d).kcal||0)):null,p:eat.length?av(eat.map(d=>dayTot(d).p)):null,eatN:eat.length,
+      fb:eatI.length?av(eatI.map(d=>dayFib(d).fb)):null,fm:eatI.reduce((a,d)=>a+dayFib(d).fm,0),eatIN:eatI.length,
+      mood:av(mood),moodN:mood.length,dig:Q.filter(q=>q.dig&&q.dig!=="ok").length,digN:Q.filter(q=>q.dig).length,noct:av(noct),noctN:noct.length,noct2:noct.filter(x=>x>=2).length,
+      trainC:trainC.length?av(trainC):null,trainN:trainC.length,watch:Object.fromEntries(Object.entries(watch).map(([k,v])=>[k,eatI.length?v/eatI.length:null]))});
+  }
+  return out;
+}
+function lowMoodRun(now){ // 最近 7 天里有没有连续 3 天精神 ≤2（有记录的日子按日期连着算）
+  let run=0; for(let i=6;i>=0;i--){ const d=new Date(now); d.setHours(12,0,0,0); d.setDate(d.getDate()-i); const q=diet.dq[isoDay(d.getTime())]; if(q&&q.mood>=1&&q.mood<=2){ run++; if(run>=3) return true; } else run=0; } return false; }
+const r1s=x=>x==null?"—":r1(x).toFixed(1);
+// 规则全是 App 的安排；措辞只到出处写的程度
+function wkAdvice(now){
+  const A=wkAgg(now,8), n=A.length, cur=A[n-1], L=(cur.kgN||cur.moodN||cur.digN||cur.noctN||cur.eatN)?n-1:n-2, a=A[L], b=A[L-1], c=A[L-2], out=[];
+  const tR=wkTargets("rest"), tT=wkTargets("train"), pv=WD.map((_,w)=>planDayVals(w)), pAvg=pv.reduce((s,v)=>s+v.k,0)/7, pFat=pv.reduce((s,v)=>s+v.f,0)/7;
+  const tdeeAvg=tR.tdee!=null?(tR.tdee*(7-wp().train.filter(Boolean).length)+tT.tdee*wp().train.filter(Boolean).length)/7:null;
+  // 1. 体重周平均连续 2 周上升，或腹围比上周大 ≥0.5 cm
+  const kgUp=a&&b&&c&&a.kg!=null&&b.kg!=null&&c.kg!=null&&r1(a.kg)>r1(b.kg)&&r1(b.kg)>r1(c.kg);
+  const waUp=a&&b&&a.waist!=null&&b.waist!=null&&r1(a.waist)-r1(b.waist)>=0.5-1e-9;
+  if(kgUp||waUp){
+    const why=kgUp?'体重周平均连续 2 周上升（'+r1s(c.kg)+' → '+r1s(b.kg)+' → '+r1s(a.kg)+' kg）':'腹围周平均比上周大（'+r1s(b.waist)+' → '+r1s(a.waist)+' cm）';
+    const tips=[], big=wp().days.some(d=>d.meals.some(M=>!M.out&&M.items.some(ci=>ci.r==="sishenL")));
+    const deepAlready=tdeeAvg!=null&&tdeeAvg-pAvg>=500;
+    if(deepAlready) tips.push('菜单已经比估计消耗平均少约 '+Math.round(tdeeAvg-pAvg)+' kcal（超过 500），<b>不要再减</b>；先对一下记录、称重与量腰围的时间是不是一致。');
+    else{
+      tips.push(big?'粥改回小碗（大碗比小碗多 '+Math.round(recipeVals("sishenL").k-recipeVals("sishen").k)+' kcal），或大碗少放小米、白米。':'粥已经是小碗；要再减可以少放小米、白米。');
+      const floorAvg=tR.T.k!=null?Math.ceil(pAvg*FAT_FLOOR/100/9):null;
+      if(floorAvg!=null&&pFat*9/pAvg*100<=FAT_FLOOR+2) tips.push('菜单的脂肪已接近 20% 下限（平均每天 '+Math.round(pFat)+' g），<b>油和坚果先别再减</b>。');
+      else tips.push('橄榄油、核桃、牛油果各减一点；但每天脂肪别低于约 '+(floorAvg!=null?floorAvg+' g（':'')+'热量的 20%'+(floorAvg!=null?'）':'')+'。');
+      tips.push('一天总共少吃的量别超过 500 kcal。');
+    }
+    out.push({key:"gain",title:"体重／腹围往上走",html:why+'。先减热量密度高的：<ul class="list small">'+tips.map(t=>'<li>'+t+'</li>').join("")+'</ul><p class="small muted">App 的安排：连续 2 周周平均上升、或腹围大 0.5 cm 以上才提醒（小于这个当量测误差）；脂肪下限 20% 见下面「热量别降太狠」。</p>'});
+  }
+  // 2. 精神变差：周平均比上周降 ≥1，或最近 7 天连续 3 天 ≤2
+  const moodDrop=a&&b&&a.mood!=null&&b.mood!=null&&b.mood-a.mood>=1-1e-9, run3=lowMoodRun(now);
+  if(moodDrop||run3){
+    const tips=[];
+    const tAvg=tR.T.k!=null?(tR.T.k*(7-wp().train.filter(Boolean).length)+tT.T.k*wp().train.filter(Boolean).length)/7:null;
+    if(a&&a.eatN>=3&&a.kcal!=null&&tAvg!=null) tips.push('这周有记录的 '+a.eatN+' 天平均 '+Math.round(a.kcal)+' kcal，'+(a.kcal<tAvg-100?'比目标少约 '+Math.round(tAvg-a.kcal)+' kcal。':'跟目标差不多。'));
+    else tips.push('这周饮食记录不到 3 天，先对一下是不是吃得比目标少很多。');
+    if(a&&a.trainN&&tT.T.c!=null) tips.push('训练日碳水：记录平均 '+Math.round(a.trainC)+' g，目标 '+tT.T.c+' g'+(a.trainC<tT.T.c-30?'（偏少，训练日可以多一点糙米或地瓜）':'')+'。');
+    tips.push('建议先把热量加回目标，观察一周再看。');
+    out.push({key:"mood",title:"精神变差，可能吃太少",html:(moodDrop?'精神周平均从 '+r1s(b.mood)+' 降到 '+r1s(a.mood):'最近连续 3 天精神 ≤2')+'。<ul class="list small">'+tips.map(t=>'<li>'+t+'</li>').join("")+'</ul><p class="small muted">App 的安排：周平均降 1 分以上、或连续 3 天 ≤2 才提醒。睡不好、生病、工作累也会让精神变差，不一定是吃的问题。</p>'});
+  }
+  // 3. 消化不适：一周 ≥3 天
+  if(a&&a.dig>=3){
+    const lines=[];
+    if(a.fb!=null&&b&&b.fb!=null) lines.push('这周记录的膳食纤维平均每天约 '+Math.round(a.fb)+' g（大致值），上周约 '+Math.round(b.fb)+' g'+(a.fb-b.fb>=5?'——<b>突然多了约 '+Math.round(a.fb-b.fb)+' g</b>':'')+'。');
+    else if(a.fb!=null) lines.push('这周记录的膳食纤维平均每天约 '+Math.round(a.fb)+' g（大致值）；上周没有条目可比。');
+    WATCH_FIB.forEach(([id,zh])=>{ const x=a.watch[id], y=b?b.watch[id]:null; if(x>0&&(y==null||y===0)) lines.push(zh+'：这周新出现（平均每天约 '+Math.round(x)+' g）。'); else if(x>0&&y>0&&x>=y*1.3) lines.push(zh+'：分量比上周多（每天约 '+Math.round(y)+' → '+Math.round(x)+' g）。'); });
+    if(lines.length<=1) lines.push('先看这周新加或高纤维的食物（例如薏仁、糙米、地瓜的分量有没有变）。');
+    const cont=b&&b.dig>=3;
+    out.push({key:"dig",title:'消化不适 '+a.dig+' 天'+(cont?'，已经连续 2 周':''),html:'<ul class="list small">'+lines.map(t=>'<li>'+t+'</li>').join("")+'</ul>'+(cont?'<p class="small"><b>持续了，建议看医生</b>（'+dA("nhsBloat")+'、'+dA("nhsConst")+'：常常胀气、常常便秘、改饮食也没好，就去看医生）。</p>':'')+
+      '<p class="small muted">App 的安排：一周 3 天以上才提醒、连 2 周算持续。警讯不论几天都直接看医生，见下面「什么时候要看医生」。</p>'});
+  }
+  // 4. 夜尿：连续 2 周，每周记 ≥4 晚且每晚都 ≥2 次
+  const noctBad=w=>w&&w.noctN>=4&&w.noct2===w.noctN;
+  if(noctBad(a)&&noctBad(b)) out.push({key:"noct",title:"夜尿连续 2 周每晚 2 次以上",html:'<p class="small">建议问医生（'+dA("nhsProst")+'：需要更常小便，包括夜里起来小便，就去看家庭医生）。App 不做诊断。'+dA("nhsIncont")+'：夜里常起来小便的人，睡前几小时少喝一点，但白天要喝够。</p><p class="small muted">App 的安排：连续 2 周、每周至少记 4 晚、每晚都 ≥2 次才提醒。</p>'});
+  return {A,L,items:out};
+}
+const DIG_RED='<ul class="list small"><li><b>尽快看医生</b>：大便有血或黑色、暗红色；体重没刻意减却往下掉；腹泻超过 7 天；带血的腹泻；胀气又发烧、或同时吐、腹泻、便秘、肚子痛（'+dA("nhsBowel")+'、'+dA("nhsDiarr")+'、'+dA("nhsBloat")+'）。</li><li><b>马上去急诊</b>：突然而且剧烈的肚子痛；吐血或吐出像咖啡渣的东西（'+dA("nhsBloat")+'、'+dA("nhsDiarr")+'）。</li></ul>';
+// ---- 画面 ----
+let wv={view:"main",day:null,msg:"",dqDay:null,dqDraft:null};
+function wkTodayW(){ return jsToW(new Date(Date.now()).getDay()); }
+function vTxt(v,withFb){ return Math.round(v.k)+' kcal · 蛋白 '+r1(v.p)+' g · 碳水 '+Math.round(v.c)+' g · 脂肪 '+Math.round(v.f)+' g'+(withFb!==false?' · 纤维约 '+Math.round(v.fb)+' g'+(v.fm?'（'+v.fm+' 项缺资料）':''):''); }
+function renderWkEntry(){
+  const el=$("dWk"); if(!el) return;
+  const d=isoDay(Date.now()), k=dayKind(d), w=wkTodayW(), v=planDayVals(w), q=diet.dq[d], T=wkTargets(k.train?"train":"rest");
+  el.innerHTML='<div class="block-head"><h2>每周饮食与体重</h2><span class="small muted">今天'+(k.train?'训练日':'休息日')+'</span></div>'+
+    '<p class="small">今天菜单 '+Math.round(v.k)+' kcal · 蛋白 '+r1(v.p)+' g'+(T.T.k!=null?'（目标 '+T.T.k+' kcal）':'')+'；快速记录'+(q?'已填':'还没填')+'。</p>'+
+    '<div class="row"><button class="btn primary" data-wv="daily">每日快速记录</button><button class="btn" data-wv="plan">每周菜单</button><button class="btn" data-wv="review">周复盘</button></div>';
+}
+function setWv(v){ wv.view=v; wv.msg=""; if(v==="plan"&&wv.day==null) wv.day=wkTodayW(); if(v==="daily"){ wv.dqDay=isoDay(Date.now()); wv.dqDraft=null; } renderWkView(); window.scrollTo({top:0}); }
+function renderWkView(){
+  const V=$("dWkView"), main=wv.view==="main";
+  Array.from($("tab-diet").children).forEach(c=>{ if(c.id!=="dWkView"&&!c.classList.contains("dkeep")) c.hidden=!main; });
+  V.hidden=main; if(main){ V.innerHTML=""; renderWkEntry(); return; }
+  let h='<div class="row between"><button class="btn ghost" id="wvBack">‹ 回饮食页</button><div class="chips" id="wvTabs">'+[["daily","每日记录"],["plan","每周菜单"],["review","周复盘"]].map(x=>'<button class="chip" data-wv="'+x[0]+'" aria-pressed="'+(wv.view===x[0])+'">'+x[1]+'</button>').join("")+'</div></div>';
+  if(wv.view==="plan") h+=planHTML(); else if(wv.view==="daily") h+=dailyHTML(); else h+=reviewHTML();
+  V.innerHTML=h;
+  if(wv.view==="review") drawReview();
+}
+function tgtHTML(kind){
+  const t=wkTargets(kind), T=t.T, lab=kind==="train"?"训练日":"休息日";
+  if(t.bmr==null&&!(t.o.k>0)) return '<div class="card" style="background:var(--soft)" data-tgk="'+kind+'"><b>'+lab+'目标</b><p class="small muted">先在饮食页上方「我的资料」填性别、年龄、体重、身高，才算得出热量目标（或直接在下面填）。</p>'+tgtInputs(kind,t)+'</div>';
+  return '<div class="card" style="background:var(--soft)" data-tgk="'+kind+'"><b>'+lab+'目标</b>'+
+    (t.bmr!=null?'<p class="small">估计消耗 '+t.tdee+' kcal ＝ 静息 '+t.bmr+'（'+dA("msj")+'）× 活动系数 '+t.pal+'（App 的估算，落在 '+dA("fao")+'「久坐或轻度活动」1.40–1.69 之内）；目标＝消耗 − '+t.def+'（App 的安排）。</p>':'')+
+    tgtInputs(kind,t)+
+    (t.tooLow?'<p class="warn small" data-warn="deficit">目标比估计消耗少 '+(t.tdee-T.k)+' kcal，超过 500：别降这么多（App 的保守判断）。</p>':'')+
+    (t.fatLow?'<p class="warn small" data-warn="fat">脂肪 '+T.f+' g 低于热量的 20%（约 '+t.floorF+' g）：低脂饮食的研究里男性睾酮较低（'+dA("ww")+'），20% 下限是 App 的保守安排。</p>':'')+'</div>';
+}
+function tgtInputs(kind,t){
+  const row=(x,lab,unit)=>'<label>'+lab+'<input class="inp" data-tg="'+kind+':'+x+'" inputmode="decimal" value="'+(t.o[x]>0?t.o[x]:"")+'" placeholder="'+(t.auto[x]!=null?t.auto[x]:"")+'" aria-label="'+(kind==="train"?"训练日":"休息日")+lab+'"></label>';
+  return '<div class="form-row">'+row("k","热量 kcal")+row("p","蛋白 g")+'</div><div class="form-row">'+row("c","碳水 g")+row("f","脂肪 g")+row("fb","纤维 g")+'</div>'+
+    '<p class="small muted" data-tgnow="'+kind+'">现在用：'+(t.T.k!=null?t.T.k+' kcal · 蛋白 '+t.T.p+' g · 碳水 '+t.T.c+' g · 脂肪 '+t.T.f+' g · 纤维 '+t.T.fb+' g':'（缺资料）')+'。空着＝用默认（灰字）。蛋白 1.6 g/kg；脂肪＝热量 30%、碳水＝剩下的（App 的安排）；纤维 30 g（'+dA("nhsFib")+'）。</p>';
+}
+function sizeCmpHTML(){
+  const S=recipeVals("sishen"), Lg=recipeVals("sishenL"), f=v=>Math.round(v.k)+' kcal · 蛋白 '+r1(v.p)+' · 碳水 '+r1(v.c)+' · 脂肪 '+r1(v.f)+' · 纤维约 '+r1(v.fb)+' g';
+  return '<div id="wpSizeCmp" class="small"><p><b>小碗</b>（干料 62 g）：'+f(S)+'</p><p><b>大碗</b>（干料 95 g）：'+f(Lg)+'</p><p>大碗多 <b>'+Math.round(Lg.k-S.k)+' kcal</b>、碳水多 '+r1(Lg.c-S.c)+' g、蛋白多 '+r1(Lg.p-S.p)+' g。纤维是大致值：莲子那笔资料没有纤维，缺 1 项。</p></div>';
+}
+function foodOpts(){
+  const fav=["salmon","chkbreast","beefflank","egg","ricebrown","sweetpotato","avocado","olive","walnut","blueberry","broccoli","choysum","bokchoy","spinach"];
+  let h='<option value="">＋ 加食材…</option><optgroup label="常吃">'+fav.map(id=>'<option value="f:'+id+'">'+esc(FOOD_BY[id].zh)+'</option>').join("")+'<option value="r:sishen">'+esc(RECIPES.sishen.zh)+'</option><option value="r:sishenL">'+esc(RECIPES.sishenL.zh)+'</option></optgroup>';
+  FOOD_CATS.forEach(c=>{ const L=FOODS.filter(F=>F.cat===c); if(L.length) h+='<optgroup label="'+esc(c)+'">'+L.map(F=>'<option value="f:'+F.id+'">'+esc(F.zh)+'</option>').join("")+'</optgroup>'; });
+  return h;
+}
+function planHTML(){
+  const P=wp(), w=wv.day, kind=P.train[w]?"train":"rest", t=wkTargets(kind), v=planDayVals(w), win=winIssues();
+  let h='<div class="card"><div class="block-head"><h2>每周菜单</h2><span class="small muted">App 的安排，每格都能改</span></div>'+
+    '<div class="chips" id="wpDays">'+WD.map((x,i)=>'<button class="chip" data-wpday="'+i+'" aria-pressed="'+(i===w)+'">'+x+(P.train[i]?'·练':'')+(i===wkTodayW()?'（今天）':'')+'</button>').join("")+'</div>'+
+    '<div class="set-row"><span>星期'+WD[w]+'是<br><span class="small muted">'+(w===wkTodayW()?esc(dayKind(isoDay(Date.now())).why):'按菜单的标记')+'</span></span><div class="seg" role="group" aria-label="训练日或休息日" id="wpKind"><button data-v="rest" aria-pressed="'+(kind==="rest")+'">休息日</button><button data-v="train" aria-pressed="'+(kind==="train")+'">训练日</button></div></div>'+
+    '<div class="set-row"><span>四神粥份量<br><span class="small muted">二四六早餐</span></span><div class="seg" role="group" aria-label="四神粥份量" id="wpSize"><button data-v="s" aria-pressed="'+(P.size!=="l")+'">小碗</button><button data-v="l" aria-pressed="'+(P.size==="l")+'">大碗</button></div></div>'+sizeCmpHTML();
+  if(!diet.tre||!diet.tre.on) h+='<p class="small muted" id="wpWin">没开 16/8 进食窗口，不检查吃饭时间（饮食页「16/8 进食窗口」打开后会检查）。</p>';
+  else if(win.length) h+='<p class="warn small" id="wpWin" role="alert">有 '+win.length+' 餐在进食窗口（'+esc(diet.tre.start)+'–'+esc(diet.tre.end)+'）外：'+win.slice(0,6).map(x=>'星期'+WD[x.w]+PM_NAME[x.M.m]+' '+esc(x.M.at)).join('、')+(win.length>6?' 等':'')+'。</p>';
+  else h+='<p class="small muted" id="wpWin">每餐时间都在进食窗口 '+esc(diet.tre.start)+'–'+esc(diet.tre.end)+' 内。</p>';
+  h+='</div>';
+  sortedMeals(w).forEach(M=>{ const mv=mealVals(M);
+    h+='<div class="card" data-pmeal="'+esc(M.id)+'"><div class="row between"><b>'+PM_NAME[M.m]+'</b><input class="inp" type="time" style="width:auto;font-size:15px" data-wat="'+esc(M.id)+'" value="'+esc(M.at)+'" aria-label="'+PM_NAME[M.m]+'时间"></div>';
+    if(inWin(M.at)===false) h+='<p class="small warn">这餐不在进食窗口内。</p>';
+    if(M.out){
+      h+='<p class="small">外食：用「拍照估算」或自己填一笔（照片估算）。</p><div class="form-row"><label>名称<input class="inp" style="font-size:15px;text-align:left" data-won="'+esc(M.id)+'" value="'+esc(M.out.n||"")+'" placeholder="例如 别人准备的健康餐"></label></div>'+
+        '<div class="form-row"><label>热量 kcal<input class="inp" data-wok="'+esc(M.id)+'" inputmode="numeric" value="'+(M.out.k>0?M.out.k:"")+'"></label><label>蛋白 g<input class="inp" data-wop="'+esc(M.id)+'" inputmode="decimal" value="'+(M.out.p>0?M.out.p:"")+'"></label></div>'+
+        '<div class="row"><button class="btn ghost small" data-wai="'+esc(M.m)+'">去拍照估算</button><button class="btn ghost small" data-wout="'+esc(M.id)+'">改回自己煮</button></div>';
+    } else {
+      h+='<table class="dtab"><tbody>'+M.items.map((ci,i)=>{ const t0=ciTpl(ci); if(!t0) return ''; const x=calcItem(JSON.parse(JSON.stringify(t0)));
+        return '<tr><td>'+esc(t0.n)+(ci.lab?'<br><span class="small muted">'+esc(ci.lab)+'</span>':'')+'</td><td style="width:72px"><input class="inp" style="font-size:15px;padding:4px" data-wq="'+esc(M.id)+':'+i+'" inputmode="decimal" value="'+r1(t0.q)+'" aria-label="'+esc(t0.n)+(t0.u==="g"?' 克数':' 份数')+'"></td><td class="small">'+(t0.u==="g"?'g':'份')+'<br>'+Math.round(x.kcal)+' kcal</td><td style="width:34px"><button class="btn ghost small" data-wdel="'+esc(M.id)+':'+i+'" aria-label="去掉 '+esc(t0.n)+'">✕</button></td></tr>'; }).join("")+'</tbody></table>'+
+        '<select class="inp" style="font-size:15px;text-align:left" data-wadd="'+esc(M.id)+'" aria-label="加食材">'+foodOpts()+'</select>';
+      h+='<div class="row"><button class="btn ghost small" data-wout="'+esc(M.id)+'">标成外食</button><select class="inp" style="width:auto;font-size:14px" data-wmove="'+esc(M.id)+'" aria-label="整餐搬到别天"><option value="">整餐搬到…</option>'+WD.map((x,i)=>i===w?'':'<option value="'+i+'">星期'+x+'</option>').join("")+'</select></div>';
+    }
+    h+='<p class="small" data-mtot="'+esc(M.id)+'">'+(M.out?(mv.outEmpty?'还没填数字':Math.round(mv.k)+' kcal · 蛋白 '+r1(mv.p)+' g（照片估算，碳水／脂肪／纤维不计）'):vTxt(mv))+'</p></div>';
+  });
+  const T=t.T, dd=x=>T[x]!=null?' / '+T[x]:'';
+  h+='<div class="card" id="wpDayTot"><b>星期'+WD[w]+'合计</b>（'+(kind==="train"?'训练日':'休息日')+'目标）<table class="dtab"><tbody>'+
+    '<tr><td>热量</td><td>'+Math.round(v.k)+dd("k")+' kcal</td></tr><tr><td>蛋白</td><td>'+r1(v.p)+dd("p")+' g</td></tr><tr><td>碳水</td><td>'+Math.round(v.c)+dd("c")+' g</td></tr><tr><td>脂肪</td><td>'+Math.round(v.f)+dd("f")+' g</td></tr><tr><td>纤维（大致）</td><td>'+Math.round(v.fb)+dd("fb")+' g</td></tr></tbody></table>'+
+    (v.fm?'<p class="small muted">纤维为大致值、有 '+v.fm+' 项缺资料（例如莲子那笔资料没有纤维）。</p>':'')+(v.outN?'<p class="small muted">有 '+v.outN+' 餐外食：照片估算只算热量与蛋白。</p>':'');
+  if(t.tdee!=null&&t.tdee-v.k>500) h+='<p class="warn small" data-warn="daydeficit">这天菜单比估计消耗少 '+Math.round(t.tdee-v.k)+' kcal，超过 500：建议加回一点（App 的保守判断）。</p>';
+  if(kind==="train"&&T.c!=null&&v.c<T.c-30&&!v.outN) h+='<p class="small" data-hint="carb">训练日碳水比目标少约 '+Math.round(T.c-v.c)+' g：可以多一点糙米或地瓜（App 的安排）。</p>';
+  h+='</div>';
+  // 整周
+  const all=WD.map((_,i)=>planDayVals(i)), wkS=sumVals(all), fmN=all.reduce((a,x)=>a+x.fm,0);
+  h+='<div class="card" id="wpWeek"><b>整周</b><table class="dtab"><thead><tr><th>星期</th><th>kcal</th><th>蛋白</th><th>碳水</th><th>脂肪</th><th>纤维≈</th></tr></thead><tbody>'+all.map((x,i)=>'<tr><td>'+WD[i]+(wp().train[i]?'·练':'')+'</td><td>'+Math.round(x.k)+'</td><td>'+Math.round(x.p)+'</td><td>'+Math.round(x.c)+'</td><td>'+Math.round(x.f)+'</td><td>'+Math.round(x.fb)+'</td></tr>').join("")+
+    '<tr><td><b>平均</b></td><td>'+Math.round(wkS.k/7)+'</td><td>'+Math.round(wkS.p/7)+'</td><td>'+Math.round(wkS.c/7)+'</td><td>'+Math.round(wkS.f/7)+'</td><td>'+Math.round(wkS.fb/7)+'</td></tr></tbody></table>'+
+    '<p class="small muted">整周合计 '+Math.round(wkS.k)+' kcal · 蛋白 '+Math.round(wkS.p)+' g。'+(fmN?'纤维为大致值、整周有 '+fmN+' 项缺资料。':'')+'</p></div>';
+  h+='<div class="card">'+tgtHTML("rest")+tgtHTML("train")+
+    '<div class="set-row"><span>每天少吃<br><span class="small muted">比估计消耗（你定的原则 300–500）</span></span><div class="seg" role="group" aria-label="每天少吃" id="wpDef">'+DEFICITS.map(x=>'<button data-v="'+x+'" aria-pressed="'+(wp().def===x)+'">'+x+'</button>').join("")+'</div></div></div>';
+  h+='<div class="card"><div class="row"><button class="btn primary" id="wpLog">今天照计划记入</button></div><p class="small muted">把今天（星期'+WD[wkTodayW()]+'）的菜单写进「今天吃了什么」；同一餐按两次不会重复。外食那餐要先填数字。</p>'+
+    '<div class="row"><select class="inp" style="width:auto;font-size:14px" id="wpCopyTo" aria-label="复制到"><option value="">把星期'+WD[w]+'复制到…</option>'+WD.map((x,i)=>i===w?'':'<option value="'+i+'">星期'+x+'</option>').join("")+'</select><button class="btn ghost small" id="wpCopy">复制</button><button class="btn ghost small" id="wpReset">整周恢复 App 的安排</button></div>'+
+    (wv.msg?'<p class="small" id="wpMsg" role="status">'+esc(wv.msg)+'</p>':'')+'</div>';
+  return h;
+}
+function findMeal(id){ for(let w=0;w<7;w++){ const i=wp().days[w].meals.findIndex(M=>M.id===id); if(i>=0) return {w,i,M:wp().days[w].meals[i]}; } return null; }
+// 每日快速记录
+function dailyHTML(){
+  const d=wv.dqDay||isoDay(Date.now()), q=wv.dqDraft||(wv.dqDraft=Object.assign({mood:null,dig:null,dn:"",noct:null,sl:""},diet.dq[d]||{})), B=body.find(b=>isoDay(b.ts)===d);
+  const yd=new Date(Date.now()); yd.setDate(yd.getDate()-1); const yds=isoDay(yd.getTime());
+  const chips=(id,opts,val)=>'<div class="chips" id="'+id+'">'+opts.map(([v,l])=>'<button class="chip" data-v="'+v+'" aria-pressed="'+(String(val)===String(v))+'">'+l+'</button>').join("")+'</div>';
+  return '<div class="card"><div class="block-head"><h2>每日快速记录</h2>'+chips("dqDay",[[isoDay(Date.now()),"今天"],[yds,"昨天"]],d)+'</div>'+
+    '<div class="form-row"><label>体重 kg<input class="inp" id="dqKg" inputmode="decimal" value="'+(B?B.kg:"")+'"></label><label>腹围 cm<input class="inp" id="dqWaist" inputmode="decimal" value="'+(B&&B.waist?B.waist:"")+'"></label></div>'+
+    '<p class="small muted">体重、腹围跟「进度」页的体重腰围是同一份；同一天只留一笔。</p>'+
+    '<p class="small"><b>精神</b>（1 很差 – 5 很好）</p>'+chips("dqMood",[1,2,3,4,5].map(x=>[x,String(x)]),q.mood)+
+    '<p class="small"><b>消化</b></p>'+chips("dqDig",Object.entries(DIG),q.dig)+
+    '<div class="form-row"><label>消化备注（可不填）<input class="inp" id="dqDn" style="font-size:15px;text-align:left" value="'+esc(q.dn||"")+'"></label></div>'+
+    '<p class="small"><b>夜里起来小便</b>（昨晚几次）</p>'+chips("dqNoct",[[0,"0"],[1,"1"],[2,"2"],[3,"3"],[4,"4 次以上"]],q.noct)+
+    '<div class="form-row"><label>睡眠备注（可不填）<input class="inp" id="dqSl" style="font-size:15px;text-align:left" value="'+esc(q.sl||"")+'" placeholder="例如 12 点睡、醒两次"></label></div>'+
+    '<button class="btn primary" id="dqSave">存'+(d===isoDay(Date.now())?'今天':'昨天')+'</button>'+(wv.msg?'<p class="small" id="dqMsg" role="status">'+esc(wv.msg)+'</p>':'')+
+    '<p class="small muted">消化有血便、黑便、突然剧烈肚子痛这类警讯，不用等周复盘，直接看医生——见「周复盘」最下面。</p></div>';
+}
+function saveDaily(){
+  const d=wv.dqDay||isoDay(Date.now()), q=wv.dqDraft||{}, kgR=$("dqKg").value.trim(), wR=$("dqWaist").value.trim(), kg=num(kgR), w=num(wR);
+  if(kgR&&(kg==null||kg<20||kg>300)){ wv.msg="体重请填 20–300 之间的数字，或留空。"; renderWkView(); return false; }
+  if(wR&&(w==null||w<40||w>200)){ wv.msg="腹围请填 40–200 cm，或留空。"; renderWkView(); return false; }
+  const old=body.find(b=>isoDay(b.ts)===d);
+  if(kg!=null||(w!=null&&old)){ const p=d.split("-"), ts=new Date(+p[0],+p[1]-1,+p[2],8).getTime(), K=kg!=null?r1(kg):old.kg;
+    body=body.filter(b=>isoDay(b.ts)!==d); body.push({id:old&&old.ts===ts?old.id:"b_"+ts,ts,kg:K,waist:w!=null?r1(w):(wR===""?null:old?old.waist:null)}); saveBody(); }
+  const rec={}; if(q.mood>=1&&q.mood<=5) rec.mood=+q.mood; if(DIG[q.dig]) rec.dig=q.dig; const dn=$("dqDn").value.trim().slice(0,120), sl=$("dqSl").value.trim().slice(0,120);
+  if(dn) rec.dn=dn; if(q.noct!=null&&q.noct>=0&&q.noct<=4) rec.noct=+q.noct; if(sl) rec.sl=sl;
+  if(Object.keys(rec).length){ rec.ts=Date.now(); diet.dq[d]=rec; } else delete diet.dq[d];
+  saveDiet(); wv.dqDraft=null; wv.msg="已存 "+fmtDate(new Date(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10)).getTime())+(w!=null&&kg==null&&!old?"（腹围要跟体重一起记，这次没存腹围）":"")+"。"; renderWkView(); return true;
+}
+// 周复盘
+function reviewHTML(){
+  const R=wkAdvice(Date.now()), A=R.A, a=A[R.L];
+  let h='<div class="card"><div class="block-head"><h2>周复盘</h2><span class="small muted">周一开始的周</span></div>';
+  h+='<div id="wrAdvice" class="stack" style="gap:8px">'+(R.items.length?R.items.map(x=>'<div class="warn" data-adv="'+x.key+'"><b>'+esc(x.title)+'</b>（App 的安排）<br>'+x.html+'</div>').join(""):'<p class="small muted" data-adv="none">目前没有要调整的提示（规则见下面）。</p>')+'</div>';
+  h+='<table class="dtab" id="wrTab"><thead><tr><th>周</th><th>体重</th><th>腹围</th><th>kcal</th><th>蛋白</th><th>精神</th><th>不适</th><th>夜尿</th></tr></thead><tbody>'+A.slice(-4).map(x=>'<tr><td>'+fmtShort(x.ws)+'</td><td>'+r1s(x.kg)+'</td><td>'+r1s(x.waist)+'</td><td>'+(x.kcal==null?'—':Math.round(x.kcal))+'</td><td>'+(x.p==null?'—':Math.round(x.p))+'</td><td>'+r1s(x.mood)+'</td><td>'+(x.digN?x.dig+' 天':'—')+'</td><td>'+r1s(x.noct)+'</td></tr>').join("")+'</tbody></table>'+
+    '<p class="small muted">kcal、蛋白＝有饮食记录那几天的平均；精神、夜尿＝有快速记录那几天的平均。'+(a&&a.fm?'这周纤维为大致值、有 '+a.fm+' 项缺资料。':'')+'</p></div>';
+  const C=[["wcKg","体重周平均（kg）"],["wcWaist","腹围周平均（cm）"],["wcKcal","平均 kcal／天"],["wcP","平均蛋白 g／天"],["wcMood","精神平均（1–5）"],["wcDig","消化不适天数"],["wcNoct","夜尿平均（次／晚）"]];
+  h+='<div class="card"><h2>近 8 周趋势</h2>'+C.map(([id,t])=>'<p class="small"><b>'+t+'</b></p><div class="chart" id="'+id+'" style="height:140px"></div>').join("")+'</div>';
+  h+='<details class="card fold" id="wrRules"><summary>调整提示怎么判断、热量别降太狠（附来源）</summary><div class="stack"><ul class="list small">'+
+    '<li>体重周平均连续 2 周上升、或腹围周平均比上周大 0.5 cm 以上 → 先减热量密度高的（粥改回小碗或少放小米／白米；油、核桃、牛油果减一点），但脂肪不低于热量的 20%、一天少吃不超过 500 kcal。（App 的安排）</li>'+
+    '<li>精神周平均降 1 分以上、或连续 3 天 ≤2 → 可能吃太少：对一下有没有比目标少很多、训练日碳水够不够，先把热量加回目标。（App 的安排）</li>'+
+    '<li>一周消化不适 3 天以上 → 看这周新加或高纤维的食物（薏仁、糙米、地瓜）与纤维有没有突然变多；连 2 周就看医生。（App 的安排；成人纤维目标每天 30 g，'+dA("nhsFib")+'）</li>'+
+    '<li>夜尿：只记录、看趋势；连续 2 周每晚 2 次以上 → 建议问医生，不做诊断。（门槛是 App 的安排；'+dA("nhsProst")+'）</li></ul>'+
+    '<p class="small"><b>热量别降太狠</b>：App 每天只排少吃约 300–500 kcal（你定的原则，App 的保守判断），脂肪不低于热量的 20%（App 的保守安排）。依据：6 个研究、206 位男性的汇总分析，低脂饮食比高脂饮食的总睾酮、游离睾酮较低，作者说还需要更多随机试验确认（'+dA("ww")+'）；8 周限时进食的研究里睾酮也下降（'+dA("moro")+'）。这些研究没有直接量勃起功能；App 不要求记录这一项。</p>'+
+    '<p class="small"><b>什么时候要看医生（消化）</b>：</p>'+DIG_RED+'</div></details>';
+  return h;
+}
+function drawReview(){
+  const A=wkAgg(Date.now(),8), pt=(f,unit,dig)=>A.filter(x=>f(x)!=null).map(x=>({x:fmtShort(x.ws),y:dig?Math.round(f(x)):r1(f(x)),tip:fmtShort(x.ws)+' 那周<br>'+(dig?Math.round(f(x)):r1(f(x)))+' '+unit}));
+  const E="记满一周就会出现";
+  drawChart($("wcKg"),pt(x=>x.kg,"kg"),{kind:"line",label:"体重周平均",empty:E,goal:cfg.goalKg});
+  drawChart($("wcWaist"),pt(x=>x.waist,"cm"),{kind:"line",label:"腹围周平均",empty:E});
+  drawChart($("wcKcal"),pt(x=>x.kcal,"kcal",1),{kind:"line",label:"平均 kcal",empty:E});
+  drawChart($("wcP"),pt(x=>x.p,"g",1),{kind:"line",label:"平均蛋白",empty:E});
+  drawChart($("wcMood"),pt(x=>x.mood,"分"),{kind:"line",label:"精神平均",empty:E});
+  drawChart($("wcDig"),A.some(x=>x.digN)?A.map(x=>({x:fmtShort(x.ws),y:x.dig,tip:fmtShort(x.ws)+' 那周<br>不适 '+x.dig+' 天'})):[],{kind:"bar",label:"消化不适天数",empty:E});
+  drawChart($("wcNoct"),pt(x=>x.noct,"次"),{kind:"line",label:"夜尿平均",empty:E});
+}
+// ---- 事件 ----
+$("tab-diet").addEventListener("click",e=>{
+  const t=e.target, P=wp();
+  const v=t.closest("[data-wv]"); if(v){ setWv(v.dataset.wv); return; }
+  if(t.closest("#wvBack")){ wv.view="main"; renderWkView(); renderDiet(); return; }
+  const dy=t.closest("#wpDays [data-wpday]"); if(dy){ wv.day=+dy.dataset.wpday; wv.msg=""; renderWkView(); return; }
+  const kd=t.closest("#wpKind [data-v]"); if(kd){ P.train[wv.day]=kd.dataset.v==="train"; touchWp(); renderWkView(); return; }
+  const sz=t.closest("#wpSize [data-v]"); if(sz){ const to=sz.dataset.v==="l"?"l":"s", from=to==="l"?"sishen":"sishenL", nw=to==="l"?"sishenL":"sishen";
+    P.size=to; P.days.forEach(d=>d.meals.forEach(M=>M.items.forEach(ci=>{ if(ci.r===from) ci.r=nw; }))); touchWp(); wv.msg="粥改成"+(to==="l"?"大碗":"小碗")+"（菜单里所有四神粥一起换）。"; renderWkView(); return; }
+  const df=t.closest("#wpDef [data-v]"); if(df){ P.def=+df.dataset.v; touchWp(); renderWkView(); return; }
+  const dl=t.closest("[data-wdel]"); if(dl){ const [id,i]=dl.dataset.wdel.split(":"), f=findMeal(id); if(f){ f.M.items.splice(+i,1); touchWp(); } renderWkView(); return; }
+  const ot=t.closest("[data-wout]"); if(ot){ const f=findMeal(ot.dataset.wout); if(f){ f.M.out=f.M.out?null:{n:"",k:null,p:null}; touchWp(); } renderWkView(); return; }
+  const ai=t.closest("[data-wai]"); if(ai){ fd.meal=ai.dataset.wai; fd.mode="ai"; wv.view="main"; renderWkView(); renderDiet(); const el=$("dAdd"); if(el) el.scrollIntoView(); return; }
+  if(t.closest("#wpLog")){ const r=logPlanDay(isoDay(Date.now())); wv.msg=r.added?'已记入今天 '+r.added+' 餐'+(r.skip?'（'+r.skip+' 餐之前记过，没重复）':'')+(r.outSkip?'；外食 '+r.outSkip+' 餐还没填数字，没记':'')+'。':(r.skip?'今天的菜单都记过了，没有重复记。':'')+(!r.added&&r.outSkip?'外食那餐还没填数字，没记。':'')+(!r.added&&!r.skip&&!r.outSkip?'今天的菜单是空的。':''); renderWkView(); refreshTotals(); renderFoodLog(); return; }
+  if(t.closest("#wpCopy")){ const to=$("wpCopyTo").value; if(to===""){ wv.msg="先选要复制到星期几。"; renderWkView(); return; }
+    P.days[+to]={meals:P.days[wv.day].meals.map(M=>Object.assign(JSON.parse(JSON.stringify(M)),{id:newId("pm")}))}; touchWp(); wv.msg="已把星期"+WD[wv.day]+"复制到星期"+WD[+to]+"（原本的星期"+WD[+to]+"被取代）。"; renderWkView(); return; }
+  if(t.closest("#wpReset")){ const keep={tg:P.tg,def:P.def,train:P.train,size:P.size}; diet.wp=Object.assign(planDefault(P.size),keep,{days:WD.map((_,w)=>planDayDefault(w,P.size,P.train[w]))}); touchWp(); wv.msg="整周菜单恢复成 App 的安排（目标、训练日、粥份量照旧）。"; renderWkView(); return; }
+  const qd=t.closest("#dqDay [data-v]"); if(qd){ wv.dqDay=qd.dataset.v; wv.dqDraft=null; wv.msg=""; renderWkView(); return; }
+  for(const [id,k] of [["dqMood","mood"],["dqDig","dig"],["dqNoct","noct"]]){ const b=t.closest("#"+id+" [data-v]"); if(b){ const q=wv.dqDraft, val=k==="dig"?b.dataset.v:+b.dataset.v; q[k]=q[k]===val?null:val;
+    q.dn=$("dqDn").value; q.sl=$("dqSl").value; const kg=$("dqKg").value, wa=$("dqWaist").value; renderWkView(); $("dqKg").value=kg; $("dqWaist").value=wa; return; } }
+  if(t.closest("#dqSave")){ saveDaily(); return; }
+});
+$("tab-diet").addEventListener("change",e=>{
+  const t=e.target, P=wp();
+  if(t.dataset.wat){ const f=findMeal(t.dataset.wat); if(f&&tmin(t.value)!=null){ f.M.at=t.value; touchWp(); } renderWkView(); return; }
+  if(t.dataset.wq){ const [id,i]=t.dataset.wq.split(":"), f=findMeal(id), q=num(t.value); if(f&&q>0&&q<5000){ const ci=f.M.items[+i]; if(ci.r) ci.q=q; else if(ci.t) ci.t.q=q; else ci.g=q; delete ci.lab; touchWp(); } renderWkView(); return; }
+  if(t.dataset.wadd){ const f=findMeal(t.dataset.wadd), [k,id]=t.value.split(":"); if(f&&k==="f"&&FOOD_BY[id]){ const F=FOOD_BY[id]; f.M.items.push({f:id,g:F.sv&&F.sv.length?F.sv[0][1]:100}); touchWp(); } else if(f&&k==="r"&&RECIPES[id]){ f.M.items.push({r:id,q:1}); touchWp(); } renderWkView(); return; }
+  if(t.dataset.wmove){ const f=findMeal(t.dataset.wmove), to=t.value; if(f&&to!==""){ P.days[f.w].meals.splice(f.i,1); P.days[+to].meals.push(f.M); touchWp(); wv.msg="已把星期"+WD[f.w]+PM_NAME[f.M.m]+"搬到星期"+WD[+to]+"。"; } renderWkView(); return; }
+  if(t.dataset.won!=null||t.dataset.wok!=null||t.dataset.wop!=null){ const f=findMeal(t.dataset.won||t.dataset.wok||t.dataset.wop); if(!f||!f.M.out) return; const v=num(t.value);
+    if(t.dataset.won!=null) f.M.out.n=t.value.trim().slice(0,40); else if(t.dataset.wok!=null) f.M.out.k=v!=null&&v>=0&&v<5000?Math.round(v):null; else f.M.out.p=v!=null&&v>=0&&v<500?r1(v):null; touchWp(); renderWkView(); return; }
+  if(t.dataset.tg){ const [kind,x]=t.dataset.tg.split(":"), v=num(t.value); P.tg[kind]=P.tg[kind]||{}; if(t.value.trim()===""||v==null||v<=0) delete P.tg[kind][x]; else P.tg[kind][x]=r1(v); touchWp(); renderWkView(); return; }
+});
+function wkImport(dd){ // 菜单与目标：本机没动过（setTs 为 0）才用备份的；每日快速记录：日期本机没有才补
+  if(wpValid(dd.wp)&&!diet.wp.setTs&&dd.wp.setTs){ diet.wp=Object.assign(planDefault(dd.wp.size),JSON.parse(JSON.stringify(dd.wp))); if(!Array.isArray(diet.wp.train)||diet.wp.train.length!==7) diet.wp.train=TRAIN_DEF.slice(); }
+  if(dd.dq&&typeof dd.dq==="object") for(const k in dd.dq){ const q=dd.dq[k]; if(/^\d{4}-\d\d-\d\d$/.test(k)&&q&&typeof q==="object"&&!diet.dq[k]){ const r={}; if(q.mood>=1&&q.mood<=5) r.mood=Math.round(q.mood); if(DIG[q.dig]) r.dig=q.dig; if(q.dn) r.dn=String(q.dn).slice(0,120); if(q.noct>=0&&q.noct<=4) r.noct=Math.round(q.noct); if(q.sl) r.sl=String(q.sl).slice(0,120); if(Object.keys(r).length){ r.ts=+q.ts||0; diet.dq[k]=r; } } }
 }
 
 // ---------- Tabs ----------
@@ -3652,7 +3990,7 @@ function animCombos(){
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={vol:{blocksFor,rounds,armRounds,estMin,estSec,buildSteps:wk=>buildSteps(wk)},rest:{restDef,restOf,blockRest,REST_OPTS},smith:{plateCalc,plateText,SMITH_K},weekAvgInfo,suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},food:{FOODS,RECIPES,COMBOS_BUILTIN,FOOD_UNVER,recipeVals,comboTotals,comboFor,comboTpl,calcItem,dayTot,foodSearch,offLookup,ai:{compressPhoto,FOOD_PHOTO_URL,AI_TOKEN_KEY,state:()=>fd.ai}},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS},cardio:{CD_PLANS,CD_BY,cdLen,cdSync,cdWhy,cdPick,cdSteps,cdWeekMins,cdMins,hrMax,said:()=>sayLog.slice()}}; // 给自检脚本用
+window.__fit={vol:{blocksFor,rounds,armRounds,estMin,estSec,buildSteps:wk=>buildSteps(wk)},rest:{restDef,restOf,blockRest,REST_OPTS},smith:{plateCalc,plateText,SMITH_K},weekAvgInfo,suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},wk:{planDefault,planDayDefault,planDayVals,mealVals,wkTargets,wkAgg,wkAdvice,logPlanDay,bmrMSJ,inWin,winIssues,dayKind,FOOD_FIB,PAL,FAT_FLOOR,get:()=>diet.wp,dq:()=>diet.dq,setWv},food:{FOODS,RECIPES,COMBOS_BUILTIN,FOOD_UNVER,recipeVals,comboTotals,comboFor,comboTpl,calcItem,dayTot,foodSearch,offLookup,ai:{compressPhoto,FOOD_PHOTO_URL,AI_TOKEN_KEY,state:()=>fd.ai}},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS},cardio:{CD_PLANS,CD_BY,cdLen,cdSync,cdWhy,cdPick,cdSteps,cdWeekMins,cdMins,hrMax,said:()=>sayLog.slice()}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>
