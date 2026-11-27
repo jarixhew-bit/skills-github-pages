@@ -30,7 +30,7 @@
 周一都误报一次，警告就没人看了）/
 `check-gamebot`（＋`check-gamebot-logic.mjs`：把安卓 API 打桩，用假屏幕实跑手机脚本，
 查语法查不出的行为问题）/ `check-boss-sw`（同一路子：把 self/registration 打桩，派发假的 push 事件，验老板 App
-的 Service Worker 收到推送怎么弹——真浏览器发不出 push 事件，这段只能这么验）；浏览器类 `check-fitness.mjs`（减脂训练 App：用固定假历史验加重／减重／减量周建议是不是手算得出的数、备份导入不重复；第 21 段 4 组／加练手臂开关（默认关、三种器材、总时间手算）、第 22 段有氧时长 15／20（默认 15、三方案秒数与 kcal 手算）、第 23 段史密斯算片／每个动作各自的休息／体重卡每周平均与目标线、第 24 段页首总时长＝estMin（禁用写死的「每次约 30 分钟」）、第 25 段食物库＋称重记录（四神粥与两个早餐组合合计由脚本独立手算、每个内建食物有来源与 FDC／台湾编号、旧 log 相容、备份来回、星期几推荐、条码用 page.route 拦 Open Food Facts）——段落总表在脚本开头注释）/ `check-expense-company.mjs` /
+的 Service Worker 收到推送怎么弹——真浏览器发不出 push 事件，这段只能这么验）；浏览器类 `check-fitness.mjs`（减脂训练 App：用固定假历史验加重／减重／减量周建议是不是手算得出的数、备份导入不重复；第 21 段 4 组／加练手臂开关（默认关、三种器材、总时间手算）、第 22 段有氧时长 15／20（默认 15、三方案秒数与 kcal 手算）、第 23 段史密斯算片／每个动作各自的休息／体重卡每周平均与目标线、第 24 段页首总时长＝estMin（禁用写死的「每次约 30 分钟」）、第 25 段食物库＋称重记录（四神粥与两个早餐组合合计由脚本独立手算、每个内建食物有来源与 FDC／台湾编号、旧 log 相容、备份来回、星期几推荐、条码用 page.route 拦 Open Food Facts）、第 26 段拍照估算（AI）（page.route 拦 butler-bot `/food-photo`：模拟回应→显示→改数→记入后当天合计手算、失败／超时／没网／钥匙不对路径、**没按「记入」一笔都不写**、钥匙不进备份；2026-11-27 false-red 验过：改成估完就直接写入，第 26 段立刻红）——段落总表在脚本开头注释）/ `check-expense-company.mjs` /
 `check-staff-page.mjs` / `check-inventory.mjs` / `check-board.mjs`（验 `trading/board.html` 自选股看板的涨跌%／损益／合计／排序／绿涨红跌／无密码不报错，固定 fixture 手算）/ `check-fund.mjs`（验 `trading/fund.html`
 那些前端现算的钱的数字：夏普、回撤、VaR、再平衡差额，用手算得出答案的 fixture 去对；
 两个数据档全用固定 fixture 拦掉，所以不随每天行情变动而误报）/ `check-weather.mjs`

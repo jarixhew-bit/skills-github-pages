@@ -46,6 +46,8 @@
  *  24. 页首总时长：没有记录时页首写「每次约 N 分钟」＝estMin（哑铃 31、健身房 40、有氧 20＝45、手臂＝45，手算），原始码与画面不准再有「每次约 30 分钟」等写死的总时长。
  *  25. 食物库＋称重记录：四神粥／两个早餐组合合计手算（脚本独立重算）、星期几推荐、每个内建食物有来源与编号、中英搜寻、改克数／删除、
  *      照片估算一笔、最近吃过、自建食物与我的组合、包装条码（Open Food Facts 拦截：找到／查不到／没网）、旧 log{p,kcal,win} 相容、备份来回（本机没有才补）。
+ *  26. 拍照估算（AI，butler-bot /food-photo 用 page.route 拦）：自动读记账 App 的钥匙、读不到才贴一次；照片压成长边 1024 JPEG；改克数按比例改热量／蛋白；
+ *      按「记入」后当天合计手算对；没按「记入」（不要了／切走／失败／超时／没网／钥匙不对）一笔都不写；钥匙不进备份、原始码没写死钥匙。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
  *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
@@ -2560,6 +2562,106 @@ for (const [label, rows, want] of [
     check(false, '第 25 段（食物库）跑不下去：' + String(e).slice(0, 200));
   }
   check(errors.length === 0, `食物库没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+
+// ---- 26. 拍照估算（AI）（2026-11-27 用户拍板）：照片压缩 → butler-bot /food-photo → 显示各项 → 可改 → 按「记入」才写进当天 ----
+// 守：钥匙自动读记账 App 那把（同网域 localStorage `expenseTracker_companyToken`）、读不到才请贴一次；照片压到长边 1024 的 JPEG；
+//   改克数时热量／蛋白按比例跟着变；**没按「记入」前一个字都不写**（按「不要了」、切走、失败都不写）；失败／超时／没网／钥匙不对都有友好提示与改用手动一笔的引导；
+//   钥匙不进备份。手算：炒饭 300 g 520 kcal 14 g、煎蛋 50 g 90 kcal 6.3 g → 合计 610／20.3；
+//   炒饭改 150 g → 520×150/300＝260 kcal、14×150/300＝7 g；煎蛋热量改 100 → 合计 360 kcal、7＋6.3＝13.3 g。
+{
+  const { ctx, page, errors } = await openWith([]);
+  try {
+    const AI = 'https://butler-bot.jarixhew.workers.dev/food-photo';
+    let mode = 'ok', reqs = [];
+    await page.route(AI, async r => {
+      const b = JSON.parse(r.request().postData() || '{}'); reqs.push(b);
+      const J = (status, obj) => r.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(obj) });
+      if (mode === 'ok') return J(200, { status: 'ok', provider: 'Agnes', items: [{ name_zh: '炒饭', grams_est: 300, kcal: 520, protein_g: 14 }, { name_zh: '煎蛋', grams_est: 50, kcal: 90, protein_g: 6.3 }], total_kcal: 610, total_protein_g: 20.3, confidence: 'medium', notes: '油量按一般炒饭估' });
+      if (mode === '504') return J(504, { status: 'timeout', message: 'AI 太久没回应' });
+      if (mode === '401') return J(401, { status: 'unauthorized' });
+      if (mode === '403') return J(403, { status: 'forbidden' });
+      if (mode === '422') return J(422, { status: 'invalid' });
+      return r.abort();
+    });
+    const today = () => page.evaluate(() => (window.__fit.diet.get().log['2026-09-30'] || {}).items || []);
+    const png = Buffer.from(await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 2000; c.height = 1500; const g = c.getContext('2d'); g.fillStyle = '#c84'; g.fillRect(0, 0, 2000, 1500); g.fillStyle = '#fff'; g.fillRect(500, 400, 900, 600); return c.toDataURL('image/png').split(',')[1]; }), 'base64');
+    const shoot = async () => { await page.setInputFiles('#aiFile', { name: 'meal.png', mimeType: 'image/png', buffer: png }); };
+    await page.click('#dietCard [data-open-diet]');
+    check(/拍照估算/.test(await page.textContent('#fMode')), '「记一笔」有「拍照估算」，跟「手动一笔（照片估算）」并排');
+    await page.click('#fMode [data-v="ai"]');
+    check(await page.isVisible('#aiKeyBox') && await page.isDisabled('#aiFile'), '没有钥匙 → 显示贴钥匙的框，选照片先锁住');
+    check(/误差可能有两三成（App 的保守判断）/.test(await page.textContent('#dAdd')) && /能称重时用称重/.test(await page.textContent('#dAdd')), '写明「照片只能估，误差可能有两三成（App 的保守判断），能称重时用称重」');
+    // 记账 App 存过钥匙（同网域）→ 直接读到，不用再贴
+    await page.evaluate(() => localStorage.setItem('expenseTracker_companyToken', 'et-boss-key'));
+    await page.click('#fMode [data-v="search"]'); await page.click('#fMode [data-v="ai"]');
+    check(!(await page.isVisible('#aiKeyBox')) && !(await page.isDisabled('#aiFile')), '记账 App 存过钥匙 → 自动读到，不显示贴钥匙的框');
+    await page.click('#fMeal [data-v="l"]');
+    await shoot(); await page.waitForSelector('#aiRes');
+    const q = reqs[0];
+    check(q && q.token === 'et-boss-key' && q.mime === 'image/jpeg' && /^\/9j\//.test(q.image), `送出去的是记账 App 那把钥匙＋JPEG（实得 token=${q && q.token}, mime=${q && q.mime}）`);
+    const dim = await page.evaluate(src => new Promise(ok => { const im = new Image(); im.onload = () => ok([im.naturalWidth, im.naturalHeight]); im.src = 'data:image/jpeg;base64,' + src; }), q.image);
+    check(dim[0] === 1024 && dim[1] === 768 && q.image.length < png.toString('base64').length, `照片先压缩：2000×1500 → ${dim.join('×')}（长边 1024）`);
+    const res0 = await page.textContent('#aiRes');
+    check(/610 kcal/.test(await page.textContent('#aiTot')) && /20\.3 g/.test(await page.textContent('#aiTot')) && /信心：中/.test(res0) && /油量按一般炒饭估/.test(res0)
+      && (await page.inputValue('[data-ain="0"]')) === '炒饭' && (await page.inputValue('[data-ain="1"]')) === '煎蛋', `显示 AI 估的两项与合计 610 kcal · 20.3 g（实得 ${await page.textContent('#aiTot')}）`);
+    check((await today()).length === 0, '估出来了但还没按「记入」→ 今天一笔都没写');
+    await page.fill('[data-aig="0"]', '150');
+    check((await page.inputValue('[data-aik="0"]')) === '260' && (await page.inputValue('[data-aip="0"]')) === '7', `炒饭改 150 g → 热量 260、蛋白 7 跟着按比例变（实得 ${await page.inputValue('[data-aik="0"]')}／${await page.inputValue('[data-aip="0"]')}）`);
+    await page.fill('[data-aik="1"]', '100');
+    check(/360 kcal/.test(await page.textContent('#aiTot')) && /13\.3 g/.test(await page.textContent('#aiTot')), `煎蛋热量改 100 → 合计 360 kcal · 13.3 g（实得 ${await page.textContent('#aiTot')}）`);
+    check((await today()).length === 0, '改数字时也还没写进今天');
+    await page.click('#aiAdd');
+    const it1 = await today();
+    const lg = await page.textContent('#dLog');
+    check(it1.length === 2 && it1.every(x => x.m === 'l' && x.src === 'aiphoto') && it1[0].u === 'g' && it1[0].q === 150 && it1[0].kcal === 260 && it1[0].p === 7 && it1[1].kcal === 100, `按「记入」→ 午餐 2 笔、来源 aiphoto、炒饭 150 g 260 kcal 7 g（实得 ${JSON.stringify(it1.map(x => [x.n, x.u, x.q, x.kcal, x.p]))}）`);
+    check(/午餐/.test(lg) && /照片估算（AI）/.test(lg) && /360 kcal · 蛋白 13\.3 g/.test(lg), '饮食记录：午餐小计 360 kcal · 13.3 g，标「照片估算（AI）」');
+    check(/360 kcal/.test(await page.textContent('#dToday')) && /\b13 g 蛋白/.test(await page.textContent('#dToday')), `「今天」卡片合计 360 kcal、蛋白 13 g（卡片取整数；13.3 → 13）（实得 ${(await page.textContent('#dToday')).slice(0, 60)}）`);
+    // 记进去以后改克数：炒饭 150 → 300 g → 520 kcal（每 100 g 换算存得对）
+    await page.fill(`[data-edit="${it1[0].id}"]`, '300'); await page.dispatchEvent(`[data-edit="${it1[0].id}"]`, 'change');
+    check((await today())[0].kcal === 520 && (await today())[0].p === 14, '记入后在记录里把炒饭改回 300 g → 520 kcal、14 g');
+    // 不确认的路：估完按「不要了」、或估完直接切走 → 都不写
+    await shoot(); await page.waitForSelector('#aiRes'); await page.click('#aiDrop');
+    check((await today()).length === 2 && !(await page.isVisible('#aiRes')), '估完按「不要了」→ 没写进今天（还是 2 笔）');
+    await shoot(); await page.waitForSelector('#aiRes'); await page.click('#fMode [data-v="search"]');
+    check((await today()).length === 2, '估完没按「记入」就切到别的记法 → 没写进今天');
+    await page.click('#fMode [data-v="ai"]');
+    check(await page.isVisible('#aiRes'), '切回来估好的结果还在，按「记入」前都不会写');
+    await page.click('#aiDrop');
+    // 失败路径：超时、连不上、数字不合理、钥匙不对、同事钥匙、没网 —— 都不写、都有引导
+    const fail = async (m, re, label) => { mode = m; await shoot(); await page.waitForSelector('#aiErr'); const t = await page.textContent('#aiErr');
+      check(re.test(t) && (m === '401' || m === '403' || /手动一笔/.test(t)) && (await today()).length === 2 && !(await page.isVisible('#aiRes')), `${label} → 提示「${t.slice(0, 40)}…」、没写进今天`); };
+    await fail('504', /太久没回应.*Claude/, '服务器回 504 超时');
+    await fail('abort', /连不上/, '网络断掉');
+    await fail('422', /不合理/, 'AI 数字不合理（422）');
+    await fail('403', /同事版的钥匙不行/, '同事钥匙（403）');
+    check(await page.isVisible('#aiKeyBox'), '403 之后显示贴钥匙的框');
+    mode = 'ok';
+    await page.fill('#aiKey', 'pasted-key'); await page.click('#aiKeySave');
+    await shoot(); await page.waitForSelector('#aiRes');
+    check(reqs[reqs.length - 1].token === 'pasted-key' && (await page.evaluate(() => localStorage.getItem('fit.aiToken'))) === 'pasted-key', '贴进去的钥匙存本机、下一次就用它');
+    await page.click('#aiDrop');
+    await fail('401', /钥匙不对/, '钥匙不对（401）');
+    check(await page.isVisible('#aiKeyBox') && (await page.evaluate(() => localStorage.getItem('fit.aiToken'))) === null, '401 → 清掉本机存的错钥匙、再显示贴钥匙的框');
+    await page.fill('#aiKey', 'pasted-key'); await page.click('#aiKeySave');
+    mode = 'ok';
+    await ctx.setOffline(true); await shoot(); await page.waitForSelector('#aiErr');
+    const nReq = reqs.length;
+    check(/没网/.test(await page.textContent('#aiErr')) && /手动一笔/.test(await page.textContent('#aiErr')) && (await today()).length === 2, '没网 → 「现在没网」＋引导手动一笔，没写进今天');
+    await ctx.setOffline(false);
+    check(reqs.length === nReq, '没网时根本没送照片');
+    // 钥匙不进备份
+    await page.click('#dietBack'); await page.click('nav.tabs [data-tab="more"]');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+    const bkTxt = fs.readFileSync(await dl.path(), 'utf8');
+    check(!bkTxt.includes('pasted-key') && !bkTxt.includes('et-boss-key') && /aiphoto/.test(bkTxt), '备份带着照片估算（AI）的条目，但不带钥匙');
+    const src = fs.readFileSync(new globalThis.URL('../fitness/index.html', import.meta.url), 'utf8');
+    check(src.includes("expenseTracker_companyToken") && !/token\s*[:=]\s*["'][A-Za-z0-9_\-]{16,}["']/.test(src), '原始码只写钥匙存在哪个 key，没有写死任何钥匙');
+  } catch (e) {
+    check(false, '第 26 段（拍照估算）跑不下去：' + String(e).slice(0, 300));
+  }
+  check(errors.length === 0, `拍照估算没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
 }
 

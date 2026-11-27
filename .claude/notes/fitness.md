@@ -228,6 +228,16 @@
     **搜寻框只重画结果区（`renderFoodRes`）**，不能整块重画——会打断中文输入法。组合改量只改那一格，不要在 change 时重画整块（会吃掉同时按下的切换钮，自检抓过）。
   - 条码：Open Food Facts v2（ODbL，页面有标注），只用 `energy-kcal_100g`＋`proteins_100g`，缺就叫用户自建；10 秒逾时／没网显示「连不上」；有 `BarcodeDetector` 才出现「用相机扫」。
   - 自检：check-fitness 第 25 段（手算写在段首注释；OFF 用 `page.route` 拦）。
+- **拍照估算（AI）（2026-11-27，用户拍板）**：`#fMode` 的 `ai`「拍照估算」，排在「手动一笔（照片估算）」前面。
+  - 流程：`#aiFile` 选／拍照 → `compressPhoto`（长边 1024、JPEG 0.8）→ `POST https://butler-bot.jarixhew.workers.dev/food-photo`（`{token,image,mime,note}`，55 秒逾时）
+    → `fd.ai.rows` 显示在 `#aiRes`（`data-ain` 名称／`data-aig` 克／`data-aik` kcal／`data-aip` 蛋白／`data-aidel` 去掉、合计 `#aiTot`）→ **按 `#aiAdd`「记入」才 `addItems`**，`#aiDrop`「不要了」直接丢。
+    改克数时 kcal／蛋白按 AI 原值（`g0/k0/p0`）比例跟着变；输入只改那一格与 `#aiTot`，不整块重画。
+  - 记入的条目 `src:"aiphoto"`（标签「照片估算（AI）」，`est:true` 但不另挂「估算值」）；有克数就存 `u:"g"`、`b`＝每 100 g（之后在记录里改克数照比例算），克数 0 才存 `u:"份"`。
+  - 钥匙：先读 App 自己的 `fit.aiToken`，没有再读记账 App 的 `expenseTracker_companyToken`（同网域 jarixhew-bit.github.io，同一个浏览器里直接读得到；
+    iPhone 主画面 App 各自分开存时读不到 → `#aiKeyBox` 请贴一次，存 `fit.aiToken`）。**钥匙不进备份**（备份是逐项挑的，没有它）、原始码不写死。
+    401 清掉 `fit.aiToken` 再请贴；403＝同事版钥匙。服务端只认老板那把，见 butler-bot `src/handlers/food_photo.js`。
+  - 失败／504／422／没网（`navigator.onLine===false` 时根本不送）一律 `#aiErr` 友好提示＋引导「手动一笔」或把照片发给 Claude，不写任何条目。
+  - 自检：check-fitness 第 26 段。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
