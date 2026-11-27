@@ -4710,6 +4710,12 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   await shoot(); await page.waitForTimeout(600);
   ok('★bot 的 AI 全挂 → 提示「稍后再试或手动输入」', toasts.some(m => /稍后再试/.test(m) && /手动输入/.test(m)), toasts);
 
+  // 密钥不对（401）→ 提示查密钥，不要叫人「稍后再试」
+  toasts.length = 0;
+  proxy.status = 401; proxy.body = { error: '缺少 apiKey，也没有有效的公司报账密钥' };
+  await shoot(); await page.waitForTimeout(600);
+  ok('密钥不对（401）→ 提示检查密钥，不说 bot 连不上', toasts.some(m => /密钥不对/.test(m)) && !toasts.some(m => /暂时连不上/.test(m)), toasts);
+
   // 没公司密钥 → 不打 bot（没钥匙用不了 bot 额度）
   calls.length = 0;
   await page.evaluate(() => localStorage.removeItem('expenseTracker_companyToken'));

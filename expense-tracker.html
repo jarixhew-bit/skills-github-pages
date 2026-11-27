@@ -6204,7 +6204,11 @@ async function runReceiptSmartOCR(sourceCanvas){
       ]);
       let body = null;
       try{ body = await resp.json(); }catch(e){}
-      if(!resp.ok) throw new Error((body && body.error) || (aiName(provider) + ' HTTP ' + resp.status));
+      if(!resp.ok){
+        const err = new Error((body && body.error) || (aiName(provider) + ' HTTP ' + resp.status));
+        err.httpStatus = resp.status;
+        throw err;
+      }
       text = body && body.text;
       if(!text) throw new Error(aiName(provider) + ' 返回为空');
       if(body && body.provider) console.info('收据识别由', body.provider, '完成');
@@ -6242,7 +6246,11 @@ async function runReceiptSmartOCR(sourceCanvas){
     console.error('AI receipt OCR failed, falling back to local OCR (ignored):', e);
     // bot 的 AI 全部不通（或超时）：说清楚，再退回本地识别兜底
     if(provider === AI_SHARED_PROVIDER){
-      try{ toast('bot 的 AI 暂时连不上，先用本机识别；认不准请稍后再试或手动输入'); }catch(e2){}
+      // 401 = 公司报账密钥不对，不是 bot 挂了——别让人白等
+      const msg = (e && e.httpStatus === 401)
+        ? '公司报账密钥不对，用不了 bot 的 AI，先用本机识别；请检查密钥或手动输入'
+        : 'bot 的 AI 暂时连不上，先用本机识别；认不准请稍后再试或手动输入';
+      try{ toast(msg); }catch(e2){}
     }
     await runReceiptOCRPrefill(sourceCanvas);
   }

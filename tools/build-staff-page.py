@@ -349,6 +349,7 @@ STORAGE_KEYS = [
     ("'expenseTracker_aiProvider'",      "'staffExpense_aiProvider'", 1),
     ("'expenseTracker_aiKey_'",          "'staffExpense_aiKey_'",     1),
     ("'expenseTracker_geminiKey'",       "'staffExpense_geminiKey'",  1),
+    ("'expenseTracker_aiRetiredNotice'", "'staffExpense_aiRetiredNotice'", 1),
 ]
 
 # 页面用相对路径引的同源大件（收据识别用的 opencv / tesseract）。
