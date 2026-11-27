@@ -17,11 +17,14 @@ def fdc_zip(url,label):
     want={"1008":"kcal","1003":"prot","1004":"fat","1005":"carb","2047":"kcalAtw","2048":"kcalSpec"}
     nut={}
     for r in rd("food_nutrient.csv"):
+        r["nutrient_id"]=r.get("nutrient_id","").strip()
         if r["nutrient_id"] in want: nut.setdefault(r["fdc_id"],{})[want[r["nutrient_id"]]]=r["amount"]
     mu={r["id"]:r["name"] for r in rd("measure_unit.csv")}
     por={}
     for r in rd("food_portion.csv"):
         por.setdefault(r["fdc_id"],[]).append(f'{r.get("amount","")} {mu.get(r.get("measure_unit_id",""),"")} {r.get("portion_description","")} {r.get("modifier","")} = {r.get("gram_weight","")} g'.replace("  "," "))
+    print("  names",[n for n in names if n.endswith(".csv")][:30])
+    fr=[r for r in rd("food_nutrient.csv")[:3]]; print("  fn sample",fr)
     ndb={r["fdc_id"]:r.get("NDB_number","") for r in rd("sr_legacy_food.csv")}
     print("  foods",len(food))
     for p in PAT:
@@ -31,7 +34,7 @@ def fdc_zip(url,label):
             print(f"  {k} ndb={ndb.get(k,'')} | {v} | {json.dumps(nut.get(k,{}))} | portions: {' ; '.join(por.get(k,[])[:4])}")
 fdc_zip("https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_csv_2018-04.zip","SR Legacy")
 # 找 FNDDS（survey）下载连结
-if 0:
+if 1:
     raw,_=get("https://fdc.nal.usda.gov/download-datasets")
     links=sorted(set(re.findall(rb'fdc-datasets/[A-Za-z0-9_\-\.]+\.zip',raw)))
     print("ZIP LINKS:",[l.decode() for l in links])
@@ -58,7 +61,7 @@ for lt in ("3","2","1"):
     if isinstance(data,dict): data=next((v for v in data.values() if isinstance(v,list)),[])
     print("  type0",type(data[0]),str(data[0])[:600]); print("  type1",str(data[1])[:600])
     if isinstance(data[0],list):
-        hdr=data[0]; data=[dict(zip(hdr,r)) for r in data[1:]]
+        data=[{k:v for d in r for k,v in d.items()} for r in data]
     print("  rows",len(data),"keys",list(data[0].keys()))
     keyname=[k for k in data[0] if "樣品名稱" in k][0]
     item=[k for k in data[0] if k=="分析項"][0] if "分析項" in data[0] else None
@@ -74,3 +77,4 @@ for lt in ("3","2","1"):
     break
 print("DONE")
 # run2
+# run3

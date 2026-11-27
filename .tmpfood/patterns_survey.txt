@@ -1,1 +1,4 @@
-x
+^Rice, fried, (with chicken|with pork|with shrimp|meatless|NFS)
+steamed|Chinese|bun
+^Rice noodles
+noodle soup|Noodle soup|^Soup, .*noodle
