@@ -514,6 +514,9 @@ canvas.wide{width:100%;height:180px;background:var(--bg);border-radius:12px;disp
     <div class="card" id="dTargets"></div>
     <div class="card" id="dTreCard"></div>
     <div class="card" id="dToday"></div>
+    <div class="card" id="dAdd"></div>
+    <div class="card" id="dCombo"></div>
+    <div class="card" id="dLog"></div>
     <div class="card" id="dWeekCard"></div>
     <div class="card" id="dQg"></div>
     <details class="card fold"><summary>16/8 有没有额外效果（附来源）</summary><div class="stack" id="dTreWhy"></div></details>
@@ -2979,8 +2982,8 @@ function plateauInfo(now){
 }
 function dayLog(d){ return diet.log[d]||{p:0,kcal:null,win:false}; }
 function renderDietCard(){
-  const kg=diet.profile.kg, t=protTarget(kg), td=dayLog(isoDay(Date.now()));
-  $("dietCard").innerHTML='<div class="row between"><span><b>饮食</b>　<span class="small muted">'+(t?'今天蛋白 '+td.p+' / '+Math.round(t)+' g'+(diet.tre.on?' · 窗口 '+esc(diet.tre.start)+'–'+esc(diet.tre.end):''):'按体重算蛋白与热量目标')+'</span></span><button class="btn'+(t?'':' primary')+' small" data-open-diet>'+(t?'记今天':'填资料')+'</button></div>';
+  const kg=diet.profile.kg, t=protTarget(kg), td=dayTot(isoDay(Date.now()));
+  $("dietCard").innerHTML='<div class="row between"><span><b>饮食</b>　<span class="small muted">'+(t?'今天蛋白 '+Math.round(td.p)+' / '+Math.round(t)+' g'+(td.n&&td.kcal!=null?' · '+td.kcal+' kcal':'')+(diet.tre.on?' · 窗口 '+esc(diet.tre.start)+'–'+esc(diet.tre.end):''):'按体重算蛋白与热量目标')+'</span></span><button class="btn'+(t?'':' primary')+' small" data-open-diet>'+(t?'记今天':'填资料')+'</button></div>';
 }
 function renderDietProfile(){
   const p=diet.profile;
@@ -3041,19 +3044,20 @@ function renderDietTre(){
   $("dTreCard").innerHTML=h;
 }
 function renderDietToday(){
-  const kg=diet.profile.kg, t=protTarget(kg), d=isoDay(Date.now()), L=dayLog(d);
+  const kg=diet.profile.kg, t=protTarget(kg), d=isoDay(Date.now()), L=dayLog(d), T=dayTot(d);
   let h='<div class="block-head"><h2>今天</h2><span class="small muted">'+fmtDate(Date.now())+'</span></div>'+
-    '<p><span class="num" style="font-size:26px">'+L.p+(t?' / '+Math.round(t):'')+' g</span> 蛋白</p>'+
+    '<p><span class="num" style="font-size:26px">'+Math.round(T.p)+(t?' / '+Math.round(t):'')+' g</span> 蛋白</p>'+
+    (T.n?'<p id="dTodayK"><span class="num" style="font-size:22px">'+T.kcal+' kcal</span> <span class="small muted">（'+T.n+' 笔条目'+(L.kcal!=null?'＋热量栏':'')+'）</span></p>':'')+
     '<div class="row">'+[10,20,30].map(n=>'<button class="btn" data-padd="'+n+'">+'+n+'</button>').join("")+'<button class="btn ghost" data-padd="-10">−10</button></div>'+
-    '<p class="small muted">看包装上的蛋白质克数；没有包装的粗估就好（App 的做法）。</p>'+
-    '<div class="form-row"><label>热量 kcal（可不填）<input class="inp" id="dKcalIn" inputmode="numeric" value="'+(L.kcal!=null?L.kcal:"")+'"></label></div>';
+    '<p class="small muted">快速粗估：看包装上的蛋白质克数，没有包装的粗估就好（App 的做法）。要准就用下面「记一笔」称重记。</p>'+
+    '<div class="form-row"><label>'+(T.n?'另外没记成条目的热量 kcal（可不填）':'热量 kcal（可不填）')+'<input class="inp" id="dKcalIn" inputmode="numeric" value="'+(L.kcal!=null?L.kcal:"")+'"></label></div>';
   if(diet.tre.on) h+='<div class="set-row"><span>今天在窗口内吃完</span><button class="toggle" id="dWin" aria-label="今天在窗口内吃完" aria-pressed="'+!!L.win+'"></button></div>';
   $("dToday").innerHTML=h;
 }
 function renderDietWeek(){
   const kg=diet.profile.kg, t=protTarget(kg), w0=weekStart(Date.now()), today=isoDay(Date.now());
   let rows='', hit=0;
-  for(let i=0;i<7;i++){ const dd=new Date(w0); dd.setDate(dd.getDate()+i); const k=isoDay(dd.getTime()), L=diet.log[k], fut=k>today;
+  for(let i=0;i<7;i++){ const dd=new Date(w0); dd.setDate(dd.getDate()+i); const k=isoDay(dd.getTime()), L0=diet.log[k], fut=k>today, L=L0?Object.assign({},L0,dayTot(k)):null; if(L) L.p=Math.round(L.p);
     if(L&&t&&L.p>=Math.round(t)) hit++;
     rows+='<tr><td>'+fmtShort(dd.getTime())+' '+"日一二三四五六"[dd.getDay()]+'</td><td>'+(fut?'':L?L.p+' g':'—')+'</td><td>'+(fut?'':L&&L.kcal!=null?L.kcal:'—')+'</td>'+(diet.tre.on?'<td>'+(fut?'':L&&L.win?'✓':'—')+'</td>':'')+'</tr>'; }
   let h='<div class="block-head"><h2>本周</h2><span class="small muted">'+(t?'蛋白达标 '+hit+' 天':'')+'</span></div>'+
@@ -3092,7 +3096,7 @@ const TRE_WHY='<ul class="list small">'+
 function renderDiet(){
   renderDietCard();
   if($("tab-diet").hidden) return;
-  renderDietProfile(); renderDietRest();
+  renderDietProfile(); renderDietRest(); renderFood();
   $("dTreWhy").innerHTML=TRE_WHY;
 }
 function renderDietRest(){ renderDietCard(); renderDietTargets(); renderDietTre(); renderDietToday(); renderDietWeek(); renderDietQg(); }
@@ -3115,7 +3119,7 @@ $("tab-diet").addEventListener("input",e=>{
   if(id==="dAge"){ const v=num(e.target.value); diet.profile.age=v!=null&&v>0&&v<120?Math.round(v):null; }
   else if(id==="dKg"){ const v=num(e.target.value); diet.profile.kg=v!=null&&v>=25&&v<=300?r1(v):null; }
   else if(id==="dCm"){ const v=num(e.target.value); diet.profile.cm=v!=null&&v>=100&&v<=250?r1(v):null; }
-  else if(id==="dKcalIn"){ const d=isoDay(Date.now()), v=num(e.target.value), L=Object.assign({p:0,kcal:null,win:false},diet.log[d]); L.kcal=v!=null&&v>=0&&v<20000?Math.round(v):null; diet.log[d]=L; saveDiet(); renderDietCard(); renderDietWeek(); return; }
+  else if(id==="dKcalIn"){ const d=isoDay(Date.now()), v=num(e.target.value), L=Object.assign({p:0,kcal:null,win:false},diet.log[d]); L.kcal=v!=null&&v>=0&&v<20000?Math.round(v):null; diet.log[d]=L; saveDiet(); renderDietCard(); renderDietWeek(); const T=dayTot(d), tk=$("dTodayK"); if(tk&&T.n) tk.querySelector(".num").textContent=T.kcal+' kcal'; return; }
   else return;
   diet.setTs=Date.now(); saveDiet(); renderDietRest();
 });
@@ -3132,8 +3136,402 @@ function dietImport(dd){
     if(dd.tre&&typeof dd.tre==="object") diet.tre=Object.assign({},diet.tre,dd.tre); if(dd.qg&&typeof dd.qg==="object") diet.qg=Object.assign({},diet.qg,dd.qg);
     diet.setTs=dd.setTs||Date.now();
   }
-  if(dd.log&&typeof dd.log==="object") for(const k in dd.log){ const L=dd.log[k]; if(/^\d{4}-\d\d-\d\d$/.test(k)&&L&&typeof L==="object"&&!diet.log[k]) diet.log[k]={p:+L.p||0,kcal:L.kcal==null?null:+L.kcal,win:!!L.win}; }
+  if(dd.log&&typeof dd.log==="object") for(const k in dd.log){ const L=dd.log[k]; if(/^\d{4}-\d\d-\d\d$/.test(k)&&L&&typeof L==="object"&&!diet.log[k]){ diet.log[k]={p:+L.p||0,kcal:L.kcal==null?null:+L.kcal,win:!!L.win}; const it=cleanItems(L.items); if(it&&it.length) diet.log[k].items=it; } }
+  foodImport(dd); // 我的食物、我的组合：本机没有的（按 id）才补
   saveDiet();
+}
+
+// ---------- 食物库＋称重记录（2026-11-27）：选食物→填克数→自动算 kcal 与蛋白，按餐累加 ----------
+// 数值正本：.claude/notes/fitness-fatloss-research.md「食物库数值（2026-11-27 查证）」（每个数值附 FDC ID／台湾食药署整合编号／CI run ID）。
+// 每 100 g 的值。src：usda＝USDA FoodData Central（SR Legacy，公有领域 CC0）；fndds＝USDA 全国饮食调查（FNDDS）；tw＝台湾食药署食品营养成分资料库（政府资料开放授权，热量取「修正热量」）。
+/*FOODS-BEGIN*/
+const FOOD_RAW=[
+["chkbreast","鸡胸肉（熟，去皮）","鸡胸","chicken breast","肉","usda","171477","Chicken, broilers or fryers, breast, meat only, cooked, roasted",165,31.02,0,3.57,[["半块鸡胸（去骨去皮）", 86]],"",0],
+["chkthigh","鸡腿肉（熟，去皮去骨）","鸡腿 大鸡腿","chicken thigh","肉","usda","172388","Chicken, broilers or fryers, thigh, meat only, cooked, roasted",179,24.76,0,8.15,[],"",0],
+["chkdrum","鸡小腿肉（熟，去皮去骨）","棒棒腿 鸡腿","chicken drumstick","肉","usda","172376","Chicken, broilers or fryers, dark meat, drumstick, meat only, cooked, roasted",155,24.24,0,5.7,[],"",0],
+["chkwing","鸡翅肉（熟，去皮去骨）","鸡翅","chicken wing","肉","usda","172392","Chicken, broilers or fryers, wing, meat only, cooked, roasted",203,30.46,0,8.13,[],"",0],
+["duck","鸭肉（熟，去皮）","烤鸭","duck","肉","usda","172411","Duck, domesticated, meat only, cooked, roasted",201,23.48,0,11.2,[],"",0],
+["porktender","猪里脊（熟，瘦肉）","里脊 猪柳 小里脊","pork tenderloin","肉","usda","168250","Pork, fresh, loin, tenderloin, separable lean only, cooked, roasted",143,26.17,0,3.51,[],"",0],
+["porkchop","猪排（熟，瘦肉）","猪扒 大里脊","pork chop","肉","usda","168240","Pork, fresh, loin, center loin (chops), bone-in, separable lean only, cooked, broiled",180,26.76,0,7.29,[],"",0],
+["porkbelly","五花肉（生）","三层肉 猪五花","pork belly","肉","usda","167812","Pork, fresh, belly, raw",518,9.34,0,53.01,[],"USDA 只有生的；熟的没查到",0],
+["porkmince","猪绞肉（熟）","猪肉碎 肉末","ground pork","肉","usda","167903","Pork, fresh, ground, cooked",297,25.69,0,20.77,[],"",0],
+["beefshank","牛腱（熟，炖，瘦肉）","牛腱子 卤牛腱","beef shank","肉","usda","169442","Beef, shank crosscuts, separable lean only, trimmed to 1/4\" fat, choice, cooked, simmered",201,33.68,0,6.36,[],"",0],
+["beefshankraw","牛腱（生，瘦肉）","牛腱子","beef shank raw","肉","usda","169441","Beef, shank crosscuts, separable lean only, trimmed to 1/4\" fat, choice, raw",128,21.75,0,3.85,[],"",0],
+["beefflank","牛排（侧腹，熟）","牛扒 牛肉","beef flank steak","肉","usda","168611","Beef, flank, steak, separable lean only, trimmed to 0\" fat, choice, cooked, broiled",194,27.82,0,8.32,[],"",0],
+["beefmince90","牛绞肉 90% 瘦（熟）","牛肉碎 牛肉末","ground beef 90%","肉","usda","171793","Beef, ground, 90% lean meat / 10% fat, patty, cooked, pan-broiled",204,25.21,0,10.68,[],"",0],
+["beefmince85","牛绞肉 85% 瘦（熟）","牛肉碎 汉堡肉","ground beef 85%","肉","usda","174032","Beef, ground, 85% lean meat / 15% fat, patty, cooked, broiled",250,25.93,0,15.41,[],"",0],
+["lambleg","羊腿肉（熟，瘦肉）","羊肉","lamb leg","肉","usda","172487","Lamb, leg, shank half, separable lean only, trimmed to 1/4\" fat, choice, cooked, roasted",180,28.17,0,6.67,[],"",0],
+["lambstew","羊肉块（炖，瘦肉）","羊肉 羊肉炉","lamb stew meat","肉","usda","172509","Lamb, cubed for stew or kabob (leg and shoulder), separable lean only, trimmed to 1/4\" fat, cooked, braised",223,33.69,0,8.8,[],"",0],
+["shrimp","虾（熟）","虾仁 大虾","shrimp cooked","海鲜","usda","175180","Crustaceans, shrimp, cooked",99,23.98,0.2,0.28,[],"",0],
+["shrimpraw","虾（生）","虾仁","shrimp raw","海鲜","usda","175179","Crustaceans, shrimp, raw",85,20.1,0,0.51,[],"",0],
+["squid","鱿鱼（生）","苏东 墨鱼","squid","海鲜","usda","174223","Mollusks, squid, mixed species, raw",92,15.58,3.08,1.38,[],"",0],
+["salmon","三文鱼（养殖，熟）","鲑鱼","salmon","海鲜","usda","175168","Fish, salmon, Atlantic, farmed, cooked, dry heat",206,22.1,0,12.35,[],"",0],
+["tilapia","罗非鱼（熟）","非洲鱼 吴郭鱼 金目鲈","tilapia","海鲜","usda","175177","Fish, tilapia, cooked, dry heat",128,26.15,0,2.65,[],"",0],
+["cod","鳕鱼（熟）","","cod","海鲜","usda","171956","Fish, cod, Atlantic, cooked, dry heat",105,22.83,0,0.86,[],"",0],
+["snapper","红鲷鱼（熟）","鲷鱼 红鱼","snapper","海鲜","usda","173699","Fish, snapper, mixed species, cooked, dry heat",128,26.3,0,1.72,[],"",0],
+["grouper","石斑鱼（熟）","石斑","grouper","海鲜","usda","171963","Fish, grouper, mixed species, cooked, dry heat",118,24.84,0,1.3,[],"",0],
+["mackerel","马鲛鱼（熟）","鲅鱼 马加鱼","spanish mackerel","海鲜","usda","173674","Fish, mackerel, spanish, cooked, dry heat",158,23.59,0,6.32,[],"",0],
+["catfish","鲶鱼（养殖，熟）","塘虱","catfish","海鲜","usda","175166","Fish, catfish, channel, farmed, cooked, dry heat",144,18.44,0,7.19,[],"",0],
+["milkfish","虱目鱼（熟）","","milkfish","海鲜","usda","171995","Fish, milkfish, cooked, dry heat",190,26.32,0,8.63,[],"",0],
+["pompano","金鲳鱼（熟）","鲳鱼","pompano","海鲜","usda","173683","Fish, pompano, florida, cooked, dry heat",211,23.69,0,12.14,[],"",0],
+["tuna","水浸金枪鱼罐头（沥干）","吞拿鱼 鲔鱼罐头","canned tuna in water","海鲜","usda","173709","Fish, tuna, light, canned in water, drained solids",86,19.44,0,0.96,[["1 罐（沥干）", 165]],"",0],
+["crab","螃蟹肉（熟）","蟹","crab","海鲜","usda","174205","Crustaceans, crab, blue, cooked, moist heat",83,17.88,0,0.74,[],"",0],
+["egg","鸡蛋（半生熟／水煮，不加油）","鸡蛋 蛋 半熟蛋 溏心蛋 水煮蛋 荷包蛋","egg soft boiled","蛋豆","usda","172186","Egg, whole, cooked, poached",143,12.51,0.71,9.47,[["1 颗大号", 50]],"USDA 没有「半生熟带壳煮」这一项；用同样只用水煮、不加油的水波蛋近似（App 的安排）",0],
+["egghard","鸡蛋（全熟水煮）","水煮蛋 白煮蛋","egg hard boiled","蛋豆","usda","173424","Egg, whole, cooked, hard-boiled",155,12.58,1.12,10.61,[["1 颗大号", 50]],"",0],
+["eggraw","鸡蛋（生，全蛋）","生鸡蛋","egg raw","蛋豆","usda","171287","Egg, whole, raw, fresh",143,12.56,0.72,9.51,[["1 颗大号", 50], ["1 颗中号", 44]],"",0],
+["eggwhite","蛋白（生）","蛋清","egg white","蛋豆","usda","172183","Egg, white, raw, fresh",52,10.9,0.73,0.17,[["1 颗大号的蛋白", 33]],"",0],
+["tofufirm","板豆腐／老豆腐","老豆腐 板豆腐 硬豆腐","firm tofu","蛋豆","usda","172475","Tofu, raw, firm, prepared with calcium sulfate",144,17.27,2.78,8.72,[],"",0],
+["tofu","豆腐（一般）","豆腐","tofu","蛋豆","usda","172476","Tofu, raw, regular, prepared with calcium sulfate",76,8.08,1.87,4.78,[],"",0],
+["tofusoft","嫩豆腐","嫩豆腐 绢豆腐","soft tofu","蛋豆","usda","172449","Tofu, soft, prepared with calcium sulfate and magnesium chloride (nigari)",61,7.17,1.18,3.69,[],"",0],
+["tofufried","炸豆腐／豆泡","豆卜 豆泡 油豆腐","fried tofu","蛋豆","usda","172451","Tofu, fried",270,18.82,8.86,20.18,[],"",0],
+["dougan","豆干（小方豆干）","豆干 豆腐干 豆乾","dried tofu","蛋豆","tw","R4700203","小方豆干（Hard bean curd）",155,17.4,3.5,8.6,[],"USDA 没有豆干；用台湾食药署资料库（热量取「修正热量」）",0],
+["soymilk","豆浆（原味，有糖）","豆奶 豆浆","soy milk","蛋豆","usda","172446","Soymilk, original and vanilla, unfortified",54,3.27,6.28,1.75,[["1 杯", 243]],"",0],
+["soymilkns","无糖豆浆","无糖豆奶","unsweetened soy milk","蛋豆","usda","175215","Soymilk (all flavors), unsweetened, with added calcium, vitamins A and D",33,2.86,1.74,1.61,[["1 杯", 243]],"",0],
+["edamame","毛豆（煮好）","枝豆","edamame","蛋豆","usda","168411","Edamame, frozen, prepared",121,11.91,8.91,5.2,[],"",0],
+["lentil","小扁豆（熟）","扁豆 兵豆","lentils","蛋豆","usda","172421","Lentils, mature seeds, cooked, boiled, without salt",116,9.02,20.13,0.38,[],"",0],
+["chickpea","鹰嘴豆（熟）","","chickpeas","蛋豆","usda","173757","Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled, without salt",164,8.86,27.42,2.59,[],"",0],
+["mungbean","绿豆（熟）","","mung beans","蛋豆","usda","174257","Mung beans, mature seeds, cooked, boiled, without salt",105,7.02,19.15,0.38,[],"",0],
+["redbean","红腰豆（熟）","","kidney beans","蛋豆","usda","175194","Beans, kidney, red, mature seeds, cooked, boiled, without salt",127,8.67,22.8,0.5,[],"",0],
+["rice","白饭（熟）","米饭 白米饭 饭","white rice cooked","主食","usda","168878","Rice, white, long-grain, regular, enriched, cooked",130,2.69,28.17,0.28,[["1 碗（1 杯）", 158]],"",0],
+["riceshort","白饭（短粒米，熟）","珍珠米 日本米","short-grain rice cooked","主食","usda","168932","Rice, white, short-grain, cooked, unenriched",130,2.36,28.73,0.19,[["1 杯", 205]],"",0],
+["ricebrown","糙米饭（熟）","糙米","brown rice cooked","主食","usda","169704","Rice, brown, long-grain, cooked",123,2.74,25.58,0.97,[["1 杯", 202]],"",0],
+["riceglut","糯米饭（熟）","糯米","glutinous rice cooked","主食","usda","169711","Rice, white, glutinous, unenriched, cooked",97,2.02,21.09,0.19,[],"",0],
+["riceraw","白米（生）","大米 白米 生米","white rice raw","主食","usda","168877","Rice, white, long-grain, regular, raw, enriched",365,7.13,79.95,0.66,[],"",0],
+["ricenoodle","粿条／河粉／米粉（煮熟）","粿条 河粉 米粉 粉条 金边粉 kuy teav","rice noodles cooked","主食","usda","168914","Rice noodles, cooked",108,1.79,24.01,0.2,[["1 杯", 176]],"USDA 只有「米制面条，煮熟」一项，粿条、河粉、米粉都用它近似",0],
+["ricenoodledry","米粉（干）","米粉 干米粉 粿条干","rice noodles dry","主食","usda","169742","Rice noodles, dry",364,5.95,80.18,0.56,[],"",0],
+["eggnoodle","鸡蛋面（熟）","面条 面 蛋面","egg noodles cooked","主食","usda","168919","Noodles, egg, cooked, enriched, with added salt",138,4.54,25.16,2.07,[["1 杯", 160]],"",0],
+["pasta","意大利面（熟）","意面 面条","pasta cooked","主食","usda","169737","Pasta, cooked, enriched, without added salt",158,5.8,30.86,0.93,[],"",0],
+["pastaww","全麦意面（熟）","全麦面","whole-wheat pasta","主食","usda","168910","Pasta, whole-wheat, cooked",149,5.99,30.07,1.71,[],"",0],
+["soba","荞麦面（熟）","","soba","主食","usda","168907","Noodles, japanese, soba, cooked",99,5.06,21.44,0.1,[],"",0],
+["mantou","白馒头","馒头","steamed bun","主食","tw","R2400201","白饅頭",246,8.1,51.3,1.2,[],"USDA 没有馒头；用台湾食药署资料库（热量取「修正热量」）",0],
+["breadwhite","白吐司","面包 吐司","white bread","主食","usda","174924","Bread, white, commercially prepared",266,8.85,49.42,3.33,[["1 片", 29]],"",0],
+["breadww","全麦面包","全麦吐司 面包","whole-wheat bread","主食","usda","172688","Bread, whole-wheat, commercially prepared",252,12.45,42.71,3.5,[["1 片", 32]],"",0],
+["oats","燕麦片（干）","燕麦 麦片","oats dry","主食","usda","173904","Cereals, oats, regular and quick, not fortified, dry",379,13.15,67.7,6.52,[["1/3 杯", 27]],"",0],
+["oatmeal","燕麦粥（水煮）","麦片粥","oatmeal cooked","主食","usda","171675","Cereals, oats, regular and quick and instant, unenriched, cooked with water (includes boiling and microwaving), with salt",71,2.54,12,1.52,[["1 杯", 234]],"",0],
+["corn","甜玉米（煮）","玉米 粟米","sweet corn","主食","usda","169999","Corn, sweet, yellow, cooked, boiled, drained, without salt",96,3.41,20.98,1.5,[["1 根中型", 103]],"",0],
+["potato","马铃薯（水煮去皮）","土豆 薯仔","potato boiled","主食","usda","170440","Potatoes, boiled, cooked without skin, flesh, without salt",86,1.71,20.01,0.1,[["1 颗中型", 167]],"",0],
+["potatobaked","烤马铃薯（连皮）","烤土豆","baked potato","主食","usda","170093","Potatoes, baked, flesh and skin, without salt",93,2.5,21.15,0.13,[["1 颗中型", 173]],"",0],
+["taro","芋头（熟）","芋","taro","主食","usda","168486","Taro, cooked, without salt",142,0.52,34.6,0.11,[],"",0],
+["pumpkin","南瓜（煮）","金瓜","pumpkin","主食","usda","168449","Pumpkin, cooked, boiled, drained, without salt",20,0.72,4.9,0.07,[],"USDA 的南瓜是美式橙色南瓜；东南亚常见的日本南瓜（kabocha）淀粉多、热量较高，这里会偏低",0],
+["sweetpotato","地瓜（蒸／水煮，去皮）","番薯 红薯 甘薯 蒸地瓜","sweet potato steamed","主食","usda","168484","Sweet potato, cooked, boiled, without skin",76,1.37,17.72,0.14,[["1 条中型", 151]],"USDA 没有「蒸」；用最接近的水煮去皮近似（同样是水气加热、不加油）",0],
+["sweetpotatobaked","烤地瓜（连皮烤）","烤番薯","sweet potato baked","主食","usda","168483","Sweet potato, cooked, baked in skin, flesh, without salt",90,2.01,20.71,0.15,[["1 条中型", 114]],"",0],
+["millet","小米（生）","小米","millet raw","主食","usda","169702","Millet, raw",378,11.02,72.85,4.22,[],"",0],
+["huaishan","淮山（干片）","淮山 山药干 怀山","dried chinese yam","四神料","tw","B0100101","淮山（樣品狀態：乾貨）",351,5.3,82.4,0.3,[],"USDA 只有新鲜山药；干货用台湾食药署资料库（热量取「修正热量」）",0],
+["lotusseed","莲子（干）","莲子","lotus seeds dried","四神料","usda","170149","Seeds, lotus seeds, dried",332,15.41,64.47,1.97,[["42 颗中型", 28.35]],"台湾食药署的蓮子(乾)蛋白是 21.8 g、修正热量 307，跟 USDA 不同；App 用 USDA",0],
+["qianshi","芡实（干）","芡实 鸡头米","euryale seed","四神料","tw","C1800101","芡實",336,9.9,75.4,0.1,[],"USDA 没有；用台湾食药署资料库（热量取「修正热量」）",0],
+["fuling","茯苓（干，白茯苓）","茯苓 白茯苓","poria","四神料","tw","G2100101","白茯苓（乾貨，去外皮之白色部份）",162,1.0,79.9,0.2,[],"USDA 没有；用台湾食药署资料库。茯苓几乎都是膳食纤维，「热量」栏 316、「修正热量」162，App 用修正热量",0],
+["yiren","薏仁（炒薏仁按生薏仁算）","薏仁 薏米 炒薏仁","job's tears adlay","四神料","tw","A1000101","薏仁（生）",375,14.1,66.2,6.1,[],"USDA 没有；用台湾食药署资料库。资料库只有生薏仁，炒过水分少一点，每克会略高（App 的近似）",0],
+["choysum","菜心","菜心 油菜心","choy sum","蔬菜","tw","E3201001","油菜心（生）",27,3.2,4.0,0.9,[],"USDA 没有菜心；用台湾食药署资料库（热量取「修正热量」）",0],
+["kangkung","空心菜（煮）","空心菜 通菜 蕹菜 kangkung","water spinach cooked","蔬菜","usda","169302","Water convolvulus, cooked, boiled, drained, without salt",20,2.08,3.7,0.24,[],"",0],
+["kangkungraw","空心菜（生）","通菜 蕹菜","water spinach raw","蔬菜","usda","169301","Water convolvulus,raw",19,2.6,3.13,0.2,[],"",0],
+["broccoli","西兰花（煮）","青花菜 西蓝花","broccoli","蔬菜","usda","169967","Broccoli, cooked, boiled, drained, without salt",35,2.38,7.18,0.41,[],"",0],
+["gailan","芥兰（熟）","芥蓝","chinese broccoli","蔬菜","usda","169392","Broccoli, chinese, cooked",22,1.14,3.81,0.72,[],"",0],
+["bokchoy","小白菜／青江菜（煮）","白菜仔 上海青 青江菜 小白菜","bok choy","蔬菜","usda","170391","Cabbage, chinese (pak-choi), cooked, boiled, drained, without salt",12,1.56,1.78,0.16,[],"",0],
+["napa","大白菜（煮）","白菜 黄芽白","napa cabbage","蔬菜","usda","169980","Cabbage, chinese (pe-tsai), cooked, boiled, drained, without salt",14,1.5,2.41,0.17,[],"",0],
+["cabbage","包菜（生）","高丽菜 卷心菜 椰菜","cabbage","蔬菜","usda","169975","Cabbage, raw",25,1.28,5.8,0.1,[],"",0],
+["spinach","菠菜（煮）","","spinach","蔬菜","usda","168463","Spinach, cooked, boiled, drained, without salt",23,2.97,3.75,0.26,[["1 杯", 180]],"",0],
+["cucumber","黄瓜（连皮）","青瓜","cucumber","蔬菜","usda","168409","Cucumber, with peel, raw",15,0.65,3.63,0.11,[],"",0],
+["tomato","番茄","西红柿","tomato","蔬菜","usda","170457","Tomatoes, red, ripe, raw, year round average",18,0.88,3.89,0.2,[["1 颗中型", 123]],"",0],
+["greenpepper","青椒","灯笼椒 甜椒","green pepper","蔬菜","usda","170427","Peppers, sweet, green, raw",20,0.86,4.64,0.17,[],"",0],
+["carrot","胡萝卜（生）","红萝卜 甘笋","carrot","蔬菜","usda","170393","Carrots, raw",41,0.93,9.58,0.24,[["1 根中型", 61]],"",0],
+["mushroom","白蘑菇（生）","蘑菇 洋菇","white mushroom","蔬菜","usda","169251","Mushrooms, white, raw",22,3.09,3.26,0.34,[],"",0],
+["shiitake","香菇（熟）","冬菇","shiitake","蔬菜","usda","168437","Mushrooms, shiitake, cooked, without salt",56,1.56,14.39,0.22,[],"",0],
+["enoki","金针菇（生）","金针菇","enoki","蔬菜","usda","169382","Mushrooms, enoki, raw",37,2.66,7.81,0.29,[],"",0],
+["oystermush","秀珍菇／蚝菇（生）","平菇 蚝菇 秀珍菇","oyster mushroom","蔬菜","usda","168580","Mushrooms, oyster, raw",33,3.31,6.09,0.41,[],"",0],
+["eggplant","茄子（煮）","矮瓜","eggplant","蔬菜","usda","169229","Eggplant, cooked, boiled, drained, without salt",35,0.83,8.73,0.23,[],"",0],
+["longbean","长豆角（煮）","豆角 长豆","long beans","蔬菜","usda","169223","Yardlong bean, cooked, boiled, drained, without salt",47,2.53,9.18,0.1,[],"",0],
+["greenbean","四季豆（煮）","敏豆 菜豆","green beans","蔬菜","usda","169141","Beans, snap, green, cooked, boiled, drained, without salt",35,1.89,7.88,0.28,[],"",0],
+["bittergourd","苦瓜（煮）","凉瓜","bitter gourd","蔬菜","usda","168394","Balsam-pear (bitter gourd), pods, cooked, boiled, drained, without salt",19,0.84,4.32,0.18,[],"",0],
+["okra","秋葵（煮）","羊角豆","okra","蔬菜","usda","169261","Okra, cooked, boiled, drained, without salt",22,1.87,4.51,0.21,[],"",0],
+["calabash","葫芦瓜（煮）","蒲瓜 瓠瓜","bottle gourd","蔬菜","usda","169233","Gourd, white-flowered (calabash), cooked, boiled, drained, without salt",15,0.6,3.69,0.02,[],"",0],
+["beansprout","绿豆芽（生）","豆芽 芽菜","bean sprouts","蔬菜","usda","169957","Mung beans, mature seeds, sprouted, raw",30,3.04,5.94,0.18,[],"",0],
+["onion","洋葱（生）","","onion","蔬菜","usda","170000","Onions, raw",40,1.1,9.34,0.1,[],"",0],
+["lettuce","生菜（罗马生菜）","生菜 莴苣","romaine lettuce","蔬菜","usda","169247","Lettuce, cos or romaine, raw",17,1.23,3.29,0.3,[],"",0],
+["cauliflower","花椰菜（煮）","菜花","cauliflower","蔬菜","usda","170397","Cauliflower, cooked, boiled, drained, without salt",23,1.84,4.11,0.45,[],"",0],
+["lotusroot","莲藕（煮）","莲藕","lotus root","蔬菜","usda","168430","Lotus root, cooked, boiled, drained, without salt",66,1.58,16.02,0.07,[],"",0],
+["celery","芹菜（生）","西芹","celery","蔬菜","usda","169988","Celery, raw",14,0.69,2.97,0.17,[],"",0],
+["kelp","海带（生）","昆布","kelp","蔬菜","usda","168457","Seaweed, kelp, raw",43,1.68,9.57,0.56,[],"",0],
+["banana","香蕉","","banana","水果","usda","173944","Bananas, raw",89,1.09,22.84,0.33,[["1 根中型（去皮）", 118]],"",0],
+["mango","芒果","","mango","水果","usda","169910","Mangos, raw",60,0.82,14.98,0.38,[["1 颗（去皮去核）", 336]],"",0],
+["papaya","木瓜","","papaya","水果","usda","169926","Papayas, raw",43,0.47,10.82,0.26,[["1 杯块", 145]],"",0],
+["watermelon","西瓜","","watermelon","水果","usda","167765","Watermelon, raw",30,0.61,7.55,0.15,[["1 杯丁", 152]],"",0],
+["apple","苹果（连皮）","","apple","水果","usda","171688","Apples, raw, with skin",52,0.26,13.81,0.17,[["1 颗中型", 182]],"",0],
+["orange","橙","橙子 柳丁","orange","水果","usda","169097","Oranges, raw, all commercial varieties",47,0.94,11.75,0.12,[["1 颗", 131]],"",0],
+["guava","番石榴","芭乐","guava","水果","usda","173044","Guavas, common, raw",68,2.55,14.32,0.95,[["1 颗（可食部分）", 55]],"",0],
+["pineapple","菠萝","凤梨 黄梨","pineapple","水果","usda","169124","Pineapple, raw, all varieties",50,0.54,13.12,0.12,[["1 杯块", 165]],"",0],
+["durian","榴莲","","durian","水果","usda","168192","Durian, raw or frozen",147,1.47,27.09,5.33,[],"",0],
+["longan","龙眼","桂圆","longan","水果","usda","169089","Longans, raw",60,1.31,15.14,0.1,[["1 颗（可食部分）", 3.2]],"",0],
+["lychee","荔枝","","lychee","水果","usda","169086","Litchis, raw",66,0.83,16.53,0.44,[["1 颗（可食部分）", 9.6]],"",0],
+["jackfruit","菠萝蜜","木菠萝","jackfruit","水果","usda","174687","Jackfruit, raw",95,1.72,23.25,0.64,[],"",0],
+["grapes","葡萄","提子","grapes","水果","usda","174683","Grapes, red or green (European type, such as Thompson seedless), raw",69,0.72,18.1,0.16,[],"",0],
+["kiwi","奇异果","猕猴桃","kiwi","水果","usda","168153","Kiwifruit, green, raw",61,1.14,14.66,0.52,[["1 颗", 69]],"",0],
+["avocado","牛油果","酪梨","avocado","水果","usda","171705","Avocados, raw, all commercial varieties",160,2,8.53,14.66,[],"",0],
+["pear","梨","","pear","水果","usda","169118","Pears, raw",57,0.36,15.23,0.14,[["1 颗中型", 178]],"",0],
+["strawberry","草莓","","strawberry","水果","usda","167762","Strawberries, raw",32,0.67,7.68,0.3,[],"",0],
+["walnut","核桃（去壳）","核桃 胡桃 合桃","walnuts","坚果种子","usda","170187","Nuts, walnuts, english",654,15.23,13.71,65.21,[["1 颗（去壳）", 4]],"「1 颗 4 g」来自 USDA 份量「7 颗去壳可食部分＝28 g」（28÷7）；核桃大小不一，最好自己称一次 4 颗",0],
+["almond","杏仁（生）","扁桃仁 巴旦木","almonds","坚果种子","usda","170567","Nuts, almonds",579,21.15,21.55,49.93,[["1 颗", 1.2]],"",0],
+["peanut","花生（烤，无盐）","花生米","peanuts roasted","坚果种子","usda","173806","Peanuts, all types, dry-roasted, without salt",587,24.35,21.26,49.66,[["1 粒", 1]],"",0],
+["cashew","腰果（生）","","cashews","坚果种子","usda","170162","Nuts, cashew nuts, raw",553,18.22,30.19,43.85,[],"",0],
+["sesame","芝麻","白芝麻 黑芝麻","sesame seeds","坚果种子","usda","170150","Seeds, sesame seeds, whole, dried",573,17.73,23.45,49.67,[["1 大匙", 9]],"",0],
+["chia","奇亚籽","","chia seeds","坚果种子","usda","170554","Seeds, chia seeds, dried",486,16.54,42.12,30.74,[],"",0],
+["flax","亚麻籽","","flaxseed","坚果种子","usda","169414","Seeds, flaxseed",534,18.29,28.88,42.16,[["1 大匙（整粒）", 10.3]],"",0],
+["pumpkinseed","南瓜子仁","南瓜籽","pumpkin seeds","坚果种子","usda","170556","Seeds, pumpkin and squash seed kernels, dried",559,30.23,10.71,49.05,[],"",0],
+["sunflower","葵花子仁","瓜子","sunflower seeds","坚果种子","usda","170562","Seeds, sunflower seed kernels, dried",584,20.78,20,51.46,[],"",0],
+["milk","全脂牛奶","牛奶 鲜奶","whole milk","乳品","usda","171265","Milk, whole, 3.25% milkfat, with added vitamin D",61,3.15,4.8,3.25,[["1 杯", 244]],"",0],
+["milklow","低脂牛奶（1%）","低脂奶","lowfat milk","乳品","usda","170872","Milk, lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D",42,3.37,4.99,0.97,[["1 杯", 244]],"",0],
+["milkskim","脱脂牛奶","脱脂奶","skim milk","乳品","usda","171269","Milk, nonfat, fluid, with added vitamin A and vitamin D (fat free or skim)",34,3.37,4.96,0.08,[["1 杯", 245]],"",0],
+["yogurt","原味优格（全脂）","酸奶 优格 乳酪","plain yogurt","乳品","usda","171284","Yogurt, plain, whole milk",61,3.47,4.66,3.25,[["1 盒（6 oz）", 170]],"",0],
+["greek0","希腊优格（无脂）","希腊酸奶","greek yogurt nonfat","乳品","usda","170894","Yogurt, Greek, plain, nonfat",59,10.19,3.6,0.39,[["1 盒", 170]],"",0],
+["greek","希腊优格（全脂）","希腊酸奶","greek yogurt","乳品","usda","171304","Yogurt, Greek, plain, whole milk",97,9,3.98,5,[],"",0],
+["cheddar","切达芝士","奶酪 芝士 起司","cheddar cheese","乳品","usda","173414","Cheese, cheddar",403,22.87,3.37,33.31,[["1 片", 28]],"",0],
+["mozzarella","马苏里拉芝士（部分脱脂）","芝士","mozzarella","乳品","usda","170847","Cheese, mozzarella, part skim milk",254,24.26,2.77,15.92,[],"",0],
+["olive","初榨橄榄油","橄榄油","olive oil","油与调味","usda","171413","Oil, olive, salad or cooking",884,0,0,100,[["10 ml", 9], ["1 大匙", 13.5], ["1 小匙", 4.5]],"10 ml ＝ 9 g：USDA「1 大匙＝13.5 g」× NIST「1 大匙≈15 ml」。USDA 这一项是一般橄榄油，没有分初榨（同为纯油，热量一样）",0],
+["peanutoil","花生油","","peanut oil","油与调味","usda","171410","Oil, peanut, salad or cooking",884,0,0,100,[["1 大匙", 13.5], ["1 小匙", 4.5]],"",0],
+["canola","芥花油／菜籽油","菜油 植物油","canola oil","油与调味","usda","172336","Oil, canola",884,0,0,100,[["1 大匙", 14], ["1 小匙", 4.5]],"",0],
+["sesameoil","麻油","香油 芝麻油","sesame oil","油与调味","usda","171016","Oil, sesame, salad or cooking",884,0,0,100,[["1 大匙", 13.6], ["1 小匙", 4.5]],"",0],
+["coconutoil","椰子油","","coconut oil","油与调味","usda","171412","Oil, coconut",892,0,0,99.06,[["1 大匙", 13.6]],"",0],
+["butter","牛油（有盐）","黄油 奶油","butter","油与调味","usda","173410","Butter, salted",717,0.85,0.06,81.11,[["1 大匙", 14.2]],"",0],
+["soysauce","酱油","生抽 豉油","soy sauce","油与调味","usda","174277","Soy sauce made from soy and wheat (shoyu)",53,8.14,4.93,0.57,[["1 大匙", 16], ["1 小匙", 5.3]],"",0],
+["oystersauce","蚝油","","oyster sauce","油与调味","usda","174529","Sauce, oyster, ready-to-serve",51,1.35,10.92,0.25,[["1 大匙", 18]],"",0],
+["fishsauce","鱼露","","fish sauce","油与调味","usda","174531","Sauce, fish, ready-to-serve",35,5.06,3.64,0.01,[["1 大匙", 18]],"",0],
+["sugar","白糖","砂糖 糖","sugar","油与调味","usda","169655","Sugars, granulated",387,0,99.98,0,[["1 小匙", 4.2]],"",0],
+["brownsugar","红糖","黑糖 黄糖","brown sugar","油与调味","usda","168833","Sugars, brown",380,0.12,98.09,0,[],"",0],
+["honey","蜂蜜","蜜糖","honey","油与调味","usda","169640","Honey",304,0.3,82.4,0,[["1 大匙", 21]],"",0],
+["coconutmilk","椰浆","椰奶","coconut milk","油与调味","usda","170172","Nuts, coconut milk, raw (liquid expressed from grated meat and water)",230,2.29,5.54,23.84,[["1 大匙", 15]],"",0],
+["friedrice_chk","鸡肉炒饭（估算）","炒饭 鸡炒饭 fried rice","chicken fried rice","外食（估算）","fndds","2708953","Rice, fried, with chicken",173,7.28,27.62,3.66,[],"美国全国饮食调查的平均做法；油量、配料差很多",1],
+["friedrice_pork","猪肉炒饭（估算）","炒饭","pork fried rice","外食（估算）","fndds","2708954","Rice, fried, with pork",179,7.56,27.62,4.16,[],"美国全国饮食调查的平均做法；油量、配料差很多",1],
+["friedrice_shrimp","虾仁炒饭（估算）","炒饭","shrimp fried rice","外食（估算）","fndds","2708956","Rice, fried, with shrimp",166,6.68,27.85,2.97,[],"美国全国饮食调查的平均做法；油量、配料差很多",1],
+["friedrice_veg","蛋炒饭／素炒饭（估算）","炒饭 蛋炒饭","fried rice meatless","外食（估算）","fndds","2708951","Rice, fried, meatless",174,3.84,32.5,3.19,[],"美国全国饮食调查的平均做法；油量、配料差很多",1],
+["lomein","素炒面（餐馆，估算）","炒面","vegetable lo mein","外食（估算）","usda","167677","Restaurant, Chinese, vegetable lo mein, without meat",121,4.77,20.16,2.35,[],"美国中餐馆样本；做法差很多",1],
+["kungpao","宫保鸡丁（餐馆，估算）","宫保鸡","kung pao chicken","外食（估算）","usda","167676","Restaurant, Chinese, kung pao chicken",129,9.76,6.87,6.98,[],"美国中餐馆样本；做法差很多",1],
+["chkveg","鸡肉炒杂菜（餐馆，估算）","炒杂菜","chicken and vegetables","外食（估算）","usda","167678","Restaurant, Chinese, chicken and vegetables",95,8.18,5.38,4.56,[],"美国中餐馆样本；做法差很多",1],
+["noodlesoup","汤面（泛指，估算）","汤面 粿条汤 面汤","noodle soup","外食（估算）","fndds","2709145","Soup, noodle, NFS",90,5.48,10.08,2.99,[],"美国全国饮食调查的「汤面，泛指」，不是柬式粿条汤；汤底、肉量差很多，只能当很粗的参考",1]
+];
+const FOOD_UNVER=[["火龙果", "dragon fruit pitaya", "USDA 与台湾食药署这次都没查到"], ["粿条汤（柬式）", "kuy teav", "没有可查的成分资料；可拍照给 Claude 估算后用「手动一笔」"]];
+/*FOODS-END*/
+const FOODS=FOOD_RAW.map(a=>({id:a[0],zh:a[1],al:a[2],en:a[3],cat:a[4],src:a[5],ref:a[6],desc:a[7],k:a[8],p:a[9],c:a[10],f:a[11],sv:a[12],note:a[13],est:!!a[14]}));
+const FOOD_BY={}; FOODS.forEach(f=>{ FOOD_BY[f.id]=f; });
+const FOOD_CATS=["肉","海鲜","蛋豆","主食","蔬菜","水果","坚果种子","乳品","油与调味","四神料","外食（估算）"];
+// 自己煮的组合料理：每份＝各食材 克数×每100g÷100 的和
+const RECIPES={sishen:{zh:"四神小米粥（干料 62 g，一份）",al:"四神粥 四神汤 小米粥 粥",en:"si shen millet congee",
+  parts:[["millet",20],["riceraw",5],["huaishan",8],["lotusseed",8],["qianshi",8],["fuling",8],["yiren",5]],note:"小米 20、白米 5、淮山 8、莲子 8、芡实 8、茯苓 8、炒薏仁 5 g；加水 500–600 ml，水不算热量"}};
+function recipeVals(rid){ const R=RECIPES[rid], v={k:0,p:0,c:0,f:0}; if(!R) return null; R.parts.forEach(([id,g])=>{ const F=FOOD_BY[id]; ["k","p","c","f"].forEach(x=>{ v[x]+=g*F[x]/100; }); }); return v; }
+// 你的早餐（用户 2026-11-27 给的）；星期几推荐哪一组是 App 的安排
+const COMBOS_BUILTIN=[
+  {id:"b246",name:"二四六早餐：四神小米粥",days:[2,4,6],items:[{r:"sishen",q:1},{f:"egg",g:100,lab:"2 颗大号"},{f:"olive",g:9,lab:"10 ml"},{f:"walnut",g:16,lab:"4 颗"}]},
+  {id:"b135",name:"一三五日早餐：蒸地瓜",days:[1,3,5,0],items:[{f:"sweetpotato",g:150},{f:"egg",g:100,lab:"2 颗大号"},{f:"walnut",g:16,lab:"4 颗"}]}];
+const MEALS=[["b","早餐"],["l","午餐"],["d","晚餐"],["s","点心"]], MEAL_NAME={b:"早餐",l:"午餐",d:"晚餐",s:"点心"};
+const SRC_TAG={usda:"USDA",fndds:"USDA 饮食调查",tw:"台湾食药署",recipe:"组合计算",custom:"自建",off:"条码",photo:"照片估算"};
+const FDC_URL=id=>"https://fdc.nal.usda.gov/food-details/"+id+"/nutrients", TW_URL="https://data.gov.tw/dataset/8543", OFF_URL="https://world.openfoodfacts.org/";
+["foods","combos"].forEach(k=>{ if(!Array.isArray(diet[k])) diet[k]=[]; });
+const n1=x=>Math.round((+x||0)*10)/10;
+// 一个条目：u＝"g"（q 是克数，b 是每 100 g）或 "份"（q 是份数，b 是每份）
+function calcItem(it){ const d=it.u==="g"?100:1; it.kcal=n1(it.q*it.b.k/d); it.p=n1(it.q*it.b.p/d); it.c=it.b.c!=null?n1(it.q*it.b.c/d):null; it.f=it.b.f!=null?n1(it.q*it.b.f/d):null; return it; }
+function bOf(F){ return {k:F.k,p:F.p,c:F.c,f:F.f}; }
+function tplFood(F,g){ return {n:F.zh,src:F.src,ref:F.ref,fid:F.id,u:"g",q:g,b:bOf(F),est:!!F.est}; }
+function tplRecipe(rid,q){ const v=recipeVals(rid); return {n:RECIPES[rid].zh,src:"recipe",fid:rid,u:"份",q:q,b:{k:v.k,p:v.p,c:v.c,f:v.f},est:false}; }
+function tplCustom(C,q){ return {n:C.zh,src:"custom",fid:C.id,u:C.u==="份"?"份":"g",q:q,b:Object.assign({},C.b),est:!!C.est}; }
+function comboTpl(ci){ if(ci.r) return tplRecipe(ci.r,ci.q); if(ci.f&&FOOD_BY[ci.f]) return tplFood(FOOD_BY[ci.f],ci.g); if(ci.t) return JSON.parse(JSON.stringify(ci.t)); return null; }
+let iSeq=0; const newId=p=>p+Date.now().toString(36)+(iSeq++).toString(36);
+function mkItem(t,m){ return calcItem(Object.assign({id:newId("i"),m:m,ts:Date.now()},JSON.parse(JSON.stringify(t)))); }
+function dayItems(d){ const L=diet.log[d]; return L&&Array.isArray(L.items)?L.items:[]; }
+// 一天合计：旧记录只有 {p,kcal}（没有条目）照原样；有条目时＝快速按钮的粗估蛋白＋热量栏＋所有条目
+function dayTot(d){ const L=diet.log[d], it=dayItems(d);
+  let p=L?(+L.p||0):0, k=it.length?(L&&L.kcal!=null?+L.kcal:0):(L&&L.kcal!=null?+L.kcal:null);
+  it.forEach(x=>{ p+=+x.p||0; k+=+x.kcal||0; });
+  return {p:n1(p),kcal:k==null?null:Math.round(k),n:it.length}; }
+function addItems(d,arr){ const L=Object.assign({p:0,kcal:null,win:false},diet.log[d]); L.items=(Array.isArray(L.items)?L.items:[]).concat(arr); diet.log[d]=L; saveDiet(); }
+function comboFor(day){ return COMBOS_BUILTIN.find(c=>c.days.includes(day))||COMBOS_BUILTIN[0]; }
+function comboTotals(items){ let k=0,p=0; items.forEach(ci=>{ const t=comboTpl(ci); if(!t) return; const x=calcItem(t); k+=x.kcal; p+=x.p; }); return {kcal:Math.round(k),p:n1(p)}; }
+function allCombos(){ return COMBOS_BUILTIN.concat(diet.combos); }
+// 搜寻：中文名、别名、英文都比对（不分大小写）
+function foodSearch(q){
+  q=String(q||"").trim().toLowerCase(); if(!q) return [];
+  const hit=s=>String(s||"").toLowerCase().includes(q), out=[];
+  diet.foods.forEach(C=>{ if(hit(C.zh)||hit(C.en)) out.push({kind:"cus",id:C.id,zh:C.zh,sub:"自建"}); });
+  for(const rid in RECIPES){ const R=RECIPES[rid]; if(hit(R.zh)||hit(R.al)||hit(R.en)) out.push({kind:"rec",id:rid,zh:R.zh,sub:"组合计算"}); }
+  FOODS.forEach(F=>{ if(hit(F.zh)||hit(F.al)||hit(F.en)) out.push({kind:"food",id:F.id,zh:F.zh,sub:F.cat+(F.est?" · 估算值":"")}); });
+  FOOD_UNVER.forEach(u=>{ if(hit(u[0])||hit(u[1])) out.push({kind:"unver",zh:u[0],sub:"未查证："+u[2]}); });
+  return out.slice(0,30);
+}
+function recentItems(){ const seen=new Set(), out=[]; Object.keys(diet.log).sort().reverse().forEach(d=>{ dayItems(d).slice().reverse().forEach(x=>{ const key=(x.fid||x.n)+"|"+x.u+"|"+x.q; if(!seen.has(key)&&out.length<8){ seen.add(key); out.push(x); } }); }); return out; }
+function defMeal(){ const h=new Date(Date.now()).getHours(); return h<11?"b":h<15?"l":h<17?"s":"d"; } // App 的安排：按现在几点先选好餐别
+let fd={meal:null,mode:"search",q:"",pick:null,cb:null,cbDraft:null,msg:"",bar:"",barMsg:"",offFood:null};
+function srcLine(t){
+  if(t.src==="usda"||t.src==="fndds"){ const F=FOOD_BY[t.fid]; return '来源：<a href="'+FDC_URL(t.ref)+'" target="_blank" rel="noopener">USDA FoodData Central '+esc(t.ref)+'</a>'+(F?'（'+esc(F.desc)+'）':'')+(F&&F.note?'。'+esc(F.note):'')+(t.est?'。<b>估算值，做法差很多</b>':''); }
+  if(t.src==="tw"){ const F=FOOD_BY[t.fid]; return '来源：<a href="'+TW_URL+'" target="_blank" rel="noopener">台湾食药署食品营养成分资料库</a> '+esc(t.ref)+(F?'（'+esc(F.desc)+'）。'+esc(F.note):''); }
+  if(t.src==="recipe"){ const R=RECIPES[t.fid]; return '每份＝各食材 克数×每100g÷100 的和：'+esc(R.note)+'（各食材来源见食物库）'; }
+  if(t.src==="off") return '来源：<a href="'+OFF_URL+'" target="_blank" rel="noopener">Open Food Facts</a>（开放资料 ODbL，由用户照包装填写，可能有错）条码 '+esc(t.ref);
+  if(t.src==="photo") return '照片估算：你自己填的数字';
+  return '自建食物：你自己填的数字';
+}
+const tagOf=t=>'<span class="pill">'+esc(SRC_TAG[t.src]||t.src)+'</span>'+(t.est&&t.src!=="photo"?' <span class="pill">估算值</span>':'');
+const qtyTxt=t=>t.u==="g"?r1(t.q)+' g':r1(t.q)+' 份';
+function pickTpl(){ const P=fd.pick; if(!P) return null; return P; }
+function renderFoodAdd(){
+  if(!fd.meal) fd.meal=defMeal();
+  let h='<div class="block-head"><h2>记一笔</h2><span class="small muted">称重最准</span></div>'+
+    '<div class="set-row"><span>记到</span><div class="seg" role="group" aria-label="记到哪一餐" id="fMeal">'+MEALS.map(m=>'<button data-v="'+m[0]+'" aria-pressed="'+(fd.meal===m[0])+'">'+m[1]+'</button>').join("")+'</div></div>'+
+    '<div class="chips" id="fMode" role="group" aria-label="怎么记">'+[["search","搜食物"],["bar","包装条码"],["photo","手动一笔（照片估算）"],["custom","自建食物"]].map(m=>'<button class="chip" data-v="'+m[0]+'" aria-pressed="'+(fd.mode===m[0])+'">'+m[1]+'</button>').join("")+'</div>';
+  if(fd.mode==="search"){
+    h+='<input class="inp" id="fQ" type="search" placeholder="中文或英文，例如 鸡胸、chicken" value="'+esc(fd.q)+'" style="text-align:left;font-size:16px" aria-label="搜食物">';
+    h+='<div id="fResWrap"></div>';
+  } else if(fd.mode==="bar"){
+    h+='<div class="form-row"><label>条码数字<input class="inp" id="fBar" inputmode="numeric" value="'+esc(fd.bar)+'" placeholder="包装背面的数字"></label></div>'+
+      '<div class="row"><button class="btn" id="fBarGo">查询</button>'+(("BarcodeDetector" in window)?'<button class="btn ghost" id="fScan">用相机扫</button>':'')+'</div><video id="fVid" playsinline muted hidden style="width:100%;border-radius:10px"></video>'+
+      '<p class="small" id="fBarMsg">'+esc(fd.barMsg)+'</p>'+
+      '<p class="small muted">资料来自 <a href="'+OFF_URL+'" target="_blank" rel="noopener">Open Food Facts</a>（开放资料 ODbL，大家照包装填写的，可能有错，跟包装对一下）。要上网；查不到就照包装用「自建食物」。</p>';
+  } else if(fd.mode==="photo"){
+    h+='<p class="small">外食拍照给 Claude 估算，把它给的数字填这里。会标「照片估算」。</p>'+
+      '<div class="form-row"><label>名称<input class="inp" id="fmN" style="font-size:16px" placeholder="例如 午餐便当"></label></div>'+
+      '<div class="form-row"><label>热量 kcal<input class="inp" id="fmK" inputmode="numeric"></label><label>蛋白 g<input class="inp" id="fmP" inputmode="decimal"></label></div>'+
+      '<button class="btn primary" id="fmAdd">加入'+MEAL_NAME[fd.meal]+'</button>';
+  } else {
+    h+='<p class="small">照包装或可靠资料填。存进「我的食物」，以后搜得到。</p>'+
+      '<div class="form-row"><label>名称<input class="inp" id="fcN" style="font-size:16px"></label></div>'+
+      '<div class="set-row"><span>数字是</span><div class="seg" role="group" aria-label="数字是" id="fcU">'+[["g","每 100 g"],["份","每份"]].map(x=>'<button data-v="'+x[0]+'" aria-pressed="'+((fd.cu||"g")===x[0])+'">'+x[1]+'</button>').join("")+'</div></div>'+
+      '<div class="form-row"><label>热量 kcal<input class="inp" id="fcK" inputmode="decimal"></label><label>蛋白 g<input class="inp" id="fcP" inputmode="decimal"></label></div>'+
+      '<div class="form-row"><label>碳水 g（可不填）<input class="inp" id="fcC" inputmode="decimal"></label><label>脂肪 g（可不填）<input class="inp" id="fcF" inputmode="decimal"></label></div>'+
+      '<button class="btn primary" id="fcSave">存成我的食物</button>';
+    if(diet.foods.length) h+='<p class="small muted">我的食物：'+diet.foods.map(C=>esc(C.zh)+' <button class="btn ghost small" data-cusdel="'+esc(C.id)+'" aria-label="删除 '+esc(C.zh)+'">✕</button>').join("　")+'</p>';
+  }
+  if(fd.msg) h+='<p class="small" id="fMsg">'+esc(fd.msg)+'</p>';
+  const P=pickTpl();
+  if(P){ const x=calcItem(JSON.parse(JSON.stringify(P)));
+    const svs=P.src==="usda"||P.src==="fndds"||P.src==="tw"?(FOOD_BY[P.fid].sv||[]):P.sg?[["1 份",P.sg]]:[];
+    h+='<div class="card" id="fPick" style="background:var(--soft)"><b>'+esc(P.n)+'</b> '+tagOf(P)+
+      '<div class="form-row"><label>'+(P.u==="g"?'克数 g':'几份')+'<input class="inp" id="fG" inputmode="decimal" value="'+r1(P.q)+'"></label></div>'+
+      (svs.length?'<div class="chips">'+svs.map(s=>'<button class="chip" data-sv="'+s[1]+'">'+esc(s[0])+'＝'+s[1]+' g</button>').join("")+'</div>':'')+
+      '<p id="fCalc"><span class="num" style="font-size:22px">'+Math.round(x.kcal)+' kcal</span> · 蛋白 '+x.p+' g'+(x.c!=null?' · 碳水 '+x.c+' g':'')+(x.f!=null?' · 脂肪 '+x.f+' g':'')+'</p>'+
+      '<p class="small muted">'+srcLine(P)+'</p>'+
+      '<div class="row"><button class="btn primary" id="fAddBtn">加入'+MEAL_NAME[fd.meal]+'</button><button class="btn ghost" id="fCancel">取消</button>'+(P.src==="off"?'<button class="btn ghost" id="fOffSave">存成我的食物</button>':'')+'</div></div>';
+  }
+  $("dAdd").innerHTML=h;
+  if(fd.mode==="search") renderFoodRes();
+}
+function renderFoodRes(){
+  const w=$("fResWrap"); if(!w) return; let h="";
+  const res=foodSearch(fd.q);
+  if(fd.q.trim()) h='<div id="fRes" class="stack" style="gap:4px">'+(res.length?res.map(r=>r.kind==="unver"?'<div class="small muted">'+esc(r.zh)+'：'+esc(r.sub)+'（可用「自建食物」或「手动一笔」）</div>':'<button class="btn ghost small" style="justify-content:space-between;text-align:left;gap:8px" data-pick="'+r.kind+':'+esc(r.id)+'"><span>'+esc(r.zh)+'</span><span class="small muted">'+esc(r.sub)+'</span></button>').join(""):'<p class="small muted">食物库里没有「'+esc(fd.q)+'」。有包装的试「包装条码」，或用「自建食物」。</p>')+'</div>';
+  else{ const rc=recentItems(); h='<div id="fRecent" class="stack" style="gap:4px">'+(rc.length?'<p class="small muted">最近吃过（按一下照同样的量记到'+MEAL_NAME[fd.meal]+'）</p>'+rc.map((x,i)=>'<button class="btn ghost small" style="justify-content:space-between;text-align:left;gap:8px" data-again="'+i+'"><span>'+esc(x.n)+' · '+qtyTxt(x)+'</span><span class="small muted">'+Math.round(x.kcal)+' kcal · 蛋白 '+x.p+' g</span></button>').join(""):'<p class="small muted">食物库有 '+FOODS.length+' 种（每 100 g 的值，附来源），另有四神小米粥。</p>')+'</div>'; }
+  w.innerHTML=h;
+}
+function renderCombo(){
+  const day=new Date(Date.now()).getDay(), rec=comboFor(day), list=allCombos();
+  if(!fd.cb||!list.some(c=>c.id===fd.cb)){ fd.cb=rec.id; fd.cbDraft=null; }
+  const C=list.find(c=>c.id===fd.cb); if(!fd.cbDraft) fd.cbDraft=JSON.parse(JSON.stringify(C.items));
+  const tot=comboTotals(fd.cbDraft);
+  let h='<div class="block-head"><h2>常吃早餐</h2><span class="small muted">今天星期'+"日一二三四五六"[day]+'</span></div>'+
+    '<p class="small muted">App 的安排：二四六推荐四神小米粥、一三五日推荐蒸地瓜（照你说的习惯）。加入前可以改克数。</p>'+
+    '<div class="chips" id="cbSel">'+list.map(c=>'<button class="chip" data-cb="'+esc(c.id)+'" aria-pressed="'+(c.id===fd.cb)+'">'+esc(c.name)+(c.id===rec.id?'（今天）':'')+'</button>').join("")+'</div>'+
+    '<table class="dtab" id="cbTab"><tbody>'+fd.cbDraft.map((ci,i)=>{ const t=comboTpl(ci); if(!t) return ''; const x=calcItem(t);
+      return '<tr><td>'+esc(t.n)+(ci.lab?'<br><span class="small muted">'+esc(ci.lab)+'</span>':'')+'</td><td style="width:84px"><input class="inp" style="font-size:15px;padding:4px" data-cbq="'+i+'" inputmode="decimal" value="'+r1(t.q)+'" aria-label="'+esc(t.n)+(t.u==="g"?' 克数':' 份数')+'"></td><td class="small">'+(t.u==="g"?'g':'份')+'</td><td class="small">'+Math.round(x.kcal)+' kcal<br>'+x.p+' g</td></tr>'; }).join("")+'</tbody></table>'+
+    '<p id="cbTot"><span class="num" style="font-size:22px">'+tot.kcal+' kcal</span> · 蛋白 '+tot.p+' g</p>'+
+    '<div class="row"><button class="btn primary" id="cbAdd">加入今天早餐</button>'+(C.id.startsWith("u")?'<button class="btn ghost" id="cbDel">删除这个组合</button>':'')+'</div>'+
+    '<p class="small muted">核桃 1 颗约 4 g 是 USDA 的平均（7 颗去壳 28 g）；你的核桃大小不同，称一次 4 颗的重量填进去最准。橄榄油 10 ml 约 9 g。</p>';
+  $("dCombo").innerHTML=h;
+}
+function renderFoodLog(){
+  const d=isoDay(Date.now()), it=dayItems(d), L=diet.log[d];
+  let h='<div class="block-head"><h2>今天吃了什么</h2><span class="small muted">'+it.length+' 笔</span></div>';
+  if(!it.length) h+='<p class="small muted">还没有条目。上面「记一笔」或「常吃早餐」加进来；旧的快速按钮（+10 g）也照样算进总数。</p>';
+  MEALS.forEach(([m,name])=>{ const rows=it.filter(x=>x.m===m); if(!rows.length) return;
+    const k=Math.round(rows.reduce((a,x)=>a+(+x.kcal||0),0)), p=n1(rows.reduce((a,x)=>a+(+x.p||0),0));
+    h+='<div class="stack meal" data-meal="'+m+'" style="gap:4px"><div class="row between"><b>'+name+'</b><span class="small">'+k+' kcal · 蛋白 '+p+' g</span></div><table class="dtab"><tbody>'+
+      rows.map(x=>'<tr data-item="'+esc(x.id)+'"><td>'+esc(x.n)+'<br>'+tagOf(x)+'</td><td style="width:78px"><input class="inp" style="font-size:15px;padding:4px" data-edit="'+esc(x.id)+'" inputmode="decimal" value="'+r1(x.q)+'" aria-label="'+esc(x.n)+(x.u==="g"?' 克数':' 份数')+'"></td><td class="small">'+(x.u==="g"?'g':'份')+'</td><td class="small">'+Math.round(x.kcal)+' kcal<br>'+x.p+' g</td><td><button class="btn ghost small" data-del="'+esc(x.id)+'" aria-label="删除 '+esc(x.n)+'">✕</button></td></tr>').join("")+
+      '</tbody></table><div class="row"><input class="inp" style="font-size:15px;text-align:left" data-cbname="'+m+'" placeholder="组合名称（可不填）" aria-label="组合名称"><button class="btn ghost small" data-savecb="'+m+'">存成我的组合</button></div></div>'; });
+  if(it.length&&L&&((+L.p||0)>0||L.kcal!=null)) h+='<p class="small muted">另外：快速按钮粗估的蛋白 '+(+L.p||0)+' g'+(L.kcal!=null?'、热量栏 '+L.kcal+' kcal':'')+'，也算在今天的总数里。</p>';
+  $("dLog").innerHTML=h;
+}
+function renderFood(){ renderFoodAdd(); renderCombo(); renderFoodLog(); }
+function refreshTotals(){ renderDietCard(); renderDietToday(); renderDietWeek(); }
+function setPick(t){ fd.pick=t; fd.msg=""; renderFoodAdd(); const g=$("fG"); if(g) g.focus(); }
+$("tab-diet").addEventListener("click",e=>{
+  const t=e.target, d=isoDay(Date.now());
+  const fm=t.closest("#fMeal [data-v]"); if(fm){ fd.meal=fm.dataset.v; renderFoodAdd(); return; }
+  const mo=t.closest("#fMode [data-v]"); if(mo){ fd.mode=mo.dataset.v; fd.msg=""; if(fd.mode!=="bar") stopScan(); renderFoodAdd(); return; }
+  const pk=t.closest("[data-pick]"); if(pk){ const [kind,id]=pk.dataset.pick.split(":");
+    if(kind==="food"){ const F=FOOD_BY[id]; setPick(tplFood(F,F.sv&&F.sv.length?F.sv[0][1]:100)); }
+    else if(kind==="rec") setPick(tplRecipe(id,1));
+    else if(kind==="cus"){ const C=diet.foods.find(x=>x.id===id); if(C) setPick(Object.assign(tplCustom(C,C.u==="份"?1:100),{sg:C.sg})); }
+    return; }
+  const ag=t.closest("[data-again]"); if(ag){ const x=recentItems()[+ag.dataset.again]; if(x){ const c=JSON.parse(JSON.stringify(x)); ["id","m","ts","kcal","p","c","f"].forEach(k=>delete c[k]); addItems(d,[mkItem(c,fd.meal)]); fd.msg="已记到"+MEAL_NAME[fd.meal]+"："+x.n+" "+qtyTxt(x); renderFood(); refreshTotals(); } return; }
+  const sv=t.closest("[data-sv]"); if(sv&&fd.pick){ fd.pick.q=+sv.dataset.sv; renderFoodAdd(); return; }
+  if(t.closest("#fCancel")){ fd.pick=null; renderFoodAdd(); return; }
+  if(t.closest("#fAddBtn")&&fd.pick){ const q=num($("fG").value); if(!(q>0&&q<5000)){ fd.msg="克数／份数要填大于 0 的数字"; renderFoodAdd(); return; }
+    fd.pick.q=q; const it=mkItem(fd.pick,fd.meal); addItems(d,[it]); fd.msg="已记到"+MEAL_NAME[fd.meal]+"："+it.n+" "+qtyTxt(it)+" · "+Math.round(it.kcal)+" kcal · 蛋白 "+it.p+" g"; fd.pick=null; fd.q=""; renderFood(); refreshTotals(); return; }
+  if(t.closest("#fOffSave")&&fd.pick){ const P=fd.pick, C={id:newId("u"),zh:P.n,en:"",u:"g",b:Object.assign({},P.b),sg:P.sg||null,src:"off",ref:P.ref}; diet.foods.push(C); saveDiet(); fd.msg="已存成我的食物："+C.zh; renderFoodAdd(); return; }
+  if(t.closest("#fmAdd")){ const n=$("fmN").value.trim()||"外食（照片估算）", k=num($("fmK").value), p=num($("fmP").value);
+    if(!(k>=0&&k<10000)||!(p>=0&&p<500)){ fd.msg="热量和蛋白都要填数字"; renderFoodAdd(); return; }
+    const it=mkItem({n,src:"photo",ref:"",fid:null,u:"份",q:1,b:{k,p,c:null,f:null},est:true},fd.meal); addItems(d,[it]); fd.msg="已记到"+MEAL_NAME[fd.meal]+"："+n+"（照片估算）"; renderFood(); refreshTotals(); return; }
+  const cu=t.closest("#fcU [data-v]"); if(cu){ fd.cu=cu.dataset.v; renderFoodAdd(); return; }
+  if(t.closest("#fcSave")){ const zh=$("fcN").value.trim(), k=num($("fcK").value), p=num($("fcP").value), c=num($("fcC").value), f=num($("fcF").value);
+    if(!zh||!(k>=0&&k<2000)||!(p>=0&&p<200)){ fd.msg="名称、热量、蛋白都要填"; renderFoodAdd(); return; }
+    const C={id:newId("u"),zh,en:"",u:fd.cu==="份"?"份":"g",b:{k,p,c,f},src:"custom"}; diet.foods.push(C); saveDiet();
+    fd.mode="search"; setPick(tplCustom(C,C.u==="份"?1:100)); fd.msg="已存成我的食物，填好量按「加入」"; renderFoodAdd(); return; }
+  const cd=t.closest("[data-cusdel]"); if(cd){ diet.foods=diet.foods.filter(x=>x.id!==cd.dataset.cusdel); saveDiet(); renderFoodAdd(); return; }
+  if(t.closest("#fBarGo")){ barLookup($("fBar").value); return; }
+  if(t.closest("#fScan")){ startScan(); return; }
+  const cb=t.closest("#cbSel [data-cb]"); if(cb){ fd.cb=cb.dataset.cb; fd.cbDraft=null; renderCombo(); return; }
+  if(t.closest("#cbAdd")){ const arr=fd.cbDraft.map(ci=>comboTpl(ci)).filter(Boolean).map(x=>mkItem(x,"b")); addItems(d,arr); fd.cbDraft=null; renderFood(); refreshTotals(); return; }
+  if(t.closest("#cbDel")){ diet.combos=diet.combos.filter(c=>c.id!==fd.cb); fd.cb=null; fd.cbDraft=null; saveDiet(); renderCombo(); return; }
+  const dl=t.closest("[data-del]"); if(dl){ const L=diet.log[d]; if(L&&Array.isArray(L.items)){ L.items=L.items.filter(x=>x.id!==dl.dataset.del); saveDiet(); } renderFood(); refreshTotals(); return; }
+  const sc=t.closest("[data-savecb]"); if(sc){ const m=sc.dataset.savecb, rows=dayItems(d).filter(x=>x.m===m); if(!rows.length) return;
+    const inp=document.querySelector('[data-cbname="'+m+'"]'), name=(inp&&inp.value.trim())||("我的"+MEAL_NAME[m]+" "+fmtShort(Date.now()));
+    diet.combos.push({id:newId("u"),name,items:rows.map(x=>{ const c=JSON.parse(JSON.stringify(x)); ["id","m","ts","kcal","p","c","f"].forEach(k=>delete c[k]); return {t:c}; })}); saveDiet();
+    fd.cb=diet.combos[diet.combos.length-1].id; fd.cbDraft=null; renderCombo(); return; }
+});
+$("tab-diet").addEventListener("input",e=>{
+  const t=e.target;
+  if(t.id==="fQ"){ fd.q=t.value; if(fd.pick){ fd.pick=null; const pk=$("fPick"); if(pk) pk.remove(); } renderFoodRes(); return; }
+  if(t.id==="fBar"){ fd.bar=t.value; return; }
+  if(t.id==="fG"&&fd.pick){ const q=num(t.value); if(q>0){ const x=calcItem(Object.assign(JSON.parse(JSON.stringify(fd.pick)),{q})); $("fCalc").innerHTML='<span class="num" style="font-size:22px">'+Math.round(x.kcal)+' kcal</span> · 蛋白 '+x.p+' g'+(x.c!=null?' · 碳水 '+x.c+' g':'')+(x.f!=null?' · 脂肪 '+x.f+' g':''); } return; }
+  if(t.dataset.cbq!=null&&fd.cbDraft){ const q=num(t.value), ci=fd.cbDraft[+t.dataset.cbq]; if(q>0&&ci){ if(ci.r||(ci.t&&ci.t.u==="份")){ if(ci.t) ci.t.q=q; else ci.q=q; } else if(ci.t) ci.t.q=q; else ci.g=q; delete ci.lab;
+      const x=calcItem(comboTpl(ci)), td=t.closest("tr")&&t.closest("tr").lastElementChild; if(td) td.innerHTML=Math.round(x.kcal)+' kcal<br>'+x.p+' g';
+      const tot=comboTotals(fd.cbDraft); $("cbTot").innerHTML='<span class="num" style="font-size:22px">'+tot.kcal+' kcal</span> · 蛋白 '+tot.p+' g'; } return; }
+});
+$("tab-diet").addEventListener("change",e=>{
+  const t=e.target;
+  if(t.dataset.edit){ const d=isoDay(Date.now()), x=dayItems(d).find(i=>i.id===t.dataset.edit), q=num(t.value); if(x&&q>0&&q<5000){ x.q=q; calcItem(x); saveDiet(); } renderFoodLog(); refreshTotals(); }
+});
+$("tab-diet").addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.id==="fBar"){ e.preventDefault(); barLookup(e.target.value); } });
+// 包装条码：Open Food Facts（开放资料 ODbL）。只用它给的「每 100 g 热量 kcal」与蛋白；缺任何一项就当资料不全，不自己换算
+async function offLookup(code){
+  code=String(code||"").replace(/\D/g,""); if(code.length<6||code.length>14) return {err:"bad"};
+  if(navigator.onLine===false) return {err:"offline"};
+  let r; try{ const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),10000);
+    r=await fetch("https://world.openfoodfacts.org/api/v2/product/"+code+".json?fields=product_name,product_name_zh,brands,nutriments,serving_quantity",{signal:ctl.signal}); clearTimeout(to);
+  }catch(e){ return {err:"net"}; }
+  let j=null; try{ j=await r.json(); }catch(e){}
+  if(!j||j.status===0||!j.product) return r.ok||r.status===404?{none:true,code}:{err:"net"};
+  const P=j.product, N=P.nutriments||{}, k=num(N["energy-kcal_100g"]), p=num(N.proteins_100g);
+  const name=(P.product_name_zh||P.product_name||"条码 "+code)+(P.brands?"（"+String(P.brands).split(",")[0]+"）":"");
+  if(k==null||p==null) return {partial:true,code,name};
+  return {tpl:{n:name,src:"off",ref:code,fid:null,u:"g",q:100,b:{k,p,c:num(N.carbohydrates_100g),f:num(N.fat_100g)},est:false,sg:num(P.serving_quantity)||null}};
+}
+async function barLookup(v){
+  fd.bar=v; fd.barMsg="查询中…"; renderFoodAdd();
+  const res=await offLookup(v);
+  if(res.tpl){ fd.barMsg="找到了："+res.tpl.n; fd.pick=res.tpl; }
+  else if(res.err==="bad") fd.barMsg="条码位数不对（一般是 8 或 13 位数字）。";
+  else if(res.err) fd.barMsg="连不上 Open Food Facts（可能没网）。可以照包装用「自建食物」先记。";
+  else if(res.partial) fd.barMsg="找到「"+res.name+"」，但资料不全（缺每 100 g 热量或蛋白）。照包装用「自建食物」记。";
+  else fd.barMsg="Open Food Facts 查不到这个条码。照包装用「自建食物」记。";
+  renderFoodAdd();
+}
+let scanStream=null, scanTimer=null;
+function stopScan(){ if(scanTimer){ clearInterval(scanTimer); scanTimer=null; } if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; } const v=$("fVid"); if(v) v.hidden=true; }
+async function startScan(){
+  try{ const det=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]}); scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+    const v=$("fVid"); v.srcObject=scanStream; v.hidden=false; await v.play();
+    scanTimer=setInterval(async()=>{ try{ const c=await det.detect(v); if(c&&c.length){ const code=c[0].rawValue; stopScan(); barLookup(code); } }catch(_){} },400);
+  }catch(e){ stopScan(); fd.barMsg="开不了相机，直接打条码数字就好。"; renderFoodAdd(); }
+}
+// 备份导入用：只收结构对的条目，数字照每100g／每份重算
+function cleanItems(a){ if(!Array.isArray(a)) return undefined; return a.filter(x=>x&&typeof x==="object"&&x.b&&isFinite(x.q)&&+x.q>0&&isFinite(x.b.k)&&isFinite(x.b.p)).map(x=>calcItem({id:String(x.id||newId("i")),m:MEAL_NAME[x.m]?x.m:"s",ts:+x.ts||0,n:String(x.n||"").slice(0,80),src:SRC_TAG[x.src]?x.src:"custom",ref:String(x.ref==null?"":x.ref),fid:x.fid||null,u:x.u==="份"?"份":"g",q:+x.q,b:{k:+x.b.k,p:+x.b.p,c:x.b.c==null?null:+x.b.c,f:x.b.f==null?null:+x.b.f},est:!!x.est})); }
+function foodImport(dd){
+  if(Array.isArray(dd.foods)) dd.foods.forEach(C=>{ if(C&&C.id&&C.zh&&C.b&&isFinite(C.b.k)&&isFinite(C.b.p)&&!diet.foods.some(x=>x.id===C.id)) diet.foods.push({id:String(C.id),zh:String(C.zh).slice(0,80),en:String(C.en||""),u:C.u==="份"?"份":"g",b:{k:+C.b.k,p:+C.b.p,c:C.b.c==null?null:+C.b.c,f:C.b.f==null?null:+C.b.f},sg:C.sg||null,src:C.src==="off"?"off":"custom",ref:C.ref||""}); });
+  if(Array.isArray(dd.combos)) dd.combos.forEach(c=>{ if(c&&c.id&&Array.isArray(c.items)&&!diet.combos.some(x=>x.id===c.id)) diet.combos.push({id:String(c.id).startsWith("u")?String(c.id):"u"+c.id,name:String(c.name||"我的组合").slice(0,60),items:c.items.filter(ci=>ci&&(ci.t||ci.f||ci.r))}); });
 }
 
 // ---------- Tabs ----------
@@ -3171,7 +3569,7 @@ function animCombos(){
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={vol:{blocksFor,rounds,armRounds,estMin,estSec,buildSteps:wk=>buildSteps(wk)},rest:{restDef,restOf,blockRest,REST_OPTS},smith:{plateCalc,plateText,SMITH_K},weekAvgInfo,suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS},cardio:{CD_PLANS,CD_BY,cdLen,cdSync,cdWhy,cdPick,cdSteps,cdWeekMins,cdMins,hrMax,said:()=>sayLog.slice()}}; // 给自检脚本用
+window.__fit={vol:{blocksFor,rounds,armRounds,estMin,estSec,buildSteps:wk=>buildSteps(wk)},rest:{restDef,restOf,blockRest,REST_OPTS},smith:{plateCalc,plateText,SMITH_K},weekAvgInfo,suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},food:{FOODS,RECIPES,COMBOS_BUILTIN,FOOD_UNVER,recipeVals,comboTotals,comboFor,comboTpl,calcItem,dayTot,foodSearch,offLookup},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS},cardio:{CD_PLANS,CD_BY,cdLen,cdSync,cdWhy,cdPick,cdSteps,cdWeekMins,cdMins,hrMax,said:()=>sayLog.slice()}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>

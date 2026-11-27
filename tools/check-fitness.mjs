@@ -44,6 +44,8 @@
  *      超级组取较长者、逐个改、恢复默认、旧 cfg.rest 迁移、总时间手算、跟练／Garmin／卡片倒数、备份来回）、体重卡（每周平均与变化手算、
  *      不足两周只给提示、目标线、备份来回、NHS 原文链接）。
  *  24. 页首总时长：没有记录时页首写「每次约 N 分钟」＝estMin（哑铃 31、健身房 40、有氧 20＝45、手臂＝45，手算），原始码与画面不准再有「每次约 30 分钟」等写死的总时长。
+ *  25. 食物库＋称重记录：四神粥／两个早餐组合合计手算（脚本独立重算）、星期几推荐、每个内建食物有来源与编号、中英搜寻、改克数／删除、
+ *      照片估算一笔、最近吃过、自建食物与我的组合、包装条码（Open Food Facts 拦截：找到／查不到／没网）、旧 log{p,kcal,win} 相容、备份来回（本机没有才补）。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
  *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
@@ -2407,6 +2409,157 @@ for (const [label, rows, want] of [
   check(!bad.test(fs.readFileSync(new globalThis.URL('../fitness/index.html', import.meta.url), 'utf8')) && !bad.test(fs.readFileSync(new globalThis.URL('../fitness/manifest.webmanifest', import.meta.url), 'utf8')),
     '原始码（index.html 与 manifest）没有写死的总时长字样');
   check(errors.length === 0, `页首总时长：没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+
+// ---- 25. 食物库＋称重记录（2026-11-27 用户：在家称重、外食拍照估算；类似 MyFitnessPal 但资料自己查证） ----
+// 手算 fixture（每 100 g 的值抄自 .claude/notes/fitness-fatloss-research.md「食物库数值（2026-11-27 查证）」，脚本独立重算，不读 App 的算式）：
+//   四神小米粥干料一份：小米 20×378（USDA 169702）＋白米 5×365（168877）＋淮山 8×351（台湾 B0100101 修正热量）＋莲子 8×332（USDA 170149）
+//     ＋芡实 8×336（C1800101）＋茯苓 8×162（G2100101）＋薏仁 5×375（A1000101），÷100 ＝ 207.08 kcal；
+//     蛋白 20×11.02＋5×7.13＋8×5.3＋8×15.41＋8×9.9＋8×1.0＋5×14.1，÷100 ＝ 5.7943 g
+//   二四六：粥 1 份＋鸡蛋 100 g（2 颗大号，USDA 172186：143／12.51）＋橄榄油 9 g（10 ml，171413：884／0）＋核桃 16 g（4 颗，170187：654／15.23）
+//     每项取到 0.1 再加：207.1＋143＋79.6＋104.6＝534.3 → 534 kcal；5.8＋12.5＋0＋2.4＝20.7 g
+//   一三五日：地瓜 150 g（168484：76／1.37）＋鸡蛋 100 g＋核桃 16 g：114＋143＋104.6＝361.6 → 362 kcal；2.1＋12.5＋2.4＝17.0 g
+// 还守：星期几推荐哪一组（App 的安排）、旧 log{p,kcal,win} 照常显示、备份来回（本机没有才补）、每个内建食物都有来源与编号、
+//   中英搜寻、照片估算一笔、改克数／删除、最近吃过、包装条码（Open Food Facts 拦截：找到／查不到／没网）。
+{
+  const SRC = { // 每 100 g：[kcal, 蛋白]
+    millet: [378, 11.02], riceraw: [365, 7.13], huaishan: [351, 5.3], lotusseed: [332, 15.41], qianshi: [336, 9.9], fuling: [162, 1.0], yiren: [375, 14.1],
+    egg: [143, 12.51], olive: [884, 0], walnut: [654, 15.23], sweetpotato: [76, 1.37], chkbreast: [165, 31.02],
+  };
+  const SISHEN = [['millet', 20], ['riceraw', 5], ['huaishan', 8], ['lotusseed', 8], ['qianshi', 8], ['fuling', 8], ['yiren', 5]];
+  const sumOf = (parts, i) => parts.reduce((a, [id, g]) => a + g * SRC[id][i] / 100, 0);
+  const sishenK = sumOf(SISHEN, 0), sishenP = sumOf(SISHEN, 1);
+  const r1 = x => Math.round(x * 10) / 10;
+  const combo = rows => { let k = 0, p = 0; rows.forEach(([kk, pp]) => { k += r1(kk); p += r1(pp); }); return { kcal: Math.round(k), p: r1(p) }; };
+  const item = (id, g) => [g * SRC[id][0] / 100, g * SRC[id][1] / 100];
+  const W246 = combo([[sishenK, sishenP], item('egg', 100), item('olive', 9), item('walnut', 16)]);
+  const W135 = combo([item('sweetpotato', 150), item('egg', 100), item('walnut', 16)]);
+  check(Math.abs(sishenK - 207.08) < 1e-9 && Math.abs(sishenP - 5.7943) < 1e-9 && W246.kcal === 534 && W246.p === 20.7 && W135.kcal === 362 && W135.p === 17,
+    `食物库手算底数自洽：四神粥 207.08 kcal／5.7943 g、二四六 534／20.7、一三五日 362／17（实得 ${JSON.stringify([sishenK, sishenP, W246, W135])}）`);
+  const { ctx, page, errors } = await openWith([]);
+  try {
+    const F = await page.evaluate(() => { const f = window.__fit.food; return { foods: f.FOODS, unver: f.FOOD_UNVER, sishen: f.recipeVals('sishen'), b246: f.comboTotals(f.COMBOS_BUILTIN.find(c => c.id === 'b246').items), b135: f.comboTotals(f.COMBOS_BUILTIN.find(c => c.id === 'b135').items), days: [0, 1, 2, 3, 4, 5, 6].map(d => f.comboFor(d).id) }; });
+    const by = Object.fromEntries(F.foods.map(x => [x.id, x]));
+    const bad = Object.entries(SRC).filter(([id, [k, p]]) => !by[id] || by[id].k !== k || by[id].p !== p).map(([id]) => id);
+    check(bad.length === 0, `食物库：抽查的 ${Object.keys(SRC).length} 种食物每 100 g 数值跟研究笔记一致（不一致：${bad.join('、') || '无'}）`);
+    check(Math.abs(F.sishen.k - sishenK) < 1e-9 && Math.abs(F.sishen.p - sishenP) < 1e-9, `四神小米粥一份＝各食材 克数×每100g÷100 的和：${r1(F.sishen.k)} kcal／${F.sishen.p.toFixed(4)} g（手算 207.08／5.7943）`);
+    check(F.b246.kcal === W246.kcal && F.b246.p === W246.p, `二四六早餐合计 ${F.b246.kcal} kcal／${F.b246.p} g ＝ 手算 534／20.7`);
+    check(F.b135.kcal === W135.kcal && F.b135.p === W135.p, `一三五日早餐合计 ${F.b135.kcal} kcal／${F.b135.p} g ＝ 手算 362／17`);
+    check(JSON.stringify(F.days) === JSON.stringify(['b135', 'b135', 'b246', 'b135', 'b246', 'b135', 'b246']), `星期几推荐：日一三五→蒸地瓜、二四六→四神粥（实得 ${F.days}）`);
+    // 每个内建食物都有来源；USDA 的有 FDC ID（纯数字），台湾食药署的有整合编号；估算值一定有说明
+    const noSrc = F.foods.filter(x => !['usda', 'fndds', 'tw'].includes(x.src) || !x.desc
+      || ((x.src === 'usda' || x.src === 'fndds') && !/^\d{5,8}$/.test(x.ref)) || (x.src === 'tw' && !/^[A-Z]\d{7}$/.test(x.ref))
+      || (x.est && !x.note) || !(x.k >= 0 && x.p >= 0) || !x.zh || !x.en);
+    check(noSrc.length === 0, `食物库：每种都有来源与编号（USDA→FDC ID、台湾→整合编号）、估算值附说明（有问题：${noSrc.map(x => x.id).join('、') || '无'}）`);
+    check(F.foods.length >= 100 && F.foods.filter(x => !x.est && x.src !== 'tw').every(x => /^\d+$/.test(x.ref)), `食物库 ${F.foods.length} 种（≥100），非估算的 USDA 食物都有 FDC ID`);
+    check(F.foods.filter(x => x.est).every(x => /估算/.test(x.zh)) && F.unver.length >= 1, '估算值的名称都写「估算」；查不到的（火龙果等）列为未查证、不给数字');
+    // 页面：今天 2026-09-30 星期三 → 推荐一三五日
+    await page.click('#dietCard [data-open-diet]');
+    const pressed = await page.getAttribute('#cbSel [aria-pressed="true"]', 'data-cb');
+    check(pressed === 'b135' && /一三五日早餐：蒸地瓜（今天）/.test(await page.textContent('#cbSel')) && /App 的安排/.test(await page.textContent('#dCombo')), `星期三打开饮食页 → 预选「一三五日：蒸地瓜」并标（今天）、写 App 的安排（实得 ${pressed}）`);
+    check(/362 kcal/.test(await page.textContent('#cbTot')) && /17 g/.test(await page.textContent('#cbTot')), `常吃早餐卡片显示 362 kcal · 蛋白 17 g（实得 ${await page.textContent('#cbTot')}）`);
+    await page.click('#cbSel [data-cb="b246"]');
+    check(/534 kcal/.test(await page.textContent('#cbTot')) && /20\.7 g/.test(await page.textContent('#cbTot')), `切到二四六 → 534 kcal · 蛋白 20.7 g（实得 ${await page.textContent('#cbTot')}）`);
+    // 加入前改克数：核桃 16 → 20 g：534.3−104.6＋130.8＝560.5 → 561（四舍五入到整数后的显示）；蛋白 20.7−2.4＋3.0＝21.3
+    await page.fill('#cbTab [data-cbq="3"]', '20');
+    check(/561 kcal/.test(await page.textContent('#cbTot')) && /21\.3 g/.test(await page.textContent('#cbTot')), `加入前把核桃改 20 g → 561 kcal · 21.3 g（实得 ${await page.textContent('#cbTot')}）`);
+    await page.click('#cbSel [data-cb="b135"]'); await page.click('#cbAdd');
+    const log1 = await page.textContent('#dLog');
+    check((await page.locator('#dLog [data-item]').count()) === 3 && /早餐/.test(log1) && /362 kcal · 蛋白 17 g/.test(log1), `加入一三五日早餐 → 今天 3 笔、早餐小计 362 kcal · 17 g（实得 ${log1.slice(0, 80)}）`);
+    check(/17 g/.test(await page.textContent('#dToday')) && /362 kcal/.test(await page.textContent('#dToday')), '「今天」卡片合计跟着变：蛋白 17 g、362 kcal');
+    // 搜寻：中英都行；称 150 g 鸡胸：165×1.5＝247.5 → 248 kcal、31.02×1.5＝46.53 → 46.5 g
+    await page.fill('#fQ', 'chicken');
+    check(/鸡胸肉/.test(await page.textContent('#fRes')), '英文搜 chicken 找得到鸡胸肉');
+    await page.fill('#fQ', '粿条');
+    check(/粿条／河粉／米粉/.test(await page.textContent('#fRes')), '中文搜「粿条」找得到（用 USDA 米制面条近似）');
+    await page.fill('#fQ', '火龙果');
+    check(/未查证/.test(await page.textContent('#fRes')) && (await page.locator('#fRes [data-pick]').count()) === 0, '搜「火龙果」→ 写未查证、不给可选的数字');
+    await page.fill('#fQ', '鸡胸'); await page.click('#fRes [data-pick="food:chkbreast"]');
+    await page.click('#fMeal [data-v="l"]').catch(() => {});
+    check(/USDA FoodData Central 171477/.test(await page.textContent('#fPick')), '选了食物会显示 USDA 来源与 FDC ID');
+    await page.fill('#fG', '150');
+    check(/248 kcal/.test(await page.textContent('#fCalc')) && /46\.5 g/.test(await page.textContent('#fCalc')), `鸡胸 150 g → 248 kcal、46.5 g（实得 ${await page.textContent('#fCalc')}）`);
+    await page.click('#fAddBtn');
+    check(/午餐/.test(await page.textContent('#dLog')) && /248 kcal · 蛋白 46\.5 g/.test(await page.textContent('#dLog')), '加到午餐，午餐小计 248 kcal · 46.5 g');
+    // 改克数：鸡胸 150 → 100 g → 165 kcal、31 g；再删掉
+    const chkId = await page.evaluate(() => window.__fit.diet.get().log['2026-09-30'].items.find(x => x.fid === 'chkbreast').id);
+    await page.fill(`[data-edit="${chkId}"]`, '100'); await page.dispatchEvent(`[data-edit="${chkId}"]`, 'change');
+    check(/165 kcal · 蛋白 31 g/.test(await page.textContent('#dLog')), '午餐鸡胸改成 100 g → 165 kcal · 31 g');
+    await page.click(`[data-del="${chkId}"]`);
+    check((await page.locator('#dLog [data-item]').count()) === 3, '删掉鸡胸 → 回到 3 笔');
+    // 手动一笔（照片估算）
+    await page.click('#fMode [data-v="photo"]'); await page.click('#fMeal [data-v="d"]');
+    await page.fill('#fmN', '健康餐便当'); await page.fill('#fmK', '550'); await page.fill('#fmP', '35'); await page.click('#fmAdd');
+    const lg = await page.textContent('#dLog');
+    check(/晚餐/.test(lg) && /健康餐便当/.test(lg) && /照片估算/.test(lg) && /550 kcal/.test(lg), '手动一笔：记到晚餐、标「照片估算」');
+    check(/912 kcal/.test(await page.textContent('#dToday')) && /52 g/.test(await page.textContent('#dToday')), `今天合计 362＋550＝912 kcal、蛋白 17＋35＝52 g（实得 ${(await page.textContent('#dToday')).slice(0, 60)}）`);
+    // 最近吃过：一键重复（搜寻框空着时出现）
+    await page.click('#fMode [data-v="search"]'); await page.click('#fMeal [data-v="s"]');
+    const nBefore = await page.locator('#dLog [data-item]').count();
+    await page.click('#fRecent [data-again="0"]');
+    check((await page.locator('#dLog [data-item]').count()) === nBefore + 1 && /点心/.test(await page.textContent('#dLog')), '最近吃过：按一下就照同样的量再记一笔（记到点心）');
+    // 自建食物＋存成组合
+    await page.click('#fMode [data-v="custom"]');
+    await page.fill('#fcN', '某牌高蛋白优格'); await page.fill('#fcK', '80'); await page.fill('#fcP', '10'); await page.click('#fcSave');
+    await page.fill('#fG', '200');
+    check(/160 kcal/.test(await page.textContent('#fCalc')) && /20 g/.test(await page.textContent('#fCalc')), '自建食物（每 100 g 80 kcal／10 g）称 200 g → 160 kcal、20 g');
+    await page.click('#fAddBtn');
+    await page.fill('[data-cbname="b"]', '我的星期三早餐'); await page.click('[data-savecb="b"]');
+    check(/我的星期三早餐/.test(await page.textContent('#cbSel')), '早餐存成我的组合，出现在常吃早餐里');
+    // 包装条码（Open Food Facts，拦截假资料）：每 100 g 400 kcal／10 g，称 50 g → 200 kcal／5 g
+    await page.route('https://world.openfoodfacts.org/**', r => {
+      const u = r.request().url();
+      if (u.includes('/1234567890128')) return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: 1, product: { product_name: '测试燕麦棒', nutriments: { 'energy-kcal_100g': 400, proteins_100g: 10, carbohydrates_100g: 60, fat_100g: 12 } } }) });
+      if (u.includes('/2000000000008')) return r.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ status: 0, status_verbose: 'product not found' }) });
+      return r.abort();
+    });
+    await page.click('#fMode [data-v="bar"]');
+    check(/Open Food Facts/.test(await page.textContent('#dAdd')) && /ODbL/.test(await page.textContent('#dAdd')), '条码查询标注 Open Food Facts 与 ODbL');
+    await page.fill('#fBar', '1234567890128'); await page.click('#fBarGo');
+    await page.waitForSelector('#fPick');
+    await page.fill('#fG', '50');
+    check(/200 kcal/.test(await page.textContent('#fCalc')) && /5 g/.test(await page.textContent('#fCalc')) && /条码/.test(await page.textContent('#fPick')), '条码找到 → 50 g 算出 200 kcal、5 g，标「条码」');
+    await page.click('#fCancel');
+    await page.fill('#fBar', '2000000000008'); await page.click('#fBarGo');
+    await page.waitForFunction(() => /查不到/.test(document.getElementById('fBarMsg').textContent));
+    check(/自建食物/.test(await page.textContent('#fBarMsg')), '条码查不到 → 引导用「自建食物」');
+    await page.fill('#fBar', '3000000000005'); await page.click('#fBarGo');
+    await page.waitForFunction(() => /连不上/.test(document.getElementById('fBarMsg').textContent));
+    check(true, '没网／连不上 → 显示「连不上」不报错');
+    // 备份来回
+    await page.click('#dietBack'); await page.click('nav.tabs [data-tab="more"]');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+    const file = os.tmpdir() + '/fit-food-backup.json'; fs.copyFileSync(await dl.path(), file);
+    const bk = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const its = bk.diet.log['2026-09-30'].items;
+    check(Array.isArray(its) && its.length === 6 && bk.diet.foods.length === 1 && bk.diet.combos.length === 1, `备份带着今天的条目（${its && its.length} 笔）、我的食物、我的组合`);
+    // 导入到另一台：本机 9/29 有旧记录、9/30 也有自己的记录 → 9/29、9/30 都不被覆盖；9/28 没有才补
+    const b2 = await openWith([]);
+    await b2.page.evaluate(() => localStorage.setItem('fit.diet', JSON.stringify({ log: { '2026-09-29': { p: 90, kcal: 1600, win: true }, '2026-09-30': { p: 40, kcal: null, win: false } } })));
+    const bk2 = JSON.parse(JSON.stringify(bk)); bk2.diet.log['2026-09-28'] = { p: 0, kcal: null, win: false, items: its.slice(0, 3) }; bk2.diet.log['2026-09-29'] = { p: 1, kcal: 1, win: false };
+    const file2 = os.tmpdir() + '/fit-food-backup2.json'; fs.writeFileSync(file2, JSON.stringify(bk2));
+    await b2.page.reload(); await b2.page.waitForSelector('#workout .ex');
+    await b2.page.click('#dietCard [data-open-diet]');
+    const wk0 = await b2.page.textContent('#dWeek');
+    check(/90 g/.test(wk0) && /1600/.test(wk0), `旧记录相容：只有 {p,kcal,win} 的 9/29 在每周表照常显示 90 g、1600（实得 ${wk0.slice(0, 120)}）`);
+    await b2.page.click('#dietBack'); await b2.page.click('nav.tabs [data-tab="more"]');
+    await b2.page.setInputFiles('#bkFile', file2);
+    await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    const d2 = await b2.page.evaluate(() => JSON.parse(localStorage.getItem('fit.diet')));
+    check(d2.log['2026-09-29'].p === 90 && d2.log['2026-09-29'].kcal === 1600 && d2.log['2026-09-30'].p === 40 && !d2.log['2026-09-30'].items, '导入：本机已有的日子（9/29 旧记录、9/30）不被备份覆盖');
+    check(d2.log['2026-09-28'] && d2.log['2026-09-28'].items.length === 3 && Math.round(d2.log['2026-09-28'].items.reduce((a, x) => a + x.kcal, 0)) === 362, '导入：本机没有的 9/28 补进来，条目与热量（362 kcal）都对');
+    check(d2.foods.length === 1 && d2.combos.length === 1 && d2.foods[0].zh === '某牌高蛋白优格', '导入：我的食物、我的组合补进来');
+    const b3 = await openWith([]);
+    await b3.page.click('nav.tabs [data-tab="more"]'); await b3.page.setInputFiles('#bkFile', file);
+    await b3.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    await b3.page.click('nav.tabs [data-tab="train"]'); await b3.page.click('#dietCard [data-open-diet]');
+    check((await b3.page.locator('#dLog [data-item]').count()) === 6 && /照片估算/.test(await b3.page.textContent('#dLog')), '导入到空白手机：今天 6 笔条目原样出现（含照片估算）');
+    await b2.ctx.close(); await b3.ctx.close();
+  } catch (e) {
+    check(false, '第 25 段（食物库）跑不下去：' + String(e).slice(0, 200));
+  }
+  check(errors.length === 0, `食物库没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
 }
 

@@ -216,6 +216,18 @@
   换替代动作也会重画 picker）。有记录时照旧写第几周、不写时长。meta description 与 manifest 不写分钟数（改成「时长按你的设置显示在开始按钮下」）；
   使用说明 `#helpSsMin`／`#helpDbMin`／`#helpGymMin` 的 HTML 初值改成「…」（`renderCdLen()` 现算覆盖），别再填数字。全新用户：哑铃 A 31、健身房 A 40（有氧 20＝45、加手臂＝45）。
   自检：check-fitness 第 24 段（含禁用词：`每次约 30 分钟`／`30 分钟全身`／`28–30`／`37–39`，画面与原始码都查）。
+- **食物库＋称重记录（2026-11-27，用户：在家称重、外食拍照给 Claude 估算再填）**：数值正本 `.claude/notes/fitness-fatloss-research.md` 最后一节「食物库数值（2026-11-27 查证）」（全表＋FDC ID／台湾整合编号＋CI run ID）。
+  - 资料：`FOOD_RAW`（160 种，每 100 g 的 kcal／蛋白／碳水／脂肪＋来源 `usda`／`fndds`／`tw`＋编号＋原始描述＋份量＋备注＋是否估算）；`FOOD_UNVER`（查不到的，搜到只写「未查证」、不给数字）；
+    `RECIPES.sishen`（四神小米粥干料 62 g，一份＝各食材克数×每100g÷100 的和）；`COMBOS_BUILTIN`（二四六＝粥＋蛋 100 g＋橄榄油 9 g＋核桃 16 g；一三五日＝地瓜 150 g＋蛋＋核桃，`comboFor(星期)` 推荐，App 的安排）。
+  - `fit.diet` 多三样（都进备份）：`log[日].items[]`＝`{id,m:b/l/d/s,n,src,ref,fid,u:"g"|"份",q,b:{k,p,c,f}（每100g或每份）,est,kcal,p,c,f}`（kcal 等由 `calcItem` 从 q×b 算，取到 0.1）；
+    `foods[]` 我的食物（自建／条码存的）；`combos[]` 我的组合（`items:[{t:条目模板}]`，内建的是 `{f,g}`／`{r,q}`）。
+    **旧记录 `{p,kcal,win}` 不动**：`dayTot(日)`＝快速按钮的 `L.p`＋热量栏 `L.kcal`＋所有条目；没有条目的日子＝原数字。`#dietCard`、`#dToday`、每周表、蛋白达标天数都改用 `dayTot`。
+    导入：日期本机没有才整天补（含条目，`cleanItems` 重算）；我的食物／组合按 id 本机没有才补（`foodImport`）。
+  - 画面（饮食页 `#dToday` 下面）：`#dAdd`「记一笔」（餐别 `#fMeal`、方式 `#fMode`：搜食物 `#fQ`（中英文、别名，结果 `#fRes`，空着时是「最近吃过」`#fRecent` 一键重复）／包装条码 `#fBar`／手动一笔照片估算 `#fmN` `#fmK` `#fmP`／自建食物 `#fc*`；
+    选中后 `#fPick` 填克数 `#fG`、份量快捷钮、即时 `#fCalc`、来源行）；`#dCombo`「常吃早餐」（`#cbSel`、加入前改量 `data-cbq`、`#cbAdd` 一律加到早餐）；`#dLog`「今天吃了什么」（按餐、`data-edit` 改量、`data-del` 删、`data-savecb` 存成组合）。
+    **搜寻框只重画结果区（`renderFoodRes`）**，不能整块重画——会打断中文输入法。组合改量只改那一格，不要在 change 时重画整块（会吃掉同时按下的切换钮，自检抓过）。
+  - 条码：Open Food Facts v2（ODbL，页面有标注），只用 `energy-kcal_100g`＋`proteins_100g`，缺就叫用户自建；10 秒逾时／没网显示「连不上」；有 `BarcodeDetector` 才出现「用相机扫」。
+  - 自检：check-fitness 第 25 段（手算写在段首注释；OFF 用 `page.route` 拦）。
 - `sw.js` — 离线缓存。**改 index.html 或 manifest 必须升 `CACHE` 版本号**（check-sw-version 会拦）。
 - `manifest.webmanifest`、`icon*.png`、`icon.svg`。
 
