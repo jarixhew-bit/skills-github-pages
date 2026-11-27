@@ -1,9 +1,1 @@
-^Rice, fried
-^Fried rice
-noodle soup
-^Rice noodles
-^Chow mein
-^Chicken fried rice
-^Pho
-^Beef noodle soup
-^Rice, white, cooked
+x

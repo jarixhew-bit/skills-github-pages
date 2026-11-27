@@ -25,13 +25,13 @@ def fdc_zip(url,label):
     ndb={r["fdc_id"]:r.get("NDB_number","") for r in rd("sr_legacy_food.csv")}
     print("  foods",len(food))
     for p in PAT:
-        rx=re.compile(p,re.I); hits=[(k,v) for k,v in food.items() if rx.search(v)][:10]
+        rx=re.compile(p,re.I); hits=[(k,v) for k,v in food.items() if rx.search(v)][:8]
         print(f"--- /{p}/ hits={len(hits)}")
         for k,v in hits:
-            print(f"  {k} ndb={ndb.get(k,'')} | {v} | {json.dumps(nut.get(k,{}))} | portions: {' ; '.join(por.get(k,[])[:6])}")
+            print(f"  {k} ndb={ndb.get(k,'')} | {v} | {json.dumps(nut.get(k,{}))} | portions: {' ; '.join(por.get(k,[])[:4])}")
 fdc_zip("https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_csv_2018-04.zip","SR Legacy")
 # 找 FNDDS（survey）下载连结
-try:
+if 0:
     raw,_=get("https://fdc.nal.usda.gov/download-datasets")
     links=sorted(set(re.findall(rb'fdc-datasets/[A-Za-z0-9_\-\.]+\.zip',raw)))
     print("ZIP LINKS:",[l.decode() for l in links])
@@ -39,7 +39,6 @@ try:
     if sv:
         PAT[:]= [l.strip() for l in open(".tmpfood/patterns_survey.txt",encoding="utf8") if l.strip()]
         fdc_zip("https://fdc.nal.usda.gov/"+sorted(sv)[-1],"FNDDS")
-except Exception as e: print("download page FAIL",e)
 # 台湾食药署 食品营养成分资料库（开放资料 InfoId=20）
 TW=["小米","白米","精白米","山藥","淮山","芡實","茯苓","薏仁","薏苡","蓮子","地瓜","甘藷","核桃","雞蛋","橄欖油","炒飯","粿條"]
 for lt in ("3","2","1"):
@@ -57,6 +56,9 @@ for lt in ("3","2","1"):
     except Exception as e: print("  parse FAIL",e)
     if not data: print("  not json; head:",raw[:300]); continue
     if isinstance(data,dict): data=next((v for v in data.values() if isinstance(v,list)),[])
+    print("  type0",type(data[0]),str(data[0])[:600]); print("  type1",str(data[1])[:600])
+    if isinstance(data[0],list):
+        hdr=data[0]; data=[dict(zip(hdr,r)) for r in data[1:]]
     print("  rows",len(data),"keys",list(data[0].keys()))
     keyname=[k for k in data[0] if "樣品名稱" in k][0]
     item=[k for k in data[0] if k=="分析項"][0] if "分析項" in data[0] else None
@@ -71,3 +73,4 @@ for lt in ("3","2","1"):
             print("  ",json.dumps({k:r[k] for k in r if k in (keyname,"整合編號","俗名","樣品英文名稱","內容物描述","每單位重",item)+tuple(val)},ensure_ascii=False))
     break
 print("DONE")
+# run2

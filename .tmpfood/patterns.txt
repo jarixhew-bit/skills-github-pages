@@ -1,64 +1,76 @@
-^Millet, (raw|cooked)
-^Rice, white, long-grain, regular, (raw|cooked), enriched
-^Rice, white, short-grain, (raw|cooked)
-^Rice, brown, long-grain, (raw|cooked)
-^Lotus seeds
-^Yam, (raw|cooked)
-^Mountain yam
-job|gorgon|euryale|poria|coix|barley, pearled, (raw|cooked)
-^Egg, whole, (raw, fresh|cooked, hard-boiled|cooked, poached)
-^Oil, olive, salad or cooking
-^Nuts, walnuts, english
-^Sweet potato, (raw|cooked)
-^Chicken, broilers or fryers, breast, meat only, (cooked, roasted|raw)
-^Chicken, broilers or fryers, thigh, meat only, cooked, roasted
-^Beef, ground, 85% lean meat / 15% fat, patty, cooked, broiled
-^Beef, ground, 90% lean
-^Pork, fresh, loin, tenderloin, separable lean only, cooked, roasted
-^Pork, fresh, belly, raw
-^Fish, salmon, atlantic, farmed, (raw|cooked, dry heat)
-^Fish, tilapia, (raw|cooked, dry heat)
-^Fish, cod, Atlantic, cooked, dry heat
-^Crustaceans, shrimp, (raw|cooked)
-^Tofu, (raw, firm|raw, regular|firm, prepared with calcium sulfate)
-^Milk, (whole, 3.25%|reduced fat, fluid, 2%|lowfat, fluid, 1%|nonfat)
-^Soymilk
-^Cereals, oats, regular and quick, not fortified, dry
-^Cereals, oats, regular and quick and instant, unenriched, cooked with water
-^Bananas, raw
-^Apples, raw, with skin
-^Oranges, raw, all commercial
-^Papayas, raw
-^Mangos, raw
-^Grapes, red or green
-^Watermelon, raw
-^Avocados, raw, all commercial
-^Broccoli, (raw|cooked, boiled, drained, without salt)
-^Spinach, (raw|cooked, boiled, drained, without salt)
-^Cabbage, chinese \(pak-choi\), (raw|cooked)
-^Cabbage, raw
-^Carrots, raw
-^Tomatoes, red, ripe, raw, year round average
-^Cucumber, with peel, raw
-^Potatoes, boiled, cooked without skin, flesh, without salt
-^Noodles, egg, cooked, enriched
-^Pasta, cooked, enriched, without added salt
-^Noodles, chinese, (chow mein|cellophane)
-^Rice noodles, (cooked|dry)
-^Bread, white, commercially prepared
-^Bread, whole-wheat, commercially prepared
-^Yogurt, (plain, whole milk|Greek, plain, nonfat|Greek, plain, whole milk)
-^Peanuts, all types, (raw|dry-roasted, without salt)
-^Nuts, almonds$|^Nuts, almonds, dry roasted, without salt
-^Soybeans, green, cooked
-^Mushrooms, white, raw
-^Onions, raw
-^Corn, sweet, yellow, (raw|cooked, boiled, drained, without salt)
-^Pumpkin, raw
-^Lettuce, cos or romaine, raw
-^Lentils, mature seeds, cooked, boiled, without salt
-^Chickpeas \(garbanzo beans, bengal gram\), mature seeds, cooked
-^Cheese, cheddar$|^Cheese, cheddar \(
-^Water spinach
-^Bean sprouts|^Mung beans, mature seeds, sprouted, raw
-^Chicken, broilers or fryers, drumstick, meat only, cooked, roasted
+lotus
+^Taro, cooked
+^Pumpkin, cooked, boiled, drained, without salt
+^Chicken, broilers or fryers, (dark meat, )?drumstick, meat only, cooked
+^Chicken, broilers or fryers, wing, meat only, cooked, roasted
+^Pork, fresh, ground, cooked
+^Pork, fresh, belly
+^Beef, shank crosscuts, separable lean only, cooked
+^Lamb, domestic, leg, whole \(shank and sirloin\), separable lean only, cooked, roasted
+^Mollusks, squid, mixed species, (raw|cooked)
+^Fish, mackerel, (Pacific|spanish|king), cooked
+^Fish, snapper, mixed species, cooked
+^Fish, grouper, mixed species, cooked
+^Fish, catfish, channel, farmed, cooked
+^Fish, tuna, light, canned in water, drained
+^Fish, pompano, florida, cooked
+^Crustaceans, crab, blue, cooked
+^Tofu
+^Soymilk, original and vanilla, unfortified
+^Edamame
+steam
+^Bread, wheat
+^Rolls, dinner, plain
+^Cabbage, chinese \(pe-tsai\), (raw|cooked)
+^Broccoli, chinese, cooked
+^Swamp cabbage
+^Peppers, sweet, green, raw
+^Mushrooms, (shiitake, cooked|enoki|oyster, raw|white, cooked)
+^Eggplant, (raw|cooked)
+^Yardlong bean, (raw|cooked)
+^Balsam-pear \(bitter gourd\), pods, cooked
+^Okra, cooked
+^Gourd, white-flowered \(calabash\), cooked
+^Kale, raw
+pitaya|dragon
+^Guavas, common, raw
+^Pineapple, raw, all varieties
+^Durian, raw
+^Rambutan
+^Longans, raw
+^Litchis, raw
+^Jackfruit, raw
+^Pears, raw
+^Kiwifruit, green, raw
+^Strawberries, raw
+^Nuts, cashew nuts, (raw|dry roasted, without salt)
+^Seeds, (sesame seeds, whole, dried|chia seeds, dried|flaxseed|pumpkin and squash seed kernels, dried|sunflower seed kernels, dried)
+^Nuts, coconut milk, raw
+^Oil, (peanut, salad or cooking|canola|sesame, salad or cooking|coconut)
+^Butter, salted
+^Soy sauce made from soy and wheat \(shoyu\)$
+^Sauce, (oyster, ready-to-serve|fish, ready-to-serve)
+^Sugars, (granulated|brown)$
+^Honey$
+^Cheese, mozzarella, part skim milk$
+^Beverages, coffee, brewed, prepared with tap water$
+^Corn, sweet, yellow, cooked, boiled, drained, without salt
+^Rice, white, glutinous, cooked
+^Noodles, egg, cooked, enriched, without added salt
+^Noodles, japanese, (soba|udon)
+^Spaghetti, whole-wheat, cooked
+^Beans, (kidney, red, mature seeds, cooked, boiled, without salt|black, mature seeds, cooked, boiled, without salt)
+^Mung beans, mature seeds, cooked
+^Whey
+^Beef, round, top round, separable lean only, trimmed to 0" fat, select, cooked, broiled
+^Beef, flank, steak, separable lean only, trimmed to 0" fat, choice, cooked, broiled
+^Duck, domesticated, meat only, cooked, roasted
+^Egg, white, raw, fresh
+^Sausage, chinese|^Pork, cured, bacon, cooked
+^Potatoes, baked, flesh and skin, without salt
+^Celery, raw
+^Beans, snap, green, cooked, boiled, drained, without salt
+^Peas, green, cooked, boiled, drained, without salt
+^Cauliflower, (raw|cooked, boiled, drained, without salt)
+^Lettuce, iceberg
+^Seaweed, (wakame|kelp|laver)
