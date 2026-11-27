@@ -3321,7 +3321,7 @@ const COMBOS_BUILTIN=[
   {id:"b246",name:"二四六早餐：四神小米粥",days:[2,4,6],items:[{r:"sishen",q:1},{f:"egg",g:100,lab:"2 颗大号"},{f:"olive",g:9,lab:"10 ml"},{f:"walnut",g:16,lab:"4 颗"}]},
   {id:"b135",name:"一三五日早餐：蒸地瓜",days:[1,3,5,0],items:[{f:"sweetpotato",g:150},{f:"egg",g:100,lab:"2 颗大号"},{f:"walnut",g:16,lab:"4 颗"}]}];
 const MEALS=[["b","早餐"],["l","午餐"],["d","晚餐"],["s","点心"]], MEAL_NAME={b:"早餐",l:"午餐",d:"晚餐",s:"点心"};
-const SRC_TAG={usda:"USDA",fndds:"USDA 饮食调查",tw:"台湾食药署",recipe:"组合计算",custom:"自建",off:"条码",photo:"照片估算"};
+const SRC_TAG={usda:"USDA",fndds:"USDA 饮食调查",tw:"台湾食药署",recipe:"组合计算",custom:"自建",off:"条码",photo:"照片估算",aiphoto:"照片估算（AI）"};
 const FDC_URL=id=>"https://fdc.nal.usda.gov/food-details/"+id+"/nutrients", TW_URL="https://data.gov.tw/dataset/8543", OFF_URL="https://world.openfoodfacts.org/";
 ["foods","combos"].forEach(k=>{ if(!Array.isArray(diet[k])) diet[k]=[]; });
 const n1=x=>Math.round((+x||0)*10)/10;
@@ -3363,16 +3363,79 @@ function srcLine(t){
   if(t.src==="recipe"){ const R=RECIPES[t.fid]; return '每份＝各食材 克数×每100g÷100 的和：'+esc(R.note)+'（各食材来源见食物库）'; }
   if(t.src==="off") return '来源：<a href="'+OFF_URL+'" target="_blank" rel="noopener">Open Food Facts</a>（开放资料 ODbL，由大家照包装填写，可能有错）条码 '+esc(t.ref);
   if(t.src==="photo") return '照片估算：你自己填的数字';
+  if(t.src==="aiphoto") return '照片估算（AI）：AI 看照片估的，记入前你看过、可改过；误差可能有两三成';
   return '自建食物：你自己填的数字';
 }
-const tagOf=t=>'<span class="pill">'+esc(SRC_TAG[t.src]||t.src)+'</span>'+(t.est&&t.src!=="photo"?' <span class="pill">估算值</span>':'');
+const tagOf=t=>'<span class="pill">'+esc(SRC_TAG[t.src]||t.src)+'</span>'+(t.est&&t.src!=="photo"&&t.src!=="aiphoto"?' <span class="pill">估算值</span>':'');
 const qtyTxt=t=>t.u==="g"?r1(t.q)+' g':r1(t.q)+' 份';
 function pickTpl(){ const P=fd.pick; if(!P) return null; return P; }
+// ---- 拍照估算（AI）：照片压缩后送 butler-bot 的 /food-photo，回来的数字要你看过、按「记入」才写进当天 ----
+// 钥匙＝记账 App 的「公司报账密钥」（老板那把）。同网域 jarixhew-bit.github.io，记账 App 存过就直接读得到；
+// 读不到（例如这个 App 是另外加到主画面的，iPhone 上各自分开存）才请你贴一次，只存这台手机、不进备份。
+const FOOD_PHOTO_URL="https://butler-bot.jarixhew.workers.dev/food-photo", AI_TOKEN_KEY="fit.aiToken", ET_TOKEN_KEY="expenseTracker_companyToken";
+function aiToken(){ try{ return (localStorage.getItem(AI_TOKEN_KEY)||localStorage.getItem(ET_TOKEN_KEY)||"").trim(); }catch(e){ return ""; } }
+fd.ai={busy:false,err:"",rows:null,notes:"",conf:"",note:"",needKey:false};
+const AI_WARN='照片只能估，误差可能有两三成（App 的保守判断）；能称重时用称重。';
+function aiTotals(){ const R=(fd.ai.rows||[]).filter(r=>!r.del); return {k:Math.round(R.reduce((a,r)=>a+(+r.k||0),0)),p:n1(R.reduce((a,r)=>a+(+r.p||0),0)),n:R.length}; }
+function aiTotTxt(){ const t=aiTotals(); return '合计 <span class="num" style="font-size:22px">'+t.k+' kcal</span> · 蛋白 '+t.p+' g（'+t.n+' 项）'; }
+function renderAiPhoto(){
+  const A=fd.ai, tok=aiToken(); let h='<p class="small"><b>'+AI_WARN+'</b></p>';
+  if(!tok||A.needKey){
+    h+='<div class="card" id="aiKeyBox" style="background:var(--soft)"><p class="small">第一次用要贴一次钥匙：打开<a href="../expense-tracker.html" target="_blank" rel="noopener">记账 App</a> → 设置 → 「公司报账密钥」那串，复制贴到这里。只存这台手机，不进备份。</p>'+
+      '<div class="form-row"><label>钥匙<input class="inp" id="aiKey" type="password" autocomplete="off" style="font-size:16px;text-align:left"></label></div><button class="btn primary" id="aiKeySave">存起来</button></div>';
+  }
+  if(!A.rows){
+    h+='<div class="form-row"><label>说明（可不填）<input class="inp" id="aiNote" style="font-size:16px;text-align:left" placeholder="例如 饭只吃一半" value="'+esc(A.note)+'"></label></div>'+
+      '<label class="btn primary" id="aiPickLbl" style="display:inline-flex"'+(A.busy?' aria-disabled="true"':'')+'>'+(A.busy?'估算中…':'拍照／选照片')+'<input id="aiFile" type="file" accept="image/*" hidden'+(A.busy||!tok?' disabled':'')+'></label>'+
+      '<p class="small muted">照片会压缩后传给 butler-bot 让 AI 估，估完不保存。通常几秒，最长约 45 秒。</p>';
+    if(A.busy) h+='<p class="small" id="aiBusy">估算中…</p>';
+  } else {
+    h+='<div class="card" id="aiRes" style="background:var(--soft)"><b>AI 估的（还没记入）</b>'+(A.conf?' <span class="pill">信心：'+({high:"高",medium:"中",low:"低"}[A.conf]||A.conf)+'</span>':'')+
+      '<table class="dtab"><thead><tr><th>食物</th><th>克</th><th>kcal</th><th>蛋白 g</th><th></th></tr></thead><tbody>'+A.rows.map((r,i)=>r.del?'':'<tr data-airow="'+i+'"><td><input class="inp" style="font-size:15px;padding:4px;text-align:left" data-ain="'+i+'" value="'+esc(r.n)+'" aria-label="名称"></td><td style="width:64px"><input class="inp" style="font-size:15px;padding:4px" data-aig="'+i+'" inputmode="decimal" value="'+r.g+'" aria-label="'+esc(r.n)+' 克数"></td><td style="width:64px"><input class="inp" style="font-size:15px;padding:4px" data-aik="'+i+'" inputmode="decimal" value="'+r.k+'" aria-label="'+esc(r.n)+' 热量"></td><td style="width:56px"><input class="inp" style="font-size:15px;padding:4px" data-aip="'+i+'" inputmode="decimal" value="'+r.p+'" aria-label="'+esc(r.n)+' 蛋白"></td><td><button class="btn ghost small" data-aidel="'+i+'" aria-label="去掉 '+esc(r.n)+'">✕</button></td></tr>').join("")+'</tbody></table>'+
+      '<p id="aiTot">'+aiTotTxt()+'</p>'+(A.notes?'<p class="small muted">AI 的说明：'+esc(A.notes)+'</p>':'')+
+      '<p class="small muted">改克数时热量和蛋白按比例跟着变；也可以直接改热量、蛋白。按「记入」才会写进今天。</p>'+
+      '<div class="row"><button class="btn primary" id="aiAdd">记入'+MEAL_NAME[fd.meal]+'</button><button class="btn ghost" id="aiDrop">不要了</button></div></div>';
+  }
+  if(A.err) h+='<p class="small" id="aiErr" role="alert">'+esc(A.err)+'</p>';
+  if(tok&&!A.needKey) h+='<p class="small muted"><button class="btn ghost small" id="aiKeyClear">换钥匙</button></p>';
+  return h;
+}
+// 浏览器端压缩：长边 1024、JPEG 0.8（手机原图常 3–5 MB，压完一般 100–300 KB）
+async function compressPhoto(file){
+  const url=URL.createObjectURL(file);
+  try{ const img=await new Promise((ok,no)=>{ const im=new Image(); im.onload=()=>ok(im); im.onerror=()=>no(new Error("读不了这张照片")); im.src=url; });
+    const W=img.naturalWidth||img.width, H=img.naturalHeight||img.height, sc=Math.min(1,1024/Math.max(W,H)), w=Math.max(1,Math.round(W*sc)), h=Math.max(1,Math.round(H*sc));
+    const cv=document.createElement("canvas"); cv.width=w; cv.height=h; cv.getContext("2d").drawImage(img,0,0,w,h);
+    return {b64:cv.toDataURL("image/jpeg",0.8).split(",")[1],w,h};
+  } finally { URL.revokeObjectURL(url); }
+}
+const AI_FALLBACK='可以改用「手动一笔（照片估算）」自己填，或把照片发给 Claude 估。';
+async function runAiPhoto(file){
+  const A=fd.ai; A.err=""; A.rows=null; fd.msg="";
+  const tok=aiToken(); if(!tok){ A.needKey=true; A.err="先贴钥匙才能用。"; renderFoodAdd(); return; }
+  if(navigator.onLine===false){ A.err="现在没网，估不了。"+AI_FALLBACK; renderFoodAdd(); return; }
+  A.busy=true; renderFoodAdd();
+  let r=null, j=null;
+  try{ const ph=await compressPhoto(file); const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),55000);
+    try{ r=await fetch(FOOD_PHOTO_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:tok,image:ph.b64,mime:"image/jpeg",note:A.note||undefined}),signal:ctl.signal}); }
+    finally{ clearTimeout(to); }
+    try{ j=await r.json(); }catch(e){}
+  }catch(e){ A.busy=false; A.err=(e&&e.name==="AbortError"?"等太久没回应（超过 55 秒）。":/照片/.test(String(e&&e.message))?String(e.message)+"。":"连不上估算服务（可能没网）。")+AI_FALLBACK; renderFoodAdd(); return; }
+  A.busy=false;
+  if(r.status===200&&j&&Array.isArray(j.items)&&j.items.length){
+    A.rows=j.items.map(x=>({n:String(x.name_zh||"").slice(0,40)||"食物",g:+x.grams_est||0,k:+x.kcal||0,p:+x.protein_g||0,g0:+x.grams_est||0,k0:+x.kcal||0,p0:+x.protein_g||0})); A.notes=String(j.notes||""); A.conf=String(j.confidence||"");
+  } else if(r.status===401){ A.needKey=true; try{ localStorage.removeItem(AI_TOKEN_KEY); }catch(e){} A.err="钥匙不对。请贴记账 App 设置里「公司报账密钥」那串（同事版的钥匙不行）。";
+  } else if(r.status===403){ A.needKey=true; A.err="这把钥匙不能用拍照估算（同事版的钥匙不行），请贴记账 App 设置里「公司报账密钥」那串。";
+  } else if(r.status===504){ A.err="AI 太久没回应。"+AI_FALLBACK;
+  } else if(r.status===422){ A.err="AI 估出来的数字不合理，没采用。换个角度再拍一次，或"+AI_FALLBACK.replace("可以","");
+  } else { A.err="这次没估出来"+(j&&j.message?"（"+j.message+"）":"")+"。"+AI_FALLBACK; }
+  renderFoodAdd();
+}
 function renderFoodAdd(){
   if(!fd.meal) fd.meal=defMeal();
   let h='<div class="block-head"><h2>记一笔</h2><span class="small muted">称重最准</span></div>'+
     '<div class="set-row"><span>记到</span><div class="seg" role="group" aria-label="记到哪一餐" id="fMeal">'+MEALS.map(m=>'<button data-v="'+m[0]+'" aria-pressed="'+(fd.meal===m[0])+'">'+m[1]+'</button>').join("")+'</div></div>'+
-    '<div class="chips" id="fMode" role="group" aria-label="怎么记">'+[["search","搜食物"],["bar","包装条码"],["photo","手动一笔（照片估算）"],["custom","自建食物"]].map(m=>'<button class="chip" data-v="'+m[0]+'" aria-pressed="'+(fd.mode===m[0])+'">'+m[1]+'</button>').join("")+'</div>';
+    '<div class="chips" id="fMode" role="group" aria-label="怎么记">'+[["search","搜食物"],["bar","包装条码"],["ai","拍照估算"],["photo","手动一笔（照片估算）"],["custom","自建食物"]].map(m=>'<button class="chip" data-v="'+m[0]+'" aria-pressed="'+(fd.mode===m[0])+'">'+m[1]+'</button>').join("")+'</div>';
   if(fd.mode==="search"){
     h+='<input class="inp" id="fQ" type="search" placeholder="中文或英文，例如 鸡胸、chicken" value="'+esc(fd.q)+'" style="text-align:left;font-size:16px" aria-label="搜食物">';
     h+='<div id="fResWrap"></div>';
@@ -3381,6 +3444,8 @@ function renderFoodAdd(){
       '<div class="row"><button class="btn" id="fBarGo">查询</button>'+(("BarcodeDetector" in window)?'<button class="btn ghost" id="fScan">用相机扫</button>':'')+'</div><video id="fVid" playsinline muted hidden style="width:100%;border-radius:10px"></video>'+
       '<p class="small" id="fBarMsg">'+esc(fd.barMsg)+'</p>'+
       '<p class="small muted">资料来自 <a href="'+OFF_URL+'" target="_blank" rel="noopener">Open Food Facts</a>（开放资料 ODbL，大家照包装填写的，可能有错，跟包装对一下）。要上网；查不到就照包装用「自建食物」。</p>';
+  } else if(fd.mode==="ai"){
+    h+=renderAiPhoto();
   } else if(fd.mode==="photo"){
     h+='<p class="small">外食拍照给 Claude 估算，把它给的数字填这里。会标「照片估算」。</p>'+
       '<div class="form-row"><label>名称<input class="inp" id="fmN" style="font-size:16px" placeholder="例如 午餐便当"></label></div>'+
@@ -3461,6 +3526,14 @@ $("tab-diet").addEventListener("click",e=>{
   if(t.closest("#fAddBtn")&&fd.pick){ const q=num($("fG").value); if(!(q>0&&q<5000)){ fd.msg="克数／份数要填大于 0 的数字"; renderFoodAdd(); return; }
     fd.pick.q=q; const it=mkItem(fd.pick,fd.meal); addItems(d,[it]); fd.msg="已记到"+MEAL_NAME[fd.meal]+"："+it.n+" "+qtyTxt(it)+" · "+Math.round(it.kcal)+" kcal · 蛋白 "+it.p+" g"; fd.pick=null; fd.q=""; renderFood(); refreshTotals(); return; }
   if(t.closest("#fOffSave")&&fd.pick){ const P=fd.pick, C={id:newId("u"),zh:P.n,en:"",u:"g",b:Object.assign({},P.b),sg:P.sg||null,src:"off",ref:P.ref}; diet.foods.push(C); saveDiet(); fd.msg="已存成我的食物："+C.zh; renderFoodAdd(); return; }
+  if(t.closest("#aiKeySave")){ const v=$("aiKey").value.trim(); if(!v){ fd.ai.err="钥匙是空的。"; renderFoodAdd(); return; } try{ localStorage.setItem(AI_TOKEN_KEY,v); }catch(e){} fd.ai.needKey=false; fd.ai.err=""; fd.msg="钥匙存好了，可以拍照估算。"; renderFoodAdd(); return; }
+  if(t.closest("#aiKeyClear")){ try{ localStorage.removeItem(AI_TOKEN_KEY); }catch(e){} fd.ai.needKey=true; renderFoodAdd(); return; }
+  const ad=t.closest("[data-aidel]"); if(ad&&fd.ai.rows){ fd.ai.rows[+ad.dataset.aidel].del=true; if(!fd.ai.rows.some(r=>!r.del)) fd.ai.rows=null; renderFoodAdd(); return; }
+  if(t.closest("#aiDrop")){ fd.ai.rows=null; fd.ai.err=""; fd.msg="没记入。"; renderFoodAdd(); return; }
+  if(t.closest("#aiAdd")&&fd.ai.rows){ const R=fd.ai.rows.filter(r=>!r.del);
+    if(R.some(r=>!(r.g>=0&&r.g<5000)||!(r.k>=0&&r.k<5000)||!(r.p>=0&&r.p<500))){ fd.ai.err="克数、热量、蛋白都要是 0 以上的数字。"; renderFoodAdd(); return; }
+    const arr=R.map(r=>mkItem(r.g>0?{n:r.n,src:"aiphoto",ref:"",fid:null,u:"g",q:r.g,b:{k:r.k*100/r.g,p:r.p*100/r.g,c:null,f:null},est:true}:{n:r.n,src:"aiphoto",ref:"",fid:null,u:"份",q:1,b:{k:r.k,p:r.p,c:null,f:null},est:true},fd.meal));
+    addItems(d,arr); const tt=aiTotals(); fd.ai.rows=null; fd.ai.err=""; fd.msg="已记到"+MEAL_NAME[fd.meal]+"："+arr.length+" 项照片估算（AI），共 "+tt.k+" kcal · 蛋白 "+tt.p+" g"; renderFood(); refreshTotals(); return; }
   if(t.closest("#fmAdd")){ const n=$("fmN").value.trim()||"外食（照片估算）", k=num($("fmK").value), p=num($("fmP").value);
     if(!(k>=0&&k<10000)||!(p>=0&&p<500)){ fd.msg="热量和蛋白都要填数字"; renderFoodAdd(); return; }
     const it=mkItem({n,src:"photo",ref:"",fid:null,u:"份",q:1,b:{k,p,c:null,f:null},est:true},fd.meal); addItems(d,[it]); fd.msg="已记到"+MEAL_NAME[fd.meal]+"："+n+"（照片估算）"; renderFood(); refreshTotals(); return; }
@@ -3485,6 +3558,15 @@ $("tab-diet").addEventListener("input",e=>{
   const t=e.target;
   if(t.id==="fQ"){ fd.q=t.value; if(fd.pick){ fd.pick=null; const pk=$("fPick"); if(pk) pk.remove(); } renderFoodRes(); return; }
   if(t.id==="fBar"){ fd.bar=t.value; return; }
+  if(t.id==="aiNote"){ fd.ai.note=t.value.slice(0,200); return; }
+  if(fd.ai.rows&&(t.dataset.ain!=null||t.dataset.aig!=null||t.dataset.aik!=null||t.dataset.aip!=null)){
+    const i=+(t.dataset.ain??t.dataset.aig??t.dataset.aik??t.dataset.aip), r=fd.ai.rows[i]; if(!r) return;
+    if(t.dataset.ain!=null){ r.n=t.value.trim().slice(0,40)||"食物"; return; }
+    const v=num(t.value);
+    if(t.dataset.aig!=null){ if(v==null||v<0) return; r.g=v; if(r.g0>0){ r.k=Math.round(r.k0*v/r.g0); r.p=n1(r.p0*v/r.g0); const tr=t.closest("tr"); tr.querySelector("[data-aik]").value=r.k; tr.querySelector("[data-aip]").value=r.p; } }
+    else if(t.dataset.aik!=null){ if(v==null||v<0) return; r.k=v; }
+    else { if(v==null||v<0) return; r.p=v; }
+    const tot=$("aiTot"); if(tot) tot.innerHTML=aiTotTxt(); return; }
   if(t.id==="fG"&&fd.pick){ const q=num(t.value); if(q>0){ const x=calcItem(Object.assign(JSON.parse(JSON.stringify(fd.pick)),{q})); $("fCalc").innerHTML='<span class="num" style="font-size:22px">'+Math.round(x.kcal)+' kcal</span> · 蛋白 '+x.p+' g'+(x.c!=null?' · 碳水 '+x.c+' g':'')+(x.f!=null?' · 脂肪 '+x.f+' g':''); } return; }
   if(t.dataset.cbq!=null&&fd.cbDraft){ const q=num(t.value), ci=fd.cbDraft[+t.dataset.cbq]; if(q>0&&ci){ if(ci.r||(ci.t&&ci.t.u==="份")){ if(ci.t) ci.t.q=q; else ci.q=q; } else if(ci.t) ci.t.q=q; else ci.g=q; delete ci.lab;
       const x=calcItem(comboTpl(ci)), td=t.closest("tr")&&t.closest("tr").lastElementChild; if(td) td.innerHTML=Math.round(x.kcal)+' kcal<br>'+x.p+' g';
@@ -3492,6 +3574,7 @@ $("tab-diet").addEventListener("input",e=>{
 });
 $("tab-diet").addEventListener("change",e=>{
   const t=e.target;
+  if(t.id==="aiFile"){ const f=t.files&&t.files[0]; t.value=""; if(f) runAiPhoto(f); return; }
   if(t.dataset.edit){ const d=isoDay(Date.now()), x=dayItems(d).find(i=>i.id===t.dataset.edit), q=num(t.value); if(x&&q>0&&q<5000){ x.q=q; calcItem(x); saveDiet(); } renderFoodLog(); refreshTotals(); }
 });
 $("tab-diet").addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.id==="fBar"){ e.preventDefault(); barLookup(e.target.value); } });
@@ -3569,7 +3652,7 @@ function animCombos(){
 }
 // 侧面版动图（render 脚本连同 animCombos 一起渲染；自检核对每张都在）
 function sideCombos(){ return animCombos().filter(c=>SIDE_VIEW.has(c.file)).map(c=>Object.assign({},c,{file:c.file+"-side",base:c.file,side:true})); }
-window.__fit={vol:{blocksFor,rounds,armRounds,estMin,estSec,buildSteps:wk=>buildSteps(wk)},rest:{restDef,restOf,blockRest,REST_OPTS},smith:{plateCalc,plateText,SMITH_K},weekAvgInfo,suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},food:{FOODS,RECIPES,COMBOS_BUILTIN,FOOD_UNVER,recipeVals,comboTotals,comboFor,comboTpl,calcItem,dayTot,foodSearch,offLookup},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS},cardio:{CD_PLANS,CD_BY,cdLen,cdSync,cdWhy,cdPick,cdSteps,cdWeekMins,cdMins,hrMax,said:()=>sayLog.slice()}}; // 给自检脚本用
+window.__fit={vol:{blocksFor,rounds,armRounds,estMin,estSec,buildSteps:wk=>buildSteps(wk)},rest:{restDef,restOf,blockRest,REST_OPTS},smith:{plateCalc,plateText,SMITH_K},weekAvgInfo,suggest,cycleInfo,retInfo,gapsOf,e1rm,photos:{PH_EN,PH_ANIM},animCombos,sideCombos,SIDE_VIEW:[...SIDE_VIEW],alts:{ALTS,ALTX,altList,curKey,kInfo,validKey},moves:{MOVEX,MOVE_ALTS,WARM,COOL,curMove},player:()=>({steps,si}),animFile,diet:{qigong,plateauInfo,mealPlan,bmi,get:()=>diet},food:{FOODS,RECIPES,COMBOS_BUILTIN,FOOD_UNVER,recipeVals,comboTotals,comboFor,comboTpl,calcItem,dayTot,foodSearch,offLookup,ai:{compressPhoto,FOOD_PHOTO_URL,AI_TOKEN_KEY,state:()=>fd.ai}},posture:{get:()=>post,postSteps,postSides,hasRed,postDue,photoAll,PMOVE,redLevel,HABITS},cardio:{CD_PLANS,CD_BY,cdLen,cdSync,cdWhy,cdPick,cdSteps,cdWeekMins,cdMins,hrMax,said:()=>sayLog.slice()}}; // 给自检脚本用
 })();
 </script>
 <script type="module" src="anim3d.js"></script>
