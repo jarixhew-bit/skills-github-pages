@@ -15,6 +15,7 @@
  * 2026-08-03 Firebase SDK，全是同一类），所以基线就设成最恶劣的网络。
  */
 import { chromium } from 'playwright';
+import fs from 'node:fs';
 
 const PORT = process.env.CHECK_PORT || 8899;
 const URL = `http://localhost:${PORT}/expense-tracker.html`;
@@ -1998,7 +1999,7 @@ console.log('\n【21】老板账：把 butler 中央账本同步下来');
     { what: 'App 启动完成' });
   await page.evaluate(() => {
     localStorage.setItem('expenseTracker_companyToken', 'company-key-abc');
-    localStorage.setItem('expenseTracker_aiKey_mistral', 'mistral-key-xyz');
+    localStorage.setItem('expenseTracker_aiKey_qwen', 'qwen-key-xyz');
     localStorage.setItem('tradingAnalyzerPw', 'ibkr-pw-789');
   });
   await page.evaluate(()=>switchTab('settings'));
@@ -2017,7 +2018,7 @@ console.log('\n【21】老板账：把 butler 中央账本同步下来');
   await page.waitForTimeout(200);
   const shown = (await page.textContent('#migrate-keys')) || '';
   ok('列出公司报账密钥', shown.includes('company-key-abc'), shown.slice(0,200));
-  ok('列出 AI key', shown.includes('mistral-key-xyz'), shown.slice(0,200));
+  ok('列出 AI key', shown.includes('qwen-key-xyz'), shown.slice(0,200));
   ok('列出交易分析器密码', shown.includes('ibkr-pw-789'), shown.slice(0,200));
   // 光给一串字没用——他要知道新手机填到哪里去
   ok('每一样都写了新手机填在哪', (shown.match(/新手机/g) || []).length >= 3, shown.slice(0,300));
@@ -3631,7 +3632,7 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   }
 
   // 收着的那五块：默认看不见
-  const folded = ['#company-token-input','#ai-provider-select','#migrate-toggle'];
+  const folded = ['#company-token-input','#ai-advanced','#migrate-toggle'];
   for(const sel of folded){
     ok(`默认收着 ${sel}`, !(await page.locator(sel).isVisible()), sel);
   }
@@ -4612,6 +4613,115 @@ console.log('\n【34】内建类别自动补齐，但删过的不复活');
   const usd = await page.evaluate(() => [fmt(1234.5, 'USD'), fmt(992, 'SGD')]);
   ok('★对照组：美金／新币照旧两位小数、不加千分位', usd.join('|') === 'US$1234.50|S$ 992.00', usd);
   ok('对照组：没收录的币还是退回「代码 金额」', await page.evaluate(() => fmt(1, 'XYZ')) === 'XYZ 1.00');
+  ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
+  await ctx.close();
+}
+
+// ---------- 【44】拍收据默认走 bot 的 AI，不写死 Mistral（2026-11-27 用户拍板「方案 A」） ----------
+// 背景：页面以前把共用模式写死 provider 'mistral'，设置里也还能选 Mistral；Mistral 免费方案
+// 2026-11 起回 402。现在：没填自己的钥匙 → provider 'bot'＋公司密钥、不送任何 AI key；
+// 本机存的若是 mistral → 自动改回默认并提示一次；进阶自带钥匙的旧模式照样能用。
+{
+  console.log('\n【44】拍收据：默认用 bot 的 AI（不要钥匙、不写死 Mistral），自带钥匙仍可用');
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', e => errs.push(String(e)));
+  const calls = [];
+  const proxy = { status: 200, body: { text: '{"amount":12.34,"date":null,"merchant":"Test Shop"}', provider: 'Agnes', mode: 'bot' } };
+  await ctx.route('**/*', async r => {
+    const u = r.request().url();
+    if (u.startsWith(`http://localhost:${PORT}`)) return r.continue();
+    if (u.startsWith('https://butler-bot.jarixhew.workers.dev/ai-proxy')) {
+      calls.push(JSON.parse(r.request().postData() || '{}'));
+      return r.fulfill({ status: proxy.status, contentType:'application/json',
+        headers:{ 'Access-Control-Allow-Origin':'*' }, body: JSON.stringify(proxy.body) });
+    }
+    return r.abort('failed');
+  });
+  // 模拟「这台手机以前选过 Mistral」：开 App 之前就写进去
+  await ctx.addInitScript(() => {
+    if (!sessionStorage.getItem('seeded44')) {
+      localStorage.setItem('expenseTracker_companyToken', 'company-key-abc');
+      localStorage.setItem('expenseTracker_aiProvider', 'mistral');
+      sessionStorage.setItem('seeded44', '1');
+    }
+  });
+  const toasts = [];
+  await page.exposeFunction('__toast44', m => toasts.push(m));
+  await page.goto(URL, { waitUntil:'domcontentloaded' });
+  await until(() => page.evaluate(() => typeof data !== 'undefined' && Array.isArray(data.accounts) && data.accounts.length > 0),
+    { what: 'App 启动完成' });
+  await page.evaluate(() => { const o = window.toast; window.toast = m => { window.__toast44(String(m)); return o(m); }; });
+  await page.waitForTimeout(1200);
+
+  // 静态：原始码里不许再写死 / 提供 Mistral
+  const html = fs.readFileSync(new globalThis.URL('../expense-tracker.html', import.meta.url), 'utf8');
+  ok("★共用模式不再写死 'mistral'", !/AI_SHARED_PROVIDER\s*=\s*['"]mistral['"]/.test(html));
+  ok("★共用模式是 'bot'", /AI_SHARED_PROVIDER\s*=\s*['"]bot['"]/.test(html));
+  const opts = await page.$$eval('#ai-provider-select option', os => os.map(o => o.value));
+  ok('★设置下拉里没有 Mistral', !opts.includes('mistral'), opts);
+  ok('设置下拉的默认项是 bot 的 AI（空值）', opts[0] === '', opts);
+  ok('自带钥匙那栏收在「进阶」里（默认收合）',
+     await page.evaluate(() => { const d = document.getElementById('ai-advanced'); return !!d && d.tagName === 'DETAILS' && !d.open
+       && d.contains(document.getElementById('ai-provider-select')) && d.contains(document.getElementById('ai-key-input')); }));
+
+  // 本机存的 mistral → 改回默认＋提示一次
+  ok('★本机存的 mistral 开 App 后被清掉', await page.evaluate(() => !localStorage.getItem('expenseTracker_aiProvider')));
+  ok('★提示了一次「改用 bot 的 AI」', toasts.filter(m => /bot 的 AI/.test(m)).length === 1, toasts);
+
+  const shoot = () => page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = 400; c.height = 300;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0,0,400,300);
+    g.fillStyle = '#000'; g.font = '28px sans-serif'; g.fillText('TOTAL 12.34', 20, 150);
+    if (typeof showAddTx === 'function') showAddTx();
+    const a = document.getElementById('tx-amount'); if (a) a.value = '';
+    await runReceiptSmartOCR(c);
+  });
+
+  // 没自带钥匙 → bot
+  await shoot(); await page.waitForTimeout(400);
+  ok('★没填钥匙也真的去打了 AI（不是退回本地 OCR）', calls.length === 1, calls.length);
+  ok("★provider 送的是 'bot'", calls[0]?.provider === 'bot', calls[0]?.provider);
+  ok('★带的是公司报账密钥', calls[0]?.token === 'company-key-abc', calls[0]?.token);
+  ok('★没有送任何 AI key', !('apiKey' in (calls[0] || {})), Object.keys(calls[0] || {}));
+  ok('识别出的金额填进去了，但要人核对（不是直接入账）',
+     await page.evaluate(() => document.getElementById('tx-amount').value === '12.34'), await page.evaluate(() => document.getElementById('tx-amount').value));
+  ok('识别出来只是预填：本机账本没多出任何一笔',
+     await page.evaluate(() => (data.transactions || []).filter(t => t.amount === 12.34).length === 0));
+
+  // 选了某家但没填钥匙 → 仍走 bot
+  calls.length = 0;
+  await page.evaluate(() => localStorage.setItem('expenseTracker_aiProvider', 'qwen'));
+  await shoot(); await page.waitForTimeout(400);
+  ok('选了 Qwen 但没填钥匙 → 仍走 bot', calls[0]?.provider === 'bot' && !calls[0]?.apiKey, calls[0]);
+
+  // 进阶：自带钥匙的旧模式照样能用
+  calls.length = 0;
+  await page.evaluate(() => localStorage.setItem('expenseTracker_aiKey_qwen', 'my-qwen-key'));
+  await shoot(); await page.waitForTimeout(400);
+  ok('★进阶自带 Qwen 钥匙 → provider qwen＋自己的 key', calls[0]?.provider === 'qwen' && calls[0]?.apiKey === 'my-qwen-key', calls[0]);
+  ok('自带钥匙时不送公司密钥', !calls[0]?.token, calls[0]);
+  await page.evaluate(() => { localStorage.removeItem('expenseTracker_aiKey_qwen'); localStorage.removeItem('expenseTracker_aiProvider'); });
+
+  // bot 的 AI 全挂 → 提示稍后再试或手动输入
+  calls.length = 0; toasts.length = 0;
+  proxy.status = 502; proxy.body = { error: 'all down', mode: 'bot', allFailed: true };
+  await shoot(); await page.waitForTimeout(600);
+  ok('★bot 的 AI 全挂 → 提示「稍后再试或手动输入」', toasts.some(m => /稍后再试/.test(m) && /手动输入/.test(m)), toasts);
+
+  // 密钥不对（401）→ 提示查密钥，不要叫人「稍后再试」
+  toasts.length = 0;
+  proxy.status = 401; proxy.body = { error: '缺少 apiKey，也没有有效的公司报账密钥' };
+  await shoot(); await page.waitForTimeout(600);
+  ok('密钥不对（401）→ 提示检查密钥，不说 bot 连不上', toasts.some(m => /密钥不对/.test(m)) && !toasts.some(m => /暂时连不上/.test(m)), toasts);
+
+  // 没公司密钥 → 不打 bot（没钥匙用不了 bot 额度）
+  calls.length = 0;
+  await page.evaluate(() => localStorage.removeItem('expenseTracker_companyToken'));
+  await shoot(); await page.waitForTimeout(400);
+  ok('没有公司密钥 → 不去打 bot 的 AI', calls.length === 0, calls.length);
+
   ok('无 JS 报错', errs.length === 0, errs.slice(0,3));
   await ctx.close();
 }
