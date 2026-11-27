@@ -631,6 +631,19 @@ CSS 在 `STAFF_CSS`、脚本在 `STAFF_BOOTSTRAP`），生成后连同 `staff/in
 会执行「disabled 按钮不派发 click」的规则）模拟真实双击，Playwright 的高阶
 `page.click()` 会等按钮变回可点再点，测不出这个窗口。
 
+## 拍收据默认用 bot 的 AI，不要钥匙（2026-11-27，用户拍板「方案 A」）
+
+`runReceiptSmartOCR()`：进阶里**选了某家且填了自己的 key** 才用那家；其余一律 `AI_SHARED_PROVIDER = 'bot'`，
+送 `{provider:'bot', token: 公司报账密钥}`、**不送 apiKey**，butler-bot 的 `/ai-proxy` 验钥匙（老板与同事的都认）后
+走 bot 自己的 AI 链（Agnes → Workers AI → Gemini），回 `{text, provider}`，provider 印在 console 方便排错。
+没公司密钥＝退回本机 Tesseract。bot 全挂（502）或超时：toast「bot 的 AI 暂时连不上，先用本机识别；认不准请稍后再试或手动输入」再退回本机识别。
+- 以前写死 `'mistral'`（2026-08-13）；Mistral 免费方案 2026-11 起回 402，从下拉移除。本机存的 provider 若是
+  `mistral`（`AI_RETIRED_PROVIDERS`），`getAiProvider()` 把它清掉，开 App 时 `migrateRetiredAiProvider()` 提示一次。
+  后端仍把旧缓存页送来的 `mistral`＋钥匙当共用模式，别以为前端改完就能删后端那条。
+- 设置里「选 AI 供应商＋填钥匙」收在 `<details id="ai-advanced">`「进阶（可不填）」里，默认收合。
+- 识别结果只预填金额栏，仍走下面「要人核对过」那道闸门，入账流程没改。
+- 自检：`check-expense-company.mjs`【44】、`check-staff-page.mjs`【24】（同事版也送 `bot`）。
+
 ## 照片认出来的金额要人核对过（2026-08-08）
 
 识别（本地 Tesseract 和 AI 两条路都算）填进金额栏之后，`markAmountUnconfirmed()`

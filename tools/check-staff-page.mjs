@@ -1811,7 +1811,8 @@ if (want()) {
   await page.waitForTimeout(500);
 
   ok('真的去打了 AI 识别（不是默默退回本地 OCR）', aiProxyCalls.length === 1, aiProxyCalls.length);
-  ok('用的是 Mistral', aiProxyCalls[0]?.provider === 'mistral', aiProxyCalls[0]?.provider);
+  // 2026-11-27 起共用模式叫 'bot'（bot 自己的 AI 链），不再写死 Mistral（免费方案回 402）
+  ok("★用的是 bot 的 AI（provider 'bot'，不是 mistral）", aiProxyCalls[0]?.provider === 'bot', aiProxyCalls[0]?.provider);
   ok('带的是公司报账密钥', !!aiProxyCalls[0]?.token, Object.keys(aiProxyCalls[0] || {}));
   // 同事手机上不该有、也不该送任何 AI key——共用那把只存在服务端
   ok('没有把 AI key 送出去（共用那把只在服务端）', !aiProxyCalls[0]?.apiKey, aiProxyCalls[0]?.apiKey);

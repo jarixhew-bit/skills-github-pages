@@ -873,24 +873,29 @@ details.inv-used-up .inv-item-name,details.inv-used-up .inv-qty-val{color:var(--
       </div>
     </div>
     <div class="setting-section">
-      <div class="setting-title">拍照智能识别（可选）</div>
+      <div class="setting-title">拍照智能识别</div>
       <div style="font-size:12px;color:var(--sub);margin-bottom:8px">
-        配置后拍收据会用 AI 识别金额、日期、商户，比默认的本地识别更准；不填也没关系，会自动退回本地识别。
-        key 只存在这台设备本地，不会上传到任何服务器（除 Gemini 外都会经 butler-bot 转发一次，
-        只用于绕开浏览器的跨域限制，不会被存下来）。
+        拍收据默认用 <b>bot 的 AI</b> 识别金额、日期、商户，<b>不用填任何钥匙</b>（只要上面「公司报账」的密钥填好了）。
+        识别结果都要你核对过才会入账。
       </div>
-      <select class="form-input" id="ai-provider-select" onchange="onAiProviderChange()" style="margin-bottom:8px">
-        <option value="">不用，仅本地识别</option>
-        <option value="qwen">Qwen 中国站（通义千问，中文识图最强）</option>
-        <option value="qwen-intl">Qwen 国际站（不用中国手机号也能注册）</option>
-        <option value="mistral">Mistral（免注册门槛低）</option>
-        <option value="gemini">Gemini（Google）</option>
-        <option value="agnes">Agnes（agnes-ai.com）</option>
-      </select>
-      <div style="display:flex;gap:8px">
-        <input class="form-input" id="ai-key-input" type="password" placeholder="粘贴对应的 API Key" style="flex:1">
-        <button class="btn btn-outline btn-sm" onclick="saveAiKey()">保存</button>
-      </div>
+      <details id="ai-advanced" style="margin-bottom:6px">
+        <summary style="font-size:13px;cursor:pointer;color:var(--sub)">进阶（可不填）：用自己的 AI 钥匙</summary>
+        <div style="font-size:12px;color:var(--sub);margin:8px 0">
+          只有想改用自己申请的 AI 时才需要。key 只存在这台设备本地；除 Gemini 外都会经 butler-bot 转发一次
+          （只为绕开浏览器的跨域限制，不会被存下来）。
+        </div>
+        <select class="form-input" id="ai-provider-select" onchange="onAiProviderChange()" style="margin-bottom:8px">
+          <option value="">默认：bot 的 AI（不用钥匙）</option>
+          <option value="qwen">Qwen 中国站（通义千问，中文识图最强）</option>
+          <option value="qwen-intl">Qwen 国际站（不用中国手机号也能注册）</option>
+          <option value="gemini">Gemini（Google）</option>
+          <option value="agnes">Agnes（agnes-ai.com）</option>
+        </select>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" id="ai-key-input" type="password" placeholder="粘贴对应的 API Key" style="flex:1">
+          <button class="btn btn-outline btn-sm" onclick="saveAiKey()">保存</button>
+        </div>
+      </details>
       <div id="ai-key-status" style="font-size:12px;color:var(--sub);margin-top:6px"></div>
     </div>
     <!-- 换机准备（2026-08-21 加）：记账、账户、照片都跟着 Google 帐号走，但下面这几样
@@ -5942,7 +5947,9 @@ async function saveScannedAttachment(){
 }
 
 // ===================== AI-ASSISTED RECEIPT OCR (optional, key stored locally) =====================
-// 四选一：Qwen / Mistral / Gemini / Agnes。Gemini 允许浏览器直接跨域调用它的接口，其余几家
+// 默认（2026-11-27 起）：不用任何钥匙，走 bot 自己的 AI（/ai-proxy 的 provider 'bot'，带公司报账
+// 密钥验身份；老板与同事的钥匙都认）。进阶：自带 Qwen / Gemini / Agnes 的 key。
+// Mistral 已拿掉（免费方案 2026-11 起回 402）。Gemini 允许浏览器直接跨域调用它的接口，其余几家
 // 不允许（或未确认允许），所以都经 butler-bot 的 /ai-proxy 转发一次（调用方自带 key，
 // Worker 只转发不落地）。新增供应商时 butler-bot 那边的 buildProxyCfg 与 /ai-proxy 的
 // provider 白名单要同步加，两处缺一这里就会报 400。
@@ -5952,10 +5959,33 @@ const AI_KEY_STORAGE_PREFIX = 'expenseTracker_aiKey_';
 // 注意 qwen 与 qwen-intl 是两个独立供应商：阿里云百炼中国站/国际站的账号与 key 不通用，
 // 接口地址也不同，key 打错站会报"无效的令牌"（看起来像 key 错了，其实是站点错了）。
 const AI_PROVIDER_NAMES = {
-  qwen:'Qwen 中国站', 'qwen-intl':'Qwen 国际站', mistral:'Mistral', gemini:'Gemini', agnes:'Agnes'
+  qwen:'Qwen 中国站', 'qwen-intl':'Qwen 国际站', gemini:'Gemini', agnes:'Agnes'
 };
+// 已下架的供应商：本机存的若是它，自动改回默认（bot 的 AI），并提示一次。
+const AI_RETIRED_PROVIDERS = ['mistral'];
+const AI_RETIRED_NOTICE_KEY = 'expenseTracker_aiRetiredNotice';
 
-function getAiProvider(){ return (localStorage.getItem(AI_PROVIDER_STORAGE) || '').trim(); }
+function getAiProvider(){
+  let v = '';
+  try{ v = (localStorage.getItem(AI_PROVIDER_STORAGE) || '').trim(); }catch(e){}
+  if(v && AI_RETIRED_PROVIDERS.includes(v)){
+    try{
+      localStorage.removeItem(AI_PROVIDER_STORAGE);
+      localStorage.setItem(AI_RETIRED_NOTICE_KEY, v);   // 等页面起来再提示（toast 可能还不能用）
+    }catch(e){}
+    return '';
+  }
+  return v;
+}
+// 开 App 时跑一次：把已下架的供应商换回默认，提示一次就清掉
+function migrateRetiredAiProvider(){
+  getAiProvider();
+  let was = '';
+  try{ was = localStorage.getItem(AI_RETIRED_NOTICE_KEY) || ''; }catch(e){}
+  if(!was) return;
+  try{ localStorage.removeItem(AI_RETIRED_NOTICE_KEY); }catch(e){}
+  setTimeout(()=>{ try{ toast('拍收据识别已改用 bot 的 AI（Mistral 已停用），不用再填钥匙'); }catch(e){} }, 800);
+}
 
 // ===================== 换机准备：把只存在本机的几样列出来 =====================
 /**
@@ -5974,7 +6004,7 @@ function migrateKeyRows(){
   Object.keys(AI_PROVIDER_NAMES).forEach(pv => {
     const k = getAiKey(pv);
     if(k) rows.push({ label:`AI key（${AI_PROVIDER_NAMES[pv]}）`,
-                      hint:'新手机：设置 → 拍收据自动识别 → 选同一家 → 粘贴 → 保存', value:k });
+                      hint:'新手机：设置 → 拍照智能识别 → 进阶 → 选同一家 → 粘贴 → 保存', value:k });
   });
   const pw = (localStorage.getItem(IBKR_PW_KEY) || '').trim();
   rows.push({ label:'交易分析器密码（IBKR 余额）', hint:'新手机：首页那张 IBKR 卡片点「解锁」时填', value:pw });
@@ -6102,22 +6132,28 @@ function renderAiKeyStatus(){
   const provider = getAiProvider();
   if(select) select.value = provider;
   const key = getAiKey(provider);
-  el.textContent = (provider && key)
-    ? `✅ 已配置 ${AI_PROVIDER_NAMES[provider]}，拍收据会优先用 AI 识别`
-    : '未配置，当前使用本地识别（较简单）';
+  if(provider && key){
+    el.textContent = `✅ 用你自己的 ${AI_PROVIDER_NAMES[provider]} 钥匙识别收据`;
+  } else if(getCompanyToken()){
+    el.textContent = '✅ 正在用 bot 的 AI 识别收据（不用钥匙）';
+  } else {
+    el.textContent = '先在上面「公司报账」填好密钥，拍收据就会用 bot 的 AI 识别；没填时用本机识别（较简单）';
+  }
 }
 
-// 没在设置里填 AI key 时，用服务端的共用 key 走哪一家（2026-08-13 用户定：一律 Mistral）。
-// 同事版没有设置页、填不了 key，以前只能退回手机本地 Tesseract，识别明显更差。
-const AI_SHARED_PROVIDER = 'mistral';
+// 没在进阶里填自己的 AI 钥匙时，走 bot 自己的 AI（2026-11-27 用户拍板「方案 A」）。
+// /ai-proxy 认 provider 'bot'＋公司报账密钥（老板与同事的钥匙都认），不必送任何 AI key。
+// 以前写死 'mistral'（2026-08-13）；Mistral 免费方案回 402 后改成中性的 'bot'。
+const AI_SHARED_PROVIDER = 'bot';
 
 async function runReceiptSmartOCR(sourceCanvas){
-  // 设置里选过就用选的那家；没选过就用共用 key 那家
-  const provider = getAiProvider() || AI_SHARED_PROVIDER;
-  const key = getAiKey(provider);
-  // 没有自己的 key 时，拿公司报账密钥去换服务端那把共用 key（butler 的 /ai-proxy 认它）。
-  // Gemini 是浏览器直连、不经 /ai-proxy，没自带 key 就没得换，只能退回本地 OCR。
-  const useShared = !key && provider !== 'gemini' && !!getCompanyToken();
+  // 进阶里选了某家且填了自己的 key 才用它；其余一律走 bot 的 AI
+  const chosen = getAiProvider();
+  const ownKey = getAiKey(chosen);
+  const provider = (chosen && ownKey) ? chosen : AI_SHARED_PROVIDER;
+  const key = provider === AI_SHARED_PROVIDER ? '' : ownKey;
+  // 走 bot 的 AI 要带公司报账密钥验身份；没有密钥只能退回本地 OCR。
+  const useShared = provider === AI_SHARED_PROVIDER && !!getCompanyToken();
   if(!key && !useShared){ return runReceiptOCRPrefill(sourceCanvas); }
 
   try{
@@ -6149,27 +6185,29 @@ async function runReceiptSmartOCR(sourceCanvas){
       text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
       if(!text) throw new Error('Gemini 返回为空');
     } else {
-      // Qwen / Mistral / Agnes：不走浏览器直连，经 butler-bot 转发
+      // bot 的 AI（默认）/ Qwen / Agnes：不走浏览器直连，经 butler-bot 转发
       const resp = await Promise.race([
         fetch(AI_PROXY_URL, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             provider,
-            // 二选一：自己的 key，或用公司报账密钥换服务端那把共用 key。
-            // 两个都送的话服务端会优先用 apiKey，所以没有自己的 key 时不要送空字串。
+            // 二选一：自己的 key，或（bot 的 AI）只送公司报账密钥。
+            // 没有自己的 key 时不要送空字串 apiKey。
             ...(key ? { apiKey: key } : { token: getCompanyToken() }),
             systemPrompt: '你只输出 JSON，不要输出任何其他文字。',
             userText: prompt,
             imageBase64: base64, imageMime: 'image/jpeg'
           })
         }),
-        new Promise((_,rej)=>setTimeout(()=>rej(new Error(AI_PROVIDER_NAMES[provider] + ' timeout')), timeoutMs))
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error(aiName(provider) + ' timeout')), timeoutMs))
       ]);
-      const body = await resp.json();
-      if(!resp.ok) throw new Error((body && body.error) || (AI_PROVIDER_NAMES[provider] + ' HTTP ' + resp.status));
+      let body = null;
+      try{ body = await resp.json(); }catch(e){}
+      if(!resp.ok) throw new Error((body && body.error) || (aiName(provider) + ' HTTP ' + resp.status));
       text = body && body.text;
-      if(!text) throw new Error(AI_PROVIDER_NAMES[provider] + ' 返回为空');
+      if(!text) throw new Error(aiName(provider) + ' 返回为空');
+      if(body && body.provider) console.info('收据识别由', body.provider, '完成');
     }
 
     let cleaned = text.trim();
@@ -6202,8 +6240,15 @@ async function runReceiptSmartOCR(sourceCanvas){
     else await runReceiptOCRPrefill(sourceCanvas); // AI 没识别出东西，退回本地识别兜底
   }catch(e){
     console.error('AI receipt OCR failed, falling back to local OCR (ignored):', e);
+    // bot 的 AI 全部不通（或超时）：说清楚，再退回本地识别兜底
+    if(provider === AI_SHARED_PROVIDER){
+      try{ toast('bot 的 AI 暂时连不上，先用本机识别；认不准请稍后再试或手动输入'); }catch(e2){}
+    }
     await runReceiptOCRPrefill(sourceCanvas);
   }
+}
+function aiName(provider){
+  return provider === AI_SHARED_PROVIDER ? 'bot 的 AI' : (AI_PROVIDER_NAMES[provider] || provider);
 }
 
 function resizeForOutput(canvas, maxSide){
@@ -6396,6 +6441,7 @@ function init(){
   checkShareTarget();
   initMoreSettings();   // 设置页「更多设置」的折叠状态，恢复上次的样子
   initCatsBox();        // 设置页「消费类别」的折叠状态，同上
+  migrateRetiredAiProvider();   // 本机存的若是已下架的 Mistral，改回 bot 的 AI 并提示一次
 
   // 公司账本（全员）：开 App 时后台拉一次，首屏那张卡才有「今天」的数。
   // 不 await——拉不到就是卡上写一句「连不上」，不该拖住启动。
@@ -6441,7 +6487,7 @@ function init(){
 // 这个 App 装在手机主屏时很容易停在旧版，而旧版记的账缺 company.recordId，
 // 删除时同步不了公司账本，看起来就像功能坏了（2026-08-03 排查过一次）。
 // 改动本页面的功能时顺手把日期改成当天。
-const APP_BUILD = '2026-11-18';
+const APP_BUILD = '2026-11-27';
 
 const COMPANY_EXPENSE_URL = 'https://butler-bot.jarixhew.workers.dev/company-expense';
 const COMPANY_TOKEN_STORAGE = 'expenseTracker_companyToken';
