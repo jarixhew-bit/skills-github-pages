@@ -14,7 +14,7 @@ def fdc_zip(url,label):
         if not n: return []
         return list(csv.DictReader(io.TextIOWrapper(z.open(n[0]),encoding="utf8")))
     food={r["fdc_id"]:r["description"] for r in rd("food.csv")}
-    want={"1008":"kcal","1003":"prot","1004":"fat","1005":"carb","2047":"kcalAtw","2048":"kcalSpec"}
+    want={"208":"kcal","203":"prot","204":"fat","205":"carb","1008":"kcal","1003":"prot","1004":"fat","1005":"carb","2047":"kcalAtw","2048":"kcalSpec"}
     nut={}
     for r in rd("food_nutrient.csv"):
         r["nutrient_id"]=r.get("nutrient_id","").strip()
@@ -43,7 +43,8 @@ if 1:
         PAT[:]= [l.strip() for l in open(".tmpfood/patterns_survey.txt",encoding="utf8") if l.strip()]
         fdc_zip("https://fdc.nal.usda.gov/"+sorted(sv)[-1],"FNDDS")
 # 台湾食药署 食品营养成分资料库（开放资料 InfoId=20）
-TW=["小米","白米","精白米","山藥","淮山","芡實","茯苓","薏仁","薏苡","蓮子","地瓜","甘藷","核桃","雞蛋","橄欖油","炒飯","粿條"]
+TW=["豆干","豆乾","饅頭","菜心","火龍果","粿條","米粉","米苔目","河粉","牛腱","羊肉","豬五花","五花","白茯苓","淮山","芡實","薏仁","蓮子(乾)","小米"]
+TWX=["小米","白米","精白米","山藥","淮山","芡實","茯苓","薏仁","薏苡","蓮子","地瓜","甘藷","核桃","雞蛋","橄欖油","炒飯","粿條"]
 for lt in ("3","2","1"):
     u=f"https://data.fda.gov.tw/opendata/exportDataList.do?method=ExportData&InfoId=20&logType={lt}"
     print("="*70); print("TW",u)
@@ -68,8 +69,8 @@ for lt in ("3","2","1"):
     val=[k for k in data[0] if "每100" in k]; 
     names=sorted({r[keyname] for r in data})
     for t in TW:
-        m=[n for n in names if t in n][:15]; print(f"--- {t}: {m}")
-    show={"熱量","修正熱量","粗蛋白","粗脂肪","總碳水化合物","水分"}
+        m=[n for n in names if t in n][:25]; print(f"--- {t}: {m}")
+    show={"熱量","修正熱量","粗蛋白","粗脂肪","總碳水化合物","水分","膳食纖維"}
     for r in data:
         n=r[keyname]
         if any(t in n for t in TW) and (not item or r[item] in show):
@@ -78,3 +79,4 @@ for lt in ("3","2","1"):
 print("DONE")
 # run2
 # run3
+# run4

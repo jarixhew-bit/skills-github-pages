@@ -1,15 +1,2 @@
-^Beef, shank
-^Beef, round, eye of round
-^Lamb, domestic, leg
-^Rice, white, glutinous
-^Rice, white, long-grain, regular, enriched, cooked
-^Pasta, whole-wheat, cooked
-convolvulus|water spinach|swamp
-choy|choi
-chinese
-^Bok choy
-^Pork, fresh, loin, center loin \(chops\), bone-in, separable lean only, cooked, broiled
-^Pork, fresh, belly
-^Fish, pompano
-^Fish, milkfish
-^Fish, salmon, pink
+^Lamb.*leg
+^Lamb, (ground|domestic, shoulder)
