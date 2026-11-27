@@ -1,2 +1,0 @@
-^Lamb.*leg
-^Lamb, (ground|domestic, shoulder)
