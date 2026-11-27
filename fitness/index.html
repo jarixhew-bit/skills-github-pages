@@ -3361,7 +3361,7 @@ function srcLine(t){
   if(t.src==="usda"||t.src==="fndds"){ const F=FOOD_BY[t.fid]; return '来源：<a href="'+FDC_URL(t.ref)+'" target="_blank" rel="noopener">USDA FoodData Central '+esc(t.ref)+'</a>'+(F?'（'+esc(F.desc)+'）':'')+(F&&F.note?'。'+esc(F.note):'')+(t.est?'。<b>估算值，做法差很多</b>':''); }
   if(t.src==="tw"){ const F=FOOD_BY[t.fid]; return '来源：<a href="'+TW_URL+'" target="_blank" rel="noopener">台湾食药署食品营养成分资料库</a> '+esc(t.ref)+(F?'（'+esc(F.desc)+'）。'+esc(F.note):''); }
   if(t.src==="recipe"){ const R=RECIPES[t.fid]; return '每份＝各食材 克数×每100g÷100 的和：'+esc(R.note)+'（各食材来源见食物库）'; }
-  if(t.src==="off") return '来源：<a href="'+OFF_URL+'" target="_blank" rel="noopener">Open Food Facts</a>（开放资料 ODbL，由用户照包装填写，可能有错）条码 '+esc(t.ref);
+  if(t.src==="off") return '来源：<a href="'+OFF_URL+'" target="_blank" rel="noopener">Open Food Facts</a>（开放资料 ODbL，由大家照包装填写，可能有错）条码 '+esc(t.ref);
   if(t.src==="photo") return '照片估算：你自己填的数字';
   return '自建食物：你自己填的数字';
 }
@@ -3423,7 +3423,7 @@ function renderCombo(){
   const tot=comboTotals(fd.cbDraft);
   let h='<div class="block-head"><h2>常吃早餐</h2><span class="small muted">今天星期'+"日一二三四五六"[day]+'</span></div>'+
     '<p class="small muted">App 的安排：二四六推荐四神小米粥、一三五日推荐蒸地瓜（照你说的习惯）。加入前可以改克数。</p>'+
-    '<div class="chips" id="cbSel">'+list.map(c=>'<button class="chip" data-cb="'+esc(c.id)+'" aria-pressed="'+(c.id===fd.cb)+'">'+esc(c.name)+(c.id===rec.id?'（今天）':'')+'</button>').join("")+'</div>'+
+    '<div class="chips" id="cbSel">'+list.map(c=>'<button class="chip" data-cb="'+esc(c.id)+'" aria-pressed="'+(c.id===fd.cb)+'">'+esc(c.name)+(c.id===rec.id?'（今天，App 的安排）':'')+'</button>').join("")+'</div>'+
     '<table class="dtab" id="cbTab"><tbody>'+fd.cbDraft.map((ci,i)=>{ const t=comboTpl(ci); if(!t) return ''; const x=calcItem(t);
       return '<tr><td>'+esc(t.n)+(ci.lab?'<br><span class="small muted">'+esc(ci.lab)+'</span>':'')+'</td><td style="width:84px"><input class="inp" style="font-size:15px;padding:4px" data-cbq="'+i+'" inputmode="decimal" value="'+r1(t.q)+'" aria-label="'+esc(t.n)+(t.u==="g"?' 克数':' 份数')+'"></td><td class="small">'+(t.u==="g"?'g':'份')+'</td><td class="small">'+Math.round(x.kcal)+' kcal<br>'+x.p+' g</td></tr>'; }).join("")+'</tbody></table>'+
     '<p id="cbTot"><span class="num" style="font-size:22px">'+tot.kcal+' kcal</span> · 蛋白 '+tot.p+' g</p>'+

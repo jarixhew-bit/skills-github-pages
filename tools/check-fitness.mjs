@@ -2457,7 +2457,7 @@ for (const [label, rows, want] of [
     // 页面：今天 2026-09-30 星期三 → 推荐一三五日
     await page.click('#dietCard [data-open-diet]');
     const pressed = await page.getAttribute('#cbSel [aria-pressed="true"]', 'data-cb');
-    check(pressed === 'b135' && /一三五日早餐：蒸地瓜（今天）/.test(await page.textContent('#cbSel')) && /App 的安排/.test(await page.textContent('#dCombo')), `星期三打开饮食页 → 预选「一三五日：蒸地瓜」并标（今天）、写 App 的安排（实得 ${pressed}）`);
+    check(pressed === 'b135' && /一三五日早餐：蒸地瓜（今天，App 的安排）/.test(await page.textContent('#cbSel')) && /App 的安排/.test(await page.textContent('#dCombo')), `星期三打开饮食页 → 预选「一三五日：蒸地瓜」并在名称旁标（今天，App 的安排）（实得 ${pressed}）`);
     check(/362 kcal/.test(await page.textContent('#cbTot')) && /17 g/.test(await page.textContent('#cbTot')), `常吃早餐卡片显示 362 kcal · 蛋白 17 g（实得 ${await page.textContent('#cbTot')}）`);
     await page.click('#cbSel [data-cb="b246"]');
     check(/534 kcal/.test(await page.textContent('#cbTot')) && /20\.7 g/.test(await page.textContent('#cbTot')), `切到二四六 → 534 kcal · 蛋白 20.7 g（实得 ${await page.textContent('#cbTot')}）`);
