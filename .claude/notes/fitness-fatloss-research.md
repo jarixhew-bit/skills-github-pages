@@ -594,3 +594,221 @@ App 自己的安排／判断（没有来源，文案已标）：
 | `kungpao` | 宫保鸡丁（餐馆，估算） | [FDC 167676](https://fdc.nal.usda.gov/food-details/167676/nutrients) | Restaurant, Chinese, kung pao chicken | 129 | 9.76 | 6.87 | 6.98 |  | 45935930445 | **估算** 美国中餐馆样本；做法差很多 |
 | `chkveg` | 鸡肉炒杂菜（餐馆，估算） | [FDC 167678](https://fdc.nal.usda.gov/food-details/167678/nutrients) | Restaurant, Chinese, chicken and vegetables | 95 | 8.18 | 5.38 | 4.56 |  | 45935930445 | **估算** 美国中餐馆样本；做法差很多 |
 | `noodlesoup` | 汤面（泛指，估算） | [FDC 2709145](https://fdc.nal.usda.gov/food-details/2709145/nutrients) | Soup, noodle, NFS | 90 | 5.48 | 10.08 | 2.99 |  | 45936117341 | **估算** 美国全国饮食调查的「汤面，泛指」，不是柬式粿条汤；汤底、肉量差很多，只能当很粗的参考 |
+
+## 每周饮食与体重：膳食纤维、热量目标、调整提示的出处（2026-11-27 查证）
+
+给 App 饮食页「每周饮食与体重」用（`fitness/index.html` 的 `FOOD_FIB`、`wkTargets()`、`wkAdvice()`）。
+通道：沙盒连不到 USDA／PubMed／NHS／FAO（代理挡），全部在功能分支上用临时 workflow（`tmp-fiber-lookup.yml`，push 触发，查完已删、没进 main）在 runner 上读。
+run ID：46006967250（USDA 两个整包＋台湾整包的纤维、PubMed efetch、NHS 五页、FAO 第 5 章）、46007227968（补：蓝莓与七种常吃食物复核、FAO 表 5.3、NHS 前列腺增大／尿失禁页）。第一次 46006858350 脚本出错没印出资料。
+
+### 1. 膳食纤维：跟原本热量同一笔资料（同一个 FDC ID／台湾整合编号）
+- USDA SR Legacy：`nutrient.csv` 的 1079「Fiber, total dietary」；FNDDS（饮食调查）整包里 `food_nutrient.nutrient_id` 用的是营养素编号 291（同 2026-11-27 那节 208／203 的写法）。
+- 台湾食药署：分析项「膳食纖維」（每 100 克含量）。
+- **蓝莓是新加的**：USDA 171711「Blueberries, raw」57 kcal／蛋白 0.74／碳水 14.49／脂肪 0.33／纤维 2.4（每 100 g）。
+- **未查证（同一笔资料里没有纤维这一栏）**：虾熟 175180、虾生 175179、短粒白饭 168932、荞麦面 168907、**莲子干 170149**、长豆角 169223。
+  莲子干是四神粥的料：台湾 C2305101 写膳食纤维 13.1 g，但 App 的莲子热量／蛋白用的是 USDA 170149，两笔不是同一份样品，**没有混用**；粥的纤维因此标「大致值、有 1 项缺资料」。
+- 茯苓（台湾 G2100101）资料写膳食纤维 80.9 g、总碳水 79.9 g（纤维比总碳水还大），原样照抄、没自己改。粥里的纤维大部分来自它。
+- 全表（App 的 `FOOD_FIB` 由这张表生成，单位 g／100 g）：
+
+| App id | 食物 | 编号 | 膳食纤维 |
+|---|---|---|---|
+| chkbreast | 鸡胸肉（熟，去皮） | 171477 | 0 |
+| chkthigh | 鸡腿肉（熟，去皮去骨） | 172388 | 0 |
+| chkdrum | 鸡小腿肉（熟，去皮去骨） | 172376 | 0 |
+| chkwing | 鸡翅肉（熟，去皮去骨） | 172392 | 0 |
+| duck | 鸭肉（熟，去皮） | 172411 | 0 |
+| porktender | 猪里脊（熟，瘦肉） | 168250 | 0 |
+| porkchop | 猪排（熟，瘦肉） | 168240 | 0 |
+| porkbelly | 五花肉（生） | 167812 | 0 |
+| porkmince | 猪绞肉（熟） | 167903 | 0 |
+| beefshank | 牛腱（熟，炖，瘦肉） | 169442 | 0 |
+| beefshankraw | 牛腱（生，瘦肉） | 169441 | 0 |
+| beefflank | 牛排（侧腹，熟） | 168611 | 0 |
+| beefmince90 | 牛绞肉 90% 瘦（熟） | 171793 | 0 |
+| beefmince85 | 牛绞肉 85% 瘦（熟） | 174032 | 0 |
+| lambleg | 羊腿肉（熟，瘦肉） | 172487 | 0 |
+| lambstew | 羊肉块（炖，瘦肉） | 172509 | 0 |
+| shrimp | 虾（熟） | 175180 | 未查证 |
+| shrimpraw | 虾（生） | 175179 | 未查证 |
+| squid | 鱿鱼（生） | 174223 | 0 |
+| salmon | 三文鱼（养殖，熟） | 175168 | 0 |
+| tilapia | 罗非鱼（熟） | 175177 | 0 |
+| cod | 鳕鱼（熟） | 171956 | 0 |
+| snapper | 红鲷鱼（熟） | 173699 | 0 |
+| grouper | 石斑鱼（熟） | 171963 | 0 |
+| mackerel | 马鲛鱼（熟） | 173674 | 0 |
+| catfish | 鲶鱼（养殖，熟） | 175166 | 0 |
+| milkfish | 虱目鱼（熟） | 171995 | 0 |
+| pompano | 金鲳鱼（熟） | 173683 | 0 |
+| tuna | 水浸金枪鱼罐头（沥干） | 173709 | 0 |
+| crab | 螃蟹肉（熟） | 174205 | 0 |
+| egg | 鸡蛋（半生熟／水煮，不加油） | 172186 | 0 |
+| egghard | 鸡蛋（全熟水煮） | 173424 | 0 |
+| eggraw | 鸡蛋（生，全蛋） | 171287 | 0 |
+| eggwhite | 蛋白（生） | 172183 | 0 |
+| tofufirm | 板豆腐／老豆腐 | 172475 | 2.3 |
+| tofu | 豆腐（一般） | 172476 | 0.3 |
+| tofusoft | 嫩豆腐 | 172449 | 0.2 |
+| tofufried | 炸豆腐／豆泡 | 172451 | 3.9 |
+| dougan | 豆干（小方豆干） | R4700203 | 3.3 |
+| soymilk | 豆浆（原味，有糖） | 172446 | 0.6 |
+| soymilkns | 无糖豆浆 | 175215 | 0.5 |
+| edamame | 毛豆（煮好） | 168411 | 5.2 |
+| lentil | 小扁豆（熟） | 172421 | 7.9 |
+| chickpea | 鹰嘴豆（熟） | 173757 | 7.6 |
+| mungbean | 绿豆（熟） | 174257 | 7.6 |
+| redbean | 红腰豆（熟） | 175194 | 7.4 |
+| rice | 白饭（熟） | 168878 | 0.4 |
+| riceshort | 白饭（短粒米，熟） | 168932 | 未查证 |
+| ricebrown | 糙米饭（熟） | 169704 | 1.6 |
+| riceglut | 糯米饭（熟） | 169711 | 1 |
+| riceraw | 白米（生） | 168877 | 1.3 |
+| ricenoodle | 粿条／河粉／米粉（煮熟） | 168914 | 1 |
+| ricenoodledry | 米粉（干） | 169742 | 1.6 |
+| eggnoodle | 鸡蛋面（熟） | 168919 | 1.2 |
+| pasta | 意大利面（熟） | 169737 | 1.8 |
+| pastaww | 全麦意面（熟） | 168910 | 3.9 |
+| soba | 荞麦面（熟） | 168907 | 未查证 |
+| mantou | 白馒头 | R2400201 | 1.1 |
+| breadwhite | 白吐司 | 174924 | 2.7 |
+| breadww | 全麦面包 | 172688 | 6 |
+| oats | 燕麦片（干） | 173904 | 10.1 |
+| oatmeal | 燕麦粥（水煮） | 171675 | 1.7 |
+| corn | 甜玉米（煮） | 169999 | 2.4 |
+| potato | 马铃薯（水煮去皮） | 170440 | 1.8 |
+| potatobaked | 烤马铃薯（连皮） | 170093 | 2.2 |
+| taro | 芋头（熟） | 168486 | 5.1 |
+| pumpkin | 南瓜（煮） | 168449 | 1.1 |
+| sweetpotato | 地瓜（蒸／水煮，去皮） | 168484 | 2.5 |
+| sweetpotatobaked | 烤地瓜（连皮烤） | 168483 | 3.3 |
+| millet | 小米（生） | 169702 | 8.5 |
+| huaishan | 淮山（干片） | B0100101 | 5.4 |
+| lotusseed | 莲子（干） | 170149 | 未查证 |
+| qianshi | 芡实（干） | C1800101 | 3.1 |
+| fuling | 茯苓（干，白茯苓） | G2100101 | 80.9 |
+| yiren | 薏仁（炒薏仁按生薏仁算） | A1000101 | 1.8 |
+| choysum | 菜心 | E3201001 | 2.3 |
+| kangkung | 空心菜（煮） | 169302 | 1.9 |
+| kangkungraw | 空心菜（生） | 169301 | 2.1 |
+| broccoli | 西兰花（煮） | 169967 | 3.3 |
+| gailan | 芥兰（熟） | 169392 | 2.5 |
+| bokchoy | 小白菜／青江菜（煮） | 170391 | 1 |
+| napa | 大白菜（煮） | 169980 | 1.7 |
+| cabbage | 包菜（生） | 169975 | 2.5 |
+| spinach | 菠菜（煮） | 168463 | 2.4 |
+| cucumber | 黄瓜（连皮） | 168409 | 0.5 |
+| tomato | 番茄 | 170457 | 1.2 |
+| greenpepper | 青椒 | 170427 | 1.7 |
+| carrot | 胡萝卜（生） | 170393 | 2.8 |
+| mushroom | 白蘑菇（生） | 169251 | 1 |
+| shiitake | 香菇（熟） | 168437 | 2.1 |
+| enoki | 金针菇（生） | 169382 | 2.7 |
+| oystermush | 秀珍菇／蚝菇（生） | 168580 | 2.3 |
+| eggplant | 茄子（煮） | 169229 | 2.5 |
+| longbean | 长豆角（煮） | 169223 | 未查证 |
+| greenbean | 四季豆（煮） | 169141 | 3.2 |
+| bittergourd | 苦瓜（煮） | 168394 | 2 |
+| okra | 秋葵（煮） | 169261 | 2.5 |
+| calabash | 葫芦瓜（煮） | 169233 | 1.2 |
+| beansprout | 绿豆芽（生） | 169957 | 1.8 |
+| onion | 洋葱（生） | 170000 | 1.7 |
+| lettuce | 生菜（罗马生菜） | 169247 | 2.1 |
+| cauliflower | 花椰菜（煮） | 170397 | 2.3 |
+| lotusroot | 莲藕（煮） | 168430 | 3.1 |
+| celery | 芹菜（生） | 169988 | 1.6 |
+| kelp | 海带（生） | 168457 | 1.3 |
+| banana | 香蕉 | 173944 | 2.6 |
+| mango | 芒果 | 169910 | 1.6 |
+| papaya | 木瓜 | 169926 | 1.7 |
+| watermelon | 西瓜 | 167765 | 0.4 |
+| apple | 苹果（连皮） | 171688 | 2.4 |
+| orange | 橙 | 169097 | 2.4 |
+| guava | 番石榴 | 173044 | 5.4 |
+| pineapple | 菠萝 | 169124 | 1.4 |
+| durian | 榴莲 | 168192 | 3.8 |
+| longan | 龙眼 | 169089 | 1.1 |
+| lychee | 荔枝 | 169086 | 1.3 |
+| jackfruit | 菠萝蜜 | 174687 | 1.5 |
+| grapes | 葡萄 | 174683 | 0.9 |
+| kiwi | 奇异果 | 168153 | 3 |
+| avocado | 牛油果 | 171705 | 6.7 |
+| pear | 梨 | 169118 | 3.1 |
+| strawberry | 草莓 | 167762 | 2 |
+| walnut | 核桃（去壳） | 170187 | 6.7 |
+| almond | 杏仁（生） | 170567 | 12.5 |
+| peanut | 花生（烤，无盐） | 173806 | 8.4 |
+| cashew | 腰果（生） | 170162 | 3.3 |
+| sesame | 芝麻 | 170150 | 11.8 |
+| chia | 奇亚籽 | 170554 | 34.4 |
+| flax | 亚麻籽 | 169414 | 27.3 |
+| pumpkinseed | 南瓜子仁 | 170556 | 6 |
+| sunflower | 葵花子仁 | 170562 | 8.6 |
+| milk | 全脂牛奶 | 171265 | 0 |
+| milklow | 低脂牛奶（1%） | 170872 | 0 |
+| milkskim | 脱脂牛奶 | 171269 | 0 |
+| yogurt | 原味优格（全脂） | 171284 | 0 |
+| greek0 | 希腊优格（无脂） | 170894 | 0 |
+| greek | 希腊优格（全脂） | 171304 | 0 |
+| cheddar | 切达芝士 | 173414 | 0 |
+| mozzarella | 马苏里拉芝士（部分脱脂） | 170847 | 0 |
+| olive | 初榨橄榄油 | 171413 | 0 |
+| peanutoil | 花生油 | 171410 | 0 |
+| canola | 芥花油／菜籽油 | 172336 | 0 |
+| sesameoil | 麻油 | 171016 | 0 |
+| coconutoil | 椰子油 | 171412 | 0 |
+| butter | 牛油（有盐） | 173410 | 0 |
+| soysauce | 酱油 | 174277 | 0.8 |
+| oystersauce | 蚝油 | 174529 | 0.3 |
+| fishsauce | 鱼露 | 174531 | 0 |
+| sugar | 白糖 | 169655 | 0 |
+| brownsugar | 红糖 | 168833 | 0 |
+| honey | 蜂蜜 | 169640 | 0.2 |
+| coconutmilk | 椰浆 | 170172 | 2.2 |
+| friedrice_chk | 鸡肉炒饭（估算） | 2708953 | 0.9 |
+| friedrice_pork | 猪肉炒饭（估算） | 2708954 | 0.9 |
+| friedrice_shrimp | 虾仁炒饭（估算） | 2708956 | 0.9 |
+| friedrice_veg | 蛋炒饭／素炒饭（估算） | 2708951 | 1.1 |
+| lomein | 素炒面（餐馆，估算） | 167677 | 1.3 |
+| kungpao | 宫保鸡丁（餐馆，估算） | 167676 | 1.5 |
+| chkveg | 鸡肉炒杂菜（餐馆，估算） | 167678 | 0.9 |
+| noodlesoup | 汤面（泛指，估算） | 2709145 | 0.8 || blueberry | 蓝莓（新加） | 171711 | 2.4 |
+
+### 2. 四神小米粥两种份量（每 100 g 数值见上一节全表；水不算）
+| | 小碗（干料 62 g） | 大碗（干料 95 g） | 差 |
+|---|---|---|---|
+| 克数 | 小米 20、白米 5、淮山 8、莲子 8、芡实 8、茯苓 8、炒薏仁 5 | 小米 30、白米 15、淮山 10、莲子 10、芡实 10、茯苓 10、炒薏仁 10 | |
+| 热量 | 75.6＋18.25＋28.08＋26.56＋26.88＋12.96＋18.75 ＝ **207.08 kcal** | 113.4＋54.75＋35.1＋33.2＋33.6＋16.2＋37.5 ＝ **323.75 kcal** | ＋116.67 |
+| 蛋白 | **5.7943 g** | 3.306＋1.0695＋0.53＋1.541＋0.99＋0.1＋1.41 ＝ **8.9465 g** | ＋3.15 |
+| 碳水 | 14.57＋3.9975＋6.592＋5.1576＋6.032＋6.392＋3.31 ＝ **46.0511 g** | 21.855＋11.9925＋8.24＋6.447＋7.54＋7.99＋6.62 ＝ **70.6845 g** | ＋24.63 |
+| 脂肪 | 0.844＋0.033＋0.024＋0.1576＋0.008＋0.016＋0.305 ＝ **1.3876 g** | 1.266＋0.099＋0.03＋0.197＋0.01＋0.02＋0.61 ＝ **2.232 g** | ＋0.84 |
+| 纤维（大致，莲子缺） | 1.7＋0.065＋0.432＋0.248＋6.472＋0.09 ＝ **9.007 g** | 2.55＋0.195＋0.54＋0.31＋8.09＋0.18 ＝ **11.865 g** | ＋2.86 |
+
+用户粗算大碗约 324、小碗约 207 kcal，跟这里一致。
+
+### 3. 热量与宏量目标
+| # | 说法 | 状态 | 来源 | 原文引句 |
+|---|---|---|---|---|
+| M1 | 静息能量（REE）预测公式：男 10×kg＋6.25×cm−5×岁＋5，女同式 −161 | 已读摘要 ✔（run 46006967250） | Mifflin 1990, Am J Clin Nutr 51(2):241-7，PMID 2305711，https://pubmed.ncbi.nlm.nih.gov/2305711/ | "REE (males) = 10 x weight (kg) + 6.25 x height (cm) - 5 x age (y) + 5; REE (females) = 10 x weight (kg) + 6.25 x height (cm) - 5 x age (y) - 161."；样本 "498 healthy subjects … aged 19-78 y"，"Normal-weight (n = 264) and obese (n = 234)"，用间接测热法量 REE |
+| M2 | 活动系数（PAL＝一天总消耗÷BMR）：「久坐或轻度活动」1.40–1.69、「活跃或中度活跃」1.70–1.99 | 已读原文 ✔（run 46007227968） | FAO/WHO/UNU《Human energy requirements》2004（2001 年专家会议），第 5 章表 5.3，https://www.fao.org/4/y5686e/y5686e07.htm | "Sedentary or light activity lifestyle 1.40-1.69 / Active or moderately active lifestyle 1.70-1.99 / Vigorous or vigorously active lifestyle 2.00-2.40"；"Multiplying the PAL by the BMR gives the actual energy requirements."；表 5.1 久坐例子 "TEE = 1.53 × 5.40"；活跃的例子："the daily performance of one hour … of moderate to vigorous exercise … can raise a person's" PAL |
+| M3 | 低脂饮食 vs 高脂饮食，男性睾酮较低 | 已读摘要 ✔（run 46006967250） | Whittaker & Wu 2021, J Steroid Biochem Mol Biol 210:105878，PMID 33741447，https://pubmed.ncbi.nlm.nih.gov/33741447/（2026 年 1 月有一则更正 106880，**没读更正内容**） | "6 eligible studies, with a total of 206 participants"；"total testosterone [-0.38 (95 % CI -0.75 to -0.01) P = 0.04]; free testosterone [-0.37 …]"；"CONCLUSIONS: Low-fat diets appear to decrease testosterone levels in men, but further randomised controlled trials are needed to confirm this effect." **摘要没写「低脂」的门槛是几 %** |
+| M4 | 成人膳食纤维每天 30 g | 已读原文 ✔（run 46006967250） | NHS「How to get more fibre into your diet」（2026-03-02 审阅），https://www.nhs.uk/live-well/eat-well/digestive-health/how-to-get-more-fibre-into-your-diet/ | "Government guidelines say our dietary fibre intake should increase to 30g a day, as part of a healthy balanced diet. As most adults are only eating an average of about 20g day" |
+
+**App 的安排（没有对应出处，画面上都这样标）**：
+- 休息日 PAL 1.5、训练日 1.6（两个都落在 FAO「久坐或轻度活动」1.40–1.69 之内；训练日多 0.1 约等于多一次训练的消耗，是估算）。
+- 每天少吃 400 kcal（用户定的原则 300–500 的中间；可选 300／400／500）。估计消耗－菜单／目标 >500 就提醒（用户原则，App 的保守判断）。
+- 蛋白沿用 1.6 g/kg（见前面「16/8」那节 Morton／ISSN）。
+- 脂肪默认＝目标热量的 30%；**下限 20%**——Whittaker & Wu 只说低脂比高脂睾酮低、没给门槛，20% 是 App 的保守安排。
+- 碳水＝剩下的热量 ÷4，所以训练日热量多、碳水自然多（App 的安排，没找到「训练日要多吃碳水」的对应出处）。
+- 「热量别降太狠」那句（跟性功能有关的提醒）：只能写到「低脂饮食的研究里睾酮较低（M3）」「8 周限时进食研究里睾酮下降（Moro 2016，见前面）」；**这些研究都没有量勃起功能**，App 不写「会影响勃起」。
+
+### 4. 调整提示用到的 NHS 原文（run 46006967250／46007227968）
+- 胀气 https://www.nhs.uk/symptoms/bloating/（2026-01-21 审阅）："See a GP if: you feel bloated regularly / you've tried changing your diet but keep feeling bloated / you have bloating and unintentional weight loss / you have bloating and also have blood in your poo"；
+  紧急："you have bloating with vomiting (being sick), diarrhoea or constipation / you have bloating with a stomach ache / you have a high temperature (fever)…"；急诊："You have bloating with a swollen stomach and: you have a stomach ache that is severe and came on very suddenly / you're vomiting blood or your vomit looks like ground coffee"。
+- 便秘 https://www.nhs.uk/conditions/constipation/："See a GP if you: are constipated and it's not getting better with treatment / are regularly constipated / … have blood in your poo / have lost weight without trying / … notice sudden changes in the how you poo (your bowel habits) / have tummy pain"。
+- 腹泻 https://www.nhs.uk/conditions/diarrhoea-and-vomiting/：紧急 "you or your child have bloody diarrhoea or bleeding from the bottom / you or your child have diarrhoea for more than 7 days or vomiting for more than 2 days"；急诊 "have a sudden, severe tummy ache"。
+- 肠癌症状 https://www.nhs.uk/conditions/bowel-cancer/symptoms/（2026-09-04 审阅）："blood in your poo, which may look red or black / … losing weight without trying"；紧急 "your poo is black or dark red / you have bloody diarrhoea"。
+- 夜尿：NHS 没有单独的 nocturia 页（试过 5 个网址都 404）。用前列腺增大 https://www.nhs.uk/conditions/prostate-enlargement/：症状含 "needing to pee more often or urgently, including getting up to pee during the night"；"See a GP if: you have difficulty peeing or need to pee more frequently"；紧急 "you have blood in your pee … you have pain when peeing / you cannot pee at all"。
+  尿失禁页 https://www.nhs.uk/conditions/urinary-incontinence/："If you have to urinate frequently during the night (nocturia), try drinking less in the hours before you go to bed. However, make sure you still drink enough fluids during the day."
+- App 不写英国的 111／999（用户在东南亚，同体态页做法），改写「尽快看医生／马上去急诊」。
+
+**规则的门槛全是 App 的安排**：体重周平均连续 2 周上升、腹围周平均比上周大 ≥0.5 cm（小于这个当量测误差）、精神周平均降 ≥1 或连续 3 天 ≤2、一周消化不适 ≥3 天（连 2 周＝「持续」）、夜尿连续 2 周每周记 ≥4 晚且每晚都 ≥2 次。

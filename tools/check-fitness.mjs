@@ -48,6 +48,9 @@
  *      照片估算一笔、最近吃过、自建食物与我的组合、包装条码（Open Food Facts 拦截：找到／查不到／没网）、旧 log{p,kcal,win} 相容、备份来回（本机没有才补）。
  *  26. 拍照估算（AI，butler-bot /food-photo 用 page.route 拦）：自动读记账 App 的钥匙、读不到才贴一次；照片压成长边 1024 JPEG；改克数按比例改热量／蛋白；
  *      按「记入」后当天合计手算对；没按「记入」（不要了／切走／失败／超时／没网／钥匙不对）一笔都不写；钥匙不进备份、原始码没写死钥匙。
+ *  27. 每周饮食与体重：四神粥小碗／大碗热量与宏量（脚本独立手算）、星期三默认菜单合计手算、训练日／休息日目标（Mifflin×活动系数−400，手算）与切换、
+ *      目标太低（少 >500）与脂肪低于 20% 的警告、改克数／删／加／搬整餐／复制一天、16/8 窗口外的时间会警告、「今天照计划记入」写进当天记录且不重复（外食有数字才记）、
+ *      每日快速记录（体重腹围写进原本的 fit.body、精神／消化／夜尿／睡眠）、四条调整提示各造资料出现与不出现、周复盘趋势图、备份来回（本机没有才补）、旧资料相容、文案与出处守门。
  *  12. 回归模式（停练 ≥7 天）：没停练时周期与旧公式逐日一致；停 10 天九成、25 天八成（手算取整）、
  *      回归不加重；练满 2 次后照停练前的重量往上加；停练整周不算进周期、回归那周不排减量；
  *      停练原因存得住、记录页有分隔行；关掉开关不打折；备份带开关与原因。
@@ -2662,6 +2665,270 @@ for (const [label, rows, want] of [
     check(false, '第 26 段（拍照估算）跑不下去：' + String(e).slice(0, 300));
   }
   check(errors.length === 0, `拍照估算没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
+  await ctx.close();
+}
+
+// ---- 27. 每周饮食与体重（2026-11-27 用户要求）：每周菜单、训练日／休息日目标、每日快速记录、周复盘与调整提示 ----
+// 手算（每 100 g 的数值抄自研究笔记「食物库数值」与「每周饮食与体重」两节，脚本自己重算，不读 App 的数字当答案）：
+//   小碗四神粥（干料 62 g）：kcal 207.08、蛋白 5.7943、碳水 46.0511、脂肪 1.3876、纤维 9.007（莲子缺纤维资料，1 项）
+//   大碗（小米30 白米15 淮山10 莲子10 芡实10 茯苓10 薏仁10＝95 g）：kcal 113.4＋54.75＋35.1＋33.2＋33.6＋16.2＋37.5＝323.75、
+//     蛋白 8.9465、碳水 70.6845、脂肪 2.232、纤维 11.865 → 大碗多 116.67 kcal（画面「多 117 kcal」）
+//   目标（男 40 岁 72 kg 168 cm，全是 fixture，不是谁的资料）：Mifflin 10×72＋6.25×168−5×40＋5＝1575；
+//     休息日 ×1.5＝2362.5 → −400＝1962.5 → 取到 10：1960；蛋白 1.6×72＝115.2→115；脂肪 1960×30%÷9＝65.3→65；碳水 (1960−460−585)÷4＝228.75→229；纤维 30
+//     训练日 ×1.6＝2520 → 2120；脂肪 2120×0.3÷9＝70.7→71；碳水 (2120−460−639)÷4＝255.25→255
+//     脂肪下限＝⌈1960×20%÷9⌉＝44；目标改 1800 → 2362.5−1800＝562.5 >500 要警告；1900 → 462.5 不警告
+//   星期三默认菜单（休息日、小碗）：早 地瓜150＋蛋100＋核桃16＝361.6；午 三文鱼150＋糙米300＋西兰花150＋牛油果50＋橄榄油5＝854.7；
+//     晚 蛋100＋鸡胸100＋糙米250＋菠菜150＋橄榄油5＋蓝莓100＝751.2；合计 1967.5 kcal、蛋白 118.6、碳水 206.1、脂肪 75.6、纤维 28.1（每项先取到 0.1 再加）
+{
+  const SRC = { // 每 100 g：[kcal, 蛋白, 碳水, 脂肪, 纤维(null＝未查证)]
+    millet: [378, 11.02, 72.85, 4.22, 8.5], riceraw: [365, 7.13, 79.95, 0.66, 1.3], huaishan: [351, 5.3, 82.4, 0.3, 5.4], lotusseed: [332, 15.41, 64.47, 1.97, null],
+    qianshi: [336, 9.9, 75.4, 0.1, 3.1], fuling: [162, 1.0, 79.9, 0.2, 80.9], yiren: [375, 14.1, 66.2, 6.1, 1.8],
+    sweetpotato: [76, 1.37, 17.72, 0.14, 2.5], egg: [143, 12.51, 0.71, 9.47, 0], walnut: [654, 15.23, 13.71, 65.21, 6.7], salmon: [206, 22.1, 0, 12.35, 0],
+    ricebrown: [123, 2.74, 25.58, 0.97, 1.6], broccoli: [35, 2.38, 7.18, 0.41, 3.3], avocado: [160, 2, 8.53, 14.66, 6.7], olive: [884, 0, 0, 100, 0],
+    chkbreast: [165, 31.02, 0, 3.57, 0], spinach: [23, 2.97, 3.75, 0.26, 2.4], blueberry: [57, 0.74, 14.49, 0.33, 2.4],
+  };
+  const SMALL = [['millet', 20], ['riceraw', 5], ['huaishan', 8], ['lotusseed', 8], ['qianshi', 8], ['fuling', 8], ['yiren', 5]];
+  const LARGE = [['millet', 30], ['riceraw', 15], ['huaishan', 10], ['lotusseed', 10], ['qianshi', 10], ['fuling', 10], ['yiren', 10]];
+  const rec = parts => { const v = [0, 0, 0, 0, 0], fm = parts.filter(([id]) => SRC[id][4] == null).length; parts.forEach(([id, g]) => SRC[id].forEach((x, i) => { if (x != null) v[i] += g * x / 100; })); return { v, fm }; };
+  const S = rec(SMALL), Lg = rec(LARGE), near = (a, b, e = 1e-6) => Math.abs(a - b) < e;
+  check(near(S.v[0], 207.08) && near(S.v[1], 5.7943) && near(S.v[2], 46.0511) && near(S.v[3], 1.3876) && near(S.v[4], 9.007) && S.fm === 1
+    && near(Lg.v[0], 323.75) && near(Lg.v[1], 8.9465) && near(Lg.v[2], 70.6845) && near(Lg.v[3], 2.232) && near(Lg.v[4], 11.865) && Lg.fm === 1,
+    `第 27 段手算底数自洽：小碗 207.08／5.7943／46.0511／1.3876／9.007、大碗 323.75／8.9465／70.6845／2.232／11.865（实得 ${JSON.stringify([S, Lg])}）`);
+  const n1 = x => Math.round(x * 10) / 10, item = (id, g) => SRC[id].map(x => x == null ? null : n1(g * x / 100));
+  const WED = [['sweetpotato', 150], ['egg', 100], ['walnut', 16], ['salmon', 150], ['ricebrown', 300], ['broccoli', 150], ['avocado', 50], ['olive', 5], ['egg', 100], ['chkbreast', 100], ['ricebrown', 250], ['spinach', 150], ['olive', 5], ['blueberry', 100]];
+  const wedT = [0, 1, 2, 3, 4].map(i => WED.reduce((a, [id, g]) => a + item(id, g)[i], 0));
+  check(near(wedT[0], 1967.5, 0.01) && near(wedT[1], 118.6, 0.01) && near(wedT[2], 206.1, 0.01) && near(wedT[3], 75.6, 0.01) && near(wedT[4], 28.1, 0.01), `第 27 段手算：星期三菜单 1967.5 kcal／118.6／206.1／75.6／28.1（实得 ${wedT.map(n1)}）`);
+  const PROFILE = { sex: 'M', age: 40, kg: 72, cm: 168 };
+  const { ctx, page, errors } = await openWith([]);
+  const seed = async (diet, body, sess) => { await page.evaluate(([d, b, s]) => { localStorage.setItem('fit.diet', JSON.stringify(d)); localStorage.setItem('fit.body', JSON.stringify(b || [])); if (s) localStorage.setItem('fit.sessions', JSON.stringify(s)); }, [diet, body, sess]); await page.reload(); await page.waitForSelector('#workout .ex'); };
+  const W = () => page.evaluate(() => window.__fit.wk);
+  try {
+    await seed({ profile: PROFILE, setTs: 1 });
+    // (a) 粥两种份量：App 的组合计算 ＝ 手算；画面并列、写差多少
+    const R = await page.evaluate(() => { const f = window.__fit.food; return [f.recipeVals('sishen'), f.recipeVals('sishenL')]; });
+    const same = (a, b) => near(a.k, b.v[0]) && near(a.p, b.v[1]) && near(a.c, b.v[2]) && near(a.f, b.v[3]) && near(a.fb, b.v[4]) && a.fm === b.fm;
+    check(same(R[0], S) && same(R[1], Lg), `粥：App 算的小碗 ${n1(R[0].k)}／大碗 ${n1(R[1].k)} kcal，蛋白／碳水／脂肪／纤维都跟手算一样、各缺 1 项纤维（莲子）`);
+    const ff = await page.evaluate(() => window.__fit.wk.FOOD_FIB);
+    const fibBad = Object.entries(SRC).filter(([id, v]) => ff[id] !== v[4]).map(([id]) => id);
+    check(fibBad.length === 0 && ff.shrimp === null && ff.lotusseed === null, `食物库纤维抽查 ${Object.keys(SRC).length} 种跟研究笔记一致、查不到的（虾、莲子）是 null 不是 0（不一致：${fibBad.join('、') || '无'}）`);
+    await page.click('#dietCard [data-open-diet]');
+    check(await page.isVisible('#dWk') && /每日快速记录/.test(await page.textContent('#dWk')) && /周复盘/.test(await page.textContent('#dWk')), '饮食页有「每周饮食与体重」入口：每日快速记录、每周菜单、周复盘');
+    check(!(await page.evaluate(() => !!document.querySelector('#tab-train #dWk'))), '入口在饮食页，没有加到训练页');
+    await page.click('#dWk [data-wv="plan"]');
+    const cmp = await page.textContent('#wpSizeCmp');
+    check(/小碗.*207 kcal/.test(cmp) && /大碗.*324 kcal/.test(cmp) && /多 117 kcal/.test(cmp) && /缺 1 项/.test(cmp), `菜单页并列小碗 207、大碗 324 kcal，写「大碗多 117 kcal」与纤维缺资料（实得 ${cmp.slice(0, 160)}）`);
+    check(/App 的安排/.test(await page.textContent('#dWkView')), '菜单标明「App 的安排」');
+    // (b) 一天菜单合计（星期三＝今天，休息日、默认小碗）
+    const v3 = await page.evaluate(() => window.__fit.wk.planDayVals(2));
+    check(near(v3.k, 1967.5, 0.01) && near(v3.p, 118.6, 0.01) && near(v3.c, 206.1, 0.01) && near(v3.f, 75.6, 0.01) && near(v3.fb, 28.1, 0.01) && v3.fm === 0, `星期三默认菜单合计 ${n1(v3.k)} kcal／${n1(v3.p)}／${n1(v3.c)}／${n1(v3.f)}／纤维 ${n1(v3.fb)} ＝ 手算 1967.5／118.6／206.1／75.6／28.1`);
+    const dt = await page.textContent('#wpDayTot');
+    check(/1968 \/ 1960 kcal/.test(dt) && /118\.6 \/ 115 g/.test(dt) && /206 \/ 229 g/.test(dt) && /76 \/ 65 g/.test(dt) && /28 \/ 30 g/.test(dt) && /休息日/.test(dt), `星期三合计对休息日目标：1968/1960 kcal、118.6/115、206/229、76/65、28/30（实得 ${dt.replace(/\s+/g, ' ').slice(0, 160)}）`);
+    // 星期二（二四六）早餐是四神粥；切大碗 → 所有粥一起换、星期二合计多 116.67
+    const v1s = await page.evaluate(() => window.__fit.wk.planDayVals(1).k);
+    await page.click('#wpSize [data-v="l"]');
+    const v1l = await page.evaluate(() => window.__fit.wk.planDayVals(1).k), nL = await page.evaluate(() => window.__fit.wk.get().days.reduce((a, d) => a + d.meals.reduce((b, M) => b + M.items.filter(ci => ci.r === 'sishenL').length, 0), 0));
+    check(Math.abs(v1l - v1s - 116.67) < 0.1 && nL === 3, `切大碗：二四六三天的粥都换成大碗（${nL} 处），星期二多 ${n1(v1l - v1s)} kcal（手算 323.75−207.08＝116.67；条目各取到 0.1：323.8−207.1＝116.7）`);
+    await page.click('#wpSize [data-v="s"]');
+    // (c) 目标：休息日／训练日切换
+    const tg = await page.evaluate(() => [window.__fit.wk.wkTargets('rest'), window.__fit.wk.wkTargets('train')]);
+    check(tg[0].bmr === 1575 && tg[0].tdee === 2363 && JSON.stringify(tg[0].T) === JSON.stringify({ k: 1960, p: 115, f: 65, c: 229, fb: 30 }), `休息日目标：静息 1575、消耗 2363、1960 kcal／蛋白 115／脂肪 65／碳水 229／纤维 30（实得 ${JSON.stringify(tg[0].T)}）`);
+    check(tg[1].tdee === 2520 && JSON.stringify(tg[1].T) === JSON.stringify({ k: 2120, p: 115, f: 71, c: 255, fb: 30 }) && tg[0].floorF === 44, `训练日目标：消耗 2520、2120 kcal／115／71／255／30；脂肪下限 44 g（实得 ${JSON.stringify(tg[1].T)}，${tg[0].floorF}）`);
+    await page.click('#wpKind [data-v="train"]');
+    check(/2120 kcal/.test(await page.textContent('#wpDayTot')) && /训练日/.test(await page.textContent('#wpDayTot')), '星期三改成训练日 → 合计改对训练日目标 2120 kcal');
+    check(await page.isVisible('[data-hint="carb"]'), '训练日碳水比目标少 30 g 以上 → 提示可以多一点糙米或地瓜（206 < 255−30）');
+    await page.click('#wpKind [data-v="rest"]');
+    check(/1960 kcal/.test(await page.textContent('#wpDayTot')) && !(await page.isVisible('[data-hint="carb"]')), '改回休息日 → 回到 1960 kcal、没有训练日碳水提示');
+    await page.fill('[data-tg="rest:k"]', '1800'); await page.press('[data-tg="rest:k"]', 'Tab');
+    check(await page.isVisible('[data-tgk="rest"] [data-warn="deficit"]') && /563/.test(await page.textContent('[data-tgk="rest"] [data-warn="deficit"]')), '休息日目标改 1800 → 比消耗少 563 kcal，超过 500 要警告');
+    await page.fill('[data-tg="rest:k"]', '1900'); await page.press('[data-tg="rest:k"]', 'Tab');
+    check(!(await page.isVisible('[data-tgk="rest"] [data-warn="deficit"]')), '改 1900（少 463）→ 不警告');
+    await page.fill('[data-tg="rest:f"]', '40'); await page.press('[data-tg="rest:f"]', 'Tab');
+    check(await page.isVisible('[data-tgk="rest"] [data-warn="fat"]') && /Whittaker/.test(await page.textContent('[data-tgk="rest"] [data-warn="fat"]')), '脂肪改 40 g（低于 1900 的 20%＝43 g）→ 警告并附 Whittaker & Wu');
+    await page.fill('[data-tg="rest:k"]', ''); await page.press('[data-tg="rest:k"]', 'Tab'); await page.fill('[data-tg="rest:f"]', ''); await page.press('[data-tg="rest:f"]', 'Tab');
+    check((await page.evaluate(() => window.__fit.wk.wkTargets('rest').T.k)) === 1960, '清空自填的数字 → 回到默认 1960');
+    // 训练日判断：今天记过力量训练 → 训练日
+    check(!(await page.evaluate(() => window.__fit.wk.dayKind('2026-09-30').train)), '今天没练、菜单标休息 → 休息日');
+    // (d) 编辑：改克数、删、加、搬、复制
+    const lunchId = await page.evaluate(() => window.__fit.wk.get().days[2].meals.find(M => M.m === 'l').id);
+    await page.fill(`[data-wq="${lunchId}:1"]`, '200'); await page.press(`[data-wq="${lunchId}:1"]`, 'Tab'); // 糙米 300 → 200：少 123 kcal
+    check(near(await page.evaluate(() => window.__fit.wk.planDayVals(2).k), 1967.5 - 123, 0.01), '午餐糙米改 200 g → 当天少 123 kcal');
+    await page.click(`[data-wdel="${lunchId}:3"]`); // 去掉牛油果 −80
+    check(near(await page.evaluate(() => window.__fit.wk.planDayVals(2).k), 1967.5 - 123 - 80, 0.01), '去掉牛油果 → 再少 80 kcal');
+    await page.selectOption(`[data-wadd="${lunchId}"]`, 'f:avocado'); // 加回来，默认 100 g（食物库没有份量就是 100）
+    check(near(await page.evaluate(() => window.__fit.wk.planDayVals(2).k), 1967.5 - 123 + 80, 0.01), '加回牛油果（默认 100 g）→ 多 160 kcal');
+    await page.click('#wpReset');
+    check(near(await page.evaluate(() => window.__fit.wk.planDayVals(2).k), 1967.5, 0.01), '整周恢复 App 的安排 → 星期三回到 1967.5');
+    const din = await page.evaluate(() => window.__fit.wk.get().days[2].meals.find(M => M.m === 'd').id);
+    await page.selectOption(`[data-wmove="${din}"]`, '3');
+    const mv = await page.evaluate(() => { const P = window.__fit.wk.get(); return [P.days[2].meals.length, P.days[3].meals.length]; });
+    check(mv[0] === 2 && mv[1] === 4 && /搬到星期四/.test(await page.textContent('#wpMsg')), `晚餐整餐搬到星期四：星期三剩 ${mv[0]} 餐、星期四 ${mv[1]} 餐`);
+    await page.click('#wpReset'); await page.click('#wpDays [data-wpday="0"]'); await page.selectOption('#wpCopyTo', '2'); await page.click('#wpCopy');
+    const cp = await page.evaluate(() => { const W = window.__fit.wk; return [W.planDayVals(0).k, W.planDayVals(2).k, W.get().days[0].meals[0].id !== W.get().days[2].meals[0].id]; });
+    check(near(cp[0], cp[1], 1e-9) && cp[2], '把星期一复制到星期三：两天合计一样、餐的 id 各自独立');
+    await page.click('#wpReset'); await page.click('#wpDays [data-wpday="2"]');
+    // (e) 时间与进食窗口：没开 16/8 → 写不检查；开 10:00–18:00 → 默认都在窗口内；晚餐改 18:30 → 警告
+    check(/不检查/.test(await page.textContent('#wpWin')), '没开 16/8 进食窗口 → 写「不检查吃饭时间」');
+    await seed({ profile: PROFILE, setTs: 1, tre: { on: true, start: '10:00', end: '18:00', meals: 3 }, wp: await page.evaluate(() => window.__fit.wk.get()) });
+    await page.click('#dietCard [data-open-diet]'); await page.click('#dWk [data-wv="plan"]');
+    check(/都在进食窗口 10:00–18:00 内/.test(await page.textContent('#wpWin')) && (await page.evaluate(() => window.__fit.wk.winIssues().length)) === 0, '默认时间 10:00／13:30／17:30 都在 10:00–18:00 窗口内');
+    const din2 = await page.evaluate(() => window.__fit.wk.get().days[2].meals.find(M => M.m === 'd').id);
+    await page.fill(`[data-wat="${din2}"]`, '18:30');
+    check(/1 餐在进食窗口/.test(await page.textContent('#wpWin')) && /星期三晚餐 18:30/.test(await page.textContent('#wpWin')), `晚餐改 18:30 → 警告「星期三晚餐 18:30」不在窗口内（实得 ${await page.textContent('#wpWin')}）`);
+    check((await page.evaluate(() => [window.__fit.wk.inWin('09:59'), window.__fit.wk.inWin('10:00'), window.__fit.wk.inWin('18:00'), window.__fit.wk.inWin('18:01')])).join() === 'false,true,true,false', '窗口边界：09:59 外、10:00 内、18:00 内、18:01 外');
+    await page.fill(`[data-wat="${din2}"]`, '17:30');
+    // (f) 照计划记入：写进当天食物记录、按两次不重复；外食那餐有数字才记
+    await page.click('#wpLog');
+    let L = await page.evaluate(() => (window.__fit.diet.get().log['2026-09-30'] || {}).items || []);
+    check(L.length === 14 && L.every(x => x.pl) && near(L.reduce((a, x) => a + x.kcal, 0), 1967.5, 0.01) && /已记入今天 3 餐/.test(await page.textContent('#wpMsg')), `照计划记入：今天 14 笔、合计 1967.5 kcal、每笔带菜单那餐的标记（实得 ${L.length} 笔）`);
+    await page.click('#wpLog');
+    L = await page.evaluate(() => (window.__fit.diet.get().log['2026-09-30'] || {}).items || []);
+    check(L.length === 14 && /都记过了/.test(await page.textContent('#wpMsg')), '再按一次「照计划记入」→ 不重复（还是 14 笔）');
+    check((await page.evaluate(() => window.__fit.food.dayTot('2026-09-30').kcal)) === 1968 && !(await page.evaluate(() => 'wkLog' in window.__fit.diet.get())), '写进原本的当天记录（dayTot 1968），没有另建平行资料');
+    await page.click('#wvBack');
+    check((await page.locator('#dLog [data-item]').count()) === 14 && /1968 kcal/.test(await page.textContent('#dToday')), '回饮食页：「今天吃了什么」14 笔、「今天」1968 kcal');
+    // 外食：星期四午餐标外食、填 600 kcal／30 g；没填数字的不记
+    await seed({ profile: PROFILE, setTs: 1 });
+    await page.click('#dietCard [data-open-diet]'); await page.click('#dWk [data-wv="plan"]');
+    const lu = await page.evaluate(() => window.__fit.wk.get().days[2].meals.find(M => M.m === 'l').id);
+    await page.click(`[data-wout="${lu}"]`);
+    check(/还没填数字/.test(await page.textContent(`[data-mtot="${lu}"]`)), '午餐标成外食、还没填数字');
+    await page.click('#wpLog');
+    L = await page.evaluate(() => (window.__fit.diet.get().log['2026-09-30'] || {}).items || []);
+    check(L.length === 9 && /外食 1 餐还没填数字/.test(await page.textContent('#wpMsg')), `外食没填数字 → 只记早餐、晚餐（${L.length} 笔），提示外食还没记`);
+    await page.fill(`[data-wok="${lu}"]`, '600'); await page.press(`[data-wok="${lu}"]`, 'Tab'); await page.fill(`[data-wop="${lu}"]`, '30'); await page.press(`[data-wop="${lu}"]`, 'Tab');
+    await page.click('#wpLog');
+    L = await page.evaluate(() => (window.__fit.diet.get().log['2026-09-30'] || {}).items || []);
+    const out = L.filter(x => x.src === 'photo');
+    check(L.length === 10 && out.length === 1 && out[0].kcal === 600 && out[0].p === 30 && out[0].m === 'l', '外食填了 600 kcal／30 g 再按 → 补记那一餐（照片估算），早晚餐不重复');
+    check(await page.isVisible(`[data-wai="l"]`), '外食那餐有「去拍照估算」');
+    await page.click('[data-wai="l"]');
+    check((await page.getAttribute('#fMode [aria-pressed="true"]', 'data-v')) === 'ai' && (await page.getAttribute('#fMeal [aria-pressed="true"]', 'data-v')) === 'l', '「去拍照估算」→ 回到饮食页的「记一笔」、拍照估算、午餐');
+    // (g) 每日快速记录：体重腹围写进原本的体重腰围资料；其他写 dq；同一天只留一笔
+    await page.click('#dWk [data-wv="daily"]');
+    await page.fill('#dqKg', '72.4'); await page.fill('#dqWaist', '86');
+    await page.click('#dqMood [data-v="2"]'); await page.click('#dqDig [data-v="bloat"]'); await page.fill('#dqDn', '吃完午餐胀'); await page.click('#dqNoct [data-v="2"]'); await page.fill('#dqSl', '12 点睡');
+    await page.click('#dqSave');
+    let st = await page.evaluate(() => ({ body: JSON.parse(localStorage.getItem('fit.body')), dq: JSON.parse(localStorage.getItem('fit.diet')).dq }));
+    check(st.body.length === 1 && st.body[0].kg === 72.4 && st.body[0].waist === 86 && /已存/.test(await page.textContent('#dqMsg')), '快速记录的体重 72.4、腹围 86 写进原本的体重腰围资料（fit.body），不另存一份');
+    check(JSON.stringify(Object.keys(st.dq)) === '["2026-09-30"]' && st.dq['2026-09-30'].mood === 2 && st.dq['2026-09-30'].dig === 'bloat' && st.dq['2026-09-30'].dn === '吃完午餐胀' && st.dq['2026-09-30'].noct === 2 && st.dq['2026-09-30'].sl === '12 点睡', '精神 2、胀气＋备注、夜尿 2、睡眠备注都存住');
+    await page.fill('#dqKg', '72.1'); await page.click('#dqSave');
+    st = await page.evaluate(() => JSON.parse(localStorage.getItem('fit.body')));
+    check(st.length === 1 && st[0].kg === 72.1 && st[0].waist === 86, '同一天再存 → 只留一笔（72.1，腹围照旧）');
+    await page.click('#dqDay [data-v="2026-09-29"]'); await page.click('#dqMood [data-v="4"]'); await page.click('#dqSave');
+    st = await page.evaluate(() => JSON.parse(localStorage.getItem('fit.diet')).dq);
+    check(st['2026-09-29'] && st['2026-09-29'].mood === 4 && st['2026-09-30'].mood === 2, '可以补记昨天，今天的不受影响');
+    await page.fill('#dqKg', '1000'); await page.click('#dqSave');
+    check(/20–300/.test(await page.textContent('#dqMsg')), '体重乱填被挡');
+    // (h) 调整提示：每条规则造资料，出现／不出现
+    const mk = (d, kg, waist) => { const p = d.split('-'); const ts = new Date(+p[0], +p[1] - 1, +p[2], 8).getTime(); return { id: 'b_' + ts, ts, kg, waist: waist ?? null }; };
+    const adv = async (diet, body) => { await seed(Object.assign({ profile: PROFILE, setTs: 1 }, diet), body); return page.evaluate(() => window.__fit.wk.wkAdvice(Date.now()).items.map(x => x.key + '|' + x.title + '|' + x.html.replace(/<[^>]+>/g, ''))); };
+    const has = (a, k) => a.find(x => x.startsWith(k + '|'));
+    // 9/30 是星期三：本周＝9/28 起，上周 9/21，前一周 9/14
+    let a = await adv({}, [mk('2026-09-15', 72.0), mk('2026-09-22', 72.3), mk('2026-09-29', 72.6)]);
+    check(has(a, 'gain') && /72\.0 → 72\.3 → 72\.6/.test(has(a, 'gain')) && /粥已经是小碗/.test(has(a, 'gain')) && /别低于约/.test(has(a, 'gain')) && /500 kcal/.test(has(a, 'gain')), `体重周平均连续 2 周上升 → 提示先减热量密度高的（小碗时写「已经是小碗」、写脂肪下限与 500 kcal）（实得 ${String(has(a, 'gain')).slice(0, 160)}）`);
+    a = await adv({}, [mk('2026-09-15', 72.0), mk('2026-09-22', 72.3), mk('2026-09-29', 72.3)]);
+    check(!has(a, 'gain'), '只上升 1 周（72.0 → 72.3 → 72.3）→ 不提示');
+    const bigWp = await page.evaluate(() => { const P = window.__fit.wk.planDefault('l'); P.setTs = 1; return P; });
+    a = await adv({ wp: bigWp }, [mk('2026-09-22', 72.0, 85.0), mk('2026-09-29', 72.0, 85.5)]);
+    check(has(a, 'gain') && /腹围周平均比上周大（85\.0 → 85\.5 cm）/.test(has(a, 'gain')) && /粥改回小碗（大碗比小碗多 117 kcal）/.test(has(a, 'gain')), '腹围大 0.5 cm（大碗时）→ 提示粥改回小碗，写多 117 kcal');
+    a = await adv({}, [mk('2026-09-22', 72.0, 85.0), mk('2026-09-29', 72.0, 85.4)]);
+    check(!has(a, 'gain'), '腹围只大 0.4 cm → 不提示（当量测误差，App 的安排）');
+    a = await adv({ profile: { sex: 'M', age: 40, kg: 100, cm: 168 } }, [mk('2026-09-15', 99.0), mk('2026-09-22', 99.3), mk('2026-09-29', 99.6)]);
+    check(has(a, 'gain') && /不要再减/.test(has(a, 'gain')) && !/橄榄油/.test(has(a, 'gain')), '菜单已比估计消耗少 500 以上（100 kg 的 fixture）→ 写「不要再减」、不叫你减油');
+    const lowFatWp = await page.evaluate(() => { const P = window.__fit.wk.planDefault('s'); P.setTs = 1; P.days.forEach(d => d.meals.forEach(M => { M.items = M.items.filter(ci => !['olive', 'walnut', 'avocado', 'salmon', 'egg'].includes(ci.f)); M.items.push({ f: 'ricebrown', g: 300 }); })); return P; });
+    a = await adv({ wp: lowFatWp }, [mk('2026-09-15', 72.0), mk('2026-09-22', 72.3), mk('2026-09-29', 72.6)]);
+    check(has(a, 'gain') && /接近 20% 下限/.test(has(a, 'gain')) && /油和坚果先别再减/.test(has(a, 'gain')), '菜单脂肪已接近 20% 下限 → 写「油和坚果先别再减」');
+    const dqW = (days, f) => Object.fromEntries(days.map((d, i) => [d, f(i)]));
+    const LAST = ['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25', '2026-09-26', '2026-09-27'], THIS = ['2026-09-28', '2026-09-29', '2026-09-30'];
+    a = await adv({ dq: Object.assign(dqW(LAST, () => ({ mood: 4 })), dqW(THIS, () => ({ mood: 3 }))) });
+    check(has(a, 'mood') && /从 4\.0 降到 3\.0/.test(has(a, 'mood')) && /先把热量加回目标/.test(has(a, 'mood')), '精神周平均 4 → 3（降 1）→ 提示可能吃太少、先把热量加回目标');
+    a = await adv({ dq: Object.assign(dqW(LAST, () => ({ mood: 4 })), dqW(THIS, i => ({ mood: [3, 4, 3][i] }))) });
+    check(!has(a, 'mood'), '精神 4 → 3.3（降不到 1）→ 不提示');
+    a = await adv({ dq: dqW(THIS, () => ({ mood: 2 })) });
+    check(has(a, 'mood') && /连续 3 天精神 ≤2/.test(has(a, 'mood')), '连续 3 天精神 ≤2 → 提示');
+    a = await adv({ dq: dqW(THIS, i => ({ mood: [2, 3, 2][i] })) });
+    check(!has(a, 'mood'), '2、3、2（不连续）→ 不提示');
+    // 精神变差＋这周饮食记录 3 天、每天 1200 kcal（训练日）→ 写比目标少多少、训练日碳水
+    const logs = Object.fromEntries(THIS.map(d => [d, { p: 0, kcal: null, win: false, items: [{ id: 'i' + d, m: 'l', n: '白饭', src: 'usda', ref: '168878', fid: 'rice', u: 'g', q: 923.1, b: { k: 130, p: 2.69, c: 28.17, f: 0.28 }, est: false, kcal: 1200, p: 24.8, c: 260, f: 2.6 }] }]));
+    await seed({ profile: PROFILE, setTs: 1, log: logs, dq: Object.assign(dqW(LAST, () => ({ mood: 4 })), dqW(THIS, () => ({ mood: 3 }))) }, [], THIS.map((d, i) => ({ id: 's' + i, ts: new Date(d + 'T09:00:00+08:00').getTime(), wk: 'A', equip: 'db', dur: 30, fin: '', sets: [] })));
+    a = await page.evaluate(() => window.__fit.wk.wkAdvice(Date.now()).items.map(x => x.key + '|' + x.title + '|' + x.html.replace(/<[^>]+>/g, '')));
+    check(has(a, 'mood') && /3 天平均 1200 kcal，比目标少约/.test(has(a, 'mood')) && /训练日碳水：记录平均 260 g，目标 255 g/.test(has(a, 'mood')), `精神变差时写这周平均 1200 kcal 比目标少多少、训练日碳水 260 / 255（实得 ${String(has(a, 'mood')).slice(0, 200)}）`);
+    check((await page.evaluate(() => window.__fit.wk.dayKind('2026-09-30'))).train && /今天记过训练/.test((await page.evaluate(() => window.__fit.wk.dayKind('2026-09-30'))).why), '今天记过力量训练 → 当成训练日（沿用训练记录）');
+    // 消化
+    const ricebrownLog = Object.fromEntries(THIS.map(d => [d, { p: 0, kcal: null, win: false, items: [{ id: 'r' + d, m: 'l', n: '糙米饭（熟）', src: 'usda', ref: '169704', fid: 'ricebrown', u: 'g', q: 300, b: { k: 123, p: 2.74, c: 25.58, f: 0.97, fb: 1.6 }, est: false, kcal: 369, p: 8.2, c: 76.7, f: 2.9, fb: 4.8 }] }]));
+    a = await adv({ log: ricebrownLog, dq: dqW(THIS, () => ({ dig: 'bloat' })) });
+    check(has(a, 'dig') && /消化不适 3 天/.test(has(a, 'dig')) && /糙米：这周新出现（平均每天约 300 g）/.test(has(a, 'dig')) && !/持续了/.test(has(a, 'dig')), '一周胀气 3 天 → 提示看高纤维食物（糙米这周新出现、每天约 300 g），还不算持续');
+    a = await adv({ dq: dqW(THIS, i => ({ dig: ['bloat', 'ok', 'const'][i] })) });
+    check(!has(a, 'dig'), '一周不适 2 天 → 不提示');
+    a = await adv({ dq: Object.assign(dqW(LAST.slice(0, 3), () => ({ dig: 'diarr' })), dqW(THIS, () => ({ dig: 'other' }))) });
+    check(has(a, 'dig') && /连续 2 周/.test(has(a, 'dig')) && /持续了，建议看医生/.test(has(a, 'dig')), '连 2 周都 ≥3 天 → 写「持续了，建议看医生」');
+    // 夜尿
+    const N4 = ['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24'];
+    a = await adv({ dq: Object.assign(dqW(N4, () => ({ noct: 2 })), dqW([...THIS, '2026-09-27'].slice(0, 3), () => ({ noct: 3 })), { '2026-09-26': { noct: 2 } }) });
+    // 上周 5 晚都 ≥2；本周只有 3 晚（本周有记录就看本周）→ 不够 4 晚，不提示
+    check(!has(a, 'noct'), '本周只记 3 晚 → 夜尿不提示（要每周 ≥4 晚）');
+    const WA = ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17'];
+    a = await adv({ dq: Object.assign(dqW(WA, () => ({ noct: 2 })), dqW(N4, () => ({ noct: 3 }))) });
+    // 本周没有任何快速记录与体重 → 看上周（9/21）与前一周（9/14），两周都 4 晚、每晚 ≥2
+    check(has(a, 'noct') && /建议问医生/.test(has(a, 'noct')) && /不做诊断/.test(has(a, 'noct')), '连续 2 周、每周 4 晚都 ≥2 次 → 建议问医生、写不做诊断');
+    a = await adv({ dq: Object.assign(dqW(WA, i => ({ noct: i === 0 ? 1 : 2 })), dqW(N4, () => ({ noct: 3 }))) });
+    check(!has(a, 'noct'), '其中一晚只有 1 次 → 不提示');
+    a = await adv({}, []);
+    check(a.length === 0, '没有资料 → 一条提示都没有');
+    // (i) 周复盘画面：趋势图、表格、出处
+    await seed({ profile: PROFILE, setTs: 1, dq: Object.assign(dqW(LAST, () => ({ mood: 4, dig: 'ok', noct: 1 })), dqW(THIS, () => ({ mood: 3, dig: 'bloat', noct: 1 }))), log: logs }, [mk('2026-09-15', 72.0, 86), mk('2026-09-22', 72.3, 86.2), mk('2026-09-29', 72.6, 86.4)]);
+    await page.click('#dietCard [data-open-diet]'); await page.click('#dWk [data-wv="review"]');
+    const nSvg = await page.evaluate(() => ['wcKg', 'wcWaist', 'wcKcal', 'wcP', 'wcMood', 'wcDig', 'wcNoct'].map(id => document.querySelectorAll('#' + id + ' svg circle, #' + id + ' svg path[fill="var(--accent)"]').length));
+    check(nSvg[0] === 3 && nSvg[1] === 3 && nSvg[2] === 1 && nSvg[4] === 2 && nSvg[5] === 1 && nSvg[6] === 2, `近 8 周趋势图：体重 3 点、腹围 3 点、kcal 1 点、精神 2 点、不适 1 根柱、夜尿 2 点（实得 ${nSvg}）`);
+    const rv = await page.textContent('#dWkView');
+    check(/72\.6/.test(await page.textContent('#wrTab')) && /3 天/.test(await page.textContent('#wrTab')) && (await page.locator('#wrAdvice [data-adv]').count()) >= 3, '周复盘表格有本周体重 72.6、不适 3 天，提示有体重、精神、消化三条');
+    check(/Whittaker & Wu 2021/.test(rv) && /没有直接量勃起功能/.test(rv) && /NHS：前列腺增大/.test(rv) && /NHS：膳食纤维/.test(rv) && /马上去急诊/.test(rv) && !/(^|[^\d])(111|999)([^\d]|$)/.test(rv), '说明里有「热量别降太狠」的出处（Whittaker & Wu、写明没直接量勃起功能）、NHS 警讯，不写英国电话');
+    const src = fs.readFileSync(new globalThis.URL('../fitness/index.html', import.meta.url), 'utf8');
+    check(!/会影响勃起|导致勃起|改善勃起|勃起功能障碍/.test(src) && !/低脂.{0,6}(一定|必然)/.test(src), '原始码没有比来源更强的说法（不写「会影响勃起」等）');
+    check(/pubmed\.ncbi\.nlm\.nih\.gov\/2305711/.test(src) && /pubmed\.ncbi\.nlm\.nih\.gov\/33741447/.test(src) && /y5686e07\.htm/.test(src) && /how-to-get-more-fibre/.test(src), '出处链接都在：Mifflin（PMID 2305711）、Whittaker & Wu（33741447）、FAO 表 5.3、NHS 纤维');
+    check(!/72 kg|168 cm|YANG/.test(src.slice(src.indexOf('每周饮食与体重（2026-11-27）'))), '新模块原始码没写用户本人的体重身高');
+    // (j) 备份来回：本机没有才补
+    await page.click('#wvBack'); await page.click('#dietBack'); await page.click('nav.tabs [data-tab="more"]');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bkJson')]);
+    const file = os.tmpdir() + '/fit-wk-backup.json'; fs.copyFileSync(await dl.path(), file);
+    const bk = JSON.parse(fs.readFileSync(file, 'utf8'));
+    check(bk.diet && bk.diet.wp && bk.diet.wp.days.length === 7 && bk.diet.dq && Object.keys(bk.diet.dq).length === 10 && bk.body.length === 3, '备份带着每周菜单、10 天快速记录与体重腰围');
+    bk.diet.wp.setTs = 5; bk.diet.wp.size = 'l'; const fileB = os.tmpdir() + '/fit-wk-backup2.json'; fs.writeFileSync(fileB, JSON.stringify(bk));
+    const b2 = await openWith([]);
+    await b2.page.evaluate(() => localStorage.setItem('fit.diet', JSON.stringify({ dq: { '2026-09-30': { mood: 5, ts: 1 } } })));
+    await b2.page.reload(); await b2.page.waitForSelector('#workout .ex');
+    await b2.page.click('nav.tabs [data-tab="more"]'); await b2.page.setInputFiles('#bkFile', fileB);
+    await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    const d2 = await b2.page.evaluate(() => JSON.parse(localStorage.getItem('fit.diet')));
+    check(d2.dq['2026-09-30'].mood === 5 && d2.dq['2026-09-29'].mood === 3 && Object.keys(d2.dq).length === 10, '导入：本机已有的 9/30 快速记录不被覆盖，其余 9 天补进来');
+    check(d2.wp.size === 'l' && d2.wp.setTs === 5, '导入：本机没动过菜单 → 用备份的菜单');
+    await b2.page.setInputFiles('#bkFile', fileB);
+    await b2.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    check(Object.keys((await b2.page.evaluate(() => JSON.parse(localStorage.getItem('fit.diet')))).dq).length === 10, '同一份再导入不重复');
+    const b3 = await openWith([]);
+    await b3.page.evaluate(() => { const W = { v: 1, size: 's', def: 300, train: [1, 0, 0, 0, 0, 0, 0].map(Boolean), tg: { train: {}, rest: {} }, days: [0, 1, 2, 3, 4, 5, 6].map(() => ({ meals: [] })), setTs: 9 }; localStorage.setItem('fit.diet', JSON.stringify({ wp: W })); });
+    await b3.page.reload(); await b3.page.waitForSelector('#workout .ex');
+    await b3.page.click('nav.tabs [data-tab="more"]'); await b3.page.setInputFiles('#bkFile', fileB);
+    await b3.page.waitForFunction(() => /导入完成/.test(document.getElementById('bkMsg').textContent));
+    check((await b3.page.evaluate(() => JSON.parse(localStorage.getItem('fit.diet')).wp.def)) === 300, '导入：本机改过菜单 → 不被备份覆盖');
+    await b2.ctx.close(); await b3.ctx.close();
+    // (k) 旧资料相容：旧 diet（没有 wp／dq、旧条目没有纤维）照常打开，旧条目的纤维算「缺资料」
+    await seed({ profile: PROFILE, setTs: 1, log: { '2026-09-30': { p: 20, kcal: 300, win: false, items: [{ id: 'old1', m: 'b', n: '鸡胸肉（熟，去皮）', src: 'usda', ref: '171477', fid: 'chkbreast', u: 'g', q: 100, b: { k: 165, p: 31.02, c: 0, f: 3.57 }, est: false, kcal: 165, p: 31, c: 0, f: 3.6 }] } } });
+    const old = await page.evaluate(() => { const A = window.__fit.wk.wkAgg(Date.now(), 1)[0]; return [A.fm, window.__fit.wk.get().days.length, window.__fit.food.dayTot('2026-09-30').kcal]; });
+    check(old[0] === 1 && old[1] === 7 && old[2] === 465, `旧资料：没有菜单 → 自动给默认 7 天；旧条目没纤维 → 算 1 项缺资料；当天合计 165＋300＝465 照旧（实得 ${old}）`);
+    await page.click('#dietCard [data-open-diet]');
+    check(/今天菜单 1968 kcal/.test(await page.textContent('#dWk')), '旧资料打开饮食页，入口照常显示今天菜单 1968 kcal');
+    // (l) 手机宽度
+    await page.setViewportSize({ width: 360, height: 740 });
+    for (const vname of ['plan', 'daily', 'review']) {
+      await page.evaluate(v => window.__fit.wk.setWv(v), vname);
+      const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      check(over <= 0, `360px 宽「${vname}」没有横向卷动（多出 ${over}px）`);
+    }
+  } catch (e) {
+    check(false, '第 27 段（每周饮食与体重）跑不下去：' + String(e).slice(0, 300));
+  }
+  check(errors.length === 0, `每周饮食与体重没有 JS 错误${errors.length ? '：' + errors.join(' | ') : ''}`);
   await ctx.close();
 }
 
