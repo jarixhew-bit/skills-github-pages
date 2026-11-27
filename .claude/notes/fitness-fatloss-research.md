@@ -385,3 +385,212 @@ App 自己的安排／判断（没有来源，文案已标）：
 - Schoenfeld 2016 写明是「有训练经验的年轻男性、21 人、8 周、3 分钟比 1 分钟」——用户 40 岁，App 文案照写受试者，不推广；肌肉厚度只有大腿前侧显著（肱三头只有趋势 p＝0.06），App 只写「大腿前侧肌肉厚度」（verifier 2026-11-24 退件后改）。
 - 体重卡只引 NHS 一句「每周减 0.5–1 kg」附原文链接，写明「App 只显示数字，不替你判断快慢，也不预测体重」；BMI <18.5 时不显示这句。不做体重预测。
 - 史密斯杠重：没查到可靠来源，App 不写任何具体杠重数字，只提示「不同健身房的史密斯杠重不一样，问工作人员或看杠上标示」。
+
+## 食物库数值（2026-11-27 查证）
+
+给 App 饮食页「食物库＋称重记录」用（`fitness/index.html` 的 `FOOD_RAW`）。**每 100 g** 的值；份量来自同一笔资料的 portion 表。
+
+### 资料从哪来、怎么拿到的
+- **USDA FoodData Central**（公有领域 CC0）：沙盒连不到 fdc.nal.usda.gov／api.nal.usda.gov（代理 403），改在 CI 上下载官方整包
+  `FoodData_Central_sr_legacy_food_csv_2018-04.zip`（SR Legacy，7793 种）与 `FoodData_Central_survey_food_csv_2024-10-31.zip`（FNDDS，5432 种），
+  在 runner 上用 Python 读 `food.csv`／`food_nutrient.csv`／`food_portion.csv` 印出比对结果（临时 workflow，跑完已删，没进 main）。
+  营养素编号：SR Legacy 用 1008 热量 kcal、1003 蛋白、1005 碳水（差减法）、1004 脂肪；FNDDS 用 208／203／205／204。
+  run ID：第一轮 45935624032、第二轮 45935768104、第三轮 45935930445、第四轮 45936117341（日志在 Actions，按 cleanup-runs 规则可能 30 天后被清；数值已全抄进下表）。
+- **台湾食药署 食品营养成分资料库**（data.gov.tw 资料集 8543，政府资料开放授权）：同一个 CI 下载
+  `https://data.fda.gov.tw/opendata/exportDataList.do?method=ExportData&InfoId=20&logType=3`（zip 里 `20_3.json`，230152 列）。
+  每样有「熱量」与「修正熱量」两栏；**App 用修正熱量**。没找到官方对修正熱量算法的说明；用资料反推大致＝4×蛋白＋9×脂肪＋4×（总碳水−膳食纤维）＋2×膳食纤维
+  （芡实算出 336＝资料 336、小方豆干 154≈155、茯苓 164≈162），也就是膳食纤维按较低热量算——**这是推论，不是官方文字**。
+- **NIST**（https://www.nist.gov/pml/owm/cooking-measurement-equivalencies ，web-lookup run 45936187091）：家用烹饪近似换算「15 mL ＝ 1 tablespoon」。
+  橄榄油 10 ml ＝ 10÷15 大匙 × USDA 171413「1 tablespoon ＝ 13.5 g」＝ **9.0 g**。
+- **Open Food Facts**（ODbL）：App 只在用户输入条码时即时查 `https://world.openfoodfacts.org/api/v2/product/{条码}.json`，
+  用 `product.nutriments["energy-kcal_100g"]` 与 `proteins_100g`；缺任一项就当「资料不全」，不自己由 kJ 换算。回传格式用 web-lookup run 45936187091 实测过。
+
+### 用户的早餐（App 内建两个组合）
+- 四神小米粥干料一份 62 g：小米 20 g（USDA 169702：378 kcal／11.02 g）、白米 5 g（USDA 168877：365／7.13）、淮山干 8 g（台湾 B0100101 修正热量 351／5.3）、
+  莲子干 8 g（USDA 170149：332／15.41）、芡实 8 g（台湾 C1800101：336／9.9）、茯苓 8 g（台湾 G2100101：162／1.0）、炒薏仁 5 g（台湾 A1000101 生薏仁：375／14.1）。
+  一份 ＝ 75.6＋18.25＋28.08＋26.56＋26.88＋12.96＋18.75 ＝ **207.08 kcal**；蛋白 2.204＋0.3565＋0.424＋1.2328＋0.792＋0.08＋0.705 ＝ **5.79 g**。水不算。
+- 半生熟鸡蛋：USDA 没有「带壳半熟」，用 **Egg, whole, cooked, poached（FDC 172186）** 143 kcal／12.51 g 近似（同样只用水、不加油）；大号 1 颗 ＝ 50 g（该项 portion）。
+  对照：生全蛋 171287 是 143／12.56，全熟水煮 173424 是 155／12.58。
+- 核桃：USDA 170187 portion「1 cup, in shell, edible yield (7 nuts) ＝ 28 g」→ 1 颗去壳约 4 g，4 颗 16 g；另有「1 oz (14 halves) ＝ 28.35 g」一致（1 颗＝2 半）。
+  核桃大小不一，App 提示用户自己称一次 4 颗。
+- 蒸地瓜：USDA 没有蒸；用 **Sweet potato, cooked, boiled, without skin（168484）** 76／1.37 近似（水气加热、不加油）。对照：连皮烤 168483 是 90／2.01。
+- **二四六**：粥 207.1＋蛋 100 g 143＋橄榄油 9 g 79.6＋核桃 16 g 104.6 ＝ **534 kcal**；蛋白 5.8＋12.5＋0＋2.4 ＝ **20.7 g**。
+- **一三五日**：地瓜 150 g 114＋蛋 143＋核桃 104.6 ＝ **362 kcal**；蛋白 2.1＋12.5＋2.4 ＝ **17.0 g**。（每项先取到 0.1 再加，总热量四舍五入）
+
+### 来源矛盾（并列，App 用哪个）
+- 小米：USDA 169702 378 kcal／11.02 g；台湾 A0200101 熱量 370、修正 365／11.3 g。差不多，**App 用 USDA**。
+- 莲子干：USDA 170149 332 kcal／**15.41 g**；台湾 C2305101 熱量 334、修正 307／**21.8 g**（膳食纤维 13.1）。蛋白差很多，**App 用 USDA**（照「USDA 有的用 USDA」），食物库备注写了台湾数字。
+- 茯苓：台湾 G2100101 熱量 316、修正 162（膳食纤维 80.9 g，几乎全是纤维）。**App 用修正 162**；用熱量栏的话 8 g 会多算约 12 kcal。
+- 薏仁：台湾只有生薏仁（A1000101 375／14.1；2025 年取样 A1000102 修正 381／15.0）；用户吃炒薏仁，炒过水分少，每克略高——**未另查，App 按生薏仁算并注明**。
+- 淮山：USDA 只有新鲜 Yam（170071，118 kcal，是新鲜块茎、不是干片），干片只能用台湾 B0100101。
+
+### 估算／近似／未查证
+- **估算值**（App 名称带「估算」、标估算值）：炒饭四种（FNDDS 2708951／2708953／2708954／2708956）、素炒面／宫保鸡丁／鸡肉炒杂菜（SR Legacy 美国中餐馆样本 167677／167676／167678）、
+  汤面泛指（FNDDS 2709145，不是柬式粿条汤）。都是美国资料，做法与油量差很多。
+- **近似**（数值查证过，但食物不完全一样，备注写明）：半生熟蛋＝水波蛋、蒸地瓜＝水煮地瓜、粿条／河粉／米粉＝USDA「Rice noodles, cooked」、南瓜（美式橙色南瓜，亚洲南瓜会偏低）、炒薏仁＝生薏仁、初榨橄榄油＝一般橄榄油（纯油热量相同）。
+- **未查证、不给数字**：火龙果（USDA SR Legacy 与台湾资料库这次都没搜到）、柬式粿条汤。App 搜到时显示「未查证」，引导用自建食物或照片估算。
+- 用台湾资料补的（USDA 没有）：豆干（R4700203）、白馒头（R2400201）、菜心（油菜心 E3201001）、淮山、芡实、茯苓、薏仁。
+
+### 全表（App 的 `FOOD_RAW` 由这张表的数据生成；改数值两边一起改，check-fitness 第 25 段抽 12 项对照）
+| id | 名称 | 编号 | 原始描述 | kcal | 蛋白 | 碳水 | 脂肪 | 份量 | run | 备注 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `chkbreast` | 鸡胸肉（熟，去皮） | [FDC 171477](https://fdc.nal.usda.gov/food-details/171477/nutrients) | Chicken, broilers or fryers, breast, meat only, cooked, roasted | 165 | 31.02 | 0 | 3.57 | 半块鸡胸（去骨去皮）＝86 g | 45935624032 |  |
+| `chkthigh` | 鸡腿肉（熟，去皮去骨） | [FDC 172388](https://fdc.nal.usda.gov/food-details/172388/nutrients) | Chicken, broilers or fryers, thigh, meat only, cooked, roasted | 179 | 24.76 | 0 | 8.15 |  | 45935624032 |  |
+| `chkdrum` | 鸡小腿肉（熟，去皮去骨） | [FDC 172376](https://fdc.nal.usda.gov/food-details/172376/nutrients) | Chicken, broilers or fryers, dark meat, drumstick, meat only, cooked, roasted | 155 | 24.24 | 0 | 5.7 |  | 45935768104 |  |
+| `chkwing` | 鸡翅肉（熟，去皮去骨） | [FDC 172392](https://fdc.nal.usda.gov/food-details/172392/nutrients) | Chicken, broilers or fryers, wing, meat only, cooked, roasted | 203 | 30.46 | 0 | 8.13 |  | 45935768104 |  |
+| `duck` | 鸭肉（熟，去皮） | [FDC 172411](https://fdc.nal.usda.gov/food-details/172411/nutrients) | Duck, domesticated, meat only, cooked, roasted | 201 | 23.48 | 0 | 11.2 |  | 45935768104 |  |
+| `porktender` | 猪里脊（熟，瘦肉） | [FDC 168250](https://fdc.nal.usda.gov/food-details/168250/nutrients) | Pork, fresh, loin, tenderloin, separable lean only, cooked, roasted | 143 | 26.17 | 0 | 3.51 |  | 45935624032 |  |
+| `porkchop` | 猪排（熟，瘦肉） | [FDC 168240](https://fdc.nal.usda.gov/food-details/168240/nutrients) | Pork, fresh, loin, center loin (chops), bone-in, separable lean only, cooked, broiled | 180 | 26.76 | 0 | 7.29 |  | 45935930445 |  |
+| `porkbelly` | 五花肉（生） | [FDC 167812](https://fdc.nal.usda.gov/food-details/167812/nutrients) | Pork, fresh, belly, raw | 518 | 9.34 | 0 | 53.01 |  | 45935624032 | USDA 只有生的；熟的没查到 |
+| `porkmince` | 猪绞肉（熟） | [FDC 167903](https://fdc.nal.usda.gov/food-details/167903/nutrients) | Pork, fresh, ground, cooked | 297 | 25.69 | 0 | 20.77 |  | 45935768104 |  |
+| `beefshank` | 牛腱（熟，炖，瘦肉） | [FDC 169442](https://fdc.nal.usda.gov/food-details/169442/nutrients) | Beef, shank crosscuts, separable lean only, trimmed to 1/4" fat, choice, cooked, simmered | 201 | 33.68 | 0 | 6.36 |  | 45935930445 |  |
+| `beefshankraw` | 牛腱（生，瘦肉） | [FDC 169441](https://fdc.nal.usda.gov/food-details/169441/nutrients) | Beef, shank crosscuts, separable lean only, trimmed to 1/4" fat, choice, raw | 128 | 21.75 | 0 | 3.85 |  | 45935930445 |  |
+| `beefflank` | 牛排（侧腹，熟） | [FDC 168611](https://fdc.nal.usda.gov/food-details/168611/nutrients) | Beef, flank, steak, separable lean only, trimmed to 0" fat, choice, cooked, broiled | 194 | 27.82 | 0 | 8.32 |  | 45935768104 |  |
+| `beefmince90` | 牛绞肉 90% 瘦（熟） | [FDC 171793](https://fdc.nal.usda.gov/food-details/171793/nutrients) | Beef, ground, 90% lean meat / 10% fat, patty, cooked, pan-broiled | 204 | 25.21 | 0 | 10.68 |  | 45935624032 |  |
+| `beefmince85` | 牛绞肉 85% 瘦（熟） | [FDC 174032](https://fdc.nal.usda.gov/food-details/174032/nutrients) | Beef, ground, 85% lean meat / 15% fat, patty, cooked, broiled | 250 | 25.93 | 0 | 15.41 |  | 45935624032 |  |
+| `lambleg` | 羊腿肉（熟，瘦肉） | [FDC 172487](https://fdc.nal.usda.gov/food-details/172487/nutrients) | Lamb, leg, shank half, separable lean only, trimmed to 1/4" fat, choice, cooked, roasted | 180 | 28.17 | 0 | 6.67 |  | 45936117341 |  |
+| `lambstew` | 羊肉块（炖，瘦肉） | [FDC 172509](https://fdc.nal.usda.gov/food-details/172509/nutrients) | Lamb, cubed for stew or kabob (leg and shoulder), separable lean only, trimmed to 1/4" fat, cooked, braised | 223 | 33.69 | 0 | 8.8 |  | 45936117341 |  |
+| `shrimp` | 虾（熟） | [FDC 175180](https://fdc.nal.usda.gov/food-details/175180/nutrients) | Crustaceans, shrimp, cooked | 99 | 23.98 | 0.2 | 0.28 |  | 45935624032 |  |
+| `shrimpraw` | 虾（生） | [FDC 175179](https://fdc.nal.usda.gov/food-details/175179/nutrients) | Crustaceans, shrimp, raw | 85 | 20.1 | 0 | 0.51 |  | 45935624032 |  |
+| `squid` | 鱿鱼（生） | [FDC 174223](https://fdc.nal.usda.gov/food-details/174223/nutrients) | Mollusks, squid, mixed species, raw | 92 | 15.58 | 3.08 | 1.38 |  | 45935768104 |  |
+| `salmon` | 三文鱼（养殖，熟） | [FDC 175168](https://fdc.nal.usda.gov/food-details/175168/nutrients) | Fish, salmon, Atlantic, farmed, cooked, dry heat | 206 | 22.1 | 0 | 12.35 |  | 45935624032 |  |
+| `tilapia` | 罗非鱼（熟） | [FDC 175177](https://fdc.nal.usda.gov/food-details/175177/nutrients) | Fish, tilapia, cooked, dry heat | 128 | 26.15 | 0 | 2.65 |  | 45935624032 |  |
+| `cod` | 鳕鱼（熟） | [FDC 171956](https://fdc.nal.usda.gov/food-details/171956/nutrients) | Fish, cod, Atlantic, cooked, dry heat | 105 | 22.83 | 0 | 0.86 |  | 45935624032 |  |
+| `snapper` | 红鲷鱼（熟） | [FDC 173699](https://fdc.nal.usda.gov/food-details/173699/nutrients) | Fish, snapper, mixed species, cooked, dry heat | 128 | 26.3 | 0 | 1.72 |  | 45935768104 |  |
+| `grouper` | 石斑鱼（熟） | [FDC 171963](https://fdc.nal.usda.gov/food-details/171963/nutrients) | Fish, grouper, mixed species, cooked, dry heat | 118 | 24.84 | 0 | 1.3 |  | 45935768104 |  |
+| `mackerel` | 马鲛鱼（熟） | [FDC 173674](https://fdc.nal.usda.gov/food-details/173674/nutrients) | Fish, mackerel, spanish, cooked, dry heat | 158 | 23.59 | 0 | 6.32 |  | 45935768104 |  |
+| `catfish` | 鲶鱼（养殖，熟） | [FDC 175166](https://fdc.nal.usda.gov/food-details/175166/nutrients) | Fish, catfish, channel, farmed, cooked, dry heat | 144 | 18.44 | 0 | 7.19 |  | 45935768104 |  |
+| `milkfish` | 虱目鱼（熟） | [FDC 171995](https://fdc.nal.usda.gov/food-details/171995/nutrients) | Fish, milkfish, cooked, dry heat | 190 | 26.32 | 0 | 8.63 |  | 45935930445 |  |
+| `pompano` | 金鲳鱼（熟） | [FDC 173683](https://fdc.nal.usda.gov/food-details/173683/nutrients) | Fish, pompano, florida, cooked, dry heat | 211 | 23.69 | 0 | 12.14 |  | 45935768104 |  |
+| `tuna` | 水浸金枪鱼罐头（沥干） | [FDC 173709](https://fdc.nal.usda.gov/food-details/173709/nutrients) | Fish, tuna, light, canned in water, drained solids | 86 | 19.44 | 0 | 0.96 | 1 罐（沥干）＝165 g | 45935768104 |  |
+| `crab` | 螃蟹肉（熟） | [FDC 174205](https://fdc.nal.usda.gov/food-details/174205/nutrients) | Crustaceans, crab, blue, cooked, moist heat | 83 | 17.88 | 0 | 0.74 |  | 45935768104 |  |
+| `egg` | 鸡蛋（半生熟／水煮，不加油） | [FDC 172186](https://fdc.nal.usda.gov/food-details/172186/nutrients) | Egg, whole, cooked, poached | 143 | 12.51 | 0.71 | 9.47 | 1 颗大号＝50 g | 45935624032 | USDA 没有「半生熟带壳煮」这一项；用同样只用水煮、不加油的水波蛋近似（App 的安排） |
+| `egghard` | 鸡蛋（全熟水煮） | [FDC 173424](https://fdc.nal.usda.gov/food-details/173424/nutrients) | Egg, whole, cooked, hard-boiled | 155 | 12.58 | 1.12 | 10.61 | 1 颗大号＝50 g | 45935624032 |  |
+| `eggraw` | 鸡蛋（生，全蛋） | [FDC 171287](https://fdc.nal.usda.gov/food-details/171287/nutrients) | Egg, whole, raw, fresh | 143 | 12.56 | 0.72 | 9.51 | 1 颗大号＝50 g；1 颗中号＝44 g | 45935624032 |  |
+| `eggwhite` | 蛋白（生） | [FDC 172183](https://fdc.nal.usda.gov/food-details/172183/nutrients) | Egg, white, raw, fresh | 52 | 10.9 | 0.73 | 0.17 | 1 颗大号的蛋白＝33 g | 45935768104 |  |
+| `tofufirm` | 板豆腐／老豆腐 | [FDC 172475](https://fdc.nal.usda.gov/food-details/172475/nutrients) | Tofu, raw, firm, prepared with calcium sulfate | 144 | 17.27 | 2.78 | 8.72 |  | 45935624032 |  |
+| `tofu` | 豆腐（一般） | [FDC 172476](https://fdc.nal.usda.gov/food-details/172476/nutrients) | Tofu, raw, regular, prepared with calcium sulfate | 76 | 8.08 | 1.87 | 4.78 |  | 45935624032 |  |
+| `tofusoft` | 嫩豆腐 | [FDC 172449](https://fdc.nal.usda.gov/food-details/172449/nutrients) | Tofu, soft, prepared with calcium sulfate and magnesium chloride (nigari) | 61 | 7.17 | 1.18 | 3.69 |  | 45935768104 |  |
+| `tofufried` | 炸豆腐／豆泡 | [FDC 172451](https://fdc.nal.usda.gov/food-details/172451/nutrients) | Tofu, fried | 270 | 18.82 | 8.86 | 20.18 |  | 45935768104 |  |
+| `dougan` | 豆干（小方豆干） | 台湾 R4700203 | 小方豆干（Hard bean curd） | 155 | 17.4 | 3.5 | 8.6 |  | 45936117341 | USDA 没有豆干；用台湾食药署资料库（热量取「修正热量」） |
+| `soymilk` | 豆浆（原味，有糖） | [FDC 172446](https://fdc.nal.usda.gov/food-details/172446/nutrients) | Soymilk, original and vanilla, unfortified | 54 | 3.27 | 6.28 | 1.75 | 1 杯＝243 g | 45935624032 |  |
+| `soymilkns` | 无糖豆浆 | [FDC 175215](https://fdc.nal.usda.gov/food-details/175215/nutrients) | Soymilk (all flavors), unsweetened, with added calcium, vitamins A and D | 33 | 2.86 | 1.74 | 1.61 | 1 杯＝243 g | 45935624032 |  |
+| `edamame` | 毛豆（煮好） | [FDC 168411](https://fdc.nal.usda.gov/food-details/168411/nutrients) | Edamame, frozen, prepared | 121 | 11.91 | 8.91 | 5.2 |  | 45935768104 |  |
+| `lentil` | 小扁豆（熟） | [FDC 172421](https://fdc.nal.usda.gov/food-details/172421/nutrients) | Lentils, mature seeds, cooked, boiled, without salt | 116 | 9.02 | 20.13 | 0.38 |  | 45935624032 |  |
+| `chickpea` | 鹰嘴豆（熟） | [FDC 173757](https://fdc.nal.usda.gov/food-details/173757/nutrients) | Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled, without salt | 164 | 8.86 | 27.42 | 2.59 |  | 45935624032 |  |
+| `mungbean` | 绿豆（熟） | [FDC 174257](https://fdc.nal.usda.gov/food-details/174257/nutrients) | Mung beans, mature seeds, cooked, boiled, without salt | 105 | 7.02 | 19.15 | 0.38 |  | 45935768104 |  |
+| `redbean` | 红腰豆（熟） | [FDC 175194](https://fdc.nal.usda.gov/food-details/175194/nutrients) | Beans, kidney, red, mature seeds, cooked, boiled, without salt | 127 | 8.67 | 22.8 | 0.5 |  | 45935768104 |  |
+| `rice` | 白饭（熟） | [FDC 168878](https://fdc.nal.usda.gov/food-details/168878/nutrients) | Rice, white, long-grain, regular, enriched, cooked | 130 | 2.69 | 28.17 | 0.28 | 1 碗（1 杯）＝158 g | 45935930445 |  |
+| `riceshort` | 白饭（短粒米，熟） | [FDC 168932](https://fdc.nal.usda.gov/food-details/168932/nutrients) | Rice, white, short-grain, cooked, unenriched | 130 | 2.36 | 28.73 | 0.19 | 1 杯＝205 g | 45935624032 |  |
+| `ricebrown` | 糙米饭（熟） | [FDC 169704](https://fdc.nal.usda.gov/food-details/169704/nutrients) | Rice, brown, long-grain, cooked | 123 | 2.74 | 25.58 | 0.97 | 1 杯＝202 g | 45935624032 |  |
+| `riceglut` | 糯米饭（熟） | [FDC 169711](https://fdc.nal.usda.gov/food-details/169711/nutrients) | Rice, white, glutinous, unenriched, cooked | 97 | 2.02 | 21.09 | 0.19 |  | 45935930445 |  |
+| `riceraw` | 白米（生） | [FDC 168877](https://fdc.nal.usda.gov/food-details/168877/nutrients) | Rice, white, long-grain, regular, raw, enriched | 365 | 7.13 | 79.95 | 0.66 |  | 45935624032 |  |
+| `ricenoodle` | 粿条／河粉／米粉（煮熟） | [FDC 168914](https://fdc.nal.usda.gov/food-details/168914/nutrients) | Rice noodles, cooked | 108 | 1.79 | 24.01 | 0.2 | 1 杯＝176 g | 45935624032 | USDA 只有「米制面条，煮熟」一项，粿条、河粉、米粉都用它近似 |
+| `ricenoodledry` | 米粉（干） | [FDC 169742](https://fdc.nal.usda.gov/food-details/169742/nutrients) | Rice noodles, dry | 364 | 5.95 | 80.18 | 0.56 |  | 45935624032 |  |
+| `eggnoodle` | 鸡蛋面（熟） | [FDC 168919](https://fdc.nal.usda.gov/food-details/168919/nutrients) | Noodles, egg, cooked, enriched, with added salt | 138 | 4.54 | 25.16 | 2.07 | 1 杯＝160 g | 45935624032 |  |
+| `pasta` | 意大利面（熟） | [FDC 169737](https://fdc.nal.usda.gov/food-details/169737/nutrients) | Pasta, cooked, enriched, without added salt | 158 | 5.8 | 30.86 | 0.93 |  | 45935624032 |  |
+| `pastaww` | 全麦意面（熟） | [FDC 168910](https://fdc.nal.usda.gov/food-details/168910/nutrients) | Pasta, whole-wheat, cooked | 149 | 5.99 | 30.07 | 1.71 |  | 45935930445 |  |
+| `soba` | 荞麦面（熟） | [FDC 168907](https://fdc.nal.usda.gov/food-details/168907/nutrients) | Noodles, japanese, soba, cooked | 99 | 5.06 | 21.44 | 0.1 |  | 45935768104 |  |
+| `mantou` | 白馒头 | 台湾 R2400201 | 白饅頭 | 246 | 8.1 | 51.3 | 1.2 |  | 45936117341 | USDA 没有馒头；用台湾食药署资料库（热量取「修正热量」） |
+| `breadwhite` | 白吐司 | [FDC 174924](https://fdc.nal.usda.gov/food-details/174924/nutrients) | Bread, white, commercially prepared | 266 | 8.85 | 49.42 | 3.33 | 1 片＝29 g | 45935624032 |  |
+| `breadww` | 全麦面包 | [FDC 172688](https://fdc.nal.usda.gov/food-details/172688/nutrients) | Bread, whole-wheat, commercially prepared | 252 | 12.45 | 42.71 | 3.5 | 1 片＝32 g | 45935624032 |  |
+| `oats` | 燕麦片（干） | [FDC 173904](https://fdc.nal.usda.gov/food-details/173904/nutrients) | Cereals, oats, regular and quick, not fortified, dry | 379 | 13.15 | 67.7 | 6.52 | 1/3 杯＝27 g | 45935624032 |  |
+| `oatmeal` | 燕麦粥（水煮） | [FDC 171675](https://fdc.nal.usda.gov/food-details/171675/nutrients) | Cereals, oats, regular and quick and instant, unenriched, cooked with water (includes boiling and microwaving), with salt | 71 | 2.54 | 12 | 1.52 | 1 杯＝234 g | 45935624032 |  |
+| `corn` | 甜玉米（煮） | [FDC 169999](https://fdc.nal.usda.gov/food-details/169999/nutrients) | Corn, sweet, yellow, cooked, boiled, drained, without salt | 96 | 3.41 | 20.98 | 1.5 | 1 根中型＝103 g | 45935624032 |  |
+| `potato` | 马铃薯（水煮去皮） | [FDC 170440](https://fdc.nal.usda.gov/food-details/170440/nutrients) | Potatoes, boiled, cooked without skin, flesh, without salt | 86 | 1.71 | 20.01 | 0.1 | 1 颗中型＝167 g | 45935624032 |  |
+| `potatobaked` | 烤马铃薯（连皮） | [FDC 170093](https://fdc.nal.usda.gov/food-details/170093/nutrients) | Potatoes, baked, flesh and skin, without salt | 93 | 2.5 | 21.15 | 0.13 | 1 颗中型＝173 g | 45935768104 |  |
+| `taro` | 芋头（熟） | [FDC 168486](https://fdc.nal.usda.gov/food-details/168486/nutrients) | Taro, cooked, without salt | 142 | 0.52 | 34.6 | 0.11 |  | 45935768104 |  |
+| `pumpkin` | 南瓜（煮） | [FDC 168449](https://fdc.nal.usda.gov/food-details/168449/nutrients) | Pumpkin, cooked, boiled, drained, without salt | 20 | 0.72 | 4.9 | 0.07 |  | 45935768104 | USDA 的南瓜是美式橙色南瓜；东南亚常见的日本南瓜（kabocha）淀粉多、热量较高，这里会偏低 |
+| `sweetpotato` | 地瓜（蒸／水煮，去皮） | [FDC 168484](https://fdc.nal.usda.gov/food-details/168484/nutrients) | Sweet potato, cooked, boiled, without skin | 76 | 1.37 | 17.72 | 0.14 | 1 条中型＝151 g | 45935624032 | USDA 没有「蒸」；用最接近的水煮去皮近似（同样是水气加热、不加油） |
+| `sweetpotatobaked` | 烤地瓜（连皮烤） | [FDC 168483](https://fdc.nal.usda.gov/food-details/168483/nutrients) | Sweet potato, cooked, baked in skin, flesh, without salt | 90 | 2.01 | 20.71 | 0.15 | 1 条中型＝114 g | 45935624032 |  |
+| `millet` | 小米（生） | [FDC 169702](https://fdc.nal.usda.gov/food-details/169702/nutrients) | Millet, raw | 378 | 11.02 | 72.85 | 4.22 |  | 45935624032 |  |
+| `huaishan` | 淮山（干片） | 台湾 B0100101 | 淮山（樣品狀態：乾貨） | 351 | 5.3 | 82.4 | 0.3 |  | 45935930445 | USDA 只有新鲜山药；干货用台湾食药署资料库（热量取「修正热量」） |
+| `lotusseed` | 莲子（干） | [FDC 170149](https://fdc.nal.usda.gov/food-details/170149/nutrients) | Seeds, lotus seeds, dried | 332 | 15.41 | 64.47 | 1.97 | 42 颗中型＝28.35 g | 45935768104 | 台湾食药署的蓮子(乾)蛋白是 21.8 g、修正热量 307，跟 USDA 不同；App 用 USDA |
+| `qianshi` | 芡实（干） | 台湾 C1800101 | 芡實 | 336 | 9.9 | 75.4 | 0.1 |  | 45935930445 | USDA 没有；用台湾食药署资料库（热量取「修正热量」） |
+| `fuling` | 茯苓（干，白茯苓） | 台湾 G2100101 | 白茯苓（乾貨，去外皮之白色部份） | 162 | 1.0 | 79.9 | 0.2 |  | 45935930445 | USDA 没有；用台湾食药署资料库。茯苓几乎都是膳食纤维，「热量」栏 316、「修正热量」162，App 用修正热量 |
+| `yiren` | 薏仁（炒薏仁按生薏仁算） | 台湾 A1000101 | 薏仁（生） | 375 | 14.1 | 66.2 | 6.1 |  | 45935930445 | USDA 没有；用台湾食药署资料库。资料库只有生薏仁，炒过水分少一点，每克会略高（App 的近似） |
+| `choysum` | 菜心 | 台湾 E3201001 | 油菜心（生） | 27 | 3.2 | 4.0 | 0.9 |  | 45936117341 | USDA 没有菜心；用台湾食药署资料库（热量取「修正热量」） |
+| `kangkung` | 空心菜（煮） | [FDC 169302](https://fdc.nal.usda.gov/food-details/169302/nutrients) | Water convolvulus, cooked, boiled, drained, without salt | 20 | 2.08 | 3.7 | 0.24 |  | 45935930445 |  |
+| `kangkungraw` | 空心菜（生） | [FDC 169301](https://fdc.nal.usda.gov/food-details/169301/nutrients) | Water convolvulus,raw | 19 | 2.6 | 3.13 | 0.2 |  | 45935930445 |  |
+| `broccoli` | 西兰花（煮） | [FDC 169967](https://fdc.nal.usda.gov/food-details/169967/nutrients) | Broccoli, cooked, boiled, drained, without salt | 35 | 2.38 | 7.18 | 0.41 |  | 45935624032 |  |
+| `gailan` | 芥兰（熟） | [FDC 169392](https://fdc.nal.usda.gov/food-details/169392/nutrients) | Broccoli, chinese, cooked | 22 | 1.14 | 3.81 | 0.72 |  | 45935768104 |  |
+| `bokchoy` | 小白菜／青江菜（煮） | [FDC 170391](https://fdc.nal.usda.gov/food-details/170391/nutrients) | Cabbage, chinese (pak-choi), cooked, boiled, drained, without salt | 12 | 1.56 | 1.78 | 0.16 |  | 45935624032 |  |
+| `napa` | 大白菜（煮） | [FDC 169980](https://fdc.nal.usda.gov/food-details/169980/nutrients) | Cabbage, chinese (pe-tsai), cooked, boiled, drained, without salt | 14 | 1.5 | 2.41 | 0.17 |  | 45935768104 |  |
+| `cabbage` | 包菜（生） | [FDC 169975](https://fdc.nal.usda.gov/food-details/169975/nutrients) | Cabbage, raw | 25 | 1.28 | 5.8 | 0.1 |  | 45935624032 |  |
+| `spinach` | 菠菜（煮） | [FDC 168463](https://fdc.nal.usda.gov/food-details/168463/nutrients) | Spinach, cooked, boiled, drained, without salt | 23 | 2.97 | 3.75 | 0.26 | 1 杯＝180 g | 45935624032 |  |
+| `cucumber` | 黄瓜（连皮） | [FDC 168409](https://fdc.nal.usda.gov/food-details/168409/nutrients) | Cucumber, with peel, raw | 15 | 0.65 | 3.63 | 0.11 |  | 45935624032 |  |
+| `tomato` | 番茄 | [FDC 170457](https://fdc.nal.usda.gov/food-details/170457/nutrients) | Tomatoes, red, ripe, raw, year round average | 18 | 0.88 | 3.89 | 0.2 | 1 颗中型＝123 g | 45935624032 |  |
+| `greenpepper` | 青椒 | [FDC 170427](https://fdc.nal.usda.gov/food-details/170427/nutrients) | Peppers, sweet, green, raw | 20 | 0.86 | 4.64 | 0.17 |  | 45935768104 |  |
+| `carrot` | 胡萝卜（生） | [FDC 170393](https://fdc.nal.usda.gov/food-details/170393/nutrients) | Carrots, raw | 41 | 0.93 | 9.58 | 0.24 | 1 根中型＝61 g | 45935624032 |  |
+| `mushroom` | 白蘑菇（生） | [FDC 169251](https://fdc.nal.usda.gov/food-details/169251/nutrients) | Mushrooms, white, raw | 22 | 3.09 | 3.26 | 0.34 |  | 45935624032 |  |
+| `shiitake` | 香菇（熟） | [FDC 168437](https://fdc.nal.usda.gov/food-details/168437/nutrients) | Mushrooms, shiitake, cooked, without salt | 56 | 1.56 | 14.39 | 0.22 |  | 45935768104 |  |
+| `enoki` | 金针菇（生） | [FDC 169382](https://fdc.nal.usda.gov/food-details/169382/nutrients) | Mushrooms, enoki, raw | 37 | 2.66 | 7.81 | 0.29 |  | 45935768104 |  |
+| `oystermush` | 秀珍菇／蚝菇（生） | [FDC 168580](https://fdc.nal.usda.gov/food-details/168580/nutrients) | Mushrooms, oyster, raw | 33 | 3.31 | 6.09 | 0.41 |  | 45935768104 |  |
+| `eggplant` | 茄子（煮） | [FDC 169229](https://fdc.nal.usda.gov/food-details/169229/nutrients) | Eggplant, cooked, boiled, drained, without salt | 35 | 0.83 | 8.73 | 0.23 |  | 45935768104 |  |
+| `longbean` | 长豆角（煮） | [FDC 169223](https://fdc.nal.usda.gov/food-details/169223/nutrients) | Yardlong bean, cooked, boiled, drained, without salt | 47 | 2.53 | 9.18 | 0.1 |  | 45935768104 |  |
+| `greenbean` | 四季豆（煮） | [FDC 169141](https://fdc.nal.usda.gov/food-details/169141/nutrients) | Beans, snap, green, cooked, boiled, drained, without salt | 35 | 1.89 | 7.88 | 0.28 |  | 45935768104 |  |
+| `bittergourd` | 苦瓜（煮） | [FDC 168394](https://fdc.nal.usda.gov/food-details/168394/nutrients) | Balsam-pear (bitter gourd), pods, cooked, boiled, drained, without salt | 19 | 0.84 | 4.32 | 0.18 |  | 45935768104 |  |
+| `okra` | 秋葵（煮） | [FDC 169261](https://fdc.nal.usda.gov/food-details/169261/nutrients) | Okra, cooked, boiled, drained, without salt | 22 | 1.87 | 4.51 | 0.21 |  | 45935768104 |  |
+| `calabash` | 葫芦瓜（煮） | [FDC 169233](https://fdc.nal.usda.gov/food-details/169233/nutrients) | Gourd, white-flowered (calabash), cooked, boiled, drained, without salt | 15 | 0.6 | 3.69 | 0.02 |  | 45935768104 |  |
+| `beansprout` | 绿豆芽（生） | [FDC 169957](https://fdc.nal.usda.gov/food-details/169957/nutrients) | Mung beans, mature seeds, sprouted, raw | 30 | 3.04 | 5.94 | 0.18 |  | 45935624032 |  |
+| `onion` | 洋葱（生） | [FDC 170000](https://fdc.nal.usda.gov/food-details/170000/nutrients) | Onions, raw | 40 | 1.1 | 9.34 | 0.1 |  | 45935624032 |  |
+| `lettuce` | 生菜（罗马生菜） | [FDC 169247](https://fdc.nal.usda.gov/food-details/169247/nutrients) | Lettuce, cos or romaine, raw | 17 | 1.23 | 3.29 | 0.3 |  | 45935624032 |  |
+| `cauliflower` | 花椰菜（煮） | [FDC 170397](https://fdc.nal.usda.gov/food-details/170397/nutrients) | Cauliflower, cooked, boiled, drained, without salt | 23 | 1.84 | 4.11 | 0.45 |  | 45935768104 |  |
+| `lotusroot` | 莲藕（煮） | [FDC 168430](https://fdc.nal.usda.gov/food-details/168430/nutrients) | Lotus root, cooked, boiled, drained, without salt | 66 | 1.58 | 16.02 | 0.07 |  | 45935768104 |  |
+| `celery` | 芹菜（生） | [FDC 169988](https://fdc.nal.usda.gov/food-details/169988/nutrients) | Celery, raw | 14 | 0.69 | 2.97 | 0.17 |  | 45935768104 |  |
+| `kelp` | 海带（生） | [FDC 168457](https://fdc.nal.usda.gov/food-details/168457/nutrients) | Seaweed, kelp, raw | 43 | 1.68 | 9.57 | 0.56 |  | 45935768104 |  |
+| `banana` | 香蕉 | [FDC 173944](https://fdc.nal.usda.gov/food-details/173944/nutrients) | Bananas, raw | 89 | 1.09 | 22.84 | 0.33 | 1 根中型（去皮）＝118 g | 45935624032 |  |
+| `mango` | 芒果 | [FDC 169910](https://fdc.nal.usda.gov/food-details/169910/nutrients) | Mangos, raw | 60 | 0.82 | 14.98 | 0.38 | 1 颗（去皮去核）＝336 g | 45935624032 |  |
+| `papaya` | 木瓜 | [FDC 169926](https://fdc.nal.usda.gov/food-details/169926/nutrients) | Papayas, raw | 43 | 0.47 | 10.82 | 0.26 | 1 杯块＝145 g | 45935624032 |  |
+| `watermelon` | 西瓜 | [FDC 167765](https://fdc.nal.usda.gov/food-details/167765/nutrients) | Watermelon, raw | 30 | 0.61 | 7.55 | 0.15 | 1 杯丁＝152 g | 45935624032 |  |
+| `apple` | 苹果（连皮） | [FDC 171688](https://fdc.nal.usda.gov/food-details/171688/nutrients) | Apples, raw, with skin | 52 | 0.26 | 13.81 | 0.17 | 1 颗中型＝182 g | 45935624032 |  |
+| `orange` | 橙 | [FDC 169097](https://fdc.nal.usda.gov/food-details/169097/nutrients) | Oranges, raw, all commercial varieties | 47 | 0.94 | 11.75 | 0.12 | 1 颗＝131 g | 45935624032 |  |
+| `guava` | 番石榴 | [FDC 173044](https://fdc.nal.usda.gov/food-details/173044/nutrients) | Guavas, common, raw | 68 | 2.55 | 14.32 | 0.95 | 1 颗（可食部分）＝55 g | 45935768104 |  |
+| `pineapple` | 菠萝 | [FDC 169124](https://fdc.nal.usda.gov/food-details/169124/nutrients) | Pineapple, raw, all varieties | 50 | 0.54 | 13.12 | 0.12 | 1 杯块＝165 g | 45935768104 |  |
+| `durian` | 榴莲 | [FDC 168192](https://fdc.nal.usda.gov/food-details/168192/nutrients) | Durian, raw or frozen | 147 | 1.47 | 27.09 | 5.33 |  | 45935768104 |  |
+| `longan` | 龙眼 | [FDC 169089](https://fdc.nal.usda.gov/food-details/169089/nutrients) | Longans, raw | 60 | 1.31 | 15.14 | 0.1 | 1 颗（可食部分）＝3.2 g | 45935768104 |  |
+| `lychee` | 荔枝 | [FDC 169086](https://fdc.nal.usda.gov/food-details/169086/nutrients) | Litchis, raw | 66 | 0.83 | 16.53 | 0.44 | 1 颗（可食部分）＝9.6 g | 45935768104 |  |
+| `jackfruit` | 菠萝蜜 | [FDC 174687](https://fdc.nal.usda.gov/food-details/174687/nutrients) | Jackfruit, raw | 95 | 1.72 | 23.25 | 0.64 |  | 45935768104 |  |
+| `grapes` | 葡萄 | [FDC 174683](https://fdc.nal.usda.gov/food-details/174683/nutrients) | Grapes, red or green (European type, such as Thompson seedless), raw | 69 | 0.72 | 18.1 | 0.16 |  | 45935624032 |  |
+| `kiwi` | 奇异果 | [FDC 168153](https://fdc.nal.usda.gov/food-details/168153/nutrients) | Kiwifruit, green, raw | 61 | 1.14 | 14.66 | 0.52 | 1 颗＝69 g | 45935768104 |  |
+| `avocado` | 牛油果 | [FDC 171705](https://fdc.nal.usda.gov/food-details/171705/nutrients) | Avocados, raw, all commercial varieties | 160 | 2 | 8.53 | 14.66 |  | 45935624032 |  |
+| `pear` | 梨 | [FDC 169118](https://fdc.nal.usda.gov/food-details/169118/nutrients) | Pears, raw | 57 | 0.36 | 15.23 | 0.14 | 1 颗中型＝178 g | 45935768104 |  |
+| `strawberry` | 草莓 | [FDC 167762](https://fdc.nal.usda.gov/food-details/167762/nutrients) | Strawberries, raw | 32 | 0.67 | 7.68 | 0.3 |  | 45935768104 |  |
+| `walnut` | 核桃（去壳） | [FDC 170187](https://fdc.nal.usda.gov/food-details/170187/nutrients) | Nuts, walnuts, english | 654 | 15.23 | 13.71 | 65.21 | 1 颗（去壳）＝4 g | 45935624032 | 「1 颗 4 g」来自 USDA 份量「7 颗去壳可食部分＝28 g」（28÷7）；核桃大小不一，最好自己称一次 4 颗 |
+| `almond` | 杏仁（生） | [FDC 170567](https://fdc.nal.usda.gov/food-details/170567/nutrients) | Nuts, almonds | 579 | 21.15 | 21.55 | 49.93 | 1 颗＝1.2 g | 45935624032 |  |
+| `peanut` | 花生（烤，无盐） | [FDC 173806](https://fdc.nal.usda.gov/food-details/173806/nutrients) | Peanuts, all types, dry-roasted, without salt | 587 | 24.35 | 21.26 | 49.66 | 1 粒＝1 g | 45935624032 |  |
+| `cashew` | 腰果（生） | [FDC 170162](https://fdc.nal.usda.gov/food-details/170162/nutrients) | Nuts, cashew nuts, raw | 553 | 18.22 | 30.19 | 43.85 |  | 45935768104 |  |
+| `sesame` | 芝麻 | [FDC 170150](https://fdc.nal.usda.gov/food-details/170150/nutrients) | Seeds, sesame seeds, whole, dried | 573 | 17.73 | 23.45 | 49.67 | 1 大匙＝9 g | 45935768104 |  |
+| `chia` | 奇亚籽 | [FDC 170554](https://fdc.nal.usda.gov/food-details/170554/nutrients) | Seeds, chia seeds, dried | 486 | 16.54 | 42.12 | 30.74 |  | 45935768104 |  |
+| `flax` | 亚麻籽 | [FDC 169414](https://fdc.nal.usda.gov/food-details/169414/nutrients) | Seeds, flaxseed | 534 | 18.29 | 28.88 | 42.16 | 1 大匙（整粒）＝10.3 g | 45935768104 |  |
+| `pumpkinseed` | 南瓜子仁 | [FDC 170556](https://fdc.nal.usda.gov/food-details/170556/nutrients) | Seeds, pumpkin and squash seed kernels, dried | 559 | 30.23 | 10.71 | 49.05 |  | 45935768104 |  |
+| `sunflower` | 葵花子仁 | [FDC 170562](https://fdc.nal.usda.gov/food-details/170562/nutrients) | Seeds, sunflower seed kernels, dried | 584 | 20.78 | 20 | 51.46 |  | 45935768104 |  |
+| `milk` | 全脂牛奶 | [FDC 171265](https://fdc.nal.usda.gov/food-details/171265/nutrients) | Milk, whole, 3.25% milkfat, with added vitamin D | 61 | 3.15 | 4.8 | 3.25 | 1 杯＝244 g | 45935624032 |  |
+| `milklow` | 低脂牛奶（1%） | [FDC 170872](https://fdc.nal.usda.gov/food-details/170872/nutrients) | Milk, lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D | 42 | 3.37 | 4.99 | 0.97 | 1 杯＝244 g | 45935624032 |  |
+| `milkskim` | 脱脂牛奶 | [FDC 171269](https://fdc.nal.usda.gov/food-details/171269/nutrients) | Milk, nonfat, fluid, with added vitamin A and vitamin D (fat free or skim) | 34 | 3.37 | 4.96 | 0.08 | 1 杯＝245 g | 45935624032 |  |
+| `yogurt` | 原味优格（全脂） | [FDC 171284](https://fdc.nal.usda.gov/food-details/171284/nutrients) | Yogurt, plain, whole milk | 61 | 3.47 | 4.66 | 3.25 | 1 盒（6 oz）＝170 g | 45935624032 |  |
+| `greek0` | 希腊优格（无脂） | [FDC 170894](https://fdc.nal.usda.gov/food-details/170894/nutrients) | Yogurt, Greek, plain, nonfat | 59 | 10.19 | 3.6 | 0.39 | 1 盒＝170 g | 45935624032 |  |
+| `greek` | 希腊优格（全脂） | [FDC 171304](https://fdc.nal.usda.gov/food-details/171304/nutrients) | Yogurt, Greek, plain, whole milk | 97 | 9 | 3.98 | 5 |  | 45935624032 |  |
+| `cheddar` | 切达芝士 | [FDC 173414](https://fdc.nal.usda.gov/food-details/173414/nutrients) | Cheese, cheddar | 403 | 22.87 | 3.37 | 33.31 | 1 片＝28 g | 45935624032 |  |
+| `mozzarella` | 马苏里拉芝士（部分脱脂） | [FDC 170847](https://fdc.nal.usda.gov/food-details/170847/nutrients) | Cheese, mozzarella, part skim milk | 254 | 24.26 | 2.77 | 15.92 |  | 45935768104 |  |
+| `olive` | 初榨橄榄油 | [FDC 171413](https://fdc.nal.usda.gov/food-details/171413/nutrients) | Oil, olive, salad or cooking | 884 | 0 | 0 | 100 | 10 ml＝9 g；1 大匙＝13.5 g；1 小匙＝4.5 g | 45935624032 | 10 ml ＝ 9 g：USDA「1 大匙＝13.5 g」× NIST「1 大匙≈15 ml」。USDA 这一项是一般橄榄油，没有分初榨（同为纯油，热量一样） |
+| `peanutoil` | 花生油 | [FDC 171410](https://fdc.nal.usda.gov/food-details/171410/nutrients) | Oil, peanut, salad or cooking | 884 | 0 | 0 | 100 | 1 大匙＝13.5 g；1 小匙＝4.5 g | 45935768104 |  |
+| `canola` | 芥花油／菜籽油 | [FDC 172336](https://fdc.nal.usda.gov/food-details/172336/nutrients) | Oil, canola | 884 | 0 | 0 | 100 | 1 大匙＝14 g；1 小匙＝4.5 g | 45935768104 |  |
+| `sesameoil` | 麻油 | [FDC 171016](https://fdc.nal.usda.gov/food-details/171016/nutrients) | Oil, sesame, salad or cooking | 884 | 0 | 0 | 100 | 1 大匙＝13.6 g；1 小匙＝4.5 g | 45935768104 |  |
+| `coconutoil` | 椰子油 | [FDC 171412](https://fdc.nal.usda.gov/food-details/171412/nutrients) | Oil, coconut | 892 | 0 | 0 | 99.06 | 1 大匙＝13.6 g | 45935768104 |  |
+| `butter` | 牛油（有盐） | [FDC 173410](https://fdc.nal.usda.gov/food-details/173410/nutrients) | Butter, salted | 717 | 0.85 | 0.06 | 81.11 | 1 大匙＝14.2 g | 45935768104 |  |
+| `soysauce` | 酱油 | [FDC 174277](https://fdc.nal.usda.gov/food-details/174277/nutrients) | Soy sauce made from soy and wheat (shoyu) | 53 | 8.14 | 4.93 | 0.57 | 1 大匙＝16 g；1 小匙＝5.3 g | 45935768104 |  |
+| `oystersauce` | 蚝油 | [FDC 174529](https://fdc.nal.usda.gov/food-details/174529/nutrients) | Sauce, oyster, ready-to-serve | 51 | 1.35 | 10.92 | 0.25 | 1 大匙＝18 g | 45935768104 |  |
+| `fishsauce` | 鱼露 | [FDC 174531](https://fdc.nal.usda.gov/food-details/174531/nutrients) | Sauce, fish, ready-to-serve | 35 | 5.06 | 3.64 | 0.01 | 1 大匙＝18 g | 45935768104 |  |
+| `sugar` | 白糖 | [FDC 169655](https://fdc.nal.usda.gov/food-details/169655/nutrients) | Sugars, granulated | 387 | 0 | 99.98 | 0 | 1 小匙＝4.2 g | 45935768104 |  |
+| `brownsugar` | 红糖 | [FDC 168833](https://fdc.nal.usda.gov/food-details/168833/nutrients) | Sugars, brown | 380 | 0.12 | 98.09 | 0 |  | 45935768104 |  |
+| `honey` | 蜂蜜 | [FDC 169640](https://fdc.nal.usda.gov/food-details/169640/nutrients) | Honey | 304 | 0.3 | 82.4 | 0 | 1 大匙＝21 g | 45935768104 |  |
+| `coconutmilk` | 椰浆 | [FDC 170172](https://fdc.nal.usda.gov/food-details/170172/nutrients) | Nuts, coconut milk, raw (liquid expressed from grated meat and water) | 230 | 2.29 | 5.54 | 23.84 | 1 大匙＝15 g | 45935768104 |  |
+| `friedrice_chk` | 鸡肉炒饭（估算） | [FDC 2708953](https://fdc.nal.usda.gov/food-details/2708953/nutrients) | Rice, fried, with chicken | 173 | 7.28 | 27.62 | 3.66 |  | 45936117341 | **估算** 美国全国饮食调查的平均做法；油量、配料差很多 |
+| `friedrice_pork` | 猪肉炒饭（估算） | [FDC 2708954](https://fdc.nal.usda.gov/food-details/2708954/nutrients) | Rice, fried, with pork | 179 | 7.56 | 27.62 | 4.16 |  | 45936117341 | **估算** 美国全国饮食调查的平均做法；油量、配料差很多 |
+| `friedrice_shrimp` | 虾仁炒饭（估算） | [FDC 2708956](https://fdc.nal.usda.gov/food-details/2708956/nutrients) | Rice, fried, with shrimp | 166 | 6.68 | 27.85 | 2.97 |  | 45936117341 | **估算** 美国全国饮食调查的平均做法；油量、配料差很多 |
+| `friedrice_veg` | 蛋炒饭／素炒饭（估算） | [FDC 2708951](https://fdc.nal.usda.gov/food-details/2708951/nutrients) | Rice, fried, meatless | 174 | 3.84 | 32.5 | 3.19 |  | 45936117341 | **估算** 美国全国饮食调查的平均做法；油量、配料差很多 |
+| `lomein` | 素炒面（餐馆，估算） | [FDC 167677](https://fdc.nal.usda.gov/food-details/167677/nutrients) | Restaurant, Chinese, vegetable lo mein, without meat | 121 | 4.77 | 20.16 | 2.35 |  | 45935930445 | **估算** 美国中餐馆样本；做法差很多 |
+| `kungpao` | 宫保鸡丁（餐馆，估算） | [FDC 167676](https://fdc.nal.usda.gov/food-details/167676/nutrients) | Restaurant, Chinese, kung pao chicken | 129 | 9.76 | 6.87 | 6.98 |  | 45935930445 | **估算** 美国中餐馆样本；做法差很多 |
+| `chkveg` | 鸡肉炒杂菜（餐馆，估算） | [FDC 167678](https://fdc.nal.usda.gov/food-details/167678/nutrients) | Restaurant, Chinese, chicken and vegetables | 95 | 8.18 | 5.38 | 4.56 |  | 45935930445 | **估算** 美国中餐馆样本；做法差很多 |
+| `noodlesoup` | 汤面（泛指，估算） | [FDC 2709145](https://fdc.nal.usda.gov/food-details/2709145/nutrients) | Soup, noodle, NFS | 90 | 5.48 | 10.08 | 2.99 |  | 45936117341 | **估算** 美国全国饮食调查的「汤面，泛指」，不是柬式粿条汤；汤底、肉量差很多，只能当很粗的参考 |
